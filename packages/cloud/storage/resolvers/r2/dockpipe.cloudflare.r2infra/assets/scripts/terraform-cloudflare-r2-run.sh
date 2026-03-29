@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
-# Cloudflare R2 + bundled r2publish Terraform module: TF_VAR_*, R2_*, DOCKPIPE_TF_* (terraform-pipeline R2 backend writer).
-# Invoked by dockpipe.cloudflare.r2infra and by scripts/dockpipe/r2-publish.sh — not the provider-agnostic core terraform-run.sh.
+# dockpipe.cloudflare.r2infra — thin host: Cloudflare/R2 env + bundled Terraform module path, then
+# terraform-core's terraform-pipeline.sh (DOCKPIPE_TF_* / R2_* mapping). Not provider-agnostic terraform-run.sh.
+# Terraform module (.tf) lives under dockpipe.cloudflare.r2publish/terraform (historical name); this script lives with the infra workflow resolver.
+# Invoked by dockpipe.cloudflare.r2infra and by scripts/dockpipe/r2-publish.sh.
 set -euo pipefail
 
 WF_NS="${DOCKPIPE_WORKFLOW_NAME:-dockpipe.cloudflare.r2infra}"
