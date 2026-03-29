@@ -1,18 +1,19 @@
 #!/usr/bin/env bash
 # shellcheck shell=bash
 # Reusable Terraform command pipeline for DockPipe host workflows (source this file).
+# Shipped with package dockpipe.terraform.core (packages/terraform/resolvers/terraform-core), not src/core.
 #
 # Convention: environment variables use the DOCKPIPE_TF_* namespace. Optional compatibility
 # mappers (e.g. dockpipe_tf_map_r2_publish_env) set DOCKPIPE_TF_* from workflow-specific names.
 #
 # Typical use:
-#   source "$ROOT/templates/core/assets/scripts/terraform-pipeline.sh"  # or src/core/... in repo
+#   source "$ROOT/packages/terraform/resolvers/terraform-core/assets/scripts/terraform-pipeline.sh"
 #   export DOCKPIPE_TF_LOG_PREFIX=my-workflow
 #   dockpipe_tf_map_r2_publish_env   # if using R2_* names from dockpipe.cloudflare.r2publish (r2-publish)
 #   export TF_VAR_...
 #   dockpipe_tf_run_pipeline "$tf_dir" "$path/to/backend.hcl"
 #
-# See: src/core/assets/scripts/README.md (terraform-pipeline section)
+# See: packages/terraform/resolvers/terraform-core/README.md
 
 [[ -n "${BASH_VERSION:-}" ]] || {
   echo "terraform-pipeline.sh: bash required" >&2
@@ -48,6 +49,17 @@ dockpipe_tf_map_r2_publish_env() {
   export DOCKPIPE_TF_STATE_ACCESS_KEY_ID="${DOCKPIPE_TF_STATE_ACCESS_KEY_ID:-${R2_STATE_ACCESS_KEY_ID:-}}"
   export DOCKPIPE_TF_STATE_SECRET_ACCESS_KEY="${DOCKPIPE_TF_STATE_SECRET_ACCESS_KEY:-${R2_STATE_SECRET_ACCESS_KEY:-}}"
   export DOCKPIPE_TF_DRY_RUN="${DOCKPIPE_TF_DRY_RUN:-${R2_PUBLISH_DRY_RUN:-0}}"
+}
+
+# Defaults for generic Terraform workflows (dockpipe.terraform.core / arbitrary .tf trees).
+# Does not pull R2 publish legacy names; use dockpipe_tf_map_r2_publish_env for r2-publish compatibility.
+dockpipe_tf_map_generic_env() {
+  export DOCKPIPE_TF_COMMANDS="${DOCKPIPE_TF_COMMANDS:-plan}"
+  export DOCKPIPE_TF_SKIP_INIT="${DOCKPIPE_TF_SKIP_INIT:-0}"
+  export DOCKPIPE_TF_BACKEND="${DOCKPIPE_TF_BACKEND:-local}"
+  export DOCKPIPE_TF_STATE_KEY="${DOCKPIPE_TF_STATE_KEY:-state/terraform.tfstate}"
+  export DOCKPIPE_TF_APPLY_AUTO_APPROVE="${DOCKPIPE_TF_APPLY_AUTO_APPROVE:-1}"
+  export DOCKPIPE_TF_DRY_RUN="${DOCKPIPE_TF_DRY_RUN:-0}"
 }
 
 # CLOUDFLARE_ACCOUNT_ID must be the 32-char hex id. Users sometimes paste the full R2 S3 endpoint URL;
@@ -168,6 +180,8 @@ dockpipe_tf_run_imports() {
   fi
 }
 
+# Remote backend: normally arg2 is a temp path; dockpipe_tf_write_r2_remote_backend_config writes Cloudflare R2 S3 backend there.
+# If DOCKPIPE_TF_REMOTE_BACKEND_FILE is set to an existing file, that path is passed to terraform init -backend-config= instead (any backend HCL).
 # Args: terraform_dir, path_for_remote_backend_hcl (written when backend=remote), optional skip_apply_hint (for dry-run messaging).
 dockpipe_tf_run_pipeline() {
   local tf_dir="$1"
@@ -232,9 +246,16 @@ dockpipe_tf_run_pipeline() {
         if [[ "$tf_backend" == local ]]; then
           terraform init -input=false -backend=false "${init_extra[@]}"
         else
-          [[ -n "$backend_cfg_path" ]] || dockpipe_tf_die "remote backend requires backend config path (arg 2 to dockpipe_tf_run_pipeline)"
-          dockpipe_tf_write_r2_remote_backend_config "$backend_cfg_path"
-          terraform init -input=false -backend-config="$backend_cfg_path" "${init_extra[@]}"
+          local backend_use=""
+          if [[ -n "${DOCKPIPE_TF_REMOTE_BACKEND_FILE:-}" ]]; then
+            [[ -f "${DOCKPIPE_TF_REMOTE_BACKEND_FILE}" ]] || dockpipe_tf_die "DOCKPIPE_TF_REMOTE_BACKEND_FILE not found: ${DOCKPIPE_TF_REMOTE_BACKEND_FILE}"
+            backend_use="${DOCKPIPE_TF_REMOTE_BACKEND_FILE}"
+          else
+            [[ -n "$backend_cfg_path" ]] || dockpipe_tf_die "remote backend requires backend config path (arg 2 to dockpipe_tf_run_pipeline) or set DOCKPIPE_TF_REMOTE_BACKEND_FILE"
+            dockpipe_tf_write_r2_remote_backend_config "$backend_cfg_path"
+            backend_use="$backend_cfg_path"
+          fi
+          terraform init -input=false -backend-config="$backend_use" "${init_extra[@]}"
         fi
         did_init=true
         dockpipe_tf_maybe_workspace
