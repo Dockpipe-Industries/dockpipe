@@ -124,7 +124,7 @@ func (s *Server) handleInitialize(req *rpcRequest) *rpcResponse {
 	var r result
 	r.ProtocolVersion = ver
 	r.Capabilities.Tools = struct{}{}
-	r.ServerInfo.Name = "dockpipe-mcp"
+	r.ServerInfo.Name = "dorkpipe-mcp"
 	r.ServerInfo.Version = s.Version
 	b, err := json.Marshal(r)
 	if err != nil {

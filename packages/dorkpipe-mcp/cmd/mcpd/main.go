@@ -1,5 +1,5 @@
 // Command mcpd is a thin MCP (Model Context Protocol) bridge over DockPipe/DorkPipe.
-// See dockpipe-mcp/README.md and mcpbridge/README.md.
+// See dorkpipe-mcp/README.md and mcpbridge/README.md.
 package main
 
 import (
@@ -11,7 +11,7 @@ import (
 	"os/signal"
 	"strings"
 
-	"dockpipe.mcp/mcpbridge"
+	"dorkpipe.mcp/mcpbridge"
 )
 
 // Version is set at link time (see Makefile).
@@ -80,7 +80,7 @@ func main() {
 	// Do not write to stderr in stdio mode unless explicitly enabled: many MCP hosts
 	// surface stderr as [error], which looks like a failed handshake when this is only a status line.
 	if strings.TrimSpace(os.Getenv("DOCKPIPE_MCP_DEBUG")) != "" {
-		fmt.Fprintf(os.Stderr, "[dockpipe-mcpd] stdio mode (version %s); awaiting MCP JSON-RPC on stdin\n", srv.Version)
+		fmt.Fprintf(os.Stderr, "[dorkpipe-mcpd] stdio mode (version %s); awaiting MCP JSON-RPC on stdin\n", srv.Version)
 	}
 	if err := srv.ServeStdio(os.Stdin, os.Stdout, os.Stderr); err != nil {
 		log.Fatal(err)

@@ -1,4 +1,4 @@
-module dockpipe.mcp
+module dorkpipe.mcp
 
 go 1.25
 
