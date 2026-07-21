@@ -35,6 +35,8 @@ const (
 	backlogStatusContract               = "dorkpipe.remote-status/v1"
 	backlogDiffFixtureContract          = "dorkpipe.remote-diff-observation-fixture/v1"
 	backlogDiffContract                 = "dorkpipe.remote-diff/v1"
+	backlogResultFixtureContract        = "dorkpipe.remote-result-observation-fixture/v1"
+	backlogResultContract               = "dorkpipe.remote-result/v1"
 )
 
 var (
@@ -145,6 +147,28 @@ type backlogDiffFixture struct {
 	ObservedAt                     string `json:"observed_at"`
 	PatchFile                      string `json:"patch_file"`
 	PatchSHA256                    string `json:"patch_sha256"`
+}
+
+type backlogResultFixture struct {
+	ContractVersion                string `json:"contract_version"`
+	ObservationID                  string `json:"observation_id"`
+	ReplayIdentity                 string `json:"replay_identity"`
+	RemoteDiffObservationID        string `json:"remote_diff_observation_id"`
+	RemoteDiffFingerprint          string `json:"remote_diff_fingerprint"`
+	PatchSHA256                    string `json:"patch_sha256"`
+	PatchBytes                     *int   `json:"patch_bytes"`
+	RemoteStatusObservationID      string `json:"remote_status_observation_id"`
+	RemoteStatusFingerprint        string `json:"remote_status_fingerprint"`
+	CompletionCandidateID          string `json:"completion_candidate_id"`
+	CompletionCandidateFingerprint string `json:"completion_candidate_fingerprint"`
+	AdapterIdentity                string `json:"adapter_identity"`
+	RemoteTaskID                   string `json:"remote_task_id"`
+	RequestFingerprint             string `json:"request_fingerprint"`
+	DispatchFingerprint            string `json:"dispatch_fingerprint"`
+	EnvironmentRef                 string `json:"environment_ref"`
+	BranchRef                      string `json:"branch_ref"`
+	ObservedAt                     string `json:"observed_at"`
+	OpaqueResult                   string `json:"opaque_result"`
 }
 
 type backlogRejection struct {
@@ -1195,6 +1219,139 @@ func retrieveBacklogRemoteDiffFixture(artifactRoot, fixturePath string) error {
 	return writeBacklogDiffArtifactsAtomic(diffPath, payload, acceptedPatchPath, patchRaw)
 }
 
+func retrieveBacklogRemoteResultFixture(artifactRoot, fixturePath string) error {
+	request, _, err := loadAndVerifyBacklogRequest(artifactRoot)
+	if err != nil {
+		return rejectBacklog("remote_result_request_invalid", "%v", err)
+	}
+	_, compatibilityFingerprint, err := loadAndVerifyBacklogCompatibility(artifactRoot, request)
+	if err != nil {
+		return rejectBacklog("remote_result_compatibility_invalid", "%v", err)
+	}
+	task, err := loadAndVerifyBacklogDispatch(artifactRoot, request, compatibilityFingerprint)
+	if err != nil {
+		return rejectBacklog("remote_result_dispatch_invalid", "%v", err)
+	}
+	candidate, candidateFingerprint, err := loadAndVerifyBacklogCompletionCandidate(artifactRoot, task)
+	if err != nil {
+		return rejectBacklog("remote_result_candidate_invalid", "%v", err)
+	}
+	status, statusFingerprint, err := loadAndVerifyBacklogRemoteStatus(artifactRoot, task, candidate, candidateFingerprint)
+	if err != nil {
+		return rejectBacklog("remote_result_status_invalid", "%v", err)
+	}
+	diff, err := loadAndVerifyBacklogRemoteDiff(artifactRoot, task, candidate, candidateFingerprint, status, statusFingerprint)
+	if err != nil {
+		return rejectBacklog("remote_result_diff_invalid", "%v", err)
+	}
+	diffFingerprint, err := backlogJSONFingerprint(diff)
+	if err != nil {
+		return rejectBacklog("remote_result_diff_invalid", "%v", err)
+	}
+
+	fixtureRaw, err := os.ReadFile(fixturePath)
+	if err != nil {
+		return rejectBacklog("remote_result_fixture_missing", "remote result fixture cannot be read: %v", err)
+	}
+	decoder := json.NewDecoder(bytes.NewReader(fixtureRaw))
+	decoder.DisallowUnknownFields()
+	fixture := backlogResultFixture{}
+	if err := decoder.Decode(&fixture); err != nil {
+		return rejectBacklog("remote_result_fixture_malformed", "remote result fixture is malformed: %v", err)
+	}
+	if err := ensureJSONEOF(decoder); err != nil {
+		return rejectBacklog("remote_result_fixture_malformed", "remote result fixture is malformed: %v", err)
+	}
+	if fixture.ContractVersion != backlogResultFixtureContract ||
+		!backlogOpaqueID.MatchString(fixture.ObservationID) ||
+		!backlogOpaqueID.MatchString(fixture.ReplayIdentity) ||
+		fixture.ObservationID == fixture.ReplayIdentity ||
+		!backlogOpaqueID.MatchString(fixture.RemoteDiffObservationID) ||
+		!backlogFingerprint.MatchString(fixture.RemoteDiffFingerprint) ||
+		!backlogFingerprint.MatchString(fixture.PatchSHA256) ||
+		fixture.PatchBytes == nil || *fixture.PatchBytes < 0 ||
+		!backlogOpaqueID.MatchString(fixture.RemoteStatusObservationID) ||
+		!backlogFingerprint.MatchString(fixture.RemoteStatusFingerprint) ||
+		!backlogOpaqueID.MatchString(fixture.CompletionCandidateID) ||
+		!backlogFingerprint.MatchString(fixture.CompletionCandidateFingerprint) ||
+		!backlogOpaqueID.MatchString(fixture.AdapterIdentity) ||
+		!backlogOpaqueID.MatchString(fixture.RemoteTaskID) ||
+		!backlogFingerprint.MatchString(fixture.RequestFingerprint) ||
+		!backlogFingerprint.MatchString(fixture.DispatchFingerprint) ||
+		!validBacklogOpaqueResult(fixture.OpaqueResult) {
+		return rejectBacklog("remote_result_identity_invalid", "remote result contract, identity, patch, or opaque evidence fields are invalid")
+	}
+	if err := validateBacklogReference("environment", fixture.EnvironmentRef); err != nil {
+		return rejectBacklog("remote_result_identity_invalid", "%v", err)
+	}
+	if err := validateBacklogReference("branch", fixture.BranchRef); err != nil {
+		return rejectBacklog("remote_result_identity_invalid", "%v", err)
+	}
+
+	diffIdentity := mapValue(diff["identity"])
+	diffPatch := mapValue(diff["patch"])
+	acceptedPatchBytes, ok := backlogJSONInt(diffPatch["bytes"])
+	if !ok {
+		return rejectBacklog("remote_result_diff_invalid", "accepted remote diff patch byte count is invalid")
+	}
+	statusIdentity := mapValue(status["identity"])
+	candidateIdentity := mapValue(candidate["identity"])
+	target := mapValue(task["target"])
+	adapter := mapValue(task["adapter"])
+	if fixture.RemoteDiffObservationID != stringValue(diffIdentity["observation_id"]) ||
+		fixture.RemoteDiffFingerprint != diffFingerprint ||
+		fixture.PatchSHA256 != stringValue(diffPatch["sha256"]) ||
+		*fixture.PatchBytes != acceptedPatchBytes ||
+		fixture.RemoteStatusObservationID != stringValue(statusIdentity["observation_id"]) ||
+		fixture.RemoteStatusFingerprint != statusFingerprint ||
+		fixture.CompletionCandidateID != stringValue(candidateIdentity["candidate_id"]) ||
+		fixture.CompletionCandidateFingerprint != candidateFingerprint ||
+		fixture.RemoteTaskID != stringValue(task["remote_task_id"]) ||
+		fixture.RequestFingerprint != stringValue(task["request_fingerprint"]) ||
+		fixture.DispatchFingerprint != stringValue(task["dispatch_fingerprint"]) ||
+		fixture.AdapterIdentity != stringValue(adapter["identity"]) ||
+		fixture.EnvironmentRef != stringValue(target["environment_ref"]) ||
+		fixture.BranchRef != stringValue(target["branch_ref"]) {
+		return rejectBacklog("remote_result_binding_mismatch", "remote result observation does not match the accepted diff, patch, status, candidate, task, request, dispatch, adapter, environment, and branch identity")
+	}
+	observedAt, err := time.Parse(time.RFC3339, fixture.ObservedAt)
+	if err != nil || observedAt.Format(time.RFC3339) != fixture.ObservedAt {
+		return rejectBacklog("remote_result_observation_invalid", "remote result observed_at must be canonical RFC3339")
+	}
+	submittedAt, _ := time.Parse(time.RFC3339, stringValue(task["submitted_at"]))
+	candidateObservedAt, _ := time.Parse(time.RFC3339, stringValue(candidate["observed_at"]))
+	statusObservedAt, _ := time.Parse(time.RFC3339, stringValue(status["observed_at"]))
+	diffObservedAt, _ := time.Parse(time.RFC3339, stringValue(diff["observed_at"]))
+	if !observedAt.After(submittedAt) || !observedAt.After(candidateObservedAt) || !observedAt.After(statusObservedAt) || !observedAt.After(diffObservedAt) {
+		return rejectBacklog("remote_result_stale", "remote result observed_at must be later than dispatch, completion-candidate, remote-status, and remote-diff observation times")
+	}
+
+	resultPath, err := backlogArtifactPath(artifactRoot, "remote-result.json")
+	if err != nil {
+		return err
+	}
+	if _, resultErr := os.Stat(resultPath); resultErr == nil {
+		existing, readErr := loadAndVerifyBacklogRemoteResult(artifactRoot, task, candidate, candidateFingerprint, status, statusFingerprint, diff, diffFingerprint)
+		if readErr != nil {
+			return rejectBacklog("remote_result_artifact_invalid", "%v", readErr)
+		}
+		identity := mapValue(existing["identity"])
+		switch {
+		case stringValue(identity["observation_id"]) == fixture.ObservationID:
+			return rejectBacklog("remote_result_duplicate", "result observation identity %q was already ingested", fixture.ObservationID)
+		case stringValue(identity["replay_identity"]) == fixture.ReplayIdentity:
+			return rejectBacklog("remote_result_replay", "result replay identity %q was already ingested", fixture.ReplayIdentity)
+		default:
+			return rejectBacklog("remote_result_already_recorded", "one remote result observation is already recorded for the accepted diff observation")
+		}
+	} else if !os.IsNotExist(resultErr) {
+		return resultErr
+	}
+
+	payload := backlogRemoteResultPayload(task, candidate, candidateFingerprint, status, statusFingerprint, diff, diffFingerprint, fixture.ObservationID, fixture.ReplayIdentity, fixture.ObservedAt, fixture.OpaqueResult)
+	return writeJSONFileAtomic(resultPath, payload)
+}
+
 func loadAndVerifyBacklogRemoteStatus(artifactRoot string, task, candidate map[string]any, candidateFingerprint string) (map[string]any, string, error) {
 	statusPath, err := backlogArtifactPath(artifactRoot, "remote-status.json")
 	if err != nil {
@@ -1329,6 +1486,119 @@ func loadAndVerifyBacklogRemoteDiff(artifactRoot string, task, candidate map[str
 		return nil, errors.New("remote diff metadata or patch is malformed, tampered, or does not match the immutable artifact chain")
 	}
 	return diff, nil
+}
+
+func loadAndVerifyBacklogRemoteResult(artifactRoot string, task, candidate map[string]any, candidateFingerprint string, status map[string]any, statusFingerprint string, diff map[string]any, diffFingerprint string) (map[string]any, error) {
+	resultPath, err := backlogArtifactPath(artifactRoot, "remote-result.json")
+	if err != nil {
+		return nil, err
+	}
+	result, err := readStrictJSONMap(resultPath)
+	if err != nil {
+		return nil, fmt.Errorf("remote result cannot be loaded: %w", err)
+	}
+	identity := mapValue(result["identity"])
+	evidence := mapValue(result["evidence"])
+	if !backlogOpaqueID.MatchString(stringValue(identity["observation_id"])) ||
+		!backlogOpaqueID.MatchString(stringValue(identity["replay_identity"])) ||
+		stringValue(identity["observation_id"]) == stringValue(identity["replay_identity"]) ||
+		!validBacklogOpaqueResult(stringValue(evidence["opaque_result"])) {
+		return nil, errors.New("remote result identity or opaque evidence is malformed")
+	}
+	observedAt, err := time.Parse(time.RFC3339, stringValue(result["observed_at"]))
+	if err != nil || observedAt.Format(time.RFC3339) != stringValue(result["observed_at"]) {
+		return nil, errors.New("remote result observed_at is not canonical RFC3339")
+	}
+	submittedAt, _ := time.Parse(time.RFC3339, stringValue(task["submitted_at"]))
+	candidateObservedAt, _ := time.Parse(time.RFC3339, stringValue(candidate["observed_at"]))
+	statusObservedAt, _ := time.Parse(time.RFC3339, stringValue(status["observed_at"]))
+	diffObservedAt, _ := time.Parse(time.RFC3339, stringValue(diff["observed_at"]))
+	if !observedAt.After(submittedAt) || !observedAt.After(candidateObservedAt) || !observedAt.After(statusObservedAt) || !observedAt.After(diffObservedAt) {
+		return nil, errors.New("remote result is stale relative to the immutable artifact chain")
+	}
+	expected := backlogRemoteResultPayload(
+		task, candidate, candidateFingerprint, status, statusFingerprint, diff, diffFingerprint,
+		stringValue(identity["observation_id"]), stringValue(identity["replay_identity"]),
+		stringValue(result["observed_at"]), stringValue(evidence["opaque_result"]),
+	)
+	if !jsonMapsEqual(result, expected) {
+		return nil, errors.New("remote result is malformed, tampered, or does not match the immutable diff, patch, status, candidate, task, request, dispatch, adapter, environment, and branch identity")
+	}
+	return result, nil
+}
+
+func backlogRemoteResultPayload(task, candidate map[string]any, candidateFingerprint string, status map[string]any, statusFingerprint string, diff map[string]any, diffFingerprint, observationID, replayIdentity, observedAt, opaqueResult string) map[string]any {
+	diffIdentity := mapValue(diff["identity"])
+	diffPatch := mapValue(diff["patch"])
+	statusIdentity := mapValue(status["identity"])
+	candidateIdentity := mapValue(candidate["identity"])
+	target := mapValue(task["target"])
+	adapter := mapValue(task["adapter"])
+	return map[string]any{
+		"contract_version": backlogResultContract,
+		"state":            "completion_candidate",
+		"identity": map[string]any{
+			"observation_id": observationID, "replay_identity": replayIdentity,
+		},
+		"remote_diff": map[string]any{
+			"observation_id":  stringValue(diffIdentity["observation_id"]),
+			"replay_identity": stringValue(diffIdentity["replay_identity"]),
+			"fingerprint":     diffFingerprint,
+			"patch_sha256":    stringValue(diffPatch["sha256"]),
+			"patch_bytes":     diffPatch["bytes"],
+		},
+		"remote_status": map[string]any{
+			"observation_id":  stringValue(statusIdentity["observation_id"]),
+			"replay_identity": stringValue(statusIdentity["replay_identity"]),
+			"fingerprint":     statusFingerprint,
+		},
+		"completion_candidate": map[string]any{
+			"candidate_id":    stringValue(candidateIdentity["candidate_id"]),
+			"replay_identity": stringValue(candidateIdentity["replay_identity"]),
+			"fingerprint":     candidateFingerprint,
+		},
+		"binding": map[string]any{
+			"remote_task_id": stringValue(task["remote_task_id"]), "request_fingerprint": stringValue(task["request_fingerprint"]),
+			"dispatch_fingerprint": stringValue(task["dispatch_fingerprint"]), "adapter_identity": stringValue(adapter["identity"]),
+			"environment_ref": stringValue(target["environment_ref"]), "branch_ref": stringValue(target["branch_ref"]),
+		},
+		"observed_at": observedAt,
+		"evidence": map[string]any{
+			"opaque_result": opaqueResult, "opaque": true, "trusted": false,
+			"authoritative": false, "interpreted": false,
+		},
+		"source": map[string]any{
+			"mode": "fixture", "provider_invoked": false, "package_owned_metadata": true,
+			"fixture_contract": backlogResultFixtureContract, "provider_response": false,
+			"callback": false, "signed_receipt": false,
+		},
+		"lifecycle": map[string]any{
+			"ready_for_review": false, "validation_receipt_retrieval": false,
+			"semantic_result_interpretation": false, "semantic_diff_verification": false,
+			"allowed_path_verification": false, "validation": false, "apply": false,
+			"commit": false, "push": false, "publication": false,
+		},
+	}
+}
+
+func validBacklogOpaqueResult(value string) bool {
+	if value == "" || value != strings.TrimSpace(value) || !utf8.ValidString(value) || len(value) > 1000 || strings.ContainsAny(value, "\r\n") {
+		return false
+	}
+	for _, r := range value {
+		if unicode.IsControl(r) {
+			return false
+		}
+	}
+	return true
+}
+
+func backlogJSONInt(value any) (int, bool) {
+	number, ok := value.(float64)
+	if !ok || number < 0 || number != float64(int(number)) {
+		return 0, false
+	}
+	return int(number), true
 }
 
 func writeBacklogDiffArtifactsAtomic(diffPath string, metadata map[string]any, patchPath string, patchRaw []byte) error {

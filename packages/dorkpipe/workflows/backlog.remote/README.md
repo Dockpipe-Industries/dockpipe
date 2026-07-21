@@ -5,15 +5,16 @@
 compiles reviewable immutable request artifacts, preflights the Codex Cloud CLI contract from narrow
 package-owned help fixtures, records fixture dispatch identity, and ingests one explicitly bound
 completion-candidate fixture plus later fixture-backed status and diff observations as untrusted
-evidence. It never invokes Codex Cloud, live-polls status or diff, retrieves a result, validates or
-applies remote work, commits, pushes, or publishes.
+evidence, followed by one fixture-backed opaque result observation. It never invokes Codex Cloud,
+live-polls status, diff, or result, interprets or validates remote work, applies remote work, commits,
+pushes, or publishes.
 
 Run it from the consumer repository root with every authority-bearing input explicit:
 
 ```bash
 dockpipe --package dorkpipe --workflow backlog.remote --workdir . \
   --var DORKPIPE_BACKLOG_TASK_ID=TASK-015 \
-  --var 'DORKPIPE_BACKLOG_SLICE=Implement only the offline completion-candidate, status, and diff-evidence proof.' \
+  --var 'DORKPIPE_BACKLOG_SLICE=Implement only the offline completion-candidate, status, diff, and result-evidence proof.' \
   --var DORKPIPE_BACKLOG_BASELINE=0123456789abcdef0123456789abcdef01234567 \
   --var DORKPIPE_BACKLOG_ENVIRONMENT_REF=codex-environment-id \
   --var DORKPIPE_BACKLOG_BRANCH_REF=js/dev \
@@ -23,7 +24,8 @@ dockpipe --package dorkpipe --workflow backlog.remote --workdir . \
   --var 'DORKPIPE_BACKLOG_ROUTED_SOURCES_JSON=["docs/agents/packages/package-authoring.md","docs/agents/workflows/yaml-workflows.md"]' \
   --var DORKPIPE_BACKLOG_COMPLETION_FIXTURE=/reviewed/path/completion-candidate.json \
   --var DORKPIPE_BACKLOG_STATUS_FIXTURE=/reviewed/path/remote-status.json \
-  --var DORKPIPE_BACKLOG_DIFF_FIXTURE=/reviewed/path/remote-diff.json --
+  --var DORKPIPE_BACKLOG_DIFF_FIXTURE=/reviewed/path/remote-diff.json \
+  --var DORKPIPE_BACKLOG_RESULT_FIXTURE=/reviewed/path/remote-result.json --
 ```
 
 The workflow writes under the normal `backlog-remote` artifact scope:
@@ -58,6 +60,12 @@ The workflow writes under the normal `backlog-remote` artifact scope:
 - `remote-diff.patch` contains the exact adjacent fixture patch bytes. They are opaque and untrusted:
   retrieval checks only the declared SHA-256 and does not parse paths, infer authorization, apply the
   patch, or infer lifecycle completion.
+- `remote-result.json` records one result observation/replay identity bound to the canonical accepted
+  diff, exact patch SHA-256 and byte count, canonical status and candidate fingerprints, and the
+  immutable task/request/dispatch/adapter/environment/branch identity. Its fixture-owned result
+  string is opaque, untrusted, non-authoritative, and uninterpreted. The artifact remains only at
+  `state: completion_candidate`; validation-receipt retrieval, review, semantic interpretation,
+  validation, apply, commit, push, and publication remain false.
 
 `orchestrate-helper backlog-followup <artifact-root>` validates and recovers identity using only the
 immutable request, compatibility, and dispatch artifacts. Completion ingestion uses those same
@@ -82,6 +90,15 @@ two outputs use temporary files and a rollback-on-rename-failure pair write. Cle
 cannot create review, result, validation, or apply artifacts; duplicate or replay rejection cannot
 change the accepted diff, status, candidate, or dispatch bytes.
 
+Result retrieval revalidates that complete chain plus the accepted diff metadata and the exact
+accepted patch bytes. An observation at or before the diff time is stale. Wrong diff, patch, status,
+candidate, task, request, dispatch, adapter, or target bindings; duplicate observation IDs; replayed
+replay IDs; malformed or missing fixtures; and tampered upstream artifacts or patch bytes fail before
+`remote-result.json` is written. Clean-chain rejection cannot create validation, review, or apply
+artifacts; duplicate or replay rejection cannot change the accepted result or any upstream bytes.
+The fixture metadata is package-owned proof input, not a provider response, callback, signed receipt,
+hidden transcript, or undocumented Codex contract.
+
 The canonical backlog has no standardized readiness or ownership fields. Package test fixtures use
 an optional `dispatch_state` (`blocked`, `external_active`, or `closed`) only to prove deterministic
 rejection. The canonical index is unchanged; a future `--next` selector remains out of scope until
@@ -94,5 +111,5 @@ submission receipt or stable opaque task-ID response contract. Compatibility is 
 `unsupported`, live submission remains disabled, and fixture dispatch remains the only enabled
 adapter. The preflight never parses submission terminal text, credentials, authentication state, or
 environment listings. A malformed compatibility contract fails before fixture dispatch and leaves
-no `remote-task.json`. Completion, status, and diff fixtures are package-test evidence, not
+no `remote-task.json`. Completion, status, diff, and result fixtures are package-test evidence, not
 undocumented provider responses or callback schemas.
