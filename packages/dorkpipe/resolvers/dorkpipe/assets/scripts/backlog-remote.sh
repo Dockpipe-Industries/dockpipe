@@ -163,6 +163,38 @@ case "$step_id" in
       "patch_treated_as_opaque=true"
     )
     ;;
+  result)
+    fixture="${DORKPIPE_BACKLOG_RESULT_FIXTURE:-}"
+    if [[ -z "$fixture" ]]; then
+      echo "DORKPIPE_BACKLOG_RESULT_FIXTURE is required for fixture-backed remote result retrieval" >&2
+      exit 1
+    fi
+    if command -v cygpath >/dev/null 2>&1; then
+      fixture="$(cygpath -m "$fixture")"
+    fi
+    trap - ERR
+    set +e
+    result_error="$(MSYS2_ARG_CONV_EXCL='*' "$helper_bin" backlog-retrieve-result-fixture "$artifact_root" "$fixture" 2>&1)"
+    result_rc=$?
+    set -e
+    trap backlog_remote_fail ERR
+    if (( result_rc != 0 )); then
+      printf '%s\n' "$result_error" >&2
+      result_reason_code="${result_error%%:*}"
+      dorkpipe_orchestrate_operation_fail "$unit" "$started_ms" "$result_error" \
+        "artifact_root=$artifact_root" "reason_code=$result_reason_code"
+      trap - ERR
+      exit "$result_rc"
+    fi
+    completion_details=(
+      "artifact=remote-result.json"
+      "authoritative_state=completion_candidate"
+      "ready_for_review=false"
+      "result_evidence_opaque=true"
+      "result_evidence_trusted=false"
+      "result_evidence_authoritative=false"
+    )
+    ;;
   *)
     echo "unsupported backlog.remote workflow step: ${step_id:-<empty>}" >&2
     exit 1

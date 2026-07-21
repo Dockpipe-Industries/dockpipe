@@ -60,15 +60,16 @@ export DORKPIPE_BACKLOG_DISPATCH_FIXTURE="$fixture_root/dispatch.json"
 export DORKPIPE_BACKLOG_COMPLETION_FIXTURE="$fixture_root/completion-candidate.json"
 export DORKPIPE_BACKLOG_STATUS_FIXTURE="$fixture_root/remote-status.json"
 export DORKPIPE_BACKLOG_DIFF_FIXTURE="$fixture_root/remote-diff.json"
+export DORKPIPE_BACKLOG_RESULT_FIXTURE="$fixture_root/remote-result.json"
 export ROOT="$consumer"
 
 log="$tmp/workflow.err"
-for step in inspect compile compatibility dispatch completion_candidate status diff; do
+for step in inspect compile compatibility dispatch completion_candidate status diff result; do
   export DOCKPIPE_STEP_ID="$step"
   bash "$DOCKPIPE_SCRIPT_DIR/backlog-remote.sh" 2>>"$log"
 done
 
-for step in inspect compile compatibility dispatch completion_candidate status diff; do
+for step in inspect compile compatibility dispatch completion_candidate status diff result; do
   grep -Fq "unit=backlog.$step status=start" "$log"
   grep -Fq "unit=backlog.$step status=done" "$log"
 done
@@ -89,7 +90,12 @@ grep -Fq "artifact=remote-diff.json" "$log"
 grep -Fq "patch_artifact=remote-diff.patch" "$log"
 grep -Fq "diff_evidence_trusted=false" "$log"
 grep -Fq "patch_treated_as_opaque=true" "$log"
-for name in backlog-selection.json remote-request.md remote-request.json remote-adapter-compatibility.json remote-task.json completion-candidate.json remote-status.json remote-diff.json remote-diff.patch; do
+grep -Fq "unit=backlog.result status=done" "$log"
+grep -Fq "artifact=remote-result.json" "$log"
+grep -Fq "result_evidence_opaque=true" "$log"
+grep -Fq "result_evidence_trusted=false" "$log"
+grep -Fq "result_evidence_authoritative=false" "$log"
+for name in backlog-selection.json remote-request.md remote-request.json remote-adapter-compatibility.json remote-task.json completion-candidate.json remote-status.json remote-diff.json remote-diff.patch remote-result.json; do
   test -f "$artifact_root/$name"
 done
 grep -Fq '"status": "selected"' "$artifact_root/backlog-selection.json"
@@ -141,6 +147,27 @@ if grep -Fq '"ready_for_review": true' "$artifact_root/remote-diff.json"; then
   exit 1
 fi
 cmp "$fixture_root/remote-diff.patch" "$artifact_root/remote-diff.patch"
+grep -Fq '"contract_version": "dorkpipe.remote-result/v1"' "$artifact_root/remote-result.json"
+grep -Fq '"state": "completion_candidate"' "$artifact_root/remote-result.json"
+grep -Fq '"observation_id": "result_fixture_observation_015"' "$artifact_root/remote-result.json"
+grep -Fq '"observation_id": "diff_fixture_observation_015"' "$artifact_root/remote-result.json"
+grep -Fq '"patch_sha256": "sha256:4027895ace152e2d66d11143b9e7841adb68e8d625977b7c123508f221114b1b"' "$artifact_root/remote-result.json"
+grep -Fq '"patch_bytes": 236' "$artifact_root/remote-result.json"
+grep -Fq '"opaque_result": "fixture-owned opaque result evidence"' "$artifact_root/remote-result.json"
+grep -Fq '"opaque": true' "$artifact_root/remote-result.json"
+grep -Fq '"trusted": false' "$artifact_root/remote-result.json"
+grep -Fq '"authoritative": false' "$artifact_root/remote-result.json"
+grep -Fq '"interpreted": false' "$artifact_root/remote-result.json"
+grep -Fq '"package_owned_metadata": true' "$artifact_root/remote-result.json"
+grep -Fq '"fixture_contract": "dorkpipe.remote-result-observation-fixture/v1"' "$artifact_root/remote-result.json"
+grep -Fq '"provider_response": false' "$artifact_root/remote-result.json"
+grep -Fq '"callback": false' "$artifact_root/remote-result.json"
+grep -Fq '"signed_receipt": false' "$artifact_root/remote-result.json"
+grep -Fq '"ready_for_review": false' "$artifact_root/remote-result.json"
+if grep -Fq '"ready_for_review": true' "$artifact_root/remote-result.json"; then
+  echo "remote result unexpectedly enabled ready_for_review" >&2
+  exit 1
+fi
 test ! -e "$invocation_log"
 diff -r "$pristine" "$consumer"
 
@@ -263,12 +290,15 @@ cmp "$artifact_root/remote-status.json" "$second_root/remote-status.json"
 MSYS2_ARG_CONV_EXCL='*' "$helper_bin" backlog-retrieve-diff-fixture "$second_root" "$fixture_root/remote-diff.json"
 cmp "$artifact_root/remote-diff.json" "$second_root/remote-diff.json"
 cmp "$artifact_root/remote-diff.patch" "$second_root/remote-diff.patch"
+MSYS2_ARG_CONV_EXCL='*' "$helper_bin" backlog-retrieve-result-fixture "$second_root" "$fixture_root/remote-result.json"
+cmp "$artifact_root/remote-result.json" "$second_root/remote-result.json"
 
 cp "$artifact_root/completion-candidate.json" "$tmp/accepted-completion-candidate.json"
 cp "$artifact_root/remote-task.json" "$tmp/accepted-remote-task.json"
 cp "$artifact_root/remote-status.json" "$tmp/accepted-remote-status.json"
 cp "$artifact_root/remote-diff.json" "$tmp/accepted-remote-diff.json"
 cp "$artifact_root/remote-diff.patch" "$tmp/accepted-remote-diff.patch"
+cp "$artifact_root/remote-result.json" "$tmp/accepted-remote-result.json"
 export DORKPIPE_BACKLOG_COMPLETION_FIXTURE="$fixture_root/completion-candidate.json"
 export DOCKPIPE_STEP_ID="completion_candidate"
 if bash "$DOCKPIPE_SCRIPT_DIR/backlog-remote.sh" 2>"$tmp/duplicate-candidate.err"; then
@@ -375,7 +405,7 @@ cmp "$tmp/accepted-remote-diff.patch" "$artifact_root/remote-diff.patch"
 prepare_diff_rejection_root() {
   local root="$1"
   cp -R "$second_root" "$root"
-  rm "$root/remote-diff.json" "$root/remote-diff.patch"
+  rm "$root/remote-diff.json" "$root/remote-diff.patch" "$root/remote-result.json"
 }
 
 stale_diff_root="$tmp/stale-diff-artifacts"
@@ -432,7 +462,84 @@ for root in "$stale_diff_root" "$mismatched_diff_root" "$malformed_diff_root" "$
 done
 test ! -e "$invocation_log"
 
-if find "$artifact_root" -mindepth 1 \( -iname '*result*' -o -iname '*apply*' -o -iname '*commit*' -o -iname '*push*' -o -iname '*publish*' -o -iname '*review*' -o -iname '*validation*' \) -print -quit | grep -q .; then
+run_result_rejection() {
+  local root="$1"
+  local fixture="$2"
+  local code="$3"
+  local output="$4"
+  export DORKPIPE_BACKLOG_ARTIFACT_ROOT="$root"
+  export DORKPIPE_BACKLOG_RESULT_FIXTURE="$fixture"
+  export DOCKPIPE_STEP_ID="result"
+  if bash "$DOCKPIPE_SCRIPT_DIR/backlog-remote.sh" 2>"$output"; then
+    echo "$code result observation unexpectedly passed" >&2
+    exit 1
+  fi
+  grep -Fq 'unit=backlog.result status=start' "$output"
+  grep -Fq 'unit=backlog.result status=fail' "$output"
+  grep -Fq "$code:" "$output"
+  grep -Fq "reason_code=$code" "$output"
+}
+
+run_result_rejection "$artifact_root" "$fixture_root/remote-result.json" remote_result_duplicate "$tmp/duplicate-result.err"
+cmp "$tmp/accepted-remote-result.json" "$artifact_root/remote-result.json"
+cmp "$tmp/accepted-remote-diff.json" "$artifact_root/remote-diff.json"
+cmp "$tmp/accepted-remote-diff.patch" "$artifact_root/remote-diff.patch"
+cmp "$tmp/accepted-remote-status.json" "$artifact_root/remote-status.json"
+cmp "$tmp/accepted-completion-candidate.json" "$artifact_root/completion-candidate.json"
+cmp "$tmp/accepted-remote-task.json" "$artifact_root/remote-task.json"
+
+replay_result_fixture="$tmp/replay-result.json"
+sed 's/result_fixture_observation_015/result_fixture_observation_016/' "$fixture_root/remote-result.json" >"$replay_result_fixture"
+run_result_rejection "$artifact_root" "$replay_result_fixture" remote_result_replay "$tmp/replay-result.err"
+cmp "$tmp/accepted-remote-result.json" "$artifact_root/remote-result.json"
+
+prepare_result_rejection_root() {
+  local root="$1"
+  cp -R "$second_root" "$root"
+  rm "$root/remote-result.json"
+}
+
+stale_result_root="$tmp/stale-result-artifacts"
+prepare_result_rejection_root "$stale_result_root"
+stale_result_fixture="$tmp/stale-result.json"
+sed 's/2026-07-19T00:04:00Z/2026-07-19T00:03:00Z/' "$fixture_root/remote-result.json" >"$stale_result_fixture"
+run_result_rejection "$stale_result_root" "$stale_result_fixture" remote_result_stale "$tmp/stale-result.err"
+
+mismatched_result_root="$tmp/mismatched-result-artifacts"
+prepare_result_rejection_root "$mismatched_result_root"
+mismatched_result_fixture="$tmp/mismatched-result.json"
+sed 's/remote_fixture_task_015/remote_fixture_task_wrong/' "$fixture_root/remote-result.json" >"$mismatched_result_fixture"
+run_result_rejection "$mismatched_result_root" "$mismatched_result_fixture" remote_result_binding_mismatch "$tmp/mismatched-result.err"
+
+malformed_result_root="$tmp/malformed-result-artifacts"
+prepare_result_rejection_root "$malformed_result_root"
+malformed_result_fixture="$tmp/malformed-result.json"
+printf '{"unexpected":true}\n' >"$malformed_result_fixture"
+run_result_rejection "$malformed_result_root" "$malformed_result_fixture" remote_result_fixture_malformed "$tmp/malformed-result.err"
+
+missing_result_root="$tmp/missing-result-artifacts"
+prepare_result_rejection_root "$missing_result_root"
+run_result_rejection "$missing_result_root" "$tmp/missing-remote-result.json" remote_result_fixture_missing "$tmp/missing-result.err"
+
+tampered_result_patch_root="$tmp/tampered-result-patch-artifacts"
+prepare_result_rejection_root "$tampered_result_patch_root"
+printf 'tampered\n' >>"$tampered_result_patch_root/remote-diff.patch"
+cp "$tampered_result_patch_root/remote-diff.patch" "$tmp/tampered-accepted-remote-diff.patch"
+run_result_rejection "$tampered_result_patch_root" "$fixture_root/remote-result.json" remote_result_diff_invalid "$tmp/tampered-result-patch.err"
+cmp "$tmp/tampered-accepted-remote-diff.patch" "$tampered_result_patch_root/remote-diff.patch"
+
+for root in "$stale_result_root" "$mismatched_result_root" "$malformed_result_root" "$missing_result_root" "$tampered_result_patch_root"; do
+  for name in remote-result.json ready-for-review.json validation-receipt.json apply.json; do
+    test ! -e "$root/$name"
+  done
+  cmp "$tmp/accepted-remote-diff.json" "$root/remote-diff.json"
+  cmp "$tmp/accepted-remote-status.json" "$root/remote-status.json"
+  cmp "$tmp/accepted-completion-candidate.json" "$root/completion-candidate.json"
+  cmp "$tmp/accepted-remote-task.json" "$root/remote-task.json"
+done
+test ! -e "$invocation_log"
+
+if find "$artifact_root" -mindepth 1 \( -iname '*apply*' -o -iname '*commit*' -o -iname '*push*' -o -iname '*publish*' -o -iname '*review*' -o -iname '*validation*' \) -print -quit | grep -q .; then
   echo "fixture slice created a forbidden lifecycle artifact" >&2
   exit 1
 fi

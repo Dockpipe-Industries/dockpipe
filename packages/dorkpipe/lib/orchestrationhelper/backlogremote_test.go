@@ -91,7 +91,24 @@ func TestBacklogRemoteArtifactsAreDeterministicAndRestartSafe(t *testing.T) {
 			t.Fatalf("remote diff retrieval changed immutable artifact %s", name)
 		}
 	}
-	for _, name := range []string{"backlog-selection.json", "remote-request.json", "remote-request.md", "remote-adapter-compatibility.json", "remote-task.json", "completion-candidate.json", "remote-status.json", "remote-diff.json", "remote-diff.patch"} {
+	immutableBeforeResult := map[string][]byte{}
+	for _, name := range []string{"remote-request.json", "remote-request.md", "remote-adapter-compatibility.json", "remote-task.json", "completion-candidate.json", "remote-status.json", "remote-diff.json", "remote-diff.patch"} {
+		immutableBeforeResult[name] = mustReadFile(t, filepath.Join(first, name))
+	}
+	firstResult := writeBacklogResultFixture(t, first, "result_fixture_observation_015", "result_fixture_replay_015", "2026-07-19T00:04:00Z", "fixture-owned opaque result evidence")
+	secondResult := writeBacklogResultFixture(t, second, "result_fixture_observation_015", "result_fixture_replay_015", "2026-07-19T00:04:00Z", "fixture-owned opaque result evidence")
+	if err := retrieveBacklogRemoteResultFixture(first, firstResult); err != nil {
+		t.Fatalf("artifact-only remote result retrieval failed: %v", err)
+	}
+	if err := retrieveBacklogRemoteResultFixture(second, secondResult); err != nil {
+		t.Fatalf("second clean remote result retrieval failed: %v", err)
+	}
+	for name, before := range immutableBeforeResult {
+		if string(mustReadFile(t, filepath.Join(first, name))) != string(before) {
+			t.Fatalf("remote result retrieval changed immutable artifact %s", name)
+		}
+	}
+	for _, name := range []string{"backlog-selection.json", "remote-request.json", "remote-request.md", "remote-adapter-compatibility.json", "remote-task.json", "completion-candidate.json", "remote-status.json", "remote-diff.json", "remote-diff.patch", "remote-result.json"} {
 		firstRaw := mustReadFile(t, filepath.Join(first, name))
 		secondRaw := mustReadFile(t, filepath.Join(second, name))
 		if string(firstRaw) != string(secondRaw) {
@@ -147,6 +164,24 @@ func TestBacklogRemoteArtifactsAreDeterministicAndRestartSafe(t *testing.T) {
 	for name, value := range mapValue(diffMetadata["lifecycle"]) {
 		if backlogTestBool(value) {
 			t.Fatalf("remote diff unexpectedly enables %s", name)
+		}
+	}
+	result := readJSONMap(filepath.Join(first, "remote-result.json"))
+	resultEvidence := mapValue(result["evidence"])
+	resultSource := mapValue(result["source"])
+	resultDiff := mapValue(result["remote_diff"])
+	if stringValue(result["state"]) != "completion_candidate" || !backlogTestBool(resultEvidence["opaque"]) || backlogTestBool(resultEvidence["trusted"]) || backlogTestBool(resultEvidence["authoritative"]) || backlogTestBool(resultEvidence["interpreted"]) {
+		t.Fatalf("unexpected remote result state or evidence trust: %#v", result)
+	}
+	if stringValue(resultEvidence["opaque_result"]) != "fixture-owned opaque result evidence" || stringValue(resultSource["fixture_contract"]) != backlogResultFixtureContract || !backlogTestBool(resultSource["package_owned_metadata"]) || backlogTestBool(resultSource["provider_invoked"]) || backlogTestBool(resultSource["provider_response"]) || backlogTestBool(resultSource["callback"]) || backlogTestBool(resultSource["signed_receipt"]) {
+		t.Fatalf("unexpected remote result evidence or fixture provenance: %#v", result)
+	}
+	if stringValue(resultDiff["patch_sha256"]) != stringValue(patch["sha256"]) || int(resultDiff["patch_bytes"].(float64)) != len(backlogTestPatch) {
+		t.Fatalf("remote result does not bind the accepted patch bytes: %#v", resultDiff)
+	}
+	for name, value := range mapValue(result["lifecycle"]) {
+		if backlogTestBool(value) {
+			t.Fatalf("remote result unexpectedly enables %s", name)
 		}
 	}
 	followup, err := loadBacklogFollowup(first)
@@ -617,6 +652,146 @@ func TestBacklogRemoteDiffRejectsStaleMismatchedMalformedMissingAndTamperedEvide
 	}
 }
 
+func TestBacklogRemoteResultRejectsDuplicateAndReplayWithoutMutation(t *testing.T) {
+	root := prepareBacklogResultTest(t)
+	acceptedFixture := writeBacklogResultFixture(t, root, "result_fixture_observation_015", "result_fixture_replay_015", "2026-07-19T00:04:00Z", "fixture-owned opaque result evidence")
+	if err := retrieveBacklogRemoteResultFixture(root, acceptedFixture); err != nil {
+		t.Fatal(err)
+	}
+	accepted := map[string][]byte{}
+	for _, name := range []string{"remote-result.json", "remote-diff.json", "remote-diff.patch", "remote-status.json", "completion-candidate.json", "remote-task.json"} {
+		accepted[name] = mustReadFile(t, filepath.Join(root, name))
+	}
+	if err := retrieveBacklogRemoteResultFixture(root, acceptedFixture); err == nil || !strings.HasPrefix(err.Error(), "remote_result_duplicate:") {
+		t.Fatalf("duplicate error = %v", err)
+	}
+	replayFixture := writeBacklogResultFixture(t, root, "result_fixture_observation_016", "result_fixture_replay_015", "2026-07-19T00:05:00Z", "second opaque fixture claim")
+	if err := retrieveBacklogRemoteResultFixture(root, replayFixture); err == nil || !strings.HasPrefix(err.Error(), "remote_result_replay:") {
+		t.Fatalf("replay error = %v", err)
+	}
+	for name, before := range accepted {
+		if string(mustReadFile(t, filepath.Join(root, name))) != string(before) {
+			t.Fatalf("duplicate or replay rejection changed %s", name)
+		}
+	}
+}
+
+func TestBacklogRemoteResultRejectsStaleMismatchedMalformedMissingAndTamperedEvidence(t *testing.T) {
+	tests := []struct {
+		name     string
+		wantCode string
+		mutate   func(t *testing.T, root, fixturePath string)
+	}{
+		{name: "stale at diff time", wantCode: "remote_result_stale", mutate: func(t *testing.T, _, fixturePath string) {
+			mutateBacklogJSONFile(t, fixturePath, func(payload map[string]any) { payload["observed_at"] = "2026-07-19T00:03:00Z" })
+		}},
+		{name: "wrong diff observation", wantCode: "remote_result_binding_mismatch", mutate: func(t *testing.T, _, fixturePath string) {
+			mutateBacklogJSONFile(t, fixturePath, func(payload map[string]any) { payload["remote_diff_observation_id"] = "diff_fixture_observation_wrong" })
+		}},
+		{name: "wrong diff fingerprint", wantCode: "remote_result_binding_mismatch", mutate: func(t *testing.T, _, fixturePath string) {
+			mutateBacklogJSONFile(t, fixturePath, func(payload map[string]any) { payload["remote_diff_fingerprint"] = "sha256:" + strings.Repeat("0", 64) })
+		}},
+		{name: "wrong patch checksum", wantCode: "remote_result_binding_mismatch", mutate: func(t *testing.T, _, fixturePath string) {
+			mutateBacklogJSONFile(t, fixturePath, func(payload map[string]any) { payload["patch_sha256"] = "sha256:" + strings.Repeat("1", 64) })
+		}},
+		{name: "wrong patch byte count", wantCode: "remote_result_binding_mismatch", mutate: func(t *testing.T, _, fixturePath string) {
+			mutateBacklogJSONFile(t, fixturePath, func(payload map[string]any) { payload["patch_bytes"] = float64(len(backlogTestPatch) + 1) })
+		}},
+		{name: "wrong status observation", wantCode: "remote_result_binding_mismatch", mutate: func(t *testing.T, _, fixturePath string) {
+			mutateBacklogJSONFile(t, fixturePath, func(payload map[string]any) {
+				payload["remote_status_observation_id"] = "status_fixture_observation_wrong"
+			})
+		}},
+		{name: "wrong status fingerprint", wantCode: "remote_result_binding_mismatch", mutate: func(t *testing.T, _, fixturePath string) {
+			mutateBacklogJSONFile(t, fixturePath, func(payload map[string]any) {
+				payload["remote_status_fingerprint"] = "sha256:" + strings.Repeat("5", 64)
+			})
+		}},
+		{name: "wrong candidate", wantCode: "remote_result_binding_mismatch", mutate: func(t *testing.T, _, fixturePath string) {
+			mutateBacklogJSONFile(t, fixturePath, func(payload map[string]any) {
+				payload["completion_candidate_id"] = "completion_fixture_candidate_wrong"
+			})
+		}},
+		{name: "wrong candidate fingerprint", wantCode: "remote_result_binding_mismatch", mutate: func(t *testing.T, _, fixturePath string) {
+			mutateBacklogJSONFile(t, fixturePath, func(payload map[string]any) {
+				payload["completion_candidate_fingerprint"] = "sha256:" + strings.Repeat("6", 64)
+			})
+		}},
+		{name: "wrong remote task", wantCode: "remote_result_binding_mismatch", mutate: func(t *testing.T, _, fixturePath string) {
+			mutateBacklogJSONFile(t, fixturePath, func(payload map[string]any) { payload["remote_task_id"] = "remote_fixture_task_wrong" })
+		}},
+		{name: "wrong request", wantCode: "remote_result_binding_mismatch", mutate: func(t *testing.T, _, fixturePath string) {
+			mutateBacklogJSONFile(t, fixturePath, func(payload map[string]any) { payload["request_fingerprint"] = "sha256:" + strings.Repeat("2", 64) })
+		}},
+		{name: "wrong dispatch", wantCode: "remote_result_binding_mismatch", mutate: func(t *testing.T, _, fixturePath string) {
+			mutateBacklogJSONFile(t, fixturePath, func(payload map[string]any) { payload["dispatch_fingerprint"] = "sha256:" + strings.Repeat("3", 64) })
+		}},
+		{name: "wrong adapter", wantCode: "remote_result_binding_mismatch", mutate: func(t *testing.T, _, fixturePath string) {
+			mutateBacklogJSONFile(t, fixturePath, func(payload map[string]any) { payload["adapter_identity"] = "codex-cloud-fixture-wrong" })
+		}},
+		{name: "wrong environment", wantCode: "remote_result_binding_mismatch", mutate: func(t *testing.T, _, fixturePath string) {
+			mutateBacklogJSONFile(t, fixturePath, func(payload map[string]any) { payload["environment_ref"] = "wrong-environment" })
+		}},
+		{name: "wrong branch", wantCode: "remote_result_binding_mismatch", mutate: func(t *testing.T, _, fixturePath string) {
+			mutateBacklogJSONFile(t, fixturePath, func(payload map[string]any) { payload["branch_ref"] = "wrong/branch" })
+		}},
+		{name: "malformed fixture", wantCode: "remote_result_fixture_malformed", mutate: func(t *testing.T, _, fixturePath string) {
+			writeBacklogTestFile(t, fixturePath, "{\"unexpected\":true}\n")
+		}},
+		{name: "missing fixture", wantCode: "remote_result_fixture_missing", mutate: func(t *testing.T, _, fixturePath string) {
+			if err := os.Remove(fixturePath); err != nil {
+				t.Fatal(err)
+			}
+		}},
+		{name: "tampered request", wantCode: "remote_result_request_invalid", mutate: func(t *testing.T, root, _ string) {
+			mutateBacklogJSONFile(t, filepath.Join(root, "remote-request.json"), func(payload map[string]any) { payload["request_fingerprint"] = "sha256:" + strings.Repeat("4", 64) })
+		}},
+		{name: "tampered compatibility", wantCode: "remote_result_compatibility_invalid", mutate: func(t *testing.T, root, _ string) {
+			mutateBacklogJSONFile(t, filepath.Join(root, "remote-adapter-compatibility.json"), func(payload map[string]any) { payload["adapter_identity"] = "tampered-adapter" })
+		}},
+		{name: "tampered dispatch", wantCode: "remote_result_dispatch_invalid", mutate: func(t *testing.T, root, _ string) {
+			mutateBacklogJSONFile(t, filepath.Join(root, "remote-task.json"), func(payload map[string]any) { payload["remote_task_id"] = "remote_fixture_task_tampered" })
+		}},
+		{name: "tampered candidate", wantCode: "remote_result_candidate_invalid", mutate: func(t *testing.T, root, _ string) {
+			mutateBacklogJSONFile(t, filepath.Join(root, "completion-candidate.json"), func(payload map[string]any) { payload["state"] = "ready_for_review" })
+		}},
+		{name: "tampered status", wantCode: "remote_result_status_invalid", mutate: func(t *testing.T, root, _ string) {
+			mutateBacklogJSONFile(t, filepath.Join(root, "remote-status.json"), func(payload map[string]any) { mapValue(payload["lifecycle"])["ready_for_review"] = true })
+		}},
+		{name: "tampered diff metadata", wantCode: "remote_result_diff_invalid", mutate: func(t *testing.T, root, _ string) {
+			mutateBacklogJSONFile(t, filepath.Join(root, "remote-diff.json"), func(payload map[string]any) { mapValue(payload["patch"])["bytes"] = float64(1) })
+		}},
+		{name: "tampered accepted patch bytes", wantCode: "remote_result_diff_invalid", mutate: func(t *testing.T, root, _ string) {
+			writeBacklogTestFile(t, filepath.Join(root, "remote-diff.patch"), backlogTestPatch+"tampered\n")
+		}},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			root := prepareBacklogResultTest(t)
+			fixturePath := writeBacklogResultFixture(t, root, "result_fixture_observation_015", "result_fixture_replay_015", "2026-07-19T00:04:00Z", "fixture-owned opaque result evidence")
+			test.mutate(t, root, fixturePath)
+			before := map[string][]byte{}
+			for _, name := range []string{"remote-diff.json", "remote-diff.patch", "remote-status.json", "completion-candidate.json", "remote-task.json"} {
+				before[name] = mustReadFile(t, filepath.Join(root, name))
+			}
+			err := retrieveBacklogRemoteResultFixture(root, fixturePath)
+			if err == nil || !strings.HasPrefix(err.Error(), test.wantCode+":") {
+				t.Fatalf("error = %v, want code %s", err, test.wantCode)
+			}
+			for _, name := range []string{"remote-result.json", "ready-for-review.json", "validation-receipt.json", "apply.json"} {
+				if _, statErr := os.Stat(filepath.Join(root, name)); !os.IsNotExist(statErr) {
+					t.Fatalf("rejected result observation left forbidden artifact %s: %v", name, statErr)
+				}
+			}
+			for name, content := range before {
+				if string(mustReadFile(t, filepath.Join(root, name))) != string(content) {
+					t.Fatalf("rejected result observation changed %s", name)
+				}
+			}
+		})
+	}
+}
+
 func prepareBacklogCompletionTest(t *testing.T) string {
 	t.Helper()
 	repo := writeBacklogTestRepo(t)
@@ -658,6 +833,16 @@ func prepareBacklogDiffTest(t *testing.T) string {
 	root := prepareBacklogStatusTest(t)
 	fixture := writeBacklogStatusFixture(t, root, "status_fixture_observation_015", "status_fixture_replay_015", "2026-07-19T00:02:00Z")
 	if err := retrieveBacklogRemoteStatusFixture(root, fixture); err != nil {
+		t.Fatal(err)
+	}
+	return root
+}
+
+func prepareBacklogResultTest(t *testing.T) string {
+	t.Helper()
+	root := prepareBacklogDiffTest(t)
+	fixture := writeBacklogDiffFixture(t, root, "diff_fixture_observation_015", "diff_fixture_replay_015", "2026-07-19T00:03:00Z", backlogTestPatch)
+	if err := retrieveBacklogRemoteDiffFixture(root, fixture); err != nil {
 		t.Fatal(err)
 	}
 	return root
@@ -743,6 +928,48 @@ func writeBacklogDiffFixture(t *testing.T, root, observationID, replayIdentity, 
 	path := filepath.Join(rootPath, "remote-diff.json")
 	writeBacklogTestFile(t, path, string(raw)+"\n")
 	writeBacklogTestFile(t, filepath.Join(rootPath, "remote-diff.patch"), patch)
+	return path
+}
+
+func writeBacklogResultFixture(t *testing.T, root, observationID, replayIdentity, observedAt, opaqueResult string) string {
+	t.Helper()
+	task := readJSONMap(filepath.Join(root, "remote-task.json"))
+	target := mapValue(task["target"])
+	adapter := mapValue(task["adapter"])
+	candidate := readJSONMap(filepath.Join(root, "completion-candidate.json"))
+	candidateFingerprint, err := backlogJSONFingerprint(candidate)
+	if err != nil {
+		t.Fatal(err)
+	}
+	status := readJSONMap(filepath.Join(root, "remote-status.json"))
+	statusFingerprint, err := backlogJSONFingerprint(status)
+	if err != nil {
+		t.Fatal(err)
+	}
+	diff := readJSONMap(filepath.Join(root, "remote-diff.json"))
+	diffFingerprint, err := backlogJSONFingerprint(diff)
+	if err != nil {
+		t.Fatal(err)
+	}
+	diffPatch := mapValue(diff["patch"])
+	patchBytes := int(diffPatch["bytes"].(float64))
+	payload := backlogResultFixture{
+		ContractVersion: backlogResultFixtureContract, ObservationID: observationID, ReplayIdentity: replayIdentity,
+		RemoteDiffObservationID: stringValue(mapValue(diff["identity"])["observation_id"]), RemoteDiffFingerprint: diffFingerprint,
+		PatchSHA256: stringValue(diffPatch["sha256"]), PatchBytes: &patchBytes,
+		RemoteStatusObservationID: stringValue(mapValue(status["identity"])["observation_id"]), RemoteStatusFingerprint: statusFingerprint,
+		CompletionCandidateID: stringValue(mapValue(candidate["identity"])["candidate_id"]), CompletionCandidateFingerprint: candidateFingerprint,
+		AdapterIdentity: stringValue(adapter["identity"]), RemoteTaskID: stringValue(task["remote_task_id"]),
+		RequestFingerprint: stringValue(task["request_fingerprint"]), DispatchFingerprint: stringValue(task["dispatch_fingerprint"]),
+		EnvironmentRef: stringValue(target["environment_ref"]), BranchRef: stringValue(target["branch_ref"]),
+		ObservedAt: observedAt, OpaqueResult: opaqueResult,
+	}
+	raw, err := json.MarshalIndent(payload, "", "  ")
+	if err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(t.TempDir(), "remote-result.json")
+	writeBacklogTestFile(t, path, string(raw)+"\n")
 	return path
 }
 
