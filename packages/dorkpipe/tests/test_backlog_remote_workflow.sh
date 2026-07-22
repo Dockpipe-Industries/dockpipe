@@ -61,15 +61,19 @@ export DORKPIPE_BACKLOG_COMPLETION_FIXTURE="$fixture_root/completion-candidate.j
 export DORKPIPE_BACKLOG_STATUS_FIXTURE="$fixture_root/remote-status.json"
 export DORKPIPE_BACKLOG_DIFF_FIXTURE="$fixture_root/remote-diff.json"
 export DORKPIPE_BACKLOG_RESULT_FIXTURE="$fixture_root/remote-result.json"
+export DORKPIPE_BACKLOG_VALIDATION_RECEIPT_FIXTURE="$fixture_root/validation-receipt.json"
 export ROOT="$consumer"
 
 log="$tmp/workflow.err"
-for step in inspect compile compatibility dispatch completion_candidate status diff result; do
+for step in inspect compile compatibility dispatch completion_candidate status diff result validation_receipt; do
   export DOCKPIPE_STEP_ID="$step"
-  bash "$DOCKPIPE_SCRIPT_DIR/backlog-remote.sh" 2>>"$log"
+  if ! bash "$DOCKPIPE_SCRIPT_DIR/backlog-remote.sh" 2>>"$log"; then
+    cat "$log" >&2
+    exit 1
+  fi
 done
 
-for step in inspect compile compatibility dispatch completion_candidate status diff result; do
+for step in inspect compile compatibility dispatch completion_candidate status diff result validation_receipt; do
   grep -Fq "unit=backlog.$step status=start" "$log"
   grep -Fq "unit=backlog.$step status=done" "$log"
 done
@@ -95,7 +99,13 @@ grep -Fq "artifact=remote-result.json" "$log"
 grep -Fq "result_evidence_opaque=true" "$log"
 grep -Fq "result_evidence_trusted=false" "$log"
 grep -Fq "result_evidence_authoritative=false" "$log"
-for name in backlog-selection.json remote-request.md remote-request.json remote-adapter-compatibility.json remote-task.json completion-candidate.json remote-status.json remote-diff.json remote-diff.patch remote-result.json; do
+grep -Fq "unit=backlog.validation_receipt status=done" "$log"
+grep -Fq "artifact=validation-receipt.json" "$log"
+grep -Fq "receipt_evidence_opaque=true" "$log"
+grep -Fq "receipt_evidence_trusted=false" "$log"
+grep -Fq "receipt_evidence_authoritative=false" "$log"
+grep -Fq "validation_executed=false" "$log"
+for name in backlog-selection.json remote-request.md remote-request.json remote-adapter-compatibility.json remote-task.json completion-candidate.json remote-status.json remote-diff.json remote-diff.patch remote-result.json validation-receipt.json; do
   test -f "$artifact_root/$name"
 done
 grep -Fq '"status": "selected"' "$artifact_root/backlog-selection.json"
@@ -166,6 +176,32 @@ grep -Fq '"signed_receipt": false' "$artifact_root/remote-result.json"
 grep -Fq '"ready_for_review": false' "$artifact_root/remote-result.json"
 if grep -Fq '"ready_for_review": true' "$artifact_root/remote-result.json"; then
   echo "remote result unexpectedly enabled ready_for_review" >&2
+  exit 1
+fi
+grep -Fq '"contract_version": "dorkpipe.validation-receipt/v1"' "$artifact_root/validation-receipt.json"
+grep -Fq '"state": "completion_candidate"' "$artifact_root/validation-receipt.json"
+grep -Fq '"observation_id": "receipt_fixture_observation_015"' "$artifact_root/validation-receipt.json"
+grep -Fq '"observation_id": "result_fixture_observation_015"' "$artifact_root/validation-receipt.json"
+grep -Fq '"fingerprint": "sha256:56b99bfd61d51fd36b6713bdab562dc3a2cfaded548f74f1b5ceefd4bb4288e1"' "$artifact_root/validation-receipt.json"
+grep -Fq '"patch_sha256": "sha256:4027895ace152e2d66d11143b9e7841adb68e8d625977b7c123508f221114b1b"' "$artifact_root/validation-receipt.json"
+grep -Fq '"required_validation": [' "$artifact_root/validation-receipt.json"
+grep -Fq '"go test ./packages/dorkpipe/lib/orchestrationhelper"' "$artifact_root/validation-receipt.json"
+grep -Fq '"fingerprint": "sha256:1dc90fee068fa97e7f2fafae5ac63498e0ace0c0260e06dd759ea164761c9b0c"' "$artifact_root/validation-receipt.json"
+grep -Fq '"compatibility_fingerprint": "sha256:4dd89b9d926989e66c26d9eab02abe95b859b2af6bfc6c4af6a44264748ea5ec"' "$artifact_root/validation-receipt.json"
+grep -Fq '"opaque_receipt": "fixture-owned opaque validation receipt evidence"' "$artifact_root/validation-receipt.json"
+grep -Fq '"trusted": false' "$artifact_root/validation-receipt.json"
+grep -Fq '"authoritative": false' "$artifact_root/validation-receipt.json"
+grep -Fq '"validation_success_interpreted": false' "$artifact_root/validation-receipt.json"
+grep -Fq '"executed": false' "$artifact_root/validation-receipt.json"
+grep -Fq '"package_owned_metadata": true' "$artifact_root/validation-receipt.json"
+grep -Fq '"provider_response": false' "$artifact_root/validation-receipt.json"
+grep -Fq '"callback": false' "$artifact_root/validation-receipt.json"
+grep -Fq '"signed_receipt": false' "$artifact_root/validation-receipt.json"
+grep -Fq '"hidden_transcript": false' "$artifact_root/validation-receipt.json"
+grep -Fq '"ready_for_review": false' "$artifact_root/validation-receipt.json"
+grep -Fq '"validation_execution": false' "$artifact_root/validation-receipt.json"
+if grep -Fq '"ready_for_review": true' "$artifact_root/validation-receipt.json"; then
+  echo "validation receipt unexpectedly enabled ready_for_review" >&2
   exit 1
 fi
 test ! -e "$invocation_log"
@@ -539,7 +575,90 @@ for root in "$stale_result_root" "$mismatched_result_root" "$malformed_result_ro
 done
 test ! -e "$invocation_log"
 
-if find "$artifact_root" -mindepth 1 \( -iname '*apply*' -o -iname '*commit*' -o -iname '*push*' -o -iname '*publish*' -o -iname '*review*' -o -iname '*validation*' \) -print -quit | grep -q .; then
+MSYS2_ARG_CONV_EXCL='*' "$helper_bin" backlog-retrieve-validation-receipt-fixture "$second_root" "$fixture_root/validation-receipt.json"
+cmp "$artifact_root/validation-receipt.json" "$second_root/validation-receipt.json"
+cp "$artifact_root/validation-receipt.json" "$tmp/accepted-validation-receipt.json"
+
+run_receipt_rejection() {
+  local root="$1"
+  local fixture="$2"
+  local code="$3"
+  local output="$4"
+  export DORKPIPE_BACKLOG_ARTIFACT_ROOT="$root"
+  export DORKPIPE_BACKLOG_VALIDATION_RECEIPT_FIXTURE="$fixture"
+  export DOCKPIPE_STEP_ID="validation_receipt"
+  if bash "$DOCKPIPE_SCRIPT_DIR/backlog-remote.sh" 2>"$output"; then
+    echo "$code validation receipt observation unexpectedly passed" >&2
+    exit 1
+  fi
+  grep -Fq 'unit=backlog.validation_receipt status=start' "$output"
+  grep -Fq 'unit=backlog.validation_receipt status=fail' "$output"
+  grep -Fq "$code:" "$output"
+  grep -Fq "reason_code=$code" "$output"
+}
+
+run_receipt_rejection "$artifact_root" "$fixture_root/validation-receipt.json" validation_receipt_duplicate "$tmp/duplicate-receipt.err"
+cmp "$tmp/accepted-validation-receipt.json" "$artifact_root/validation-receipt.json"
+cmp "$tmp/accepted-remote-result.json" "$artifact_root/remote-result.json"
+cmp "$tmp/accepted-remote-diff.json" "$artifact_root/remote-diff.json"
+cmp "$tmp/accepted-remote-diff.patch" "$artifact_root/remote-diff.patch"
+cmp "$tmp/accepted-remote-status.json" "$artifact_root/remote-status.json"
+cmp "$tmp/accepted-completion-candidate.json" "$artifact_root/completion-candidate.json"
+cmp "$tmp/accepted-remote-task.json" "$artifact_root/remote-task.json"
+
+replay_receipt_fixture="$tmp/replay-validation-receipt.json"
+sed 's/receipt_fixture_observation_015/receipt_fixture_observation_016/' "$fixture_root/validation-receipt.json" >"$replay_receipt_fixture"
+run_receipt_rejection "$artifact_root" "$replay_receipt_fixture" validation_receipt_replay "$tmp/replay-receipt.err"
+cmp "$tmp/accepted-validation-receipt.json" "$artifact_root/validation-receipt.json"
+
+prepare_receipt_rejection_root() {
+  local root="$1"
+  cp -R "$second_root" "$root"
+  rm "$root/validation-receipt.json"
+}
+
+stale_receipt_root="$tmp/stale-receipt-artifacts"
+prepare_receipt_rejection_root "$stale_receipt_root"
+stale_receipt_fixture="$tmp/stale-validation-receipt.json"
+sed 's/2026-07-19T00:05:00Z/2026-07-19T00:04:00Z/' "$fixture_root/validation-receipt.json" >"$stale_receipt_fixture"
+run_receipt_rejection "$stale_receipt_root" "$stale_receipt_fixture" validation_receipt_stale "$tmp/stale-receipt.err"
+
+mismatched_receipt_root="$tmp/mismatched-receipt-artifacts"
+prepare_receipt_rejection_root "$mismatched_receipt_root"
+mismatched_receipt_fixture="$tmp/mismatched-validation-receipt.json"
+sed 's/remote_fixture_task_015/remote_fixture_task_wrong/' "$fixture_root/validation-receipt.json" >"$mismatched_receipt_fixture"
+run_receipt_rejection "$mismatched_receipt_root" "$mismatched_receipt_fixture" validation_receipt_binding_mismatch "$tmp/mismatched-receipt.err"
+
+malformed_receipt_root="$tmp/malformed-receipt-artifacts"
+prepare_receipt_rejection_root "$malformed_receipt_root"
+malformed_receipt_fixture="$tmp/malformed-validation-receipt.json"
+printf '{"unexpected":true}\n' >"$malformed_receipt_fixture"
+run_receipt_rejection "$malformed_receipt_root" "$malformed_receipt_fixture" validation_receipt_fixture_malformed "$tmp/malformed-receipt.err"
+
+missing_receipt_root="$tmp/missing-receipt-artifacts"
+prepare_receipt_rejection_root "$missing_receipt_root"
+run_receipt_rejection "$missing_receipt_root" "$tmp/missing-validation-receipt.json" validation_receipt_fixture_missing "$tmp/missing-receipt.err"
+
+tampered_receipt_patch_root="$tmp/tampered-receipt-patch-artifacts"
+prepare_receipt_rejection_root "$tampered_receipt_patch_root"
+printf 'tampered\n' >>"$tampered_receipt_patch_root/remote-diff.patch"
+cp "$tampered_receipt_patch_root/remote-diff.patch" "$tmp/tampered-receipt-accepted-remote-diff.patch"
+run_receipt_rejection "$tampered_receipt_patch_root" "$fixture_root/validation-receipt.json" validation_receipt_diff_invalid "$tmp/tampered-receipt-patch.err"
+cmp "$tmp/tampered-receipt-accepted-remote-diff.patch" "$tampered_receipt_patch_root/remote-diff.patch"
+
+for root in "$stale_receipt_root" "$mismatched_receipt_root" "$malformed_receipt_root" "$missing_receipt_root" "$tampered_receipt_patch_root"; do
+  for name in validation-receipt.json ready-for-review.json validation-execution.json apply.json; do
+    test ! -e "$root/$name"
+  done
+  cmp "$tmp/accepted-remote-result.json" "$root/remote-result.json"
+  cmp "$tmp/accepted-remote-diff.json" "$root/remote-diff.json"
+  cmp "$tmp/accepted-remote-status.json" "$root/remote-status.json"
+  cmp "$tmp/accepted-completion-candidate.json" "$root/completion-candidate.json"
+  cmp "$tmp/accepted-remote-task.json" "$root/remote-task.json"
+done
+test ! -e "$invocation_log"
+
+if find "$artifact_root" -mindepth 1 \( -iname '*apply*' -o -iname '*commit*' -o -iname '*push*' -o -iname '*publish*' -o -iname '*review*' -o -iname '*validation-execution*' \) -print -quit | grep -q .; then
   echo "fixture slice created a forbidden lifecycle artifact" >&2
   exit 1
 fi

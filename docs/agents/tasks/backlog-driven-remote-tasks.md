@@ -76,9 +76,10 @@ couple remote Cloud task lifecycle to that adapter.
 The implemented vertical slice stops after `inspect`, `compile`, compatibility preflight,
 fixture-backed `dispatch`, untrusted `completion_candidate` ingestion, one fixture-backed remote
 status observation, one fixture-backed remote diff observation, and one fixture-backed opaque remote
-result observation. It does not create a scheduler, live-poll, retrieve validation receipts,
-interpret result evidence, validate the diff or remote work, advance to `ready_for_review`, auto-apply,
-auto-commit, auto-push, or create a cross-task orchestrator.
+result observation, followed by one fixture-backed opaque validation-receipt observation. It does not
+create a scheduler, live-poll, interpret result or validation-receipt evidence, execute validation,
+validate the diff or remote work, advance to `ready_for_review`, auto-apply, auto-commit, auto-push,
+or create a cross-task orchestrator.
 
 ## Current Status (2026-07-21)
 
@@ -136,6 +137,20 @@ orchestration-helper commands:
   candidate, status, diff metadata, and exact accepted patch bytes without rereading backlog prose or
   the consumer checkout. Fixture fields are explicitly package-owned and are not a provider response,
   callback, signed receipt, hidden transcript, or undocumented Codex contract.
+- `backlog.validation_receipt` ingests one package-owned fixture observation bound to the accepted
+  result observation identity and canonical fingerprint, accepted diff/status/candidate identities
+  and canonical fingerprints, exact accepted patch SHA-256 and byte count, immutable task/request/
+  compatibility/dispatch/adapter/environment/branch identity, and the exact `required_validation`
+  declaration plus its canonical fingerprint. Its deterministic observation time is later than
+  dispatch, candidate, status, diff, and result.
+- `validation-receipt.json` records only an opaque, untrusted, non-authoritative, uninterpreted
+  fixture receipt and remains at `state: completion_candidate`. It records the required-validation
+  declaration as immutable request evidence with `executed: false` and `interpreted: false`; review,
+  validation execution, apply, commit, push, and publication remain false. Fixture fields are
+  explicitly package-owned and are not a provider response, callback, signed receipt, hidden
+  transcript, or undocumented Codex contract.
+- Artifact-only validation-receipt retrieval revalidates the complete immutable chain through the
+  accepted result and exact patch bytes without rereading backlog prose or the consumer checkout.
 
 The package proof rejects absent, malformed, unknown, and ambiguous IDs; malformed index entries;
 missing, escaping, mismatched, or closed linked task paths; empty, whitespace-padded, multiline, or
@@ -144,6 +159,7 @@ fixture entries. Rejected inspection writes a deterministic rejection code but n
 dispatch artifact. Temporary consumer copies prove repeated-run determinism, no consumer mutation,
 no live provider invocation, no Git/SSH/network tool invocation, and no live status polling,
 live diff/result polling, result interpretation, validation, apply, commit, push, or publication.
+Validation-receipt polling, interpretation, and validation execution are also absent.
 
 The canonical index remains unchanged and open-only. Package-owned fixtures use an optional
 `dispatch_state` solely to represent `blocked`, `external_active`, and `closed` deterministically.
@@ -207,15 +223,27 @@ artifact; duplicate or replay rejection leaves the accepted result, diff, patch,
 and dispatch bytes unchanged. Operation-result evidence records success and deterministic stale,
 duplicate, replay, mismatch, malformed, missing, and tampered reason codes.
 
-The complete offline workflow invokes no Codex, Git, SSH, network, live status/diff/result polling,
-result interpretation, validation, apply, commit, push, or publication surface. Existing selection,
-request, compatibility, fixture dispatch, follow-up, completion-candidate, remote-status, and
-remote-diff artifacts remain byte-for-byte deterministic, and software.dev/Example Brain behavior is
-preserved. The next bounded remote-task slice is fixture-backed validation-receipt evidence retrieval
-and reconciliation bound to the accepted result/diff/status/candidate/task/request/dispatch chain,
-still without semantic result interpretation, semantic or allowed-path diff verification, any
-`ready_for_review` transition, apply, or publication. A live Codex Cloud adapter remains blocked until
-a future installed CLI documents a machine-readable receipt with a stable opaque task ID.
+Validation-receipt proofs show byte-for-byte deterministic `validation-receipt.json` output across
+repeated clean runs and artifact-only restart after removal of the consumer checkout. Retrieval
+rejects an observation at or before the accepted result time; wrong result, diff, patch, status,
+candidate, task, request, required-validation, compatibility, dispatch, adapter, environment, or
+branch bindings; duplicate observation IDs; replayed replay IDs; malformed or missing fixtures; and
+tampered request, compatibility, dispatch, candidate, status, diff metadata, accepted patch bytes,
+or result evidence. All checks complete before the receipt artifact is atomically materialized.
+Clean-chain rejection leaves no receipt, ready-for-review, validation-execution, or apply artifact;
+duplicate or replay rejection leaves the accepted receipt and every upstream artifact byte-for-byte
+unchanged. Operation-result evidence records success and deterministic stale, duplicate, replay,
+mismatch, malformed, missing, and tampered reason codes.
+
+The complete offline workflow invokes no Codex, Git, SSH, network, live status/diff/result/receipt
+polling, result or receipt interpretation, validation execution, apply, commit, push, or publication
+surface. Existing selection, request, compatibility, fixture dispatch, follow-up,
+completion-candidate, status, diff, patch, result, and validation-receipt artifacts remain
+byte-for-byte deterministic, and software.dev/Example Brain behavior is preserved. The next bounded
+remote-task slice is package-owned patch-structure and allowed-path boundary verification against the
+immutable request and accepted patch, still without applying the patch, executing validation,
+advancing to `ready_for_review`, or publishing. A live Codex Cloud adapter remains blocked until a
+future installed CLI documents a machine-readable receipt with a stable opaque task ID.
 
 ## Boundaries
 
@@ -257,16 +285,21 @@ a future installed CLI documents a machine-readable receipt with a stable opaque
   fingerprints, exact accepted patch SHA-256 and byte count, immutable task/request/dispatch/adapter/
   target binding, deterministic later observation time, package-owned fixture provenance, and only
   opaque untrusted evidence at the `completion_candidate` lifecycle state.
+- `validation-receipt.json`: receipt observation/replay identity, canonical accepted result/diff/
+  status/candidate fingerprints, exact patch SHA-256 and byte count, immutable task/request/
+  compatibility/dispatch/adapter/target binding, exact required-validation declaration and
+  fingerprint, deterministic later observation time, package-owned fixture provenance, and only
+  opaque untrusted evidence at the `completion_candidate` lifecycle state.
 - operation-result events for inspect, compile, compatibility, dispatch, completion-candidate
-  ingestion/rejection, status, diff, result, apply, and failure.
+  ingestion/rejection, status, diff, result, validation receipt, apply, and failure.
 
 ## Acceptance Criteria
 
 - A fixture task index plus linked task document deterministically compiles one explicit bounded
   request and rejects closed, unknown, malformed, ambiguous, active-external, and blocked entries.
-- The adapter fixtures prove dispatch, completion-candidate, status-observation, diff-observation, and
-  opaque result-observation parsing, record one opaque remote task ID, and never call a live provider
-  by default. Validation-receipt retrieval remains future work.
+- The adapter fixtures prove dispatch, completion-candidate, status-observation, diff-observation,
+  opaque result-observation, and opaque validation-receipt-observation parsing, record one opaque
+  remote task ID, and never call a live provider by default.
 - The compatibility fixture proves the exact documented CLI submission surface, fails closed when a
   machine-readable receipt or stable opaque task ID is absent, and cannot create a task identity.
 - Completion-candidate fixtures prove that stale, duplicated, replayed, mismatched, malformed, or
@@ -283,6 +316,11 @@ a future installed CLI documents a machine-readable receipt with a stable opaque
   tampered observations and upstream patch bytes cannot create accepted result evidence or advance
   beyond `completion_candidate`; accepted result claims remain opaque and cannot authorize
   validation-receipt retrieval, review, validation, apply, commit, push, or publication.
+- Validation-receipt fixtures prove that stale, duplicated, replayed, mismatched, malformed, missing,
+  or tampered observations and any tampered upstream artifact or patch bytes cannot create accepted
+  receipt evidence or advance beyond `completion_candidate`; accepted receipt claims and the exact
+  required-validation declaration remain opaque, unexecuted evidence and cannot authorize review,
+  validation, apply, commit, push, or publication.
 - A restart can recover identity solely from the immutable request, compatibility, and
   `remote-task.json` artifacts; it does not need the consumer checkout, a cron worker, or a mutable
   prose status record.

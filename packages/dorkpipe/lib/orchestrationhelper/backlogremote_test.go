@@ -108,7 +108,24 @@ func TestBacklogRemoteArtifactsAreDeterministicAndRestartSafe(t *testing.T) {
 			t.Fatalf("remote result retrieval changed immutable artifact %s", name)
 		}
 	}
-	for _, name := range []string{"backlog-selection.json", "remote-request.json", "remote-request.md", "remote-adapter-compatibility.json", "remote-task.json", "completion-candidate.json", "remote-status.json", "remote-diff.json", "remote-diff.patch", "remote-result.json"} {
+	immutableBeforeReceipt := map[string][]byte{}
+	for _, name := range []string{"remote-request.json", "remote-request.md", "remote-adapter-compatibility.json", "remote-task.json", "completion-candidate.json", "remote-status.json", "remote-diff.json", "remote-diff.patch", "remote-result.json"} {
+		immutableBeforeReceipt[name] = mustReadFile(t, filepath.Join(first, name))
+	}
+	firstReceipt := writeBacklogValidationReceiptFixture(t, first, "receipt_fixture_observation_015", "receipt_fixture_replay_015", "2026-07-19T00:05:00Z", "fixture-owned opaque validation receipt evidence")
+	secondReceipt := writeBacklogValidationReceiptFixture(t, second, "receipt_fixture_observation_015", "receipt_fixture_replay_015", "2026-07-19T00:05:00Z", "fixture-owned opaque validation receipt evidence")
+	if err := retrieveBacklogValidationReceiptFixture(first, firstReceipt); err != nil {
+		t.Fatalf("artifact-only validation receipt retrieval failed: %v", err)
+	}
+	if err := retrieveBacklogValidationReceiptFixture(second, secondReceipt); err != nil {
+		t.Fatalf("second clean validation receipt retrieval failed: %v", err)
+	}
+	for name, before := range immutableBeforeReceipt {
+		if string(mustReadFile(t, filepath.Join(first, name))) != string(before) {
+			t.Fatalf("validation receipt retrieval changed immutable artifact %s", name)
+		}
+	}
+	for _, name := range []string{"backlog-selection.json", "remote-request.json", "remote-request.md", "remote-adapter-compatibility.json", "remote-task.json", "completion-candidate.json", "remote-status.json", "remote-diff.json", "remote-diff.patch", "remote-result.json", "validation-receipt.json"} {
 		firstRaw := mustReadFile(t, filepath.Join(first, name))
 		secondRaw := mustReadFile(t, filepath.Join(second, name))
 		if string(firstRaw) != string(secondRaw) {
@@ -182,6 +199,32 @@ func TestBacklogRemoteArtifactsAreDeterministicAndRestartSafe(t *testing.T) {
 	for name, value := range mapValue(result["lifecycle"]) {
 		if backlogTestBool(value) {
 			t.Fatalf("remote result unexpectedly enables %s", name)
+		}
+	}
+	receipt := readJSONMap(filepath.Join(first, "validation-receipt.json"))
+	receiptEvidence := mapValue(receipt["evidence"])
+	receiptSource := mapValue(receipt["source"])
+	receiptValidation := mapValue(receipt["request_validation"])
+	receiptBinding := mapValue(receipt["binding"])
+	if stringValue(receipt["state"]) != "completion_candidate" || !backlogTestBool(receiptEvidence["opaque"]) || backlogTestBool(receiptEvidence["trusted"]) || backlogTestBool(receiptEvidence["authoritative"]) || backlogTestBool(receiptEvidence["interpreted"]) || backlogTestBool(receiptEvidence["validation_success_interpreted"]) {
+		t.Fatalf("unexpected validation receipt state or evidence trust: %#v", receipt)
+	}
+	if stringValue(receiptEvidence["opaque_receipt"]) != "fixture-owned opaque validation receipt evidence" || stringValue(receiptSource["fixture_contract"]) != backlogValidationReceiptFixtureContract || !backlogTestBool(receiptSource["package_owned_metadata"]) || backlogTestBool(receiptSource["provider_invoked"]) || backlogTestBool(receiptSource["provider_response"]) || backlogTestBool(receiptSource["callback"]) || backlogTestBool(receiptSource["signed_receipt"]) || backlogTestBool(receiptSource["hidden_transcript"]) {
+		t.Fatalf("unexpected validation receipt evidence or fixture provenance: %#v", receipt)
+	}
+	if backlogTestBool(receiptValidation["executed"]) || backlogTestBool(receiptValidation["interpreted"]) || !jsonMapsEqual(map[string]any{"required_validation": receiptValidation["required_validation"]}, map[string]any{"required_validation": request["required_validation"]}) {
+		t.Fatalf("validation receipt changed or interpreted required validation: %#v", receiptValidation)
+	}
+	requiredValidationFingerprint, err := backlogRequiredValidationFingerprint(request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if stringValue(receiptValidation["fingerprint"]) != requiredValidationFingerprint || stringValue(receiptBinding["compatibility_fingerprint"]) == "" {
+		t.Fatalf("validation receipt lacks immutable validation or compatibility binding: %#v", receipt)
+	}
+	for name, value := range mapValue(receipt["lifecycle"]) {
+		if backlogTestBool(value) {
+			t.Fatalf("validation receipt unexpectedly enables %s", name)
 		}
 	}
 	followup, err := loadBacklogFollowup(first)
@@ -792,6 +835,169 @@ func TestBacklogRemoteResultRejectsStaleMismatchedMalformedMissingAndTamperedEvi
 	}
 }
 
+func TestBacklogValidationReceiptRejectsDuplicateAndReplayWithoutMutation(t *testing.T) {
+	root := prepareBacklogValidationReceiptTest(t)
+	acceptedFixture := writeBacklogValidationReceiptFixture(t, root, "receipt_fixture_observation_015", "receipt_fixture_replay_015", "2026-07-19T00:05:00Z", "fixture-owned opaque validation receipt evidence")
+	if err := retrieveBacklogValidationReceiptFixture(root, acceptedFixture); err != nil {
+		t.Fatal(err)
+	}
+	accepted := map[string][]byte{}
+	for _, name := range []string{"validation-receipt.json", "remote-result.json", "remote-diff.json", "remote-diff.patch", "remote-status.json", "completion-candidate.json", "remote-task.json", "remote-request.json", "remote-adapter-compatibility.json"} {
+		accepted[name] = mustReadFile(t, filepath.Join(root, name))
+	}
+	if err := retrieveBacklogValidationReceiptFixture(root, acceptedFixture); err == nil || !strings.HasPrefix(err.Error(), "validation_receipt_duplicate:") {
+		t.Fatalf("duplicate error = %v", err)
+	}
+	replayFixture := writeBacklogValidationReceiptFixture(t, root, "receipt_fixture_observation_016", "receipt_fixture_replay_015", "2026-07-19T00:06:00Z", "second opaque fixture receipt")
+	if err := retrieveBacklogValidationReceiptFixture(root, replayFixture); err == nil || !strings.HasPrefix(err.Error(), "validation_receipt_replay:") {
+		t.Fatalf("replay error = %v", err)
+	}
+	for name, before := range accepted {
+		if string(mustReadFile(t, filepath.Join(root, name))) != string(before) {
+			t.Fatalf("duplicate or replay rejection changed %s", name)
+		}
+	}
+}
+
+func TestBacklogValidationReceiptRejectsStaleMismatchedMalformedMissingAndTamperedEvidence(t *testing.T) {
+	tests := []struct {
+		name     string
+		wantCode string
+		mutate   func(t *testing.T, root, fixturePath string)
+	}{
+		{name: "stale at result time", wantCode: "validation_receipt_stale", mutate: func(t *testing.T, _, fixturePath string) {
+			mutateBacklogJSONFile(t, fixturePath, func(payload map[string]any) { payload["observed_at"] = "2026-07-19T00:04:00Z" })
+		}},
+		{name: "wrong result observation", wantCode: "validation_receipt_binding_mismatch", mutate: func(t *testing.T, _, fixturePath string) {
+			mutateBacklogJSONFile(t, fixturePath, func(payload map[string]any) {
+				payload["remote_result_observation_id"] = "result_fixture_observation_wrong"
+			})
+		}},
+		{name: "wrong result fingerprint", wantCode: "validation_receipt_binding_mismatch", mutate: func(t *testing.T, _, fixturePath string) {
+			mutateBacklogJSONFile(t, fixturePath, func(payload map[string]any) {
+				payload["remote_result_fingerprint"] = "sha256:" + strings.Repeat("0", 64)
+			})
+		}},
+		{name: "wrong diff observation", wantCode: "validation_receipt_binding_mismatch", mutate: func(t *testing.T, _, fixturePath string) {
+			mutateBacklogJSONFile(t, fixturePath, func(payload map[string]any) { payload["remote_diff_observation_id"] = "diff_fixture_observation_wrong" })
+		}},
+		{name: "wrong diff fingerprint", wantCode: "validation_receipt_binding_mismatch", mutate: func(t *testing.T, _, fixturePath string) {
+			mutateBacklogJSONFile(t, fixturePath, func(payload map[string]any) { payload["remote_diff_fingerprint"] = "sha256:" + strings.Repeat("1", 64) })
+		}},
+		{name: "wrong patch checksum", wantCode: "validation_receipt_binding_mismatch", mutate: func(t *testing.T, _, fixturePath string) {
+			mutateBacklogJSONFile(t, fixturePath, func(payload map[string]any) { payload["patch_sha256"] = "sha256:" + strings.Repeat("2", 64) })
+		}},
+		{name: "wrong patch byte count", wantCode: "validation_receipt_binding_mismatch", mutate: func(t *testing.T, _, fixturePath string) {
+			mutateBacklogJSONFile(t, fixturePath, func(payload map[string]any) { payload["patch_bytes"] = float64(len(backlogTestPatch) + 1) })
+		}},
+		{name: "wrong status", wantCode: "validation_receipt_binding_mismatch", mutate: func(t *testing.T, _, fixturePath string) {
+			mutateBacklogJSONFile(t, fixturePath, func(payload map[string]any) {
+				payload["remote_status_observation_id"] = "status_fixture_observation_wrong"
+			})
+		}},
+		{name: "wrong status fingerprint", wantCode: "validation_receipt_binding_mismatch", mutate: func(t *testing.T, _, fixturePath string) {
+			mutateBacklogJSONFile(t, fixturePath, func(payload map[string]any) {
+				payload["remote_status_fingerprint"] = "sha256:" + strings.Repeat("7", 64)
+			})
+		}},
+		{name: "wrong candidate", wantCode: "validation_receipt_binding_mismatch", mutate: func(t *testing.T, _, fixturePath string) {
+			mutateBacklogJSONFile(t, fixturePath, func(payload map[string]any) {
+				payload["completion_candidate_id"] = "completion_fixture_candidate_wrong"
+			})
+		}},
+		{name: "wrong candidate fingerprint", wantCode: "validation_receipt_binding_mismatch", mutate: func(t *testing.T, _, fixturePath string) {
+			mutateBacklogJSONFile(t, fixturePath, func(payload map[string]any) {
+				payload["completion_candidate_fingerprint"] = "sha256:" + strings.Repeat("8", 64)
+			})
+		}},
+		{name: "wrong task", wantCode: "validation_receipt_binding_mismatch", mutate: func(t *testing.T, _, fixturePath string) {
+			mutateBacklogJSONFile(t, fixturePath, func(payload map[string]any) { payload["remote_task_id"] = "remote_fixture_task_wrong" })
+		}},
+		{name: "wrong request", wantCode: "validation_receipt_binding_mismatch", mutate: func(t *testing.T, _, fixturePath string) {
+			mutateBacklogJSONFile(t, fixturePath, func(payload map[string]any) { payload["request_fingerprint"] = "sha256:" + strings.Repeat("3", 64) })
+		}},
+		{name: "wrong required validation", wantCode: "validation_receipt_binding_mismatch", mutate: func(t *testing.T, _, fixturePath string) {
+			mutateBacklogJSONFile(t, fixturePath, func(payload map[string]any) {
+				payload["required_validation_fingerprint"] = "sha256:" + strings.Repeat("4", 64)
+			})
+		}},
+		{name: "wrong compatibility", wantCode: "validation_receipt_binding_mismatch", mutate: func(t *testing.T, _, fixturePath string) {
+			mutateBacklogJSONFile(t, fixturePath, func(payload map[string]any) {
+				payload["compatibility_fingerprint"] = "sha256:" + strings.Repeat("5", 64)
+			})
+		}},
+		{name: "wrong dispatch", wantCode: "validation_receipt_binding_mismatch", mutate: func(t *testing.T, _, fixturePath string) {
+			mutateBacklogJSONFile(t, fixturePath, func(payload map[string]any) { payload["dispatch_fingerprint"] = "sha256:" + strings.Repeat("6", 64) })
+		}},
+		{name: "wrong adapter", wantCode: "validation_receipt_binding_mismatch", mutate: func(t *testing.T, _, fixturePath string) {
+			mutateBacklogJSONFile(t, fixturePath, func(payload map[string]any) { payload["adapter_identity"] = "codex-cloud-fixture-wrong" })
+		}},
+		{name: "wrong environment", wantCode: "validation_receipt_binding_mismatch", mutate: func(t *testing.T, _, fixturePath string) {
+			mutateBacklogJSONFile(t, fixturePath, func(payload map[string]any) { payload["environment_ref"] = "wrong-environment" })
+		}},
+		{name: "wrong branch", wantCode: "validation_receipt_binding_mismatch", mutate: func(t *testing.T, _, fixturePath string) {
+			mutateBacklogJSONFile(t, fixturePath, func(payload map[string]any) { payload["branch_ref"] = "wrong/branch" })
+		}},
+		{name: "malformed fixture", wantCode: "validation_receipt_fixture_malformed", mutate: func(t *testing.T, _, fixturePath string) {
+			writeBacklogTestFile(t, fixturePath, "{\"unexpected\":true}\n")
+		}},
+		{name: "missing fixture", wantCode: "validation_receipt_fixture_missing", mutate: func(t *testing.T, _, fixturePath string) {
+			if err := os.Remove(fixturePath); err != nil {
+				t.Fatal(err)
+			}
+		}},
+		{name: "tampered request", wantCode: "validation_receipt_request_invalid", mutate: func(t *testing.T, root, _ string) {
+			mutateBacklogJSONFile(t, filepath.Join(root, "remote-request.json"), func(payload map[string]any) { payload["required_validation"] = []any{"tampered validation"} })
+		}},
+		{name: "tampered compatibility", wantCode: "validation_receipt_compatibility_invalid", mutate: func(t *testing.T, root, _ string) {
+			mutateBacklogJSONFile(t, filepath.Join(root, "remote-adapter-compatibility.json"), func(payload map[string]any) { payload["adapter_identity"] = "tampered-adapter" })
+		}},
+		{name: "tampered dispatch", wantCode: "validation_receipt_dispatch_invalid", mutate: func(t *testing.T, root, _ string) {
+			mutateBacklogJSONFile(t, filepath.Join(root, "remote-task.json"), func(payload map[string]any) { payload["remote_task_id"] = "remote_fixture_task_tampered" })
+		}},
+		{name: "tampered candidate", wantCode: "validation_receipt_candidate_invalid", mutate: func(t *testing.T, root, _ string) {
+			mutateBacklogJSONFile(t, filepath.Join(root, "completion-candidate.json"), func(payload map[string]any) { payload["state"] = "ready_for_review" })
+		}},
+		{name: "tampered status", wantCode: "validation_receipt_status_invalid", mutate: func(t *testing.T, root, _ string) {
+			mutateBacklogJSONFile(t, filepath.Join(root, "remote-status.json"), func(payload map[string]any) { mapValue(payload["lifecycle"])["ready_for_review"] = true })
+		}},
+		{name: "tampered diff", wantCode: "validation_receipt_diff_invalid", mutate: func(t *testing.T, root, _ string) {
+			mutateBacklogJSONFile(t, filepath.Join(root, "remote-diff.json"), func(payload map[string]any) { mapValue(payload["patch"])["bytes"] = float64(1) })
+		}},
+		{name: "tampered patch bytes", wantCode: "validation_receipt_diff_invalid", mutate: func(t *testing.T, root, _ string) {
+			writeBacklogTestFile(t, filepath.Join(root, "remote-diff.patch"), backlogTestPatch+"tampered\n")
+		}},
+		{name: "tampered result", wantCode: "validation_receipt_result_invalid", mutate: func(t *testing.T, root, _ string) {
+			mutateBacklogJSONFile(t, filepath.Join(root, "remote-result.json"), func(payload map[string]any) { mapValue(payload["lifecycle"])["ready_for_review"] = true })
+		}},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			root := prepareBacklogValidationReceiptTest(t)
+			fixturePath := writeBacklogValidationReceiptFixture(t, root, "receipt_fixture_observation_015", "receipt_fixture_replay_015", "2026-07-19T00:05:00Z", "fixture-owned opaque validation receipt evidence")
+			test.mutate(t, root, fixturePath)
+			before := map[string][]byte{}
+			for _, name := range []string{"remote-result.json", "remote-diff.json", "remote-diff.patch", "remote-status.json", "completion-candidate.json", "remote-task.json"} {
+				before[name] = mustReadFile(t, filepath.Join(root, name))
+			}
+			err := retrieveBacklogValidationReceiptFixture(root, fixturePath)
+			if err == nil || !strings.HasPrefix(err.Error(), test.wantCode+":") {
+				t.Fatalf("error = %v, want code %s", err, test.wantCode)
+			}
+			for _, name := range []string{"validation-receipt.json", "ready-for-review.json", "validation-execution.json", "apply.json"} {
+				if _, statErr := os.Stat(filepath.Join(root, name)); !os.IsNotExist(statErr) {
+					t.Fatalf("rejected validation receipt left forbidden artifact %s: %v", name, statErr)
+				}
+			}
+			for name, content := range before {
+				if string(mustReadFile(t, filepath.Join(root, name))) != string(content) {
+					t.Fatalf("rejected validation receipt changed %s", name)
+				}
+			}
+		})
+	}
+}
+
 func prepareBacklogCompletionTest(t *testing.T) string {
 	t.Helper()
 	repo := writeBacklogTestRepo(t)
@@ -843,6 +1049,16 @@ func prepareBacklogResultTest(t *testing.T) string {
 	root := prepareBacklogDiffTest(t)
 	fixture := writeBacklogDiffFixture(t, root, "diff_fixture_observation_015", "diff_fixture_replay_015", "2026-07-19T00:03:00Z", backlogTestPatch)
 	if err := retrieveBacklogRemoteDiffFixture(root, fixture); err != nil {
+		t.Fatal(err)
+	}
+	return root
+}
+
+func prepareBacklogValidationReceiptTest(t *testing.T) string {
+	t.Helper()
+	root := prepareBacklogResultTest(t)
+	fixture := writeBacklogResultFixture(t, root, "result_fixture_observation_015", "result_fixture_replay_015", "2026-07-19T00:04:00Z", "fixture-owned opaque result evidence")
+	if err := retrieveBacklogRemoteResultFixture(root, fixture); err != nil {
 		t.Fatal(err)
 	}
 	return root
@@ -969,6 +1185,65 @@ func writeBacklogResultFixture(t *testing.T, root, observationID, replayIdentity
 		t.Fatal(err)
 	}
 	path := filepath.Join(t.TempDir(), "remote-result.json")
+	writeBacklogTestFile(t, path, string(raw)+"\n")
+	return path
+}
+
+func writeBacklogValidationReceiptFixture(t *testing.T, root, observationID, replayIdentity, observedAt, opaqueReceipt string) string {
+	t.Helper()
+	request := readJSONMap(filepath.Join(root, "remote-request.json"))
+	requiredValidationFingerprint, err := backlogRequiredValidationFingerprint(request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	compatibility := readJSONMap(filepath.Join(root, "remote-adapter-compatibility.json"))
+	compatibilityFingerprint, err := backlogJSONFingerprint(compatibility)
+	if err != nil {
+		t.Fatal(err)
+	}
+	task := readJSONMap(filepath.Join(root, "remote-task.json"))
+	target := mapValue(task["target"])
+	adapter := mapValue(task["adapter"])
+	candidate := readJSONMap(filepath.Join(root, "completion-candidate.json"))
+	candidateFingerprint, err := backlogJSONFingerprint(candidate)
+	if err != nil {
+		t.Fatal(err)
+	}
+	status := readJSONMap(filepath.Join(root, "remote-status.json"))
+	statusFingerprint, err := backlogJSONFingerprint(status)
+	if err != nil {
+		t.Fatal(err)
+	}
+	diff := readJSONMap(filepath.Join(root, "remote-diff.json"))
+	diffFingerprint, err := backlogJSONFingerprint(diff)
+	if err != nil {
+		t.Fatal(err)
+	}
+	result := readJSONMap(filepath.Join(root, "remote-result.json"))
+	resultFingerprint, err := backlogJSONFingerprint(result)
+	if err != nil {
+		t.Fatal(err)
+	}
+	diffPatch := mapValue(diff["patch"])
+	patchBytes := int(diffPatch["bytes"].(float64))
+	payload := backlogValidationReceiptFixture{
+		ContractVersion: backlogValidationReceiptFixtureContract, ObservationID: observationID, ReplayIdentity: replayIdentity,
+		RemoteResultObservationID: stringValue(mapValue(result["identity"])["observation_id"]), RemoteResultFingerprint: resultFingerprint,
+		RemoteDiffObservationID: stringValue(mapValue(diff["identity"])["observation_id"]), RemoteDiffFingerprint: diffFingerprint,
+		PatchSHA256: stringValue(diffPatch["sha256"]), PatchBytes: &patchBytes,
+		RemoteStatusObservationID: stringValue(mapValue(status["identity"])["observation_id"]), RemoteStatusFingerprint: statusFingerprint,
+		CompletionCandidateID: stringValue(mapValue(candidate["identity"])["candidate_id"]), CompletionCandidateFingerprint: candidateFingerprint,
+		AdapterIdentity: stringValue(adapter["identity"]), RemoteTaskID: stringValue(task["remote_task_id"]),
+		RequestFingerprint: stringValue(task["request_fingerprint"]), RequiredValidationFingerprint: requiredValidationFingerprint,
+		CompatibilityFingerprint: compatibilityFingerprint, DispatchFingerprint: stringValue(task["dispatch_fingerprint"]),
+		EnvironmentRef: stringValue(target["environment_ref"]), BranchRef: stringValue(target["branch_ref"]),
+		ObservedAt: observedAt, OpaqueReceipt: opaqueReceipt,
+	}
+	raw, err := json.MarshalIndent(payload, "", "  ")
+	if err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(t.TempDir(), "validation-receipt.json")
 	writeBacklogTestFile(t, path, string(raw)+"\n")
 	return path
 }

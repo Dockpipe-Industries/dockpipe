@@ -195,6 +195,39 @@ case "$step_id" in
       "result_evidence_authoritative=false"
     )
     ;;
+  validation_receipt)
+    fixture="${DORKPIPE_BACKLOG_VALIDATION_RECEIPT_FIXTURE:-}"
+    if [[ -z "$fixture" ]]; then
+      echo "DORKPIPE_BACKLOG_VALIDATION_RECEIPT_FIXTURE is required for fixture-backed validation receipt retrieval" >&2
+      exit 1
+    fi
+    if command -v cygpath >/dev/null 2>&1; then
+      fixture="$(cygpath -m "$fixture")"
+    fi
+    trap - ERR
+    set +e
+    receipt_error="$(MSYS2_ARG_CONV_EXCL='*' "$helper_bin" backlog-retrieve-validation-receipt-fixture "$artifact_root" "$fixture" 2>&1)"
+    receipt_rc=$?
+    set -e
+    trap backlog_remote_fail ERR
+    if (( receipt_rc != 0 )); then
+      printf '%s\n' "$receipt_error" >&2
+      receipt_reason_code="${receipt_error%%:*}"
+      dorkpipe_orchestrate_operation_fail "$unit" "$started_ms" "$receipt_error" \
+        "artifact_root=$artifact_root" "reason_code=$receipt_reason_code"
+      trap - ERR
+      exit "$receipt_rc"
+    fi
+    completion_details=(
+      "artifact=validation-receipt.json"
+      "authoritative_state=completion_candidate"
+      "ready_for_review=false"
+      "receipt_evidence_opaque=true"
+      "receipt_evidence_trusted=false"
+      "receipt_evidence_authoritative=false"
+      "validation_executed=false"
+    )
+    ;;
   *)
     echo "unsupported backlog.remote workflow step: ${step_id:-<empty>}" >&2
     exit 1
