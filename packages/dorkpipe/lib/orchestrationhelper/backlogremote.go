@@ -12,6 +12,7 @@ import (
 	pathpkg "path"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strings"
 	"time"
 	"unicode"
@@ -39,6 +40,7 @@ const (
 	backlogResultContract                   = "dorkpipe.remote-result/v1"
 	backlogValidationReceiptFixtureContract = "dorkpipe.validation-receipt-observation-fixture/v1"
 	backlogValidationReceiptContract        = "dorkpipe.validation-receipt/v1"
+	backlogPatchBoundaryContract            = "dorkpipe.patch-boundary/v1"
 )
 
 var (
@@ -47,6 +49,9 @@ var (
 	backlogOpaqueID      = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$`)
 	backlogReference     = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._/@:-]{0,199}$`)
 	backlogFingerprint   = regexp.MustCompile(`^sha256:[0-9a-f]{64}$`)
+	backlogPatchIndex    = regexp.MustCompile(`^index [0-9a-f]{7,64}\.\.[0-9a-f]{7,64} ([0-7]{6})$`)
+	backlogPatchHunk     = regexp.MustCompile(`^@@ -[0-9]+(?:,[0-9]+)? \+[0-9]+(?:,[0-9]+)? @@(?: .*)?$`)
+	backlogWindowsAbs    = regexp.MustCompile(`^[A-Za-z]:/`)
 )
 
 type backlogIndex struct {
@@ -1749,6 +1754,312 @@ func loadAndVerifyBacklogValidationReceipt(artifactRoot string, request, task, c
 		return nil, errors.New("validation receipt is malformed, tampered, or does not match the immutable result, diff, patch, status, candidate, task, request, required-validation declaration, compatibility, dispatch, adapter, environment, and branch identity")
 	}
 	return receipt, nil
+}
+
+func verifyBacklogPatchBoundary(artifactRoot string) error {
+	request, _, err := loadAndVerifyBacklogRequest(artifactRoot)
+	if err != nil {
+		return rejectBacklog("patch_boundary_request_invalid", "%v", err)
+	}
+	_, compatibilityFingerprint, err := loadAndVerifyBacklogCompatibility(artifactRoot, request)
+	if err != nil {
+		return rejectBacklog("patch_boundary_compatibility_invalid", "%v", err)
+	}
+	task, err := loadAndVerifyBacklogDispatch(artifactRoot, request, compatibilityFingerprint)
+	if err != nil {
+		return rejectBacklog("patch_boundary_dispatch_invalid", "%v", err)
+	}
+	candidate, candidateFingerprint, err := loadAndVerifyBacklogCompletionCandidate(artifactRoot, task)
+	if err != nil {
+		return rejectBacklog("patch_boundary_candidate_invalid", "%v", err)
+	}
+	status, statusFingerprint, err := loadAndVerifyBacklogRemoteStatus(artifactRoot, task, candidate, candidateFingerprint)
+	if err != nil {
+		return rejectBacklog("patch_boundary_status_invalid", "%v", err)
+	}
+	diff, err := loadAndVerifyBacklogRemoteDiff(artifactRoot, task, candidate, candidateFingerprint, status, statusFingerprint)
+	if err != nil {
+		return rejectBacklog("patch_boundary_diff_invalid", "%v", err)
+	}
+	diffFingerprint, err := backlogJSONFingerprint(diff)
+	if err != nil {
+		return rejectBacklog("patch_boundary_diff_invalid", "%v", err)
+	}
+	result, err := loadAndVerifyBacklogRemoteResult(artifactRoot, task, candidate, candidateFingerprint, status, statusFingerprint, diff, diffFingerprint)
+	if err != nil {
+		return rejectBacklog("patch_boundary_result_invalid", "%v", err)
+	}
+	resultFingerprint, err := backlogJSONFingerprint(result)
+	if err != nil {
+		return rejectBacklog("patch_boundary_result_invalid", "%v", err)
+	}
+	requiredValidationFingerprint, err := backlogRequiredValidationFingerprint(request)
+	if err != nil {
+		return rejectBacklog("patch_boundary_request_invalid", "%v", err)
+	}
+	receipt, err := loadAndVerifyBacklogValidationReceipt(
+		artifactRoot, request, task, candidate, candidateFingerprint, status, statusFingerprint,
+		diff, diffFingerprint, result, resultFingerprint, requiredValidationFingerprint, compatibilityFingerprint,
+	)
+	if err != nil {
+		return rejectBacklog("patch_boundary_validation_receipt_invalid", "%v", err)
+	}
+	receiptFingerprint, err := backlogJSONFingerprint(receipt)
+	if err != nil {
+		return rejectBacklog("patch_boundary_validation_receipt_invalid", "%v", err)
+	}
+
+	allowedPaths, allowedPathsFingerprint, err := backlogAllowedPaths(request)
+	if err != nil {
+		return rejectBacklog("patch_boundary_allowed_paths_invalid", "%v", err)
+	}
+	patchPath, err := backlogArtifactPath(artifactRoot, "remote-diff.patch")
+	if err != nil {
+		return err
+	}
+	patchRaw, err := os.ReadFile(patchPath)
+	if err != nil {
+		return rejectBacklog("patch_boundary_diff_invalid", "accepted remote diff patch cannot be read: %v", err)
+	}
+	changedPaths, err := parseBacklogPatchChangedPaths(patchRaw)
+	if err != nil {
+		return rejectBacklog("patch_boundary_patch_unsupported", "%v", err)
+	}
+	for _, changedPath := range changedPaths {
+		if !backlogPatchPathAllowed(changedPath, allowedPaths) {
+			return rejectBacklog("patch_boundary_path_out_of_scope", "changed path %q is outside the immutable allowed_paths declaration", changedPath)
+		}
+	}
+
+	payload := backlogPatchBoundaryPayload(
+		request, compatibilityFingerprint, task, candidate, candidateFingerprint, status, statusFingerprint,
+		diff, diffFingerprint, result, resultFingerprint, receipt, receiptFingerprint,
+		allowedPaths, allowedPathsFingerprint, changedPaths, patchRaw,
+	)
+	boundaryPath, err := backlogArtifactPath(artifactRoot, "patch-boundary.json")
+	if err != nil {
+		return err
+	}
+	if _, statErr := os.Stat(boundaryPath); statErr == nil {
+		existing, readErr := readStrictJSONMap(boundaryPath)
+		if readErr != nil || !jsonMapsEqual(existing, payload) {
+			return rejectBacklog("patch_boundary_artifact_invalid", "existing patch-boundary.json is malformed, tampered, or does not match the immutable artifact chain")
+		}
+		return nil
+	} else if !os.IsNotExist(statErr) {
+		return statErr
+	}
+	return writeJSONFileAtomic(boundaryPath, payload)
+}
+
+func backlogAllowedPaths(request map[string]any) ([]string, string, error) {
+	scope, ok := request["scope"].(map[string]any)
+	if !ok {
+		return nil, "", errors.New("remote request scope is missing or malformed")
+	}
+	raw, ok := scope["allowed_paths"].([]any)
+	if !ok || len(raw) == 0 {
+		return nil, "", errors.New("remote request allowed_paths must be a non-empty array")
+	}
+	paths := make([]string, 0, len(raw))
+	seen := map[string]bool{}
+	for _, value := range raw {
+		pathValue, ok := value.(string)
+		if !ok {
+			return nil, "", errors.New("remote request allowed_paths must contain only strings")
+		}
+		if err := validateBacklogPatchPath(pathValue); err != nil {
+			return nil, "", fmt.Errorf("allowed path %q is invalid: %w", pathValue, err)
+		}
+		if seen[pathValue] {
+			return nil, "", fmt.Errorf("remote request allowed_paths contains duplicate %q", pathValue)
+		}
+		seen[pathValue] = true
+		paths = append(paths, pathValue)
+	}
+	fingerprint, err := backlogJSONFingerprint(map[string]any{"allowed_paths": raw})
+	if err != nil {
+		return nil, "", err
+	}
+	return paths, fingerprint, nil
+}
+
+func validateBacklogPatchPath(value string) error {
+	if value == "" || value != strings.TrimSpace(value) || !utf8.ValidString(value) {
+		return errors.New("path must be non-empty, trimmed, and valid UTF-8")
+	}
+	if strings.HasPrefix(value, "/") || backlogWindowsAbs.MatchString(value) || filepath.IsAbs(value) || filepath.VolumeName(value) != "" {
+		return errors.New("absolute paths are not supported")
+	}
+	if strings.Contains(value, "\\") || strings.Contains(value, "\"") {
+		return errors.New("backslash and quoted or escaped paths are not supported")
+	}
+	for _, r := range value {
+		if unicode.IsControl(r) || unicode.IsSpace(r) {
+			return errors.New("control characters and whitespace are not supported in patch paths")
+		}
+	}
+	if pathpkg.Clean(value) != value || value == "." || value == ".." || strings.HasPrefix(value, "../") {
+		return errors.New("path must be a canonical repository-relative path without traversal")
+	}
+	for _, component := range strings.Split(value, "/") {
+		if component == "" || component == "." || component == ".." {
+			return errors.New("path contains an empty, current-directory, or parent-directory component")
+		}
+	}
+	if isForbiddenBacklogPath(value) {
+		return errors.New("path is generated, secret-like, Git-internal, or provider-private")
+	}
+	return nil
+}
+
+func parseBacklogPatchChangedPaths(raw []byte) ([]string, error) {
+	if len(raw) == 0 || raw[len(raw)-1] != '\n' || bytes.IndexByte(raw, 0) >= 0 || bytes.Contains(raw, []byte{'\r'}) {
+		return nil, errors.New("patch must be non-empty LF-terminated ordinary text without NUL or CR bytes")
+	}
+	lines := strings.Split(string(raw[:len(raw)-1]), "\n")
+	changed := make([]string, 0)
+	seen := map[string]bool{}
+	for index := 0; index < len(lines); {
+		line := lines[index]
+		if strings.HasPrefix(line, "diff --cc ") || strings.HasPrefix(line, "diff --combined ") {
+			return nil, fmt.Errorf("line %d uses an unsupported combined diff", index+1)
+		}
+		parts := strings.Split(line, " ")
+		if len(parts) != 4 || parts[0] != "diff" || parts[1] != "--git" || !strings.HasPrefix(parts[2], "a/") || !strings.HasPrefix(parts[3], "b/") {
+			return nil, fmt.Errorf("line %d must be an unquoted 'diff --git a/<path> b/<path>' header", index+1)
+		}
+		oldPath := strings.TrimPrefix(parts[2], "a/")
+		newPath := strings.TrimPrefix(parts[3], "b/")
+		if err := validateBacklogPatchPath(oldPath); err != nil {
+			return nil, fmt.Errorf("line %d old path is invalid: %w", index+1, err)
+		}
+		if err := validateBacklogPatchPath(newPath); err != nil {
+			return nil, fmt.Errorf("line %d new path is invalid: %w", index+1, err)
+		}
+		if oldPath != newPath {
+			return nil, fmt.Errorf("line %d old and new diff paths do not match; rename and copy patches are unsupported", index+1)
+		}
+		if seen[oldPath] {
+			return nil, fmt.Errorf("line %d repeats changed path %q", index+1, oldPath)
+		}
+		index++
+		if index >= len(lines) {
+			return nil, fmt.Errorf("section for %q is missing its index line", oldPath)
+		}
+		indexMatch := backlogPatchIndex.FindStringSubmatch(lines[index])
+		if indexMatch == nil || indexMatch[1] == "160000" {
+			return nil, fmt.Errorf("line %d must be an ordinary non-submodule index line", index+1)
+		}
+		index++
+		if index >= len(lines) || lines[index] != "--- a/"+oldPath {
+			return nil, fmt.Errorf("line %d must exactly match the old path from the diff header", index+1)
+		}
+		index++
+		if index >= len(lines) || lines[index] != "+++ b/"+newPath {
+			return nil, fmt.Errorf("line %d must exactly match the new path from the diff header", index+1)
+		}
+		index++
+		hunks := 0
+		for index < len(lines) && !strings.HasPrefix(lines[index], "diff --git ") && !strings.HasPrefix(lines[index], "diff --cc ") && !strings.HasPrefix(lines[index], "diff --combined ") {
+			if !backlogPatchHunk.MatchString(lines[index]) {
+				return nil, fmt.Errorf("line %d is unsupported metadata or a malformed hunk header", index+1)
+			}
+			hunks++
+			index++
+			contentLines := 0
+			for index < len(lines) && !strings.HasPrefix(lines[index], "@@ ") && !strings.HasPrefix(lines[index], "diff --git ") && !strings.HasPrefix(lines[index], "diff --cc ") && !strings.HasPrefix(lines[index], "diff --combined ") {
+				content := lines[index]
+				if content == "\\ No newline at end of file" {
+					if contentLines == 0 {
+						return nil, fmt.Errorf("line %d has a misplaced no-newline marker", index+1)
+					}
+				} else if content == "" || !strings.Contains(" +-", content[:1]) {
+					return nil, fmt.Errorf("line %d is not an opaque unified-diff hunk line", index+1)
+				} else {
+					contentLines++
+				}
+				index++
+			}
+			if contentLines == 0 {
+				return nil, fmt.Errorf("hunk %d for %q has no content", hunks, oldPath)
+			}
+		}
+		if hunks == 0 {
+			return nil, fmt.Errorf("section for %q contains no ordinary unified-diff hunk", oldPath)
+		}
+		seen[oldPath] = true
+		changed = append(changed, oldPath)
+	}
+	if len(changed) == 0 {
+		return nil, errors.New("patch contains no changed paths")
+	}
+	sort.Strings(changed)
+	return changed, nil
+}
+
+func backlogPatchPathAllowed(changedPath string, allowedPaths []string) bool {
+	for _, allowedPath := range allowedPaths {
+		if changedPath == allowedPath || strings.HasPrefix(changedPath, allowedPath+"/") {
+			return true
+		}
+	}
+	return false
+}
+
+func backlogPatchBoundaryPayload(request map[string]any, compatibilityFingerprint string, task, candidate map[string]any, candidateFingerprint string, status map[string]any, statusFingerprint string, diff map[string]any, diffFingerprint string, result map[string]any, resultFingerprint string, receipt map[string]any, receiptFingerprint string, allowedPaths []string, allowedPathsFingerprint string, changedPaths []string, patchRaw []byte) map[string]any {
+	requestScope := mapValue(request["scope"])
+	target := mapValue(task["target"])
+	adapter := mapValue(task["adapter"])
+	candidateIdentity := mapValue(candidate["identity"])
+	statusIdentity := mapValue(status["identity"])
+	diffIdentity := mapValue(diff["identity"])
+	resultIdentity := mapValue(result["identity"])
+	receiptIdentity := mapValue(receipt["identity"])
+	return map[string]any{
+		"contract_version": backlogPatchBoundaryContract,
+		"state":            "completion_candidate",
+		"validation_receipt": map[string]any{
+			"observation_id": stringValue(receiptIdentity["observation_id"]), "replay_identity": stringValue(receiptIdentity["replay_identity"]), "fingerprint": receiptFingerprint,
+		},
+		"remote_result": map[string]any{
+			"observation_id": stringValue(resultIdentity["observation_id"]), "replay_identity": stringValue(resultIdentity["replay_identity"]), "fingerprint": resultFingerprint,
+		},
+		"remote_diff": map[string]any{
+			"observation_id": stringValue(diffIdentity["observation_id"]), "replay_identity": stringValue(diffIdentity["replay_identity"]), "fingerprint": diffFingerprint,
+			"patch_sha256": sha256String(patchRaw), "patch_bytes": len(patchRaw),
+		},
+		"remote_status": map[string]any{
+			"observation_id": stringValue(statusIdentity["observation_id"]), "replay_identity": stringValue(statusIdentity["replay_identity"]), "fingerprint": statusFingerprint,
+		},
+		"completion_candidate": map[string]any{
+			"candidate_id": stringValue(candidateIdentity["candidate_id"]), "replay_identity": stringValue(candidateIdentity["replay_identity"]), "fingerprint": candidateFingerprint,
+		},
+		"binding": map[string]any{
+			"request_fingerprint": stringValue(request["request_fingerprint"]), "compatibility_fingerprint": compatibilityFingerprint,
+			"dispatch_fingerprint": stringValue(task["dispatch_fingerprint"]), "remote_task_id": stringValue(task["remote_task_id"]),
+			"adapter_identity": stringValue(adapter["identity"]), "environment_ref": stringValue(target["environment_ref"]), "branch_ref": stringValue(target["branch_ref"]),
+		},
+		"scope": map[string]any{
+			"allowed_paths": requestScope["allowed_paths"], "allowed_paths_fingerprint": allowedPathsFingerprint,
+			"matching_rule": "exact_or_true_descendant", "lexical_only": true,
+		},
+		"changed_paths": anyStrings(changedPaths),
+		"verification": map[string]any{
+			"patch_structure":       "verified_ordinary_unified_text_modifications",
+			"allowed_path_boundary": "verified_segment_aware_lexical_containment",
+			"mechanical_only":       true,
+		},
+		"actions": map[string]any{
+			"semantic_correctness_reviewed": false, "validation_executed": false, "patch_applied": false,
+			"ready_for_review_emitted": false, "commit_performed": false, "push_performed": false, "publication_performed": false,
+		},
+		"lifecycle": map[string]any{
+			"ready_for_review": false, "validation_execution": false, "apply": false,
+			"commit": false, "push": false, "publication": false,
+		},
+		"proof": map[string]any{"allowed_paths_count": len(allowedPaths), "changed_paths_count": len(changedPaths)},
+	}
 }
 
 func backlogRemoteResultPayload(task, candidate map[string]any, candidateFingerprint string, status map[string]any, statusFingerprint string, diff map[string]any, diffFingerprint, observationID, replayIdentity, observedAt, opaqueResult string) map[string]any {

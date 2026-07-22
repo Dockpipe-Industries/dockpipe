@@ -228,6 +228,32 @@ case "$step_id" in
       "validation_executed=false"
     )
     ;;
+  patch_boundary)
+    trap - ERR
+    set +e
+    boundary_error="$(MSYS2_ARG_CONV_EXCL='*' "$helper_bin" backlog-verify-patch-boundary "$artifact_root" 2>&1)"
+    boundary_rc=$?
+    set -e
+    trap backlog_remote_fail ERR
+    if (( boundary_rc != 0 )); then
+      printf '%s\n' "$boundary_error" >&2
+      boundary_reason_code="${boundary_error%%:*}"
+      dorkpipe_orchestrate_operation_fail "$unit" "$started_ms" "$boundary_error" \
+        "artifact_root=$artifact_root" "reason_code=$boundary_reason_code"
+      trap - ERR
+      exit "$boundary_rc"
+    fi
+    completion_details=(
+      "artifact=patch-boundary.json"
+      "authoritative_state=completion_candidate"
+      "ready_for_review=false"
+      "patch_structure_verified=true"
+      "allowed_path_boundary_verified=true"
+      "semantic_correctness_reviewed=false"
+      "validation_executed=false"
+      "patch_applied=false"
+    )
+    ;;
   *)
     echo "unsupported backlog.remote workflow step: ${step_id:-<empty>}" >&2
     exit 1

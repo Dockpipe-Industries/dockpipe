@@ -76,10 +76,11 @@ couple remote Cloud task lifecycle to that adapter.
 The implemented vertical slice stops after `inspect`, `compile`, compatibility preflight,
 fixture-backed `dispatch`, untrusted `completion_candidate` ingestion, one fixture-backed remote
 status observation, one fixture-backed remote diff observation, and one fixture-backed opaque remote
-result observation, followed by one fixture-backed opaque validation-receipt observation. It does not
-create a scheduler, live-poll, interpret result or validation-receipt evidence, execute validation,
-validate the diff or remote work, advance to `ready_for_review`, auto-apply, auto-commit, auto-push,
-or create a cross-task orchestrator.
+result observation, followed by one fixture-backed opaque validation-receipt observation and one
+artifact-only mechanical patch-structure and allowed-path boundary verification. It does not create
+a scheduler, live-poll, interpret result or validation-receipt evidence, execute validation, assess
+semantic correctness, advance to `ready_for_review`, apply the patch, auto-commit, auto-push, or
+create a cross-task orchestrator.
 
 ## Current Status (2026-07-21)
 
@@ -151,6 +152,23 @@ orchestration-helper commands:
   transcript, or undocumented Codex contract.
 - Artifact-only validation-receipt retrieval revalidates the complete immutable chain through the
   accepted result and exact patch bytes without rereading backlog prose or the consumer checkout.
+- `backlog.patch_boundary` revalidates `remote-request.json`, exact `remote-request.md`, adapter
+  compatibility, dispatch, candidate, status, diff metadata and exact patch bytes, result, and
+  validation receipt before writing deterministic `patch-boundary.json`. The artifact binds the
+  canonical accepted receipt/result/diff/status/candidate identities and fingerprints, patch
+  SHA-256 and byte count, request/compatibility/dispatch fingerprints, remote task and adapter
+  identities, environment/branch refs, exact immutable `allowed_paths` declaration and canonical
+  fingerprint, and sorted changed paths. It remains only at `state: completion_candidate`.
+- The accepted grammar is deliberately narrow: unquoted `diff --git a/<path> b/<path>`, one ordinary
+  non-submodule `index` line, exactly matching `--- a/<path>` and `+++ b/<path>` headers, and one or
+  more ordinary unified-diff hunks. Hunk contents are opaque. Add/delete, combined, binary,
+  submodule, mode-only, rename/copy, quoted/escaped, repeated-path, mismatched-header, malformed, and
+  otherwise unsupported forms fail closed.
+- Patch and allowed paths are verified lexically without Git, checkout, or filesystem-existence
+  consultation. Paths must be canonical forward-slash repository-relative paths with no absolute
+  or drive prefix, backslash, traversal, empty component, control/whitespace, ambiguous quoting, or
+  generated, secret-like, Git-internal, or provider-private location. A changed path must equal one
+  immutable allowed path or begin with that path plus `/`; prefix collisions do not match.
 
 The package proof rejects absent, malformed, unknown, and ambiguous IDs; malformed index entries;
 missing, escaping, mismatched, or closed linked task paths; empty, whitespace-padded, multiline, or
@@ -239,11 +257,15 @@ The complete offline workflow invokes no Codex, Git, SSH, network, live status/d
 polling, result or receipt interpretation, validation execution, apply, commit, push, or publication
 surface. Existing selection, request, compatibility, fixture dispatch, follow-up,
 completion-candidate, status, diff, patch, result, and validation-receipt artifacts remain
-byte-for-byte deterministic, and software.dev/Example Brain behavior is preserved. The next bounded
-remote-task slice is package-owned patch-structure and allowed-path boundary verification against the
-immutable request and accepted patch, still without applying the patch, executing validation,
-advancing to `ready_for_review`, or publishing. A live Codex Cloud adapter remains blocked until a
-future installed CLI documents a machine-readable receipt with a stable opaque task ID.
+byte-for-byte deterministic, and software.dev/Example Brain behavior is preserved. Patch-boundary
+proofs additionally show deterministic and idempotent output, artifact-only restart after consumer
+removal, exact and descendant acceptance, segment-aware prefix-collision rejection, fail-closed
+unsupported grammar/path handling, complete upstream tamper rejection, and no partial lifecycle
+transition. The next bounded remote-task slice is isolated temporary-copy application of the exact
+mechanically accepted patch with a deterministic application receipt; it must still avoid consumer
+checkout mutation, validation execution, `ready_for_review`, commit, push, and publication. A live
+Codex Cloud adapter remains blocked until a future installed CLI documents a machine-readable
+receipt with a stable opaque task ID.
 
 ## Boundaries
 
@@ -279,8 +301,9 @@ future installed CLI documents a machine-readable receipt with a stable opaque t
 - `remote-diff.json`: diff observation/replay identity, canonical accepted status and candidate
   fingerprints, immutable task/request/dispatch/adapter/target binding, deterministic later
   observation time, exact patch SHA-256 and byte count, and only the `completion_candidate` state.
-- `remote-diff.patch`: exact opaque, untrusted fixture patch bytes; no parsing, authorization,
-  semantic verification, allowed-path verification, or lifecycle implication.
+- `remote-diff.patch`: exact untrusted fixture patch bytes; retrieval treats them as opaque, while
+  the later patch-boundary step parses only the narrow mechanical structure and paths. No semantic
+  verification, application, validation, or lifecycle implication.
 - `remote-result.json`: result observation/replay identity, canonical accepted diff/status/candidate
   fingerprints, exact accepted patch SHA-256 and byte count, immutable task/request/dispatch/adapter/
   target binding, deterministic later observation time, package-owned fixture provenance, and only
@@ -290,8 +313,15 @@ future installed CLI documents a machine-readable receipt with a stable opaque t
   compatibility/dispatch/adapter/target binding, exact required-validation declaration and
   fingerprint, deterministic later observation time, package-owned fixture provenance, and only
   opaque untrusted evidence at the `completion_candidate` lifecycle state.
+- `patch-boundary.json`: canonical accepted receipt/result/diff/status/candidate identities and
+  fingerprints, exact patch checksum and size, immutable request/compatibility/dispatch/adapter/
+  target bindings, exact allowed-path declaration and fingerprint, sorted changed paths, and a
+  narrowly authoritative mechanical structure and segment-aware lexical containment result. It
+  explicitly records every semantic, validation, review, apply, commit, push, and publication action
+  as not performed and remains at `completion_candidate`.
 - operation-result events for inspect, compile, compatibility, dispatch, completion-candidate
-  ingestion/rejection, status, diff, result, validation receipt, apply, and failure.
+  ingestion/rejection, status, diff, result, validation receipt, patch-boundary success/rejection,
+  apply, and failure.
 
 ## Acceptance Criteria
 
@@ -321,6 +351,12 @@ future installed CLI documents a machine-readable receipt with a stable opaque t
   receipt evidence or advance beyond `completion_candidate`; accepted receipt claims and the exact
   required-validation declaration remain opaque, unexecuted evidence and cannot authorize review,
   validation, apply, commit, push, or publication.
+- Patch-boundary proofs accept ordinary in-scope text modifications, exact allowed-path matches, and
+  true descendants; reject prefix collisions, invalid/forbidden paths, malformed or unsupported
+  patch structures, every tampered upstream binding, exact patch-byte tampering, and a malformed or
+  tampered existing derived artifact; and leave every lifecycle-bearing artifact only at
+  `completion_candidate`. Success is mechanical evidence only and cannot imply semantic correctness,
+  validation success, approval, `ready_for_review`, apply, commit, push, or publication.
 - A restart can recover identity solely from the immutable request, compatibility, and
   `remote-task.json` artifacts; it does not need the consumer checkout, a cron worker, or a mutable
   prose status record.

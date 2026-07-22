@@ -65,7 +65,7 @@ export DORKPIPE_BACKLOG_VALIDATION_RECEIPT_FIXTURE="$fixture_root/validation-rec
 export ROOT="$consumer"
 
 log="$tmp/workflow.err"
-for step in inspect compile compatibility dispatch completion_candidate status diff result validation_receipt; do
+for step in inspect compile compatibility dispatch completion_candidate status diff result validation_receipt patch_boundary; do
   export DOCKPIPE_STEP_ID="$step"
   if ! bash "$DOCKPIPE_SCRIPT_DIR/backlog-remote.sh" 2>>"$log"; then
     cat "$log" >&2
@@ -73,7 +73,7 @@ for step in inspect compile compatibility dispatch completion_candidate status d
   fi
 done
 
-for step in inspect compile compatibility dispatch completion_candidate status diff result validation_receipt; do
+for step in inspect compile compatibility dispatch completion_candidate status diff result validation_receipt patch_boundary; do
   grep -Fq "unit=backlog.$step status=start" "$log"
   grep -Fq "unit=backlog.$step status=done" "$log"
 done
@@ -105,7 +105,13 @@ grep -Fq "receipt_evidence_opaque=true" "$log"
 grep -Fq "receipt_evidence_trusted=false" "$log"
 grep -Fq "receipt_evidence_authoritative=false" "$log"
 grep -Fq "validation_executed=false" "$log"
-for name in backlog-selection.json remote-request.md remote-request.json remote-adapter-compatibility.json remote-task.json completion-candidate.json remote-status.json remote-diff.json remote-diff.patch remote-result.json validation-receipt.json; do
+grep -Fq "unit=backlog.patch_boundary status=done" "$log"
+grep -Fq "artifact=patch-boundary.json" "$log"
+grep -Fq "patch_structure_verified=true" "$log"
+grep -Fq "allowed_path_boundary_verified=true" "$log"
+grep -Fq "semantic_correctness_reviewed=false" "$log"
+grep -Fq "patch_applied=false" "$log"
+for name in backlog-selection.json remote-request.md remote-request.json remote-adapter-compatibility.json remote-task.json completion-candidate.json remote-status.json remote-diff.json remote-diff.patch remote-result.json validation-receipt.json patch-boundary.json; do
   test -f "$artifact_root/$name"
 done
 grep -Fq '"status": "selected"' "$artifact_root/backlog-selection.json"
@@ -202,6 +208,25 @@ grep -Fq '"ready_for_review": false' "$artifact_root/validation-receipt.json"
 grep -Fq '"validation_execution": false' "$artifact_root/validation-receipt.json"
 if grep -Fq '"ready_for_review": true' "$artifact_root/validation-receipt.json"; then
   echo "validation receipt unexpectedly enabled ready_for_review" >&2
+  exit 1
+fi
+grep -Fq '"contract_version": "dorkpipe.patch-boundary/v1"' "$artifact_root/patch-boundary.json"
+grep -Fq '"state": "completion_candidate"' "$artifact_root/patch-boundary.json"
+grep -Fq '"patch_sha256": "sha256:4027895ace152e2d66d11143b9e7841adb68e8d625977b7c123508f221114b1b"' "$artifact_root/patch-boundary.json"
+grep -Fq '"patch_bytes": 236' "$artifact_root/patch-boundary.json"
+grep -Fq '"allowed_paths_fingerprint": "sha256:' "$artifact_root/patch-boundary.json"
+grep -Fq '"matching_rule": "exact_or_true_descendant"' "$artifact_root/patch-boundary.json"
+grep -Fq '"packages/dorkpipe/README.md"' "$artifact_root/patch-boundary.json"
+grep -Fq '"patch_structure": "verified_ordinary_unified_text_modifications"' "$artifact_root/patch-boundary.json"
+grep -Fq '"allowed_path_boundary": "verified_segment_aware_lexical_containment"' "$artifact_root/patch-boundary.json"
+grep -Fq '"mechanical_only": true' "$artifact_root/patch-boundary.json"
+grep -Fq '"semantic_correctness_reviewed": false' "$artifact_root/patch-boundary.json"
+grep -Fq '"validation_executed": false' "$artifact_root/patch-boundary.json"
+grep -Fq '"patch_applied": false' "$artifact_root/patch-boundary.json"
+grep -Fq '"ready_for_review_emitted": false' "$artifact_root/patch-boundary.json"
+grep -Fq '"ready_for_review": false' "$artifact_root/patch-boundary.json"
+if grep -Fq '"ready_for_review": true' "$artifact_root/patch-boundary.json"; then
+  echo "patch boundary unexpectedly enabled ready_for_review" >&2
   exit 1
 fi
 test ! -e "$invocation_log"
@@ -577,6 +602,12 @@ test ! -e "$invocation_log"
 
 MSYS2_ARG_CONV_EXCL='*' "$helper_bin" backlog-retrieve-validation-receipt-fixture "$second_root" "$fixture_root/validation-receipt.json"
 cmp "$artifact_root/validation-receipt.json" "$second_root/validation-receipt.json"
+second_boundary_root="$tmp/artifacts-second-boundary"
+cp -R "$second_root" "$second_boundary_root"
+MSYS2_ARG_CONV_EXCL='*' "$helper_bin" backlog-verify-patch-boundary "$second_boundary_root"
+cmp "$artifact_root/patch-boundary.json" "$second_boundary_root/patch-boundary.json"
+MSYS2_ARG_CONV_EXCL='*' "$helper_bin" backlog-verify-patch-boundary "$second_boundary_root"
+cmp "$artifact_root/patch-boundary.json" "$second_boundary_root/patch-boundary.json"
 cp "$artifact_root/validation-receipt.json" "$tmp/accepted-validation-receipt.json"
 
 run_receipt_rejection() {
@@ -657,6 +688,50 @@ for root in "$stale_receipt_root" "$mismatched_receipt_root" "$malformed_receipt
   cmp "$tmp/accepted-remote-task.json" "$root/remote-task.json"
 done
 test ! -e "$invocation_log"
+
+tampered_boundary_patch_root="$tmp/tampered-boundary-patch-artifacts"
+cp -R "$second_boundary_root" "$tampered_boundary_patch_root"
+rm "$tampered_boundary_patch_root/patch-boundary.json"
+printf 'tampered\n' >>"$tampered_boundary_patch_root/remote-diff.patch"
+export DORKPIPE_BACKLOG_ARTIFACT_ROOT="$tampered_boundary_patch_root"
+export DOCKPIPE_STEP_ID="patch_boundary"
+if bash "$DOCKPIPE_SCRIPT_DIR/backlog-remote.sh" 2>"$tmp/tampered-boundary-patch.err"; then
+  echo "tampered accepted patch unexpectedly passed patch-boundary verification" >&2
+  exit 1
+fi
+grep -Fq 'unit=backlog.patch_boundary status=start' "$tmp/tampered-boundary-patch.err"
+grep -Fq 'unit=backlog.patch_boundary status=fail' "$tmp/tampered-boundary-patch.err"
+grep -Fq 'patch_boundary_diff_invalid:' "$tmp/tampered-boundary-patch.err"
+grep -Fq 'reason_code=patch_boundary_diff_invalid' "$tmp/tampered-boundary-patch.err"
+test ! -e "$tampered_boundary_patch_root/patch-boundary.json"
+for name in ready-for-review.json validation-execution.json apply.json; do
+  test ! -e "$tampered_boundary_patch_root/$name"
+done
+test ! -e "$invocation_log"
+
+cat >"$tmp/fake-boundary-helper" <<'HELPER'
+#!/usr/bin/env bash
+printf '%s: deterministic fixture rejection\n' "${DORKPIPE_BACKLOG_FAKE_BOUNDARY_ERROR:?}" >&2
+exit 1
+HELPER
+chmod +x "$tmp/fake-boundary-helper"
+real_helper_bin="$DORKPIPE_ORCH_HELPER_BIN"
+export DORKPIPE_ORCH_HELPER_BIN="$tmp/fake-boundary-helper"
+export DORKPIPE_BACKLOG_ARTIFACT_ROOT="$second_root"
+export DOCKPIPE_STEP_ID="patch_boundary"
+for code in patch_boundary_patch_unsupported patch_boundary_path_out_of_scope; do
+  export DORKPIPE_BACKLOG_FAKE_BOUNDARY_ERROR="$code"
+  if bash "$DOCKPIPE_SCRIPT_DIR/backlog-remote.sh" 2>"$tmp/$code.err"; then
+    echo "$code unexpectedly passed patch-boundary operation-result proof" >&2
+    exit 1
+  fi
+  grep -Fq 'unit=backlog.patch_boundary status=start' "$tmp/$code.err"
+  grep -Fq 'unit=backlog.patch_boundary status=fail' "$tmp/$code.err"
+  grep -Fq "$code: deterministic fixture rejection" "$tmp/$code.err"
+  grep -Fq "reason_code=$code" "$tmp/$code.err"
+done
+export DORKPIPE_ORCH_HELPER_BIN="$real_helper_bin"
+unset DORKPIPE_BACKLOG_FAKE_BOUNDARY_ERROR
 
 if find "$artifact_root" -mindepth 1 \( -iname '*apply*' -o -iname '*commit*' -o -iname '*push*' -o -iname '*publish*' -o -iname '*review*' -o -iname '*validation-execution*' \) -print -quit | grep -q .; then
   echo "fixture slice created a forbidden lifecycle artifact" >&2
