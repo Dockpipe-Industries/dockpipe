@@ -125,7 +125,29 @@ func TestBacklogRemoteArtifactsAreDeterministicAndRestartSafe(t *testing.T) {
 			t.Fatalf("validation receipt retrieval changed immutable artifact %s", name)
 		}
 	}
-	for _, name := range []string{"backlog-selection.json", "remote-request.json", "remote-request.md", "remote-adapter-compatibility.json", "remote-task.json", "completion-candidate.json", "remote-status.json", "remote-diff.json", "remote-diff.patch", "remote-result.json", "validation-receipt.json"} {
+	immutableBeforeBoundary := map[string][]byte{}
+	for _, name := range []string{"remote-request.json", "remote-request.md", "remote-adapter-compatibility.json", "remote-task.json", "completion-candidate.json", "remote-status.json", "remote-diff.json", "remote-diff.patch", "remote-result.json", "validation-receipt.json"} {
+		immutableBeforeBoundary[name] = mustReadFile(t, filepath.Join(first, name))
+	}
+	if err := verifyBacklogPatchBoundary(first); err != nil {
+		t.Fatalf("artifact-only patch-boundary verification failed: %v", err)
+	}
+	firstBoundary := mustReadFile(t, filepath.Join(first, "patch-boundary.json"))
+	if err := verifyBacklogPatchBoundary(first); err != nil {
+		t.Fatalf("idempotent patch-boundary verification failed: %v", err)
+	}
+	if string(mustReadFile(t, filepath.Join(first, "patch-boundary.json"))) != string(firstBoundary) {
+		t.Fatal("idempotent patch-boundary verification changed its artifact")
+	}
+	if err := verifyBacklogPatchBoundary(second); err != nil {
+		t.Fatalf("second clean patch-boundary verification failed: %v", err)
+	}
+	for name, before := range immutableBeforeBoundary {
+		if string(mustReadFile(t, filepath.Join(first, name))) != string(before) {
+			t.Fatalf("patch-boundary verification changed immutable artifact %s", name)
+		}
+	}
+	for _, name := range []string{"backlog-selection.json", "remote-request.json", "remote-request.md", "remote-adapter-compatibility.json", "remote-task.json", "completion-candidate.json", "remote-status.json", "remote-diff.json", "remote-diff.patch", "remote-result.json", "validation-receipt.json", "patch-boundary.json"} {
 		firstRaw := mustReadFile(t, filepath.Join(first, name))
 		secondRaw := mustReadFile(t, filepath.Join(second, name))
 		if string(firstRaw) != string(secondRaw) {
@@ -225,6 +247,32 @@ func TestBacklogRemoteArtifactsAreDeterministicAndRestartSafe(t *testing.T) {
 	for name, value := range mapValue(receipt["lifecycle"]) {
 		if backlogTestBool(value) {
 			t.Fatalf("validation receipt unexpectedly enables %s", name)
+		}
+	}
+	boundary := readJSONMap(filepath.Join(first, "patch-boundary.json"))
+	boundaryScope := mapValue(boundary["scope"])
+	boundaryVerification := mapValue(boundary["verification"])
+	boundaryActions := mapValue(boundary["actions"])
+	if stringValue(boundary["contract_version"]) != backlogPatchBoundaryContract || stringValue(boundary["state"]) != "completion_candidate" {
+		t.Fatalf("unexpected patch-boundary contract or state: %#v", boundary)
+	}
+	if stringValue(boundaryVerification["patch_structure"]) != "verified_ordinary_unified_text_modifications" || stringValue(boundaryVerification["allowed_path_boundary"]) != "verified_segment_aware_lexical_containment" || !backlogTestBool(boundaryVerification["mechanical_only"]) {
+		t.Fatalf("unexpected patch-boundary verification scope: %#v", boundaryVerification)
+	}
+	if stringValue(boundaryScope["matching_rule"]) != "exact_or_true_descendant" || !backlogTestBool(boundaryScope["lexical_only"]) || stringValue(boundaryScope["allowed_paths_fingerprint"]) == "" {
+		t.Fatalf("unexpected patch-boundary allowed-path contract: %#v", boundaryScope)
+	}
+	if !jsonMapsEqual(map[string]any{"allowed_paths": boundaryScope["allowed_paths"]}, map[string]any{"allowed_paths": mapValue(request["scope"])["allowed_paths"]}) || !jsonMapsEqual(map[string]any{"changed_paths": boundary["changed_paths"]}, map[string]any{"changed_paths": []any{"packages/dorkpipe/README.md"}}) {
+		t.Fatalf("patch-boundary paths do not match immutable scope and accepted patch: %#v", boundary)
+	}
+	for name, value := range boundaryActions {
+		if backlogTestBool(value) {
+			t.Fatalf("patch-boundary unexpectedly performed %s", name)
+		}
+	}
+	for name, value := range mapValue(boundary["lifecycle"]) {
+		if backlogTestBool(value) {
+			t.Fatalf("patch-boundary unexpectedly enables %s", name)
 		}
 	}
 	followup, err := loadBacklogFollowup(first)
@@ -996,6 +1044,207 @@ func TestBacklogValidationReceiptRejectsStaleMismatchedMalformedMissingAndTamper
 			}
 		})
 	}
+}
+
+func TestBacklogPatchBoundaryAcceptsExactAndDescendantPaths(t *testing.T) {
+	for _, test := range []struct {
+		name         string
+		changedPath  string
+		allowedPaths []string
+	}{
+		{name: "exact", changedPath: "packages/dorkpipe", allowedPaths: []string{"packages/dorkpipe"}},
+		{name: "descendant", changedPath: "packages/dorkpipe/README.md", allowedPaths: []string{"packages/dorkpipe"}},
+		{name: "second declaration", changedPath: "docs/agents/tasks/backlog-driven-remote-tasks.md", allowedPaths: []string{"packages/dorkpipe", "docs/agents/tasks/backlog-driven-remote-tasks.md"}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			if !backlogPatchPathAllowed(test.changedPath, test.allowedPaths) {
+				t.Fatalf("expected %q to match %#v", test.changedPath, test.allowedPaths)
+			}
+		})
+	}
+	for _, changedPath := range []string{"packages/dorkpipe-evil", "packages/dorkpipeline/file.go", "packages/dork"} {
+		if backlogPatchPathAllowed(changedPath, []string{"packages/dorkpipe"}) {
+			t.Fatalf("prefix collision %q unexpectedly matched", changedPath)
+		}
+	}
+	exactPatch := strings.ReplaceAll(backlogTestPatch, "packages/dorkpipe/README.md", "docs/agents/tasks/backlog-driven-remote-tasks.md")
+	exactRoot := prepareBacklogPatchBoundaryTest(t, exactPatch, `["docs/agents/tasks/backlog-driven-remote-tasks.md"]`)
+	if err := verifyBacklogPatchBoundary(exactRoot); err != nil {
+		t.Fatalf("exact allowed-path verification failed: %v", err)
+	}
+	multiPatch := backlogTestPatch + exactPatch
+	paths, err := parseBacklogPatchChangedPaths([]byte(multiPatch))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !stringSlicesEqual(paths, []string{"docs/agents/tasks/backlog-driven-remote-tasks.md", "packages/dorkpipe/README.md"}) {
+		t.Fatalf("changed paths are not deterministically sorted: %#v", paths)
+	}
+}
+
+func TestBacklogPatchBoundaryRejectsMalformedUnsupportedAndInvalidPaths(t *testing.T) {
+	validHeader := func(path string) string {
+		return "diff --git a/" + path + " b/" + path + "\nindex 1111111..2222222 100644\n--- a/" + path + "\n+++ b/" + path + "\n@@ -1 +1 @@\n-old\n+new\n"
+	}
+	tests := map[string]string{
+		"absolute":           validHeader("/etc/passwd"),
+		"windows absolute":   validHeader("C:/secret.txt"),
+		"backslash":          validHeader(`packages\dorkpipe\README.md`),
+		"traversal":          validHeader("packages/dorkpipe/../secret.txt"),
+		"empty component":    validHeader("packages//dorkpipe/file.go"),
+		"quoted":             "diff --git \"a/packages/dorkpipe/README.md\" \"b/packages/dorkpipe/README.md\"\nindex 1111111..2222222 100644\n--- \"a/packages/dorkpipe/README.md\"\n+++ \"b/packages/dorkpipe/README.md\"\n@@ -1 +1 @@\n-old\n+new\n",
+		"control":            validHeader("packages/dorkpipe/bad\tpath.go"),
+		"git internal":       validHeader(".git/config"),
+		"generated":          validHeader("bin/.dockpipe/internal/state.json"),
+		"secret like":        validHeader("config/secrets/token.txt"),
+		"combined":           "diff --cc packages/dorkpipe/README.md\nindex 1111111,2222222..3333333\n--- a/packages/dorkpipe/README.md\n+++ b/packages/dorkpipe/README.md\n@@@ -1,1 -1,1 +1,1 @@@\n-old\n+new\n",
+		"binary":             "diff --git a/packages/dorkpipe/README.md b/packages/dorkpipe/README.md\nindex 1111111..2222222 100644\nBinary files a/packages/dorkpipe/README.md and b/packages/dorkpipe/README.md differ\n",
+		"submodule":          "diff --git a/packages/dorkpipe/submodule b/packages/dorkpipe/submodule\nindex 1111111..2222222 160000\n--- a/packages/dorkpipe/submodule\n+++ b/packages/dorkpipe/submodule\n@@ -1 +1 @@\n-Subproject commit 1111111\n+Subproject commit 2222222\n",
+		"rename":             "diff --git a/packages/dorkpipe/old.go b/packages/dorkpipe/new.go\nsimilarity index 100%\nrename from packages/dorkpipe/old.go\nrename to packages/dorkpipe/new.go\n",
+		"copy":               "diff --git a/packages/dorkpipe/old.go b/packages/dorkpipe/new.go\nsimilarity index 100%\ncopy from packages/dorkpipe/old.go\ncopy to packages/dorkpipe/new.go\n",
+		"mismatched headers": "diff --git a/packages/dorkpipe/README.md b/packages/dorkpipe/README.md\nindex 1111111..2222222 100644\n--- a/packages/dorkpipe/OTHER.md\n+++ b/packages/dorkpipe/README.md\n@@ -1 +1 @@\n-old\n+new\n",
+		"malformed hunk":     "diff --git a/packages/dorkpipe/README.md b/packages/dorkpipe/README.md\nindex 1111111..2222222 100644\n--- a/packages/dorkpipe/README.md\n+++ b/packages/dorkpipe/README.md\n@@ malformed @@\n-old\n+new\n",
+		"unsupported mode":   "diff --git a/packages/dorkpipe/README.md b/packages/dorkpipe/README.md\nold mode 100644\nnew mode 100755\n",
+		"not terminated":     strings.TrimSuffix(validHeader("packages/dorkpipe/README.md"), "\n"),
+	}
+	for name, patch := range tests {
+		t.Run(name, func(t *testing.T) {
+			if paths, err := parseBacklogPatchChangedPaths([]byte(patch)); err == nil {
+				t.Fatalf("unsupported patch unexpectedly accepted paths %#v", paths)
+			}
+		})
+	}
+}
+
+func TestBacklogPatchBoundaryRejectsOutOfScopeAndTamperedChainWithoutArtifact(t *testing.T) {
+	outOfScopePatch := strings.ReplaceAll(backlogTestPatch, "packages/dorkpipe/README.md", "packages/dorkpipe-evil/README.md")
+	root := prepareBacklogPatchBoundaryTest(t, outOfScopePatch, `["packages/dorkpipe"]`)
+	if err := verifyBacklogPatchBoundary(root); err == nil || !strings.HasPrefix(err.Error(), "patch_boundary_path_out_of_scope:") {
+		t.Fatalf("out-of-scope prefix collision returned %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(root, "patch-boundary.json")); !os.IsNotExist(err) {
+		t.Fatalf("out-of-scope patch created patch-boundary.json: %v", err)
+	}
+
+	mutations := map[string]func(string){
+		"remote-request.json": func(path string) {
+			mutateBacklogJSONFile(t, path, func(value map[string]any) {
+				mapValue(value["scope"])["allowed_paths"] = []any{"packages/dorkpipe-evil"}
+			})
+		},
+		"remote-request.md": func(path string) { writeBacklogTestFile(t, path, "tampered request markdown\n") },
+		"remote-adapter-compatibility.json": func(path string) {
+			mutateBacklogJSONFile(t, path, func(value map[string]any) { value["adapter_identity"] = "tampered-adapter" })
+		},
+		"remote-task.json": func(path string) {
+			mutateBacklogJSONFile(t, path, func(value map[string]any) { value["remote_task_id"] = "remote_fixture_task_tampered" })
+		},
+		"completion-candidate.json": func(path string) {
+			mutateBacklogJSONFile(t, path, func(value map[string]any) {
+				mapValue(value["identity"])["candidate_id"] = "completion_fixture_candidate_tampered"
+			})
+		},
+		"remote-status.json": func(path string) {
+			mutateBacklogJSONFile(t, path, func(value map[string]any) {
+				mapValue(value["identity"])["observation_id"] = "status_fixture_observation_tampered"
+			})
+		},
+		"remote-diff.json": func(path string) {
+			mutateBacklogJSONFile(t, path, func(value map[string]any) { value["observed_at"] = "2026-07-19T00:03:01Z" })
+		},
+		"remote-diff.patch": func(path string) { writeBacklogTestFile(t, path, backlogTestPatch+"tampered\n") },
+		"remote-result.json": func(path string) {
+			mutateBacklogJSONFile(t, path, func(value map[string]any) { mapValue(value["evidence"])["opaque_result"] = "tampered result evidence" })
+		},
+		"validation-receipt.json": func(path string) {
+			mutateBacklogJSONFile(t, path, func(value map[string]any) {
+				mapValue(value["remote_result"])["fingerprint"] = "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+			})
+		},
+	}
+	for artifact, mutate := range mutations {
+		t.Run(artifact, func(t *testing.T) {
+			tamperedRoot := cloneBacklogTestArtifacts(t, prepareBacklogPatchBoundaryTest(t, backlogTestPatch, `["packages/dorkpipe"]`))
+			mutate(filepath.Join(tamperedRoot, artifact))
+			if err := verifyBacklogPatchBoundary(tamperedRoot); err == nil {
+				t.Fatalf("tampered %s unexpectedly verified", artifact)
+			}
+			if _, err := os.Stat(filepath.Join(tamperedRoot, "patch-boundary.json")); !os.IsNotExist(err) {
+				t.Fatalf("tampered %s created patch-boundary.json: %v", artifact, err)
+			}
+		})
+	}
+}
+
+func TestBacklogPatchBoundaryRejectsTamperedExistingArtifact(t *testing.T) {
+	root := prepareBacklogPatchBoundaryTest(t, backlogTestPatch, `["packages/dorkpipe"]`)
+	if err := verifyBacklogPatchBoundary(root); err != nil {
+		t.Fatal(err)
+	}
+	mutateBacklogJSONFile(t, filepath.Join(root, "patch-boundary.json"), func(value map[string]any) {
+		value["state"] = "ready_for_review"
+	})
+	if err := verifyBacklogPatchBoundary(root); err == nil || !strings.HasPrefix(err.Error(), "patch_boundary_artifact_invalid:") {
+		t.Fatalf("tampered existing patch-boundary artifact returned %v", err)
+	}
+}
+
+func prepareBacklogPatchBoundaryTest(t *testing.T, patch, allowedPathsJSON string) string {
+	t.Helper()
+	repo := writeBacklogTestRepo(t)
+	root := filepath.Join(t.TempDir(), "artifacts")
+	if err := inspectBacklogSelection(repo, backlogIndexPath, "TASK-015", "Implement only the bounded patch-boundary slice.", backlogTestBaseline, root); err != nil {
+		t.Fatal(err)
+	}
+	if err := compileBacklogRemoteRequest(repo, root, "fixture-environment", "js/dev", allowedPathsJSON, `["No live provider"]`, `["go test ./packages/dorkpipe/lib/orchestrationhelper"]`, `[]`); err != nil {
+		t.Fatal(err)
+	}
+	if err := preflightBacklogRemoteCompatibility(root, writeBacklogCompatibilityFixture(t)); err != nil {
+		t.Fatal(err)
+	}
+	dispatchFixture := filepath.Join(t.TempDir(), "dispatch.json")
+	writeBacklogTestFile(t, dispatchFixture, `{
+  "contract_version": "dorkpipe.remote-dispatch-fixture/v1",
+  "adapter_identity": "codex-cloud-fixture-v1",
+  "remote_task_id": "remote_fixture_task_015",
+  "submitted_at": "2026-07-19T00:00:00Z"
+}`)
+	if err := dispatchBacklogFixture(root, dispatchFixture); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.RemoveAll(repo); err != nil {
+		t.Fatal(err)
+	}
+	candidateFixture := writeBacklogCompletionFixture(t, root, "completion_fixture_candidate_015", "completion_fixture_replay_015", "2026-07-19T00:01:00Z")
+	if err := ingestBacklogCompletionCandidate(root, candidateFixture); err != nil {
+		t.Fatal(err)
+	}
+	statusFixture := writeBacklogStatusFixture(t, root, "status_fixture_observation_015", "status_fixture_replay_015", "2026-07-19T00:02:00Z")
+	if err := retrieveBacklogRemoteStatusFixture(root, statusFixture); err != nil {
+		t.Fatal(err)
+	}
+	diffFixture := writeBacklogDiffFixture(t, root, "diff_fixture_observation_015", "diff_fixture_replay_015", "2026-07-19T00:03:00Z", patch)
+	if err := retrieveBacklogRemoteDiffFixture(root, diffFixture); err != nil {
+		t.Fatal(err)
+	}
+	resultFixture := writeBacklogResultFixture(t, root, "result_fixture_observation_015", "result_fixture_replay_015", "2026-07-19T00:04:00Z", "fixture-owned opaque result evidence")
+	if err := retrieveBacklogRemoteResultFixture(root, resultFixture); err != nil {
+		t.Fatal(err)
+	}
+	receiptFixture := writeBacklogValidationReceiptFixture(t, root, "receipt_fixture_observation_015", "receipt_fixture_replay_015", "2026-07-19T00:05:00Z", "fixture-owned opaque validation receipt evidence")
+	if err := retrieveBacklogValidationReceiptFixture(root, receiptFixture); err != nil {
+		t.Fatal(err)
+	}
+	return root
+}
+
+func cloneBacklogTestArtifacts(t *testing.T, source string) string {
+	t.Helper()
+	destination := filepath.Join(t.TempDir(), "artifacts")
+	if err := os.CopyFS(destination, os.DirFS(source)); err != nil {
+		t.Fatal(err)
+	}
+	return destination
 }
 
 func prepareBacklogCompletionTest(t *testing.T) string {

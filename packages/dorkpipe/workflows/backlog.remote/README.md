@@ -6,16 +6,17 @@ compiles reviewable immutable request artifacts, preflights the Codex Cloud CLI 
 package-owned help fixtures, records fixture dispatch identity, and ingests one explicitly bound
 completion-candidate fixture plus later fixture-backed status and diff observations as untrusted
 evidence, followed by one fixture-backed opaque result observation and one fixture-backed opaque
-validation-receipt observation. It never invokes Codex Cloud, live-polls status, diff, result, or
-validation receipts, interprets or executes validation, applies remote work, commits, pushes, or
-publishes.
+validation-receipt observation, then performs one artifact-only mechanical patch-structure and
+allowed-path boundary check. It never invokes Codex Cloud, live-polls status, diff, result, or
+validation receipts, interprets code or receipt correctness, executes validation, applies remote
+work, commits, pushes, or publishes.
 
 Run it from the consumer repository root with every authority-bearing input explicit:
 
 ```bash
 dockpipe --package dorkpipe --workflow backlog.remote --workdir . \
   --var DORKPIPE_BACKLOG_TASK_ID=TASK-015 \
-  --var 'DORKPIPE_BACKLOG_SLICE=Implement only the offline completion-candidate, status, diff, result, and validation-receipt proof.' \
+  --var 'DORKPIPE_BACKLOG_SLICE=Implement only the offline evidence and patch-boundary proof.' \
   --var DORKPIPE_BACKLOG_BASELINE=0123456789abcdef0123456789abcdef01234567 \
   --var DORKPIPE_BACKLOG_ENVIRONMENT_REF=codex-environment-id \
   --var DORKPIPE_BACKLOG_BRANCH_REF=js/dev \
@@ -76,6 +77,14 @@ The workflow writes under the normal `backlog-remote` artifact scope:
   as request evidence only and is not executed. The artifact remains only at
   `state: completion_candidate`; review, validation execution, apply, commit, push, and publication
   remain false.
+- `patch-boundary.json` revalidates the complete immutable chain from `remote-request.json` and its
+  exact markdown through compatibility, dispatch, candidate, status, diff and exact patch bytes,
+  result, and validation receipt. It binds every accepted identity/fingerprint, the patch SHA-256
+  and byte count, target and adapter refs, the exact immutable `allowed_paths` declaration and its
+  canonical fingerprint, and the sorted changed paths. Its authority is limited to the supported
+  patch grammar and segment-aware lexical containment. It remains at `completion_candidate` and
+  explicitly records that semantic correctness, validation, review readiness, apply, commit, push,
+  and publication were not performed.
 
 `orchestrate-helper backlog-followup <artifact-root>` validates and recovers identity using only the
 immutable request, compatibility, and dispatch artifacts. Completion ingestion uses those same
@@ -118,6 +127,23 @@ or patch bytes fail before `validation-receipt.json` is written. Clean-chain rej
 review, validation-execution, or apply artifacts; duplicate or replay rejection cannot change the
 accepted receipt or any upstream bytes. Fixture fields are package-owned proof input, not a provider
 response, callback, signed receipt, hidden transcript, or undocumented Codex contract.
+
+Patch-boundary verification supports only ordinary Git unified text modifications. Every section
+must contain exactly one unquoted `diff --git a/<path> b/<path>` header for the same path, one
+non-submodule `index <old>..<new> <mode>` line, matching `--- a/<path>` and `+++ b/<path>` headers,
+and one or more ordinary `@@ ... @@` hunks. Hunk contents are opaque. Combined diffs, binary or
+submodule patches, add/delete forms, mode metadata, rename/copy metadata, quoted/escaped paths,
+mismatched headers, repeated path sections, and malformed or otherwise unsupported structures fail
+closed before `patch-boundary.json` is written.
+
+Patch paths must be canonical forward-slash repository-relative paths with no absolute or drive
+prefix, backslash, traversal, empty component, control/whitespace character, ambiguous quoting, or
+generated, secret-like, Git-internal, or provider-private location. A changed path is accepted only
+when it equals one immutable allowed path or starts with that allowed path plus `/`; string-prefix
+collisions such as `packages/dorkpipe-evil` never match `packages/dorkpipe`. The check never consults
+Git, the consumer checkout, or path existence. Repeated verification is idempotent only when the
+entire upstream chain and derived artifact are identical; malformed or tampered existing boundary
+evidence is rejected.
 
 The canonical backlog has no standardized readiness or ownership fields. Package test fixtures use
 an optional `dispatch_state` (`blocked`, `external_active`, or `closed`) only to prove deterministic

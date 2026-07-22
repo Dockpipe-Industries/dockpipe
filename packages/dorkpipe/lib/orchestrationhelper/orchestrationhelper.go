@@ -369,6 +369,11 @@ func Run(args []string, env map[string]string, stdout, stderr io.Writer) error {
 			return errors.New("usage: orchestrate-helper backlog-retrieve-validation-receipt-fixture <artifact-root> <fixture.json>")
 		}
 		return retrieveBacklogValidationReceiptFixture(args[1], args[2])
+	case "backlog-verify-patch-boundary":
+		if len(args) != 2 {
+			return errors.New("usage: orchestrate-helper backlog-verify-patch-boundary <artifact-root>")
+		}
+		return verifyBacklogPatchBoundary(args[1])
 	case "backlog-followup":
 		if len(args) != 2 {
 			return errors.New("usage: orchestrate-helper backlog-followup <artifact-root>")
