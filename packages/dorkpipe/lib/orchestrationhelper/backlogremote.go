@@ -21,22 +21,24 @@ import (
 )
 
 const (
-	backlogIndexPath                    = "docs/agents/task-index.yaml"
-	backlogSelectionContract            = "dorkpipe.backlog-selection/v1"
-	backlogRequestContract              = "dorkpipe.remote-request/v1"
-	backlogTaskContract                 = "dorkpipe.remote-task/v1"
-	backlogFollowupContract             = "dorkpipe.remote-followup/v1"
-	backlogFixtureContract              = "dorkpipe.remote-dispatch-fixture/v1"
-	backlogCompatibilityFixtureContract = "dorkpipe.codex-cloud-cli-compatibility-fixture/v1"
-	backlogCompatibilityContract        = "dorkpipe.remote-adapter-compatibility/v1"
-	backlogCompletionFixtureContract    = "dorkpipe.remote-completion-candidate-fixture/v1"
-	backlogCompletionCandidateContract  = "dorkpipe.remote-completion-candidate/v1"
-	backlogStatusFixtureContract        = "dorkpipe.remote-status-observation-fixture/v1"
-	backlogStatusContract               = "dorkpipe.remote-status/v1"
-	backlogDiffFixtureContract          = "dorkpipe.remote-diff-observation-fixture/v1"
-	backlogDiffContract                 = "dorkpipe.remote-diff/v1"
-	backlogResultFixtureContract        = "dorkpipe.remote-result-observation-fixture/v1"
-	backlogResultContract               = "dorkpipe.remote-result/v1"
+	backlogIndexPath                        = "docs/agents/task-index.yaml"
+	backlogSelectionContract                = "dorkpipe.backlog-selection/v1"
+	backlogRequestContract                  = "dorkpipe.remote-request/v1"
+	backlogTaskContract                     = "dorkpipe.remote-task/v1"
+	backlogFollowupContract                 = "dorkpipe.remote-followup/v1"
+	backlogFixtureContract                  = "dorkpipe.remote-dispatch-fixture/v1"
+	backlogCompatibilityFixtureContract     = "dorkpipe.codex-cloud-cli-compatibility-fixture/v1"
+	backlogCompatibilityContract            = "dorkpipe.remote-adapter-compatibility/v1"
+	backlogCompletionFixtureContract        = "dorkpipe.remote-completion-candidate-fixture/v1"
+	backlogCompletionCandidateContract      = "dorkpipe.remote-completion-candidate/v1"
+	backlogStatusFixtureContract            = "dorkpipe.remote-status-observation-fixture/v1"
+	backlogStatusContract                   = "dorkpipe.remote-status/v1"
+	backlogDiffFixtureContract              = "dorkpipe.remote-diff-observation-fixture/v1"
+	backlogDiffContract                     = "dorkpipe.remote-diff/v1"
+	backlogResultFixtureContract            = "dorkpipe.remote-result-observation-fixture/v1"
+	backlogResultContract                   = "dorkpipe.remote-result/v1"
+	backlogValidationReceiptFixtureContract = "dorkpipe.validation-receipt-observation-fixture/v1"
+	backlogValidationReceiptContract        = "dorkpipe.validation-receipt/v1"
 )
 
 var (
@@ -169,6 +171,32 @@ type backlogResultFixture struct {
 	BranchRef                      string `json:"branch_ref"`
 	ObservedAt                     string `json:"observed_at"`
 	OpaqueResult                   string `json:"opaque_result"`
+}
+
+type backlogValidationReceiptFixture struct {
+	ContractVersion                string `json:"contract_version"`
+	ObservationID                  string `json:"observation_id"`
+	ReplayIdentity                 string `json:"replay_identity"`
+	RemoteResultObservationID      string `json:"remote_result_observation_id"`
+	RemoteResultFingerprint        string `json:"remote_result_fingerprint"`
+	RemoteDiffObservationID        string `json:"remote_diff_observation_id"`
+	RemoteDiffFingerprint          string `json:"remote_diff_fingerprint"`
+	PatchSHA256                    string `json:"patch_sha256"`
+	PatchBytes                     *int   `json:"patch_bytes"`
+	RemoteStatusObservationID      string `json:"remote_status_observation_id"`
+	RemoteStatusFingerprint        string `json:"remote_status_fingerprint"`
+	CompletionCandidateID          string `json:"completion_candidate_id"`
+	CompletionCandidateFingerprint string `json:"completion_candidate_fingerprint"`
+	AdapterIdentity                string `json:"adapter_identity"`
+	RemoteTaskID                   string `json:"remote_task_id"`
+	RequestFingerprint             string `json:"request_fingerprint"`
+	RequiredValidationFingerprint  string `json:"required_validation_fingerprint"`
+	CompatibilityFingerprint       string `json:"compatibility_fingerprint"`
+	DispatchFingerprint            string `json:"dispatch_fingerprint"`
+	EnvironmentRef                 string `json:"environment_ref"`
+	BranchRef                      string `json:"branch_ref"`
+	ObservedAt                     string `json:"observed_at"`
+	OpaqueReceipt                  string `json:"opaque_receipt"`
 }
 
 type backlogRejection struct {
@@ -1278,7 +1306,7 @@ func retrieveBacklogRemoteResultFixture(artifactRoot, fixturePath string) error 
 		!backlogOpaqueID.MatchString(fixture.RemoteTaskID) ||
 		!backlogFingerprint.MatchString(fixture.RequestFingerprint) ||
 		!backlogFingerprint.MatchString(fixture.DispatchFingerprint) ||
-		!validBacklogOpaqueResult(fixture.OpaqueResult) {
+		!validBacklogOpaqueEvidence(fixture.OpaqueResult) {
 		return rejectBacklog("remote_result_identity_invalid", "remote result contract, identity, patch, or opaque evidence fields are invalid")
 	}
 	if err := validateBacklogReference("environment", fixture.EnvironmentRef); err != nil {
@@ -1350,6 +1378,161 @@ func retrieveBacklogRemoteResultFixture(artifactRoot, fixturePath string) error 
 
 	payload := backlogRemoteResultPayload(task, candidate, candidateFingerprint, status, statusFingerprint, diff, diffFingerprint, fixture.ObservationID, fixture.ReplayIdentity, fixture.ObservedAt, fixture.OpaqueResult)
 	return writeJSONFileAtomic(resultPath, payload)
+}
+
+func retrieveBacklogValidationReceiptFixture(artifactRoot, fixturePath string) error {
+	request, _, err := loadAndVerifyBacklogRequest(artifactRoot)
+	if err != nil {
+		return rejectBacklog("validation_receipt_request_invalid", "%v", err)
+	}
+	_, compatibilityFingerprint, err := loadAndVerifyBacklogCompatibility(artifactRoot, request)
+	if err != nil {
+		return rejectBacklog("validation_receipt_compatibility_invalid", "%v", err)
+	}
+	task, err := loadAndVerifyBacklogDispatch(artifactRoot, request, compatibilityFingerprint)
+	if err != nil {
+		return rejectBacklog("validation_receipt_dispatch_invalid", "%v", err)
+	}
+	candidate, candidateFingerprint, err := loadAndVerifyBacklogCompletionCandidate(artifactRoot, task)
+	if err != nil {
+		return rejectBacklog("validation_receipt_candidate_invalid", "%v", err)
+	}
+	status, statusFingerprint, err := loadAndVerifyBacklogRemoteStatus(artifactRoot, task, candidate, candidateFingerprint)
+	if err != nil {
+		return rejectBacklog("validation_receipt_status_invalid", "%v", err)
+	}
+	diff, err := loadAndVerifyBacklogRemoteDiff(artifactRoot, task, candidate, candidateFingerprint, status, statusFingerprint)
+	if err != nil {
+		return rejectBacklog("validation_receipt_diff_invalid", "%v", err)
+	}
+	diffFingerprint, err := backlogJSONFingerprint(diff)
+	if err != nil {
+		return rejectBacklog("validation_receipt_diff_invalid", "%v", err)
+	}
+	result, err := loadAndVerifyBacklogRemoteResult(artifactRoot, task, candidate, candidateFingerprint, status, statusFingerprint, diff, diffFingerprint)
+	if err != nil {
+		return rejectBacklog("validation_receipt_result_invalid", "%v", err)
+	}
+	resultFingerprint, err := backlogJSONFingerprint(result)
+	if err != nil {
+		return rejectBacklog("validation_receipt_result_invalid", "%v", err)
+	}
+	requiredValidationFingerprint, err := backlogRequiredValidationFingerprint(request)
+	if err != nil {
+		return rejectBacklog("validation_receipt_request_invalid", "%v", err)
+	}
+
+	fixtureRaw, err := os.ReadFile(fixturePath)
+	if err != nil {
+		return rejectBacklog("validation_receipt_fixture_missing", "validation receipt fixture cannot be read: %v", err)
+	}
+	decoder := json.NewDecoder(bytes.NewReader(fixtureRaw))
+	decoder.DisallowUnknownFields()
+	fixture := backlogValidationReceiptFixture{}
+	if err := decoder.Decode(&fixture); err != nil {
+		return rejectBacklog("validation_receipt_fixture_malformed", "validation receipt fixture is malformed: %v", err)
+	}
+	if err := ensureJSONEOF(decoder); err != nil {
+		return rejectBacklog("validation_receipt_fixture_malformed", "validation receipt fixture is malformed: %v", err)
+	}
+	if fixture.ContractVersion != backlogValidationReceiptFixtureContract ||
+		!backlogOpaqueID.MatchString(fixture.ObservationID) ||
+		!backlogOpaqueID.MatchString(fixture.ReplayIdentity) ||
+		fixture.ObservationID == fixture.ReplayIdentity ||
+		!backlogOpaqueID.MatchString(fixture.RemoteResultObservationID) ||
+		!backlogFingerprint.MatchString(fixture.RemoteResultFingerprint) ||
+		!backlogOpaqueID.MatchString(fixture.RemoteDiffObservationID) ||
+		!backlogFingerprint.MatchString(fixture.RemoteDiffFingerprint) ||
+		!backlogFingerprint.MatchString(fixture.PatchSHA256) ||
+		fixture.PatchBytes == nil || *fixture.PatchBytes < 0 ||
+		!backlogOpaqueID.MatchString(fixture.RemoteStatusObservationID) ||
+		!backlogFingerprint.MatchString(fixture.RemoteStatusFingerprint) ||
+		!backlogOpaqueID.MatchString(fixture.CompletionCandidateID) ||
+		!backlogFingerprint.MatchString(fixture.CompletionCandidateFingerprint) ||
+		!backlogOpaqueID.MatchString(fixture.AdapterIdentity) ||
+		!backlogOpaqueID.MatchString(fixture.RemoteTaskID) ||
+		!backlogFingerprint.MatchString(fixture.RequestFingerprint) ||
+		!backlogFingerprint.MatchString(fixture.RequiredValidationFingerprint) ||
+		!backlogFingerprint.MatchString(fixture.CompatibilityFingerprint) ||
+		!backlogFingerprint.MatchString(fixture.DispatchFingerprint) ||
+		!validBacklogOpaqueEvidence(fixture.OpaqueReceipt) {
+		return rejectBacklog("validation_receipt_identity_invalid", "validation receipt contract, identity, immutable binding, or opaque evidence fields are invalid")
+	}
+	if err := validateBacklogReference("environment", fixture.EnvironmentRef); err != nil {
+		return rejectBacklog("validation_receipt_identity_invalid", "%v", err)
+	}
+	if err := validateBacklogReference("branch", fixture.BranchRef); err != nil {
+		return rejectBacklog("validation_receipt_identity_invalid", "%v", err)
+	}
+
+	resultIdentity := mapValue(result["identity"])
+	diffIdentity := mapValue(diff["identity"])
+	diffPatch := mapValue(diff["patch"])
+	acceptedPatchBytes, ok := backlogJSONInt(diffPatch["bytes"])
+	if !ok {
+		return rejectBacklog("validation_receipt_diff_invalid", "accepted remote diff patch byte count is invalid")
+	}
+	statusIdentity := mapValue(status["identity"])
+	candidateIdentity := mapValue(candidate["identity"])
+	target := mapValue(task["target"])
+	adapter := mapValue(task["adapter"])
+	if fixture.RemoteResultObservationID != stringValue(resultIdentity["observation_id"]) ||
+		fixture.RemoteResultFingerprint != resultFingerprint ||
+		fixture.RemoteDiffObservationID != stringValue(diffIdentity["observation_id"]) ||
+		fixture.RemoteDiffFingerprint != diffFingerprint ||
+		fixture.PatchSHA256 != stringValue(diffPatch["sha256"]) ||
+		*fixture.PatchBytes != acceptedPatchBytes ||
+		fixture.RemoteStatusObservationID != stringValue(statusIdentity["observation_id"]) ||
+		fixture.RemoteStatusFingerprint != statusFingerprint ||
+		fixture.CompletionCandidateID != stringValue(candidateIdentity["candidate_id"]) ||
+		fixture.CompletionCandidateFingerprint != candidateFingerprint ||
+		fixture.RemoteTaskID != stringValue(task["remote_task_id"]) ||
+		fixture.RequestFingerprint != stringValue(task["request_fingerprint"]) ||
+		fixture.RequiredValidationFingerprint != requiredValidationFingerprint ||
+		fixture.CompatibilityFingerprint != compatibilityFingerprint ||
+		fixture.DispatchFingerprint != stringValue(task["dispatch_fingerprint"]) ||
+		fixture.AdapterIdentity != stringValue(adapter["identity"]) ||
+		fixture.EnvironmentRef != stringValue(target["environment_ref"]) ||
+		fixture.BranchRef != stringValue(target["branch_ref"]) {
+		return rejectBacklog("validation_receipt_binding_mismatch", "validation receipt observation does not match the accepted result, diff, patch, status, candidate, task, request, required-validation declaration, compatibility, dispatch, adapter, environment, and branch identity")
+	}
+	observedAt, err := time.Parse(time.RFC3339, fixture.ObservedAt)
+	if err != nil || observedAt.Format(time.RFC3339) != fixture.ObservedAt {
+		return rejectBacklog("validation_receipt_observation_invalid", "validation receipt observed_at must be canonical RFC3339")
+	}
+	submittedAt, _ := time.Parse(time.RFC3339, stringValue(task["submitted_at"]))
+	candidateObservedAt, _ := time.Parse(time.RFC3339, stringValue(candidate["observed_at"]))
+	statusObservedAt, _ := time.Parse(time.RFC3339, stringValue(status["observed_at"]))
+	diffObservedAt, _ := time.Parse(time.RFC3339, stringValue(diff["observed_at"]))
+	resultObservedAt, _ := time.Parse(time.RFC3339, stringValue(result["observed_at"]))
+	if !observedAt.After(submittedAt) || !observedAt.After(candidateObservedAt) || !observedAt.After(statusObservedAt) || !observedAt.After(diffObservedAt) || !observedAt.After(resultObservedAt) {
+		return rejectBacklog("validation_receipt_stale", "validation receipt observed_at must be later than dispatch, completion-candidate, remote-status, remote-diff, and remote-result observation times")
+	}
+
+	receiptPath, err := backlogArtifactPath(artifactRoot, "validation-receipt.json")
+	if err != nil {
+		return err
+	}
+	if _, receiptErr := os.Stat(receiptPath); receiptErr == nil {
+		existing, readErr := loadAndVerifyBacklogValidationReceipt(artifactRoot, request, task, candidate, candidateFingerprint, status, statusFingerprint, diff, diffFingerprint, result, resultFingerprint, requiredValidationFingerprint, compatibilityFingerprint)
+		if readErr != nil {
+			return rejectBacklog("validation_receipt_artifact_invalid", "%v", readErr)
+		}
+		identity := mapValue(existing["identity"])
+		switch {
+		case stringValue(identity["observation_id"]) == fixture.ObservationID:
+			return rejectBacklog("validation_receipt_duplicate", "validation receipt observation identity %q was already ingested", fixture.ObservationID)
+		case stringValue(identity["replay_identity"]) == fixture.ReplayIdentity:
+			return rejectBacklog("validation_receipt_replay", "validation receipt replay identity %q was already ingested", fixture.ReplayIdentity)
+		default:
+			return rejectBacklog("validation_receipt_already_recorded", "one validation receipt observation is already recorded for the accepted remote result observation")
+		}
+	} else if !os.IsNotExist(receiptErr) {
+		return receiptErr
+	}
+
+	payload := backlogValidationReceiptPayload(request, task, candidate, candidateFingerprint, status, statusFingerprint, diff, diffFingerprint, result, resultFingerprint, requiredValidationFingerprint, compatibilityFingerprint, fixture.ObservationID, fixture.ReplayIdentity, fixture.ObservedAt, fixture.OpaqueReceipt)
+	return writeJSONFileAtomic(receiptPath, payload)
 }
 
 func loadAndVerifyBacklogRemoteStatus(artifactRoot string, task, candidate map[string]any, candidateFingerprint string) (map[string]any, string, error) {
@@ -1502,7 +1685,7 @@ func loadAndVerifyBacklogRemoteResult(artifactRoot string, task, candidate map[s
 	if !backlogOpaqueID.MatchString(stringValue(identity["observation_id"])) ||
 		!backlogOpaqueID.MatchString(stringValue(identity["replay_identity"])) ||
 		stringValue(identity["observation_id"]) == stringValue(identity["replay_identity"]) ||
-		!validBacklogOpaqueResult(stringValue(evidence["opaque_result"])) {
+		!validBacklogOpaqueEvidence(stringValue(evidence["opaque_result"])) {
 		return nil, errors.New("remote result identity or opaque evidence is malformed")
 	}
 	observedAt, err := time.Parse(time.RFC3339, stringValue(result["observed_at"]))
@@ -1525,6 +1708,47 @@ func loadAndVerifyBacklogRemoteResult(artifactRoot string, task, candidate map[s
 		return nil, errors.New("remote result is malformed, tampered, or does not match the immutable diff, patch, status, candidate, task, request, dispatch, adapter, environment, and branch identity")
 	}
 	return result, nil
+}
+
+func loadAndVerifyBacklogValidationReceipt(artifactRoot string, request, task, candidate map[string]any, candidateFingerprint string, status map[string]any, statusFingerprint string, diff map[string]any, diffFingerprint string, result map[string]any, resultFingerprint, requiredValidationFingerprint, compatibilityFingerprint string) (map[string]any, error) {
+	receiptPath, err := backlogArtifactPath(artifactRoot, "validation-receipt.json")
+	if err != nil {
+		return nil, err
+	}
+	receipt, err := readStrictJSONMap(receiptPath)
+	if err != nil {
+		return nil, fmt.Errorf("validation receipt cannot be loaded: %w", err)
+	}
+	identity := mapValue(receipt["identity"])
+	evidence := mapValue(receipt["evidence"])
+	if !backlogOpaqueID.MatchString(stringValue(identity["observation_id"])) ||
+		!backlogOpaqueID.MatchString(stringValue(identity["replay_identity"])) ||
+		stringValue(identity["observation_id"]) == stringValue(identity["replay_identity"]) ||
+		!validBacklogOpaqueEvidence(stringValue(evidence["opaque_receipt"])) {
+		return nil, errors.New("validation receipt identity or opaque evidence is malformed")
+	}
+	observedAt, err := time.Parse(time.RFC3339, stringValue(receipt["observed_at"]))
+	if err != nil || observedAt.Format(time.RFC3339) != stringValue(receipt["observed_at"]) {
+		return nil, errors.New("validation receipt observed_at is not canonical RFC3339")
+	}
+	submittedAt, _ := time.Parse(time.RFC3339, stringValue(task["submitted_at"]))
+	candidateObservedAt, _ := time.Parse(time.RFC3339, stringValue(candidate["observed_at"]))
+	statusObservedAt, _ := time.Parse(time.RFC3339, stringValue(status["observed_at"]))
+	diffObservedAt, _ := time.Parse(time.RFC3339, stringValue(diff["observed_at"]))
+	resultObservedAt, _ := time.Parse(time.RFC3339, stringValue(result["observed_at"]))
+	if !observedAt.After(submittedAt) || !observedAt.After(candidateObservedAt) || !observedAt.After(statusObservedAt) || !observedAt.After(diffObservedAt) || !observedAt.After(resultObservedAt) {
+		return nil, errors.New("validation receipt is stale relative to the immutable artifact chain")
+	}
+	expected := backlogValidationReceiptPayload(
+		request, task, candidate, candidateFingerprint, status, statusFingerprint, diff, diffFingerprint,
+		result, resultFingerprint, requiredValidationFingerprint, compatibilityFingerprint,
+		stringValue(identity["observation_id"]), stringValue(identity["replay_identity"]),
+		stringValue(receipt["observed_at"]), stringValue(evidence["opaque_receipt"]),
+	)
+	if !jsonMapsEqual(receipt, expected) {
+		return nil, errors.New("validation receipt is malformed, tampered, or does not match the immutable result, diff, patch, status, candidate, task, request, required-validation declaration, compatibility, dispatch, adapter, environment, and branch identity")
+	}
+	return receipt, nil
 }
 
 func backlogRemoteResultPayload(task, candidate map[string]any, candidateFingerprint string, status map[string]any, statusFingerprint string, diff map[string]any, diffFingerprint, observationID, replayIdentity, observedAt, opaqueResult string) map[string]any {
@@ -1581,7 +1805,74 @@ func backlogRemoteResultPayload(task, candidate map[string]any, candidateFingerp
 	}
 }
 
-func validBacklogOpaqueResult(value string) bool {
+func backlogValidationReceiptPayload(request, task, candidate map[string]any, candidateFingerprint string, status map[string]any, statusFingerprint string, diff map[string]any, diffFingerprint string, result map[string]any, resultFingerprint, requiredValidationFingerprint, compatibilityFingerprint, observationID, replayIdentity, observedAt, opaqueReceipt string) map[string]any {
+	resultIdentity := mapValue(result["identity"])
+	diffIdentity := mapValue(diff["identity"])
+	diffPatch := mapValue(diff["patch"])
+	statusIdentity := mapValue(status["identity"])
+	candidateIdentity := mapValue(candidate["identity"])
+	target := mapValue(task["target"])
+	adapter := mapValue(task["adapter"])
+	return map[string]any{
+		"contract_version": backlogValidationReceiptContract,
+		"state":            "completion_candidate",
+		"identity": map[string]any{
+			"observation_id": observationID, "replay_identity": replayIdentity,
+		},
+		"remote_result": map[string]any{
+			"observation_id":  stringValue(resultIdentity["observation_id"]),
+			"replay_identity": stringValue(resultIdentity["replay_identity"]),
+			"fingerprint":     resultFingerprint,
+		},
+		"remote_diff": map[string]any{
+			"observation_id":  stringValue(diffIdentity["observation_id"]),
+			"replay_identity": stringValue(diffIdentity["replay_identity"]),
+			"fingerprint":     diffFingerprint,
+			"patch_sha256":    stringValue(diffPatch["sha256"]),
+			"patch_bytes":     diffPatch["bytes"],
+		},
+		"remote_status": map[string]any{
+			"observation_id":  stringValue(statusIdentity["observation_id"]),
+			"replay_identity": stringValue(statusIdentity["replay_identity"]),
+			"fingerprint":     statusFingerprint,
+		},
+		"completion_candidate": map[string]any{
+			"candidate_id":    stringValue(candidateIdentity["candidate_id"]),
+			"replay_identity": stringValue(candidateIdentity["replay_identity"]),
+			"fingerprint":     candidateFingerprint,
+		},
+		"request_validation": map[string]any{
+			"required_validation": request["required_validation"],
+			"fingerprint":         requiredValidationFingerprint,
+			"executed":            false,
+			"interpreted":         false,
+		},
+		"binding": map[string]any{
+			"remote_task_id": stringValue(task["remote_task_id"]), "request_fingerprint": stringValue(task["request_fingerprint"]),
+			"compatibility_fingerprint": compatibilityFingerprint, "dispatch_fingerprint": stringValue(task["dispatch_fingerprint"]),
+			"adapter_identity": stringValue(adapter["identity"]), "environment_ref": stringValue(target["environment_ref"]),
+			"branch_ref": stringValue(target["branch_ref"]),
+		},
+		"observed_at": observedAt,
+		"evidence": map[string]any{
+			"opaque_receipt": opaqueReceipt, "opaque": true, "trusted": false,
+			"authoritative": false, "interpreted": false, "validation_success_interpreted": false,
+		},
+		"source": map[string]any{
+			"mode": "fixture", "provider_invoked": false, "package_owned_metadata": true,
+			"fixture_contract": backlogValidationReceiptFixtureContract, "provider_response": false,
+			"callback": false, "signed_receipt": false, "hidden_transcript": false,
+		},
+		"lifecycle": map[string]any{
+			"ready_for_review": false, "semantic_result_interpretation": false,
+			"semantic_receipt_interpretation": false, "semantic_diff_verification": false,
+			"allowed_path_verification": false, "validation_execution": false, "validation": false,
+			"apply": false, "commit": false, "push": false, "publication": false,
+		},
+	}
+}
+
+func validBacklogOpaqueEvidence(value string) bool {
 	if value == "" || value != strings.TrimSpace(value) || !utf8.ValidString(value) || len(value) > 1000 || strings.ContainsAny(value, "\r\n") {
 		return false
 	}
@@ -1591,6 +1882,10 @@ func validBacklogOpaqueResult(value string) bool {
 		}
 	}
 	return true
+}
+
+func backlogRequiredValidationFingerprint(request map[string]any) (string, error) {
+	return backlogJSONFingerprint(map[string]any{"required_validation": request["required_validation"]})
 }
 
 func backlogJSONInt(value any) (int, bool) {

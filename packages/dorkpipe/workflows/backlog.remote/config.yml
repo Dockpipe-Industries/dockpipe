@@ -2,8 +2,8 @@ name: backlog.remote
 namespace: dockpipeproject
 description: >-
   Inspect one explicit open backlog task, compile one bounded remote request, and record
-  fixture-backed dispatch, completion-candidate identity, and untrusted status, diff, and result
-  evidence without invoking a live provider or advancing beyond completion_candidate.
+  fixture-backed dispatch, completion-candidate identity, and untrusted status, diff, result, and
+  validation-receipt evidence without invoking a live provider or advancing beyond completion_candidate.
 
 docker_preflight: false
 platforms: [windows, deb]
@@ -33,6 +33,7 @@ vars:
   DORKPIPE_BACKLOG_STATUS_FIXTURE: ""
   DORKPIPE_BACKLOG_DIFF_FIXTURE: ""
   DORKPIPE_BACKLOG_RESULT_FIXTURE: ""
+  DORKPIPE_BACKLOG_VALIDATION_RECEIPT_FIXTURE: ""
 
 steps:
   - id: inspect
@@ -78,6 +79,12 @@ steps:
     run: scripts/dorkpipe/backlog-remote.sh
 
   - id: result
+    kind: host
+    cwd: repo
+    scopes: { source: repo, artifacts: artifacts }
+    run: scripts/dorkpipe/backlog-remote.sh
+
+  - id: validation_receipt
     kind: host
     cwd: repo
     scopes: { source: repo, artifacts: artifacts }
