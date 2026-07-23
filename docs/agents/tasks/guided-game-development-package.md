@@ -181,9 +181,7 @@ over.
   descriptive **Guided game-development package** name is provisional.
 - Define the smallest supported Unreal version, host platforms, compiler/toolchain matrix, and
   starter-project contract.
-- Evaluate Unreal MCP's exact capability, authentication, lifecycle, and failure-recovery surface
-  before adopting it as the local bridge.
-- Decide the first playable interaction for the non-programmer golden-path proof while keeping the
+- Evaluate Unreal MCP's exact capability, authentication, lifecycle, and failure-recovery surface         klwhile keeping the
   procedural tavern as the developer dogfood scenario.
 - Define asset-source, licence, provenance, and AI-content metadata before any asset acquisition or
   generation workflow is implemented.
