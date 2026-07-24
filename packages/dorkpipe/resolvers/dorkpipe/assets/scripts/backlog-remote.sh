@@ -286,6 +286,37 @@ case "$step_id" in
       "ready_for_review=false"
     )
     ;;
+  validation_execution)
+    consumer_root="${DORKPIPE_BACKLOG_CONSUMER_ROOT:-$ROOT}"
+    if command -v cygpath >/dev/null 2>&1; then
+      consumer_root="$(cygpath -m "$consumer_root")"
+    fi
+    trap - ERR
+    set +e
+    validation_error="$(MSYS2_ARG_CONV_EXCL='*' "$helper_bin" backlog-execute-validation "$consumer_root" "$artifact_root" 2>&1)"
+    validation_rc=$?
+    set -e
+    trap backlog_remote_fail ERR
+    if (( validation_rc != 0 )); then
+      printf '%s\n' "$validation_error" >&2
+      validation_reason_code="${validation_error%%:*}"
+      dorkpipe_orchestrate_operation_fail "$unit" "$started_ms" "$validation_error" \
+        "artifact_root=$artifact_root" "reason_code=$validation_reason_code"
+      trap - ERR
+      exit "$validation_rc"
+    fi
+    if [[ -n "$validation_error" ]]; then
+      printf '%s\n' "$validation_error" >&2
+    fi
+    completion_details=(
+      "artifact=validation-execution.json"
+      "authoritative_state=completion_candidate"
+      "validation_executed=true"
+      "validation_success_authoritative=false"
+      "consumer_checkout_mutated=false"
+      "ready_for_review=false"
+    )
+    ;;
   *)
     echo "unsupported backlog.remote workflow step: ${step_id:-<empty>}" >&2
     exit 1

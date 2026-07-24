@@ -78,8 +78,9 @@ fixture-backed `dispatch`, untrusted `completion_candidate` ingestion, one fixtu
 status observation, one fixture-backed remote diff observation, and one fixture-backed opaque remote
 result observation, followed by one fixture-backed opaque validation-receipt observation and one
 artifact-only mechanical patch-structure and allowed-path boundary verification plus isolated
-temporary-copy mechanical application. It does not create
-a scheduler, live-poll, interpret result or validation-receipt evidence, execute validation, assess
+temporary-copy mechanical application and isolated execution of the immutable required-validation
+declaration. It does not create a scheduler, live-poll, interpret result or validation-receipt
+evidence, assess
 semantic correctness, advance to `ready_for_review`, mutate the consumer checkout, auto-commit,
 auto-push, or create a cross-task orchestrator.
 
@@ -197,14 +198,36 @@ orchestration-helper commands:
   only successful mechanical `temporary_copy_only` application and verified cleanup. It explicitly
   denies semantic review, validation execution, checkout mutation, `ready_for_review`, apply to the
   checkout, commit, push, and publication, and remains at `completion_candidate`.
+- `backlog.validation_execution` requires the exact accepted `patch-application.json`, revalidates
+  the complete immutable chain before source access, and writes deterministic
+  `dorkpipe.validation-execution/v1` evidence. A valid existing artifact is accepted after
+  artifact-only revalidation without the consumer checkout or command re-execution; a malformed,
+  tampered, or non-identical artifact is rejected and never overwritten.
+- A fresh validation workspace contains only the exact union of the request's 92 declared validation
+  inputs and the boundary's sorted changed-path overlay. Every input is reread from the consumer root
+  with canonical-path, regular-file, link/reparse, containment, byte-count, and SHA-256 checks; the
+  overlay preimage and reproduced postimage must match `patch-application/v2` exactly.
+- Validation accepts only canonical direct `go test ./<exact-package-path>` argv declarations. It
+  rejects shell quoting, flags, recursive patterns, metacharacters, redirection, pipelines,
+  environment assignment, absolute paths, and traversal before launch. Commands run sequentially,
+  bounded and offline, and stop at the first nonzero result.
+- `validation-execution.json` binds request, compatibility, dispatch, task, adapter, target,
+  baseline, validation-input, required-validation, receipt, boundary, patch-application, and exact
+  patch identities; sorted changed paths; exact workspace authority; deterministic per-command argv,
+  status, and exit code; aggregate status; cleanup success; and a canonical artifact fingerprint.
+  It contains no timestamps, durations, output text, environment state, consumer/temporary paths, or
+  host identity. Passed and failed evidence both remain at `completion_candidate`; validation success
+  is explicitly non-authoritative and cannot imply semantic approval or `ready_for_review`.
 
 The validation-source binding was added after the prior application slice exposed a contract
 contradiction: the request's `source_files` contained only context documents, `allowed_paths` bound
 only patch-write scope, and the accepted README-only patch could not authorize or bind the Go and
 module inputs required by `go test ./packages/dorkpipe/lib/orchestrationhelper`. The checked fixture
 now explicitly names the module metadata, target package sources/tests, local Go dependency sources,
-embedded schema, and minimal root-embed matches required to assemble that command workspace. The
-list is inspected and fingerprinted only; no workspace is constructed and validation is not run.
+embedded schema, exact Go workspace/module manifests, two package-owned Example Brain contract
+files read by the target tests, and minimal root-embed matches required to assemble that command
+workspace. No directory walk, glob, dependency discovery, whole-checkout copy, Git query, or backlog
+prose expands that authority.
 
 The package proof rejects absent, malformed, unknown, and ambiguous IDs; malformed index entries;
 missing, escaping, mismatched, or closed linked task paths; empty, whitespace-padded, multiline, or
@@ -212,8 +235,9 @@ otherwise malformed bounded slices; invalid baselines; and explicitly blocked or
 fixture entries. Rejected inspection writes a deterministic rejection code but no request or
 dispatch artifact. Temporary consumer copies prove repeated-run determinism, no consumer mutation,
 no live provider invocation, no Git/SSH/network tool invocation, and no live status polling,
-live diff/result polling, result interpretation, validation, apply, commit, push, or publication.
-Validation-receipt polling, interpretation, and validation execution are also absent.
+live diff/result polling, result interpretation, semantic approval, apply, commit, push, or
+publication. Validation-receipt polling and interpretation are also absent; only the immutable
+required-validation declaration is executed inside the bounded temporary workspace.
 
 The canonical index remains unchanged and open-only. Package-owned fixtures use an optional
 `dispatch_state` solely to represent `blocked`, `external_active`, and `closed` deterministically.
@@ -289,10 +313,10 @@ duplicate or replay rejection leaves the accepted receipt and every upstream art
 unchanged. Operation-result evidence records success and deterministic stale, duplicate, replay,
 mismatch, malformed, missing, and tampered reason codes.
 
-The complete offline workflow invokes no Codex, Git, SSH, network, live status/diff/result/receipt
-polling, result or receipt interpretation, validation execution, apply, commit, push, or publication
-surface. Existing selection, request, compatibility, fixture dispatch, follow-up,
-completion-candidate, status, diff, patch, result, and validation-receipt artifacts remain
+The complete offline workflow invokes no Codex, Git, Docker, SSH, network, live status/diff/result/
+receipt polling, result or receipt interpretation, semantic approval, apply, commit, push, or
+publication surface. Existing selection, request, compatibility, fixture dispatch, follow-up,
+completion-candidate, status, diff, patch, result, validation-receipt, and validation-execution artifacts remain
 byte-for-byte deterministic, and software.dev/Example Brain behavior is preserved. Patch-boundary
 proofs additionally show deterministic and idempotent output, artifact-only restart after consumer
 removal, exact and descendant acceptance, segment-aware prefix-collision rejection, fail-closed
@@ -301,11 +325,15 @@ transition. Application proofs additionally show deterministic and idempotent re
 multi-file/multi-hunk mechanics, exact context and removal matching, missing/symlink/non-regular/
 escaping source rejection, no-newline and malformed-count rejection, cleanup on success and failure,
 cleanup-failure reporting, upstream and existing-receipt tamper rejection, and byte-for-byte
-preservation of the consumer checkout and every upstream artifact. The next bounded remote-task
-slice is isolated construction from the immutable `validation_input_files` list and execution of the
-immutable `required_validation` declaration against the successfully applied temporary copy. It may
-produce only deterministic `validation-execution.json` evidence and must still withhold semantic
-approval and `ready_for_review`. A live Codex Cloud adapter remains blocked until a future installed CLI
+preservation of the consumer checkout and every upstream artifact. Validation-execution proofs add
+exact declared-input-plus-overlay construction, size/hash and link/reparse checks, direct
+argv from the patched workspace, an actually passing checked `go test` fixture, deterministic
+nonzero evidence, first-failure stopping, command rejection before launch, cleanup across every
+path, upstream-before-source tamper rejection, artifact-only restart, and no forbidden tool or
+lifecycle action. The next bounded remote-task slice is an explicit package-owned semantic-review
+decision receipt bound to the accepted validation execution; only an affirmative local review may
+emit a separate `ready-for-review.json`, and that slice must still perform no checkout apply, commit,
+push, or publication. A live Codex Cloud adapter remains blocked until a future installed CLI
 documents a machine-readable receipt with a stable opaque task ID.
 
 ## Boundaries
@@ -366,9 +394,15 @@ documents a machine-readable receipt with a stable opaque task ID.
   and explicit false statements for semantic review, validation, checkout mutation,
   `ready_for_review`, apply, commit, push, and publication. It contains no file contents, absolute or
   temporary paths, timestamps, process/host identity, or durable patched source snapshot.
+- `validation-execution.json`: canonical patch-application and upstream identities, exact
+  validation-input and required-validation bindings, accepted patch and sorted changed paths, exact
+  union-workspace authority, deterministic per-command argv/status/exit code, aggregate passed/failed
+  status, cleanup result, canonical fingerprint, and explicit false statements for semantic approval,
+  `ready_for_review`, checkout apply, commit, push, and publication.
 - operation-result events for inspect, compile, compatibility, dispatch, completion-candidate
   ingestion/rejection, status, diff, result, validation receipt, patch-boundary success/rejection,
-  temporary-copy application success/rejection, apply, and failure.
+  temporary-copy application success/rejection, validation-execution success/rejection, apply, and
+  failure.
 
 ## Acceptance Criteria
 
@@ -409,6 +443,12 @@ documents a machine-readable receipt with a stable opaque task ID.
   reject malformed counts/coordinates, context or removal mismatches, unsupported no-newline forms,
   missing/symlink/non-regular/escaping sources, upstream or receipt tampering, and cleanup failure,
   and cannot mutate the consumer checkout or advance beyond `completion_candidate`.
+- Validation-execution proofs require the immutable chain through patch application, construct only
+  the exact declared-input-plus-changed-overlay workspace, reproduce the patch there, execute the
+  declaration as direct bounded offline argv, stop on first nonzero, clean on every path, publish only
+  canonical pass/fail evidence after successful cleanup, support artifact-only restart, reject
+  tampering rather than repair it, and cannot interpret success as semantic approval or advance
+  beyond `completion_candidate`.
 - A restart can recover identity solely from the immutable request, compatibility, and
   `remote-task.json` artifacts; it does not need the consumer checkout, a cron worker, or a mutable
   prose status record.
