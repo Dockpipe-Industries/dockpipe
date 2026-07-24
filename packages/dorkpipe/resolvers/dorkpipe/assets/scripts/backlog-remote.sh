@@ -254,6 +254,37 @@ case "$step_id" in
       "patch_applied=false"
     )
     ;;
+  patch_application)
+    consumer_root="${DORKPIPE_BACKLOG_CONSUMER_ROOT:-$ROOT}"
+    if command -v cygpath >/dev/null 2>&1; then
+      consumer_root="$(cygpath -m "$consumer_root")"
+    fi
+    trap - ERR
+    set +e
+    application_error="$(MSYS2_ARG_CONV_EXCL='*' "$helper_bin" backlog-apply-patch-temporary "$consumer_root" "$artifact_root" 2>&1)"
+    application_rc=$?
+    set -e
+    trap backlog_remote_fail ERR
+    if (( application_rc != 0 )); then
+      printf '%s\n' "$application_error" >&2
+      application_reason_code="${application_error%%:*}"
+      dorkpipe_orchestrate_operation_fail "$unit" "$started_ms" "$application_error" \
+        "artifact_root=$artifact_root" "reason_code=$application_reason_code"
+      trap - ERR
+      exit "$application_rc"
+    fi
+    completion_details=(
+      "artifact=patch-application.json"
+      "authoritative_state=completion_candidate"
+      "application_scope=temporary_copy_only"
+      "mechanical_application_succeeded=true"
+      "temporary_workspace_cleanup_succeeded=true"
+      "consumer_checkout_mutated=false"
+      "semantic_correctness_reviewed=false"
+      "validation_executed=false"
+      "ready_for_review=false"
+    )
+    ;;
   *)
     echo "unsupported backlog.remote workflow step: ${step_id:-<empty>}" >&2
     exit 1

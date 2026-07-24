@@ -374,6 +374,11 @@ func Run(args []string, env map[string]string, stdout, stderr io.Writer) error {
 			return errors.New("usage: orchestrate-helper backlog-verify-patch-boundary <artifact-root>")
 		}
 		return verifyBacklogPatchBoundary(args[1])
+	case "backlog-apply-patch-temporary":
+		if len(args) != 3 {
+			return errors.New("usage: orchestrate-helper backlog-apply-patch-temporary <consumer-root> <artifact-root>")
+		}
+		return applyBacklogPatchTemporaryCopy(args[1], args[2])
 	case "backlog-followup":
 		if len(args) != 2 {
 			return errors.New("usage: orchestrate-helper backlog-followup <artifact-root>")

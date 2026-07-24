@@ -77,12 +77,13 @@ The implemented vertical slice stops after `inspect`, `compile`, compatibility p
 fixture-backed `dispatch`, untrusted `completion_candidate` ingestion, one fixture-backed remote
 status observation, one fixture-backed remote diff observation, and one fixture-backed opaque remote
 result observation, followed by one fixture-backed opaque validation-receipt observation and one
-artifact-only mechanical patch-structure and allowed-path boundary verification. It does not create
+artifact-only mechanical patch-structure and allowed-path boundary verification plus isolated
+temporary-copy mechanical application. It does not create
 a scheduler, live-poll, interpret result or validation-receipt evidence, execute validation, assess
-semantic correctness, advance to `ready_for_review`, apply the patch, auto-commit, auto-push, or
-create a cross-task orchestrator.
+semantic correctness, advance to `ready_for_review`, mutate the consumer checkout, auto-commit,
+auto-push, or create a cross-task orchestrator.
 
-## Current Status (2026-07-21)
+## Current Status (2026-07-23)
 
 The first vertical slice is implemented as the package-owned `backlog.remote` workflow and dedicated
 orchestration-helper commands:
@@ -169,6 +170,22 @@ orchestration-helper commands:
   or drive prefix, backslash, traversal, empty component, control/whitespace, ambiguous quoting, or
   generated, secret-like, Git-internal, or provider-private location. A changed path must equal one
   immutable allowed path or begin with that path plus `/`; prefix collisions do not match.
+- `backlog.patch_application` requires that exact verified boundary artifact, revalidates the full
+  immutable chain before reading source files, and uses only its sorted `changed_paths`. Each source
+  path is joined beneath an explicit consumer root and must be an existing regular non-symlink file
+  with no linked ancestor or root escape. Only those files are copied into a new temporary directory.
+- The package-owned application engine accepts the same ordinary unified text-modification sections
+  and additionally validates hunk coordinates, declared old/new line counts, ordering, overlap, and
+  exact context/removal preimages. It applies additions only inside the temporary copy. Source text
+  must be LF-terminated UTF-8 without CR or NUL bytes; no-newline markers are rejected as unsupported
+  because this slice does not define an unambiguous end-of-file reconstruction rule.
+- `patch-application.json` binds the canonical boundary fingerprint; receipt/result/diff/status/
+  candidate identities and fingerprints; exact patch checksum and byte count; immutable request,
+  compatibility, dispatch, task, adapter, target, and baseline declarations; sorted changed paths;
+  canonical per-file preimage and postimage manifests; and deterministic file/hunk counts. It records
+  only successful mechanical `temporary_copy_only` application and verified cleanup. It explicitly
+  denies semantic review, validation execution, checkout mutation, `ready_for_review`, apply to the
+  checkout, commit, push, and publication, and remains at `completion_candidate`.
 
 The package proof rejects absent, malformed, unknown, and ambiguous IDs; malformed index entries;
 missing, escaping, mismatched, or closed linked task paths; empty, whitespace-padded, multiline, or
@@ -261,11 +278,15 @@ byte-for-byte deterministic, and software.dev/Example Brain behavior is preserve
 proofs additionally show deterministic and idempotent output, artifact-only restart after consumer
 removal, exact and descendant acceptance, segment-aware prefix-collision rejection, fail-closed
 unsupported grammar/path handling, complete upstream tamper rejection, and no partial lifecycle
-transition. The next bounded remote-task slice is isolated temporary-copy application of the exact
-mechanically accepted patch with a deterministic application receipt; it must still avoid consumer
-checkout mutation, validation execution, `ready_for_review`, commit, push, and publication. A live
-Codex Cloud adapter remains blocked until a future installed CLI documents a machine-readable
-receipt with a stable opaque task ID.
+transition. Application proofs additionally show deterministic and idempotent receipts, strict
+multi-file/multi-hunk mechanics, exact context and removal matching, missing/symlink/non-regular/
+escaping source rejection, no-newline and malformed-count rejection, cleanup on success and failure,
+cleanup-failure reporting, upstream and existing-receipt tamper rejection, and byte-for-byte
+preservation of the consumer checkout and every upstream artifact. The next bounded remote-task
+slice is isolated execution of the immutable `required_validation` declaration against the
+successfully applied temporary copy, producing local validation evidence while still withholding
+`ready_for_review`. A live Codex Cloud adapter remains blocked until a future installed CLI
+documents a machine-readable receipt with a stable opaque task ID.
 
 ## Boundaries
 
@@ -319,9 +340,15 @@ receipt with a stable opaque task ID.
   narrowly authoritative mechanical structure and segment-aware lexical containment result. It
   explicitly records every semantic, validation, review, apply, commit, push, and publication action
   as not performed and remains at `completion_candidate`.
+- `patch-application.json`: canonical boundary and upstream identities, exact accepted patch binding,
+  baseline as an unverified request declaration, sorted changed paths, canonical preimage/postimage
+  manifests, file/hunk counts, successful temporary-copy-only mechanical application and cleanup,
+  and explicit false statements for semantic review, validation, checkout mutation,
+  `ready_for_review`, apply, commit, push, and publication. It contains no file contents, absolute or
+  temporary paths, timestamps, process/host identity, or durable patched source snapshot.
 - operation-result events for inspect, compile, compatibility, dispatch, completion-candidate
   ingestion/rejection, status, diff, result, validation receipt, patch-boundary success/rejection,
-  apply, and failure.
+  temporary-copy application success/rejection, apply, and failure.
 
 ## Acceptance Criteria
 
@@ -357,6 +384,11 @@ receipt with a stable opaque task ID.
   tampered existing derived artifact; and leave every lifecycle-bearing artifact only at
   `completion_candidate`. Success is mechanical evidence only and cannot imply semantic correctness,
   validation success, approval, `ready_for_review`, apply, commit, push, or publication.
+- Patch-application proofs require the exact verified boundary and source preimages, deterministically
+  apply ordinary multi-file/multi-hunk text modifications only inside a cleaned temporary directory,
+  reject malformed counts/coordinates, context or removal mismatches, unsupported no-newline forms,
+  missing/symlink/non-regular/escaping sources, upstream or receipt tampering, and cleanup failure,
+  and cannot mutate the consumer checkout or advance beyond `completion_candidate`.
 - A restart can recover identity solely from the immutable request, compatibility, and
   `remote-task.json` artifacts; it does not need the consumer checkout, a cron worker, or a mutable
   prose status record.

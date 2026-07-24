@@ -7,16 +7,17 @@ package-owned help fixtures, records fixture dispatch identity, and ingests one 
 completion-candidate fixture plus later fixture-backed status and diff observations as untrusted
 evidence, followed by one fixture-backed opaque result observation and one fixture-backed opaque
 validation-receipt observation, then performs one artifact-only mechanical patch-structure and
-allowed-path boundary check. It never invokes Codex Cloud, live-polls status, diff, result, or
-validation receipts, interprets code or receipt correctness, executes validation, applies remote
-work, commits, pushes, or publishes.
+allowed-path boundary check followed by isolated temporary-copy mechanical application. It never
+invokes Codex Cloud, live-polls status, diff, result, or validation receipts, interprets code or
+receipt correctness, executes validation, mutates the consumer checkout, commits, pushes, or
+publishes.
 
 Run it from the consumer repository root with every authority-bearing input explicit:
 
 ```bash
 dockpipe --package dorkpipe --workflow backlog.remote --workdir . \
   --var DORKPIPE_BACKLOG_TASK_ID=TASK-015 \
-  --var 'DORKPIPE_BACKLOG_SLICE=Implement only the offline evidence and patch-boundary proof.' \
+  --var 'DORKPIPE_BACKLOG_SLICE=Implement only the offline evidence and temporary-copy application proof.' \
   --var DORKPIPE_BACKLOG_BASELINE=0123456789abcdef0123456789abcdef01234567 \
   --var DORKPIPE_BACKLOG_ENVIRONMENT_REF=codex-environment-id \
   --var DORKPIPE_BACKLOG_BRANCH_REF=js/dev \
@@ -30,6 +31,10 @@ dockpipe --package dorkpipe --workflow backlog.remote --workdir . \
   --var DORKPIPE_BACKLOG_RESULT_FIXTURE=/reviewed/path/remote-result.json \
   --var DORKPIPE_BACKLOG_VALIDATION_RECEIPT_FIXTURE=/reviewed/path/validation-receipt.json --
 ```
+
+`DORKPIPE_BACKLOG_CONSUMER_ROOT` may explicitly select the read-only consumer source root for the
+application step; it defaults to the workflow workdir. The application step reads only the exact
+paths already recorded by the verified boundary artifact.
 
 The workflow writes under the normal `backlog-remote` artifact scope:
 
@@ -85,6 +90,14 @@ The workflow writes under the normal `backlog-remote` artifact scope:
   patch grammar and segment-aware lexical containment. It remains at `completion_candidate` and
   explicitly records that semantic correctness, validation, review readiness, apply, commit, push,
   and publication were not performed.
+- `patch-application.json` requires and revalidates that complete boundary before reading source
+  files. It binds the canonical boundary and upstream identities, exact patch, request/compatibility/
+  dispatch/task/adapter/target refs, baseline as an unverified request declaration, sorted changed
+  paths, canonical per-file preimage/postimage manifests, and deterministic file/hunk counts. It
+  records successful `temporary_copy_only` mechanical application and cleanup while explicitly
+  denying semantic review, validation execution, consumer mutation, `ready_for_review`, apply to the
+  checkout, commit, push, and publication. It contains no contents, absolute or temporary paths,
+  timestamps, process IDs, hostnames, or durable patched source snapshot.
 
 `orchestrate-helper backlog-followup <artifact-root>` validates and recovers identity using only the
 immutable request, compatibility, and dispatch artifacts. Completion ingestion uses those same
@@ -144,6 +157,26 @@ collisions such as `packages/dorkpipe-evil` never match `packages/dorkpipe`. The
 Git, the consumer checkout, or path existence. Repeated verification is idempotent only when the
 entire upstream chain and derived artifact are identical; malformed or tampered existing boundary
 evidence is rejected.
+
+Temporary-copy application uses only the boundary's sorted changed paths. The consumer root, every
+ancestor, and every changed source must pass root-containment and non-symlink checks; each source must
+be a regular file. Only those files are copied into a fresh temporary directory, and cleanup is
+required before a receipt can be materialized. Success and every ordinary failure remove the
+temporary directory; a cleanup error rejects the operation and prevents receipt creation.
+
+Application supports multiple files and multiple ordinary hunks. Hunk coordinates must be ordered,
+non-overlapping, consistent between old and new images, and exactly match declared line counts.
+Context and removed lines must exactly match LF-terminated UTF-8 preimage text without CR or NUL
+bytes; additions are copied exactly. No-newline markers are rejected fail-closed because this slice
+does not define an unambiguous end-of-file reconstruction rule. Any boundary-accepted form that this
+application grammar cannot apply fails before `patch-application.json` is written.
+
+The receipt is idempotent only when the immutable chain, exact boundary and patch bytes, source
+preimages, and derived postimages all match. An existing malformed, tampered, or non-identical
+receipt is rejected and never overwritten or repaired. Mechanical success is not evidence that the
+change is correct, complete, secure, desirable, or likely to pass validation. The next bounded slice
+is isolated execution of the immutable `required_validation` declaration against the successfully
+applied temporary copy while still withholding `ready_for_review`.
 
 The canonical backlog has no standardized readiness or ownership fields. Package test fixtures use
 an optional `dispatch_state` (`blocked`, `external_active`, or `closed`) only to prove deterministic
