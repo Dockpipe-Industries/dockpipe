@@ -4,8 +4,9 @@ description: >-
   Inspect one explicit open backlog task, compile one bounded remote request, and record
   fixture-backed dispatch, completion-candidate identity, and untrusted status, diff, result, and
   validation-receipt evidence, then mechanically verify accepted patch structure and lexical
-  allowed-path containment and apply it only to an isolated temporary copy without invoking a live
-  provider, mutating the consumer checkout, or advancing beyond completion_candidate.
+  allowed-path containment, apply it only to an isolated temporary copy, and execute the immutable
+  required validation in an exact-input temporary workspace without invoking a live provider,
+  mutating the consumer checkout, or advancing beyond completion_candidate.
 
 docker_preflight: false
 platforms: [windows, deb]
@@ -101,6 +102,12 @@ steps:
     run: scripts/dorkpipe/backlog-remote.sh
 
   - id: patch_application
+    kind: host
+    cwd: repo
+    scopes: { source: repo, artifacts: artifacts }
+    run: scripts/dorkpipe/backlog-remote.sh
+
+  - id: validation_execution
     kind: host
     cwd: repo
     scopes: { source: repo, artifacts: artifacts }
