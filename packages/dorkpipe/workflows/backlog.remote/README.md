@@ -7,10 +7,11 @@ package-owned help fixtures, records fixture dispatch identity, and ingests one 
 completion-candidate fixture plus later fixture-backed status and diff observations as untrusted
 evidence, followed by one fixture-backed opaque result observation and one fixture-backed opaque
 validation-receipt observation, then performs one artifact-only mechanical patch-structure and
-allowed-path boundary check followed by isolated temporary-copy mechanical application. It never
-invokes Codex Cloud, live-polls status, diff, result, or validation receipts, interprets code or
-receipt correctness, executes validation, mutates the consumer checkout, commits, pushes, or
-publishes.
+allowed-path boundary check followed by isolated temporary-copy mechanical application, exact-input
+offline validation execution, and one explicit local semantic-review decision. Only approved review
+bound to passed validation emits a separate readiness artifact. It never invokes Codex Cloud,
+live-polls status, diff, result, or validation receipts, infers review approval, mutates the consumer
+checkout, applies there, commits, pushes, or publishes.
 
 Run it from the consumer repository root with every authority-bearing input explicit:
 
@@ -30,12 +31,13 @@ dockpipe --package dorkpipe --workflow backlog.remote --workdir . \
   --var DORKPIPE_BACKLOG_STATUS_FIXTURE=/reviewed/path/remote-status.json \
   --var DORKPIPE_BACKLOG_DIFF_FIXTURE=/reviewed/path/remote-diff.json \
   --var DORKPIPE_BACKLOG_RESULT_FIXTURE=/reviewed/path/remote-result.json \
-  --var DORKPIPE_BACKLOG_VALIDATION_RECEIPT_FIXTURE=/reviewed/path/validation-receipt.json --
+  --var DORKPIPE_BACKLOG_VALIDATION_RECEIPT_FIXTURE=/reviewed/path/validation-receipt.json \
+  --var DORKPIPE_BACKLOG_SEMANTIC_REVIEW_FIXTURE=/reviewed/path/semantic-review-decision.json --
 ```
 
 `DORKPIPE_BACKLOG_CONSUMER_ROOT` may explicitly select the read-only consumer source root for the
-application step; it defaults to the workflow workdir. The application step reads only the exact
-paths already recorded by the verified boundary artifact.
+application and validation-execution steps; it defaults to the workflow workdir. Those steps read
+only the exact immutable source authority already recorded by the request and verified boundary.
 
 The workflow writes under the normal `backlog-remote` artifact scope:
 
@@ -112,6 +114,19 @@ The workflow writes under the normal `backlog-remote` artifact scope:
   denying semantic review, validation execution, consumer mutation, `ready_for_review`, apply to the
   checkout, commit, push, and publication. It contains no contents, absolute or temporary paths,
   timestamps, process IDs, hostnames, or durable patched source snapshot.
+- `validation-execution.json` uses `dorkpipe.validation-execution/v1`, revalidates the complete chain
+  through patch application, constructs only the declared validation-input-plus-changed-path
+  workspace, reproduces the exact accepted patch, and runs only the bounded direct offline argv
+  declaration. Passed and failed evidence both remain at `completion_candidate`; passing validation
+  is explicitly non-authoritative and does not imply semantic approval or readiness.
+- `semantic-review-decision.json` uses `dorkpipe.semantic-review-decision/v1` and records exactly one
+  explicit package-owned local `approved` or `rejected` decision bound to the complete immutable
+  chain, exact patch, sorted changed paths, validation status, and bounded review scope. It remains at
+  `completion_candidate` and grants no apply, commit, push, publication, or next-task capability.
+- `ready-for-review.json` uses `dorkpipe.ready-for-review/v1` and exists only when the explicit
+  decision is approved and validation passed. It binds the decision fingerprint and complete
+  candidate identity, records only `state: ready_for_review`, and grants no mutation, Git,
+  publication, or next-task authority.
 
 `orchestrate-helper backlog-followup <artifact-root>` validates and recovers identity using only the
 immutable request, compatibility, and dispatch artifacts. Completion ingestion uses those same
@@ -192,14 +207,14 @@ minimal checked embed matches, every target-package Go and test file, the local 
 schema required by `go test ./packages/dorkpipe/lib/orchestrationhelper`. It does not use a directory,
 glob, dependency walk, whole-checkout copy, generated binary, or cache as authority.
 
-The receipt is idempotent only when the immutable chain, exact boundary and patch bytes, source
+The application receipt is idempotent only when the immutable chain, exact boundary and patch bytes, source
 preimages, and derived postimages all match. An existing malformed, tampered, or non-identical
-receipt is rejected and never overwritten or repaired. Mechanical success is not evidence that the
-change is correct, complete, secure, desirable, or likely to pass validation. The next bounded slice
-is isolated construction from the immutable `validation_input_files` list followed by execution of
-the immutable `required_validation` declaration against the successfully applied temporary copy,
-producing `validation-execution.json` while still withholding `ready_for_review`. This slice does not
-construct that workspace, execute validation, or create that artifact.
+receipt is rejected and never overwritten or repaired. Mechanical success and validation success
+are not semantic approval. Review recording revalidates the entire chain artifact-only, accepts only
+the strict bounded fixture, emits no readiness for rejection or failed validation, and rejects
+duplicate/replayed/changed identities or tampered existing artifacts without overwrite. The next
+bounded slice is a separate governed checkout-application request that consumes valid readiness and
+requires explicit local apply approval while still withholding commit, push, and publication.
 
 The canonical backlog has no standardized readiness or ownership fields. Package test fixtures use
 an optional `dispatch_state` (`blocked`, `external_active`, or `closed`) only to prove deterministic

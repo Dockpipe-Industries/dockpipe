@@ -5,8 +5,10 @@ description: >-
   fixture-backed dispatch, completion-candidate identity, and untrusted status, diff, result, and
   validation-receipt evidence, then mechanically verify accepted patch structure and lexical
   allowed-path containment, apply it only to an isolated temporary copy, and execute the immutable
-  required validation in an exact-input temporary workspace without invoking a live provider,
-  mutating the consumer checkout, or advancing beyond completion_candidate.
+  required validation in an exact-input temporary workspace, then record one explicit local
+  semantic-review decision and emit readiness only for an approved, passed candidate without
+  invoking a live provider, mutating the consumer checkout, applying, committing, pushing, or
+  publishing.
 
 docker_preflight: false
 platforms: [windows, deb]
@@ -38,6 +40,7 @@ vars:
   DORKPIPE_BACKLOG_DIFF_FIXTURE: ""
   DORKPIPE_BACKLOG_RESULT_FIXTURE: ""
   DORKPIPE_BACKLOG_VALIDATION_RECEIPT_FIXTURE: ""
+  DORKPIPE_BACKLOG_SEMANTIC_REVIEW_FIXTURE: ""
   DORKPIPE_BACKLOG_CONSUMER_ROOT: ""
 
 steps:
@@ -108,6 +111,12 @@ steps:
     run: scripts/dorkpipe/backlog-remote.sh
 
   - id: validation_execution
+    kind: host
+    cwd: repo
+    scopes: { source: repo, artifacts: artifacts }
+    run: scripts/dorkpipe/backlog-remote.sh
+
+  - id: semantic_review
     kind: host
     cwd: repo
     scopes: { source: repo, artifacts: artifacts }

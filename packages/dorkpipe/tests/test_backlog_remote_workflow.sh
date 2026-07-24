@@ -76,6 +76,7 @@ export DORKPIPE_BACKLOG_STATUS_FIXTURE="$fixture_root/remote-status.json"
 export DORKPIPE_BACKLOG_DIFF_FIXTURE="$fixture_root/remote-diff.json"
 export DORKPIPE_BACKLOG_RESULT_FIXTURE="$fixture_root/remote-result.json"
 export DORKPIPE_BACKLOG_VALIDATION_RECEIPT_FIXTURE="$fixture_root/validation-receipt.json"
+export DORKPIPE_BACKLOG_SEMANTIC_REVIEW_FIXTURE="$fixture_root/semantic-review-decision.json"
 export DORKPIPE_BACKLOG_CONSUMER_ROOT="$application_consumer"
 export ROOT="$consumer"
 
@@ -94,7 +95,7 @@ done < <(
 )
 
 log="$tmp/workflow.err"
-for step in inspect compile compatibility dispatch completion_candidate status diff result validation_receipt patch_boundary patch_application validation_execution; do
+for step in inspect compile compatibility dispatch completion_candidate status diff result validation_receipt patch_boundary patch_application validation_execution semantic_review; do
   export DOCKPIPE_STEP_ID="$step"
   if ! bash "$DOCKPIPE_SCRIPT_DIR/backlog-remote.sh" 2>>"$log"; then
     cat "$log" >&2
@@ -102,7 +103,7 @@ for step in inspect compile compatibility dispatch completion_candidate status d
   fi
 done
 
-for step in inspect compile compatibility dispatch completion_candidate status diff result validation_receipt patch_boundary patch_application validation_execution; do
+for step in inspect compile compatibility dispatch completion_candidate status diff result validation_receipt patch_boundary patch_application validation_execution semantic_review; do
   grep -Fq "unit=backlog.$step status=start" "$log"
   grep -Fq "unit=backlog.$step status=done" "$log"
 done
@@ -149,14 +150,23 @@ grep -Fq "consumer_checkout_mutated=false" "$log"
 grep -Fq "unit=backlog.validation_execution status=done" "$log"
 grep -Fq "artifact=validation-execution.json" "$log"
 grep -Fq "validation_success_authoritative=false" "$log"
-for name in backlog-selection.json remote-request.md remote-request.json remote-adapter-compatibility.json remote-task.json completion-candidate.json remote-status.json remote-diff.json remote-diff.patch remote-result.json validation-receipt.json patch-boundary.json patch-application.json validation-execution.json; do
+grep -Fq "unit=backlog.semantic_review status=done" "$log"
+grep -Fq "artifact=semantic-review-decision.json" "$log"
+grep -Fq "readiness_artifact=ready-for-review.json" "$log"
+grep -Fq "authoritative_state=ready_for_review" "$log"
+grep -Fq "explicit_local_semantic_decision=approved" "$log"
+grep -Fq "apply_authorized=false" "$log"
+grep -Fq "commit_authorized=false" "$log"
+grep -Fq "push_authorized=false" "$log"
+grep -Fq "publication_authorized=false" "$log"
+for name in backlog-selection.json remote-request.md remote-request.json remote-adapter-compatibility.json remote-task.json completion-candidate.json remote-status.json remote-diff.json remote-diff.patch remote-result.json validation-receipt.json patch-boundary.json patch-application.json validation-execution.json semantic-review-decision.json ready-for-review.json; do
   test -f "$artifact_root/$name"
 done
 grep -Fq '"status": "selected"' "$artifact_root/backlog-selection.json"
 grep -Fq '"contract_version": "dorkpipe.remote-request/v2"' "$artifact_root/remote-request.json"
 grep -Fq '"validation_input_files": [' "$artifact_root/remote-request.json"
 grep -Fq '"semantics": "complete_list"' "$artifact_root/remote-request.json"
-grep -Fq '"file_count": 92' "$artifact_root/remote-request.json"
+grep -Fq '"file_count": 94' "$artifact_root/remote-request.json"
 grep -Fq '"validation_inputs_fingerprint": "sha256:' "$artifact_root/validation-receipt.json"
 grep -Fq '"validation_inputs_fingerprint": "sha256:' "$artifact_root/patch-boundary.json"
 grep -Fq '"validation_inputs_fingerprint": "sha256:' "$artifact_root/patch-application.json"
@@ -232,12 +242,12 @@ grep -Fq '"contract_version": "dorkpipe.validation-receipt/v2"' "$artifact_root/
 grep -Fq '"state": "completion_candidate"' "$artifact_root/validation-receipt.json"
 grep -Fq '"observation_id": "receipt_fixture_observation_015"' "$artifact_root/validation-receipt.json"
 grep -Fq '"observation_id": "result_fixture_observation_015"' "$artifact_root/validation-receipt.json"
-grep -Fq '"fingerprint": "sha256:dc911a51b7242d272654d4a2c84805a94af9d34920588b52875c99570befd9f3"' "$artifact_root/validation-receipt.json"
+grep -Fq '"fingerprint": "sha256:1aad165c5b51e7491219e4b28f11c853eec2fbcca6a60e2987280b7cff27b327"' "$artifact_root/validation-receipt.json"
 grep -Fq '"patch_sha256": "sha256:4027895ace152e2d66d11143b9e7841adb68e8d625977b7c123508f221114b1b"' "$artifact_root/validation-receipt.json"
 grep -Fq '"required_validation": [' "$artifact_root/validation-receipt.json"
 grep -Fq '"go test ./packages/dorkpipe/lib/orchestrationhelper"' "$artifact_root/validation-receipt.json"
 grep -Fq '"fingerprint": "sha256:1dc90fee068fa97e7f2fafae5ac63498e0ace0c0260e06dd759ea164761c9b0c"' "$artifact_root/validation-receipt.json"
-grep -Fq '"compatibility_fingerprint": "sha256:b9a32d4a394ec41e8b50a84a049d8070e5c354d6b805baf37e2b2e92bfb2c634"' "$artifact_root/validation-receipt.json"
+grep -Fq '"compatibility_fingerprint": "sha256:182f72e5bbf6fb90076699d30987b4733374562b6112afa4fc7beef327ae73ab"' "$artifact_root/validation-receipt.json"
 grep -Fq '"opaque_receipt": "fixture-owned opaque validation receipt evidence"' "$artifact_root/validation-receipt.json"
 grep -Fq '"trusted": false' "$artifact_root/validation-receipt.json"
 grep -Fq '"authoritative": false' "$artifact_root/validation-receipt.json"
@@ -307,6 +317,22 @@ if grep -Fq '"ready_for_review": true' "$artifact_root/validation-execution.json
   echo "validation execution unexpectedly enabled ready_for_review" >&2
   exit 1
 fi
+grep -Fq '"contract_version": "dorkpipe.semantic-review-decision/v1"' "$artifact_root/semantic-review-decision.json"
+grep -Fq '"state": "completion_candidate"' "$artifact_root/semantic-review-decision.json"
+grep -Fq '"value": "approved"' "$artifact_root/semantic-review-decision.json"
+grep -Fq '"review_scope": "semantic_correctness_of_bound_candidate"' "$artifact_root/semantic-review-decision.json"
+grep -Fq '"explicit_local_decision": true' "$artifact_root/semantic-review-decision.json"
+grep -Fq '"validation_status": "passed"' "$artifact_root/semantic-review-decision.json"
+grep -Fq '"contract_version": "dorkpipe.ready-for-review/v1"' "$artifact_root/ready-for-review.json"
+grep -Fq '"state": "ready_for_review"' "$artifact_root/ready-for-review.json"
+grep -Fq '"ready_for_review_recorded": true' "$artifact_root/ready-for-review.json"
+for name in semantic-review-decision.json ready-for-review.json; do
+  grep -Fq '"apply_to_checkout": false' "$artifact_root/$name"
+  grep -Fq '"commit": false' "$artifact_root/$name"
+  grep -Fq '"push": false' "$artifact_root/$name"
+  grep -Fq '"publication": false' "$artifact_root/$name"
+  grep -Fq '"start_another_backlog_item": false' "$artifact_root/$name"
+done
 test ! -e "$invocation_log"
 "$REAL_GIT" status --short --untracked-files=all >"$tmp/repo-status-after"
 cmp "$tmp/repo-status-before" "$tmp/repo-status-after"
@@ -889,7 +915,7 @@ unset DORKPIPE_BACKLOG_FAKE_APPLICATION_ERROR
 export DORKPIPE_BACKLOG_ARTIFACT_ROOT="$artifact_root"
 export DORKPIPE_BACKLOG_CONSUMER_ROOT="$application_consumer"
 
-if find "$artifact_root" -mindepth 1 \( -iname '*apply*' -o -iname '*commit*' -o -iname '*push*' -o -iname '*publish*' -o -iname '*review*' \) -print -quit | grep -q .; then
+if find "$artifact_root" -mindepth 1 \( -iname '*apply*' -o -iname '*commit*' -o -iname '*push*' -o -iname '*publish*' \) -print -quit | grep -q .; then
   echo "fixture slice created a forbidden lifecycle artifact" >&2
   exit 1
 fi

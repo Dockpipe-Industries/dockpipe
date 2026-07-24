@@ -11,6 +11,8 @@
   "packages/dorkpipe/lib/orchestrationhelper/backlogpatchapplication_test.go",
   "packages/dorkpipe/lib/orchestrationhelper/backlogremote.go",
   "packages/dorkpipe/lib/orchestrationhelper/backlogremote_test.go",
+  "packages/dorkpipe/lib/orchestrationhelper/backlogsemanticreview.go",
+  "packages/dorkpipe/lib/orchestrationhelper/backlogsemanticreview_test.go",
   "packages/dorkpipe/lib/orchestrationhelper/backlogvalidationexecution.go",
   "packages/dorkpipe/lib/orchestrationhelper/backlogvalidationexecution_test.go",
   "packages/dorkpipe/lib/orchestrationhelper/orchestrationhelper.go",

@@ -79,10 +79,11 @@ status observation, one fixture-backed remote diff observation, and one fixture-
 result observation, followed by one fixture-backed opaque validation-receipt observation and one
 artifact-only mechanical patch-structure and allowed-path boundary verification plus isolated
 temporary-copy mechanical application and isolated execution of the immutable required-validation
-declaration. It does not create a scheduler, live-poll, interpret result or validation-receipt
-evidence, assess
-semantic correctness, advance to `ready_for_review`, mutate the consumer checkout, auto-commit,
-auto-push, or create a cross-task orchestrator.
+declaration, followed by one explicit fixture-backed local semantic-review decision. Only an
+affirmative decision bound to passed validation emits a separate readiness artifact. It does not
+create a scheduler, live-poll, infer approval from provider/result/receipt/validation evidence,
+mutate the consumer checkout, apply the patch there, auto-commit, auto-push, publish, or create a
+cross-task orchestrator.
 
 ## Current Status (2026-07-23)
 
@@ -203,7 +204,7 @@ orchestration-helper commands:
   `dorkpipe.validation-execution/v1` evidence. A valid existing artifact is accepted after
   artifact-only revalidation without the consumer checkout or command re-execution; a malformed,
   tampered, or non-identical artifact is rejected and never overwritten.
-- A fresh validation workspace contains only the exact union of the request's 92 declared validation
+- A fresh validation workspace contains only the exact union of the request's 94 declared validation
   inputs and the boundary's sorted changed-path overlay. Every input is reread from the consumer root
   with canonical-path, regular-file, link/reparse, containment, byte-count, and SHA-256 checks; the
   overlay preimage and reproduced postimage must match `patch-application/v2` exactly.
@@ -218,6 +219,27 @@ orchestration-helper commands:
   It contains no timestamps, durations, output text, environment state, consumer/temporary paths, or
   host identity. Passed and failed evidence both remain at `completion_candidate`; validation success
   is explicitly non-authoritative and cannot imply semantic approval or `ready_for_review`.
+- `backlog.semantic_review` consumes only a strict package-owned
+  `dorkpipe.semantic-review-decision-fixture/v1` input. It requires one exact `approved` or
+  `rejected` decision, the bounded `semantic_correctness_of_bound_candidate` scope token, separate
+  decision/replay identities, and exact task/request/compatibility/dispatch/adapter/target/baseline,
+  candidate/status/diff/result/receipt/boundary/application/execution, patch, changed-path, and
+  validation-status bindings. It contains no reviewer identity, path, timestamp, environment
+  snapshot, secret, or review prose.
+- Before accepting the decision, the helper revalidates the complete immutable chain through the
+  exact `validation-execution.json` and patch bytes. Passing validation alone creates nothing;
+  approved review of failed validation is rejected. A rejected decision may bind passed or failed
+  validation but never creates readiness.
+- `semantic-review-decision.json` uses `dorkpipe.semantic-review-decision/v1`, remains at
+  `completion_candidate`, records the explicit local decision and canonical artifact fingerprint,
+  and grants no checkout apply, commit, push, publication, or next-task authority.
+  `ready-for-review.json` uses `dorkpipe.ready-for-review/v1` and is emitted only for an approved
+  decision bound to passed validation. It transitions only to `state: ready_for_review`, binds the
+  accepted decision fingerprint and complete candidate identity, and grants no further capability.
+- Existing decision/readiness artifacts are accepted only after artifact-only canonical
+  revalidation. Rejected decisions restart without creating readiness; duplicate decision IDs,
+  replayed replay IDs, changed decisions under an accepted identity, conflicting artifacts, and any
+  chain or derived-artifact tampering fail closed without overwrite or repair.
 
 The validation-source binding was added after the prior application slice exposed a contract
 contradiction: the request's `source_files` contained only context documents, `allowed_paths` bound
@@ -314,8 +336,8 @@ unchanged. Operation-result evidence records success and deterministic stale, du
 mismatch, malformed, missing, and tampered reason codes.
 
 The complete offline workflow invokes no Codex, Git, Docker, SSH, network, live status/diff/result/
-receipt polling, result or receipt interpretation, semantic approval, apply, commit, push, or
-publication surface. Existing selection, request, compatibility, fixture dispatch, follow-up,
+receipt polling, automatic semantic interpretation, checkout apply, commit, push, or publication
+surface. Existing selection, request, compatibility, fixture dispatch, follow-up,
 completion-candidate, status, diff, patch, result, validation-receipt, and validation-execution artifacts remain
 byte-for-byte deterministic, and software.dev/Example Brain behavior is preserved. Patch-boundary
 proofs additionally show deterministic and idempotent output, artifact-only restart after consumer
@@ -330,11 +352,18 @@ exact declared-input-plus-overlay construction, size/hash and link/reparse check
 argv from the patched workspace, an actually passing checked `go test` fixture, deterministic
 nonzero evidence, first-failure stopping, command rejection before launch, cleanup across every
 path, upstream-before-source tamper rejection, artifact-only restart, and no forbidden tool or
-lifecycle action. The next bounded remote-task slice is an explicit package-owned semantic-review
-decision receipt bound to the accepted validation execution; only an affirmative local review may
-emit a separate `ready-for-review.json`, and that slice must still perform no checkout apply, commit,
-push, or publication. A live Codex Cloud adapter remains blocked until a future installed CLI
-documents a machine-readable receipt with a stable opaque task ID.
+lifecycle action. Semantic-review proofs add strict approved/rejected parsing, exact full-chain and
+review-scope binding, failed-validation gating, approved/rejected artifact-only restart,
+deterministic decision/readiness artifacts, duplicate/replay/change rejection, existing-artifact
+tamper rejection, and explicit denial of apply, commit, push, publication, and next-task authority.
+
+The single next bounded TASK-015 slice is an explicit governed checkout-application request that
+consumes only a valid `ready-for-review.json`, revalidates the complete immutable chain and exact
+consumer preimages, requires separate local apply approval, applies only the accepted patch to the
+consumer checkout with rollback-safe failure handling, and emits an application receipt while still
+performing no commit, push, publication, or next-task selection. A live Codex Cloud adapter remains
+blocked until a future installed CLI documents a machine-readable receipt with a stable opaque task
+ID.
 
 ## Boundaries
 
@@ -399,10 +428,16 @@ documents a machine-readable receipt with a stable opaque task ID.
   union-workspace authority, deterministic per-command argv/status/exit code, aggregate passed/failed
   status, cleanup result, canonical fingerprint, and explicit false statements for semantic approval,
   `ready_for_review`, checkout apply, commit, push, and publication.
+- `semantic-review-decision.json`: explicit approved/rejected local decision, bounded review scope,
+  separate decision/replay identities, complete immutable chain and patch binding, exact validation
+  status, canonical fingerprint, and false apply/commit/push/publication/next-task capabilities.
+- `ready-for-review.json`: emitted only for approved review plus passed validation; binds the accepted
+  decision fingerprint and complete candidate identity, records only `state: ready_for_review`, and
+  grants no authority to apply, commit, push, publish, or start another backlog item.
 - operation-result events for inspect, compile, compatibility, dispatch, completion-candidate
   ingestion/rejection, status, diff, result, validation receipt, patch-boundary success/rejection,
-  temporary-copy application success/rejection, validation-execution success/rejection, apply, and
-  failure.
+  temporary-copy application success/rejection, validation-execution success/rejection,
+  semantic-review decision/readiness success/rejection, apply, and failure.
 
 ## Acceptance Criteria
 
@@ -449,6 +484,12 @@ documents a machine-readable receipt with a stable opaque task ID.
   canonical pass/fail evidence after successful cleanup, support artifact-only restart, reject
   tampering rather than repair it, and cannot interpret success as semantic approval or advance
   beyond `completion_candidate`.
+- Semantic-review proofs require an explicit strict local decision, revalidate the immutable chain
+  through exact validation execution and patch bytes, reject malformed/ambiguous/unknown decisions
+  and every stale binding, emit readiness only for approved review plus passed validation, preserve
+  rejected decisions without readiness, support artifact-only restart, reject duplicate/replay/
+  changed identities and tampered existing artifacts without overwrite, and grant no apply, commit,
+  push, publication, or next-task capability.
 - A restart can recover identity solely from the immutable request, compatibility, and
   `remote-task.json` artifacts; it does not need the consumer checkout, a cron worker, or a mutable
   prose status record.
