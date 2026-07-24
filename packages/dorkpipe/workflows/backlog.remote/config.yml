@@ -4,7 +4,8 @@ description: >-
   Inspect one explicit open backlog task, compile one bounded remote request, and record
   fixture-backed dispatch, completion-candidate identity, and untrusted status, diff, result, and
   validation-receipt evidence, then mechanically verify accepted patch structure and lexical
-  allowed-path containment without invoking a live provider or advancing beyond completion_candidate.
+  allowed-path containment and apply it only to an isolated temporary copy without invoking a live
+  provider, mutating the consumer checkout, or advancing beyond completion_candidate.
 
 docker_preflight: false
 platforms: [windows, deb]
@@ -35,6 +36,7 @@ vars:
   DORKPIPE_BACKLOG_DIFF_FIXTURE: ""
   DORKPIPE_BACKLOG_RESULT_FIXTURE: ""
   DORKPIPE_BACKLOG_VALIDATION_RECEIPT_FIXTURE: ""
+  DORKPIPE_BACKLOG_CONSUMER_ROOT: ""
 
 steps:
   - id: inspect
@@ -92,6 +94,12 @@ steps:
     run: scripts/dorkpipe/backlog-remote.sh
 
   - id: patch_boundary
+    kind: host
+    cwd: repo
+    scopes: { source: repo, artifacts: artifacts }
+    run: scripts/dorkpipe/backlog-remote.sh
+
+  - id: patch_application
     kind: host
     cwd: repo
     scopes: { source: repo, artifacts: artifacts }
