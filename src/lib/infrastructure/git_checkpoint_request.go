@@ -187,6 +187,42 @@ func LoadControlledCheckpointRequest(path string) (*ControlledCheckpointRequest,
 	return &request, nil
 }
 
+// ValidateControlledCheckpointReceiptForSession revalidates the immutable request, runtime
+// session, checkpoint metadata, commit, paths, postimages, and trailers without creating a commit.
+func ValidateControlledCheckpointReceiptForSession(session *GitSession, requestPath, receiptPath string) (*ControlledCheckpointReceipt, string, error) {
+	request, err := LoadControlledCheckpointRequest(requestPath)
+	if err != nil {
+		return nil, "", err
+	}
+	if session == nil || session.SessionID != request.SessionID || session.WorkspaceID != request.WorkspaceID || session.Repo.SessionRef != request.ExpectedBranch {
+		return nil, "", errors.New("checkpoint_session_mismatch: request session, workspace, or branch does not match runtime metadata")
+	}
+	workspace, err := sessionGitTop(session)
+	if err != nil || !sameControlledCheckpointPath(workspace, session.Storage.Workspace) {
+		return nil, "", errors.New("checkpoint_session_mismatch: session workspace is not the Git work tree root")
+	}
+	receipt, exists, err := loadControlledCheckpointReceipt(receiptPath)
+	if err != nil {
+		return nil, "", err
+	}
+	if !exists {
+		return nil, "", errors.New("checkpoint_receipt_invalid: receipt does not exist")
+	}
+	if err := validateControlledCheckpointReceipt(receipt, request, session, workspace); err != nil {
+		return nil, "", err
+	}
+	metadataPath := filepath.Join(session.Storage.Metadata, "checkpoints", receipt.CheckpointID+".json")
+	metadata, exists, err := loadControlledGitCheckpoint(metadataPath)
+	if err != nil || !exists || !reflect.DeepEqual(metadata, controlledCheckpointMetadata(receipt, request.Message)) {
+		return nil, "", errors.New("checkpoint_receipt_invalid: runtime checkpoint metadata is missing, tampered, or conflicting")
+	}
+	raw, err := json.Marshal(receipt)
+	if err != nil {
+		return nil, "", fmt.Errorf("checkpoint_receipt_invalid: %w", err)
+	}
+	return receipt, controlledCheckpointBytesSHA256(raw), nil
+}
+
 func CheckpointSessionFromRequest(session *GitSession, requestPath, receiptPath string) (*ControlledCheckpointResult, error) {
 	request, err := LoadControlledCheckpointRequest(requestPath)
 	if err != nil {
