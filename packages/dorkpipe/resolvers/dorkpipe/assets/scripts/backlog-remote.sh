@@ -317,6 +317,53 @@ case "$step_id" in
       "ready_for_review=false"
     )
     ;;
+  semantic_review)
+    fixture="${DORKPIPE_BACKLOG_SEMANTIC_REVIEW_FIXTURE:-}"
+    if [[ -z "$fixture" ]]; then
+      echo "DORKPIPE_BACKLOG_SEMANTIC_REVIEW_FIXTURE is required for explicit local semantic-review decision recording" >&2
+      exit 1
+    fi
+    if command -v cygpath >/dev/null 2>&1; then
+      fixture="$(cygpath -m "$fixture")"
+    fi
+    trap - ERR
+    set +e
+    review_error="$(MSYS2_ARG_CONV_EXCL='*' "$helper_bin" backlog-record-semantic-review-decision "$artifact_root" "$fixture" 2>&1)"
+    review_rc=$?
+    set -e
+    trap backlog_remote_fail ERR
+    if (( review_rc != 0 )); then
+      printf '%s\n' "$review_error" >&2
+      review_reason_code="${review_error%%:*}"
+      dorkpipe_orchestrate_operation_fail "$unit" "$started_ms" "$review_error" \
+        "artifact_root=$artifact_root" "reason_code=$review_reason_code"
+      trap - ERR
+      exit "$review_rc"
+    fi
+    if [[ -f "$artifact_root/ready-for-review.json" ]]; then
+      completion_details=(
+        "artifact=semantic-review-decision.json"
+        "readiness_artifact=ready-for-review.json"
+        "authoritative_state=ready_for_review"
+        "explicit_local_semantic_decision=approved"
+        "validation_status=passed"
+      )
+    else
+      completion_details=(
+        "artifact=semantic-review-decision.json"
+        "readiness_artifact=none"
+        "authoritative_state=completion_candidate"
+        "explicit_local_semantic_decision=rejected"
+      )
+    fi
+    completion_details+=(
+      "consumer_checkout_mutated=false"
+      "apply_authorized=false"
+      "commit_authorized=false"
+      "push_authorized=false"
+      "publication_authorized=false"
+    )
+    ;;
   *)
     echo "unsupported backlog.remote workflow step: ${step_id:-<empty>}" >&2
     exit 1
