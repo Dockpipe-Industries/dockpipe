@@ -1,7 +1,9 @@
 package application
 
 import (
+	"crypto/sha256"
 	"encoding/json"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -71,6 +73,61 @@ func TestSessionCommandsListInspectSwitch(t *testing.T) {
 	if !strings.Contains(switchOut, session.Storage.Workspace) || !strings.Contains(switchOut, "Branch:") {
 		t.Fatalf("switch output missing handoff: %q", switchOut)
 	}
+}
+
+func TestSessionCheckpointCommandUsesControlledRuntimeRequest(t *testing.T) {
+	repo := initSessionCommandRepo(t)
+	session, err := infrastructure.CreateSessionBranch(infrastructure.GitSessionRequest{
+		WorkspaceID: "checkpoint-cli", SourceDir: repo, Mode: "managed", BranchPrefix: "ai",
+		SessionID: "checkpoint-cli-session", Checkpoint: "manual", Publish: "none",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer removeSessionCommandWorktree(t, repo, session.Storage.Workspace)
+	parent, err := infrastructure.GitRevParse(session.Storage.Workspace, "HEAD")
+	if err != nil {
+		t.Fatal(err)
+	}
+	postimage := []byte("checkpoint from cli\n")
+	if err := os.WriteFile(filepath.Join(session.Storage.Workspace, "README.md"), postimage, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	request, err := infrastructure.FinalizeControlledCheckpointRequest(infrastructure.ControlledCheckpointRequest{
+		ContractVersion: infrastructure.ControlledCheckpointRequestContract, RequestID: "cli-checkpoint-request",
+		AuthorizationFingerprint: sessionCommandSHA256([]byte("approved")), SessionID: session.SessionID,
+		WorkspaceID: session.WorkspaceID, ExpectedBranch: session.Repo.SessionRef, ExpectedParent: strings.TrimSpace(parent),
+		CheckpointScope: infrastructure.ControlledCheckpointScope, Message: "checkpoint(runtime): CLI exact request",
+		Paths: []string{"README.md"}, Postimages: []infrastructure.ControlledCheckpointPostimage{{Path: "README.md", SHA256: sessionCommandSHA256(postimage), Bytes: int64(len(postimage))}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	artifactRoot := t.TempDir()
+	requestPath := filepath.Join(artifactRoot, "checkpoint-request.json")
+	receiptPath := filepath.Join(artifactRoot, "checkpoint-receipt.json")
+	if err := infrastructure.WriteControlledCheckpointRequest(requestPath, request); err != nil {
+		t.Fatal(err)
+	}
+	out, err := captureStdout(t, func() error {
+		return cmdSession([]string{"checkpoint", session.SessionID, "--workdir", repo, "--request", requestPath, "--receipt", receiptPath, "--json"})
+	})
+	if err != nil {
+		t.Fatalf("session checkpoint command: %v", err)
+	}
+	var payload map[string]any
+	if err := json.Unmarshal([]byte(out), &payload); err != nil {
+		t.Fatalf("checkpoint JSON: %v\n%s", err, out)
+	}
+	receipt := payload["receipt"].(map[string]any)
+	if receipt["parent"] != strings.TrimSpace(parent) || receipt["request_fingerprint"] != request.RequestFingerprint {
+		t.Fatalf("checkpoint receipt = %+v", receipt)
+	}
+}
+
+func sessionCommandSHA256(raw []byte) string {
+	digest := sha256.Sum256(raw)
+	return fmt.Sprintf("sha256:%x", digest)
 }
 
 func initSessionCommandRepo(t *testing.T) string {

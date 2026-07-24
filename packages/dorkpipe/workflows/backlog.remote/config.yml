@@ -8,8 +8,9 @@ description: >-
   required validation in an exact-input temporary workspace, then record one explicit local
   semantic-review decision and emit readiness only for an approved, passed candidate, then require
   a separate explicit local decision before rollback-safe application of the exact accepted patch
-  to the consumer checkout, without invoking a live provider, committing, pushing, checkpointing,
-  syncing, publishing, or selecting another task.
+  to the consumer checkout, then require one separately approved exact-path request before the
+  DockPipe runtime creates a checkpoint, without invoking a live provider, pushing, syncing,
+  publishing, merging, or selecting another task.
 
 docker_preflight: false
 platforms: [windows, deb]
@@ -21,6 +22,15 @@ dependencies:
       install:
         windows: winget install Git.Git
         deb: sudo apt-get update && sudo apt-get install -y bash
+
+workspace:
+  repo: .
+  mode: managed
+  storage: worktree
+  lifecycle:
+    branch_prefix: dorkpipe
+    checkpoint: manual
+    publish: none
 
 vars:
   DORKPIPE_BACKLOG_TASK_INDEX: docs/agents/task-index.yaml
@@ -43,6 +53,7 @@ vars:
   DORKPIPE_BACKLOG_VALIDATION_RECEIPT_FIXTURE: ""
   DORKPIPE_BACKLOG_SEMANTIC_REVIEW_FIXTURE: ""
   DORKPIPE_BACKLOG_CHECKOUT_APPLICATION_FIXTURE: ""
+  DORKPIPE_BACKLOG_CHECKPOINT_FIXTURE: ""
   DORKPIPE_BACKLOG_CONSUMER_ROOT: ""
 
 steps:
@@ -125,6 +136,12 @@ steps:
     run: scripts/dorkpipe/backlog-remote.sh
 
   - id: checkout_application
+    kind: host
+    cwd: repo
+    scopes: { source: repo, artifacts: artifacts }
+    run: scripts/dorkpipe/backlog-remote.sh
+
+  - id: checkout_checkpoint
     kind: host
     cwd: repo
     scopes: { source: repo, artifacts: artifacts }

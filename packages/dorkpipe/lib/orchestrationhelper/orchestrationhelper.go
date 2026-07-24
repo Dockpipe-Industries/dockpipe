@@ -394,6 +394,13 @@ func Run(args []string, env map[string]string, stdout, stderr io.Writer) error {
 			return errors.New("usage: orchestrate-helper backlog-apply-reviewed-patch <consumer-root> <artifact-root> <approval-fixture.json>")
 		}
 		return applyBacklogPatchToCheckout(args[1], args[2], args[3])
+	case "backlog-request-checkpoint":
+		if len(args) != 8 {
+			return errors.New("usage: orchestrate-helper backlog-request-checkpoint <consumer-root> <artifact-root> <approval-fixture.json> <session-id> <workspace-id> <session-branch> <session-workspace>")
+		}
+		return requestBacklogCheckoutCheckpoint(args[1], args[2], args[3], backlogRuntimeCheckpointBinding{
+			SessionID: args[4], WorkspaceID: args[5], Branch: args[6], Workspace: args[7],
+		})
 	case "backlog-followup":
 		if len(args) != 2 {
 			return errors.New("usage: orchestrate-helper backlog-followup <artifact-root>")

@@ -82,12 +82,14 @@ temporary-copy mechanical application and isolated execution of the immutable re
 declaration, followed by one explicit fixture-backed local semantic-review decision. Only an
 affirmative decision bound to passed validation emits a separate readiness artifact. A second,
 separately identified fixture-backed local decision may then authorize one exact rollback-safe
-application to the consumer checkout and emit an `applied_for_review` receipt. It does not create a
-scheduler, live-poll, infer either approval from provider/result/receipt/validation evidence,
-auto-commit, auto-push, checkpoint, sync, publish, select another task, or create a cross-task
-orchestrator.
+application to the consumer checkout and emit an `applied_for_review` receipt. A third separately
+identified local decision may authorize submission of one exact-path request to the generic
+DockPipe runtime, which independently verifies the runtime session, Git state, and approved
+postimages before creating one checkpoint and receipt. It does not create a scheduler, live-poll,
+infer any approval from provider/result/receipt/validation evidence, auto-push, sync, publish,
+merge, select another task, or create a cross-task orchestrator.
 
-## Current Status (2026-07-23)
+## Current Status (2026-07-24)
 
 The first vertical slice is implemented as the package-owned `backlog.remote` workflow and dedicated
 orchestration-helper commands:
@@ -206,7 +208,7 @@ orchestration-helper commands:
   `dorkpipe.validation-execution/v1` evidence. A valid existing artifact is accepted after
   artifact-only revalidation without the consumer checkout or command re-execution; a malformed,
   tampered, or non-identical artifact is rejected and never overwritten.
-- A fresh validation workspace contains only the exact union of the request's 96 declared validation
+- A fresh validation workspace contains only the exact union of the request's 99 declared validation
   inputs and the boundary's sorted changed-path overlay. Every input is reread from the consumer root
   with canonical-path, regular-file, link/reparse, containment, byte-count, and SHA-256 checks; the
   overlay preimage and reproduced postimage must match `patch-application/v2` exactly.
@@ -275,6 +277,34 @@ orchestration-helper commands:
   and rejected approval restarts without mutation. Duplicate/replayed approval identities, changed
   decisions, conflicting artifacts, and tampered upstream or derived artifacts reject without
   overwrite.
+- `backlog.checkout_checkpoint` consumes only a canonically valid `checkout-application.json` plus
+  one strict `dorkpipe.checkout-checkpoint-approval-fixture/v1` decision. The package revalidates the
+  complete immutable chain through checkout application, exact patch bytes and fingerprints,
+  sorted changed paths, and every exact consumer postimage before it records
+  `dorkpipe.checkout-checkpoint-approval/v1`.
+- The checkpoint decision binds the exact task/request/adapter target/baseline/candidate chain,
+  checkout-application approval and receipt, consumer postimage manifest, runtime session/workspace
+  and branch, expected parent commit, bounded message, and fixed
+  `accepted_postimages_exact_runtime_checkpoint_once` scope. A rejected decision creates neither a
+  request nor a commit; the package grants only permission to submit one runtime request.
+- Approved decisions emit provider-neutral `dockpipe.session-checkpoint-request/v1` with a canonical
+  fingerprint, authorization fingerprint, runtime session/workspace identity, exact branch and
+  parent, sorted paths, exact postimage manifest, bounded message, and the fixed
+  `exact_paths_one_checkpoint` runtime scope. Package helpers and workflow assets invoke no raw Git.
+- The generic `dockpipe session checkpoint` runtime operation rejects the wrong session, workspace,
+  branch, parent, staged state, extra modified/deleted/renamed/untracked path, unsupported change
+  kind, stale/missing/non-regular/linked/reparsed/escaping postimage, and any staged/postimage race.
+  It stages only the accepted paths, creates one request-fingerprint-bound checkpoint commit, and
+  verifies its exact parent, path set, blobs, trailers, branch, and clean workspace.
+- `dockpipe.session-checkpoint-receipt/v1` binds the request and authorization fingerprints,
+  checkpoint/session/workspace identities, branch, parent, resulting commit, exact paths and
+  postimages, runtime ownership, and false push/publication/sync/merge actions. Runtime checkpoint
+  metadata records the same request, parent, branch, workspace, and path bindings.
+- Restart is fail closed: a valid receipt is revalidated against the exact live commit; an absent
+  receipt may recover only when HEAD is exactly the requested child commit. Pre-commit failure
+  restores the previously empty index and leaves HEAD unchanged. Commit, metadata, and receipt
+  failures are distinct; metadata/receipt failure after commit preserves the exact commit for
+  deterministic recovery and never reports success prematurely.
 
 The validation-source binding was added after the prior application slice exposed a contract
 contradiction: the request's `source_files` contained only context documents, `allowed_paths` bound
@@ -370,9 +400,10 @@ duplicate or replay rejection leaves the accepted receipt and every upstream art
 unchanged. Operation-result evidence records success and deterministic stale, duplicate, replay,
 mismatch, malformed, missing, and tampered reason codes.
 
-The complete offline workflow invokes no Codex, Git, Docker, SSH, network, live status/diff/result/
-receipt polling, automatic semantic interpretation, commit, push, publication, checkpoint, sync, or
-next-task surface. Existing selection, request, compatibility, fixture dispatch, follow-up,
+The package-owned evidence and approval phases invoke no Codex, raw Git, Docker, SSH, network, live
+status/diff/result/receipt polling, automatic semantic interpretation, push, publication, sync,
+merge, or next-task surface. Only the generic DockPipe runtime invokes local Git for the separately
+approved exact checkpoint. Existing selection, request, compatibility, fixture dispatch, follow-up,
 completion-candidate, status, diff, patch, result, validation-receipt, and validation-execution artifacts remain
 byte-for-byte deterministic, and software.dev/Example Brain behavior is preserved. Patch-boundary
 proofs additionally show deterministic and idempotent output, artifact-only restart after consumer
@@ -399,11 +430,19 @@ replay/change rejection, upstream and derived-artifact tamper rejection, unrelat
 upstream-evidence preservation, and explicit denial of Git, publication, synchronization, and
 next-task authority.
 
-The single next bounded TASK-015 slice is a separate runtime-owned commit/checkpoint request that
-consumes only a valid `checkout-application.json`, revalidates its approval and exact consumer
-postimages, requires explicit human authority, and creates no push, publication, sync, or next-task
-authority. It must use the existing runtime Git lifecycle boundary; raw Git in the package helper or
-workflow remains forbidden. A live Codex Cloud adapter remains blocked until a future installed CLI
+Checkout-checkpoint proofs add a third independent approved/rejected decision, complete immutable
+chain and exact postimage revalidation, checked fixture and canonical approval/request contracts,
+runtime session/workspace/branch/parent binding, exact-path-only staging and commit, wrong/stale/
+extra/staged/change-kind/path/link/reparse rejection, pre-commit index restoration, distinct commit/
+metadata/receipt failures, exact-commit recovery, idempotent restart, existing-artifact tamper and
+replay rejection, byte-for-byte upstream preservation, and explicit denial of push, publication,
+sync, merge, and next-task authority.
+
+The single next bounded TASK-015 slice is a separately approved runtime-owned publication request
+that consumes only a valid `dockpipe.session-checkpoint-receipt/v1`, binds one exact commit and
+session branch to one reviewed remote/ref destination, and permits only one push/publication action.
+It must not sync, merge, switch branches, alter the checkpoint, select another task, or give package
+code raw Git authority. A live Codex Cloud adapter remains blocked until a future installed CLI
 documents a machine-readable receipt with a stable opaque task ID.
 
 ## Boundaries
@@ -483,10 +522,22 @@ documents a machine-readable receipt with a stable opaque task ID.
   complete-postimage recovery; binds approval and readiness fingerprints, complete chain identity,
   exact pre/post manifests, paths, file/hunk counts, rollback preparation, mode preservation,
   cleanup, consumer verification, and no remaining lifecycle authority.
+- `checkout-checkpoint-approval.json`: separate approved/rejected local checkpoint decision,
+  approval/replay identities, full checkout-application and upstream chain binding, exact consumer
+  postimage manifest, runtime session/workspace/branch and expected parent, fixed scope, canonical
+  fingerprint, and permission only to submit one exact runtime request when approved.
+- `checkpoint-request.json`: provider-neutral `dockpipe.session-checkpoint-request/v1` binding the
+  approval fingerprint, runtime identities, exact branch/parent, sorted paths, exact postimages,
+  fixed checkpoint scope, bounded message, and canonical request fingerprint.
+- `checkpoint-receipt.json`: runtime-owned `dockpipe.session-checkpoint-receipt/v1` binding the
+  request/authorization fingerprints, checkpoint/session/workspace, branch, parent, resulting
+  commit, exact committed paths/postimages, runtime ownership, and false push/publication/sync/merge
+  actions.
 - operation-result events for inspect, compile, compatibility, dispatch, completion-candidate
   ingestion/rejection, status, diff, result, validation receipt, patch-boundary success/rejection,
   temporary-copy application success/rejection, validation-execution success/rejection,
-  semantic-review decision/readiness success/rejection, apply, and failure.
+  semantic-review decision/readiness success/rejection, checkout application, controlled checkpoint
+  request/runtime success/rejection, and failure.
 
 ## Acceptance Criteria
 
@@ -546,6 +597,14 @@ documents a machine-readable receipt with a stable opaque task ID.
   idempotent restart, reject mixed or tampered state without repair, preserve unrelated files and
   upstream evidence, and grant no commit, push, publication, checkpoint, sync, or next-task
   capability.
+- Checkout-checkpoint proofs require the exact accepted checkout-application approval and receipt,
+  complete upstream chain, exact postimages, and a third strict local decision. Rejected, malformed,
+  ambiguous, replayed, changed, stale, mismatched, or tampered decisions cannot create a request or
+  commit. The generic runtime must verify the exact session/workspace/branch/parent, empty index,
+  complete change set, contained regular non-link postimages, and sorted paths before committing
+  only those paths; it must restore the index after pre-commit failure, distinguish commit from
+  metadata/receipt failure, recover only the exact resulting commit, remain idempotent after
+  success, and grant no push, publication, sync, merge, or next-task authority.
 - A restart can recover identity solely from the immutable request, compatibility, and
   `remote-task.json` artifacts; it does not need the consumer checkout, a cron worker, or a mutable
   prose status record.
