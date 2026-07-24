@@ -92,10 +92,18 @@ orchestration-helper commands:
   exact baseline commit. It strictly loads `docs/agents/task-index.yaml`, resolves one exact linked
   document, verifies that document's heading matches the selected task ID, and records source
   digests in `backlog-selection.json`.
-- `backlog.compile` writes deterministic `remote-request.json` and `remote-request.md`. Their shared
-  fingerprint binds the selected task/path/slice/baseline, explicit environment and branch refs,
-  allowed paths, hard boundaries, required validation, and only `AGENTS.md`, the index, the linked
-  task, and explicitly routed source files with digests.
+- `backlog.compile` writes deterministic `dorkpipe.remote-request/v2` JSON and matching markdown.
+  Their shared fingerprint binds the selected task/path/slice/baseline, explicit environment and
+  branch refs, allowed paths, hard boundaries, required validation, context sources, and a separate
+  complete validation-input manifest. `source_files` remains request/context evidence,
+  `scope.allowed_paths` remains patch-write scope, and only `validation_input_files` grants bounded
+  source authority for a later validation workspace.
+- The validation-input declaration is a non-empty, caller-authored, ordinally sorted list of exact
+  repository-relative regular files. It permits no directories, globs, inferred walks, whole-
+  checkout copies, links/reparse points, root escapes, generated paths, secrets, Git internals, or
+  provider-private paths. Every file and ancestor is inspected fail-closed; each entry records path,
+  SHA-256, and bytes; and the request records complete-list semantics, count, aggregate bytes, and a
+  canonical aggregate fingerprint. The contract caps the list at 256 files and 8 MiB.
 - `backlog.dispatch` is fixture-only. It writes `remote-task.json` with one opaque task ID, request
   and compatibility fingerprints, environment/branch refs, deterministic fixture time, and adapter
   identity. The artifact records `provider_invoked: false` and no status, diff, result, apply,
@@ -145,15 +153,18 @@ orchestration-helper commands:
   compatibility/dispatch/adapter/environment/branch identity, and the exact `required_validation`
   declaration plus its canonical fingerprint. Its deterministic observation time is later than
   dispatch, candidate, status, diff, and result.
-- `validation-receipt.json` records only an opaque, untrusted, non-authoritative, uninterpreted
+- `dorkpipe.validation-receipt/v2` records only an opaque, untrusted, non-authoritative,
+  uninterpreted
   fixture receipt and remains at `state: completion_candidate`. It records the required-validation
-  declaration as immutable request evidence with `executed: false` and `interpreted: false`; review,
+  declaration and validation-input fingerprint as immutable request evidence with `executed: false`
+  and `interpreted: false`; review,
   validation execution, apply, commit, push, and publication remain false. Fixture fields are
   explicitly package-owned and are not a provider response, callback, signed receipt, hidden
   transcript, or undocumented Codex contract.
 - Artifact-only validation-receipt retrieval revalidates the complete immutable chain through the
   accepted result and exact patch bytes without rereading backlog prose or the consumer checkout.
-- `backlog.patch_boundary` revalidates `remote-request.json`, exact `remote-request.md`, adapter
+- `backlog.patch_boundary` writes `dorkpipe.patch-boundary/v2` after revalidating
+  `remote-request.json`, exact `remote-request.md`, adapter
   compatibility, dispatch, candidate, status, diff metadata and exact patch bytes, result, and
   validation receipt before writing deterministic `patch-boundary.json`. The artifact binds the
   canonical accepted receipt/result/diff/status/candidate identities and fingerprints, patch
@@ -179,13 +190,21 @@ orchestration-helper commands:
   exact context/removal preimages. It applies additions only inside the temporary copy. Source text
   must be LF-terminated UTF-8 without CR or NUL bytes; no-newline markers are rejected as unsupported
   because this slice does not define an unambiguous end-of-file reconstruction rule.
-- `patch-application.json` binds the canonical boundary fingerprint; receipt/result/diff/status/
+- `dorkpipe.patch-application/v2` binds the canonical boundary fingerprint; receipt/result/diff/status/
   candidate identities and fingerprints; exact patch checksum and byte count; immutable request,
   compatibility, dispatch, task, adapter, target, and baseline declarations; sorted changed paths;
   canonical per-file preimage and postimage manifests; and deterministic file/hunk counts. It records
   only successful mechanical `temporary_copy_only` application and verified cleanup. It explicitly
   denies semantic review, validation execution, checkout mutation, `ready_for_review`, apply to the
   checkout, commit, push, and publication, and remains at `completion_candidate`.
+
+The validation-source binding was added after the prior application slice exposed a contract
+contradiction: the request's `source_files` contained only context documents, `allowed_paths` bound
+only patch-write scope, and the accepted README-only patch could not authorize or bind the Go and
+module inputs required by `go test ./packages/dorkpipe/lib/orchestrationhelper`. The checked fixture
+now explicitly names the module metadata, target package sources/tests, local Go dependency sources,
+embedded schema, and minimal root-embed matches required to assemble that command workspace. The
+list is inspected and fingerprinted only; no workspace is constructed and validation is not run.
 
 The package proof rejects absent, malformed, unknown, and ambiguous IDs; malformed index entries;
 missing, escaping, mismatched, or closed linked task paths; empty, whitespace-padded, multiline, or
@@ -283,9 +302,10 @@ multi-file/multi-hunk mechanics, exact context and removal matching, missing/sym
 escaping source rejection, no-newline and malformed-count rejection, cleanup on success and failure,
 cleanup-failure reporting, upstream and existing-receipt tamper rejection, and byte-for-byte
 preservation of the consumer checkout and every upstream artifact. The next bounded remote-task
-slice is isolated execution of the immutable `required_validation` declaration against the
-successfully applied temporary copy, producing local validation evidence while still withholding
-`ready_for_review`. A live Codex Cloud adapter remains blocked until a future installed CLI
+slice is isolated construction from the immutable `validation_input_files` list and execution of the
+immutable `required_validation` declaration against the successfully applied temporary copy. It may
+produce only deterministic `validation-execution.json` evidence and must still withhold semantic
+approval and `ready_for_review`. A live Codex Cloud adapter remains blocked until a future installed CLI
 documents a machine-readable receipt with a stable opaque task ID.
 
 ## Boundaries

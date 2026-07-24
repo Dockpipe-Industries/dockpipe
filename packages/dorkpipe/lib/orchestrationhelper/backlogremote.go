@@ -11,6 +11,7 @@ import (
 	"os"
 	pathpkg "path"
 	"path/filepath"
+	"reflect"
 	"regexp"
 	"sort"
 	"strings"
@@ -24,7 +25,7 @@ import (
 const (
 	backlogIndexPath                        = "docs/agents/task-index.yaml"
 	backlogSelectionContract                = "dorkpipe.backlog-selection/v1"
-	backlogRequestContract                  = "dorkpipe.remote-request/v1"
+	backlogRequestContract                  = "dorkpipe.remote-request/v2"
 	backlogTaskContract                     = "dorkpipe.remote-task/v1"
 	backlogFollowupContract                 = "dorkpipe.remote-followup/v1"
 	backlogFixtureContract                  = "dorkpipe.remote-dispatch-fixture/v1"
@@ -38,20 +39,23 @@ const (
 	backlogDiffContract                     = "dorkpipe.remote-diff/v1"
 	backlogResultFixtureContract            = "dorkpipe.remote-result-observation-fixture/v1"
 	backlogResultContract                   = "dorkpipe.remote-result/v1"
-	backlogValidationReceiptFixtureContract = "dorkpipe.validation-receipt-observation-fixture/v1"
-	backlogValidationReceiptContract        = "dorkpipe.validation-receipt/v1"
-	backlogPatchBoundaryContract            = "dorkpipe.patch-boundary/v1"
+	backlogValidationReceiptFixtureContract = "dorkpipe.validation-receipt-observation-fixture/v2"
+	backlogValidationReceiptContract        = "dorkpipe.validation-receipt/v2"
+	backlogPatchBoundaryContract            = "dorkpipe.patch-boundary/v2"
+	backlogValidationInputMaxFiles          = 256
+	backlogValidationInputMaxBytes          = 8 * 1024 * 1024
 )
 
 var (
-	backlogTaskIDPattern = regexp.MustCompile(`^TASK-[0-9]{3}$`)
-	backlogBaseline      = regexp.MustCompile(`^[0-9a-f]{40}$`)
-	backlogOpaqueID      = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$`)
-	backlogReference     = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._/@:-]{0,199}$`)
-	backlogFingerprint   = regexp.MustCompile(`^sha256:[0-9a-f]{64}$`)
-	backlogPatchIndex    = regexp.MustCompile(`^index [0-9a-f]{7,64}\.\.[0-9a-f]{7,64} ([0-7]{6})$`)
-	backlogPatchHunk     = regexp.MustCompile(`^@@ -[0-9]+(?:,[0-9]+)? \+[0-9]+(?:,[0-9]+)? @@(?: .*)?$`)
-	backlogWindowsAbs    = regexp.MustCompile(`^[A-Za-z]:/`)
+	backlogTaskIDPattern               = regexp.MustCompile(`^TASK-[0-9]{3}$`)
+	backlogBaseline                    = regexp.MustCompile(`^[0-9a-f]{40}$`)
+	backlogOpaqueID                    = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$`)
+	backlogReference                   = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._/@:-]{0,199}$`)
+	backlogFingerprint                 = regexp.MustCompile(`^sha256:[0-9a-f]{64}$`)
+	backlogPatchIndex                  = regexp.MustCompile(`^index [0-9a-f]{7,64}\.\.[0-9a-f]{7,64} ([0-7]{6})$`)
+	backlogPatchHunk                   = regexp.MustCompile(`^@@ -[0-9]+(?:,[0-9]+)? \+[0-9]+(?:,[0-9]+)? @@(?: .*)?$`)
+	backlogWindowsAbs                  = regexp.MustCompile(`^[A-Za-z]:/`)
+	backlogValidationInputAfterInspect = func(string) error { return nil }
 )
 
 type backlogIndex struct {
@@ -196,6 +200,7 @@ type backlogValidationReceiptFixture struct {
 	RemoteTaskID                   string `json:"remote_task_id"`
 	RequestFingerprint             string `json:"request_fingerprint"`
 	RequiredValidationFingerprint  string `json:"required_validation_fingerprint"`
+	ValidationInputsFingerprint    string `json:"validation_inputs_fingerprint"`
 	CompatibilityFingerprint       string `json:"compatibility_fingerprint"`
 	DispatchFingerprint            string `json:"dispatch_fingerprint"`
 	EnvironmentRef                 string `json:"environment_ref"`
@@ -392,7 +397,7 @@ func linkedTaskHeadingMatches(raw []byte, taskID string) bool {
 	return false
 }
 
-func compileBacklogRemoteRequest(repoRoot, artifactRoot, environmentRef, branchRef, allowedJSON, boundariesJSON, validationJSON, sourcesJSON string) error {
+func compileBacklogRemoteRequest(repoRoot, artifactRoot, environmentRef, branchRef, allowedJSON, boundariesJSON, validationJSON, validationInputsJSON, sourcesJSON string) error {
 	if err := validateBacklogReference("environment", environmentRef); err != nil {
 		return err
 	}
@@ -410,6 +415,16 @@ func compileBacklogRemoteRequest(repoRoot, artifactRoot, environmentRef, branchR
 	validation, err := parseBacklogStringList("required validation", validationJSON, true)
 	if err != nil {
 		return err
+	}
+	validationInputPaths, err := parseBacklogStringList("validation input files", validationInputsJSON, true)
+	if err != nil {
+		return err
+	}
+	if len(validationInputPaths) > backlogValidationInputMaxFiles {
+		return fmt.Errorf("validation input files exceed the %d-file limit", backlogValidationInputMaxFiles)
+	}
+	if !sort.StringsAreSorted(validationInputPaths) {
+		return errors.New("validation input files must be in deterministic ascending path order")
 	}
 	routed, err := parseBacklogStringList("routed sources", sourcesJSON, false)
 	if err != nil {
@@ -456,6 +471,22 @@ func compileBacklogRemoteRequest(repoRoot, artifactRoot, environmentRef, branchR
 	if sourceDigest(sourceFiles, backlogIndexPath) != stringValue(digests["task_index"]) || sourceDigest(sourceFiles, linkedPath) != stringValue(digests["linked_task"]) {
 		return errors.New("task index or linked task changed after backlog inspection")
 	}
+	validationInputFiles := make([]any, 0, len(validationInputPaths))
+	totalValidationInputBytes := 0
+	for _, rel := range validationInputPaths {
+		raw, readErr := readBacklogValidationInput(repoRoot, rel, backlogValidationInputMaxBytes-totalValidationInputBytes)
+		if readErr != nil {
+			return fmt.Errorf("validation input %q is invalid: %w", rel, readErr)
+		}
+		totalValidationInputBytes += len(raw)
+		validationInputFiles = append(validationInputFiles, map[string]any{
+			"path": rel, "sha256": sha256String(raw), "bytes": len(raw),
+		})
+	}
+	validationInputManifest, err := backlogValidationInputManifest(validationInputFiles)
+	if err != nil {
+		return err
+	}
 	payload := map[string]any{
 		"contract_version": backlogRequestContract,
 		"selection": map[string]any{
@@ -465,10 +496,12 @@ func compileBacklogRemoteRequest(repoRoot, artifactRoot, environmentRef, branchR
 			"bounded_slice":    stringValue(selection["bounded_slice"]),
 			"baseline_commit":  stringValue(selection["baseline_commit"]),
 		},
-		"target":              map[string]any{"environment_ref": environmentRef, "branch_ref": branchRef},
-		"scope":               map[string]any{"allowed_paths": anyStrings(allowed), "hard_boundaries": anyStrings(boundaries)},
-		"required_validation": anyStrings(validation),
-		"source_files":        sourceFiles,
+		"target":                    map[string]any{"environment_ref": environmentRef, "branch_ref": branchRef},
+		"scope":                     map[string]any{"allowed_paths": anyStrings(allowed), "hard_boundaries": anyStrings(boundaries)},
+		"required_validation":       anyStrings(validation),
+		"validation_input_files":    validationInputFiles,
+		"validation_input_manifest": validationInputManifest,
+		"source_files":              sourceFiles,
 		"execution": map[string]any{
 			"adapter_mode": "fixture_only", "attempts": 1, "cloud_spend": "disabled",
 			"live_provider": false, "status_polling": false, "diff_retrieval": false,
@@ -520,6 +553,17 @@ func renderBacklogRequestMarkdown(payload map[string]any) string {
 	lines = append(lines, "", "## Required validation", "")
 	for _, item := range stringList(payload["required_validation"]) {
 		lines = append(lines, "- `"+item+"`")
+	}
+	manifest := mapValue(payload["validation_input_manifest"])
+	lines = append(lines, "", "## Validation input authority", "",
+		"This is the complete bounded file list authorized for later validation-workspace construction. It is not context evidence or patch-write scope.", "",
+		"- Semantics: `"+stringValue(manifest["semantics"])+"`",
+		fmt.Sprintf("- Files: `%d`", intFromAny(manifest["file_count"])),
+		fmt.Sprintf("- Aggregate bytes: `%d`", intFromAny(manifest["aggregate_bytes"])),
+		"- Fingerprint: `"+stringValue(manifest["fingerprint"])+"`", "")
+	for _, raw := range listValue(payload["validation_input_files"]) {
+		item := mapValue(raw)
+		lines = append(lines, fmt.Sprintf("- `%s` (%s, %d bytes)", stringValue(item["path"]), stringValue(item["sha256"]), intFromAny(item["bytes"])))
 	}
 	lines = append(lines, "", "## Source of truth", "")
 	for _, raw := range listValue(payload["source_files"]) {
@@ -1426,6 +1470,10 @@ func retrieveBacklogValidationReceiptFixture(artifactRoot, fixturePath string) e
 	if err != nil {
 		return rejectBacklog("validation_receipt_request_invalid", "%v", err)
 	}
+	_, validationInputsFingerprint, err := backlogValidationInputs(request)
+	if err != nil {
+		return rejectBacklog("validation_receipt_request_invalid", "%v", err)
+	}
 
 	fixtureRaw, err := os.ReadFile(fixturePath)
 	if err != nil {
@@ -1458,6 +1506,7 @@ func retrieveBacklogValidationReceiptFixture(artifactRoot, fixturePath string) e
 		!backlogOpaqueID.MatchString(fixture.RemoteTaskID) ||
 		!backlogFingerprint.MatchString(fixture.RequestFingerprint) ||
 		!backlogFingerprint.MatchString(fixture.RequiredValidationFingerprint) ||
+		!backlogFingerprint.MatchString(fixture.ValidationInputsFingerprint) ||
 		!backlogFingerprint.MatchString(fixture.CompatibilityFingerprint) ||
 		!backlogFingerprint.MatchString(fixture.DispatchFingerprint) ||
 		!validBacklogOpaqueEvidence(fixture.OpaqueReceipt) {
@@ -1494,12 +1543,13 @@ func retrieveBacklogValidationReceiptFixture(artifactRoot, fixturePath string) e
 		fixture.RemoteTaskID != stringValue(task["remote_task_id"]) ||
 		fixture.RequestFingerprint != stringValue(task["request_fingerprint"]) ||
 		fixture.RequiredValidationFingerprint != requiredValidationFingerprint ||
+		fixture.ValidationInputsFingerprint != validationInputsFingerprint ||
 		fixture.CompatibilityFingerprint != compatibilityFingerprint ||
 		fixture.DispatchFingerprint != stringValue(task["dispatch_fingerprint"]) ||
 		fixture.AdapterIdentity != stringValue(adapter["identity"]) ||
 		fixture.EnvironmentRef != stringValue(target["environment_ref"]) ||
 		fixture.BranchRef != stringValue(target["branch_ref"]) {
-		return rejectBacklog("validation_receipt_binding_mismatch", "validation receipt observation does not match the accepted result, diff, patch, status, candidate, task, request, required-validation declaration, compatibility, dispatch, adapter, environment, and branch identity")
+		return rejectBacklog("validation_receipt_binding_mismatch", "validation receipt observation does not match the accepted result, diff, patch, status, candidate, task, request, required-validation declaration, validation-input declaration, compatibility, dispatch, adapter, environment, and branch identity")
 	}
 	observedAt, err := time.Parse(time.RFC3339, fixture.ObservedAt)
 	if err != nil || observedAt.Format(time.RFC3339) != fixture.ObservedAt {
@@ -1519,7 +1569,7 @@ func retrieveBacklogValidationReceiptFixture(artifactRoot, fixturePath string) e
 		return err
 	}
 	if _, receiptErr := os.Stat(receiptPath); receiptErr == nil {
-		existing, readErr := loadAndVerifyBacklogValidationReceipt(artifactRoot, request, task, candidate, candidateFingerprint, status, statusFingerprint, diff, diffFingerprint, result, resultFingerprint, requiredValidationFingerprint, compatibilityFingerprint)
+		existing, readErr := loadAndVerifyBacklogValidationReceipt(artifactRoot, request, task, candidate, candidateFingerprint, status, statusFingerprint, diff, diffFingerprint, result, resultFingerprint, requiredValidationFingerprint, validationInputsFingerprint, compatibilityFingerprint)
 		if readErr != nil {
 			return rejectBacklog("validation_receipt_artifact_invalid", "%v", readErr)
 		}
@@ -1536,7 +1586,7 @@ func retrieveBacklogValidationReceiptFixture(artifactRoot, fixturePath string) e
 		return receiptErr
 	}
 
-	payload := backlogValidationReceiptPayload(request, task, candidate, candidateFingerprint, status, statusFingerprint, diff, diffFingerprint, result, resultFingerprint, requiredValidationFingerprint, compatibilityFingerprint, fixture.ObservationID, fixture.ReplayIdentity, fixture.ObservedAt, fixture.OpaqueReceipt)
+	payload := backlogValidationReceiptPayload(request, task, candidate, candidateFingerprint, status, statusFingerprint, diff, diffFingerprint, result, resultFingerprint, requiredValidationFingerprint, validationInputsFingerprint, compatibilityFingerprint, fixture.ObservationID, fixture.ReplayIdentity, fixture.ObservedAt, fixture.OpaqueReceipt)
 	return writeJSONFileAtomic(receiptPath, payload)
 }
 
@@ -1715,7 +1765,7 @@ func loadAndVerifyBacklogRemoteResult(artifactRoot string, task, candidate map[s
 	return result, nil
 }
 
-func loadAndVerifyBacklogValidationReceipt(artifactRoot string, request, task, candidate map[string]any, candidateFingerprint string, status map[string]any, statusFingerprint string, diff map[string]any, diffFingerprint string, result map[string]any, resultFingerprint, requiredValidationFingerprint, compatibilityFingerprint string) (map[string]any, error) {
+func loadAndVerifyBacklogValidationReceipt(artifactRoot string, request, task, candidate map[string]any, candidateFingerprint string, status map[string]any, statusFingerprint string, diff map[string]any, diffFingerprint string, result map[string]any, resultFingerprint, requiredValidationFingerprint, validationInputsFingerprint, compatibilityFingerprint string) (map[string]any, error) {
 	receiptPath, err := backlogArtifactPath(artifactRoot, "validation-receipt.json")
 	if err != nil {
 		return nil, err
@@ -1746,12 +1796,12 @@ func loadAndVerifyBacklogValidationReceipt(artifactRoot string, request, task, c
 	}
 	expected := backlogValidationReceiptPayload(
 		request, task, candidate, candidateFingerprint, status, statusFingerprint, diff, diffFingerprint,
-		result, resultFingerprint, requiredValidationFingerprint, compatibilityFingerprint,
+		result, resultFingerprint, requiredValidationFingerprint, validationInputsFingerprint, compatibilityFingerprint,
 		stringValue(identity["observation_id"]), stringValue(identity["replay_identity"]),
 		stringValue(receipt["observed_at"]), stringValue(evidence["opaque_receipt"]),
 	)
 	if !jsonMapsEqual(receipt, expected) {
-		return nil, errors.New("validation receipt is malformed, tampered, or does not match the immutable result, diff, patch, status, candidate, task, request, required-validation declaration, compatibility, dispatch, adapter, environment, and branch identity")
+		return nil, errors.New("validation receipt is malformed, tampered, or does not match the immutable result, diff, patch, status, candidate, task, request, required-validation declaration, validation-input declaration, compatibility, dispatch, adapter, environment, and branch identity")
 	}
 	return receipt, nil
 }
@@ -1797,9 +1847,13 @@ func verifyBacklogPatchBoundary(artifactRoot string) error {
 	if err != nil {
 		return rejectBacklog("patch_boundary_request_invalid", "%v", err)
 	}
+	_, validationInputsFingerprint, err := backlogValidationInputs(request)
+	if err != nil {
+		return rejectBacklog("patch_boundary_request_invalid", "%v", err)
+	}
 	receipt, err := loadAndVerifyBacklogValidationReceipt(
 		artifactRoot, request, task, candidate, candidateFingerprint, status, statusFingerprint,
-		diff, diffFingerprint, result, resultFingerprint, requiredValidationFingerprint, compatibilityFingerprint,
+		diff, diffFingerprint, result, resultFingerprint, requiredValidationFingerprint, validationInputsFingerprint, compatibilityFingerprint,
 	)
 	if err != nil {
 		return rejectBacklog("patch_boundary_validation_receipt_invalid", "%v", err)
@@ -2016,6 +2070,7 @@ func backlogPatchBoundaryPayload(request map[string]any, compatibilityFingerprin
 	diffIdentity := mapValue(diff["identity"])
 	resultIdentity := mapValue(result["identity"])
 	receiptIdentity := mapValue(receipt["identity"])
+	validationInputsFingerprint := stringValue(mapValue(request["validation_input_manifest"])["fingerprint"])
 	return map[string]any{
 		"contract_version": backlogPatchBoundaryContract,
 		"state":            "completion_candidate",
@@ -2037,7 +2092,8 @@ func backlogPatchBoundaryPayload(request map[string]any, compatibilityFingerprin
 		},
 		"binding": map[string]any{
 			"request_fingerprint": stringValue(request["request_fingerprint"]), "compatibility_fingerprint": compatibilityFingerprint,
-			"dispatch_fingerprint": stringValue(task["dispatch_fingerprint"]), "remote_task_id": stringValue(task["remote_task_id"]),
+			"validation_inputs_fingerprint": validationInputsFingerprint,
+			"dispatch_fingerprint":          stringValue(task["dispatch_fingerprint"]), "remote_task_id": stringValue(task["remote_task_id"]),
 			"adapter_identity": stringValue(adapter["identity"]), "environment_ref": stringValue(target["environment_ref"]), "branch_ref": stringValue(target["branch_ref"]),
 		},
 		"scope": map[string]any{
@@ -2116,7 +2172,7 @@ func backlogRemoteResultPayload(task, candidate map[string]any, candidateFingerp
 	}
 }
 
-func backlogValidationReceiptPayload(request, task, candidate map[string]any, candidateFingerprint string, status map[string]any, statusFingerprint string, diff map[string]any, diffFingerprint string, result map[string]any, resultFingerprint, requiredValidationFingerprint, compatibilityFingerprint, observationID, replayIdentity, observedAt, opaqueReceipt string) map[string]any {
+func backlogValidationReceiptPayload(request, task, candidate map[string]any, candidateFingerprint string, status map[string]any, statusFingerprint string, diff map[string]any, diffFingerprint string, result map[string]any, resultFingerprint, requiredValidationFingerprint, validationInputsFingerprint, compatibilityFingerprint, observationID, replayIdentity, observedAt, opaqueReceipt string) map[string]any {
 	resultIdentity := mapValue(result["identity"])
 	diffIdentity := mapValue(diff["identity"])
 	diffPatch := mapValue(diff["patch"])
@@ -2153,10 +2209,12 @@ func backlogValidationReceiptPayload(request, task, candidate map[string]any, ca
 			"fingerprint":     candidateFingerprint,
 		},
 		"request_validation": map[string]any{
-			"required_validation": request["required_validation"],
-			"fingerprint":         requiredValidationFingerprint,
-			"executed":            false,
-			"interpreted":         false,
+			"required_validation":           request["required_validation"],
+			"fingerprint":                   requiredValidationFingerprint,
+			"validation_inputs_fingerprint": validationInputsFingerprint,
+			"validation_input_manifest":     request["validation_input_manifest"],
+			"executed":                      false,
+			"interpreted":                   false,
 		},
 		"binding": map[string]any{
 			"remote_task_id": stringValue(task["remote_task_id"]), "request_fingerprint": stringValue(task["request_fingerprint"]),
@@ -2200,11 +2258,22 @@ func backlogRequiredValidationFingerprint(request map[string]any) (string, error
 }
 
 func backlogJSONInt(value any) (int, bool) {
-	number, ok := value.(float64)
-	if !ok || number < 0 || number != float64(int(number)) {
+	switch number := value.(type) {
+	case int:
+		return number, number >= 0
+	case int64:
+		if number < 0 || int64(int(number)) != number {
+			return 0, false
+		}
+		return int(number), true
+	case float64:
+		if number < 0 || number != float64(int(number)) {
+			return 0, false
+		}
+		return int(number), true
+	default:
 		return 0, false
 	}
-	return int(number), true
 }
 
 func writeBacklogDiffArtifactsAtomic(diffPath string, metadata map[string]any, patchPath string, patchRaw []byte) error {
@@ -2334,6 +2403,9 @@ func loadAndVerifyBacklogRequest(artifactRoot string) (map[string]any, string, e
 	if stringValue(request["contract_version"]) != backlogRequestContract {
 		return nil, "", errors.New("remote request has an unsupported contract")
 	}
+	if _, _, err := backlogValidationInputs(request); err != nil {
+		return nil, "", err
+	}
 	markdownPath, err := backlogArtifactPath(artifactRoot, "remote-request.md")
 	if err != nil {
 		return nil, "", err
@@ -2376,6 +2448,192 @@ func backlogJSONFingerprint(payload map[string]any) (string, error) {
 		return "", err
 	}
 	return sha256String(raw), nil
+}
+
+func backlogValidationInputManifest(files []any) (map[string]any, error) {
+	totalBytes := 0
+	for _, raw := range files {
+		entry := mapValue(raw)
+		bytes, ok := backlogJSONInt(entry["bytes"])
+		if !ok || bytes < 0 {
+			return nil, errors.New("validation input file byte count is invalid")
+		}
+		totalBytes += bytes
+	}
+	fingerprint, err := backlogJSONFingerprint(map[string]any{
+		"semantics": "complete_list", "validation_input_files": files,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return map[string]any{
+		"semantics": "complete_list", "file_count": len(files),
+		"aggregate_bytes": totalBytes, "fingerprint": fingerprint,
+	}, nil
+}
+
+func backlogValidationInputs(request map[string]any) ([]any, string, error) {
+	files, ok := request["validation_input_files"].([]any)
+	if !ok || len(files) == 0 {
+		return nil, "", errors.New("remote request validation_input_files must be a non-empty array")
+	}
+	if len(files) > backlogValidationInputMaxFiles {
+		return nil, "", fmt.Errorf("remote request validation_input_files exceed the %d-file limit", backlogValidationInputMaxFiles)
+	}
+	paths := make([]string, 0, len(files))
+	seen := map[string]bool{}
+	totalBytes := 0
+	for _, raw := range files {
+		entry, ok := raw.(map[string]any)
+		if !ok || len(entry) != 3 {
+			return nil, "", errors.New("remote request validation_input_files entries must contain only path, sha256, and bytes")
+		}
+		pathValue, pathOK := entry["path"].(string)
+		shaValue, shaOK := entry["sha256"].(string)
+		bytesValue, bytesOK := backlogJSONInt(entry["bytes"])
+		if !pathOK || !shaOK || !bytesOK || bytesValue < 0 || !backlogFingerprint.MatchString(shaValue) {
+			return nil, "", errors.New("remote request validation_input_files contains a malformed entry")
+		}
+		if err := validateBacklogValidationInputPath(pathValue); err != nil {
+			return nil, "", fmt.Errorf("remote request validation input %q is invalid: %w", pathValue, err)
+		}
+		if seen[pathValue] {
+			return nil, "", fmt.Errorf("remote request validation_input_files contains duplicate %q", pathValue)
+		}
+		seen[pathValue] = true
+		paths = append(paths, pathValue)
+		totalBytes += bytesValue
+		if totalBytes > backlogValidationInputMaxBytes {
+			return nil, "", fmt.Errorf("remote request validation_input_files exceed the %d-byte aggregate limit", backlogValidationInputMaxBytes)
+		}
+	}
+	if !sort.StringsAreSorted(paths) {
+		return nil, "", errors.New("remote request validation_input_files are not in deterministic ascending path order")
+	}
+	expectedManifest, err := backlogValidationInputManifest(files)
+	if err != nil {
+		return nil, "", err
+	}
+	manifest, ok := request["validation_input_manifest"].(map[string]any)
+	if !ok || len(manifest) != 4 || !jsonMapsEqual(manifest, expectedManifest) {
+		return nil, "", errors.New("remote request validation_input_manifest is malformed or does not bind the complete validation input file list")
+	}
+	return files, stringValue(expectedManifest["fingerprint"]), nil
+}
+
+func validateBacklogValidationInputPath(value string) error {
+	if err := validateBacklogPatchPath(value); err != nil {
+		return err
+	}
+	lower := strings.ToLower("/" + value + "/")
+	for _, token := range []string{"/bin/", "/build/", "/dist/", "/node_modules/", "/.cache/", "/.staging/", "/.codex/", "/.claude/", "/.agents/"} {
+		if strings.Contains(lower, token) {
+			return errors.New("path is generated or provider-private")
+		}
+	}
+	return nil
+}
+
+func readBacklogValidationInput(repoRoot, rel string, remainingBytes int) ([]byte, error) {
+	if err := validateBacklogValidationInputPath(rel); err != nil {
+		return nil, err
+	}
+	if remainingBytes < 0 {
+		return nil, fmt.Errorf("validation inputs exceed the %d-byte aggregate limit", backlogValidationInputMaxBytes)
+	}
+	root, err := filepath.Abs(repoRoot)
+	if err != nil {
+		return nil, err
+	}
+	rootInfo, err := os.Lstat(root)
+	if err != nil {
+		return nil, fmt.Errorf("repository root cannot be inspected: %w", err)
+	}
+	if !rootInfo.IsDir() || backlogFileInfoIsLinkOrReparse(rootInfo) {
+		return nil, errors.New("repository root must be a directory and must not be a symlink or reparse point")
+	}
+	candidate := filepath.Join(root, filepath.FromSlash(rel))
+	if !withinRoot(root, candidate) {
+		return nil, errors.New("path escapes the repository root")
+	}
+	current := root
+	parts := strings.Split(rel, "/")
+	var inspected os.FileInfo
+	for index, part := range parts {
+		current = filepath.Join(current, part)
+		info, inspectErr := os.Lstat(current)
+		if inspectErr != nil {
+			return nil, fmt.Errorf("path cannot be inspected: %w", inspectErr)
+		}
+		if backlogFileInfoIsLinkOrReparse(info) {
+			return nil, errors.New("path contains a symlink or reparse point")
+		}
+		if index < len(parts)-1 && !info.IsDir() {
+			return nil, errors.New("path has a non-directory ancestor")
+		}
+		if index == len(parts)-1 {
+			inspected = info
+		}
+	}
+	if inspected == nil || !inspected.Mode().IsRegular() {
+		return nil, errors.New("path is not a regular file")
+	}
+	if inspected.Size() > int64(remainingBytes) {
+		return nil, fmt.Errorf("validation inputs exceed the %d-byte aggregate limit", backlogValidationInputMaxBytes)
+	}
+	if err := backlogValidationInputAfterInspect(candidate); err != nil {
+		return nil, err
+	}
+	resolvedRoot, err := filepath.EvalSymlinks(root)
+	if err != nil {
+		return nil, err
+	}
+	resolvedCandidate, err := filepath.EvalSymlinks(candidate)
+	if err != nil || !withinRoot(resolvedRoot, resolvedCandidate) {
+		return nil, errors.New("path escapes the repository root through a filesystem link")
+	}
+	file, err := os.Open(candidate)
+	if err != nil {
+		return nil, fmt.Errorf("path cannot be opened: %w", err)
+	}
+	defer file.Close()
+	openedInfo, err := file.Stat()
+	if err != nil || !openedInfo.Mode().IsRegular() || backlogFileInfoIsLinkOrReparse(openedInfo) || !os.SameFile(inspected, openedInfo) || openedInfo.Size() != inspected.Size() || !openedInfo.ModTime().Equal(inspected.ModTime()) {
+		return nil, errors.New("path changed after inspection")
+	}
+	raw, err := io.ReadAll(io.LimitReader(file, int64(remainingBytes)+1))
+	if err != nil {
+		return nil, fmt.Errorf("path cannot be read: %w", err)
+	}
+	if len(raw) > remainingBytes {
+		return nil, fmt.Errorf("validation inputs exceed the %d-byte aggregate limit", backlogValidationInputMaxBytes)
+	}
+	finalInfo, err := file.Stat()
+	if err != nil || !os.SameFile(openedInfo, finalInfo) || finalInfo.Size() != openedInfo.Size() || !finalInfo.ModTime().Equal(openedInfo.ModTime()) || int64(len(raw)) != finalInfo.Size() {
+		return nil, errors.New("path changed while being read")
+	}
+	return raw, nil
+}
+
+func backlogFileInfoIsLinkOrReparse(info os.FileInfo) bool {
+	if info == nil || info.Mode()&os.ModeSymlink != 0 {
+		return true
+	}
+	value := reflect.ValueOf(info.Sys())
+	if !value.IsValid() {
+		return false
+	}
+	if value.Kind() == reflect.Pointer {
+		if value.IsNil() {
+			return false
+		}
+		value = value.Elem()
+	}
+	if value.Kind() != reflect.Struct {
+		return false
+	}
+	attributes := value.FieldByName("FileAttributes")
+	return attributes.IsValid() && attributes.CanUint() && attributes.Uint()&0x400 != 0
 }
 
 func resolveBacklogRepoPath(repoRoot, rel string, requireFile, allowDir bool) (string, error) {

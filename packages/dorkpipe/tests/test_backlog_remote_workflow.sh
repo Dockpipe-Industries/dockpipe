@@ -3,14 +3,14 @@ set -euo pipefail
 trap 'rc=$?; echo "test_backlog_remote_workflow failed at line ${LINENO}: ${BASH_COMMAND}" >&2; exit "$rc"' ERR
 
 REPO_ROOT="$(git rev-parse --show-toplevel)"
+REAL_GIT="$(command -v git)"
 # shellcheck source=packages/dorkpipe/tests/lib/test-tools.sh
 source "$REPO_ROOT/packages/dorkpipe/tests/lib/test-tools.sh"
 dorkpipe_test_require_go "test_backlog_remote_workflow"
 dorkpipe_test_init_go_cache "$REPO_ROOT"
 
 tmp="$(dorkpipe_test_mktemp_dir "$REPO_ROOT")"
-consumer="$tmp/consumer"
-pristine="$tmp/pristine"
+consumer="$REPO_ROOT"
 application_consumer="$tmp/application-consumer"
 application_pristine="$tmp/application-pristine"
 artifact_root="$tmp/artifacts"
@@ -21,11 +21,10 @@ helper_bin="$tmp/orchestrate-helper"
 invocation_log="$tmp/forbidden-invocations.log"
 trap 'rm -rf "$tmp"' EXIT
 
-mkdir -p "$consumer" "$tmp/fake-bin"
-cp -R "$fixture_root/consumer/." "$consumer/"
-cp -R "$consumer" "$pristine"
+mkdir -p "$tmp/fake-bin"
 cp -R "$fixture_root/application-consumer" "$application_consumer"
 cp -R "$application_consumer" "$application_pristine"
+"$REAL_GIT" status --short --untracked-files=all >"$tmp/repo-status-before"
 (
   cd "$REPO_ROOT/packages/dorkpipe/lib"
   go build -o "$helper_bin" ./cmd/orchestrate-helper
@@ -58,6 +57,7 @@ export DORKPIPE_BACKLOG_BRANCH_REF="js/dev"
 export DORKPIPE_BACKLOG_ALLOWED_PATHS_JSON='["packages/dorkpipe","docs/agents/tasks/backlog-driven-remote-tasks.md"]'
 export DORKPIPE_BACKLOG_HARD_BOUNDARIES_JSON='["No live provider invocation","No apply, commit, push, or publication"]'
 export DORKPIPE_BACKLOG_REQUIRED_VALIDATION_JSON='["go test ./packages/dorkpipe/lib/orchestrationhelper"]'
+export DORKPIPE_BACKLOG_VALIDATION_INPUTS_JSON="$(<"$fixture_root/validation-input-files.json")"
 export DORKPIPE_BACKLOG_ROUTED_SOURCES_JSON='["docs/agents/packages/package-authoring.md","docs/agents/workflows/yaml-workflows.md"]'
 export DORKPIPE_BACKLOG_COMPATIBILITY_FIXTURE="$compatibility_fixture"
 export DORKPIPE_BACKLOG_DISPATCH_FIXTURE="$fixture_root/dispatch.json"
@@ -68,6 +68,20 @@ export DORKPIPE_BACKLOG_RESULT_FIXTURE="$fixture_root/remote-result.json"
 export DORKPIPE_BACKLOG_VALIDATION_RECEIPT_FIXTURE="$fixture_root/validation-receipt.json"
 export DORKPIPE_BACKLOG_CONSUMER_ROOT="$application_consumer"
 export ROOT="$consumer"
+
+for required_input in VERSION assets/entrypoint.sh embed.go go.mod go.sum src/core/package.yml \
+  src/lib/infrastructure/schema/workflow.schema.json workflows/README.md; do
+  grep -Fq "\"$required_input\"" "$fixture_root/validation-input-files.json"
+done
+while IFS= read -r required_input; do
+  required_input="${required_input#./}"
+  grep -Fq "\"$required_input\"" "$fixture_root/validation-input-files.json"
+done < <(
+  cd "$REPO_ROOT"
+  find packages/dorkpipe/lib/orchestrationhelper -maxdepth 1 -type f -name '*.go' -print
+  find src/lib/domain src/lib/infrastructure/packagebuild -maxdepth 1 -type f -name '*.go' ! -name '*_test.go' -print
+  find src/lib/infrastructure -maxdepth 1 -type f -name '*.go' ! -name '*_test.go' -print
+)
 
 log="$tmp/workflow.err"
 for step in inspect compile compatibility dispatch completion_candidate status diff result validation_receipt patch_boundary patch_application; do
@@ -126,7 +140,13 @@ for name in backlog-selection.json remote-request.md remote-request.json remote-
   test -f "$artifact_root/$name"
 done
 grep -Fq '"status": "selected"' "$artifact_root/backlog-selection.json"
-grep -Fq '"contract_version": "dorkpipe.remote-request/v1"' "$artifact_root/remote-request.json"
+grep -Fq '"contract_version": "dorkpipe.remote-request/v2"' "$artifact_root/remote-request.json"
+grep -Fq '"validation_input_files": [' "$artifact_root/remote-request.json"
+grep -Fq '"semantics": "complete_list"' "$artifact_root/remote-request.json"
+grep -Fq '"file_count": 83' "$artifact_root/remote-request.json"
+grep -Fq '"validation_inputs_fingerprint": "sha256:' "$artifact_root/validation-receipt.json"
+grep -Fq '"validation_inputs_fingerprint": "sha256:' "$artifact_root/patch-boundary.json"
+grep -Fq '"validation_inputs_fingerprint": "sha256:' "$artifact_root/patch-application.json"
 grep -Fq '"adapter_mode": "fixture_only"' "$artifact_root/remote-request.json"
 grep -Fq '"live_provider": false' "$artifact_root/remote-request.json"
 grep -Fq '"contract_version": "dorkpipe.remote-adapter-compatibility/v1"' "$artifact_root/remote-adapter-compatibility.json"
@@ -195,16 +215,16 @@ if grep -Fq '"ready_for_review": true' "$artifact_root/remote-result.json"; then
   echo "remote result unexpectedly enabled ready_for_review" >&2
   exit 1
 fi
-grep -Fq '"contract_version": "dorkpipe.validation-receipt/v1"' "$artifact_root/validation-receipt.json"
+grep -Fq '"contract_version": "dorkpipe.validation-receipt/v2"' "$artifact_root/validation-receipt.json"
 grep -Fq '"state": "completion_candidate"' "$artifact_root/validation-receipt.json"
 grep -Fq '"observation_id": "receipt_fixture_observation_015"' "$artifact_root/validation-receipt.json"
 grep -Fq '"observation_id": "result_fixture_observation_015"' "$artifact_root/validation-receipt.json"
-grep -Fq '"fingerprint": "sha256:56b99bfd61d51fd36b6713bdab562dc3a2cfaded548f74f1b5ceefd4bb4288e1"' "$artifact_root/validation-receipt.json"
+grep -Fq '"fingerprint": "sha256:1c68ea8b375bdb063289eed08bbe6f56707f7cfe54bd66832ca6676ae5bb0e19"' "$artifact_root/validation-receipt.json"
 grep -Fq '"patch_sha256": "sha256:4027895ace152e2d66d11143b9e7841adb68e8d625977b7c123508f221114b1b"' "$artifact_root/validation-receipt.json"
 grep -Fq '"required_validation": [' "$artifact_root/validation-receipt.json"
 grep -Fq '"go test ./packages/dorkpipe/lib/orchestrationhelper"' "$artifact_root/validation-receipt.json"
 grep -Fq '"fingerprint": "sha256:1dc90fee068fa97e7f2fafae5ac63498e0ace0c0260e06dd759ea164761c9b0c"' "$artifact_root/validation-receipt.json"
-grep -Fq '"compatibility_fingerprint": "sha256:4dd89b9d926989e66c26d9eab02abe95b859b2af6bfc6c4af6a44264748ea5ec"' "$artifact_root/validation-receipt.json"
+grep -Fq '"compatibility_fingerprint": "sha256:b2cac99a652b2b943ce42a025154810a4b2c44bab88f682ed2f1bf6c36c9cd38"' "$artifact_root/validation-receipt.json"
 grep -Fq '"opaque_receipt": "fixture-owned opaque validation receipt evidence"' "$artifact_root/validation-receipt.json"
 grep -Fq '"trusted": false' "$artifact_root/validation-receipt.json"
 grep -Fq '"authoritative": false' "$artifact_root/validation-receipt.json"
@@ -221,7 +241,7 @@ if grep -Fq '"ready_for_review": true' "$artifact_root/validation-receipt.json";
   echo "validation receipt unexpectedly enabled ready_for_review" >&2
   exit 1
 fi
-grep -Fq '"contract_version": "dorkpipe.patch-boundary/v1"' "$artifact_root/patch-boundary.json"
+grep -Fq '"contract_version": "dorkpipe.patch-boundary/v2"' "$artifact_root/patch-boundary.json"
 grep -Fq '"state": "completion_candidate"' "$artifact_root/patch-boundary.json"
 grep -Fq '"patch_sha256": "sha256:4027895ace152e2d66d11143b9e7841adb68e8d625977b7c123508f221114b1b"' "$artifact_root/patch-boundary.json"
 grep -Fq '"patch_bytes": 236' "$artifact_root/patch-boundary.json"
@@ -240,7 +260,7 @@ if grep -Fq '"ready_for_review": true' "$artifact_root/patch-boundary.json"; the
   echo "patch boundary unexpectedly enabled ready_for_review" >&2
   exit 1
 fi
-grep -Fq '"contract_version": "dorkpipe.patch-application/v1"' "$artifact_root/patch-application.json"
+grep -Fq '"contract_version": "dorkpipe.patch-application/v2"' "$artifact_root/patch-application.json"
 grep -Fq '"state": "completion_candidate"' "$artifact_root/patch-application.json"
 grep -Fq '"application_scope": "temporary_copy_only"' "$artifact_root/patch-application.json"
 grep -Fq '"mechanical_application_succeeded": true' "$artifact_root/patch-application.json"
@@ -255,7 +275,8 @@ if grep -Fq '"ready_for_review": true' "$artifact_root/patch-application.json"; 
   exit 1
 fi
 test ! -e "$invocation_log"
-diff -r "$pristine" "$consumer"
+"$REAL_GIT" status --short --untracked-files=all >"$tmp/repo-status-after"
+cmp "$tmp/repo-status-before" "$tmp/repo-status-after"
 diff -r "$application_pristine" "$application_consumer"
 
 MSYS2_ARG_CONV_EXCL='*' "$helper_bin" backlog-inspect \
@@ -264,7 +285,8 @@ MSYS2_ARG_CONV_EXCL='*' "$helper_bin" backlog-inspect \
 MSYS2_ARG_CONV_EXCL='*' "$helper_bin" backlog-compile \
   "$consumer" "$second_root" "$DORKPIPE_BACKLOG_ENVIRONMENT_REF" "$DORKPIPE_BACKLOG_BRANCH_REF" \
   "$DORKPIPE_BACKLOG_ALLOWED_PATHS_JSON" "$DORKPIPE_BACKLOG_HARD_BOUNDARIES_JSON" \
-  "$DORKPIPE_BACKLOG_REQUIRED_VALIDATION_JSON" "$DORKPIPE_BACKLOG_ROUTED_SOURCES_JSON"
+  "$DORKPIPE_BACKLOG_REQUIRED_VALIDATION_JSON" "$DORKPIPE_BACKLOG_VALIDATION_INPUTS_JSON" \
+  "$DORKPIPE_BACKLOG_ROUTED_SOURCES_JSON"
 MSYS2_ARG_CONV_EXCL='*' "$helper_bin" backlog-compatibility-preflight "$second_root" "$compatibility_fixture"
 test ! -e "$second_root/remote-task.json"
 MSYS2_ARG_CONV_EXCL='*' "$helper_bin" backlog-dispatch-fixture "$second_root" "$DORKPIPE_BACKLOG_DISPATCH_FIXTURE"
@@ -290,7 +312,8 @@ MSYS2_ARG_CONV_EXCL='*' "$helper_bin" backlog-inspect \
 MSYS2_ARG_CONV_EXCL='*' "$helper_bin" backlog-compile \
   "$consumer" "$malformed_root" "$DORKPIPE_BACKLOG_ENVIRONMENT_REF" "$DORKPIPE_BACKLOG_BRANCH_REF" \
   "$DORKPIPE_BACKLOG_ALLOWED_PATHS_JSON" "$DORKPIPE_BACKLOG_HARD_BOUNDARIES_JSON" \
-  "$DORKPIPE_BACKLOG_REQUIRED_VALIDATION_JSON" "$DORKPIPE_BACKLOG_ROUTED_SOURCES_JSON"
+  "$DORKPIPE_BACKLOG_REQUIRED_VALIDATION_JSON" "$DORKPIPE_BACKLOG_VALIDATION_INPUTS_JSON" \
+  "$DORKPIPE_BACKLOG_ROUTED_SOURCES_JSON"
 export DORKPIPE_BACKLOG_ARTIFACT_ROOT="$malformed_root"
 export DORKPIPE_BACKLOG_COMPATIBILITY_FIXTURE="$malformed_fixture"
 export DOCKPIPE_STEP_ID="compatibility"
@@ -353,7 +376,6 @@ for name in remote-request.md remote-request.json remote-task.json; do
   test ! -e "$rejected_root/$name"
 done
 
-rm -rf "$consumer"
 export DORKPIPE_BACKLOG_TASK_ID="TASK-015"
 export DORKPIPE_BACKLOG_ARTIFACT_ROOT="$artifact_root"
 MSYS2_ARG_CONV_EXCL='*' "$helper_bin" backlog-followup "$artifact_root" >"$tmp/followup.json"

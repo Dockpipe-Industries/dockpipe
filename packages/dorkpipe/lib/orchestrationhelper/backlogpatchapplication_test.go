@@ -39,6 +39,10 @@ func TestBacklogPatchApplicationIsDeterministicIsolatedAndRestartSafe(t *testing
 	if stringValue(binding["baseline_commit"]) != backlogTestBaseline || backlogTestBool(binding["baseline_commit_git_verified"]) {
 		t.Fatalf("baseline was not preserved as an unverified request declaration: %#v", binding)
 	}
+	request := readJSONMap(filepath.Join(artifactRoot, "remote-request.json"))
+	if stringValue(binding["validation_inputs_fingerprint"]) != stringValue(mapValue(request["validation_input_manifest"])["fingerprint"]) {
+		t.Fatalf("application does not bind the immutable validation inputs: %#v", binding)
+	}
 	acceptedPatch := mapValue(application["accepted_patch"])
 	if stringValue(acceptedPatch["sha256"]) != sha256String([]byte(backlogTestPatch)) || int(acceptedPatch["bytes"].(float64)) != len(backlogTestPatch) {
 		t.Fatalf("accepted patch binding is wrong: %#v", acceptedPatch)

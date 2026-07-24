@@ -2,13 +2,18 @@ package orchestrationhelper
 
 import (
 	"encoding/json"
+	"fmt"
+	"net"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
 
 const backlogTestBaseline = "0123456789abcdef0123456789abcdef01234567"
+const backlogTestValidationInputsJSON = `["packages/dorkpipe/README.md"]`
 
 const backlogTestPatch = "diff --git a/packages/dorkpipe/README.md b/packages/dorkpipe/README.md\nindex 1111111..2222222 100644\n--- a/packages/dorkpipe/README.md\n+++ b/packages/dorkpipe/README.md\n@@ -1 +1,2 @@\n # Fixture package\n+Untrusted remote fixture change.\n"
 
@@ -33,6 +38,7 @@ func TestBacklogRemoteArtifactsAreDeterministicAndRestartSafe(t *testing.T) {
 			`["packages/dorkpipe","docs/agents/tasks/backlog-driven-remote-tasks.md"]`,
 			`["No live provider invocation","No apply, commit, push, or publication"]`,
 			`["go test ./packages/dorkpipe/lib/orchestrationhelper"]`,
+			backlogTestValidationInputsJSON,
 			`["docs/agents/packages/package-authoring.md","docs/agents/workflows/yaml-workflows.md"]`,
 		); err != nil {
 			t.Fatal(err)
@@ -241,7 +247,11 @@ func TestBacklogRemoteArtifactsAreDeterministicAndRestartSafe(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if stringValue(receiptValidation["fingerprint"]) != requiredValidationFingerprint || stringValue(receiptBinding["compatibility_fingerprint"]) == "" {
+	_, validationInputsFingerprint, err := backlogValidationInputs(request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if stringValue(receiptValidation["fingerprint"]) != requiredValidationFingerprint || stringValue(receiptValidation["validation_inputs_fingerprint"]) != validationInputsFingerprint || stringValue(receiptBinding["compatibility_fingerprint"]) == "" {
 		t.Fatalf("validation receipt lacks immutable validation or compatibility binding: %#v", receipt)
 	}
 	for name, value := range mapValue(receipt["lifecycle"]) {
@@ -251,6 +261,7 @@ func TestBacklogRemoteArtifactsAreDeterministicAndRestartSafe(t *testing.T) {
 	}
 	boundary := readJSONMap(filepath.Join(first, "patch-boundary.json"))
 	boundaryScope := mapValue(boundary["scope"])
+	boundaryBinding := mapValue(boundary["binding"])
 	boundaryVerification := mapValue(boundary["verification"])
 	boundaryActions := mapValue(boundary["actions"])
 	if stringValue(boundary["contract_version"]) != backlogPatchBoundaryContract || stringValue(boundary["state"]) != "completion_candidate" {
@@ -261,6 +272,9 @@ func TestBacklogRemoteArtifactsAreDeterministicAndRestartSafe(t *testing.T) {
 	}
 	if stringValue(boundaryScope["matching_rule"]) != "exact_or_true_descendant" || !backlogTestBool(boundaryScope["lexical_only"]) || stringValue(boundaryScope["allowed_paths_fingerprint"]) == "" {
 		t.Fatalf("unexpected patch-boundary allowed-path contract: %#v", boundaryScope)
+	}
+	if stringValue(boundaryBinding["validation_inputs_fingerprint"]) != validationInputsFingerprint {
+		t.Fatalf("patch boundary does not bind immutable validation inputs: %#v", boundaryBinding)
 	}
 	if !jsonMapsEqual(map[string]any{"allowed_paths": boundaryScope["allowed_paths"]}, map[string]any{"allowed_paths": mapValue(request["scope"])["allowed_paths"]}) || !jsonMapsEqual(map[string]any{"changed_paths": boundary["changed_paths"]}, map[string]any{"changed_paths": []any{"packages/dorkpipe/README.md"}}) {
 		t.Fatalf("patch-boundary paths do not match immutable scope and accepted patch: %#v", boundary)
@@ -360,13 +374,213 @@ maintenance:
 	}
 }
 
+func TestBacklogValidationInputContractIsCompleteBoundedAndFailClosed(t *testing.T) {
+	compile := func(t *testing.T, repo, inputsJSON string) (string, error) {
+		t.Helper()
+		root := filepath.Join(t.TempDir(), "artifacts")
+		if err := inspectBacklogSelection(repo, backlogIndexPath, "TASK-015", "Implement only the bounded validation input binding slice.", backlogTestBaseline, root); err != nil {
+			t.Fatal(err)
+		}
+		err := compileBacklogRemoteRequest(repo, root, "fixture-environment", "js/dev", `["packages/dorkpipe"]`, `["No live provider"]`, `["go test ./packages/dorkpipe/lib/orchestrationhelper"]`, inputsJSON, `[]`)
+		return root, err
+	}
+
+	t.Run("canonical manifest", func(t *testing.T) {
+		repo := writeBacklogTestRepo(t)
+		before := mustReadFile(t, filepath.Join(repo, "packages", "dorkpipe", "README.md"))
+		root, err := compile(t, repo, backlogTestValidationInputsJSON)
+		if err != nil {
+			t.Fatal(err)
+		}
+		request := readJSONMap(filepath.Join(root, "remote-request.json"))
+		files, fingerprint, err := backlogValidationInputs(request)
+		if err != nil {
+			t.Fatal(err)
+		}
+		manifest := mapValue(request["validation_input_manifest"])
+		if stringValue(request["contract_version"]) != "dorkpipe.remote-request/v2" || len(files) != 1 || stringValue(manifest["semantics"]) != "complete_list" || intFromAny(manifest["file_count"]) != 1 || stringValue(manifest["fingerprint"]) != fingerprint {
+			t.Fatalf("unexpected validation input request contract: %#v", request)
+		}
+		entry := mapValue(files[0])
+		if stringValue(entry["path"]) != "packages/dorkpipe/README.md" || stringValue(entry["sha256"]) != sha256String(before) || intFromAny(entry["bytes"]) != len(before) {
+			t.Fatalf("unexpected validation input entry: %#v", entry)
+		}
+		if got := mustReadFile(t, filepath.Join(repo, "packages", "dorkpipe", "README.md")); string(got) != string(before) {
+			t.Fatal("request compilation mutated the consumer source")
+		}
+		for _, name := range []string{"validation-execution.json", "ready-for-review.json"} {
+			if _, statErr := os.Stat(filepath.Join(root, name)); !os.IsNotExist(statErr) {
+				t.Fatalf("request compilation created %s: %v", name, statErr)
+			}
+		}
+	})
+
+	tests := []struct {
+		name   string
+		inputs string
+		setup  func(*testing.T, string)
+		want   string
+	}{
+		{name: "missing declaration", inputs: "", want: "JSON string array"},
+		{name: "empty declaration", inputs: `[]`, want: "at least one"},
+		{name: "missing file", inputs: `["missing.go"]`, want: "cannot be inspected"},
+		{name: "absolute path", inputs: `["/absolute.go"]`, want: "absolute paths"},
+		{name: "drive path", inputs: `["C:/absolute.go"]`, want: "absolute paths"},
+		{name: "traversal", inputs: `["../escape.go"]`, want: "traversal"},
+		{name: "prefix collision escape", inputs: `["packages/dorkpipe/../dorkpipe-evil/input.go"]`, want: "canonical"},
+		{name: "directory", inputs: `["packages/dorkpipe/lib"]`, want: "not a regular file", setup: func(t *testing.T, repo string) {
+			if err := os.MkdirAll(filepath.Join(repo, "packages", "dorkpipe", "lib"), 0o755); err != nil {
+				t.Fatal(err)
+			}
+		}},
+		{name: "duplicate", inputs: `["packages/dorkpipe/README.md","packages/dorkpipe/README.md"]`, want: "duplicate"},
+		{name: "unsorted", inputs: `["packages/dorkpipe/README.md","AGENTS.md"]`, want: "ascending"},
+		{name: "generated", inputs: `["packages/dorkpipe/bin/tool"]`, want: "generated"},
+		{name: "secret like", inputs: `["secrets/token.json"]`, want: "secret-like"},
+		{name: "git internal", inputs: `[".git/config"]`, want: "Git-internal"},
+		{name: "provider private", inputs: `[".codex/state.json"]`, want: "provider-private"},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			repo := writeBacklogTestRepo(t)
+			if test.setup != nil {
+				test.setup(t, repo)
+			}
+			root, err := compile(t, repo, test.inputs)
+			if err == nil || !strings.Contains(err.Error(), test.want) {
+				t.Fatalf("error = %v, want substring %q", err, test.want)
+			}
+			if _, statErr := os.Stat(filepath.Join(root, "remote-request.json")); !os.IsNotExist(statErr) {
+				t.Fatalf("rejected input created remote-request.json: %v", statErr)
+			}
+		})
+	}
+
+	t.Run("symlink", func(t *testing.T) {
+		repo := writeBacklogTestRepo(t)
+		target := filepath.Join(repo, "target.go")
+		writeBacklogTestFile(t, target, "package fixture\n")
+		link := filepath.Join(repo, "input.go")
+		if err := os.Symlink(target, link); err != nil {
+			t.Skipf("symlink creation unavailable: %v", err)
+		}
+		_, err := compile(t, repo, `["input.go"]`)
+		if err == nil || !strings.Contains(err.Error(), "symlink or reparse point") {
+			t.Fatalf("symlink error = %v", err)
+		}
+	})
+
+	t.Run("junction reparse point", func(t *testing.T) {
+		if runtime.GOOS != "windows" {
+			t.Skip("Windows junction proof")
+		}
+		repo := writeBacklogTestRepo(t)
+		target := filepath.Join(repo, "target-dir")
+		if err := os.MkdirAll(target, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		writeBacklogTestFile(t, filepath.Join(target, "input.go"), "package fixture\n")
+		junction := filepath.Join(repo, "junction")
+		if output, err := exec.Command("cmd", "/c", "mklink", "/J", junction, target).CombinedOutput(); err != nil {
+			t.Skipf("junction creation unavailable: %v (%s)", err, output)
+		}
+		_, err := compile(t, repo, `["junction/input.go"]`)
+		if err == nil || !strings.Contains(err.Error(), "symlink or reparse point") {
+			t.Fatalf("junction error = %v", err)
+		}
+	})
+
+	t.Run("nonregular", func(t *testing.T) {
+		repo := writeBacklogTestRepo(t)
+		path := filepath.Join(repo, "input.sock")
+		listener, err := net.Listen("unix", path)
+		if err != nil {
+			t.Skipf("filesystem socket unavailable: %v", err)
+		}
+		defer listener.Close()
+		_, err = compile(t, repo, `["input.sock"]`)
+		if err == nil || !strings.Contains(err.Error(), "not a regular file") {
+			t.Fatalf("nonregular error = %v", err)
+		}
+	})
+
+	t.Run("changed after inspection", func(t *testing.T) {
+		repo := writeBacklogTestRepo(t)
+		original := backlogValidationInputAfterInspect
+		backlogValidationInputAfterInspect = func(path string) error {
+			return os.WriteFile(path, []byte("# Changed after inspection with a different size.\n"), 0o644)
+		}
+		t.Cleanup(func() { backlogValidationInputAfterInspect = original })
+		_, err := compile(t, repo, backlogTestValidationInputsJSON)
+		if err == nil || !strings.Contains(err.Error(), "changed after inspection") {
+			t.Fatalf("changed input error = %v", err)
+		}
+	})
+
+	t.Run("count cap", func(t *testing.T) {
+		repo := writeBacklogTestRepo(t)
+		paths := make([]string, backlogValidationInputMaxFiles+1)
+		for index := range paths {
+			paths[index] = fmt.Sprintf("input-%03d.go", index)
+		}
+		raw, err := json.Marshal(paths)
+		if err != nil {
+			t.Fatal(err)
+		}
+		_, err = compile(t, repo, string(raw))
+		if err == nil || !strings.Contains(err.Error(), "file limit") {
+			t.Fatalf("count cap error = %v", err)
+		}
+	})
+
+	t.Run("aggregate byte cap", func(t *testing.T) {
+		repo := writeBacklogTestRepo(t)
+		path := filepath.Join(repo, "oversized.go")
+		if err := os.WriteFile(path, make([]byte, backlogValidationInputMaxBytes+1), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		_, err := compile(t, repo, `["oversized.go"]`)
+		if err == nil || !strings.Contains(err.Error(), "byte aggregate limit") {
+			t.Fatalf("byte cap error = %v", err)
+		}
+	})
+
+	t.Run("tampered aggregate fingerprint", func(t *testing.T) {
+		repo := writeBacklogTestRepo(t)
+		root, err := compile(t, repo, backlogTestValidationInputsJSON)
+		if err != nil {
+			t.Fatal(err)
+		}
+		requestPath := filepath.Join(root, "remote-request.json")
+		request := readJSONMap(requestPath)
+		mapValue(request["validation_input_manifest"])["fingerprint"] = "sha256:" + strings.Repeat("a", 64)
+		withoutFingerprint := copyMap(request)
+		delete(withoutFingerprint, "request_fingerprint")
+		markdown := renderBacklogRequestMarkdown(withoutFingerprint)
+		fingerprint, err := backlogRequestFingerprint(withoutFingerprint, markdown)
+		if err != nil {
+			t.Fatal(err)
+		}
+		request["request_fingerprint"] = fingerprint
+		raw, err := json.MarshalIndent(request, "", "  ")
+		if err != nil {
+			t.Fatal(err)
+		}
+		writeBacklogTestFile(t, requestPath, string(raw)+"\n")
+		writeBacklogTestFile(t, filepath.Join(root, "remote-request.md"), markdown)
+		if _, _, err := loadAndVerifyBacklogRequest(root); err == nil || !strings.Contains(err.Error(), "validation_input_manifest") {
+			t.Fatalf("tampered manifest error = %v", err)
+		}
+	})
+}
+
 func TestBacklogCompatibilityRejectsMalformedContractWithoutDispatchArtifact(t *testing.T) {
 	repo := writeBacklogTestRepo(t)
 	root := filepath.Join(t.TempDir(), "artifacts")
 	if err := inspectBacklogSelection(repo, backlogIndexPath, "TASK-015", "Implement only the bounded compatibility preflight slice.", backlogTestBaseline, root); err != nil {
 		t.Fatal(err)
 	}
-	if err := compileBacklogRemoteRequest(repo, root, "fixture-environment", "js/dev", `["packages/dorkpipe"]`, `["No live provider"]`, `["go test ./packages/dorkpipe/lib/orchestrationhelper"]`, `[]`); err != nil {
+	if err := compileBacklogRemoteRequest(repo, root, "fixture-environment", "js/dev", `["packages/dorkpipe"]`, `["No live provider"]`, `["go test ./packages/dorkpipe/lib/orchestrationhelper"]`, backlogTestValidationInputsJSON, `[]`); err != nil {
 		t.Fatal(err)
 	}
 	fixtureRoot := t.TempDir()
@@ -390,7 +604,7 @@ func TestBacklogFollowupRejectsTamperedImmutableRequest(t *testing.T) {
 	if err := inspectBacklogSelection(repo, backlogIndexPath, "TASK-015", "Implement only the bounded offline fixture dispatch slice.", backlogTestBaseline, root); err != nil {
 		t.Fatal(err)
 	}
-	if err := compileBacklogRemoteRequest(repo, root, "fixture-environment", "js/dev", `["packages/dorkpipe"]`, `["No live provider"]`, `["go test ./packages/dorkpipe/lib/orchestrationhelper"]`, `[]`); err != nil {
+	if err := compileBacklogRemoteRequest(repo, root, "fixture-environment", "js/dev", `["packages/dorkpipe"]`, `["No live provider"]`, `["go test ./packages/dorkpipe/lib/orchestrationhelper"]`, backlogTestValidationInputsJSON, `[]`); err != nil {
 		t.Fatal(err)
 	}
 	requestPath := filepath.Join(root, "remote-request.json")
@@ -969,6 +1183,11 @@ func TestBacklogValidationReceiptRejectsStaleMismatchedMalformedMissingAndTamper
 				payload["required_validation_fingerprint"] = "sha256:" + strings.Repeat("4", 64)
 			})
 		}},
+		{name: "wrong validation inputs", wantCode: "validation_receipt_binding_mismatch", mutate: func(t *testing.T, _, fixturePath string) {
+			mutateBacklogJSONFile(t, fixturePath, func(payload map[string]any) {
+				payload["validation_inputs_fingerprint"] = "sha256:" + strings.Repeat("9", 64)
+			})
+		}},
 		{name: "wrong compatibility", wantCode: "validation_receipt_binding_mismatch", mutate: func(t *testing.T, _, fixturePath string) {
 			mutateBacklogJSONFile(t, fixturePath, func(payload map[string]any) {
 				payload["compatibility_fingerprint"] = "sha256:" + strings.Repeat("5", 64)
@@ -1196,7 +1415,7 @@ func prepareBacklogPatchBoundaryTest(t *testing.T, patch, allowedPathsJSON strin
 	if err := inspectBacklogSelection(repo, backlogIndexPath, "TASK-015", "Implement only the bounded patch-boundary slice.", backlogTestBaseline, root); err != nil {
 		t.Fatal(err)
 	}
-	if err := compileBacklogRemoteRequest(repo, root, "fixture-environment", "js/dev", allowedPathsJSON, `["No live provider"]`, `["go test ./packages/dorkpipe/lib/orchestrationhelper"]`, `[]`); err != nil {
+	if err := compileBacklogRemoteRequest(repo, root, "fixture-environment", "js/dev", allowedPathsJSON, `["No live provider"]`, `["go test ./packages/dorkpipe/lib/orchestrationhelper"]`, backlogTestValidationInputsJSON, `[]`); err != nil {
 		t.Fatal(err)
 	}
 	if err := preflightBacklogRemoteCompatibility(root, writeBacklogCompatibilityFixture(t)); err != nil {
@@ -1254,7 +1473,7 @@ func prepareBacklogCompletionTest(t *testing.T) string {
 	if err := inspectBacklogSelection(repo, backlogIndexPath, "TASK-015", "Implement only the bounded completion candidate slice.", backlogTestBaseline, root); err != nil {
 		t.Fatal(err)
 	}
-	if err := compileBacklogRemoteRequest(repo, root, "fixture-environment", "js/dev", `["packages/dorkpipe"]`, `["No live provider"]`, `["go test ./packages/dorkpipe/lib/orchestrationhelper"]`, `[]`); err != nil {
+	if err := compileBacklogRemoteRequest(repo, root, "fixture-environment", "js/dev", `["packages/dorkpipe"]`, `["No live provider"]`, `["go test ./packages/dorkpipe/lib/orchestrationhelper"]`, backlogTestValidationInputsJSON, `[]`); err != nil {
 		t.Fatal(err)
 	}
 	if err := preflightBacklogRemoteCompatibility(root, writeBacklogCompatibilityFixture(t)); err != nil {
@@ -1445,6 +1664,10 @@ func writeBacklogValidationReceiptFixture(t *testing.T, root, observationID, rep
 	if err != nil {
 		t.Fatal(err)
 	}
+	_, validationInputsFingerprint, err := backlogValidationInputs(request)
+	if err != nil {
+		t.Fatal(err)
+	}
 	compatibility := readJSONMap(filepath.Join(root, "remote-adapter-compatibility.json"))
 	compatibilityFingerprint, err := backlogJSONFingerprint(compatibility)
 	if err != nil {
@@ -1484,7 +1707,8 @@ func writeBacklogValidationReceiptFixture(t *testing.T, root, observationID, rep
 		CompletionCandidateID: stringValue(mapValue(candidate["identity"])["candidate_id"]), CompletionCandidateFingerprint: candidateFingerprint,
 		AdapterIdentity: stringValue(adapter["identity"]), RemoteTaskID: stringValue(task["remote_task_id"]),
 		RequestFingerprint: stringValue(task["request_fingerprint"]), RequiredValidationFingerprint: requiredValidationFingerprint,
-		CompatibilityFingerprint: compatibilityFingerprint, DispatchFingerprint: stringValue(task["dispatch_fingerprint"]),
+		ValidationInputsFingerprint: validationInputsFingerprint,
+		CompatibilityFingerprint:    compatibilityFingerprint, DispatchFingerprint: stringValue(task["dispatch_fingerprint"]),
 		EnvironmentRef: stringValue(target["environment_ref"]), BranchRef: stringValue(target["branch_ref"]),
 		ObservedAt: observedAt, OpaqueReceipt: opaqueReceipt,
 	}
