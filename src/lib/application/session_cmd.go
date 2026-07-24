@@ -25,6 +25,8 @@ func cmdSession(args []string) error {
 		return cmdSessionInspect(args[1:])
 	case "switch":
 		return cmdSessionSwitch(args[1:])
+	case "checkpoint":
+		return cmdSessionCheckpoint(args[1:])
 	case "publish":
 		return cmdSessionPublish(args[1:])
 	case "worker-acquire":
@@ -32,7 +34,7 @@ func cmdSession(args []string) error {
 	case "worker-release":
 		return cmdSessionWorkerRelease(args[1:])
 	default:
-		return fmt.Errorf("unknown session subcommand %q (try: list, inspect, switch, publish, worker-acquire, or worker-release)", args[0])
+		return fmt.Errorf("unknown session subcommand %q (try: list, inspect, switch, checkpoint, publish, worker-acquire, or worker-release)", args[0])
 	}
 }
 
@@ -135,6 +137,85 @@ func cmdSessionSwitch(args []string) error {
 	fmt.Fprintf(os.Stdout, "Branch:  %s\n", session.Repo.SessionRef)
 	fmt.Fprintf(os.Stdout, "Workdir: %s\n", session.Storage.Workspace)
 	fmt.Fprintf(os.Stdout, "\n%s\n", shellChangeDirectoryCommand(session.Storage.Workspace))
+	return nil
+}
+
+func cmdSessionCheckpoint(args []string) error {
+	selector, rest, err := takeSessionSelector("checkpoint", args)
+	if err != nil {
+		return err
+	}
+	if selector == "" {
+		return nil
+	}
+	if sessionArgsHaveHelp(rest) {
+		fmt.Print(sessionUsageText)
+		return nil
+	}
+	workdir := ""
+	requestPath := ""
+	receiptPath := ""
+	jsonOut := false
+	for i := 0; i < len(rest); i++ {
+		switch rest[i] {
+		case "--workdir":
+			if i+1 >= len(rest) {
+				return fmt.Errorf("--workdir requires a path")
+			}
+			workdir = rest[i+1]
+			i++
+		case "--request":
+			if i+1 >= len(rest) {
+				return fmt.Errorf("--request requires a path")
+			}
+			requestPath = rest[i+1]
+			i++
+		case "--receipt":
+			if i+1 >= len(rest) {
+				return fmt.Errorf("--receipt requires a path")
+			}
+			receiptPath = rest[i+1]
+			i++
+		case "--json":
+			jsonOut = true
+		default:
+			if strings.HasPrefix(rest[i], "-") {
+				return fmt.Errorf("unknown option %s", rest[i])
+			}
+			return fmt.Errorf("unexpected argument %q", rest[i])
+		}
+	}
+	if strings.TrimSpace(requestPath) == "" || strings.TrimSpace(receiptPath) == "" {
+		return fmt.Errorf("session checkpoint requires --request and --receipt")
+	}
+	if workdir == "" {
+		workdir, err = os.Getwd()
+		if err != nil {
+			return err
+		}
+	}
+	session, err := infrastructure.LoadGitSession(workdir, selector)
+	if err != nil {
+		return err
+	}
+	result, err := infrastructure.CheckpointSessionFromRequest(session, requestPath, receiptPath)
+	if err != nil {
+		return err
+	}
+	if jsonOut {
+		encoder := json.NewEncoder(os.Stdout)
+		encoder.SetIndent("", "  ")
+		return encoder.Encode(map[string]any{
+			"receipt": result.Receipt, "idempotent": result.Idempotent, "recovered": result.Recovered,
+		})
+	}
+	fmt.Fprintf(os.Stdout, "Checkpoint: %s %s\n", result.Receipt.CheckpointID, result.Receipt.Commit)
+	fmt.Fprintf(os.Stdout, "Request:    %s\n", result.Receipt.RequestFingerprint)
+	if result.Idempotent {
+		fmt.Fprintln(os.Stdout, "Result:     already recorded")
+	} else if result.Recovered {
+		fmt.Fprintln(os.Stdout, "Result:     exact commit recovered")
+	}
 	return nil
 }
 
@@ -487,11 +568,13 @@ Usage:
   dockpipe session list [--workdir <path>] [--json]
   dockpipe session inspect <id|latest> [--workdir <path>] [--json]
   dockpipe session switch <id|latest> [--workdir <path>] [--json]
+  dockpipe session checkpoint <id|latest> [--workdir <path>] --request <checkpoint-request.json> --receipt <checkpoint-receipt.json> [--json]
   dockpipe session publish <id|latest> [--workdir <path>] [--remote origin] [--json]
   dockpipe session worker-acquire <id|latest> [--workdir <path>] --worker <worker-id> [--role edit] [--mode serialized|split-volume] [--ttl <seconds>] [--branch] [--json]
   dockpipe session worker-release <id|latest> [--workdir <path>] --worker <worker-id> [--status released] [--apply] [--json]
 
 Notes:
   switch prints the managed worktree path and shell cd command; a child process cannot change the parent shell cwd.
+  checkpoint accepts one strict exact-path runtime request, validates the session branch, parent, index, worktree, and postimages, and creates no push or publish action.
   publish creates a pre-publish checkpoint commit when needed, then pushes the session branch. It does not merge.
 `

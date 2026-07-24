@@ -418,6 +418,88 @@ case "$step_id" in
       "next_task_authorized=false"
     )
     ;;
+  checkout_checkpoint)
+    fixture="${DORKPIPE_BACKLOG_CHECKPOINT_FIXTURE:-}"
+    if [[ -z "$fixture" ]]; then
+      echo "DORKPIPE_BACKLOG_CHECKPOINT_FIXTURE is required for explicit local checkout-checkpoint approval" >&2
+      exit 1
+    fi
+    for required_name in DOCKPIPE_SESSION_ID DOCKPIPE_WORKSPACE_ID DOCKPIPE_SESSION_BRANCH DOCKPIPE_SESSION_WORKSPACE; do
+      if [[ -z "${!required_name:-}" ]]; then
+        echo "$required_name is required for a runtime-owned checkout checkpoint" >&2
+        exit 1
+      fi
+    done
+    consumer_root="${DORKPIPE_BACKLOG_CONSUMER_ROOT:-$ROOT}"
+    session_workspace="$DOCKPIPE_SESSION_WORKSPACE"
+    if command -v cygpath >/dev/null 2>&1; then
+      fixture="$(cygpath -m "$fixture")"
+      consumer_root="$(cygpath -m "$consumer_root")"
+      session_workspace="$(cygpath -m "$session_workspace")"
+    fi
+    trap - ERR
+    set +e
+    checkpoint_error="$(MSYS2_ARG_CONV_EXCL='*' "$helper_bin" backlog-request-checkpoint \
+      "$consumer_root" "$artifact_root" "$fixture" \
+      "$DOCKPIPE_SESSION_ID" "$DOCKPIPE_WORKSPACE_ID" "$DOCKPIPE_SESSION_BRANCH" "$session_workspace" 2>&1)"
+    checkpoint_rc=$?
+    set -e
+    trap backlog_remote_fail ERR
+    if (( checkpoint_rc != 0 )); then
+      printf '%s\n' "$checkpoint_error" >&2
+      checkpoint_reason_code="${checkpoint_error%%:*}"
+      dorkpipe_orchestrate_operation_fail "$unit" "$started_ms" "$checkpoint_error" \
+        "artifact_root=$artifact_root" "reason_code=$checkpoint_reason_code"
+      trap - ERR
+      exit "$checkpoint_rc"
+    fi
+    if [[ -f "$artifact_root/checkpoint-request.json" ]]; then
+      trap - ERR
+      set +e
+      runtime_error="$(MSYS2_ARG_CONV_EXCL='*' dockpipe session checkpoint "$DOCKPIPE_SESSION_ID" \
+        --workdir "$session_workspace" \
+        --request "$artifact_root/checkpoint-request.json" \
+        --receipt "$artifact_root/checkpoint-receipt.json" \
+        --json 2>&1)"
+      runtime_rc=$?
+      set -e
+      trap backlog_remote_fail ERR
+      if (( runtime_rc != 0 )); then
+        printf '%s\n' "$runtime_error" >&2
+        runtime_reason_code="${runtime_error%%:*}"
+        dorkpipe_orchestrate_operation_fail "$unit" "$started_ms" "$runtime_error" \
+          "artifact_root=$artifact_root" "reason_code=$runtime_reason_code"
+        trap - ERR
+        exit "$runtime_rc"
+      fi
+      completion_details=(
+        "approval_artifact=checkout-checkpoint-approval.json"
+        "request_artifact=checkpoint-request.json"
+        "receipt_artifact=checkpoint-receipt.json"
+        "authoritative_state=checkpoint_created"
+        "explicit_local_checkpoint_decision=approved"
+        "runtime_checkpoint_performed=true"
+        "exact_paths_only=true"
+      )
+    else
+      completion_details=(
+        "approval_artifact=checkout-checkpoint-approval.json"
+        "request_artifact=none"
+        "receipt_artifact=none"
+        "authoritative_state=applied_for_review"
+        "explicit_local_checkpoint_decision=rejected"
+        "runtime_checkpoint_performed=false"
+      )
+    fi
+    completion_details+=(
+      "package_git_invoked=false"
+      "push_authorized=false"
+      "publication_authorized=false"
+      "sync_authorized=false"
+      "merge_authorized=false"
+      "next_task_authorized=false"
+    )
+    ;;
   *)
     echo "unsupported backlog.remote workflow step: ${step_id:-<empty>}" >&2
     exit 1
