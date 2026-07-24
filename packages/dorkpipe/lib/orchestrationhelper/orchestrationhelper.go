@@ -330,10 +330,10 @@ func Run(args []string, env map[string]string, stdout, stderr io.Writer) error {
 		}
 		return inspectBacklogSelection(args[1], args[2], args[3], args[4], args[5], args[6])
 	case "backlog-compile":
-		if len(args) != 9 {
-			return errors.New("usage: orchestrate-helper backlog-compile <repo-root> <artifact-root> <environment-ref> <branch-ref> <allowed-paths-json> <hard-boundaries-json> <required-validation-json> <routed-sources-json>")
+		if len(args) != 10 {
+			return errors.New("usage: orchestrate-helper backlog-compile <repo-root> <artifact-root> <environment-ref> <branch-ref> <allowed-paths-json> <hard-boundaries-json> <required-validation-json> <validation-input-files-json> <routed-sources-json>")
 		}
-		return compileBacklogRemoteRequest(args[1], args[2], args[3], args[4], args[5], args[6], args[7], args[8])
+		return compileBacklogRemoteRequest(args[1], args[2], args[3], args[4], args[5], args[6], args[7], args[8], args[9])
 	case "backlog-compatibility-preflight":
 		if len(args) != 3 {
 			return errors.New("usage: orchestrate-helper backlog-compatibility-preflight <artifact-root> <fixture-root>")

@@ -24,6 +24,7 @@ dockpipe --package dorkpipe --workflow backlog.remote --workdir . \
   --var 'DORKPIPE_BACKLOG_ALLOWED_PATHS_JSON=["packages/dorkpipe","docs/agents/tasks/backlog-driven-remote-tasks.md"]' \
   --var 'DORKPIPE_BACKLOG_HARD_BOUNDARIES_JSON=["No src/lib or src/cmd changes","No live provider invocation"]' \
   --var 'DORKPIPE_BACKLOG_REQUIRED_VALIDATION_JSON=["go test ./packages/dorkpipe/lib/orchestrationhelper"]' \
+  --var "DORKPIPE_BACKLOG_VALIDATION_INPUTS_JSON=$(tr -d '\r\n' < packages/dorkpipe/tests/fixtures/backlog.remote/validation-input-files.json)" \
   --var 'DORKPIPE_BACKLOG_ROUTED_SOURCES_JSON=["docs/agents/packages/package-authoring.md","docs/agents/workflows/yaml-workflows.md"]' \
   --var DORKPIPE_BACKLOG_COMPLETION_FIXTURE=/reviewed/path/completion-candidate.json \
   --var DORKPIPE_BACKLOG_STATUS_FIXTURE=/reviewed/path/remote-status.json \
@@ -40,8 +41,17 @@ The workflow writes under the normal `backlog-remote` artifact scope:
 
 - `backlog-selection.json` records the exact open task, linked path, bounded slice, baseline, and
   source digests. A rejected inspection writes the same contract with a deterministic rejection code.
-- `remote-request.json` and `remote-request.md` bind the explicit target, allowed paths, hard
-  boundaries, validation, and exact source file digests under one request fingerprint.
+- `remote-request.json` and `remote-request.md` use `dorkpipe.remote-request/v2` and bind the explicit
+  target, allowed paths, hard boundaries, validation declaration, context-source digests, and a
+  separate complete validation-input manifest under one request fingerprint. `source_files` remains
+  request/context evidence, `scope.allowed_paths` remains patch-write scope, and only
+  `validation_input_files` grants bounded file authority for a later validation workspace.
+- Every validation input is an exact sorted repository-relative regular file with a SHA-256 and byte
+  count. Directories, globs, inferred walks, duplicates, unsorted declarations, absolute/drive/
+  traversal/backslash paths, linked or reparse-point ancestors, root escapes, generated locations,
+  secrets, Git internals, and provider-private paths fail closed. The complete list is capped at 256
+  files and 8 MiB aggregate. `validation_input_manifest` records `complete_list` semantics, count,
+  aggregate bytes, and a canonical fingerprint over the entire ordered list.
 - `remote-adapter-compatibility.json` binds the inspected adapter/CLI contract to that request
   fingerprint and the explicit environment/branch refs. It records required commands, documented
   inputs, receipt/task-ID support, the compatibility status and exact fail-closed reason, enabled
@@ -74,15 +84,18 @@ The workflow writes under the normal `backlog-remote` artifact scope:
   string is opaque, untrusted, non-authoritative, and uninterpreted. The artifact remains only at
   `state: completion_candidate`; validation-receipt retrieval, review, semantic interpretation,
   validation, apply, commit, push, and publication remain false.
-- `validation-receipt.json` records one receipt observation/replay identity bound to the canonical
+- `validation-receipt.json` uses `dorkpipe.validation-receipt/v2` and records one receipt
+  observation/replay identity bound to the canonical
   accepted result, diff, status, and candidate fingerprints; exact accepted patch SHA-256 and byte
   count; immutable task/request/compatibility/dispatch/adapter/target identity; and the exact
-  `required_validation` array plus its canonical fingerprint. Its receipt string is opaque,
+  `required_validation` array plus its canonical fingerprint and the immutable aggregate validation-
+  input fingerprint. Its receipt string is opaque,
   untrusted, non-authoritative, and uninterpreted. The required-validation declaration is preserved
   as request evidence only and is not executed. The artifact remains only at
   `state: completion_candidate`; review, validation execution, apply, commit, push, and publication
   remain false.
-- `patch-boundary.json` revalidates the complete immutable chain from `remote-request.json` and its
+- `patch-boundary.json` uses `dorkpipe.patch-boundary/v2` and revalidates the complete immutable
+  chain from `remote-request.json` and its
   exact markdown through compatibility, dispatch, candidate, status, diff and exact patch bytes,
   result, and validation receipt. It binds every accepted identity/fingerprint, the patch SHA-256
   and byte count, target and adapter refs, the exact immutable `allowed_paths` declaration and its
@@ -90,7 +103,8 @@ The workflow writes under the normal `backlog-remote` artifact scope:
   patch grammar and segment-aware lexical containment. It remains at `completion_candidate` and
   explicitly records that semantic correctness, validation, review readiness, apply, commit, push,
   and publication were not performed.
-- `patch-application.json` requires and revalidates that complete boundary before reading source
+- `patch-application.json` uses `dorkpipe.patch-application/v2` and requires and revalidates that
+  complete boundary before reading source
   files. It binds the canonical boundary and upstream identities, exact patch, request/compatibility/
   dispatch/task/adapter/target refs, baseline as an unverified request declaration, sorted changed
   paths, canonical per-file preimage/postimage manifests, and deterministic file/hunk counts. It
@@ -131,10 +145,11 @@ artifacts; duplicate or replay rejection cannot change the accepted result or an
 The fixture metadata is package-owned proof input, not a provider response, callback, signed receipt,
 hidden transcript, or undocumented Codex contract.
 
-Validation-receipt retrieval revalidates that complete chain plus the accepted result and the exact
-`required_validation` declaration without rereading backlog prose or the consumer checkout. An
+Validation-receipt retrieval revalidates that complete chain plus the accepted result, the exact
+`required_validation` declaration, and the complete validation-input fingerprint without rereading
+backlog prose or the consumer checkout. An
 observation at or before the result time is stale. Wrong result, diff, patch, status, candidate,
-task, request, required-validation, compatibility, dispatch, adapter, or target bindings; duplicate
+task, request, required-validation, validation-input, compatibility, dispatch, adapter, or target bindings; duplicate
 observation IDs; replayed replay IDs; malformed or missing fixtures; and tampered upstream artifacts
 or patch bytes fail before `validation-receipt.json` is written. Clean-chain rejection cannot create
 review, validation-execution, or apply artifacts; duplicate or replay rejection cannot change the
@@ -171,12 +186,20 @@ bytes; additions are copied exactly. No-newline markers are rejected fail-closed
 does not define an unambiguous end-of-file reconstruction rule. Any boundary-accepted form that this
 application grammar cannot apply fails before `patch-application.json` is written.
 
+The checked fixture's complete input list names `go.mod`, `go.sum`, the root embed metadata and
+minimal checked embed matches, every target-package Go and test file, the local `domain`,
+`infrastructure/packagebuild`, and `infrastructure` source dependencies, and the embedded workflow
+schema required by `go test ./packages/dorkpipe/lib/orchestrationhelper`. It does not use a directory,
+glob, dependency walk, whole-checkout copy, generated binary, or cache as authority.
+
 The receipt is idempotent only when the immutable chain, exact boundary and patch bytes, source
 preimages, and derived postimages all match. An existing malformed, tampered, or non-identical
 receipt is rejected and never overwritten or repaired. Mechanical success is not evidence that the
 change is correct, complete, secure, desirable, or likely to pass validation. The next bounded slice
-is isolated execution of the immutable `required_validation` declaration against the successfully
-applied temporary copy while still withholding `ready_for_review`.
+is isolated construction from the immutable `validation_input_files` list followed by execution of
+the immutable `required_validation` declaration against the successfully applied temporary copy,
+producing `validation-execution.json` while still withholding `ready_for_review`. This slice does not
+construct that workspace, execute validation, or create that artifact.
 
 The canonical backlog has no standardized readiness or ownership fields. Package test fixtures use
 an optional `dispatch_state` (`blocked`, `external_active`, or `closed`) only to prove deterministic

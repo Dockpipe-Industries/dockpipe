@@ -14,7 +14,7 @@ import (
 	"unicode/utf8"
 )
 
-const backlogPatchApplicationContract = "dorkpipe.patch-application/v1"
+const backlogPatchApplicationContract = "dorkpipe.patch-application/v2"
 
 var (
 	backlogApplicationHunk      = regexp.MustCompile(`^@@ -([0-9]+)(?:,([0-9]+))? \+([0-9]+)(?:,([0-9]+))? @@(?: .*)?$`)
@@ -439,7 +439,8 @@ func backlogPatchApplicationPayload(request, boundary map[string]any, boundaryFi
 		"completion_candidate": mapValue(boundary["completion_candidate"]),
 		"binding": map[string]any{
 			"request_fingerprint": stringValue(binding["request_fingerprint"]), "compatibility_fingerprint": stringValue(binding["compatibility_fingerprint"]),
-			"dispatch_fingerprint": stringValue(binding["dispatch_fingerprint"]), "remote_task_id": stringValue(binding["remote_task_id"]),
+			"validation_inputs_fingerprint": stringValue(binding["validation_inputs_fingerprint"]),
+			"dispatch_fingerprint":          stringValue(binding["dispatch_fingerprint"]), "remote_task_id": stringValue(binding["remote_task_id"]),
 			"adapter_identity": stringValue(binding["adapter_identity"]), "environment_ref": stringValue(binding["environment_ref"]),
 			"branch_ref": stringValue(binding["branch_ref"]), "baseline_commit": stringValue(selection["baseline_commit"]),
 			"baseline_commit_git_verified": false,
