@@ -13,6 +13,7 @@ tmp="$(dorkpipe_test_mktemp_dir "$REPO_ROOT")"
 consumer="$REPO_ROOT"
 application_consumer="$tmp/application-consumer"
 application_pristine="$tmp/application-pristine"
+application_expected="$tmp/application-expected"
 artifact_root="$tmp/artifacts"
 second_root="$tmp/artifacts-second"
 fixture_root="$REPO_ROOT/packages/dorkpipe/tests/fixtures/backlog.remote"
@@ -34,6 +35,8 @@ while IFS= read -r validation_input; do
   cp "$REPO_ROOT/$validation_input" "$application_consumer/$validation_input"
 done <"$fixture_root/validation-input-files.json"
 cp -R "$application_consumer" "$application_pristine"
+cp -R "$application_consumer" "$application_expected"
+printf '%s\n' '# Fixture package' 'Untrusted remote fixture change.' >"$application_expected/packages/dorkpipe/README.md"
 "$REAL_GIT" status --short --untracked-files=all >"$tmp/repo-status-before"
 (
   cd "$REPO_ROOT/packages/dorkpipe/lib"
@@ -77,6 +80,7 @@ export DORKPIPE_BACKLOG_DIFF_FIXTURE="$fixture_root/remote-diff.json"
 export DORKPIPE_BACKLOG_RESULT_FIXTURE="$fixture_root/remote-result.json"
 export DORKPIPE_BACKLOG_VALIDATION_RECEIPT_FIXTURE="$fixture_root/validation-receipt.json"
 export DORKPIPE_BACKLOG_SEMANTIC_REVIEW_FIXTURE="$fixture_root/semantic-review-decision.json"
+export DORKPIPE_BACKLOG_CHECKOUT_APPLICATION_FIXTURE="$fixture_root/checkout-application-approval.json"
 export DORKPIPE_BACKLOG_CONSUMER_ROOT="$application_consumer"
 export ROOT="$consumer"
 
@@ -95,7 +99,7 @@ done < <(
 )
 
 log="$tmp/workflow.err"
-for step in inspect compile compatibility dispatch completion_candidate status diff result validation_receipt patch_boundary patch_application validation_execution semantic_review; do
+for step in inspect compile compatibility dispatch completion_candidate status diff result validation_receipt patch_boundary patch_application validation_execution semantic_review checkout_application; do
   export DOCKPIPE_STEP_ID="$step"
   if ! bash "$DOCKPIPE_SCRIPT_DIR/backlog-remote.sh" 2>>"$log"; then
     cat "$log" >&2
@@ -103,7 +107,7 @@ for step in inspect compile compatibility dispatch completion_candidate status d
   fi
 done
 
-for step in inspect compile compatibility dispatch completion_candidate status diff result validation_receipt patch_boundary patch_application validation_execution semantic_review; do
+for step in inspect compile compatibility dispatch completion_candidate status diff result validation_receipt patch_boundary patch_application validation_execution semantic_review checkout_application; do
   grep -Fq "unit=backlog.$step status=start" "$log"
   grep -Fq "unit=backlog.$step status=done" "$log"
 done
@@ -159,14 +163,26 @@ grep -Fq "apply_authorized=false" "$log"
 grep -Fq "commit_authorized=false" "$log"
 grep -Fq "push_authorized=false" "$log"
 grep -Fq "publication_authorized=false" "$log"
-for name in backlog-selection.json remote-request.md remote-request.json remote-adapter-compatibility.json remote-task.json completion-candidate.json remote-status.json remote-diff.json remote-diff.patch remote-result.json validation-receipt.json patch-boundary.json patch-application.json validation-execution.json semantic-review-decision.json ready-for-review.json; do
+grep -Fq "unit=backlog.checkout_application status=done" "$log"
+grep -Fq "approval_artifact=checkout-application-approval.json" "$log"
+grep -Fq "artifact=checkout-application.json" "$log"
+grep -Fq "authoritative_state=applied_for_review" "$log"
+grep -Fq "explicit_local_checkout_decision=approved" "$log"
+grep -Fq "consumer_checkout_mutated=true" "$log"
+grep -Fq "consumer_postimages_verified=true" "$log"
+grep -Fq "rollback_plan_prepared=true" "$log"
+grep -Fq "cleanup_succeeded=true" "$log"
+grep -Fq "checkpoint_authorized=false" "$log"
+grep -Fq "sync_authorized=false" "$log"
+grep -Fq "next_task_authorized=false" "$log"
+for name in backlog-selection.json remote-request.md remote-request.json remote-adapter-compatibility.json remote-task.json completion-candidate.json remote-status.json remote-diff.json remote-diff.patch remote-result.json validation-receipt.json patch-boundary.json patch-application.json validation-execution.json semantic-review-decision.json ready-for-review.json checkout-application-approval.json checkout-application.json; do
   test -f "$artifact_root/$name"
 done
 grep -Fq '"status": "selected"' "$artifact_root/backlog-selection.json"
 grep -Fq '"contract_version": "dorkpipe.remote-request/v2"' "$artifact_root/remote-request.json"
 grep -Fq '"validation_input_files": [' "$artifact_root/remote-request.json"
 grep -Fq '"semantics": "complete_list"' "$artifact_root/remote-request.json"
-grep -Fq '"file_count": 94' "$artifact_root/remote-request.json"
+grep -Fq '"file_count": 96' "$artifact_root/remote-request.json"
 grep -Fq '"validation_inputs_fingerprint": "sha256:' "$artifact_root/validation-receipt.json"
 grep -Fq '"validation_inputs_fingerprint": "sha256:' "$artifact_root/patch-boundary.json"
 grep -Fq '"validation_inputs_fingerprint": "sha256:' "$artifact_root/patch-application.json"
@@ -242,12 +258,12 @@ grep -Fq '"contract_version": "dorkpipe.validation-receipt/v2"' "$artifact_root/
 grep -Fq '"state": "completion_candidate"' "$artifact_root/validation-receipt.json"
 grep -Fq '"observation_id": "receipt_fixture_observation_015"' "$artifact_root/validation-receipt.json"
 grep -Fq '"observation_id": "result_fixture_observation_015"' "$artifact_root/validation-receipt.json"
-grep -Fq '"fingerprint": "sha256:1aad165c5b51e7491219e4b28f11c853eec2fbcca6a60e2987280b7cff27b327"' "$artifact_root/validation-receipt.json"
+grep -Fq '"fingerprint": "sha256:8e60f1e20a3997489440fad4814266b9944af31a8bae711f2e1eff0e2302d39e"' "$artifact_root/validation-receipt.json"
 grep -Fq '"patch_sha256": "sha256:4027895ace152e2d66d11143b9e7841adb68e8d625977b7c123508f221114b1b"' "$artifact_root/validation-receipt.json"
 grep -Fq '"required_validation": [' "$artifact_root/validation-receipt.json"
 grep -Fq '"go test ./packages/dorkpipe/lib/orchestrationhelper"' "$artifact_root/validation-receipt.json"
 grep -Fq '"fingerprint": "sha256:1dc90fee068fa97e7f2fafae5ac63498e0ace0c0260e06dd759ea164761c9b0c"' "$artifact_root/validation-receipt.json"
-grep -Fq '"compatibility_fingerprint": "sha256:182f72e5bbf6fb90076699d30987b4733374562b6112afa4fc7beef327ae73ab"' "$artifact_root/validation-receipt.json"
+grep -Fq '"compatibility_fingerprint": "sha256:78c8ca027c9f2941ae6adbaf5c6484cc56c5752bf9acd20667ba2fbb2f6ee1ca"' "$artifact_root/validation-receipt.json"
 grep -Fq '"opaque_receipt": "fixture-owned opaque validation receipt evidence"' "$artifact_root/validation-receipt.json"
 grep -Fq '"trusted": false' "$artifact_root/validation-receipt.json"
 grep -Fq '"authoritative": false' "$artifact_root/validation-receipt.json"
@@ -333,10 +349,22 @@ for name in semantic-review-decision.json ready-for-review.json; do
   grep -Fq '"publication": false' "$artifact_root/$name"
   grep -Fq '"start_another_backlog_item": false' "$artifact_root/$name"
 done
+grep -Fq '"contract_version": "dorkpipe.checkout-application-approval/v1"' "$artifact_root/checkout-application-approval.json"
+grep -Fq '"application_scope": "accepted_changed_paths_exact_patch_once"' "$artifact_root/checkout-application-approval.json"
+grep -Fq '"contract_version": "dorkpipe.checkout-application/v1"' "$artifact_root/checkout-application.json"
+grep -Fq '"state": "applied_for_review"' "$artifact_root/checkout-application.json"
+grep -Fq '"consumer_checkout_applied": true' "$artifact_root/checkout-application.json"
+grep -Fq '"consumer_postimages_verified": true' "$artifact_root/checkout-application.json"
+grep -Fq '"cleanup_succeeded": true' "$artifact_root/checkout-application.json"
+for capability in apply_to_checkout commit push publication checkpoint sync start_another_backlog_item; do
+  grep -Fq "\"$capability\": false" "$artifact_root/checkout-application.json"
+done
 test ! -e "$invocation_log"
 "$REAL_GIT" status --short --untracked-files=all >"$tmp/repo-status-after"
 cmp "$tmp/repo-status-before" "$tmp/repo-status-after"
-diff -r "$application_pristine" "$application_consumer"
+diff -r "$application_expected" "$application_consumer"
+rm -rf "$application_consumer"
+cp -R "$application_pristine" "$application_consumer"
 
 MSYS2_ARG_CONV_EXCL='*' "$helper_bin" backlog-inspect \
   "$consumer" docs/agents/task-index.yaml TASK-015 \

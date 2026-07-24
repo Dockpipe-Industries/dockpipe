@@ -7,6 +7,8 @@
   "go.work",
   "packages/dorkpipe/lib/go.mod",
   "packages/dorkpipe/lib/go.sum",
+  "packages/dorkpipe/lib/orchestrationhelper/backlogcheckoutapplication.go",
+  "packages/dorkpipe/lib/orchestrationhelper/backlogcheckoutapplication_test.go",
   "packages/dorkpipe/lib/orchestrationhelper/backlogpatchapplication.go",
   "packages/dorkpipe/lib/orchestrationhelper/backlogpatchapplication_test.go",
   "packages/dorkpipe/lib/orchestrationhelper/backlogremote.go",

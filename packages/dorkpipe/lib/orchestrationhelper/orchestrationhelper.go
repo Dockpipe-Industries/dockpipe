@@ -389,6 +389,11 @@ func Run(args []string, env map[string]string, stdout, stderr io.Writer) error {
 			return errors.New("usage: orchestrate-helper backlog-record-semantic-review-decision <artifact-root> <fixture.json>")
 		}
 		return recordBacklogSemanticReviewDecision(args[1], args[2])
+	case "backlog-apply-reviewed-patch":
+		if len(args) != 4 {
+			return errors.New("usage: orchestrate-helper backlog-apply-reviewed-patch <consumer-root> <artifact-root> <approval-fixture.json>")
+		}
+		return applyBacklogPatchToCheckout(args[1], args[2], args[3])
 	case "backlog-followup":
 		if len(args) != 2 {
 			return errors.New("usage: orchestrate-helper backlog-followup <artifact-root>")

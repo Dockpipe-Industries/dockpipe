@@ -364,6 +364,60 @@ case "$step_id" in
       "publication_authorized=false"
     )
     ;;
+  checkout_application)
+    fixture="${DORKPIPE_BACKLOG_CHECKOUT_APPLICATION_FIXTURE:-}"
+    if [[ -z "$fixture" ]]; then
+      echo "DORKPIPE_BACKLOG_CHECKOUT_APPLICATION_FIXTURE is required for explicit local checkout-application approval" >&2
+      exit 1
+    fi
+    consumer_root="${DORKPIPE_BACKLOG_CONSUMER_ROOT:-$ROOT}"
+    if command -v cygpath >/dev/null 2>&1; then
+      fixture="$(cygpath -m "$fixture")"
+      consumer_root="$(cygpath -m "$consumer_root")"
+    fi
+    trap - ERR
+    set +e
+    checkout_error="$(MSYS2_ARG_CONV_EXCL='*' "$helper_bin" backlog-apply-reviewed-patch "$consumer_root" "$artifact_root" "$fixture" 2>&1)"
+    checkout_rc=$?
+    set -e
+    trap backlog_remote_fail ERR
+    if (( checkout_rc != 0 )); then
+      printf '%s\n' "$checkout_error" >&2
+      checkout_reason_code="${checkout_error%%:*}"
+      dorkpipe_orchestrate_operation_fail "$unit" "$started_ms" "$checkout_error" \
+        "artifact_root=$artifact_root" "reason_code=$checkout_reason_code"
+      trap - ERR
+      exit "$checkout_rc"
+    fi
+    if [[ -f "$artifact_root/checkout-application.json" ]]; then
+      completion_details=(
+        "approval_artifact=checkout-application-approval.json"
+        "artifact=checkout-application.json"
+        "authoritative_state=applied_for_review"
+        "explicit_local_checkout_decision=approved"
+        "consumer_checkout_mutated=true"
+        "consumer_postimages_verified=true"
+        "rollback_plan_prepared=true"
+        "cleanup_succeeded=true"
+      )
+    else
+      completion_details=(
+        "approval_artifact=checkout-application-approval.json"
+        "artifact=none"
+        "authoritative_state=ready_for_review"
+        "explicit_local_checkout_decision=rejected"
+        "consumer_checkout_mutated=false"
+      )
+    fi
+    completion_details+=(
+      "commit_authorized=false"
+      "push_authorized=false"
+      "publication_authorized=false"
+      "checkpoint_authorized=false"
+      "sync_authorized=false"
+      "next_task_authorized=false"
+    )
+    ;;
   *)
     echo "unsupported backlog.remote workflow step: ${step_id:-<empty>}" >&2
     exit 1
