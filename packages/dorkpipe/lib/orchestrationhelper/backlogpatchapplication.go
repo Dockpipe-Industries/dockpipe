@@ -174,7 +174,7 @@ func validateBacklogConsumerRoot(root string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("consumer root cannot be inspected: %w", err)
 	}
-	if info.Mode()&os.ModeSymlink != 0 || !info.IsDir() {
+	if backlogFileInfoIsLinkOrReparse(info) || !info.IsDir() {
 		return "", errors.New("consumer root must be a directory and must not be a symlink")
 	}
 	return abs, nil
@@ -197,8 +197,8 @@ func readBacklogConsumerSource(root, rel string) ([]byte, error) {
 		if err != nil {
 			return nil, fmt.Errorf("changed source path %q cannot be inspected: %w", rel, err)
 		}
-		if info.Mode()&os.ModeSymlink != 0 {
-			return nil, fmt.Errorf("changed source path %q contains a symlink", rel)
+		if backlogFileInfoIsLinkOrReparse(info) {
+			return nil, fmt.Errorf("changed source path %q contains a filesystem link or reparse point", rel)
 		}
 		if index < len(parts)-1 && !info.IsDir() {
 			return nil, fmt.Errorf("changed source path %q has a non-directory ancestor", rel)

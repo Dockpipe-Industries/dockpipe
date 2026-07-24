@@ -1,9 +1,9 @@
 {
-  "contract_version": "dorkpipe.semantic-review-decision-fixture/v1",
-  "decision_id": "semantic_review_decision_015",
-  "replay_identity": "semantic_review_replay_015",
+  "contract_version": "dorkpipe.checkout-application-approval-fixture/v1",
+  "approval_id": "checkout_application_approval_015",
+  "replay_identity": "checkout_application_replay_015",
   "decision": "approved",
-  "review_scope": "semantic_correctness_of_bound_candidate",
+  "application_scope": "accepted_changed_paths_exact_patch_once",
   "task_id": "TASK-015",
   "remote_task_id": "remote_fixture_task_015",
   "request_fingerprint": "sha256:9986efad35cb885af12b70d90dedd3b0b2e2d4af64168bc1cd8d9a645d949203",
@@ -26,10 +26,13 @@
   "patch_boundary_fingerprint": "sha256:9b9d8b0169a7da390fbfdb397804b4d7bee82fdb5bc391ddba1fcc84db3bc718",
   "patch_application_fingerprint": "sha256:56afed5667f12af8c75518808d64c6d45a28f264a744fadc667bbd70162ff4f1",
   "validation_execution_fingerprint": "sha256:3918d3064d6872c4683e60b84ad5d8ae87291fabb6f8929ca71016b75193581f",
+  "semantic_review_decision_id": "semantic_review_decision_015",
+  "semantic_review_fingerprint": "sha256:8573101d0016d92c895107208152805983c16792683e88006ee501e731a2196a",
+  "readiness_fingerprint": "sha256:db43bedacc4bb6ab707d61c9f0f9210867bfb51518efc68be9c3d7d6d54b00a0",
   "patch_sha256": "sha256:4027895ace152e2d66d11143b9e7841adb68e8d625977b7c123508f221114b1b",
   "patch_bytes": 236,
   "changed_paths": [
     "packages/dorkpipe/README.md"
   ],
-  "validation_status": "passed"
+  "consumer_preimage_fingerprint": "sha256:0f122a5c61b19e6d2aa1be205a7e496343cabda7b28c7d4ee231dd3d1826e603"
 }

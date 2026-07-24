@@ -6,9 +6,10 @@ description: >-
   validation-receipt evidence, then mechanically verify accepted patch structure and lexical
   allowed-path containment, apply it only to an isolated temporary copy, and execute the immutable
   required validation in an exact-input temporary workspace, then record one explicit local
-  semantic-review decision and emit readiness only for an approved, passed candidate without
-  invoking a live provider, mutating the consumer checkout, applying, committing, pushing, or
-  publishing.
+  semantic-review decision and emit readiness only for an approved, passed candidate, then require
+  a separate explicit local decision before rollback-safe application of the exact accepted patch
+  to the consumer checkout, without invoking a live provider, committing, pushing, checkpointing,
+  syncing, publishing, or selecting another task.
 
 docker_preflight: false
 platforms: [windows, deb]
@@ -41,6 +42,7 @@ vars:
   DORKPIPE_BACKLOG_RESULT_FIXTURE: ""
   DORKPIPE_BACKLOG_VALIDATION_RECEIPT_FIXTURE: ""
   DORKPIPE_BACKLOG_SEMANTIC_REVIEW_FIXTURE: ""
+  DORKPIPE_BACKLOG_CHECKOUT_APPLICATION_FIXTURE: ""
   DORKPIPE_BACKLOG_CONSUMER_ROOT: ""
 
 steps:
@@ -117,6 +119,12 @@ steps:
     run: scripts/dorkpipe/backlog-remote.sh
 
   - id: semantic_review
+    kind: host
+    cwd: repo
+    scopes: { source: repo, artifacts: artifacts }
+    run: scripts/dorkpipe/backlog-remote.sh
+
+  - id: checkout_application
     kind: host
     cwd: repo
     scopes: { source: repo, artifacts: artifacts }

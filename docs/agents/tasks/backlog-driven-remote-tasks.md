@@ -80,10 +80,12 @@ result observation, followed by one fixture-backed opaque validation-receipt obs
 artifact-only mechanical patch-structure and allowed-path boundary verification plus isolated
 temporary-copy mechanical application and isolated execution of the immutable required-validation
 declaration, followed by one explicit fixture-backed local semantic-review decision. Only an
-affirmative decision bound to passed validation emits a separate readiness artifact. It does not
-create a scheduler, live-poll, infer approval from provider/result/receipt/validation evidence,
-mutate the consumer checkout, apply the patch there, auto-commit, auto-push, publish, or create a
-cross-task orchestrator.
+affirmative decision bound to passed validation emits a separate readiness artifact. A second,
+separately identified fixture-backed local decision may then authorize one exact rollback-safe
+application to the consumer checkout and emit an `applied_for_review` receipt. It does not create a
+scheduler, live-poll, infer either approval from provider/result/receipt/validation evidence,
+auto-commit, auto-push, checkpoint, sync, publish, select another task, or create a cross-task
+orchestrator.
 
 ## Current Status (2026-07-23)
 
@@ -204,7 +206,7 @@ orchestration-helper commands:
   `dorkpipe.validation-execution/v1` evidence. A valid existing artifact is accepted after
   artifact-only revalidation without the consumer checkout or command re-execution; a malformed,
   tampered, or non-identical artifact is rejected and never overwritten.
-- A fresh validation workspace contains only the exact union of the request's 94 declared validation
+- A fresh validation workspace contains only the exact union of the request's 96 declared validation
   inputs and the boundary's sorted changed-path overlay. Every input is reread from the consumer root
   with canonical-path, regular-file, link/reparse, containment, byte-count, and SHA-256 checks; the
   overlay preimage and reproduced postimage must match `patch-application/v2` exactly.
@@ -240,6 +242,39 @@ orchestration-helper commands:
   revalidation. Rejected decisions restart without creating readiness; duplicate decision IDs,
   replayed replay IDs, changed decisions under an accepted identity, conflicting artifacts, and any
   chain or derived-artifact tampering fail closed without overwrite or repair.
+- `backlog.checkout_application` consumes only a canonically valid `ready-for-review.json` and one
+  strict `dorkpipe.checkout-application-approval-fixture/v1` decision. It requires separate approval
+  and replay identities, one exact `approved` or `rejected` value, the fixed
+  `accepted_changed_paths_exact_patch_once` scope, and exact readiness, semantic decision,
+  execution, application, boundary, receipt, result, diff, status, candidate, task, request,
+  compatibility, dispatch, adapter, target, baseline, patch, changed-path, and consumer-preimage
+  bindings. Readiness and semantic approval alone cannot authorize checkout mutation.
+- `checkout-application-approval.json` uses
+  `dorkpipe.checkout-application-approval/v1`, records the explicit bounded local decision and a
+  canonical artifact fingerprint, and grants only the one exact application when approved. Commit,
+  push, publication, checkpoint, sync, and next-task capabilities remain false. A rejected decision
+  is deterministic, performs no mutation, and cannot create a successful application receipt.
+- Approved application revalidates the complete immutable chain and exact patch bytes before source
+  access, then requires every accepted path to be an existing contained regular non-link/reparse
+  file. The complete consumer set must match either the exact accepted preimage manifest or the exact
+  accepted postimage manifest; stale, unexpected, and mixed sets fail closed without repair.
+- Before first mutation the helper derives every exact postimage from the accepted patch, verifies
+  it against `patch-application/v2`, and prepares same-directory postimage and rollback files with
+  the original supported mode. It replaces only accepted changed paths, verifies all resulting
+  bytes, removes temporary/rollback files, and writes no receipt until verification and cleanup
+  succeed. Any in-process failure after mutation begins restores and verifies every exact preimage;
+  rollback and cleanup failures are distinct and never successful.
+- `checkout-application.json` uses `dorkpipe.checkout-application/v1`, records package-local
+  `state: applied_for_review`, and binds the approval fingerprint, complete readiness identity,
+  exact pre/post manifests, sorted applied paths, file/hunk counts, supported mode preservation,
+  cleanup, and consumer verification. It explicitly grants no further apply, commit, push,
+  publication, checkpoint, sync, or next-task authority.
+- Restart is deterministic: a valid receipt requires the complete exact postimage set; an approved
+  artifact without a receipt may recover the same receipt only from the complete exact postimage
+  set; the complete preimage set performs the approved operation once; mixed/unknown state rejects;
+  and rejected approval restarts without mutation. Duplicate/replayed approval identities, changed
+  decisions, conflicting artifacts, and tampered upstream or derived artifacts reject without
+  overwrite.
 
 The validation-source binding was added after the prior application slice exposed a contract
 contradiction: the request's `source_files` contained only context documents, `allowed_paths` bound
@@ -336,8 +371,8 @@ unchanged. Operation-result evidence records success and deterministic stale, du
 mismatch, malformed, missing, and tampered reason codes.
 
 The complete offline workflow invokes no Codex, Git, Docker, SSH, network, live status/diff/result/
-receipt polling, automatic semantic interpretation, checkout apply, commit, push, or publication
-surface. Existing selection, request, compatibility, fixture dispatch, follow-up,
+receipt polling, automatic semantic interpretation, commit, push, publication, checkpoint, sync, or
+next-task surface. Existing selection, request, compatibility, fixture dispatch, follow-up,
 completion-candidate, status, diff, patch, result, validation-receipt, and validation-execution artifacts remain
 byte-for-byte deterministic, and software.dev/Example Brain behavior is preserved. Patch-boundary
 proofs additionally show deterministic and idempotent output, artifact-only restart after consumer
@@ -356,14 +391,20 @@ lifecycle action. Semantic-review proofs add strict approved/rejected parsing, e
 review-scope binding, failed-validation gating, approved/rejected artifact-only restart,
 deterministic decision/readiness artifacts, duplicate/replay/change rejection, existing-artifact
 tamper rejection, and explicit denial of apply, commit, push, publication, and next-task authority.
+Checkout-application proofs add separate approved/rejected parsing, exact readiness/preimage/scope
+binding, readiness-only and semantic-only denial, exact multi-file/multi-hunk checkout mutation,
+stale/missing/non-regular/link/reparse/escape/mixed-state rejection, forced post-mutation rollback,
+distinct rollback and cleanup failures, exact postimage recovery and idempotent rerun, duplicate/
+replay/change rejection, upstream and derived-artifact tamper rejection, unrelated-file and
+upstream-evidence preservation, and explicit denial of Git, publication, synchronization, and
+next-task authority.
 
-The single next bounded TASK-015 slice is an explicit governed checkout-application request that
-consumes only a valid `ready-for-review.json`, revalidates the complete immutable chain and exact
-consumer preimages, requires separate local apply approval, applies only the accepted patch to the
-consumer checkout with rollback-safe failure handling, and emits an application receipt while still
-performing no commit, push, publication, or next-task selection. A live Codex Cloud adapter remains
-blocked until a future installed CLI documents a machine-readable receipt with a stable opaque task
-ID.
+The single next bounded TASK-015 slice is a separate runtime-owned commit/checkpoint request that
+consumes only a valid `checkout-application.json`, revalidates its approval and exact consumer
+postimages, requires explicit human authority, and creates no push, publication, sync, or next-task
+authority. It must use the existing runtime Git lifecycle boundary; raw Git in the package helper or
+workflow remains forbidden. A live Codex Cloud adapter remains blocked until a future installed CLI
+documents a machine-readable receipt with a stable opaque task ID.
 
 ## Boundaries
 
@@ -434,6 +475,14 @@ ID.
 - `ready-for-review.json`: emitted only for approved review plus passed validation; binds the accepted
   decision fingerprint and complete candidate identity, records only `state: ready_for_review`, and
   grants no authority to apply, commit, push, publish, or start another backlog item.
+- `checkout-application-approval.json`: explicit approved/rejected local application decision,
+  separate approval/replay identities, fixed application scope, complete readiness/chain binding,
+  exact patch and changed paths, canonical consumer preimage manifest, canonical fingerprint, and
+  false commit/push/publication/checkpoint/sync/next-task capabilities.
+- `checkout-application.json`: emitted only after approved exact checkout application or provable
+  complete-postimage recovery; binds approval and readiness fingerprints, complete chain identity,
+  exact pre/post manifests, paths, file/hunk counts, rollback preparation, mode preservation,
+  cleanup, consumer verification, and no remaining lifecycle authority.
 - operation-result events for inspect, compile, compatibility, dispatch, completion-candidate
   ingestion/rejection, status, diff, result, validation receipt, patch-boundary success/rejection,
   temporary-copy application success/rejection, validation-execution success/rejection,
@@ -490,6 +539,13 @@ ID.
   rejected decisions without readiness, support artifact-only restart, reject duplicate/replay/
   changed identities and tampered existing artifacts without overwrite, and grant no apply, commit,
   push, publication, or next-task capability.
+- Checkout-application proofs require a distinct strict local decision and valid readiness,
+  revalidate the complete immutable chain and exact preimages before mutation, apply only accepted
+  paths and bytes, verify exact postimages, roll back every mutation on in-process failure, report
+  rollback/cleanup failures distinctly, support deterministic complete-postimage recovery and
+  idempotent restart, reject mixed or tampered state without repair, preserve unrelated files and
+  upstream evidence, and grant no commit, push, publication, checkpoint, sync, or next-task
+  capability.
 - A restart can recover identity solely from the immutable request, compatibility, and
   `remote-task.json` artifacts; it does not need the consumer checkout, a cron worker, or a mutable
   prose status record.
