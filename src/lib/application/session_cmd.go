@@ -233,6 +233,11 @@ func cmdSessionPublish(args []string) error {
 	}
 	workdir := ""
 	remote := "origin"
+	requestPath := ""
+	receiptPath := ""
+	checkpointRequestPath := ""
+	checkpointReceiptPath := ""
+	remoteExplicit := false
 	jsonOut := false
 	for i := 0; i < len(rest); i++ {
 		switch rest[i] {
@@ -247,6 +252,31 @@ func cmdSessionPublish(args []string) error {
 				return fmt.Errorf("--remote requires a name")
 			}
 			remote = rest[i+1]
+			remoteExplicit = true
+			i++
+		case "--request":
+			if i+1 >= len(rest) {
+				return fmt.Errorf("--request requires a path")
+			}
+			requestPath = rest[i+1]
+			i++
+		case "--receipt":
+			if i+1 >= len(rest) {
+				return fmt.Errorf("--receipt requires a path")
+			}
+			receiptPath = rest[i+1]
+			i++
+		case "--checkpoint-request":
+			if i+1 >= len(rest) {
+				return fmt.Errorf("--checkpoint-request requires a path")
+			}
+			checkpointRequestPath = rest[i+1]
+			i++
+		case "--checkpoint-receipt":
+			if i+1 >= len(rest) {
+				return fmt.Errorf("--checkpoint-receipt requires a path")
+			}
+			checkpointReceiptPath = rest[i+1]
 			i++
 		case "--json":
 			jsonOut = true
@@ -267,6 +297,34 @@ func cmdSessionPublish(args []string) error {
 	session, err := infrastructure.LoadGitSession(workdir, selector)
 	if err != nil {
 		return err
+	}
+	strictRequest := requestPath != "" || receiptPath != "" || checkpointRequestPath != "" || checkpointReceiptPath != ""
+	if strictRequest {
+		if requestPath == "" || receiptPath == "" || checkpointRequestPath == "" || checkpointReceiptPath == "" {
+			return fmt.Errorf("strict session publish requires --request, --receipt, --checkpoint-request, and --checkpoint-receipt")
+		}
+		if remoteExplicit {
+			return fmt.Errorf("--remote cannot be combined with a strict publication request")
+		}
+		result, publishErr := infrastructure.PublishSessionFromRequest(session, checkpointRequestPath, checkpointReceiptPath, requestPath, receiptPath)
+		if jsonOut && result != nil {
+			enc := json.NewEncoder(os.Stdout)
+			enc.SetIndent("", "  ")
+			_ = enc.Encode(map[string]any{"receipt": result.Receipt, "idempotent": result.Idempotent, "recovered": result.Recovered})
+		}
+		if publishErr != nil {
+			return publishErr
+		}
+		if !jsonOut {
+			fmt.Fprintf(os.Stdout, "Published:  %s -> %s %s\n", result.Receipt.SourceCommit, result.Receipt.RemoteName, result.Receipt.DestinationRef)
+			fmt.Fprintf(os.Stdout, "Request:    %s\n", result.Receipt.RequestFingerprint)
+			if result.Idempotent {
+				fmt.Fprintln(os.Stdout, "Result:     already recorded")
+			} else if result.Recovered {
+				fmt.Fprintln(os.Stdout, "Result:     exact remote ref recovered")
+			}
+		}
+		return nil
 	}
 	cp, err := infrastructure.CheckpointSession(session, "pre-publish checkpoint")
 	if err != nil {
@@ -570,11 +628,13 @@ Usage:
   dockpipe session switch <id|latest> [--workdir <path>] [--json]
   dockpipe session checkpoint <id|latest> [--workdir <path>] --request <checkpoint-request.json> --receipt <checkpoint-receipt.json> [--json]
   dockpipe session publish <id|latest> [--workdir <path>] [--remote origin] [--json]
+  dockpipe session publish <id|latest> [--workdir <path>] --checkpoint-request <checkpoint-request.json> --checkpoint-receipt <checkpoint-receipt.json> --request <publication-request.json> --receipt <publication-receipt.json> [--json]
   dockpipe session worker-acquire <id|latest> [--workdir <path>] --worker <worker-id> [--role edit] [--mode serialized|split-volume] [--ttl <seconds>] [--branch] [--json]
   dockpipe session worker-release <id|latest> [--workdir <path>] --worker <worker-id> [--status released] [--apply] [--json]
 
 Notes:
   switch prints the managed worktree path and shell cd command; a child process cannot change the parent shell cwd.
   checkpoint accepts one strict exact-path runtime request, validates the session branch, parent, index, worktree, and postimages, and creates no push or publish action.
-  publish creates a pre-publish checkpoint commit when needed, then pushes the session branch. It does not merge.
+  publish with a strict request validates an existing exact checkpoint and pushes its immutable commit to one fully qualified branch ref without changing upstream configuration.
+  publish without a request creates a pre-publish checkpoint commit when needed, then pushes the session branch. It does not merge.
 `

@@ -9,8 +9,9 @@ description: >-
   semantic-review decision and emit readiness only for an approved, passed candidate, then require
   a separate explicit local decision before rollback-safe application of the exact accepted patch
   to the consumer checkout, then require one separately approved exact-path request before the
-  DockPipe runtime creates a checkpoint, without invoking a live provider, pushing, syncing,
-  publishing, merging, or selecting another task.
+  DockPipe runtime creates a checkpoint, then require one distinct approved request before the
+  runtime publishes that exact commit to one reviewed remote branch ref, without invoking a live
+  provider, syncing, merging, or selecting another task.
 
 docker_preflight: false
 platforms: [windows, deb]
@@ -54,6 +55,7 @@ vars:
   DORKPIPE_BACKLOG_SEMANTIC_REVIEW_FIXTURE: ""
   DORKPIPE_BACKLOG_CHECKOUT_APPLICATION_FIXTURE: ""
   DORKPIPE_BACKLOG_CHECKPOINT_FIXTURE: ""
+  DORKPIPE_BACKLOG_PUBLICATION_FIXTURE: ""
   DORKPIPE_BACKLOG_CONSUMER_ROOT: ""
 
 steps:
@@ -142,6 +144,12 @@ steps:
     run: scripts/dorkpipe/backlog-remote.sh
 
   - id: checkout_checkpoint
+    kind: host
+    cwd: repo
+    scopes: { source: repo, artifacts: artifacts }
+    run: scripts/dorkpipe/backlog-remote.sh
+
+  - id: checkout_publication
     kind: host
     cwd: repo
     scopes: { source: repo, artifacts: artifacts }

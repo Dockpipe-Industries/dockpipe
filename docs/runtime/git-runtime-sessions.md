@@ -62,6 +62,7 @@ dockpipe session inspect <id|latest>
 dockpipe session switch <id|latest>
 dockpipe session checkpoint <id|latest> --request <checkpoint-request.json> --receipt <checkpoint-receipt.json>
 dockpipe session publish <id|latest>
+dockpipe session publish <id|latest> --checkpoint-request <checkpoint-request.json> --checkpoint-receipt <checkpoint-receipt.json> --request <publication-request.json> --receipt <publication-receipt.json>
 ```
 
 `switch` prints the managed worktree path and a shell `cd` command because a child process cannot
@@ -75,6 +76,20 @@ runtime session/workspace identity, exact branch and parent, empty index, comple
 contained regular non-link postimages, and sorted exact paths before staging or committing. It
 stages only those paths and writes `dockpipe.session-checkpoint-receipt/v1` plus runtime checkpoint
 metadata. The request grants no push, publication, sync, merge, or branch-switch authority.
+
+The strict `publish` request mode is a separate machine-facing boundary for one already-created
+checkpoint. It accepts `dockpipe.session-publication-request/v1`, revalidates the exact checkpoint
+request/receipt and runtime metadata, requires the approved attached session branch at the exact
+clean checkpoint commit, hashes and compares the effective configured push destination without
+persisting its URL, and accepts only one fully qualified `refs/heads/...` destination. The runtime
+pushes the immutable commit object with one non-force `<commit>:<ref>` refspec and does not create a
+checkpoint, set upstream configuration, fetch, sync, merge, force, delete, or publish tags.
+
+`dockpipe.session-publication-receipt/v1` records only sanitized request/checkpoint/session/commit/
+remote-identity/ref bindings. A valid receipt is idempotent. If a successful push is followed by a
+metadata or receipt failure, recovery may observe only the exact approved remote/ref and succeeds
+only when it equals the approved commit; this is bounded recovery, not a claim of exactly-once
+network delivery.
 
 Names below are conceptual Go/service operations behind that shape.
 
@@ -96,6 +111,10 @@ The local implementation exposes this strict request-file adapter beside the pol
 `CheckpointSession` operation so a package or resolver can request one checkpoint without receiving
 raw Git authority. The request is provider-neutral and contains no package, workflow, provider, or
 backlog fields.
+
+The publication request-file adapter likewise sits beside the older policy-driven `PublishSession`.
+It is provider-neutral and contains no package, workflow, backlog, provider, credential-bearing URL,
+or resolved-authentication field.
 
 Required properties:
 

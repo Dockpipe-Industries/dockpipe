@@ -82,6 +82,7 @@ export DORKPIPE_BACKLOG_VALIDATION_RECEIPT_FIXTURE="$fixture_root/validation-rec
 export DORKPIPE_BACKLOG_SEMANTIC_REVIEW_FIXTURE="$fixture_root/semantic-review-decision.json"
 export DORKPIPE_BACKLOG_CHECKOUT_APPLICATION_FIXTURE="$fixture_root/checkout-application-approval.json"
 export DORKPIPE_BACKLOG_CHECKPOINT_FIXTURE="$fixture_root/checkout-checkpoint-approval.json"
+export DORKPIPE_BACKLOG_PUBLICATION_FIXTURE="$fixture_root/checkout-publication-approval.json"
 export DORKPIPE_BACKLOG_CONSUMER_ROOT="$application_consumer"
 export ROOT="$consumer"
 
@@ -109,13 +110,21 @@ for step in inspect compile compatibility dispatch completion_candidate status d
 done
 
 grep -Fq '  - id: checkout_checkpoint' "$DOCKPIPE_WORKFLOW_CONFIG"
+grep -Fq '  - id: checkout_publication' "$DOCKPIPE_WORKFLOW_CONFIG"
 grep -Fq 'checkpoint: manual' "$DOCKPIPE_WORKFLOW_CONFIG"
 grep -Fq 'publish: none' "$DOCKPIPE_WORKFLOW_CONFIG"
 grep -Fq 'backlog-request-checkpoint' "$DOCKPIPE_SCRIPT_DIR/backlog-remote.sh"
 grep -Fq 'dockpipe session checkpoint' "$DOCKPIPE_SCRIPT_DIR/backlog-remote.sh"
+grep -Fq 'backlog-request-publication' "$DOCKPIPE_SCRIPT_DIR/backlog-remote.sh"
+grep -Fq 'dockpipe session publish' "$DOCKPIPE_SCRIPT_DIR/backlog-remote.sh"
 if rg -n 'exec\.Command\("git"|runCommandString\([^\n]*"git"' \
   "$REPO_ROOT/packages/dorkpipe/lib/orchestrationhelper/backlogcheckoutcheckpoint.go"; then
   echo "package checkpoint helper invokes Git directly" >&2
+  exit 1
+fi
+if rg -n 'exec\.Command\("git"|runCommandString\([^\n]*"git"' \
+  "$REPO_ROOT/packages/dorkpipe/lib/orchestrationhelper/backlogcheckoutpublication.go"; then
+  echo "package publication helper invokes Git directly" >&2
   exit 1
 fi
 
@@ -194,7 +203,7 @@ grep -Fq '"status": "selected"' "$artifact_root/backlog-selection.json"
 grep -Fq '"contract_version": "dorkpipe.remote-request/v2"' "$artifact_root/remote-request.json"
 grep -Fq '"validation_input_files": [' "$artifact_root/remote-request.json"
 grep -Fq '"semantics": "complete_list"' "$artifact_root/remote-request.json"
-grep -Fq '"file_count": 99' "$artifact_root/remote-request.json"
+grep -Fq '"file_count": 104' "$artifact_root/remote-request.json"
 grep -Fq '"validation_inputs_fingerprint": "sha256:' "$artifact_root/validation-receipt.json"
 grep -Fq '"validation_inputs_fingerprint": "sha256:' "$artifact_root/patch-boundary.json"
 grep -Fq '"validation_inputs_fingerprint": "sha256:' "$artifact_root/patch-application.json"
@@ -270,12 +279,12 @@ grep -Fq '"contract_version": "dorkpipe.validation-receipt/v2"' "$artifact_root/
 grep -Fq '"state": "completion_candidate"' "$artifact_root/validation-receipt.json"
 grep -Fq '"observation_id": "receipt_fixture_observation_015"' "$artifact_root/validation-receipt.json"
 grep -Fq '"observation_id": "result_fixture_observation_015"' "$artifact_root/validation-receipt.json"
-grep -Fq '"fingerprint": "sha256:aefe92a9568b34b8ff87922b80722fe9b478caab23b47cc73460efc62188f9b4"' "$artifact_root/validation-receipt.json"
+grep -Fq '"fingerprint": "sha256:3a9c04e28d1e5374aa04ec75907ebbd8b67c9574b9eb76ffd53ac6d0beb1c0df"' "$artifact_root/validation-receipt.json"
 grep -Fq '"patch_sha256": "sha256:4027895ace152e2d66d11143b9e7841adb68e8d625977b7c123508f221114b1b"' "$artifact_root/validation-receipt.json"
 grep -Fq '"required_validation": [' "$artifact_root/validation-receipt.json"
 grep -Fq '"go test ./packages/dorkpipe/lib/orchestrationhelper"' "$artifact_root/validation-receipt.json"
 grep -Fq '"fingerprint": "sha256:1dc90fee068fa97e7f2fafae5ac63498e0ace0c0260e06dd759ea164761c9b0c"' "$artifact_root/validation-receipt.json"
-grep -Fq '"compatibility_fingerprint": "sha256:b4f9bd20e1be6df0181433a683312e7b70b723dc28891eba25b5619a9241df2e"' "$artifact_root/validation-receipt.json"
+grep -Fq '"compatibility_fingerprint": "sha256:8366a5716742f5ab0d08609f790755f36aff1f267f617bd4c85d4d992e8d7205"' "$artifact_root/validation-receipt.json"
 grep -Fq '"opaque_receipt": "fixture-owned opaque validation receipt evidence"' "$artifact_root/validation-receipt.json"
 grep -Fq '"trusted": false' "$artifact_root/validation-receipt.json"
 grep -Fq '"authoritative": false' "$artifact_root/validation-receipt.json"

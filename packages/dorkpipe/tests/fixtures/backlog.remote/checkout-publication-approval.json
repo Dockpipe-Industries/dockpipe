@@ -1,0 +1,21 @@
+{
+  "contract_version": "dorkpipe.checkout-publication-approval-fixture/v1",
+  "approval_id": "checkout_publication_approval_015",
+  "replay_identity": "checkout_publication_replay_015",
+  "decision": "approved",
+  "publication_scope": "approved_checkpoint_exact_commit_exact_branch_ref_once",
+  "task_id": "TASK-015",
+  "immutable_chain_fingerprint": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+  "checkpoint_approval_fingerprint": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+  "checkpoint_request_fingerprint": "sha256:3333333333333333333333333333333333333333333333333333333333333333",
+  "checkpoint_receipt_fingerprint": "sha256:4444444444444444444444444444444444444444444444444444444444444444",
+  "runtime_session_id": "runtime_publication_session_015",
+  "runtime_workspace_id": "runtime_publication_workspace_015",
+  "runtime_session_branch": "dorkpipe/session-publication-fixture",
+  "source_commit": "5555555555555555555555555555555555555555",
+  "source_parent": "6666666666666666666666666666666666666666",
+  "remote_name": "reviewed",
+  "remote_identity": "sha256:7777777777777777777777777777777777777777777777777777777777777777",
+  "destination_ref": "refs/heads/review/task-015",
+  "publication_reason": "publish the separately approved reviewed checkpoint"
+}

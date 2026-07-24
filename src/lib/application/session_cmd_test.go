@@ -125,6 +125,101 @@ func TestSessionCheckpointCommandUsesControlledRuntimeRequest(t *testing.T) {
 	}
 }
 
+func TestSessionPublishCommandStrictRequestPublishesWithoutCheckpointOrUpstream(t *testing.T) {
+	repo := initSessionCommandRepo(t)
+	session, err := infrastructure.CreateSessionBranch(infrastructure.GitSessionRequest{
+		WorkspaceID: "publication-cli", SourceDir: repo, Mode: "managed", BranchPrefix: "ai",
+		SessionID: "publication-cli-session", Checkpoint: "manual", Publish: "none",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer removeSessionCommandWorktree(t, repo, session.Storage.Workspace)
+	parent, _ := infrastructure.GitRevParse(session.Storage.Workspace, "HEAD")
+	postimage := []byte("published from cli\n")
+	if err := os.WriteFile(filepath.Join(session.Storage.Workspace, "README.md"), postimage, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	checkpointRequest, err := infrastructure.FinalizeControlledCheckpointRequest(infrastructure.ControlledCheckpointRequest{
+		ContractVersion: infrastructure.ControlledCheckpointRequestContract, RequestID: "cli-publication-checkpoint",
+		AuthorizationFingerprint: sessionCommandSHA256([]byte("checkpoint approval")), SessionID: session.SessionID,
+		WorkspaceID: session.WorkspaceID, ExpectedBranch: session.Repo.SessionRef, ExpectedParent: strings.TrimSpace(parent),
+		CheckpointScope: infrastructure.ControlledCheckpointScope, Message: "checkpoint(runtime): CLI publication request",
+		Paths: []string{"README.md"}, Postimages: []infrastructure.ControlledCheckpointPostimage{{Path: "README.md", SHA256: sessionCommandSHA256(postimage), Bytes: int64(len(postimage))}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	artifactRoot := t.TempDir()
+	checkpointRequestPath := filepath.Join(artifactRoot, "checkpoint-request.json")
+	checkpointReceiptPath := filepath.Join(artifactRoot, "checkpoint-receipt.json")
+	if err := infrastructure.WriteControlledCheckpointRequest(checkpointRequestPath, checkpointRequest); err != nil {
+		t.Fatal(err)
+	}
+	checkpointResult, err := infrastructure.CheckpointSessionFromRequest(session, checkpointRequestPath, checkpointReceiptPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	remote := filepath.Join(t.TempDir(), "reviewed.git")
+	if out, err := exec.Command("git", "init", "--bare", remote).CombinedOutput(); err != nil {
+		t.Fatalf("init bare: %v\n%s", err, out)
+	}
+	if out, err := exec.Command("git", "-C", session.Storage.Workspace, "remote", "add", "reviewed", remote).CombinedOutput(); err != nil {
+		t.Fatalf("add remote: %v\n%s", err, out)
+	}
+	remoteIdentity, err := infrastructure.ControlledPublicationRemoteIdentity(session.Storage.Workspace, "reviewed")
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, checkpointReceiptFP, err := infrastructure.ValidateControlledCheckpointReceiptForSession(session, checkpointRequestPath, checkpointReceiptPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	publicationRequest, err := infrastructure.FinalizeControlledPublicationRequest(infrastructure.ControlledPublicationRequest{
+		ContractVersion: infrastructure.ControlledPublicationRequestContract, RequestID: "cli-publication-request",
+		AuthorizationFingerprint:     sessionCommandSHA256([]byte("publication approval")),
+		CheckpointRequestFingerprint: checkpointRequest.RequestFingerprint, CheckpointReceiptFingerprint: checkpointReceiptFP,
+		SessionID: session.SessionID, WorkspaceID: session.WorkspaceID, ExpectedBranch: session.Repo.SessionRef,
+		SourceCommit: checkpointResult.Receipt.Commit, SourceParent: checkpointResult.Receipt.Parent,
+		RemoteName: "reviewed", RemoteIdentity: remoteIdentity, DestinationRef: "refs/heads/review/cli",
+		PublicationScope: infrastructure.ControlledPublicationScope, Reason: "publish exact CLI checkpoint",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	publicationRequestPath := filepath.Join(artifactRoot, "publication-request.json")
+	publicationReceiptPath := filepath.Join(artifactRoot, "publication-receipt.json")
+	if err := infrastructure.WriteControlledPublicationRequest(publicationRequestPath, publicationRequest); err != nil {
+		t.Fatal(err)
+	}
+	out, err := captureStdout(t, func() error {
+		return cmdSession([]string{"publish", session.SessionID, "--workdir", repo,
+			"--checkpoint-request", checkpointRequestPath, "--checkpoint-receipt", checkpointReceiptPath,
+			"--request", publicationRequestPath, "--receipt", publicationReceiptPath, "--json"})
+	})
+	if err != nil {
+		t.Fatalf("strict publish: %v", err)
+	}
+	var payload map[string]any
+	if err := json.Unmarshal([]byte(out), &payload); err != nil {
+		t.Fatalf("publish JSON: %v\n%s", err, out)
+	}
+	receipt := payload["receipt"].(map[string]any)
+	if receipt["source_commit"] != checkpointResult.Receipt.Commit || receipt["destination_ref"] != "refs/heads/review/cli" {
+		t.Fatalf("publication receipt = %+v", receipt)
+	}
+	remoteCommit, err := exec.Command("git", "--git-dir", remote, "rev-parse", "refs/heads/review/cli").Output()
+	if err != nil || strings.TrimSpace(string(remoteCommit)) != checkpointResult.Receipt.Commit {
+		t.Fatalf("remote commit = %q, %v", remoteCommit, err)
+	}
+	if count, _ := exec.Command("git", "-C", session.Storage.Workspace, "rev-list", "--count", strings.TrimSpace(parent)+"..HEAD").Output(); strings.TrimSpace(string(count)) != "1" {
+		t.Fatalf("strict publication created another checkpoint: %q", count)
+	}
+	if upstream, _ := exec.Command("git", "-C", session.Storage.Workspace, "config", "--get", "branch."+session.Repo.SessionRef+".remote").Output(); strings.TrimSpace(string(upstream)) != "" {
+		t.Fatalf("strict publication configured upstream: %q", upstream)
+	}
+}
+
 func sessionCommandSHA256(raw []byte) string {
 	digest := sha256.Sum256(raw)
 	return fmt.Sprintf("sha256:%x", digest)

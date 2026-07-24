@@ -305,6 +305,41 @@ orchestration-helper commands:
   restores the previously empty index and leaves HEAD unchanged. Commit, metadata, and receipt
   failures are distinct; metadata/receipt failure after commit preserves the exact commit for
   deterministic recovery and never reports success prematurely.
+- `backlog.checkout_publication` consumes only that valid runtime checkpoint receipt plus a fourth,
+  independent `dorkpipe.checkout-publication-approval-fixture/v1` decision. It revalidates the
+  complete immutable chain through checkout application and checkpoint, including exact paths,
+  postimages, commit parent, trailers, request fingerprint, runtime checkpoint metadata, clean
+  session workspace, and exact session/workspace/branch identity before recording
+  `dorkpipe.checkout-publication-approval/v1`.
+- The publication decision binds the exact task and canonical immutable-chain fingerprint, exact
+  checkpoint approval/request/receipt fingerprints, immutable source commit and parent, runtime
+  session/workspace/branch, one configured remote name, a SHA-256 identity of its effective push
+  destination, one fully qualified `refs/heads/...` destination, bounded reason, distinct approval
+  and replay identities, and fixed `approved_checkpoint_exact_commit_exact_branch_ref_once` scope.
+  Rejected decisions create no request and perform no push.
+- Approved decisions emit provider-neutral `dockpipe.session-publication-request/v1`. The generic
+  strict `dockpipe session publish` request mode is the only component that invokes Git: it requires
+  the exact checkpoint request and receipt, clean attached session branch at the approved HEAD,
+  unchanged commit/parent/paths/postimages/trailers/metadata, and an effective configured push
+  destination whose hashed identity matches the approval. It pushes one non-force refspec formed as
+  `<approved-commit>:<approved-fully-qualified-ref>` and never uses a branch source, `-u`, force,
+  wildcard, delete, tag, mirror, all-refs, or multiple-ref behavior.
+- Requests and receipts persist only the bounded remote name and SHA-256 destination identity, never
+  the effective URL, credentials, resolved authentication, or raw push output. Authentication stays
+  in the existing host-side runtime Git boundary. Package helpers contain no raw Git or network
+  operation and the workflow keeps `publish: none`; the separate request is the sole authority.
+- `dockpipe.session-publication-receipt/v1` binds the approval/request fingerprints, checkpoint
+  request/receipt/checkpoint identities, session/workspace/branch, immutable commit/parent, remote
+  identity, destination ref, fixed scope, exact-refspec mode, no-force/no-upstream/no-credential
+  facts, and false checkpoint/sync/fetch/merge/force actions. Runtime metadata stores the same
+  sanitized receipt.
+- A valid existing receipt is revalidated and returned without another push. Before mutation, a
+  failure leaves local Git and the destination unchanged. Push rejection is distinct and cannot
+  create a success receipt. Metadata or receipt failure after a successful push reports that remote
+  mutation distinctly; restart may recover only after a bounded `ls-remote --refs` observation proves
+  the one approved destination equals the exact approved commit while every local binding still
+  matches. This does not promise impossible exactly-once transport semantics across an unobservable
+  network failure.
 
 The validation-source binding was added after the prior application slice exposed a contract
 contradiction: the request's `source_files` contained only context documents, `allowed_paths` bound
@@ -438,12 +473,24 @@ metadata/receipt failures, exact-commit recovery, idempotent restart, existing-a
 replay rejection, byte-for-byte upstream preservation, and explicit denial of push, publication,
 sync, merge, and next-task authority.
 
-The single next bounded TASK-015 slice is a separately approved runtime-owned publication request
-that consumes only a valid `dockpipe.session-checkpoint-receipt/v1`, binds one exact commit and
-session branch to one reviewed remote/ref destination, and permits only one push/publication action.
-It must not sync, merge, switch branches, alter the checkpoint, select another task, or give package
-code raw Git authority. A live Codex Cloud adapter remains blocked until a future installed CLI
-documents a machine-readable receipt with a stable opaque task ID.
+Checkout-publication proofs add a fourth independent approved/rejected decision, full immutable
+chain and exact checkpoint revalidation, canonical approval/request/receipt contracts, strict
+session/workspace/branch/HEAD/clean-state binding, credential-free effective-remote identity, one
+fully qualified branch destination, immutable commit-source refspec, local-bare-remote-only push,
+no automatic checkpoint or upstream configuration, malformed/ambiguous/tag/wildcard/delete/force/
+multi-ref rejection, pre-push and non-fast-forward failure, distinct post-push metadata/receipt
+failure, exact-ref recovery, receipt idempotence and tamper rejection, byte-for-byte upstream
+preservation, and explicit denial of sync, fetch, merge, task completion, and next-task authority.
+
+The single next bounded TASK-015 slice is a separately approved, runtime-owned fast-forward
+integration request that consumes only a valid publication receipt and a distinct human review
+decision, binds the exact published commit and reviewed source/destination refs, and permits at most
+one non-force fast-forward of one fully qualified integration ref. It must not infer approval from
+publication, create another commit, force, merge with a generated merge commit, close TASK-015,
+select another task, or give package code raw Git authority. If provider-neutral review evidence and
+safe post-mutation recovery cannot be proven, stop at that architecture gate. A live Codex Cloud
+adapter remains blocked until a future installed CLI documents a machine-readable receipt with a
+stable opaque task ID.
 
 ## Boundaries
 
@@ -533,11 +580,25 @@ documents a machine-readable receipt with a stable opaque task ID.
   request/authorization fingerprints, checkpoint/session/workspace, branch, parent, resulting
   commit, exact committed paths/postimages, runtime ownership, and false push/publication/sync/merge
   actions.
+- `checkout-publication-approval.json`: separate approved/rejected local publication decision,
+  approval/replay identities, complete immutable-chain and checkpoint fingerprints, exact runtime
+  identities and commit/parent, reviewed remote name plus credential-free destination identity, one
+  fully qualified destination branch ref, fixed scope, canonical fingerprint, and permission only
+  to submit one exact runtime request when approved.
+- `publication-request.json`: provider-neutral `dockpipe.session-publication-request/v1` binding the
+  approval, checkpoint request/receipt, session/workspace/branch, immutable source commit/parent,
+  reviewed remote identity, exact destination ref, bounded reason, fixed scope, and canonical
+  request fingerprint.
+- `publication-receipt.json`: runtime-owned `dockpipe.session-publication-receipt/v1` binding the
+  request and checkpoint, exact commit/parent/remote/ref, sanitized exact-refspec result, runtime
+  ownership, no credential persistence, no force/upstream configuration, and false checkpoint/sync/
+  fetch/merge/force actions.
 - operation-result events for inspect, compile, compatibility, dispatch, completion-candidate
   ingestion/rejection, status, diff, result, validation receipt, patch-boundary success/rejection,
   temporary-copy application success/rejection, validation-execution success/rejection,
   semantic-review decision/readiness success/rejection, checkout application, controlled checkpoint
-  request/runtime success/rejection, and failure.
+  request/runtime success/rejection, controlled publication request/runtime success/rejection, and
+  failure.
 
 ## Acceptance Criteria
 
@@ -605,6 +666,15 @@ documents a machine-readable receipt with a stable opaque task ID.
   only those paths; it must restore the index after pre-commit failure, distinguish commit from
   metadata/receipt failure, recover only the exact resulting commit, remain idempotent after
   success, and grant no push, publication, sync, merge, or next-task authority.
+- Checkout-publication proofs require the exact accepted checkpoint approval/request/receipt,
+  complete immutable chain, exact commit/parent/paths/postimages/trailers, and a fourth strict local
+  decision. Rejected, malformed, ambiguous, replayed, changed, stale, mismatched, or tampered
+  decisions cannot create a request or push. The generic runtime must verify the exact session,
+  workspace, branch, HEAD, clean worktree/index, unchanged checkpoint metadata, effective remote
+  identity, and one fully qualified branch destination before pushing the immutable commit object as
+  one non-force refspec; it must never checkpoint, set upstream, force, delete, tag, sync, fetch,
+  merge, or select another task. Restart must revalidate a receipt without pushing again, or recover
+  only after the exact approved remote/ref is safely observed at the exact commit.
 - A restart can recover identity solely from the immutable request, compatibility, and
   `remote-task.json` artifacts; it does not need the consumer checkout, a cron worker, or a mutable
   prose status record.

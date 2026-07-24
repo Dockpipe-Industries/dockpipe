@@ -500,6 +500,92 @@ case "$step_id" in
       "next_task_authorized=false"
     )
     ;;
+  checkout_publication)
+    fixture="${DORKPIPE_BACKLOG_PUBLICATION_FIXTURE:-}"
+    if [[ -z "$fixture" ]]; then
+      echo "DORKPIPE_BACKLOG_PUBLICATION_FIXTURE is required for explicit local checkout-publication approval" >&2
+      exit 1
+    fi
+    for required_name in DOCKPIPE_SESSION_ID DOCKPIPE_WORKSPACE_ID DOCKPIPE_SESSION_BRANCH DOCKPIPE_SESSION_WORKSPACE; do
+      if [[ -z "${!required_name:-}" ]]; then
+        echo "$required_name is required for a runtime-owned checkout publication" >&2
+        exit 1
+      fi
+    done
+    consumer_root="${DORKPIPE_BACKLOG_CONSUMER_ROOT:-$ROOT}"
+    session_workspace="$DOCKPIPE_SESSION_WORKSPACE"
+    if command -v cygpath >/dev/null 2>&1; then
+      fixture="$(cygpath -m "$fixture")"
+      consumer_root="$(cygpath -m "$consumer_root")"
+      session_workspace="$(cygpath -m "$session_workspace")"
+    fi
+    trap - ERR
+    set +e
+    publication_error="$(MSYS2_ARG_CONV_EXCL='*' "$helper_bin" backlog-request-publication \
+      "$consumer_root" "$artifact_root" "$fixture" \
+      "$DOCKPIPE_SESSION_ID" "$DOCKPIPE_WORKSPACE_ID" "$DOCKPIPE_SESSION_BRANCH" "$session_workspace" 2>&1)"
+    publication_rc=$?
+    set -e
+    trap backlog_remote_fail ERR
+    if (( publication_rc != 0 )); then
+      printf '%s\n' "$publication_error" >&2
+      publication_reason_code="${publication_error%%:*}"
+      dorkpipe_orchestrate_operation_fail "$unit" "$started_ms" "$publication_error" \
+        "artifact_root=$artifact_root" "reason_code=$publication_reason_code"
+      trap - ERR
+      exit "$publication_rc"
+    fi
+    if [[ -f "$artifact_root/publication-request.json" ]]; then
+      trap - ERR
+      set +e
+      runtime_error="$(MSYS2_ARG_CONV_EXCL='*' dockpipe session publish "$DOCKPIPE_SESSION_ID" \
+        --workdir "$session_workspace" \
+        --checkpoint-request "$artifact_root/checkpoint-request.json" \
+        --checkpoint-receipt "$artifact_root/checkpoint-receipt.json" \
+        --request "$artifact_root/publication-request.json" \
+        --receipt "$artifact_root/publication-receipt.json" \
+        --json 2>&1)"
+      runtime_rc=$?
+      set -e
+      trap backlog_remote_fail ERR
+      if (( runtime_rc != 0 )); then
+        printf '%s\n' "$runtime_error" >&2
+        runtime_reason_code="${runtime_error%%:*}"
+        dorkpipe_orchestrate_operation_fail "$unit" "$started_ms" "$runtime_error" \
+          "artifact_root=$artifact_root" "reason_code=$runtime_reason_code"
+        trap - ERR
+        exit "$runtime_rc"
+      fi
+      completion_details=(
+        "approval_artifact=checkout-publication-approval.json"
+        "request_artifact=publication-request.json"
+        "receipt_artifact=publication-receipt.json"
+        "authoritative_state=checkpoint_published"
+        "explicit_local_publication_decision=approved"
+        "runtime_publication_performed=true"
+        "exact_commit_source=true"
+        "exact_destination_ref=true"
+      )
+    else
+      completion_details=(
+        "approval_artifact=checkout-publication-approval.json"
+        "request_artifact=none"
+        "receipt_artifact=none"
+        "authoritative_state=checkpoint_created"
+        "explicit_local_publication_decision=rejected"
+        "runtime_publication_performed=false"
+      )
+    fi
+    completion_details+=(
+      "package_git_invoked=false"
+      "checkpoint_authorized=false"
+      "sync_authorized=false"
+      "fetch_authorized=false"
+      "merge_authorized=false"
+      "force_authorized=false"
+      "next_task_authorized=false"
+    )
+    ;;
   *)
     echo "unsupported backlog.remote workflow step: ${step_id:-<empty>}" >&2
     exit 1
