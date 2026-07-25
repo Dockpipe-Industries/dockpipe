@@ -17,7 +17,7 @@ import (
 const (
 	backlogValidationExecutionContract = "dorkpipe.validation-execution/v1"
 	backlogValidationCommandLimit      = 16
-	backlogValidationCommandTimeout    = 2 * time.Minute
+	backlogValidationCommandTimeout    = 4 * time.Minute
 )
 
 var (

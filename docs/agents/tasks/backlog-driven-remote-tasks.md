@@ -5,7 +5,8 @@
 Provide package-owned DorkPipe workflows for two related but distinct remote-execution paths:
 
 1. execute one explicitly selected, decision-ready backlog item as a bounded remote Codex task;
-2. execute one DorkPipe task graph across user-owned DockPipe nodes and compatibility surfaces.
+2. execute one DorkPipe task graph across user-owned DockPipe nodes through a transport-neutral
+   broker contract and pluggable edge adapters.
 
 The first path turns an item from `docs/agents/task-index.yaml` and its linked task document into a
 bounded remote Codex task. The second schedules implementation, validation, repair, and aggregation
@@ -482,15 +483,62 @@ multi-ref rejection, pre-push and non-fast-forward failure, distinct post-push m
 failure, exact-ref recovery, receipt idempotence and tamper rejection, byte-for-byte upstream
 preservation, and explicit denial of sync, fetch, merge, task completion, and next-task authority.
 
-The single next bounded TASK-015 slice is a separately approved, runtime-owned fast-forward
-integration request that consumes only a valid publication receipt and a distinct human review
-decision, binds the exact published commit and reviewed source/destination refs, and permits at most
-one non-force fast-forward of one fully qualified integration ref. It must not infer approval from
-publication, create another commit, force, merge with a generated merge commit, close TASK-015,
-select another task, or give package code raw Git authority. If provider-neutral review evidence and
-safe post-mutation recovery cannot be proven, stop at that architecture gate. A live Codex Cloud
-adapter remains blocked until a future installed CLI documents a machine-readable receipt with a
-stable opaque task ID.
+The completed remote-backlog lifecycle stops at publication. A separately approved, runtime-owned
+fast-forward integration request remains a later bounded follow-up: it must consume only a valid
+publication receipt and distinct human review, bind exact source/destination refs, permit at most one
+non-force fast-forward, and grant package code no raw Git authority. It is not the current priority.
+
+The package-owned `node-execution.v1` contract and in-process fake broker are now implemented in
+`packages/dorkpipe/lib/orchestrationhelper/nodeexecution.go`. The strict JSON schemas are:
+
+| Contract | Schema |
+| --- | --- |
+| Machine identity | `dorkpipe.node-execution.machine-identity/v1` |
+| Capability snapshot | `dorkpipe.node-execution.capability-snapshot/v1` |
+| Execution request | `dorkpipe.node-execution.execution-request/v1` |
+| Task lease | `dorkpipe.node-execution.task-lease/v1` |
+| Event envelope | `dorkpipe.node-execution.event-envelope/v1` |
+| Cancellation and acknowledgement | `dorkpipe.node-execution.cancellation/v1`, `dorkpipe.node-execution.cancellation-ack/v1` |
+| Artifact manifest | `dorkpipe.node-execution.artifact-manifest/v1` |
+| Execution receipt | `dorkpipe.node-execution.execution-receipt/v1` |
+
+The fake broker binds one stable operation and immutable request fingerprint to the enrolled machine,
+one immutable capability snapshot, one expiring attempt/lease, one cancellation identity, ordered
+event cursors, and one operation-keyed receipt. Connection IDs are process-local presence evidence;
+disconnect and reconnect neither issue a lease nor execute, complete, cancel, retry, or transfer the
+operation. Capability refresh appends a new snapshot and cannot mutate an accepted request or lease.
+
+Every successful transition publishes a new immutable, fingerprint-linked broker-state JSON artifact
+through the package atomic writer. Reopening scans and revalidates the complete artifact chain before
+returning the accepted cursor or terminal receipt. Exact request, event, cancellation, capability,
+and receipt deliveries are idempotent. Malformed or unknown JSON, non-canonical payloads, changed
+duplicates, ordering gaps/regressions, stale/expired/differently bound leases, conflicting receipts,
+and tampered capability, request, event, artifact-manifest, receipt, or state fingerprints fail closed
+without overwriting prior evidence or advancing in-memory state.
+
+The outer event envelope preserves the canonical `dockpipe.operation_event.v1` payload and permits
+only bounded checksum references for stdout/stderr-style output. Artifact entries are sorted logical
+names with sizes and SHA-256 digests; remote paths and credential-like URLs are not artifacts.
+Cancellation acknowledgement is stored separately from terminal cleanup. Successful cleanup requires
+digest evidence, while cleanup failure remains `failed` or `degraded`. The receipt binds the exact
+machine, snapshot, lease/attempt, request fingerprint, optional local run, final cursor, result,
+manifest, cancellation, cleanup, and completion time.
+
+Focused `TestNodeExecution*` coverage proves identity separation, exact replay, capability refresh,
+one fake execution, lease expiry/substitution rejection, reconnect and restart resumption, monotonic
+events, cancellation/cleanup separation, terminal receipt idempotence/conflict rejection, manifest
+binding, strict field/time/identifier validation, full-chain tamper rejection, and no partial atomic
+publication. The fake accepts only an injected deterministic test executor and events. It adds no
+DockPipe process execution, network/socket, service, Git, provider, workflow, retry/repair, apply,
+checkpoint, publication, or external-call surface. Cloudflare, ngrok, direct TLS, private-overlay,
+and future edges remain replaceable deployment adapters above the unchanged broker contract.
+
+The single next bounded TASK-015 slice is to connect this proven broker contract through the injected
+connector boundary to one local read-only DockPipe validation execution. It should bind the returned
+canonical events, local run ID, artifacts, cancellation, and cleanup to the existing receipt without
+adding a live edge provider, generic shell, automatic retry, mutation, apply, commit, or publication.
+A live Codex Cloud adapter remains blocked until a future installed CLI documents a machine-readable
+receipt with a stable opaque task ID.
 
 ## Boundaries
 
@@ -712,6 +760,7 @@ network worker. It was assessed against the current monorepo surfaces:
 | DockPipe results/events (`docs/runtime/operation-results.md`, `src/lib/infrastructure/operation_event.go`) | Canonical `OperationResult` records can be emitted as JSONL operation events with IDs, status, timing, and errors. | Keep the inner event unchanged; add distributed correlation outside it. |
 | DockPipe artifacts and sessions (`docs/runtime/artifacts.md`, `docs/runtime/git-runtime-sessions.md`) | Scoped artifacts, session metadata, worker leases, checkpoints, sync/publish lifecycle, and future distributed-session intent. | Exact-commit execution and cleanup can reuse runtime primitives; graph ownership must remain above them. |
 | DorkPipe package (`packages/dorkpipe/`) | DAG parsing/validation, topological scheduling, bounded parallel task execution, dependency artifacts, follow-up reruns, repair, budgets, approval, merge, and verification. | DorkPipe is the natural owner of node selection, graph state, retries, and final aggregation. |
+| [GitHub issue #11](https://github.com/jamie-steele/dockpipe/issues/11) | Broker/worker design feedback calls out separate machine, capability, task-lease, and execution-receipt identities, with idempotent receipts keyed by operation ID. | Make those identities explicit before a real transport so reconnects and UI disconnects cannot duplicate work or transfer responsibility. |
 
 `packages/dorkpipe/` is a first-party package in this DockPipe checkout, not a separate Git checkout
 here. Its package boundary is nevertheless the DorkPipe product boundary for this decision.
@@ -722,8 +771,8 @@ Adopt this responsibility boundary:
 
 ```text
 DorkPipe scheduler and graph state
-  -> node-execution adapter / outer transport envelope
-    -> optional DockPipe node endpoint or existing trusted transport
+  -> broker protocol / outer transport envelope
+    -> outbound node connector
       -> DockPipe local workflow execution
         -> host | Docker | QEMU | WSL | future runtime
 ```
@@ -734,25 +783,27 @@ DorkPipe scheduler and graph state
 - **DorkPipe decides where, when, and why work executes across nodes.** It owns the graph, placement,
   dependency state, fan-out, retries/repair, distributed approval state, budgets, aggregation, and
   final graph outcome.
-- **Transport is replaceable.** The first version uses a user-managed trusted transport; a persistent
-  endpoint is an optional later capability, not an implied DockPipe daemon.
+- **Broker and edge are separate boundaries.** `node-execution.v1` defines identity, dispatch,
+  leases, events, cancellation, and artifacts over standard HTTPS/WebSocket semantics. Cloudflare,
+  ngrok, direct TLS, private overlays, and future providers are replaceable edge adapters; none
+  defines the execution contract.
 
 This confirms the hypothesis. The location, availability, and scheduling concepts are orchestration
 concepts; putting them in DockPipe core would couple a standalone local executor to a cluster-control
 plane it does not need.
 
-## Architecture Options
+## Deployment Modes
 
-| Option | Layering and portability | Security and operations | Verdict |
-| --- | --- | --- | --- |
-| A. Optional DockPipe node service | Clean local-executor endpoint if it exposes only a narrow execution contract; preserves third-party use. | Requires service install, mTLS/enrollment, revocation, binding/firewall UX, reconnect semantics, and durable local request state. | Viable Phase 4+ option; do not make it the first dependency. |
-| B. DorkPipe-owned worker service calling local DockPipe | Keeps DockPipe networking-free, but duplicates local execution wrapping, health, cancellation, and policy translation in DorkPipe. | DorkPipe becomes responsible for a privileged long-running host agent and risks bypassing DockPipe semantics. | Do not use as the permanent default. It is acceptable only as a thin transport adapter with no independent executor. |
-| C. Shared protocol with separate implementations | Can avoid a DorkPipe-specific wire format and permit optional DockPipe or third-party endpoints. | A protocol package still needs versioning, identity, authorization, and replay protection; premature sharing can freeze an immature design. | Define a small versioned contract after the existing-transport slice proves it; keep it transport-neutral. |
-| D. Existing trusted transport first | Maximally local-first and portable: invoke the installed local DockPipe CLI through SSH or another user-managed private path. | Reuses user-owned network/auth/firewall controls; requires a careful wrapper for event streaming, cancellation, and artifact retrieval. | Recommended first vertical slice. |
+| Deployment mode | Ownership | Boundary and verdict |
+| --- | --- | --- |
+| A. Local/private broker | The user runs the broker and nodes on one machine, LAN, VPN, or private overlay. | Free and local-first. It requires no external edge provider or DockPipe-hosted infrastructure and is the deterministic development/test baseline. |
+| B. BYO edge and broker | The user hosts the broker and owns the domain, tunnel/edge account, credentials, and policy. | Cloudflare Tunnel, ngrok, direct TLS, and equivalent adapters expose the same broker protocol. DockPipe may automate setup and diagnostics but does not own or persist provider credentials. |
+| C. Managed DockPipe broker | DockPipe hosts the multi-tenant broker and edge; users enroll outbound-only nodes. | Subscription service. Tenant identity, quotas, audit, retention, availability, and billing remain control-plane concerns and cannot widen local execution authority. |
 
-The default must not expose a public listener, require DockPipe-hosted infrastructure, or introduce a
-generic remote shell. A later service, if justified, accepts only authenticated, allow-listed
-DockPipe execution requests and cannot be a general command relay.
+SSH, WinRM, and other remote-shell integrations may exist later as compatibility adapters, but they
+are not the target architecture and must not shape `node-execution.v1`. The default node makes an
+outbound authenticated connection and exposes no inbound public listener or generic remote shell.
+Local/private and BYO modes must not require DockPipe-hosted infrastructure.
 
 ## Responsibilities
 
@@ -775,15 +826,18 @@ DockPipe core must **not** gain node enrollment, scheduler persistence, task-gra
 queues, leases between machines, retries, repair policy, health-based placement, cost/risk placement,
 distributed approvals, artifact fan-in, coordinator hosting, or a DorkPipe-specific protocol.
 
-### Optional DockPipe node component
+### Outbound node connector
 
-Only after a transport-neutral contract is proven, an optional `dockpipe node` component may provide
-an authenticated endpoint for local execution, capability snapshots, event streaming, cancellation,
-artifact retrieval, and health. It should be an installable Windows service or systemd service, not
-part of normal `dockpipe` CLI startup.
+A narrow node connector maintains an outbound authenticated broker connection for execution,
+capability snapshots, event streaming, cancellation, artifact transfer, and health. It should be an
+installable Windows service or systemd service, not part of normal `dockpipe` CLI startup. The first
+slice may keep it package-owned while the contract is proven; promotion into generic DockPipe code
+requires evidence that the primitive is independently reusable.
 
 It owns local request deduplication and cleanup recovery for a request it accepted. It does not own
-worker enrollment policy, global leases, task selection, graph persistence, or final success.
+tenant policy, global leases, task selection, graph persistence, placement, billing, or final graph
+success. It invokes the local DockPipe execution boundary and cannot become an independent executor
+or arbitrary command relay.
 
 ### DorkPipe scheduler/orchestration
 
@@ -803,13 +857,29 @@ No two edit tasks may receive the same mutable workspace by default. Version one
 implementation owner; all validation targets use the exact resulting commit. Concurrent edits need
 explicit ownership, isolated branches/workspaces, and a reconciliation task before they are enabled.
 
-### Shared protocol package (conditional)
+### Broker and node-execution contract
 
-Do not create a shared package in Phase 1. If a second transport or an optional DockPipe endpoint is
-implemented, extract a small transport-neutral `node-execution.v1` contract owned jointly by the
-projects. It contains capability snapshot, execution request/receipt, event envelope, cancellation,
-artifact manifest, health, identity, and version negotiation. It contains no scheduler decisions,
-provider/model details, or generic-shell command field.
+Define package-owned design fixtures for a small transport-neutral `node-execution.v1` contract
+before integrating a real edge provider. It contains enrollment and node identity, capability
+snapshot, execution request/receipt, lease and idempotency identity, event cursor/envelope,
+cancellation, artifact manifest, health/presence, and version negotiation. It contains no scheduler
+decisions, provider/model details, tunnel credentials, subscription policy, or generic-shell command
+field. Do not promote it into a shared engine package until the fake-broker slice proves the shapes.
+
+The protocol keeps four identities distinct:
+
+1. **Machine identity** identifies and authenticates one enrolled node independently of its current
+   connection.
+2. **Capability snapshot identity** binds the advertised and policy-approved facts used for one
+   placement decision; a refresh creates a new snapshot rather than mutating old evidence.
+3. **Task lease identity** binds one broker assignment, attempt, expiry, and cancellation authority;
+   reconnecting does not silently create or transfer a lease.
+4. **Execution receipt identity** is keyed by a stable operation ID and binds the accepted contract,
+   local DockPipe run, terminal outcome, events, artifacts, and cleanup. Retrying delivery of the same
+   operation returns or resumes the same receipt instead of executing it twice.
+
+Broker responsibility survives UI disconnects, node reconnects, and process restarts. Connection
+presence is evidence only; it cannot grant a lease, prove completion, or transfer responsibility.
 
 ## Target Model And Authoring Boundary
 
@@ -891,9 +961,11 @@ remote path as an artifact.
 
 ## Security Boundary
 
-The first transport inherits a user-managed private network (LAN, VPN, or overlay) and must bind no
-new public listener. The scheduler authorizes a named node for an allow-listed contract, not an
-arbitrary command. Requirements before a persistent endpoint is accepted include:
+The connector initiates an outbound authenticated broker connection and must bind no new public node
+listener. Local/private mode may remain entirely on a user-managed machine, LAN, VPN, or overlay.
+BYO and managed edges terminate only the broker connection; they cannot translate requests into
+generic commands or widen a node's local policy. The scheduler authorizes a named node for an
+allow-listed contract, not an arbitrary command. Requirements include:
 
 - separate node and scheduler identities, mutual authentication, enrollment/revocation, and scoped
   task authorization;
@@ -908,47 +980,51 @@ arbitrary command. Requirements before a persistent endpoint is accepted include
   assistance, audit logs, and node quarantine/revocation after suspected compromise;
 - artifact/event integrity checks and no remote provider callback that can apply, publish, or expand
   authority without local reconciliation and approval.
+- edge credentials, tunnel tokens, provider API tokens, and managed-service credentials remain secret
+  references and never enter task contracts, receipts, events, or repository configuration.
 
-## Recommended First Vertical Slice
+## Proven Foundation And Next Vertical Slice
 
-Use **SSH over a user-owned LAN/VPN/overlay to Windows OpenSSH** as the initial transport. It avoids
-new public infrastructure and is available from a Linux scheduler without requiring WinRM firewall
-and remoting policy setup. PowerShell may run inside the remote DockPipe Windows workflow; it is not
-the control-plane transport. WinRM/PowerShell Remoting remains a later adapter for organizations
-that standardize it.
+The **in-process fake broker and injected connector boundary** now prove the durable product boundary
+before Cloudflare, ngrok, direct TLS, or another edge provider can shape it. The fake implements the
+protocol identity, reconnect, lease, receipt, event-cursor, cancellation, and artifact behavior
+required by real deployments without invoking a process or network.
 
-Slice:
+Next slice:
 
-1. Linux DorkPipe receives one implementation commit and one manually configured `office-windows`
-   target with a static, reviewed capability manifest.
-2. DorkPipe opens a single SSH execution session, prepares a Windows runtime-owned workspace at the
-   exact commit, and invokes the installed local DockPipe validation workflow in the foreground.
-3. A thin package-owned remote adapter streams/collects DockPipe's existing JSONL operation events,
-   stdout/stderr references, terminal result, and artifact manifest into a DorkPipe outer envelope.
-4. Cancellation is sent against the same request; the Windows adapter proves foreground process-tree
-   termination and reports the DockPipe cleanup receipt. A failed cleanup is a distinct failed or
-   degraded terminal result, never a successful cancellation.
-5. DorkPipe records the per-target receipt and does no automatic repair, retry, apply, commit, or
-   publish in this slice.
+1. Inject one package-owned connector adapter that invokes an existing local DockPipe read-only
+   validation boundary for the exact source revision and typed workflow reference.
+2. Feed the unchanged canonical DockPipe events, bounded output/artifact references, local run ID,
+   terminal result, cancellation acknowledgement, and explicit cleanup evidence into the proven fake
+   broker state machine.
+3. Reuse the existing reconnect, restart, idempotency, lease, cursor, receipt, and tamper proofs and
+   add executor-bound proof that the operation still runs at most once.
+4. Perform no live edge/provider integration, generic shell dispatch, retry/repair, source mutation,
+   apply, commit, checkpoint, push, publication, or next-task action.
 
-The slice deliberately excludes a daemon, auto-discovery, enrollment, QEMU dispatch, dynamic
-scheduling, and generic remote shell. It must use a fixture/local fake for transport and an opt-in
-Windows compatibility test; no live remote machine is required in the default package test suite.
+The slice deliberately excludes a production daemon/service installer, live edge provider,
+auto-discovery, billing, multi-tenancy, QEMU dispatch, dynamic scheduling, and generic remote shell.
+Default tests require no network, provider account, tunnel, or remote machine.
 
 ## Phased Backlog
 
-1. **Architecture decision:** define `node-execution.v1` shapes as package-owned design fixtures,
-   target capabilities, outer correlation, security gates, and SSH acceptance tests.
-2. **One remote Windows target:** implement the recommended slice above with exact-commit checkout,
-   canonical event collection, cancellation/cleanup verification, artifacts, and restart-safe receipts.
-3. **Multi-target validation:** add concurrent Linux-host, Windows-physical-host, and Linux-QEMU
+1. **Contract and fake broker (complete):** the strict package-owned shapes, four distinct identities,
+   exact-revision binding, reconnect/idempotency, canonical events, cancellation/cleanup, artifacts,
+   and restart-safe receipts are proven without a real executor or transport.
+2. **Local/private broker:** run one real broker plus outbound Windows connector on user-owned
+   LAN/VPN/overlay infrastructure; add enrollment, credential rotation/revocation, presence, health,
+   capability refresh, reconnect, and offline behavior.
+3. **BYO edge adapters:** expose the same self-hosted broker through opt-in Cloudflare, ngrok, direct
+   TLS, or equivalent adapters. Keep provider credentials local and test adapters independently from
+   broker semantics.
+4. **Managed broker preview:** host the broker/edge as a subscription service with tenant isolation,
+   quotas, audit, retention, operations, and billing. Prefer shared broker ingress with tenant/node
+   multiplexing over a separate tunnel credential distributed to every customer node.
+5. **Multi-target validation:** add concurrent Linux-host, Windows-physical-host, and Linux-QEMU
    Windows-guest targets; aggregate per-target results and dispatch only an explicit repair task.
-4. **Persistent nodes (conditional):** prove whether SSH limitations justify an optional endpoint;
-   then add enrollment, health, capability refresh, reconnect, revocation, and offline behavior.
-5. **Installer/UX (conditional):** role selection, Windows service/systemd management, private
-   binding, optional firewall assistance, diagnostics, node naming, and node-management commands.
-6. **Advanced scheduling:** leases, availability/load/risk/cost placement, retries, quarantine,
-   disposable VMs/cloud workers, Mac, GPU, and third-party endpoint adapters.
+6. **Installer and advanced scheduling:** service lifecycle and diagnostics, then availability/load/
+   risk/cost placement, bounded retries, quarantine, disposable workers, Mac, GPU, and third-party
+   compatibility adapters.
 
 ## Acceptance Criteria For This Extension
 
@@ -956,21 +1032,27 @@ Windows compatibility test; no live remote machine is required in the default pa
 - DorkPipe owns graph and placement decisions; DockPipe receives only a local execution contract.
 - Host/runtime/guest dimensions are separately matched and reported.
 - Existing DockPipe operation events/results are reused inside an outer DorkPipe envelope.
-- The first slice runs one exact commit on a configured physical Windows target through SSH, returns
-  structured results/artifacts, and proves cancellation plus cleanup handling.
-- Default execution needs neither DockPipe-hosted cloud infrastructure nor a public listener.
+- The completed foundation binds one exact commit through the fake broker and injected connector,
+  accepts deterministic structured results/artifacts, and proves reconnect, idempotent receipt,
+  cancellation, and cleanup without running the commit yet.
+- Machine, capability snapshot, lease, and execution receipt identities are separately bound and
+  cannot be inferred from connection presence or substituted for one another.
+- Default execution needs neither DockPipe-hosted cloud infrastructure, an external edge provider,
+  nor a public node listener.
 - A failure cannot silently duplicate a task, replay a stale cancellation, hide cleanup residue, or
   automatically publish a change.
-- Persistent-service work cannot start until its added value over the SSH adapter is documented with
-  concrete cancellation, reconnect, capability-refresh, or UX evidence.
+- Cloudflare, ngrok, direct TLS, managed hosting, and any compatibility transport exercise the same
+  broker/node contract and cannot add execution authority.
 
 ## Open Decisions For The Extension
 
 - Whether the current DockPipe process-runner/cancellation primitives need one small generic
-  machine-readable cancel/status API before the SSH slice can make its cleanup guarantee.
+  machine-readable cancel/status API before the connector can make its cleanup guarantee.
 - The exact target schema location and migration path in the DorkPipe orchestration contract.
-- Whether the first Windows target requires a preinstalled system OpenSSH service, a user-launched
-  SSH endpoint, or an organization-owned private overlay; all remain user-managed prerequisites.
 - Artifact transfer limits, retention, and checksum/signature policy for large guest logs/images.
-- When a second real transport is sufficient evidence to extract `node-execution.v1`, and whether an
-  optional DockPipe endpoint or a DorkPipe adapter should implement it first.
+- The package/component boundary for the first production broker and node connector after the
+  package-owned fake proves the contract.
+- Which standard wire framing and authentication profile to use without coupling the contract to one
+  edge provider.
+- Managed-service tenant, retention, quota, billing, availability, and custom-domain policy; none is
+  required for local/private or BYO operation.
