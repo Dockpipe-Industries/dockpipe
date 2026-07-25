@@ -533,12 +533,27 @@ DockPipe process execution, network/socket, service, Git, provider, workflow, re
 checkpoint, publication, or external-call surface. Cloudflare, ngrok, direct TLS, private-overlay,
 and future edges remain replaceable deployment adapters above the unchanged broker contract.
 
-The single next bounded TASK-015 slice is to connect this proven broker contract through the injected
-connector boundary to one local read-only DockPipe validation execution. It should bind the returned
-canonical events, local run ID, artifacts, cancellation, and cleanup to the existing receipt without
-adding a live edge provider, generic shell, automatic retry, mutation, apply, commit, or publication.
-A live Codex Cloud adapter remains blocked until a future installed CLI documents a machine-readable
-receipt with a stable opaque task ID.
+The package-owned local node-validation connector is now implemented in
+`packages/dorkpipe/lib/orchestrationhelper/nodeconnector.go`. It accepts only one configured
+`NodeExecutionWorkflowReference` and exact 40-character source revision, invokes an injected
+already-prepared read-only validation function at most once, validates the complete returned evidence
+before broker publication, and feeds unchanged canonical DockPipe events plus bounded checksum
+references, local run identity, terminal result, cancellation acknowledgement, cleanup evidence, and
+artifacts into the existing event and receipt contracts. Exact duplicate dispatch, reconnect, broker
+reopen, repeated resume, and terminal delivery reuse the durable broker result without validation
+re-execution. Workflow/revision mismatch, malformed or reordered events, path-bearing or invalid
+artifacts, inconsistent run identity, stale cancellation, missing cleanup evidence, conflicting
+terminal results, and changed terminal state fail closed without partial evidence publication. The
+connector adds no process, shell, network, provider, Git, workflow, retry/repair, mutation, approval,
+checkpoint, push, publication, or next-task authority.
+
+The single next bounded TASK-015 slice is a package-local transport-neutral connector-session fake
+for enrollment, credential rotation/revocation, presence, health, capability refresh, and reconnect
+negotiation above the unchanged `node-execution.v1` broker and validation connector. It should use an
+injected deterministic transport only, exercise no socket or network, and grant no lease, execution,
+completion, retry, mutation, or publication authority from connection presence. A live Codex Cloud
+adapter remains blocked until a future installed CLI documents a machine-readable receipt with a
+stable opaque task ID.
 
 ## Boundaries
 
