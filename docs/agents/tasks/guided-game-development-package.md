@@ -68,7 +68,7 @@ Prefer composition over new infrastructure:
 - scoped filesystem access plus separate apply and publish boundaries
 - operation-result events, logs, artifacts, and run inspection
 - skills rendering and durable project guidance
-- PipeDeck's planned YAML-backed UI and approval surface from [TASK-008](agentic-app-ui.md)
+- ForgePipe's planned YAML-backed UI and approval surface from [TASK-008](agentic-app-ui.md)
 - the shipped generic software-development workflow and task-pack contract from
   [TASK-007](closed/generic-software-dev-workflow.md), where applicable
 
@@ -153,7 +153,7 @@ over.
 - [TASK-007 Generic Software Dev Workflow](closed/generic-software-dev-workflow.md) is a shipped
   foundation for governed planning, implementation, verification, approval, apply, and targeted
   follow-up work. Reuse it rather than duplicating its contract.
-- [TASK-008 PipeDeck Agentic App UI](agentic-app-ui.md) owns the general YAML-backed UI, approvals,
+- [TASK-008 ForgePipe Agentic App UI](agentic-app-ui.md) owns the general YAML-backed UI, approvals,
   artifacts, logs, and run-inspection surface. The Unreal panel must stay a thin domain adapter.
 - [TASK-009 Sandbox Toolchain Determinism](sandbox-toolchain-determinism.md) owns the broader
   resolver/preflight problem for reliable host tooling.
