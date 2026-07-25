@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestBacklogValidationExecutionUsesExactPatchedWorkspaceAndSupportsArtifactOnlyRestart(t *testing.T) {
@@ -24,6 +25,11 @@ func TestBacklogValidationExecutionUsesExactPatchedWorkspaceAndSupportsArtifactO
 		runs++
 		if ctx == nil || !stringSlicesEqual(argv, []string{"go", "test", "./packages/dorkpipe/lib/orchestrationhelper"}) {
 			t.Fatalf("validation did not receive direct expected argv: %#v", argv)
+		}
+		deadline, hasDeadline := ctx.Deadline()
+		remaining := time.Until(deadline)
+		if !hasDeadline || backlogValidationCommandTimeout != 4*time.Minute || remaining <= 0 || remaining > backlogValidationCommandTimeout {
+			t.Fatalf("validation command did not receive the bounded four-minute deadline: deadline=%v remaining=%v", hasDeadline, remaining)
 		}
 		if root == consumerRoot || !environmentContains(environment, "GOPROXY=off") || !environmentContains(environment, "GOVCS=off") || !environmentContains(environment, "GOENV=off") {
 			t.Fatalf("validation command did not use an isolated offline environment")

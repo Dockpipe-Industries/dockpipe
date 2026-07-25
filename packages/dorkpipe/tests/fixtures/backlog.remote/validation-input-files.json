@@ -21,6 +21,8 @@
   "packages/dorkpipe/lib/orchestrationhelper/backlogsemanticreview_test.go",
   "packages/dorkpipe/lib/orchestrationhelper/backlogvalidationexecution.go",
   "packages/dorkpipe/lib/orchestrationhelper/backlogvalidationexecution_test.go",
+  "packages/dorkpipe/lib/orchestrationhelper/nodeexecution.go",
+  "packages/dorkpipe/lib/orchestrationhelper/nodeexecution_test.go",
   "packages/dorkpipe/lib/orchestrationhelper/orchestrationhelper.go",
   "packages/dorkpipe/lib/orchestrationhelper/orchestrationhelper_test.go",
   "packages/dorkpipe/lib/orchestrationhelper/promotion.go",
