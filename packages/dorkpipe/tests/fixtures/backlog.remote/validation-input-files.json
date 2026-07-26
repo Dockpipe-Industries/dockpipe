@@ -27,6 +27,8 @@
   "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorduplex_test.go",
   "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorsession.go",
   "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorsession_test.go",
+  "packages/dorkpipe/lib/orchestrationhelper/nodeconnectortransport.go",
+  "packages/dorkpipe/lib/orchestrationhelper/nodeconnectortransport_test.go",
   "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorwire.go",
   "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorwire_test.go",
   "packages/dorkpipe/lib/orchestrationhelper/nodeexecution.go",
