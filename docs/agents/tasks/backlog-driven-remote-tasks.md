@@ -570,13 +570,34 @@ tamper reject before validation with no partial publication. Presence and health
 prerequisites only: without the broker operation and lease they initiate nothing and grant no
 completion, cancellation, retry, mutation, apply, checkpoint, commit, push, or publication authority.
 
-The single next bounded TASK-015 follow-up is a package-owned, fixture-only wire-framing and mutual-
-authentication profile for the unchanged connector-session and `node-execution.v1` messages. Prove
-canonical bounded envelopes, opaque credential references, revocation, replay rejection, and the
-absence of generic-command or lifecycle-authority fields with injected in-process framing only. Add no
-socket, HTTP, WebSocket, TLS implementation, service, listener, edge provider, scheduling, mutation,
-Git, apply, checkpoint, push, publication, or managed-broker work. A live Codex Cloud adapter remains
-blocked until a future installed CLI documents a machine-readable receipt with a stable opaque task ID.
+The package-owned authenticated wire-framing proof is now implemented in `nodeconnectorwire.go`.
+`dorkpipe.node-connector.authenticated-frame/v1` is canonical JSON bounded to 64 KiB with a 48 KiB
+payload cap and five-minute maximum freshness window. Its strict allowlist wraps the existing
+connector-session and `node-execution.v1` messages without changing their bytes or schemas. Every
+frame binds direction, sender/receiver roles, peer identities, one opaque credential reference,
+distinct frame/replay identities, message kind/schema, exact payload SHA-256, and issued/expiry times
+through a direction-specific injected authentication collaborator. Connector proofs cannot
+authenticate broker frames and broker proofs cannot authenticate connector frames; no live
+credential or cryptographic provider is selected or claimed.
+
+The fingerprint-linked durable replay chain rejects duplicate frames across receiver restart and is
+updated only after the framed operation succeeds. The exact broker-accepted request and lease travel
+in separate verified broker frames through the unchanged session-to-dispatch seam. The first proof
+invokes `NodeValidationConnector` and the injected validator once with no broker executor; fresh frames
+after disconnect/reconnect and broker/session/framing restart return the same durable receipt without
+a second invocation or output. Complete enrollment, credential, session, presence, health,
+capability, request, lease, and receipt bindings are revalidated before dispatch or receipt-frame
+acceptance. Revocation, expiry, replay, substitution, malformed/noncanonical/unknown/trailing/oversize
+input, and durable framing/session/broker tamper fail closed without partial output. Frame freshness
+never extends a session or task lease, and authenticated session or receipt evidence initiates no
+execution or lifecycle transition.
+
+The single next bounded TASK-015 follow-up is an injected package-local in-process duplex exchange
+proof for authenticated frame ordering, bounded flow control, and reconnect/resume. It must retain the
+same broker-authority boundary and add no real transport, socket, HTTP, WebSocket, TLS, service,
+listener, edge provider, scheduling, mutation, Git, apply, checkpoint, push, publication, or managed-
+broker work. A live Codex Cloud adapter remains blocked until a future installed CLI documents a
+machine-readable receipt with a stable opaque task ID.
 
 ## Boundaries
 
@@ -1023,21 +1044,22 @@ allow-listed contract, not an arbitrary command. Requirements include:
 
 ## Proven Foundation And Next Vertical Slice
 
-The **in-process fake broker, injected validation connector, and transport-neutral connector-session
-fake plus the session-to-dispatch integration seam** now prove the durable product boundary before
-Cloudflare, ngrok, direct TLS, or another edge provider can shape it. The package implements broker
-lease/receipt/event behavior, prepared local validation delivery, durable enrollment/credential/
-presence/health/capability/restart evidence, and exact accepted request/lease handoff without invoking
-a process or network.
+The **in-process fake broker, injected validation connector, transport-neutral connector-session
+fake, session-to-dispatch seam, and authenticated canonical framing profile** now prove the durable
+product boundary before Cloudflare, ngrok, direct TLS, or another edge provider can shape it. The
+package implements broker lease/receipt/event behavior, prepared local validation delivery, durable
+enrollment/credential/presence/health/capability/restart evidence, exact accepted request/lease
+handoff, mutual peer authentication, and restart-safe wire replay rejection without invoking a
+process or network.
 
 Next slice:
 
-1. Define one package-owned framing and mutual-authentication profile around the unchanged connector-
-   session and `node-execution.v1` messages using deterministic fixture bytes only.
-2. Prove canonical bounded envelopes, opaque credential references, revocation, tamper and replay
-   rejection, and strict message-to-enrollment/session/request/lease binding.
-3. Prove the profile contains no generic-command, completion, cancellation, retry, mutation, apply,
-   checkpoint, commit, push, or publication authority.
+1. Add one injected package-local in-process duplex exchange around the completed authenticated frame
+   profile using deterministic fixture bytes only.
+2. Prove exact authenticated frame ordering, explicit bounded flow control, and reconnect/resume
+   without changing the connector-session or `node-execution.v1` messages.
+3. Preserve the broker-accepted request and lease as the sole execution authority; exchange state,
+   ordering, flow-control credit, authentication, and reconnect evidence grant no lifecycle authority.
 4. Perform no live transport/edge/provider integration, socket, HTTP, WebSocket, TLS, service/listener,
    retry/repair, source mutation, apply, commit, checkpoint, push, publication, or next-task action.
 
@@ -1050,10 +1072,12 @@ Default tests require no network, provider account, tunnel, or remote machine.
 1. **Contract and fake broker (complete):** the strict package-owned shapes, four distinct identities,
    exact-revision binding, reconnect/idempotency, canonical events, cancellation/cleanup, artifacts,
    and restart-safe receipts are proven without a real executor or transport.
-2. **Connector-session foundation (complete):** transport-neutral enrollment, opaque credential
-   rotation/revocation, presence, health, capability refresh, disconnect/reconnect, and restart
-   negotiation are proven with an injected deterministic in-process transport. A later production
-   slice may run one real broker plus outbound connector on user-owned LAN/VPN/overlay infrastructure.
+2. **Connector-session and authenticated framing foundation (complete):** transport-neutral
+   enrollment, opaque credential rotation/revocation, presence, health, capability refresh,
+   disconnect/reconnect, restart negotiation, mutual peer authentication, canonical bounded frames,
+   and restart-safe replay rejection are proven with injected deterministic in-process collaborators.
+   A later production slice may run one real broker plus outbound connector on user-owned
+   LAN/VPN/overlay infrastructure.
 3. **BYO edge adapters:** expose the same self-hosted broker through opt-in Cloudflare, ngrok, direct
    TLS, or equivalent adapters. Keep provider credentials local and test adapters independently from
    broker semantics.
