@@ -625,12 +625,23 @@ validator invocation. Transport framing, location, connection, authentication, o
 acknowledgement, and resume evidence create no request, lease, receipt, credential, execution, or
 lifecycle authority.
 
-The single next bounded TASK-015 follow-up is one opt-in direct-TLS BYO edge-adapter proof for a
-user-owned broker. It must preserve this transport contract unchanged, keep certificate and key
-material as local secret references, expose no node listener, and add no Cloudflare/ngrok provider,
-discovery, scheduler, installer/service lifecycle, managed broker, generic command execution, source
-mutation, Git, apply, checkpoint, push, or publication. A live Codex Cloud adapter remains blocked
-until a future installed CLI documents a machine-readable receipt with a stable opaque task ID.
+The package-local direct-TLS BYO edge proof is now implemented in `nodeconnectordirecttls.go`. The
+broker alone owns one explicit numeric listener; the connector performs one outbound TLS 1.3 dial
+with explicit trust roots, expected server identity, and bounded handshake. Certificate chain,
+private key, and trust roots resolve only through opaque local references. There is no ambient trust,
+insecure verification, plaintext downgrade, raw-TCP retry, discovery, or serialized secret material.
+
+Real loopback proofs use ephemeral local certificates and carry the unchanged transport records in
+both directions, including split/coalesced writes, downstream-before-ack, exact reconnect/resume, and
+completed request/lease receipt replay without re-execution. Wrong trust or identity, invalid-time or
+malformed/mismatched material, absent references, timeout, closure, non-TLS peers, and rejected records
+fail closed without durable state or acknowledgement. TLS confidentiality, chain, location, and peer
+identity evidence grant no request, lease, execution, receipt, mutation, Git, or lifecycle authority.
+
+The single next bounded TASK-015 follow-up is one opt-in Cloudflare Tunnel BYO edge-adapter proof for
+a user-owned broker, preserving the completed transport and authority contracts and keeping provider
+credentials as local secret references. A live Codex Cloud adapter remains blocked until a future
+installed CLI documents a machine-readable receipt with a stable opaque task ID.
 
 ## Boundaries
 
@@ -1079,22 +1090,23 @@ allow-listed contract, not an arbitrary command. Requirements include:
 
 The **in-process fake broker, injected validation connector, transport-neutral connector-session
 fake, session-to-dispatch seam, authenticated canonical framing profile, bounded durable duplex
-exchange, and real loopback process-boundary adapter** now prove the durable product boundary before
-a BYO edge can shape it. The package implements broker lease/receipt/event behavior, prepared local
+exchange, real loopback process-boundary adapter, and direct-TLS BYO edge** now prove the durable
+product boundary before a provider edge can shape it. The package implements broker lease/receipt/event behavior, prepared local
 validation delivery, durable enrollment/credential/presence/health/capability/restart evidence, exact
 accepted request/lease handoff, mutual peer authentication, independent directional ordering and
-acknowledgement, explicit record/frame/byte bounds, exact durable resume, and restart-safe replay
-rejection without an external network, provider account, remote machine, or public listener.
+acknowledgement, explicit record/frame/byte bounds, TLS 1.3 confidentiality and server identity,
+local-only secret references, exact durable resume, and restart-safe replay rejection without an
+external network, provider account, remote machine, or node listener.
 
 Next slice:
 
-1. Add one opt-in direct-TLS BYO edge-adapter proof for a user-owned broker.
-2. Preserve the completed loopback transport record, authenticated duplex bytes, directional
+1. Add one opt-in Cloudflare Tunnel BYO edge-adapter proof for a user-owned broker.
+2. Preserve the completed direct-TLS transport records, authenticated duplex bytes, directional
    ordering, bounds, acknowledgement, and exact reconnect/resume cursor contract unchanged.
-3. Keep certificate and private-key material as local secret references; serialize no secret bytes.
-4. Preserve the broker-accepted request and lease as the sole execution authority, expose no node
-   listener, and add no Cloudflare/ngrok provider, discovery, scheduler, installer/service lifecycle,
-   managed broker, generic command execution, mutation, Git, apply, checkpoint, push, or publication.
+3. Keep provider credentials as local secret references and serialize no resolved secret bytes.
+4. Preserve the broker-accepted request and lease as the sole execution authority and add no node
+   listener, ngrok provider, discovery, scheduler, installer/service lifecycle, managed broker,
+   generic command execution, mutation, Git, apply, checkpoint, push, or publication.
 
 The slice deliberately excludes a production daemon/service installer, live edge provider,
 auto-discovery, billing, multi-tenancy, QEMU dispatch, dynamic scheduling, and generic remote shell.
@@ -1110,11 +1122,10 @@ Default tests require no network, provider account, tunnel, or remote machine.
    disconnect/reconnect, restart negotiation, mutual peer authentication, canonical bounded frames,
    independent directional ordering/acknowledgement, explicit queued and in-flight frame/byte limits,
    bounded TCP records, deterministic resume, and restart-safe replay rejection are proven across an
-   explicit ephemeral loopback listener and outbound connector. The next proof adds only opt-in direct
-   TLS for a user-owned broker.
-3. **BYO edge adapters:** prove direct TLS first, then independently consider opt-in Cloudflare,
-   ngrok, or equivalent adapters. Keep provider credentials and certificate/key material local and
-   test adapters independently from broker semantics.
+   explicit ephemeral loopback listener and outbound connector.
+3. **BYO edge adapters (direct TLS complete):** TLS 1.3, explicit trust and server identity, bounded
+   handshake, secret references, no downgrade, and unchanged transport semantics are proven. Next,
+   prove one opt-in Cloudflare Tunnel adapter independently from broker semantics.
 4. **Managed broker preview:** host the broker/edge as a subscription service with tenant isolation,
    quotas, audit, retention, operations, and billing. Prefer shared broker ingress with tenant/node
    multiplexing over a separate tunnel credential distributed to every customer node.
