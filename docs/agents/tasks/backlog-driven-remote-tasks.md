@@ -592,12 +592,30 @@ input, and durable framing/session/broker tamper fail closed without partial out
 never extends a session or task lease, and authenticated session or receipt evidence initiates no
 execution or lifecycle transition.
 
-The single next bounded TASK-015 follow-up is an injected package-local in-process duplex exchange
-proof for authenticated frame ordering, bounded flow control, and reconnect/resume. It must retain the
-same broker-authority boundary and add no real transport, socket, HTTP, WebSocket, TLS, service,
-listener, edge provider, scheduling, mutation, Git, apply, checkpoint, push, publication, or managed-
-broker work. A live Codex Cloud adapter remains blocked until a future installed CLI documents a
-machine-readable receipt with a stable opaque task ID.
+The package-owned in-process duplex exchange proof is now implemented in `nodeconnectorduplex.go`.
+Connector-to-broker and broker-to-connector directions have independent monotonic accepted,
+delivered, and acknowledged frontiers. Immutable configuration fingerprints bind explicit queued,
+in-flight, and individual-frame count/byte limits; the primary proof profile allows eight queued
+frames/512 KiB, four in-flight frames/256 KiB, and 64 KiB per authenticated frame. Limit, ordering,
+cursor, direction, replay, authentication, freshness, configuration, and durable-chain failures reject
+before advancing bytes, counters, cursors, acknowledgements, or fingerprints.
+
+Delivery preserves the exact authenticated frame bytes and calls only an injected existing wire/session
+acceptance boundary. Successful downstream acceptance durably moves ordered frames in-flight before a
+separate acknowledgement, so restart between those boundaries resumes without a second connector or
+validator invocation or receipt. Rejected downstream acceptance remains queued for safe retry. Exact
+accepted wire identities remain rejected after restart, while fresh frames for the same completed
+request/lease return the same durable receipt. Exchange identity, sequence, credit, acknowledgement,
+cursor, and reconnect state remain distinct from machine, capability, lease, receipt, connector,
+session, frame, enrollment, and credential identities and grant no lifecycle authority.
+
+The single next bounded TASK-015 follow-up is a package-local loopback process-boundary transport
+adapter proof for one outbound connector and one user-owned local/private broker. It must preserve the
+completed duplex bytes, ordering, limits, cursors, authentication, and authority boundaries while
+adding no edge provider, discovery, scheduler, installer/service lifecycle, managed broker, generic
+command execution, source mutation, Git, apply, checkpoint, push, or publication. A live Codex Cloud
+adapter remains blocked until a future installed CLI documents a machine-readable receipt with a
+stable opaque task ID.
 
 ## Boundaries
 
@@ -1045,23 +1063,25 @@ allow-listed contract, not an arbitrary command. Requirements include:
 ## Proven Foundation And Next Vertical Slice
 
 The **in-process fake broker, injected validation connector, transport-neutral connector-session
-fake, session-to-dispatch seam, and authenticated canonical framing profile** now prove the durable
-product boundary before Cloudflare, ngrok, direct TLS, or another edge provider can shape it. The
-package implements broker lease/receipt/event behavior, prepared local validation delivery, durable
-enrollment/credential/presence/health/capability/restart evidence, exact accepted request/lease
-handoff, mutual peer authentication, and restart-safe wire replay rejection without invoking a
-process or network.
+fake, session-to-dispatch seam, authenticated canonical framing profile, and bounded durable duplex
+exchange** now prove the durable product boundary before Cloudflare, ngrok, direct TLS, or another
+edge provider can shape it. The package implements broker lease/receipt/event behavior, prepared local
+validation delivery, durable enrollment/credential/presence/health/capability/restart evidence, exact
+accepted request/lease handoff, mutual peer authentication, independent directional ordering and
+acknowledgement, explicit frame/byte flow control, and restart-safe wire replay rejection without
+invoking a process or network.
 
 Next slice:
 
-1. Add one injected package-local in-process duplex exchange around the completed authenticated frame
-   profile using deterministic fixture bytes only.
-2. Prove exact authenticated frame ordering, explicit bounded flow control, and reconnect/resume
-   without changing the connector-session or `node-execution.v1` messages.
-3. Preserve the broker-accepted request and lease as the sole execution authority; exchange state,
-   ordering, flow-control credit, authentication, and reconnect evidence grant no lifecycle authority.
-4. Perform no live transport/edge/provider integration, socket, HTTP, WebSocket, TLS, service/listener,
-   retry/repair, source mutation, apply, commit, checkpoint, push, publication, or next-task action.
+1. Add one package-local loopback process-boundary transport adapter proof for one outbound connector
+   and one user-owned local/private broker.
+2. Carry the completed authenticated duplex bytes, directional ordering, bounded flow control,
+   acknowledgement, and reconnect/resume cursors unchanged across that boundary.
+3. Preserve the broker-accepted request and lease as the sole execution authority; transport,
+   connection, ordering, flow-control credit, authentication, and reconnect evidence grant no
+   lifecycle authority.
+4. Add no edge provider, discovery, scheduler, installer/service lifecycle, managed broker, generic
+   command execution, source mutation, Git, apply, checkpoint, push, or publication.
 
 The slice deliberately excludes a production daemon/service installer, live edge provider,
 auto-discovery, billing, multi-tenancy, QEMU dispatch, dynamic scheduling, and generic remote shell.
@@ -1072,12 +1092,13 @@ Default tests require no network, provider account, tunnel, or remote machine.
 1. **Contract and fake broker (complete):** the strict package-owned shapes, four distinct identities,
    exact-revision binding, reconnect/idempotency, canonical events, cancellation/cleanup, artifacts,
    and restart-safe receipts are proven without a real executor or transport.
-2. **Connector-session and authenticated framing foundation (complete):** transport-neutral
+2. **Connector-session, authenticated framing, and duplex exchange foundation (complete):** transport-neutral
    enrollment, opaque credential rotation/revocation, presence, health, capability refresh,
    disconnect/reconnect, restart negotiation, mutual peer authentication, canonical bounded frames,
-   and restart-safe replay rejection are proven with injected deterministic in-process collaborators.
-   A later production slice may run one real broker plus outbound connector on user-owned
-   LAN/VPN/overlay infrastructure.
+   independent directional ordering/acknowledgement, explicit queued and in-flight frame/byte limits,
+   deterministic resume, and restart-safe replay rejection are proven with injected deterministic
+   in-process collaborators. A later production slice may run one real broker plus outbound connector
+   on user-owned LAN/VPN/overlay infrastructure.
 3. **BYO edge adapters:** expose the same self-hosted broker through opt-in Cloudflare, ngrok, direct
    TLS, or equivalent adapters. Keep provider credentials local and test adapters independently from
    broker semantics.

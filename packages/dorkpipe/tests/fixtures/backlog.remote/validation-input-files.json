@@ -23,6 +23,8 @@
   "packages/dorkpipe/lib/orchestrationhelper/backlogvalidationexecution_test.go",
   "packages/dorkpipe/lib/orchestrationhelper/nodeconnector.go",
   "packages/dorkpipe/lib/orchestrationhelper/nodeconnector_test.go",
+  "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorduplex.go",
+  "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorduplex_test.go",
   "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorsession.go",
   "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorsession_test.go",
   "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorwire.go",
