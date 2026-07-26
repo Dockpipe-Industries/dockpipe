@@ -638,10 +638,25 @@ malformed/mismatched material, absent references, timeout, closure, non-TLS peer
 fail closed without durable state or acknowledgement. TLS confidentiality, chain, location, and peer
 identity evidence grant no request, lease, execution, receipt, mutation, Git, or lifecycle authority.
 
-The single next bounded TASK-015 follow-up is one opt-in Cloudflare Tunnel BYO edge-adapter proof for
-a user-owned broker, preserving the completed transport and authority contracts and keeping provider
-credentials as local secret references. A live Codex Cloud adapter remains blocked until a future
-installed CLI documents a machine-readable receipt with a stable opaque task ID.
+The package-local Cloudflare Tunnel BYO edge proof is now implemented in
+`nodeconnectorcloudflaretunnel.go`. It selects Cloudflare's documented locally managed
+credentials-file mode with one temporary ingress rule from the public hostname to the explicit
+numeric-loopback direct-TLS broker, plus documented client-side `cloudflared access tcp` bound to an
+adapter-owned numeric-loopback proxy. `cloudflared` owns TCP/WebSocket provider translation while the
+existing TLS 1.3 connection remains end-to-end inside it. Cloudflare documents no minimum version for
+this combined mode, so the compatibility floor is an explicit resolver declaration of locally managed
+credentials-file, TCP-ingress, PID-file readiness, and Access TCP capabilities; unknown versions or
+missing capabilities fail closed. The executable and credential are opaque references resolved only
+before shell-free launch; only the credential file path enters private temporary configuration, never
+its bytes, and config/PID state is removed after bounded shutdown or failure. Process, hostname,
+provider, readiness, and connection evidence grants no request, lease, execution, receipt, mutation,
+Git, or lifecycle authority; reconnect resumes only the existing durable transport cursors.
+
+The single next bounded TASK-015 follow-up is a package-local, fixture-only managed-broker preview
+contract for tenant identity, quotas, audit, retention, and availability boundaries, with no hosted
+service, live network, billing integration, scheduler, or widened node authority. A live Codex Cloud
+adapter remains blocked until a future installed CLI documents a machine-readable receipt with a
+stable opaque task ID.
 
 ## Boundaries
 
@@ -1090,8 +1105,8 @@ allow-listed contract, not an arbitrary command. Requirements include:
 
 The **in-process fake broker, injected validation connector, transport-neutral connector-session
 fake, session-to-dispatch seam, authenticated canonical framing profile, bounded durable duplex
-exchange, real loopback process-boundary adapter, and direct-TLS BYO edge** now prove the durable
-product boundary before a provider edge can shape it. The package implements broker lease/receipt/event behavior, prepared local
+exchange, real loopback process-boundary adapter, direct-TLS BYO edge, and Cloudflare Tunnel BYO
+adapter** now prove the durable product boundary without letting a provider edge shape it. The package implements broker lease/receipt/event behavior, prepared local
 validation delivery, durable enrollment/credential/presence/health/capability/restart evidence, exact
 accepted request/lease handoff, mutual peer authentication, independent directional ordering and
 acknowledgement, explicit record/frame/byte bounds, TLS 1.3 confidentiality and server identity,
@@ -1100,13 +1115,12 @@ external network, provider account, remote machine, or node listener.
 
 Next slice:
 
-1. Add one opt-in Cloudflare Tunnel BYO edge-adapter proof for a user-owned broker.
-2. Preserve the completed direct-TLS transport records, authenticated duplex bytes, directional
-   ordering, bounds, acknowledgement, and exact reconnect/resume cursor contract unchanged.
-3. Keep provider credentials as local secret references and serialize no resolved secret bytes.
-4. Preserve the broker-accepted request and lease as the sole execution authority and add no node
-   listener, ngrok provider, discovery, scheduler, installer/service lifecycle, managed broker,
-   generic command execution, mutation, Git, apply, checkpoint, push, or publication.
+1. Add one package-local, fixture-only managed-broker preview contract.
+2. Keep tenant identity, quota, audit, retention, and availability evidence separate from machine,
+   capability, lease, receipt, connection, and provider identities.
+3. Preserve the broker-accepted request and lease as the sole execution authority.
+4. Add no hosted service, live network, billing integration, scheduler, node listener, generic
+   command execution, mutation, Git, apply, checkpoint, push, or publication.
 
 The slice deliberately excludes a production daemon/service installer, live edge provider,
 auto-discovery, billing, multi-tenancy, QEMU dispatch, dynamic scheduling, and generic remote shell.
@@ -1123,10 +1137,11 @@ Default tests require no network, provider account, tunnel, or remote machine.
    independent directional ordering/acknowledgement, explicit queued and in-flight frame/byte limits,
    bounded TCP records, deterministic resume, and restart-safe replay rejection are proven across an
    explicit ephemeral loopback listener and outbound connector.
-3. **BYO edge adapters (direct TLS complete):** TLS 1.3, explicit trust and server identity, bounded
-   handshake, secret references, no downgrade, and unchanged transport semantics are proven. Next,
-   prove one opt-in Cloudflare Tunnel adapter independently from broker semantics.
-4. **Managed broker preview:** host the broker/edge as a subscription service with tenant isolation,
+3. **BYO edge adapters (complete):** direct TLS proves TLS 1.3, explicit trust and server identity,
+   bounded handshake, secret references, and no downgrade. Cloudflare Tunnel independently proves
+   locally managed credential-file ingress, outbound origin connectivity, client-side Access TCP,
+   PID-file/process lifecycle, unchanged direct-TLS transport semantics, and no provider authority.
+4. **Managed broker preview (next):** host the broker/edge as a subscription service with tenant isolation,
    quotas, audit, retention, operations, and billing. Prefer shared broker ingress with tenant/node
    multiplexing over a separate tunnel credential distributed to every customer node.
 5. **Multi-target validation:** add concurrent Linux-host, Windows-physical-host, and Linux-QEMU
