@@ -90,7 +90,7 @@ postimages before creating one checkpoint and receipt. It does not create a sche
 infer any approval from provider/result/receipt/validation evidence, auto-push, sync, publish,
 merge, select another task, or create a cross-task orchestrator.
 
-## Current Status (2026-07-24)
+## Current Status (2026-07-25)
 
 The first vertical slice is implemented as the package-owned `backlog.remote` workflow and dedicated
 orchestration-helper commands:
@@ -547,13 +547,25 @@ terminal results, and changed terminal state fail closed without partial evidenc
 connector adds no process, shell, network, provider, Git, workflow, retry/repair, mutation, approval,
 checkpoint, push, publication, or next-task authority.
 
-The single next bounded TASK-015 slice is a package-local transport-neutral connector-session fake
-for enrollment, credential rotation/revocation, presence, health, capability refresh, and reconnect
-negotiation above the unchanged `node-execution.v1` broker and validation connector. It should use an
-injected deterministic transport only, exercise no socket or network, and grant no lease, execution,
-completion, retry, mutation, or publication authority from connection presence. A live Codex Cloud
-adapter remains blocked until a future installed CLI documents a machine-readable receipt with a
-stable opaque task ID.
+The package-local transport-neutral connector-session contract and deterministic in-process fake are
+now implemented in `nodeconnectorsession.go`. Enrollment binds one machine to one bounded opaque
+credential identity; explicit rotation and revocation evidence advances a fingerprint-linked durable
+transition chain without storing credential material. Session hello/negotiation keeps connection and
+session identities separate, preserves one session identity across explicit disconnect/reconnect and
+process restart, and reuses exact accepted negotiation replay without calling the injected transport.
+Presence, health, and capability refresh are strict evidence with an all-false authority contract.
+Stale enrollment, revoked credentials, changed duplicates, replay identities, capability substitution,
+conflicting restart identity, malformed input, tampered state, and atomic-write failure reject without
+publishing partial session state. The fake opens no socket, listener, process, provider, or network and
+does not change or invoke the broker lease/execution or validation-connector authority boundaries.
+
+The single next bounded TASK-015 follow-up is an in-process session-to-dispatch integration proof:
+carry one already broker-accepted request and lease through the established session identity into the
+existing `NodeValidationConnector`, and prove that disconnect/restart reuses the same broker operation
+and receipt while session evidence alone still cannot dispatch, execute, cancel, retry, or complete
+anything. Keep it fixture-only and injected; add no real transport, service, scheduling, mutation, Git,
+provider, or publication surface. A live Codex Cloud adapter remains blocked until a future installed
+CLI documents a machine-readable receipt with a stable opaque task ID.
 
 ## Boundaries
 
@@ -1000,22 +1012,22 @@ allow-listed contract, not an arbitrary command. Requirements include:
 
 ## Proven Foundation And Next Vertical Slice
 
-The **in-process fake broker and injected connector boundary** now prove the durable product boundary
-before Cloudflare, ngrok, direct TLS, or another edge provider can shape it. The fake implements the
-protocol identity, reconnect, lease, receipt, event-cursor, cancellation, and artifact behavior
-required by real deployments without invoking a process or network.
+The **in-process fake broker, injected validation connector, and transport-neutral connector-session
+fake** now prove the durable product boundary before Cloudflare, ngrok, direct TLS, or another edge
+provider can shape it. The package implements broker lease/receipt/event behavior, prepared local
+validation delivery, and durable enrollment/credential/presence/health/capability/restart evidence
+without invoking a process or network.
 
 Next slice:
 
-1. Inject one package-owned connector adapter that invokes an existing local DockPipe read-only
-   validation boundary for the exact source revision and typed workflow reference.
-2. Feed the unchanged canonical DockPipe events, bounded output/artifact references, local run ID,
-   terminal result, cancellation acknowledgement, and explicit cleanup evidence into the proven fake
-   broker state machine.
-3. Reuse the existing reconnect, restart, idempotency, lease, cursor, receipt, and tamper proofs and
-   add executor-bound proof that the operation still runs at most once.
-4. Perform no live edge/provider integration, generic shell dispatch, retry/repair, source mutation,
-   apply, commit, checkpoint, push, publication, or next-task action.
+1. Bind one already accepted `node-execution.v1` request and lease to the established session identity
+   before invoking the existing `NodeValidationConnector`.
+2. Prove disconnect, connector restart, session restart negotiation, broker reopen, and exact replay
+   converge on the same operation-keyed receipt without a second validation invocation.
+3. Prove presence, health, enrollment, credential, or capability evidence without that exact accepted
+   request and lease cannot dispatch, execute, cancel, retry, complete, mutate, or publish anything.
+4. Perform no live transport/edge/provider integration, service/listener work, generic shell dispatch,
+   retry/repair, source mutation, apply, commit, checkpoint, push, publication, or next-task action.
 
 The slice deliberately excludes a production daemon/service installer, live edge provider,
 auto-discovery, billing, multi-tenancy, QEMU dispatch, dynamic scheduling, and generic remote shell.
@@ -1026,9 +1038,10 @@ Default tests require no network, provider account, tunnel, or remote machine.
 1. **Contract and fake broker (complete):** the strict package-owned shapes, four distinct identities,
    exact-revision binding, reconnect/idempotency, canonical events, cancellation/cleanup, artifacts,
    and restart-safe receipts are proven without a real executor or transport.
-2. **Local/private broker:** run one real broker plus outbound Windows connector on user-owned
-   LAN/VPN/overlay infrastructure; add enrollment, credential rotation/revocation, presence, health,
-   capability refresh, reconnect, and offline behavior.
+2. **Connector-session foundation (complete):** transport-neutral enrollment, opaque credential
+   rotation/revocation, presence, health, capability refresh, disconnect/reconnect, and restart
+   negotiation are proven with an injected deterministic in-process transport. A later production
+   slice may run one real broker plus outbound connector on user-owned LAN/VPN/overlay infrastructure.
 3. **BYO edge adapters:** expose the same self-hosted broker through opt-in Cloudflare, ngrok, direct
    TLS, or equivalent adapters. Keep provider credentials local and test adapters independently from
    broker semantics.
