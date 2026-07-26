@@ -90,7 +90,7 @@ postimages before creating one checkpoint and receipt. It does not create a sche
 infer any approval from provider/result/receipt/validation evidence, auto-push, sync, publish,
 merge, select another task, or create a cross-task orchestrator.
 
-## Current Status (2026-07-25)
+## Current Status (2026-07-26)
 
 The first vertical slice is implemented as the package-owned `backlog.remote` workflow and dedicated
 orchestration-helper commands:
@@ -609,13 +609,28 @@ request/lease return the same durable receipt. Exchange identity, sequence, cred
 cursor, and reconnect state remain distinct from machine, capability, lease, receipt, connector,
 session, frame, enrollment, and credential identities and grant no lifecycle authority.
 
-The single next bounded TASK-015 follow-up is a package-local loopback process-boundary transport
-adapter proof for one outbound connector and one user-owned local/private broker. It must preserve the
-completed duplex bytes, ordering, limits, cursors, authentication, and authority boundaries while
-adding no edge provider, discovery, scheduler, installer/service lifecycle, managed broker, generic
-command execution, source mutation, Git, apply, checkpoint, push, or publication. A live Codex Cloud
-adapter remains blocked until a future installed CLI documents a machine-readable receipt with a
-stable opaque task ID.
+The package-local process-boundary transport proof is now implemented in
+`nodeconnectortransport.go`. The broker binds only an explicit numeric loopback IP at an ephemeral
+port, and the separately constructed connector owns only an outbound dialer. A four-byte big-endian
+length prefix bounds each canonical resume, authenticated-frame, or acknowledgement record before
+allocation. Hostnames, wildcard/unspecified/public endpoints, empty/partial/truncated/malformed/
+oversized/trailing records, wrong direction/sequence/exchange/configuration, replay, timeout,
+downstream rejection, cursor substitution, and durable-state tamper fail closed.
+
+Both directions preserve the exact authenticated frame bytes across real TCP loopback, including
+split writes and coalesced records. Acknowledgement follows only successful existing wire/session
+acceptance. Exact durable cursors resume after disconnect and both endpoint restarts; a fresh
+authenticated request/lease replay returns the same durable receipt without a second connector or
+validator invocation. Transport framing, location, connection, authentication, ordering, credit,
+acknowledgement, and resume evidence create no request, lease, receipt, credential, execution, or
+lifecycle authority.
+
+The single next bounded TASK-015 follow-up is one opt-in direct-TLS BYO edge-adapter proof for a
+user-owned broker. It must preserve this transport contract unchanged, keep certificate and key
+material as local secret references, expose no node listener, and add no Cloudflare/ngrok provider,
+discovery, scheduler, installer/service lifecycle, managed broker, generic command execution, source
+mutation, Git, apply, checkpoint, push, or publication. A live Codex Cloud adapter remains blocked
+until a future installed CLI documents a machine-readable receipt with a stable opaque task ID.
 
 ## Boundaries
 
@@ -1063,25 +1078,23 @@ allow-listed contract, not an arbitrary command. Requirements include:
 ## Proven Foundation And Next Vertical Slice
 
 The **in-process fake broker, injected validation connector, transport-neutral connector-session
-fake, session-to-dispatch seam, authenticated canonical framing profile, and bounded durable duplex
-exchange** now prove the durable product boundary before Cloudflare, ngrok, direct TLS, or another
-edge provider can shape it. The package implements broker lease/receipt/event behavior, prepared local
+fake, session-to-dispatch seam, authenticated canonical framing profile, bounded durable duplex
+exchange, and real loopback process-boundary adapter** now prove the durable product boundary before
+a BYO edge can shape it. The package implements broker lease/receipt/event behavior, prepared local
 validation delivery, durable enrollment/credential/presence/health/capability/restart evidence, exact
 accepted request/lease handoff, mutual peer authentication, independent directional ordering and
-acknowledgement, explicit frame/byte flow control, and restart-safe wire replay rejection without
-invoking a process or network.
+acknowledgement, explicit record/frame/byte bounds, exact durable resume, and restart-safe replay
+rejection without an external network, provider account, remote machine, or public listener.
 
 Next slice:
 
-1. Add one package-local loopback process-boundary transport adapter proof for one outbound connector
-   and one user-owned local/private broker.
-2. Carry the completed authenticated duplex bytes, directional ordering, bounded flow control,
-   acknowledgement, and reconnect/resume cursors unchanged across that boundary.
-3. Preserve the broker-accepted request and lease as the sole execution authority; transport,
-   connection, ordering, flow-control credit, authentication, and reconnect evidence grant no
-   lifecycle authority.
-4. Add no edge provider, discovery, scheduler, installer/service lifecycle, managed broker, generic
-   command execution, source mutation, Git, apply, checkpoint, push, or publication.
+1. Add one opt-in direct-TLS BYO edge-adapter proof for a user-owned broker.
+2. Preserve the completed loopback transport record, authenticated duplex bytes, directional
+   ordering, bounds, acknowledgement, and exact reconnect/resume cursor contract unchanged.
+3. Keep certificate and private-key material as local secret references; serialize no secret bytes.
+4. Preserve the broker-accepted request and lease as the sole execution authority, expose no node
+   listener, and add no Cloudflare/ngrok provider, discovery, scheduler, installer/service lifecycle,
+   managed broker, generic command execution, mutation, Git, apply, checkpoint, push, or publication.
 
 The slice deliberately excludes a production daemon/service installer, live edge provider,
 auto-discovery, billing, multi-tenancy, QEMU dispatch, dynamic scheduling, and generic remote shell.
@@ -1092,16 +1105,16 @@ Default tests require no network, provider account, tunnel, or remote machine.
 1. **Contract and fake broker (complete):** the strict package-owned shapes, four distinct identities,
    exact-revision binding, reconnect/idempotency, canonical events, cancellation/cleanup, artifacts,
    and restart-safe receipts are proven without a real executor or transport.
-2. **Connector-session, authenticated framing, and duplex exchange foundation (complete):** transport-neutral
+2. **Connector-session, authenticated framing, duplex, and loopback transport foundation (complete):** transport-neutral
    enrollment, opaque credential rotation/revocation, presence, health, capability refresh,
    disconnect/reconnect, restart negotiation, mutual peer authentication, canonical bounded frames,
    independent directional ordering/acknowledgement, explicit queued and in-flight frame/byte limits,
-   deterministic resume, and restart-safe replay rejection are proven with injected deterministic
-   in-process collaborators. A later production slice may run one real broker plus outbound connector
-   on user-owned LAN/VPN/overlay infrastructure.
-3. **BYO edge adapters:** expose the same self-hosted broker through opt-in Cloudflare, ngrok, direct
-   TLS, or equivalent adapters. Keep provider credentials local and test adapters independently from
-   broker semantics.
+   bounded TCP records, deterministic resume, and restart-safe replay rejection are proven across an
+   explicit ephemeral loopback listener and outbound connector. The next proof adds only opt-in direct
+   TLS for a user-owned broker.
+3. **BYO edge adapters:** prove direct TLS first, then independently consider opt-in Cloudflare,
+   ngrok, or equivalent adapters. Keep provider credentials and certificate/key material local and
+   test adapters independently from broker semantics.
 4. **Managed broker preview:** host the broker/edge as a subscription service with tenant isolation,
    quotas, audit, retention, operations, and billing. Prefer shared broker ingress with tenant/node
    multiplexing over a separate tunnel credential distributed to every customer node.
