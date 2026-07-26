@@ -559,13 +559,24 @@ conflicting restart identity, malformed input, tampered state, and atomic-write 
 publishing partial session state. The fake opens no socket, listener, process, provider, or network and
 does not change or invoke the broker lease/execution or validation-connector authority boundaries.
 
-The single next bounded TASK-015 follow-up is an in-process session-to-dispatch integration proof:
-carry one already broker-accepted request and lease through the established session identity into the
-existing `NodeValidationConnector`, and prove that disconnect/restart reuses the same broker operation
-and receipt while session evidence alone still cannot dispatch, execute, cancel, retry, or complete
-anything. Keep it fixture-only and injected; add no real transport, service, scheduling, mutation, Git,
-provider, or publication surface. A live Codex Cloud adapter remains blocked until a future installed
-CLI documents a machine-readable receipt with a stable opaque task ID.
+The package-local session-to-dispatch seam now revalidates the complete immutable broker and session
+chains before carrying one exact broker-accepted request and active lease through the current healthy
+session into the existing `NodeValidationConnector`. Enrollment, credential, session, connection,
+machine, capability, request, lease, and terminal receipt bindings are checked independently. Exact
+terminal replay before and after disconnect/reconnect plus broker/session/connector restart returns the
+same durable receipt without a second connector invocation or output. Missing/stale session state,
+revocation, capability/request/lease/session substitution, expiry, changed replay, and durable-state
+tamper reject before validation with no partial publication. Presence and health remain transport
+prerequisites only: without the broker operation and lease they initiate nothing and grant no
+completion, cancellation, retry, mutation, apply, checkpoint, commit, push, or publication authority.
+
+The single next bounded TASK-015 follow-up is a package-owned, fixture-only wire-framing and mutual-
+authentication profile for the unchanged connector-session and `node-execution.v1` messages. Prove
+canonical bounded envelopes, opaque credential references, revocation, replay rejection, and the
+absence of generic-command or lifecycle-authority fields with injected in-process framing only. Add no
+socket, HTTP, WebSocket, TLS implementation, service, listener, edge provider, scheduling, mutation,
+Git, apply, checkpoint, push, publication, or managed-broker work. A live Codex Cloud adapter remains
+blocked until a future installed CLI documents a machine-readable receipt with a stable opaque task ID.
 
 ## Boundaries
 
@@ -1013,20 +1024,21 @@ allow-listed contract, not an arbitrary command. Requirements include:
 ## Proven Foundation And Next Vertical Slice
 
 The **in-process fake broker, injected validation connector, and transport-neutral connector-session
-fake** now prove the durable product boundary before Cloudflare, ngrok, direct TLS, or another edge
-provider can shape it. The package implements broker lease/receipt/event behavior, prepared local
-validation delivery, and durable enrollment/credential/presence/health/capability/restart evidence
-without invoking a process or network.
+fake plus the session-to-dispatch integration seam** now prove the durable product boundary before
+Cloudflare, ngrok, direct TLS, or another edge provider can shape it. The package implements broker
+lease/receipt/event behavior, prepared local validation delivery, durable enrollment/credential/
+presence/health/capability/restart evidence, and exact accepted request/lease handoff without invoking
+a process or network.
 
 Next slice:
 
-1. Bind one already accepted `node-execution.v1` request and lease to the established session identity
-   before invoking the existing `NodeValidationConnector`.
-2. Prove disconnect, connector restart, session restart negotiation, broker reopen, and exact replay
-   converge on the same operation-keyed receipt without a second validation invocation.
-3. Prove presence, health, enrollment, credential, or capability evidence without that exact accepted
-   request and lease cannot dispatch, execute, cancel, retry, complete, mutate, or publish anything.
-4. Perform no live transport/edge/provider integration, service/listener work, generic shell dispatch,
+1. Define one package-owned framing and mutual-authentication profile around the unchanged connector-
+   session and `node-execution.v1` messages using deterministic fixture bytes only.
+2. Prove canonical bounded envelopes, opaque credential references, revocation, tamper and replay
+   rejection, and strict message-to-enrollment/session/request/lease binding.
+3. Prove the profile contains no generic-command, completion, cancellation, retry, mutation, apply,
+   checkpoint, commit, push, or publication authority.
+4. Perform no live transport/edge/provider integration, socket, HTTP, WebSocket, TLS, service/listener,
    retry/repair, source mutation, apply, commit, checkpoint, push, publication, or next-task action.
 
 The slice deliberately excludes a production daemon/service installer, live edge provider,
