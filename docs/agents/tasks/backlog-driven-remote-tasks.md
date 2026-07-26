@@ -652,11 +652,27 @@ its bytes, and config/PID state is removed after bounded shutdown or failure. Pr
 provider, readiness, and connection evidence grants no request, lease, execution, receipt, mutation,
 Git, or lifecycle authority; reconnect resumes only the existing durable transport cursors.
 
-The single next bounded TASK-015 follow-up is a package-local, fixture-only managed-broker preview
-contract for tenant identity, quotas, audit, retention, and availability boundaries, with no hosted
-service, live network, billing integration, scheduler, or widened node authority. A live Codex Cloud
-adapter remains blocked until a future installed CLI documents a machine-readable receipt with a
-stable opaque task ID.
+The package-local managed-broker preview contract is now complete in
+`nodeconnectormanagedbrokerpreview.go`. Its strict fixture-only evidence keeps tenant identity,
+bounded quota snapshots, audit evidence, retention policy, availability evidence, shared ingress,
+machine, capability, connection, provider, lease, and receipt identities separate. Cross-tenant,
+unknown, substituted, malformed, unbounded, and conflicting replay evidence fails closed; exact
+restart replay is idempotent. Audit, availability, quota, retention, connection, provider, and
+receipt evidence remains opaque and cannot prove completion or authorize execution, validation,
+mutation, Git, apply, checkpoint, commit, push, or publication. The preview preserves only the exact
+broker-accepted request fingerprint and active lease as the execution-authority reference.
+
+This proof is not a hosted service or live multi-tenant implementation. It adds no network, provider
+account, billing integration, quota enforcement, scheduler, daemon, node listener, or service
+operation, and serializes no managed credentials or private configuration. Shared broker ingress
+with tenant/node multiplexing remains the preferred future architecture; one edge credential per
+node is not modeled or distributed.
+
+The single next bounded TASK-015 follow-up is phased-backlog item 5: add one fixture-only
+multi-target validation aggregation contract for explicit Linux-host, Windows-physical-host, and
+Linux-QEMU Windows-guest receipts, without adding live dispatch, scheduling, repair execution, or
+engine behavior. A live Codex Cloud adapter remains blocked until a future installed CLI documents
+a machine-readable receipt with a stable opaque task ID.
 
 ## Boundaries
 
@@ -1105,22 +1121,25 @@ allow-listed contract, not an arbitrary command. Requirements include:
 
 The **in-process fake broker, injected validation connector, transport-neutral connector-session
 fake, session-to-dispatch seam, authenticated canonical framing profile, bounded durable duplex
-exchange, real loopback process-boundary adapter, direct-TLS BYO edge, and Cloudflare Tunnel BYO
-adapter** now prove the durable product boundary without letting a provider edge shape it. The package implements broker lease/receipt/event behavior, prepared local
+exchange, real loopback process-boundary adapter, direct-TLS BYO edge, Cloudflare Tunnel BYO
+adapter, and fixture-only managed-broker preview** now prove the durable product boundary without
+letting a provider edge or managed-service artifact shape it. The package implements broker lease/receipt/event behavior, prepared local
 validation delivery, durable enrollment/credential/presence/health/capability/restart evidence, exact
 accepted request/lease handoff, mutual peer authentication, independent directional ordering and
 acknowledgement, explicit record/frame/byte bounds, TLS 1.3 confidentiality and server identity,
-local-only secret references, exact durable resume, and restart-safe replay rejection without an
-external network, provider account, remote machine, or node listener.
+local-only secret references, managed tenant/isolation/quota/audit/retention/availability evidence,
+exact durable resume, and restart-safe replay rejection without an external network, provider
+account, remote machine, or node listener. The managed preview remains untrusted evidence only,
+uses shared tenant/node-multiplexed ingress, and cannot add execution or lifecycle authority.
 
 Next slice:
 
-1. Add one package-local, fixture-only managed-broker preview contract.
-2. Keep tenant identity, quota, audit, retention, and availability evidence separate from machine,
-   capability, lease, receipt, connection, and provider identities.
-3. Preserve the broker-accepted request and lease as the sole execution authority.
-4. Add no hosted service, live network, billing integration, scheduler, node listener, generic
-   command execution, mutation, Git, apply, checkpoint, push, or publication.
+1. Add one package-local, fixture-only multi-target validation aggregation contract.
+2. Bind explicit Linux-host, Windows-physical-host, and Linux-QEMU Windows-guest receipts without
+   inferring target identity or success from availability, connection, provider, or managed-service evidence.
+3. Aggregate only immutable per-target validation evidence and dispatch no repair automatically.
+4. Add no live dispatch, scheduler, repair execution, hosted service, network, provider, engine,
+   mutation, Git, apply, checkpoint, push, or publication behavior.
 
 The slice deliberately excludes a production daemon/service installer, live edge provider,
 auto-discovery, billing, multi-tenancy, QEMU dispatch, dynamic scheduling, and generic remote shell.
@@ -1141,10 +1160,12 @@ Default tests require no network, provider account, tunnel, or remote machine.
    bounded handshake, secret references, and no downgrade. Cloudflare Tunnel independently proves
    locally managed credential-file ingress, outbound origin connectivity, client-side Access TCP,
    PID-file/process lifecycle, unchanged direct-TLS transport semantics, and no provider authority.
-4. **Managed broker preview (next):** host the broker/edge as a subscription service with tenant isolation,
-   quotas, audit, retention, operations, and billing. Prefer shared broker ingress with tenant/node
-   multiplexing over a separate tunnel credential distributed to every customer node.
-5. **Multi-target validation:** add concurrent Linux-host, Windows-physical-host, and Linux-QEMU
+4. **Managed broker preview (complete):** the package-local fixture proof separates tenant identity,
+   bounded quota snapshots, audit, retention, availability, shared ingress, and all node/broker
+   identities without implementing hosting, billing, quota enforcement, or live multi-tenancy.
+   Shared broker ingress with tenant/node multiplexing remains preferred over a separate edge
+   credential distributed to every customer node.
+5. **Multi-target validation (next):** add concurrent Linux-host, Windows-physical-host, and Linux-QEMU
    Windows-guest targets; aggregate per-target results and dispatch only an explicit repair task.
 6. **Installer and advanced scheduling:** service lifecycle and diagnostics, then availability/load/
    risk/cost placement, bounded retries, quarantine, disposable workers, Mac, GPU, and third-party
