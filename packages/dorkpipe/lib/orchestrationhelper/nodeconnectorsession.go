@@ -413,6 +413,96 @@ func (fake *NodeConnectorSessionFake) RecordEvidence(raw []byte) error {
 	return fake.appendTransition(nodeConnectorSessionTransition{Kind: "evidence", Evidence: &value})
 }
 
+// DispatchAcceptedValidation carries one already broker-accepted request and
+// lease through the current healthy connector session. The session is only a
+// transport prerequisite: it cannot create or replace the broker authority,
+// and an exact terminal replay returns the durable receipt without invoking
+// the validation connector again.
+func (fake *NodeConnectorSessionFake) DispatchAcceptedValidation(connector *NodeValidationConnector, negotiation NodeConnectorSessionNegotiation, request NodeExecutionRequest, lease NodeExecutionTaskLease, at time.Time) (NodeExecutionReceipt, error) {
+	fake.mu.Lock()
+	defer fake.mu.Unlock()
+	if connector == nil {
+		return NodeExecutionReceipt{}, errors.New("connector session dispatch requires the existing node validation connector")
+	}
+
+	brokerStates, err := loadNodeExecutionStates(fake.broker.root)
+	if err != nil {
+		return NodeExecutionReceipt{}, fmt.Errorf("connector session dispatch broker state failed revalidation: %w", err)
+	}
+	if len(brokerStates) == 0 || brokerStates[len(brokerStates)-1].StateFingerprint != fake.broker.state.StateFingerprint {
+		return NodeExecutionReceipt{}, errors.New("connector session dispatch broker state is missing or stale")
+	}
+	sessionStates, err := loadNodeConnectorSessionStates(fake.root, fake.broker)
+	if err != nil {
+		return NodeExecutionReceipt{}, fmt.Errorf("connector session dispatch state failed revalidation: %w", err)
+	}
+	if len(sessionStates) == 0 || sessionStates[len(sessionStates)-1].StateFingerprint != fake.state.StateFingerprint {
+		return NodeExecutionReceipt{}, errors.New("connector session dispatch state is missing or stale")
+	}
+	derived, err := deriveNodeConnectorSessionState(fake.state, fake.broker)
+	if err != nil {
+		return NodeExecutionReceipt{}, err
+	}
+	acceptedNegotiation, ok := derived.negotiations[negotiation.NegotiationID]
+	if !ok || !nodeExecutionEqual(acceptedNegotiation.Negotiation, negotiation) {
+		return NodeExecutionReceipt{}, errors.New("connector session dispatch requires the exact accepted negotiation")
+	}
+	session, ok := derived.sessions[negotiation.SessionID]
+	if !ok || session.SessionID != negotiation.SessionID || session.ConnectionID != negotiation.ConnectionID || session.CredentialID != negotiation.CredentialID || session.CapabilitySnapshot != negotiation.CapabilitySnapshotID {
+		return NodeExecutionReceipt{}, errors.New("connector session dispatch identity conflicts with the current session")
+	}
+	if !session.Present || session.Health != "healthy" {
+		return NodeExecutionReceipt{}, errors.New("connector session dispatch requires current healthy presence evidence")
+	}
+	if negotiation.EnrollmentID != fake.state.Enrollment.EnrollmentID || negotiation.MachineID != fake.state.Enrollment.MachineID || negotiation.CredentialID != derived.currentCredential || derived.revoked[negotiation.CredentialID] {
+		return NodeExecutionReceipt{}, errors.New("connector session dispatch enrollment or credential binding is stale or revoked")
+	}
+	if err := validateNodeExecutionRequest(request); err != nil {
+		return NodeExecutionReceipt{}, err
+	}
+	if err := validateNodeExecutionLease(lease); err != nil {
+		return NodeExecutionReceipt{}, err
+	}
+	capability, ok := fake.broker.capability(request.CapabilitySnapshotID)
+	if !ok || capability.MachineID != negotiation.MachineID || request.CapabilitySnapshotID != negotiation.CapabilitySnapshotID || lease.CapabilitySnapshotID != request.CapabilitySnapshotID {
+		return NodeExecutionReceipt{}, errors.New("connector session dispatch capability binding is invalid")
+	}
+	operation, ok := fake.broker.state.Operations[request.OperationID]
+	if !ok || !nodeExecutionEqual(operation.Request, request) || !nodeExecutionEqual(operation.Lease, lease) {
+		return NodeExecutionReceipt{}, errors.New("connector session dispatch requires the exact broker-accepted request and lease")
+	}
+	connectedMachine, err := fake.broker.connectedMachine(negotiation.ConnectionID)
+	if err != nil {
+		return NodeExecutionReceipt{}, err
+	}
+	identities := []string{
+		negotiation.MachineID,
+		negotiation.CapabilitySnapshotID,
+		lease.LeaseID,
+		negotiation.ConnectionID,
+		negotiation.EnrollmentID,
+		negotiation.CredentialID,
+		negotiation.SessionID,
+	}
+	seen := map[string]bool{}
+	for _, identity := range identities {
+		if seen[identity] {
+			return NodeExecutionReceipt{}, errors.New("connector session dispatch protocol identities must remain distinct")
+		}
+		seen[identity] = true
+	}
+	if operation.Receipt != nil {
+		if seen[operation.Receipt.ReceiptID] {
+			return NodeExecutionReceipt{}, errors.New("connector session dispatch receipt identity conflicts with another protocol identity")
+		}
+		return *operation.Receipt, nil
+	}
+	if err := validateNodeExecutionActiveLease(operation, connectedMachine, lease.MachineID, lease.CapabilitySnapshotID, lease.LeaseID, lease.OperationID, lease.Attempt, at); err != nil {
+		return NodeExecutionReceipt{}, err
+	}
+	return connector.Execute(fake.broker, negotiation.ConnectionID, request, lease, nil)
+}
+
 func (fake *NodeConnectorSessionFake) appendTransition(transition nodeConnectorSessionTransition) error {
 	next := cloneNodeConnectorSessionState(fake.state)
 	next.Transitions = append(next.Transitions, transition)

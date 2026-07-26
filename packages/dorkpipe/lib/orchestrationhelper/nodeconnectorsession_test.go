@@ -19,6 +19,290 @@ type nodeConnectorSessionFixture struct {
 	calls      *int
 }
 
+type nodeConnectorSessionDispatchFixture struct {
+	session         *nodeConnectorSessionFixture
+	negotiation     NodeConnectorSessionNegotiation
+	lease           NodeExecutionTaskLease
+	connector       *NodeValidationConnector
+	validationCalls *int
+}
+
+func TestNodeConnectorSessionDispatchesAcceptedValidationOnceAcrossReplayReconnectAndRestart(t *testing.T) {
+	fixture := newNodeConnectorSessionDispatchFixture(t)
+	receipt, err := fixture.session.fake.DispatchAcceptedValidation(fixture.connector, fixture.negotiation, fixture.session.execution.request, fixture.lease, fixture.session.execution.now.Add(10*time.Second))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if *fixture.validationCalls != 1 || *fixture.session.execution.calls != 1 {
+		t.Fatalf("accepted proof invocation counts are invalid: validation=%d broker_executor=%d", *fixture.validationCalls, *fixture.session.execution.calls)
+	}
+	if receipt.RequestFingerprint != fixture.session.execution.request.RequestFingerprint || receipt.LeaseID != fixture.lease.LeaseID || receipt.CapabilitySnapshotID != fixture.negotiation.CapabilitySnapshotID || receipt.MachineID != fixture.negotiation.MachineID {
+		t.Fatalf("connector receipt lost the accepted request or lease binding: %#v", receipt)
+	}
+	identities := []string{
+		fixture.negotiation.MachineID,
+		fixture.negotiation.CapabilitySnapshotID,
+		fixture.lease.LeaseID,
+		receipt.ReceiptID,
+		fixture.negotiation.ConnectionID,
+		fixture.negotiation.EnrollmentID,
+		fixture.negotiation.CredentialID,
+		fixture.negotiation.SessionID,
+	}
+	unique := map[string]bool{}
+	for _, identity := range identities {
+		unique[identity] = true
+	}
+	if len(unique) != len(identities) {
+		t.Fatalf("machine, capability, lease, receipt, connection, enrollment, credential, and session identities are not distinct: %#v", identities)
+	}
+
+	terminalBroker := nodeConnectorStateBytes(t, fixture.session.execution.root)
+	terminalSession := nodeConnectorSessionStateBytes(t, fixture.session.root)
+	replayed, err := fixture.session.fake.DispatchAcceptedValidation(fixture.connector, fixture.negotiation, fixture.session.execution.request, fixture.lease, fixture.session.execution.now.Add(11*time.Second))
+	if err != nil || replayed.ReceiptFingerprint != receipt.ReceiptFingerprint || *fixture.validationCalls != 1 || !nodeConnectorStateBytesEqual(terminalBroker, nodeConnectorStateBytes(t, fixture.session.execution.root)) || !nodeConnectorSessionStateBytesEqual(terminalSession, nodeConnectorSessionStateBytes(t, fixture.session.root)) {
+		t.Fatalf("exact replay invoked validation or published duplicate output: receipt=%#v err=%v calls=%d", replayed, err, *fixture.validationCalls)
+	}
+	changedRequest := fixture.session.execution.request
+	changedRequest.TaskID = "task-validation-changed-001"
+	changedRequest, err = FinalizeNodeExecutionRequest(changedRequest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := fixture.session.fake.DispatchAcceptedValidation(fixture.connector, fixture.negotiation, changedRequest, fixture.lease, fixture.session.execution.now.Add(12*time.Second)); err == nil {
+		t.Fatal("changed terminal request replay was accepted")
+	}
+	if *fixture.validationCalls != 1 || !nodeConnectorStateBytesEqual(terminalBroker, nodeConnectorStateBytes(t, fixture.session.execution.root)) || !nodeConnectorSessionStateBytesEqual(terminalSession, nodeConnectorSessionStateBytes(t, fixture.session.root)) {
+		t.Fatal("changed replay invoked validation or published partial state")
+	}
+
+	disconnected := nodeConnectorSessionEvidence(t, fixture.session, 4, "evidence-dispatch-disconnected-001", "replay-dispatch-disconnected-001", "presence", "disconnected", fixture.negotiation.SessionID, fixture.negotiation.ConnectionID, fixture.negotiation.CredentialID, "", fixture.negotiation.CapabilitySnapshotID, fixture.session.execution.now.Add(13*time.Second))
+	mustRecordNodeConnectorEvidence(t, fixture.session.fake, disconnected)
+	fixture.session.execution.broker.Disconnect(fixture.negotiation.ConnectionID)
+	disconnectedBroker := nodeConnectorStateBytes(t, fixture.session.execution.root)
+	disconnectedSession := nodeConnectorSessionStateBytes(t, fixture.session.root)
+	if _, err := fixture.session.fake.DispatchAcceptedValidation(fixture.connector, fixture.negotiation, fixture.session.execution.request, fixture.lease, fixture.session.execution.now.Add(14*time.Second)); err == nil {
+		t.Fatal("disconnected session transported validation")
+	}
+	if *fixture.validationCalls != 1 || !nodeConnectorStateBytesEqual(disconnectedBroker, nodeConnectorStateBytes(t, fixture.session.execution.root)) || !nodeConnectorSessionStateBytesEqual(disconnectedSession, nodeConnectorSessionStateBytes(t, fixture.session.root)) {
+		t.Fatal("disconnect rejection invoked validation or published partial state")
+	}
+
+	restartedExecutions := 0
+	reopenedBroker, err := NewNodeExecutionFakeBroker(fixture.session.execution.root, fixture.session.execution.machine, []NodeExecutionCapabilitySnapshot{fixture.session.execution.capability}, func(NodeExecutionRequest, NodeExecutionTaskLease) { restartedExecutions++ })
+	if err != nil {
+		t.Fatal(err)
+	}
+	reopenedSession, err := NewNodeConnectorSessionFake(fixture.session.root, reopenedBroker, fixture.session.enrollment, nodeConnectorSessionTransport(fixture.session.calls, false))
+	if err != nil {
+		t.Fatal(err)
+	}
+	reconnect := nodeConnectorSessionHello(t, fixture.session, 5, "negotiation-dispatch-restart-001", "replay-dispatch-restart-001", "connection-dispatch-restart-001", fixture.negotiation.SessionID, fixture.negotiation.CredentialID, fixture.negotiation.CapabilitySnapshotID, fixture.session.execution.now.Add(15*time.Second))
+	restartedNegotiation, err := reopenedSession.Negotiate(mustNodeExecutionJSON(t, reconnect))
+	if err != nil {
+		t.Fatal(err)
+	}
+	mustRecordNodeConnectorEvidence(t, reopenedSession, nodeConnectorSessionEvidence(t, fixture.session, 6, "evidence-dispatch-reconnected-001", "replay-dispatch-reconnected-001", "presence", "connected", restartedNegotiation.SessionID, restartedNegotiation.ConnectionID, restartedNegotiation.CredentialID, "", restartedNegotiation.CapabilitySnapshotID, fixture.session.execution.now.Add(16*time.Second)))
+	mustRecordNodeConnectorEvidence(t, reopenedSession, nodeConnectorSessionEvidence(t, fixture.session, 7, "evidence-dispatch-restart-health-001", "replay-dispatch-restart-health-001", "health", "healthy", restartedNegotiation.SessionID, restartedNegotiation.ConnectionID, restartedNegotiation.CredentialID, "", restartedNegotiation.CapabilitySnapshotID, fixture.session.execution.now.Add(17*time.Second)))
+	if err := reopenedBroker.Connect(restartedNegotiation.MachineID, restartedNegotiation.ConnectionID); err != nil {
+		t.Fatal(err)
+	}
+	restartedValidationCalls := 0
+	restartedConnector, err := NewNodeValidationConnector(fixture.session.execution.request.Workflow, fixture.session.execution.request.SourceRevision, func(NodeValidationInvocation) (NodeValidationEvidence, error) {
+		restartedValidationCalls++
+		return nodeConnectorTestEvidence(t, fixture.session.execution), nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	restartBroker := nodeConnectorStateBytes(t, fixture.session.execution.root)
+	restartSession := nodeConnectorSessionStateBytes(t, fixture.session.root)
+	expiresAt, err := parseNodeExecutionTime(fixture.lease.ExpiresAt)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, replayAt := range []time.Time{fixture.session.execution.now.Add(18 * time.Second), expiresAt.Add(time.Second)} {
+		resumed, err := reopenedSession.DispatchAcceptedValidation(restartedConnector, restartedNegotiation, fixture.session.execution.request, fixture.lease, replayAt)
+		if err != nil || resumed.ReceiptFingerprint != receipt.ReceiptFingerprint {
+			t.Fatalf("restart resume lost the accepted receipt: receipt=%#v err=%v", resumed, err)
+		}
+	}
+	if restartedValidationCalls != 0 || restartedExecutions != 0 || *fixture.validationCalls != 1 || !nodeConnectorStateBytesEqual(restartBroker, nodeConnectorStateBytes(t, fixture.session.execution.root)) || !nodeConnectorSessionStateBytesEqual(restartSession, nodeConnectorSessionStateBytes(t, fixture.session.root)) {
+		t.Fatalf("restart replay duplicated validation, execution, or durable output: validation=%d execution=%d", restartedValidationCalls, restartedExecutions)
+	}
+}
+
+func TestNodeConnectorSessionDispatchRejectsChangedBindingsExpiryStaleStateRevocationAndTamper(t *testing.T) {
+	tests := []struct {
+		name   string
+		mutate func(*nodeConnectorSessionDispatchFixture) (NodeConnectorSessionNegotiation, NodeExecutionRequest, NodeExecutionTaskLease, time.Time)
+	}{
+		{name: "machine identity", mutate: func(f *nodeConnectorSessionDispatchFixture) (NodeConnectorSessionNegotiation, NodeExecutionRequest, NodeExecutionTaskLease, time.Time) {
+			value := f.negotiation
+			value.MachineID = "machine-conflict-001"
+			return mustFinalizeNodeConnectorSessionNegotiation(t, value), f.session.execution.request, f.lease, f.session.execution.now.Add(10 * time.Second)
+		}},
+		{name: "connection identity", mutate: func(f *nodeConnectorSessionDispatchFixture) (NodeConnectorSessionNegotiation, NodeExecutionRequest, NodeExecutionTaskLease, time.Time) {
+			value := f.negotiation
+			value.ConnectionID = "connection-conflict-001"
+			return mustFinalizeNodeConnectorSessionNegotiation(t, value), f.session.execution.request, f.lease, f.session.execution.now.Add(10 * time.Second)
+		}},
+		{name: "enrollment identity", mutate: func(f *nodeConnectorSessionDispatchFixture) (NodeConnectorSessionNegotiation, NodeExecutionRequest, NodeExecutionTaskLease, time.Time) {
+			value := f.negotiation
+			value.EnrollmentID = "enrollment-conflict-001"
+			return mustFinalizeNodeConnectorSessionNegotiation(t, value), f.session.execution.request, f.lease, f.session.execution.now.Add(10 * time.Second)
+		}},
+		{name: "credential identity", mutate: func(f *nodeConnectorSessionDispatchFixture) (NodeConnectorSessionNegotiation, NodeExecutionRequest, NodeExecutionTaskLease, time.Time) {
+			value := f.negotiation
+			value.CredentialID = "cred-conflict-identity-001"
+			return mustFinalizeNodeConnectorSessionNegotiation(t, value), f.session.execution.request, f.lease, f.session.execution.now.Add(10 * time.Second)
+		}},
+		{name: "session identity", mutate: func(f *nodeConnectorSessionDispatchFixture) (NodeConnectorSessionNegotiation, NodeExecutionRequest, NodeExecutionTaskLease, time.Time) {
+			value := f.negotiation
+			value.SessionID = "session-conflict-001"
+			return mustFinalizeNodeConnectorSessionNegotiation(t, value), f.session.execution.request, f.lease, f.session.execution.now.Add(10 * time.Second)
+		}},
+		{name: "capability substitution", mutate: func(f *nodeConnectorSessionDispatchFixture) (NodeConnectorSessionNegotiation, NodeExecutionRequest, NodeExecutionTaskLease, time.Time) {
+			capability, err := NewNodeExecutionCapabilitySnapshot(f.negotiation.MachineID, NodeExecutionObservedCapabilities{HostOS: "windows", Runtime: "docker", Toolchains: []string{"go1.26"}}, NodeExecutionApprovedCapabilities{PolicyClass: "validation", AllowedWorkflowKinds: []string{"dockpipe.workflow"}}, f.session.execution.now.Add(4*time.Second))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := f.session.execution.broker.RegisterCapabilitySnapshot(capability); err != nil {
+				t.Fatal(err)
+			}
+			request := f.session.execution.request
+			request.CapabilitySnapshotID = capability.SnapshotID
+			request, err = FinalizeNodeExecutionRequest(request)
+			if err != nil {
+				t.Fatal(err)
+			}
+			lease := f.lease
+			lease.CapabilitySnapshotID = capability.SnapshotID
+			return f.negotiation, request, lease, f.session.execution.now.Add(10 * time.Second)
+		}},
+		{name: "lease identity", mutate: func(f *nodeConnectorSessionDispatchFixture) (NodeConnectorSessionNegotiation, NodeExecutionRequest, NodeExecutionTaskLease, time.Time) {
+			lease := f.lease
+			lease.LeaseID = "lease-conflict-000000000001"
+			return f.negotiation, f.session.execution.request, lease, f.session.execution.now.Add(10 * time.Second)
+		}},
+		{name: "lease expiry", mutate: func(f *nodeConnectorSessionDispatchFixture) (NodeConnectorSessionNegotiation, NodeExecutionRequest, NodeExecutionTaskLease, time.Time) {
+			expiresAt, err := parseNodeExecutionTime(f.lease.ExpiresAt)
+			if err != nil {
+				t.Fatal(err)
+			}
+			return f.negotiation, f.session.execution.request, f.lease, expiresAt
+		}},
+		{name: "request substitution", mutate: func(f *nodeConnectorSessionDispatchFixture) (NodeConnectorSessionNegotiation, NodeExecutionRequest, NodeExecutionTaskLease, time.Time) {
+			request := f.session.execution.request
+			request.RunID = "run-substituted-001"
+			request, err := FinalizeNodeExecutionRequest(request)
+			if err != nil {
+				t.Fatal(err)
+			}
+			return f.negotiation, request, f.lease, f.session.execution.now.Add(10 * time.Second)
+		}},
+		{name: "revoked credential", mutate: func(f *nodeConnectorSessionDispatchFixture) (NodeConnectorSessionNegotiation, NodeExecutionRequest, NodeExecutionTaskLease, time.Time) {
+			revocation := mustFinalizeNodeConnectorCredentialEvidence(t, NodeConnectorCredentialEvidence{
+				Sequence: 4, EvidenceID: "evidence-dispatch-revocation-001", ReplayIdentity: "replay-dispatch-revocation-001", EnrollmentID: f.negotiation.EnrollmentID, MachineID: f.negotiation.MachineID, Action: "revoke", CredentialID: f.negotiation.CredentialID, ObservedAt: nodeExecutionTime(f.session.execution.now.Add(4 * time.Second)),
+			})
+			if err := f.session.fake.RecordCredential(mustNodeExecutionJSON(t, revocation)); err != nil {
+				t.Fatal(err)
+			}
+			return f.negotiation, f.session.execution.request, f.lease, f.session.execution.now.Add(10 * time.Second)
+		}},
+		{name: "stale in-memory session state", mutate: func(f *nodeConnectorSessionDispatchFixture) (NodeConnectorSessionNegotiation, NodeExecutionRequest, NodeExecutionTaskLease, time.Time) {
+			reopened, err := NewNodeConnectorSessionFake(f.session.root, f.session.execution.broker, f.session.enrollment, nodeConnectorSessionTransport(f.session.calls, false))
+			if err != nil {
+				t.Fatal(err)
+			}
+			mustRecordNodeConnectorEvidence(t, reopened, nodeConnectorSessionEvidence(t, f.session, 4, "evidence-dispatch-external-disconnect-001", "replay-dispatch-external-disconnect-001", "presence", "disconnected", f.negotiation.SessionID, f.negotiation.ConnectionID, f.negotiation.CredentialID, "", f.negotiation.CapabilitySnapshotID, f.session.execution.now.Add(4*time.Second)))
+			return f.negotiation, f.session.execution.request, f.lease, f.session.execution.now.Add(10 * time.Second)
+		}},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			fixture := newNodeConnectorSessionDispatchFixture(t)
+			negotiation, request, lease, at := test.mutate(fixture)
+			assertNodeConnectorSessionDispatchRejected(t, fixture, negotiation, request, lease, at)
+		})
+	}
+
+	t.Run("missing accepted session state", func(t *testing.T) {
+		session := newNodeConnectorSessionFixture(t, nil)
+		lease := dispatchNodeExecutionFixture(t, session.execution)
+		calls := 0
+		connector, err := NewNodeValidationConnector(session.execution.request.Workflow, session.execution.request.SourceRevision, func(NodeValidationInvocation) (NodeValidationEvidence, error) {
+			calls++
+			return nodeConnectorTestEvidence(t, session.execution), nil
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		fixture := &nodeConnectorSessionDispatchFixture{session: session, lease: lease, connector: connector, validationCalls: &calls}
+		assertNodeConnectorSessionDispatchRejected(t, fixture, NodeConnectorSessionNegotiation{}, session.execution.request, lease, session.execution.now.Add(10*time.Second))
+	})
+
+	t.Run("healthy presence without accepted request and lease", func(t *testing.T) {
+		session := newNodeConnectorSessionFixture(t, nil)
+		hello := nodeConnectorSessionHello(t, session, 1, "negotiation-presence-only-001", "replay-presence-only-001", "connection-presence-only-001", "", session.enrollment.InitialCredentialID, session.execution.capability.SnapshotID, session.execution.now.Add(time.Second))
+		negotiation, err := session.fake.Negotiate(mustNodeExecutionJSON(t, hello))
+		if err != nil {
+			t.Fatal(err)
+		}
+		mustRecordNodeConnectorEvidence(t, session.fake, nodeConnectorSessionEvidence(t, session, 2, "evidence-presence-only-connected-001", "replay-presence-only-connected-001", "presence", "connected", negotiation.SessionID, negotiation.ConnectionID, negotiation.CredentialID, "", negotiation.CapabilitySnapshotID, session.execution.now.Add(2*time.Second)))
+		mustRecordNodeConnectorEvidence(t, session.fake, nodeConnectorSessionEvidence(t, session, 3, "evidence-presence-only-health-001", "replay-presence-only-health-001", "health", "healthy", negotiation.SessionID, negotiation.ConnectionID, negotiation.CredentialID, "", negotiation.CapabilitySnapshotID, session.execution.now.Add(3*time.Second)))
+		if err := session.execution.broker.Connect(negotiation.MachineID, negotiation.ConnectionID); err != nil {
+			t.Fatal(err)
+		}
+		calls := 0
+		connector, err := NewNodeValidationConnector(session.execution.request.Workflow, session.execution.request.SourceRevision, func(NodeValidationInvocation) (NodeValidationEvidence, error) {
+			calls++
+			return nodeConnectorTestEvidence(t, session.execution), nil
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		lease := newNodeExecutionLease(session.execution.request, negotiation.MachineID, session.execution.now, session.execution.now.Add(30*time.Minute))
+		brokerBefore := nodeConnectorStateBytes(t, session.execution.root)
+		sessionBefore := nodeConnectorSessionStateBytes(t, session.root)
+		if _, err := session.fake.DispatchAcceptedValidation(connector, negotiation, session.execution.request, lease, session.execution.now.Add(10*time.Second)); err == nil {
+			t.Fatal("healthy presence initiated an unaccepted handoff")
+		}
+		if calls != 0 || *session.execution.calls != 0 || len(session.execution.broker.state.Operations) != 0 || !nodeConnectorStateBytesEqual(brokerBefore, nodeConnectorStateBytes(t, session.execution.root)) || !nodeConnectorSessionStateBytesEqual(sessionBefore, nodeConnectorSessionStateBytes(t, session.root)) {
+			t.Fatal("session evidence created authority, invoked execution, or published state")
+		}
+	})
+
+	for _, target := range []string{"session", "broker"} {
+		t.Run(target+" durable tamper", func(t *testing.T) {
+			fixture := newNodeConnectorSessionDispatchFixture(t)
+			var path string
+			var oldValue, newValue []byte
+			if target == "session" {
+				artifacts := nodeConnectorSessionStateArtifacts(t, fixture.session.root)
+				path = filepath.Join(fixture.session.root, artifacts[len(artifacts)-1])
+				oldValue, newValue = []byte(fixture.negotiation.ConnectionID), []byte("connection-tampered-001")
+			} else {
+				artifacts := nodeExecutionStateArtifacts(t, fixture.session.execution.root)
+				path = filepath.Join(fixture.session.execution.root, artifacts[len(artifacts)-1])
+				oldValue, newValue = []byte(fixture.session.execution.request.TaskID), []byte("task-tampered-0001")
+			}
+			raw, err := os.ReadFile(path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			tampered := bytes.Replace(raw, oldValue, newValue, 1)
+			if bytes.Equal(raw, tampered) {
+				t.Fatal("tamper fixture did not change durable state")
+			}
+			if err := os.WriteFile(path, tampered, 0o644); err != nil {
+				t.Fatal(err)
+			}
+			assertNodeConnectorSessionDispatchRejected(t, fixture, fixture.negotiation, fixture.session.execution.request, fixture.lease, fixture.session.execution.now.Add(10*time.Second))
+		})
+	}
+}
+
 func TestNodeConnectorSessionEnrollmentRotationPresenceHealthRefreshReconnectAndRestart(t *testing.T) {
 	fixture := newNodeConnectorSessionFixture(t, nil)
 	hello := nodeConnectorSessionHello(t, fixture, 1, "negotiation-initial-001", "replay-negotiation-initial-001", "connection-transport-001", "", "cred-fixture-initial-001", fixture.execution.capability.SnapshotID, fixture.execution.now.Add(time.Second))
@@ -290,6 +574,47 @@ func TestNodeConnectorSessionRestartTamperAndAtomicFailurePublishNothing(t *test
 	}
 }
 
+func newNodeConnectorSessionDispatchFixture(t *testing.T) *nodeConnectorSessionDispatchFixture {
+	t.Helper()
+	session := newNodeConnectorSessionFixture(t, nil)
+	hello := nodeConnectorSessionHello(t, session, 1, "negotiation-dispatch-initial-001", "replay-dispatch-initial-001", "connection-dispatch-initial-001", "", session.enrollment.InitialCredentialID, session.execution.capability.SnapshotID, session.execution.now.Add(time.Second))
+	negotiation, err := session.fake.Negotiate(mustNodeExecutionJSON(t, hello))
+	if err != nil {
+		t.Fatal(err)
+	}
+	mustRecordNodeConnectorEvidence(t, session.fake, nodeConnectorSessionEvidence(t, session, 2, "evidence-dispatch-connected-001", "replay-dispatch-connected-001", "presence", "connected", negotiation.SessionID, negotiation.ConnectionID, negotiation.CredentialID, "", negotiation.CapabilitySnapshotID, session.execution.now.Add(2*time.Second)))
+	mustRecordNodeConnectorEvidence(t, session.fake, nodeConnectorSessionEvidence(t, session, 3, "evidence-dispatch-health-001", "replay-dispatch-health-001", "health", "healthy", negotiation.SessionID, negotiation.ConnectionID, negotiation.CredentialID, "", negotiation.CapabilitySnapshotID, session.execution.now.Add(3*time.Second)))
+	if err := session.execution.broker.Connect(negotiation.MachineID, negotiation.ConnectionID); err != nil {
+		t.Fatal(err)
+	}
+	lease, err := session.execution.broker.Dispatch(negotiation.ConnectionID, session.execution.requestRaw, session.execution.now, 30*time.Minute)
+	if err != nil {
+		t.Fatal(err)
+	}
+	validationCalls := 0
+	connector, err := NewNodeValidationConnector(session.execution.request.Workflow, session.execution.request.SourceRevision, func(NodeValidationInvocation) (NodeValidationEvidence, error) {
+		validationCalls++
+		return nodeConnectorTestEvidence(t, session.execution), nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return &nodeConnectorSessionDispatchFixture{session: session, negotiation: negotiation, lease: lease, connector: connector, validationCalls: &validationCalls}
+}
+
+func assertNodeConnectorSessionDispatchRejected(t *testing.T, fixture *nodeConnectorSessionDispatchFixture, negotiation NodeConnectorSessionNegotiation, request NodeExecutionRequest, lease NodeExecutionTaskLease, at time.Time) {
+	t.Helper()
+	brokerBefore := nodeConnectorStateBytes(t, fixture.session.execution.root)
+	sessionBefore := nodeConnectorSessionStateBytes(t, fixture.session.root)
+	executionsBefore := *fixture.session.execution.calls
+	if _, err := fixture.session.fake.DispatchAcceptedValidation(fixture.connector, negotiation, request, lease, at); err == nil {
+		t.Fatal("changed or unauthorized connector session dispatch was accepted")
+	}
+	if *fixture.validationCalls != 0 || *fixture.session.execution.calls != executionsBefore || !nodeConnectorStateBytesEqual(brokerBefore, nodeConnectorStateBytes(t, fixture.session.execution.root)) || !nodeConnectorSessionStateBytesEqual(sessionBefore, nodeConnectorSessionStateBytes(t, fixture.session.root)) {
+		t.Fatalf("rejected handoff invoked validation or execution or published partial state: validation=%d executions_before=%d executions_after=%d", *fixture.validationCalls, executionsBefore, *fixture.session.execution.calls)
+	}
+}
+
 func newNodeConnectorSessionFixture(t *testing.T, transport NodeConnectorSessionTransport) *nodeConnectorSessionFixture {
 	t.Helper()
 	execution := newNodeExecutionTestFixture(t)
@@ -350,6 +675,14 @@ func nodeConnectorSessionEvidence(t *testing.T, fixture *nodeConnectorSessionFix
 func mustFinalizeNodeConnectorSessionHello(t *testing.T, value NodeConnectorSessionHello) NodeConnectorSessionHello {
 	t.Helper()
 	result, err := FinalizeNodeConnectorSessionHello(value)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return result
+}
+func mustFinalizeNodeConnectorSessionNegotiation(t *testing.T, value NodeConnectorSessionNegotiation) NodeConnectorSessionNegotiation {
+	t.Helper()
+	result, err := FinalizeNodeConnectorSessionNegotiation(value)
 	if err != nil {
 		t.Fatal(err)
 	}
