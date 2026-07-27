@@ -35,6 +35,12 @@ tasks:
   - id: TASK-016
     topic: Guided game-development package and Unreal integration
     path: docs/agents/tasks/guided-game-development-package.md
+  - id: TASK-017
+    topic: Portable embedded execution target and MCU runtime
+    path: docs/agents/tasks/portable-embedded-execution-target.md
+  - id: TASK-018
+    topic: Cross-platform MIDI package and dual-host workflow
+    path: docs/agents/tasks/midi-dual-host-workflow.md
 
 maintenance:
   - Treat this YAML file as the AI/backlog entrypoint.

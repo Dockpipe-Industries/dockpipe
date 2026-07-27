@@ -31,6 +31,8 @@
   "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorduplex_test.go",
   "packages/dorkpipe/lib/orchestrationhelper/nodeconnectormanagedbrokerpreview.go",
   "packages/dorkpipe/lib/orchestrationhelper/nodeconnectormanagedbrokerpreview_test.go",
+  "packages/dorkpipe/lib/orchestrationhelper/nodeconnectormultitargetvalidation.go",
+  "packages/dorkpipe/lib/orchestrationhelper/nodeconnectormultitargetvalidation_test.go",
   "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorsession.go",
   "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorsession_test.go",
   "packages/dorkpipe/lib/orchestrationhelper/nodeconnectortransport.go",
