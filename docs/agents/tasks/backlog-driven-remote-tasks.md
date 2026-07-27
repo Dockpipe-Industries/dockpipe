@@ -1122,24 +1122,23 @@ allow-listed contract, not an arbitrary command. Requirements include:
 The **in-process fake broker, injected validation connector, transport-neutral connector-session
 fake, session-to-dispatch seam, authenticated canonical framing profile, bounded durable duplex
 exchange, real loopback process-boundary adapter, direct-TLS BYO edge, Cloudflare Tunnel BYO
-adapter, and fixture-only managed-broker preview** now prove the durable product boundary without
+adapter, fixture-only managed-broker preview, and fixture-only multi-target validation aggregate** now prove the durable product boundary without
 letting a provider edge or managed-service artifact shape it. The package implements broker lease/receipt/event behavior, prepared local
 validation delivery, durable enrollment/credential/presence/health/capability/restart evidence, exact
 accepted request/lease handoff, mutual peer authentication, independent directional ordering and
 acknowledgement, explicit record/frame/byte bounds, TLS 1.3 confidentiality and server identity,
 local-only secret references, managed tenant/isolation/quota/audit/retention/availability evidence,
-exact durable resume, and restart-safe replay rejection without an external network, provider
+exact durable resume, three exact target-profile receipt bindings, deterministic aggregate outcomes,
+and restart-safe replay rejection without an external network, provider
 account, remote machine, or node listener. The managed preview remains untrusted evidence only,
 uses shared tenant/node-multiplexed ingress, and cannot add execution or lifecycle authority.
 
 Next slice:
 
-1. Add one package-local, fixture-only multi-target validation aggregation contract.
-2. Bind explicit Linux-host, Windows-physical-host, and Linux-QEMU Windows-guest receipts without
-   inferring target identity or success from availability, connection, provider, or managed-service evidence.
-3. Aggregate only immutable per-target validation evidence and dispatch no repair automatically.
-4. Add no live dispatch, scheduler, repair execution, hosted service, network, provider, engine,
-   mutation, Git, apply, checkpoint, push, or publication behavior.
+1. Add a separate package-local, fixture-only explicit repair decision/request contract.
+2. Consume only a failed multi-target aggregate and require an independent strict local decision.
+3. Grant no live repair execution, scheduler, network, engine, mutation, Git, apply, checkpoint,
+   push, or publication authority.
 
 The slice deliberately excludes a production daemon/service installer, live edge provider,
 auto-discovery, billing, multi-tenancy, QEMU dispatch, dynamic scheduling, and generic remote shell.
@@ -1165,9 +1164,12 @@ Default tests require no network, provider account, tunnel, or remote machine.
    identities without implementing hosting, billing, quota enforcement, or live multi-tenancy.
    Shared broker ingress with tenant/node multiplexing remains preferred over a separate edge
    credential distributed to every customer node.
-5. **Multi-target validation (next):** add concurrent Linux-host, Windows-physical-host, and Linux-QEMU
-   Windows-guest targets; aggregate per-target results and dispatch only an explicit repair task.
-6. **Installer and advanced scheduling:** service lifecycle and diagnostics, then availability/load/
+5. **Multi-target validation (complete):** the fixture-only aggregate binds exact Linux-host,
+   Windows-physical-host, and Linux-QEMU Windows-guest receipts, derives success only when all three
+   pass, and records failed targets without repair or lifecycle authority.
+6. **Explicit repair decision/request (next):** consume a failed aggregate only after a separate
+   strict local decision; emit a fixture request with no live repair execution or other authority.
+7. **Installer and advanced scheduling:** service lifecycle and diagnostics, then availability/load/
    risk/cost placement, bounded retries, quarantine, disposable workers, Mac, GPU, and third-party
    compatibility adapters.
 
