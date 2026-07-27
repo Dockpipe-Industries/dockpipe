@@ -90,7 +90,7 @@ postimages before creating one checkpoint and receipt. It does not create a sche
 infer any approval from provider/result/receipt/validation evidence, auto-push, sync, publish,
 merge, select another task, or create a cross-task orchestrator.
 
-## Current Status (2026-07-26)
+## Current Status (2026-07-27)
 
 The first vertical slice is implemented as the package-owned `backlog.remote` workflow and dedicated
 orchestration-helper commands:
@@ -668,11 +668,28 @@ operation, and serializes no managed credentials or private configuration. Share
 with tenant/node multiplexing remains the preferred future architecture; one edge credential per
 node is not modeled or distributed.
 
-The single next bounded TASK-015 follow-up is phased-backlog item 5: add one fixture-only
-multi-target validation aggregation contract for explicit Linux-host, Windows-physical-host, and
-Linux-QEMU Windows-guest receipts, without adding live dispatch, scheduling, repair execution, or
-engine behavior. A live Codex Cloud adapter remains blocked until a future installed CLI documents
-a machine-readable receipt with a stable opaque task ID.
+The package-local explicit multi-target repair decision/request contract is now implemented in
+`nodeconnectormultitargetrepair.go`. It directly revalidates one failed aggregate, requires an
+independent strict fixture-owned approved/rejected decision bound to the exact sorted failed-target
+set, and persists the canonical decision before optionally emitting one exact canonical request.
+Rejected decisions emit no request. Approved request publication is restart-safe after a durable
+decision and binds only the failed targets' immutable profile, machine, capability, operation,
+request, lease, event, receipt, artifact, result, and cleanup evidence.
+
+The decision and request invoke no repair worker, executor, validator, scheduler, transport,
+provider, network, Git, or lifecycle transition. The request contains no command, repair
+instruction, replacement target/profile, retry or scheduling decision, credential, path, raw event,
+or raw receipt; `repair_dispatched` and every execution, validation, scheduling, network, repair,
+mutation, Git, apply, checkpoint, commit, push, publication, completion, and next-task authority are
+false. Aggregate, decision, and request tamper, changed expectations, cross-target substitution,
+malformed/noncanonical/unknown/oversized input, conflicting replay, and partial publication fail
+closed.
+
+The single next bounded TASK-015 follow-up is the package-local, fixture-only **connector service
+lifecycle and diagnostics contract**: define explicit installer/service lifecycle intent and bounded
+health/diagnostic evidence without performing an OS service mutation, live node execution, network
+or provider operation, or Git lifecycle action. A live Codex Cloud adapter remains blocked until a
+future installed CLI documents a machine-readable receipt with a stable opaque task ID.
 
 ## Boundaries
 
@@ -1122,23 +1139,25 @@ allow-listed contract, not an arbitrary command. Requirements include:
 The **in-process fake broker, injected validation connector, transport-neutral connector-session
 fake, session-to-dispatch seam, authenticated canonical framing profile, bounded durable duplex
 exchange, real loopback process-boundary adapter, direct-TLS BYO edge, Cloudflare Tunnel BYO
-adapter, fixture-only managed-broker preview, and fixture-only multi-target validation aggregate** now prove the durable product boundary without
+ adapter, fixture-only managed-broker preview, fixture-only multi-target validation aggregate, and
+ explicit fixture-only multi-target repair decision/request contract** now prove the durable product boundary without
 letting a provider edge or managed-service artifact shape it. The package implements broker lease/receipt/event behavior, prepared local
 validation delivery, durable enrollment/credential/presence/health/capability/restart evidence, exact
 accepted request/lease handoff, mutual peer authentication, independent directional ordering and
 acknowledgement, explicit record/frame/byte bounds, TLS 1.3 confidentiality and server identity,
 local-only secret references, managed tenant/isolation/quota/audit/retention/availability evidence,
-exact durable resume, three exact target-profile receipt bindings, deterministic aggregate outcomes,
-and restart-safe replay rejection without an external network, provider
+ exact durable resume, three exact target-profile receipt bindings, deterministic aggregate outcomes,
+ independent approved/rejected repair decisions, exact failed-target-only repair requests, and
+ restart-safe replay rejection without an external network, provider
 account, remote machine, or node listener. The managed preview remains untrusted evidence only,
 uses shared tenant/node-multiplexed ingress, and cannot add execution or lifecycle authority.
 
 Next slice:
 
-1. Add a separate package-local, fixture-only explicit repair decision/request contract.
-2. Consume only a failed multi-target aggregate and require an independent strict local decision.
-3. Grant no live repair execution, scheduler, network, engine, mutation, Git, apply, checkpoint,
-   push, or publication authority.
+1. Add the package-local, fixture-only **connector service lifecycle and diagnostics contract**,
+   proving explicit installer/service lifecycle intent and bounded health/diagnostic evidence while
+   performing no OS service mutation, live execution, scheduler, network, provider, engine, Git,
+   apply, checkpoint, commit, push, or publication action.
 
 The slice deliberately excludes a production daemon/service installer, live edge provider,
 auto-discovery, billing, multi-tenancy, QEMU dispatch, dynamic scheduling, and generic remote shell.
@@ -1167,11 +1186,13 @@ Default tests require no network, provider account, tunnel, or remote machine.
 5. **Multi-target validation (complete):** the fixture-only aggregate binds exact Linux-host,
    Windows-physical-host, and Linux-QEMU Windows-guest receipts, derives success only when all three
    pass, and records failed targets without repair or lifecycle authority.
-6. **Explicit repair decision/request (next):** consume a failed aggregate only after a separate
+6. **Explicit repair decision/request (complete):** consume a failed aggregate only after a separate
    strict local decision; emit a fixture request with no live repair execution or other authority.
-7. **Installer and advanced scheduling:** service lifecycle and diagnostics, then availability/load/
-   risk/cost placement, bounded retries, quarantine, disposable workers, Mac, GPU, and third-party
-   compatibility adapters.
+7. **Connector service lifecycle and diagnostics (next):** define fixture-only installer/service
+   lifecycle intent and bounded diagnostic evidence without performing service mutation or granting
+   execution, scheduling, network, provider, Git, or lifecycle authority. Availability/load/risk/cost
+   placement, bounded retries, quarantine, disposable workers, Mac, GPU, and third-party compatibility
+   adapters remain later work.
 
 ## Acceptance Criteria For This Extension
 
