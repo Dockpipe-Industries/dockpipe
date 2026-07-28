@@ -209,7 +209,7 @@ orchestration-helper commands:
   `dorkpipe.validation-execution/v1` evidence. A valid existing artifact is accepted after
   artifact-only revalidation without the consumer checkout or command re-execution; a malformed,
   tampered, or non-identical artifact is rejected and never overwritten.
-- A fresh validation workspace contains only the exact union of the request's 99 declared validation
+- A fresh validation workspace contains only the exact union of the request's 134 declared validation
   inputs and the boundary's sorted changed-path overlay. Every input is reread from the consumer root
   with canonical-path, regular-file, link/reparse, containment, byte-count, and SHA-256 checks; the
   overlay preimage and reproduced postimage must match `patch-application/v2` exactly.
@@ -722,10 +722,30 @@ publication, lifecycle, completion, or next-task authority. Exact replay is idem
 replay, changed inputs, identity/profile substitution, tamper, and partial or failed publication fail
 closed across restart.
 
-This completes the authorized placement decision/request slice. No retry, quarantine, disposable
-worker, Mac, GPU, compatibility-adapter, or successor placement/execution slice is started here. A
-live Codex Cloud adapter remains blocked until a future installed CLI documents a machine-readable
-receipt with a stable opaque task ID.
+The separate package-local fixture-only placement-bound dispatch decision/request contract is now
+complete in `nodeconnectorplacementdispatchdecision.go`. It directly revalidates the exact inventory,
+placement input, approved placement decision, and placement request before accepting one independent
+strict canonical local approved or rejected dispatch decision. The decision binds the complete
+candidate set; exact selected node, machine, immutable capability identity and fingerprint, and
+host/runtime/guest profile; separate workload and execution-task identities; and the complete
+canonical finalized `NodeExecutionRequest`, including its request fingerprint and every operation,
+graph, run, task, source, workflow, capability, input, artifact, and request-time field.
+
+Only an approved dispatch decision may emit one separately fingerprint-bound, unconsumed request for
+a future one-time submission of that exact execution request to the existing in-process fixture
+broker for the exact selected machine/capability binding. A rejected decision emits no request, and
+the prior placement request alone authorizes nothing. This slice does not consume the authorization,
+connect a node, invoke `NodeExecutionFakeBroker.Dispatch`, issue a task lease, invoke an executor, or
+publish broker state. It grants no live/network/provider dispatch, execution, retry, repair,
+quarantine, service, mutation, validation, Git, apply, checkpoint, commit, push, publication,
+completion, lifecycle, or next-task authority. Exact replay is idempotent; malformed, noncanonical,
+unknown, oversized, reordered, substituted, stale, tampered, orphaned, conflicting, and partial or
+failed publication inputs fail closed across restart.
+
+This completes the authorized placement-bound dispatch decision/request slice. Fake-broker
+submission, lease issuance, execution, retries, quarantine, disposable workers, Mac, GPU, and
+compatibility adapters remain later work. A live Codex Cloud adapter remains blocked until a future
+installed CLI documents a machine-readable receipt with a stable opaque task ID.
 
 ## Boundaries
 
@@ -1178,8 +1198,9 @@ exchange, real loopback process-boundary adapter, direct-TLS BYO edge, Cloudflar
  adapter, fixture-only managed-broker preview, fixture-only multi-target validation aggregate, and
  explicit fixture-only multi-target repair decision/request contract, fixture-only connector
  service lifecycle and diagnostics contract, fixture-only node inventory and placement-input
- snapshot contract, and explicit fixture-only node placement decision/request contract** now prove
- the durable product boundary without
+ snapshot contract, explicit fixture-only node placement decision/request contract, and explicit
+ fixture-only placement-bound dispatch decision/request contract** now prove the durable product
+ boundary without
 letting a provider edge or managed-service artifact shape it. The package implements broker lease/receipt/event behavior, prepared local
 validation delivery, durable enrollment/credential/presence/health/capability/restart evidence, exact
 accepted request/lease handoff, mutual peer authentication, independent directional ordering and
@@ -1197,6 +1218,10 @@ evidence remain untrusted inputs only and cannot add placement, execution, or li
 The explicit placement proof adds one separate local decision, one exact selected-node binding, and
 one evidence-only request without granting dispatch, lease, execution, repair, validation, mutation,
 Git, publication, completion, or lifecycle authority.
+The placement-bound dispatch proof adds a second independent local decision and one unconsumed
+request that binds the complete exact `NodeExecutionRequest`. Its only positive authority is a future
+one-time in-process fixture-broker submission; this proof performs no submission, connection, lease,
+execution, broker-state mutation, or lifecycle action.
 
 Authorized bounded slice status:
 
@@ -1206,6 +1231,12 @@ Authorized bounded slice status:
    grants no live dispatch or adjacent execution, retry, repair, network, provider, service,
    mutation, validation, Git, apply, checkpoint, commit, push, publication, lifecycle, completion,
    or next-task authority.
+2. The separate package-local fixture-only **placement-bound dispatch decision/request contract** is
+   complete. It consumes the exact approved placement chain plus one complete canonical finalized
+   execution request, requires another independent strict local decision, and emits only an
+   unconsumed request for a future one-time in-process fixture-broker submission. It invokes no
+   broker dispatch, connection, lease, executor, provider, network, service, mutation, validation,
+   Git, apply, checkpoint, commit, push, publication, completion, lifecycle, or next-task action.
 
 The slice deliberately excludes a production daemon/service installer, live edge provider,
 auto-discovery, billing, multi-tenancy, QEMU dispatch, dynamic scheduling, and generic remote shell.
@@ -1250,6 +1281,12 @@ Default tests require no network, provider account, tunnel, or remote machine.
    adjacent execution, retry, repair, provider, service, validation, mutation, Git, publication,
    completion, or lifecycle authority. Bounded retries, quarantine, disposable workers, Mac, GPU,
    and third-party compatibility adapters remain later work and are not started by this slice.
+10. **Placement-bound dispatch decision/request (complete):** consume the exact approved placement
+    decision/request and one complete finalized execution request behind a separate strict local
+    approved/rejected decision. Approved decisions emit one fingerprint-bound, unconsumed request
+    permitting only a future one-time submission to the existing in-process fixture broker;
+    rejected decisions emit none. Actual broker submission, connection, lease issuance, execution,
+    retries, quarantine, disposable workers, Mac, GPU, and compatibility adapters remain later work.
 
 ## Acceptance Criteria For This Extension
 
@@ -1262,6 +1299,9 @@ Default tests require no network, provider account, tunnel, or remote machine.
   cancellation, and cleanup without running the commit yet.
 - Machine, capability snapshot, lease, and execution receipt identities are separately bound and
   cannot be inferred from connection presence or substituted for one another.
+- A placement request alone cannot authorize dispatch. The placement-bound dispatch request binds
+  the exact selected machine/capability and complete finalized execution request, remains unconsumed,
+  and cannot issue a lease, invoke execution, or widen fixture-only submission authority.
 - Default execution needs neither DockPipe-hosted cloud infrastructure, an external edge provider,
   nor a public node listener.
 - A failure cannot silently duplicate a task, replay a stale cancellation, hide cleanup residue, or
