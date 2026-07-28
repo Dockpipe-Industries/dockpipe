@@ -29,6 +29,8 @@
   "packages/dorkpipe/lib/orchestrationhelper/nodeconnectordirecttls_test.go",
   "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorduplex.go",
   "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorduplex_test.go",
+  "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorinventorysnapshot.go",
+  "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorinventorysnapshot_test.go",
   "packages/dorkpipe/lib/orchestrationhelper/nodeconnectormanagedbrokerpreview.go",
   "packages/dorkpipe/lib/orchestrationhelper/nodeconnectormanagedbrokerpreview_test.go",
   "packages/dorkpipe/lib/orchestrationhelper/nodeconnectormultitargetrepair.go",
