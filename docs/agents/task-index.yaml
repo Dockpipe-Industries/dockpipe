@@ -41,6 +41,9 @@ tasks:
   - id: TASK-018
     topic: Cross-platform MIDI package and dual-host workflow
     path: docs/agents/tasks/midi-dual-host-workflow.md
+  - id: TASK-019
+    topic: Freenet decentralized execution coordination
+    path: docs/agents/tasks/freenet-decentralized-execution.md
 
 maintenance:
   - Treat this YAML file as the AI/backlog entrypoint.
