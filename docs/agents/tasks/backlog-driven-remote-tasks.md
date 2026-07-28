@@ -708,12 +708,24 @@ leasing, or dispatching a node. Both artifacts are canonical, fingerprinted, res
 atomically published. Availability, load, risk, and cost evidence grants no placement, dispatch,
 execution, repair, retry, network, service, or lifecycle authority.
 
-The single next bounded TASK-015 follow-up is a separate package-local, fixture-only **explicit
-placement decision/request contract** that consumes one exact inventory and placement-input snapshot,
-requires an independent strict local decision, may select exactly one bound node, and grants no live
-dispatch, execution, retry, repair, network, provider, service, mutation, Git, apply, checkpoint,
-commit, push, or publication authority. A live Codex Cloud adapter remains blocked until a future
-installed CLI documents a machine-readable receipt with a stable opaque task ID.
+The separate package-local fixture-only explicit node placement decision/request contract is now
+complete in `nodeconnectorplacementdecision.go`. It directly revalidates one exact durable inventory
+and placement-input snapshot, requires an independent strict canonical local approved or rejected
+decision, and never derives selection from availability, load, risk, cost, ordering, scoring,
+ranking, recommendation, matching, or connection presence. An approved decision explicitly selects
+exactly one member of the complete candidate set and binds its exact node, machine, immutable
+capability identity and fingerprint, and host/runtime/guest profile. Only that approved decision may
+emit one separately fingerprint-bound placement request; a rejected decision emits none. The request
+is evidence of explicit selection only and grants no dispatch, lease, execution, retry, repair,
+quarantine, network, provider, service, mutation, validation, Git, apply, checkpoint, commit, push,
+publication, lifecycle, completion, or next-task authority. Exact replay is idempotent; conflicting
+replay, changed inputs, identity/profile substitution, tamper, and partial or failed publication fail
+closed across restart.
+
+This completes the authorized placement decision/request slice. No retry, quarantine, disposable
+worker, Mac, GPU, compatibility-adapter, or successor placement/execution slice is started here. A
+live Codex Cloud adapter remains blocked until a future installed CLI documents a machine-readable
+receipt with a stable opaque task ID.
 
 ## Boundaries
 
@@ -1165,8 +1177,9 @@ fake, session-to-dispatch seam, authenticated canonical framing profile, bounded
 exchange, real loopback process-boundary adapter, direct-TLS BYO edge, Cloudflare Tunnel BYO
  adapter, fixture-only managed-broker preview, fixture-only multi-target validation aggregate, and
  explicit fixture-only multi-target repair decision/request contract, fixture-only connector
- service lifecycle and diagnostics contract, and fixture-only node inventory and placement-input
- snapshot contract** now prove the durable product boundary without
+ service lifecycle and diagnostics contract, fixture-only node inventory and placement-input
+ snapshot contract, and explicit fixture-only node placement decision/request contract** now prove
+ the durable product boundary without
 letting a provider edge or managed-service artifact shape it. The package implements broker lease/receipt/event behavior, prepared local
 validation delivery, durable enrollment/credential/presence/health/capability/restart evidence, exact
 accepted request/lease handoff, mutual peer authentication, independent directional ordering and
@@ -1181,14 +1194,18 @@ account, remote machine, or node listener. The inventory proof adds exact Linux-
 and Linux/QEMU/Windows node bindings plus bounded non-authoritative availability/load/risk/cost
 evidence and one exact complete placement-input candidate set. The managed preview and inventory
 evidence remain untrusted inputs only and cannot add placement, execution, or lifecycle authority.
+The explicit placement proof adds one separate local decision, one exact selected-node binding, and
+one evidence-only request without granting dispatch, lease, execution, repair, validation, mutation,
+Git, publication, completion, or lifecycle authority.
 
-Next slice:
+Authorized bounded slice status:
 
-1. Add a separate package-local, fixture-only **explicit placement decision/request contract** that
-   consumes one exact inventory and placement-input snapshot, requires an independent strict local
-   decision, may select exactly one bound node, and grants no live dispatch, execution, retry,
-   repair, network, provider, service, mutation, Git, apply, checkpoint, commit, push, or publication
-   authority.
+1. The separate package-local fixture-only **explicit placement decision/request contract** is
+   complete. It consumes one exact inventory and placement-input snapshot, requires an independent
+   strict local decision, permits exactly one explicit bound-node selection only when approved, and
+   grants no live dispatch or adjacent execution, retry, repair, network, provider, service,
+   mutation, validation, Git, apply, checkpoint, commit, push, publication, lifecycle, completion,
+   or next-task authority.
 
 The slice deliberately excludes a production daemon/service installer, live edge provider,
 auto-discovery, billing, multi-tenancy, QEMU dispatch, dynamic scheduling, and generic remote shell.
@@ -1227,11 +1244,12 @@ Default tests require no network, provider account, tunnel, or remote machine.
    plus bounded fixture-only availability/load/risk/cost evidence, then revalidate one complete
    placement-input candidate set without making a placement, dispatch, retry, repair, execution,
    network, service, or lifecycle decision.
-9. **Explicit placement decision/request (next):** consume one exact inventory and placement-input
-   snapshot behind an independent strict local decision, permit selection of exactly one bound node,
-   and grant no live dispatch or adjacent execution, provider, mutation, Git, or lifecycle authority.
-   Bounded retries, quarantine, disposable workers, Mac, GPU, and third-party compatibility adapters
-   remain later work.
+9. **Explicit placement decision/request (complete):** consume one exact inventory and placement-input
+   snapshot behind an independent strict local decision, permit selection of exactly one bound node
+   only when approved, and emit one evidence-only fingerprint-bound request with no live dispatch or
+   adjacent execution, retry, repair, provider, service, validation, mutation, Git, publication,
+   completion, or lifecycle authority. Bounded retries, quarantine, disposable workers, Mac, GPU,
+   and third-party compatibility adapters remain later work and are not started by this slice.
 
 ## Acceptance Criteria For This Extension
 
