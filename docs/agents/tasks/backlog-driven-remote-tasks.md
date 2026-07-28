@@ -697,11 +697,23 @@ diagnostics grant no installer, service-manager, process, probe, lifecycle, exec
 network, provider, mutation, repair, Git, apply, checkpoint, commit, push, publication, lease, or
 completion authority.
 
-The single next bounded TASK-015 follow-up is a package-local, fixture-only **node inventory and
-placement-input snapshot contract** that binds bounded availability/load/risk/cost evidence without
-making a placement, dispatch, retry, repair, execution, network, or lifecycle decision. A live Codex
-Cloud adapter remains blocked until a future installed CLI documents a machine-readable receipt
-with a stable opaque task ID.
+The package-local fixture-only node inventory and placement-input snapshot contract is now complete
+in `nodeconnectorinventorysnapshot.go`. One strict inventory binds an ordinally sorted bounded set of
+Linux-host, Windows-host, and Linux-hosted QEMU Windows-guest nodes to exact machine and immutable
+capability identities, target profiles, canonical observation time, and bounded availability, load,
+risk, normalized-cost, and checksum-only reference evidence. A second strict artifact revalidates the
+durable inventory and binds one workload and immutable requirements fingerprint to the exact complete
+sorted inventory node set without filtering, scoring, ranking, recommending, selecting, reserving,
+leasing, or dispatching a node. Both artifacts are canonical, fingerprinted, restart-safe, and
+atomically published. Availability, load, risk, and cost evidence grants no placement, dispatch,
+execution, repair, retry, network, service, or lifecycle authority.
+
+The single next bounded TASK-015 follow-up is a separate package-local, fixture-only **explicit
+placement decision/request contract** that consumes one exact inventory and placement-input snapshot,
+requires an independent strict local decision, may select exactly one bound node, and grants no live
+dispatch, execution, retry, repair, network, provider, service, mutation, Git, apply, checkpoint,
+commit, push, or publication authority. A live Codex Cloud adapter remains blocked until a future
+installed CLI documents a machine-readable receipt with a stable opaque task ID.
 
 ## Boundaries
 
@@ -1152,8 +1164,9 @@ The **in-process fake broker, injected validation connector, transport-neutral c
 fake, session-to-dispatch seam, authenticated canonical framing profile, bounded durable duplex
 exchange, real loopback process-boundary adapter, direct-TLS BYO edge, Cloudflare Tunnel BYO
  adapter, fixture-only managed-broker preview, fixture-only multi-target validation aggregate, and
- explicit fixture-only multi-target repair decision/request contract, plus fixture-only connector
- service lifecycle and diagnostics contract** now prove the durable product boundary without
+ explicit fixture-only multi-target repair decision/request contract, fixture-only connector
+ service lifecycle and diagnostics contract, and fixture-only node inventory and placement-input
+ snapshot contract** now prove the durable product boundary without
 letting a provider edge or managed-service artifact shape it. The package implements broker lease/receipt/event behavior, prepared local
 validation delivery, durable enrollment/credential/presence/health/capability/restart evidence, exact
 accepted request/lease handoff, mutual peer authentication, independent directional ordering and
@@ -1164,14 +1177,18 @@ local-only secret references, managed tenant/isolation/quota/audit/retention/ava
  Windows SCM and Linux systemd service-target evidence, non-authoritative lifecycle intent, bounded
  health/diagnostic evidence, and
  restart-safe replay rejection without an external network, provider
-account, remote machine, or node listener. The managed preview remains untrusted evidence only,
-uses shared tenant/node-multiplexed ingress, and cannot add execution or lifecycle authority.
+account, remote machine, or node listener. The inventory proof adds exact Linux-host, Windows-host,
+and Linux/QEMU/Windows node bindings plus bounded non-authoritative availability/load/risk/cost
+evidence and one exact complete placement-input candidate set. The managed preview and inventory
+evidence remain untrusted inputs only and cannot add placement, execution, or lifecycle authority.
 
 Next slice:
 
-1. Add a package-local, fixture-only **node inventory and placement-input snapshot contract** that
-   binds bounded availability/load/risk/cost evidence without making a placement, dispatch, retry,
-   repair, execution, network, or lifecycle decision.
+1. Add a separate package-local, fixture-only **explicit placement decision/request contract** that
+   consumes one exact inventory and placement-input snapshot, requires an independent strict local
+   decision, may select exactly one bound node, and grants no live dispatch, execution, retry,
+   repair, network, provider, service, mutation, Git, apply, checkpoint, commit, push, or publication
+   authority.
 
 The slice deliberately excludes a production daemon/service installer, live edge provider,
 auto-discovery, billing, multi-tenancy, QEMU dispatch, dynamic scheduling, and generic remote shell.
@@ -1206,10 +1223,15 @@ Default tests require no network, provider account, tunnel, or remote machine.
    machine-service or Linux systemd system-service targets to canonical lifecycle intent and bounded
    diagnostic evidence without performing service mutation or granting service-operation, execution,
    scheduling, network, provider, Git, or lifecycle authority.
-8. **Node inventory and placement inputs (next):** bind bounded fixture-only availability/load/risk/
-   cost evidence without making a placement, dispatch, retry, repair, execution, network, or lifecycle
-   decision. Bounded retries, quarantine, disposable workers, Mac, GPU, and third-party compatibility
-   adapters remain later work.
+8. **Node inventory and placement inputs (complete):** bind exact sorted node identities and profiles
+   plus bounded fixture-only availability/load/risk/cost evidence, then revalidate one complete
+   placement-input candidate set without making a placement, dispatch, retry, repair, execution,
+   network, service, or lifecycle decision.
+9. **Explicit placement decision/request (next):** consume one exact inventory and placement-input
+   snapshot behind an independent strict local decision, permit selection of exactly one bound node,
+   and grant no live dispatch or adjacent execution, provider, mutation, Git, or lifecycle authority.
+   Bounded retries, quarantine, disposable workers, Mac, GPU, and third-party compatibility adapters
+   remain later work.
 
 ## Acceptance Criteria For This Extension
 
