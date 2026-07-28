@@ -37,6 +37,8 @@
   "packages/dorkpipe/lib/orchestrationhelper/nodeconnectormultitargetrepair_test.go",
   "packages/dorkpipe/lib/orchestrationhelper/nodeconnectormultitargetvalidation.go",
   "packages/dorkpipe/lib/orchestrationhelper/nodeconnectormultitargetvalidation_test.go",
+  "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorplacementdecision.go",
+  "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorplacementdecision_test.go",
   "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorservicelifecycle.go",
   "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorservicelifecycle_test.go",
   "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorsession.go",
