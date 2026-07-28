@@ -685,11 +685,23 @@ false. Aggregate, decision, and request tamper, changed expectations, cross-targ
 malformed/noncanonical/unknown/oversized input, conflicting replay, and partial publication fail
 closed.
 
-The single next bounded TASK-015 follow-up is the package-local, fixture-only **connector service
-lifecycle and diagnostics contract**: define explicit installer/service lifecycle intent and bounded
-health/diagnostic evidence without performing an OS service mutation, live node execution, network
-or provider operation, or Git lifecycle action. A live Codex Cloud adapter remains blocked until a
-future installed CLI documents a machine-readable receipt with a stable opaque task ID.
+The package-local fixture-only connector service lifecycle and diagnostics contract is now complete
+in `nodeconnectorservicelifecycle.go`. It binds one exact service, machine, connector artifact,
+immutable service configuration, and either the Windows SCM machine-service profile or Linux
+systemd system-service profile. A separate canonical lifecycle intent records only requested
+install/start/stop/restart/uninstall follow-up; a separately fingerprint-bound diagnostic records
+only one consistent bounded state/health/failure classification and sorted checksum references.
+Restart replay, exact expected bindings, encoded/reference/aggregate bounds, and durable intent then
+diagnostic publication fail closed under tamper, conflict, or atomic-write failure. Intent and
+diagnostics grant no installer, service-manager, process, probe, lifecycle, execution, scheduling,
+network, provider, mutation, repair, Git, apply, checkpoint, commit, push, publication, lease, or
+completion authority.
+
+The single next bounded TASK-015 follow-up is a package-local, fixture-only **node inventory and
+placement-input snapshot contract** that binds bounded availability/load/risk/cost evidence without
+making a placement, dispatch, retry, repair, execution, network, or lifecycle decision. A live Codex
+Cloud adapter remains blocked until a future installed CLI documents a machine-readable receipt
+with a stable opaque task ID.
 
 ## Boundaries
 
@@ -1140,24 +1152,26 @@ The **in-process fake broker, injected validation connector, transport-neutral c
 fake, session-to-dispatch seam, authenticated canonical framing profile, bounded durable duplex
 exchange, real loopback process-boundary adapter, direct-TLS BYO edge, Cloudflare Tunnel BYO
  adapter, fixture-only managed-broker preview, fixture-only multi-target validation aggregate, and
- explicit fixture-only multi-target repair decision/request contract** now prove the durable product boundary without
+ explicit fixture-only multi-target repair decision/request contract, plus fixture-only connector
+ service lifecycle and diagnostics contract** now prove the durable product boundary without
 letting a provider edge or managed-service artifact shape it. The package implements broker lease/receipt/event behavior, prepared local
 validation delivery, durable enrollment/credential/presence/health/capability/restart evidence, exact
 accepted request/lease handoff, mutual peer authentication, independent directional ordering and
 acknowledgement, explicit record/frame/byte bounds, TLS 1.3 confidentiality and server identity,
 local-only secret references, managed tenant/isolation/quota/audit/retention/availability evidence,
  exact durable resume, three exact target-profile receipt bindings, deterministic aggregate outcomes,
- independent approved/rejected repair decisions, exact failed-target-only repair requests, and
+ independent approved/rejected repair decisions, exact failed-target-only repair requests, strict
+ Windows SCM and Linux systemd service-target evidence, non-authoritative lifecycle intent, bounded
+ health/diagnostic evidence, and
  restart-safe replay rejection without an external network, provider
 account, remote machine, or node listener. The managed preview remains untrusted evidence only,
 uses shared tenant/node-multiplexed ingress, and cannot add execution or lifecycle authority.
 
 Next slice:
 
-1. Add the package-local, fixture-only **connector service lifecycle and diagnostics contract**,
-   proving explicit installer/service lifecycle intent and bounded health/diagnostic evidence while
-   performing no OS service mutation, live execution, scheduler, network, provider, engine, Git,
-   apply, checkpoint, commit, push, or publication action.
+1. Add a package-local, fixture-only **node inventory and placement-input snapshot contract** that
+   binds bounded availability/load/risk/cost evidence without making a placement, dispatch, retry,
+   repair, execution, network, or lifecycle decision.
 
 The slice deliberately excludes a production daemon/service installer, live edge provider,
 auto-discovery, billing, multi-tenancy, QEMU dispatch, dynamic scheduling, and generic remote shell.
@@ -1188,10 +1202,13 @@ Default tests require no network, provider account, tunnel, or remote machine.
    pass, and records failed targets without repair or lifecycle authority.
 6. **Explicit repair decision/request (complete):** consume a failed aggregate only after a separate
    strict local decision; emit a fixture request with no live repair execution or other authority.
-7. **Connector service lifecycle and diagnostics (next):** define fixture-only installer/service
-   lifecycle intent and bounded diagnostic evidence without performing service mutation or granting
-   execution, scheduling, network, provider, Git, or lifecycle authority. Availability/load/risk/cost
-   placement, bounded retries, quarantine, disposable workers, Mac, GPU, and third-party compatibility
+7. **Connector service lifecycle and diagnostics (complete):** bind strict fixture-only Windows SCM
+   machine-service or Linux systemd system-service targets to canonical lifecycle intent and bounded
+   diagnostic evidence without performing service mutation or granting service-operation, execution,
+   scheduling, network, provider, Git, or lifecycle authority.
+8. **Node inventory and placement inputs (next):** bind bounded fixture-only availability/load/risk/
+   cost evidence without making a placement, dispatch, retry, repair, execution, network, or lifecycle
+   decision. Bounded retries, quarantine, disposable workers, Mac, GPU, and third-party compatibility
    adapters remain later work.
 
 ## Acceptance Criteria For This Extension
