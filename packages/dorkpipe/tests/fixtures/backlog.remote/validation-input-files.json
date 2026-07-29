@@ -43,6 +43,8 @@
   "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorplacementdispatchdecision_test.go",
   "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorplacementdispatchsubmission.go",
   "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorplacementdispatchsubmission_test.go",
+  "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorplacementexecutiondelivery.go",
+  "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorplacementexecutiondelivery_test.go",
   "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorplacementexecutionhandoff.go",
   "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorplacementexecutionhandoff_test.go",
   "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorservicelifecycle.go",
