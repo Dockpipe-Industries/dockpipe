@@ -763,7 +763,25 @@ Changed policy, binding, replay identity, broker state, lease, upstream artifact
 submission fails closed without repair.
 
 This completes the authorized placement-bound fake-broker submission/lease-materialization slice.
-Execution handoff, events, receipts, cancellation, retries, quarantine, disposable workers, Mac,
+The separate package-local fixture-only placement-bound execution-handoff decision/request contract
+is now complete in `nodeconnectorplacementexecutionhandoff.go`. It directly revalidates the complete
+inventory, placement, dispatch, submission, durable broker, exact operation, canonical execution
+request, selected node/machine/capability/profile, and broker-issued lease chain before accepting a
+third independent strict local approved or rejected decision. The decision binds a bounded reason
+and issuance time within the exact lease interval. Only an approved decision emits one canonical,
+fingerprint-bound, unconsumed request whose sole positive authority is a future one-time call through
+the existing in-process fixture connector-session seam; a rejected decision emits no request.
+
+This slice does not invoke `NodeConnectorSessionFake.DispatchAcceptedValidation`, a
+`NodeValidationConnector`, an executor, the broker, a provider, a network, validation, mutation, Git,
+or any lifecycle transition. Connection, health, availability, load, risk, cost, ordering, ranking,
+provider evidence, broker acceptance, and lease existence cannot imply approval. Exact replay and
+restart are idempotent, request-publication failure after a durable decision recovers identically,
+and changed bindings, replay conflicts, stale broker state, substituted leases, upstream tamper,
+malformed/noncanonical input, and partial evidence fail closed without repair or mutation.
+
+This completes the authorized placement-bound execution-handoff decision/request slice. Connector
+invocation, execution, events, receipts, cancellation, retries, quarantine, disposable workers, Mac,
 GPU, and compatibility adapters remain later work. A live Codex Cloud adapter remains blocked until
 a future installed CLI documents a machine-readable receipt with a stable opaque task ID.
 
@@ -1219,8 +1237,9 @@ exchange, real loopback process-boundary adapter, direct-TLS BYO edge, Cloudflar
  explicit fixture-only multi-target repair decision/request contract, fixture-only connector
  service lifecycle and diagnostics contract, fixture-only node inventory and placement-input
  snapshot contract, explicit fixture-only node placement decision/request contract, explicit
- fixture-only placement-bound dispatch decision/request contract, and executorless fixture-broker
- submission/lease-materialization contract** now prove the durable product
+ fixture-only placement-bound dispatch decision/request contract, executorless fixture-broker
+ submission/lease-materialization contract, and explicit fixture-only placement-bound execution-
+ handoff decision/request contract** now prove the durable product
  boundary without
 letting a provider edge or managed-service artifact shape it. The package implements broker lease/receipt/event behavior, prepared local
 validation delivery, durable enrollment/credential/presence/health/capability/restart evidence, exact
@@ -1244,6 +1263,10 @@ request that binds the complete exact `NodeExecutionRequest`. Its only positive 
 one-time in-process fixture-broker submission. The submission proof consumes only that exact
 authorization, uses an existing transient selected-machine connection, and records the exact
 broker-issued lease without invoking an executor or starting execution.
+The placement-bound execution-handoff proof adds a third independent local decision and one
+unconsumed request bound to the exact submission, unchanged broker operation, canonical execution
+request, selected node/machine/capability/profile, and task lease. Its only positive authority is a
+future one-time call through the existing in-process fixture connector-session seam.
 
 Authorized bounded slice status:
 
@@ -1266,6 +1289,12 @@ Authorized bounded slice status:
    connection and invokes no executor, connector, event, receipt, cancellation, network, provider,
    retry, repair, service, mutation, validation, Git, publication, completion, lifecycle, or
    next-task action.
+4. The separate package-local fixture-only **placement-bound execution-handoff decision/request
+   contract** is complete. It consumes the exact submission and broker-issued lease only after a
+   third independent strict local decision, then emits one unconsumed request whose sole positive
+   authority is a future one-time call through the existing in-process connector-session seam. It
+   invokes no connector, executor, broker, validation, network, provider, mutation, Git,
+   publication, completion, lifecycle, or next-task action.
 
 The slice deliberately excludes a production daemon/service installer, live edge provider,
 auto-discovery, billing, multi-tenancy, QEMU dispatch, dynamic scheduling, and generic remote shell.
@@ -1322,6 +1351,14 @@ Default tests require no network, provider account, tunnel, or remote machine.
     publication; exact retry recovers the same lease without a second broker generation. Execution
     handoff, events, receipts, cancellation, retries, quarantine, disposable workers, Mac, GPU, and
     compatibility adapters remain later work.
+12. **Placement-bound execution-handoff decision/request (complete):** consume the exact immutable
+    placement-dispatch submission, unchanged durable broker operation, canonical execution request,
+    selected node/machine/capability/profile, and broker-issued lease behind a third independent
+    strict approved/rejected local decision. Approved decisions emit one fingerprint-bound,
+    unconsumed request permitting only a future one-time call through the existing in-process
+    connector-session seam; rejected decisions emit none. Connector invocation, execution, events,
+    receipts, cancellation, retries, quarantine, disposable workers, Mac, GPU, and compatibility
+    adapters remain later work.
 
 ## Acceptance Criteria For This Extension
 
