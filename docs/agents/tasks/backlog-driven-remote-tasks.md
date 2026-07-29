@@ -90,7 +90,7 @@ postimages before creating one checkpoint and receipt. It does not create a sche
 infer any approval from provider/result/receipt/validation evidence, auto-push, sync, publish,
 merge, select another task, or create a cross-task orchestrator.
 
-## Current Status (2026-07-27)
+## Current Status (2026-07-29)
 
 The first vertical slice is implemented as the package-owned `backlog.remote` workflow and dedicated
 orchestration-helper commands:
@@ -742,10 +742,30 @@ completion, lifecycle, or next-task authority. Exact replay is idempotent; malfo
 unknown, oversized, reordered, substituted, stale, tampered, orphaned, conflicting, and partial or
 failed publication inputs fail closed across restart.
 
-This completes the authorized placement-bound dispatch decision/request slice. Fake-broker
-submission, lease issuance, execution, retries, quarantine, disposable workers, Mac, GPU, and
-compatibility adapters remain later work. A live Codex Cloud adapter remains blocked until a future
-installed CLI documents a machine-readable receipt with a stable opaque task ID.
+The package-local executorless fake-broker submission and lease-materialization boundary is now
+complete in `nodeconnectorplacementdispatchsubmission.go`. It directly reloads and revalidates the
+complete inventory, placement, and placement-dispatch chain before accepting one strict fixture-owned
+submission. Only the exact approved, unconsumed placement-dispatch request may submit its unchanged
+canonical `NodeExecutionRequest` through an already-connected transient in-process connection for the
+exact selected machine and registered capability snapshot. A broker configured with an executor is
+rejected before mutation. The only accepted lease is the exact `NodeExecutionTaskLease` returned by
+the unchanged `NodeExecutionFakeBroker`.
+
+The durable canonical submission artifact binds the complete upstream chain, deterministic bounded
+issuance policy, post-transition broker-state fingerprint, exact request, and exact lease. It records
+authorization consumption, broker invocation, and lease issuance while explicitly recording no
+executor, connector, event, receipt, cancellation, execution, network, provider, retry, repair,
+service, mutation, validation, Git, publication, completion, or lifecycle authority. If local atomic
+publication fails after broker acceptance, no partial artifact is left and broker history is not
+rewritten; an exact retry or restart through a fresh transient connection recovers the same lease by
+operation/request idempotence and publishes the same evidence without another broker generation.
+Changed policy, binding, replay identity, broker state, lease, upstream artifact, or existing
+submission fails closed without repair.
+
+This completes the authorized placement-bound fake-broker submission/lease-materialization slice.
+Execution handoff, events, receipts, cancellation, retries, quarantine, disposable workers, Mac,
+GPU, and compatibility adapters remain later work. A live Codex Cloud adapter remains blocked until
+a future installed CLI documents a machine-readable receipt with a stable opaque task ID.
 
 ## Boundaries
 
@@ -1198,8 +1218,9 @@ exchange, real loopback process-boundary adapter, direct-TLS BYO edge, Cloudflar
  adapter, fixture-only managed-broker preview, fixture-only multi-target validation aggregate, and
  explicit fixture-only multi-target repair decision/request contract, fixture-only connector
  service lifecycle and diagnostics contract, fixture-only node inventory and placement-input
- snapshot contract, explicit fixture-only node placement decision/request contract, and explicit
- fixture-only placement-bound dispatch decision/request contract** now prove the durable product
+ snapshot contract, explicit fixture-only node placement decision/request contract, explicit
+ fixture-only placement-bound dispatch decision/request contract, and executorless fixture-broker
+ submission/lease-materialization contract** now prove the durable product
  boundary without
 letting a provider edge or managed-service artifact shape it. The package implements broker lease/receipt/event behavior, prepared local
 validation delivery, durable enrollment/credential/presence/health/capability/restart evidence, exact
@@ -1220,8 +1241,9 @@ one evidence-only request without granting dispatch, lease, execution, repair, v
 Git, publication, completion, or lifecycle authority.
 The placement-bound dispatch proof adds a second independent local decision and one unconsumed
 request that binds the complete exact `NodeExecutionRequest`. Its only positive authority is a future
-one-time in-process fixture-broker submission; this proof performs no submission, connection, lease,
-execution, broker-state mutation, or lifecycle action.
+one-time in-process fixture-broker submission. The submission proof consumes only that exact
+authorization, uses an existing transient selected-machine connection, and records the exact
+broker-issued lease without invoking an executor or starting execution.
 
 Authorized bounded slice status:
 
@@ -1237,6 +1259,13 @@ Authorized bounded slice status:
    unconsumed request for a future one-time in-process fixture-broker submission. It invokes no
    broker dispatch, connection, lease, executor, provider, network, service, mutation, validation,
    Git, apply, checkpoint, commit, push, publication, completion, lifecycle, or next-task action.
+3. The separate package-local **executorless fake-broker submission/lease-materialization contract**
+   is complete. It consumes the exact approved request once, revalidates the complete immutable
+   placement chain and durable broker state, recovers the same broker-issued lease across exact retry
+   and restart, and publishes one canonical fingerprint-bound submission artifact. It creates no
+   connection and invokes no executor, connector, event, receipt, cancellation, network, provider,
+   retry, repair, service, mutation, validation, Git, publication, completion, lifecycle, or
+   next-task action.
 
 The slice deliberately excludes a production daemon/service installer, live edge provider,
 auto-discovery, billing, multi-tenancy, QEMU dispatch, dynamic scheduling, and generic remote shell.
@@ -1285,8 +1314,14 @@ Default tests require no network, provider account, tunnel, or remote machine.
     decision/request and one complete finalized execution request behind a separate strict local
     approved/rejected decision. Approved decisions emit one fingerprint-bound, unconsumed request
     permitting only a future one-time submission to the existing in-process fixture broker;
-    rejected decisions emit none. Actual broker submission, connection, lease issuance, execution,
-    retries, quarantine, disposable workers, Mac, GPU, and compatibility adapters remain later work.
+    rejected decisions emit none.
+11. **Executorless fake-broker submission and lease materialization (complete):** consume the exact
+    approved unconsumed placement-dispatch request through one existing transient selected-machine
+    connection, submit the unchanged canonical execution request to the existing in-process fake
+    broker, and persist one exact lease-bound transition artifact. Broker acceptance precedes local
+    publication; exact retry recovers the same lease without a second broker generation. Execution
+    handoff, events, receipts, cancellation, retries, quarantine, disposable workers, Mac, GPU, and
+    compatibility adapters remain later work.
 
 ## Acceptance Criteria For This Extension
 
@@ -1300,8 +1335,9 @@ Default tests require no network, provider account, tunnel, or remote machine.
 - Machine, capability snapshot, lease, and execution receipt identities are separately bound and
   cannot be inferred from connection presence or substituted for one another.
 - A placement request alone cannot authorize dispatch. The placement-bound dispatch request binds
-  the exact selected machine/capability and complete finalized execution request, remains unconsumed,
-  and cannot issue a lease, invoke execution, or widen fixture-only submission authority.
+  the exact selected machine/capability and complete finalized execution request and cannot widen
+  fixture-only submission authority. Only its explicit one-time submission may issue the exact fake-
+  broker lease; that evidence cannot invoke execution or become a receipt.
 - Default execution needs neither DockPipe-hosted cloud infrastructure, an external edge provider,
   nor a public node listener.
 - A failure cannot silently duplicate a task, replay a stale cancellation, hide cleanup residue, or
