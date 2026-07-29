@@ -780,10 +780,27 @@ restart are idempotent, request-publication failure after a durable decision rec
 and changed bindings, replay conflicts, stale broker state, substituted leases, upstream tamper,
 malformed/noncanonical input, and partial evidence fail closed without repair or mutation.
 
-This completes the authorized placement-bound execution-handoff decision/request slice. Connector
-invocation, execution, events, receipts, cancellation, retries, quarantine, disposable workers, Mac,
-GPU, and compatibility adapters remain later work. A live Codex Cloud adapter remains blocked until
-a future installed CLI documents a machine-readable receipt with a stable opaque task ID.
+This completes the authorized placement-bound execution-handoff decision/request slice. The separate
+package-local fixture-only placement-bound execution-delivery contract is now complete in
+`nodeconnectorplacementexecutiondelivery.go`. It consumes only the exact approved and unconsumed
+handoff request, revalidates the complete immutable upstream chain plus the historical broker state
+that issued the lease and the current durable broker/session state, and invokes
+`NodeConnectorSessionFake.DispatchAcceptedValidation` once with the unchanged execution request,
+exact broker lease, and explicitly supplied deterministic validation connector.
+
+The delivery publishes one canonical receipt-bound artifact and records one connector-session and
+prepared-validation invocation with zero broker-executor invocations. Exact replay, restart, and
+post-receipt atomic-write recovery return the identical terminal evidence without reinvocation.
+Changed identities, bindings, policy, session health/presence/negotiation, workflow, revision,
+events, receipt, durable broker history, upstream artifacts, or existing delivery evidence fail
+closed. Connection, health, presence, availability, load, risk, cost, ordering, ranking, provider
+claims, broker acceptance, lease existence, and receipt shape cannot imply approval.
+
+This delivery proof launches no real validation process, shell, workflow runner, Docker container,
+provider, network, or remote machine. Cancellation, retries, repair, quarantine, disposable workers,
+service mutation, publication, production execution, Mac, GPU, and compatibility adapters remain
+later work. A live Codex Cloud adapter remains blocked until a future installed CLI documents a
+machine-readable receipt with a stable opaque task ID.
 
 ## Boundaries
 
@@ -1238,8 +1255,9 @@ exchange, real loopback process-boundary adapter, direct-TLS BYO edge, Cloudflar
  service lifecycle and diagnostics contract, fixture-only node inventory and placement-input
  snapshot contract, explicit fixture-only node placement decision/request contract, explicit
  fixture-only placement-bound dispatch decision/request contract, executorless fixture-broker
- submission/lease-materialization contract, and explicit fixture-only placement-bound execution-
- handoff decision/request contract** now prove the durable product
+ submission/lease-materialization contract, explicit fixture-only placement-bound execution-
+ handoff decision/request contract, and fixture-only placement-bound execution-delivery contract**
+ now prove the durable product
  boundary without
 letting a provider edge or managed-service artifact shape it. The package implements broker lease/receipt/event behavior, prepared local
 validation delivery, durable enrollment/credential/presence/health/capability/restart evidence, exact
@@ -1267,6 +1285,10 @@ The placement-bound execution-handoff proof adds a third independent local decis
 unconsumed request bound to the exact submission, unchanged broker operation, canonical execution
 request, selected node/machine/capability/profile, and task lease. Its only positive authority is a
 future one-time call through the existing in-process fixture connector-session seam.
+The placement-bound execution-delivery proof consumes that exact authority once, revalidates the
+historical lease-issuance state and current broker/session state, calls the existing connector-session
+seam once, and records the exact terminal events and receipt with connector and prepared-validation
+counts of one and broker-executor count of zero.
 
 Authorized bounded slice status:
 
@@ -1295,6 +1317,13 @@ Authorized bounded slice status:
    authority is a future one-time call through the existing in-process connector-session seam. It
    invokes no connector, executor, broker, validation, network, provider, mutation, Git,
    publication, completion, lifecycle, or next-task action.
+5. The separate package-local fixture-only **placement-bound execution-delivery contract** is
+   complete. It consumes the exact approved handoff request once, invokes only the existing
+   connector-session validation seam, materializes the exact terminal events and receipt, and
+   recovers exact replay/restart/atomic-write failures without reinvocation. It creates no broker
+   operation, lease, attempt, connection, session, enrollment, or credential and grants no
+   cancellation, retry, repair, quarantine, service, network, provider, mutation, Git, apply,
+   checkpoint, commit, push, publication, completion, lifecycle, or next-task authority.
 
 The slice deliberately excludes a production daemon/service installer, live edge provider,
 auto-discovery, billing, multi-tenancy, QEMU dispatch, dynamic scheduling, and generic remote shell.
@@ -1359,6 +1388,13 @@ Default tests require no network, provider account, tunnel, or remote machine.
     connector-session seam; rejected decisions emit none. Connector invocation, execution, events,
     receipts, cancellation, retries, quarantine, disposable workers, Mac, GPU, and compatibility
     adapters remain later work.
+13. **Placement-bound execution delivery (complete):** consume the exact approved and unconsumed
+    handoff request, revalidate the immutable placement/submission/lease chain plus the current
+    healthy connector session, invoke the existing deterministic connector-session seam once, and
+    publish one canonical receipt-bound delivery artifact. Exact replay and restart do not reinvoke;
+    broker executor, production runner, cancellation, retries, repair, quarantine, service,
+    network/provider behavior, mutation, Git, publication, completion, and next-task work remain
+    excluded.
 
 ## Acceptance Criteria For This Extension
 
