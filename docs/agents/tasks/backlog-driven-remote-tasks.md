@@ -1291,8 +1291,10 @@ exchange, real loopback process-boundary adapter, direct-TLS BYO edge, Cloudflar
  snapshot contract, explicit fixture-only node placement decision/request contract, explicit
  fixture-only placement-bound dispatch decision/request contract, executorless fixture-broker
  submission/lease-materialization contract, explicit fixture-only placement-bound execution-
- handoff decision/request contract, fixture-only placement-bound execution-delivery contract, and
- fixture-only placement-bound execution-reconciliation decision/request contract**
+ handoff decision/request contract, fixture-only placement-bound execution-delivery contract,
+ fixture-only placement-bound execution-reconciliation decision/request contract, fixture-only
+ graph-finalization decision/request contract, and fixture-only graph final-state projection
+ decision/request contract**
  now prove the durable product
  boundary without
 letting a provider edge or managed-service artifact shape it. The package implements broker lease/receipt/event behavior, prepared local
@@ -1332,6 +1334,13 @@ the graph, schedule another task, or reinvoke any execution boundary.
 The task-level graph-reconciliation proof consumes that exact request once, interprets only the
 fully validated receipt into `passed` or `failed`, and records the immutable task outcome without
 completing the graph, propagating failure, scheduling another task, retrying, or repairing.
+The graph-finalization proof places one nonempty ordinal set of those canonical terminal outcomes
+behind a fifth independent local decision and emits only an unconsumed local-finalization request.
+The graph final-state projection proof accepts only that exact approved decision/request chain and
+its immutable graph-run, run, task, operation, receipt, and outcome bindings behind a sixth
+fixture-owned local decision. Its approved request preserves `succeeded` and `failed` as distinct
+terminal states and grants only a future one-time local projection attempt; it does not project or
+persist a graph lifecycle state.
 
 Authorized bounded slice status:
 
@@ -1379,6 +1388,19 @@ Authorized bounded slice status:
    evidence plus every immutable identity/fingerprint binding. Whole-graph completion, graph-failure
    propagation, dependency release, next-task scheduling, retry, repair, cancellation, execution,
    lifecycle mutation, Git, and publication remain unauthorized and open.
+8. The separate package-local fixture-only **local graph-finalization decision/request contract** is
+   complete. It accepts only canonical terminal task outcomes for one exact graph run behind a fifth
+   independent approved/rejected decision, and emits at most one unconsumed request that preserves
+   terminal success or failure. It grants no projection, lifecycle, dependency, scheduling,
+   retry/repair/cancellation, execution, ForgePipe/broker/provider, Git, or publication authority.
+9. The separate package-local fixture-only **graph final-state projection decision/request contract**
+   is complete. It consumes only the exact approved graph-finalization decision/request and binds
+   their authority plus every immutable graph-run, run, task, operation, receipt, and outcome
+   identity behind a sixth independent approved/rejected decision. Approved success and failure
+   requests remain distinct; rejection emits no request. Exact replay/restart is idempotent, while
+   concurrent conflicts, missing/tampered evidence, changed identities, malformed/noncanonical
+   inputs, and mismatched terminal states fail closed. It creates only its decision/request
+   artifacts and grants no actual graph transition or other lifecycle side effect.
 
 The slice deliberately excludes a production daemon/service installer, live edge provider,
 auto-discovery, billing, multi-tenancy, QEMU dispatch, dynamic scheduling, and generic remote shell.
@@ -1474,11 +1496,27 @@ Default tests require no network, provider account, tunnel, or remote machine.
     effect. Machine identity, capability snapshot, lease, events, connection, provider claims, and
     validation claims remain neither authority nor substitute inputs. Replay, restart, concurrency,
     malformed/noncanonical data, tamper, changed identities, and conflicting evidence fail closed.
+17. **Local graph final-state projection decision/request (complete):** consume only the exact
+    approved, unconsumed graph-finalization request and its accepted decision, revalidate their
+    immutable terminal-outcome set, and require a sixth independent fixture-owned approved/rejected
+    local decision. An approved decision emits one unconsumed request bound to the exact graph-run,
+    run, task, operation, receipt, task-outcome, outcome-fingerprint, predecessor-decision,
+    predecessor-request, and predecessor-authority identities. `succeeded` and `failed` remain
+    distinct and must exactly match the accepted finalization; rejected decisions emit no request.
+    Provider-like fixtures, events, connections, availability, validation claims, machine identity,
+    capability snapshots, leases, and receipts cannot infer approval or projection authority.
+    Replays and restarts recover exactly; concurrent/conflicting decisions, missing or tampered
+    evidence, changed identities, malformed/noncanonical input, and terminal-state mismatch fail
+    closed. This contract creates no graph lifecycle transition, dependency release, next-task
+    scheduling, retry, repair, cancellation, publication, new execution, ForgePipe/broker/provider
+    action, checkout/Git action, commit, push, or external-service effect.
 
-The finalization decision/request is intentionally not a graph lifecycle executor. Its remaining
-open successor must independently define and authorize any final graph state projection, dependency
-release, retry/repair/cancellation behavior, scheduling, or publication; none follows from a
-successful or failed finalization request.
+Neither the finalization nor projection decision/request is a graph lifecycle executor. The still-
+open successor policy must separately define how an authorized final state could be projected and
+persisted, including atomicity, authoritative graph-store ownership, idempotent consumption,
+crash recovery, and audit evidence. Dependency release, retry/repair/cancellation, next-task
+scheduling, publication, and every other lifecycle action require their own later policies and do
+not follow from a successful or failed projection request.
 
 ## Acceptance Criteria For This Extension
 
