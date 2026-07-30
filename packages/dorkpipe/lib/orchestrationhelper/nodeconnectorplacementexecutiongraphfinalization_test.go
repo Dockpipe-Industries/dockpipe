@@ -54,7 +54,7 @@ func TestNodeConnectorPlacementExecutionGraphFinalizationAggregatesOrdinalTaskOu
 		t.Fatal(err)
 	}
 	second.ArtifactFingerprint = fingerprint
-	value.expected.Outcomes = append(value.expected.Outcomes, second)
+	value.expected.Outcomes = []NodeConnectorPlacementExecutionGraphReconciliation{second, value.expected.Outcomes[0]}
 	value.fixture.Outcomes = cloneNodeConnectorPlacementExecutionGraphFinalizationOutcomes(value.expected.Outcomes)
 	value.fixture.Finalization = "failed"
 	decision, request := mustDecideNodeConnectorPlacementExecutionGraphFinalization(t, mustOpenNodeConnectorPlacementExecutionGraphFinalizations(t, value), value.fixture)
@@ -63,7 +63,7 @@ func TestNodeConnectorPlacementExecutionGraphFinalizationAggregatesOrdinalTaskOu
 	}
 
 	unsorted := newNodeConnectorPlacementExecutionGraphFinalizationTestFixture(t, "succeeded", "approved")
-	unsorted.expected.Outcomes = []NodeConnectorPlacementExecutionGraphReconciliation{second, unsorted.expected.Outcomes[0]}
+	unsorted.expected.Outcomes = []NodeConnectorPlacementExecutionGraphReconciliation{unsorted.expected.Outcomes[0], second}
 	if _, err := OpenNodeConnectorPlacementExecutionGraphFinalizations(unsorted.root, unsorted.expected); err == nil {
 		t.Fatal("unordered task outcomes were accepted")
 	}
