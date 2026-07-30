@@ -448,7 +448,7 @@ func bytesEqual(left, right []byte) bool {
 
 func backlogValidationCommandEnvironment() []string {
 	overrides := map[string]string{
-		"CGO_ENABLED": "0", "GO111MODULE": "on", "GOENV": "off", "GOFLAGS": "-mod=readonly",
+		"CGO_ENABLED": "0", "GO111MODULE": "on", "GOENV": "off", "GOFLAGS": "-mod=readonly -count=1",
 		"GONOSUMDB": "*", "GOPROXY": "off", "GOSUMDB": "off", "GOTOOLCHAIN": "local", "GOVCS": "off",
 	}
 	environment := []string{}
