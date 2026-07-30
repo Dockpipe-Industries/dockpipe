@@ -802,6 +802,27 @@ service mutation, publication, production execution, Mac, GPU, and compatibility
 later work. A live Codex Cloud adapter remains blocked until a future installed CLI documents a
 machine-readable receipt with a stable opaque task ID.
 
+The separate package-local fixture-only placement-bound execution-reconciliation decision/request
+contract is now complete in `nodeconnectorplacementexecutionreconciliation.go`. It directly
+revalidates the complete immutable placement, dispatch, submission, handoff, delivery, durable
+broker operation, exact request/lease, ordered terminal events, and receipt chain before accepting a
+fourth independent strict local approved or rejected decision. Only an approved decision emits one
+canonical unconsumed request whose sole positive authority is a future one-time local graph-
+reconciliation request.
+
+Terminal success, receipt shape, validation, provider, availability, connection, presence, health,
+broker acceptance, and lease existence cannot imply approval or graph outcome. The terminal evidence
+remains opaque: this slice does not perform reconciliation, claim graph completion, propagate graph
+failure, schedule another task, reinvoke the connector or prepared validation, invoke an executor,
+or mutate broker history. Exact replay, restart, and decision/request atomic-write recovery are
+idempotent; changed bindings, colliding identities, upstream tamper, malformed/noncanonical input,
+and orphaned or conflicting artifacts fail closed without repair.
+
+The bounded backlog validation lane now disables only Go successful test-result caching while
+retaining the exact direct `go test` argv, readonly-module policy, offline environment, compilation
+cache, and explicit four-minute deadline. This ensures validation is actually executed and avoids
+unbounded parent-process test-cache finalization after the test binary exits.
+
 ## Boundaries
 
 - Keep Codex Cloud CLI integration, backlog parsing, prompt compilation, and task artifacts inside
@@ -1256,7 +1277,8 @@ exchange, real loopback process-boundary adapter, direct-TLS BYO edge, Cloudflar
  snapshot contract, explicit fixture-only node placement decision/request contract, explicit
  fixture-only placement-bound dispatch decision/request contract, executorless fixture-broker
  submission/lease-materialization contract, explicit fixture-only placement-bound execution-
- handoff decision/request contract, and fixture-only placement-bound execution-delivery contract**
+ handoff decision/request contract, fixture-only placement-bound execution-delivery contract, and
+ fixture-only placement-bound execution-reconciliation decision/request contract**
  now prove the durable product
  boundary without
 letting a provider edge or managed-service artifact shape it. The package implements broker lease/receipt/event behavior, prepared local
@@ -1289,6 +1311,10 @@ The placement-bound execution-delivery proof consumes that exact authority once,
 historical lease-issuance state and current broker/session state, calls the existing connector-session
 seam once, and records the exact terminal events and receipt with connector and prepared-validation
 counts of one and broker-executor count of zero.
+The placement-bound execution-reconciliation proof preserves that terminal delivery as opaque
+evidence behind a fourth independent local decision. Its approved request authorizes only a future
+one-time local graph-reconciliation attempt; it cannot interpret success/failure, complete or fail
+the graph, schedule another task, or reinvoke any execution boundary.
 
 Authorized bounded slice status:
 
@@ -1324,6 +1350,12 @@ Authorized bounded slice status:
    operation, lease, attempt, connection, session, enrollment, or credential and grants no
    cancellation, retry, repair, quarantine, service, network, provider, mutation, Git, apply,
    checkpoint, commit, push, publication, completion, lifecycle, or next-task authority.
+6. The separate package-local fixture-only **placement-bound execution-reconciliation
+   decision/request contract** is complete. It consumes only the exact durable terminal delivery
+   behind a fourth independent strict local decision and emits at most one unconsumed request for a
+   future local graph owner. It leaves terminal interpretation, graph reconciliation, graph
+   completion/failure, retry/repair, and next-task scheduling false and invokes no connector,
+   validator, executor, broker, network, provider, mutation, Git, publication, or lifecycle action.
 
 The slice deliberately excludes a production daemon/service installer, live edge provider,
 auto-discovery, billing, multi-tenancy, QEMU dispatch, dynamic scheduling, and generic remote shell.
@@ -1395,6 +1427,12 @@ Default tests require no network, provider account, tunnel, or remote machine.
     broker executor, production runner, cancellation, retries, repair, quarantine, service,
     network/provider behavior, mutation, Git, publication, completion, and next-task work remain
     excluded.
+14. **Placement-bound execution-reconciliation decision/request (complete):** consume the exact
+    immutable terminal delivery only behind a fourth independent strict approved/rejected local
+    decision. Approved decisions emit one fingerprint-bound unconsumed request permitting only a
+    future one-time local graph-reconciliation attempt; rejected decisions emit none. Terminal
+    interpretation, graph reconciliation, graph completion/failure propagation, retry/repair,
+    next-task scheduling, and every execution or lifecycle action remain later work.
 
 ## Acceptance Criteria For This Extension
 

@@ -31,7 +31,7 @@ func TestBacklogValidationExecutionUsesExactPatchedWorkspaceAndSupportsArtifactO
 		if !hasDeadline || backlogValidationCommandTimeout != 4*time.Minute || remaining <= 0 || remaining > backlogValidationCommandTimeout {
 			t.Fatalf("validation command did not receive the bounded four-minute deadline: deadline=%v remaining=%v", hasDeadline, remaining)
 		}
-		if root == consumerRoot || !environmentContains(environment, "GOPROXY=off") || !environmentContains(environment, "GOVCS=off") || !environmentContains(environment, "GOENV=off") {
+		if root == consumerRoot || !environmentContains(environment, "GOPROXY=off") || !environmentContains(environment, "GOVCS=off") || !environmentContains(environment, "GOENV=off") || !environmentContains(environment, "GOFLAGS=-mod=readonly -count=1") {
 			t.Fatalf("validation command did not use an isolated offline environment")
 		}
 		expected := map[string][]byte{
@@ -147,7 +147,11 @@ func TestBacklogValidationExecutionRejectsUnsafeCommandGrammarBeforeExecution(t 
 func TestBacklogValidationExecutionFiltersHostWorkspaceAndTemporaryOverrides(t *testing.T) {
 	t.Setenv("GOWORK", "C:/host/go.work")
 	t.Setenv("GOTMPDIR", "C:/host/go-tmp")
+	t.Setenv("GOFLAGS", "-mod=mod -count=9")
 	environment := backlogValidationCommandEnvironment()
+	if !environmentContains(environment, "GOFLAGS=-mod=readonly -count=1") {
+		t.Fatal("validation environment did not disable test-result caching while preserving readonly modules")
+	}
 	for _, entry := range environment {
 		upper := strings.ToUpper(entry)
 		if strings.HasPrefix(upper, "GOWORK=") || strings.HasPrefix(upper, "GOTMPDIR=") {
