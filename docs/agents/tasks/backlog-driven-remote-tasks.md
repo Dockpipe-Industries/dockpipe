@@ -818,6 +818,20 @@ or mutate broker history. Exact replay, restart, and decision/request atomic-wri
 idempotent; changed bindings, colliding identities, upstream tamper, malformed/noncanonical input,
 and orphaned or conflicting artifacts fail closed without repair.
 
+The separate package-local task-level graph-reconciliation consumer is now complete in
+`nodeconnectorplacementexecutiongraphreconciliation.go`. It consumes only the exact approved,
+unconsumed, one-time request, directly revalidates the complete immutable chain again, and records
+one canonical durable consumption artifact. Only the fully validated execution receipt determines
+the task outcome: `succeeded` with cleanup `not_required` becomes `passed`; `failed`, `degraded`, or
+`cancelled` becomes `failed`, with the exact terminal result and cleanup evidence preserved.
+
+The artifact binds the exact graph run, run, task, operation, attempt, execution request, lease,
+ordered event stream, receipt, artifact manifest, decision, delivery, and reconciliation request.
+Exact replay, concurrent calls, restart, and atomic-write recovery converge without changing the
+immutable request or reinvoking any execution boundary. Whole-graph completion, graph-failure
+propagation, dependency release, next-task scheduling, retry, repair, cancellation, publication,
+and every execution or lifecycle side effect remain unauthorized and explicitly open.
+
 The bounded backlog validation lane now disables only Go successful test-result caching while
 retaining the exact direct `go test` argv, readonly-module policy, offline environment, compilation
 cache, and explicit four-minute deadline. This ensures validation is actually executed and avoids
@@ -1315,6 +1329,9 @@ The placement-bound execution-reconciliation proof preserves that terminal deliv
 evidence behind a fourth independent local decision. Its approved request authorizes only a future
 one-time local graph-reconciliation attempt; it cannot interpret success/failure, complete or fail
 the graph, schedule another task, or reinvoke any execution boundary.
+The task-level graph-reconciliation proof consumes that exact request once, interprets only the
+fully validated receipt into `passed` or `failed`, and records the immutable task outcome without
+completing the graph, propagating failure, scheduling another task, retrying, or repairing.
 
 Authorized bounded slice status:
 
@@ -1356,6 +1373,12 @@ Authorized bounded slice status:
    future local graph owner. It leaves terminal interpretation, graph reconciliation, graph
    completion/failure, retry/repair, and next-task scheduling false and invokes no connector,
    validator, executor, broker, network, provider, mutation, Git, publication, or lifecycle action.
+7. The separate package-local fixture-only **task-level graph-reconciliation consumer** is complete.
+   It consumes the exact approved one-time request through one canonical durable artifact, derives
+   the task outcome only from the fully validated receipt, and preserves exact terminal and cleanup
+   evidence plus every immutable identity/fingerprint binding. Whole-graph completion, graph-failure
+   propagation, dependency release, next-task scheduling, retry, repair, cancellation, execution,
+   lifecycle mutation, Git, and publication remain unauthorized and open.
 
 The slice deliberately excludes a production daemon/service installer, live edge provider,
 auto-discovery, billing, multi-tenancy, QEMU dispatch, dynamic scheduling, and generic remote shell.
@@ -1431,8 +1454,14 @@ Default tests require no network, provider account, tunnel, or remote machine.
     immutable terminal delivery only behind a fourth independent strict approved/rejected local
     decision. Approved decisions emit one fingerprint-bound unconsumed request permitting only a
     future one-time local graph-reconciliation attempt; rejected decisions emit none. Terminal
-    interpretation, graph reconciliation, graph completion/failure propagation, retry/repair,
-    next-task scheduling, and every execution or lifecycle action remain later work.
+    interpretation and task-level reconciliation are performed only by the separate bounded
+    consumer; graph completion/failure propagation, retry/repair, next-task scheduling, and every
+    execution or lifecycle action remain later work.
+15. **Task-level graph reconciliation (complete):** consume the exact approved unconsumed request
+    once, revalidate the full immutable execution chain, and persist one canonical task outcome from
+    the receipt alone. Whole-graph completion, graph-failure propagation, dependency release,
+    next-task scheduling, retry, repair, cancellation, publication, and execution/lifecycle side
+    effects remain explicitly open and unimplemented.
 
 ## Acceptance Criteria For This Extension
 
