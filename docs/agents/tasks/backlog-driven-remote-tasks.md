@@ -1341,6 +1341,12 @@ its immutable graph-run, run, task, operation, receipt, and outcome bindings beh
 fixture-owned local decision. Its approved request preserves `succeeded` and `failed` as distinct
 terminal states and grants only a future one-time local projection attempt; it does not project or
 persist a graph lifecycle state.
+The graph lifecycle executor policy proof accepts that exact projection chain only as evidence and
+places the future executor attempt behind a seventh independent fixture-owned local decision. Its
+approved request binds one logical local graph store, one graph record, an immutable preimage
+fingerprint/version, the exact terminal post-state, and every predecessor identity/fingerprint. It
+requires compare-and-swap, one-record atomicity, exact-replay idempotency, crash recovery, and a
+separately durable audit receipt, but it neither invokes an executor nor changes a graph record.
 
 Authorized bounded slice status:
 
@@ -1401,6 +1407,16 @@ Authorized bounded slice status:
    concurrent conflicts, missing/tampered evidence, changed identities, malformed/noncanonical
    inputs, and mismatched terminal states fail closed. It creates only its decision/request
    artifacts and grants no actual graph transition or other lifecycle side effect.
+10. The separate package-local fixture-only **graph lifecycle executor policy decision/request
+    contract** is complete. It consumes only the exact accepted graph final-state projection and
+    its immutable predecessor chain behind a seventh independent approved/rejected policy decision.
+    Approved success and failure requests remain distinct and authorize only a future one-time
+    local graph-state projection executor attempt constrained to one logical store/record CAS
+    precondition. Rejection emits no request. The policy requires one-record atomicity, exact-replay
+    idempotency, crash recovery, and a separately durable audit receipt. It creates only its policy
+    decision/request artifacts and invokes no executor, mutates no graph record, releases no
+    dependency, schedules no task, and grants no retry, repair, cancellation, execution, broker,
+    provider, ForgePipe, validation, checkout, Git, publication, or general lifecycle authority.
 
 The slice deliberately excludes a production daemon/service installer, live edge provider,
 auto-discovery, billing, multi-tenancy, QEMU dispatch, dynamic scheduling, and generic remote shell.
@@ -1510,13 +1526,29 @@ Default tests require no network, provider account, tunnel, or remote machine.
     closed. This contract creates no graph lifecycle transition, dependency release, next-task
     scheduling, retry, repair, cancellation, publication, new execution, ForgePipe/broker/provider
     action, checkout/Git action, commit, push, or external-service effect.
+18. **Local graph lifecycle executor policy decision/request (complete):** consume only the exact
+    accepted graph final-state projection decision/request and its revalidated finalization and
+    task-outcome predecessors behind a seventh independent fixture-owned approved/rejected policy.
+    Bind one explicit logical local graph-store identity, graph-record identity, expected immutable
+    preimage fingerprint/version, exact `succeeded` or `failed` projected terminal post-state, and
+    every graph-run, run, task, operation, receipt, outcome, finalization, and projection
+    identity/fingerprint. An approved policy emits one unconsumed request authorizing only a future
+    one-time local graph-state projection executor attempt with mandatory compare-and-swap,
+    one-record atomicity, exact-replay idempotency, crash recovery, and a separately durable audit
+    receipt. A rejected policy emits no request. Exact replay/restart and same-decision concurrency
+    are deterministic; conflicts, stale preimages, changed store/record or predecessor bindings,
+    missing/tampered/orphaned evidence, malformed/noncanonical input, terminal mismatch, and partial
+    publication fail closed. This policy creates no graph record, invokes no executor, and grants no
+    completion/failure propagation, dependency release, next-task scheduling, retry, repair,
+    cancellation, publication, broker/provider/ForgePipe, checkout/Git, or general lifecycle action.
 
-Neither the finalization nor projection decision/request is a graph lifecycle executor. The still-
-open successor policy must separately define how an authorized final state could be projected and
-persisted, including atomicity, authoritative graph-store ownership, idempotent consumption,
-crash recovery, and audit evidence. Dependency release, retry/repair/cancellation, next-task
+The executor policy decision/request is not the graph lifecycle executor. The still-open successor
+is the actual atomic local graph-state projection executor and its separately durable audit receipt:
+it must consume the exact approved policy request once, compare-and-swap the bound record against
+the exact preimage fingerprint/version, recover safely after crashes, and prove the exact durable
+post-state without widening authority. Dependency release, retry/repair/cancellation, next-task
 scheduling, publication, and every other lifecycle action require their own later policies and do
-not follow from a successful or failed projection request.
+not follow from a successful or failed projection or executor-policy request.
 
 ## Acceptance Criteria For This Extension
 
