@@ -1462,6 +1462,23 @@ Default tests require no network, provider account, tunnel, or remote machine.
     the receipt alone. Whole-graph completion, graph-failure propagation, dependency release,
     next-task scheduling, retry, repair, cancellation, publication, and execution/lifecycle side
     effects remain explicitly open and unimplemented.
+16. **Local graph-finalization decision/request (complete):** consume a nonempty, ordinally sorted
+    set of durable canonical task outcomes for one exact graph run only behind a fifth independent
+    fixture-owned approved/rejected local decision. An approved decision must explicitly name
+    `succeeded` only when every task outcome is `passed`, or `failed` when any terminal task outcome
+    is `failed`; rejected decisions emit no request. The resulting one-time request is bound to the
+    graph run, task/operation/receipt identities, outcome fingerprints, and explicit decision, and
+    grants only a future local graph-finalization consumer. It performs no graph completion or
+    failure propagation, dependency release, scheduling, retry, repair, cancellation, execution,
+    ForgePipe/broker/provider action, checkout/Git action, publication, or other lifecycle side
+    effect. Machine identity, capability snapshot, lease, events, connection, provider claims, and
+    validation claims remain neither authority nor substitute inputs. Replay, restart, concurrency,
+    malformed/noncanonical data, tamper, changed identities, and conflicting evidence fail closed.
+
+The finalization decision/request is intentionally not a graph lifecycle executor. Its remaining
+open successor must independently define and authorize any final graph state projection, dependency
+release, retry/repair/cancellation behavior, scheduling, or publication; none follows from a
+successful or failed finalization request.
 
 ## Acceptance Criteria For This Extension
 
