@@ -1362,6 +1362,15 @@ may authorize one future dependency-release transition attempt; `failed` may aut
 failure-propagation transition attempt. The routes are mutually exclusive and bind one exact,
 ordinally sorted dependency-target precondition set. The policy neither performs either transition
 nor releases dependencies, propagates failure, schedules a task, or invokes any callback.
+The graph dependency-transition executor consumes only that exact approved, authenticated,
+fixture-owned, unconsumed route request. It revalidates the persisted terminal graph postimage and
+complete immutable predecessor chain, prevalidates every strict dependency record before mutation,
+and replaces only the exact authorized records with deterministic route-specific successor versions.
+Its separate canonical durable evidence binds the policy decision/request, route, sorted target set,
+every exact preimage/postimage, transition/write counts, consumed authorization, fixture ownership,
+and the full predecessor binding. Exact replay returns the same evidence; restart can finish only an
+exact same-request partial transition or publish the missing receipt from the complete exact
+postimages without repeating any completed transition.
 
 Authorized bounded slice status:
 
@@ -1457,6 +1466,20 @@ Authorized bounded slice status:
     release, propagation, scheduling, new execution, retry, repair, cancellation, validation,
     checkout mutation, Git, commit, push, publication, broker, provider, ForgePipe, network, or
     remote authority.
+13. The separate package-local fixture-only **dependency-transition executor and durable transition
+    evidence** is complete. It consumes only the exact approved, authenticated, fixture-owned,
+    unconsumed policy request after revalidating the persisted terminal graph postimage, complete
+    immutable predecessor chain, policy decision/request fingerprints, route, sorted target-set
+    fingerprint, and every strict target preimage identity/fingerprint/version. The success route
+    performs only `blocked` to `dependency_released`; the failure route performs only `blocked` to
+    `failure_propagated`. Every target is validated before the first replacement. Exact replay,
+    restart, same-request concurrency, partial-write recovery, and receipt-publication recovery are
+    deterministic and never repeat a completed target transition. The separate canonical receipt
+    binds the full predecessor chain, decision/request, route, sorted target set, every preimage and
+    postimage, exact transition/write counts, consumed authorization, and fixture ownership. That
+    evidence grants no next-task scheduling, new execution, retry, repair, cancellation, callback,
+    validation, publication, network, broker, provider, ForgePipe, checkout, Git, commit, or push
+    authority.
 
 The slice deliberately excludes a production daemon/service installer, live edge provider,
 auto-discovery, billing, multi-tenancy, QEMU dispatch, dynamic scheduling, and generic remote shell.
@@ -1603,13 +1626,22 @@ Default tests require no network, provider account, tunnel, or remote machine.
     replay/restart/concurrency is deterministic; conflicts, stale records, changed targets or
     identities, malformed/noncanonical artifacts, and ambiguous encodings fail closed. This policy
     performs no transition, mutation, scheduling, execution, or callback.
+21. **Local dependency-transition executor and durable evidence (complete):** consume only the exact
+    approved, authenticated, fixture-owned, unconsumed route request and revalidate its complete
+    immutable predecessor chain, persisted terminal graph postimage, decision/request fingerprints,
+    route, sorted target-set fingerprint, and every strict dependency record precondition. Validate
+    the entire target set before mutation, then replace only exact bound records with deterministic
+    `dependency_released` or `failure_propagated` successor versions. Emit one separate canonical
+    receipt binding the full chain, route, targets, every preimage/postimage, transition/write counts,
+    consumed authorization, and fixture ownership. Exact replay/restart/concurrency is idempotent;
+    exact same-request partial transitions and receipt-publication failures recover without repeating
+    completed writes, while ambiguous or unrelated partial state fails closed. The receipt is evidence
+    only and grants no adjacent lifecycle action.
 
-The next remaining bounded boundary is the actual local dependency-transition executor. It may
-consume only the exact approved unconsumed route request, revalidate the complete immutable chain
-and each target precondition, perform only the authorized release or failure-propagation route, and
-emit separate durable transition evidence. Next-task scheduling remains a later independent policy
-that must consume that durable dependency-transition evidence; graph completion, terminal state,
-the executor audit receipt, or a dependency-transition request cannot imply scheduling authority.
+The next remaining bounded boundary is a separate next-task scheduling policy. It may consume only
+the exact durable dependency-transition evidence behind its own independent local decision; graph
+completion, terminal state, the lifecycle executor audit receipt, a dependency-transition request,
+or released/failed dependency records cannot imply scheduling authority.
 Retry, repair, cancellation, publication, new execution, broker, provider, ForgePipe, validation,
 checkout, Git, commit, push, and every other lifecycle action also remain independently unauthorized
 and unimplemented.
