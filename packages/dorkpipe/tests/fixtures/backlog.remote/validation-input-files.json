@@ -49,6 +49,8 @@
   "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorplacementexecutiongraphfinalization_test.go",
   "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorplacementexecutiongraphfinalstateprojection.go",
   "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorplacementexecutiongraphfinalstateprojection_test.go",
+  "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorplacementexecutiongraphlifecycleexecutor.go",
+  "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorplacementexecutiongraphlifecycleexecutor_test.go",
   "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorplacementexecutiongraphlifecycleexecutorpolicy.go",
   "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorplacementexecutiongraphlifecycleexecutorpolicy_test.go",
   "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorplacementexecutiongraphreconciliation.go",
