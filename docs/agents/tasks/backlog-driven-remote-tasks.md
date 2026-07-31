@@ -1293,8 +1293,9 @@ exchange, real loopback process-boundary adapter, direct-TLS BYO edge, Cloudflar
  submission/lease-materialization contract, explicit fixture-only placement-bound execution-
  handoff decision/request contract, fixture-only placement-bound execution-delivery contract,
  fixture-only placement-bound execution-reconciliation decision/request contract, fixture-only
- graph-finalization decision/request contract, and fixture-only graph final-state projection
- decision/request contract**
+ graph-finalization decision/request contract, fixture-only graph final-state projection
+ decision/request contract, fixture-only graph lifecycle executor policy, and atomic fixture-only
+ graph lifecycle executor with its durable audit receipt**
  now prove the durable product
  boundary without
 letting a provider edge or managed-service artifact shape it. The package implements broker lease/receipt/event behavior, prepared local
@@ -1347,6 +1348,14 @@ approved request binds one logical local graph store, one graph record, an immut
 fingerprint/version, the exact terminal post-state, and every predecessor identity/fingerprint. It
 requires compare-and-swap, one-record atomicity, exact-replay idempotency, crash recovery, and a
 separately durable audit receipt, but it neither invokes an executor nor changes a graph record.
+The graph lifecycle executor consumes only that exact approved, unconsumed policy request, revalidates
+the complete immutable predecessor chain, and compare-and-swaps one existing strict fixture record
+from its exact fingerprinted/versioned `running` preimage to the exact `succeeded` or `failed`
+successor version. Its separately durable canonical audit receipt binds both record images, the
+store/record identities, every policy/projection/finalization identity and fingerprint, and every
+graph-run/run/task/operation/receipt/outcome binding. Exact replay returns the same receipt. If
+receipt publication fails after the record replacement, restart accepts only the exact deterministic
+postimage and finishes that same receipt without a second transition.
 
 Authorized bounded slice status:
 
@@ -1417,6 +1426,19 @@ Authorized bounded slice status:
     decision/request artifacts and invokes no executor, mutates no graph record, releases no
     dependency, schedules no task, and grants no retry, repair, cancellation, execution, broker,
     provider, ForgePipe, validation, checkout, Git, publication, or general lifecycle authority.
+11. The separate package-local fixture-only **atomic graph lifecycle executor and durable audit
+    receipt** is complete. It consumes only the exact approved policy request and revalidates its
+    complete immutable projection, finalization, task-outcome, execution-receipt, operation, task,
+    run, and graph-run chain before one bound record compare-and-swap. The strict existing record
+    must match the exact preimage fingerprint/version; only that record is atomically replaced by
+    the exact terminal successor version, preserving `succeeded` and `failed` distinctly. Exact
+    replay and same-request concurrency return one receipt without another transition, and a crash
+    after replacement can publish the receipt only when the current record is the exact expected
+    postimage. Stale, unrelated, malformed, noncanonical, oversized, missing, tampered, orphaned,
+    or conflicting record, policy, predecessor, or receipt evidence fails closed. The receipt proves
+    only that local record transition and grants no dependency release, failure propagation,
+    scheduling, retry, repair, cancellation, execution, broker/provider/ForgePipe, network,
+    validation, checkout, Git, commit, push, publication, or general lifecycle authority.
 
 The slice deliberately excludes a production daemon/service installer, live edge provider,
 auto-discovery, billing, multi-tenancy, QEMU dispatch, dynamic scheduling, and generic remote shell.
@@ -1541,14 +1563,23 @@ Default tests require no network, provider account, tunnel, or remote machine.
     publication fail closed. This policy creates no graph record, invokes no executor, and grants no
     completion/failure propagation, dependency release, next-task scheduling, retry, repair,
     cancellation, publication, broker/provider/ForgePipe, checkout/Git, or general lifecycle action.
+19. **Atomic local graph-state projection executor and audit receipt (complete):** consume only the
+    exact approved, unconsumed executor-policy request after revalidating the complete immutable
+    predecessor chain. Require the one existing bound strict fixture record to match the exact
+    expected preimage fingerprint/version, atomically replace only that record with the exact
+    terminal successor and deterministic version, and durably publish one canonical audit receipt
+    binding the preimage, postimage, store/record, policy, projection, finalization, graph-run, run,
+    task, operation, receipt, and outcome identities/fingerprints. Preserve `succeeded` and `failed`
+    distinctly. Exact replay/restart and same-request concurrency are idempotent; recovery after
+    record replacement accepts only the exact expected postimage and never repeats the transition.
+    Stale, unrelated, missing, tampered, orphaned, malformed, noncanonical, unknown-field, trailing,
+    oversized, or conflicting evidence fails closed. No adjacent callback or authority is present.
 
-The executor policy decision/request is not the graph lifecycle executor. The still-open successor
-is the actual atomic local graph-state projection executor and its separately durable audit receipt:
-it must consume the exact approved policy request once, compare-and-swap the bound record against
-the exact preimage fingerprint/version, recover safely after crashes, and prove the exact durable
-post-state without widening authority. Dependency release, retry/repair/cancellation, next-task
-scheduling, publication, and every other lifecycle action require their own later policies and do
-not follow from a successful or failed projection or executor-policy request.
+The next remaining boundary is separately authorized dependency release/failure propagation and
+next-task scheduling policy. Neither successful nor failed terminal state, nor the executor audit
+receipt, implies those actions. Retry, repair, cancellation, publication, new execution, broker,
+provider, ForgePipe, validation, checkout, Git, commit, push, and every other lifecycle action also
+remain independently unauthorized and unimplemented.
 
 ## Acceptance Criteria For This Extension
 
