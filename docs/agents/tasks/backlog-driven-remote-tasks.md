@@ -1356,6 +1356,12 @@ store/record identities, every policy/projection/finalization identity and finge
 graph-run/run/task/operation/receipt/outcome binding. Exact replay returns the same receipt. If
 receipt publication fails after the record replacement, restart accepts only the exact deterministic
 postimage and finishes that same receipt without a second transition.
+The graph dependency-transition policy consumes only that exact durable executor receipt and its
+persisted postimage behind an eighth independent, fixture-owned authenticated decision. `succeeded`
+may authorize one future dependency-release transition attempt; `failed` may authorize one future
+failure-propagation transition attempt. The routes are mutually exclusive and bind one exact,
+ordinally sorted dependency-target precondition set. The policy neither performs either transition
+nor releases dependencies, propagates failure, schedules a task, or invokes any callback.
 
 Authorized bounded slice status:
 
@@ -1439,6 +1445,18 @@ Authorized bounded slice status:
     only that local record transition and grants no dependency release, failure propagation,
     scheduling, retry, repair, cancellation, execution, broker/provider/ForgePipe, network,
     validation, checkout, Git, commit, push, publication, or general lifecycle authority.
+12. The separate package-local fixture-only **graph dependency-transition policy decision/request
+    contract** is complete. It consumes only the exact durable graph lifecycle executor audit
+    receipt whose persisted postimage remains present, then requires an eighth independent strict
+    fixture-owned authenticated decision. `succeeded` may emit exactly one unconsumed request for a
+    future dependency-release transition attempt; `failed` may emit exactly one unconsumed request
+    for a future failure-propagation transition attempt. The structurally distinct routes are
+    mutually exclusive and preserve exact sorted dependency-target preconditions plus the complete
+    graph/run/reconciliation/outcome/finalization/projection/lifecycle-policy/transition/execution
+    identity chain. The contract performs no dependency mutation or callback and grants no actual
+    release, propagation, scheduling, new execution, retry, repair, cancellation, validation,
+    checkout mutation, Git, commit, push, publication, broker, provider, ForgePipe, network, or
+    remote authority.
 
 The slice deliberately excludes a production daemon/service installer, live edge provider,
 auto-discovery, billing, multi-tenancy, QEMU dispatch, dynamic scheduling, and generic remote shell.
@@ -1574,12 +1592,27 @@ Default tests require no network, provider account, tunnel, or remote machine.
     record replacement accepts only the exact expected postimage and never repeats the transition.
     Stale, unrelated, missing, tampered, orphaned, malformed, noncanonical, unknown-field, trailing,
     oversized, or conflicting evidence fails closed. No adjacent callback or authority is present.
+20. **Explicit graph dependency-transition policy decision/request (complete):** consume only the
+    exact durable graph lifecycle executor audit receipt while its exact persisted terminal
+    postimage remains present, and require a separately authenticated fixture-owned approved or
+    rejected decision. An approved `succeeded` decision emits one unconsumed request for only a
+    future local dependency-release transition attempt; an approved `failed` decision emits one
+    unconsumed request for only a future local failure-propagation transition attempt. Bind the
+    exact store, record, postimage fingerprint/version, predecessor identities, intended request,
+    route, and nonempty ordinally sorted target preconditions. Rejection emits no request. Exact
+    replay/restart/concurrency is deterministic; conflicts, stale records, changed targets or
+    identities, malformed/noncanonical artifacts, and ambiguous encodings fail closed. This policy
+    performs no transition, mutation, scheduling, execution, or callback.
 
-The next remaining boundary is separately authorized dependency release/failure propagation and
-next-task scheduling policy. Neither successful nor failed terminal state, nor the executor audit
-receipt, implies those actions. Retry, repair, cancellation, publication, new execution, broker,
-provider, ForgePipe, validation, checkout, Git, commit, push, and every other lifecycle action also
-remain independently unauthorized and unimplemented.
+The next remaining bounded boundary is the actual local dependency-transition executor. It may
+consume only the exact approved unconsumed route request, revalidate the complete immutable chain
+and each target precondition, perform only the authorized release or failure-propagation route, and
+emit separate durable transition evidence. Next-task scheduling remains a later independent policy
+that must consume that durable dependency-transition evidence; graph completion, terminal state,
+the executor audit receipt, or a dependency-transition request cannot imply scheduling authority.
+Retry, repair, cancellation, publication, new execution, broker, provider, ForgePipe, validation,
+checkout, Git, commit, push, and every other lifecycle action also remain independently unauthorized
+and unimplemented.
 
 ## Acceptance Criteria For This Extension
 
