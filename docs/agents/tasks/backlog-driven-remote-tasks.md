@@ -1836,19 +1836,35 @@ Default tests require no network, provider account, tunnel, or remote machine.
     concurrency, pre-existing identical outputs, and accepted-result-before-receipt recovery are
     idempotent; conflicts, orphans, unsafe artifacts, replay, ambiguous partial state, and adjacent
     authority fail closed. Perform no graph continuation/finalization or other lifecycle action.
+27. **Explicit post-reconciliation graph-continuation/finalization policy decision/request
+    (complete):** consume only the exact durable next-task result-reconciliation receipt and accepted
+    result after revalidating their complete immutable predecessor chain. Require one separate,
+    deterministic, one-time, independently authenticated, fixture-owned approved/rejected decision
+    bound to the exact observation, attempt and executor receipt, launch authorization, scheduling,
+    dependency, lifecycle, graph run, terminal and selected tasks, candidate set, released dependency
+    postimage, persisted scheduled record, terminal result, task outcome, explicit route, and intended
+    request identity. Only three approved combinations are valid: `passed` with
+    `graph_continuation`, `passed` with `successful_graph_finalization`, and `failed` with
+    `failed_graph_finalization`. Rejection emits no request. Approval emits one deterministic,
+    fingerprint-bound, unconsumed request whose sole positive authority is one future local executor
+    attempt for that exact route. Exact replay, restart, identical concurrency, decision-before-
+    request recovery, and pre-existing identical artifacts are idempotent; conflicting decisions or
+    routes, mismatched outcomes, missing or changed predecessors, inference, replayed/consumed or
+    unauthenticated evidence, authority escalation, orphaned/partial artifacts, and malformed,
+    noncanonical, unknown-field, trailing, oversized, symlinked, unsafe, or tampered evidence fail
+    closed. The policy performs no graph continuation/finalization, mutation, scheduling, execution,
+    callback, provider/broker/ForgePipe, validation, checkout, Git, or external action.
 
-The next remaining bounded boundary is a separate post-reconciliation graph-continuation/finalization
-policy. It may consume only the exact durable next-task result-reconciliation receipt, require its own
-strict independently authenticated fixture-owned approved/rejected decision, and emit at most one
-unconsumed request for a future local graph-continuation/finalization attempt. The result observation,
-accepted result, attempt, executor receipt, task outcome, scheduled state, dependency release,
-candidate presence, graph/lifecycle/transition state, process exit, connector, lease,
-broker/provider/ForgePipe, validation, or any other predecessor evidence must never infer approval or
-the continuation route. Actual process or node execution, graph continuation or finalization,
-completion/failure propagation, dependency release, scheduling, placement, dispatch, connector or
-broker activity, retry, repair, cancellation, publication, remote execution, validation, checkout,
-Git, commit, push, and every other lifecycle action remain independently unauthorized and
-unimplemented.
+The next remaining bounded boundary is a separate atomic local graph-continuation/finalization
+executor. It may consume only the exact approved, independently authenticated, fixture-owned,
+unconsumed request for its explicit outcome-compatible route, revalidate the full immutable chain,
+and perform only that route's exact local graph transition with separately durable evidence. It must
+not infer route or authority from the result, outcome, graph, scheduling, dependency, lifecycle,
+candidate, process, connector, lease, broker/provider/ForgePipe, validation, or receipt evidence.
+That executor, actual graph continuation/finalization, completion/failure propagation, dependency
+release, scheduling, process or node execution, placement, dispatch, connector or broker activity,
+retry, repair, cancellation, publication, remote execution, validation, checkout, Git, commit, push,
+and every other adjacent lifecycle action remain independently unauthorized and unimplemented.
 
 ## Acceptance Criteria For This Extension
 
