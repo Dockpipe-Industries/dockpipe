@@ -39,7 +39,7 @@ while IFS= read -r validation_input; do
   mkdir -p "$application_consumer/$(dirname "$validation_input")"
   cp "$REPO_ROOT/$validation_input" "$application_consumer/$validation_input"
 done <"$fixture_root/validation-input-files.json"
-test "$validation_input_file_count" -eq 158
+test "$validation_input_file_count" -eq 160
 cp -R "$application_consumer" "$application_pristine"
 cp -R "$application_consumer" "$application_expected"
 printf '%s\n' '# Fixture package' 'Untrusted remote fixture change.' >"$application_expected/packages/dorkpipe/README.md"
@@ -285,12 +285,12 @@ grep -Fq '"contract_version": "dorkpipe.validation-receipt/v2"' "$artifact_root/
 grep -Fq '"state": "completion_candidate"' "$artifact_root/validation-receipt.json"
 grep -Fq '"observation_id": "receipt_fixture_observation_015"' "$artifact_root/validation-receipt.json"
 grep -Fq '"observation_id": "result_fixture_observation_015"' "$artifact_root/validation-receipt.json"
-grep -Fq '"fingerprint": "sha256:c223d2badf956abf675f5aecabd5b2aaa95d7331bdd31b2a7fcbf57964ecbb49"' "$artifact_root/validation-receipt.json"
+grep -Fq '"fingerprint": "sha256:f34933cac1bf13f8da50a76a2f3e610569ac9eaa0329a6c061217ddafe2ac6b6"' "$artifact_root/validation-receipt.json"
 grep -Fq '"patch_sha256": "sha256:4027895ace152e2d66d11143b9e7841adb68e8d625977b7c123508f221114b1b"' "$artifact_root/validation-receipt.json"
 grep -Fq '"required_validation": [' "$artifact_root/validation-receipt.json"
 grep -Fq '"go test ./packages/dorkpipe/lib/orchestrationhelper"' "$artifact_root/validation-receipt.json"
 grep -Fq '"fingerprint": "sha256:1dc90fee068fa97e7f2fafae5ac63498e0ace0c0260e06dd759ea164761c9b0c"' "$artifact_root/validation-receipt.json"
-grep -Fq '"compatibility_fingerprint": "sha256:2a51f95aca89039febbb43716d0111c4f7b4cfe3403c3a0507a3e855111928d8"' "$artifact_root/validation-receipt.json"
+grep -Fq '"compatibility_fingerprint": "sha256:23b1abe20f04dc3cffb81410253dd5865d80ccab48d1099387f4c48b7ba7ae00"' "$artifact_root/validation-receipt.json"
 grep -Fq '"opaque_receipt": "fixture-owned opaque validation receipt evidence"' "$artifact_root/validation-receipt.json"
 grep -Fq '"trusted": false' "$artifact_root/validation-receipt.json"
 grep -Fq '"authoritative": false' "$artifact_root/validation-receipt.json"

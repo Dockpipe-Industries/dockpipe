@@ -1296,8 +1296,8 @@ exchange, real loopback process-boundary adapter, direct-TLS BYO edge, Cloudflar
  graph-finalization decision/request contract, fixture-only graph final-state projection
  decision/request contract, fixture-only graph lifecycle executor policy, atomic fixture-only graph
  lifecycle executor with its durable audit receipt, explicit fixture-only dependency-transition
- policy, atomic fixture-only dependency-transition executor, and fixture-only next-task scheduling
- policy**
+ policy, atomic fixture-only dependency-transition executor, fixture-only next-task scheduling
+ policy, and atomic fixture-only next-task scheduling executor with durable evidence**
  now prove the durable product
  boundary without
 letting a provider edge or managed-service artifact shape it. The package implements broker lease/receipt/event behavior, prepared local
@@ -1381,6 +1381,17 @@ request for a future local scheduling executor attempt, and the selected task mu
 named by that decision. Failure propagation and rejected decisions emit no request. Released state,
 candidate discovery, ordering, readiness, availability, load, risk, cost, ranking, matching,
 connection, provider, broker, or ForgePipe evidence never selects a task or implies approval.
+The next-task scheduling executor consumes only that exact approved, authenticated, fixture-owned,
+unconsumed request after revalidating the complete immutable predecessor chain and every persisted
+dependency postimage. It compare-and-swaps one separate strict fixture-owned scheduling record from
+its exact `dependency_released` preimage to `scheduled`, leaving every unselected candidate and all
+dependency records unchanged. Its separate canonical receipt binds the graph run, terminal task,
+policy decision/request, authentication, transition receipt and postimages, full candidate set,
+selected task, record preimage/postimage, one transition/write, consumed authorization, and fixture
+ownership. Exact replay, restart, same-request concurrency, pre-existing identical output, and
+receipt-publication recovery never repeat the transition. The receipt proves only that local state
+change and grants no task-launch, node-execution, callback, broker/provider/ForgePipe, network,
+validation, checkout, Git, publication, retry, repair, cancellation, or external-action authority.
 
 Authorized bounded slice status:
 
@@ -1503,6 +1514,19 @@ Authorized bounded slice status:
     scheduling mutation, task launch, node execution, retry, repair, cancellation, callback,
     publication, broker/provider/ForgePipe, network, validation, checkout, Git, commit, push, or
     remote action.
+15. The separate package-local fixture-only **next-task scheduling executor and durable evidence**
+    is complete. It consumes only the exact approved, authenticated, fixture-owned, unconsumed
+    scheduling-policy request after revalidating the complete transition and graph predecessor
+    chain plus every persisted released dependency postimage. It changes only the explicitly
+    selected task's separate strict scheduling record from `dependency_released` to `scheduled`,
+    atomically and exactly once, while every unselected scheduling record and every dependency
+    record remain unchanged. Exact replay, restart, identical concurrency, pre-existing identical
+    output, and receipt-publication recovery return the same canonical evidence without another
+    transition; conflicts and ambiguous partial state fail closed. The evidence binds the full
+    candidate set, exact selected released postimage, record transition, one transition/write,
+    consumed authorization, and fixture ownership. It grants no task launch, node execution,
+    retry, repair, cancellation, callback, publication, broker/provider/ForgePipe, remote execution,
+    network, validation, checkout, Git, commit, push, or external-action authority.
 
 The slice deliberately excludes a production daemon/service installer, live edge provider,
 auto-discovery, billing, multi-tenancy, QEMU dispatch, dynamic scheduling, and generic remote shell.
@@ -1673,13 +1697,27 @@ Default tests require no network, provider account, tunnel, or remote machine.
     evidence cannot infer approval or selection. The policy performs no queue mutation, scheduling
     mutation, task launch, node execution, retry, repair, cancellation, callback, publication,
     network, validation, checkout, Git, commit, push, or remote action.
+23. **Local next-task scheduling executor and durable evidence (complete):** consume only one exact
+    approved, authenticated, fixture-owned, unconsumed scheduling-policy request after revalidating
+    its complete immutable predecessor chain and every persisted released dependency postimage.
+    Require one existing strict scheduling record for the independently selected candidate, then
+    atomically replace only its exact `dependency_released` preimage with the deterministic
+    `scheduled` successor. Leave all unselected candidates and dependency records unchanged. Publish
+    separate canonical evidence binding the full transition postimages and candidate set, selected
+    task and released postimage, policy authentication and decision/request, exact record images,
+    one transition/write, consumed authorization, and fixture ownership. Exact replay, restart,
+    concurrency, pre-existing identical output, and receipt-publication recovery are idempotent;
+    missing, stale, tampered, malformed, unsafe, conflicting, or ambiguous state fails closed. The
+    evidence grants no launch, execution, callback, retry, repair, cancellation, publication,
+    broker/provider/ForgePipe, remote, network, validation, checkout, or Git authority.
 
-The next remaining bounded boundary is the separate local next-task scheduling executor. It may
-consume only one exact approved, unconsumed scheduling-policy request and perform only the bound
-local scheduling transition. Actual task launch and new node execution remain separate later
-authority; retry, repair, cancellation, publication, broker, provider, ForgePipe, remote execution,
-validation, checkout, Git, commit, push, and every other lifecycle action also remain independently
-unauthorized and unimplemented.
+The next remaining bounded boundary is a separate local task-launch/new-node-execution authorization
+policy. It may consume only the exact durable next-task scheduling evidence behind another explicit,
+independently authenticated fixture-owned decision and may emit at most one unconsumed request for a
+future bound launch/execution attempt. That successor policy must not itself launch the task or invoke
+node execution. Actual launch/execution, retry, repair, cancellation, publication, broker, provider,
+ForgePipe, remote execution, validation, checkout, Git, commit, push, and every other lifecycle action
+remain independently unauthorized and unimplemented.
 
 ## Acceptance Criteria For This Extension
 
