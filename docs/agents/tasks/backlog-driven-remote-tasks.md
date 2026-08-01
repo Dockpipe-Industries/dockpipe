@@ -1297,7 +1297,8 @@ exchange, real loopback process-boundary adapter, direct-TLS BYO edge, Cloudflar
  decision/request contract, fixture-only graph lifecycle executor policy, atomic fixture-only graph
  lifecycle executor with its durable audit receipt, explicit fixture-only dependency-transition
  policy, atomic fixture-only dependency-transition executor, fixture-only next-task scheduling
- policy, and atomic fixture-only next-task scheduling executor with durable evidence**
+ policy, atomic fixture-only next-task scheduling executor with durable evidence, and fixture-only
+ next-task launch/new-node-execution authorization policy**
  now prove the durable product
  boundary without
 letting a provider edge or managed-service artifact shape it. The package implements broker lease/receipt/event behavior, prepared local
@@ -1392,6 +1393,19 @@ ownership. Exact replay, restart, same-request concurrency, pre-existing identic
 receipt-publication recovery never repeat the transition. The receipt proves only that local state
 change and grants no task-launch, node-execution, callback, broker/provider/ForgePipe, network,
 validation, checkout, Git, publication, retry, repair, cancellation, or external-action authority.
+The next-task launch/new-node-execution authorization policy consumes only that exact durable
+scheduling receipt while its exact `scheduled` record postimage remains present. It revalidates the
+complete immutable predecessor chain and requires a tenth independent strict fixture-owned
+authenticated approved/rejected decision. Only an approved decision emits one deterministic,
+unconsumed, one-time request whose sole positive authority is a future local task-launch/new-node-
+execution executor attempt for the exact scheduled task. Rejection emits no request. Scheduled
+state, dependency release, candidate presence or selection, ordering, readiness, availability,
+load, risk, cost, score, ranking, recommendation, matching, graph completion, lifecycle, transition,
+receipt, connection, lease, broker, provider, ForgePipe, machine, capability, placement, validation,
+or execution evidence never implies approval. The policy creates only its decision/request
+artifacts and performs no scheduling mutation, task launch, node execution, dispatch, connector,
+broker/provider/ForgePipe activity, callback, retry, repair, cancellation, publication, remote or
+network action, validation, checkout mutation, Git action, or external action.
 
 Authorized bounded slice status:
 
@@ -1527,6 +1541,21 @@ Authorized bounded slice status:
     consumed authorization, and fixture ownership. It grants no task launch, node execution,
     retry, repair, cancellation, callback, publication, broker/provider/ForgePipe, remote execution,
     network, validation, checkout, Git, commit, push, or external-action authority.
+16. The separate package-local fixture-only **next-task launch/new-node-execution authorization
+    policy decision/request contract** is complete. It consumes only the exact durable scheduling
+    executor receipt while the exact bound `scheduled` record postimage remains present, revalidates
+    the complete immutable graph, lifecycle, dependency-transition, and scheduling predecessor
+    chain, and requires a tenth independent authenticated fixture-owned approved/rejected decision.
+    Approved decisions emit one deterministic, unconsumed, one-time request bound to the exact graph
+    run, terminal task, candidate set, explicitly selected task, released dependency postimage,
+    scheduled record postimage, scheduling policy decision/request, and both authentication chains.
+    Rejection emits no request. Exact replay, restart, identical concurrency, pre-existing identical
+    output, and decision-before-request recovery are idempotent; changed, stale, missing, malformed,
+    noncanonical, oversized, symlinked, unsafe, orphaned, tampered, replayed, conflicting, consumed,
+    authority-escalated, or ambiguous evidence fails closed. The policy invokes no executor and
+    performs no scheduling mutation, task launch, node execution, dispatch, connector, callback,
+    external action, broker/provider/ForgePipe activity, retry, repair, cancellation, publication,
+    network or remote execution, validation, checkout mutation, Git action, commit, or push.
 
 The slice deliberately excludes a production daemon/service installer, live edge provider,
 auto-discovery, billing, multi-tenancy, QEMU dispatch, dynamic scheduling, and generic remote shell.
@@ -1710,14 +1739,29 @@ Default tests require no network, provider account, tunnel, or remote machine.
     missing, stale, tampered, malformed, unsafe, conflicting, or ambiguous state fails closed. The
     evidence grants no launch, execution, callback, retry, repair, cancellation, publication,
     broker/provider/ForgePipe, remote, network, validation, checkout, or Git authority.
+24. **Explicit next-task launch/new-node-execution authorization policy decision/request
+    (complete):** consume only the exact durable next-task scheduling receipt while its exact bound
+    `scheduled` postimage remains present, revalidate the complete immutable predecessor chain, and
+    require a tenth independent authenticated fixture-owned approved/rejected decision. Bind the
+    scheduling receipt, graph run, terminal task, complete candidate set, explicitly selected task,
+    released dependency postimage, scheduled record postimage/fingerprint/version, scheduling-policy
+    decision/request identities and fingerprints, decision authentication, and the intended
+    authorization request identity. Rejection emits no request. Approval emits one deterministic,
+    unconsumed, one-time request whose sole positive authority is a future local task-launch/new-node-
+    execution executor attempt for the exact scheduled task. Exact replay/restart/concurrency and
+    decision-before-request recovery are idempotent; stale, changed, missing, malformed,
+    noncanonical, oversized, symlinked, unsafe, orphaned, tampered, replayed, conflicting, consumed,
+    authority-escalated, inferred, or ambiguous evidence fails closed. The policy performs no
+    scheduling mutation, task launch, node execution, dispatch, connector, callback, external
+    action, broker/provider/ForgePipe activity, retry, repair, cancellation, publication, network or
+    remote execution, validation, checkout mutation, or Git action.
 
-The next remaining bounded boundary is a separate local task-launch/new-node-execution authorization
-policy. It may consume only the exact durable next-task scheduling evidence behind another explicit,
-independently authenticated fixture-owned decision and may emit at most one unconsumed request for a
-future bound launch/execution attempt. That successor policy must not itself launch the task or invoke
-node execution. Actual launch/execution, retry, repair, cancellation, publication, broker, provider,
-ForgePipe, remote execution, validation, checkout, Git, commit, push, and every other lifecycle action
-remain independently unauthorized and unimplemented.
+The next remaining bounded boundary is a separate local task-launch/new-node-execution executor. It
+may consume only the exact approved, authenticated, fixture-owned, unconsumed authorization request
+and perform only the exact bound local launch/execution attempt. Placement, dispatch, connector,
+broker/provider/ForgePipe activity, retry, repair, cancellation, publication, remote execution,
+validation, checkout, Git, commit, push, and every other lifecycle action remain independently
+unauthorized and unimplemented.
 
 ## Acceptance Criteria For This Extension
 
