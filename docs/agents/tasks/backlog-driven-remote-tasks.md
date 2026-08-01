@@ -1299,7 +1299,8 @@ exchange, real loopback process-boundary adapter, direct-TLS BYO edge, Cloudflar
  policy, atomic fixture-only dependency-transition executor, fixture-only next-task scheduling
  policy, atomic fixture-only next-task scheduling executor with durable evidence, and fixture-only
  next-task launch/new-node-execution authorization policy, and atomic fixture-only next-task launch/
- new-node-execution executor with a durable attempt record and consumption receipt**
+ new-node-execution executor with a durable attempt record and consumption receipt, and fixture-only
+ next-task result ingestion and task-level outcome reconciliation with separate durable evidence**
  now prove the durable product
  boundary without
 letting a provider edge or managed-service artifact shape it. The package implements broker lease/receipt/event behavior, prepared local
@@ -1420,6 +1421,21 @@ executor starts no task process or node execution and produces no execution resu
 completion, graph progress, placement, dispatch, connector, broker/provider/ForgePipe, callback,
 external, network, remote, validation, checkout, Git, retry, repair, cancellation, publication, or
 lifecycle-transition effect.
+The next-task result reconciler consumes only that exact durable executor receipt and attempt record
+plus one separate canonical, independently authenticated, fixture-owned result observation bound to
+the exact graph run, terminal task, selected scheduled task, candidate set, released dependency
+postimage, and persisted `scheduled` record. It accepts only explicit `succeeded` or `failed`, writes
+one canonical accepted-result record, then writes one separate durable reconciliation receipt that
+records exactly one ingestion, one accepted-result write, and one reconciliation write. Only
+`succeeded` maps to task outcome `passed`; only `failed` maps to task outcome `failed`. The immutable
+observation and every predecessor remain unchanged. Exact replay, restart, identical concurrency,
+pre-existing identical output, and accepted-result-before-receipt recovery converge without another
+ingestion or reconciliation; conflicting observations, outcomes, artifacts, or partial state fail
+closed. Attempt existence, authorization consumption, scheduled state, process exit, connector,
+lease, broker/provider/ForgePipe, validation, graph, lifecycle, transition, or receipt evidence never
+implies a result or outcome. The receipt claims no graph completion, graph failure propagation,
+dependency release, next-task scheduling, execution, retry, repair, cancellation, publication,
+callback, external action, or adjacent lifecycle authority.
 
 Authorized bounded slice status:
 
@@ -1583,6 +1599,19 @@ Authorized bounded slice status:
     node execution and grants no result, outcome, completion, graph progress, placement, dispatch,
     connector, broker/provider/ForgePipe, callback, external, network, remote, validation, checkout,
     Git, retry, repair, cancellation, publication, or lifecycle-transition authority.
+18. The separate package-local fixture-only **durable next-task result ingestion and task-level
+    outcome reconciliation** is complete. It consumes only the exact durable launch/execution
+    attempt and receipt plus one independently authenticated, fixture-owned, unconsumed canonical
+    result observation bound to the exact authorization, scheduling, dependency-transition,
+    lifecycle, graph, selected-task, candidate-set, released-postimage, and persisted `scheduled`
+    record chain. It materializes exactly one accepted result and one separate durable receipt,
+    mapping only `succeeded` to `passed` and only `failed` to `failed`. Replay, restart, identical
+    concurrency, pre-existing identical outputs, and accepted-result-before-receipt recovery are
+    idempotent; missing, stale, malformed, noncanonical, unsafe, unauthenticated, inferred, consumed,
+    replayed, conflicting, orphaned, authority-escalating, or ambiguous state fails closed. It
+    performs no graph continuation/finalization, completion, failure propagation, dependency release,
+    scheduling, execution, retry, repair, cancellation, callback, external action, validation,
+    network, checkout, Git, commit, push, or publication action.
 
 The slice deliberately excludes a production daemon/service installer, live edge provider,
 auto-discovery, billing, multi-tenancy, QEMU dispatch, dynamic scheduling, and generic remote shell.
@@ -1795,16 +1824,31 @@ Default tests require no network, provider account, tunnel, or remote machine.
     conflicting, orphaned, inferred, unauthenticated, consumed, authority-escalated, or ambiguous
     state fails closed. Start no task process or node execution and infer no result, outcome,
     completion, graph progress, or adjacent authority.
+26. **Durable next-task result ingestion and task-level outcome reconciliation (complete):** consume
+    only the exact durable attempt and executor receipt plus one separate canonical, independently
+    authenticated, fixture-owned, initially unconsumed result observation bound to the exact
+    authorization, scheduling, dependency-transition, lifecycle, graph, candidate, selected-task,
+    released-postimage, and persisted `scheduled` record chain. Materialize one accepted-result
+    record and one separate durable reconciliation receipt. Map only explicit `succeeded` to task
+    outcome `passed` and explicit `failed` to task outcome `failed`; never infer either from attempt,
+    process, connector, lease, broker/provider/ForgePipe, validation, graph, lifecycle, transition,
+    or receipt evidence. Preserve every immutable input and predecessor. Exact replay, restart,
+    concurrency, pre-existing identical outputs, and accepted-result-before-receipt recovery are
+    idempotent; conflicts, orphans, unsafe artifacts, replay, ambiguous partial state, and adjacent
+    authority fail closed. Perform no graph continuation/finalization or other lifecycle action.
 
-The next remaining bounded boundary is separate durable result/outcome ingestion and graph
-reconciliation for the exact attempted next task. It may consume only the exact executor receipt and
-separately authenticated fixture-owned result evidence, preserve the distinction between an attempt
-and an outcome, and reconcile only the exact bound task and graph identities. An attempt receipt,
-process exit, connector presence, broker/provider/ForgePipe evidence, validation evidence, or any
-other predecessor state never implies success, failure, completion, or graph progress. Actual
-process or node execution, placement, dispatch, connector or broker activity, retry, repair,
-cancellation, publication, remote execution, validation, checkout, Git, commit, push, and every
-other lifecycle action remain independently unauthorized and unimplemented.
+The next remaining bounded boundary is a separate post-reconciliation graph-continuation/finalization
+policy. It may consume only the exact durable next-task result-reconciliation receipt, require its own
+strict independently authenticated fixture-owned approved/rejected decision, and emit at most one
+unconsumed request for a future local graph-continuation/finalization attempt. The result observation,
+accepted result, attempt, executor receipt, task outcome, scheduled state, dependency release,
+candidate presence, graph/lifecycle/transition state, process exit, connector, lease,
+broker/provider/ForgePipe, validation, or any other predecessor evidence must never infer approval or
+the continuation route. Actual process or node execution, graph continuation or finalization,
+completion/failure propagation, dependency release, scheduling, placement, dispatch, connector or
+broker activity, retry, repair, cancellation, publication, remote execution, validation, checkout,
+Git, commit, push, and every other lifecycle action remain independently unauthorized and
+unimplemented.
 
 ## Acceptance Criteria For This Extension
 
