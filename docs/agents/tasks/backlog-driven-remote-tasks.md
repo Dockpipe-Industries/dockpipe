@@ -90,7 +90,7 @@ postimages before creating one checkpoint and receipt. It does not create a sche
 infer any approval from provider/result/receipt/validation evidence, auto-push, sync, publish,
 merge, select another task, or create a cross-task orchestrator.
 
-## Current Status (2026-07-29)
+## Current Status (2026-08-01)
 
 The first vertical slice is implemented as the package-owned `backlog.remote` workflow and dedicated
 orchestration-helper commands:
@@ -1298,7 +1298,8 @@ exchange, real loopback process-boundary adapter, direct-TLS BYO edge, Cloudflar
  lifecycle executor with its durable audit receipt, explicit fixture-only dependency-transition
  policy, atomic fixture-only dependency-transition executor, fixture-only next-task scheduling
  policy, atomic fixture-only next-task scheduling executor with durable evidence, and fixture-only
- next-task launch/new-node-execution authorization policy**
+ next-task launch/new-node-execution authorization policy, and atomic fixture-only next-task launch/
+ new-node-execution executor with a durable attempt record and consumption receipt**
  now prove the durable product
  boundary without
 letting a provider edge or managed-service artifact shape it. The package implements broker lease/receipt/event behavior, prepared local
@@ -1406,6 +1407,19 @@ or execution evidence never implies approval. The policy creates only its decisi
 artifacts and performs no scheduling mutation, task launch, node execution, dispatch, connector,
 broker/provider/ForgePipe activity, callback, retry, repair, cancellation, publication, remote or
 network action, validation, checkout mutation, Git action, or external action.
+The next-task launch/new-node-execution executor consumes only that exact approved, independently
+authenticated, fixture-owned, unconsumed request after revalidating the complete immutable graph,
+lifecycle, dependency-transition, scheduling, and authorization chain. It materializes one
+deterministic local attempt record and one separate canonical durable receipt that binds the exact
+scheduled task, released and scheduled postimages, full candidate and transition evidence, both
+authorization identities, and every predecessor fingerprint. The receipt records authorization
+consumption without mutating the request. Exact replay, restart, identical concurrency, pre-existing
+identical output, and attempt-before-receipt recovery never materialize a second attempt; malformed,
+stale, missing, unsafe, conflicting, orphaned, or authority-escalating state fails closed. The
+executor starts no task process or node execution and produces no execution result, outcome,
+completion, graph progress, placement, dispatch, connector, broker/provider/ForgePipe, callback,
+external, network, remote, validation, checkout, Git, retry, repair, cancellation, publication, or
+lifecycle-transition effect.
 
 Authorized bounded slice status:
 
@@ -1556,6 +1570,19 @@ Authorized bounded slice status:
     performs no scheduling mutation, task launch, node execution, dispatch, connector, callback,
     external action, broker/provider/ForgePipe activity, retry, repair, cancellation, publication,
     network or remote execution, validation, checkout mutation, Git action, commit, or push.
+17. The separate package-local fixture-only **next-task launch/new-node-execution executor attempt
+    and durable receipt** is complete. It consumes only the exact approved, independently
+    authenticated, fixture-owned, unconsumed authorization request after revalidating the complete
+    immutable predecessor chain and the exact persisted `scheduled` record. It materializes one
+    deterministic local attempt record and then one separate canonical receipt that durably records
+    authorization consumption while leaving the request unchanged. Exact replay, restart,
+    same-request concurrency, pre-existing identical output, and attempt-before-receipt recovery
+    return the same evidence without a second attempt; conflicting, malformed, noncanonical,
+    oversized, symlinked, missing, stale, orphaned, tampered, inferred, unauthenticated, consumed,
+    authority-escalated, or ambiguous evidence fails closed. The executor starts no task process or
+    node execution and grants no result, outcome, completion, graph progress, placement, dispatch,
+    connector, broker/provider/ForgePipe, callback, external, network, remote, validation, checkout,
+    Git, retry, repair, cancellation, publication, or lifecycle-transition authority.
 
 The slice deliberately excludes a production daemon/service installer, live edge provider,
 auto-discovery, billing, multi-tenancy, QEMU dispatch, dynamic scheduling, and generic remote shell.
@@ -1755,13 +1782,29 @@ Default tests require no network, provider account, tunnel, or remote machine.
     scheduling mutation, task launch, node execution, dispatch, connector, callback, external
     action, broker/provider/ForgePipe activity, retry, repair, cancellation, publication, network or
     remote execution, validation, checkout mutation, or Git action.
+25. **Local next-task launch/new-node-execution attempt executor and durable receipt (complete):**
+    consume only the exact approved, independently authenticated, fixture-owned, unconsumed
+    authorization request after revalidating its complete immutable predecessor chain and exact
+    persisted `scheduled` record. Materialize one deterministic local attempt record, then publish
+    one separate canonical receipt binding the authorization decision/request and authentication,
+    scheduling receipt and policy chain, graph run, terminal task, transition postimages, complete
+    candidate set, explicitly selected task, released and scheduled postimages, one attempt/write,
+    consumed authorization, and fixture ownership. Leave the immutable request and all predecessor
+    records unchanged. Exact replay, restart, same-request concurrency, pre-existing identical
+    output, and attempt-before-receipt recovery are idempotent; malformed, unsafe, stale, missing,
+    conflicting, orphaned, inferred, unauthenticated, consumed, authority-escalated, or ambiguous
+    state fails closed. Start no task process or node execution and infer no result, outcome,
+    completion, graph progress, or adjacent authority.
 
-The next remaining bounded boundary is a separate local task-launch/new-node-execution executor. It
-may consume only the exact approved, authenticated, fixture-owned, unconsumed authorization request
-and perform only the exact bound local launch/execution attempt. Placement, dispatch, connector,
-broker/provider/ForgePipe activity, retry, repair, cancellation, publication, remote execution,
-validation, checkout, Git, commit, push, and every other lifecycle action remain independently
-unauthorized and unimplemented.
+The next remaining bounded boundary is separate durable result/outcome ingestion and graph
+reconciliation for the exact attempted next task. It may consume only the exact executor receipt and
+separately authenticated fixture-owned result evidence, preserve the distinction between an attempt
+and an outcome, and reconcile only the exact bound task and graph identities. An attempt receipt,
+process exit, connector presence, broker/provider/ForgePipe evidence, validation evidence, or any
+other predecessor state never implies success, failure, completion, or graph progress. Actual
+process or node execution, placement, dispatch, connector or broker activity, retry, repair,
+cancellation, publication, remote execution, validation, checkout, Git, commit, push, and every
+other lifecycle action remain independently unauthorized and unimplemented.
 
 ## Acceptance Criteria For This Extension
 
