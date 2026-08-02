@@ -90,7 +90,7 @@ postimages before creating one checkpoint and receipt. It does not create a sche
 infer any approval from provider/result/receipt/validation evidence, auto-push, sync, publish,
 merge, select another task, or create a cross-task orchestrator.
 
-## Current Status (2026-08-01)
+## Current Status (2026-08-02)
 
 The first vertical slice is implemented as the package-owned `backlog.remote` workflow and dedicated
 orchestration-helper commands:
@@ -1923,14 +1923,29 @@ Default tests require no network, provider account, tunnel, or remote machine.
     inference, authority escalation, orphaned/partial state, and malformed, noncanonical,
     unknown-field, trailing, oversized, symlinked, unsafe, or tampered artifacts fail closed. The
     policy performs no handoff or materialization and invokes zero callbacks or external actions.
+30. **Route-compatible post-transition graph-output consumer/executor (complete):** consume only the
+    exact approved, independently authenticated, fixture-owned, initially unconsumed output-policy
+    request after revalidating the complete immutable transition and predecessor chain. Materialize
+    one absent-to-exact canonical output record and one separate durable executor receipt. The
+    `graph_continuation` route creates only a local `continuation_handoff`; successful and failed
+    finalization routes create distinct local terminal graph-result records. Each record binds the
+    exact policy decision/request and authentication, transition receipt and record, route,
+    post-state, route-specific effect, graph run, terminal and selected tasks, candidate set,
+    accepted result, reconciliation receipt, terminal result, reconciled outcome, and prior policy
+    authentication. The receipt proves exactly one output action, one output-record write, consumed
+    authorization, and fixture ownership. Exact replay, restart, identical concurrency, identical
+    existing artifacts, and output-before-receipt recovery are idempotent; conflicts, orphans,
+    incompatible route/output/outcome/state/effect combinations, changed predecessors, ambiguous
+    partial state, authority escalation, and malformed, noncanonical, unknown-field, trailing,
+    oversized, symlinked, unsafe, or tampered artifacts fail closed. The continuation record invokes
+    no receiver, and terminal records are not published, delivered, or used to trigger lifecycle
+    work. Every predecessor remains unchanged and zero callbacks or external actions are invoked.
 
-The next remaining bounded boundary is the separate consumer/executor for the authorized output
-request. It may consume only one exact approved, authenticated, fixture-owned, unconsumed request and
-perform only its route-compatible action: one continuation handoff or one terminal graph-result
-materialization. Dependency release, scheduling, task launch, node execution, callbacks, providers,
-connectors, brokers, ForgePipe, validation, checkout, Git, publication, retry, repair, cancellation,
-network, and every other adjacent lifecycle action remain independently unauthorized and
-unimplemented.
+The next remaining bounded boundary is a separate downstream consumer/delivery contract for the
+durable continuation handoff or terminal graph result. Output presence alone grants no lifecycle,
+dependency, scheduling, execution, provider, connector, broker, ForgePipe, callback, delivery,
+publication, network, Git, validation, checkout, retry, repair, cancellation, or external authority.
+TASK-015 remains open for that separately authenticated and independently authorized boundary.
 
 ## Acceptance Criteria For This Extension
 
