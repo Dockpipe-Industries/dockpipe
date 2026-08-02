@@ -2028,11 +2028,33 @@ Default tests require no network, provider account, tunnel, or remote machine.
     publication, provider, connector, broker, ForgePipe, process, network, validation, checkout,
     Git, or external action.
 
-The next remaining bounded boundary is a separately authenticated post-reconciliation policy
-decision. It may consume only the exact durable reconciliation record and executor receipt after
-revalidating their complete immutable predecessor chain. It must not implement or presume lifecycle
-advancement, dependency work, scheduling, publication, callback, network, or external authority.
-TASK-015 remains open for that independent policy boundary.
+35. **Separately authenticated post-reconciliation policy decision/request (complete):** consume
+    only the exact durable acknowledgement-reconciliation record and executor receipt after
+    revalidating their complete immutable predecessor chain, including the accepted acknowledgement,
+    delivery receipt, route/state/effect/output/delivery, downstream consumer identity and contract,
+    terminal result and task outcome, and prior reconciliation policy decision/request and
+    authentication. Require one deterministic, one-time, independently authenticated, fixture-owned
+    approved/rejected decision. An approved decision emits exactly one immutable request granting
+    only one opaque future local executor attempt compatible with the exact route:
+    `continuation_handoff_post_reconciliation_attempt`,
+    `successful_terminal_graph_result_post_reconciliation_attempt`, or
+    `failed_terminal_graph_result_post_reconciliation_attempt`. A rejected decision emits no request
+    and grants no authority. Exact replay, restart, identical concurrency, identical pre-existing
+    artifacts, and decision-before-request recovery are idempotent; conflicts, missing or changed
+    predecessors, incompatible route/state/effect/output/delivery/outcome/terminal/consumer/contract
+    bindings, inference, consumed/replayed or unauthenticated prior evidence, authority escalation,
+    orphaned or ambiguous partial state, and malformed, noncanonical, unknown-field, trailing,
+    partial, empty, oversized, symlinked, unsafe, or tampered artifacts fail closed. The policy
+    performs or grants no acknowledgement reconciliation, lifecycle advancement, graph mutation,
+    dependency work or release, failure propagation, candidate selection, scheduling, execution,
+    result collection, delivery, consumer invocation, retry, repair, cancellation, queue processing,
+    callback, publication, provider, connector, broker, ForgePipe, process, network, remote
+    execution, validation, checkout mutation, Git, checkpoint, commit, push, or external action.
+
+The next remaining bounded boundary is a separate local post-reconciliation executor. It may consume
+only the exact approved, independently authenticated, fixture-owned, unconsumed request after
+revalidating the complete immutable predecessor chain and must produce separate durable attempt and
+consumption evidence. TASK-015 remains open for that independent executor boundary.
 
 ## Acceptance Criteria For This Extension
 
