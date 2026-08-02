@@ -835,7 +835,10 @@ and every execution or lifecycle side effect remain unauthorized and explicitly 
 The bounded backlog validation lane now disables only Go successful test-result caching while
 retaining the exact direct `go test` argv, readonly-module policy, offline environment, compilation
 cache, and explicit four-minute deadline. This ensures validation is actually executed and avoids
-unbounded parent-process test-cache finalization after the test binary exits.
+unbounded parent-process test-cache finalization after the test binary exits. Temporary validation
+workspace cleanup also tolerates a short bounded transient-lock window before preserving the same
+fail-closed cleanup error for a persistent lock; workflow-run scratch data remains outside durable
+`bin/.dockpipe` and package state.
 
 ## Boundaries
 
@@ -2003,13 +2006,33 @@ Default tests require no network, provider account, tunnel, or remote machine.
     mutation, dependency work, scheduling, execution, retry, repair, cancellation, callback,
     publication, provider, connector, broker, ForgePipe, process, network, validation, checkout,
     Git, or external action.
+34. **Local post-delivery acknowledgement-reconciliation executor and durable evidence (complete):**
+    consume only the exact approved, independently authenticated, fixture-owned, initially
+    unconsumed policy request after revalidating the accepted acknowledgement, delivery-executor
+    receipt, downstream consumer identity and contract, and complete immutable predecessor chain.
+    Persist one canonical versioned reconciliation record and one separate executor receipt binding
+    the policy decision/request and authentication, acknowledgement and operation key, delivery
+    receipt, route/state/effect/output/delivery, consumer contract, graph run, terminal and selected
+    tasks, complete candidate set, accepted result and prior reconciliation receipt, transition,
+    output policy/executor, and delivery policy/executor chain. The receipt records exactly one
+    logical reconciliation attempt, one record write, one receipt write, the mutually exclusive
+    route authority consumed, complete predecessor revalidation, no consumer reinvocation, and no
+    duplicate reconciliation while leaving the immutable request unchanged. Exact replay, restart,
+    identical concurrency, identical pre-existing artifacts, and record-before-receipt recovery are
+    idempotent; conflicts, missing or changed predecessors, incompatible routes, inference,
+    consumed/replayed/unauthenticated/non-fixture-owned evidence, authority escalation, orphaned or
+    ambiguous partial state, and malformed, noncanonical, unknown-field, trailing, partial, empty,
+    oversized, symlinked, unsafe, or tampered artifacts fail closed. The record and receipt are
+    evidence only and perform or grant no lifecycle advancement, graph mutation, dependency work,
+    scheduling, execution, delivery, consumer reinvocation, retry, repair, cancellation, callback,
+    publication, provider, connector, broker, ForgePipe, process, network, validation, checkout,
+    Git, or external action.
 
-The next remaining bounded boundary is a separate local acknowledgement-reconciliation executor and
-durable evidence. It may consume only one exact approved, independently authenticated, fixture-owned,
-unconsumed request after revalidating the acknowledgement, delivery receipt, consumer contract, and
-complete immutable predecessor chain. The approved request and acknowledgement presence grant no
-lifecycle advancement, dependency work, scheduling, publication, callback, network, or external
-authority. TASK-015 remains open for that executor boundary.
+The next remaining bounded boundary is a separately authenticated post-reconciliation policy
+decision. It may consume only the exact durable reconciliation record and executor receipt after
+revalidating their complete immutable predecessor chain. It must not implement or presume lifecycle
+advancement, dependency work, scheduling, publication, callback, network, or external authority.
+TASK-015 remains open for that independent policy boundary.
 
 ## Acceptance Criteria For This Extension
 

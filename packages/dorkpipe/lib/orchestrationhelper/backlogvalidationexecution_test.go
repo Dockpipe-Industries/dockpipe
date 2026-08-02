@@ -236,21 +236,61 @@ func TestBacklogValidationExecutionCleansOperationalFailuresAndRejectsTampering(
 		assertBacklogValidationReceiptAbsent(t, artifactRoot)
 	})
 
-	t.Run("cleanup failure", func(t *testing.T) {
+	t.Run("transient cleanup failure", func(t *testing.T) {
+		temporaryRoot := filepath.Join(t.TempDir(), "validation-workspace")
+		if err := os.Mkdir(temporaryRoot, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		originalRemoveAll := backlogValidationRemoveAll
+		originalWait := backlogValidationCleanupWait
+		removeAttempts := 0
+		waits := 0
+		backlogValidationRemoveAll = func(path string) error {
+			removeAttempts++
+			if removeAttempts == 1 {
+				return errors.New("injected transient cleanup lock")
+			}
+			return originalRemoveAll(path)
+		}
+		backlogValidationCleanupWait = func(time.Duration) { waits++ }
+		t.Cleanup(func() {
+			backlogValidationRemoveAll = originalRemoveAll
+			backlogValidationCleanupWait = originalWait
+		})
+		if err := cleanupBacklogValidationTemporaryRoot(temporaryRoot); err != nil {
+			t.Fatalf("transient cleanup failure was not recovered: %v", err)
+		}
+		if removeAttempts != 2 || waits != 1 {
+			t.Fatalf("transient cleanup used %d remove attempts and %d waits; want 2 and 1", removeAttempts, waits)
+		}
+		if _, err := os.Lstat(temporaryRoot); !os.IsNotExist(err) {
+			t.Fatalf("temporary workspace survived recovered cleanup: %v", err)
+		}
+	})
+
+	t.Run("persistent cleanup failure", func(t *testing.T) {
 		artifactRoot, consumerRoot := prepareBacklogValidationExecutionArtifacts(t, `["go test ./packages/dorkpipe/lib/orchestrationhelper"]`, `["AGENTS.md"]`)
 		originalRunner := backlogValidationRunCommand
 		originalRemoveAll := backlogValidationRemoveAll
+		originalWait := backlogValidationCleanupWait
+		removeAttempts := 0
 		backlogValidationRunCommand = func(context.Context, string, []string, []string) (int, bool, error) { return 0, true, nil }
 		backlogValidationRemoveAll = func(path string) error {
+			removeAttempts++
 			_ = originalRemoveAll(path)
 			return errors.New("injected cleanup failure")
 		}
+		backlogValidationCleanupWait = func(time.Duration) {}
 		t.Cleanup(func() {
 			backlogValidationRunCommand = originalRunner
 			backlogValidationRemoveAll = originalRemoveAll
+			backlogValidationCleanupWait = originalWait
 		})
 		if err := executeBacklogValidation(consumerRoot, artifactRoot); err == nil || !strings.HasPrefix(err.Error(), "validation_execution_cleanup_failed:") {
 			t.Fatalf("cleanup failure returned %v", err)
+		}
+		if removeAttempts != backlogValidationCleanupAttempts {
+			t.Fatalf("persistent cleanup used %d attempts; want %d", removeAttempts, backlogValidationCleanupAttempts)
 		}
 		assertBacklogValidationReceiptAbsent(t, artifactRoot)
 	})
