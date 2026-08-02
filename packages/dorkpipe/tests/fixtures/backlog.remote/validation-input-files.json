@@ -63,6 +63,8 @@
   "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorplacementexecutiongraphnexttasklaunchexecutionexecutor_test.go",
   "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorplacementexecutiongraphnexttaskresultcontinuationexecutor.go",
   "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorplacementexecutiongraphnexttaskresultcontinuationexecutor_test.go",
+  "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorplacementexecutiongraphnexttaskresultcontinuationoutputdeliveryexecutor.go",
+  "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorplacementexecutiongraphnexttaskresultcontinuationoutputdeliveryexecutor_test.go",
   "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorplacementexecutiongraphnexttaskresultcontinuationoutputdeliverypolicy.go",
   "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorplacementexecutiongraphnexttaskresultcontinuationoutputdeliverypolicy_test.go",
   "packages/dorkpipe/lib/orchestrationhelper/nodeconnectorplacementexecutiongraphnexttaskresultcontinuationoutputexecutor.go",
