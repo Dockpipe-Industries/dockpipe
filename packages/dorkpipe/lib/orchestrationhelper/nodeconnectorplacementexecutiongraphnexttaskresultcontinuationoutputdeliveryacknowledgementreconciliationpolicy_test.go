@@ -20,6 +20,19 @@ type nodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputDeliver
 	requestPath     string
 }
 
+type nodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputDeliveryAcknowledgementReconciliationPolicyTestTemplate struct {
+	once    sync.Once
+	fixture nodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputDeliveryAcknowledgementReconciliationPolicyTestFixture
+	files   map[string][]byte
+}
+
+var nodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputDeliveryAcknowledgementReconciliationPolicyTestTemplates = map[string]*nodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputDeliveryAcknowledgementReconciliationPolicyTestTemplate{
+	"succeeded\x00" + NodeConnectorPlacementExecutionGraphNextTaskResultContinuationRoute + "\x00approved":           {},
+	"succeeded\x00" + NodeConnectorPlacementExecutionGraphNextTaskResultContinuationRoute + "\x00rejected":           {},
+	"succeeded\x00" + NodeConnectorPlacementExecutionGraphNextTaskResultSuccessfulFinalizationRoute + "\x00approved": {},
+	"failed\x00" + NodeConnectorPlacementExecutionGraphNextTaskResultFailedFinalizationRoute + "\x00approved":        {},
+}
+
 func TestNodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputDeliveryAcknowledgementReconciliationPolicyExactRoutes(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
@@ -61,6 +74,7 @@ func TestNodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputDel
 
 func TestNodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputDeliveryAcknowledgementReconciliationPolicyRejectsInferenceAuthenticationAndRouteEscalation(t *testing.T) {
 	t.Parallel()
+	base := newNodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputDeliveryAcknowledgementReconciliationPolicyTestFixture(t, "succeeded", NodeConnectorPlacementExecutionGraphNextTaskResultContinuationRoute, "approved")
 	mutations := []struct {
 		name   string
 		mutate func(*nodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputDeliveryAcknowledgementReconciliationPolicyTestFixture)
@@ -131,7 +145,7 @@ func TestNodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputDel
 	for _, test := range mutations {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
-			value := newNodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputDeliveryAcknowledgementReconciliationPolicyTestFixture(t, "succeeded", NodeConnectorPlacementExecutionGraphNextTaskResultContinuationRoute, "approved")
+			value := cloneNodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputDeliveryAcknowledgementReconciliationPolicyTestFixture(t, base)
 			test.mutate(value)
 			assertNodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputDeliveryAcknowledgementReconciliationPolicyRejected(t, value, mustMarshalNodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputDeliveryAcknowledgementReconciliationPolicy(t, value.fixture))
 		})
@@ -140,6 +154,7 @@ func TestNodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputDel
 
 func TestNodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputDeliveryAcknowledgementReconciliationPolicyRequiresExactAcknowledgementReceiptAndPredecessors(t *testing.T) {
 	t.Parallel()
+	base := newNodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputDeliveryAcknowledgementReconciliationPolicyTestFixture(t, "succeeded", NodeConnectorPlacementExecutionGraphNextTaskResultContinuationRoute, "approved")
 	mutations := []struct {
 		name   string
 		mutate func(*nodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputDeliveryAcknowledgementReconciliationPolicyTestFixture)
@@ -217,7 +232,7 @@ func TestNodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputDel
 	for _, test := range mutations {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
-			value := newNodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputDeliveryAcknowledgementReconciliationPolicyTestFixture(t, "succeeded", NodeConnectorPlacementExecutionGraphNextTaskResultContinuationRoute, "approved")
+			value := cloneNodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputDeliveryAcknowledgementReconciliationPolicyTestFixture(t, base)
 			test.mutate(value)
 			if _, err := OpenNodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputDeliveryAcknowledgementReconciliationPolicies(value.root, value.expected); err == nil {
 				assertNodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputDeliveryAcknowledgementReconciliationPolicyRejected(t, value, mustMarshalNodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputDeliveryAcknowledgementReconciliationPolicy(t, value.fixture))
@@ -299,11 +314,10 @@ func TestNodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputDel
 	unknownRaw, _ := json.MarshalIndent(unknown, "", "  ")
 	malformed = append(malformed, append(unknownRaw, '\n'))
 	for _, raw := range malformed {
-		candidate := cloneNodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputDeliveryAcknowledgementReconciliationPolicyTestFixture(t, value)
-		assertNodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputDeliveryAcknowledgementReconciliationPolicyRejected(t, candidate, raw)
+		assertNodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputDeliveryAcknowledgementReconciliationPolicyRejected(t, value, raw)
 	}
 
-	orphan := cloneNodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputDeliveryAcknowledgementReconciliationPolicyTestFixture(t, value)
+	orphan := value
 	decision, request := mustDeriveNodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputDeliveryAcknowledgementReconciliationPolicy(t, orphan)
 	if request == nil {
 		t.Fatal("approved fixture produced no request")
@@ -312,17 +326,25 @@ func TestNodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputDel
 	if _, err := OpenNodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputDeliveryAcknowledgementReconciliationPolicies(orphan.root, orphan.expected); err == nil {
 		t.Fatal("request without decision was accepted")
 	}
+	if err := os.Remove(orphan.requestPath); err != nil {
+		t.Fatal(err)
+	}
 
-	tampered := cloneNodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputDeliveryAcknowledgementReconciliationPolicyTestFixture(t, value)
+	tampered := value
 	mustWriteNodeConnectorPlacementExecutionGraphNextTaskSchedulingExecutorArtifact(t, tampered.decisionPath, decision)
 	decision.DecisionFingerprint = valueFingerprintForAcknowledgementReconciliationTest(t, "tampered")
 	mustWriteNodeConnectorPlacementExecutionGraphNextTaskSchedulingExecutorArtifact(t, tampered.decisionPath, decision)
 	if _, err := OpenNodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputDeliveryAcknowledgementReconciliationPolicies(tampered.root, tampered.expected); err == nil {
 		t.Fatal("tampered decision was accepted")
 	}
+	if err := os.Remove(tampered.decisionPath); err != nil {
+		t.Fatal(err)
+	}
 
-	symlinked := cloneNodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputDeliveryAcknowledgementReconciliationPolicyTestFixture(t, value)
+	symlinked := value
 	target := filepath.Join(symlinked.root, "outside-decision.json")
+	defer os.Remove(target)
+	defer os.Remove(symlinked.decisionPath)
 	if err := os.WriteFile(target, []byte("{}\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
@@ -334,6 +356,34 @@ func TestNodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputDel
 }
 
 func newNodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputDeliveryAcknowledgementReconciliationPolicyTestFixture(t *testing.T, terminalResult, route, decision string) *nodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputDeliveryAcknowledgementReconciliationPolicyTestFixture {
+	t.Helper()
+	template, ok := nodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputDeliveryAcknowledgementReconciliationPolicyTestTemplates[terminalResult+"\x00"+route+"\x00"+decision]
+	if !ok {
+		t.Fatalf("unsupported acknowledgement-reconciliation policy test route %q/%q/%q", terminalResult, route, decision)
+	}
+	template.once.Do(func() {
+		value := buildNodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputDeliveryAcknowledgementReconciliationPolicyTestFixture(t, terminalResult, route, decision)
+		template.fixture = *value
+		template.files = mustSnapshotNodeConnectorPlacementExecutionGraphLifecycleExecutorRoot(t, value.root)
+	})
+	root := t.TempDir()
+	for relative, raw := range template.files {
+		path := filepath.Join(root, filepath.FromSlash(relative))
+		if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, raw, 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	value := template.fixture
+	value.root = root
+	value.decisionPath = filepath.Join(root, nodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputDeliveryAcknowledgementReconciliationDecisionName)
+	value.requestPath = filepath.Join(root, nodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputDeliveryAcknowledgementReconciliationRequestName)
+	return &value
+}
+
+func buildNodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputDeliveryAcknowledgementReconciliationPolicyTestFixture(t *testing.T, terminalResult, route, decision string) *nodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputDeliveryAcknowledgementReconciliationPolicyTestFixture {
 	t.Helper()
 	delivery := newNodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputDeliveryExecutorTestFixture(t, terminalResult, route)
 	acknowledgement, receipt := mustExecuteNodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputDeliveryExecutor(t, delivery)

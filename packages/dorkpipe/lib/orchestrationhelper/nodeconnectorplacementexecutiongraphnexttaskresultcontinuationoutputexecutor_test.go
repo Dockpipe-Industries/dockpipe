@@ -23,6 +23,19 @@ type nodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputExecuto
 	receiptPath string
 }
 
+type nodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputExecutorTestTemplate struct {
+	once    sync.Once
+	fixture nodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputExecutorTestFixture
+	policy  nodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputPolicyTestFixture
+	files   map[string][]byte
+}
+
+var nodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputExecutorTestTemplates = map[string]*nodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputExecutorTestTemplate{
+	"succeeded\x00" + NodeConnectorPlacementExecutionGraphNextTaskResultContinuationRoute:           {},
+	"succeeded\x00" + NodeConnectorPlacementExecutionGraphNextTaskResultSuccessfulFinalizationRoute: {},
+	"failed\x00" + NodeConnectorPlacementExecutionGraphNextTaskResultFailedFinalizationRoute:        {},
+}
+
 func TestNodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputExecutorExactRoutes(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
@@ -355,13 +368,13 @@ func TestNodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputExe
 	value := newNodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputExecutorTestFixture(t, "succeeded", NodeConnectorPlacementExecutionGraphNextTaskResultContinuationRoute)
 
 	t.Run("receipt without output", func(t *testing.T) {
-		clone := cloneNodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputExecutorTestFixture(t, value)
-		receipt := mustExecuteNodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputExecutor(t, clone)
-		if err := os.Remove(clone.outputPath); err != nil {
+		defer removeNodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputExecutorTestArtifacts(value)
+		receipt := mustExecuteNodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputExecutor(t, value)
+		if err := os.Remove(value.outputPath); err != nil {
 			t.Fatal(err)
 		}
-		mustWriteNodeConnectorPlacementExecutionGraphNextTaskSchedulingExecutorArtifact(t, clone.receiptPath, receipt)
-		if _, err := OpenNodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputExecutor(clone.root, clone.expected); err == nil {
+		mustWriteNodeConnectorPlacementExecutionGraphNextTaskSchedulingExecutorArtifact(t, value.receiptPath, receipt)
+		if _, err := OpenNodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputExecutor(value.root, value.expected); err == nil {
 			t.Fatal("receipt without its exact output record was accepted")
 		}
 	})
@@ -378,50 +391,51 @@ func TestNodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputExe
 		{"partial", []byte("{\"schema\":\"dorkpipe.node-placement-execution-graph-next-task-result-continuation-output-record/v1\"}\n")},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			clone := cloneNodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputExecutorTestFixture(t, value)
-			if err := os.WriteFile(clone.outputPath, test.raw, 0o600); err != nil {
+			defer removeNodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputExecutorTestArtifacts(value)
+			if err := os.WriteFile(value.outputPath, test.raw, 0o600); err != nil {
 				t.Fatal(err)
 			}
-			if _, err := OpenNodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputExecutor(clone.root, clone.expected); err == nil {
+			if _, err := OpenNodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputExecutor(value.root, value.expected); err == nil {
 				t.Fatal("malformed, unknown-field, trailing, noncanonical, oversized, partial, or ambiguous output was accepted")
 			}
-			assertNodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputExecutorArtifactAbsent(t, clone.receiptPath)
+			assertNodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputExecutorArtifactAbsent(t, value.receiptPath)
 		})
 	}
 
 	t.Run("conflicting existing output", func(t *testing.T) {
-		clone := cloneNodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputExecutorTestFixture(t, value)
-		_ = mustExecuteNodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputExecutor(t, clone)
-		record := mustLoadNodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputRecord(t, clone)
+		defer removeNodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputExecutorTestArtifacts(value)
+		_ = mustExecuteNodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputExecutor(t, value)
+		record := mustLoadNodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputRecord(t, value)
 		record.Binding.OutputType = NodeConnectorPlacementExecutionGraphNextTaskResultSuccessfulFinalizationMaterialization
 		record.RecordFingerprint, _ = nodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputRecordFingerprint(record)
-		mustWriteNodeConnectorPlacementExecutionGraphNextTaskSchedulingExecutorArtifact(t, clone.outputPath, record)
-		if _, err := OpenNodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputExecutor(clone.root, clone.expected); err == nil {
+		mustWriteNodeConnectorPlacementExecutionGraphNextTaskSchedulingExecutorArtifact(t, value.outputPath, record)
+		if _, err := OpenNodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputExecutor(value.root, value.expected); err == nil {
 			t.Fatal("conflicting route or output record was accepted")
 		}
 	})
 
 	t.Run("conflicting receipt", func(t *testing.T) {
-		clone := cloneNodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputExecutorTestFixture(t, value)
-		receipt := mustExecuteNodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputExecutor(t, clone)
+		defer removeNodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputExecutorTestArtifacts(value)
+		receipt := mustExecuteNodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputExecutor(t, value)
 		receipt.OutputActionCount = 2
 		receipt.ReceiptFingerprint, _ = nodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputExecutorReceiptFingerprint(receipt)
-		mustWriteNodeConnectorPlacementExecutionGraphNextTaskSchedulingExecutorArtifact(t, clone.receiptPath, receipt)
-		if _, err := OpenNodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputExecutor(clone.root, clone.expected); err == nil {
+		mustWriteNodeConnectorPlacementExecutionGraphNextTaskSchedulingExecutorArtifact(t, value.receiptPath, receipt)
+		if _, err := OpenNodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputExecutor(value.root, value.expected); err == nil {
 			t.Fatal("conflicting count or receipt was accepted")
 		}
 	})
 
 	t.Run("symlinked output", func(t *testing.T) {
-		clone := cloneNodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputExecutorTestFixture(t, value)
-		target := filepath.Join(clone.root, "output-target.json")
+		defer removeNodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputExecutorTestArtifacts(value)
+		target := filepath.Join(value.root, "output-target.json")
+		defer os.Remove(target)
 		if err := os.WriteFile(target, []byte("{}\n"), 0o600); err != nil {
 			t.Fatal(err)
 		}
-		if err := os.Symlink(target, clone.outputPath); err != nil {
+		if err := os.Symlink(target, value.outputPath); err != nil {
 			t.Skipf("symlink unavailable: %v", err)
 		}
-		if _, err := OpenNodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputExecutor(clone.root, clone.expected); err == nil {
+		if _, err := OpenNodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputExecutor(value.root, value.expected); err == nil {
 			t.Fatal("symlinked output was accepted")
 		}
 	})
@@ -442,6 +456,45 @@ func TestNodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputExe
 }
 
 func newNodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputExecutorTestFixture(t *testing.T, terminalResult, route string) *nodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputExecutorTestFixture {
+	t.Helper()
+	template, ok := nodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputExecutorTestTemplates[terminalResult+"\x00"+route]
+	if !ok {
+		t.Fatalf("unsupported output-executor test route %q/%q", terminalResult, route)
+	}
+	template.once.Do(func() {
+		value := buildNodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputExecutorTestFixture(t, terminalResult, route)
+		template.policy = *value.policy
+		template.fixture = *value
+		template.fixture.policy = &template.policy
+		template.files = mustSnapshotNodeConnectorPlacementExecutionGraphLifecycleExecutorRoot(t, value.root)
+	})
+	root := t.TempDir()
+	for relative, raw := range template.files {
+		path := filepath.Join(root, filepath.FromSlash(relative))
+		if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, raw, 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	policy := template.policy
+	policy.root = root
+	policy.decisionPath = filepath.Join(root, nodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputPolicyDecisionName)
+	policy.requestPath = filepath.Join(root, nodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputPolicyRequestName)
+	policy.executor = &nodeConnectorPlacementExecutionGraphNextTaskResultContinuationExecutorTestFixture{
+		root:           root,
+		transitionPath: filepath.Join(root, nodeConnectorPlacementExecutionGraphNextTaskResultContinuationTransitionRecordName),
+		receiptPath:    filepath.Join(root, nodeConnectorPlacementExecutionGraphNextTaskResultContinuationExecutorReceiptName),
+	}
+	value := template.fixture
+	value.root, value.policy = root, &policy
+	value.outputPath = filepath.Join(root, nodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputRecordName)
+	value.receiptPath = filepath.Join(root, nodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputExecutorReceiptName)
+	return &value
+}
+
+func buildNodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputExecutorTestFixture(t *testing.T, terminalResult, route string) *nodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputExecutorTestFixture {
 	t.Helper()
 	policy := newNodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputPolicyTestFixture(t, terminalResult, "approved", route)
 	decision, requestPointer := mustDecideNodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputPolicy(t, policy)
@@ -595,4 +648,9 @@ func assertNodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputE
 	if _, err := os.Lstat(path); !os.IsNotExist(err) {
 		t.Fatalf("executor unexpectedly published %s", path)
 	}
+}
+
+func removeNodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputExecutorTestArtifacts(value *nodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputExecutorTestFixture) {
+	_ = os.Remove(value.outputPath)
+	_ = os.Remove(value.receiptPath)
 }

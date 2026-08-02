@@ -18,12 +18,15 @@ const (
 	backlogValidationExecutionContract = "dorkpipe.validation-execution/v1"
 	backlogValidationCommandLimit      = 16
 	backlogValidationCommandTimeout    = 4 * time.Minute
+	backlogValidationCleanupAttempts   = 61
+	backlogValidationCleanupDelay      = time.Second
 )
 
 var (
-	backlogValidationMkdirTemp  = os.MkdirTemp
-	backlogValidationRemoveAll  = os.RemoveAll
-	backlogValidationRunCommand = func(ctx context.Context, root string, argv, environment []string) (int, bool, error) {
+	backlogValidationMkdirTemp   = os.MkdirTemp
+	backlogValidationRemoveAll   = os.RemoveAll
+	backlogValidationCleanupWait = time.Sleep
+	backlogValidationRunCommand  = func(ctx context.Context, root string, argv, environment []string) (int, bool, error) {
 		command := exec.CommandContext(ctx, argv[0], argv[1:]...)
 		command.Dir = root
 		command.Env = environment
@@ -202,12 +205,7 @@ func executeBacklogValidation(consumerRoot, artifactRoot string) error {
 		}
 		return nil
 	}()
-	cleanupErr := backlogValidationRemoveAll(temporaryRoot)
-	if cleanupErr == nil {
-		if _, statErr := os.Lstat(temporaryRoot); !os.IsNotExist(statErr) {
-			cleanupErr = errors.New("temporary validation workspace still exists after cleanup")
-		}
-	}
+	cleanupErr := cleanupBacklogValidationTemporaryRoot(temporaryRoot)
 	if cleanupErr != nil {
 		return rejectBacklog("validation_execution_cleanup_failed", "temporary validation workspace cleanup failed: %v", cleanupErr)
 	}
@@ -223,6 +221,23 @@ func executeBacklogValidation(consumerRoot, artifactRoot string) error {
 		return err
 	}
 	return writeJSONFileAtomic(executionPath, payload)
+}
+
+func cleanupBacklogValidationTemporaryRoot(temporaryRoot string) error {
+	var cleanupErr error
+	for attempt := 0; attempt < backlogValidationCleanupAttempts; attempt++ {
+		cleanupErr = backlogValidationRemoveAll(temporaryRoot)
+		if cleanupErr == nil {
+			if _, statErr := os.Lstat(temporaryRoot); os.IsNotExist(statErr) {
+				return nil
+			}
+			cleanupErr = errors.New("temporary validation workspace still exists after cleanup")
+		}
+		if attempt+1 < backlogValidationCleanupAttempts {
+			backlogValidationCleanupWait(backlogValidationCleanupDelay)
+		}
+	}
+	return cleanupErr
 }
 
 func requireBacklogRegularArtifact(artifactRoot, name string) (string, error) {

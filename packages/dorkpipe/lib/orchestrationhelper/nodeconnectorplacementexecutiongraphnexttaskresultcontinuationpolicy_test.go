@@ -24,6 +24,21 @@ type nodeConnectorPlacementExecutionGraphNextTaskResultContinuationPolicyTestFix
 	requestPath    string
 }
 
+type nodeConnectorPlacementExecutionGraphNextTaskResultContinuationPolicyTestTemplate struct {
+	once             sync.Once
+	fixture          nodeConnectorPlacementExecutionGraphNextTaskResultContinuationPolicyTestFixture
+	reconciliation   nodeConnectorPlacementExecutionGraphNextTaskResultReconciliationTestFixture
+	selectedRelative string
+	files            map[string][]byte
+}
+
+var nodeConnectorPlacementExecutionGraphNextTaskResultContinuationPolicyTestTemplates = map[string]*nodeConnectorPlacementExecutionGraphNextTaskResultContinuationPolicyTestTemplate{
+	"succeeded\x00approved\x00" + NodeConnectorPlacementExecutionGraphNextTaskResultContinuationRoute: {},
+	"succeeded\x00rejected\x00": {},
+	"succeeded\x00approved\x00" + NodeConnectorPlacementExecutionGraphNextTaskResultSuccessfulFinalizationRoute: {},
+	"failed\x00approved\x00" + NodeConnectorPlacementExecutionGraphNextTaskResultFailedFinalizationRoute:        {},
+}
+
 func TestNodeConnectorPlacementExecutionGraphNextTaskResultContinuationPolicyApprovedRoutesAreExact(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
@@ -435,8 +450,9 @@ func TestNodeConnectorPlacementExecutionGraphNextTaskResultContinuationPolicyRej
 	}
 
 	t.Run("symlinked decision", func(t *testing.T) {
-		value := newNodeConnectorPlacementExecutionGraphNextTaskResultContinuationPolicyTestFixture(t, "succeeded", "approved", NodeConnectorPlacementExecutionGraphNextTaskResultContinuationRoute)
 		target := value.decisionPath + ".target"
+		defer os.Remove(value.decisionPath)
+		defer os.Remove(target)
 		mustWriteNodeConnectorPlacementExecutionGraphNextTaskSchedulingExecutorArtifact(t, target, NodeConnectorPlacementExecutionGraphNextTaskResultContinuationPolicyDecision{})
 		if err := os.Symlink(target, value.decisionPath); err != nil {
 			t.Skipf("symlink unavailable: %v", err)
@@ -447,7 +463,7 @@ func TestNodeConnectorPlacementExecutionGraphNextTaskResultContinuationPolicyRej
 	})
 
 	t.Run("partial decision artifact", func(t *testing.T) {
-		value := newNodeConnectorPlacementExecutionGraphNextTaskResultContinuationPolicyTestFixture(t, "succeeded", "approved", NodeConnectorPlacementExecutionGraphNextTaskResultContinuationRoute)
+		defer os.Remove(value.decisionPath)
 		if err := os.WriteFile(value.decisionPath, []byte("{"), 0o600); err != nil {
 			t.Fatal(err)
 		}
@@ -458,6 +474,50 @@ func TestNodeConnectorPlacementExecutionGraphNextTaskResultContinuationPolicyRej
 }
 
 func newNodeConnectorPlacementExecutionGraphNextTaskResultContinuationPolicyTestFixture(t *testing.T, terminalResult, decision, route string) *nodeConnectorPlacementExecutionGraphNextTaskResultContinuationPolicyTestFixture {
+	t.Helper()
+	template, ok := nodeConnectorPlacementExecutionGraphNextTaskResultContinuationPolicyTestTemplates[terminalResult+"\x00"+decision+"\x00"+route]
+	if !ok {
+		t.Fatalf("unsupported continuation-policy test route %q/%q/%q", terminalResult, decision, route)
+	}
+	template.once.Do(func() {
+		value := buildNodeConnectorPlacementExecutionGraphNextTaskResultContinuationPolicyTestFixture(t, terminalResult, decision, route)
+		selectedRelative, err := filepath.Rel(value.root, value.reconciliation.executor.policy.executor.selectedPath)
+		if err != nil {
+			t.Fatal(err)
+		}
+		template.selectedRelative = filepath.ToSlash(selectedRelative)
+		template.reconciliation = *value.reconciliation
+		template.reconciliation.executor = nil
+		template.fixture = *value
+		template.fixture.reconciliation = &template.reconciliation
+		template.files = mustSnapshotNodeConnectorPlacementExecutionGraphLifecycleExecutorRoot(t, value.root)
+	})
+	root := t.TempDir()
+	for relative, raw := range template.files {
+		path := filepath.Join(root, filepath.FromSlash(relative))
+		if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, raw, 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	reconciliation := template.reconciliation
+	reconciliation.root = root
+	reconciliation.observationPath = filepath.Join(root, nodeConnectorPlacementExecutionGraphNextTaskResultObservationName)
+	reconciliation.acceptedPath = filepath.Join(root, nodeConnectorPlacementExecutionGraphNextTaskAcceptedResultName)
+	reconciliation.receiptPath = filepath.Join(root, nodeConnectorPlacementExecutionGraphNextTaskResultReconciliationReceiptName)
+	scheduling := &nodeConnectorPlacementExecutionGraphNextTaskSchedulingExecutorTestFixture{root: root, selectedPath: filepath.Join(root, filepath.FromSlash(template.selectedRelative))}
+	authorization := &nodeConnectorPlacementExecutionGraphNextTaskLaunchExecutionAuthorizationPolicyTestFixture{root: root, executor: scheduling}
+	reconciliation.executor = &nodeConnectorPlacementExecutionGraphNextTaskLaunchExecutionExecutorTestFixture{root: root, policy: authorization}
+	value := template.fixture
+	value.root, value.reconciliation = root, &reconciliation
+	value.decisionPath = filepath.Join(root, nodeConnectorPlacementExecutionGraphNextTaskResultContinuationPolicyDecisionName)
+	value.requestPath = filepath.Join(root, nodeConnectorPlacementExecutionGraphNextTaskResultContinuationPolicyRequestName)
+	return &value
+}
+
+func buildNodeConnectorPlacementExecutionGraphNextTaskResultContinuationPolicyTestFixture(t *testing.T, terminalResult, decision, route string) *nodeConnectorPlacementExecutionGraphNextTaskResultContinuationPolicyTestFixture {
 	t.Helper()
 	reconciliation := newNodeConnectorPlacementExecutionGraphNextTaskResultReconciliationTestFixture(t, terminalResult)
 	accepted, receipt := mustReconcileNodeConnectorPlacementExecutionGraphNextTaskResult(t, reconciliation)

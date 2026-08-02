@@ -24,6 +24,19 @@ type nodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputPolicyT
 	requestPath  string
 }
 
+type nodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputPolicyTestTemplate struct {
+	once    sync.Once
+	fixture nodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputPolicyTestFixture
+	files   map[string][]byte
+}
+
+var nodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputPolicyTestTemplates = map[string]*nodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputPolicyTestTemplate{
+	"succeeded\x00approved\x00" + NodeConnectorPlacementExecutionGraphNextTaskResultContinuationRoute: {},
+	"succeeded\x00rejected\x00": {},
+	"succeeded\x00approved\x00" + NodeConnectorPlacementExecutionGraphNextTaskResultSuccessfulFinalizationRoute: {},
+	"failed\x00approved\x00" + NodeConnectorPlacementExecutionGraphNextTaskResultFailedFinalizationRoute:        {},
+}
+
 func TestNodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputPolicyExactRoutes(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
@@ -339,8 +352,9 @@ func TestNodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputPol
 	}
 
 	t.Run("symlinked decision", func(t *testing.T) {
-		value := cloneNodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputPolicyTestFixture(t, value)
 		target := value.decisionPath + ".target"
+		defer os.Remove(value.decisionPath)
+		defer os.Remove(target)
 		mustWriteNodeConnectorPlacementExecutionGraphNextTaskSchedulingExecutorArtifact(t, target, NodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputPolicyDecision{})
 		if err := os.Symlink(target, value.decisionPath); err != nil {
 			t.Skipf("symlink unavailable: %v", err)
@@ -361,7 +375,7 @@ func TestNodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputPol
 		{"oversized", bytes.Repeat([]byte("x"), nodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputPolicyArtifactMaxBytes+1)},
 	} {
 		t.Run("existing "+test.name, func(t *testing.T) {
-			value := cloneNodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputPolicyTestFixture(t, value)
+			defer os.Remove(value.decisionPath)
 			if err := os.WriteFile(value.decisionPath, test.raw, 0o600); err != nil {
 				t.Fatal(err)
 			}
@@ -398,6 +412,40 @@ func TestNodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputPol
 }
 
 func newNodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputPolicyTestFixture(t *testing.T, terminalResult, decision, route string) *nodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputPolicyTestFixture {
+	t.Helper()
+	template, ok := nodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputPolicyTestTemplates[terminalResult+"\x00"+decision+"\x00"+route]
+	if !ok {
+		t.Fatalf("unsupported output-policy test route %q/%q/%q", terminalResult, decision, route)
+	}
+	template.once.Do(func() {
+		value := buildNodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputPolicyTestFixture(t, terminalResult, decision, route)
+		template.fixture = *value
+		template.fixture.executor = nil
+		template.files = mustSnapshotNodeConnectorPlacementExecutionGraphLifecycleExecutorRoot(t, value.root)
+	})
+	root := t.TempDir()
+	for relative, raw := range template.files {
+		path := filepath.Join(root, filepath.FromSlash(relative))
+		if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, raw, 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	value := template.fixture
+	value.root = root
+	value.executor = &nodeConnectorPlacementExecutionGraphNextTaskResultContinuationExecutorTestFixture{
+		root:           root,
+		transitionPath: filepath.Join(root, nodeConnectorPlacementExecutionGraphNextTaskResultContinuationTransitionRecordName),
+		receiptPath:    filepath.Join(root, nodeConnectorPlacementExecutionGraphNextTaskResultContinuationExecutorReceiptName),
+	}
+	value.decisionPath = filepath.Join(root, nodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputPolicyDecisionName)
+	value.requestPath = filepath.Join(root, nodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputPolicyRequestName)
+	return &value
+}
+
+func buildNodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputPolicyTestFixture(t *testing.T, terminalResult, decision, route string) *nodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputPolicyTestFixture {
 	t.Helper()
 	executorRoute := route
 	if executorRoute == "" {

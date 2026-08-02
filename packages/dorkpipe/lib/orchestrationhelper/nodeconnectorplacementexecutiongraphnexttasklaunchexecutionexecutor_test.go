@@ -23,6 +23,16 @@ type nodeConnectorPlacementExecutionGraphNextTaskLaunchExecutionExecutorTestFixt
 	receiptPath string
 }
 
+type nodeConnectorPlacementExecutionGraphNextTaskLaunchExecutionExecutorTestTemplate struct {
+	once       sync.Once
+	fixture    nodeConnectorPlacementExecutionGraphNextTaskLaunchExecutionExecutorTestFixture
+	policy     nodeConnectorPlacementExecutionGraphNextTaskLaunchExecutionAuthorizationPolicyTestFixture
+	scheduling nodeConnectorPlacementExecutionGraphNextTaskSchedulingExecutorTestFixture
+	files      map[string][]byte
+}
+
+var nodeConnectorPlacementExecutionGraphNextTaskLaunchExecutionExecutorSharedTestTemplate nodeConnectorPlacementExecutionGraphNextTaskLaunchExecutionExecutorTestTemplate
+
 func TestNodeConnectorPlacementExecutionGraphNextTaskLaunchExecutionExecutorMaterializesExactAttemptAndReceipt(t *testing.T) {
 	t.Parallel()
 	value := newNodeConnectorPlacementExecutionGraphNextTaskLaunchExecutionExecutorTestFixture(t)
@@ -574,6 +584,53 @@ func TestNodeConnectorPlacementExecutionGraphNextTaskLaunchExecutionExecutorReje
 }
 
 func newNodeConnectorPlacementExecutionGraphNextTaskLaunchExecutionExecutorTestFixture(t *testing.T) *nodeConnectorPlacementExecutionGraphNextTaskLaunchExecutionExecutorTestFixture {
+	t.Helper()
+	template := &nodeConnectorPlacementExecutionGraphNextTaskLaunchExecutionExecutorSharedTestTemplate
+	template.once.Do(func() {
+		value := buildNodeConnectorPlacementExecutionGraphNextTaskLaunchExecutionExecutorTestFixture(t)
+		template.scheduling = *value.policy.executor
+		template.policy = *value.policy
+		template.policy.executor = &template.scheduling
+		template.fixture = *value
+		template.fixture.policy = &template.policy
+		template.files = mustSnapshotNodeConnectorPlacementExecutionGraphLifecycleExecutorRoot(t, value.root)
+	})
+	root := t.TempDir()
+	for relative, raw := range template.files {
+		path := filepath.Join(root, filepath.FromSlash(relative))
+		if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, raw, 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	scheduling := template.scheduling
+	scheduling.root = root
+	scheduling.recordPaths = make(map[string]string, len(template.scheduling.recordPaths))
+	for taskID, path := range template.scheduling.recordPaths {
+		relative, err := filepath.Rel(template.fixture.root, path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		scheduling.recordPaths[taskID] = filepath.Join(root, relative)
+	}
+	selectedRelative, err := filepath.Rel(template.fixture.root, template.scheduling.selectedPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	scheduling.selectedPath = filepath.Join(root, selectedRelative)
+	scheduling.receiptPath = filepath.Join(root, nodeConnectorPlacementExecutionGraphNextTaskSchedulingExecutorReceiptName)
+	policy := template.policy
+	policy.root, policy.executor = root, &scheduling
+	value := template.fixture
+	value.root, value.policy = root, &policy
+	value.attemptPath = filepath.Join(root, nodeConnectorPlacementExecutionGraphNextTaskLaunchExecutionExecutorAttemptRecordName)
+	value.receiptPath = filepath.Join(root, nodeConnectorPlacementExecutionGraphNextTaskLaunchExecutionExecutorReceiptName)
+	return &value
+}
+
+func buildNodeConnectorPlacementExecutionGraphNextTaskLaunchExecutionExecutorTestFixture(t *testing.T) *nodeConnectorPlacementExecutionGraphNextTaskLaunchExecutionExecutorTestFixture {
 	t.Helper()
 	policy := newNodeConnectorPlacementExecutionGraphNextTaskLaunchExecutionAuthorizationPolicyTestFixture(t, "approved")
 	decision, requestPointer := mustDecideNodeConnectorPlacementExecutionGraphNextTaskLaunchExecutionAuthorizationPolicy(t, policy)

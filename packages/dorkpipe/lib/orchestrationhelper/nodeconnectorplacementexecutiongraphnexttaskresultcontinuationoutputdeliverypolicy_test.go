@@ -237,6 +237,8 @@ func TestNodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputDel
 func TestNodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputDeliveryPolicyRevalidatesCompleteChainAndDurableOutput(t *testing.T) {
 	t.Parallel()
 	value := newNodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputDeliveryPolicyTestFixture(t, "succeeded", "approved", NodeConnectorPlacementExecutionGraphNextTaskResultContinuationRoute)
+	outputRaw := mustReadNodeConnectorPlacementExecutionGraphLifecycleExecutorFile(t, value.executor.outputPath)
+	receiptRaw := mustReadNodeConnectorPlacementExecutionGraphLifecycleExecutorFile(t, value.executor.receiptPath)
 	raw, _ := json.Marshal(value.expected)
 	for _, test := range []struct {
 		name   string
@@ -335,8 +337,11 @@ func TestNodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputDel
 		}},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			changed := cloneNodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputDeliveryPolicyTestFixture(t, value)
-			test.mutate(changed)
+			defer mustRestoreNodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputDeliveryPolicyArtifacts(t, value, outputRaw, receiptRaw)
+			changed := *value
+			changed.output = value.output
+			changed.receipt = value.receipt
+			test.mutate(&changed)
 			if _, err := OpenNodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputDeliveryPolicies(changed.root, changed.expected); err == nil {
 				t.Fatal("missing, orphaned, wrong-count, wrong-version, or non-fixture output evidence was accepted")
 			}
@@ -451,24 +456,24 @@ func TestNodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputDel
 		{"oversized", bytes.Repeat([]byte("x"), nodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputDeliveryArtifactMax+1)},
 	} {
 		t.Run("existing "+test.name, func(t *testing.T) {
-			changed := cloneNodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputDeliveryPolicyTestFixture(t, value)
-			if err := os.WriteFile(changed.decisionPath, test.raw, 0o600); err != nil {
+			defer os.Remove(value.decisionPath)
+			if err := os.WriteFile(value.decisionPath, test.raw, 0o600); err != nil {
 				t.Fatal(err)
 			}
-			if _, err := OpenNodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputDeliveryPolicies(changed.root, changed.expected); err == nil {
+			if _, err := OpenNodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputDeliveryPolicies(value.root, value.expected); err == nil {
 				t.Fatal("partial, unknown, trailing, noncanonical, or oversized artifact was accepted")
 			}
 		})
 	}
 
 	t.Run("symlinked decision", func(t *testing.T) {
-		changed := cloneNodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputDeliveryPolicyTestFixture(t, value)
-		target := changed.decisionPath + ".target"
+		defer os.Remove(value.decisionPath)
+		target := value.decisionPath + ".target"
 		mustWriteNodeConnectorPlacementExecutionGraphNextTaskSchedulingExecutorArtifact(t, target, NodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputDeliveryPolicyDecision{})
-		if err := os.Symlink(target, changed.decisionPath); err != nil {
+		if err := os.Symlink(target, value.decisionPath); err != nil {
 			t.Skipf("symlink unavailable: %v", err)
 		}
-		if _, err := OpenNodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputDeliveryPolicies(changed.root, changed.expected); err == nil {
+		if _, err := OpenNodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputDeliveryPolicies(value.root, value.expected); err == nil {
 			t.Fatal("symlinked policy artifact was accepted")
 		}
 	})
@@ -477,7 +482,7 @@ func TestNodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputDel
 		t.Fatal("unsafe output path was accepted")
 	}
 
-	orphan := cloneNodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputDeliveryPolicyTestFixture(t, value)
+	orphan := value
 	decision, orphanRequest, err := deriveNodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputDeliveryPolicy(orphan.expected, orphan.output, orphan.receipt, orphan.decision)
 	if err != nil || orphanRequest == nil {
 		t.Fatal(err)
@@ -493,6 +498,16 @@ func TestNodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputDel
 	escalated.RequestFingerprint, _ = nodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputDeliveryPolicyRequestFingerprint(escalated)
 	if validateNodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputDeliveryPolicyRequest(escalated, value.expected, value.output, value.receipt, decision) == nil {
 		t.Fatal("consumed, performed, acknowledged, lifecycle-escalated, or published request was accepted")
+	}
+}
+
+func mustRestoreNodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputDeliveryPolicyArtifacts(t *testing.T, value *nodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputDeliveryPolicyTestFixture, outputRaw, receiptRaw []byte) {
+	t.Helper()
+	if err := os.WriteFile(value.executor.outputPath, outputRaw, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(value.executor.receiptPath, receiptRaw, 0o600); err != nil {
+		t.Fatal(err)
 	}
 }
 
