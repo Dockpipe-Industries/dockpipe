@@ -1961,12 +1961,30 @@ Default tests require no network, provider account, tunnel, or remote machine.
     closed. The policy invokes no consumer or receiver and performs no delivery, acknowledgement,
     lifecycle advancement, callback, publication, network, external, provider, connector, broker,
     ForgePipe, validation, checkout, or Git action.
+32. **Route-compatible downstream graph-output delivery/consumer executor (complete):** consume only
+    the exact approved, independently authenticated, fixture-owned, initially unconsumed delivery-
+    policy request with its exact durable output and complete immutable predecessor chain. Require
+    one injected local consumer whose identity and contract fingerprint exactly match the request,
+    use the delivery request/replay pair as its durable operation key, and invoke it at most once.
+    Persist one canonical fixture-owned acknowledgement and one separate executor receipt binding
+    the delivery decision/request and authentication, output record and executor receipt, output
+    policy, transition, graph run, terminal and selected tasks, complete candidate set, accepted
+    result, reconciliation receipt, exact route/output/delivery/state/effect/outcome, and consumer
+    contract. Exact replay, restart, identical concurrency, identical pre-existing artifacts,
+    consumer-acceptance-before-local-acknowledgement recovery, and acknowledgement-before-receipt
+    recovery are idempotent without reinvoking the consumer. Conflicts, rejection, errors, orphans,
+    ambiguous partial state, changed predecessors, incompatible routes, outputs, deliveries,
+    consumers, contracts, or authorities, and malformed, noncanonical, unknown-field, trailing,
+    partial, empty, oversized, symlinked, unsafe, or tampered evidence fail closed. The executor
+    performs no lifecycle advancement, graph mutation, dependency work, scheduling, execution,
+    retry, repair, cancellation, callback, publication, provider, connector, broker, ForgePipe,
+    process, network, validation, checkout, Git, or external action.
 
-The next remaining bounded boundary is the separate route-compatible delivery/consumer executor.
-It may consume only the exact approved unconsumed delivery-policy request, invoke the exact bound
-local consumer once, and persist separate acknowledgement/receipt evidence. Neither output presence
-nor an approved delivery request implies acknowledgement, lifecycle advancement, publication, or
-external authority. TASK-015 remains open for that independently implemented executor boundary.
+The next remaining bounded boundary is a separate post-delivery acknowledgement reconciliation and
+policy decision. It may consume only the exact durable acknowledgement and delivery-executor receipt
+after revalidating their complete immutable predecessor chain. Acknowledgement presence alone grants
+no lifecycle advancement, dependency work, scheduling, publication, callback, network, or external
+authority. TASK-015 remains open for that independently authenticated decision boundary.
 
 ## Acceptance Criteria For This Extension
 
