@@ -133,9 +133,11 @@ func TestNodeConnectorSessionDispatchesAcceptedValidationOnceAcrossReplayReconne
 }
 
 func TestNodeConnectorSessionDispatchRejectsChangedBindingsExpiryStaleStateRevocationAndTamper(t *testing.T) {
+	sharedFixture := newNodeConnectorSessionDispatchFixture(t)
 	tests := []struct {
-		name   string
-		mutate func(*nodeConnectorSessionDispatchFixture) (NodeConnectorSessionNegotiation, NodeExecutionRequest, NodeExecutionTaskLease, time.Time)
+		name     string
+		isolated bool
+		mutate   func(*nodeConnectorSessionDispatchFixture) (NodeConnectorSessionNegotiation, NodeExecutionRequest, NodeExecutionTaskLease, time.Time)
 	}{
 		{name: "machine identity", mutate: func(f *nodeConnectorSessionDispatchFixture) (NodeConnectorSessionNegotiation, NodeExecutionRequest, NodeExecutionTaskLease, time.Time) {
 			value := f.negotiation
@@ -162,7 +164,7 @@ func TestNodeConnectorSessionDispatchRejectsChangedBindingsExpiryStaleStateRevoc
 			value.SessionID = "session-conflict-001"
 			return mustFinalizeNodeConnectorSessionNegotiation(t, value), f.session.execution.request, f.lease, f.session.execution.now.Add(10 * time.Second)
 		}},
-		{name: "capability substitution", mutate: func(f *nodeConnectorSessionDispatchFixture) (NodeConnectorSessionNegotiation, NodeExecutionRequest, NodeExecutionTaskLease, time.Time) {
+		{name: "capability substitution", isolated: true, mutate: func(f *nodeConnectorSessionDispatchFixture) (NodeConnectorSessionNegotiation, NodeExecutionRequest, NodeExecutionTaskLease, time.Time) {
 			capability, err := NewNodeExecutionCapabilitySnapshot(f.negotiation.MachineID, NodeExecutionObservedCapabilities{HostOS: "windows", Runtime: "docker", Toolchains: []string{"go1.26"}}, NodeExecutionApprovedCapabilities{PolicyClass: "validation", AllowedWorkflowKinds: []string{"dockpipe.workflow"}}, f.session.execution.now.Add(4*time.Second))
 			if err != nil {
 				t.Fatal(err)
@@ -201,7 +203,7 @@ func TestNodeConnectorSessionDispatchRejectsChangedBindingsExpiryStaleStateRevoc
 			}
 			return f.negotiation, request, f.lease, f.session.execution.now.Add(10 * time.Second)
 		}},
-		{name: "revoked credential", mutate: func(f *nodeConnectorSessionDispatchFixture) (NodeConnectorSessionNegotiation, NodeExecutionRequest, NodeExecutionTaskLease, time.Time) {
+		{name: "revoked credential", isolated: true, mutate: func(f *nodeConnectorSessionDispatchFixture) (NodeConnectorSessionNegotiation, NodeExecutionRequest, NodeExecutionTaskLease, time.Time) {
 			revocation := mustFinalizeNodeConnectorCredentialEvidence(t, NodeConnectorCredentialEvidence{
 				Sequence: 4, EvidenceID: "evidence-dispatch-revocation-001", ReplayIdentity: "replay-dispatch-revocation-001", EnrollmentID: f.negotiation.EnrollmentID, MachineID: f.negotiation.MachineID, Action: "revoke", CredentialID: f.negotiation.CredentialID, ObservedAt: nodeExecutionTime(f.session.execution.now.Add(4 * time.Second)),
 			})
@@ -210,7 +212,7 @@ func TestNodeConnectorSessionDispatchRejectsChangedBindingsExpiryStaleStateRevoc
 			}
 			return f.negotiation, f.session.execution.request, f.lease, f.session.execution.now.Add(10 * time.Second)
 		}},
-		{name: "stale in-memory session state", mutate: func(f *nodeConnectorSessionDispatchFixture) (NodeConnectorSessionNegotiation, NodeExecutionRequest, NodeExecutionTaskLease, time.Time) {
+		{name: "stale in-memory session state", isolated: true, mutate: func(f *nodeConnectorSessionDispatchFixture) (NodeConnectorSessionNegotiation, NodeExecutionRequest, NodeExecutionTaskLease, time.Time) {
 			reopened, err := NewNodeConnectorSessionFake(f.session.root, f.session.execution.broker, f.session.enrollment, nodeConnectorSessionTransport(f.session.calls, false))
 			if err != nil {
 				t.Fatal(err)
@@ -221,7 +223,10 @@ func TestNodeConnectorSessionDispatchRejectsChangedBindingsExpiryStaleStateRevoc
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			fixture := newNodeConnectorSessionDispatchFixture(t)
+			fixture := sharedFixture
+			if test.isolated {
+				fixture = newNodeConnectorSessionDispatchFixture(t)
+			}
 			negotiation, request, lease, at := test.mutate(fixture)
 			assertNodeConnectorSessionDispatchRejected(t, fixture, negotiation, request, lease, at)
 		})

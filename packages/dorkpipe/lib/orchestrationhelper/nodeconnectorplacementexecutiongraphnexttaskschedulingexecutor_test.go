@@ -70,6 +70,8 @@ func TestNodeConnectorPlacementExecutionGraphNextTaskSchedulingExecutorRejectsMi
 }
 
 func TestNodeConnectorPlacementExecutionGraphNextTaskSchedulingExecutorRejectsConsumedEscalatedAndMismatchedRequests(t *testing.T) {
+	value := newNodeConnectorPlacementExecutionGraphNextTaskSchedulingExecutorTestFixture(t)
+
 	for _, test := range []struct {
 		name   string
 		mutate func(*NodeConnectorPlacementExecutionGraphNextTaskSchedulingPolicyRequest)
@@ -112,33 +114,41 @@ func TestNodeConnectorPlacementExecutionGraphNextTaskSchedulingExecutorRejectsCo
 		}},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			value := newNodeConnectorPlacementExecutionGraphNextTaskSchedulingExecutorTestFixture(t)
-			request := value.request
+			caseValue := *value
+			request := cloneNodeConnectorPlacementExecutionGraphNextTaskSchedulingPolicyRequest(value.request)
 			test.mutate(&request)
 			request.RequestFingerprint, _ = nodeConnectorPlacementExecutionGraphNextTaskSchedulingPolicyRequestFingerprint(request)
 			mustWriteNodeConnectorPlacementExecutionGraphNextTaskSchedulingExecutorArtifact(t, filepath.Join(value.root, nodeConnectorPlacementExecutionGraphNextTaskSchedulingPolicyRequestName), request)
-			value.expected.PolicyRequestFingerprint = request.RequestFingerprint
-			assertNodeConnectorPlacementExecutionGraphNextTaskSchedulingExecutorOpenFailsWithoutTransition(t, value)
+			caseValue.expected.PolicyRequestFingerprint = request.RequestFingerprint
+			assertNodeConnectorPlacementExecutionGraphNextTaskSchedulingExecutorOpenFailsWithoutTransition(t, &caseValue)
 		})
 	}
 }
 
 func TestNodeConnectorPlacementExecutionGraphNextTaskSchedulingExecutorDoesNotInferSelectionOrAuthority(t *testing.T) {
+	value := newNodeConnectorPlacementExecutionGraphNextTaskSchedulingExecutorTestFixture(t)
+
 	for _, source := range []string{"dependency release", "candidate presence", "ordering", "readiness", "availability", "load", "risk", "cost", "ranking", "matching", "connection", "provider", "broker", "forgepipe", "lifecycle", "receipt"} {
 		t.Run(source, func(t *testing.T) {
-			value := newNodeConnectorPlacementExecutionGraphNextTaskSchedulingExecutorTestFixture(t)
-			decision := value.decision
+			caseValue := *value
+			decision := cloneNodeConnectorPlacementExecutionGraphNextTaskSchedulingPolicyDecision(value.decision)
 			decision.ApprovalInferred = true
 			decision.InferenceSource = source
 			decision.DecisionFingerprint, _ = nodeConnectorPlacementExecutionGraphNextTaskSchedulingPolicyDecisionFingerprint(decision)
 			mustWriteNodeConnectorPlacementExecutionGraphNextTaskSchedulingExecutorArtifact(t, filepath.Join(value.root, nodeConnectorPlacementExecutionGraphNextTaskSchedulingPolicyDecisionName), decision)
-			value.expected.PolicyDecisionFingerprint = decision.DecisionFingerprint
-			assertNodeConnectorPlacementExecutionGraphNextTaskSchedulingExecutorOpenFailsWithoutTransition(t, value)
+			caseValue.expected.PolicyDecisionFingerprint = decision.DecisionFingerprint
+			assertNodeConnectorPlacementExecutionGraphNextTaskSchedulingExecutorOpenFailsWithoutTransition(t, &caseValue)
 		})
 	}
 }
 
 func TestNodeConnectorPlacementExecutionGraphNextTaskSchedulingExecutorRevalidatesPredecessorsAndReleasedPostimages(t *testing.T) {
+	value := newNodeConnectorPlacementExecutionGraphNextTaskSchedulingExecutorTestFixture(t)
+	expectedRaw, err := json.Marshal(value.expected)
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	for _, test := range []struct {
 		name   string
 		mutate func(*nodeConnectorPlacementExecutionGraphNextTaskSchedulingExecutorTestFixture)
@@ -163,9 +173,12 @@ func TestNodeConnectorPlacementExecutionGraphNextTaskSchedulingExecutorRevalidat
 		}},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			value := newNodeConnectorPlacementExecutionGraphNextTaskSchedulingExecutorTestFixture(t)
-			test.mutate(value)
-			assertNodeConnectorPlacementExecutionGraphNextTaskSchedulingExecutorOpenFailsWithoutTransition(t, value)
+			caseValue := *value
+			if err := json.Unmarshal(expectedRaw, &caseValue.expected); err != nil {
+				t.Fatal(err)
+			}
+			test.mutate(&caseValue)
+			assertNodeConnectorPlacementExecutionGraphNextTaskSchedulingExecutorOpenFailsWithoutTransition(t, &caseValue)
 		})
 	}
 
@@ -184,6 +197,8 @@ func TestNodeConnectorPlacementExecutionGraphNextTaskSchedulingExecutorRevalidat
 }
 
 func TestNodeConnectorPlacementExecutionGraphNextTaskSchedulingExecutorRejectsInvalidSchedulingRecords(t *testing.T) {
+	value := newNodeConnectorPlacementExecutionGraphNextTaskSchedulingExecutorTestFixture(t)
+
 	for _, test := range []struct {
 		name   string
 		mutate func(*testing.T, *nodeConnectorPlacementExecutionGraphNextTaskSchedulingExecutorTestFixture)
@@ -220,7 +235,7 @@ func TestNodeConnectorPlacementExecutionGraphNextTaskSchedulingExecutorRejectsIn
 		}},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			value := newNodeConnectorPlacementExecutionGraphNextTaskSchedulingExecutorTestFixture(t)
+			mustWriteNodeConnectorPlacementExecutionGraphNextTaskSchedulingExecutorArtifact(t, value.selectedPath, value.preimages[value.request.SelectedTaskID])
 			test.mutate(t, value)
 			assertNodeConnectorPlacementExecutionGraphNextTaskSchedulingExecutorOpenFailsWithoutTransition(t, value)
 		})

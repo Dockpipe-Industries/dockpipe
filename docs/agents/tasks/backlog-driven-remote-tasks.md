@@ -1300,7 +1300,9 @@ exchange, real loopback process-boundary adapter, direct-TLS BYO edge, Cloudflar
  policy, atomic fixture-only next-task scheduling executor with durable evidence, and fixture-only
  next-task launch/new-node-execution authorization policy, and atomic fixture-only next-task launch/
  new-node-execution executor with a durable attempt record and consumption receipt, and fixture-only
- next-task result ingestion and task-level outcome reconciliation with separate durable evidence**
+ next-task result ingestion and task-level outcome reconciliation with separate durable evidence,
+ explicit fixture-only post-reconciliation graph-continuation/finalization policy, and atomic
+ fixture-only route-bound graph-continuation/finalization executor with separate durable evidence**
  now prove the durable product
  boundary without
 letting a provider edge or managed-service artifact shape it. The package implements broker lease/receipt/event behavior, prepared local
@@ -1436,6 +1438,28 @@ lease, broker/provider/ForgePipe, validation, graph, lifecycle, transition, or r
 implies a result or outcome. The receipt claims no graph completion, graph failure propagation,
 dependency release, next-task scheduling, execution, retry, repair, cancellation, publication,
 callback, external action, or adjacent lifecycle authority.
+
+The post-reconciliation graph-continuation/finalization executor consumes only the exact approved,
+independently authenticated, fixture-owned, unconsumed policy request after revalidating the complete
+immutable result-reconciliation, launch, scheduling, dependency-transition, lifecycle, graph, and
+persisted scheduled-record chain. It accepts only `passed` with `graph_continuation`, `passed` with
+`successful_graph_finalization`, or `failed` with `failed_graph_finalization`; the route is never
+inferred from any result, outcome, graph, candidate, predecessor, provider, or connection evidence.
+It atomically materializes one absent-to-exact fixture-owned route-bound transition record without
+rewriting any completed lifecycle, dependency, scheduling, attempt, result, or reconciliation record,
+then publishes one separate canonical durable receipt recording one transition, one record write, and
+consumed authorization while leaving the immutable request unchanged.
+
+`graph_continuation` records only that the passed selected task authoritatively continued the local
+graph. `successful_graph_finalization` records successful local graph completion for the exact passed
+result. `failed_graph_finalization` records failed local graph finalization and failure propagation for
+the exact failed result. Exact replay, restart, identical concurrency, pre-existing identical output,
+and transition-before-receipt recovery converge without another transition. Conflicting routes or
+requests, missing or changed predecessors, malformed/noncanonical/unknown/trailing/oversized/symlinked
+or unsafe evidence, orphaned or partial output, and authority escalation fail closed. The executor
+invokes no callback or external collaborator and grants no future scheduling, execution, placement,
+dispatch, connector, broker/provider/ForgePipe, retry, repair, cancellation, publication, validation,
+checkout, Git, or general lifecycle authority.
 
 Authorized bounded slice status:
 
@@ -1612,6 +1636,18 @@ Authorized bounded slice status:
     performs no graph continuation/finalization, completion, failure propagation, dependency release,
     scheduling, execution, retry, repair, cancellation, callback, external action, validation,
     network, checkout, Git, commit, push, or publication action.
+19. The separate package-local fixture-only **atomic post-reconciliation graph-continuation/
+    finalization executor and durable receipt** is complete. It consumes only the exact approved,
+    independently authenticated, fixture-owned, unconsumed policy request after revalidating the
+    complete immutable chain and persisted `scheduled` postimage. It accepts only the three explicit
+    outcome-compatible routes, materializes one deterministic absent-to-exact route-bound transition
+    record, and publishes one separate canonical receipt binding the exact post-state, route-specific
+    effect, policy authentication, result/reconciliation, launch, scheduling, graph, candidate,
+    released-postimage, and scheduled-record evidence. Exact replay, restart, concurrency, identical
+    pre-existing output, and transition-before-receipt recovery are idempotent; conflicts, orphans,
+    unsafe artifacts, partial state, changed predecessors, and authority escalation fail closed. It
+    rewrites no predecessor and invokes no callback, provider, connector, broker, ForgePipe, process,
+    validation, checkout, Git, publication, or external action.
 
 The slice deliberately excludes a production daemon/service installer, live edge provider,
 auto-discovery, billing, multi-tenancy, QEMU dispatch, dynamic scheduling, and generic remote shell.
@@ -1854,17 +1890,31 @@ Default tests require no network, provider account, tunnel, or remote machine.
     noncanonical, unknown-field, trailing, oversized, symlinked, unsafe, or tampered evidence fail
     closed. The policy performs no graph continuation/finalization, mutation, scheduling, execution,
     callback, provider/broker/ForgePipe, validation, checkout, Git, or external action.
+28. **Atomic local post-reconciliation graph-continuation/finalization executor and durable evidence
+    (complete):** consume only the exact approved, independently authenticated, fixture-owned,
+    unconsumed policy request for its explicit outcome-compatible route and revalidate the complete
+    immutable predecessor chain plus the exact persisted `scheduled` postimage before mutation.
+    Materialize one absent-to-exact deterministic route-bound transition record, then publish one
+    separate canonical receipt binding its identity, fingerprint, version, post-state, route-specific
+    effect, policy decision/request and authentication, reconciliation and accepted result,
+    observation, launch attempt and receipt, launch authorization, scheduling receipt and policy,
+    graph run, terminal and selected tasks, candidate set, released dependency postimage, scheduled
+    record, terminal result, and task outcome. Record exactly one transition and one record write,
+    consume authorization only in the receipt, and leave the request and every predecessor unchanged.
+    Exact replay/restart/concurrency, identical pre-existing output, and transition-before-receipt
+    recovery are idempotent; conflicting routes or requests, stale or changed predecessors, orphaned
+    or ambiguous partial state, malformed/noncanonical/unknown/trailing/oversized/symlinked/unsafe
+    artifacts, and authority escalation fail closed. Invoke zero callbacks and external actions.
 
-The next remaining bounded boundary is a separate atomic local graph-continuation/finalization
-executor. It may consume only the exact approved, independently authenticated, fixture-owned,
-unconsumed request for its explicit outcome-compatible route, revalidate the full immutable chain,
-and perform only that route's exact local graph transition with separately durable evidence. It must
-not infer route or authority from the result, outcome, graph, scheduling, dependency, lifecycle,
-candidate, process, connector, lease, broker/provider/ForgePipe, validation, or receipt evidence.
-That executor, actual graph continuation/finalization, completion/failure propagation, dependency
-release, scheduling, process or node execution, placement, dispatch, connector or broker activity,
-retry, repair, cancellation, publication, remote execution, validation, checkout, Git, commit, push,
-and every other adjacent lifecycle action remain independently unauthorized and unimplemented.
+The next remaining bounded boundary is a separate post-transition graph-output decision/request
+contract. It may consume only the exact canonical executor receipt and transition record behind a new
+independently authenticated fixture-owned decision, bind the already completed route and post-state,
+and authorize at most one future route-compatible output attempt: continuation handoff for
+`graph_continuation`, or terminal graph-result materialization for either finalization route. It must
+not itself release dependencies, schedule or launch a task, execute a node, publish a terminal result,
+invoke a callback, provider, connector, broker, or ForgePipe, or perform validation, checkout, Git,
+publication, retry, repair, cancellation, network, or external action. Those consumers and every other
+adjacent lifecycle action remain independently unauthorized and unimplemented.
 
 ## Acceptance Criteria For This Extension
 

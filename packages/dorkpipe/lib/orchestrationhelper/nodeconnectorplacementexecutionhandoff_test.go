@@ -125,6 +125,9 @@ func TestNodeConnectorPlacementExecutionHandoffRevalidatesCompleteUpstreamBroker
 }
 
 func TestNodeConnectorPlacementExecutionHandoffChangedBindingsFailClosed(t *testing.T) {
+	value := newNodeConnectorPlacementExecutionHandoffTestFixture(t, "approved")
+	handoffs := mustOpenNodeConnectorPlacementExecutionHandoffs(t, value)
+
 	mutations := []struct {
 		name   string
 		mutate func(*NodeConnectorPlacementExecutionHandoffDecisionFixture)
@@ -166,27 +169,27 @@ func TestNodeConnectorPlacementExecutionHandoffChangedBindingsFailClosed(t *test
 	}
 	for _, test := range mutations {
 		t.Run(test.name, func(t *testing.T) {
-			value := newNodeConnectorPlacementExecutionHandoffTestFixture(t, "approved")
 			changed := cloneNodeConnectorPlacementExecutionHandoffDecisionFixture(value.fixture)
 			test.mutate(&changed)
-			assertNodeConnectorPlacementExecutionHandoffRejected(t, value, mustOpenNodeConnectorPlacementExecutionHandoffs(t, value), changed)
+			assertNodeConnectorPlacementExecutionHandoffRejected(t, value, handoffs, changed)
 		})
 	}
 }
 
 func TestNodeConnectorPlacementExecutionHandoffEvidenceCannotImplyApproval(t *testing.T) {
+	value := newNodeConnectorPlacementExecutionHandoffTestFixture(t, "approved")
+	handoffs := mustOpenNodeConnectorPlacementExecutionHandoffs(t, value)
+
 	for _, field := range []string{"connection_present", "healthy", "available", "load", "risk", "cost", "ordering", "ranking", "provider_evidence", "broker_acceptance", "lease_exists"} {
 		t.Run(field, func(t *testing.T) {
-			value := newNodeConnectorPlacementExecutionHandoffTestFixture(t, "approved")
 			valid := mustMarshalNodeConnectorPlacementExecutionHandoff(t, value.fixture)
 			raw := append(append([]byte{}, valid[:len(valid)-1]...), []byte(`,"`+field+`":true}`)...)
-			assertNodeConnectorPlacementExecutionHandoffRawRejected(t, value, mustOpenNodeConnectorPlacementExecutionHandoffs(t, value), raw)
+			assertNodeConnectorPlacementExecutionHandoffRawRejected(t, value, handoffs, raw)
 		})
 	}
-	value := newNodeConnectorPlacementExecutionHandoffTestFixture(t, "approved")
 	changed := cloneNodeConnectorPlacementExecutionHandoffDecisionFixture(value.fixture)
 	changed.Decision = ""
-	assertNodeConnectorPlacementExecutionHandoffRejected(t, value, mustOpenNodeConnectorPlacementExecutionHandoffs(t, value), changed)
+	assertNodeConnectorPlacementExecutionHandoffRejected(t, value, handoffs, changed)
 }
 
 func TestNodeConnectorPlacementExecutionHandoffReplayCollisionAndRestartAreStrict(t *testing.T) {
@@ -230,6 +233,7 @@ func TestNodeConnectorPlacementExecutionHandoffReplayCollisionAndRestartAreStric
 
 func TestNodeConnectorPlacementExecutionHandoffRejectsMalformedUnknownTrailingOversizedAndNoncanonicalJSON(t *testing.T) {
 	value := newNodeConnectorPlacementExecutionHandoffTestFixture(t, "approved")
+	handoffs := mustOpenNodeConnectorPlacementExecutionHandoffs(t, value)
 	valid := mustMarshalNodeConnectorPlacementExecutionHandoff(t, value.fixture)
 	var pretty bytes.Buffer
 	if err := json.Indent(&pretty, valid, "", "  "); err != nil {
@@ -240,15 +244,17 @@ func TestNodeConnectorPlacementExecutionHandoffRejectsMalformedUnknownTrailingOv
 		inputs = append(inputs, append(append([]byte{}, valid[:len(valid)-1]...), []byte(`,"`+field+`":true}`)...))
 	}
 	for index, raw := range inputs {
-		caseValue := newNodeConnectorPlacementExecutionHandoffTestFixture(t, "approved")
-		assertNodeConnectorPlacementExecutionHandoffRawRejected(t, caseValue, mustOpenNodeConnectorPlacementExecutionHandoffs(t, caseValue), raw)
-		if _, err := os.Lstat(filepath.Join(caseValue.base.root, nodeConnectorPlacementExecutionHandoffDecisionName)); !os.IsNotExist(err) {
+		assertNodeConnectorPlacementExecutionHandoffRawRejected(t, value, handoffs, raw)
+		if _, err := os.Lstat(filepath.Join(value.base.root, nodeConnectorPlacementExecutionHandoffDecisionName)); !os.IsNotExist(err) {
 			t.Fatalf("invalid input %d published partial evidence", index)
 		}
 	}
 }
 
 func TestNodeConnectorPlacementExecutionHandoffRejectsInvalidOrUnboundedIssuancePolicy(t *testing.T) {
+	value := newNodeConnectorPlacementExecutionHandoffTestFixture(t, "approved")
+	handoffs := mustOpenNodeConnectorPlacementExecutionHandoffs(t, value)
+
 	mutations := []func(*NodeConnectorPlacementExecutionHandoffDecisionFixture){
 		func(value *NodeConnectorPlacementExecutionHandoffDecisionFixture) { value.Reason = "" },
 		func(value *NodeConnectorPlacementExecutionHandoffDecisionFixture) { value.Reason = " leading" },
@@ -264,10 +270,9 @@ func TestNodeConnectorPlacementExecutionHandoffRejectsInvalidOrUnboundedIssuance
 		},
 	}
 	for index, mutate := range mutations {
-		value := newNodeConnectorPlacementExecutionHandoffTestFixture(t, "approved")
 		changed := cloneNodeConnectorPlacementExecutionHandoffDecisionFixture(value.fixture)
 		mutate(&changed)
-		assertNodeConnectorPlacementExecutionHandoffRejected(t, value, mustOpenNodeConnectorPlacementExecutionHandoffs(t, value), changed)
+		assertNodeConnectorPlacementExecutionHandoffRejected(t, value, handoffs, changed)
 		if _, err := os.Lstat(filepath.Join(value.base.root, nodeConnectorPlacementExecutionHandoffDecisionName)); !os.IsNotExist(err) {
 			t.Fatalf("invalid issuance case %d published a decision", index)
 		}

@@ -272,6 +272,11 @@ func TestNodeConnectorWireCanonicalMutualAuthenticationAndStrictFraming(t *testi
 }
 
 func TestNodeConnectorWireRejectsChangedBindingsFreshnessRevocationAndTamper(t *testing.T) {
+	sharedFixture := newNodeConnectorWireFixture(t)
+	acceptNodeConnectorWireSession(t, sharedFixture)
+	acceptNodeConnectorWireBrokerOperation(t, sharedFixture)
+	sharedRequestFrame, sharedLeaseFrame := nodeConnectorWireOperationFrames(t, sharedFixture)
+
 	tests := []struct {
 		name   string
 		mutate func(*nodeConnectorWireFixture, []byte, []byte) ([]byte, []byte, time.Time)
@@ -355,10 +360,15 @@ func TestNodeConnectorWireRejectsChangedBindingsFreshnessRevocationAndTamper(t *
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			fixture := newNodeConnectorWireFixture(t)
-			acceptNodeConnectorWireSession(t, fixture)
-			acceptNodeConnectorWireBrokerOperation(t, fixture)
-			requestFrame, leaseFrame := nodeConnectorWireOperationFrames(t, fixture)
+			fixture := sharedFixture
+			requestFrame := append([]byte{}, sharedRequestFrame...)
+			leaseFrame := append([]byte{}, sharedLeaseFrame...)
+			if test.name == "revoked broker credential" {
+				fixture = newNodeConnectorWireFixture(t)
+				acceptNodeConnectorWireSession(t, fixture)
+				acceptNodeConnectorWireBrokerOperation(t, fixture)
+				requestFrame, leaseFrame = nodeConnectorWireOperationFrames(t, fixture)
+			}
 			requestFrame, leaseFrame, at := test.mutate(fixture, requestFrame, leaseFrame)
 			assertNodeConnectorWireDispatchRejected(t, fixture, requestFrame, leaseFrame, at)
 		})
@@ -377,12 +387,10 @@ func TestNodeConnectorWireRejectsChangedBindingsFreshnessRevocationAndTamper(t *
 		}},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			fixture := newNodeConnectorWireFixture(t)
-			acceptNodeConnectorWireSession(t, fixture)
-			acceptNodeConnectorWireBrokerOperation(t, fixture)
+			fixture := *sharedFixture
+			fixture.negotiation = sharedFixture.negotiation
 			test.mutate(&fixture.negotiation)
-			requestFrame, leaseFrame := nodeConnectorWireOperationFrames(t, fixture)
-			assertNodeConnectorWireDispatchRejected(t, fixture, requestFrame, leaseFrame, fixture.now.Add(5*time.Second))
+			assertNodeConnectorWireDispatchRejected(t, &fixture, sharedRequestFrame, sharedLeaseFrame, fixture.now.Add(5*time.Second))
 		})
 	}
 
