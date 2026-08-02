@@ -1905,16 +1905,32 @@ Default tests require no network, provider account, tunnel, or remote machine.
     recovery are idempotent; conflicting routes or requests, stale or changed predecessors, orphaned
     or ambiguous partial state, malformed/noncanonical/unknown/trailing/oversized/symlinked/unsafe
     artifacts, and authority escalation fail closed. Invoke zero callbacks and external actions.
+29. **Explicit post-transition graph-output policy decision/request (complete):** consume only the
+    exact canonical continuation/finalization executor receipt and transition record after
+    revalidating their complete immutable predecessor chain, and require a new independently
+    authenticated fixture-owned approved/rejected decision. Bind the exact executor receipt,
+    transition record, route, post-state, route-specific effect, graph run, terminal and selected
+    tasks, candidate set, accepted result, reconciled outcome, and prior policy authentication.
+    Approval emits one deterministic, canonical, initially unconsumed request with exactly one
+    mutually exclusive future authority: a continuation-handoff attempt for `graph_continuation`, a
+    successful terminal graph-result materialization attempt for `successful_graph_finalization`, or
+    a failed terminal graph-result materialization attempt for `failed_graph_finalization`.
+    Rejection emits no request. Result, outcome, graph, transition, post-state, scheduling,
+    availability, connection, lease, provider/broker/ForgePipe, ranking, cost, risk, or receipt
+    evidence cannot infer approval, route, output type, or authority. Exact replay, restart,
+    concurrency, identical existing artifacts, and decision-before-request recovery are idempotent;
+    conflicts, missing or changed predecessors, consumed/replayed/unauthenticated evidence,
+    inference, authority escalation, orphaned/partial state, and malformed, noncanonical,
+    unknown-field, trailing, oversized, symlinked, unsafe, or tampered artifacts fail closed. The
+    policy performs no handoff or materialization and invokes zero callbacks or external actions.
 
-The next remaining bounded boundary is a separate post-transition graph-output decision/request
-contract. It may consume only the exact canonical executor receipt and transition record behind a new
-independently authenticated fixture-owned decision, bind the already completed route and post-state,
-and authorize at most one future route-compatible output attempt: continuation handoff for
-`graph_continuation`, or terminal graph-result materialization for either finalization route. It must
-not itself release dependencies, schedule or launch a task, execute a node, publish a terminal result,
-invoke a callback, provider, connector, broker, or ForgePipe, or perform validation, checkout, Git,
-publication, retry, repair, cancellation, network, or external action. Those consumers and every other
-adjacent lifecycle action remain independently unauthorized and unimplemented.
+The next remaining bounded boundary is the separate consumer/executor for the authorized output
+request. It may consume only one exact approved, authenticated, fixture-owned, unconsumed request and
+perform only its route-compatible action: one continuation handoff or one terminal graph-result
+materialization. Dependency release, scheduling, task launch, node execution, callbacks, providers,
+connectors, brokers, ForgePipe, validation, checkout, Git, publication, retry, repair, cancellation,
+network, and every other adjacent lifecycle action remain independently unauthorized and
+unimplemented.
 
 ## Acceptance Criteria For This Extension
 
