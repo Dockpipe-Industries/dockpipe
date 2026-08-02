@@ -2051,10 +2051,30 @@ Default tests require no network, provider account, tunnel, or remote machine.
     callback, publication, provider, connector, broker, ForgePipe, process, network, remote
     execution, validation, checkout mutation, Git, checkpoint, commit, push, or external action.
 
-The next remaining bounded boundary is a separate local post-reconciliation executor. It may consume
-only the exact approved, independently authenticated, fixture-owned, unconsumed request after
-revalidating the complete immutable predecessor chain and must produce separate durable attempt and
-consumption evidence. TASK-015 remains open for that independent executor boundary.
+36. **Local post-reconciliation executor with separate durable attempt and consumption evidence
+    (complete):** consume only the exact approved, independently authenticated, fixture-owned,
+    initially unconsumed post-reconciliation policy request after revalidating the exact
+    acknowledgement-reconciliation record and receipt plus their complete immutable predecessor
+    chain. Accept exactly one route-compatible opaque attempt authority for continuation handoff,
+    successful terminal graph result, or failed terminal graph result. Materialize one deterministic,
+    versioned, fixture-owned route-bound attempt record and one separate canonical executor receipt
+    proving one logical local attempt, one attempt-record write, one receipt write, exact authority
+    consumption, complete predecessor-chain revalidation, no duplicate attempt, and an unchanged
+    request. Exact replay, restart, identical concurrency, identical pre-existing artifacts, and
+    attempt-before-receipt recovery are idempotent; conflicts, rejection, missing or changed policy,
+    reconciliation, acknowledgement, delivery, consumer, result, or predecessor evidence, inferred
+    or escalated authority, or malformed, noncanonical, unknown-field, trailing, partial, empty,
+    oversized, symlinked, unsafe, or tampered artifacts fail closed. The attempt and receipt are
+    evidence only and perform or grant no lifecycle advancement, graph mutation, dependency work,
+    scheduling, task launch, node execution, result collection, output materialization, delivery,
+    consumer invocation, retry, repair, cancellation, queue processing, callback, publication,
+    provider, connector, broker, ForgePipe, process, network, remote execution, validation, checkout
+    mutation, Git, checkpoint, commit, push, external action, or future downstream authority.
+
+This completes the post-delivery acknowledgement/reconciliation outcome sub-chain. TASK-015 remains
+open; selection of any further bounded slice requires a separate review of the remaining canonical
+backlog and must not invent another policy, lifecycle, scheduling, publication, or external-authority
+hop.
 
 ## Acceptance Criteria For This Extension
 
