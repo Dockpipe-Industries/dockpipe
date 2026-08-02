@@ -1980,11 +1980,36 @@ Default tests require no network, provider account, tunnel, or remote machine.
     retry, repair, cancellation, callback, publication, provider, connector, broker, ForgePipe,
     process, network, validation, checkout, Git, or external action.
 
-The next remaining bounded boundary is a separate post-delivery acknowledgement reconciliation and
-policy decision. It may consume only the exact durable acknowledgement and delivery-executor receipt
-after revalidating their complete immutable predecessor chain. Acknowledgement presence alone grants
-no lifecycle advancement, dependency work, scheduling, publication, callback, network, or external
-authority. TASK-015 remains open for that independently authenticated decision boundary.
+33. **Explicit post-delivery acknowledgement-reconciliation policy decision/request (complete):**
+    consume only the exact canonical accepted delivery acknowledgement and its exact durable
+    delivery-executor receipt after revalidating their complete immutable predecessor chain and the
+    exact downstream consumer identity and contract. Require a new independently authenticated,
+    deterministic, one-time, fixture-owned approved/rejected decision. Rejection names no route,
+    output, delivery, consumer, request, or authority and emits no request. Approval preserves the
+    exact route, post-state, route-specific effect, output type, delivery type, terminal result, task
+    outcome, consumer, acknowledgement operation key, and predecessor bindings, and emits one
+    canonical initially unconsumed request with exactly one mutually exclusive future authority: a
+    continuation-handoff acknowledgement-reconciliation attempt, a successful-terminal-result
+    acknowledgement-reconciliation attempt, or a failed-terminal-result acknowledgement-
+    reconciliation attempt. Acknowledgement or receipt presence, consumer acceptance, output,
+    result, graph, transition, scheduling, availability, connection, lease, provider, connector,
+    broker, ForgePipe, ranking, cost, risk, validation, or any adjacent evidence cannot infer
+    approval, route, consumer, reconciliation, or authority. Exact replay, restart, identical
+    concurrency, pre-existing identical artifacts, and decision-before-request recovery are
+    idempotent; conflicts, missing or changed predecessors, inference, consumed/replayed or
+    unauthenticated evidence, authority escalation, orphaned/partial state, and malformed,
+    noncanonical, unknown-field, trailing, oversized, symlinked, unsafe, or tampered artifacts fail
+    closed. The policy performs no acknowledgement reconciliation, lifecycle advancement, graph
+    mutation, dependency work, scheduling, execution, retry, repair, cancellation, callback,
+    publication, provider, connector, broker, ForgePipe, process, network, validation, checkout,
+    Git, or external action.
+
+The next remaining bounded boundary is a separate local acknowledgement-reconciliation executor and
+durable evidence. It may consume only one exact approved, independently authenticated, fixture-owned,
+unconsumed request after revalidating the acknowledgement, delivery receipt, consumer contract, and
+complete immutable predecessor chain. The approved request and acknowledgement presence grant no
+lifecycle advancement, dependency work, scheduling, publication, callback, network, or external
+authority. TASK-015 remains open for that executor boundary.
 
 ## Acceptance Criteria For This Extension
 
