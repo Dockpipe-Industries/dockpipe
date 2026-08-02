@@ -64,6 +64,9 @@ func TestNodeConnectorPlacementExecutionGraphNextTaskSchedulingPolicyRejectedAnd
 }
 
 func TestNodeConnectorPlacementExecutionGraphNextTaskSchedulingPolicyRejectsCandidateAndInferenceConflicts(t *testing.T) {
+	value := newNodeConnectorPlacementExecutionGraphNextTaskSchedulingPolicyTestFixture(t, "succeeded", "approved")
+	policies := mustOpenNodeConnectorPlacementExecutionGraphNextTaskSchedulingPolicies(t, value)
+
 	for _, test := range []struct {
 		name   string
 		mutate func(*NodeConnectorPlacementExecutionGraphNextTaskSchedulingPolicyDecisionFixture)
@@ -97,29 +100,34 @@ func TestNodeConnectorPlacementExecutionGraphNextTaskSchedulingPolicyRejectsCand
 		}},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			value := newNodeConnectorPlacementExecutionGraphNextTaskSchedulingPolicyTestFixture(t, "succeeded", "approved")
-			test.mutate(&value.fixture)
-			if _, _, err := mustOpenNodeConnectorPlacementExecutionGraphNextTaskSchedulingPolicies(t, value).Decide(mustMarshalNodeConnectorPlacementExecutionGraphNextTaskSchedulingPolicy(t, value.fixture)); err == nil {
+			fixture := value.fixture
+			fixture.Candidates = cloneNodeConnectorPlacementExecutionGraphNextTaskSchedulingCandidates(value.fixture.Candidates)
+			test.mutate(&fixture)
+			if _, _, err := deriveNodeConnectorPlacementExecutionGraphNextTaskSchedulingPolicy(policies.expected, policies.receipt, fixture); err == nil {
 				t.Fatal("missing, outside, reordered, duplicated, stale, or mismatched candidate evidence was accepted")
 			}
-			assertNodeConnectorPlacementExecutionGraphNextTaskSchedulingPolicyArtifactsAbsent(t, value.root)
 		})
 	}
 
 	for _, source := range []string{"released_records", "ordering", "readiness", "availability", "load", "risk", "cost", "ranking", "matching", "connection", "provider", "broker", "forgepipe"} {
 		t.Run("inferred from "+source, func(t *testing.T) {
-			value := newNodeConnectorPlacementExecutionGraphNextTaskSchedulingPolicyTestFixture(t, "succeeded", "approved")
-			value.fixture.ApprovalInferred = true
-			value.fixture.InferenceSource = source
-			if _, _, err := mustOpenNodeConnectorPlacementExecutionGraphNextTaskSchedulingPolicies(t, value).Decide(mustMarshalNodeConnectorPlacementExecutionGraphNextTaskSchedulingPolicy(t, value.fixture)); err == nil {
+			fixture := value.fixture
+			fixture.Candidates = cloneNodeConnectorPlacementExecutionGraphNextTaskSchedulingCandidates(value.fixture.Candidates)
+			fixture.ApprovalInferred = true
+			fixture.InferenceSource = source
+			if _, _, err := deriveNodeConnectorPlacementExecutionGraphNextTaskSchedulingPolicy(policies.expected, policies.receipt, fixture); err == nil {
 				t.Fatalf("scheduling approval inferred from %s evidence", source)
 			}
-			assertNodeConnectorPlacementExecutionGraphNextTaskSchedulingPolicyArtifactsAbsent(t, value.root)
 		})
 	}
+
+	assertNodeConnectorPlacementExecutionGraphNextTaskSchedulingPolicyArtifactsAbsent(t, value.root)
 }
 
 func TestNodeConnectorPlacementExecutionGraphNextTaskSchedulingPolicyRejectsMismatchedFixtureBindings(t *testing.T) {
+	value := newNodeConnectorPlacementExecutionGraphNextTaskSchedulingPolicyTestFixture(t, "succeeded", "approved")
+	policies := mustOpenNodeConnectorPlacementExecutionGraphNextTaskSchedulingPolicies(t, value)
+
 	for _, test := range []struct {
 		name   string
 		mutate func(*NodeConnectorPlacementExecutionGraphNextTaskSchedulingPolicyDecisionFixture)
@@ -150,17 +158,25 @@ func TestNodeConnectorPlacementExecutionGraphNextTaskSchedulingPolicyRejectsMism
 		}},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			value := newNodeConnectorPlacementExecutionGraphNextTaskSchedulingPolicyTestFixture(t, "succeeded", "approved")
-			test.mutate(&value.fixture)
-			if _, _, err := mustOpenNodeConnectorPlacementExecutionGraphNextTaskSchedulingPolicies(t, value).Decide(mustMarshalNodeConnectorPlacementExecutionGraphNextTaskSchedulingPolicy(t, value.fixture)); err == nil {
+			fixture := value.fixture
+			fixture.Candidates = cloneNodeConnectorPlacementExecutionGraphNextTaskSchedulingCandidates(value.fixture.Candidates)
+			test.mutate(&fixture)
+			if _, _, err := deriveNodeConnectorPlacementExecutionGraphNextTaskSchedulingPolicy(policies.expected, policies.receipt, fixture); err == nil {
 				t.Fatal("mismatched graph, terminal task, route, receipt, selected task, decision, or authority was accepted")
 			}
-			assertNodeConnectorPlacementExecutionGraphNextTaskSchedulingPolicyArtifactsAbsent(t, value.root)
 		})
 	}
+
+	assertNodeConnectorPlacementExecutionGraphNextTaskSchedulingPolicyArtifactsAbsent(t, value.root)
 }
 
 func TestNodeConnectorPlacementExecutionGraphNextTaskSchedulingPolicyRevalidatesCompletePredecessorChain(t *testing.T) {
+	value := newNodeConnectorPlacementExecutionGraphNextTaskSchedulingPolicyTestFixture(t, "succeeded", "approved")
+	expectedRaw, err := json.Marshal(value.expected)
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	for _, test := range []struct {
 		name   string
 		mutate func(*NodeConnectorPlacementExecutionGraphNextTaskSchedulingPolicyExpected)
@@ -191,14 +207,17 @@ func TestNodeConnectorPlacementExecutionGraphNextTaskSchedulingPolicyRevalidates
 		}},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			value := newNodeConnectorPlacementExecutionGraphNextTaskSchedulingPolicyTestFixture(t, "succeeded", "approved")
-			test.mutate(&value.expected)
-			if _, err := OpenNodeConnectorPlacementExecutionGraphNextTaskSchedulingPolicies(value.root, value.expected); err == nil {
+			var expected NodeConnectorPlacementExecutionGraphNextTaskSchedulingPolicyExpected
+			if err := json.Unmarshal(expectedRaw, &expected); err != nil {
+				t.Fatal(err)
+			}
+			test.mutate(&expected)
+			if _, err := OpenNodeConnectorPlacementExecutionGraphNextTaskSchedulingPolicies(value.root, expected); err == nil {
 				t.Fatal("stale or changed immutable predecessor binding was accepted")
 			}
-			assertNodeConnectorPlacementExecutionGraphNextTaskSchedulingPolicyArtifactsAbsent(t, value.root)
 		})
 	}
+	assertNodeConnectorPlacementExecutionGraphNextTaskSchedulingPolicyArtifactsAbsent(t, value.root)
 
 	t.Run("missing receipt", func(t *testing.T) {
 		value := newNodeConnectorPlacementExecutionGraphNextTaskSchedulingPolicyTestFixture(t, "succeeded", "approved")
@@ -301,6 +320,10 @@ func TestNodeConnectorPlacementExecutionGraphNextTaskSchedulingPolicyConcurrentC
 }
 
 func TestNodeConnectorPlacementExecutionGraphNextTaskSchedulingPolicyRejectsMalformedFixturesAndArtifacts(t *testing.T) {
+	fixtureValue := newNodeConnectorPlacementExecutionGraphNextTaskSchedulingPolicyTestFixture(t, "succeeded", "approved")
+	fixturePolicies := mustOpenNodeConnectorPlacementExecutionGraphNextTaskSchedulingPolicies(t, fixtureValue)
+	fixtureRaw := mustMarshalNodeConnectorPlacementExecutionGraphNextTaskSchedulingPolicy(t, fixtureValue.fixture)
+
 	for _, test := range []struct {
 		name   string
 		mutate func([]byte) []byte
@@ -320,14 +343,18 @@ func TestNodeConnectorPlacementExecutionGraphNextTaskSchedulingPolicyRejectsMalf
 		}},
 	} {
 		t.Run("fixture "+test.name, func(t *testing.T) {
-			value := newNodeConnectorPlacementExecutionGraphNextTaskSchedulingPolicyTestFixture(t, "succeeded", "approved")
-			raw := test.mutate(mustMarshalNodeConnectorPlacementExecutionGraphNextTaskSchedulingPolicy(t, value.fixture))
-			if _, _, err := mustOpenNodeConnectorPlacementExecutionGraphNextTaskSchedulingPolicies(t, value).Decide(raw); err == nil {
+			raw := test.mutate(fixtureRaw)
+			if _, _, err := fixturePolicies.Decide(raw); err == nil {
 				t.Fatal("malformed, unknown-field, trailing, oversized, or noncanonical fixture was accepted")
 			}
-			assertNodeConnectorPlacementExecutionGraphNextTaskSchedulingPolicyArtifactsAbsent(t, value.root)
 		})
 	}
+	assertNodeConnectorPlacementExecutionGraphNextTaskSchedulingPolicyArtifactsAbsent(t, fixtureValue.root)
+
+	requestValue := newNodeConnectorPlacementExecutionGraphNextTaskSchedulingPolicyTestFixture(t, "succeeded", "approved")
+	mustDecideNodeConnectorPlacementExecutionGraphNextTaskSchedulingPolicy(t, requestValue)
+	requestPath := filepath.Join(requestValue.root, nodeConnectorPlacementExecutionGraphNextTaskSchedulingPolicyRequestName)
+	requestRaw := mustReadNodeConnectorPlacementExecutionGraphLifecycleExecutorFile(t, requestPath)
 
 	for _, test := range []struct {
 		name   string
@@ -349,12 +376,8 @@ func TestNodeConnectorPlacementExecutionGraphNextTaskSchedulingPolicyRejectsMalf
 		}},
 	} {
 		t.Run("request "+test.name, func(t *testing.T) {
-			value := newNodeConnectorPlacementExecutionGraphNextTaskSchedulingPolicyTestFixture(t, "succeeded", "approved")
-			mustDecideNodeConnectorPlacementExecutionGraphNextTaskSchedulingPolicy(t, value)
-			path := filepath.Join(value.root, nodeConnectorPlacementExecutionGraphNextTaskSchedulingPolicyRequestName)
-			raw := mustReadNodeConnectorPlacementExecutionGraphLifecycleExecutorFile(t, path)
-			mustWriteRawNodeConnectorPlacementExecutionGraphLifecycleExecutorFile(t, path, test.mutate(raw))
-			if _, err := OpenNodeConnectorPlacementExecutionGraphNextTaskSchedulingPolicies(value.root, value.expected); err == nil {
+			mustWriteRawNodeConnectorPlacementExecutionGraphLifecycleExecutorFile(t, requestPath, test.mutate(requestRaw))
+			if _, err := OpenNodeConnectorPlacementExecutionGraphNextTaskSchedulingPolicies(requestValue.root, requestValue.expected); err == nil {
 				t.Fatal("malformed, unknown-field, trailing, oversized, or noncanonical request was accepted")
 			}
 		})

@@ -160,6 +160,10 @@ func TestNodeConnectorPlacementExecutionGraphReconciliationRequiresApprovedUncon
 		assertNodeConnectorPlacementExecutionGraphReconciliationAbsent(t, value.deliveryValue.handoff.base.root)
 	})
 
+	value := newNodeConnectorPlacementExecutionGraphReconciliationTestFixture(t, "succeeded")
+	root := value.reconciliation.deliveryValue.handoff.base.root
+	requestPath := filepath.Join(root, nodeConnectorPlacementExecutionReconciliationRequestName)
+	requestRaw := mustReadNodeConnectorPlacementExecutionGraphReconciliationFile(t, root, nodeConnectorPlacementExecutionReconciliationRequestName)
 	for _, mutation := range []struct {
 		name string
 		from string
@@ -170,8 +174,9 @@ func TestNodeConnectorPlacementExecutionGraphReconciliationRequiresApprovedUncon
 		{"stale-request", `"request_id": "placement-execution-reconciliation-request-001"`, `"request_id": "placement-execution-reconciliation-request-stale-001"`},
 	} {
 		t.Run(mutation.name, func(t *testing.T) {
-			value := newNodeConnectorPlacementExecutionGraphReconciliationTestFixture(t, "succeeded")
-			root := value.reconciliation.deliveryValue.handoff.base.root
+			if err := os.WriteFile(requestPath, requestRaw, 0o644); err != nil {
+				t.Fatal(err)
+			}
 			mutateNodeConnectorPlacementExecutionGraphReconciliationFile(t, filepath.Join(root, nodeConnectorPlacementExecutionReconciliationRequestName), []byte(mutation.from), []byte(mutation.to))
 			if _, err := OpenNodeConnectorPlacementExecutionGraphReconciliations(root, value.expected, value.reconciliation.deliveryValue.handoff.base.broker); err == nil {
 				t.Fatal("consumed, escalated, or stale reconciliation authorization was accepted")
@@ -182,6 +187,9 @@ func TestNodeConnectorPlacementExecutionGraphReconciliationRequiresApprovedUncon
 }
 
 func TestNodeConnectorPlacementExecutionGraphReconciliationRejectsTamperAndSubstitutionAtEveryBoundary(t *testing.T) {
+	value := newNodeConnectorPlacementExecutionGraphReconciliationTestFixture(t, "succeeded")
+	root := value.reconciliation.deliveryValue.handoff.base.root
+
 	tests := []struct {
 		name string
 		path func(*nodeConnectorPlacementExecutionGraphReconciliationTestFixture) string
@@ -221,9 +229,17 @@ func TestNodeConnectorPlacementExecutionGraphReconciliationRejectsTamperAndSubst
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			value := newNodeConnectorPlacementExecutionGraphReconciliationTestFixture(t, "succeeded")
-			root := value.reconciliation.deliveryValue.handoff.base.root
-			mutateNodeConnectorPlacementExecutionGraphReconciliationFile(t, test.path(value), []byte(test.from(value)), []byte(test.to))
+			path := test.path(value)
+			raw, err := os.ReadFile(path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer func() {
+				if err := os.WriteFile(path, raw, 0o644); err != nil {
+					t.Error(err)
+				}
+			}()
+			mutateNodeConnectorPlacementExecutionGraphReconciliationFile(t, path, []byte(test.from(value)), []byte(test.to))
 			if _, err := OpenNodeConnectorPlacementExecutionGraphReconciliations(root, value.expected, value.reconciliation.deliveryValue.handoff.base.broker); err == nil {
 				t.Fatal("tampered or substituted immutable chain boundary was accepted")
 			}
@@ -252,6 +268,12 @@ func TestNodeConnectorPlacementExecutionGraphReconciliationRejectsTamperAndSubst
 }
 
 func TestNodeConnectorPlacementExecutionGraphReconciliationRejectsMalformedUnknownTrailingOversizedAndConflictingArtifacts(t *testing.T) {
+	value := newNodeConnectorPlacementExecutionGraphReconciliationTestFixture(t, "succeeded")
+	mustReconcileNodeConnectorPlacementExecutionGraph(t, mustOpenNodeConnectorPlacementExecutionGraphReconciliations(t, value))
+	root := value.reconciliation.deliveryValue.handoff.base.root
+	path := filepath.Join(root, nodeConnectorPlacementExecutionGraphReconciliationName)
+	raw := mustReadNodeConnectorPlacementExecutionGraphReconciliationFile(t, root, nodeConnectorPlacementExecutionGraphReconciliationName)
+
 	mutations := []struct {
 		name string
 		raw  func([]byte) []byte
@@ -270,11 +292,6 @@ func TestNodeConnectorPlacementExecutionGraphReconciliationRejectsMalformedUnkno
 	}
 	for _, mutation := range mutations {
 		t.Run(mutation.name, func(t *testing.T) {
-			value := newNodeConnectorPlacementExecutionGraphReconciliationTestFixture(t, "succeeded")
-			mustReconcileNodeConnectorPlacementExecutionGraph(t, mustOpenNodeConnectorPlacementExecutionGraphReconciliations(t, value))
-			root := value.reconciliation.deliveryValue.handoff.base.root
-			path := filepath.Join(root, nodeConnectorPlacementExecutionGraphReconciliationName)
-			raw := mustReadNodeConnectorPlacementExecutionGraphReconciliationFile(t, root, nodeConnectorPlacementExecutionGraphReconciliationName)
 			if err := os.WriteFile(path, mutation.raw(raw), 0o644); err != nil {
 				t.Fatal(err)
 			}
