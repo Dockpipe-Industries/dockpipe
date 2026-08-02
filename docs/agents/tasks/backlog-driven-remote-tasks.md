@@ -1940,12 +1940,33 @@ Default tests require no network, provider account, tunnel, or remote machine.
     oversized, symlinked, unsafe, or tampered artifacts fail closed. The continuation record invokes
     no receiver, and terminal records are not published, delivered, or used to trigger lifecycle
     work. Every predecessor remains unchanged and zero callbacks or external actions are invoked.
+31. **Explicit downstream graph-output delivery policy decision/request (complete):** consume only
+    the exact durable output record and output-executor receipt after revalidating their complete
+    immutable predecessor chain. Require one new independently authenticated, deterministic,
+    one-time, fixture-owned approved/rejected decision bound to the exact output and executor
+    receipt, output policy, transition, route, post-state, route-specific effect, output type, graph
+    run, terminal and selected tasks, candidate set, accepted result, reconciliation receipt,
+    terminal result, reconciled task outcome, and one exact downstream consumer identity and
+    consumer-contract fingerprint. Rejection names no route, delivery type, request, or consumer and
+    emits no request. Approval emits one canonical initially unconsumed request with exactly one
+    mutually exclusive future authority: `continuation_handoff_delivery_attempt` for
+    `graph_continuation`, `successful_terminal_graph_result_delivery_attempt` for successful
+    finalization, or `failed_terminal_graph_result_delivery_attempt` for failed finalization. Output,
+    result, graph, transition, scheduling, availability, connection, lease, provider, broker,
+    ForgePipe, ranking, cost, risk, validation, or receipt presence cannot infer approval, route,
+    output, delivery type, consumer, or authority. Exact replay, restart, identical concurrency,
+    pre-existing identical artifacts, and decision-before-request recovery are idempotent; missing,
+    changed, malformed, unsafe, orphaned, tampered, conflicting, inferred, consumed, replayed,
+    unauthenticated, non-fixture-owned, consumer-ambiguous, or authority-escalated evidence fails
+    closed. The policy invokes no consumer or receiver and performs no delivery, acknowledgement,
+    lifecycle advancement, callback, publication, network, external, provider, connector, broker,
+    ForgePipe, validation, checkout, or Git action.
 
-The next remaining bounded boundary is a separate downstream consumer/delivery contract for the
-durable continuation handoff or terminal graph result. Output presence alone grants no lifecycle,
-dependency, scheduling, execution, provider, connector, broker, ForgePipe, callback, delivery,
-publication, network, Git, validation, checkout, retry, repair, cancellation, or external authority.
-TASK-015 remains open for that separately authenticated and independently authorized boundary.
+The next remaining bounded boundary is the separate route-compatible delivery/consumer executor.
+It may consume only the exact approved unconsumed delivery-policy request, invoke the exact bound
+local consumer once, and persist separate acknowledgement/receipt evidence. Neither output presence
+nor an approved delivery request implies acknowledgement, lifecycle advancement, publication, or
+external authority. TASK-015 remains open for that independently implemented executor boundary.
 
 ## Acceptance Criteria For This Extension
 
