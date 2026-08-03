@@ -26,10 +26,16 @@ trap 'rm -rf "$tmp"' EXIT
 mkdir -p "$tmp/fake-bin"
 cp -R "$fixture_root/consumer" "$consumer"
 for routed_source in AGENTS.md docs/agents/packages/package-authoring.md \
-  docs/agents/tasks/backlog-driven-remote-tasks.md docs/agents/workflows/yaml-workflows.md; do
+  docs/agents/workflows/yaml-workflows.md; do
   mkdir -p "$consumer/$(dirname "$routed_source")"
   cp "$REPO_ROOT/$routed_source" "$consumer/$routed_source"
 done
+# TASK-015 is closed canonically. The synthetic consumer intentionally retains its open fixture path
+# so selector behavior and every package contract remain unchanged.
+fixture_task_path="docs/agents/tasks/backlog-driven-remote-tasks.md"
+mkdir -p "$consumer/$(dirname "$fixture_task_path")"
+cp "$REPO_ROOT/docs/agents/tasks/closed/backlog-driven-remote-tasks.md" \
+  "$consumer/$fixture_task_path"
 cp -R "$fixture_root/application-consumer" "$application_consumer"
 while IFS= read -r validation_input; do
   validation_input="${validation_input#  \"}"

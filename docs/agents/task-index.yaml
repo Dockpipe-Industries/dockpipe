@@ -56,12 +56,6 @@ tasks:
     dispatch:
       readiness: unclassified
       ownership: unclaimed
-  - id: TASK-015
-    topic: Backlog-driven remote tasks and multi-machine execution
-    path: docs/agents/tasks/backlog-driven-remote-tasks.md
-    dispatch:
-      readiness: unclassified
-      ownership: unclaimed
   - id: TASK-016
     topic: Guided game-development package and Unreal integration
     path: docs/agents/tasks/guided-game-development-package.md

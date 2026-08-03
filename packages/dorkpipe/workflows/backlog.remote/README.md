@@ -1,7 +1,8 @@
 # backlog.remote
 
-`backlog.remote` is the offline TASK-015 path. It resolves either one explicit schema-2 entry or the
-only entry eligible through the literal `--next` selector from `docs/agents/task-index.yaml`, requires
+`backlog.remote` is the package-owned offline backlog path. It resolves either one explicit schema-2
+entry or the only entry eligible through the literal `--next` selector from
+`docs/agents/task-index.yaml`, requires
 `decision_ready` readiness plus `unclaimed` ownership,
 validates its exact linked task document and a one-line bounded slice,
 compiles reviewable immutable request artifacts, preflights the Codex Cloud CLI contract from narrow
@@ -16,7 +17,12 @@ decision may then authorize exactly one rollback-safe application of the accepte
 consumer checkout. The workflow never invokes Codex Cloud, live-polls evidence, infers either
 approval, commits, pushes, checkpoints, syncs, publishes, or selects another task.
 
-Run it from the consumer repository root with every authority-bearing input explicit:
+TASK-015 is closed and is no longer present in the canonical open-only index, so it is not a runnable
+canonical selection. The checked package consumer retains TASK-015 as fixture data to prove explicit
+and unique-ready behavior without changing the workflow contract. For a real consumer, use an open
+indexed task whose dispatch metadata is explicitly `decision_ready` plus `unclaimed`.
+
+The fixture-consumer invocation remains and intentionally uses that synthetic active path:
 
 ```bash
 dockpipe --package dorkpipe --workflow backlog.remote --workdir . \
