@@ -24,7 +24,7 @@ import (
 
 const (
 	backlogIndexPath                        = "docs/agents/task-index.yaml"
-	backlogSelectionContract                = "dorkpipe.backlog-selection/v1"
+	backlogSelectionContract                = "dorkpipe.backlog-selection/v2"
 	backlogRequestContract                  = "dorkpipe.remote-request/v2"
 	backlogTaskContract                     = "dorkpipe.remote-task/v1"
 	backlogFollowupContract                 = "dorkpipe.remote-followup/v1"
@@ -66,10 +66,15 @@ type backlogIndex struct {
 }
 
 type backlogIndexEntry struct {
-	ID            string `yaml:"id"`
-	Topic         string `yaml:"topic"`
-	Path          string `yaml:"path"`
-	DispatchState string `yaml:"dispatch_state,omitempty"`
+	ID       string                  `yaml:"id"`
+	Topic    string                  `yaml:"topic"`
+	Path     string                  `yaml:"path"`
+	Dispatch backlogDispatchMetadata `yaml:"dispatch"`
+}
+
+type backlogDispatchMetadata struct {
+	Readiness string `yaml:"readiness"`
+	Ownership string `yaml:"ownership"`
 }
 
 type backlogDispatchFixture struct {
@@ -290,16 +295,17 @@ func inspectBacklogSelection(repoRoot, indexPath, taskID, boundedSlice, baseline
 	if linkedMatches != 1 {
 		return reject(rejectBacklog("ambiguous_linked_task", "linked task path %q has %d index entries", entry.Path, linkedMatches))
 	}
-	switch entry.DispatchState {
-	case "blocked":
-		return reject(rejectBacklog("task_blocked", "task ID %q is explicitly marked blocked", taskID))
-	case "external_active":
-		return reject(rejectBacklog("task_externally_active", "task ID %q is explicitly marked externally active", taskID))
-	case "closed":
-		return reject(rejectBacklog("task_closed", "task ID %q is explicitly marked closed", taskID))
-	}
 	if strings.HasPrefix(entry.Path, "docs/agents/tasks/closed/") {
 		return reject(rejectBacklog("task_closed", "task ID %q links to the closed task tree", taskID))
+	}
+	if entry.Dispatch.Ownership == "external_active" {
+		return reject(rejectBacklog("task_externally_active", "task ID %q is explicitly externally active", taskID))
+	}
+	switch entry.Dispatch.Readiness {
+	case "unclassified":
+		return reject(rejectBacklog("task_not_decision_ready", "task ID %q is not classified as decision ready", taskID))
+	case "decision_blocked":
+		return reject(rejectBacklog("task_blocked", "task ID %q is explicitly decision blocked", taskID))
 	}
 	resolvedTask, err := resolveBacklogRepoPath(repoRoot, entry.Path, true, false)
 	if err != nil {
@@ -325,7 +331,11 @@ func inspectBacklogSelection(repoRoot, indexPath, taskID, boundedSlice, baseline
 		"bounded_slice":    boundedSlice,
 		"baseline_commit":  baseline,
 		"task_index_path":  backlogIndexPath,
-		"dispatch_state":   "open",
+		"dispatch": map[string]any{
+			"readiness": entry.Dispatch.Readiness,
+			"ownership": entry.Dispatch.Ownership,
+		},
+		"automatic_selection_performed": false,
 		"source_digests": map[string]any{
 			"task_index":  sha256String(indexRaw),
 			"linked_task": sha256String(taskRaw),
@@ -349,8 +359,8 @@ func loadBacklogIndex(path string) (*backlogIndex, error) {
 	if err := decoder.Decode(extra); err != io.EOF {
 		return nil, rejectBacklog("malformed_index", "task index must contain exactly one document")
 	}
-	if index.Schema != 1 || strings.TrimSpace(index.Description) == "" || len(index.Tasks) == 0 {
-		return nil, rejectBacklog("malformed_index", "task index requires schema 1, a description, and at least one task")
+	if index.Schema != 2 || strings.TrimSpace(index.Description) == "" || len(index.Tasks) == 0 {
+		return nil, rejectBacklog("malformed_index", "task index requires schema 2, a description, and at least one task")
 	}
 	for i, entry := range index.Tasks {
 		if !backlogTaskIDPattern.MatchString(entry.ID) || strings.TrimSpace(entry.Topic) == "" || strings.TrimSpace(entry.Path) == "" {
@@ -362,10 +372,15 @@ func loadBacklogIndex(path string) (*backlogIndex, error) {
 		if pathpkg.Clean(strings.ReplaceAll(entry.Path, "\\", "/")) != entry.Path || !strings.HasPrefix(entry.Path, "docs/agents/tasks/") {
 			return nil, rejectBacklog("malformed_index_entry", "task index entry %d has a non-canonical linked path", i+1)
 		}
-		switch entry.DispatchState {
-		case "", "open", "blocked", "external_active", "closed":
+		switch entry.Dispatch.Readiness {
+		case "unclassified", "decision_ready", "decision_blocked":
 		default:
-			return nil, rejectBacklog("malformed_index_entry", "task index entry %d has unsupported dispatch_state %q", i+1, entry.DispatchState)
+			return nil, rejectBacklog("malformed_index_entry", "task index entry %d has unsupported dispatch readiness %q", i+1, entry.Dispatch.Readiness)
+		}
+		switch entry.Dispatch.Ownership {
+		case "unclaimed", "external_active":
+		default:
+			return nil, rejectBacklog("malformed_index_entry", "task index entry %d has unsupported dispatch ownership %q", i+1, entry.Dispatch.Ownership)
 		}
 	}
 	return index, nil
@@ -438,8 +453,14 @@ func compileBacklogRemoteRequest(repoRoot, artifactRoot, environmentRef, branchR
 	if err != nil {
 		return fmt.Errorf("backlog selection cannot be loaded: %w", err)
 	}
-	if stringValue(selection["contract_version"]) != backlogSelectionContract || stringValue(selection["status"]) != "selected" {
-		return errors.New("backlog selection is not a selected dorkpipe.backlog-selection/v1 artifact")
+	dispatch := mapValue(selection["dispatch"])
+	automaticSelectionPerformed, automaticSelectionDeclared := selection["automatic_selection_performed"].(bool)
+	if stringValue(selection["contract_version"]) != backlogSelectionContract ||
+		stringValue(selection["status"]) != "selected" ||
+		stringValue(dispatch["readiness"]) != "decision_ready" ||
+		stringValue(dispatch["ownership"]) != "unclaimed" ||
+		!automaticSelectionDeclared || automaticSelectionPerformed {
+		return errors.New("backlog selection is not an explicit decision-ready, unclaimed dorkpipe.backlog-selection/v2 artifact")
 	}
 	for _, rel := range allowed {
 		if isForbiddenBacklogPath(rel) || rel == "." {

@@ -10,7 +10,7 @@ dorkpipe_test_require_go "test_backlog_remote_workflow"
 dorkpipe_test_init_go_cache "$REPO_ROOT"
 
 tmp="$(dorkpipe_test_mktemp_dir "$REPO_ROOT")"
-consumer="$REPO_ROOT"
+consumer="$tmp/consumer"
 application_consumer="$tmp/application-consumer"
 application_pristine="$tmp/application-pristine"
 application_expected="$tmp/application-expected"
@@ -24,6 +24,12 @@ validation_input_file_count=0
 trap 'rm -rf "$tmp"' EXIT
 
 mkdir -p "$tmp/fake-bin"
+cp -R "$fixture_root/consumer" "$consumer"
+for routed_source in AGENTS.md docs/agents/packages/package-authoring.md \
+  docs/agents/tasks/backlog-driven-remote-tasks.md docs/agents/workflows/yaml-workflows.md; do
+  mkdir -p "$consumer/$(dirname "$routed_source")"
+  cp "$REPO_ROOT/$routed_source" "$consumer/$routed_source"
+done
 cp -R "$fixture_root/application-consumer" "$application_consumer"
 while IFS= read -r validation_input; do
   validation_input="${validation_input#  \"}"
@@ -33,6 +39,8 @@ while IFS= read -r validation_input; do
     continue
   fi
   validation_input_file_count=$((validation_input_file_count + 1))
+  mkdir -p "$consumer/$(dirname "$validation_input")"
+  cp "$REPO_ROOT/$validation_input" "$consumer/$validation_input"
   if [[ "$validation_input" == "packages/dorkpipe/README.md" ]]; then
     continue
   fi
@@ -206,6 +214,10 @@ for name in backlog-selection.json remote-request.md remote-request.json remote-
   test -f "$artifact_root/$name"
 done
 grep -Fq '"status": "selected"' "$artifact_root/backlog-selection.json"
+grep -Fq '"contract_version": "dorkpipe.backlog-selection/v2"' "$artifact_root/backlog-selection.json"
+grep -Fq '"readiness": "decision_ready"' "$artifact_root/backlog-selection.json"
+grep -Fq '"ownership": "unclaimed"' "$artifact_root/backlog-selection.json"
+grep -Fq '"automatic_selection_performed": false' "$artifact_root/backlog-selection.json"
 grep -Fq '"contract_version": "dorkpipe.remote-request/v2"' "$artifact_root/remote-request.json"
 grep -Fq '"validation_input_files": [' "$artifact_root/remote-request.json"
 grep -Fq '"semantics": "complete_list"' "$artifact_root/remote-request.json"

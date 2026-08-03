@@ -160,6 +160,19 @@ func TestBacklogRemoteArtifactsAreDeterministicAndRestartSafe(t *testing.T) {
 			t.Fatalf("%s is not deterministic", name)
 		}
 	}
+	selection := readJSONMap(filepath.Join(first, "backlog-selection.json"))
+	selectionDispatch := mapValue(selection["dispatch"])
+	if stringValue(selection["contract_version"]) != backlogSelectionContract ||
+		stringValue(selectionDispatch["readiness"]) != "decision_ready" ||
+		stringValue(selectionDispatch["ownership"]) != "unclaimed" ||
+		backlogTestBool(selection["automatic_selection_performed"]) {
+		t.Fatalf("selection does not bind explicit decision-ready, unclaimed inspection: %#v", selection)
+	}
+	for _, forbidden := range []string{"claim", "lease", "ranking", "scheduling", "dispatch_authority", "provider", "execution", "apply", "git", "publication"} {
+		if _, exists := selection[forbidden]; exists {
+			t.Fatalf("selection unexpectedly contains %s authority", forbidden)
+		}
+	}
 	compatibility := readJSONMap(filepath.Join(first, "remote-adapter-compatibility.json"))
 	if stringValue(mapValue(compatibility["compatibility"])["status"]) != "unsupported" || backlogTestBool(compatibility["live_submission_enabled"]) {
 		t.Fatalf("unexpected compatibility artifact: %#v", compatibility)
@@ -310,15 +323,19 @@ func TestBacklogRemoteArtifactsAreDeterministicAndRestartSafe(t *testing.T) {
 }
 
 func TestBacklogInspectRejectsSelectionFailuresWithoutDispatchArtifact(t *testing.T) {
-	validIndex := `schema: 1
+	validIndex := `schema: 2
 description: Fixture open-only backlog.
 tasks:
   - id: TASK-015
     topic: Backlog remote fixture
     path: docs/agents/tasks/backlog-driven-remote-tasks.md
+    dispatch:
+      readiness: decision_ready
+      ownership: unclaimed
 maintenance:
   - Keep open-only.
 `
+	dispatchBlock := "    dispatch:\n      readiness: decision_ready\n      ownership: unclaimed\n"
 	tests := []struct {
 		name     string
 		index    string
@@ -331,15 +348,26 @@ maintenance:
 		{name: "absent id", index: validIndex, taskID: "", slice: "Implement the bounded fixture slice.", wantCode: "task_id_required"},
 		{name: "malformed id", index: validIndex, taskID: "TASK-15", slice: "Implement the bounded fixture slice.", wantCode: "malformed_task_id"},
 		{name: "unknown id", index: validIndex, taskID: "TASK-014", slice: "Implement the bounded fixture slice.", wantCode: "unknown_task_id"},
-		{name: "duplicate", index: strings.Replace(validIndex, "maintenance:", "  - id: TASK-015\n    topic: Duplicate\n    path: docs/agents/tasks/backlog-driven-remote-tasks.md\nmaintenance:", 1), taskID: "TASK-015", slice: "Implement the bounded fixture slice.", wantCode: "ambiguous_task_id"},
-		{name: "ambiguous linked path", index: strings.Replace(validIndex, "maintenance:", "  - id: TASK-014\n    topic: Same linked task\n    path: docs/agents/tasks/backlog-driven-remote-tasks.md\nmaintenance:", 1), taskID: "TASK-015", slice: "Implement the bounded fixture slice.", wantCode: "ambiguous_linked_task"},
+		{name: "duplicate", index: strings.Replace(validIndex, "maintenance:", "  - id: TASK-015\n    topic: Duplicate\n    path: docs/agents/tasks/backlog-driven-remote-tasks.md\n"+dispatchBlock+"maintenance:", 1), taskID: "TASK-015", slice: "Implement the bounded fixture slice.", wantCode: "ambiguous_task_id"},
+		{name: "ambiguous linked path", index: strings.Replace(validIndex, "maintenance:", "  - id: TASK-014\n    topic: Same linked task\n    path: docs/agents/tasks/backlog-driven-remote-tasks.md\n"+dispatchBlock+"maintenance:", 1), taskID: "TASK-015", slice: "Implement the bounded fixture slice.", wantCode: "ambiguous_linked_task"},
 		{name: "malformed entry", index: strings.Replace(validIndex, "    topic: Backlog remote fixture\n", "", 1), taskID: "TASK-015", slice: "Implement the bounded fixture slice.", wantCode: "malformed_index_entry"},
 		{name: "missing link", index: strings.Replace(validIndex, "backlog-driven-remote-tasks.md", "missing.md", 1), taskID: "TASK-015", slice: "Implement the bounded fixture slice.", wantCode: "invalid_linked_task"},
 		{name: "escaping link", index: strings.Replace(validIndex, "docs/agents/tasks/backlog-driven-remote-tasks.md", "docs/agents/tasks/../../../outside.md", 1), taskID: "TASK-015", slice: "Implement the bounded fixture slice.", wantCode: "malformed_index_entry"},
 		{name: "mismatched link", index: validIndex, taskID: "TASK-015", slice: "Implement the bounded fixture slice.", taskDoc: "# TASK-014 Wrong task\n", wantCode: "mismatched_linked_task"},
 		{name: "closed path", index: strings.Replace(validIndex, "docs/agents/tasks/backlog-driven-remote-tasks.md", "docs/agents/tasks/closed/backlog-driven-remote-tasks.md", 1), taskID: "TASK-015", slice: "Implement the bounded fixture slice.", wantCode: "task_closed"},
-		{name: "blocked fixture", index: strings.Replace(validIndex, "    path: docs/agents/tasks/backlog-driven-remote-tasks.md", "    path: docs/agents/tasks/backlog-driven-remote-tasks.md\n    dispatch_state: blocked", 1), taskID: "TASK-015", slice: "Implement the bounded fixture slice.", wantCode: "task_blocked"},
-		{name: "externally active fixture", index: strings.Replace(validIndex, "    path: docs/agents/tasks/backlog-driven-remote-tasks.md", "    path: docs/agents/tasks/backlog-driven-remote-tasks.md\n    dispatch_state: external_active", 1), taskID: "TASK-015", slice: "Implement the bounded fixture slice.", wantCode: "task_externally_active"},
+		{name: "schema 1", index: strings.Replace(validIndex, "schema: 2", "schema: 1", 1), taskID: "TASK-015", slice: "Implement the bounded fixture slice.", wantCode: "malformed_index"},
+		{name: "missing dispatch", index: strings.Replace(validIndex, dispatchBlock, "", 1), taskID: "TASK-015", slice: "Implement the bounded fixture slice.", wantCode: "malformed_index_entry"},
+		{name: "missing readiness", index: strings.Replace(validIndex, "      readiness: decision_ready\n", "", 1), taskID: "TASK-015", slice: "Implement the bounded fixture slice.", wantCode: "malformed_index_entry"},
+		{name: "missing ownership", index: strings.Replace(validIndex, "      ownership: unclaimed\n", "", 1), taskID: "TASK-015", slice: "Implement the bounded fixture slice.", wantCode: "malformed_index_entry"},
+		{name: "unknown readiness", index: strings.Replace(validIndex, "readiness: decision_ready", "readiness: inferred_ready", 1), taskID: "TASK-015", slice: "Implement the bounded fixture slice.", wantCode: "malformed_index_entry"},
+		{name: "unknown ownership", index: strings.Replace(validIndex, "ownership: unclaimed", "ownership: local_active", 1), taskID: "TASK-015", slice: "Implement the bounded fixture slice.", wantCode: "malformed_index_entry"},
+		{name: "legacy dispatch state", index: strings.Replace(validIndex, dispatchBlock, "    dispatch_state: open\n", 1), taskID: "TASK-015", slice: "Implement the bounded fixture slice.", wantCode: "malformed_index"},
+		{name: "unknown nested dispatch field", index: strings.Replace(validIndex, "      ownership: unclaimed\n", "      ownership: unclaimed\n      priority: high\n", 1), taskID: "TASK-015", slice: "Implement the bounded fixture slice.", wantCode: "malformed_index"},
+		{name: "unclassified is not ready", index: strings.Replace(validIndex, "readiness: decision_ready", "readiness: unclassified", 1), taskID: "TASK-015", slice: "Implement the bounded fixture slice.", wantCode: "task_not_decision_ready"},
+		{name: "decision blocked", index: strings.Replace(validIndex, "readiness: decision_ready", "readiness: decision_blocked", 1), taskID: "TASK-015", slice: "Implement the bounded fixture slice.", wantCode: "task_blocked"},
+		{name: "readiness cannot imply ownership", index: strings.Replace(validIndex, "ownership: unclaimed", "ownership: external_active", 1), taskID: "TASK-015", slice: "Implement the bounded fixture slice.", wantCode: "task_externally_active"},
+		{name: "ownership cannot imply readiness", index: strings.Replace(validIndex, "readiness: decision_ready", "readiness: unclassified", 1), taskID: "TASK-015", slice: "Implement the bounded fixture slice.", wantCode: "task_not_decision_ready"},
+		{name: "external ownership wins independently", index: strings.Replace(strings.Replace(validIndex, "readiness: decision_ready", "readiness: decision_blocked", 1), "ownership: unclaimed", "ownership: external_active", 1), taskID: "TASK-015", slice: "Implement the bounded fixture slice.", wantCode: "task_externally_active"},
 		{name: "empty slice", index: validIndex, taskID: "TASK-015", slice: "", wantCode: "invalid_bounded_slice"},
 		{name: "padded slice", index: validIndex, taskID: "TASK-015", slice: " Implement the bounded fixture slice. ", wantCode: "invalid_bounded_slice"},
 		{name: "multiline slice", index: validIndex, taskID: "TASK-015", slice: "Implement this slice.\nThen widen it.", wantCode: "invalid_bounded_slice"},
@@ -365,10 +393,47 @@ maintenance:
 			if stringValue(mapValue(selection["rejection"])["code"]) != test.wantCode {
 				t.Fatalf("rejection artifact = %#v", selection)
 			}
-			for _, name := range []string{"remote-request.json", "remote-request.md", "remote-task.json"} {
+			for _, name := range []string{"remote-request.json", "remote-request.md", "remote-adapter-compatibility.json", "remote-task.json", "completion-candidate.json", "remote-status.json", "remote-diff.json", "remote-diff.patch", "remote-result.json", "validation-receipt.json", "patch-boundary.json", "patch-application.json", "validation-execution.json", "semantic-review-decision.json", "ready-for-review.json", "checkout-application-approval.json", "checkout-application.json"} {
 				if _, statErr := os.Stat(filepath.Join(root, name)); !os.IsNotExist(statErr) {
 					t.Fatalf("rejected selection left %s", name)
 				}
+			}
+		})
+	}
+
+	for _, test := range []struct {
+		name   string
+		mutate func(*testing.T, string)
+	}{
+		{name: "changed index invalidates stale selection", mutate: func(t *testing.T, repo string) {
+			path := filepath.Join(repo, filepath.FromSlash(backlogIndexPath))
+			writeBacklogTestFile(t, path, strings.Replace(string(mustReadFile(t, path)), "topic: Backlog remote fixture", "topic: Changed backlog fixture", 1))
+		}},
+		{name: "changed linked task invalidates stale selection", mutate: func(t *testing.T, repo string) {
+			writeBacklogTestFile(t, filepath.Join(repo, "docs", "agents", "tasks", "backlog-driven-remote-tasks.md"), "# TASK-015 Backlog remote fixture\n\nChanged fixture body.\n")
+		}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			repo := writeBacklogTestRepo(t)
+			root := filepath.Join(t.TempDir(), "artifacts")
+			if err := inspectBacklogSelection(repo, backlogIndexPath, "TASK-015", "Implement the bounded fixture slice.", backlogTestBaseline, root); err != nil {
+				t.Fatal(err)
+			}
+			before := readJSONMap(filepath.Join(root, "backlog-selection.json"))
+			test.mutate(t, repo)
+			if err := compileBacklogRemoteRequest(repo, root, "fixture-environment", "js/dev", `["packages/dorkpipe"]`, `["No external action"]`, `["go test ./packages/dorkpipe/lib/orchestrationhelper"]`, backlogTestValidationInputsJSON, `[]`); err == nil || !strings.Contains(err.Error(), "changed after backlog inspection") {
+				t.Fatalf("stale selection error = %v", err)
+			}
+			freshRoot := filepath.Join(t.TempDir(), "fresh-artifacts")
+			if err := inspectBacklogSelection(repo, backlogIndexPath, "TASK-015", "Implement the bounded fixture slice.", backlogTestBaseline, freshRoot); err != nil {
+				t.Fatal(err)
+			}
+			fresh := readJSONMap(filepath.Join(freshRoot, "backlog-selection.json"))
+			if jsonMapsEqual(mapValue(before["source_digests"]), mapValue(fresh["source_digests"])) {
+				t.Fatal("changed source bytes did not alter selection digests")
+			}
+			if _, statErr := os.Stat(filepath.Join(root, "remote-request.json")); !os.IsNotExist(statErr) {
+				t.Fatalf("stale selection created remote-request.json: %v", statErr)
 			}
 		})
 	}
@@ -1737,7 +1802,7 @@ func writeBacklogTestRepo(t *testing.T) string {
 	root := t.TempDir()
 	files := map[string]string{
 		"AGENTS.md":      "# Fixture agent guidance\n",
-		backlogIndexPath: "schema: 1\ndescription: Fixture open-only backlog.\ntasks:\n  - id: TASK-015\n    topic: Backlog remote fixture\n    path: docs/agents/tasks/backlog-driven-remote-tasks.md\nmaintenance:\n  - Keep open-only.\n",
+		backlogIndexPath: "schema: 2\ndescription: Fixture open-only backlog.\ntasks:\n  - id: TASK-015\n    topic: Backlog remote fixture\n    path: docs/agents/tasks/backlog-driven-remote-tasks.md\n    dispatch:\n      readiness: decision_ready\n      ownership: unclaimed\nmaintenance:\n  - Keep open-only.\n",
 		"docs/agents/tasks/backlog-driven-remote-tasks.md": "# TASK-015 Backlog remote fixture\n\nFixture task body.\n",
 		"docs/agents/packages/package-authoring.md":        "# Package authoring fixture\n",
 		"docs/agents/workflows/yaml-workflows.md":          "# YAML workflow fixture\n",
