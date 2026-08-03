@@ -724,11 +724,48 @@ selection/effective-mismatched, or caller-drifted evidence is rejected before pr
 resume, turn start, and steer. The existing recovery policy key and all no-replay, no-retry,
 no-fallback, correlation, audit, disconnect, and consumer behavior remain unchanged.
 
-Every non-baseline sandbox choice and every enabled capability remain lifecycle-blocked because their
-validated advertisements retain no exact package-owned provider mapping. The smallest evidence-backed
-next CAS-14 action is one separately bounded package-local fixture/schema slice proving and retaining
-one exact non-baseline sandbox mapping without inferring it from approval automation or widening the
-current lifecycle sandbox. Capability wiring, consumers, MCP, Pipeon, fallback, and engine work remain
+One non-baseline sandbox mapping is now proven and retained without lifecycle authorization. The
+stable JSON Schema generated offline by installed `codex-cli 0.144.1`, without `--experimental`,
+defines `danger-full-access` in `SandboxMode`, defines the exact `dangerFullAccess` discriminator in
+`SandboxPolicy`, and binds those definitions to the stable thread/turn lifecycle parameter shapes.
+The fixture-backed `broader-native-sandbox` advertisement therefore retains exactly that private pair;
+the opaque reference, display meaning, ordering, availability, approval/reviewer selection, model,
+capabilities, connection, and confirmation are never used to derive either wire value.
+
+The option must remain stable, available, exactly selected/effective, and individually
+session-confirmed. Its mapping participates in catalog identity, ambiguity and drift rejection,
+defensive copies, and pinned-catalog comparison. Missing, partial, malformed, duplicate, second,
+changed, removed, unavailable, unconfirmed, cross-confirmed, shell-command-enabling, or
+policy-bypassing evidence fails closed. Approval automation cannot select or confirm sandbox
+authority. The existing lifecycle resolver remains unchanged and accepts only the proven
+`workspace-write` / `workspaceWrite` lane, so `StartThread`, `ReadThread`, `ResumeThread`, `StartTurn`,
+and `SteerTurn` reject the mapped non-baseline option before protocol request I/O. Zero enabled
+capabilities, the recovery policy key, immutable thread binding, and no-replay/no-retry/no-fallback
+behavior remain unchanged.
+
+One stable capability mapping is now proven and retained without enablement or dispatch. The same
+non-experimental schema defines `InitializeCapabilities.requestAttestation` as a boolean that defaults
+to `false`; `true` opts into `attestation/generate` requests for upstream `x-oai-attestation`. The
+fixture-backed `request-attestation` advertisement retains exactly that private field/value pair and
+marks it stable, available, supported, authority-expanding, and non-experimental. The opaque reference,
+ordering, availability, support, authority classification, another capability, approval, sandbox,
+model, or confirmation never derives the wire mapping.
+
+The private pair participates in capability catalog identity, mapping ambiguity/drift detection,
+defensive copies, and pinned comparison. Missing, partial, changed, duplicate, second-mapped, removed,
+unstable, unavailable, unsupported, non-authority, experimental, or unconfirmed evidence fails closed.
+The selected effective-policy baseline keeps it disabled and unconfirmed. Existing initialization
+still sends only its notification opt-outs, and unchanged lifecycle resolution rejects every enabled
+capability before protocol I/O for thread start/read/resume and turn start/steer. No attestation request,
+credential, account value, authentication action, or provider call was made or retained.
+
+No second in-scope stable mapping is proven. `experimentalApi` is the prohibited global experimental
+opt-in, `mcpServerOpenaiFormElicitation` is outside the no-MCP boundary,
+`optOutNotificationMethods` suppresses notifications rather than enabling a capability, and
+`SelectedCapabilityRoot` appears only as an unbound shared definition in stable `ThreadStartParams`.
+The smallest evidence-backed next CAS-14 action is a separately approved package-local contract and
+sequencing decision for individually confirmed pre-initialization capabilities; no dispatch code is
+implied. Consumers, MCP, Pipeon, provider pools, fallback, workflows, schemas, and engine work remain
 separate.
 
 `packages/dorkpipe/lib/cmd/dorkpipe/provider_pool.go`,
