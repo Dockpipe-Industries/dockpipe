@@ -2,21 +2,29 @@ package appserversupervisor
 
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"strconv"
 	"strings"
 	"time"
+	"unicode"
+	"unicode/utf8"
 
 	"dorkpipe.orchestrator/providersession"
 )
 
 // CAS-07 keeps App Server request shapes private. It projects only a small
-// neutral subset and never retains command text, patches, prompts, messages,
-// provider request IDs, or permission payloads.
+// neutral subset and never persists command text, patches, prompts, messages,
+// provider request IDs, permission payloads, answers, or private mappings.
 var (
-	ErrDecisionUnavailable = errors.New("app server approval decision is unavailable")
-	ErrDecisionRejected    = errors.New("app server approval decision was rejected")
+	ErrDecisionUnavailable          = errors.New("app server approval decision is unavailable")
+	ErrDecisionRejected             = errors.New("app server approval decision was rejected")
+	ErrUserInputPromptUnavailable   = errors.New("app server user-input prompt is unavailable")
+	ErrUserInputPromptRejected      = errors.New("app server user-input prompt was rejected")
+	ErrUserInputResponseUnavailable = errors.New("app server user-input response is unavailable")
+	ErrUserInputResponseRejected    = errors.New("app server user-input response was rejected")
 )
 
 type pendingKind uint8
@@ -32,8 +40,27 @@ type pendingRequest struct {
 	providerID       uint64
 	kind             pendingKind
 	correlation      providersession.Correlation
+	prompt           *providersession.UserInputPrompt
+	input            *pendingUserInputState
 	decisionInFlight bool
 	timer            *time.Timer
+}
+
+type pendingUserInputState struct {
+	questionID     string
+	answerByOption map[string]string
+}
+
+type providerUserInputQuestion struct {
+	id      string
+	summary string
+	options []providerUserInputOption
+}
+
+type providerUserInputOption struct {
+	answer      string
+	label       string
+	description string
 }
 
 type serverRequestParams struct {
@@ -66,6 +93,14 @@ func (s *Supervisor) handleServerRequest(providerID uint64, method string, raw j
 	kind, actionClass, scope, reason := classifyServerRequest(method, params)
 	if reason != "" {
 		return reason
+	}
+	var inputQuestion *providerUserInputQuestion
+	if kind == pendingUserInput {
+		parsed, ok := parseProviderUserInputQuestion(params.Questions)
+		if !ok {
+			return DisconnectUnsupportedEvent
+		}
+		inputQuestion = &parsed
 	}
 
 	s.mu.Lock()
@@ -102,6 +137,16 @@ func (s *Supervisor) handleServerRequest(providerID uint64, method string, raw j
 	correlation := s.eventCorrelation(s.lifecycle.turnID, s.lifecycle.itemID)
 	correlation.RequestID, correlation.DecisionID = requestRef, decisionRef
 	pending := &pendingRequest{providerID: providerID, kind: kind, correlation: correlation}
+	if kind == pendingUserInput {
+		request := providersession.UserInputRequest{Correlation: correlation, PromptRef: requestRef}
+		prompt, input, ok := projectProviderUserInput(*inputQuestion, request)
+		if !ok {
+			s.mu.Unlock()
+			return DisconnectUnsupportedEvent
+		}
+		pending.prompt = &prompt
+		pending.input = &input
+	}
 	s.lifecycle.pending = pending
 	pending.timer = time.AfterFunc(s.deadlines.Request, func() { s.expirePending(correlation) })
 	s.sequence++
@@ -132,7 +177,7 @@ func serverRequestShapeAllowed(method string, raw json.RawMessage) bool {
 	case "item/permissions/requestApproval":
 		allowed = []string{"threadId", "turnId", "itemId", "permissions", "additionalPermissions", "networkApprovalContext", "proposedExecpolicyAmendment", "proposedNetworkPolicyAmendments"}
 	case "item/tool/requestUserInput":
-		allowed = []string{"threadId", "turnId", "itemId", "questions"}
+		allowed = []string{"threadId", "turnId", "itemId", "questions", "autoResolutionMs"}
 	default:
 		return false
 	}
@@ -143,13 +188,17 @@ func serverRequestShapeAllowed(method string, raw json.RawMessage) bool {
 	if startedAt, found := fields["startedAtMs"]; found && !validRequestTimestamp(startedAt) {
 		return false
 	}
+	if autoResolution, found := fields["autoResolutionMs"]; found && !explicitJSONNull(autoResolution) {
+		return false
+	}
 	if questions, found := fields["questions"]; found {
 		var values []json.RawMessage
 		if json.Unmarshal(questions, &values) != nil {
 			return false
 		}
 		for _, value := range values {
-			if !nestedObjectFields(value, "id", "header", "question", "options") {
+			questionFields, allowed := objectFields(value, "id", "header", "question", "options", "isOther", "isSecret")
+			if !allowed || !absentOrExplicitFalse(questionFields, "isOther") || !absentOrExplicitFalse(questionFields, "isSecret") {
 				return false
 			}
 		}
@@ -162,6 +211,19 @@ func serverRequestShapeAllowed(method string, raw json.RawMessage) bool {
 func validRequestTimestamp(raw json.RawMessage) bool {
 	var value uint64
 	return json.Unmarshal(raw, &value) == nil
+}
+
+func explicitJSONNull(raw json.RawMessage) bool {
+	return strings.TrimSpace(string(raw)) == "null"
+}
+
+func absentOrExplicitFalse(fields map[string]json.RawMessage, name string) bool {
+	raw, found := fields[name]
+	if !found {
+		return true
+	}
+	var value *bool
+	return json.Unmarshal(raw, &value) == nil && value != nil && !*value
 }
 
 func classifyServerRequest(method string, params serverRequestParams) (pendingKind, string, []string, DisconnectReason) {
@@ -182,9 +244,6 @@ func classifyServerRequest(method string, params serverRequestParams) (pendingKi
 		}
 		return pendingPermission, "declared_permission", []string{"declared_writable_roots"}, ""
 	case "item/tool/requestUserInput":
-		if !validQuestions(params.Questions) {
-			return 0, "", nil, DisconnectUnsupportedEvent
-		}
 		return pendingUserInput, "", nil, ""
 	default:
 		return 0, "", nil, DisconnectUnsupportedEvent
@@ -199,21 +258,247 @@ func presentJSON(raw json.RawMessage) bool {
 	return len(raw) != 0 && string(raw) != "null"
 }
 
-func validQuestions(questions []json.RawMessage) bool {
-	if len(questions) < 1 || len(questions) > 3 {
-		return false
+func parseProviderUserInputQuestion(questions []json.RawMessage) (providerUserInputQuestion, bool) {
+	// The neutral contract represents one prompt and one response. A provider
+	// batch cannot be partially answered or correlated safely by this slice.
+	if len(questions) != 1 {
+		return providerUserInputQuestion{}, false
 	}
-	seen := map[string]bool{}
-	for _, raw := range questions {
-		var question struct {
-			ID string `json:"id"`
-		}
-		if json.Unmarshal(raw, &question) != nil || !validID(question.ID) || seen[question.ID] {
-			return false
-		}
-		seen[question.ID] = true
+	fields, ok := objectFields(questions[0], "id", "header", "question", "options", "isOther", "isSecret")
+	if !ok || !absentOrExplicitFalse(fields, "isOther") || !absentOrExplicitFalse(fields, "isSecret") {
+		return providerUserInputQuestion{}, false
 	}
-	return true
+	for _, required := range []string{"id", "header", "question"} {
+		if _, found := fields[required]; !found {
+			return providerUserInputQuestion{}, false
+		}
+	}
+	var question struct {
+		ID       string            `json:"id"`
+		Header   string            `json:"header"`
+		Question string            `json:"question"`
+		Options  []json.RawMessage `json:"options"`
+	}
+	if json.Unmarshal(questions[0], &question) != nil || !validID(question.ID) || len(question.Options) > 16 {
+		return providerUserInputQuestion{}, false
+	}
+	if _, ok := normalizeUserInputDisplayText(question.Header, 128); !ok {
+		return providerUserInputQuestion{}, false
+	}
+	summary, ok := normalizeUserInputDisplayText(question.Question, 512)
+	if !ok {
+		return providerUserInputQuestion{}, false
+	}
+	parsed := providerUserInputQuestion{id: question.ID, summary: summary, options: make([]providerUserInputOption, 0, len(question.Options))}
+	answers := make(map[string]struct{}, len(question.Options))
+	displayLabels := make(map[string]struct{}, len(question.Options))
+	for _, raw := range question.Options {
+		optionFields, allowed := objectFields(raw, "label", "description")
+		if !allowed {
+			return providerUserInputQuestion{}, false
+		}
+		if _, found := optionFields["label"]; !found {
+			return providerUserInputQuestion{}, false
+		}
+		if _, found := optionFields["description"]; !found {
+			return providerUserInputQuestion{}, false
+		}
+		var option struct {
+			Label       string `json:"label"`
+			Description string `json:"description"`
+		}
+		if json.Unmarshal(raw, &option) != nil || len(option.Label) > 4096 || len(option.Description) > 4096 || !utf8.ValidString(option.Label) || !utf8.ValidString(option.Description) || strings.ContainsRune(option.Label, '\x00') || strings.ContainsRune(option.Description, '\x00') {
+			return providerUserInputQuestion{}, false
+		}
+		if _, duplicate := answers[option.Label]; duplicate {
+			return providerUserInputQuestion{}, false
+		}
+		label, ok := normalizeUserInputDisplayText(option.Label, 128)
+		if !ok {
+			return providerUserInputQuestion{}, false
+		}
+		if _, duplicate := displayLabels[label]; duplicate {
+			return providerUserInputQuestion{}, false
+		}
+		answers[option.Label] = struct{}{}
+		displayLabels[label] = struct{}{}
+		parsed.options = append(parsed.options, providerUserInputOption{answer: option.Label, label: label, description: option.Description})
+	}
+	return parsed, true
+}
+
+func normalizeUserInputDisplayText(value string, maximum int) (string, bool) {
+	if value == "" || len(value) > 4096 || !utf8.ValidString(value) || strings.ContainsRune(value, '\x00') {
+		return "", false
+	}
+	normalized := strings.Join(strings.Fields(value), " ")
+	if normalized == "" || len(normalized) > maximum {
+		return "", false
+	}
+	for _, character := range normalized {
+		if unicode.IsControl(character) {
+			return "", false
+		}
+	}
+	return normalized, true
+}
+
+func projectProviderUserInput(question providerUserInputQuestion, request providersession.UserInputRequest) (providersession.UserInputPrompt, pendingUserInputState, bool) {
+	prompt := providersession.UserInputPrompt{Correlation: request.Correlation, PromptRef: request.PromptRef, Summary: question.summary}
+	input := pendingUserInputState{questionID: question.id}
+	if len(question.options) == 0 {
+		prompt.Kind = providersession.UserInputPromptText
+		prompt.MaxTextBytes = 4096
+	} else {
+		prompt.Kind = providersession.UserInputPromptSelectOne
+		prompt.MaxSelections = 1
+		prompt.Options = make([]providersession.UserInputOption, 0, len(question.options))
+		input.answerByOption = make(map[string]string, len(question.options))
+		for _, option := range question.options {
+			optionRef := providerUserInputOptionReference(request.Correlation, question.id, option)
+			if _, duplicate := input.answerByOption[optionRef]; duplicate {
+				return providersession.UserInputPrompt{}, pendingUserInputState{}, false
+			}
+			prompt.Options = append(prompt.Options, providersession.UserInputOption{OptionRef: optionRef, Label: option.label})
+			input.answerByOption[optionRef] = option.answer
+		}
+	}
+	if err := prompt.ValidateFor(request); err != nil {
+		return providersession.UserInputPrompt{}, pendingUserInputState{}, false
+	}
+	return prompt, input, true
+}
+
+func providerUserInputOptionReference(correlation providersession.Correlation, questionID string, option providerUserInputOption) string {
+	hash := sha256.New()
+	for _, value := range []string{
+		correlation.ProcessIncarnationID,
+		correlation.ConnectionID,
+		correlation.SessionID,
+		correlation.InteractionID,
+		correlation.ActivityID,
+		correlation.RequestID,
+		correlation.DecisionID,
+		questionID,
+		option.answer,
+		option.description,
+	} {
+		_, _ = hash.Write([]byte(value))
+		_, _ = hash.Write([]byte{0})
+	}
+	return fmt.Sprintf("option-%x", hash.Sum(nil))
+}
+
+// UserInputPrompt returns a defensive copy of the one normalized prompt bound
+// to the exact current request. Lookup is read-only and does not consume,
+// answer, persist, replay, or dispatch the prompt.
+func (s *Supervisor) UserInputPrompt(ctx context.Context, request providersession.UserInputRequest) (providersession.UserInputPrompt, error) {
+	if err := ctx.Err(); err != nil {
+		return providersession.UserInputPrompt{}, err
+	}
+	if err := request.Validate(); err != nil {
+		return providersession.UserInputPrompt{}, s.rejectUserInputPrompt(DisconnectUnsupportedEvent, ErrUserInputPromptRejected)
+	}
+	s.mu.RLock()
+	pending := s.lifecycle.pending
+	ready := s.started && s.initialized && s.state == providersession.StateWaitingForUserInput && pending != nil && pending.kind == pendingUserInput
+	if !ready {
+		s.mu.RUnlock()
+		return providersession.UserInputPrompt{}, s.rejectUserInputPrompt(DisconnectDecisionRejected, ErrUserInputPromptUnavailable)
+	}
+	current := providersession.UserInputRequest{Correlation: pending.correlation, PromptRef: pending.correlation.RequestID}
+	if request != current {
+		s.mu.RUnlock()
+		return providersession.UserInputPrompt{}, s.rejectUserInputPrompt(DisconnectCorrelationMismatch, ErrUserInputPromptRejected)
+	}
+	if pending.prompt == nil {
+		s.mu.RUnlock()
+		return providersession.UserInputPrompt{}, s.rejectUserInputPrompt(DisconnectUnsupportedEvent, ErrUserInputPromptUnavailable)
+	}
+	prompt := cloneUserInputPrompt(*pending.prompt)
+	s.mu.RUnlock()
+	if err := prompt.ValidateFor(request); err != nil {
+		return providersession.UserInputPrompt{}, s.rejectUserInputPrompt(DisconnectUnsupportedEvent, ErrUserInputPromptRejected)
+	}
+	return prompt, nil
+}
+
+func (s *Supervisor) rejectUserInputPrompt(reason DisconnectReason, err error) error {
+	s.fail(reason)
+	return err
+}
+
+func cloneUserInputPrompt(prompt providersession.UserInputPrompt) providersession.UserInputPrompt {
+	prompt.Options = append([]providersession.UserInputOption(nil), prompt.Options...)
+	return prompt
+}
+
+// RespondUserInput delivers one exact validated response to the current private
+// App Server request. Answer content and provider mapping are used only to build
+// this write and are cleared before control returns to the caller.
+func (s *Supervisor) RespondUserInput(parent context.Context, response providersession.UserInputResponse) error {
+	started := time.Now()
+	s.mu.Lock()
+	pending := s.lifecycle.pending
+	ready := s.started && s.initialized && s.state == providersession.StateWaitingForUserInput && pending != nil && pending.kind == pendingUserInput && pending.prompt != nil && pending.input != nil
+	if !ready {
+		s.mu.Unlock()
+		return s.rejectUserInputResponse(DisconnectDecisionRejected, ErrUserInputResponseUnavailable)
+	}
+	if response.Correlation != pending.correlation || response.PromptRef != pending.prompt.PromptRef {
+		s.mu.Unlock()
+		return s.rejectUserInputResponse(DisconnectCorrelationMismatch, ErrUserInputResponseRejected)
+	}
+	if pending.decisionInFlight {
+		s.mu.Unlock()
+		return s.rejectUserInputResponse(DisconnectDecisionRejected, ErrUserInputResponseRejected)
+	}
+	if err := response.ValidateFor(*pending.prompt); err != nil {
+		s.mu.Unlock()
+		return s.rejectUserInputResponse(DisconnectDecisionRejected, ErrUserInputResponseRejected)
+	}
+	result, ok := userInputResult(response, *pending.input)
+	if !ok {
+		s.mu.Unlock()
+		return s.rejectUserInputResponse(DisconnectDecisionRejected, ErrUserInputResponseRejected)
+	}
+	client, providerID, correlation := s.client, pending.providerID, pending.correlation
+	pending.decisionInFlight = true
+	// Clear all prompt content and private mapping before the provider write.
+	pending.prompt = nil
+	pending.input = nil
+	s.mu.Unlock()
+	ctx, cancel := context.WithTimeout(parent, s.deadlines.Request)
+	defer cancel()
+	if client == nil || client.respond(ctx, providerID, result) != nil {
+		s.fail(DisconnectTransportClosed)
+		return ErrUserInputResponseUnavailable
+	}
+	if !s.auditOperation("user_input", "delivered", "waiting", "user_input_delivered", correlation, started) {
+		return ErrUserInputResponseUnavailable
+	}
+	return nil
+}
+
+func userInputResult(response providersession.UserInputResponse, input pendingUserInputState) (map[string]any, bool) {
+	answers := make([]string, 0, len(response.SelectedOptionRefs)+1)
+	if response.Text != "" {
+		answers = append(answers, response.Text)
+	} else {
+		for _, optionRef := range response.SelectedOptionRefs {
+			answer, found := input.answerByOption[optionRef]
+			if !found {
+				return nil, false
+			}
+			answers = append(answers, answer)
+		}
+	}
+	return map[string]any{"answers": map[string]any{input.questionID: map[string]any{"answers": answers}}}, true
+}
+
+func (s *Supervisor) rejectUserInputResponse(reason DisconnectReason, err error) error {
+	s.fail(reason)
+	return err
 }
 
 func (s *Supervisor) permissionScopeDeclared(raw json.RawMessage) bool {
@@ -338,7 +623,11 @@ func (s *Supervisor) handleServerRequestResolved(params eventParams) DisconnectR
 		s.mu.Unlock()
 		return DisconnectCorrelationMismatch
 	}
-	if !pending.decisionInFlight || s.state != providersession.StateWaitingForApproval {
+	wantState := providersession.StateWaitingForApproval
+	if pending.kind == pendingUserInput {
+		wantState = providersession.StateWaitingForUserInput
+	}
+	if !pending.decisionInFlight || s.state != wantState {
 		s.mu.Unlock()
 		return DisconnectEventOrdering
 	}
@@ -348,9 +637,13 @@ func (s *Supervisor) handleServerRequestResolved(params eventParams) DisconnectR
 	s.lifecycle.pending = nil
 	s.state = providersession.StateRunning
 	s.sequence++
-	event := providersession.Event{ContractVersion: providersession.ContractVersion, Sequence: s.sequence, OccurredAt: nowUTC(), Session: s.session, Kind: providersession.EventStateChanged, State: s.state, Correlation: pending.correlation, Summary: "approval_resolved"}
+	operation, summary := "approval", "approval_resolved"
+	if pending.kind == pendingUserInput {
+		operation, summary = "user_input", "user_input_resolved"
+	}
+	event := providersession.Event{ContractVersion: providersession.ContractVersion, Sequence: s.sequence, OccurredAt: nowUTC(), Session: s.session, Kind: providersession.EventStateChanged, State: s.state, Correlation: pending.correlation, Summary: summary}
 	s.mu.Unlock()
-	if !s.publish(event, "approval", "resolved", "running") {
+	if !s.publish(event, operation, "resolved", "running") {
 		return DisconnectAuditFailure
 	}
 	return ""

@@ -17,14 +17,33 @@ or approval delivery behavior.
   interaction, activity, request, and decision identity.
 - `RecoveryRequest` binds an opaque bounded recovery-evidence reference to the exact session;
   adapter-local persistence and reconciliation decide whether that evidence is safe.
-- `Adapter` describes future start, send, decide, cancel, and recover operations without choosing a
-  provider implementation.
+- `ModelReasoningCatalog` carries at most 128 opaque, validated, currently available stable
+  model/reasoning combinations. A selection is valid only against the exact catalog reference and
+  exact advertised pair.
+- `EffectivePolicySnapshot` carries exact selected/effective model, reasoning, approval/reviewer,
+  and sandbox references plus a safe capability projection. It contains no adapter selection.
+- `CapabilityRecord` distinguishes support, user enablement, authority expansion, and experimental
+  status. Unsupported capabilities remain disabled; every enabled authority-expanding or
+  experimental capability requires its own per-session confirmation.
+- `UserInputPrompt` is a normalized renderable record with a 512-byte summary, at most 16 bounded
+  options, or one text answer bounded to at most 4096 bytes. It never contains a provider question
+  or option union.
+- `Adapter` describes catalog, start, effective-policy, send, approval, bounded prompt lookup,
+  one-time input response, cancel, and recover operations without choosing a provider implementation.
 
 ## Safety semantics
 
 `disconnected` is fail-closed. It can return to `ready` only through verified recovery; a terminal
 state cannot restart. A human decision requires the complete correlation tuple, preventing replay
-or cross-session application.
+or cross-session application. Model/reasoning and approval/sandbox selections cannot be silently
+substituted. Approval and sandbox are validated independently, so approval automation never grants
+broader sandbox authority. Any authority-expanding policy requires explicit confirmation for that
+session; the confirmation is not reusable by a new session.
+
+Prompt summaries and option labels are bounded normalized display values, not retained provider
+input. Text answers exist only as transient operation input. Implementations must consume an input
+response at most once for its exact process, connection, session, interaction, activity, request,
+decision, and prompt references, then exclude it from events, snapshots, diagnostics, and audits.
 
 ## Future adapter mapping
 
@@ -106,27 +125,214 @@ and private in-memory stdio; no provider executable, account, credential, networ
 integration route is involved. Expanded source-boundary checks keep App Server/raw-protocol vocabulary
 out of `providersession` and Pipeon.
 
-CAS-13 is not complete. On 2026-07-12 its opt-in supervisor harness used the CAS-11 direct
-`codex app-server --stdio` child to verify the current v2 initialization shape, the exact pinned
-`gpt-5.6-terra` / `high` catalog entry, thread start, clean shutdown, and bounded controlled
-transport loss. The v2 wire result omits the redundant `jsonrpc` member; the supervisor now
-accepts only that documented omission or `2.0`, and retains no raw frame. The pinned policy remains
-workspace-write with declared in-workspace roots, network disabled, human review, and no shell,
-full-access, automatic-review, reroute, or fallback path.
+CAS-13 controlled Windows integration is complete. Its host-resident harness verified the exact
+`gpt-5.6-terra` / `high` catalog combination, one completed no-tool turn, one exact interrupted
+terminal, a correlated file-change denial with no requested change, clean shutdown, controlled
+transport loss, and direct-child exit. The native turn policy remained workspace-write with declared
+roots, network disabled, and human review. No raw frame, provider error, prompt, command, path,
+credential, account value, or provider identifier was retained. CAS-14 production migration remains
+deferred.
 
-The constrained no-tool turn now reaches a normalized `turn_failed` terminal after its bounded
-provider run for both tested opaque no-tool references and an ephemeral direct no-tool prompt; the
-prompt was not retained. A constrained workspace-change prompt also failed before any approval
-request arrived. Current v2 object status shapes and terminal thread-status transitions are covered
-by fixtures. This proves correlated streaming and fail-closed terminal normalization, not a
-successful completed turn. A constrained interrupt cannot win the race before that failure, so
-genuine approval/denial, exact interruption terminal confirmation, and controlled real child death
-remain unverified. CAS-13 and CAS-14+ remain deferred. No provider artifact is retained.
+CAS-14 has its provider-neutral implementation foundation. The contract can expose the validated
+stable model/reasoning catalog and safe effective-policy snapshot, keeping approval and sandbox
+selection independent and requiring explicit per-session confirmation for authority expansion. It
+also adds bounded prompt lookup and exact-correlation transient input response operations. Validation
+rejects unavailable or silently substituted model/reasoning pairs, substituted approval/sandbox
+policies, unsupported enabled capabilities, unconfirmed authority or experimental capabilities,
+duplicate capability/options, stale input correlation, unknown choices, and oversized or malformed
+display/input values. Adapter choice remains outside this contract.
 
-A post-failure read of the same thread succeeds, isolating the bounded `turn_failed_other` outcome
-to the model-execution/stream path rather than App Server initialization, existing authentication,
-catalog, or thread-control availability. No provider error body is retained.
+The first supervisor-only CAS-14 foundation is fixture-backed and unused by a consumer. An initialized,
+idle supervisor can project one bounded complete model catalog into an order-independent opaque
+catalog reference and pin one exact advertised stable model/reasoning combination. It returns a
+validated `EffectivePolicySnapshot` with no substitution, the existing human-review and
+workspace-write references, and no enabled capability records. The CAS-13 `gpt-5.6-terra` / `high`
+combination remains the proven fixture baseline but is not the only accepted catalog entry. Empty,
+duplicate, incomplete, paged, unavailable, removed, mismatched, changed, malformed, or rerouted
+catalog/selection evidence disconnects fail closed.
 
-The direct child is `codex-cli 0.144.1`. A narrowly reviewed host-side no-model-turn initialization
-probe of the current desktop App resource failed at child startup, so the active desktop Terra UI is
-not a substitutable App Server route for this task.
+The second supervisor-only CAS-14 projection is also fixture-backed and unused by a consumer. Its
+order-independent native policy catalog requires the human-review and workspace-write baseline and
+accepts additional available stable approval/reviewer and sandbox choices only through exact opaque
+references. Approval and sandbox are selected independently; each authority-expanding choice requires
+its own per-session confirmation. Empty, duplicate, unavailable, removed, mismatched, changed,
+unsupported, unconfirmed, cross-confirmed, shell-command-enabling, policy-bypassing, or silently
+substituted evidence disconnects fail closed. Approval automation cannot select or confirm sandbox
+authority, and broader sandbox projection cannot change approval authority.
+
+The third supervisor-only CAS-14 projection is fixture-backed and unused by a consumer. Its bounded,
+order-independent capability catalog requires stable available opaque references while keeping
+availability distinct from explicit DockPipe support. The baseline projects every advertised record
+disabled. An enabled subset must name exact advertised supported references, and every
+authority-expanding or experimental capability requires its own per-session confirmation. Empty,
+duplicate, unavailable, removed, changed, unsupported, unconfirmed, mismatched, or substituted
+evidence disconnects fail closed. Catalog ordering, model, approval/reviewer, sandbox, and another
+capability never imply support, selection, confirmation, or enablement.
+
+The fourth supervisor-only CAS-14 projection established the bounded prompt-record and exact lookup
+foundation and remains unused by a consumer. While one exact user-input request is pending, it can pin
+one bounded normalized `UserInputPrompt` to the complete current correlation and opaque prompt
+reference. Exact lookup returns only a defensive provider-neutral copy and leaves the supervisor
+waiting for input. Empty, duplicate, stale, expired, mismatched, cross-session, substituted,
+unsupported, malformed, or oversized lookup evidence disconnects fail closed. The normalized prompt
+remains transient pending-request state; expiry and disconnect clear it, and prompt content never
+enters events, snapshots, diagnostics, or audits.
+
+The fifth supervisor-only CAS-14 slice is fixture-backed and unused by a consumer. It delivers one
+validated `UserInputResponse` exactly once for the complete current correlation and opaque prompt
+reference. One private provider question is supported per request; choice answers use an explicit
+complete option-reference mapping, never option order, display labels, availability, or substitution.
+The response and private question/option mapping remain transient and are cleared before delivery;
+events and audits contain only bounded delivery/resolution classes. Duplicate, stale, expired,
+malformed, oversized, mismatched, cross-session, unknown-option, post-disconnect, and replayed
+responses fail closed. Multi-question provider batches remain unsupported rather than partially
+answered.
+
+The sixth supervisor-only CAS-14 slice is fixture-tested and unused by a consumer. The exact validated
+single-question `item/tool/requestUserInput` request now creates the normalized prompt and private
+answer mapping directly, without caller-supplied prompt or mapping evidence. Question whitespace and
+option labels become bounded display values; text answers retain the contract's 4096-byte ceiling.
+Each opaque option reference binds the complete current correlation to the exact private
+question/option content and is therefore independent of provider option ordering. Raw question text,
+provider option objects and descriptions, private question identity, raw answer labels, and the
+reference mapping remain transient supervisor-local values and never enter events, snapshots,
+diagnostics, or audits. Empty, malformed, over-bound, control-bearing, duplicate, display-ambiguous,
+multi-question, or otherwise unsupported provider requests disconnect fail closed before any partial
+prompt or answer is exposed.
+
+The opt-in controlled Windows user-input harness is implemented but its 2026-08-03 proof stopped
+safely. One bounded follow-up diagnostic found the exact request-production blocker in the installed
+`codex-cli 0.144.1`: the generated protocol still contains the experimental
+`item/tool/requestUserInput` method and accepts `initialize.capabilities.experimentalApi=true`, but
+the `default_mode_request_user_input` feature is under development and disabled. The authenticated
+no-write turn therefore completed with `user_input_tool_advertised=false`,
+`user_input_tool_invoked=false`, `request_method_class=none`, and `schema_shape=none`. No answer was
+sent, no retry occurred, no provider payload was retained, and the temporary workspace was removed.
+Live prompt normalization, non-first option-reference delivery, matching resolution, and replay
+rejection therefore remain unproven; production contracts and lifecycle dispatch remain unchanged.
+
+A separately approved request-only follow-up then enabled `default_mode_request_user_input` through
+an exact build-tagged launcher wrapper while retaining the experimental initialize capability, the
+same deadline, and the same no-write prompt. One actual authenticated turn stopped at the expected
+server request with `terminal_class=not_reached`, `user_input_tool_advertised=true`,
+`user_input_tool_invoked=true`, `request_method_class=user_input`, and
+`schema_shape=single_select_v1`. No response or retry was sent, no provider content was retained, and
+the temporary workspace was removed. An initial harness launch was rejected locally before child
+spawn because the production launcher intentionally allow-lists only the standard App Server command;
+that produced no authenticated turn and was corrected only in the build-tagged diagnostic wrapper.
+
+The separately approved supervisor-backed, feature-enabled request-only probe stopped safely at a
+second independent gate. Its one authenticated no-write turn reached a non-input terminal with
+`request_class=none`, `parser_class=not_reached`, `prompt_lookup=unavailable`, and
+`response_sent=false`. The production supervisor initializer sends only its notification opt-outs and
+does not advertise `experimentalApi=true`; enabling `default_mode_request_user_input` only on the App
+Server process is therefore insufficient. The direct request-production diagnostic succeeded only
+when both the server feature and client experimental capability were present. No answer or retry was
+sent, and no production contract changed.
+
+The separately approved build-tagged initialization shim then added only `experimentalApi=true` to the
+diagnostic's first initialize frame, while the test-local launcher enabled the server feature. Its one
+authenticated no-write turn reached the supervisor but disconnected before exposing a prompt:
+`terminal_class=disconnected`, `request_class=none`, `parser_class=not_reached`,
+`prompt_lookup=unavailable`, and `response_sent=false`. The shim's offline shape test passed, no answer
+or retry was sent, and production initialization remained unchanged. The run did not retain the safe
+disconnect sub-class, so it does not yet distinguish request ordering, turn correlation, item
+correlation, or another fail-closed handler rejection.
+
+The separately approved classified rerun produced `terminal_class=disconnected` and
+`disconnect_class=other`, with `request_class=none`, `parser_class=not_reached`,
+`prompt_lookup=unavailable`, and `response_sent=false`. This rules out the four retained lifecycle and
+correlation classes. A no-turn comparison of the installed experimental schema then found safe
+structural drift beyond the production parser's exact allowlist: request params now define optional
+`autoResolutionMs`, and questions define optional `isOther` and `isSecret`. No field values or live
+frame were retained. The production parser therefore remains correctly fail-closed, but this run did
+not determine which optional field was present on the live request.
+
+The separately approved direct request-only structural probe then isolated the live incompatibility.
+It produced `terminal_class=not_reached`, `user_input_tool_advertised=true`,
+`user_input_tool_invoked=true`, `request_method_class=user_input`, and
+`schema_shape=single_select`; `autoResolutionMs`, `isOther`, and `isSecret` were all present. The
+production parser's exact request/question allowlists exclude those three fields, so the
+supervisor-backed probe correctly disconnected before correlation or prompt projection. No field
+values, identifiers, prompt content, raw frame, answer, or retry were retained or sent.
+
+The offline fixture-only compatibility decision is complete. The installed schema makes
+`autoResolutionMs` nullable or a non-negative integer with no default, while `isOther` and `isSecret`
+are booleans defaulting to false. None is unconditionally ignorable. Each is independently supportable
+only through an exact default-only gate: `autoResolutionMs=null`, `isOther=false`, and
+`isSecret=false` are safely ignorable defaults; any non-null auto-resolution value or either true
+boolean remains unsupported and must fail closed. Malformed and unknown evidence remains invalid.
+Build-tagged fixtures cover each accepted default and rejected active value; production parsing is
+unchanged and no authenticated turn occurred.
+
+The explicitly approved production-parser slice is complete. The App Server request parser now accepts
+the three fields only when omitted or set to the exact compatible defaults:
+`autoResolutionMs=null`, `isOther=false`, and `isSecret=false`. Any non-null auto-resolution value,
+either true boolean, null boolean, type substitution, malformed value, unknown field, or broader
+experimental shape remains unsupported and disconnects fail closed before prompt projection. Focused
+fixtures prove the accepted default combination and each active, null, and substituted rejection.
+Neutral prompt/response contracts, lifecycle dispatch, consumers, and broader experimental schema
+support remain unchanged.
+
+The separately approved supervisor-backed request-only proof ran exactly once through the existing
+build-tagged dual opt-in. Its authenticated no-write turn ended with
+`terminal_class=disconnected`, `disconnect_class=other`, `user_input_tool_advertised=true`,
+`user_input_tool_invoked=unconfirmed`, `request_method_class=none_observed`, and
+`schema_shape=none_observed`; production parsing and prompt lookup were not reached, and no response
+or retry was sent. The retained class rules out the harness's inactive, turn-mismatch, item-mismatch,
+and not-running cases, but intentionally cannot distinguish another unsupported experimental event
+or request shape from an active experimental field value. Naming one of those as the cause would
+require provider content that this diagnostic did not retain. The temporary workspace was removed,
+and production contracts, parser behavior, lifecycle dispatch, and consumers remain unchanged.
+
+The separately approved offline-only harness extension is complete. The existing build-tagged
+dual-opt-in launcher now classifies the supervisor's pre-prompt stream as one of
+`event_method_incompatible`, `event_shape_incompatible`, `default_only_request_incompatible`,
+`request_shape_incompatible`, or `default_only_request_compatible`, with a bounded malformed-frame
+fallback. It also retains only whether the user-input method was observed plus its method and schema
+classes. App Server response frames are ignored; partial provider frames are capped at 1 MiB, cleared
+after classification, and cleared again on close. Chunked offline fixtures prove every class and
+verify that neither the transient reader nor its retained result contains provider content. No App
+Server child, authenticated turn, response, retry, or production change occurred.
+
+The separately approved classified rerun then executed exactly one authenticated no-write turn. It
+produced `terminal_class=disconnected`, `disconnect_class=other`,
+`pre_prompt_class=default_only_request_incompatible`, `user_input_tool_advertised=true`,
+`user_input_tool_invoked=true`, `request_method_class=user_input`, `schema_shape=single_select`, and
+`request_compatibility=default_only_request_incompatible`; production prompt projection was not
+reached and `response_sent=false`. This is the exact safe blocker: the installed App Server emits the
+supported method and single-select shape, but at least one experimental field carries active or
+otherwise non-default semantics outside the parser's accepted `null`/`false` subset. The classifier
+intentionally retained neither the individual field nor its value, so no narrower cause is claimed.
+No retry or response occurred, the temporary workspace was removed, and production contracts and
+parser behavior remain unchanged.
+
+The smallest evidence-backed next CAS-14 action is no code change: retain the fail-closed blocker and
+keep active experimental user-input semantics unsupported until either the installed App Server emits
+the already supported default-only subset or a separately approved provider-neutral contract decision
+defines safe active semantics. Another diagnostic, parser widening, response proof, lifecycle
+dispatch, and consumer wiring are not implied.
+
+The bounded selected-policy lifecycle seam now requires complete pinned model, native-policy, and
+capability selections before `StartThread`, revalidates every exact catalog plus the effective snapshot
+immediately before lifecycle use, and dispatches the selected model/reasoning values without fallback
+or substitution. The `human-review` and `workspace-write` baseline advertisements retain the exact
+already proven private App Server mapping (`untrusted` plus `user`, and `workspaceWrite` with the
+caller's validated declared roots and network disabled). Those independent dimensions may therefore
+be dispatched; their opaque refs, display meaning, ordering, availability, or confirmation are never
+used to derive a wire value. Zero enabled capabilities is the safe lifecycle baseline.
+
+The complete resolved policy receives a separate immutable thread binding while the existing recovery
+policy key remains unchanged. `thread/read`, `thread/resume`, `turn/start`, and `turn/steer` revalidate
+the pinned catalogs/snapshot and reject caller-policy, catalog, effective-value, or binding drift before
+I/O. Removed or unavailable options, selection/effective mismatch, reroute/substitution evidence,
+missing confirmation, and incomplete selection continue to fail closed with no replay, retry, or
+fallback.
+
+The precise package-local blocker is missing provider-private mapping evidence for every non-baseline
+approval/reviewer option, every non-baseline sandbox option, and every enabled capability. Those choices
+remain projection-only and lifecycle-blocked even when advertised, supported, selected, or individually
+confirmed. The smallest evidence-backed next slice is to retain and validate one exact non-baseline
+approval/reviewer provider mapping in the fixture-backed advertisement before enabling its lifecycle
+dispatch. Provider discovery persistence, adapter selection, MCP, Pipeon, fallback, rollback, and all
+consumer/bridge paths remain separate work.

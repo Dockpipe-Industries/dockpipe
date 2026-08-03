@@ -379,7 +379,7 @@ func validAuditSummary(value string) bool {
 		}
 	}
 	switch value {
-	case "initialized", "approval_requested", "user_input_requested", "approval_resolved", "cancellation_requested", "background_process_risk_possible", "cancelled", "recovered_idle", "thread_checked", "approval_delivered", "request_expired", "interrupt_delivered", "audit_rejected":
+	case "initialized", "approval_requested", "user_input_requested", "approval_resolved", "user_input_delivered", "user_input_resolved", "cancellation_requested", "background_process_risk_possible", "cancelled", "recovered_idle", "thread_checked", "approval_delivered", "request_expired", "interrupt_delivered", "audit_rejected":
 		return true
 	default:
 		return validAuditDisconnectReason(value)
