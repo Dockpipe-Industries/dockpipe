@@ -1,10 +1,13 @@
-schema: 1
+schema: 2
 description: Fixture open-only backlog.
 
 tasks:
   - id: TASK-015
     topic: Backlog remote fixture
     path: docs/agents/tasks/backlog-driven-remote-tasks.md
+    dispatch:
+      readiness: decision_ready
+      ownership: unclaimed
 
 maintenance:
   - Keep open-only.

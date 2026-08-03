@@ -1,7 +1,8 @@
 # backlog.remote
 
-`backlog.remote` is the offline TASK-015 path. It resolves exactly one explicit entry from
-`docs/agents/task-index.yaml`, validates its exact linked task document and a one-line bounded slice,
+`backlog.remote` is the offline TASK-015 path. It resolves exactly one explicit schema-2 entry from
+`docs/agents/task-index.yaml`, requires `decision_ready` readiness plus `unclaimed` ownership,
+validates its exact linked task document and a one-line bounded slice,
 compiles reviewable immutable request artifacts, preflights the Codex Cloud CLI contract from narrow
 package-owned help fixtures, records fixture dispatch identity, and ingests one explicitly bound
 completion-candidate fixture plus later fixture-backed status and diff observations as untrusted
@@ -44,8 +45,10 @@ the exact readiness, patch, changed paths, and consumer preimage manifest.
 
 The workflow writes under the normal `backlog-remote` artifact scope:
 
-- `backlog-selection.json` records the exact open task, linked path, bounded slice, baseline, and
-  source digests. A rejected inspection writes the same contract with a deterministic rejection code.
+- `backlog-selection.json` uses `dorkpipe.backlog-selection/v2` and records the exact explicitly
+  selected task, linked path, bounded slice, baseline, `decision_ready` readiness, `unclaimed`
+  ownership, source digests, and `automatic_selection_performed: false`. A rejected inspection writes
+  the same contract with a deterministic rejection code and no downstream artifact.
 - `remote-request.json` and `remote-request.md` use `dorkpipe.remote-request/v2` and bind the explicit
   target, allowed paths, hard boundaries, validation declaration, context-source digests, and a
   separate complete validation-input manifest under one request fingerprint. `source_files` remains
@@ -244,10 +247,14 @@ consumes a valid `checkout-application.json`, requires explicit human authority,
 push, publication, sync, and next-task selection. It must not add raw Git to the package helper or
 workflow.
 
-The canonical backlog has no standardized readiness or ownership fields. Package test fixtures use
-an optional `dispatch_state` (`blocked`, `external_active`, or `closed`) only to prove deterministic
-rejection. The canonical index is unchanged; a future `--next` selector remains out of scope until
-that metadata contract is decided.
+The strict schema-2 backlog contract requires every entry to declare `dispatch.readiness` as one of
+`unclassified`, `decision_ready`, or `decision_blocked` and `dispatch.ownership` as either
+`unclaimed` or `external_active`. Explicit inspection succeeds only for `decision_ready` plus
+`unclaimed`; unclassified, blocked, externally active, missing, partial, legacy, or unknown metadata
+fails closed. The canonical backlog is conservatively initialized to `unclassified` and `unclaimed`.
+Narrative status remains in each linked task document. Prose, ordering, availability, recent activity,
+commit history, or task presence cannot imply readiness. Automatic promotion, `--next`, ranking,
+claiming, owner identity, dynamic ownership mutation, scheduling, and dispatch remain unimplemented.
 
 The checked package fixture records the exact read-only inspection of `codex-cli 0.144.1` through
 `codex --version`, `codex cloud --help`, and `codex cloud exec --help`. The documented submit surface
