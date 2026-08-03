@@ -759,14 +759,32 @@ still sends only its notification opt-outs, and unchanged lifecycle resolution r
 capability before protocol I/O for thread start/read/resume and turn start/steer. No attestation request,
 credential, account value, authentication action, or provider call was made or retained.
 
+The bounded pre-initialization capability decision is now complete without consuming the mapping.
+A package-private one-shot planner may be created only for a fresh, not-yet-started supervisor. It
+accepts fixture-backed capability evidence plus exactly one `request-attestation` intent and one
+independent confirmation bound to the exact package session, supervisor incarnation, complete
+order-independent capability-catalog identity, and capability reference. The resulting scalar plan
+fingerprints the exact private `requestAttestation=true` mapping and confirmation, but is deliberately
+detached from `Supervisor`; it cannot alter initialization, lifecycle dispatch, request handling,
+recovery, or a consumer.
+
+Catalog evidence is validated before child startup because it is fixture-backed package evidence;
+provider-backed model discovery and native-policy selection remain after initialization. Missing,
+malformed, stale, drifted, unsupported, experimental, non-authority, ambiguous, multi-capability,
+cross-session, cross-supervisor, replayed, or mutated evidence fails closed. A new or recovered
+supervisor has a different incarnation target and retains no plan or confirmation authority. The
+production initialize frame remains the exact opt-out-only baseline, and `attestation/generate`
+remains unsupported. No provider-neutral contract change is warranted because the plan contains
+provider-private initialize sequencing and mapping evidence only.
+
 No second in-scope stable mapping is proven. `experimentalApi` is the prohibited global experimental
 opt-in, `mcpServerOpenaiFormElicitation` is outside the no-MCP boundary,
 `optOutNotificationMethods` suppresses notifications rather than enabling a capability, and
 `SelectedCapabilityRoot` appears only as an unbound shared definition in stable `ThreadStartParams`.
-The smallest evidence-backed next CAS-14 action is a separately approved package-local contract and
-sequencing decision for individually confirmed pre-initialization capabilities; no dispatch code is
-implied. Consumers, MCP, Pipeon, provider pools, fallback, workflows, schemas, and engine work remain
-separate.
+The smallest evidence-backed next CAS-14 action is a separately approved package-local offline
+contract decision for the exact `attestation/generate` request shape and fail-closed response
+semantics. Initialization opt-in cannot safely precede that proof; no wire change, live request,
+consumer, MCP, Pipeon, provider-pool, fallback, workflow, schema, or engine work is implied.
 
 `packages/dorkpipe/lib/cmd/dorkpipe/provider_pool.go`,
 `packages/dorkpipe/resolvers/dorkpipe/assets/provider-pools/catalog.yml`,
