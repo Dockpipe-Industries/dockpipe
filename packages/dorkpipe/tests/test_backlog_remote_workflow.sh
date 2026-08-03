@@ -57,6 +57,23 @@ printf '%s\n' '# Fixture package' 'Untrusted remote fixture change.' >"$applicat
   go build -o "$helper_bin" ./cmd/orchestrate-helper
 )
 
+canonical_next_root="$tmp/canonical-next-rejection"
+cp "$REPO_ROOT/docs/agents/task-index.yaml" "$tmp/canonical-index-before.yaml"
+if MSYS2_ARG_CONV_EXCL='*' "$helper_bin" backlog-inspect \
+  "$REPO_ROOT" docs/agents/task-index.yaml --next \
+  "Inspect only the unique decision-ready backlog entry." \
+  0123456789abcdef0123456789abcdef01234567 "$canonical_next_root" \
+  2>"$tmp/canonical-next.err"; then
+  echo "canonical --next inspection unexpectedly selected a task" >&2
+  exit 1
+fi
+grep -Fq 'no_decision_ready_task:' "$tmp/canonical-next.err"
+grep -Fq '"code": "no_decision_ready_task"' "$canonical_next_root/backlog-selection.json"
+cmp "$tmp/canonical-index-before.yaml" "$REPO_ROOT/docs/agents/task-index.yaml"
+for name in remote-request.md remote-request.json remote-adapter-compatibility.json remote-task.json completion-candidate.json remote-status.json remote-diff.json remote-diff.patch remote-result.json validation-receipt.json patch-boundary.json patch-application.json validation-execution.json semantic-review-decision.json ready-for-review.json checkout-application-approval.json checkout-application.json; do
+  test ! -e "$canonical_next_root/$name"
+done
+
 cat >"$tmp/fake-bin/forbidden-tool" <<'TOOL'
 #!/usr/bin/env bash
 printf '%s\n' "$(basename "$0") $*" >>"${DORKPIPE_BACKLOG_FORBIDDEN_LOG:?}"
@@ -76,7 +93,7 @@ export DOCKPIPE_WORKFLOW_NAME="backlog.remote"
 export DORKPIPE_ORCH_HELPER_BIN="$helper_bin"
 export DORKPIPE_BACKLOG_ARTIFACT_ROOT="$artifact_root"
 export DORKPIPE_BACKLOG_TASK_INDEX="docs/agents/task-index.yaml"
-export DORKPIPE_BACKLOG_TASK_ID="TASK-015"
+export DORKPIPE_BACKLOG_TASK_ID="--next"
 export DORKPIPE_BACKLOG_SLICE="Implement only the bounded offline fixture dispatch slice."
 export DORKPIPE_BACKLOG_BASELINE="0123456789abcdef0123456789abcdef01234567"
 export DORKPIPE_BACKLOG_ENVIRONMENT_REF="fixture-environment"
@@ -214,10 +231,14 @@ for name in backlog-selection.json remote-request.md remote-request.json remote-
   test -f "$artifact_root/$name"
 done
 grep -Fq '"status": "selected"' "$artifact_root/backlog-selection.json"
-grep -Fq '"contract_version": "dorkpipe.backlog-selection/v2"' "$artifact_root/backlog-selection.json"
+grep -Fq '"contract_version": "dorkpipe.backlog-selection/v3"' "$artifact_root/backlog-selection.json"
 grep -Fq '"readiness": "decision_ready"' "$artifact_root/backlog-selection.json"
 grep -Fq '"ownership": "unclaimed"' "$artifact_root/backlog-selection.json"
-grep -Fq '"automatic_selection_performed": false' "$artifact_root/backlog-selection.json"
+grep -Fq '"mode": "unique_decision_ready"' "$artifact_root/backlog-selection.json"
+grep -Fq '"automatic_selection_performed": true' "$artifact_root/backlog-selection.json"
+for authority in ranking score priority recommendation claim lease owner mutation scheduling dispatch execution provider git publication; do
+  grep -Fq "\"$authority\": false" "$artifact_root/backlog-selection.json"
+done
 grep -Fq '"contract_version": "dorkpipe.remote-request/v2"' "$artifact_root/remote-request.json"
 grep -Fq '"validation_input_files": [' "$artifact_root/remote-request.json"
 grep -Fq '"semantics": "complete_list"' "$artifact_root/remote-request.json"
@@ -413,7 +434,7 @@ rm -rf "$application_consumer"
 cp -R "$application_pristine" "$application_consumer"
 
 MSYS2_ARG_CONV_EXCL='*' "$helper_bin" backlog-inspect \
-  "$consumer" docs/agents/task-index.yaml TASK-015 \
+  "$consumer" docs/agents/task-index.yaml --next \
   "$DORKPIPE_BACKLOG_SLICE" "$DORKPIPE_BACKLOG_BASELINE" "$second_root"
 MSYS2_ARG_CONV_EXCL='*' "$helper_bin" backlog-compile \
   "$consumer" "$second_root" "$DORKPIPE_BACKLOG_ENVIRONMENT_REF" "$DORKPIPE_BACKLOG_BRANCH_REF" \
