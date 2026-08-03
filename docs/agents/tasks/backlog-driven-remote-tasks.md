@@ -4,7 +4,8 @@
 
 Provide package-owned DorkPipe workflows for two related but distinct remote-execution paths:
 
-1. execute one explicitly selected, decision-ready backlog item as a bounded remote Codex task;
+1. inspect one explicitly selected or uniquely eligible decision-ready backlog item as a bounded
+   remote Codex task input;
 2. execute one DorkPipe task graph across user-owned DockPipe nodes through a transport-neutral
    broker contract and pluggable edge adapters.
 
@@ -29,15 +30,18 @@ couple remote Cloud task lifecycle to that adapter.
 ### Backlog input
 
 - `docs/agents/task-index.yaml` remains the single open-only entrypoint.
-- The first workflow requires an explicit task ID and bounded slice reference. It reads only that
-  index entry, its linked task document, `AGENTS.md`, and the docs routed for the selected task type.
+- The first workflow requires an explicit task ID or the literal `--next` selector plus a bounded
+  slice reference. It strictly validates the complete index, then reads only the selected entry, its
+  linked task document, `AGENTS.md`, and the docs routed for the selected task type.
 - It must reject closed, absent, malformed, ambiguous, externally active, or decision-blocked items
   before any remote submission.
 - The schema-2 backlog records strict readiness and ownership metadata. Explicit inspection succeeds
   only for `decision_ready` plus `unclaimed`; it must never infer readiness from prose, ordering,
   availability, recent activity, commit history, or task presence.
-- A future `--next` selector, automatic readiness promotion, claiming, owner identity, and dynamic
-  ownership mutation remain unimplemented.
+- Read-only `--next` inspection succeeds only when exactly one complete index entry is
+  `decision_ready` plus `unclaimed`; zero or multiple eligible entries reject, and index order never
+  breaks a tie. Automatic readiness promotion, claiming, owner identity, and dynamic ownership
+  mutation remain unimplemented.
 
 ### Remote execution
 
@@ -70,7 +74,7 @@ couple remote Cloud task lifecycle to that adapter.
 
 ### Workflow shape
 
-1. `backlog.inspect` resolves and validates one selected task/slice.
+1. `backlog.inspect` resolves and validates one explicitly selected or uniquely eligible task/slice.
 2. `backlog.compile` materializes a reviewable task request artifact.
 3. `backlog.dispatch` submits one remote task and records its identifier.
 4. `backlog.status` and `backlog.diff` reconcile only the recorded remote task.
@@ -98,11 +102,14 @@ merge, select another task, or create a cross-task orchestrator.
 The first vertical slice is implemented as the package-owned `backlog.remote` workflow and dedicated
 orchestration-helper commands:
 
-- `backlog.inspect` requires one exact `TASK-NNN`, one trimmed single-line bounded slice, and one
-  exact baseline commit. It strictly loads schema-2 `docs/agents/task-index.yaml` and fails closed
-  unless the selected entry is `decision_ready` and `unclaimed`; it then resolves one exact linked
-  document, verifies that document's heading matches the selected task ID, and records readiness,
-  ownership, explicit-selection status, and source digests in `backlog-selection.json`.
+- `backlog.inspect` requires one exact `TASK-NNN` or the literal `--next`, one trimmed single-line
+  bounded slice, and one exact baseline commit. It strictly loads the complete schema-2
+  `docs/agents/task-index.yaml` and fails closed unless explicit selection names, or `--next` uniquely
+  identifies, an entry that is `decision_ready` and `unclaimed`. It then resolves one exact linked
+  document, verifies that document's heading matches the selected task ID, and records the exact
+  selector object, readiness, ownership, automatic-selection status, source digests, and false
+  ranking/claim/mutation/scheduling/dispatch/execution/provider/Git/publication authority in
+  `dorkpipe.backlog-selection/v3`.
 - `backlog.compile` writes deterministic `dorkpipe.remote-request/v2` JSON and matching markdown.
   Their shared fingerprint binds the selected task/path/slice/baseline, explicit environment and
   branch refs, allowed paths, hard boundaries, required validation, context sources, and a separate
@@ -359,8 +366,11 @@ prose expands that authority.
 The package proof rejects absent, malformed, unknown, and ambiguous IDs; schema-1, malformed, legacy,
 missing, partial, or unknown dispatch metadata; missing, escaping, mismatched, or closed linked task
 paths; empty, whitespace-padded, multiline, or otherwise malformed bounded slices; invalid baselines;
-unclassified or decision-blocked entries; and externally active ownership. Rejected inspection writes
-a deterministic rejection code but no request or
+unclassified or decision-blocked entries; and externally active ownership. For `--next`, it also
+proves one unique eligible entry independent of index ordering, exact zero/multiple rejection,
+whole-index failure for malformed inactive entries or duplicate IDs/paths, byte-identical replay,
+unchanged index bytes, and successful fixture-backed downstream compilation/dispatch. Rejected
+inspection writes a deterministic rejection code but no request or
 dispatch artifact. Temporary consumer copies prove repeated-run determinism, no consumer mutation,
 no live provider invocation, no Git/SSH/network tool invocation, and no live status polling,
 live diff/result polling, result interpretation, semantic approval, apply, commit, push, or
@@ -369,10 +379,11 @@ required-validation declaration is executed inside the bounded temporary workspa
 
 The open-only canonical index now uses the strict schema-2 dispatch contract. Every canonical task is
 conservatively initialized to `readiness: unclassified` and `ownership: unclaimed`; presence,
-ordering, prose, recent activity, availability, or commit history cannot promote it. The fixture
-consumer uses `decision_ready` plus `unclaimed` only to prove explicit inspection. `--next`, automatic
-promotion, ranking or selection policy, task claiming, owner identity, dynamic ownership mutation,
-and scheduling remain unimplemented.
+ordering, prose, recent activity, availability, or commit history cannot promote it. Canonical
+`--next` inspection therefore rejects with `no_decision_ready_task`. The fixture consumer uses its
+single `decision_ready` plus `unclaimed` entry to prove explicit and unique-ready inspection.
+Automatic promotion, ranking or selection among multiple tasks, task claiming, owner identity,
+dynamic ownership mutation, and scheduling remain unimplemented.
 
 The installed CLI documents `codex cloud exec --env <id> --branch <branch> [query]`, but its help
 does not expose a machine-readable submission receipt or a stable task-ID response schema. Parsing
@@ -865,9 +876,10 @@ fail-closed cleanup error for a persistent lock; workflow-run scratch data remai
 
 ## Required Artifacts
 
-- `backlog-selection.json`: explicit selected task ID, linked task path, bounded slice, baseline,
-  exact readiness and ownership, schema-2 index and linked-task digests, an explicit statement that
-  automatic selection was not performed, and a deterministic rejection reason when not inspectable.
+- `backlog-selection.json`: selected task ID, linked task path, bounded slice, baseline, exact
+  readiness and ownership, schema-2 index and linked-task digests, exact `explicit_task` or
+  `unique_decision_ready` selector object, coherent automatic-selection boolean, explicit false
+  authority declarations, and a deterministic rejection reason when not inspectable.
 - `remote-request.md` and `remote-request.json`: reviewable compiled request and safe metadata.
 - `remote-adapter-compatibility.json`: inspected adapter/CLI contract, documented inputs and receipt
   capability, exact fail-closed reason, and immutable request/target binding.
@@ -1044,8 +1056,8 @@ fail-closed cleanup error for a persistent lock; workflow-run scratch data remai
 ## Open Decisions
 
 - Which resolver/profile owns the configured Cloud environment and selected branch policy.
-- The minimum standardized readiness/ownership fields needed before a safe `--next` backlog
-  selector can replace explicit task selection.
+- Whether a separately authorized future contract should ever add claiming after read-only `--next`
+  inspection; this selection contract deliberately does not.
 - Whether remote task results should be applied only through the Codex CLI or through a
   provider-neutral DorkPipe remote-task adapter contract.
 - Whether any provider callback can meet the correlation and signature requirements; otherwise
@@ -2084,11 +2096,13 @@ open; selection of any further bounded slice requires a separate review of the r
 backlog and must not invent another policy, lifecycle, scheduling, publication, or external-authority
 hop.
 
-The strict schema-2 readiness/ownership metadata contract is complete. Explicit `backlog.inspect`
-now fails closed unless the selected entry is exactly `decision_ready` and `unclaimed`. The canonical
-backlog remains conservatively `unclassified` and `unclaimed`. `--next`, automatic promotion,
-selection policy, task claiming, owner identity, and dynamic ownership mutation remain unimplemented;
-no prose, ordering, availability, recent activity, commit history, or task presence implies readiness.
+The strict schema-2 readiness/ownership metadata contract and read-only unique-ready inspection are
+complete. Explicit `backlog.inspect` retains its behavior, while literal `--next` succeeds only for
+one uniquely eligible `decision_ready` plus `unclaimed` entry after complete index validation. The
+canonical backlog remains conservatively `unclassified` and `unclaimed`, so canonical `--next`
+rejects. Automatic promotion, selection among multiple tasks, task claiming, owner identity, and
+dynamic ownership mutation remain unimplemented; no prose, ordering, availability, recent activity,
+commit history, or task presence implies readiness.
 
 ## Acceptance Criteria For This Extension
 

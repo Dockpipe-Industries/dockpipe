@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"reflect"
 	"runtime"
 	"strings"
 	"testing"
@@ -28,9 +29,9 @@ func TestBacklogRemoteArtifactsAreDeterministicAndRestartSafe(t *testing.T) {
   "submitted_at": "2026-07-19T00:00:00Z"
 }`)
 
-	compile := func(root string) {
+	compile := func(root, selector string) {
 		t.Helper()
-		if err := inspectBacklogSelection(repo, backlogIndexPath, "TASK-015", "Implement only the bounded offline fixture dispatch slice.", backlogTestBaseline, root); err != nil {
+		if err := inspectBacklogSelection(repo, backlogIndexPath, selector, "Implement only the bounded offline fixture dispatch slice.", backlogTestBaseline, root); err != nil {
 			t.Fatal(err)
 		}
 		if err := compileBacklogRemoteRequest(
@@ -59,8 +60,28 @@ func TestBacklogRemoteArtifactsAreDeterministicAndRestartSafe(t *testing.T) {
 
 	first := filepath.Join(t.TempDir(), "first")
 	second := filepath.Join(t.TempDir(), "second")
-	compile(first)
-	compile(second)
+	compile(first, "TASK-015")
+	compile(second, "TASK-015")
+	nextFirst := filepath.Join(t.TempDir(), "next-first")
+	nextSecond := filepath.Join(t.TempDir(), "next-second")
+	indexBeforeNext := mustReadFile(t, filepath.Join(repo, filepath.FromSlash(backlogIndexPath)))
+	compile(nextFirst, "--next")
+	compile(nextSecond, "--next")
+	if string(mustReadFile(t, filepath.Join(nextFirst, "backlog-selection.json"))) != string(mustReadFile(t, filepath.Join(nextSecond, "backlog-selection.json"))) {
+		t.Fatal("--next selection is not byte-identical on exact replay")
+	}
+	if string(mustReadFile(t, filepath.Join(repo, filepath.FromSlash(backlogIndexPath)))) != string(indexBeforeNext) {
+		t.Fatal("--next selection modified the task index")
+	}
+	nextSelection := readJSONMap(filepath.Join(nextFirst, "backlog-selection.json"))
+	if !backlogTestBool(nextSelection["automatic_selection_performed"]) || !jsonMapsEqual(mapValue(nextSelection["selector"]), map[string]any{"mode": "unique_decision_ready"}) {
+		t.Fatalf("unexpected --next selector evidence: %#v", nextSelection)
+	}
+	for _, name := range []string{"remote-request.json", "remote-request.md", "remote-adapter-compatibility.json", "remote-task.json"} {
+		if _, err := os.Stat(filepath.Join(nextFirst, name)); err != nil {
+			t.Fatalf("--next selection did not feed downstream fixture chain through %s: %v", name, err)
+		}
+	}
 	firstCandidate := writeBacklogCompletionFixture(t, first, "completion_fixture_candidate_015", "completion_fixture_replay_015", "2026-07-19T00:01:00Z")
 	secondCandidate := writeBacklogCompletionFixture(t, second, "completion_fixture_candidate_015", "completion_fixture_replay_015", "2026-07-19T00:01:00Z")
 	if err := os.RemoveAll(repo); err != nil {
@@ -165,7 +186,9 @@ func TestBacklogRemoteArtifactsAreDeterministicAndRestartSafe(t *testing.T) {
 	if stringValue(selection["contract_version"]) != backlogSelectionContract ||
 		stringValue(selectionDispatch["readiness"]) != "decision_ready" ||
 		stringValue(selectionDispatch["ownership"]) != "unclaimed" ||
-		backlogTestBool(selection["automatic_selection_performed"]) {
+		backlogTestBool(selection["automatic_selection_performed"]) ||
+		!jsonMapsEqual(mapValue(selection["selector"]), map[string]any{"mode": "explicit_task", "task_id": "TASK-015"}) ||
+		!reflect.DeepEqual(mapValue(selection["authority"]), backlogSelectionAuthority()) {
 		t.Fatalf("selection does not bind explicit decision-ready, unclaimed inspection: %#v", selection)
 	}
 	for _, forbidden := range []string{"claim", "lease", "ranking", "scheduling", "dispatch_authority", "provider", "execution", "apply", "git", "publication"} {
@@ -368,6 +391,13 @@ maintenance:
 		{name: "readiness cannot imply ownership", index: strings.Replace(validIndex, "ownership: unclaimed", "ownership: external_active", 1), taskID: "TASK-015", slice: "Implement the bounded fixture slice.", wantCode: "task_externally_active"},
 		{name: "ownership cannot imply readiness", index: strings.Replace(validIndex, "readiness: decision_ready", "readiness: unclassified", 1), taskID: "TASK-015", slice: "Implement the bounded fixture slice.", wantCode: "task_not_decision_ready"},
 		{name: "external ownership wins independently", index: strings.Replace(strings.Replace(validIndex, "readiness: decision_ready", "readiness: decision_blocked", 1), "ownership: unclaimed", "ownership: external_active", 1), taskID: "TASK-015", slice: "Implement the bounded fixture slice.", wantCode: "task_externally_active"},
+		{name: "next with zero eligible", index: strings.Replace(validIndex, "readiness: decision_ready", "readiness: unclassified", 1), taskID: "--next", slice: "Implement the bounded fixture slice.", wantCode: "no_decision_ready_task"},
+		{name: "next excludes external active", index: strings.Replace(validIndex, "ownership: unclaimed", "ownership: external_active", 1), taskID: "--next", slice: "Implement the bounded fixture slice.", wantCode: "no_decision_ready_task"},
+		{name: "next excludes blocked unclaimed", index: strings.Replace(validIndex, "readiness: decision_ready", "readiness: decision_blocked", 1), taskID: "--next", slice: "Implement the bounded fixture slice.", wantCode: "no_decision_ready_task"},
+		{name: "next rejects multiple eligible", index: strings.Replace(validIndex, "maintenance:", "  - id: TASK-014\n    topic: Second ready task\n    path: docs/agents/tasks/second-ready.md\n"+dispatchBlock+"maintenance:", 1), taskID: "--next", slice: "Implement the bounded fixture slice.", wantCode: "ambiguous_decision_ready_tasks"},
+		{name: "next rejects malformed inactive entry", index: strings.Replace(validIndex, "maintenance:", "  - id: TASK-014\n    topic: Inactive malformed task\n    path: docs/agents/tasks/inactive.md\n    dispatch:\n      readiness: unclassified\n      ownership: unclaimed\n      priority: high\nmaintenance:", 1), taskID: "--next", slice: "Implement the bounded fixture slice.", wantCode: "malformed_index"},
+		{name: "next rejects duplicate inactive id", index: strings.Replace(validIndex, "maintenance:", "  - id: TASK-015\n    topic: Duplicate inactive task\n    path: docs/agents/tasks/inactive.md\n    dispatch:\n      readiness: unclassified\n      ownership: unclaimed\nmaintenance:", 1), taskID: "--next", slice: "Implement the bounded fixture slice.", wantCode: "ambiguous_task_id"},
+		{name: "next rejects duplicate inactive path", index: strings.Replace(validIndex, "maintenance:", "  - id: TASK-014\n    topic: Duplicate inactive path\n    path: docs/agents/tasks/backlog-driven-remote-tasks.md\n    dispatch:\n      readiness: unclassified\n      ownership: unclaimed\nmaintenance:", 1), taskID: "--next", slice: "Implement the bounded fixture slice.", wantCode: "ambiguous_linked_task"},
 		{name: "empty slice", index: validIndex, taskID: "TASK-015", slice: "", wantCode: "invalid_bounded_slice"},
 		{name: "padded slice", index: validIndex, taskID: "TASK-015", slice: " Implement the bounded fixture slice. ", wantCode: "invalid_bounded_slice"},
 		{name: "multiline slice", index: validIndex, taskID: "TASK-015", slice: "Implement this slice.\nThen widen it.", wantCode: "invalid_bounded_slice"},
@@ -400,6 +430,36 @@ maintenance:
 			}
 		})
 	}
+
+	t.Run("next selection is independent of index ordering", func(t *testing.T) {
+		entry015 := "  - id: TASK-015\n    topic: Backlog remote fixture\n    path: docs/agents/tasks/backlog-driven-remote-tasks.md\n    dispatch:\n      readiness: decision_ready\n      ownership: unclaimed\n"
+		entry014 := "  - id: TASK-014\n    topic: Ineligible fixture\n    path: docs/agents/tasks/ineligible.md\n    dispatch:\n      readiness: unclassified\n      ownership: unclaimed\n"
+		inspect := func(index string) map[string]any {
+			t.Helper()
+			repo := writeBacklogTestRepo(t)
+			writeBacklogTestFile(t, filepath.Join(repo, filepath.FromSlash(backlogIndexPath)), "schema: 2\ndescription: Fixture open-only backlog.\ntasks:\n"+index+"maintenance:\n  - Keep open-only.\n")
+			writeBacklogTestFile(t, filepath.Join(repo, "docs", "agents", "tasks", "ineligible.md"), "# TASK-014 Ineligible fixture\n")
+			root := filepath.Join(t.TempDir(), "artifacts")
+			before := mustReadFile(t, filepath.Join(repo, filepath.FromSlash(backlogIndexPath)))
+			if err := inspectBacklogSelection(repo, backlogIndexPath, "--next", "Implement the bounded fixture slice.", backlogTestBaseline, root); err != nil {
+				t.Fatal(err)
+			}
+			if string(mustReadFile(t, filepath.Join(repo, filepath.FromSlash(backlogIndexPath)))) != string(before) {
+				t.Fatal("--next changed index bytes")
+			}
+			return readJSONMap(filepath.Join(root, "backlog-selection.json"))
+		}
+		first := inspect(entry015 + entry014)
+		second := inspect(entry014 + entry015)
+		for _, field := range []string{"task_id", "topic", "linked_task_path", "bounded_slice", "baseline_commit"} {
+			if stringValue(first[field]) != stringValue(second[field]) {
+				t.Fatalf("index ordering changed %s: %#v != %#v", field, first[field], second[field])
+			}
+		}
+		if !jsonMapsEqual(mapValue(first["selector"]), map[string]any{"mode": "unique_decision_ready"}) || !jsonMapsEqual(mapValue(second["selector"]), map[string]any{"mode": "unique_decision_ready"}) {
+			t.Fatalf("index ordering changed selector evidence: %#v %#v", first, second)
+		}
+	})
 
 	for _, test := range []struct {
 		name   string

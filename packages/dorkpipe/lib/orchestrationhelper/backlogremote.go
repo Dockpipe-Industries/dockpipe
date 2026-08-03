@@ -24,7 +24,7 @@ import (
 
 const (
 	backlogIndexPath                        = "docs/agents/task-index.yaml"
-	backlogSelectionContract                = "dorkpipe.backlog-selection/v2"
+	backlogSelectionContract                = "dorkpipe.backlog-selection/v3"
 	backlogRequestContract                  = "dorkpipe.remote-request/v2"
 	backlogTaskContract                     = "dorkpipe.remote-task/v1"
 	backlogFollowupContract                 = "dorkpipe.remote-followup/v1"
@@ -226,12 +226,20 @@ func rejectBacklog(code, format string, args ...any) error {
 }
 
 func inspectBacklogSelection(repoRoot, indexPath, taskID, boundedSlice, baseline, artifactRoot string) error {
+	automaticSelection := taskID == "--next"
+	selector := map[string]any{"mode": "explicit_task", "task_id": strings.TrimSpace(taskID)}
+	if automaticSelection {
+		selector = map[string]any{"mode": "unique_decision_ready"}
+	}
 	selection := map[string]any{
-		"contract_version": backlogSelectionContract,
-		"status":           "rejected",
-		"task_id":          strings.TrimSpace(taskID),
-		"bounded_slice":    strings.TrimSpace(boundedSlice),
-		"baseline_commit":  strings.TrimSpace(baseline),
+		"contract_version":              backlogSelectionContract,
+		"status":                        "rejected",
+		"task_id":                       strings.TrimSpace(taskID),
+		"selector":                      selector,
+		"bounded_slice":                 strings.TrimSpace(boundedSlice),
+		"baseline_commit":               strings.TrimSpace(baseline),
+		"automatic_selection_performed": automaticSelection,
+		"authority":                     backlogSelectionAuthority(),
 	}
 	selectionPath, err := backlogArtifactPath(artifactRoot, "backlog-selection.json")
 	if err != nil {
@@ -259,9 +267,9 @@ func inspectBacklogSelection(repoRoot, indexPath, taskID, boundedSlice, baseline
 		return reject(rejectBacklog("invalid_baseline", "baseline commit must be exactly 40 lowercase hexadecimal characters"))
 	}
 	if strings.TrimSpace(taskID) == "" {
-		return reject(rejectBacklog("task_id_required", "an explicit task ID is required"))
+		return reject(rejectBacklog("task_id_required", "an explicit task ID or --next is required"))
 	}
-	if !backlogTaskIDPattern.MatchString(taskID) {
+	if !automaticSelection && !backlogTaskIDPattern.MatchString(taskID) {
 		return reject(rejectBacklog("malformed_task_id", "task ID %q must match TASK-NNN", taskID))
 	}
 
@@ -273,19 +281,47 @@ func inspectBacklogSelection(repoRoot, indexPath, taskID, boundedSlice, baseline
 	if err != nil {
 		return reject(err)
 	}
-	matches := []backlogIndexEntry{}
-	for _, entry := range index.Tasks {
-		if entry.ID == taskID {
-			matches = append(matches, entry)
+	var entry backlogIndexEntry
+	if automaticSelection {
+		seenIDs := map[string]bool{}
+		seenPaths := map[string]bool{}
+		eligible := []backlogIndexEntry{}
+		for _, candidate := range index.Tasks {
+			if seenIDs[candidate.ID] {
+				return reject(rejectBacklog("ambiguous_task_id", "task ID %q has multiple index entries", candidate.ID))
+			}
+			if seenPaths[candidate.Path] {
+				return reject(rejectBacklog("ambiguous_linked_task", "linked task path %q has multiple index entries", candidate.Path))
+			}
+			seenIDs[candidate.ID] = true
+			seenPaths[candidate.Path] = true
+			if candidate.Dispatch.Readiness == "decision_ready" && candidate.Dispatch.Ownership == "unclaimed" {
+				eligible = append(eligible, candidate)
+			}
 		}
+		switch len(eligible) {
+		case 0:
+			return reject(rejectBacklog("no_decision_ready_task", "task index contains no uniquely eligible decision-ready, unclaimed task"))
+		case 1:
+			entry = eligible[0]
+		default:
+			return reject(rejectBacklog("ambiguous_decision_ready_tasks", "task index contains %d decision-ready, unclaimed tasks", len(eligible)))
+		}
+	} else {
+		matches := []backlogIndexEntry{}
+		for _, candidate := range index.Tasks {
+			if candidate.ID == taskID {
+				matches = append(matches, candidate)
+			}
+		}
+		if len(matches) == 0 {
+			return reject(rejectBacklog("unknown_task_id", "task ID %q is not present in the open task index", taskID))
+		}
+		if len(matches) != 1 {
+			return reject(rejectBacklog("ambiguous_task_id", "task ID %q has %d index entries", taskID, len(matches)))
+		}
+		entry = matches[0]
 	}
-	if len(matches) == 0 {
-		return reject(rejectBacklog("unknown_task_id", "task ID %q is not present in the open task index", taskID))
-	}
-	if len(matches) != 1 {
-		return reject(rejectBacklog("ambiguous_task_id", "task ID %q has %d index entries", taskID, len(matches)))
-	}
-	entry := matches[0]
 	linkedMatches := 0
 	for _, candidate := range index.Tasks {
 		if candidate.Path == entry.Path {
@@ -315,7 +351,7 @@ func inspectBacklogSelection(repoRoot, indexPath, taskID, boundedSlice, baseline
 	if err != nil {
 		return reject(rejectBacklog("invalid_linked_task", "linked task %q cannot be read: %v", entry.Path, err))
 	}
-	if !linkedTaskHeadingMatches(taskRaw, taskID) {
+	if !linkedTaskHeadingMatches(taskRaw, entry.ID) {
 		return reject(rejectBacklog("mismatched_linked_task", "linked task %q does not begin with the selected task ID", entry.Path))
 	}
 	indexRaw, err := os.ReadFile(resolvedIndex)
@@ -326,6 +362,7 @@ func inspectBacklogSelection(repoRoot, indexPath, taskID, boundedSlice, baseline
 		"contract_version": backlogSelectionContract,
 		"status":           "selected",
 		"task_id":          entry.ID,
+		"selector":         selector,
 		"topic":            entry.Topic,
 		"linked_task_path": entry.Path,
 		"bounded_slice":    boundedSlice,
@@ -335,13 +372,45 @@ func inspectBacklogSelection(repoRoot, indexPath, taskID, boundedSlice, baseline
 			"readiness": entry.Dispatch.Readiness,
 			"ownership": entry.Dispatch.Ownership,
 		},
-		"automatic_selection_performed": false,
+		"automatic_selection_performed": automaticSelection,
+		"authority":                     backlogSelectionAuthority(),
 		"source_digests": map[string]any{
 			"task_index":  sha256String(indexRaw),
 			"linked_task": sha256String(taskRaw),
 		},
 	}
 	return writeJSONFileAtomic(selectionPath, selection)
+}
+
+func backlogSelectionAuthority() map[string]any {
+	return map[string]any{
+		"ranking": false, "score": false, "priority": false, "recommendation": false,
+		"claim": false, "lease": false, "owner": false, "mutation": false,
+		"scheduling": false, "dispatch": false, "execution": false, "provider": false,
+		"git": false, "publication": false,
+	}
+}
+
+func validateBacklogSelectionEvidence(selection map[string]any) error {
+	dispatch := mapValue(selection["dispatch"])
+	automatic, automaticDeclared := selection["automatic_selection_performed"].(bool)
+	selector := mapValue(selection["selector"])
+	selectorValid := false
+	switch stringValue(selector["mode"]) {
+	case "explicit_task":
+		selectorValid = !automatic && len(selector) == 2 && stringValue(selector["task_id"]) == stringValue(selection["task_id"])
+	case "unique_decision_ready":
+		selectorValid = automatic && len(selector) == 1
+	}
+	authority := mapValue(selection["authority"])
+	if stringValue(selection["contract_version"]) != backlogSelectionContract ||
+		stringValue(selection["status"]) != "selected" ||
+		stringValue(dispatch["readiness"]) != "decision_ready" ||
+		stringValue(dispatch["ownership"]) != "unclaimed" ||
+		!automaticDeclared || !selectorValid || !reflect.DeepEqual(authority, backlogSelectionAuthority()) {
+		return errors.New("backlog selection is not coherent decision-ready, unclaimed dorkpipe.backlog-selection/v3 evidence")
+	}
+	return nil
 }
 
 func loadBacklogIndex(path string) (*backlogIndex, error) {
@@ -453,14 +522,8 @@ func compileBacklogRemoteRequest(repoRoot, artifactRoot, environmentRef, branchR
 	if err != nil {
 		return fmt.Errorf("backlog selection cannot be loaded: %w", err)
 	}
-	dispatch := mapValue(selection["dispatch"])
-	automaticSelectionPerformed, automaticSelectionDeclared := selection["automatic_selection_performed"].(bool)
-	if stringValue(selection["contract_version"]) != backlogSelectionContract ||
-		stringValue(selection["status"]) != "selected" ||
-		stringValue(dispatch["readiness"]) != "decision_ready" ||
-		stringValue(dispatch["ownership"]) != "unclaimed" ||
-		!automaticSelectionDeclared || automaticSelectionPerformed {
-		return errors.New("backlog selection is not an explicit decision-ready, unclaimed dorkpipe.backlog-selection/v2 artifact")
+	if err := validateBacklogSelectionEvidence(selection); err != nil {
+		return err
 	}
 	for _, rel := range allowed {
 		if isForbiddenBacklogPath(rel) || rel == "." {
@@ -555,7 +618,7 @@ func renderBacklogRequestMarkdown(payload map[string]any) string {
 	scope := mapValue(payload["scope"])
 	lines := []string{
 		"# Bounded remote backlog request", "",
-		"Complete only the explicitly selected backlog slice. Do not widen scope or infer readiness, ownership, or activity from prose.", "",
+		"Complete only the selected backlog slice. Do not widen scope or infer readiness, ownership, or activity from prose.", "",
 		"- Task ID: `" + stringValue(selection["task_id"]) + "`",
 		"- Linked task: `" + stringValue(selection["linked_task_path"]) + "`",
 		"- Bounded slice: " + stringValue(selection["bounded_slice"]),

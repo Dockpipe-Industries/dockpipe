@@ -326,7 +326,7 @@ func Run(args []string, env map[string]string, stdout, stderr io.Writer) error {
 		return applySoftwareDevPromotionPatch(args[1], args[2], args[3])
 	case "backlog-inspect":
 		if len(args) != 7 {
-			return errors.New("usage: orchestrate-helper backlog-inspect <repo-root> <task-index.yml> <task-id> <bounded-slice> <baseline-commit> <artifact-root>")
+			return errors.New("usage: orchestrate-helper backlog-inspect <repo-root> <task-index.yml> <TASK-NNN|--next> <bounded-slice> <baseline-commit> <artifact-root>")
 		}
 		return inspectBacklogSelection(args[1], args[2], args[3], args[4], args[5], args[6])
 	case "backlog-compile":
