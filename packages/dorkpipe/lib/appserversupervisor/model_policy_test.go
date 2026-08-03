@@ -13,11 +13,11 @@ const modelCatalogFixture = `{"data":[{"id":"gpt-5.6-terra","supportedReasoningE
 func nativePolicyFixture() NativePolicyAdvertisement {
 	return NativePolicyAdvertisement{
 		Approval: []NativeApprovalPolicyOption{
-			{PolicyRef: humanReviewPolicyRef, Stable: true, Available: true, providerPolicy: "untrusted", providerReviewer: "user"},
-			{PolicyRef: "native-auto-review", Stable: true, Available: true, AuthorityExpanding: true},
+			{PolicyRef: humanReviewPolicyRef, Stable: true, Available: true, providerPolicy: providerApprovalPolicyUntrusted, providerReviewer: providerApprovalsReviewerUser},
+			{PolicyRef: nativeAutoReviewPolicyRef, Stable: true, Available: true, AuthorityExpanding: true, providerPolicy: providerApprovalPolicyUntrusted, providerReviewer: providerApprovalsReviewerAuto},
 		},
 		Sandbox: []NativeSandboxPolicyOption{
-			{PolicyRef: workspaceWritePolicyRef, Stable: true, Available: true, providerSandbox: "workspace-write", providerSandboxType: "workspaceWrite"},
+			{PolicyRef: workspaceWritePolicyRef, Stable: true, Available: true, providerSandbox: providerSandboxWorkspaceWrite, providerSandboxType: providerSandboxTypeWorkspaceWrite},
 			{PolicyRef: "broader-native-sandbox", Stable: true, Available: true, AuthorityExpanding: true},
 		},
 	}
@@ -258,7 +258,7 @@ func TestCAS14NativeApprovalAndSandboxPoliciesAreIndependentlySelected(t *testin
 		}
 		policy, err := s.SelectNativePolicies(NativePolicySelection{
 			CatalogRef:               policyCatalog.CatalogRef,
-			ApprovalRef:              "native-auto-review",
+			ApprovalRef:              nativeAutoReviewPolicyRef,
 			ApprovalSessionConfirmed: true,
 			SandboxRef:               workspaceWritePolicyRef,
 		})
@@ -337,9 +337,16 @@ func TestCAS14NativePolicyAdvertisementFailsClosed(t *testing.T) {
 		"removed_baseline":     func(f *NativePolicyAdvertisement) { f.Sandbox = f.Sandbox[1:] },
 		"baseline_changed":     func(f *NativePolicyAdvertisement) { f.Approval[0].AuthorityExpanding = true },
 		"partial_approval_map": func(f *NativePolicyAdvertisement) { f.Approval[0].providerReviewer = "" },
-		"partial_sandbox_map":  func(f *NativePolicyAdvertisement) { f.Sandbox[0].providerSandboxType = "" },
+		"missing_nonbaseline_map": func(f *NativePolicyAdvertisement) {
+			f.Approval[1].providerPolicy, f.Approval[1].providerReviewer = "", ""
+		},
+		"partial_nonbaseline_map": func(f *NativePolicyAdvertisement) { f.Approval[1].providerReviewer = "" },
+		"unproven_nonbaseline_map": func(f *NativePolicyAdvertisement) {
+			f.Approval[1].providerReviewer = "guardian_subagent"
+		},
+		"partial_sandbox_map": func(f *NativePolicyAdvertisement) { f.Sandbox[0].providerSandboxType = "" },
 		"ambiguous_approval_map": func(f *NativePolicyAdvertisement) {
-			f.Approval[1].providerPolicy, f.Approval[1].providerReviewer = "untrusted", "user"
+			f.Approval[1].providerPolicy, f.Approval[1].providerReviewer = providerApprovalPolicyUntrusted, providerApprovalsReviewerUser
 		},
 		"ambiguous_sandbox_map": func(f *NativePolicyAdvertisement) {
 			f.Sandbox[1].providerSandbox, f.Sandbox[1].providerSandboxType = "workspace-write", "workspaceWrite"
@@ -369,7 +376,7 @@ func TestCAS14NativePolicySelectionFailsClosedWithoutSubstitution(t *testing.T) 
 		"mismatched_catalog":       {CatalogRef: "policy-catalog-stale", ApprovalRef: humanReviewPolicyRef, SandboxRef: workspaceWritePolicyRef},
 		"unavailable_approval":     {ApprovalRef: "removed-reviewer", SandboxRef: workspaceWritePolicyRef},
 		"removed_sandbox":          {ApprovalRef: humanReviewPolicyRef, SandboxRef: "removed-sandbox"},
-		"unconfirmed_approval":     {ApprovalRef: "native-auto-review", SandboxRef: workspaceWritePolicyRef},
+		"unconfirmed_approval":     {ApprovalRef: nativeAutoReviewPolicyRef, SandboxRef: workspaceWritePolicyRef},
 		"unconfirmed_sandbox":      {ApprovalRef: humanReviewPolicyRef, SandboxRef: "broader-native-sandbox"},
 		"cross_confirmed_approval": {ApprovalRef: humanReviewPolicyRef, ApprovalSessionConfirmed: true, SandboxRef: "broader-native-sandbox", SandboxSessionConfirmed: true},
 	}
@@ -400,7 +407,7 @@ func TestCAS14NativePolicySelectionPinsExactRefs(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	selection := NativePolicySelection{CatalogRef: catalog.CatalogRef, ApprovalRef: "native-auto-review", ApprovalSessionConfirmed: true, SandboxRef: "broader-native-sandbox", SandboxSessionConfirmed: true}
+	selection := NativePolicySelection{CatalogRef: catalog.CatalogRef, ApprovalRef: nativeAutoReviewPolicyRef, ApprovalSessionConfirmed: true, SandboxRef: "broader-native-sandbox", SandboxSessionConfirmed: true}
 	first, err := s.SelectNativePolicies(selection)
 	if err != nil {
 		t.Fatal(err)

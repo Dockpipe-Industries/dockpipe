@@ -12,10 +12,16 @@ import (
 )
 
 const (
-	humanReviewPolicyRef    = "human-review"
-	workspaceWritePolicyRef = "workspace-write"
-	maxNativePolicyOptions  = 16
-	maxCapabilityOptions    = 64
+	humanReviewPolicyRef              = "human-review"
+	nativeAutoReviewPolicyRef         = "native-auto-review"
+	workspaceWritePolicyRef           = "workspace-write"
+	providerApprovalPolicyUntrusted   = "untrusted"
+	providerApprovalsReviewerUser     = "user"
+	providerApprovalsReviewerAuto     = "auto_review"
+	providerSandboxWorkspaceWrite     = "workspace-write"
+	providerSandboxTypeWorkspaceWrite = "workspaceWrite"
+	maxNativePolicyOptions            = 16
+	maxCapabilityOptions              = 64
 )
 
 var (
@@ -491,7 +497,7 @@ func projectNativePolicyCatalog(advertisement NativePolicyAdvertisement) (Native
 	sort.Slice(approval, func(i, j int) bool { return approval[i].PolicyRef < approval[j].PolicyRef })
 	sort.Slice(sandbox, func(i, j int) bool { return sandbox[i].PolicyRef < sandbox[j].PolicyRef })
 
-	baselineApproval, baselineSandbox := false, false
+	baselineApproval, mappedNonBaselineApproval, baselineSandbox := false, false, false
 	seen := make(map[string]struct{}, len(approval)+len(sandbox))
 	for _, option := range approval {
 		if !validID(option.PolicyRef) || !option.Stable || !option.Available || !validOptionalApprovalMapping(option) {
@@ -514,6 +520,12 @@ func projectNativePolicyCatalog(advertisement NativePolicyAdvertisement) (Native
 				return NativePolicyCatalog{}, DisconnectPolicyMismatch
 			}
 			baselineApproval = true
+		}
+		if option.PolicyRef == nativeAutoReviewPolicyRef {
+			if !option.AuthorityExpanding {
+				return NativePolicyCatalog{}, DisconnectPolicyMismatch
+			}
+			mappedNonBaselineApproval = true
 		}
 	}
 	for _, option := range sandbox {
@@ -539,7 +551,7 @@ func projectNativePolicyCatalog(advertisement NativePolicyAdvertisement) (Native
 			baselineSandbox = true
 		}
 	}
-	if !baselineApproval || !baselineSandbox {
+	if !baselineApproval || !mappedNonBaselineApproval || !baselineSandbox {
 		return NativePolicyCatalog{}, DisconnectPolicyMismatch
 	}
 	catalog := NativePolicyCatalog{Approval: approval, Sandbox: sandbox}
@@ -559,10 +571,14 @@ func nativePolicyCatalogReference(catalog NativePolicyCatalog) string {
 }
 
 func validOptionalApprovalMapping(option NativeApprovalPolicyOption) bool {
-	if option.providerPolicy == "" && option.providerReviewer == "" {
-		return true
+	switch option.PolicyRef {
+	case humanReviewPolicyRef:
+		return option.providerPolicy == providerApprovalPolicyUntrusted && option.providerReviewer == providerApprovalsReviewerUser
+	case nativeAutoReviewPolicyRef:
+		return option.providerPolicy == providerApprovalPolicyUntrusted && option.providerReviewer == providerApprovalsReviewerAuto
+	default:
+		return option.providerPolicy == "" && option.providerReviewer == ""
 	}
-	return validID(option.providerPolicy) && validID(option.providerReviewer)
 }
 
 func validOptionalSandboxMapping(option NativeSandboxPolicyOption) bool {

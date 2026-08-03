@@ -16,8 +16,9 @@ import (
 // LifecyclePolicy is the caller's exact native-turn policy for every lifecycle
 // operation. Model and reasoning must match the already selected effective
 // policy; the remaining provider-private values must match a retained mapping.
-// It deliberately has no full-access, shell, automatic review, fallback, or
-// network-enabled mode.
+// It deliberately has no full-access, shell, fallback, or network-enabled
+// mode. AutoReview is an explicit caller assertion that must match the one
+// retained native automatic-review mapping; it never changes sandbox policy.
 type LifecyclePolicy struct {
 	Workspace        string
 	WritableRoots    []string
@@ -76,7 +77,9 @@ type lifecycleState struct {
 
 func (p LifecyclePolicy) validate() error {
 	workspace, workspaceOK := boundedLocalPath(p.Workspace)
-	if !workspaceOK || p.Sandbox != "workspace-write" || p.NetworkEnabled || p.ApprovalPolicy != "untrusted" || p.Reviewer != "user" || !validID(p.Model) || !validID(p.ReasoningEffort) || p.ModelProvider != "openai" || p.FullAccess || p.AllowShell || p.AutoReview || strings.TrimSpace(p.FallbackModel) != "" || strings.TrimSpace(p.FallbackProvider) != "" || len(p.WritableRoots) == 0 || len(p.WritableRoots) > maxLifecycleRoots {
+	baselineReview := p.ApprovalPolicy == providerApprovalPolicyUntrusted && p.Reviewer == providerApprovalsReviewerUser && !p.AutoReview
+	nativeAutoReview := p.ApprovalPolicy == providerApprovalPolicyUntrusted && p.Reviewer == providerApprovalsReviewerAuto && p.AutoReview
+	if !workspaceOK || p.Sandbox != providerSandboxWorkspaceWrite || p.NetworkEnabled || (!baselineReview && !nativeAutoReview) || !validID(p.Model) || !validID(p.ReasoningEffort) || p.ModelProvider != "openai" || p.FullAccess || p.AllowShell || strings.TrimSpace(p.FallbackModel) != "" || strings.TrimSpace(p.FallbackProvider) != "" || len(p.WritableRoots) == 0 || len(p.WritableRoots) > maxLifecycleRoots {
 		return errors.New("native-turn policy is not permitted")
 	}
 	seen, containsWorkspace := map[string]bool{}, false
@@ -163,7 +166,9 @@ func (s *Supervisor) resolveLifecyclePolicy(caller LifecyclePolicy) (resolvedLif
 	if !approvalOK || !sandboxOK || effective.Approval.EffectiveRef != approval.PolicyRef || effective.Approval.AuthorityExpanding != approval.AuthorityExpanding || effective.Approval.SessionConfirmed != approval.AuthorityExpanding || effective.Sandbox.EffectiveRef != sandbox.PolicyRef || effective.Sandbox.AuthorityExpanding != sandbox.AuthorityExpanding || effective.Sandbox.SessionConfirmed != sandbox.AuthorityExpanding {
 		return resolvedLifecyclePolicy{}, DisconnectPolicyMismatch
 	}
-	if approval.providerPolicy != "untrusted" || approval.providerReviewer != "user" || sandbox.providerSandbox != "workspace-write" || sandbox.providerSandboxType != "workspaceWrite" {
+	baselineApproval := approval.PolicyRef == humanReviewPolicyRef && approval.providerPolicy == providerApprovalPolicyUntrusted && approval.providerReviewer == providerApprovalsReviewerUser && !approval.AuthorityExpanding
+	nativeAutoApproval := approval.PolicyRef == nativeAutoReviewPolicyRef && approval.providerPolicy == providerApprovalPolicyUntrusted && approval.providerReviewer == providerApprovalsReviewerAuto && approval.AuthorityExpanding
+	if (!baselineApproval && !nativeAutoApproval) || sandbox.providerSandbox != providerSandboxWorkspaceWrite || sandbox.providerSandboxType != providerSandboxTypeWorkspaceWrite {
 		return resolvedLifecyclePolicy{}, DisconnectUnsupportedCapability
 	}
 
@@ -180,7 +185,7 @@ func (s *Supervisor) resolveLifecyclePolicy(caller LifecyclePolicy) (resolvedLif
 		}
 	}
 
-	if caller.Model != effective.EffectiveModelRef || caller.ReasoningEffort != effective.EffectiveReasoningRef || caller.ApprovalPolicy != approval.providerPolicy || caller.Reviewer != approval.providerReviewer || caller.Sandbox != sandbox.providerSandbox {
+	if caller.Model != effective.EffectiveModelRef || caller.ReasoningEffort != effective.EffectiveReasoningRef || caller.ApprovalPolicy != approval.providerPolicy || caller.Reviewer != approval.providerReviewer || caller.AutoReview != nativeAutoApproval || caller.Sandbox != sandbox.providerSandbox {
 		return resolvedLifecyclePolicy{}, DisconnectPolicyMismatch
 	}
 	return resolvedLifecyclePolicy{policy: caller, key: selectedLifecyclePolicyKey(caller, modelCatalog.CatalogRef, nativeCatalog.CatalogRef, capabilityCatalog.CatalogRef, effective)}, ""
