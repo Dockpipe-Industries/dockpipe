@@ -380,10 +380,21 @@ existing notification opt-outs, and unchanged lifecycle resolution rejects every
 before thread start/read/resume or turn start/steer request I/O. No attestation request, credential,
 account value, authentication action, or provider call occurred.
 
+The package-local pre-initialization decision adds no provider-neutral surface. A one-shot private
+planner can validate the fixture-backed capability catalog before child startup and bind exactly one
+`request-attestation` intent plus one independent confirmation to the exact package session,
+supervisor incarnation, catalog identity, and private `requestAttestation=true` mapping. Its
+fingerprinted scalar plan is not stored on the supervisor and is not consumed by initialize,
+lifecycle, recovery, request handling, or a consumer. Catalog order is irrelevant while content or
+mapping drift, reuse, cross-session or cross-supervisor substitution, multiple requests, a second
+mapping, unsupported/experimental evidence, and post-validation mutation are rejected. Fresh and
+recovered supervisors retain neither the plan nor confirmation authority; production initialization
+and attestation-request rejection remain unchanged.
+
 No second in-scope stable mapping is proven: `experimentalApi` is a global experimental opt-in,
 `mcpServerOpenaiFormElicitation` is outside the no-MCP boundary, `optOutNotificationMethods` is a
 suppression list rather than enablement, and `SelectedCapabilityRoot` is not bound to a stable thread
-parameter. The smallest evidence-backed next slice is a separately approved package-local contract
-and sequencing decision for individually confirmed pre-initialization capabilities, without dispatch.
-Provider discovery persistence, adapter selection, MCP, Pipeon, fallback, rollback, and all
-consumer/bridge paths remain separate work.
+parameter. The smallest evidence-backed next slice is a separately approved package-local offline
+contract decision for the exact `attestation/generate` request shape and fail-closed response
+semantics, still without initialization opt-in or a live request. Provider discovery persistence,
+adapter selection, MCP, Pipeon, fallback, rollback, and all consumer/bridge paths remain separate work.
