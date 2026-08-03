@@ -198,24 +198,30 @@ type Supervisor struct {
 	store          SnapshotStore
 	audit          *auditJournal
 
-	mu                 sync.RWMutex
-	lifecycleMu        sync.Mutex
-	started            bool
-	initialized        bool
-	state              providersession.State
-	sequence           uint64
-	child              Child
-	stdin              io.WriteCloser
-	stdout             io.ReadCloser
-	client             *protocolClient
-	initializationInfo InitializationInfo
-	processRef         string
-	connectionRef      string
-	recoveryEvidence   string
-	lifecycle          lifecycleState
-	lastNotification   string
-	waitDone           chan struct{}
-	record             ShutdownRecord
+	mu                     sync.RWMutex
+	lifecycleMu            sync.Mutex
+	started                bool
+	initialized            bool
+	state                  providersession.State
+	sequence               uint64
+	child                  Child
+	stdin                  io.WriteCloser
+	stdout                 io.ReadCloser
+	client                 *protocolClient
+	initializationInfo     InitializationInfo
+	modelCatalog           *providersession.ModelReasoningCatalog
+	nativePolicyCatalog    *NativePolicyCatalog
+	capabilityCatalog      *CapabilityCatalog
+	effectivePolicy        *providersession.EffectivePolicySnapshot
+	nativePoliciesSelected bool
+	capabilitiesSelected   bool
+	processRef             string
+	connectionRef          string
+	recoveryEvidence       string
+	lifecycle              lifecycleState
+	lastNotification       string
+	waitDone               chan struct{}
+	record                 ShutdownRecord
 
 	disconnectOnce sync.Once
 	shutdownOnce   sync.Once

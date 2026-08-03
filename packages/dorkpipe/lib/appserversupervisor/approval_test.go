@@ -157,9 +157,9 @@ func TestApprovalRelayAcceptsZeroServerRequestID(t *testing.T) {
 	}
 }
 
-func TestUserInputRelayIsOpaqueAndHasNoAnswerOperation(t *testing.T) {
+func TestUserInputRelayIsOpaqueAndRejectsApprovalDecision(t *testing.T) {
 	s, child, _, _, _ := startApprovalTurn(t)
-	sendServerRequest(t, child, 43, "item/tool/requestUserInput", `{"threadId":"thread-1","turnId":"turn-1","itemId":"item-1","questions":[{"id":"question-1","header":"private header","question":"private prompt","options":["private option"]}]}`)
+	sendServerRequest(t, child, 43, "item/tool/requestUserInput", `{"threadId":"thread-1","turnId":"turn-1","itemId":"item-1","questions":[{"id":"question-1","header":"private header","question":"private prompt","options":[{"label":"Private A","description":"private a"},{"label":"Private B","description":"private b"}]}]}`)
 	event := nextEvent(t, s)
 	if event.Kind != providersession.EventUserInputRequested || event.State != providersession.StateWaitingForUserInput || event.UserInput == nil || event.UserInput.PromptRef == "" || event.UserInput.Correlation.ActivityID != "item-1" {
 		t.Fatalf("user input event = %+v", event)
@@ -173,6 +173,401 @@ func TestUserInputRelayIsOpaqueAndHasNoAnswerOperation(t *testing.T) {
 	}
 	if disconnected := nextEvent(t, s); disconnected.State != providersession.StateDisconnected || disconnected.Summary != string(DisconnectDecisionRejected) {
 		t.Fatalf("unsupported input decision = %+v", disconnected)
+	}
+}
+
+func TestCAS14UserInputAcceptsOnlyExperimentalDefaults(t *testing.T) {
+	s, child, _, _, _ := startApprovalTurn(t)
+	sendServerRequest(t, child, 53, "item/tool/requestUserInput", `{"threadId":"thread-1","turnId":"turn-1","itemId":"item-1","autoResolutionMs":null,"questions":[{"id":"question-1","header":"private header","question":"private prompt","isOther":false,"isSecret":false,"options":[{"label":"Private A","description":"private a"},{"label":"Private B","description":"private b"}]}]}`)
+	event := nextEvent(t, s)
+	if event.Kind != providersession.EventUserInputRequested || event.State != providersession.StateWaitingForUserInput || event.UserInput == nil {
+		t.Fatalf("default-only experimental request = %+v", event)
+	}
+	prompt, err := s.UserInputPrompt(context.Background(), *event.UserInput)
+	if err != nil || prompt.Kind != providersession.UserInputPromptSelectOne || len(prompt.Options) != 2 {
+		t.Fatalf("default-only experimental prompt = %+v, err=%v", prompt, err)
+	}
+}
+
+func TestCAS14UserInputRejectsActiveMalformedAndSubstitutedExperimentalFields(t *testing.T) {
+	fixtures := []struct {
+		name   string
+		params string
+	}{
+		{name: "auto_resolution_zero", params: `{"threadId":"thread-1","turnId":"turn-1","itemId":"item-1","autoResolutionMs":0,"questions":[{"id":"question-1","header":"header","question":"prompt","options":null}]}`},
+		{name: "auto_resolution_positive", params: `{"threadId":"thread-1","turnId":"turn-1","itemId":"item-1","autoResolutionMs":1000,"questions":[{"id":"question-1","header":"header","question":"prompt","options":null}]}`},
+		{name: "auto_resolution_substituted", params: `{"threadId":"thread-1","turnId":"turn-1","itemId":"item-1","autoResolutionMs":"null","questions":[{"id":"question-1","header":"header","question":"prompt","options":null}]}`},
+		{name: "other_active", params: `{"threadId":"thread-1","turnId":"turn-1","itemId":"item-1","questions":[{"id":"question-1","header":"header","question":"prompt","isOther":true,"options":null}]}`},
+		{name: "other_null", params: `{"threadId":"thread-1","turnId":"turn-1","itemId":"item-1","questions":[{"id":"question-1","header":"header","question":"prompt","isOther":null,"options":null}]}`},
+		{name: "other_substituted", params: `{"threadId":"thread-1","turnId":"turn-1","itemId":"item-1","questions":[{"id":"question-1","header":"header","question":"prompt","isOther":"false","options":null}]}`},
+		{name: "secret_active", params: `{"threadId":"thread-1","turnId":"turn-1","itemId":"item-1","questions":[{"id":"question-1","header":"header","question":"prompt","isSecret":true,"options":null}]}`},
+		{name: "secret_null", params: `{"threadId":"thread-1","turnId":"turn-1","itemId":"item-1","questions":[{"id":"question-1","header":"header","question":"prompt","isSecret":null,"options":null}]}`},
+		{name: "secret_substituted", params: `{"threadId":"thread-1","turnId":"turn-1","itemId":"item-1","questions":[{"id":"question-1","header":"header","question":"prompt","isSecret":0,"options":null}]}`},
+		{name: "unknown_question_field", params: `{"threadId":"thread-1","turnId":"turn-1","itemId":"item-1","questions":[{"id":"question-1","header":"header","question":"prompt","futureField":false,"options":null}]}`},
+	}
+	for _, fixture := range fixtures {
+		t.Run(fixture.name, func(t *testing.T) {
+			s, child, _, _, _ := startApprovalTurn(t)
+			sendServerRequest(t, child, 54, "item/tool/requestUserInput", fixture.params)
+			if event := nextEvent(t, s); event.State != providersession.StateDisconnected || event.Summary != string(DisconnectUnsupportedEvent) {
+				t.Fatalf("experimental field rejection = %+v", event)
+			}
+		})
+	}
+}
+
+func startUserInputRequest(t *testing.T) (*Supervisor, *fakeChild, *bufio.Scanner, providersession.UserInputRequest, providersession.UserInputPrompt) {
+	t.Helper()
+	s, child, scanner, _, _ := startApprovalTurn(t)
+	sendServerRequest(t, child, 49, "item/tool/requestUserInput", `{"threadId":"thread-1","turnId":"turn-1","itemId":"item-1","questions":[{"id":"question-1","header":"private header","question":"private prompt","options":[{"label":"Private A","description":"private a"},{"label":"Private B","description":"private b"}]}]}`)
+	event := nextEvent(t, s)
+	if event.Kind != providersession.EventUserInputRequested || event.UserInput == nil {
+		t.Fatalf("user-input request event = %+v", event)
+	}
+	request := *event.UserInput
+	prompt, err := s.UserInputPrompt(context.Background(), request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return s, child, scanner, request, prompt
+}
+
+func promptOptionRef(t *testing.T, prompt providersession.UserInputPrompt, label string) string {
+	t.Helper()
+	for _, option := range prompt.Options {
+		if option.Label == label {
+			return option.OptionRef
+		}
+	}
+	t.Fatalf("prompt option %q not found in %+v", label, prompt)
+	return ""
+}
+
+func TestCAS14ProviderUserInputPromptIsNormalizedExactDefensiveAndLookupOnly(t *testing.T) {
+	s, _, _, request, first := startUserInputRequest(t)
+	if err := first.ValidateFor(request); err != nil || first.Summary != "private prompt" || len(first.Options) != 2 || first.Options[0].Label != "Private A" || first.Options[1].Label != "Private B" {
+		t.Fatalf("normalized prompt lookup = %+v, err=%v", first, err)
+	}
+	for _, option := range first.Options {
+		if !strings.HasPrefix(option.OptionRef, "option-") || strings.Contains(option.OptionRef, option.Label) || option.OptionRef == request.PromptRef {
+			t.Fatalf("option reference is not opaque: %+v", option)
+		}
+	}
+	first.Options[0].Label = "returned mutation"
+	second, err := s.UserInputPrompt(context.Background(), request)
+	if err != nil || second.Options[0].Label != "Private A" {
+		t.Fatalf("prompt lookup was not defensively copied: %+v, err=%v", second, err)
+	}
+
+	s.mu.RLock()
+	pending := s.lifecycle.pending
+	state := s.state
+	inFlight := pending != nil && pending.decisionInFlight
+	s.mu.RUnlock()
+	if state != providersession.StateWaitingForUserInput || pending == nil || inFlight {
+		t.Fatalf("lookup changed input or lifecycle state: state=%s pending=%v in_flight=%t", state, pending != nil, inFlight)
+	}
+}
+
+func TestCAS14ProviderUserInputOptionReferencesDoNotDependOnOrder(t *testing.T) {
+	_, _, _, request, _ := startUserInputRequest(t)
+	first, ok := parseProviderUserInputQuestion([]json.RawMessage{json.RawMessage(`{"id":"question-1","header":" header ","question":" choose   one ","options":[{"label":"Private A","description":"private a"},{"label":"Private B","description":"private b"}]}`)})
+	if !ok {
+		t.Fatal("first provider question was rejected")
+	}
+	second, ok := parseProviderUserInputQuestion([]json.RawMessage{json.RawMessage(`{"id":"question-1","header":"header","question":"choose one","options":[{"label":"Private B","description":"private b"},{"label":"Private A","description":"private a"}]}`)})
+	if !ok {
+		t.Fatal("reordered provider question was rejected")
+	}
+	firstPrompt, _, ok := projectProviderUserInput(first, request)
+	if !ok {
+		t.Fatal("first prompt projection was rejected")
+	}
+	secondPrompt, _, ok := projectProviderUserInput(second, request)
+	if !ok {
+		t.Fatal("reordered prompt projection was rejected")
+	}
+	for _, label := range []string{"Private A", "Private B"} {
+		if promptOptionRef(t, firstPrompt, label) != promptOptionRef(t, secondPrompt, label) {
+			t.Fatalf("option reference for %q depended on provider ordering", label)
+		}
+	}
+	if firstPrompt.Summary != "choose one" || secondPrompt.Summary != "choose one" {
+		t.Fatalf("question text was not normalized: first=%q second=%q", firstPrompt.Summary, secondPrompt.Summary)
+	}
+}
+
+func TestCAS14ProviderUserInputNormalizationRejectsMalformedOversizedAndAmbiguousPrompts(t *testing.T) {
+	requests := map[string]string{
+		"empty_question":      `{"threadId":"thread-1","turnId":"turn-1","itemId":"item-1","questions":[{"id":"question-1","header":"header","question":"   ","options":null}]}`,
+		"control_character":   `{"threadId":"thread-1","turnId":"turn-1","itemId":"item-1","questions":[{"id":"question-1","header":"header","question":"unsafe\u0001question","options":null}]}`,
+		"duplicate_labels":    `{"threadId":"thread-1","turnId":"turn-1","itemId":"item-1","questions":[{"id":"question-1","header":"header","question":"choose","options":[{"label":"Option A","description":"first"},{"label":"Option A","description":"second"}]}]}`,
+		"ambiguous_labels":    `{"threadId":"thread-1","turnId":"turn-1","itemId":"item-1","questions":[{"id":"question-1","header":"header","question":"choose","options":[{"label":"Option  A","description":"first"},{"label":"Option A","description":"second"}]}]}`,
+		"missing_description": `{"threadId":"thread-1","turnId":"turn-1","itemId":"item-1","questions":[{"id":"question-1","header":"header","question":"choose","options":[{"label":"Option A"}]}]}`,
+	}
+	requests["oversized_question"] = `{"threadId":"thread-1","turnId":"turn-1","itemId":"item-1","questions":[{"id":"question-1","header":"header","question":` + quoteJSON(strings.Repeat("x", 513)) + `,"options":null}]}`
+	requests["oversized_label"] = `{"threadId":"thread-1","turnId":"turn-1","itemId":"item-1","questions":[{"id":"question-1","header":"header","question":"choose","options":[{"label":` + quoteJSON(strings.Repeat("x", 129)) + `,"description":"private"}]}]}`
+	for name, params := range requests {
+		t.Run(name, func(t *testing.T) {
+			s, child, _, _, _ := startApprovalTurn(t)
+			sendServerRequest(t, child, 49, "item/tool/requestUserInput", params)
+			if event := nextEvent(t, s); event.State != providersession.StateDisconnected || event.Summary != string(DisconnectUnsupportedEvent) {
+				t.Fatalf("normalization rejection = %+v", event)
+			}
+		})
+	}
+}
+
+func TestCAS14UserInputPromptLookupMismatchAndExpiryFailClosed(t *testing.T) {
+	for _, name := range []string{"stale", "cross_session", "substituted_reference"} {
+		t.Run(name, func(t *testing.T) {
+			s, _, _, request, _ := startUserInputRequest(t)
+			lookup := request
+			switch name {
+			case "stale":
+				lookup.Correlation.DecisionID = "decision-stale"
+			case "cross_session":
+				lookup.Correlation.SessionID = "thread-other"
+			case "substituted_reference":
+				lookup.PromptRef = "request-substituted"
+			}
+			if _, err := s.UserInputPrompt(context.Background(), lookup); !errors.Is(err, ErrUserInputPromptRejected) {
+				t.Fatalf("mismatched lookup error = %v", err)
+			}
+			if event := nextEvent(t, s); event.State != providersession.StateDisconnected || event.Summary != string(DisconnectCorrelationMismatch) {
+				t.Fatalf("mismatched lookup rejection = %+v", event)
+			}
+		})
+	}
+
+	t.Run("expired", func(t *testing.T) {
+		s, _, _, request, _ := startUserInputRequest(t)
+		s.expirePending(request.Correlation)
+		if event := nextEvent(t, s); event.State != providersession.StateDisconnected || event.Summary != string(DisconnectRequestDeadline) {
+			t.Fatalf("expiry rejection = %+v", event)
+		}
+		if _, err := s.UserInputPrompt(context.Background(), request); !errors.Is(err, ErrUserInputPromptUnavailable) {
+			t.Fatalf("expired lookup error = %v", err)
+		}
+		s.mu.RLock()
+		pending := s.lifecycle.pending
+		s.mu.RUnlock()
+		if pending != nil {
+			t.Fatal("expired normalized prompt remained in private state")
+		}
+	})
+}
+
+func TestCAS14UserInputResponseDeliversExactChoiceOnceAndRetainsNoAnswer(t *testing.T) {
+	s, child, scanner, request, prompt := startUserInputRequest(t)
+	selectedRef := promptOptionRef(t, prompt, "Private B")
+	response := providersession.UserInputResponse{Correlation: request.Correlation, PromptRef: request.PromptRef, SelectedOptionRefs: []string{selectedRef}}
+	done := make(chan error, 1)
+	go func() { done <- s.RespondUserInput(context.Background(), response) }()
+	if !scanner.Scan() {
+		t.Fatal("expected private user-input response")
+	}
+	var wire struct {
+		ID     uint64         `json:"id"`
+		Result map[string]any `json:"result"`
+	}
+	want := map[string]any{"answers": map[string]any{"question-1": map[string]any{"answers": []string{"Private B"}}}}
+	if err := json.Unmarshal(scanner.Bytes(), &wire); err != nil || wire.ID != 49 || !sameResult(wire.Result, want) {
+		t.Fatalf("user-input response = %s, err=%v", scanner.Text(), err)
+	}
+	if err := <-done; err != nil {
+		t.Fatal(err)
+	}
+
+	s.mu.RLock()
+	pending := s.lifecycle.pending
+	retainedPrompt := pending != nil && pending.prompt != nil
+	retainedMapping := pending != nil && pending.input != nil
+	s.mu.RUnlock()
+	if pending == nil || retainedPrompt || retainedMapping || !pending.decisionInFlight {
+		t.Fatalf("transient response state retained: pending=%v prompt=%t mapping=%t", pending != nil, retainedPrompt, retainedMapping)
+	}
+	s.audit.mu.Lock()
+	auditData, _ := json.Marshal(s.audit.document)
+	s.audit.mu.Unlock()
+	for _, private := range []string{"Private B", selectedRef, "question-1"} {
+		if strings.Contains(string(auditData), private) {
+			t.Fatalf("private response data leaked into audit: %s", auditData)
+		}
+	}
+
+	sendNotification(t, child, "serverRequest/resolved", `{"threadId":"thread-1","requestId":49}`)
+	resolved := nextEvent(t, s)
+	if resolved.State != providersession.StateRunning || resolved.Summary != "user_input_resolved" || resolved.Correlation != request.Correlation {
+		t.Fatalf("user-input resolution = %+v", resolved)
+	}
+	encoded, _ := json.Marshal(resolved)
+	if strings.Contains(string(encoded), "Private B") || strings.Contains(string(encoded), selectedRef) || strings.Contains(string(encoded), "question-1") {
+		t.Fatalf("private response data leaked into event: %s", encoded)
+	}
+}
+
+func TestCAS14UserInputTextResponseIsTransientAndExact(t *testing.T) {
+	s, child, scanner, _, _ := startApprovalTurn(t)
+	sendServerRequest(t, child, 50, "item/tool/requestUserInput", `{"threadId":"thread-1","turnId":"turn-1","itemId":"item-1","questions":[{"id":"private-text-question","header":"private header","question":"private prompt","options":null}]}`)
+	event := nextEvent(t, s)
+	if event.UserInput == nil {
+		t.Fatalf("user-input request = %+v", event)
+	}
+	request := *event.UserInput
+	prompt, err := s.UserInputPrompt(context.Background(), request)
+	if err != nil || prompt.Kind != providersession.UserInputPromptText || prompt.Summary != "private prompt" || prompt.MaxTextBytes != 4096 {
+		t.Fatalf("text prompt = %+v, err=%v", prompt, err)
+	}
+	response := providersession.UserInputResponse{Correlation: request.Correlation, PromptRef: request.PromptRef, Text: "private answer"}
+	done := make(chan error, 1)
+	go func() { done <- s.RespondUserInput(context.Background(), response) }()
+	if !scanner.Scan() {
+		t.Fatal("expected private text response")
+	}
+	var wire struct {
+		Result map[string]any `json:"result"`
+	}
+	want := map[string]any{"answers": map[string]any{"private-text-question": map[string]any{"answers": []string{"private answer"}}}}
+	if err := json.Unmarshal(scanner.Bytes(), &wire); err != nil || !sameResult(wire.Result, want) {
+		t.Fatalf("text response = %s, err=%v", scanner.Text(), err)
+	}
+	if err := <-done; err != nil {
+		t.Fatal(err)
+	}
+	s.mu.RLock()
+	retained := s.lifecycle.pending != nil && (s.lifecycle.pending.prompt != nil || s.lifecycle.pending.input != nil)
+	s.mu.RUnlock()
+	if retained {
+		t.Fatal("text answer or provider mapping remained in pending state")
+	}
+}
+
+func TestCAS14UserInputResponseRejectsMismatchesMalformedAndUnknownOptions(t *testing.T) {
+	tests := map[string]struct {
+		mutate func(*providersession.UserInputResponse)
+		reason DisconnectReason
+	}{
+		"stale": {
+			mutate: func(response *providersession.UserInputResponse) { response.Correlation.DecisionID = "decision-stale" },
+			reason: DisconnectCorrelationMismatch,
+		},
+		"cross_session": {
+			mutate: func(response *providersession.UserInputResponse) { response.Correlation.SessionID = "thread-other" },
+			reason: DisconnectCorrelationMismatch,
+		},
+		"mismatched_prompt": {
+			mutate: func(response *providersession.UserInputResponse) { response.PromptRef = "request-other" },
+			reason: DisconnectCorrelationMismatch,
+		},
+		"unknown_option": {
+			mutate: func(response *providersession.UserInputResponse) {
+				response.SelectedOptionRefs = []string{"option-unknown"}
+			},
+			reason: DisconnectDecisionRejected,
+		},
+		"malformed": {
+			mutate: func(response *providersession.UserInputResponse) { response.SelectedOptionRefs = nil },
+			reason: DisconnectDecisionRejected,
+		},
+	}
+	for name, test := range tests {
+		t.Run(name, func(t *testing.T) {
+			s, _, _, request, prompt := startUserInputRequest(t)
+			response := providersession.UserInputResponse{Correlation: request.Correlation, PromptRef: request.PromptRef, SelectedOptionRefs: []string{promptOptionRef(t, prompt, "Private A")}}
+			test.mutate(&response)
+			if err := s.RespondUserInput(context.Background(), response); !errors.Is(err, ErrUserInputResponseRejected) {
+				t.Fatalf("response rejection = %v", err)
+			}
+			if event := nextEvent(t, s); event.State != providersession.StateDisconnected || event.Summary != string(test.reason) {
+				t.Fatalf("response rejection event = %+v", event)
+			}
+		})
+	}
+}
+
+func TestCAS14UserInputResponseRejectsOversizedDuplicateExpiredDisconnectedAndReplay(t *testing.T) {
+	t.Run("oversized_text", func(t *testing.T) {
+		s, child, _, _, _ := startApprovalTurn(t)
+		sendServerRequest(t, child, 51, "item/tool/requestUserInput", `{"threadId":"thread-1","turnId":"turn-1","itemId":"item-1","questions":[{"id":"text-question","header":"private header","question":"private prompt","options":null}]}`)
+		request := *nextEvent(t, s).UserInput
+		response := providersession.UserInputResponse{Correlation: request.Correlation, PromptRef: request.PromptRef, Text: strings.Repeat("x", 4097)}
+		if err := s.RespondUserInput(context.Background(), response); !errors.Is(err, ErrUserInputResponseRejected) {
+			t.Fatalf("oversized response = %v", err)
+		}
+		if event := nextEvent(t, s); event.Summary != string(DisconnectDecisionRejected) {
+			t.Fatalf("oversized response event = %+v", event)
+		}
+	})
+
+	t.Run("duplicate_in_flight", func(t *testing.T) {
+		s, _, scanner, request, prompt := startUserInputRequest(t)
+		response := providersession.UserInputResponse{Correlation: request.Correlation, PromptRef: request.PromptRef, SelectedOptionRefs: []string{promptOptionRef(t, prompt, "Private A")}}
+		done := make(chan error, 1)
+		go func() { done <- s.RespondUserInput(context.Background(), response) }()
+		if !scanner.Scan() {
+			t.Fatal("expected first response")
+		}
+		if err := <-done; err != nil {
+			t.Fatal(err)
+		}
+		if err := s.RespondUserInput(context.Background(), response); !errors.Is(err, ErrUserInputResponseUnavailable) {
+			t.Fatalf("duplicate response = %v", err)
+		}
+		if event := nextEvent(t, s); event.Summary != string(DisconnectDecisionRejected) {
+			t.Fatalf("duplicate response event = %+v", event)
+		}
+	})
+
+	t.Run("expired", func(t *testing.T) {
+		s, _, _, request, prompt := startUserInputRequest(t)
+		s.expirePending(request.Correlation)
+		if event := nextEvent(t, s); event.Summary != string(DisconnectRequestDeadline) {
+			t.Fatalf("expiry event = %+v", event)
+		}
+		response := providersession.UserInputResponse{Correlation: request.Correlation, PromptRef: request.PromptRef, SelectedOptionRefs: []string{promptOptionRef(t, prompt, "Private A")}}
+		if err := s.RespondUserInput(context.Background(), response); !errors.Is(err, ErrUserInputResponseUnavailable) {
+			t.Fatalf("expired response = %v", err)
+		}
+	})
+
+	t.Run("post_disconnect", func(t *testing.T) {
+		s, _, _, request, prompt := startUserInputRequest(t)
+		s.fail(DisconnectTransportClosed)
+		_ = nextEvent(t, s)
+		response := providersession.UserInputResponse{Correlation: request.Correlation, PromptRef: request.PromptRef, SelectedOptionRefs: []string{promptOptionRef(t, prompt, "Private A")}}
+		if err := s.RespondUserInput(context.Background(), response); !errors.Is(err, ErrUserInputResponseUnavailable) {
+			t.Fatalf("post-disconnect response = %v", err)
+		}
+	})
+
+	t.Run("replayed_after_resolution", func(t *testing.T) {
+		s, child, scanner, request, prompt := startUserInputRequest(t)
+		response := providersession.UserInputResponse{Correlation: request.Correlation, PromptRef: request.PromptRef, SelectedOptionRefs: []string{promptOptionRef(t, prompt, "Private A")}}
+		done := make(chan error, 1)
+		go func() { done <- s.RespondUserInput(context.Background(), response) }()
+		if !scanner.Scan() {
+			t.Fatal("expected first response")
+		}
+		if err := <-done; err != nil {
+			t.Fatal(err)
+		}
+		sendNotification(t, child, "serverRequest/resolved", `{"threadId":"thread-1","requestId":49}`)
+		_ = nextEvent(t, s)
+		if err := s.RespondUserInput(context.Background(), response); !errors.Is(err, ErrUserInputResponseUnavailable) {
+			t.Fatalf("replayed response = %v", err)
+		}
+		if event := nextEvent(t, s); event.Summary != string(DisconnectDecisionRejected) {
+			t.Fatalf("replayed response event = %+v", event)
+		}
+	})
+}
+
+func TestCAS14UserInputRejectsMultiQuestionBatchWithoutPartialAnswer(t *testing.T) {
+	s, child, _, _, _ := startApprovalTurn(t)
+	sendServerRequest(t, child, 52, "item/tool/requestUserInput", `{"threadId":"thread-1","turnId":"turn-1","itemId":"item-1","questions":[{"id":"question-1","header":"first","question":"first prompt","options":null},{"id":"question-2","header":"second","question":"second prompt","options":null}]}`)
+	if event := nextEvent(t, s); event.State != providersession.StateDisconnected || event.Summary != string(DisconnectUnsupportedEvent) {
+		t.Fatalf("multi-question rejection = %+v", event)
 	}
 }
 
