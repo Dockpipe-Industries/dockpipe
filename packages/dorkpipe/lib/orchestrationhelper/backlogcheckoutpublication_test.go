@@ -87,6 +87,7 @@ func writeBacklogPublicationTestFixture(t *testing.T, state *backlogPublicationT
 }
 
 func TestBacklogCheckoutPublicationApprovedRequestPublishesExactCheckpoint(t *testing.T) {
+	t.Parallel()
 	state := prepareBacklogPublicationTest(t)
 	upstream := snapshotBacklogCheckoutApplicationUpstream(t, state.checkpoint.artifactRoot)
 	for _, name := range []string{"checkout-application-approval.json", "checkout-application.json", "checkout-checkpoint-approval.json", "checkpoint-request.json", "checkpoint-receipt.json"} {
@@ -134,6 +135,7 @@ func TestBacklogCheckoutPublicationApprovedRequestPublishesExactCheckpoint(t *te
 }
 
 func TestBacklogCheckoutPublicationRejectedDecisionCreatesNoRequestOrPush(t *testing.T) {
+	t.Parallel()
 	state := prepareBacklogPublicationTest(t)
 	fixture := writeBacklogPublicationTestFixture(t, state, "checkout_publication_rejected_015", "checkout_publication_rejected_replay_015", backlogSemanticReviewRejected)
 	if err := requestBacklogCheckoutPublication(state.checkpoint.consumerRoot, state.checkpoint.artifactRoot, fixture, state.checkpoint.binding); err != nil {
@@ -150,7 +152,9 @@ func TestBacklogCheckoutPublicationRejectedDecisionCreatesNoRequestOrPush(t *tes
 }
 
 func TestBacklogCheckoutPublicationRejectsMalformedWrongReplayAndTampering(t *testing.T) {
+	t.Parallel()
 	t.Run("checkpoint receipt alone cannot publish", func(t *testing.T) {
+		t.Parallel()
 		state := prepareBacklogPublicationTest(t)
 		if _, err := os.Lstat(filepath.Join(state.checkpoint.artifactRoot, "publication-request.json")); !os.IsNotExist(err) {
 			t.Fatalf("checkpoint receipt implied a publication request: %v", err)
@@ -158,6 +162,7 @@ func TestBacklogCheckoutPublicationRejectsMalformedWrongReplayAndTampering(t *te
 	})
 
 	t.Run("wrong chain binding", func(t *testing.T) {
+		t.Parallel()
 		state := prepareBacklogPublicationTest(t)
 		fixture := backlogCheckoutPublicationFixtureForChain(state.chain, "publication_wrong_015", "publication_wrong_replay_015", backlogSemanticReviewApproved, "reviewed", state.remoteID, state.destination, "publish the separately approved reviewed checkpoint")
 		fixture.ImmutableChainFingerprint = sha256String([]byte("wrong"))
@@ -169,6 +174,7 @@ func TestBacklogCheckoutPublicationRejectsMalformedWrongReplayAndTampering(t *te
 	})
 
 	t.Run("invalid destination", func(t *testing.T) {
+		t.Parallel()
 		state := prepareBacklogPublicationTest(t)
 		fixture := backlogCheckoutPublicationFixtureForChain(state.chain, "publication_tag_015", "publication_tag_replay_015", backlogSemanticReviewApproved, "reviewed", state.remoteID, "refs/tags/v1", "publish the separately approved reviewed checkpoint")
 		path := filepath.Join(t.TempDir(), "tag.json")
@@ -179,6 +185,7 @@ func TestBacklogCheckoutPublicationRejectsMalformedWrongReplayAndTampering(t *te
 	})
 
 	t.Run("replay and artifact tampering", func(t *testing.T) {
+		t.Parallel()
 		state := prepareBacklogPublicationTest(t)
 		first := writeBacklogPublicationTestFixture(t, state, "publication_original_015", "publication_original_replay_015", backlogSemanticReviewRejected)
 		if err := requestBacklogCheckoutPublication(state.checkpoint.consumerRoot, state.checkpoint.artifactRoot, first, state.checkpoint.binding); err != nil {

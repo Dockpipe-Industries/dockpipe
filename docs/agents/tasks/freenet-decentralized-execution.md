@@ -400,7 +400,7 @@ input to the ADR. It is not permission to weaken either project's sandbox.
 
 ## Dependencies And Related Tasks
 
-- [TASK-015 Backlog-Driven Remote Tasks And Multi-Machine Execution](backlog-driven-remote-tasks.md)
+- [TASK-015 Backlog-Driven Remote Tasks And Multi-Machine Execution](closed/backlog-driven-remote-tasks.md)
   owns the transport-neutral machine, capability snapshot, lease, event, cancellation, receipt,
   placement, and connector authority model. TASK-019 should adapt it, not invent a parallel remote
   execution contract.

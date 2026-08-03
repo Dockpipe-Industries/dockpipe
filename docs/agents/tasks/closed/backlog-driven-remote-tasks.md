@@ -1,4 +1,53 @@
-# TASK-015 Backlog-Driven Remote Tasks And Multi-Machine Execution
+# TASK-015 Backlog-Driven Remote Tasks And Multi-Machine Execution — Closed
+
+Status: Closed
+
+Completed: 2026-08-02
+
+## Shipped Summary
+
+- The package-owned, fixture-only `backlog.remote` lifecycle now provides deterministic immutable
+  evidence from strict schema-2 explicit or read-only unique-ready selection through request
+  compilation, compatibility rejection, fixture dispatch and retrieval, mechanical boundary and
+  application proof, bounded validation, independent semantic and checkout decisions, reviewed
+  apply, and separately governed runtime checkpoint and publication contracts. Every stage validates
+  and replays fail closed; provider, validation, receipt, availability, or prior-stage evidence never
+  implies the next authority.
+- The package-local `node-execution.v1` proof now covers the fake broker, connector/session and edge
+  seams, independent placement and execution decisions, lease-bound delivery, task and graph
+  reconciliation, dependency and next-task outcome chains, output delivery, acknowledgement, and
+  final post-reconciliation evidence. Interactions remain fixture-only or deterministic local proof;
+  immutable machine, capability, lease, receipt, graph, result, and acknowledgement bindings remain
+  distinct and restart-safe.
+- Canonical `--next` remains read-only and fail closed: it selects only one uniquely eligible
+  `decision_ready` plus `unclaimed` entry, never ranks candidates, claims a task, or mutates ownership.
+  The canonical open-only backlog has no decision-ready task, so it still rejects with
+  `no_decision_ready_task`. The package fixture consumer retains TASK-015 solely as test data.
+
+## Deferred Follow-ups — Not Shipped
+
+The following items are explicitly deferred. They are not shipped, are not decision-ready, and gain
+no implementation or runtime authority merely because TASK-015 is closed. Any future work requires a
+separately reviewed task with explicit scope, authority, validation, and product decisions.
+
+- live Codex Cloud submission, status, result, or diff integration while the installed CLI lacks a
+  documented machine-readable receipt and stable opaque task-ID contract; undocumented terminal
+  output parsing is not authorized;
+- optional task claiming, leases, owner identity, backlog ownership mutation, automatic readiness
+  promotion, or selection among multiple eligible tasks;
+- resolver/profile ownership, provider adapters, callbacks, UI integration, live-provider result-
+  reconciliation product decisions, or any new scheduling, lifecycle, external-authority, or
+  automatic publication hop;
+- production broker and node-connector packaging, hosted or managed services, tenant isolation,
+  quotas, billing, availability, retention, custom-domain, and production provider policy;
+- target-schema location and migration, large-artifact transfer limits, retention and signature
+  policy, and standardized wire framing and authentication;
+- any generic machine-readable cancellation/status primitive needed by a future production
+  connector.
+
+Everything below is retained as the detailed implementation and decision history. Historical proposed
+contracts, open decisions, and phased backlog text do not convert deferred work into shipped behavior
+or active acceptance criteria.
 
 ## Goal
 
@@ -2091,10 +2140,10 @@ Default tests require no network, provider account, tunnel, or remote machine.
     provider, connector, broker, ForgePipe, process, network, remote execution, validation, checkout
     mutation, Git, checkpoint, commit, push, external action, or future downstream authority.
 
-This completes the post-delivery acknowledgement/reconciliation outcome sub-chain. TASK-015 remains
-open; selection of any further bounded slice requires a separate review of the remaining canonical
-backlog and must not invent another policy, lifecycle, scheduling, publication, or external-authority
-hop.
+This completes the post-delivery acknowledgement/reconciliation outcome sub-chain. TASK-015 is
+closed; any further bounded slice requires a separately reviewed task and explicit scope, and must
+not infer another policy, lifecycle, scheduling, publication, or external-authority hop from this
+completed evidence.
 
 The strict schema-2 readiness/ownership metadata contract and read-only unique-ready inspection are
 complete. Explicit `backlog.inspect` retains its behavior, while literal `--next` succeeds only for
