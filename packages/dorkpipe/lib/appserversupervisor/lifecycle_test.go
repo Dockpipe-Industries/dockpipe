@@ -15,7 +15,7 @@ import (
 func testLifecyclePolicy(t *testing.T) LifecyclePolicy {
 	t.Helper()
 	workspace := filepath.Join(t.TempDir(), "workspace")
-	return LifecyclePolicy{Workspace: workspace, WritableRoots: []string{workspace}, Sandbox: "workspace-write", ApprovalPolicy: "untrusted", Reviewer: "user", Model: PinnedModel, ReasoningEffort: PinnedReasoningEffort, ModelProvider: "openai"}
+	return LifecyclePolicy{Workspace: workspace, WritableRoots: []string{workspace}, Sandbox: providerSandboxWorkspaceWrite, ApprovalPolicy: providerApprovalPolicyUntrusted, Reviewer: providerApprovalsReviewerUser, Model: PinnedModel, ReasoningEffort: PinnedReasoningEffort, ModelProvider: "openai"}
 }
 
 func initializedUnselectedLifecycle(t *testing.T) (*Supervisor, *fakeChild, *bufio.Scanner, LifecyclePolicy) {
@@ -38,6 +38,17 @@ func initializedSelectedLifecycle(t *testing.T) (*Supervisor, *fakeChild, *bufio
 func initializedLifecycle(t *testing.T) (*Supervisor, *fakeChild, *bufio.Scanner, LifecyclePolicy) {
 	t.Helper()
 	return initializedSelectedLifecycle(t)
+}
+
+func initializedAutoReviewLifecycle(t *testing.T) (*Supervisor, *fakeChild, *bufio.Scanner, LifecyclePolicy) {
+	t.Helper()
+	s, child, scanner, _ := initializedUnselectedLifecycle(t)
+	policy := selectLifecyclePolicyForTest(t, s, "model-stable-b", "medium", NativePolicySelection{
+		ApprovalRef:              nativeAutoReviewPolicyRef,
+		ApprovalSessionConfirmed: true,
+		SandboxRef:               workspaceWritePolicyRef,
+	}, CapabilitySelection{})
+	return s, child, scanner, policy
 }
 
 func selectLifecyclePolicyForTest(t *testing.T, s *Supervisor, model, reasoning string, nativeSelection NativePolicySelection, capabilitySelection CapabilitySelection) LifecyclePolicy {
@@ -77,6 +88,10 @@ func selectLifecyclePolicyForTest(t *testing.T, s *Supervisor, model, reasoning 
 	}
 	policy := testLifecyclePolicy(t)
 	policy.Model, policy.ReasoningEffort = model, reasoning
+	if nativeSelection.ApprovalRef == nativeAutoReviewPolicyRef {
+		policy.Reviewer = providerApprovalsReviewerAuto
+		policy.AutoReview = true
+	}
 	return policy
 }
 
@@ -113,11 +128,11 @@ func requestParams(t *testing.T, request map[string]any) map[string]any {
 func assertSelectedPolicy(t *testing.T, request map[string]any, policy LifecyclePolicy) {
 	t.Helper()
 	params := requestParams(t, request)
-	if params["cwd"] != policy.Workspace || params["sandbox"] != "workspace-write" || params["approvalPolicy"] != "untrusted" || params["approvalsReviewer"] != "user" || params["model"] != policy.Model || params["effort"] != policy.ReasoningEffort || params["modelProvider"] != "openai" {
+	if params["cwd"] != policy.Workspace || params["sandbox"] != providerSandboxWorkspaceWrite || params["approvalPolicy"] != policy.ApprovalPolicy || params["approvalsReviewer"] != policy.Reviewer || params["model"] != policy.Model || params["effort"] != policy.ReasoningEffort || params["modelProvider"] != "openai" {
 		t.Fatalf("request does not retain the exact selected policy: %#v", request)
 	}
 	sandbox, ok := params["sandboxPolicy"].(map[string]any)
-	if !ok || sandbox["type"] != "workspaceWrite" || sandbox["networkAccess"] != false {
+	if !ok || sandbox["type"] != providerSandboxTypeWorkspaceWrite || sandbox["networkAccess"] != false {
 		t.Fatalf("sandbox policy = %#v", request["sandboxPolicy"])
 	}
 	roots, ok := sandbox["writableRoots"].([]any)
@@ -215,6 +230,60 @@ func TestLifecycleInitializedThreadReadResumeTurnAndSteer(t *testing.T) {
 	}
 	if event := nextEvent(t, s); event.State != "running" || event.Summary != "turn_started" {
 		t.Fatalf("turn event = %+v", event)
+	}
+}
+
+func TestCAS14LifecycleDispatchesExactNativeAutoReviewWithIndependentWorkspaceWriteSandbox(t *testing.T) {
+	s, child, scanner, policy := initializedAutoReviewLifecycle(t)
+	if policy.ApprovalPolicy != providerApprovalPolicyUntrusted || policy.Reviewer != providerApprovalsReviewerAuto || !policy.AutoReview {
+		t.Fatalf("native automatic-review caller policy = %+v", policy)
+	}
+	thread := startThreadForTest(t, s, child, scanner, policy)
+
+	for _, operation := range []struct {
+		method string
+		id     uint64
+		call   func() (LifecycleReference, error)
+	}{
+		{"thread/read", 3, func() (LifecycleReference, error) { return s.ReadThread(context.Background(), thread, policy) }},
+		{"thread/resume", 4, func() (LifecycleReference, error) { return s.ResumeThread(context.Background(), thread, policy) }},
+	} {
+		done := make(chan error, 1)
+		go func() { _, err := operation.call(); done <- err }()
+		request := lifecycleRequest(t, scanner, operation.method, operation.id)
+		assertSelectedPolicy(t, request, policy)
+		_, _ = child.stdoutW.Write([]byte(response(operation.id, `{"thread":{"id":"thread-1"}}`)))
+		if err := <-done; err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	turnDone := make(chan struct {
+		ref LifecycleReference
+		err error
+	}, 1)
+	go func() {
+		ref, err := s.StartTurn(context.Background(), thread, policy, "turn-input-1")
+		turnDone <- struct {
+			ref LifecycleReference
+			err error
+		}{ref, err}
+	}()
+	turnRequest := lifecycleRequest(t, scanner, "turn/start", 5)
+	assertSelectedPolicy(t, turnRequest, policy)
+	_, _ = child.stdoutW.Write([]byte(response(5, `{"thread":{"id":"thread-1"},"turn":{"id":"turn-1","status":"inProgress"}}`)))
+	turn := <-turnDone
+	if turn.err != nil {
+		t.Fatal(turn.err)
+	}
+
+	steerDone := make(chan error, 1)
+	go func() { steerDone <- s.SteerTurn(context.Background(), turn.ref, policy, "turn-input-2") }()
+	steerRequest := lifecycleRequest(t, scanner, "turn/steer", 6)
+	assertSelectedPolicy(t, steerRequest, policy)
+	_, _ = child.stdoutW.Write([]byte(response(6, `{"thread":{"id":"thread-1"},"turn":{"id":"turn-1","status":"inProgress"}}`)))
+	if err := <-steerDone; err != nil {
+		t.Fatal(err)
 	}
 }
 
@@ -373,7 +442,7 @@ func TestLifecyclePolicyAndTransportGate(t *testing.T) {
 	policy := testLifecyclePolicy(t)
 	for name, mutate := range map[string]func(*LifecyclePolicy){
 		"full_access": func(p *LifecyclePolicy) { p.FullAccess = true }, "shell": func(p *LifecyclePolicy) { p.AllowShell = true },
-		"auto_review": func(p *LifecyclePolicy) { p.AutoReview = true }, "network": func(p *LifecyclePolicy) { p.NetworkEnabled = true },
+		"auto_review_without_mapping": func(p *LifecyclePolicy) { p.AutoReview = true }, "network": func(p *LifecyclePolicy) { p.NetworkEnabled = true },
 		"no_roots": func(p *LifecyclePolicy) { p.WritableRoots = nil }, "model": func(p *LifecyclePolicy) { p.Model = "unsafe model" },
 		"effort": func(p *LifecyclePolicy) { p.ReasoningEffort = "" }, "fallback": func(p *LifecyclePolicy) { p.FallbackModel = "other" },
 	} {
@@ -436,9 +505,6 @@ func TestCAS14LifecycleBlocksDimensionsWithoutExactProviderMapping(t *testing.T)
 		native       NativePolicySelection
 		capabilities CapabilitySelection
 	}{
-		"approval_reviewer": {
-			native: NativePolicySelection{ApprovalRef: "native-auto-review", ApprovalSessionConfirmed: true, SandboxRef: workspaceWritePolicyRef},
-		},
 		"sandbox": {
 			native: NativePolicySelection{ApprovalRef: humanReviewPolicyRef, SandboxRef: "broader-native-sandbox", SandboxSessionConfirmed: true},
 		},
@@ -541,5 +607,95 @@ func TestCAS14LifecycleRejectsCatalogAndEffectiveSnapshotDriftBeforeRequest(t *t
 				t.Fatalf("stored policy drift event = %+v", event)
 			}
 		})
+	}
+}
+
+func TestCAS14NativeAutoReviewThreadRejectsEveryPolicyDriftBeforeRequest(t *testing.T) {
+	operations := map[string]func(*Supervisor, LifecycleReference, LifecyclePolicy) error{
+		"read": func(s *Supervisor, thread LifecycleReference, policy LifecyclePolicy) error {
+			_, err := s.ReadThread(context.Background(), thread, policy)
+			return err
+		},
+		"resume": func(s *Supervisor, thread LifecycleReference, policy LifecyclePolicy) error {
+			_, err := s.ResumeThread(context.Background(), thread, policy)
+			return err
+		},
+		"start_turn": func(s *Supervisor, thread LifecycleReference, policy LifecyclePolicy) error {
+			_, err := s.StartTurn(context.Background(), thread, policy, "turn-input-1")
+			return err
+		},
+		"steer_turn": func(s *Supervisor, thread LifecycleReference, policy LifecyclePolicy) error {
+			return s.SteerTurn(context.Background(), thread, policy, "turn-input-1")
+		},
+	}
+	drifts := map[string]struct {
+		mutateStored func(*Supervisor)
+		mutateCaller func(*LifecyclePolicy)
+	}{
+		"mapping_missing": {mutateStored: func(s *Supervisor) {
+			s.nativePolicyCatalog.Approval[1].providerPolicy, s.nativePolicyCatalog.Approval[1].providerReviewer = "", ""
+		}},
+		"mapping_partial": {mutateStored: func(s *Supervisor) {
+			s.nativePolicyCatalog.Approval[1].providerReviewer = ""
+		}},
+		"mapping_ambiguous": {mutateStored: func(s *Supervisor) {
+			s.nativePolicyCatalog.Approval[1].providerReviewer = providerApprovalsReviewerUser
+		}},
+		"mapping_changed": {mutateStored: func(s *Supervisor) {
+			s.nativePolicyCatalog.Approval[1].providerReviewer = "guardian_subagent"
+		}},
+		"selection_changed": {mutateStored: func(s *Supervisor) {
+			s.effectivePolicy.Approval.SelectedRef = humanReviewPolicyRef
+		}},
+		"catalog_changed": {mutateStored: func(s *Supervisor) {
+			s.nativePolicyCatalog.CatalogRef = "policy-catalog-stale"
+		}},
+		"effective_changed": {mutateStored: func(s *Supervisor) {
+			s.effectivePolicy.Approval.EffectiveRef = humanReviewPolicyRef
+		}},
+		"confirmation_missing": {mutateStored: func(s *Supervisor) {
+			s.effectivePolicy.Approval.SessionConfirmed = false
+		}},
+		"option_removed": {mutateStored: func(s *Supervisor) {
+			s.nativePolicyCatalog.Approval = s.nativePolicyCatalog.Approval[:1]
+		}},
+		"option_unavailable": {mutateStored: func(s *Supervisor) {
+			s.nativePolicyCatalog.Approval[1].Available = false
+		}},
+		"caller_policy_changed": {mutateCaller: func(policy *LifecyclePolicy) {
+			policy.Reviewer = providerApprovalsReviewerUser
+			policy.AutoReview = false
+		}},
+	}
+
+	for operationName, operation := range operations {
+		for driftName, drift := range drifts {
+			t.Run(operationName+"/"+driftName, func(t *testing.T) {
+				s, child, scanner, policy := initializedAutoReviewLifecycle(t)
+				thread := startThreadForTest(t, s, child, scanner, policy)
+				client := s.client
+				before := protocolRequestID(client)
+				if drift.mutateStored != nil {
+					s.mu.Lock()
+					drift.mutateStored(s)
+					s.mu.Unlock()
+				}
+				if drift.mutateCaller != nil {
+					drift.mutateCaller(&policy)
+				}
+				if err := operation(s, thread, policy); !errors.Is(err, ErrLifecycleRejected) {
+					t.Fatalf("policy drift error = %v", err)
+				}
+				if after := protocolRequestID(client); after != before {
+					t.Fatalf("drifted lifecycle request was sent: request id %d -> %d", before, after)
+				}
+				if event := nextEvent(t, s); event.State != providersession.StateReady {
+					t.Fatal(event)
+				}
+				if event := nextEvent(t, s); event.State != providersession.StateDisconnected {
+					t.Fatalf("policy drift event = %+v", event)
+				}
+			})
+		}
 	}
 }

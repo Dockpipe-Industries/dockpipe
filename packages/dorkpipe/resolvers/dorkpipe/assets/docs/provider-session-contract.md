@@ -329,10 +329,26 @@ I/O. Removed or unavailable options, selection/effective mismatch, reroute/subst
 missing confirmation, and incomplete selection continue to fail closed with no replay, retry, or
 fallback.
 
-The precise package-local blocker is missing provider-private mapping evidence for every non-baseline
-approval/reviewer option, every non-baseline sandbox option, and every enabled capability. Those choices
-remain projection-only and lifecycle-blocked even when advertised, supported, selected, or individually
-confirmed. The smallest evidence-backed next slice is to retain and validate one exact non-baseline
-approval/reviewer provider mapping in the fixture-backed advertisement before enabling its lifecycle
-dispatch. Provider discovery persistence, adapter selection, MCP, Pipeon, fallback, rollback, and all
-consumer/bridge paths remain separate work.
+One non-baseline approval/reviewer mapping is now proven and dispatchable. The stable JSON Schema
+generated offline by installed `codex-cli 0.144.1` defines `untrusted` in `AskForApproval`, defines
+`auto_review` in `ApprovalsReviewer`, and binds those definitions directly to the `approvalPolicy` and
+`approvalsReviewer` fields on thread and turn start parameters. Its description identifies
+`auto_review` as the native risk-based reviewing subagent. The package-private `native-auto-review`
+fixture therefore retains exactly `untrusted` plus `auto_review`; no opaque reference, display label,
+ordering, availability, confirmation, sandbox choice, model, or capability is used to derive either
+wire value.
+
+The option remains stable, available, exactly selected/effective, and individually session-confirmed.
+Its private mapping participates in catalog identity, ambiguity detection, immediate pre-I/O catalog
+and snapshot revalidation, and the immutable thread binding. `thread/read`, `thread/resume`,
+`turn/start`, and `turn/steer` reject missing, partial, ambiguous, changed, removed, unavailable,
+unconfirmed, selection/effective-mismatched, or caller-drifted evidence before a request is sent. The
+independent workspace-write mapping, declared roots, network-disabled policy, and zero enabled
+capabilities remain the only sandbox/capability lifecycle state; the recovery policy key and existing
+no-replay/no-retry/no-fallback behavior are unchanged.
+
+The precise remaining package-local mapping gaps are every non-baseline sandbox option and every
+enabled capability. The smallest evidence-backed next slice is one separately bounded fixture/schema
+proof for one exact non-baseline sandbox mapping without dispatch or authority inference. Provider
+discovery persistence, adapter selection, MCP, Pipeon, fallback, rollback, and all consumer/bridge
+paths remain separate work.

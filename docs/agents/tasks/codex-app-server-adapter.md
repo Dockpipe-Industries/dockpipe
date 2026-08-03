@@ -707,14 +707,29 @@ thread; read, resume, turn start, and steer reject catalog, snapshot, caller, or
 request is sent. Existing workspace/root validation, recovery snapshots, no-replay/no-retry behavior,
 audit/correlation, disconnect handling, and the consumer boundary remain unchanged.
 
-Broader approval/reviewer and sandbox choices remain projection-only because their validated
-advertisements retain no exact provider-private wire mapping. Every enabled capability remains
-lifecycle-blocked for the same reason, even when it is advertised, supported, selected, and
-individually confirmed. Availability, support, confirmation, catalog order, display labels, opaque
-refs, or another policy dimension never supply the missing mapping. The smallest evidence-backed next
-CAS-14 action is one package-local fixture/schema slice that retains and validates one exact
-non-baseline approval/reviewer provider mapping before permitting that option in lifecycle dispatch;
-sandbox widening, capability wiring, consumers, MCP, Pipeon, fallback, and engine work remain separate.
+The bounded non-baseline approval/reviewer mapping slice is complete. The stable protocol schema
+generated offline by installed `codex-cli 0.144.1` defines `approvalPolicy` through
+`AskForApproval`, including the exact string `untrusted`, and defines `approvalsReviewer` through
+`ApprovalsReviewer`, including the exact stable string `auto_review`. The schema binds both fields
+directly to `thread/start` and `turn/start`; its description identifies `auto_review` as the native
+risk-based reviewing subagent. The fixture-backed `native-auto-review` advertisement now retains only
+that proven private pair: `untrusted` plus `auto_review`.
+
+The pair is independently selected, individually session-confirmed, revalidated with the pinned
+catalog/effective snapshot immediately before every lifecycle operation, and immutably bound to the
+thread. The exact values are dispatched without substitution while the existing `workspace-write` /
+`workspaceWrite`, declared-root, network-disabled sandbox and zero-enabled-capability baseline remain
+unchanged. Missing, partial, duplicate, ambiguous, changed, removed, unavailable, unconfirmed,
+selection/effective-mismatched, or caller-drifted evidence is rejected before protocol I/O for read,
+resume, turn start, and steer. The existing recovery policy key and all no-replay, no-retry,
+no-fallback, correlation, audit, disconnect, and consumer behavior remain unchanged.
+
+Every non-baseline sandbox choice and every enabled capability remain lifecycle-blocked because their
+validated advertisements retain no exact package-owned provider mapping. The smallest evidence-backed
+next CAS-14 action is one separately bounded package-local fixture/schema slice proving and retaining
+one exact non-baseline sandbox mapping without inferring it from approval automation or widening the
+current lifecycle sandbox. Capability wiring, consumers, MCP, Pipeon, fallback, and engine work remain
+separate.
 
 `packages/dorkpipe/lib/cmd/dorkpipe/provider_pool.go`,
 `packages/dorkpipe/resolvers/dorkpipe/assets/provider-pools/catalog.yml`,
