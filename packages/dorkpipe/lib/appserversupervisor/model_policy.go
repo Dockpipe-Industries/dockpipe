@@ -15,11 +15,16 @@ const (
 	humanReviewPolicyRef              = "human-review"
 	nativeAutoReviewPolicyRef         = "native-auto-review"
 	workspaceWritePolicyRef           = "workspace-write"
+	broaderNativeSandboxPolicyRef     = "broader-native-sandbox"
 	providerApprovalPolicyUntrusted   = "untrusted"
 	providerApprovalsReviewerUser     = "user"
 	providerApprovalsReviewerAuto     = "auto_review"
 	providerSandboxWorkspaceWrite     = "workspace-write"
 	providerSandboxTypeWorkspaceWrite = "workspaceWrite"
+	providerSandboxDangerFullAccess   = "danger-full-access"
+	providerSandboxTypeDangerFull     = "dangerFullAccess"
+	requestAttestationCapabilityRef   = "request-attestation"
+	providerCapabilityAttestation     = "requestAttestation"
 	maxNativePolicyOptions            = 16
 	maxCapabilityOptions              = 64
 )
@@ -85,7 +90,9 @@ type NativePolicySelection struct {
 
 // CapabilityOption is fixture-backed policy evidence for one opaque stable
 // capability. Available and Supported are independent: availability never
-// implies that DockPipe policy supports or enables the capability.
+// implies that DockPipe policy supports or enables the capability. An exact
+// private mapping, when present, is catalog evidence only and is not
+// initialization or lifecycle dispatch.
 type CapabilityOption struct {
 	CapabilityRef      string
 	Stable             bool
@@ -93,6 +100,8 @@ type CapabilityOption struct {
 	Supported          bool
 	AuthorityExpanding bool
 	Experimental       bool
+	providerCapability string
+	providerEnabled    bool
 }
 
 // CapabilityAdvertisement is a complete fixture-backed capability view. It is
@@ -336,7 +345,8 @@ func (s *Supervisor) ProjectCapabilities(advertisement CapabilityAdvertisement) 
 // capabilities is the baseline. Every enabled authority-expanding or
 // experimental capability requires its own per-session confirmation. The
 // resulting effective-policy snapshot may authorize only the zero-enabled
-// lifecycle baseline until exact package-owned provider mappings exist.
+// lifecycle baseline. Retaining a private mapping does not wire it into
+// initialization or lifecycle dispatch.
 func (s *Supervisor) SelectCapabilities(selection CapabilitySelection) (providersession.EffectivePolicySnapshot, error) {
 	s.lifecycleMu.Lock()
 	defer s.lifecycleMu.Unlock()
@@ -497,7 +507,7 @@ func projectNativePolicyCatalog(advertisement NativePolicyAdvertisement) (Native
 	sort.Slice(approval, func(i, j int) bool { return approval[i].PolicyRef < approval[j].PolicyRef })
 	sort.Slice(sandbox, func(i, j int) bool { return sandbox[i].PolicyRef < sandbox[j].PolicyRef })
 
-	baselineApproval, mappedNonBaselineApproval, baselineSandbox := false, false, false
+	baselineApproval, mappedNonBaselineApproval, baselineSandbox, mappedNonBaselineSandbox := false, false, false, false
 	seen := make(map[string]struct{}, len(approval)+len(sandbox))
 	for _, option := range approval {
 		if !validID(option.PolicyRef) || !option.Stable || !option.Available || !validOptionalApprovalMapping(option) {
@@ -550,8 +560,14 @@ func projectNativePolicyCatalog(advertisement NativePolicyAdvertisement) (Native
 			}
 			baselineSandbox = true
 		}
+		if option.PolicyRef == broaderNativeSandboxPolicyRef {
+			if !option.AuthorityExpanding {
+				return NativePolicyCatalog{}, DisconnectPolicyMismatch
+			}
+			mappedNonBaselineSandbox = true
+		}
 	}
-	if !baselineApproval || !mappedNonBaselineApproval || !baselineSandbox {
+	if !baselineApproval || !mappedNonBaselineApproval || !baselineSandbox || !mappedNonBaselineSandbox {
 		return NativePolicyCatalog{}, DisconnectPolicyMismatch
 	}
 	catalog := NativePolicyCatalog{Approval: approval, Sandbox: sandbox}
@@ -582,10 +598,14 @@ func validOptionalApprovalMapping(option NativeApprovalPolicyOption) bool {
 }
 
 func validOptionalSandboxMapping(option NativeSandboxPolicyOption) bool {
-	if option.providerSandbox == "" && option.providerSandboxType == "" {
-		return true
+	switch option.PolicyRef {
+	case workspaceWritePolicyRef:
+		return option.providerSandbox == providerSandboxWorkspaceWrite && option.providerSandboxType == providerSandboxTypeWorkspaceWrite
+	case broaderNativeSandboxPolicyRef:
+		return option.providerSandbox == providerSandboxDangerFullAccess && option.providerSandboxType == providerSandboxTypeDangerFull
+	default:
+		return option.providerSandbox == "" && option.providerSandboxType == ""
 	}
-	return validID(option.providerSandbox) && validID(option.providerSandboxType)
 }
 
 func projectCapabilityCatalog(advertisement CapabilityAdvertisement) (CapabilityCatalog, DisconnectReason) {
@@ -595,14 +615,31 @@ func projectCapabilityCatalog(advertisement CapabilityAdvertisement) (Capability
 	capabilities := append([]CapabilityOption(nil), advertisement.Capabilities...)
 	sort.Slice(capabilities, func(i, j int) bool { return capabilities[i].CapabilityRef < capabilities[j].CapabilityRef })
 	seen := make(map[string]struct{}, len(capabilities))
+	mappedCapability := false
 	for _, option := range capabilities {
-		if !validID(option.CapabilityRef) || !option.Stable || !option.Available {
+		if !validID(option.CapabilityRef) || !option.Stable || !option.Available || !validOptionalCapabilityMapping(option) {
 			return CapabilityCatalog{}, DisconnectUnsupportedCapability
 		}
 		if _, duplicate := seen[option.CapabilityRef]; duplicate {
 			return CapabilityCatalog{}, DisconnectUnsupportedCapability
 		}
 		seen[option.CapabilityRef] = struct{}{}
+		if option.providerCapability != "" {
+			mappingKey := "capability-mapping\x00" + option.providerCapability
+			if _, duplicate := seen[mappingKey]; duplicate {
+				return CapabilityCatalog{}, DisconnectUnsupportedCapability
+			}
+			seen[mappingKey] = struct{}{}
+		}
+		if option.CapabilityRef == requestAttestationCapabilityRef {
+			if !option.Supported || !option.AuthorityExpanding || option.Experimental {
+				return CapabilityCatalog{}, DisconnectPolicyMismatch
+			}
+			mappedCapability = true
+		}
+	}
+	if !mappedCapability {
+		return CapabilityCatalog{}, DisconnectPolicyMismatch
 	}
 	catalog := CapabilityCatalog{Capabilities: capabilities}
 	catalog.CatalogRef = capabilityCatalogReference(catalog)
@@ -612,9 +649,18 @@ func projectCapabilityCatalog(advertisement CapabilityAdvertisement) (Capability
 func capabilityCatalogReference(catalog CapabilityCatalog) string {
 	hash := sha256.New()
 	for _, option := range catalog.Capabilities {
-		_, _ = fmt.Fprintf(hash, "capability\x00%s\x00%t\x00%t\x00%t\x00", option.CapabilityRef, option.Supported, option.AuthorityExpanding, option.Experimental)
+		_, _ = fmt.Fprintf(hash, "capability\x00%s\x00%t\x00%t\x00%t\x00%s\x00%t\x00", option.CapabilityRef, option.Supported, option.AuthorityExpanding, option.Experimental, option.providerCapability, option.providerEnabled)
 	}
 	return fmt.Sprintf("capability-catalog-%x", hash.Sum(nil))
+}
+
+func validOptionalCapabilityMapping(option CapabilityOption) bool {
+	switch option.CapabilityRef {
+	case requestAttestationCapabilityRef:
+		return option.providerCapability == providerCapabilityAttestation && option.providerEnabled
+	default:
+		return option.providerCapability == "" && !option.providerEnabled
+	}
 }
 
 func advertisedCapability(catalog CapabilityCatalog, ref string) (CapabilityOption, bool) {

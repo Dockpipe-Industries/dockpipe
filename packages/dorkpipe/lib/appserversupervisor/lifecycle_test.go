@@ -500,16 +500,19 @@ func TestCAS14LifecycleRequiresCompletePinnedSelectionsBeforeRequest(t *testing.
 	}
 }
 
-func TestCAS14LifecycleBlocksDimensionsWithoutExactProviderMapping(t *testing.T) {
+func TestCAS14LifecycleBlocksNonBaselineSandboxAndEnabledCapabilities(t *testing.T) {
 	tests := map[string]struct {
 		native       NativePolicySelection
 		capabilities CapabilitySelection
 	}{
 		"sandbox": {
-			native: NativePolicySelection{ApprovalRef: humanReviewPolicyRef, SandboxRef: "broader-native-sandbox", SandboxSessionConfirmed: true},
+			native: NativePolicySelection{ApprovalRef: humanReviewPolicyRef, SandboxRef: broaderNativeSandboxPolicyRef, SandboxSessionConfirmed: true},
 		},
 		"enabled_capability": {
 			capabilities: CapabilitySelection{Enabled: []CapabilityChoice{{CapabilityRef: "stable-safe"}}},
+		},
+		"mapped_attestation_capability": {
+			capabilities: CapabilitySelection{Enabled: []CapabilityChoice{{CapabilityRef: requestAttestationCapabilityRef, SessionConfirmed: true}}},
 		},
 	}
 	for name, test := range tests {
@@ -519,16 +522,124 @@ func TestCAS14LifecycleBlocksDimensionsWithoutExactProviderMapping(t *testing.T)
 			client := s.client
 			before := protocolRequestID(client)
 			if _, err := s.StartThread(context.Background(), policy); !errors.Is(err, ErrLifecycleRejected) {
-				t.Fatalf("missing mapping error = %v", err)
+				t.Fatalf("unsupported lifecycle dimension error = %v", err)
 			}
 			if after := protocolRequestID(client); after != before {
-				t.Fatalf("lifecycle request was sent without an exact mapping: request id %d -> %d", before, after)
+				t.Fatalf("unsupported lifecycle dimension was dispatched: request id %d -> %d", before, after)
 			}
 			if event := nextEvent(t, s); event.State != providersession.StateReady {
 				t.Fatal(event)
 			}
 			if event := nextEvent(t, s); event.State != providersession.StateDisconnected || event.Summary != string(DisconnectUnsupportedCapability) {
-				t.Fatalf("missing mapping event = %+v", event)
+				t.Fatalf("unsupported lifecycle dimension event = %+v", event)
+			}
+		})
+	}
+}
+
+func TestCAS14MappedAttestationCapabilityRejectsEveryLifecycleOperationBeforeRequest(t *testing.T) {
+	operations := map[string]func(*Supervisor, LifecycleReference, LifecycleReference, LifecyclePolicy) error{
+		"start_thread": func(s *Supervisor, _ LifecycleReference, _ LifecycleReference, policy LifecyclePolicy) error {
+			_, err := s.StartThread(context.Background(), policy)
+			return err
+		},
+		"read_thread": func(s *Supervisor, thread LifecycleReference, _ LifecycleReference, policy LifecyclePolicy) error {
+			_, err := s.ReadThread(context.Background(), thread, policy)
+			return err
+		},
+		"resume_thread": func(s *Supervisor, thread LifecycleReference, _ LifecycleReference, policy LifecyclePolicy) error {
+			_, err := s.ResumeThread(context.Background(), thread, policy)
+			return err
+		},
+		"start_turn": func(s *Supervisor, thread LifecycleReference, _ LifecycleReference, policy LifecyclePolicy) error {
+			_, err := s.StartTurn(context.Background(), thread, policy, "turn-input-1")
+			return err
+		},
+		"steer_turn": func(s *Supervisor, _ LifecycleReference, turn LifecycleReference, policy LifecyclePolicy) error {
+			return s.SteerTurn(context.Background(), turn, policy, "turn-input-1")
+		},
+	}
+	for name, operation := range operations {
+		t.Run(name, func(t *testing.T) {
+			s, _, _, _ := initializedUnselectedLifecycle(t)
+			policy := selectLifecyclePolicyForTest(t, s, "model-stable-b", "medium", NativePolicySelection{}, CapabilitySelection{Enabled: []CapabilityChoice{{CapabilityRef: requestAttestationCapabilityRef, SessionConfirmed: true}}})
+			s.mu.Lock()
+			s.lifecycle.threadID = s.session.SessionID
+			s.lifecycle.turnID = "turn-1"
+			s.lifecycle.active = true
+			s.lifecycle.steerable = true
+			s.mu.Unlock()
+			thread := s.lifecycleReference("")
+			turn := s.lifecycleReference("turn-1")
+			client := s.client
+			before := protocolRequestID(client)
+			if err := operation(s, thread, turn, policy); !errors.Is(err, ErrLifecycleRejected) {
+				t.Fatalf("mapped attestation capability lifecycle error = %v", err)
+			}
+			if after := protocolRequestID(client); after != before {
+				t.Fatalf("mapped attestation capability dispatched %s: request id %d -> %d", name, before, after)
+			}
+			if event := nextEvent(t, s); event.State != providersession.StateReady {
+				t.Fatal(event)
+			}
+			if event := nextEvent(t, s); event.State != providersession.StateDisconnected || event.Summary != string(DisconnectUnsupportedCapability) {
+				t.Fatalf("mapped attestation capability rejection = %+v", event)
+			}
+		})
+	}
+}
+
+func TestCAS14MappedNonBaselineSandboxRejectsEveryLifecycleOperationBeforeRequest(t *testing.T) {
+	operations := map[string]func(*Supervisor, LifecycleReference, LifecycleReference, LifecyclePolicy) error{
+		"start_thread": func(s *Supervisor, _ LifecycleReference, _ LifecycleReference, policy LifecyclePolicy) error {
+			_, err := s.StartThread(context.Background(), policy)
+			return err
+		},
+		"read_thread": func(s *Supervisor, thread LifecycleReference, _ LifecycleReference, policy LifecyclePolicy) error {
+			_, err := s.ReadThread(context.Background(), thread, policy)
+			return err
+		},
+		"resume_thread": func(s *Supervisor, thread LifecycleReference, _ LifecycleReference, policy LifecyclePolicy) error {
+			_, err := s.ResumeThread(context.Background(), thread, policy)
+			return err
+		},
+		"start_turn": func(s *Supervisor, thread LifecycleReference, _ LifecycleReference, policy LifecyclePolicy) error {
+			_, err := s.StartTurn(context.Background(), thread, policy, "turn-input-1")
+			return err
+		},
+		"steer_turn": func(s *Supervisor, _ LifecycleReference, turn LifecycleReference, policy LifecyclePolicy) error {
+			return s.SteerTurn(context.Background(), turn, policy, "turn-input-1")
+		},
+	}
+	for name, operation := range operations {
+		t.Run(name, func(t *testing.T) {
+			s, _, _, _ := initializedUnselectedLifecycle(t)
+			policy := selectLifecyclePolicyForTest(t, s, "model-stable-b", "medium", NativePolicySelection{
+				ApprovalRef:             humanReviewPolicyRef,
+				SandboxRef:              broaderNativeSandboxPolicyRef,
+				SandboxSessionConfirmed: true,
+			}, CapabilitySelection{})
+			s.mu.Lock()
+			s.lifecycle.threadID = s.session.SessionID
+			s.lifecycle.turnID = "turn-1"
+			s.lifecycle.active = true
+			s.lifecycle.steerable = true
+			s.mu.Unlock()
+			thread := s.lifecycleReference("")
+			turn := s.lifecycleReference("turn-1")
+			client := s.client
+			before := protocolRequestID(client)
+			if err := operation(s, thread, turn, policy); !errors.Is(err, ErrLifecycleRejected) {
+				t.Fatalf("mapped non-baseline sandbox lifecycle error = %v", err)
+			}
+			if after := protocolRequestID(client); after != before {
+				t.Fatalf("mapped non-baseline sandbox dispatched %s: request id %d -> %d", name, before, after)
+			}
+			if event := nextEvent(t, s); event.State != providersession.StateReady {
+				t.Fatal(event)
+			}
+			if event := nextEvent(t, s); event.State != providersession.StateDisconnected || event.Summary != string(DisconnectUnsupportedCapability) {
+				t.Fatalf("mapped non-baseline sandbox rejection = %+v", event)
 			}
 		})
 	}

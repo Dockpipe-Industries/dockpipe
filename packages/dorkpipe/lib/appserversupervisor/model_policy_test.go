@@ -18,7 +18,7 @@ func nativePolicyFixture() NativePolicyAdvertisement {
 		},
 		Sandbox: []NativeSandboxPolicyOption{
 			{PolicyRef: workspaceWritePolicyRef, Stable: true, Available: true, providerSandbox: providerSandboxWorkspaceWrite, providerSandboxType: providerSandboxTypeWorkspaceWrite},
-			{PolicyRef: "broader-native-sandbox", Stable: true, Available: true, AuthorityExpanding: true},
+			{PolicyRef: broaderNativeSandboxPolicyRef, Stable: true, Available: true, AuthorityExpanding: true, providerSandbox: providerSandboxDangerFullAccess, providerSandboxType: providerSandboxTypeDangerFull},
 		},
 	}
 }
@@ -84,6 +84,7 @@ func capabilityFixture() CapabilityAdvertisement {
 		{CapabilityRef: "authority-one", Stable: true, Available: true, Supported: true, AuthorityExpanding: true},
 		{CapabilityRef: "experimental-one", Stable: true, Available: true, Supported: true, Experimental: true},
 		{CapabilityRef: "known-unsupported", Stable: true, Available: true},
+		{CapabilityRef: requestAttestationCapabilityRef, Stable: true, Available: true, Supported: true, AuthorityExpanding: true, providerCapability: providerCapabilityAttestation, providerEnabled: true},
 	}}
 }
 
@@ -282,7 +283,7 @@ func TestCAS14NativeApprovalAndSandboxPoliciesAreIndependentlySelected(t *testin
 		policy, err := s.SelectNativePolicies(NativePolicySelection{
 			CatalogRef:              policyCatalog.CatalogRef,
 			ApprovalRef:             humanReviewPolicyRef,
-			SandboxRef:              "broader-native-sandbox",
+			SandboxRef:              broaderNativeSandboxPolicyRef,
 			SandboxSessionConfirmed: true,
 		})
 		if err != nil {
@@ -291,7 +292,7 @@ func TestCAS14NativeApprovalAndSandboxPoliciesAreIndependentlySelected(t *testin
 		if err := policy.Validate(modelCatalog); err != nil {
 			t.Fatal(err)
 		}
-		if policy.Approval.AuthorityExpanding || policy.Approval.SessionConfirmed || policy.Approval.SelectedRef != humanReviewPolicyRef || !policy.Sandbox.AuthorityExpanding || !policy.Sandbox.SessionConfirmed {
+		if policy.Approval.AuthorityExpanding || policy.Approval.SessionConfirmed || policy.Approval.SelectedRef != humanReviewPolicyRef || policy.Sandbox.SelectedRef != broaderNativeSandboxPolicyRef || policy.Sandbox.EffectiveRef != broaderNativeSandboxPolicyRef || !policy.Sandbox.AuthorityExpanding || !policy.Sandbox.SessionConfirmed {
 			t.Fatalf("sandbox selection coupled approval authority: %+v", policy)
 		}
 	})
@@ -312,29 +313,71 @@ func TestCAS14NativePolicyCatalogIsExactStableAndPinned(t *testing.T) {
 		t.Fatalf("order-independent policy catalog = %+v, %v", again, err)
 	}
 	again.Approval[0].PolicyRef = "caller-mutation"
+	for i := range again.Sandbox {
+		if again.Sandbox[i].PolicyRef == broaderNativeSandboxPolicyRef {
+			again.Sandbox[i].providerSandbox = "caller-mutation"
+		}
+	}
 	pinned, err := s.ProjectNativePolicies(fixture)
-	if err != nil || pinned.Approval[0].PolicyRef == "caller-mutation" {
+	pinnedNonBaseline, found := advertisedSandboxPolicy(pinned, broaderNativeSandboxPolicyRef)
+	if err != nil || !found || pinned.Approval[0].PolicyRef == "caller-mutation" || pinnedNonBaseline.providerSandbox == "caller-mutation" {
 		t.Fatal("caller mutation changed the pinned policy catalog")
+	}
+	drifted := cloneNativePolicyCatalog(catalog)
+	for i := range drifted.Sandbox {
+		if drifted.Sandbox[i].PolicyRef == broaderNativeSandboxPolicyRef {
+			drifted.Sandbox[i].providerSandboxType = providerSandboxTypeWorkspaceWrite
+		}
+	}
+	if nativePolicyCatalogReference(drifted) == catalog.CatalogRef || sameNativePolicyCatalog(drifted, catalog) {
+		t.Fatal("private sandbox mapping drift was absent from catalog identity or pinned comparison")
 	}
 
 	changed := nativePolicyFixture()
-	changed.Sandbox[1].AuthorityExpanding = false
+	changed.Sandbox[1].providerSandboxType = providerSandboxTypeWorkspaceWrite
 	if _, err := s.ProjectNativePolicies(changed); !errors.Is(err, ErrModelPolicyRejected) {
 		t.Fatalf("changed policy advertisement error = %v", err)
 	}
 	_ = nextEvent(t, s)
-	if event := nextEvent(t, s); event.State != providersession.StateDisconnected || event.Summary != string(DisconnectPolicyMismatch) {
+	if event := nextEvent(t, s); event.State != providersession.StateDisconnected || event.Summary != string(DisconnectUnsupportedCapability) {
 		t.Fatalf("changed policy advertisement = %+v", event)
+	}
+}
+
+func TestCAS14NativePolicyCatalogRetainsExactlyOneProvenNonBaselineSandboxMapping(t *testing.T) {
+	s, _ := supervisorWithSelectedModel(t)
+	catalog, err := s.ProjectNativePolicies(nativePolicyFixture())
+	if err != nil {
+		t.Fatal(err)
+	}
+	mappedNonBaseline := 0
+	for _, option := range catalog.Sandbox {
+		if option.PolicyRef == workspaceWritePolicyRef || option.providerSandbox == "" {
+			continue
+		}
+		mappedNonBaseline++
+		if option.PolicyRef != broaderNativeSandboxPolicyRef || option.providerSandbox != providerSandboxDangerFullAccess || option.providerSandboxType != providerSandboxTypeDangerFull || !option.AuthorityExpanding || !option.Stable || !option.Available {
+			t.Fatalf("non-baseline sandbox mapping was not retained exactly: %+v", option)
+		}
+	}
+	if mappedNonBaseline != 1 {
+		t.Fatalf("mapped non-baseline sandbox count = %d, want 1", mappedNonBaseline)
 	}
 }
 
 func TestCAS14NativePolicyAdvertisementFailsClosed(t *testing.T) {
 	tests := map[string]func(*NativePolicyAdvertisement){
-		"empty_approval":       func(f *NativePolicyAdvertisement) { f.Approval = nil },
-		"duplicate":            func(f *NativePolicyAdvertisement) { f.Approval = append(f.Approval, f.Approval[0]) },
+		"empty_approval": func(f *NativePolicyAdvertisement) { f.Approval = nil },
+		"duplicate":      func(f *NativePolicyAdvertisement) { f.Approval = append(f.Approval, f.Approval[0]) },
+		"duplicate_nonbaseline_sandbox": func(f *NativePolicyAdvertisement) {
+			f.Sandbox = append(f.Sandbox, f.Sandbox[1])
+		},
 		"unavailable":          func(f *NativePolicyAdvertisement) { f.Sandbox[1].Available = false },
 		"unsupported_unstable": func(f *NativePolicyAdvertisement) { f.Approval[1].Stable = false },
 		"removed_baseline":     func(f *NativePolicyAdvertisement) { f.Sandbox = f.Sandbox[1:] },
+		"removed_nonbaseline_sandbox": func(f *NativePolicyAdvertisement) {
+			f.Sandbox = f.Sandbox[:1]
+		},
 		"baseline_changed":     func(f *NativePolicyAdvertisement) { f.Approval[0].AuthorityExpanding = true },
 		"partial_approval_map": func(f *NativePolicyAdvertisement) { f.Approval[0].providerReviewer = "" },
 		"missing_nonbaseline_map": func(f *NativePolicyAdvertisement) {
@@ -345,6 +388,17 @@ func TestCAS14NativePolicyAdvertisementFailsClosed(t *testing.T) {
 			f.Approval[1].providerReviewer = "guardian_subagent"
 		},
 		"partial_sandbox_map": func(f *NativePolicyAdvertisement) { f.Sandbox[0].providerSandboxType = "" },
+		"missing_nonbaseline_sandbox_map": func(f *NativePolicyAdvertisement) {
+			f.Sandbox[1].providerSandbox, f.Sandbox[1].providerSandboxType = "", ""
+		},
+		"partial_nonbaseline_sandbox_map":   func(f *NativePolicyAdvertisement) { f.Sandbox[1].providerSandboxType = "" },
+		"malformed_nonbaseline_sandbox_map": func(f *NativePolicyAdvertisement) { f.Sandbox[1].providerSandbox = "danger full access" },
+		"changed_nonbaseline_sandbox_map": func(f *NativePolicyAdvertisement) {
+			f.Sandbox[1].providerSandboxType = providerSandboxTypeWorkspaceWrite
+		},
+		"second_mapped_nonbaseline_sandbox": func(f *NativePolicyAdvertisement) {
+			f.Sandbox = append(f.Sandbox, NativeSandboxPolicyOption{PolicyRef: "another-sandbox", Stable: true, Available: true, AuthorityExpanding: true, providerSandbox: providerSandboxDangerFullAccess, providerSandboxType: providerSandboxTypeDangerFull})
+		},
 		"ambiguous_approval_map": func(f *NativePolicyAdvertisement) {
 			f.Approval[1].providerPolicy, f.Approval[1].providerReviewer = providerApprovalPolicyUntrusted, providerApprovalsReviewerUser
 		},
@@ -372,13 +426,14 @@ func TestCAS14NativePolicyAdvertisementFailsClosed(t *testing.T) {
 
 func TestCAS14NativePolicySelectionFailsClosedWithoutSubstitution(t *testing.T) {
 	tests := map[string]NativePolicySelection{
-		"empty":                    {},
-		"mismatched_catalog":       {CatalogRef: "policy-catalog-stale", ApprovalRef: humanReviewPolicyRef, SandboxRef: workspaceWritePolicyRef},
-		"unavailable_approval":     {ApprovalRef: "removed-reviewer", SandboxRef: workspaceWritePolicyRef},
-		"removed_sandbox":          {ApprovalRef: humanReviewPolicyRef, SandboxRef: "removed-sandbox"},
-		"unconfirmed_approval":     {ApprovalRef: nativeAutoReviewPolicyRef, SandboxRef: workspaceWritePolicyRef},
-		"unconfirmed_sandbox":      {ApprovalRef: humanReviewPolicyRef, SandboxRef: "broader-native-sandbox"},
-		"cross_confirmed_approval": {ApprovalRef: humanReviewPolicyRef, ApprovalSessionConfirmed: true, SandboxRef: "broader-native-sandbox", SandboxSessionConfirmed: true},
+		"empty":                {},
+		"mismatched_catalog":   {CatalogRef: "policy-catalog-stale", ApprovalRef: humanReviewPolicyRef, SandboxRef: workspaceWritePolicyRef},
+		"unavailable_approval": {ApprovalRef: "removed-reviewer", SandboxRef: workspaceWritePolicyRef},
+		"removed_sandbox":      {ApprovalRef: humanReviewPolicyRef, SandboxRef: "removed-sandbox"},
+		"unconfirmed_approval": {ApprovalRef: nativeAutoReviewPolicyRef, SandboxRef: workspaceWritePolicyRef},
+		"unconfirmed_sandbox":  {ApprovalRef: humanReviewPolicyRef, SandboxRef: broaderNativeSandboxPolicyRef},
+		"approval_confirmation_cannot_confirm_sandbox": {ApprovalRef: nativeAutoReviewPolicyRef, ApprovalSessionConfirmed: true, SandboxRef: broaderNativeSandboxPolicyRef},
+		"cross_confirmed_approval":                     {ApprovalRef: humanReviewPolicyRef, ApprovalSessionConfirmed: true, SandboxRef: broaderNativeSandboxPolicyRef, SandboxSessionConfirmed: true},
 	}
 	for name, selection := range tests {
 		t.Run(name, func(t *testing.T) {
@@ -407,7 +462,7 @@ func TestCAS14NativePolicySelectionPinsExactRefs(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	selection := NativePolicySelection{CatalogRef: catalog.CatalogRef, ApprovalRef: nativeAutoReviewPolicyRef, ApprovalSessionConfirmed: true, SandboxRef: "broader-native-sandbox", SandboxSessionConfirmed: true}
+	selection := NativePolicySelection{CatalogRef: catalog.CatalogRef, ApprovalRef: nativeAutoReviewPolicyRef, ApprovalSessionConfirmed: true, SandboxRef: broaderNativeSandboxPolicyRef, SandboxSessionConfirmed: true}
 	first, err := s.SelectNativePolicies(selection)
 	if err != nil {
 		t.Fatal(err)
@@ -452,6 +507,31 @@ func TestCAS14CapabilityCatalogKeepsZeroEnabledBaseline(t *testing.T) {
 	}
 	if policy.Approval.SelectedRef != humanReviewPolicyRef || policy.Sandbox.SelectedRef != workspaceWritePolicyRef || policy.EffectiveModelRef != PinnedModel || policy.EffectiveReasoningRef != PinnedReasoningEffort {
 		t.Fatalf("capability projection changed another policy dimension: %+v", policy)
+	}
+	attestation, found := capabilityRecord(policy, requestAttestationCapabilityRef)
+	if !found || !attestation.Supported || !attestation.AuthorityExpanding || attestation.Experimental || attestation.UserEnabled || attestation.SessionConfirmed {
+		t.Fatalf("mapped attestation capability escaped the zero-enabled baseline: %+v", attestation)
+	}
+}
+
+func TestCAS14CapabilityCatalogRetainsExactlyOneProvenPrivateMapping(t *testing.T) {
+	s, _ := supervisorWithNativePolicies(t)
+	catalog, err := s.ProjectCapabilities(capabilityFixture())
+	if err != nil {
+		t.Fatal(err)
+	}
+	mapped := 0
+	for _, option := range catalog.Capabilities {
+		if option.providerCapability == "" {
+			continue
+		}
+		mapped++
+		if option.CapabilityRef != requestAttestationCapabilityRef || option.providerCapability != providerCapabilityAttestation || !option.providerEnabled || !option.Stable || !option.Available || !option.Supported || !option.AuthorityExpanding || option.Experimental {
+			t.Fatalf("private capability mapping was not retained exactly: %+v", option)
+		}
+	}
+	if mapped != 1 {
+		t.Fatalf("mapped capability count = %d, want 1", mapped)
 	}
 }
 
@@ -499,9 +579,24 @@ func TestCAS14CapabilityCatalogIsOrderIndependentDefensiveAndPinned(t *testing.T
 		t.Fatalf("order-independent capability catalog = %+v, %v", again, err)
 	}
 	again.Capabilities[0].CapabilityRef = "caller-mutation"
+	for i := range again.Capabilities {
+		if again.Capabilities[i].CapabilityRef == requestAttestationCapabilityRef {
+			again.Capabilities[i].providerCapability = "caller-mutation"
+		}
+	}
 	pinned, err := s.ProjectCapabilities(fixture)
-	if err != nil || pinned.Capabilities[0].CapabilityRef == "caller-mutation" {
+	mappedPinned, mappedFound := advertisedCapability(pinned, requestAttestationCapabilityRef)
+	if err != nil || !mappedFound || pinned.Capabilities[0].CapabilityRef == "caller-mutation" || mappedPinned.providerCapability == "caller-mutation" {
 		t.Fatal("caller mutation changed the pinned capability catalog")
+	}
+	drifted := cloneCapabilityCatalog(catalog)
+	for i := range drifted.Capabilities {
+		if drifted.Capabilities[i].CapabilityRef == requestAttestationCapabilityRef {
+			drifted.Capabilities[i].providerCapability = "requestAttestationChanged"
+		}
+	}
+	if capabilityCatalogReference(drifted) == catalog.CatalogRef || sameCapabilityCatalog(drifted, catalog) {
+		t.Fatal("private capability mapping drift was absent from catalog identity or pinned comparison")
 	}
 
 	changed := capabilityFixture()
@@ -522,6 +617,23 @@ func TestCAS14CapabilityAdvertisementFailsClosed(t *testing.T) {
 		"unavailable": func(f *CapabilityAdvertisement) { f.Capabilities[0].Available = false },
 		"unstable":    func(f *CapabilityAdvertisement) { f.Capabilities[0].Stable = false },
 		"malformed":   func(f *CapabilityAdvertisement) { f.Capabilities[0].CapabilityRef = "unsafe capability" },
+		"mapped_removed": func(f *CapabilityAdvertisement) {
+			f.Capabilities = f.Capabilities[:len(f.Capabilities)-1]
+		},
+		"mapped_unavailable": func(f *CapabilityAdvertisement) { f.Capabilities[4].Available = false },
+		"mapped_unstable":    func(f *CapabilityAdvertisement) { f.Capabilities[4].Stable = false },
+		"mapping_missing": func(f *CapabilityAdvertisement) {
+			f.Capabilities[4].providerCapability, f.Capabilities[4].providerEnabled = "", false
+		},
+		"mapping_partial":       func(f *CapabilityAdvertisement) { f.Capabilities[4].providerCapability = "" },
+		"mapping_changed":       func(f *CapabilityAdvertisement) { f.Capabilities[4].providerCapability = "requestAttestationChanged" },
+		"mapping_disabled":      func(f *CapabilityAdvertisement) { f.Capabilities[4].providerEnabled = false },
+		"mapping_not_supported": func(f *CapabilityAdvertisement) { f.Capabilities[4].Supported = false },
+		"mapping_not_authority": func(f *CapabilityAdvertisement) { f.Capabilities[4].AuthorityExpanding = false },
+		"mapping_experimental":  func(f *CapabilityAdvertisement) { f.Capabilities[4].Experimental = true },
+		"second_mapped_capability": func(f *CapabilityAdvertisement) {
+			f.Capabilities = append(f.Capabilities, CapabilityOption{CapabilityRef: "another-mapped-capability", Stable: true, Available: true, Supported: true, AuthorityExpanding: true, providerCapability: providerCapabilityAttestation, providerEnabled: true})
+		},
 	}
 	for name, mutate := range tests {
 		t.Run(name, func(t *testing.T) {
@@ -532,7 +644,12 @@ func TestCAS14CapabilityAdvertisementFailsClosed(t *testing.T) {
 				t.Fatalf("capability advertisement error = %v", err)
 			}
 			_ = nextEvent(t, s)
-			if event := nextEvent(t, s); event.State != providersession.StateDisconnected || event.Summary != string(DisconnectUnsupportedCapability) {
+			expectedReason := DisconnectUnsupportedCapability
+			switch name {
+			case "mapped_removed", "mapping_not_supported", "mapping_not_authority", "mapping_experimental":
+				expectedReason = DisconnectPolicyMismatch
+			}
+			if event := nextEvent(t, s); event.State != providersession.StateDisconnected || event.Summary != string(expectedReason) {
 				t.Fatalf("capability advertisement rejection = %+v", event)
 			}
 		})
@@ -556,6 +673,9 @@ func TestCAS14CapabilitySelectionFailsClosedWithoutInferenceOrSubstitution(t *te
 		},
 		"unconfirmed_authority": func(c CapabilityCatalog) CapabilitySelection {
 			return CapabilitySelection{CatalogRef: c.CatalogRef, Enabled: []CapabilityChoice{{CapabilityRef: "authority-one"}}}
+		},
+		"unconfirmed_mapped_attestation": func(c CapabilityCatalog) CapabilitySelection {
+			return CapabilitySelection{CatalogRef: c.CatalogRef, Enabled: []CapabilityChoice{{CapabilityRef: requestAttestationCapabilityRef}}}
 		},
 		"unconfirmed_experimental": func(c CapabilityCatalog) CapabilitySelection {
 			return CapabilitySelection{CatalogRef: c.CatalogRef, Enabled: []CapabilityChoice{{CapabilityRef: "experimental-one"}}}

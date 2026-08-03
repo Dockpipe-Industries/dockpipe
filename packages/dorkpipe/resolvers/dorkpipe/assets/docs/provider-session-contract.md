@@ -347,8 +347,43 @@ independent workspace-write mapping, declared roots, network-disabled policy, an
 capabilities remain the only sandbox/capability lifecycle state; the recovery policy key and existing
 no-replay/no-retry/no-fallback behavior are unchanged.
 
-The precise remaining package-local mapping gaps are every non-baseline sandbox option and every
-enabled capability. The smallest evidence-backed next slice is one separately bounded fixture/schema
-proof for one exact non-baseline sandbox mapping without dispatch or authority inference. Provider
-discovery persistence, adapter selection, MCP, Pipeon, fallback, rollback, and all consumer/bridge
-paths remain separate work.
+One non-baseline sandbox mapping is now proven and retained without lifecycle authorization. The
+stable JSON Schema generated offline by installed `codex-cli 0.144.1`, without `--experimental`,
+defines the exact lifecycle sandbox value `danger-full-access` and the exact `SandboxPolicy.type`
+value `dangerFullAccess`. The fixture-backed `broader-native-sandbox` advertisement retains that
+private pair directly; no opaque reference, display label, ordering, availability, approval/reviewer
+selection, confirmation, model, capability, connection, or authority status derives either value.
+
+The catalog requires exactly one complete mapped non-baseline sandbox and includes its private pair
+in identity, ambiguity/drift detection, defensive copies, and pinned comparison. The option must be
+stable, available, exactly selected/effective, and individually session-confirmed. Missing, partial,
+malformed, duplicate, second, changed, removed, unavailable, unconfirmed, cross-confirmed,
+shell-command-enabling, or policy-bypassing evidence fails closed. Approval automation cannot select
+or confirm sandbox authority. Production lifecycle validation, parameter construction, mapping
+resolution, and dispatch remain unchanged and accept only `workspace-write` / `workspaceWrite`;
+thread start/read/resume and turn start/steer therefore reject the newly mapped option before protocol
+request I/O. Zero enabled capabilities and all recovery/no-replay behavior remain unchanged.
+
+One stable capability mapping is now proven and retained without enablement or dispatch. The stable
+schema generated without `--experimental` defines `InitializeCapabilities.requestAttestation` as a
+boolean defaulting to `false`; `true` opts into `attestation/generate` requests for upstream
+`x-oai-attestation`. The fixture-backed `request-attestation` advertisement retains exactly that
+private field/value pair as stable, available, supported, authority-expanding, and non-experimental.
+No opaque reference, order, availability, support flag, authority classification, another policy
+dimension, or confirmation derives the mapping.
+
+The private mapping participates in catalog identity, ambiguity/drift detection, defensive copies,
+and pinned comparison. Missing, partial, changed, duplicate, second-mapped, removed, unstable,
+unavailable, unsupported, non-authority, experimental, or unconfirmed evidence fails closed. The
+effective-policy baseline keeps it disabled and unconfirmed. Initialization still sends only the
+existing notification opt-outs, and unchanged lifecycle resolution rejects every enabled capability
+before thread start/read/resume or turn start/steer request I/O. No attestation request, credential,
+account value, authentication action, or provider call occurred.
+
+No second in-scope stable mapping is proven: `experimentalApi` is a global experimental opt-in,
+`mcpServerOpenaiFormElicitation` is outside the no-MCP boundary, `optOutNotificationMethods` is a
+suppression list rather than enablement, and `SelectedCapabilityRoot` is not bound to a stable thread
+parameter. The smallest evidence-backed next slice is a separately approved package-local contract
+and sequencing decision for individually confirmed pre-initialization capabilities, without dispatch.
+Provider discovery persistence, adapter selection, MCP, Pipeon, fallback, rollback, and all
+consumer/bridge paths remain separate work.
