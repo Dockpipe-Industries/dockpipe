@@ -4,11 +4,13 @@ import (
 	"bufio"
 	"context"
 	"crypto/sha1"
+	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"os/exec"
@@ -16,11 +18,14 @@ import (
 	"path/filepath"
 	"runtime"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"syscall"
 	"time"
 
+	"dorkpipe.orchestrator/appserversupervisor"
+	"dorkpipe.orchestrator/providersession"
 	"dorkpipe.orchestrator/statepaths"
 	"gopkg.in/yaml.v3"
 )
@@ -142,23 +147,97 @@ type providerPoolLease struct {
 }
 
 type providerPoolPromptOptions struct {
-	Workdir             string
-	Provider            string
-	Model               string
-	Prompt              string
-	SessionID           string
-	Role                string
-	WorkflowRunID       string
-	NodeID              string
-	MaxActive           int
-	QueueTimeoutSeconds int
-	ActiveFile          string
-	OpenFiles           []string
-	SelectionText       string
+	Workdir                 string
+	Provider                string
+	Model                   string
+	Prompt                  string
+	SessionID               string
+	SessionAdapter          string
+	Role                    string
+	WorkflowRunID           string
+	NodeID                  string
+	MaxActive               int
+	QueueTimeoutSeconds     int
+	ActiveFile              string
+	OpenFiles               []string
+	SelectionText           string
+	approvalDecisionSource  providerPoolApprovalDecisionSource
+	userInputResponseSource providerPoolUserInputResponseSource
+}
+
+const (
+	providerPoolCodexExecAdapter      = "codex_exec"
+	providerPoolCodexAppServerAdapter = "codex_app_server"
+	providerPoolSessionAdapterSchema  = 1
+)
+
+type providerPoolSessionAdapterBinding struct {
+	Schema    int    `json:"schema"`
+	SessionID string `json:"session_id"`
+	Adapter   string `json:"adapter"`
+}
+
+type providerPoolAppServerSessionState struct {
+	Schema            int    `json:"schema"`
+	SessionID         string `json:"session_id"`
+	CompletedTurn     uint64 `json:"completed_turn"`
+	ProviderSessionID string `json:"provider_session_id"`
+	RecoveryEvidence  string `json:"recovery_evidence"`
+	Model             string `json:"model"`
+	ReasoningEffort   string `json:"reasoning_effort"`
+}
+
+type providerPoolAppServerTurnClaim struct {
+	Schema      int    `json:"schema"`
+	SessionID   string `json:"session_id"`
+	PendingTurn uint64 `json:"pending_turn"`
+}
+
+type providerPoolAppServerRunResult struct {
+	Response          *providerPoolPromptResponse
+	ProviderSessionID string
+	RecoveryEvidence  string
+	VerifiedIdle      bool
+}
+
+type providerPoolApprovalDecisionSource func(context.Context, providersession.ApprovalRequest) (providersession.ApprovalDecision, bool, error)
+
+type providerPoolUserInputResponseSource func(context.Context, providersession.UserInputPrompt) (providersession.UserInputResponse, bool, error)
+
+const (
+	providerPoolPrivateApprovalFramePrefix = "DORKPIPE_PRIVATE_APPROVAL_V1 "
+	providerPoolPrivateApprovalFrameLimit  = 64 * 1024
+)
+
+type providerPoolPrivateApprovalRequestFrame struct {
+	Type    string                          `json:"type"`
+	Request providersession.ApprovalRequest `json:"request"`
+}
+
+type providerPoolPrivateApprovalDecisionFrame struct {
+	Type     string                           `json:"type"`
+	Decision providersession.ApprovalDecision `json:"decision"`
+}
+
+type providerPoolPrivateApprovalStdio struct {
+	mu     sync.Mutex
+	reader *bufio.Reader
+	writer io.Writer
+}
+
+type providerPoolAppServerTurnController interface {
+	Events() <-chan providersession.Event
+	State() providersession.State
+	Decide(context.Context, providersession.ApprovalDecision) error
+	UserInputPrompt(context.Context, providersession.UserInputRequest) (providersession.UserInputPrompt, error)
+	RespondUserInput(context.Context, providersession.UserInputResponse) error
+	CompletedTurnText() (string, bool)
+	RecoveryEvidence() string
 }
 
 var providerPoolClaudeImageBuild sync.Mutex
 var stopProviderPoolClaudeWorkersFunc = stopProviderPoolClaudeWorkers
+var runProviderPoolCodexAppServerPromptFunc = runProviderPoolCodexAppServerPrompt
 
 func providerPoolCmd(argv []string) {
 	if len(argv) == 0 {
@@ -292,6 +371,7 @@ func providerPoolPromptCmd(argv []string) {
 	model := fs.String("model", "", "model override")
 	prompt := fs.String("prompt", "", "prompt text")
 	sessionID := fs.String("session-id", "", "provider-pool session id")
+	sessionAdapter := fs.String("session-adapter", "", "session-pinned Codex adapter")
 	role := fs.String("role", "", "provider-pool role hint")
 	workflowRunID := fs.String("workflow-run-id", "", "workflow run attribution")
 	nodeID := fs.String("node-id", "", "workflow node attribution")
@@ -302,28 +382,39 @@ func providerPoolPromptCmd(argv []string) {
 	fs.Var(&openFiles, "open-file", "repo-relative open file hint (repeatable)")
 	selectionText := fs.String("selection-text", "", "selection hint")
 	asJSON := fs.Bool("json", false, "print JSON")
+	privateApprovalStdio := fs.Bool("_private-mcp-approval-stdio-v1", false, "private MCP approval transport")
 	_ = fs.Parse(argv)
 	if strings.TrimSpace(*prompt) == "" {
 		fmt.Fprintln(os.Stderr, "provider-pool prompt: --prompt is required")
 		os.Exit(2)
 	}
+	if *privateApprovalStdio && (!*asJSON || strings.TrimSpace(*sessionAdapter) != providerPoolCodexAppServerAdapter) {
+		fmt.Fprintln(os.Stderr, "provider-pool prompt: private MCP approval transport requires --json and --session-adapter codex_app_server")
+		os.Exit(2)
+	}
 	wd := mustWorkdir(*workdir)
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
+	var approvalDecisionSource providerPoolApprovalDecisionSource
+	if *privateApprovalStdio {
+		approvalDecisionSource = newProviderPoolPrivateApprovalStdio(os.Stdin, os.Stderr).decisionSource
+	}
 	result, err := runProviderPoolPrompt(ctx, providerPoolPromptOptions{
-		Workdir:             wd,
-		Provider:            strings.TrimSpace(*provider),
-		Model:               strings.TrimSpace(*model),
-		Prompt:              strings.TrimSpace(*prompt),
-		SessionID:           strings.TrimSpace(*sessionID),
-		Role:                strings.TrimSpace(*role),
-		WorkflowRunID:       strings.TrimSpace(*workflowRunID),
-		NodeID:              strings.TrimSpace(*nodeID),
-		MaxActive:           *maxActive,
-		QueueTimeoutSeconds: *queueTimeoutSeconds,
-		ActiveFile:          strings.TrimSpace(*activeFile),
-		OpenFiles:           uniqueNonEmpty(openFiles),
-		SelectionText:       strings.TrimSpace(*selectionText),
+		Workdir:                wd,
+		Provider:               strings.TrimSpace(*provider),
+		Model:                  strings.TrimSpace(*model),
+		Prompt:                 strings.TrimSpace(*prompt),
+		SessionID:              strings.TrimSpace(*sessionID),
+		SessionAdapter:         strings.TrimSpace(*sessionAdapter),
+		Role:                   strings.TrimSpace(*role),
+		WorkflowRunID:          strings.TrimSpace(*workflowRunID),
+		NodeID:                 strings.TrimSpace(*nodeID),
+		MaxActive:              *maxActive,
+		QueueTimeoutSeconds:    *queueTimeoutSeconds,
+		ActiveFile:             strings.TrimSpace(*activeFile),
+		OpenFiles:              uniqueNonEmpty(openFiles),
+		SelectionText:          strings.TrimSpace(*selectionText),
+		approvalDecisionSource: approvalDecisionSource,
 	})
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
@@ -356,6 +447,77 @@ func providerPoolPromptArgs(argv []string) []string {
 		return out
 	}
 	return append(out, parsed...)
+}
+
+func newProviderPoolPrivateApprovalStdio(reader io.Reader, writer io.Writer) *providerPoolPrivateApprovalStdio {
+	return &providerPoolPrivateApprovalStdio{
+		reader: bufio.NewReaderSize(reader, providerPoolPrivateApprovalFrameLimit),
+		writer: writer,
+	}
+}
+
+func (transport *providerPoolPrivateApprovalStdio) decisionSource(ctx context.Context, request providersession.ApprovalRequest) (providersession.ApprovalDecision, bool, error) {
+	transport.mu.Lock()
+	defer transport.mu.Unlock()
+	request = cloneProviderPoolApprovalRequest(request)
+	if err := request.Validate(); err != nil {
+		return providersession.ApprovalDecision{}, false, fmt.Errorf("private MCP approval request rejected: %w", err)
+	}
+	frame := providerPoolPrivateApprovalRequestFrame{Type: "approval_request", Request: request}
+	encoded, err := json.Marshal(frame)
+	if err != nil {
+		return providersession.ApprovalDecision{}, false, err
+	}
+	line := append([]byte(providerPoolPrivateApprovalFramePrefix), encoded...)
+	line = append(line, '\n')
+	if len(line) > providerPoolPrivateApprovalFrameLimit {
+		return providersession.ApprovalDecision{}, false, errors.New("private MCP approval request frame exceeds its bound")
+	}
+	written, err := transport.writer.Write(line)
+	if err != nil {
+		return providersession.ApprovalDecision{}, false, fmt.Errorf("write private MCP approval request: %w", err)
+	}
+	if written != len(line) {
+		return providersession.ApprovalDecision{}, false, io.ErrShortWrite
+	}
+
+	type readResult struct {
+		line []byte
+		err  error
+	}
+	readDone := make(chan readResult, 1)
+	go func() {
+		line, prefix, readErr := transport.reader.ReadLine()
+		if prefix && readErr == nil {
+			readErr = errors.New("private MCP approval decision frame exceeds its bound")
+		}
+		readDone <- readResult{line: append([]byte(nil), line...), err: readErr}
+	}()
+	var read readResult
+	select {
+	case read = <-readDone:
+	case <-ctx.Done():
+		return providersession.ApprovalDecision{}, false, ctx.Err()
+	}
+	if read.err != nil {
+		return providersession.ApprovalDecision{}, false, fmt.Errorf("read private MCP approval decision: %w", read.err)
+	}
+	if !strings.HasPrefix(string(read.line), providerPoolPrivateApprovalFramePrefix) {
+		return providersession.ApprovalDecision{}, false, errors.New("invalid private MCP approval decision frame")
+	}
+	var decisionFrame providerPoolPrivateApprovalDecisionFrame
+	decoder := json.NewDecoder(strings.NewReader(strings.TrimPrefix(string(read.line), providerPoolPrivateApprovalFramePrefix)))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&decisionFrame); err != nil {
+		return providersession.ApprovalDecision{}, false, fmt.Errorf("invalid private MCP approval decision frame: %w", err)
+	}
+	if decoder.Decode(&struct{}{}) != io.EOF || decisionFrame.Type != "approval_decision" {
+		return providersession.ApprovalDecision{}, false, errors.New("invalid private MCP approval decision frame")
+	}
+	if err := decisionFrame.Decision.ValidateFor(request); err != nil {
+		return providersession.ApprovalDecision{}, false, fmt.Errorf("private MCP approval decision rejected: %w", err)
+	}
+	return decisionFrame.Decision, true, nil
 }
 
 func buildProviderPoolCatalogResponse(workdir string, allowWarmStart bool) (*providerPoolCatalogResponse, error) {
@@ -406,6 +568,15 @@ func runProviderPoolPrompt(ctx context.Context, opts providerPoolPromptOptions) 
 	chosenModel := strings.TrimSpace(opts.Model)
 	if chosenModel == "" {
 		chosenModel = providerPoolChosenModel(provider)
+	}
+	if provider.ID == "codex" {
+		sessionAdapter, err := resolveProviderPoolCodexSessionAdapter(opts.Workdir, opts.SessionID, opts.SessionAdapter)
+		if err != nil {
+			return nil, err
+		}
+		opts.SessionAdapter = sessionAdapter
+	} else if strings.TrimSpace(opts.SessionAdapter) != "" {
+		return nil, fmt.Errorf("provider-pool session adapter is only valid for the Codex provider")
 	}
 	statusStartedAt := time.Now()
 	status, err := providerPoolStatusFor(opts.Workdir, provider, chosenModel, opts.SessionID, true)
@@ -509,6 +680,9 @@ func enrichProviderPoolPromptMetadata(metadata map[string]any, providerID, chose
 	if strings.TrimSpace(opts.SessionID) != "" {
 		metadata["session_id"] = strings.TrimSpace(opts.SessionID)
 	}
+	if strings.TrimSpace(opts.SessionAdapter) != "" {
+		metadata["session_adapter"] = strings.TrimSpace(opts.SessionAdapter)
+	}
 	if strings.TrimSpace(opts.Role) != "" {
 		metadata["role"] = strings.TrimSpace(opts.Role)
 	}
@@ -527,6 +701,262 @@ func enrichProviderPoolPromptMetadata(metadata map[string]any, providerID, chose
 	if _, ok := metadata["prompt_turn_id"]; !ok {
 		metadata["prompt_turn_id"] = providerPoolPromptTurnID()
 	}
+}
+
+func resolveProviderPoolCodexSessionAdapter(workdir, sessionID, requestedAdapter string) (string, error) {
+	sessionID = strings.TrimSpace(sessionID)
+	requestedAdapter = strings.TrimSpace(requestedAdapter)
+	if requestedAdapter == "" {
+		if !validProviderPoolAdapterSessionID(sessionID) {
+			return providerPoolCodexExecAdapter, nil
+		}
+		binding, found, err := loadProviderPoolSessionAdapterBinding(workdir, sessionID)
+		if err != nil {
+			return "", err
+		}
+		if found {
+			return "", fmt.Errorf("provider-pool session %q is pinned to %q and requires an explicit adapter choice", sessionID, binding.Adapter)
+		}
+		return providerPoolCodexExecAdapter, nil
+	}
+	if requestedAdapter != providerPoolCodexExecAdapter && requestedAdapter != providerPoolCodexAppServerAdapter {
+		return "", fmt.Errorf("unknown provider-pool Codex session adapter %q", requestedAdapter)
+	}
+	if !validProviderPoolAdapterSessionID(sessionID) {
+		return "", fmt.Errorf("provider-pool Codex session adapter requires a valid session id")
+	}
+
+	binding, found, err := loadProviderPoolSessionAdapterBinding(workdir, sessionID)
+	if err != nil {
+		return "", err
+	}
+	if found {
+		if binding.Adapter != requestedAdapter {
+			return "", fmt.Errorf("provider-pool session %q is pinned to %q and cannot change to %q", sessionID, binding.Adapter, requestedAdapter)
+		}
+		return binding.Adapter, nil
+	}
+	binding = providerPoolSessionAdapterBinding{Schema: providerPoolSessionAdapterSchema, SessionID: sessionID, Adapter: requestedAdapter}
+	if err := createProviderPoolSessionAdapterBinding(workdir, binding); err != nil {
+		return "", err
+	}
+	return requestedAdapter, nil
+}
+
+func validProviderPoolAdapterSessionID(sessionID string) bool {
+	if sessionID == "" || len(sessionID) > 256 {
+		return false
+	}
+	return !strings.ContainsAny(sessionID, "\x00\r\n")
+}
+
+func providerPoolSessionAdapterBindingPath(workdir, sessionID string) (string, error) {
+	dir, err := statepaths.ProviderPoolSessionAdaptersDir(workdir)
+	if err != nil {
+		return "", err
+	}
+	digest := sha256.Sum256([]byte(sessionID))
+	return filepath.Join(dir, hex.EncodeToString(digest[:])+".json"), nil
+}
+
+func loadProviderPoolSessionAdapterBinding(workdir, sessionID string) (providerPoolSessionAdapterBinding, bool, error) {
+	path, err := providerPoolSessionAdapterBindingPath(workdir, sessionID)
+	if err != nil {
+		return providerPoolSessionAdapterBinding{}, false, err
+	}
+	raw, err := os.ReadFile(path)
+	if errors.Is(err, os.ErrNotExist) {
+		return providerPoolSessionAdapterBinding{}, false, nil
+	}
+	if err != nil {
+		return providerPoolSessionAdapterBinding{}, false, err
+	}
+	var binding providerPoolSessionAdapterBinding
+	if json.Unmarshal(raw, &binding) != nil {
+		return providerPoolSessionAdapterBinding{}, false, fmt.Errorf("provider-pool session adapter binding is malformed")
+	}
+	canonical, err := json.Marshal(binding)
+	if err != nil || strings.TrimSpace(string(raw)) != string(canonical) {
+		return providerPoolSessionAdapterBinding{}, false, fmt.Errorf("provider-pool session adapter binding is malformed")
+	}
+	if binding.Schema != providerPoolSessionAdapterSchema || binding.SessionID != sessionID || !validProviderPoolAdapterSessionID(binding.SessionID) || (binding.Adapter != providerPoolCodexExecAdapter && binding.Adapter != providerPoolCodexAppServerAdapter) {
+		return providerPoolSessionAdapterBinding{}, false, fmt.Errorf("provider-pool session adapter binding does not match the requested session")
+	}
+	return binding, true, nil
+}
+
+func createProviderPoolSessionAdapterBinding(workdir string, binding providerPoolSessionAdapterBinding) error {
+	path, err := providerPoolSessionAdapterBindingPath(workdir, binding.SessionID)
+	if err != nil {
+		return err
+	}
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return err
+	}
+	raw, err := json.Marshal(binding)
+	if err != nil {
+		return err
+	}
+	raw = append(raw, '\n')
+	file, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
+	if errors.Is(err, os.ErrExist) {
+		existing, found, loadErr := loadProviderPoolSessionAdapterBinding(workdir, binding.SessionID)
+		if loadErr != nil {
+			return loadErr
+		}
+		if !found || existing.Adapter != binding.Adapter {
+			return fmt.Errorf("provider-pool session adapter binding changed during first-use pinning")
+		}
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	if written, err := file.Write(raw); err != nil || written != len(raw) {
+		_ = file.Close()
+		if err == nil {
+			err = fmt.Errorf("provider-pool session adapter binding write was incomplete")
+		}
+		return err
+	}
+	if err := file.Sync(); err != nil {
+		_ = file.Close()
+		return err
+	}
+	return file.Close()
+}
+
+func providerPoolCodexAppServerSessionPath(workdir, sessionID string) (string, error) {
+	root, err := statepaths.ProviderPoolAppServerDir(workdir)
+	if err != nil {
+		return "", err
+	}
+	digest := sha256.Sum256([]byte(sessionID))
+	return filepath.Join(root, "sessions", hex.EncodeToString(digest[:])+".json"), nil
+}
+
+func providerPoolCodexAppServerRecoveryEvidence(sessionID string) string {
+	digest := sha256.Sum256([]byte(sessionID))
+	return "pipeon-" + hex.EncodeToString(digest[:])
+}
+
+func loadProviderPoolCodexAppServerSession(workdir, sessionID string) (providerPoolAppServerSessionState, bool, error) {
+	path, err := providerPoolCodexAppServerSessionPath(workdir, sessionID)
+	if err != nil {
+		return providerPoolAppServerSessionState{}, false, err
+	}
+	raw, err := os.ReadFile(path)
+	if errors.Is(err, os.ErrNotExist) {
+		return providerPoolAppServerSessionState{}, false, nil
+	}
+	if err != nil {
+		return providerPoolAppServerSessionState{}, false, err
+	}
+	var state providerPoolAppServerSessionState
+	if json.Unmarshal(raw, &state) != nil {
+		return providerPoolAppServerSessionState{}, false, fmt.Errorf("provider-pool App Server session state is malformed")
+	}
+	canonical, marshalErr := json.Marshal(state)
+	providerSession := providersession.SessionRef{Provider: "codex", SessionID: state.ProviderSessionID}
+	if marshalErr != nil || strings.TrimSpace(string(raw)) != string(canonical) || state.Schema != 1 || state.SessionID != sessionID || state.CompletedTurn == 0 || providerSession.Validate() != nil || state.RecoveryEvidence != providerPoolCodexAppServerRecoveryEvidence(sessionID) || strings.TrimSpace(state.Model) == "" || state.Model != strings.TrimSpace(state.Model) || strings.TrimSpace(state.ReasoningEffort) == "" || state.ReasoningEffort != strings.TrimSpace(state.ReasoningEffort) {
+		return providerPoolAppServerSessionState{}, false, fmt.Errorf("provider-pool App Server session state is malformed")
+	}
+	return state, true, nil
+}
+
+func beginProviderPoolCodexAppServerTurn(workdir, sessionID, model, reasoning string) (*providerPoolAppServerSessionState, uint64, string, error) {
+	state, found, err := loadProviderPoolCodexAppServerSession(workdir, sessionID)
+	if err != nil {
+		return nil, 0, "", err
+	}
+	turn := uint64(1)
+	if found {
+		if state.Model != model || state.ReasoningEffort != reasoning {
+			return nil, 0, "", fmt.Errorf("provider-pool App Server session %q is pinned to model %q with reasoning %q", sessionID, state.Model, state.ReasoningEffort)
+		}
+		if state.CompletedTurn == ^uint64(0) {
+			return nil, 0, "", fmt.Errorf("provider-pool App Server session turn counter is exhausted")
+		}
+		turn = state.CompletedTurn + 1
+	}
+	path, err := providerPoolCodexAppServerSessionPath(workdir, sessionID)
+	if err != nil {
+		return nil, 0, "", err
+	}
+	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+		return nil, 0, "", err
+	}
+	lockPath := path + ".lock"
+	claim := providerPoolAppServerTurnClaim{Schema: 1, SessionID: sessionID, PendingTurn: turn}
+	raw, err := json.Marshal(claim)
+	if err != nil {
+		return nil, 0, "", err
+	}
+	raw = append(raw, '\n')
+	file, err := os.OpenFile(lockPath, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
+	if errors.Is(err, os.ErrExist) {
+		return nil, 0, "", fmt.Errorf("provider-pool App Server session %q has an unresolved prior turn and cannot be replayed", sessionID)
+	}
+	if err != nil {
+		return nil, 0, "", err
+	}
+	if written, writeErr := file.Write(raw); writeErr != nil || written != len(raw) {
+		_ = file.Close()
+		if writeErr != nil {
+			return nil, 0, "", writeErr
+		}
+		return nil, 0, "", fmt.Errorf("provider-pool App Server turn claim write was incomplete")
+	}
+	if err := file.Sync(); err != nil {
+		_ = file.Close()
+		return nil, 0, "", err
+	}
+	if err := file.Close(); err != nil {
+		return nil, 0, "", err
+	}
+	if !found {
+		return nil, turn, lockPath, nil
+	}
+	return &state, turn, lockPath, nil
+}
+
+func finishProviderPoolCodexAppServerTurn(workdir, lockPath string, state providerPoolAppServerSessionState) error {
+	path, err := providerPoolCodexAppServerSessionPath(workdir, state.SessionID)
+	if err != nil {
+		return err
+	}
+	raw, err := json.Marshal(state)
+	if err != nil {
+		return err
+	}
+	raw = append(raw, '\n')
+	file, err := os.CreateTemp(filepath.Dir(path), ".app-server-session-*.tmp")
+	if err != nil {
+		return err
+	}
+	temporary := file.Name()
+	err = file.Chmod(0o600)
+	if err == nil {
+		_, err = file.Write(raw)
+	}
+	if err == nil {
+		err = file.Sync()
+	}
+	if closeErr := file.Close(); err == nil {
+		err = closeErr
+	}
+	if err != nil {
+		_ = os.Remove(temporary)
+		return err
+	}
+	if err := os.Rename(temporary, path); err != nil {
+		_ = os.Remove(temporary)
+		return err
+	}
+	if err := os.Remove(lockPath); err != nil {
+		return err
+	}
+	return nil
 }
 
 func waitForProviderPoolPromptReady(ctx context.Context, workdir string, provider providerPoolProvider, chosenModel, sessionID string) (*providerPoolStatus, error) {
@@ -921,6 +1351,42 @@ func runProviderPoolCodexPrompt(ctx context.Context, opts providerPoolPromptOpti
 			ExitCode: -1,
 		}, nil
 	}
+	if opts.SessionAdapter == providerPoolCodexAppServerAdapter {
+		if strings.TrimSpace(chosenModel) == "" || strings.EqualFold(strings.TrimSpace(chosenModel), "config") {
+			return nil, fmt.Errorf("provider-pool App Server dispatch requires an explicit model; the Codex config alias cannot be session-pinned")
+		}
+		prior, turn, lockPath, err := beginProviderPoolCodexAppServerTurn(opts.Workdir, opts.SessionID, chosenModel, appserversupervisor.PinnedReasoningEffort)
+		if err != nil {
+			return nil, err
+		}
+		run, err := runProviderPoolCodexAppServerPromptFunc(ctx, opts, chosenModel, codexPath, prior, turn)
+		if err != nil {
+			return nil, err
+		}
+		if run == nil || run.Response == nil {
+			return nil, fmt.Errorf("provider-pool App Server dispatch returned no result")
+		}
+		if !run.VerifiedIdle {
+			return run.Response, nil
+		}
+		providerSession := providersession.SessionRef{Provider: "codex", SessionID: run.ProviderSessionID}
+		if run.Response.State != "ready" || run.Response.ExitCode != 0 || providerSession.Validate() != nil || run.RecoveryEvidence != providerPoolCodexAppServerRecoveryEvidence(opts.SessionID) || (prior != nil && run.ProviderSessionID != prior.ProviderSessionID) {
+			return nil, fmt.Errorf("provider-pool App Server verified-idle result does not match the pinned session")
+		}
+		state := providerPoolAppServerSessionState{
+			Schema:            1,
+			SessionID:         opts.SessionID,
+			CompletedTurn:     turn,
+			ProviderSessionID: run.ProviderSessionID,
+			RecoveryEvidence:  run.RecoveryEvidence,
+			Model:             chosenModel,
+			ReasoningEffort:   appserversupervisor.PinnedReasoningEffort,
+		}
+		if err := finishProviderPoolCodexAppServerTurn(opts.Workdir, lockPath, state); err != nil {
+			return nil, fmt.Errorf("provider-pool App Server verified-idle state: %w", err)
+		}
+		return run.Response, nil
+	}
 	args := []string{"exec", "-C", opts.Workdir, "--sandbox", "workspace-write"}
 	modelArg := strings.TrimSpace(chosenModel)
 	if modelArg != "" && !strings.EqualFold(modelArg, "config") {
@@ -1000,6 +1466,307 @@ func runProviderPoolCodexPrompt(ctx context.Context, opts providerPoolPromptOpti
 			"worker_mode":     map[bool]string{true: "host_resume", false: "host_prompt"}[codexSession != ""],
 		},
 	}, nil
+}
+
+func runProviderPoolCodexAppServerPrompt(ctx context.Context, opts providerPoolPromptOptions, chosenModel, codexPath string, prior *providerPoolAppServerSessionState, turnNumber uint64) (*providerPoolAppServerRunResult, error) {
+	policy, err := appserversupervisor.BaselineLifecyclePolicy(opts.Workdir, chosenModel, appserversupervisor.PinnedReasoningEffort)
+	if err != nil {
+		return nil, fmt.Errorf("provider-pool App Server baseline policy: %w", err)
+	}
+	deadlines := appserversupervisor.Deadlines{Startup: time.Minute, Shutdown: 20 * time.Second, Kill: 10 * time.Second, Liveness: time.Minute, Request: time.Minute}
+	initialization := appserversupervisor.InitializationConfig{
+		SchemaVersion:        "v2",
+		RequiredCapabilities: []string{"stableV2"},
+		ClientName:           "dorkpipe-pipeon",
+		ClientVersion:        "0.1.0",
+		Model:                appserversupervisor.PinnedModel,
+		ReasoningEffort:      appserversupervisor.PinnedReasoningEffort,
+	}
+	appServerRoot, err := statepaths.ProviderPoolAppServerDir(opts.Workdir)
+	if err != nil {
+		return nil, err
+	}
+	evidence := providerPoolCodexAppServerRecoveryEvidence(opts.SessionID)
+	digest := sha256.Sum256([]byte(opts.SessionID))
+	identitySuffix := hex.EncodeToString(digest[:8]) + "-" + strconv.FormatUint(turnNumber, 10)
+	identity := appserversupervisor.DurableIdentity{RecoveryEvidence: evidence, ProcessIncarnationID: "process-" + identitySuffix, ConnectionID: "connection-" + identitySuffix}
+	session := providersession.SessionRef{Provider: "codex", SessionID: strings.TrimSpace(opts.SessionID)}
+	if prior != nil {
+		session.SessionID = prior.ProviderSessionID
+	}
+	supervisor, err := appserversupervisor.NewWithStoresAndIdentity(
+		session,
+		appserversupervisor.HostLauncher{Executable: codexPath, Args: []string{"app-server", "--stdio"}},
+		deadlines,
+		initialization,
+		appserversupervisor.FileSnapshotStore{Root: filepath.Join(appServerRoot, "snapshots")},
+		appserversupervisor.FileAuditStore{Root: filepath.Join(appServerRoot, "audit")},
+		identity,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("provider-pool App Server supervisor: %w", err)
+	}
+	started := false
+	defer func() {
+		if !started {
+			return
+		}
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), deadlines.Shutdown+deadlines.Kill)
+		defer cancel()
+		_ = supervisor.Shutdown(shutdownCtx)
+	}()
+	var thread appserversupervisor.LifecycleReference
+	var effective providersession.EffectivePolicySnapshot
+	if prior == nil {
+		if err := supervisor.Start(ctx); err != nil {
+			return nil, fmt.Errorf("provider-pool App Server initialization: %w", err)
+		}
+		started = true
+		effective, err = supervisor.SelectBaselinePolicy(ctx, chosenModel, appserversupervisor.PinnedReasoningEffort)
+		if err != nil {
+			return nil, fmt.Errorf("provider-pool App Server model/policy selection: %w", err)
+		}
+		thread, err = supervisor.StartThread(ctx, policy)
+		if err != nil {
+			return nil, fmt.Errorf("provider-pool App Server thread start: %w", err)
+		}
+	} else {
+		started = true
+		thread, effective, err = supervisor.RecoverBaseline(ctx, providersession.RecoveryRequest{Session: session, RecoveryEvidence: prior.RecoveryEvidence}, policy)
+		if err != nil {
+			return nil, fmt.Errorf("provider-pool App Server verified-idle recovery: %w", err)
+		}
+	}
+	if _, err := supervisor.StartPromptTurn(ctx, thread, policy, augmentDirectPrompt(opts.Prompt, opts.ActiveFile, opts.SelectionText, opts.OpenFiles)); err != nil {
+		return nil, fmt.Errorf("provider-pool App Server turn start: %w", err)
+	}
+	return consumeProviderPoolCodexAppServerTurn(ctx, supervisor, opts.approvalDecisionSource, opts.userInputResponseSource, chosenModel, effective, thread.Session.SessionID, turnNumber, prior != nil)
+}
+
+func consumeProviderPoolCodexAppServerTurn(ctx context.Context, controller providerPoolAppServerTurnController, decisionSource providerPoolApprovalDecisionSource, userInputSource providerPoolUserInputResponseSource, chosenModel string, effective providersession.EffectivePolicySnapshot, providerSessionID string, turnNumber uint64, recovered bool) (*providerPoolAppServerRunResult, error) {
+	var completedText string
+	var lastSequence uint64
+	turnCompleted := false
+	handledApprovals := make(map[providersession.Correlation]struct{})
+	var pendingApproval *providersession.Correlation
+	userInputHandled := false
+	var pendingUserInput *providersession.Correlation
+	for {
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		case event, ok := <-controller.Events():
+			if !ok {
+				return &providerPoolAppServerRunResult{Response: appServerPromptFailure(chosenModel, "transport_closed", effective, true)}, nil
+			}
+			if event.Validate() != nil || (lastSequence != 0 && event.Sequence <= lastSequence) {
+				if event.Kind == providersession.EventUserInputRequested {
+					return &providerPoolAppServerRunResult{Response: appServerPromptFailure(chosenModel, "user_input_request_rejected", effective, true)}, nil
+				}
+				return &providerPoolAppServerRunResult{Response: appServerPromptFailure(chosenModel, "invalid_event", effective, true)}, nil
+			}
+			lastSequence = event.Sequence
+			if event.State == providersession.StateDisconnected {
+				return &providerPoolAppServerRunResult{Response: appServerPromptFailure(chosenModel, event.Summary, effective, true)}, nil
+			}
+			if event.Kind == providersession.EventUserInputRequested {
+				request, valid := exactProviderPoolUserInputRequest(event, providerSessionID)
+				if !valid {
+					return &providerPoolAppServerRunResult{Response: appServerPromptFailure(chosenModel, "user_input_request_rejected", effective, true)}, nil
+				}
+				if pendingApproval != nil || pendingUserInput != nil || userInputHandled {
+					return &providerPoolAppServerRunResult{Response: appServerPromptFailure(chosenModel, "user_input_request_replayed", effective, true)}, nil
+				}
+				userInputHandled = true
+				if userInputSource == nil {
+					return &providerPoolAppServerRunResult{Response: appServerPromptFailure(chosenModel, "interactive_control_required", effective, true)}, nil
+				}
+				if controller.State() != providersession.StateWaitingForUserInput {
+					return &providerPoolAppServerRunResult{Response: appServerPromptFailure(chosenModel, "user_input_response_rejected", effective, true)}, nil
+				}
+				prompt, err := controller.UserInputPrompt(ctx, request)
+				if err != nil {
+					return &providerPoolAppServerRunResult{Response: appServerPromptFailure(chosenModel, "user_input_prompt_unavailable", effective, true)}, nil
+				}
+				prompt = cloneProviderPoolUserInputPrompt(prompt)
+				if prompt.ValidateFor(request) != nil {
+					return &providerPoolAppServerRunResult{Response: appServerPromptFailure(chosenModel, "user_input_prompt_rejected", effective, true)}, nil
+				}
+				response, found, err := userInputSource(ctx, cloneProviderPoolUserInputPrompt(prompt))
+				if err != nil {
+					return &providerPoolAppServerRunResult{Response: appServerPromptFailure(chosenModel, "user_input_response_unavailable", effective, true)}, nil
+				}
+				if !found {
+					return &providerPoolAppServerRunResult{Response: appServerPromptFailure(chosenModel, "interactive_control_required", effective, true)}, nil
+				}
+				response = cloneProviderPoolUserInputResponse(response)
+				if response.ValidateFor(prompt) != nil || controller.State() != providersession.StateWaitingForUserInput {
+					return &providerPoolAppServerRunResult{Response: appServerPromptFailure(chosenModel, "user_input_response_rejected", effective, true)}, nil
+				}
+				if err := controller.RespondUserInput(ctx, cloneProviderPoolUserInputResponse(response)); err != nil {
+					return &providerPoolAppServerRunResult{Response: appServerPromptFailure(chosenModel, "user_input_response_delivery_failed", effective, true)}, nil
+				}
+				correlation := request.Correlation
+				pendingUserInput = &correlation
+				continue
+			}
+			if event.Kind == providersession.EventApprovalRequested {
+				if pendingUserInput != nil {
+					return &providerPoolAppServerRunResult{Response: appServerPromptFailure(chosenModel, "user_input_resolution_missing", effective, true)}, nil
+				}
+				request, valid := exactProviderPoolApprovalRequest(event)
+				if !valid {
+					return &providerPoolAppServerRunResult{Response: appServerPromptFailure(chosenModel, "approval_request_rejected", effective, true)}, nil
+				}
+				if pendingApproval != nil {
+					return &providerPoolAppServerRunResult{Response: appServerPromptFailure(chosenModel, "approval_request_replayed", effective, true)}, nil
+				}
+				if _, duplicate := handledApprovals[request.Correlation]; duplicate {
+					return &providerPoolAppServerRunResult{Response: appServerPromptFailure(chosenModel, "approval_request_replayed", effective, true)}, nil
+				}
+				handledApprovals[request.Correlation] = struct{}{}
+				if decisionSource == nil {
+					return &providerPoolAppServerRunResult{Response: appServerPromptFailure(chosenModel, "interactive_control_required", effective, true)}, nil
+				}
+				decision, found, err := decisionSource(ctx, cloneProviderPoolApprovalRequest(request))
+				if err != nil {
+					return &providerPoolAppServerRunResult{Response: appServerPromptFailure(chosenModel, "approval_decision_unavailable", effective, true)}, nil
+				}
+				if !found {
+					return &providerPoolAppServerRunResult{Response: appServerPromptFailure(chosenModel, "interactive_control_required", effective, true)}, nil
+				}
+				if decision.ValidateFor(request) != nil || controller.State() != providersession.StateWaitingForApproval {
+					return &providerPoolAppServerRunResult{Response: appServerPromptFailure(chosenModel, "approval_decision_rejected", effective, true)}, nil
+				}
+				if err := controller.Decide(ctx, decision); err != nil {
+					return &providerPoolAppServerRunResult{Response: appServerPromptFailure(chosenModel, "approval_decision_rejected", effective, true)}, nil
+				}
+				if decision.Decision == providersession.DecisionDeny {
+					return &providerPoolAppServerRunResult{Response: appServerPromptFailure(chosenModel, "approval_denied", effective, false)}, nil
+				}
+				correlation := request.Correlation
+				pendingApproval = &correlation
+				continue
+			}
+			if pendingApproval != nil {
+				if event.Kind == providersession.EventStateChanged && event.State == providersession.StateRunning && event.Summary == "approval_resolved" && event.Correlation == *pendingApproval {
+					pendingApproval = nil
+					continue
+				}
+				if event.Summary == "turn_completed" || event.Summary == "thread_idle" || event.Summary == "turn_failed" || event.Summary == "turn_interrupted" {
+					return &providerPoolAppServerRunResult{Response: appServerPromptFailure(chosenModel, "approval_resolution_missing", effective, true)}, nil
+				}
+			}
+			if pendingUserInput != nil {
+				if event.Kind == providersession.EventStateChanged && event.State == providersession.StateRunning && event.Summary == "user_input_resolved" && event.Correlation == *pendingUserInput {
+					pendingUserInput = nil
+					continue
+				}
+				if event.Summary == "turn_completed" || event.Summary == "thread_idle" || event.Summary == "turn_failed" || event.Summary == "turn_interrupted" {
+					return &providerPoolAppServerRunResult{Response: appServerPromptFailure(chosenModel, "user_input_resolution_missing", effective, true)}, nil
+				}
+			}
+			switch event.Summary {
+			case "turn_completed":
+				text, ok := controller.CompletedTurnText()
+				if !ok {
+					return &providerPoolAppServerRunResult{Response: appServerPromptFailure(chosenModel, "completed_output_unavailable", effective, false)}, nil
+				}
+				if strings.TrimSpace(text) == "" {
+					text = "(Codex returned no output.)"
+				}
+				completedText = text
+				turnCompleted = true
+			case "thread_idle":
+				if !turnCompleted {
+					return &providerPoolAppServerRunResult{Response: appServerPromptFailure(chosenModel, "idle_before_terminal", effective, true)}, nil
+				}
+				metadata := appServerPromptMetadata(effective, "turn_completed", false)
+				metadata["session_turn"] = turnNumber
+				metadata["recovered_idle_session"] = recovered
+				return &providerPoolAppServerRunResult{Response: &providerPoolPromptResponse{
+					Provider: "codex",
+					Model:    chosenModel,
+					State:    "ready",
+					Status:   fmt.Sprintf("Provider: Codex App Server | State: ready | Model: %s", chosenModel),
+					Text:     completedText,
+					ExitCode: 0,
+					Metadata: metadata,
+				}, ProviderSessionID: providerSessionID, RecoveryEvidence: controller.RecoveryEvidence(), VerifiedIdle: true}, nil
+			case "turn_failed", "turn_interrupted":
+				return &providerPoolAppServerRunResult{Response: appServerPromptFailure(chosenModel, event.Summary, effective, false)}, nil
+			}
+		}
+	}
+}
+
+func exactProviderPoolApprovalRequest(event providersession.Event) (providersession.ApprovalRequest, bool) {
+	if event.Kind != providersession.EventApprovalRequested || event.State != providersession.StateWaitingForApproval || event.Approval == nil {
+		return providersession.ApprovalRequest{}, false
+	}
+	request := cloneProviderPoolApprovalRequest(*event.Approval)
+	if request.Validate() != nil || event.Correlation != request.Correlation || event.Session.SessionID != request.Correlation.SessionID {
+		return providersession.ApprovalRequest{}, false
+	}
+	return request, true
+}
+
+func cloneProviderPoolApprovalRequest(request providersession.ApprovalRequest) providersession.ApprovalRequest {
+	request.AllowedDecisions = append([]string(nil), request.AllowedDecisions...)
+	return request
+}
+
+func exactProviderPoolUserInputRequest(event providersession.Event, providerSessionID string) (providersession.UserInputRequest, bool) {
+	if event.Kind != providersession.EventUserInputRequested || event.State != providersession.StateWaitingForUserInput || event.UserInput == nil {
+		return providersession.UserInputRequest{}, false
+	}
+	request := *event.UserInput
+	if request.Validate() != nil || event.Correlation != request.Correlation || event.Session.SessionID != request.Correlation.SessionID || request.Correlation.SessionID != providerSessionID {
+		return providersession.UserInputRequest{}, false
+	}
+	return request, true
+}
+
+func cloneProviderPoolUserInputPrompt(prompt providersession.UserInputPrompt) providersession.UserInputPrompt {
+	prompt.Options = append([]providersession.UserInputOption(nil), prompt.Options...)
+	return prompt
+}
+
+func cloneProviderPoolUserInputResponse(response providersession.UserInputResponse) providersession.UserInputResponse {
+	response.SelectedOptionRefs = append([]string(nil), response.SelectedOptionRefs...)
+	return response
+}
+
+func appServerPromptFailure(chosenModel, summary string, effective providersession.EffectivePolicySnapshot, outcomeUnknown bool) *providerPoolPromptResponse {
+	metadata := appServerPromptMetadata(effective, summary, outcomeUnknown)
+	text := "The App Server turn did not produce a safe completed response. It will not be replayed through Codex exec."
+	if outcomeUnknown {
+		text = "The App Server turn ended without a verified terminal outcome. It will not be replayed through Codex exec."
+	}
+	return &providerPoolPromptResponse{
+		Provider: "codex",
+		Model:    chosenModel,
+		State:    "failed",
+		Status:   fmt.Sprintf("Provider: Codex App Server | State: failed | %s", summary),
+		Text:     text,
+		ExitCode: 1,
+		Metadata: metadata,
+	}
+}
+
+func appServerPromptMetadata(effective providersession.EffectivePolicySnapshot, summary string, outcomeUnknown bool) map[string]any {
+	return map[string]any{
+		"provider_preset":           "codex",
+		"worker_mode":               "host_app_server_one_shot",
+		"session_adapter":           providerPoolCodexAppServerAdapter,
+		"selected_model":            effective.EffectiveModelRef,
+		"selected_reasoning_effort": effective.EffectiveReasoningRef,
+		"approval_policy":           effective.Approval.EffectiveRef,
+		"sandbox":                   effective.Sandbox.EffectiveRef,
+		"capabilities_enabled":      0,
+		"terminal_summary":          summary,
+		"outcome_unknown":           outcomeUnknown,
+	}
 }
 
 func providerPoolCodexOutputFailed(parts ...string) bool {
