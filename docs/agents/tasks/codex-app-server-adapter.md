@@ -29,11 +29,60 @@ Repository has no ADR convention; this task is the accepted product-decision rec
 - The protocol spike, provider-neutral contracts, supervision, lifecycle, approvals, cancellation,
   recovery, persistence, audit, security fixtures, and controlled Codex integration are complete.
 - The boundary remains package-local. The first Pipeon migration seam carries and session-pins an
-  explicit Codex adapter choice. An explicit `codex_app_server` choice now supports a first
+  explicit Codex adapter choice. New normal Pipeon Codex sessions now capture
+  `codex_app_server` by default, while the explicit configured `codex_exec` escape hatch applies to
+  later new sessions. Existing and migrated Pipeon sessions retain one immutable closed choice, and
+  legacy sessions without explicit resource, workspace, or user evidence conservatively retain the
+  historical `codex_exec` default. An explicit `codex_app_server` choice supports a first
   host-resident turn and later turns only after fresh-child model/policy revalidation plus exact
-  verified-idle recovery. Its transient approval request now renders in Pipeon with exact one-time
-  approve/deny controls. Fallback policy, operations rollout, other interactive controls, and the
-  primary/default adapter change have not started.
+  verified-idle recovery. Its transient approval, user-input, and user-requested cancellation
+  controls now render in Pipeon with exact one-time delivery. Eligible failures proven before any
+  `turn/start` attempt now roll back only the exact newly claimed turn and fall back once through the
+  governed buffered `codex_exec` route. Provider-pool bindings remain authoritative and unchanged.
+  Retained App Server sessions now persist and render one strictly normalized post-turn neutral
+  status snapshot from the existing closed provider-pool response. Sessions without a snapshot
+  remain valid and gain no inferred history. A retained valid `recovery_required` snapshot with an
+  exact unknown outcome now blocks another normal direct App Server prompt before messages,
+  interactive monitors, MCP, provider-pool state, claims, fallback, replay, retry, or children. The
+  host retains the adapter, snapshot, messages, and persistent warning unchanged; the webview only
+  disables its existing Send action for ordinary Codex text from the allowlisted display projection.
+  A package-private read-only recovery-candidate classifier now recognizes only the exact canonical
+  App Server binding, prior strict-loader-validated verified-idle session state, and canonical
+  unresolved next-turn claim for the same session. Repeated classification is byte-for-byte inert,
+  and candidate status authorizes no child, provider call, reconciliation, claim removal, snapshot
+  transition, new turn, or safe-continuation claim. First-turn uncertainty and every incomplete or
+  mismatched evidence set remain non-candidates. A package-private recovery-only host operation now
+  consumes only that exact candidate classification, strictly reloads the retained state, constructs
+  one fresh supervisor with the retained provider-session ID, recovery evidence, model, and reasoning
+  values, and invokes the existing `RecoverBaseline` exactly once. It has no prompt input or dispatch,
+  always shuts the fresh supervisor down after the attempt, and returns only a non-authorizing
+  observation or error. The binding, completed state, unresolved claim, Pipeon snapshot, messages,
+  warning, guard, and Send state remain unchanged. The follow-up atomic-transition investigation
+  proved that the provider-pool package's three independent binding, completed-state, and claim files
+  cannot be safely coordinated with Pipeon's separately owned recovery-required workspace snapshot.
+  The accepted product/storage direction now defines the truthful non-terminal post-state as
+  `reconciled_outcome_unknown`: the exact retained provider thread satisfied the verified-idle
+  recovery baseline, but the prior prompt outcome remains unknown and continuation, replay, retry,
+  and normal Send remain unauthorized. It selects the provider-pool coordinator as the sole durable
+  transaction owner of one canonical per-session aggregate, consumes the unresolved claim into that
+  aggregate as permanent no-replay evidence, and makes Pipeon's retained snapshot a projection only.
+  A future exact user decision bound to the aggregate would be required before a fresh later turn
+  could be authorized. Maintainer acceptance on 2026-08-04 established the product/storage
+  direction, and authorized Slice 1 now implements only the package-private canonical aggregate
+  contract, strict bounded loader, and inert package-state path described below. They remain unused
+  and unreachable from production, and no aggregate has been written. The dated pre-Slice-2
+  primitive decision packet below now records the accepted all-platform research policy and the
+  completed primary-documentation matrix for Windows/NTFS/amd64, Linux/ext4/amd64, and
+  macOS/APFS/arm64. Linux has a documentation-supported candidate sequence for later native
+  evidence, but Windows and macOS retain required undocumented guarantees. The all-or-nothing
+  documentation gate is therefore unmet: the primitive matrix is not accepted, prototype evidence
+  remains unauthorized on every platform, and no support reduction or implementation choice is
+  made. Migration, operations, storage implementation, observation,
+  compare-and-commit, cutover, dispatch guards, decision controls, later-turn claiming, Pipeon
+  projection, platform evidence acceptance, compatibility, and rollback remain separately gated.
+  Slice 2 has not started; TASK-013 and CAS-14 remain open.
+  Operations rollout, live event transport, and durable event-history rendering/retention have not
+  started.
 - The CAS-14 product direction is accepted. Its provider-neutral contract is complete, and the
   supervisor-only projections now cover stable model/reasoning, native approval/reviewer and
   sandbox policy, safe capability selection, provider-backed bounded user-input prompt
@@ -41,11 +90,13 @@ Repository has no ADR convention; this task is the accepted product-decision rec
   The normal Pipeon chat route now has the validated adapter-selection foundation plus bounded
   dispatch, idle-session continuation, the package-local approval-decision controller below, and
   one bounded concurrent MCP server chat slot across stdio and HTTP with transient exact approval
-  request/decision transport.
-  The normal CLI and zero-value dispatcher still supply neither an approval decision source nor a
-  user-input response source. Pipeon approval rendering and user controls are now implemented; the
-  provider-neutral user-input controller seam below is complete, while its MCP/Pipeon transport,
-  durable event rendering, and all other production consumer controls remain unimplemented.
+  request/decision transport, exact user-input request/response transport and Pipeon controls, the
+  package-private cancellation-controller seam, the transient cancellation MCP transport, and the
+  Pipeon cancellation control and immutable Pipeon session adapter cache below.
+  The normal CLI and zero-value dispatcher still supply no approval, user-input, or cancellation
+  source. The persisted adapter binding remains `codex_app_server` across the one-shot exec fallback;
+  the first Pipeon-owned post-turn snapshot is durable, while live event streaming/cursors, full
+  durable event history, operations evidence, and cross-platform acceptance remain incomplete.
 
 ### Scope
 
@@ -1081,6 +1132,1136 @@ path. No MCP operation, Pipeon rendering/control, transport, listener, fallback,
 child, adapter substitution, or authority inference was added. The next single safe slice is transient
 MCP user-input request/response transport over the existing active-chat ownership model, still without
 Pipeon rendering or controls.
+
+That transient MCP user-input transport is now complete. The closed exec-tier
+`dorkpipe.provider_pool_user_input_request` operation returns a defensive, non-consuming copy of the
+one exact normalized prompt pending for the same MCP server's one active provider-pool chat. The
+closed exec-tier `dorkpipe.provider_pool_user_input_respond` operation accepts one complete neutral
+response, validates it with `UserInputResponse.ValidateFor` against the server's immutable retained
+prompt plus strict UTF-8/control-text checks, and returns `{"delivered":true}` only after one exact
+write to the same live child is acknowledged. It does not report provider resolution, completion,
+success, or verified idle; the original chat remains pending through its existing exact
+`user_input_resolved`, terminal, and durable-idle sequence.
+
+The explicitly negotiated MCP App Server route now installs one combined child-side interactive
+transport over the existing anonymous stderr/stdin boundary. Approval frames retain the unchanged
+`DORKPIPE_PRIVATE_APPROVAL_V1` class. User input uses the distinct
+`DORKPIPE_PRIVATE_USER_INPUT_V1` class. Both are closed JSON and bounded to 64 KiB, ordinary stderr
+remains ordinary stderr, and final provider-pool JSON remains on stdout. The user-input prompt frame
+contains only the neutral prompt fields and the response frame only the neutral response fields;
+neither can carry provider request IDs, raw/private provider content, commands, patches, paths,
+credentials, adapter/policy/capability state, approval state, recovery/audit data, or prior responses.
+
+The active-chat record owns separate approval and user-input controllers. A second prompt, second
+chat, malformed or extended frame, invalid option/text answer, stale or substituted correlation,
+duplicate/replayed response, cross-chat/server/process/session/turn/item/request/decision value,
+child exit, cancellation, EOF, read/write/framing failure, MCP/HTTP/stdio transport loss, or shutdown
+fails closed before another child delivery and clears the pending state. Shutdown joins the active
+chat and suppresses late output. Prompt summaries, labels/references, selected references, and text
+answers remain transient process memory and enter no package state, snapshot, audit, log, diagnostic,
+telemetry, metadata, environment value, file, queue, or artifact. Approval behavior is unchanged;
+neither request class can observe or answer the other. Normal CLI, zero-value options, `codex_exec`,
+Ollama, and Claude acquire no response source. No Pipeon UI, automatic answer, default, retry,
+fallback, replay, second child, adapter substitution, or authority inference was added. The next
+single safe slice is Pipeon rendering and exact user controls for this transport.
+
+That Pipeon user-input control slice is now complete. Only a normal Pipeon Codex chat explicitly
+pinned to `codex_app_server` starts a second invocation-owned bounded monitor alongside the unchanged
+approval monitor and original chat request. It polls only the existing authenticated
+`dorkpipe.provider_pool_user_input_request` operation, treats only the exact no-prompt and no-active-
+chat results as expected misses, and never consumes, answers, defaults, or infers a response. A
+monitor transport failure aborts the original chat. Every terminal path aborts and joins both
+monitors, then independently clears the approval and user-input registries.
+
+The user-input registry is separate from approvals and binds one complete strictly normalized prompt
+to the exact Pipeon session, chat invocation, provider-pool chat invocation, and random prompt UI
+reference. Every selectable option receives a separate random UI reference mapped host-only to its
+retained opaque option reference. The webview projection contains only the prompt UI reference,
+closed kind, bounded display summary/labels, random option references, relevant bound, and closed
+transport state. Correlation, `prompt_ref`, opaque option refs, provider/private data, and response
+content never enter messages, current or pending-action state, webview state, workspace/global state,
+logs, telemetry, files, queues, or artifacts.
+
+Pipeon renders neutral cards for exact single choice, bounded multiple choice, and bounded text. No
+selection is preselected. Single choice requires exactly one random option reference; multiple choice
+requires one through the retained maximum and disables additional choices at that maximum; text uses
+a UTF-8 byte counter and requires nonblank valid Unicode without NUL or control characters. The host
+revalidates the exact prompt kind and current ownership, maps only random option references back to
+the retained opaque refs, preserves accepted text unchanged, constructs one exact neutral response,
+and calls `dorkpipe.provider_pool_user_input_respond` once. All controls disable on the first submit,
+and response content is discarded after the call is constructed and sent.
+
+Only an explicit `{"delivered":true}` acknowledgement produces `Response delivered; waiting for
+Codex.` Delivery does not resolve the prompt, settle the still-busy chat, imply success or idle,
+satisfy approval, or authorize recovery. Duplicate, stale, cross-session, cross-chat,
+cross-invocation, cross-UI-reference, wrong-kind, unknown-option, duplicate-option, and excessive
+selection submissions fail before MCP. Ambiguous delivery enters permanent `transport_error`, aborts
+the original chat, and performs no retry, fallback, replacement response, chat, or child. Completion,
+failure, denial, cancellation, transport loss, teardown, view disposal, reset, and extension reload
+leave no replayable prompt or response state.
+
+Approval operations, normalization, registry, monitor, acknowledgement, retry posture, ownership, and
+denial semantics remain unchanged and fixture-green. Slash commands, `codex_exec`, Ollama, Claude,
+normal CLI, and zero-value routes create no user-input registry or monitor. This remains package-owned
+Pipeon tooling over the existing MCP transport; no engine, workflow, schema, listener, endpoint,
+provider-pool, supervisor, provider-session, cancellation, or recovery behavior changed. After this
+slice, the smallest remaining fixture-only TASK-013 gate is a package-private provider-pool
+cancellation-controller seam; Pipeon cancellation rendering and controls remain a later independent
+slice.
+
+That package-private provider-pool cancellation-controller seam is now complete. One optional
+`providerPoolCancellationIntentSource` belongs only to the existing session-pinned App Server
+consumer. It starts at most once, and only after the consumer validates the normalized correlated
+`turn_started` progress event for the current provider session. Its private scope contains only a
+defensive copy of the neutral session reference and exact process-incarnation, connection, session,
+and active-turn correlation. A chat-owned child context cancels and joins the concurrent source wait
+on completion, failure, parent cancellation, event-channel closure, or teardown. `found=false`
+disables that wait and leaves the original chat unchanged; source failure returns only a bounded
+unknown-outcome class and is never retried.
+
+A supplied intent is defensively copied, validated through `CancellationIntent.Validate`, rebound to
+that immutable active-turn scope, restricted to the three existing closed reasons, and accepted only
+while the same controller remains exactly `running` with no approval, user-input, terminal,
+disconnect, or prior-cancellation state pending. The consumer calls the same controller's existing
+neutral `Cancel` operation once. Delivery is not completion: the original chat and unresolved-turn
+lock remain active until the exact same-controller `cancellation_requested` projection, optional one
+bounded `background_process_risk_possible` progress event, and exact correlated
+`state_changed / cancelled / cancelled` terminal arrive in order. Only that terminal produces the
+bounded cancelled result, which never sets verified idle or recovery evidence.
+
+Malformed, incomplete, stale, substituted, cross-process, cross-connection, cross-session,
+cross-turn, replayed, or unknown-reason intents stop before delivery. Missing, malformed, duplicate,
+reordered, or mismatched cancellation acknowledgement/progress/terminal events; non-cancelled
+terminals; controller drift or delivery failure; source/context failure; and transport closure all
+fail closed without exposing intent, correlation, provider, process, command, or background-process
+details. Approval and user-input sources remain separate and unchanged. Normal CLI, zero-value
+options, `codex_exec`, Ollama, Claude, approval-only and user-input-only fixtures, workflows, and
+bounded workers install no cancellation source. No transport, MCP operation, listener, Pipeon
+control, retry, replay, fallback, recovery, persistence, or engine behavior was added. With this
+consumer dependency complete, the smallest remaining TASK-013 gate is transient MCP cancellation
+request/delivery over the existing active-chat ownership and private interactive relay; Pipeon
+cancellation rendering and controls remain a later independent slice.
+
+That transient MCP cancellation transport is now complete. The closed exec-tier
+`dorkpipe.provider_pool_cancellation_request` operation accepts only `{}` and returns a defensive,
+non-consuming copy of the exact neutral session/active-turn scope pending for this MCP server's one
+active provider-pool chat. The closed exec-tier
+`dorkpipe.provider_pool_cancellation_deliver` operation accepts one exact neutral
+`CancellationIntent`, validates it against the immutable retained scope and the three existing
+reasons, and returns only `{"delivered":true}` after the exact intent frame is written to the same
+live child. That acknowledgement does not claim controller acceptance, interruption,
+`cancellation_requested`, terminal cancellation, completion, readiness, verified idle, or recovery;
+the original consumer seam retains all acknowledgement and terminal authority.
+
+The active-chat record owns a third transient controller independent from approval and user input.
+It retains at most one scope containing only `SessionRef` plus process-incarnation, connection,
+session, and active-turn correlation, hides it immediately after one valid intent submission, and
+persists neither scope nor intent. The explicitly negotiated App Server child route alone installs
+the matching source. Its `DORKPIPE_PRIVATE_CANCELLATION_V1` closed `cancellation_scope` and
+`cancellation_intent` frames share the existing bounded anonymous stderr/stdin relay but never
+ordinary stderr or final stdout.
+
+The child now has one response reader/demultiplexer for approval, user-input, and cancellation plus
+serialized request writes, so its long-lived cancellation wait cannot consume or block another
+controller's response. The bridge registers the cancellation scope synchronously, waits for the MCP
+intent in one chat-owned worker, continues scanning ordinary stderr and approval/user-input frames,
+and serializes all child-stdin responses. Duplicate, replayed, stale, substituted, cross-process,
+cross-connection, cross-session, cross-turn, cross-chat/server, malformed, post-completion, and
+post-shutdown intents fail before another delivery. Child exit, EOF, context cancellation, relay or
+write failure, MCP/HTTP/stdio loss, and server shutdown invalidate and join cancellation state with
+no retry, replay, fallback, replacement child, terminal polling, or event streaming. Approval and
+user-input state machines remain separate and fixture-green; normal CLI, zero-value, `codex_exec`,
+Ollama, Claude, workflows, and bounded workers still install no cancellation source. The smallest
+remaining TASK-013 gate is Pipeon cancellation monitoring with transient host-only intent ownership
+and one explicit cancel control over these two MCP operations; it remains a separate slice.
+
+That Pipeon cancellation control is now complete. Only one normal direct Pipeon Codex chat explicitly
+pinned to `codex_app_server`, and already owning the approval and user-input controls, starts the third
+monitor in the same invocation-owned wrapper. It polls only
+`dorkpipe.provider_pool_cancellation_request` at 125 ms for at most ten minutes, treats only the exact
+no-scope and no-active-chat results as expected misses, and stops on scope discovery, chat settlement,
+invocation end, abort, teardown, or disposal. A monitor failure creates only a cancellation
+`transport_error` projection and neither aborts the original chat nor changes approval or user-input
+state.
+
+The independent host-only registry binds one strictly normalized defensive cancellation scope to the
+exact Pipeon session, chat invocation, shared provider-pool chat invocation, and one cryptographically
+random UI reference. Process-incarnation, connection, provider-session, and turn correlation remain
+host-only; activity, request, and decision scope must be empty. The webview receives only the random
+reference and one of `pending`, `submitting`, `delivered`, or `transport_error`. It renders one neutral
+`Cancel this Codex turn` card, and one click emits only that UI reference and disables the control.
+
+The host rebinds the live ownership tuple, moves `pending` to `submitting`, constructs one unchanged
+neutral intent with reason exactly `user_requested`, and calls
+`dorkpipe.provider_pool_cancellation_deliver` once. Only exact `{"delivered":true}` renders
+`Cancellation intent delivered; waiting for Codex.` This remains a child-frame-write acknowledgement,
+not controller acceptance, interruption acknowledgement, terminal cancellation, completion, ready,
+idle, or recovery evidence. The original provider-pool chat remains the only terminal authority and
+its unresolved-turn posture is unchanged.
+
+Timeout, HTTP/MCP failure, malformed or missing acknowledgement, aborted delivery, and transport loss
+after submission permanently produce `transport_error`, discard the prepared intent, and never retry,
+replay, choose another reason, abort the original chat, or use approval/user-input as a substitute.
+Duplicate, stale, substituted, cross-session, cross-chat, cross-invocation, and cross-reference actions
+fail before MCP. Completion, cancellation, denial, failure, disconnect, teardown, reset, session
+removal, view disposal, and extension reload clear the scope and UI reference. Normal/default adapter,
+`codex_exec`, Ollama, Claude, slash-command, workflow, prepared-action, and bounded-worker routes remain
+unchanged. No engine, workflow, schema, listener, endpoint, event/status polling, recovery, persistence,
+or provider contract changed.
+
+The bounded provider-pool readiness-classification and one-shot fallback slice is now complete. One
+closed package-private classification marks only failures proven to occur before any `turn/start`
+attempt as eligible. The provider-pool coordinator consumes only that class, removes only the newly
+created App Server `.lock` whose canonical schema, Pipeon session ID, and exact turn number all match,
+then submits the unchanged original prompt once through the existing governed buffered `codex_exec`
+route. A first-turn fallback creates no App Server session file. Recovered fallback retains the prior
+verified-idle session file byte-for-byte. Missing, malformed, extended, substituted, stale,
+mismatched, or unremovable claims block exec; the persisted adapter binding remains
+`codex_app_server`.
+
+The classification changes to dispatched-or-unknown before `StartPromptTurn` is called, so a start
+error and every later consumer failure retain the unresolved-turn claim and remain no-replay. Neither
+App Server nor exec is retried, and an exec failure or ambiguous result starts no fallback, replay,
+or second child. Local fixtures cover setup, baseline-policy and supervisor construction,
+initialization, model/policy selection, thread creation, verified-idle recovery, exact first and
+recovered claims, every rejected claim class, removal failure, turn-start ambiguity, post-start
+  consumer failure, successful App Server dispatch, direct `codex_exec`, adapter pinning/drift, and
+  ambiguous exec completion. Interactive monitors remain limited to an explicitly retained normal
+  direct App Server chat. No public/provider-neutral/MCP contract gained fallback classification or
+  rollback details. Durable rendering/retention, operations evidence, and cross-platform acceptance
+  remain incomplete.
+
+The bounded Pipeon default-and-session-pinning slice is now complete. The resource-scoped manifest
+default and the extension fallback are exactly `codex_app_server`. Each new Pipeon chat session
+captures the currently configured supported adapter once; an explicit `codex_exec` setting remains
+the escape hatch for later new sessions. The host persists that closed choice with the session, sends
+it unchanged on every Codex turn, and never re-reads configuration for an existing session. Stored
+`codex_exec` and `codex_app_server` choices survive reload and later configuration changes
+byte-for-byte.
+
+For a legacy stored session with no retained field, Pipeon inspects explicit resource, workspace, and
+user configuration provenance. A supported explicit value is retained exactly; without one, the
+session is migrated once to the historical `codex_exec` default. Empty, unknown, malformed,
+extended, non-string, omitted post-migration, or substituted retained evidence fails before MCP.
+The provider-pool persisted binding remains the final drift check and is neither migrated nor
+rewritten. Only a retained `codex_app_server` choice on normal direct Codex chat starts the approval,
+user-input, and cancellation monitors; `codex_exec`, slash commands, other providers, workflows,
+prepared actions, and bounded workers start none. The proven pre-`turn/start` fallback boundary is
+unchanged, neither adapter is retried, ambiguous prompts are never replayed, and no second child is
+started. No UI, public/provider-neutral/MCP contract, durable transient control state, or adapter
+diagnostic was added. Durable event rendering/retention, operations evidence, and cross-platform
+acceptance remain incomplete; TASK-013 and CAS-14 remain open.
+
+The bounded Pipeon post-turn snapshot slice is now complete. A normal direct Codex chat whose
+retained adapter is exactly `codex_app_server` derives one host-owned closed display snapshot only
+from that retained adapter, the existing closed provider-pool response state, and the existing safe
+App Server response metadata. The persisted record contains exactly the App Server adapter, one of
+`completed`, `failed`, `cancelled`, or `recovery_required`, the exact `outcomeUnknown` boolean, an
+optional bounded terminal-summary identifier, and optional bounded opaque model, reasoning,
+approval, and sandbox references when supplied. Missing policy evidence remains absent. Empty,
+unknown, malformed, extended, substituted, oversized, non-string, or adapter-mismatched persisted
+snapshot evidence fails closed.
+
+The webview receives a separate allowlisted display record with no `codexSessionAdapter`, raw
+provider metadata, correlation, prompt, response, control, fallback, or provider-pool binding. A
+snapshot with `outcomeUnknown: true` survives reload as `recovery_required` and renders only the
+persistent neutral warning that the outcome is unknown and recovery is required; it makes no
+completion, cancellation, ready, idle, recovered, or retry claim. A session without snapshot
+evidence remains valid and renders no App Server status. Clearing ordinary messages conservatively
+retains both the session-pinned adapter and the last post-turn snapshot because message deletion is
+not lifecycle evidence. Later configuration changes affect only later new sessions and alter neither
+field on an existing session.
+
+This snapshot remains Pipeon host/display state and adds no provider-neutral or MCP authority.
+Provider-pool responses and bindings, adapter pinning and legacy migration, transient approval,
+user-input and cancellation monitors, one-shot pre-turn fallback, exact rollback, retry, and
+no-replay behavior are unchanged. Live event streaming or cursors, polling, replay, full durable
+event history, operations evidence, and cross-platform acceptance remain incomplete; TASK-013 and
+CAS-14 remain open.
+
+The bounded Pipeon recovery-required turn-start guard slice is now complete. For the existing target
+session only, a normal direct non-slash Codex request whose retained adapter is exactly
+`codex_app_server` and whose valid retained snapshot is exactly `recovery_required` with
+`outcomeUnknown: true` now returns before logging or changing active turn state. It adds no user
+message, assistant placeholder, interactive monitor, provider-pool arguments, MCP call, claim,
+fallback, replay, retry, pending action, durable record, or child. Repeated blocked attempts remain
+inert. The retained adapter, snapshot, messages, and persistent unknown-outcome warning remain
+unchanged across blocked attempts, ordinary-message clearing, and later configuration changes.
+
+Completed, failed, and cancelled snapshots and sessions without snapshot evidence do not activate
+the guard. Slash commands, explicit `codex_exec`, Ollama, Claude, workflows, prepared actions, and
+bounded workers remain unaffected and gain no App Server snapshot. The host guard is authoritative
+for stale or directly posted `ask` requests. The webview uses only its existing allowlisted
+`appServerStatus` projection to disable the existing Send action for ordinary Codex text while
+leaving the prompt editable; a slash draft or another provider re-enables Send without changing the
+retained status. No reconciliation or recovery action, new transport, provider-neutral or MCP
+authority, live event stream, cursor, polling, retry, ambiguous replay, or second child was added.
+Live event streaming/cursors, full durable event history, reconciliation, operations evidence, and
+cross-platform acceptance remain incomplete; TASK-013 and CAS-14 remain open.
+
+The bounded provider-pool recovery-candidate classification slice is now complete. One closed
+package-private classification is produced only for a valid exact Pipeon session ID whose retained
+adapter is exactly `codex_app_server`, whose canonical persisted adapter binding has the supported
+schema and matches that session and adapter, whose canonical persisted App Server session state
+passes the existing strict loader with a valid provider-session ID, exact bounded recovery evidence,
+accepted retained model/reasoning values, and a nonzero non-exhausted completed-turn counter, and
+whose canonical bounded companion claim matches the same session with `pending_turn` exactly one
+greater than `completed_turn`. The classifier rereads the same bounded files before returning the
+candidate classification and repeated calls leave the entire package-state tree byte-for-byte
+unchanged.
+
+Missing, malformed, extended, duplicated, reordered, substituted, stale, oversized, partial,
+trailing, cross-session, cross-adapter, and cross-turn evidence fails closed. So do `codex_exec`, an
+omitted or unknown adapter, invalid session IDs, first-turn uncertainty without prior verified-idle
+state, completed state without a claim, a claim without completed state, zero or exhausted counters,
+and any claim other than the exact next turn. Configuration, display snapshot/status, terminal
+summary, messages, provider availability, response text, catalog order, authentication state, and a
+bare `.lock` file supply no authority.
+
+Classification starts no supervisor, child, provider, prompt, exec, MCP, monitor, fallback, replay,
+retry, interactive controller, or second child and performs no reconciliation, claim removal,
+snapshot transition, durable write, or new turn. Candidate status says only that exact authoritative
+evidence exists for a later separately authorized recovery attempt; it does not classify the unknown
+prompt as completed, failed, cancelled, idle, recovered, replayable, or safe to continue. Pipeon
+therefore remains blocked until a later separately authorized recovery operation proves its required
+state and performs an explicitly designed atomic transition. No CLI, MCP, provider-neutral, Pipeon,
+workflow, schema, public contract, recovery action, or UI control was added. Reconciliation, recovery
+control, atomic claim/status transition, live event streaming/cursors, full durable event history,
+operations evidence, and cross-platform acceptance remain incomplete; TASK-013 and CAS-14 remain
+open.
+
+The bounded provider-pool recovery-only host-operation slice is now complete. The package-private
+operation first requires the exact recovery-candidate classification, strictly reloads the retained
+App Server state, revalidates the candidate and unchanged state again before construction, and uses
+the retained provider-session ID, recovery evidence, model, and reasoning values without
+substitution. It constructs exactly one fresh App Server supervisor through the existing
+package-private factory, invokes the existing `RecoverBaseline` exactly once, and always shuts that
+supervisor down after the attempt whether recovery succeeds or fails. Only the initialization,
+model/policy revalidation, and private idle `thread/read` reconciliation already owned by
+`RecoverBaseline` are permitted; the host operation has no prompt input and never invokes
+`StartPromptTurn`.
+
+The successful value is only a closed, non-authorizing observation that the existing
+`RecoverBaseline` contract returned its required state during that one attempt. It does not authorize
+continued chat, claim removal, snapshot clearing, replay, retry, completion, cancellation, a new
+turn, or any provider-pool/Pipeon transition. Constructor, recovery, and shutdown failures remain
+fail closed and cause no fallback, retry, replay, exec, second supervisor, or second child. Exact
+fixtures prove one constructor call, one `RecoverBaseline` call, shutdown after success and failure,
+no prompt dispatch or lifecycle start outside `RecoverBaseline`, and byte-for-byte preservation of
+the adapter binding, completed session state, unresolved claim, and Pipeon display evidence. The
+existing Pipeon `recovery_required` unknown-outcome guard, messages, warning, and Send state remain
+unchanged.
+
+No CLI, MCP, provider-neutral, Pipeon, workflow, schema, public contract, recovery control, or UI
+surface was added. The atomic claim/status transition, explicit recovery control, live event
+streaming/cursors, full durable event history, operations evidence, and cross-platform acceptance
+remain incomplete; TASK-013 and CAS-14 remain open.
+
+The bounded atomic-transition contract investigation is now complete and blocked without a
+production transition. Its authoritative pre-state is split between the provider-pool package's
+canonical adapter-binding file, completed App Server session-state file, and consecutive unresolved
+claim file, and Pipeon's separately persisted workspace chat session containing the retained
+`codex_app_server` adapter plus exact `recovery_required` / `outcomeUnknown: true` snapshot. The
+successful recovery-only observation remains bound operationally to the same session, provider
+session, recovery evidence, model, reasoning, completed turn, and pending turn that were strictly
+reloaded before `RecoverBaseline`, but its closed success value is intentionally not terminal-outcome
+evidence and is not an authorization or a durable compare-and-swap token.
+
+No existing transaction covers those records. Adapter first-use uses exclusive creation, the claim
+uses a separate exclusive file, verified-idle completion atomically renames only the App Server
+session-state file and then separately removes the claim, and Pipeon persists its chat state through
+its own workspace-state owner. Therefore neither claim-first nor Pipeon-first mutation can be made
+all-or-nothing across restart or concurrent processes. Fixture-only injected-failure evidence proves
+both rejected orderings: claim-first leaves the persistent Pipeon guard in place after recovery
+candidate evidence has been destroyed, and Pipeon-first removes the turn-start/Send guard while the
+exact unresolved claim still exists. Reload observes those partial mixtures directly; binding and
+completed-state bytes remain unchanged, so neither ordering can be reinterpreted as a complete
+provider-pool commit.
+
+The existing Pipeon status vocabulary also offers no truthful post-state: `completed`, `failed`, and
+`cancelled` would invent the unknown prompt outcome, while removing `recovery_required` would falsely
+authorize continuation. Implementation requires one explicit product/storage decision that both
+defines a non-terminal post-reconciliation meaning which preserves the unknown outcome and selects
+one durable transaction owner capable of comparing and committing the binding, completed state,
+claim, and Pipeon guard together. Until then, exact replay, concurrency, restart, and injected commit
+failure must remain closed by leaving the complete old state intact. This slice added no production
+CAS, transition record, consumer, control, transport, prompt, recovery call, provider dispatch, exec,
+MCP, monitor, fallback, retry, supervisor, child, public contract, schema, or Pipeon change. TASK-013
+and CAS-14 remain open.
+
+#### Proposed post-reconciliation product/storage decision — 2026-08-04
+
+**Status: accepted as product/storage direction on 2026-08-04.** Acceptance establishes
+product/storage direction only. Implementation, migration, schemas, controls, and cross-platform
+atomicity evidence remain separately gated. This subsection records design only; it adds no
+implementation or authority.
+
+**Evidence and current ownership.** Provider-pool currently owns three canonical package-state
+records: the immutable Pipeon-session-to-`codex_app_server` binding, the last completed App Server
+session state, and the consecutive unresolved turn claim. Pipeon separately owns its retained adapter
+and `recovery_required` / `outcomeUnknown: true` snapshot inside VS Code workspace chat state. The
+existing recovery-only observation proves only that the exact retained provider thread satisfied the
+verified-idle `RecoverBaseline` contract during that attempt. It does not prove what happened to the
+unknown prompt. The rejected separate-write-ordering fixture demonstrates that neither current owner
+can safely remove its guard evidence before the other.
+
+**Proposed truthful meaning.** Use `reconciled_outcome_unknown` as a working name for one non-terminal,
+non-authorizing state. It means only that the exact retained provider thread identified by the bound
+pre-state was reconciled to the existing verified-idle recovery baseline. The prior prompt may have
+completed, failed, been cancelled, produced content, caused side effects, or never been observed; this
+state makes none of those claims. It is not completed, failed, cancelled, dismissed, replayed, retried,
+or recovered content. It authorizes no prompt, replay, retry, fallback, normal Send, claim reuse, or
+new child.
+
+Continued chat could become eligible only after a separate explicit user decision equivalent to
+"acknowledge the unknown prior outcome and continue with a fresh later turn." That decision must be
+bound to the exact aggregate revision and reconciliation fingerprint, must never authorize replay of
+the unknown turn, and must be consumed at most once when a strictly later fresh turn is claimed. Until
+that later decision is durably accepted, both host dispatch and the Pipeon Send projection remain
+guarded. Closing or abandoning the session needs no continuation authority.
+
+**Selected owner and authority.** The proposed sole durable transaction owner is the provider-pool
+coordinator, using one canonical per-session App Server lifecycle aggregate under provider-pool
+package state. This follows the existing ownership of adapter pinning, App Server session state,
+recovery evidence, and turn claims. The aggregate, not a companion marker, becomes the authority for
+the binding, completed state, unknown turn, recovery guard, observation consumption, and future user
+decision. Mere aggregate-file existence supplies no authority: the complete canonical schema,
+identity, revision, state, and fingerprints must validate or the session remains blocked.
+
+Pipeon's retained App Server snapshot becomes projection-only. After migration it is rendered from
+the authoritative aggregate and may be cached in workspace state for display, but stale, missing,
+cleared, malformed, or early/late projection writes can neither authorize nor prevent an otherwise
+authoritative transition. Before prompt dispatch, the Pipeon host must query/validate the aggregate's
+guard state; absence or failure is closed. Pipeon messages and other chat presentation data remain
+Pipeon-owned and do not enter the lifecycle aggregate.
+
+The future aggregate must carry these semantics, independent of production syntax:
+
+- aggregate schema/version and monotonic revision;
+- exact Pipeon session ID and exact `codex_app_server` adapter binding;
+- exact provider-session ID and recovery-evidence reference;
+- retained model and reasoning values;
+- last known completed turn, the consecutive unknown pending turn, and a turn high-water mark that
+  prevents that pending turn number from ever being reused;
+- non-terminal unknown-outcome state, including `outcome unknown = true` and
+  `reconciled to verified idle = true` without a terminal outcome;
+- an exact recovery-observation fingerprint bound to the exact pre-state fingerprint and the one
+  successful recovery attempt;
+- unresolved-claim consumption state and permanent replay-forbidden state;
+- guarded explicit-user-decision state: initially required, later capable of recording one exact
+  accepted decision bound to the current revision/fingerprint, and finally consumed by at most one
+  strictly later fresh-turn claim.
+
+**Future compare and commit semantics.** One provider-pool operation must hold a verified
+cross-process, OS-backed exclusive lock for the session across observation, comparison, and commit.
+A process-local mutex is insufficient because Pipeon, CLI/MCP hosts, restarts, and concurrent
+provider-pool processes do not share memory and can all observe durable state.
+
+The expected pre-state fingerprint must be computed from an unambiguous length-prefixed encoding of
+the exact bytes (and their named paths/roles) of the current adapter binding, completed session state,
+unresolved claim, and canonical Pipeon retained-adapter/unknown-outcome guard, plus the session,
+provider-session, recovery-evidence, model, reasoning, completed-turn, and pending-turn identities.
+The recovery observation must be minted and used only inside that locked owner operation and bind the
+same fingerprint. A display projection, status label, bare lock file, or caller-supplied digest without
+the exact source evidence is insufficient.
+
+Immediately before commit, the owner must reread and byte-compare all authoritative source evidence,
+reject a stale or substituted observation, verify the aggregate revision or legacy-absence condition,
+and reject any semantic or byte mismatch without mutation. The sole commit point is a verified
+same-directory, same-volume atomic replacement of the complete canonical aggregate. The owner must
+fully write and synchronize the temporary file before replacement, then synchronize the aggregate
+and parent directory before reporting success. A platform without verified atomic replacement and
+required synchronization must fail closed rather than emulate the transaction with ordered writes.
+
+Failure before or during comparison leaves the old state authoritative. Failure after comparison but
+before replacement leaves only an ignorable temporary file and the old state authoritative. The
+atomic replacement makes the new aggregate authoritative in one step. Failure after replacement but
+before durable acknowledgement is an unknown commit result: no retry or replay is allowed; restart
+must reload and validate the aggregate to determine which full revision is visible. Temporary files,
+locks, or acknowledgements never override the valid aggregate.
+
+On restart, readers accept only one complete valid aggregate revision and derive the guard from it.
+Two concurrent operations using the same observation/pre-state serialize on the cross-process lock;
+after the first commit, the second sees a changed revision and consumed observation and is rejected.
+The exact observation is likewise rejected after restart. A new reconciliation attempt requires a
+new observation over the still-current exact pre-state; it cannot reuse an earlier observation or
+the unknown pending turn.
+
+**Migration and mutation.** Initial migration must occur under the same owner lock. With no aggregate
+present, the owner must strictly read the three current provider-pool records and the exact canonical
+Pipeon retained-adapter/guard slice, bind them into the expected pre-state fingerprint, perform the
+recovery observation, reread the sources, and atomically create the first authoritative aggregate.
+The future Pipeon integration must make that exact retained slice available to the transaction owner;
+display-only state is not migration evidence. The first aggregate commit is the authority cutover.
+All legacy readers and writers must then reject or defer to the aggregate. The old provider-pool files
+and Pipeon snapshot may remain frozen for audit/compatibility until a later cleanup, but are ignored
+for authorization and are not deleted as part of this transition.
+
+The transition preserves the adapter, provider session, recovery evidence, model, reasoning, and last
+known completed turn. It consumes the exact unresolved claim into the authoritative guarded recovery
+record, records its pending turn as the no-replay high-water mark, replaces the separate Pipeon guard's
+authority with `reconciled_outcome_unknown`, records the bound successful observation as consumed, and
+sets explicit-user-decision state to required. It does not delete the claim merely because idle was
+observed; classify the prompt outcome; clear or authorize Send by projection; mutate messages or
+content; start a prompt, provider, exec, fallback, retry, supervisor, or child; or alter the retained
+provider thread.
+
+**Rejected alternatives.** Each of these remains unsafe:
+
+- Removing the claim and then clearing Pipeon strands the guard after destroying candidate evidence
+  if the second write fails.
+- Clearing Pipeon and then removing the claim removes the host/Send guard while the unresolved claim
+  survives if the second write fails.
+- Mapping the snapshot to `completed`, `failed`, or `cancelled` invents a terminal prompt outcome.
+- Keeping multiple authoritative files behind a process-local mutex does not serialize other
+  processes or survive restart and therefore preserves the partial-commit problem.
+- Adding a transaction or tombstone file whose mere existence becomes authority cannot prove its
+  contents bind the exact old records, observation, or committed post-state. Only the complete valid
+  aggregate and atomic replacement may carry authority.
+- Treating successful `RecoverBaseline` as a prompt result confuses verified idle with terminal
+  outcome or recovered content.
+- Allowing Pipeon display state to override provider-pool lifecycle evidence lets stale, missing, or
+  reordered UI persistence authorize continuation.
+- Reusing an exact observation after commit, restart, or in another process can apply the same
+  transition twice or revive stale evidence; the aggregate must persist consumption and reject it.
+
+**Maintainer decision:** accepted on 2026-08-04 as product/storage direction only. This acceptance
+authorizes only a separately bounded implementation-planning slice, not implementation. Classifier,
+recovery-only operation, current records, claims, bindings, provider-pool responses, fallback,
+adapter pinning, Pipeon guards and controls, rollback, retry, and no-replay behavior remain unchanged.
+TASK-013 and CAS-14 remain open.
+
+##### Accepted post-reconciliation implementation plan — 2026-08-04
+
+**Plan status and boundary.** This is the decision-complete implementation plan authorized by the
+accepted product/storage direction above. It does not select schema syntax, add an operation, or
+authorize any implementation slice. The working state name remains `reconciled_outcome_unknown`
+with exactly the accepted meaning: verified idle for the retained provider thread and an unknown
+prior prompt outcome. Nothing in this plan converts verified idle into prompt completion or grants
+Send, replay, retry, fallback, claim reuse, or prompt authority.
+
+**Current-to-future ownership map.** The current records are separate authorities only until the
+first valid aggregate commit. Paths below are relative to the DorkPipe package-state root returned by
+`statepaths.PackageStateDir`; `<session-digest>` is the current SHA-256 naming of the exact Pipeon
+session ID.
+
+| Record | Current owner and exact location | Current readers | Current writers | Post-cutover responsibility |
+| --- | --- | --- | --- | --- |
+| Immutable session adapter binding | provider-pool; `provider-pools/session-adapters/<session-digest>.json` | adapter resolution and the recovery-candidate classifier/operation | first-use adapter pinning only | copied into the aggregate as authoritative identity; the legacy file stays frozen for compatibility/audit and all legacy readers defer to the aggregate |
+| Last completed App Server session state | provider-pool; `provider-pools/app-server/sessions/<session-digest>.json` | turn claiming, exact candidate classification, and the recovery-only operation | verified-idle turn completion through same-directory temporary-file rename | copied into the aggregate as the retained completed-turn/provider-session/recovery/model/reasoning baseline; the legacy file stays frozen and is never advanced after cutover |
+| Consecutive unresolved turn claim | provider-pool; `provider-pools/app-server/sessions/<session-digest>.json.lock` | turn claiming, candidate classification, exact rollback, and turn completion | exclusive claim creation before dispatch; exact pre-`turn/start` rollback or removal after verified-idle completion | consumed semantically into the aggregate as the permanent unknown-turn/high-water/no-replay record; the legacy file remains frozen rather than being deleted or reused |
+| Retained adapter and post-turn guard slice | Pipeon extension host; the session's `codexSessionAdapter` and `codexAppServerPostTurnSnapshot` fields in VS Code workspace state key `pipeon.chatState.v2` | Pipeon restore/normalization, extension-host pre-dispatch guard, view projection, and webview Send guard | Pipeon session creation/migration, closed provider-pool response projection, and workspace-state persistence | the adapter/status slice becomes projection-only after migration; it may be refreshed from the aggregate but cannot authorize, veto, or repair an authoritative transition |
+| Pipeon messages and other chat presentation state | Pipeon workspace state outside the exact retained adapter/guard slice | Pipeon extension and webview | Pipeon chat flows | remains Pipeon-owned, mutable presentation data and never enters the aggregate or its fingerprint |
+
+The future authority is one canonical per-session App Server lifecycle aggregate under
+provider-pool package state. Its exact filename and directory syntax remain an open schema/storage
+choice. Provider-pool alone owns aggregate validation and mutation. Pipeon owns only a bounded
+display projection and delivery of an explicit user request to the owner; it never owns lifecycle
+truth.
+
+**Aggregate contract plan.** The following are accepted semantic requirements, not field names or a
+schema definition:
+
+- **Envelope and identity:** one explicit aggregate schema/version, one exact Pipeon session ID, the
+  exact `codex_app_server` binding, exact provider-session ID, recovery-evidence reference, retained
+  model and reasoning values, and one monotonically increasing revision. The record must identify
+  one session unambiguously and must not permit adapter rebinding.
+- **Lifecycle state:** the post-reconciliation state is exactly `reconciled_outcome_unknown`, with
+  outcome-unknown true and reconciled-to-verified-idle true, but no terminal outcome, recovered
+  content, or completion/failure/cancellation classification.
+- **Turn boundary:** retain the last completed turn, the consecutive unknown pending turn, and a
+  high-water mark at least equal to that pending turn. At migration the pending turn must equal the
+  completed turn plus one and becomes permanently unavailable. Every later fresh claim must be
+  strictly greater than the high-water mark.
+- **Fingerprint:** retain an exact pre-state fingerprint over a length-prefixed encoding of every
+  named source path/role and exact source byte sequence plus the accepted session, provider-session,
+  recovery-evidence, model, reasoning, completed-turn, and pending-turn identities. The digest
+  algorithm and serialized field syntax remain gated, but ambiguity, order dependence, or omitted
+  source roles are forbidden.
+- **Observation consumption:** retain an exact recovery-observation fingerprint bound to that
+  pre-state fingerprint and the one successful in-lock recovery attempt. The observation is recorded
+  as consumed by the first aggregate commit and cannot be reused after commit, restart, or from
+  another process.
+- **Replay prohibition:** retain both consumed-unresolved-claim and permanent replay-forbidden
+  semantics. Neither absence of a legacy claim nor a later user decision can make the unknown pending
+  turn reusable.
+- **User decision:** begin in `required`; a future operation may record only one explicit decision to
+  acknowledge the unknown outcome and continue with a fresh later turn, bound to the exact current
+  aggregate revision and reconciliation fingerprint. Acceptance grants no replay or dispatch by
+  itself. At most one strictly later fresh-turn claim may atomically consume that decision; stale,
+  duplicate, substituted, or already-consumed decisions fail closed.
+- **Validation:** reject missing or extra authority-bearing data, unknown schema/version/state,
+  malformed or non-canonical bytes, invalid identities, revision regression, impossible turn
+  relationships, fingerprint mismatch, unconsumed/reused observation, weakened replay prohibition,
+  invalid decision transitions, oversized/non-regular storage, or any partial record. A missing or
+  invalid aggregate after cutover blocks dispatch; no legacy record, marker, projection, label, or
+  caller assertion fills the gap.
+
+Exact JSON or other encoding, field names, bounds, revision starting value, digest algorithm, file
+name, permissions, and schema-evolution syntax are later schema/storage decisions. They may express
+the semantics above but may not change them. No schema is created by this plan.
+
+**Owner-operation boundary.** The future operation belongs to the DorkPipe provider-pool component,
+with storage paths supplied by `packages/dorkpipe/lib/statepaths`; it does not belong in DockPipe
+engine code, `providersession`, appserversupervisor, MCP, or Pipeon. The same owner operation is
+responsible for strict source loading, fingerprint construction, session-scoped cross-process
+locking, recovery observation, pre-state comparison, first migration commit, later aggregate
+replacement, post-commit reload, observation/replay rejection, and an authority-safe result.
+
+Its semantic request is only: exact Pipeon session identity, the requested owner action, and access
+to the exact canonical Pipeon legacy adapter/guard slice when migration requires it. Whether that
+slice is read through a trusted host callback, a bounded request value verified against the
+authoritative workspace store, or another package-local bridge is an open gate. The operation itself
+must load the three provider-pool records, construct the expected fingerprint, mint the recovery
+observation, and compare revisions/bytes. A caller-supplied digest, display status, marker file,
+aggregate-file existence, process-local mutex, or claimed observation carries no authority.
+
+The semantic result is one closed outcome: unchanged/rejected with a bounded reason, committed with
+the exact validated aggregate revision and a projection derived from it, or unknown-commit-result
+requiring restart reload. It returns no prompt, provider content, replay token, raw evidence, or
+automatic retry authority. Pipeon is the intended first requester because it owns the exact legacy
+workspace slice and guard. CLI, MCP, other consumers, and administrative tools are not authorized by
+this plan; adding any requester or public surface requires a separate maintainer choice. All callers
+request work, while provider-pool remains the only transaction owner.
+
+**Migration and authority cutover sequence.** A future migration must perform these steps as one
+owner-controlled transaction:
+
+1. Resolve the exact session-scoped aggregate path and acquire the verified OS-backed exclusive lock.
+   Hold it through source observation, comparison, replacement, synchronization, reload, and result
+   classification. A current `.json.lock` turn-claim file is evidence, not this transaction lock.
+2. Require aggregate absence for initial migration. If an aggregate exists, validate it and use only
+   the revision-based aggregate operation; malformed existence blocks rather than falling back to
+   legacy files.
+3. Strictly read the exact current binding JSON, completed-state JSON, unresolved claim JSON, and the
+   canonical Pipeon retained-adapter/unknown-outcome guard slice. Require the accepted exact
+   `codex_app_server` binding, strict completed state, consecutive claim, retained Pipeon adapter,
+   and `recovery_required` / `outcomeUnknown: true`. Preserve each named path/role and exact byte
+   sequence.
+4. Construct the expected pre-state fingerprint from those bytes and the exact bound identities.
+   Reject malformed, missing, mismatched, substituted, non-canonical, oversized, non-regular, or
+   changing evidence before provider activity.
+5. While still holding the same lock, invoke the recovery-only observation for that exact bound
+   pre-state. Bind the successful verified-idle observation to the fingerprint inside the owner;
+   failure or ambiguity produces no aggregate and changes no source record.
+6. Immediately reread all four legacy inputs from their authoritative stores and byte-compare them
+   with the captured values. Revalidate every semantic identity, aggregate absence, and observation
+   binding. Any difference rejects without mutation.
+7. Build the complete first aggregate: preserved binding/session/policy/completed turn,
+   `reconciled_outcome_unknown`, consumed claim/observation, pending-turn high-water mark, permanent
+   replay prohibition, and user-decision-required state. Fully write and synchronize a temporary
+   file in the aggregate directory.
+8. Make the complete aggregate authoritative at the single verified same-directory, same-volume
+   atomic replacement/create point; synchronize the resulting aggregate and parent directory before
+   acknowledging success. If the platform cannot prove every required guarantee, stop closed before
+   cutover.
+9. Reload and strictly validate the authoritative aggregate. Before replacement, the legacy state is
+   authoritative. After replacement, the aggregate is authoritative even if acknowledgement or
+   projection fails. An uncertain replacement result is never retried; restart reload decides which
+   complete revision is visible.
+10. Freeze the three provider-pool legacy records and the exact Pipeon adapter/guard slice for the
+    chosen compatibility/audit retention period. Aggregate-aware legacy readers defer to the
+    aggregate; legacy writers reject the session rather than update, remove, roll back, or recreate
+    any frozen record. Mixed-version and downgrade enforcement remain an explicit gate.
+11. Only after authoritative commit and reload may Pipeon request/receive a projection refresh. A
+    missing, stale, reordered, or failed projection write leaves the provider-pool guard intact and
+    cannot authorize normal Send.
+
+**Cross-platform storage evidence plan.** No platform guarantee is assumed by this plan. The storage
+primitive cannot be selected or activated until fixture-backed and process-backed evidence proves the
+following on each currently supported Windows, Linux, and macOS host/filesystem combination:
+
+| Property | Required evidence on every platform | Fail-closed result if absent or ambiguous |
+| --- | --- | --- |
+| Cross-process exclusion | two independent processes contend for the same session; only one enters the observation/compare/commit region; a different session does not share authority; process exit/crash has documented lock semantics; restart cannot mistake the turn-claim file or a stale marker for ownership | no observation or migration; session remains guarded |
+| Same-directory atomic replacement/create | readers racing repeated old-to-new revisions observe only one complete valid old or new aggregate, never missing/truncated/mixed bytes; replacement is on the same volume and rejects symlink/reparse/path substitution as applicable | no replacement; old authority remains, or unknown result is resolved only by reload |
+| File synchronization | the temporary file is fully written and synchronized before replacement, and the resulting aggregate is synchronizable before success | do not acknowledge success; if replacement may have occurred, classify unknown commit and reload after restart |
+| Parent-directory synchronization | creation/replacement and directory entry durability are demonstrated with the platform's documented supported primitive | platform/filesystem is unsupported for cutover; do not emulate with ordered writes |
+| Restart visibility | a separate fresh process after each injected boundary loads exactly the old full revision or new full revision and derives the correct guard; consumed observation and pending-turn high-water survive | block dispatch and replay; require evidence review |
+| Unknown commit result | injected failures after replacement but before each synchronization/acknowledgement point yield no automatic retry; fresh reload validates one full revision, rejects duplicates, and preserves no-replay | report unknown commit, block, and reload; never re-observe or replay automatically |
+
+Evidence must include success and injected-failure cases around lock acquisition, source reads,
+observation, reread, temporary write, temporary sync, replacement, aggregate sync, directory sync,
+reload, and acknowledgement. Platform/version/filesystem support, including whether required
+directory synchronization is actually available, remains a separately reviewed gate. Unsupported or
+unproven environments must keep the legacy guard and reject migration.
+
+**Guard and continuation integration plan.** Provider-pool must validate the aggregate guard before
+any App Server turn claim, prompt dispatch, fallback, provider call, supervisor/child creation, or
+claim rollback/reuse. Once cut over, aggregate absence, corruption, unknown state, user-decision
+required/accepted-but-unconsumed state, stale revision, or unknown commit result blocks. The legacy
+claim remains permanent evidence and is never treated as a live reusable transaction lock.
+
+Pipeon must obtain its status projection from the validated aggregate. Its extension-host preflight
+is a convenience defense; authoritative provider-pool validation remains mandatory even if the
+webview is stale or bypassed. The webview keeps normal direct Codex Send disabled while the
+projection is guarded, and projection failure must render a blocked/unknown condition rather than
+enable Send. Slash-command and other existing routing behavior is unchanged unless a later expressly
+authorized slice says otherwise.
+
+A future user-decision operation must authenticate one explicit local choice, bind it to the exact
+current revision and reconciliation fingerprint, compare under the owner lock, and durably record it
+without starting a turn. A later separate claim operation must reacquire the lock, reread the current
+aggregate, reject stale/duplicate/consumed decisions, allocate a turn strictly greater than the
+high-water mark, and atomically consume the decision with that fresh claim. The unknown pending turn,
+consumed recovery observation, and all lower/equal turn numbers remain permanently rejected. No
+current guard, claim, binding, snapshot, fallback, retry, or no-replay behavior changes in this plan.
+
+**Validation and failure matrix.** Every future implementation lane must prove that no case below
+authorizes replay or normal Send incorrectly.
+
+| Case | Required authoritative result |
+| --- | --- |
+| Exact legacy migration | one valid first aggregate becomes authority; claim and observation are consumed, the pending turn is the high-water mark, user decision is required, legacy records freeze, and Pipeon refresh follows commit only |
+| Failure before/during legacy read or fingerprinting | no observation, aggregate, or legacy mutation; existing host/webview guard remains |
+| Recovery observation failure or ambiguity | no aggregate or legacy mutation; no retry, fallback, child continuation, or outcome inference |
+| Reread/byte comparison failure | reject stale or substituted evidence without mutation, even when semantic JSON values appear equal |
+| Temporary create/write/sync failure | old state remains authoritative; incomplete temporary data is ignorable and never authority |
+| Replacement failure known not to commit | old state remains authoritative; no legacy write or projection refresh |
+| Replacement/sync/acknowledgement ambiguity | unknown commit result; no retry/re-observation; fresh restart reload accepts only one complete valid revision and otherwise blocks |
+| Malformed/missing/unknown-version aggregate after cutover | reject all dispatch and decisions; never defer to legacy or projection authority |
+| Two concurrent processes | one serial winner at most; the loser observes changed revision/consumed observation and rejects without mutation |
+| Restart before replacement | legacy evidence and guard remain authoritative; no aggregate authority is inferred from temporary/lock files |
+| Restart after replacement | the aggregate alone supplies authority; frozen legacy files and stale Pipeon snapshot cannot override it |
+| Duplicate/stale/substituted recovery observation | reject permanently, including after restart and from another process |
+| Duplicate/stale/substituted/already-consumed user decision | reject without claim or dispatch; revision/fingerprint mismatch cannot be repaired by the caller |
+| Pipeon projection missing, reordered, malformed, or unwritable | authoritative guard remains; host dispatch blocks and UI does not enable normal Send |
+| Unsupported platform/filesystem guarantee | reject migration before observation/commit or remain blocked on unknown result; never emulate with separate ordered writes |
+| Mixed-version legacy reader/writer or downgrade | reject/defer under the chosen compatibility mechanism; never update frozen files or bypass the aggregate |
+| Fresh later continuation | only an exact accepted decision is atomically consumed with a strictly greater fresh-turn claim; the unknown turn and consumed observation remain replay-forbidden |
+
+Focused tests must inject every boundary above, compare exact bytes before/after, start independent
+processes where process isolation matters, and repeat restart validation. Existing adapter selection,
+fallback, classifier, recovery-only operation, claim, Pipeon guard, and webview smoke lanes remain
+regression checks rather than sources of new authority.
+
+**Ordered future implementation slices.** Each slice is independently bounded and stops before the
+next. Slice 1 is the first possible implementation and requires a new explicit maintainer
+authorization because the accepted decision authorized this plan only. No slice inherits authority
+for its successor; the authority-changing activation in Slice 4 and the user-decision/continuation
+slices require their own explicit selection before work begins.
+
+1. **Canonical aggregate contract and inert storage paths.** Responsibility: define the package-private
+   schema syntax, strict validator/canonical encoder, revision/state/turn/fingerprint/decision
+   invariants, size and file-type checks, and package-state path helper without any production reader
+   or writer. Likely areas: a new provider-pool-owned Go file and focused tests under
+   `packages/dorkpipe/lib/cmd/dorkpipe`, plus `packages/dorkpipe/lib/statepaths` only for the selected
+   path. Invariants: the accepted semantics above are represented exactly; malformed/unknown records
+   fail closed; no provider-neutral or engine type gains product knowledge. Validation lane: focused
+   schema/path unit tests, existing statepaths tests, `git diff --check`. Non-goals: locks, file
+   replacement, migration, observation, callers, Pipeon, controls, or dispatch. Stop when unused
+   contract/path fixtures pass and no runtime reference exists.
+
+   **Slice 1 status — implemented 2026-08-04.** The unused provider-pool contract selects schema
+   `dorkpipe.provider-pool.app-server-lifecycle-aggregate` with numeric version `1`, revision origin
+   `1`, and deterministic JSON with exactly one trailing newline. Aggregate files are bounded to
+   16 KiB; identities are bounded to 256 UTF-8 bytes and allow only graphic, non-whitespace,
+   non-control characters so whitespace substitution is rejected. Pre-state, recovery-observation,
+   reconciliation, and future-decision fingerprints use the explicit
+   `sha256:<64-lowercase-hex>` syntax, with duplicated binding references validated exactly; this
+   slice defines syntax only and constructs no digest from legacy evidence. The state path is
+   `provider-pools/app-server/aggregates/<sha256-exact-session-id>.json`, derived through
+   `statepaths` after identity validation so the raw session ID is not exposed. The schema includes
+   exact required, accepted-but-unconsumed, and consumed decision shapes, but provides no transition
+   operation. The package-private regular-file loader is test-exercised and enforces type, size,
+   canonical bytes, revision advancement when a prior revision is supplied, and exact session/path
+   binding. No aggregate file has been written, and no runtime reader, writer, temporary file,
+   replacement, synchronization, lock, migration, observation, compare-and-commit, cutover, guard,
+   decision control, later-turn claim, or Pipeon projection exists. Slice 2 has not started;
+   TASK-013 and CAS-14 remain open. Platform primitives/evidence, migration input/fingerprint
+   construction, permissions/evolution/operator recovery, mixed-version compatibility, authority
+   cutover, projection, decision UX/authenticity, later-turn consumption, and rollback remain open.
+2. **Cross-process transaction/storage primitive and platform evidence.** Responsibility: implement
+   and prove the selected session lock, same-directory write/sync/replace, directory sync, reload, and
+   unknown-result classifications independently of lifecycle semantics. Likely areas:
+   provider-pool package-local storage files/tests and narrowly separated OS-specific files if
+   required. Invariants: one full old/new revision only; process-local mutexes and marker authority are
+   forbidden; unsupported guarantees fail closed. Validation lane: unit fault injection plus
+   independent-process Windows/Linux/macOS evidence for the matrix above. Non-goals: legacy reads,
+   recovery observation, aggregate migration, Pipeon, user decisions, or dispatch. Stop at a reviewed
+   evidence packet; do not activate the primitive for sessions.
+3. **Locked reconciliation compare/commit operation, fixture-only.** Responsibility: compose strict
+   legacy reads, internal fingerprinting, in-lock recovery observation, exact reread/byte comparison,
+   first aggregate build, atomic commit, reload, consumption, and closed result classifications.
+   Likely areas: provider-pool command package and focused fake-supervisor/storage tests; existing
+   recovery-only code is called but not weakened. Invariants: no caller observation/digest authority,
+   no legacy mutation, no prompt, no replay, and no production caller. Validation lane: full partial-
+   failure matrix with exact tree snapshots, concurrency, and restart fixtures. Non-goals: cutover
+   activation, public API/CLI/MCP, Pipeon projection, user decisions, or new turns. Stop when the
+   operation remains package-private and unreachable outside tests.
+4. **Legacy migration activation and provider-pool authority cutover.** Responsibility: add the
+   explicitly selected trusted request path, execute first migration, make aggregate-aware
+   provider-pool readers authoritative, freeze/defer/reject legacy writers, and enforce aggregate
+   guard/replay rejection before dispatch. Likely areas: provider-pool dispatch/state files and
+   tests, with the minimal trusted Pipeon-host bridge chosen at the open gate; no provider-neutral
+   contract widening by default. Invariants: first aggregate replacement is the only cutover;
+   aggregate sessions never fall back to legacy authority; projection is not required for safety.
+   Validation lane: migration, mixed-reader/writer, dispatch-guard, fallback/claim regression,
+   concurrency, restart, and unknown-result fixtures. Non-goals: display refresh, decision control,
+   normal Send enablement, later-turn claiming, cleanup, or deletion. Stop with every migrated session
+   still guarded in `reconciled_outcome_unknown` and Pipeon's old guard still safe if stale.
+5. **Pipeon projection-only integration.** Responsibility: query a validated aggregate projection
+   after commit, persist/render it as non-authoritative workspace state, and keep host/webview Send
+   fail-closed on missing/stale/malformed/reordered/query-failed projections. Likely areas: Pipeon
+   extension host, webview, and smoke tests, plus only the previously authorized read-only provider-
+   pool projection surface. Invariants: messages remain Pipeon-owned; projection never mutates
+   lifecycle authority; refresh failure cannot enable Send. Validation lane: extension unit/smoke
+   cases for reload, reordering, stale revision, persistence failure, and host-vs-webview bypass.
+   Non-goals: user-decision UX, aggregate mutation, claim consumption, dispatch, or legacy cleanup.
+   Stop while every reconciled session still blocks normal Send.
+6. **Explicit user-decision recording.** Responsibility: define the separately approved local
+   decision control, exact revision/fingerprint binding, owner-side validation, and one durable
+   accepted-but-unconsumed transition. Likely areas: provider-pool package, the chosen private
+   transport/control, Pipeon host/webview, and focused tests; `providersession` remains unchanged
+   unless a separate provider-neutral need is proven and authorized. Invariants: one explicit choice,
+   no inference from idle/projection/messages, and recording never claims or dispatches a turn.
+   Validation lane: stale/duplicate/substituted/cross-session/restart/ambiguous-delivery tests.
+   Non-goals: replay, Send enablement, fresh claim, provider call, or unknown-turn deletion. Stop with
+   the accepted decision durable but normal Send still guarded.
+7. **Strictly later fresh-turn claim and one-time decision consumption.** Responsibility: under the
+   owner lock, compare the exact decision/revision/fingerprint, allocate above the high-water mark,
+   atomically consume the decision with the fresh claim, and integrate provider-pool pre-dispatch
+   guard/replay rejection. Likely areas: provider-pool lifecycle/dispatch files and focused tests,
+   followed by the minimal Pipeon Send projection update. Invariants: the unknown pending turn and
+   observation remain permanently forbidden; no decision can authorize two claims; no exec fallback
+   reuses the unknown turn. Validation lane: concurrent claim, restart, stale/duplicate decision,
+   fallback boundary, exact turn numbering, host bypass, and Pipeon Send tests. Non-goals: legacy
+   deletion, automatic decisions, retry/replay, additional consumers, or operations rollout. Stop
+   after one fresh later turn can be claimed only through the exact decision path.
+8. **Final cross-platform cutover and restart acceptance evidence.** Responsibility: run the reviewed
+   controlled Windows/Linux/macOS matrix against the complete guarded flow, including lock
+   contention, every injected storage boundary, unknown commit reload, frozen legacy behavior,
+   projection failure, decision consumption, and permanent replay rejection. Likely areas: dedicated
+   package-owned evidence fixtures/artifacts and the TASK-013 evidence record; production semantics
+   change only if a separately authorized defect slice is required. Invariants: raw payloads and
+   credentials remain excluded; unsupported platforms remain blocked; no failed case authorizes Send
+   or replay. Validation lane: the full platform matrix plus existing focused Go/package/Pipeon
+   regressions. Non-goals: fixing discovered defects in the evidence slice, new consumers, cleanup,
+   operations guidance, or CAS-15. Stop for explicit maintainer acceptance; CAS-14 remains open until
+   that acceptance.
+
+##### Pre-Slice-2 storage-primitive decision packet — 2026-08-04
+
+**Decision status and boundary.** The maintainer research policy below is accepted. The primitive/API
+matrix and every implementation choice remain unaccepted. This packet adds documentation only: no
+prototype, evidence harness, storage code, dependency, lock, temporary file, aggregate, process
+helper, generated artifact, or production call site was created. Slice 2 has not started; TASK-013
+and CAS-14 remain open. Provider-pool remains the sole future transaction owner, and
+`reconciled_outcome_unknown` remains non-terminal and non-authorizing. The unknown pending turn is
+permanently replay-forbidden. Package/engine and provider-neutral boundaries are unchanged.
+
+**Accepted storage-research policy.** These decisions govern qualification and are not primitive
+acceptance or implementation authority:
+
+1. No production Slice 2 implementation may begin until Windows, Linux, and macOS all qualify.
+2. The complete documentation matrix for all three platforms must be reviewed before any prototype.
+3. Published vendor/system documentation is normative; official source may only corroborate it.
+4. Any undocumented required guarantee blocks the feature; the contract is neither weakened nor emulated.
+5. Initial tuples are Windows/local fixed-disk NTFS/`amd64`, Linux/local fixed-disk ext4/`amd64`,
+   and macOS/local fixed-disk APFS/`arm64`.
+6. Minimum versions derive from documented primitives and later native evidence. Older hosts may run
+   DockPipe, but aggregate cutover must fail closed there.
+7. Later implementation may use only the Go standard library plus the newest compatible, reviewed,
+   exactly pinned `golang.org/x/sys`; no CGO or portability wrapper is authorized.
+8. Each session has one deterministic persistent empty lock file. It is immutable,
+   non-authoritative, and never substitutes for the validated live OS-held lock.
+9. A lock is never deleted, broken, or replaced as stale.
+10. Acquisition uses native nonblocking attempts for at most 30 seconds; caller cancellation or a
+    shorter context may stop it, but no caller may extend the cap.
+11. Every symlink, junction/reparse point, bind mount, nested mount, and cross-volume component in
+    the complete transaction path must be rejected.
+12. Authority storage is private: Unix directories `0700` and files `0600`; Windows DACL access is
+    limited to the current user and `SYSTEM`; broader write access fails closed.
+13. Runtime support uses a versioned package-owned evidence allowlist for OS, architecture,
+    filesystem version, and relevant mount/volume properties. Local configuration cannot override it.
+14. Commit success requires complete temp write, temp sync, atomic no-replace create or replacement,
+    visible aggregate reopen and identity verification, visible-file sync, parent-directory entry
+    sync, and exact canonical reload.
+15. Publication errors use a conservative documentation-plus-evidence allowlist. Once publication is
+    invoked, any outcome not positively proven unchanged is `unknown_commit_result`.
+16. Restart classifies an unknown result read-only: exact new revision is committed, exact old is not
+    committed, and missing/malformed/substituted/unexpected state is blocked. It never retries,
+    re-observes, repairs, or mutates.
+17. Missing or malformed authoritative aggregates block with read-only diagnostics only; there is no
+    reconstruction, deletion, rollback, legacy fallback, or automatic repair.
+18. Stale temporary files remain non-authoritative and untouched; cleanup is a later decision.
+19. Aggregate cutover creates a one-way minimum-version boundary. Old binaries cannot operate on
+    migrated sessions, and downgrade never restores legacy authority.
+20. Future prototype/evidence code must be package-owned, platform-specific, build-tagged,
+    test-only, and unreachable from production.
+21. Evidence uses deterministic synthetic aggregates only.
+22. Git retains only bounded summaries, environment tuples, counts, results, and hashes; raw logs,
+    VM images, crash dumps, and generated artifacts remain outside Git.
+23. Every accepted tuple requires every deterministic failure hook, 10,000 publication/reader race
+    cycles, 1,000 lock/forced-termination cycles, and three controlled VM hard-reboot or power-loss
+    trials at every durability boundary.
+24. Final acceptance is all-or-nothing: every selected tuple must pass every property before Slice 2
+    production implementation can be authorized.
+
+**Go surface and version policy.** The standard library is insufficient: [`os.Rename`](https://pkg.go.dev/os#Rename)
+explicitly disclaims atomic rename on non-Unix platforms, while [`File.Sync`](https://pkg.go.dev/os#File.Sync)
+does not provide locking, no-replace publication, parent-entry sync, containment, identity, or
+filesystem qualification. The checkout currently pins `golang.org/x/sys v0.28.0` indirectly. Its
+[`windows`](https://pkg.go.dev/golang.org/x/sys@v0.28.0/windows) and
+[`unix`](https://pkg.go.dev/golang.org/x/sys@v0.28.0/unix) packages expose the syscall entry points
+listed below, but exposure supplies no semantic guarantee. No exact future version is selected here;
+after documentation and evidence gates pass, the newest compatible release must be reviewed and
+made an exact direct requirement. Platform-specific package code is still required for handles,
+flags, retries, identity, ACL/mode checks, publication classification, and runtime allowlisting.
+
+**Candidate platform profiles and normative documentation.** These are research results, not
+implementation approval. Status words below mean documented and evidence-eligible, unsupported by
+an explicit published limitation, or unresolved after the listed primary surfaces were exhausted.
+
+- **Windows / local fixed-disk NTFS / `amd64`: not documentation-qualified.** Retain every directory
+  handle opened by [`CreateFileW`](https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-createfilew)
+  with `FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OPEN_REPARSE_POINT`; reject every
+  `FILE_ATTRIBUTE_REPARSE_POINT`; deny `FILE_SHARE_DELETE`; and compare `FILE_ID_INFO` volume/file
+  identity. Microsoft documents that file ID plus volume serial identifies an open file on one
+  computer in [`FILE_ID_INFO`](https://learn.microsoft.com/en-us/windows/win32/api/winbase/ns-winbase-file_id_info),
+  while [`GetVolumeInformationByHandleW`](https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-getvolumeinformationbyhandlew),
+  [`GetDriveTypeW`](https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-getdrivetypew),
+  and [`FSCTL_GET_NTFS_VOLUME_DATA`](https://learn.microsoft.com/en-us/windows/win32/api/winioctl/ni-winioctl-fsctl_get_ntfs_volume_data)
+  expose NTFS, fixed-media, and NTFS major/minor-version facts. The private DACL must contain only the
+  current-user and `SYSTEM` allows; Microsoft documents DACL access decisions and implicit denial in
+  [DACLs and ACEs](https://learn.microsoft.com/en-us/windows/win32/secauthz/dacls-and-aces).
+  Open the empty lock with `OPEN_ALWAYS`, non-inheritable handle, no delete sharing; use
+  `LockFileEx(LOCKFILE_EXCLUSIVE_LOCK | LOCKFILE_FAIL_IMMEDIATELY)` over `[0,1)` and bounded polling.
+  [`LockFileEx`](https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-lockfileex)
+  documents exclusive byte-range exclusion, including beyond EOF, but mapped access ignores it;
+  [`UnlockFileEx`](https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-unlockfileex)
+  and [process termination](https://learn.microsoft.com/en-us/windows/win32/procthread/terminating-a-process)
+  document handle/lock release. Create the sibling temp with `CREATE_NEW`, write all bytes, and call
+  [`FlushFileBuffers`](https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-flushfilebuffers).
+  The publication candidates remain `SetFileInformationByHandle(FileRenameInfoEx)`, flags `0` for
+  first publication and `FILE_RENAME_FLAG_REPLACE_IF_EXISTS | FILE_RENAME_FLAG_POSIX_SEMANTICS` for
+  replacement. [`FileRenameInformationEx`](https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-fscc/4217551b-d2c0-42cb-9dc1-69a716cf6d0c)
+  documents no-replace failure when the target exists, and the kernel information class is available
+  from Windows 10 version 1709, but the public docs do not promise atomic old/new visibility or a
+  user-mode parent-directory entry flush. [`ReplaceFileW`](https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-replacefilew)
+  is rejected: `REPLACEFILE_WRITE_THROUGH` is unsupported and documented failures can remove or move
+  names. Candidate minimum is Windows 10 version 1709, but no Windows version is accepted.
+- **Linux / local fixed-disk ext4 / `amd64`: documentation-qualified for later native evidence only.**
+  Retain one aggregate-directory fd and use
+  [`openat2`](https://man7.org/linux/man-pages/man2/openat2.2.html) with
+  `RESOLVE_BENEATH | RESOLVE_NO_SYMLINKS | RESOLVE_NO_MAGICLINKS | RESOLVE_NO_XDEV`; the last flag
+  explicitly rejects every mount crossing, including bind mounts. Open the persistent lock with
+  `O_RDWR | O_CREAT | O_CLOEXEC | O_NOFOLLOW`, `0600`, and poll
+  [`flock(LOCK_EX | LOCK_NB)`](https://man7.org/linux/man-pages/man2/flock.2.html); it is advisory,
+  scoped to the open file description, and released only by `LOCK_UN` or last close. Create a sibling
+  temp with `O_WRONLY | O_CREAT | O_EXCL | O_CLOEXEC | O_NOFOLLOW`, `0600`; the
+  [`open(2)`](https://man7.org/linux/man-pages/man2/open.2.html) contract documents exclusive create
+  and final-component no-follow behavior. Write exact bytes, `fsync` the temp, publish with
+  [`renameat2`](https://man7.org/linux/man-pages/man2/renameat2.2.html) using `RENAME_NOREPLACE` for
+  revision one and flags `0` thereafter, reopen/verify/sync the visible inode, then `fsync` the parent
+  dirfd. Linux documents atomic replacement, no-replace (ext4 since Linux 3.15), same-mount limits,
+  target preservation on replacement failure, and explicitly states in
+  [`fsync(2)`](https://man7.org/linux/man-pages/man2/fsync.2.html) that file sync excludes the directory
+  entry and a directory `fsync` is also required; it also states successful sync survives crash or
+  reboot and flushes a present disk cache. `statx(STATX_MNT_ID)` (since Linux 5.8), `fstatfs`, and
+  `/proc/self/mountinfo` bind exact file, mount, ext4 type, and allowlisted read-write/journal/barrier
+  properties; see [`statx(2)`](https://man7.org/linux/man-pages/man2/statx.2.html), the kernel
+  [`mountinfo`](https://www.kernel.org/doc/html/latest/filesystems/proc.html#proc-pid-mountinfo-information-about-mounts)
+  format, and ext4 [journal](https://www.kernel.org/doc/html/latest/filesystems/ext4/journal.html)
+  documentation. Candidate minimum is Linux 5.8 because mount identity is required; the exact kernel
+  build, ext4 feature set, and explicit mount-property allowlist still require native evidence and
+  maintainer acceptance.
+- **macOS / local fixed-disk APFS / `arm64`: not documentation-qualified.** Retain a descriptor walk
+  using `openat` with `O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC`; use `fstat`/`fstatfs` to require APFS,
+  `MNT_LOCAL`, stable `fsid`, and accepted mount flags. Apple documents final-component no-follow and
+  exclusive create in [`open(2)`](https://developer.apple.com/library/archive/documentation/System/Conceptual/ManPages_iPhoneOS/man2/open.2.html),
+  advisory whole-file exclusion in [`flock(2)`](https://developer.apple.com/library/archive/documentation/System/Conceptual/ManPages_iPhoneOS/man2/flock.2.html),
+  and filesystem/mount identity fields in [`statfs(2)`](https://developer.apple.com/library/archive/documentation/System/Conceptual/ManPages_iPhoneOS/man2/statfs.2.html).
+  Open the persistent lock with `O_RDWR | O_CREAT | O_CLOEXEC | O_NOFOLLOW`, `0600`, and poll
+  `flock(LOCK_EX | LOCK_NB)`. Create the sibling temp with `O_EXCL`, write exact bytes, and request
+  `fcntl(F_FULLFSYNC)`. Publication candidates are
+  [`renameatx_np`](https://developer.apple.com/library/archive/documentation/FileManagement/Conceptual/APFS_Guide/ToolsandAPIs/ToolsandAPIs.html)
+  with `RENAME_EXCL` for first publication and flags `0` for replacement. Apple publishes a general
+  [`rename(2)`](https://developer.apple.com/library/archive/documentation/System/Conceptual/ManPages_iPhoneOS/man2/rename.2.html)
+  old/new namespace guarantee and a volume capability for
+  [`RENAME_EXCL`](https://developer.apple.com/documentation/foundation/urlresourcevalues/volumesupportsexclusiverenaming),
+  but does not publish the exact `renameatx_np` flag/error/atomicity contract needed here. Apple's
+  [`fsync(2)`](https://developer.apple.com/library/archive/documentation/System/Conceptual/ManPages_iPhoneOS/man2/fsync.2.html)
+  says ordinary `fsync` permits power-loss reordering; its archived
+  [`fcntl(2)`](https://developer.apple.com/library/archive/documentation/System/Conceptual/ManPages_iPhoneOS/man2/fcntl.2.html)
+  `F_FULLFSYNC` support list does not include APFS, and no published unprivileged parent-directory
+  entry-sync primitive or complete same-volume nested-mount rejection was found. APFS is documented
+  as the default from macOS High Sierra, while the selected `arm64` tuple implies macOS 11 or later;
+  see [Apple filesystem details](https://developer.apple.com/library/archive/documentation/FileManagement/Conceptual/FileSystemProgrammingGuide/FileSystemDetails/FileSystemDetails.html)
+  and [Apple-silicon availability](https://developer.apple.com/help/app-store-connect/manage-your-apps-availability/manage-availability-of-iphone-and-ipad-apps-on-macs-with-apple-silicon).
+  No macOS minimum is accepted while these gaps remain.
+
+**Compact 13-property matrix.** `D` means the published docs support the candidate and it is eligible
+for later native evidence; `R` means unresolved after the primary surfaces listed above were
+exhausted; `U` means a published limitation makes that alternative unsupported. `D` is not executed
+proof or primitive acceptance. Locks remain advisory on Unix and mandatory only for Windows byte
+I/O (not mapped access); lock bytes/existence never grant authority. Restart means a fresh process,
+while durability also requires the separately controlled hard-reboot/power-loss lane.
+
+| # / required property | Windows / NTFS / `amd64` | Linux / ext4 / `amd64` | macOS / APFS / `arm64` | Documentation status |
+| --- | --- | --- | --- | --- |
+| 1. Session-scoped cross-process exclusive locking | `CreateFileW` + `LockFileEx(EXCLUSIVE|FAIL_IMMEDIATELY)`, byte `[0,1)` | retained inode + advisory `flock(EX|NB)` | retained inode + advisory `flock(EX|NB)` | W:D; L:D; M:D |
+| 2. Release after normal exit, crash, termination | exact `UnlockFileEx`/handle close; termination closes kernel handles | `LOCK_UN` or last close; `O_CLOEXEC` prevents exec leak | `LOCK_UN` or last close; `O_CLOEXEC` prevents exec leak | W:D; L:D; M:D |
+| 3. Same-session contention; different-session independence | one validated digest-named file per session | one validated digest-named inode per session | one validated digest-named inode per session | W:D; L:D; M:D; mapping still needs process evidence |
+| 4. Same-directory exclusive temp creation | sibling `CreateFileW(CREATE_NEW)` | dirfd-relative `openat2(O_CREAT|O_EXCL|O_NOFOLLOW)` | dirfd-relative `openat(O_CREAT|O_EXCL|O_NOFOLLOW)` | W:D; L:D; M:D |
+| 5. Atomic first publication without overwrite | `FileRenameInfoEx`, flags `0`; no-overwrite is documented, atomic complete-file visibility is not | `renameat2(RENAME_NOREPLACE)`; ext4 support since Linux 3.15 | `renameatx_np(RENAME_EXCL)` is exposed, but exact flag/error/atomicity docs were not found | W:R; L:D; M:R |
+| 6. Atomic replacement of one complete revision | `FileRenameInfoEx(REPLACE_IF_EXISTS|POSIX_SEMANTICS)` lacks an atomic old/new contract; `ReplaceFileW` is U | same-dirfd `renameat2(..., 0)` documents atomic replacement | `renameatx_np(..., 0)` candidate; general `rename` is documented but exact descriptor API contract is absent | W:R; L:D; M:R |
+| 7. File-content sync before publication | exact temp write + `FlushFileBuffers` | exact temp write + `fsync(tempfd)` | `F_FULLFSYNC`; ordinary `fsync` is U and APFS support is undocumented | W:D; L:D; M:R |
+| 8. Visible aggregate sync after publication | reopen/identity/canonical check + `FlushFileBuffers` | dirfd reopen/identity/canonical check + `fsync` | reopen/identity/canonical check + `F_FULLFSYNC`; APFS guarantee absent | W:D; L:D; M:R |
+| 9. Parent-directory entry sync | no documented unprivileged primitive; privileged volume flush is not a substitute | `fsync(parent-dirfd)` is explicitly required | no documented directory-entry durability primitive | W:R; L:D; M:R |
+| 10. Restart and power-loss visibility | cannot qualify without 5, 6, and 9 | full sequence is documented to survive crash/reboot; hard-power evidence remains mandatory | cannot qualify without 5-9 | W:R; L:D; M:R |
+| 11. Known failure vs unknown result | only pre-publication/proven-unchanged failures are known; all other post-invocation outcomes unknown | same conservative rule; exact old/new restart reload classifies | same conservative rule; unresolved API errors remain unknown | W:D; L:D; M:D as package policy; no automatic retry |
+| 12. Reject link/reparse/mount/path/cross-volume substitution | retained non-delete directory handles, `OPEN_REPARSE_POINT`, reparse rejection, file/volume IDs | `openat2` containment + `NO_XDEV`, `statx` mount ID, inode/device checks | component `O_NOFOLLOW` + `fstatfs` lacks a documented complete nested/same-volume mount-substitution proof | W:D; L:D; M:R |
+| 13. Exact local filesystem and minimum-version support | fixed NTFS + NTFS major/minor is detectable; candidate Windows 10 1709+; no version accepted | fixed local ext4; Linux 5.8+ for mount ID; exact kernel/ext4/mount allowlist awaits evidence | APFS/local/type is detectable, but no documented APFS format-version contract; selected arch implies macOS 11+ | W:D detection only; L:D candidate; M:R |
+
+**Tuple results.** Windows/NTFS/`amd64` is not documentation-qualified because properties 5, 6, 9,
+and 10 remain unresolved. Linux/ext4/`amd64` is documentation-qualified for a future native evidence
+prototype at Linux 5.8+ on an exact later-reviewed allowlist, but that prototype is not authorized.
+macOS/APFS/`arm64` is not documentation-qualified because properties 5-10, 12, and the APFS-version
+portion of 13 remain unresolved. The all-or-nothing documentation gate is unmet; no platform may
+begin prototype evidence and Slice 2 remains blocked.
+
+**Documentation gap audit.** For Windows, the reviewed Microsoft surfaces were `CreateFileW`,
+`LockFileEx`/`UnlockFileEx`, process termination, `FlushFileBuffers`, `FILE_RENAME_INFO`,
+`FileRenameInfoEx`, `SetFileInformationByHandle`, `ReplaceFileW`, file/volume/reparse-point identity,
+NTFS volume data, fixed-drive detection, and DACL documentation. No qualifying published atomic
+old/new contract for `FileRenameInfoEx` or unprivileged parent-directory entry flush was found;
+properties 5, 6, 9, and 10 therefore remain unresolved. For Linux, the reviewed Linux man-pages and
+kernel docs explicitly cover `openat2`, `flock`, `open`/`O_EXCL`, `renameat2`, file and directory
+`fsync`, `statx`, mountinfo, and ext4 journaling. They qualify the exact candidate for later evidence,
+but do not prove the composed application state machine or an accepted environment allowlist. For
+macOS, the reviewed Apple syscall man-page index and pages for `open`, `flock`, `rename`, `fsync`,
+`fcntl`, and `statfs`, plus the APFS Tools and APIs guide, APFS/filesystem guides, and Foundation
+volume-capability properties, expose the candidate names. No qualifying published exact
+`renameatx_np` flag/error/atomicity contract, APFS `F_FULLFSYNC` guarantee, unprivileged
+parent-directory entry sync, complete nested-mount rejection, or APFS version contract was found;
+those properties remain unresolved. Apple open source can corroborate symbols only and was not used
+to fill a documentation gap. Native execution remains required for every `D` cell; cross-compilation
+proves only that build tags compile and cannot change a platform result.
+
+**Future independent-process evidence protocol.** The evidence harness remains design only.
+
+1. A parent test controller creates one canonical absolute fixture root under the test framework's
+   temporary root, records its resolved identity and a random run token, and passes both explicitly
+   to children. Children reject any path outside that exact root, any changed root identity, and any
+   relative, parent-traversing, linked, mounted, or reparse-substituted component. Only the parent may
+   clean up, after revalidating the exact absolute root and token; no child runs recursive deletion.
+2. One test executable exposes private child roles through arguments: `lock-holder`,
+   `same-session-contender`, `different-session-contender`, `publisher`, `reader`, `fresh-verifier`,
+   and `fault-controller`. Roles communicate readiness and acknowledgement only through inherited
+   pipes/handles. They share no mutex, heap, in-process callback, or authoritative marker file.
+3. The lock holder acquires the OS lock and reports entry. The same-session contender must not enter
+   until release; the different-session contender must enter while the first remains held. Repeat
+   after normal exit, forced termination, and crash. Each entrant proves the lock path still names
+   the locked inode/file ID. Lock bytes and mere existence are deliberately varied and ignored.
+4. Seed exact canonical old and new aggregate byte strings with distinct revisions and hashes.
+   Multiple publisher processes repeatedly alternate complete revisions while multiple independent
+   readers race the visible target. Every read must equal exactly one allowlisted complete canonical
+   byte string and validate its session/revision; missing, empty, truncated, mixed, duplicate-key,
+   extra-record, wrong-session, alternate-path, or substituted-inode data fails the run.
+5. Fault hooks surround lock open/acquire, source open/read, observation boundary, source reread,
+   temp create, every partial/full write, temp sync, publish syscall entry/return, visible reopen,
+   identity check, visible sync, parent-directory sync, strict reload, result construction, and
+   acknowledgement. The controller may return an injected error, close a handle, substitute a path,
+   terminate the child, or crash it at each hook. It never treats a test marker as commit authority.
+6. For a known failure before publication, a fresh verifier must see exact legacy/old authority. For
+   any loss after publication is invoked and before durable acknowledgement, the result is
+   `unknown_commit_result`; the controller must prove no automatic retry or second observation was
+   started. A newly launched verifier then accepts exactly one full old or new revision, applies the
+   corresponding guard, and rejects every other tree. A selected VM reboot/power-loss lane repeats
+   the durability boundaries; process restart alone is not claimed as power-loss proof.
+7. First-create races prove exactly one no-replace winner. Replacement races prove one serial winner
+   per expected revision; the loser reloads a changed revision and rejects. Temp files, lock files,
+   lock contents, pipe acknowledgements, projection files, caller claims, and alternate aggregate
+   names are mutated independently to prove they carry no authority.
+8. Each case snapshots the exact fixture tree before and after, verifies permissions/type,
+   filesystem and mount identity, exact canonical bytes, monotonic revision, consumed observation,
+   permanent unknown-turn high-water/no-replay state, and absence of out-of-root writes. Cleanup may
+   remove only paths enumerated beneath the revalidated fixture root; failure preserves the fixture
+   for review rather than broadening deletion.
+
+The acceptance rule is strict: readers must observe exactly one full old or new canonical revision,
+never missing, truncated, mixed, duplicated, substituted, or partially acknowledged authority. An
+unknown result prohibits automatic retry even when a later reload shows the old revision; a new
+reconciliation attempt requires separately authorized lifecycle semantics outside Slice 2.
+
+**Rejected alternatives.** `os.Rename` is rejected as the cross-platform contract because Go
+documents non-Unix non-atomic behavior. Windows `ReplaceFileW` is rejected because its documented
+error cases can leave the replaced name absent or move both inputs, and its
+`REPLACEFILE_WRITE_THROUGH` flag is unsupported. Directly opening the authoritative target with
+`CREATE_NEW`/`O_EXCL` is rejected because partial first-revision bytes become visible before commit.
+Create/delete marker locks are rejected because crash leaves stale existence and unlink/recreate can
+split lock authority. Process-local mutexes do not cover other hosts/processes. File sync without
+parent-directory sync proves content, not namespace durability. `fsync` without `F_FULLFSYNC` is
+insufficient for the selected macOS durability claim. Network locks, generic “atomic file” packages,
+SQLite, journaling/tombstone files, ordered multi-file writes, and volume-wide privileged flushes are
+rejected for this slice because they either change the authority model, do not expose the exact
+guarantees, or expand deployment/security scope. Cross-compilation and same-process tests are not
+platform evidence.
+
+**Exact unresolved maintainer choices.** Before Slice 2 can begin, a maintainer must explicitly:
+
+- accept, revise, or reject this platform/primitive matrix;
+- supply or identify normative primary documentation that closes the Windows/NTFS rename atomicity,
+  parent-directory durability, mount-containment, and host-eligibility gaps; implementation tests
+  cannot substitute for the missing documentation qualification;
+- supply or identify normative primary documentation that closes the macOS/APFS exclusive-rename,
+  atomicity, file and parent-directory durability, complete mount-containment, APFS-version, and
+  host-eligibility gaps; `F_FULLFSYNC` success alone does not close those gaps;
+- accept Linux 5.8 or later, ext4 on one local non-removable mount, and the exact runtime
+  filesystem/mount-identification deny policy as the sole documentation-qualified candidate; every
+  network, FUSE, overlay, tmpfs, removable, cross-mount, bind-mounted, or unknown filesystem remains
+  unsupported by default;
+- after all three platform documentation gates pass, select and separately review the exact
+  `golang.org/x/sys` version needed to expose the accepted primitives. The currently resolved
+  indirect `v0.28.0` is evidence of API availability only and is not approved for promotion; no CGO
+  or new third-party library is implied;
+- accept exact lock-artifact location, lifetime, permissions/ACLs, inheritance rules, timeout and
+  cancellation behavior, and the requirement that cleanup never deletes a live/stale lock inode;
+- accept the exact known-failure versus unknown-result error mapping for each syscall and the
+  restart/operator response, with no automatic retry, repair, replay, or legacy fallback;
+- select the controlled native hosts/filesystems and VM reboot/power-loss method for executable
+  durability evidence, including retained evidence artifacts and review criteria; and
+- separately authorize Slice 2 implementation and its harness after this packet is accepted.
+
+Until those choices are explicit, every unsupported or ambiguous platform guarantee fails closed,
+the legacy guard remains authoritative, and no observation, aggregate creation/replacement,
+projection, decision, claim, prompt, fallback, retry, or replay is authorized. Classifier,
+recovery-only operation, claims, bindings, responses, fallback, adapter pinning, guards, controls,
+rollback, retry, migration, and permanent no-replay behavior remain unchanged.
+
+**Open implementation gates and maintainer choices.** These facts are intentionally unresolved and
+must not be silently selected to simplify implementation:
+
+- exact aggregate directory/name, schema/version syntax, canonical encoding, bounds, revision origin,
+  digest algorithm, permissions, schema upgrade rules, and corrupt-record/operator-recovery policy;
+- the Windows and macOS normative documentation needed to close the gaps recorded above, followed by
+  maintainer acceptance of one all-platform primitive/library and supported host/filesystem/version
+  matrix. Linux's documentation-qualified candidate does not permit Linux-only implementation or
+  prototype work; network/removable/virtual filesystems remain unsupported until separately proven;
+- the trusted way provider-pool obtains and byte-identifies Pipeon's canonical VS Code workspace
+  adapter/guard slice without accepting display state or a caller digest as authority;
+- the exact private requester surface and authentication/authorization boundary; CLI, MCP, other
+  consumers, and administrative repair are not implicitly approved;
+- mixed-version rollout and downgrade behavior that guarantees old readers/writers cannot mutate or
+  trust frozen legacy records after aggregate cutover;
+- retention duration, audit access, permissions, and eventual cleanup for frozen binding/state/claim
+  files, the legacy Pipeon slice, temporary files, and transaction-lock artifacts;
+- restart/operator UX for malformed aggregates and unknown commit results, including how a blocked
+  session is inspected without providing retry, replay, repair, or legacy-fallback authority;
+- exact explicit-user-decision wording, UI, local-authenticity proof, expiry/cancellation semantics,
+  durable decision identity, and ambiguous-delivery handling;
+- projection versioning, stale-revision display, and Pipeon persistence/query failure UX; projection
+  repair can improve display only and cannot change lifecycle authority;
+- rollback after authority cutover. Reverting to legacy authority is prohibited by the accepted
+  direction, so any supported software rollback/minimum-version mechanism requires an explicit
+  compatibility and maintainer decision; and
+- final platform evidence acceptance, implementation evidence acceptance, and any later cleanup,
+  operations, CAS-15 consumer, or public surface remain separate maintainer gates.
+
+Unresolved gates keep the session blocked. They do not weaken, redesign, or defer the accepted
+single-owner aggregate, exact compare-and-commit, projection-only Pipeon, explicit user decision,
+strictly later fresh-turn, or permanent no-replay requirements.
 
 The implementation test matrix is:
 
