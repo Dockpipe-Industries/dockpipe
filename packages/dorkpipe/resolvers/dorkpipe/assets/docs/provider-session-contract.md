@@ -15,6 +15,9 @@ or approval delivery behavior.
   records before a future adapter applies them.
 - `Correlation` is the one-time decision tuple: process incarnation, connection, session,
   interaction, activity, request, and decision identity.
+- `ApprovalRequest` carries only that complete correlation, one closed safe reason, and the exact
+  allowed decisions. Command/workspace changes permit `approve` or `deny`; declared permissions are
+  deny-only because this contract has no grant-subset surface.
 - `RecoveryRequest` binds an opaque bounded recovery-evidence reference to the exact session;
   adapter-local persistence and reconciliation decide whether that evidence is safe.
 - `ModelReasoningCatalog` carries at most 128 opaque, validated, currently available stable
@@ -45,6 +48,13 @@ input. Text answers exist only as transient operation input. Implementations mus
 response at most once for its exact process, connection, session, interaction, activity, request,
 decision, and prompt references, then exclude it from events, snapshots, diagnostics, and audits.
 
+Approval implementations must defensively pin the exact request. An explicit approve may resume only
+that request and only after its matching provider resolution. An explicit deny is fail-closed and
+must terminate rather than return the turn to running. Missing, malformed, duplicated, stale,
+substituted, cross-session, and cross-request decisions cannot continue. Policy selection,
+capabilities, model metadata, connection state, previous approvals, and consumer behavior are never
+decision evidence.
+
 ## Future adapter mapping
 
 A future App Server adapter maps its provider-specific thread to `SessionRef`, turn to
@@ -71,13 +81,14 @@ additional hardening, and Pipeon wiring remain deferred to CAS-07+.
 
 CAS-07 adds package-local approval and user-input request relay. It creates opaque request and
 one-time decision references only after exact process, connection, thread, turn, and item
-correlation. It projects closed action classes and safe scope labels, never command text, patches,
+correlation. It projects a closed reason and exact allowed decisions, never command text, patches,
 paths, question text, provider request IDs, raw payloads, or permission/policy data. The neutral
-contract now bounds approval decisions to one-turn `approve` or `deny`: command/file requests can
-use both; declared-permission requests are deny-only because a granted subset would need a new
-neutral contract surface. User-input requests are delivered as opaque references but have no answer
-operation yet. Expiry and every stale, duplicate, malformed, unsupported, transport, child-exit,
-provider-error, or reroute condition fail closed.
+contract bounds approval decisions to one-turn `approve` or `deny`: command/file requests can use
+both; declared-permission requests are deny-only because a granted subset would need a new neutral
+contract surface. Exact approval still waits for matching private resolution before returning to
+running; explicit denial closes the supervised turn fail-closed. User-input requests use their
+separate bounded response operation. Expiry and every stale, duplicate, malformed, unsupported,
+transport, child-exit, provider-error, or reroute condition fail closed.
 
 CAS-08 adds cancellation only through the existing neutral `CancellationIntent`: `user_requested`,
 `safety_stop`, or `deadline_exceeded`. The package-local supervisor requires the exact active
@@ -391,10 +402,205 @@ mapping, unsupported/experimental evidence, and post-validation mutation are rej
 recovered supervisors retain neither the plan nor confirmation authority; production initialization
 and attestation-request rejection remain unchanged.
 
+The subsequent offline contract decision also adds no provider-neutral surface or production code.
+In `codex-cli 0.144.1`, `attestation/generate` requires a JSON-RPC id, that exact method, and params.
+The generated JSON Schema leaves the params object open, but the exact official `rust-v0.144.1`
+source at commit `44918ea10c0f99151c6710411b4322c2f5c96bea` defines
+`AttestationGenerateParams {}` and generates `Record<string, never>`, so the params are exactly empty.
+The named result remains only an opaque string token and defines no bounds, provenance, audience,
+expiry, replay, challenge, signing, credential, account, or authentication contract.
+
+App Server binds the request internally to the first attestation-capable live connection subscribed
+to the current thread, sends that connection empty params without a thread id in the request
+envelope, and waits 100 ms. Success becomes `{"v":1,"s":0,"t":"<token>"}` in the upstream
+`x-oai-attestation` header. Request failure, cancellation, timeout, and malformed response instead
+become status `2`, `3`, `1`, and `4` headers without a token; no capable connection or unusable header
+value simply omits the header. The provider request continues in all of those cases.
+
+That sequencing is incompatible with the neutral contract's fail-closed boundary, which requires
+missing or invalid authority to stop before provider/network action. A private request/result type
+cannot make App Server abort upstream I/O, so adding one would be an unsafe partial abstraction even
+though the empty request is exact. Initialization therefore continues to omit
+`requestAttestation`, request dispatch remains unsupported, and no token, credential/account access,
+authentication, provider/network action, or upstream header mutation is permitted. This remains
+provider-private initialization and transport sequencing; the neutral `providersession` contract
+does not change.
+
+The approved installed-binary inspection is corroborated by the exact tagged source. It proves only
+that App Server delegates generation to its client and transports a result. The reviewed tagged App
+Server, protocol, and core source paths expose no generator; their only response construction is the
+integration-test fixture. The installed CLI exposes no DockPipe-usable producer, reports generation
+as unsupported in exec mode, and reports it unavailable in TUI.
+
+Neither official source nor installed artifacts define a token algorithm, trust root, challenge,
+signing key, credential/account dependency, origin/audience binding, expiry, or replay rule. There
+is no smaller safe package-local action. An upstream Codex contract and implementation must first
+supply an authoritative client generator and abort provider I/O on absent, invalid, rejected,
+canceled, or timed-out attestation. Only then could a separately bounded DockPipe slice reconsider a
+private request/result validator or runtime authority. The neutral contract still requires no
+change.
+
+The first consumer-routing seam remains outside the neutral session contract. Normal Pipeon Codex
+chat now reads a resource-scoped `codex_exec` / `codex_app_server` choice, passes it through one closed
+MCP/CLI field, and requires a bounded Pipeon session id before persisting an explicit first-use
+choice. The exact schema-versioned binding is stored in DorkPipe package state under a SHA-256-derived
+filename with exclusive creation. Repeated exact choices are accepted; omission after pinning,
+adapter drift, unknown values, malformed or extended state, cross-provider use, and conflicting
+first writes fail before readiness, lease, execution, or provider activity.
+
+The setting still defaults to `codex_exec`, and an unpinned caller that omits the field keeps the
+existing exec behavior without creating adapter state. A separately bounded consumer slice now lets
+an explicit pinned `codex_app_server` choice dispatch host-resident turns only through the
+verified-idle continuation rules below. It does not change this neutral contract or the default.
+
+Before every child startup, provider-pool creates one exclusive per-session turn lock. The first turn
+has no prior provider session. A later turn is eligible only when canonical package state records the
+previous correlated completion followed by a durable idle snapshot, the exact completed-turn counter,
+opaque provider session and recovery references, and the unchanged model/reasoning pair. Unknown or
+failed outcomes, interactive requests, crashes, malformed/substituted state, policy drift, concurrent
+invocations, and incomplete persistence leave the lock in place; another request then fails before
+supervisor, provider, or exec activity.
+
+A later invocation uses a new process/connection incarnation and fresh direct App Server child. It
+loads the exact snapshot and audit cursor, accepts no event after the idle snapshot except one clean
+local shutdown disconnect, revalidates the exact model against the fresh live catalog, re-selects the
+human-review/workspace-write/zero-capability policy, and proves the retained thread idle through one
+correlated read. Only that sequence authorizes the next turn. It does not claim that active work
+survived and never substitutes a new thread or exec route.
+
+The one-turn path validates the exact requested model plus the fixed `high` reasoning baseline against
+the live catalog, then selects the proven human-review/workspace-write mappings with zero enabled
+capabilities. The exec-only `config` alias is rejected before a claim; an explicit model reference is
+required. Attestation remains disabled. The prompt is private transient input. Only one bounded
+completed agent message may be retained in memory after an exactly correlated completed terminal
+event, and disconnect/shutdown clears it; neither value enters neutral events, audit, recovery, or
+adapter state. Interactive approval/input control, durable rendering, fallback, rollback, default
+selection, other consumers, and controlled provider evidence remain separate work.
+
+The subsequent package-local approval-request slice tightens the existing relay without adding a
+consumer operation. The normalized `ApprovalRequest` now has exactly three fields: complete
+correlation identity, a closed reason (`command_execution`, `workspace_change`, or
+`declared_permission`), and an exact allowed-decision list. The supervisor retains a defensive copy
+while paused. An exact approve writes the private accept response and remains paused until the exact
+`serverRequest/resolved` correlation returns; only then is `running` projected. An explicit deny
+writes the private decline response and immediately disconnects as `approval_denied`, stopping the
+child so the turn cannot continue. Without a decision, the request cannot resume. Malformed,
+duplicated, stale, substituted, cross-session, or cross-request decisions fail closed, and no policy, capability,
+metadata, connection, prior approval, or consumer state can imply approval.
+
+Fixture-only supervisor and neutral-contract tests cover exact resume, terminal denial, missing
+decision, replay/substitution, request isolation, and no fallback launch. Provider-pool/MCP decision
+transport, Pipeon rendering and controls, free-text input, automatic approval, fallback, attestation,
+and live provider execution remain deferred. The existing explicit App Server consumer route still
+stops with an interactive-control failure and retains its unresolved turn lock.
+
+The next consumer-only slice leaves this neutral contract unchanged and adds a package-private local
+decision-source seam to the session-pinned App Server dispatcher. The production/default route has no
+source. Only after a validated `EventApprovalRequested` exists may the dispatcher call the source,
+passing a defensive copy of the exact `ApprovalRequest` and no policy, capability, model, connection,
+adapter, or prior-decision metadata. The dispatcher validates any returned decision with
+`ApprovalDecision.ValidateFor` against its own retained request copy before delivering it through the
+same live supervisor; source mutation cannot widen the supervisor's pinned decision set.
+
+Exact approval remains paused until the matching provider resolution and then continues the same
+event loop. Completion and verified-idle persistence still require the existing correlated terminal
+and durable idle gates. Denial terminates immediately as `approval_denied` without reading later
+continuation, reporting success, persisting verified idle, releasing the unresolved turn lock,
+starting a second child, replaying the prompt, substituting exec, or changing the pinned adapter.
+Missing decisions preserve `interactive_control_required`; malformed, duplicate, replayed, stale,
+substituted, cross-session, cross-turn, cross-request, and post-disconnect decisions fail closed.
+User-input requests remain on their separate existing path and never invoke this source.
+
+No MCP operation, Pipeon UI/control transport, free-text approval input, automatic decision,
+persistence of approval content or decisions, fallback, rollback, attestation, default-adapter flip,
+or live provider execution is added. Those production control surfaces remain deferred.
+
+The subsequent MCP stdio concurrency foundation leaves this neutral contract unchanged. A single MCP
+server may run at most one asynchronous `dorkpipe.provider_pool_chat` request while continuing to read
+and service lightweight requests such as `ping`. A second concurrent chat is rejected before another
+DorkPipe runner or child starts. All responses retain their exact JSON-RPC ids and pass through one
+serialized Content-Length writer even when they complete out of order. Input EOF, read/framing or
+write failure, and stdio shutdown cancel and join the active handler before return and suppress a late
+response after transport closure.
+
+Every non-chat tool remains synchronous and keeps its existing tier enforcement. At that foundation
+boundary the fixture runner used by MCP tests was not a production approval source, provider-pool
+session and unresolved-turn locks remained authoritative, and no approval operation was introduced.
+
+The next bounded MCP slice leaves the neutral contract unchanged and transports only its validated
+`ApprovalRequest` and `ApprovalDecision` projections. The exec-tier request operation reads a
+defensive copy of the exact request currently pending for the one active chat on the same MCP server;
+repeated reads do not consume it. The exec-tier decide operation requires the complete exact
+correlation, accepts only the request's pinned allowed-decision set, validates through
+`ApprovalDecision.ValidateFor`, and delivers once. Malformed, stale, replayed, duplicate, substituted,
+cross-request, cross-turn, cross-session, cross-chat, cross-server, and post-shutdown values fail
+before delivery.
+
+Only an explicitly negotiated package-private mode installs the child-side source. The child emits a
+versioned bounded neutral request frame on its anonymous stderr pipe, receives one versioned bounded
+neutral decision frame on its anonymous stdin pipe, and leaves final provider-pool JSON on stdout.
+Frames contain no provider RPC id, command, prompt, patch, path, credential, raw frame, provider
+payload, or inferred authority. No file, package state, environment decision, polling, socket, named
+pipe, listener, localhost endpoint, or persisted queue is used.
+
+The server-owned active-chat record binds the transient controller, request, runner, context, and
+same live child. Only one request may be pending. Exact approval remains blocked until the existing
+matching provider resolution; denial retains terminal `approval_denied`. Child exit, control or MCP
+transport failure, cancellation, EOF, or shutdown invalidates the request, cancels the source wait,
+joins the chat, rejects later operations, and suppresses late output. Normal CLI and zero-value
+provider-pool routes still install no source. No request or decision is persisted, and no fallback,
+replay, second child, adapter substitution, user-input response, cancellation control, or Pipeon UI is
+added. The next safe slice is Pipeon rendering and exact user controls over this transient transport.
+
+The pre-existing authenticated MCP HTTP handler used by Pipeon creates that same active-chat record
+before provider-pool dispatch. Concurrent HTTP reads and decisions therefore address the exact same
+child; a second HTTP chat fails before another runner starts, ordinary exec-adapter chats keep their
+buffered route, and server shutdown cancels and joins the active handler. No new listener or HTTP
+authority is introduced.
+
+The subsequent Pipeon-only control slice leaves this neutral contract and MCP operations unchanged.
+For one normal Codex chat explicitly pinned to `codex_app_server`, the extension host runs one
+invocation-owned bounded monitor over that authenticated HTTP transport. It retains the complete
+validated `ApprovalRequest` only in host memory. The webview projection contains only a random
+transient UI reference, the closed reason, the exact allowed-decision list, and a closed UI delivery
+state; correlation and provider content never enter webview state, messages, `pendingAction`,
+workspace/global persistence, logs, telemetry, or artifacts.
+
+One exact click is checked against the same live Pipeon session, chat invocation, UI reference, and
+retained allowed-decision set before the extension submits the unchanged correlation and selected
+decision through `dorkpipe.provider_pool_approval_decide`. Confirmed delivery is not completion: the
+original chat remains pending until its exact provider resolution and final response. Denial retains
+the original `approval_denied` result, absence of a decision remains blocked, and ambiguous decision
+delivery disables the controls without retry, fallback, replay, an opposite decision, another chat,
+or another child. Chat completion, denial, failure, disconnect, cancellation, transport loss, and
+extension restart retain nothing. Other providers, exec-adapter chats, prepared edits, normal CLI,
+and zero-value production routes remain unchanged and acquire no decision source.
+
+The subsequent provider-pool user-input controller seam also leaves this neutral contract unchanged.
+One package-private response source may be supplied only to the existing session-pinned App Server
+dispatcher; normal CLI and zero-value production options supply none. After one exact validated
+`EventUserInputRequested`, the consumer requires the same live controller to remain
+`waiting_for_user_input`, obtains the exact normalized `UserInputPrompt` through
+`UserInputPrompt`, validates it for the request, retains an immutable defensive copy, and calls the
+source at most once with a separate defensive copy. Only complete neutral prompt fields cross that
+boundary; provider request IDs, raw/private provider content, prompt or command material, policy,
+model, capability, approval, recovery, connection, and prior-response metadata do not.
+
+A returned `UserInputResponse` must validate against the retained prompt before one delivery through
+that controller's `RespondUserInput`. Source mutation cannot widen options, selections, text bounds,
+kind, correlation, or prompt reference. Delivery leaves the turn pending until the exact correlated
+`user_input_resolved` event; only then can existing terminal and verified-idle gates run. Missing
+source or `found=false` remains `interactive_control_required`; source, prompt, response, delivery,
+replay, stale-state, and missing-resolution failures are bounded and contain no prompt or answer
+content. No prompt or answer field enters package state, snapshots, audit content, diagnostics, logs,
+metadata, environment, files, or artifacts. Approval handling is unchanged and remains on its
+separate source. No MCP/Pipeon transport, fallback, retry, replay, second child, adapter substitution,
+or authority inference is introduced. The next safe slice is transient MCP user-input
+request/response transport over the existing active-chat ownership model.
+
 No second in-scope stable mapping is proven: `experimentalApi` is a global experimental opt-in,
 `mcpServerOpenaiFormElicitation` is outside the no-MCP boundary, `optOutNotificationMethods` is a
 suppression list rather than enablement, and `SelectedCapabilityRoot` is not bound to a stable thread
-parameter. The smallest evidence-backed next slice is a separately approved package-local offline
-contract decision for the exact `attestation/generate` request shape and fail-closed response
-semantics, still without initialization opt-in or a live request. Provider discovery persistence,
-adapter selection, MCP, Pipeon, fallback, rollback, and all consumer/bridge paths remain separate work.
+parameter. None changes the blocker above or authorizes initialization opt-in or a live request.
+Provider discovery persistence, adapter selection, MCP, Pipeon, fallback, rollback, and all
+consumer/bridge paths remain separate work.
