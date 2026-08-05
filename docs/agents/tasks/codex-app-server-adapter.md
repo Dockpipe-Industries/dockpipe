@@ -3130,8 +3130,59 @@ read-only in that sandbox; it supplied no native evidence. The successful comman
 required host access and revalidated a newly created fixture path rather than reusing the removed
 attempt fixture. This Linux smoke qualification changes no dependency, production storage, Slice 2
 surface, publication/contention/failure cohort, migration, cutover, lifecycle, or support decision.
-Because the shared smoke wrapper changed, `TestWindowsNativeSQLiteSmoke` requires one final native
-Windows rerun before these changes may be committed as fully cross-platform validated.
+The shared smoke wrapper has now passed both the native Linux qualification above and the final
+native Windows rerun below.
+
+**Final Windows/amd64 shared-wrapper rerun — 2026-08-04.** The Windows-only opt-in
+`TestWindowsNativeSQLiteSmoke` passed natively with `CGO_ENABLED=0` on Windows build `10.0.26200`,
+`amd64`, and Go `go1.26.4`. The fixture used qualifying fixed local NTFS storage on volume
+`\\?\Volume{2eb284d8-09e6-483c-b096-6deed2208642}\` with serial `88c9a133` and label `OS`; the
+unprivileged NTFS-version query remained unavailable. The fixture root, both database files, and
+observed journals were owned by current-user SID
+`S-1-5-21-2729925100-2499202611-1015899381-1002`, admitted only that SID and `SYSTEM`
+(`S-1-5-18`) as trustees, and granted them full access.
+
+The queried engine was SQLite `3.53.3` with source ID
+`2026-06-26 20:14:12 d4c0e51e4aeb96955b99185ab9cde75c339e2c29c3f3f12428d364a10d782c62`
+and native `win32` VFS. The exact selected main-database URI was:
+
+```text
+file:///C:/Users/Jamie/AppData/Local/Temp/TestWindowsNativeSQLiteSmoke827599481/001/main/aggregate.sqlite?_dqs=0&_error_rc=1&_txlock=exclusive&cache=private&mode=rw&vfs=win32
+```
+
+The lane read back the selected `journal_mode=delete`, `synchronous=3` (`EXTRA`), `fullfsync=1`,
+`temp_store=2` (`MEMORY`), `mmap_size=0`, `busy_timeout=0`, `foreign_keys=1`,
+`trusted_schema=0`, `cell_size_check=1`, `locking_mode=exclusive`, and pre-schema
+`page_size=4096` pragmas. It required only `main`, the exact singleton STRICT
+`app_server_aggregate` schema with `user_version=1`, and the selected absolute URI. Windows retained
+its exact sorted 57-option allowlist, including `COMPILER=gcc-12-win32`, `MUTEX_NOOP`, and
+`OMIT_SEH`, with no `MUTEX_PTHREADS`. Linux remains exactly 56 options with
+`COMPILER=gcc-12.2.0` and `MUTEX_PTHREADS`, without the two Windows-only mutex/SEH entries.
+
+The exact revision-1 insert payload and digest reloaded equal at
+`5bacd33f5355f1a64a096841fe3fceeca28a40f211723e2ce4bb9b56988e6fe8`; the exact revision-2 CAS
+payload and digest reloaded equal at
+`37572e06825751539b2e65c19034a23950925abbbe795d296a52ecf1e6e2aca4`. An independent owner staged
+revision 3 and held the same database and its protected rollback journal. A fresh contender returned
+genuine primary `SQLITE_BUSY` (`5`), while the different-session database remained independently
+writable. The parent forcibly terminated the owner before commit; a fresh recovery child returned
+`quick_check=ok` and the exact old revision-2 row. There were zero retries, replays, repairs,
+fallbacks, or inferred acknowledgements. The observed journals remained protected siblings, were
+4,616 bytes after commit, and were never opened or hashed for content. Cleanup remained
+parent-test-only, and the test left no fixture, evidence artifact, binary, or child process.
+
+The exact successful PowerShell command, run from `packages/dorkpipe/lib`, was:
+
+```powershell
+$env:DORKPIPE_SQLITE_EVIDENCE = "1"
+$env:CGO_ENABLED = "0"
+go test -mod=readonly ./appserversupervisor/sqliteevidence -run '^TestWindowsNativeSQLiteSmoke$' -count=1 -v -timeout=10m
+```
+
+The evidence lane elapsed time was `1.429s`; the package result was `ok` in `3.929s`. This completes
+the shared-wrapper native Linux and Windows qualification only. It does not qualify the deferred
+publication, contention, or failure cohorts on Linux or other platforms, power-loss evidence,
+production storage, migration, Slice 2, or macOS.
 
 The remaining required validation produced these exact results from `packages/dorkpipe/lib`:
 
