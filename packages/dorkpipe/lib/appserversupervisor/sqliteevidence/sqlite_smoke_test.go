@@ -27,6 +27,9 @@ const (
 	evidenceOptInEnv       = "DORKPIPE_SQLITE_EVIDENCE"
 	childRoleEnv           = "DORKPIPE_SQLITE_EVIDENCE_CHILD"
 	childDatabaseEnv       = "DORKPIPE_SQLITE_EVIDENCE_DATABASE"
+	childFixtureRootEnv    = "DORKPIPE_SQLITE_EVIDENCE_FIXTURE_ROOT"
+	childRunTokenEnv       = "DORKPIPE_SQLITE_EVIDENCE_RUN_TOKEN"
+	childRootIdentityEnv   = "DORKPIPE_SQLITE_EVIDENCE_ROOT_IDENTITY"
 	childReadyMarker       = "SQLITE_EVIDENCE_OWNER_READY"
 	selectedSessionID      = "pipeon-sqlite-native-smoke"
 )
@@ -68,96 +71,201 @@ type evidenceDatabase struct {
 	db             *sql.DB
 	conn           *sql.Conn
 	path           string
+	dsn            string
 	compileOptions []string
+}
+
+type nativeSmokePlatform struct {
+	name                      string
+	optInEnv                  string
+	childTestName             string
+	qualifyRoot               func(string) (string, error)
+	prepareFile               func(*testing.T, string, string) string
+	requireJournal            func(*testing.T, string)
+	inspectJournalAfterCommit func(*testing.T, string)
+	requireSiblings           func(*testing.T, string, bool)
+	stableTreeHash            func(string) (string, error)
+	rootIdentity              func(string) (string, error)
+	validateCompileOptions    func([]string) error
+	cleanCommitAfterRecovery  bool
+}
+
+type evidenceChildSpec struct {
+	testName     string
+	fixtureRoot  string
+	runToken     string
+	rootIdentity string
 }
 
 func TestWindowsNativeSQLiteSmoke(t *testing.T) {
 	if runtime.GOOS != "windows" || runtime.GOARCH != "amd64" {
 		t.Skip("Windows/amd64 native evidence only")
 	}
-	if os.Getenv(evidenceOptInEnv) != "1" {
-		t.Skip("set DORKPIPE_SQLITE_EVIDENCE=1 to run the bounded native smoke lane")
+	runNativeSQLiteSmoke(t, nativeSmokePlatform{
+		name:                      "Windows",
+		optInEnv:                  evidenceOptInEnv,
+		childTestName:             "TestSQLiteEvidenceChild",
+		qualifyRoot:               qualifyWindowsSmokeRoot,
+		prepareFile:               prepareEvidenceFile,
+		requireJournal:            mustRequireJournal,
+		inspectJournalAfterCommit: mustInspectJournalAfterCommit,
+		requireSiblings:           mustRequireSiblings,
+	})
+}
+
+func qualifyWindowsSmokeRoot(root string) (string, error) {
+	hostFacts, err := collectAndProtectWindowsHost(root)
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("windows_build=%s arch=%s drive=%s filesystem=%s ntfs_version=%s volume=%s go=%s root_protection={%s}",
+		hostFacts.WindowsBuild, hostFacts.Architecture, hostFacts.DriveType, hostFacts.FileSystem,
+		hostFacts.NTFSVersion, hostFacts.VolumeID, hostFacts.GoVersion, hostFacts.Protection), nil
+}
+
+func runNativeSQLiteSmoke(t *testing.T, platform nativeSmokePlatform) {
+	t.Helper()
+	if os.Getenv(platform.optInEnv) != "1" {
+		t.Skipf("set %s=1 to run the bounded native smoke lane", platform.optInEnv)
 	}
 	if evidenceCGOEnabled || os.Getenv("CGO_ENABLED") != "0" {
 		t.Fatalf("native evidence requires a !cgo test binary and CGO_ENABLED=0; compiled_cgo=%t env=%q", evidenceCGOEnabled, os.Getenv("CGO_ENABLED"))
 	}
-
+	startedAt := time.Now()
 	fixtureRoot, err := filepath.Abs(t.TempDir())
 	if err != nil {
 		t.Fatalf("canonicalize fixture root: %v", err)
 	}
 	fixtureRoot = filepath.Clean(fixtureRoot)
-	hostFacts, err := collectAndProtectWindowsHost(fixtureRoot)
+	hostEvidence, err := platform.qualifyRoot(fixtureRoot)
 	if err != nil {
-		t.Fatalf("qualify Windows host: %v", err)
+		t.Fatalf("qualify %s host: %v", platform.name, err)
 	}
-	t.Logf("host windows_build=%s arch=%s drive=%s filesystem=%s ntfs_version=%s volume=%s go=%s root_protection={%s}",
-		hostFacts.WindowsBuild, hostFacts.Architecture, hostFacts.DriveType, hostFacts.FileSystem,
-		hostFacts.NTFSVersion, hostFacts.VolumeID, hostFacts.GoVersion, hostFacts.Protection)
+	t.Logf("host %s", hostEvidence)
 
-	mainPath := prepareEvidenceFile(t, fixtureRoot, "main")
-	otherPath := prepareEvidenceFile(t, fixtureRoot, "other")
+	mainPath := platform.prepareFile(t, fixtureRoot, "main")
+	otherPath := platform.prepareFile(t, fixtureRoot, "other")
 	ctx, cancel := context.WithTimeout(context.Background(), 45*time.Second)
 	defer cancel()
 
 	mainDB := mustOpenEvidenceDatabase(t, ctx, mainPath)
-	t.Logf("sqlite version=%s source_id=%s vfs=%s uri={absolute mode=rw cache=private _txlock=exclusive _dqs=0 _error_rc=1}",
-		selectedSQLiteVersion, selectedSQLiteSourceID, selectedNativeVFS())
+	t.Logf("sqlite version=%s source_id=%s vfs=%s uri=%q", selectedSQLiteVersion, selectedSQLiteSourceID, selectedNativeVFS(), mainDB.dsn)
 	t.Logf("sqlite compile_options[%d]=%s", len(mainDB.compileOptions), strings.Join(mainDB.compileOptions, ","))
+	if platform.validateCompileOptions != nil {
+		if err := platform.validateCompileOptions(mainDB.compileOptions); err != nil {
+			t.Fatalf("validate compile options: %v", err)
+		}
+	}
 	mustRequireOnlyMain(t, ctx, mainDB.conn, mainPath)
-	mustRequireSiblings(t, filepath.Dir(mainPath), false)
+	platform.requireSiblings(t, filepath.Dir(mainPath), false)
 	mustCreateSelectedSchema(t, ctx, mainDB.conn)
 
 	revision1 := selectedRow(1, payloadRevision1)
-	mustInsertAndCommit(t, ctx, mainDB.conn, revision1, mainPath)
+	mustInsertAndCommitWithJournal(t, ctx, mainDB.conn, revision1, mainPath, platform.requireJournal)
 	mustRequireExactRow(t, ctx, mainDB.conn, revision1)
-	mustInspectJournalAfterCommit(t, mainPath)
+	platform.inspectJournalAfterCommit(t, mainPath)
 
 	revision2 := selectedRow(2, payloadRevision2)
-	mustCASAndCommit(t, ctx, mainDB.conn, revision1, revision2, mainPath)
+	mustCASAndCommitWithJournal(t, ctx, mainDB.conn, revision1, revision2, mainPath, platform.requireJournal)
 	mustRequireExactRow(t, ctx, mainDB.conn, revision2)
 	mustRequireSchema(t, ctx, mainDB.conn)
 	mustRequireOnlyMain(t, ctx, mainDB.conn, mainPath)
-	mustInspectJournalAfterCommit(t, mainPath)
+	platform.inspectJournalAfterCommit(t, mainPath)
 	mustCloseEvidenceDatabase(t, mainDB)
 
 	otherDB := mustOpenEvidenceDatabase(t, ctx, otherPath)
 	mustCreateSelectedSchema(t, ctx, otherDB.conn)
 	mustCloseEvidenceDatabase(t, otherDB)
 
-	owner := startOwnerChild(t, mainPath)
+	preTreeHash := "not_recorded"
+	if platform.stableTreeHash != nil {
+		preTreeHash, err = platform.stableTreeHash(fixtureRoot)
+		if err != nil {
+			t.Fatalf("capture pre-contention metadata tree: %v", err)
+		}
+	}
+	runToken := fmt.Sprintf("%x", sha256.Sum256([]byte(fmt.Sprintf("%s\x00%d", fixtureRoot, time.Now().UnixNano()))))
+	rootIdentity := ""
+	if platform.rootIdentity != nil {
+		rootIdentity, err = platform.rootIdentity(fixtureRoot)
+		if err != nil {
+			t.Fatalf("capture fixture-root identity: %v", err)
+		}
+	}
+	child := evidenceChildSpec{testName: platform.childTestName, fixtureRoot: fixtureRoot, runToken: runToken, rootIdentity: rootIdentity}
+	owner := startOwnerChild(t, mainPath, child)
 	t.Cleanup(func() {
 		if owner.ProcessState == nil || !owner.ProcessState.Exited() {
 			_ = owner.Process.Kill()
 			_, _ = owner.Process.Wait()
 		}
 	})
-	mustRequireJournal(t, mainPath)
-	mustRunChild(t, "contend", mainPath, "same_database_busy_or_locked")
-	mustRunChild(t, "other", otherPath, "different_database_succeeded")
+	platform.requireJournal(t, mainPath)
+	mustRunChild(t, "contend", mainPath, "same_database_busy_or_locked", child)
+	mustRunChild(t, "other", otherPath, "different_database_succeeded", child)
 	if err := owner.Process.Kill(); err != nil {
 		t.Fatalf("force-terminate exclusive owner: %v", err)
 	}
 	if err := owner.Wait(); err == nil {
 		t.Fatal("force-terminated owner unexpectedly exited successfully")
 	}
-	mustRunChild(t, "recover", mainPath, "recovery_succeeded")
-	mustRequireSiblings(t, filepath.Dir(mainPath), false)
-	mustInspectJournalAfterCommit(t, mainPath)
-	t.Log("contention same_database=BUSY_or_LOCKED different_database=success forced_termination=lock_released recovery=quick_check_ok row=revision_2_or_3")
+	mustRunChild(t, "recover", mainPath, "recovery_succeeded", child)
+	finalRow := revision2
+	var cleanDB *evidenceDatabase
+	if platform.cleanCommitAfterRecovery {
+		cleanDB = mustOpenEvidenceDatabase(t, ctx, mainPath)
+		mustRequireExactRow(t, ctx, cleanDB.conn, revision2)
+		mustCASAndCommitWithJournal(t, ctx, cleanDB.conn, revision2, selectedRow(3, payloadRevision3), mainPath, platform.requireJournal)
+		finalRow = selectedRow(3, payloadRevision3)
+		mustRequireExactRow(t, ctx, cleanDB.conn, finalRow)
+		mustRequireSchema(t, ctx, cleanDB.conn)
+		if err := requireQuickCheck(ctx, cleanDB.conn); err != nil {
+			t.Fatalf("clean writer quick_check: %v", err)
+		}
+		t.Logf("clean commit revision=%d digest=%x", finalRow.Revision, finalRow.SHA256)
+	}
+	platform.requireSiblings(t, filepath.Dir(mainPath), true)
+	platform.inspectJournalAfterCommit(t, mainPath)
+	postTreeHash := "not_recorded"
+	if platform.stableTreeHash != nil {
+		postTreeHash, err = platform.stableTreeHash(fixtureRoot)
+		if err != nil {
+			t.Fatalf("capture post-recovery metadata tree: %v", err)
+		}
+	}
+	if cleanDB != nil {
+		mustCloseEvidenceDatabase(t, cleanDB)
+	}
+	t.Logf("contention same_database=BUSY_or_LOCKED different_database=success forced_termination=lock_released recovery=quick_check_ok recovery_revision=%d clean_commit_revision=%d retries=0 replays=0 repairs=0 fallbacks=0 inferred_acknowledgements=0", revision2.Revision, finalRow.Revision)
+	t.Logf("smoke initial_revision=%d initial_digest=%x final_revision=%d final_digest=%x pre_metadata_tree_sha256=%s post_metadata_tree_sha256=%s elapsed=%s journal_contents_opened_or_hashed=false parent_cleanup_only=true", revision1.Revision, revision1.SHA256, finalRow.Revision, finalRow.SHA256, preTreeHash, postTreeHash, time.Since(startedAt).Round(time.Millisecond))
 }
 
 func TestSQLiteEvidenceChild(t *testing.T) {
+	runSQLiteEvidenceChild(t, "windows", nil, requireWindowsChildJournal, false)
+}
+
+func runSQLiteEvidenceChild(t *testing.T, expectedOS string, validatePath func(string, string, string) error, requireJournal func(string) error, strictRecoveryOld bool) {
+	t.Helper()
 	role := os.Getenv(childRoleEnv)
 	if role == "" {
 		t.Skip("child-process helper")
 	}
-	if runtime.GOOS != "windows" || runtime.GOARCH != "amd64" || evidenceCGOEnabled {
-		t.Fatalf("child requires Windows/amd64 with CGO disabled; os=%s arch=%s cgo=%t", runtime.GOOS, runtime.GOARCH, evidenceCGOEnabled)
+	if runtime.GOOS != expectedOS || runtime.GOARCH != "amd64" || evidenceCGOEnabled {
+		t.Fatalf("child requires %s/amd64 with CGO disabled; os=%s arch=%s cgo=%t", expectedOS, runtime.GOOS, runtime.GOARCH, evidenceCGOEnabled)
 	}
 	databasePath := filepath.Clean(os.Getenv(childDatabaseEnv))
 	if databasePath == "." || !filepath.IsAbs(databasePath) {
 		t.Fatalf("child database path must be absolute: %q", databasePath)
+	}
+	fixtureRoot := filepath.Clean(os.Getenv(childFixtureRootEnv))
+	runToken := os.Getenv(childRunTokenEnv)
+	if fixtureRoot == "." || !filepath.IsAbs(fixtureRoot) || len(runToken) != 64 {
+		t.Fatalf("child fixture identity is invalid: root=%q token_length=%d", fixtureRoot, len(runToken))
+	}
+	if validatePath != nil {
+		if err := validatePath(fixtureRoot, databasePath, os.Getenv(childRootIdentityEnv)); err != nil {
+			t.Fatalf("child path validation: %v", err)
+		}
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 25*time.Second)
 	defer cancel()
@@ -168,12 +276,23 @@ func TestSQLiteEvidenceChild(t *testing.T) {
 	case "other":
 		childUseDifferentDatabase(t, ctx, databasePath)
 	case "owner":
-		childHoldExclusiveOwner(t, ctx, databasePath)
+		childHoldExclusiveOwner(t, ctx, databasePath, requireJournal)
 	case "recover":
-		childRecover(t, ctx, databasePath)
+		childRecover(t, ctx, databasePath, strictRecoveryOld)
 	default:
 		t.Fatalf("unknown child role %q", role)
 	}
+}
+
+func requireWindowsChildJournal(journalPath string) error {
+	info, err := os.Lstat(journalPath)
+	if err != nil || !info.Mode().IsRegular() || info.Mode()&os.ModeSymlink != 0 {
+		return fmt.Errorf("owner live journal: info=%v err=%v", info, err)
+	}
+	if _, err := requireWindowsPrivatePath(journalPath); err != nil {
+		return fmt.Errorf("owner live journal protection: %w", err)
+	}
+	return nil
 }
 
 func prepareEvidenceFile(t *testing.T, root, name string) string {
@@ -244,7 +363,7 @@ func openEvidenceDatabase(ctx context.Context, path string) (*evidenceDatabase, 
 		_ = db.Close()
 		return nil, fmt.Errorf("open dedicated connection: %w", err)
 	}
-	result := &evidenceDatabase{db: db, conn: conn, path: path}
+	result := &evidenceDatabase{db: db, conn: conn, path: path, dsn: dsn}
 	fail := func(err error) (*evidenceDatabase, error) {
 		_ = conn.Close()
 		_ = db.Close()
@@ -438,6 +557,10 @@ func requireSchemaObjectCount(ctx context.Context, conn *sql.Conn, want int) err
 }
 
 func mustInsertAndCommit(t *testing.T, ctx context.Context, conn *sql.Conn, row aggregateRow, path string) {
+	mustInsertAndCommitWithJournal(t, ctx, conn, row, path, mustRequireJournal)
+}
+
+func mustInsertAndCommitWithJournal(t *testing.T, ctx context.Context, conn *sql.Conn, row aggregateRow, path string, requireJournal func(*testing.T, string)) {
 	t.Helper()
 	tx, err := conn.BeginTx(ctx, nil)
 	if err != nil {
@@ -450,13 +573,17 @@ func mustInsertAndCommit(t *testing.T, ctx context.Context, conn *sql.Conn, row 
 		_ = tx.Rollback()
 		t.Fatalf("insert selected row: %v", err)
 	}
-	mustRequireJournal(t, path)
+	requireJournal(t, path)
 	if err := tx.Commit(); err != nil {
 		t.Fatalf("commit selected row: %v", err)
 	}
 }
 
 func mustCASAndCommit(t *testing.T, ctx context.Context, conn *sql.Conn, oldRow, newRow aggregateRow, path string) {
+	mustCASAndCommitWithJournal(t, ctx, conn, oldRow, newRow, path, mustRequireJournal)
+}
+
+func mustCASAndCommitWithJournal(t *testing.T, ctx context.Context, conn *sql.Conn, oldRow, newRow aggregateRow, path string, requireJournal func(*testing.T, string)) {
 	t.Helper()
 	tx, err := conn.BeginTx(ctx, nil)
 	if err != nil {
@@ -474,7 +601,7 @@ func mustCASAndCommit(t *testing.T, ctx context.Context, conn *sql.Conn, oldRow,
 		_ = tx.Rollback()
 		t.Fatalf("selected CAS affected %d rows err=%v, want 1", affected, err)
 	}
-	mustRequireJournal(t, path)
+	requireJournal(t, path)
 	if err := tx.Commit(); err != nil {
 		t.Fatalf("commit selected CAS: %v", err)
 	}
@@ -644,10 +771,10 @@ func mustCloseEvidenceDatabase(t *testing.T, database *evidenceDatabase) {
 	}
 }
 
-func startOwnerChild(t *testing.T, databasePath string) *exec.Cmd {
+func startOwnerChild(t *testing.T, databasePath string, child evidenceChildSpec) *exec.Cmd {
 	t.Helper()
-	command := exec.Command(os.Args[0], "-test.run=^TestSQLiteEvidenceChild$", "-test.count=1", "-test.timeout=30s")
-	command.Env = evidenceChildEnvironment("owner", databasePath)
+	command := exec.Command(os.Args[0], "-test.run=^"+child.testName+"$", "-test.count=1", "-test.timeout=30s")
+	command.Env = evidenceChildEnvironment("owner", databasePath, child)
 	stdout, err := command.StdoutPipe()
 	if err != nil {
 		t.Fatalf("create owner stdout pipe: %v", err)
@@ -687,12 +814,12 @@ func startOwnerChild(t *testing.T, databasePath string) *exec.Cmd {
 	return command
 }
 
-func mustRunChild(t *testing.T, role, databasePath, wantMarker string) {
+func mustRunChild(t *testing.T, role, databasePath, wantMarker string, child evidenceChildSpec) {
 	t.Helper()
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
-	command := exec.CommandContext(ctx, os.Args[0], "-test.run=^TestSQLiteEvidenceChild$", "-test.count=1", "-test.timeout=12s")
-	command.Env = evidenceChildEnvironment(role, databasePath)
+	command := exec.CommandContext(ctx, os.Args[0], "-test.run=^"+child.testName+"$", "-test.count=1", "-test.timeout=12s")
+	command.Env = evidenceChildEnvironment(role, databasePath, child)
 	output, err := command.CombinedOutput()
 	if err != nil {
 		t.Fatalf("%s child failed: %v output=%s", role, err, boundedText(string(output)))
@@ -706,15 +833,21 @@ func mustRunChild(t *testing.T, role, databasePath, wantMarker string) {
 	t.Logf("%s child result=%s", role, strings.TrimSpace(boundedText(string(output))))
 }
 
-func evidenceChildEnvironment(role, databasePath string) []string {
-	environment := make([]string, 0, len(os.Environ())+2)
+func evidenceChildEnvironment(role, databasePath string, child evidenceChildSpec) []string {
+	environment := make([]string, 0, len(os.Environ())+5)
 	for _, item := range os.Environ() {
-		if strings.HasPrefix(item, childRoleEnv+"=") || strings.HasPrefix(item, childDatabaseEnv+"=") {
+		if strings.HasPrefix(item, childRoleEnv+"=") || strings.HasPrefix(item, childDatabaseEnv+"=") || strings.HasPrefix(item, childFixtureRootEnv+"=") || strings.HasPrefix(item, childRunTokenEnv+"=") || strings.HasPrefix(item, childRootIdentityEnv+"=") {
 			continue
 		}
 		environment = append(environment, item)
 	}
-	return append(environment, childRoleEnv+"="+role, childDatabaseEnv+"="+databasePath)
+	return append(environment,
+		childRoleEnv+"="+role,
+		childDatabaseEnv+"="+databasePath,
+		childFixtureRootEnv+"="+child.fixtureRoot,
+		childRunTokenEnv+"="+child.runToken,
+		childRootIdentityEnv+"="+child.rootIdentity,
+	)
 }
 
 func boundedText(value string) string {
@@ -769,7 +902,7 @@ func childUseDifferentDatabase(t *testing.T, ctx context.Context, databasePath s
 	fmt.Println("different_database_succeeded")
 }
 
-func childHoldExclusiveOwner(t *testing.T, ctx context.Context, databasePath string) {
+func childHoldExclusiveOwner(t *testing.T, ctx context.Context, databasePath string, requireJournal func(string) error) {
 	database, err := openEvidenceDatabase(ctx, databasePath)
 	if err != nil {
 		t.Fatalf("owner open: %v", err)
@@ -797,12 +930,8 @@ func childHoldExclusiveOwner(t *testing.T, ctx context.Context, databasePath str
 	if affected, err := result.RowsAffected(); err != nil || affected != 1 {
 		t.Fatalf("owner CAS affected=%d err=%v", affected, err)
 	}
-	journalPath := databasePath + "-journal"
-	if info, err := os.Lstat(journalPath); err != nil || !info.Mode().IsRegular() {
-		t.Fatalf("owner live journal: info=%v err=%v", info, err)
-	}
-	if _, err := requireWindowsPrivatePath(journalPath); err != nil {
-		t.Fatalf("owner live journal protection: %v", err)
+	if err := requireJournal(databasePath + "-journal"); err != nil {
+		t.Fatalf("owner live journal: %v", err)
 	}
 	fmt.Println(childReadyMarker)
 	for {
@@ -810,7 +939,7 @@ func childHoldExclusiveOwner(t *testing.T, ctx context.Context, databasePath str
 	}
 }
 
-func childRecover(t *testing.T, ctx context.Context, databasePath string) {
+func childRecover(t *testing.T, ctx context.Context, databasePath string, strictOld bool) {
 	database, err := openEvidenceDatabase(ctx, databasePath)
 	if err != nil {
 		t.Fatalf("recovery open: %v", err)
@@ -827,7 +956,10 @@ func childRecover(t *testing.T, ctx context.Context, databasePath string) {
 	if err != nil {
 		t.Fatalf("recovery reload: %v", err)
 	}
-	if !sameRow(row, selectedRow(2, payloadRevision2)) && !sameRow(row, selectedRow(3, payloadRevision3)) {
+	if strictOld && !sameRow(row, selectedRow(2, payloadRevision2)) {
+		t.Fatalf("recovery row is not the exact old canonical row: revision=%d session=%q payload=%x sha=%x", row.Revision, row.SessionID, row.Payload, row.SHA256)
+	}
+	if !strictOld && !sameRow(row, selectedRow(2, payloadRevision2)) && !sameRow(row, selectedRow(3, payloadRevision3)) {
 		t.Fatalf("recovery row is not allowlisted: revision=%d session=%q payload=%x sha=%x", row.Revision, row.SessionID, row.Payload, row.SHA256)
 	}
 	fmt.Printf("recovery_succeeded revision=%d\n", row.Revision)
