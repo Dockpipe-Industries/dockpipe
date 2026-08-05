@@ -98,7 +98,9 @@ Repository has no ADR convention; this task is the accepted product-decision rec
   aggregate, migration, or lifecycle behavior. The deterministic matrix now reaches the exact
   post-COMMIT-invocation/pre-result loss boundary through the pinned driver's native commit hook;
   its required genuine-commit-error row remains proven unreachable under the selected exclusive
-  shape, so the complete-matrix claim remains open. Reboot/power-loss evidence, Linux/macOS runtime
+  shape, so the complete-matrix claim remains open. The native Linux/`amd64` smoke below now
+  qualifies the selected contract once on the current Pop!_OS/local-ext4 host with the exact
+  platform compile-option set; broader Linux cohorts, macOS runtime evidence, reboot/power-loss
   evidence, and the production-use gate remain open. A shared cross-session
   database remains rejected because it would couple otherwise independent session writers.
   Migration, operations, storage implementation, observation,
@@ -3008,18 +3010,164 @@ failure-matrix file SHA-256 is
 
 Row 10 is now genuinely reachable and proven. The complete deterministic matrix is still not
 claimed closed because the required, genuinely unreachable row 11 remains recorded rather than
-simulated. Windows reboot/power-loss trials, Linux native
-runtime evidence, macOS/arm64 GitHub Actions evidence intentionally scheduled last, macOS VM
+simulated. Windows reboot/power-loss trials, broader Linux publication/contention/failure cohorts,
+macOS/arm64 GitHub Actions evidence intentionally scheduled last, macOS VM
 disruption evidence if still required, complete production host/sidecar acceptance, production
 storage, migration, cutover, recovery authority, dispatch/projection/decision integration, and Slice
 2 all remain open. TASK-013 and CAS-14 remain open.
 
 The completed dependency-pin/smoke, publication, and contention/forced-termination slices do not
 claim the deterministic failure-boundary matrix, Windows VM reboot or hard-power-loss durability,
-complete sidecar qualification, a production host allowlist, Linux/ext4 runtime evidence,
+complete sidecar qualification, a production host allowlist, broader Linux native cohorts,
 macOS/arm64 GitHub Actions evidence (intentionally last), or macOS VM disruption evidence if still
 required. They add no production store, migration, cutover, recovery authority, lifecycle dispatch,
 Pipeon projection, or Slice 2 work. Those gates remain open; TASK-013 and CAS-14 remain open.
+
+**Linux/amd64 native SQLite smoke qualification — 2026-08-04.** The Linux-only opt-in
+`TestLinuxNativeSQLiteSmoke` passed natively with `CGO_ENABLED=0` on Pop!_OS 22.04 LTS,
+Linux `7.0.11-76070011-generic`, kernel build
+`#202606011647~1780583630~22.04~70ad774 SMP PREEMPT_DYNAMIC Thu J`, bare metal according to
+`systemd-detect-virt`, `amd64`, and Go `go1.25.0`. The pinned module graph remained unchanged:
+`golang.org/x/sys v0.47.0`, `modernc.org/libc v1.74.4`, and `modernc.org/sqlite v1.56.0`; the
+`go.mod` / `go.sum` SHA-256 values were respectively
+`f59ee93b1feb390705c790649a6ac36de360053aa5260818885c78df19881d19` and
+`b426dc8754abc50973fbae78d32642746de09cc6c6b6485a24727572cbf610a9`.
+
+The parent created one new private temporary parent
+`/tmp/dockpipe-sqlite-linux-fYSJ5FKK` outside the repository, set and revalidated it as a current-user
+owned `0700` directory, and used it as `TMPDIR`. The successful test-framework fixture root was
+`/tmp/dockpipe-sqlite-linux-fYSJ5FKK/TestLinuxNativeSQLiteSmoke3890145937/001`, also current-user
+owned and `0700`. `statx(STATX_MNT_ID)`, a metadata-only `O_PATH|O_NOFOLLOW` handle plus `fstatfs`,
+and `/proc/self/mountinfo` agreed on mount ID `33`, device `259:7`, ext4 magic `0xef53`, source
+`/dev/nvme0n1p3`, mount root/point `/` / `/`, options `rw,noatime`, and super-options
+`rw,errors=remount-ro,stripe=64`. The exact mountinfo row was:
+
+```text
+33 2 259:7 / / rw,noatime shared:1 - ext4 /dev/nvme0n1p3 rw,errors=remount-ro,stripe=64
+```
+
+The source block device and its parent were non-removable. The lane rejected bind, nested, overlay,
+FUSE, network, removable, shared-host, `drvfs`, `9p`, `tmpfs`, symlinked/substituted, and cross-mount
+storage. Every fixture/session directory was an owned regular `0700` directory; every database and
+observed journal was an owned regular `0600` file on the same exact mount/device. Only the selected
+`aggregate.sqlite` and `aggregate.sqlite-journal` siblings were admitted. The metadata checks never
+opened a journal for content and never parsed, copied, moved, truncated, deleted, or hashed one.
+
+The queried engine was SQLite `3.53.3` with source ID
+`2026-06-26 20:14:12 d4c0e51e4aeb96955b99185ab9cde75c339e2c29c3f3f12428d364a10d782c62`
+and native `unix` VFS. The exact main-database URI was:
+
+```text
+file:///tmp/dockpipe-sqlite-linux-fYSJ5FKK/TestLinuxNativeSQLiteSmoke3890145937/001/main/aggregate.sqlite?_dqs=0&_error_rc=1&_txlock=exclusive&cache=private&mode=rw&vfs=unix
+```
+
+The lane applied and read back `journal_mode=delete`, `synchronous=3` (`EXTRA`), `fullfsync=1`,
+`temp_store=2` (`MEMORY`), `mmap_size=0`, `busy_timeout=0`, `foreign_keys=1`,
+`trusted_schema=0`, `cell_size_check=1`, `locking_mode=exclusive`, and pre-schema
+`page_size=4096`. It also rejected unresolved double-quoted SQL, required only `main` in
+`PRAGMA database_list`, created exactly the selected singleton STRICT
+`app_server_aggregate` table plus `user_version=1`, and used only the selected insert and exact
+session/revision/digest conditional-update shape. Every staged and committed row reloaded with exact
+canonical payload, envelope, and SHA-256 equality; revisions were strictly monotonic.
+
+Linux exposed this exact sorted 56-entry compile-option set:
+
+```text
+ATOMIC_INTRINSICS=1,COMPILER=gcc-12.2.0,DEFAULT_AUTOVACUUM,DEFAULT_CACHE_SIZE=-2000,
+DEFAULT_FILE_FORMAT=4,DEFAULT_JOURNAL_SIZE_LIMIT=-1,DEFAULT_MEMSTATUS=0,DEFAULT_MMAP_SIZE=0,
+DEFAULT_PAGE_SIZE=4096,DEFAULT_PCACHE_INITSZ=20,DEFAULT_RECURSIVE_TRIGGERS,
+DEFAULT_SECTOR_SIZE=4096,DEFAULT_SYNCHRONOUS=2,DEFAULT_WAL_AUTOCHECKPOINT=1000,
+DEFAULT_WAL_SYNCHRONOUS=2,DEFAULT_WORKER_THREADS=0,DIRECT_OVERFLOW_READ,DISABLE_INTRINSIC,
+ENABLE_COLUMN_METADATA,ENABLE_DBPAGE_VTAB,ENABLE_DBSTAT_VTAB,ENABLE_FTS5,ENABLE_GEOPOLY,
+ENABLE_MATH_FUNCTIONS,ENABLE_MEMORY_MANAGEMENT,ENABLE_OFFSET_SQL_FUNC,ENABLE_PREUPDATE_HOOK,
+ENABLE_RBU,ENABLE_RTREE,ENABLE_SESSION,ENABLE_SNAPSHOT,ENABLE_STAT4,ENABLE_UNLOCK_NOTIFY,
+LIKE_DOESNT_MATCH_BLOBS,MALLOC_SOFT_LIMIT=1024,MAX_ATTACHED=10,MAX_COLUMN=2000,
+MAX_COMPOUND_SELECT=500,MAX_DEFAULT_PAGE_SIZE=8192,MAX_EXPR_DEPTH=1000,MAX_FUNCTION_ARG=1000,
+MAX_LENGTH=1000000000,MAX_LIKE_PATTERN_LENGTH=50000,MAX_MMAP_SIZE=0x7fff0000,
+MAX_PAGE_COUNT=0xfffffffe,MAX_PAGE_SIZE=65536,MAX_SQL_LENGTH=1000000000,
+MAX_TRIGGER_DEPTH=1000,MAX_VARIABLE_NUMBER=32766,MAX_VDBE_OP=250000000,
+MAX_WORKER_THREADS=8,MUTEX_PTHREADS,SOUNDEX,SYSTEM_MALLOC,TEMP_STORE=1,THREADSAFE=1
+```
+
+This is an exact native platform allowlist, not a weakened count-only or subset check: count,
+ordering, and every entry fail closed. Windows independently retains its existing exact 57-entry
+set and evidence contract. Linux uses `MUTEX_PTHREADS`; Windows uses `MUTEX_NOOP` and additionally
+has the Windows-only `OMIT_SEH` entry. Their separately pinned compiler identity entries also remain
+platform-specific (`gcc-12.2.0` on Linux and `gcc-12-win32` on Windows). No Windows cohort or
+protected Windows evidence contract changed.
+
+The revision-1 insert digest was
+`5bacd33f5355f1a64a096841fe3fceeca28a40f211723e2ce4bb9b56988e6fe8`; the exact revision-2 CAS
+digest was `37572e06825751539b2e65c19034a23950925abbbe795d296a52ecf1e6e2aca4`.
+An independent owner process staged revision 3 and retained the live rollback journal. A fresh
+same-session contender returned genuine primary `SQLITE_BUSY` (`5`), while a different-session
+database remained independently writable and passed its own `quick_check`. Forced owner
+termination occurred before any commit. A fresh recovery child returned `quick_check=ok` and the
+exact old revision-2 row. One fresh parent-held dedicated connection then committed revision 3
+exactly once, reloaded and integrity-checked it, and produced final digest
+`557edb00816e95dbc84b0bba0f347cdaf6087fc49a6661534de903646cd3ec66`.
+There were zero retries, replays, repairs, fallbacks, inferred acknowledgements, staged-row leaks,
+revision gaps/duplicates, or ambiguous recoveries. Journal metadata was observed at 4,616 bytes for
+the initial commits and 8,720 bytes while the clean revision-3 connection remained open.
+
+The pre-contention and post-clean-commit metadata-tree SHA-256 values were respectively
+`0a388a03d9be383266d97f96a101f39b28e94b87f00c52f52cf6700f3ae13dc2` and
+`6fcf39acb8a48a782087cccba2f97958578d6077633c3fdf4618f96cfe627bc2`.
+Each hash covered LF-terminated ordinally sorted rows containing relative path, entry type, size,
+mode, owner, device, inode, mount ID, filesystem type/magic, source, and mount point. Evidence elapsed
+time was `50ms`; the package result was `ok` in `0.052s`. Only the parent test framework cleaned the
+fixture. After the pass, the caller removed the exact now-empty temporary parent and verified it no
+longer existed. No child process, fixture, binary, or evidence artifact remained.
+
+The exact successful native command, run from `packages/dorkpipe/lib`, was:
+
+```text
+TMPDIR=/tmp/dockpipe-sqlite-linux-fYSJ5FKK DORKPIPE_SQLITE_LINUX_EVIDENCE=1 CGO_ENABLED=0 go test -mod=readonly ./appserversupervisor/sqliteevidence -run '^TestLinuxNativeSQLiteSmoke$' -count=1 -v -timeout=10m
+```
+
+A preceding sandboxed setup attempt never started the test because the existing Go build cache was
+read-only in that sandbox; it supplied no native evidence. The successful command above ran with the
+required host access and revalidated a newly created fixture path rather than reusing the removed
+attempt fixture. This Linux smoke qualification changes no dependency, production storage, Slice 2
+surface, publication/contention/failure cohort, migration, cutover, lifecycle, or support decision.
+Because the shared smoke wrapper changed, `TestWindowsNativeSQLiteSmoke` requires one final native
+Windows rerun before these changes may be committed as fully cross-platform validated.
+
+The remaining required validation produced these exact results from `packages/dorkpipe/lib`:
+
+```text
+CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go test -mod=readonly -c -o <verified-temporary-binary> ./appserversupervisor/sqliteevidence
+PASS; embedded CGO_ENABLED=0, GOOS=windows, GOARCH=amd64; size 12,087,808 bytes
+CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go test -mod=readonly -c -o <verified-temporary-binary> ./appserversupervisor/sqliteevidence
+PASS; embedded CGO_ENABLED=0, GOOS=linux, GOARCH=amd64; size 11,137,781 bytes
+CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go test -mod=readonly -c -o <verified-temporary-binary> ./appserversupervisor/sqliteevidence
+PASS; embedded CGO_ENABLED=0, GOOS=darwin, GOARCH=arm64; size 10,953,058 bytes
+go test -mod=readonly ./appserversupervisor ./providersession -count=1
+PASS; appserversupervisor 0.712s; providersession 0.002s
+go test -mod=readonly ./... -count=1 -timeout=90s
+EXPECTED PROTECTED FAILURES; sqliteevidence passed; cmd/dorkpipe failed its existing Windows-style path-normalization candidate assertion; orchestrationhelper timed out after 90s
+go mod verify
+PASS; all modules verified
+gofmt -d appserversupervisor/sqliteevidence/host_other_test.go appserversupervisor/sqliteevidence/sqlite_smoke_test.go appserversupervisor/sqliteevidence/host_linux_test.go appserversupervisor/sqliteevidence/linux_smoke_test.go
+PASS; empty output
+git diff --check
+PASS
+```
+
+All three cross-target binaries were written under the one revalidated private ext4 directory
+`/tmp/dockpipe-sqlite-cross-0fVZ2Rme`, inspected with `go version -m`, then removed with that exact
+directory. The full suite's protected `cmd/dorkpipe` failure was
+`TestProviderPoolWorkdirHashCandidatesIncludeWindowsStyleNormalizations`: the candidate list retained
+the original and lowercase Windows paths plus Linux-working-directory-prefixed forms, but lacked the
+expected normalized variants. The exact protected timeout was
+`TestSoftwareDevPromotionPatchGenerationAndApprovedApply`; at the timeout it was inside the
+pre-existing bundled-cache fingerprint/extraction path reached through
+`ValidateResolvedWorkflowYAML`, promotion patch compilation, and approved apply. This moved from the
+Windows baseline timeout in
+`TestNodeConnectorPlacementExecutionGraphDependencyTransitionPolicyRejectsMalformedDecisionFixtures/malformed`,
+which was blocked in its pre-existing `os.ReadFile` fixture path. Neither protected failure is in an
+authorized path for this Linux qualification, and `appserversupervisor/sqliteevidence` passed in the
+same full-suite run.
 
 The implementation test matrix is:
 
