@@ -3220,6 +3220,121 @@ which was blocked in its pre-existing `os.ReadFile` fixture path. Neither protec
 authorized path for this Linux qualification, and `appserversupervisor/sqliteevidence` passed in the
 same full-suite run.
 
+**Linux/amd64 10,000-cycle native reader-publication cohort — 2026-08-04.** The Linux-only opt-in
+`TestLinuxNativeSQLitePublicationCohort`, gated by
+`DORKPIPE_SQLITE_LINUX_PUBLICATION_COHORT=1`, passed natively with `CGO_ENABLED=0`,
+`-mod=readonly`, `-count=1`, verbose output, and the fixed 30-minute timeout. It ran on Pop!_OS
+22.04 LTS, Linux `7.0.11-76070011-generic`, kernel build
+`#202606011647~1780583630~22.04~70ad774 SMP PREEMPT_DYNAMIC Thu J`, bare metal according to
+`systemd-detect-virt`, `amd64`, and Go `go1.25.0`.
+
+The caller created the new private parent
+`/tmp/dockpipe-sqlite-linux-publication-vqoEPdfl` outside the repository with mode `0700`, owner
+UID/GID `1000:1000`, device `259:7`, and inode `57176041`, and used it as `TMPDIR`. The test-owned
+fixture root was
+`/tmp/dockpipe-sqlite-linux-publication-vqoEPdfl/TestLinuxNativeSQLitePublicationCohort2406397794/001`,
+also owned `1000:1000` with mode `0700`. Its retained root identity was mount ID `33`, device
+`259:7`, inode `57176196`, and kind `directory`. Metadata-only `statx`, `O_PATH|O_NOFOLLOW` plus
+`fstatfs`, and `/proc/self/mountinfo` agreed on ext4 magic `0xef53`, source `/dev/nvme0n1p3`, mount
+root/point `/` / `/`, mount options `rw,noatime`, and super-options
+`rw,errors=remount-ro,stripe=64`. The exact mountinfo row was:
+
+```text
+33 2 259:7 / / rw,noatime shared:1 - ext4 /dev/nvme0n1p3 rw,errors=remount-ro,stripe=64
+```
+
+The source block device and parent were non-removable. The lane rejected bind, nested, overlay,
+FUSE, network, removable, shared-host, `drvfs`, `9p`, `tmpfs`, symlinked/substituted, and cross-mount
+storage. Every fixture/session directory remained an owned `0700` directory; the main database and
+every observed rollback journal remained owned regular `0600` files on the exact qualified
+mount/device. Only `aggregate.sqlite` and `aggregate.sqlite-journal` were admitted.
+
+The queried engine was SQLite `3.53.3` with source ID
+`2026-06-26 20:14:12 d4c0e51e4aeb96955b99185ab9cde75c339e2c29c3f3f12428d364a10d782c62`
+and native `unix` VFS. The exact selected URI was:
+
+```text
+file:///tmp/dockpipe-sqlite-linux-publication-vqoEPdfl/TestLinuxNativeSQLitePublicationCohort2406397794/001/main/aggregate.sqlite?_dqs=0&_error_rc=1&_txlock=exclusive&cache=private&mode=rw&vfs=unix
+```
+
+Every connection applied and read back `journal_mode=delete`, `synchronous=3` (`EXTRA`),
+`fullfsync=1`, `temp_store=2` (`MEMORY`), `mmap_size=0`, `busy_timeout=0`, `foreign_keys=1`,
+`trusted_schema=0`, `cell_size_check=1`, `locking_mode=exclusive`, and pre-schema `page_size=4096`.
+The lane rejected unresolved double-quoted SQL, required only `main`, and retained exactly the
+singleton STRICT `app_server_aggregate` schema with `user_version=1`. The initial connection
+fail-closed validated the exact sorted 56-option Linux allowlist recorded in the preceding Linux
+smoke qualification: it includes `COMPILER=gcc-12.2.0` and `MUTEX_PTHREADS`, with no `MUTEX_NOOP`
+or `OMIT_SEH`. Windows independently remains exactly 57 options with `COMPILER=gcc-12-win32`,
+`MUTEX_NOOP`, and `OMIT_SEH`, and without `MUTEX_PTHREADS`.
+
+One persistent writer child and one persistent reader child used a bounded strict JSON-line
+protocol. Every command and response retained its exact cycle number and operation. Missing,
+duplicate, malformed, substituted, unknown-field, multiple-value, or out-of-order protocol data
+failed closed. For every cycle, the reader returned the exact old row, the writer staged exactly the
+next revision and held the protected live rollback journal, a fresh same-database reader connection
+returned only genuine primary `SQLITE_BUSY` (`5`) or `SQLITE_LOCKED` (`6`), the writer committed
+exactly once, and the reader then returned the exact new row and `quick_check=ok`. Complete canonical
+payload, envelope, session ID, revision, and SHA-256 equality was required throughout.
+
+The exact aggregate result was:
+
+- cycles: `10000`;
+- successful pre-publication exact old reads: `10000`;
+- live-owner primary `SQLITE_BUSY`/`SQLITE_LOCKED` results: `10000`;
+- successful post-release exact new reads: `10000`;
+- protected live-journal observations: `10000`;
+- ambiguous or partial reads, revision gaps/duplicates, digest mismatches, and child-protocol loss,
+  duplication, substitution, or reordering: `0`;
+- retries, replays, repairs, fallbacks, and inferred acknowledgements: `0`;
+- initial revision/digest: `1` /
+  `aa5cf90832cf7e71136cfa92208ef923e141d7d8103cab900f642ed02e50b3fb`;
+- final revision/digest: `10001` /
+  `3304b9ccdfd01f7c211e8e4530be8b533c6b2c506975b83ebceb33f6288eb838`;
+- cohort elapsed time: `1m33.87s`; package result: `ok` in `93.891s`.
+
+The quiescent pre/post Linux metadata-tree SHA-256 was stable and equal:
+`ccaaef3dc1a4eab9ab808bd5ec040fcdedbde14ab4202ad540aee9fb9f362e90`. The hash covered
+LF-terminated ordinally sorted rows containing relative path, entry type, byte size, mode, owner,
+device, inode, mount ID, filesystem type/magic, source, and mount point. Journal checks were
+metadata-only: no journal was opened or hashed for content. Both children exited through the exact
+shutdown protocol; only the parent test framework cleaned the fixture. The caller found the private
+temporary parent empty, removed that exact directory, verified it no longer existed, and found no
+remaining fixture, child process, binary, or evidence artifact.
+
+The exact successful native command, run from `packages/dorkpipe/lib`, was:
+
+```text
+TMPDIR=/tmp/dockpipe-sqlite-linux-publication-vqoEPdfl DORKPIPE_SQLITE_LINUX_PUBLICATION_COHORT=1 CGO_ENABLED=0 go test -mod=readonly ./appserversupervisor/sqliteevidence -run '^TestLinuxNativeSQLitePublicationCohort$' -count=1 -v -timeout=30m
+```
+
+The required focused validation, run from `packages/dorkpipe/lib`, produced:
+
+```text
+CGO_ENABLED=0 go test -mod=readonly ./appserversupervisor/sqliteevidence -count=1
+PASS; ok in 0.006s
+TMPDIR=/tmp/dockpipe-sqlite-linux-publication-smoke-BJ0KRAtZ CGO_ENABLED=0 DORKPIPE_SQLITE_LINUX_EVIDENCE=1 go test -mod=readonly ./appserversupervisor/sqliteevidence -run '^TestLinuxNativeSQLiteSmoke$' -count=1 -v -timeout=10m
+PASS; evidence 47ms; package 0.049s; primary contention code SQLITE_BUSY (5); recovery quick_check=ok
+go mod verify
+PASS; all modules verified
+gofmt -d appserversupervisor/sqliteevidence/linux_publication_cohort_test.go appserversupervisor/sqliteevidence/host_linux_test.go appserversupervisor/sqliteevidence/linux_smoke_test.go appserversupervisor/sqliteevidence/sqlite_smoke_test.go
+PASS; empty output
+git diff --check
+PASS; empty output
+```
+
+The smoke fixture used a separately created private ext4 parent, which was empty after parent-test
+cleanup and then removed exactly. The complete test package also cross-compiled with `CGO_ENABLED=0`
+to one new verified private directory outside the repository. `go version -m` confirmed embedded
+settings for Windows/`amd64`, Linux/`amd64`, and macOS/`arm64`; the binaries were respectively
+12,087,808, 11,588,685, and 10,953,058 bytes. The three exact binaries and their now-empty parent
+`/tmp/dockpipe-sqlite-linux-publication-cross-OGrCa3sR` were removed. Cross-compilation remains
+compatibility evidence only.
+
+The protected Windows publication cohort remains unchanged and independently qualified. This pass
+qualifies only the Linux reader-publication cohort. It does not qualify Linux contention or failure
+cohorts, power-loss evidence, production storage, migration, Slice 2, or macOS. Linux contention is
+the next native cohort; macOS evidence remains intentionally last. TASK-013 and CAS-14 remain open.
+
 The implementation test matrix is:
 
 1. **Adapter selection:** a new normal Pipeon Codex session defaults to App Server; the explicit exec
