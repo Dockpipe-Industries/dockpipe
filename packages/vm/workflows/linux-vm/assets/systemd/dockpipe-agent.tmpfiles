@@ -1,0 +1,2 @@
+d /var/lib/dockpipe-agent 0700 dockpipe-agent dockpipe-agent -
+d /var/lib/dockpipe-agent/tickets 0700 dockpipe-agent dockpipe-agent -

@@ -1,0 +1,16 @@
+workflow: linux-vm
+resolver: qemu
+purpose: development
+noninteractive: true
+inputs:
+  General.ExecMode: bash
+  General.BootSource: image
+  General.Purpose: development
+  Image.Url: https://cloud-images.ubuntu.com/releases/noble/release-20260801/ubuntu-24.04-server-cloudimg-amd64.img
+  Image.Sha256: 0533b0655c32e68b31d792ecd6ccfca95abdbc536c4446874fe0513bd4140ffe
+  Storage.Disk: /absolute/path/to/user-owned-development-disk.qcow2
+  Storage.Persistence: ephemeral
+  Advanced.SshUser: ubuntu
+  Advanced.NetDevice: virtio-net-pci
+  Advanced.GuestCommand: id
+  Qualification.Enabled: false

@@ -1,7 +1,7 @@
 schema: 1
 kind: package
 name: vm
-version: 0.6.0
+version: 0.7.0
 title: DockPipe VM package family
 platforms: [windows, deb]
 description: |
@@ -14,6 +14,8 @@ description: |
 author: DockPipe
 license: Apache-2.0
 repository: https://github.com/dockpipe/dockpipe
-tags: [workflow, vm, qemu, windows]
+tags: [workflow, vm, qemu, windows, linux, qualification]
 script_contract:
   inject: [workdir, workflow_name, script_dir, package_root, assets_dir, dockpipe_bin]
+test:
+  script: tests/run.sh

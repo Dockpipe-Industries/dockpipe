@@ -1,0 +1,16 @@
+#cloud-config
+apt:
+  preserve_sources_list: true
+package_update: false
+package_upgrade: false
+packages: []
+users: []
+write_files:
+  - path: /etc/systemd/system/dockpipe-qualification-offline
+    owner: root:root
+    permissions: "0400"
+    content: |
+      This seed is inert until package-owned binaries, exact hashes, keys,
+      systemd assets, and the reviewed data-disk identity are injected by a
+      separately approved provisioning gate.
+runcmd: []
