@@ -276,6 +276,44 @@ func (j *auditJournal) recoverCursor(ctx context.Context, evidence string, sessi
 	return nil
 }
 
+// recoverCursorAfterIdleShutdown accepts either the exact idle cursor or one
+// subsequent clean local shutdown event. Any other event suffix remains
+// ambiguous and is rejected.
+func (j *auditJournal) recoverCursorAfterIdleShutdown(ctx context.Context, evidence string, session providersession.SessionRef, cursor uint64) (uint64, error) {
+	j.mu.Lock()
+	defer j.mu.Unlock()
+	if j.document.Version != 0 || !safeEvidence(evidence) {
+		return 0, errors.New("audit recovery evidence is ambiguous")
+	}
+	j.evidence, j.session = evidence, session
+	data, err := j.store.Load(ctx, evidence)
+	if err != nil || len(data) == 0 || len(data) > maxAuditBytes || json.Unmarshal(data, &j.document) != nil {
+		return 0, errors.New("audit recovery evidence is missing")
+	}
+	if err := j.document.validate(evidence, session); err != nil || j.document.LastEvent < cursor || j.document.LastEvent > cursor+1 {
+		return 0, errors.New("audit recovery cursor is invalid")
+	}
+	if j.document.LastEvent == cursor {
+		return cursor, nil
+	}
+	var suffix *AuditRecord
+	for segmentIndex := range j.document.Segments {
+		for recordIndex := range j.document.Segments[segmentIndex].Records {
+			record := &j.document.Segments[segmentIndex].Records[recordIndex]
+			if record.EventSequence == cursor+1 {
+				if suffix != nil {
+					return 0, errors.New("audit recovery suffix is ambiguous")
+				}
+				suffix = record
+			}
+		}
+	}
+	if suffix == nil || suffix.Operation != "disconnect" || suffix.Outcome != "failed" || suffix.Lifecycle != "disconnected" || suffix.Summary != string(DisconnectShutdown) || suffix.Session != session || suffix.Correlation != (providersession.Correlation{}) {
+		return 0, errors.New("audit recovery suffix is unsafe")
+	}
+	return cursor + 1, nil
+}
+
 func (r AuditRecord) validContent(provider string, requireUnsetSequence bool) error {
 	if r.Version != auditSchemaVersion {
 		return errors.New("audit record version is invalid")
@@ -400,7 +438,7 @@ func safeAuditClass(value string) bool {
 
 func validAuditDisconnectReason(value string) bool {
 	switch DisconnectReason(value) {
-	case DisconnectStartupFailure, DisconnectStartupDeadline, DisconnectChildExit, DisconnectTransportClosed, DisconnectMalformedInput, DisconnectLivenessDeadline, DisconnectShutdown, DisconnectRequestDeadline, DisconnectMalformedEnvelope, DisconnectCorrelationMismatch, DisconnectProviderError, DisconnectInitializationRejected, DisconnectUnsupportedSchema, DisconnectUnsupportedCapability, DisconnectModelRerouted, DisconnectPolicyMismatch, DisconnectLifecycleRejected, DisconnectUnsupportedLifecycle, DisconnectUnsupportedEvent, DisconnectEventOrdering, DisconnectDecisionRejected, DisconnectCancellationRejected, DisconnectPersistenceFailure, DisconnectAuditFailure, DisconnectUnsafeConfiguration, DisconnectTransportOwnership:
+	case DisconnectStartupFailure, DisconnectStartupDeadline, DisconnectChildExit, DisconnectTransportClosed, DisconnectMalformedInput, DisconnectLivenessDeadline, DisconnectShutdown, DisconnectRequestDeadline, DisconnectMalformedEnvelope, DisconnectCorrelationMismatch, DisconnectProviderError, DisconnectInitializationRejected, DisconnectUnsupportedSchema, DisconnectUnsupportedCapability, DisconnectModelRerouted, DisconnectPolicyMismatch, DisconnectLifecycleRejected, DisconnectUnsupportedLifecycle, DisconnectUnsupportedEvent, DisconnectEventOrdering, DisconnectDecisionRejected, DisconnectApprovalDenied, DisconnectCancellationRejected, DisconnectPersistenceFailure, DisconnectAuditFailure, DisconnectUnsafeConfiguration, DisconnectTransportOwnership:
 		return true
 	default:
 		return false

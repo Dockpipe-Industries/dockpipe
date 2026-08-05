@@ -9,6 +9,7 @@ import (
 	"regexp"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"dorkpipe.orchestrator/providersession"
 )
@@ -47,6 +48,8 @@ type LifecycleReference struct {
 // InputReference is an opaque, bounded reference. CAS-05 never accepts or
 // retains prompt text; a later adapter is responsible for resolving a ref.
 type InputReference string
+
+const maxTransientPromptBytes = 256 * 1024
 
 var (
 	ErrLifecycleUnavailable = errors.New("app server lifecycle is unavailable")
@@ -380,6 +383,16 @@ func (s *Supervisor) StartTurn(ctx context.Context, reference LifecycleReference
 	return s.startTurn(ctx, reference, policy, inputParam(input))
 }
 
+// StartPromptTurn is the first-consumer input seam. It transmits one bounded
+// prompt directly to the private App Server transport and never retains it in
+// supervisor state, provider-neutral events, audit, or recovery records.
+func (s *Supervisor) StartPromptTurn(ctx context.Context, reference LifecycleReference, policy LifecyclePolicy, prompt string) (LifecycleReference, error) {
+	if strings.TrimSpace(prompt) == "" || len(prompt) > maxTransientPromptBytes || !utf8.ValidString(prompt) || strings.ContainsRune(prompt, '\x00') {
+		return LifecycleReference{}, s.rejectLifecycle(DisconnectLifecycleRejected)
+	}
+	return s.startTurn(ctx, reference, policy, []any{map[string]any{"type": "text", "text": prompt}})
+}
+
 // startTurn keeps the private provider input inside the supervisor package.
 // The public lifecycle surface remains limited to opaque InputReference values.
 func (s *Supervisor) startTurn(ctx context.Context, reference LifecycleReference, policy LifecyclePolicy, input []any) (LifecycleReference, error) {
@@ -406,6 +419,8 @@ func (s *Supervisor) startTurn(ctx context.Context, reference LifecycleReference
 	}
 	s.mu.Lock()
 	s.lifecycle.startPending = true
+	s.completedTurnText = ""
+	s.completedTurnTextReady = false
 	s.mu.Unlock()
 	params := policy.params()
 	params["threadId"] = threadID

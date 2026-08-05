@@ -200,11 +200,17 @@ func (s *Supervisor) terminalEventLocked(params eventParams) (providersession.Ev
 			pending.timer.Stop()
 		}
 		s.lifecycle.turnID, s.lifecycle.active, s.lifecycle.steerable, s.lifecycle.turnNotified, s.lifecycle.itemID, s.lifecycle.cancellation = "", false, false, false, "", nil
+		s.completedTurnText = ""
+		s.completedTurnTextReady = false
 		s.state = providersession.StateCancelled
 		s.sequence++
 		return providersession.Event{ContractVersion: providersession.ContractVersion, Sequence: s.sequence, OccurredAt: nowUTC(), Session: s.session, Kind: providersession.EventStateChanged, State: providersession.StateCancelled, Correlation: pending.intent.Correlation, Summary: "cancelled"}, ""
 	}
 	s.lifecycle.turnID, s.lifecycle.active, s.lifecycle.steerable, s.lifecycle.turnNotified = "", false, false, false
+	s.completedTurnTextReady = status == "completed"
+	if status != "completed" {
+		s.completedTurnText = ""
+	}
 	s.sequence++
 	return providersession.Event{ContractVersion: providersession.ContractVersion, Sequence: s.sequence, OccurredAt: nowUTC(), Session: s.session, Kind: providersession.EventProgress, Correlation: s.eventCorrelation(turnID, ""), Summary: "turn_" + status}, ""
 }

@@ -287,18 +287,34 @@ func (c Correlation) ValidateForDecision() error {
 }
 
 type ApprovalRequest struct {
-	Correlation Correlation `json:"correlation"`
-	ActionClass string      `json:"action_class"`
-	Summary     string      `json:"summary"`
-	Scope       []string    `json:"scope,omitempty"`
+	Correlation      Correlation `json:"correlation"`
+	Reason           string      `json:"reason"`
+	AllowedDecisions []string    `json:"allowed_decisions"`
 }
+
+const (
+	ApprovalReasonCommandExecution = "command_execution"
+	ApprovalReasonWorkspaceChange  = "workspace_change"
+	ApprovalReasonPermission       = "declared_permission"
+)
 
 func (r ApprovalRequest) Validate() error {
 	if err := r.Correlation.ValidateForDecision(); err != nil {
 		return err
 	}
-	if strings.TrimSpace(r.ActionClass) == "" || strings.TrimSpace(r.Summary) == "" {
-		return errors.New("approval action class and summary are required")
+	want := []string{DecisionApprove, DecisionDeny}
+	if r.Reason == ApprovalReasonPermission {
+		want = []string{DecisionDeny}
+	} else if r.Reason != ApprovalReasonCommandExecution && r.Reason != ApprovalReasonWorkspaceChange {
+		return errors.New("known approval reason is required")
+	}
+	if len(r.AllowedDecisions) != len(want) {
+		return errors.New("exact allowed approval decisions are required")
+	}
+	for index := range want {
+		if r.AllowedDecisions[index] != want[index] {
+			return errors.New("exact allowed approval decisions are required")
+		}
 	}
 	return nil
 }
@@ -558,6 +574,27 @@ func (d ApprovalDecision) Validate() error {
 		return errors.New("known approval decision is required")
 	}
 	return nil
+}
+
+// ValidateFor binds one explicit local decision to the exact request and its
+// closed decision set. Policy, capability, connection, or consumer state is
+// never evidence for a decision.
+func (d ApprovalDecision) ValidateFor(request ApprovalRequest) error {
+	if err := request.Validate(); err != nil {
+		return err
+	}
+	if err := d.Validate(); err != nil {
+		return err
+	}
+	if d.Correlation != request.Correlation {
+		return errors.New("approval decision correlation does not match the request")
+	}
+	for _, allowed := range request.AllowedDecisions {
+		if d.Decision == allowed {
+			return nil
+		}
+	}
+	return errors.New("approval decision is not allowed for the request")
 }
 
 type RecoveryRequest struct {
