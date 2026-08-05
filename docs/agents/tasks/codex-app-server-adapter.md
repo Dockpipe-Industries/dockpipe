@@ -72,12 +72,36 @@ Repository has no ADR convention; this task is the accepted product-decision rec
   contract, strict bounded loader, and inert package-state path described below. They remain unused
   and unreachable from production, and no aggregate has been written. The dated pre-Slice-2
   primitive decision packet below now records the accepted all-platform research policy and the
-  completed primary-documentation matrix for Windows/NTFS/amd64, Linux/ext4/amd64, and
-  macOS/APFS/arm64. Linux has a documentation-supported candidate sequence for later native
-  evidence, but Windows and macOS retain required undocumented guarantees. The all-or-nothing
-  documentation gate is therefore unmet: the primitive matrix is not accepted, prototype evidence
-  remains unauthorized on every platform, and no support reduction or implementation choice is
-  made. Migration, operations, storage implementation, observation,
+  accepted current negative documentation result for Windows/NTFS/amd64, Linux/ext4/amd64, and
+  macOS/APFS/arm64. Acceptance covers only the recorded `D`/`R`/`U` documentation findings. A
+  focused Windows re-audit now documents an unprivileged NTFS rename-metadata
+  sync candidate, but atomic first-publication/replacement and resulting power-loss visibility remain
+  unresolved. Linux has a documentation-supported candidate sequence for later native evidence,
+  while Windows and macOS retain required undocumented guarantees. The all-or-nothing
+  documentation gate is therefore unmet: no storage primitive, API sequence, dependency version,
+  platform allowlist, implementation, or evidence harness is accepted, prototype evidence remains
+  unauthorized on every platform, and no support reduction or implementation choice is made.
+  The authorized bounded transactional-store selection below now accepts the logical-one-aggregate,
+  physical-per-session-SQLite direction and fixes an exact design/evidence baseline. The accepted
+  dependency baseline is `modernc.org/sqlite v1.56.0`, its required
+  `modernc.org/libc v1.74.4`, embedded SQLite 3.53.3, native `win32`/`unix` VFSes, rollback journal,
+  exclusive connection locking, and `synchronous=EXTRA`. The closed version-skew qualification below
+  proves every SQLite 3.53.4 fix irrelevant to the selected fixed schema, single-database/no-`ATTACH`
+  contract, and bounded SQL surface. A separately authorized dependency-pin and test-only Windows
+  smoke slice now pins those exact modules and proves the selected contract once on the current
+  fixed NTFS Windows/`amd64` host with CGo disabled. A separate opt-in 10,000-cycle Windows native
+  reader-publication cohort proves exact old reads, live-owner fail-closed contention, protected
+  journals, and exact new reads across independent persistent child processes. The additional opt-in
+  1,000-cycle Windows contention/forced-termination cohort below proves exact old-row hot-journal
+  recovery and one later clean commit while an independent different-session database continues
+  committing. None of these tests changes production storage source, the inert Slice 1 path/loader,
+  aggregate, migration, or lifecycle behavior. The deterministic matrix now reaches the exact
+  post-COMMIT-invocation/pre-result loss boundary through the pinned driver's native commit hook;
+  its required genuine-commit-error row remains proven unreachable under the selected exclusive
+  shape, so the complete-matrix claim remains open. Reboot/power-loss evidence, Linux/macOS runtime
+  evidence, and the production-use gate remain open. A shared cross-session
+  database remains rejected because it would couple otherwise independent session writers.
+  Migration, operations, storage implementation, observation,
   compare-and-commit, cutover, dispatch guards, decision controls, later-turn claiming, Pipeon
   projection, platform evidence acceptance, compatibility, and rollback remain separately gated.
   Slice 2 has not started; TASK-013 and CAS-14 remain open.
@@ -1942,11 +1966,13 @@ slices require their own explicit selection before work begins.
 
 ##### Pre-Slice-2 storage-primitive decision packet — 2026-08-04
 
-**Decision status and boundary.** The maintainer research policy below is accepted. The primitive/API
-matrix and every implementation choice remain unaccepted. This packet adds documentation only: no
-prototype, evidence harness, storage code, dependency, lock, temporary file, aggregate, process
-helper, generated artifact, or production call site was created. Slice 2 has not started; TASK-013
-and CAS-14 remain open. Provider-pool remains the sole future transaction owner, and
+**Decision status and boundary.** The maintainer research policy below and the matrix's current
+negative documentation result are accepted on 2026-08-04. Acceptance covers only the recorded
+`D`/`R`/`U` documentation findings. No storage primitive, API sequence, dependency version, platform
+allowlist, implementation, or evidence harness is accepted or authorized. This packet adds
+documentation only: no prototype, storage code, lock, temporary file, aggregate, process helper,
+generated artifact, or production call site was created. Slice 2 has not started; TASK-013 and
+CAS-14 remain open. Provider-pool remains the sole future transaction owner, and
 `reconciled_outcome_unknown` remains non-terminal and non-authorizing. The unknown pending turn is
 permanently replay-forbidden. Package/engine and provider-neutral boundaries are unchanged.
 
@@ -2031,16 +2057,43 @@ an explicit published limitation, or unresolved after the listed primary surface
   documents exclusive byte-range exclusion, including beyond EOF, but mapped access ignores it;
   [`UnlockFileEx`](https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-unlockfileex)
   and [process termination](https://learn.microsoft.com/en-us/windows/win32/procthread/terminating-a-process)
-  document handle/lock release. Create the sibling temp with `CREATE_NEW`, write all bytes, and call
+  document handle/lock release.
+
+  Create the sibling temp with `CREATE_NEW | FILE_FLAG_WRITE_THROUGH`, write all bytes, and call
   [`FlushFileBuffers`](https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-flushfilebuffers).
-  The publication candidates remain `SetFileInformationByHandle(FileRenameInfoEx)`, flags `0` for
-  first publication and `FILE_RENAME_FLAG_REPLACE_IF_EXISTS | FILE_RENAME_FLAG_POSIX_SEMANTICS` for
-  replacement. [`FileRenameInformationEx`](https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-fscc/4217551b-d2c0-42cb-9dc1-69a716cf6d0c)
-  documents no-replace failure when the target exists, and the kernel information class is available
-  from Windows 10 version 1709, but the public docs do not promise atomic old/new visibility or a
-  user-mode parent-directory entry flush. [`ReplaceFileW`](https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-replacefilew)
-  is rejected: `REPLACEFILE_WRITE_THROUGH` is unsupported and documented failures can remove or move
-  names. Candidate minimum is Windows 10 version 1709, but no Windows version is accepted.
+  Use that same write-through source handle for
+  [`SetFileInformationByHandle(FileRenameInfoEx)`](https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-setfileinformationbyhandle):
+  flags `0` for first publication and `FILE_RENAME_FLAG_REPLACE_IF_EXISTS |
+  FILE_RENAME_FLAG_POSIX_SEMANTICS` for replacement. [`CreateFileW`](https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-createfilew#caching-behavior)
+  explicitly says a write-through request causes NTFS to flush metadata changes such as a rename,
+  and [File Caching](https://learn.microsoft.com/en-us/windows/win32/fileio/file-caching) says a file
+  flush or `FILE_FLAG_WRITE_THROUGH` stores file-system metadata changes to disk. Together with the
+  documented ordinary file/directory access requirements for rename, this qualifies property 9
+  without a directory or administrative volume flush. A retained directory handle remains an
+  identity/containment anchor only; neither `FlushFileBuffers` nor the driver flush documentation
+  promises parent-entry durability for a directory handle. The documented volume-wide flush requires
+  administrative privileges and remains rejected.
+
+  [`FileRenameInformationEx`](https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-fscc/4217551b-d2c0-42cb-9dc1-69a716cf6d0c)
+  requires flags `0` to fail if the target exists and says POSIX replacement leaves old handles valid
+  while subsequent opens of the target name open the renamed file. The WDK
+  [`FILE_RENAME_INFORMATION`](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/ns-ntifs-_file_rename_information)
+  contract also requires same-volume rename and describes same-directory naming. The normative
+  [`FileRenameInformation`](https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-fsa/87f86c9b-6c2a-4803-84b7-131a74a434fa)
+  algorithm removes and adds directory links, but none of these sources states that first publication
+  or replacement is atomic to concurrent readers, excludes a transient missing target, or guarantees
+  one complete old-or-new revision for an open racing the operation. They also do not define a local
+  NTFS post-failure state for every error. Therefore properties 5 and 6 remain unresolved, and every
+  non-allowlisted outcome after publication is invoked remains `unknown_commit_result`.
+
+  The WDK [`FILE_INFORMATION_CLASS`](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ne-wdm-_file_information_class)
+  page documents `FileRenameInformationEx` from Windows 10 version 1709. The public Win32 enum lists
+  `FileRenameInfoEx` without a per-value minimum and `SetFileInformationByHandle` warns that information
+  classes can vary by OS release. Candidate minimum therefore remains Windows 10 version 1709, not an
+  earlier inferred floor. Microsoft exposes NTFS major/minor values but does not bind these rename and
+  durability guarantees to an exact NTFS format version; no Windows/NTFS version tuple is accepted.
+  `ReplaceFileW` remains rejected because `REPLACEFILE_WRITE_THROUGH` is unsupported and documented
+  failures can remove or move names.
 - **Linux / local fixed-disk ext4 / `amd64`: documentation-qualified for later native evidence only.**
   Retain one aggregate-directory fd and use
   [`openat2`](https://man7.org/linux/man-pages/man2/openat2.2.html) with
@@ -2068,28 +2121,66 @@ an explicit published limitation, or unresolved after the listed primary surface
   maintainer acceptance.
 - **macOS / local fixed-disk APFS / `arm64`: not documentation-qualified.** Retain a descriptor walk
   using `openat` with `O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC`; use `fstat`/`fstatfs` to require APFS,
-  `MNT_LOCAL`, stable `fsid`, and accepted mount flags. Apple documents final-component no-follow and
-  exclusive create in [`open(2)`](https://developer.apple.com/library/archive/documentation/System/Conceptual/ManPages_iPhoneOS/man2/open.2.html),
-  advisory whole-file exclusion in [`flock(2)`](https://developer.apple.com/library/archive/documentation/System/Conceptual/ManPages_iPhoneOS/man2/flock.2.html),
-  and filesystem/mount identity fields in [`statfs(2)`](https://developer.apple.com/library/archive/documentation/System/Conceptual/ManPages_iPhoneOS/man2/statfs.2.html).
+  `MNT_LOCAL`, one retained filesystem ID, and accepted mount flags. Apple documents final-component
+  no-follow and exclusive create in
+  [`open(2)`](https://developer.apple.com/library/archive/documentation/System/Conceptual/ManPages_iPhoneOS/man2/open.2.html),
+  advisory whole-file exclusion in
+  [`flock(2)`](https://developer.apple.com/library/archive/documentation/System/Conceptual/ManPages_iPhoneOS/man2/flock.2.html),
+  and filesystem ID, type, mount-point, mounted-from, and flag fields in
+  [`statfs(2)`](https://developer.apple.com/library/archive/documentation/System/Conceptual/ManPages_iPhoneOS/man2/statfs.2.html).
+  Those surfaces support properties 1-4 only; `statfs` names `f_fsid` as a filesystem ID but does not
+  make the complete descriptor walk a race-free containment or same-volume proof.
+
   Open the persistent lock with `O_RDWR | O_CREAT | O_CLOEXEC | O_NOFOLLOW`, `0600`, and poll
-  `flock(LOCK_EX | LOCK_NB)`. Create the sibling temp with `O_EXCL`, write exact bytes, and request
-  `fcntl(F_FULLFSYNC)`. Publication candidates are
-  [`renameatx_np`](https://developer.apple.com/library/archive/documentation/FileManagement/Conceptual/APFS_Guide/ToolsandAPIs/ToolsandAPIs.html)
-  with `RENAME_EXCL` for first publication and flags `0` for replacement. Apple publishes a general
+  `flock(LOCK_EX | LOCK_NB)`. Create the sibling temp with `O_EXCL` and write exact bytes. The APFS
+  [Tools and APIs guide](https://developer.apple.com/library/archive/documentation/FileManagement/Conceptual/APFS_Guide/ToolsandAPIs/ToolsandAPIs.html)
+  labels `renamex_np` and `renameatx_np` as safe-save APIs but publishes only their prototypes.
+  Foundation's
+  [`volumeSupportsExclusiveRenaming`](https://developer.apple.com/documentation/foundation/urlresourcevalues/volumesupportsexclusiverenaming)
+  says that a true value means support for `RENAME_EXCL` on path-based `renamex_np` and describes a
+  pre-existing-destination warning. General
   [`rename(2)`](https://developer.apple.com/library/archive/documentation/System/Conceptual/ManPages_iPhoneOS/man2/rename.2.html)
-  old/new namespace guarantee and a volume capability for
-  [`RENAME_EXCL`](https://developer.apple.com/documentation/foundation/urlresourcevalues/volumesupportsexclusiverenaming),
-  but does not publish the exact `renameatx_np` flag/error/atomicity contract needed here. Apple's
+  requires one filesystem and says an instance of the new name always exists even across a crash;
+  [About Apple File System](https://developer.apple.com/documentation/foundation/about-apple-file-system)
+  also advertises atomic safe-save as an APFS feature. None of those contracts defines
+  `renameatx_np` flags or errors, binds `RENAME_EXCL` to the descriptor-relative call, establishes an
+  atomic no-overwrite first publication, or establishes flags-`0` replacement in which racing readers
+  observe exactly one complete old or new revision without a transient missing target. Properties 5
+  and 6 therefore remain unresolved.
+
+  Request `fcntl(F_FULLFSYNC)` before publication and after reopening the visible file only as an
+  unresolved candidate. Apple's
   [`fsync(2)`](https://developer.apple.com/library/archive/documentation/System/Conceptual/ManPages_iPhoneOS/man2/fsync.2.html)
-  says ordinary `fsync` permits power-loss reordering; its archived
+  says ordinary `fsync` permits data loss and write reordering after power loss or an OS crash. Its
+  archived
   [`fcntl(2)`](https://developer.apple.com/library/archive/documentation/System/Conceptual/ManPages_iPhoneOS/man2/fcntl.2.html)
-  `F_FULLFSYNC` support list does not include APFS, and no published unprivileged parent-directory
-  entry-sync primitive or complete same-volume nested-mount rejection was found. APFS is documented
-  as the default from macOS High Sierra, while the selected `arm64` tuple implies macOS 11 or later;
-  see [Apple filesystem details](https://developer.apple.com/library/archive/documentation/FileManagement/Conceptual/FileSystemProgrammingGuide/FileSystemDetails/FileSystemDetails.html)
-  and [Apple-silicon availability](https://developer.apple.com/help/app-store-connect/manage-your-apps-availability/manage-availability-of-iphone-and-ipad-apps-on-macs-with-apple-silicon).
-  No macOS minimum is accepted while these gaps remain.
+  says `F_FULLFSYNC` asks the drive to flush buffered data but lists only HFS, FAT, and UDF as
+  implemented filesystems. Current Apple
+  [disk-write guidance](https://developer.apple.com/documentation/xcode/reducing-disk-writes) calls
+  `F_FULLFSYNC` a strong expectation and an iOS best-effort guarantee that can still lose data on
+  sudden power loss; it does not publish an APFS/macOS persistence contract. No unprivileged
+  parent-directory entry-sync primitive is documented. APFS copy-on-write crash-protection statements
+  in Apple's
+  [FAQ](https://developer.apple.com/library/archive/documentation/FileManagement/Conceptual/APFS_Guide/FAQ/FAQ.html)
+  do not bind this exact file/rename/directory sequence. Properties 7-10 remain unresolved.
+
+  Foundation publishes
+  [`isMountTrigger`](https://developer.apple.com/documentation/foundation/urlresourcevalues/ismounttrigger)
+  and
+  [`volumeIdentifier`](https://developer.apple.com/documentation/foundation/urlresourcevalues/volumeidentifier)
+  detection values, but neither those values nor `O_NOFOLLOW`/`fstatfs` rejects every symlink, mount
+  substitution, same-filesystem nested mount, and cross-volume movement throughout the retained walk;
+  property 12 remains unresolved. The
+  [Apple File System Reference](https://developer.apple.com/support/downloads/Apple-File-System-Reference.pdf)
+  documents APFS version 2 as implemented in macOS 10.13, backward-incompatible feature flags, and a
+  reserved `nx_newest_mounted_version` field recording the newest Apple software to mount a container.
+  Apple also documents APFS support from macOS 10.13 in the
+  [Disk Utility guide](https://support.apple.com/en-ca/guide/disk-utility/dsku19ed921c/mac), while
+  [Apple-silicon porting guidance](https://developer.apple.com/documentation/apple-silicon/porting-your-macos-apps-to-apple-silicon)
+  documents native macOS `arm64` in the macOS 11 porting context. These are format and host
+  facts, not an unprivileged mounted-volume API or compatibility contract mapping an exact APFS
+  feature set, macOS build, and hardware to the required rename, synchronization, containment, and
+  power-loss guarantees. Property 13 and an exact allowlist floor remain unresolved.
 
 **Compact 13-property matrix.** `D` means the published docs support the candidate and it is eligible
 for later native evidence; `R` means unresolved after the primary surfaces listed above were
@@ -2104,39 +2195,59 @@ while durability also requires the separately controlled hard-reboot/power-loss 
 | 2. Release after normal exit, crash, termination | exact `UnlockFileEx`/handle close; termination closes kernel handles | `LOCK_UN` or last close; `O_CLOEXEC` prevents exec leak | `LOCK_UN` or last close; `O_CLOEXEC` prevents exec leak | W:D; L:D; M:D |
 | 3. Same-session contention; different-session independence | one validated digest-named file per session | one validated digest-named inode per session | one validated digest-named inode per session | W:D; L:D; M:D; mapping still needs process evidence |
 | 4. Same-directory exclusive temp creation | sibling `CreateFileW(CREATE_NEW)` | dirfd-relative `openat2(O_CREAT|O_EXCL|O_NOFOLLOW)` | dirfd-relative `openat(O_CREAT|O_EXCL|O_NOFOLLOW)` | W:D; L:D; M:D |
-| 5. Atomic first publication without overwrite | `FileRenameInfoEx`, flags `0`; no-overwrite is documented, atomic complete-file visibility is not | `renameat2(RENAME_NOREPLACE)`; ext4 support since Linux 3.15 | `renameatx_np(RENAME_EXCL)` is exposed, but exact flag/error/atomicity docs were not found | W:R; L:D; M:R |
-| 6. Atomic replacement of one complete revision | `FileRenameInfoEx(REPLACE_IF_EXISTS|POSIX_SEMANTICS)` lacks an atomic old/new contract; `ReplaceFileW` is U | same-dirfd `renameat2(..., 0)` documents atomic replacement | `renameatx_np(..., 0)` candidate; general `rename` is documented but exact descriptor API contract is absent | W:R; L:D; M:R |
-| 7. File-content sync before publication | exact temp write + `FlushFileBuffers` | exact temp write + `fsync(tempfd)` | `F_FULLFSYNC`; ordinary `fsync` is U and APFS support is undocumented | W:D; L:D; M:R |
-| 8. Visible aggregate sync after publication | reopen/identity/canonical check + `FlushFileBuffers` | dirfd reopen/identity/canonical check + `fsync` | reopen/identity/canonical check + `F_FULLFSYNC`; APFS guarantee absent | W:D; L:D; M:R |
-| 9. Parent-directory entry sync | no documented unprivileged primitive; privileged volume flush is not a substitute | `fsync(parent-dirfd)` is explicitly required | no documented directory-entry durability primitive | W:R; L:D; M:R |
-| 10. Restart and power-loss visibility | cannot qualify without 5, 6, and 9 | full sequence is documented to survive crash/reboot; hard-power evidence remains mandatory | cannot qualify without 5-9 | W:R; L:D; M:R |
+| 5. Atomic first publication without overwrite | `FileRenameInfoEx`, flags `0`; target-exists failure is documented, concurrent complete-file visibility is not | `renameat2(RENAME_NOREPLACE)`; ext4 support since Linux 3.15 | path-based `RENAME_EXCL` capability documents a pre-existing-target warning, but `renameatx_np` publishes only a prototype and no descriptor-relative flag/error/racing-reader atomicity contract | W:R; L:D; M:R |
+| 6. Atomic replacement of one complete revision | `FileRenameInfoEx(REPLACE_IF_EXISTS|POSIX_SEMANTICS)` preserves old handles and routes later opens to new, but lacks a racing-reader atomic old/new contract; `ReplaceFileW` is U | same-dirfd `renameat2(..., 0)` documents atomic replacement | general `rename` keeps an instance of the new name through a crash, but flags-`0` `renameatx_np` replacement and exact racing-reader old/new visibility are undocumented | W:R; L:D; M:R |
+| 7. File-content sync before publication | exact temp write + `FlushFileBuffers` | exact temp write + `fsync(tempfd)` | `F_FULLFSYNC`; archived support list does not include APFS and current iOS guidance is best-effort, not an APFS/macOS contract | W:D; L:D; M:R |
+| 8. Visible aggregate sync after publication | reopen/identity/canonical check + `FlushFileBuffers` | dirfd reopen/identity/canonical check + `fsync` | reopen/identity/canonical check + `F_FULLFSYNC`; no published APFS/macOS persistence guarantee | W:D; L:D; M:R |
+| 9. Parent-directory entry sync | source handle opened `FILE_FLAG_WRITE_THROUGH`; NTFS documents rename-metadata flush to disk; no directory or volume flush | `fsync(parent-dirfd)` is explicitly required | no documented directory-entry durability primitive | W:D; L:D; M:R |
+| 10. Restart and power-loss visibility | cannot qualify without 5 and 6; write-through hardware support is not universal | full sequence is documented to survive crash/reboot; hard-power evidence remains mandatory | general rename/APFS crash-protection statements do not qualify the exact sequence; cannot qualify without 5-9 | W:R; L:D; M:R |
 | 11. Known failure vs unknown result | only pre-publication/proven-unchanged failures are known; all other post-invocation outcomes unknown | same conservative rule; exact old/new restart reload classifies | same conservative rule; unresolved API errors remain unknown | W:D; L:D; M:D as package policy; no automatic retry |
-| 12. Reject link/reparse/mount/path/cross-volume substitution | retained non-delete directory handles, `OPEN_REPARSE_POINT`, reparse rejection, file/volume IDs | `openat2` containment + `NO_XDEV`, `statx` mount ID, inode/device checks | component `O_NOFOLLOW` + `fstatfs` lacks a documented complete nested/same-volume mount-substitution proof | W:D; L:D; M:R |
-| 13. Exact local filesystem and minimum-version support | fixed NTFS + NTFS major/minor is detectable; candidate Windows 10 1709+; no version accepted | fixed local ext4; Linux 5.8+ for mount ID; exact kernel/ext4/mount allowlist awaits evidence | APFS/local/type is detectable, but no documented APFS format-version contract; selected arch implies macOS 11+ | W:D detection only; L:D candidate; M:R |
+| 12. Reject link/reparse/mount/path/cross-volume substitution | retained non-delete directory handles, `OPEN_REPARSE_POINT`, reparse rejection, file/volume IDs | `openat2` containment + `NO_XDEV`, `statx` mount ID, inode/device checks | component `O_NOFOLLOW`, `fstatfs`, volume ID, and mount-trigger detection lack a documented complete race-free nested/same-filesystem mount-substitution proof | W:D; L:D; M:R |
+| 13. Exact local filesystem and minimum-version support | fixed NTFS + NTFS major/minor is detectable; candidate Windows 10 1709+; no version accepted | fixed local ext4; Linux 5.8+ for mount ID; exact kernel/ext4/mount allowlist awaits evidence | APFS v2+ and macOS/`arm64` baseline facts are documented, but no unprivileged exact APFS-feature/OS-build/hardware contract maps them to properties 5-12 | W:D detection only; L:D candidate; M:R |
 
-**Tuple results.** Windows/NTFS/`amd64` is not documentation-qualified because properties 5, 6, 9,
-and 10 remain unresolved. Linux/ext4/`amd64` is documentation-qualified for a future native evidence
+**Tuple results.** Windows/NTFS/`amd64` is not documentation-qualified because properties 5, 6, and
+10 remain unresolved; property 9 now has a documentation-supported write-through candidate, not
+implementation acceptance. Linux/ext4/`amd64` is documentation-qualified for a future native evidence
 prototype at Linux 5.8+ on an exact later-reviewed allowlist, but that prototype is not authorized.
-macOS/APFS/`arm64` is not documentation-qualified because properties 5-10, 12, and the APFS-version
-portion of 13 remain unresolved. The all-or-nothing documentation gate is unmet; no platform may
+macOS/APFS/`arm64` is not documentation-qualified because properties 5-10, 12, and the exact
+APFS/macOS/host-eligibility contract in 13 remain unresolved. APFS version-2 and `arm64` baseline
+facts do not supply that contract. The all-or-nothing documentation gate is unmet; no platform may
 begin prototype evidence and Slice 2 remains blocked.
 
-**Documentation gap audit.** For Windows, the reviewed Microsoft surfaces were `CreateFileW`,
-`LockFileEx`/`UnlockFileEx`, process termination, `FlushFileBuffers`, `FILE_RENAME_INFO`,
-`FileRenameInfoEx`, `SetFileInformationByHandle`, `ReplaceFileW`, file/volume/reparse-point identity,
-NTFS volume data, fixed-drive detection, and DACL documentation. No qualifying published atomic
-old/new contract for `FileRenameInfoEx` or unprivileged parent-directory entry flush was found;
-properties 5, 6, 9, and 10 therefore remain unresolved. For Linux, the reviewed Linux man-pages and
+**Documentation gap audit.** The focused Windows re-audit exhausted these Microsoft surfaces:
+`CreateFileW` and File Caching; `FlushFileBuffers`, `ZwFlushBuffersFile`, and
+`IRP_MJ_FLUSH_BUFFERS`; `SetFileInformationByHandle`, `FILE_INFO_BY_HANDLE_CLASS`,
+`FILE_INFORMATION_CLASS`, `FILE_RENAME_INFO`, `FILE_RENAME_INFORMATION`, the MS-FSCC
+`FileRenameInformation`/`FileRenameInformationEx` structures, and the MS-FSA
+`FileRenameInformation` algorithm; `LockFileEx`/`UnlockFileEx` and process termination;
+`FILE_ID_INFO`, `GetVolumeInformationByHandleW`, `GetDriveTypeW`, `FSCTL_GET_NTFS_VOLUME_DATA`,
+`NTFS_VOLUME_DATA_BUFFER`, and the NTFS overview; `WRITE_THROUGH` capability reporting;
+`IOCTL_VOLSNAP_FLUSH_AND_HOLD_WRITES`; and `ReplaceFileW`. They establish no-overwrite failure,
+same-volume/same-directory addressing, old-handle retention, later-open routing, file-content flush,
+NTFS rename-metadata write-through, identity/detection surfaces, and the Windows 10 1709 information-
+class floor. They do not establish racing-reader atomic first publication or replacement, a complete
+post-failure state map, universal hardware power-loss persistence, or an exact NTFS format-version
+floor. Property 9 is documentation-supported only through the source handle's
+`FILE_FLAG_WRITE_THROUGH`, not a retained directory handle or administrative volume flush;
+properties 5, 6, and 10 remain unresolved. For Linux, the reviewed Linux man-pages and
 kernel docs explicitly cover `openat2`, `flock`, `open`/`O_EXCL`, `renameat2`, file and directory
 `fsync`, `statx`, mountinfo, and ext4 journaling. They qualify the exact candidate for later evidence,
 but do not prove the composed application state machine or an accepted environment allowlist. For
-macOS, the reviewed Apple syscall man-page index and pages for `open`, `flock`, `rename`, `fsync`,
-`fcntl`, and `statfs`, plus the APFS Tools and APIs guide, APFS/filesystem guides, and Foundation
-volume-capability properties, expose the candidate names. No qualifying published exact
-`renameatx_np` flag/error/atomicity contract, APFS `F_FULLFSYNC` guarantee, unprivileged
-parent-directory entry sync, complete nested-mount rejection, or APFS version contract was found;
-those properties remain unresolved. Apple open source can corroborate symbols only and was not used
-to fill a documentation gap. Native execution remains required for every `D` cell; cross-compilation
+macOS, the audit exhausted Apple's published `open(2)`, `flock(2)`, `rename(2)`, `fsync(2)`,
+`fcntl(2)`, and `statfs(2)` pages; the APFS Tools and APIs guide; About Apple File System; the APFS
+Guide introduction, FAQ, filesystem-details, and volume-comparison pages; current disk-write
+guidance; Foundation exclusive-rename, mount-trigger, volume-identifier, and related volume-capability
+properties; the 2020-06-22 Apple File System Reference; the current Disk Utility APFS-format guide;
+and Apple-silicon porting guidance. The exact results are narrower than the exposed names:
+`renameatx_np` has a published prototype but no flag/error/atomicity contract; path-based
+`RENAME_EXCL` capability and general `rename` do not establish the descriptor-relative first-create
+or replacement reader contract; `F_FULLFSYNC` has no published APFS/macOS guarantee and current iOS
+guidance calls it best-effort; no unprivileged parent-directory entry sync is documented; the
+identity and mount-trigger values do not provide complete race-free nested-mount containment; and the
+APFS format reference's version/feature/software fields are not an unprivileged runtime compatibility
+contract binding an exact macOS build and host to the required primitives. Properties 5-10, 12, and
+13 therefore remain unresolved. Apple open source can corroborate symbols only and was not used to
+fill a documentation gap. Native execution remains required for every `D` cell; cross-compilation
 proves only that build tags compile and cannot change a platform result.
 
 **Future independent-process evidence protocol.** The evidence harness remains design only.
@@ -2201,13 +2312,16 @@ platform evidence.
 
 **Exact unresolved maintainer choices.** Before Slice 2 can begin, a maintainer must explicitly:
 
-- accept, revise, or reject this platform/primitive matrix;
-- supply or identify normative primary documentation that closes the Windows/NTFS rename atomicity,
-  parent-directory durability, mount-containment, and host-eligibility gaps; implementation tests
-  cannot substitute for the missing documentation qualification;
-- supply or identify normative primary documentation that closes the macOS/APFS exclusive-rename,
-  atomicity, file and parent-directory durability, complete mount-containment, APFS-version, and
-  host-eligibility gaps; `F_FULLFSYNC` success alone does not close those gaps;
+- supply or identify normative primary documentation that closes the Windows/NTFS concurrent-reader
+  atomicity gaps for first publication and replacement (properties 5 and 6) and the resulting
+  restart/power-loss qualification gap (property 10); then accept an exact NTFS/version/host
+  allowlist. Property 9's write-through rename-metadata candidate and property 12's containment and
+  identity checks are documentation-supported only, not primitive, allowlist, or implementation
+  acceptance;
+- supply or identify normative primary documentation that closes the macOS/APFS descriptor-relative
+  exclusive-rename and replacement atomicity, file and parent-directory durability, complete
+  mount-containment, and exact APFS-feature/macOS-build/host-eligibility gaps; documented APFS
+  version-2 fields, `arm64` availability, or `F_FULLFSYNC` success alone do not close those gaps;
 - accept Linux 5.8 or later, ext4 on one local non-removable mount, and the exact runtime
   filesystem/mount-identification deny policy as the sole documentation-qualified candidate; every
   network, FUSE, overlay, tmpfs, removable, cross-mount, bind-mounted, or unknown filesystem remains
@@ -2233,12 +2347,22 @@ rollback, retry, migration, and permanent no-replay behavior remain unchanged.
 **Open implementation gates and maintainer choices.** These facts are intentionally unresolved and
 must not be silently selected to simplify implementation:
 
-- exact aggregate directory/name, schema/version syntax, canonical encoding, bounds, revision origin,
-  digest algorithm, permissions, schema upgrade rules, and corrupt-record/operator-recovery policy;
-- the Windows and macOS normative documentation needed to close the gaps recorded above, followed by
-  maintainer acceptance of one all-platform primitive/library and supported host/filesystem/version
-  matrix. Linux's documentation-qualified candidate does not permit Linux-only implementation or
-  prototype work; network/removable/virtual filesystems remain unsupported until separately proven;
+- Slice 1 already selected and implemented the unused package-private aggregate directory/name,
+  schema/version syntax, canonical encoding, bounds, revision origin, digest syntax and SHA-256 path
+  derivation, and inert package-state path. No production reader or writer uses them and no aggregate
+  has been written. Schema evolution, permissions hardening, corrupt-record/operator recovery,
+  platform storage primitives, migration, cutover, projection, and later lifecycle activation remain
+  unresolved;
+- the Windows normative documentation still needed for concurrent-reader atomic first publication
+  and replacement (properties 5 and 6) and resulting restart/power-loss qualification (property 10),
+  plus maintainer acceptance of an exact NTFS/version/host allowlist. Property 9's write-through
+  rename-metadata candidate and property 12's containment and identity checks are documentation-
+  supported only. The macOS normative documentation needed for properties 5-10, 12, and the exact
+  APFS-feature/macOS-build/host eligibility in 13 also remains open, followed by maintainer acceptance
+  of one all-platform primitive/library and supported host/filesystem/version matrix. Linux's
+  documentation-qualified candidate does not permit Linux-only implementation or prototype work;
+  network/removable/virtual filesystems remain unsupported
+  until separately proven;
 - the trusted way provider-pool obtains and byte-identifies Pipeon's canonical VS Code workspace
   adapter/guard slice without accepting display state or a caller digest as authority;
 - the exact private requester surface and authentication/authorization boundary; CLI, MCP, other
@@ -2262,6 +2386,640 @@ must not be silently selected to simplify implementation:
 Unresolved gates keep the session blocked. They do not weaken, redesign, or defer the accepted
 single-owner aggregate, exact compare-and-commit, projection-only Pipeon, explicit user decision,
 strictly later fresh-turn, or permanent no-replay requirements.
+
+**Bounded transactional-store reconsideration — SQLite candidate (2026-08-04).** This subsection
+compares SQLite against the accepted safety invariants only. It does not select a dependency or
+configuration, authorize implementation or a prototype, reduce Windows/Linux/macOS support, change
+lifecycle authority, or supersede the accepted product/storage direction above.
+
+The only candidate shape that survives the comparison is one private database per App Server
+session, stored in that session's package-state directory, with one strict authoritative aggregate
+record. A single shared database is rejected as a candidate shape: SQLite permits only one writer
+per database, so it would serialize unrelated session writers and violate the accepted requirement
+that different sessions not share lock authority or needlessly block one another. The database and
+any SQLite-required journal, WAL, shared-memory, or temporary support files are collectively the
+physical store; no file's existence, including the main database file, independently establishes
+lifecycle authority. Authority would still require one successfully committed transaction followed
+by strict aggregate schema, identity, revision, fingerprint, and outcome validation.
+
+| Accepted safety invariant | SQLite documentation result | Reconsideration result |
+| --- | --- | --- |
+| One provider-pool transaction owner; unrelated sessions remain independent | SQLite serializes writers per database, including across processes, while separate databases have separate locking domains ([transaction isolation](https://www.sqlite.org/isolation.html), [transactions](https://www.sqlite.org/lang_transaction.html)). | **Conditional match only with one database per session.** A shared cross-session database is rejected. Provider-pool ownership and the existing single-session mutation boundary remain unchanged. |
+| One authoritative aggregate and one indivisible old-or-new commit | SQLite documents serializable ACID transactions and atomic commit; in rollback mode the rollback journal protects the pre-transaction state until the commit point ([transactional guarantee](https://www.sqlite.org/transactional.html), [atomic commit](https://www.sqlite.org/atomiccommit.html)). | **Strong candidate match.** One transaction can replace the aggregate record without composing rename, directory-sync, and replacement primitives in package code. Exact SQL schema and representation remain unselected. |
+| Crash/restart and power interruption expose one valid old or new revision, never a partial revision | SQLite documents hot-journal recovery after process or OS failure and durability through power loss, subject to truthful locking, flush, deletion, and storage-device behavior. Rollback mode with `synchronous=EXTRA` additionally syncs the containing directory after journal unlink ([atomic commit](https://www.sqlite.org/atomiccommit.html), [`synchronous`](https://www.sqlite.org/pragma.html#pragma_synchronous)). | **Documentation-supported but not yet accepted.** The guarantee still depends on an exact version, VFS, journal mode, synchronization mode, filesystem, OS, and hardware contract plus native interruption evidence on every supported platform. |
+| Cross-process exclusion spans source observation, recovery observation, comparison, commit, and authoritative reload | SQLite's pager and VFS use operating-system locks to coordinate processes; the documented Windows VFS uses `LockFile`/`LockFileEx`, and Unix VFSes use advisory locks ([locking](https://www.sqlite.org/lockingv3.html), [VFS](https://www.sqlite.org/vfs.html)). | **Partial match.** A later design must prove that one write transaction holds the required per-session exclusion for the entire accepted observation/compare/commit window and fails closed on contention, expiry, cancellation, or lock failure. No prototype is authorized by this packet. |
+| An ambiguous commit response never authorizes replay, retry, fallback, or inferred terminal outcome | SQLite exposes transaction state on a live connection, while commit and I/O failures can have result-dependent transaction effects ([transactions](https://www.sqlite.org/lang_transaction.html), [`sqlite3_get_autocommit`](https://www.sqlite.org/c3ref/get_autocommit.html)). | **Policy remains application-owned.** After connection, process, OS, or host loss, provider-pool must reopen and strictly reload the exact expected revision. If the result cannot be proven, it must preserve `reconciled_outcome_unknown`; it must never resend, replay, repair, or fall back automatically. Exact binding-specific error mapping remains unresolved. |
+| Support files, stale files, and cleanup cannot become independent authority | SQLite rollback journals, WAL files, and shared-memory files can be required for recovery or database integrity; SQLite explicitly treats temporary-file details as implementation-dependent ([temporary files](https://www.sqlite.org/tempfiles.html), [WAL](https://www.sqlite.org/wal.html)). | **Conditional match.** Required sidecars must live in the same private session directory, inherit the accepted protection boundary, survive recovery, and never be parsed as lifecycle authority. Exact allowed files, cleanup rules, and backup/move semantics must be pinned to the selected SQLite version and mode. |
+| The store is private to the current user and supported on Windows, Linux, and macOS without weakening the allowlist | SQLite provides built-in Windows and Unix VFSes and supports Windows, Linux, and macOS, but warns that correctness depends on reliable filesystem locks and sync behavior; dangerous no-lock VFS variants exist ([VFS](https://www.sqlite.org/vfs.html), [features](https://www.sqlite.org/features.html), [URI parameters](https://www.sqlite.org/uri.html)). | **Platform breadth match; environment proof gap remains.** The accepted Windows DACL and Unix `0700`/`0600` requirements still apply to the per-session directory and every physical store file. Network/removable filesystems, aliases/links, no-lock VFSes, and unproven host/storage combinations remain excluded pending an exact all-platform allowlist. |
+| Storage substitution cannot alter recovery, cutover, dispatch, projection, or explicit-user-decision semantics | SQLite supplies storage transactions and recovery, not App Server lifecycle authority. | **No lifecycle change.** The accepted legacy-source reread and byte comparison, exact compare-and-commit rules, cutover boundary, projection-only Pipeon state, later-turn claiming, explicit user decision, and permanent no-replay guarantees remain mandatory and separately gated. |
+
+**Decision result.** SQLite materially improves the documented transactional-store fit over a
+package-owned composition of raw rename and directory-sync primitives, and a private per-session
+database is therefore retained as a credible alternative candidate. It is not accepted for
+implementation. The comparison does not prove the exact cross-process observation window, select
+the physical transaction configuration, close the host/filesystem/hardware evidence gate, or resolve
+sidecar protection and ambiguous-error mapping.
+
+Before this candidate could replace the accepted canonical-file direction, maintainers must
+separately accept the logical-one-aggregate/physical-database distinction and then authorize a later
+selection slice for the exact SQLite version and Go binding, VFS, journal and synchronization modes,
+database schema, sidecar/permission/cleanup contract, lock acquisition and timeout behavior,
+binding-specific error taxonomy, and Windows/NTFS/amd64, Linux/ext4/amd64, and macOS/APFS/arm64
+allowlist and native evidence plan. Until then, the all-platform gate remains unmet, Slice 2 remains
+blocked, and implementation and prototype work remain unauthorized.
+
+**Authorized SQLite selection — exact design/evidence baseline (2026-08-04).** This selection accepts
+the logical-one-aggregate/physical-database distinction and replaces only the earlier raw-file
+storage-primitive dependency direction if a later implementation is authorized. It does not modify
+the inert Slice 1 code or path, add dependencies, create a database, authorize an evidence prototype,
+start Slice 2, change cutover or lifecycle semantics, reduce DockPipe platform support, or permit a
+Linux-only lane.
+
+| Surface | Selected baseline | Required fail-closed check |
+| --- | --- | --- |
+| Go binding | [`modernc.org/sqlite v1.56.0`](https://pkg.go.dev/modernc.org/sqlite@v1.56.0), a CGo-free `database/sql` driver, with the binding-required [`modernc.org/libc v1.74.4`](https://gitlab.com/cznic/sqlite/-/raw/v1.56.0/go.mod). `github.com/mattn/go-sqlite3` is rejected because it requires CGo and a platform compiler toolchain. | Future module edits must pin both exact versions, retain `CGO_ENABLED=0` builds, review the complete transitive module graph and licenses, and fail if the resolved versions differ. No module edit is authorized here. |
+| SQLite engine | The selected binding embeds SQLite 3.53.3 with source ID `2026-06-26 20:14:12 d4c0e51e4aeb96955b99185ab9cde75c339e2c29c3f3f12428d364a10d782c62` ([3.53.3 release](https://sqlite.org/releaselog/3_53_3.html)). The closed 3.53.4 delta qualification below accepts this exact engine as the production dependency pin for the selected bounded store. | Query and require exact `sqlite_version()` and `sqlite_source_id()` before any store access. Any binding, engine, schema, SQL-operation, extension, `ATTACH`, VFS, journal, or synchronization change requires a fresh delta review. No module edit is authorized here. |
+| Physical scope and name | One private directory per validated Pipeon session at the existing package-owned aggregate root, using the existing SHA-256 session-name derivation; future shape `<aggregate-root>/<session-digest>/aggregate.sqlite`. `aggregate.sqlite-journal` is the only selected SQLite sidecar. | Reject raw session IDs in paths, links/reparse points, nested/cross mounts, non-local storage, aliases, substituted identities, unexpected siblings, and any `-wal`, `-shm`, super-journal, attached database, or alternate database file. The existing inert `.json` path is not changed by this slice. |
+| Open/VFS contract | One absolute file URI opened `mode=rw&cache=private`, with explicit `vfs=win32` on Windows and `vfs=unix` on Linux/macOS. The main file is first created empty by the future platform-specific private-file operation and parent entry is synchronized before SQLite opens it; empty physical existence never creates lifecycle authority. SQLite documents `win32` and `unix` as the native defaults ([VFS](https://sqlite.org/vfs.html)). | Prohibit `mode=rwc`, shared cache, `immutable`, `nolock`, `psow`, custom/no-lock VFSes, URI authorities, relative paths, `ATTACH`, loadable extensions, and backup/rename/copy while open. Require the opened database and parent identities to match the prevalidated session path. |
+| Connection ownership | Exactly one dedicated `database/sql` connection for one provider-pool owner operation; pool limits are one open and one idle connection, and the handle is closed at the operation boundary. Driver parameters are `_txlock=exclusive`, `_dqs=0`, and `_error_rc=1`. | No second connection, helper process, reader pool, global database, long-lived idle connection, or non-provider-pool writer. Close releases the SQLite-held OS lock; close failure cannot upgrade an uncertain result to success. |
+| Journal/durability | `PRAGMA journal_mode=DELETE`, `synchronous=EXTRA`, `fullfsync=ON`, `temp_store=MEMORY`, `mmap_size=0`, `busy_timeout=0`, `foreign_keys=ON`, `trusted_schema=OFF`, and `cell_size_check=ON`; database page size is fixed to 4096 before schema creation. SQLite documents rollback `EXTRA` as ACID and its directory sync after a DELETE-mode journal unlink ([synchronous](https://sqlite.org/pragma.html#pragma_synchronous)). | Apply settings on the dedicated connection, query every selected value back, require the exact returned value, record `PRAGMA compile_options`, and abort before observation on an ignored, substituted, unsupported, or mismatched setting. No default value supplies authority. |
+| Lock window | Set and verify `PRAGMA locking_mode=EXCLUSIVE`, then acquire `BEGIN EXCLUSIVE` before reading any legacy source or recovery evidence. SQLite documents that exclusive locking mode retains file locks across transaction completion until the connection closes ([locking mode](https://sqlite.org/pragma.html#pragma_locking_mode)); the same connection performs post-commit strict reload before closing. | `busy_timeout=0` keeps each SQLite attempt nonblocking. Provider-pool may poll only lock acquisition, with caller cancellation and the already accepted absolute 30-second cap. `BUSY`/`LOCKED` after observation begins is not retried. Different session databases must remain independently acquirable. |
+| Sidecar/privacy | In exclusive locking mode the rollback journal can remain after commit and is part of the physical store, not stale cleanup material. SQLite requires a hot journal to stay paired with its database ([temporary files](https://sqlite.org/tempfiles.html), [corruption hazards](https://sqlite.org/howtocorrupt.html)). Parent directories remain Unix `0700` or Windows current-user/`SYSTEM`; main and journal files must be Unix `0600` or carry the same restricted Windows DACL. | Never parse, move, copy, replace, truncate, quarantine, or delete the journal outside SQLite. Verify type, identity, ownership/DACL/mode, and sibling set before and after the operation. Any unexplained file or protection widening blocks; future native evidence must prove the SQLite-created journal meets the exact protection contract on all three tuples. |
+
+The selected schema preserves the existing Slice 1 canonical JSON as the only lifecycle payload. SQL
+columns provide a singleton/CAS envelope and must equal the values decoded from those exact canonical
+bytes; neither an envelope field nor the database file's existence is independently authoritative:
+
+```sql
+CREATE TABLE app_server_aggregate (
+    singleton INTEGER PRIMARY KEY CHECK (singleton = 1),
+    pipeon_session_id TEXT NOT NULL CHECK (length(pipeon_session_id) BETWEEN 1 AND 256),
+    revision INTEGER NOT NULL CHECK (revision >= 1),
+    canonical_json BLOB NOT NULL CHECK (length(canonical_json) BETWEEN 1 AND 16384),
+    canonical_sha256 BLOB NOT NULL CHECK (length(canonical_sha256) = 32)
+) STRICT;
+PRAGMA user_version = 1;
+```
+
+Initial migration requires no row, then inserts singleton `1` only after the accepted legacy-source
+reread and byte comparison. Later mutation uses one conditional update matching singleton, exact
+session ID, previous revision, and previous canonical SHA-256; zero or multiple affected rows reject.
+Before commit, provider-pool decodes and byte-compares the candidate row. After commit, the same
+exclusive-locking connection reloads the row, requires one exact canonical aggregate, revalidates all
+existing schema/identity/revision/fingerprint/outcome invariants, and only then classifies committed.
+
+**Selected error classification.** Lock-acquisition `SQLITE_BUSY`/`SQLITE_LOCKED` may be polled only
+before observation. A pre-write validation or zero-row CAS failure rolls back and rejects. After a
+write starts but before `COMMIT`, success requires an explicit rollback and exact old-row reload;
+rollback/reload uncertainty becomes `unknown_commit_result`. Once `COMMIT` is invoked, it is never
+retried. A documented `SQLITE_BUSY` commit leaves the transaction active, so one rollback plus exact
+old-row reload may prove unchanged; every other commit error, connection loss, process/OS loss, or
+failure to prove the exact old row is unknown. Commit success followed by reload, sidecar, permission,
+close, or acknowledgement failure is also unknown until a fresh recovery-only restart open permits
+SQLite to apply any required hot-journal recovery and then strictly reloads without an application
+write. No branch authorizes resend, re-observation, repair, replay, fallback, inferred terminal
+outcome, or a second commit attempt.
+
+**Selected native-evidence plan.** The initial evidence cohorts remain Windows/local fixed-disk
+NTFS/`amd64`, Linux 5.8+/local ext4/`amd64`, and macOS/local APFS/`arm64`; this selects test cohorts,
+not a production allowlist or a reduction of general DockPipe support. Each run records exact OS/build,
+kernel, architecture, filesystem/volume version and properties, storage device/virtualization facts,
+Go version, module graph, SQLite version/source ID, compile options, VFS, queried pragmas, DACL/modes,
+and pre/post file-tree hashes. The existing independent-process protocol and counts remain: 10,000
+old/new reader-publication cycles, 1,000 same-session contention/forced-termination cycles while a
+different-session writer succeeds, every deterministic failure boundary, and three controlled VM
+hard-reboot or power-loss trials at every durability boundary. Readers may fail closed with
+`BUSY` while the exclusive owner is live, but every successful post-release read must be exactly the
+old or new canonical row; `quick_check`, strict decode, envelope equality, revision monotonicity,
+permanent no-replay state, sidecar pairing, and protection checks must all pass.
+
+**Closed SQLite 3.53.4 version-skew qualification (2026-08-04).** The newest exact CGo-free binding
+remains `modernc.org/sqlite v1.56.0`; its tagged `go.mod` requires Go 1.25.0 and
+`modernc.org/libc v1.74.4`, while its supported matrix retains Windows/`amd64`, Linux/`amd64`, and
+macOS/`arm64` on SQLite 3.53.3. The complete official [3.53.3-to-3.53.4 check-in
+timeline](https://sqlite.org/src/timeline?from=version-3.53.0&to=version-3.53.4&to2=branch-3.53&y=ci)
+was reviewed against the selected schema and operation surface:
+
+- Check-in `bf70dadc2d` changes hot-journal recovery only for a crash-corrupted super-journal record.
+  The originating [official report](https://sqlite.org/forum/info/2026-07-20T18:27:00Z) states that
+  the defect requires a multi-database `ATTACH` transaction. This store prohibits `ATTACH`, alternate
+  databases, and super-journals before open and rejects any unexpected sibling, so that state is
+  unreachable without an already-fail-closed contract violation.
+- Check-in `a210f6f939` replaces an unchecked double-to-`int64` cast in VFS current-time conversion and
+  one window-frame numeric check. The fixed store issues no date/time or window SQL, uses
+  `busy_timeout=0`, and does not derive locking, synchronization, commit, recovery, or error authority
+  from VFS wall time.
+- Check-in `5d7c6fe1e9` affects expression indexes, subtypes, and unary `+`; the selected singleton table
+  has no expression index, subtype operation, or unary-`+` SQL.
+- Every other intervening check-in is patch metadata or is confined to the CLI/shell, `sqlite3_rsync`,
+  tests, FTS3/4/5, RBU, session/rebaser, JSON/JSONB, `fileio`, incremental-integrity-check,
+  `normalize`, Fossil-delta, `series`, `amatch`, or `fuzzer` surfaces. None is loaded, invoked, or
+  represented by the fixed private schema and bounded SQL; canonical lifecycle JSON remains an opaque
+  `BLOB`, loadable extensions are prohibited, unexpected schema is rejected, and `quick_check` does
+  not authorize any of those features.
+
+Therefore every 3.53.4 fix is demonstrably outside the selected rollback-journal, exclusive-locking,
+native-VFS, synchronization, sidecar, fixed-schema, and error-classification surface. The version-skew
+gate is closed: `modernc.org/sqlite v1.56.0` + `modernc.org/libc v1.74.4` + the exact SQLite 3.53.3
+source ID above is the accepted production dependency baseline. This acceptance does not authorize a
+module edit, evidence harness, implementation, migration, cutover, lifecycle activation, or Slice 2.
+
+**Selection result and remaining gates.** The storage shape, binding family, exact evidence versions,
+schema, VFS mapping, transaction settings, lock window, sidecar policy, error policy, and evidence plan
+are selected. The prior standard-library-plus-`x/sys` and persistent empty lock-file direction is
+superseded only for this SQLite candidate; no engine code is implicated. Production dependency
+selection is closed on the exact versions and source ID above. The separately authorized dependency
+pin and test-only Windows smoke slice below completes only the module edit and bounded evidence
+harness authorization. Production use remains gated by the complete three native cohorts proving
+exact lock release, journal protection, power-loss durability, and host eligibility, plus later
+maintainer authorization for any Slice 1 path/loader revision, Slice 2 implementation, migration,
+cutover, or lifecycle activation. Slice 2 remains blocked.
+
+**Dependency pin and test-only Windows native smoke evidence — 2026-08-04.** This bounded slice pins
+`modernc.org/sqlite v1.56.0` and `modernc.org/libc v1.74.4` in
+`packages/dorkpipe/lib/go.mod` / `go.sum` and adds only `_test.go` files under
+`appserversupervisor/sqliteevidence`. The package remains opt-in through
+`DORKPIPE_SQLITE_EVIDENCE=1`; ordinary package regression runs skip the native host probe. The module
+directive remains Go `1.25`. The Windows-only DACL/volume evidence directly uses the selected graph's
+`golang.org/x/sys v0.47.0`, replacing the prior indirect `v0.28.0`; no other pre-existing selected
+module version changed. No `go mod tidy` rewrite was accepted because its proposed checksum cleanup
+removed unrelated historical entries.
+
+With `GOWORK=off`, the exact resolved non-main module graph contains 32 entries:
+
+```text
+dockpipe v0.0.0 => ../../..
+github.com/dustin/go-humanize v1.0.1
+github.com/google/pprof v0.0.0-20260802141513-ef3492d7dac3
+github.com/google/uuid v1.6.0
+github.com/hashicorp/golang-lru/v2 v2.0.7
+github.com/lib/pq v1.10.9
+github.com/mattn/go-isatty v0.0.24
+github.com/mattn/go-shellwords v1.0.12
+github.com/ncruces/go-strftime v1.0.0
+github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec
+github.com/santhosh-tekuri/jsonschema/v5 v5.3.1
+golang.org/x/mod v0.37.0
+golang.org/x/sync v0.21.0
+golang.org/x/sys v0.47.0
+golang.org/x/term v0.27.0
+golang.org/x/tools v0.47.0
+gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405
+gopkg.in/yaml.v3 v3.0.1
+modernc.org/cc/v4 v4.29.1
+modernc.org/ccgo/v4 v4.34.6
+modernc.org/fileutil v1.4.0
+modernc.org/gc/v2 v2.6.5
+modernc.org/gc/v3 v3.1.4
+modernc.org/goabi0 v0.2.0
+modernc.org/libc v1.74.4
+modernc.org/mathutil v1.7.1
+modernc.org/memory v1.11.0
+modernc.org/opt v0.2.0
+modernc.org/sortutil v1.2.1
+modernc.org/sqlite v1.56.0
+modernc.org/strutil v1.2.1
+modernc.org/token v1.1.0
+```
+
+Every one of those 32 module directories exposed a root license/notice file. The complete scan found
+only the repository's existing Apache-2.0 dependency plus permissive Apache-2.0, BSD-style, MIT, and
+dual MIT/Apache terms; no module lacked license material. The two selected modernc modules each carry
+their BSD-style three-clause license.
+
+The native smoke passed on this exact host and toolchain:
+
+- Windows build `10.0.26200`, `amd64`, Go `go1.26.4`, module language baseline Go `1.25`, and
+  `CGO_ENABLED=0`;
+- fixed local drive, filesystem `NTFS`, volume
+  `\\?\Volume{2eb284d8-09e6-483c-b096-6deed2208642}\`, serial `88c9a133`, label `OS`; the optional
+  unprivileged NTFS-version query was unavailable, so no NTFS version is claimed;
+- one canonical absolute test-framework fixture root with a protected DACL; the root, pre-created
+  empty main/other databases, and every observed journal were owned by current-user SID
+  `S-1-5-21-2729925100-2499202611-1015899381-1002` and granted full access only to that SID and
+  `SYSTEM` (`S-1-5-18`).
+
+The exact queried runtime identity was SQLite `3.53.3` with source ID
+`2026-06-26 20:14:12 d4c0e51e4aeb96955b99185ab9cde75c339e2c29c3f3f12428d364a10d782c62`.
+The test opened one absolute `file:` URI per database with `mode=rw`, `cache=private`, `vfs=win32`,
+`_txlock=exclusive`, `_dqs=0`, and `_error_rc=1`; an unresolved double-quoted string was rejected,
+proving DQS remained disabled. The bounded compile-option record contained exactly 57 entries:
+
+```text
+ATOMIC_INTRINSICS=1,COMPILER=gcc-12-win32,DEFAULT_AUTOVACUUM,DEFAULT_CACHE_SIZE=-2000,
+DEFAULT_FILE_FORMAT=4,DEFAULT_JOURNAL_SIZE_LIMIT=-1,DEFAULT_MEMSTATUS=0,DEFAULT_MMAP_SIZE=0,
+DEFAULT_PAGE_SIZE=4096,DEFAULT_PCACHE_INITSZ=20,DEFAULT_RECURSIVE_TRIGGERS,
+DEFAULT_SECTOR_SIZE=4096,DEFAULT_SYNCHRONOUS=2,DEFAULT_WAL_AUTOCHECKPOINT=1000,
+DEFAULT_WAL_SYNCHRONOUS=2,DEFAULT_WORKER_THREADS=0,DIRECT_OVERFLOW_READ,DISABLE_INTRINSIC,
+ENABLE_COLUMN_METADATA,ENABLE_DBPAGE_VTAB,ENABLE_DBSTAT_VTAB,ENABLE_FTS5,ENABLE_GEOPOLY,
+ENABLE_MATH_FUNCTIONS,ENABLE_MEMORY_MANAGEMENT,ENABLE_OFFSET_SQL_FUNC,ENABLE_PREUPDATE_HOOK,
+ENABLE_RBU,ENABLE_RTREE,ENABLE_SESSION,ENABLE_SNAPSHOT,ENABLE_STAT4,ENABLE_UNLOCK_NOTIFY,
+LIKE_DOESNT_MATCH_BLOBS,MALLOC_SOFT_LIMIT=1024,MAX_ATTACHED=10,MAX_COLUMN=2000,
+MAX_COMPOUND_SELECT=500,MAX_DEFAULT_PAGE_SIZE=8192,MAX_EXPR_DEPTH=1000,MAX_FUNCTION_ARG=1000,
+MAX_LENGTH=1000000000,MAX_LIKE_PATTERN_LENGTH=50000,MAX_MMAP_SIZE=0x7fff0000,
+MAX_PAGE_COUNT=0xfffffffe,MAX_PAGE_SIZE=65536,MAX_SQL_LENGTH=1000000000,
+MAX_TRIGGER_DEPTH=1000,MAX_VARIABLE_NUMBER=32766,MAX_VDBE_OP=250000000,
+MAX_WORKER_THREADS=8,MUTEX_NOOP,OMIT_SEH,SOUNDEX,SYSTEM_MALLOC,TEMP_STORE=1,THREADSAFE=1
+```
+
+Every selected pragma was applied and read back on the same dedicated connection:
+
+| Setting | Exact readback |
+| --- | --- |
+| `journal_mode=DELETE` | `delete` |
+| `synchronous=EXTRA` | `3` |
+| `fullfsync=ON` | `1` |
+| `temp_store=MEMORY` | `2` |
+| `mmap_size=0` | `0` |
+| `busy_timeout=0` | `0` |
+| `foreign_keys=ON` | `1` |
+| `trusted_schema=OFF` | `0` |
+| `cell_size_check=ON` | `1` |
+| `locking_mode=EXCLUSIVE` | `exclusive` |
+| pre-schema `page_size=4096` | `4096` |
+
+The test created exactly the selected singleton STRICT table and `user_version=1`, rejected every
+unexpected schema object/database/sibling, and kept canonical JSON opaque in the BLOB column. The
+revision-1 insert used SHA-256
+`5bacd33f5355f1a64a096841fe3fceeca28a40f211723e2ce4bb9b56988e6fe8`; the exact revision-2 CAS
+used SHA-256 `37572e06825751539b2e65c19034a23950925abbbe795d296a52ecf1e6e2aca4`. Each commit reloaded
+the exact singleton, session ID, revision, payload bytes, and digest through the same connection.
+`PRAGMA database_list` contained only `main`.
+
+The SQLite-created rollback journal was a regular file while each write transaction was live and
+remained present after both commits at 4,616 bytes. It retained the exact current-user/`SYSTEM`
+full-control boundary before and after commit, after forced termination, and after recovery. The test
+never opened it for content, parsed it, or altered, truncated, moved, or deleted it; the database
+directory contained only `aggregate.sqlite` and `aggregate.sqlite-journal`.
+
+An independent owner child staged revision 3 and held the exclusive transaction. A second process
+received primary `SQLITE_BUSY` (`5`) for the same database while a different-database process opened,
+ran `quick_check`, and committed successfully. Forced owner termination released the first database
+lock. A fresh recovery process opened the database, allowed SQLite recovery, returned exactly one
+`quick_check=ok`, revalidated the exact schema, and reloaded the allowlisted old revision 2 (not the
+uncommitted revision 3). Child processes performed no cleanup; only the parent test framework removed
+the exact temporary root.
+
+With `CGO_ENABLED=0`, the test-only package cross-compiled successfully to temporary binaries outside
+the repository for Windows/`amd64`, Linux/`amd64`, and macOS/`arm64`; embedded build settings confirmed
+each `GOOS`, `GOARCH`, and `CGO_ENABLED=0`. The inspected binary sizes were 11,464,704 bytes,
+11,044,675 bytes, and 10,943,842 bytes respectively. All binaries and the final unique temporary
+directory `dockpipe-sqlite-cross-5028fe64ad384dbe8eb341a24d032556` were removed after inspection.
+The Linux and macOS results are compile compatibility only; neither is runtime evidence.
+
+The exact native smoke command passed. The required focused regression command separately failed in
+protected predecessor work: `TestProtocolBoundaryContainsNoGenericOrPipeonProtocolLeak` observed 17
+Pipeon adapter-selector occurrences in protected `extension.ts` while the protected
+`protocol_test.go` expected 1. The full `go test ./... -count=1` command then exceeded its five-minute
+execution bound without package output. A diagnostic rerun with a 90-second per-package timeout
+confirmed the same App Server failure and a separate `orchestrationhelper` timeout in
+`TestNodeConnectorPlacementExecutionGraphDependencyTransitionExecutorRevalidatesImmutableBindings`
+while it blocked in the pre-existing reconciliation fixture's `os.ReadFile`; all other reported
+packages passed, including `appserversupervisor/sqliteevidence`. Neither protected Pipeon/App Server
+file is authorized for this slice, and both still match the accepted protected manifest; no
+orchestration-helper file was changed. These validation results do not weaken or expand the
+successful SQLite smoke evidence.
+
+**Windows 10,000-cycle native reader-publication cohort — 2026-08-04.** The separate Windows-only
+`TestWindowsNativeSQLitePublicationCohort`, gated by
+`DORKPIPE_SQLITE_PUBLICATION_COHORT=1`, passed with `CGO_ENABLED=0`, `-mod=readonly`, and the fixed
+30-minute timeout. It used the pinned SQLite 3.53.3/source-ID baseline, native `win32` VFS, selected
+URI parameters, queried pragmas, singleton STRICT schema, `user_version=1`, fixed local NTFS volume,
+and current-user/`SYSTEM` DACL contract already proved by the smoke lane.
+
+One persistent writer child and one persistent reader child used a bounded strict JSON-line protocol.
+Every command and response carried the exact cycle number; the reader opened a fresh connection for
+each observation, and the writer opened one connection for each staged transaction and closed it
+after commit and exact reload. Duplicate, missing, malformed, substituted, or out-of-order commands
+and responses fail closed. Children never deleted fixture paths; only the parent test framework
+cleaned the exact temporary root.
+
+The exact aggregate result was:
+
+- cycles: `10000`;
+- successful pre-publication exact old reads: `10000`;
+- live-owner primary `SQLITE_BUSY`/`SQLITE_LOCKED` results: `10000`;
+- successful post-release exact new reads: `10000`;
+- protected live-journal observations: `10000`;
+- ambiguous or partial reads, revision gaps/duplicates, digest mismatches, and child-protocol loss,
+  duplication, or reordering: `0`;
+- initial revision/digest: `1` /
+  `aa5cf90832cf7e71136cfa92208ef923e141d7d8103cab900f642ed02e50b3fb`;
+- final revision/digest: `10001` /
+  `3304b9ccdfd01f7c211e8e4530be8b533c6b2c506975b83ebceb33f6288eb838`;
+- cohort elapsed time: `4m33.39s`.
+
+Every live journal was a regular exact-basename sibling with the selected current-user/`SYSTEM`
+full-control DACL, and no unexpected sibling appeared. The quiescent pre/post metadata-tree hash—over
+ordinal relative path, entry type, size, and exact DACL evidence without opening or parsing journal
+content—was stable and equal before and after the cohort:
+`dd678add8ff983d5b8794ab62907ed89b3c162c32fa6d988a29a57e0462b0aaa`.
+
+The existing native smoke rerun passed unchanged. With CGo disabled, the complete test-only package
+cross-compiled with embedded target settings confirmed for Windows/`amd64`, Linux/`amd64`, and
+macOS/`arm64`; binary sizes were 11,949,568, 11,044,675, and 10,943,842 bytes respectively, and the
+temporary directory `dockpipe-sqlite-publication-cross-7d65b0ee4d0d4add952e5130031b3f78` was
+removed. These cross-target builds are compile compatibility only.
+
+The focused App Server/provider-session regression result matched the protected baseline exactly:
+`providersession` passed and `TestProtocolBoundaryContainsNoGenericOrPipeonProtocolLeak` still found
+17 protected Pipeon selector occurrences instead of 1. The bounded full `go test -mod=readonly ./...
+-count=1 -timeout=90s` run reported that same App Server failure, and the protected
+`orchestrationhelper` suite again timed out in the existing placement-execution graph fixture chain.
+The exact timed-out subtest moved from the prior immutable-binding run to
+`TestNodeConnectorPlacementExecutionGraphDependencyTransitionExecutorRejectsMalformedAndUnsafeArtifacts/receipt_noncanonical`
+while decoding its pre-existing fixture; all other reported packages passed, including
+`appserversupervisor/sqliteevidence`. No protected App Server, Pipeon, or orchestration-helper file
+changed, and the timeout difference is not attributable to this isolated Windows-only test file.
+
+**Windows 1,000-cycle native contention/forced-termination cohort — 2026-08-04.** The Windows-only
+`TestWindowsNativeSQLiteContentionCohort`, gated by
+`DORKPIPE_SQLITE_CONTENTION_COHORT=1`, passed with `CGO_ENABLED=0`, `-mod=readonly`, `-count=1`,
+verbose output, and the fixed 30-minute timeout. It ran on Windows build `10.0.26200`, `amd64`, Go
+`go1.26.4`, fixed NTFS volume `\\?\Volume{2eb284d8-09e6-483c-b096-6deed2208642}\` with serial
+`88c9a133` and label `OS`; the unprivileged NTFS-version query remained unavailable. It revalidated
+SQLite `3.53.3`, source ID
+`2026-06-26 20:14:12 d4c0e51e4aeb96955b99185ab9cde75c339e2c29c3f3f12428d364a10d782c62`,
+the native `win32` VFS, all 57 compile options, the selected absolute URI and queried pragmas, the
+singleton STRICT schema and `user_version=1`, and one database per synthetic session. The exact
+current-user SID was `S-1-5-21-2729925100-2499202611-1015899381-1002`; the canonical temporary root,
+both session directories and main files, and every observed journal granted full control only to
+that SID and `SYSTEM` (`S-1-5-18`).
+
+Each cycle used a fresh owner process that loaded the exact committed same-session row, began the
+selected exclusive transaction, applied the exact next-revision CAS, validated the complete staged
+row, and remained live after reporting `staged_live`. The parent observed the exact regular protected
+journal, a fresh contender returned only primary `SQLITE_BUSY`/`SQLITE_LOCKED`, and a fresh independent
+different-session writer validated, committed, reloaded, integrity-checked, and closed its different
+database while the first owner remained live. The parent then killed the owner before any commit
+command existed. A fresh recovery-only process allowed hot-journal recovery, required exactly one
+`quick_check=ok`, revalidated schema, database identity, protections, and siblings, and returned the
+exact old row rather than the killed owner's staged row. A separate fresh clean writer then committed
+that same-session next revision exactly once. Deterministic opaque canonical BLOBs carried exact
+adapter, session, revision, unknown-outcome, and permanent no-replay values; complete row and SHA-256
+equality was required at every boundary. Children never deleted or altered journals or fixture paths;
+only the parent test framework owned temporary-root cleanup.
+
+The exact aggregate result was:
+
+- owner transactions staged: `1000`;
+- protected live journals: `1000`;
+- same-session primary `SQLITE_BUSY`/`SQLITE_LOCKED` results: `1000`;
+- different-session commits while the owner remained live: `1000`;
+- forced owner terminations before commit invocation: `1000`;
+- exact old-row recoveries: `1000`;
+- successful post-recovery same-session commits: `1000`;
+- ambiguous recoveries, staged-row leaks, revision gaps/duplicates, digest/envelope mismatches,
+  unexpected siblings/protection widening, and child-protocol loss/duplication/reordering: `0`;
+- same-session initial revision/digest: `1` /
+  `bb0b0fa448e6532a65b420e128470a70fe5e32e15e94634b8c4fcf64a0b1e5ed`;
+- same-session final revision/digest: `1001` /
+  `e024c4e5dafc3841e26abbc2df7618f2fd78fcabd3b41bd364485b2ad56ff693`;
+- different-session initial revision/digest: `1` /
+  `8b351be57c3b6f86535ca6c2c3f6ef159175513013f7ac6608413e4e411dedfe`;
+- different-session final revision/digest: `1001` /
+  `5c78a969b9d47e07ef749d58c6b0fa3311512435141191d79376dd50e2f62f26`;
+- elapsed time: `3m19.25s`.
+
+The stable quiescent pre/post metadata-tree hash was equal:
+`9e4b6e98a9ce839c24ee20cb21f56ecc379eff03133782b593fb10b936e511b8`. The hash is SHA-256 over
+LF-terminated rows sorted by ordinal relative path; each row contains relative path, entry type,
+byte size, and exact owner/DACL evidence. It opens and hashes no journal content.
+
+The unchanged 10,000-cycle publication cohort rerun passed in `4m19.979s` with its existing counters,
+initial/final revisions and digests, and equal metadata-tree hash
+`dd678add8ff983d5b8794ab62907ed89b3c162c32fa6d988a29a57e0462b0aaa`. The unchanged native Windows
+smoke passed. The complete test package cross-compiled with embedded target settings confirming
+`CGO_ENABLED=0` for Windows/`amd64`, Linux/`amd64`, and macOS/`arm64`; binary sizes were 12,056,064,
+11,044,675, and 10,943,842 bytes. The verified temporary directory
+`dockpipe-sqlite-contention-cross-da2f4b7dfff54e789acf71baa98b4890` was removed.
+
+The focused regression again passed `providersession` and failed only the protected
+`TestProtocolBoundaryContainsNoGenericOrPipeonProtocolLeak` assertion at 17 occurrences instead of 1.
+The bounded full suite reported that same failure, passed `appserversupervisor/sqliteevidence`, and
+again timed out in the protected orchestration-helper reconciliation fixture chain. This run's exact
+active subtest moved from the preceding `receipt_noncanonical` case to
+`TestNodeConnectorPlacementExecutionGraphDependencyTransitionExecutorRequiresExactAuthorization/inferred_decision`,
+blocked in the same pre-existing `os.ReadFile` path. `go mod verify` returned `all modules verified`;
+`gofmt -d` for the new file was empty, and `git diff --check` passed. No protected predecessor file
+was edited.
+
+The exact validation commands were run from `packages/dorkpipe/lib` (environment assignments shown
+in portable prefix form):
+
+```text
+DORKPIPE_SQLITE_CONTENTION_COHORT=1 CGO_ENABLED=0 go test -mod=readonly ./appserversupervisor/sqliteevidence -run '^TestWindowsNativeSQLiteContentionCohort$' -count=1 -v -timeout=30m
+DORKPIPE_SQLITE_PUBLICATION_COHORT=1 CGO_ENABLED=0 go test -mod=readonly ./appserversupervisor/sqliteevidence -run '^TestWindowsNativeSQLitePublicationCohort$' -count=1 -v -timeout=30m
+DORKPIPE_SQLITE_EVIDENCE=1 CGO_ENABLED=0 go test -mod=readonly ./appserversupervisor/sqliteevidence -run '^TestWindowsNativeSQLiteSmoke$' -count=1 -v
+CGO_ENABLED=0 GOOS=<windows|linux|darwin> GOARCH=<amd64|amd64|arm64> go test -mod=readonly -c -o <verified-temporary-binary> ./appserversupervisor/sqliteevidence
+go version -m <verified-temporary-binary>
+go test -mod=readonly ./appserversupervisor ./providersession -count=1
+go test -mod=readonly ./... -count=1 -timeout=90s
+go mod verify
+gofmt -d appserversupervisor/sqliteevidence/windows_contention_cohort_test.go
+git diff --check
+```
+
+**Windows native deterministic SQLite failure-boundary matrix — 2026-08-04.** The new Windows-only
+`TestWindowsNativeSQLiteFailureBoundaryMatrix`, gated by
+`DORKPIPE_SQLITE_FAILURE_MATRIX=1`, passed with `CGO_ENABLED=0`, `-mod=readonly`, `-count=1`, verbose
+output, and the fixed 30-minute timeout. It ran on Windows build `10.0.26200`, `amd64`, Go
+`go1.26.4`, fixed NTFS volume `\\?\Volume{2eb284d8-09e6-483c-b096-6deed2208642}\` with serial
+`88c9a133` and label `OS`; the unprivileged NTFS-version query remained unavailable. The canonical
+temporary root and every scenario directory, main database, and observed journal were owned by
+current-user SID `S-1-5-21-2729925100-2499202611-1015899381-1002` and granted full control only to
+that SID and `SYSTEM` (`S-1-5-18`).
+
+Every fresh per-attempt database revalidated SQLite `3.53.3`, source ID
+`2026-06-26 20:14:12 d4c0e51e4aeb96955b99185ab9cde75c339e2c29c3f3f12428d364a10d782c62`,
+native `win32`, the selected absolute `mode=rw` / `cache=private` / `_txlock=exclusive` / `_dqs=0` /
+`_error_rc=1` URI, every selected pragma and exact readback, the singleton STRICT schema and
+`user_version=1`, and the exact 57-entry compile-option set listed above. The LF-terminated exact-set
+SHA-256 was `e08918d66caa484a6929317e24d92db1d6a078fc115dbf15adb10994f869babf`.
+Each database held exactly one bounded canonical JSON BLOB with adapter, session, revision,
+unknown-outcome, permanent-no-replay, envelope, and SHA-256 equality. Child processes used a strict
+bounded JSON-line protocol on `stderr`, isolated from Go test output on `stdout`; every command and
+response carried exact scenario, cycle, attempt, operation, checkpoint, database, and session
+identity. Missing, duplicate, substituted, cross-scenario, malformed, or out-of-order traffic failed
+closed. Children performed only ordinary SQLite operations and never cleaned or altered physical
+store files.
+
+The complete 22-attempt result table follows. `Harness` means the named application checkpoint or
+response loss was injected and is not a SQLite/OS result. `Native` means the recorded outcome was
+genuinely returned by SQLite or Windows process termination/recovery. Each row began at exact
+revision `1`; the table binds its session-specific initial and final digest exactly:
+
+| Scenario | Attempt and boundary | Evidence kind | Authoritative classification | Initial revision / SHA-256 | Final physical revision / SHA-256 |
+| --- | --- | --- | --- | --- | --- |
+| `01_before_open` | 1; reject before database open | Harness | rejected | 1 / `d11618d4938743fbe7582c37b3ec38f5e480f1a0e7b4ca97a19f46b214abb689` | 1 / `d11618d4938743fbe7582c37b3ec38f5e480f1a0e7b4ca97a19f46b214abb689` |
+| `02_contract_reject` | 1; substituted contract evidence before observation | Harness | rejected | 1 / `32e409176da2a0c3bd010747fbd9cce2ac41c6c8b3be4c002989692b68190a07` | 1 / `32e409176da2a0c3bd010747fbd9cce2ac41c6c8b3be4c002989692b68190a07` |
+| `03_contention` | 1; same-session lock before observation | Native primary `SQLITE_BUSY` (`5`) | rejected | 1 / `1fca77d81f99a9dca417372de397a9fa801da364e3e140526cee574884577a4a` | 1 / `1fca77d81f99a9dca417372de397a9fa801da364e3e140526cee574884577a4a` |
+| `04_cancel_after_observation` | 1; cancellation after exact old observation | Harness plus genuine rollback/reload | rejected | 1 / `a6db7755613e0a36301f372c966dbceef77da2e058634ba5fbbaf26cec93ea94` | 1 / `a6db7755613e0a36301f372c966dbceef77da2e058634ba5fbbaf26cec93ea94` |
+| `05_stale_cas` | 1; stale session | Native zero rows plus rollback/reload | known unchanged | 1 / `6cf53d46e2f230531e71a9b9e038dfa69a836adcc2086a801d496ab6202508fb` | 1 / `6cf53d46e2f230531e71a9b9e038dfa69a836adcc2086a801d496ab6202508fb` |
+| `05_stale_cas` | 2; stale revision | Native zero rows plus rollback/reload | known unchanged | 1 / `d4fa724c2c7feb3812383febed9c94b5dcb300f6c4f5d9f0864c969bc87ebdbf` | 1 / `d4fa724c2c7feb3812383febed9c94b5dcb300f6c4f5d9f0864c969bc87ebdbf` |
+| `05_stale_cas` | 3; stale digest | Native zero rows plus rollback/reload | known unchanged | 1 / `e324953707b27c5af0598cab81f0764c727cd7b445b1d137ecc35aae1a7c0ea3` | 1 / `e324953707b27c5af0598cab81f0764c727cd7b445b1d137ecc35aae1a7c0ea3` |
+| `06_after_begin` | 1; injected loss after begin before CAS | Harness plus genuine rollback/reload | known unchanged | 1 / `faaa05f23a2c00cf7301f3fee428254ec19f2eb72419c2a012882f8960af16bf` | 1 / `faaa05f23a2c00cf7301f3fee428254ec19f2eb72419c2a012882f8960af16bf` |
+| `07_after_stage` | 1; injected loss after exact CAS staging before commit | Harness plus genuine rollback/reload | known unchanged | 1 / `91f371614445768866b3e0fb9a32890ded0f4d6e15d2296054ef295e0de0c31f` | 1 / `91f371614445768866b3e0fb9a32890ded0f4d6e15d2296054ef295e0de0c31f` |
+| `08_terminate_precommit` | 1; forced termination after staging before commit | Native termination/hot-journal recovery | known unchanged | 1 / `b721a5187f4f556565cfd7644037321dba1360f7611e9182d1767aa03578a05a` | 1 / `b721a5187f4f556565cfd7644037321dba1360f7611e9182d1767aa03578a05a` |
+| `09_rollback_proof_loss` | 1; forced loss prevents rollback/old-row proof | Harness loss plus later native physical recovery | `unknown_commit_result` | 1 / `0b0c1ce8d1e351f1f95ab480f8112e9c89361e30550308f4e04f598e8c0fdd46` | 1 / `0b0c1ce8d1e351f1f95ab480f8112e9c89361e30550308f4e04f598e8c0fdd46` |
+| `10_commit_call_loss` | 1; forced termination from inside SQLite's commit hook after the write-transaction and exclusive-lock checks, before commit phase one or result availability | Native SQLite commit-hook observation plus harness termination | `unknown_commit_result` | 1 / `43bef391b42f6b51b4c67517efe00e7c97dda0eabca6ed52975980468ed0923f` | 1 / `43bef391b42f6b51b4c67517efe00e7c97dda0eabca6ed52975980468ed0923f` |
+| `11_genuine_commit_error` | 1; genuine commit error attempt | Proven unreachable under selected exclusive shape; control commit genuinely succeeded | committed | 1 / `538c917b0fc4360a9f1337b5f04a3f0baf9e7436adcc21e1f6374e679587216e` | 2 / `7c0dd65cc2a2850d7fb6dfde8e3bd9142cf26503b74ddcc575fc9c170588e4d8` |
+| `12_response_loss` | 1; genuine commit success, caller response lost before reload | Harness | `unknown_commit_result` | 1 / `32097cd580bc4bb23bbdb3a84dc6ea953d9233840965514258386a3bf66e5410` | 2 / `fa586651472644b528aff5c042e98cc78284b0508048e4d63d124de173ff895d` |
+| `13_validation_loss` | 1; schema validation result lost after exact reload | Harness | `unknown_commit_result` | 1 / `604abe29c761b3c1f6fd4d303e2d59e2b97414dac714d3d361a76d28124af792` | 2 / `53f1d118dc76593ec110233467c23e292fe769bf480317957cfc908be043a214` |
+| `13_validation_loss` | 2; identity validation result lost | Harness | `unknown_commit_result` | 1 / `95f5a71c86ed8215865cf6880460dc1b954aebfde94d882b4378db91f7379eed` | 2 / `37ba916c7c427488bb0482f5e9490a176a1ec91157a74028748df1c5240fc7e5` |
+| `13_validation_loss` | 3; digest/envelope validation result lost | Harness | `unknown_commit_result` | 1 / `e2351ed2ad87340ac3671ad728083354787307b52e0b021f441ea31f506f2972` | 2 / `0790b0985f1a1d5782a9dc46cca025a204a952c6a5352c0e5147dadccaf57da3` |
+| `13_validation_loss` | 4; sibling validation result lost | Harness | `unknown_commit_result` | 1 / `b9fbd37af1ec09c17bade131abbadd653640c9ce8c4e41ef1f1d457cd89cf9a9` | 2 / `73f98f28c9ba21837cfe1045e7c3cc165a6100030f44c808e6ac04dc777df357` |
+| `13_validation_loss` | 5; DACL validation result lost | Harness | `unknown_commit_result` | 1 / `0ede316defffda98a5b2751ade8a26607433a6721809e5f0e2223694ebb9ec9e` | 2 / `39651e0ab7acd41405c527582dc669fae31372148a959e6b1149a379b4669781` |
+| `14_close_result_loss` | 1; successful close result lost | Harness | `unknown_commit_result` | 1 / `308fa6348158fc37f3d4f8e639f63666065850bda7d2c7dd306637e70b71a936` | 2 / `d4ad3b44fc10c58caeed27efbee783e3a7bef2188e88b1e793f17d56eb43f0ae` |
+| `15_ack_loss` | 1; complete path followed by acknowledgement loss | Harness | `unknown_commit_result` | 1 / `09d2cabd2f6b285735e8b9206d463c89036333c547a08134d7417f5f31e42877` | 2 / `8711029d8629c4ac052c7a963f7f0d15e99f39a7184eab6a772e67e1febf9c9d` |
+| `16_success` | 1; full validated path and one acknowledgement | Native | committed | 1 / `2a10f300002f05f312429cfc3c9ee12629fb6c127927be866a23096b15640717` | 2 / `792629f5e19b1b26eb3ca65bb91f19b0f122f2f0b9485236b90ae0615b1f5927` |
+
+The row-9 fresh recovery described physical old state only and did not retroactively invent an
+earlier acknowledgement. Row 10 is now deterministically reached through the pinned driver's public
+`sqlite.HookRegisterer.RegisterCommitHook` surface obtained from the dedicated
+`database/sql.Conn.Raw` connection. The generated SQLite engine invokes that callback from inside
+`_vdbeCommit` only after it has found the live write transaction and acquired the pager's exclusive
+lock, and before `_sqlite3BtreeCommitPhaseOne`. The callback writes the one strict child-protocol
+checkpoint from that native call stack and then blocks without returning. Only after the parent has
+validated the exact scenario, cycle, attempt, operation, checkpoint, database, session, and
+`commit_invoked=true` / `commit_returned=false` evidence does it terminate the child. Fresh
+recovery returned the exact old row. The application outcome remains `unknown_commit_result`; the
+injected process loss is not reported as a SQLite error or Windows storage result. Row 11 is
+genuinely unreachable under this exact shape without changing SQLite, the
+driver, filesystem, or protected code: an independent same-session owner is rejected with
+`BUSY/LOCKED` at acquisition before observation and therefore cannot retain a conflicting lock at
+commit; the control transaction returned genuine success. No error code was fabricated.
+
+**Exact local commit call-chain qualification — 2026-08-04.** The reviewed standard-library source
+was Go `go1.26.4` at `C:\Program Files\Go\src\database\sql\sql.go:2287-2319` and
+`C:\Program Files\Go\src\database\sql\driver\driver.go:518-522`. The reviewed pinned module source
+was `modernc.org/sqlite v1.56.0` at
+`C:\Users\Jamie\go\pkg\mod\modernc.org\sqlite@v1.56.0`, with its required
+`modernc.org/libc v1.74.4`. The exact path is:
+
+```text
+(*database/sql.Tx).Commit
+  -> driver.Tx.Commit through tx.txi under database/sql's driverConn lock
+  -> (*modernc.org/sqlite.tx).Commit
+  -> (*sqlite.tx).exec(context.Background(), "commit")
+  -> sqlite3.Xsqlite3_exec
+  -> sqlite3.Xsqlite3_prepare_v2
+  -> sqlite3.Xsqlite3_step
+  -> _sqlite3Step
+  -> _sqlite3VdbeExec
+  -> _sqlite3VdbeHalt
+  -> _vdbeCommit
+  -> detect the live write transaction and acquire the pager exclusive lock
+  -> FxCommitCallback / modernc commitHookTrampoline / test callback
+  -> _sqlite3BtreeCommitPhaseOne
+  -> _sqlite3BtreeCommitPhaseTwo
+  -> return through sqlite3_exec, modernc tx.Commit, and database/sql Tx.Commit
+```
+
+The driver locations were `tx.go:34-78` for its commit/exec path,
+`sqlite.go:618-622` for `HookRegisterer`, and `pre_update_hook.go:53-67,205-215` for commit-hook
+registration and dispatch. The generated Windows/amd64 engine locations were
+`lib/sqlite_windows.go:5803-5924` for `Xsqlite3_exec`,
+`lib/sqlite.go:11963-12022` for `Xsqlite3_step`, and
+`lib/sqlite_windows.go:93901-93973,104342-104538,116055-116163` for `_sqlite3Step`, VDBE halt,
+the commit-hook boundary, and the two commit phases.
+
+Every candidate observation or interception point was classified explicitly:
+
+- a marker immediately before `Tx.Commit`, entry to a wrapper `driver.Tx.Commit`, goroutine start,
+  timer, sleep, or parent-side kill race is too early because the underlying commit may not have
+  begun;
+- the Go `database/sql` test hooks cover connection return, transaction connection grabbing, and
+  rollback, but expose no post-driver-commit-entry/pre-result hook;
+- driver connection hooks run at connection setup; pre-update/update hooks run while staging the
+  row; rollback hooks run on rollback; authorizer and statement-trace callbacks can run at prepare or
+  statement-start boundaries; and progress callbacks are opcode-cadence dependent. None proves the
+  selected exact commit boundary as strongly as the native commit hook;
+- suppressing a result after `Tx.Commit`, dropping the child response, or relabeling the existing
+  response-loss row is too late because the commit result was already observed in the child;
+- debugger breakpoints, runtime/symbol patching, a replacement driver, a custom VFS, and direct
+  SQLite/pager instrumentation would require a different lower-level harness or dependency surface;
+  filesystem/journal observation is both insufficient and prohibited by this evidence contract; and
+- the accepted `RegisterCommitHook` callback is the exact seam: SQLite itself calls it from
+  `_vdbeCommit` after the write-transaction and exclusive-lock checks and before phase one. The test
+  callback never returns, never supplies a nonzero abort code, and never observes or suppresses a
+  commit result.
+
+The exact aggregate counters were: rows attempted `22`; rows proven natively `7`; harness-injected
+application-boundary rows `14`; rows proven unreachable `1`; rows still unproven `0`; known unchanged
+`6`; committed `2`; rejected `4`; `unknown_commit_result` `10`; recovery-only opens `22`; exact old
+recoveries `12`; exact new recoveries `10`; genuine `BUSY/LOCKED` before observation `1`, after
+observation `0`, and at commit `0`; successful different-session commits `1`; rollback attempts and
+exact-old proofs `6` / `6`; forced terminations `4`; commit invocations and genuine return
+observations `12` / `11`; success acknowledgements `2` (the independent different-session control
+and the full-success row). Duplicate commits, retries, replays, repairs, fallbacks, partial rows,
+ambiguous pre-commit recoveries, staged-row leaks, revision gaps/duplicates, digest/envelope
+mismatches, unexpected siblings/protection widening, and protocol loss/duplication/reordering were
+all `0`.
+
+The clean matrix elapsed time was `3.893s`. The canonical-root pre/post metadata-tree SHA-256 values
+were `01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b` and
+`527048ffa7ddd5c489824413b8b38a23d70609ace1e728e58dcc8966e38e765e`. The rollups over every
+scenario's exact pre/post metadata hash were
+`7ba2eb2fd9acaf76c15a9139f494fd31c2515498757db1d162002dcc3e05b7a5` and
+`596eb9e3504a83a46846de9e79a4c9de04de66c37b224513f9a42e50590dccc7`.
+Each metadata-tree hash is SHA-256 over LF-terminated, ordinally sorted rows containing relative path,
+entry type, byte size, and exact owner/DACL evidence. The rollup binds scenario ID, attempt, and its
+tree hash. No journal was opened or hashed for contents. Every scenario admitted only exact
+`aggregate.sqlite` / `aggregate.sqlite-journal` regular siblings; journals retained the exact private
+DACL. Only the parent test framework removed the canonical temporary root after all children and
+connections closed.
+
+Required validation then produced these exact results, in order:
+
+```text
+DORKPIPE_SQLITE_FAILURE_MATRIX=1 CGO_ENABLED=0 go test -mod=readonly ./appserversupervisor/sqliteevidence -run '^TestWindowsNativeSQLiteFailureBoundaryMatrix$' -count=1 -v -timeout=30m
+PASS; matrix elapsed 3.893s; rows proven natively 7; rows still unproven 0; commit invocations/returns 12/11
+DORKPIPE_SQLITE_CONTENTION_COHORT=1 CGO_ENABLED=0 go test -mod=readonly ./appserversupervisor/sqliteevidence -run '^TestWindowsNativeSQLiteContentionCohort$' -count=1 -v -timeout=30m
+PASS; cohort elapsed 2m26.596s; all existing counters and 9e4b...11b8 pre/post hash unchanged
+DORKPIPE_SQLITE_PUBLICATION_COHORT=1 CGO_ENABLED=0 go test -mod=readonly ./appserversupervisor/sqliteevidence -run '^TestWindowsNativeSQLitePublicationCohort$' -count=1 -v -timeout=30m
+PASS; cohort elapsed 3m56.453s; all existing counters and dd67...0aaa pre/post hash unchanged
+DORKPIPE_SQLITE_EVIDENCE=1 CGO_ENABLED=0 go test -mod=readonly ./appserversupervisor/sqliteevidence -run '^TestWindowsNativeSQLiteSmoke$' -count=1 -v
+PASS; smoke elapsed 1.46s; primary SQLITE_BUSY 5 and exact revision-2 recovery unchanged
+CGO_ENABLED=0 GOOS=<windows|linux|darwin> GOARCH=<amd64|amd64|arm64> go test -mod=readonly -c -o <verified-temporary-binary> ./appserversupervisor/sqliteevidence
+PASS; embedded CGO_ENABLED/GOOS/GOARCH matched; binary sizes 12205568 / 11044675 / 10943842 bytes; verified temporary directory removed
+go test -mod=readonly ./appserversupervisor ./providersession -count=1
+EXPECTED PROTECTED FAILURE; providersession passed; selector assertion remained 17 instead of 1
+go test -mod=readonly ./... -count=1 -timeout=90s
+EXPECTED PROTECTED FAILURES; selector assertion unchanged; sqliteevidence passed; orchestrationhelper timed out in TestNodeConnectorPlacementExecutionGraphDependencyTransitionPolicyRejectsMalformedDecisionFixtures/malformed
+go mod verify
+PASS; all modules verified
+gofmt -d appserversupervisor/sqliteevidence/windows_failure_boundary_matrix_test.go
+PASS; empty output
+git diff --check
+PASS
+```
+
+The full-suite timeout remained in the same protected placement-execution fixture chain and the same
+pre-existing `os.ReadFile` path, but its active subtest moved from the preceding
+`TestNodeConnectorPlacementExecutionGraphDependencyTransitionExecutorRejectsTargetSetConflicts/stale_version`
+case to
+`TestNodeConnectorPlacementExecutionGraphDependencyTransitionPolicyRejectsMalformedDecisionFixtures/malformed`.
+No protected App Server, Pipeon, or orchestration-helper path was edited. Clean cross-target evidence
+binaries were inspected outside the repository and the verified directory
+`dockpipe-sqlite-failure-cross-769ef3630a344e2e9359f6df6603a836` was removed. The updated
+failure-matrix file SHA-256 is
+`e15d602c8945a0852a6c388702c8242dfce0a9c9e17959caf4f7a18d9b933077`.
+
+Row 10 is now genuinely reachable and proven. The complete deterministic matrix is still not
+claimed closed because the required, genuinely unreachable row 11 remains recorded rather than
+simulated. Windows reboot/power-loss trials, Linux native
+runtime evidence, macOS/arm64 GitHub Actions evidence intentionally scheduled last, macOS VM
+disruption evidence if still required, complete production host/sidecar acceptance, production
+storage, migration, cutover, recovery authority, dispatch/projection/decision integration, and Slice
+2 all remain open. TASK-013 and CAS-14 remain open.
+
+The completed dependency-pin/smoke, publication, and contention/forced-termination slices do not
+claim the deterministic failure-boundary matrix, Windows VM reboot or hard-power-loss durability,
+complete sidecar qualification, a production host allowlist, Linux/ext4 runtime evidence,
+macOS/arm64 GitHub Actions evidence (intentionally last), or macOS VM disruption evidence if still
+required. They add no production store, migration, cutover, recovery authority, lifecycle dispatch,
+Pipeon projection, or Slice 2 work. Those gates remain open; TASK-013 and CAS-14 remain open.
 
 The implementation test matrix is:
 
