@@ -598,6 +598,162 @@ separate source. No MCP/Pipeon transport, fallback, retry, replay, second child,
 or authority inference is introduced. The next safe slice is transient MCP user-input
 request/response transport over the existing active-chat ownership model.
 
+That transient MCP user-input transport is now complete without changing the neutral contract. Two
+closed exec-tier operations, `dorkpipe.provider_pool_user_input_request` and
+`dorkpipe.provider_pool_user_input_respond`, address only the one prompt owned by the same MCP
+server's one active provider-pool chat. Request reads return defensive copies and are non-consuming.
+Respond requires one complete neutral `UserInputResponse`, validates it with `ValidateFor` against
+the server's immutable retained prompt plus the transport's UTF-8/control-text boundary, and
+acknowledges only one exact write to the same live child. Duplicate, stale, replayed, substituted,
+cross-correlation, cross-chat, cross-server, and post-shutdown responses fail before child delivery.
+
+Only the explicitly negotiated MCP App Server route installs the combined child-side interactive
+source. The existing anonymous stderr/stdin control boundary now recognizes the unchanged
+`DORKPIPE_PRIVATE_APPROVAL_V1` class and a distinct `DORKPIPE_PRIVATE_USER_INPUT_V1` class, each
+closed-JSON decoded and bounded to 64 KiB; ordinary stderr and final stdout remain separate. The
+user-input frame contains only the complete neutral prompt, and its return frame only the complete
+neutral response. Approval controllers cannot observe or answer user-input prompts, and user-input
+controllers cannot observe or answer approval requests.
+
+Response delivery does not project provider resolution, completion, success, or verified idle. The
+chat remains active until its existing exact `user_input_resolved`, terminal, and durable-idle gates.
+Chat completion, failure, denial, cancellation, child exit, framing or control-transport failure,
+MCP transport loss, EOF, HTTP/stdio shutdown, or server shutdown clears the pending prompt, cancels
+the wait, joins the active chat, rejects later operations, and suppresses late output. Prompt and
+response content remains process-memory-only and enters no package state, snapshot, audit, log,
+diagnostic, telemetry, metadata, environment value, file, queue, or artifact. Normal CLI,
+zero-value options, `codex_exec`, Ollama, and Claude routes still install no user-input source. No
+Pipeon UI, automatic answer, default, retry, fallback, replay, second child, adapter substitution, or
+authority inference is added. The next safe slice is Pipeon rendering and exact user controls for
+this transient user-input transport.
+
+The subsequent Pipeon-only user-input control slice also leaves this neutral contract and both MCP
+request classes unchanged. One normal Pipeon Codex chat pinned to `codex_app_server` runs a separate
+bounded user-input monitor alongside the existing approval monitor and original chat promise. It
+uses only the authenticated MCP HTTP transport, treats only the exact no-prompt and no-active-chat
+responses as expected misses, and never consumes or fabricates an answer. Any monitor transport
+failure aborts that same chat; every terminal path aborts and joins both monitors and clears their
+registries independently.
+
+The extension host strictly normalizes one exact kind-specific `UserInputPrompt`, defensively copies
+it, and binds it to the exact Pipeon session, chat invocation, provider-pool chat invocation, and a
+random prompt UI reference. Each selectable option receives a distinct random UI reference with a
+host-only mapping to the opaque `option_ref`. The webview receives only those random references,
+closed kind, bounded summary and labels, the relevant selection/text bound, and closed transport
+state. It never receives correlation, `prompt_ref`, opaque option refs, provider/private data,
+approval or recovery metadata, or response content, and none is persisted in webview, workspace, or
+global state.
+
+Single-choice, multiple-choice, and text submissions have no defaults. The extension host rebinds
+the exact active ownership tuple, validates the retained kind and response again, maps random option
+references without using labels, order, indices, or counts as authority, preserves valid text bytes
+unchanged, and constructs exactly one neutral `UserInputResponse`. Only an explicit
+`{"delivered":true}` from `dorkpipe.provider_pool_user_input_respond` confirms delivery. Response
+content is discarded after the call is constructed and sent. Delivery leaves the chat busy and
+implies neither prompt resolution, completion, success, idle, approval, nor recovery.
+
+Duplicate, stale, cross-session, cross-chat, cross-invocation, cross-UI-reference, wrong-kind,
+unknown-option, duplicate-option, and excessive-selection operations fail before MCP. An ambiguous
+delivery permanently disables controls, records only `transport_error`, aborts the original chat,
+and performs no retry, fallback, replacement response, child, or chat. Completion, failure, denial,
+cancellation, transport loss, teardown, view disposal/reset, and reload leave no replayable prompt or
+answer. Approval behavior remains on its unchanged separate registry and monitor. Slash commands,
+`codex_exec`, Ollama, Claude, normal CLI, and zero-value routes create no user-input control state.
+No engine, workflow, schema, listener, endpoint, provider-pool, supervisor, provider-session,
+cancellation, or recovery behavior changes. The next bounded consumer dependency is a separate
+package-private provider-pool cancellation-controller seam; Pipeon cancellation UI remains later
+work.
+
+That provider-pool cancellation-controller seam is now complete without changing this neutral
+contract. One optional package-private source receives only a defensive copy of the exact active
+`SessionRef` and turn correlation after the existing App Server consumer validates the correlated
+`turn_started` progress event. The source wait runs concurrently under a child context owned by the
+current chat, starts at most once, and is cancelled and joined on completion, failure, parent
+cancellation, event-channel closure, or teardown. `found=false` leaves the original chat running;
+source errors are bounded unknown outcomes and are not retried.
+
+The consumer copies and validates a supplied `CancellationIntent`, requires its session and complete
+process-incarnation/connection/session/turn scope to equal the retained active turn, accepts only the
+three existing closed reasons, and requires the same controller to remain exactly `running` with no
+approval, user-input, terminal, disconnect, or earlier cancellation pending. It then calls that
+controller's existing neutral `Cancel` once. Successful delivery does not complete the chat, release
+the unresolved-turn lock, persist idle/recovery evidence, or imply cancellation. The consumer waits
+for the exact correlated `cancellation_requested` projection, optional one bounded
+`background_process_risk_possible` progress event, and exact
+`state_changed / cancelled / cancelled` terminal. Only that terminal returns a bounded cancelled
+result, never verified idle.
+
+Malformed, stale, substituted, cross-process, cross-connection, cross-session, cross-turn,
+duplicate, reordered, mismatched, missing-terminal, controller-drift, source/context, and transport
+failures stop closed without exposing intent or correlation content. Approval and user-input paths
+remain independent. Normal CLI, zero-value options, `codex_exec`, Ollama, Claude, workflows, and
+bounded workers install no source. No MCP operation, transport, listener, Pipeon control, retry,
+replay, fallback, recovery, persistence, or engine behavior is added. The next bounded dependency is
+transient MCP cancellation request/delivery over the existing active-chat ownership and private
+interactive relay; Pipeon cancellation rendering and controls remain later work.
+
+That transient MCP cancellation transport is now complete without changing the neutral contract.
+The exec-tier `dorkpipe.provider_pool_cancellation_request` operation accepts only `{}` and returns a
+defensive, non-consuming copy of the one exact pending `SessionRef` plus active-turn correlation
+owned by the same MCP server's active chat. The closed
+`dorkpipe.provider_pool_cancellation_deliver` operation accepts one existing
+`CancellationIntent`, requires exact retained session/correlation equality and one of the three
+closed reasons, and returns only `{"delivered":true}` after writing the exact intent frame to the
+same live child. Delivery does not imply controller acceptance, interruption acknowledgement,
+terminal cancellation, completion, readiness, verified idle, or recovery.
+
+Only the explicitly negotiated App Server route installs the source. The distinct
+`DORKPIPE_PRIVATE_CANCELLATION_V1` class carries closed `cancellation_scope` and
+`cancellation_intent` frames over the existing bounded anonymous stderr/stdin boundary. The scope
+contains no activity, request, or decision scope, and neither frame carries provider protocol,
+prompt, command, patch, path, policy, approval, user-input, recovery, audit, or transport metadata.
+One child response demultiplexer isolates approval, user-input, and cancellation while serialized
+writes prevent frame interleaving. The bridge's active-chat-owned worker waits for cancellation
+without blocking stderr scanning or later approval/user-input registration and joins on every
+terminal or transport-loss path.
+
+Duplicate, replayed, stale, substituted, cross-process, cross-connection, cross-session, cross-turn,
+cross-chat/server, malformed, post-completion, and post-shutdown intents fail closed. EOF, child exit,
+context cancellation, relay/write failure, HTTP/stdio loss, and server shutdown clear and join the
+pending state without retry, replay, fallback, persistence, replacement child, polling, or event
+streaming. Approval and user-input controllers remain independent. Normal CLI, zero-value,
+`codex_exec`, Ollama, Claude, workflows, and bounded workers install no cancellation source. Pipeon
+cancellation rendering and explicit host-only control remain a later separate slice.
+
+That Pipeon-only cancellation control is now complete without changing this neutral contract. One
+normal direct Pipeon Codex chat explicitly pinned to `codex_app_server`, and already owning the
+approval and user-input controls, runs one additional invocation-owned bounded monitor in the same
+chat wrapper. It polls only the authenticated
+`dorkpipe.provider_pool_cancellation_request` operation at 125 ms for at most ten minutes and stops on
+the first exact scope, original chat settlement, invocation end or abort, teardown, or view disposal.
+Only the exact no-scope and no-active-chat errors are expected misses. Any other monitor error exposes
+only cancellation `transport_error`; it does not retry, infer a reason, submit an intent, abort the
+chat, or alter approval/user-input state.
+
+The separate host-only registry strictly normalizes and defensively retains one complete scope bound
+to the Pipeon session, exact chat invocation, same provider-pool chat invocation, and a cryptographically
+random cancellation UI reference. The process-incarnation, connection, provider-session, and active-
+turn identities never reach the webview, while activity, request, and decision scope must remain empty.
+The webview sees only the random reference plus `pending`, `submitting`, `delivered`, or
+`transport_error`; its one neutral button emits only that reference.
+
+The extension host revalidates the live ownership tuple, atomically consumes the pending scope,
+constructs one exact `CancellationIntent` with reason `user_requested`, and calls
+`dorkpipe.provider_pool_cancellation_deliver` once. Exact `{"delivered":true}` means only that the
+intent frame was written to the same live child. It does not settle or abort the original chat, clear
+the unresolved-turn lock, satisfy another control, or claim controller acceptance, interruption,
+terminal cancellation, completion, readiness, verified idle, or recovery.
+
+Every ambiguous post-submission outcome becomes permanent `transport_error`; no retry, replay,
+fallback, replacement reason, child, or chat is attempted. Duplicate, stale, substituted,
+cross-session, cross-chat, cross-invocation, cross-reference, malformed, post-completion, and post-
+teardown actions fail before MCP. Every terminal or teardown path clears the registry, scope, and UI
+reference without persistence or reconstruction. Approval, user input, and cancellation remain
+independent and may coexist. Default/missing adapters, `codex_exec`, Ollama, Claude, slash commands,
+workflows, prepared actions, normal CLI, zero-value options, and bounded workers remain unchanged. No
+event/status polling, listener, endpoint, transport, provider contract, persistence, recovery, or
+engine behavior is added.
+
 No second in-scope stable mapping is proven: `experimentalApi` is a global experimental opt-in,
 `mcpServerOpenaiFormElicitation` is outside the no-MCP boundary, `optOutNotificationMethods` is a
 suppression list rather than enablement, and `SelectedCapabilityRoot` is not bound to a stable thread
