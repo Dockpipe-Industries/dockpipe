@@ -9,6 +9,7 @@ const fs = require("fs/promises");
 const path = require("path");
 const cp = require("child_process");
 const os = require("os");
+const crypto = require("crypto");
 
 const DEFAULT_MODEL = "llama3.2";
 const DEFAULT_MODEL_PROVIDER = "dorkpipe-mcp";
@@ -42,6 +43,36 @@ const BUILTIN_TEMPLATE_ID = "dockpipe.default";
 const MAX_REASONING_TEMPLATES = 16;
 const MAX_TEMPLATE_NODES = 48;
 const MAX_LOOP_ITERATIONS = 8;
+const APP_SERVER_SESSION_ADAPTER = "codex_app_server";
+const CODEX_SESSION_ADAPTERS = ["codex_exec", APP_SERVER_SESSION_ADAPTER];
+const DEFAULT_CODEX_SESSION_ADAPTER = APP_SERVER_SESSION_ADAPTER;
+const HISTORICAL_CODEX_SESSION_ADAPTER = "codex_exec";
+const PROVIDER_POOL_APPROVAL_REQUEST_TOOL = "dorkpipe.provider_pool_approval_request";
+const PROVIDER_POOL_APPROVAL_DECIDE_TOOL = "dorkpipe.provider_pool_approval_decide";
+const PROVIDER_POOL_USER_INPUT_REQUEST_TOOL = "dorkpipe.provider_pool_user_input_request";
+const PROVIDER_POOL_USER_INPUT_RESPOND_TOOL = "dorkpipe.provider_pool_user_input_respond";
+const PROVIDER_POOL_CANCELLATION_REQUEST_TOOL = "dorkpipe.provider_pool_cancellation_request";
+const PROVIDER_POOL_CANCELLATION_DELIVER_TOOL = "dorkpipe.provider_pool_cancellation_deliver";
+const APPROVAL_MONITOR_CADENCE_MS = 125;
+const APPROVAL_MONITOR_LIFETIME_MS = 10 * 60 * 1000;
+const APPROVAL_CORRELATION_KEYS = [
+  "process_incarnation_id",
+  "connection_id",
+  "session_id",
+  "interaction_id",
+  "activity_id",
+  "request_id",
+  "decision_id",
+];
+const USER_INPUT_PROMPT_KINDS = ["select_one", "select_many", "text"];
+const MAX_OPAQUE_REFERENCE_BYTES = 128;
+const MAX_USER_INPUT_SUMMARY_BYTES = 512;
+const MAX_USER_INPUT_OPTIONS = 16;
+const MAX_USER_INPUT_OPTION_LABEL_BYTES = 128;
+const MAX_USER_INPUT_TEXT_BYTES = 4096;
+const APP_SERVER_POST_TURN_STATES = ["completed", "failed", "cancelled", "recovery_required"];
+const APP_SERVER_SNAPSHOT_REQUIRED_KEYS = ["adapter", "state", "outcomeUnknown"];
+const APP_SERVER_SNAPSHOT_OPTIONAL_KEYS = ["terminalSummaryId", "modelRef", "reasoningRef", "approvalRef", "sandboxRef"];
 
 type AnyRecord = Record<string, any>;
 
@@ -93,6 +124,10 @@ type ExecuteNaturalLanguageRequestOptions = {
   onEventDetail?: (event: DorkpipeRequestEvent) => void;
   onToken?: (token: string, fullText: string) => void;
   channel?: RequestChannel | null;
+  sessionAdapter?: string;
+  approvalInvocation?: AnyRecord | null;
+  userInputInvocation?: AnyRecord | null;
+  cancellationInvocation?: AnyRecord | null;
 };
 
 type AttachmentRecord = {
@@ -548,6 +583,1014 @@ function makeId(prefix) {
   return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
 }
 
+function makeRandomId(prefix) {
+  return `${prefix}_${crypto.randomBytes(18).toString("base64url")}`;
+}
+
+function hasExactObjectKeys(value, expectedKeys) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return false;
+  }
+  const actual = Object.keys(value).sort();
+  const expected = [...expectedKeys].sort();
+  return actual.length === expected.length && actual.every((key, index) => key === expected[index]);
+}
+
+function normalizeNeutralApprovalRequest(value) {
+  if (!hasExactObjectKeys(value, ["correlation", "reason", "allowed_decisions"])) {
+    throw new Error("Invalid neutral approval request.");
+  }
+  if (!hasExactObjectKeys(value.correlation, APPROVAL_CORRELATION_KEYS)) {
+    throw new Error("Invalid neutral approval request correlation.");
+  }
+  const correlation: AnyRecord = {};
+  for (const key of APPROVAL_CORRELATION_KEYS) {
+    const item = value.correlation[key];
+    if (typeof item !== "string" || !item.trim()) {
+      throw new Error("Incomplete neutral approval request correlation.");
+    }
+    correlation[key] = item;
+  }
+  const reason = String(value.reason || "");
+  const allowedDecisions = Array.isArray(value.allowed_decisions)
+    ? value.allowed_decisions.map((item) => String(item))
+    : [];
+  const expected = reason === "declared_permission"
+    ? ["deny"]
+    : (reason === "command_execution" || reason === "workspace_change" ? ["approve", "deny"] : []);
+  if (!expected.length || allowedDecisions.length !== expected.length || allowedDecisions.some((item, index) => item !== expected[index])) {
+    throw new Error("Invalid neutral approval request decision set.");
+  }
+  return {
+    correlation,
+    reason,
+    allowed_decisions: [...allowedDecisions],
+  };
+}
+
+class TransientApprovalRegistry {
+  makeReference: () => string;
+  invocations: Map<string, AnyRecord>;
+  recordsBySession: Map<string, AnyRecord>;
+
+  constructor(makeReference = () => makeId("approval_ui")) {
+    this.makeReference = makeReference;
+    this.invocations = new Map();
+    this.recordsBySession = new Map();
+  }
+
+  begin(sessionId) {
+    const normalizedSessionId = String(sessionId || "").trim();
+    if (!normalizedSessionId) {
+      throw new Error("Pipeon session id is required for an approval invocation.");
+    }
+    const invocation = {
+      id: makeId("approval_invocation"),
+      sessionId: normalizedSessionId,
+      active: true,
+    };
+    this.invocations.set(invocation.id, invocation);
+    return { id: invocation.id, sessionId: invocation.sessionId };
+  }
+
+  isActive(invocationId) {
+    return this.invocations.get(String(invocationId || ""))?.active === true;
+  }
+
+  retain(invocationId, value) {
+    const invocation = this.invocations.get(String(invocationId || ""));
+    if (!invocation?.active) {
+      return null;
+    }
+    const existing = this.recordsBySession.get(invocation.sessionId);
+    if (existing) {
+      return existing.invocationId === invocation.id ? this.project(invocation.sessionId) : null;
+    }
+    const request = normalizeNeutralApprovalRequest(value);
+    const record = {
+      uiReference: this.makeReference(),
+      sessionId: invocation.sessionId,
+      invocationId: invocation.id,
+      request,
+      state: "pending",
+    };
+    this.recordsBySession.set(invocation.sessionId, record);
+    return this.project(invocation.sessionId);
+  }
+
+  prepareDecision(sessionId, uiReference, decision) {
+    const record = this.recordsBySession.get(String(sessionId || ""));
+    const selectedDecision = String(decision || "");
+    if (
+      !record
+      || record.uiReference !== String(uiReference || "")
+      || record.state !== "pending"
+      || !this.isActive(record.invocationId)
+      || !record.request.allowed_decisions.includes(selectedDecision)
+    ) {
+      return null;
+    }
+    record.state = "submitting";
+    return {
+      correlation: { ...record.request.correlation },
+      decision: selectedDecision,
+    };
+  }
+
+  markDelivered(sessionId, uiReference) {
+    const record = this.recordsBySession.get(String(sessionId || ""));
+    if (!record || record.uiReference !== String(uiReference || "") || record.state !== "submitting") {
+      return false;
+    }
+    record.state = "delivered";
+    return true;
+  }
+
+  markTransportError(sessionId, uiReference) {
+    const record = this.recordsBySession.get(String(sessionId || ""));
+    if (!record || record.uiReference !== String(uiReference || "") || record.state !== "submitting") {
+      return false;
+    }
+    record.state = "transport_error";
+    return true;
+  }
+
+  project(sessionId) {
+    const record = this.recordsBySession.get(String(sessionId || ""));
+    if (!record || !this.isActive(record.invocationId)) {
+      return null;
+    }
+    return {
+      uiReference: record.uiReference,
+      reason: record.request.reason,
+      allowedDecisions: [...record.request.allowed_decisions],
+      state: record.state,
+    };
+  }
+
+  end(invocationId) {
+    const invocation = this.invocations.get(String(invocationId || ""));
+    if (!invocation) {
+      return false;
+    }
+    invocation.active = false;
+    this.invocations.delete(invocation.id);
+    const record = this.recordsBySession.get(invocation.sessionId);
+    if (record?.invocationId === invocation.id) {
+      this.recordsBySession.delete(invocation.sessionId);
+    }
+    return true;
+  }
+}
+
+function isUnicodeScalarString(value) {
+  const text = String(value);
+  for (let index = 0; index < text.length; index += 1) {
+    const code = text.charCodeAt(index);
+    if (code >= 0xd800 && code <= 0xdbff) {
+      if (index + 1 >= text.length) {
+        return false;
+      }
+      const next = text.charCodeAt(index + 1);
+      if (next < 0xdc00 || next > 0xdfff) {
+        return false;
+      }
+      index += 1;
+    } else if (code >= 0xdc00 && code <= 0xdfff) {
+      return false;
+    }
+  }
+  return true;
+}
+
+function hasProhibitedControlCharacters(value) {
+  return /\p{Cc}/u.test(String(value));
+}
+
+function utf8ByteLength(value) {
+  return Buffer.byteLength(String(value), "utf8");
+}
+
+function normalizeOpaqueUserInputReference(value, name) {
+  if (
+    typeof value !== "string"
+    || !value
+    || utf8ByteLength(value) > MAX_OPAQUE_REFERENCE_BYTES
+    || !/^[A-Za-z0-9._:-]+$/.test(value)
+  ) {
+    throw new Error(`Invalid ${name}.`);
+  }
+  return value;
+}
+
+function normalizeUserInputDisplayText(value, name, maxBytes) {
+  if (
+    typeof value !== "string"
+    || !value.trim()
+    || !isUnicodeScalarString(value)
+    || hasProhibitedControlCharacters(value)
+    || utf8ByteLength(value) > maxBytes
+  ) {
+    throw new Error(`Invalid ${name}.`);
+  }
+  return value;
+}
+
+function normalizeUserInputCorrelation(value) {
+  if (!hasExactObjectKeys(value, APPROVAL_CORRELATION_KEYS)) {
+    throw new Error("Invalid neutral user-input prompt correlation.");
+  }
+  const correlation: AnyRecord = {};
+  for (const key of APPROVAL_CORRELATION_KEYS) {
+    const item = value[key];
+    if (typeof item !== "string" || !item.trim() || !isUnicodeScalarString(item) || hasProhibitedControlCharacters(item)) {
+      throw new Error("Incomplete neutral user-input prompt correlation.");
+    }
+    correlation[key] = item;
+  }
+  return correlation;
+}
+
+function normalizeNeutralUserInputPrompt(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    throw new Error("Invalid neutral user-input prompt.");
+  }
+  const kind = typeof value.kind === "string" && USER_INPUT_PROMPT_KINDS.includes(value.kind)
+    ? value.kind
+    : "";
+  if (!kind) {
+    throw new Error("Invalid neutral user-input prompt kind.");
+  }
+  const expectedKeys = kind === "text"
+    ? ["correlation", "prompt_ref", "kind", "summary", "max_text_bytes"]
+    : ["correlation", "prompt_ref", "kind", "summary", "options", "max_selections"];
+  if (!hasExactObjectKeys(value, expectedKeys)) {
+    throw new Error("Invalid neutral user-input prompt shape.");
+  }
+  const prompt: AnyRecord = {
+    correlation: normalizeUserInputCorrelation(value.correlation),
+    prompt_ref: normalizeOpaqueUserInputReference(value.prompt_ref, "neutral user-input prompt reference"),
+    kind,
+    summary: normalizeUserInputDisplayText(value.summary, "neutral user-input summary", MAX_USER_INPUT_SUMMARY_BYTES),
+  };
+  if (kind === "text") {
+    if (!Number.isInteger(value.max_text_bytes) || value.max_text_bytes < 1 || value.max_text_bytes > MAX_USER_INPUT_TEXT_BYTES) {
+      throw new Error("Invalid neutral user-input text bound.");
+    }
+    prompt.max_text_bytes = value.max_text_bytes;
+    return prompt;
+  }
+  if (!Array.isArray(value.options) || value.options.length < 1 || value.options.length > MAX_USER_INPUT_OPTIONS) {
+    throw new Error("Invalid neutral user-input options.");
+  }
+  const seen = new Set();
+  prompt.options = value.options.map((option) => {
+    if (!hasExactObjectKeys(option, ["option_ref", "label"])) {
+      throw new Error("Invalid neutral user-input option shape.");
+    }
+    const optionRef = normalizeOpaqueUserInputReference(option.option_ref, "neutral user-input option reference");
+    if (seen.has(optionRef)) {
+      throw new Error("Duplicate neutral user-input option reference.");
+    }
+    seen.add(optionRef);
+    return {
+      option_ref: optionRef,
+      label: normalizeUserInputDisplayText(option.label, "neutral user-input option label", MAX_USER_INPUT_OPTION_LABEL_BYTES),
+    };
+  });
+  if (!Number.isInteger(value.max_selections)) {
+    throw new Error("Invalid neutral user-input selection bound.");
+  }
+  if (kind === "select_one" && value.max_selections !== 1) {
+    throw new Error("Invalid neutral single-selection bound.");
+  }
+  if (kind === "select_many" && (value.max_selections < 1 || value.max_selections > prompt.options.length)) {
+    throw new Error("Invalid neutral multiple-selection bound.");
+  }
+  prompt.max_selections = value.max_selections;
+  return prompt;
+}
+
+function validateUserInputText(value, maxBytes) {
+  if (
+    typeof value !== "string"
+    || !value.trim()
+    || !isUnicodeScalarString(value)
+    || hasProhibitedControlCharacters(value)
+    || utf8ByteLength(value) > maxBytes
+  ) {
+    throw new Error("Invalid bounded user-input text response.");
+  }
+  return value;
+}
+
+class TransientUserInputRegistry {
+  makeReference: () => string;
+  makeOptionReference: () => string;
+  invocations: Map<string, AnyRecord>;
+  recordsBySession: Map<string, AnyRecord>;
+  issuedReferences: Set<string>;
+
+  constructor(
+    makeReference = () => makeRandomId("user_input_ui"),
+    makeOptionReference = () => makeRandomId("user_input_option_ui")
+  ) {
+    this.makeReference = makeReference;
+    this.makeOptionReference = makeOptionReference;
+    this.invocations = new Map();
+    this.recordsBySession = new Map();
+    this.issuedReferences = new Set();
+  }
+
+  begin(sessionId) {
+    const normalizedSessionId = String(sessionId || "").trim();
+    if (!normalizedSessionId) {
+      throw new Error("Pipeon session id is required for a user-input invocation.");
+    }
+    const invocation = {
+      id: makeRandomId("user_input_invocation"),
+      providerPoolChatId: makeRandomId("provider_pool_chat"),
+      sessionId: normalizedSessionId,
+      active: true,
+      abortChat: null,
+    };
+    this.invocations.set(invocation.id, invocation);
+    return {
+      id: invocation.id,
+      providerPoolChatId: invocation.providerPoolChatId,
+      sessionId: invocation.sessionId,
+    };
+  }
+
+  isActive(invocationId) {
+    return this.invocations.get(String(invocationId || ""))?.active === true;
+  }
+
+  bindChatAbort(invocationId, abortChat) {
+    const invocation = this.invocations.get(String(invocationId || ""));
+    if (!invocation?.active || typeof abortChat !== "function" || invocation.abortChat) {
+      return false;
+    }
+    invocation.abortChat = abortChat;
+    return true;
+  }
+
+  retain(invocationId, value) {
+    const invocation = this.invocations.get(String(invocationId || ""));
+    if (!invocation?.active) {
+      throw new Error("User-input invocation is no longer active.");
+    }
+    if (this.recordsBySession.has(invocation.sessionId)) {
+      throw new Error("A user-input prompt is already retained for this Pipeon session.");
+    }
+    const prompt = normalizeNeutralUserInputPrompt(value);
+    let uiReference = "";
+    for (let attempt = 0; attempt < 32 && (!uiReference || this.issuedReferences.has(uiReference)); attempt += 1) {
+      uiReference = this.makeReference();
+    }
+    if (!uiReference || this.issuedReferences.has(uiReference)) {
+      throw new Error("A random user-input UI reference is required.");
+    }
+    this.issuedReferences.add(uiReference);
+    const usedReferences = new Set([uiReference]);
+    const optionReferences = new Map();
+    const projectedOptions = (prompt.options || []).map((option) => {
+      let uiOptionReference = "";
+      for (
+        let attempt = 0;
+        attempt < 32 && (!uiOptionReference || usedReferences.has(uiOptionReference) || this.issuedReferences.has(uiOptionReference));
+        attempt += 1
+      ) {
+        uiOptionReference = this.makeOptionReference();
+      }
+      if (!uiOptionReference || usedReferences.has(uiOptionReference) || this.issuedReferences.has(uiOptionReference)) {
+        throw new Error("Distinct random user-input option references are required.");
+      }
+      usedReferences.add(uiOptionReference);
+      this.issuedReferences.add(uiOptionReference);
+      optionReferences.set(uiOptionReference, option.option_ref);
+      return { uiOptionReference, label: option.label };
+    });
+    const record = {
+      uiReference,
+      sessionId: invocation.sessionId,
+      invocationId: invocation.id,
+      providerPoolChatId: invocation.providerPoolChatId,
+      prompt,
+      optionReferences,
+      projectedOptions,
+      state: "pending",
+    };
+    this.recordsBySession.set(invocation.sessionId, record);
+    return this.project(invocation.sessionId);
+  }
+
+  prepareResponse(sessionId, uiReference, responseKind, submission: AnyRecord = {}) {
+    const record = this.recordsBySession.get(String(sessionId || ""));
+    const invocation = record ? this.invocations.get(record.invocationId) : null;
+    if (
+      !record
+      || !invocation?.active
+      || invocation.sessionId !== record.sessionId
+      || invocation.providerPoolChatId !== record.providerPoolChatId
+      || record.uiReference !== String(uiReference || "")
+      || record.state !== "pending"
+      || record.prompt.kind !== String(responseKind || "")
+    ) {
+      return null;
+    }
+    const response: AnyRecord = {
+      correlation: { ...record.prompt.correlation },
+      prompt_ref: record.prompt.prompt_ref,
+    };
+    if (record.prompt.kind === "text") {
+      if (!hasExactObjectKeys(submission, ["text"])) {
+        return null;
+      }
+      try {
+        response.text = validateUserInputText(submission.text, record.prompt.max_text_bytes);
+      } catch {
+        return null;
+      }
+    } else {
+      if (!hasExactObjectKeys(submission, ["uiOptionReferences"]) || !Array.isArray(submission.uiOptionReferences)) {
+        return null;
+      }
+      const selected = submission.uiOptionReferences;
+      if (selected.length < 1 || selected.length > record.prompt.max_selections || (record.prompt.kind === "select_one" && selected.length !== 1)) {
+        return null;
+      }
+      const seen = new Set();
+      const optionRefs = [];
+      for (const uiOptionReference of selected) {
+        if (typeof uiOptionReference !== "string" || seen.has(uiOptionReference) || !record.optionReferences.has(uiOptionReference)) {
+          return null;
+        }
+        seen.add(uiOptionReference);
+        optionRefs.push(record.optionReferences.get(uiOptionReference));
+      }
+      response.selected_option_refs = optionRefs;
+    }
+    record.state = "submitting";
+    record.prompt = null;
+    record.optionReferences.clear();
+    record.projectedOptions.length = 0;
+    return response;
+  }
+
+  markDelivered(sessionId, uiReference) {
+    const record = this.recordsBySession.get(String(sessionId || ""));
+    if (!record || record.uiReference !== String(uiReference || "") || record.state !== "submitting") {
+      return false;
+    }
+    record.state = "delivered";
+    return true;
+  }
+
+  markTransportError(sessionId, uiReference) {
+    const record = this.recordsBySession.get(String(sessionId || ""));
+    if (!record || record.uiReference !== String(uiReference || "") || record.state !== "submitting") {
+      return false;
+    }
+    record.state = "transport_error";
+    return true;
+  }
+
+  abortChat(sessionId, uiReference) {
+    const record = this.recordsBySession.get(String(sessionId || ""));
+    if (!record || record.uiReference !== String(uiReference || "")) {
+      return false;
+    }
+    const invocation = this.invocations.get(record.invocationId);
+    if (!invocation?.active || invocation.providerPoolChatId !== record.providerPoolChatId) {
+      return false;
+    }
+    invocation.abortChat?.();
+    return true;
+  }
+
+  project(sessionId) {
+    const record = this.recordsBySession.get(String(sessionId || ""));
+    const invocation = record ? this.invocations.get(record.invocationId) : null;
+    if (!record || !invocation?.active || invocation.providerPoolChatId !== record.providerPoolChatId) {
+      return null;
+    }
+    if (record.state !== "pending") {
+      return {
+        uiReference: record.uiReference,
+        state: record.state,
+      };
+    }
+    const projection: AnyRecord = {
+      uiReference: record.uiReference,
+      kind: record.prompt.kind,
+      summary: record.prompt.summary,
+      state: record.state,
+    };
+    if (record.prompt.kind === "text") {
+      projection.maxTextBytes = record.prompt.max_text_bytes;
+    } else {
+      projection.options = record.projectedOptions.map((option) => ({ ...option }));
+      if (record.prompt.kind === "select_many") {
+        projection.maxSelections = record.prompt.max_selections;
+      }
+    }
+    return projection;
+  }
+
+  end(invocationId) {
+    const invocation = this.invocations.get(String(invocationId || ""));
+    if (!invocation) {
+      return false;
+    }
+    invocation.active = false;
+    invocation.abortChat = null;
+    this.invocations.delete(invocation.id);
+    const record = this.recordsBySession.get(invocation.sessionId);
+    if (record?.invocationId === invocation.id) {
+      record.optionReferences?.clear();
+      if (record.projectedOptions) {
+        record.projectedOptions.length = 0;
+      }
+      this.recordsBySession.delete(invocation.sessionId);
+    }
+    return true;
+  }
+
+  abortSession(sessionId) {
+    const record = this.recordsBySession.get(String(sessionId || ""));
+    if (!record) {
+      return false;
+    }
+    const invocation = this.invocations.get(record.invocationId);
+    invocation?.abortChat?.();
+    return this.end(record.invocationId);
+  }
+
+  abortAll() {
+    const invocationIds = [...this.invocations.keys()];
+    for (const invocationId of invocationIds) {
+      const invocation = this.invocations.get(invocationId);
+      invocation?.abortChat?.();
+      this.end(invocationId);
+    }
+  }
+}
+
+function normalizeCancellationIdentifier(value, name, allowEmpty = false) {
+  if (typeof value !== "string" || !isUnicodeScalarString(value) || hasProhibitedControlCharacters(value)) {
+    throw new Error(`Invalid ${name}.`);
+  }
+  if (allowEmpty) {
+    if (value !== "") {
+      throw new Error(`Invalid ${name}.`);
+    }
+    return value;
+  }
+  if (!value.trim() || value.trim() !== value) {
+    throw new Error(`Invalid ${name}.`);
+  }
+  return value;
+}
+
+function normalizeNeutralCancellationScope(value) {
+  if (!hasExactObjectKeys(value, ["session", "correlation"])) {
+    throw new Error("Invalid neutral cancellation scope.");
+  }
+  if (!hasExactObjectKeys(value.session, ["provider", "session_id"])) {
+    throw new Error("Invalid neutral cancellation session.");
+  }
+  if (value.session.provider !== "codex") {
+    throw new Error("Invalid neutral cancellation provider.");
+  }
+  const sessionId = normalizeCancellationIdentifier(value.session.session_id, "neutral cancellation session id");
+  if (!hasExactObjectKeys(value.correlation, APPROVAL_CORRELATION_KEYS)) {
+    throw new Error("Invalid neutral cancellation correlation.");
+  }
+  const correlation = {
+    process_incarnation_id: normalizeCancellationIdentifier(value.correlation.process_incarnation_id, "neutral cancellation process incarnation id"),
+    connection_id: normalizeCancellationIdentifier(value.correlation.connection_id, "neutral cancellation connection id"),
+    session_id: normalizeCancellationIdentifier(value.correlation.session_id, "neutral cancellation correlation session id"),
+    interaction_id: normalizeCancellationIdentifier(value.correlation.interaction_id, "neutral cancellation interaction id"),
+    activity_id: normalizeCancellationIdentifier(value.correlation.activity_id, "neutral cancellation activity id", true),
+    request_id: normalizeCancellationIdentifier(value.correlation.request_id, "neutral cancellation request id", true),
+    decision_id: normalizeCancellationIdentifier(value.correlation.decision_id, "neutral cancellation decision id", true),
+  };
+  if (correlation.session_id !== sessionId) {
+    throw new Error("Neutral cancellation session identity does not match.");
+  }
+  return {
+    session: { provider: "codex", session_id: sessionId },
+    correlation,
+  };
+}
+
+class TransientCancellationRegistry {
+  makeReference: () => string;
+  invocations: Map<string, AnyRecord>;
+  recordsBySession: Map<string, AnyRecord>;
+  issuedReferences: Set<string>;
+
+  constructor(makeReference = () => makeRandomId("cancellation_ui")) {
+    this.makeReference = makeReference;
+    this.invocations = new Map();
+    this.recordsBySession = new Map();
+    this.issuedReferences = new Set();
+  }
+
+  begin(sessionId, providerPoolChatId) {
+    const normalizedSessionId = String(sessionId || "").trim();
+    const normalizedChatId = String(providerPoolChatId || "").trim();
+    if (!normalizedSessionId || !normalizedChatId) {
+      throw new Error("Pipeon session and provider-pool chat ids are required for a cancellation invocation.");
+    }
+    const invocation = {
+      id: makeRandomId("cancellation_invocation"),
+      providerPoolChatId: normalizedChatId,
+      sessionId: normalizedSessionId,
+      active: true,
+      abortMonitor: null,
+    };
+    this.invocations.set(invocation.id, invocation);
+    return { id: invocation.id, providerPoolChatId: invocation.providerPoolChatId, sessionId: invocation.sessionId };
+  }
+
+  isActive(invocationId) {
+    return this.invocations.get(String(invocationId || ""))?.active === true;
+  }
+
+  bindMonitorAbort(invocationId, abortMonitor) {
+    const invocation = this.invocations.get(String(invocationId || ""));
+    if (!invocation?.active || typeof abortMonitor !== "function" || invocation.abortMonitor) {
+      return false;
+    }
+    invocation.abortMonitor = abortMonitor;
+    return true;
+  }
+
+  makeUniqueReference() {
+    let uiReference = "";
+    for (let attempt = 0; attempt < 32 && (!uiReference || this.issuedReferences.has(uiReference)); attempt += 1) {
+      uiReference = this.makeReference();
+    }
+    if (!uiReference || this.issuedReferences.has(uiReference)) {
+      throw new Error("A random cancellation UI reference is required.");
+    }
+    this.issuedReferences.add(uiReference);
+    return uiReference;
+  }
+
+  retain(invocationId, value) {
+    const invocation = this.invocations.get(String(invocationId || ""));
+    if (!invocation?.active) {
+      throw new Error("Cancellation invocation is no longer active.");
+    }
+    if (this.recordsBySession.has(invocation.sessionId)) {
+      throw new Error("A cancellation scope is already retained for this Pipeon session.");
+    }
+    const scope = normalizeNeutralCancellationScope(value);
+    const record = {
+      uiReference: this.makeUniqueReference(),
+      sessionId: invocation.sessionId,
+      invocationId: invocation.id,
+      providerPoolChatId: invocation.providerPoolChatId,
+      scope,
+      state: "pending",
+    };
+    this.recordsBySession.set(invocation.sessionId, record);
+    return this.project(invocation.sessionId);
+  }
+
+  markMonitorTransportError(invocationId) {
+    const invocation = this.invocations.get(String(invocationId || ""));
+    if (!invocation?.active) {
+      return false;
+    }
+    const existing = this.recordsBySession.get(invocation.sessionId);
+    if (existing) {
+      return existing.invocationId === invocation.id && existing.state === "transport_error";
+    }
+    this.recordsBySession.set(invocation.sessionId, {
+      uiReference: this.makeUniqueReference(),
+      sessionId: invocation.sessionId,
+      invocationId: invocation.id,
+      providerPoolChatId: invocation.providerPoolChatId,
+      scope: null,
+      state: "transport_error",
+    });
+    return true;
+  }
+
+  prepareIntent(sessionId, uiReference) {
+    const record = this.recordsBySession.get(String(sessionId || ""));
+    const invocation = record ? this.invocations.get(record.invocationId) : null;
+    if (
+      !record
+      || !invocation?.active
+      || invocation.sessionId !== record.sessionId
+      || invocation.providerPoolChatId !== record.providerPoolChatId
+      || record.uiReference !== String(uiReference || "")
+      || record.state !== "pending"
+      || !record.scope
+    ) {
+      return null;
+    }
+    const intent = {
+      session: { ...record.scope.session },
+      correlation: { ...record.scope.correlation },
+      reason: "user_requested",
+    };
+    record.state = "submitting";
+    record.scope = null;
+    return intent;
+  }
+
+  markDelivered(sessionId, uiReference) {
+    const record = this.recordsBySession.get(String(sessionId || ""));
+    if (!record || record.uiReference !== String(uiReference || "") || record.state !== "submitting") {
+      return false;
+    }
+    record.state = "delivered";
+    return true;
+  }
+
+  markTransportError(sessionId, uiReference) {
+    const record = this.recordsBySession.get(String(sessionId || ""));
+    if (!record || record.uiReference !== String(uiReference || "") || record.state !== "submitting") {
+      return false;
+    }
+    record.state = "transport_error";
+    return true;
+  }
+
+  project(sessionId) {
+    const record = this.recordsBySession.get(String(sessionId || ""));
+    const invocation = record ? this.invocations.get(record.invocationId) : null;
+    if (
+      !record
+      || !invocation?.active
+      || invocation.sessionId !== record.sessionId
+      || invocation.providerPoolChatId !== record.providerPoolChatId
+    ) {
+      return null;
+    }
+    return { uiReference: record.uiReference, state: record.state };
+  }
+
+  end(invocationId) {
+    const invocation = this.invocations.get(String(invocationId || ""));
+    if (!invocation) {
+      return false;
+    }
+    invocation.active = false;
+    invocation.abortMonitor?.();
+    invocation.abortMonitor = null;
+    this.invocations.delete(invocation.id);
+    const record = this.recordsBySession.get(invocation.sessionId);
+    if (record?.invocationId === invocation.id) {
+      record.scope = null;
+      this.recordsBySession.delete(invocation.sessionId);
+    }
+    return true;
+  }
+
+  abortSession(sessionId) {
+    const normalizedSessionId = String(sessionId || "");
+    let changed = false;
+    for (const invocation of [...this.invocations.values()]) {
+      if (invocation.sessionId === normalizedSessionId) {
+        changed = this.end(invocation.id) || changed;
+      }
+    }
+    return changed;
+  }
+
+  abortAll() {
+    for (const invocationId of [...this.invocations.keys()]) {
+      this.end(invocationId);
+    }
+  }
+}
+
+function isExpectedApprovalReadMiss(error) {
+  const message = error instanceof Error ? error.message : String(error || "");
+  return message.includes("no exact provider-pool approval request is pending")
+    || message.includes("no provider-pool chat is active");
+}
+
+function waitForApprovalCadence(milliseconds, signal?: AbortSignal) {
+  if (signal?.aborted) {
+    return Promise.resolve(false);
+  }
+  return new Promise((resolve) => {
+    let timeout: NodeJS.Timeout | null = null;
+    const onAbort = () => {
+      if (timeout) {
+        clearTimeout(timeout);
+      }
+      signal?.removeEventListener("abort", onAbort);
+      resolve(false);
+    };
+    timeout = setTimeout(() => {
+      signal?.removeEventListener("abort", onAbort);
+      resolve(true);
+    }, Math.max(0, Number(milliseconds) || 0));
+    signal?.addEventListener("abort", onAbort, { once: true });
+  });
+}
+
+async function monitorProviderPoolApproval(options: AnyRecord) {
+  const startedAt = Date.now();
+  const cadenceMs = Number.isFinite(Number(options.cadenceMs)) ? Math.max(0, Number(options.cadenceMs)) : APPROVAL_MONITOR_CADENCE_MS;
+  const lifetimeMs = Number.isFinite(Number(options.lifetimeMs)) ? Math.max(1, Number(options.lifetimeMs)) : APPROVAL_MONITOR_LIFETIME_MS;
+  while (options.isActive() && !options.signal?.aborted && Date.now() - startedAt < lifetimeMs) {
+    try {
+      const request = normalizeNeutralApprovalRequest(await options.readRequest(options.signal));
+      if (!options.isActive() || options.signal?.aborted) {
+        return "stopped";
+      }
+      options.onRequest(request);
+      return "found";
+    } catch (error) {
+      if (!options.isActive() || options.signal?.aborted) {
+        return "stopped";
+      }
+      if (!isExpectedApprovalReadMiss(error)) {
+        options.onTransportFailure?.();
+        return "transport_error";
+      }
+    }
+    if (!(await waitForApprovalCadence(cadenceMs, options.signal))) {
+      return "stopped";
+    }
+  }
+  return options.isActive() && !options.signal?.aborted ? "expired" : "stopped";
+}
+
+async function deliverTransientApprovalDecision(registry, sessionId, uiReference, decision, callTool, onStateChanged = () => {}) {
+  const payload = registry.prepareDecision(sessionId, uiReference, decision);
+  if (!payload) {
+    return "rejected";
+  }
+  onStateChanged();
+  try {
+    const result = await callTool(PROVIDER_POOL_APPROVAL_DECIDE_TOOL, payload);
+    if (result?.delivered !== true) {
+      throw new Error("Approval delivery was not confirmed.");
+    }
+    registry.markDelivered(sessionId, uiReference);
+    onStateChanged();
+    return "delivered";
+  } catch {
+    registry.markTransportError(sessionId, uiReference);
+    onStateChanged();
+    return "transport_error";
+  }
+}
+
+function isExpectedUserInputReadMiss(error) {
+  const message = error instanceof Error ? error.message : String(error || "");
+  return message.includes("no exact provider-pool user-input prompt is pending")
+    || message.includes("no provider-pool chat is active");
+}
+
+async function monitorProviderPoolUserInput(options: AnyRecord) {
+  const startedAt = Date.now();
+  const cadenceMs = Number.isFinite(Number(options.cadenceMs)) ? Math.max(0, Number(options.cadenceMs)) : APPROVAL_MONITOR_CADENCE_MS;
+  const lifetimeMs = Number.isFinite(Number(options.lifetimeMs)) ? Math.max(1, Number(options.lifetimeMs)) : APPROVAL_MONITOR_LIFETIME_MS;
+  while (options.isActive() && !options.signal?.aborted && Date.now() - startedAt < lifetimeMs) {
+    try {
+      const prompt = normalizeNeutralUserInputPrompt(await options.readPrompt(options.signal));
+      if (!options.isActive() || options.signal?.aborted) {
+        return "stopped";
+      }
+      options.onPrompt(prompt);
+      return "found";
+    } catch (error) {
+      if (!options.isActive() || options.signal?.aborted) {
+        return "stopped";
+      }
+      if (!isExpectedUserInputReadMiss(error)) {
+        options.onTransportFailure?.();
+        return "transport_error";
+      }
+    }
+    if (!(await waitForApprovalCadence(cadenceMs, options.signal))) {
+      return "stopped";
+    }
+  }
+  return options.isActive() && !options.signal?.aborted ? "expired" : "stopped";
+}
+
+async function deliverTransientUserInputResponse(
+  registry,
+  sessionId,
+  uiReference,
+  responseKind,
+  submission,
+  callTool,
+  onStateChanged = () => {}
+) {
+  let payload = registry.prepareResponse(sessionId, uiReference, responseKind, submission);
+  submission = null;
+  if (!payload) {
+    return "rejected";
+  }
+  onStateChanged();
+  try {
+    const delivery = callTool(PROVIDER_POOL_USER_INPUT_RESPOND_TOOL, payload);
+    payload = null;
+    const result = await delivery;
+    if (result?.delivered !== true) {
+      throw new Error("User-input delivery was not confirmed.");
+    }
+    registry.markDelivered(sessionId, uiReference);
+    onStateChanged();
+    return "delivered";
+  } catch {
+    payload = null;
+    registry.markTransportError(sessionId, uiReference);
+    onStateChanged();
+    registry.abortChat(sessionId, uiReference);
+    return "transport_error";
+  }
+}
+
+function isExpectedCancellationReadMiss(error) {
+  const message = error instanceof Error ? error.message : String(error || "");
+  return message === "MCP RPC -32000: no exact provider-pool cancellation scope is pending"
+    || message === "MCP RPC -32000: no provider-pool chat is active";
+}
+
+async function monitorProviderPoolCancellation(options: AnyRecord) {
+  const startedAt = Date.now();
+  const cadenceMs = Number.isFinite(Number(options.cadenceMs)) ? Math.max(0, Number(options.cadenceMs)) : APPROVAL_MONITOR_CADENCE_MS;
+  const lifetimeMs = Number.isFinite(Number(options.lifetimeMs)) ? Math.max(1, Number(options.lifetimeMs)) : APPROVAL_MONITOR_LIFETIME_MS;
+  while (options.isActive() && !options.signal?.aborted && Date.now() - startedAt < lifetimeMs) {
+    try {
+      const scope = normalizeNeutralCancellationScope(await options.readScope(options.signal));
+      if (!options.isActive() || options.signal?.aborted) {
+        return "stopped";
+      }
+      options.onScope(scope);
+      return "found";
+    } catch (error) {
+      if (!options.isActive() || options.signal?.aborted) {
+        return "stopped";
+      }
+      if (!isExpectedCancellationReadMiss(error)) {
+        options.onTransportFailure?.();
+        return "transport_error";
+      }
+    }
+    if (!(await waitForApprovalCadence(cadenceMs, options.signal))) {
+      return "stopped";
+    }
+  }
+  return options.isActive() && !options.signal?.aborted ? "expired" : "stopped";
+}
+
+async function deliverTransientCancellationIntent(registry, sessionId, uiReference, callTool, onStateChanged = () => {}) {
+  let payload = registry.prepareIntent(sessionId, uiReference);
+  if (!payload) {
+    return "rejected";
+  }
+  onStateChanged();
+  try {
+    const delivery = callTool(PROVIDER_POOL_CANCELLATION_DELIVER_TOOL, payload);
+    payload = null;
+    const result = await delivery;
+    if (!hasExactObjectKeys(result, ["delivered"]) || result.delivered !== true) {
+      throw new Error("Cancellation delivery was not confirmed.");
+    }
+    registry.markDelivered(sessionId, uiReference);
+    onStateChanged();
+    return "delivered";
+  } catch {
+    payload = null;
+    registry.markTransportError(sessionId, uiReference);
+    onStateChanged();
+    return "transport_error";
+  }
+}
+
+function shouldStartTransientInteractiveControls(provider, sessionAdapter, text, routeKind = "direct_chat") {
+  return String(routeKind || "") === "direct_chat"
+    && String(provider || "") === "codex"
+    && String(sessionAdapter || "") === APP_SERVER_SESSION_ADAPTER
+    && !String(text || "").trim().startsWith("/");
+}
+
+function beginTransientInteractiveInvocations(owner, sessionId, provider, sessionAdapter, text, routeKind = "direct_chat") {
+  if (!shouldStartTransientInteractiveControls(provider, sessionAdapter, text, routeKind)) {
+    return { approvalInvocation: null, userInputInvocation: null, cancellationInvocation: null };
+  }
+  const approvalInvocation = owner.beginApprovalInvocation(sessionId);
+  const userInputInvocation = owner.beginUserInputInvocation(sessionId);
+  const cancellationInvocation = owner.beginCancellationInvocation(sessionId, userInputInvocation.providerPoolChatId);
+  return { approvalInvocation, userInputInvocation, cancellationInvocation };
+}
+
 function clampText(text, maxChars) {
   if (!text) return "";
   const value = String(text);
@@ -716,13 +1759,242 @@ function summarizeSessionTitle(text) {
   return `${oneLine.slice(0, 41)}...`;
 }
 
-function createSession(seedText = "") {
+class CodexSessionAdapterEvidenceError extends Error {}
+class CodexAppServerSnapshotEvidenceError extends Error {}
+
+function normalizeCodexSessionAdapter(value) {
+  if (typeof value !== "string" || !CODEX_SESSION_ADAPTERS.includes(value)) {
+    throw new CodexSessionAdapterEvidenceError(`Unsupported Pipeon Codex session adapter: ${typeof value === "string" ? value || "(empty)" : "(empty)"}`);
+  }
+  return value;
+}
+
+function configuredCodexSessionAdapter(root) {
+  const resource = root ? vscode.Uri.file(root) : undefined;
+  const value = vscode.workspace.getConfiguration("pipeon", resource).get("codex.sessionAdapter", DEFAULT_CODEX_SESSION_ADAPTER);
+  return normalizeCodexSessionAdapter(value);
+}
+
+function explicitlyConfiguredCodexSessionAdapter(root) {
+  const resource = root ? vscode.Uri.file(root) : undefined;
+  const inspected = vscode.workspace.getConfiguration("pipeon", resource).inspect("codex.sessionAdapter");
+  if (!inspected || typeof inspected !== "object") {
+    throw new CodexSessionAdapterEvidenceError("Unsupported Pipeon Codex session adapter: (empty)");
+  }
+  for (const key of ["workspaceFolderValue", "workspaceValue", "globalValue"]) {
+    if (inspected[key] !== undefined) {
+      return normalizeCodexSessionAdapter(inspected[key]);
+    }
+  }
+  return null;
+}
+
+function legacyCodexSessionAdapter(root) {
+  return explicitlyConfiguredCodexSessionAdapter(root) || HISTORICAL_CODEX_SESSION_ADAPTER;
+}
+
+function retainedCodexSessionAdapter(session) {
+  if (!session || typeof session !== "object" || !Object.prototype.hasOwnProperty.call(session, "codexSessionAdapter")) {
+    throw new CodexSessionAdapterEvidenceError("Unsupported Pipeon Codex session adapter: (empty)");
+  }
+  return normalizeCodexSessionAdapter(session.codexSessionAdapter);
+}
+
+function normalizeAppServerSnapshotIdentifier(value, name) {
+  if (
+    typeof value !== "string"
+    || !value
+    || utf8ByteLength(value) > MAX_OPAQUE_REFERENCE_BYTES
+    || !/^[a-z][a-z0-9_]*$/.test(value)
+  ) {
+    throw new CodexAppServerSnapshotEvidenceError(`Invalid ${name}.`);
+  }
+  return value;
+}
+
+function normalizeAppServerSnapshotReference(value, name) {
+  if (
+    typeof value !== "string"
+    || !value
+    || utf8ByteLength(value) > MAX_OPAQUE_REFERENCE_BYTES
+    || !/^[A-Za-z0-9._:\/-]+$/.test(value)
+  ) {
+    throw new CodexAppServerSnapshotEvidenceError(`Invalid ${name}.`);
+  }
+  return value;
+}
+
+function normalizeCodexAppServerPostTurnSnapshot(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    throw new CodexAppServerSnapshotEvidenceError("Invalid Pipeon App Server post-turn snapshot.");
+  }
+  const keys = Object.keys(value);
+  const allowedKeys = new Set([...APP_SERVER_SNAPSHOT_REQUIRED_KEYS, ...APP_SERVER_SNAPSHOT_OPTIONAL_KEYS]);
+  if (
+    APP_SERVER_SNAPSHOT_REQUIRED_KEYS.some((key) => !Object.prototype.hasOwnProperty.call(value, key))
+    || keys.some((key) => !allowedKeys.has(key))
+  ) {
+    throw new CodexAppServerSnapshotEvidenceError("Invalid Pipeon App Server post-turn snapshot shape.");
+  }
+  if (value.adapter !== APP_SERVER_SESSION_ADAPTER) {
+    throw new CodexAppServerSnapshotEvidenceError("Invalid Pipeon App Server post-turn snapshot adapter.");
+  }
+  if (typeof value.state !== "string" || !APP_SERVER_POST_TURN_STATES.includes(value.state)) {
+    throw new CodexAppServerSnapshotEvidenceError("Invalid Pipeon App Server post-turn snapshot state.");
+  }
+  if (typeof value.outcomeUnknown !== "boolean" || value.outcomeUnknown !== (value.state === "recovery_required")) {
+    throw new CodexAppServerSnapshotEvidenceError("Invalid Pipeon App Server post-turn snapshot outcome.");
+  }
+  const snapshot: AnyRecord = {
+    adapter: APP_SERVER_SESSION_ADAPTER,
+    state: value.state,
+    outcomeUnknown: value.outcomeUnknown,
+  };
+  if (Object.prototype.hasOwnProperty.call(value, "terminalSummaryId")) {
+    snapshot.terminalSummaryId = normalizeAppServerSnapshotIdentifier(value.terminalSummaryId, "App Server terminal summary identifier");
+    if (
+      (value.state === "completed" && snapshot.terminalSummaryId !== "turn_completed")
+      || (value.state === "cancelled" && snapshot.terminalSummaryId !== "cancelled")
+      || (["failed", "recovery_required"].includes(value.state) && ["turn_completed", "cancelled"].includes(snapshot.terminalSummaryId))
+    ) {
+      throw new CodexAppServerSnapshotEvidenceError("App Server terminal summary does not match the neutral state.");
+    }
+  }
+  for (const [key, label] of [
+    ["modelRef", "model reference"],
+    ["reasoningRef", "reasoning reference"],
+    ["approvalRef", "approval reference"],
+    ["sandboxRef", "sandbox reference"],
+  ]) {
+    if (Object.prototype.hasOwnProperty.call(value, key)) {
+      snapshot[key] = normalizeAppServerSnapshotReference(value[key], `App Server ${label}`);
+    }
+  }
+  return snapshot;
+}
+
+function optionalCodexAppServerPostTurnSnapshot(session) {
+  if (!session || typeof session !== "object" || !Object.prototype.hasOwnProperty.call(session, "codexAppServerPostTurnSnapshot")) {
+    return {};
+  }
+  if (
+    Object.prototype.hasOwnProperty.call(session, "codexSessionAdapter")
+    && normalizeCodexSessionAdapter(session.codexSessionAdapter) !== APP_SERVER_SESSION_ADAPTER
+  ) {
+    throw new CodexAppServerSnapshotEvidenceError("Pipeon App Server snapshot does not match the retained session adapter.");
+  }
+  return { codexAppServerPostTurnSnapshot: normalizeCodexAppServerPostTurnSnapshot(session.codexAppServerPostTurnSnapshot) };
+}
+
+function deriveCodexAppServerPostTurnSnapshot(sessionAdapter, result) {
+  if (normalizeCodexSessionAdapter(sessionAdapter) !== APP_SERVER_SESSION_ADAPTER) {
+    return null;
+  }
+  const metadata = result?.metadata;
+  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata) || !Object.prototype.hasOwnProperty.call(metadata, "session_adapter")) {
+    return null;
+  }
+  if (metadata.session_adapter !== APP_SERVER_SESSION_ADAPTER) {
+    throw new CodexAppServerSnapshotEvidenceError("Invalid App Server response adapter evidence.");
+  }
+  if (typeof metadata.outcome_unknown !== "boolean") {
+    throw new CodexAppServerSnapshotEvidenceError("Invalid App Server response outcome evidence.");
+  }
+  const responseState = result?.providerPoolState;
+  const state = metadata.outcome_unknown && responseState === "failed"
+    ? "recovery_required"
+    : responseState === "ready"
+      ? "completed"
+      : responseState === "failed"
+        ? "failed"
+        : responseState === "cancelled"
+          ? "cancelled"
+          : "";
+  if (!state || (metadata.outcome_unknown && state !== "recovery_required")) {
+    throw new CodexAppServerSnapshotEvidenceError("Invalid App Server response terminal state evidence.");
+  }
+  const snapshot: AnyRecord = {
+    adapter: APP_SERVER_SESSION_ADAPTER,
+    state,
+    outcomeUnknown: metadata.outcome_unknown,
+  };
+  const fields = [
+    ["terminal_summary", "terminalSummaryId"],
+    ["selected_model", "modelRef"],
+    ["selected_reasoning_effort", "reasoningRef"],
+    ["approval_policy", "approvalRef"],
+    ["sandbox", "sandboxRef"],
+  ];
+  for (const [sourceKey, targetKey] of fields) {
+    if (Object.prototype.hasOwnProperty.call(metadata, sourceKey)) {
+      snapshot[targetKey] = metadata[sourceKey];
+    }
+  }
+  return normalizeCodexAppServerPostTurnSnapshot(snapshot);
+}
+
+function updateCodexAppServerPostTurnSnapshot(session, provider, text, result, routeKind = "direct_chat") {
+  if (
+    provider !== "codex"
+    || routeKind !== "direct_chat"
+    || String(text || "").trim().startsWith("/")
+    || retainedCodexSessionAdapter(session) !== APP_SERVER_SESSION_ADAPTER
+  ) {
+    return false;
+  }
+  const snapshot = deriveCodexAppServerPostTurnSnapshot(APP_SERVER_SESSION_ADAPTER, result);
+  if (!snapshot) {
+    return false;
+  }
+  session.codexAppServerPostTurnSnapshot = snapshot;
+  return true;
+}
+
+function projectCodexAppServerPostTurnSnapshot(session) {
+  const retained = optionalCodexAppServerPostTurnSnapshot(session).codexAppServerPostTurnSnapshot;
+  if (!retained) {
+    return null;
+  }
+  const display: AnyRecord = {
+    state: retained.state,
+    outcomeUnknown: retained.outcomeUnknown,
+  };
+  for (const key of APP_SERVER_SNAPSHOT_OPTIONAL_KEYS) {
+    if (Object.prototype.hasOwnProperty.call(retained, key)) {
+      display[key] = retained[key];
+    }
+  }
+  return display;
+}
+
+function shouldBlockCodexAppServerRecoveryRequiredTurn(session, provider, text, routeKind = "direct_chat") {
+  if (
+    String(routeKind || "") !== "direct_chat"
+    || String(provider || "") !== "codex"
+    || String(text || "").trim().startsWith("/")
+    || retainedCodexSessionAdapter(session) !== APP_SERVER_SESSION_ADAPTER
+  ) {
+    return false;
+  }
+  const snapshot = optionalCodexAppServerPostTurnSnapshot(session).codexAppServerPostTurnSnapshot;
+  return snapshot?.state === "recovery_required" && snapshot.outcomeUnknown === true;
+}
+
+function clearSessionMessages(session) {
+  session.messages = [];
+  return session;
+}
+
+function createSession(seedText = "", sessionAdapter?) {
   const createdAt = nowIso();
   return {
     id: makeId("chat"),
     title: summarizeSessionTitle(seedText),
     createdAt,
     updatedAt: createdAt,
+    codexSessionAdapter: sessionAdapter === undefined
+      ? configuredCodexSessionAdapter(getWorkspaceRoot())
+      : normalizeCodexSessionAdapter(sessionAdapter),
     messages: [],
   };
 }
@@ -1349,7 +2621,13 @@ function buildRequestErrorStatus(message) {
   return "DorkPipe request failed";
 }
 
-function normalizeStoredChatState(raw) {
+function storedChatStateNeedsCodexSessionAdapterMigration(raw) {
+  return !!raw && Array.isArray(raw.sessions) && raw.sessions.some((session) => (
+    session && typeof session === "object" && !Object.prototype.hasOwnProperty.call(session, "codexSessionAdapter")
+  ));
+}
+
+function normalizeStoredChatState(raw, root = getWorkspaceRoot()) {
   try {
     const base = createInitialChatState();
     if (!raw || !Array.isArray(raw.sessions) || raw.sessions.length === 0) {
@@ -1364,6 +2642,10 @@ function normalizeStoredChatState(raw) {
         title: summarizeSessionTitle(session?.title || "New chat"),
         createdAt: String(session?.createdAt || nowIso()),
         updatedAt: String(session?.updatedAt || session?.createdAt || nowIso()),
+        codexSessionAdapter: Object.prototype.hasOwnProperty.call(session || {}, "codexSessionAdapter")
+          ? normalizeCodexSessionAdapter(session.codexSessionAdapter)
+          : legacyCodexSessionAdapter(root),
+        ...optionalCodexAppServerPostTurnSnapshot(session),
         messages: Array.isArray(session?.messages) ? session.messages.map(sanitizeMessage).slice(-MAX_HISTORY_MESSAGES * 3) : [],
       }))
       .slice(0, MAX_SAVED_SESSIONS);
@@ -1386,7 +2668,10 @@ function normalizeStoredChatState(raw) {
       reasoningTemplates,
       modelStore,
     };
-  } catch {
+  } catch (error) {
+    if (error instanceof CodexSessionAdapterEvidenceError || error instanceof CodexAppServerSnapshotEvidenceError) {
+      throw error;
+    }
     return createInitialChatState();
   }
 }
@@ -1506,6 +2791,8 @@ function compactChatStoreForPersistence(chatStore) {
       title: summarizeSessionTitle(session.title || "New chat"),
       createdAt: String(session.createdAt || nowIso()),
       updatedAt: String(session.updatedAt || session.createdAt || nowIso()),
+      codexSessionAdapter: retainedCodexSessionAdapter(session),
+      ...optionalCodexAppServerPostTurnSnapshot(session),
       messages: Array.isArray(session.messages) ? session.messages.slice(-MAX_HISTORY_MESSAGES * 2).map(compactMessageForStorage) : [],
     })),
   };
@@ -1944,7 +3231,7 @@ function mcpHttpEndpoint(url) {
   return clean.endsWith("/mcp") ? clean : `${clean}/mcp`;
 }
 
-async function callMcpAt(url, apiKey, method, params) {
+async function callMcpAt(url, apiKey, method, params, options: AnyRecord = {}) {
   const endpoint = mcpHttpEndpoint(url);
   if (!endpoint) {
     throw new Error("MCP URL is required.");
@@ -1959,6 +3246,7 @@ async function callMcpAt(url, apiKey, method, params) {
   const response = await fetch(endpoint, {
     method: "POST",
     headers,
+    signal: options.signal,
     body: JSON.stringify({
       jsonrpc: "2.0",
       id: Date.now(),
@@ -2001,7 +3289,7 @@ async function callMcpTool(toolName, args) {
   return raw ? JSON.parse(raw) : null;
 }
 
-async function callHostMcpTool(toolName, args) {
+async function callHostMcpTool(toolName, args, options: AnyRecord = {}) {
   const url = String(process.env.PIPEON_HOST_MCP_URL || "").trim();
   const apiKey = String(process.env.PIPEON_HOST_MCP_API_KEY || "").trim();
   if (!url || !apiKey) {
@@ -2010,12 +3298,73 @@ async function callHostMcpTool(toolName, args) {
   const result = await callMcpAt(url, apiKey, "tools/call", {
     name: toolName,
     arguments: args,
-  });
+  }, options);
   if (!result) {
     return null;
   }
   const raw = flattenMcpTextContent(result.content);
   return raw ? JSON.parse(raw) : null;
+}
+
+async function callProviderPoolChatWithApprovalMonitor(toolArguments, invocation) {
+  const chatAbort = new AbortController();
+  const monitorAbort = new AbortController();
+  const chatPromise = callHostMcpTool("dorkpipe.provider_pool_chat", toolArguments, { signal: chatAbort.signal });
+  const monitorPromise = monitorProviderPoolApproval({
+    signal: monitorAbort.signal,
+    isActive: invocation.isActive,
+    readRequest: (signal) => callHostMcpTool(PROVIDER_POOL_APPROVAL_REQUEST_TOOL, {}, { signal }),
+    onRequest: invocation.onRequest,
+    onTransportFailure: () => chatAbort.abort(),
+  });
+  try {
+    return await chatPromise;
+  } finally {
+    monitorAbort.abort();
+    await monitorPromise;
+  }
+}
+
+async function callProviderPoolChatWithInteractiveMonitors(toolArguments, approvalInvocation, userInputInvocation, cancellationInvocation) {
+  const chatAbort = new AbortController();
+  const approvalMonitorAbort = new AbortController();
+  const userInputMonitorAbort = new AbortController();
+  const cancellationMonitorAbort = new AbortController();
+  if (userInputInvocation.providerPoolChatId !== cancellationInvocation.providerPoolChatId) {
+    throw new Error("Interactive controls do not own the same provider-pool chat invocation.");
+  }
+  cancellationInvocation.bindMonitorAbort(() => cancellationMonitorAbort.abort());
+  userInputInvocation.bindChatAbort(() => chatAbort.abort());
+  const chatPromise = callHostMcpTool("dorkpipe.provider_pool_chat", toolArguments, { signal: chatAbort.signal });
+  const approvalMonitorPromise = monitorProviderPoolApproval({
+    signal: approvalMonitorAbort.signal,
+    isActive: approvalInvocation.isActive,
+    readRequest: (signal) => callHostMcpTool(PROVIDER_POOL_APPROVAL_REQUEST_TOOL, {}, { signal }),
+    onRequest: approvalInvocation.onRequest,
+    onTransportFailure: () => chatAbort.abort(),
+  });
+  const userInputMonitorPromise = monitorProviderPoolUserInput({
+    signal: userInputMonitorAbort.signal,
+    isActive: userInputInvocation.isActive,
+    readPrompt: (signal) => callHostMcpTool(PROVIDER_POOL_USER_INPUT_REQUEST_TOOL, {}, { signal }),
+    onPrompt: userInputInvocation.onPrompt,
+    onTransportFailure: () => chatAbort.abort(),
+  });
+  const cancellationMonitorPromise = monitorProviderPoolCancellation({
+    signal: cancellationMonitorAbort.signal,
+    isActive: cancellationInvocation.isActive,
+    readScope: (signal) => callHostMcpTool(PROVIDER_POOL_CANCELLATION_REQUEST_TOOL, {}, { signal }),
+    onScope: cancellationInvocation.onScope,
+    onTransportFailure: cancellationInvocation.onTransportFailure,
+  });
+  try {
+    return await chatPromise;
+  } finally {
+    approvalMonitorAbort.abort();
+    userInputMonitorAbort.abort();
+    cancellationMonitorAbort.abort();
+    await Promise.all([approvalMonitorPromise, userInputMonitorPromise, cancellationMonitorPromise]);
+  }
 }
 
 async function executeNaturalLanguageRequest(root, text, signals, options: ExecuteNaturalLanguageRequestOptions = {}): Promise<any> {
@@ -2032,6 +3381,10 @@ async function executeNaturalLanguageRequest(root, text, signals, options: Execu
     provider: chatProvider,
     model: chatModel,
     sessionId: options.sessionId,
+    sessionAdapter: chatProvider === "codex" ? normalizeCodexSessionAdapter(options.sessionAdapter) : "",
+    approvalInvocation: options.approvalInvocation,
+    userInputInvocation: options.userInputInvocation,
+    cancellationInvocation: options.cancellationInvocation,
     mode: requestMode,
     modelProfile,
     onEvent: options.onEvent,
@@ -2039,14 +3392,11 @@ async function executeNaturalLanguageRequest(root, text, signals, options: Execu
   });
 }
 
-async function executeProviderPoolChat(root, text, signals, options: AnyRecord = {}): Promise<any> {
+function buildProviderPoolChatToolArguments(root, text, signals, options: AnyRecord = {}) {
   const provider = normalizeChatProvider(options.provider);
   const model = normalizeChatModel(provider, options.model);
   const sessionId = String(options.sessionId || "").trim();
-  if (options.onEvent) {
-    options.onEvent(`Checking ${provider} provider pool`);
-  }
-  const payload = await callHostMcpTool("dorkpipe.provider_pool_chat", {
+  const toolArguments: AnyRecord = {
     workdir: root,
     message: text,
     provider,
@@ -2055,7 +3405,35 @@ async function executeProviderPoolChat(root, text, signals, options: AnyRecord =
     active_file: signals.activeFile || "",
     open_files: Array.isArray(signals.openFiles) ? signals.openFiles : [],
     selection_text: signals.selectionText || "",
-  });
+  };
+  const sessionAdapter = provider === "codex"
+    ? normalizeCodexSessionAdapter(options.sessionAdapter)
+    : String(options.sessionAdapter || "").trim();
+  if (sessionAdapter) {
+    toolArguments.session_adapter = sessionAdapter;
+  }
+  return { provider, model, sessionAdapter, toolArguments };
+}
+
+async function executeProviderPoolChat(root, text, signals, options: AnyRecord = {}): Promise<any> {
+  const { provider, model, sessionAdapter, toolArguments } = buildProviderPoolChatToolArguments(root, text, signals, options);
+  if (options.onEvent) {
+    options.onEvent(`Checking ${provider} provider pool`);
+  }
+  const approvalInvocation = provider === "codex" && sessionAdapter === APP_SERVER_SESSION_ADAPTER
+    ? options.approvalInvocation
+    : null;
+  const userInputInvocation = provider === "codex" && sessionAdapter === APP_SERVER_SESSION_ADAPTER
+    ? options.userInputInvocation
+    : null;
+  const cancellationInvocation = provider === "codex" && sessionAdapter === APP_SERVER_SESSION_ADAPTER
+    ? options.cancellationInvocation
+    : null;
+  const payload = approvalInvocation && userInputInvocation && cancellationInvocation
+    ? await callProviderPoolChatWithInteractiveMonitors(toolArguments, approvalInvocation, userInputInvocation, cancellationInvocation)
+    : approvalInvocation
+      ? await callProviderPoolChatWithApprovalMonitor(toolArguments, approvalInvocation)
+    : await callHostMcpTool("dorkpipe.provider_pool_chat", toolArguments);
   if (Array.isArray(payload?.stderr) && payload.stderr.length) {
     options.channel?.appendLine(payload.stderr.join("\n"));
   } else if (String(payload?.stderr || "").trim()) {
@@ -2081,6 +3459,7 @@ async function executeProviderPoolChat(root, text, signals, options: AnyRecord =
       model,
       provider_pool_state: payload?.state || "unknown",
     },
+    providerPoolState: payload?.state,
     providerAction,
     status: payload?.status || `Provider: ${provider} | Model: ${model}`,
   };
@@ -2749,6 +4128,10 @@ async function executeDorkpipeRequest(root, session, text, options: ExecuteNatur
       chatModel: options.chatModel,
       providerCatalog: options.providerCatalog,
       sessionId: options.sessionId,
+      sessionAdapter: options.sessionAdapter,
+      approvalInvocation: options.approvalInvocation,
+      userInputInvocation: options.userInputInvocation,
+      cancellationInvocation: options.cancellationInvocation,
       conversationHistory: options.conversationHistory,
       attachments: options.attachments,
       reasoningTemplate,
@@ -2776,6 +4159,10 @@ async function executeDorkpipeRequest(root, session, text, options: ExecuteNatur
     chatModel: options.chatModel,
     providerCatalog: options.providerCatalog,
     sessionId: options.sessionId,
+    sessionAdapter: options.sessionAdapter,
+    approvalInvocation: options.approvalInvocation,
+    userInputInvocation: options.userInputInvocation,
+    cancellationInvocation: options.cancellationInvocation,
     conversationHistory: options.conversationHistory,
     attachments: options.attachments,
     reasoningTemplate,
@@ -3561,6 +4948,9 @@ class PipeonChatViewProvider {
   view: WebviewView | null;
   surfaces: Map<string, PipeonSurface>;
   sessionPanels: Map<string, WebviewPanel>;
+  transientApprovals: TransientApprovalRegistry;
+  transientUserInputs: TransientUserInputRegistry;
+  transientCancellations: TransientCancellationRegistry;
   chatStore: any;
   state: any;
 
@@ -3571,9 +4961,14 @@ class PipeonChatViewProvider {
     this.view = null;
     this.surfaces = new Map();
     this.sessionPanels = new Map();
+    this.transientApprovals = new TransientApprovalRegistry();
+    this.transientUserInputs = new TransientUserInputRegistry();
+    this.transientCancellations = new TransientCancellationRegistry();
     logChannelInfo(this.channel, "Pipeon chat provider constructing");
     try {
-      const workspaceChatStore = normalizeStoredChatState(this.context.workspaceState.get(CHAT_STATE_KEY));
+      const storedChatState = this.context.workspaceState.get(CHAT_STATE_KEY);
+      const needsSessionAdapterMigration = storedChatStateNeedsCodexSessionAdapterMigration(storedChatState);
+      const workspaceChatStore = normalizeStoredChatState(storedChatState);
       const userStudioState = normalizeUserStudioState(this.context.globalState.get(USER_STUDIO_STATE_KEY), workspaceChatStore);
       this.chatStore = {
         ...workspaceChatStore,
@@ -3584,9 +4979,15 @@ class PipeonChatViewProvider {
         activeSessionId: this.chatStore?.activeSessionId || "",
         templates: Array.isArray(this.chatStore?.reasoningTemplates) ? this.chatStore.reasoningTemplates.length : 0,
       });
+      if (needsSessionAdapterMigration) {
+        void this.persistChatStore();
+      }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       this.channel.error(`Failed to restore chat history: ${message}`);
+      if (error instanceof CodexSessionAdapterEvidenceError) {
+        throw error;
+      }
       this.chatStore = createInitialChatState();
     }
     this.state = {
@@ -3644,6 +5045,116 @@ class PipeonChatViewProvider {
   sessionById(sessionId) {
     this.chatStore = ensureValidChatStore(this.chatStore);
     return this.chatStore.sessions.find((session) => session.id === sessionId) || null;
+  }
+
+  beginApprovalInvocation(sessionId) {
+    const invocation = this.transientApprovals.begin(sessionId);
+    return {
+      id: invocation.id,
+      sessionId: invocation.sessionId,
+      isActive: () => this.transientApprovals.isActive(invocation.id),
+      onRequest: (request) => {
+        if (this.transientApprovals.retain(invocation.id, request)) {
+          this.refresh();
+        }
+      },
+    };
+  }
+
+  endApprovalInvocation(invocation) {
+    if (invocation?.id && this.transientApprovals.end(invocation.id)) {
+      this.refresh();
+    }
+  }
+
+  async resolveTransientApproval(uiReference, decision, sessionId) {
+    return deliverTransientApprovalDecision(
+      this.transientApprovals,
+      sessionId,
+      uiReference,
+      decision,
+      (toolName, args) => callHostMcpTool(toolName, args),
+      () => this.refresh()
+    );
+  }
+
+  beginUserInputInvocation(sessionId) {
+    const invocation = this.transientUserInputs.begin(sessionId);
+    return {
+      id: invocation.id,
+      providerPoolChatId: invocation.providerPoolChatId,
+      sessionId: invocation.sessionId,
+      isActive: () => this.transientUserInputs.isActive(invocation.id),
+      bindChatAbort: (abortChat) => this.transientUserInputs.bindChatAbort(invocation.id, abortChat),
+      onPrompt: (prompt) => {
+        this.transientUserInputs.retain(invocation.id, prompt);
+        this.refresh();
+      },
+    };
+  }
+
+  endUserInputInvocation(invocation) {
+    if (invocation?.id && this.transientUserInputs.end(invocation.id)) {
+      this.refresh();
+    }
+  }
+
+  async resolveTransientUserInput(uiReference, responseKind, submission, sessionId) {
+    return deliverTransientUserInputResponse(
+      this.transientUserInputs,
+      sessionId,
+      uiReference,
+      responseKind,
+      submission,
+      (toolName, args) => callHostMcpTool(toolName, args),
+      () => this.refresh()
+    );
+  }
+
+  beginCancellationInvocation(sessionId, providerPoolChatId) {
+    const invocation = this.transientCancellations.begin(sessionId, providerPoolChatId);
+    return {
+      id: invocation.id,
+      providerPoolChatId: invocation.providerPoolChatId,
+      sessionId: invocation.sessionId,
+      isActive: () => this.transientCancellations.isActive(invocation.id),
+      bindMonitorAbort: (abortMonitor) => this.transientCancellations.bindMonitorAbort(invocation.id, abortMonitor),
+      onScope: (scope) => {
+        this.transientCancellations.retain(invocation.id, scope);
+        this.refresh();
+      },
+      onTransportFailure: () => {
+        if (this.transientCancellations.markMonitorTransportError(invocation.id)) {
+          this.refresh();
+        }
+      },
+    };
+  }
+
+  endCancellationInvocation(invocation) {
+    if (invocation?.id && this.transientCancellations.end(invocation.id)) {
+      this.refresh();
+    }
+  }
+
+  async resolveTransientCancellation(uiReference, sessionId) {
+    const session = this.sessionById(sessionId);
+    if (
+      normalizeChatProvider(this.chatStore.chatProvider) !== "codex"
+      || !session
+      || retainedCodexSessionAdapter(session) !== APP_SERVER_SESSION_ADAPTER
+    ) {
+      this.transientCancellations.abortSession(sessionId);
+      this.refresh();
+      return "rejected";
+    }
+    return deliverTransientCancellationIntent(
+      this.transientCancellations,
+      sessionId,
+      uiReference,
+      (toolName, args) => callHostMcpTool(toolName, args),
+      () => this.refresh()
+    );
   }
 
   async persistChatStore() {
@@ -3726,10 +5237,17 @@ class PipeonChatViewProvider {
   stateForSession(sessionId) {
     this.syncViewState();
     const session = this.sessionById(sessionId) || this.activeSession;
+    if (retainedCodexSessionAdapter(session) !== APP_SERVER_SESSION_ADAPTER) {
+      this.transientCancellations.abortSession(session.id);
+    }
     return {
       ...this.state,
       activeSessionId: session.id,
       activeSessionTitle: session.title || "New chat",
+      transientApproval: this.transientApprovals.project(session.id),
+      transientUserInput: this.transientUserInputs.project(session.id),
+      transientCancellation: this.transientCancellations.project(session.id),
+      appServerStatus: projectCodexAppServerPostTurnSnapshot(session),
       messages: session.messages.map((message) => ({
         ...message,
         html: safeRenderMessageBody(message, this.channel),
@@ -3809,7 +5327,8 @@ class PipeonChatViewProvider {
   }
 
   async newSession(seedText = "") {
-    const session = createSession(seedText);
+    this.transientCancellations.abortAll();
+    const session = createSession(seedText, configuredCodexSessionAdapter(getWorkspaceRoot()));
     this.chatStore.sessions = [session, ...this.chatStore.sessions].slice(0, MAX_SAVED_SESSIONS);
     this.chatStore.activeSessionId = session.id;
     this.state.trace = [];
@@ -3820,7 +5339,8 @@ class PipeonChatViewProvider {
 
   async clearActiveSession() {
     const session = this.activeSession;
-    session.messages = [];
+    this.transientCancellations.abortSession(session.id);
+    clearSessionMessages(session);
     session.updatedAt = nowIso();
     session.title = "New chat";
     this.state.trace = [];
@@ -3862,6 +5382,7 @@ class PipeonChatViewProvider {
   }
 
   async setChatProviderModel(provider, model) {
+    this.transientCancellations.abortAll();
     const nextProvider = normalizeChatProvider(provider);
     const nextModel = normalizeChatModel(nextProvider, model, this.chatStore.providerCatalog);
     this.chatStore.chatProvider = nextProvider;
@@ -3915,6 +5436,8 @@ class PipeonChatViewProvider {
   }
 
   async resetWebviewShell(reason = "Manual reset") {
+    this.transientUserInputs.abortAll();
+    this.transientCancellations.abortAll();
     for (const surface of this.surfaces.values()) {
       surface.rendered = false;
       surface.shellVersion = "";
@@ -3923,6 +5446,11 @@ class PipeonChatViewProvider {
     this.state.isBusy = false;
     this.state.status = `Rebuilding DorkPipe chat shell (${reason})`;
     this.refresh();
+  }
+
+  dispose() {
+    this.transientUserInputs.abortAll();
+    this.transientCancellations.abortAll();
   }
 
   sidebarShellLooksStale() {
@@ -4052,6 +5580,15 @@ class PipeonChatViewProvider {
   }
 
   async ask(root, text, mode = "ask", modelProfile = "balanced", attachments = [], sessionId = "", chatProvider = "", chatModel = "") {
+    const retainedSessions = Array.isArray(this.chatStore?.sessions) ? this.chatStore.sessions : [];
+    const retainedTarget = retainedSessions.find((item) => item?.id === sessionId)
+      || retainedSessions.find((item) => item?.id === this.chatStore?.activeSessionId)
+      || retainedSessions[0]
+      || null;
+    const requestedProvider = normalizeChatProvider(chatProvider || this.chatStore?.chatProvider || this.chatStore?.providerCatalog?.defaultProvider);
+    if (retainedTarget && shouldBlockCodexAppServerRecoveryRequiredTurn(retainedTarget, requestedProvider, text)) {
+      return;
+    }
     logChannelInfo(this.channel, "Received ask request", {
       mode,
       modelProfile,
@@ -4129,7 +5666,18 @@ class PipeonChatViewProvider {
     session.messages.push(assistantMessage);
     await this.saveAndRefresh();
 
+    let approvalInvocation = null;
+    let userInputInvocation = null;
+    let cancellationInvocation = null;
     try {
+      const sessionAdapter = normalizedProvider === "codex" ? retainedCodexSessionAdapter(session) : "";
+      ({ approvalInvocation, userInputInvocation, cancellationInvocation } = beginTransientInteractiveInvocations(
+        this,
+        session.id,
+        normalizedProvider,
+        sessionAdapter,
+        text
+      ));
       const reasoningTemplate = templateById(this.chatStore.reasoningTemplates, this.chatStore.activeTemplateId);
       const result = await executeDorkpipeRequest(root, session, text, {
         onEvent: (label) => {
@@ -4160,10 +5708,15 @@ class PipeonChatViewProvider {
         chatModel: normalizedModel,
         providerCatalog: this.chatStore.providerCatalog,
         sessionId: session.id,
+        sessionAdapter,
+        approvalInvocation,
+        userInputInvocation,
+        cancellationInvocation,
         conversationHistory,
         attachments: normalizedAttachments,
         reasoningTemplate,
       });
+      updateCodexAppServerPostTurnSnapshot(session, normalizedProvider, text, result);
       assistantMessage.liveStatus = "";
       assistantMessage.liveTrace = [];
       assistantMessage.text = result.text;
@@ -4239,6 +5792,10 @@ class PipeonChatViewProvider {
       assistantMessage.providerAction = null;
       this.state.status = buildRequestErrorStatus(message);
       this.channel.error(message);
+    } finally {
+      this.endApprovalInvocation(approvalInvocation);
+      this.endUserInputInvocation(userInputInvocation);
+      this.endCancellationInvocation(cancellationInvocation);
     }
 
     session.messages = session.messages.slice(-MAX_HISTORY_MESSAGES * 4);
@@ -4520,6 +6077,22 @@ class PipeonChatViewProvider {
           vscode.window.showWarningMessage("DorkPipe: open a workspace folder first.");
           return;
         }
+        if (msg?.type === "approvalDecision" && msg.uiReference) {
+          await this.resolveTransientApproval(msg.uiReference, msg.decision, surfaceSessionId);
+          return;
+        }
+        if (msg?.type === "userInputResponse" && msg.uiReference) {
+          const responseKind = String(msg.responseKind || "");
+          const submission = responseKind === "text"
+            ? { text: msg.text }
+            : { uiOptionReferences: msg.uiOptionReferences };
+          await this.resolveTransientUserInput(msg.uiReference, responseKind, submission, surfaceSessionId);
+          return;
+        }
+        if (msg?.type === "cancellationIntent" && msg.uiReference && hasExactObjectKeys(msg, ["type", "uiReference"])) {
+          await this.resolveTransientCancellation(msg.uiReference, surfaceSessionId);
+          return;
+        }
         if (msg?.type === "resolvePendingAction" && msg.messageId) {
           await this.resolvePendingAction(workspaceRoot, msg.messageId, msg.decision, surfaceSessionId);
           return;
@@ -4585,6 +6158,8 @@ class PipeonChatViewProvider {
     this.refresh();
     panel.onDidDispose(() => {
       logChannelInfo(this.channel, "Detached chat panel disposed", { surfaceId });
+      this.transientUserInputs.abortSession(session.id);
+      this.transientCancellations.abortSession(session.id);
       this.surfaces.delete(surfaceId);
       this.sessionPanels.delete(session.id);
     });
@@ -4610,6 +6185,7 @@ class PipeonChatViewProvider {
     this.refresh();
     webviewView.onDidDispose(() => {
       logChannelInfo(this.channel, "Chat webview disposed");
+      this.transientCancellations.abortAll();
       this.view = null;
       this.surfaces.delete("sidebar");
     });
@@ -4623,6 +6199,7 @@ function activate(context) {
   const extensionVersion = context.extension?.packageJSON?.version || "unknown";
   logChannelInfo(channel, "Pipeon extension version", { version: extensionVersion });
   const chatProvider = new PipeonChatViewProvider(context, channel, extensionVersion);
+  context.subscriptions.push(chatProvider);
 
   context.subscriptions.push(
     vscode.window.registerWebviewViewProvider(CHAT_VIEW_ID, chatProvider, {
@@ -4763,4 +6340,52 @@ function activate(context) {
 
 function deactivate() {}
 
-module.exports = { activate, deactivate };
+module.exports = {
+  activate,
+  deactivate,
+  __approvalTest: {
+    TransientApprovalRegistry,
+    normalizeNeutralApprovalRequest,
+    monitorProviderPoolApproval,
+    deliverTransientApprovalDecision,
+    compactChatStoreForPersistence,
+  },
+  __userInputTest: {
+    TransientUserInputRegistry,
+    normalizeNeutralUserInputPrompt,
+    monitorProviderPoolUserInput,
+    deliverTransientUserInputResponse,
+    shouldStartTransientInteractiveControls,
+    compactChatStoreForPersistence,
+  },
+  __cancellationTest: {
+    TransientCancellationRegistry,
+    normalizeNeutralCancellationScope,
+    monitorProviderPoolCancellation,
+    deliverTransientCancellationIntent,
+    shouldStartTransientInteractiveControls,
+    compactChatStoreForPersistence,
+  },
+  __sessionAdapterTest: {
+    CodexSessionAdapterEvidenceError,
+    normalizeCodexSessionAdapter,
+    configuredCodexSessionAdapter,
+    explicitlyConfiguredCodexSessionAdapter,
+    legacyCodexSessionAdapter,
+    retainedCodexSessionAdapter,
+    createSession,
+    normalizeStoredChatState,
+    storedChatStateNeedsCodexSessionAdapterMigration,
+    compactChatStoreForPersistence,
+    beginTransientInteractiveInvocations,
+    buildProviderPoolChatToolArguments,
+    CodexAppServerSnapshotEvidenceError,
+    normalizeCodexAppServerPostTurnSnapshot,
+    deriveCodexAppServerPostTurnSnapshot,
+    updateCodexAppServerPostTurnSnapshot,
+    projectCodexAppServerPostTurnSnapshot,
+    shouldBlockCodexAppServerRecoveryRequiredTurn,
+    clearSessionMessages,
+    PipeonChatViewProvider,
+  },
+};
