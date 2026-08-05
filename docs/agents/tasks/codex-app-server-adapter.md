@@ -3725,6 +3725,49 @@ reboot/power-loss durability, production storage, migration, cutover, recovery a
 dispatch/projection integration, Slice 2, or macOS. Linux reboot/power-loss remains open and macOS
 remains intentionally last. TASK-013 and CAS-14 remain open.
 
+#### Linux VM reboot/power-loss package foundation (2026-08-05)
+
+The package-owned foundation needed before a controlled Linux VM trial is now implemented under
+`packages/vm/**` as VM package version `0.7.0`. It adds the `linux-vm` workflow and a separate
+`LinuxQemuVmResolverConfig` root alongside the unchanged Windows model, keeps `runtime: vm` and
+resolver `qemu`, and does not add VM-product policy to `src/**`. The Ubuntu 24.04 LTS amd64 profile
+pins the immutable `20260801` cloud-image URL and SHA-256. It requires local NoCloud, disables
+qualification networking and SSH, performs no `apt` update or upgrade, requests no additional debs,
+uses only the XDG cache/state/config/runtime layout, and has no checkout-generated-state fallback.
+
+The offline qualification manifest fails closed unless it identifies a disposable KVM guest with
+host CPU, two vCPUs, 4096 MiB, no swap, distinct host/guest identities, exactly one private OS clone
+and one private 4 GiB sparse raw data disk, and no physical disk, passthrough, share, extra disk,
+network, SSH, or arbitrary command surface. The whole-device ext4 tuple fixes UUID mounting at
+`/var/lib/dockpipe-qualification`, disables lazy inode/journal initialization, and requires exactly
+`rw,noatime,nodev,nosuid,noexec,data=ordered`. Package Go sources provide per-instance Ed25519 keys,
+mutual pinning, bounded length-prefixed canonical JSON, signed identity and phase context, replay and
+substitution rejection, recovery-only pending-ticket semantics, safe QMP parsing, exact process
+authorization, inert pidfd/SIGKILL planning, exact QEMU/block argument planning, trial isolation, and
+exact cleanup planning. The current Windows guest agent remains the active Windows path; there is no
+cutover in this slice.
+
+Validation for this foundation covers package Go tests with `CGO_ENABLED=0 -mod=readonly`, strict
+protocol negatives, fake filesystem and socket behavior, manifest/isolation failures, XDG paths,
+two-disk and QEMU tuples, cleanup identity, legacy Windows workflow validation, both workflow/model
+compiles, Linux/amd64 controller and guest-agent builds, and Windows/amd64 shared guest-agent source
+compatibility. Cross-compilation is compatibility evidence only. It is not a Linux VM run, native
+Windows evidence, or macOS evidence.
+
+No image was downloaded. No VM, disk, filesystem, NoCloud seed, guest service, process, SQLite
+fixture, or evidence tree was created, cloned, modified, attached, started, stopped, rebooted,
+provisioned, killed, destroyed, or cleaned. No QMP power command or real signal was issued. Therefore
+Linux reboot/power-loss remains open, macOS remains intentionally last, TASK-013 remains open, and
+Slice 2 has not started.
+
+The remaining live work stays split into separate maintainer approvals:
+
+1. download and verify the single pinned Ubuntu image;
+2. create/provision one disposable VM and install the hash-pinned agent assets;
+3. run a non-destructive identity, controller, and recovery dry run;
+4. run one bounded Linux destructive cohort and preserve/read back its complete evidence; and
+5. consider a separate Windows VM gate later. macOS remains the final platform gate.
+
 The implementation test matrix is:
 
 1. **Adapter selection:** a new normal Pipeon Codex session defaults to App Server; the explicit exec

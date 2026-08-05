@@ -1,0 +1,56 @@
+package controller
+
+import (
+	"bufio"
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
+	"net"
+	"strings"
+	"testing"
+)
+
+func TestQMPFakeSocketAllowsQueriesAndRejectsPower(t *testing.T) {
+	clientConn, serverConn := net.Pipe()
+	defer clientConn.Close()
+	defer serverConn.Close()
+	go func() {
+		reader := bufio.NewReader(serverConn)
+		line, _ := reader.ReadBytes('\n')
+		var request map[string]string
+		_ = json.Unmarshal(line, &request)
+		_, _ = serverConn.Write([]byte(`{"return":{"status":"running"},"id":"status-1"}` + "\n"))
+	}()
+	response, err := (QMPClient{Conn: clientConn}).Query("query-status", "status-1")
+	if err != nil || len(response.Return) == 0 {
+		t.Fatalf("safe fake QMP query: %+v %v", response, err)
+	}
+	for _, command := range []string{"quit", "stop", "system_powerdown", "system_reset", "human-monitor-command"} {
+		if _, err := (QMPClient{Conn: clientConn}).Query(command, "unsafe"); err == nil {
+			t.Fatalf("expected %s rejection", command)
+		}
+	}
+}
+
+func TestHardPowerCanOnlyBePlannedForExactOwnedProcess(t *testing.T) {
+	token := "single-use-authentication-token"
+	sum := sha256.Sum256([]byte(token))
+	process := ProcessIdentity{PID: 4242, UID: 1000, StartTicks: 987654, ExecutableSHA: strings.Repeat("a", 64), CommandSHA: strings.Repeat("b", 64), InstanceRoot: t.TempDir()}
+	auth := DestructiveAuthorization{Qualification: true, Disposable: true, MachineUUID: "machine", DiskSerial: "disk", RunID: "run-001", CheckpointAuthenticated: true, ExpectedProcess: process, ObservedProcess: process, ExpectedTokenSHA256: hex.EncodeToString(sum[:]), PresentedToken: token}
+	plan, err := PlanHardPower(auth)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if plan.Execute || plan.Mechanism != "pidfd_send_signal" || plan.Signal != "SIGKILL" {
+		t.Fatalf("hard-power foundation must be inert: %+v", plan)
+	}
+	auth.ObservedProcess.StartTicks++
+	if _, err := PlanHardPower(auth); err == nil {
+		t.Fatal("expected PID reuse/process substitution rejection")
+	}
+	auth.ObservedProcess = process
+	auth.PresentedToken = "wrong"
+	if _, err := PlanHardPower(auth); err == nil {
+		t.Fatal("expected token rejection")
+	}
+}

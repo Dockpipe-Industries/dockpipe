@@ -1,0 +1,15 @@
+/// <summary>Generic Linux guest execution settings.</summary>
+public Class LinuxVmGeneral
+{
+    /// <summary>Linux guest execution wrapper mode.</summary>
+    [EnvName = "DOCKPIPE_VM_EXEC_MODE"]
+    public string ExecMode = "bash";
+
+    /// <summary>Boot source for the Linux guest.</summary>
+    [EnvName = "DOCKPIPE_VM_BOOT_SOURCE"]
+    public string BootSource = "image";
+
+    /// <summary>Run purpose. Qualification remains offline-only in this slice.</summary>
+    [EnvName = "DOCKPIPE_VM_PURPOSE"]
+    public string Purpose = "development";
+}
