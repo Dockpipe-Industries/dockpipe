@@ -1,7 +1,12 @@
 package statepaths
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
+	"fmt"
 	"path/filepath"
+	"unicode"
+	"unicode/utf8"
 
 	"dockpipe/src/lib/infrastructure"
 )
@@ -142,6 +147,46 @@ func ProviderPoolSessionsPath(workdir string) (string, error) {
 		return "", err
 	}
 	return filepath.Join(root, "sessions.json"), nil
+}
+
+func ProviderPoolSessionAdaptersDir(workdir string) (string, error) {
+	root, err := ProviderPoolsDir(workdir)
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(root, "session-adapters"), nil
+}
+
+func ProviderPoolAppServerDir(workdir string) (string, error) {
+	root, err := ProviderPoolsDir(workdir)
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(root, "app-server"), nil
+}
+
+func ProviderPoolAppServerAggregatePath(workdir, sessionID string) (string, error) {
+	if !validProviderPoolAggregateSessionID(sessionID) {
+		return "", fmt.Errorf("provider-pool App Server aggregate requires a valid session identity")
+	}
+	root, err := ProviderPoolAppServerDir(workdir)
+	if err != nil {
+		return "", err
+	}
+	digest := sha256.Sum256([]byte(sessionID))
+	return filepath.Join(root, "aggregates", hex.EncodeToString(digest[:])+".json"), nil
+}
+
+func validProviderPoolAggregateSessionID(sessionID string) bool {
+	if sessionID == "" || len(sessionID) > 256 || !utf8.ValidString(sessionID) {
+		return false
+	}
+	for _, character := range sessionID {
+		if !unicode.IsGraphic(character) || unicode.IsSpace(character) || unicode.IsControl(character) {
+			return false
+		}
+	}
+	return true
 }
 
 func ProviderPoolScratchDir(workdir string) (string, error) {
