@@ -74,7 +74,37 @@ func mcpToolCatalog() []mcpToolMeta {
 		{
 			Name:        "dorkpipe.provider_pool_chat",
 			Description: "Route a direct prompt through the shared DorkPipe provider-pool contract. Tier: exec only.",
-			InputSchema: json.RawMessage(`{"type":"object","properties":{"workdir":{"type":"string"},"message":{"type":"string"},"provider":{"type":"string","enum":["ollama","codex","claude"]},"model":{"type":"string"},"session_id":{"type":"string"},"active_file":{"type":"string"},"open_files":{"type":"array","items":{"type":"string"}},"selection_text":{"type":"string"}},"required":["message"],"additionalProperties":false}`),
+			InputSchema: json.RawMessage(`{"type":"object","properties":{"workdir":{"type":"string"},"message":{"type":"string"},"provider":{"type":"string","enum":["ollama","codex","claude"]},"model":{"type":"string"},"session_id":{"type":"string"},"session_adapter":{"type":"string","enum":["codex_exec","codex_app_server"]},"active_file":{"type":"string"},"open_files":{"type":"array","items":{"type":"string"}},"selection_text":{"type":"string"}},"required":["message"],"additionalProperties":false}`),
+		},
+		{
+			Name:        "dorkpipe.provider_pool_approval_request",
+			Description: "Read the exact neutral approval request currently pending for this MCP server's one active provider-pool chat. Tier: exec only.",
+			InputSchema: json.RawMessage(`{"type":"object","properties":{},"additionalProperties":false}`),
+		},
+		{
+			Name:        "dorkpipe.provider_pool_approval_decide",
+			Description: "Deliver one exact approve or deny decision to this MCP server's pending provider-pool approval request. Tier: exec only.",
+			InputSchema: json.RawMessage(`{"type":"object","properties":{"correlation":{"type":"object","properties":{"process_incarnation_id":{"type":"string","minLength":1},"connection_id":{"type":"string","minLength":1},"session_id":{"type":"string","minLength":1},"interaction_id":{"type":"string","minLength":1},"activity_id":{"type":"string","minLength":1},"request_id":{"type":"string","minLength":1},"decision_id":{"type":"string","minLength":1}},"required":["process_incarnation_id","connection_id","session_id","interaction_id","activity_id","request_id","decision_id"],"additionalProperties":false},"decision":{"type":"string","enum":["approve","deny"]}},"required":["correlation","decision"],"additionalProperties":false}`),
+		},
+		{
+			Name:        "dorkpipe.provider_pool_user_input_request",
+			Description: "Read a defensive copy of the exact neutral user-input prompt currently pending for this MCP server's one active provider-pool chat. Tier: exec only.",
+			InputSchema: json.RawMessage(`{"type":"object","properties":{},"additionalProperties":false}`),
+		},
+		{
+			Name:        "dorkpipe.provider_pool_user_input_respond",
+			Description: "Deliver one complete exact neutral response to this MCP server's pending provider-pool user-input prompt. Tier: exec only.",
+			InputSchema: json.RawMessage(`{"type":"object","properties":{"correlation":{"type":"object","properties":{"process_incarnation_id":{"type":"string","minLength":1},"connection_id":{"type":"string","minLength":1},"session_id":{"type":"string","minLength":1},"interaction_id":{"type":"string","minLength":1},"activity_id":{"type":"string","minLength":1},"request_id":{"type":"string","minLength":1},"decision_id":{"type":"string","minLength":1}},"required":["process_incarnation_id","connection_id","session_id","interaction_id","activity_id","request_id","decision_id"],"additionalProperties":false},"prompt_ref":{"type":"string","minLength":1,"maxLength":128,"pattern":"^[A-Za-z0-9_.:-]+$"},"selected_option_refs":{"type":"array","maxItems":16,"uniqueItems":true,"items":{"type":"string","minLength":1,"maxLength":128,"pattern":"^[A-Za-z0-9_.:-]+$"}},"text":{"type":"string","maxLength":4096}},"required":["correlation","prompt_ref"],"additionalProperties":false}`),
+		},
+		{
+			Name:        "dorkpipe.provider_pool_cancellation_request",
+			Description: "Read a defensive copy of the exact neutral cancellation scope currently pending for this MCP server's one active provider-pool chat. Tier: exec only.",
+			InputSchema: json.RawMessage(`{"type":"object","properties":{},"additionalProperties":false}`),
+		},
+		{
+			Name:        "dorkpipe.provider_pool_cancellation_deliver",
+			Description: "Deliver one exact neutral cancellation intent to this MCP server's pending provider-pool cancellation scope. Tier: exec only.",
+			InputSchema: json.RawMessage(`{"type":"object","properties":{"session":{"type":"object","properties":{"provider":{"type":"string","enum":["codex"]},"session_id":{"type":"string","minLength":1}},"required":["provider","session_id"],"additionalProperties":false},"correlation":{"type":"object","properties":{"process_incarnation_id":{"type":"string","minLength":1},"connection_id":{"type":"string","minLength":1},"session_id":{"type":"string","minLength":1},"interaction_id":{"type":"string","minLength":1},"activity_id":{"type":"string","maxLength":0},"request_id":{"type":"string","maxLength":0},"decision_id":{"type":"string","maxLength":0}},"required":["process_incarnation_id","connection_id","session_id","interaction_id","activity_id","request_id","decision_id"],"additionalProperties":false},"reason":{"type":"string","enum":["user_requested","safety_stop","deadline_exceeded"]}},"required":["session","correlation","reason"],"additionalProperties":false}`),
 		},
 		{
 			Name:        "dorkpipe.host_codex_chat",

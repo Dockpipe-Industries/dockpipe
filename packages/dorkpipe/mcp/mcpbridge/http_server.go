@@ -117,6 +117,7 @@ func (s *Server) ServeHTTP(ctx context.Context, cfg HTTPConfig) error {
 
 	select {
 	case <-ctx.Done():
+		s.cancelAndWaitForActiveProviderPoolChat()
 		shCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 		defer cancel()
 		_ = srv.Shutdown(shCtx)
@@ -126,6 +127,7 @@ func (s *Server) ServeHTTP(ctx context.Context, cfg HTTPConfig) error {
 		}
 		return nil
 	case err := <-errCh:
+		s.cancelAndWaitForActiveProviderPoolChat()
 		if err == nil {
 			return nil
 		}
@@ -212,7 +214,7 @@ func (s *Server) jsonRPCHandler(logW io.Writer) http.Handler {
 		}
 		_ = r.Body.Close()
 
-		resp := s.handleMessage(r.Context(), body, logW)
+		resp := s.handleHTTPMessage(r.Context(), body, logW)
 		if resp == nil {
 			w.WriteHeader(http.StatusNoContent)
 			return
@@ -221,6 +223,20 @@ func (s *Server) jsonRPCHandler(logW io.Writer) http.Handler {
 		w.WriteHeader(http.StatusOK)
 		if err := json.NewEncoder(w).Encode(resp); err != nil {
 			lg.Printf("encode response: %v", err)
+			s.cancelAndWaitForActiveProviderPoolChat()
 		}
 	})
+}
+
+func (s *Server) handleHTTPMessage(ctx context.Context, body []byte, logW io.Writer) *rpcResponse {
+	id, isChat := providerPoolChatRequestID(ctx, body)
+	if !isChat {
+		return s.handleMessage(ctx, body, logW)
+	}
+	active, started := s.beginActiveProviderPoolChat(ctx)
+	if !started {
+		return errResponse(id, -32000, "dorkpipe.provider_pool_chat is already active for this MCP server")
+	}
+	defer s.finishActiveProviderPoolChat(active)
+	return s.handleMessage(active.ctx, body, logW)
 }
