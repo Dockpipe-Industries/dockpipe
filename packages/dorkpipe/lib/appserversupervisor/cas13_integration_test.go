@@ -224,7 +224,7 @@ func TestCAS13ControlledApprovalDeny(t *testing.T) {
 				if err := s.Decide(ctx, providersession.ApprovalDecision{Correlation: event.Approval.Correlation, Decision: providersession.DecisionDeny}); err != nil {
 					t.Fatalf("CAS-13 denial delivery failed: %s", cas13FailureClass(s))
 				}
-				if outcome := waitCAS13ApprovalResolution(ctx, s); outcome != "approval_resolved" {
+				if outcome := waitCAS13ApprovalResolution(ctx, s); outcome != string(DisconnectApprovalDenied) {
 					t.Fatalf("CAS-13 denial resolution = %s", outcome)
 				}
 				return

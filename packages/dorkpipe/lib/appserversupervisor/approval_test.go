@@ -49,12 +49,12 @@ func approvalRequest(t *testing.T, s *Supervisor, child *fakeChild, id uint64, m
 
 func TestApprovalRelayProjectsSafeCorrelatedRequestsAndOneTimeDecision(t *testing.T) {
 	for _, fixture := range []struct {
-		name        string
-		method      string
-		params      string
-		actionClass string
-		decision    string
-		wantResult  map[string]any
+		name       string
+		method     string
+		params     string
+		reason     string
+		decision   string
+		wantResult map[string]any
 	}{
 		{"command", "item/commandExecution/requestApproval", `{"threadId":"thread-1","turnId":"turn-1","itemId":"item-1","command":"private command","cwd":"private path","reason":"private reason"}`, "command_execution", providersession.DecisionApprove, map[string]any{"decision": "accept"}},
 		{"file", "item/fileChange/requestApproval", `{"threadId":"thread-1","turnId":"turn-1","itemId":"item-1","patch":"private patch","reason":"private reason","startedAtMs":1710000000000}`, "workspace_change", providersession.DecisionDeny, map[string]any{"decision": "decline"}},
@@ -62,7 +62,7 @@ func TestApprovalRelayProjectsSafeCorrelatedRequestsAndOneTimeDecision(t *testin
 		t.Run(fixture.name, func(t *testing.T) {
 			s, child, scanner, _, _ := startApprovalTurn(t)
 			event := approvalRequest(t, s, child, 41, fixture.method, fixture.params)
-			if event.Approval.ActionClass != fixture.actionClass || len(event.Approval.Scope) != 1 || event.Approval.Scope[0] != "turn" || event.Approval.Correlation.ProcessIncarnationID == "" || event.Approval.Correlation.ConnectionID == "" || event.Approval.Correlation.SessionID != "thread-1" || event.Approval.Correlation.InteractionID != "turn-1" || event.Approval.Correlation.ActivityID != "item-1" || event.Approval.Correlation.RequestID == "" || event.Approval.Correlation.DecisionID == "" {
+			if event.Approval.Reason != fixture.reason || len(event.Approval.AllowedDecisions) != 2 || event.Approval.AllowedDecisions[0] != providersession.DecisionApprove || event.Approval.AllowedDecisions[1] != providersession.DecisionDeny || event.Approval.Correlation.ProcessIncarnationID == "" || event.Approval.Correlation.ConnectionID == "" || event.Approval.Correlation.SessionID != "thread-1" || event.Approval.Correlation.InteractionID != "turn-1" || event.Approval.Correlation.ActivityID != "item-1" || event.Approval.Correlation.RequestID == "" || event.Approval.Correlation.DecisionID == "" {
 				t.Fatalf("unsafe approval projection = %+v", event)
 			}
 			data, _ := json.Marshal(event)
@@ -86,6 +86,12 @@ func TestApprovalRelayProjectsSafeCorrelatedRequestsAndOneTimeDecision(t *testin
 			if err := <-done; err != nil {
 				t.Fatal(err)
 			}
+			if fixture.decision == providersession.DecisionDeny {
+				if denied := nextEvent(t, s); denied.State != providersession.StateDisconnected || denied.Summary != string(DisconnectApprovalDenied) {
+					t.Fatalf("denial event = %+v", denied)
+				}
+				return
+			}
 			sendNotification(t, child, "serverRequest/resolved", `{"threadId":"thread-1","requestId":41}`)
 			if resolved := nextEvent(t, s); resolved.State != providersession.StateRunning || resolved.Summary != "approval_resolved" || resolved.Correlation != event.Approval.Correlation {
 				t.Fatalf("resolution event = %+v", resolved)
@@ -98,9 +104,12 @@ func TestApprovalRelayPermissionIsDeclaredAndDenyOnly(t *testing.T) {
 	s, child, scanner, policy, _ := startApprovalTurn(t)
 	params := `{"threadId":"thread-1","turnId":"turn-1","itemId":"item-1","permissions":{"fileSystem":{"write":[` + quoteJSON(policy.Workspace) + `]}}}`
 	event := approvalRequest(t, s, child, 42, "item/permissions/requestApproval", params)
-	if event.Approval.ActionClass != "declared_permission" || len(event.Approval.Scope) != 1 || event.Approval.Scope[0] != "declared_writable_roots" {
+	if event.Approval.Reason != providersession.ApprovalReasonPermission || len(event.Approval.AllowedDecisions) != 1 || event.Approval.AllowedDecisions[0] != providersession.DecisionDeny {
 		t.Fatalf("permission projection = %+v", event)
 	}
+	// Consumer mutation cannot widen the supervisor's defensively pinned
+	// deny-only request.
+	event.Approval.AllowedDecisions = append(event.Approval.AllowedDecisions, providersession.DecisionApprove)
 	approve := providersession.ApprovalDecision{Correlation: event.Approval.Correlation, Decision: providersession.DecisionApprove}
 	if err := s.Decide(context.Background(), approve); err == nil {
 		t.Fatal("permission approval without a neutral granted subset must fail")
@@ -129,6 +138,9 @@ func TestApprovalRelayIgnoresCurrentUnchangedThreadStatusWhilePending(t *testing
 	if err := <-done; err != nil {
 		t.Fatal(err)
 	}
+	if denied := nextEvent(t, s); denied.State != providersession.StateDisconnected || denied.Summary != string(DisconnectApprovalDenied) {
+		t.Fatalf("denial event = %+v", denied)
+	}
 }
 
 func TestApprovalRelayAcceptsZeroServerRequestID(t *testing.T) {
@@ -136,7 +148,7 @@ func TestApprovalRelayAcceptsZeroServerRequestID(t *testing.T) {
 	event := approvalRequest(t, s, child, 0, "item/fileChange/requestApproval", `{"threadId":"thread-1","turnId":"turn-1","itemId":"item-1","startedAtMs":1710000000000}`)
 	done := make(chan error, 1)
 	go func() {
-		done <- s.Decide(context.Background(), providersession.ApprovalDecision{Correlation: event.Approval.Correlation, Decision: providersession.DecisionDeny})
+		done <- s.Decide(context.Background(), providersession.ApprovalDecision{Correlation: event.Approval.Correlation, Decision: providersession.DecisionApprove})
 	}()
 	if !scanner.Scan() {
 		t.Fatal("expected zero-ID decision response")
@@ -145,7 +157,7 @@ func TestApprovalRelayAcceptsZeroServerRequestID(t *testing.T) {
 		ID     uint64         `json:"id"`
 		Result map[string]any `json:"result"`
 	}
-	if err := json.Unmarshal(scanner.Bytes(), &response); err != nil || response.ID != 0 || !sameResult(response.Result, map[string]any{"decision": "decline"}) {
+	if err := json.Unmarshal(scanner.Bytes(), &response); err != nil || response.ID != 0 || !sameResult(response.Result, map[string]any{"decision": "accept"}) {
 		t.Fatalf("zero-ID decision response = %s, err=%v", scanner.Text(), err)
 	}
 	if err := <-done; err != nil {
@@ -154,6 +166,91 @@ func TestApprovalRelayAcceptsZeroServerRequestID(t *testing.T) {
 	sendNotification(t, child, "serverRequest/resolved", `{"threadId":"thread-1","requestId":0}`)
 	if resolved := nextEvent(t, s); resolved.State != providersession.StateRunning || resolved.Summary != "approval_resolved" {
 		t.Fatalf("zero-ID resolution event = %+v", resolved)
+	}
+}
+
+func TestApprovalRequestEventContainsOnlyIdentityReasonAndAllowedDecisions(t *testing.T) {
+	s, child, _, _, _ := startApprovalTurn(t)
+	event := approvalRequest(t, s, child, 49, "item/fileChange/requestApproval", `{"threadId":"thread-1","turnId":"turn-1","itemId":"item-1","patch":"private patch","reason":"private reason"}`)
+	raw, err := json.Marshal(event.Approval)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var fields map[string]json.RawMessage
+	if json.Unmarshal(raw, &fields) != nil || len(fields) != 3 || fields["correlation"] == nil || fields["reason"] == nil || fields["allowed_decisions"] == nil {
+		t.Fatalf("approval request shape = %s", raw)
+	}
+	if strings.Contains(string(raw), "private") || event.Approval.Reason != providersession.ApprovalReasonWorkspaceChange {
+		t.Fatalf("approval request leaked provider content: %s", raw)
+	}
+}
+
+func TestApprovalCannotContinueWithoutExplicitDecision(t *testing.T) {
+	s, child, _, _, _ := startApprovalTurn(t)
+	_ = approvalRequest(t, s, child, 50, "item/commandExecution/requestApproval", `{"threadId":"thread-1","turnId":"turn-1","itemId":"item-1"}`)
+	sendNotification(t, child, "serverRequest/resolved", `{"threadId":"thread-1","requestId":50}`)
+	if disconnected := nextEvent(t, s); disconnected.State != providersession.StateDisconnected || disconnected.Summary != string(DisconnectEventOrdering) {
+		t.Fatalf("decision-free continuation event = %+v", disconnected)
+	}
+}
+
+func TestApprovalForOneRequestCannotAuthorizeAnother(t *testing.T) {
+	s, child, scanner, _, _ := startApprovalTurn(t)
+	first := approvalRequest(t, s, child, 51, "item/commandExecution/requestApproval", `{"threadId":"thread-1","turnId":"turn-1","itemId":"item-1"}`)
+	done := make(chan error, 1)
+	go func() {
+		done <- s.Decide(context.Background(), providersession.ApprovalDecision{Correlation: first.Approval.Correlation, Decision: providersession.DecisionApprove})
+	}()
+	if !scanner.Scan() {
+		t.Fatal("expected first approval response")
+	}
+	if err := <-done; err != nil {
+		t.Fatal(err)
+	}
+	sendNotification(t, child, "serverRequest/resolved", `{"threadId":"thread-1","requestId":51}`)
+	if event := nextEvent(t, s); event.State != providersession.StateRunning || event.Summary != "approval_resolved" {
+		t.Fatalf("first resolution = %+v", event)
+	}
+	sendNotification(t, child, "item/completed", `{"threadId":"thread-1","turnId":"turn-1","item":{"id":"item-1","type":"commandExecution","status":"completed"}}`)
+	if event := nextEvent(t, s); event.Summary != "item_completed" {
+		t.Fatalf("first item completion = %+v", event)
+	}
+	sendNotification(t, child, "item/started", `{"threadId":"thread-1","turnId":"turn-1","item":{"id":"item-2","type":"commandExecution","status":"inProgress"}}`)
+	if event := nextEvent(t, s); event.Summary != "item_started" {
+		t.Fatalf("second item start = %+v", event)
+	}
+	_ = approvalRequest(t, s, child, 52, "item/commandExecution/requestApproval", `{"threadId":"thread-1","turnId":"turn-1","itemId":"item-2"}`)
+	if err := s.Decide(context.Background(), providersession.ApprovalDecision{Correlation: first.Approval.Correlation, Decision: providersession.DecisionApprove}); err == nil {
+		t.Fatal("first request approval authorized a second request")
+	}
+	if disconnected := nextEvent(t, s); disconnected.State != providersession.StateDisconnected || disconnected.Summary != string(DisconnectCorrelationMismatch) {
+		t.Fatalf("cross-request decision event = %+v", disconnected)
+	}
+}
+
+func TestApprovalDenialTerminatesWithoutExecFallback(t *testing.T) {
+	s, child, scanner, _, _ := startApprovalTurn(t)
+	fallbackStarts := 0
+	s.launcher = fakeLauncher{start: func(context.Context) (Child, error) {
+		fallbackStarts++
+		return nil, errors.New("fallback launch is forbidden")
+	}}
+	event := approvalRequest(t, s, child, 53, "item/fileChange/requestApproval", `{"threadId":"thread-1","turnId":"turn-1","itemId":"item-1"}`)
+	done := make(chan error, 1)
+	go func() {
+		done <- s.Decide(context.Background(), providersession.ApprovalDecision{Correlation: event.Approval.Correlation, Decision: providersession.DecisionDeny})
+	}()
+	if !scanner.Scan() {
+		t.Fatal("expected private deny response")
+	}
+	if err := <-done; err != nil {
+		t.Fatal(err)
+	}
+	if denied := nextEvent(t, s); denied.State != providersession.StateDisconnected || denied.Summary != string(DisconnectApprovalDenied) {
+		t.Fatalf("denial event = %+v", denied)
+	}
+	if fallbackStarts != 0 {
+		t.Fatalf("denial started %d fallback processes", fallbackStarts)
 	}
 }
 
@@ -622,7 +719,7 @@ func TestApprovalRelayRejectsDuplicateStaleReorderedAndCrossCorrelatedMessages(t
 func TestApprovalRelayRejectsDuplicateDecisionIdentity(t *testing.T) {
 	s, child, scanner, _, _ := startApprovalTurn(t)
 	event := approvalRequest(t, s, child, 47, "item/commandExecution/requestApproval", `{"threadId":"thread-1","turnId":"turn-1","itemId":"item-1"}`)
-	decision := providersession.ApprovalDecision{Correlation: event.Approval.Correlation, Decision: providersession.DecisionDeny}
+	decision := providersession.ApprovalDecision{Correlation: event.Approval.Correlation, Decision: providersession.DecisionApprove}
 	done := make(chan error, 1)
 	go func() { done <- s.Decide(context.Background(), decision) }()
 	if !scanner.Scan() {

@@ -414,6 +414,76 @@ func (s *Supervisor) SelectCapabilities(selection CapabilitySelection) (provider
 	return cloneEffectivePolicy(policy), nil
 }
 
+// BaselineLifecyclePolicy constructs the exact non-expanding first-consumer
+// policy. Provider-private values remain owned by this package.
+func BaselineLifecyclePolicy(workspace, model, reasoning string) (LifecyclePolicy, error) {
+	policy := LifecyclePolicy{
+		Workspace:       workspace,
+		WritableRoots:   []string{workspace},
+		Sandbox:         providerSandboxWorkspaceWrite,
+		ApprovalPolicy:  providerApprovalPolicyUntrusted,
+		Reviewer:        providerApprovalsReviewerUser,
+		Model:           model,
+		ReasoningEffort: reasoning,
+		ModelProvider:   "openai",
+	}
+	if err := policy.validate(); err != nil {
+		return LifecyclePolicy{}, err
+	}
+	return policy, nil
+}
+
+// SelectBaselinePolicy validates the exact requested model/reasoning pair
+// against the live catalog, then pins the proven human-review/workspace-write
+// policy with every capability disabled. Availability never enables the
+// retained request-attestation mapping.
+func (s *Supervisor) SelectBaselinePolicy(ctx context.Context, model, reasoning string) (providersession.EffectivePolicySnapshot, error) {
+	catalog, err := s.Catalog(ctx)
+	if err != nil {
+		return providersession.EffectivePolicySnapshot{}, err
+	}
+	if _, err := s.SelectModelReasoning(providersession.ModelReasoningSelection{CatalogRef: catalog.CatalogRef, ModelRef: model, ReasoningRef: reasoning}); err != nil {
+		return providersession.EffectivePolicySnapshot{}, err
+	}
+	nativeCatalog, err := s.ProjectNativePolicies(baselineNativePolicyAdvertisement())
+	if err != nil {
+		return providersession.EffectivePolicySnapshot{}, err
+	}
+	if _, err := s.SelectNativePolicies(NativePolicySelection{CatalogRef: nativeCatalog.CatalogRef, ApprovalRef: humanReviewPolicyRef, SandboxRef: workspaceWritePolicyRef}); err != nil {
+		return providersession.EffectivePolicySnapshot{}, err
+	}
+	capabilityCatalog, err := s.ProjectCapabilities(baselineCapabilityAdvertisement())
+	if err != nil {
+		return providersession.EffectivePolicySnapshot{}, err
+	}
+	return s.SelectCapabilities(CapabilitySelection{CatalogRef: capabilityCatalog.CatalogRef})
+}
+
+func baselineNativePolicyAdvertisement() NativePolicyAdvertisement {
+	return NativePolicyAdvertisement{
+		Approval: []NativeApprovalPolicyOption{
+			{PolicyRef: humanReviewPolicyRef, Stable: true, Available: true, providerPolicy: providerApprovalPolicyUntrusted, providerReviewer: providerApprovalsReviewerUser},
+			{PolicyRef: nativeAutoReviewPolicyRef, Stable: true, Available: true, AuthorityExpanding: true, providerPolicy: providerApprovalPolicyUntrusted, providerReviewer: providerApprovalsReviewerAuto},
+		},
+		Sandbox: []NativeSandboxPolicyOption{
+			{PolicyRef: workspaceWritePolicyRef, Stable: true, Available: true, providerSandbox: providerSandboxWorkspaceWrite, providerSandboxType: providerSandboxTypeWorkspaceWrite},
+			{PolicyRef: broaderNativeSandboxPolicyRef, Stable: true, Available: true, AuthorityExpanding: true, providerSandbox: providerSandboxDangerFullAccess, providerSandboxType: providerSandboxTypeDangerFull},
+		},
+	}
+}
+
+func baselineCapabilityAdvertisement() CapabilityAdvertisement {
+	return CapabilityAdvertisement{Capabilities: []CapabilityOption{{
+		CapabilityRef:      requestAttestationCapabilityRef,
+		Stable:             true,
+		Available:          true,
+		Supported:          true,
+		AuthorityExpanding: true,
+		providerCapability: providerCapabilityAttestation,
+		providerEnabled:    true,
+	}}}
+}
+
 func (s *Supervisor) rejectModelPolicy(reason DisconnectReason) error {
 	s.fail(reason)
 	return ErrModelPolicyRejected

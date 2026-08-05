@@ -64,7 +64,7 @@ func TestSequenceRejectsDuplicateStaleAndGappedEvents(t *testing.T) {
 }
 
 func TestApprovalRequiresCompleteOneTimeCorrelation(t *testing.T) {
-	event := Event{ContractVersion: ContractVersion, Sequence: 1, OccurredAt: time.Now(), Session: SessionRef{Provider: "example", SessionID: "session"}, Kind: EventApprovalRequested, Approval: &ApprovalRequest{Correlation: decisionCorrelation(), ActionClass: "workspace_change", Summary: "Apply reviewed change"}}
+	event := Event{ContractVersion: ContractVersion, Sequence: 1, OccurredAt: time.Now(), Session: SessionRef{Provider: "example", SessionID: "session"}, Kind: EventApprovalRequested, Approval: &ApprovalRequest{Correlation: decisionCorrelation(), Reason: ApprovalReasonWorkspaceChange, AllowedDecisions: []string{DecisionApprove, DecisionDeny}}}
 	if err := event.Validate(); err != nil {
 		t.Fatalf("valid approval event: %v", err)
 	}
@@ -82,6 +82,25 @@ func TestApprovalDecisionIsNeutralAndBounded(t *testing.T) {
 	}
 	if err := (ApprovalDecision{Correlation: decisionCorrelation(), Decision: "acceptForSession"}).Validate(); err == nil {
 		t.Fatal("provider-specific session grant must be rejected")
+	}
+	request := ApprovalRequest{Correlation: decisionCorrelation(), Reason: ApprovalReasonPermission, AllowedDecisions: []string{DecisionDeny}}
+	if err := (ApprovalDecision{Correlation: decisionCorrelation(), Decision: DecisionDeny}).ValidateFor(request); err != nil {
+		t.Fatalf("exact deny decision: %v", err)
+	}
+	if err := (ApprovalDecision{Correlation: decisionCorrelation(), Decision: DecisionApprove}).ValidateFor(request); err == nil {
+		t.Fatal("decision outside the exact request set must be rejected")
+	}
+	substituted := ApprovalDecision{Correlation: decisionCorrelation(), Decision: DecisionDeny}
+	substituted.Correlation.ConnectionID = "other-connection"
+	if err := substituted.ValidateFor(request); err == nil {
+		t.Fatal("substituted decision correlation must be rejected")
+	}
+	for _, malformed := range [][]string{nil, {DecisionDeny, DecisionDeny}, {DecisionApprove}, {DecisionDeny, DecisionApprove}} {
+		candidate := request
+		candidate.AllowedDecisions = malformed
+		if err := candidate.Validate(); err == nil {
+			t.Fatalf("malformed decision set accepted: %#v", malformed)
+		}
 	}
 }
 

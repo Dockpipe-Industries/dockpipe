@@ -40,6 +40,7 @@ type pendingRequest struct {
 	providerID       uint64
 	kind             pendingKind
 	correlation      providersession.Correlation
+	approval         *providersession.ApprovalRequest
 	prompt           *providersession.UserInputPrompt
 	input            *pendingUserInputState
 	decisionInFlight bool
@@ -90,7 +91,7 @@ func (s *Supervisor) handleServerRequest(providerID uint64, method string, raw j
 	if !serverRequestShapeAllowed(method, raw) {
 		return DisconnectUnsupportedEvent
 	}
-	kind, actionClass, scope, reason := classifyServerRequest(method, params)
+	kind, approvalReason, allowedDecisions, reason := classifyServerRequest(method, params)
 	if reason != "" {
 		return reason
 	}
@@ -146,6 +147,17 @@ func (s *Supervisor) handleServerRequest(providerID uint64, method string, raw j
 		}
 		pending.prompt = &prompt
 		pending.input = &input
+	} else {
+		approval := providersession.ApprovalRequest{
+			Correlation:      correlation,
+			Reason:           approvalReason,
+			AllowedDecisions: append([]string(nil), allowedDecisions...),
+		}
+		if approval.Validate() != nil {
+			s.mu.Unlock()
+			return DisconnectUnsupportedEvent
+		}
+		pending.approval = &approval
 	}
 	s.lifecycle.pending = pending
 	pending.timer = time.AfterFunc(s.deadlines.Request, func() { s.expirePending(correlation) })
@@ -158,7 +170,8 @@ func (s *Supervisor) handleServerRequest(providerID uint64, method string, raw j
 	} else {
 		s.state = providersession.StateWaitingForApproval
 		event.Kind, event.State, event.Summary = providersession.EventApprovalRequested, s.state, "approval_requested"
-		event.Approval = &providersession.ApprovalRequest{Correlation: correlation, ActionClass: actionClass, Summary: actionClass + "_approval", Scope: scope}
+		approval := cloneApprovalRequest(*pending.approval)
+		event.Approval = &approval
 	}
 	s.mu.Unlock()
 	if !s.publish(event, "approval", "accepted", "waiting") {
@@ -232,22 +245,27 @@ func classifyServerRequest(method string, params serverRequestParams) (pendingKi
 		if unsafeApprovalExtension(params) {
 			return 0, "", nil, DisconnectUnsupportedEvent
 		}
-		return pendingCommand, "command_execution", []string{"turn"}, ""
+		return pendingCommand, providersession.ApprovalReasonCommandExecution, []string{providersession.DecisionApprove, providersession.DecisionDeny}, ""
 	case "item/fileChange/requestApproval":
 		if strings.TrimSpace(params.GrantRoot) != "" {
 			return 0, "", nil, DisconnectUnsupportedEvent
 		}
-		return pendingFileChange, "workspace_change", []string{"turn"}, ""
+		return pendingFileChange, providersession.ApprovalReasonWorkspaceChange, []string{providersession.DecisionApprove, providersession.DecisionDeny}, ""
 	case "item/permissions/requestApproval":
 		if len(params.Permissions) == 0 || unsafeApprovalExtension(params) {
 			return 0, "", nil, DisconnectUnsupportedEvent
 		}
-		return pendingPermission, "declared_permission", []string{"declared_writable_roots"}, ""
+		return pendingPermission, providersession.ApprovalReasonPermission, []string{providersession.DecisionDeny}, ""
 	case "item/tool/requestUserInput":
 		return pendingUserInput, "", nil, ""
 	default:
 		return 0, "", nil, DisconnectUnsupportedEvent
 	}
+}
+
+func cloneApprovalRequest(request providersession.ApprovalRequest) providersession.ApprovalRequest {
+	request.AllowedDecisions = append([]string(nil), request.AllowedDecisions...)
+	return request
 }
 
 func unsafeApprovalExtension(params serverRequestParams) bool {
@@ -536,20 +554,21 @@ func (s *Supervisor) permissionScopeDeclared(raw json.RawMessage) bool {
 // answer a user-input request, or approve a permission profile.
 func (s *Supervisor) Decide(parent context.Context, decision providersession.ApprovalDecision) error {
 	started := time.Now()
-	if err := decision.Validate(); err != nil {
-		return s.rejectDecision(DisconnectDecisionRejected)
-	}
 	s.mu.Lock()
 	if !s.started || !s.initialized || s.state == providersession.StateDisconnected || s.lifecycle.pending == nil {
 		s.mu.Unlock()
 		return s.rejectDecision(DisconnectDecisionRejected)
 	}
 	pending := s.lifecycle.pending
+	if pending.kind == pendingUserInput || pending.approval == nil {
+		s.mu.Unlock()
+		return s.rejectDecision(DisconnectDecisionRejected)
+	}
 	if decision.Correlation != pending.correlation {
 		s.mu.Unlock()
 		return s.rejectDecision(DisconnectCorrelationMismatch)
 	}
-	if pending.decisionInFlight || pending.kind == pendingUserInput || pending.kind == pendingPermission && decision.Decision != providersession.DecisionDeny {
+	if pending.decisionInFlight || decision.ValidateFor(*pending.approval) != nil {
 		s.mu.Unlock()
 		return s.rejectDecision(DisconnectDecisionRejected)
 	}
@@ -565,6 +584,12 @@ func (s *Supervisor) Decide(parent context.Context, decision providersession.App
 	}
 	if !s.auditOperation("approval", "delivered", "waiting", "approval_delivered", decision.Correlation, started) {
 		return ErrDecisionUnavailable
+	}
+	if decision.Decision == providersession.DecisionDeny {
+		// A local denial is terminal for this supervised turn. Closing the
+		// private transport prevents provider continuation and cannot select
+		// an exec route, replay the prompt, or authorize another request.
+		s.fail(DisconnectApprovalDenied)
 	}
 	return nil
 }
