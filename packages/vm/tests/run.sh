@@ -10,7 +10,7 @@ cd "$PACKAGE_ROOT/tools"
 GOWORK=off GOCACHE="$VM_TEST_TMP/cache" GOTMPDIR="$VM_TEST_TMP/tmp" CGO_ENABLED=0 go test -mod=readonly ./...
 
 cd "$PACKAGE_ROOT"
-grep -Fq 'version: 0.7.0' package.yml
+grep -Fq 'version: 0.8.0' package.yml
 grep -Fq 'models/QemuVmResolverConfig' resolvers/qemu/types.yml
 grep -Fq 'models/LinuxQemuVmResolverConfig' resolvers/qemu/types.yml
 grep -Fq 'runtime: vm' workflows/windows-vm/config.yml
@@ -19,6 +19,17 @@ grep -Fq 'runtime: vm' workflows/linux-vm/config.yml
 grep -Fq 'resolver: qemu' workflows/linux-vm/config.yml
 grep -Fq 'Qualification.Enabled: false' workflows/linux-vm/config.yml
 grep -Fq '0533b0655c32e68b31d792ecd6ccfca95abdbc536c4446874fe0513bd4140ffe' profiles/ubuntu-24.04-amd64.yml
+grep -Fq 'dockpipe.vm.provisioning.v1' manifests/linux-provisioning.template.json
+grep -Fq 'dockpipe.vm.live-authorization.v1' manifests/linux-live-authorization.template.json
+grep -Fq '"approved": false' manifests/linux-live-authorization.template.json
+grep -Fq -- '--serve-virtio-serial=' workflows/linux-vm/assets/systemd/dockpipe-agent.service
+grep -Fq 'package_update: false' workflows/linux-vm/assets/nocloud/user-data
+grep -Fq 'ssh_pwauth: false' workflows/linux-vm/assets/nocloud/user-data
+
+if grep -R -Eq 'os/exec|exec\.Command|syscall\.Exec' tools/internal/provisioning tools/internal/guest; then
+  echo 'planning and guest service code must not expose raw subprocess execution' >&2
+  exit 1
+fi
 
 if grep -Eiq '(qemu-system|virsh|systemctl|poweroff|reboot|shutdown|SIGKILL|pidfd).*([[:space:]]run|[[:space:]]start|[[:space:]]send|[[:space:]]kill)' examples/linux-qualification-offline.yml; then
   echo 'offline qualification example contains a live or destructive command' >&2

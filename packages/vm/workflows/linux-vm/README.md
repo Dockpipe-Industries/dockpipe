@@ -80,8 +80,35 @@ Any failure preserves the complete instance. Cleanup is only an inert plan
 until it matches the exact run ID and ordered resource enumeration, and it
 refuses completed roots.
 
-The systemd and NoCloud files under `assets/` are design assets only. The
-service is unprivileged, nologin, capability-free, private-networked, ordered
-before network, and uses virtio-serial. System state stays on the OS disk;
-tickets and results use the qualification mount. Binary hashes must be pinned
-before a later provisioning gate installs anything.
+The six systemd and NoCloud files under `assets/` are now exact renderer inputs
+whose reviewed SHA-256 values are compiled into the controller.
+Rendering requires binary hashes, mutually pinned Ed25519 keys, fresh
+run/cohort/machine/disk/filesystem/nonce identities, and package XDG roots. The
+keypairs are generated before authorization, their public hashes are included
+in the contract and plan, and reservation refuses different key material. The
+rendered seed disables network and SSH, requests no packages or apt changes,
+formats only the exact virtio data-disk serial with the reviewed UUID/ext4
+tuple, mounts only by that UUID, installs only the hash-pinned guest binary plus
+reviewed systemd/config/key files, and starts the fixed agent service. There is
+no user-provided command field.
+
+The service is unprivileged, nologin, capability-free, private-networked,
+ordered before network, and uses virtio-serial. Its implemented service mode
+recognizes only canonical, signed, length-prefixed `request` frames for the five reviewed
+capabilities. Identity, health, and binary-pin verification respond; checkpoint
+and recovery remain fail-closed until a separate reviewed harness adapter owns
+their state transition. Signature, public-key pin, binary pin, freshness, replay,
+sequence, identity, nonce, and payload substitution failures close the stream.
+System state stays on the OS disk; tickets and results use the qualification
+mount.
+
+The controller's provisioning plan is a deterministic closed set of typed
+operations: exclusive identity reservation; source verification; private OS
+clone and 4 GiB sparse raw data-disk creation; exact NoCloud rendering and seed
+creation; hash-pinned asset installation; stable format/mount; QEMU launch;
+guest verification; controlled shutdown; failure preservation; and later exact
+cleanup. Planning invokes no subprocess and the emitted plan is always
+`execute=false`. A distinct, short-lived authorization file must authenticate
+both the exact contract digest and the complete typed-plan digest but cannot
+make this offline slice execute it. The package authorization template defaults
+to `approved=false` and is not itself a live authorization.

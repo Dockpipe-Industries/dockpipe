@@ -3728,7 +3728,7 @@ remains intentionally last. TASK-013 and CAS-14 remain open.
 #### Linux VM reboot/power-loss package foundation (2026-08-05)
 
 The package-owned foundation needed before a controlled Linux VM trial is now implemented under
-`packages/vm/**` as VM package version `0.7.0`. It adds the `linux-vm` workflow and a separate
+`packages/vm/**` as VM package version `0.8.0`. It adds the `linux-vm` workflow and a separate
 `LinuxQemuVmResolverConfig` root alongside the unchanged Windows model, keeps `runtime: vm` and
 resolver `qemu`, and does not add VM-product policy to `src/**`. The Ubuntu 24.04 LTS amd64 profile
 pins the immutable `20260801` cloud-image URL and SHA-256. It requires local NoCloud, disables
@@ -3747,6 +3747,34 @@ authorization, inert pidfd/SIGKILL planning, exact QEMU/block argument planning,
 exact cleanup planning. The current Windows guest agent remains the active Windows path; there is no
 cutover in this slice.
 
+The offline Gate 2 prerequisite is now implemented as a strict typed provisioning contract for
+exactly one disposable qualification instance. It requires the pinned XDG cache image path, byte
+size, regular non-symlink owner-only file, and SHA-256; rejects checkout, `.dockpipe`, `.dorkpipe`,
+relative, overlapping, and pre-existing generated roots; and reserves fresh run, cohort, machine,
+disk, filesystem, nonce, and Ed25519 identities exclusively without replacement. Fresh keypairs are
+generated before authorization, their public hashes are bound into the contract and plan, and
+reservation accepts only those same keys. The controller
+deterministically emits the closed set of inert operations for the private OS clone, private 4 GiB
+sparse raw data disk, reviewed NoCloud rendering and seed, hash-pinned assets, stable format/mount,
+QEMU launch, signed verification, controlled shutdown, failure preservation, and exact later
+cleanup. Planning invokes no subprocess and always emits `execute=false`. A distinct short-lived
+authorization can bind only to the exact contract and plan digest; it does not add an executor.
+The separate package authorization template defaults to `approved=false` and therefore grants no
+authority until a later reviewed gate supplies both exact digests and a fresh bounded lifetime.
+
+The reviewed NoCloud and systemd assets are now exact renderer inputs rather than design-only
+placeholders, and their six source hashes are compiled into the controller and checked during both
+planning and rendering. Rendering pins the controller and guest binaries and both Ed25519 public identities,
+disables network and SSH, performs no apt update or upgrade, installs no package, fixes the exact
+data-disk serial, filesystem UUID, mount path, and options, and exposes no user-provided command
+field. The systemd-referenced guest-agent service mode is implemented with the existing canonical,
+signed, length-prefixed protocol, accepts only signed `request` frames, and exposes only the five
+reviewed capabilities. Identity, health, and
+binary-pin verification respond; checkpoint and recovery validate their reviewed signed payload
+shape and then fail closed because this Gate 2 foundation does not own a harness adapter. Invalid framing,
+signature, public-key or binary pins, freshness, replay, sequence, nonce, identity, capability, and
+payload substitutions fail closed. Windows workflow behavior remains unchanged.
+
 Validation for this foundation covers package Go tests with `CGO_ENABLED=0 -mod=readonly`, strict
 protocol negatives, fake filesystem and socket behavior, manifest/isolation failures, XDG paths,
 two-disk and QEMU tuples, cleanup identity, legacy Windows workflow validation, both workflow/model
@@ -3754,7 +3782,9 @@ compiles, Linux/amd64 controller and guest-agent builds, and Windows/amd64 share
 compatibility. Cross-compilation is compatibility evidence only. It is not a Linux VM run, native
 Windows evidence, or macOS evidence.
 
-No image was downloaded. No VM, disk, filesystem, NoCloud seed, guest service, process, SQLite
+No image was downloaded or modified in this slice. The existing Gate 1 cache artifact was verified
+read-only at the pinned path, type, ownership, mode, byte size, and SHA-256. No VM, disk, filesystem,
+NoCloud seed, guest service, process, SQLite
 fixture, or evidence tree was created, cloned, modified, attached, started, stopped, rebooted,
 provisioned, killed, destroyed, or cleaned. No QMP power command or real signal was issued. Therefore
 Linux reboot/power-loss remains open, macOS remains intentionally last, TASK-013 remains open, and
@@ -3762,11 +3792,10 @@ Slice 2 has not started.
 
 The remaining live work stays split into separate maintainer approvals:
 
-1. download and verify the single pinned Ubuntu image;
-2. create/provision one disposable VM and install the hash-pinned agent assets;
-3. run a non-destructive identity, controller, and recovery dry run;
-4. run one bounded Linux destructive cohort and preserve/read back its complete evidence; and
-5. consider a separate Windows VM gate later. macOS remains the final platform gate.
+1. create/provision one disposable VM and install the hash-pinned agent assets;
+2. run a non-destructive identity, controller, and recovery dry run;
+3. run one bounded Linux destructive cohort and preserve/read back its complete evidence; and
+4. consider a separate Windows VM gate later. macOS remains the final platform gate.
 
 The implementation test matrix is:
 

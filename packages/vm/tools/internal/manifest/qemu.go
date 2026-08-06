@@ -1,6 +1,7 @@
 package manifest
 
 import (
+	"encoding/json"
 	"fmt"
 	"path/filepath"
 	"strings"
@@ -10,6 +11,37 @@ import (
 type QEMUPlan struct {
 	Binary string   `json:"binary"`
 	Args   []string `json:"args"`
+}
+
+// PlanProvisioningQEMU binds the validated VM tuple to the fresh XDG instance
+// disks and an immutable read-only NoCloud seed. It remains an inert argv plan.
+func PlanProvisioningQEMU(m Manifest, runtimeDir, osDisk, dataDisk, seed string) (QEMUPlan, error) {
+	for label, path := range map[string]string{"OS disk": osDisk, "data disk": dataDisk, "NoCloud seed": seed} {
+		if !filepath.IsAbs(path) || strings.ContainsAny(path, ",\r\n") {
+			return QEMUPlan{}, fmt.Errorf("%s path must be absolute and QEMU-safe", label)
+		}
+	}
+	if osDisk == dataDisk || osDisk == seed || dataDisk == seed {
+		return QEMUPlan{}, fmt.Errorf("OS, data, and NoCloud seed paths must be distinct")
+	}
+	m.OSDisk.Path = osDisk
+	m.DataDisk.Path = dataDisk
+	plan, err := PlanQEMU(m, runtimeDir)
+	if err != nil {
+		return QEMUPlan{}, err
+	}
+	plan.Args = append(plan.Args,
+		"-device", "virtio-scsi-pci,id=qual-seed-scsi",
+		"-blockdev", "driver=file,node-name=qual-seed-file,filename="+seed+",read-only=on,auto-read-only=off,discard=ignore",
+		"-blockdev", "driver=raw,node-name=qual-seed,file=qual-seed-file,read-only=on,discard=ignore",
+		"-device", "scsi-cd,drive=qual-seed,bus=qual-seed-scsi.0",
+	)
+	return plan, nil
+}
+
+func (p QEMUPlan) CanonicalJSON() (string, error) {
+	b, err := json.Marshal(p)
+	return string(b), err
 }
 
 func PlanQEMU(m Manifest, runtimeDir string) (QEMUPlan, error) {

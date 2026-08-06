@@ -39,6 +39,7 @@ func TestManifestRejectsUnsafeQualificationVariants(t *testing.T) {
 		"network":            func(m *Manifest) { m.Isolation.Network = true },
 		"ssh":                func(m *Manifest) { m.Isolation.SSH = true },
 		"share":              func(m *Manifest) { m.Isolation.Shares = []string{"/host"} },
+		"physical disk":      func(m *Manifest) { m.Isolation.PhysicalDisks = []string{"/dev/sda"} },
 		"passthrough":        func(m *Manifest) { m.Isolation.Passthrough = []string{"0000:01:00.0"} },
 		"extra disk":         func(m *Manifest) { m.Isolation.ExtraDisks = []string{"third.raw"} },
 		"arbitrary exec":     func(m *Manifest) { m.Isolation.ArbitraryExec = true },
@@ -78,6 +79,21 @@ func TestQEMUPlanHasExactIsolationAndBlockPolicy(t *testing.T) {
 	for _, forbidden := range []string{"accel=tcg", "-net ", "hostfwd", "virtio-9p", "snapshot=on", "discard=unmap", "detect-zeroes=unmap"} {
 		if strings.Contains(joined, forbidden) {
 			t.Fatalf("QEMU plan contains forbidden %q: %s", forbidden, joined)
+		}
+	}
+}
+
+func TestProvisioningQEMUPlanBindsFreshDisksAndReadOnlySeed(t *testing.T) {
+	m := sample(t)
+	root := t.TempDir()
+	plan, err := PlanProvisioningQEMU(m, filepath.Join(root, "runtime"), filepath.Join(root, "os.qcow2"), filepath.Join(root, "data.raw"), filepath.Join(root, "seed.iso"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	joined := strings.Join(plan.Args, " ")
+	for _, required := range []string{filepath.Join(root, "os.qcow2"), filepath.Join(root, "data.raw"), filepath.Join(root, "seed.iso"), "read-only=on", "scsi-cd", "-nic none"} {
+		if !strings.Contains(joined, required) {
+			t.Fatalf("provisioning QEMU plan missing %q: %s", required, joined)
 		}
 	}
 }

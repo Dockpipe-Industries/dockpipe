@@ -1,16 +1,18 @@
 # DockPipe VM package
 
 The `vm` package owns guest-specific workflows, QEMU resolver models, and the
-VMM-neutral control protocol. DockPipe core remains generic. Version 0.7.0 adds
-the Linux package foundation alongside the unchanged `windows-vm` surface.
+VMM-neutral control protocol. DockPipe core remains generic. Version 0.8.0 adds
+the offline Gate 2 provisioning foundation alongside the unchanged
+`windows-vm` surface.
 
 The Linux foundation has two deliberately different paths:
 
 - `linux-vm` composes the generic `runtime: vm` and `resolver: qemu` for
   ordinary user-owned development images.
-- qualification manifests, protocol code, QEMU argv generation, recovery
-  tickets, and cleanup plans are offline-only. No package binary in this slice
-  starts, stops, reboots, kills, provisions, or removes a VM or disk.
+- qualification manifests, protocol code, provisioning and QEMU plan
+  generation, recovery tickets, and cleanup plans are offline-only. No package
+  binary in this slice starts, stops, reboots, kills, provisions, or removes a
+  VM or disk.
 
 The immutable Ubuntu profile is `profiles/ubuntu-24.04-amd64.yml`. Downloads are
 never implicit: the official release-stamped URL and SHA-256 must both match,
@@ -33,9 +35,34 @@ store fallback. Private keys and recovery tickets use owner-only permissions.
 
 `tools/cmd/dockpipe-guest-agent` and
 `tools/cmd/dockpipe-qemu-controller` are source foundations. The controller can
-validate a manifest and print an inert argv plan; it cannot execute that plan.
-The guest binary exposes versioned identity, health, checkpoint, recovery, and
-hash-pinned-launch capabilities only. It has no arbitrary execution surface.
+validate a manifest, verify the exact cached source image, and print a
+deterministic inert provisioning or QEMU argv plan. Planning also verifies the
+six NoCloud/systemd inputs against reviewed hashes compiled into the controller.
+A separate short-lived
+authorization must bind to both the exact contract and complete typed-plan
+digests, but the plan remains
+`execute=false`: this slice contains no subprocess executor. The guest binary
+now implements the systemd-referenced virtio-serial service mode. It verifies
+the controller signature, identity, sequence, nonce, lifetime, capability, and
+binary/key pins before returning a guest-signed response. Identity, health, and
+hash-pinned-launch are operational; only signed `request` frames are accepted,
+and checkpoint and recovery recognize only the
+reviewed signed payload shape and fail closed because the Gate 2 foundation
+does not own a harness adapter. No other capability or arbitrary execution
+surface exists.
+
+`manifests/linux-provisioning.template.json` is deliberately non-runnable. A
+live gate must replace every marker with fresh identities, the current XDG
+runtime root, task-owned binary paths and hashes, and mutually pinned fresh
+keys. Fresh keypairs are generated in memory first, their public hashes are
+bound into the contract and plan, and only those same keys may then be reserved
+exclusively. The controller rejects relative, checkout, `.dockpipe`, `.dorkpipe`,
+pre-existing, mismatched, expired, or substituted inputs.
+
+`manifests/linux-live-authorization.template.json` is separately inert with
+`approved=false`. A later reviewed gate must bind a fresh, short-lived copy to
+the emitted contract and plan SHA-256 values; the offline controller still
+leaves `execute=false` after validating it.
 
 Run package tests with:
 
