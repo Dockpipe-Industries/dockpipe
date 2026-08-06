@@ -25,3 +25,21 @@ func TestGeneratePerInstanceOwnerOnlyKey(t *testing.T) {
 		t.Fatal("expected relative key root rejection")
 	}
 }
+
+func TestGenerateRejectsExistingPublicKeyWithoutCreatingPrivateKey(t *testing.T) {
+	root := t.TempDir()
+	publicPath := root + "/guest.pub"
+	if err := os.WriteFile(publicPath, []byte("existing"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Generate(root, "guest"); err == nil {
+		t.Fatal("expected existing public-key rejection")
+	}
+	if _, err := os.Stat(root + "/guest.key"); !os.IsNotExist(err) {
+		t.Fatal("private key was created after public-key collision")
+	}
+	b, _ := os.ReadFile(publicPath)
+	if string(b) != "existing" {
+		t.Fatal("existing public key was replaced")
+	}
+}

@@ -1,2 +1,2 @@
-instance-id: dockpipe-qualification-${RUN_ID}
+instance-id: dockpipe-qualification-@@RUN_ID@@-@@COHORT_ID@@
 local-hostname: dockpipe-qualification

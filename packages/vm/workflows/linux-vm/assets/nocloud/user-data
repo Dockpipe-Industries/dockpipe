@@ -4,13 +4,34 @@ apt:
 package_update: false
 package_upgrade: false
 packages: []
-users: []
+network:
+  config: disabled
+disable_root: true
+ssh_pwauth: false
+ssh_deletekeys: true
+ssh_genkeytypes: []
+users:
+  - name: dockpipe-agent
+    system: true
+    shell: /usr/sbin/nologin
+    homedir: /var/lib/dockpipe-agent
+    create_home: true
+    lock_passwd: true
+    ssh_authorized_keys: []
+fs_setup:
+  - label: dockpipe-qual
+    filesystem: ext4
+    device: /dev/disk/by-id/virtio-@@DISK_SERIAL@@
+    partition: none
+    overwrite: false
+    extra_opts: ["-U", "@@FILESYSTEM_UUID@@", "-E", "lazy_itable_init=0,lazy_journal_init=0"]
+mounts:
+  - ["UUID=@@FILESYSTEM_UUID@@", "/var/lib/dockpipe-qualification", "ext4", "rw,noatime,nodev,nosuid,noexec,data=ordered", "0", "2"]
 write_files:
-  - path: /etc/systemd/system/dockpipe-qualification-offline
-    owner: root:root
-    permissions: "0400"
-    content: |
-      This seed is inert until package-owned binaries, exact hashes, keys,
-      systemd assets, and the reviewed data-disk identity are injected by a
-      separately approved provisioning gate.
-runcmd: []
+@@WRITE_FILES@@
+runcmd:
+  - [systemctl, disable, --now, ssh.service, ssh.socket]
+  - [systemd-sysusers, /usr/lib/sysusers.d/dockpipe-agent.conf]
+  - [systemd-tmpfiles, --create, /usr/lib/tmpfiles.d/dockpipe-agent.conf]
+  - [systemctl, daemon-reload]
+  - [systemctl, enable, --now, dockpipe-agent.service]
