@@ -567,6 +567,21 @@ Independent read-back confirmed every ordered resource and recorded QEMU PID
 executor-v7 source-review controller retain their reviewed hashes. No retry,
 promotion, preparation, live Gate 2, or Gate 3 action occurred.
 
+The next separately approved offline gate published immutable executor-v7
+promotion `vmp-202608084eb50c76` from exact checkpoint
+`4eb50c762005ae6f10f51cd57daf9790196cd4ac`. Its closed inventory contains
+only controller SHA-256
+`9f2e2827cffe6924645a90e7381b804111c5f4ec1c46eaab2c270c85a4b1e0d9`
+at `5447254` bytes and guest-agent SHA-256
+`3a2d7657e13b6ec30fc8dc268ad977bb248b6598749979edf63223d364cc59e7`
+at `3870222` bytes, each owner-only executable mode `0500`. Canonical promotion
+evidence SHA-256 is
+`6fec8b7a8154f6286fac655fe668184cd9fb23f558bab7aed578dc2a502b5101`.
+Independent read-back confirmed the two-file promotion inventory and one-file
+evidence inventory. Windows compatibility remained unpromoted, the
+package/engine boundary remained preserved, and no preparation, authorization,
+disk, seed, socket, process, cleanup, Gate 2, or Gate 3 action occurred.
+
 The original documentation decision created no promotion evidence and granted no Gate 2
 authority. Deterministic source review, offline promotion, Gate 2 preparation,
 Gate 2 live authorization and execution, cleanup, and Gate 3 remain distinct
