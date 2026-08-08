@@ -4277,6 +4277,19 @@ separation. The earlier promotion remains untouched. This gate created no identi
 input, plan, authorization, disk, seed, socket, QEMU process, cleanup, Gate 2, or Gate 3 action.
 Fresh Gate 2 preparation remains separately authorized.
 
+The separately authorized offline preparation then created fresh task root
+`/tmp/dockpipe-vm-gate2-prep-20260808-d8fb7b9e`, run `g2r-1f9bdb5dd11545a4`, and cohort
+`g2c-17706e2c6519c7b0`. It generated a new 24-hour identity bundle, qualification input SHA-256
+`c1583eff7db0049a6fb7692d36b153bbe285801232d26ed4b91c5e4df6965ab3`, provisioning input
+SHA-256 `460b759b050a68a500aa6ea4e2c2e503ba2317d955e4e8b2d47d6eb6b93b39ec`, contract SHA-256
+`656c5bca0ae6d0f994ecdad799b4a4d58354b955396e547d29981c0980521f1c`, and inert plan SHA-256
+`bb1670208553885674e698b86bd0fee103ccda4e4cadee0497420b7913c09edc`. The plan retains
+`live_authorized=false`, `execute=false`, `authorization_required=true`, and the reviewed
+180-second guest-verification deadline. QMP, agent, and console socket paths are respectively 93,
+95, and 92 bytes, below Linux's 107-byte bound. All four exact live roots remain absent. No live
+authorization, identity reservation, disk, seed, socket, process, Gate 2, cleanup, or Gate 3 action
+occurred. Live Gate 2 remains a separate exact authorization.
+
 The implementation test matrix is:
 
 1. **Adapter selection:** a new normal Pipeon Codex session defaults to App Server; the explicit exec
