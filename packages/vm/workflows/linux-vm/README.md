@@ -28,6 +28,11 @@ swap, exactly two private disks, and no network, SSH, passthrough, physical
 disk, share, extra disk, or arbitrary command capability. Host and guest
 machine identities must differ.
 
+The manifest does not prescribe a boot UUID. Schema
+`dockpipe.vm.qualification.v2` fixes only
+`boot_id_source=/proc/sys/kernel/random/boot_id`; the actual per-boot value is
+learned through the authenticated guest-first protocol below.
+
 The data disk is a 4 GiB sparse raw whole-device ext4 filesystem. Its reviewed
 creation tuple is:
 
@@ -64,6 +69,30 @@ time window, and payload. Qualification capabilities are exactly:
 `identity/v1`, `health/v1`, `checkpoint/v1`, `recovery/v1`, and
 `launch-hash-pinned/v1`.
 
+Protocol `dockpipe.vm.v2` has one exact bootstrap. The fresh provisioning-v3
+`bootstrap_nonce` is generated with the per-instance Ed25519 keys, bound into
+the provisioning contract, inert plan, short-lived live authorization,
+NoCloud guest configuration, and sealed executor-v2 digest. Once the guest has
+read the reviewed kernel boot-ID path, it writes the first length-prefixed frame
+before reading controller bytes. That canonical frame has kind `bootstrap`,
+capability `identity/v1`, sequence 1, phase `bootstrap`, the launch bootstrap
+nonce, actual boot ID, all static identity fields, and a payload containing the
+boot-ID source plus both public-key and binary SHA-256 pins. It is signed only
+by the pinned guest key; there is no unsigned identity or controller bootstrap
+exception.
+
+The controller must read first and verify framing, canonical JSON, freshness,
+the pinned guest signature, exact bootstrap nonce, sequence/phase, static
+machine/disk/run/scenario/boundary context, boot-ID UUID, boot-ID source, and all
+four pins. It must then exclusively create mode-`0600` `bootstrap.json`, record
+the verified frame and learned boot ID, and fsync the file and evidence
+directory before writing any request. Existing evidence or any verification or
+durability failure stops with preservation and no retry. The first
+controller-signed `identity/v1` request uses that boot ID at sequence 2 with a
+new nonce; later requests are contiguous and may not reuse the bootstrap or any
+request nonce. Guest-signed results echo each request context. This second step
+proves the guest's controller-key pin while retaining mutual Ed25519 pinning.
+
 A pending signed ticket blocks all work other than the exact matching recovery.
 Machine, disk, boot, run, scenario, boundary, nonce, and harness hash must all
 match. The guest durably records `consumed` and the result hash before returning
@@ -83,7 +112,7 @@ refuses completed roots.
 The six systemd and NoCloud files under `assets/` are now exact renderer inputs
 whose reviewed SHA-256 values are compiled into the controller.
 Rendering requires binary hashes, mutually pinned Ed25519 keys, fresh
-run/cohort/machine/disk/filesystem/nonce identities, and package XDG roots. The
+run/cohort/machine/disk/filesystem/bootstrap-nonce identities, and package XDG roots. The
 keypairs are generated before authorization, their public hashes are included
 in the contract and plan, and reservation refuses different key material. The
 rendered seed disables network and SSH, requests no packages or apt changes,
@@ -94,8 +123,9 @@ no user-provided command field.
 
 The service is unprivileged, nologin, capability-free, private-networked,
 ordered before network, and uses virtio-serial. Its implemented service mode
-recognizes only canonical, signed, length-prefixed `request` frames for the five reviewed
-capabilities. Identity, health, and binary-pin verification respond; checkpoint
+emits the one canonical signed bootstrap and then recognizes only canonical,
+signed, length-prefixed `request` frames for the five reviewed capabilities.
+Identity, health, and binary-pin verification respond; checkpoint
 and recovery remain fail-closed until a separate reviewed harness adapter owns
 their state transition. Signature, public-key pin, binary pin, freshness, replay,
 sequence, identity, nonce, and payload substitution failures close the stream.
@@ -112,3 +142,22 @@ cleanup. Planning invokes no subprocess and the emitted plan is always
 both the exact contract digest and the complete typed-plan digest but cannot
 make this offline slice execute it. The package authorization template defaults
 to `approved=false` and is not itself a live authorization.
+
+The next offline contract layer binds that plan to one task-owned QEMU `11.0.3`
+Linux/amd64 bundle. The bundle contains only hash-pinned `qemu-img`,
+`qemu-system-x86_64`, and their exact runtime closure. `qemu-img` has one fixed
+120-second private backing-clone argv; the controller owns exclusive 4 GiB
+sparse-raw creation and deterministic `dockpipe-go-iso9660-v1` seed creation.
+QEMU launch is bounded to 120 seconds, signed guest verification to 60 seconds,
+and QMP `system_powerdown` shutdown to 120 seconds with no fallback signal.
+Any failure stops once, preserves all four instance roots, and never retries or
+cleans. Cleanup requires a separate fresh authorization bound to the exact
+contract, plan, executor digest, and ordered resource list.
+
+Gate 1 materialized this bundle at
+`/home/jamie/.cache/dockpipe/vm/toolchains/qemu-11.0.3-linux-amd64.1`, with
+manifest SHA-256
+`11a27f32eb93e62aba8ebc500dfd877339a71821793cbf30845b53964c22320c`.
+Two independent builds matched the same complete output inventory. Only an
+injected typed runner exists in this slice, with fake-runner tests; no `os/exec`
+adapter or live controller flag exists. Gate 2 and Gate 3 have not started.

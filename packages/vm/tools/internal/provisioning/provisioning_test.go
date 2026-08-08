@@ -4,6 +4,7 @@ import (
 	"crypto/ed25519"
 	"crypto/rand"
 	"crypto/sha256"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"io/fs"
@@ -71,6 +72,56 @@ func contractFixture(t *testing.T) (Contract, xdg.Paths, RenderMaterial) {
 	if err := os.WriteFile(guestPath, guestBinary, 0o700); err != nil {
 		t.Fatal(err)
 	}
+	toolchainRoot := filepath.Join(root, "toolchain")
+	for _, dir := range []string{toolchainRoot, filepath.Join(toolchainRoot, "bin"), filepath.Join(toolchainRoot, "lib")} {
+		if err := os.Mkdir(dir, 0o700); err != nil {
+			t.Fatal(err)
+		}
+	}
+	qemuSystem := []byte("qemu-system-test-binary")
+	qemuImage := []byte("qemu-img-test-binary")
+	runtimeLoader := []byte("runtime-loader-test-binary")
+	for _, file := range []struct {
+		path string
+		data []byte
+		mode os.FileMode
+	}{
+		{filepath.Join(toolchainRoot, "bin", ToolQEMUSystem), qemuSystem, 0o500},
+		{filepath.Join(toolchainRoot, "bin", ToolQEMUImage), qemuImage, 0o500},
+		{filepath.Join(toolchainRoot, "lib", "ld-linux-x86-64.so.2"), runtimeLoader, 0o500},
+	} {
+		if err := os.WriteFile(file.path, file.data, file.mode); err != nil {
+			t.Fatal(err)
+		}
+	}
+	toolchain := ToolchainManifest{
+		Schema: ToolchainSchema, BundleID: ToolchainBundleID, BundleVersion: "11.0.3-linux-amd64.1", OS: "linux", Architecture: "amd64", QEMUVersion: ToolchainQEMUVersion,
+		Source:            ToolchainSource{URL: ToolchainSourceURL, SignatureURL: ToolchainSignatureURL, ArchiveSHA256: strings.Repeat("a", 64), SignerFingerprint: ToolchainSigner},
+		BuildRecipeSHA256: strings.Repeat("b", 64),
+		Tools: []ToolPin{
+			{ID: ToolQEMUImage, RelativePath: "bin/" + ToolQEMUImage, SHA256: digest(qemuImage), Version: "qemu-img version " + ToolchainQEMUVersion, Mode: 0o500},
+			{ID: ToolQEMUSystem, RelativePath: "bin/" + ToolQEMUSystem, SHA256: digest(qemuSystem), Version: "QEMU emulator version " + ToolchainQEMUVersion, Mode: 0o500},
+		},
+		RuntimeFiles: []FilePin{{RelativePath: "lib/ld-linux-x86-64.so.2", SHA256: digest(runtimeLoader), Mode: 0o500}},
+	}
+	toolchainJSON, err := json.Marshal(toolchain)
+	if err != nil {
+		t.Fatal(err)
+	}
+	toolchainManifest := filepath.Join(toolchainRoot, ToolchainManifestName)
+	if err := os.WriteFile(toolchainManifest, toolchainJSON, 0o400); err != nil {
+		t.Fatal(err)
+	}
+	for _, dir := range []string{filepath.Join(toolchainRoot, "bin"), filepath.Join(toolchainRoot, "lib"), toolchainRoot} {
+		if err := os.Chmod(dir, 0o500); err != nil {
+			t.Fatal(err)
+		}
+	}
+	t.Cleanup(func() {
+		_ = os.Chmod(toolchainRoot, 0o700)
+		_ = os.Chmod(filepath.Join(toolchainRoot, "bin"), 0o700)
+		_ = os.Chmod(filepath.Join(toolchainRoot, "lib"), 0o700)
+	})
 	assetsRoot, err := filepath.Abs(filepath.Join("..", "..", "..", "workflows", "linux-vm", "assets"))
 	if err != nil {
 		t.Fatal(err)
@@ -78,12 +129,39 @@ func contractFixture(t *testing.T) (Contract, xdg.Paths, RenderMaterial) {
 	m := qualification(t)
 	c := Contract{
 		Schema: Schema, Purpose: "qualification", Disposable: true, InstanceCount: 1,
-		RunID: m.RunID, CohortID: "cohort-001", MachineUUID: m.MachineUUID, DiskSerial: m.DataDisk.Serial, FilesystemUUID: m.Filesystem.UUID, Nonce: strings.Repeat("1", 64),
+		RunID: m.RunID, CohortID: "cohort-001", MachineUUID: m.MachineUUID, DiskSerial: m.DataDisk.Serial, FilesystemUUID: m.Filesystem.UUID, BootstrapNonce: strings.Repeat("1", 64),
 		SourceImage: SourceImage{Path: filepath.Join(paths.Images, PinnedImageFilename), SHA256: manifest.UbuntuImageSHA256, Bytes: PinnedImageBytes},
+		Toolchain:   ToolchainReference{Root: toolchainRoot, Manifest: toolchainManifest, ManifestSHA256: digest(toolchainJSON)},
 		Roots:       Roots{Instances: paths.Instances, Evidence: paths.Evidence, Config: paths.Config, Runtime: paths.Runtime},
 		Artifacts:   Artifacts{AssetsRoot: assetsRoot, ControllerBinary: controllerPath, ControllerBinarySHA256: digest(controllerBinary), GuestAgentBinary: guestPath, GuestAgentBinarySHA256: digest(guestBinary), ControllerPublicKeySHA256: digest(controllerPub), GuestPublicKeySHA256: digest(guestPub)},
+		Execution:   RequiredExecutionPolicy(),
 	}
 	return c, paths, RenderMaterial{Keys: KeyMaterial{ControllerPublic: controllerPub, ControllerPrivate: controllerPriv, GuestPublic: guestPub, GuestPrivate: guestPriv}, ControllerBinary: controllerBinary, GuestAgentBinary: guestBinary}
+}
+
+func qualificationForContract(t *testing.T, c Contract) manifest.Manifest {
+	t.Helper()
+	m := qualification(t)
+	toolchain, err := LoadToolchain(c.Toolchain)
+	if err != nil {
+		t.Fatal(err)
+	}
+	qemu, err := toolchain.Tool(ToolQEMUSystem)
+	if err != nil {
+		t.Fatal(err)
+	}
+	m.QEMU.BinaryPath = filepath.Join(c.Toolchain.Root, filepath.FromSlash(qemu.RelativePath))
+	m.QEMU.BinarySHA256 = qemu.SHA256
+	m.QEMU.Version = qemu.Version
+	m.Protocol.ControllerBinarySHA256 = c.Artifacts.ControllerBinarySHA256
+	m.Protocol.GuestAgentBinarySHA256 = c.Artifacts.GuestAgentBinarySHA256
+	m.Protocol.ControllerPublicKeySHA256 = c.Artifacts.ControllerPublicKeySHA256
+	m.Protocol.GuestPublicKeySHA256 = c.Artifacts.GuestPublicKeySHA256
+	m.QEMU.ConfigurationSHA256, err = manifest.ConfigurationSHA256(m)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return m
 }
 
 func digest(data []byte) string {
@@ -93,7 +171,7 @@ func digest(data []byte) string {
 
 func TestProvisioningPlanIsDeterministicInertAndClosed(t *testing.T) {
 	c, paths, _ := contractFixture(t)
-	m := qualification(t)
+	m := qualificationForContract(t, c)
 	inspector := fakeInspector{info: fakeFileInfo{mode: 0o600, size: PinnedImageBytes}, digest: manifest.UbuntuImageSHA256}
 	first, err := BuildPlan(c, paths, m, "/checkout", inspector)
 	if err != nil {
@@ -119,17 +197,25 @@ func TestProvisioningPlanIsDeterministicInertAndClosed(t *testing.T) {
 			t.Fatalf("plan contains forbidden surface %q", forbidden)
 		}
 	}
+	var clone PinnedCommand
+	if err := json.Unmarshal([]byte(first.Operations[2].Inputs[0]), &clone); err != nil {
+		t.Fatal(err)
+	}
+	wantCloneArgs := []string{"create", "-f", "qcow2", "-F", "qcow2", "-b", c.SourceImage.Path, filepath.Join(c.Roots.Instances, c.RunID, c.CohortID, "os-private.qcow2")}
+	if clone.ToolID != ToolQEMUImage || clone.BinarySHA256 == "" || clone.TimeoutSeconds != 120 || !slices.Equal(clone.Args, wantCloneArgs) || first.ToolchainSHA256 != c.Toolchain.ManifestSHA256 {
+		t.Fatalf("clone or toolchain binding changed: clone=%+v plan=%+v", clone, first)
+	}
 }
 
 func TestLiveAuthorizationFailsClosedAndNeverChangesExecute(t *testing.T) {
 	c, paths, _ := contractFixture(t)
-	plan, err := BuildPlan(c, paths, qualification(t), "/checkout", fakeInspector{info: fakeFileInfo{mode: 0o600, size: PinnedImageBytes}, digest: manifest.UbuntuImageSHA256})
+	plan, err := BuildPlan(c, paths, qualificationForContract(t, c), "/checkout", fakeInspector{info: fakeFileInfo{mode: 0o600, size: PinnedImageBytes}, digest: manifest.UbuntuImageSHA256})
 	if err != nil {
 		t.Fatal(err)
 	}
 	now := time.Unix(1_800_000_000, 0)
 	digest, _ := c.Digest()
-	base := LiveAuthorization{Schema: AuthorizationSchema, Approved: true, ContractSHA256: digest, PlanSHA256: plan.PlanSHA256, RunID: c.RunID, CohortID: c.CohortID, Nonce: c.Nonce, ExpiresAtUnix: now.Add(5 * time.Minute).Unix()}
+	base := LiveAuthorization{Schema: AuthorizationSchema, Approved: true, ContractSHA256: digest, PlanSHA256: plan.PlanSHA256, RunID: c.RunID, CohortID: c.CohortID, BootstrapNonce: c.BootstrapNonce, ExpiresAtUnix: now.Add(5 * time.Minute).Unix()}
 	if _, err := AuthorizePlan(plan, c, LiveAuthorization{}, now); err == nil {
 		t.Fatal("expected missing live authorization rejection")
 	}
@@ -149,6 +235,11 @@ func TestLiveAuthorizationFailsClosedAndNeverChangesExecute(t *testing.T) {
 	if _, err := AuthorizePlan(tampered, c, base, now); err == nil {
 		t.Fatal("expected exact plan digest substitution rejection")
 	}
+	tampered = plan
+	tampered.ToolchainSHA256 = strings.Repeat("f", 64)
+	if _, err := AuthorizePlan(tampered, c, base, now); err == nil {
+		t.Fatal("expected toolchain digest substitution rejection")
+	}
 	authorized, err := AuthorizePlan(plan, c, base, now)
 	if err != nil {
 		t.Fatal(err)
@@ -161,7 +252,7 @@ func TestLiveAuthorizationFailsClosedAndNeverChangesExecute(t *testing.T) {
 func TestLiveAuthorizationFileMustBeAbsoluteOwnerOnlyAndNonSymlink(t *testing.T) {
 	root := t.TempDir()
 	path := filepath.Join(root, "authorization.json")
-	data := []byte(`{"schema":"dockpipe.vm.live-authorization.v1","approved":false,"contract_sha256":"` + strings.Repeat("a", 64) + `","plan_sha256":"` + strings.Repeat("b", 64) + `","run_id":"run-001","cohort_id":"cohort-001","nonce":"` + strings.Repeat("c", 64) + `","expires_at_unix":0}`)
+	data := []byte(`{"schema":"dockpipe.vm.live-authorization.v3","approved":false,"contract_sha256":"` + strings.Repeat("a", 64) + `","plan_sha256":"` + strings.Repeat("b", 64) + `","run_id":"run-001","cohort_id":"cohort-001","bootstrap_nonce":"` + strings.Repeat("c", 64) + `","expires_at_unix":0}`)
 	if err := os.WriteFile(path, data, 0o600); err != nil {
 		t.Fatal(err)
 	}
@@ -248,6 +339,87 @@ func TestPinnedBinaryRejectsTypeAndChecksumSubstitution(t *testing.T) {
 	}
 }
 
+func TestToolchainIsExactTaskOwnedAndHasNoFallbackSurface(t *testing.T) {
+	c, _, _ := contractFixture(t)
+	toolchain, err := LoadToolchain(c.Toolchain)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := toolchain.Validate(c.Toolchain, "/checkout", c.Roots); err != nil {
+		t.Fatal(err)
+	}
+	if toolchain.QEMUVersion != "11.0.3" || len(toolchain.Tools) != 2 || len(toolchain.RuntimeFiles) == 0 {
+		t.Fatalf("unexpected toolchain closure: %+v", toolchain)
+	}
+	encoded, _ := json.Marshal(toolchain)
+	for _, forbidden := range []string{"$PATH", "cloud-localds", "xorriso", "genisoimage", "ssh", "network", "fallback"} {
+		if strings.Contains(strings.ToLower(string(encoded)), strings.ToLower(forbidden)) {
+			t.Fatalf("toolchain exposes forbidden fallback surface %q", forbidden)
+		}
+	}
+}
+
+func TestToolchainRejectsExtraFilesHashesModesSymlinksAndRootOverlap(t *testing.T) {
+	t.Run("extra file", func(t *testing.T) {
+		c, _, _ := contractFixture(t)
+		toolchain, _ := LoadToolchain(c.Toolchain)
+		if err := os.Chmod(c.Toolchain.Root, 0o700); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(c.Toolchain.Root, "unexpected"), []byte("not authorized"), 0o400); err != nil {
+			t.Fatal(err)
+		}
+		if err := toolchain.Validate(c.Toolchain, "/checkout", c.Roots); err == nil {
+			t.Fatal("expected unmanifested file rejection")
+		}
+	})
+	t.Run("hash", func(t *testing.T) {
+		c, _, _ := contractFixture(t)
+		toolchain, _ := LoadToolchain(c.Toolchain)
+		toolchain.Tools[0].SHA256 = strings.Repeat("0", 64)
+		if err := toolchain.Validate(c.Toolchain, "/checkout", c.Roots); err == nil {
+			t.Fatal("expected tool hash substitution rejection")
+		}
+	})
+	t.Run("mode", func(t *testing.T) {
+		c, _, _ := contractFixture(t)
+		toolchain, _ := LoadToolchain(c.Toolchain)
+		path := filepath.Join(c.Toolchain.Root, filepath.FromSlash(toolchain.Tools[0].RelativePath))
+		if err := os.Chmod(path, 0o700); err != nil {
+			t.Fatal(err)
+		}
+		if err := toolchain.Validate(c.Toolchain, "/checkout", c.Roots); err == nil {
+			t.Fatal("expected executable mode substitution rejection")
+		}
+	})
+	t.Run("symlink", func(t *testing.T) {
+		c, _, _ := contractFixture(t)
+		toolchain, _ := LoadToolchain(c.Toolchain)
+		path := filepath.Join(c.Toolchain.Root, filepath.FromSlash(toolchain.RuntimeFiles[0].RelativePath))
+		backup := path + ".real"
+		if err := os.Chmod(filepath.Dir(path), 0o700); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Rename(path, backup); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Symlink(backup, path); err != nil {
+			t.Fatal(err)
+		}
+		if err := toolchain.Validate(c.Toolchain, "/checkout", c.Roots); err == nil {
+			t.Fatal("expected runtime symlink substitution rejection")
+		}
+	})
+	t.Run("generated root overlap", func(t *testing.T) {
+		c, _, _ := contractFixture(t)
+		toolchain, _ := LoadToolchain(c.Toolchain)
+		c.Roots.Instances = filepath.Dir(c.Toolchain.Root)
+		if err := toolchain.Validate(c.Toolchain, "/checkout", c.Roots); err == nil {
+			t.Fatal("expected toolchain and generated root overlap rejection")
+		}
+	})
+}
+
 func TestExclusiveIdentityCreationNeverReplaces(t *testing.T) {
 	c, _, material := contractFixture(t)
 	root := filepath.Join(t.TempDir(), "identity")
@@ -266,7 +438,7 @@ func TestExclusiveIdentityCreationNeverReplaces(t *testing.T) {
 	if !slices.Equal(before, after) {
 		t.Fatal("existing private key was replaced")
 	}
-	for _, path := range []string{reserved.ControllerPrivateKey, reserved.GuestPrivateKey, reserved.NoncePath} {
+	for _, path := range []string{reserved.ControllerPrivateKey, reserved.GuestPrivateKey, reserved.BootstrapNoncePath} {
 		info, _ := os.Stat(path)
 		if info.Mode().Perm() != 0o600 {
 			t.Fatalf("private identity mode changed for %s", path)
@@ -310,6 +482,23 @@ func TestNoCloudRenderingIsExactPinnedAndRestricted(t *testing.T) {
 		if !strings.Contains(rendered, required) {
 			t.Fatalf("rendered seed missing %q", required)
 		}
+	}
+	var renderedConfig AgentConfig
+	for _, line := range strings.Split(rendered, "\n") {
+		encoded, ok := strings.CutPrefix(strings.TrimSpace(line), "content: ")
+		if !ok {
+			continue
+		}
+		decoded, err := base64.StdEncoding.DecodeString(encoded)
+		if err == nil {
+			var candidate AgentConfig
+			if json.Unmarshal(decoded, &candidate) == nil && candidate.Schema == "dockpipe.vm.guest-agent-config.v2" {
+				renderedConfig = candidate
+			}
+		}
+	}
+	if renderedConfig.BootstrapNonce != c.BootstrapNonce || renderedConfig.BootIDSource != manifest.KernelBootIDSource {
+		t.Fatalf("rendered guest config does not bind bootstrap nonce and kernel boot-ID source: %+v", renderedConfig)
 	}
 	bad := material
 	bad.GuestAgentBinary = []byte("substituted")

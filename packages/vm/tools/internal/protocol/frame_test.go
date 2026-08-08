@@ -4,14 +4,16 @@ import (
 	"bytes"
 	"crypto/ed25519"
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/binary"
+	"encoding/hex"
 	"strings"
 	"testing"
 	"time"
 )
 
 func testContext() Context {
-	return Context{MachineUUID: "11111111-1111-4111-8111-111111111111", DiskSerial: "dockpipe-qual-data-001", BootID: "22222222-2222-4222-8222-222222222222", Sequence: 1, RunID: "run-001", Nonce: strings.Repeat("a", 64), Scenario: "wal-checkpoint", DurabilityBoundary: "after-fsync", Phase: "checkpoint"}
+	return Context{MachineUUID: "11111111-1111-4111-8111-111111111111", DiskSerial: "dockpipe-qual-data-001", BootID: "22222222-2222-4222-8222-222222222222", Sequence: FirstRequestSequence, RunID: "run-001", Nonce: strings.Repeat("a", 64), Scenario: "wal-checkpoint", DurabilityBoundary: "after-fsync", Phase: "checkpoint"}
 }
 
 func keypair(t *testing.T) (ed25519.PublicKey, ed25519.PrivateKey) {
@@ -26,7 +28,7 @@ func keypair(t *testing.T) (ed25519.PublicKey, ed25519.PrivateKey) {
 func TestSignVerifyAndFrameRoundTrip(t *testing.T) {
 	pub, priv := keypair(t)
 	now := time.Unix(1_800_000_000, 0)
-	data, err := Sign("checkpoint", "checkpoint/v1", testContext(), map[string]any{"boundary": "after-fsync"}, now, now.Add(time.Minute), priv)
+	data, err := Sign(RequestKind, "checkpoint/v1", testContext(), map[string]any{"boundary": "after-fsync"}, now, now.Add(time.Minute), priv)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -55,7 +57,7 @@ func TestProtocolRejectsMalformedAndUntrustedFrames(t *testing.T) {
 	pub, priv := keypair(t)
 	otherPub, _ := keypair(t)
 	now := time.Unix(1_800_000_000, 0)
-	data, err := Sign("health", "health/v1", testContext(), map[string]any{"healthy": true}, now, now.Add(time.Minute), priv)
+	data, err := Sign(ResultKind, "health/v1", testContext(), map[string]any{"healthy": true}, now, now.Add(time.Minute), priv)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -83,15 +85,15 @@ func TestProtocolRejectsMalformedAndUntrustedFrames(t *testing.T) {
 func TestProtocolRejectsOversizeAndProhibitedCapability(t *testing.T) {
 	_, priv := keypair(t)
 	now := time.Unix(1_800_000_000, 0)
-	if _, err := Sign("exec", "exec/v1", testContext(), map[string]string{"command": "id"}, now, now.Add(time.Minute), priv); err == nil {
+	if _, err := Sign(RequestKind, "exec/v1", testContext(), map[string]string{"command": "id"}, now, now.Add(time.Minute), priv); err == nil {
 		t.Fatal("expected arbitrary exec rejection")
 	}
-	if _, err := Sign("health", "health/v1", testContext(), map[string]string{"data": strings.Repeat("x", MaxPayloadBytes+1)}, now, now.Add(time.Minute), priv); err == nil {
+	if _, err := Sign(RequestKind, "health/v1", testContext(), map[string]string{"data": strings.Repeat("x", MaxPayloadBytes+1)}, now, now.Add(time.Minute), priv); err == nil {
 		t.Fatal("expected oversized payload rejection")
 	}
 	missing := testContext()
 	missing.BootID = ""
-	if _, err := Sign("health", "health/v1", missing, map[string]bool{"healthy": true}, now, now.Add(time.Minute), priv); err == nil {
+	if _, err := Sign(RequestKind, "health/v1", missing, map[string]bool{"healthy": true}, now, now.Add(time.Minute), priv); err == nil {
 		t.Fatal("expected missing authenticated identity rejection")
 	}
 	var prefix [4]byte
@@ -107,6 +109,36 @@ func TestProtocolRejectsOversizeAndProhibitedCapability(t *testing.T) {
 	}
 }
 
+func TestGuestFirstIdentityBootstrapAuthenticatesKernelBootID(t *testing.T) {
+	guestPub, guestPriv := keypair(t)
+	now := time.Unix(1_800_000_000, 0)
+	ctx := testContext()
+	ctx.Sequence = BootstrapSequence
+	ctx.Nonce = strings.Repeat("b", 64)
+	ctx.Phase = BootstrapPhase
+	payload := IdentityBootstrapPayload{
+		BootIDSource: "/proc/sys/kernel/random/boot_id", ControllerPublicKeySHA256: strings.Repeat("c", 64),
+		GuestPublicKeySHA256: func() string { sum := sha256.Sum256(guestPub); return hex.EncodeToString(sum[:]) }(), ControllerBinarySHA256: strings.Repeat("e", 64), GuestAgentBinarySHA256: strings.Repeat("f", 64),
+	}
+	data, err := Sign(BootstrapKind, "identity/v1", ctx, payload, now, now.Add(time.Minute), guestPriv)
+	if err != nil {
+		t.Fatal(err)
+	}
+	expected := ctx
+	expected.BootID = ""
+	if _, err := VerifyIdentityBootstrap(data, guestPub, now, expected, ctx.Nonce, payload); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := VerifyIdentityBootstrap(data, guestPub, now, expected, strings.Repeat("9", 64), payload); err == nil {
+		t.Fatal("expected launch bootstrap nonce substitution rejection")
+	}
+	wrongPayload := payload
+	wrongPayload.GuestPublicKeySHA256 = strings.Repeat("0", 64)
+	if _, err := VerifyIdentityBootstrap(data, guestPub, now, expected, ctx.Nonce, wrongPayload); err == nil {
+		t.Fatal("expected bootstrap pin substitution rejection")
+	}
+}
+
 func TestReplayGuardRejectsReplayOrderAndIdentitySubstitution(t *testing.T) {
 	ctx := testContext()
 	guard := NewReplayGuard(ctx)
@@ -117,12 +149,12 @@ func TestReplayGuardRejectsReplayOrderAndIdentitySubstitution(t *testing.T) {
 	if err := guard.Accept(frame); err == nil {
 		t.Fatal("expected replay rejection")
 	}
-	ctx.Sequence = 3
+	ctx.Sequence = 4
 	ctx.Nonce = strings.Repeat("b", 64)
 	if err := guard.Accept(SignedFrame{Context: ctx}); err == nil {
 		t.Fatal("expected out-of-order rejection")
 	}
-	ctx.Sequence = 2
+	ctx.Sequence = 3
 	ctx.MachineUUID = "33333333-3333-4333-8333-333333333333"
 	if err := guard.Accept(SignedFrame{Context: ctx}); err == nil {
 		t.Fatal("expected identity substitution rejection")

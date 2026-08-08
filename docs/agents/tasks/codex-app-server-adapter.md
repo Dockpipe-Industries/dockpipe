@@ -3797,6 +3797,129 @@ The remaining live work stays split into separate maintainer approvals:
 3. run one bounded Linux destructive cohort and preserve/read back its complete evidence; and
 4. consider a separate Windows VM gate later. macOS remains the final platform gate.
 
+#### Linux VM task-owned executor/toolchain contract (2026-08-06)
+
+The missing offline contract between the inert Gate 2 provisioning plan and any future live runner
+is now implemented under `packages/vm/**` as VM package version `0.9.0`. “Package-owned” here means
+the VM-specific source, policy, templates, and tests remain in the VM package. It does not wire the
+task into DockPipe package installation, release, registry, signing, global-store, or version
+resolution. Those package-layer capabilities remain separate backlog work. The future QEMU bundle
+is instead a separately prepared task-owned local artifact, like the pinned image and task-owned
+controller/guest builds.
+
+The provisioning and plan contracts are now v2 and bind an exact absolute bundle root plus its raw
+manifest SHA-256. The new `dockpipe.vm.toolchain.v1` manifest accepts only QEMU `11.0.3` on
+Linux/amd64 with KVM, exactly `qemu-img`, `qemu-system-x86_64`, and a non-empty complete
+runtime-library/ROM/data closure. It pins the official source and signature URLs, release-manager
+fingerprint, source-archive hash, build-recipe hash, exact relative paths, version output, file
+hashes, and finalized owner-only read/execute modes. Validation rejects checkout, `.dockpipe`,
+`.dorkpipe`, VM instance/evidence/config/runtime overlap, symlinks, extra or missing files, widened
+modes, changed hashes or versions, substituted tools, and fallback lookup. The bundle root and all
+directories are finalized mode `0500`, the manifest/runtime data are `0400`, and executables/loaders
+are `0500`.
+
+The exact OS clone command is the bundle-pinned `qemu-img create -f qcow2 -F qcow2 -b <pinned
+source> <fresh private target>` with a 120-second bound and no alternate tool. The Go controller owns
+exclusive mode-`0600` 4 GiB sparse raw creation and deterministic `dockpipe-go-iso9660-v1` NoCloud
+construction, so `cloud-localds`, `xorriso`, and `genisoimage` are absent. QEMU startup is bounded to
+120 seconds, controller-signed/guest-signed identity, health, and launch-pin verification to 60
+seconds, and QMP `system_powerdown` to 120 seconds with no fallback signal.
+
+The new `dockpipe.vm.executor.v1` contract is deterministically derived from only the exact
+authorized contract, plan digest, immutable toolchain manifest, QEMU argv, and reviewed NoCloud
+rendering. Its injected runner has typed methods only for private clone, sparse raw disk, NoCloud
+seed, QEMU launch, signed verification, controlled shutdown, preservation, and cleanup. It has no
+generic command, shell, environment, network, SSH, passthrough, share, physical-disk, or fallback
+surface. Any failure stops once, performs no retry or cleanup, and requests preservation of the
+complete instance/evidence/config/runtime roots. Cleanup is never automatic and requires a separate
+fresh authorization bound to the contract, plan, executor digest, run/cohort, and exact ordered
+resource list.
+
+Only fake runners exist and tests launch no subprocess. There is no `os/exec` adapter or live CLI
+execution flag. Gate 1 materialization completed on 2026-08-07 using the exact QEMU 11.0.3 source
+archive SHA-256 `da5fcffc32762820568b828ed430a728864d34d50b6d2f30358597760cbb0523`,
+detached-signature SHA-256 `719f32c491ee724629f7d5918a6ff04ddc115d92a597b504cc4f12191e4a5e77`,
+signer `CEACC9E15534EBABB82D3FA03353C9CEF108B584`, and pinned builder manifest
+`sha256:9108d3cbdacbaf442f8b8938a2e94a7cdf04c0b093953866726c5734cb478f2e`.
+The builder configuration digest is
+`sha256:ae716e47ccf0cde02ef2b290116ddc2a7c66ac0a912a6f1b74f28a5670a3dd21`,
+its complete 36,551-entry inventory SHA-256 is
+`ecb649e86e299e6dd0e569f15a2c4fa207e6dc03bcddf540460453b819a48cb5`, and the
+reviewed recipe SHA-256 is
+`669021bd42c5a47c7173821e68ec9e37143c7406e9093338318504e79b502a69`.
+
+Two independent no-network builds produced byte-identical 125-entry output inventories with
+SHA-256 `22f24ba020b98b0802d67956bd5d7699bcd9d12a99773e185165087b8b1aedec`.
+The immutable `jamie:jamie` bundle is
+`/home/jamie/.cache/dockpipe/vm/toolchains/qemu-11.0.3-linux-amd64.1`; its
+`toolchain.json` SHA-256 is
+`11a27f32eb93e62aba8ebc500dfd877339a71821793cbf30845b53964c22320c`.
+`qemu-img` is `8f136e6f9550ca0c4d0bed73c7fb761537425c4bd0e4f95c0fd8ee93b6b2ed81`, and
+`qemu-system-x86_64` is
+`3544680aaeaf8087bbf3ef693ff185c2691831560c767672defccd784ec37140`.
+The exact bundle-owned musl interpreter, literal `$ORIGIN/../lib` RPATH, `NODEFLIB`, recursive
+declared library closure, owner-only modes, absence of symlinks/writable/group/world entries, and
+absolute-path `env -i` version/help execution were verified. The exact checked-in manifest and build
+evidence contain no replacement markers.
+
+Gate 1 is complete. Gate 2 and Gate 3 have not started; no VM, VM disk, NoCloud seed, live root,
+QEMU process, socket, or cleanup action was created. A separately reviewed slice may add a real
+runner and Gate 2 execution prompt later.
+
+Offline validation passed the VM package test (including the new executor and toolchain negatives),
+workflow and resolver compiles, `CGO_ENABLED=0 go test -mod=readonly ./...`, `go vet
+-mod=readonly ./...`, two byte-identical Linux/amd64 `-trimpath -buildvcs=false` builds, and the
+Windows/amd64 guest-agent compatibility build. The new controller SHA-256 is
+`ccefd4daaa2394748b08c5f3ec21efe5298aba848b4b819b1b491aa2287c6549`; the unchanged guest
+agent retains SHA-256 `cb99865a1f628083a0c732341dddff1c0ecbb6ba5609a55fd78ed3a4bee3856f`.
+The two Linux builds matched byte-for-byte. Cross-compilation remains compatibility evidence only.
+No VM, disk, NoCloud seed, XDG VM root, process, socket, or live cleanup was created or operated.
+
+#### Accepted Linux guest boot-identity bootstrap (2026-08-07)
+
+The blocked boot-ID decision is closed with a guest-first signed identity frame. A predetermined
+kernel boot ID and an unsigned identity exchange are both rejected. Qualification manifest v2 no
+longer accepts a pre-launch `boot_id`; it fixes only the reviewed source
+`/proc/sys/kernel/random/boot_id`. Provisioning/plan/live-authorization v3 renames the already fresh
+32-byte value to `bootstrap_nonce` and binds it, the per-instance Ed25519 key pins, static
+machine/disk/run/scenario/durability identities, and rendered NoCloud bytes into the existing sealed
+contracts. Guest-agent config v2 receives that exact nonce and source.
+
+On opening virtio-serial, the guest reads the kernel value and writes before it reads. Its first and
+only bootstrap is a canonical length-prefixed `dockpipe.vm.v2` frame with kind `bootstrap`,
+capability `identity/v1`, sequence 1, phase `bootstrap`, the sealed bootstrap nonce, the actual boot
+UUID, every static authenticated context field, and a payload containing the boot-ID source plus the
+controller-public, guest-public, controller-binary, and guest-binary SHA-256 pins. The frame is
+signed by the pinned guest private key. There is no unsigned frame, controller-signed frame without
+a boot ID, alternate framing path, or fallback identity authority.
+
+The future controller must read first. Within the existing 60-second bound it verifies canonical
+framing, time window, pinned guest signature, bootstrap nonce, sequence/phase, static context, boot
+UUID, source, and all four pins. Before writing any controller request, it exclusively creates
+mode-`0600` `bootstrap.json`, records the verified frame and learned boot ID, and fsyncs the file and
+parent evidence directory. Existing evidence or any verification/write/fsync failure stops once,
+preserves the complete roots, and permits no retry, reconnect, fallback, or cleanup. The first
+controller-signed `identity/v1` request then uses the authenticated boot ID at sequence 2 with a new
+nonce; later requests are contiguous and cannot reuse the bootstrap or another request nonce.
+Guest-signed results echo the request context. This second signed exchange proves the guest's pinned
+controller identity and preserves mutual Ed25519 pinning.
+
+The offline implementation covers protocol framing and negative verification, guest-first service
+ordering, manifest/config rendering, sealed executor-v2 fields, and tamper rejection. It adds no
+production runner or generic command surface. No VM or Gate 2 operation is authorized by this
+decision, and no Gate 2 execution prompt is emitted here.
+
+Post-decision offline validation passed the complete VM package Go suite, `go vet -mod=readonly
+./...`, the VM package test, both Linux and Windows workflow validations, VM workflow/resolver
+compiles into an isolated temporary workdir, two byte-identical Linux/amd64
+`-trimpath -buildvcs=false` builds, and a Windows/amd64 guest-agent compatibility build.
+The current source builds are controller
+`f0f6b17ab730dc69d3638a39cf8dfb082cc8d288f2257c3cbd97ba38cf5d509d`, Linux guest agent
+`3f9354ff666a21a5b1fc05b2089ffe523fe4123a5d3ef04968c6af00ac66a328`, and Windows guest agent
+`a0666c4e00b1725944ffbe75f8fa3e9a26f9971d6e3710a66ceff74f1a1f5957`. These temporary builds
+supersede the earlier source-build hashes for this uncommitted protocol revision but do not alter the
+immutable Gate 1 QEMU bundle or authorize publication or live use.
+
 The implementation test matrix is:
 
 1. **Adapter selection:** a new normal Pipeon Codex session defaults to App Server; the explicit exec

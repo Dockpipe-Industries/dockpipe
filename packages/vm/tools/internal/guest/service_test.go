@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"dockpipe.vm/tools/internal/manifest"
 	"dockpipe.vm/tools/internal/protocol"
 )
 
@@ -27,14 +28,16 @@ func serviceFixture(t *testing.T) (*Service, ed25519.PrivateKey, ed25519.PublicK
 	guestPub, guestPriv, _ := ed25519.GenerateKey(rand.Reader)
 	now := time.Unix(1_800_000_000, 0)
 	expected := protocol.Context{MachineUUID: "11111111-1111-4111-8111-111111111111", DiskSerial: "dockpipe-qual-data-001", BootID: "22222222-2222-4222-8222-222222222222", RunID: "run-001", Scenario: "sqlite-wal", DurabilityBoundary: "after-fsync"}
-	service := &Service{ControllerPublic: controllerPub, GuestPrivate: guestPriv, Expected: expected, AgentSHA256: strings.Repeat("a", 64), ControllerSHA256: strings.Repeat("c", 64), Now: func() time.Time { return now }}
-	service.Replay = protocol.NewReplayGuard(expected)
+	bootstrapNonce := strings.Repeat("b", 64)
+	payload := protocol.IdentityBootstrapPayload{BootIDSource: manifest.KernelBootIDSource, ControllerPublicKeySHA256: hash(controllerPub), GuestPublicKeySHA256: hash(guestPub), ControllerBinarySHA256: strings.Repeat("c", 64), GuestAgentBinarySHA256: strings.Repeat("a", 64)}
+	service := &Service{ControllerPublic: controllerPub, GuestPrivate: guestPriv, Expected: expected, AgentSHA256: strings.Repeat("a", 64), ControllerSHA256: strings.Repeat("c", 64), BootstrapNonce: bootstrapNonce, BootIDSource: manifest.KernelBootIDSource, BootstrapPayload: payload, Now: func() time.Time { return now }}
+	service.Replay = protocol.NewReplayGuardAfterBootstrap(expected, bootstrapNonce)
 	return service, controllerPriv, guestPub, now
 }
 
 func request(t *testing.T, private ed25519.PrivateKey, now time.Time, ctx protocol.Context, capability string, payload any) []byte {
 	t.Helper()
-	b, err := protocol.Sign("request", capability, ctx, payload, now, now.Add(time.Minute), private)
+	b, err := protocol.Sign(protocol.RequestKind, capability, ctx, payload, now, now.Add(time.Minute), private)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -51,7 +54,7 @@ func requestContext(service *Service, sequence uint64, nonceByte string) protoco
 
 func TestServiceModeFramesVerifiesAndSignsReviewedCapabilities(t *testing.T) {
 	service, controllerPriv, guestPub, now := serviceFixture(t)
-	ctx := requestContext(service, 1, "1")
+	ctx := requestContext(service, protocol.FirstRequestSequence, "1")
 	req := request(t, controllerPriv, now, ctx, "identity/v1", struct{}{})
 	var framed bytes.Buffer
 	if err := protocol.WriteFramed(&framed, req); err != nil {
@@ -61,12 +64,21 @@ func TestServiceModeFramesVerifiesAndSignsReviewedCapabilities(t *testing.T) {
 	if err := service.Serve(rw); err != nil {
 		t.Fatal(err)
 	}
+	bootstrap, err := protocol.ReadFramed(&rw.writer)
+	if err != nil {
+		t.Fatal(err)
+	}
+	expected := service.Expected
+	expected.BootID = ""
+	if _, err := protocol.VerifyIdentityBootstrap(bootstrap, guestPub, now, expected, service.BootstrapNonce, service.BootstrapPayload); err != nil {
+		t.Fatal(err)
+	}
 	response, err := protocol.ReadFramed(&rw.writer)
 	if err != nil {
 		t.Fatal(err)
 	}
 	frame, err := protocol.Verify(response, guestPub, now)
-	if err != nil || frame.Kind != "result" || frame.Capability != "identity/v1" || frame.Context != ctx {
+	if err != nil || frame.Kind != protocol.ResultKind || frame.Capability != "identity/v1" || frame.Context != ctx {
 		t.Fatalf("signed response mismatch: %+v %v", frame, err)
 	}
 	var payload map[string]any
@@ -77,7 +89,7 @@ func TestServiceModeFramesVerifiesAndSignsReviewedCapabilities(t *testing.T) {
 
 func TestServiceModeRejectsSignatureReplaySequenceIdentityAndCapabilityInputs(t *testing.T) {
 	service, controllerPriv, _, now := serviceFixture(t)
-	ctx := requestContext(service, 1, "1")
+	ctx := requestContext(service, protocol.FirstRequestSequence, "1")
 	valid := request(t, controllerPriv, now, ctx, "health/v1", struct{}{})
 	otherService, _, _, _ := serviceFixture(t)
 	if _, err := otherService.Handle(valid); err == nil {
@@ -90,26 +102,26 @@ func TestServiceModeRejectsSignatureReplaySequenceIdentityAndCapabilityInputs(t 
 		t.Fatal("expected replay rejection")
 	}
 	service, controllerPriv, _, now = serviceFixture(t)
-	ctx = requestContext(service, 1, "2")
-	nonRequest, err := protocol.Sign("result", "health/v1", ctx, struct{}{}, now, now.Add(time.Minute), controllerPriv)
+	ctx = requestContext(service, protocol.FirstRequestSequence, "2")
+	nonRequest, err := protocol.Sign(protocol.ResultKind, "health/v1", ctx, struct{}{}, now, now.Add(time.Minute), controllerPriv)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if _, err := service.Handle(nonRequest); err == nil {
 		t.Fatal("expected non-request frame rejection")
 	}
-	ctx = requestContext(service, 3, "2")
+	ctx = requestContext(service, protocol.FirstRequestSequence+2, "2")
 	if _, err := service.Handle(request(t, controllerPriv, now, ctx, "health/v1", struct{}{})); err == nil {
 		t.Fatal("expected sequence rejection")
 	}
 	service, controllerPriv, _, now = serviceFixture(t)
-	ctx = requestContext(service, 1, "3")
+	ctx = requestContext(service, protocol.FirstRequestSequence, "3")
 	ctx.MachineUUID = "33333333-3333-4333-8333-333333333333"
 	if _, err := service.Handle(request(t, controllerPriv, now, ctx, "health/v1", struct{}{})); err == nil {
 		t.Fatal("expected identity substitution rejection")
 	}
 	service, controllerPriv, _, now = serviceFixture(t)
-	ctx = requestContext(service, 1, "4")
+	ctx = requestContext(service, protocol.FirstRequestSequence, "4")
 	if _, err := service.Handle(request(t, controllerPriv, now, ctx, "launch-hash-pinned/v1", map[string]string{"controller_binary_sha256": strings.Repeat("c", 64), "guest_agent_binary_sha256": strings.Repeat("b", 64)})); err == nil {
 		t.Fatal("expected binary hash substitution rejection")
 	}
@@ -130,7 +142,7 @@ func TestServiceModeKeepsCheckpointAndRecoveryHarnessFailClosed(t *testing.T) {
 	for _, capability := range []string{"checkpoint/v1", "recovery/v1"} {
 		t.Run(capability, func(t *testing.T) {
 			service, controllerPriv, _, now := serviceFixture(t)
-			ctx := requestContext(service, 1, "5")
+			ctx := requestContext(service, protocol.FirstRequestSequence, "5")
 			payload := map[string]string{"checkpoint_sha256": strings.Repeat("d", 64)}
 			if capability == "recovery/v1" {
 				payload = map[string]string{"ticket_sha256": strings.Repeat("d", 64)}

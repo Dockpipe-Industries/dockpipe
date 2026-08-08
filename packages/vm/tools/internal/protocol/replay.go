@@ -12,7 +12,13 @@ func NewReplayGuard(identity Context) *ReplayGuard {
 	identity.Sequence = 0
 	identity.Nonce = ""
 	identity.Phase = ""
-	return &ReplayGuard{identity: identity, next: FirstSequence, nonces: map[string]struct{}{}}
+	return &ReplayGuard{identity: identity, next: FirstRequestSequence, nonces: map[string]struct{}{}}
+}
+
+func NewReplayGuardAfterBootstrap(identity Context, bootstrapNonce string) *ReplayGuard {
+	guard := NewReplayGuard(identity)
+	guard.nonces[bootstrapNonce] = struct{}{}
+	return guard
 }
 
 func (g *ReplayGuard) Accept(frame SignedFrame) error {

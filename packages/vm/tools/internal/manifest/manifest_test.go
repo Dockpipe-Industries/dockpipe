@@ -36,6 +36,7 @@ func TestManifestRejectsUnsafeQualificationVariants(t *testing.T) {
 	tests := map[string]func(*Manifest){
 		"tcg":                func(m *Manifest) { m.Machine.Acceleration = "tcg" },
 		"host as guest":      func(m *Manifest) { m.HostMachineUUID = m.MachineUUID },
+		"boot ID input":      func(m *Manifest) { m.BootIDSource = "33333333-3333-4333-8333-333333333333" },
 		"network":            func(m *Manifest) { m.Isolation.Network = true },
 		"ssh":                func(m *Manifest) { m.Isolation.SSH = true },
 		"share":              func(m *Manifest) { m.Isolation.Shares = []string{"/host"} },

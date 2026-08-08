@@ -14,9 +14,10 @@ import (
 )
 
 const (
-	Schema               = "dockpipe.vm.qualification.v1"
+	Schema               = "dockpipe.vm.qualification.v2"
 	QualificationPurpose = "qualification"
 	QualificationMount   = "/var/lib/dockpipe-qualification"
+	KernelBootIDSource   = "/proc/sys/kernel/random/boot_id"
 	DataDiskBytes        = int64(4 * 1024 * 1024 * 1024)
 	UbuntuImageURL       = "https://cloud-images.ubuntu.com/releases/noble/release-20260801/ubuntu-24.04-server-cloudimg-amd64.img"
 	UbuntuImageSHA256    = "0533b0655c32e68b31d792ecd6ccfca95abdbc536c4446874fe0513bd4140ffe"
@@ -42,7 +43,7 @@ type Manifest struct {
 	DurabilityBoundary    string     `json:"durability_boundary"`
 	MachineUUID           string     `json:"machine_uuid"`
 	HostMachineUUID       string     `json:"host_machine_uuid"`
-	BootID                string     `json:"boot_id"`
+	BootIDSource          string     `json:"boot_id_source"`
 	Image                 Image      `json:"image"`
 	Machine               Machine    `json:"machine"`
 	Isolation             Isolation  `json:"isolation"`
@@ -166,8 +167,8 @@ func (m Manifest) Validate() error {
 			return fmt.Errorf("%s is not a stable identifier", label)
 		}
 	}
-	if !uuidPattern.MatchString(m.MachineUUID) || !uuidPattern.MatchString(m.HostMachineUUID) || !uuidPattern.MatchString(m.BootID) || m.MachineUUID == m.HostMachineUUID {
-		return fmt.Errorf("machine, host, and boot identities must be exact, distinct UUIDs")
+	if !uuidPattern.MatchString(m.MachineUUID) || !uuidPattern.MatchString(m.HostMachineUUID) || m.MachineUUID == m.HostMachineUUID || m.BootIDSource != KernelBootIDSource {
+		return fmt.Errorf("machine and host identities must be exact, distinct UUIDs and boot ID must come from %s", KernelBootIDSource)
 	}
 	if err := validateImage(m.Image); err != nil {
 		return err

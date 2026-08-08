@@ -7,10 +7,11 @@ import (
 	"os"
 
 	"dockpipe.vm/tools/internal/guest"
+	"dockpipe.vm/tools/internal/manifest"
 	"dockpipe.vm/tools/internal/protocol"
 )
 
-const version = "0.8.0"
+const version = "0.9.0"
 
 func main() {
 	showVersion := flag.Bool("version", false, "print version")
@@ -35,7 +36,7 @@ func main() {
 		if err != nil {
 			fatal(err.Error())
 		}
-		service, err := guest.LoadService(*configPath, executable, "/proc/sys/kernel/random/boot_id")
+		service, err := guest.LoadService(*configPath, executable, manifest.KernelBootIDSource)
 		if err != nil {
 			fatal(err.Error())
 		}

@@ -42,11 +42,11 @@ type ReservedIdentity struct {
 	GuestPrivateKey        string `json:"guest_private_key"`
 	ControllerPublicSHA256 string `json:"controller_public_sha256"`
 	GuestPublicSHA256      string `json:"guest_public_sha256"`
-	NoncePath              string `json:"nonce_path"`
+	BootstrapNoncePath     string `json:"bootstrap_nonce_path"`
 }
 
 // ReserveIdentity creates a brand-new instance identity directory containing
-// the exact fresh keys pinned before authorization. The root, keys, and nonce
+// the exact fresh keys pinned before authorization. The root, keys, and bootstrap nonce
 // all use exclusive creation and are never replaced.
 func ReserveIdentity(root string, c Contract, material KeyMaterial) (ReservedIdentity, error) {
 	var out ReservedIdentity
@@ -66,7 +66,7 @@ func ReserveIdentity(root string, c Contract, material KeyMaterial) (ReservedIde
 	defer func() {
 		if failed {
 			_ = os.Remove(filepath.Join(root, "identity.json"))
-			_ = os.Remove(filepath.Join(root, "nonce"))
+			_ = os.Remove(filepath.Join(root, "bootstrap-nonce"))
 			_ = os.Remove(filepath.Join(root, "controller.pub"))
 			_ = os.Remove(filepath.Join(root, "controller.key"))
 			_ = os.Remove(filepath.Join(root, "guest.pub"))
@@ -77,7 +77,7 @@ func ReserveIdentity(root string, c Contract, material KeyMaterial) (ReservedIde
 	out = ReservedIdentity{
 		Root:                root,
 		ControllerPublicKey: filepath.Join(root, "controller.pub"), ControllerPrivateKey: filepath.Join(root, "controller.key"),
-		GuestPublicKey: filepath.Join(root, "guest.pub"), GuestPrivateKey: filepath.Join(root, "guest.key"), NoncePath: filepath.Join(root, "nonce"),
+		GuestPublicKey: filepath.Join(root, "guest.pub"), GuestPrivateKey: filepath.Join(root, "guest.key"), BootstrapNoncePath: filepath.Join(root, "bootstrap-nonce"),
 	}
 	out.ControllerPublicSHA256 = hash(material.ControllerPublic)
 	out.GuestPublicSHA256 = hash(material.GuestPublic)
@@ -88,7 +88,7 @@ func ReserveIdentity(root string, c Contract, material KeyMaterial) (ReservedIde
 	}{
 		{out.ControllerPublicKey, material.ControllerPublic, 0o600}, {out.ControllerPrivateKey, material.ControllerPrivate, 0o600},
 		{out.GuestPublicKey, material.GuestPublic, 0o600}, {out.GuestPrivateKey, material.GuestPrivate, 0o600},
-		{out.NoncePath, []byte(c.Nonce), 0o600},
+		{out.BootstrapNoncePath, []byte(c.BootstrapNonce), 0o600},
 	} {
 		if err := writeExclusive(file.path, file.data, file.mode); err != nil {
 			return ReservedIdentity{}, err
@@ -100,8 +100,8 @@ func ReserveIdentity(root string, c Contract, material KeyMaterial) (ReservedIde
 		MachineUUID    string `json:"machine_uuid"`
 		DiskSerial     string `json:"disk_serial"`
 		FilesystemUUID string `json:"filesystem_uuid"`
-		Nonce          string `json:"nonce"`
-	}{c.RunID, c.CohortID, c.MachineUUID, c.DiskSerial, c.FilesystemUUID, c.Nonce}
+		BootstrapNonce string `json:"bootstrap_nonce"`
+	}{c.RunID, c.CohortID, c.MachineUUID, c.DiskSerial, c.FilesystemUUID, c.BootstrapNonce}
 	b, err := json.Marshal(record)
 	if err != nil {
 		return ReservedIdentity{}, err
