@@ -619,3 +619,14 @@ at `5447686` bytes and guest-agent SHA-256
 at `3870222` bytes, both mode `0500`. Promotion evidence SHA-256 is
 `77567cf76eed3e2bb6b44e960bb0949b2665a5cc98d86cece66bca1707ecfb16`.
 Independent read-back confirmed both closed inventories and no live action.
+
+Fresh executor-v8 preparation then created run `g2r-a29152ab33508801` and
+cohort `g2c-ebce6db36b4937a1`. The owner-only identity expires at Unix
+`1786305140`, exactly 24 hours after creation. Qualification SHA-256 is
+`ac349e8729a1c7c9851e64ea696e91f8a15320e0334587673f7c041c6ad1a203`;
+provisioning SHA-256 is
+`80915d8b46f1c6bf99d36d2110d6ef7077380978e22f4ce2403c3e7382bc65d9`;
+inert-plan SHA-256 is
+`288d0b64916714f2f986ed771863c86b792021530540e27486aa741d61f26149`.
+The plan remains non-authorized and non-executing, binds executor-v8 and the
+240-second verification window, and created no live root.
