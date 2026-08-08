@@ -385,6 +385,19 @@ run was not retried and no fresh VM action occurred. Executor-v5 review outputs
 remain unpromoted, so fresh promotion, preparation, and live authorization are
 still separate gates.
 
+The next separately authorized offline gate published immutable promotion
+`vmp-202608089f6d406e`. Its exact two-file inventory is the Linux controller
+SHA-256
+`c6c2ce8abebf9027af01fdde6a4ac8c487eb53124fbea5c2edeee7c538f5ad7b`
+at `5447222` bytes and Linux guest-agent SHA-256
+`3a2d7657e13b6ec30fc8dc268ad977bb248b6598749979edf63223d364cc59e7`
+at `3870222` bytes. Canonical evidence SHA-256 is
+`6ee9dfac5ed41d60cd4335d70284588c198ebdfbfd475a3f3be95c2cf08b8987`.
+Independent read-back confirmed both artifacts are owner-only mode `0500`,
+single-link files and that Windows remained compatibility-only. No identity,
+plan, authorization, VM, cleanup, Gate 2, or Gate 3 action occurred. Fresh
+preparation remains separately authorized.
+
 The original documentation decision created no promotion evidence and granted no Gate 2
 authority. Deterministic source review, offline promotion, Gate 2 preparation,
 Gate 2 live authorization and execution, cleanup, and Gate 3 remain distinct

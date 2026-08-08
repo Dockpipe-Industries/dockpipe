@@ -4360,6 +4360,22 @@ unpromoted. The next live chain still begins with a separately authorized
 promotion and fresh preparation; Gate 2 is unqualified and Gate 3 remains
 blocked.
 
+The next separately authorized offline gate published executor-v5 promotion
+`vmp-202608089f6d406e` from exact checkpoint
+`9f6d406e9725acb73476bcde1617fc4fce87b700`. Its closed inventory contains
+only the Linux controller SHA-256
+`c6c2ce8abebf9027af01fdde6a4ac8c487eb53124fbea5c2edeee7c538f5ad7b`
+at `5447222` bytes and Linux guest-agent SHA-256
+`3a2d7657e13b6ec30fc8dc268ad977bb248b6598749979edf63223d364cc59e7`
+at `3870222` bytes. Both are mode `0500`, owner-only, single-link files.
+Canonical promotion evidence SHA-256 is
+`6ee9dfac5ed41d60cd4335d70284588c198ebdfbfd475a3f3be95c2cf08b8987`.
+The Windows artifact remains compatibility-only and was not promoted.
+Independent read-back confirmed the exact inventory, ownership, modes, sizes,
+hashes, and package/engine boundary. The promotion performed no identity
+preparation, live input, plan, authorization, disk, seed, socket, QEMU, cleanup,
+Gate 2, or Gate 3 action. Fresh Gate 2 preparation remains a separate gate.
+
 The implementation test matrix is:
 
 1. **Adapter selection:** a new normal Pipeon Codex session defaults to App Server; the explicit exec
