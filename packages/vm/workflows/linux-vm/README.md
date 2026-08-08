@@ -204,7 +204,7 @@ confirmed all ordered 12 resources absent while the immutable prior promotion
 and post-correction build root remained untouched.
 
 The `dockpipe.vm.first-boot-observation.v1` policy is now production-wired but
-still non-authorizing. The fresh provisioning plan and sealed executor-v7 bind
+still non-authorizing. The fresh provisioning plan and sealed executor-v8 bind
 the exact evidence and runtime paths, existing `isa-serial/ttyS0` source,
 one-shot Unix transport with QEMU as client and the controller as listener,
 exclusive mode-`0600` evidence, 4 MiB prefix cap, fail-closed overflow, fsync,
@@ -215,9 +215,9 @@ propagates listener-close, sink-sync, sink-close, and parent-directory-sync
 errors. It adds no seed or guest mutation, private-payload read, network, shell,
 reconnect, retry, fallback, signal, or automatic cleanup.
 
-Preserved executor-v6, executor-v5, executor-v4, executor-v3, and executor-v2 contracts
+Preserved executor-v7, executor-v6, executor-v5, executor-v4, executor-v3, and executor-v2 contracts
 remain accepted only by the exact cleanup path; fresh execution requires
-executor-v7 and the observation policy, and compatibility tests pin all
+executor-v8 and the observation policy, and compatibility tests pin all
 historical cleanup paths.
 The checked-in authorization template remains `approved=false`, every emitted
 plan remains `execute=false`, and this slice created no live inputs or artifacts.
@@ -563,3 +563,27 @@ plan digest
 `0d1fd14723fc8f504a9b9347343a3d1eb01f56aef9b151ff23b46f379c0b06e6`,
 and executor-v7's 240-second verification. It remains non-authorized and
 non-executing, and all four live roots remain absent.
+
+The executor-v7 live authorization then ran exactly once. Signed bootstrap
+sequence 1 succeeded, followed by signed identity, health, and
+launch-hash-pinned results at sequences 2 through 4. Health reported true and
+both promoted binary hashes matched. Bootstrap evidence SHA-256 is
+`77d9adb16aa125dfd1eeb8645537d066b5006ab006cf774bbb6399caae238f84`;
+verification evidence SHA-256 is
+`1c555ff80801d04fa3274e230bac1ca1e9d6c740cec5225de8a9b51c4af550c7`.
+The remaining `controlled-shutdown` operation failed closed with `QMP response
+id mismatch`. All 12 cleanup resources remain preserved and recorded QEMU PID
+`4150024` is absent. No retry, signal, cleanup, or Gate 3 action occurred.
+
+VM package 1.1.5 admits bounded QMP asynchronous event frames while waiting for
+the exact command response. It skips only well-formed events, caps them at 64,
+and retains strict wrong-ID, malformed-frame, size, decode, QMP-error,
+transport, and deadline failures. No QMP command, reconnect, retry, signal,
+fallback, or cleanup behavior was added. Executor-v8 owns fresh execution;
+executor-v7 remains exact-cleanup-only.
+
+Offline validation passed the full VM Go suite, `go vet`, focused controller
+and executor race tests, the package harness, both workflow validators, and
+isolated workflow and resolver compilation. Tests cover event-before-response
+success and wrong-ID failure. Only temporary compilation artifacts were
+created.

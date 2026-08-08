@@ -34,6 +34,9 @@ func TestQMPFakeSocketNegotiatesAndSendsOnlyTypedPowerdown(t *testing.T) {
 				done <- fmt.Errorf("unexpected QMP request: %v", request)
 				return
 			}
+			if want.command == "system_powerdown" {
+				_, _ = serverConn.Write([]byte(`{"event":"SHUTDOWN","data":{"guest":true},"timestamp":{"seconds":1,"microseconds":2}}` + "\n"))
+			}
 			_, _ = serverConn.Write([]byte(`{"return":{},"id":"` + want.id + `"}` + "\n"))
 		}
 		done <- nil
@@ -47,6 +50,54 @@ func TestQMPFakeSocketNegotiatesAndSendsOnlyTypedPowerdown(t *testing.T) {
 	}
 	if err := <-done; err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestQMPRejectsWrongResponseIDAfterAsyncEvent(t *testing.T) {
+	clientConn, serverConn := net.Pipe()
+	defer clientConn.Close()
+	defer serverConn.Close()
+	go func() {
+		reader := bufio.NewReader(serverConn)
+		_, _ = reader.ReadBytes('\n')
+		_, _ = serverConn.Write([]byte(`{"event":"STOP"}` + "\n"))
+		_, _ = serverConn.Write([]byte(`{"return":{},"id":"other"}` + "\n"))
+	}()
+	_, err := (QMPClient{Conn: clientConn}).Query("query-status", "status-1")
+	if err == nil || err.Error() != "QMP response id mismatch" {
+		t.Fatalf("wrong response ID must remain fail-closed: %v", err)
+	}
+}
+
+func TestQMPRejectsMalformedAsyncEvent(t *testing.T) {
+	clientConn, serverConn := net.Pipe()
+	defer clientConn.Close()
+	defer serverConn.Close()
+	go func() {
+		reader := bufio.NewReader(serverConn)
+		_, _ = reader.ReadBytes('\n')
+		_, _ = serverConn.Write([]byte(`{"event":"STOP","id":"status-1"}` + "\n"))
+	}()
+	_, err := (QMPClient{Conn: clientConn}).Query("query-status", "status-1")
+	if err == nil || err.Error() != "invalid QMP asynchronous event" {
+		t.Fatalf("event/response hybrid must fail closed: %v", err)
+	}
+}
+
+func TestQMPBoundsAsyncEventSkipping(t *testing.T) {
+	clientConn, serverConn := net.Pipe()
+	defer clientConn.Close()
+	defer serverConn.Close()
+	go func() {
+		reader := bufio.NewReader(serverConn)
+		_, _ = reader.ReadBytes('\n')
+		for range maxQMPAsyncEvents + 1 {
+			_, _ = serverConn.Write([]byte(`{"event":"STOP"}` + "\n"))
+		}
+	}()
+	_, err := (QMPClient{Conn: clientConn}).Query("query-status", "status-1")
+	if err == nil || err.Error() != "QMP asynchronous event limit exceeded" {
+		t.Fatalf("asynchronous event stream must remain bounded: %v", err)
 	}
 }
 

@@ -4626,6 +4626,41 @@ It remains non-authorized and non-executing with executor-v7's 240-second
 verification window. All four live roots remain absent; no live authorization,
 VM execution, cleanup, or Gate 3 action occurred.
 
+The executor-v7 live wrapper SHA-256
+`6f5052c05ac61256673360322cf9c3746d3c5091cc25f76bd8be134090977ba1`
+executed exactly once with authorization SHA-256
+`4a4e71e3d40bc8e4a86592cd77f5152962cfc633d63db32d40dedac8af4fe9e6`.
+The guest emitted authenticated bootstrap sequence 1 and signed identity,
+health, and launch-hash-pinned results at sequences 2 through 4. Health was
+true and both promoted binary hashes matched. Bootstrap evidence SHA-256 is
+`77d9adb16aa125dfd1eeb8645537d066b5006ab006cf774bbb6399caae238f84`;
+verification evidence SHA-256 is
+`1c555ff80801d04fa3274e230bac1ca1e9d6c740cec5225de8a9b51c4af550c7`.
+
+The final controlled-shutdown operation failed closed with `QMP response id
+mismatch`. The complete instance and executor-ordered 12-resource cleanup list
+remain preserved, while recorded QEMU PID `4150024` is absent. Executor
+SHA-256 is
+`e2ca1d6f89ffd4f55e55aa51967b7b07d94ff3bdf270753ed4cc41b83d580137`;
+first-boot console SHA-256 is
+`af5786f74d73c5665a7f753ba236106ed7effe77dd0a75c28821fe547984ea66`
+at `87088` bytes. No retry, signal, cleanup, or Gate 3 action occurred.
+
+VM package 1.1.5 corrects the package-owned QMP response loop. The old loop
+unconditionally decoded the next frame as the command response even though QMP
+may interleave asynchronous event frames. The new loop skips only structurally
+valid events, caps them at 64, and retains exact ID matching plus every prior
+frame-size, decode, QMP-error, transport, and deadline failure. It adds no
+command, reconnect, retry, signal, fallback, or automatic cleanup. Executor-v8
+owns fresh execution; executor-v7 remains separately authorized exact-cleanup
+only. No `src/**` file changed, preserving the package/engine boundary.
+
+Offline validation passed the full VM Go suite, `go vet`, focused controller
+and executor race tests, the VM package harness, both workflow validators, and
+isolated workflow and resolver compilation. Regression tests prove a valid
+asynchronous event may precede the exact response while a wrong response ID
+still fails closed. The compilation outputs remain temporary.
+
 The implementation test matrix is:
 
 1. **Adapter selection:** a new normal Pipeon Codex session defaults to App Server; the explicit exec
