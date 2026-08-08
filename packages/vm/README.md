@@ -370,6 +370,21 @@ platforms and flags, and all non-standard dependencies resolve under
 identity, authorization, live root, VM, cleanup, Gate 2, or Gate 3 action was
 included.
 
+The preserved executor-v4 instance was subsequently cleaned through a
+separate exact authorization. Wrapper SHA-256
+`49d1d779a1a245c4974e23273a2cea8377fe81afec41b7207647805fb4087744`
+used authorization SHA-256
+`eee700a82b075564f4a9406101501292980fb62150314319e040e4f3158cdaf1`
+once. The controller bound execution SHA-256
+`b59f443e2c5aea26dc8e798500aa7ec58d2c2415ffb017ebc77ce4077d4a0266`
+and returned `completed=["cleanup"]`, `cleanup_run=true`, and
+`preserved=false`. Cleanup-result SHA-256 is
+`5e45ed67fc6866bc4715791e190371b76c334330c8495f262c6fa21ed0d5e0f0`;
+independent read-back confirmed all 12 ordered resources absent. The failed
+run was not retried and no fresh VM action occurred. Executor-v5 review outputs
+remain unpromoted, so fresh promotion, preparation, and live authorization are
+still separate gates.
+
 The original documentation decision created no promotion evidence and granted no Gate 2
 authority. Deterministic source review, offline promotion, Gate 2 preparation,
 Gate 2 live authorization and execution, cleanup, and Gate 3 remain distinct
