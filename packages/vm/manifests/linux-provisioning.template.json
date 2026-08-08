@@ -31,6 +31,8 @@
     "controller_binary_sha256": "REPLACE_WITH_64_LOWERCASE_HEX_CHARACTERS",
     "guest_agent_binary": "/REPLACE_WITH_TASK_OWNED_BUILD_DIR/dockpipe-guest-agent",
     "guest_agent_binary_sha256": "REPLACE_WITH_64_LOWERCASE_HEX_CHARACTERS",
+    "harness_binary": "/REPLACE_WITH_TASK_OWNED_BUILD_DIR/dockpipe-sqlite-vm-harness",
+    "harness_binary_sha256": "REPLACE_WITH_64_LOWERCASE_HEX_CHARACTERS",
     "controller_public_key_sha256": "REPLACE_WITH_64_LOWERCASE_HEX_CHARACTERS",
     "guest_public_key_sha256": "REPLACE_WITH_64_LOWERCASE_HEX_CHARACTERS"
   },

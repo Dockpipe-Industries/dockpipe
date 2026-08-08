@@ -23,7 +23,7 @@ func (f *fakeStore) Save(ticket Ticket) error {
 func (f *fakeStore) Delete(string) error { f.exists = false; return nil }
 
 func identity() Identity {
-	return Identity{MachineUUID: "machine", DiskSerial: "disk", BootID: "boot", RunID: "run-001", Scenario: "sqlite", DurabilityBoundary: "after-fsync", Nonce: strings.Repeat("a", 64), HarnessSHA256: strings.Repeat("b", 64)}
+	return Identity{MachineUUID: "machine", DiskSerial: "disk", BootID: "boot", RunID: "run-001", CohortID: "cohort-001", TrialID: "trial-001", Scenario: "sqlite", DurabilityBoundary: "after-fsync", Nonce: strings.Repeat("a", 64), HarnessSHA256: strings.Repeat("b", 64)}
 }
 
 func TestPendingTicketBlocksAndRecoveryIsConsumedBeforeResult(t *testing.T) {
@@ -49,10 +49,10 @@ func TestPendingTicketBlocksAndRecoveryIsConsumedBeforeResult(t *testing.T) {
 	if _, err := sm.ConsumeRecovery(result); err == nil {
 		t.Fatal("expected lost-result no-resend rule")
 	}
-	if err := sm.CleanupConsumed(identity().RunID, true, true); err == nil {
+	if err := sm.CleanupConsumed(identity().TrialID, true, true); err == nil {
 		t.Fatal("expected cleanup rejection during qualification")
 	}
-	if err := sm.CleanupConsumed(identity().RunID, false, true); err != nil {
+	if err := sm.CleanupConsumed(identity().TrialID, false, true); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -82,7 +82,7 @@ func TestFileStoreUsesOwnerOnlyTicketFiles(t *testing.T) {
 	if err := store.Save(ticket); err != nil {
 		t.Fatal(err)
 	}
-	loaded, exists, err := store.Load(identity().RunID)
+	loaded, exists, err := store.Load(identity().TrialID)
 	if err != nil || !exists || loaded.Status != "pending" {
 		t.Fatalf("file store round trip: %+v %v %v", loaded, exists, err)
 	}

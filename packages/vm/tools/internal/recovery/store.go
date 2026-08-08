@@ -39,7 +39,7 @@ func (s FileStore) Load(runID string) (Ticket, bool, error) {
 }
 
 func (s FileStore) Save(ticket Ticket) error {
-	path, err := s.path(ticket.Identity.RunID)
+	path, err := s.path(ticket.Identity.TrialID)
 	if err != nil {
 		return err
 	}

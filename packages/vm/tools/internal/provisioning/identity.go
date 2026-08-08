@@ -6,9 +6,90 @@ import (
 	"crypto/rand"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
+	"syscall"
 )
+
+// LoadReservedKeyMaterial reopens only the exact durable identity created for
+// one authorized instance. It rejects links, widened modes, ownership changes,
+// key substitution, and identity-record drift.
+func LoadReservedKeyMaterial(root string, c Contract) (KeyMaterial, error) {
+	var material KeyMaterial
+	if !filepath.IsAbs(root) || filepath.Base(root) != "identity" {
+		return material, fmt.Errorf("reserved identity root is invalid")
+	}
+	info, err := os.Lstat(root)
+	if err != nil || info.Mode()&os.ModeSymlink != 0 || !info.IsDir() || info.Mode().Perm() != 0o700 {
+		return material, fmt.Errorf("reserved identity root must remain private")
+	}
+	if stat, ok := info.Sys().(*syscall.Stat_t); ok && int(stat.Uid) != os.Geteuid() {
+		return material, fmt.Errorf("reserved identity ownership changed")
+	}
+	read := func(name string, size int) ([]byte, error) {
+		path := filepath.Join(root, name)
+		info, err := os.Lstat(path)
+		if err != nil || info.Mode()&os.ModeSymlink != 0 || !info.Mode().IsRegular() || info.Mode().Perm() != 0o600 || info.Size() != int64(size) {
+			return nil, fmt.Errorf("reserved identity file %s changed", name)
+		}
+		if stat, ok := info.Sys().(*syscall.Stat_t); ok && int(stat.Uid) != os.Geteuid() {
+			return nil, fmt.Errorf("reserved identity file %s ownership changed", name)
+		}
+		return os.ReadFile(path)
+	}
+	controllerPublic, err := read("controller.pub", ed25519.PublicKeySize)
+	if err != nil {
+		return material, err
+	}
+	controllerPrivate, err := read("controller.key", ed25519.PrivateKeySize)
+	if err != nil {
+		return material, err
+	}
+	guestPublic, err := read("guest.pub", ed25519.PublicKeySize)
+	if err != nil {
+		return material, err
+	}
+	guestPrivate, err := read("guest.key", ed25519.PrivateKeySize)
+	if err != nil {
+		return material, err
+	}
+	material = KeyMaterial{ControllerPublic: controllerPublic, ControllerPrivate: controllerPrivate, GuestPublic: guestPublic, GuestPrivate: guestPrivate}
+	if err := validateKeyMaterial(c, material); err != nil {
+		return KeyMaterial{}, err
+	}
+	nonce, err := read("bootstrap-nonce", len(c.BootstrapNonce))
+	if err != nil || string(nonce) != c.BootstrapNonce {
+		return KeyMaterial{}, fmt.Errorf("reserved bootstrap nonce changed")
+	}
+	var record struct {
+		RunID          string `json:"run_id"`
+		CohortID       string `json:"cohort_id"`
+		MachineUUID    string `json:"machine_uuid"`
+		DiskSerial     string `json:"disk_serial"`
+		FilesystemUUID string `json:"filesystem_uuid"`
+		BootstrapNonce string `json:"bootstrap_nonce"`
+	}
+	recordPath := filepath.Join(root, "identity.json")
+	recordInfo, err := os.Lstat(recordPath)
+	if err != nil || recordInfo.Mode()&os.ModeSymlink != 0 || !recordInfo.Mode().IsRegular() || recordInfo.Mode().Perm() != 0o600 {
+		return KeyMaterial{}, fmt.Errorf("reserved identity record changed")
+	}
+	if stat, ok := recordInfo.Sys().(*syscall.Stat_t); ok && int(stat.Uid) != os.Geteuid() {
+		return KeyMaterial{}, fmt.Errorf("reserved identity record ownership changed")
+	}
+	recordJSON, err := os.ReadFile(recordPath)
+	decoder := json.NewDecoder(bytes.NewReader(recordJSON))
+	decoder.DisallowUnknownFields()
+	if err != nil || decoder.Decode(&record) != nil {
+		return KeyMaterial{}, fmt.Errorf("reserved identity record changed")
+	}
+	var extra any
+	if decoder.Decode(&extra) != io.EOF || record.RunID != c.RunID || record.CohortID != c.CohortID || record.MachineUUID != c.MachineUUID || record.DiskSerial != c.DiskSerial || record.FilesystemUUID != c.FilesystemUUID || record.BootstrapNonce != c.BootstrapNonce {
+		return KeyMaterial{}, fmt.Errorf("reserved identity record changed")
+	}
+	return material, nil
+}
 
 type KeyMaterial struct {
 	ControllerPublic  ed25519.PublicKey

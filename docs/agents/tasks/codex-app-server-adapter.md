@@ -4743,6 +4743,36 @@ console SHA-256 is
 at `87171` bytes. Gate 2 is qualified. No cleanup or Gate 3 action occurred;
 Gate 3 is unblocked and remains a separate approval boundary.
 
+#### Linux VM offline Gate 3 durability cohort (2026-08-08)
+
+VM package 1.2.0 implements the package-owned Gate 3 contract without running
+it. The fixed cohort covers four application-visible SQLite durability
+transitions and three independent attempts per transition. It therefore
+requires twelve authenticated checkpoint/recovery trials, twelve hard-power
+events, and thirteen boots. Durable pending tickets bind the exact run,
+cohort, trial, machine, disk, scenario, transition, nonce, harness hash, and
+checkpoint boot ID; recovery requires a distinct authenticated kernel boot ID.
+
+The guest surface is restricted to a root-owned, mode-`0755`, hash-pinned
+SQLite test harness and two fixed roles. It permits no arguments, shell,
+network access, or arbitrary command dispatch. Guest and controller both
+validate canonical nested evidence for the exact expected old/new revision,
+SQLite 3.53.3 source identity, native `unix` VFS, metadata hashes,
+`quick_check=ok`, and zero retry, replay, repair, or fallback counts. The host
+runner rereads the exact QEMU identity after `pidfd_open` and uses only
+`pidfd_send_signal(SIGKILL)` for the twelve reviewed cuts. Any mismatch stops
+and preserves; a complete cohort uses typed QMP for one final controlled
+shutdown.
+
+Executor-v9 is fresh-execution-only and requires a new three-binary promotion,
+fresh preparation, and fresh Gate 2 qualification before a short-lived Gate 3
+authorization can be created. Executor-v8 is cleanup-only for successful run
+`g2r-a29152ab33508801`; that instance and its executor-ordered resources remain
+untouched. Promotion, preparation, Gate 2, Gate 3, and cleanup remain separate
+approval boundaries. This implementation created no live authorization,
+started no VM, performed no hard-power event, ran no Gate 3 action, and cleaned
+nothing.
+
 The implementation test matrix is:
 
 1. **Adapter selection:** a new normal Pipeon Codex session defaults to App Server; the explicit exec

@@ -1,10 +1,9 @@
 # DockPipe VM package
 
 The `vm` package owns guest-specific workflows, QEMU resolver models, and the
-VMM-neutral control protocol. DockPipe core remains generic. Version 1.1.5
-retains the sealed first-boot console observation path, corrects the pinned
-Ubuntu NoCloud system-user and virtio-port contracts, and admits bounded QMP
-asynchronous events while retaining exact response correlation. The unchanged
+VMM-neutral control protocol. DockPipe core remains generic. Version 1.2.0
+retains the qualified executor-v8 Gate 2 path and adds the offline-reviewed,
+separately authorized executor-v9 Gate 3 durability cohort. The unchanged
 `windows-vm` surface remains available alongside Linux qualification.
 
 The Linux foundation has two deliberately different paths:
@@ -56,11 +55,12 @@ After that bootstrap, controller-signed requests start at sequence 2 and carry
 the authenticated boot ID. The guest verifies controller signature, identity,
 contiguous sequence, fresh non-reused nonce, lifetime, capability, and
 binary/key pins before returning a guest-signed response. Identity, health, and
-hash-pinned-launch are operational; only signed `request` frames are accepted
-after the bootstrap, and checkpoint and recovery recognize only the
-reviewed signed payload shape and fail closed because the Gate 2 foundation
-does not own a harness adapter. No other capability or arbitrary execution
-surface exists.
+hash-pinned-launch are operational. Executor-v9 also binds checkpoint and
+recovery to one exact test-only SQLite harness binary, durable pending/consumed
+tickets, and four reviewed Gate 3 boundaries. The agent launches only that
+root-owned hash-pinned binary with one fixed private role variable and a strict
+typed JSON command; no generic argument, environment, shell, network, SSH, or
+arbitrary execution surface exists.
 
 `manifests/linux-provisioning.template.json` is deliberately non-runnable. A
 live gate must replace every marker with fresh identities, a 32-byte launch
@@ -727,6 +727,37 @@ and first-boot console SHA-256 is
 at `87171` bytes. Gate 2 is qualified. No cleanup or Gate 3 action occurred;
 Gate 3 is now unblocked and remains separately authorized.
 
+Version 1.2.0 adds the package-owned, offline Gate 3 durability contract. It
+does not run Gate 3. The reviewed cohort covers four application-visible
+SQLite transitions with three independent trials per transition: twelve
+checkpoint/recovery trials, twelve authenticated hard-power events, and
+thirteen guest boots. Each checkpoint creates a durable pending ticket bound
+to the exact run, cohort, trial, machine, disk, bootstrap identity, boot ID,
+nonce, and harness hash. Recovery requires a different authenticated kernel
+boot ID and independently verifies the expected old or new revision,
+`PRAGMA quick_check`, the native `unix` VFS, SQLite 3.53.3 source identity,
+metadata hashes, and zero retry, replay, repair, or fallback counters.
+
+The test-only SQLite harness is built from the package-owned
+`sqliteevidence` test binary and installed as one root-owned, hash-pinned
+guest executable. The guest adapter exposes only the fixed checkpoint and
+recovery roles; it accepts no arguments, shell, network operation, or generic
+execution. The controller independently validates the signed nested evidence
+and uses `pidfd_open` plus `pidfd_send_signal(SIGKILL)` only after rereading
+the exact QEMU process identity. Any mismatch fails closed and preserves the
+instance. A complete cohort ends with one typed QMP controlled shutdown; no
+cleanup is implied.
+
+Executor-v9 is the only fresh-execution schema for this contract;
+executor-v8 remains exact-cleanup-only for the already-qualified run
+`g2r-a29152ab33508801`. That successful Gate 2 instance and its twelve ordered
+resources remain untouched. A later Gate 3 chain requires a separately
+approved three-binary Linux promotion, fresh preparation and Gate 2
+qualification, then a short-lived authorization bound to the exact inert Gate
+3 plan and destructive-token hash. Promotion, preparation, Gate 2, Gate 3,
+and cleanup remain distinct approvals. No live Gate 3 or cleanup action was
+performed by this offline implementation.
+
 The original documentation decision created no promotion evidence and granted no Gate 2
 authority. Deterministic source review, offline promotion, Gate 2 preparation,
 Gate 2 live authorization and execution, cleanup, and Gate 3 remain distinct
@@ -748,6 +779,8 @@ The production CLI modes are mutually exclusive:
 --validate-manifest <file> --configuration-sha256
 --validate-manifest <file> --plan-provisioning <file> [--live-authorization <file>]
 --validate-manifest <file> --plan-provisioning <file> --live-authorization <file> --identity-material <absolute-root> --execute-qualification
+--gate3-executor <executor.json> --gate3-provisioning <provisioning.json> --gate3-manifest <qualification.json>
+--gate3-executor <executor.json> --gate3-provisioning <provisioning.json> --gate3-manifest <qualification.json> --gate3-plan <plan.json> --gate3-authorization <authorization.json> --gate3-token <token> --execute-gate3
 --cleanup-executor <executor.json> --cleanup-authorization <file>
 ```
 

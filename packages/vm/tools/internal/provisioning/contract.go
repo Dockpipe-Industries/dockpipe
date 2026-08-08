@@ -90,6 +90,8 @@ type Artifacts struct {
 	ControllerBinarySHA256    string `json:"controller_binary_sha256"`
 	GuestAgentBinary          string `json:"guest_agent_binary"`
 	GuestAgentBinarySHA256    string `json:"guest_agent_binary_sha256"`
+	HarnessBinary             string `json:"harness_binary"`
+	HarnessBinarySHA256       string `json:"harness_binary_sha256"`
 	ControllerPublicKeySHA256 string `json:"controller_public_key_sha256"`
 	GuestPublicKeySHA256      string `json:"guest_public_key_sha256"`
 }
@@ -182,12 +184,13 @@ func (c Contract) Validate(paths xdg.Paths, qualification manifest.Manifest, che
 		"assets root":        c.Artifacts.AssetsRoot,
 		"controller binary":  c.Artifacts.ControllerBinary,
 		"guest-agent binary": c.Artifacts.GuestAgentBinary,
+		"harness binary":     c.Artifacts.HarnessBinary,
 	} {
 		if !filepath.IsAbs(value) {
 			return fmt.Errorf("%s must be absolute", label)
 		}
 	}
-	for _, sum := range []string{c.Artifacts.ControllerBinarySHA256, c.Artifacts.GuestAgentBinarySHA256, c.Artifacts.ControllerPublicKeySHA256, c.Artifacts.GuestPublicKeySHA256} {
+	for _, sum := range []string{c.Artifacts.ControllerBinarySHA256, c.Artifacts.GuestAgentBinarySHA256, c.Artifacts.HarnessBinarySHA256, c.Artifacts.ControllerPublicKeySHA256, c.Artifacts.GuestPublicKeySHA256} {
 		if !shaPattern.MatchString(sum) {
 			return fmt.Errorf("binary and mutually pinned public-key SHA-256 values are required")
 		}

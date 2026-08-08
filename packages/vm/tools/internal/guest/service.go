@@ -18,7 +18,7 @@ import (
 	"dockpipe.vm/tools/internal/protocol"
 )
 
-const ConfigSchema = "dockpipe.vm.guest-agent-config.v2"
+const ConfigSchema = "dockpipe.vm.guest-agent-config.v3"
 
 var shaPattern = regexp.MustCompile(`^[0-9a-f]{64}$`)
 
@@ -30,6 +30,9 @@ type Config struct {
 	GuestPublicKeySHA256      string `json:"guest_public_key_sha256"`
 	ControllerBinarySHA256    string `json:"controller_binary_sha256"`
 	GuestAgentBinarySHA256    string `json:"guest_agent_binary_sha256"`
+	HarnessBinaryPath         string `json:"harness_binary_path"`
+	HarnessBinarySHA256       string `json:"harness_binary_sha256"`
+	QualificationRoot         string `json:"qualification_root"`
 	MachineUUID               string `json:"machine_uuid"`
 	DiskSerial                string `json:"disk_serial"`
 	RunID                     string `json:"run_id"`
@@ -48,8 +51,29 @@ type Service struct {
 	BootstrapNonce   string
 	BootIDSource     string
 	BootstrapPayload protocol.IdentityBootstrapPayload
+	Harness          HarnessAdapter
 	Replay           *protocol.ReplayGuard
 	Now              func() time.Time
+}
+
+type HarnessRequest struct {
+	MachineUUID      string
+	DiskSerial       string
+	BootID           string
+	RunID            string
+	CohortID         string
+	Scenario         string
+	Boundary         string
+	TrialID          string
+	Attempt          int
+	TicketNonce      string
+	CheckpointBootID string
+	HarnessSHA256    string
+}
+
+type HarnessAdapter interface {
+	Checkpoint(HarnessRequest) (any, error)
+	Recovery(HarnessRequest) (any, error)
 }
 
 func LoadService(configPath, executablePath, bootIDPath string) (*Service, error) {
@@ -67,13 +91,13 @@ func LoadService(configPath, executablePath, bootIDPath string) (*Service, error
 	if err := dec.Decode(&extra); err != io.EOF {
 		return nil, fmt.Errorf("guest-agent config contains trailing JSON")
 	}
-	if config.Schema != ConfigSchema || !shaPattern.MatchString(config.ControllerPublicKeySHA256) || !shaPattern.MatchString(config.GuestPublicKeySHA256) || !shaPattern.MatchString(config.ControllerBinarySHA256) || !shaPattern.MatchString(config.GuestAgentBinarySHA256) || !shaPattern.MatchString(config.BootstrapNonce) {
+	if config.Schema != ConfigSchema || !shaPattern.MatchString(config.ControllerPublicKeySHA256) || !shaPattern.MatchString(config.GuestPublicKeySHA256) || !shaPattern.MatchString(config.ControllerBinarySHA256) || !shaPattern.MatchString(config.GuestAgentBinarySHA256) || !shaPattern.MatchString(config.HarnessBinarySHA256) || !shaPattern.MatchString(config.BootstrapNonce) {
 		return nil, fmt.Errorf("guest-agent config schema or hash pins are invalid")
 	}
 	if config.BootIDSource != bootIDPath || config.BootIDSource != manifest.KernelBootIDSource {
 		return nil, fmt.Errorf("guest-agent boot identity source is not the reviewed kernel path")
 	}
-	if !filepath.IsAbs(config.ControllerPublicKeyPath) || !filepath.IsAbs(config.GuestPrivateKeyPath) || !filepath.IsAbs(executablePath) || !filepath.IsAbs(bootIDPath) {
+	if !filepath.IsAbs(config.ControllerPublicKeyPath) || !filepath.IsAbs(config.GuestPrivateKeyPath) || !filepath.IsAbs(config.HarnessBinaryPath) || !filepath.IsAbs(config.QualificationRoot) || !filepath.IsAbs(executablePath) || !filepath.IsAbs(bootIDPath) {
 		return nil, fmt.Errorf("guest-agent key, binary, and boot identity paths must be absolute")
 	}
 	controllerPublic, err := os.ReadFile(config.ControllerPublicKeyPath)
@@ -107,7 +131,11 @@ func LoadService(configPath, executablePath, bootIDPath string) (*Service, error
 		GuestPublicKeySHA256: config.GuestPublicKeySHA256, ControllerBinarySHA256: config.ControllerBinarySHA256,
 		GuestAgentBinarySHA256: config.GuestAgentBinarySHA256,
 	}
-	service := &Service{ControllerPublic: controllerPublic, GuestPrivate: guestPrivate, Expected: expected, AgentSHA256: config.GuestAgentBinarySHA256, ControllerSHA256: config.ControllerBinarySHA256, BootstrapNonce: config.BootstrapNonce, BootIDSource: config.BootIDSource, BootstrapPayload: bootstrapPayload, Now: time.Now}
+	harness, err := NewLinuxHarnessAdapter(config.HarnessBinaryPath, config.HarnessBinarySHA256, config.QualificationRoot)
+	if err != nil {
+		return nil, err
+	}
+	service := &Service{ControllerPublic: controllerPublic, GuestPrivate: guestPrivate, Expected: expected, AgentSHA256: config.GuestAgentBinarySHA256, ControllerSHA256: config.ControllerBinarySHA256, BootstrapNonce: config.BootstrapNonce, BootIDSource: config.BootIDSource, BootstrapPayload: bootstrapPayload, Harness: harness, Now: time.Now}
 	service.Replay = protocol.NewReplayGuardAfterBootstrap(expected, config.BootstrapNonce)
 	return service, nil
 }
@@ -205,20 +233,37 @@ func (s *Service) handleCapability(frame protocol.SignedFrame) (any, error) {
 		return map[string]any{"controller_binary_sha256": s.ControllerSHA256, "guest_agent_binary_sha256": s.AgentSHA256, "matched": true}, nil
 	case "checkpoint/v1":
 		var payload struct {
-			CheckpointSHA256 string `json:"checkpoint_sha256"`
+			CohortID      string `json:"cohort_id"`
+			TrialID       string `json:"trial_id"`
+			Attempt       int    `json:"attempt"`
+			Boundary      string `json:"boundary"`
+			TicketNonce   string `json:"ticket_nonce"`
+			HarnessSHA256 string `json:"harness_sha256"`
 		}
-		if err := decodePayload(frame.Payload, &payload); err != nil || !shaPattern.MatchString(payload.CheckpointSHA256) {
+		if err := decodePayload(frame.Payload, &payload); err != nil || !shaPattern.MatchString(payload.TicketNonce) || !shaPattern.MatchString(payload.HarnessSHA256) {
 			return nil, fmt.Errorf("checkpoint payload rejected")
 		}
-		return nil, fmt.Errorf("checkpoint harness ownership is not authorized in the Gate 2 foundation")
+		if s.Harness == nil {
+			return nil, fmt.Errorf("checkpoint harness ownership is not authorized in the Gate 2 foundation")
+		}
+		return s.Harness.Checkpoint(HarnessRequest{MachineUUID: frame.Context.MachineUUID, DiskSerial: frame.Context.DiskSerial, BootID: frame.Context.BootID, RunID: frame.Context.RunID, CohortID: payload.CohortID, Scenario: frame.Context.Scenario, Boundary: payload.Boundary, TrialID: payload.TrialID, Attempt: payload.Attempt, TicketNonce: payload.TicketNonce, HarnessSHA256: payload.HarnessSHA256})
 	case "recovery/v1":
 		var payload struct {
-			TicketSHA256 string `json:"ticket_sha256"`
+			CohortID         string `json:"cohort_id"`
+			TrialID          string `json:"trial_id"`
+			Attempt          int    `json:"attempt"`
+			Boundary         string `json:"boundary"`
+			TicketNonce      string `json:"ticket_nonce"`
+			CheckpointBootID string `json:"checkpoint_boot_id"`
+			HarnessSHA256    string `json:"harness_sha256"`
 		}
-		if err := decodePayload(frame.Payload, &payload); err != nil || !shaPattern.MatchString(payload.TicketSHA256) {
+		if err := decodePayload(frame.Payload, &payload); err != nil || !shaPattern.MatchString(payload.TicketNonce) || !shaPattern.MatchString(payload.HarnessSHA256) {
 			return nil, fmt.Errorf("recovery payload rejected")
 		}
-		return nil, fmt.Errorf("recovery harness ownership is not authorized in the Gate 2 foundation")
+		if s.Harness == nil {
+			return nil, fmt.Errorf("recovery harness ownership is not authorized in the Gate 2 foundation")
+		}
+		return s.Harness.Recovery(HarnessRequest{MachineUUID: frame.Context.MachineUUID, DiskSerial: frame.Context.DiskSerial, BootID: frame.Context.BootID, RunID: frame.Context.RunID, CohortID: payload.CohortID, Scenario: frame.Context.Scenario, Boundary: payload.Boundary, TrialID: payload.TrialID, Attempt: payload.Attempt, TicketNonce: payload.TicketNonce, CheckpointBootID: payload.CheckpointBootID, HarnessSHA256: payload.HarnessSHA256})
 	default:
 		return nil, fmt.Errorf("capability is not reviewed")
 	}
