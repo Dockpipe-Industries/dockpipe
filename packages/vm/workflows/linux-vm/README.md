@@ -319,3 +319,12 @@ SHA-256 is
 The promotion is immutable, the earlier promotion remains untouched, and no
 identity, plan, authorization, VM, cleanup, Gate 2, or Gate 3 action was
 included. Fresh preparation remains separately authorized.
+
+Fresh offline preparation later created run `g2r-1f9bdb5dd11545a4`, cohort
+`g2c-17706e2c6519c7b0`, contract SHA-256
+`656c5bca0ae6d0f994ecdad799b4a4d58354b955396e547d29981c0980521f1c`,
+and inert plan SHA-256
+`bb1670208553885674e698b86bd0fee103ccda4e4cadee0497420b7913c09edc`.
+The plan remains non-executing and non-authorized, uses the 180-second guest
+deadline, and keeps all Unix socket paths within the reviewed limit. No live
+root or VM was created; Gate 2 execution remains separate.

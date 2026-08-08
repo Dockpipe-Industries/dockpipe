@@ -320,6 +320,15 @@ The earlier promotion remains untouched. No identity, live input, plan,
 authorization, VM, cleanup, Gate 2, or Gate 3 action was included; fresh
 preparation is still a separate gate.
 
+Fresh offline preparation for run `g2r-1f9bdb5dd11545a4` and cohort
+`g2c-17706e2c6519c7b0` subsequently produced contract SHA-256
+`656c5bca0ae6d0f994ecdad799b4a4d58354b955396e547d29981c0980521f1c`
+and inert plan SHA-256
+`bb1670208553885674e698b86bd0fee103ccda4e4cadee0497420b7913c09edc`.
+The plan is not live-authorized, does not execute, binds the 180-second guest
+deadline, and keeps all socket paths below 107 bytes. No live root or VM was
+created; execution remains separately authorized.
+
 The original documentation decision created no promotion evidence and granted no Gate 2
 authority. Deterministic source review, offline promotion, Gate 2 preparation,
 Gate 2 live authorization and execution, cleanup, and Gate 3 remain distinct
