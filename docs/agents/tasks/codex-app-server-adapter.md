@@ -4216,9 +4216,12 @@ Fresh offline preparation then produced run `g2r-e58b5061e0e69e7e`, cohort
 authorization ran once and is permanently spent. Identity staging was consumed only after durable
 reservation, and all four fresh owner-only XDG roots were created. The controller invocation lost
 supervision while its exact QEMU child remained active, so no retry, signal, reconnect, fallback,
-cleanup, or second live authorization occurred. Before the separately authorized recovery action
-could send QMP, narrow read-back proved the recorded PID had already exited; no QMP command was sent.
-The stale socket and complete roots remain preserved.
+cleanup, or second live authorization occurred. A sandbox PID-namespace read initially and
+incorrectly appeared to show that PID absent; the later escalated host read proved the original QEMU
+still active with exact recorded PID `1884350`, start ticks `7105843`, executable SHA-256
+`3544680aaeaf8087bbf3ef693ff185c2691831560c767672defccd784ec37140`, and sealed command SHA-256
+`86ef04336070f9645355193318a64f368ba7752fa68790b5e5db7a974f6af6d8`. Cleanup correctly refused
+the active process without deleting any resource.
 
 The owner-only `first-boot-console.log` captured 58,824 bytes. It proves the exact pinned Ubuntu
 guest reached `cloud-init-local.service`, `network-pre.target`, `systemd-networkd.service`, and
@@ -4239,8 +4242,13 @@ their separately authorized exact cleanup lists, and all old inputs fail closed 
 Offline tests must pass before new deterministic builds.
 The current promotion is immutable historical input; a fresh source-build review, new promotion ID,
 fresh run/cohort and identities, new preparation, and a separately authorized live Gate 2 invocation
-are required. Exact cleanup of the preserved failed roots remains a distinct authorization. Gate 2
-is not yet qualified and Gate 3 remains blocked.
+are required. A separately authorized recovery then negotiated only QMP capabilities and sent
+`system_powerdown`; the exact recorded QEMU exited within the 120-second bound and no fallback signal
+was sent. A final fresh cleanup authorization bound to executor SHA-256
+`adcd4b1e4ea2bcd48078d0545a67699702b00dc344ca79eeeb9e49adefab0926` completed once. Immediate
+host read-back confirmed all ordered 12 resources absent. The cleanup did not touch immutable
+promotion `vmp-2026080815f0ea3f`, the post-correction source-review root, the checkout, or concurrent
+task docs. Gate 2 is not yet qualified and Gate 3 remains blocked.
 
 The post-correction offline source-build review used private root
 `/tmp/dockpipe-vm-source-review.2ikAeuDJ` and exact repository checkpoint
