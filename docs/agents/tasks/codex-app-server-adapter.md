@@ -4379,12 +4379,13 @@ Gate 2, or Gate 3 action. Fresh Gate 2 preparation remains a separate gate.
 The first executor-v5 preparation attempt for run `g2r-4153130ffe9e0189`
 and cohort `g2c-788fe545f4721de8` was executed once and is spent. It created the
 owner-only identity bundle and qualification/provisioning inputs, then failed
-in the wrapper's final offline assertion because the emitted executor-v5 plan
-stores the timeout under `executor_contract.execution`, not top-level
-`execution`. The wrapper had not yet persisted the inert plan. All four live
-roots remained absent, so no identity reservation, authorization, disk, seed,
-socket, process, Gate 2, or Gate 3 action occurred. The invocation was not
-retried.
+in the wrapper's final offline assertion because an inert provisioning plan has
+no top-level `execution` object. The timeout is bound in the provisioning input
+and typed `verify-guest` operation; executor-v5 is sealed only at the later
+authorized live boundary. The wrapper had not yet persisted the inert plan.
+All four live roots remained absent, so no identity reservation, authorization,
+disk, seed, socket, process, Gate 2, or Gate 3 action occurred. The invocation
+was not retried.
 
 A separately authorized closed-inventory cleanup then deleted the eight files
 and exact partial task root. Cleanup result SHA-256 is
