@@ -571,7 +571,7 @@ func TestNoCloudRenderingIsExactPinnedAndRestricted(t *testing.T) {
 		all.Write(file.Content)
 	}
 	rendered := all.String()
-	for _, required := range []string{"network-config", "package_update: false", "package_upgrade: false", "ssh_pwauth: false", "system: true", "shell: /usr/sbin/nologin", "lock_passwd: true", "ethernets: {}", c.DiskSerial, c.FilesystemUUID, "dockpipe-agent.service", "/usr/libexec/dockpipe-guest-agent", "/usr/libexec/dockpipe-sqlite-vm-harness", "[/usr/bin/chgrp, --dereference, dockpipe-agent, /dev/virtio-ports/org.dockpipe.agent.1]", "[/usr/bin/chmod, \"0660\", /dev/virtio-ports/org.dockpipe.agent.1]"} {
+	for _, required := range []string{"network-config", "package_update: false", "package_upgrade: false", "ssh_pwauth: false", "system: true", "shell: /usr/sbin/nologin", "lock_passwd: true", "ethernets: {}", c.DiskSerial, c.FilesystemUUID, "dockpipe-agent.service", "/etc/udev/rules.d/99-dockpipe-agent.rules", "/usr/libexec/dockpipe-guest-agent", "/usr/libexec/dockpipe-sqlite-vm-harness", "[/usr/bin/chgrp, --dereference, dockpipe-agent, /dev/virtio-ports/org.dockpipe.agent.1]", "[/usr/bin/chmod, \"0660\", /dev/virtio-ports/org.dockpipe.agent.1]"} {
 		if !strings.Contains(rendered, required) {
 			t.Fatalf("rendered seed missing %q", required)
 		}
@@ -586,6 +586,7 @@ func TestNoCloudRenderingIsExactPinnedAndRestricted(t *testing.T) {
 		t.Fatalf("rendered NoCloud config contains schema-invalid empty SSH key list")
 	}
 	var renderedConfig AgentConfig
+	renderedUdevRule := ""
 	for _, line := range strings.Split(rendered, "\n") {
 		encoded, ok := strings.CutPrefix(strings.TrimSpace(line), "content: ")
 		if !ok {
@@ -593,6 +594,9 @@ func TestNoCloudRenderingIsExactPinnedAndRestricted(t *testing.T) {
 		}
 		decoded, err := base64.StdEncoding.DecodeString(encoded)
 		if err == nil {
+			if strings.Contains(string(decoded), `ATTR{name}=="org.dockpipe.agent.1"`) {
+				renderedUdevRule = string(decoded)
+			}
 			var candidate AgentConfig
 			if json.Unmarshal(decoded, &candidate) == nil && candidate.Schema == "dockpipe.vm.guest-agent-config.v3" {
 				renderedConfig = candidate
@@ -601,6 +605,9 @@ func TestNoCloudRenderingIsExactPinnedAndRestricted(t *testing.T) {
 	}
 	if renderedConfig.BootstrapNonce != c.BootstrapNonce || renderedConfig.BootIDSource != manifest.KernelBootIDSource {
 		t.Fatalf("rendered guest config does not bind bootstrap nonce and kernel boot-ID source: %+v", renderedConfig)
+	}
+	if renderedUdevRule != "SUBSYSTEM==\"virtio-ports\", ATTR{name}==\"org.dockpipe.agent.1\", GROUP=\"dockpipe-agent\", MODE=\"0660\"\n" {
+		t.Fatalf("rendered virtio-port ownership rule changed: %q", renderedUdevRule)
 	}
 	bad := material
 	bad.GuestAgentBinary = []byte("substituted")

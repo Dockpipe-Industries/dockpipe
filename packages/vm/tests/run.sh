@@ -10,7 +10,7 @@ cd "$PACKAGE_ROOT/tools"
 GOWORK=off GOCACHE="$VM_TEST_TMP/cache" GOTMPDIR="$VM_TEST_TMP/tmp" CGO_ENABLED=0 go test -mod=readonly ./...
 
 cd "$PACKAGE_ROOT"
-grep -Fq 'version: 1.2.0' package.yml
+grep -Fq 'version: 1.2.1' package.yml
 grep -Fq 'models/QemuVmResolverConfig' resolvers/qemu/types.yml
 grep -Fq 'models/LinuxQemuVmResolverConfig' resolvers/qemu/types.yml
 grep -Fq 'runtime: vm' workflows/windows-vm/config.yml
@@ -28,6 +28,7 @@ grep -Fq '"guest_verification_timeout_seconds": 240' manifests/linux-provisionin
 grep -Fq 'dockpipe.vm.live-authorization.v3' manifests/linux-live-authorization.template.json
 grep -Fq 'dockpipe.vm.cleanup-authorization.v1' manifests/linux-cleanup-authorization.template.json
 grep -Fq 'dockpipe.vm.identity-material.v1' tools/internal/identitymaterial/material.go
+grep -Fq 'dockpipe.vm.executor.v10' tools/internal/executor/contract.go
 grep -Fq 'dockpipe.vm.executor.v9' tools/internal/executor/contract.go
 grep -Fq 'dockpipe.vm.executor.v8' tools/internal/executor/contract.go
 grep -Fq 'dockpipe.vm.executor.v7' tools/internal/executor/contract.go
@@ -51,6 +52,8 @@ grep -Fq '11a27f32eb93e62aba8ebc500dfd877339a71821793cbf30845b53964c22320c' mani
 grep -Fq '3544680aaeaf8087bbf3ef693ff185c2691831560c767672defccd784ec37140' manifests/linux-qualification.json
 grep -Fq '"approved": false' manifests/linux-live-authorization.template.json
 grep -Fq -- '--serve-virtio-serial=' workflows/linux-vm/assets/systemd/dockpipe-agent.service
+grep -Fq 'ATTR{name}=="org.dockpipe.agent.1", GROUP="dockpipe-agent", MODE="0660"' workflows/linux-vm/assets/udev/99-dockpipe-agent.rules
+grep -Fq '/etc/udev/rules.d/99-dockpipe-agent.rules' tools/internal/provisioning/render.go
 grep -Fq 'package_update: false' workflows/linux-vm/assets/nocloud/user-data
 grep -Fq 'ssh_pwauth: false' workflows/linux-vm/assets/nocloud/user-data
 if grep -Fq 'ssh_redirect_user:' workflows/linux-vm/assets/nocloud/user-data; then

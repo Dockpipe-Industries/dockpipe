@@ -689,3 +689,18 @@ at `4238382` bytes, and SQLite harness SHA-256
 at `11895893` bytes. Embedded metadata, reported binary versions, and harness
 contract self-tests all passed. The three files are unpromoted offline review
 evidence only; no live gate or cleanup action occurred.
+
+The following separately authorized executor-v9 chain promoted those three
+files and qualified Gate 2, but Gate 3 failed closed on boot 1 before any of
+its twelve trials began. Systemd started the unprivileged guest-agent service,
+yet the second-boot virtio-port device no longer had the one-time group and
+mode applied by first-boot cloud-init, so no signed bootstrap frame arrived.
+The failed authorization was not retried; both recorded QEMU PIDs were absent,
+and a separate exact cleanup removed the sealed 12-resource list.
+
+VM package 1.2.1 keeps the first-boot exact `chgrp`/`chmod` and adds one
+hash-pinned udev rule matching only `org.dockpipe.agent.1`, group
+`dockpipe-agent`, and mode `0660`. Executor-v10 is the only fresh-execution
+schema; executor-v9 remains loadable only for exact cleanup. This is an offline
+repair, not renewed live proof. Fresh build, promotion, preparation, Gate 2,
+Gate 3, and final cleanup remain separate approvals.

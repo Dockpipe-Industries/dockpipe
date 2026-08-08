@@ -55,6 +55,7 @@ var reviewedAssetSHA256 = map[string]string{
 	"systemd/dockpipe-agent.service":  "34bc05b718928c3d042210767b98f527ab9ce77271c4472e90e4481326dcb339",
 	"systemd/dockpipe-agent.sysusers": "918c4529043c930ec81256f8c72c915f460283ce33a1d75712bf44aecfa1e5c9",
 	"systemd/dockpipe-agent.tmpfiles": "793f4cd1a8e5433e117c4b615932d13241db2cde8932dcd4efb1753376d2680b",
+	"udev/99-dockpipe-agent.rules":    "d86c156c48b97a9da7ebd3dc67fa9d17a6cf9f11a8e0cec068480a261ce09095",
 }
 
 // ValidateReviewedAssets binds planning to the exact package-owned NoCloud and
@@ -122,6 +123,7 @@ func RenderNoCloud(c Contract, m manifest.Manifest, material RenderMaterial) ([]
 		{"systemd/dockpipe-agent.service", "/etc/systemd/system/dockpipe-agent.service", "root:root", "0644", nil},
 		{"systemd/dockpipe-agent.sysusers", "/usr/lib/sysusers.d/dockpipe-agent.conf", "root:root", "0644", nil},
 		{"systemd/dockpipe-agent.tmpfiles", "/usr/lib/tmpfiles.d/dockpipe-agent.conf", "root:root", "0644", nil},
+		{"udev/99-dockpipe-agent.rules", "/etc/udev/rules.d/99-dockpipe-agent.rules", "root:root", "0644", nil},
 		{"", "/etc/dockpipe-agent/controller.pub", "dockpipe-agent:dockpipe-agent", "0400", material.Keys.ControllerPublic},
 		{"", "/etc/dockpipe-agent/guest.key", "dockpipe-agent:dockpipe-agent", "0400", material.Keys.GuestPrivate},
 	}
@@ -130,11 +132,14 @@ func RenderNoCloud(c Contract, m manifest.Manifest, material RenderMaterial) ([]
 			assets[i].data = reviewed[assets[i].relative]
 		}
 	}
-	serviceText := string(assets[2].data)
+	serviceText := string(reviewed["systemd/dockpipe-agent.service"])
 	for _, required := range []string{"User=dockpipe-agent", "PrivateNetwork=yes", "NoNewPrivileges=yes", "ProtectSystem=strict", "CapabilityBoundingSet=", "AmbientCapabilities=", "RestrictAddressFamilies=AF_UNIX", "--serve-virtio-serial=/dev/virtio-ports/org.dockpipe.agent.1"} {
 		if !strings.Contains(serviceText, required) {
 			return nil, fmt.Errorf("reviewed systemd sandbox is missing %q", required)
 		}
+	}
+	if string(reviewed["udev/99-dockpipe-agent.rules"]) != "SUBSYSTEM==\"virtio-ports\", ATTR{name}==\"org.dockpipe.agent.1\", GROUP=\"dockpipe-agent\", MODE=\"0660\"\n" {
+		return nil, fmt.Errorf("reviewed virtio-port ownership rule changed")
 	}
 	config := AgentConfig{
 		Schema: "dockpipe.vm.guest-agent-config.v3", ControllerPublicKeyPath: "/etc/dockpipe-agent/controller.pub",

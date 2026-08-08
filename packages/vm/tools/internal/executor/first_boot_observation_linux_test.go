@@ -413,6 +413,39 @@ func TestPreservedExecutorV7RemainsLoadableForExactCleanupOnly(t *testing.T) {
 	}
 }
 
+func TestPreservedExecutorV8AndV9RemainLoadableForExactCleanupOnly(t *testing.T) {
+	for _, test := range []struct {
+		name   string
+		schema string
+	}{
+		{"executor-v8", LegacyGate2QualifiedCleanupSchema},
+		{"executor-v9", LegacyGate3BootCleanupSchema},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			legacy := executorFixture(t)
+			legacy.Schema = test.schema
+			legacy.Guest.TimeoutSeconds = 240
+			legacy.ExecutionSHA256, _ = legacy.Digest()
+			path := filepath.Join(t.TempDir(), test.name+".json")
+			if err := Store(path, legacy); err != nil {
+				t.Fatal(err)
+			}
+			loaded, err := Load(path)
+			if err != nil {
+				t.Fatalf("preserved %s cleanup contract became unloadable: %v", test.name, err)
+			}
+			if _, err := Execute(context.Background(), loaded, &fakeRunner{}); err == nil {
+				t.Fatalf("legacy %s executor must not regain qualification execution", test.name)
+			}
+			now := time.Unix(1_800_000_000, 0)
+			authorization := CleanupAuthorization{Schema: CleanupSchema, Approved: true, ContractSHA256: loaded.ContractSHA256, PlanSHA256: loaded.PlanSHA256, ExecutionSHA256: loaded.ExecutionSHA256, RunID: loaded.RunID, CohortID: loaded.CohortID, Resources: slices.Clone(loaded.Cleanup.Resources), ExpiresAtUnix: now.Add(time.Minute).Unix()}
+			if _, err := ExecuteCleanup(context.Background(), loaded, authorization, now, &fakeRunner{}); err != nil {
+				t.Fatalf("preserved %s exact cleanup compatibility failed: %v", test.name, err)
+			}
+		})
+	}
+}
+
 func removeConsoleArgs(args []string) []string {
 	out := make([]string, 0, len(args))
 	for i := 0; i < len(args); i++ {

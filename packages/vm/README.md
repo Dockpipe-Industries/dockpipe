@@ -1,10 +1,11 @@
 # DockPipe VM package
 
 The `vm` package owns guest-specific workflows, QEMU resolver models, and the
-VMM-neutral control protocol. DockPipe core remains generic. Version 1.2.0
-retains the qualified executor-v8 Gate 2 path and adds the offline-reviewed,
-separately authorized executor-v9 Gate 3 durability cohort. The unchanged
-`windows-vm` surface remains available alongside Linux qualification.
+VMM-neutral control protocol. DockPipe core remains generic. Version 1.2.1
+makes the exact virtio-port group and mode persistent across guest boots for
+the Gate 3 durability cohort. Executor-v10 is the only fresh-execution schema;
+executor-v9 remains exact-cleanup-only after its failed first Gate 3 boot. The
+unchanged `windows-vm` surface remains available alongside Linux qualification.
 
 The Linux foundation has two deliberately different paths:
 
@@ -780,6 +781,35 @@ authority. Deterministic source review, offline promotion, Gate 2 preparation,
 Gate 2 live authorization and execution, cleanup, and Gate 3 remain distinct
 gates. The latest executor-v8 evidence above qualifies Gate 2 and unblocks,
 but does not authorize, Gate 3.
+
+The separately approved three-file promotion `vmp-20260808a7278980` then
+published the exact controller, guest agent, and SQLite harness recorded above.
+Its canonical evidence SHA-256 is
+`68a83d74dc3b1fc6d2db953f8399d93654086ebbca2bfc72716c5b94647faf25`.
+Fresh executor-v9 run `g2r-097a3b41599cbc76`, cohort
+`g2c-c729b6ca16835493`, qualified Gate 2 through signed guest verification and
+controlled shutdown. Its execution SHA-256 is
+`1e77a6513ab7029213726b8b40d35e380b78d002cd5cfdce61566e177c069fae`.
+
+The separately approved Gate 3 plan SHA-256
+`c77abc2ca47c4c410d993a91de65007d680933cf15f08eba7808fcc3291937c3`
+started once and failed closed on boot 1 before any checkpoint, recovery, or
+pidfd power cut. The guest reached multi-user startup and systemd started
+`dockpipe-agent.service`, but no bootstrap frame arrived. The service's exact
+virtio-port group and mode had been established only by first-boot cloud-init;
+the recreated device on the next boot did not retain that access. Both recorded
+QEMU PIDs were absent, the complete instance was preserved, the authorization
+was not retried, and exact cleanup result SHA-256
+`6d33a98e6618108efd9af0169ed5aa3a6f28b8914f8ab9ab357630e9c9a24b68`
+removed only the executor-ordered 12-resource list.
+
+Version 1.2.1 installs one reviewed udev rule matching only virtio port
+`org.dockpipe.agent.1`, assigning group `dockpipe-agent` and mode `0660` on
+every device creation. The existing first-boot exact `chgrp`/`chmod` remains;
+no shell, wildcard, root-run agent, network access, retry, fallback, or
+automatic cleanup is introduced. This correction is offline source evidence,
+not live Gate 2 or Gate 3 proof. A new build, promotion, preparation, Gate 2,
+Gate 3, and final cleanup each remain separately authorized.
 
 `manifests/linux-live-authorization.template.json` is separately inert with
 `approved=false`. A later reviewed gate must bind a fresh, short-lived copy to
