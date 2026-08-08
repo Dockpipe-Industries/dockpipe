@@ -587,3 +587,16 @@ and executor race tests, the package harness, both workflow validators, and
 isolated workflow and resolver compilation. Tests cover event-before-response
 success and wrong-ID failure. Only temporary compilation artifacts were
 created.
+
+Exact checkpoint `1047d7a44a98c71fd45529d2721a808d659cdfda` was then
+rebuilt twice under `/tmp/dockpipe-vm-source-review.1047d7a4.0i4iOy5k` with
+separate caches and temporary directories, Go 1.25.0, `GOWORK=off`,
+`CGO_ENABLED=0`, `GOAMD64=v1`, `-trimpath`, and `-buildvcs=false`.
+Linux controller lanes are byte-identical at `5447686` bytes and SHA-256
+`ae624b6d3c140ccadac34ca1ca2eea509d1b22ece011fd22c811ba2c6bde011c`;
+Linux guest-agent lanes remain byte-identical at `3870222` bytes and SHA-256
+`3a2d7657e13b6ec30fc8dc268ad977bb248b6598749979edf63223d364cc59e7`.
+The Windows compatibility guest remains `3966976` bytes with SHA-256
+`86caf93a18159e8b40275f43b02e2930baa9eaffad76227285df8e0a08f3ea6c`.
+Embedded build metadata and the package-local dependency boundary passed
+review. All binaries remain unpromoted offline evidence.
