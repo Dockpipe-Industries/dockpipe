@@ -547,3 +547,19 @@ at `3870222` bytes, both mode `0500`. Promotion evidence SHA-256 is
 Independent read-back confirmed both closed inventories. The promotion created
 no identity, plan, live input, authorization, disk, seed, socket, process,
 cleanup, Gate 2, or Gate 3 action.
+
+The next separately authorized preparation created run
+`g2r-f3037fbd6df82729` and cohort `g2c-eda2763a444462ef` from promotion
+`vmp-202608084eb50c76`. The identity expires at Unix `1786303837`, exactly 24
+hours after creation. Qualification SHA-256 is
+`8da854d047acee50f8aee4cd9065dc0f5f54be4e2bfbfe1cd3b62f9e98913595`;
+provisioning SHA-256 is
+`461cfbc52ce64ebefbdd5b810c2c8eba825bb315cbfe056273621f28ab248764`;
+inert-plan SHA-256 is
+`18314569a259d85b09a68bc415f9efcc777284c792dd79fee201b55ce9a99187`.
+The plan binds contract
+`821997f35e04e528edf5d3e8e9a67a2effe82f24cad0f76517a52abaeb9532b3`,
+plan digest
+`0d1fd14723fc8f504a9b9347343a3d1eb01f56aef9b151ff23b46f379c0b06e6`,
+and executor-v7's 240-second verification. It remains non-authorized and
+non-executing, and all four live roots remain absent.
