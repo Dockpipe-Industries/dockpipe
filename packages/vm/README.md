@@ -682,6 +682,24 @@ Independent read-back confirmed the closed two-file promotion and one-file
 evidence inventories. No preparation, authorization, disk, seed, socket,
 process, cleanup, Gate 2, or Gate 3 action occurred.
 
+Fresh executor-v8 preparation then created run `g2r-a29152ab33508801` and
+cohort `g2c-ebce6db36b4937a1` for promotion `vmp-202608081047d7a4`. The
+owner-only identity expires at Unix `1786305140`, exactly 24 hours after
+creation. Qualification SHA-256 is
+`ac349e8729a1c7c9851e64ea696e91f8a15320e0334587673f7c041c6ad1a203`;
+provisioning SHA-256 is
+`80915d8b46f1c6bf99d36d2110d6ef7077380978e22f4ce2403c3e7382bc65d9`;
+inert-plan SHA-256 is
+`288d0b64916714f2f986ed771863c86b792021530540e27486aa741d61f26149`.
+The plan binds contract
+`d4fbf18728e92875d5c42427380fe6a62c235b939f6e725e1f311517b78d8d29`,
+plan digest
+`7d3826a3040d21e9b1be177e32fda990aa14aad6cec9d41f110e29b47d4d424c`,
+bootstrap nonce
+`93ef19893b20e4d154fb2f1e4cd19140b51c0fbb6b13b4db598dc6e8dc19ff4c`,
+and the 240-second verification window. It remains non-authorized and
+non-executing; all four live roots remain absent.
+
 The original documentation decision created no promotion evidence and granted no Gate 2
 authority. Deterministic source review, offline promotion, Gate 2 preparation,
 Gate 2 live authorization and execution, cleanup, and Gate 3 remain distinct
