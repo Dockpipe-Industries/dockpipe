@@ -630,3 +630,18 @@ inert-plan SHA-256 is
 `288d0b64916714f2f986ed771863c86b792021530540e27486aa741d61f26149`.
 The plan remains non-authorized and non-executing, binds executor-v8 and the
 240-second verification window, and created no live root.
+
+The executor-v8 live authorization then executed once and completed every Gate
+2 operation through controlled shutdown. Execution SHA-256 is
+`ab1c2e632f814a5e406e48a8caaafbce103d5a7953a564bf6c2b4009b8b82db7`;
+bootstrap evidence SHA-256 is
+`ce19af3864474a0171b1aa20e1a5721aee6f9c57c216e99f86b87e6c57bdf26f`;
+verification evidence SHA-256 is
+`fc8f9ab92407f32abaca4ab381c3c152d843f08276491fa33099e6774b5ae096`;
+shutdown evidence SHA-256 is
+`f1af02b35fdb9a51946cf1228071ad6db7e6b8885ea273a6af6f984d410e482e`.
+Signed identity, health, and hash-pin checks all passed; shutdown records
+`system_powerdown` and `clean_exit=true`. Recorded PID `67010` and transient
+QMP/agent sockets are absent. Gate 2 is qualified with `preserved=false` and
+`cleanup_run=false`. Gate 3 is unblocked but remains separately authorized and
+has not run.
