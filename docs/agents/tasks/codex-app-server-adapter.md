@@ -4688,6 +4688,19 @@ Independent read-back confirmed all 12 executor-ordered resources and QEMU PID
 controllers remain hash-identical. No retry, promotion, preparation, live Gate
 2, or Gate 3 action occurred.
 
+The next separately approved offline promotion created immutable
+`vmp-202608081047d7a4` from checkpoint
+`1047d7a44a98c71fd45529d2721a808d659cdfda`. Its closed inventory contains
+only controller SHA-256
+`ae624b6d3c140ccadac34ca1ca2eea509d1b22ece011fd22c811ba2c6bde011c`
+at `5447686` bytes and guest-agent SHA-256
+`3a2d7657e13b6ec30fc8dc268ad977bb248b6598749979edf63223d364cc59e7`
+at `3870222` bytes, each mode `0500`. Evidence SHA-256 is
+`77567cf76eed3e2bb6b44e960bb0949b2665a5cc98d86cece66bca1707ecfb16`.
+Independent read-back confirmed both inventories and every live-action flag
+false. No preparation, authorization, cleanup, Gate 2, or Gate 3 action
+occurred.
+
 The implementation test matrix is:
 
 1. **Adapter selection:** a new normal Pipeon Codex session defaults to App Server; the explicit exec
