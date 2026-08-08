@@ -19,6 +19,20 @@ type oneShotRW struct {
 	writer bytes.Buffer
 }
 
+type fakeHarnessAdapter struct {
+	checkpoint HarnessRequest
+	recovery   HarnessRequest
+}
+
+func (f *fakeHarnessAdapter) Checkpoint(request HarnessRequest) (any, error) {
+	f.checkpoint = request
+	return map[string]any{"accepted": true}, nil
+}
+func (f *fakeHarnessAdapter) Recovery(request HarnessRequest) (any, error) {
+	f.recovery = request
+	return map[string]any{"recovered": true}, nil
+}
+
 func (rw *oneShotRW) Read(p []byte) (int, error)  { return rw.reader.Read(p) }
 func (rw *oneShotRW) Write(p []byte) (int, error) { return rw.writer.Write(p) }
 
@@ -143,13 +157,37 @@ func TestServiceModeKeepsCheckpointAndRecoveryHarnessFailClosed(t *testing.T) {
 		t.Run(capability, func(t *testing.T) {
 			service, controllerPriv, _, now := serviceFixture(t)
 			ctx := requestContext(service, protocol.FirstRequestSequence, "5")
-			payload := map[string]string{"checkpoint_sha256": strings.Repeat("d", 64)}
+			payload := map[string]any{"cohort_id": "cohort-001", "trial_id": "after-stage-before-commit-1", "attempt": 1, "boundary": "after-stage-before-commit", "ticket_nonce": strings.Repeat("d", 64), "harness_sha256": strings.Repeat("e", 64)}
 			if capability == "recovery/v1" {
-				payload = map[string]string{"ticket_sha256": strings.Repeat("d", 64)}
+				payload["checkpoint_boot_id"] = "33333333-3333-4333-8333-333333333333"
 			}
 			if _, err := service.Handle(request(t, controllerPriv, now, ctx, capability, payload)); err == nil {
 				t.Fatal("expected unowned harness capability to fail closed")
 			}
 		})
+	}
+}
+
+func TestServiceModeRoutesExactSignedHarnessRequests(t *testing.T) {
+	service, controllerPriv, guestPub, now := serviceFixture(t)
+	adapter := &fakeHarnessAdapter{}
+	service.Harness = adapter
+	checkpointContext := requestContext(service, protocol.FirstRequestSequence, "6")
+	checkpointPayload := map[string]any{"cohort_id": "cohort-001", "trial_id": "after-stage-before-commit-1", "attempt": 1, "boundary": "after-stage-before-commit", "ticket_nonce": strings.Repeat("d", 64), "harness_sha256": strings.Repeat("e", 64)}
+	response, err := service.Handle(request(t, controllerPriv, now, checkpointContext, "checkpoint/v1", checkpointPayload))
+	if err != nil {
+		t.Fatal(err)
+	}
+	frame, err := protocol.Verify(response, guestPub, now)
+	if err != nil || frame.Capability != "checkpoint/v1" || adapter.checkpoint.TrialID != "after-stage-before-commit-1" || adapter.checkpoint.BootID != service.Expected.BootID {
+		t.Fatalf("checkpoint adapter routing changed: frame=%+v request=%+v err=%v", frame, adapter.checkpoint, err)
+	}
+	recoveryContext := requestContext(service, protocol.FirstRequestSequence+1, "7")
+	recoveryPayload := map[string]any{"cohort_id": "cohort-001", "trial_id": "after-stage-before-commit-1", "attempt": 1, "boundary": "after-stage-before-commit", "ticket_nonce": strings.Repeat("d", 64), "checkpoint_boot_id": "33333333-3333-4333-8333-333333333333", "harness_sha256": strings.Repeat("e", 64)}
+	if _, err := service.Handle(request(t, controllerPriv, now, recoveryContext, "recovery/v1", recoveryPayload)); err != nil {
+		t.Fatal(err)
+	}
+	if adapter.recovery.CheckpointBootID != "33333333-3333-4333-8333-333333333333" || adapter.recovery.TrialID != adapter.checkpoint.TrialID {
+		t.Fatalf("recovery adapter routing changed: %+v", adapter.recovery)
 	}
 }

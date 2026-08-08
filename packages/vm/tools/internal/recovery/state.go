@@ -13,6 +13,8 @@ type Identity struct {
 	DiskSerial         string `json:"disk_serial"`
 	BootID             string `json:"boot_id"`
 	RunID              string `json:"run_id"`
+	CohortID           string `json:"cohort_id"`
+	TrialID            string `json:"trial_id"`
 	Scenario           string `json:"scenario"`
 	DurabilityBoundary string `json:"durability_boundary"`
 	Nonce              string `json:"nonce"`
@@ -53,7 +55,7 @@ func (s *StateMachine) AcceptPending(ticket Ticket) error {
 	if ticket.Status != "pending" || !sameIdentity(ticket.Identity, s.expected) {
 		return fmt.Errorf("ticket does not exactly match the authenticated recovery identity")
 	}
-	if _, exists, err := s.store.Load(ticket.Identity.RunID); err != nil {
+	if _, exists, err := s.store.Load(ticket.Identity.TrialID); err != nil {
 		return err
 	} else if exists {
 		return fmt.Errorf("existing pending or consumed ticket blocks the run")
@@ -64,7 +66,7 @@ func (s *StateMachine) AcceptPending(ticket Ticket) error {
 // ConsumeRecovery persists consumed state and the result hash before returning
 // the sole signed-result payload to the caller. A lost result is never resent.
 func (s *StateMachine) ConsumeRecovery(result Result) (Result, error) {
-	ticket, exists, err := s.store.Load(s.expected.RunID)
+	ticket, exists, err := s.store.Load(s.expected.TrialID)
 	if err != nil {
 		return Result{}, err
 	}
@@ -90,24 +92,24 @@ func (s *StateMachine) ConsumeRecovery(result Result) (Result, error) {
 	return result, nil
 }
 
-func (s *StateMachine) CleanupConsumed(runID string, qualificationActive, explicit bool) error {
-	if qualificationActive || !explicit || runID != s.expected.RunID {
+func (s *StateMachine) CleanupConsumed(trialID string, qualificationActive, explicit bool) error {
+	if qualificationActive || !explicit || trialID != s.expected.TrialID {
 		return fmt.Errorf("consumed ticket cleanup is explicit and outside qualification only")
 	}
-	ticket, exists, err := s.store.Load(runID)
+	ticket, exists, err := s.store.Load(trialID)
 	if err != nil {
 		return err
 	}
 	if !exists || ticket.Status != "consumed" {
 		return fmt.Errorf("only consumed tickets may be cleaned")
 	}
-	return s.store.Delete(runID)
+	return s.store.Delete(trialID)
 }
 
 func sameIdentity(a, b Identity) bool { return a == b }
 
 func errIdentity(id Identity) error {
-	for _, value := range []string{id.MachineUUID, id.DiskSerial, id.BootID, id.RunID, id.Scenario, id.DurabilityBoundary, id.Nonce, id.HarnessSHA256} {
+	for _, value := range []string{id.MachineUUID, id.DiskSerial, id.BootID, id.RunID, id.CohortID, id.TrialID, id.Scenario, id.DurabilityBoundary, id.Nonce, id.HarnessSHA256} {
 		if strings.TrimSpace(value) == "" {
 			return fmt.Errorf("incomplete identity")
 		}

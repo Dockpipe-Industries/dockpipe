@@ -129,9 +129,10 @@ The service is unprivileged, nologin, capability-free, private-networked,
 ordered before network, and uses virtio-serial. Its implemented service mode
 emits the one canonical signed bootstrap and then recognizes only canonical,
 signed, length-prefixed `request` frames for the five reviewed capabilities.
-Identity, health, and binary-pin verification respond; checkpoint
-and recovery remain fail-closed until a separate reviewed harness adapter owns
-their state transition. Signature, public-key pin, binary pin, freshness, replay,
+Identity, health, and binary-pin verification respond. Executor-v9 binds
+checkpoint and recovery to the exact test-only SQLite VM harness and durable
+pending/consumed tickets for the separately authorized Gate 3 cohort. Signature,
+public-key pin, binary pin, freshness, replay,
 sequence, identity, nonce, and payload substitution failures close the stream.
 System state stays on the OS disk; tickets and results use the qualification
 mount.
@@ -645,3 +646,31 @@ Signed identity, health, and hash-pin checks all passed; shutdown records
 QMP/agent sockets are absent. Gate 2 is qualified with `preserved=false` and
 `cleanup_run=false`. Gate 3 is unblocked but remains separately authorized and
 has not run.
+
+VM package 1.2.0 now contains the offline-only Gate 3 durability cohort. The
+closed state machine performs three trials at each of four reviewed SQLite
+transitions. It uses thirteen boots for twelve checkpoint/recovery pairs and
+twelve exact hard-power cuts; the recovery boot for one trial is also the
+checkpoint boot for the next. Tickets bind run, cohort, trial, machine, disk,
+scenario, transition, nonce, harness hash, and checkpoint boot ID. A recovery
+request is rejected unless it arrives through a fresh signed guest bootstrap
+with a different kernel boot ID.
+
+The guest runs only the root-owned mode-`0755`, hash-pinned
+`/usr/libexec/dockpipe-sqlite-vm-harness` under one of two fixed private roles.
+Both guest and controller validate canonical harness evidence for exact SQLite
+3.53.3/source identity, native `unix` VFS, expected old/new revision,
+`quick_check=ok`, metadata hashes, and zero retries, replays, repairs, or
+fallbacks. The controller authenticates the QEMU process again after
+`pidfd_open`, then uses only `pidfd_send_signal(SIGKILL)` for each reviewed
+cut. A mismatch stops the cohort and preserves all evidence and resources.
+The thirteenth boot performs the final recovery and typed QMP controlled
+shutdown.
+
+This is an offline implementation, not live evidence. Executor-v9 requires a
+fresh three-file promotion containing the controller, guest agent, and SQLite
+harness, followed by new preparation and Gate 2 qualification before any Gate
+3 authorization can exist. The successful executor-v8 run
+`g2r-a29152ab33508801` remains preserved and unchanged; executor-v8 is now
+cleanup-only. Promotion, preparation, Gate 2, Gate 3, and cleanup each require
+their own exact approval. Gate 3 has not run and no cleanup was performed.

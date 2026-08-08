@@ -1,6 +1,7 @@
 package provisioning
 
 import (
+	"bytes"
 	"crypto/ed25519"
 	"crypto/rand"
 	"crypto/sha256"
@@ -63,16 +64,21 @@ func contractFixture(t *testing.T) (Contract, xdg.Paths, RenderMaterial) {
 	guestPub, guestPriv, _ := ed25519.GenerateKey(rand.Reader)
 	controllerBinary := []byte("controller-test-binary")
 	guestBinary := []byte("guest-test-binary")
+	harnessBinary := []byte("harness-test-binary")
 	buildRoot := filepath.Join(root, "build")
 	if err := os.MkdirAll(buildRoot, 0o700); err != nil {
 		t.Fatal(err)
 	}
 	controllerPath := filepath.Join(buildRoot, "controller")
 	guestPath := filepath.Join(buildRoot, "guest")
+	harnessPath := filepath.Join(buildRoot, "harness")
 	if err := os.WriteFile(controllerPath, controllerBinary, 0o700); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(guestPath, guestBinary, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(harnessPath, harnessBinary, 0o700); err != nil {
 		t.Fatal(err)
 	}
 	toolchainRoot := filepath.Join(root, "toolchain")
@@ -136,10 +142,10 @@ func contractFixture(t *testing.T) (Contract, xdg.Paths, RenderMaterial) {
 		SourceImage: SourceImage{Path: filepath.Join(paths.Images, PinnedImageFilename), SHA256: manifest.UbuntuImageSHA256, Bytes: PinnedImageBytes},
 		Toolchain:   ToolchainReference{Root: toolchainRoot, Manifest: toolchainManifest, ManifestSHA256: digest(toolchainJSON)},
 		Roots:       Roots{Instances: paths.Instances, Evidence: paths.Evidence, Config: paths.Config, Runtime: paths.Runtime},
-		Artifacts:   Artifacts{AssetsRoot: assetsRoot, ControllerBinary: controllerPath, ControllerBinarySHA256: digest(controllerBinary), GuestAgentBinary: guestPath, GuestAgentBinarySHA256: digest(guestBinary), ControllerPublicKeySHA256: digest(controllerPub), GuestPublicKeySHA256: digest(guestPub)},
+		Artifacts:   Artifacts{AssetsRoot: assetsRoot, ControllerBinary: controllerPath, ControllerBinarySHA256: digest(controllerBinary), GuestAgentBinary: guestPath, GuestAgentBinarySHA256: digest(guestBinary), HarnessBinary: harnessPath, HarnessBinarySHA256: digest(harnessBinary), ControllerPublicKeySHA256: digest(controllerPub), GuestPublicKeySHA256: digest(guestPub)},
 		Execution:   RequiredExecutionPolicy(),
 	}
-	return c, paths, RenderMaterial{Keys: KeyMaterial{ControllerPublic: controllerPub, ControllerPrivate: controllerPriv, GuestPublic: guestPub, GuestPrivate: guestPriv}, ControllerBinary: controllerBinary, GuestAgentBinary: guestBinary}
+	return c, paths, RenderMaterial{Keys: KeyMaterial{ControllerPublic: controllerPub, ControllerPrivate: controllerPriv, GuestPublic: guestPub, GuestPrivate: guestPriv}, ControllerBinary: controllerBinary, GuestAgentBinary: guestBinary, HarnessBinary: harnessBinary}
 }
 
 func qualificationForContract(t *testing.T, c Contract) manifest.Manifest {
@@ -162,6 +168,7 @@ func qualificationForContract(t *testing.T, c Contract) manifest.Manifest {
 	m.Filesystem.UUID = c.FilesystemUUID
 	m.Protocol.ControllerBinarySHA256 = c.Artifacts.ControllerBinarySHA256
 	m.Protocol.GuestAgentBinarySHA256 = c.Artifacts.GuestAgentBinarySHA256
+	m.Protocol.HarnessSHA256 = c.Artifacts.HarnessBinarySHA256
 	m.Protocol.ControllerPublicKeySHA256 = c.Artifacts.ControllerPublicKeySHA256
 	m.Protocol.GuestPublicKeySHA256 = c.Artifacts.GuestPublicKeySHA256
 	m.QEMU.ConfigurationSHA256, err = manifest.ConfigurationSHA256(m)
@@ -469,6 +476,10 @@ func TestExclusiveIdentityCreationNeverReplaces(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	loaded, err := LoadReservedKeyMaterial(root, c)
+	if err != nil || !bytes.Equal(loaded.ControllerPrivate, material.Keys.ControllerPrivate) || !bytes.Equal(loaded.GuestPublic, material.Keys.GuestPublic) {
+		t.Fatalf("reload exact reserved identity: err=%v", err)
+	}
 	before, err := os.ReadFile(reserved.ControllerPrivateKey)
 	if err != nil {
 		t.Fatal(err)
@@ -499,6 +510,46 @@ func TestExclusiveIdentityCreationNeverReplaces(t *testing.T) {
 	}
 }
 
+func TestReservedIdentityRecordIsStrictAndOwnerOnly(t *testing.T) {
+	t.Run("widened mode", func(t *testing.T) {
+		c, _, material := contractFixture(t)
+		root := filepath.Join(t.TempDir(), "identity")
+		if _, err := ReserveIdentity(root, c, material.Keys); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Chmod(filepath.Join(root, "identity.json"), 0o640); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := LoadReservedKeyMaterial(root, c); err == nil {
+			t.Fatal("expected widened identity-record mode rejection")
+		}
+	})
+	t.Run("unknown field", func(t *testing.T) {
+		c, _, material := contractFixture(t)
+		root := filepath.Join(t.TempDir(), "identity")
+		if _, err := ReserveIdentity(root, c, material.Keys); err != nil {
+			t.Fatal(err)
+		}
+		path := filepath.Join(root, "identity.json")
+		data, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var record map[string]any
+		if err := json.Unmarshal(data, &record); err != nil {
+			t.Fatal(err)
+		}
+		record["unexpected"] = true
+		data, _ = json.Marshal(record)
+		if err := os.WriteFile(path, data, 0o600); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := LoadReservedKeyMaterial(root, c); err == nil {
+			t.Fatal("expected unknown identity-record field rejection")
+		}
+	})
+}
+
 func TestNoCloudRenderingIsExactPinnedAndRestricted(t *testing.T) {
 	c, _, material := contractFixture(t)
 	first, err := RenderNoCloud(c, qualification(t), material)
@@ -520,7 +571,7 @@ func TestNoCloudRenderingIsExactPinnedAndRestricted(t *testing.T) {
 		all.Write(file.Content)
 	}
 	rendered := all.String()
-	for _, required := range []string{"network-config", "package_update: false", "package_upgrade: false", "ssh_pwauth: false", "system: true", "shell: /usr/sbin/nologin", "lock_passwd: true", "ethernets: {}", c.DiskSerial, c.FilesystemUUID, "dockpipe-agent.service", "/usr/libexec/dockpipe-guest-agent", "[/usr/bin/chgrp, --dereference, dockpipe-agent, /dev/virtio-ports/org.dockpipe.agent.1]", "[/usr/bin/chmod, \"0660\", /dev/virtio-ports/org.dockpipe.agent.1]"} {
+	for _, required := range []string{"network-config", "package_update: false", "package_upgrade: false", "ssh_pwauth: false", "system: true", "shell: /usr/sbin/nologin", "lock_passwd: true", "ethernets: {}", c.DiskSerial, c.FilesystemUUID, "dockpipe-agent.service", "/usr/libexec/dockpipe-guest-agent", "/usr/libexec/dockpipe-sqlite-vm-harness", "[/usr/bin/chgrp, --dereference, dockpipe-agent, /dev/virtio-ports/org.dockpipe.agent.1]", "[/usr/bin/chmod, \"0660\", /dev/virtio-ports/org.dockpipe.agent.1]"} {
 		if !strings.Contains(rendered, required) {
 			t.Fatalf("rendered seed missing %q", required)
 		}
@@ -543,7 +594,7 @@ func TestNoCloudRenderingIsExactPinnedAndRestricted(t *testing.T) {
 		decoded, err := base64.StdEncoding.DecodeString(encoded)
 		if err == nil {
 			var candidate AgentConfig
-			if json.Unmarshal(decoded, &candidate) == nil && candidate.Schema == "dockpipe.vm.guest-agent-config.v2" {
+			if json.Unmarshal(decoded, &candidate) == nil && candidate.Schema == "dockpipe.vm.guest-agent-config.v3" {
 				renderedConfig = candidate
 			}
 		}

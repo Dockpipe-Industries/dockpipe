@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"syscall"
 	"time"
 
 	"dockpipe.vm/tools/internal/executor"
@@ -16,7 +17,7 @@ import (
 	"dockpipe.vm/tools/internal/xdg"
 )
 
-const version = "1.1.5"
+const version = "1.2.0"
 
 func main() {
 	manifestPath := flag.String("validate-manifest", "", "validate an offline qualification manifest")
@@ -31,14 +32,25 @@ func main() {
 	identityMaterialPath := flag.String("identity-material", "", "load the exact prepared identity-material bundle")
 	cleanupExecutorPath := flag.String("cleanup-executor", "", "load a preserved executor contract for separately authorized exact cleanup")
 	cleanupAuthorizationPath := flag.String("cleanup-authorization", "", "load the fresh exact cleanup authorization")
+	gate3ExecutorPath := flag.String("gate3-executor", "", "load the exact qualified executor for inert Gate 3 planning")
+	gate3ProvisioningPath := flag.String("gate3-provisioning", "", "load the exact provisioning contract for Gate 3")
+	gate3ManifestPath := flag.String("gate3-manifest", "", "load the exact qualification manifest for Gate 3")
+	gate3PlanPath := flag.String("gate3-plan", "", "load the exact inert Gate 3 plan for execution")
+	gate3AuthorizationPath := flag.String("gate3-authorization", "", "load the fresh exact Gate 3 authorization")
+	gate3TokenPath := flag.String("gate3-token", "", "load the owner-only destructive Gate 3 token")
+	executeGate3 := flag.Bool("execute-gate3", false, "execute the exact authorized Gate 3 cohort")
 	showVersion := flag.Bool("version", false, "print version")
 	flag.Parse()
 	if *showVersion {
 		fmt.Println("dockpipe-qemu-controller", version)
 		return
 	}
+	gate3InputWithoutExecutor := *gate3ExecutorPath == "" && (*gate3ProvisioningPath != "" || *gate3ManifestPath != "" || *gate3PlanPath != "" || *gate3AuthorizationPath != "" || *gate3TokenPath != "" || *executeGate3)
+	if gate3InputWithoutExecutor {
+		fatal("Gate 3 inputs require --gate3-executor")
+	}
 	if *prepareIdentityPath != "" {
-		if *manifestPath != "" || *configurationSHA256 || *provisioningPath != "" || *liveAuthorizationPath != "" || *executeQualification || *identityMaterialPath != "" || *cleanupExecutorPath != "" || *cleanupAuthorizationPath != "" {
+		if *manifestPath != "" || *configurationSHA256 || *provisioningPath != "" || *liveAuthorizationPath != "" || *executeQualification || *identityMaterialPath != "" || *cleanupExecutorPath != "" || *cleanupAuthorizationPath != "" || *gate3ExecutorPath != "" || *executeGate3 {
 			fatal("identity preparation is a separate offline operation")
 		}
 		paths, checkout := environment()
@@ -47,6 +59,74 @@ func main() {
 			fatal(err.Error())
 		}
 		if err := json.NewEncoder(os.Stdout).Encode(descriptor); err != nil {
+			fatal(err.Error())
+		}
+		return
+	}
+	if *gate3ExecutorPath != "" {
+		if *cleanupExecutorPath != "" || *prepareIdentityPath != "" || *manifestPath != "" || *provisioningPath != "" || *liveAuthorizationPath != "" || *executeQualification || *identityMaterialPath != "" || *cleanupAuthorizationPath != "" || *configurationSHA256 || *planRuntime != "" {
+			fatal("Gate 3 is a separate exact executor operation")
+		}
+		if *gate3ProvisioningPath == "" || *gate3ManifestPath == "" {
+			fatal("Gate 3 requires the exact provisioning contract and qualification manifest")
+		}
+		execution, err := executor.Load(*gate3ExecutorPath)
+		if err != nil {
+			fatal(err.Error())
+		}
+		contract, err := provisioning.Load(*gate3ProvisioningPath)
+		if err != nil {
+			fatal(err.Error())
+		}
+		qualification, err := manifest.Load(*gate3ManifestPath)
+		if err != nil {
+			fatal(err.Error())
+		}
+		derived, err := executor.BuildGate3Plan(execution, contract, qualification)
+		if err != nil {
+			fatal(err.Error())
+		}
+		if !*executeGate3 {
+			if *gate3PlanPath != "" || *gate3AuthorizationPath != "" || *gate3TokenPath != "" {
+				fatal("inert Gate 3 planning accepts no plan, authorization, or token input")
+			}
+			if err := json.NewEncoder(os.Stdout).Encode(derived); err != nil {
+				fatal(err.Error())
+			}
+			return
+		}
+		if *gate3PlanPath == "" || *gate3AuthorizationPath == "" || *gate3TokenPath == "" {
+			fatal("live Gate 3 requires the exact plan, authorization, and token")
+		}
+		plan, err := executor.LoadGate3Plan(*gate3PlanPath)
+		if err != nil || plan.PlanSHA256 != derived.PlanSHA256 {
+			fatal("Gate 3 plan does not match the freshly derived inert plan")
+		}
+		authorization, err := executor.LoadGate3Authorization(*gate3AuthorizationPath)
+		if err != nil {
+			fatal(err.Error())
+		}
+		token, err := loadGate3Token(*gate3TokenPath)
+		if err != nil {
+			fatal(err.Error())
+		}
+		identityRoot := filepath.Join(contract.Roots.Config, "instances", contract.RunID, contract.CohortID, "identity")
+		keys, err := provisioning.LoadReservedKeyMaterial(identityRoot, contract)
+		if err != nil {
+			fatal(err.Error())
+		}
+		runner, err := executor.NewGate3LinuxRunner(executor.Gate3RunnerConfig{Plan: plan, Execution: execution, Contract: contract, Manifest: qualification, Keys: keys, Authorization: authorization, Token: token, Now: time.Now})
+		if err != nil {
+			fatal(err.Error())
+		}
+		result, err := executor.ExecuteGate3(context.Background(), plan, execution, authorization, time.Now(), runner)
+		if err != nil {
+			fatal(err.Error())
+		}
+		if err := executor.StoreGate3Result(plan, result); err != nil {
+			fatal(err.Error())
+		}
+		if err := json.NewEncoder(os.Stdout).Encode(result); err != nil {
 			fatal(err.Error())
 		}
 		return
@@ -152,7 +232,11 @@ func main() {
 			if err != nil {
 				fatal(err.Error())
 			}
-			execution, err := executor.Build(contract, plan, m, checkout, provisioning.RenderMaterial{Keys: keys, ControllerBinary: controllerBinary, GuestAgentBinary: guestBinary})
+			harnessBinary, err := os.ReadFile(contract.Artifacts.HarnessBinary)
+			if err != nil {
+				fatal(err.Error())
+			}
+			execution, err := executor.Build(contract, plan, m, checkout, provisioning.RenderMaterial{Keys: keys, ControllerBinary: controllerBinary, GuestAgentBinary: guestBinary, HarnessBinary: harnessBinary})
 			if err != nil {
 				fatal(err.Error())
 			}
@@ -224,4 +308,26 @@ func environment() (xdg.Paths, string) {
 func fatal(message string) {
 	fmt.Fprintln(os.Stderr, "dockpipe-qemu-controller:", message)
 	os.Exit(2)
+}
+
+func loadGate3Token(path string) (string, error) {
+	if !filepath.IsAbs(path) {
+		return "", fmt.Errorf("Gate 3 token path must be absolute")
+	}
+	info, err := os.Lstat(path)
+	if err != nil || info.Mode()&os.ModeSymlink != 0 || !info.Mode().IsRegular() || info.Mode().Perm() != 0o600 {
+		return "", fmt.Errorf("Gate 3 token must be a regular owner-only file")
+	}
+	if stat, ok := info.Sys().(*syscall.Stat_t); ok && int(stat.Uid) != os.Geteuid() {
+		return "", fmt.Errorf("Gate 3 token must be owned by the current user")
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return "", err
+	}
+	token := string(data)
+	if len(token) != 64 {
+		return "", fmt.Errorf("Gate 3 token must contain exactly 64 bytes")
+	}
+	return token, nil
 }

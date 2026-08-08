@@ -95,6 +95,9 @@ func BuildPlan(c Contract, paths xdg.Paths, m manifest.Manifest, checkoutRoot st
 	if err := ValidatePinnedBinary(c.Artifacts.GuestAgentBinary, c.Artifacts.GuestAgentBinarySHA256); err != nil {
 		return Plan{}, err
 	}
+	if err := ValidatePinnedBinary(c.Artifacts.HarnessBinary, c.Artifacts.HarnessBinarySHA256); err != nil {
+		return Plan{}, err
+	}
 	if err := ValidateReviewedAssets(c.Artifacts.AssetsRoot); err != nil {
 		return Plan{}, err
 	}
@@ -121,7 +124,7 @@ func BuildPlan(c Contract, paths xdg.Paths, m manifest.Manifest, checkoutRoot st
 	if err != nil || m.QEMU.ConfigurationSHA256 != configurationSHA256 {
 		return Plan{}, fmt.Errorf("qualification configuration SHA-256 mismatch")
 	}
-	if m.Protocol.ControllerBinarySHA256 != c.Artifacts.ControllerBinarySHA256 || m.Protocol.GuestAgentBinarySHA256 != c.Artifacts.GuestAgentBinarySHA256 || m.Protocol.ControllerPublicKeySHA256 != c.Artifacts.ControllerPublicKeySHA256 || m.Protocol.GuestPublicKeySHA256 != c.Artifacts.GuestPublicKeySHA256 {
+	if m.Protocol.ControllerBinarySHA256 != c.Artifacts.ControllerBinarySHA256 || m.Protocol.GuestAgentBinarySHA256 != c.Artifacts.GuestAgentBinarySHA256 || m.Protocol.HarnessSHA256 != c.Artifacts.HarnessBinarySHA256 || m.Protocol.ControllerPublicKeySHA256 != c.Artifacts.ControllerPublicKeySHA256 || m.Protocol.GuestPublicKeySHA256 != c.Artifacts.GuestPublicKeySHA256 {
 		return Plan{}, fmt.Errorf("qualification protocol pins do not match the provisioning contract")
 	}
 	instance := filepath.Join(c.Roots.Instances, c.RunID, c.CohortID)
@@ -185,7 +188,7 @@ func BuildPlan(c Contract, paths xdg.Paths, m manifest.Manifest, checkoutRoot st
 		{4, "create-private-data-disk", []string{"raw", fmt.Sprint(manifest.DataDiskBytes), "sparse"}, []string{dataDisk}, []string{"exclusive create", "single private data disk"}},
 		{5, "render-nocloud", []string{c.Artifacts.AssetsRoot, c.Artifacts.ControllerBinarySHA256, c.Artifacts.GuestAgentBinarySHA256, c.Artifacts.ControllerPublicKeySHA256, c.Artifacts.GuestPublicKeySHA256, c.DiskSerial, c.FilesystemUUID}, []string{filepath.Join(instance, "seed-tree")}, []string{"network disabled", "SSH disabled", "no packages", "no arbitrary commands", "compiled reviewed-asset hashes exact"}},
 		{6, "create-nocloud-seed", []string{filepath.Join(instance, "seed-tree"), SeedLabel, "dockpipe-go-iso9660-v1"}, []string{seed}, []string{"exclusive create", "deterministic ISO9660", "local NoCloud only", "no external seed tool"}},
-		{7, "install-hash-pinned-assets", []string{c.Artifacts.ControllerBinary, c.Artifacts.GuestAgentBinary, c.Artifacts.AssetsRoot}, []string{"/usr/libexec/dockpipe-guest-agent", "/etc/systemd/system/dockpipe-agent.service"}, []string{"binary hashes exact", "mutual public-key pins exact", "reviewed systemd sandbox"}},
+		{7, "install-hash-pinned-assets", []string{c.Artifacts.ControllerBinary, c.Artifacts.GuestAgentBinary, c.Artifacts.HarnessBinary, c.Artifacts.AssetsRoot}, []string{"/usr/libexec/dockpipe-guest-agent", "/usr/libexec/dockpipe-sqlite-vm-harness", "/etc/systemd/system/dockpipe-agent.service"}, []string{"binary hashes exact", "mutual public-key pins exact", "reviewed systemd sandbox", "test-only harness has no arbitrary argument surface"}},
 		{8, "format-and-mount-data-disk", []string{"/dev/disk/by-id/virtio-" + c.DiskSerial, c.FilesystemUUID, strings.Join(manifest.RequiredMountOptions, ",")}, []string{manifest.QualificationMount}, []string{"whole-device ext4", "lazy initialization disabled", "mount by UUID"}},
 		{9, "launch-qemu", []string{string(launchJSON), qemuJSON, qmp, agentSocket}, []string{filepath.Join(runtime, "process.json")}, []string{"KVM only", "network none", "exact two private writable disks plus one read-only NoCloud seed", "no passthrough or shares", "no fallback tool"}},
 		{10, "capture-first-boot-console", []string{observationJSON}, []string{observation.EvidencePath}, []string{"controller creates listener and exclusive owner-only evidence", "QEMU is a one-shot client", "capture only isa-serial/ttyS0", "4 MiB prefix cap", "overflow fails closed", "stop and join before verification returns, shutdown, or preservation"}},

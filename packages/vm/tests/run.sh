@@ -10,7 +10,7 @@ cd "$PACKAGE_ROOT/tools"
 GOWORK=off GOCACHE="$VM_TEST_TMP/cache" GOTMPDIR="$VM_TEST_TMP/tmp" CGO_ENABLED=0 go test -mod=readonly ./...
 
 cd "$PACKAGE_ROOT"
-grep -Fq 'version: 1.1.5' package.yml
+grep -Fq 'version: 1.2.0' package.yml
 grep -Fq 'models/QemuVmResolverConfig' resolvers/qemu/types.yml
 grep -Fq 'models/LinuxQemuVmResolverConfig' resolvers/qemu/types.yml
 grep -Fq 'runtime: vm' workflows/windows-vm/config.yml
@@ -28,6 +28,7 @@ grep -Fq '"guest_verification_timeout_seconds": 240' manifests/linux-provisionin
 grep -Fq 'dockpipe.vm.live-authorization.v3' manifests/linux-live-authorization.template.json
 grep -Fq 'dockpipe.vm.cleanup-authorization.v1' manifests/linux-cleanup-authorization.template.json
 grep -Fq 'dockpipe.vm.identity-material.v1' tools/internal/identitymaterial/material.go
+grep -Fq 'dockpipe.vm.executor.v9' tools/internal/executor/contract.go
 grep -Fq 'dockpipe.vm.executor.v8' tools/internal/executor/contract.go
 grep -Fq 'dockpipe.vm.executor.v7' tools/internal/executor/contract.go
 grep -Fq 'dockpipe.vm.executor.v6' tools/internal/executor/contract.go
@@ -38,6 +39,11 @@ grep -Fq 'dockpipe.vm.first-boot-observation.v1' tools/internal/provisioning/fir
 grep -Fq -- '--execute-qualification' tools/cmd/dockpipe-qemu-controller/main.go
 grep -Fq 'configuration-sha256' tools/cmd/dockpipe-qemu-controller/main.go
 grep -Fq -- '--cleanup-executor' tools/cmd/dockpipe-qemu-controller/main.go
+grep -Fq 'execute-gate3' tools/cmd/dockpipe-qemu-controller/main.go
+grep -Fq 'dockpipe.vm.gate3-authorization.v1' manifests/linux-gate3-authorization.template.json
+grep -Fq '"approved": false' manifests/linux-gate3-authorization.template.json
+grep -Fq 'after-validation-before-ack' tools/internal/executor/gate3.go
+grep -Fq 'PidfdSendSignal' tools/internal/executor/gate3_runner_linux.go
 grep -Fq 'dockpipe.vm.toolchain.v1' toolchains/qemu-11.0.3-linux-amd64/toolchain.evidence.json
 grep -Fq 'dockpipe.vm.toolchain-build-evidence.v1' toolchains/qemu-11.0.3-linux-amd64/build-contract.evidence.json
 grep -Fq '"execute": false' toolchains/qemu-11.0.3-linux-amd64/build-contract.evidence.json
@@ -66,14 +72,16 @@ if grep -R -Eq 'REPLACE_(WITH|BUILD)' toolchains/qemu-11.0.3-linux-amd64/*.evide
   exit 1
 fi
 
-if grep -R -Eq 'os/exec|exec\.Command|syscall\.Exec' tools/internal/provisioning tools/internal/guest; then
-  echo 'planning and guest service code must not expose raw subprocess execution' >&2
+guest_exec_files="$(grep -R -El 'os/exec|exec\.Command|syscall\.Exec' tools/internal/guest --include='*.go' || true)"
+if [[ "$guest_exec_files" != "tools/internal/guest/harness_linux.go" ]]; then
+  echo "guest subprocess execution must exist only in the hash-pinned harness adapter: $guest_exec_files" >&2
   exit 1
 fi
 
 executor_exec_files="$(grep -R -El 'os/exec|exec\.Command|syscall\.Exec' tools/internal/executor --include='*.go' || true)"
-if [[ "$executor_exec_files" != "tools/internal/executor/runner_linux.go" ]]; then
-  echo "subprocess execution must exist only in the typed Linux runner: $executor_exec_files" >&2
+expected_executor_exec_files=$'tools/internal/executor/runner_linux.go\ntools/internal/executor/gate3_runner_linux.go'
+if [[ "$executor_exec_files" != "$expected_executor_exec_files" ]]; then
+  echo "subprocess execution must exist only in the typed Linux runners: $executor_exec_files" >&2
   exit 1
 fi
 

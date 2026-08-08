@@ -195,6 +195,7 @@ func TestBuildDerivesClosedExecutorContractFromAuthorizedPlan(t *testing.T) {
 	}
 	controllerBinary := []byte("controller")
 	guestBinary := []byte("guest")
+	harnessBinary := []byte("harness")
 	assetsRoot, err := filepath.Abs(filepath.Join("..", "..", "..", "workflows", "linux-vm", "assets"))
 	if err != nil {
 		t.Fatal(err)
@@ -205,7 +206,7 @@ func TestBuildDerivesClosedExecutorContractFromAuthorizedPlan(t *testing.T) {
 		SourceImage: provisioning.SourceImage{Path: filepath.Join(root, "source.img"), SHA256: manifest.UbuntuImageSHA256, Bytes: provisioning.PinnedImageBytes},
 		Toolchain:   provisioning.ToolchainReference{Root: toolchainRoot, Manifest: toolchainManifest, ManifestSHA256: testSHA(toolchainJSON)},
 		Roots:       provisioning.Roots{Instances: filepath.Join(root, "instances"), Evidence: filepath.Join(root, "evidence"), Config: filepath.Join(root, "config"), Runtime: shortRuntime},
-		Artifacts:   provisioning.Artifacts{AssetsRoot: assetsRoot, ControllerBinary: filepath.Join(root, "controller"), ControllerBinarySHA256: testSHA(controllerBinary), GuestAgentBinary: filepath.Join(root, "guest"), GuestAgentBinarySHA256: testSHA(guestBinary), ControllerPublicKeySHA256: testSHA(controllerPublic), GuestPublicKeySHA256: testSHA(guestPublic)},
+		Artifacts:   provisioning.Artifacts{AssetsRoot: assetsRoot, ControllerBinary: filepath.Join(root, "controller"), ControllerBinarySHA256: testSHA(controllerBinary), GuestAgentBinary: filepath.Join(root, "guest"), GuestAgentBinarySHA256: testSHA(guestBinary), HarnessBinary: filepath.Join(root, "harness"), HarnessBinarySHA256: testSHA(harnessBinary), ControllerPublicKeySHA256: testSHA(controllerPublic), GuestPublicKeySHA256: testSHA(guestPublic)},
 		Execution:   provisioning.RequiredExecutionPolicy(),
 	}
 	contractSHA, _ := c.Digest()
@@ -236,7 +237,7 @@ func TestBuildDerivesClosedExecutorContractFromAuthorizedPlan(t *testing.T) {
 	operations[9].Outputs = []string{observation.EvidencePath}
 	p.Operations = operations
 	p.PlanSHA256, _ = p.Digest()
-	material := provisioning.RenderMaterial{Keys: provisioning.KeyMaterial{ControllerPublic: controllerPublic, ControllerPrivate: controllerPrivate, GuestPublic: guestPublic, GuestPrivate: guestPrivate}, ControllerBinary: controllerBinary, GuestAgentBinary: guestBinary}
+	material := provisioning.RenderMaterial{Keys: provisioning.KeyMaterial{ControllerPublic: controllerPublic, ControllerPrivate: controllerPrivate, GuestPublic: guestPublic, GuestPrivate: guestPrivate}, ControllerBinary: controllerBinary, GuestAgentBinary: guestBinary, HarnessBinary: harnessBinary}
 	execution, err := Build(c, p, m, "/checkout", material)
 	if err != nil {
 		t.Fatal(err)
