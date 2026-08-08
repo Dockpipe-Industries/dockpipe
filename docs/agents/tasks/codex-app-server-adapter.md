@@ -4676,6 +4676,18 @@ Embedded build metadata and every non-standard dependency preserve the
 package-local boundary. The review root is unpromoted; no cleanup or live gate
 action occurred.
 
+The separately approved executor-v7 cleanup wrapper SHA-256
+`7dd37da324571170d1e587441356aa4d5f96cd98c6a307544d6fb057d926be69`
+then executed exactly once. Cleanup authorization SHA-256 is
+`262595f83f033d7311a6db7343d0b1ceeb296cebd2fc8f65538655a3b03bc676`;
+the pinned controller returned `completed=["cleanup"]`, `cleanup_run=true`,
+and `preserved=false`. Cleanup-result SHA-256 is
+`253cd08488148f3d1508c9892aa12f813b4cd491ac836bd2704929ffbdaa608c`.
+Independent read-back confirmed all 12 executor-ordered resources and QEMU PID
+`4150024` absent. The executor-v7 promotion and executor-v8 source-review
+controllers remain hash-identical. No retry, promotion, preparation, live Gate
+2, or Gate 3 action occurred.
+
 The implementation test matrix is:
 
 1. **Adapter selection:** a new normal Pipeon Codex session defaults to App Server; the explicit exec
