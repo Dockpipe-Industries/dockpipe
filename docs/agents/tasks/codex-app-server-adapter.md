@@ -4242,6 +4242,22 @@ fresh run/cohort and identities, new preparation, and a separately authorized li
 are required. Exact cleanup of the preserved failed roots remains a distinct authorization. Gate 2
 is not yet qualified and Gate 3 remains blocked.
 
+The post-correction offline source-build review used private root
+`/tmp/dockpipe-vm-source-review.2ikAeuDJ` and exact repository checkpoint
+`f6d5c19c24613945f5cbcf190aca50725ab51fdf`. Two independent Linux/amd64 lanes
+used separate caches and temporary directories with Go 1.25.0, `GOWORK=off`, `CGO_ENABLED=0`,
+`GOAMD64=v1`, `-trimpath`, and `-buildvcs=false`. Their controller outputs are byte-identical at
+`5447246` bytes and SHA-256
+`564d57937bef2856777dc3a3d05a57649e8918a0572f9f7f4d758308e9a7089c`; their guest-agent outputs
+are byte-identical at `3870038` bytes and SHA-256
+`7434d3980013e0a978dd73851b4893f1325f6d1c2a27222afcfc20024d46e583`. The Windows/amd64
+compatibility output is
+`5f8b3b83b373ca5d8e70a63283871bdc1842b5e8bdd14a69191d56d362b2a84e` and is not a Linux
+promotion input. Go dependency closure inspection found only the standard library and packages under
+`packages/vm/tools/**`. This gate created no live identity, input, plan, authorization, XDG root,
+disk, seed, socket, process, cleanup, Gate 2, or Gate 3 action. The builds remain offline review
+artifacts until a separately authorized fresh promotion.
+
 The implementation test matrix is:
 
 1. **Adapter selection:** a new normal Pipeon Codex session defaults to App Server; the explicit exec
