@@ -4327,6 +4327,22 @@ requires separately authorized exact cleanup, and fresh builds, promotion,
 preparation, and one new live authorization are required before Gate 2 can be
 qualified. Gate 3 remains blocked.
 
+The corrected source was then rebuilt twice from exact checkpoint
+`9f6d406e9725acb73476bcde1617fc4fce87b700` under private root
+`/tmp/dockpipe-vm-source-review.HIC5Ps`. Independent Linux/amd64 lanes produced
+byte-identical controller outputs of `5447222` bytes and SHA-256
+`c6c2ce8abebf9027af01fdde6a4ac8c487eb53124fbea5c2edeee7c538f5ad7b`,
+and byte-identical guest-agent outputs of `3870222` bytes and SHA-256
+`3a2d7657e13b6ec30fc8dc268ad977bb248b6598749979edf63223d364cc59e7`.
+The Windows/amd64 guest-agent compatibility output is `3966976` bytes and
+SHA-256 `86caf93a18159e8b40275f43b02e2930baa9eaffad76227285df8e0a08f3ea6c`;
+it is not a Linux promotion input. Builds used Go 1.25.0, `GOWORK=off`,
+`CGO_ENABLED=0`, `GOAMD64=v1`, `-trimpath`, and `-buildvcs=false`. Embedded
+metadata matches those settings and every non-standard dependency resolves
+inside `packages/vm/tools/**`. This was offline evidence only and created no
+promotion, identity, authorization, live root, disk, socket, process, cleanup,
+Gate 2, or Gate 3 action.
+
 The implementation test matrix is:
 
 1. **Adapter selection:** a new normal Pipeon Codex session defaults to App Server; the explicit exec
