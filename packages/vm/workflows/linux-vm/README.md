@@ -204,5 +204,68 @@ and guest-agent builds. Their SHA-256 values are respectively
 The Windows/amd64 guest-agent cross-build SHA-256 is
 `5f8b3b83b373ca5d8e70a63283871bdc1842b5e8bdd14a69191d56d362b2a84e`;
 it is compatibility evidence only. No output was promoted or copied into a live
-or preserved root. One fresh separately authorized Gate 2 invocation is the
-remaining live gate; Gate 3 remains blocked.
+or preserved root.
+
+## Offline promotion boundary
+
+The reviewed deterministic builds are not yet Gate 2 inputs. A distinct
+offline promotion must first publish only the Linux/amd64 controller and guest
+agent into `/home/jamie/.local/share/dockpipe-vm-gates`, a fixed non-live
+task-owned namespace separate from the checkout, package/install and generated
+stores, caches, live XDG roots, and preserved Gate 2 roots. Promotion IDs match
+`vmp-[0-9a-f]{16}`. The first proposed ID is `vmp-2026080815f0ea3f`:
+
+- root:
+  `/home/jamie/.local/share/dockpipe-vm-gates/promotions/vmp-2026080815f0ea3f`
+- evidence:
+  `/home/jamie/.local/share/dockpipe-vm-gates/evidence/vmp-2026080815f0ea3f/promotion.evidence.json`
+
+The root is exclusively created mode `0700`. Its immutable closed inventory is
+exactly `dockpipe-qemu-controller` (`5447054` bytes,
+`b3e428bbadd11d1c9576676ad1f7d0769baddf77a256022eda0bbbc6720cf8cc`)
+and `dockpipe-guest-agent` (`3870038` bytes,
+`7434d3980013e0a978dd73851b4893f1325f6d1c2a27222afcfc20024d46e583`).
+Both are regular non-symlink single-link static Linux/amd64 ELF executables,
+exclusively created no-follow as mode `0500`, owned by the effective user and
+primary group. No other entry may remain. The `linux-b` outputs are rechecked
+byte-for-byte immediately before promotion but never copied. The Windows hash
+`5f8b3b83b373ca5d8e70a63283871bdc1842b5e8bdd14a69191d56d362b2a84e`
+is compatibility-only evidence with `promoted: false`.
+
+The gate verifies owned non-symlink namespace components and rejects checkout,
+store, cache, live, preserved, source-review, and mutual overlap. It exclusively
+creates exact mode-`0700` promotion and evidence directories, failing if either
+task-owned destination exists. All created directories and files are owned by
+the effective user and primary group. It synchronizes the promotion-root
+parent, copies and synchronizes each exclusive mode-`0500` file, closes and
+reopens it no-follow for complete metadata/hash/Go-build read-back, verifies the
+exact inventory, and synchronizes the promotion root. It then synchronizes the
+new evidence-directory parent, exclusively writes mode-`0600`
+`promotion.evidence.json`, synchronizes and reopens it, synchronizes the
+evidence directory, and immediately reads back both roots. Any failure stops
+once and preserves partial roots without retry, replacement, repair, fallback,
+or cleanup; the promotion ID cannot be reused.
+
+Canonical evidence uses schema `dockpipe.vm.offline-promotion.v1`, stable field
+names, and an ordered two-entry `promoted_inventory`. It records the promotion
+ID, checkpoint, source-review root, exact `linux-a` and `linux-b` paths and
+comparison results, full Go build provenance, destination/evidence paths,
+effective UID/GID and modes, per-file paths/source/hash/size/type/mode/UID/GID/
+link-count/Go metadata, the non-promoted Windows artifact, every file and
+directory sync boundary, exact closed inventory, package/engine boundary, and
+explicitly false identity, live-input, plan, authorization, disk, seed, socket,
+QEMU, Gate 2, cleanup, and Gate 3 actions. It contains no secret, private key,
+live authorization, or preserved-root content.
+
+The exact contract and stable evidence field names are defined in the VM
+package README. A successful promotion is immutable read-only input: Gate 2
+does not consume, replace, mutate, expire, or clean it. A failed promotion
+preserves its partial roots. Either removal path requires a separate exact
+offline cleanup authorization. Only a later Gate 2 preparation gate may bind
+the promoted paths into a task-owned provisioning input outside the checkout;
+the checked-in template remains machine-path neutral.
+
+This docs-only decision produced no promotion evidence and grants no Gate 2
+authority. Source-build evidence, offline promotion, Gate 2 preparation, live
+authorization/execution, cleanup, and Gate 3 are separate gates. Gate 2 remains
+unqualified and Gate 3 remains blocked.
