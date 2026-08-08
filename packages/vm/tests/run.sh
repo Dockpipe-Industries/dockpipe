@@ -10,7 +10,7 @@ cd "$PACKAGE_ROOT/tools"
 GOWORK=off GOCACHE="$VM_TEST_TMP/cache" GOTMPDIR="$VM_TEST_TMP/tmp" CGO_ENABLED=0 go test -mod=readonly ./...
 
 cd "$PACKAGE_ROOT"
-grep -Fq 'version: 0.9.0' package.yml
+grep -Fq 'version: 1.1.0' package.yml
 grep -Fq 'models/QemuVmResolverConfig' resolvers/qemu/types.yml
 grep -Fq 'models/LinuxQemuVmResolverConfig' resolvers/qemu/types.yml
 grep -Fq 'runtime: vm' workflows/windows-vm/config.yml
@@ -25,6 +25,13 @@ grep -Fq 'dockpipe.vm.v2' tools/internal/protocol/frame.go
 grep -Fq 'FirstRequestSequence' tools/internal/protocol/frame.go
 grep -Fq 'dockpipe.vm.provisioning.v3' manifests/linux-provisioning.template.json
 grep -Fq 'dockpipe.vm.live-authorization.v3' manifests/linux-live-authorization.template.json
+grep -Fq 'dockpipe.vm.cleanup-authorization.v1' manifests/linux-cleanup-authorization.template.json
+grep -Fq 'dockpipe.vm.identity-material.v1' tools/internal/identitymaterial/material.go
+grep -Fq 'dockpipe.vm.executor.v3' tools/internal/executor/contract.go
+grep -Fq 'dockpipe.vm.first-boot-observation.v1' tools/internal/provisioning/first_boot_observation.go
+grep -Fq -- '--execute-qualification' tools/cmd/dockpipe-qemu-controller/main.go
+grep -Fq 'configuration-sha256' tools/cmd/dockpipe-qemu-controller/main.go
+grep -Fq -- '--cleanup-executor' tools/cmd/dockpipe-qemu-controller/main.go
 grep -Fq 'dockpipe.vm.toolchain.v1' toolchains/qemu-11.0.3-linux-amd64/toolchain.evidence.json
 grep -Fq 'dockpipe.vm.toolchain-build-evidence.v1' toolchains/qemu-11.0.3-linux-amd64/build-contract.evidence.json
 grep -Fq '"execute": false' toolchains/qemu-11.0.3-linux-amd64/build-contract.evidence.json
@@ -45,10 +52,18 @@ if grep -R -Eq 'REPLACE_(WITH|BUILD)' toolchains/qemu-11.0.3-linux-amd64/*.evide
   exit 1
 fi
 
-if grep -R -Eq 'os/exec|exec\.Command|syscall\.Exec' tools/internal/provisioning tools/internal/executor tools/internal/guest; then
-  echo 'planning, typed executor, and guest service code must not expose raw subprocess execution' >&2
+if grep -R -Eq 'os/exec|exec\.Command|syscall\.Exec' tools/internal/provisioning tools/internal/guest; then
+  echo 'planning and guest service code must not expose raw subprocess execution' >&2
   exit 1
 fi
+
+executor_exec_files="$(grep -R -El 'os/exec|exec\.Command|syscall\.Exec' tools/internal/executor --include='*.go' || true)"
+if [[ "$executor_exec_files" != "tools/internal/executor/runner_linux.go" ]]; then
+  echo "subprocess execution must exist only in the typed Linux runner: $executor_exec_files" >&2
+  exit 1
+fi
+
+grep -Fq 'cmd.Env = []string{}' tools/internal/executor/runner_linux.go
 
 if grep -Eiq '(qemu-system|virsh|systemctl|poweroff|reboot|shutdown|SIGKILL|pidfd).*([[:space:]]run|[[:space:]]start|[[:space:]]send|[[:space:]]kill)' examples/linux-qualification-offline.yml; then
   echo 'offline qualification example contains a live or destructive command' >&2

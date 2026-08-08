@@ -16,6 +16,13 @@ func sample(t *testing.T) Manifest {
 	return m
 }
 
+func shortRuntimeRoot(t *testing.T, name string) string {
+	t.Helper()
+	root := t.TempDir()
+	volumeRoot := filepath.VolumeName(root) + string(filepath.Separator)
+	return filepath.Join(volumeRoot, name)
+}
+
 func TestQualificationManifestAndExactCommands(t *testing.T) {
 	m := sample(t)
 	mkfs, err := MkfsCommand(m, "/dev/disk/by-id/virtio-"+m.DataDisk.Serial)
@@ -67,7 +74,7 @@ func TestManifestRejectsUnsafeQualificationVariants(t *testing.T) {
 
 func TestQEMUPlanHasExactIsolationAndBlockPolicy(t *testing.T) {
 	m := sample(t)
-	plan, err := PlanQEMU(m, t.TempDir())
+	plan, err := PlanQEMU(m, shortRuntimeRoot(t, "dp-vm-manifest"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -84,15 +91,34 @@ func TestQEMUPlanHasExactIsolationAndBlockPolicy(t *testing.T) {
 	}
 }
 
+func TestQEMUPlanEnforcesLinuxUnixSocketPathLimit(t *testing.T) {
+	m := sample(t)
+	agentName := m.RunID + ".agent"
+	runtimeLength := LinuxUnixSocketPathMaxBytes - 1 - len(agentName)
+	volumeRoot := filepath.VolumeName(t.TempDir()) + string(filepath.Separator)
+	runtime := filepath.Join(volumeRoot, strings.Repeat("r", runtimeLength-len(volumeRoot)))
+	agentSocket := filepath.Join(runtime, agentName)
+	if got := len([]byte(agentSocket)); got != LinuxUnixSocketPathMaxBytes {
+		t.Fatalf("test did not construct the exact Linux socket boundary: got %d", got)
+	}
+	if _, err := PlanQEMU(m, runtime); err != nil {
+		t.Fatalf("exact %d-byte Unix socket path was rejected: %v", LinuxUnixSocketPathMaxBytes, err)
+	}
+	if _, err := PlanQEMU(m, runtime+"r"); err == nil || !strings.Contains(err.Error(), "agent Unix socket path is 108 bytes") {
+		t.Fatalf("expected deterministic overlength agent-socket rejection, got %v", err)
+	}
+}
+
 func TestProvisioningQEMUPlanBindsFreshDisksAndReadOnlySeed(t *testing.T) {
 	m := sample(t)
 	root := t.TempDir()
-	plan, err := PlanProvisioningQEMU(m, filepath.Join(root, "runtime"), filepath.Join(root, "os.qcow2"), filepath.Join(root, "data.raw"), filepath.Join(root, "seed.iso"))
+	runtimeRoot := shortRuntimeRoot(t, "dp-vm-provisioning")
+	plan, err := PlanProvisioningQEMU(m, runtimeRoot, filepath.Join(root, "os.qcow2"), filepath.Join(root, "data.raw"), filepath.Join(root, "seed.iso"), filepath.Join(runtimeRoot, "console.sock"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	joined := strings.Join(plan.Args, " ")
-	for _, required := range []string{filepath.Join(root, "os.qcow2"), filepath.Join(root, "data.raw"), filepath.Join(root, "seed.iso"), "read-only=on", "scsi-cd", "-nic none"} {
+	for _, required := range []string{filepath.Join(root, "os.qcow2"), filepath.Join(root, "data.raw"), filepath.Join(root, "seed.iso"), "read-only=on", "scsi-cd", "-nic none", "id=dockpipe-first-boot-console", "server=off", "reconnect-ms=0", "-serial chardev:dockpipe-first-boot-console"} {
 		if !strings.Contains(joined, required) {
 			t.Fatalf("provisioning QEMU plan missing %q: %s", required, joined)
 		}

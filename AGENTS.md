@@ -9,6 +9,11 @@ Machine-readable routing: `docs/agents/index.yaml`.
 
 ## Global Hard Rules
 
+When user input is genuinely required and the host supports structured prompts, use Yes/No for
+binary decisions or 2-3 mutually exclusive choices with the recommended option first. Use prose
+when the decision needs more than three meaningful choices, structured choices would misrepresent
+it, or the host lacks that UI.
+
 | Rule | Where to read |
 | --- | --- |
 | Keep `src/lib/` and `src/cmd/` generic. No repo-specific package/workflow/staging knowledge in engine code. | `docs/agents/core/engine-boundary.md` |

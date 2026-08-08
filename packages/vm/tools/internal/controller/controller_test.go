@@ -5,10 +5,50 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"net"
 	"strings"
 	"testing"
 )
+
+func TestQMPFakeSocketNegotiatesAndSendsOnlyTypedPowerdown(t *testing.T) {
+	clientConn, serverConn := net.Pipe()
+	defer clientConn.Close()
+	defer serverConn.Close()
+	done := make(chan error, 1)
+	go func() {
+		_, _ = serverConn.Write([]byte(`{"QMP":{"version":{"qemu":{"major":11}},"capabilities":[]}}` + "\n"))
+		reader := bufio.NewReader(serverConn)
+		for _, want := range []struct{ command, id string }{{"qmp_capabilities", "capabilities-1"}, {"system_powerdown", "powerdown-1"}} {
+			line, err := reader.ReadBytes('\n')
+			if err != nil {
+				done <- err
+				return
+			}
+			var request map[string]string
+			if err = json.Unmarshal(line, &request); err != nil {
+				done <- err
+				return
+			}
+			if request["execute"] != want.command || request["id"] != want.id {
+				done <- fmt.Errorf("unexpected QMP request: %v", request)
+				return
+			}
+			_, _ = serverConn.Write([]byte(`{"return":{},"id":"` + want.id + `"}` + "\n"))
+		}
+		done <- nil
+	}()
+	client := QMPClient{Conn: clientConn}
+	if err := client.Negotiate("capabilities-1"); err != nil {
+		t.Fatal(err)
+	}
+	if err := client.SystemPowerdown("powerdown-1"); err != nil {
+		t.Fatal(err)
+	}
+	if err := <-done; err != nil {
+		t.Fatal(err)
+	}
+}
 
 func TestQMPFakeSocketAllowsQueriesAndRejectsPower(t *testing.T) {
 	clientConn, serverConn := net.Pipe()

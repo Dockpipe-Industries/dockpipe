@@ -1,13 +1,17 @@
 package executor
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io"
+	"os"
 	"path/filepath"
 	"slices"
 	"strings"
+	"syscall"
 	"time"
 
 	"dockpipe.vm/tools/internal/manifest"
@@ -15,7 +19,8 @@ import (
 )
 
 const (
-	Schema               = "dockpipe.vm.executor.v2"
+	Schema               = "dockpipe.vm.executor.v3"
+	LegacyCleanupSchema  = "dockpipe.vm.executor.v2"
 	CleanupSchema        = "dockpipe.vm.cleanup-authorization.v1"
 	NoCloudBuilder       = "dockpipe-go-iso9660-v1"
 	ControlledPowerdown  = "system_powerdown"
@@ -23,22 +28,24 @@ const (
 )
 
 type Contract struct {
-	Schema          string                   `json:"schema"`
-	ContractSHA256  string                   `json:"contract_sha256"`
-	PlanSHA256      string                   `json:"plan_sha256"`
-	ToolchainSHA256 string                   `json:"toolchain_sha256"`
-	ExecutionSHA256 string                   `json:"execution_sha256"`
-	RunID           string                   `json:"run_id"`
-	CohortID        string                   `json:"cohort_id"`
-	OSClone         OSCloneRequest           `json:"os_clone"`
-	DataDisk        SparseRawDiskRequest     `json:"data_disk"`
-	NoCloud         NoCloudSeedRequest       `json:"nocloud"`
-	Launch          LaunchRequest            `json:"launch"`
-	Guest           GuestVerificationRequest `json:"guest_verification"`
-	Shutdown        ShutdownRequest          `json:"shutdown"`
-	Preservation    PreservationRequest      `json:"preservation"`
-	Cleanup         CleanupRequest           `json:"cleanup"`
-	sealed          bool
+	Schema               string                                 `json:"schema"`
+	ContractSHA256       string                                 `json:"contract_sha256"`
+	PlanSHA256           string                                 `json:"plan_sha256"`
+	ToolchainSHA256      string                                 `json:"toolchain_sha256"`
+	ExecutionSHA256      string                                 `json:"execution_sha256"`
+	RunID                string                                 `json:"run_id"`
+	CohortID             string                                 `json:"cohort_id"`
+	ProvisioningRoots    *provisioning.Roots                    `json:"provisioning_roots,omitempty"`
+	OSClone              OSCloneRequest                         `json:"os_clone"`
+	DataDisk             SparseRawDiskRequest                   `json:"data_disk"`
+	NoCloud              NoCloudSeedRequest                     `json:"nocloud"`
+	Launch               LaunchRequest                          `json:"launch"`
+	FirstBootObservation *provisioning.FirstBootObservationPlan `json:"first_boot_observation,omitempty"`
+	Guest                GuestVerificationRequest               `json:"guest_verification"`
+	Shutdown             ShutdownRequest                        `json:"shutdown"`
+	Preservation         PreservationRequest                    `json:"preservation"`
+	Cleanup              CleanupRequest                         `json:"cleanup"`
+	sealed               bool
 }
 
 type OSCloneRequest struct {
@@ -164,10 +171,10 @@ func Build(c provisioning.Contract, p provisioning.Plan, m manifest.Manifest, ch
 	if p.Schema != provisioning.PlanSchema || !p.LiveAuthorized || p.Execute || p.ContractSHA256 != contractSHA || p.PlanSHA256 != planSHA || p.ToolchainSHA256 != c.Toolchain.ManifestSHA256 {
 		return out, fmt.Errorf("executor requires the exact authorized inert provisioning plan")
 	}
-	if len(p.Operations) != 13 {
+	if len(p.Operations) != 14 {
 		return out, fmt.Errorf("executor requires the complete closed provisioning plan")
 	}
-	wantKinds := []string{"reserve-identities", "verify-source-image", "create-private-os-clone", "create-private-data-disk", "render-nocloud", "create-nocloud-seed", "install-hash-pinned-assets", "format-and-mount-data-disk", "launch-qemu", "verify-guest", "controlled-shutdown", "preserve-failure", "cleanup"}
+	wantKinds := []string{"reserve-identities", "verify-source-image", "create-private-os-clone", "create-private-data-disk", "render-nocloud", "create-nocloud-seed", "install-hash-pinned-assets", "format-and-mount-data-disk", "launch-qemu", "capture-first-boot-console", "verify-guest", "controlled-shutdown", "preserve-failure", "cleanup"}
 	for i, operation := range p.Operations {
 		if operation.Order != i+1 || operation.Kind != wantKinds[i] {
 			return out, fmt.Errorf("provisioning operation order or kind changed")
@@ -200,7 +207,18 @@ func Build(c provisioning.Contract, p provisioning.Plan, m manifest.Manifest, ch
 	seed := filepath.Join(instance, "nocloud-seed.iso")
 	qmp := filepath.Join(runtime, m.RunID+".qmp")
 	agent := filepath.Join(runtime, m.RunID+".agent")
-	qemuPlan, err := manifest.PlanProvisioningQEMU(m, runtime, osDisk, dataDisk, seed)
+	observation, err := provisioning.PlanFirstBootObservation(c.Roots.Evidence, c.Roots.Runtime, c.RunID, c.CohortID)
+	if err != nil {
+		return out, err
+	}
+	if p.FirstBootObservation != observation {
+		return out, fmt.Errorf("executor first-boot observation policy does not match the authorized plan")
+	}
+	observationJSON, err := observation.CanonicalJSON()
+	if err != nil {
+		return out, err
+	}
+	qemuPlan, err := manifest.PlanProvisioningQEMU(m, runtime, osDisk, dataDisk, seed, observation.SocketPath)
 	if err != nil {
 		return out, err
 	}
@@ -220,7 +238,7 @@ func Build(c provisioning.Contract, p provisioning.Plan, m manifest.Manifest, ch
 	if err != nil {
 		return out, err
 	}
-	if len(p.Operations[2].Inputs) != 1 || p.Operations[2].Inputs[0] != string(cloneJSON) || len(p.Operations[8].Inputs) < 1 || p.Operations[8].Inputs[0] != string(launchJSON) {
+	if len(p.Operations[2].Inputs) != 1 || p.Operations[2].Inputs[0] != string(cloneJSON) || len(p.Operations[8].Inputs) < 1 || p.Operations[8].Inputs[0] != string(launchJSON) || !slices.Equal(p.Operations[9].Inputs, []string{observationJSON}) || !slices.Equal(p.Operations[9].Outputs, []string{observation.EvidencePath}) {
 		return out, fmt.Errorf("executor command tuple does not match the authorized plan")
 	}
 	rendered, err := provisioning.RenderNoCloud(c, m, material)
@@ -233,10 +251,12 @@ func Build(c provisioning.Contract, p provisioning.Plan, m manifest.Manifest, ch
 	}
 	out = Contract{
 		Schema: Schema, ContractSHA256: contractSHA, PlanSHA256: planSHA, ToolchainSHA256: c.Toolchain.ManifestSHA256, RunID: c.RunID, CohortID: c.CohortID,
-		OSClone:  OSCloneRequest{Command: clone, Source: c.SourceImage.Path, SourceSHA256: c.SourceImage.SHA256, Target: osDisk, Format: "qcow2", BackingFormat: "qcow2", Exclusive: true, SourceReadOnly: true},
-		DataDisk: SparseRawDiskRequest{Target: dataDisk, Bytes: manifest.DataDiskBytes, Mode: 0o600, Exclusive: true, Sparse: true},
-		NoCloud:  NoCloudSeedRequest{Builder: NoCloudBuilder, Label: provisioning.SeedLabel, Target: seed, Mode: 0o600, Exclusive: true, Files: seedFiles},
-		Launch:   LaunchRequest{Command: launch, QMP: qmp, AgentSocket: agent, ProcessRecord: filepath.Join(runtime, "process.json")},
+		ProvisioningRoots:    &c.Roots,
+		OSClone:              OSCloneRequest{Command: clone, Source: c.SourceImage.Path, SourceSHA256: c.SourceImage.SHA256, Target: osDisk, Format: "qcow2", BackingFormat: "qcow2", Exclusive: true, SourceReadOnly: true},
+		DataDisk:             SparseRawDiskRequest{Target: dataDisk, Bytes: manifest.DataDiskBytes, Mode: 0o600, Exclusive: true, Sparse: true},
+		NoCloud:              NoCloudSeedRequest{Builder: NoCloudBuilder, Label: provisioning.SeedLabel, Target: seed, Mode: 0o600, Exclusive: true, Files: seedFiles},
+		Launch:               LaunchRequest{Command: launch, QMP: qmp, AgentSocket: agent, ProcessRecord: filepath.Join(runtime, "process.json")},
+		FirstBootObservation: &observation,
 		Guest: GuestVerificationRequest{
 			Socket: agent,
 			Bootstrap: IdentityBootstrapRequest{
@@ -250,7 +270,7 @@ func Build(c provisioning.Contract, p provisioning.Plan, m manifest.Manifest, ch
 		},
 		Shutdown:     ShutdownRequest{QMP: qmp, ProcessRecord: filepath.Join(runtime, "process.json"), Command: ControlledPowerdown, TimeoutSeconds: c.Execution.ShutdownTimeoutSeconds, FallbackSignal: false, Evidence: filepath.Join(evidence, "shutdown.json")},
 		Preservation: PreservationRequest{Roots: []string{instance, evidence, config, runtime}, TimeoutSeconds: PreservationDeadline},
-		Cleanup:      CleanupRequest{Resources: []string{seed, dataDisk, osDisk, filepath.Join(instance, "seed-tree"), filepath.Join(runtime, "process.json"), agent, qmp, runtime, config, evidence, instance}, SeparateAuthorization: true},
+		Cleanup:      CleanupRequest{Resources: []string{seed, dataDisk, osDisk, filepath.Join(instance, "seed-tree"), filepath.Join(runtime, "process.json"), agent, qmp, observation.SocketPath, runtime, config, evidence, instance}, SeparateAuthorization: true},
 		sealed:       true,
 	}
 	out.ExecutionSHA256, err = out.Digest()
@@ -292,8 +312,26 @@ func (c Contract) Digest() (string, error) {
 
 func (c Contract) Validate() error {
 	digest, err := c.Digest()
-	if err != nil || !c.sealed || c.Schema != Schema || c.ExecutionSHA256 != digest || !isSHA256(c.ContractSHA256) || !isSHA256(c.PlanSHA256) || !isSHA256(c.ToolchainSHA256) {
+	if err != nil || !c.sealed || (c.Schema != Schema && c.Schema != LegacyCleanupSchema) || c.ExecutionSHA256 != digest || !isSHA256(c.ContractSHA256) || !isSHA256(c.PlanSHA256) || !isSHA256(c.ToolchainSHA256) {
 		return fmt.Errorf("executor contract identity or digest is invalid")
+	}
+	if c.Schema == LegacyCleanupSchema {
+		if c.FirstBootObservation != nil || c.ProvisioningRoots != nil {
+			return fmt.Errorf("legacy cleanup executor cannot contain current provisioning-root or observation fields")
+		}
+	} else {
+		if c.FirstBootObservation == nil || c.ProvisioningRoots == nil || c.FirstBootObservation.Validate() != nil {
+			return fmt.Errorf("first-boot observation contract changed")
+		}
+		if err := c.validateCurrentPaths(); err != nil {
+			return err
+		}
+		if c.FirstBootObservation.EvidencePath == c.Guest.Evidence || c.FirstBootObservation.SocketPath == c.Launch.QMP || c.FirstBootObservation.SocketPath == c.Launch.AgentSocket {
+			return fmt.Errorf("first-boot observation path binding changed")
+		}
+		if !exactConsoleArgs(c.Launch.Command.Args, *c.FirstBootObservation) {
+			return fmt.Errorf("first-boot observation QEMU transport changed")
+		}
 	}
 	if !c.OSClone.Exclusive || !c.OSClone.SourceReadOnly || c.OSClone.Format != "qcow2" || c.OSClone.BackingFormat != "qcow2" || c.OSClone.Command.ToolID != provisioning.ToolQEMUImage || c.OSClone.Command.TimeoutSeconds != 120 {
 		return fmt.Errorf("OS clone contract differs from the closed qemu-img tuple")
@@ -328,6 +366,56 @@ func (c Contract) Validate() error {
 	return nil
 }
 
+func (c Contract) validateCurrentPaths() error {
+	roots := *c.ProvisioningRoots
+	for _, root := range []string{roots.Instances, roots.Evidence, roots.Config, roots.Runtime} {
+		if !filepath.IsAbs(root) || filepath.Clean(root) != root {
+			return fmt.Errorf("executor provisioning root binding changed")
+		}
+	}
+	instance := filepath.Join(roots.Instances, c.RunID, c.CohortID)
+	evidence := filepath.Join(roots.Evidence, c.RunID, c.CohortID)
+	config := filepath.Join(roots.Config, "instances", c.RunID, c.CohortID)
+	runtime := filepath.Join(roots.Runtime, c.RunID, c.CohortID)
+	observation := c.FirstBootObservation
+	if observation.EvidenceRoot != roots.Evidence || observation.RuntimeRoot != roots.Runtime || observation.EvidencePath != filepath.Join(evidence, provisioning.FirstBootObservationFilename) || observation.SocketPath != filepath.Join(runtime, provisioning.FirstBootObservationSocketFilename) {
+		return fmt.Errorf("first-boot observation root or path binding changed")
+	}
+	if c.Launch.QMP != filepath.Join(runtime, c.RunID+".qmp") || c.Launch.AgentSocket != filepath.Join(runtime, c.RunID+".agent") || c.Launch.ProcessRecord != filepath.Join(runtime, "process.json") || c.Guest.Socket != c.Launch.AgentSocket || c.Guest.Bootstrap.ExclusiveEvidencePath != filepath.Join(evidence, "bootstrap.json") || c.Guest.Evidence != filepath.Join(evidence, "verification.json") || c.Shutdown.QMP != c.Launch.QMP || c.Shutdown.ProcessRecord != c.Launch.ProcessRecord || c.Shutdown.Evidence != filepath.Join(evidence, "shutdown.json") {
+		return fmt.Errorf("executor launch, verification, or shutdown path binding changed")
+	}
+	if c.OSClone.Target != filepath.Join(instance, "os-private.qcow2") || c.DataDisk.Target != filepath.Join(instance, "qualification.raw") || c.NoCloud.Target != filepath.Join(instance, "nocloud-seed.iso") {
+		return fmt.Errorf("executor instance artifact path binding changed")
+	}
+	wantPreservation := []string{instance, evidence, config, runtime}
+	wantCleanup := []string{c.NoCloud.Target, c.DataDisk.Target, c.OSClone.Target, filepath.Join(instance, "seed-tree"), c.Launch.ProcessRecord, c.Launch.AgentSocket, c.Launch.QMP, observation.SocketPath, runtime, config, evidence, instance}
+	if !slices.Equal(c.Preservation.Roots, wantPreservation) || !slices.Equal(c.Cleanup.Resources, wantCleanup) {
+		return fmt.Errorf("executor preservation or cleanup path binding changed")
+	}
+	return nil
+}
+
+func exactConsoleArgs(args []string, observation provisioning.FirstBootObservationPlan) bool {
+	wantChardev := "socket,id=dockpipe-first-boot-console,path=" + observation.SocketPath + ",server=off,reconnect-ms=0"
+	wantSerial := "chardev:dockpipe-first-boot-console"
+	consoleChardevCount, expectedSerialCount, totalSerialCount := 0, 0, 0
+	for i := 0; i+1 < len(args); i++ {
+		if args[i] == "-chardev" && strings.Contains(args[i+1], "id=dockpipe-first-boot-console") {
+			if args[i+1] != wantChardev {
+				return false
+			}
+			consoleChardevCount++
+		}
+		if args[i] == "-serial" {
+			totalSerialCount++
+			if args[i+1] == wantSerial {
+				expectedSerialCount++
+			}
+		}
+	}
+	return consoleChardevCount == 1 && expectedSerialCount == 1 && totalSerialCount == 1
+}
+
 func (a CleanupAuthorization) Validate(c Contract, now time.Time) error {
 	if a.Schema != CleanupSchema || !a.Approved || a.ContractSHA256 != c.ContractSHA256 || a.PlanSHA256 != c.PlanSHA256 || a.ExecutionSHA256 != c.ExecutionSHA256 || a.RunID != c.RunID || a.CohortID != c.CohortID || !slices.Equal(a.Resources, c.Cleanup.Resources) {
 		return fmt.Errorf("cleanup authorization does not match the exact executor contract and resources")
@@ -336,6 +424,86 @@ func (a CleanupAuthorization) Validate(c Contract, now time.Time) error {
 		return fmt.Errorf("cleanup authorization must be fresh and expire within 15 minutes")
 	}
 	return nil
+}
+
+func Store(path string, c Contract) error {
+	if err := c.Validate(); err != nil {
+		return err
+	}
+	b, err := json.Marshal(c)
+	if err != nil {
+		return err
+	}
+	return writeDurableExclusive(path, b)
+}
+
+func Load(path string) (Contract, error) {
+	var c Contract
+	if err := decodeOwnerOnly(path, &c); err != nil {
+		return c, err
+	}
+	c.sealed = true
+	return c, c.Validate()
+}
+
+func LoadCleanupAuthorization(path string) (CleanupAuthorization, error) {
+	var authorization CleanupAuthorization
+	if err := decodeOwnerOnly(path, &authorization); err != nil {
+		return authorization, err
+	}
+	return authorization, nil
+}
+
+func decodeOwnerOnly(path string, out any) error {
+	if !filepath.IsAbs(path) {
+		return fmt.Errorf("executor input path must be absolute")
+	}
+	info, err := os.Lstat(path)
+	if err != nil || info.Mode()&os.ModeSymlink != 0 || !info.Mode().IsRegular() || info.Mode().Perm() != 0o600 {
+		return fmt.Errorf("executor input must be an owner-only regular non-symlink file")
+	}
+	if stat, ok := info.Sys().(*syscall.Stat_t); ok && int(stat.Uid) != os.Geteuid() {
+		return fmt.Errorf("executor input must be owned by the current user")
+	}
+	b, err := os.ReadFile(path)
+	if err != nil {
+		return err
+	}
+	dec := json.NewDecoder(bytes.NewReader(b))
+	dec.DisallowUnknownFields()
+	if err := dec.Decode(out); err != nil {
+		return err
+	}
+	var extra any
+	if err := dec.Decode(&extra); err != io.EOF {
+		return fmt.Errorf("executor input contains trailing JSON")
+	}
+	return nil
+}
+
+func writeDurableExclusive(path string, data []byte) error {
+	if !filepath.IsAbs(path) {
+		return fmt.Errorf("executor evidence path must be absolute")
+	}
+	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
+	if err != nil {
+		return err
+	}
+	if _, err = f.Write(data); err == nil {
+		err = f.Sync()
+	}
+	if closeErr := f.Close(); err == nil {
+		err = closeErr
+	}
+	if err != nil {
+		return err
+	}
+	dir, err := os.Open(filepath.Dir(path))
+	if err != nil {
+		return err
+	}
+	defer dir.Close()
+	return dir.Sync()
 }
 
 func isSHA256(value string) bool {

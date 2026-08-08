@@ -109,8 +109,23 @@ func ReserveIdentity(root string, c Contract, material KeyMaterial) (ReservedIde
 	if err := writeExclusive(filepath.Join(root, "identity.json"), b, 0o600); err != nil {
 		return ReservedIdentity{}, err
 	}
+	if err := syncIdentityDir(root); err != nil {
+		return ReservedIdentity{}, err
+	}
+	if err := syncIdentityDir(filepath.Dir(root)); err != nil {
+		return ReservedIdentity{}, err
+	}
 	failed = false
 	return out, nil
+}
+
+func syncIdentityDir(path string) error {
+	f, err := os.Open(path)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	return f.Sync()
 }
 
 func validateKeyMaterial(c Contract, material KeyMaterial) error {

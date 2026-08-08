@@ -43,6 +43,22 @@ func ReadGreeting(r io.Reader) (QMPGreeting, error) {
 
 type QMPClient struct{ Conn net.Conn }
 
+func (c QMPClient) Negotiate(id string) error {
+	if c.Conn == nil {
+		return fmt.Errorf("QMP connection is required")
+	}
+	if _, err := ReadGreeting(c.Conn); err != nil {
+		return err
+	}
+	_, err := c.executeExact("qmp_capabilities", id)
+	return err
+}
+
+func (c QMPClient) SystemPowerdown(id string) error {
+	_, err := c.executeExact("system_powerdown", id)
+	return err
+}
+
 func (c QMPClient) Query(command, id string) (QMPResponse, error) {
 	var response QMPResponse
 	if c.Conn == nil {
@@ -50,6 +66,19 @@ func (c QMPClient) Query(command, id string) (QMPResponse, error) {
 	}
 	if _, ok := safeQMPCommands[command]; !ok {
 		return response, fmt.Errorf("QMP command %q is not read-only", command)
+	}
+	return c.executeExact(command, id)
+}
+
+func (c QMPClient) executeExact(command, id string) (QMPResponse, error) {
+	var response QMPResponse
+	if c.Conn == nil {
+		return response, fmt.Errorf("QMP connection is required")
+	}
+	if command != "qmp_capabilities" && command != "system_powerdown" {
+		if _, ok := safeQMPCommands[command]; !ok {
+			return response, fmt.Errorf("QMP command %q is not permitted", command)
+		}
 	}
 	request, _ := json.Marshal(struct {
 		Execute string `json:"execute"`
