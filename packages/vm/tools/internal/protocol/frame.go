@@ -3,8 +3,10 @@ package protocol
 import (
 	"bytes"
 	"crypto/ed25519"
+	"crypto/sha256"
 	"encoding/base64"
 	"encoding/binary"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -13,13 +15,18 @@ import (
 )
 
 const (
-	Version         = "dockpipe.vm.v1"
-	MaxFrameBytes   = 64 * 1024
-	MaxPayloadBytes = 32 * 1024
-	MaxLifetime     = 5 * time.Minute
-	MaxClockSkew    = 30 * time.Second
-	NonceBytes      = 32
-	FirstSequence   = uint64(1)
+	Version              = "dockpipe.vm.v2"
+	MaxFrameBytes        = 64 * 1024
+	MaxPayloadBytes      = 32 * 1024
+	MaxLifetime          = 5 * time.Minute
+	MaxClockSkew         = 30 * time.Second
+	NonceBytes           = 32
+	BootstrapKind        = "bootstrap"
+	RequestKind          = "request"
+	ResultKind           = "result"
+	BootstrapPhase       = "bootstrap"
+	BootstrapSequence    = uint64(1)
+	FirstRequestSequence = uint64(2)
 )
 
 var QualificationCapabilities = map[string]struct{}{
@@ -64,6 +71,14 @@ type SignedFrame struct {
 	Context       Context         `json:"context"`
 	Payload       json.RawMessage `json:"payload"`
 	Signature     string          `json:"signature"`
+}
+
+type IdentityBootstrapPayload struct {
+	BootIDSource              string `json:"boot_id_source"`
+	ControllerPublicKeySHA256 string `json:"controller_public_key_sha256"`
+	GuestPublicKeySHA256      string `json:"guest_public_key_sha256"`
+	ControllerBinarySHA256    string `json:"controller_binary_sha256"`
+	GuestAgentBinarySHA256    string `json:"guest_agent_binary_sha256"`
 }
 
 func Sign(kind, capability string, ctx Context, payload any, issuedAt, expiresAt time.Time, privateKey ed25519.PrivateKey) ([]byte, error) {
@@ -148,8 +163,11 @@ func Verify(data []byte, publicKey ed25519.PublicKey, now time.Time) (SignedFram
 }
 
 func validateUnsigned(frame UnsignedFrame) error {
-	if frame.Version != Version || frame.Kind == "" {
+	if frame.Version != Version {
 		return fmt.Errorf("unsupported protocol version or empty kind")
+	}
+	if frame.Kind != BootstrapKind && frame.Kind != RequestKind && frame.Kind != ResultKind {
+		return fmt.Errorf("unsupported signed frame kind %q", frame.Kind)
 	}
 	if _, ok := QualificationCapabilities[frame.Capability]; !ok {
 		return fmt.Errorf("capability %q is not permitted in qualification", frame.Capability)
@@ -160,8 +178,12 @@ func validateUnsigned(frame UnsignedFrame) error {
 	if !contextUUID.MatchString(frame.Context.MachineUUID) || !contextUUID.MatchString(frame.Context.BootID) || !contextID.MatchString(frame.Context.DiskSerial) || !contextID.MatchString(frame.Context.RunID) || !nonceHex.MatchString(frame.Context.Nonce) || !contextID.MatchString(frame.Context.Scenario) || !contextID.MatchString(frame.Context.DurabilityBoundary) || !contextID.MatchString(frame.Context.Phase) {
 		return fmt.Errorf("authenticated context is incomplete or malformed")
 	}
-	if frame.Context.Sequence < FirstSequence {
-		return fmt.Errorf("sequence must start at %d", FirstSequence)
+	if frame.Kind == BootstrapKind {
+		if frame.Capability != "identity/v1" || frame.Context.Sequence != BootstrapSequence || frame.Context.Phase != BootstrapPhase {
+			return fmt.Errorf("identity bootstrap must be sequence %d in phase %q", BootstrapSequence, BootstrapPhase)
+		}
+	} else if frame.Context.Sequence < FirstRequestSequence || frame.Context.Phase == BootstrapPhase {
+		return fmt.Errorf("request and result sequences must start at %d outside bootstrap phase", FirstRequestSequence)
 	}
 	if frame.ExpiresAtUnix <= frame.IssuedAtUnix || time.Duration(frame.ExpiresAtUnix-frame.IssuedAtUnix)*time.Second > MaxLifetime {
 		return fmt.Errorf("frame lifetime exceeds policy")
@@ -173,6 +195,47 @@ func validateUnsigned(frame UnsignedFrame) error {
 		return fmt.Errorf("payload: %w", err)
 	}
 	return nil
+}
+
+func VerifyIdentityBootstrap(data []byte, publicKey ed25519.PublicKey, now time.Time, expected Context, bootstrapNonce string, expectedPayload IdentityBootstrapPayload) (SignedFrame, error) {
+	if expected.BootID != "" {
+		return SignedFrame{}, fmt.Errorf("controller must not prescribe a pre-launch boot ID")
+	}
+	frame, err := Verify(data, publicKey, now)
+	if err != nil {
+		return SignedFrame{}, err
+	}
+	if frame.Kind != BootstrapKind || frame.Capability != "identity/v1" || frame.Context.Sequence != BootstrapSequence || frame.Context.Phase != BootstrapPhase {
+		return SignedFrame{}, fmt.Errorf("first guest frame is not the signed identity bootstrap")
+	}
+	if !nonceHex.MatchString(bootstrapNonce) || frame.Context.Nonce != bootstrapNonce {
+		return SignedFrame{}, fmt.Errorf("identity bootstrap nonce mismatch")
+	}
+	if frame.Context.MachineUUID != expected.MachineUUID || frame.Context.DiskSerial != expected.DiskSerial || frame.Context.RunID != expected.RunID || frame.Context.Scenario != expected.Scenario || frame.Context.DurabilityBoundary != expected.DurabilityBoundary {
+		return SignedFrame{}, fmt.Errorf("identity bootstrap context substitution rejected")
+	}
+	var payload IdentityBootstrapPayload
+	dec := json.NewDecoder(bytes.NewReader(frame.Payload))
+	dec.DisallowUnknownFields()
+	if err := dec.Decode(&payload); err != nil {
+		return SignedFrame{}, fmt.Errorf("decode identity bootstrap payload: %w", err)
+	}
+	if err := requireEOF(dec); err != nil {
+		return SignedFrame{}, err
+	}
+	if payload != expectedPayload || payload.BootIDSource == "" {
+		return SignedFrame{}, fmt.Errorf("identity bootstrap pin or boot-ID source mismatch")
+	}
+	for _, sum := range []string{payload.ControllerPublicKeySHA256, payload.GuestPublicKeySHA256, payload.ControllerBinarySHA256, payload.GuestAgentBinarySHA256} {
+		if !nonceHex.MatchString(sum) {
+			return SignedFrame{}, fmt.Errorf("identity bootstrap requires exact SHA-256 pins")
+		}
+	}
+	guestPublicSHA256 := sha256.Sum256(publicKey)
+	if hex.EncodeToString(guestPublicSHA256[:]) != payload.GuestPublicKeySHA256 {
+		return SignedFrame{}, fmt.Errorf("identity bootstrap signature key does not match the guest public-key pin")
+	}
+	return frame, nil
 }
 
 func WriteFramed(w io.Writer, frame []byte) error {

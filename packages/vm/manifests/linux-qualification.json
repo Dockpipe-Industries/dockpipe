@@ -1,5 +1,5 @@
 {
-  "schema": "dockpipe.vm.qualification.v1",
+  "schema": "dockpipe.vm.qualification.v2",
   "purpose": "qualification",
   "disposable": true,
   "live_execution_approved": false,
@@ -8,7 +8,7 @@
   "durability_boundary": "after-checkpoint-fsync",
   "machine_uuid": "11111111-1111-4111-8111-111111111111",
   "host_machine_uuid": "22222222-2222-4222-8222-222222222222",
-  "boot_id": "33333333-3333-4333-8333-333333333333",
+  "boot_id_source": "/proc/sys/kernel/random/boot_id",
   "image": {
     "url": "https://cloud-images.ubuntu.com/releases/noble/release-20260801/ubuntu-24.04-server-cloudimg-amd64.img",
     "sha256": "0533b0655c32e68b31d792ecd6ccfca95abdbc536c4446874fe0513bd4140ffe"
@@ -70,10 +70,10 @@
     "mount_id": 1
   },
   "qemu": {
-    "binary_path": "/usr/bin/qemu-system-x86_64",
-    "binary_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-    "version": "QEMU emulator version 9.2.0",
-    "configuration_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "binary_path": "/home/jamie/.cache/dockpipe/vm/toolchains/qemu-11.0.3-linux-amd64.1/bin/qemu-system-x86_64",
+    "binary_sha256": "3544680aaeaf8087bbf3ef693ff185c2691831560c767672defccd784ec37140",
+    "version": "QEMU emulator version 11.0.3",
+    "configuration_sha256": "c93e634835b0a26eeb69157ac39619ca07f67b0d4ba80ae4443e1db6005aed8b",
     "cache": "none",
     "aio": "threads",
     "reviewed_native_aio": false,

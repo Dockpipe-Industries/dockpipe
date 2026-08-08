@@ -17,6 +17,7 @@ import (
 type Plan struct {
 	Schema                string      `json:"schema"`
 	ContractSHA256        string      `json:"contract_sha256"`
+	ToolchainSHA256       string      `json:"toolchain_sha256"`
 	PlanSHA256            string      `json:"plan_sha256"`
 	RunID                 string      `json:"run_id"`
 	CohortID              string      `json:"cohort_id"`
@@ -33,11 +34,12 @@ func (p Plan) Digest() (string, error) {
 	material := struct {
 		Schema                string      `json:"schema"`
 		ContractSHA256        string      `json:"contract_sha256"`
+		ToolchainSHA256       string      `json:"toolchain_sha256"`
 		RunID                 string      `json:"run_id"`
 		CohortID              string      `json:"cohort_id"`
 		AuthorizationRequired bool        `json:"authorization_required"`
 		Operations            []Operation `json:"operations"`
-	}{p.Schema, p.ContractSHA256, p.RunID, p.CohortID, p.AuthorizationRequired, p.Operations}
+	}{p.Schema, p.ContractSHA256, p.ToolchainSHA256, p.RunID, p.CohortID, p.AuthorizationRequired, p.Operations}
 	b, err := json.Marshal(material)
 	if err != nil {
 		return "", err
@@ -54,6 +56,15 @@ type Operation struct {
 	Inputs     []string `json:"inputs"`
 	Outputs    []string `json:"outputs"`
 	Assertions []string `json:"assertions"`
+}
+
+type PinnedCommand struct {
+	ToolID         string   `json:"tool_id"`
+	Binary         string   `json:"binary"`
+	BinarySHA256   string   `json:"binary_sha256"`
+	Version        string   `json:"version"`
+	Args           []string `json:"args"`
+	TimeoutSeconds int      `json:"timeout_seconds"`
 }
 
 var operationKinds = map[string]struct{}{
@@ -85,6 +96,32 @@ func BuildPlan(c Contract, paths xdg.Paths, m manifest.Manifest, checkoutRoot st
 	if err := ValidateReviewedAssets(c.Artifacts.AssetsRoot); err != nil {
 		return Plan{}, err
 	}
+	toolchain, err := LoadToolchain(c.Toolchain)
+	if err != nil {
+		return Plan{}, err
+	}
+	if err := toolchain.Validate(c.Toolchain, checkoutRoot, c.Roots); err != nil {
+		return Plan{}, err
+	}
+	qemuSystem, err := toolchain.Tool(ToolQEMUSystem)
+	if err != nil {
+		return Plan{}, err
+	}
+	qemuImage, err := toolchain.Tool(ToolQEMUImage)
+	if err != nil {
+		return Plan{}, err
+	}
+	qemuSystemPath := filepath.Join(c.Toolchain.Root, filepath.FromSlash(qemuSystem.RelativePath))
+	if m.QEMU.BinaryPath != qemuSystemPath || m.QEMU.BinarySHA256 != qemuSystem.SHA256 || m.QEMU.Version != qemuSystem.Version {
+		return Plan{}, fmt.Errorf("qualification QEMU identity does not match the exact task-owned toolchain")
+	}
+	configurationSHA256, err := manifest.ConfigurationSHA256(m)
+	if err != nil || m.QEMU.ConfigurationSHA256 != configurationSHA256 {
+		return Plan{}, fmt.Errorf("qualification configuration SHA-256 mismatch")
+	}
+	if m.Protocol.ControllerBinarySHA256 != c.Artifacts.ControllerBinarySHA256 || m.Protocol.GuestAgentBinarySHA256 != c.Artifacts.GuestAgentBinarySHA256 || m.Protocol.ControllerPublicKeySHA256 != c.Artifacts.ControllerPublicKeySHA256 || m.Protocol.GuestPublicKeySHA256 != c.Artifacts.GuestPublicKeySHA256 {
+		return Plan{}, fmt.Errorf("qualification protocol pins do not match the provisioning contract")
+	}
 	instance := filepath.Join(c.Roots.Instances, c.RunID, c.CohortID)
 	evidence := filepath.Join(c.Roots.Evidence, c.RunID, c.CohortID)
 	config := filepath.Join(c.Roots.Config, "instances", c.RunID, c.CohortID)
@@ -113,18 +150,36 @@ func BuildPlan(c Contract, paths xdg.Paths, m manifest.Manifest, checkoutRoot st
 	if err != nil {
 		return Plan{}, err
 	}
+	cloneCommand := PinnedCommand{
+		ToolID: ToolQEMUImage, Binary: filepath.Join(c.Toolchain.Root, filepath.FromSlash(qemuImage.RelativePath)),
+		BinarySHA256: qemuImage.SHA256, Version: qemuImage.Version,
+		Args:           []string{"create", "-f", "qcow2", "-F", "qcow2", "-b", c.SourceImage.Path, osDisk},
+		TimeoutSeconds: c.Execution.CloneTimeoutSeconds,
+	}
+	cloneJSON, err := json.Marshal(cloneCommand)
+	if err != nil {
+		return Plan{}, err
+	}
+	launchCommand := PinnedCommand{
+		ToolID: ToolQEMUSystem, Binary: qemuPlan.Binary, BinarySHA256: qemuSystem.SHA256,
+		Version: qemuSystem.Version, Args: qemuPlan.Args, TimeoutSeconds: c.Execution.LaunchTimeoutSeconds,
+	}
+	launchJSON, err := json.Marshal(launchCommand)
+	if err != nil {
+		return Plan{}, err
+	}
 	operations := []Operation{
-		{1, "reserve-identities", []string{c.RunID, c.CohortID, c.MachineUUID, c.DiskSerial, c.FilesystemUUID, c.Nonce}, []string{instance, evidence, config, runtime}, []string{"exclusive creation", "owner-only private keys", "no replacement"}},
+		{1, "reserve-identities", []string{c.RunID, c.CohortID, c.MachineUUID, c.DiskSerial, c.FilesystemUUID, c.BootstrapNonce}, []string{instance, evidence, config, runtime}, []string{"exclusive creation", "owner-only private keys and bootstrap nonce", "no replacement"}},
 		{2, "verify-source-image", []string{c.SourceImage.Path, c.SourceImage.SHA256, fmt.Sprint(c.SourceImage.Bytes)}, nil, []string{"regular non-symlink", "owner-only", "read-only source"}},
-		{3, "create-private-os-clone", []string{c.SourceImage.Path, "qcow2", "backing-read-only"}, []string{osDisk}, []string{"exclusive create", "never mutate source"}},
+		{3, "create-private-os-clone", []string{string(cloneJSON)}, []string{osDisk}, []string{"exclusive instance root", "target absent", "never mutate source", "no fallback tool"}},
 		{4, "create-private-data-disk", []string{"raw", fmt.Sprint(manifest.DataDiskBytes), "sparse"}, []string{dataDisk}, []string{"exclusive create", "single private data disk"}},
 		{5, "render-nocloud", []string{c.Artifacts.AssetsRoot, c.Artifacts.ControllerBinarySHA256, c.Artifacts.GuestAgentBinarySHA256, c.Artifacts.ControllerPublicKeySHA256, c.Artifacts.GuestPublicKeySHA256, c.DiskSerial, c.FilesystemUUID}, []string{filepath.Join(instance, "seed-tree")}, []string{"network disabled", "SSH disabled", "no packages", "no arbitrary commands", "compiled reviewed-asset hashes exact"}},
-		{6, "create-nocloud-seed", []string{filepath.Join(instance, "seed-tree"), SeedLabel}, []string{seed}, []string{"exclusive create", "local NoCloud only"}},
+		{6, "create-nocloud-seed", []string{filepath.Join(instance, "seed-tree"), SeedLabel, "dockpipe-go-iso9660-v1"}, []string{seed}, []string{"exclusive create", "deterministic ISO9660", "local NoCloud only", "no external seed tool"}},
 		{7, "install-hash-pinned-assets", []string{c.Artifacts.ControllerBinary, c.Artifacts.GuestAgentBinary, c.Artifacts.AssetsRoot}, []string{"/usr/libexec/dockpipe-guest-agent", "/etc/systemd/system/dockpipe-agent.service"}, []string{"binary hashes exact", "mutual public-key pins exact", "reviewed systemd sandbox"}},
 		{8, "format-and-mount-data-disk", []string{"/dev/disk/by-id/virtio-" + c.DiskSerial, c.FilesystemUUID, strings.Join(manifest.RequiredMountOptions, ",")}, []string{manifest.QualificationMount}, []string{"whole-device ext4", "lazy initialization disabled", "mount by UUID"}},
-		{9, "launch-qemu", []string{m.QEMU.BinarySHA256, qemuJSON, qmp, agentSocket}, []string{filepath.Join(runtime, "process.json")}, []string{"KVM only", "network none", "exact two private writable disks plus one read-only NoCloud seed", "no passthrough or shares"}},
-		{10, "verify-guest", []string{agentSocket, "identity/v1", "health/v1", "launch-hash-pinned/v1"}, []string{filepath.Join(evidence, "verification.json")}, []string{"signed framed protocol", "replay and identity protection", "hash pins exact"}},
-		{11, "controlled-shutdown", []string{qmp, filepath.Join(runtime, "process.json")}, []string{filepath.Join(evidence, "shutdown.json")}, []string{"separate authorization", "exact owned process", "bounded wait", "no fallback signal"}},
+		{9, "launch-qemu", []string{string(launchJSON), qemuJSON, qmp, agentSocket}, []string{filepath.Join(runtime, "process.json")}, []string{"KVM only", "network none", "exact two private writable disks plus one read-only NoCloud seed", "no passthrough or shares", "no fallback tool"}},
+		{10, "verify-guest", []string{agentSocket, "guest-first-signed-identity/v1", c.BootstrapNonce, manifest.KernelBootIDSource, "identity/v1", "health/v1", "launch-hash-pinned/v1", fmt.Sprint(c.Execution.GuestVerificationTimeoutSeconds)}, []string{filepath.Join(evidence, "bootstrap.json"), filepath.Join(evidence, "verification.json")}, []string{"guest-signed bootstrap before controller writes", "controller-signed requests from sequence 2", "guest-signed responses", "replay and identity protection", "hash pins exact"}},
+		{11, "controlled-shutdown", []string{qmp, filepath.Join(runtime, "process.json"), "system_powerdown", fmt.Sprint(c.Execution.ShutdownTimeoutSeconds)}, []string{filepath.Join(evidence, "shutdown.json")}, []string{"exact owned process", "bounded wait", "no fallback signal"}},
 		{12, "preserve-failure", []string{instance, evidence, config, runtime}, nil, []string{"any failure preserves complete instance", "no automatic retry", "no automatic cleanup"}},
 		{13, "cleanup", []string{c.RunID, c.CohortID, instance, evidence, config, runtime}, nil, []string{"later explicit approval", "exact ordered enumeration", "refuse failed or completed roots"}},
 	}
@@ -136,7 +191,7 @@ func BuildPlan(c Contract, paths xdg.Paths, m manifest.Manifest, checkoutRoot st
 			return Plan{}, fmt.Errorf("unknown provisioning operation %q", op.Kind)
 		}
 	}
-	plan := Plan{Schema: PlanSchema, ContractSHA256: digest, RunID: c.RunID, CohortID: c.CohortID, Execute: false, AuthorizationRequired: true, Operations: operations}
+	plan := Plan{Schema: PlanSchema, ContractSHA256: digest, ToolchainSHA256: c.Toolchain.ManifestSHA256, RunID: c.RunID, CohortID: c.CohortID, Execute: false, AuthorizationRequired: true, Operations: operations}
 	plan.PlanSHA256, err = plan.Digest()
 	if err != nil {
 		return Plan{}, err
@@ -148,12 +203,12 @@ func AuthorizePlan(plan Plan, c Contract, auth LiveAuthorization, now time.Time)
 	if err := auth.Validate(c, plan, now); err != nil {
 		return Plan{}, err
 	}
-	if plan.Schema != PlanSchema || plan.ContractSHA256 != auth.ContractSHA256 || plan.PlanSHA256 != auth.PlanSHA256 || plan.RunID != auth.RunID || plan.CohortID != auth.CohortID || plan.Execute {
+	if plan.Schema != PlanSchema || plan.ContractSHA256 != auth.ContractSHA256 || plan.ToolchainSHA256 != c.Toolchain.ManifestSHA256 || plan.PlanSHA256 != auth.PlanSHA256 || plan.RunID != auth.RunID || plan.CohortID != auth.CohortID || plan.Execute {
 		return Plan{}, fmt.Errorf("authorization target is not the exact inert provisioning plan")
 	}
 	plan.LiveAuthorized = true
-	// This slice intentionally has no executor. Gate 2 must consume this exact
-	// authorized plan through a separately reviewed package-owned execution gate.
+	// The offline typed executor contract may be derived from this plan, but no
+	// subprocess runner or live CLI execution flag exists in this slice.
 	plan.Execute = false
 	return plan, nil
 }

@@ -14,10 +14,11 @@ import (
 	"strings"
 	"time"
 
+	"dockpipe.vm/tools/internal/manifest"
 	"dockpipe.vm/tools/internal/protocol"
 )
 
-const ConfigSchema = "dockpipe.vm.guest-agent-config.v1"
+const ConfigSchema = "dockpipe.vm.guest-agent-config.v2"
 
 var shaPattern = regexp.MustCompile(`^[0-9a-f]{64}$`)
 
@@ -34,6 +35,8 @@ type Config struct {
 	RunID                     string `json:"run_id"`
 	Scenario                  string `json:"scenario"`
 	DurabilityBoundary        string `json:"durability_boundary"`
+	BootstrapNonce            string `json:"bootstrap_nonce"`
+	BootIDSource              string `json:"boot_id_source"`
 }
 
 type Service struct {
@@ -42,6 +45,9 @@ type Service struct {
 	Expected         protocol.Context
 	AgentSHA256      string
 	ControllerSHA256 string
+	BootstrapNonce   string
+	BootIDSource     string
+	BootstrapPayload protocol.IdentityBootstrapPayload
 	Replay           *protocol.ReplayGuard
 	Now              func() time.Time
 }
@@ -61,8 +67,11 @@ func LoadService(configPath, executablePath, bootIDPath string) (*Service, error
 	if err := dec.Decode(&extra); err != io.EOF {
 		return nil, fmt.Errorf("guest-agent config contains trailing JSON")
 	}
-	if config.Schema != ConfigSchema || !shaPattern.MatchString(config.ControllerPublicKeySHA256) || !shaPattern.MatchString(config.GuestPublicKeySHA256) || !shaPattern.MatchString(config.ControllerBinarySHA256) || !shaPattern.MatchString(config.GuestAgentBinarySHA256) {
+	if config.Schema != ConfigSchema || !shaPattern.MatchString(config.ControllerPublicKeySHA256) || !shaPattern.MatchString(config.GuestPublicKeySHA256) || !shaPattern.MatchString(config.ControllerBinarySHA256) || !shaPattern.MatchString(config.GuestAgentBinarySHA256) || !shaPattern.MatchString(config.BootstrapNonce) {
 		return nil, fmt.Errorf("guest-agent config schema or hash pins are invalid")
+	}
+	if config.BootIDSource != bootIDPath || config.BootIDSource != manifest.KernelBootIDSource {
+		return nil, fmt.Errorf("guest-agent boot identity source is not the reviewed kernel path")
 	}
 	if !filepath.IsAbs(config.ControllerPublicKeyPath) || !filepath.IsAbs(config.GuestPrivateKeyPath) || !filepath.IsAbs(executablePath) || !filepath.IsAbs(bootIDPath) {
 		return nil, fmt.Errorf("guest-agent key, binary, and boot identity paths must be absolute")
@@ -93,14 +102,26 @@ func LoadService(configPath, executablePath, bootIDPath string) (*Service, error
 		return nil, err
 	}
 	expected := protocol.Context{MachineUUID: config.MachineUUID, DiskSerial: config.DiskSerial, BootID: strings.TrimSpace(string(bootID)), RunID: config.RunID, Scenario: config.Scenario, DurabilityBoundary: config.DurabilityBoundary}
-	service := &Service{ControllerPublic: controllerPublic, GuestPrivate: guestPrivate, Expected: expected, AgentSHA256: config.GuestAgentBinarySHA256, ControllerSHA256: config.ControllerBinarySHA256, Now: time.Now}
-	service.Replay = protocol.NewReplayGuard(expected)
+	bootstrapPayload := protocol.IdentityBootstrapPayload{
+		BootIDSource: config.BootIDSource, ControllerPublicKeySHA256: config.ControllerPublicKeySHA256,
+		GuestPublicKeySHA256: config.GuestPublicKeySHA256, ControllerBinarySHA256: config.ControllerBinarySHA256,
+		GuestAgentBinarySHA256: config.GuestAgentBinarySHA256,
+	}
+	service := &Service{ControllerPublic: controllerPublic, GuestPrivate: guestPrivate, Expected: expected, AgentSHA256: config.GuestAgentBinarySHA256, ControllerSHA256: config.ControllerBinarySHA256, BootstrapNonce: config.BootstrapNonce, BootIDSource: config.BootIDSource, BootstrapPayload: bootstrapPayload, Now: time.Now}
+	service.Replay = protocol.NewReplayGuardAfterBootstrap(expected, config.BootstrapNonce)
 	return service, nil
 }
 
 func (s *Service) Serve(rw io.ReadWriter) error {
 	if rw == nil {
 		return fmt.Errorf("virtio-serial stream is required")
+	}
+	bootstrap, err := s.IdentityBootstrap()
+	if err != nil {
+		return err
+	}
+	if err := protocol.WriteFramed(rw, bootstrap); err != nil {
+		return err
 	}
 	for {
 		request, err := protocol.ReadFramed(rw)
@@ -120,16 +141,28 @@ func (s *Service) Serve(rw io.ReadWriter) error {
 	}
 }
 
+func (s *Service) IdentityBootstrap() ([]byte, error) {
+	if err := s.requirePinned(); err != nil {
+		return nil, err
+	}
+	ctx := s.Expected
+	ctx.Sequence = protocol.BootstrapSequence
+	ctx.Nonce = s.BootstrapNonce
+	ctx.Phase = protocol.BootstrapPhase
+	now := s.Now()
+	return protocol.Sign(protocol.BootstrapKind, "identity/v1", ctx, s.BootstrapPayload, now, now.Add(time.Minute), s.GuestPrivate)
+}
+
 func (s *Service) Handle(request []byte) ([]byte, error) {
-	if len(s.ControllerPublic) != ed25519.PublicKeySize || len(s.GuestPrivate) != ed25519.PrivateKeySize || s.Replay == nil || s.Now == nil || !shaPattern.MatchString(s.AgentSHA256) || !shaPattern.MatchString(s.ControllerSHA256) {
-		return nil, fmt.Errorf("guest-agent service is not fully pinned")
+	if err := s.requirePinned(); err != nil {
+		return nil, err
 	}
 	now := s.Now()
 	frame, err := protocol.Verify(request, s.ControllerPublic, now)
 	if err != nil {
 		return nil, err
 	}
-	if frame.Kind != "request" {
+	if frame.Kind != protocol.RequestKind {
 		return nil, fmt.Errorf("guest-agent accepts only signed request frames")
 	}
 	if err := s.Replay.Accept(frame); err != nil {
@@ -139,7 +172,14 @@ func (s *Service) Handle(request []byte) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	return protocol.Sign("result", frame.Capability, frame.Context, payload, now, now.Add(time.Minute), s.GuestPrivate)
+	return protocol.Sign(protocol.ResultKind, frame.Capability, frame.Context, payload, now, now.Add(time.Minute), s.GuestPrivate)
+}
+
+func (s *Service) requirePinned() error {
+	if len(s.ControllerPublic) != ed25519.PublicKeySize || len(s.GuestPrivate) != ed25519.PrivateKeySize || s.Replay == nil || s.Now == nil || !shaPattern.MatchString(s.AgentSHA256) || !shaPattern.MatchString(s.ControllerSHA256) || !shaPattern.MatchString(s.BootstrapNonce) || s.BootIDSource != manifest.KernelBootIDSource || s.BootstrapPayload.BootIDSource != s.BootIDSource || hash(s.ControllerPublic) != s.BootstrapPayload.ControllerPublicKeySHA256 || hash(s.GuestPrivate[32:]) != s.BootstrapPayload.GuestPublicKeySHA256 || s.ControllerSHA256 != s.BootstrapPayload.ControllerBinarySHA256 || s.AgentSHA256 != s.BootstrapPayload.GuestAgentBinarySHA256 {
+		return fmt.Errorf("guest-agent service is not fully pinned")
+	}
+	return nil
 }
 
 func (s *Service) handleCapability(frame protocol.SignedFrame) (any, error) {

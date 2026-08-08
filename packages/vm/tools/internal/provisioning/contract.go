@@ -18,9 +18,9 @@ import (
 )
 
 const (
-	Schema              = "dockpipe.vm.provisioning.v1"
-	PlanSchema          = "dockpipe.vm.provisioning-plan.v1"
-	AuthorizationSchema = "dockpipe.vm.live-authorization.v1"
+	Schema              = "dockpipe.vm.provisioning.v3"
+	PlanSchema          = "dockpipe.vm.provisioning-plan.v3"
+	AuthorizationSchema = "dockpipe.vm.live-authorization.v3"
 	PinnedImageFilename = "ubuntu-24.04-server-cloudimg-amd64-20260801.img"
 	PinnedImageBytes    = int64(624239616)
 	SeedLabel           = "cidata"
@@ -35,19 +35,40 @@ var (
 )
 
 type Contract struct {
-	Schema         string      `json:"schema"`
-	Purpose        string      `json:"purpose"`
-	Disposable     bool        `json:"disposable"`
-	InstanceCount  int         `json:"instance_count"`
-	RunID          string      `json:"run_id"`
-	CohortID       string      `json:"cohort_id"`
-	MachineUUID    string      `json:"machine_uuid"`
-	DiskSerial     string      `json:"disk_serial"`
-	FilesystemUUID string      `json:"filesystem_uuid"`
-	Nonce          string      `json:"nonce"`
-	SourceImage    SourceImage `json:"source_image"`
-	Roots          Roots       `json:"roots"`
-	Artifacts      Artifacts   `json:"artifacts"`
+	Schema         string             `json:"schema"`
+	Purpose        string             `json:"purpose"`
+	Disposable     bool               `json:"disposable"`
+	InstanceCount  int                `json:"instance_count"`
+	RunID          string             `json:"run_id"`
+	CohortID       string             `json:"cohort_id"`
+	MachineUUID    string             `json:"machine_uuid"`
+	DiskSerial     string             `json:"disk_serial"`
+	FilesystemUUID string             `json:"filesystem_uuid"`
+	BootstrapNonce string             `json:"bootstrap_nonce"`
+	SourceImage    SourceImage        `json:"source_image"`
+	Toolchain      ToolchainReference `json:"toolchain"`
+	Roots          Roots              `json:"roots"`
+	Artifacts      Artifacts          `json:"artifacts"`
+	Execution      ExecutionPolicy    `json:"execution"`
+}
+
+type ExecutionPolicy struct {
+	CloneTimeoutSeconds             int  `json:"clone_timeout_seconds"`
+	LaunchTimeoutSeconds            int  `json:"launch_timeout_seconds"`
+	GuestVerificationTimeoutSeconds int  `json:"guest_verification_timeout_seconds"`
+	ShutdownTimeoutSeconds          int  `json:"shutdown_timeout_seconds"`
+	AutomaticRetry                  bool `json:"automatic_retry"`
+	AutomaticCleanup                bool `json:"automatic_cleanup"`
+	FallbackSignal                  bool `json:"fallback_signal"`
+	PreserveCompleteFailure         bool `json:"preserve_complete_failure"`
+}
+
+func RequiredExecutionPolicy() ExecutionPolicy {
+	return ExecutionPolicy{
+		CloneTimeoutSeconds: 120, LaunchTimeoutSeconds: 120,
+		GuestVerificationTimeoutSeconds: 60, ShutdownTimeoutSeconds: 120,
+		PreserveCompleteFailure: true,
+	}
 }
 
 type SourceImage struct {
@@ -80,7 +101,7 @@ type LiveAuthorization struct {
 	PlanSHA256     string `json:"plan_sha256"`
 	RunID          string `json:"run_id"`
 	CohortID       string `json:"cohort_id"`
-	Nonce          string `json:"nonce"`
+	BootstrapNonce string `json:"bootstrap_nonce"`
 	ExpiresAtUnix  int64  `json:"expires_at_unix"`
 }
 
@@ -151,6 +172,12 @@ func (c Contract) Validate(paths xdg.Paths, qualification manifest.Manifest, che
 	if c.SourceImage.Path != wantImage || c.SourceImage.SHA256 != manifest.UbuntuImageSHA256 || c.SourceImage.Bytes != PinnedImageBytes {
 		return fmt.Errorf("source image must be the exact pinned XDG cache artifact")
 	}
+	if !filepath.IsAbs(c.Toolchain.Root) || !filepath.IsAbs(c.Toolchain.Manifest) || filepath.Clean(c.Toolchain.Manifest) != filepath.Join(filepath.Clean(c.Toolchain.Root), ToolchainManifestName) || !shaPattern.MatchString(c.Toolchain.ManifestSHA256) {
+		return fmt.Errorf("an exact absolute task-owned toolchain root and manifest SHA-256 are required")
+	}
+	if c.Execution != RequiredExecutionPolicy() {
+		return fmt.Errorf("execution timeouts and fail-closed preservation policy differ from the reviewed tuple")
+	}
 	for label, value := range map[string]string{
 		"assets root":        c.Artifacts.AssetsRoot,
 		"controller binary":  c.Artifacts.ControllerBinary,
@@ -172,8 +199,8 @@ func validateContractIdentities(c Contract) error {
 	if c.Schema != Schema || c.Purpose != manifest.QualificationPurpose || !c.Disposable || c.InstanceCount != 1 {
 		return fmt.Errorf("provisioning is restricted to exactly one disposable qualification instance")
 	}
-	if !idPattern.MatchString(c.RunID) || !idPattern.MatchString(c.CohortID) || !uuidPattern.MatchString(c.MachineUUID) || !serialPattern.MatchString(c.DiskSerial) || !uuidPattern.MatchString(c.FilesystemUUID) || !noncePattern.MatchString(c.Nonce) {
-		return fmt.Errorf("fresh run, cohort, machine, disk, filesystem, and nonce identities are required")
+	if !idPattern.MatchString(c.RunID) || !idPattern.MatchString(c.CohortID) || !uuidPattern.MatchString(c.MachineUUID) || !serialPattern.MatchString(c.DiskSerial) || !uuidPattern.MatchString(c.FilesystemUUID) || !noncePattern.MatchString(c.BootstrapNonce) {
+		return fmt.Errorf("fresh run, cohort, machine, disk, filesystem, and bootstrap nonce identities are required")
 	}
 	return nil
 }
@@ -244,7 +271,7 @@ func (a LiveAuthorization) Validate(c Contract, plan Plan, now time.Time) error 
 	if err != nil {
 		return err
 	}
-	if a.ContractSHA256 != contractDigest || a.PlanSHA256 != planDigest || plan.PlanSHA256 != planDigest || a.RunID != c.RunID || a.CohortID != c.CohortID || a.Nonce != c.Nonce {
+	if a.ContractSHA256 != contractDigest || a.PlanSHA256 != planDigest || plan.PlanSHA256 != planDigest || a.RunID != c.RunID || a.CohortID != c.CohortID || a.BootstrapNonce != c.BootstrapNonce {
 		return fmt.Errorf("live authorization does not match the exact provisioning contract and plan")
 	}
 	if a.ExpiresAtUnix <= now.Unix() || a.ExpiresAtUnix > now.Add(15*time.Minute).Unix() {

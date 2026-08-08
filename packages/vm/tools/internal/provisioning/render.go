@@ -40,6 +40,8 @@ type AgentConfig struct {
 	RunID                     string `json:"run_id"`
 	Scenario                  string `json:"scenario"`
 	DurabilityBoundary        string `json:"durability_boundary"`
+	BootstrapNonce            string `json:"bootstrap_nonce"`
+	BootIDSource              string `json:"boot_id_source"`
 }
 
 var reviewedAssetSHA256 = map[string]string{
@@ -130,10 +132,11 @@ func RenderNoCloud(c Contract, m manifest.Manifest, material RenderMaterial) ([]
 		}
 	}
 	config := AgentConfig{
-		Schema: "dockpipe.vm.guest-agent-config.v1", ControllerPublicKeyPath: "/etc/dockpipe-agent/controller.pub",
+		Schema: "dockpipe.vm.guest-agent-config.v2", ControllerPublicKeyPath: "/etc/dockpipe-agent/controller.pub",
 		ControllerPublicKeySHA256: c.Artifacts.ControllerPublicKeySHA256, GuestPrivateKeyPath: "/etc/dockpipe-agent/guest.key",
 		GuestPublicKeySHA256: c.Artifacts.GuestPublicKeySHA256, ControllerBinarySHA256: c.Artifacts.ControllerBinarySHA256, GuestAgentBinarySHA256: c.Artifacts.GuestAgentBinarySHA256,
 		MachineUUID: c.MachineUUID, DiskSerial: c.DiskSerial, RunID: c.RunID, Scenario: m.Scenario, DurabilityBoundary: m.DurabilityBoundary,
+		BootstrapNonce: c.BootstrapNonce, BootIDSource: m.BootIDSource,
 	}
 	configJSON, err := json.Marshal(config)
 	if err != nil {

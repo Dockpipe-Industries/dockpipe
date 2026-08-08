@@ -12,7 +12,7 @@ import (
 	"dockpipe.vm/tools/internal/xdg"
 )
 
-const version = "0.8.0"
+const version = "0.9.0"
 
 func main() {
 	manifestPath := flag.String("validate-manifest", "", "validate an offline qualification manifest")
