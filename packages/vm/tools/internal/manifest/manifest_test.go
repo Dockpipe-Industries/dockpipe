@@ -52,6 +52,8 @@ func TestManifestRejectsUnsafeQualificationVariants(t *testing.T) {
 		"extra disk":         func(m *Manifest) { m.Isolation.ExtraDisks = []string{"third.raw"} },
 		"arbitrary exec":     func(m *Manifest) { m.Isolation.ArbitraryExec = true },
 		"wrong data size":    func(m *Manifest) { m.DataDisk.Bytes-- },
+		"long OS serial":     func(m *Manifest) { m.OSDisk.Serial = strings.Repeat("o", VirtioBlockSerialMaxBytes+1) },
+		"long data serial":   func(m *Manifest) { m.DataDisk.Serial = strings.Repeat("d", VirtioBlockSerialMaxBytes+1) },
 		"discard":            func(m *Manifest) { m.QEMU.Discard = true },
 		"snapshot":           func(m *Manifest) { m.QEMU.Snapshot = true },
 		"unexpected mount":   func(m *Manifest) { m.Filesystem.MountOptions = append(m.Filesystem.MountOptions, "discard") },
@@ -79,7 +81,7 @@ func TestQEMUPlanHasExactIsolationAndBlockPolicy(t *testing.T) {
 		t.Fatal(err)
 	}
 	joined := strings.Join(plan.Args, " ")
-	for _, required := range []string{"q35,accel=kvm", "-cpu host", "-smp 2", "-m 4096", "-nic none", "node-name=qual-data", "serial=dockpipe-qual-data-001", "cache.direct=on", "cache.no-flush=off", "aio=threads", "discard=ignore", "config-wce=on", "rerror=stop", "werror=stop"} {
+	for _, required := range []string{"q35,accel=kvm", "-cpu host", "-smp 2", "-m 4096", "-nic none", "node-name=qual-data", "serial=dockpipe-data-000001", "cache.direct=on", "cache.no-flush=off", "aio=threads", "discard=ignore", "config-wce=on", "rerror=stop", "werror=stop"} {
 		if !strings.Contains(joined, required) {
 			t.Fatalf("QEMU plan missing %q: %s", required, joined)
 		}

@@ -45,7 +45,7 @@
     "bytes": 4294967296,
     "sparse": true,
     "private": true,
-    "serial": "dockpipe-qual-data-001",
+    "serial": "dockpipe-data-000001",
     "node_name": "qual-data",
     "host_backing_identity": "dev=example,ino=qualification-data"
   },

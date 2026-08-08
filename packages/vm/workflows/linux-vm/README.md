@@ -33,7 +33,9 @@ The manifest does not prescribe a boot UUID. Schema
 `boot_id_source=/proc/sys/kernel/random/boot_id`; the actual per-boot value is
 learned through the authenticated guest-first protocol below.
 
-The data disk is a 4 GiB sparse raw whole-device ext4 filesystem. Its reviewed
+The data disk is a 4 GiB sparse raw whole-device ext4 filesystem. Both QEMU
+virtio-blk serials are limited to 20 ASCII bytes so the Linux-visible stable ID
+cannot be truncated. Its reviewed
 creation tuple is:
 
 ```text
@@ -150,7 +152,7 @@ Linux/amd64 bundle. The bundle contains only hash-pinned `qemu-img`,
 `qemu-system-x86_64`, and their exact runtime closure. `qemu-img` has one fixed
 120-second private backing-clone argv; the controller owns exclusive 4 GiB
 sparse-raw creation and deterministic `dockpipe-go-iso9660-v1` seed creation.
-QEMU launch is bounded to 120 seconds, signed guest verification to 180 seconds,
+QEMU launch is bounded to 120 seconds, signed guest verification to 240 seconds,
 and QMP `system_powerdown` shutdown to 120 seconds with no fallback signal.
 Any failure stops once, preserves all four instance roots, and never retries or
 cleans. Cleanup requires a separate fresh authorization bound to the exact
@@ -202,7 +204,7 @@ confirmed all ordered 12 resources absent while the immutable prior promotion
 and post-correction build root remained untouched.
 
 The `dockpipe.vm.first-boot-observation.v1` policy is now production-wired but
-still non-authorizing. The fresh provisioning plan and sealed executor-v4 bind
+still non-authorizing. The fresh provisioning plan and sealed executor-v5 bind
 the exact evidence and runtime paths, existing `isa-serial/ttyS0` source,
 one-shot Unix transport with QEMU as client and the controller as listener,
 exclusive mode-`0600` evidence, 4 MiB prefix cap, fail-closed overflow, fsync,
@@ -213,9 +215,9 @@ propagates listener-close, sink-sync, sink-close, and parent-directory-sync
 errors. It adds no seed or guest mutation, private-payload read, network, shell,
 reconnect, retry, fallback, signal, or automatic cleanup.
 
-Preserved executor-v3 and executor-v2 contracts remain accepted only by the
-exact cleanup path; fresh execution requires executor-v4 and the observation
-policy, and compatibility tests pin both historical cleanup paths.
+Preserved executor-v4, executor-v3, and executor-v2 contracts remain accepted only by the
+exact cleanup path; fresh execution requires executor-v5 and the observation
+policy, and compatibility tests pin all historical cleanup paths.
 The checked-in authorization template remains `approved=false`, every emitted
 plan remains `execute=false`, and this slice created no live inputs or artifacts.
 Absence of a console milestone will remain non-diagnostic. A subsequent offline
@@ -328,3 +330,25 @@ and inert plan SHA-256
 The plan remains non-executing and non-authorized, uses the 180-second guest
 deadline, and keeps all Unix socket paths within the reviewed limit. No live
 root or VM was created; Gate 2 execution remains separate.
+
+That exact authorization was later executed once and is spent. The run failed
+closed after 180 seconds, preserved the complete instance, and captured 86,335
+bytes of first-boot console evidence. Cloud-init reached the agent start only
+at about 176.2 seconds. Its logs also prove two independent provisioning
+defects: early `write_files` ownership lookup failed because the agent account
+did not yet exist, and the 23-character data-disk serial did not produce the
+requested Linux virtio by-id path. The QEMU process is no longer active, but
+the roots remain preserved for separately authorized exact cleanup. The run
+must not be retried.
+
+VM package 1.1.2 defers the three agent-owned key/config files until cloud-init's
+final stage, removes schema-invalid empty/unsupported NoCloud fields, restricts
+both disk serials to the 20-byte virtio-blk limit, and gives guest verification
+240 seconds. The user-data shape validates against the schema extracted from
+the exact pinned Ubuntu image. Executor-v5 seals this policy; executor-v4 keeps
+its 180-second shape only for exact cleanup, and executor-v3/v2 keep their
+60-second cleanup shapes. Networking remains `-nic none`, the separate NoCloud
+network-config has no Ethernet interfaces, SSH is disabled, and there is still
+no retry, fallback signal, or automatic cleanup. Fresh builds, promotion,
+preparation, and live authorization remain separate. Gate 2 is unqualified and
+Gate 3 remains blocked.

@@ -3,21 +3,17 @@ apt:
   preserve_sources_list: true
 package_update: false
 package_upgrade: false
-packages: []
-network:
-  config: disabled
 disable_root: true
 ssh_pwauth: false
 ssh_deletekeys: true
-ssh_genkeytypes: []
+ssh_genkeytypes: [ed25519]
 users:
   - name: dockpipe-agent
     system: true
     shell: /usr/sbin/nologin
     homedir: /var/lib/dockpipe-agent
-    create_home: true
     lock_passwd: true
-    ssh_authorized_keys: []
+    ssh_redirect_user: true
 fs_setup:
   - label: dockpipe-qual
     filesystem: ext4

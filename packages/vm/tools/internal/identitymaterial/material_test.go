@@ -15,7 +15,7 @@ func TestPreparedIdentityMaterialIsDurableExactAndConsumedAfterReservation(t *te
 	if err := os.Chmod(base, 0o700); err != nil {
 		t.Fatal(err)
 	}
-	contract := provisioning.Contract{Schema: provisioning.Schema, Purpose: manifest.QualificationPurpose, Disposable: true, InstanceCount: 1, RunID: "run-001", CohortID: "cohort-001", MachineUUID: "11111111-1111-4111-8111-111111111111", DiskSerial: "dockpipe-qual-data-001", FilesystemUUID: "44444444-4444-4444-8444-444444444444", Roots: provisioning.Roots{Instances: filepath.Join(base, "instances"), Evidence: filepath.Join(base, "evidence"), Config: filepath.Join(base, "config"), Runtime: filepath.Join(base, "runtime")}}
+	contract := provisioning.Contract{Schema: provisioning.Schema, Purpose: manifest.QualificationPurpose, Disposable: true, InstanceCount: 1, RunID: "run-001", CohortID: "cohort-001", MachineUUID: "11111111-1111-4111-8111-111111111111", DiskSerial: "dockpipe-data-000001", FilesystemUUID: "44444444-4444-4444-8444-444444444444", Roots: provisioning.Roots{Instances: filepath.Join(base, "instances"), Evidence: filepath.Join(base, "evidence"), Config: filepath.Join(base, "config"), Runtime: filepath.Join(base, "runtime")}}
 	stageParent := filepath.Join(base, "stage-parent")
 	if err := os.Mkdir(stageParent, 0o700); err != nil {
 		t.Fatal(err)

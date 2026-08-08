@@ -178,11 +178,25 @@ func digest(data []byte) string {
 
 func TestRequiredExecutionPolicyAllowsPinnedNetworklessCloudInitBoot(t *testing.T) {
 	policy := RequiredExecutionPolicy()
-	if policy.CloneTimeoutSeconds != 120 || policy.LaunchTimeoutSeconds != 120 || policy.GuestVerificationTimeoutSeconds != 180 || policy.ShutdownTimeoutSeconds != 120 {
+	if policy.CloneTimeoutSeconds != 120 || policy.LaunchTimeoutSeconds != 120 || policy.GuestVerificationTimeoutSeconds != 240 || policy.ShutdownTimeoutSeconds != 120 {
 		t.Fatalf("reviewed execution deadlines changed: %+v", policy)
 	}
 	if policy.AutomaticRetry || policy.AutomaticCleanup || policy.FallbackSignal || !policy.PreserveCompleteFailure {
 		t.Fatalf("fail-closed execution policy changed: %+v", policy)
+	}
+}
+
+func TestProvisioningContractRejectsVirtioSerialOverTwentyBytes(t *testing.T) {
+	c, _, _ := contractFixture(t)
+	if len(c.DiskSerial) != manifest.VirtioBlockSerialMaxBytes {
+		t.Fatalf("fixture must exercise the exact virtio-blk serial boundary: %q", c.DiskSerial)
+	}
+	if err := validateContractIdentities(c); err != nil {
+		t.Fatalf("exact virtio-blk serial boundary was rejected: %v", err)
+	}
+	c.DiskSerial += "x"
+	if err := validateContractIdentities(c); err == nil {
+		t.Fatal("expected overlength virtio-blk serial rejection")
 	}
 }
 
@@ -506,10 +520,16 @@ func TestNoCloudRenderingIsExactPinnedAndRestricted(t *testing.T) {
 		all.Write(file.Content)
 	}
 	rendered := all.String()
-	for _, required := range []string{"network-config", "package_update: false", "package_upgrade: false", "packages: []", "ssh_pwauth: false", "config: disabled", c.DiskSerial, c.FilesystemUUID, "dockpipe-agent.service", "/usr/libexec/dockpipe-guest-agent"} {
+	for _, required := range []string{"network-config", "package_update: false", "package_upgrade: false", "ssh_pwauth: false", "ssh_redirect_user: true", "ethernets: {}", c.DiskSerial, c.FilesystemUUID, "dockpipe-agent.service", "/usr/libexec/dockpipe-guest-agent"} {
 		if !strings.Contains(rendered, required) {
 			t.Fatalf("rendered seed missing %q", required)
 		}
+	}
+	if strings.Count(rendered, "    defer: true\n") != 3 {
+		t.Fatalf("agent-owned NoCloud files must be deferred until after user creation")
+	}
+	if strings.Contains(rendered, "ssh_authorized_keys: []") {
+		t.Fatalf("rendered NoCloud config contains schema-invalid empty SSH key list")
 	}
 	var renderedConfig AgentConfig
 	for _, line := range strings.Split(rendered, "\n") {
