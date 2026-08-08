@@ -520,13 +520,16 @@ func TestNoCloudRenderingIsExactPinnedAndRestricted(t *testing.T) {
 		all.Write(file.Content)
 	}
 	rendered := all.String()
-	for _, required := range []string{"network-config", "package_update: false", "package_upgrade: false", "ssh_pwauth: false", "ssh_redirect_user: true", "ethernets: {}", c.DiskSerial, c.FilesystemUUID, "dockpipe-agent.service", "/usr/libexec/dockpipe-guest-agent"} {
+	for _, required := range []string{"network-config", "package_update: false", "package_upgrade: false", "ssh_pwauth: false", "system: true", "shell: /usr/sbin/nologin", "lock_passwd: true", "ethernets: {}", c.DiskSerial, c.FilesystemUUID, "dockpipe-agent.service", "/usr/libexec/dockpipe-guest-agent"} {
 		if !strings.Contains(rendered, required) {
 			t.Fatalf("rendered seed missing %q", required)
 		}
 	}
 	if strings.Count(rendered, "    defer: true\n") != 3 {
 		t.Fatalf("agent-owned NoCloud files must be deferred until after user creation")
+	}
+	if strings.Contains(rendered, "ssh_redirect_user:") {
+		t.Fatalf("system user must not declare cloud-init ssh_redirect_user")
 	}
 	if strings.Contains(rendered, "ssh_authorized_keys: []") {
 		t.Fatalf("rendered NoCloud config contains schema-invalid empty SSH key list")

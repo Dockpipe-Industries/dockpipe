@@ -19,14 +19,15 @@ import (
 )
 
 const (
-	Schema                         = "dockpipe.vm.executor.v5"
-	LegacyDeadlineCleanupSchema    = "dockpipe.vm.executor.v4"
-	LegacyObservationCleanupSchema = "dockpipe.vm.executor.v3"
-	LegacyCleanupSchema            = "dockpipe.vm.executor.v2"
-	CleanupSchema                  = "dockpipe.vm.cleanup-authorization.v1"
-	NoCloudBuilder                 = "dockpipe-go-iso9660-v1"
-	ControlledPowerdown            = "system_powerdown"
-	PreservationDeadline           = 30
+	Schema                          = "dockpipe.vm.executor.v6"
+	LegacyUserCreationCleanupSchema = "dockpipe.vm.executor.v5"
+	LegacyDeadlineCleanupSchema     = "dockpipe.vm.executor.v4"
+	LegacyObservationCleanupSchema  = "dockpipe.vm.executor.v3"
+	LegacyCleanupSchema             = "dockpipe.vm.executor.v2"
+	CleanupSchema                   = "dockpipe.vm.cleanup-authorization.v1"
+	NoCloudBuilder                  = "dockpipe-go-iso9660-v1"
+	ControlledPowerdown             = "system_powerdown"
+	PreservationDeadline            = 30
 )
 
 type Contract struct {
@@ -314,7 +315,7 @@ func (c Contract) Digest() (string, error) {
 
 func (c Contract) Validate() error {
 	digest, err := c.Digest()
-	if err != nil || !c.sealed || (c.Schema != Schema && c.Schema != LegacyDeadlineCleanupSchema && c.Schema != LegacyObservationCleanupSchema && c.Schema != LegacyCleanupSchema) || c.ExecutionSHA256 != digest || !isSHA256(c.ContractSHA256) || !isSHA256(c.PlanSHA256) || !isSHA256(c.ToolchainSHA256) {
+	if err != nil || !c.sealed || (c.Schema != Schema && c.Schema != LegacyUserCreationCleanupSchema && c.Schema != LegacyDeadlineCleanupSchema && c.Schema != LegacyObservationCleanupSchema && c.Schema != LegacyCleanupSchema) || c.ExecutionSHA256 != digest || !isSHA256(c.ContractSHA256) || !isSHA256(c.PlanSHA256) || !isSHA256(c.ToolchainSHA256) {
 		return fmt.Errorf("executor contract identity or digest is invalid")
 	}
 	if c.Schema == LegacyCleanupSchema {
@@ -357,7 +358,9 @@ func (c Contract) Validate() error {
 	}
 	bootstrap := c.Guest.Bootstrap
 	wantGuestTimeout := provisioning.RequiredExecutionPolicy().GuestVerificationTimeoutSeconds
-	if c.Schema == LegacyDeadlineCleanupSchema {
+	if c.Schema == LegacyUserCreationCleanupSchema {
+		wantGuestTimeout = 240
+	} else if c.Schema == LegacyDeadlineCleanupSchema {
 		wantGuestTimeout = 180
 	} else if c.Schema != Schema {
 		wantGuestTimeout = 60

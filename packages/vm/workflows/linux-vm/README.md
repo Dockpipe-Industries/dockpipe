@@ -204,7 +204,7 @@ confirmed all ordered 12 resources absent while the immutable prior promotion
 and post-correction build root remained untouched.
 
 The `dockpipe.vm.first-boot-observation.v1` policy is now production-wired but
-still non-authorizing. The fresh provisioning plan and sealed executor-v5 bind
+still non-authorizing. The fresh provisioning plan and sealed executor-v6 bind
 the exact evidence and runtime paths, existing `isa-serial/ttyS0` source,
 one-shot Unix transport with QEMU as client and the controller as listener,
 exclusive mode-`0600` evidence, 4 MiB prefix cap, fail-closed overflow, fsync,
@@ -215,9 +215,10 @@ propagates listener-close, sink-sync, sink-close, and parent-directory-sync
 errors. It adds no seed or guest mutation, private-payload read, network, shell,
 reconnect, retry, fallback, signal, or automatic cleanup.
 
-Preserved executor-v4, executor-v3, and executor-v2 contracts remain accepted only by the
-exact cleanup path; fresh execution requires executor-v5 and the observation
-policy, and compatibility tests pin all historical cleanup paths.
+Preserved executor-v5, executor-v4, executor-v3, and executor-v2 contracts
+remain accepted only by the exact cleanup path; fresh execution requires
+executor-v6 and the observation policy, and compatibility tests pin all
+historical cleanup paths.
 The checked-in authorization template remains `approved=false`, every emitted
 plan remains `execute=false`, and this slice created no live inputs or artifacts.
 Absence of a console milestone will remain non-diagnostic. A subsequent offline
@@ -420,3 +421,26 @@ The identity expires at `2026-08-09T16:47:02Z`. The plan is non-authorized and
 non-executing, binds 240-second guest verification, uses 20-byte disk serials,
 and keeps QMP, agent, and console sockets at 93, 95, and 92 bytes. All live
 roots remain absent; live Gate 2 remains separately authorized.
+
+That executor-v5 Gate 2 authorization was subsequently consumed exactly once.
+The controller timed out at signed guest verification after 240 seconds,
+preserved every root, and did not retry, signal, clean, or enter Gate 3. The
+recorded QEMU process is absent. The console plus a read-only forensic copy of
+the overlay show cloud-init rejected the agent user because `system: true` and
+`ssh_redirect_user: true` cannot be combined. The failed users module then left
+the three deferred agent-owned files without an account, so the agent could not
+start correctly.
+
+VM package 1.1.3 removes `ssh_redirect_user` while retaining the locked system
+account, `/usr/sbin/nologin`, disabled SSH, `-nic none`, and the existing
+systemd sandbox. The package pins the corrected NoCloud asset and rejects any
+reintroduction in tests. Executor-v6 is the only fresh-execution schema;
+executor-v5 remains cleanup-only for this preserved instance. Cleanup, source
+review, promotion, fresh preparation, live Gate 2, and Gate 3 remain separate
+authorization boundaries.
+
+The complete package Go suite, `go vet`, focused race tests, VM package test,
+Linux and Windows workflow validation, and isolated workflow/resolver
+compilation all pass. Cloud-init 26.1 extracted from the exact preserved image
+also accepts the corrected rendered user-data shape. Those checks were offline
+only and created no checkout-generated state, promotion, or live VM action.

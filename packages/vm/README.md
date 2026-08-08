@@ -1,11 +1,11 @@
 # DockPipe VM package
 
 The `vm` package owns guest-specific workflows, QEMU resolver models, and the
-VMM-neutral control protocol. DockPipe core remains generic. Version 1.1.2
+VMM-neutral control protocol. DockPipe core remains generic. Version 1.1.3
 retains the sealed first-boot console observation path, corrects the pinned
-Ubuntu NoCloud contract and virtio-blk serial bound, and gives the networkless
-qualification path a complete post-boot verification window alongside the
-unchanged `windows-vm` surface.
+Ubuntu NoCloud system-user contract and virtio-blk serial bound, and gives the
+networkless qualification path a complete post-boot verification window
+alongside the unchanged `windows-vm` surface.
 
 The Linux foundation has two deliberately different paths:
 
@@ -82,7 +82,7 @@ staging bundle; a later failure preserves the final configuration root.
 The staging descriptor expires exactly 24 hours after creation. Expiry never
 deletes material automatically; it requires explicit removal and fresh preparation.
 
-The executor-v5 verification request requires the controller to read and verify
+The executor-v6 verification request requires the controller to read and verify
 the bootstrap before it writes anything to the stream. Acceptance requires the
 exact pinned guest signature, fresh time window, bootstrap nonce, sequence 1,
 phase `bootstrap`, static identity tuple, kernel boot-ID source, and key/binary
@@ -152,7 +152,7 @@ promotion, preparation, authorization, and one new Gate 2 invocation remain
 required before Gate 2 can be qualified.
 
 `dockpipe.vm.first-boot-observation.v1` is now bound into every fresh
-provisioning plan, its digest, executor-v5, and the exact QEMU argv. QEMU exposes
+provisioning plan, its digest, executor-v6, and the exact QEMU argv. QEMU exposes
 only the existing `isa-serial/ttyS0` stream as a one-shot Unix client; before
 launch, the controller creates the exact listener and an exclusive mode-`0600`
 `first-boot-console.log`. The controller retains at most the first 4 MiB,
@@ -165,11 +165,11 @@ planning and sealed executor validation. The path adds no NoCloud or guest
 mutation, private-payload read, network, shell, retry, reconnect, signal,
 fallback, or automatic cleanup.
 
-Fresh qualification execution now requires executor-v5 with that exact policy.
-Preserved executor-v4, executor-v3, and executor-v2 files remain loadable only for their
-separately authorized exact cleanup resource lists; they cannot regain
-qualification execution, and independent compatibility tests pin all three cleanup
-paths. The checked-in live authorization remains disabled and
+Fresh qualification execution now requires executor-v6 with that exact policy.
+Preserved executor-v5, executor-v4, executor-v3, and executor-v2 files remain
+loadable only for their separately authorized exact cleanup resource lists;
+they cannot regain qualification execution, and independent compatibility
+tests pin all four cleanup paths. The checked-in live authorization remains disabled and
 the plan remains `execute=false`. No new live identity, root, disk, seed,
 process, socket, or evidence was created by this offline slice. Gate 2 remains
 unqualified. The subsequent offline source-build review produced two
@@ -425,6 +425,32 @@ The identity expires at `2026-08-09T16:47:02Z`. The plan remains non-authorized
 and non-executing, binds the typed 240-second verification operation, keeps both
 disk serials at 20 bytes, and keeps socket paths below Linux's bound. Every live
 root remains absent; live Gate 2 is still a separate exact authorization.
+
+That exact executor-v5 authorization later ran once and is permanently spent.
+Guest verification timed out after 240 seconds with no signed bootstrap, retry,
+signal, fallback, automatic cleanup, or Gate 3 action; the complete instance was
+preserved and the recorded QEMU process is absent. The first-boot console and a
+read-only forensic copy of the preserved overlay prove cloud-init rejected the
+agent account with `ValueError: Not creating user dockpipe-agent. Key(s)
+ssh_redirect_user cannot be provided with system`. Because `users_groups`
+failed, the three deferred agent-owned files also failed and the service could
+not bootstrap.
+
+Version 1.1.3 removes only `ssh_redirect_user` from that locked system account.
+The account remains `system: true`, uses `/usr/sbin/nologin`, has a locked
+password, and is isolated by disabled SSH and networking. The reviewed NoCloud
+asset hash and regression tests pin that shape. Executor-v6 owns the corrected
+policy; executor-v5 is accepted only for the preserved run's separately
+authorized exact cleanup. The failed run is not retried. Offline validation,
+fresh deterministic builds, promotion, preparation, and a new live Gate 2
+authorization remain separate boundaries.
+
+Offline validation passed the complete Go test suite, `go vet`, focused race
+tests, the VM package test, both workflow validations, and isolated workflow
+and resolver compilation. Cloud-init 26.1 extracted from the exact preserved
+Ubuntu image reported the corrected rendered user-data shape as valid. The
+schema check and compilation outputs remain temporary review artifacts outside
+the checkout; no promotion or live action occurred.
 
 The original documentation decision created no promotion evidence and granted no Gate 2
 authority. Deterministic source review, offline promotion, Gate 2 preparation,

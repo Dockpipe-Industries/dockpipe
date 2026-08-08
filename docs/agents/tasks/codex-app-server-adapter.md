@@ -4411,6 +4411,48 @@ bytes. All four live roots remain absent. No authorization, identity
 reservation, disk, seed, socket, process, cleanup, Gate 2, or Gate 3 action
 occurred. Live Gate 2 remains a separate exact authorization.
 
+#### Linux VM Gate 2 system-user correction (2026-08-08)
+
+Live Gate 2 script SHA-256
+`1fc9d1074cce63bd5fa7be09557cc6984e9b1255d35f354925f4049c3ccd2f29`
+executed exactly once for run `g2r-ff1cc0a230d1f0c2` and cohort
+`g2c-1e7fe20cf8ac84ad`; its authorization is permanently spent. The sealed
+executor-v5 reached `verify-guest`, timed out after 240 seconds, and preserved
+the complete instance. It created no signed bootstrap or verification
+evidence, issued no retry or fallback signal, performed no cleanup, and did not
+enter Gate 3. The recorded QEMU PID `3439760` is absent. The owner-only
+first-boot console is `87817` bytes with SHA-256
+`6dee73649a3f94276e7b387880cbac21adb0d82c603ccb47eefb90bf7790895a`.
+
+The console showed both `users_groups` and `write_files_deferred` failing. An
+unprivileged read-only sparse forensic copy of the preserved overlay exposed
+the exact cloud-init traceback: `ValueError: Not creating user dockpipe-agent.
+Key(s) ssh_redirect_user cannot be provided with system`. The NoCloud user
+combined `system: true` with `ssh_redirect_user: true`; cloud-init therefore
+did not create the account, and the three deferred agent-owned key/config files
+could not resolve their owner. The forensic copy modified neither the
+preserved overlay nor any live root.
+
+VM package 1.1.3 removes only `ssh_redirect_user` from the locked system user.
+It retains `system: true`, `/usr/sbin/nologin`, `lock_passwd: true`, disabled
+SSH, `-nic none`, and the existing systemd sandbox. The reviewed asset SHA-256
+and package tests pin that corrected shape and explicitly reject the invalid
+key. Executor-v6 owns fresh execution. Preserved executor-v5 remains loadable
+only for its separately authorized exact cleanup list, alongside historical
+executor-v4/v3/v2 cleanup compatibility. No `src/**` file changed, so the
+package/engine boundary remains preserved. The spent run will not be retried;
+exact cleanup, deterministic source review, promotion, fresh preparation, a
+new live Gate 2 authorization, and Gate 3 remain separate gates.
+
+Offline validation passed `GOWORK=off CGO_ENABLED=0 go test -mod=readonly
+./...`, `go vet -mod=readonly ./...`, focused provisioning/executor race tests,
+the VM package test, Linux and Windows workflow validation, and isolated
+workflow/resolver compilation under `/tmp`. Cloud-init 26.1 extracted from the
+exact preserved Ubuntu overlay reported the corrected rendered user-data shape
+as valid. These checks created no repository-generated state, promotion,
+identity, authorization, disk, socket, process, cleanup, Gate 2, or Gate 3
+action.
+
 The implementation test matrix is:
 
 1. **Adapter selection:** a new normal Pipeon Codex session defaults to App Server; the explicit exec
