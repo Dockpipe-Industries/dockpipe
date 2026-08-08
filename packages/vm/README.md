@@ -481,6 +481,21 @@ recorded QEMU process absent. The prior immutable promotion and executor-v6
 source-review output remain unchanged. No retry, promotion, preparation, live
 Gate 2, or Gate 3 action occurred.
 
+The next separately authorized offline gate published immutable executor-v6
+promotion `vmp-2026080897480d78`. Its closed inventory contains only the Linux
+controller SHA-256
+`d43af4d07ce6c338494f0a36acfe9530029fce1545201411387067dd6b1ced43`
+at `5447246` bytes and Linux guest-agent SHA-256
+`3a2d7657e13b6ec30fc8dc268ad977bb248b6598749979edf63223d364cc59e7`
+at `3870222` bytes. Both are mode `0500`, owner-only, single-link files.
+Canonical promotion evidence SHA-256 is
+`c82161da827842b926bbed834fddbd14957577df5a69ae5d4d640949deb7eac1`.
+Independent read-back confirmed checkpoint
+`97480d78d3e7a69f22f4d17c6551f6b4d9d877d0`, the exact inventory,
+ownership, modes, hashes, and preserved package/engine boundary. The promotion
+created no identity, plan, authorization, disk, seed, socket, process, cleanup,
+Gate 2, or Gate 3 action. Fresh preparation remains separate.
+
 The original documentation decision created no promotion evidence and granted no Gate 2
 authority. Deterministic source review, offline promotion, Gate 2 preparation,
 Gate 2 live authorization and execution, cleanup, and Gate 3 remain distinct
