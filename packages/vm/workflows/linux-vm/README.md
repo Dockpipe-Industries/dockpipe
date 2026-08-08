@@ -194,6 +194,13 @@ contract, plan, authorization, and executor for fresh execution. Executor-v4
 owns the new deadline; preserved executor-v3 and executor-v2 contracts remain
 cleanup-only under their exact separately authorized lists.
 
+For this failed run, cleanup initially refused the still-active host QEMU. A
+separately authorized QMP-only recovery sent `system_powerdown`, observed the
+exact process exit within 120 seconds, and sent no fallback signal. A final
+fresh executor-bound cleanup then completed once; immediate host read-back
+confirmed all ordered 12 resources absent while the immutable prior promotion
+and post-correction build root remained untouched.
+
 The `dockpipe.vm.first-boot-observation.v1` policy is now production-wired but
 still non-authorizing. The fresh provisioning plan and sealed executor-v4 bind
 the exact evidence and runtime paths, existing `isa-serial/ttyS0` source,

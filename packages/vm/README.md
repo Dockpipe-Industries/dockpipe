@@ -143,8 +143,10 @@ Clone, launch, and shutdown remain bounded to 120 seconds; networking, SSH,
 automatic retry, automatic cleanup, and fallback signals remain disabled. The
 new timeout is part of the provisioning contract, deterministic plan digest,
 and sealed executor-v4, so old plans and authorizations cannot acquire the wider
-deadline. The failed live roots remain preserved and require separately
-authorized exact cleanup. Fresh deterministic builds are recorded below;
+deadline. The failed live roots were preserved pending separately authorized
+exact cleanup. That cleanup later completed after an exact QMP-only
+power-down; all 12 executor-bound resources are absent and the immutable
+promotion remains untouched. Fresh deterministic builds are recorded below;
 promotion, preparation, authorization, and one new Gate 2 invocation remain
 required before Gate 2 can be qualified.
 
