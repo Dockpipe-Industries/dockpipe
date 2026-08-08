@@ -525,3 +525,14 @@ The Windows compatibility guest is `3966976` bytes with SHA-256
 `86caf93a18159e8b40275f43b02e2930baa9eaffad76227285df8e0a08f3ea6c`.
 Embedded build metadata and the package-local dependency boundary passed
 review. All three binaries remain unpromoted offline evidence.
+
+The separately authorized executor-v6 cleanup wrapper then ran once. Cleanup
+authorization SHA-256 is
+`8a5fbdbf19f744121b3ec7ea42b611fd1a5b0cd24972904299ae2370ac14f460`;
+the controller returned `completed=["cleanup"]`, `cleanup_run=true`, and
+`preserved=false`. Cleanup-result SHA-256 is
+`55114a525775c99bcc33eab203a598bcd8aba79878e72817a97aced772d46231`.
+Independent read-back confirmed all 12 executor-ordered resources and QEMU PID
+`3947652` absent. The prior promotion and executor-v7 source-review binaries
+remain unchanged. No retry, promotion, preparation, live Gate 2, or Gate 3
+action occurred.

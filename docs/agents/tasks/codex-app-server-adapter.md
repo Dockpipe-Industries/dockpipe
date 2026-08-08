@@ -4581,6 +4581,19 @@ Embedded build metadata matches the requested platforms and flags, and every
 non-standard dependency remains under `packages/vm/tools/**`. The review root
 is unpromoted; no cleanup, live Gate 2, or Gate 3 action occurred.
 
+The separately approved executor-v6 cleanup wrapper SHA-256
+`26644340417e14c6cb0c3d2c3c80e96bc373964679a94925f33f68a10da5a715`
+executed exactly once and created cleanup authorization SHA-256
+`8a5fbdbf19f744121b3ec7ea42b611fd1a5b0cd24972904299ae2370ac14f460`
+for only the sealed executor-ordered 12 resources. The pinned controller
+returned `completed=["cleanup"]`, `cleanup_run=true`, and `preserved=false`;
+cleanup-result SHA-256 is
+`55114a525775c99bcc33eab203a598bcd8aba79878e72817a97aced772d46231`.
+Independent read-back found all 12 resources and recorded QEMU PID `3947652`
+absent. Both the prior promotion controller and executor-v7 source-review
+controller remain hash-identical. No retry, promotion, preparation, live Gate
+2, or Gate 3 action occurred.
+
 The implementation test matrix is:
 
 1. **Adapter selection:** a new normal Pipeon Codex session defaults to App Server; the explicit exec
