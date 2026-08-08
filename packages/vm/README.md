@@ -669,6 +669,19 @@ QEMU PID `4150024` absent. The executor-v7 promotion controller and executor-v8
 source-review controller retain their exact hashes. No retry, promotion,
 preparation, live Gate 2, or Gate 3 action occurred.
 
+The next separately approved offline promotion published immutable executor-v8
+promotion `vmp-202608081047d7a4` from checkpoint
+`1047d7a44a98c71fd45529d2721a808d659cdfda`. Its closed inventory contains
+only controller SHA-256
+`ae624b6d3c140ccadac34ca1ca2eea509d1b22ece011fd22c811ba2c6bde011c`
+at `5447686` bytes and guest-agent SHA-256
+`3a2d7657e13b6ec30fc8dc268ad977bb248b6598749979edf63223d364cc59e7`
+at `3870222` bytes, each owner-only mode `0500`. Canonical evidence SHA-256 is
+`77567cf76eed3e2bb6b44e960bb0949b2665a5cc98d86cece66bca1707ecfb16`.
+Independent read-back confirmed the closed two-file promotion and one-file
+evidence inventories. No preparation, authorization, disk, seed, socket,
+process, cleanup, Gate 2, or Gate 3 action occurred.
+
 The original documentation decision created no promotion evidence and granted no Gate 2
 authority. Deterministic source review, offline promotion, Gate 2 preparation,
 Gate 2 live authorization and execution, cleanup, and Gate 3 remain distinct

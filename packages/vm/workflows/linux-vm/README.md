@@ -610,3 +610,12 @@ the controller returned `completed=["cleanup"]`, `cleanup_run=true`, and
 Independent read-back confirmed all 12 resources and QEMU PID `4150024`
 absent. Both immutable controller inputs remain unchanged. No retry, promotion,
 preparation, live Gate 2, or Gate 3 action occurred.
+
+The next separately authorized offline promotion created immutable
+`vmp-202608081047d7a4`. Its exact inventory is controller SHA-256
+`ae624b6d3c140ccadac34ca1ca2eea509d1b22ece011fd22c811ba2c6bde011c`
+at `5447686` bytes and guest-agent SHA-256
+`3a2d7657e13b6ec30fc8dc268ad977bb248b6598749979edf63223d364cc59e7`
+at `3870222` bytes, both mode `0500`. Promotion evidence SHA-256 is
+`77567cf76eed3e2bb6b44e960bb0949b2665a5cc98d86cece66bca1707ecfb16`.
+Independent read-back confirmed both closed inventories and no live action.
