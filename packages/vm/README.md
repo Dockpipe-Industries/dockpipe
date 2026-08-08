@@ -658,6 +658,17 @@ non-standard dependency resolves under `packages/vm/tools/**`. These are
 unpromoted offline review artifacts; no cleanup, Gate 2, or Gate 3 action
 occurred.
 
+The separately approved executor-v7 cleanup wrapper then executed exactly once.
+Cleanup authorization SHA-256 is
+`262595f83f033d7311a6db7343d0b1ceeb296cebd2fc8f65538655a3b03bc676`;
+the pinned controller returned `completed=["cleanup"]`, `cleanup_run=true`,
+and `preserved=false`. Cleanup-result SHA-256 is
+`253cd08488148f3d1508c9892aa12f813b4cd491ac836bd2704929ffbdaa608c`.
+Independent read-back confirmed all 12 executor-ordered resources and recorded
+QEMU PID `4150024` absent. The executor-v7 promotion controller and executor-v8
+source-review controller retain their exact hashes. No retry, promotion,
+preparation, live Gate 2, or Gate 3 action occurred.
+
 The original documentation decision created no promotion evidence and granted no Gate 2
 authority. Deterministic source review, offline promotion, Gate 2 preparation,
 Gate 2 live authorization and execution, cleanup, and Gate 3 remain distinct
