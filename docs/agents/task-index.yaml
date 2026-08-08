@@ -80,6 +80,12 @@ tasks:
     dispatch:
       readiness: unclassified
       ownership: unclaimed
+  - id: TASK-020
+    topic: Declarative application surfaces and standalone target builders
+    path: docs/agents/tasks/declarative-application-surfaces-and-target-builders.md
+    dispatch:
+      readiness: unclassified
+      ownership: unclaimed
 
 maintenance:
   - Treat this YAML file as the AI/backlog entrypoint.
