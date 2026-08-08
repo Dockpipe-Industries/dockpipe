@@ -4607,6 +4607,25 @@ Independent read-back confirmed the two promoted files and sole evidence file;
 all live-action flags are false. No preparation, authorization, cleanup, Gate
 2, or Gate 3 action occurred.
 
+The next separately approved preparation created fresh run
+`g2r-f3037fbd6df82729` and cohort `g2c-eda2763a444462ef` for promotion
+`vmp-202608084eb50c76`. The owner-only identity expires at Unix `1786303837`,
+exactly 24 hours after creation. Qualification input SHA-256 is
+`8da854d047acee50f8aee4cd9065dc0f5f54be4e2bfbfe1cd3b62f9e98913595`;
+provisioning input SHA-256 is
+`461cfbc52ce64ebefbdd5b810c2c8eba825bb315cbfe056273621f28ab248764`;
+inert-plan SHA-256 is
+`18314569a259d85b09a68bc415f9efcc777284c792dd79fee201b55ce9a99187`.
+The plan binds contract
+`821997f35e04e528edf5d3e8e9a67a2effe82f24cad0f76517a52abaeb9532b3`,
+plan digest
+`0d1fd14723fc8f504a9b9347343a3d1eb01f56aef9b151ff23b46f379c0b06e6`,
+and bootstrap nonce
+`fbcd69ca7bc51a50a45ef13a88bba72f9e9dd4ad6514a222cc5dbeedbf0ad5e0`.
+It remains non-authorized and non-executing with executor-v7's 240-second
+verification window. All four live roots remain absent; no live authorization,
+VM execution, cleanup, or Gate 3 action occurred.
+
 The implementation test matrix is:
 
 1. **Adapter selection:** a new normal Pipeon Codex session defaults to App Server; the explicit exec
