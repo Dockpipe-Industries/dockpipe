@@ -52,9 +52,12 @@ func qualification(t *testing.T) manifest.Manifest {
 func contractFixture(t *testing.T) (Contract, xdg.Paths, RenderMaterial) {
 	t.Helper()
 	root := t.TempDir()
+	rootDigest := sha256.Sum256([]byte(root))
+	volumeRoot := filepath.VolumeName(root) + string(filepath.Separator)
+	shortRuntime := filepath.Join(volumeRoot, "dpvm-"+hex.EncodeToString(rootDigest[:4]))
 	paths := xdg.Paths{
 		Images: filepath.Join(root, "cache", "dockpipe", "vm", "images"), Instances: filepath.Join(root, "state", "dockpipe", "vm", "instances"),
-		Evidence: filepath.Join(root, "state", "dockpipe", "evidence"), Config: filepath.Join(root, "config", "dockpipe", "vm"), Runtime: filepath.Join(root, "run", "dockpipe", "vm"),
+		Evidence: filepath.Join(root, "state", "dockpipe", "evidence"), Config: filepath.Join(root, "config", "dockpipe", "vm"), Runtime: shortRuntime,
 	}
 	controllerPub, controllerPriv, _ := ed25519.GenerateKey(rand.Reader)
 	guestPub, guestPriv, _ := ed25519.GenerateKey(rand.Reader)
@@ -153,6 +156,10 @@ func qualificationForContract(t *testing.T, c Contract) manifest.Manifest {
 	m.QEMU.BinaryPath = filepath.Join(c.Toolchain.Root, filepath.FromSlash(qemu.RelativePath))
 	m.QEMU.BinarySHA256 = qemu.SHA256
 	m.QEMU.Version = qemu.Version
+	m.RunID = c.RunID
+	m.MachineUUID = c.MachineUUID
+	m.DataDisk.Serial = c.DiskSerial
+	m.Filesystem.UUID = c.FilesystemUUID
 	m.Protocol.ControllerBinarySHA256 = c.Artifacts.ControllerBinarySHA256
 	m.Protocol.GuestAgentBinarySHA256 = c.Artifacts.GuestAgentBinarySHA256
 	m.Protocol.ControllerPublicKeySHA256 = c.Artifacts.ControllerPublicKeySHA256
@@ -183,11 +190,11 @@ func TestProvisioningPlanIsDeterministicInertAndClosed(t *testing.T) {
 	}
 	firstJSON, _ := json.Marshal(first)
 	secondJSON, _ := json.Marshal(second)
-	if !slices.Equal(firstJSON, secondJSON) || first.Execute || first.LiveAuthorized || !first.AuthorizationRequired || len(first.Operations) != 13 {
+	if !slices.Equal(firstJSON, secondJSON) || first.Execute || first.LiveAuthorized || !first.AuthorizationRequired || len(first.Operations) != 14 || first.FirstBootObservation.Validate() != nil {
 		t.Fatalf("provisioning plan is not deterministic and inert: %s", firstJSON)
 	}
 	joined := string(firstJSON)
-	for _, required := range []string{"verify-source-image", "create-private-os-clone", "create-private-data-disk", "render-nocloud", "launch-qemu", "controlled-shutdown", "preserve-failure", "cleanup"} {
+	for _, required := range []string{"verify-source-image", "create-private-os-clone", "create-private-data-disk", "render-nocloud", "launch-qemu", "capture-first-boot-console", "controller-owned-bounded-file", "controlled-shutdown", "preserve-failure", "cleanup"} {
 		if !strings.Contains(joined, required) {
 			t.Fatalf("plan missing %q", required)
 		}
@@ -204,6 +211,17 @@ func TestProvisioningPlanIsDeterministicInertAndClosed(t *testing.T) {
 	wantCloneArgs := []string{"create", "-f", "qcow2", "-F", "qcow2", "-b", c.SourceImage.Path, filepath.Join(c.Roots.Instances, c.RunID, c.CohortID, "os-private.qcow2")}
 	if clone.ToolID != ToolQEMUImage || clone.BinarySHA256 == "" || clone.TimeoutSeconds != 120 || !slices.Equal(clone.Args, wantCloneArgs) || first.ToolchainSHA256 != c.Toolchain.ManifestSHA256 {
 		t.Fatalf("clone or toolchain binding changed: clone=%+v plan=%+v", clone, first)
+	}
+}
+
+func TestProvisioningPlanRejectsOverlengthRuntimeSockets(t *testing.T) {
+	c, paths, _ := contractFixture(t)
+	c.RunID = "run-" + strings.Repeat("r", 60)
+	c.CohortID = "cohort-" + strings.Repeat("c", 60)
+	m := qualificationForContract(t, c)
+	inspector := fakeInspector{info: fakeFileInfo{mode: 0o600, size: PinnedImageBytes}, digest: manifest.UbuntuImageSHA256}
+	if _, err := BuildPlan(c, paths, m, "/checkout", inspector); err == nil || !strings.Contains(err.Error(), "Unix socket path") {
+		t.Fatalf("expected overlength runtime socket rejection before authorization, got %v", err)
 	}
 }
 

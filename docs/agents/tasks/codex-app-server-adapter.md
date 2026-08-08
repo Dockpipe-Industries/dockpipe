@@ -3920,6 +3920,185 @@ The current source builds are controller
 supersede the earlier source-build hashes for this uncommitted protocol revision but do not alter the
 immutable Gate 1 QEMU bundle or authorize publication or live use.
 
+#### Linux VM production qualification runner (2026-08-07)
+
+The package-owned production runner is implemented under `packages/vm/**` as VM package version
+`1.0.0`; `src/**` remains unchanged. The accepted pre-authorization identity-material decision uses
+one new mode-`0700` task staging root outside the checkout and all live XDG roots. Preparation
+generates the 32-byte bootstrap nonce plus controller and guest Ed25519 keypairs in memory,
+exclusively writes exactly five mode-`0600` files, fsyncs every file and directory, and emits only
+non-secret identity metadata, the nonce, and public-key hashes. The later live invocation strictly reloads that inventory, verifies
+keypair integrity and the provisioning-v3 pins, durably reserves the same keys under the final
+configuration root, and consumes the staging copy only afterward. A failure before durable
+reservation preserves the staging bundle; a later failure preserves the final configuration root.
+The staging descriptor expires after exactly 24 hours; expiry performs no automatic deletion or
+fallback and requires explicit removal plus fresh preparation.
+
+The controller CLI now separates identity preparation, inert planning/authorization review, typed
+qualification execution, and separately authorized cleanup. The production adapter exposes no
+generic command method and gives both subprocesses an empty environment. It revalidates the pinned
+source and absolute binaries, runs only the sealed `qemu-img` clone argv, creates the exclusive
+mode-`0600` 4 GiB sparse disk in Go, builds the deterministic `dockpipe-go-iso9660-v1` seed in Go,
+launches only the pinned QEMU argv, and records the exact owned process identity. It reads and verifies
+the guest-signed bootstrap before exclusively creating and fsyncing `bootstrap.json`, then sends
+controller-signed identity, health, and launch-pin requests beginning at sequence 2 with fresh
+contiguous nonces. Every guest result must echo the complete request context. Shutdown negotiates QMP
+and sends only `system_powerdown`; there is no fallback signal. Any failure stops once, fsyncs the
+complete roots, and performs no retry or cleanup. Cleanup requires a new owner-only authorization
+matching the exact contract, plan, executor digest, run/cohort, and ordered resource list, and refuses
+an active recorded QEMU process.
+
+Offline proof passed focused executor/protocol/guest/identity/QMP tests, `CGO_ENABLED=0 go test
+-mod=readonly ./...`, `CGO_ENABLED=0 go vet -mod=readonly ./...`, the VM package test, Linux and
+Windows workflow validation, and workflow/resolver compilation into an isolated `/tmp` workdir. Two
+independent Linux/amd64 `-trimpath -buildvcs=false` builds with separate caches were byte-identical.
+The controller SHA-256 is `a079350a68649c2350122fe81d4617d13aebb4c09dec960cc3279ce196002fa8`;
+the Linux guest-agent SHA-256 is
+`df1a55c45ddcb367e803129e712bb2c926c4c5c5f0a42c5be9e1c5a2632ace96`; and the Windows/amd64
+compatibility build is `5858a6cc18d89f1a6bdd2a6bb75515c5c628d62cc65cd08e2892d94bcb65e1f9`.
+No QEMU process, real VM disk, NoCloud seed, live XDG root, QMP command, signal, cleanup, Gate 2, or
+Gate 3 action occurred. Gate 2 remains a separate explicit execution approval.
+
+#### Linux VM Gate 2 launch-path correction (2026-08-08)
+
+One exact Gate 2 invocation was authorized for run
+`gate2-run-cbc0d22e-ae56-4f80-aaf0-92b6b02531e3`, cohort
+`gate2-cohort-567199c4-312f-439e-8f83-f694b34d76e1`, contract SHA-256
+`b201995ab497d3f131cd899418a46097c2b2f4f84b886d61297e567c6794f01a`, and plan SHA-256
+`cbc9d8b7cd376187ca8eea69ab6bea3ef9aed3f175fd359f3bc6aaa2a4878418`. It ran once and failed
+closed at `launch-qemu`: QEMU exited with status 1 before its exact sockets became ready. No retry,
+reconnect, fallback signal, private-payload inspection, or automatic cleanup occurred. All four
+owner-only live roots were preserved and the exact owned QEMU process count was zero.
+
+Offline read-back proved the authorized QMP pathname was 174 bytes and the agent pathname was 176
+bytes. Linux pathname Unix sockets have only 107 usable bytes in `sockaddr_un.sun_path` once the
+terminating NUL is reserved, so the authorized launch plan could not create either socket. A
+separate exact cleanup authorization bound to executor SHA-256
+`6280d29d100076181f55ebd54fd1c0fba1deeab06b34487f09dc8acb4d0ccfc5` ran once and removed the
+stored executor's ordered 11-resource list. Narrow read-back confirmed every authorized path absent
+and no owned QEMU process active; the checkout and the separate `/tmp` review/build root were not
+cleanup targets.
+
+The package-owned correction now rejects QMP or agent pathname sockets longer than 107 bytes during
+inert QEMU plan construction, before plan authorization, identity reservation, or any subprocess.
+Exact boundary tests accept 107 bytes and reject 108 bytes; provisioning coverage proves long but
+otherwise schema-valid run/cohort identities fail before authorization. Existing tests that used
+long framework-generated temporary runtime paths now use short, unique, platform-absolute runtime
+roots while their disk, toolchain, and artifact fixtures remain isolated. The corrected controller
+rejects the preserved failed contract offline with the exact safe error class
+`QMP Unix socket path is 174 bytes; Linux pathname sockets permit at most 107`.
+
+Post-correction offline validation passed focused manifest/provisioning tests, the complete
+`CGO_ENABLED=0 go test -mod=readonly ./...` suite, `CGO_ENABLED=0 go vet -mod=readonly ./...`, the
+VM package test, and workflow/resolver compilation into an isolated `/tmp` workdir. Two independent
+Linux/amd64 `-trimpath -buildvcs=false` builds were byte-identical. The current controller SHA-256
+is `f49ac43a78b3589c1375ab2c67c664be42a78140b43fa1919cc1e48df1dc2984`; the current Linux guest
+agent SHA-256 is `fa83a65b89d76303e808578ba7b872a33f6bd6c2d122c9ca3ba8174d531fd8f6`; and the Windows/amd64
+guest compatibility build is `677a71cd966599bb8d01a8481b107fd03b1b2b06f5fe571636c139d9c2e611e8`.
+
+Gate 2 is not qualified and was not retried. Any future attempt must start from fresh run/cohort,
+machine, filesystem, disk, nonce, key, staging, build, input, contract, plan, authorization, live-root,
+socket, disk, and evidence identities. Gate 3 remains blocked behind a successful separately
+authorized Gate 2.
+
+#### Linux VM Gate 2 verify-guest failure and first-boot observation wiring (2026-08-08)
+
+After the launch-path correction, one fresh qualification invocation ran for run
+`g2r-970fd15c42e793bb`, cohort `g2c-6013982ee1e49710`, contract SHA-256
+`01bf24d6f792608ed9c124e737ac175efa4816ed7a8bbfc001931eba25c61d2a`, plan SHA-256
+`7565df9f071d21751b87d9ee46c785bb0e6210a5161adf2718b9296bd99b247c`, executor SHA-256
+`94c258b22714a9d3ab6a57a66753ee28e3d69fe40e55d84eb3fedc3f3eb672bc`, toolchain SHA-256
+`11a27f32eb93e62aba8ebc500dfd877339a71821793cbf30845b53964c22320c`, and bootstrap nonce
+`c50fcbac0ec1f1f6b79278a9f433807bf6f2336f0c2ed8fa23d6d0d56c2124c7`. It ran once and failed
+closed at `verify-guest` with
+`read unix @->/run/user/1000/dockpipe/vm/g2r-970fd15c42e793bb/g2c-6013982ee1e49710/g2r-970fd15c42e793bb.agent: i/o timeout`.
+The exact live authorization is spent and permanently non-reusable.
+
+QEMU created both exact Unix sockets, and the controller connected to the agent chardev. The
+executor created one 60-second verification context and the Linux runner copied that deadline to the
+Unix connection. `protocol.ReadFramed` timed out before a complete four-byte-length-prefixed signed
+bootstrap. Bootstrap verification, `bootstrap.json`, `verification.json`, and every controller
+request were never reached. `qemu.log` was empty; `shutdown.json` was absent; `qemu-img.log` recorded
+successful private-clone creation; and the recorded QEMU PID was no longer active. The complete
+owner-only instance, evidence, configuration, and runtime roots remain preserved with their clone,
+raw disk, NoCloud ISO, seed tree, final identity material, sockets, and executor contract.
+
+A separately authorized offline forensic artifact with SHA-256
+`e90fec92a46fb6e3e21ddb923b8a960866bb72437507ef9da92b97b04104fe68` ran once through network and
+mount namespaces using kernel NBD read-only and ext4 `ro,noload,nodev,nosuid,noexec` mounts. It
+uniquely identified `/dev/nbd15p1` as root, found `/var/lib/cloud` absent, found no cloud-init
+`status.json`, `result.json`, or `boot-finished`, found no matching persistent-journal agent entries,
+and found no DockPipe-specific udev ownership/mode rule. It did not record the actual runtime
+virtio-port ownership or mode. NBD and mounts were detached; the preserved disk metadata tuple was
+unchanged. The owner-only report SHA-256 is
+`504e8e68acc91ace97eba74a676c1e9675d5a5c1d13a216ed93a27a3ad0e7565`. Earlier v1-v3 forensic
+authorizations are spent and non-reusable.
+
+The evidence therefore leaves unprivileged virtio-port access plausible but unproven. The earliest
+missing observable milestone is cloud-init/first-boot state, before any evidenced agent-service
+attempt. It does not establish a service, device-permission, cloud-init, or boot cause.
+
+The bounded offline production-wiring slice is now implemented under `packages/vm/**` as VM package
+version `1.1.0`. `dockpipe.vm.first-boot-observation.v1` is bound into every fresh deterministic
+provisioning plan and digest, the sealed executor-v3 digest, the exact QEMU launch argv, the typed
+Linux runner, and the new cleanup resource enumeration. QEMU exposes only the existing
+`isa-serial/ttyS0` byte stream as a one-shot Unix client with reconnect disabled. Before launch, the
+controller creates the exact Unix listener and exclusively creates the cohort
+`first-boot-console.log` as mode `0600`; QEMU is never pointed at an ordinary output file.
+
+The controller-owned sink retains exactly the first 4 MiB, fails closed if another byte arrives,
+preserves the prefix, and propagates capture, file-sync, parent-directory-sync, and close errors. The
+runner deterministically closes and joins capture before guest verification returns and again guards
+shutdown and failure preservation. Planning and executor validation bind the evidence/runtime roots,
+paths, source, transport, client/listener roles, no-reconnect setting, mode, exclusive creation, cap,
+overflow policy, fsync policy, and stop/join requirement. Offline negatives reject path, transport,
+mode, cap, replacement, reconnect, lifecycle, operation, and argv substitution before a runner can
+be reached. No NoCloud/user-data or guest asset changed, and no private seed/key payload read,
+network, generic command, shell, retry, reconnect, fallback, signal, or automatic cleanup was added.
+
+Compatibility is explicit: fresh qualification execution requires executor-v3 and the exact
+observation policy, while a stored executor-v2 contract with no observation field retains its
+original digest and remains loadable only for separately authorized exact cleanup. It cannot regain
+qualification execution. The checked-in live authorization template remains `approved=false`, the
+reviewed plan remains `execute=false`, and this slice minted no identity or authorization and created
+no live root, disk, seed, QEMU process, socket, or evidence. It did not read or change the preserved
+Gate 2 instance. Gate 2 is still unqualified. Renewed source builds/hashes and one fresh separately
+authorized Gate 2 invocation are the next live gate; Gate 3 remains blocked.
+
+Offline validation passed `git diff --check`, the complete `GOWORK=off CGO_ENABLED=0 go test
+-mod=readonly ./...` and `go vet -mod=readonly ./...` suites, the VM package test, Linux and Windows
+workflow validation, and workflow/resolver compilation into a fresh isolated `/tmp` workdir. Focused
+observation lifecycle tests also passed under the race detector and across ten repeated runs. They
+cover deterministic plan binding, exact QEMU transport, path/mode/cap/overflow substitution,
+exclusive owner-only evidence, exact-cap and one-byte-overflow behavior, file and directory sync
+and close error propagation including listener-setup failure, goroutine joining, file-descriptor
+closure, pre-authorization rejection, and independently checked historical executor-v2 digest and
+cleanup compatibility. The sandbox prohibits binding a real Unix socket, so the
+listener-ownership unit uses an injected inert listener; no QEMU process or VM was used. No build
+intended for live use was produced.
+
+A separately authorized offline source-build/review gate then used the fresh private root
+`/tmp/dockpipe-vm-source-review.ZStX82CE`. The complete current source diff and both target dependency
+closures were reviewed; every non-standard build input resolves under `packages/vm/tools/**`, with
+no `src/**` input. Two independent Linux/amd64 lanes used separate build caches, temporary
+directories, and output directories with Go 1.25.0, `GOWORK=off`, `CGO_ENABLED=0`, `-trimpath`, and
+`-buildvcs=false`. Both controller outputs were byte-identical at SHA-256
+`b3e428bbadd11d1c9576676ad1f7d0769baddf77a256022eda0bbbc6720cf8cc`; both guest-agent outputs
+were byte-identical at SHA-256
+`7434d3980013e0a978dd73851b4893f1325f6d1c2a27222afcfc20024d46e583`. The separate Windows/amd64
+guest-agent compatibility build has SHA-256
+`5f8b3b83b373ca5d8e70a63283871bdc1842b5e8bdd14a69191d56d362b2a84e`; it is cross-compilation
+evidence only.
+
+Fresh Go build/temp-cache validation passed `git diff --check`, the complete VM Go test and vet suites, focused
+observation race tests across ten repeated runs, the VM package test, Linux and Windows workflow
+validation, and workflow/resolver compilation into separate isolated workdirs under that task root.
+The build outputs remain only under the offline task root and were not promoted, copied into any live
+or preserved root, or used to prepare identity, provisioning, plan, or authorization material. No
+preserved Gate 2 root was accessed, no live artifact or socket was created, and no VM, cleanup,
+Gate 2, or Gate 3 action ran. These hashes are reviewed deterministic source-build evidence only;
+any fresh Gate 2 invocation still requires another explicit authorization.
+
 The implementation test matrix is:
 
 1. **Adapter selection:** a new normal Pipeon Codex session defaults to App Server; the explicit exec

@@ -15,16 +15,17 @@ import (
 )
 
 type Plan struct {
-	Schema                string      `json:"schema"`
-	ContractSHA256        string      `json:"contract_sha256"`
-	ToolchainSHA256       string      `json:"toolchain_sha256"`
-	PlanSHA256            string      `json:"plan_sha256"`
-	RunID                 string      `json:"run_id"`
-	CohortID              string      `json:"cohort_id"`
-	LiveAuthorized        bool        `json:"live_authorized"`
-	Execute               bool        `json:"execute"`
-	AuthorizationRequired bool        `json:"authorization_required"`
-	Operations            []Operation `json:"operations"`
+	Schema                string                   `json:"schema"`
+	ContractSHA256        string                   `json:"contract_sha256"`
+	ToolchainSHA256       string                   `json:"toolchain_sha256"`
+	PlanSHA256            string                   `json:"plan_sha256"`
+	RunID                 string                   `json:"run_id"`
+	CohortID              string                   `json:"cohort_id"`
+	LiveAuthorized        bool                     `json:"live_authorized"`
+	Execute               bool                     `json:"execute"`
+	AuthorizationRequired bool                     `json:"authorization_required"`
+	FirstBootObservation  FirstBootObservationPlan `json:"first_boot_observation"`
+	Operations            []Operation              `json:"operations"`
 }
 
 // Digest binds authorization to the complete immutable plan rather than only
@@ -32,14 +33,15 @@ type Plan struct {
 // deliberately excluded so authorization cannot change what was reviewed.
 func (p Plan) Digest() (string, error) {
 	material := struct {
-		Schema                string      `json:"schema"`
-		ContractSHA256        string      `json:"contract_sha256"`
-		ToolchainSHA256       string      `json:"toolchain_sha256"`
-		RunID                 string      `json:"run_id"`
-		CohortID              string      `json:"cohort_id"`
-		AuthorizationRequired bool        `json:"authorization_required"`
-		Operations            []Operation `json:"operations"`
-	}{p.Schema, p.ContractSHA256, p.ToolchainSHA256, p.RunID, p.CohortID, p.AuthorizationRequired, p.Operations}
+		Schema                string                   `json:"schema"`
+		ContractSHA256        string                   `json:"contract_sha256"`
+		ToolchainSHA256       string                   `json:"toolchain_sha256"`
+		RunID                 string                   `json:"run_id"`
+		CohortID              string                   `json:"cohort_id"`
+		AuthorizationRequired bool                     `json:"authorization_required"`
+		FirstBootObservation  FirstBootObservationPlan `json:"first_boot_observation"`
+		Operations            []Operation              `json:"operations"`
+	}{p.Schema, p.ContractSHA256, p.ToolchainSHA256, p.RunID, p.CohortID, p.AuthorizationRequired, p.FirstBootObservation, p.Operations}
 	b, err := json.Marshal(material)
 	if err != nil {
 		return "", err
@@ -71,7 +73,7 @@ var operationKinds = map[string]struct{}{
 	"reserve-identities": {}, "verify-source-image": {}, "create-private-os-clone": {},
 	"create-private-data-disk": {}, "render-nocloud": {}, "create-nocloud-seed": {},
 	"install-hash-pinned-assets": {}, "format-and-mount-data-disk": {}, "launch-qemu": {},
-	"verify-guest": {}, "controlled-shutdown": {}, "preserve-failure": {}, "cleanup": {},
+	"capture-first-boot-console": {}, "verify-guest": {}, "controlled-shutdown": {}, "preserve-failure": {}, "cleanup": {},
 }
 
 func BuildPlan(c Contract, paths xdg.Paths, m manifest.Manifest, checkoutRoot string, inspector ImageInspector) (Plan, error) {
@@ -142,7 +144,15 @@ func BuildPlan(c Contract, paths xdg.Paths, m manifest.Manifest, checkoutRoot st
 	seed := filepath.Join(instance, "nocloud-seed.iso")
 	qmp := filepath.Join(runtime, m.RunID+".qmp")
 	agentSocket := filepath.Join(runtime, m.RunID+".agent")
-	qemuPlan, err := manifest.PlanProvisioningQEMU(m, runtime, osDisk, dataDisk, seed)
+	observation, err := PlanFirstBootObservation(c.Roots.Evidence, c.Roots.Runtime, c.RunID, c.CohortID)
+	if err != nil {
+		return Plan{}, err
+	}
+	observationJSON, err := observation.CanonicalJSON()
+	if err != nil {
+		return Plan{}, err
+	}
+	qemuPlan, err := manifest.PlanProvisioningQEMU(m, runtime, osDisk, dataDisk, seed, observation.SocketPath)
 	if err != nil {
 		return Plan{}, err
 	}
@@ -178,10 +188,11 @@ func BuildPlan(c Contract, paths xdg.Paths, m manifest.Manifest, checkoutRoot st
 		{7, "install-hash-pinned-assets", []string{c.Artifacts.ControllerBinary, c.Artifacts.GuestAgentBinary, c.Artifacts.AssetsRoot}, []string{"/usr/libexec/dockpipe-guest-agent", "/etc/systemd/system/dockpipe-agent.service"}, []string{"binary hashes exact", "mutual public-key pins exact", "reviewed systemd sandbox"}},
 		{8, "format-and-mount-data-disk", []string{"/dev/disk/by-id/virtio-" + c.DiskSerial, c.FilesystemUUID, strings.Join(manifest.RequiredMountOptions, ",")}, []string{manifest.QualificationMount}, []string{"whole-device ext4", "lazy initialization disabled", "mount by UUID"}},
 		{9, "launch-qemu", []string{string(launchJSON), qemuJSON, qmp, agentSocket}, []string{filepath.Join(runtime, "process.json")}, []string{"KVM only", "network none", "exact two private writable disks plus one read-only NoCloud seed", "no passthrough or shares", "no fallback tool"}},
-		{10, "verify-guest", []string{agentSocket, "guest-first-signed-identity/v1", c.BootstrapNonce, manifest.KernelBootIDSource, "identity/v1", "health/v1", "launch-hash-pinned/v1", fmt.Sprint(c.Execution.GuestVerificationTimeoutSeconds)}, []string{filepath.Join(evidence, "bootstrap.json"), filepath.Join(evidence, "verification.json")}, []string{"guest-signed bootstrap before controller writes", "controller-signed requests from sequence 2", "guest-signed responses", "replay and identity protection", "hash pins exact"}},
-		{11, "controlled-shutdown", []string{qmp, filepath.Join(runtime, "process.json"), "system_powerdown", fmt.Sprint(c.Execution.ShutdownTimeoutSeconds)}, []string{filepath.Join(evidence, "shutdown.json")}, []string{"exact owned process", "bounded wait", "no fallback signal"}},
-		{12, "preserve-failure", []string{instance, evidence, config, runtime}, nil, []string{"any failure preserves complete instance", "no automatic retry", "no automatic cleanup"}},
-		{13, "cleanup", []string{c.RunID, c.CohortID, instance, evidence, config, runtime}, nil, []string{"later explicit approval", "exact ordered enumeration", "refuse failed or completed roots"}},
+		{10, "capture-first-boot-console", []string{observationJSON}, []string{observation.EvidencePath}, []string{"controller creates listener and exclusive owner-only evidence", "QEMU is a one-shot client", "capture only isa-serial/ttyS0", "4 MiB prefix cap", "overflow fails closed", "stop and join before verification returns, shutdown, or preservation"}},
+		{11, "verify-guest", []string{agentSocket, "guest-first-signed-identity/v1", c.BootstrapNonce, manifest.KernelBootIDSource, "identity/v1", "health/v1", "launch-hash-pinned/v1", fmt.Sprint(c.Execution.GuestVerificationTimeoutSeconds)}, []string{filepath.Join(evidence, "bootstrap.json"), filepath.Join(evidence, "verification.json")}, []string{"guest-signed bootstrap before controller writes", "controller-signed requests from sequence 2", "guest-signed responses", "replay and identity protection", "hash pins exact"}},
+		{12, "controlled-shutdown", []string{qmp, filepath.Join(runtime, "process.json"), "system_powerdown", fmt.Sprint(c.Execution.ShutdownTimeoutSeconds)}, []string{filepath.Join(evidence, "shutdown.json")}, []string{"exact owned process", "bounded wait", "no fallback signal"}},
+		{13, "preserve-failure", []string{instance, evidence, config, runtime}, nil, []string{"any failure preserves complete instance", "no automatic retry", "no automatic cleanup", "first-boot prefix and parent fsynced"}},
+		{14, "cleanup", []string{c.RunID, c.CohortID, instance, evidence, config, runtime}, nil, []string{"later explicit approval", "exact ordered enumeration", "refuse failed or completed roots"}},
 	}
 	for i, op := range operations {
 		if op.Order != i+1 {
@@ -191,7 +202,7 @@ func BuildPlan(c Contract, paths xdg.Paths, m manifest.Manifest, checkoutRoot st
 			return Plan{}, fmt.Errorf("unknown provisioning operation %q", op.Kind)
 		}
 	}
-	plan := Plan{Schema: PlanSchema, ContractSHA256: digest, ToolchainSHA256: c.Toolchain.ManifestSHA256, RunID: c.RunID, CohortID: c.CohortID, Execute: false, AuthorizationRequired: true, Operations: operations}
+	plan := Plan{Schema: PlanSchema, ContractSHA256: digest, ToolchainSHA256: c.Toolchain.ManifestSHA256, RunID: c.RunID, CohortID: c.CohortID, Execute: false, AuthorizationRequired: true, FirstBootObservation: observation, Operations: operations}
 	plan.PlanSHA256, err = plan.Digest()
 	if err != nil {
 		return Plan{}, err
@@ -203,12 +214,12 @@ func AuthorizePlan(plan Plan, c Contract, auth LiveAuthorization, now time.Time)
 	if err := auth.Validate(c, plan, now); err != nil {
 		return Plan{}, err
 	}
-	if plan.Schema != PlanSchema || plan.ContractSHA256 != auth.ContractSHA256 || plan.ToolchainSHA256 != c.Toolchain.ManifestSHA256 || plan.PlanSHA256 != auth.PlanSHA256 || plan.RunID != auth.RunID || plan.CohortID != auth.CohortID || plan.Execute {
+	if plan.Schema != PlanSchema || plan.ContractSHA256 != auth.ContractSHA256 || plan.ToolchainSHA256 != c.Toolchain.ManifestSHA256 || plan.PlanSHA256 != auth.PlanSHA256 || plan.RunID != auth.RunID || plan.CohortID != auth.CohortID || plan.Execute || plan.FirstBootObservation.Validate() != nil {
 		return Plan{}, fmt.Errorf("authorization target is not the exact inert provisioning plan")
 	}
 	plan.LiveAuthorized = true
-	// The offline typed executor contract may be derived from this plan, but no
-	// subprocess runner or live CLI execution flag exists in this slice.
+	// Authorization keeps the reviewed plan inert. A separately selected closed
+	// executor path may derive and run only the exact sealed operations.
 	plan.Execute = false
 	return plan, nil
 }

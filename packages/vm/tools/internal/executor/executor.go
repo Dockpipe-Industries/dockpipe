@@ -9,7 +9,8 @@ import (
 
 // Runner is deliberately typed. It offers no command, shell, environment,
 // network, SSH, passthrough, share, physical-disk, or fallback surface.
-// This offline slice provides only fake implementations in tests.
+// Tests use fake implementations; the package-owned Linux adapter implements
+// only these sealed operations.
 type Runner interface {
 	CreateOSClone(context.Context, OSCloneRequest) error
 	CreateSparseRawDisk(context.Context, SparseRawDiskRequest) error
@@ -41,6 +42,9 @@ func Execute(ctx context.Context, contract Contract, runner Runner) (Result, err
 	}
 	if err := contract.Validate(); err != nil {
 		return result, err
+	}
+	if contract.Schema != Schema || contract.FirstBootObservation == nil {
+		return result, fmt.Errorf("qualification execution requires the current first-boot observation contract")
 	}
 	steps := []step{
 		{"create-private-os-clone", contract.OSClone.Command.TimeoutSeconds, func(call context.Context) error { return runner.CreateOSClone(call, contract.OSClone) }},

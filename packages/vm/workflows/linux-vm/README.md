@@ -72,7 +72,7 @@ time window, and payload. Qualification capabilities are exactly:
 Protocol `dockpipe.vm.v2` has one exact bootstrap. The fresh provisioning-v3
 `bootstrap_nonce` is generated with the per-instance Ed25519 keys, bound into
 the provisioning contract, inert plan, short-lived live authorization,
-NoCloud guest configuration, and sealed executor-v2 digest. Once the guest has
+NoCloud guest configuration, and sealed current executor digest. Once the guest has
 read the reviewed kernel boot-ID path, it writes the first length-prefixed frame
 before reading controller bytes. That canonical frame has kind `bootstrap`,
 capability `identity/v1`, sequence 1, phase `bootstrap`, the launch bootstrap
@@ -105,16 +105,18 @@ outside qualification.
 One VM is reserved per cohort, with a private OS clone and data disk. Run,
 cohort, boundary, and attempt roots are unique and immutable; database,
 journal, nonce, and ticket material are never reused. Recovery is sequential.
-Any failure preserves the complete instance. Cleanup is only an inert plan
-until it matches the exact run ID and ordered resource enumeration, and it
-refuses completed roots.
+Any failure preserves the complete instance. Cleanup is a separate production
+operation and remains unauthorized until a fresh file matches the exact run,
+contract, plan, executor digest, and ordered resource enumeration.
 
 The six systemd and NoCloud files under `assets/` are now exact renderer inputs
 whose reviewed SHA-256 values are compiled into the controller.
 Rendering requires binary hashes, mutually pinned Ed25519 keys, fresh
 run/cohort/machine/disk/filesystem/bootstrap-nonce identities, and package XDG roots. The
-keypairs are generated before authorization, their public hashes are included
-in the contract and plan, and reservation refuses different key material. The
+keypairs and bootstrap nonce are generated before authorization in a new
+owner-only `dockpipe.vm.identity-material.v1` staging bundle. Their public hashes
+and nonce are included in the contract and plan, reservation refuses different
+material, and the staging copy is consumed only after durable final reservation. The
 rendered seed disables network and SSH, requests no packages or apt changes,
 formats only the exact virtio data-disk serial with the reviewed UUID/ext4
 tuple, mounts only by that UUID, installs only the hash-pinned guest binary plus
@@ -137,11 +139,11 @@ operations: exclusive identity reservation; source verification; private OS
 clone and 4 GiB sparse raw data-disk creation; exact NoCloud rendering and seed
 creation; hash-pinned asset installation; stable format/mount; QEMU launch;
 guest verification; controlled shutdown; failure preservation; and later exact
-cleanup. Planning invokes no subprocess and the emitted plan is always
-`execute=false`. A distinct, short-lived authorization file must authenticate
-both the exact contract digest and the complete typed-plan digest but cannot
-make this offline slice execute it. The package authorization template defaults
-to `approved=false` and is not itself a live authorization.
+cleanup. Planning invokes no subprocess and the emitted plan remains
+`execute=false`. A distinct, short-lived authorization file authenticates both
+the exact contract digest and complete typed-plan digest; the operator must
+additionally select the closed `--execute-qualification` CLI mode. The checked-in
+package authorization template defaults to `approved=false` and grants no authority.
 
 The next offline contract layer binds that plan to one task-owned QEMU `11.0.3`
 Linux/amd64 bundle. The bundle contains only hash-pinned `qemu-img`,
@@ -158,6 +160,49 @@ Gate 1 materialized this bundle at
 `/home/jamie/.cache/dockpipe/vm/toolchains/qemu-11.0.3-linux-amd64.1`, with
 manifest SHA-256
 `11a27f32eb93e62aba8ebc500dfd877339a71821793cbf30845b53964c22320c`.
-Two independent builds matched the same complete output inventory. Only an
-injected typed runner exists in this slice, with fake-runner tests; no `os/exec`
-adapter or live controller flag exists. Gate 2 and Gate 3 have not started.
+Two independent builds matched the same complete output inventory. The
+production Linux runner now implements the exact typed operations with no shell,
+environment passthrough, fallback tool, retry, or automatic cleanup. Offline
+tests use inert subprocess fixtures and in-memory connections. The first Gate 2
+attempt on 2026-08-08 failed closed at `launch-qemu` because its 174-byte QMP
+and 176-byte agent pathname sockets exceeded Linux's 107-byte Unix-socket path
+limit. Exact separately authorized cleanup completed. Planning now rejects
+overlength socket paths before authorization. Gate 2 remains unqualified and
+Gate 3 has not run.
+
+One subsequent fresh Gate 2 invocation reached `verify-guest`. QEMU created
+both exact Unix sockets and the controller connected to the agent chardev, but
+the single 60-second verification deadline expired before a complete framed,
+signed guest bootstrap arrived. Bootstrap verification, evidence creation, and
+all controller requests were therefore never reached. A separately authorized
+offline read-only inspection found no `/var/lib/cloud` state and no matching
+agent-service journal entries. It did not establish whether the guest failed in
+boot, cloud-init, service startup, or unprivileged virtio-port access.
+
+The `dockpipe.vm.first-boot-observation.v1` policy is now production-wired but
+still non-authorizing. The fresh provisioning plan and sealed executor-v3 bind
+the exact evidence and runtime paths, existing `isa-serial/ttyS0` source,
+one-shot Unix transport with QEMU as client and the controller as listener,
+exclusive mode-`0600` evidence, 4 MiB prefix cap, fail-closed overflow, fsync,
+and stop/join lifecycle. The controller creates the bounded sink before QEMU,
+captures during guest verification, and deterministically closes and joins it
+before verification returns, shutdown, or preservation. Listener-setup failure
+propagates listener-close, sink-sync, sink-close, and parent-directory-sync
+errors. It adds no seed or guest mutation, private-payload read, network, shell,
+reconnect, retry, fallback, signal, or automatic cleanup.
+
+Preserved executor-v2 contracts remain accepted only by the exact cleanup path;
+fresh execution requires executor-v3 and the observation policy, and an
+independent historical-v2 serialization test pins the original digest shape.
+The checked-in authorization template remains `approved=false`, every emitted
+plan remains `execute=false`, and this slice created no live inputs or artifacts.
+Absence of a console milestone will remain non-diagnostic. A subsequent offline
+source-build review produced byte-identical independent Linux/amd64 controller
+and guest-agent builds. Their SHA-256 values are respectively
+`b3e428bbadd11d1c9576676ad1f7d0769baddf77a256022eda0bbbc6720cf8cc` and
+`7434d3980013e0a978dd73851b4893f1325f6d1c2a27222afcfc20024d46e583`.
+The Windows/amd64 guest-agent cross-build SHA-256 is
+`5f8b3b83b373ca5d8e70a63283871bdc1842b5e8bdd14a69191d56d362b2a84e`;
+it is compatibility evidence only. No output was promoted or copied into a live
+or preserved root. One fresh separately authorized Gate 2 invocation is the
+remaining live gate; Gate 3 remains blocked.
