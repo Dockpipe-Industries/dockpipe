@@ -47,7 +47,7 @@ type AgentConfig struct {
 var reviewedAssetSHA256 = map[string]string{
 	"nocloud/meta-data":               "e1e3a5697cd018d2465093e7011a60dfa17de51ade7a702252d887fada833ef7",
 	"nocloud/network-config":          "639b6f419a9ac49312b218e12395dc7e7d623d96202c3315a92dcd19d6fa02ba",
-	"nocloud/user-data":               "539ca10340244378248d4bc75fb6cf1daa02cbb65a86e78ef4f8ef8f21d62057",
+	"nocloud/user-data":               "1c3d8edbc1073ed523f7d2a818712a7d8509b9a99de6267c17d498594402a693",
 	"systemd/dockpipe-agent.service":  "34bc05b718928c3d042210767b98f527ab9ce77271c4472e90e4481326dcb339",
 	"systemd/dockpipe-agent.sysusers": "918c4529043c930ec81256f8c72c915f460283ce33a1d75712bf44aecfa1e5c9",
 	"systemd/dockpipe-agent.tmpfiles": "fd07f8893e38df78e8c6b1cd2745bafc9f3a3634bb7685e004c8b0d8ff5b7a91",

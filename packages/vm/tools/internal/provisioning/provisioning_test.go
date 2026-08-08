@@ -520,7 +520,7 @@ func TestNoCloudRenderingIsExactPinnedAndRestricted(t *testing.T) {
 		all.Write(file.Content)
 	}
 	rendered := all.String()
-	for _, required := range []string{"network-config", "package_update: false", "package_upgrade: false", "ssh_pwauth: false", "system: true", "shell: /usr/sbin/nologin", "lock_passwd: true", "ethernets: {}", c.DiskSerial, c.FilesystemUUID, "dockpipe-agent.service", "/usr/libexec/dockpipe-guest-agent"} {
+	for _, required := range []string{"network-config", "package_update: false", "package_upgrade: false", "ssh_pwauth: false", "system: true", "shell: /usr/sbin/nologin", "lock_passwd: true", "ethernets: {}", c.DiskSerial, c.FilesystemUUID, "dockpipe-agent.service", "/usr/libexec/dockpipe-guest-agent", "[/usr/bin/chgrp, --dereference, dockpipe-agent, /dev/virtio-ports/org.dockpipe.agent.1]", "[/usr/bin/chmod, \"0660\", /dev/virtio-ports/org.dockpipe.agent.1]"} {
 		if !strings.Contains(rendered, required) {
 			t.Fatalf("rendered seed missing %q", required)
 		}

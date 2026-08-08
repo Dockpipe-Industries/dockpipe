@@ -4526,6 +4526,46 @@ bytes. All four live roots remain absent. No live authorization, identity
 reservation, disk, seed, socket, process, cleanup, Gate 2, or Gate 3 action
 occurred. Live Gate 2 remains a separate exact authorization.
 
+#### Linux VM Gate 2 virtio-port access correction (2026-08-08)
+
+Live wrapper SHA-256
+`d1f5786f0661ca1a99b06a554c57df9ed06079242f6c07b195052f371f146221`
+created authorization SHA-256
+`e2bfaed94a54e24fd3825100475f2bc9f373438292a5bc1dd06944709dd78006`
+and executed once for run `g2r-40a86fe85ed7b2f8` and cohort
+`g2c-c0805ed9b9d9aff1`. The executor-v6 execution SHA-256 is
+`0dcc9d5aeeb8a7159749ac2a565b0eacd4cc58091904a593455f509b7d08a5b1`;
+executor file SHA-256 is
+`dbe53105424f9cd5e973c4ccb4a846a569c9bc02f7778ca3af12acee6175e753`.
+Guest verification timed out after 240 seconds, preserved all roots, and
+created no signed bootstrap or verification evidence. Recorded QEMU PID
+`3947652` is absent. First-boot console SHA-256 is
+`04df68c2754ec0121c810fcf48c5821a761e8ee0722286acecf37974c112f641`
+at `86993` bytes.
+
+The console and an unprivileged read-only forensic conversion prove every prior
+correction worked: cloud-init created `dockpipe-agent`, formatted and mounted
+the exact data disk, completed all three deferred writes with UID 999/GID 988,
+and started `dockpipe-agent.service` at about 178 seconds. Syslog then records
+the exact failure: `dockpipe-guest-agent: open
+/dev/virtio-ports/org.dockpipe.agent.1: permission denied`, followed by service
+exit status 2. The preserved overlay was not modified.
+
+VM package 1.1.4 adds two exact root-run cloud-init commands before service
+start. `/usr/bin/chgrp --dereference dockpipe-agent` changes only the target
+group of `/dev/virtio-ports/org.dockpipe.agent.1`, retaining root ownership;
+`/usr/bin/chmod 0660` restricts the target to root and agent-group access. The
+fix adds no shell, wildcard, udev-wide rule, capability, additional group,
+root-run agent, retry, signal, or automatic cleanup. Executor-v7 owns fresh
+execution. Executor-v6 remains loadable only for separately authorized exact
+cleanup, alongside executor-v5/v4/v3/v2. No `src/**` file changed and the
+package/engine boundary remains preserved.
+
+Offline validation passed the full VM Go suite, `go vet`, focused provisioning
+and executor race tests, the package harness, both workflow validators,
+isolated workflow and resolver compilation, and cloud-init 26.1 schema
+validation. Only temporary isolated compilation outputs were generated.
+
 The implementation test matrix is:
 
 1. **Adapter selection:** a new normal Pipeon Codex session defaults to App Server; the explicit exec

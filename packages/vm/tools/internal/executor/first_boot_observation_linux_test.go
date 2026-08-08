@@ -365,6 +365,30 @@ func TestPreservedExecutorV5RemainsLoadableForExactCleanupOnly(t *testing.T) {
 	}
 }
 
+func TestPreservedExecutorV6RemainsLoadableForExactCleanupOnly(t *testing.T) {
+	legacy := executorFixture(t)
+	legacy.Schema = LegacyPortAccessCleanupSchema
+	legacy.Guest.TimeoutSeconds = 240
+	legacy.ExecutionSHA256, _ = legacy.Digest()
+	path := filepath.Join(t.TempDir(), "executor-v6.json")
+	if err := Store(path, legacy); err != nil {
+		t.Fatal(err)
+	}
+	loaded, err := Load(path)
+	if err != nil {
+		t.Fatalf("preserved executor-v6 cleanup contract became unloadable: %v", err)
+	}
+	if _, err := Execute(context.Background(), loaded, &fakeRunner{}); err == nil {
+		t.Fatal("legacy port-access executor must not regain qualification execution")
+	}
+	now := time.Unix(1_800_000_000, 0)
+	authorization := CleanupAuthorization{Schema: CleanupSchema, Approved: true, ContractSHA256: loaded.ContractSHA256, PlanSHA256: loaded.PlanSHA256, ExecutionSHA256: loaded.ExecutionSHA256, RunID: loaded.RunID, CohortID: loaded.CohortID, Resources: slices.Clone(loaded.Cleanup.Resources), ExpiresAtUnix: now.Add(time.Minute).Unix()}
+	runner := &fakeRunner{}
+	if _, err := ExecuteCleanup(context.Background(), loaded, authorization, now, runner); err != nil {
+		t.Fatalf("preserved executor-v6 exact cleanup compatibility failed: %v", err)
+	}
+}
+
 func removeConsoleArgs(args []string) []string {
 	out := make([]string, 0, len(args))
 	for i := 0; i < len(args); i++ {

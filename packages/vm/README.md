@@ -1,7 +1,7 @@
 # DockPipe VM package
 
 The `vm` package owns guest-specific workflows, QEMU resolver models, and the
-VMM-neutral control protocol. DockPipe core remains generic. Version 1.1.3
+VMM-neutral control protocol. DockPipe core remains generic. Version 1.1.4
 retains the sealed first-boot console observation path, corrects the pinned
 Ubuntu NoCloud system-user contract and virtio-blk serial bound, and gives the
 networkless qualification path a complete post-boot verification window
@@ -82,7 +82,7 @@ staging bundle; a later failure preserves the final configuration root.
 The staging descriptor expires exactly 24 hours after creation. Expiry never
 deletes material automatically; it requires explicit removal and fresh preparation.
 
-The executor-v6 verification request requires the controller to read and verify
+The executor-v7 verification request requires the controller to read and verify
 the bootstrap before it writes anything to the stream. Acceptance requires the
 exact pinned guest signature, fresh time window, bootstrap nonce, sequence 1,
 phase `bootstrap`, static identity tuple, kernel boot-ID source, and key/binary
@@ -152,7 +152,7 @@ promotion, preparation, authorization, and one new Gate 2 invocation remain
 required before Gate 2 can be qualified.
 
 `dockpipe.vm.first-boot-observation.v1` is now bound into every fresh
-provisioning plan, its digest, executor-v6, and the exact QEMU argv. QEMU exposes
+provisioning plan, its digest, executor-v7, and the exact QEMU argv. QEMU exposes
 only the existing `isa-serial/ttyS0` stream as a one-shot Unix client; before
 launch, the controller creates the exact listener and an exclusive mode-`0600`
 `first-boot-console.log`. The controller retains at most the first 4 MiB,
@@ -165,11 +165,11 @@ planning and sealed executor validation. The path adds no NoCloud or guest
 mutation, private-payload read, network, shell, retry, reconnect, signal,
 fallback, or automatic cleanup.
 
-Fresh qualification execution now requires executor-v6 with that exact policy.
-Preserved executor-v5, executor-v4, executor-v3, and executor-v2 files remain
+Fresh qualification execution now requires executor-v7 with that exact policy.
+Preserved executor-v6, executor-v5, executor-v4, executor-v3, and executor-v2 files remain
 loadable only for their separately authorized exact cleanup resource lists;
 they cannot regain qualification execution, and independent compatibility
-tests pin all four cleanup paths. The checked-in live authorization remains disabled and
+tests pin all five cleanup paths. The checked-in live authorization remains disabled and
 the plan remains `execute=false`. No new live identity, root, disk, seed,
 process, socket, or evidence was created by this offline slice. Gate 2 remains
 unqualified. The subsequent offline source-build review produced two
@@ -511,6 +511,28 @@ The identity expires at `2026-08-09T18:46:09Z`. The plan remains
 binds the 240-second verification operation, and keeps QMP, agent, and console
 socket paths at 93, 95, and 92 bytes. All four live roots remain absent; live
 Gate 2 remains a separate exact authorization.
+
+That executor-v6 authorization ran once and is permanently spent. Cloud-init
+successfully created the locked agent account, formatted and mounted the data
+disk, installed all deferred files with the correct ownership, and started the
+service. The agent then exited immediately with `permission denied` opening
+`/dev/virtio-ports/org.dockpipe.agent.1`; signed bootstrap never began. The
+complete instance was preserved, recorded QEMU PID `3947652` is absent, and no
+retry, signal, cleanup, or Gate 3 action occurred.
+
+Version 1.1.4 grants only the `dockpipe-agent` group read/write access to that
+exact virtio port before service start: `/usr/bin/chgrp --dereference` keeps the
+device root-owned while `/usr/bin/chmod 0660` limits access to root and the
+agent group. No shell, wildcard, broader device rule, capability, or root-run
+agent is introduced. Executor-v7 owns the corrected policy; executor-v6 remains
+cleanup-only for the preserved run.
+
+Offline validation passed the full VM Go suite, `go vet`, focused race tests
+for provisioning and executor packages, the VM package test harness, both
+workflow validators, isolated workflow and resolver compilation, and the
+cloud-init 26.1 schema check for the rendered user-data shape. The isolated
+compiled packages remain under `/tmp`; no generated package artifact is part
+of this source correction.
 
 The original documentation decision created no promotion evidence and granted no Gate 2
 authority. Deterministic source review, offline promotion, Gate 2 preparation,

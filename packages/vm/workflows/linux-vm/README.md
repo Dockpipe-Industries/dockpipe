@@ -204,7 +204,7 @@ confirmed all ordered 12 resources absent while the immutable prior promotion
 and post-correction build root remained untouched.
 
 The `dockpipe.vm.first-boot-observation.v1` policy is now production-wired but
-still non-authorizing. The fresh provisioning plan and sealed executor-v6 bind
+still non-authorizing. The fresh provisioning plan and sealed executor-v7 bind
 the exact evidence and runtime paths, existing `isa-serial/ttyS0` source,
 one-shot Unix transport with QEMU as client and the controller as listener,
 exclusive mode-`0600` evidence, 4 MiB prefix cap, fail-closed overflow, fsync,
@@ -215,9 +215,9 @@ propagates listener-close, sink-sync, sink-close, and parent-directory-sync
 errors. It adds no seed or guest mutation, private-payload read, network, shell,
 reconnect, retry, fallback, signal, or automatic cleanup.
 
-Preserved executor-v5, executor-v4, executor-v3, and executor-v2 contracts
+Preserved executor-v6, executor-v5, executor-v4, executor-v3, and executor-v2 contracts
 remain accepted only by the exact cleanup path; fresh execution requires
-executor-v6 and the observation policy, and compatibility tests pin all
+executor-v7 and the observation policy, and compatibility tests pin all
 historical cleanup paths.
 The checked-in authorization template remains `approved=false`, every emitted
 plan remains `execute=false`, and this slice created no live inputs or artifacts.
@@ -494,3 +494,21 @@ The owner-only identity expires at `2026-08-09T18:46:09Z`. The plan is
 non-authorized and non-executing, binds executor-v6's 240-second verification,
 and keeps all socket paths below Linux's limit. Every live root remains absent;
 live Gate 2 is separately authorized.
+
+The executor-v6 live authorization was then consumed once. Provisioning and
+cloud-init completed, all agent files had the expected owner and mode, and
+systemd started the service. The guest agent immediately failed with
+`open /dev/virtio-ports/org.dockpipe.agent.1: permission denied`, so no signed
+bootstrap arrived. The instance remains preserved, the recorded QEMU process
+is absent, and the run was not retried or cleaned.
+
+VM package 1.1.4 performs exact pre-start device access setup: the virtio-port
+target remains owned by root, its group becomes `dockpipe-agent`, and its mode
+becomes `0660`. The commands name only the reviewed port and use no shell,
+wildcard, capability, udev-wide policy, or root-run agent. Executor-v7 is the
+only fresh-execution schema; executor-v6 remains exact-cleanup-only.
+
+Offline validation passed the full VM Go suite, `go vet`, focused provisioning
+and executor race tests, the VM package test harness, both workflow validators,
+isolated workflow and resolver compilation, and cloud-init 26.1 schema
+validation. The isolated compilation outputs remain temporary and uncommitted.

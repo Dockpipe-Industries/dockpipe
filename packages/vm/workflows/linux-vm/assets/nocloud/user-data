@@ -28,5 +28,7 @@ runcmd:
   - [systemctl, disable, --now, ssh.service, ssh.socket]
   - [systemd-sysusers, /usr/lib/sysusers.d/dockpipe-agent.conf]
   - [systemd-tmpfiles, --create, /usr/lib/tmpfiles.d/dockpipe-agent.conf]
+  - [/usr/bin/chgrp, --dereference, dockpipe-agent, /dev/virtio-ports/org.dockpipe.agent.1]
+  - [/usr/bin/chmod, "0660", /dev/virtio-ports/org.dockpipe.agent.1]
   - [systemctl, daemon-reload]
   - [systemctl, enable, --now, dockpipe-agent.service]
