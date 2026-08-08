@@ -4266,6 +4266,17 @@ promotion input. Go dependency closure inspection found only the standard librar
 disk, seed, socket, process, cleanup, Gate 2, or Gate 3 action. The builds remain offline review
 artifacts until a separately authorized fresh promotion.
 
+The separately authorized immutable promotion `vmp-20260808f6d5c19c` then completed once. Its exact
+mode-`0700` root contains only the mode-`0500` controller and guest-agent files with the hashes and
+sizes above. Canonical evidence is
+`/home/jamie/.local/share/dockpipe-vm-gates/evidence/vmp-20260808f6d5c19c/promotion.evidence.json`
+with SHA-256 `71827ec3cb32d35b92773b74fc0e0e2a68f0ba223341811c5e9da6b2de0f271d`.
+Immediate read-back revalidated the independent build comparisons, embedded Go metadata, closed
+inventories, owner-only modes, file and directory synchronization boundaries, and package/engine
+separation. The earlier promotion remains untouched. This gate created no identity material, live
+input, plan, authorization, disk, seed, socket, QEMU process, cleanup, Gate 2, or Gate 3 action.
+Fresh Gate 2 preparation remains separately authorized.
+
 The implementation test matrix is:
 
 1. **Adapter selection:** a new normal Pipeon Codex session defaults to App Server; the explicit exec

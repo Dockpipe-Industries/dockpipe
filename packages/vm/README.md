@@ -312,6 +312,14 @@ and is not a promotion input. All non-standard dependencies resolve below
 `packages/vm/tools/**`. These are offline source-build artifacts only; a fresh
 promotion ID and authorization are still required.
 
+That separate gate subsequently published immutable promotion
+`vmp-20260808f6d5c19c`. Its exact controller and guest-agent inventory matches
+the 1.1.1 hashes and sizes above. Canonical evidence SHA-256 is
+`71827ec3cb32d35b92773b74fc0e0e2a68f0ba223341811c5e9da6b2de0f271d`.
+The earlier promotion remains untouched. No identity, live input, plan,
+authorization, VM, cleanup, Gate 2, or Gate 3 action was included; fresh
+preparation is still a separate gate.
+
 The original documentation decision created no promotion evidence and granted no Gate 2
 authority. Deterministic source review, offline promotion, Gate 2 preparation,
 Gate 2 live authorization and execution, cleanup, and Gate 3 remain distinct
