@@ -512,3 +512,16 @@ Offline validation passed the full VM Go suite, `go vet`, focused provisioning
 and executor race tests, the VM package test harness, both workflow validators,
 isolated workflow and resolver compilation, and cloud-init 26.1 schema
 validation. The isolated compilation outputs remain temporary and uncommitted.
+
+Exact checkpoint `4eb50c762005ae6f10f51cd57daf9790196cd4ac` was then
+rebuilt twice under `/tmp/dockpipe-vm-source-review.4eb50c76.ZsNklPyL` with
+separate caches and temporary directories, Go 1.25.0, `GOWORK=off`,
+`CGO_ENABLED=0`, `GOAMD64=v1`, `-trimpath`, and `-buildvcs=false`.
+Linux controller lanes are byte-identical at `5447254` bytes and SHA-256
+`9f2e2827cffe6924645a90e7381b804111c5f4ec1c46eaab2c270c85a4b1e0d9`;
+Linux guest-agent lanes are byte-identical at `3870222` bytes and SHA-256
+`3a2d7657e13b6ec30fc8dc268ad977bb248b6598749979edf63223d364cc59e7`.
+The Windows compatibility guest is `3966976` bytes with SHA-256
+`86caf93a18159e8b40275f43b02e2930baa9eaffad76227285df8e0a08f3ea6c`.
+Embedded build metadata and the package-local dependency boundary passed
+review. All three binaries remain unpromoted offline evidence.

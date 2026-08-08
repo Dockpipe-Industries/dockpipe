@@ -4566,6 +4566,21 @@ and executor race tests, the package harness, both workflow validators,
 isolated workflow and resolver compilation, and cloud-init 26.1 schema
 validation. Only temporary isolated compilation outputs were generated.
 
+Exact checkpoint `4eb50c762005ae6f10f51cd57daf9790196cd4ac` was then
+rebuilt in two independent Linux/amd64 lanes under private root
+`/tmp/dockpipe-vm-source-review.4eb50c76.ZsNklPyL`. Each lane used separate
+caches and temporary directories with Go 1.25.0, `GOWORK=off`,
+`CGO_ENABLED=0`, `GOAMD64=v1`, `-trimpath`, and `-buildvcs=false`. Controller
+outputs are byte-identical at `5447254` bytes with SHA-256
+`9f2e2827cffe6924645a90e7381b804111c5f4ec1c46eaab2c270c85a4b1e0d9`;
+guest-agent outputs are byte-identical at `3870222` bytes with SHA-256
+`3a2d7657e13b6ec30fc8dc268ad977bb248b6598749979edf63223d364cc59e7`.
+The Windows/amd64 compatibility guest is `3966976` bytes with SHA-256
+`86caf93a18159e8b40275f43b02e2930baa9eaffad76227285df8e0a08f3ea6c`.
+Embedded build metadata matches the requested platforms and flags, and every
+non-standard dependency remains under `packages/vm/tools/**`. The review root
+is unpromoted; no cleanup, live Gate 2, or Gate 3 action occurred.
+
 The implementation test matrix is:
 
 1. **Adapter selection:** a new normal Pipeon Codex session defaults to App Server; the explicit exec
