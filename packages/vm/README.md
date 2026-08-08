@@ -758,6 +758,23 @@ qualification, then a short-lived authorization bound to the exact inert Gate
 and cleanup remain distinct approvals. No live Gate 3 or cleanup action was
 performed by this offline implementation.
 
+Exact checkpoint `a72789801a83b53761b710388618d7aafc15648e` was then
+rebuilt in two independent Linux/amd64 lanes under private review root
+`/tmp/dockpipe-vm-source-review.a7278980.TuSIQFWC`. Each lane used its own
+source extraction, cache, temporary directory, and output directory with Go
+1.25.0, `GOWORK=off`, `CGO_ENABLED=0`, `GOAMD64=v1`, `-trimpath`,
+`-buildvcs=false`, and an empty build ID. The controller outputs are
+byte-identical at `5721936` bytes with SHA-256
+`a8ff286cba55cf03eed2832f26069ea3812f239b6c767c77c1cd4c2cf045bd1a`;
+guest-agent outputs are byte-identical at `4238382` bytes with SHA-256
+`4a2533d297d698328d5875e5af7c1f57d59b0a16b55c84f4a71c6107b5fb38a2`;
+SQLite harness outputs are byte-identical at `11895893` bytes with SHA-256
+`08b979ab70922c596ea14847ff023357616ebc5c92daee50ecab84ffbcfa3cc5`.
+Embedded metadata matches the requested platform and flags, controller and
+guest versions report 1.2.0 and 1.1.0 respectively, and the harness contract
+self-tests pass. These files remain unpromoted offline source-review evidence;
+no preparation, authorization, VM, Gate 2, Gate 3, or cleanup action occurred.
+
 The original documentation decision created no promotion evidence and granted no Gate 2
 authority. Deterministic source review, offline promotion, Gate 2 preparation,
 Gate 2 live authorization and execution, cleanup, and Gate 3 remain distinct

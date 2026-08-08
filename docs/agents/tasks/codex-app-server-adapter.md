@@ -4773,6 +4773,21 @@ approval boundaries. This implementation created no live authorization,
 started no VM, performed no hard-power event, ran no Gate 3 action, and cleaned
 nothing.
 
+Exact checkpoint `a72789801a83b53761b710388618d7aafc15648e` was subsequently
+built twice from independent source extractions under
+`/tmp/dockpipe-vm-source-review.a7278980.TuSIQFWC`. Both Linux/amd64 lanes used
+separate caches, temporary roots, and outputs with Go 1.25.0, `GOWORK=off`,
+`CGO_ENABLED=0`, `GOAMD64=v1`, `-trimpath`, `-buildvcs=false`, and an empty
+build ID. All outputs are byte-identical: controller SHA-256
+`a8ff286cba55cf03eed2832f26069ea3812f239b6c767c77c1cd4c2cf045bd1a`
+at `5721936` bytes, guest-agent SHA-256
+`4a2533d297d698328d5875e5af7c1f57d59b0a16b55c84f4a71c6107b5fb38a2`
+at `4238382` bytes, and SQLite harness SHA-256
+`08b979ab70922c596ea14847ff023357616ebc5c92daee50ecab84ffbcfa3cc5`
+at `11895893` bytes. Embedded build metadata, binary versions, and the harness
+contract self-tests passed. The review root is unpromoted; it supplied no live
+input and authorized no preparation, VM, Gate 2, Gate 3, or cleanup action.
+
 The implementation test matrix is:
 
 1. **Adapter selection:** a new normal Pipeon Codex session defaults to App Server; the explicit exec
