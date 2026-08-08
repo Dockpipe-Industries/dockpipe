@@ -496,6 +496,22 @@ ownership, modes, hashes, and preserved package/engine boundary. The promotion
 created no identity, plan, authorization, disk, seed, socket, process, cleanup,
 Gate 2, or Gate 3 action. Fresh preparation remains separate.
 
+Fresh offline preparation then completed for run `g2r-40a86fe85ed7b2f8`
+and cohort `g2c-c0805ed9b9d9aff1` using promotion
+`vmp-2026080897480d78`. Qualification input SHA-256 is
+`410adcc1056cb9fe1ac8d190e30ff4d414ceeddcf56d54725ff3cd2fd3ddba37`,
+provisioning input SHA-256 is
+`74b5d529a49da372f9baec334fd4ddc72183ebdb4cb976b986932150ded621ad`,
+contract SHA-256 is
+`010406e2cbdf7903229c7cc344fcf1cdfb99fdc2f43cd52b37a36afc1ace6a6a`,
+and inert plan SHA-256 is
+`afa3ac656db78672aea4b03a4fd55561ffb7b050224714598a09dcd6e3ab9881`.
+The identity expires at `2026-08-09T18:46:09Z`. The plan remains
+`live_authorized=false`, `execute=false`, and `authorization_required=true`,
+binds the 240-second verification operation, and keeps QMP, agent, and console
+socket paths at 93, 95, and 92 bytes. All four live roots remain absent; live
+Gate 2 remains a separate exact authorization.
+
 The original documentation decision created no promotion evidence and granted no Gate 2
 authority. Deterministic source review, offline promotion, Gate 2 preparation,
 Gate 2 live authorization and execution, cleanup, and Gate 3 remain distinct
