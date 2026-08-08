@@ -288,6 +288,19 @@ unqualified and Gate 3 remains blocked.
 The separately authorized promotion later completed once with that exact
 two-file inventory. The evidence-file SHA-256 is
 `c411a6cfa326d61c6bfd9663a7f063d21dcb364520c2274fb3fe34d1f951889b`.
-It remains immutable historical input. The 1.1.1 verification-deadline fix must
-be rebuilt and promoted under a fresh identity; it cannot replace or reuse this
-promotion.
+It remains immutable historical input. The 1.1.1 verification-deadline fix
+required a new build and still requires promotion under a fresh identity; it
+cannot replace or reuse this promotion.
+
+The correction was subsequently rebuilt twice from checkpoint
+`f6d5c19c24613945f5cbcf190aca50725ab51fdf` under the private offline root
+`/tmp/dockpipe-vm-source-review.2ikAeuDJ`. Independent Linux/amd64 lanes were
+byte-identical: controller SHA-256
+`564d57937bef2856777dc3a3d05a57649e8918a0572f9f7f4d758308e9a7089c`
+at `5447246` bytes and guest-agent SHA-256
+`7434d3980013e0a978dd73851b4893f1325f6d1c2a27222afcfc20024d46e583`
+at `3870038` bytes. The Windows compatibility hash remains
+`5f8b3b83b373ca5d8e70a63283871bdc1842b5e8bdd14a69191d56d362b2a84e`.
+Builds used Go 1.25.0, `GOWORK=off`, `CGO_ENABLED=0`, `GOAMD64=v1`,
+`-trimpath`, and `-buildvcs=false`, and every non-standard dependency remains
+package-owned. No build was promoted or used live.

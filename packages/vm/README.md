@@ -144,9 +144,9 @@ automatic retry, automatic cleanup, and fallback signals remain disabled. The
 new timeout is part of the provisioning contract, deterministic plan digest,
 and sealed executor-v4, so old plans and authorizations cannot acquire the wider
 deadline. The failed live roots remain preserved and require separately
-authorized exact cleanup. Fresh deterministic builds, promotion, preparation,
-authorization, and one new Gate 2 invocation remain required before Gate 2 can
-be qualified.
+authorized exact cleanup. Fresh deterministic builds are recorded below;
+promotion, preparation, authorization, and one new Gate 2 invocation remain
+required before Gate 2 can be qualified.
 
 `dockpipe.vm.first-boot-observation.v1` is now bound into every fresh
 provisioning plan, its digest, executor-v4, and the exact QEMU argv. QEMU exposes
@@ -292,8 +292,23 @@ That promotion completed once with the exact inventory above. Its canonical
 evidence file has SHA-256
 `c411a6cfa326d61c6bfd9663a7f063d21dcb364520c2274fb3fe34d1f951889b`.
 The promotion remains immutable historical input; the 1.1.1 deadline correction
-requires new deterministic builds and a new promotion identity rather than
-changing or reusing it.
+required new deterministic builds and still requires a new promotion identity
+rather than changing or reusing it.
+
+The 1.1.1 correction was rebuilt twice from repository checkpoint
+`f6d5c19c24613945f5cbcf190aca50725ab51fdf` under
+`/tmp/dockpipe-vm-source-review.2ikAeuDJ`. Separate Go caches and temporary
+directories produced byte-identical Linux/amd64 outputs with Go 1.25.0,
+`GOWORK=off`, `CGO_ENABLED=0`, `GOAMD64=v1`, `-trimpath`, and
+`-buildvcs=false`. The controller is `5447246` bytes with SHA-256
+`564d57937bef2856777dc3a3d05a57649e8918a0572f9f7f4d758308e9a7089c`;
+the guest agent is `3870038` bytes with SHA-256
+`7434d3980013e0a978dd73851b4893f1325f6d1c2a27222afcfc20024d46e583`.
+The Windows/amd64 compatibility build remains
+`5f8b3b83b373ca5d8e70a63283871bdc1842b5e8bdd14a69191d56d362b2a84e`
+and is not a promotion input. All non-standard dependencies resolve below
+`packages/vm/tools/**`. These are offline source-build artifacts only; a fresh
+promotion ID and authorization are still required.
 
 The original documentation decision created no promotion evidence and granted no Gate 2
 authority. Deterministic source review, offline promotion, Gate 2 preparation,
