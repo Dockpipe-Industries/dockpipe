@@ -8,7 +8,10 @@ import (
 	"strings"
 )
 
-const maxQMPMessage = 64 * 1024
+const (
+	maxQMPMessage     = 64 * 1024
+	maxQMPAsyncEvents = 64
+)
 
 var safeQMPCommands = map[string]struct{}{"query-status": {}, "query-uuid": {}}
 
@@ -25,7 +28,8 @@ type QMPResponse struct {
 		Class string `json:"class"`
 		Desc  string `json:"desc"`
 	} `json:"error,omitempty"`
-	ID string `json:"id,omitempty"`
+	ID    string `json:"id,omitempty"`
+	Event string `json:"event,omitempty"`
 }
 
 func ReadGreeting(r io.Reader) (QMPGreeting, error) {
@@ -88,20 +92,34 @@ func (c QMPClient) executeExact(command, id string) (QMPResponse, error) {
 	if _, err := c.Conn.Write(request); err != nil {
 		return response, err
 	}
-	line, err := readBoundedLine(c.Conn)
-	if err != nil {
-		return response, err
+	asyncEvents := 0
+	for {
+		line, err := readBoundedLine(c.Conn)
+		if err != nil {
+			return response, err
+		}
+		response = QMPResponse{}
+		if err := json.Unmarshal(line, &response); err != nil {
+			return response, fmt.Errorf("decode QMP response: %w", err)
+		}
+		if response.Event != "" {
+			if response.ID != "" || len(response.Return) != 0 || response.Error != nil {
+				return response, fmt.Errorf("invalid QMP asynchronous event")
+			}
+			asyncEvents++
+			if asyncEvents > maxQMPAsyncEvents {
+				return response, fmt.Errorf("QMP asynchronous event limit exceeded")
+			}
+			continue
+		}
+		if response.ID != id {
+			return response, fmt.Errorf("QMP response id mismatch")
+		}
+		if response.Error != nil {
+			return response, fmt.Errorf("QMP %s: %s", response.Error.Class, response.Error.Desc)
+		}
+		return response, nil
 	}
-	if err := json.Unmarshal(line, &response); err != nil {
-		return response, fmt.Errorf("decode QMP response: %w", err)
-	}
-	if response.ID != id {
-		return response, fmt.Errorf("QMP response id mismatch")
-	}
-	if response.Error != nil {
-		return response, fmt.Errorf("QMP %s: %s", response.Error.Class, response.Error.Desc)
-	}
-	return response, nil
 }
 
 func readBoundedLine(r io.Reader) ([]byte, error) {

@@ -1,11 +1,11 @@
 # DockPipe VM package
 
 The `vm` package owns guest-specific workflows, QEMU resolver models, and the
-VMM-neutral control protocol. DockPipe core remains generic. Version 1.1.4
+VMM-neutral control protocol. DockPipe core remains generic. Version 1.1.5
 retains the sealed first-boot console observation path, corrects the pinned
-Ubuntu NoCloud system-user contract and virtio-blk serial bound, and gives the
-networkless qualification path a complete post-boot verification window
-alongside the unchanged `windows-vm` surface.
+Ubuntu NoCloud system-user and virtio-port contracts, and admits bounded QMP
+asynchronous events while retaining exact response correlation. The unchanged
+`windows-vm` surface remains available alongside Linux qualification.
 
 The Linux foundation has two deliberately different paths:
 
@@ -82,7 +82,7 @@ staging bundle; a later failure preserves the final configuration root.
 The staging descriptor expires exactly 24 hours after creation. Expiry never
 deletes material automatically; it requires explicit removal and fresh preparation.
 
-The executor-v7 verification request requires the controller to read and verify
+The executor-v8 verification request requires the controller to read and verify
 the bootstrap before it writes anything to the stream. Acceptance requires the
 exact pinned guest signature, fresh time window, bootstrap nonce, sequence 1,
 phase `bootstrap`, static identity tuple, kernel boot-ID source, and key/binary
@@ -152,7 +152,7 @@ promotion, preparation, authorization, and one new Gate 2 invocation remain
 required before Gate 2 can be qualified.
 
 `dockpipe.vm.first-boot-observation.v1` is now bound into every fresh
-provisioning plan, its digest, executor-v7, and the exact QEMU argv. QEMU exposes
+provisioning plan, its digest, executor-v8, and the exact QEMU argv. QEMU exposes
 only the existing `isa-serial/ttyS0` stream as a one-shot Unix client; before
 launch, the controller creates the exact listener and an exclusive mode-`0600`
 `first-boot-console.log`. The controller retains at most the first 4 MiB,
@@ -165,11 +165,11 @@ planning and sealed executor validation. The path adds no NoCloud or guest
 mutation, private-payload read, network, shell, retry, reconnect, signal,
 fallback, or automatic cleanup.
 
-Fresh qualification execution now requires executor-v7 with that exact policy.
-Preserved executor-v6, executor-v5, executor-v4, executor-v3, and executor-v2 files remain
+Fresh qualification execution now requires executor-v8 with that exact policy.
+Preserved executor-v7, executor-v6, executor-v5, executor-v4, executor-v3, and executor-v2 files remain
 loadable only for their separately authorized exact cleanup resource lists;
 they cannot regain qualification execution, and independent compatibility
-tests pin all five cleanup paths. The checked-in live authorization remains disabled and
+tests pin all six cleanup paths. The checked-in live authorization remains disabled and
 the plan remains `execute=false`. No new live identity, root, disk, seed,
 process, socket, or evidence was created by this offline slice. Gate 2 remains
 unqualified. The subsequent offline source-build review produced two
@@ -601,6 +601,45 @@ executor-v7, and the 240-second verification window. It remains
 `live_authorized=false`, `execute=false`, and authorization-required. All four
 live roots remain absent; no live authorization, VM execution, cleanup, or
 Gate 3 action occurred.
+
+The executor-v7 live wrapper SHA-256
+`6f5052c05ac61256673360322cf9c3746d3c5091cc25f76bd8be134090977ba1`
+then ran once with authorization SHA-256
+`4a4e71e3d40bc8e4a86592cd77f5152962cfc633d63db32d40dedac8af4fe9e6`.
+Guest bootstrap and all three signed verification capabilities succeeded:
+identity matched the exact machine, disk, and boot ID; health reported
+`healthy=true`; and launch-hash-pinned reported `matched=true` for the promoted
+controller and guest hashes. Bootstrap evidence SHA-256 is
+`77d9adb16aa125dfd1eeb8645537d066b5006ab006cf774bbb6399caae238f84`;
+verification evidence SHA-256 is
+`1c555ff80801d04fa3274e230bac1ca1e9d6c740cec5225de8a9b51c4af550c7`.
+
+The run then failed closed at `controlled-shutdown` with `QMP response id
+mismatch`. Complete roots and the executor-ordered 12-resource cleanup list
+were preserved; recorded QEMU PID `4150024` is absent. Executor file SHA-256 is
+`e2ca1d6f89ffd4f55e55aa51967b7b07d94ff3bdf270753ed4cc41b83d580137`,
+and first-boot console SHA-256 is
+`af5786f74d73c5665a7f753ba236106ed7effe77dd0a75c28821fe547984ea66`
+at `87088` bytes. The authorization is permanently spent; no retry, signal,
+cleanup, or Gate 3 action occurred.
+
+Version 1.1.5 corrects the package-owned QMP client. QMP may interleave
+asynchronous event frames before the response carrying the requested command
+ID; the old client treated the first event's absent ID as a mismatched response.
+The client now skips only structurally valid asynchronous events, accepts at
+most 64 before the exact response, and still rejects malformed event/response
+hybrids, wrong response IDs, oversized frames, decode failures, QMP errors, and
+deadline or transport failures. It adds no command, reconnect, retry, signal,
+fallback, or automatic cleanup. Executor-v8 owns fresh execution; executor-v7
+is exact-cleanup-only for the preserved run. No `src/**` file changed, so the
+package/engine boundary remains preserved.
+
+Offline validation passed the full VM Go suite, `go vet`, focused controller
+and executor race tests, the VM package harness, both workflow validators, and
+isolated workflow and resolver compilation. Regression coverage injects an
+asynchronous `SHUTDOWN` event before the exact powerdown response and proves a
+subsequent wrong response ID still fails closed. Temporary compilation outputs
+remain under `/tmp`; no generated package artifact or live action was created.
 
 The original documentation decision created no promotion evidence and granted no Gate 2
 authority. Deterministic source review, offline promotion, Gate 2 preparation,
