@@ -13,7 +13,6 @@ users:
     shell: /usr/sbin/nologin
     homedir: /var/lib/dockpipe-agent
     lock_passwd: true
-    ssh_redirect_user: true
 fs_setup:
   - label: dockpipe-qual
     filesystem: ext4
