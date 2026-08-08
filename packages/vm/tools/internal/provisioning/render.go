@@ -47,7 +47,7 @@ type AgentConfig struct {
 var reviewedAssetSHA256 = map[string]string{
 	"nocloud/meta-data":               "e1e3a5697cd018d2465093e7011a60dfa17de51ade7a702252d887fada833ef7",
 	"nocloud/network-config":          "639b6f419a9ac49312b218e12395dc7e7d623d96202c3315a92dcd19d6fa02ba",
-	"nocloud/user-data":               "0415a78cb017cba0a05d45a5592a83a1bd33cc088123b64794219ccd4158184f",
+	"nocloud/user-data":               "29ee79436a47ec317fafea1d52ef096f852fe02ba30e82cf227f6c8f29007412",
 	"systemd/dockpipe-agent.service":  "34bc05b718928c3d042210767b98f527ab9ce77271c4472e90e4481326dcb339",
 	"systemd/dockpipe-agent.sysusers": "918c4529043c930ec81256f8c72c915f460283ce33a1d75712bf44aecfa1e5c9",
 	"systemd/dockpipe-agent.tmpfiles": "fd07f8893e38df78e8c6b1cd2745bafc9f3a3634bb7685e004c8b0d8ff5b7a91",
@@ -148,7 +148,11 @@ func RenderNoCloud(c Contract, m manifest.Manifest, material RenderMaterial) ([]
 	}{"", "/etc/dockpipe-agent/config.json", "dockpipe-agent:dockpipe-agent", "0400", configJSON})
 	var writeFiles strings.Builder
 	for _, asset := range assets {
-		fmt.Fprintf(&writeFiles, "  - path: %s\n    owner: %s\n    permissions: \"%s\"\n    encoding: b64\n    content: %s\n", asset.target, asset.owner, asset.mode, base64.StdEncoding.EncodeToString(asset.data))
+		deferWrite := ""
+		if asset.owner == "dockpipe-agent:dockpipe-agent" {
+			deferWrite = "    defer: true\n"
+		}
+		fmt.Fprintf(&writeFiles, "  - path: %s\n    owner: %s\n    permissions: \"%s\"\n    encoding: b64\n%s    content: %s\n", asset.target, asset.owner, asset.mode, deferWrite, base64.StdEncoding.EncodeToString(asset.data))
 	}
 	replacements := map[string]string{
 		"@@RUN_ID@@": c.RunID, "@@COHORT_ID@@": c.CohortID, "@@DISK_SERIAL@@": c.DiskSerial,

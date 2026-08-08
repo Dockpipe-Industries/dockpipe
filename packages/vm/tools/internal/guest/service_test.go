@@ -27,7 +27,7 @@ func serviceFixture(t *testing.T) (*Service, ed25519.PrivateKey, ed25519.PublicK
 	controllerPub, controllerPriv, _ := ed25519.GenerateKey(rand.Reader)
 	guestPub, guestPriv, _ := ed25519.GenerateKey(rand.Reader)
 	now := time.Unix(1_800_000_000, 0)
-	expected := protocol.Context{MachineUUID: "11111111-1111-4111-8111-111111111111", DiskSerial: "dockpipe-qual-data-001", BootID: "22222222-2222-4222-8222-222222222222", RunID: "run-001", Scenario: "sqlite-wal", DurabilityBoundary: "after-fsync"}
+	expected := protocol.Context{MachineUUID: "11111111-1111-4111-8111-111111111111", DiskSerial: "dockpipe-data-000001", BootID: "22222222-2222-4222-8222-222222222222", RunID: "run-001", Scenario: "sqlite-wal", DurabilityBoundary: "after-fsync"}
 	bootstrapNonce := strings.Repeat("b", 64)
 	payload := protocol.IdentityBootstrapPayload{BootIDSource: manifest.KernelBootIDSource, ControllerPublicKeySHA256: hash(controllerPub), GuestPublicKeySHA256: hash(guestPub), ControllerBinarySHA256: strings.Repeat("c", 64), GuestAgentBinarySHA256: strings.Repeat("a", 64)}
 	service := &Service{ControllerPublic: controllerPub, GuestPrivate: guestPriv, Expected: expected, AgentSHA256: strings.Repeat("a", 64), ControllerSHA256: strings.Repeat("c", 64), BootstrapNonce: bootstrapNonce, BootIDSource: manifest.KernelBootIDSource, BootstrapPayload: payload, Now: func() time.Time { return now }}

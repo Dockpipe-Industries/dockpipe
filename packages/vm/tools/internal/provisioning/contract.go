@@ -29,7 +29,7 @@ const (
 var (
 	idPattern     = regexp.MustCompile(`^[a-z0-9][a-z0-9._-]{2,127}$`)
 	uuidPattern   = regexp.MustCompile(`^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$`)
-	serialPattern = regexp.MustCompile(`^[a-z0-9][a-z0-9._-]{7,63}$`)
+	serialPattern = regexp.MustCompile(`^[a-z0-9][a-z0-9._-]{7,19}$`)
 	noncePattern  = regexp.MustCompile(`^[0-9a-f]{64}$`)
 	shaPattern    = regexp.MustCompile(`^[0-9a-f]{64}$`)
 )
@@ -66,7 +66,7 @@ type ExecutionPolicy struct {
 func RequiredExecutionPolicy() ExecutionPolicy {
 	return ExecutionPolicy{
 		CloneTimeoutSeconds: 120, LaunchTimeoutSeconds: 120,
-		GuestVerificationTimeoutSeconds: 180, ShutdownTimeoutSeconds: 120,
+		GuestVerificationTimeoutSeconds: 240, ShutdownTimeoutSeconds: 120,
 		PreserveCompleteFailure: true,
 	}
 }

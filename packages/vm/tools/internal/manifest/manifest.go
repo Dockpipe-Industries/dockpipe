@@ -19,13 +19,15 @@ const (
 	QualificationMount   = "/var/lib/dockpipe-qualification"
 	KernelBootIDSource   = "/proc/sys/kernel/random/boot_id"
 	DataDiskBytes        = int64(4 * 1024 * 1024 * 1024)
+	// VirtioBlockSerialMaxBytes is the Linux-visible virtio-blk serial limit.
+	VirtioBlockSerialMaxBytes = 20
 	UbuntuImageURL       = "https://cloud-images.ubuntu.com/releases/noble/release-20260801/ubuntu-24.04-server-cloudimg-amd64.img"
 	UbuntuImageSHA256    = "0533b0655c32e68b31d792ecd6ccfca95abdbc536c4446874fe0513bd4140ffe"
 )
 
 var (
 	uuidPattern   = regexp.MustCompile(`^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$`)
-	serialPattern = regexp.MustCompile(`^[a-z0-9][a-z0-9._-]{7,63}$`)
+	serialPattern = regexp.MustCompile(`^[a-z0-9][a-z0-9._-]{7,19}$`)
 	idPattern     = regexp.MustCompile(`^[a-z0-9][a-z0-9._-]{2,127}$`)
 	shaPattern    = regexp.MustCompile(`^[0-9a-f]{64}$`)
 )

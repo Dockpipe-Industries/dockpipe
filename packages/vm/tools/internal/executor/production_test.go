@@ -107,7 +107,7 @@ func TestLinuxRunnerPerformsGuestFirstSignedVerificationAndDurableEvidence(t *te
 	controllerPublic, controllerPrivate, _ := ed25519.GenerateKey(rand.Reader)
 	guestPublic, guestPrivate, _ := ed25519.GenerateKey(rand.Reader)
 	now := time.Unix(1_800_000_000, 0)
-	m := manifest.Manifest{MachineUUID: "11111111-1111-4111-8111-111111111111", RunID: "run-001", Scenario: "sqlite-wal", DurabilityBoundary: "after-fsync", BootIDSource: manifest.KernelBootIDSource, DataDisk: manifest.Disk{Serial: "dockpipe-qual-data-001"}}
+	m := manifest.Manifest{MachineUUID: "11111111-1111-4111-8111-111111111111", RunID: "run-001", Scenario: "sqlite-wal", DurabilityBoundary: "after-fsync", BootIDSource: manifest.KernelBootIDSource, DataDisk: manifest.Disk{Serial: "dockpipe-data-000001"}}
 	contract := provisioning.Contract{RunID: "run-001", CohortID: "cohort-001", BootstrapNonce: execution.Guest.Bootstrap.BootstrapNonce, Artifacts: provisioning.Artifacts{ControllerPublicKeySHA256: hashBytes(controllerPublic), GuestPublicKeySHA256: hashBytes(guestPublic), ControllerBinarySHA256: execution.NoCloud.Files[0].SHA256, GuestAgentBinarySHA256: execution.NoCloud.Files[1].SHA256}}
 	keys := provisioning.KeyMaterial{ControllerPublic: controllerPublic, ControllerPrivate: controllerPrivate, GuestPublic: guestPublic, GuestPrivate: guestPrivate}
 	payload := protocol.IdentityBootstrapPayload{BootIDSource: manifest.KernelBootIDSource, ControllerPublicKeySHA256: contract.Artifacts.ControllerPublicKeySHA256, GuestPublicKeySHA256: contract.Artifacts.GuestPublicKeySHA256, ControllerBinarySHA256: contract.Artifacts.ControllerBinarySHA256, GuestAgentBinarySHA256: contract.Artifacts.GuestAgentBinarySHA256}

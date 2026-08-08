@@ -10,7 +10,7 @@ cd "$PACKAGE_ROOT/tools"
 GOWORK=off GOCACHE="$VM_TEST_TMP/cache" GOTMPDIR="$VM_TEST_TMP/tmp" CGO_ENABLED=0 go test -mod=readonly ./...
 
 cd "$PACKAGE_ROOT"
-grep -Fq 'version: 1.1.1' package.yml
+grep -Fq 'version: 1.1.2' package.yml
 grep -Fq 'models/QemuVmResolverConfig' resolvers/qemu/types.yml
 grep -Fq 'models/LinuxQemuVmResolverConfig' resolvers/qemu/types.yml
 grep -Fq 'runtime: vm' workflows/windows-vm/config.yml
@@ -24,10 +24,11 @@ grep -Fq '"boot_id_source": "/proc/sys/kernel/random/boot_id"' manifests/linux-q
 grep -Fq 'dockpipe.vm.v2' tools/internal/protocol/frame.go
 grep -Fq 'FirstRequestSequence' tools/internal/protocol/frame.go
 grep -Fq 'dockpipe.vm.provisioning.v3' manifests/linux-provisioning.template.json
-grep -Fq '"guest_verification_timeout_seconds": 180' manifests/linux-provisioning.template.json
+grep -Fq '"guest_verification_timeout_seconds": 240' manifests/linux-provisioning.template.json
 grep -Fq 'dockpipe.vm.live-authorization.v3' manifests/linux-live-authorization.template.json
 grep -Fq 'dockpipe.vm.cleanup-authorization.v1' manifests/linux-cleanup-authorization.template.json
 grep -Fq 'dockpipe.vm.identity-material.v1' tools/internal/identitymaterial/material.go
+grep -Fq 'dockpipe.vm.executor.v5' tools/internal/executor/contract.go
 grep -Fq 'dockpipe.vm.executor.v4' tools/internal/executor/contract.go
 grep -Fq 'dockpipe.vm.executor.v3' tools/internal/executor/contract.go
 grep -Fq 'dockpipe.vm.first-boot-observation.v1' tools/internal/provisioning/first_boot_observation.go
@@ -43,6 +44,9 @@ grep -Fq '"approved": false' manifests/linux-live-authorization.template.json
 grep -Fq -- '--serve-virtio-serial=' workflows/linux-vm/assets/systemd/dockpipe-agent.service
 grep -Fq 'package_update: false' workflows/linux-vm/assets/nocloud/user-data
 grep -Fq 'ssh_pwauth: false' workflows/linux-vm/assets/nocloud/user-data
+grep -Fq 'ssh_redirect_user: true' workflows/linux-vm/assets/nocloud/user-data
+grep -Fq 'defer: true' tools/internal/provisioning/render.go
+grep -Fq 'dockpipe-data-000001' manifests/linux-qualification.json
 
 if grep -Fq '"boot_id":' manifests/linux-qualification.json; then
   echo 'qualification manifest must learn boot ID from the signed guest bootstrap' >&2

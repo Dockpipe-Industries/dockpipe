@@ -1,10 +1,11 @@
 # DockPipe VM package
 
 The `vm` package owns guest-specific workflows, QEMU resolver models, and the
-VMM-neutral control protocol. DockPipe core remains generic. Version 1.1.1
-retains the sealed first-boot console observation path and corrects the
-networkless Ubuntu qualification boot deadline alongside the unchanged
-`windows-vm` surface.
+VMM-neutral control protocol. DockPipe core remains generic. Version 1.1.2
+retains the sealed first-boot console observation path, corrects the pinned
+Ubuntu NoCloud contract and virtio-blk serial bound, and gives the networkless
+qualification path a complete post-boot verification window alongside the
+unchanged `windows-vm` surface.
 
 The Linux foundation has two deliberately different paths:
 
@@ -81,7 +82,7 @@ staging bundle; a later failure preserves the final configuration root.
 The staging descriptor expires exactly 24 hours after creation. Expiry never
 deletes material automatically; it requires explicit removal and fresh preparation.
 
-The executor-v4 verification request requires the controller to read and verify
+The executor-v5 verification request requires the controller to read and verify
 the bootstrap before it writes anything to the stream. Acceptance requires the
 exact pinned guest signature, fresh time window, bootstrap nonce, sequence 1,
 phase `bootstrap`, static identity tuple, kernel boot-ID source, and key/binary
@@ -151,7 +152,7 @@ promotion, preparation, authorization, and one new Gate 2 invocation remain
 required before Gate 2 can be qualified.
 
 `dockpipe.vm.first-boot-observation.v1` is now bound into every fresh
-provisioning plan, its digest, executor-v4, and the exact QEMU argv. QEMU exposes
+provisioning plan, its digest, executor-v5, and the exact QEMU argv. QEMU exposes
 only the existing `isa-serial/ttyS0` stream as a one-shot Unix client; before
 launch, the controller creates the exact listener and an exclusive mode-`0600`
 `first-boot-console.log`. The controller retains at most the first 4 MiB,
@@ -164,10 +165,10 @@ planning and sealed executor validation. The path adds no NoCloud or guest
 mutation, private-payload read, network, shell, retry, reconnect, signal,
 fallback, or automatic cleanup.
 
-Fresh qualification execution now requires executor-v4 with that exact policy.
-Preserved executor-v3 and executor-v2 files remain loadable only for their
+Fresh qualification execution now requires executor-v5 with that exact policy.
+Preserved executor-v4, executor-v3, and executor-v2 files remain loadable only for their
 separately authorized exact cleanup resource lists; they cannot regain
-qualification execution, and independent compatibility tests pin both cleanup
+qualification execution, and independent compatibility tests pin all three cleanup
 paths. The checked-in live authorization remains disabled and
 the plan remains `execute=false`. No new live identity, root, disk, seed,
 process, socket, or evidence was created by this offline slice. Gate 2 remains
@@ -328,6 +329,29 @@ and inert plan SHA-256
 The plan is not live-authorized, does not execute, binds the 180-second guest
 deadline, and keeps all socket paths below 107 bytes. No live root or VM was
 created; execution remains separately authorized.
+
+That separately authorized run executed once and is permanently spent. It
+failed closed after the full 180-second verification window, preserved every
+instance root, and produced an 86,335-byte owner-only first-boot console log.
+The log proves cloud-init did not start the agent until about 176.2 seconds.
+It also records `write_files` failing because `dockpipe-agent` did not yet
+exist and `disk_setup` failing because the requested 23-character data-disk
+serial had no matching `/dev/disk/by-id/virtio-*` path. The exact QEMU process
+later exited without bootstrap or verification evidence; the preserved roots
+remain pending a separately authorized cleanup and the run will not be retried.
+
+Version 1.1.2 corrects those observed failures as one new sealed contract.
+Agent-owned key/config files use cloud-init's reviewed `defer: true` path, after
+user creation; the rendered config validates against the schema extracted from
+the exact pinned image. Qualification OS and data serials are now restricted
+to Linux's 20-byte virtio-blk identifier limit. Guest verification is bounded
+to 240 seconds, retaining the observed 120-second networkless wait plus the
+original 60-second signed-verification allowance after the agent becomes
+available. Executor-v5 owns the new policy. Executor-v4 retains its 180-second
+shape only for exact separately authorized cleanup; executor-v3 and executor-v2
+retain their historical 60-second cleanup shapes. Fresh deterministic builds,
+promotion, preparation, and one separately authorized Gate 2 run are still
+required. Gate 2 remains unqualified and Gate 3 remains blocked.
 
 The original documentation decision created no promotion evidence and granted no Gate 2
 authority. Deterministic source review, offline promotion, Gate 2 preparation,

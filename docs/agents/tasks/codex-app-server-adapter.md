@@ -4290,6 +4290,43 @@ SHA-256 `460b759b050a68a500aa6ea4e2c2e503ba2317d955e4e8b2d47d6eb6b93b39ec`, cont
 authorization, identity reservation, disk, seed, socket, process, Gate 2, cleanup, or Gate 3 action
 occurred. Live Gate 2 remains a separate exact authorization.
 
+#### Linux VM Gate 2 NoCloud and virtio correction (2026-08-08)
+
+The exact live authorization for run `g2r-1f9bdb5dd11545a4` and cohort
+`g2c-17706e2c6519c7b0` executed once and is permanently spent. Guest
+verification failed closed after the complete 180-second executor-v4 deadline;
+no signed bootstrap, verification evidence, controller request, retry, signal,
+fallback, or cleanup occurred. All task roots remain preserved. An escalated
+host read proved the recorded QEMU process absent after failure. The owner-only
+`first-boot-console.log` is `86335` bytes.
+
+The captured console and an unprivileged read-only sparse copy of the preserved
+OS overlay prove three independent causes. The pinned image spent about 120
+seconds in `systemd-networkd-wait-online.service`, then started the agent only
+at about 176.2 seconds. Cloud-init `write_files` failed with `Unknown user or
+group: dockpipe-agent` because three agent-owned files were rendered before the
+users module. Disk setup failed because `/dev/disk/by-id/virtio-g2data-63a5654952ec9a88`
+did not exist: the requested serial is 23 characters while Linux exposes only
+20 bytes for a virtio-blk serial. Cloud-init's pinned schema additionally
+rejected the empty `packages`, `ssh_genkeytypes`, and `ssh_authorized_keys`
+arrays, the user `create_home` field, and the misplaced user-data `network`
+field. The forensic copy touched neither the preserved overlay nor any live
+root.
+
+VM package 1.1.2 corrects the package-owned contract. The three agent-owned
+key/config files use cloud-init `defer: true`; the invalid fields are removed or
+replaced while the separate NoCloud network-config still declares no Ethernet
+interfaces. Both OS and data serial validation now fail closed above the
+20-byte virtio-blk limit. Guest verification is 240 seconds: the observed
+networkless 120-second wait plus the original 60-second post-agent verification
+allowance. Executor-v5 owns the new policy. Preserved executor-v4, executor-v3,
+and executor-v2 files remain cleanup-only with their respective 180/60/60-second
+shapes, and compatibility tests pin each exact cleanup path. No `src/**` file
+changed; the package/engine boundary remains preserved. The spent run still
+requires separately authorized exact cleanup, and fresh builds, promotion,
+preparation, and one new live authorization are required before Gate 2 can be
+qualified. Gate 3 remains blocked.
+
 The implementation test matrix is:
 
 1. **Adapter selection:** a new normal Pipeon Codex session defaults to App Server; the explicit exec

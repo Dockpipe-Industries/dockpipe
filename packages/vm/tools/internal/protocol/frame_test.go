@@ -13,7 +13,7 @@ import (
 )
 
 func testContext() Context {
-	return Context{MachineUUID: "11111111-1111-4111-8111-111111111111", DiskSerial: "dockpipe-qual-data-001", BootID: "22222222-2222-4222-8222-222222222222", Sequence: FirstRequestSequence, RunID: "run-001", Nonce: strings.Repeat("a", 64), Scenario: "wal-checkpoint", DurabilityBoundary: "after-fsync", Phase: "checkpoint"}
+	return Context{MachineUUID: "11111111-1111-4111-8111-111111111111", DiskSerial: "dockpipe-data-000001", BootID: "22222222-2222-4222-8222-222222222222", Sequence: FirstRequestSequence, RunID: "run-001", Nonce: strings.Repeat("a", 64), Scenario: "wal-checkpoint", DurabilityBoundary: "after-fsync", Phase: "checkpoint"}
 }
 
 func keypair(t *testing.T) (ed25519.PublicKey, ed25519.PrivateKey) {
