@@ -480,3 +480,17 @@ at `3870222` bytes. Promotion evidence SHA-256 is
 Independent read-back confirmed the exact checkpoint, closed inventory, modes,
 hashes, and package/engine separation. No identity, plan, authorization, live
 VM, cleanup, Gate 2, or Gate 3 action occurred; fresh preparation is separate.
+
+Fresh preparation subsequently completed for run `g2r-40a86fe85ed7b2f8`
+and cohort `g2c-c0805ed9b9d9aff1`. Qualification input SHA-256 is
+`410adcc1056cb9fe1ac8d190e30ff4d414ceeddcf56d54725ff3cd2fd3ddba37`,
+provisioning input SHA-256 is
+`74b5d529a49da372f9baec334fd4ddc72183ebdb4cb976b986932150ded621ad`,
+contract SHA-256 is
+`010406e2cbdf7903229c7cc344fcf1cdfb99fdc2f43cd52b37a36afc1ace6a6a`,
+and inert plan SHA-256 is
+`afa3ac656db78672aea4b03a4fd55561ffb7b050224714598a09dcd6e3ab9881`.
+The owner-only identity expires at `2026-08-09T18:46:09Z`. The plan is
+non-authorized and non-executing, binds executor-v6's 240-second verification,
+and keeps all socket paths below Linux's limit. Every live root remains absent;
+live Gate 2 is separately authorized.

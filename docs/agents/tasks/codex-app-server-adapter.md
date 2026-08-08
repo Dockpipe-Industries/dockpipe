@@ -4503,6 +4503,29 @@ The promotion performed no identity preparation, live input, plan,
 authorization, disk, seed, socket, QEMU process, cleanup, Gate 2, or Gate 3
 action. Fresh Gate 2 preparation remains separately authorized.
 
+The separately authorized offline preparation then created fresh task root
+`/tmp/dockpipe-vm-gate2-prep-20260808-7fddef13`, run
+`g2r-40a86fe85ed7b2f8`, and cohort `g2c-c0805ed9b9d9aff1` from promotion
+`vmp-2026080897480d78`. Identity descriptor SHA-256 is
+`3738490e1e43882e7f8585f3e77de9c485ebc6c9804c9b43f50ef0543687fbe6`;
+qualification input SHA-256 is
+`410adcc1056cb9fe1ac8d190e30ff4d414ceeddcf56d54725ff3cd2fd3ddba37`;
+provisioning input SHA-256 is
+`74b5d529a49da372f9baec334fd4ddc72183ebdb4cb976b986932150ded621ad`;
+and inert plan file SHA-256 is
+`73eb04cafa4b739ff9225bf95176d6d26987118713d1af6917447f9930b7d163`.
+The plan binds contract SHA-256
+`010406e2cbdf7903229c7cc344fcf1cdfb99fdc2f43cd52b37a36afc1ace6a6a`
+and plan SHA-256
+`afa3ac656db78672aea4b03a4fd55561ffb7b050224714598a09dcd6e3ab9881`.
+The identity expires at `2026-08-09T18:46:09Z`. The persisted plan remains
+`live_authorized=false`, `execute=false`, and `authorization_required=true`;
+both the provisioning input and typed `verify-guest` operation bind 240
+seconds. QMP, agent, and first-boot-console socket paths are 93, 95, and 92
+bytes. All four live roots remain absent. No live authorization, identity
+reservation, disk, seed, socket, process, cleanup, Gate 2, or Gate 3 action
+occurred. Live Gate 2 remains a separate exact authorization.
+
 The implementation test matrix is:
 
 1. **Adapter selection:** a new normal Pipeon Codex session defaults to App Server; the explicit exec
