@@ -4661,6 +4661,21 @@ isolated workflow and resolver compilation. Regression tests prove a valid
 asynchronous event may precede the exact response while a wrong response ID
 still fails closed. The compilation outputs remain temporary.
 
+Exact checkpoint `1047d7a44a98c71fd45529d2721a808d659cdfda` was then
+rebuilt in two independent Linux/amd64 lanes under private root
+`/tmp/dockpipe-vm-source-review.1047d7a4.0i4iOy5k`. Each lane used separate
+caches and temporary directories with Go 1.25.0, `GOWORK=off`,
+`CGO_ENABLED=0`, `GOAMD64=v1`, `-trimpath`, and `-buildvcs=false`. Controller
+outputs are byte-identical at `5447686` bytes with SHA-256
+`ae624b6d3c140ccadac34ca1ca2eea509d1b22ece011fd22c811ba2c6bde011c`;
+guest-agent outputs remain byte-identical at `3870222` bytes with SHA-256
+`3a2d7657e13b6ec30fc8dc268ad977bb248b6598749979edf63223d364cc59e7`.
+The Windows/amd64 compatibility guest remains `3966976` bytes with SHA-256
+`86caf93a18159e8b40275f43b02e2930baa9eaffad76227285df8e0a08f3ea6c`.
+Embedded build metadata and every non-standard dependency preserve the
+package-local boundary. The review root is unpromoted; no cleanup or live gate
+action occurred.
+
 The implementation test matrix is:
 
 1. **Adapter selection:** a new normal Pipeon Codex session defaults to App Server; the explicit exec
