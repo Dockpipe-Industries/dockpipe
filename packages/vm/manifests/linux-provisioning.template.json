@@ -37,7 +37,7 @@
   "execution": {
     "clone_timeout_seconds": 120,
     "launch_timeout_seconds": 120,
-    "guest_verification_timeout_seconds": 60,
+    "guest_verification_timeout_seconds": 180,
     "shutdown_timeout_seconds": 120,
     "automatic_retry": false,
     "automatic_cleanup": false,

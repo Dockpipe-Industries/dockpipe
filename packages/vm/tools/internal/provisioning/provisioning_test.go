@@ -176,6 +176,16 @@ func digest(data []byte) string {
 	return hex.EncodeToString(sum[:])
 }
 
+func TestRequiredExecutionPolicyAllowsPinnedNetworklessCloudInitBoot(t *testing.T) {
+	policy := RequiredExecutionPolicy()
+	if policy.CloneTimeoutSeconds != 120 || policy.LaunchTimeoutSeconds != 120 || policy.GuestVerificationTimeoutSeconds != 180 || policy.ShutdownTimeoutSeconds != 120 {
+		t.Fatalf("reviewed execution deadlines changed: %+v", policy)
+	}
+	if policy.AutomaticRetry || policy.AutomaticCleanup || policy.FallbackSignal || !policy.PreserveCompleteFailure {
+		t.Fatalf("fail-closed execution policy changed: %+v", policy)
+	}
+}
+
 func TestProvisioningPlanIsDeterministicInertAndClosed(t *testing.T) {
 	c, paths, _ := contractFixture(t)
 	m := qualificationForContract(t, c)

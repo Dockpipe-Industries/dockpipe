@@ -99,7 +99,7 @@ func executorFixture(t *testing.T) Contract {
 			},
 			Capabilities: []string{"identity/v1", "health/v1", "launch-hash-pinned/v1"}, FirstRequestSequence: 2,
 			BootIDFromBootstrap: true, ContiguousSequence: true, RejectNonceReuse: true,
-			TimeoutSeconds: 60, ControllerSigned: true, GuestSigned: true, Evidence: filepath.Join(evidence, "verification.json"),
+			TimeoutSeconds: 180, ControllerSigned: true, GuestSigned: true, Evidence: filepath.Join(evidence, "verification.json"),
 		},
 		Shutdown:     ShutdownRequest{QMP: qmp, ProcessRecord: filepath.Join(runtime, "process.json"), Command: ControlledPowerdown, TimeoutSeconds: 120, Evidence: filepath.Join(evidence, "shutdown.json")},
 		Preservation: PreservationRequest{Roots: []string{instance, evidence, config, runtime}, TimeoutSeconds: PreservationDeadline},

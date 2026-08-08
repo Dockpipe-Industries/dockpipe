@@ -1,9 +1,10 @@
 # DockPipe VM package
 
 The `vm` package owns guest-specific workflows, QEMU resolver models, and the
-VMM-neutral control protocol. DockPipe core remains generic. Version 1.1.0
-adds the sealed first-boot console observation path to the package-owned Linux
-qualification runner alongside the unchanged `windows-vm` surface.
+VMM-neutral control protocol. DockPipe core remains generic. Version 1.1.1
+retains the sealed first-boot console observation path and corrects the
+networkless Ubuntu qualification boot deadline alongside the unchanged
+`windows-vm` surface.
 
 The Linux foundation has two deliberately different paths:
 
@@ -80,7 +81,7 @@ staging bundle; a later failure preserves the final configuration root.
 The staging descriptor expires exactly 24 hours after creation. Expiry never
 deletes material automatically; it requires explicit removal and fresh preparation.
 
-The executor-v3 verification request requires the controller to read and verify
+The executor-v4 verification request requires the controller to read and verify
 the bootstrap before it writes anything to the stream. Acceptance requires the
 exact pinned guest signature, fresh time window, bootstrap nonce, sequence 1,
 phase `bootstrap`, static identity tuple, kernel boot-ID source, and key/binary
@@ -127,8 +128,28 @@ authorized read-only disk inspection found no `/var/lib/cloud` state and no
 agent-service journal entries, so the earliest missing observable milestone is
 cloud-init/first-boot state; the guest-side cause remains unproven.
 
+A later fresh Gate 2 attempt captured the missing first-boot milestone. The
+pinned Ubuntu image reached `cloud-init-local.service`, started
+`systemd-networkd.service`, and then remained in
+`systemd-networkd-wait-online.service` beyond the controller's 60-second guest
+verification deadline. Offline read-only extraction of the exact pinned source
+image proved that wait-online is enabled in `network-online.target`, defaults to
+120 seconds, and is an explicit predecessor of `cloud-init.service`. NoCloud
+installs the guest agent only after that dependency completes, so the old bound
+could not observe a signed bootstrap on this deliberately networkless boot.
+
+The reviewed execution policy now allows 180 seconds for guest verification.
+Clone, launch, and shutdown remain bounded to 120 seconds; networking, SSH,
+automatic retry, automatic cleanup, and fallback signals remain disabled. The
+new timeout is part of the provisioning contract, deterministic plan digest,
+and sealed executor-v4, so old plans and authorizations cannot acquire the wider
+deadline. The failed live roots remain preserved and require separately
+authorized exact cleanup. Fresh deterministic builds, promotion, preparation,
+authorization, and one new Gate 2 invocation remain required before Gate 2 can
+be qualified.
+
 `dockpipe.vm.first-boot-observation.v1` is now bound into every fresh
-provisioning plan, its digest, executor-v3, and the exact QEMU argv. QEMU exposes
+provisioning plan, its digest, executor-v4, and the exact QEMU argv. QEMU exposes
 only the existing `isa-serial/ttyS0` stream as a one-shot Unix client; before
 launch, the controller creates the exact listener and an exclusive mode-`0600`
 `first-boot-console.log`. The controller retains at most the first 4 MiB,
@@ -141,11 +162,11 @@ planning and sealed executor validation. The path adds no NoCloud or guest
 mutation, private-payload read, network, shell, retry, reconnect, signal,
 fallback, or automatic cleanup.
 
-Fresh qualification execution now requires executor-v3 with that exact policy.
-Preserved executor-v2 files remain loadable only for their separately
-authorized exact cleanup resource lists; they cannot regain qualification
-execution, and an independent historical-v2 serialization test pins their
-original digest shape. The checked-in live authorization remains disabled and
+Fresh qualification execution now requires executor-v4 with that exact policy.
+Preserved executor-v3 and executor-v2 files remain loadable only for their
+separately authorized exact cleanup resource lists; they cannot regain
+qualification execution, and independent compatibility tests pin both cleanup
+paths. The checked-in live authorization remains disabled and
 the plan remains `execute=false`. No new live identity, root, disk, seed,
 process, socket, or evidence was created by this offline slice. Gate 2 remains
 unqualified. The subsequent offline source-build review produced two
@@ -174,7 +195,7 @@ generated store.
 Every promotion ID must match `vmp-[0-9a-f]{16}`. A separately authorized gate
 must supply the exact ID and every source and destination path before execution;
 it may not discover, substitute, increment, or fall back to another destination.
-The proposed first identity is `vmp-2026080815f0ea3f`, with exact future paths:
+The first completed identity is `vmp-2026080815f0ea3f`, with exact paths:
 
 - promotion root:
   `/home/jamie/.local/share/dockpipe-vm-gates/promotions/vmp-2026080815f0ea3f`
@@ -267,7 +288,14 @@ offline-promotion cleanup gate. The later preparation gate binds the two exact
 promoted paths into a task-owned provisioning input outside the checkout; the
 machine-specific paths do not belong in the checked-in provisioning template.
 
-This documentation decision creates no promotion evidence and grants no Gate 2
+That promotion completed once with the exact inventory above. Its canonical
+evidence file has SHA-256
+`c411a6cfa326d61c6bfd9663a7f063d21dcb364520c2274fb3fe34d1f951889b`.
+The promotion remains immutable historical input; the 1.1.1 deadline correction
+requires new deterministic builds and a new promotion identity rather than
+changing or reusing it.
+
+The original documentation decision created no promotion evidence and granted no Gate 2
 authority. Deterministic source review, offline promotion, Gate 2 preparation,
 Gate 2 live authorization and execution, cleanup, and Gate 3 remain distinct
 gates. Gate 2 remains unqualified and Gate 3 remains blocked.
