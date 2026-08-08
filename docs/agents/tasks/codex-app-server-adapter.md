@@ -4393,6 +4393,24 @@ and exact partial task root. Cleanup result SHA-256 is
 independent read-back confirmed the task root and all four live roots absent.
 A corrected preparation must use a fresh run, cohort, and identity bundle.
 
+Corrected preparation then completed once for fresh run
+`g2r-ff1cc0a230d1f0c2`, cohort `g2c-1e7fe20cf8ac84ad`, and immutable promotion
+`vmp-202608089f6d406e`. Qualification input SHA-256 is
+`cc1eee4b2fb9cd258307205535f4218ddedd3b0b47ab9e4c2be6c801ecb9e805`,
+provisioning input SHA-256 is
+`99c715a35c339730c790f62ac23ec11f3e8327a11e791f57db2360b224fee297`,
+contract SHA-256 is
+`1b09bfb642a968237dd66bbe3693213ade7b1229bdec48569aee331f5b9aed34`,
+and plan SHA-256 is
+`39177e8612cb0b83e0f6960027268d3d34dc61c30568a13bffeda1d023ab7988`.
+The identity expires at `2026-08-09T16:47:02Z`. The persisted plan remains
+`live_authorized=false`, `execute=false`, and `authorization_required=true`;
+its typed `verify-guest` operation binds 240 seconds. Both disk serials are 20
+bytes, and QMP, agent, and first-boot-console socket paths are 93, 95, and 92
+bytes. All four live roots remain absent. No authorization, identity
+reservation, disk, seed, socket, process, cleanup, Gate 2, or Gate 3 action
+occurred. Live Gate 2 remains a separate exact authorization.
+
 The implementation test matrix is:
 
 1. **Adapter selection:** a new normal Pipeon Codex session defaults to App Server; the explicit exec

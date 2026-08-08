@@ -411,6 +411,21 @@ deleted all eight partial files and the task root. Cleanup result SHA-256 is
 Independent read-back confirmed the task and live roots absent. Any corrected
 preparation requires fresh run/cohort identity.
 
+Corrected preparation subsequently completed for fresh run
+`g2r-ff1cc0a230d1f0c2` and cohort `g2c-1e7fe20cf8ac84ad`. Qualification input
+SHA-256 is
+`cc1eee4b2fb9cd258307205535f4218ddedd3b0b47ab9e4c2be6c801ecb9e805`,
+provisioning input SHA-256 is
+`99c715a35c339730c790f62ac23ec11f3e8327a11e791f57db2360b224fee297`,
+contract SHA-256 is
+`1b09bfb642a968237dd66bbe3693213ade7b1229bdec48569aee331f5b9aed34`,
+and inert plan SHA-256 is
+`39177e8612cb0b83e0f6960027268d3d34dc61c30568a13bffeda1d023ab7988`.
+The identity expires at `2026-08-09T16:47:02Z`. The plan remains non-authorized
+and non-executing, binds the typed 240-second verification operation, keeps both
+disk serials at 20 bytes, and keeps socket paths below Linux's bound. Every live
+root remains absent; live Gate 2 is still a separate exact authorization.
+
 The original documentation decision created no promotion evidence and granted no Gate 2
 authority. Deterministic source review, offline promotion, Gate 2 preparation,
 Gate 2 live authorization and execution, cleanup, and Gate 3 remain distinct
