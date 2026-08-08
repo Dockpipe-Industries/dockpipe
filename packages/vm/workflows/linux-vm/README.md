@@ -150,7 +150,7 @@ Linux/amd64 bundle. The bundle contains only hash-pinned `qemu-img`,
 `qemu-system-x86_64`, and their exact runtime closure. `qemu-img` has one fixed
 120-second private backing-clone argv; the controller owns exclusive 4 GiB
 sparse-raw creation and deterministic `dockpipe-go-iso9660-v1` seed creation.
-QEMU launch is bounded to 120 seconds, signed guest verification to 60 seconds,
+QEMU launch is bounded to 120 seconds, signed guest verification to 180 seconds,
 and QMP `system_powerdown` shutdown to 120 seconds with no fallback signal.
 Any failure stops once, preserves all four instance roots, and never retries or
 cleans. Cleanup requires a separate fresh authorization bound to the exact
@@ -179,8 +179,23 @@ offline read-only inspection found no `/var/lib/cloud` state and no matching
 agent-service journal entries. It did not establish whether the guest failed in
 boot, cloud-init, service startup, or unprivileged virtio-port access.
 
+A later fresh Gate 2 attempt made that boundary observable. The first-boot
+console reached cloud-init local discovery and networkd, then remained in
+`systemd-networkd-wait-online.service` beyond the old 60-second verification
+deadline. Offline read-only extraction of the exact pinned Ubuntu image proved
+that its wait-online service defaults to 120 seconds and that
+`cloud-init.service` is explicitly ordered after it. Because NoCloud installs
+the guest agent later, a networkless qualification boot cannot emit the signed
+bootstrap inside the old deadline. The reviewed policy now allows 180 seconds
+for signed guest verification while retaining `-nic none`, disabled SSH, the
+120-second clone/launch/shutdown bounds, complete failure preservation, and no
+retry, cleanup, or fallback signal. This policy change invalidates every old
+contract, plan, authorization, and executor for fresh execution. Executor-v4
+owns the new deadline; preserved executor-v3 and executor-v2 contracts remain
+cleanup-only under their exact separately authorized lists.
+
 The `dockpipe.vm.first-boot-observation.v1` policy is now production-wired but
-still non-authorizing. The fresh provisioning plan and sealed executor-v3 bind
+still non-authorizing. The fresh provisioning plan and sealed executor-v4 bind
 the exact evidence and runtime paths, existing `isa-serial/ttyS0` source,
 one-shot Unix transport with QEMU as client and the controller as listener,
 exclusive mode-`0600` evidence, 4 MiB prefix cap, fail-closed overflow, fsync,
@@ -191,9 +206,9 @@ propagates listener-close, sink-sync, sink-close, and parent-directory-sync
 errors. It adds no seed or guest mutation, private-payload read, network, shell,
 reconnect, retry, fallback, signal, or automatic cleanup.
 
-Preserved executor-v2 contracts remain accepted only by the exact cleanup path;
-fresh execution requires executor-v3 and the observation policy, and an
-independent historical-v2 serialization test pins the original digest shape.
+Preserved executor-v3 and executor-v2 contracts remain accepted only by the
+exact cleanup path; fresh execution requires executor-v4 and the observation
+policy, and compatibility tests pin both historical cleanup paths.
 The checked-in authorization template remains `approved=false`, every emitted
 plan remains `execute=false`, and this slice created no live inputs or artifacts.
 Absence of a console milestone will remain non-diagnostic. A subsequent offline
@@ -213,7 +228,7 @@ offline promotion must first publish only the Linux/amd64 controller and guest
 agent into `/home/jamie/.local/share/dockpipe-vm-gates`, a fixed non-live
 task-owned namespace separate from the checkout, package/install and generated
 stores, caches, live XDG roots, and preserved Gate 2 roots. Promotion IDs match
-`vmp-[0-9a-f]{16}`. The first proposed ID is `vmp-2026080815f0ea3f`:
+`vmp-[0-9a-f]{16}`. The first completed ID is `vmp-2026080815f0ea3f`:
 
 - root:
   `/home/jamie/.local/share/dockpipe-vm-gates/promotions/vmp-2026080815f0ea3f`
@@ -265,7 +280,14 @@ offline cleanup authorization. Only a later Gate 2 preparation gate may bind
 the promoted paths into a task-owned provisioning input outside the checkout;
 the checked-in template remains machine-path neutral.
 
-This docs-only decision produced no promotion evidence and grants no Gate 2
+The original docs-only decision produced no promotion evidence and granted no Gate 2
 authority. Source-build evidence, offline promotion, Gate 2 preparation, live
 authorization/execution, cleanup, and Gate 3 are separate gates. Gate 2 remains
 unqualified and Gate 3 remains blocked.
+
+The separately authorized promotion later completed once with that exact
+two-file inventory. The evidence-file SHA-256 is
+`c411a6cfa326d61c6bfd9663a7f063d21dcb364520c2274fb3fe34d1f951889b`.
+It remains immutable historical input. The 1.1.1 verification-deadline fix must
+be rebuilt and promoted under a fresh identity; it cannot replace or reuse this
+promotion.

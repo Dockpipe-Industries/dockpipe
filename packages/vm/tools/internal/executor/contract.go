@@ -19,12 +19,13 @@ import (
 )
 
 const (
-	Schema               = "dockpipe.vm.executor.v3"
-	LegacyCleanupSchema  = "dockpipe.vm.executor.v2"
-	CleanupSchema        = "dockpipe.vm.cleanup-authorization.v1"
-	NoCloudBuilder       = "dockpipe-go-iso9660-v1"
-	ControlledPowerdown  = "system_powerdown"
-	PreservationDeadline = 30
+	Schema                         = "dockpipe.vm.executor.v4"
+	LegacyObservationCleanupSchema = "dockpipe.vm.executor.v3"
+	LegacyCleanupSchema            = "dockpipe.vm.executor.v2"
+	CleanupSchema                  = "dockpipe.vm.cleanup-authorization.v1"
+	NoCloudBuilder                 = "dockpipe-go-iso9660-v1"
+	ControlledPowerdown            = "system_powerdown"
+	PreservationDeadline           = 30
 )
 
 type Contract struct {
@@ -312,7 +313,7 @@ func (c Contract) Digest() (string, error) {
 
 func (c Contract) Validate() error {
 	digest, err := c.Digest()
-	if err != nil || !c.sealed || (c.Schema != Schema && c.Schema != LegacyCleanupSchema) || c.ExecutionSHA256 != digest || !isSHA256(c.ContractSHA256) || !isSHA256(c.PlanSHA256) || !isSHA256(c.ToolchainSHA256) {
+	if err != nil || !c.sealed || (c.Schema != Schema && c.Schema != LegacyObservationCleanupSchema && c.Schema != LegacyCleanupSchema) || c.ExecutionSHA256 != digest || !isSHA256(c.ContractSHA256) || !isSHA256(c.PlanSHA256) || !isSHA256(c.ToolchainSHA256) {
 		return fmt.Errorf("executor contract identity or digest is invalid")
 	}
 	if c.Schema == LegacyCleanupSchema {
@@ -354,7 +355,11 @@ func (c Contract) Validate() error {
 		}
 	}
 	bootstrap := c.Guest.Bootstrap
-	if c.Launch.Command.ToolID != provisioning.ToolQEMUSystem || c.Launch.Command.TimeoutSeconds != 120 || c.Launch.Network || c.Launch.SSH || c.Guest.TimeoutSeconds != 60 || !c.Guest.ControllerSigned || !c.Guest.GuestSigned || c.Guest.FirstRequestSequence != 2 || !c.Guest.BootIDFromBootstrap || !c.Guest.ContiguousSequence || !c.Guest.RejectNonceReuse || !slices.Equal(c.Guest.Capabilities, []string{"identity/v1", "health/v1", "launch-hash-pinned/v1"}) {
+	wantGuestTimeout := provisioning.RequiredExecutionPolicy().GuestVerificationTimeoutSeconds
+	if c.Schema != Schema {
+		wantGuestTimeout = 60
+	}
+	if c.Launch.Command.ToolID != provisioning.ToolQEMUSystem || c.Launch.Command.TimeoutSeconds != 120 || c.Launch.Network || c.Launch.SSH || c.Guest.TimeoutSeconds != wantGuestTimeout || !c.Guest.ControllerSigned || !c.Guest.GuestSigned || c.Guest.FirstRequestSequence != 2 || !c.Guest.BootIDFromBootstrap || !c.Guest.ContiguousSequence || !c.Guest.RejectNonceReuse || !slices.Equal(c.Guest.Capabilities, []string{"identity/v1", "health/v1", "launch-hash-pinned/v1"}) {
 		return fmt.Errorf("launch or signed guest-verification contract changed")
 	}
 	if bootstrap.Kind != "bootstrap" || bootstrap.Capability != "identity/v1" || !isSHA256(bootstrap.BootstrapNonce) || bootstrap.BootIDSource != manifest.KernelBootIDSource || bootstrap.Sequence != 1 || bootstrap.Phase != "bootstrap" || !bootstrap.GuestWritesFirst || !bootstrap.ControllerReadsFirst || !bootstrap.GuestSigned || bootstrap.ControllerSigned || filepath.Base(bootstrap.ExclusiveEvidencePath) != "bootstrap.json" || bootstrap.EvidenceMode != 0o600 || !bootstrap.EvidenceExclusive || !bootstrap.FsyncEvidenceFile || !bootstrap.FsyncEvidenceDir {

@@ -4200,6 +4200,48 @@ process, execute Gate 2, perform cleanup, or begin Gate 3. Deterministic source-
 promotion, Gate 2 preparation, Gate 2 live authorization/execution, cleanup, and Gate 3 remain
 separate gates. The package/engine boundary remains preserved with no `src/**` change.
 
+#### Linux VM promotion, fresh Gate 2 evidence, and deadline correction (2026-08-08)
+
+The separately authorized promotion `vmp-2026080815f0ea3f` completed once under
+`/home/jamie/.local/share/dockpipe-vm-gates`. Its immutable closed inventory contains only the
+mode-`0500` Linux/amd64 controller and guest agent with the reviewed hashes above. Canonical evidence
+is stored at
+`/home/jamie/.local/share/dockpipe-vm-gates/evidence/vmp-2026080815f0ea3f/promotion.evidence.json`
+with SHA-256 `c411a6cfa326d61c6bfd9663a7f063d21dcb364520c2274fb3fe34d1f951889b`.
+
+Fresh offline preparation then produced run `g2r-e58b5061e0e69e7e`, cohort
+`g2c-b725086f6d664d7d`, provisioning contract SHA-256
+`a47cd2f0f9cac67770add46fdf687b67bfc75301f75c6e143d6e45e630d95ce3`, and plan SHA-256
+`8f2bbc6418315248fd15220cfd7998dabb2e453dd087cbe5460e9aaba7ac53c5`. One exact live
+authorization ran once and is permanently spent. Identity staging was consumed only after durable
+reservation, and all four fresh owner-only XDG roots were created. The controller invocation lost
+supervision while its exact QEMU child remained active, so no retry, signal, reconnect, fallback,
+cleanup, or second live authorization occurred. Before the separately authorized recovery action
+could send QMP, narrow read-back proved the recorded PID had already exited; no QMP command was sent.
+The stale socket and complete roots remain preserved.
+
+The owner-only `first-boot-console.log` captured 58,824 bytes. It proves the exact pinned Ubuntu
+guest reached `cloud-init-local.service`, `network-pre.target`, `systemd-networkd.service`, and
+`network.target`, then remained in `systemd-networkd-wait-online.service` through the end of capture.
+An offline read-only extraction of the exact pinned source image proved that
+`systemd-networkd-wait-online.service` is enabled under `network-online.target`, invokes
+`systemd-networkd-wait-online` with its documented 120-second default, and is an explicit
+predecessor of `cloud-init.service`. NoCloud installs the signed guest agent only after this boundary.
+The prior 60-second guest-verification deadline therefore could not observe a bootstrap on the
+reviewed networkless `-nic none` boot path.
+
+VM package 1.1.1 corrects only that sealed deadline: guest verification is now 180 seconds. Clone,
+QEMU launch, and QMP shutdown remain 120 seconds; networking and SSH remain disabled; complete
+failure preservation remains required; and retry, cleanup, and fallback signals remain prohibited.
+The timeout remains part of provisioning-v3 and the deterministic plan digest; executor-v4 owns the
+new 180-second contract. Preserved executor-v3 and executor-v2 contracts remain loadable only for
+their separately authorized exact cleanup lists, and all old inputs fail closed for fresh execution.
+Offline tests must pass before new deterministic builds.
+The current promotion is immutable historical input; a fresh source-build review, new promotion ID,
+fresh run/cohort and identities, new preparation, and a separately authorized live Gate 2 invocation
+are required. Exact cleanup of the preserved failed roots remains a distinct authorization. Gate 2
+is not yet qualified and Gate 3 remains blocked.
+
 The implementation test matrix is:
 
 1. **Adapter selection:** a new normal Pipeon Codex session defaults to App Server; the explicit exec
