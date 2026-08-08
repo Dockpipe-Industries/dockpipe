@@ -157,9 +157,120 @@ the Linux guest-agent SHA-256 is
 and the Windows/amd64 guest-agent compatibility build SHA-256 is
 `5f8b3b83b373ca5d8e70a63283871bdc1842b5e8bdd14a69191d56d362b2a84e`.
 The Windows output is cross-compilation evidence only. None of these outputs
-was promoted or copied into a live or preserved root. A fresh separately
-authorized Gate 2 invocation is the explicit next live gate, and Gate 3 remains
-blocked.
+was promoted or copied into a live or preserved root.
+
+## Offline source-build promotion
+
+Deterministic source-build evidence is not promotion evidence and is not live
+authority. Before any fresh Gate 2 preparation, the reviewed Linux outputs must
+pass a separately authorized offline promotion gate into the fixed non-live
+namespace `/home/jamie/.local/share/dockpipe-vm-gates`. That namespace is
+distinct from the checkout, DockPipe's global package/install root,
+`.dockpipe` and `.dorkpipe`, VM image and toolchain caches, every live instance,
+evidence, configuration, and runtime XDG root, and every preserved Gate 2 root.
+It is task-owned VM qualification input, not a DockPipe package installation or
+generated store.
+
+Every promotion ID must match `vmp-[0-9a-f]{16}`. A separately authorized gate
+must supply the exact ID and every source and destination path before execution;
+it may not discover, substitute, increment, or fall back to another destination.
+The proposed first identity is `vmp-2026080815f0ea3f`, with exact future paths:
+
+- promotion root:
+  `/home/jamie/.local/share/dockpipe-vm-gates/promotions/vmp-2026080815f0ea3f`
+- evidence directory:
+  `/home/jamie/.local/share/dockpipe-vm-gates/evidence/vmp-2026080815f0ea3f`
+- evidence file:
+  `/home/jamie/.local/share/dockpipe-vm-gates/evidence/vmp-2026080815f0ea3f/promotion.evidence.json`
+
+The promotion root is exclusively created as mode `0700`, owned by the
+effective promotion user and that user's primary group. Its closed inventory is
+exactly two regular, non-symlink, single-link files, each exclusively created
+without following links as mode `0500` and with the same owner and group:
+
+| Relative name | Reviewed source | Bytes | SHA-256 | Type |
+| --- | --- | ---: | --- | --- |
+| `dockpipe-qemu-controller` | `linux-a` controller | `5447054` | `b3e428bbadd11d1c9576676ad1f7d0769baddf77a256022eda0bbbc6720cf8cc` | static Linux/amd64 ELF executable |
+| `dockpipe-guest-agent` | `linux-a` guest agent | `3870038` | `7434d3980013e0a978dd73851b4893f1325f6d1c2a27222afcfc20024d46e583` | static Linux/amd64 ELF executable |
+
+No directory, manifest, evidence file, Windows binary, temporary file, cache,
+log, key, authorization, or other artifact may remain in the promotion root.
+The matching `linux-b` files are comparison inputs only: they must be checked
+byte-for-byte against `linux-a` immediately before promotion and are never
+copied. The Windows/amd64 guest-agent hash
+`5f8b3b83b373ca5d8e70a63283871bdc1842b5e8bdd14a69191d56d362b2a84e`
+is compatibility evidence only and must be recorded as `promoted: false`.
+
+Before creation, the promotion gate verifies every fixed namespace component is
+an owned non-symlink directory and rejects overlap with the checkout, generated
+stores, global installs, live XDG roots, preserved roots, the source-review
+root, or the other task-owned destination. It creates missing fixed namespace
+directories one component at a time as mode `0700`, then exclusively creates
+the exact promotion root and evidence directory. Existing task-owned
+destinations fail closed. Every created directory and the evidence file are
+owned by the effective promotion user and that user's primary group. There is
+no overwrite, rename-over-existing, alternate lane, fallback path, retry,
+replacement, repair, or cleanup.
+
+The durability sequence is fixed:
+
+1. Revalidate both reviewed Linux pairs, hashes, sizes, types, modes, ownership,
+   link counts, and embedded Go build metadata.
+2. Exclusively create the mode-`0700` promotion root and synchronize its parent
+   after publishing the directory entry.
+3. Exclusively create each mode-`0500` destination with no-follow semantics,
+   copy the exact `linux-a` bytes, synchronize it, close it, reopen without
+   following links, and read back its identity, type, size, owner, group, mode,
+   link count, SHA-256, Go package path, and build settings.
+4. Verify the exact two-file inventory and synchronize the promotion root.
+5. Exclusively create the mode-`0700` evidence directory and synchronize its
+   parent.
+6. Exclusively create `promotion.evidence.json` as mode `0600`, synchronize it,
+   reopen and verify it, then synchronize the evidence directory.
+7. Immediately read back both roots and report the evidence-file SHA-256.
+
+Any failure stops once and preserves the exact partial promotion and evidence
+roots. A failed promotion ID is never reused; inspection or cleanup requires a
+separate exact offline authorization.
+
+The canonical evidence schema is `dockpipe.vm.offline-promotion.v1`. Canonical
+JSON uses stable snake-case field names and an ordered two-entry
+`promoted_inventory`. It records `schema`, `promotion_id`,
+`repository_checkpoint`, `source_review_root`, exact `linux_a_sources` and
+`linux_b_comparison_sources`, successful `byte_comparisons`,
+`build_provenance` (`go_version`, `gowork`, `cgo_enabled`, `goos`, `goarch`,
+`goamd64`, `trimpath`, and `buildvcs`), `promotion_root`, `evidence_path`,
+`effective_uid`, `effective_gid`, `promotion_root_mode`, and
+`evidence_directory_mode`. Each ordered inventory entry records
+`relative_name`, `absolute_path`, `source_path`, `sha256`, `byte_size`,
+`file_type`, `mode`, `uid`, `gid`, `link_count`, `go_package_path`, and
+`go_build_settings`. The remaining stable fields are
+`windows_amd64_compatibility` with `promoted: false`, `file_syncs`,
+`directory_syncs`, `closed_inventory`, `package_engine_boundary`, and
+`actions_performed`.
+
+`actions_performed` must explicitly record `false` for identity preparation,
+live input, plan, authorization, disk, seed, socket, QEMU process, Gate 2,
+cleanup, and Gate 3. Evidence contains no secret, private key, live
+authorization material, or preserved-root content. The current reviewed source
+root is `/tmp/dockpipe-vm-source-review.ZStX82CE`, the repository checkpoint is
+`15f0ea3f027877221b78f637a00ab010d0a8be1d`, and the reviewed builds used Go
+1.25.0, `GOWORK=off`, `CGO_ENABLED=0`, `GOOS=linux`, `GOARCH=amd64`,
+`-trimpath`, and `-buildvcs=false`; the promotion gate must revalidate and
+record the exact embedded `GOAMD64`, Go package paths, and build settings.
+
+A successful promotion is immutable task-owned, read-only input for a later,
+separately authorized Gate 2 preparation and execution chain. Gate 2 does not
+consume it, mutate it in place, silently replace it, expire it, or target it
+from qualification cleanup. Removal requires a separately authorized exact
+offline-promotion cleanup gate. The later preparation gate binds the two exact
+promoted paths into a task-owned provisioning input outside the checkout; the
+machine-specific paths do not belong in the checked-in provisioning template.
+
+This documentation decision creates no promotion evidence and grants no Gate 2
+authority. Deterministic source review, offline promotion, Gate 2 preparation,
+Gate 2 live authorization and execution, cleanup, and Gate 3 remain distinct
+gates. Gate 2 remains unqualified and Gate 3 remains blocked.
 
 `manifests/linux-live-authorization.template.json` is separately inert with
 `approved=false`. A later reviewed gate must bind a fresh, short-lived copy to
