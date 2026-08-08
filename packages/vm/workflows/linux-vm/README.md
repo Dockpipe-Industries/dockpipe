@@ -406,3 +406,17 @@ SHA-256 is
 `6df37d51443afeb37b2c3272ee6563e0d7d596a7d2755a525be715686a668aa3`,
 and independent read-back confirmed the task and live roots absent. Corrected
 preparation requires a fresh run, cohort, and identity bundle.
+
+Corrected preparation then completed for fresh run `g2r-ff1cc0a230d1f0c2`
+and cohort `g2c-1e7fe20cf8ac84ad`. Qualification input SHA-256 is
+`cc1eee4b2fb9cd258307205535f4218ddedd3b0b47ab9e4c2be6c801ecb9e805`,
+provisioning input SHA-256 is
+`99c715a35c339730c790f62ac23ec11f3e8327a11e791f57db2360b224fee297`,
+contract SHA-256 is
+`1b09bfb642a968237dd66bbe3693213ade7b1229bdec48569aee331f5b9aed34`,
+and inert plan SHA-256 is
+`39177e8612cb0b83e0f6960027268d3d34dc61c30568a13bffeda1d023ab7988`.
+The identity expires at `2026-08-09T16:47:02Z`. The plan is non-authorized and
+non-executing, binds 240-second guest verification, uses 20-byte disk serials,
+and keeps QMP, agent, and console sockets at 93, 95, and 92 bytes. All live
+roots remain absent; live Gate 2 remains separately authorized.
