@@ -366,3 +366,17 @@ with SHA-256
 All builds use Go 1.25.0, `GOWORK=off`, `CGO_ENABLED=0`, `GOAMD64=v1`,
 `-trimpath`, and `-buildvcs=false`; all non-standard dependencies remain under
 `packages/vm/tools/**`. No output was promoted or used by a live gate.
+
+The failed executor-v4 instance was later cleaned once through its separate
+exact cleanup gate. Wrapper SHA-256
+`49d1d779a1a245c4974e23273a2cea8377fe81afec41b7207647805fb4087744`
+used authorization SHA-256
+`eee700a82b075564f4a9406101501292980fb62150314319e040e4f3158cdaf1`
+and bound execution SHA-256
+`b59f443e2c5aea26dc8e798500aa7ec58d2c2415ffb017ebc77ce4077d4a0266`.
+The result reported `completed=["cleanup"]`, `cleanup_run=true`, and
+`preserved=false`; result SHA-256 is
+`5e45ed67fc6866bc4715791e190371b76c334330c8495f262c6fa21ed0d5e0f0`.
+Independent read-back confirmed all 12 ordered resources absent. No retry or
+fresh live VM action occurred. The executor-v5 source-review outputs still
+require separate promotion, preparation, and live authorization.

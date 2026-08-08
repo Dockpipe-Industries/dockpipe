@@ -4343,6 +4343,23 @@ inside `packages/vm/tools/**`. This was offline evidence only and created no
 promotion, identity, authorization, live root, disk, socket, process, cleanup,
 Gate 2, or Gate 3 action.
 
+The spent executor-v4 run was then removed through its distinct exact cleanup
+boundary. Cleanup wrapper SHA-256
+`49d1d779a1a245c4974e23273a2cea8377fe81afec41b7207647805fb4087744`
+used cleanup authorization SHA-256
+`eee700a82b075564f4a9406101501292980fb62150314319e040e4f3158cdaf1`
+once for execution SHA-256
+`b59f443e2c5aea26dc8e798500aa7ec58d2c2415ffb017ebc77ce4077d4a0266`.
+The controller returned `completed=["cleanup"]`, `cleanup_run=true`, and
+`preserved=false`; cleanup-result SHA-256 is
+`5e45ed67fc6866bc4715791e190371b76c334330c8495f262c6fa21ed0d5e0f0`.
+Independent read-back confirmed all 12 executor-ordered resources absent and
+the recorded QEMU PID remained absent. The spent Gate 2 run was not retried,
+no fresh live action occurred, and executor-v5 source-review outputs remain
+unpromoted. The next live chain still begins with a separately authorized
+promotion and fresh preparation; Gate 2 is unqualified and Gate 3 remains
+blocked.
+
 The implementation test matrix is:
 
 1. **Adapter selection:** a new normal Pipeon Codex session defaults to App Server; the explicit exec
