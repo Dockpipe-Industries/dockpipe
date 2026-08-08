@@ -4487,6 +4487,22 @@ QEMU PID `3439760` absent. The immutable executor-v5 promotion controller and
 executor-v6 source-review controller retain their reviewed hashes. No retry,
 promotion, preparation, live Gate 2, or Gate 3 action occurred.
 
+The next separately authorized offline promotion published immutable
+`vmp-2026080897480d78` from exact checkpoint
+`97480d78d3e7a69f22f4d17c6551f6b4d9d877d0`. Its closed inventory contains
+only controller SHA-256
+`d43af4d07ce6c338494f0a36acfe9530029fce1545201411387067dd6b1ced43`
+at `5447246` bytes and guest-agent SHA-256
+`3a2d7657e13b6ec30fc8dc268ad977bb248b6598749979edf63223d364cc59e7`
+at `3870222` bytes. Both are mode `0500`, owner-only, regular single-link
+Linux/amd64 executables. Canonical promotion evidence SHA-256 is
+`c82161da827842b926bbed834fddbd14957577df5a69ae5d4d640949deb7eac1`.
+Independent read-back confirmed the repository checkpoint, source comparisons,
+closed inventory, ownership, modes, sizes, hashes, and package/engine boundary.
+The promotion performed no identity preparation, live input, plan,
+authorization, disk, seed, socket, QEMU process, cleanup, Gate 2, or Gate 3
+action. Fresh Gate 2 preparation remains separately authorized.
+
 The implementation test matrix is:
 
 1. **Adapter selection:** a new normal Pipeon Codex session defaults to App Server; the explicit exec

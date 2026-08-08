@@ -468,3 +468,15 @@ the typed result reports `completed=["cleanup"]`, `cleanup_run=true`, and
 `preserved=false`. Independent read-back confirmed all 12 ordered resources
 and the recorded QEMU process absent while both the prior promotion and new
 source-review outputs remain unchanged. No retry or other gate action occurred.
+
+The following separately approved offline promotion published
+`vmp-2026080897480d78` with exactly two owner-only mode-`0500` files:
+controller SHA-256
+`d43af4d07ce6c338494f0a36acfe9530029fce1545201411387067dd6b1ced43`
+at `5447246` bytes and guest-agent SHA-256
+`3a2d7657e13b6ec30fc8dc268ad977bb248b6598749979edf63223d364cc59e7`
+at `3870222` bytes. Promotion evidence SHA-256 is
+`c82161da827842b926bbed834fddbd14957577df5a69ae5d4d640949deb7eac1`.
+Independent read-back confirmed the exact checkpoint, closed inventory, modes,
+hashes, and package/engine separation. No identity, plan, authorization, live
+VM, cleanup, Gate 2, or Gate 3 action occurred; fresh preparation is separate.
