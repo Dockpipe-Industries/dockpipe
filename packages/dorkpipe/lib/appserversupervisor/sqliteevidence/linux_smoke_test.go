@@ -139,7 +139,7 @@ func requireLinuxModuleGraph() (string, error) {
 	}
 	modText := string(modPayload)
 	sumText := string(sumPayload)
-	for _, required := range []string{"\ngo 1.25\n", "\n\tgolang.org/x/sys v0.47.0\n", "\n\tmodernc.org/sqlite v1.56.0\n", "\n\tmodernc.org/libc v1.74.4 // indirect\n"} {
+	for _, required := range []string{"\ngo 1.25.0\n", "\n\tgolang.org/x/sys v0.47.0\n", "\n\tmodernc.org/sqlite v1.56.0\n", "\n\tmodernc.org/libc v1.74.4 // indirect\n"} {
 		if !strings.Contains(modText, required) {
 			return "", fmt.Errorf("go.mod missing exact selected line %q", strings.TrimSpace(required))
 		}
