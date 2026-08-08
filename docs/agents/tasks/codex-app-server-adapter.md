@@ -4594,6 +4594,19 @@ absent. Both the prior promotion controller and executor-v7 source-review
 controller remain hash-identical. No retry, promotion, preparation, live Gate
 2, or Gate 3 action occurred.
 
+The next separately approved offline promotion created immutable
+`vmp-202608084eb50c76` from checkpoint
+`4eb50c762005ae6f10f51cd57daf9790196cd4ac`. Its closed inventory contains
+only controller SHA-256
+`9f2e2827cffe6924645a90e7381b804111c5f4ec1c46eaab2c270c85a4b1e0d9`
+at `5447254` bytes and guest-agent SHA-256
+`3a2d7657e13b6ec30fc8dc268ad977bb248b6598749979edf63223d364cc59e7`
+at `3870222` bytes, each mode `0500`. Canonical evidence SHA-256 is
+`6fec8b7a8154f6286fac655fe668184cd9fb23f558bab7aed578dc2a502b5101`.
+Independent read-back confirmed the two promoted files and sole evidence file;
+all live-action flags are false. No preparation, authorization, cleanup, Gate
+2, or Gate 3 action occurred.
+
 The implementation test matrix is:
 
 1. **Adapter selection:** a new normal Pipeon Codex session defaults to App Server; the explicit exec
