@@ -353,6 +353,23 @@ retain their historical 60-second cleanup shapes. Fresh deterministic builds,
 promotion, preparation, and one separately authorized Gate 2 run are still
 required. Gate 2 remains unqualified and Gate 3 remains blocked.
 
+The 1.1.2 correction was then rebuilt from exact checkpoint
+`9f6d406e9725acb73476bcde1617fc4fce87b700` under private offline root
+`/tmp/dockpipe-vm-source-review.HIC5Ps`. Two Linux/amd64 lanes used distinct
+Go caches and temporary directories with Go 1.25.0, `GOWORK=off`,
+`CGO_ENABLED=0`, `GOAMD64=v1`, `-trimpath`, and `-buildvcs=false`. Their
+controller outputs are byte-identical at `5447222` bytes with SHA-256
+`c6c2ce8abebf9027af01fdde6a4ac8c487eb53124fbea5c2edeee7c538f5ad7b`;
+their guest-agent outputs are byte-identical at `3870222` bytes with SHA-256
+`3a2d7657e13b6ec30fc8dc268ad977bb248b6598749979edf63223d364cc59e7`.
+The Windows/amd64 guest-agent compatibility output is `3966976` bytes with
+SHA-256 `86caf93a18159e8b40275f43b02e2930baa9eaffad76227285df8e0a08f3ea6c`
+and is not a Linux promotion input. Embedded metadata matches the requested
+platforms and flags, and all non-standard dependencies resolve under
+`packages/vm/tools/**`. These are offline review artifacts only; no promotion,
+identity, authorization, live root, VM, cleanup, Gate 2, or Gate 3 action was
+included.
+
 The original documentation decision created no promotion evidence and granted no Gate 2
 authority. Deterministic source review, offline promotion, Gate 2 preparation,
 Gate 2 live authorization and execution, cleanup, and Gate 3 remain distinct

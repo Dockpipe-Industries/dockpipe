@@ -352,3 +352,17 @@ network-config has no Ethernet interfaces, SSH is disabled, and there is still
 no retry, fallback signal, or automatic cleanup. Fresh builds, promotion,
 preparation, and live authorization remain separate. Gate 2 is unqualified and
 Gate 3 remains blocked.
+
+The 1.1.2 source review then built exact checkpoint
+`9f6d406e9725acb73476bcde1617fc4fce87b700` in
+`/tmp/dockpipe-vm-source-review.HIC5Ps`. Independent Linux/amd64 lanes are
+byte-identical: controller SHA-256
+`c6c2ce8abebf9027af01fdde6a4ac8c487eb53124fbea5c2edeee7c538f5ad7b`
+at `5447222` bytes and guest-agent SHA-256
+`3a2d7657e13b6ec30fc8dc268ad977bb248b6598749979edf63223d364cc59e7`
+at `3870222` bytes. The Windows/amd64 compatibility build is `3966976` bytes
+with SHA-256
+`86caf93a18159e8b40275f43b02e2930baa9eaffad76227285df8e0a08f3ea6c`.
+All builds use Go 1.25.0, `GOWORK=off`, `CGO_ENABLED=0`, `GOAMD64=v1`,
+`-trimpath`, and `-buildvcs=false`; all non-standard dependencies remain under
+`packages/vm/tools/**`. No output was promoted or used by a live gate.
