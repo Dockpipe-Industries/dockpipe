@@ -311,3 +311,11 @@ at `3870038` bytes. The Windows compatibility hash remains
 Builds used Go 1.25.0, `GOWORK=off`, `CGO_ENABLED=0`, `GOAMD64=v1`,
 `-trimpath`, and `-buildvcs=false`, and every non-standard dependency remains
 package-owned. No build was promoted or used live.
+
+The separately authorized promotion `vmp-20260808f6d5c19c` then published only
+those exact Linux controller and guest-agent bytes. Its canonical evidence
+SHA-256 is
+`71827ec3cb32d35b92773b74fc0e0e2a68f0ba223341811c5e9da6b2de0f271d`.
+The promotion is immutable, the earlier promotion remains untouched, and no
+identity, plan, authorization, VM, cleanup, Gate 2, or Gate 3 action was
+included. Fresh preparation remains separately authorized.
