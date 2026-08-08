@@ -467,6 +467,20 @@ The Windows/amd64 compatibility output remains `3966976` bytes with SHA-256
 Every non-standard dependency resolves under `packages/vm/tools/**`. These are
 offline review artifacts only; no promotion, cleanup, or live gate occurred.
 
+The first separately approved cleanup wrapper for the preserved executor-v5
+run was consumed once after its fixed authorization had expired. It failed
+before controller invocation, removed nothing, and wrote no result. A fresh
+one-shot wrapper then created a 600-second authorization and invoked only the
+exact cleanup path. Authorization SHA-256 is
+`d903cc895e189eccb5facf81ce1f5fdac32adb41bd10fb1340e6740a95ba6dc1`;
+the controller returned `completed=["cleanup"]`, `cleanup_run=true`, and
+`preserved=false`. Cleanup-result SHA-256 is
+`ff971ac3fc994e72e40886c8f2eb6140e1b4ffe4919023e489d12fed6489ace4`.
+Independent read-back confirmed all 12 executor-ordered resources and the
+recorded QEMU process absent. The prior immutable promotion and executor-v6
+source-review output remain unchanged. No retry, promotion, preparation, live
+Gate 2, or Gate 3 action occurred.
+
 The original documentation decision created no promotion evidence and granted no Gate 2
 authority. Deterministic source review, offline promotion, Gate 2 preparation,
 Gate 2 live authorization and execution, cleanup, and Gate 3 remain distinct
