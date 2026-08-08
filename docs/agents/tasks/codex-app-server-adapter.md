@@ -4718,6 +4718,31 @@ and bootstrap nonce
 `93ef19893b20e4d154fb2f1e4cd19140b51c0fbb6b13b4db598dc6e8dc19ff4c`.
 It is non-authorized and non-executing with all four live roots absent.
 
+The executor-v8 live wrapper SHA-256
+`67c4775f43bc61204a902d459ab50e60012e83a9456dfc78f589dbb7677438f3`
+then executed once with authorization SHA-256
+`7b3cb2a0f69dec174ad36b4573fe543f3b4fa0886b79096f5b9b81a28025bbe6`.
+Execution SHA-256
+`ab1c2e632f814a5e406e48a8caaafbce103d5a7953a564bf6c2b4009b8b82db7`
+completed clone, disk, seed, launch, signed verification, and controlled
+shutdown with `preserved=false` and `cleanup_run=false`.
+
+Bootstrap evidence SHA-256 is
+`ce19af3864474a0171b1aa20e1a5721aee6f9c57c216e99f86b87e6c57bdf26f`;
+verification evidence SHA-256 is
+`fc8f9ab92407f32abaca4ab381c3c152d843f08276491fa33099e6774b5ae096`.
+Authenticated sequences 1 through 4 prove exact identity, `healthy=true`, and
+matching promoted binary hashes. Shutdown evidence SHA-256 is
+`f1af02b35fdb9a51946cf1228071ad6db7e6b8885ea273a6af6f984d410e482e`
+and records `system_powerdown`, `clean_exit=true`, and PID `67010`.
+Independent read-back confirms that PID and transient QMP/agent sockets absent.
+Executor SHA-256 is
+`cc5f38063a9bf06541b62fe1ab12e4d14dc684cafe3fac8da7b029085b8e5b24`;
+console SHA-256 is
+`3738cb9fe16cff9ca3570604b2fcb9d8ccf40141551da42f51b966b6f485bb69`
+at `87171` bytes. Gate 2 is qualified. No cleanup or Gate 3 action occurred;
+Gate 3 is unblocked and remains a separate approval boundary.
+
 The implementation test matrix is:
 
 1. **Adapter selection:** a new normal Pipeon Codex session defaults to App Server; the explicit exec

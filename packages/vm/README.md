@@ -700,10 +700,38 @@ bootstrap nonce
 and the 240-second verification window. It remains non-authorized and
 non-executing; all four live roots remain absent.
 
+The executor-v8 live wrapper SHA-256
+`67c4775f43bc61204a902d459ab50e60012e83a9456dfc78f589dbb7677438f3`
+then executed once with authorization SHA-256
+`7b3cb2a0f69dec174ad36b4573fe543f3b4fa0886b79096f5b9b81a28025bbe6`.
+Execution SHA-256
+`ab1c2e632f814a5e406e48a8caaafbce103d5a7953a564bf6c2b4009b8b82db7`
+completed the private OS clone, private data disk, NoCloud seed, QEMU launch,
+signed guest verification, and controlled shutdown. The typed result reports
+`preserved=false` and `cleanup_run=false`.
+
+Bootstrap evidence SHA-256 is
+`ce19af3864474a0171b1aa20e1a5721aee6f9c57c216e99f86b87e6c57bdf26f`;
+verification evidence SHA-256 is
+`fc8f9ab92407f32abaca4ab381c3c152d843f08276491fa33099e6774b5ae096`.
+Authenticated sequences 1 through 4 prove the kernel boot ID, exact machine
+and disk identities, `healthy=true`, and matching promoted controller and guest
+hashes. Shutdown evidence SHA-256
+`f1af02b35fdb9a51946cf1228071ad6db7e6b8885ea273a6af6f984d410e482e`
+records `system_powerdown`, `clean_exit=true`, and PID `67010`; independent
+read-back confirms that PID and the transient QMP/agent sockets absent.
+Executor file SHA-256 is
+`cc5f38063a9bf06541b62fe1ab12e4d14dc684cafe3fac8da7b029085b8e5b24`,
+and first-boot console SHA-256 is
+`3738cb9fe16cff9ca3570604b2fcb9d8ccf40141551da42f51b966b6f485bb69`
+at `87171` bytes. Gate 2 is qualified. No cleanup or Gate 3 action occurred;
+Gate 3 is now unblocked and remains separately authorized.
+
 The original documentation decision created no promotion evidence and granted no Gate 2
 authority. Deterministic source review, offline promotion, Gate 2 preparation,
 Gate 2 live authorization and execution, cleanup, and Gate 3 remain distinct
-gates. Gate 2 remains unqualified and Gate 3 remains blocked.
+gates. The latest executor-v8 evidence above qualifies Gate 2 and unblocks,
+but does not authorize, Gate 3.
 
 `manifests/linux-live-authorization.template.json` is separately inert with
 `approved=false`. A later reviewed gate must bind a fresh, short-lived copy to
