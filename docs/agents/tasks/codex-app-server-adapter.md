@@ -4376,6 +4376,22 @@ hashes, and package/engine boundary. The promotion performed no identity
 preparation, live input, plan, authorization, disk, seed, socket, QEMU, cleanup,
 Gate 2, or Gate 3 action. Fresh Gate 2 preparation remains a separate gate.
 
+The first executor-v5 preparation attempt for run `g2r-4153130ffe9e0189`
+and cohort `g2c-788fe545f4721de8` was executed once and is spent. It created the
+owner-only identity bundle and qualification/provisioning inputs, then failed
+in the wrapper's final offline assertion because the emitted executor-v5 plan
+stores the timeout under `executor_contract.execution`, not top-level
+`execution`. The wrapper had not yet persisted the inert plan. All four live
+roots remained absent, so no identity reservation, authorization, disk, seed,
+socket, process, Gate 2, or Gate 3 action occurred. The invocation was not
+retried.
+
+A separately authorized closed-inventory cleanup then deleted the eight files
+and exact partial task root. Cleanup result SHA-256 is
+`6df37d51443afeb37b2c3272ee6563e0d7d596a7d2755a525be715686a668aa3`;
+independent read-back confirmed the task root and all four live roots absent.
+A corrected preparation must use a fresh run, cohort, and identity bundle.
+
 The implementation test matrix is:
 
 1. **Adapter selection:** a new normal Pipeon Codex session defaults to App Server; the explicit exec

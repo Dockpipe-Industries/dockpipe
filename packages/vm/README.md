@@ -398,6 +398,18 @@ single-link files and that Windows remained compatibility-only. No identity,
 plan, authorization, VM, cleanup, Gate 2, or Gate 3 action occurred. Fresh
 preparation remains separately authorized.
 
+The first executor-v5 preparation attempt used fresh run
+`g2r-4153130ffe9e0189` and cohort `g2c-788fe545f4721de8`, but its one approved
+invocation failed in the wrapper's final postcondition: the emitted executor-v5
+plan nests the timeout under `executor_contract.execution`, while the wrapper
+looked for top-level `execution`. It created only the owner-only identity bundle
+and two inputs; the inert plan was not persisted and every live root remained
+absent. The attempt was not retried. A separately authorized exact cleanup
+deleted all eight partial files and the task root. Cleanup result SHA-256 is
+`6df37d51443afeb37b2c3272ee6563e0d7d596a7d2755a525be715686a668aa3`.
+Independent read-back confirmed the task and live roots absent. Any corrected
+preparation requires fresh run/cohort identity.
+
 The original documentation decision created no promotion evidence and granted no Gate 2
 authority. Deterministic source review, offline promotion, Gate 2 preparation,
 Gate 2 live authorization and execution, cleanup, and Gate 3 remain distinct

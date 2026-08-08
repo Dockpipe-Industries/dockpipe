@@ -393,3 +393,14 @@ Windows remained compatibility-only. Independent read-back confirmed the
 closed inventory and package/engine boundary, with no identity, live input,
 plan, authorization, VM, cleanup, Gate 2, or Gate 3 action. Fresh preparation
 remains separate.
+
+The first executor-v5 preparation attempt for run `g2r-4153130ffe9e0189` and
+cohort `g2c-788fe545f4721de8` was spent without retry after its wrapper checked
+the 240-second timeout at the wrong plan location. Executor-v5 nests it below
+`executor_contract.execution`. The wrapper created the identity bundle and two
+inputs but did not persist the inert plan; all live roots remained absent. A
+separate exact cleanup removed the eight-file partial root. Cleanup result
+SHA-256 is
+`6df37d51443afeb37b2c3272ee6563e0d7d596a7d2755a525be715686a668aa3`,
+and independent read-back confirmed the task and live roots absent. Corrected
+preparation requires a fresh run, cohort, and identity bundle.
