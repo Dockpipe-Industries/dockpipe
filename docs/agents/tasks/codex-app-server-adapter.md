@@ -4470,6 +4470,23 @@ platforms and flags, and all non-standard dependencies resolve under
 `packages/vm/tools/**`. The source-review artifacts remain unpromoted and were
 not used for cleanup, Gate 2, or Gate 3.
 
+The first separately authorized cleanup wrapper was executed exactly once but
+its fixed cleanup authorization had expired. It stopped before controller
+invocation, removed none of the 12 resources, wrote no result, and was not
+retried. A separately approved fresh wrapper then created one 600-second exact
+cleanup authorization with SHA-256
+`d903cc895e189eccb5facf81ce1f5fdac32adb41bd10fb1340e6740a95ba6dc1`
+and invoked only the prior promoted controller's cleanup mode for execution
+SHA-256
+`594d4cd1c143a1084af3369684e9abaac7cfb5892f8828dd4fb85e6023058c57`.
+The controller returned `completed=["cleanup"]`, `cleanup_run=true`, and
+`preserved=false`; cleanup-result SHA-256 is
+`ff971ac3fc994e72e40886c8f2eb6140e1b4ffe4919023e489d12fed6489ace4`.
+Independent read-back confirmed all 12 executor-ordered resources and recorded
+QEMU PID `3439760` absent. The immutable executor-v5 promotion controller and
+executor-v6 source-review controller retain their reviewed hashes. No retry,
+promotion, preparation, live Gate 2, or Gate 3 action occurred.
+
 The implementation test matrix is:
 
 1. **Adapter selection:** a new normal Pipeon Codex session defaults to App Server; the explicit exec

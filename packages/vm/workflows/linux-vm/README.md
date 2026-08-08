@@ -457,3 +457,14 @@ bytes with SHA-256
 All builds used Go 1.25.0 with the reviewed reproducibility flags, and all
 non-standard dependencies remain package-owned. No output was promoted or used
 for cleanup or a live gate.
+
+The first approved cleanup packet expired before controller invocation and was
+not retried. It removed nothing. A separately approved fresh wrapper then
+created authorization SHA-256
+`d903cc895e189eccb5facf81ce1f5fdac32adb41bd10fb1340e6740a95ba6dc1`
+and completed the exact executor-v5 cleanup once. Result SHA-256 is
+`ff971ac3fc994e72e40886c8f2eb6140e1b4ffe4919023e489d12fed6489ace4`;
+the typed result reports `completed=["cleanup"]`, `cleanup_run=true`, and
+`preserved=false`. Independent read-back confirmed all 12 ordered resources
+and the recorded QEMU process absent while both the prior promotion and new
+source-review outputs remain unchanged. No retry or other gate action occurred.
