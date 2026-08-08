@@ -674,3 +674,18 @@ harness, followed by new preparation and Gate 2 qualification before any Gate
 `g2r-a29152ab33508801` remains preserved and unchanged; executor-v8 is now
 cleanup-only. Promotion, preparation, Gate 2, Gate 3, and cleanup each require
 their own exact approval. Gate 3 has not run and no cleanup was performed.
+
+Exact checkpoint `a72789801a83b53761b710388618d7aafc15648e` was rebuilt in
+two independent Linux/amd64 lanes under
+`/tmp/dockpipe-vm-source-review.a7278980.TuSIQFWC`. Both lanes used Go 1.25.0,
+`GOWORK=off`, `CGO_ENABLED=0`, `GOAMD64=v1`, `-trimpath`,
+`-buildvcs=false`, an empty build ID, and separate source, cache, temporary,
+and output roots. Byte-identical outputs are controller SHA-256
+`a8ff286cba55cf03eed2832f26069ea3812f239b6c767c77c1cd4c2cf045bd1a`
+at `5721936` bytes, guest-agent SHA-256
+`4a2533d297d698328d5875e5af7c1f57d59b0a16b55c84f4a71c6107b5fb38a2`
+at `4238382` bytes, and SQLite harness SHA-256
+`08b979ab70922c596ea14847ff023357616ebc5c92daee50ecab84ffbcfa3cc5`
+at `11895893` bytes. Embedded metadata, reported binary versions, and harness
+contract self-tests all passed. The three files are unpromoted offline review
+evidence only; no live gate or cleanup action occurred.
