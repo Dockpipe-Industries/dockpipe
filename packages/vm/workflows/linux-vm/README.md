@@ -380,3 +380,16 @@ The result reported `completed=["cleanup"]`, `cleanup_run=true`, and
 Independent read-back confirmed all 12 ordered resources absent. No retry or
 fresh live VM action occurred. The executor-v5 source-review outputs still
 require separate promotion, preparation, and live authorization.
+
+The following separately authorized offline promotion published
+`vmp-202608089f6d406e` with exactly two mode-`0500`, single-link Linux files:
+controller SHA-256
+`c6c2ce8abebf9027af01fdde6a4ac8c487eb53124fbea5c2edeee7c538f5ad7b`
+at `5447222` bytes and guest-agent SHA-256
+`3a2d7657e13b6ec30fc8dc268ad977bb248b6598749979edf63223d364cc59e7`
+at `3870222` bytes. Canonical evidence SHA-256 is
+`6ee9dfac5ed41d60cd4335d70284588c198ebdfbfd475a3f3be95c2cf08b8987`.
+Windows remained compatibility-only. Independent read-back confirmed the
+closed inventory and package/engine boundary, with no identity, live input,
+plan, authorization, VM, cleanup, Gate 2, or Gate 3 action. Fresh preparation
+remains separate.
