@@ -4453,6 +4453,23 @@ as valid. These checks created no repository-generated state, promotion,
 identity, authorization, disk, socket, process, cleanup, Gate 2, or Gate 3
 action.
 
+The corrected source was then rebuilt twice from exact checkpoint
+`97480d78d3e7a69f22f4d17c6551f6b4d9d877d0` under private root
+`/tmp/dockpipe-vm-source-review.97480d78.5adWdyrB`. Independent Linux/amd64
+lanes used separate caches and temporary directories with Go 1.25.0,
+`GOWORK=off`, `CGO_ENABLED=0`, `GOAMD64=v1`, `-trimpath`, and
+`-buildvcs=false`. Their controller outputs are byte-identical at `5447246`
+bytes with SHA-256
+`d43af4d07ce6c338494f0a36acfe9530029fce1545201411387067dd6b1ced43`;
+their guest-agent outputs are byte-identical at `3870222` bytes with SHA-256
+`3a2d7657e13b6ec30fc8dc268ad977bb248b6598749979edf63223d364cc59e7`.
+The Windows/amd64 compatibility output is `3966976` bytes with SHA-256
+`86caf93a18159e8b40275f43b02e2930baa9eaffad76227285df8e0a08f3ea6c`
+and is not a Linux promotion input. Embedded Go metadata matches the requested
+platforms and flags, and all non-standard dependencies resolve under
+`packages/vm/tools/**`. The source-review artifacts remain unpromoted and were
+not used for cleanup, Gate 2, or Gate 3.
+
 The implementation test matrix is:
 
 1. **Adapter selection:** a new normal Pipeon Codex session defaults to App Server; the explicit exec

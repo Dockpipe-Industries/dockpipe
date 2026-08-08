@@ -444,3 +444,16 @@ Linux and Windows workflow validation, and isolated workflow/resolver
 compilation all pass. Cloud-init 26.1 extracted from the exact preserved image
 also accepts the corrected rendered user-data shape. Those checks were offline
 only and created no checkout-generated state, promotion, or live VM action.
+
+Exact checkpoint `97480d78d3e7a69f22f4d17c6551f6b4d9d877d0` was then
+rebuilt under `/tmp/dockpipe-vm-source-review.97480d78.5adWdyrB`. Independent
+Linux/amd64 lanes are byte-identical: controller SHA-256
+`d43af4d07ce6c338494f0a36acfe9530029fce1545201411387067dd6b1ced43`
+at `5447246` bytes and guest-agent SHA-256
+`3a2d7657e13b6ec30fc8dc268ad977bb248b6598749979edf63223d364cc59e7`
+at `3870222` bytes. The Windows/amd64 compatibility build remains `3966976`
+bytes with SHA-256
+`86caf93a18159e8b40275f43b02e2930baa9eaffad76227285df8e0a08f3ea6c`.
+All builds used Go 1.25.0 with the reviewed reproducibility flags, and all
+non-standard dependencies remain package-owned. No output was promoted or used
+for cleanup or a live gate.

@@ -452,6 +452,21 @@ Ubuntu image reported the corrected rendered user-data shape as valid. The
 schema check and compilation outputs remain temporary review artifacts outside
 the checkout; no promotion or live action occurred.
 
+The correction was then rebuilt from exact checkpoint
+`97480d78d3e7a69f22f4d17c6551f6b4d9d877d0` under private review root
+`/tmp/dockpipe-vm-source-review.97480d78.5adWdyrB`. Two independent
+Linux/amd64 lanes used separate caches and temporary directories with Go
+1.25.0, `GOWORK=off`, `CGO_ENABLED=0`, `GOAMD64=v1`, `-trimpath`, and
+`-buildvcs=false`. Their controller outputs are byte-identical at `5447246`
+bytes and SHA-256
+`d43af4d07ce6c338494f0a36acfe9530029fce1545201411387067dd6b1ced43`;
+their guest-agent outputs are byte-identical at `3870222` bytes and SHA-256
+`3a2d7657e13b6ec30fc8dc268ad977bb248b6598749979edf63223d364cc59e7`.
+The Windows/amd64 compatibility output remains `3966976` bytes with SHA-256
+`86caf93a18159e8b40275f43b02e2930baa9eaffad76227285df8e0a08f3ea6c`.
+Every non-standard dependency resolves under `packages/vm/tools/**`. These are
+offline review artifacts only; no promotion, cleanup, or live gate occurred.
+
 The original documentation decision created no promotion evidence and granted no Gate 2
 authority. Deterministic source review, offline promotion, Gate 2 preparation,
 Gate 2 live authorization and execution, cleanup, and Gate 3 remain distinct
