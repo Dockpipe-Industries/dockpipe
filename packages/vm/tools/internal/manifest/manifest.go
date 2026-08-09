@@ -21,8 +21,8 @@ const (
 	DataDiskBytes        = int64(4 * 1024 * 1024 * 1024)
 	// VirtioBlockSerialMaxBytes is the Linux-visible virtio-blk serial limit.
 	VirtioBlockSerialMaxBytes = 20
-	UbuntuImageURL       = "https://cloud-images.ubuntu.com/releases/noble/release-20260801/ubuntu-24.04-server-cloudimg-amd64.img"
-	UbuntuImageSHA256    = "0533b0655c32e68b31d792ecd6ccfca95abdbc536c4446874fe0513bd4140ffe"
+	UbuntuImageURL            = "https://cloud-images.ubuntu.com/releases/noble/release-20260801/ubuntu-24.04-server-cloudimg-amd64.img"
+	UbuntuImageSHA256         = "0533b0655c32e68b31d792ecd6ccfca95abdbc536c4446874fe0513bd4140ffe"
 )
 
 var (
@@ -140,21 +140,32 @@ type Protocol struct {
 }
 
 func Load(path string) (Manifest, error) {
+	out, _, err := LoadWithBytes(path)
+	return out, err
+}
+
+// LoadWithBytes validates a qualification manifest and returns the exact bytes
+// that were decoded so a later durable copy cannot drift from the validated
+// input through a second read.
+func LoadWithBytes(path string) (Manifest, []byte, error) {
 	var out Manifest
 	b, err := os.ReadFile(path)
 	if err != nil {
-		return out, err
+		return out, nil, err
 	}
 	dec := json.NewDecoder(strings.NewReader(string(b)))
 	dec.DisallowUnknownFields()
 	if err := dec.Decode(&out); err != nil {
-		return out, fmt.Errorf("decode qualification manifest: %w", err)
+		return out, nil, fmt.Errorf("decode qualification manifest: %w", err)
 	}
 	var extra any
 	if err := dec.Decode(&extra); err != io.EOF {
-		return out, fmt.Errorf("qualification manifest contains trailing JSON")
+		return out, nil, fmt.Errorf("qualification manifest contains trailing JSON")
 	}
-	return out, out.Validate()
+	if err := out.Validate(); err != nil {
+		return out, nil, err
+	}
+	return out, b, nil
 }
 
 func (m Manifest) Validate() error {

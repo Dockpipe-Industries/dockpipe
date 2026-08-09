@@ -80,6 +80,12 @@ func TestProtocolRejectsMalformedAndUntrustedFrames(t *testing.T) {
 	if _, err := Verify(data, pub, now.Add(10*time.Minute)); err == nil {
 		t.Fatal("expected stale frame rejection")
 	}
+	if recorded, err := VerifyRecorded(data, pub); err != nil || recorded.Context != testContext() {
+		t.Fatalf("historical authentication rejected: frame=%+v err=%v", recorded, err)
+	}
+	if _, err := VerifyRecorded(data, otherPub); err == nil {
+		t.Fatal("expected historical pinned-key substitution rejection")
+	}
 }
 
 func TestProtocolRejectsOversizeAndProhibitedCapability(t *testing.T) {

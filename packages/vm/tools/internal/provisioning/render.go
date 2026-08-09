@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"sort"
@@ -46,6 +47,90 @@ type AgentConfig struct {
 	DurabilityBoundary        string `json:"durability_boundary"`
 	BootstrapNonce            string `json:"bootstrap_nonce"`
 	BootIDSource              string `json:"boot_id_source"`
+}
+
+// RecoverAgentConfig reads the exact non-secret guest configuration embedded
+// in a sealed NoCloud user-data file. It does not inspect a seed image or any
+// private identity material.
+func RecoverAgentConfig(userData []byte) (AgentConfig, error) {
+	var config AgentConfig
+	lines := strings.Split(string(userData), "\n")
+	const target = "  - path: /etc/dockpipe-agent/config.json"
+	start := -1
+	for index, line := range lines {
+		if line == target {
+			if start != -1 {
+				return config, fmt.Errorf("rendered guest configuration is duplicated")
+			}
+			start = index
+		}
+	}
+	if start == -1 {
+		return config, fmt.Errorf("rendered guest configuration is absent")
+	}
+	end := len(lines)
+	for index := start + 1; index < len(lines); index++ {
+		if strings.HasPrefix(lines[index], "  - path: ") {
+			end = index
+			break
+		}
+	}
+	want := map[string]string{
+		"owner":       "dockpipe-agent:dockpipe-agent",
+		"permissions": "\"0400\"",
+		"encoding":    "b64",
+		"defer":       "true",
+	}
+	seen := map[string]bool{}
+	content := ""
+	for _, line := range lines[start+1 : end] {
+		if line == "" {
+			continue
+		}
+		if !strings.HasPrefix(line, "    ") {
+			if content != "" && len(seen) == len(want)+1 {
+				break
+			}
+			return config, fmt.Errorf("rendered guest configuration block changed")
+		}
+		key, value, ok := strings.Cut(strings.TrimPrefix(line, "    "), ": ")
+		if !ok || seen[key] {
+			return config, fmt.Errorf("rendered guest configuration block changed")
+		}
+		seen[key] = true
+		if key == "content" {
+			content = value
+			continue
+		}
+		if expected, ok := want[key]; !ok || value != expected {
+			return config, fmt.Errorf("rendered guest configuration block changed")
+		}
+	}
+	if content == "" || len(seen) != len(want)+1 {
+		return config, fmt.Errorf("rendered guest configuration block is incomplete")
+	}
+	raw, err := base64.StdEncoding.Strict().DecodeString(content)
+	if err != nil {
+		return config, fmt.Errorf("decode rendered guest configuration: %w", err)
+	}
+	decoder := json.NewDecoder(strings.NewReader(string(raw)))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&config); err != nil {
+		return AgentConfig{}, fmt.Errorf("decode rendered guest configuration: %w", err)
+	}
+	var extra any
+	if decoder.Decode(&extra) != io.EOF {
+		return AgentConfig{}, fmt.Errorf("rendered guest configuration contains trailing JSON")
+	}
+	if config.Schema != "dockpipe.vm.guest-agent-config.v3" || config.ControllerPublicKeyPath != "/etc/dockpipe-agent/controller.pub" || config.GuestPrivateKeyPath != "/etc/dockpipe-agent/guest.key" || config.HarnessBinaryPath != "/usr/libexec/dockpipe-sqlite-vm-harness" || config.QualificationRoot != manifest.QualificationMount || config.BootIDSource != manifest.KernelBootIDSource || !uuidPattern.MatchString(config.MachineUUID) || !serialPattern.MatchString(config.DiskSerial) || !idPattern.MatchString(config.RunID) || !idPattern.MatchString(config.Scenario) || !idPattern.MatchString(config.DurabilityBoundary) || !noncePattern.MatchString(config.BootstrapNonce) {
+		return AgentConfig{}, fmt.Errorf("rendered guest configuration identity changed")
+	}
+	for _, sum := range []string{config.ControllerPublicKeySHA256, config.GuestPublicKeySHA256, config.ControllerBinarySHA256, config.GuestAgentBinarySHA256, config.HarnessBinarySHA256} {
+		if !shaPattern.MatchString(sum) {
+			return AgentConfig{}, fmt.Errorf("rendered guest configuration hash pin changed")
+		}
+	}
+	return config, nil
 }
 
 var reviewedAssetSHA256 = map[string]string{

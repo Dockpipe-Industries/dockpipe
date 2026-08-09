@@ -17,7 +17,7 @@ import (
 	"dockpipe.vm/tools/internal/xdg"
 )
 
-const version = "1.2.1"
+const version = "1.3.1"
 
 func main() {
 	manifestPath := flag.String("validate-manifest", "", "validate an offline qualification manifest")
@@ -33,6 +33,8 @@ func main() {
 	cleanupExecutorPath := flag.String("cleanup-executor", "", "load a preserved executor contract for separately authorized exact cleanup")
 	cleanupAuthorizationPath := flag.String("cleanup-authorization", "", "load the fresh exact cleanup authorization")
 	gate3ExecutorPath := flag.String("gate3-executor", "", "load the exact qualified executor for inert Gate 3 planning")
+	gate3ReconstitutePath := flag.String("gate3-reconstitute-executor", "", "read-only export of proof-bound Gate 3 planning inputs from a qualified executor")
+	gate3ReconstitutionPath := flag.String("gate3-reconstitution", "", "load proof-bound historical inputs for inert Gate 3 planning")
 	gate3ProvisioningPath := flag.String("gate3-provisioning", "", "load the exact provisioning contract for Gate 3")
 	gate3ManifestPath := flag.String("gate3-manifest", "", "load the exact qualification manifest for Gate 3")
 	gate3PlanPath := flag.String("gate3-plan", "", "load the exact inert Gate 3 plan for execution")
@@ -45,12 +47,25 @@ func main() {
 		fmt.Println("dockpipe-qemu-controller", version)
 		return
 	}
-	gate3InputWithoutExecutor := *gate3ExecutorPath == "" && (*gate3ProvisioningPath != "" || *gate3ManifestPath != "" || *gate3PlanPath != "" || *gate3AuthorizationPath != "" || *gate3TokenPath != "" || *executeGate3)
+	if *gate3ReconstitutePath != "" {
+		if *manifestPath != "" || *planRuntime != "" || *configurationSHA256 || *provisioningPath != "" || *liveAuthorizationPath != "" || *prepareIdentityPath != "" || *runID != "" || *cohortID != "" || *executeQualification || *identityMaterialPath != "" || *cleanupExecutorPath != "" || *cleanupAuthorizationPath != "" || *gate3ExecutorPath != "" || *gate3ReconstitutionPath != "" || *gate3ProvisioningPath != "" || *gate3ManifestPath != "" || *gate3PlanPath != "" || *gate3AuthorizationPath != "" || *gate3TokenPath != "" || *executeGate3 {
+			fatal("Gate 3 reconstitution is a separate read-only operation")
+		}
+		reconstitution, err := executor.ReconstituteGate3(*gate3ReconstitutePath)
+		if err != nil {
+			fatal(err.Error())
+		}
+		if err := json.NewEncoder(os.Stdout).Encode(reconstitution); err != nil {
+			fatal(err.Error())
+		}
+		return
+	}
+	gate3InputWithoutExecutor := *gate3ExecutorPath == "" && (*gate3ReconstitutionPath != "" || *gate3ProvisioningPath != "" || *gate3ManifestPath != "" || *gate3PlanPath != "" || *gate3AuthorizationPath != "" || *gate3TokenPath != "" || *executeGate3)
 	if gate3InputWithoutExecutor {
 		fatal("Gate 3 inputs require --gate3-executor")
 	}
 	if *prepareIdentityPath != "" {
-		if *manifestPath != "" || *configurationSHA256 || *provisioningPath != "" || *liveAuthorizationPath != "" || *executeQualification || *identityMaterialPath != "" || *cleanupExecutorPath != "" || *cleanupAuthorizationPath != "" || *gate3ExecutorPath != "" || *executeGate3 {
+		if *manifestPath != "" || *configurationSHA256 || *provisioningPath != "" || *liveAuthorizationPath != "" || *executeQualification || *identityMaterialPath != "" || *cleanupExecutorPath != "" || *cleanupAuthorizationPath != "" || *gate3ExecutorPath != "" || *gate3ReconstitutionPath != "" || *executeGate3 {
 			fatal("identity preparation is a separate offline operation")
 		}
 		paths, checkout := environment()
@@ -67,24 +82,40 @@ func main() {
 		if *cleanupExecutorPath != "" || *prepareIdentityPath != "" || *manifestPath != "" || *provisioningPath != "" || *liveAuthorizationPath != "" || *executeQualification || *identityMaterialPath != "" || *cleanupAuthorizationPath != "" || *configurationSHA256 || *planRuntime != "" {
 			fatal("Gate 3 is a separate exact executor operation")
 		}
-		if *gate3ProvisioningPath == "" || *gate3ManifestPath == "" {
-			fatal("Gate 3 requires the exact provisioning contract and qualification manifest")
-		}
-		execution, err := executor.Load(*gate3ExecutorPath)
+		execution, executorFileSHA256, err := executor.LoadWithSHA256(*gate3ExecutorPath)
 		if err != nil {
 			fatal(err.Error())
 		}
-		contract, err := provisioning.Load(*gate3ProvisioningPath)
-		if err != nil {
-			fatal(err.Error())
-		}
-		qualification, err := manifest.Load(*gate3ManifestPath)
-		if err != nil {
-			fatal(err.Error())
-		}
-		derived, err := executor.BuildGate3Plan(execution, contract, qualification)
-		if err != nil {
-			fatal(err.Error())
+		var derived executor.Gate3Plan
+		var contract provisioning.Contract
+		var qualification manifest.Manifest
+		if *gate3ReconstitutionPath != "" {
+			if *gate3ProvisioningPath != "" || *gate3ManifestPath != "" {
+				fatal("Gate 3 planning requires either reconstitution or the exact provisioning and manifest inputs")
+			}
+			if *executeGate3 {
+				fatal("reconstituted Gate 3 inputs are inert and cannot execute")
+			}
+			reconstitution, err := executor.LoadGate3Reconstitution(*gate3ReconstitutionPath, execution, executorFileSHA256)
+			if err != nil {
+				fatal(err.Error())
+			}
+			derived, err = executor.BuildGate3PlanFromReconstitution(execution, reconstitution, executorFileSHA256)
+			if err != nil {
+				fatal(err.Error())
+			}
+		} else {
+			if *gate3ProvisioningPath == "" || *gate3ManifestPath == "" {
+				fatal("Gate 3 requires proof-bound reconstitution or the exact provisioning contract and qualification manifest")
+			}
+			contract, qualification, err = executor.LoadRetainedGate3Inputs(execution, *gate3ProvisioningPath, *gate3ManifestPath)
+			if err != nil {
+				fatal(err.Error())
+			}
+			derived, err = executor.BuildGate3Plan(execution, contract, qualification)
+			if err != nil {
+				fatal(err.Error())
+			}
 		}
 		if !*executeGate3 {
 			if *gate3PlanPath != "" || *gate3AuthorizationPath != "" || *gate3TokenPath != "" {
@@ -164,7 +195,7 @@ func main() {
 	if *manifestPath == "" {
 		fatal("an explicit version, identity, cleanup, or manifest operation is required")
 	}
-	m, err := manifest.Load(*manifestPath)
+	m, manifestJSON, err := manifest.LoadWithBytes(*manifestPath)
 	if err != nil {
 		fatal(err.Error())
 	}
@@ -183,7 +214,7 @@ func main() {
 		if *planRuntime != "" {
 			fatal("QEMU argv and provisioning plans must be requested separately")
 		}
-		contract, err := provisioning.Load(*provisioningPath)
+		contract, provisioningJSON, err := provisioning.LoadWithBytes(*provisioningPath)
 		if err != nil {
 			fatal(err.Error())
 		}
@@ -242,6 +273,9 @@ func main() {
 			}
 			identityRoot, err := executor.PrepareLiveRoots(contract)
 			if err != nil {
+				fatal(err.Error())
+			}
+			if _, err := executor.StoreRetainedGate3Inputs(execution, contract, provisioningJSON, m, manifestJSON); err != nil {
 				fatal(err.Error())
 			}
 			reserved, err := provisioning.ReserveIdentity(identityRoot, contract, keys)

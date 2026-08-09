@@ -550,6 +550,40 @@ func TestReservedIdentityRecordIsStrictAndOwnerOnly(t *testing.T) {
 	})
 }
 
+func TestReservedPublicIdentityNeverDependsOnPrivateKeyBytes(t *testing.T) {
+	c, _, material := contractFixture(t)
+	root := filepath.Join(t.TempDir(), "identity")
+	if _, err := ReserveIdentity(root, c, material.Keys); err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"controller.key", "guest.key"} {
+		path := filepath.Join(root, name)
+		info, err := os.Stat(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, bytes.Repeat([]byte{0xa5}, int(info.Size())), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	public, err := LoadReservedPublicIdentity(root)
+	if err != nil {
+		t.Fatalf("public-only identity load inspected private key bytes: %v", err)
+	}
+	if !bytes.Equal(public.ControllerPublic, material.Keys.ControllerPublic) || !bytes.Equal(public.GuestPublic, material.Keys.GuestPublic) || public.Record.RunID != c.RunID {
+		t.Fatalf("public identity changed: %+v", public.Record)
+	}
+	if _, err := LoadReservedKeyMaterial(root, c); err == nil {
+		t.Fatal("full key loader accepted corrupted private key bytes")
+	}
+	if err := os.WriteFile(filepath.Join(root, "unexpected"), []byte("x"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := LoadReservedPublicIdentity(root); err == nil {
+		t.Fatal("public-only loader accepted changed identity inventory")
+	}
+}
+
 func TestNoCloudRenderingIsExactPinnedAndRestricted(t *testing.T) {
 	c, _, material := contractFixture(t)
 	first, err := RenderNoCloud(c, qualification(t), material)
@@ -564,6 +598,25 @@ func TestNoCloudRenderingIsExactPinnedAndRestricted(t *testing.T) {
 	secondJSON, _ := json.Marshal(second)
 	if !slices.Equal(firstJSON, secondJSON) || len(first) != 3 {
 		t.Fatal("NoCloud rendering is not deterministic")
+	}
+	for _, file := range first {
+		if file.Name != "user-data" {
+			continue
+		}
+		recovered, err := RecoverAgentConfig(file.Content)
+		if err != nil || recovered.RunID != c.RunID || recovered.MachineUUID != c.MachineUUID || recovered.HarnessBinarySHA256 != c.Artifacts.HarnessBinarySHA256 {
+			t.Fatalf("recover rendered agent config: config=%+v err=%v", recovered, err)
+		}
+		marker := []byte("  - path: /etc/dockpipe-agent/config.json")
+		start := bytes.Index(file.Content, marker)
+		if start < 0 {
+			t.Fatal("rendered config marker absent")
+		}
+		tampered := slices.Clone(file.Content)
+		tampered = append(tampered[:start], bytes.Replace(tampered[start:], []byte("    defer: true\n    content:"), []byte("    defer: false\n    content:"), 1)...)
+		if _, err := RecoverAgentConfig(tampered); err == nil {
+			t.Fatal("expected changed deferred-write policy rejection")
+		}
 	}
 	var all strings.Builder
 	for _, file := range first {
