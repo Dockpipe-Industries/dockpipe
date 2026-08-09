@@ -52,23 +52,25 @@ type Service struct {
 	BootIDSource     string
 	BootstrapPayload protocol.IdentityBootstrapPayload
 	Harness          HarnessAdapter
+	Observability    io.Writer
 	Replay           *protocol.ReplayGuard
 	Now              func() time.Time
 }
 
 type HarnessRequest struct {
-	MachineUUID      string
-	DiskSerial       string
-	BootID           string
-	RunID            string
-	CohortID         string
-	Scenario         string
-	Boundary         string
-	TrialID          string
-	Attempt          int
-	TicketNonce      string
-	CheckpointBootID string
-	HarnessSHA256    string
+	MachineUUID       string
+	DiskSerial        string
+	BootID            string
+	RunID             string
+	CohortID          string
+	Scenario          string
+	Boundary          string
+	TrialID           string
+	Attempt           int
+	TicketNonce       string
+	CheckpointBootID  string
+	HarnessSHA256     string
+	observeCheckpoint func(stage, ticketSHA256, evidenceSHA256 string) error
 }
 
 type HarnessAdapter interface {
@@ -135,7 +137,7 @@ func LoadService(configPath, executablePath, bootIDPath string) (*Service, error
 	if err != nil {
 		return nil, err
 	}
-	service := &Service{ControllerPublic: controllerPublic, GuestPrivate: guestPrivate, Expected: expected, AgentSHA256: config.GuestAgentBinarySHA256, ControllerSHA256: config.ControllerBinarySHA256, BootstrapNonce: config.BootstrapNonce, BootIDSource: config.BootIDSource, BootstrapPayload: bootstrapPayload, Harness: harness, Now: time.Now}
+	service := &Service{ControllerPublic: controllerPublic, GuestPrivate: guestPrivate, Expected: expected, AgentSHA256: config.GuestAgentBinarySHA256, ControllerSHA256: config.ControllerBinarySHA256, BootstrapNonce: config.BootstrapNonce, BootIDSource: config.BootIDSource, BootstrapPayload: bootstrapPayload, Harness: harness, Observability: os.Stderr, Now: time.Now}
 	service.Replay = protocol.NewReplayGuardAfterBootstrap(expected, config.BootstrapNonce)
 	return service, nil
 }
@@ -246,7 +248,14 @@ func (s *Service) handleCapability(frame protocol.SignedFrame) (any, error) {
 		if s.Harness == nil {
 			return nil, fmt.Errorf("checkpoint harness ownership is not authorized in the Gate 2 foundation")
 		}
-		return s.Harness.Checkpoint(HarnessRequest{MachineUUID: frame.Context.MachineUUID, DiskSerial: frame.Context.DiskSerial, BootID: frame.Context.BootID, RunID: frame.Context.RunID, CohortID: payload.CohortID, Scenario: frame.Context.Scenario, Boundary: payload.Boundary, TrialID: payload.TrialID, Attempt: payload.Attempt, TicketNonce: payload.TicketNonce, HarnessSHA256: payload.HarnessSHA256})
+		request := HarnessRequest{MachineUUID: frame.Context.MachineUUID, DiskSerial: frame.Context.DiskSerial, BootID: frame.Context.BootID, RunID: frame.Context.RunID, CohortID: payload.CohortID, Scenario: frame.Context.Scenario, Boundary: payload.Boundary, TrialID: payload.TrialID, Attempt: payload.Attempt, TicketNonce: payload.TicketNonce, HarnessSHA256: payload.HarnessSHA256}
+		request.observeCheckpoint = func(stage, ticketSHA256, evidenceSHA256 string) error {
+			return s.writeCheckpointObservation(request, stage, ticketSHA256, evidenceSHA256)
+		}
+		if err := request.observeCheckpoint(checkpointStageRequestReceived, "", ""); err != nil {
+			return nil, err
+		}
+		return s.Harness.Checkpoint(request)
 	case "recovery/v1":
 		var payload struct {
 			CohortID         string `json:"cohort_id"`

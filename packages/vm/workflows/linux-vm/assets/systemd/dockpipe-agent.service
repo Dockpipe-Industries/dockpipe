@@ -10,6 +10,7 @@ Type=simple
 User=dockpipe-agent
 Group=dockpipe-agent
 ExecStart=/usr/libexec/dockpipe-guest-agent --config=/etc/dockpipe-agent/config.json --serve-virtio-serial=/dev/virtio-ports/org.dockpipe.agent.1
+StandardError=journal+console
 Restart=no
 NoNewPrivileges=yes
 PrivateNetwork=yes

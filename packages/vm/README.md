@@ -811,6 +811,33 @@ automatic cleanup is introduced. This correction is offline source evidence,
 not live Gate 2 or Gate 3 proof. A new build, promotion, preparation, Gate 2,
 Gate 3, and final cleanup each remain separately authorized.
 
+The offline `dockpipe.vm.gate3-checkpoint-observation.v1` contract makes a
+future freshly sealed checkpoint failure distinguish four ordered milestones
+without changing the 60-second action deadline. After authenticating and
+strictly decoding a checkpoint request, the guest writes canonical,
+non-secret `dockpipe-gate3-checkpoint-observation` records for
+`request-received`, `pending-ticket-accepted`, and
+`harness-evidence-emitted` to stderr. The reviewed service routes stderr to
+both the journal and the already bounded, controller-owned boot console. The
+pending record is written only after the owner-only ticket's file sync,
+atomic rename, and parent-directory sync complete. The harness record includes
+only the ticket and canonical-evidence SHA-256 values and is written only
+after the pinned harness evidence is read and validated. It never emits the
+ticket nonce, request payload, key material, or database content.
+
+The controller creates a separate owner-only
+`<trial>-checkpoint-response-delivered.json` immediately after receiving and
+verifying the guest-signed result kind, capability, and exact request context,
+before deeper payload acceptance. Any guest observation write or host evidence
+durability failure stops the checkpoint path before hard power. The existing
+`<trial>-checkpoint.json` remains the fully validated checkpoint result. Thus
+the preserved console and evidence inventory can distinguish request receipt,
+durable pending-ticket acceptance, harness evidence emission, and signed
+response delivery. Absence of a later milestone still proves no absence of
+guest-side state, and grants no retry, disk inspection, recovery, cleanup, or
+live authority. This source-only contract does not advance the executor schema
+or prepare a build, promotion, plan, authorization, or live gate.
+
 `manifests/linux-live-authorization.template.json` is separately inert with
 `approved=false`. A later reviewed gate must bind a fresh, short-lived copy to
 the emitted contract and plan SHA-256 values; the offline controller still

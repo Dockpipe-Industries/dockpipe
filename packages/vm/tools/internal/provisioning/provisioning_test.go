@@ -587,6 +587,7 @@ func TestNoCloudRenderingIsExactPinnedAndRestricted(t *testing.T) {
 	}
 	var renderedConfig AgentConfig
 	renderedUdevRule := ""
+	renderedService := ""
 	for _, line := range strings.Split(rendered, "\n") {
 		encoded, ok := strings.CutPrefix(strings.TrimSpace(line), "content: ")
 		if !ok {
@@ -594,6 +595,9 @@ func TestNoCloudRenderingIsExactPinnedAndRestricted(t *testing.T) {
 		}
 		decoded, err := base64.StdEncoding.DecodeString(encoded)
 		if err == nil {
+			if strings.Contains(string(decoded), "ExecStart=/usr/libexec/dockpipe-guest-agent") {
+				renderedService = string(decoded)
+			}
 			if strings.Contains(string(decoded), `ATTR{name}=="org.dockpipe.agent.1"`) {
 				renderedUdevRule = string(decoded)
 			}
@@ -608,6 +612,9 @@ func TestNoCloudRenderingIsExactPinnedAndRestricted(t *testing.T) {
 	}
 	if renderedUdevRule != "SUBSYSTEM==\"virtio-ports\", ATTR{name}==\"org.dockpipe.agent.1\", GROUP=\"dockpipe-agent\", MODE=\"0660\"\n" {
 		t.Fatalf("rendered virtio-port ownership rule changed: %q", renderedUdevRule)
+	}
+	if !strings.Contains(renderedService, "StandardError=journal+console\n") {
+		t.Fatalf("rendered guest service does not route checkpoint observations to the captured console: %q", renderedService)
 	}
 	bad := material
 	bad.GuestAgentBinary = []byte("substituted")
