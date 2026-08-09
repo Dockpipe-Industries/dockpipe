@@ -453,12 +453,25 @@ func Store(path string, c Contract) error {
 }
 
 func Load(path string) (Contract, error) {
+	c, _, err := LoadWithSHA256(path)
+	return c, err
+}
+
+func LoadWithSHA256(path string) (Contract, string, error) {
 	var c Contract
-	if err := decodeOwnerOnly(path, &c); err != nil {
-		return c, err
+	b, err := readOwnerOnly(path)
+	if err != nil {
+		return c, "", err
+	}
+	if err := decodeExactJSON(b, &c); err != nil {
+		return c, "", err
 	}
 	c.sealed = true
-	return c, c.Validate()
+	if err := c.Validate(); err != nil {
+		return c, "", err
+	}
+	sum := sha256.Sum256(b)
+	return c, hex.EncodeToString(sum[:]), nil
 }
 
 func LoadCleanupAuthorization(path string) (CleanupAuthorization, error) {
@@ -470,20 +483,32 @@ func LoadCleanupAuthorization(path string) (CleanupAuthorization, error) {
 }
 
 func decodeOwnerOnly(path string, out any) error {
-	if !filepath.IsAbs(path) {
-		return fmt.Errorf("executor input path must be absolute")
-	}
-	info, err := os.Lstat(path)
-	if err != nil || info.Mode()&os.ModeSymlink != 0 || !info.Mode().IsRegular() || info.Mode().Perm() != 0o600 {
-		return fmt.Errorf("executor input must be an owner-only regular non-symlink file")
-	}
-	if stat, ok := info.Sys().(*syscall.Stat_t); ok && int(stat.Uid) != os.Geteuid() {
-		return fmt.Errorf("executor input must be owned by the current user")
-	}
-	b, err := os.ReadFile(path)
+	b, err := readOwnerOnly(path)
 	if err != nil {
 		return err
 	}
+	return decodeExactJSON(b, out)
+}
+
+func readOwnerOnly(path string) ([]byte, error) {
+	if !filepath.IsAbs(path) {
+		return nil, fmt.Errorf("executor input path must be absolute")
+	}
+	info, err := os.Lstat(path)
+	if err != nil || info.Mode()&os.ModeSymlink != 0 || !info.Mode().IsRegular() || info.Mode().Perm() != 0o600 {
+		return nil, fmt.Errorf("executor input must be an owner-only regular non-symlink file")
+	}
+	if stat, ok := info.Sys().(*syscall.Stat_t); ok && int(stat.Uid) != os.Geteuid() {
+		return nil, fmt.Errorf("executor input must be owned by the current user")
+	}
+	b, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+	return b, nil
+}
+
+func decodeExactJSON(b []byte, out any) error {
 	dec := json.NewDecoder(bytes.NewReader(b))
 	dec.DisallowUnknownFields()
 	if err := dec.Decode(out); err != nil {

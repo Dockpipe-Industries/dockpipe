@@ -108,11 +108,22 @@ type LiveAuthorization struct {
 }
 
 func Load(path string) (Contract, error) {
+	c, _, err := LoadWithBytes(path)
+	return c, err
+}
+
+// LoadWithBytes strictly decodes a provisioning contract and returns the exact
+// validated input bytes for durable Gate 3 retention.
+func LoadWithBytes(path string) (Contract, []byte, error) {
 	var c Contract
-	if err := decodeStrictFile(path, &c); err != nil {
-		return c, err
+	b, err := os.ReadFile(path)
+	if err != nil {
+		return c, nil, err
 	}
-	return c, nil
+	if err := decodeStrictBytes(filepath.Base(path), b, &c); err != nil {
+		return c, nil, err
+	}
+	return c, b, nil
 }
 
 func LoadAuthorization(path string) (LiveAuthorization, error) {
@@ -144,14 +155,18 @@ func decodeStrictFile(path string, out any) error {
 	if err != nil {
 		return err
 	}
+	return decodeStrictBytes(filepath.Base(path), b, out)
+}
+
+func decodeStrictBytes(name string, b []byte, out any) error {
 	dec := json.NewDecoder(strings.NewReader(string(b)))
 	dec.DisallowUnknownFields()
 	if err := dec.Decode(out); err != nil {
-		return fmt.Errorf("decode %s: %w", filepath.Base(path), err)
+		return fmt.Errorf("decode %s: %w", name, err)
 	}
 	var extra any
 	if err := dec.Decode(&extra); err != io.EOF {
-		return fmt.Errorf("%s contains trailing JSON", filepath.Base(path))
+		return fmt.Errorf("%s contains trailing JSON", name)
 	}
 	return nil
 }

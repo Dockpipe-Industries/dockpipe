@@ -16,13 +16,14 @@ import (
 )
 
 const (
-	Gate3PlanSchema           = "dockpipe.vm.gate3-plan.v1"
-	Gate3AuthorizationSchema  = "dockpipe.vm.gate3-authorization.v1"
-	Gate3ResultSchema         = "dockpipe.vm.gate3-result.v1"
-	Gate3TrialsPerBoundary    = 3
-	Gate3BootTimeoutSeconds   = 240
-	Gate3ActionTimeoutSeconds = 60
-	Gate3PowerTimeoutSeconds  = 30
+	Gate3PlanSchema              = "dockpipe.vm.gate3-plan.v1"
+	Gate3ReconstitutedPlanSchema = "dockpipe.vm.gate3-plan.v2"
+	Gate3AuthorizationSchema     = "dockpipe.vm.gate3-authorization.v1"
+	Gate3ResultSchema            = "dockpipe.vm.gate3-result.v1"
+	Gate3TrialsPerBoundary       = 3
+	Gate3BootTimeoutSeconds      = 240
+	Gate3ActionTimeoutSeconds    = 60
+	Gate3PowerTimeoutSeconds     = 30
 )
 
 var Gate3Boundaries = []string{
@@ -34,6 +35,7 @@ var Gate3Boundaries = []string{
 
 type Gate3Plan struct {
 	Schema               string                     `json:"schema"`
+	ReconstitutionSHA256 string                     `json:"reconstitution_sha256,omitempty"`
 	ExecutionSHA256      string                     `json:"execution_sha256"`
 	ContractSHA256       string                     `json:"contract_sha256"`
 	ProvisioningSHA256   string                     `json:"provisioning_sha256"`
@@ -127,6 +129,36 @@ func BuildGate3Plan(execution Contract, contract provisioning.Contract, qualific
 	return plan, plan.Validate(execution)
 }
 
+// BuildGate3PlanFromReconstitution creates an inert plan from authenticated
+// historical proof. The resulting v2 plan is intentionally not executable.
+func BuildGate3PlanFromReconstitution(execution Contract, reconstitution Gate3Reconstitution, executorFileSHA256 string) (Gate3Plan, error) {
+	var plan Gate3Plan
+	if err := execution.Validate(); err != nil || execution.Schema != Schema {
+		return plan, fmt.Errorf("Gate 3 requires the current qualified executor contract")
+	}
+	if err := reconstitution.Validate(execution, executorFileSHA256); err != nil {
+		return plan, err
+	}
+	if execution.ProvisioningRoots == nil || execution.FirstBootObservation == nil {
+		return plan, fmt.Errorf("Gate 3 requires current provisioning roots and console transport")
+	}
+	plan = Gate3Plan{
+		Schema: Gate3ReconstitutedPlanSchema, ReconstitutionSHA256: reconstitution.ReconstitutionSHA256,
+		ExecutionSHA256: execution.ExecutionSHA256, ContractSHA256: execution.ContractSHA256, ProvisioningSHA256: execution.PlanSHA256,
+		RunID: execution.RunID, CohortID: execution.CohortID, MachineUUID: reconstitution.MachineUUID, DiskSerial: reconstitution.DiskSerial, Scenario: reconstitution.Scenario,
+		HarnessSHA256: reconstitution.HarnessSHA256, Boundaries: slices.Clone(Gate3Boundaries), TrialsPerBoundary: Gate3TrialsPerBoundary,
+		Launch: execution.Launch.Command, QMP: execution.Launch.QMP, AgentSocket: execution.Launch.AgentSocket, ConsoleSocket: execution.FirstBootObservation.SocketPath,
+		EvidenceRoot:       filepath.Join(execution.ProvisioningRoots.Evidence, execution.RunID, execution.CohortID, "gate3"),
+		BootTimeoutSeconds: Gate3BootTimeoutSeconds, ActionTimeoutSeconds: Gate3ActionTimeoutSeconds, PowerTimeoutSeconds: Gate3PowerTimeoutSeconds,
+	}
+	var err error
+	plan.PlanSHA256, err = plan.Digest()
+	if err != nil {
+		return Gate3Plan{}, err
+	}
+	return plan, plan.Validate(execution)
+}
+
 func (p Gate3Plan) Digest() (string, error) {
 	copy := p
 	copy.PlanSHA256 = ""
@@ -141,7 +173,9 @@ func (p Gate3Plan) Digest() (string, error) {
 
 func (p Gate3Plan) Validate(execution Contract) error {
 	digest, err := p.Digest()
-	if err != nil || p.Schema != Gate3PlanSchema || p.PlanSHA256 != digest || p.Execute || p.ExecutionSHA256 != execution.ExecutionSHA256 || p.ContractSHA256 != execution.ContractSHA256 || p.ProvisioningSHA256 != execution.PlanSHA256 || p.RunID != execution.RunID || p.CohortID != execution.CohortID || !isSHA256(p.HarnessSHA256) {
+	legacyShape := p.Schema == Gate3PlanSchema && p.ReconstitutionSHA256 == ""
+	reconstitutedShape := p.Schema == Gate3ReconstitutedPlanSchema && isSHA256(p.ReconstitutionSHA256)
+	if err != nil || (!legacyShape && !reconstitutedShape) || p.PlanSHA256 != digest || p.Execute || p.ExecutionSHA256 != execution.ExecutionSHA256 || p.ContractSHA256 != execution.ContractSHA256 || p.ProvisioningSHA256 != execution.PlanSHA256 || p.RunID != execution.RunID || p.CohortID != execution.CohortID || !isSHA256(p.HarnessSHA256) {
 		return fmt.Errorf("Gate 3 plan identity or digest is invalid")
 	}
 	if !slices.Equal(p.Boundaries, Gate3Boundaries) || p.TrialsPerBoundary != Gate3TrialsPerBoundary || p.BootTimeoutSeconds != Gate3BootTimeoutSeconds || p.ActionTimeoutSeconds != Gate3ActionTimeoutSeconds || p.PowerTimeoutSeconds != Gate3PowerTimeoutSeconds {
@@ -174,6 +208,9 @@ func LoadGate3Authorization(path string) (Gate3Authorization, error) {
 }
 
 func (a Gate3Authorization) Validate(plan Gate3Plan, execution Contract, now time.Time) error {
+	if plan.Schema != Gate3PlanSchema || plan.ReconstitutionSHA256 != "" {
+		return fmt.Errorf("reconstituted Gate 3 plans cannot be authorized")
+	}
 	if a.Schema != Gate3AuthorizationSchema || !a.Approved || a.ExecutionSHA256 != execution.ExecutionSHA256 || a.PlanSHA256 != plan.PlanSHA256 || a.RunID != plan.RunID || a.CohortID != plan.CohortID || !isSHA256(a.TokenSHA256) {
 		return fmt.Errorf("Gate 3 authorization does not match the exact plan")
 	}
@@ -185,6 +222,9 @@ func (a Gate3Authorization) Validate(plan Gate3Plan, execution Contract, now tim
 
 func ExecuteGate3(ctx context.Context, plan Gate3Plan, execution Contract, authorization Gate3Authorization, now time.Time, runner Gate3Runner) (Gate3Result, error) {
 	result := Gate3Result{Schema: Gate3ResultSchema, ExecutionSHA256: execution.ExecutionSHA256, PlanSHA256: plan.PlanSHA256}
+	if plan.Schema != Gate3PlanSchema || plan.ReconstitutionSHA256 != "" {
+		return result, fmt.Errorf("reconstituted Gate 3 plans are inert and cannot execute")
+	}
 	if runner == nil {
 		return result, fmt.Errorf("typed Gate 3 runner is required")
 	}
@@ -235,6 +275,9 @@ func ExecuteGate3(ctx context.Context, plan Gate3Plan, execution Contract, autho
 }
 
 func StoreGate3Result(plan Gate3Plan, result Gate3Result) error {
+	if plan.Schema != Gate3PlanSchema || plan.ReconstitutionSHA256 != "" {
+		return fmt.Errorf("reconstituted Gate 3 plans cannot store execution results")
+	}
 	if result.Schema != Gate3ResultSchema || result.ExecutionSHA256 != plan.ExecutionSHA256 || result.PlanSHA256 != plan.PlanSHA256 || result.CompletedTrials != len(Gate3Trials()) || result.HardPowerEvents != len(Gate3Trials()) || result.RecoveryResults != len(Gate3Trials()) || !result.ControlledShutdown || result.Preserved || result.CleanupRun {
 		return fmt.Errorf("Gate 3 result is incomplete")
 	}

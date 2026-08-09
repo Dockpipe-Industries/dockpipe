@@ -68,6 +68,9 @@ func NewGate3LinuxRunner(config Gate3RunnerConfig) (*Gate3LinuxRunner, error) {
 	if config.Now == nil {
 		config.Now = time.Now
 	}
+	if config.Plan.Schema != Gate3PlanSchema || config.Plan.ReconstitutionSHA256 != "" {
+		return nil, fmt.Errorf("reconstituted Gate 3 plans are inert and cannot execute")
+	}
 	if err := config.Plan.Validate(config.Execution); err != nil {
 		return nil, err
 	}

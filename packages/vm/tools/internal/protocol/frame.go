@@ -124,6 +124,17 @@ func Sign(kind, capability string, ctx Context, payload any, issuedAt, expiresAt
 }
 
 func Verify(data []byte, publicKey ed25519.PublicKey, now time.Time) (SignedFrame, error) {
+	return verify(data, publicKey, now, true)
+}
+
+// VerifyRecorded authenticates a previously accepted canonical frame without
+// treating its historical validity window as current authority. The signed
+// issuance and expiry policy is still validated by validateUnsigned.
+func VerifyRecorded(data []byte, publicKey ed25519.PublicKey) (SignedFrame, error) {
+	return verify(data, publicKey, time.Time{}, false)
+}
+
+func verify(data []byte, publicKey ed25519.PublicKey, now time.Time, requireFresh bool) (SignedFrame, error) {
 	var frame SignedFrame
 	if len(data) == 0 || len(data) > MaxFrameBytes {
 		return frame, fmt.Errorf("invalid frame length")
@@ -144,7 +155,7 @@ func Verify(data []byte, publicKey ed25519.PublicKey, now time.Time) (SignedFram
 		return frame, err
 	}
 	issued, expires := time.Unix(frame.IssuedAtUnix, 0), time.Unix(frame.ExpiresAtUnix, 0)
-	if now.Add(MaxClockSkew).Before(issued) || now.Add(-MaxClockSkew).After(expires) {
+	if requireFresh && (now.Add(MaxClockSkew).Before(issued) || now.Add(-MaxClockSkew).After(expires)) {
 		return frame, fmt.Errorf("frame is stale or not yet valid")
 	}
 	sig, err := base64.RawStdEncoding.DecodeString(frame.Signature)

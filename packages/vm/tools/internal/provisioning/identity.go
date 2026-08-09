@@ -12,6 +12,98 @@ import (
 	"syscall"
 )
 
+type ReservedIdentityRecord struct {
+	RunID          string `json:"run_id"`
+	CohortID       string `json:"cohort_id"`
+	MachineUUID    string `json:"machine_uuid"`
+	DiskSerial     string `json:"disk_serial"`
+	FilesystemUUID string `json:"filesystem_uuid"`
+	BootstrapNonce string `json:"bootstrap_nonce"`
+}
+
+// ReservedPublicIdentity is the non-secret subset needed to authenticate
+// durable, historical qualification evidence. Private-key bytes are never
+// opened by LoadReservedPublicIdentity.
+type ReservedPublicIdentity struct {
+	ControllerPublic ed25519.PublicKey
+	GuestPublic      ed25519.PublicKey
+	Record           ReservedIdentityRecord
+}
+
+// LoadReservedPublicIdentity reads only the public keys and identity record
+// from an exact reserved identity directory. It inspects private-key metadata
+// to reject an incomplete or widened bundle but never reads private-key bytes.
+func LoadReservedPublicIdentity(root string) (ReservedPublicIdentity, error) {
+	var out ReservedPublicIdentity
+	if !filepath.IsAbs(root) || filepath.Base(root) != "identity" {
+		return out, fmt.Errorf("reserved identity root is invalid")
+	}
+	info, err := os.Lstat(root)
+	if err != nil || info.Mode()&os.ModeSymlink != 0 || !info.IsDir() || info.Mode().Perm() != 0o700 || !ownedByCurrentUser(info) {
+		return out, fmt.Errorf("reserved identity root must remain private")
+	}
+	entries, err := os.ReadDir(root)
+	if err != nil {
+		return out, fmt.Errorf("inspect reserved identity inventory: %w", err)
+	}
+	want := map[string]int64{
+		"bootstrap-nonce": 64,
+		"controller.key":  ed25519.PrivateKeySize,
+		"controller.pub":  ed25519.PublicKeySize,
+		"guest.key":       ed25519.PrivateKeySize,
+		"guest.pub":       ed25519.PublicKeySize,
+		"identity.json":   -1,
+	}
+	if len(entries) != len(want) {
+		return out, fmt.Errorf("reserved identity inventory changed")
+	}
+	for _, entry := range entries {
+		size, ok := want[entry.Name()]
+		if !ok {
+			return out, fmt.Errorf("reserved identity inventory changed")
+		}
+		fileInfo, err := os.Lstat(filepath.Join(root, entry.Name()))
+		if err != nil || fileInfo.Mode()&os.ModeSymlink != 0 || !fileInfo.Mode().IsRegular() || fileInfo.Mode().Perm() != 0o600 || !ownedByCurrentUser(fileInfo) || (size >= 0 && fileInfo.Size() != size) {
+			return out, fmt.Errorf("reserved identity file %s changed", entry.Name())
+		}
+	}
+	read := func(name string) ([]byte, error) {
+		data, err := os.ReadFile(filepath.Join(root, name))
+		if err != nil {
+			return nil, fmt.Errorf("read reserved identity file %s: %w", name, err)
+		}
+		return data, nil
+	}
+	controllerPublic, err := read("controller.pub")
+	if err != nil {
+		return out, err
+	}
+	guestPublic, err := read("guest.pub")
+	if err != nil {
+		return out, err
+	}
+	nonce, err := read("bootstrap-nonce")
+	if err != nil {
+		return out, err
+	}
+	recordJSON, err := read("identity.json")
+	if err != nil {
+		return out, err
+	}
+	decoder := json.NewDecoder(bytes.NewReader(recordJSON))
+	decoder.DisallowUnknownFields()
+	var record ReservedIdentityRecord
+	if decoder.Decode(&record) != nil {
+		return out, fmt.Errorf("reserved identity record changed")
+	}
+	var extra any
+	if decoder.Decode(&extra) != io.EOF || !idPattern.MatchString(record.RunID) || !idPattern.MatchString(record.CohortID) || !uuidPattern.MatchString(record.MachineUUID) || !serialPattern.MatchString(record.DiskSerial) || !uuidPattern.MatchString(record.FilesystemUUID) || !noncePattern.MatchString(record.BootstrapNonce) || string(nonce) != record.BootstrapNonce {
+		return out, fmt.Errorf("reserved identity record changed")
+	}
+	out = ReservedPublicIdentity{ControllerPublic: ed25519.PublicKey(controllerPublic), GuestPublic: ed25519.PublicKey(guestPublic), Record: record}
+	return out, nil
+}
+
 // LoadReservedKeyMaterial reopens only the exact durable identity created for
 // one authorized instance. It rejects links, widened modes, ownership changes,
 // key substitution, and identity-record drift.
@@ -62,14 +154,7 @@ func LoadReservedKeyMaterial(root string, c Contract) (KeyMaterial, error) {
 	if err != nil || string(nonce) != c.BootstrapNonce {
 		return KeyMaterial{}, fmt.Errorf("reserved bootstrap nonce changed")
 	}
-	var record struct {
-		RunID          string `json:"run_id"`
-		CohortID       string `json:"cohort_id"`
-		MachineUUID    string `json:"machine_uuid"`
-		DiskSerial     string `json:"disk_serial"`
-		FilesystemUUID string `json:"filesystem_uuid"`
-		BootstrapNonce string `json:"bootstrap_nonce"`
-	}
+	var record ReservedIdentityRecord
 	recordPath := filepath.Join(root, "identity.json")
 	recordInfo, err := os.Lstat(recordPath)
 	if err != nil || recordInfo.Mode()&os.ModeSymlink != 0 || !recordInfo.Mode().IsRegular() || recordInfo.Mode().Perm() != 0o600 {
@@ -175,14 +260,7 @@ func ReserveIdentity(root string, c Contract, material KeyMaterial) (ReservedIde
 			return ReservedIdentity{}, err
 		}
 	}
-	record := struct {
-		RunID          string `json:"run_id"`
-		CohortID       string `json:"cohort_id"`
-		MachineUUID    string `json:"machine_uuid"`
-		DiskSerial     string `json:"disk_serial"`
-		FilesystemUUID string `json:"filesystem_uuid"`
-		BootstrapNonce string `json:"bootstrap_nonce"`
-	}{c.RunID, c.CohortID, c.MachineUUID, c.DiskSerial, c.FilesystemUUID, c.BootstrapNonce}
+	record := ReservedIdentityRecord{c.RunID, c.CohortID, c.MachineUUID, c.DiskSerial, c.FilesystemUUID, c.BootstrapNonce}
 	b, err := json.Marshal(record)
 	if err != nil {
 		return ReservedIdentity{}, err

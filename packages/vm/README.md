@@ -1,11 +1,16 @@
 # DockPipe VM package
 
 The `vm` package owns guest-specific workflows, QEMU resolver models, and the
-VMM-neutral control protocol. DockPipe core remains generic. Version 1.2.1
-makes the exact virtio-port group and mode persistent across guest boots for
-the Gate 3 durability cohort. Executor-v10 is the only fresh-execution schema;
-executor-v9 remains exact-cleanup-only after its failed first Gate 3 boot. The
-unchanged `windows-vm` surface remains available alongside Linux qualification.
+VMM-neutral control protocol. DockPipe core remains generic. Version 1.3.1
+durably retains the exact validated provisioning contract and qualification
+manifest for every fresh executor-v10 Gate 2 before identity consumption or VM
+action. Gate 3 v1 planning requires those deterministic owner-only inputs.
+Version 1.3.0's public-only reconstitution path remains available for historical
+planning, but its schema-v2 plans are permanently rejected by authorization,
+execution, and result storage. Executor-v10 remains the only fresh-execution
+schema; executor-v9 remains exact-cleanup-only after its failed first Gate 3
+boot. The unchanged `windows-vm` surface remains available alongside Linux
+qualification.
 
 The Linux foundation has two deliberately different paths:
 
@@ -853,10 +858,47 @@ The production CLI modes are mutually exclusive:
 --validate-manifest <file> --configuration-sha256
 --validate-manifest <file> --plan-provisioning <file> [--live-authorization <file>]
 --validate-manifest <file> --plan-provisioning <file> --live-authorization <file> --identity-material <absolute-root> --execute-qualification
+--gate3-reconstitute-executor <executor.json>
+--gate3-executor <executor.json> --gate3-reconstitution <reconstitution.json>
 --gate3-executor <executor.json> --gate3-provisioning <provisioning.json> --gate3-manifest <qualification.json>
 --gate3-executor <executor.json> --gate3-provisioning <provisioning.json> --gate3-manifest <qualification.json> --gate3-plan <plan.json> --gate3-authorization <authorization.json> --gate3-token <token> --execute-gate3
 --cleanup-executor <executor.json> --cleanup-authorization <file>
 ```
+
+`--gate3-reconstitute-executor` reads the sealed executor, the exact public
+identity inventory, and the preserved bootstrap, verification, and shutdown
+evidence. It authenticates the historical guest signatures without treating
+their expired time windows as fresh authority, reads no private-key bytes, and
+prints one `dockpipe.vm.gate3-reconstitution.v1` document to stdout. The
+document binds the executor file, signed sequences 1-4, health and launch-pin
+results, clean `system_powerdown`, and all planning identities and hashes. It
+sets planning-only and historical-evidence flags and carries no live, cleanup,
+or execution authority. Planning from that document emits
+`dockpipe.vm.gate3-plan.v2`; authorization and execution reject that schema.
+
+Fresh executor-v10 Gate 2 creates these deterministic files below the resolved
+VM configuration root:
+
+```text
+instances/<run-id>/<cohort-id>/gate3-inputs/provisioning-contract.json
+instances/<run-id>/<cohort-id>/gate3-inputs/qualification-manifest.json
+```
+
+The controller retains the exact bytes returned by the strict validation read,
+creates the `gate3-inputs` directory and both files exclusively, writes each
+file as a current-user-owned regular non-symlink with mode `0600`, fsyncs each
+file and its parent, and performs no rollback on failure. Retention runs after
+the four live roots are exclusively prepared but before identity reservation,
+identity-material consumption, executor storage, runner construction, or any
+disk, seed, socket, QEMU, or guest action. A failure therefore stops closed and
+leaves every partial root and durable file available for inspection.
+
+Gate 3 v1 still takes `--gate3-provisioning` and `--gate3-manifest`, but both
+arguments must exactly equal the paths derived from the sealed executor above.
+Planning rejects alternate paths, missing or symlinked files, mode or owner
+drift, malformed/trailing/unknown JSON, and any contract, executor, or
+qualification identity mismatch. These retained files grant no execution,
+cleanup, retry, or live authority.
 
 Run package tests with:
 

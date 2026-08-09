@@ -33,6 +33,23 @@ The manifest does not prescribe a boot UUID. Schema
 `boot_id_source=/proc/sys/kernel/random/boot_id`; the actual per-boot value is
 learned through the authenticated guest-first protocol below.
 
+VM package 1.3.1 retains the exact validated provisioning contract and
+qualification manifest bytes beneath
+`<config-root>/instances/<run>/<cohort>/gate3-inputs/` before a fresh
+executor-v10 Gate 2 consumes identity material or performs VM action. Gate 3
+v1 planning accepts only those derived owner-only paths and rejects path,
+metadata, JSON, contract, or identity drift.
+
+If a qualified executor-v10 and its durable evidence survive while those
+retained inputs are unavailable, VM package 1.3.0 can export a
+`dockpipe.vm.gate3-reconstitution.v1` planning input. The export opens only the
+reserved public keys and exact identity record, authenticates the recorded
+guest-signed bootstrap and result frames, verifies the clean shutdown evidence,
+and binds their file hashes to the executor digest. Historical validity is not
+fresh authority: the resulting Gate 3 plan uses inert schema v2 and cannot be
+authorized or executed. Reconstitution, planning, live execution, and cleanup
+remain separate operations.
+
 The data disk is a 4 GiB sparse raw whole-device ext4 filesystem. Both QEMU
 virtio-blk serials are limited to 20 ASCII bytes so the Linux-visible stable ID
 cannot be truncated. Its reviewed
