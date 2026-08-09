@@ -704,3 +704,14 @@ hash-pinned udev rule matching only `org.dockpipe.agent.1`, group
 schema; executor-v9 remains loadable only for exact cleanup. This is an offline
 repair, not renewed live proof. Fresh build, promotion, preparation, Gate 2,
 Gate 3, and final cleanup remain separate approvals.
+
+The offline checkpoint-observation decision adds no timeout, retry, recovery,
+or execution authority. A future freshly sealed Gate 3 boot console can carry
+three canonical non-secret records, in order: authenticated request receipt,
+durably accepted pending ticket, and validated harness-evidence emission. A
+separate owner-only host evidence file records delivery of the exact signed
+checkpoint response before deep result validation. Instrumentation failures
+stop before hard power, the ticket nonce is never logged, and a missing later
+record does not prove the corresponding guest-side state absent. No executor
+schema, build, promotion, preparation, plan, authorization, live gate, disk
+inspection, recovery, or cleanup is part of this source-only change.

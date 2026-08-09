@@ -179,7 +179,7 @@ func (r *Gate3LinuxRunner) Boot(ctx context.Context, bootNumber int) (result err
 		if capability == "launch-hash-pinned/v1" {
 			body = map[string]string{"controller_binary_sha256": r.config.Contract.Artifacts.ControllerBinarySHA256, "guest_agent_binary_sha256": r.config.Contract.Artifacts.GuestAgentBinarySHA256}
 		}
-		response, err := r.exchange(ctx, capability, body, "gate3-verification")
+		response, err := r.exchange(ctx, capability, body, "gate3-verification", "")
 		if err != nil {
 			return err
 		}
@@ -197,7 +197,8 @@ func (r *Gate3LinuxRunner) Checkpoint(ctx context.Context, trial Gate3Trial) err
 		return err
 	}
 	body := map[string]any{"cohort_id": r.config.Plan.CohortID, "trial_id": trial.TrialID, "attempt": trial.Attempt, "boundary": trial.Boundary, "ticket_nonce": nonce, "harness_sha256": r.config.Plan.HarnessSHA256}
-	response, err := r.exchange(ctx, "checkpoint/v1", body, "gate3-checkpoint")
+	responseDelivery := filepath.Join(r.config.Plan.EvidenceRoot, trial.TrialID+"-checkpoint-response-delivered.json")
+	response, err := r.exchange(ctx, "checkpoint/v1", body, "gate3-checkpoint", responseDelivery)
 	if err != nil {
 		return err
 	}
@@ -231,7 +232,7 @@ func (r *Gate3LinuxRunner) Recover(ctx context.Context, trial Gate3Trial) error 
 		return fmt.Errorf("Gate 3 recovery has no distinct checkpoint boot")
 	}
 	body := map[string]any{"cohort_id": r.config.Plan.CohortID, "trial_id": trial.TrialID, "attempt": trial.Attempt, "boundary": trial.Boundary, "ticket_nonce": state.Nonce, "checkpoint_boot_id": state.CheckpointBootID, "harness_sha256": r.config.Plan.HarnessSHA256}
-	response, err := r.exchange(ctx, "recovery/v1", body, "gate3-recovery")
+	response, err := r.exchange(ctx, "recovery/v1", body, "gate3-recovery", "")
 	if err != nil {
 		return err
 	}
@@ -354,7 +355,7 @@ func (r *Gate3LinuxRunner) Preserve(context.Context) error {
 	return result
 }
 
-func (r *Gate3LinuxRunner) exchange(ctx context.Context, capability string, body any, phase string) ([]byte, error) {
+func (r *Gate3LinuxRunner) exchange(ctx context.Context, capability string, body any, phase, responseDeliveryPath string) ([]byte, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	if r.agent == nil {
@@ -387,6 +388,11 @@ func (r *Gate3LinuxRunner) exchange(ctx context.Context, capability string, body
 	frame, err := protocol.Verify(response, r.config.Keys.GuestPublic, r.config.Now())
 	if err != nil || frame.Kind != protocol.ResultKind || frame.Capability != capability || frame.Context != requestContext {
 		return nil, fmt.Errorf("Gate 3 guest result context changed: %v", err)
+	}
+	if responseDeliveryPath != "" {
+		if err := durableExclusive(responseDeliveryPath, response, 0o600); err != nil {
+			return nil, fmt.Errorf("persist Gate 3 signed response delivery: %w", err)
+		}
 	}
 	return response, nil
 }
@@ -522,6 +528,9 @@ func (s *gate3ConsoleSession) finish() error {
 	var result error
 	if s.done != nil && s.conn != nil {
 		result = <-s.done
+		if errors.Is(result, net.ErrClosed) {
+			result = nil
+		}
 	}
 	if err := s.file.Sync(); result == nil {
 		result = err

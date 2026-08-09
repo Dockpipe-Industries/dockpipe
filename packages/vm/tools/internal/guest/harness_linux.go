@@ -91,6 +91,12 @@ func (a *linuxHarnessAdapter) Checkpoint(request HarnessRequest) (any, error) {
 		return nil, err
 	}
 	ticketJSON, _ := json.Marshal(ticket)
+	ticketSHA256 := hashHarnessBytes(ticketJSON)
+	if request.observeCheckpoint != nil {
+		if err := request.observeCheckpoint(checkpointStagePendingAccepted, ticketSHA256, ""); err != nil {
+			return nil, err
+		}
+	}
 	evidence, process, wait, err := a.runHarness(command, harnessCheckpointRole, true)
 	if err != nil {
 		return nil, err
@@ -103,8 +109,14 @@ func (a *linuxHarnessAdapter) Checkpoint(request HarnessRequest) (any, error) {
 	a.mu.Lock()
 	a.held = process
 	a.mu.Unlock()
+	evidenceSHA256 := hashHarnessBytes(evidence)
+	if request.observeCheckpoint != nil {
+		if err := request.observeCheckpoint(checkpointStageHarnessEmitted, ticketSHA256, evidenceSHA256); err != nil {
+			return nil, err
+		}
+	}
 	return map[string]any{
-		"ticket_sha256": hashHarnessBytes(ticketJSON), "checkpoint_boot_id": request.BootID,
+		"ticket_sha256": ticketSHA256, "checkpoint_boot_id": request.BootID,
 		"harness_sha256": a.binarySHA, "evidence": json.RawMessage(evidence),
 	}, nil
 }

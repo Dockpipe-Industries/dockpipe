@@ -19,6 +19,10 @@ type oneShotRW struct {
 	writer bytes.Buffer
 }
 
+type failingObservationWriter struct{}
+
+func (failingObservationWriter) Write([]byte) (int, error) { return 0, io.ErrClosedPipe }
+
 type fakeHarnessAdapter struct {
 	checkpoint HarnessRequest
 	recovery   HarnessRequest
@@ -26,6 +30,14 @@ type fakeHarnessAdapter struct {
 
 func (f *fakeHarnessAdapter) Checkpoint(request HarnessRequest) (any, error) {
 	f.checkpoint = request
+	if request.observeCheckpoint != nil {
+		if err := request.observeCheckpoint(checkpointStagePendingAccepted, strings.Repeat("e", 64), ""); err != nil {
+			return nil, err
+		}
+		if err := request.observeCheckpoint(checkpointStageHarnessEmitted, strings.Repeat("e", 64), strings.Repeat("f", 64)); err != nil {
+			return nil, err
+		}
+	}
 	return map[string]any{"accepted": true}, nil
 }
 func (f *fakeHarnessAdapter) Recovery(request HarnessRequest) (any, error) {
@@ -44,7 +56,7 @@ func serviceFixture(t *testing.T) (*Service, ed25519.PrivateKey, ed25519.PublicK
 	expected := protocol.Context{MachineUUID: "11111111-1111-4111-8111-111111111111", DiskSerial: "dockpipe-data-000001", BootID: "22222222-2222-4222-8222-222222222222", RunID: "run-001", Scenario: "sqlite-wal", DurabilityBoundary: "after-fsync"}
 	bootstrapNonce := strings.Repeat("b", 64)
 	payload := protocol.IdentityBootstrapPayload{BootIDSource: manifest.KernelBootIDSource, ControllerPublicKeySHA256: hash(controllerPub), GuestPublicKeySHA256: hash(guestPub), ControllerBinarySHA256: strings.Repeat("c", 64), GuestAgentBinarySHA256: strings.Repeat("a", 64)}
-	service := &Service{ControllerPublic: controllerPub, GuestPrivate: guestPriv, Expected: expected, AgentSHA256: strings.Repeat("a", 64), ControllerSHA256: strings.Repeat("c", 64), BootstrapNonce: bootstrapNonce, BootIDSource: manifest.KernelBootIDSource, BootstrapPayload: payload, Now: func() time.Time { return now }}
+	service := &Service{ControllerPublic: controllerPub, GuestPrivate: guestPriv, Expected: expected, AgentSHA256: strings.Repeat("a", 64), ControllerSHA256: strings.Repeat("c", 64), BootstrapNonce: bootstrapNonce, BootIDSource: manifest.KernelBootIDSource, BootstrapPayload: payload, Observability: io.Discard, Now: func() time.Time { return now }}
 	service.Replay = protocol.NewReplayGuardAfterBootstrap(expected, bootstrapNonce)
 	return service, controllerPriv, guestPub, now
 }
@@ -189,5 +201,94 @@ func TestServiceModeRoutesExactSignedHarnessRequests(t *testing.T) {
 	}
 	if adapter.recovery.CheckpointBootID != "33333333-3333-4333-8333-333333333333" || adapter.recovery.TrialID != adapter.checkpoint.TrialID {
 		t.Fatalf("recovery adapter routing changed: %+v", adapter.recovery)
+	}
+}
+
+func TestCheckpointObservationDistinguishesGuestMilestonesWithoutSecrets(t *testing.T) {
+	service, controllerPriv, _, now := serviceFixture(t)
+	service.Harness = &fakeHarnessAdapter{}
+	var observation bytes.Buffer
+	service.Observability = &observation
+	ctx := requestContext(service, protocol.FirstRequestSequence, "8")
+	payload := map[string]any{
+		"cohort_id": "cohort-001", "trial_id": "after-stage-before-commit-1", "attempt": 1,
+		"boundary": "after-stage-before-commit", "ticket_nonce": strings.Repeat("d", 64),
+		"harness_sha256": strings.Repeat("a", 64),
+	}
+	if _, err := service.Handle(request(t, controllerPriv, now, ctx, "checkpoint/v1", payload)); err != nil {
+		t.Fatal(err)
+	}
+	lines := strings.Split(strings.TrimSpace(observation.String()), "\n")
+	wantStages := []string{checkpointStageRequestReceived, checkpointStagePendingAccepted, checkpointStageHarnessEmitted}
+	if len(lines) != len(wantStages) {
+		t.Fatalf("checkpoint observations = %q, want %d stages", observation.String(), len(wantStages))
+	}
+	for index, line := range lines {
+		data, ok := strings.CutPrefix(line, checkpointObservationPrefix)
+		if !ok {
+			t.Fatalf("checkpoint observation %d lacks exact prefix: %q", index, line)
+		}
+		var got checkpointObservation
+		decoder := json.NewDecoder(strings.NewReader(data))
+		decoder.DisallowUnknownFields()
+		if err := decoder.Decode(&got); err != nil {
+			t.Fatal(err)
+		}
+		if err := protocol.RequireCanonical([]byte(data)); err != nil {
+			t.Fatalf("checkpoint observation %d is not canonical: %v", index, err)
+		}
+		if got.Schema != checkpointObservationSchema || got.Stage != wantStages[index] || got.RunID != ctx.RunID || got.CohortID != "cohort-001" || got.TrialID != "after-stage-before-commit-1" || got.BootID != ctx.BootID {
+			t.Fatalf("checkpoint observation %d changed: %+v", index, got)
+		}
+		if index == 0 && (got.TicketSHA256 != "" || got.EvidenceSHA256 != "") {
+			t.Fatalf("request receipt claims later evidence: %+v", got)
+		}
+		if index == 1 && (got.TicketSHA256 != strings.Repeat("e", 64) || got.EvidenceSHA256 != "") {
+			t.Fatalf("pending-ticket observation changed: %+v", got)
+		}
+		if index == 2 && (got.TicketSHA256 != strings.Repeat("e", 64) || got.EvidenceSHA256 != strings.Repeat("f", 64)) {
+			t.Fatalf("harness-evidence observation changed: %+v", got)
+		}
+	}
+	if strings.Contains(observation.String(), strings.Repeat("d", 64)) {
+		t.Fatal("checkpoint observations must not emit the private ticket nonce")
+	}
+}
+
+func TestCheckpointObservationFailureStopsBeforeHarness(t *testing.T) {
+	service, controllerPriv, _, now := serviceFixture(t)
+	adapter := &fakeHarnessAdapter{}
+	service.Harness = adapter
+	service.Observability = failingObservationWriter{}
+	ctx := requestContext(service, protocol.FirstRequestSequence, "9")
+	payload := map[string]any{
+		"cohort_id": "cohort-001", "trial_id": "after-stage-before-commit-1", "attempt": 1,
+		"boundary": "after-stage-before-commit", "ticket_nonce": strings.Repeat("d", 64),
+		"harness_sha256": strings.Repeat("a", 64),
+	}
+	if _, err := service.Handle(request(t, controllerPriv, now, ctx, "checkpoint/v1", payload)); err == nil {
+		t.Fatal("expected checkpoint observation failure to stop the request")
+	}
+	if adapter.checkpoint.TrialID != "" {
+		t.Fatalf("harness ran after observation failure: %+v", adapter.checkpoint)
+	}
+}
+
+func TestCheckpointObservationRequiresSinkBeforeHarness(t *testing.T) {
+	service, controllerPriv, _, now := serviceFixture(t)
+	adapter := &fakeHarnessAdapter{}
+	service.Harness = adapter
+	service.Observability = nil
+	ctx := requestContext(service, protocol.FirstRequestSequence, "a")
+	payload := map[string]any{
+		"cohort_id": "cohort-001", "trial_id": "after-stage-before-commit-1", "attempt": 1,
+		"boundary": "after-stage-before-commit", "ticket_nonce": strings.Repeat("d", 64),
+		"harness_sha256": strings.Repeat("a", 64),
+	}
+	if _, err := service.Handle(request(t, controllerPriv, now, ctx, "checkpoint/v1", payload)); err == nil {
+		t.Fatal("expected missing checkpoint observation sink to stop the request")
+	}
+	if adapter.checkpoint.TrialID != "" {
+		t.Fatalf("harness ran without a checkpoint observation sink: %+v", adapter.checkpoint)
 	}
 }
