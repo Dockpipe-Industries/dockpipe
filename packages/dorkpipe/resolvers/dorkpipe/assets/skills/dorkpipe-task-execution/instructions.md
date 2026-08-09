@@ -21,9 +21,46 @@ completion_policy: require_user_approval_before_successor | stop
 top_level_successor_limit: 1
 ```
 
+For any one-shot action, also require:
+
+```text
+One-shot readiness:
+required: true
+status: verified_current | unverified
+artifact_sha256: <exact hash>
+preflight: <exact non-consuming command and result or why unavailable>
+coverage: <all predicates before first mutation>
+checkpoint_roles: <execution checkout, promotion/source, and other distinct owners>
+unverified_predicates: none | <exact list>
+```
+
+For ordinary work, record `required: false` and `status: not_applicable` when the distinction matters.
+
 If the fresh task lacks this exact slice or its creation was not approved, end `blocked` before mutation. Explicit creation approval authorizes ordinary implementation and validation only within `authorized_slice`; it does not consume or replace separately required live-action, retry, cleanup, commit, push, cost, credential, or resource authority. A carried approval, old capability, broad backlog, or suggested next step remains context only.
 
 Inventory branch, HEAD, staged, unstaged, and untracked state. Identify user-owned changes and the files this slice owns. Do not revert, stash, overwrite, reformat, stage, commit, or publish unrelated work. Stop `blocked` when ownership overlap cannot be resolved safely.
+
+## Gate one-shot consumption
+
+Treat a single-use, no-retry, live, costly, destructive, or credential-bearing invocation as
+unready until its `One-shot readiness` record is `verified_current` for the exact artifact bytes and
+current state.
+
+- Distinguish checkpoint roles. Validate the execution checkout against its pin and immutable
+  promotion/source evidence against its own pin; never assume those commits must be equal.
+- Re-run the exact non-consuming preflight immediately before invocation. It must exercise every
+  predicate before the first mutation and must not create identity material, consume authority, or
+  expose secrets.
+- Treat compilation, schema validation, hashes, a narrow diff, predecessor success, or spot checks
+  as integrity evidence only. They cannot replace complete readiness proof.
+- When repairing a fail-fast artifact, validate the remaining pre-mutation predicates as well as the
+  observed failure before sealing or proposing direct invocation.
+- If the handoff lacks complete proof and the slice does not authorize readiness repair, stop
+  `blocked` without consuming authority. If the exact non-consuming preflight fails, preserve its
+  evidence and stop `failed_verification` without invoking the one-shot action.
+
+Once the one-shot action itself begins, its authority is consumed regardless of exit status. Never
+retry it under the same authority.
 
 ## Execute the slice
 
@@ -56,6 +93,8 @@ Use judgment rather than a fixed pass count. Repeated evidence about the same un
 | Acceptance passes; one exact successor is warranted | `completed` | Propose it and wait for `Approve next slice: <exact short slice label>`; only after that response invoke handoff once, then stop. |
 | Acceptance passes; no successor exists | `completed` | Record proof and stop; do not invoke handoff. |
 | A genuine invariant, authority, ownership, or human decision blocks safe progress | `blocked` | Record the exact blocker and required input; do not invoke handoff automatically. |
+| Required one-shot readiness proof is missing, partial, or stale | `blocked` | Do not invoke; identify the exact proof or repair slice required. |
+| Exact non-consuming preflight fails before invocation | `failed_verification` | Preserve evidence and stop without consuming the one-shot authority. |
 | Required verification fails after the authorized implementation | `failed_verification` | Preserve failure evidence and stop; do not claim completion or invoke handoff automatically. |
 | Repeated audit yields only non-blocking findings | Based on acceptance proof | Defer findings and terminate the audit loop. |
 | Dirty tree contains unrelated user-owned changes | Based on owned slice | Preserve them and validate only the owned diff; block on unsafe overlap. |
