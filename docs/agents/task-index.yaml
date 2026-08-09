@@ -86,6 +86,18 @@ tasks:
     dispatch:
       readiness: unclassified
       ownership: unclaimed
+  - id: TASK-021
+    topic: PipeLang deterministic semantic and application language foundation
+    path: docs/agents/tasks/pipelang-reactive-application-language.md
+    dispatch:
+      readiness: unclassified
+      ownership: unclaimed
+  - id: TASK-022
+    topic: Go-first PipeLang backend services and typed clients
+    path: docs/agents/tasks/go-first-pipelang-backend-services.md
+    dispatch:
+      readiness: unclassified
+      ownership: unclaimed
 
 maintenance:
   - Treat this YAML file as the AI/backlog entrypoint.
