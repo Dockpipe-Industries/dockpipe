@@ -24,6 +24,25 @@ Re-read the minimum live state needed for the next task:
 
 Never infer current state only from conversation memory when a cheap read-only check exists.
 
+## Prove one-shot readiness
+
+Before handing off an invocation that is single-use, no-retry, live, costly, destructive, or
+credential-bearing:
+
+1. Enumerate every predicate evaluated before the first mutation. A fail-fast repair must cover the
+   remaining predicates, not only the first failure that was reached.
+2. Require a repeatable non-consuming preflight from the exact hash-pinned artifact, or an exact
+   checker proven to cover the same predicates. Compilation, schema validation, hashes, a narrow
+   diff, and predecessor success prove integrity, not execution readiness.
+3. Re-run that preflight against current state after the final artifact bytes are sealed. Record its
+   command, artifact hash, result, covered boundary, and state anchors without exposing secrets.
+4. Name checkpoint roles separately, such as `execution_checkout` and `promotion_source`. Never
+   require them to be equal merely because both are Git commits.
+
+If full non-consuming proof is unavailable, do not hand off direct invocation or describe the
+artifact as execution-ready. Hand off a verification/repair slice instead and preserve the exact
+unreached or unverified predicates.
+
 ## Compress without weakening
 
 Apply `dorkpipe-token-optimization` when available. Summarize durable milestones instead of replaying the transcript.
@@ -58,11 +77,20 @@ terminal_conditions: completed | blocked | failed_verification
 completion_policy: require_user_approval_before_successor | stop
 top_level_successor_limit: 1
 
+One-shot readiness:
+required: true | false
+status: verified_current | unverified | not_applicable
+artifact_sha256: <exact hash or not_applicable>
+preflight: <exact non-consuming command and result or why unavailable>
+coverage: <all predicates before first mutation or not_applicable>
+checkpoint_roles: <execution checkout, promotion/source, and other distinct owners>
+unverified_predicates: none | <exact list>
+
 Anchors and protected state:
 <branch, HEAD, dirty-tree ownership, exact live or preserved resources>
 
 Completed proof:
-<durable milestones, commits, validations, and evidence>
+<durable milestones, commits, validations, evidence, and exact readiness-proof coverage>
 
 Pending boundary:
 <exact unresolved action, approval state, and why it has not run>
@@ -71,13 +99,14 @@ Exact required user response:
 none — approving creation authorized this slice
 
 First action:
-Invoke `dorkpipe-task-execution`, then perform <first read-only verification> and execute the authorized slice.
+Invoke `dorkpipe-task-execution`, validate the recorded readiness proof, then perform the authorized slice.
 
 Hard stops:
 <no retry, cleanup, unrelated mutation, authority transfer, or fallback>
 ```
 
 Make the prompt self-contained and execution-ready. Do not make the fresh task reopen the full prior conversation.
+Never turn `unverified` into `verified_current` through wording or compression.
 
 The old task must receive `Approve next slice: <exact short slice label>` before this handoff is created. That approval authorizes one task creation and execution of only the named slice. It does not authorize any separately gated live action, retry, cleanup, commit, push, cost, credential, or resource operation. Never infer approval from a broad backlog or suggested follow-up.
 
