@@ -98,6 +98,12 @@ tasks:
     dispatch:
       readiness: unclassified
       ownership: unclaimed
+  - id: TASK-023
+    topic: Lightweight native host-sandbox runtime
+    path: docs/agents/tasks/host-sandbox-runtime.md
+    dispatch:
+      readiness: decision_ready
+      ownership: unclaimed
 
 maintenance:
   - Treat this YAML file as the AI/backlog entrypoint.
