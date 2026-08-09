@@ -1,0 +1,3 @@
+name: dorkpipe-task-handoff
+description: Carry active work into exactly one fresh task or chat after that exact successor slice is approved, with creation authorizing execution there through dorkpipe-task-execution. Use when the user requests and approves a new chat, fresh task, carry-over, continuation, or token-saving handoff, and after completed execution when the user approves one exact next slice.
+short_description: Carry work into a fresh task safely
