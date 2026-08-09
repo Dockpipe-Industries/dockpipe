@@ -6,6 +6,18 @@ At a completed slice in a normal session:
 2. Ask whether the user wants the current branch committed. Commit only after explicit approval; never commit/push by default.
 3. If work remains, offer one compact next-slice prompt. Otherwise ask what to do next.
 
+Use `dorkpipe-task-handoff` when the user requests a fresh task/chat or when the next materially
+different slice would benefit from a token-saving carry-over. Confirm task creation once, create the
+fresh task through the host when available, and never transfer execution or cleanup authority in the
+handoff prompt.
+
+Before creating a successor, the completed task asks the user to approve one exact next slice.
+Approval authorizes one fresh task and execution there of only that slice. The successor starts
+`state: ready_for_execution`, explicitly invokes `dorkpipe-task-execution`, and does not ask again.
+Execution ends `completed`, `blocked`, or `failed_verification`; any further successor requires a new
+end-of-slice approval. The old session never executes the successor slice, and creation never widens
+separately gated live-action, cleanup, commit, push, cost, credential, or resource authority.
+
 ## Autonomous Master Exception
 
 An explicitly designated master-orchestrator session may select one bounded slice whose required

@@ -17,7 +17,7 @@ export USERPROFILE="$TEST_HOME"
 export XDG_CONFIG_HOME="$TEST_HOME/.config"
 export DORKPIPE_ORCH_AUTH_LOGIN_ON_MISSING="${DORKPIPE_ORCH_AUTH_LOGIN_ON_MISSING:-never}"
 failed=0
-for f in test_normalize_ci_scans.sh test_user_insight_queue.sh test_repo_tools.sh test_build_source_operation_results.sh test_orchestration_approval_operation_results.sh test_orchestration_verify_status.sh test_orchestration_lanes.sh test_software_dev_workflow.sh test_backlog_remote_workflow.sh test_example_brain_contract.sh test_orchestration_optimize.sh test_orchestration_container_auth.sh test_dev_stack_gpu_policy.sh test_cas01_app_server.sh test_codex_cli_update.sh; do
+for f in test_normalize_ci_scans.sh test_user_insight_queue.sh test_repo_tools.sh test_build_source_operation_results.sh test_orchestration_approval_operation_results.sh test_orchestration_verify_status.sh test_orchestration_lanes.sh test_software_dev_workflow.sh test_backlog_remote_workflow.sh test_example_brain_contract.sh test_orchestration_optimize.sh test_orchestration_container_auth.sh test_dev_stack_gpu_policy.sh test_cas01_app_server.sh test_codex_cli_update.sh test_task_skill_lifecycle.sh; do
 	echo "--- dorkpipe/tests/$f ---"
 	if ! bash "$DIR/$f"; then
 		echo "dorkpipe/tests/$f FAILED" >&2
@@ -29,7 +29,7 @@ if DOCKPIPE_ASSETS_DIR="$ROOT/packages/dorkpipe/resolvers/dorkpipe/assets" \
 	DOCKPIPE_WORKFLOW_NAME="skills.render.smoke" \
 	DOCKPIPE_WORKFLOW_CONFIG="$ROOT/packages/dorkpipe/workflows/skills.render/config.yml" \
 	DOCKPIPE_STEP_ID="render" \
-	DOCKPIPE_ARGS_JSON='["--target","generic","--output","/tmp/dorkpipe-skills-render-test","--dry-run","--skills","dorkpipe-core-review"]' \
+	DOCKPIPE_ARGS_JSON='["--target","generic","--output","/tmp/dorkpipe-skills-render-test","--dry-run","--skills","dorkpipe-core-review,dorkpipe-task-execution,dorkpipe-task-handoff"]' \
 	bash "$ROOT/packages/dorkpipe/resolvers/dorkpipe/assets/scripts/skills-render.sh"; then
 	echo "dorkpipe skills.render smoke OK"
 else
