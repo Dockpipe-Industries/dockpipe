@@ -19,7 +19,8 @@ import (
 )
 
 const (
-	Schema                            = "dockpipe.vm.executor.v10"
+	Schema                            = "dockpipe.vm.executor.v11"
+	LegacyGate2TimeoutCleanupSchema   = "dockpipe.vm.executor.v10"
 	LegacyGate3BootCleanupSchema      = "dockpipe.vm.executor.v9"
 	LegacyGate2QualifiedCleanupSchema = "dockpipe.vm.executor.v8"
 	LegacyQMPEventCleanupSchema       = "dockpipe.vm.executor.v7"
@@ -111,6 +112,7 @@ type GuestVerificationRequest struct {
 	ControllerSigned     bool                     `json:"controller_signed"`
 	GuestSigned          bool                     `json:"guest_signed"`
 	Evidence             string                   `json:"evidence"`
+	FailureEvidence      string                   `json:"failure_evidence,omitempty"`
 }
 
 type IdentityBootstrapRequest struct {
@@ -207,6 +209,7 @@ func Build(c provisioning.Contract, p provisioning.Plan, m manifest.Manifest, ch
 	}
 	instance := filepath.Join(c.Roots.Instances, c.RunID, c.CohortID)
 	evidence := filepath.Join(c.Roots.Evidence, c.RunID, c.CohortID)
+	verificationFailure := filepath.Join(evidence, "verification-failure.json")
 	config := filepath.Join(c.Roots.Config, "instances", c.RunID, c.CohortID)
 	runtime := filepath.Join(c.Roots.Runtime, c.RunID, c.CohortID)
 	osDisk := filepath.Join(instance, "os-private.qcow2")
@@ -245,7 +248,7 @@ func Build(c provisioning.Contract, p provisioning.Plan, m manifest.Manifest, ch
 	if err != nil {
 		return out, err
 	}
-	if len(p.Operations[2].Inputs) != 1 || p.Operations[2].Inputs[0] != string(cloneJSON) || len(p.Operations[8].Inputs) < 1 || p.Operations[8].Inputs[0] != string(launchJSON) || !slices.Equal(p.Operations[9].Inputs, []string{observationJSON}) || !slices.Equal(p.Operations[9].Outputs, []string{observation.EvidencePath}) {
+	if len(p.Operations[2].Inputs) != 1 || p.Operations[2].Inputs[0] != string(cloneJSON) || len(p.Operations[8].Inputs) < 1 || p.Operations[8].Inputs[0] != string(launchJSON) || !slices.Equal(p.Operations[9].Inputs, []string{observationJSON}) || !slices.Equal(p.Operations[9].Outputs, []string{observation.EvidencePath}) || !slices.Equal(p.Operations[10].Outputs, []string{filepath.Join(evidence, "bootstrap.json"), filepath.Join(evidence, "verification.json"), verificationFailure}) {
 		return out, fmt.Errorf("executor command tuple does not match the authorized plan")
 	}
 	rendered, err := provisioning.RenderNoCloud(c, m, material)
@@ -273,7 +276,7 @@ func Build(c provisioning.Contract, p provisioning.Plan, m manifest.Manifest, ch
 			},
 			Capabilities: []string{"identity/v1", "health/v1", "launch-hash-pinned/v1"}, FirstRequestSequence: 2,
 			BootIDFromBootstrap: true, ContiguousSequence: true, RejectNonceReuse: true,
-			TimeoutSeconds: c.Execution.GuestVerificationTimeoutSeconds, ControllerSigned: true, GuestSigned: true, Evidence: filepath.Join(evidence, "verification.json"),
+			TimeoutSeconds: c.Execution.GuestVerificationTimeoutSeconds, ControllerSigned: true, GuestSigned: true, Evidence: filepath.Join(evidence, "verification.json"), FailureEvidence: verificationFailure,
 		},
 		Shutdown:     ShutdownRequest{QMP: qmp, ProcessRecord: filepath.Join(runtime, "process.json"), Command: ControlledPowerdown, TimeoutSeconds: c.Execution.ShutdownTimeoutSeconds, FallbackSignal: false, Evidence: filepath.Join(evidence, "shutdown.json")},
 		Preservation: PreservationRequest{Roots: []string{instance, evidence, config, runtime}, TimeoutSeconds: PreservationDeadline},
@@ -319,7 +322,7 @@ func (c Contract) Digest() (string, error) {
 
 func (c Contract) Validate() error {
 	digest, err := c.Digest()
-	if err != nil || !c.sealed || (c.Schema != Schema && c.Schema != LegacyGate3BootCleanupSchema && c.Schema != LegacyGate2QualifiedCleanupSchema && c.Schema != LegacyQMPEventCleanupSchema && c.Schema != LegacyPortAccessCleanupSchema && c.Schema != LegacyUserCreationCleanupSchema && c.Schema != LegacyDeadlineCleanupSchema && c.Schema != LegacyObservationCleanupSchema && c.Schema != LegacyCleanupSchema) || c.ExecutionSHA256 != digest || !isSHA256(c.ContractSHA256) || !isSHA256(c.PlanSHA256) || !isSHA256(c.ToolchainSHA256) {
+	if err != nil || !c.sealed || (c.Schema != Schema && c.Schema != LegacyGate2TimeoutCleanupSchema && c.Schema != LegacyGate3BootCleanupSchema && c.Schema != LegacyGate2QualifiedCleanupSchema && c.Schema != LegacyQMPEventCleanupSchema && c.Schema != LegacyPortAccessCleanupSchema && c.Schema != LegacyUserCreationCleanupSchema && c.Schema != LegacyDeadlineCleanupSchema && c.Schema != LegacyObservationCleanupSchema && c.Schema != LegacyCleanupSchema) || c.ExecutionSHA256 != digest || !isSHA256(c.ContractSHA256) || !isSHA256(c.PlanSHA256) || !isSHA256(c.ToolchainSHA256) {
 		return fmt.Errorf("executor contract identity or digest is invalid")
 	}
 	if c.Schema == LegacyCleanupSchema {
@@ -362,7 +365,7 @@ func (c Contract) Validate() error {
 	}
 	bootstrap := c.Guest.Bootstrap
 	wantGuestTimeout := provisioning.RequiredExecutionPolicy().GuestVerificationTimeoutSeconds
-	if c.Schema == LegacyGate3BootCleanupSchema || c.Schema == LegacyGate2QualifiedCleanupSchema || c.Schema == LegacyQMPEventCleanupSchema || c.Schema == LegacyPortAccessCleanupSchema || c.Schema == LegacyUserCreationCleanupSchema {
+	if c.Schema == LegacyGate2TimeoutCleanupSchema || c.Schema == LegacyGate3BootCleanupSchema || c.Schema == LegacyGate2QualifiedCleanupSchema || c.Schema == LegacyQMPEventCleanupSchema || c.Schema == LegacyPortAccessCleanupSchema || c.Schema == LegacyUserCreationCleanupSchema {
 		wantGuestTimeout = 240
 	} else if c.Schema == LegacyDeadlineCleanupSchema {
 		wantGuestTimeout = 180
@@ -396,7 +399,11 @@ func (c Contract) validateCurrentPaths() error {
 	if observation.EvidenceRoot != roots.Evidence || observation.RuntimeRoot != roots.Runtime || observation.EvidencePath != filepath.Join(evidence, provisioning.FirstBootObservationFilename) || observation.SocketPath != filepath.Join(runtime, provisioning.FirstBootObservationSocketFilename) {
 		return fmt.Errorf("first-boot observation root or path binding changed")
 	}
-	if c.Launch.QMP != filepath.Join(runtime, c.RunID+".qmp") || c.Launch.AgentSocket != filepath.Join(runtime, c.RunID+".agent") || c.Launch.ProcessRecord != filepath.Join(runtime, "process.json") || c.Guest.Socket != c.Launch.AgentSocket || c.Guest.Bootstrap.ExclusiveEvidencePath != filepath.Join(evidence, "bootstrap.json") || c.Guest.Evidence != filepath.Join(evidence, "verification.json") || c.Shutdown.QMP != c.Launch.QMP || c.Shutdown.ProcessRecord != c.Launch.ProcessRecord || c.Shutdown.Evidence != filepath.Join(evidence, "shutdown.json") {
+	wantFailureEvidence := ""
+	if c.Schema == Schema {
+		wantFailureEvidence = filepath.Join(evidence, "verification-failure.json")
+	}
+	if c.Launch.QMP != filepath.Join(runtime, c.RunID+".qmp") || c.Launch.AgentSocket != filepath.Join(runtime, c.RunID+".agent") || c.Launch.ProcessRecord != filepath.Join(runtime, "process.json") || c.Guest.Socket != c.Launch.AgentSocket || c.Guest.Bootstrap.ExclusiveEvidencePath != filepath.Join(evidence, "bootstrap.json") || c.Guest.Evidence != filepath.Join(evidence, "verification.json") || c.Guest.FailureEvidence != wantFailureEvidence || c.Shutdown.QMP != c.Launch.QMP || c.Shutdown.ProcessRecord != c.Launch.ProcessRecord || c.Shutdown.Evidence != filepath.Join(evidence, "shutdown.json") {
 		return fmt.Errorf("executor launch, verification, or shutdown path binding changed")
 	}
 	if c.OSClone.Target != filepath.Join(instance, "os-private.qcow2") || c.DataDisk.Target != filepath.Join(instance, "qualification.raw") || c.NoCloud.Target != filepath.Join(instance, "nocloud-seed.iso") {

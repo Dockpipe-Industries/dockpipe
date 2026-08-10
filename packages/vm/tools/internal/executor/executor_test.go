@@ -99,7 +99,7 @@ func executorFixture(t *testing.T) Contract {
 			},
 			Capabilities: []string{"identity/v1", "health/v1", "launch-hash-pinned/v1"}, FirstRequestSequence: 2,
 			BootIDFromBootstrap: true, ContiguousSequence: true, RejectNonceReuse: true,
-			TimeoutSeconds: 240, ControllerSigned: true, GuestSigned: true, Evidence: filepath.Join(evidence, "verification.json"),
+			TimeoutSeconds: 300, ControllerSigned: true, GuestSigned: true, Evidence: filepath.Join(evidence, "verification.json"), FailureEvidence: filepath.Join(evidence, "verification-failure.json"),
 		},
 		Shutdown:     ShutdownRequest{QMP: qmp, ProcessRecord: filepath.Join(runtime, "process.json"), Command: ControlledPowerdown, TimeoutSeconds: 120, Evidence: filepath.Join(evidence, "shutdown.json")},
 		Preservation: PreservationRequest{Roots: []string{instance, evidence, config, runtime}, TimeoutSeconds: PreservationDeadline},
@@ -235,6 +235,7 @@ func TestBuildDerivesClosedExecutorContractFromAuthorizedPlan(t *testing.T) {
 	observationJSON, _ := observation.CanonicalJSON()
 	operations[9].Inputs = []string{observationJSON}
 	operations[9].Outputs = []string{observation.EvidencePath}
+	operations[10].Outputs = []string{filepath.Join(c.Roots.Evidence, c.RunID, c.CohortID, "bootstrap.json"), filepath.Join(c.Roots.Evidence, c.RunID, c.CohortID, "verification.json"), filepath.Join(c.Roots.Evidence, c.RunID, c.CohortID, "verification-failure.json")}
 	p.Operations = operations
 	p.PlanSHA256, _ = p.Digest()
 	material := provisioning.RenderMaterial{Keys: provisioning.KeyMaterial{ControllerPublic: controllerPublic, ControllerPrivate: controllerPrivate, GuestPublic: guestPublic, GuestPrivate: guestPrivate}, ControllerBinary: controllerBinary, GuestAgentBinary: guestBinary, HarnessBinary: harnessBinary}
@@ -242,7 +243,7 @@ func TestBuildDerivesClosedExecutorContractFromAuthorizedPlan(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if execution.ToolchainSHA256 != c.Toolchain.ManifestSHA256 || execution.OSClone.Command.Binary != filepath.Join(toolchainRoot, "bin", "qemu-img") || execution.NoCloud.Builder != NoCloudBuilder || execution.FirstBootObservation == nil || *execution.FirstBootObservation != observation || execution.Guest.Bootstrap.BootstrapNonce != c.BootstrapNonce || execution.Guest.Bootstrap.BootIDSource != manifest.KernelBootIDSource || !execution.Guest.Bootstrap.GuestWritesFirst || !execution.Guest.Bootstrap.ControllerReadsFirst || execution.Guest.Bootstrap.ControllerSigned || execution.Guest.Bootstrap.EvidenceMode != 0o600 || !execution.Guest.Bootstrap.EvidenceExclusive || !execution.Guest.Bootstrap.FsyncEvidenceFile || !execution.Guest.Bootstrap.FsyncEvidenceDir || execution.Guest.FirstRequestSequence != 2 || !execution.Guest.BootIDFromBootstrap || !execution.Guest.ContiguousSequence || !execution.Guest.RejectNonceReuse || execution.Shutdown.FallbackSignal || !execution.Cleanup.SeparateAuthorization {
+	if execution.ToolchainSHA256 != c.Toolchain.ManifestSHA256 || execution.OSClone.Command.Binary != filepath.Join(toolchainRoot, "bin", "qemu-img") || execution.NoCloud.Builder != NoCloudBuilder || execution.FirstBootObservation == nil || *execution.FirstBootObservation != observation || execution.Guest.Bootstrap.BootstrapNonce != c.BootstrapNonce || execution.Guest.Bootstrap.BootIDSource != manifest.KernelBootIDSource || !execution.Guest.Bootstrap.GuestWritesFirst || !execution.Guest.Bootstrap.ControllerReadsFirst || execution.Guest.Bootstrap.ControllerSigned || execution.Guest.Bootstrap.EvidenceMode != 0o600 || !execution.Guest.Bootstrap.EvidenceExclusive || !execution.Guest.Bootstrap.FsyncEvidenceFile || !execution.Guest.Bootstrap.FsyncEvidenceDir || execution.Guest.FirstRequestSequence != 2 || !execution.Guest.BootIDFromBootstrap || !execution.Guest.ContiguousSequence || !execution.Guest.RejectNonceReuse || execution.Guest.FailureEvidence != filepath.Join(c.Roots.Evidence, c.RunID, c.CohortID, "verification-failure.json") || execution.Shutdown.FallbackSignal || !execution.Cleanup.SeparateAuthorization {
 		t.Fatalf("derived executor contract changed: %+v", execution)
 	}
 	tampered := p

@@ -185,7 +185,7 @@ func digest(data []byte) string {
 
 func TestRequiredExecutionPolicyAllowsPinnedNetworklessCloudInitBoot(t *testing.T) {
 	policy := RequiredExecutionPolicy()
-	if policy.CloneTimeoutSeconds != 120 || policy.LaunchTimeoutSeconds != 120 || policy.GuestVerificationTimeoutSeconds != 240 || policy.ShutdownTimeoutSeconds != 120 {
+	if policy.CloneTimeoutSeconds != 120 || policy.LaunchTimeoutSeconds != 120 || policy.GuestVerificationTimeoutSeconds != 300 || policy.ShutdownTimeoutSeconds != 120 {
 		t.Fatalf("reviewed execution deadlines changed: %+v", policy)
 	}
 	if policy.AutomaticRetry || policy.AutomaticCleanup || policy.FallbackSignal || !policy.PreserveCompleteFailure {

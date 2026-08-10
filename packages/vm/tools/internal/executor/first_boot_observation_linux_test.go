@@ -240,6 +240,7 @@ func TestObservationCaptureClosesAllOwnedFileDescriptors(t *testing.T) {
 func TestPreservedExecutorV2RemainsLoadableForExactCleanupOnly(t *testing.T) {
 	legacy := executorFixture(t)
 	legacy.Schema = LegacyCleanupSchema
+	legacy.Guest.FailureEvidence = ""
 	legacy.FirstBootObservation = nil
 	legacy.ProvisioningRoots = nil
 	legacy.Guest.TimeoutSeconds = 60
@@ -296,6 +297,7 @@ func TestPreservedExecutorV2RemainsLoadableForExactCleanupOnly(t *testing.T) {
 func TestPreservedExecutorV3RemainsLoadableForExactCleanupOnly(t *testing.T) {
 	legacy := executorFixture(t)
 	legacy.Schema = LegacyObservationCleanupSchema
+	legacy.Guest.FailureEvidence = ""
 	legacy.Guest.TimeoutSeconds = 60
 	legacy.ExecutionSHA256, _ = legacy.Digest()
 	path := filepath.Join(t.TempDir(), "executor-v3.json")
@@ -320,6 +322,7 @@ func TestPreservedExecutorV3RemainsLoadableForExactCleanupOnly(t *testing.T) {
 func TestPreservedExecutorV4RemainsLoadableForExactCleanupOnly(t *testing.T) {
 	legacy := executorFixture(t)
 	legacy.Schema = LegacyDeadlineCleanupSchema
+	legacy.Guest.FailureEvidence = ""
 	legacy.Guest.TimeoutSeconds = 180
 	legacy.ExecutionSHA256, _ = legacy.Digest()
 	path := filepath.Join(t.TempDir(), "executor-v4.json")
@@ -344,6 +347,7 @@ func TestPreservedExecutorV4RemainsLoadableForExactCleanupOnly(t *testing.T) {
 func TestPreservedExecutorV5RemainsLoadableForExactCleanupOnly(t *testing.T) {
 	legacy := executorFixture(t)
 	legacy.Schema = LegacyUserCreationCleanupSchema
+	legacy.Guest.FailureEvidence = ""
 	legacy.Guest.TimeoutSeconds = 240
 	legacy.ExecutionSHA256, _ = legacy.Digest()
 	path := filepath.Join(t.TempDir(), "executor-v5.json")
@@ -368,6 +372,7 @@ func TestPreservedExecutorV5RemainsLoadableForExactCleanupOnly(t *testing.T) {
 func TestPreservedExecutorV6RemainsLoadableForExactCleanupOnly(t *testing.T) {
 	legacy := executorFixture(t)
 	legacy.Schema = LegacyPortAccessCleanupSchema
+	legacy.Guest.FailureEvidence = ""
 	legacy.Guest.TimeoutSeconds = 240
 	legacy.ExecutionSHA256, _ = legacy.Digest()
 	path := filepath.Join(t.TempDir(), "executor-v6.json")
@@ -392,6 +397,7 @@ func TestPreservedExecutorV6RemainsLoadableForExactCleanupOnly(t *testing.T) {
 func TestPreservedExecutorV7RemainsLoadableForExactCleanupOnly(t *testing.T) {
 	legacy := executorFixture(t)
 	legacy.Schema = LegacyQMPEventCleanupSchema
+	legacy.Guest.FailureEvidence = ""
 	legacy.Guest.TimeoutSeconds = 240
 	legacy.ExecutionSHA256, _ = legacy.Digest()
 	path := filepath.Join(t.TempDir(), "executor-v7.json")
@@ -413,17 +419,19 @@ func TestPreservedExecutorV7RemainsLoadableForExactCleanupOnly(t *testing.T) {
 	}
 }
 
-func TestPreservedExecutorV8AndV9RemainLoadableForExactCleanupOnly(t *testing.T) {
+func TestPreservedExecutorV8ThroughV10RemainLoadableForExactCleanupOnly(t *testing.T) {
 	for _, test := range []struct {
 		name   string
 		schema string
 	}{
 		{"executor-v8", LegacyGate2QualifiedCleanupSchema},
 		{"executor-v9", LegacyGate3BootCleanupSchema},
+		{"executor-v10", LegacyGate2TimeoutCleanupSchema},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			legacy := executorFixture(t)
 			legacy.Schema = test.schema
+			legacy.Guest.FailureEvidence = ""
 			legacy.Guest.TimeoutSeconds = 240
 			legacy.ExecutionSHA256, _ = legacy.Digest()
 			path := filepath.Join(t.TempDir(), test.name+".json")

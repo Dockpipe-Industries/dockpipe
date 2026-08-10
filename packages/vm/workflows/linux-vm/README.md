@@ -33,14 +33,14 @@ The manifest does not prescribe a boot UUID. Schema
 `boot_id_source=/proc/sys/kernel/random/boot_id`; the actual per-boot value is
 learned through the authenticated guest-first protocol below.
 
-VM package 1.3.1 retains the exact validated provisioning contract and
+VM package 1.3.2 retains the exact validated provisioning contract and
 qualification manifest bytes beneath
 `<config-root>/instances/<run>/<cohort>/gate3-inputs/` before a fresh
-executor-v10 Gate 2 consumes identity material or performs VM action. Gate 3
+executor-v11 Gate 2 consumes identity material or performs VM action. Gate 3
 v1 planning accepts only those derived owner-only paths and rejects path,
 metadata, JSON, contract, or identity drift.
 
-If a qualified executor-v10 and its durable evidence survive while those
+If a qualified executor-v11 and its durable evidence survive while those
 retained inputs are unavailable, VM package 1.3.0 can export a
 `dockpipe.vm.gate3-reconstitution.v1` planning input. The export opens only the
 reserved public keys and exact identity record, authenticates the recorded
@@ -170,7 +170,7 @@ Linux/amd64 bundle. The bundle contains only hash-pinned `qemu-img`,
 `qemu-system-x86_64`, and their exact runtime closure. `qemu-img` has one fixed
 120-second private backing-clone argv; the controller owns exclusive 4 GiB
 sparse-raw creation and deterministic `dockpipe-go-iso9660-v1` seed creation.
-QEMU launch is bounded to 120 seconds, signed guest verification to 240 seconds,
+QEMU launch is bounded to 120 seconds, signed guest verification to 300 seconds,
 and QMP `system_powerdown` shutdown to 120 seconds with no fallback signal.
 Any failure stops once, preserves all four instance roots, and never retries or
 cleans. Cleanup requires a separate fresh authorization bound to the exact
@@ -721,6 +721,41 @@ hash-pinned udev rule matching only `org.dockpipe.agent.1`, group
 schema; executor-v9 remains loadable only for exact cleanup. This is an offline
 repair, not renewed live proof. Fresh build, promotion, preparation, Gate 2,
 Gate 3, and final cleanup remain separate approvals.
+
+Recovered executor-v10 Gate 2 evidence later proved the fixed 240-second
+verification policy stopped only 32.630 seconds after the guest durably entered
+`modules-final`. Cloud-final began 210 seconds after controller start and the
+last repaired journal/stage milestones persisted at 216-217 seconds, with no
+guest failure, agent start, bootstrap, or completed final module. VM package
+1.3.2 therefore seals executor-v11 with a 300-second verification window: 217
+observed seconds plus the existing 60-second signed-verification allowance
+requires at least 277 seconds, and 300 is the smallest closed whole-minute
+policy. Executor-v10 remains exact-cleanup-only.
+
+The v11 typed plan additionally binds an exclusive owner-only
+`verification-failure.json`. A timeout receipt is fsynced before complete
+failure preservation and contains only schema, operation, timeout reason and
+seconds, bootstrap-verification state, and completed public capability names.
+It excludes paths, run/cohort and boot identities, nonces, frames, payloads,
+keys, timestamps, and private material. No timeout receipt is overwritten, and
+the change adds no retry, signal, fallback, automatic cleanup, promotion, or
+live authority.
+
+The executor-v11 correction was deterministically rebuilt in two independent
+source lanes under `/tmp/dockpipe-vm-source-review.v11.cANo3uZi` from base HEAD
+`6eb03ff3cf6d9edde37308400d5ba1940895afdc` plus owned build-input diff SHA-256
+`8e33045be0218f0cb57fa34867aad61af71beed6ddcac7aab013efbca0c3db66`.
+Both lanes used the reviewed SHA-256-pinned Go 1.25.0 toolchain,
+`GOWORK=off`, `CGO_ENABLED=0`, `GOAMD64=v1`, `-trimpath`,
+`-buildvcs=false`, and an empty build ID. Their three-file Linux promotion
+inventories are byte-identical: controller
+`f40ede2b6ddaa1b31202a724d5f3325729fddd5b16baab481374e2d96dfd99a0`
+at `5858767` bytes, guest agent
+`04c7456f8d94d47deba8babfdce2853fb775fc83c7859b5de910e0227c256713`
+at `4245103` bytes, and SQLite harness
+`08b979ab70922c596ea14847ff023357616ebc5c92daee50ecab84ffbcfa3cc5`
+at `11895893` bytes. ELF/build metadata, versions, harness self-tests, and the
+package/engine boundary passed. The outputs remain unpromoted `/tmp` evidence.
 
 The offline checkpoint-observation decision adds no timeout, retry, recovery,
 or execution authority. A future freshly sealed Gate 3 boot console can carry

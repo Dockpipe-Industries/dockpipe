@@ -4788,6 +4788,74 @@ at `11895893` bytes. Embedded build metadata, binary versions, and the harness
 contract self-tests passed. The review root is unpromoted; it supplied no live
 input and authorized no preparation, VM, Gate 2, Gate 3, or cleanup action.
 
+#### Linux VM Gate 2 cloud-final timeout and safe receipt correction (2026-08-09)
+
+Recovered executor-v10 run `g2r-aaaf79e59edac6de`, cohort
+`g2c-9546f32de134237b`, against immutable promotion
+`vmp-2026080958440ef8` and source
+`58440ef8466568b7cce1f1df0a137148a1bcb7e2` began once at
+`2026-08-09T22:30:07Z`. Cloud-final began at `22:33:37Z`, the repaired journal
+ended at `22:33:43Z`, and `stage=modules-final` persisted at `22:33:44Z`.
+The controller exited at `22:34:16.630Z`, only 32.630 seconds after the last
+durable guest milestone, after the fixed 240-second `verify-guest` deadline
+expired while reading the first framed bootstrap. There was no guest failure,
+final-module completion, agent start, bootstrap, or verification result. The
+forensic result SHA-256 is
+`2a6789cde2f530165821bb61afd5baf0b28b5891b98e6cb35477a45209a20f71`;
+the successful replay derivative SHA-256 is
+`aa6afb9688d214655aecfa18fa92318d0317e3b91c9c05072776aca5f70c4935`.
+The run and all replay authority are consumed; every preserved root remains
+untouched.
+
+VM package 1.3.2 seals executor-v11 with a 300-second verification policy.
+The last observed legitimate milestone was about 217 seconds after controller
+start, so preserving the existing 60-second signed-verification allowance
+requires at least 277 seconds; 300 seconds is the smallest closed whole-minute
+policy. Clone, launch, shutdown, complete preservation, no-retry, no-fallback,
+and separate-cleanup rules remain unchanged. Executor-v10 is retained only for
+exact separately authorized cleanup, avoiding reinterpretation of the consumed
+contract.
+
+The v11 plan also binds owner-only `verification-failure.json`. On timeout the
+controller exclusively creates and fsyncs schema
+`dockpipe.vm.guest-verification-failure.v1` before preservation. Its stable
+fields are limited to operation, timeout reason and policy, bootstrap-verified
+state, and completed public capability names. It contains no path, run/cohort
+or boot identity, nonce, frame, payload, key, timestamp, secret, configuration,
+or private material. Deterministic tests pin the 300-second policy, exact safe
+JSON, mode `0600`, exclusive creation, current v11 path binding, and v10
+cleanup-only compatibility.
+
+This was a package-owned offline correction only. No preserved evidence was
+re-read, no VM/process/socket/QMP/agent interaction occurred, and no replay,
+recovery, cleanup, promotion, preparation, Gate 2, Gate 3, network, install,
+commit, or publish action was performed.
+
+The authorized follow-on source review built the current package-conventional
+Linux inventory in two independent lanes beneath
+`/tmp/dockpipe-vm-source-review.v11.cANo3uZi`. Its exact build closure was base
+HEAD `6eb03ff3cf6d9edde37308400d5ba1940895afdc` plus owned build-input diff
+SHA-256 `8e33045be0218f0cb57fa34867aad61af71beed6ddcac7aab013efbca0c3db66`.
+Both lanes used the locally reviewed Go 1.25.0 binary SHA-256
+`b93cdfdbc72f1afc3f21498c80bf3d155a44a9b95e2d690c940511051574bc25`,
+with network resolution disabled, `GOWORK=off`, `CGO_ENABLED=0`,
+`GOAMD64=v1`, `-trimpath`, `-buildvcs=false`, and an empty build ID. The
+controller pair is byte-identical at `5858767` bytes with SHA-256
+`f40ede2b6ddaa1b31202a724d5f3325729fddd5b16baab481374e2d96dfd99a0`;
+the guest-agent pair is byte-identical at `4245103` bytes with SHA-256
+`04c7456f8d94d47deba8babfdce2853fb775fc83c7859b5de910e0227c256713`;
+and the unchanged SQLite harness pair is byte-identical at `11895893` bytes
+with SHA-256
+`08b979ab70922c596ea14847ff023357616ebc5c92daee50ecab84ffbcfa3cc5`.
+All are static Linux/amd64 ELF files with the expected Go metadata and package
+paths; controller 1.3.2, guest-agent 1.1.0, both harness contract self-tests,
+the package boundary, Go test/vet, VM harness, package test, both workflow
+validators, and isolated workflow/resolver compiles passed. Canonical owner-only
+evidence SHA-256 is
+`537fabf0e04702115e73789dfcf268576b926416e712075ff838eb52599ef90e`.
+No output was promoted or used for preparation, live execution, Gate 2, Gate 3,
+retry, replay, recovery, or cleanup.
+
 The implementation test matrix is:
 
 1. **Adapter selection:** a new normal Pipeon Codex session defaults to App Server; the explicit exec
