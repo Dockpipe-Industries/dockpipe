@@ -150,3 +150,69 @@ func TestLinuxRunnerPerformsGuestFirstSignedVerificationAndDurableEvidence(t *te
 		t.Fatal("guest fixture did not terminate")
 	}
 }
+
+func TestGuestVerificationTimeoutEvidenceIsExclusiveDurableAndNonSecret(t *testing.T) {
+	execution := executorFixture(t)
+	if err := os.MkdirAll(filepath.Dir(execution.Guest.FailureEvidence), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	progress := guestVerificationProgress{BootstrapVerified: true, CompletedCapabilities: []string{"identity/v1"}}
+	if err := persistGuestVerificationTimeout(execution.Guest, progress); err != nil {
+		t.Fatal(err)
+	}
+	evidence, err := os.ReadFile(execution.Guest.FailureEvidence)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := `{"schema":"dockpipe.vm.guest-verification-failure.v1","operation":"verify-guest","reason":"timeout","timeout_seconds":300,"bootstrap_verified":true,"completed_capabilities":["identity/v1"]}`
+	if string(evidence) != want {
+		t.Fatalf("unexpected timeout evidence: %s", evidence)
+	}
+	for _, forbidden := range []string{"run_id", "cohort_id", "boot_id", "nonce", "frame", "payload", "key", "path", "timestamp"} {
+		if bytes.Contains(evidence, []byte(forbidden)) {
+			t.Fatalf("timeout evidence disclosed forbidden field %q: %s", forbidden, evidence)
+		}
+	}
+	info, err := os.Lstat(execution.Guest.FailureEvidence)
+	if err != nil || !info.Mode().IsRegular() || info.Mode()&os.ModeSymlink != 0 || info.Mode().Perm() != 0o600 {
+		t.Fatalf("timeout evidence metadata changed: info=%v err=%v", info, err)
+	}
+	if err := persistGuestVerificationTimeout(execution.Guest, progress); err == nil {
+		t.Fatal("timeout evidence must be exclusively created")
+	}
+}
+
+func TestLinuxRunnerPersistsTimeoutEvidenceWhenBootstrapReadExpires(t *testing.T) {
+	execution := executorFixture(t)
+	if err := os.MkdirAll(filepath.Dir(execution.Guest.FailureEvidence), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	verificationClient, verificationServer := net.Pipe()
+	defer verificationServer.Close()
+	runner := &LinuxRunner{config: RunnerConfig{Dial: func(context.Context, string, string) (net.Conn, error) {
+		return verificationClient, nil
+	}}}
+	consoleReader, consoleWriter := net.Pipe()
+	consoleFile, err := os.OpenFile(execution.FirstBootObservation.EvidencePath, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
+	if err != nil {
+		t.Fatal(err)
+	}
+	runner.observation = &observationSession{policy: *execution.FirstBootObservation, conn: consoleReader, file: consoleFile, syncDir: syncDirectory}
+	go func() {
+		_, _ = consoleWriter.Write([]byte("first-boot progress fixture\n"))
+		_ = consoleWriter.Close()
+	}()
+	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
+	defer cancel()
+	if err := runner.VerifyGuest(ctx, execution.Guest); err == nil {
+		t.Fatal("expected bootstrap read timeout")
+	}
+	evidence, err := os.ReadFile(execution.Guest.FailureEvidence)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := `{"schema":"dockpipe.vm.guest-verification-failure.v1","operation":"verify-guest","reason":"timeout","timeout_seconds":300,"bootstrap_verified":false,"completed_capabilities":[]}`
+	if string(evidence) != want {
+		t.Fatalf("unexpected bootstrap timeout evidence: %s", evidence)
+	}
+}

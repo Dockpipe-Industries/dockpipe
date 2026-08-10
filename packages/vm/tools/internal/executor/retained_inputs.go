@@ -33,7 +33,7 @@ type retainedInputWriter func(string, []byte, os.FileMode) error
 func Gate3RetainedInputPaths(execution Contract) (RetainedGate3InputPaths, error) {
 	var paths RetainedGate3InputPaths
 	if err := execution.Validate(); err != nil || execution.Schema != Schema || execution.ProvisioningRoots == nil {
-		return paths, fmt.Errorf("retained Gate 3 inputs require the current executor-v10 contract")
+		return paths, fmt.Errorf("retained Gate 3 inputs require the current executor-v11 contract")
 	}
 	configRoot := filepath.Join(execution.ProvisioningRoots.Config, "instances", execution.RunID, execution.CohortID)
 	if !filepath.IsAbs(configRoot) || filepath.Clean(configRoot) != configRoot {

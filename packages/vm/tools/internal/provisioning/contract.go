@@ -66,7 +66,7 @@ type ExecutionPolicy struct {
 func RequiredExecutionPolicy() ExecutionPolicy {
 	return ExecutionPolicy{
 		CloneTimeoutSeconds: 120, LaunchTimeoutSeconds: 120,
-		GuestVerificationTimeoutSeconds: 240, ShutdownTimeoutSeconds: 120,
+		GuestVerificationTimeoutSeconds: 300, ShutdownTimeoutSeconds: 120,
 		PreserveCompleteFailure: true,
 	}
 }

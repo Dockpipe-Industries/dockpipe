@@ -1,16 +1,15 @@
 # DockPipe VM package
 
 The `vm` package owns guest-specific workflows, QEMU resolver models, and the
-VMM-neutral control protocol. DockPipe core remains generic. Version 1.3.1
+VMM-neutral control protocol. DockPipe core remains generic. Version 1.3.2
 durably retains the exact validated provisioning contract and qualification
-manifest for every fresh executor-v10 Gate 2 before identity consumption or VM
+manifest for every fresh executor-v11 Gate 2 before identity consumption or VM
 action. Gate 3 v1 planning requires those deterministic owner-only inputs.
 Version 1.3.0's public-only reconstitution path remains available for historical
 planning, but its schema-v2 plans are permanently rejected by authorization,
-execution, and result storage. Executor-v10 remains the only fresh-execution
-schema; executor-v9 remains exact-cleanup-only after its failed first Gate 3
-boot. The unchanged `windows-vm` surface remains available alongside Linux
-qualification.
+execution, and result storage. Executor-v11 remains the only fresh-execution
+schema; executor-v10 and earlier schemas remain exact-cleanup-only. The
+unchanged `windows-vm` surface remains available alongside Linux qualification.
 
 The Linux foundation has two deliberately different paths:
 
@@ -876,7 +875,7 @@ sets planning-only and historical-evidence flags and carries no live, cleanup,
 or execution authority. Planning from that document emits
 `dockpipe.vm.gate3-plan.v2`; authorization and execution reject that schema.
 
-Fresh executor-v10 Gate 2 creates these deterministic files below the resolved
+Fresh executor-v11 Gate 2 creates these deterministic files below the resolved
 VM configuration root:
 
 ```text
@@ -899,6 +898,60 @@ Planning rejects alternate paths, missing or symlinked files, mode or owner
 drift, malformed/trailing/unknown JSON, and any contract, executor, or
 qualification identity mismatch. These retained files grant no execution,
 cleanup, retry, or live authority.
+
+## Gate 2 first-boot timeout and failure receipt
+
+Recovered executor-v10 evidence showed a legitimate networkless first boot
+still advancing when the 240-second `verify-guest` deadline was nearly spent.
+The one-shot controller began at `2026-08-09T22:30:07Z`; cloud-final began at
+`22:33:37Z`, the repaired journal ended at `22:33:43Z`, and
+`stage=modules-final` persisted at `22:33:44Z`. The controller stopped at
+`22:34:16.630Z`, only 32.630 seconds after that last durable guest milestone.
+There was no guest failure, final-module completion, agent start, bootstrap, or
+signed verification result.
+
+Version 1.3.2 therefore gives executor-v11 signed guest verification 300
+seconds. The observed first-boot path reached its last durable milestone about
+217 seconds after controller start; retaining the existing 60-second signed
+verification allowance requires at least 277 seconds. Three hundred seconds is
+the smallest closed whole-minute policy that preserves that allowance. Clone,
+launch, shutdown, preservation, no-retry, no-fallback, and separate-cleanup
+rules are unchanged.
+
+Executor-v11 also binds `verification-failure.json` as a typed plan output. On
+a verification timeout, the controller exclusively creates it mode `0600`,
+fsyncs the file and parent directory, and then preserves the complete instance.
+Schema `dockpipe.vm.guest-verification-failure.v1` records only the fixed
+operation, timeout reason and policy, whether bootstrap was verified, and the
+ordered names of completed public capabilities. It records no path, run or
+cohort ID, boot ID, nonce, frame, payload, key, timestamp, or private material.
+Existing evidence fails closed; there is no overwrite, retry, signal, cleanup,
+or fallback.
+
+Executor-v10 remains loadable only for exact separately authorized cleanup, so
+the consumed preserved run is not reinterpreted under the new policy. This
+source-only correction performed no promotion, preparation, live Gate 2, Gate
+3, recovery, replay, or cleanup action.
+
+The executor-v11 correction was then rebuilt in two independent source lanes
+under `/tmp/dockpipe-vm-source-review.v11.cANo3uZi`. The build closure was base
+HEAD `6eb03ff3cf6d9edde37308400d5ba1940895afdc` plus owned build-input diff
+SHA-256 `8e33045be0218f0cb57fa34867aad61af71beed6ddcac7aab013efbca0c3db66`.
+Both lanes used the reviewed Go 1.25.0 binary with SHA-256
+`b93cdfdbc72f1afc3f21498c80bf3d155a44a9b95e2d690c940511051574bc25`,
+`GOWORK=off`, `CGO_ENABLED=0`, `GOAMD64=v1`, `-trimpath`,
+`-buildvcs=false`, and an empty build ID. The package-conventional three-file
+Linux inventory is byte-identical: controller SHA-256
+`f40ede2b6ddaa1b31202a724d5f3325729fddd5b16baab481374e2d96dfd99a0`
+at `5858767` bytes, guest-agent SHA-256
+`04c7456f8d94d47deba8babfdce2853fb775fc83c7859b5de910e0227c256713`
+at `4245103` bytes, and SQLite harness SHA-256
+`08b979ab70922c596ea14847ff023357616ebc5c92daee50ecab84ffbcfa3cc5`
+at `11895893` bytes. Static ELF identity, embedded metadata, reported versions,
+harness self-tests, and the package/engine boundary passed. Owner-only source
+evidence SHA-256 is
+`537fabf0e04702115e73789dfcf268576b926416e712075ff838eb52599ef90e`.
+The review outputs remain unpromoted `/tmp` evidence and grant no live action.
 
 Run package tests with:
 

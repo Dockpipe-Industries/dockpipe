@@ -46,6 +46,22 @@ type LinuxRunner struct {
 	observation *observationSession
 }
 
+const guestVerificationFailureSchema = "dockpipe.vm.guest-verification-failure.v1"
+
+type guestVerificationProgress struct {
+	BootstrapVerified     bool
+	CompletedCapabilities []string
+}
+
+type guestVerificationFailureEvidence struct {
+	Schema                string   `json:"schema"`
+	Operation             string   `json:"operation"`
+	Reason                string   `json:"reason"`
+	TimeoutSeconds        int      `json:"timeout_seconds"`
+	BootstrapVerified     bool     `json:"bootstrap_verified"`
+	CompletedCapabilities []string `json:"completed_capabilities"`
+}
+
 func NewLinuxRunner(config RunnerConfig) (*LinuxRunner, error) {
 	if config.Now == nil {
 		config.Now = time.Now
@@ -259,10 +275,16 @@ func (r *LinuxRunner) LaunchQEMU(ctx context.Context, request LaunchRequest) (re
 }
 
 func (r *LinuxRunner) VerifyGuest(ctx context.Context, request GuestVerificationRequest) (result error) {
+	progress := guestVerificationProgress{CompletedCapabilities: []string{}}
 	if err := r.startObservationCapture(); err != nil {
 		return errors.Join(err, r.finishObservation())
 	}
-	defer func() { result = errors.Join(result, r.finishObservation()) }()
+	defer func() {
+		if isGuestVerificationTimeout(result) {
+			result = errors.Join(result, persistGuestVerificationTimeout(request, progress))
+		}
+		result = errors.Join(result, r.finishObservation())
+	}()
 	conn, err := r.config.Dial(ctx, "unix", request.Socket)
 	if err != nil {
 		return err
@@ -289,6 +311,7 @@ func (r *LinuxRunner) VerifyGuest(ctx context.Context, request GuestVerification
 	if err := durableExclusive(request.Bootstrap.ExclusiveEvidencePath, bootstrapEvidence, 0o600); err != nil {
 		return err
 	}
+	progress.BootstrapVerified = true
 	results := make([]json.RawMessage, 0, len(request.Capabilities))
 	nonces := map[string]bool{request.Bootstrap.BootstrapNonce: true}
 	for i, capability := range request.Capabilities {
@@ -327,6 +350,7 @@ func (r *LinuxRunner) VerifyGuest(ctx context.Context, request GuestVerification
 			return err
 		}
 		results = append(results, responseJSON)
+		progress.CompletedCapabilities = append(progress.CompletedCapabilities, capability)
 	}
 	evidence, _ := json.Marshal(struct {
 		Schema  string            `json:"schema"`
@@ -334,6 +358,32 @@ func (r *LinuxRunner) VerifyGuest(ctx context.Context, request GuestVerification
 		Results []json.RawMessage `json:"results"`
 	}{"dockpipe.vm.verification-evidence.v1", bootstrap.Context.BootID, results})
 	return durableExclusive(request.Evidence, evidence, 0o600)
+}
+
+func isGuestVerificationTimeout(err error) bool {
+	if err == nil {
+		return false
+	}
+	if errors.Is(err, context.DeadlineExceeded) {
+		return true
+	}
+	var timeout net.Error
+	return errors.As(err, &timeout) && timeout.Timeout()
+}
+
+func persistGuestVerificationTimeout(request GuestVerificationRequest, progress guestVerificationProgress) error {
+	evidence, err := json.Marshal(guestVerificationFailureEvidence{
+		Schema: guestVerificationFailureSchema, Operation: "verify-guest", Reason: "timeout",
+		TimeoutSeconds: request.TimeoutSeconds, BootstrapVerified: progress.BootstrapVerified,
+		CompletedCapabilities: append([]string{}, progress.CompletedCapabilities...),
+	})
+	if err != nil {
+		return fmt.Errorf("encode guest-verification timeout evidence: %w", err)
+	}
+	if err := durableExclusive(request.FailureEvidence, evidence, 0o600); err != nil {
+		return fmt.Errorf("persist guest-verification timeout evidence: %w", err)
+	}
+	return nil
 }
 
 func (r *LinuxRunner) ControlledShutdown(ctx context.Context, request ShutdownRequest) error {
