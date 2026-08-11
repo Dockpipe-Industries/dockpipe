@@ -71,12 +71,19 @@ func setWindowsPrivateDirectory(string) error {
 }
 
 func qualifyLinuxFixtureRoot(root string) (*linuxQualification, string, error) {
+	return qualifyLinuxFixtureRootAtReviewedWholeDeviceMount(root, "")
+}
+
+func qualifyLinuxFixtureRootAtReviewedWholeDeviceMount(root, reviewedMountPoint string) (*linuxQualification, string, error) {
 	if runtime.GOOS != "linux" || runtime.GOARCH != "amd64" {
 		return nil, "", fmt.Errorf("host is %s/%s, want linux/amd64", runtime.GOOS, runtime.GOARCH)
 	}
 	root = filepath.Clean(root)
 	if !filepath.IsAbs(root) {
 		return nil, "", fmt.Errorf("fixture root is not absolute: %q", root)
+	}
+	if err := requireReviewedWholeDeviceMountPoint(root, reviewedMountPoint); err != nil {
+		return nil, "", err
 	}
 	if err := requireNoSymlinkComponents(root); err != nil {
 		return nil, "", err
@@ -103,10 +110,7 @@ func qualifyLinuxFixtureRoot(root string) (*linuxQualification, string, error) {
 	if err != nil {
 		return nil, "", err
 	}
-	if mount.Major != rootFact.DeviceMajor || mount.Minor != rootFact.DeviceMinor {
-		return nil, "", fmt.Errorf("mountinfo device %d:%d differs from statx %d:%d", mount.Major, mount.Minor, rootFact.DeviceMajor, rootFact.DeviceMinor)
-	}
-	if err := requireQualifiedExt4Mount(root, rootFact, mount, mounts); err != nil {
+	if err := requireQualifiedExt4MountAtReviewedMount(root, reviewedMountPoint, rootFact, mount, mounts); err != nil {
 		return nil, "", err
 	}
 	var uts unix.Utsname
@@ -418,17 +422,37 @@ func exactMountByID(mounts []linuxMountInfo, id uint64) (linuxMountInfo, error) 
 }
 
 func requireQualifiedExt4Mount(root string, rootFact linuxPathFact, mount linuxMountInfo, mounts []linuxMountInfo) error {
-	return requireQualifiedExt4MountWithProbes(root, rootFact, mount, mounts, func(source string) (os.FileMode, error) {
+	return requireQualifiedExt4MountAtReviewedMount(root, "", rootFact, mount, mounts)
+}
+
+func requireQualifiedExt4MountAtReviewedMount(root, reviewedMountPoint string, rootFact linuxPathFact, mount linuxMountInfo, mounts []linuxMountInfo) error {
+	return requireQualifiedExt4MountAtReviewedMountWithProbes(root, reviewedMountPoint, rootFact, mount, mounts, func(source string) (os.FileMode, error) {
 		sourceInfo, err := os.Stat(source)
 		return modeOrZero(sourceInfo), err
 	}, linuxBlockRemovable)
 }
 
 func requireQualifiedExt4MountWithProbes(root string, rootFact linuxPathFact, mount linuxMountInfo, mounts []linuxMountInfo, statSource func(string) (os.FileMode, error), blockRemovable func(string) (bool, error)) error {
+	return requireQualifiedExt4MountAtReviewedMountWithProbes(root, "", rootFact, mount, mounts, statSource, blockRemovable)
+}
+
+func requireQualifiedExt4MountAtReviewedMountWithProbes(root, reviewedMountPoint string, rootFact linuxPathFact, mount linuxMountInfo, mounts []linuxMountInfo, statSource func(string) (os.FileMode, error), blockRemovable func(string) (bool, error)) error {
+	if err := requireReviewedWholeDeviceMountPoint(root, reviewedMountPoint); err != nil {
+		return err
+	}
 	if rootFact.FSMagic != linuxExt4Magic || mount.FileSystem != "ext4" {
 		return fmt.Errorf("fixture filesystem magic/type = %#x/%q, want %#x/ext4", rootFact.FSMagic, mount.FileSystem, linuxExt4Magic)
 	}
-	if mount.Root != "/" || (mount.MountPoint != "/" && mount.MountPoint != root) {
+	if mount.ID != rootFact.MountID || mount.Major != rootFact.DeviceMajor || mount.Minor != rootFact.DeviceMinor {
+		return fmt.Errorf("fixture mount identity = mount=%d device=%d:%d, want mount=%d device=%d:%d", mount.ID, mount.Major, mount.Minor, rootFact.MountID, rootFact.DeviceMajor, rootFact.DeviceMinor)
+	}
+	if mount.Root != "/" {
+		return fmt.Errorf("fixture mount root = %q, want whole-device root /", mount.Root)
+	}
+	if reviewedMountPoint != "" && mount.MountPoint != reviewedMountPoint {
+		return fmt.Errorf("fixture mount point = %q, want exact reviewed whole-device mount %q", mount.MountPoint, reviewedMountPoint)
+	}
+	if reviewedMountPoint == "" && mount.MountPoint != "/" && mount.MountPoint != root {
 		return fmt.Errorf("fixture mount root/point = %q/%q, want whole-device root / mounted at / or fixture root %q", mount.Root, mount.MountPoint, root)
 	}
 	if !optionContains(mount.MountOptions, "rw") || !optionContains(mount.SuperOptions, "rw") || optionContains(mount.MountOptions, "ro") {
@@ -453,6 +477,17 @@ func requireQualifiedExt4MountWithProbes(root string, rootFact linuxPathFact, mo
 		if (isPathWithin(point, root) && point != "/") || isPathWithin(root, point) {
 			return fmt.Errorf("fixture path crosses or contains nested mount %q: %q", point, candidate.Raw)
 		}
+	}
+	return nil
+}
+
+func requireReviewedWholeDeviceMountPoint(root, reviewedMountPoint string) error {
+	if reviewedMountPoint == "" {
+		return nil
+	}
+	cleanMountPoint := filepath.Clean(reviewedMountPoint)
+	if !filepath.IsAbs(reviewedMountPoint) || cleanMountPoint != reviewedMountPoint || cleanMountPoint == "/" || cleanMountPoint == root || !isPathWithin(cleanMountPoint, root) {
+		return fmt.Errorf("fixture root %q is not strictly beneath exact reviewed whole-device mount %q", root, reviewedMountPoint)
 	}
 	return nil
 }

@@ -184,7 +184,7 @@ func runVMCheckpoint(command vmHarnessCommand, output io.Writer) error {
 		}
 	}
 	sqliteRoot := filepath.Join(command.Root, "sqlite")
-	qualification, _, err := qualifyLinuxFixtureRoot(sqliteRoot)
+	qualification, _, err := qualifyLinuxFixtureRootAtReviewedWholeDeviceMount(sqliteRoot, vmQualificationRoot)
 	if err != nil {
 		return fmt.Errorf("qualify VM SQLite root: %w", err)
 	}
@@ -315,7 +315,7 @@ func runVMRecovery(command vmHarnessCommand, output io.Writer) error {
 		return fmt.Errorf("VM recovery root is absent or invalid")
 	}
 	sqliteRoot := filepath.Join(command.Root, "sqlite")
-	qualification, _, err := qualifyLinuxFixtureRoot(sqliteRoot)
+	qualification, _, err := qualifyLinuxFixtureRootAtReviewedWholeDeviceMount(sqliteRoot, vmQualificationRoot)
 	if err != nil {
 		return err
 	}

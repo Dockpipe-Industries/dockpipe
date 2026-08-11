@@ -20,8 +20,111 @@ func TestRequireQualifiedExt4MountAcceptsDirectWholeDeviceMounts(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			mount, mounts := qualifiedExt4MountFixture(test.root, test.mountPoint)
-			if err := requireQualifiedExt4MountWithProbes(test.root, linuxPathFact{FSMagic: linuxExt4Magic}, mount, mounts, qualifiedBlockDevice, fixedRemovable(false, nil)); err != nil {
+			if err := requireQualifiedExt4MountWithProbes(test.root, qualifiedExt4RootFact(mount), mount, mounts, qualifiedBlockDevice, fixedRemovable(false, nil)); err != nil {
 				t.Fatalf("direct whole-device ext4 mount rejected: %v", err)
+			}
+		})
+	}
+}
+
+func TestRequireQualifiedExt4MountAcceptsNestedFixtureOnExactReviewedMount(t *testing.T) {
+	const (
+		reviewedMountPoint = "/var/lib/dockpipe-qualification"
+		root               = reviewedMountPoint + "/cohorts/g2c/example/attempt-1/sqlite"
+	)
+	mount, mounts := qualifiedExt4MountFixture(root, reviewedMountPoint)
+	if err := requireQualifiedExt4MountAtReviewedMountWithProbes(root, reviewedMountPoint, qualifiedExt4RootFact(mount), mount, mounts, qualifiedBlockDevice, fixedRemovable(false, nil)); err != nil {
+		t.Fatalf("nested fixture on exact reviewed whole-device mount rejected: %v", err)
+	}
+}
+
+func TestRequireQualifiedExt4MountRejectsInvalidNestedFixtureMounts(t *testing.T) {
+	const (
+		reviewedMountPoint = "/var/lib/dockpipe-qualification"
+		root               = reviewedMountPoint + "/cohorts/g2c/example/attempt-1/sqlite"
+	)
+
+	for _, test := range []struct {
+		name        string
+		fixtureRoot string
+		mutate      func(*linuxPathFact, *linuxMountInfo, *[]linuxMountInfo)
+		want        string
+	}{
+		{
+			name:        "fixture outside reviewed mount",
+			fixtureRoot: "/var/lib/other-qualification/cohorts/g2c/example/attempt-1/sqlite",
+			want:        "not strictly beneath exact reviewed whole-device mount",
+		},
+		{
+			name: "arbitrary ancestor mount",
+			mutate: func(_ *linuxPathFact, mount *linuxMountInfo, _ *[]linuxMountInfo) {
+				mount.MountPoint = "/var/lib"
+			},
+			want: "want exact reviewed whole-device mount",
+		},
+		{
+			name: "sibling mount",
+			mutate: func(_ *linuxPathFact, mount *linuxMountInfo, _ *[]linuxMountInfo) {
+				mount.MountPoint = "/var/lib/dockpipe-qualification-sibling"
+			},
+			want: "want exact reviewed whole-device mount",
+		},
+		{
+			name: "bind mount",
+			mutate: func(_ *linuxPathFact, mount *linuxMountInfo, _ *[]linuxMountInfo) {
+				mount.Root = "/qualification"
+			},
+			want: "want whole-device root /",
+		},
+		{
+			name: "nested mount",
+			mutate: func(_ *linuxPathFact, _ *linuxMountInfo, mounts *[]linuxMountInfo) {
+				*mounts = append(*mounts, linuxMountInfo{ID: 3, MountPoint: root + "/nested", Raw: "nested mount"})
+			},
+			want: "crosses or contains nested mount",
+		},
+		{
+			name: "crossing mount",
+			mutate: func(_ *linuxPathFact, _ *linuxMountInfo, mounts *[]linuxMountInfo) {
+				*mounts = append(*mounts, linuxMountInfo{ID: 3, MountPoint: reviewedMountPoint + "/cohorts", Raw: "crossing mount"})
+			},
+			want: "crosses or contains nested mount",
+		},
+		{
+			name: "wrong device identity",
+			mutate: func(rootFact *linuxPathFact, _ *linuxMountInfo, _ *[]linuxMountInfo) {
+				rootFact.DeviceMinor++
+			},
+			want: "fixture mount identity",
+		},
+		{
+			name: "wrong filesystem type",
+			mutate: func(_ *linuxPathFact, mount *linuxMountInfo, _ *[]linuxMountInfo) {
+				mount.FileSystem = "xfs"
+			},
+			want: "want 0xef53/ext4",
+		},
+		{
+			name: "read-only mount",
+			mutate: func(_ *linuxPathFact, mount *linuxMountInfo, _ *[]linuxMountInfo) {
+				mount.MountOptions = "ro,relatime"
+			},
+			want: "not unambiguously read-write",
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			fixtureRoot := test.fixtureRoot
+			if fixtureRoot == "" {
+				fixtureRoot = root
+			}
+			mount, mounts := qualifiedExt4MountFixture(fixtureRoot, reviewedMountPoint)
+			rootFact := qualifiedExt4RootFact(mount)
+			if test.mutate != nil {
+				test.mutate(&rootFact, &mount, &mounts)
+			}
+			err := requireQualifiedExt4MountAtReviewedMountWithProbes(fixtureRoot, reviewedMountPoint, rootFact, mount, mounts, qualifiedBlockDevice, fixedRemovable(false, nil))
+			if err == nil || !strings.Contains(err.Error(), test.want) {
+				t.Fatalf("error = %v, want substring %q", err, test.want)
 			}
 		})
 	}
@@ -120,8 +223,8 @@ func TestRequireQualifiedExt4MountRejectsUnqualifiedMounts(t *testing.T) {
 		},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			rootFact := linuxPathFact{FSMagic: linuxExt4Magic}
 			mount, mounts := qualifiedExt4MountFixture(root, root)
+			rootFact := qualifiedExt4RootFact(mount)
 			if test.mutate != nil {
 				test.mutate(&rootFact, &mount, &mounts)
 			}
@@ -139,6 +242,10 @@ func TestRequireQualifiedExt4MountRejectsUnqualifiedMounts(t *testing.T) {
 			}
 		})
 	}
+}
+
+func qualifiedExt4RootFact(mount linuxMountInfo) linuxPathFact {
+	return linuxPathFact{FSMagic: linuxExt4Magic, MountID: mount.ID, DeviceMajor: mount.Major, DeviceMinor: mount.Minor}
 }
 
 func qualifiedExt4MountFixture(root, mountPoint string) (linuxMountInfo, []linuxMountInfo) {
