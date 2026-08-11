@@ -30,7 +30,7 @@ func TestNormalizeWritesFindingsAndSummary(t *testing.T) {
 
 	res, err := Normalize(tmp, map[string]string{
 		"GITHUB_WORKFLOW":   "ci",
-		"GITHUB_REPOSITORY": "dockpipe/dockpipe",
+		"GITHUB_REPOSITORY": "Dockpipe-Industries/dockpipe",
 	})
 	if err != nil {
 		t.Fatalf("Normalize() error = %v", err)
@@ -64,7 +64,7 @@ func TestNormalizeWritesFindingsAndSummary(t *testing.T) {
 	if doc.Provenance.WorkflowName != "ci" {
 		t.Fatalf("workflow_name = %q, want ci", doc.Provenance.WorkflowName)
 	}
-	if doc.Provenance.Repository != "dockpipe/dockpipe" {
+	if doc.Provenance.Repository != "Dockpipe-Industries/dockpipe" {
 		t.Fatalf("repository = %q", doc.Provenance.Repository)
 	}
 	if doc.Provenance.Tools.Gosec != "fixture-gosec" || doc.Provenance.Tools.Govulncheck != "fixture-govuln" {

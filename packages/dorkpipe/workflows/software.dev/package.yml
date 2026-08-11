@@ -8,7 +8,7 @@ description: |
   planner proposal inside fixed DorkPipe authority, approval, apply, publish, and sync boundaries.
 author: DockPipe
 license: Apache-2.0
-repository: https://github.com/dockpipe/dockpipe
+repository: https://github.com/Dockpipe-Industries/dockpipe
 tags: [workflow, dorkpipe, software-development, orchestration]
 depends: [dorkpipe]
 platforms: [windows, deb]

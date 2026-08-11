@@ -11,7 +11,7 @@ first thing you learn.
 
 Most users should start with the packaged install flow, not a source checkout:
 
-1. Install DockPipe from [GitHub Releases](https://github.com/jamie-steele/dockpipe/releases) using [docs/install.md](docs/install.md).
+1. Install DockPipe from [GitHub Releases](https://github.com/Dockpipe-Industries/dockpipe/releases) using [docs/install.md](docs/install.md).
 2. Run `dockpipe -- pwd`.
 3. Read [docs/onboarding.md](docs/onboarding.md) for the first workflow path.
 

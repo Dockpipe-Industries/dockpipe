@@ -9,7 +9,7 @@ description: |
   terraform-pipeline.sh. Compose domain packs (e.g. cloud.storage.r2) on top; see resolver README.
 author: DockPipe
 license: Apache-2.0
-repository: https://github.com/dockpipe/dockpipe
+repository: https://github.com/Dockpipe-Industries/dockpipe
 tags: [terraform, iac, workflow]
 includes_resolvers:
   - terraform-core

@@ -6,7 +6,7 @@
   "publisher": "dorkpipe",
   "repository": {
     "type": "git",
-    "url": "https://github.com/jamie-steele/dockpipe.git"
+    "url": "https://github.com/Dockpipe-Industries/dockpipe.git"
   },
   "icon": "images/dorkpipe-icon.png",
   "engines": {

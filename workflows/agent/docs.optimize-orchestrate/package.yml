@@ -9,7 +9,7 @@ description: |
   working tree without committing.
 author: DockPipe
 license: Apache-2.0
-repository: https://github.com/dockpipe/dockpipe
+repository: https://github.com/Dockpipe-Industries/dockpipe
 tags: [workflow, docs, orchestration, dorkpipe, ollama, optimizer]
 depends: [dorkpipe]
 platforms: [windows, deb]

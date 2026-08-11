@@ -1,14 +1,14 @@
 #!/usr/bin/env sh
 # Install dockpipe on Linux from GitHub Releases (deb, apk, rpm, or Arch package).
 #
-#   curl -fsSL https://raw.githubusercontent.com/jamie-steele/dockpipe/master/release/packaging/linux/install.sh | sh
+#   curl -fsSL https://raw.githubusercontent.com/Dockpipe-Industries/dockpipe/master/release/packaging/linux/install.sh | sh
 #
 # Optional env:
 #   DOCKPIPE_VERSION=1.2.3   Pin tag (default: latest release)
 #   DOCKPIPE_REPO=owner/repo  Fork releases
 set -eu
 
-REPO="${DOCKPIPE_REPO:-jamie-steele/dockpipe}"
+REPO="${DOCKPIPE_REPO:-Dockpipe-Industries/dockpipe}"
 VERSION="${DOCKPIPE_VERSION:-}"
 TMP="${TMPDIR:-/tmp}/dockpipe-install-$$"
 mkdir -p "$TMP"

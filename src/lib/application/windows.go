@@ -230,7 +230,7 @@ func runWSLBootstrapElevated(distroname string) error {
 // Minimal deps: Alpine gets a tiny apk set; Debian/Ubuntu/apt a small apt-get line; static dockpipe binary works on musl.
 func defaultWSLInstallDockpipeScript() string {
 	return `set -eu
-REPO="${DOCKPIPE_GITHUB_REPO:-jamie-steele/dockpipe}"
+REPO="${DOCKPIPE_GITHUB_REPO:-Dockpipe-Industries/dockpipe}"
 BIN_DIR="${HOME}/.local/bin"
 mkdir -p "$BIN_DIR"
 if [ -f /etc/alpine-release ]; then

@@ -12,7 +12,7 @@ This directory contains the Homebrew formula used by a tap repo.
 
    ```bash
    VERSION=0.6.0
-   curl -L "https://github.com/jamie-steele/dockpipe/archive/refs/tags/v${VERSION}.tar.gz" -o "/tmp/dockpipe-${VERSION}.tar.gz"
+   curl -L "https://github.com/Dockpipe-Industries/dockpipe/archive/refs/tags/v${VERSION}.tar.gz" -o "/tmp/dockpipe-${VERSION}.tar.gz"
    shasum -a 256 "/tmp/dockpipe-${VERSION}.tar.gz"
    ```
 
@@ -26,7 +26,7 @@ This directory contains the Homebrew formula used by a tap repo.
 4. Verify install:
 
    ```bash
-   brew tap jamie-steele/dockpipe
+   brew tap Dockpipe-Industries/dockpipe
    brew install dockpipe
    dockpipe --help
    ```

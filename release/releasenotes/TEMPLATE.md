@@ -20,7 +20,7 @@ The GitHub Release workflow uses **`release/releasenotes/${VERSION}.md`** as the
 
 ## Installation
 
-Full reference: **[docs/install.md](https://github.com/jamie-steele/dockpipe/blob/vX.Y.Z/docs/install.md)**. Below: **Linux**, **macOS**, **Windows** for this tag (**vX.Y.Z**).
+Full reference: **[docs/install.md](https://github.com/Dockpipe-Industries/dockpipe/blob/vX.Y.Z/docs/install.md)**. Below: **Linux**, **macOS**, **Windows** for this tag (**vX.Y.Z**).
 
 ### Linux
 
@@ -35,14 +35,14 @@ Full reference: **[docs/install.md](https://github.com/jamie-steele/dockpipe/blo
 **x86_64:**
 
 ```bash
-wget https://github.com/jamie-steele/dockpipe/releases/download/vX.Y.Z/dockpipe_X.Y.Z_amd64.deb
+wget https://github.com/Dockpipe-Industries/dockpipe/releases/download/vX.Y.Z/dockpipe_X.Y.Z_amd64.deb
 sudo dpkg -i dockpipe_X.Y.Z_amd64.deb
 ```
 
 **aarch64 (ARM64):**
 
 ```bash
-wget https://github.com/jamie-steele/dockpipe/releases/download/vX.Y.Z/dockpipe_X.Y.Z_arm64.deb
+wget https://github.com/Dockpipe-Industries/dockpipe/releases/download/vX.Y.Z/dockpipe_X.Y.Z_arm64.deb
 sudo dpkg -i dockpipe_X.Y.Z_arm64.deb
 ```
 
@@ -55,10 +55,10 @@ sudo apt-get install -f
 **Option A2 — install script (Debian/Ubuntu, Alpine, Fedora, Arch, or tarball fallback)**
 
 ```bash
-DOCKPIPE_VERSION=X.Y.Z curl -fsSL https://raw.githubusercontent.com/jamie-steele/dockpipe/master/release/packaging/linux/install.sh | sh
+DOCKPIPE_VERSION=X.Y.Z curl -fsSL https://raw.githubusercontent.com/Dockpipe-Industries/dockpipe/master/release/packaging/linux/install.sh | sh
 ```
 
-**Option A3 — Alpine / Fedora / Arch packages** (same tag on [Releases](https://github.com/jamie-steele/dockpipe/releases))
+**Option A3 — Alpine / Fedora / Arch packages** (same tag on [Releases](https://github.com/Dockpipe-Industries/dockpipe/releases))
 
 - **Alpine (x86_64 / aarch64):** `dockpipe_X.Y.Z_linux_amd64.apk` / `…_arm64.apk` — `sudo apk add --allow-untrusted ./dockpipe_….apk`
 - **Fedora / RHEL-compatible:** `dockpipe_X.Y.Z_linux_amd64.rpm` / `…_arm64.rpm` — `sudo dnf install ./dockpipe_….rpm`
@@ -68,14 +68,14 @@ DOCKPIPE_VERSION=X.Y.Z curl -fsSL https://raw.githubusercontent.com/jamie-steele
 
 ```bash
 # amd64
-wget https://github.com/jamie-steele/dockpipe/releases/download/vX.Y.Z/dockpipe_X.Y.Z_linux_amd64.tar.gz
+wget https://github.com/Dockpipe-Industries/dockpipe/releases/download/vX.Y.Z/dockpipe_X.Y.Z_linux_amd64.tar.gz
 tar -xzf dockpipe_X.Y.Z_linux_amd64.tar.gz
 sudo install -m 0755 dockpipe /usr/local/bin/dockpipe
 ```
 
 ```bash
 # arm64
-wget https://github.com/jamie-steele/dockpipe/releases/download/vX.Y.Z/dockpipe_X.Y.Z_linux_arm64.tar.gz
+wget https://github.com/Dockpipe-Industries/dockpipe/releases/download/vX.Y.Z/dockpipe_X.Y.Z_linux_arm64.tar.gz
 tar -xzf dockpipe_X.Y.Z_linux_arm64.tar.gz
 sudo install -m 0755 dockpipe /usr/local/bin/dockpipe
 ```
@@ -85,7 +85,7 @@ sudo install -m 0755 dockpipe /usr/local/bin/dockpipe
 Requires **Go** (see repo **`go.mod`**). From a clone at **`vX.Y.Z`**:
 
 ```bash
-git clone https://github.com/jamie-steele/dockpipe.git
+git clone https://github.com/Dockpipe-Industries/dockpipe.git
 cd dockpipe && git checkout vX.Y.Z
 make
 export PATH="$PATH:$(pwd)/bin"
@@ -104,7 +104,7 @@ export PATH="$PATH:$(pwd)/bin"
 **Option A — Homebrew** (after the tap is published)
 
 ```bash
-brew tap jamie-steele/dockpipe
+brew tap Dockpipe-Industries/dockpipe
 brew install dockpipe
 ```
 
@@ -113,7 +113,7 @@ brew install dockpipe
 **Apple Silicon (arm64):**
 
 ```bash
-curl -LO https://github.com/jamie-steele/dockpipe/releases/download/vX.Y.Z/dockpipe_X.Y.Z_darwin_arm64.tar.gz
+curl -LO https://github.com/Dockpipe-Industries/dockpipe/releases/download/vX.Y.Z/dockpipe_X.Y.Z_darwin_arm64.tar.gz
 tar -xzf dockpipe_X.Y.Z_darwin_arm64.tar.gz
 sudo install -m 0755 dockpipe /usr/local/bin/dockpipe
 ```
@@ -121,7 +121,7 @@ sudo install -m 0755 dockpipe /usr/local/bin/dockpipe
 **Intel (amd64):**
 
 ```bash
-curl -LO https://github.com/jamie-steele/dockpipe/releases/download/vX.Y.Z/dockpipe_X.Y.Z_darwin_amd64.tar.gz
+curl -LO https://github.com/Dockpipe-Industries/dockpipe/releases/download/vX.Y.Z/dockpipe_X.Y.Z_darwin_amd64.tar.gz
 tar -xzf dockpipe_X.Y.Z_darwin_amd64.tar.gz
 sudo install -m 0755 dockpipe /usr/local/bin/dockpipe
 ```
@@ -129,7 +129,7 @@ sudo install -m 0755 dockpipe /usr/local/bin/dockpipe
 **Option C — build from source**
 
 ```bash
-git clone https://github.com/jamie-steele/dockpipe.git
+git clone https://github.com/Dockpipe-Industries/dockpipe.git
 cd dockpipe && git checkout vX.Y.Z
 make
 export PATH="$PATH:$(pwd)/bin"
@@ -149,7 +149,7 @@ export PATH="$PATH:$(pwd)/bin"
 
 ```powershell
 $i = "$env:TEMP\dockpipe-install.ps1"
-Invoke-WebRequest -Uri "https://raw.githubusercontent.com/jamie-steele/dockpipe/master/release/packaging/windows/install.ps1" -OutFile $i -UseBasicParsing
+Invoke-WebRequest -Uri "https://raw.githubusercontent.com/Dockpipe-Industries/dockpipe/master/release/packaging/windows/install.ps1" -OutFile $i -UseBasicParsing
 & $i -Version X.Y.Z
 ```
 
@@ -164,12 +164,12 @@ dockpipe --version
 dockpipe -- echo ok
 ```
 
-**Optional — WSL bridge** (`DOCKPIPE_USE_WSL_BRIDGE=1`): install **`dockpipe`** in WSL, then **`dockpipe windows setup`**. See **[docs/install.md](https://github.com/jamie-steele/dockpipe/blob/vX.Y.Z/docs/install.md)** (Windows). Optional advanced **git bundle** handoff between WSL and Windows: **[docs/runtime/wsl-windows.md](https://github.com/jamie-steele/dockpipe/blob/vX.Y.Z/docs/runtime/wsl-windows.md)**.
+**Optional — WSL bridge** (`DOCKPIPE_USE_WSL_BRIDGE=1`): install **`dockpipe`** in WSL, then **`dockpipe windows setup`**. See **[docs/install.md](https://github.com/Dockpipe-Industries/dockpipe/blob/vX.Y.Z/docs/install.md)** (Windows). Optional advanced **git bundle** handoff between WSL and Windows: **[docs/runtime/wsl-windows.md](https://github.com/Dockpipe-Industries/dockpipe/blob/vX.Y.Z/docs/runtime/wsl-windows.md)**.
 
 **Build from source on Windows**
 
 ```powershell
-git clone https://github.com/jamie-steele/dockpipe.git
+git clone https://github.com/Dockpipe-Industries/dockpipe.git
 cd dockpipe
 git checkout vX.Y.Z
 $env:GOOS = "windows"; $env:GOARCH = "amd64"; $env:CGO_ENABLED = "0"
@@ -184,4 +184,4 @@ go build -trimpath -ldflags "-s -w -X main.Version=X.Y.Z" -o dockpipe.exe ./src/
 
 ---
 
-Feedback: [CONTRIBUTING.md](https://github.com/jamie-steele/dockpipe/blob/master/CONTRIBUTING.md)
+Feedback: [CONTRIBUTING.md](https://github.com/Dockpipe-Industries/dockpipe/blob/master/CONTRIBUTING.md)
