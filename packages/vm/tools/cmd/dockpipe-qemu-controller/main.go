@@ -17,7 +17,7 @@ import (
 	"dockpipe.vm/tools/internal/xdg"
 )
 
-const version = "1.3.2"
+const version = "1.3.3"
 
 func main() {
 	manifestPath := flag.String("validate-manifest", "", "validate an offline qualification manifest")
@@ -129,8 +129,8 @@ func main() {
 		if *gate3PlanPath == "" || *gate3AuthorizationPath == "" || *gate3TokenPath == "" {
 			fatal("live Gate 3 requires the exact plan, authorization, and token")
 		}
-		plan, err := executor.LoadGate3Plan(*gate3PlanPath)
-		if err != nil || plan.PlanSHA256 != derived.PlanSHA256 {
+		plan, err := executor.LoadGate3PlanForExecution(*gate3PlanPath, execution, derived)
+		if err != nil {
 			fatal("Gate 3 plan does not match the freshly derived inert plan")
 		}
 		authorization, err := executor.LoadGate3Authorization(*gate3AuthorizationPath)

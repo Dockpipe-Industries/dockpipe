@@ -1,10 +1,14 @@
 # DockPipe VM package
 
 The `vm` package owns guest-specific workflows, QEMU resolver models, and the
-VMM-neutral control protocol. DockPipe core remains generic. Version 1.3.2
-durably retains the exact validated provisioning contract and qualification
-manifest for every fresh executor-v11 Gate 2 before identity consumption or VM
-action. Gate 3 v1 planning requires those deterministic owner-only inputs.
+VMM-neutral control protocol. DockPipe core remains generic. Version 1.3.3
+aligns the live controller with the sealed Gate 3 review contract: it loads the
+exact owner-read-only mode-`0400` plan, validates every typed plan predicate,
+and compares the complete plan with its freshly derived inert value before any
+authorization, token, key, or VM handling. Version 1.3.2 durably retains the
+exact validated provisioning contract and qualification manifest for every
+fresh executor-v11 Gate 2 before identity consumption or VM action. Gate 3 v1
+planning requires those deterministic owner-only inputs.
 Version 1.3.0's public-only reconstitution path remains available for historical
 planning, but its schema-v2 plans are permanently rejected by authorization,
 execution, and result storage. Executor-v11 remains the only fresh-execution

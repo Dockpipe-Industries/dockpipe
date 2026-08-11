@@ -191,10 +191,22 @@ func (p Gate3Plan) Validate(execution Contract) error {
 	return nil
 }
 
-func LoadGate3Plan(path string) (Gate3Plan, error) {
+// LoadGate3PlanForExecution admits the sealed read-only plan only when every
+// plan predicate still validates and its complete typed value equals the
+// freshly derived inert plan.
+func LoadGate3PlanForExecution(path string, execution Contract, derived Gate3Plan) (Gate3Plan, error) {
 	var plan Gate3Plan
-	if err := decodeGate3File(path, &plan); err != nil {
+	if err := decodeOwnerReadOnly(path, &plan); err != nil {
 		return plan, err
+	}
+	if err := plan.Validate(execution); err != nil {
+		return Gate3Plan{}, err
+	}
+	if err := derived.Validate(execution); err != nil {
+		return Gate3Plan{}, fmt.Errorf("freshly derived Gate 3 plan is invalid: %w", err)
+	}
+	if !reflect.DeepEqual(plan, derived) {
+		return Gate3Plan{}, fmt.Errorf("sealed Gate 3 plan differs from the freshly derived inert plan")
 	}
 	return plan, nil
 }

@@ -490,7 +490,15 @@ func LoadCleanupAuthorization(path string) (CleanupAuthorization, error) {
 }
 
 func decodeOwnerOnly(path string, out any) error {
-	b, err := readOwnerOnly(path)
+	b, err := readOwnerMode(path, 0o600)
+	if err != nil {
+		return err
+	}
+	return decodeExactJSON(b, out)
+}
+
+func decodeOwnerReadOnly(path string, out any) error {
+	b, err := readOwnerMode(path, 0o400)
 	if err != nil {
 		return err
 	}
@@ -498,12 +506,16 @@ func decodeOwnerOnly(path string, out any) error {
 }
 
 func readOwnerOnly(path string) ([]byte, error) {
+	return readOwnerMode(path, 0o600)
+}
+
+func readOwnerMode(path string, mode os.FileMode) ([]byte, error) {
 	if !filepath.IsAbs(path) {
 		return nil, fmt.Errorf("executor input path must be absolute")
 	}
 	info, err := os.Lstat(path)
-	if err != nil || info.Mode()&os.ModeSymlink != 0 || !info.Mode().IsRegular() || info.Mode().Perm() != 0o600 {
-		return nil, fmt.Errorf("executor input must be an owner-only regular non-symlink file")
+	if err != nil || info.Mode()&os.ModeSymlink != 0 || !info.Mode().IsRegular() || info.Mode().Perm() != mode {
+		return nil, fmt.Errorf("executor input must be a current-user-owned regular non-symlink mode %04o file", mode)
 	}
 	if stat, ok := info.Sys().(*syscall.Stat_t); ok && int(stat.Uid) != os.Geteuid() {
 		return nil, fmt.Errorf("executor input must be owned by the current user")

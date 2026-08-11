@@ -4,7 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 	"path/filepath"
+	"reflect"
 	"slices"
 	"strings"
 	"testing"
@@ -86,6 +88,71 @@ func TestGate3FailurePreservesAndNeverContinuesOrCleans(t *testing.T) {
 			t.Fatalf("Gate 3 continued after failure: %v", runner.calls)
 		}
 	}
+}
+
+func TestGate3SealedPlanMatchesFreshDerivationBeforeExecution(t *testing.T) {
+	execution := executorFixture(t)
+	derived := gate3TestPlan(t, execution)
+	path := writeSealedGate3Plan(t, derived, 0o400)
+
+	loaded, err := LoadGate3PlanForExecution(path, execution, derived)
+	if err != nil {
+		t.Fatalf("sealed mode-0400 plan did not match fresh derivation: %v", err)
+	}
+	if !reflect.DeepEqual(loaded, derived) {
+		t.Fatalf("loaded plan differs from fresh derivation:\n got=%+v\nwant=%+v", loaded, derived)
+	}
+}
+
+func TestGate3SealedPlanChecksEveryPreMutationPlanPredicate(t *testing.T) {
+	execution := executorFixture(t)
+	derived := gate3TestPlan(t, execution)
+	tests := []struct {
+		name   string
+		mode   os.FileMode
+		mutate func(*Gate3Plan)
+	}{
+		{name: "sealed mode", mode: 0o600},
+		{name: "execute remains inert", mode: 0o400, mutate: func(plan *Gate3Plan) { plan.Execute = true }},
+		{name: "execution identity", mode: 0o400, mutate: func(plan *Gate3Plan) {
+			plan.ExecutionSHA256 = strings.Repeat("0", 64)
+			plan.PlanSHA256, _ = plan.Digest()
+		}},
+		{name: "closed boundaries", mode: 0o400, mutate: func(plan *Gate3Plan) {
+			plan.Boundaries = plan.Boundaries[:len(plan.Boundaries)-1]
+			plan.PlanSHA256, _ = plan.Digest()
+		}},
+		{name: "closed timeouts", mode: 0o400, mutate: func(plan *Gate3Plan) { plan.ActionTimeoutSeconds++; plan.PlanSHA256, _ = plan.Digest() }},
+		{name: "launch tuple", mode: 0o400, mutate: func(plan *Gate3Plan) { plan.QMP += ".changed"; plan.PlanSHA256, _ = plan.Digest() }},
+		{name: "evidence root", mode: 0o400, mutate: func(plan *Gate3Plan) { plan.EvidenceRoot += ".changed"; plan.PlanSHA256, _ = plan.Digest() }},
+		{name: "complete derived equality", mode: 0o400, mutate: func(plan *Gate3Plan) { plan.Scenario += "-changed"; plan.PlanSHA256, _ = plan.Digest() }},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			plan := derived
+			plan.Boundaries = slices.Clone(derived.Boundaries)
+			if test.mutate != nil {
+				test.mutate(&plan)
+			}
+			path := writeSealedGate3Plan(t, plan, test.mode)
+			if _, err := LoadGate3PlanForExecution(path, execution, derived); err == nil {
+				t.Fatal("changed pre-mutation plan predicate was accepted")
+			}
+		})
+	}
+}
+
+func writeSealedGate3Plan(t *testing.T, plan Gate3Plan, mode os.FileMode) string {
+	t.Helper()
+	data, err := json.Marshal(plan)
+	if err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(t.TempDir(), "gate3-plan.json")
+	if err := os.WriteFile(path, append(data, '\n'), mode); err != nil {
+		t.Fatal(err)
+	}
+	return path
 }
 
 func TestGate3HarnessEvidenceIsIndependentlyValidated(t *testing.T) {
