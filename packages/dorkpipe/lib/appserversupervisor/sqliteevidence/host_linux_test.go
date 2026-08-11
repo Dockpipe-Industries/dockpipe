@@ -418,11 +418,18 @@ func exactMountByID(mounts []linuxMountInfo, id uint64) (linuxMountInfo, error) 
 }
 
 func requireQualifiedExt4Mount(root string, rootFact linuxPathFact, mount linuxMountInfo, mounts []linuxMountInfo) error {
+	return requireQualifiedExt4MountWithProbes(root, rootFact, mount, mounts, func(source string) (os.FileMode, error) {
+		sourceInfo, err := os.Stat(source)
+		return modeOrZero(sourceInfo), err
+	}, linuxBlockRemovable)
+}
+
+func requireQualifiedExt4MountWithProbes(root string, rootFact linuxPathFact, mount linuxMountInfo, mounts []linuxMountInfo, statSource func(string) (os.FileMode, error), blockRemovable func(string) (bool, error)) error {
 	if rootFact.FSMagic != linuxExt4Magic || mount.FileSystem != "ext4" {
 		return fmt.Errorf("fixture filesystem magic/type = %#x/%q, want %#x/ext4", rootFact.FSMagic, mount.FileSystem, linuxExt4Magic)
 	}
-	if mount.Root != "/" || mount.MountPoint != "/" {
-		return fmt.Errorf("fixture mount root/point = %q/%q, want direct non-bind root /", mount.Root, mount.MountPoint)
+	if mount.Root != "/" || (mount.MountPoint != "/" && mount.MountPoint != root) {
+		return fmt.Errorf("fixture mount root/point = %q/%q, want whole-device root / mounted at / or fixture root %q", mount.Root, mount.MountPoint, root)
 	}
 	if !optionContains(mount.MountOptions, "rw") || !optionContains(mount.SuperOptions, "rw") || optionContains(mount.MountOptions, "ro") {
 		return fmt.Errorf("fixture mount is not unambiguously read-write: mount=%q super=%q", mount.MountOptions, mount.SuperOptions)
@@ -430,11 +437,11 @@ func requireQualifiedExt4Mount(root string, rootFact linuxPathFact, mount linuxM
 	if !strings.HasPrefix(mount.Source, "/dev/") {
 		return fmt.Errorf("fixture source %q is not a local block device", mount.Source)
 	}
-	sourceInfo, err := os.Stat(mount.Source)
-	if err != nil || sourceInfo.Mode()&os.ModeDevice == 0 {
-		return fmt.Errorf("fixture source %q is not an accessible block device: mode=%v err=%v", mount.Source, modeOrZero(sourceInfo), err)
+	sourceMode, err := statSource(mount.Source)
+	if err != nil || sourceMode&os.ModeDevice == 0 {
+		return fmt.Errorf("fixture source %q is not an accessible block device: mode=%v err=%v", mount.Source, sourceMode, err)
 	}
-	removable, err := linuxBlockRemovable(filepath.Base(mount.Source))
+	removable, err := blockRemovable(filepath.Base(mount.Source))
 	if err != nil || removable {
 		return fmt.Errorf("fixture source removable=%t err=%v", removable, err)
 	}
@@ -443,7 +450,7 @@ func requireQualifiedExt4Mount(root string, rootFact linuxPathFact, mount linuxM
 			continue
 		}
 		point := filepath.Clean(candidate.MountPoint)
-		if isPathWithin(point, root) || isPathWithin(root, point) && point != "/" {
+		if (isPathWithin(point, root) && point != "/") || isPathWithin(root, point) {
 			return fmt.Errorf("fixture path crosses or contains nested mount %q: %q", point, candidate.Raw)
 		}
 	}

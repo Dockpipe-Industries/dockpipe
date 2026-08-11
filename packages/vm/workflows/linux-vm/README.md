@@ -40,6 +40,11 @@ executor-v11 Gate 2 consumes identity material or performs VM action. Gate 3
 v1 planning accepts only those derived owner-only paths and rejects path,
 metadata, JSON, contract, or identity drift.
 
+VM package 1.3.3 admits the separately sealed Gate 3 plan only as a regular,
+current-user-owned, non-symlink mode-`0400` file. Before authorization, token,
+key, or VM handling, the controller validates every typed plan predicate and
+requires the complete loaded plan to equal its freshly derived inert value.
+
 If a qualified executor-v11 and its durable evidence survive while those
 retained inputs are unavailable, VM package 1.3.0 can export a
 `dockpipe.vm.gate3-reconstitution.v1` planning input. The export opens only the

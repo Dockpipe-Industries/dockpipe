@@ -1,7 +1,7 @@
 schema: 1
 kind: package
 name: vm
-version: 1.3.2
+version: 1.3.3
 title: DockPipe VM package family
 platforms: [windows, deb]
 description: |

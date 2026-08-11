@@ -10,7 +10,8 @@ cd "$PACKAGE_ROOT/tools"
 GOWORK=off GOCACHE="$VM_TEST_TMP/cache" GOTMPDIR="$VM_TEST_TMP/tmp" CGO_ENABLED=0 go test -mod=readonly ./...
 
 cd "$PACKAGE_ROOT"
-grep -Fq 'version: 1.3.2' package.yml
+grep -Fq 'version: 1.3.3' package.yml
+grep -Fq 'const version = "1.3.3"' tools/cmd/dockpipe-qemu-controller/main.go
 grep -Fq 'models/QemuVmResolverConfig' resolvers/qemu/types.yml
 grep -Fq 'models/LinuxQemuVmResolverConfig' resolvers/qemu/types.yml
 grep -Fq 'runtime: vm' workflows/windows-vm/config.yml
@@ -47,6 +48,7 @@ grep -Fq 'gate3-reconstitute-executor' tools/cmd/dockpipe-qemu-controller/main.g
 grep -Fq 'dockpipe.vm.gate3-reconstitution.v1' tools/internal/executor/reconstitution.go
 grep -Fq 'dockpipe.vm.gate3-plan.v2' tools/internal/executor/gate3.go
 grep -Fq 'reconstituted Gate 3 plans are inert and cannot execute' tools/internal/executor/gate3.go
+grep -Fq 'LoadGate3PlanForExecution' tools/cmd/dockpipe-qemu-controller/main.go
 grep -Fq 'gate3-inputs' tools/internal/executor/retained_inputs.go
 grep -Fq 'provisioning-contract.json' tools/internal/executor/retained_inputs.go
 grep -Fq 'qualification-manifest.json' tools/internal/executor/retained_inputs.go
