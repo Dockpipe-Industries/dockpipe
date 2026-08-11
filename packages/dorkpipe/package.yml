@@ -10,7 +10,7 @@ description: |
   flows remain opt-in maintainer paths.
 author: DockPipe
 license: Apache-2.0
-repository: https://github.com/dockpipe/dockpipe
+repository: https://github.com/Dockpipe-Industries/dockpipe
 icon: assets/images/icon.png
 tags: [dorkpipe, orchestration, stack, agentic]
 platforms: [windows, deb]

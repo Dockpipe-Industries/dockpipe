@@ -13,7 +13,7 @@ description: |
   still prompt for user-supplied guest media as needed.
 author: DockPipe
 license: Apache-2.0
-repository: https://github.com/dockpipe/dockpipe
+repository: https://github.com/Dockpipe-Industries/dockpipe
 tags: [workflow, vm, qemu, windows, linux, qualification]
 script_contract:
   inject: [workdir, workflow_name, script_dir, package_root, assets_dir, dockpipe_bin]

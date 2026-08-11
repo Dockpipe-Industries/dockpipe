@@ -49,7 +49,7 @@ func TestApplyDefaultWSLInstallCommand(t *testing.T) {
 	var o windowsSetupOpts
 	o.BootstrapWSL = true
 	applyDefaultWSLInstallCommand(&o)
-	if !strings.Contains(o.InstallCommand, "jamie-steele/dockpipe") || !strings.Contains(o.InstallCommand, "alpine-release") {
+	if !strings.Contains(o.InstallCommand, "Dockpipe-Industries/dockpipe") || !strings.Contains(o.InstallCommand, "alpine-release") {
 		t.Fatalf("expected default Alpine-aware install script, got %q", o.InstallCommand)
 	}
 	o = windowsSetupOpts{BootstrapWSL: true, NoInstallDockpipe: true}

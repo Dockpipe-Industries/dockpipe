@@ -9,7 +9,7 @@ description: |
   this packaged workflow instead of hand-authoring stack_up/stack_down steps.
 author: DockPipe
 license: Apache-2.0
-repository: https://github.com/dockpipe/dockpipe
+repository: https://github.com/Dockpipe-Industries/dockpipe
 tags: [workflow, dorkpipe, orchestration, stack]
 depends: [dorkpipe]
 platforms: [windows, deb]

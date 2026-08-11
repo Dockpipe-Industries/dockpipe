@@ -10,7 +10,7 @@ description: |
   local fallback/editor-integrated use.
 author: DockPipe
 license: Apache-2.0
-repository: https://github.com/dockpipe/dockpipe
+repository: https://github.com/Dockpipe-Industries/dockpipe
 icon: resolvers/pipeon/vscode-extension/images/icon.png
 tags: [resolver, pipeon, ide]
 artwork:
