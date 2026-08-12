@@ -104,6 +104,66 @@ tasks:
     dispatch:
       readiness: decision_ready
       ownership: unclaimed
+  - id: TASK-024
+    topic: Fedora and Debian DockPipe support and qualification parity
+    path: docs/agents/tasks/linux-distribution-qualification-parity.md
+    dispatch:
+      readiness: unclassified
+      ownership: unclaimed
+  - id: TASK-025
+    topic: DockPipe supported-platform program and qualification matrix
+    path: docs/agents/tasks/supported-platform-program.md
+    dispatch:
+      readiness: unclassified
+      ownership: unclaimed
+  - id: TASK-026
+    topic: Enterprise Linux support for RHEL, Rocky Linux, and AlmaLinux
+    path: docs/agents/tasks/enterprise-linux-support.md
+    dispatch:
+      readiness: unclassified
+      ownership: unclaimed
+  - id: TASK-027
+    topic: Alpine Linux musl and BusyBox support
+    path: docs/agents/tasks/alpine-linux-support.md
+    dispatch:
+      readiness: unclassified
+      ownership: unclaimed
+  - id: TASK-028
+    topic: Arch Linux rolling-release support
+    path: docs/agents/tasks/arch-linux-support.md
+    dispatch:
+      readiness: unclassified
+      ownership: unclaimed
+  - id: TASK-029
+    topic: Amazon Linux cloud-host support
+    path: docs/agents/tasks/amazon-linux-support.md
+    dispatch:
+      readiness: unclassified
+      ownership: unclaimed
+  - id: TASK-030
+    topic: openSUSE Leap and Tumbleweed support
+    path: docs/agents/tasks/opensuse-support.md
+    dispatch:
+      readiness: unclassified
+      ownership: unclaimed
+  - id: TASK-031
+    topic: NixOS declarative-host support
+    path: docs/agents/tasks/nixos-support.md
+    dispatch:
+      readiness: unclassified
+      ownership: unclaimed
+  - id: TASK-032
+    topic: Windows DockPipe platform support and qualification
+    path: docs/agents/tasks/windows-platform-support.md
+    dispatch:
+      readiness: unclassified
+      ownership: unclaimed
+  - id: TASK-033
+    topic: macOS DockPipe platform support and qualification
+    path: docs/agents/tasks/macos-platform-support.md
+    dispatch:
+      readiness: unclassified
+      ownership: unclaimed
 
 maintenance:
   - Treat this YAML file as the AI/backlog entrypoint.
