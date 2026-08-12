@@ -545,6 +545,10 @@ func linuxDistribution() (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("read os-release: %w", err)
 	}
+	return linuxDistributionFromOSRelease(payload)
+}
+
+func linuxDistributionFromOSRelease(payload []byte) (string, error) {
 	values := map[string]string{}
 	for _, line := range strings.Split(string(payload), "\n") {
 		key, value, ok := strings.Cut(line, "=")
@@ -552,10 +556,13 @@ func linuxDistribution() (string, error) {
 			values[key] = strings.Trim(value, `"`)
 		}
 	}
-	if values["ID"] != "pop" || values["VERSION_ID"] == "" || values["PRETTY_NAME"] == "" {
+	id := values["ID"]
+	versionID := values["VERSION_ID"]
+	prettyName := values["PRETTY_NAME"]
+	if versionID == "" || prettyName == "" || id != "pop" && (id != "ubuntu" || versionID != "24.04") {
 		return "", fmt.Errorf("unsupported or incomplete distribution identity: ID=%q VERSION_ID=%q PRETTY_NAME=%q", values["ID"], values["VERSION_ID"], values["PRETTY_NAME"])
 	}
-	return values["PRETTY_NAME"], nil
+	return prettyName, nil
 }
 
 func linuxVirtualization() (string, error) {
