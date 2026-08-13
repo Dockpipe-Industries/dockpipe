@@ -10,8 +10,8 @@ cd "$PACKAGE_ROOT/tools"
 GOWORK=off GOCACHE="$VM_TEST_TMP/cache" GOTMPDIR="$VM_TEST_TMP/tmp" CGO_ENABLED=0 go test -mod=readonly ./...
 
 cd "$PACKAGE_ROOT"
-grep -Fq 'version: 1.3.3' package.yml
-grep -Fq 'const version = "1.3.3"' tools/cmd/dockpipe-qemu-controller/main.go
+grep -Fq 'version: 1.3.4' package.yml
+grep -Fq 'const version = "1.3.4"' tools/cmd/dockpipe-qemu-controller/main.go
 grep -Fq 'models/QemuVmResolverConfig' resolvers/qemu/types.yml
 grep -Fq 'models/LinuxQemuVmResolverConfig' resolvers/qemu/types.yml
 grep -Fq 'runtime: vm' workflows/windows-vm/config.yml

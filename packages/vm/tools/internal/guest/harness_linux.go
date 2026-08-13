@@ -26,6 +26,7 @@ const (
 	harnessRecoverySchema   = "dockpipe.sqlite-vm-recovery-evidence.v1"
 	harnessCheckpointRole   = "DORKPIPE_SQLITE_VM_HARNESS_ROLE=checkpoint"
 	harnessRecoveryRole     = "DORKPIPE_SQLITE_VM_HARNESS_ROLE=recovery"
+	harnessLookupPath       = "PATH=/usr/bin:/bin"
 	harnessOutputLimit      = 32 * 1024
 )
 
@@ -193,7 +194,7 @@ func (a *linuxHarnessAdapter) runHarness(command harnessCommand, role string, ho
 		return nil, nil, nil, err
 	}
 	process := exec.Command(a.binaryPath)
-	process.Env = []string{role}
+	process.Env = []string{role, harnessLookupPath}
 	process.Dir = filepath.Dir(a.binaryPath)
 	process.Stdin = bytes.NewReader(input)
 	stdout, err := process.StdoutPipe()
