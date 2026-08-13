@@ -5,6 +5,11 @@ runtime and the `qemu` resolver. Its runnable path is development-only. The
 qualification fields are a typed contract for offline validation and are fixed
 to `Qualification.Enabled: false` until a separate integration and live gate.
 
+VM package 1.3.4 gives the hash-pinned SQLite harness only its fixed private
+role and `PATH=/usr/bin:/bin`, allowing the reviewed
+`systemd-detect-virt --vm` lookup without inheriting the guest-agent service
+environment or adding a generic execution surface.
+
 ## Immutable Ubuntu profile
 
 The reviewed profile is Ubuntu 24.04 LTS amd64 release stamp `20260801`:
@@ -679,7 +684,8 @@ request is rejected unless it arrives through a fresh signed guest bootstrap
 with a different kernel boot ID.
 
 The guest runs only the root-owned mode-`0755`, hash-pinned
-`/usr/libexec/dockpipe-sqlite-vm-harness` under one of two fixed private roles.
+`/usr/libexec/dockpipe-sqlite-vm-harness` under one of two fixed private roles
+and the fixed `PATH=/usr/bin:/bin`.
 Both guest and controller validate canonical harness evidence for exact SQLite
 3.53.3/source identity, native `unix` VFS, expected old/new revision,
 `quick_check=ok`, metadata hashes, and zero retries, replays, repairs, or

@@ -1,7 +1,10 @@
 # DockPipe VM package
 
 The `vm` package owns guest-specific workflows, QEMU resolver models, and the
-VMM-neutral control protocol. DockPipe core remains generic. Version 1.3.3
+VMM-neutral control protocol. DockPipe core remains generic. Version 1.3.4
+keeps the pinned SQLite harness environment closed while adding the exact
+`PATH=/usr/bin:/bin` required for its reviewed `systemd-detect-virt --vm`
+lookup. Version 1.3.3
 aligns the live controller with the sealed Gate 3 review contract: it loads the
 exact owner-read-only mode-`0400` plan, validates every typed plan predicate,
 and compares the complete plan with its freshly derived inert value before any
@@ -67,9 +70,9 @@ binary/key pins before returning a guest-signed response. Identity, health, and
 hash-pinned-launch are operational. Executor-v9 also binds checkpoint and
 recovery to one exact test-only SQLite harness binary, durable pending/consumed
 tickets, and four reviewed Gate 3 boundaries. The agent launches only that
-root-owned hash-pinned binary with one fixed private role variable and a strict
-typed JSON command; no generic argument, environment, shell, network, SSH, or
-arbitrary execution surface exists.
+root-owned hash-pinned binary with one fixed private role variable, the fixed
+`PATH=/usr/bin:/bin`, and a strict typed JSON command; no inherited environment,
+generic argument, shell, network, SSH, or arbitrary execution surface exists.
 
 `manifests/linux-provisioning.template.json` is deliberately non-runnable. A
 live gate must replace every marker with fresh identities, a 32-byte launch
