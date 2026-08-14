@@ -377,14 +377,17 @@ func waitForCancellationControllerScope(t *testing.T, controller *transientCance
 func waitForActiveCancellationScope(t *testing.T, server *Server, want providerPoolCancellationScope) {
 	t.Helper()
 	deadline := time.Now().Add(3 * time.Second)
+	var last providerPoolCancellationScope
+	var lastErr error
 	for time.Now().Before(deadline) {
 		got, err := server.activeCancellationScope()
+		last, lastErr = got, err
 		if err == nil && reflect.DeepEqual(got, want) {
 			return
 		}
 		time.Sleep(time.Millisecond)
 	}
-	t.Fatal("timed out waiting for active cancellation scope")
+	t.Fatalf("timed out waiting for active cancellation scope: got=%+v want=%+v err=%v", last, want, lastErr)
 }
 
 func cancellationRequestFixture(id string) string {

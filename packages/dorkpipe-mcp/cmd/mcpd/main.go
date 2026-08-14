@@ -1,5 +1,5 @@
 // Command mcpd is a thin MCP (Model Context Protocol) bridge over DockPipe/DorkPipe.
-// See packages/dorkpipe/mcp/README.md and mcpbridge/README.md.
+// See packages/dorkpipe-mcp/README.md and mcpbridge/README.md.
 package main
 
 import (

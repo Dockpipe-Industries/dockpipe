@@ -82,6 +82,5 @@ build_tool() {
 }
 
 build_tool "dorkpipe" "$PACKAGE_ROOT/lib" "$OUT_DIR/dorkpipe" "./cmd/dorkpipe"
-build_tool "mcpd" "$PACKAGE_ROOT/mcp" "$OUT_DIR/mcpd" "./cmd/mcpd"
 build_tool "skills-render" "$PACKAGE_ROOT/lib" "$OUT_DIR/skills-render$GOEXE" "./cmd/skills-render"
 build_tool "orchestrate-helper" "$PACKAGE_ROOT/lib" "$OUT_DIR/orchestrate-helper$GOEXE" "./cmd/orchestrate-helper"

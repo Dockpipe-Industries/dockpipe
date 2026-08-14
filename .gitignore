@@ -15,8 +15,7 @@ tmp/*
 # Built Go binaries under src/bin (launchers stay as shell scripts; see Makefile / src/Makefile)
 # Maintainer packages — built ELF artifacts (not under src/bin/)
 packages/dorkpipe/bin/dorkpipe
-packages/dorkpipe-mcp/bin/mcpd
-packages/dorkpipe/mcp/bin/mcpd
+packages/*/bin/*.exe
 packages/dorkpipe/resolvers/dorkpipe/assets/tooling/bin/
 
 # Build output

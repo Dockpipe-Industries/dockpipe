@@ -160,7 +160,7 @@ Generic API shape:
 
 Existing MCP leverage:
 
-- The stack already has the right MCP front door. `packages/dorkpipe/mcp` exposes
+- The stack already has the right MCP front door. `packages/dorkpipe-mcp` exposes
   `dorkpipe.provider_pool_catalog`, `dorkpipe.provider_pool_status`, and
   `dorkpipe.provider_pool_chat`; Pipeon already calls the host MCP bridge tool
   `dorkpipe.provider_pool_chat` for direct provider chat.
@@ -489,7 +489,7 @@ Claude-specific note:
 - A current Claude worker transcript showed the CLI correctly denying any implicit host/MCP contract:
   the bind-mounted `/work` repo is file access, not host execution. The warm Claude lane must therefore
   be launched with an explicit DorkPipe/Pipeon contract and routed through a guarded bridge. It should
-  not rely on the Claude Code session independently discovering `packages/dorkpipe/mcp`.
+  not rely on the Claude Code session independently discovering `packages/dorkpipe-mcp`.
 
 Non-goals:
 

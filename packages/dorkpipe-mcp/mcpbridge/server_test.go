@@ -377,6 +377,7 @@ func enableMCPExecTier(t *testing.T) {
 	t.Setenv("DOCKPIPE_MCP_TIER", "exec")
 	t.Setenv("DOCKPIPE_MCP_ALLOW_EXEC", "")
 	t.Setenv("DOCKPIPE_MCP_ALLOWED_TOOLS", "")
+	t.Setenv("DOCKPIPE_REPO_ROOT", t.TempDir())
 }
 
 func providerPoolChatFixture(id string) string {

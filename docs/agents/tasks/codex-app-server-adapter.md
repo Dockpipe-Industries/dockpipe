@@ -598,8 +598,8 @@ tests:
 | --- | --- |
 | `packages/pipeon/resolvers/pipeon/vscode-extension/package.json` and `src/extension.ts` | Default App Server selection, session-pinned adapter/model/reasoning/approval/sandbox controls, individually gated experimental capabilities, neutral rendering, approval/input/cancel/recovery controls, and persistent recovery banner. |
 | `packages/pipeon/resolvers/pipeon/vscode-extension/scripts/webview-smoke.js` | Primary/default selection, explicit exec escape hatch, visible effective policy, and provider-neutral rendering/control smoke coverage. |
-| `packages/dorkpipe/mcp/mcpbridge/catalog.go`, `server.go`, and `tier.go` | Closed adapter request plus provider-neutral session event/decision/input/cancel/recover operations; host-resident supervisor ownership keyed by workspace and Pipeon session; existing exec tier/path enforcement retained. |
-| `packages/dorkpipe/mcp/mcpbridge/server_test.go`, `tier_test.go`, and `codex_session_test.go` | Tool schema/tier, session isolation, adapter pinning, safe fallback, stale-decision rejection, redaction, and rollback tests. |
+| `packages/dorkpipe-mcp/mcpbridge/catalog.go`, `server.go`, and `tier.go` | Closed adapter request plus provider-neutral session event/decision/input/cancel/recover operations; host-resident supervisor ownership keyed by workspace and Pipeon session; existing exec tier/path enforcement retained. |
+| `packages/dorkpipe-mcp/mcpbridge/server_test.go`, `tier_test.go`, and `codex_session_test.go` | Tool schema/tier, session isolation, adapter pinning, safe fallback, stale-decision rejection, redaction, and rollback tests. |
 | `packages/dorkpipe/lib/providersession/contract.go` and `contract_test.go` | Opaque stable model/reasoning catalog, exact selected/effective policy and capability records, bounded prompt record, and one-time user-input response contract only; no adapter selection or provider protocol types. |
 | `packages/dorkpipe/lib/appserversupervisor/model_policy.go`, `protocol.go`, `lifecycle.go`, `approval.go`, `hardening.go`, `supervisor.go`, and `recovery.go` | Validate available model/reasoning and stable capability catalogs, resolve an opaque turn input, map user-selected native approval/sandbox policy, answer bounded user input, expose neutral events, and retain fail-closed lifecycle/recovery rules. |
 | Existing focused tests in `packages/dorkpipe/lib/appserversupervisor` | Extend lifecycle, approval, contract, recovery, hardening, and source-boundary fixtures for the consumer seam. |
@@ -947,7 +947,7 @@ writes fail closed before readiness checks, lease acquisition, Codex execution, 
 substituted exec. The separately approved dispatch slice below replaces only that not-enabled branch.
 
 `packages/dorkpipe/resolvers/dorkpipe/assets/provider-pools/catalog.yml`,
-`packages/dorkpipe/mcp/mcpbridge/exec.go`, `dorkpipe.host_codex_chat`, bounded worker code,
+`packages/dorkpipe-mcp/mcpbridge/exec.go`, `dorkpipe.host_codex_chat`, bounded worker code,
 schemas/YAML, and `src/lib` / `src/cmd` remain unchanged in this first implementation. The existing
 `dorkpipe.provider_pool_chat` request remains the Pipeon entrypoint; the bridge honors the explicit
 App Server adapter only for the eligible pinned Pipeon session and otherwise delegates to the
@@ -4921,7 +4921,7 @@ surface, CAS-17 operations guidance, ForgePipe, and remaining provider-pool work
 ## Likely impact map
 
 - packages/dorkpipe/lib: provider-neutral contracts, adapter package, state and tests;
-- packages/dorkpipe/mcp/mcpbridge: normalized host session/approval operations;
+- packages/dorkpipe-mcp/mcpbridge: normalized host session/approval operations;
 - packages/dorkpipe/lib/cmd/dorkpipe/provider_pool.go: adapter selection retaining exec;
 - packages/dorkpipe/resolvers/dorkpipe/assets/provider-pools/catalog.yml: capability policy;
 - Pipeon extension: normalized session/event UI;

@@ -339,14 +339,17 @@ func approvalFixtureRequest(requestID string) providersession.ApprovalRequest {
 func waitForApprovalRequest(t *testing.T, server *Server, want providersession.ApprovalRequest) {
 	t.Helper()
 	deadline := time.Now().Add(3 * time.Second)
+	var last providersession.ApprovalRequest
+	var lastErr error
 	for time.Now().Before(deadline) {
 		got, err := server.activeApprovalRequest()
+		last, lastErr = got, err
 		if err == nil && reflect.DeepEqual(got, want) {
 			return
 		}
 		time.Sleep(time.Millisecond)
 	}
-	t.Fatal("timed out waiting for active approval request")
+	t.Fatalf("timed out waiting for active approval request: got=%+v want=%+v err=%v", last, want, lastErr)
 }
 
 func waitForControllerRequest(t *testing.T, controller *transientApprovalController, want providersession.ApprovalRequest) {

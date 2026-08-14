@@ -23,7 +23,7 @@ mcpd_target_is_stale() {
   if [[ -f "$ROOT/VERSION" && "$ROOT/VERSION" -nt "$TARGET" ]]; then
     return 0
   fi
-  find "$ROOT/packages/dorkpipe/mcp" "$ROOT/packages/dorkpipe/lib" \
+  find "$ROOT/packages/dorkpipe-mcp" \
     \( -path '*/.git' -o -path '*/bin' -o -path '*/node_modules' -o -path '*/.dockpipe' \) -prune \
     -o -type f \( -name '*.go' -o -name 'go.mod' -o -name 'go.sum' \) -newer "$TARGET" -print -quit \
     | grep -q .
@@ -31,13 +31,13 @@ mcpd_target_is_stale() {
 
 if mcpd_target_is_stale; then
   if [[ -x "$DOCKPIPE_BIN" ]]; then
-    "$DOCKPIPE_BIN" package build source --workdir "$ROOT" --only dorkpipe
+    "$DOCKPIPE_BIN" package build source --workdir "$ROOT" --only dorkpipe.mcp
   fi
 fi
 
 if [[ ! -x "$TARGET" ]]; then
   echo "mcpd wrapper: missing maintainer binary at $TARGET" >&2
-  echo "Run: $DOCKPIPE_BIN package build source --workdir $ROOT --only dorkpipe" >&2
+  echo "Run: $DOCKPIPE_BIN package build source --workdir $ROOT --only dorkpipe.mcp" >&2
   exit 1
 fi
 

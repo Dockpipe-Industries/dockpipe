@@ -1,6 +1,6 @@
 # `mcpbridge` — MCP stdio bridge (`dorkpipe.mcp`)
 
-Authoring tree: **`packages/dorkpipe/mcp/mcpbridge/`** — dumb interface
+Authoring tree: **`packages/dorkpipe-mcp/mcpbridge/`** — dumb interface
 
 This package implements a **minimal** JSON-RPC over stdio (Content-Length framing) server that exposes **named tools** mapping to:
 
@@ -33,18 +33,18 @@ Every request must authenticate with the same secret via **`Authorization: Beare
 |-----------------|--------|
 | `MCP_HTTP_LISTEN` / `-http` | Listen address (e.g. `:8443`). Empty = stdio (default). |
 | `MCP_HTTP_API_KEY` / `-api-key` | **Required** in HTTP mode **unless** `MCP_HTTP_KEY_TIERS_FILE` is set. |
-| `MCP_HTTP_KEY_TIERS_FILE` / `-key-tiers-file` | JSON file: `[{"key":"secret","tier":"readonly"},…]` — **replaces** single `MCP_HTTP_API_KEY`; each key has its own tier. See **`packages/dorkpipe/mcp/examples/mcp-http-key-tiers.json`**. |
+| `MCP_HTTP_KEY_TIERS_FILE` / `-key-tiers-file` | JSON file: `[{"key":"secret","tier":"readonly"},…]` — **replaces** single `MCP_HTTP_API_KEY`; each key has its own tier. See **`packages/dorkpipe-mcp/examples/mcp-http-key-tiers.json`**. |
 | `MCP_TLS_CERT_FILE` / `-tls-cert` | PEM certificate (HTTPS). |
 | `MCP_TLS_KEY_FILE` / `-tls-key` | PEM private key (HTTPS). |
 | `MCP_HTTP_INSECURE_LOOPBACK` / `-insecure-loopback` | Allow plain HTTP on loopback only (dev). |
 
 ## Entrypoint
 
-- `packages/dorkpipe/mcp/cmd/mcpd` — stdio MCP (default), or **HTTPS/HTTP** when `-http` / `MCP_HTTP_LISTEN` is set. Build the package-owned source artifacts with **`./src/bin/dockpipe package build source --workdir . --only dorkpipe`**; the wrapper lives at **`packages/dorkpipe/bin/mcpd`** (not under **`src/bin/`**).
+- `packages/dorkpipe-mcp/cmd/mcpd` — stdio MCP (default), or **HTTPS/HTTP** when `-http` / `MCP_HTTP_LISTEN` is set. Build the package-owned source artifact with **`./src/bin/dockpipe package build source --workdir . --only dorkpipe.mcp`**; the wrapper lives at **`packages/dorkpipe-mcp/bin/mcpd`** (not under **`src/bin/`**).
 
 ### Trying it in Cursor
 
-Run **`make build`** from repo root, then use **`./src/bin/dockpipe package build source --workdir . --only dorkpipe`** when you want the DorkPipe/MCP source artifacts refreshed. Use **`.cursor/mcp.json`** — set **`"type": "stdio"`**, **`command`** to the absolute **`mcpd`** binary, and set **`DOCKPIPE_BIN`** / **`DORKPIPE_BIN`** to the absolute executables you want the bridge to launch. In this checkout that is typically **`packages/dorkpipe/bin/mcpd`**, **`src/bin/dockpipe`**, and **`packages/dorkpipe/bin/dorkpipe`**. If **`${workspaceFolder}`** is not expanded in **`env`**, set those paths to absolute. Cursor speaks Content-Length JSON-RPC over stdin/stdout; **`initialize`** echoes the client’s **`protocolVersion`** (e.g. **`2025-11-25`**) so the handshake completes with current Cursor hosts.
+Run **`make build`** from repo root, then use **`./src/bin/dockpipe package build source --workdir . --only dorkpipe.mcp`** when you want the MCP source artifact refreshed. Use **`.cursor/mcp.json`** — set **`"type": "stdio"`**, **`command`** to the absolute **`mcpd`** binary, and set **`DOCKPIPE_BIN`** / **`DORKPIPE_BIN`** to the absolute executables you want the bridge to launch. In this checkout that is typically **`packages/dorkpipe-mcp/bin/mcpd`**, **`src/bin/dockpipe`**, and **`packages/dorkpipe/bin/dorkpipe`**. If **`${workspaceFolder}`** is not expanded in **`env`**, set those paths to absolute. Cursor speaks Content-Length JSON-RPC over stdin/stdout; **`initialize`** echoes the client’s **`protocolVersion`** (e.g. **`2025-11-25`**) so the handshake completes with current Cursor hosts.
 
 ## See also
 
