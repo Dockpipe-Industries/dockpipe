@@ -1,166 +1,314 @@
-# dockpipe
+# DockPipe
 
-**Run any command in a disposable container. Optionally run an action on the result (e.g. commit, export patch).**
+**Run any command in a disposable container, then optionally act on the result.**
 
-General-purpose: run tests, one-off scripts, codegen, or AI tools—same flow. Your dir is mounted, your user owns the files, container is gone when done. Not an AI framework; AI is one use case.
+DockPipe gives you a simple way to run tests, scripts, code generation, and AI tools in clean Docker environments. Your working directory is mounted into the container, files remain owned by your user, and the container disappears when the command finishes.
 
----
+> [!IMPORTANT]
+> **DockPipe 0.6.0 is coming soon—and it is a massive improvement.**
+>
+> Preview the next version on the **[`dev` branch](https://github.com/Dockpipe-Industries/dockpipe/tree/dev)**.
 
-## Try it (15 seconds)
+## Quick Start
 
-**Install:** [Download the .deb](https://github.com/jamie-steele/dockpipe/releases) → `sudo dpkg -i dockpipe_*_all.deb`  
-Or from source: `git clone https://github.com/jamie-steele/dockpipe.git` and add `bin` to your PATH.
+### Install
 
-**First run:**
+Download the latest `.deb` from [GitHub Releases](https://github.com/Dockpipe-Industries/dockpipe/releases):
+
+```bash
+sudo dpkg -i dockpipe_*_all.deb
+```
+
+Or install from source:
+
+```bash
+git clone https://github.com/Dockpipe-Industries/dockpipe.git
+cd dockpipe
+export PATH="$PWD/bin:$PATH"
+```
+
+DockPipe requires **Docker** and **Bash**.
+
+### Run a Command
 
 ```bash
 dockpipe -- make test
 ```
 
-Runs `make test` in a clean container. Your current directory is at `/work`. When it exits, the container is removed. Closing the terminal also tears down the container (attached run). Use `-d` to run in the background. Same for `npm test`, `cargo test`, or any command.
+DockPipe runs `make test` in a clean container with your current directory mounted at `/work`. When the command exits, the container is removed.
 
----
-
-## What you can do
-
-| Use case | Command |
-|----------|--------|
-| **Run tests in isolation** | `dockpipe -- make test` |
-| **Run a script and commit the result** | `dockpipe --action examples/actions/commit-worktree.sh -- ./scripts/generate-docs.sh` |
-| **Pipe stdin** | `echo "input" \| dockpipe -- cmd` |
-| **AI + commit** | `dockpipe --template agent-dev --action examples/actions/commit-worktree.sh -- claude -p "Your prompt"` |
-
-Scaffold your own action: `dockpipe action init my-action.sh` (or `init my-commit.sh --from commit-worktree` to copy a bundled one) → then `--action my-action.sh`.
-
----
-
-## How it works
-
-1. **Spawn** — Start a container (default: small dev image, built if needed).
-2. **Run** — Execute the command you pass after `--`.
-3. **Act** — Optionally run a script after the command (e.g. commit, notify).
-
-You pick the image, the command, and the action. No workflow engine—just one primitive you compose.
-
-**Persistent data:** By default dockpipe mounts a named volume `dockpipe-data` at `/dockpipe-data` and sets `HOME` there so tool state (e.g. first-time Claude login) persists. Use `--data-vol <name>` or `--data-dir /path` to change where; `--no-data` to disable. Override `HOME` with `--env HOME=...` if a tool needs a different home. If a tool (e.g. Claude) exits immediately with the default volume, try `--no-data` or `--reinit` (removes the named volume so the next run gets a fresh one).
-
----
-
-## Why not just `docker run`?
-
-Same isolation, less boilerplate. You’d otherwise write:
+The same pattern works for any command:
 
 ```bash
-docker run --rm -v "$(pwd):/work" -w /work -u "$(id -u):$(id -g)" some-image make test
+dockpipe -- npm test
+dockpipe -- cargo test
+dockpipe -- ./scripts/generate-docs.sh
 ```
 
-dockpipe does that by default and adds: **action phase** (run then act in one go), **templates** (`--template dev` / `agent-dev`), **pipe-friendly CLI**. Files created in the container are owned by you (UID/GID passed through).
+## What You Can Do
 
----
+| Use case | Command |
+| --- | --- |
+| Run tests in isolation | `dockpipe -- make test` |
+| Run a script | `dockpipe -- ./scripts/generate-docs.sh` |
+| Pipe standard input | `echo "input" \| dockpipe -- command` |
+| Run and then commit changes | `dockpipe --action examples/actions/commit-worktree.sh -- ./scripts/generate-docs.sh` |
+| Run an AI tool | `dockpipe --template agent-dev -- claude -p "Review this project"` |
+| Run an AI tool and commit its work | `dockpipe --template agent-dev --action examples/actions/commit-worktree.sh -- claude -p "Implement this task"` |
 
-## Install (details)
+## How It Works
 
-| Platform | How |
-|----------|-----|
-| **Linux** | [Releases](https://github.com/jamie-steele/dockpipe/releases) → `sudo dpkg -i dockpipe_*_all.deb` |
-| **macOS** | Clone repo, add `bin` to PATH. Requires Bash + Docker. |
-| **Windows** | Not supported; [WSL](https://docs.microsoft.com/en-us/windows/wsl/) + source may work. |
+DockPipe has one small, composable lifecycle:
 
-Requirements: **Bash**, **Docker**. [More in docs/install.md](docs/install.md).
+1. **Spawn** — Start a disposable container.
+2. **Run** — Execute the command passed after `--`.
+3. **Act** — Optionally run an action script on the result.
 
----
+You choose the image, command, and optional action. DockPipe handles the Docker boilerplate, working-directory mount, user mapping, cleanup, and persistent tool state.
+
+DockPipe is not an AI framework. AI tools are simply one of the many command types it can run.
+
+## Why Not Just `docker run`?
+
+You could write:
+
+```bash
+docker run --rm \
+  -v "$(pwd):/work" \
+  -w /work \
+  -u "$(id -u):$(id -g)" \
+  some-image \
+  make test
+```
+
+DockPipe gives you the same isolation with a shorter command:
+
+```bash
+dockpipe -- make test
+```
+
+It also adds:
+
+- an optional action phase
+- reusable container templates
+- persistent tool data
+- pipe-friendly command handling
+- automatic UID/GID mapping
+- attached and detached execution
+
+Files created inside the container remain owned by your host user.
+
+## Persistent Data
+
+By default, DockPipe mounts a named volume called `dockpipe-data` at `/dockpipe-data` and uses it as `HOME`.
+
+This lets tools preserve state between disposable runs—for example, an authenticated CLI session or downloaded tool configuration.
+
+Use a different named volume:
+
+```bash
+dockpipe --data-vol my-project-data -- command
+```
+
+Use a host directory:
+
+```bash
+dockpipe --data-dir "$HOME/.dockpipe" -- command
+```
+
+Disable persistent data:
+
+```bash
+dockpipe --no-data -- command
+```
+
+Recreate the default named volume:
+
+```bash
+dockpipe --reinit -- command
+```
+
+`--reinit` asks for confirmation. Use `--force` to skip the prompt.
+
+If a tool exits unexpectedly while using the default data volume, try `--no-data` or recreate the volume with `--reinit`.
+
+## Actions
+
+Actions are scripts that run inside the container after the main command finishes.
+
+For example:
+
+```bash
+dockpipe \
+  --action examples/actions/commit-worktree.sh \
+  -- ./scripts/generate-docs.sh
+```
+
+Actions receive:
+
+- `DOCKPIPE_EXIT_CODE`
+- `DOCKPIPE_CONTAINER_WORKDIR`
+
+Create an action:
+
+```bash
+dockpipe action init my-action.sh
+```
+
+Start from a bundled action:
+
+```bash
+dockpipe action init my-commit.sh --from commit-worktree
+```
+
+Bundled examples include:
+
+- [`commit-worktree`](examples/actions/commit-worktree.sh)
+- [`export-patch`](examples/actions/export-patch.sh)
+- [`print-summary`](examples/actions/print-summary.sh)
+
+## Templates
+
+| Template | Description |
+| --- | --- |
+| `base-dev` | Lightweight development environment with Git, curl, Bash, ripgrep, and jq |
+| `dev` | General development environment with additional build tools |
+| `agent-dev` | Development environment for AI coding tools |
+| `claude` | Alias for `agent-dev` |
+
+Use a template with any command:
+
+```bash
+dockpipe --template dev -- make test
+```
+
+## Examples
+
+### Run a command
+
+```bash
+dockpipe -- ls -la
+```
+
+### Run a shell command
+
+```bash
+dockpipe -- bash -c "npm test"
+```
+
+### Run with a development template
+
+```bash
+dockpipe --template dev -- make test
+```
+
+### Run a script and commit its changes
+
+```bash
+dockpipe \
+  --action examples/actions/commit-worktree.sh \
+  -- ./my-script.sh
+```
+
+### Run Claude and commit its work
+
+```bash
+cd /path/to/repository
+
+dockpipe \
+  --template agent-dev \
+  --action examples/actions/commit-worktree.sh \
+  --env "DOCKPIPE_COMMIT_MESSAGE=agent: implement task" \
+  -- claude --dangerously-skip-permissions -p "Implement this task"
+```
+
+### Run in the background
+
+```bash
+dockpipe -d --template agent-dev -- claude -p "Review this repository"
+```
+
+Use Docker to inspect or reconnect to the running container:
+
+```bash
+docker logs <container-id>
+docker attach <container-id>
+```
+
+### Resume a Claude session
+
+```bash
+dockpipe \
+  --template agent-dev \
+  -- claude --resume <session-id> --dangerously-skip-permissions
+```
+
+### Chain isolated commands
+
+Each command runs in a fresh container:
+
+```bash
+dockpipe -- make lint \
+  && dockpipe -- make test \
+  && dockpipe -- make build
+```
 
 ## Usage
 
 ```text
 dockpipe [options] -- <command> [args...]
-dockpipe action init [--from <bundled>] <filename>
+dockpipe action init [--from <bundled-action>] <filename>
 ```
 
 | Option | Description |
-|--------|-------------|
-| `--image <name>` | Docker image (default: dockpipe-base-dev). |
-| `--template <name>` | Preset: `base-dev`, `dev`, `agent-dev` (or `claude`). |
-| `--action <script>` | Script run inside container after the command. |
-| `--workdir <path>` | Host path mounted at `/work` (default: current dir). |
-| `--data-vol <name>` | Named volume for persistent data (default: `dockpipe-data`). Same volume each run = reusable agent environment. |
-| `--data-dir <path>` | Bind mount host path for persistent data (e.g. `$HOME/.dockpipe`). Mounted at `/dockpipe-data`; HOME set there. |
-| `--no-data` | Do not mount the data volume (minimal run). |
-| `--reinit` | Remove the named data volume before running (fresh volume). Prompts to confirm; use `-f` to skip. |
-| `-f`, `--force` | With `--reinit`, skip confirmation (warning still shown). |
-| `--mount`, `--env` | Extra volumes or env vars. |
-| `-d`, `--detach` | Run container in background; don't attach. Container stays up until command exits. |
-| `--help` | Help. |
+| --- | --- |
+| `--image <name>` | Select the Docker image |
+| `--template <name>` | Use a predefined environment |
+| `--action <script>` | Run an action after the command |
+| `--workdir <path>` | Select the host directory mounted at `/work` |
+| `--data-vol <name>` | Use a named volume for persistent data |
+| `--data-dir <path>` | Use a host directory for persistent data |
+| `--no-data` | Disable persistent data |
+| `--reinit` | Recreate the named data volume |
+| `-f`, `--force` | Skip confirmation when using `--reinit` |
+| `--mount` | Add another volume mount |
+| `--env` | Pass an environment variable |
+| `-d`, `--detach` | Run the container in the background |
+| `--help` | Show command help |
 
----
+## Platform Support
 
-## Examples
+| Platform | Installation |
+| --- | --- |
+| Linux | Install the `.deb` from [GitHub Releases](https://github.com/Dockpipe-Industries/dockpipe/releases) |
+| macOS | Clone the repository and add `bin` to `PATH` |
+| Windows | Use WSL with Docker and install from source |
 
-**Generic:**
+See [docs/install.md](docs/install.md) for details.
 
-```bash
-dockpipe -- ls -la
-dockpipe -- bash -c "npm test"
-dockpipe --template dev -- make test
-```
+## More Examples
 
-**Run script then commit:**
+- [Chained non-AI commands](examples/chained-non-ai/README.md)
+- [Chained multi-AI commands](examples/chained-multi-ai/README.md)
+- [Claude worktree example](examples/claude-worktree/README.md)
+- [Codex worktree example](examples/codex-worktree/README.md)
 
-```bash
-dockpipe --action examples/actions/commit-worktree.sh -- ./my-script.sh
-```
+## Development
 
-**AI (agent-dev template) + commit:**
-
-```bash
-cd /path/to/repo
-dockpipe --template agent-dev --action examples/actions/commit-worktree.sh \
-  --env "DOCKPIPE_COMMIT_MESSAGE=agent: my task" \
-  -- claude --dangerously-skip-permissions -p "Your prompt"
-```
-
-**Run in background (detach):** close terminal and container keeps running until the command exits; use `docker logs <id>` or `docker attach <id>`:
+Run the test suite from the repository root:
 
 ```bash
-dockpipe -d --template agent-dev -- claude -p "review this"
+bash tests/run_tests.sh
 ```
 
-**Resume a previous Claude session** (state lives in the default data volume):
+Integration tests require Docker and the `agent-dev` image:
 
 ```bash
-dockpipe --template agent-dev -- claude --resume <session-id> --dangerously-skip-permissions
+bash integration-tests/run.sh
 ```
 
-**Chained (each step in a fresh container):**
+See [integration-tests/README.md](integration-tests/README.md) for details.
 
-```bash
-dockpipe -- make lint && dockpipe -- make test && dockpipe -- make build
-```
+## License
 
-**Full runnable examples:** [chained non-AI](examples/chained-non-ai/README.md) · [chained multi-AI](examples/chained-multi-ai/README.md) · [Claude worktree](examples/claude-worktree/README.md) · [Codex worktree](examples/codex-worktree/README.md)
-
----
-
-## Templates
-
-| Template | Description |
-|----------|-------------|
-| `base-dev` | Light: git, curl, bash, ripgrep, jq. |
-| `dev` | base-dev + build-essential, ssh, etc. |
-| `agent-dev` | Node + Claude Code (AI/agent workflows). `claude` is an alias. |
-
----
-
-## Actions
-
-Scripts that run **inside** the container after your command. They get `DOCKPIPE_EXIT_CODE` and `DOCKPIPE_CONTAINER_WORKDIR`. Create one: `dockpipe action init my-action.sh`, or clone a bundled one to customize: `dockpipe action init my-commit.sh --from commit-worktree`. Bundled: [commit-worktree](examples/actions/commit-worktree.sh), [export-patch](examples/actions/export-patch.sh), [print-summary](examples/actions/print-summary.sh).
-
----
-
-## Docs & repo
-
-- [Blog: Run, Isolate, and Act](https://dev.to/jamie-steele/run-isolate-and-act-a-minimal-primitive-for-container-workflows-553m)
-- [Architecture](docs/architecture.md) · [Install](docs/install.md) · [AGENTS.md](AGENTS.md)
-- **Tests:** `bash tests/run_tests.sh` (from repo root). **Integration tests** (Docker + agent-dev): [integration-tests/README.md](integration-tests/README.md) → `bash integration-tests/run.sh`
-
-**License:** Apache-2.0. See [LICENSE](LICENSE).
+DockPipe is licensed under the [Apache License 2.0](LICENSE).
