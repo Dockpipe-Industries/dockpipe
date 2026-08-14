@@ -2,7 +2,7 @@
 
 **New to dockpipe?** Run **`dockpipe -- pwd`** after install, then read **[onboarding.md](onboarding.md)**. If something fails, **`dockpipe doctor`** checks **bash**, **Docker**, and bundled assets.
 
-**Platforms:** **Docker** and **bash** on the host are required everywhere. Linux: **`.deb`**, **`.apk`**, **`.rpm`**, **Arch `.pkg.tar.zst`**, portable **`.tar.gz`**, or **[`linux/install.sh`](https://github.com/jamie-steele/dockpipe/blob/master/release/packaging/linux/install.sh)** — see sections below. macOS: Docker Desktop + bash (system `/bin/bash` is fine). Windows: **`dockpipe.exe`** + Docker Desktop + **Git for Windows** (bash + git). **`DOCKPIPE_USE_WSL_BRIDGE=1`** and **`dockpipe windows …`** are **optional** — only if you want the Linux `dockpipe` binary inside a WSL distro.
+**Platforms:** **Docker** and **bash** on the host are required everywhere. Linux: **`.deb`**, **`.apk`**, **`.rpm`**, **Arch `.pkg.tar.zst`**, portable **`.tar.gz`**, or **[`linux/install.sh`](https://github.com/Dockpipe-Industries/dockpipe/blob/master/release/packaging/linux/install.sh)** — see sections below. macOS: Docker Desktop + bash (system `/bin/bash` is fine). Windows: **`dockpipe.exe`** + Docker Desktop + **Git for Windows** (bash + git). **`DOCKPIPE_USE_WSL_BRIDGE=1`** and **`dockpipe windows …`** are **optional** — only if you want the Linux `dockpipe` binary inside a WSL distro.
 
 ### Bundled templates (no extra install tree)
 
@@ -25,7 +25,7 @@ User-created workflow files from **`dockpipe init`** live in your project, typic
 
 ## Install the .deb (Linux)
 
-1. Download the latest `.deb` for your CPU from [Releases](https://github.com/jamie-steele/dockpipe/releases):
+1. Download the latest `.deb` for your CPU from [Releases](https://github.com/Dockpipe-Industries/dockpipe/releases):
    - **x86_64** → `dockpipe_*_amd64.deb`
    - **aarch64** (ARM64 Linux, e.g. many cloud VMs / Raspberry Pi OS 64-bit) → `dockpipe_*_arm64.deb`  
    The two packages are **not** interchangeable (each contains a native Go binary). The `.deb` installs **`/usr/bin/dockpipe`** only (bundled assets are inside the binary; no `/usr/lib/dockpipe` layout).
@@ -73,10 +73,10 @@ Packages declare **`bash`** and **`git`** as dependencies; **Docker** is still s
 
 ## One-liner Linux install (try this first)
 
-From a network-connected shell (uses [GitHub Releases](https://github.com/jamie-steele/dockpipe/releases); detects distro from `/etc/os-release`, otherwise drops the **portable `.tar.gz`** into **`~/.local/bin`**):
+From a network-connected shell (uses [GitHub Releases](https://github.com/Dockpipe-Industries/dockpipe/releases); detects distro from `/etc/os-release`, otherwise drops the **portable `.tar.gz`** into **`~/.local/bin`**):
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/jamie-steele/dockpipe/master/release/packaging/linux/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/Dockpipe-Industries/dockpipe/master/release/packaging/linux/install.sh | sh
 ```
 
 Pin a version: `DOCKPIPE_VERSION=0.6.0 curl -fsSL … | sh`  
@@ -91,7 +91,7 @@ Script: **[release/packaging/linux/install.sh](../release/packaging/linux/instal
 The CLI is built with **Go** matching **`go.mod`** (currently **1.25**; see `toolchain` there) (`go build -o src/bin/dockpipe.bin ./src/cmd` or **`make`**). The `src/bin/dockpipe` script runs the binary if present, otherwise `go run`.
 
 ```bash
-git clone https://github.com/jamie-steele/dockpipe.git
+git clone https://github.com/Dockpipe-Industries/dockpipe.git
 cd dockpipe
 make   # or: go build -o src/bin/dockpipe.bin ./src/cmd
 export PATH="$PATH:$(pwd)/bin"
@@ -121,12 +121,12 @@ Add **`dockpipe.exe`** to `PATH` (**install script** or **zip**; **MSI** when pu
 **Automated (recommended):** downloads from the latest release — prefers **MSI** when the release includes it, otherwise **zip** — verifies **`SHA256SUMS.txt`** when available, installs **per-user** (no admin):
 
 ```powershell
-irm https://raw.githubusercontent.com/jamie-steele/dockpipe/master/release/packaging/windows/install.ps1 | iex
+irm https://raw.githubusercontent.com/Dockpipe-Industries/dockpipe/master/release/packaging/windows/install.ps1 | iex
 ```
 
-Pin a version: save [release/packaging/windows/install.ps1](https://github.com/jamie-steele/dockpipe/blob/master/release/packaging/windows/install.ps1) and run `.\install.ps1 -Version 0.6.0`.
+Pin a version: save [release/packaging/windows/install.ps1](https://github.com/Dockpipe-Industries/dockpipe/blob/master/release/packaging/windows/install.ps1) and run `.\install.ps1 -Version 0.6.0`.
 
-**Manual:** from [Releases](https://github.com/jamie-steele/dockpipe/releases):
+**Manual:** from [Releases](https://github.com/Dockpipe-Industries/dockpipe/releases):
 
 - **`dockpipe_<version>_windows_amd64.zip`** — unzip and add the folder to `PATH`.
 - **`dockpipe_<version>_windows_amd64.msi`** — **when published** for that release: double-click, or `msiexec /i .\….msi /qn` (adds `%LOCALAPPDATA%\dockpipe` to your user **PATH**). Some releases ship **zip only** until MSI is enabled for that tag.
@@ -193,7 +193,7 @@ dockpipe windows doctor
 Current reliable path is source-based:
 
 ```bash
-git clone https://github.com/jamie-steele/dockpipe.git
+git clone https://github.com/Dockpipe-Industries/dockpipe.git
 cd dockpipe
 make
 export PATH="$PATH:$(pwd)/bin"
@@ -212,7 +212,7 @@ echo "export PATH=\"\$PATH:$(pwd)/bin\"" >> ~/.zshrc
 Preferred packaged path once the tap is published:
 
 ```bash
-brew tap jamie-steele/dockpipe
+brew tap Dockpipe-Industries/dockpipe
 brew install dockpipe
 ```
 

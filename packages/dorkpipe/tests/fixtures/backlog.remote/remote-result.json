@@ -1,0 +1,21 @@
+{
+  "contract_version": "dorkpipe.remote-result-observation-fixture/v1",
+  "observation_id": "result_fixture_observation_015",
+  "replay_identity": "result_fixture_replay_015",
+  "remote_diff_observation_id": "diff_fixture_observation_015",
+  "remote_diff_fingerprint": "sha256:39d37155f4ec0005e160024939689fee7140d2cfd3a0b4e52cd732318420213f",
+  "patch_sha256": "sha256:4027895ace152e2d66d11143b9e7841adb68e8d625977b7c123508f221114b1b",
+  "patch_bytes": 236,
+  "remote_status_observation_id": "status_fixture_observation_015",
+  "remote_status_fingerprint": "sha256:dbae50cbb3781ba1efeb009d98b4807ee528f30672fcbfc38115f4d3c8b126e7",
+  "completion_candidate_id": "completion_fixture_candidate_015",
+  "completion_candidate_fingerprint": "sha256:bc125ce92c071670bbb62b222291d4e2bab60c3616ae85aa04a3dfed6a7bf766",
+  "adapter_identity": "codex-cloud-fixture-v1",
+  "remote_task_id": "remote_fixture_task_015",
+  "request_fingerprint": "sha256:7457afedf60de8df4a8932aa87e5784d3ec9ba93376a7d7a07311b49d5bf5aae",
+  "dispatch_fingerprint": "sha256:00ec6abc682a77867315d3f561b50937c63526948a4bc65dd855b3d1c9712031",
+  "environment_ref": "fixture-environment",
+  "branch_ref": "js/dev",
+  "observed_at": "2026-07-19T00:04:00Z",
+  "opaque_result": "fixture-owned opaque result evidence"
+}

@@ -22,6 +22,27 @@ assets/docs/example-brain/index.md
 
 That baseline keeps consumer output repo-native and prevents runtime, mount, artifact, or lane
 terminology from leaking into durable docs unless the consumer repo explicitly owns those concepts.
+The `example_brain_baseline` shared collector loads the package asset and DorkPipe deterministically
+places it first only for tasks that explicitly reference its `shared/<path>` artifact in authored
+context. That reference is the package-local eligibility signal: eligible durable-guidance and
+planning tasks move the baseline ahead of their repo-specific context without changing the relative
+order of the remaining entries, while tasks that omit the reference receive no baseline.
+`example.brain` is currently the only package-owned native guidance workflow that materializes
+durable consumer documentation, so it is the complete eligible-workflow inventory for this contract.
+
+Source packets and durable output intentionally have different path rules:
+
+- source packets may show stable guest display paths such as `/DesignNotes/reference.md` as bounded
+  run evidence, while machine host paths remain hidden
+- materialized Markdown and YAML must use repo-native references
+- `/work` or another guest reference is rewritten only when one explicit mount mapping resolves to
+  exactly one location inside the consumer repository
+- external, duplicate, root-only, or otherwise ambiguous mappings fail materialization
+- machine host paths and orchestration-only terms such as artifact roots, worker/provider lanes,
+  source packets, or worker results fail materialization
+
+The policy operates on recognized references and exact terminology. It does not use broad string
+replacement to guess source identity.
 
 The primitive should be driven by workflow-owned declarative data such as YAML task specs. Shared
 scripts should materialize and execute the contract; they should not hardcode one example workflow's
@@ -52,6 +73,9 @@ dockpipe scope workflow <workflow-name> orchestrate
 - `merge/final.md`
 - `verify/result.json`
 - `approval.md`
+- `proposal/promotion-candidate.json` (eligible reusable soft-layer review data only)
+- `proposal/promotion-patch.json` and `proposal/promotion.patch` (deterministic review artifacts)
+- `proposal/promotion-apply-result.json` (separately approved promotion result)
 
 ## Shared artifacts
 
@@ -200,20 +224,16 @@ Task-class gating should make weak local lanes effectively non-authoritative:
 - local model strings and host capacity should be considered together so a large Ollama model on a
   small laptop does not win just because it is local
 
-TODO: add package-owned source walkers for local lanes. The current Ollama lane is prompt-only; it
-can summarize provided excerpts, but it cannot inspect mounted roots by itself. DorkPipe should add
-deterministic walkers that produce bounded repo/design/source packets from `access.read`,
-`context.source_roots`, ignore rules, size limits, file type filters, and source authority labels.
-Those packets can then feed local models cheaply without pretending local lanes performed source-root
-discovery. Until that exists, broad source discovery should use a tool-capable worker or a
-deterministic shared collector artifact.
-
-Local lanes now materialize a `tasks/<task-id>/source-packet.md` when the task declares
-`context.source_roots`. The packet is package-owned, bounded, and deterministic: it resolves `/work`
+Local lanes are source-packet consumers, not source scouts. When a task declares
+`context.source_roots`, DorkPipe materializes a package-owned
+`tasks/<task-id>/source-packet.md` before prompt assembly. The deterministic walker resolves `/work`
 and declared external mounts on the host, accepts only roots inside `access.read`, excludes
-`access.deny`, cache/generated directories, symlinks, and non-text files, and is appended to the
-local prompt as evidence. A local task with source roots but no readable access fails during planning
-instead of silently broadening discovery.
+`access.deny`, cache/generated directories, symlinks, and non-text files, and enforces fixed file,
+per-file byte, and total source-byte bounds. Declared root order is preserved and each root is walked
+lexically. Packet headings retain stable guest paths such as `/DesignNotes/reference.md`; resolved
+machine-specific host mount paths are never rendered into the packet. A local task with source roots
+but no readable access fails during planning instead of silently broadening discovery. Broad source
+discovery still requires a tool-capable worker or an explicitly declared deterministic source set.
 
 Local/custom lanes also materialize `tasks/<task-id>/prompt-brief.md` from their declared
 `context.required_artifacts` and `context.seed_paths` before prompt assembly. It reuses the existing

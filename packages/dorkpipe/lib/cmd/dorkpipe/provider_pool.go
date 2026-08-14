@@ -2,13 +2,16 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"crypto/sha1"
+	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"os/exec"
@@ -16,11 +19,16 @@ import (
 	"path/filepath"
 	"runtime"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"syscall"
 	"time"
+	"unicode"
+	"unicode/utf8"
 
+	"dorkpipe.orchestrator/appserversupervisor"
+	"dorkpipe.orchestrator/providersession"
 	"dorkpipe.orchestrator/statepaths"
 	"gopkg.in/yaml.v3"
 )
@@ -142,23 +150,203 @@ type providerPoolLease struct {
 }
 
 type providerPoolPromptOptions struct {
-	Workdir             string
-	Provider            string
-	Model               string
-	Prompt              string
-	SessionID           string
-	Role                string
-	WorkflowRunID       string
-	NodeID              string
-	MaxActive           int
-	QueueTimeoutSeconds int
-	ActiveFile          string
-	OpenFiles           []string
-	SelectionText       string
+	Workdir                  string
+	Provider                 string
+	Model                    string
+	Prompt                   string
+	SessionID                string
+	SessionAdapter           string
+	Role                     string
+	WorkflowRunID            string
+	NodeID                   string
+	MaxActive                int
+	QueueTimeoutSeconds      int
+	ActiveFile               string
+	OpenFiles                []string
+	SelectionText            string
+	approvalDecisionSource   providerPoolApprovalDecisionSource
+	userInputResponseSource  providerPoolUserInputResponseSource
+	cancellationIntentSource providerPoolCancellationIntentSource
+}
+
+const (
+	providerPoolCodexExecAdapter                  = "codex_exec"
+	providerPoolCodexAppServerAdapter             = "codex_app_server"
+	providerPoolSessionAdapterSchema              = 1
+	providerPoolRecoveryCandidateMaxEvidenceBytes = 4096
+)
+
+type providerPoolSessionAdapterBinding struct {
+	Schema    int    `json:"schema"`
+	SessionID string `json:"session_id"`
+	Adapter   string `json:"adapter"`
+}
+
+type providerPoolAppServerSessionState struct {
+	Schema            int    `json:"schema"`
+	SessionID         string `json:"session_id"`
+	CompletedTurn     uint64 `json:"completed_turn"`
+	ProviderSessionID string `json:"provider_session_id"`
+	RecoveryEvidence  string `json:"recovery_evidence"`
+	Model             string `json:"model"`
+	ReasoningEffort   string `json:"reasoning_effort"`
+}
+
+type providerPoolAppServerTurnClaim struct {
+	Schema      int    `json:"schema"`
+	SessionID   string `json:"session_id"`
+	PendingTurn uint64 `json:"pending_turn"`
+}
+
+type providerPoolAppServerRunResult struct {
+	Response          *providerPoolPromptResponse
+	ProviderSessionID string
+	RecoveryEvidence  string
+	VerifiedIdle      bool
+}
+
+type providerPoolAppServerFallbackEligibility uint8
+
+const (
+	providerPoolAppServerDispatchedOrUnknown providerPoolAppServerFallbackEligibility = iota
+	providerPoolAppServerEligibleBeforeTurnStart
+)
+
+func (eligibility providerPoolAppServerFallbackEligibility) allowsFallback() bool {
+	return eligibility == providerPoolAppServerEligibleBeforeTurnStart
+}
+
+type providerPoolAppServerRecoveryCandidateClassification uint8
+
+const (
+	providerPoolAppServerRecoveryNotCandidate providerPoolAppServerRecoveryCandidateClassification = iota
+	providerPoolAppServerRecoveryCandidate
+)
+
+type providerPoolAppServerRecoveryAttemptObservation uint8
+
+const (
+	providerPoolAppServerRecoveryAttemptNotObserved providerPoolAppServerRecoveryAttemptObservation = iota
+	providerPoolAppServerRecoveryAttemptObserved
+)
+
+type providerPoolApprovalDecisionSource func(context.Context, providersession.ApprovalRequest) (providersession.ApprovalDecision, bool, error)
+
+type providerPoolUserInputResponseSource func(context.Context, providersession.UserInputPrompt) (providersession.UserInputResponse, bool, error)
+
+type providerPoolCancellationScope struct {
+	Session     providersession.SessionRef
+	Correlation providersession.Correlation
+}
+
+type providerPoolCancellationIntentSource func(context.Context, providerPoolCancellationScope) (providersession.CancellationIntent, bool, error)
+
+type providerPoolCancellationSourceResult struct {
+	intent providersession.CancellationIntent
+	found  bool
+	err    error
+}
+
+const (
+	providerPoolPrivateApprovalFramePrefix     = "DORKPIPE_PRIVATE_APPROVAL_V1 "
+	providerPoolPrivateApprovalFrameLimit      = 64 * 1024
+	providerPoolPrivateUserInputFramePrefix    = "DORKPIPE_PRIVATE_USER_INPUT_V1 "
+	providerPoolPrivateUserInputFrameLimit     = 64 * 1024
+	providerPoolPrivateCancellationFramePrefix = "DORKPIPE_PRIVATE_CANCELLATION_V1 "
+	providerPoolPrivateCancellationFrameLimit  = 64 * 1024
+)
+
+type providerPoolPrivateApprovalRequestFrame struct {
+	Type    string                          `json:"type"`
+	Request providersession.ApprovalRequest `json:"request"`
+}
+
+type providerPoolPrivateApprovalDecisionFrame struct {
+	Type     string                           `json:"type"`
+	Decision providersession.ApprovalDecision `json:"decision"`
+}
+
+type providerPoolPrivateUserInputPromptFrame struct {
+	Type   string                          `json:"type"`
+	Prompt providersession.UserInputPrompt `json:"prompt"`
+}
+
+type providerPoolPrivateUserInputResponseFrame struct {
+	Type     string                            `json:"type"`
+	Response providersession.UserInputResponse `json:"response"`
+}
+
+type providerPoolPrivateCancellationScopeFrame struct {
+	Type  string                        `json:"type"`
+	Scope providerPoolCancellationScope `json:"scope"`
+}
+
+type providerPoolPrivateCancellationIntentFrame struct {
+	Type   string                             `json:"type"`
+	Intent providersession.CancellationIntent `json:"intent"`
+}
+
+type providerPoolPrivateApprovalStdio struct {
+	mu     sync.Mutex
+	reader *bufio.Reader
+	writer io.Writer
+}
+
+type providerPoolPrivateInteractiveStdio struct {
+	mu                  sync.Mutex
+	reader              *bufio.Reader
+	readerCloser        io.Closer
+	writer              io.Writer
+	writeMu             sync.Mutex
+	started             bool
+	closed              bool
+	closeErr            error
+	done                chan struct{}
+	readerDone          chan struct{}
+	pendingApproval     chan providerPoolPrivateApprovalDecisionFrame
+	pendingUserInput    chan providerPoolPrivateUserInputResponseFrame
+	pendingCancellation chan providerPoolPrivateCancellationIntentFrame
+}
+
+type providerPoolAppServerTurnController interface {
+	Events() <-chan providersession.Event
+	State() providersession.State
+	Decide(context.Context, providersession.ApprovalDecision) error
+	UserInputPrompt(context.Context, providersession.UserInputRequest) (providersession.UserInputPrompt, error)
+	RespondUserInput(context.Context, providersession.UserInputResponse) error
+	Cancel(context.Context, providersession.CancellationIntent) error
+	CompletedTurnText() (string, bool)
+	RecoveryEvidence() string
+}
+
+type providerPoolAppServerSupervisor interface {
+	providerPoolAppServerTurnController
+	Start(context.Context) error
+	Shutdown(context.Context) error
+	SelectBaselinePolicy(context.Context, string, string) (providersession.EffectivePolicySnapshot, error)
+	StartThread(context.Context, appserversupervisor.LifecyclePolicy) (appserversupervisor.LifecycleReference, error)
+	RecoverBaseline(context.Context, providersession.RecoveryRequest, appserversupervisor.LifecyclePolicy) (appserversupervisor.LifecycleReference, providersession.EffectivePolicySnapshot, error)
+	StartPromptTurn(context.Context, appserversupervisor.LifecycleReference, appserversupervisor.LifecyclePolicy, string) (appserversupervisor.LifecycleReference, error)
+}
+
+type providerPoolAppServerSupervisorSpec struct {
+	Session        providersession.SessionRef
+	Launcher       appserversupervisor.Launcher
+	Deadlines      appserversupervisor.Deadlines
+	Initialization appserversupervisor.InitializationConfig
+	SnapshotStore  appserversupervisor.SnapshotStore
+	AuditStore     appserversupervisor.AuditStore
+	Identity       appserversupervisor.DurableIdentity
 }
 
 var providerPoolClaudeImageBuild sync.Mutex
 var stopProviderPoolClaudeWorkersFunc = stopProviderPoolClaudeWorkers
+var runProviderPoolCodexAppServerPromptFunc = runProviderPoolCodexAppServerPrompt
+var runProviderPoolCommandCaptureFunc = runCommandCapture
+var removeProviderPoolAppServerTurnClaimFunc = os.Remove
+var newProviderPoolAppServerSupervisorFunc = func(spec providerPoolAppServerSupervisorSpec) (providerPoolAppServerSupervisor, error) {
+	return appserversupervisor.NewWithStoresAndIdentity(spec.Session, spec.Launcher, spec.Deadlines, spec.Initialization, spec.SnapshotStore, spec.AuditStore, spec.Identity)
+}
 
 func providerPoolCmd(argv []string) {
 	if len(argv) == 0 {
@@ -292,6 +480,7 @@ func providerPoolPromptCmd(argv []string) {
 	model := fs.String("model", "", "model override")
 	prompt := fs.String("prompt", "", "prompt text")
 	sessionID := fs.String("session-id", "", "provider-pool session id")
+	sessionAdapter := fs.String("session-adapter", "", "session-pinned Codex adapter")
 	role := fs.String("role", "", "provider-pool role hint")
 	workflowRunID := fs.String("workflow-run-id", "", "workflow run attribution")
 	nodeID := fs.String("node-id", "", "workflow node attribution")
@@ -302,29 +491,59 @@ func providerPoolPromptCmd(argv []string) {
 	fs.Var(&openFiles, "open-file", "repo-relative open file hint (repeatable)")
 	selectionText := fs.String("selection-text", "", "selection hint")
 	asJSON := fs.Bool("json", false, "print JSON")
+	privateApprovalStdio := fs.Bool("_private-mcp-approval-stdio-v1", false, "private MCP approval transport")
+	privateInteractiveStdio := fs.Bool("_private-mcp-interactive-stdio-v1", false, "private MCP interactive transport")
 	_ = fs.Parse(argv)
 	if strings.TrimSpace(*prompt) == "" {
 		fmt.Fprintln(os.Stderr, "provider-pool prompt: --prompt is required")
 		os.Exit(2)
 	}
+	if (*privateApprovalStdio || *privateInteractiveStdio) && (!*asJSON || strings.TrimSpace(*sessionAdapter) != providerPoolCodexAppServerAdapter) {
+		fmt.Fprintln(os.Stderr, "provider-pool prompt: private MCP interactive transport requires --json and --session-adapter codex_app_server")
+		os.Exit(2)
+	}
+	if *privateApprovalStdio && *privateInteractiveStdio {
+		fmt.Fprintln(os.Stderr, "provider-pool prompt: private MCP transport modes are mutually exclusive")
+		os.Exit(2)
+	}
 	wd := mustWorkdir(*workdir)
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
+	var approvalDecisionSource providerPoolApprovalDecisionSource
+	var userInputResponseSource providerPoolUserInputResponseSource
+	var cancellationIntentSource providerPoolCancellationIntentSource
+	var interactiveTransport *providerPoolPrivateInteractiveStdio
+	if *privateApprovalStdio {
+		approvalDecisionSource = newProviderPoolPrivateApprovalStdio(os.Stdin, os.Stderr).decisionSource
+	}
+	if *privateInteractiveStdio {
+		interactiveTransport = newProviderPoolPrivateInteractiveStdio(os.Stdin, os.Stderr)
+		approvalDecisionSource = interactiveTransport.decisionSource
+		userInputResponseSource = interactiveTransport.responseSource
+		cancellationIntentSource = interactiveTransport.cancellationSource
+	}
 	result, err := runProviderPoolPrompt(ctx, providerPoolPromptOptions{
-		Workdir:             wd,
-		Provider:            strings.TrimSpace(*provider),
-		Model:               strings.TrimSpace(*model),
-		Prompt:              strings.TrimSpace(*prompt),
-		SessionID:           strings.TrimSpace(*sessionID),
-		Role:                strings.TrimSpace(*role),
-		WorkflowRunID:       strings.TrimSpace(*workflowRunID),
-		NodeID:              strings.TrimSpace(*nodeID),
-		MaxActive:           *maxActive,
-		QueueTimeoutSeconds: *queueTimeoutSeconds,
-		ActiveFile:          strings.TrimSpace(*activeFile),
-		OpenFiles:           uniqueNonEmpty(openFiles),
-		SelectionText:       strings.TrimSpace(*selectionText),
+		Workdir:                  wd,
+		Provider:                 strings.TrimSpace(*provider),
+		Model:                    strings.TrimSpace(*model),
+		Prompt:                   strings.TrimSpace(*prompt),
+		SessionID:                strings.TrimSpace(*sessionID),
+		SessionAdapter:           strings.TrimSpace(*sessionAdapter),
+		Role:                     strings.TrimSpace(*role),
+		WorkflowRunID:            strings.TrimSpace(*workflowRunID),
+		NodeID:                   strings.TrimSpace(*nodeID),
+		MaxActive:                *maxActive,
+		QueueTimeoutSeconds:      *queueTimeoutSeconds,
+		ActiveFile:               strings.TrimSpace(*activeFile),
+		OpenFiles:                uniqueNonEmpty(openFiles),
+		SelectionText:            strings.TrimSpace(*selectionText),
+		approvalDecisionSource:   approvalDecisionSource,
+		userInputResponseSource:  userInputResponseSource,
+		cancellationIntentSource: cancellationIntentSource,
 	})
+	if interactiveTransport != nil {
+		interactiveTransport.close(errors.New("private MCP interactive transport is closed"))
+	}
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
@@ -356,6 +575,504 @@ func providerPoolPromptArgs(argv []string) []string {
 		return out
 	}
 	return append(out, parsed...)
+}
+
+func newProviderPoolPrivateApprovalStdio(reader io.Reader, writer io.Writer) *providerPoolPrivateApprovalStdio {
+	return &providerPoolPrivateApprovalStdio{
+		reader: bufio.NewReaderSize(reader, providerPoolPrivateApprovalFrameLimit),
+		writer: writer,
+	}
+}
+
+func (transport *providerPoolPrivateApprovalStdio) decisionSource(ctx context.Context, request providersession.ApprovalRequest) (providersession.ApprovalDecision, bool, error) {
+	transport.mu.Lock()
+	defer transport.mu.Unlock()
+	request = cloneProviderPoolApprovalRequest(request)
+	if err := request.Validate(); err != nil {
+		return providersession.ApprovalDecision{}, false, fmt.Errorf("private MCP approval request rejected: %w", err)
+	}
+	frame := providerPoolPrivateApprovalRequestFrame{Type: "approval_request", Request: request}
+	encoded, err := json.Marshal(frame)
+	if err != nil {
+		return providersession.ApprovalDecision{}, false, err
+	}
+	line := append([]byte(providerPoolPrivateApprovalFramePrefix), encoded...)
+	line = append(line, '\n')
+	if len(line) > providerPoolPrivateApprovalFrameLimit {
+		return providersession.ApprovalDecision{}, false, errors.New("private MCP approval request frame exceeds its bound")
+	}
+	written, err := transport.writer.Write(line)
+	if err != nil {
+		return providersession.ApprovalDecision{}, false, fmt.Errorf("write private MCP approval request: %w", err)
+	}
+	if written != len(line) {
+		return providersession.ApprovalDecision{}, false, io.ErrShortWrite
+	}
+
+	type readResult struct {
+		line []byte
+		err  error
+	}
+	readDone := make(chan readResult, 1)
+	go func() {
+		line, prefix, readErr := transport.reader.ReadLine()
+		if prefix && readErr == nil {
+			readErr = errors.New("private MCP approval decision frame exceeds its bound")
+		}
+		readDone <- readResult{line: append([]byte(nil), line...), err: readErr}
+	}()
+	var read readResult
+	select {
+	case read = <-readDone:
+	case <-ctx.Done():
+		return providersession.ApprovalDecision{}, false, ctx.Err()
+	}
+	if read.err != nil {
+		return providersession.ApprovalDecision{}, false, fmt.Errorf("read private MCP approval decision: %w", read.err)
+	}
+	if !strings.HasPrefix(string(read.line), providerPoolPrivateApprovalFramePrefix) {
+		return providersession.ApprovalDecision{}, false, errors.New("invalid private MCP approval decision frame")
+	}
+	var decisionFrame providerPoolPrivateApprovalDecisionFrame
+	decoder := json.NewDecoder(strings.NewReader(strings.TrimPrefix(string(read.line), providerPoolPrivateApprovalFramePrefix)))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&decisionFrame); err != nil {
+		return providersession.ApprovalDecision{}, false, fmt.Errorf("invalid private MCP approval decision frame: %w", err)
+	}
+	if decoder.Decode(&struct{}{}) != io.EOF || decisionFrame.Type != "approval_decision" {
+		return providersession.ApprovalDecision{}, false, errors.New("invalid private MCP approval decision frame")
+	}
+	if err := decisionFrame.Decision.ValidateFor(request); err != nil {
+		return providersession.ApprovalDecision{}, false, fmt.Errorf("private MCP approval decision rejected: %w", err)
+	}
+	return decisionFrame.Decision, true, nil
+}
+
+func newProviderPoolPrivateInteractiveStdio(reader io.Reader, writer io.Writer) *providerPoolPrivateInteractiveStdio {
+	transport := &providerPoolPrivateInteractiveStdio{
+		reader:     bufio.NewReaderSize(reader, providerPoolPrivateUserInputFrameLimit),
+		writer:     writer,
+		done:       make(chan struct{}),
+		readerDone: make(chan struct{}),
+	}
+	if closer, ok := reader.(io.Closer); ok {
+		transport.readerCloser = closer
+	}
+	return transport
+}
+
+func (transport *providerPoolPrivateInteractiveStdio) decisionSource(ctx context.Context, request providersession.ApprovalRequest) (providersession.ApprovalDecision, bool, error) {
+	request = cloneProviderPoolApprovalRequest(request)
+	if err := request.Validate(); err != nil {
+		return providersession.ApprovalDecision{}, false, fmt.Errorf("private MCP approval request rejected: %w", err)
+	}
+	responses := make(chan providerPoolPrivateApprovalDecisionFrame, 1)
+	if err := transport.registerApproval(responses); err != nil {
+		return providersession.ApprovalDecision{}, false, err
+	}
+	defer transport.unregisterApproval(responses)
+	encoded, err := json.Marshal(providerPoolPrivateApprovalRequestFrame{Type: "approval_request", Request: request})
+	if err != nil {
+		return providersession.ApprovalDecision{}, false, err
+	}
+	if err := transport.writeFrame(providerPoolPrivateApprovalFramePrefix, providerPoolPrivateApprovalFrameLimit, encoded); err != nil {
+		return providersession.ApprovalDecision{}, false, fmt.Errorf("write private MCP approval request: %w", err)
+	}
+	transport.startReader()
+	frame, err := transport.waitApproval(ctx, responses)
+	if err != nil {
+		return providersession.ApprovalDecision{}, false, fmt.Errorf("read private MCP approval decision: %w", err)
+	}
+	if err := frame.Decision.ValidateFor(request); err != nil {
+		return providersession.ApprovalDecision{}, false, fmt.Errorf("private MCP approval decision rejected: %w", err)
+	}
+	return frame.Decision, true, nil
+}
+
+func (transport *providerPoolPrivateInteractiveStdio) responseSource(ctx context.Context, prompt providersession.UserInputPrompt) (providersession.UserInputResponse, bool, error) {
+	prompt = cloneProviderPoolUserInputPrompt(prompt)
+	request := providersession.UserInputRequest{Correlation: prompt.Correlation, PromptRef: prompt.PromptRef}
+	if err := prompt.ValidateFor(request); err != nil {
+		return providersession.UserInputResponse{}, false, fmt.Errorf("private MCP user-input prompt rejected: %w", err)
+	}
+	responses := make(chan providerPoolPrivateUserInputResponseFrame, 1)
+	if err := transport.registerUserInput(responses); err != nil {
+		return providersession.UserInputResponse{}, false, err
+	}
+	defer transport.unregisterUserInput(responses)
+	encoded, err := json.Marshal(providerPoolPrivateUserInputPromptFrame{Type: "user_input_prompt", Prompt: prompt})
+	if err != nil {
+		return providersession.UserInputResponse{}, false, err
+	}
+	if err := transport.writeFrame(providerPoolPrivateUserInputFramePrefix, providerPoolPrivateUserInputFrameLimit, encoded); err != nil {
+		return providersession.UserInputResponse{}, false, fmt.Errorf("write private MCP user-input prompt: %w", err)
+	}
+	transport.startReader()
+	frame, err := transport.waitUserInput(ctx, responses)
+	if err != nil {
+		return providersession.UserInputResponse{}, false, fmt.Errorf("read private MCP user-input response: %w", err)
+	}
+	frame.Response = cloneProviderPoolUserInputResponse(frame.Response)
+	if err := validateProviderPoolPrivateUserInputResponse(frame.Response, prompt); err != nil {
+		return providersession.UserInputResponse{}, false, fmt.Errorf("private MCP user-input response rejected: %w", err)
+	}
+	return frame.Response, true, nil
+}
+
+func (transport *providerPoolPrivateInteractiveStdio) cancellationSource(ctx context.Context, scope providerPoolCancellationScope) (providersession.CancellationIntent, bool, error) {
+	scope = cloneProviderPoolCancellationScope(scope)
+	if err := validateProviderPoolPrivateCancellationScope(scope); err != nil {
+		return providersession.CancellationIntent{}, false, err
+	}
+	intents := make(chan providerPoolPrivateCancellationIntentFrame, 1)
+	if err := transport.registerCancellation(intents); err != nil {
+		return providersession.CancellationIntent{}, false, err
+	}
+	defer transport.unregisterCancellation(intents)
+	encoded, err := json.Marshal(providerPoolPrivateCancellationScopeFrame{Type: "cancellation_scope", Scope: scope})
+	if err != nil {
+		return providersession.CancellationIntent{}, false, err
+	}
+	if err := transport.writeFrame(providerPoolPrivateCancellationFramePrefix, providerPoolPrivateCancellationFrameLimit, encoded); err != nil {
+		return providersession.CancellationIntent{}, false, fmt.Errorf("write private MCP cancellation scope: %w", err)
+	}
+	transport.startReader()
+	frame, err := transport.waitCancellation(ctx, intents)
+	if err != nil {
+		return providersession.CancellationIntent{}, false, fmt.Errorf("read private MCP cancellation intent: %w", err)
+	}
+	intent := cloneProviderPoolCancellationIntent(frame.Intent)
+	if err := validateProviderPoolPrivateCancellationIntent(intent, scope); err != nil {
+		return providersession.CancellationIntent{}, false, err
+	}
+	return intent, true, nil
+}
+
+func (transport *providerPoolPrivateInteractiveStdio) writeFrame(prefix string, limit int, encoded []byte) error {
+	transport.writeMu.Lock()
+	defer transport.writeMu.Unlock()
+	if err := transport.closedError(); err != nil {
+		return err
+	}
+	line := append([]byte(prefix), encoded...)
+	line = append(line, '\n')
+	if len(line) > limit {
+		return errors.New("private MCP frame exceeds its bound")
+	}
+	written, err := transport.writer.Write(line)
+	if err != nil {
+		transport.fail(err)
+		return err
+	}
+	if written != len(line) {
+		transport.fail(io.ErrShortWrite)
+		return io.ErrShortWrite
+	}
+	return nil
+}
+
+func (transport *providerPoolPrivateInteractiveStdio) startReader() {
+	transport.mu.Lock()
+	if transport.started || transport.closed {
+		transport.mu.Unlock()
+		return
+	}
+	transport.started = true
+	transport.mu.Unlock()
+	go transport.readLoop()
+}
+
+func (transport *providerPoolPrivateInteractiveStdio) readLoop() {
+	defer close(transport.readerDone)
+	for {
+		line, continued, err := transport.reader.ReadLine()
+		if continued && err == nil {
+			err = errors.New("private MCP frame exceeds its bound")
+		}
+		if err != nil {
+			transport.fail(err)
+			return
+		}
+		line = append([]byte(nil), line...)
+		if len(line)+1 > providerPoolPrivateUserInputFrameLimit || !utf8.Valid(line) {
+			transport.fail(errors.New("invalid private MCP frame"))
+			return
+		}
+		if err := transport.dispatchFrame(line); err != nil {
+			transport.fail(err)
+			return
+		}
+	}
+}
+
+func (transport *providerPoolPrivateInteractiveStdio) dispatchFrame(line []byte) error {
+	switch {
+	case bytes.HasPrefix(line, []byte(providerPoolPrivateApprovalFramePrefix)):
+		var frame providerPoolPrivateApprovalDecisionFrame
+		if decodeProviderPoolPrivateFrame(line[len(providerPoolPrivateApprovalFramePrefix):], &frame) != nil || frame.Type != "approval_decision" {
+			return errors.New("invalid private MCP approval decision frame")
+		}
+		transport.mu.Lock()
+		pending := transport.pendingApproval
+		transport.pendingApproval = nil
+		transport.mu.Unlock()
+		if pending == nil {
+			return errors.New("unsolicited private MCP approval decision frame")
+		}
+		pending <- frame
+		return nil
+	case bytes.HasPrefix(line, []byte(providerPoolPrivateUserInputFramePrefix)):
+		var frame providerPoolPrivateUserInputResponseFrame
+		if decodeProviderPoolPrivateFrame(line[len(providerPoolPrivateUserInputFramePrefix):], &frame) != nil || frame.Type != "user_input_response" {
+			return errors.New("invalid private MCP user-input response frame")
+		}
+		transport.mu.Lock()
+		pending := transport.pendingUserInput
+		transport.pendingUserInput = nil
+		transport.mu.Unlock()
+		if pending == nil {
+			return errors.New("unsolicited private MCP user-input response frame")
+		}
+		pending <- frame
+		return nil
+	case bytes.HasPrefix(line, []byte(providerPoolPrivateCancellationFramePrefix)):
+		var frame providerPoolPrivateCancellationIntentFrame
+		if decodeProviderPoolPrivateFrame(line[len(providerPoolPrivateCancellationFramePrefix):], &frame) != nil || frame.Type != "cancellation_intent" || frame.Intent.Validate() != nil {
+			return errors.New("invalid private MCP cancellation intent frame")
+		}
+		transport.mu.Lock()
+		pending := transport.pendingCancellation
+		transport.pendingCancellation = nil
+		transport.mu.Unlock()
+		if pending == nil {
+			return errors.New("unsolicited private MCP cancellation intent frame")
+		}
+		pending <- frame
+		return nil
+	default:
+		return errors.New("invalid private MCP interactive response frame")
+	}
+}
+
+func (transport *providerPoolPrivateInteractiveStdio) registerApproval(pending chan providerPoolPrivateApprovalDecisionFrame) error {
+	transport.mu.Lock()
+	defer transport.mu.Unlock()
+	if transport.closed {
+		return transport.closeErr
+	}
+	if transport.pendingApproval != nil {
+		return errors.New("a private MCP approval response is already pending")
+	}
+	transport.pendingApproval = pending
+	return nil
+}
+
+func (transport *providerPoolPrivateInteractiveStdio) unregisterApproval(pending chan providerPoolPrivateApprovalDecisionFrame) {
+	transport.mu.Lock()
+	if transport.pendingApproval == pending {
+		transport.pendingApproval = nil
+	}
+	transport.mu.Unlock()
+}
+
+func (transport *providerPoolPrivateInteractiveStdio) registerUserInput(pending chan providerPoolPrivateUserInputResponseFrame) error {
+	transport.mu.Lock()
+	defer transport.mu.Unlock()
+	if transport.closed {
+		return transport.closeErr
+	}
+	if transport.pendingUserInput != nil {
+		return errors.New("a private MCP user-input response is already pending")
+	}
+	transport.pendingUserInput = pending
+	return nil
+}
+
+func (transport *providerPoolPrivateInteractiveStdio) unregisterUserInput(pending chan providerPoolPrivateUserInputResponseFrame) {
+	transport.mu.Lock()
+	if transport.pendingUserInput == pending {
+		transport.pendingUserInput = nil
+	}
+	transport.mu.Unlock()
+}
+
+func (transport *providerPoolPrivateInteractiveStdio) registerCancellation(pending chan providerPoolPrivateCancellationIntentFrame) error {
+	transport.mu.Lock()
+	defer transport.mu.Unlock()
+	if transport.closed {
+		return transport.closeErr
+	}
+	if transport.pendingCancellation != nil {
+		return errors.New("a private MCP cancellation intent is already pending")
+	}
+	transport.pendingCancellation = pending
+	return nil
+}
+
+func (transport *providerPoolPrivateInteractiveStdio) unregisterCancellation(pending chan providerPoolPrivateCancellationIntentFrame) {
+	transport.mu.Lock()
+	if transport.pendingCancellation == pending {
+		transport.pendingCancellation = nil
+	}
+	transport.mu.Unlock()
+}
+
+func (transport *providerPoolPrivateInteractiveStdio) waitApproval(ctx context.Context, pending <-chan providerPoolPrivateApprovalDecisionFrame) (providerPoolPrivateApprovalDecisionFrame, error) {
+	select {
+	case frame := <-pending:
+		return frame, nil
+	case <-transport.done:
+		select {
+		case frame := <-pending:
+			return frame, nil
+		default:
+		}
+		return providerPoolPrivateApprovalDecisionFrame{}, transport.closedError()
+	case <-ctx.Done():
+		return providerPoolPrivateApprovalDecisionFrame{}, ctx.Err()
+	}
+}
+
+func (transport *providerPoolPrivateInteractiveStdio) waitUserInput(ctx context.Context, pending <-chan providerPoolPrivateUserInputResponseFrame) (providerPoolPrivateUserInputResponseFrame, error) {
+	select {
+	case frame := <-pending:
+		return frame, nil
+	case <-transport.done:
+		select {
+		case frame := <-pending:
+			return frame, nil
+		default:
+		}
+		return providerPoolPrivateUserInputResponseFrame{}, transport.closedError()
+	case <-ctx.Done():
+		return providerPoolPrivateUserInputResponseFrame{}, ctx.Err()
+	}
+}
+
+func (transport *providerPoolPrivateInteractiveStdio) waitCancellation(ctx context.Context, pending <-chan providerPoolPrivateCancellationIntentFrame) (providerPoolPrivateCancellationIntentFrame, error) {
+	select {
+	case frame := <-pending:
+		return frame, nil
+	case <-transport.done:
+		select {
+		case frame := <-pending:
+			return frame, nil
+		default:
+		}
+		return providerPoolPrivateCancellationIntentFrame{}, transport.closedError()
+	case <-ctx.Done():
+		return providerPoolPrivateCancellationIntentFrame{}, ctx.Err()
+	}
+}
+
+func (transport *providerPoolPrivateInteractiveStdio) closedError() error {
+	transport.mu.Lock()
+	defer transport.mu.Unlock()
+	if !transport.closed {
+		return nil
+	}
+	if transport.closeErr != nil {
+		return transport.closeErr
+	}
+	return errors.New("private MCP interactive transport is closed")
+}
+
+func (transport *providerPoolPrivateInteractiveStdio) fail(err error) {
+	if err == nil {
+		err = errors.New("private MCP interactive transport is closed")
+	}
+	transport.mu.Lock()
+	if transport.closed {
+		transport.mu.Unlock()
+		return
+	}
+	transport.closed = true
+	transport.closeErr = err
+	closer := transport.readerCloser
+	close(transport.done)
+	transport.mu.Unlock()
+	if closer != nil {
+		_ = closer.Close()
+	}
+}
+
+func (transport *providerPoolPrivateInteractiveStdio) close(err error) {
+	transport.fail(err)
+	transport.mu.Lock()
+	started := transport.started
+	transport.mu.Unlock()
+	if started {
+		<-transport.readerDone
+	}
+}
+
+func cloneProviderPoolCancellationScope(scope providerPoolCancellationScope) providerPoolCancellationScope {
+	return providerPoolCancellationScope{Session: scope.Session, Correlation: scope.Correlation}
+}
+
+func cloneProviderPoolCancellationIntent(intent providersession.CancellationIntent) providersession.CancellationIntent {
+	return providersession.CancellationIntent{Session: intent.Session, Correlation: intent.Correlation, Reason: intent.Reason}
+}
+
+func validateProviderPoolPrivateCancellationScope(scope providerPoolCancellationScope) error {
+	if err := scope.Session.Validate(); err != nil || scope.Session.Provider != "codex" || strings.TrimSpace(scope.Session.SessionID) != scope.Session.SessionID {
+		return errors.New("private MCP cancellation scope rejected")
+	}
+	correlation := scope.Correlation
+	for _, value := range []string{correlation.ProcessIncarnationID, correlation.ConnectionID, correlation.SessionID, correlation.InteractionID} {
+		if strings.TrimSpace(value) == "" || strings.TrimSpace(value) != value {
+			return errors.New("private MCP cancellation scope rejected")
+		}
+	}
+	if correlation.SessionID != scope.Session.SessionID || correlation.ActivityID != "" || correlation.RequestID != "" || correlation.DecisionID != "" {
+		return errors.New("private MCP cancellation scope rejected")
+	}
+	return nil
+}
+
+func validateProviderPoolPrivateCancellationIntent(intent providersession.CancellationIntent, scope providerPoolCancellationScope) error {
+	if err := intent.Validate(); err != nil {
+		return errors.New("private MCP cancellation intent rejected")
+	}
+	if intent.Session != scope.Session || intent.Correlation != scope.Correlation {
+		return errors.New("private MCP cancellation intent rejected")
+	}
+	switch intent.Reason {
+	case providersession.CancellationReasonUserRequested, providersession.CancellationReasonSafetyStop, providersession.CancellationReasonDeadline:
+		return nil
+	default:
+		return errors.New("private MCP cancellation intent rejected")
+	}
+}
+
+func decodeProviderPoolPrivateFrame(raw []byte, target any) error {
+	if !utf8.Valid(raw) {
+		return errors.New("private MCP frame must be valid UTF-8")
+	}
+	decoder := json.NewDecoder(bytes.NewReader(raw))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(target); err != nil {
+		return err
+	}
+	if decoder.Decode(&struct{}{}) != io.EOF {
+		return errors.New("multiple JSON values are not allowed")
+	}
+	return nil
+}
+
+func validateProviderPoolPrivateUserInputResponse(response providersession.UserInputResponse, prompt providersession.UserInputPrompt) error {
+	if err := response.ValidateFor(prompt); err != nil {
+		return err
+	}
+	if !utf8.ValidString(response.Text) {
+		return errors.New("user-input text must be valid UTF-8")
+	}
+	for _, character := range response.Text {
+		if unicode.IsControl(character) {
+			return errors.New("user-input text must not contain control characters")
+		}
+	}
+	return nil
 }
 
 func buildProviderPoolCatalogResponse(workdir string, allowWarmStart bool) (*providerPoolCatalogResponse, error) {
@@ -406,6 +1123,15 @@ func runProviderPoolPrompt(ctx context.Context, opts providerPoolPromptOptions) 
 	chosenModel := strings.TrimSpace(opts.Model)
 	if chosenModel == "" {
 		chosenModel = providerPoolChosenModel(provider)
+	}
+	if provider.ID == "codex" {
+		sessionAdapter, err := resolveProviderPoolCodexSessionAdapter(opts.Workdir, opts.SessionID, opts.SessionAdapter)
+		if err != nil {
+			return nil, err
+		}
+		opts.SessionAdapter = sessionAdapter
+	} else if strings.TrimSpace(opts.SessionAdapter) != "" {
+		return nil, fmt.Errorf("provider-pool session adapter is only valid for the Codex provider")
 	}
 	statusStartedAt := time.Now()
 	status, err := providerPoolStatusFor(opts.Workdir, provider, chosenModel, opts.SessionID, true)
@@ -509,6 +1235,9 @@ func enrichProviderPoolPromptMetadata(metadata map[string]any, providerID, chose
 	if strings.TrimSpace(opts.SessionID) != "" {
 		metadata["session_id"] = strings.TrimSpace(opts.SessionID)
 	}
+	if strings.TrimSpace(opts.SessionAdapter) != "" {
+		metadata["session_adapter"] = strings.TrimSpace(opts.SessionAdapter)
+	}
 	if strings.TrimSpace(opts.Role) != "" {
 		metadata["role"] = strings.TrimSpace(opts.Role)
 	}
@@ -527,6 +1256,432 @@ func enrichProviderPoolPromptMetadata(metadata map[string]any, providerID, chose
 	if _, ok := metadata["prompt_turn_id"]; !ok {
 		metadata["prompt_turn_id"] = providerPoolPromptTurnID()
 	}
+}
+
+func resolveProviderPoolCodexSessionAdapter(workdir, sessionID, requestedAdapter string) (string, error) {
+	sessionID = strings.TrimSpace(sessionID)
+	requestedAdapter = strings.TrimSpace(requestedAdapter)
+	if requestedAdapter == "" {
+		if !validProviderPoolAdapterSessionID(sessionID) {
+			return providerPoolCodexExecAdapter, nil
+		}
+		binding, found, err := loadProviderPoolSessionAdapterBinding(workdir, sessionID)
+		if err != nil {
+			return "", err
+		}
+		if found {
+			return "", fmt.Errorf("provider-pool session %q is pinned to %q and requires an explicit adapter choice", sessionID, binding.Adapter)
+		}
+		return providerPoolCodexExecAdapter, nil
+	}
+	if requestedAdapter != providerPoolCodexExecAdapter && requestedAdapter != providerPoolCodexAppServerAdapter {
+		return "", fmt.Errorf("unknown provider-pool Codex session adapter %q", requestedAdapter)
+	}
+	if !validProviderPoolAdapterSessionID(sessionID) {
+		return "", fmt.Errorf("provider-pool Codex session adapter requires a valid session id")
+	}
+
+	binding, found, err := loadProviderPoolSessionAdapterBinding(workdir, sessionID)
+	if err != nil {
+		return "", err
+	}
+	if found {
+		if binding.Adapter != requestedAdapter {
+			return "", fmt.Errorf("provider-pool session %q is pinned to %q and cannot change to %q", sessionID, binding.Adapter, requestedAdapter)
+		}
+		return binding.Adapter, nil
+	}
+	binding = providerPoolSessionAdapterBinding{Schema: providerPoolSessionAdapterSchema, SessionID: sessionID, Adapter: requestedAdapter}
+	if err := createProviderPoolSessionAdapterBinding(workdir, binding); err != nil {
+		return "", err
+	}
+	return requestedAdapter, nil
+}
+
+func validProviderPoolAdapterSessionID(sessionID string) bool {
+	if sessionID == "" || len(sessionID) > 256 {
+		return false
+	}
+	return !strings.ContainsAny(sessionID, "\x00\r\n")
+}
+
+func providerPoolSessionAdapterBindingPath(workdir, sessionID string) (string, error) {
+	dir, err := statepaths.ProviderPoolSessionAdaptersDir(workdir)
+	if err != nil {
+		return "", err
+	}
+	digest := sha256.Sum256([]byte(sessionID))
+	return filepath.Join(dir, hex.EncodeToString(digest[:])+".json"), nil
+}
+
+func loadProviderPoolSessionAdapterBinding(workdir, sessionID string) (providerPoolSessionAdapterBinding, bool, error) {
+	path, err := providerPoolSessionAdapterBindingPath(workdir, sessionID)
+	if err != nil {
+		return providerPoolSessionAdapterBinding{}, false, err
+	}
+	raw, err := os.ReadFile(path)
+	if errors.Is(err, os.ErrNotExist) {
+		return providerPoolSessionAdapterBinding{}, false, nil
+	}
+	if err != nil {
+		return providerPoolSessionAdapterBinding{}, false, err
+	}
+	var binding providerPoolSessionAdapterBinding
+	if json.Unmarshal(raw, &binding) != nil {
+		return providerPoolSessionAdapterBinding{}, false, fmt.Errorf("provider-pool session adapter binding is malformed")
+	}
+	canonical, err := json.Marshal(binding)
+	if err != nil || strings.TrimSpace(string(raw)) != string(canonical) {
+		return providerPoolSessionAdapterBinding{}, false, fmt.Errorf("provider-pool session adapter binding is malformed")
+	}
+	if binding.Schema != providerPoolSessionAdapterSchema || binding.SessionID != sessionID || !validProviderPoolAdapterSessionID(binding.SessionID) || (binding.Adapter != providerPoolCodexExecAdapter && binding.Adapter != providerPoolCodexAppServerAdapter) {
+		return providerPoolSessionAdapterBinding{}, false, fmt.Errorf("provider-pool session adapter binding does not match the requested session")
+	}
+	return binding, true, nil
+}
+
+func createProviderPoolSessionAdapterBinding(workdir string, binding providerPoolSessionAdapterBinding) error {
+	path, err := providerPoolSessionAdapterBindingPath(workdir, binding.SessionID)
+	if err != nil {
+		return err
+	}
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return err
+	}
+	raw, err := json.Marshal(binding)
+	if err != nil {
+		return err
+	}
+	raw = append(raw, '\n')
+	file, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
+	if errors.Is(err, os.ErrExist) {
+		existing, found, loadErr := loadProviderPoolSessionAdapterBinding(workdir, binding.SessionID)
+		if loadErr != nil {
+			return loadErr
+		}
+		if !found || existing.Adapter != binding.Adapter {
+			return fmt.Errorf("provider-pool session adapter binding changed during first-use pinning")
+		}
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	if written, err := file.Write(raw); err != nil || written != len(raw) {
+		_ = file.Close()
+		if err == nil {
+			err = fmt.Errorf("provider-pool session adapter binding write was incomplete")
+		}
+		return err
+	}
+	if err := file.Sync(); err != nil {
+		_ = file.Close()
+		return err
+	}
+	return file.Close()
+}
+
+func providerPoolCodexAppServerSessionPath(workdir, sessionID string) (string, error) {
+	root, err := statepaths.ProviderPoolAppServerDir(workdir)
+	if err != nil {
+		return "", err
+	}
+	digest := sha256.Sum256([]byte(sessionID))
+	return filepath.Join(root, "sessions", hex.EncodeToString(digest[:])+".json"), nil
+}
+
+func providerPoolCodexAppServerRecoveryEvidence(sessionID string) string {
+	digest := sha256.Sum256([]byte(sessionID))
+	return "pipeon-" + hex.EncodeToString(digest[:])
+}
+
+func loadProviderPoolCodexAppServerSession(workdir, sessionID string) (providerPoolAppServerSessionState, bool, error) {
+	path, err := providerPoolCodexAppServerSessionPath(workdir, sessionID)
+	if err != nil {
+		return providerPoolAppServerSessionState{}, false, err
+	}
+	raw, err := os.ReadFile(path)
+	if errors.Is(err, os.ErrNotExist) {
+		return providerPoolAppServerSessionState{}, false, nil
+	}
+	if err != nil {
+		return providerPoolAppServerSessionState{}, false, err
+	}
+	var state providerPoolAppServerSessionState
+	if json.Unmarshal(raw, &state) != nil {
+		return providerPoolAppServerSessionState{}, false, fmt.Errorf("provider-pool App Server session state is malformed")
+	}
+	canonical, marshalErr := json.Marshal(state)
+	providerSession := providersession.SessionRef{Provider: "codex", SessionID: state.ProviderSessionID}
+	if marshalErr != nil || strings.TrimSpace(string(raw)) != string(canonical) || state.Schema != 1 || state.SessionID != sessionID || state.CompletedTurn == 0 || providerSession.Validate() != nil || state.RecoveryEvidence != providerPoolCodexAppServerRecoveryEvidence(sessionID) || strings.TrimSpace(state.Model) == "" || state.Model != strings.TrimSpace(state.Model) || strings.TrimSpace(state.ReasoningEffort) == "" || state.ReasoningEffort != strings.TrimSpace(state.ReasoningEffort) {
+		return providerPoolAppServerSessionState{}, false, fmt.Errorf("provider-pool App Server session state is malformed")
+	}
+	return state, true, nil
+}
+
+func classifyProviderPoolCodexAppServerRecoveryCandidate(workdir, sessionID, retainedAdapter string) providerPoolAppServerRecoveryCandidateClassification {
+	if sessionID != strings.TrimSpace(sessionID) || !validProviderPoolAdapterSessionID(sessionID) || retainedAdapter != providerPoolCodexAppServerAdapter {
+		return providerPoolAppServerRecoveryNotCandidate
+	}
+
+	bindingPath, err := providerPoolSessionAdapterBindingPath(workdir, sessionID)
+	if err != nil {
+		return providerPoolAppServerRecoveryNotCandidate
+	}
+	bindingRaw, ok := readProviderPoolRecoveryCandidateEvidence(bindingPath)
+	if !ok {
+		return providerPoolAppServerRecoveryNotCandidate
+	}
+	binding, found, err := loadProviderPoolSessionAdapterBinding(workdir, sessionID)
+	if err != nil || !found || binding.Adapter != providerPoolCodexAppServerAdapter || !providerPoolRecoveryCandidateCanonicalJSON(bindingRaw, binding) {
+		return providerPoolAppServerRecoveryNotCandidate
+	}
+
+	sessionPath, err := providerPoolCodexAppServerSessionPath(workdir, sessionID)
+	if err != nil {
+		return providerPoolAppServerRecoveryNotCandidate
+	}
+	stateRaw, ok := readProviderPoolRecoveryCandidateEvidence(sessionPath)
+	if !ok {
+		return providerPoolAppServerRecoveryNotCandidate
+	}
+	state, found, err := loadProviderPoolCodexAppServerSession(workdir, sessionID)
+	if err != nil || !found || !providerPoolRecoveryCandidateCanonicalJSON(stateRaw, state) || state.CompletedTurn == ^uint64(0) {
+		return providerPoolAppServerRecoveryNotCandidate
+	}
+
+	claimRaw, ok := readProviderPoolRecoveryCandidateEvidence(sessionPath + ".lock")
+	if !ok {
+		return providerPoolAppServerRecoveryNotCandidate
+	}
+	var claim providerPoolAppServerTurnClaim
+	if json.Unmarshal(claimRaw, &claim) != nil || !providerPoolRecoveryCandidateCanonicalJSON(claimRaw, claim) || claim.Schema != 1 || claim.SessionID != sessionID || claim.PendingTurn == 0 || claim.PendingTurn != state.CompletedTurn+1 {
+		return providerPoolAppServerRecoveryNotCandidate
+	}
+	for path, expected := range map[string][]byte{bindingPath: bindingRaw, sessionPath: stateRaw, sessionPath + ".lock": claimRaw} {
+		actual, ok := readProviderPoolRecoveryCandidateEvidence(path)
+		if !ok || !bytes.Equal(actual, expected) {
+			return providerPoolAppServerRecoveryNotCandidate
+		}
+	}
+	return providerPoolAppServerRecoveryCandidate
+}
+
+func observeProviderPoolCodexAppServerRecoveryAttempt(ctx context.Context, workdir, sessionID, retainedAdapter string) (providerPoolAppServerRecoveryAttemptObservation, error) {
+	if classifyProviderPoolCodexAppServerRecoveryCandidate(workdir, sessionID, retainedAdapter) != providerPoolAppServerRecoveryCandidate {
+		return providerPoolAppServerRecoveryAttemptNotObserved, fmt.Errorf("provider-pool App Server recovery attempt is not an exact candidate")
+	}
+	state, found, err := loadProviderPoolCodexAppServerSession(workdir, sessionID)
+	if err != nil || !found || state.CompletedTurn == ^uint64(0) {
+		return providerPoolAppServerRecoveryAttemptNotObserved, fmt.Errorf("provider-pool App Server recovery attempt state is invalid")
+	}
+	policy, err := appserversupervisor.BaselineLifecyclePolicy(workdir, state.Model, state.ReasoningEffort)
+	if err != nil {
+		return providerPoolAppServerRecoveryAttemptNotObserved, fmt.Errorf("provider-pool App Server recovery attempt policy: %w", err)
+	}
+	codexPath, err := providerPoolCodexCLIPath()
+	if err != nil {
+		return providerPoolAppServerRecoveryAttemptNotObserved, fmt.Errorf("provider-pool App Server recovery attempt executable: %w", err)
+	}
+	appServerRoot, err := statepaths.ProviderPoolAppServerDir(workdir)
+	if err != nil {
+		return providerPoolAppServerRecoveryAttemptNotObserved, fmt.Errorf("provider-pool App Server recovery attempt state root: %w", err)
+	}
+	if classifyProviderPoolCodexAppServerRecoveryCandidate(workdir, sessionID, retainedAdapter) != providerPoolAppServerRecoveryCandidate {
+		return providerPoolAppServerRecoveryAttemptNotObserved, fmt.Errorf("provider-pool App Server recovery attempt evidence changed")
+	}
+	confirmed, found, err := loadProviderPoolCodexAppServerSession(workdir, sessionID)
+	if err != nil || !found || confirmed != state {
+		return providerPoolAppServerRecoveryAttemptNotObserved, fmt.Errorf("provider-pool App Server recovery attempt state changed")
+	}
+
+	deadlines := appserversupervisor.Deadlines{Startup: time.Minute, Shutdown: 20 * time.Second, Kill: 10 * time.Second, Liveness: time.Minute, Request: time.Minute}
+	initialization := appserversupervisor.InitializationConfig{
+		SchemaVersion:        "v2",
+		RequiredCapabilities: []string{"stableV2"},
+		ClientName:           "dorkpipe-pipeon",
+		ClientVersion:        "0.1.0",
+		Model:                appserversupervisor.PinnedModel,
+		ReasoningEffort:      appserversupervisor.PinnedReasoningEffort,
+	}
+	digest := sha256.Sum256([]byte(sessionID))
+	identitySuffix := hex.EncodeToString(digest[:8]) + "-" + strconv.FormatUint(state.CompletedTurn+1, 10)
+	providerSession := providersession.SessionRef{Provider: "codex", SessionID: state.ProviderSessionID}
+	supervisor, err := newProviderPoolAppServerSupervisorFunc(providerPoolAppServerSupervisorSpec{
+		Session:        providerSession,
+		Launcher:       appserversupervisor.HostLauncher{Executable: codexPath, Args: []string{"app-server", "--stdio"}},
+		Deadlines:      deadlines,
+		Initialization: initialization,
+		SnapshotStore:  appserversupervisor.FileSnapshotStore{Root: filepath.Join(appServerRoot, "snapshots")},
+		AuditStore:     appserversupervisor.FileAuditStore{Root: filepath.Join(appServerRoot, "audit")},
+		Identity: appserversupervisor.DurableIdentity{
+			RecoveryEvidence:     state.RecoveryEvidence,
+			ProcessIncarnationID: "process-" + identitySuffix,
+			ConnectionID:         "connection-" + identitySuffix,
+		},
+	})
+	if err != nil {
+		return providerPoolAppServerRecoveryAttemptNotObserved, fmt.Errorf("provider-pool App Server recovery attempt supervisor: %w", err)
+	}
+
+	_, _, recoveryErr := supervisor.RecoverBaseline(ctx, providersession.RecoveryRequest{Session: providerSession, RecoveryEvidence: state.RecoveryEvidence}, policy)
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), deadlines.Shutdown+deadlines.Kill)
+	shutdownErr := supervisor.Shutdown(shutdownCtx)
+	cancel()
+	if recoveryErr != nil || shutdownErr != nil {
+		return providerPoolAppServerRecoveryAttemptNotObserved, errors.Join(
+			wrapProviderPoolAppServerRecoveryAttemptError("RecoverBaseline", recoveryErr),
+			wrapProviderPoolAppServerRecoveryAttemptError("shutdown", shutdownErr),
+		)
+	}
+	return providerPoolAppServerRecoveryAttemptObserved, nil
+}
+
+func wrapProviderPoolAppServerRecoveryAttemptError(stage string, err error) error {
+	if err == nil {
+		return nil
+	}
+	return fmt.Errorf("provider-pool App Server recovery attempt %s: %w", stage, err)
+}
+
+func readProviderPoolRecoveryCandidateEvidence(path string) ([]byte, bool) {
+	file, err := os.Open(path)
+	if err != nil {
+		return nil, false
+	}
+	defer file.Close()
+	info, err := file.Stat()
+	if err != nil || !info.Mode().IsRegular() || info.Size() <= 0 || info.Size() > providerPoolRecoveryCandidateMaxEvidenceBytes {
+		return nil, false
+	}
+	raw, err := io.ReadAll(io.LimitReader(file, providerPoolRecoveryCandidateMaxEvidenceBytes+1))
+	if err != nil || len(raw) == 0 || len(raw) > providerPoolRecoveryCandidateMaxEvidenceBytes {
+		return nil, false
+	}
+	return raw, true
+}
+
+func providerPoolRecoveryCandidateCanonicalJSON(raw []byte, value any) bool {
+	canonical, err := json.Marshal(value)
+	if err != nil {
+		return false
+	}
+	canonical = append(canonical, '\n')
+	return bytes.Equal(raw, canonical)
+}
+
+func beginProviderPoolCodexAppServerTurn(workdir, sessionID, model, reasoning string) (*providerPoolAppServerSessionState, uint64, string, error) {
+	state, found, err := loadProviderPoolCodexAppServerSession(workdir, sessionID)
+	if err != nil {
+		return nil, 0, "", err
+	}
+	turn := uint64(1)
+	if found {
+		if state.Model != model || state.ReasoningEffort != reasoning {
+			return nil, 0, "", fmt.Errorf("provider-pool App Server session %q is pinned to model %q with reasoning %q", sessionID, state.Model, state.ReasoningEffort)
+		}
+		if state.CompletedTurn == ^uint64(0) {
+			return nil, 0, "", fmt.Errorf("provider-pool App Server session turn counter is exhausted")
+		}
+		turn = state.CompletedTurn + 1
+	}
+	path, err := providerPoolCodexAppServerSessionPath(workdir, sessionID)
+	if err != nil {
+		return nil, 0, "", err
+	}
+	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+		return nil, 0, "", err
+	}
+	lockPath := path + ".lock"
+	claim := providerPoolAppServerTurnClaim{Schema: 1, SessionID: sessionID, PendingTurn: turn}
+	raw, err := json.Marshal(claim)
+	if err != nil {
+		return nil, 0, "", err
+	}
+	raw = append(raw, '\n')
+	file, err := os.OpenFile(lockPath, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
+	if errors.Is(err, os.ErrExist) {
+		return nil, 0, "", fmt.Errorf("provider-pool App Server session %q has an unresolved prior turn and cannot be replayed", sessionID)
+	}
+	if err != nil {
+		return nil, 0, "", err
+	}
+	if written, writeErr := file.Write(raw); writeErr != nil || written != len(raw) {
+		_ = file.Close()
+		if writeErr != nil {
+			return nil, 0, "", writeErr
+		}
+		return nil, 0, "", fmt.Errorf("provider-pool App Server turn claim write was incomplete")
+	}
+	if err := file.Sync(); err != nil {
+		_ = file.Close()
+		return nil, 0, "", err
+	}
+	if err := file.Close(); err != nil {
+		return nil, 0, "", err
+	}
+	if !found {
+		return nil, turn, lockPath, nil
+	}
+	return &state, turn, lockPath, nil
+}
+
+func rollbackProviderPoolCodexAppServerTurnClaim(lockPath, sessionID string, turn uint64) error {
+	expected, err := json.Marshal(providerPoolAppServerTurnClaim{Schema: 1, SessionID: sessionID, PendingTurn: turn})
+	if err != nil {
+		return err
+	}
+	expected = append(expected, '\n')
+	actual, err := os.ReadFile(lockPath)
+	if err != nil {
+		return fmt.Errorf("provider-pool App Server turn claim rollback rejected: %w", err)
+	}
+	if !bytes.Equal(actual, expected) {
+		return fmt.Errorf("provider-pool App Server turn claim rollback rejected: claim does not exactly match the current turn")
+	}
+	if err := removeProviderPoolAppServerTurnClaimFunc(lockPath); err != nil {
+		return fmt.Errorf("provider-pool App Server turn claim rollback failed: %w", err)
+	}
+	return nil
+}
+
+func finishProviderPoolCodexAppServerTurn(workdir, lockPath string, state providerPoolAppServerSessionState) error {
+	path, err := providerPoolCodexAppServerSessionPath(workdir, state.SessionID)
+	if err != nil {
+		return err
+	}
+	raw, err := json.Marshal(state)
+	if err != nil {
+		return err
+	}
+	raw = append(raw, '\n')
+	file, err := os.CreateTemp(filepath.Dir(path), ".app-server-session-*.tmp")
+	if err != nil {
+		return err
+	}
+	temporary := file.Name()
+	err = file.Chmod(0o600)
+	if err == nil {
+		_, err = file.Write(raw)
+	}
+	if err == nil {
+		err = file.Sync()
+	}
+	if closeErr := file.Close(); err == nil {
+		err = closeErr
+	}
+	if err != nil {
+		_ = os.Remove(temporary)
+		return err
+	}
+	if err := os.Rename(temporary, path); err != nil {
+		_ = os.Remove(temporary)
+		return err
+	}
+	if err := os.Remove(lockPath); err != nil {
+		return err
+	}
+	return nil
 }
 
 func waitForProviderPoolPromptReady(ctx context.Context, workdir string, provider providerPoolProvider, chosenModel, sessionID string) (*providerPoolStatus, error) {
@@ -910,8 +2065,17 @@ func runProviderPoolOllamaPrompt(ctx context.Context, opts providerPoolPromptOpt
 }
 
 func runProviderPoolCodexPrompt(ctx context.Context, opts providerPoolPromptOptions, chosenModel string) (*providerPoolPromptResponse, error) {
+	response, _, err := runProviderPoolCodexPromptWithFallbackEligibility(ctx, opts, chosenModel)
+	return response, err
+}
+
+func runProviderPoolCodexPromptWithFallbackEligibility(ctx context.Context, opts providerPoolPromptOptions, chosenModel string) (*providerPoolPromptResponse, providerPoolAppServerFallbackEligibility, error) {
 	codexPath, err := providerPoolCodexCLIPath()
 	if err != nil {
+		eligibility := providerPoolAppServerDispatchedOrUnknown
+		if opts.SessionAdapter == providerPoolCodexAppServerAdapter {
+			eligibility = providerPoolAppServerEligibleBeforeTurnStart
+		}
 		return &providerPoolPromptResponse{
 			Provider: "codex",
 			Model:    chosenModel,
@@ -919,8 +2083,67 @@ func runProviderPoolCodexPrompt(ctx context.Context, opts providerPoolPromptOpti
 			Status:   "Provider: Codex host | State: disabled | Codex CLI missing",
 			Text:     "Codex CLI is not installed or not discoverable on the host.",
 			ExitCode: -1,
-		}, nil
+		}, eligibility, nil
 	}
+	if opts.SessionAdapter == providerPoolCodexAppServerAdapter {
+		if strings.TrimSpace(chosenModel) == "" || strings.EqualFold(strings.TrimSpace(chosenModel), "config") {
+			eligibility := providerPoolAppServerEligibleBeforeTurnStart
+			response, execErr := runProviderPoolCodexAppServerFallback(ctx, opts, chosenModel, codexPath, eligibility, "", 0)
+			return response, eligibility, execErr
+		}
+		prior, turn, lockPath, err := beginProviderPoolCodexAppServerTurn(opts.Workdir, opts.SessionID, chosenModel, appserversupervisor.PinnedReasoningEffort)
+		if err != nil {
+			return nil, providerPoolAppServerDispatchedOrUnknown, err
+		}
+		run, eligibility, err := runProviderPoolCodexAppServerPromptFunc(ctx, opts, chosenModel, codexPath, prior, turn)
+		if eligibility.allowsFallback() {
+			response, execErr := runProviderPoolCodexAppServerFallback(ctx, opts, chosenModel, codexPath, eligibility, lockPath, turn)
+			return response, eligibility, execErr
+		}
+		if err != nil {
+			return nil, eligibility, err
+		}
+		if run == nil || run.Response == nil {
+			return nil, providerPoolAppServerDispatchedOrUnknown, fmt.Errorf("provider-pool App Server dispatch returned no result")
+		}
+		if !run.VerifiedIdle {
+			return run.Response, providerPoolAppServerDispatchedOrUnknown, nil
+		}
+		providerSession := providersession.SessionRef{Provider: "codex", SessionID: run.ProviderSessionID}
+		if run.Response.State != "ready" || run.Response.ExitCode != 0 || providerSession.Validate() != nil || run.RecoveryEvidence != providerPoolCodexAppServerRecoveryEvidence(opts.SessionID) || (prior != nil && run.ProviderSessionID != prior.ProviderSessionID) {
+			return nil, providerPoolAppServerDispatchedOrUnknown, fmt.Errorf("provider-pool App Server verified-idle result does not match the pinned session")
+		}
+		state := providerPoolAppServerSessionState{
+			Schema:            1,
+			SessionID:         opts.SessionID,
+			CompletedTurn:     turn,
+			ProviderSessionID: run.ProviderSessionID,
+			RecoveryEvidence:  run.RecoveryEvidence,
+			Model:             chosenModel,
+			ReasoningEffort:   appserversupervisor.PinnedReasoningEffort,
+		}
+		if err := finishProviderPoolCodexAppServerTurn(opts.Workdir, lockPath, state); err != nil {
+			return nil, providerPoolAppServerDispatchedOrUnknown, fmt.Errorf("provider-pool App Server verified-idle state: %w", err)
+		}
+		return run.Response, providerPoolAppServerDispatchedOrUnknown, nil
+	}
+	response, err := runProviderPoolCodexExecPrompt(ctx, opts, chosenModel, codexPath)
+	return response, providerPoolAppServerDispatchedOrUnknown, err
+}
+
+func runProviderPoolCodexAppServerFallback(ctx context.Context, opts providerPoolPromptOptions, chosenModel, codexPath string, eligibility providerPoolAppServerFallbackEligibility, lockPath string, turn uint64) (*providerPoolPromptResponse, error) {
+	if opts.SessionAdapter != providerPoolCodexAppServerAdapter || !eligibility.allowsFallback() {
+		return nil, fmt.Errorf("provider-pool App Server fallback is not authorized")
+	}
+	if lockPath != "" {
+		if err := rollbackProviderPoolCodexAppServerTurnClaim(lockPath, opts.SessionID, turn); err != nil {
+			return nil, err
+		}
+	}
+	return runProviderPoolCodexExecPrompt(ctx, opts, chosenModel, codexPath)
+}
+
+func runProviderPoolCodexExecPrompt(ctx context.Context, opts providerPoolPromptOptions, chosenModel, codexPath string) (*providerPoolPromptResponse, error) {
 	args := []string{"exec", "-C", opts.Workdir, "--sandbox", "workspace-write"}
 	modelArg := strings.TrimSpace(chosenModel)
 	if modelArg != "" && !strings.EqualFold(modelArg, "config") {
@@ -951,7 +2174,7 @@ func runProviderPoolCodexPrompt(ctx context.Context, opts providerPoolPromptOpti
 	defer os.Remove(lastPath)
 	args = append(args, "--output-last-message", lastPath, augmentDirectPrompt(opts.Prompt, opts.ActiveFile, opts.SelectionText, opts.OpenFiles))
 	startedAt := time.Now()
-	stdout, stderr, code, runErr := runCommandCapture(ctx, opts.Workdir, codexPath, args...)
+	stdout, stderr, code, runErr := runProviderPoolCommandCaptureFunc(ctx, opts.Workdir, codexPath, args...)
 	if runErr != nil {
 		return nil, runErr
 	}
@@ -1000,6 +2223,480 @@ func runProviderPoolCodexPrompt(ctx context.Context, opts providerPoolPromptOpti
 			"worker_mode":     map[bool]string{true: "host_resume", false: "host_prompt"}[codexSession != ""],
 		},
 	}, nil
+}
+
+func runProviderPoolCodexAppServerPrompt(ctx context.Context, opts providerPoolPromptOptions, chosenModel, codexPath string, prior *providerPoolAppServerSessionState, turnNumber uint64) (*providerPoolAppServerRunResult, providerPoolAppServerFallbackEligibility, error) {
+	policy, err := appserversupervisor.BaselineLifecyclePolicy(opts.Workdir, chosenModel, appserversupervisor.PinnedReasoningEffort)
+	if err != nil {
+		return nil, providerPoolAppServerEligibleBeforeTurnStart, fmt.Errorf("provider-pool App Server baseline policy: %w", err)
+	}
+	deadlines := appserversupervisor.Deadlines{Startup: time.Minute, Shutdown: 20 * time.Second, Kill: 10 * time.Second, Liveness: time.Minute, Request: time.Minute}
+	initialization := appserversupervisor.InitializationConfig{
+		SchemaVersion:        "v2",
+		RequiredCapabilities: []string{"stableV2"},
+		ClientName:           "dorkpipe-pipeon",
+		ClientVersion:        "0.1.0",
+		Model:                appserversupervisor.PinnedModel,
+		ReasoningEffort:      appserversupervisor.PinnedReasoningEffort,
+	}
+	appServerRoot, err := statepaths.ProviderPoolAppServerDir(opts.Workdir)
+	if err != nil {
+		return nil, providerPoolAppServerEligibleBeforeTurnStart, err
+	}
+	evidence := providerPoolCodexAppServerRecoveryEvidence(opts.SessionID)
+	digest := sha256.Sum256([]byte(opts.SessionID))
+	identitySuffix := hex.EncodeToString(digest[:8]) + "-" + strconv.FormatUint(turnNumber, 10)
+	identity := appserversupervisor.DurableIdentity{RecoveryEvidence: evidence, ProcessIncarnationID: "process-" + identitySuffix, ConnectionID: "connection-" + identitySuffix}
+	session := providersession.SessionRef{Provider: "codex", SessionID: strings.TrimSpace(opts.SessionID)}
+	if prior != nil {
+		session.SessionID = prior.ProviderSessionID
+	}
+	supervisor, err := newProviderPoolAppServerSupervisorFunc(providerPoolAppServerSupervisorSpec{
+		Session:        session,
+		Launcher:       appserversupervisor.HostLauncher{Executable: codexPath, Args: []string{"app-server", "--stdio"}},
+		Deadlines:      deadlines,
+		Initialization: initialization,
+		SnapshotStore:  appserversupervisor.FileSnapshotStore{Root: filepath.Join(appServerRoot, "snapshots")},
+		AuditStore:     appserversupervisor.FileAuditStore{Root: filepath.Join(appServerRoot, "audit")},
+		Identity:       identity,
+	})
+	if err != nil {
+		return nil, providerPoolAppServerEligibleBeforeTurnStart, fmt.Errorf("provider-pool App Server supervisor: %w", err)
+	}
+	started := false
+	defer func() {
+		if !started {
+			return
+		}
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), deadlines.Shutdown+deadlines.Kill)
+		defer cancel()
+		_ = supervisor.Shutdown(shutdownCtx)
+	}()
+	var thread appserversupervisor.LifecycleReference
+	var effective providersession.EffectivePolicySnapshot
+	if prior == nil {
+		if err := supervisor.Start(ctx); err != nil {
+			return nil, providerPoolAppServerEligibleBeforeTurnStart, fmt.Errorf("provider-pool App Server initialization: %w", err)
+		}
+		started = true
+		effective, err = supervisor.SelectBaselinePolicy(ctx, chosenModel, appserversupervisor.PinnedReasoningEffort)
+		if err != nil {
+			return nil, providerPoolAppServerEligibleBeforeTurnStart, fmt.Errorf("provider-pool App Server model/policy selection: %w", err)
+		}
+		thread, err = supervisor.StartThread(ctx, policy)
+		if err != nil {
+			return nil, providerPoolAppServerEligibleBeforeTurnStart, fmt.Errorf("provider-pool App Server thread start: %w", err)
+		}
+	} else {
+		started = true
+		thread, effective, err = supervisor.RecoverBaseline(ctx, providersession.RecoveryRequest{Session: session, RecoveryEvidence: prior.RecoveryEvidence}, policy)
+		if err != nil {
+			return nil, providerPoolAppServerEligibleBeforeTurnStart, fmt.Errorf("provider-pool App Server verified-idle recovery: %w", err)
+		}
+	}
+	if _, err := supervisor.StartPromptTurn(ctx, thread, policy, augmentDirectPrompt(opts.Prompt, opts.ActiveFile, opts.SelectionText, opts.OpenFiles)); err != nil {
+		return nil, providerPoolAppServerDispatchedOrUnknown, fmt.Errorf("provider-pool App Server turn start: %w", err)
+	}
+	run, err := consumeProviderPoolCodexAppServerTurnWithCancellation(ctx, supervisor, opts.approvalDecisionSource, opts.userInputResponseSource, opts.cancellationIntentSource, chosenModel, effective, thread.Session.SessionID, turnNumber, prior != nil)
+	return run, providerPoolAppServerDispatchedOrUnknown, err
+}
+
+func consumeProviderPoolCodexAppServerTurn(ctx context.Context, controller providerPoolAppServerTurnController, decisionSource providerPoolApprovalDecisionSource, userInputSource providerPoolUserInputResponseSource, chosenModel string, effective providersession.EffectivePolicySnapshot, providerSessionID string, turnNumber uint64, recovered bool) (*providerPoolAppServerRunResult, error) {
+	return consumeProviderPoolCodexAppServerTurnWithCancellation(ctx, controller, decisionSource, userInputSource, nil, chosenModel, effective, providerSessionID, turnNumber, recovered)
+}
+
+func consumeProviderPoolCodexAppServerTurnWithCancellation(ctx context.Context, controller providerPoolAppServerTurnController, decisionSource providerPoolApprovalDecisionSource, userInputSource providerPoolUserInputResponseSource, cancellationSource providerPoolCancellationIntentSource, chosenModel string, effective providersession.EffectivePolicySnapshot, providerSessionID string, turnNumber uint64, recovered bool) (*providerPoolAppServerRunResult, error) {
+	var completedText string
+	var lastSequence uint64
+	turnCompleted := false
+	handledApprovals := make(map[providersession.Correlation]struct{})
+	var pendingApproval *providersession.Correlation
+	userInputHandled := false
+	var pendingUserInput *providersession.Correlation
+	var cancellationResults <-chan providerPoolCancellationSourceResult
+	var cancellationCancel context.CancelFunc
+	cancellationSourceStarted := false
+	cancellationSourceDone := false
+	var cancellationScope *providerPoolCancellationScope
+	var cancellationIntent *providersession.CancellationIntent
+	cancellationDelivered := false
+	cancellationRequestAcknowledged := false
+	backgroundRiskSeen := false
+	stopCancellationSource := func() {
+		if cancellationCancel != nil {
+			cancellationCancel()
+		}
+		if cancellationSourceStarted && !cancellationSourceDone {
+			<-cancellationResults
+			cancellationSourceDone = true
+		}
+		cancellationResults = nil
+	}
+	defer stopCancellationSource()
+	failCancellation := func(summary string) (*providerPoolAppServerRunResult, error) {
+		return &providerPoolAppServerRunResult{Response: appServerCancellationFailure(chosenModel, summary)}, nil
+	}
+	for {
+		select {
+		case <-ctx.Done():
+			if cancellationSourceStarted {
+				return failCancellation("cancellation_source_cancelled")
+			}
+			return nil, ctx.Err()
+		case sourceResult := <-cancellationResults:
+			cancellationSourceDone = true
+			cancellationResults = nil
+			if cancellationCancel != nil {
+				cancellationCancel()
+			}
+			if sourceResult.err != nil {
+				if ctx.Err() != nil || errors.Is(sourceResult.err, context.Canceled) || errors.Is(sourceResult.err, context.DeadlineExceeded) {
+					return failCancellation("cancellation_source_cancelled")
+				}
+				return failCancellation("cancellation_intent_unavailable")
+			}
+			if !sourceResult.found {
+				continue
+			}
+			intent := sourceResult.intent
+			if intent.Validate() != nil || cancellationScope == nil || intent.Session != cancellationScope.Session || intent.Correlation != cancellationScope.Correlation {
+				return failCancellation("cancellation_intent_rejected")
+			}
+			if cancellationDelivered || cancellationIntent != nil || turnCompleted || pendingApproval != nil || pendingUserInput != nil || controller.State() != providersession.StateRunning {
+				return failCancellation("cancellation_intent_rejected")
+			}
+			if err := controller.Cancel(ctx, intent); err != nil {
+				return failCancellation("cancellation_delivery_failed")
+			}
+			retained := intent
+			cancellationIntent = &retained
+			cancellationDelivered = true
+		case event, ok := <-controller.Events():
+			if !ok {
+				if cancellationDelivered {
+					return failCancellation("cancellation_terminal_missing")
+				}
+				return &providerPoolAppServerRunResult{Response: appServerPromptFailure(chosenModel, "transport_closed", effective, true)}, nil
+			}
+			if event.Validate() != nil || (lastSequence != 0 && event.Sequence <= lastSequence) {
+				if event.Kind == providersession.EventCancellationRequested {
+					return failCancellation("cancellation_request_rejected")
+				}
+				if event.Kind == providersession.EventUserInputRequested {
+					return &providerPoolAppServerRunResult{Response: appServerPromptFailure(chosenModel, "user_input_request_rejected", effective, true)}, nil
+				}
+				return &providerPoolAppServerRunResult{Response: appServerPromptFailure(chosenModel, "invalid_event", effective, true)}, nil
+			}
+			lastSequence = event.Sequence
+			if event.State == providersession.StateDisconnected {
+				if cancellationDelivered {
+					return failCancellation("cancellation_terminal_missing")
+				}
+				return &providerPoolAppServerRunResult{Response: appServerPromptFailure(chosenModel, event.Summary, effective, true)}, nil
+			}
+			if event.Kind == providersession.EventProgress && event.Summary == "turn_started" && cancellationSource != nil {
+				scope, valid := exactProviderPoolCancellationScope(event, providerSessionID)
+				if !valid || cancellationSourceStarted || controller.State() != providersession.StateRunning {
+					return failCancellation("cancellation_scope_rejected")
+				}
+				retained := scope
+				cancellationScope = &retained
+				cancellationSourceStarted = true
+				sourceCtx, cancel := context.WithCancel(ctx)
+				cancellationCancel = cancel
+				results := make(chan providerPoolCancellationSourceResult, 1)
+				cancellationResults = results
+				sourceScope := retained
+				go func() {
+					intent, found, err := cancellationSource(sourceCtx, sourceScope)
+					results <- providerPoolCancellationSourceResult{intent: intent, found: found, err: err}
+				}()
+				continue
+			}
+			if event.Kind == providersession.EventCancellationRequested {
+				if !cancellationDelivered || cancellationIntent == nil {
+					return failCancellation("cancellation_request_unexpected")
+				}
+				if cancellationRequestAcknowledged {
+					return failCancellation("cancellation_request_replayed")
+				}
+				if !exactProviderPoolCancellationRequest(event, *cancellationIntent) {
+					return failCancellation("cancellation_request_rejected")
+				}
+				cancellationRequestAcknowledged = true
+				continue
+			}
+			if event.Summary == "background_process_risk_possible" {
+				if !cancellationDelivered || !cancellationRequestAcknowledged || backgroundRiskSeen || !exactProviderPoolCancellationProgress(event, *cancellationIntent) {
+					return failCancellation("cancellation_progress_rejected")
+				}
+				backgroundRiskSeen = true
+				continue
+			}
+			if event.Kind == providersession.EventStateChanged && event.State == providersession.StateCancelled && event.Summary == "cancelled" {
+				if !cancellationDelivered || !cancellationRequestAcknowledged || cancellationIntent == nil || !exactProviderPoolCancellationTerminal(event, *cancellationIntent) {
+					return failCancellation("cancellation_terminal_rejected")
+				}
+				return &providerPoolAppServerRunResult{Response: appServerPromptCancelled(chosenModel)}, nil
+			}
+			if cancellationDelivered {
+				return failCancellation("cancellation_terminal_missing")
+			}
+			if event.Kind == providersession.EventUserInputRequested {
+				request, valid := exactProviderPoolUserInputRequest(event, providerSessionID)
+				if !valid {
+					return &providerPoolAppServerRunResult{Response: appServerPromptFailure(chosenModel, "user_input_request_rejected", effective, true)}, nil
+				}
+				if pendingApproval != nil || pendingUserInput != nil || userInputHandled {
+					return &providerPoolAppServerRunResult{Response: appServerPromptFailure(chosenModel, "user_input_request_replayed", effective, true)}, nil
+				}
+				userInputHandled = true
+				if userInputSource == nil {
+					return &providerPoolAppServerRunResult{Response: appServerPromptFailure(chosenModel, "interactive_control_required", effective, true)}, nil
+				}
+				if controller.State() != providersession.StateWaitingForUserInput {
+					return &providerPoolAppServerRunResult{Response: appServerPromptFailure(chosenModel, "user_input_response_rejected", effective, true)}, nil
+				}
+				prompt, err := controller.UserInputPrompt(ctx, request)
+				if err != nil {
+					return &providerPoolAppServerRunResult{Response: appServerPromptFailure(chosenModel, "user_input_prompt_unavailable", effective, true)}, nil
+				}
+				prompt = cloneProviderPoolUserInputPrompt(prompt)
+				if prompt.ValidateFor(request) != nil {
+					return &providerPoolAppServerRunResult{Response: appServerPromptFailure(chosenModel, "user_input_prompt_rejected", effective, true)}, nil
+				}
+				response, found, err := userInputSource(ctx, cloneProviderPoolUserInputPrompt(prompt))
+				if err != nil {
+					return &providerPoolAppServerRunResult{Response: appServerPromptFailure(chosenModel, "user_input_response_unavailable", effective, true)}, nil
+				}
+				if !found {
+					return &providerPoolAppServerRunResult{Response: appServerPromptFailure(chosenModel, "interactive_control_required", effective, true)}, nil
+				}
+				response = cloneProviderPoolUserInputResponse(response)
+				if response.ValidateFor(prompt) != nil || controller.State() != providersession.StateWaitingForUserInput {
+					return &providerPoolAppServerRunResult{Response: appServerPromptFailure(chosenModel, "user_input_response_rejected", effective, true)}, nil
+				}
+				if err := controller.RespondUserInput(ctx, cloneProviderPoolUserInputResponse(response)); err != nil {
+					return &providerPoolAppServerRunResult{Response: appServerPromptFailure(chosenModel, "user_input_response_delivery_failed", effective, true)}, nil
+				}
+				correlation := request.Correlation
+				pendingUserInput = &correlation
+				continue
+			}
+			if event.Kind == providersession.EventApprovalRequested {
+				if pendingUserInput != nil {
+					return &providerPoolAppServerRunResult{Response: appServerPromptFailure(chosenModel, "user_input_resolution_missing", effective, true)}, nil
+				}
+				request, valid := exactProviderPoolApprovalRequest(event)
+				if !valid {
+					return &providerPoolAppServerRunResult{Response: appServerPromptFailure(chosenModel, "approval_request_rejected", effective, true)}, nil
+				}
+				if pendingApproval != nil {
+					return &providerPoolAppServerRunResult{Response: appServerPromptFailure(chosenModel, "approval_request_replayed", effective, true)}, nil
+				}
+				if _, duplicate := handledApprovals[request.Correlation]; duplicate {
+					return &providerPoolAppServerRunResult{Response: appServerPromptFailure(chosenModel, "approval_request_replayed", effective, true)}, nil
+				}
+				handledApprovals[request.Correlation] = struct{}{}
+				if decisionSource == nil {
+					return &providerPoolAppServerRunResult{Response: appServerPromptFailure(chosenModel, "interactive_control_required", effective, true)}, nil
+				}
+				decision, found, err := decisionSource(ctx, cloneProviderPoolApprovalRequest(request))
+				if err != nil {
+					return &providerPoolAppServerRunResult{Response: appServerPromptFailure(chosenModel, "approval_decision_unavailable", effective, true)}, nil
+				}
+				if !found {
+					return &providerPoolAppServerRunResult{Response: appServerPromptFailure(chosenModel, "interactive_control_required", effective, true)}, nil
+				}
+				if decision.ValidateFor(request) != nil || controller.State() != providersession.StateWaitingForApproval {
+					return &providerPoolAppServerRunResult{Response: appServerPromptFailure(chosenModel, "approval_decision_rejected", effective, true)}, nil
+				}
+				if err := controller.Decide(ctx, decision); err != nil {
+					return &providerPoolAppServerRunResult{Response: appServerPromptFailure(chosenModel, "approval_decision_rejected", effective, true)}, nil
+				}
+				if decision.Decision == providersession.DecisionDeny {
+					return &providerPoolAppServerRunResult{Response: appServerPromptFailure(chosenModel, "approval_denied", effective, false)}, nil
+				}
+				correlation := request.Correlation
+				pendingApproval = &correlation
+				continue
+			}
+			if pendingApproval != nil {
+				if event.Kind == providersession.EventStateChanged && event.State == providersession.StateRunning && event.Summary == "approval_resolved" && event.Correlation == *pendingApproval {
+					pendingApproval = nil
+					continue
+				}
+				if event.Summary == "turn_completed" || event.Summary == "thread_idle" || event.Summary == "turn_failed" || event.Summary == "turn_interrupted" {
+					return &providerPoolAppServerRunResult{Response: appServerPromptFailure(chosenModel, "approval_resolution_missing", effective, true)}, nil
+				}
+			}
+			if pendingUserInput != nil {
+				if event.Kind == providersession.EventStateChanged && event.State == providersession.StateRunning && event.Summary == "user_input_resolved" && event.Correlation == *pendingUserInput {
+					pendingUserInput = nil
+					continue
+				}
+				if event.Summary == "turn_completed" || event.Summary == "thread_idle" || event.Summary == "turn_failed" || event.Summary == "turn_interrupted" {
+					return &providerPoolAppServerRunResult{Response: appServerPromptFailure(chosenModel, "user_input_resolution_missing", effective, true)}, nil
+				}
+			}
+			switch event.Summary {
+			case "turn_completed":
+				stopCancellationSource()
+				text, ok := controller.CompletedTurnText()
+				if !ok {
+					return &providerPoolAppServerRunResult{Response: appServerPromptFailure(chosenModel, "completed_output_unavailable", effective, false)}, nil
+				}
+				if strings.TrimSpace(text) == "" {
+					text = "(Codex returned no output.)"
+				}
+				completedText = text
+				turnCompleted = true
+			case "thread_idle":
+				if !turnCompleted {
+					return &providerPoolAppServerRunResult{Response: appServerPromptFailure(chosenModel, "idle_before_terminal", effective, true)}, nil
+				}
+				metadata := appServerPromptMetadata(effective, "turn_completed", false)
+				metadata["session_turn"] = turnNumber
+				metadata["recovered_idle_session"] = recovered
+				return &providerPoolAppServerRunResult{Response: &providerPoolPromptResponse{
+					Provider: "codex",
+					Model:    chosenModel,
+					State:    "ready",
+					Status:   fmt.Sprintf("Provider: Codex App Server | State: ready | Model: %s", chosenModel),
+					Text:     completedText,
+					ExitCode: 0,
+					Metadata: metadata,
+				}, ProviderSessionID: providerSessionID, RecoveryEvidence: controller.RecoveryEvidence(), VerifiedIdle: true}, nil
+			case "turn_failed", "turn_interrupted":
+				return &providerPoolAppServerRunResult{Response: appServerPromptFailure(chosenModel, event.Summary, effective, false)}, nil
+			}
+		}
+	}
+}
+
+func exactProviderPoolCancellationScope(event providersession.Event, providerSessionID string) (providerPoolCancellationScope, bool) {
+	if event.Kind != providersession.EventProgress || event.State != "" || event.Summary != "turn_started" || event.Approval != nil || event.UserInput != nil || event.Cancellation != nil {
+		return providerPoolCancellationScope{}, false
+	}
+	session := event.Session
+	correlation := event.Correlation
+	if session.Provider != "codex" || session.SessionID != providerSessionID || correlation.SessionID != providerSessionID {
+		return providerPoolCancellationScope{}, false
+	}
+	for _, value := range []string{correlation.ProcessIncarnationID, correlation.ConnectionID, correlation.SessionID, correlation.InteractionID} {
+		if strings.TrimSpace(value) == "" || strings.TrimSpace(value) != value {
+			return providerPoolCancellationScope{}, false
+		}
+	}
+	if correlation.ActivityID != "" || correlation.RequestID != "" || correlation.DecisionID != "" {
+		return providerPoolCancellationScope{}, false
+	}
+	return providerPoolCancellationScope{Session: session, Correlation: correlation}, true
+}
+
+func exactProviderPoolCancellationRequest(event providersession.Event, intent providersession.CancellationIntent) bool {
+	return event.Kind == providersession.EventCancellationRequested && event.State == "" && event.Summary == "cancellation_requested" && event.Session == intent.Session && event.Correlation == intent.Correlation && event.Approval == nil && event.UserInput == nil && event.Cancellation != nil && *event.Cancellation == intent
+}
+
+func exactProviderPoolCancellationProgress(event providersession.Event, intent providersession.CancellationIntent) bool {
+	return event.Kind == providersession.EventProgress && event.State == "" && event.Summary == "background_process_risk_possible" && event.Session == intent.Session && event.Correlation == intent.Correlation && event.Approval == nil && event.UserInput == nil && event.Cancellation == nil
+}
+
+func exactProviderPoolCancellationTerminal(event providersession.Event, intent providersession.CancellationIntent) bool {
+	return event.Kind == providersession.EventStateChanged && event.State == providersession.StateCancelled && event.Summary == "cancelled" && event.Session == intent.Session && event.Correlation == intent.Correlation && event.Approval == nil && event.UserInput == nil && event.Cancellation == nil
+}
+
+func exactProviderPoolApprovalRequest(event providersession.Event) (providersession.ApprovalRequest, bool) {
+	if event.Kind != providersession.EventApprovalRequested || event.State != providersession.StateWaitingForApproval || event.Approval == nil {
+		return providersession.ApprovalRequest{}, false
+	}
+	request := cloneProviderPoolApprovalRequest(*event.Approval)
+	if request.Validate() != nil || event.Correlation != request.Correlation || event.Session.SessionID != request.Correlation.SessionID {
+		return providersession.ApprovalRequest{}, false
+	}
+	return request, true
+}
+
+func cloneProviderPoolApprovalRequest(request providersession.ApprovalRequest) providersession.ApprovalRequest {
+	request.AllowedDecisions = append([]string(nil), request.AllowedDecisions...)
+	return request
+}
+
+func exactProviderPoolUserInputRequest(event providersession.Event, providerSessionID string) (providersession.UserInputRequest, bool) {
+	if event.Kind != providersession.EventUserInputRequested || event.State != providersession.StateWaitingForUserInput || event.UserInput == nil {
+		return providersession.UserInputRequest{}, false
+	}
+	request := *event.UserInput
+	if request.Validate() != nil || event.Correlation != request.Correlation || event.Session.SessionID != request.Correlation.SessionID || request.Correlation.SessionID != providerSessionID {
+		return providersession.UserInputRequest{}, false
+	}
+	return request, true
+}
+
+func cloneProviderPoolUserInputPrompt(prompt providersession.UserInputPrompt) providersession.UserInputPrompt {
+	prompt.Options = append([]providersession.UserInputOption(nil), prompt.Options...)
+	return prompt
+}
+
+func cloneProviderPoolUserInputResponse(response providersession.UserInputResponse) providersession.UserInputResponse {
+	response.SelectedOptionRefs = append([]string(nil), response.SelectedOptionRefs...)
+	return response
+}
+
+func appServerPromptFailure(chosenModel, summary string, effective providersession.EffectivePolicySnapshot, outcomeUnknown bool) *providerPoolPromptResponse {
+	metadata := appServerPromptMetadata(effective, summary, outcomeUnknown)
+	text := "The App Server turn did not produce a safe completed response. It will not be replayed through Codex exec."
+	if outcomeUnknown {
+		text = "The App Server turn ended without a verified terminal outcome. It will not be replayed through Codex exec."
+	}
+	return &providerPoolPromptResponse{
+		Provider: "codex",
+		Model:    chosenModel,
+		State:    "failed",
+		Status:   fmt.Sprintf("Provider: Codex App Server | State: failed | %s", summary),
+		Text:     text,
+		ExitCode: 1,
+		Metadata: metadata,
+	}
+}
+
+func appServerPromptCancelled(chosenModel string) *providerPoolPromptResponse {
+	return &providerPoolPromptResponse{
+		Provider: "codex",
+		Model:    chosenModel,
+		State:    "cancelled",
+		Status:   "State: cancelled",
+		Text:     "The App Server turn was interrupted.",
+		ExitCode: 1,
+		Metadata: map[string]any{"terminal_summary": "cancelled", "outcome_unknown": false},
+	}
+}
+
+func appServerCancellationFailure(chosenModel, summary string) *providerPoolPromptResponse {
+	return &providerPoolPromptResponse{
+		Provider: "codex",
+		Model:    chosenModel,
+		State:    "failed",
+		Status:   "State: failed",
+		Text:     "The cancellation request did not reach a verified terminal outcome.",
+		ExitCode: 1,
+		Metadata: map[string]any{"terminal_summary": summary, "outcome_unknown": true},
+	}
+}
+
+func appServerPromptMetadata(effective providersession.EffectivePolicySnapshot, summary string, outcomeUnknown bool) map[string]any {
+	return map[string]any{
+		"provider_preset":           "codex",
+		"worker_mode":               "host_app_server_one_shot",
+		"session_adapter":           providerPoolCodexAppServerAdapter,
+		"selected_model":            effective.EffectiveModelRef,
+		"selected_reasoning_effort": effective.EffectiveReasoningRef,
+		"approval_policy":           effective.Approval.EffectiveRef,
+		"sandbox":                   effective.Sandbox.EffectiveRef,
+		"capabilities_enabled":      0,
+		"terminal_summary":          summary,
+		"outcome_unknown":           outcomeUnknown,
+	}
 }
 
 func providerPoolCodexOutputFailed(parts ...string) bool {

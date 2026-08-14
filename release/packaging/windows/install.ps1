@@ -12,14 +12,14 @@
   After install, optionally configures WSL for DOCKPIPE_USE_WSL_BRIDGE=1 (minimal Alpine + latest Linux dockpipe from GitHub). Use -SkipWSLSetup to skip. May prompt for Administrator (WSL) or require a reboot.
 
 .EXAMPLE
-  iwr -useb https://raw.githubusercontent.com/jamie-steele/dockpipe/master/release/packaging/windows/install.ps1 | iex
+  iwr -useb https://raw.githubusercontent.com/Dockpipe-Industries/dockpipe/master/release/packaging/windows/install.ps1 | iex
 
 .EXAMPLE
   .\install.ps1 -Version 0.6.0
 #>
 param(
     [string]$Version = "",
-    [string]$Repo = "jamie-steele/dockpipe",
+    [string]$Repo = "Dockpipe-Industries/dockpipe",
     [switch]$SkipWSLSetup
 )
 

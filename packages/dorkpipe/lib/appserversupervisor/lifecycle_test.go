@@ -8,15 +8,17 @@ import (
 	"path/filepath"
 	"testing"
 	"time"
+
+	"dorkpipe.orchestrator/providersession"
 )
 
 func testLifecyclePolicy(t *testing.T) LifecyclePolicy {
 	t.Helper()
 	workspace := filepath.Join(t.TempDir(), "workspace")
-	return LifecyclePolicy{Workspace: workspace, WritableRoots: []string{workspace}, Sandbox: "workspace-write", ApprovalPolicy: "untrusted", Reviewer: "user", Model: PinnedModel, ReasoningEffort: PinnedReasoningEffort, ModelProvider: "openai"}
+	return LifecyclePolicy{Workspace: workspace, WritableRoots: []string{workspace}, Sandbox: providerSandboxWorkspaceWrite, ApprovalPolicy: providerApprovalPolicyUntrusted, Reviewer: providerApprovalsReviewerUser, Model: PinnedModel, ReasoningEffort: PinnedReasoningEffort, ModelProvider: "openai"}
 }
 
-func initializedLifecycle(t *testing.T) (*Supervisor, *fakeChild, *bufio.Scanner, LifecyclePolicy) {
+func initializedUnselectedLifecycle(t *testing.T) (*Supervisor, *fakeChild, *bufio.Scanner, LifecyclePolicy) {
 	t.Helper()
 	child := newFakeChild()
 	s := newTestSupervisor(t, fakeLauncher{start: func(context.Context) (Child, error) { return child, nil }}, testDeadlines())
@@ -24,6 +26,79 @@ func initializedLifecycle(t *testing.T) (*Supervisor, *fakeChild, *bufio.Scanner
 		t.Fatal(err)
 	}
 	return s, child, bufio.NewScanner(child.stdinR), testLifecyclePolicy(t)
+}
+
+func initializedSelectedLifecycle(t *testing.T) (*Supervisor, *fakeChild, *bufio.Scanner, LifecyclePolicy) {
+	t.Helper()
+	s, child, scanner, _ := initializedUnselectedLifecycle(t)
+	policy := selectLifecyclePolicyForTest(t, s, "model-stable-b", "medium", NativePolicySelection{}, CapabilitySelection{})
+	return s, child, scanner, policy
+}
+
+func initializedLifecycle(t *testing.T) (*Supervisor, *fakeChild, *bufio.Scanner, LifecyclePolicy) {
+	t.Helper()
+	return initializedSelectedLifecycle(t)
+}
+
+func initializedAutoReviewLifecycle(t *testing.T) (*Supervisor, *fakeChild, *bufio.Scanner, LifecyclePolicy) {
+	t.Helper()
+	s, child, scanner, _ := initializedUnselectedLifecycle(t)
+	policy := selectLifecyclePolicyForTest(t, s, "model-stable-b", "medium", NativePolicySelection{
+		ApprovalRef:              nativeAutoReviewPolicyRef,
+		ApprovalSessionConfirmed: true,
+		SandboxRef:               workspaceWritePolicyRef,
+	}, CapabilitySelection{})
+	return s, child, scanner, policy
+}
+
+func selectLifecyclePolicyForTest(t *testing.T, s *Supervisor, model, reasoning string, nativeSelection NativePolicySelection, capabilitySelection CapabilitySelection) LifecyclePolicy {
+	t.Helper()
+	modelCatalog, reason := projectModelReasoningCatalog([]byte(modelCatalogFixture))
+	if reason != "" {
+		t.Fatal(reason)
+	}
+	s.mu.Lock()
+	storedModelCatalog := cloneModelReasoningCatalog(modelCatalog)
+	s.modelCatalog = &storedModelCatalog
+	s.mu.Unlock()
+	if _, err := s.SelectModelReasoning(providersession.ModelReasoningSelection{CatalogRef: modelCatalog.CatalogRef, ModelRef: model, ReasoningRef: reasoning}); err != nil {
+		t.Fatal(err)
+	}
+	nativeCatalog, err := s.ProjectNativePolicies(nativePolicyFixture())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if nativeSelection.ApprovalRef == "" {
+		nativeSelection.ApprovalRef = humanReviewPolicyRef
+	}
+	if nativeSelection.SandboxRef == "" {
+		nativeSelection.SandboxRef = workspaceWritePolicyRef
+	}
+	nativeSelection.CatalogRef = nativeCatalog.CatalogRef
+	if _, err := s.SelectNativePolicies(nativeSelection); err != nil {
+		t.Fatal(err)
+	}
+	capabilityCatalog, err := s.ProjectCapabilities(capabilityFixture())
+	if err != nil {
+		t.Fatal(err)
+	}
+	capabilitySelection.CatalogRef = capabilityCatalog.CatalogRef
+	if _, err := s.SelectCapabilities(capabilitySelection); err != nil {
+		t.Fatal(err)
+	}
+	policy := testLifecyclePolicy(t)
+	policy.Model, policy.ReasoningEffort = model, reasoning
+	if nativeSelection.ApprovalRef == nativeAutoReviewPolicyRef {
+		policy.Reviewer = providerApprovalsReviewerAuto
+		policy.AutoReview = true
+	}
+	return policy
+}
+
+func protocolRequestID(client *protocolClient) uint64 {
+	client.mu.Lock()
+	defer client.mu.Unlock()
+	return client.nextID
 }
 
 func lifecycleRequest(t *testing.T, scanner *bufio.Scanner, wantMethod string, wantID uint64) map[string]any {
@@ -50,14 +125,14 @@ func requestParams(t *testing.T, request map[string]any) map[string]any {
 	return params
 }
 
-func assertPinnedPolicy(t *testing.T, request map[string]any, policy LifecyclePolicy) {
+func assertSelectedPolicy(t *testing.T, request map[string]any, policy LifecyclePolicy) {
 	t.Helper()
 	params := requestParams(t, request)
-	if params["cwd"] != policy.Workspace || params["sandbox"] != "workspace-write" || params["approvalPolicy"] != "untrusted" || params["approvalsReviewer"] != "user" || params["model"] != PinnedModel || params["effort"] != PinnedReasoningEffort || params["modelProvider"] != "openai" {
-		t.Fatalf("request does not retain pinned policy: %#v", request)
+	if params["cwd"] != policy.Workspace || params["sandbox"] != providerSandboxWorkspaceWrite || params["approvalPolicy"] != policy.ApprovalPolicy || params["approvalsReviewer"] != policy.Reviewer || params["model"] != policy.Model || params["effort"] != policy.ReasoningEffort || params["modelProvider"] != "openai" {
+		t.Fatalf("request does not retain the exact selected policy: %#v", request)
 	}
 	sandbox, ok := params["sandboxPolicy"].(map[string]any)
-	if !ok || sandbox["type"] != "workspaceWrite" || sandbox["networkAccess"] != false {
+	if !ok || sandbox["type"] != providerSandboxTypeWorkspaceWrite || sandbox["networkAccess"] != false {
 		t.Fatalf("sandbox policy = %#v", request["sandboxPolicy"])
 	}
 	roots, ok := sandbox["writableRoots"].([]any)
@@ -68,6 +143,12 @@ func assertPinnedPolicy(t *testing.T, request map[string]any, policy LifecyclePo
 
 func startThreadForTest(t *testing.T, s *Supervisor, child *fakeChild, scanner *bufio.Scanner, policy LifecyclePolicy) LifecycleReference {
 	t.Helper()
+	s.mu.RLock()
+	selected := s.modelCatalog != nil && s.nativePolicyCatalog != nil && s.capabilityCatalog != nil && s.effectivePolicy != nil && s.nativePoliciesSelected && s.capabilitiesSelected
+	s.mu.RUnlock()
+	if !selected {
+		_ = selectLifecyclePolicyForTest(t, s, policy.Model, policy.ReasoningEffort, NativePolicySelection{}, CapabilitySelection{})
+	}
 	done := make(chan struct {
 		ref LifecycleReference
 		err error
@@ -80,7 +161,7 @@ func startThreadForTest(t *testing.T, s *Supervisor, child *fakeChild, scanner *
 		}{ref, err}
 	}()
 	request := lifecycleRequest(t, scanner, "thread/start", 2)
-	assertPinnedPolicy(t, request, policy)
+	assertSelectedPolicy(t, request, policy)
 	_, _ = child.stdoutW.Write([]byte(response(2, `{"thread":{"id":"thread-1"}}`)))
 	result := <-done
 	if result.err != nil {
@@ -90,7 +171,7 @@ func startThreadForTest(t *testing.T, s *Supervisor, child *fakeChild, scanner *
 }
 
 func TestLifecycleInitializedThreadReadResumeTurnAndSteer(t *testing.T) {
-	s, child, scanner, policy := initializedLifecycle(t)
+	s, child, scanner, policy := initializedSelectedLifecycle(t)
 	thread := startThreadForTest(t, s, child, scanner, policy)
 	for _, operation := range []struct {
 		method string
@@ -102,7 +183,7 @@ func TestLifecycleInitializedThreadReadResumeTurnAndSteer(t *testing.T) {
 		done := make(chan error, 1)
 		go func() { _, err := operation.call(); done <- err }()
 		request := lifecycleRequest(t, scanner, operation.method, map[string]uint64{"thread/read": 3, "thread/resume": 4}[operation.method])
-		assertPinnedPolicy(t, request, policy)
+		assertSelectedPolicy(t, request, policy)
 		params := requestParams(t, request)
 		if params["threadId"] != "thread-1" || params["includeTurns"] != false {
 			t.Fatalf("thread lifecycle params = %#v", request)
@@ -124,7 +205,7 @@ func TestLifecycleInitializedThreadReadResumeTurnAndSteer(t *testing.T) {
 		}{ref, err}
 	}()
 	turnRequest := lifecycleRequest(t, scanner, "turn/start", 5)
-	assertPinnedPolicy(t, turnRequest, policy)
+	assertSelectedPolicy(t, turnRequest, policy)
 	if requestParams(t, turnRequest)["threadId"] != "thread-1" {
 		t.Fatalf("turn request = %#v", turnRequest)
 	}
@@ -136,7 +217,7 @@ func TestLifecycleInitializedThreadReadResumeTurnAndSteer(t *testing.T) {
 	steerDone := make(chan error, 1)
 	go func() { steerDone <- s.SteerTurn(context.Background(), turn.ref, policy, "turn-input-2") }()
 	steerRequest := lifecycleRequest(t, scanner, "turn/steer", 6)
-	assertPinnedPolicy(t, steerRequest, policy)
+	assertSelectedPolicy(t, steerRequest, policy)
 	if requestParams(t, steerRequest)["threadId"] != "thread-1" || requestParams(t, steerRequest)["turnId"] != "turn-1" {
 		t.Fatalf("steer request = %#v", steerRequest)
 	}
@@ -152,8 +233,62 @@ func TestLifecycleInitializedThreadReadResumeTurnAndSteer(t *testing.T) {
 	}
 }
 
+func TestCAS14LifecycleDispatchesExactNativeAutoReviewWithIndependentWorkspaceWriteSandbox(t *testing.T) {
+	s, child, scanner, policy := initializedAutoReviewLifecycle(t)
+	if policy.ApprovalPolicy != providerApprovalPolicyUntrusted || policy.Reviewer != providerApprovalsReviewerAuto || !policy.AutoReview {
+		t.Fatalf("native automatic-review caller policy = %+v", policy)
+	}
+	thread := startThreadForTest(t, s, child, scanner, policy)
+
+	for _, operation := range []struct {
+		method string
+		id     uint64
+		call   func() (LifecycleReference, error)
+	}{
+		{"thread/read", 3, func() (LifecycleReference, error) { return s.ReadThread(context.Background(), thread, policy) }},
+		{"thread/resume", 4, func() (LifecycleReference, error) { return s.ResumeThread(context.Background(), thread, policy) }},
+	} {
+		done := make(chan error, 1)
+		go func() { _, err := operation.call(); done <- err }()
+		request := lifecycleRequest(t, scanner, operation.method, operation.id)
+		assertSelectedPolicy(t, request, policy)
+		_, _ = child.stdoutW.Write([]byte(response(operation.id, `{"thread":{"id":"thread-1"}}`)))
+		if err := <-done; err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	turnDone := make(chan struct {
+		ref LifecycleReference
+		err error
+	}, 1)
+	go func() {
+		ref, err := s.StartTurn(context.Background(), thread, policy, "turn-input-1")
+		turnDone <- struct {
+			ref LifecycleReference
+			err error
+		}{ref, err}
+	}()
+	turnRequest := lifecycleRequest(t, scanner, "turn/start", 5)
+	assertSelectedPolicy(t, turnRequest, policy)
+	_, _ = child.stdoutW.Write([]byte(response(5, `{"thread":{"id":"thread-1"},"turn":{"id":"turn-1","status":"inProgress"}}`)))
+	turn := <-turnDone
+	if turn.err != nil {
+		t.Fatal(turn.err)
+	}
+
+	steerDone := make(chan error, 1)
+	go func() { steerDone <- s.SteerTurn(context.Background(), turn.ref, policy, "turn-input-2") }()
+	steerRequest := lifecycleRequest(t, scanner, "turn/steer", 6)
+	assertSelectedPolicy(t, steerRequest, policy)
+	_, _ = child.stdoutW.Write([]byte(response(6, `{"thread":{"id":"thread-1"},"turn":{"id":"turn-1","status":"inProgress"}}`)))
+	if err := <-steerDone; err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestLifecycleRejectsStaleAndDuplicateTurnReferences(t *testing.T) {
-	s, child, scanner, policy := initializedLifecycle(t)
+	s, child, scanner, policy := initializedSelectedLifecycle(t)
 	thread := startThreadForTest(t, s, child, scanner, policy)
 	stale := thread
 	stale.Correlation.ConnectionID = "stale"
@@ -167,7 +302,7 @@ func TestLifecycleRejectsStaleAndDuplicateTurnReferences(t *testing.T) {
 		t.Fatalf("stale event = %+v", event)
 	}
 
-	s, child, scanner, policy = initializedLifecycle(t)
+	s, child, scanner, policy = initializedSelectedLifecycle(t)
 	thread = startThreadForTest(t, s, child, scanner, policy)
 	stale = thread
 	stale.Correlation.ProcessIncarnationID = "stale"
@@ -181,7 +316,7 @@ func TestLifecycleRejectsStaleAndDuplicateTurnReferences(t *testing.T) {
 		t.Fatalf("stale resume event = %+v", event)
 	}
 
-	s, child, scanner, policy = initializedLifecycle(t)
+	s, child, scanner, policy = initializedSelectedLifecycle(t)
 	thread = startThreadForTest(t, s, child, scanner, policy)
 	first := make(chan error, 1)
 	go func() { _, err := s.StartTurn(context.Background(), thread, policy, "turn-input-1"); first <- err }()
@@ -207,7 +342,7 @@ func TestLifecycleRejectsStaleAndDuplicateTurnReferences(t *testing.T) {
 }
 
 func TestLifecycleSteerRejectsNonSteerableAndBadResponse(t *testing.T) {
-	s, child, scanner, policy := initializedLifecycle(t)
+	s, child, scanner, policy := initializedSelectedLifecycle(t)
 	thread := startThreadForTest(t, s, child, scanner, policy)
 	done := make(chan struct {
 		ref LifecycleReference
@@ -253,7 +388,7 @@ func TestLifecycleProtocolAndDeadlineFailuresFailClosed(t *testing.T) {
 		"reroute":        {response(2, `{"thread":{"id":"thread-1"},"modelRerouted":true}`), DisconnectModelRerouted},
 	} {
 		t.Run(name, func(t *testing.T) {
-			s, child, scanner, policy := initializedLifecycle(t)
+			s, child, scanner, policy := initializedSelectedLifecycle(t)
 			done := make(chan error, 1)
 			go func() { _, err := s.StartThread(context.Background(), policy); done <- err }()
 			_ = lifecycleRequest(t, scanner, "thread/start", 2)
@@ -269,7 +404,7 @@ func TestLifecycleProtocolAndDeadlineFailuresFailClosed(t *testing.T) {
 		})
 	}
 	t.Run("deadline", func(t *testing.T) {
-		s, _, scanner, policy := initializedLifecycle(t)
+		s, _, scanner, policy := initializedSelectedLifecycle(t)
 		s.deadlines.Request = 20 * time.Millisecond
 		done := make(chan error, 1)
 		go func() { _, err := s.StartThread(context.Background(), policy); done <- err }()
@@ -286,7 +421,7 @@ func TestLifecycleProtocolAndDeadlineFailuresFailClosed(t *testing.T) {
 }
 
 func TestTurnLifecycleStateIsRejected(t *testing.T) {
-	s, child, scanner, policy := initializedLifecycle(t)
+	s, child, scanner, policy := initializedSelectedLifecycle(t)
 	thread := startThreadForTest(t, s, child, scanner, policy)
 	done := make(chan error, 1)
 	go func() { _, err := s.StartTurn(context.Background(), thread, policy, "turn-input-1"); done <- err }()
@@ -307,9 +442,9 @@ func TestLifecyclePolicyAndTransportGate(t *testing.T) {
 	policy := testLifecyclePolicy(t)
 	for name, mutate := range map[string]func(*LifecyclePolicy){
 		"full_access": func(p *LifecyclePolicy) { p.FullAccess = true }, "shell": func(p *LifecyclePolicy) { p.AllowShell = true },
-		"auto_review": func(p *LifecyclePolicy) { p.AutoReview = true }, "network": func(p *LifecyclePolicy) { p.NetworkEnabled = true },
-		"no_roots": func(p *LifecyclePolicy) { p.WritableRoots = nil }, "model": func(p *LifecyclePolicy) { p.Model = "other" },
-		"effort": func(p *LifecyclePolicy) { p.ReasoningEffort = "low" }, "fallback": func(p *LifecyclePolicy) { p.FallbackModel = "other" },
+		"auto_review_without_mapping": func(p *LifecyclePolicy) { p.AutoReview = true }, "network": func(p *LifecyclePolicy) { p.NetworkEnabled = true },
+		"no_roots": func(p *LifecyclePolicy) { p.WritableRoots = nil }, "model": func(p *LifecyclePolicy) { p.Model = "unsafe model" },
+		"effort": func(p *LifecyclePolicy) { p.ReasoningEffort = "" }, "fallback": func(p *LifecyclePolicy) { p.FallbackModel = "other" },
 	} {
 		t.Run(name, func(t *testing.T) {
 			candidate := policy
@@ -319,7 +454,7 @@ func TestLifecyclePolicyAndTransportGate(t *testing.T) {
 			}
 		})
 	}
-	s, child, scanner, policy := initializedLifecycle(t)
+	s, child, scanner, policy := initializedSelectedLifecycle(t)
 	thread := startThreadForTest(t, s, child, scanner, policy)
 	changed := policy
 	changed.Workspace = filepath.Join(t.TempDir(), "other-workspace")
@@ -334,7 +469,7 @@ func TestLifecyclePolicyAndTransportGate(t *testing.T) {
 		t.Fatal(event)
 	}
 
-	s, child, _, policy = initializedLifecycle(t)
+	s, child, _, policy = initializedSelectedLifecycle(t)
 	child.exit(errors.New("lost"))
 	if event := nextEvent(t, s); event.State != "ready" {
 		t.Fatal(event)
@@ -344,5 +479,334 @@ func TestLifecyclePolicyAndTransportGate(t *testing.T) {
 	}
 	if _, err := s.StartThread(context.Background(), policy); !errors.Is(err, ErrLifecycleRejected) {
 		t.Fatalf("post-loss lifecycle error = %v", err)
+	}
+}
+
+func TestCAS14LifecycleRequiresCompletePinnedSelectionsBeforeRequest(t *testing.T) {
+	s, _, _, policy := initializedUnselectedLifecycle(t)
+	client := s.client
+	before := protocolRequestID(client)
+	if _, err := s.StartThread(context.Background(), policy); !errors.Is(err, ErrLifecycleRejected) {
+		t.Fatalf("missing selection error = %v", err)
+	}
+	if after := protocolRequestID(client); after != before {
+		t.Fatalf("lifecycle request was sent before selection: request id %d -> %d", before, after)
+	}
+	if event := nextEvent(t, s); event.State != providersession.StateReady {
+		t.Fatal(event)
+	}
+	if event := nextEvent(t, s); event.State != providersession.StateDisconnected || event.Summary != string(DisconnectLifecycleRejected) {
+		t.Fatalf("missing selection event = %+v", event)
+	}
+}
+
+func TestCAS14LifecycleBlocksNonBaselineSandboxAndEnabledCapabilities(t *testing.T) {
+	tests := map[string]struct {
+		native       NativePolicySelection
+		capabilities CapabilitySelection
+	}{
+		"sandbox": {
+			native: NativePolicySelection{ApprovalRef: humanReviewPolicyRef, SandboxRef: broaderNativeSandboxPolicyRef, SandboxSessionConfirmed: true},
+		},
+		"enabled_capability": {
+			capabilities: CapabilitySelection{Enabled: []CapabilityChoice{{CapabilityRef: "stable-safe"}}},
+		},
+		"mapped_attestation_capability": {
+			capabilities: CapabilitySelection{Enabled: []CapabilityChoice{{CapabilityRef: requestAttestationCapabilityRef, SessionConfirmed: true}}},
+		},
+	}
+	for name, test := range tests {
+		t.Run(name, func(t *testing.T) {
+			s, _, _, _ := initializedUnselectedLifecycle(t)
+			policy := selectLifecyclePolicyForTest(t, s, "model-stable-b", "medium", test.native, test.capabilities)
+			client := s.client
+			before := protocolRequestID(client)
+			if _, err := s.StartThread(context.Background(), policy); !errors.Is(err, ErrLifecycleRejected) {
+				t.Fatalf("unsupported lifecycle dimension error = %v", err)
+			}
+			if after := protocolRequestID(client); after != before {
+				t.Fatalf("unsupported lifecycle dimension was dispatched: request id %d -> %d", before, after)
+			}
+			if event := nextEvent(t, s); event.State != providersession.StateReady {
+				t.Fatal(event)
+			}
+			if event := nextEvent(t, s); event.State != providersession.StateDisconnected || event.Summary != string(DisconnectUnsupportedCapability) {
+				t.Fatalf("unsupported lifecycle dimension event = %+v", event)
+			}
+		})
+	}
+}
+
+func TestCAS14MappedAttestationCapabilityRejectsEveryLifecycleOperationBeforeRequest(t *testing.T) {
+	operations := map[string]func(*Supervisor, LifecycleReference, LifecycleReference, LifecyclePolicy) error{
+		"start_thread": func(s *Supervisor, _ LifecycleReference, _ LifecycleReference, policy LifecyclePolicy) error {
+			_, err := s.StartThread(context.Background(), policy)
+			return err
+		},
+		"read_thread": func(s *Supervisor, thread LifecycleReference, _ LifecycleReference, policy LifecyclePolicy) error {
+			_, err := s.ReadThread(context.Background(), thread, policy)
+			return err
+		},
+		"resume_thread": func(s *Supervisor, thread LifecycleReference, _ LifecycleReference, policy LifecyclePolicy) error {
+			_, err := s.ResumeThread(context.Background(), thread, policy)
+			return err
+		},
+		"start_turn": func(s *Supervisor, thread LifecycleReference, _ LifecycleReference, policy LifecyclePolicy) error {
+			_, err := s.StartTurn(context.Background(), thread, policy, "turn-input-1")
+			return err
+		},
+		"steer_turn": func(s *Supervisor, _ LifecycleReference, turn LifecycleReference, policy LifecyclePolicy) error {
+			return s.SteerTurn(context.Background(), turn, policy, "turn-input-1")
+		},
+	}
+	for name, operation := range operations {
+		t.Run(name, func(t *testing.T) {
+			s, _, _, _ := initializedUnselectedLifecycle(t)
+			policy := selectLifecyclePolicyForTest(t, s, "model-stable-b", "medium", NativePolicySelection{}, CapabilitySelection{Enabled: []CapabilityChoice{{CapabilityRef: requestAttestationCapabilityRef, SessionConfirmed: true}}})
+			s.mu.Lock()
+			s.lifecycle.threadID = s.session.SessionID
+			s.lifecycle.turnID = "turn-1"
+			s.lifecycle.active = true
+			s.lifecycle.steerable = true
+			s.mu.Unlock()
+			thread := s.lifecycleReference("")
+			turn := s.lifecycleReference("turn-1")
+			client := s.client
+			before := protocolRequestID(client)
+			if err := operation(s, thread, turn, policy); !errors.Is(err, ErrLifecycleRejected) {
+				t.Fatalf("mapped attestation capability lifecycle error = %v", err)
+			}
+			if after := protocolRequestID(client); after != before {
+				t.Fatalf("mapped attestation capability dispatched %s: request id %d -> %d", name, before, after)
+			}
+			if event := nextEvent(t, s); event.State != providersession.StateReady {
+				t.Fatal(event)
+			}
+			if event := nextEvent(t, s); event.State != providersession.StateDisconnected || event.Summary != string(DisconnectUnsupportedCapability) {
+				t.Fatalf("mapped attestation capability rejection = %+v", event)
+			}
+		})
+	}
+}
+
+func TestCAS14MappedNonBaselineSandboxRejectsEveryLifecycleOperationBeforeRequest(t *testing.T) {
+	operations := map[string]func(*Supervisor, LifecycleReference, LifecycleReference, LifecyclePolicy) error{
+		"start_thread": func(s *Supervisor, _ LifecycleReference, _ LifecycleReference, policy LifecyclePolicy) error {
+			_, err := s.StartThread(context.Background(), policy)
+			return err
+		},
+		"read_thread": func(s *Supervisor, thread LifecycleReference, _ LifecycleReference, policy LifecyclePolicy) error {
+			_, err := s.ReadThread(context.Background(), thread, policy)
+			return err
+		},
+		"resume_thread": func(s *Supervisor, thread LifecycleReference, _ LifecycleReference, policy LifecyclePolicy) error {
+			_, err := s.ResumeThread(context.Background(), thread, policy)
+			return err
+		},
+		"start_turn": func(s *Supervisor, thread LifecycleReference, _ LifecycleReference, policy LifecyclePolicy) error {
+			_, err := s.StartTurn(context.Background(), thread, policy, "turn-input-1")
+			return err
+		},
+		"steer_turn": func(s *Supervisor, _ LifecycleReference, turn LifecycleReference, policy LifecyclePolicy) error {
+			return s.SteerTurn(context.Background(), turn, policy, "turn-input-1")
+		},
+	}
+	for name, operation := range operations {
+		t.Run(name, func(t *testing.T) {
+			s, _, _, _ := initializedUnselectedLifecycle(t)
+			policy := selectLifecyclePolicyForTest(t, s, "model-stable-b", "medium", NativePolicySelection{
+				ApprovalRef:             humanReviewPolicyRef,
+				SandboxRef:              broaderNativeSandboxPolicyRef,
+				SandboxSessionConfirmed: true,
+			}, CapabilitySelection{})
+			s.mu.Lock()
+			s.lifecycle.threadID = s.session.SessionID
+			s.lifecycle.turnID = "turn-1"
+			s.lifecycle.active = true
+			s.lifecycle.steerable = true
+			s.mu.Unlock()
+			thread := s.lifecycleReference("")
+			turn := s.lifecycleReference("turn-1")
+			client := s.client
+			before := protocolRequestID(client)
+			if err := operation(s, thread, turn, policy); !errors.Is(err, ErrLifecycleRejected) {
+				t.Fatalf("mapped non-baseline sandbox lifecycle error = %v", err)
+			}
+			if after := protocolRequestID(client); after != before {
+				t.Fatalf("mapped non-baseline sandbox dispatched %s: request id %d -> %d", name, before, after)
+			}
+			if event := nextEvent(t, s); event.State != providersession.StateReady {
+				t.Fatal(event)
+			}
+			if event := nextEvent(t, s); event.State != providersession.StateDisconnected || event.Summary != string(DisconnectUnsupportedCapability) {
+				t.Fatalf("mapped non-baseline sandbox rejection = %+v", event)
+			}
+		})
+	}
+}
+
+func TestCAS14LifecycleOperationsRejectCallerPolicyDriftBeforeRequest(t *testing.T) {
+	operations := map[string]func(*Supervisor, LifecycleReference, LifecyclePolicy) error{
+		"read": func(s *Supervisor, thread LifecycleReference, policy LifecyclePolicy) error {
+			_, err := s.ReadThread(context.Background(), thread, policy)
+			return err
+		},
+		"resume": func(s *Supervisor, thread LifecycleReference, policy LifecyclePolicy) error {
+			_, err := s.ResumeThread(context.Background(), thread, policy)
+			return err
+		},
+		"start_turn": func(s *Supervisor, thread LifecycleReference, policy LifecyclePolicy) error {
+			_, err := s.StartTurn(context.Background(), thread, policy, "turn-input-1")
+			return err
+		},
+		"steer_turn": func(s *Supervisor, thread LifecycleReference, policy LifecyclePolicy) error {
+			return s.SteerTurn(context.Background(), thread, policy, "turn-input-1")
+		},
+	}
+	for name, operation := range operations {
+		t.Run(name, func(t *testing.T) {
+			s, child, scanner, policy := initializedSelectedLifecycle(t)
+			thread := startThreadForTest(t, s, child, scanner, policy)
+			client := s.client
+			before := protocolRequestID(client)
+			drifted := policy
+			drifted.Model = PinnedModel
+			if err := operation(s, thread, drifted); !errors.Is(err, ErrLifecycleRejected) {
+				t.Fatalf("caller policy drift error = %v", err)
+			}
+			if after := protocolRequestID(client); after != before {
+				t.Fatalf("drifted lifecycle request was sent: request id %d -> %d", before, after)
+			}
+			if event := nextEvent(t, s); event.State != providersession.StateReady {
+				t.Fatal(event)
+			}
+			if event := nextEvent(t, s); event.State != providersession.StateDisconnected || event.Summary != string(DisconnectPolicyMismatch) {
+				t.Fatalf("caller policy drift event = %+v", event)
+			}
+		})
+	}
+}
+
+func TestCAS14LifecycleRejectsCatalogAndEffectiveSnapshotDriftBeforeRequest(t *testing.T) {
+	tests := map[string]func(*Supervisor){
+		"catalog_drift": func(s *Supervisor) {
+			s.modelCatalog.Options[0].ReasoningRef = "drifted"
+		},
+		"selected_effective_mismatch": func(s *Supervisor) {
+			s.effectivePolicy.EffectiveModelRef = PinnedModel
+		},
+	}
+	for name, mutate := range tests {
+		t.Run(name, func(t *testing.T) {
+			s, child, scanner, policy := initializedSelectedLifecycle(t)
+			thread := startThreadForTest(t, s, child, scanner, policy)
+			client := s.client
+			before := protocolRequestID(client)
+			s.mu.Lock()
+			mutate(s)
+			s.mu.Unlock()
+			if _, err := s.ReadThread(context.Background(), thread, policy); !errors.Is(err, ErrLifecycleRejected) {
+				t.Fatalf("stored policy drift error = %v", err)
+			}
+			if after := protocolRequestID(client); after != before {
+				t.Fatalf("stored policy drift request was sent: request id %d -> %d", before, after)
+			}
+			if event := nextEvent(t, s); event.State != providersession.StateReady {
+				t.Fatal(event)
+			}
+			if event := nextEvent(t, s); event.State != providersession.StateDisconnected || event.Summary != string(DisconnectPolicyMismatch) {
+				t.Fatalf("stored policy drift event = %+v", event)
+			}
+		})
+	}
+}
+
+func TestCAS14NativeAutoReviewThreadRejectsEveryPolicyDriftBeforeRequest(t *testing.T) {
+	operations := map[string]func(*Supervisor, LifecycleReference, LifecyclePolicy) error{
+		"read": func(s *Supervisor, thread LifecycleReference, policy LifecyclePolicy) error {
+			_, err := s.ReadThread(context.Background(), thread, policy)
+			return err
+		},
+		"resume": func(s *Supervisor, thread LifecycleReference, policy LifecyclePolicy) error {
+			_, err := s.ResumeThread(context.Background(), thread, policy)
+			return err
+		},
+		"start_turn": func(s *Supervisor, thread LifecycleReference, policy LifecyclePolicy) error {
+			_, err := s.StartTurn(context.Background(), thread, policy, "turn-input-1")
+			return err
+		},
+		"steer_turn": func(s *Supervisor, thread LifecycleReference, policy LifecyclePolicy) error {
+			return s.SteerTurn(context.Background(), thread, policy, "turn-input-1")
+		},
+	}
+	drifts := map[string]struct {
+		mutateStored func(*Supervisor)
+		mutateCaller func(*LifecyclePolicy)
+	}{
+		"mapping_missing": {mutateStored: func(s *Supervisor) {
+			s.nativePolicyCatalog.Approval[1].providerPolicy, s.nativePolicyCatalog.Approval[1].providerReviewer = "", ""
+		}},
+		"mapping_partial": {mutateStored: func(s *Supervisor) {
+			s.nativePolicyCatalog.Approval[1].providerReviewer = ""
+		}},
+		"mapping_ambiguous": {mutateStored: func(s *Supervisor) {
+			s.nativePolicyCatalog.Approval[1].providerReviewer = providerApprovalsReviewerUser
+		}},
+		"mapping_changed": {mutateStored: func(s *Supervisor) {
+			s.nativePolicyCatalog.Approval[1].providerReviewer = "guardian_subagent"
+		}},
+		"selection_changed": {mutateStored: func(s *Supervisor) {
+			s.effectivePolicy.Approval.SelectedRef = humanReviewPolicyRef
+		}},
+		"catalog_changed": {mutateStored: func(s *Supervisor) {
+			s.nativePolicyCatalog.CatalogRef = "policy-catalog-stale"
+		}},
+		"effective_changed": {mutateStored: func(s *Supervisor) {
+			s.effectivePolicy.Approval.EffectiveRef = humanReviewPolicyRef
+		}},
+		"confirmation_missing": {mutateStored: func(s *Supervisor) {
+			s.effectivePolicy.Approval.SessionConfirmed = false
+		}},
+		"option_removed": {mutateStored: func(s *Supervisor) {
+			s.nativePolicyCatalog.Approval = s.nativePolicyCatalog.Approval[:1]
+		}},
+		"option_unavailable": {mutateStored: func(s *Supervisor) {
+			s.nativePolicyCatalog.Approval[1].Available = false
+		}},
+		"caller_policy_changed": {mutateCaller: func(policy *LifecyclePolicy) {
+			policy.Reviewer = providerApprovalsReviewerUser
+			policy.AutoReview = false
+		}},
+	}
+
+	for operationName, operation := range operations {
+		for driftName, drift := range drifts {
+			t.Run(operationName+"/"+driftName, func(t *testing.T) {
+				s, child, scanner, policy := initializedAutoReviewLifecycle(t)
+				thread := startThreadForTest(t, s, child, scanner, policy)
+				client := s.client
+				before := protocolRequestID(client)
+				if drift.mutateStored != nil {
+					s.mu.Lock()
+					drift.mutateStored(s)
+					s.mu.Unlock()
+				}
+				if drift.mutateCaller != nil {
+					drift.mutateCaller(&policy)
+				}
+				if err := operation(s, thread, policy); !errors.Is(err, ErrLifecycleRejected) {
+					t.Fatalf("policy drift error = %v", err)
+				}
+				if after := protocolRequestID(client); after != before {
+					t.Fatalf("drifted lifecycle request was sent: request id %d -> %d", before, after)
+				}
+				if event := nextEvent(t, s); event.State != providersession.StateReady {
+					t.Fatal(event)
+				}
+				if event := nextEvent(t, s); event.State != providersession.StateDisconnected {
+					t.Fatalf("policy drift event = %+v", event)
+				}
+			})
+		}
 	}
 }

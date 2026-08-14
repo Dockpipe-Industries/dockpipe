@@ -11,6 +11,8 @@ Use:
 ```yaml
 skills:
   - dorkpipe-core-review
+  - dorkpipe-task-execution
+  - dorkpipe-task-handoff
   - dorkpipe-token-optimization
 ```
 
@@ -22,6 +24,8 @@ skill for Codex, Claude, or another target.
 - `dorkpipe-agentic-yaml`
 - `dorkpipe-core-review`
 - `dorkpipe-package-authoring`
+- `dorkpipe-task-execution`
+- `dorkpipe-task-handoff`
 - `dorkpipe-token-optimization`
 - `dorkpipe-yaml-workflows`
 

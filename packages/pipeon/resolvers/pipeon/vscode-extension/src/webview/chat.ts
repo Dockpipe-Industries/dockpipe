@@ -181,6 +181,310 @@
     ].join("");
   }
 
+  function normalizeTransientApproval(value) {
+    if (!value || typeof value !== "object" || Array.isArray(value)) {
+      return null;
+    }
+    const uiReference = typeof value.uiReference === "string" ? value.uiReference : "";
+    const reason = ["command_execution", "workspace_change", "declared_permission"].includes(String(value.reason || ""))
+      ? String(value.reason)
+      : "";
+    const allowedDecisions = Array.isArray(value.allowedDecisions)
+      ? value.allowedDecisions.map((item) => String(item))
+      : [];
+    const expected = reason === "declared_permission" ? ["deny"] : ["approve", "deny"];
+    const state = ["pending", "submitting", "delivered", "transport_error"].includes(String(value.state || ""))
+      ? String(value.state)
+      : "";
+    if (!uiReference || !reason || !state || allowedDecisions.length !== expected.length || allowedDecisions.some((item, index) => item !== expected[index])) {
+      return null;
+    }
+    return { uiReference, reason, allowedDecisions, state };
+  }
+
+  function renderTransientApproval(value) {
+    const approval = normalizeTransientApproval(value);
+    if (!approval) {
+      return "";
+    }
+    const reasonText = {
+      command_execution: "Codex requests permission to run a command.",
+      workspace_change: "Codex requests permission to change the workspace.",
+      declared_permission: "Codex requests an additional declared permission.",
+    }[approval.reason];
+    let statusText = "";
+    if (approval.state === "submitting") {
+      statusText = "Delivering decision…";
+    } else if (approval.state === "delivered") {
+      statusText = "Decision delivered; waiting for Codex.";
+    } else if (approval.state === "transport_error") {
+      statusText = "Decision delivery could not be confirmed. The request remains blocked.";
+    }
+    const controls = approval.state === "pending"
+      ? [
+          '<div class="pendingActions">',
+          approval.allowedDecisions.includes("approve")
+            ? '<button class="btn" type="button" data-approval-decision="approve" data-approval-reference="' + escapeHtml(approval.uiReference) + '">Approve</button>'
+            : "",
+          approval.allowedDecisions.includes("deny")
+            ? '<button class="btn ghost" type="button" data-approval-decision="deny" data-approval-reference="' + escapeHtml(approval.uiReference) + '">Deny</button>'
+            : "",
+          "</div>",
+        ].join("")
+      : '<div class="pendingMeta">' + escapeHtml(statusText) + "</div>";
+    return [
+      '<section class="pendingCard" data-approval-card="true">',
+      '<div class="pendingTitle">Codex approval required</div>',
+      '<div class="pendingMeta">' + escapeHtml(reasonText) + "</div>",
+      controls,
+      "</section>",
+    ].join("");
+  }
+
+  function normalizeTransientUserInput(value) {
+    if (!value || typeof value !== "object" || Array.isArray(value)) {
+      return null;
+    }
+    const uiReference = typeof value.uiReference === "string" ? value.uiReference : "";
+    const state = ["pending", "submitting", "delivered", "transport_error"].includes(String(value.state || ""))
+      ? String(value.state)
+      : "";
+    if (!uiReference || !state) {
+      return null;
+    }
+    if (state !== "pending") {
+      return { uiReference, state };
+    }
+    const kind = ["select_one", "select_many", "text"].includes(String(value.kind || ""))
+      ? String(value.kind)
+      : "";
+    const summary = typeof value.summary === "string" ? value.summary : "";
+    const options = Array.isArray(value.options)
+      ? value.options.map((option) => ({
+          uiOptionReference: typeof option?.uiOptionReference === "string" ? option.uiOptionReference : "",
+          label: typeof option?.label === "string" ? option.label : "",
+        }))
+      : [];
+    if (!kind || !summary || options.some((option) => !option.uiOptionReference || !option.label)) {
+      return null;
+    }
+    if (kind === "text") {
+      const maxTextBytes = Number(value.maxTextBytes);
+      if (options.length !== 0 || !Number.isInteger(maxTextBytes) || maxTextBytes < 1 || maxTextBytes > 4096) {
+        return null;
+      }
+      return { uiReference, kind, summary, options: [], maxTextBytes, state };
+    }
+    if (options.length < 1 || options.length > 16 || new Set(options.map((option) => option.uiOptionReference)).size !== options.length) {
+      return null;
+    }
+    const maxSelections = kind === "select_one" ? 1 : Number(value.maxSelections);
+    if (kind === "select_many" && (!Number.isInteger(maxSelections) || maxSelections < 1 || maxSelections > options.length)) {
+      return null;
+    }
+    return { uiReference, kind, summary, options, maxSelections, state };
+  }
+
+  function renderTransientUserInput(value) {
+    const prompt = normalizeTransientUserInput(value);
+    if (!prompt) {
+      return "";
+    }
+    if (prompt.state !== "pending") {
+      const statusText = prompt.state === "submitting"
+        ? "Delivering response…"
+        : prompt.state === "delivered"
+          ? "Response delivered; waiting for Codex."
+          : "Response delivery could not be confirmed. The request was stopped.";
+      return '<section class="pendingCard" data-user-input-card="true"><div class="pendingMeta">' + escapeHtml(statusText) + "</div></section>";
+    }
+    let body = "";
+    if (prompt.kind === "text") {
+      body = [
+        '<textarea class="userInputText" data-user-input-text="true" data-user-input-reference="' + escapeHtml(prompt.uiReference) + '" rows="4" maxlength="' + escapeHtml(String(prompt.maxTextBytes)) + '" aria-label="Response"></textarea>',
+        '<div class="pendingMeta"><span data-user-input-byte-count="true">0</span> / ' + escapeHtml(String(prompt.maxTextBytes)) + ' UTF-8 bytes</div>',
+        '<div class="pendingActions"><button class="btn" type="button" data-user-input-submit="true" data-user-input-reference="' + escapeHtml(prompt.uiReference) + '" disabled>Submit response</button></div>',
+      ].join("");
+    } else {
+      const inputType = prompt.kind === "select_one" ? "radio" : "checkbox";
+      const options = prompt.options.map((option) => [
+        '<label class="pendingMeta userInputOption">',
+        '<input type="' + inputType + '" name="user-input-' + escapeHtml(prompt.uiReference) + '" data-user-input-option="true" data-user-input-reference="' + escapeHtml(prompt.uiReference) + '" value="' + escapeHtml(option.uiOptionReference) + '"> ',
+        escapeHtml(option.label),
+        "</label>",
+      ].join("")).join("");
+      const bound = prompt.kind === "select_many"
+        ? '<div class="pendingMeta">Choose 1 to ' + escapeHtml(String(prompt.maxSelections)) + ' distinct options.</div>'
+        : '<div class="pendingMeta">Choose exactly one option.</div>';
+      body = options + bound
+        + '<div class="pendingActions"><button class="btn" type="button" data-user-input-submit="true" data-user-input-reference="' + escapeHtml(prompt.uiReference) + '" disabled>Submit response</button></div>';
+    }
+    return [
+      '<section class="pendingCard" data-user-input-card="true" data-user-input-kind="' + escapeHtml(prompt.kind) + '" data-user-input-reference="' + escapeHtml(prompt.uiReference) + '">',
+      '<div class="pendingTitle">Codex needs your input</div>',
+      '<div class="pendingMeta">' + escapeHtml(prompt.summary) + "</div>",
+      body,
+      "</section>",
+    ].join("");
+  }
+
+  function normalizeTransientCancellation(value) {
+    if (!value || typeof value !== "object" || Array.isArray(value)) {
+      return null;
+    }
+    const keys = Object.keys(value).sort();
+    if (keys.length !== 2 || keys[0] !== "state" || keys[1] !== "uiReference") {
+      return null;
+    }
+    const uiReference = typeof value.uiReference === "string" ? value.uiReference : "";
+    const state = ["pending", "submitting", "delivered", "transport_error"].includes(String(value.state || ""))
+      ? String(value.state)
+      : "";
+    return uiReference && state ? { uiReference, state } : null;
+  }
+
+  function renderTransientCancellation(value) {
+    const cancellation = normalizeTransientCancellation(value);
+    if (!cancellation) {
+      return "";
+    }
+    let body = "";
+    if (cancellation.state === "pending") {
+      body = '<div class="pendingActions"><button class="btn ghost" type="button" data-cancellation-request="true" data-cancellation-reference="'
+        + escapeHtml(cancellation.uiReference) + '">Cancel</button></div>';
+    } else {
+      const statusText = cancellation.state === "submitting"
+        ? "Delivering cancellation intent…"
+        : cancellation.state === "delivered"
+          ? "Cancellation intent delivered; waiting for Codex."
+          : "Cancellation delivery is uncertain. No retry will be attempted.";
+      body = '<div class="pendingMeta">' + escapeHtml(statusText) + "</div>";
+    }
+    return [
+      '<section class="pendingCard" data-cancellation-card="true">',
+      '<div class="pendingTitle">Cancel this Codex turn</div>',
+      body,
+      "</section>",
+    ].join("");
+  }
+
+  function normalizeAppServerStatus(value) {
+    if (!value || typeof value !== "object" || Array.isArray(value)) {
+      return null;
+    }
+    const requiredKeys = ["state", "outcomeUnknown"];
+    const optionalKeys = ["terminalSummaryId", "modelRef", "reasoningRef", "approvalRef", "sandboxRef"];
+    const allowedKeys = new Set([...requiredKeys, ...optionalKeys]);
+    const keys = Object.keys(value);
+    if (requiredKeys.some((key) => !Object.prototype.hasOwnProperty.call(value, key)) || keys.some((key) => !allowedKeys.has(key))) {
+      return null;
+    }
+    const state = typeof value.state === "string" && ["completed", "failed", "cancelled", "recovery_required"].includes(value.state)
+      ? value.state
+      : "";
+    if (!state || typeof value.outcomeUnknown !== "boolean" || value.outcomeUnknown !== (state === "recovery_required")) {
+      return null;
+    }
+    const status: Record<string, any> = { state, outcomeUnknown: value.outcomeUnknown };
+    for (const key of optionalKeys) {
+      if (!Object.prototype.hasOwnProperty.call(value, key)) {
+        continue;
+      }
+      const item = value[key];
+      const valid = typeof item === "string"
+        && item.length > 0
+        && utf8ByteLengthStrict(item) <= 128
+        && (key === "terminalSummaryId" ? /^[a-z][a-z0-9_]*$/.test(item) : /^[A-Za-z0-9._:\/-]+$/.test(item));
+      if (!valid) {
+        return null;
+      }
+      status[key] = item;
+    }
+    if (
+      Object.prototype.hasOwnProperty.call(status, "terminalSummaryId")
+      && (
+        (state === "completed" && status.terminalSummaryId !== "turn_completed")
+        || (state === "cancelled" && status.terminalSummaryId !== "cancelled")
+        || (["failed", "recovery_required"].includes(state) && ["turn_completed", "cancelled"].includes(status.terminalSummaryId))
+      )
+    ) {
+      return null;
+    }
+    return status;
+  }
+
+  function renderAppServerStatus(value) {
+    const snapshot = normalizeAppServerStatus(value);
+    if (!snapshot) {
+      return "";
+    }
+    const detailLabels = {
+      terminalSummaryId: "Summary",
+      modelRef: "Model",
+      reasoningRef: "Reasoning",
+      approvalRef: "Approval",
+      sandboxRef: "Sandbox",
+    };
+    const details = Object.entries(detailLabels)
+      .filter(([key]) => Object.prototype.hasOwnProperty.call(snapshot, key))
+      .map(([key, label]) => '<div class="pendingMeta">' + escapeHtml(label) + ": " + escapeHtml(snapshot[key]) + "</div>")
+      .join("");
+    const stateLabel = {
+      completed: "Completed",
+      failed: "Failed",
+      cancelled: "Interrupted",
+    }[snapshot.state] || "";
+    const body = snapshot.outcomeUnknown
+      ? '<div class="pendingTitle" data-outcome-unknown="true">Outcome unknown — recovery is required.</div>'
+      : '<div class="pendingTitle">' + escapeHtml(stateLabel) + "</div>";
+    return [
+      '<section class="pendingCard" data-provider-status="' + escapeHtml(snapshot.state) + '">',
+      '<div class="pendingMeta">Codex App Server status</div>',
+      body,
+      details,
+      "</section>",
+    ].join("");
+  }
+
+  function shouldDisableSendForAppServerRecovery(value, provider, draft) {
+    const text = String(draft || "").trim();
+    const snapshot = normalizeAppServerStatus(value);
+    return normalizeChatProvider(provider) === "codex"
+      && !!text
+      && !text.startsWith("/")
+      && snapshot?.state === "recovery_required"
+      && snapshot.outcomeUnknown === true;
+  }
+
+  function utf8ByteLengthStrict(value) {
+    const text = String(value);
+    let bytes = 0;
+    for (let index = 0; index < text.length; index += 1) {
+      let code = text.charCodeAt(index);
+      if (code >= 0xd800 && code <= 0xdbff) {
+        if (index + 1 >= text.length) {
+          return -1;
+        }
+        const next = text.charCodeAt(index + 1);
+        if (next < 0xdc00 || next > 0xdfff) {
+          return -1;
+        }
+        code = 0x10000 + ((code - 0xd800) << 10) + (next - 0xdc00);
+        index += 1;
+      } else if (code >= 0xdc00 && code <= 0xdfff) {
+        return -1;
+      }
+      bytes += code <= 0x7f ? 1 : code <= 0x7ff ? 2 : code <= 0xffff ? 3 : 4;
+    }
+    return bytes;
+  }
+
+  function isValidUserInputText(value, maxBytes) {
+    const text = String(value);
+    const bytes = utf8ByteLengthStrict(text);
+    return !!text.trim() && bytes >= 0 && bytes <= maxBytes && !/\p{Cc}/u.test(text);
+  }
+
   function renderDiffPreview(message) {
     if (!message.diffPreview || (message.pendingAction && message.pendingAction.kind === "edit")) {
       return "";
@@ -902,9 +1206,20 @@
     })();
 
     let currentState = initialState && typeof initialState === "object" ? initialState : {};
+    const submittedApprovalReferences = new Set();
+    const submittedUserInputReferences = new Set();
+    const submittedCancellationReferences = new Set();
     let dragPayload = null;
     let workingTemplate = null;
     let activeDropTarget = null;
+
+    function updateSendEnabledState() {
+      send.disabled = !!currentState.isBusy || shouldDisableSendForAppServerRecovery(
+        currentState.appServerStatus,
+        chatProviderSelect.value,
+        prompt.value
+      );
+    }
 
     function clearDesignerDropState() {
       for (const zone of designerCanvas.querySelectorAll(".dropZone.active")) {
@@ -1166,7 +1481,11 @@
         syncTemplateFromState();
         const previousBottomOffset = transcript.scrollHeight - transcript.scrollTop;
         const stickToBottom = previousBottomOffset - transcript.clientHeight <= 24 || !!viewState.pinnedToBottom;
-        transcript.innerHTML = renderMessages(currentState.messages || []);
+        transcript.innerHTML = renderMessages(currentState.messages || [])
+          + renderAppServerStatus(currentState.appServerStatus)
+          + renderTransientApproval(currentState.transientApproval)
+          + renderTransientUserInput(currentState.transientUserInput)
+          + renderTransientCancellation(currentState.transientCancellation);
         trace.innerHTML = renderTrace(currentState.trace || []);
         status.textContent = currentState.status || "";
         const attachmentsHtml = renderAttachmentTray(currentState.pendingAttachments || []);
@@ -1183,7 +1502,7 @@
         chatProviderSelect.value = currentProvider;
         chatModelSelect.innerHTML = renderChatModelOptions(currentProvider, currentModel);
         chatModelSelect.value = currentModel;
-        send.disabled = !!currentState.isBusy;
+        updateSendEnabledState();
         clearBtn.disabled = !!currentState.isBusy;
         newChatBtn.disabled = !!currentState.isBusy;
         newFromComposer.disabled = !!currentState.isBusy;
@@ -1260,6 +1579,10 @@
 
     function submitPrompt() {
       const text = prompt.value.trim();
+      if (shouldDisableSendForAppServerRecovery(currentState.appServerStatus, chatProviderSelect.value, text)) {
+        updateSendEnabledState();
+        return;
+      }
       postDiag("submit-attempt", { chars: text.length, mode: modeSelect.value, profile: modelProfileSelect.value, provider: chatProviderSelect.value, model: chatModelSelect.value });
       if (!text) return;
       prompt.value = "";
@@ -1290,6 +1613,7 @@
       chatModelSelect.value = normalizeChatModel(chatProviderSelect.value, viewState.chatModel || currentState.chatModel);
       prompt.addEventListener("input", () => {
         saveViewState({ draft: prompt.value });
+        updateSendEnabledState();
       });
       modeSelect.addEventListener("change", () => {
         saveViewState({ mode: modeSelect.value });
@@ -1309,6 +1633,7 @@
         chatModelSelect.value = model;
         saveViewState({ chatProvider: provider, chatModel: model });
         vscode.postMessage({ type: "setChatProviderModel", provider, model });
+        updateSendEnabledState();
       });
       chatModelSelect.addEventListener("change", () => {
         const provider = normalizeChatProvider(chatProviderSelect.value);
@@ -1602,7 +1927,158 @@
         });
       }
 
+      transcript.addEventListener("input", (event) => {
+        const textArea = event.target instanceof HTMLElement ? event.target.closest("[data-user-input-text]") : null;
+        if (!textArea) {
+          return;
+        }
+        const prompt = normalizeTransientUserInput(currentState.transientUserInput);
+        const uiReference = textArea.getAttribute("data-user-input-reference") || "";
+        if (!prompt || prompt.kind !== "text" || prompt.state !== "pending" || prompt.uiReference !== uiReference) {
+          return;
+        }
+        const card = textArea.closest("[data-user-input-card]");
+        const bytes = utf8ByteLengthStrict(textArea.value || "");
+        const counter = card ? card.querySelectorAll("[data-user-input-byte-count]")[0] : null;
+        const submit = card ? card.querySelectorAll("button[data-user-input-submit]")[0] : null;
+        if (counter) {
+          counter.textContent = bytes < 0 ? "invalid" : String(bytes);
+        }
+        if (submit) {
+          submit.disabled = !isValidUserInputText(textArea.value || "", prompt.maxTextBytes);
+        }
+      });
+
+      transcript.addEventListener("change", (event) => {
+        const option = event.target instanceof HTMLElement ? event.target.closest("[data-user-input-option]") : null;
+        if (!option) {
+          return;
+        }
+        const prompt = normalizeTransientUserInput(currentState.transientUserInput);
+        const uiReference = option.getAttribute("data-user-input-reference") || "";
+        if (!prompt || prompt.kind === "text" || prompt.state !== "pending" || prompt.uiReference !== uiReference) {
+          return;
+        }
+        const card = option.closest("[data-user-input-card]");
+        if (!card) {
+          return;
+        }
+        const allOptions = Array.from(card.querySelectorAll("input[data-user-input-option]"));
+        const selected = allOptions.filter((item: any) => !!item.checked);
+        if (prompt.kind === "select_many") {
+          const atMaximum = selected.length >= prompt.maxSelections;
+          for (const item of allOptions as any[]) {
+            item.disabled = atMaximum && !item.checked;
+          }
+        }
+        const submit = card.querySelectorAll("button[data-user-input-submit]")[0] as any;
+        if (submit) {
+          submit.disabled = prompt.kind === "select_one"
+            ? selected.length !== 1
+            : selected.length < 1 || selected.length > prompt.maxSelections;
+        }
+      });
+
       transcript.addEventListener("click", (event) => {
+        const cancellationTarget = event.target instanceof HTMLElement ? event.target.closest("[data-cancellation-request]") : null;
+        if (cancellationTarget) {
+          const uiReference = cancellationTarget.getAttribute("data-cancellation-reference") || "";
+          const cancellation = normalizeTransientCancellation(currentState.transientCancellation);
+          if (
+            !cancellation
+            || cancellation.state !== "pending"
+            || cancellation.uiReference !== uiReference
+            || submittedCancellationReferences.has(uiReference)
+          ) {
+            return;
+          }
+          submittedCancellationReferences.add(uiReference);
+          const card = cancellationTarget.closest("[data-cancellation-card]");
+          if (card) {
+            for (const button of card.querySelectorAll("button[data-cancellation-request]")) {
+              button.disabled = true;
+            }
+          } else {
+            cancellationTarget.disabled = true;
+          }
+          vscode.postMessage({ type: "cancellationIntent", uiReference });
+          return;
+        }
+        const userInputTarget = event.target instanceof HTMLElement ? event.target.closest("[data-user-input-submit]") : null;
+        if (userInputTarget) {
+          const uiReference = userInputTarget.getAttribute("data-user-input-reference") || "";
+          const prompt = normalizeTransientUserInput(currentState.transientUserInput);
+          if (
+            !prompt
+            || prompt.state !== "pending"
+            || prompt.uiReference !== uiReference
+            || submittedUserInputReferences.has(uiReference)
+          ) {
+            return;
+          }
+          const card = userInputTarget.closest("[data-user-input-card]");
+          if (!card) {
+            return;
+          }
+          let message = null;
+          if (prompt.kind === "text") {
+            const textArea = card.querySelectorAll("[data-user-input-text]")[0] as any;
+            const text = typeof textArea?.value === "string" ? textArea.value : "";
+            if (!isValidUserInputText(text, prompt.maxTextBytes)) {
+              return;
+            }
+            message = { type: "userInputResponse", uiReference, responseKind: "text", text };
+            textArea.value = "";
+            textArea.textContent = "";
+          } else {
+            const selected = Array.from(card.querySelectorAll("input[data-user-input-option]"))
+              .filter((item: any) => !!item.checked)
+              .map((item: any) => String(item.value || ""));
+            const allowed = new Set(prompt.options.map((option) => option.uiOptionReference));
+            if (
+              selected.length < 1
+              || selected.length > prompt.maxSelections
+              || (prompt.kind === "select_one" && selected.length !== 1)
+              || new Set(selected).size !== selected.length
+              || selected.some((reference) => !allowed.has(reference))
+            ) {
+              return;
+            }
+            message = { type: "userInputResponse", uiReference, responseKind: prompt.kind, uiOptionReferences: selected };
+          }
+          submittedUserInputReferences.add(uiReference);
+          for (const control of card.querySelectorAll("button, input, textarea") as any) {
+            control.disabled = true;
+          }
+          vscode.postMessage(message);
+          return;
+        }
+        const approvalTarget = event.target instanceof HTMLElement ? event.target.closest("[data-approval-decision]") : null;
+        if (approvalTarget) {
+          const uiReference = approvalTarget.getAttribute("data-approval-reference") || "";
+          const decision = approvalTarget.getAttribute("data-approval-decision") || "";
+          const approval = normalizeTransientApproval(currentState.transientApproval);
+          if (
+            !approval
+            || approval.state !== "pending"
+            || approval.uiReference !== uiReference
+            || !approval.allowedDecisions.includes(decision)
+            || submittedApprovalReferences.has(uiReference)
+          ) {
+            return;
+          }
+          submittedApprovalReferences.add(uiReference);
+          const card = approvalTarget.closest("[data-approval-card]");
+          if (card) {
+            for (const button of card.querySelectorAll("button[data-approval-decision]")) {
+              button.disabled = true;
+            }
+          } else {
+            approvalTarget.disabled = true;
+          }
+          vscode.postMessage({ type: "approvalDecision", uiReference, decision });
+          return;
+        }
         const runTarget = event.target instanceof HTMLElement ? event.target.closest("[data-run-inspect]") : null;
         if (runTarget) {
           saveViewState({ selectedRunMessageId: runTarget.getAttribute("data-run-inspect") || "", workspaceMode: "run" });
@@ -1650,7 +2126,7 @@
           }
           prompt.value = "";
           saveViewState({ draft: "", pinnedToBottom: true });
-          send.disabled = false;
+          updateSendEnabledState();
           prompt.focus();
         }
       });

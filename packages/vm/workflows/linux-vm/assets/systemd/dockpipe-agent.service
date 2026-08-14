@@ -1,0 +1,30 @@
+[Unit]
+Description=DockPipe qualification guest agent
+DefaultDependencies=no
+Before=network-pre.target
+After=local-fs.target var-lib-dockpipe\x2dqualification.mount
+ConditionPathExists=/dev/virtio-ports/org.dockpipe.agent.1
+
+[Service]
+Type=simple
+User=dockpipe-agent
+Group=dockpipe-agent
+ExecStart=/usr/libexec/dockpipe-guest-agent --config=/etc/dockpipe-agent/config.json --serve-virtio-serial=/dev/virtio-ports/org.dockpipe.agent.1
+StandardError=journal+console
+Restart=no
+NoNewPrivileges=yes
+PrivateNetwork=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictAddressFamilies=AF_UNIX
+CapabilityBoundingSet=
+AmbientCapabilities=
+ReadWritePaths=/var/lib/dockpipe-agent /var/lib/dockpipe-qualification
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

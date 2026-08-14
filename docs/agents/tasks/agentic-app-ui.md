@@ -1,8 +1,8 @@
-# TASK-008 PipeDeck Agentic App UI
+# TASK-008 ForgePipe Agentic App UI
 
 ## Goal
 
-Design and build PipeDeck, a standalone DockPipe-launched agentic app for creating, editing, running, and
+Design and build ForgePipe, a standalone DockPipe-launched agentic app for creating, editing, running, and
 inspecting DockPipe/DorkPipe workflows through a clean modern interface.
 
 The app should make the YAML contracts approachable without replacing them. Workflow, agent, MCP,
@@ -11,7 +11,7 @@ catalogs.
 
 ## Current Decisions
 
-- Build PipeDeck as a standalone app launched by DockPipe, using the same launcher-context model as
+- Build ForgePipe as a standalone app launched by DockPipe, using the same launcher-context model as
   Pipeon.
 - Treat the app as a control and inspection surface over DockPipe, not a second runtime.
 - Keep YAML and package-owned catalogs as the durable source of truth.
@@ -40,15 +40,15 @@ catalogs.
   secret-reference handling.
 - Provide diff, conflict, artifact, and repair review without becoming a full IDE.
 - The Pipeon VS Code extension should remain a thin chat/run-inspection shell for now. Defer rich
-  template and model-lane authoring to PipeDeck, with workflow YAML as the bridge until then.
+  template and model-lane authoring to ForgePipe, with workflow YAML as the bridge until then.
 
 ## Product Shape
 
-PipeDeck is a standalone application invoked through the same DockPipe launcher model as Pipeon. It
+ForgePipe is a standalone application invoked through the same DockPipe launcher model as Pipeon. It
 inherits execution context from the launcher: selected repo, workflow/package context, environment,
 scopes, and runtime/session identity.
 
-PipeDeck should be agentic, but not a full IDE. It should focus on governed workflow creation,
+ForgePipe should be agentic, but not a full IDE. It should focus on governed workflow creation,
 execution, review, and iteration.
 
 Primary jobs:
@@ -167,7 +167,7 @@ The app should make it easy to switch between guided UI and raw YAML for advance
 
 ## Extension UX Scope
 
-Until PipeDeck owns richer authoring, the Pipeon VS Code extension should:
+Until ForgePipe owns richer authoring, the Pipeon VS Code extension should:
 
 - expose a provider/model selector for direct chat
 - route Ollama chat through DorkPipe MCP and the local stack
@@ -183,7 +183,7 @@ Until PipeDeck owns richer authoring, the Pipeon VS Code extension should:
 - avoid extension-local model-lane or workflow-authoring state that cannot round-trip through
   workflow/package-owned contracts
 
-Future PipeDeck work can add rich model-lane and workflow authoring once it is backed by durable
+Future ForgePipe work can add rich model-lane and workflow authoring once it is backed by durable
 YAML, package catalogs, validation, and CLI/MCP execution.
 
 ## Review UX
@@ -231,7 +231,7 @@ updated after the run.
 
 ## Pipeon Interim Direct-Agent Slice
 
-Before PipeDeck owns the full control surface, Pipeon should expose a minimal, honest split:
+Before ForgePipe owns the full control surface, Pipeon should expose a minimal, honest split:
 
 - Chat: provider/model-selectable direct chatbot for lightweight questions, local commands, and
   handoff.
@@ -246,13 +246,13 @@ the task crosses the value bar for orchestration.
 
 ## Still Open
 
-- Decide where PipeDeck lives in the first-party package tree.
+- Decide where ForgePipe lives in the first-party package tree.
 - Define the launcher context payload shared with Pipeon-style app launches.
 - Decide which YAML contracts exist for MCP connectors and agent/task packs before building rich
   editors.
-- Extend the initial `dockpipe.operation_event.v1` JSONL stream into the full PipeDeck run inspector
+- Extend the initial `dockpipe.operation_event.v1` JSONL stream into the full ForgePipe run inspector
   feed, including logs, artifact references, approvals, and task graph state.
-- Add a future graph visualizer for repo guidance and task contracts so PipeDeck can render
+- Add a future graph visualizer for repo guidance and task contracts so ForgePipe can render
   relationships across `AGENTS.md`, `docs/agents/*.yaml`, linked task docs, workflow/package docs,
   and other durable agent-routing sources instead of depending on markdown-link-only tooling.
 - Decide how much editing happens in-app versus handing off to the user's normal editor.

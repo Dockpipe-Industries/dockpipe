@@ -1,6 +1,6 @@
 # Tooling Surfaces
 
-Read when changing DockPipe Language Support, the DorkPipe/Pipeon VS Code extension, PipeDeck,
+Read when changing DockPipe Language Support, the DorkPipe/Pipeon VS Code extension, ForgePipe,
 model browser, template designer, run inspector, or any editor/app-facing workflow UX.
 
 ## Contract Rule
@@ -8,7 +8,7 @@ model browser, template designer, run inspector, or any editor/app-facing workfl
 Workflow YAML is the durable contract. Tooling may make it easier to author, inspect, or launch, but
 must not create a second durable workflow system.
 
-PipeDeck follows the same rule. It is a modern control surface over YAML, package-owned catalogs,
+ForgePipe follows the same rule. It is a modern control surface over YAML, package-owned catalogs,
 launcher context, operation-result events, and artifacts. It does not own a separate execution or
 configuration model.
 
@@ -18,17 +18,17 @@ configuration model.
 | --- | --- |
 | DockPipe Language Support | YAML/schema completions, hovers, diagnostics, snippets. |
 | DorkPipe/Pipeon extension | Chat, designer, model browser, run inspector, draft UI state. |
-| PipeDeck | Launcher-context workflow control, YAML-backed authoring, run inspection, approvals, artifact/log views, diff preview. |
+| ForgePipe | Launcher-context workflow control, YAML-backed authoring, run inspection, approvals, artifact/log views, diff preview. |
 | DorkPipe package | Agent orchestration, model escalation, skills, artifacts, package-owned catalogs. |
 | DockPipe engine | Generic workflow/package/runtime/resolver execution primitives. |
 
-## PipeDeck
+## ForgePipe
 
-PipeDeck should be invoked by the DockPipe launcher, using the same context-passing model as Pipeon.
+ForgePipe should be invoked by the DockPipe launcher, using the same context-passing model as Pipeon.
 The launcher provides the current repo/workspace, selected workflow or package, session
 identity, artifact root, allowed scopes, model/resolver lanes, and MCP connector availability.
 
-PipeDeck should focus on governed workflow work, not full IDE replacement:
+ForgePipe should focus on governed workflow work, not full IDE replacement:
 
 - create and edit workflows, agents, tasks, MCP connectors, model-lane policy, approval/apply
   policy, and package workflow references
@@ -68,7 +68,7 @@ through operation-result events, and backed by YAML/package config rather than U
   assets explicitly.
 - If the YAML surface changes, update DockPipe Language Support in the same change.
 - If the rich extension UX changes, document how it maps back to YAML and package-owned catalogs.
-- If PipeDeck UX changes, document the launcher context, YAML mapping, event stream, and
+- If ForgePipe UX changes, document the launcher context, YAML mapping, event stream, and
   artifact/run-inspection behavior.
 
 ## Validation

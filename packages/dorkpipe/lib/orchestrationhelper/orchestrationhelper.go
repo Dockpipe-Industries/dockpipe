@@ -10,6 +10,7 @@ import (
 	"math"
 	"os"
 	"os/exec"
+	pathpkg "path"
 	"path/filepath"
 	"regexp"
 	"runtime"
@@ -18,6 +19,7 @@ import (
 	"strings"
 	"time"
 
+	"dockpipe/src/lib/infrastructure"
 	"gopkg.in/yaml.v3"
 )
 
@@ -44,9 +46,24 @@ var (
 	reBulletMarker      = regexp.MustCompile(`^\s*(?:[-*+]\s+|•\s*)`)
 	reSafeCompareSuffix = regexp.MustCompile(`[^A-Za-z0-9_]+`)
 	reGuestDocPath      = regexp.MustCompile(`/(?:work|DesignNotes)/[A-Za-z0-9._/\-]+\.(?:md|ya?ml)`)
+	reDurableHostPath   = regexp.MustCompile("(?i)(?:[A-Z]:[\\\\/]|\\\\\\\\|/(?:home|Users|tmp|var|mnt|opt)/)[^`<>\\r\\n]*?\\.(?:md|ya?ml|txt|json|go|js|jsx|ts|tsx|xml|toml|ini|cs|java|py|rb|rs|sh|ps1|sql)")
+	reDurableHostToken  = regexp.MustCompile(`(?i)(?:[A-Z]:[\\/]|\\\\|/(?:home|Users|tmp|var|mnt|opt)/)[A-Za-z0-9._~@%+,\-\\/]+`)
 	reMarkdownLink      = regexp.MustCompile(`\[[^\]]*\]\(([^)#]+)(?:#[^)]+)?\)`)
 	reValidationRemoved = regexp.MustCompile("(?im)^- \\*\\*Removed `([^`]+)`")
 )
+
+var durableOutputForbiddenTerms = []struct {
+	label   string
+	pattern *regexp.Regexp
+}{
+	{label: "DockPipe or DorkPipe", pattern: regexp.MustCompile(`(?i)\b(?:dockpipe|dorkpipe)\b`)},
+	{label: "orchestration", pattern: regexp.MustCompile(`(?i)\borchestrat(?:ion|or|ed|ing)\b`)},
+	{label: "runtime mount terminology", pattern: regexp.MustCompile(`(?i)\b(?:runtime mounts?|mount labels?|mounted source(?: roots?)?)\b`)},
+	{label: "artifact root terminology", pattern: regexp.MustCompile(`(?i)\b(?:artifact|workflow) roots?\b`)},
+	{label: "lane terminology", pattern: regexp.MustCompile(`(?i)\b(?:worker|model|provider) lanes?\b|\blane selection\b`)},
+	{label: "provider metadata", pattern: regexp.MustCompile(`(?i)\bproviders?_(?:actual|requested)\b|\bresolver hints?\b`)},
+	{label: "run artifact terminology", pattern: regexp.MustCompile(`(?i)\b(?:source packets?|task graphs?|worker results?|merge results?|materialized outputs?|artifact handoffs?|worker artifacts?)\b`)},
+}
 
 type trainingEntry struct {
 	Samples         int     `json:"samples"`
@@ -203,10 +220,10 @@ func Run(args []string, env map[string]string, stdout, stderr io.Writer) error {
 		}
 		return nil
 	case "materialize-task-outputs":
-		if len(args) != 5 {
-			return errors.New("usage: orchestrate-helper materialize-task-outputs <response.md> <task-dir> <outputs.json> <result.json>")
+		if len(args) != 6 {
+			return errors.New("usage: orchestrate-helper materialize-task-outputs <response.md> <task-dir> <outputs.json> <result.json> <repo-root>")
 		}
-		return materializeTaskOutputs(args[1], args[2], args[3], args[4])
+		return materializeTaskOutputs(args[1], args[2], args[3], args[4], args[5], env["DOCKPIPE_CONTAINER_MOUNTS"])
 	case "write-task-result":
 		if len(args) != 2 {
 			return errors.New("usage: orchestrate-helper write-task-result <result.json>")
@@ -278,6 +295,130 @@ func Run(args []string, env map[string]string, stdout, stderr io.Writer) error {
 			return errors.New("usage: orchestrate-helper plan <workflow.yml> <step-id>")
 		}
 		return planOrchestration(args[1], args[2], env)
+	case "software-dev-compile":
+		if len(args) != 7 && len(args) != 8 {
+			return errors.New("usage: orchestrate-helper software-dev-compile <package-workflow.yml> <package-step-id> <repo-root> <task-pack.yml> <task-pack-step-id> <artifact-root> [planner-proposal]")
+		}
+		proposalPath := ""
+		if len(args) == 8 {
+			proposalPath = args[7]
+		}
+		return compileSoftwareDevArtifacts(args[1], args[2], args[3], args[4], args[5], args[6], proposalPath)
+	case "software-dev-stage-proposal":
+		if len(args) != 4 {
+			return errors.New("usage: orchestrate-helper software-dev-stage-proposal <repo-root> <repo-relative-proposal> <target>")
+		}
+		return stageSoftwareDevProposal(args[1], args[2], args[3], env["DORKPIPE_ORCH_ROOT"])
+	case "software-dev-evaluate-promotion":
+		if len(args) != 5 {
+			return errors.New("usage: orchestrate-helper software-dev-evaluate-promotion <repo-root> <task-pack.yml> <task-pack-step-id> <artifact-root>")
+		}
+		return evaluateSoftwareDevPromotionArtifacts(args[1], args[2], args[3], args[4])
+	case "software-dev-build-promotion-patch":
+		if len(args) != 3 {
+			return errors.New("usage: orchestrate-helper software-dev-build-promotion-patch <repo-root> <artifact-root>")
+		}
+		return buildSoftwareDevPromotionPatchArtifacts(args[1], args[2])
+	case "software-dev-apply-promotion":
+		if len(args) != 4 {
+			return errors.New("usage: orchestrate-helper software-dev-apply-promotion <repo-root> <artifact-root> <approval.json>")
+		}
+		return applySoftwareDevPromotionPatch(args[1], args[2], args[3])
+	case "backlog-inspect":
+		if len(args) != 7 {
+			return errors.New("usage: orchestrate-helper backlog-inspect <repo-root> <task-index.yml> <TASK-NNN|--next> <bounded-slice> <baseline-commit> <artifact-root>")
+		}
+		return inspectBacklogSelection(args[1], args[2], args[3], args[4], args[5], args[6])
+	case "backlog-compile":
+		if len(args) != 10 {
+			return errors.New("usage: orchestrate-helper backlog-compile <repo-root> <artifact-root> <environment-ref> <branch-ref> <allowed-paths-json> <hard-boundaries-json> <required-validation-json> <validation-input-files-json> <routed-sources-json>")
+		}
+		return compileBacklogRemoteRequest(args[1], args[2], args[3], args[4], args[5], args[6], args[7], args[8], args[9])
+	case "backlog-compatibility-preflight":
+		if len(args) != 3 {
+			return errors.New("usage: orchestrate-helper backlog-compatibility-preflight <artifact-root> <fixture-root>")
+		}
+		return preflightBacklogRemoteCompatibility(args[1], args[2])
+	case "backlog-dispatch-fixture":
+		if len(args) != 3 {
+			return errors.New("usage: orchestrate-helper backlog-dispatch-fixture <artifact-root> <fixture.json>")
+		}
+		return dispatchBacklogFixture(args[1], args[2])
+	case "backlog-ingest-completion-candidate":
+		if len(args) != 3 {
+			return errors.New("usage: orchestrate-helper backlog-ingest-completion-candidate <artifact-root> <fixture.json>")
+		}
+		return ingestBacklogCompletionCandidate(args[1], args[2])
+	case "backlog-retrieve-status-fixture":
+		if len(args) != 3 {
+			return errors.New("usage: orchestrate-helper backlog-retrieve-status-fixture <artifact-root> <fixture.json>")
+		}
+		return retrieveBacklogRemoteStatusFixture(args[1], args[2])
+	case "backlog-retrieve-diff-fixture":
+		if len(args) != 3 {
+			return errors.New("usage: orchestrate-helper backlog-retrieve-diff-fixture <artifact-root> <fixture.json>")
+		}
+		return retrieveBacklogRemoteDiffFixture(args[1], args[2])
+	case "backlog-retrieve-result-fixture":
+		if len(args) != 3 {
+			return errors.New("usage: orchestrate-helper backlog-retrieve-result-fixture <artifact-root> <fixture.json>")
+		}
+		return retrieveBacklogRemoteResultFixture(args[1], args[2])
+	case "backlog-retrieve-validation-receipt-fixture":
+		if len(args) != 3 {
+			return errors.New("usage: orchestrate-helper backlog-retrieve-validation-receipt-fixture <artifact-root> <fixture.json>")
+		}
+		return retrieveBacklogValidationReceiptFixture(args[1], args[2])
+	case "backlog-verify-patch-boundary":
+		if len(args) != 2 {
+			return errors.New("usage: orchestrate-helper backlog-verify-patch-boundary <artifact-root>")
+		}
+		return verifyBacklogPatchBoundary(args[1])
+	case "backlog-apply-patch-temporary":
+		if len(args) != 3 {
+			return errors.New("usage: orchestrate-helper backlog-apply-patch-temporary <consumer-root> <artifact-root>")
+		}
+		return applyBacklogPatchTemporaryCopy(args[1], args[2])
+	case "backlog-execute-validation":
+		if len(args) != 3 {
+			return errors.New("usage: orchestrate-helper backlog-execute-validation <consumer-root> <artifact-root>")
+		}
+		return executeBacklogValidation(args[1], args[2])
+	case "backlog-record-semantic-review-decision":
+		if len(args) != 3 {
+			return errors.New("usage: orchestrate-helper backlog-record-semantic-review-decision <artifact-root> <fixture.json>")
+		}
+		return recordBacklogSemanticReviewDecision(args[1], args[2])
+	case "backlog-apply-reviewed-patch":
+		if len(args) != 4 {
+			return errors.New("usage: orchestrate-helper backlog-apply-reviewed-patch <consumer-root> <artifact-root> <approval-fixture.json>")
+		}
+		return applyBacklogPatchToCheckout(args[1], args[2], args[3])
+	case "backlog-request-checkpoint":
+		if len(args) != 8 {
+			return errors.New("usage: orchestrate-helper backlog-request-checkpoint <consumer-root> <artifact-root> <approval-fixture.json> <session-id> <workspace-id> <session-branch> <session-workspace>")
+		}
+		return requestBacklogCheckoutCheckpoint(args[1], args[2], args[3], backlogRuntimeCheckpointBinding{
+			SessionID: args[4], WorkspaceID: args[5], Branch: args[6], Workspace: args[7],
+		})
+	case "backlog-request-publication":
+		if len(args) != 8 {
+			return errors.New("usage: orchestrate-helper backlog-request-publication <consumer-root> <artifact-root> <approval-fixture.json> <session-id> <workspace-id> <session-branch> <session-workspace>")
+		}
+		return requestBacklogCheckoutPublication(args[1], args[2], args[3], backlogRuntimeCheckpointBinding{
+			SessionID: args[4], WorkspaceID: args[5], Branch: args[6], Workspace: args[7],
+		})
+	case "backlog-followup":
+		if len(args) != 2 {
+			return errors.New("usage: orchestrate-helper backlog-followup <artifact-root>")
+		}
+		followup, err := loadBacklogFollowup(args[1])
+		if err != nil {
+			return err
+		}
+		encoder := json.NewEncoder(stdout)
+		encoder.SetIndent("", "  ")
+		return encoder.Encode(followup)
 	case "run-tasks":
 		if len(args) != 3 {
 			return errors.New("usage: orchestrate-helper run-tasks <graph.json> <runner.sh>")
@@ -323,6 +464,2183 @@ func taskIDFromWorkflow(path, stepID string) (string, error) {
 		return stringValue(mapValue(step["agent"])["task_id"]), nil
 	}
 	return "", nil
+}
+
+func loadTaskPack(repoRoot, taskPackPath, stepID string) (map[string]any, error) {
+	displayPath := strings.TrimSpace(taskPackPath)
+	if displayPath == "" {
+		return nil, errors.New("task pack path is required")
+	}
+	if strings.TrimSpace(repoRoot) == "" {
+		return nil, fmt.Errorf("task pack path %q cannot be loaded without a consumer repo root", displayPath)
+	}
+	if filepath.IsAbs(displayPath) || filepath.VolumeName(displayPath) != "" {
+		return nil, fmt.Errorf("task pack path %q must be relative to the consumer repo", displayPath)
+	}
+
+	rootPath, err := filepath.Abs(repoRoot)
+	if err != nil {
+		return nil, fmt.Errorf("task pack path %q has an invalid consumer repo root: %w", displayPath, err)
+	}
+	candidatePath, err := filepath.Abs(filepath.Join(rootPath, filepath.Clean(filepath.FromSlash(displayPath))))
+	if err != nil || !withinRoot(rootPath, candidatePath) {
+		return nil, fmt.Errorf("task pack path %q escapes the consumer repo", displayPath)
+	}
+	info, err := os.Stat(candidatePath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, fmt.Errorf("task pack path %q does not exist", displayPath)
+		}
+		return nil, fmt.Errorf("task pack path %q cannot be read: %w", displayPath, err)
+	}
+	if info.IsDir() {
+		return nil, fmt.Errorf("task pack path %q is not a workflow file", displayPath)
+	}
+
+	resolvedRoot, err := filepath.EvalSymlinks(rootPath)
+	if err != nil {
+		return nil, fmt.Errorf("task pack path %q has an invalid consumer repo root: %w", displayPath, err)
+	}
+	resolvedCandidate, err := filepath.EvalSymlinks(candidatePath)
+	if err != nil {
+		return nil, fmt.Errorf("task pack path %q cannot be resolved: %w", displayPath, err)
+	}
+	if !withinRoot(resolvedRoot, resolvedCandidate) {
+		return nil, fmt.Errorf("task pack path %q escapes the consumer repo", displayPath)
+	}
+
+	selectedStepID := strings.TrimSpace(stepID)
+	if selectedStepID == "" {
+		return nil, fmt.Errorf("task pack step id is required for %q", displayPath)
+	}
+	raw, err := os.ReadFile(resolvedCandidate)
+	if err != nil {
+		return nil, fmt.Errorf("task pack path %q cannot be read: %w", displayPath, err)
+	}
+	workflow := map[string]any{}
+	if err := yaml.Unmarshal(raw, &workflow); err != nil {
+		return nil, fmt.Errorf("task pack path %q is not valid workflow YAML: %w", displayPath, err)
+	}
+
+	matches := []map[string]any{}
+	for _, rawStep := range listValue(workflow["steps"]) {
+		step := mapValue(rawStep)
+		if stringValue(step["id"]) == selectedStepID {
+			matches = append(matches, step)
+		}
+	}
+	if len(matches) == 0 {
+		return nil, fmt.Errorf("%s: task pack step id %q was not found", displayPath, selectedStepID)
+	}
+	if len(matches) > 1 {
+		return nil, fmt.Errorf("%s: task pack step id %q is ambiguous (%d matches)", displayPath, selectedStepID, len(matches))
+	}
+
+	agent, ok := mapDeclaration(matches[0]["agent"])
+	if !ok {
+		return nil, fmt.Errorf("%s: task pack step id %q has no agent.orchestration declaration", displayPath, selectedStepID)
+	}
+	if _, ok := mapDeclaration(agent["orchestration"]); !ok {
+		return nil, fmt.Errorf("%s: task pack step id %q has no agent.orchestration declaration", displayPath, selectedStepID)
+	}
+	if err := infrastructure.ValidateResolvedWorkflowYAML(resolvedCandidate); err != nil {
+		return nil, fmt.Errorf("task pack path %q is not a valid workflow: %w", displayPath, err)
+	}
+	return copyMap(agent), nil
+}
+
+func mapDeclaration(value any) (map[string]any, bool) {
+	switch value.(type) {
+	case map[string]any, map[any]any:
+		return mapValue(value), true
+	default:
+		return nil, false
+	}
+}
+
+type parsedPlannerProposal struct {
+	Format      string         `json:"format"`
+	Declaration map[string]any `json:"declaration"`
+}
+
+type compiledExecutableContract struct {
+	Plan             map[string]any `json:"plan"`
+	TaskGraph        map[string]any `json:"task_graph"`
+	TaskArtifacts    []any          `json:"task_artifacts"`
+	ProposalMetadata map[string]any `json:"proposal_metadata"`
+}
+
+// parsePlannerProposal accepts exactly one structured JSON or YAML document. It returns data only;
+// the result is not executable until compileExecutableContract validates the complete contract.
+func parsePlannerProposal(raw []byte) (*parsedPlannerProposal, error) {
+	trimmed := bytes.TrimSpace(raw)
+	if len(trimmed) == 0 {
+		return nil, errors.New("planner proposal is empty")
+	}
+
+	decoder := yaml.NewDecoder(bytes.NewReader(trimmed))
+	document := yaml.Node{}
+	if err := decoder.Decode(&document); err != nil {
+		return nil, fmt.Errorf("planner proposal is not valid JSON or YAML: %w", err)
+	}
+	extra := yaml.Node{}
+	if err := decoder.Decode(&extra); err != io.EOF {
+		if err == nil {
+			return nil, errors.New("planner proposal must contain exactly one structured document")
+		}
+		return nil, fmt.Errorf("planner proposal is not valid JSON or YAML: %w", err)
+	}
+	if len(document.Content) != 1 || document.Content[0].Kind != yaml.MappingNode {
+		return nil, errors.New("planner proposal root must be an object")
+	}
+
+	declaration := map[string]any{}
+	if err := document.Content[0].Decode(&declaration); err != nil {
+		return nil, fmt.Errorf("planner proposal is not valid JSON or YAML: %w", err)
+	}
+	if problems := validatePlannerProposal(declaration); len(problems) > 0 {
+		return nil, fmt.Errorf("invalid planner proposal: %s", strings.Join(problems, "; "))
+	}
+	format := "yaml"
+	if json.Valid(trimmed) {
+		format = "json"
+	}
+	return &parsedPlannerProposal{Format: format, Declaration: declaration}, nil
+}
+
+func validatePlannerProposal(proposal map[string]any) []string {
+	problems := []string{}
+	appendUnknownProposalFields(proposal, "planner proposal root", []string{
+		"startup_prompt", "include_agents_md", "access", "cloud_budget", "constraints", "publish", "sync", "orchestration",
+	}, &problems)
+	validateProposalOptionalString(proposal, "startup_prompt", "planner proposal.startup_prompt", &problems)
+	validateProposalOptionalBool(proposal, "include_agents_md", "planner proposal.include_agents_md", &problems)
+	validateProposalStringListField(proposal, "constraints", "planner proposal.constraints", &problems)
+	validateProposalOptionalBool(proposal, "publish", "planner proposal.publish", &problems)
+	validateProposalOptionalBool(proposal, "sync", "planner proposal.sync", &problems)
+	validateProposalAccess(proposal["access"], "planner proposal.access", &problems)
+	validateProposalBudget(proposal["cloud_budget"], "planner proposal.cloud_budget", &problems)
+
+	orchestration, ok := mapDeclaration(proposal["orchestration"])
+	if !ok {
+		problems = append(problems, "planner proposal.orchestration is required")
+		return problems
+	}
+	appendUnknownProposalFields(orchestration, "planner proposal.orchestration", []string{
+		"request", "plan", "agents", "tasks", "merge", "verify", "apply", "access", "cloud_budget", "constraints", "publish", "sync",
+	}, &problems)
+	validateProposalRequest(orchestration["request"], "planner proposal.orchestration.request", &problems)
+	validateProposalPlan(orchestration["plan"], "planner proposal.orchestration.plan", &problems)
+	validateProposalRoles(orchestration["agents"], "planner proposal.orchestration.agents", &problems)
+	validateProposalTasks(orchestration["tasks"], "planner proposal.orchestration.tasks", &problems)
+	validateProposalScalarMap(orchestration["merge"], "planner proposal.orchestration.merge", &problems)
+	validateProposalScalarMap(orchestration["verify"], "planner proposal.orchestration.verify", &problems)
+	validateProposalApply(orchestration["apply"], "planner proposal.orchestration.apply", &problems)
+	validateProposalAccess(orchestration["access"], "planner proposal.orchestration.access", &problems)
+	validateProposalBudget(orchestration["cloud_budget"], "planner proposal.orchestration.cloud_budget", &problems)
+	validateProposalStringListField(orchestration, "constraints", "planner proposal.orchestration.constraints", &problems)
+	validateProposalOptionalBool(orchestration, "publish", "planner proposal.orchestration.publish", &problems)
+	validateProposalOptionalBool(orchestration, "sync", "planner proposal.orchestration.sync", &problems)
+	return problems
+}
+
+func appendUnknownProposalFields(value map[string]any, field string, allowed []string, problems *[]string) {
+	allowedSet := map[string]bool{}
+	for _, key := range allowed {
+		allowedSet[key] = true
+	}
+	unknown := []string{}
+	for key := range value {
+		if !allowedSet[key] {
+			unknown = append(unknown, key)
+		}
+	}
+	sort.Strings(unknown)
+	for _, key := range unknown {
+		*problems = append(*problems, fmt.Sprintf("%s field %q is not allowed", field, key))
+	}
+}
+
+func validateProposalOptionalString(value map[string]any, key, field string, problems *[]string) {
+	raw, present := value[key]
+	if !present {
+		return
+	}
+	if _, ok := raw.(string); !ok {
+		*problems = append(*problems, field+" must be a string")
+	}
+}
+
+func validateProposalRequiredString(value map[string]any, key, field string, problems *[]string) {
+	raw, present := value[key]
+	text, ok := raw.(string)
+	if !present || !ok || strings.TrimSpace(text) == "" {
+		*problems = append(*problems, field+" is required")
+	}
+}
+
+func validateProposalOptionalBool(value map[string]any, key, field string, problems *[]string) {
+	raw, present := value[key]
+	if !present {
+		return
+	}
+	if _, ok := raw.(bool); !ok {
+		*problems = append(*problems, field+" must be a boolean")
+	}
+}
+
+func proposalArray(value any) ([]any, bool) {
+	switch typed := value.(type) {
+	case []any:
+		return typed, true
+	case []string:
+		out := make([]any, 0, len(typed))
+		for _, item := range typed {
+			out = append(out, item)
+		}
+		return out, true
+	default:
+		return nil, false
+	}
+}
+
+func validateProposalStringListField(value map[string]any, key, field string, problems *[]string) {
+	raw, present := value[key]
+	if !present {
+		return
+	}
+	items, ok := proposalArray(raw)
+	if !ok {
+		*problems = append(*problems, field+" must be an array of strings")
+		return
+	}
+	for _, item := range items {
+		if _, ok := item.(string); !ok {
+			*problems = append(*problems, field+" must be an array of strings")
+			return
+		}
+	}
+}
+
+func proposalInteger(value any) (int, bool) {
+	switch typed := value.(type) {
+	case int:
+		return typed, true
+	case int64:
+		return int(typed), true
+	case uint64:
+		if typed <= uint64(^uint(0)>>1) {
+			return int(typed), true
+		}
+	case float64:
+		if typed == math.Trunc(typed) && typed >= 0 && typed <= float64(^uint(0)>>1) {
+			return int(typed), true
+		}
+	}
+	return 0, false
+}
+
+func validateProposalAccess(value any, field string, problems *[]string) {
+	if value == nil {
+		return
+	}
+	access, ok := mapDeclaration(value)
+	if !ok {
+		*problems = append(*problems, field+" must be an object")
+		return
+	}
+	appendUnknownProposalFields(access, field, []string{"read", "write", "deny", "remove_deny"}, problems)
+	for _, key := range []string{"read", "write", "deny", "remove_deny"} {
+		validateProposalStringListField(access, key, field+"."+key, problems)
+	}
+}
+
+func validateProposalBudget(value any, field string, problems *[]string) {
+	if value == nil {
+		return
+	}
+	budget, ok := mapDeclaration(value)
+	if !ok {
+		*problems = append(*problems, field+" must be an object")
+		return
+	}
+	appendUnknownProposalFields(budget, field, []string{"max_total_tokens", "max_task_tokens", "max_tasks"}, problems)
+	for _, key := range []string{"max_total_tokens", "max_task_tokens", "max_tasks"} {
+		raw, present := budget[key]
+		if !present {
+			continue
+		}
+		if number, ok := proposalInteger(raw); !ok || number < 0 {
+			*problems = append(*problems, field+"."+key+" must be a non-negative integer")
+		}
+	}
+}
+
+func validateProposalRequest(value any, field string, problems *[]string) {
+	if value == nil {
+		return
+	}
+	request, ok := mapDeclaration(value)
+	if !ok {
+		*problems = append(*problems, field+" must be an object")
+		return
+	}
+	appendUnknownProposalFields(request, field, []string{"text"}, problems)
+	validateProposalOptionalString(request, "text", field+".text", problems)
+}
+
+func validateProposalPlan(value any, field string, problems *[]string) {
+	if value == nil {
+		return
+	}
+	plan, ok := mapDeclaration(value)
+	if !ok {
+		*problems = append(*problems, field+" must be an object")
+		return
+	}
+	appendUnknownProposalFields(plan, field, []string{"goal", "steps", "constraints"}, problems)
+	validateProposalOptionalString(plan, "goal", field+".goal", problems)
+	validateProposalStringListField(plan, "steps", field+".steps", problems)
+	validateProposalStringListField(plan, "constraints", field+".constraints", problems)
+}
+
+func validateProposalRoles(value any, field string, problems *[]string) {
+	if value == nil {
+		return
+	}
+	roles, ok := mapDeclaration(value)
+	if !ok {
+		*problems = append(*problems, field+" must be an object")
+		return
+	}
+	ids := make([]string, 0, len(roles))
+	for id := range roles {
+		ids = append(ids, id)
+	}
+	sort.Strings(ids)
+	for _, id := range ids {
+		definition, ok := mapDeclaration(roles[id])
+		roleField := fmt.Sprintf("%s[%q]", field, id)
+		if strings.TrimSpace(id) == "" {
+			*problems = append(*problems, field+" role id must not be empty")
+		}
+		if !ok {
+			*problems = append(*problems, roleField+" must be an object")
+			continue
+		}
+		appendUnknownProposalFields(definition, roleField, []string{
+			"role", "worker", "worker_type", "work_mode", "worker_policy", "authority", "constraints", "accessible_paths", "access", "model", "model_policy", "max_cloud_tokens", "cloud_budget", "require_approval", "publish", "sync",
+		}, problems)
+		for _, key := range []string{"role", "worker", "worker_type", "work_mode"} {
+			validateProposalOptionalString(definition, key, roleField+"."+key, problems)
+		}
+		for _, key := range []string{"worker_policy", "authority", "model", "model_policy"} {
+			if raw, present := definition[key]; present {
+				if _, ok := mapDeclaration(raw); !ok {
+					*problems = append(*problems, roleField+"."+key+" must be an object")
+				}
+			}
+		}
+		validateProposalStringListField(definition, "constraints", roleField+".constraints", problems)
+		validateProposalStringListField(definition, "accessible_paths", roleField+".accessible_paths", problems)
+		validateProposalAccess(definition["access"], roleField+".access", problems)
+		validateProposalBudget(definition["cloud_budget"], roleField+".cloud_budget", problems)
+		validateProposalOptionalBool(definition, "require_approval", roleField+".require_approval", problems)
+		validateProposalOptionalBool(definition, "publish", roleField+".publish", problems)
+		validateProposalOptionalBool(definition, "sync", roleField+".sync", problems)
+		if raw, present := definition["max_cloud_tokens"]; present {
+			if number, ok := proposalInteger(raw); !ok || number < 0 {
+				*problems = append(*problems, roleField+".max_cloud_tokens must be a non-negative integer")
+			}
+		}
+	}
+}
+
+func validateProposalTasks(value any, field string, problems *[]string) {
+	tasks, ok := proposalArray(value)
+	if !ok {
+		*problems = append(*problems, field+" must be an array")
+		return
+	}
+	if len(tasks) == 0 {
+		*problems = append(*problems, field+" must contain at least one task")
+		return
+	}
+	for index, raw := range tasks {
+		taskField := fmt.Sprintf("%s[%d]", field, index)
+		task, ok := mapDeclaration(raw)
+		if !ok {
+			*problems = append(*problems, taskField+" must be an object")
+			continue
+		}
+		appendUnknownProposalFields(task, taskField, []string{
+			"id", "agent", "goal", "brief", "context", "expected_output", "prompt", "constraints", "depends_on", "claims", "citations", "max_cloud_tokens", "materialize_outputs",
+		}, problems)
+		validateProposalRequiredString(task, "id", taskField+".id", problems)
+		for _, key := range []string{"agent", "goal", "brief", "expected_output", "prompt"} {
+			validateProposalOptionalString(task, key, taskField+"."+key, problems)
+		}
+		for _, key := range []string{"constraints", "depends_on", "claims", "citations"} {
+			validateProposalStringListField(task, key, taskField+"."+key, problems)
+		}
+		validateProposalTaskContext(task["context"], taskField+".context", problems)
+		validateProposalMaterializeOutputs(task["materialize_outputs"], taskField+".materialize_outputs", problems)
+		if raw, present := task["max_cloud_tokens"]; present {
+			if number, ok := proposalInteger(raw); !ok || number < 0 {
+				*problems = append(*problems, taskField+".max_cloud_tokens must be a non-negative integer")
+			}
+		}
+	}
+}
+
+func validateProposalTaskContext(value any, field string, problems *[]string) {
+	if value == nil {
+		return
+	}
+	context, ok := mapDeclaration(value)
+	if !ok {
+		*problems = append(*problems, field+" must be an object")
+		return
+	}
+	appendUnknownProposalFields(context, field, []string{"required_artifacts", "seed_paths", "source_roots"}, problems)
+	for _, key := range []string{"required_artifacts", "seed_paths", "source_roots"} {
+		validateProposalStringListField(context, key, field+"."+key, problems)
+	}
+}
+
+func validateProposalMaterializeOutputs(value any, field string, problems *[]string) {
+	if value == nil {
+		return
+	}
+	outputs, ok := proposalArray(value)
+	if !ok {
+		*problems = append(*problems, field+" must be an array")
+		return
+	}
+	for index, raw := range outputs {
+		outputField := fmt.Sprintf("%s[%d]", field, index)
+		output, ok := mapDeclaration(raw)
+		if !ok {
+			*problems = append(*problems, outputField+" must be an object")
+			continue
+		}
+		appendUnknownProposalFields(output, outputField, []string{"id", "path"}, problems)
+		validateProposalOptionalString(output, "id", outputField+".id", problems)
+		validateProposalRequiredString(output, "path", outputField+".path", problems)
+	}
+}
+
+func validateProposalScalarMap(value any, field string, problems *[]string) {
+	if value == nil {
+		return
+	}
+	data, ok := mapDeclaration(value)
+	if !ok {
+		*problems = append(*problems, field+" must be an object")
+		return
+	}
+	keys := make([]string, 0, len(data))
+	for key := range data {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	for _, key := range keys {
+		if !isContractScalar(data[key]) {
+			*problems = append(*problems, field+"."+key+" must be a scalar")
+		}
+	}
+}
+
+func validateProposalApply(value any, field string, problems *[]string) {
+	if value == nil {
+		return
+	}
+	apply, ok := mapDeclaration(value)
+	if !ok {
+		*problems = append(*problems, field+" must be an object")
+		return
+	}
+	appendUnknownProposalFields(apply, field, []string{"require_approval", "target_root", "required_artifacts"}, problems)
+	validateProposalOptionalBool(apply, "require_approval", field+".require_approval", problems)
+	validateProposalOptionalString(apply, "target_root", field+".target_root", problems)
+	validateProposalStringListField(apply, "required_artifacts", field+".required_artifacts", problems)
+}
+
+// compileExecutableContract is the authority boundary between parsed planner data and runnable
+// artifacts. It constructs no partial graph or task artifact until normalization fully succeeds.
+func compileExecutableContract(packageDefaults, repoTaskPack map[string]any, proposal *parsedPlannerProposal) (*compiledExecutableContract, error) {
+	var proposalDeclaration map[string]any
+	if proposal != nil {
+		proposalDeclaration = proposal.Declaration
+	}
+	normalized, err := normalizeTaskPackContract(packageDefaults, repoTaskPack, proposalDeclaration)
+	if err != nil {
+		return nil, err
+	}
+
+	rolesByID := map[string]map[string]any{}
+	for _, rawRole := range listValue(normalized["roles"]) {
+		role := mapValue(rawRole)
+		rolesByID[stringValue(role["id"])] = role
+	}
+	taskArtifacts := make([]any, 0, len(listValue(normalized["tasks"])))
+	graphTasks := make([]any, 0, len(listValue(normalized["tasks"])))
+	for _, rawTask := range listValue(normalized["tasks"]) {
+		task := mapValue(rawTask)
+		artifact := map[string]any{}
+		for _, key := range []string{"id", "agent", "goal", "brief", "context", "constraints", "expected_output", "prompt", "claims", "citations", "max_cloud_tokens", "depends_on", "materialize_outputs"} {
+			if value, present := task[key]; present {
+				artifact[key] = value
+			}
+		}
+		role := rolesByID[stringValue(task["agent"])]
+		for _, key := range []string{"role", "worker", "worker_type", "work_mode", "worker_policy", "model", "model_policy", "accessible_paths", "authority"} {
+			if value, present := role[key]; present {
+				artifact[key] = value
+			}
+		}
+		roleConstraints := stringList(role["constraints"])
+		artifact["constraints"] = anySlice(appendStableContractStrings(roleConstraints, stringList(task["constraints"])...))
+		effectiveAccess := mapValue(normalized["access"])
+		if len(role) > 0 {
+			effectiveAccess = mapValue(role["access"])
+		}
+		if taskAccess, present := mapDeclaration(task["access"]); present {
+			effectiveAccess = intersectContractAccess(effectiveAccess, taskAccess)
+		}
+		artifact["access"] = effectiveAccess
+		if _, present := artifact["max_cloud_tokens"]; !present {
+			if roleBudget := intFromAny(role["max_cloud_tokens"]); roleBudget > 0 {
+				artifact["max_cloud_tokens"] = roleBudget
+			} else if runBudget := intFromAny(mapValue(normalized["cloud_budget"])["max_task_tokens"]); runBudget > 0 {
+				artifact["max_cloud_tokens"] = runBudget
+			}
+		}
+		if stringValue(artifact["role"]) == "" && stringValue(artifact["agent"]) != "" {
+			artifact["role"] = artifact["agent"]
+		}
+		if len(mapValue(artifact["context"])) == 0 {
+			artifact["context"] = map[string]any{}
+		}
+		worker := fallbackString(strings.TrimSpace(stringValue(artifact["worker"])), "auto")
+		model := mapValue(artifact["model"])
+		lane := map[string]any{
+			"lane_id":       "compiled." + worker,
+			"provider":      worker,
+			"resolver_hint": worker,
+			"model":         stringValue(model["model"]),
+			"available":     true,
+		}
+		artifact["base_id"] = artifact["id"]
+		artifact["comparison"] = map[string]any{"enabled": false}
+		artifact["resolver_hint"] = worker
+		artifact["requested_resolver_hint"] = worker
+		artifact["lane"] = lane
+		artifact["output_path"] = inferTaskOutputPath(artifact)
+		artifact["context_paths"] = anySlice(stringList(mapValue(artifact["context"])["required_artifacts"]))
+		artifact["startup_prompt"] = normalized["startup_prompt"]
+		artifact["include_agents_md"] = normalized["include_agents_md"]
+		taskArtifacts = append(taskArtifacts, artifact)
+		graphTasks = append(graphTasks, map[string]any{
+			"id":                  artifact["id"],
+			"base_task_id":        artifact["id"],
+			"agent":               artifact["agent"],
+			"depends_on":          artifact["depends_on"],
+			"resolver_hint":       artifact["resolver_hint"],
+			"lane_id":             lane["lane_id"],
+			"provider":            lane["provider"],
+			"model":               lane["model"],
+			"worker_type":         fallbackString(stringValue(artifact["worker_type"]), "analysis"),
+			"output_path":         artifact["output_path"],
+			"materialize_outputs": artifact["materialize_outputs"],
+		})
+	}
+
+	planCfg := mapValue(normalized["plan"])
+	concurrency := mapValue(contractOrchestration(packageDefaults)["concurrency"])
+	plan := map[string]any{
+		"goal":              stringValue(planCfg["goal"]),
+		"request":           mapValue(normalized["request"]),
+		"plan":              planCfg,
+		"merge":             mapValue(normalized["merge"]),
+		"verify":            mapValue(normalized["verify"]),
+		"startup_prompt":    normalized["startup_prompt"],
+		"include_agents_md": normalized["include_agents_md"],
+		"constraints":       normalized["constraints"],
+		"required_outputs":  normalized["required_outputs"],
+		"access":            normalized["access"],
+		"cloud_budget":      normalized["cloud_budget"],
+		"roles":             normalized["roles"],
+		"concurrency":       concurrency,
+		"approval_required": normalized["approval_required"],
+		"publish":           normalized["publish"],
+		"sync":              normalized["sync"],
+		"apply": map[string]any{
+			"require_approval":   normalized["approval_required"],
+			"target_root":        normalized["apply_target"],
+			"required_artifacts": normalized["required_outputs"],
+		},
+	}
+	return &compiledExecutableContract{
+		Plan:             plan,
+		TaskGraph:        map[string]any{"concurrency": concurrency, "tasks": graphTasks},
+		TaskArtifacts:    taskArtifacts,
+		ProposalMetadata: normalizedProposalMetadata(proposal, normalized),
+	}, nil
+}
+
+func normalizedProposalMetadata(proposal *parsedPlannerProposal, normalized map[string]any) map[string]any {
+	metadata := map[string]any{
+		"present":             false,
+		"source_format":       "none",
+		"selected_graph":      false,
+		"role_ids":            []any{},
+		"constraints":         []any{},
+		"task_ids":            []any{},
+		"dependencies":        []any{},
+		"materialize_outputs": []any{},
+	}
+	if proposal == nil {
+		return metadata
+	}
+	metadata["present"] = true
+	metadata["source_format"] = proposal.Format
+	metadata["selected_graph"] = true
+	roleIDs := []string{}
+	for id := range mapValue(contractOrchestration(proposal.Declaration)["agents"]) {
+		roleIDs = append(roleIDs, id)
+	}
+	sort.Strings(roleIDs)
+	metadata["role_ids"] = anySlice(roleIDs)
+	metadata["constraints"] = anySlice(contractConstraints(proposal.Declaration))
+	taskIDs := []string{}
+	dependencies := []any{}
+	outputs := []any{}
+	for _, rawTask := range listValue(normalized["tasks"]) {
+		task := mapValue(rawTask)
+		id := stringValue(task["id"])
+		taskIDs = append(taskIDs, id)
+		dependencies = append(dependencies, map[string]any{"task_id": id, "depends_on": task["depends_on"]})
+		for _, rawOutput := range listValue(task["materialize_outputs"]) {
+			outputs = append(outputs, map[string]any{"task_id": id, "path": stringValue(mapValue(rawOutput)["path"])})
+		}
+	}
+	metadata["task_ids"] = anySlice(taskIDs)
+	metadata["dependencies"] = dependencies
+	metadata["materialize_outputs"] = outputs
+	return metadata
+}
+
+func compileSoftwareDevArtifacts(packageWorkflowPath, packageStepID, repoRoot, taskPackPath, taskPackStepID, artifactRoot, proposalPath string) error {
+	rootPath, err := softwareDevArtifactRoot(artifactRoot)
+	if err != nil {
+		return err
+	}
+	artifactRoot = rootPath
+	cleanupOnError := func(err error, rawProposal []byte) error {
+		if len(rawProposal) > 0 {
+			if recordErr := recordRejectedSoftwareDevProposal(artifactRoot, rawProposal); recordErr != nil {
+				err = fmt.Errorf("%v; record rejected proposal: %w", err, recordErr)
+			}
+		}
+		if cleanupErr := cleanupSoftwareDevExecutableArtifacts(artifactRoot); cleanupErr != nil {
+			return fmt.Errorf("%v; clean executable artifacts: %w", err, cleanupErr)
+		}
+		return err
+	}
+
+	packageWorkflowAbs, err := filepath.Abs(packageWorkflowPath)
+	if err != nil {
+		return cleanupOnError(fmt.Errorf("invalid package workflow path: %w", err), nil)
+	}
+	packageDefaults, err := loadTaskPack(filepath.Dir(packageWorkflowAbs), filepath.Base(packageWorkflowAbs), packageStepID)
+	if err != nil {
+		return cleanupOnError(fmt.Errorf("load package software.dev contract: %w", err), nil)
+	}
+	packageDefaults["cloud_budget"] = map[string]any{
+		"max_total_tokens": 60000,
+		"max_task_tokens":  20000,
+		"max_tasks":        8,
+	}
+	packageDefaults["constraints"] = []any{
+		"execute only tasks in the successfully compiled graph",
+		"preserve package access, budget, approval, apply, publish, and sync authority",
+	}
+	packageDefaults["publish"] = false
+	packageDefaults["sync"] = false
+	repoTaskPack, err := loadTaskPack(repoRoot, taskPackPath, taskPackStepID)
+	if err != nil {
+		return cleanupOnError(err, nil)
+	}
+
+	var proposal *parsedPlannerProposal
+	var rawProposal []byte
+	if strings.TrimSpace(proposalPath) != "" {
+		rawProposal, err = os.ReadFile(proposalPath)
+		if err != nil {
+			return cleanupOnError(fmt.Errorf("planner proposal cannot be read: %w", err), nil)
+		}
+		proposal, err = parsePlannerProposal(rawProposal)
+		if err != nil {
+			return cleanupOnError(err, rawProposal)
+		}
+	}
+
+	compiled, err := compileExecutableContract(packageDefaults, repoTaskPack, proposal)
+	if err != nil {
+		return cleanupOnError(err, rawProposal)
+	}
+	canonicalTaskPackPath := filepath.ToSlash(filepath.Clean(filepath.FromSlash(strings.TrimSpace(taskPackPath))))
+	compiled.ProposalMetadata["task_pack"] = map[string]any{
+		"path":    canonicalTaskPackPath,
+		"step_id": strings.TrimSpace(taskPackStepID),
+	}
+	if err := materializeSoftwareDevContract(artifactRoot, repoRoot, compiled, proposal, rawProposal); err != nil {
+		return cleanupOnError(err, rawProposal)
+	}
+	return nil
+}
+
+func stageSoftwareDevProposal(repoRoot, repoRelativeProposal, target, artifactRoot string) error {
+	raw, err := readRepoRelativeRegularFile(repoRoot, repoRelativeProposal)
+	if err != nil {
+		return err
+	}
+	if strings.TrimSpace(artifactRoot) == "" {
+		return errors.New("software.dev artifact root is required when staging a proposal")
+	}
+	rootPath, err := softwareDevArtifactRoot(artifactRoot)
+	if err != nil {
+		return err
+	}
+	targetPath, err := filepath.Abs(target)
+	if err != nil || !withinRoot(rootPath, targetPath) {
+		return fmt.Errorf("software.dev staged proposal target escapes the run artifact root: %s", target)
+	}
+	if err := os.MkdirAll(filepath.Dir(targetPath), 0o755); err != nil {
+		return err
+	}
+	resolvedRoot, err := filepath.EvalSymlinks(rootPath)
+	if err != nil {
+		return fmt.Errorf("software.dev artifact root cannot be resolved: %w", err)
+	}
+	resolvedParent, err := filepath.EvalSymlinks(filepath.Dir(targetPath))
+	if err != nil || !withinRoot(resolvedRoot, resolvedParent) {
+		return fmt.Errorf("software.dev staged proposal target escapes the resolved run artifact root: %s", target)
+	}
+	if info, statErr := os.Lstat(targetPath); statErr == nil && info.Mode()&os.ModeSymlink != 0 {
+		return fmt.Errorf("software.dev staged proposal target cannot be a symlink: %s", target)
+	} else if statErr != nil && !os.IsNotExist(statErr) {
+		return statErr
+	}
+	return os.WriteFile(targetPath, raw, 0o644)
+}
+
+func readRepoRelativeRegularFile(repoRoot, relativePath string) ([]byte, error) {
+	displayPath := strings.TrimSpace(relativePath)
+	if displayPath == "" {
+		return nil, errors.New("proposal fixture path is required")
+	}
+	if filepath.IsAbs(displayPath) || filepath.VolumeName(displayPath) != "" {
+		return nil, fmt.Errorf("proposal fixture path %q must be relative to the consumer repo", displayPath)
+	}
+	rootPath, err := filepath.Abs(repoRoot)
+	if err != nil {
+		return nil, fmt.Errorf("proposal fixture path %q has an invalid consumer repo root: %w", displayPath, err)
+	}
+	candidatePath, err := filepath.Abs(filepath.Join(rootPath, filepath.Clean(filepath.FromSlash(displayPath))))
+	if err != nil || !withinRoot(rootPath, candidatePath) {
+		return nil, fmt.Errorf("proposal fixture path %q escapes the consumer repo", displayPath)
+	}
+	resolvedRoot, err := filepath.EvalSymlinks(rootPath)
+	if err != nil {
+		return nil, fmt.Errorf("proposal fixture path %q has an invalid consumer repo root: %w", displayPath, err)
+	}
+	resolvedCandidate, err := filepath.EvalSymlinks(candidatePath)
+	if err != nil {
+		return nil, fmt.Errorf("proposal fixture path %q cannot be resolved: %w", displayPath, err)
+	}
+	if !withinRoot(resolvedRoot, resolvedCandidate) {
+		return nil, fmt.Errorf("proposal fixture path %q escapes the consumer repo", displayPath)
+	}
+	info, err := os.Stat(resolvedCandidate)
+	if err != nil {
+		return nil, fmt.Errorf("proposal fixture path %q cannot be read: %w", displayPath, err)
+	}
+	if !info.Mode().IsRegular() {
+		return nil, fmt.Errorf("proposal fixture path %q is not a regular file", displayPath)
+	}
+	raw, err := os.ReadFile(resolvedCandidate)
+	if err != nil {
+		return nil, fmt.Errorf("proposal fixture path %q cannot be read: %w", displayPath, err)
+	}
+	return raw, nil
+}
+
+func materializeSoftwareDevContract(artifactRoot, repoRoot string, compiled *compiledExecutableContract, proposal *parsedPlannerProposal, rawProposal []byte) error {
+	rootPath, err := softwareDevArtifactRoot(artifactRoot)
+	if err != nil {
+		return err
+	}
+	if err := os.MkdirAll(rootPath, 0o755); err != nil {
+		return err
+	}
+	stageRoot, err := os.MkdirTemp(rootPath, ".software-dev-compile-")
+	if err != nil {
+		return err
+	}
+	defer os.RemoveAll(stageRoot)
+
+	if err := writeJSONFile(filepath.Join(stageRoot, "request.json"), mapValue(compiled.Plan["request"])); err != nil {
+		return err
+	}
+	if err := writeJSONFile(filepath.Join(stageRoot, "plan.json"), compiled.Plan); err != nil {
+		return err
+	}
+	if err := writeJSONFile(filepath.Join(stageRoot, "task-graph.json"), compiled.TaskGraph); err != nil {
+		return err
+	}
+	if err := writeJSONFile(filepath.Join(stageRoot, "proposal", "metadata.json"), compiled.ProposalMetadata); err != nil {
+		return err
+	}
+	if proposal != nil {
+		if err := writeJSONFile(filepath.Join(stageRoot, "proposal", "normalized.json"), proposal.Declaration); err != nil {
+			return err
+		}
+		extension := ".yaml"
+		if proposal.Format == "json" {
+			extension = ".json"
+		}
+		if err := os.WriteFile(filepath.Join(stageRoot, "proposal", "raw"+extension), rawProposal, 0o644); err != nil {
+			return err
+		}
+	}
+	for _, rawTask := range compiled.TaskArtifacts {
+		task := mapValue(rawTask)
+		taskID := stringValue(task["id"])
+		if taskID == "" {
+			return errors.New("compiled software.dev task artifact has no id")
+		}
+		taskDir := filepath.Join(stageRoot, "tasks", taskID)
+		if err := writeJSONFile(filepath.Join(taskDir, "task.json"), task); err != nil {
+			return err
+		}
+		if err := os.WriteFile(filepath.Join(taskDir, "prompt.md"), []byte(renderCompiledSoftwareDevPrompt(compiled.Plan, task, repoRoot)), 0o644); err != nil {
+			return err
+		}
+	}
+
+	for _, name := range []string{"request.json", "plan.json", "task-graph.json", "tasks", "proposal"} {
+		target := filepath.Join(rootPath, name)
+		if err := os.RemoveAll(target); err != nil {
+			return err
+		}
+		if err := os.Rename(filepath.Join(stageRoot, name), target); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func renderCompiledSoftwareDevPrompt(plan, task map[string]any, repoRoot string) string {
+	lines := []string{}
+	if startup := strings.TrimSpace(stringValue(plan["startup_prompt"])); startup != "" {
+		lines = append(lines, startup, "")
+	}
+	lines = append(lines,
+		"You are one bounded worker in a governed software-development task graph.",
+		"",
+		"Task id: "+stringValue(task["id"]),
+		"Agent role: "+fallbackString(stringValue(task["role"]), stringValue(task["agent"])),
+		"Goal: "+stringValue(task["goal"]),
+		"Expected output: "+stringValue(task["expected_output"]),
+	)
+	if brief := strings.TrimSpace(stringValue(task["brief"])); brief != "" {
+		lines = append(lines, "", "Brief:", brief)
+	}
+	if prompt := strings.TrimSpace(stringValue(task["prompt"])); prompt != "" {
+		lines = append(lines, "", "Task instructions:", prompt)
+	}
+	if constraints := stringList(task["constraints"]); len(constraints) > 0 {
+		lines = append(lines, "", "Constraints:")
+		for _, constraint := range constraints {
+			lines = append(lines, "- "+constraint)
+		}
+	}
+	if contextPaths := stringList(task["context_paths"]); len(contextPaths) > 0 {
+		lines = append(lines, "", "Context briefing paths:")
+		for _, contextPath := range contextPaths {
+			lines = append(lines, "- "+contextPath)
+		}
+	}
+	access := mapValue(task["access"])
+	if len(stringList(access["read"]))+len(stringList(access["write"]))+len(stringList(access["deny"])) > 0 {
+		lines = append(lines, "", "Access policy:")
+		for _, mode := range []string{"read", "write", "deny"} {
+			paths := stringList(access[mode])
+			if len(paths) == 0 {
+				continue
+			}
+			lines = append(lines, mode+":")
+			for _, path := range paths {
+				lines = append(lines, "- "+path)
+			}
+		}
+	}
+	if boolAny(plan["include_agents_md"]) {
+		if rawAgents, err := os.ReadFile(filepath.Join(repoRoot, "AGENTS.md")); err == nil {
+			lines = append(lines, "", "AGENTS.md context:", "", strings.TrimRight(string(rawAgents), "\n"))
+		}
+	}
+	lines = append(lines,
+		"",
+		"Rules:",
+		"- Execute only this compiled task and respect its dependencies.",
+		"- Treat access, deny, budget, approval, apply, publish, and sync policy as fixed authority.",
+		"- Return the requested artifact content directly without narrating commands or orchestration mechanics.",
+	)
+	if contract := renderMaterializeOutputContract(listValue(task["materialize_outputs"])); contract != "" {
+		lines = append(lines, "", contract)
+	}
+	return strings.Join(lines, "\n") + "\n"
+}
+
+func cleanupSoftwareDevExecutableArtifacts(artifactRoot string) error {
+	rootPath, err := softwareDevArtifactRoot(artifactRoot)
+	if err != nil {
+		return err
+	}
+	for _, name := range []string{"plan.json", "task-graph.json", "tasks"} {
+		if err := os.RemoveAll(filepath.Join(rootPath, name)); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func recordRejectedSoftwareDevProposal(artifactRoot string, raw []byte) error {
+	rootPath, err := softwareDevArtifactRoot(artifactRoot)
+	if err != nil {
+		return err
+	}
+	proposalDir := filepath.Join(rootPath, "proposal")
+	if err := os.RemoveAll(proposalDir); err != nil {
+		return err
+	}
+	if err := os.MkdirAll(proposalDir, 0o755); err != nil {
+		return err
+	}
+	return os.WriteFile(filepath.Join(proposalDir, "rejected.txt"), raw, 0o644)
+}
+
+func softwareDevArtifactRoot(raw string) (string, error) {
+	if strings.TrimSpace(raw) == "" {
+		return "", errors.New("software.dev artifact root is required")
+	}
+	rootPath, err := filepath.Abs(raw)
+	if err != nil {
+		return "", fmt.Errorf("invalid software.dev artifact root: %w", err)
+	}
+	if filepath.Dir(rootPath) == rootPath {
+		return "", fmt.Errorf("software.dev artifact root cannot be a filesystem root: %s", rootPath)
+	}
+	return rootPath, nil
+}
+
+type softwareDevPromotionIdentity struct {
+	TaskPackPath string
+	StepID       string
+	SiblingRoles string
+}
+
+func evaluateSoftwareDevPromotionArtifacts(repoRoot, taskPackPath, taskPackStepID, artifactRoot string) error {
+	repoTaskPack, identity, err := loadSoftwareDevPromotionIdentity(repoRoot, taskPackPath, taskPackStepID)
+	if err != nil {
+		return err
+	}
+	rootPath, err := softwareDevArtifactRoot(artifactRoot)
+	if err != nil {
+		return err
+	}
+	proposalDir := filepath.Join(rootPath, "proposal")
+	if err := requirePromotionDirectory(rootPath, proposalDir, "proposal artifact directory"); err != nil {
+		return err
+	}
+	if err := requirePromotionDirectory(rootPath, filepath.Join(rootPath, "verify"), "verification artifact directory"); err != nil {
+		return err
+	}
+	candidatePath := filepath.Join(proposalDir, "promotion-candidate.json")
+
+	rawProposal, rawRelativePath, err := readPromotionRawProposal(rootPath)
+	if err != nil {
+		return err
+	}
+	parsed, err := parsePlannerProposal(rawProposal)
+	if err != nil {
+		return fmt.Errorf("promotion source proposal is invalid: %w", err)
+	}
+	normalized, err := readPromotionJSONMap(rootPath, "proposal/normalized.json")
+	if err != nil {
+		return err
+	}
+	metadata, err := readPromotionJSONMap(rootPath, "proposal/metadata.json")
+	if err != nil {
+		return err
+	}
+	verification, err := readPromotionJSONMap(rootPath, "verify/result.json")
+	if err != nil {
+		return err
+	}
+	if mustJSON(parsed.Declaration, nil) != mustJSON(normalized, nil) {
+		return errors.New("promotion proposal raw and normalized artifacts are inconsistent")
+	}
+	if err := validatePromotionMetadata(parsed, metadata, identity); err != nil {
+		return err
+	}
+	if err := validatePromotionVerificationArtifact(verification); err != nil {
+		return err
+	}
+
+	candidate := evaluateSoftwareDevPromotion(repoTaskPack, normalized, metadata, verification, identity, rawRelativePath)
+	if err := addPromotionCandidateTargetDigests(candidate, repoRoot, identity); err != nil {
+		return err
+	}
+	if err := writeJSONFileAtomic(candidatePath, candidate); err != nil {
+		return fmt.Errorf("write promotion candidate: %w", err)
+	}
+	return nil
+}
+
+func loadSoftwareDevPromotionIdentity(repoRoot, taskPackPath, taskPackStepID string) (map[string]any, softwareDevPromotionIdentity, error) {
+	displayPath := strings.TrimSpace(taskPackPath)
+	canonicalPath := filepath.ToSlash(filepath.Clean(filepath.FromSlash(displayPath)))
+	if displayPath == "" {
+		return nil, softwareDevPromotionIdentity{}, errors.New("promotion task pack path is required")
+	}
+	if filepath.IsAbs(displayPath) || filepath.VolumeName(displayPath) != "" {
+		return nil, softwareDevPromotionIdentity{}, fmt.Errorf("promotion task pack path %q must be relative to the consumer repo", displayPath)
+	}
+	if canonicalPath == "." || displayPath != canonicalPath {
+		return nil, softwareDevPromotionIdentity{}, fmt.Errorf("promotion task pack path %q is not an exact canonical repo-relative identity", displayPath)
+	}
+	stepID := strings.TrimSpace(taskPackStepID)
+	if stepID == "" || stepID != taskPackStepID {
+		return nil, softwareDevPromotionIdentity{}, errors.New("promotion task pack step id must be an exact non-empty identity")
+	}
+	rootPath, err := filepath.Abs(repoRoot)
+	if err != nil {
+		return nil, softwareDevPromotionIdentity{}, fmt.Errorf("promotion consumer repo root is invalid: %w", err)
+	}
+	candidatePath, err := filepath.Abs(filepath.Join(rootPath, filepath.FromSlash(canonicalPath)))
+	if err != nil || !withinRoot(rootPath, candidatePath) {
+		return nil, softwareDevPromotionIdentity{}, fmt.Errorf("promotion task pack path %q escapes the consumer repo", displayPath)
+	}
+	if err := rejectSymlinkPath(rootPath, candidatePath, "promotion task pack"); err != nil {
+		return nil, softwareDevPromotionIdentity{}, err
+	}
+	info, err := os.Stat(candidatePath)
+	if err != nil || !info.Mode().IsRegular() {
+		return nil, softwareDevPromotionIdentity{}, fmt.Errorf("promotion task pack path %q is not a readable regular file", displayPath)
+	}
+	repoTaskPack, err := loadTaskPack(rootPath, canonicalPath, stepID)
+	if err != nil {
+		return nil, softwareDevPromotionIdentity{}, err
+	}
+
+	siblingRelative := ""
+	siblingPath := filepath.Join(filepath.Dir(candidatePath), "agents.yml")
+	if siblingInfo, statErr := os.Lstat(siblingPath); statErr == nil {
+		if siblingInfo.Mode()&os.ModeSymlink != 0 || !siblingInfo.Mode().IsRegular() {
+			return nil, softwareDevPromotionIdentity{}, fmt.Errorf("promotion sibling agents path for %q is not a repo-owned regular file", displayPath)
+		}
+		if err := rejectSymlinkPath(rootPath, siblingPath, "promotion sibling agents file"); err != nil {
+			return nil, softwareDevPromotionIdentity{}, err
+		}
+		sibling := readYAMLMap(siblingPath)
+		if _, ok := mapDeclaration(sibling["agents"]); !ok {
+			return nil, softwareDevPromotionIdentity{}, fmt.Errorf("promotion sibling agents path for %q has no agents mapping", displayPath)
+		}
+		relative, relErr := filepath.Rel(rootPath, siblingPath)
+		if relErr != nil || strings.HasPrefix(relative, "..") {
+			return nil, softwareDevPromotionIdentity{}, fmt.Errorf("promotion sibling agents path for %q escapes the consumer repo", displayPath)
+		}
+		siblingRelative = filepath.ToSlash(relative)
+	} else if !os.IsNotExist(statErr) {
+		return nil, softwareDevPromotionIdentity{}, fmt.Errorf("inspect promotion sibling agents path: %w", statErr)
+	}
+
+	return repoTaskPack, softwareDevPromotionIdentity{
+		TaskPackPath: canonicalPath,
+		StepID:       stepID,
+		SiblingRoles: siblingRelative,
+	}, nil
+}
+
+func rejectSymlinkPath(rootPath, targetPath, label string) error {
+	relative, err := filepath.Rel(rootPath, targetPath)
+	if err != nil || relative == ".." || strings.HasPrefix(relative, ".."+string(filepath.Separator)) {
+		return fmt.Errorf("%s escapes the consumer repo", label)
+	}
+	current := rootPath
+	for _, part := range strings.Split(relative, string(filepath.Separator)) {
+		if part == "" || part == "." {
+			continue
+		}
+		current = filepath.Join(current, part)
+		info, statErr := os.Lstat(current)
+		if statErr != nil {
+			return fmt.Errorf("%s cannot be inspected: %w", label, statErr)
+		}
+		if info.Mode()&os.ModeSymlink != 0 {
+			return fmt.Errorf("%s cannot use a symlinked identity: %s", label, filepath.ToSlash(relative))
+		}
+	}
+	return nil
+}
+
+func requirePromotionDirectory(rootPath, directory, label string) error {
+	if !withinRoot(rootPath, directory) {
+		return fmt.Errorf("%s escapes the run artifact root", label)
+	}
+	info, err := os.Lstat(directory)
+	if err != nil {
+		return fmt.Errorf("%s is missing: %w", label, err)
+	}
+	if info.Mode()&os.ModeSymlink != 0 || !info.IsDir() {
+		return fmt.Errorf("%s is not a regular directory", label)
+	}
+	return nil
+}
+
+func readPromotionRawProposal(rootPath string) ([]byte, string, error) {
+	type candidate struct {
+		path     string
+		relative string
+	}
+	found := []candidate{}
+	for _, relative := range []string{"proposal/raw.yaml", "proposal/raw.json"} {
+		path := filepath.Join(rootPath, filepath.FromSlash(relative))
+		if _, err := os.Lstat(path); err == nil {
+			found = append(found, candidate{path: path, relative: relative})
+		} else if !os.IsNotExist(err) {
+			return nil, "", fmt.Errorf("inspect %s: %w", relative, err)
+		}
+	}
+	if len(found) != 1 {
+		return nil, "", fmt.Errorf("promotion requires exactly one raw proposal artifact; found %d", len(found))
+	}
+	raw, err := readPromotionRegularFile(rootPath, found[0].path, found[0].relative)
+	return raw, found[0].relative, err
+}
+
+func readPromotionJSONMap(rootPath, relative string) (map[string]any, error) {
+	path := filepath.Join(rootPath, filepath.FromSlash(relative))
+	raw, err := readPromotionRegularFile(rootPath, path, relative)
+	if err != nil {
+		return nil, err
+	}
+	payload := map[string]any{}
+	if err := json.Unmarshal(raw, &payload); err != nil {
+		return nil, fmt.Errorf("promotion artifact %s is malformed JSON: %w", relative, err)
+	}
+	if len(payload) == 0 {
+		return nil, fmt.Errorf("promotion artifact %s must be a non-empty JSON object", relative)
+	}
+	return payload, nil
+}
+
+func readPromotionRegularFile(rootPath, path, relative string) ([]byte, error) {
+	if !withinRoot(rootPath, path) {
+		return nil, fmt.Errorf("promotion artifact %s escapes the run artifact root", relative)
+	}
+	info, err := os.Lstat(path)
+	if err != nil {
+		return nil, fmt.Errorf("promotion artifact %s is missing: %w", relative, err)
+	}
+	if info.Mode()&os.ModeSymlink != 0 || !info.Mode().IsRegular() {
+		return nil, fmt.Errorf("promotion artifact %s is not a regular file", relative)
+	}
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("promotion artifact %s cannot be read: %w", relative, err)
+	}
+	return raw, nil
+}
+
+func validatePromotionMetadata(proposal *parsedPlannerProposal, metadata map[string]any, identity softwareDevPromotionIdentity) error {
+	if !boolAny(metadata["present"]) || !boolAny(metadata["selected_graph"]) {
+		return errors.New("promotion metadata does not identify a successfully selected proposal graph")
+	}
+	if stringValue(metadata["source_format"]) != proposal.Format {
+		return errors.New("promotion metadata source format does not match the raw proposal")
+	}
+	taskPack := mapValue(metadata["task_pack"])
+	if stringValue(taskPack["path"]) != identity.TaskPackPath || stringValue(taskPack["step_id"]) != identity.StepID {
+		return errors.New("promotion metadata task-pack identity does not match the selected repo surface")
+	}
+
+	orchestration := contractOrchestration(proposal.Declaration)
+	roleIDs := []string{}
+	for id := range mapValue(orchestration["agents"]) {
+		roleIDs = append(roleIDs, id)
+	}
+	sort.Strings(roleIDs)
+	taskIDs := []string{}
+	dependencies := []any{}
+	outputs := []any{}
+	for _, rawTask := range listValue(orchestration["tasks"]) {
+		task := mapValue(rawTask)
+		id := stringValue(task["id"])
+		taskIDs = append(taskIDs, id)
+		dependencies = append(dependencies, map[string]any{"task_id": id, "depends_on": anySlice(stringList(task["depends_on"]))})
+		for _, rawOutput := range listValue(task["materialize_outputs"]) {
+			outputs = append(outputs, map[string]any{"task_id": id, "path": stringValue(mapValue(rawOutput)["path"])})
+		}
+	}
+	expected := map[string]any{
+		"role_ids":            anySlice(roleIDs),
+		"constraints":         anySlice(contractConstraints(proposal.Declaration)),
+		"task_ids":            anySlice(taskIDs),
+		"dependencies":        dependencies,
+		"materialize_outputs": outputs,
+	}
+	for _, key := range []string{"role_ids", "constraints", "task_ids", "dependencies", "materialize_outputs"} {
+		if mustJSON(metadata[key], []any{}) != mustJSON(expected[key], []any{}) {
+			return fmt.Errorf("promotion metadata %s does not match the selected proposal graph", key)
+		}
+	}
+	return nil
+}
+
+func validatePromotionVerificationArtifact(verification map[string]any) error {
+	for _, key := range []string{"status", "failure_class"} {
+		value, ok := verification[key].(string)
+		if !ok || strings.TrimSpace(value) == "" {
+			return fmt.Errorf("promotion verification %s must be a non-empty string", key)
+		}
+	}
+	issues, ok := proposalArray(verification["issues"])
+	if !ok {
+		return errors.New("promotion verification issues must be an array of strings")
+	}
+	for _, issue := range issues {
+		if _, ok := issue.(string); !ok {
+			return errors.New("promotion verification issues must be an array of strings")
+		}
+	}
+	valueBar, ok := mapDeclaration(verification["value_bar"])
+	if !ok {
+		return errors.New("promotion verification value_bar must be an object")
+	}
+	if verdict, ok := valueBar["verdict"].(string); !ok || strings.TrimSpace(verdict) == "" {
+		return errors.New("promotion verification value_bar.verdict must be a non-empty string")
+	}
+	switch valueBar["overall_score"].(type) {
+	case int, int64, float32, float64, json.Number:
+	default:
+		return errors.New("promotion verification value_bar.overall_score must be a number")
+	}
+	baseline, ok := mapDeclaration(verification["direct_worker_baseline"])
+	if !ok {
+		return errors.New("promotion verification direct_worker_baseline must be an object")
+	}
+	if verdict, ok := baseline["verdict"].(string); !ok || strings.TrimSpace(verdict) == "" {
+		return errors.New("promotion verification direct_worker_baseline.verdict must be a non-empty string")
+	}
+	return nil
+}
+
+func evaluateSoftwareDevPromotion(repoTaskPack, proposal, metadata, verification map[string]any, identity softwareDevPromotionIdentity, rawRelativePath string) map[string]any {
+	delta, meaningful := promotionSoftLayerDelta(repoTaskPack, proposal)
+	reasons := []any{}
+	status := strings.TrimSpace(stringValue(verification["status"]))
+	if status != "pass" {
+		reasons = append(reasons, promotionReason("verification_not_passed", "Verification status must be pass."))
+	}
+	if len(stringList(verification["issues"])) > 0 {
+		reasons = append(reasons, promotionReason("verification_has_issues", "Verification issues must be empty."))
+	}
+	if failureClass := strings.TrimSpace(stringValue(verification["failure_class"])); failureClass != "none" {
+		reasons = append(reasons, promotionReason("verification_failure_class", "Verification failure_class must be none."))
+	}
+	valueBar := mapValue(verification["value_bar"])
+	valueVerdict := stringValue(valueBar["verdict"])
+	if valueVerdict != "strong_orchestration_value" && valueVerdict != "mixed_orchestration_value" {
+		reasons = append(reasons, promotionReason("weak_or_missing_value_bar", "Value-bar evidence must be mixed or strong."))
+	}
+	baseline := mapValue(verification["direct_worker_baseline"])
+	baselineVerdict := stringValue(baseline["verdict"])
+	if baselineVerdict != "orchestration_adds_value" && baselineVerdict != "direct_worker_likely_sufficient" {
+		reasons = append(reasons, promotionReason("lower_or_missing_direct_worker_baseline", "Direct-worker evidence must not prefer the direct worker."))
+	}
+	if !meaningful {
+		reasons = append(reasons, promotionReason("no_reusable_soft_layer_delta", "The proposal adds no meaningful reusable soft-layer guidance."))
+	}
+	eligibilityStatus := "eligible"
+	if len(reasons) > 0 {
+		eligibilityStatus = "ineligible"
+	} else {
+		reasons = append(reasons,
+			promotionReason("selected_proposal_graph_confirmed", "Proposal metadata matches the selected compiled graph."),
+			promotionReason("verification_and_value_bar_passed", "Verification, value-bar, and direct-worker gates passed."),
+			promotionReason("reusable_soft_layer_delta_found", "At least one reusable soft-layer delta is reviewable."),
+		)
+	}
+
+	targets := []any{
+		map[string]any{
+			"kind":    "selected_task_pack_step",
+			"path":    identity.TaskPackPath,
+			"step_id": identity.StepID,
+		},
+	}
+	if len(mapValue(delta["roles"])) > 0 && identity.SiblingRoles != "" {
+		targets = append(targets, map[string]any{
+			"kind": "owned_sibling_agents",
+			"path": identity.SiblingRoles,
+		})
+	}
+
+	return map[string]any{
+		"contract_version": "software.dev.promotion-candidate/v1",
+		"eligibility": map[string]any{
+			"status":  eligibilityStatus,
+			"reasons": reasons,
+		},
+		"source_evidence": map[string]any{
+			"proposal": map[string]any{
+				"raw":            rawRelativePath,
+				"normalized":     "proposal/normalized.json",
+				"metadata":       "proposal/metadata.json",
+				"source_format":  metadata["source_format"],
+				"selected_graph": metadata["selected_graph"],
+			},
+			"verification": map[string]any{
+				"path":                    "verify/result.json",
+				"status":                  status,
+				"failure_class":           verification["failure_class"],
+				"value_bar_verdict":       valueVerdict,
+				"value_bar_overall_score": valueBar["overall_score"],
+				"direct_worker_verdict":   baselineVerdict,
+			},
+		},
+		"mutable_surface": map[string]any{
+			"task_pack_path": identity.TaskPackPath,
+			"step_id":        identity.StepID,
+		},
+		"repo_owned_target_surfaces":     targets,
+		"promotable_soft_layer_delta":    delta,
+		"excluded_session_only_fields":   promotionSessionExclusions(),
+		"excluded_hard_authority_fields": promotionHardAuthorityExclusions(),
+		"workspace_mutation": map[string]any{
+			"performed":    false,
+			"confirmation": "Evaluation wrote only proposal/promotion-candidate.json under the existing run artifact root.",
+		},
+	}
+}
+
+func promotionSoftLayerDelta(repoTaskPack, proposal map[string]any) (map[string]any, bool) {
+	repoOrchestration := contractOrchestration(repoTaskPack)
+	proposalOrchestration := contractOrchestration(proposal)
+	meaningful := false
+	step := map[string]any{}
+	if startup := strings.TrimSpace(stringValue(proposal["startup_prompt"])); startup != "" && startup != strings.TrimSpace(stringValue(repoTaskPack["startup_prompt"])) {
+		step["startup_prompt"] = startup
+		meaningful = true
+	}
+	rootConstraints := promotionStringAdditions(stringList(repoTaskPack["constraints"]), stringList(proposal["constraints"]))
+	if len(rootConstraints) > 0 {
+		step["constraints"] = anySlice(rootConstraints)
+		meaningful = true
+	}
+
+	orchestration := map[string]any{}
+	orchestrationConstraints := promotionStringAdditions(stringList(repoOrchestration["constraints"]), stringList(proposalOrchestration["constraints"]))
+	if len(orchestrationConstraints) > 0 {
+		orchestration["constraints"] = anySlice(orchestrationConstraints)
+		meaningful = true
+	}
+	plan := promotionPlanDelta(mapValue(repoOrchestration["plan"]), mapValue(proposalOrchestration["plan"]))
+	if len(plan) > 0 {
+		orchestration["plan"] = plan
+		meaningful = true
+	}
+	for _, key := range []string{"merge", "verify"} {
+		difference := promotionScalarMapDelta(mapValue(repoOrchestration[key]), mapValue(proposalOrchestration[key]))
+		if len(difference) > 0 {
+			orchestration[key] = difference
+			meaningful = true
+		}
+	}
+	required := promotionStringAdditions(
+		stringList(mapValue(repoOrchestration["apply"])["required_artifacts"]),
+		stringList(mapValue(proposalOrchestration["apply"])["required_artifacts"]),
+	)
+	if len(required) > 0 {
+		orchestration["apply"] = map[string]any{"required_artifacts": anySlice(required)}
+		meaningful = true
+	}
+	if len(orchestration) > 0 {
+		step["orchestration"] = orchestration
+	}
+
+	roles := map[string]any{}
+	repoRoles := mapValue(repoOrchestration["agents"])
+	proposalRoles := mapValue(proposalOrchestration["agents"])
+	roleIDs := make([]string, 0, len(proposalRoles))
+	for id := range proposalRoles {
+		roleIDs = append(roleIDs, id)
+	}
+	sort.Strings(roleIDs)
+	for _, id := range roleIDs {
+		proposalRole := mapValue(proposalRoles[id])
+		repoRole := mapValue(repoRoles[id])
+		roleDelta := map[string]any{}
+		if guidance := strings.TrimSpace(stringValue(proposalRole["role"])); guidance != "" && guidance != strings.TrimSpace(stringValue(repoRole["role"])) {
+			roleDelta["role"] = guidance
+		}
+		constraints := promotionStringAdditions(stringList(repoRole["constraints"]), stringList(proposalRole["constraints"]))
+		if len(constraints) > 0 {
+			roleDelta["constraints"] = anySlice(constraints)
+		}
+		if len(roleDelta) > 0 {
+			roles[id] = roleDelta
+			meaningful = true
+		}
+	}
+
+	return map[string]any{
+		"task_pack_step": step,
+		"roles":          roles,
+	}, meaningful
+}
+
+func promotionPlanDelta(repo, proposal map[string]any) map[string]any {
+	out := map[string]any{}
+	if goal := strings.TrimSpace(stringValue(proposal["goal"])); goal != "" && goal != strings.TrimSpace(stringValue(repo["goal"])) {
+		out["goal"] = goal
+	}
+	steps := promotionStringAdditions(stringList(repo["steps"]), stringList(proposal["steps"]))
+	if len(steps) > 0 {
+		out["steps"] = anySlice(steps)
+	}
+	constraints := promotionStringAdditions(stringList(repo["constraints"]), stringList(proposal["constraints"]))
+	if len(constraints) > 0 {
+		out["constraints"] = anySlice(constraints)
+	}
+	return out
+}
+
+func promotionScalarMapDelta(repo, proposal map[string]any) map[string]any {
+	out := map[string]any{}
+	for key, value := range proposal {
+		if isContractScalar(value) && mustJSON(value, nil) != mustJSON(repo[key], nil) {
+			out[key] = value
+		}
+	}
+	return out
+}
+
+func promotionStringAdditions(existing, proposed []string) []string {
+	out := []string{}
+	for _, value := range proposed {
+		value = strings.TrimSpace(value)
+		if value != "" && !containsString(existing, value) {
+			out = appendStableContractStrings(out, value)
+		}
+	}
+	return out
+}
+
+func promotionReason(code, message string) map[string]any {
+	return map[string]any{"code": code, "message": message}
+}
+
+func promotionSessionExclusions() []any {
+	return []any{
+		map[string]any{"fields": []any{"orchestration.request"}, "reason": "The exact request is per-run context."},
+		map[string]any{"fields": []any{"orchestration.tasks", "orchestration.tasks[].goal", "orchestration.tasks[].brief", "orchestration.tasks[].prompt"}, "reason": "Exact task decomposition and task prompts are session-only."},
+		map[string]any{"fields": []any{"orchestration.tasks[].depends_on"}, "reason": "The exact dependency graph is session-only."},
+		map[string]any{"fields": []any{"orchestration.agents[].worker", "orchestration.agents[].worker_type", "orchestration.agents[].work_mode", "orchestration.agents[].worker_policy", "orchestration.agents[].model", "orchestration.agents[].model_policy"}, "reason": "Selected workers, providers, models, and lanes are session-only."},
+		map[string]any{"fields": []any{"orchestration.tasks[].materialize_outputs"}, "reason": "One-off inferred outputs remain session-only; only explicit required-artifact floor additions may be proposed."},
+		map[string]any{"fields": []any{"verification.recommended_rerun_tasks", "verification.root_cause_task", "verification.next_action", "verification.issues"}, "reason": "Repair plans and validation failures are session-only evidence."},
+	}
+}
+
+func promotionHardAuthorityExclusions() []any {
+	return []any{
+		map[string]any{"fields": []any{"access", "orchestration.access", "orchestration.agents[].access", "orchestration.agents[].accessible_paths"}, "reason": "Mounts and access policy are hard runtime authority."},
+		map[string]any{"fields": []any{"access.deny", "orchestration.access.deny", "orchestration.agents[].access.deny", "remove_deny"}, "reason": "Deny-rule changes are never promotable."},
+		map[string]any{"fields": []any{"auth", "secrets"}, "reason": "Authentication and secrets are never promotable."},
+		map[string]any{"fields": []any{"cloud_budget", "max_cloud_tokens", "orchestration.cloud_budget", "orchestration.agents[].cloud_budget", "orchestration.agents[].max_cloud_tokens"}, "reason": "Budgets and token ceilings are package-owned authority."},
+		map[string]any{"fields": []any{"orchestration.apply.require_approval", "orchestration.agents[].require_approval"}, "reason": "Approval settings are package-owned authority."},
+		map[string]any{"fields": []any{"orchestration.apply.target_root"}, "reason": "The repo-selected apply target cannot be changed by promotion."},
+		map[string]any{"fields": []any{"publish", "sync", "orchestration.publish", "orchestration.sync", "orchestration.agents[].publish", "orchestration.agents[].sync"}, "reason": "Publish and sync behavior are package-owned authority."},
+		map[string]any{"fields": []any{"destructive_action_policy"}, "reason": "Destructive-action policy is never promotable."},
+	}
+}
+
+func writeJSONFileAtomic(path string, payload any) error {
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return err
+	}
+	if info, err := os.Lstat(path); err == nil && info.Mode()&os.ModeSymlink != 0 {
+		return fmt.Errorf("atomic JSON target cannot be a symlink: %s", path)
+	} else if err != nil && !os.IsNotExist(err) {
+		return err
+	}
+	raw, err := json.MarshalIndent(payload, "", "  ")
+	if err != nil {
+		return err
+	}
+	temporary, err := os.CreateTemp(filepath.Dir(path), ".promotion-candidate-*.json")
+	if err != nil {
+		return err
+	}
+	temporaryPath := temporary.Name()
+	defer os.Remove(temporaryPath)
+	if _, err = temporary.Write(append(raw, '\n')); err == nil {
+		err = temporary.Sync()
+	}
+	if closeErr := temporary.Close(); err == nil {
+		err = closeErr
+	}
+	if err != nil {
+		return err
+	}
+	if err := os.Rename(temporaryPath, path); err != nil {
+		return err
+	}
+	return nil
+}
+
+// normalizeTaskPackContract compiles package defaults, one loaded repository task-pack agent
+// declaration, and an optional per-run planner proposal into a deterministic, data-only contract.
+// It deliberately does not materialize artifacts or execute tasks; the two-phase compiler owns
+// those later boundaries.
+func normalizeTaskPackContract(packageDefaults, repoTaskPack, proposal map[string]any) (map[string]any, error) {
+	layers := []struct {
+		name string
+		data map[string]any
+	}{
+		{name: "package", data: packageDefaults},
+		{name: "repo", data: repoTaskPack},
+		{name: "proposal", data: proposal},
+	}
+	problems := []string{}
+
+	packageAccess := normalizedContractAccess(contractAccess(packageDefaults), "package.access", &problems)
+	effectiveAccess := copyMap(packageAccess)
+	for _, layer := range layers[1:] {
+		if len(layer.data) == 0 {
+			continue
+		}
+		effectiveAccess = narrowContractAccess(effectiveAccess, contractAccess(layer.data), layer.name, &problems)
+	}
+
+	packageBudget := normalizedContractBudget(contractBudget(packageDefaults), "package.cloud_budget", &problems)
+	effectiveBudget := copyMap(packageBudget)
+	for _, layer := range layers[1:] {
+		if len(layer.data) == 0 {
+			continue
+		}
+		effectiveBudget = narrowContractBudget(effectiveBudget, contractBudget(layer.data), layer.name, &problems)
+	}
+
+	for _, layer := range layers[1:] {
+		if len(layer.data) == 0 {
+			continue
+		}
+		if contractBool(layer.data, "publish") {
+			problems = append(problems, layer.name+".publish cannot enable package-owned publish")
+		}
+		if contractBool(layer.data, "sync") {
+			problems = append(problems, layer.name+".sync cannot enable package-owned sync")
+		}
+		if value, ok := contractApply(layer.data)["require_approval"]; ok && !boolAny(value) {
+			problems = append(problems, layer.name+".apply.require_approval cannot disable mandatory package approval")
+		}
+	}
+
+	soft := map[string]any{}
+	for _, key := range []string{"startup_prompt", "include_agents_md"} {
+		for _, layer := range layers {
+			if value, ok := layer.data[key]; ok && isContractScalar(value) {
+				soft[key] = value
+			}
+		}
+	}
+	for _, key := range []string{"request", "plan", "merge", "verify"} {
+		merged := map[string]any{}
+		for _, layer := range layers {
+			mergeContractScalars(merged, mapValue(contractOrchestration(layer.data)[key]))
+		}
+		soft[key] = merged
+	}
+
+	constraints := []string{}
+	for _, layer := range layers {
+		constraints = appendStableContractStrings(constraints, contractConstraints(layer.data)...)
+	}
+
+	baseFloor := []string{}
+	for _, layer := range layers[:2] {
+		for _, rawPath := range stringList(contractApply(layer.data)["required_artifacts"]) {
+			path, err := normalizeContractOutputPath(rawPath)
+			if err != nil {
+				problems = append(problems, fmt.Sprintf("%s.apply.required_artifacts output path %q is invalid: %v", layer.name, rawPath, err))
+				continue
+			}
+			baseFloor = appendStableContractStrings(baseFloor, path)
+		}
+	}
+	requiredOutputs := append([]string{}, baseFloor...)
+	proposalApply := contractApply(proposal)
+	if rawProposalFloor, present := proposalApply["required_artifacts"]; present {
+		proposalFloor := []string{}
+		for _, rawPath := range stringList(rawProposalFloor) {
+			path, err := normalizeContractOutputPath(rawPath)
+			if err != nil {
+				problems = append(problems, fmt.Sprintf("proposal.apply.required_artifacts output path %q is invalid: %v", rawPath, err))
+				continue
+			}
+			proposalFloor = appendStableContractStrings(proposalFloor, path)
+		}
+		for _, floor := range baseFloor {
+			if !containsString(proposalFloor, floor) {
+				problems = append(problems, fmt.Sprintf("proposal.apply.required_artifacts cannot remove or rename required output %q", floor))
+			}
+		}
+		requiredOutputs = appendStableContractStrings(requiredOutputs, proposalFloor...)
+	}
+
+	applyTarget := strings.TrimSpace(stringValue(contractApply(packageDefaults)["target_root"]))
+	if repoTarget := strings.TrimSpace(stringValue(contractApply(repoTaskPack)["target_root"])); repoTarget != "" {
+		applyTarget = repoTarget
+	}
+	if proposalTarget := strings.TrimSpace(stringValue(proposalApply["target_root"])); proposalTarget != "" && proposalTarget != applyTarget {
+		problems = append(problems, fmt.Sprintf("proposal.apply.target_root %q cannot change repo-selected target %q", proposalTarget, applyTarget))
+	}
+
+	roles := normalizeContractRoles(packageDefaults, repoTaskPack, proposal, packageAccess, effectiveAccess, effectiveBudget, &problems)
+	taskLayerName, rawTasks := selectContractTasks(packageDefaults, repoTaskPack, proposal)
+	tasks := normalizeContractTasks(rawTasks, taskLayerName, effectiveAccess, effectiveBudget, &problems)
+	if maxTasks := intFromAny(effectiveBudget["max_tasks"]); maxTasks > 0 && len(tasks) > maxTasks {
+		problems = append(problems, fmt.Sprintf("%s.tasks count %d exceeds cloud_budget.max_tasks ceiling %d", taskLayerName, len(tasks), maxTasks))
+	}
+	validateContractTaskRoles(tasks, roles, taskLayerName, &problems)
+	validateContractGraph(tasks, requiredOutputs, &problems)
+
+	if len(problems) > 0 {
+		return nil, fmt.Errorf("invalid normalized orchestration contract: %s", strings.Join(problems, "; "))
+	}
+
+	return map[string]any{
+		"startup_prompt":    soft["startup_prompt"],
+		"include_agents_md": soft["include_agents_md"],
+		"request":           soft["request"],
+		"plan":              soft["plan"],
+		"merge":             soft["merge"],
+		"verify":            soft["verify"],
+		"access":            effectiveAccess,
+		"cloud_budget":      effectiveBudget,
+		"constraints":       anySlice(constraints),
+		"required_outputs":  anySlice(requiredOutputs),
+		"apply_target":      applyTarget,
+		"approval_required": true,
+		"publish":           false,
+		"sync":              false,
+		"roles":             roles,
+		"tasks":             tasks,
+	}, nil
+}
+
+func contractOrchestration(layer map[string]any) map[string]any {
+	return mapValue(layer["orchestration"])
+}
+
+func contractAccess(layer map[string]any) map[string]any {
+	if access, ok := mapDeclaration(layer["access"]); ok {
+		return access
+	}
+	return mapValue(contractOrchestration(layer)["access"])
+}
+
+func contractBudget(layer map[string]any) map[string]any {
+	if budget, ok := mapDeclaration(layer["cloud_budget"]); ok {
+		return budget
+	}
+	return mapValue(contractOrchestration(layer)["cloud_budget"])
+}
+
+func contractApply(layer map[string]any) map[string]any {
+	return mapValue(contractOrchestration(layer)["apply"])
+}
+
+func contractBool(layer map[string]any, key string) bool {
+	if value, ok := layer[key]; ok {
+		return boolAny(value)
+	}
+	return boolAny(contractOrchestration(layer)[key])
+}
+
+func contractConstraints(layer map[string]any) []string {
+	out := []string{}
+	out = appendStableContractStrings(out, stringList(layer["constraints"])...)
+	orchestration := contractOrchestration(layer)
+	out = appendStableContractStrings(out, stringList(orchestration["constraints"])...)
+	out = appendStableContractStrings(out, stringList(mapValue(orchestration["plan"])["constraints"])...)
+	return out
+}
+
+func isContractScalar(value any) bool {
+	switch value.(type) {
+	case nil, string, bool, int, int64, float64, json.Number:
+		return true
+	default:
+		return false
+	}
+}
+
+func mergeContractScalars(target, source map[string]any) {
+	keys := make([]string, 0, len(source))
+	for key := range source {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	for _, key := range keys {
+		if key == "constraints" || !isContractScalar(source[key]) {
+			continue
+		}
+		target[key] = source[key]
+	}
+}
+
+func appendStableContractStrings(values []string, additions ...string) []string {
+	for _, addition := range additions {
+		addition = strings.TrimSpace(addition)
+		if addition != "" && !containsString(values, addition) {
+			values = append(values, addition)
+		}
+	}
+	return values
+}
+
+func normalizedContractAccess(access map[string]any, field string, problems *[]string) map[string]any {
+	out := map[string]any{}
+	for _, key := range []string{"read", "write", "deny"} {
+		paths := []string{}
+		for _, rawPath := range stringList(access[key]) {
+			path, err := normalizeContractAuthorityPath(rawPath)
+			if err != nil {
+				*problems = append(*problems, fmt.Sprintf("%s.%s path %q is invalid: %v", field, key, rawPath, err))
+				continue
+			}
+			paths = appendStableContractStrings(paths, path)
+		}
+		out[key] = anySlice(paths)
+	}
+	return out
+}
+
+func narrowContractAccess(current, requested map[string]any, layer string, problems *[]string) map[string]any {
+	out := copyMap(current)
+	if removed := stringList(requested["remove_deny"]); len(removed) > 0 {
+		for _, path := range removed {
+			*problems = append(*problems, fmt.Sprintf("%s.access.remove_deny cannot remove package deny rule %q", layer, path))
+		}
+	}
+	for _, key := range []string{"read", "write"} {
+		raw, present := requested[key]
+		if !present {
+			continue
+		}
+		ceiling := stringList(current[key])
+		narrowed := []string{}
+		for _, rawPath := range stringList(raw) {
+			path, err := normalizeContractAuthorityPath(rawPath)
+			if err != nil {
+				*problems = append(*problems, fmt.Sprintf("%s.access.%s path %q is invalid: %v", layer, key, rawPath, err))
+				continue
+			}
+			if !contractPathWithinAny(path, ceiling) {
+				*problems = append(*problems, fmt.Sprintf("%s.access.%s path %q is outside the current package authority ceiling", layer, key, path))
+				continue
+			}
+			narrowed = appendStableContractStrings(narrowed, path)
+		}
+		out[key] = anySlice(narrowed)
+	}
+	denied := stringList(current["deny"])
+	for _, rawPath := range stringList(requested["deny"]) {
+		path, err := normalizeContractAuthorityPath(rawPath)
+		if err != nil {
+			*problems = append(*problems, fmt.Sprintf("%s.access.deny path %q is invalid: %v", layer, rawPath, err))
+			continue
+		}
+		denied = appendStableContractStrings(denied, path)
+	}
+	out["deny"] = anySlice(denied)
+	return out
+}
+
+func normalizeContractAuthorityPath(raw string) (string, error) {
+	value := strings.TrimSpace(strings.ReplaceAll(raw, "\\", "/"))
+	if value == "" {
+		return "", errors.New("path is empty")
+	}
+	cleaned := pathpkg.Clean(value)
+	if cleaned == ".." || strings.HasPrefix(cleaned, "../") {
+		return "", errors.New("path escapes its authority root")
+	}
+	return cleaned, nil
+}
+
+func contractPathWithinAny(candidate string, ceilings []string) bool {
+	for _, ceiling := range ceilings {
+		if ceiling == "." && candidate != ".." && !strings.HasPrefix(candidate, "../") && !strings.HasPrefix(candidate, "/") {
+			return true
+		}
+		if candidate == ceiling || ceiling == "/" || strings.HasPrefix(candidate, strings.TrimSuffix(ceiling, "/")+"/") {
+			return true
+		}
+	}
+	return false
+}
+
+func intersectContractAccess(packageRoleAccess, runAccess map[string]any) map[string]any {
+	out := map[string]any{}
+	for _, key := range []string{"read", "write"} {
+		paths := []string{}
+		for _, runPath := range stringList(runAccess[key]) {
+			for _, rolePath := range stringList(packageRoleAccess[key]) {
+				switch {
+				case contractPathWithinAny(runPath, []string{rolePath}):
+					paths = appendStableContractStrings(paths, runPath)
+				case contractPathWithinAny(rolePath, []string{runPath}):
+					paths = appendStableContractStrings(paths, rolePath)
+				}
+			}
+		}
+		out[key] = anySlice(paths)
+	}
+	denied := appendStableContractStrings(nil, stringList(packageRoleAccess["deny"])...)
+	denied = appendStableContractStrings(denied, stringList(runAccess["deny"])...)
+	out["deny"] = anySlice(denied)
+	return out
+}
+
+func normalizedContractBudget(budget map[string]any, field string, problems *[]string) map[string]any {
+	out := map[string]any{}
+	for _, key := range []string{"max_total_tokens", "max_task_tokens", "max_tasks"} {
+		if raw, ok := budget[key]; ok {
+			value := intFromAny(raw)
+			if value < 0 {
+				*problems = append(*problems, fmt.Sprintf("%s.%s must be non-negative", field, key))
+				continue
+			}
+			out[key] = value
+		}
+	}
+	return out
+}
+
+func narrowContractBudget(current, requested map[string]any, layer string, problems *[]string) map[string]any {
+	out := copyMap(current)
+	for _, key := range []string{"max_total_tokens", "max_task_tokens", "max_tasks"} {
+		raw, present := requested[key]
+		if !present {
+			continue
+		}
+		value := intFromAny(raw)
+		ceilingRaw, governed := current[key]
+		ceiling := intFromAny(ceilingRaw)
+		if value < 0 {
+			*problems = append(*problems, fmt.Sprintf("%s.cloud_budget.%s must be non-negative", layer, key))
+			continue
+		}
+		if !governed || value > ceiling {
+			*problems = append(*problems, fmt.Sprintf("%s.cloud_budget.%s value %d exceeds package ceiling %d", layer, key, value, ceiling))
+			continue
+		}
+		out[key] = value
+	}
+	return out
+}
+
+func normalizeContractRoles(packageDefaults, repoTaskPack, proposal map[string]any, packageAccess, runAccess, budget map[string]any, problems *[]string) []any {
+	layers := []struct {
+		name  string
+		roles map[string]any
+	}{
+		{name: "package", roles: mapValue(contractOrchestration(packageDefaults)["agents"])},
+		{name: "repo", roles: mapValue(contractOrchestration(repoTaskPack)["agents"])},
+		{name: "proposal", roles: mapValue(contractOrchestration(proposal)["agents"])},
+	}
+	ids := []string{}
+	for _, layer := range layers {
+		for id := range layer.roles {
+			ids = appendStableContractStrings(ids, id)
+		}
+	}
+	sort.Strings(ids)
+	out := make([]any, 0, len(ids))
+	hardKeys := map[string]bool{"access": true, "authority": true, "max_cloud_tokens": true, "cloud_budget": true, "require_approval": true, "publish": true, "sync": true}
+	for _, id := range ids {
+		role := map[string]any{"id": id}
+		constraints := []string{}
+		packageRole := mapValue(layers[0].roles[id])
+		roleAccess := copyMap(packageAccess)
+		if access, ok := mapDeclaration(packageRole["access"]); ok {
+			roleAccess = narrowContractAccess(roleAccess, access, fmt.Sprintf("package.roles[%q]", id), problems)
+		}
+		roleAccess = intersectContractAccess(roleAccess, runAccess)
+		roleBudget := intFromAny(budget["max_task_tokens"])
+		if raw, ok := packageRole["max_cloud_tokens"]; ok && intFromAny(raw) < roleBudget {
+			roleBudget = intFromAny(raw)
+		}
+		for _, layer := range layers {
+			definition := mapValue(layer.roles[id])
+			if len(definition) == 0 {
+				continue
+			}
+			keys := make([]string, 0, len(definition))
+			for key := range definition {
+				keys = append(keys, key)
+			}
+			sort.Strings(keys)
+			for _, key := range keys {
+				if key == "constraints" || hardKeys[key] {
+					continue
+				}
+				role[key] = definition[key]
+			}
+			constraints = appendStableContractStrings(constraints, stringList(definition["constraints"])...)
+			if layer.name == "package" {
+				if authority, ok := definition["authority"]; ok {
+					role["authority"] = authority
+				}
+				continue
+			}
+			if access, ok := mapDeclaration(definition["access"]); ok {
+				roleAccess = narrowContractAccess(roleAccess, access, fmt.Sprintf("%s.roles[%q]", layer.name, id), problems)
+			}
+			if raw, ok := definition["max_cloud_tokens"]; ok {
+				value := intFromAny(raw)
+				if value > roleBudget {
+					*problems = append(*problems, fmt.Sprintf("%s.roles[%q].max_cloud_tokens value %d exceeds package ceiling %d", layer.name, id, value, roleBudget))
+				} else {
+					roleBudget = value
+				}
+			}
+			if authority, ok := definition["authority"]; ok && mustJSON(authority, nil) != mustJSON(role["authority"], nil) {
+				*problems = append(*problems, fmt.Sprintf("%s.roles[%q].authority cannot replace package authority", layer.name, id))
+			}
+			for _, key := range []string{"require_approval", "publish", "sync"} {
+				if boolAny(definition[key]) || (key == "require_approval" && definition[key] != nil && !boolAny(definition[key])) {
+					*problems = append(*problems, fmt.Sprintf("%s.roles[%q].%s is package-owned authority", layer.name, id, key))
+				}
+			}
+		}
+		role["constraints"] = anySlice(constraints)
+		role["access"] = roleAccess
+		if roleBudget > 0 {
+			role["max_cloud_tokens"] = roleBudget
+		}
+		out = append(out, role)
+	}
+	return out
+}
+
+func selectContractTasks(packageDefaults, repoTaskPack, proposal map[string]any) (string, []any) {
+	if tasks, present := contractOrchestration(proposal)["tasks"]; present {
+		return "proposal", listValue(tasks)
+	}
+	if tasks, present := contractOrchestration(repoTaskPack)["tasks"]; present {
+		return "repo", listValue(tasks)
+	}
+	return "package", listValue(contractOrchestration(packageDefaults)["tasks"])
+}
+
+func normalizeContractTasks(rawTasks []any, layer string, access, budget map[string]any, problems *[]string) []any {
+	out := make([]any, 0, len(rawTasks))
+	maxTaskTokens := intFromAny(budget["max_task_tokens"])
+	for index, raw := range rawTasks {
+		source := mapValue(raw)
+		id := strings.TrimSpace(stringValue(source["id"]))
+		field := fmt.Sprintf("%s.tasks[%d]", layer, index)
+		if id != "" {
+			field = fmt.Sprintf("%s.tasks[%q]", layer, id)
+		}
+		task := copyMap(source)
+		task["id"] = id
+		dependsOn := appendStableContractStrings(nil, stringList(source["depends_on"])...)
+		task["depends_on"] = anySlice(dependsOn)
+		constraints := appendStableContractStrings(nil, stringList(source["constraints"])...)
+		task["constraints"] = anySlice(constraints)
+
+		outputs := []any{}
+		for _, rawOutput := range listValue(source["materialize_outputs"]) {
+			output := mapValue(rawOutput)
+			rawPath := stringValue(output["path"])
+			if len(output) == 0 {
+				rawPath = stringValue(rawOutput)
+				output = map[string]any{}
+			}
+			path, err := normalizeContractOutputPath(rawPath)
+			if err != nil {
+				*problems = append(*problems, fmt.Sprintf("%s.materialize_outputs output path %q is invalid: %v", field, rawPath, err))
+				continue
+			}
+			output = copyMap(output)
+			output["path"] = path
+			outputs = append(outputs, output)
+		}
+		task["materialize_outputs"] = outputs
+
+		if taskAccess, ok := mapDeclaration(source["access"]); ok {
+			task["access"] = narrowContractAccess(access, taskAccess, field, problems)
+		}
+		if raw, present := source["max_cloud_tokens"]; present {
+			value := intFromAny(raw)
+			if maxTaskTokens == 0 || value > maxTaskTokens {
+				*problems = append(*problems, fmt.Sprintf("%s.max_cloud_tokens value %d exceeds package ceiling %d", field, value, maxTaskTokens))
+			}
+		}
+		if contractBool(source, "publish") {
+			*problems = append(*problems, field+".publish cannot enable package-owned publish")
+		}
+		if contractBool(source, "sync") {
+			*problems = append(*problems, field+".sync cannot enable package-owned sync")
+		}
+		out = append(out, task)
+	}
+	return out
+}
+
+func validateContractTaskRoles(tasks, roles []any, layer string, problems *[]string) {
+	rolesByID := map[string]map[string]any{}
+	for _, rawRole := range roles {
+		role := mapValue(rawRole)
+		rolesByID[stringValue(role["id"])] = role
+	}
+	for _, rawTask := range tasks {
+		task := mapValue(rawTask)
+		agentID := strings.TrimSpace(stringValue(task["agent"]))
+		if agentID == "" {
+			continue
+		}
+		role, exists := rolesByID[agentID]
+		if !exists {
+			*problems = append(*problems, fmt.Sprintf("%s.tasks[%q].agent references unknown normalized role %q", layer, stringValue(task["id"]), agentID))
+			continue
+		}
+		taskBudget := intFromAny(task["max_cloud_tokens"])
+		roleBudget := intFromAny(role["max_cloud_tokens"])
+		if taskBudget > 0 && roleBudget > 0 && taskBudget > roleBudget {
+			*problems = append(*problems, fmt.Sprintf("%s.tasks[%q].max_cloud_tokens value %d exceeds normalized role %q ceiling %d", layer, stringValue(task["id"]), taskBudget, agentID, roleBudget))
+		}
+	}
+}
+
+func normalizeContractOutputPath(raw string) (string, error) {
+	value := strings.TrimSpace(strings.ReplaceAll(raw, "\\", "/"))
+	if value == "" {
+		return "", errors.New("path is empty")
+	}
+	if strings.HasPrefix(value, "/") || strings.Contains(value, ":") {
+		return "", errors.New("path must be relative")
+	}
+	cleaned := pathpkg.Clean(value)
+	if cleaned == "." || cleaned == ".." || strings.HasPrefix(cleaned, "../") {
+		return "", errors.New("path escapes the materialized output root")
+	}
+	return cleaned, nil
+}
+
+func validateContractGraph(tasks []any, requiredOutputs []string, problems *[]string) {
+	firstTask := map[string]int{}
+	orderedIDs := []string{}
+	for index, raw := range tasks {
+		task := mapValue(raw)
+		id := stringValue(task["id"])
+		if id == "" {
+			*problems = append(*problems, fmt.Sprintf("tasks[%d].id is required", index))
+			continue
+		}
+		if first, duplicate := firstTask[id]; duplicate {
+			*problems = append(*problems, fmt.Sprintf("tasks[%q].id is duplicate (first declared at index %d)", id, first))
+			continue
+		}
+		firstTask[id] = index
+		orderedIDs = append(orderedIDs, id)
+	}
+	for _, raw := range tasks {
+		task := mapValue(raw)
+		id := stringValue(task["id"])
+		for _, dependency := range stringList(task["depends_on"]) {
+			if _, ok := firstTask[dependency]; !ok {
+				*problems = append(*problems, fmt.Sprintf("tasks[%q].depends_on dependency %q does not exist", id, dependency))
+			}
+		}
+	}
+
+	state := map[string]int{}
+	stack := []string{}
+	cycleSeen := map[string]bool{}
+	var visit func(string)
+	visit = func(id string) {
+		state[id] = 1
+		stack = append(stack, id)
+		task := mapValue(tasks[firstTask[id]])
+		for _, dependency := range stringList(task["depends_on"]) {
+			if _, exists := firstTask[dependency]; !exists {
+				continue
+			}
+			if state[dependency] == 0 {
+				visit(dependency)
+				continue
+			}
+			if state[dependency] == 1 {
+				start := 0
+				for stack[start] != dependency {
+					start++
+				}
+				cycle := append(append([]string{}, stack[start:]...), dependency)
+				signature := strings.Join(cycle, " -> ")
+				if !cycleSeen[signature] {
+					cycleSeen[signature] = true
+					*problems = append(*problems, fmt.Sprintf("tasks[%q].depends_on dependency %q creates cycle %s", id, dependency, signature))
+				}
+			}
+		}
+		stack = stack[:len(stack)-1]
+		state[id] = 2
+	}
+	for _, id := range orderedIDs {
+		if state[id] == 0 {
+			visit(id)
+		}
+	}
+
+	producers := map[string]string{}
+	for _, raw := range tasks {
+		task := mapValue(raw)
+		id := stringValue(task["id"])
+		for _, rawOutput := range listValue(task["materialize_outputs"]) {
+			path := stringValue(mapValue(rawOutput)["path"])
+			if first, exists := producers[path]; exists {
+				*problems = append(*problems, fmt.Sprintf("materialized output %q has duplicate producers tasks[%q] and tasks[%q]", path, first, id))
+				continue
+			}
+			producers[path] = id
+		}
+	}
+	for _, path := range requiredOutputs {
+		if _, ok := producers[path]; !ok {
+			*problems = append(*problems, fmt.Sprintf("required output floor %q has no producer", path))
+		}
+	}
 }
 
 func emitTaskEnv(path string, stdout io.Writer) error {
@@ -581,7 +2899,7 @@ func writeTaskResult(path string, env map[string]string) error {
 	return writeJSONFile(path, payload)
 }
 
-func materializeTaskOutputs(responsePath, taskDir, outputsJSON, resultPath string) error {
+func materializeTaskOutputs(responsePath, taskDir, outputsJSON, resultPath, repoRoot, mountEnv string) error {
 	outputs := listValue(decodeJSONAny(outputsJSON, []any{}))
 	if len(outputs) == 0 {
 		return writeJSONFile(resultPath, map[string]any{
@@ -595,7 +2913,11 @@ func materializeTaskOutputs(responsePath, taskDir, outputsJSON, resultPath strin
 	}
 	blocks := parseMaterializedBlocks(string(raw))
 	materializedRoot := filepath.Join(taskDir, "materialized")
-	files := []map[string]any{}
+	type pendingMaterializedOutput struct {
+		clean   string
+		content string
+	}
+	pending := []pendingMaterializedOutput{}
 	for _, rawOutput := range outputs {
 		output := mapValue(rawOutput)
 		rel := strings.TrimSpace(stringValue(output["path"]))
@@ -616,22 +2938,221 @@ func materializeTaskOutputs(responsePath, taskDir, outputsJSON, resultPath strin
 		if !ok {
 			return fmt.Errorf("missing materialized output block for %s", rel)
 		}
-		target := filepath.Join(materializedRoot, filepath.FromSlash(clean))
+		if durableOutputNeedsPolicy(clean) {
+			content, err = normalizeDurableOutput(content, repoRoot, mountEnv)
+			if err != nil {
+				return fmt.Errorf("%s: %w", filepath.ToSlash(clean), err)
+			}
+		}
+		pending = append(pending, pendingMaterializedOutput{clean: clean, content: content})
+	}
+	files := []map[string]any{}
+	for _, output := range pending {
+		target := filepath.Join(materializedRoot, filepath.FromSlash(output.clean))
 		if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
 			return err
 		}
-		if err := os.WriteFile(target, []byte(strings.TrimRight(content, "\r\n")+"\n"), 0o644); err != nil {
+		if err := os.WriteFile(target, []byte(strings.TrimRight(output.content, "\r\n")+"\n"), 0o644); err != nil {
 			return err
 		}
 		files = append(files, map[string]any{
-			"path":     filepath.ToSlash(clean),
-			"artifact": filepath.ToSlash(filepath.Join("materialized", filepath.FromSlash(clean))),
+			"path":     filepath.ToSlash(output.clean),
+			"artifact": filepath.ToSlash(filepath.Join("materialized", filepath.FromSlash(output.clean))),
 		})
 	}
 	return writeJSONFile(resultPath, map[string]any{
 		"status": "materialized",
 		"files":  files,
 	})
+}
+
+func durableOutputNeedsPolicy(path string) bool {
+	switch strings.ToLower(filepath.Ext(path)) {
+	case ".md", ".markdown", ".yml", ".yaml":
+		return true
+	default:
+		return false
+	}
+}
+
+func normalizeDurableOutput(content, repoRoot, mountEnv string) (string, error) {
+	root, err := filepath.Abs(strings.TrimSpace(repoRoot))
+	if err != nil || strings.TrimSpace(repoRoot) == "" {
+		return "", errors.New("durable output policy requires an explicit consumer repository root")
+	}
+	guestRoots := []string{"/work", "/DesignNotes"}
+	seenRoots := map[string]bool{"/work": true, "/DesignNotes": true}
+	for _, line := range strings.Split(mountEnv, "\n") {
+		_, guest, ok := parseContainerMountSpec(line)
+		if !ok {
+			continue
+		}
+		guest = cleanGuestPath(guest)
+		if guest != "" && !seenRoots[guest] {
+			seenRoots[guest] = true
+			guestRoots = append(guestRoots, guest)
+		}
+	}
+	sort.Slice(guestRoots, func(i, j int) bool {
+		if len(guestRoots[i]) != len(guestRoots[j]) {
+			return len(guestRoots[i]) > len(guestRoots[j])
+		}
+		return guestRoots[i] < guestRoots[j]
+	})
+	parts := make([]string, 0, len(guestRoots))
+	for _, guest := range guestRoots {
+		parts = append(parts, regexp.QuoteMeta(guest))
+	}
+	guestPattern := regexp.MustCompile(`(?:` + strings.Join(parts, "|") + `)(?:/[A-Za-z0-9._~@%+,\-]+)*`)
+	normalized, err := rewriteDurableGuestReferences(content, guestPattern, func(reference string) (string, error) {
+		return repoNativeGuestReference(root, reference, mountEnv)
+	})
+	if err != nil {
+		return "", err
+	}
+	normalized, err = rewriteDurableHostReferences(normalized, reDurableHostPath, func(reference string) (string, error) {
+		return repoNativeHostReference(root, reference)
+	})
+	if err != nil {
+		return "", err
+	}
+	normalized, err = rewriteDurableHostReferences(normalized, reDurableHostToken, func(reference string) (string, error) {
+		return repoNativeHostReference(root, reference)
+	})
+	if err != nil {
+		return "", err
+	}
+	for _, forbidden := range durableOutputForbiddenTerms {
+		if match := forbidden.pattern.FindString(normalized); match != "" {
+			return "", fmt.Errorf("durable output contains orchestration-only terminology %q (%s)", match, forbidden.label)
+		}
+	}
+	return normalized, nil
+}
+
+func rewriteDurableGuestReferences(content string, pattern *regexp.Regexp, rewrite func(string) (string, error)) (string, error) {
+	return rewriteDurableReferencesWhere(content, pattern, func(text string, start, end int) bool {
+		if start > 0 && isDurablePathCharacter(text[start-1]) {
+			return false
+		}
+		return end >= len(text) || !isDurablePathCharacter(text[end])
+	}, rewrite)
+}
+
+func rewriteDurableHostReferences(content string, pattern *regexp.Regexp, rewrite func(string) (string, error)) (string, error) {
+	return rewriteDurableReferencesWhere(content, pattern, func(text string, start, end int) bool {
+		if strings.Contains(text[start:end], "://") {
+			return false
+		}
+		tokenStart := strings.LastIndexAny(text[:start], " \t\r\n`(<[\"'")
+		return !strings.Contains(text[tokenStart+1:start], "://")
+	}, rewrite)
+}
+
+func rewriteDurableReferencesWhere(content string, pattern *regexp.Regexp, include func(string, int, int) bool, rewrite func(string) (string, error)) (string, error) {
+	allMatches := pattern.FindAllStringIndex(content, -1)
+	matches := make([][]int, 0, len(allMatches))
+	for _, match := range allMatches {
+		if include(content, match[0], match[1]) {
+			matches = append(matches, match)
+		}
+	}
+	if len(matches) == 0 {
+		return content, nil
+	}
+	var out strings.Builder
+	start := 0
+	for _, match := range matches {
+		reference := content[match[0]:match[1]]
+		replacement, err := rewrite(reference)
+		if err != nil {
+			return "", err
+		}
+		out.WriteString(content[start:match[0]])
+		out.WriteString(replacement)
+		start = match[1]
+	}
+	out.WriteString(content[start:])
+	return out.String(), nil
+}
+
+func isDurablePathCharacter(value byte) bool {
+	return value == '/' || value == '\\' || value == '-' || value == '_' || value == '.' || value == '~' || value == '@' || value == '%' || value == '+' || value == ',' ||
+		(value >= '0' && value <= '9') || (value >= 'A' && value <= 'Z') || (value >= 'a' && value <= 'z')
+}
+
+func repoNativeGuestReference(repoRoot, reference, mountEnv string) (string, error) {
+	type candidate struct {
+		guestRoot string
+		hostRoot  string
+	}
+	candidates := []candidate{{guestRoot: "/work", hostRoot: repoRoot}}
+	for _, line := range strings.Split(mountEnv, "\n") {
+		host, guest, ok := parseContainerMountSpec(line)
+		if !ok {
+			continue
+		}
+		guest = cleanGuestPath(guest)
+		if guest != "" {
+			candidates = append(candidates, candidate{guestRoot: guest, hostRoot: host})
+		}
+	}
+	cleanReference := cleanGuestPath(reference)
+	bestLength := -1
+	resolved := map[string]bool{}
+	for _, item := range candidates {
+		if !guestPathContains(item.guestRoot, cleanReference) {
+			continue
+		}
+		if len(item.guestRoot) < bestLength {
+			continue
+		}
+		if len(item.guestRoot) > bestLength {
+			bestLength = len(item.guestRoot)
+			resolved = map[string]bool{}
+		}
+		hostRoot, err := filepath.Abs(item.hostRoot)
+		if err != nil {
+			return "", fmt.Errorf("runtime path reference %q has an invalid source mapping", reference)
+		}
+		rel := strings.TrimPrefix(cleanReference, item.guestRoot)
+		rel = strings.TrimPrefix(rel, "/")
+		hostTarget, err := filepath.Abs(filepath.Join(hostRoot, filepath.FromSlash(rel)))
+		if err != nil || !withinRoot(hostRoot, hostTarget) {
+			return "", fmt.Errorf("runtime path reference %q escapes its explicit source mapping", reference)
+		}
+		resolved[filepath.Clean(hostTarget)] = true
+	}
+	if len(resolved) != 1 {
+		return "", fmt.Errorf("runtime path reference %q is ambiguous; no unique repo-native source mapping exists", reference)
+	}
+	var hostTarget string
+	for value := range resolved {
+		hostTarget = value
+	}
+	if !withinRoot(repoRoot, hostTarget) {
+		return "", fmt.Errorf("runtime path reference %q maps outside the consumer repository", reference)
+	}
+	rel, err := filepath.Rel(repoRoot, hostTarget)
+	if err != nil || rel == "." || strings.HasPrefix(rel, "..") || filepath.IsAbs(rel) {
+		return "", fmt.Errorf("runtime path reference %q does not prove a specific repo-native reference", reference)
+	}
+	return filepath.ToSlash(rel), nil
+}
+
+func repoNativeHostReference(repoRoot, reference string) (string, error) {
+	if runtime.GOOS != "windows" && regexp.MustCompile(`^[A-Za-z]:[\\/]`).MatchString(reference) {
+		return "", fmt.Errorf("machine host path %q cannot be mapped on this host", reference)
+	}
+	hostPath, err := filepath.Abs(reference)
+	if err != nil || !withinRoot(repoRoot, hostPath) {
+		return "", fmt.Errorf("machine host path %q is not a repo-native reference", reference)
+	}
+	rel, err := filepath.Rel(repoRoot, hostPath)
+	if err != nil || rel == "." || strings.HasPrefix(rel, "..") || filepath.IsAbs(rel) {
+		return "", fmt.Errorf("machine host path %q does not prove a specific repo-native reference", reference)
+	}
+	return filepath.ToSlash(rel), nil
 }
 
 func renderMaterializeOutputContract(outputs []any) string {
@@ -2144,7 +4665,7 @@ func mountedGuestRootNotes(mountEnv string) []string {
 	notes := []string{}
 	seen := map[string]bool{}
 	for _, line := range strings.Split(mountEnv, "\n") {
-		host, guest, ok := parseContainerMountSpec(line)
+		_, guest, ok := parseContainerMountSpec(line)
 		if !ok {
 			continue
 		}
@@ -2158,15 +4679,13 @@ func mountedGuestRootNotes(mountEnv string) []string {
 			continue
 		case "/DesignNotes":
 			notes = append(notes,
-				fmt.Sprintf("- `%s` is an external mounted design corpus, not part of the repo checkout under `/work`.", guest),
-				fmt.Sprintf("- Host path for this run: `%s`.", filepath.Clean(host)),
-				"- If durable docs need to mention it, describe it as a SharePoint-backed or Windows-local design-notes mirror at that host path; do not imply it lives inside the repo.",
+				fmt.Sprintf("- `%s` is a stable source-packet label for an external design corpus, not a repo-native path.", guest),
+				"- Use it only while gathering evidence. Durable docs must cite a repo-native reference proven by an explicit source mapping or omit the path.",
 			)
 		default:
 			notes = append(notes,
-				fmt.Sprintf("- `%s` is an external mounted source root for this run.", guest),
-				fmt.Sprintf("- Host path for this run: `%s`.", filepath.Clean(host)),
-				"- Do not describe this mount as a repo-owned directory unless the task has explicit source authority for that claim.",
+				fmt.Sprintf("- `%s` is a stable source-packet label, not a repo-native path.", guest),
+				"- Use it only while gathering evidence. Durable docs must cite a repo-native reference proven by an explicit source mapping or omit the path.",
 			)
 		}
 	}
@@ -2437,6 +4956,8 @@ func planOrchestration(workflowPath, stepID string, env map[string]string) error
 	trainingPolicy := mapValue(baselinePolicy["training"])
 	trainingStats := loadTrainingStats(globalTrainingMetricsPath, trainingPolicy)
 
+	shared = orderedNativeGuidanceShared(shared)
+	baselineContextPath := nativeGuidanceBaselineContextPath(shared)
 	for _, raw := range shared {
 		entry := mapValue(raw)
 		rel := stringValue(entry["path"])
@@ -2514,8 +5035,10 @@ func planOrchestration(workflowPath, stepID string, env map[string]string) error
 			"next_action_default": fallbackString(stringValue(verify["next_action_default"]), "human approval before treating orchestration output as final"),
 		},
 		"apply": map[string]any{
-			"require_approval": boolDefault(apply["require_approval"], true),
-			"outputs":          listValue(apply["outputs"]),
+			"require_approval":   boolDefault(apply["require_approval"], true),
+			"outputs":            listValue(apply["outputs"]),
+			"target_root":        stringValue(apply["target_root"]),
+			"required_artifacts": listValue(apply["required_artifacts"]),
 		},
 	}
 	if followUpMode {
@@ -2682,7 +5205,7 @@ func planOrchestration(workflowPath, stepID string, env map[string]string) error
 					}
 				}
 			}
-			contextPaths := taskContextPaths(task)
+			contextPaths := orderNativeGuidanceTaskContext(taskContextPaths(task), baselineContextPath)
 			resolvedContextPaths, err := resolveScopeList(anySlice(contextPaths))
 			if err != nil {
 				return err
@@ -4842,6 +7365,16 @@ func renderShared(entry map[string]any, root string, env map[string]string) (str
 	switch collector {
 	case "literal":
 		return stringValue(entry["text"]), nil
+	case "example_brain_baseline":
+		path := strings.TrimSpace(env["DORKPIPE_ORCH_EXAMPLE_BRAIN_BASELINE"])
+		if path == "" {
+			return "", errors.New("example_brain_baseline collector requires DORKPIPE_ORCH_EXAMPLE_BRAIN_BASELINE")
+		}
+		raw, err := os.ReadFile(path)
+		if err != nil {
+			return "", fmt.Errorf("read example brain baseline: %w", err)
+		}
+		return string(raw), nil
 	case "repo_map":
 		tracked, _ := runCommandString(root, env, "git", "-C", root, "ls-files")
 		trackedCount := 0
@@ -4887,11 +7420,66 @@ func renderShared(entry map[string]any, root string, env map[string]string) (str
 	}
 }
 
+func orderedNativeGuidanceShared(shared []any) []any {
+	ordered := make([]any, 0, len(shared))
+	for _, raw := range shared {
+		if stringValue(mapValue(raw)["collector"]) == "example_brain_baseline" {
+			ordered = append(ordered, raw)
+		}
+	}
+	for _, raw := range shared {
+		if stringValue(mapValue(raw)["collector"]) != "example_brain_baseline" {
+			ordered = append(ordered, raw)
+		}
+	}
+	return ordered
+}
+
+func nativeGuidanceBaselineContextPath(shared []any) string {
+	for _, raw := range shared {
+		entry := mapValue(raw)
+		if stringValue(entry["collector"]) != "example_brain_baseline" {
+			continue
+		}
+		if rel := strings.TrimSpace(stringValue(entry["path"])); rel != "" {
+			return filepath.ToSlash(filepath.Join("shared", rel))
+		}
+	}
+	return ""
+}
+
+func orderNativeGuidanceTaskContext(values []string, baseline string) []string {
+	if baseline == "" || !containsString(values, baseline) {
+		return append([]string{}, values...)
+	}
+	return prependUniqueString(values, baseline)
+}
+
+func prependUniqueString(values []string, first string) []string {
+	out := []string{first}
+	for _, value := range values {
+		if value != first {
+			out = append(out, value)
+		}
+	}
+	return out
+}
+
 const (
 	sourcePacketMaxFiles     = 32
 	sourcePacketMaxFileBytes = 1200
 	sourcePacketMaxBytes     = 6000
 )
+
+type sourcePacketRoot struct {
+	hostPath    string
+	displayPath string
+}
+
+type sourcePacketFile struct {
+	hostPath    string
+	displayPath string
+}
 
 var sourcePacketExtensions = map[string]bool{
 	".bash": true, ".c": true, ".cfg": true, ".conf": true, ".cpp": true, ".cs": true,
@@ -4923,23 +7511,23 @@ func renderSourcePacket(root string, sourceRoots, readRoots, denyRoots []string,
 	if err != nil {
 		return "", fmt.Errorf("resolve access.deny: %w", err)
 	}
-	resolvedSources, err := resolveSourcePacketPaths(root, sourceRoots, mountEnv)
+	resolvedSources, err := resolveSourcePacketRoots(root, sourceRoots, mountEnv)
 	if err != nil {
 		return "", fmt.Errorf("resolve context.source_roots: %w", err)
 	}
 	for _, source := range resolvedSources {
-		if !pathWithinAny(source, resolvedReads) {
-			return "", fmt.Errorf("source root is outside access.read: %s", source)
+		if !pathWithinAny(source.hostPath, resolvedReads) {
+			return "", fmt.Errorf("source root is outside access.read: %s", source.displayPath)
 		}
 	}
 
-	files := []string{}
+	files := []sourcePacketFile{}
 	seen := map[string]bool{}
 	for _, source := range resolvedSources {
 		if len(files) >= sourcePacketMaxFiles {
 			break
 		}
-		walkErr := filepath.WalkDir(source, func(path string, entry fs.DirEntry, walkErr error) error {
+		walkErr := filepath.WalkDir(source.hostPath, func(path string, entry fs.DirEntry, walkErr error) error {
 			if walkErr != nil {
 				return walkErr
 			}
@@ -4960,7 +7548,10 @@ func renderSourcePacket(root string, sourceRoots, readRoots, denyRoots []string,
 			}
 			if !seen[path] {
 				seen[path] = true
-				files = append(files, path)
+				files = append(files, sourcePacketFile{
+					hostPath:    path,
+					displayPath: sourcePacketChildDisplayPath(source, path),
+				})
 			}
 			if len(files) >= sourcePacketMaxFiles {
 				return filepath.SkipDir
@@ -4972,10 +7563,6 @@ func renderSourcePacket(root string, sourceRoots, readRoots, denyRoots []string,
 		}
 	}
 
-	rootAbs, err := filepath.Abs(root)
-	if err != nil {
-		return "", err
-	}
 	lines := []string{
 		"# Deterministic Source Packet",
 		"",
@@ -4988,15 +7575,15 @@ func renderSourcePacket(root string, sourceRoots, readRoots, denyRoots []string,
 		"",
 	}
 	for _, source := range resolvedSources {
-		lines = append(lines, "- `"+sourcePacketDisplayPath(rootAbs, source)+"` (allowed by `access.read`)")
+		lines = append(lines, "- `"+source.displayPath+"` (allowed by `access.read`)")
 	}
 	remaining := sourcePacketMaxBytes
 	included := 0
-	for _, path := range files {
+	for _, file := range files {
 		if remaining <= 0 {
 			break
 		}
-		content, err := readSourcePacketFile(path, minInt(sourcePacketMaxFileBytes, remaining))
+		content, err := readSourcePacketFile(file.hostPath, minInt(sourcePacketMaxFileBytes, remaining))
 		if err != nil {
 			return "", err
 		}
@@ -5007,7 +7594,7 @@ func renderSourcePacket(root string, sourceRoots, readRoots, denyRoots []string,
 		remaining -= len(content)
 		included++
 		text := strings.ReplaceAll(strings.TrimRight(string(content), "\n"), "```", "``\\`")
-		lines = append(lines, "", "## "+sourcePacketDisplayPath(rootAbs, path), "", "```text", text, "```")
+		lines = append(lines, "", "## "+file.displayPath, "", "```text", text, "```")
 	}
 	if included == 0 {
 		lines = append(lines, "", "No readable text files matched the declared roots and packet policy.")
@@ -5015,6 +7602,31 @@ func renderSourcePacket(root string, sourceRoots, readRoots, denyRoots []string,
 		lines = append(lines, "", "Packet bounds reached; additional allowed files were not included.")
 	}
 	return strings.Join(lines, "\n") + "\n", nil
+}
+
+func resolveSourcePacketRoots(root string, paths []string, mountEnv string) ([]sourcePacketRoot, error) {
+	resolved := []sourcePacketRoot{}
+	seen := map[string]bool{}
+	for _, raw := range paths {
+		value := strings.TrimSpace(raw)
+		if value == "" {
+			continue
+		}
+		hostPath, err := resolveSourcePacketPath(root, value, mountEnv)
+		if err != nil {
+			return nil, err
+		}
+		if seen[hostPath] {
+			continue
+		}
+		displayPath, err := sourcePacketRootDisplayPath(root, value, hostPath, mountEnv)
+		if err != nil {
+			return nil, err
+		}
+		seen[hostPath] = true
+		resolved = append(resolved, sourcePacketRoot{hostPath: hostPath, displayPath: displayPath})
+	}
+	return resolved, nil
 }
 
 func resolveSourcePacketPaths(root string, paths []string, mountEnv string) ([]string, error) {
@@ -5069,12 +7681,71 @@ func pathWithinAny(path string, roots []string) bool {
 	return false
 }
 
-func sourcePacketDisplayPath(root, path string) string {
-	rel, err := filepath.Rel(root, path)
-	if err == nil && !strings.HasPrefix(rel, "..") && !filepath.IsAbs(rel) {
-		return filepath.ToSlash(rel)
+func sourcePacketRootDisplayPath(root, declared, hostPath, mountEnv string) (string, error) {
+	declaredSlash := filepath.ToSlash(declared)
+	if strings.HasPrefix(declaredSlash, "/") {
+		if _, _, ok := resolveGuestMountTarget(declared, mountEnv); ok {
+			return cleanGuestPath(declared), nil
+		}
+		if _, _, ok := resolvePrimaryWorkTarget(root, declared); ok {
+			return cleanGuestPath(declared), nil
+		}
 	}
-	return filepath.ToSlash(path)
+	if !filepath.IsAbs(declared) {
+		return filepath.ToSlash(filepath.Clean(declared)), nil
+	}
+	if guestPath, ok := sourcePacketGuestPathForHost(hostPath, mountEnv); ok {
+		return guestPath, nil
+	}
+	rootAbs, err := filepath.Abs(root)
+	if err != nil {
+		return "", err
+	}
+	rel, err := filepath.Rel(rootAbs, hostPath)
+	if err == nil && !strings.HasPrefix(rel, "..") && !filepath.IsAbs(rel) {
+		return filepath.ToSlash(rel), nil
+	}
+	return "", fmt.Errorf("external source root must use a declared guest mount")
+}
+
+func sourcePacketGuestPathForHost(hostPath, mountEnv string) (string, bool) {
+	bestHostRoot := ""
+	bestGuestRoot := ""
+	for _, line := range strings.Split(mountEnv, "\n") {
+		host, guest, ok := parseContainerMountSpec(line)
+		if !ok {
+			continue
+		}
+		hostRoot, err := filepath.Abs(host)
+		if err != nil || !withinRoot(hostRoot, hostPath) || len(hostRoot) <= len(bestHostRoot) {
+			continue
+		}
+		bestHostRoot = hostRoot
+		bestGuestRoot = cleanGuestPath(guest)
+	}
+	if bestHostRoot == "" || bestGuestRoot == "" {
+		return "", false
+	}
+	rel, err := filepath.Rel(bestHostRoot, hostPath)
+	if err != nil {
+		return "", false
+	}
+	if rel == "." {
+		return bestGuestRoot, true
+	}
+	return strings.TrimRight(bestGuestRoot, "/") + "/" + filepath.ToSlash(rel), true
+}
+
+func sourcePacketChildDisplayPath(root sourcePacketRoot, hostPath string) string {
+	rel, err := filepath.Rel(root.hostPath, hostPath)
+	if err != nil || rel == "." {
+		return root.displayPath
+	}
+	rel = filepath.ToSlash(rel)
+	if root.displayPath == "." {
+		return rel
+	}
+	return strings.TrimRight(root.displayPath, "/") + "/" + rel
 }
 
 func readSourcePacketFile(path string, limit int) ([]byte, error) {

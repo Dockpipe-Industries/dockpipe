@@ -1,0 +1,8 @@
+# Validation only. This example contains no VM start, stop, reboot, or power command.
+operation: validate-offline
+manifest: ../manifests/linux-qualification.json
+requires:
+  qualification: true
+  disposable: true
+  live_execution_approved: false
+expected_result: live execution rejected by this foundation slice
