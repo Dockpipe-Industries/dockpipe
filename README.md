@@ -7,7 +7,7 @@ DockPipe gives you a simple way to run tests, scripts, code generation, and AI t
 > [!IMPORTANT]
 > **DockPipe 0.6.0 is coming soon—and it is a massive improvement.**
 >
-> Preview the next version on the **[`dev` branch](https://github.com/Dockpipe-Industries/dockpipe/tree/dev)**.
+> You don’t have to wait for the release—**you can start using it now from the [`dev` branch](https://github.com/Dockpipe-Industries/dockpipe/tree/dev)**.
 
 ## Quick Start
 
