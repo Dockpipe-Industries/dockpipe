@@ -62,7 +62,7 @@ dorkpipe_stack_require_consumer_binaries() {
 		if [[ "${#missing[@]}" -gt 0 ]]; then
 			echo "dev-stack: checkout bundle mode needs local built binaries:" >&2
 			printf '  missing: %s\n' "${missing[@]}" >&2
-			echo "dev-stack: run: make build && ./src/bin/dockpipe package build source --workdir . --only dorkpipe" >&2
+			echo "dev-stack: run: make build && ./src/bin/dockpipe package build source --workdir . --only dorkpipe && ./src/bin/dockpipe package build source --workdir . --only dorkpipe.mcp" >&2
 			return 1
 		fi
 		context_root="$(dorkpipe_stack_state_dir)/checkout-context"

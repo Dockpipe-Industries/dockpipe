@@ -190,7 +190,7 @@ No production area was changed by this research.
 | Area | Likely future change |
 | --- | --- |
 | packages/dorkpipe/lib | Provider-neutral top-level contracts, state/events/persistence and dedicated adapter package. |
-| packages/dorkpipe/mcp/mcpbridge | Normalized host session/approval operations while retaining tier/path control. |
+| packages/dorkpipe-mcp/mcpbridge | Normalized host session/approval operations while retaining tier/path control. |
 | provider-pool and catalog | Adapter selection/capability policy while retaining exec. |
 | Pipeon extension | Normalized lifecycle/approval/recovery UI; never raw protocol. |
 | DorkPipe/Pipeon tests/docs | Contract fixtures, controlled integration tests and operations guidance. |

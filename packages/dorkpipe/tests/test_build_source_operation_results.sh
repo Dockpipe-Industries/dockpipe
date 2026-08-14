@@ -18,7 +18,7 @@ fi
 fake_repo="$tmp/repo"
 fake_package_root="$fake_repo/packages/dorkpipe"
 mkdir -p "$fake_bin"
-mkdir -p "$fake_package_root/lib" "$fake_package_root/mcp"
+mkdir -p "$fake_package_root/lib"
 printf '0.0.0-test\n' > "$fake_repo/VERSION"
 operation_log="$tmp/operation.log"
 go_log="$tmp/go.log"
@@ -93,16 +93,15 @@ export DOCKPIPE_PACKAGE_ROOT="$fake_package_root"
 
 bash "$SCRIPT"
 
-for tool in dorkpipe mcpd skills-render orchestrate-helper; do
+for tool in dorkpipe skills-render orchestrate-helper; do
   grep -Fq -- "unit=package.source.tool status=start" "$operation_log"
   grep -Fq -- "unit=package.source.tool status=done" "$operation_log"
   grep -Fq -- "tool=$tool" "$operation_log"
 done
 
-[[ "$(grep -c 'unit=package.source.tool status=start' "$operation_log")" -eq 4 ]]
-[[ "$(grep -c 'unit=package.source.tool status=done' "$operation_log")" -eq 4 ]]
+[[ "$(grep -c 'unit=package.source.tool status=start' "$operation_log")" -eq 3 ]]
+[[ "$(grep -c 'unit=package.source.tool status=done' "$operation_log")" -eq 3 ]]
 grep -Fq -- "./cmd/dorkpipe" "$go_log"
-grep -Fq -- "./cmd/mcpd" "$go_log"
 grep -Fq -- "./cmd/skills-render" "$go_log"
 grep -Fq -- "./cmd/orchestrate-helper" "$go_log"
 

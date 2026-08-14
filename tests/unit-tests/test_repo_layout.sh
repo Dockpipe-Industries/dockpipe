@@ -23,6 +23,16 @@ test ! -e "$ROOT/scripts/dockpipe" || fail "repo-root scripts/dockpipe must not 
 test ! -e "$ROOT/src/bin/dorkpipe" || fail "src/bin/dorkpipe must not exist — use packages/dorkpipe/bin/dorkpipe"
 test ! -e "$ROOT/src/bin/mcpd" || fail "src/bin/mcpd must not exist — use packages/dorkpipe-mcp/bin/mcpd"
 test ! -e "$ROOT/src/bin/pipeon" || fail "src/bin/pipeon must not exist — use packages/pipeon/resolvers/pipeon/bin/pipeon"
+test -f "$ROOT/packages/dorkpipe-mcp/package.yml" || fail "dorkpipe.mcp must be a top-level package"
+test -x "$ROOT/packages/dorkpipe-mcp/bin/mcpd" || fail "missing packages/dorkpipe-mcp/bin/mcpd launcher"
+test ! -d "$ROOT/packages/dorkpipe/mcp" || fail "dorkpipe.mcp must not be nested under packages/dorkpipe"
+test ! -e "$ROOT/packages/dorkpipe/bin/mcpd" || fail "mcpd launcher belongs to packages/dorkpipe-mcp"
+test ! -e "$ROOT/packages/dorkpipe/bin/dorkpipe.exe" || fail "generated dorkpipe.exe must not be committed under packages"
+test ! -e "$ROOT/packages/dorkpipe-mcp/bin/mcpd.exe" || fail "generated mcpd.exe must not be committed under packages"
+if rg -n '\$\{PACKAGE_ROOT\}/mcp|packages/dorkpipe/mcp|src/cmd/mcpd|src/bin/mcpd' \
+	"$ROOT/packages/dorkpipe" "$ROOT/packages/ide/resolvers/cursor-dev" >/dev/null; then
+	fail "legacy nested MCP source or launcher references remain"
+fi
 
 # Pipeon (first-party — packages/pipeon/)
 test -f "$ROOT/packages/pipeon/resolvers/pipeon/bin/pipeon" || fail "missing packages/pipeon/resolvers/pipeon/bin/pipeon"

@@ -7,9 +7,9 @@ STATE_ROOT="$(dockpipe scope --package cursor-dev .)"
 DIR="$STATE_ROOT"
 mkdir -p "$DIR"
 
-# Dockpipe source checkout (src/cmd/mcpd) — after `make build`, binaries exist under src/bin/.
+# DockPipe source checkout — build MCP through its package-owned source contract.
 HAS_MCP=""
-if [[ -f "$ROOT/src/bin/mcpd" ]] || [[ -f "$ROOT/src/cmd/mcpd/main.go" ]]; then
+if [[ -f "$ROOT/packages/dorkpipe-mcp/package.yml" ]]; then
   HAS_MCP=1
 fi
 
@@ -49,8 +49,9 @@ DockPipe ships **\`mcpd\`**, a small bridge that exposes **named tools** (workfl
 
 1. From the repo root: \`make build\`.
 2. Refresh DorkPipe package-owned source artifacts when needed:
-   \`./src/bin/dockpipe package build source --workdir . --only dorkpipe\`
-   That gives you \`src/bin/dockpipe\`, \`packages/dorkpipe/bin/dorkpipe\`, and \`packages/dorkpipe/bin/mcpd\`.
+   \`./src/bin/dockpipe package build source --workdir . --only dorkpipe\` and
+   \`./src/bin/dockpipe package build source --workdir . --only dorkpipe.mcp\`.
+   That gives you \`src/bin/dockpipe\`, \`packages/dorkpipe/bin/dorkpipe\`, and \`packages/dorkpipe-mcp/bin/mcpd\`.
 2. In Cursor: enable **MCP** and use the project file **\`.cursor/mcp.json\`** at the repo root (or merge **\`${DIR}/mcp.json.example\`** from this folder if present).
 3. Restart Cursor after editing MCP config.
 4. Defaults are security-first (workdir under repo, absolute paths to CLIs) — see **\`docs/mcp-host-hardening.md\`**.
@@ -75,7 +76,7 @@ if [[ -n "$HAS_MCP" ]]; then
 {
   "mcpServers": {
     "dockpipe": {
-      "command": "${ROOT}/packages/dorkpipe/bin/mcpd",
+      "command": "${ROOT}/packages/dorkpipe-mcp/bin/mcpd",
       "args": [],
       "env": {
         "DOCKPIPE_BIN": "${ROOT}/src/bin/dockpipe",
