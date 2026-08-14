@@ -8,7 +8,7 @@ description: |
   specialized workers, merges results, verifies them, and requires approval.
 author: DockPipe
 license: Apache-2.0
-repository: https://github.com/dockpipe/dockpipe
+repository: https://github.com/Dockpipe-Industries/dockpipe
 tags: [workflow, docs, orchestration, dorkpipe, ai]
 depends: [dorkpipe]
 platforms: [windows, deb]

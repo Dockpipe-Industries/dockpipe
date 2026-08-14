@@ -6,6 +6,8 @@ skills:
     - dorkpipe-agentic-yaml
     - dorkpipe-core-review
     - dorkpipe-package-authoring
+    - dorkpipe-task-execution
+    - dorkpipe-task-handoff
     - dorkpipe-token-optimization
     - dorkpipe-yaml-workflows
   render:
@@ -299,6 +301,33 @@ tasks:
       - ./src/bin/dockpipe --package dorkpipe --workflow skills.render -- --list
       - ./src/bin/dockpipe --package dorkpipe --workflow skills.render -- --target codex --dry-run
       - ./src/bin/dockpipe --package dorkpipe --workflow skills.render -- --target claude --output /tmp/dorkpipe-claude-skills --dry-run
+
+  task_handoff:
+    read:
+      - AGENTS.md
+      - docs/agents/docs/session-handoffs.md
+      - docs/agents/docs/token-optimization.md
+      - docs/agents/docs/skills.md
+    skills:
+      - dorkpipe-task-handoff
+      - dorkpipe-token-optimization
+    validation:
+      - ./src/bin/dockpipe --package dorkpipe --workflow skills.render -- --list
+      - ./src/bin/dockpipe --package dorkpipe --workflow skills.render -- --target codex --dry-run --skills dorkpipe-task-handoff
+
+  task_execution:
+    read:
+      - AGENTS.md
+      - docs/agents/docs/session-handoffs.md
+      - docs/agents/docs/skills.md
+      - docs/agents/task-index.yaml
+      - docs/agents/workflows/planner-promotion-model.md
+    skills:
+      - dorkpipe-task-execution
+      - dorkpipe-task-handoff
+    validation:
+      - bash packages/dorkpipe/tests/test_task_skill_lifecycle.sh
+      - ./src/bin/dockpipe --package dorkpipe --workflow skills.render -- --target codex --dry-run --skills dorkpipe-task-execution,dorkpipe-task-handoff
 
   safety_or_secrets:
     read:

@@ -1,0 +1,31 @@
+/// <summary>Fail-closed qualification identity and isolation controls.</summary>
+public Class LinuxVmQualification
+{
+    /// <summary>Qualification execution is not enabled by this foundation slice.</summary>
+    [EnvName = "DOCKPIPE_VM_QUALIFICATION_ENABLED"]
+    public string Enabled = "false";
+
+    /// <summary>Manifest must identify the VM as disposable.</summary>
+    [EnvName = "DOCKPIPE_VM_DISPOSABLE"]
+    public string Disposable = "true";
+
+    /// <summary>Stable machine UUID required for signed protocol frames.</summary>
+    [EnvName = "DOCKPIPE_VM_MACHINE_UUID"]
+    public string MachineUuid = "";
+
+    /// <summary>Stable data-disk serial required for signed protocol frames.</summary>
+    [EnvName = "DOCKPIPE_VM_DISK_SERIAL"]
+    public string DiskSerial = "";
+
+    /// <summary>Unique run identity; never reused across cohorts.</summary>
+    [EnvName = "DOCKPIPE_VM_RUN_ID"]
+    public string RunId = "";
+
+    /// <summary>Qualification scenario name.</summary>
+    [EnvName = "DOCKPIPE_VM_SCENARIO"]
+    public string Scenario = "";
+
+    /// <summary>Immutable durability boundary name.</summary>
+    [EnvName = "DOCKPIPE_VM_DURABILITY_BOUNDARY"]
+    public string DurabilityBoundary = "";
+}

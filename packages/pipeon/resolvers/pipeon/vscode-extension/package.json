@@ -6,7 +6,7 @@
   "publisher": "dorkpipe",
   "repository": {
     "type": "git",
-    "url": "https://github.com/jamie-steele/dockpipe.git"
+    "url": "https://github.com/Dockpipe-Industries/dockpipe.git"
   },
   "icon": "images/dorkpipe-icon.png",
   "engines": {
@@ -37,6 +37,25 @@
   ],
   "main": "extension.js",
   "contributes": {
+    "configuration": {
+      "title": "Pipeon",
+      "properties": {
+        "pipeon.codex.sessionAdapter": {
+          "type": "string",
+          "enum": [
+            "codex_exec",
+            "codex_app_server"
+          ],
+          "enumDescriptions": [
+            "Use the existing governed Codex exec session route.",
+            "Pin the session to App Server with transient per-turn approval, user-input, and cancellation controls."
+          ],
+          "default": "codex_app_server",
+          "scope": "resource",
+          "description": "Adapter pinned to a Pipeon session on its first Codex request."
+        }
+      }
+    },
     "viewsContainers": {
       "activitybar": [
         {

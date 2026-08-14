@@ -1,0 +1,49 @@
+{
+  "schema": "dockpipe.vm.provisioning.v3",
+  "purpose": "qualification",
+  "disposable": true,
+  "instance_count": 1,
+  "run_id": "run-example-001",
+  "cohort_id": "cohort-example-001",
+  "machine_uuid": "11111111-1111-4111-8111-111111111111",
+  "disk_serial": "dockpipe-data-000001",
+  "filesystem_uuid": "44444444-4444-4444-8444-444444444444",
+  "bootstrap_nonce": "REPLACE_WITH_64_LOWERCASE_HEX_CHARACTERS",
+  "source_image": {
+    "path": "/home/jamie/.cache/dockpipe/vm/images/ubuntu-24.04-server-cloudimg-amd64-20260801.img",
+    "sha256": "0533b0655c32e68b31d792ecd6ccfca95abdbc536c4446874fe0513bd4140ffe",
+    "bytes": 624239616
+  },
+  "toolchain": {
+    "root": "/home/jamie/.cache/dockpipe/vm/toolchains/qemu-11.0.3-linux-amd64.1",
+    "manifest": "/home/jamie/.cache/dockpipe/vm/toolchains/qemu-11.0.3-linux-amd64.1/toolchain.json",
+    "manifest_sha256": "11a27f32eb93e62aba8ebc500dfd877339a71821793cbf30845b53964c22320c"
+  },
+  "roots": {
+    "instances": "/home/jamie/.local/state/dockpipe/vm/instances",
+    "evidence": "/home/jamie/.local/state/dockpipe/evidence",
+    "config": "/home/jamie/.config/dockpipe/vm",
+    "runtime": "/run/user/REPLACE_UID/dockpipe/vm"
+  },
+  "artifacts": {
+    "assets_root": "/home/jamie/source/dockpipe/packages/vm/workflows/linux-vm/assets",
+    "controller_binary": "/REPLACE_WITH_TASK_OWNED_BUILD_DIR/dockpipe-qemu-controller",
+    "controller_binary_sha256": "REPLACE_WITH_64_LOWERCASE_HEX_CHARACTERS",
+    "guest_agent_binary": "/REPLACE_WITH_TASK_OWNED_BUILD_DIR/dockpipe-guest-agent",
+    "guest_agent_binary_sha256": "REPLACE_WITH_64_LOWERCASE_HEX_CHARACTERS",
+    "harness_binary": "/REPLACE_WITH_TASK_OWNED_BUILD_DIR/dockpipe-sqlite-vm-harness",
+    "harness_binary_sha256": "REPLACE_WITH_64_LOWERCASE_HEX_CHARACTERS",
+    "controller_public_key_sha256": "REPLACE_WITH_64_LOWERCASE_HEX_CHARACTERS",
+    "guest_public_key_sha256": "REPLACE_WITH_64_LOWERCASE_HEX_CHARACTERS"
+  },
+  "execution": {
+    "clone_timeout_seconds": 120,
+    "launch_timeout_seconds": 120,
+    "guest_verification_timeout_seconds": 300,
+    "shutdown_timeout_seconds": 120,
+    "automatic_retry": false,
+    "automatic_cleanup": false,
+    "fallback_signal": false,
+    "preserve_complete_failure": true
+  }
+}

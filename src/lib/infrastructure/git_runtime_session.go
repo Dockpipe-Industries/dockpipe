@@ -62,14 +62,19 @@ type GitSessionPolicy struct {
 }
 
 type GitCheckpoint struct {
-	Schema       int    `json:"schema"`
-	CheckpointID string `json:"checkpoint_id"`
-	SessionID    string `json:"session_id"`
-	Commit       string `json:"commit,omitempty"`
-	Reason       string `json:"reason"`
-	DirtyBefore  bool   `json:"dirty_before"`
-	Status       string `json:"status"`
-	CreatedAt    string `json:"created_at"`
+	Schema             int      `json:"schema"`
+	CheckpointID       string   `json:"checkpoint_id"`
+	SessionID          string   `json:"session_id"`
+	WorkspaceID        string   `json:"workspace_id,omitempty"`
+	Branch             string   `json:"branch,omitempty"`
+	Parent             string   `json:"parent,omitempty"`
+	Commit             string   `json:"commit,omitempty"`
+	Reason             string   `json:"reason"`
+	DirtyBefore        bool     `json:"dirty_before"`
+	Status             string   `json:"status"`
+	CreatedAt          string   `json:"created_at"`
+	Paths              []string `json:"paths,omitempty"`
+	RequestFingerprint string   `json:"request_fingerprint,omitempty"`
 }
 
 type GitSyncResult struct {

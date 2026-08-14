@@ -34,7 +34,7 @@ Read-only local checks found codex-cli 0.143.0. Help confirms stdio, Unix socket
 
 - **Documented:** App Server is bidirectional JSON-RPC 2.0; stdio is default and sends JSONL. It is the only first-release DockPipe transport.
 - **Documented:** Unix socket uses WebSocket framing below CODEX_HOME and proxy can bridge it to stdio. It is out of initial scope.
-- **Documented:** WebSocket provides ready/health probes but is experimental/unsupported. Do not expose it in Pipeon/PipeDesk.
+- **Documented:** WebSocket provides ready/health probes but is experimental/unsupported. Do not expose it in Pipeon/ForgePipe.
 - **Documented:** bounded queues return JSON-RPC -32001 overload; clients should retry with jittered backoff.
 - **Documented:** each connection sends initialize then initialized; response includes codexHome/platform, and pre-init/repeated init is rejected.
 - **Documented:** clientInfo identifies an integration for OpenAI compliance logs. DockPipe needs a stable truthful identity/version in audit records.
@@ -121,7 +121,7 @@ This current implementation is not wrong: it is simple, preserves native sandbox
 
 Architecture:
 
-Pipeon, PipeDesk or CLI sends only provider-neutral session operations into DockPipe. The generic contract owns provider/session ref, workspace/policy envelope, start/resume/follow-up/cancel/decision, normalized states/events and opaque correlation. A Codex-specific DorkPipe adapter owns JSON-RPC, schemas, thread/turn IDs, raw items and approval unions. The adapter runs a supervised host App Server stdio child, retains native sandbox/escalation, and projects approval/audit into DockPipe. Pipeon never parses provider protocol.
+Pipeon, ForgePipe or CLI sends only provider-neutral session operations into DockPipe. The generic contract owns provider/session ref, workspace/policy envelope, start/resume/follow-up/cancel/decision, normalized states/events and opaque correlation. A Codex-specific DorkPipe adapter owns JSON-RPC, schemas, thread/turn IDs, raw items and approval unions. The adapter runs a supervised host App Server stdio child, retains native sandbox/escalation, and projects approval/audit into DockPipe. Pipeon never parses provider protocol.
 
 Normalized lifecycle:
 
@@ -148,7 +148,7 @@ Approval relay:
 
 Migration:
 
-Keep codex_exec named legacy adapter. Feature-gate codex_app_server for one Pipeon session/top-level run. Fallback is allowed only before a turn or after explicit Disconnected; never replay a mutation prompt. Pipeon session maps to verified App Server thread rather than scraped transcript. The same normalized contract serves PipeDesk/CLI later.
+Keep codex_exec named legacy adapter. Feature-gate codex_app_server for one Pipeon session/top-level run. Fallback is allowed only before a turn or after explicit Disconnected; never replay a mutation prompt. Pipeon session maps to verified App Server thread rather than scraped transcript. The same normalized contract serves ForgePipe/CLI later.
 
 ## Focused security review
 

@@ -10,7 +10,7 @@ description: |
   Pipeon lives under packages/pipeon/ in this repo.
 author: DockPipe
 license: Apache-2.0
-repository: https://github.com/dockpipe/dockpipe
+repository: https://github.com/Dockpipe-Industries/dockpipe
 icon: resolvers/cursor-dev/assets/images/icon.png
 artwork:
   cursor-dev: resolvers/cursor-dev/assets/images/icon.png

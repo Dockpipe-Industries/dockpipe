@@ -199,9 +199,10 @@ func TestModelRerouteIndicationFailsClosed(t *testing.T) {
 	}
 }
 
-func TestProtocolBoundaryContainsNoGenericOrPipeonLeak(t *testing.T) {
+func TestProtocolBoundaryContainsNoGenericOrPipeonProtocolLeak(t *testing.T) {
 	forbidden := []string{"jsonrpc", "rawmessage", "appserversupervisor", "threadid", "turnid", "itemid"}
 	paths := []string{filepath.Join("..", "providersession", "contract.go")}
+	pipeonAdapterSelectionPath := filepath.Clean(filepath.Join("..", "..", "..", "pipeon", "resolvers", "pipeon", "vscode-extension", "src", "extension.ts"))
 	if err := filepath.WalkDir(filepath.Join("..", "..", "..", "pipeon"), func(path string, entry os.DirEntry, err error) error {
 		if err != nil || entry.IsDir() || !strings.HasSuffix(path, ".go") && !strings.HasSuffix(path, ".ts") {
 			return err
@@ -230,6 +231,12 @@ func TestProtocolBoundaryContainsNoGenericOrPipeonLeak(t *testing.T) {
 		}
 		lower := strings.ToLower(string(contents))
 		for _, token := range []string{"appserversupervisor", "codex_app_server", "app-server", "model/rerouted", "thread/start", "thread/read", "thread/resume", "turn/start", "turn/steer", "turn/interrupt", "requestapproval", "requestuserinput", "serverrequest/resolved", "json.rawmessage", "rawmessage"} {
+			if token == "codex_app_server" && filepath.Clean(path) == pipeonAdapterSelectionPath {
+				if count := strings.Count(lower, token); count != 1 {
+					t.Fatalf("Pipeon adapter selector count = %d in %s, want 1", count, path)
+				}
+				continue
+			}
 			if strings.Contains(lower, token) {
 				t.Fatalf("app server protocol boundary leak %q in %s", token, path)
 			}

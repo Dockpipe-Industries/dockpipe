@@ -1,0 +1,13 @@
+{
+  "schema": "dockpipe.vm.cleanup-authorization.v1",
+  "approved": false,
+  "contract_sha256": "REPLACE_WITH_EXACT_CONTRACT_SHA256",
+  "plan_sha256": "REPLACE_WITH_EXACT_PLAN_SHA256",
+  "execution_sha256": "REPLACE_WITH_EXACT_EXECUTOR_SHA256",
+  "run_id": "run-example-001",
+  "cohort_id": "cohort-example-001",
+  "resources": [
+    "REPLACE_WITH_EXACT_ORDERED_RESOURCE_LIST"
+  ],
+  "expires_at_unix": 0
+}

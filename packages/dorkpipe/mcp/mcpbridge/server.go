@@ -5,16 +5,74 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
+	"unicode/utf8"
+
+	"dorkpipe.orchestrator/providersession"
 )
 
 // Server holds MCP server state (version string for initialize).
 type Server struct {
-	Version string
+	Version                                 string
+	providerPoolChatRunner                  dorkpipeRunner
+	providerPoolChatStreamRunner            providerPoolChatStreamingRunner
+	providerPoolChatInteractiveStreamRunner providerPoolChatInteractiveStreamingRunner
+	activeChat                              activeProviderPoolChatController
+}
+
+type dorkpipeRunner func(context.Context, []string) (stdout, stderr string, exitCode int, err error)
+
+type activeProviderPoolChat struct {
+	ctx           context.Context
+	cancel        context.CancelFunc
+	done          chan struct{}
+	approvals     *transientApprovalController
+	inputs        *transientUserInputController
+	cancellations *transientCancellationController
+}
+
+type activeProviderPoolChatContextKey struct{}
+
+type activeProviderPoolChatController struct {
+	mu     sync.Mutex
+	active *activeProviderPoolChat
+}
+
+type stdioReadResult struct {
+	raw []byte
+	err error
+}
+
+type stdioAsyncResponse struct {
+	response     *rpcResponse
+	replyAsBatch bool
+}
+
+type serializedResponseWriter struct {
+	mu     sync.Mutex
+	out    io.Writer
+	closed bool
+}
+
+func (w *serializedResponseWriter) write(body []byte) error {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	if w.closed {
+		return fmt.Errorf("mcpbridge: stdio response transport is closed")
+	}
+	return WriteMessage(w.out, body)
+}
+
+func (w *serializedResponseWriter) close() {
+	w.mu.Lock()
+	w.closed = true
+	w.mu.Unlock()
 }
 
 // NewServer builds a server; version falls back to DOCKPIPE_MCP_SERVER_VERSION or "0.0.0-dev".
@@ -31,45 +89,263 @@ func NewServer(version string) *Server {
 
 // ServeStdio runs the MCP JSON-RPC loop over Content-Length–framed messages.
 func (s *Server) ServeStdio(in io.Reader, out io.Writer, log io.Writer) error {
+	serveCtx, cancelServe := context.WithCancel(context.Background())
+	responses := &serializedResponseWriter{out: out}
 	br := bufio.NewReader(in)
-	for {
-		raw, err := ReadMessage(br)
-		if err != nil {
-			if err == io.EOF {
-				return nil
+	reads := make(chan stdioReadResult, 1)
+	readerDone := make(chan struct{})
+	go func() {
+		defer close(readerDone)
+		for {
+			raw, err := ReadMessage(br)
+			select {
+			case reads <- stdioReadResult{raw: raw, err: err}:
+			case <-serveCtx.Done():
+				return
 			}
-			return err
-		}
-		reqBody := raw
-		replyAsBatch := false
-		if trim := bytes.TrimSpace(raw); len(trim) > 0 && trim[0] == '[' {
-			var arr []json.RawMessage
-			if err := json.Unmarshal(trim, &arr); err == nil && len(arr) == 1 {
-				reqBody = []byte(arr[0])
-				replyAsBatch = true
-			}
-		}
-		resp := s.handleMessage(context.Background(), reqBody, log)
-		if resp == nil {
-			continue
-		}
-		body, err := json.Marshal(resp)
-		if err != nil {
-			fmt.Fprintf(log, "mcpbridge: marshal response: %v\n", err)
-			continue
-		}
-		if replyAsBatch {
-			wrapped, err := json.Marshal([]json.RawMessage{json.RawMessage(body)})
 			if err != nil {
-				fmt.Fprintf(log, "mcpbridge: marshal batch response: %v\n", err)
+				return
+			}
+		}
+	}()
+	asyncResponses := make(chan stdioAsyncResponse, 1)
+	shutdown := func(closeInput bool) {
+		responses.close()
+		cancelServe()
+		s.cancelAndWaitForActiveProviderPoolChat()
+		if closeInput {
+			if closer, ok := in.(io.Closer); ok {
+				_ = closer.Close()
+				<-readerDone
+				return
+			}
+			select {
+			case <-readerDone:
+			default:
+			}
+			return
+		}
+		<-readerDone
+	}
+
+	for {
+		select {
+		case read := <-reads:
+			if read.err != nil {
+				shutdown(false)
+				if read.err == io.EOF {
+					return nil
+				}
+				return read.err
+			}
+			reqBody, replyAsBatch := unwrapSingleRequestBatch(read.raw)
+			if id, ok := providerPoolChatRequestID(serveCtx, reqBody); ok {
+				active, started := s.beginActiveProviderPoolChat(serveCtx)
+				if !started {
+					resp := errResponse(id, -32000, "dorkpipe.provider_pool_chat is already active for this MCP server")
+					if err := writeStdioResponse(responses, resp, replyAsBatch, log); err != nil {
+						shutdown(true)
+						return err
+					}
+					continue
+				}
+				go func(raw []byte, batch bool, call *activeProviderPoolChat) {
+					resp := s.handleMessage(call.ctx, raw, log)
+					s.finishActiveProviderPoolChat(call)
+					if resp == nil {
+						return
+					}
+					select {
+					case asyncResponses <- stdioAsyncResponse{response: resp, replyAsBatch: batch}:
+					case <-serveCtx.Done():
+					}
+				}(reqBody, replyAsBatch, active)
 				continue
 			}
-			body = wrapped
-		}
-		if err := WriteMessage(out, body); err != nil {
-			return err
+			resp := s.handleMessage(serveCtx, reqBody, log)
+			if resp == nil {
+				continue
+			}
+			if err := writeStdioResponse(responses, resp, replyAsBatch, log); err != nil {
+				shutdown(true)
+				return err
+			}
+		case async := <-asyncResponses:
+			if err := writeStdioResponse(responses, async.response, async.replyAsBatch, log); err != nil {
+				shutdown(true)
+				return err
+			}
 		}
 	}
+}
+
+func unwrapSingleRequestBatch(raw []byte) ([]byte, bool) {
+	trim := bytes.TrimSpace(raw)
+	if len(trim) == 0 || trim[0] != '[' {
+		return raw, false
+	}
+	var arr []json.RawMessage
+	if err := json.Unmarshal(trim, &arr); err != nil || len(arr) != 1 {
+		return raw, false
+	}
+	return []byte(arr[0]), true
+}
+
+func providerPoolChatRequestID(ctx context.Context, raw []byte) (*json.RawMessage, bool) {
+	var req rpcRequest
+	if json.Unmarshal(raw, &req) != nil || req.JSONRPC != "2.0" || req.ID == nil || req.Method != "tools/call" {
+		return nil, false
+	}
+	var params struct {
+		Name string `json:"name"`
+	}
+	if json.Unmarshal(req.Params, &params) != nil || params.Name != "dorkpipe.provider_pool_chat" || !ToolAllowed(ctx, params.Name) {
+		return nil, false
+	}
+	return req.ID, true
+}
+
+func writeStdioResponse(out *serializedResponseWriter, resp *rpcResponse, replyAsBatch bool, log io.Writer) error {
+	body, err := json.Marshal(resp)
+	if err != nil {
+		fmt.Fprintf(log, "mcpbridge: marshal response: %v\n", err)
+		return nil
+	}
+	if replyAsBatch {
+		body, err = json.Marshal([]json.RawMessage{json.RawMessage(body)})
+		if err != nil {
+			fmt.Fprintf(log, "mcpbridge: marshal batch response: %v\n", err)
+			return nil
+		}
+	}
+	return out.write(body)
+}
+
+func (s *Server) beginActiveProviderPoolChat(parent context.Context) (*activeProviderPoolChat, bool) {
+	s.activeChat.mu.Lock()
+	defer s.activeChat.mu.Unlock()
+	if s.activeChat.active != nil {
+		return nil, false
+	}
+	baseCtx, cancel := context.WithCancel(parent)
+	active := &activeProviderPoolChat{
+		cancel:        cancel,
+		done:          make(chan struct{}),
+		approvals:     newTransientApprovalController(),
+		inputs:        newTransientUserInputController(),
+		cancellations: newTransientCancellationController(),
+	}
+	active.ctx = context.WithValue(baseCtx, activeProviderPoolChatContextKey{}, active)
+	s.activeChat.active = active
+	return active, true
+}
+
+func (s *Server) finishActiveProviderPoolChat(active *activeProviderPoolChat) {
+	s.activeChat.mu.Lock()
+	if s.activeChat.active == active {
+		s.activeChat.active = nil
+	}
+	active.approvals.close(errors.New("provider-pool chat is no longer active"))
+	active.inputs.close(errors.New("provider-pool chat is no longer active"))
+	active.cancellations.close(errors.New("provider-pool chat is no longer active"))
+	close(active.done)
+	s.activeChat.mu.Unlock()
+}
+
+func (s *Server) cancelAndWaitForActiveProviderPoolChat() {
+	s.activeChat.mu.Lock()
+	active := s.activeChat.active
+	if active != nil {
+		active.cancel()
+		active.approvals.close(errors.New("provider-pool chat was cancelled"))
+		active.inputs.close(errors.New("provider-pool chat was cancelled"))
+		active.cancellations.close(errors.New("provider-pool chat was cancelled"))
+	}
+	s.activeChat.mu.Unlock()
+	if active != nil {
+		<-active.done
+	}
+}
+
+func activeProviderPoolChatFromContext(ctx context.Context) (*activeProviderPoolChat, bool) {
+	active, ok := ctx.Value(activeProviderPoolChatContextKey{}).(*activeProviderPoolChat)
+	return active, ok && active != nil
+}
+
+func (s *Server) activeApprovalRequest() (providersession.ApprovalRequest, error) {
+	s.activeChat.mu.Lock()
+	active := s.activeChat.active
+	s.activeChat.mu.Unlock()
+	if active == nil {
+		return providersession.ApprovalRequest{}, errors.New("no provider-pool chat is active")
+	}
+	return active.approvals.pendingRequest()
+}
+
+func (s *Server) submitActiveApprovalDecision(ctx context.Context, decision providersession.ApprovalDecision) error {
+	s.activeChat.mu.Lock()
+	active := s.activeChat.active
+	s.activeChat.mu.Unlock()
+	if active == nil {
+		return errors.New("no provider-pool chat is active")
+	}
+	return active.approvals.submit(ctx, decision)
+}
+
+func (s *Server) activeUserInputPrompt() (providersession.UserInputPrompt, error) {
+	s.activeChat.mu.Lock()
+	active := s.activeChat.active
+	s.activeChat.mu.Unlock()
+	if active == nil {
+		return providersession.UserInputPrompt{}, errors.New("no provider-pool chat is active")
+	}
+	return active.inputs.pendingPrompt()
+}
+
+func (s *Server) submitActiveUserInputResponse(ctx context.Context, response providersession.UserInputResponse) error {
+	s.activeChat.mu.Lock()
+	active := s.activeChat.active
+	s.activeChat.mu.Unlock()
+	if active == nil {
+		return errors.New("no provider-pool chat is active")
+	}
+	err := active.inputs.submit(ctx, response)
+	if err != nil && ctx.Err() != nil {
+		active.cancel()
+		active.approvals.close(ctx.Err())
+		active.inputs.close(ctx.Err())
+		active.cancellations.close(ctx.Err())
+		<-active.done
+	}
+	return err
+}
+
+func (s *Server) activeCancellationScope() (providerPoolCancellationScope, error) {
+	s.activeChat.mu.Lock()
+	active := s.activeChat.active
+	s.activeChat.mu.Unlock()
+	if active == nil {
+		return providerPoolCancellationScope{}, errors.New("no provider-pool chat is active")
+	}
+	return active.cancellations.pendingScope()
+}
+
+func (s *Server) submitActiveCancellationIntent(ctx context.Context, intent providersession.CancellationIntent) error {
+	s.activeChat.mu.Lock()
+	active := s.activeChat.active
+	s.activeChat.mu.Unlock()
+	if active == nil {
+		return errors.New("no provider-pool chat is active")
+	}
+	err := active.cancellations.submit(ctx, intent)
+	if err != nil && ctx.Err() != nil {
+		active.cancel()
+		active.approvals.close(ctx.Err())
+		active.inputs.close(ctx.Err())
+		active.cancellations.close(ctx.Err())
+		<-active.done
+	}
+	return err
 }
 
 func (s *Server) handleMessage(ctx context.Context, raw []byte, log io.Writer) *rpcResponse {
@@ -482,17 +758,89 @@ func (s *Server) dispatchTool(ctx context.Context, name string, args json.RawMes
 		}
 		return []byte(stdout), false, nil
 
-	case "dorkpipe.provider_pool_chat":
-		var in struct {
-			Workdir       string   `json:"workdir"`
-			Message       string   `json:"message"`
-			Provider      string   `json:"provider"`
-			Model         string   `json:"model"`
-			SessionID     string   `json:"session_id"`
-			ActiveFile    string   `json:"active_file"`
-			OpenFiles     []string `json:"open_files"`
-			SelectionText string   `json:"selection_text"`
+	case "dorkpipe.provider_pool_approval_request":
+		var in struct{}
+		if err := decodeClosedJSON(args, &in); err != nil {
+			return nil, true, fmt.Errorf("invalid approval-request arguments: %w", err)
 		}
+		request, err := s.activeApprovalRequest()
+		if err != nil {
+			return nil, true, err
+		}
+		out, err := json.Marshal(request)
+		if err != nil {
+			return nil, true, err
+		}
+		return out, false, nil
+
+	case "dorkpipe.provider_pool_approval_decide":
+		var decision providersession.ApprovalDecision
+		if err := decodeClosedJSON(args, &decision); err != nil {
+			return nil, true, fmt.Errorf("invalid approval-decision arguments: %w", err)
+		}
+		if err := s.submitActiveApprovalDecision(ctx, decision); err != nil {
+			return nil, true, err
+		}
+		return []byte(`{"delivered":true}`), false, nil
+
+	case "dorkpipe.provider_pool_user_input_request":
+		var in struct{}
+		if err := decodeClosedJSON(args, &in); err != nil {
+			return nil, true, fmt.Errorf("invalid user-input-request arguments: %w", err)
+		}
+		prompt, err := s.activeUserInputPrompt()
+		if err != nil {
+			return nil, true, err
+		}
+		out, err := json.Marshal(prompt)
+		if err != nil {
+			return nil, true, err
+		}
+		return out, false, nil
+
+	case "dorkpipe.provider_pool_user_input_respond":
+		var response providersession.UserInputResponse
+		if !utf8.Valid(args) {
+			return nil, true, errors.New("invalid user-input-response arguments: valid UTF-8 is required")
+		}
+		if err := decodeClosedJSON(args, &response); err != nil {
+			return nil, true, fmt.Errorf("invalid user-input-response arguments: %w", err)
+		}
+		if err := s.submitActiveUserInputResponse(ctx, response); err != nil {
+			return nil, true, err
+		}
+		return []byte(`{"delivered":true}`), false, nil
+
+	case "dorkpipe.provider_pool_cancellation_request":
+		var in map[string]json.RawMessage
+		if err := decodeClosedJSON(args, &in); err != nil {
+			return nil, true, fmt.Errorf("invalid cancellation-request arguments: %w", err)
+		}
+		if in == nil || len(in) != 0 {
+			return nil, true, errors.New("invalid cancellation-request arguments: an empty object is required")
+		}
+		scope, err := s.activeCancellationScope()
+		if err != nil {
+			return nil, true, err
+		}
+		out, err := json.Marshal(scope)
+		if err != nil {
+			return nil, true, err
+		}
+		return out, false, nil
+
+	case "dorkpipe.provider_pool_cancellation_deliver":
+		var intent providersession.CancellationIntent
+		if err := decodeClosedJSON(args, &intent); err != nil {
+			return nil, true, fmt.Errorf("invalid cancellation-deliver arguments: %w", err)
+		}
+		if err := s.submitActiveCancellationIntent(ctx, intent); err != nil {
+			return nil, true, err
+		}
+		return []byte(`{"delivered":true}`), false, nil
+
+	case "dorkpipe.provider_pool_chat":
+		var in providerPoolChatInput
 		if err := json.Unmarshal(args, &in); err != nil {
 			return nil, true, err
 		}
@@ -500,28 +848,24 @@ func (s *Server) dispatchTool(ctx context.Context, name string, args json.RawMes
 		if err != nil {
 			return nil, true, err
 		}
-		dargs := []string{"provider-pool", "prompt", "--workdir", wd, "--json", "--prompt", in.Message}
-		if strings.TrimSpace(in.Provider) != "" {
-			dargs = append(dargs, "--provider", strings.TrimSpace(in.Provider))
+		dargs := providerPoolChatArgs(wd, in)
+		active, activeOK := activeProviderPoolChatFromContext(ctx)
+		if !activeOK {
+			return nil, true, errors.New("provider-pool chat is not owned by an active MCP request")
 		}
-		if strings.TrimSpace(in.Model) != "" {
-			dargs = append(dargs, "--model", strings.TrimSpace(in.Model))
+		var stdout, stderr string
+		var code int
+		if s.providerPoolChatInteractiveStreamRunner != nil {
+			stdout, stderr, code, err = s.providerPoolChatInteractiveStreamRunner(ctx, dargs, active.approvals, active.inputs, active.cancellations)
+		} else if s.providerPoolChatStreamRunner != nil {
+			stdout, stderr, code, err = s.providerPoolChatStreamRunner(ctx, dargs, active.approvals)
+		} else if s.providerPoolChatRunner != nil {
+			stdout, stderr, code, err = s.providerPoolChatRunner(ctx, dargs)
+		} else if providerPoolChatUsesApprovalTransport(in) {
+			stdout, stderr, code, err = runDorkpipeWithInteractiveTransport(ctx, dargs, active.approvals, active.inputs, active.cancellations)
+		} else {
+			stdout, stderr, code, err = runDorkpipe(ctx, dargs)
 		}
-		if strings.TrimSpace(in.SessionID) != "" {
-			dargs = append(dargs, "--session-id", strings.TrimSpace(in.SessionID))
-		}
-		if strings.TrimSpace(in.ActiveFile) != "" {
-			dargs = append(dargs, "--active-file", strings.TrimSpace(in.ActiveFile))
-		}
-		for _, item := range in.OpenFiles {
-			if strings.TrimSpace(item) != "" {
-				dargs = append(dargs, "--open-file", strings.TrimSpace(item))
-			}
-		}
-		if strings.TrimSpace(in.SelectionText) != "" {
-			dargs = append(dargs, "--selection-text", strings.TrimSpace(in.SelectionText))
-		}
-		stdout, stderr, code, err := runDorkpipe(ctx, dargs)
 		if err != nil {
 			return nil, true, err
 		}
@@ -691,4 +1035,47 @@ func (s *Server) dispatchTool(ctx context.Context, name string, args json.RawMes
 	default:
 		return nil, true, fmt.Errorf("unknown tool %q", name)
 	}
+}
+
+type providerPoolChatInput struct {
+	Workdir        string   `json:"workdir"`
+	Message        string   `json:"message"`
+	Provider       string   `json:"provider"`
+	Model          string   `json:"model"`
+	SessionID      string   `json:"session_id"`
+	SessionAdapter string   `json:"session_adapter"`
+	ActiveFile     string   `json:"active_file"`
+	OpenFiles      []string `json:"open_files"`
+	SelectionText  string   `json:"selection_text"`
+}
+
+func providerPoolChatArgs(workdir string, in providerPoolChatInput) []string {
+	dargs := []string{"provider-pool", "prompt", "--workdir", workdir, "--json", "--prompt", in.Message}
+	for _, value := range []struct {
+		flag  string
+		value string
+	}{
+		{"--provider", in.Provider},
+		{"--model", in.Model},
+		{"--session-id", in.SessionID},
+		{"--session-adapter", in.SessionAdapter},
+		{"--active-file", in.ActiveFile},
+	} {
+		if trimmed := strings.TrimSpace(value.value); trimmed != "" {
+			dargs = append(dargs, value.flag, trimmed)
+		}
+	}
+	for _, item := range in.OpenFiles {
+		if trimmed := strings.TrimSpace(item); trimmed != "" {
+			dargs = append(dargs, "--open-file", trimmed)
+		}
+	}
+	if selection := strings.TrimSpace(in.SelectionText); selection != "" {
+		dargs = append(dargs, "--selection-text", selection)
+	}
+	return dargs
+}
+
+func providerPoolChatUsesApprovalTransport(in providerPoolChatInput) bool {
+	return strings.TrimSpace(in.SessionAdapter) == "codex_app_server"
 }

@@ -1,0 +1,3 @@
+name: dorkpipe-task-execution
+description: Execute one exact DockPipe task or handoff slice whose fresh-task creation authorized that slice, reaching a legitimate terminal state with bounded convergence, dirty-tree safety, and durable evidence. Use when a fresh task explicitly names this skill with a ready_for_execution lifecycle contract, and when completed work must stop for approval of one exact next slice before handoff.
+short_description: Execute one bounded task slice safely

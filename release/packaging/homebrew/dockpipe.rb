@@ -1,7 +1,7 @@
 class Dockpipe < Formula
   desc "Run -> Isolate -> Act in disposable containers"
-  homepage "https://github.com/jamie-steele/dockpipe"
-  url "https://github.com/jamie-steele/dockpipe/archive/refs/tags/v0.6.0.tar.gz"
+  homepage "https://github.com/Dockpipe-Industries/dockpipe"
+  url "https://github.com/Dockpipe-Industries/dockpipe/archive/refs/tags/v0.6.0.tar.gz"
   sha256 "REPLACE_WITH_RELEASE_TARBALL_SHA256"
   license "Apache-2.0"
 

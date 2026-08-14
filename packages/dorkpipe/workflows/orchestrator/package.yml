@@ -8,7 +8,7 @@ description: |
   contract used by Pipeon and future UI surfaces.
 author: DockPipe
 license: Apache-2.0
-repository: https://github.com/dockpipe/dockpipe
+repository: https://github.com/Dockpipe-Industries/dockpipe
 tags: [workflow, dorkpipe, orchestrator, provider-pool, codex, claude, ollama]
 depends: [dorkpipe]
 platforms: [windows, deb]
