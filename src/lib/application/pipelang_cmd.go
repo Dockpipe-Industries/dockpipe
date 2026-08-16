@@ -3,6 +3,7 @@ package application
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -19,6 +20,8 @@ func cmdPipeLang(args []string) error {
 		return nil
 	}
 	switch args[0] {
+	case "check":
+		return cmdPipeLangCheck(args[1:])
 	case "compile":
 		return cmdPipeLangCompile(args[1:])
 	case "invoke":
@@ -26,8 +29,82 @@ func cmdPipeLang(args []string) error {
 	case "materialize":
 		return cmdPipeLangMaterialize(args[1:])
 	default:
-		return fmt.Errorf("unknown pipelang subcommand %q (try: compile, invoke, or materialize)", args[0])
+		return fmt.Errorf("unknown pipelang subcommand %q (try: check, compile, invoke, or materialize)", args[0])
 	}
+}
+
+func cmdPipeLangCheck(args []string) error {
+	if len(args) > 0 && (args[0] == "--help" || args[0] == "-h") {
+		fmt.Print(pipelangCheckUsageText)
+		return nil
+	}
+	var inPath, format string
+	useStdin := false
+	for i := 0; i < len(args); i++ {
+		switch args[i] {
+		case "--in":
+			if i+1 >= len(args) {
+				return fmt.Errorf("--in requires a file path")
+			}
+			inPath = args[i+1]
+			i++
+		case "--format":
+			if i+1 >= len(args) {
+				return fmt.Errorf("--format requires text or json")
+			}
+			format = args[i+1]
+			i++
+		case "--stdin":
+			useStdin = true
+		default:
+			if strings.HasPrefix(args[i], "-") {
+				return fmt.Errorf("unknown option %s", args[i])
+			}
+			if inPath == "" {
+				inPath = args[i]
+				continue
+			}
+			return fmt.Errorf("unexpected argument %q", args[i])
+		}
+	}
+	if strings.TrimSpace(inPath) == "" {
+		return fmt.Errorf("missing input file (use --in <file.pipe>)")
+	}
+	if format == "" {
+		format = "text"
+	}
+	absInput, err := filepath.Abs(filepath.Clean(inPath))
+	if err != nil {
+		return err
+	}
+	moduleRoot := detectPipeLangModuleRoot(filepath.Dir(absInput))
+	files, _, err := readPipeFilesUnder(moduleRoot)
+	if err != nil {
+		return err
+	}
+	if useStdin {
+		contents, err := io.ReadAll(os.Stdin)
+		if err != nil {
+			return err
+		}
+		files[absInput] = contents
+	}
+	analysis := pipelang.AnalyzeFiles(files)
+	switch format {
+	case "json":
+		payload, err := pipelang.DiagnosticsJSON(analysis.Sources, analysis.Diagnostics)
+		if err != nil {
+			return err
+		}
+		fmt.Fprintln(os.Stdout, string(payload))
+	case "text":
+		for _, diagnostic := range analysis.Diagnostics {
+			fmt.Fprintln(os.Stdout, pipelang.RenderDiagnostic(analysis.Sources, diagnostic))
+		}
+	default:
+		return fmt.Errorf("unknown --format %q (use text|json)", format)
+	}
+	return analysis.Error()
 }
 
 func cmdPipeLangCompile(args []string) error {
@@ -94,7 +171,7 @@ func cmdPipeLangCompile(args []string) error {
 			return err
 		}
 		if strings.TrimSpace(entry) == "" {
-			if p, parseErr := pipelang.Parse(src); parseErr == nil && len(p.Classes) > 0 {
+			if p, parseErr := pipelang.ParseFile(inPath, src); parseErr == nil && len(p.Classes) > 0 {
 				entry = p.Classes[0].Name
 			}
 		}
@@ -199,7 +276,7 @@ func cmdPipeLangInvoke(args []string) error {
 		return err
 	}
 	if strings.TrimSpace(className) == "" {
-		if p, err := pipelang.Parse(src); err == nil && len(p.Classes) > 0 {
+		if p, err := pipelang.ParseFile(inPath, src); err == nil && len(p.Classes) > 0 {
 			className = p.Classes[0].Name
 		}
 	}
@@ -217,7 +294,7 @@ func cmdPipeLangInvoke(args []string) error {
 		payload := map[string]any{
 			"class":  res.ClassName,
 			"method": res.MethodName,
-			"type":   string(res.Type),
+			"type":   res.Type.String(),
 			"value":  jsonRawValue(res.Value),
 		}
 		b, err := json.MarshalIndent(payload, "", "  ")
@@ -329,10 +406,24 @@ const pipelangUsageText = `dockpipe pipelang
 Typed authoring helpers for PipeLang (optional layer over workflow YAML).
 
 Usage:
+  dockpipe pipelang check --in <file.pipe> [--format text|json] [--stdin]
   dockpipe pipelang compile --in <file.pipe> [--entry <ClassName>] [--out <dir>]
   dockpipe pipelang invoke --in <file.pipe> [--class <ClassName>] --method <name> [--arg <value>]... [--format text|json|env]
   dockpipe pipelang materialize [--workdir <path>] [--from <root>]... [--force]
 
+`
+
+const pipelangCheckUsageText = `dockpipe pipelang check
+
+Parse and type-check a PipeLang source set without evaluating code or emitting artifacts.
+
+Usage:
+  dockpipe pipelang check --in <file.pipe> [--format text|json] [--stdin]
+
+Options:
+  --in <path>          Input .pipe file; sibling source files share the same module root.
+  --format text|json   Stable rendered diagnostics (default: text).
+  --stdin              Replace the input file bytes with stdin for unsaved editor content.
 `
 
 const pipelangCompileUsageText = `dockpipe pipelang compile

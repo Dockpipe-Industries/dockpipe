@@ -236,18 +236,18 @@ func buildCatalogWorkflowInputRecord(prog *pipelang.Program, field pipelang.Fiel
 	if depth > 8 {
 		return nil
 	}
-	typ := pipelang.TypeName(field.Type)
+	typ := field.Type
 	attrs := catalogAnnotationMap(field.Annotations)
 	doc := strings.TrimSpace(catalogFieldDocForType(docsByType, ownerType, field.Name))
 	base := &catalogWorkflowInputRecord{
 		FieldName:   field.Name,
-		Type:        string(field.Type),
+		Type:        field.Type.String(),
 		Description: doc,
 		Attributes:  attrs,
 	}
 
 	if inner, ok := typ.ListElementType(); ok {
-		base.ElementType = string(inner)
+		base.ElementType = inner.String()
 		if inner.IsPrimitive() {
 			envName := catalogFieldEnvName(field, envPrefix)
 			if envName == "" {
@@ -268,9 +268,9 @@ func buildCatalogWorkflowInputRecord(prog *pipelang.Program, field pipelang.Fiel
 			}
 			return base
 		}
-		if childShape := findCatalogPipeTypeShape(prog, string(inner)); childShape != nil {
+		if childShape := findCatalogPipeTypeShape(prog, inner.String()); childShape != nil {
 			childPrefix := catalogChildEnvPrefix(field, envPrefix)
-			base.Children = buildCatalogChildWorkflowInputs(prog, childShape.Fields, childPrefix, string(inner), docsByType, workflowVars, seen, depth+1)
+			base.Children = buildCatalogChildWorkflowInputs(prog, childShape.Fields, childPrefix, inner.String(), docsByType, workflowVars, seen, depth+1)
 			if len(base.Children) == 0 {
 				return nil
 			}
@@ -300,10 +300,10 @@ func buildCatalogWorkflowInputRecord(prog *pipelang.Program, field pipelang.Fiel
 		return base
 	}
 
-	if childShape := findCatalogPipeTypeShape(prog, string(typ)); childShape != nil {
+	if childShape := findCatalogPipeTypeShape(prog, typ.String()); childShape != nil {
 		childPrefix := catalogChildEnvPrefix(field, envPrefix)
-		nestedDefaults := catalogNestedClassDefaults(prog, string(typ))
-		base.Children = buildCatalogChildWorkflowInputsWithDefaults(prog, childShape.Fields, childPrefix, string(typ), docsByType, workflowVars, seen, nestedDefaults, depth+1)
+		nestedDefaults := catalogNestedClassDefaults(prog, typ.String())
+		base.Children = buildCatalogChildWorkflowInputsWithDefaults(prog, childShape.Fields, childPrefix, typ.String(), docsByType, workflowVars, seen, nestedDefaults, depth+1)
 		if len(base.Children) == 0 {
 			return nil
 		}
@@ -345,7 +345,7 @@ func catalogNestedClassDefaults(prog *pipelang.Program, typeName string) map[str
 	}
 	var implName string
 	for _, decl := range prog.Classes {
-		if strings.TrimSpace(decl.Implements) != trimmed {
+		if decl.Implements == nil || strings.TrimSpace(decl.Implements.Name) != trimmed {
 			continue
 		}
 		if implName != "" {
@@ -438,16 +438,11 @@ func catalogAnnotationMap(in []pipelang.Annotation) map[string]string {
 }
 
 func mergePipeLangProgram(files map[string][]byte) (*pipelang.Program, error) {
-	merged := &pipelang.Program{}
-	for name, b := range files {
-		p, err := pipelang.Parse(b)
-		if err != nil {
-			return nil, fmt.Errorf("%s: %w", name, err)
-		}
-		merged.Interfaces = append(merged.Interfaces, p.Interfaces...)
-		merged.Classes = append(merged.Classes, p.Classes...)
+	analysis := pipelang.ParseFiles(files)
+	if err := analysis.Error(); err != nil {
+		return nil, err
 	}
-	return merged, nil
+	return analysis.Program, nil
 }
 
 func parseCatalogTypeSpec(moduleRoot, raw string) (string, string, error) {
@@ -504,7 +499,7 @@ func findCatalogPipeTypeShape(prog *pipelang.Program, name string) *catalogPipeT
 		}
 	}
 	if decl := findCatalogClassDecl(prog, name); decl != nil {
-		if ifaceName := strings.TrimSpace(decl.Implements); ifaceName != "" {
+		if ifaceName := catalogImplementedTypeName(decl); ifaceName != "" {
 			if iface := findCatalogInterfaceDecl(prog, ifaceName); iface != nil {
 				return &catalogPipeTypeShape{
 					Annotations: iface.Annotations,
@@ -545,6 +540,13 @@ func findCatalogClassDefaults(prog *pipelang.Program, className string) map[stri
 		break
 	}
 	return out
+}
+
+func catalogImplementedTypeName(decl *pipelang.ClassDecl) string {
+	if decl == nil || decl.Implements == nil {
+		return ""
+	}
+	return strings.TrimSpace(decl.Implements.Name)
 }
 
 func extractCatalogPipeFieldDocsByType(files map[string][]byte) map[string]map[string]string {

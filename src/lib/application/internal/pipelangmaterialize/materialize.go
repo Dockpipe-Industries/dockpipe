@@ -105,7 +105,7 @@ func materializePipeLangFile(path, root string, force bool, outBase string) (boo
 		entryClass = ec
 	} else {
 		if b, ok := files[path]; ok {
-			if p, err := pipelang.Parse(b); err == nil && len(p.Classes) > 0 {
+			if p, err := pipelang.ParseFile(path, b); err == nil && len(p.Classes) > 0 {
 				entryClass = p.Classes[0].Name
 			}
 		}
@@ -220,14 +220,11 @@ func InferEntryClassFromTypeRef(files map[string][]byte, typeRef string) (string
 		return "", fmt.Errorf("empty type reference")
 	}
 	merged := &pipelang.Program{}
-	for name, b := range files {
-		p, err := pipelang.Parse(b)
-		if err != nil {
-			return "", fmt.Errorf("%s: %w", name, err)
-		}
-		merged.Interfaces = append(merged.Interfaces, p.Interfaces...)
-		merged.Classes = append(merged.Classes, p.Classes...)
+	analysis := pipelang.ParseFiles(files)
+	if err := analysis.Error(); err != nil {
+		return "", err
 	}
+	merged = analysis.Program
 	for _, c := range merged.Classes {
 		if c.Name == ref {
 			return c.Name, nil
@@ -235,7 +232,7 @@ func InferEntryClassFromTypeRef(files map[string][]byte, typeRef string) (string
 	}
 	var impl []string
 	for _, c := range merged.Classes {
-		if strings.TrimSpace(c.Implements) == ref {
+		if c.Implements != nil && strings.TrimSpace(c.Implements.Name) == ref {
 			impl = append(impl, c.Name)
 		}
 	}

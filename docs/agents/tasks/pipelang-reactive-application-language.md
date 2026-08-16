@@ -2,10 +2,11 @@
 
 ## Decision Status
 
-The `vNext` foundation decision packet in this record is **accepted for implementation planning** as
-of 2026-08-16. Acceptance fixes semantics, compiler boundaries, bootstrap stages, compatibility,
-and implementation order; examples and fixtures remain non-normative and accept no production
-syntax. The first production slice still requires its own implementation review.
+The `vNext` foundation decision packet in this record is **accepted** as of 2026-08-16. Acceptance
+fixes semantics, compiler boundaries, bootstrap stages, compatibility, and implementation order;
+examples and fixtures remain non-normative and accept no production syntax. Separately authorized
+bounded objectives have completed implementation-order steps 1 through 5. This record does not by
+itself authorize step 6 or any later language slice.
 
 ## Goal
 
@@ -24,8 +25,9 @@ versioned semantic projections consumed by tooling. The Application IR in
 [TASK-022](go-first-pipelang-backend-services.md) are specialized projections over that shared
 semantic/Core foundation, not independent language models.
 
-This is a backlog/design record only. It does not authorize parser, lexer, AST, typechecker,
-evaluator, compiler, CLI, schema, catalog, editor-extension, generated-artifact, or runtime changes.
+This is the durable design and bounded-progress record. It does not authorize additional parser,
+lexer, AST, typechecker, evaluator, compiler, CLI, schema, catalog, editor-extension,
+generated-artifact, or runtime changes beyond an explicitly granted implementation objective.
 
 ## Priority And Dependency
 
@@ -345,32 +347,52 @@ boundaries executable as future fixture assertions without accepting syntax or s
 
 ### Stable semantic identities
 
-Externally referenced declarations require explicit identities that survive file moves and symbol
-renames; local implementation declarations may remain ID-free. A C#-style attribute is the leading
-non-normative spelling because PipeLang already supports annotations:
+Founder review on 2026-08-16 superseded the earlier per-declaration `[Id(...)]` direction. Public
+identity is initially derived from an explicit package identity, explicit namespace, declaration
+ownership, and the declaration's source name. Ordinary declarations do not repeat an authored ID.
+Once a public projection crosses an explicit compatibility baseline, centralized source-controlled
+migration metadata preserves its established identity across renames or moves; the compiler never
+guesses continuity from similar names or paths. Local implementation declarations remain ID-free.
 
-```csharp
-[Id("deploy.production")]
-public Action Deploy(Release release);
-```
+The accepted identity contract is:
 
-The accepted identity contract requires:
+- package ids, namespaces, and expanded semantic paths use lowercase dotted ASCII segments;
+- identity-bearing source names begin with an ASCII letter, continue with ASCII letters or digits,
+  and convert uppercase ASCII directly to lowercase without punctuation stripping, Unicode
+  normalization, locale, numbering, or collision repair;
+- initial type/member paths derive deterministically from namespace, stable owner identity, and
+  source name; new members of a renamed owner continue beneath that owner's preserved identity;
+- public declarations carry compatibility-stable identities; internal declarations carry
+  deterministic package-and-namespace-scoped tooling identities without a public compatibility
+  promise; private/local declarations use analysis-local identities only;
+- `internal` access means the same package identity and namespace, never matching namespace text in
+  another package; public cross-package access still requires an explicit import and locked
+  dependency;
+- full cross-package identity keeps `package_id` and semantic path as separate structured fields;
+  package version and content digest remain dependency-lock facts rather than identity components;
+- callable identity is structured as method-group path plus ordered resolved parameter types and
+  resolved return type. Parameter names are not identity. This reserves deterministic overload
+  identity, including return-context overloads, without encoding signatures into dotted strings or
+  enabling overload syntax/resolution in step 5;
+- before a projection is explicitly accepted as a compatibility baseline, draft identities and
+  migration history may be corrected freely. After baselining, public renames/moves require an
+  explicit migration record, former public names remain deprecated aliases until an explicitly
+  breaking release, and published identity replacement preserves the old identity as an alias;
+- baselined removals, visibility narrowing, public field/type/signature changes, parameter reorder,
+  required interface additions, identity reassignment, and promised-alias removal are breaking;
+  additions, private/internal refactors, deprecation, and identity-preserving rename/move are
+  compatible;
+- migration and compatibility inputs are complete offline compiler inputs, are hashed into the
+  lock, reject cycles/conflicts/missing targets, and project canonical current identity, former
+  names, aliases, deprecations, removals, and source relationships for authorized consumers; and
+- diagnostics and semantic projections carry structured identities. A compiler may calculate an
+  internal canonical lookup hash, but no hash or analysis-local symbol number becomes public
+  identity.
 
-- which declarations may carry IDs: modules, types, fields/properties, methods, actions, effects,
-  states, transitions, tests, and exported projections;
-- which externally referenced declarations eventually require an ID and which local implementation
-  details remain ID-free;
-- normalization and allowed character rules without conflating an ID with a source symbol;
-- uniqueness scope across a file, module, compiled package/workflow, and composed application;
-- duplicate, missing-required, malformed, moved, renamed, and compatibility diagnostics;
-- whether an explicit ID becomes part of the public compatibility contract;
-- how IDs appear in compiler artifacts, diagnostics, catalog/Application IR metadata, test failures,
-  impact graphs, and change manifests; and
-- how aliases/deprecation work if a public semantic ID must change.
-
-An explicit ID is stable because it is authored and validated, not because the compiler hashes a
-path or symbol name. The compiler may derive non-public ephemeral identities for internal analysis,
-but tools must never present those as rename-stable public contracts.
+The source spelling for namespaces, imports, package metadata, and migration records remains a later
+grammar/package-contract decision. The reviewed direction is a single namespace declaration before
+imports with centralized package-level migration history, not declaration annotations. Step 5 uses
+only structured compiler input and adds no production syntax.
 
 ### Type system
 
@@ -449,7 +471,6 @@ an exported contract.
 Illustrative directions, not accepted syntax:
 
 ```csharp
-[Id("deploy.production")]
 [Effects(Effect.Network, Effect.FileSystemWrite, Effect.ProcessSpawn)]
 [RequiresApproval("production-deploy")]
 public Action Deploy(Release release);
@@ -575,7 +596,6 @@ replay metadata. The language/compiler contract should support:
 Illustrative C#-style directions:
 
 ```csharp
-[Id("site.serialization.round-trip")]
 [Test]
 [ForAll]
 public void SerializationRoundTrips(SiteConfig value)
@@ -713,14 +733,12 @@ public Class DeploymentState
     public computed Optional<Deployment> SelectedDeployment =>
         Deployments.FirstOrNone(item => item.Id == SelectedDeploymentId);
 
-    [Id("deployment.select")]
     public Action SelectDeployment(string id)
         requires Deployments.Any(item => item.Id == id)
     {
         SelectedDeploymentId = id;
     }
 
-    [Id("deployment.refresh")]
     [Intent("Refresh visible deployment state from the governed provider")]
     public AsyncEffect Refresh()
         invokes workflow "deployments.list"
@@ -739,7 +757,7 @@ than reimplementing PipeLang parsing.
 | Decision | Accepted outcome |
 | --- | --- |
 | Language versioning | The source declares or is manifest-bound to a language contract. Internal IR versions follow the compiler; semantic, Application, Service, replay, and artifact projections version independently. `v0.0.0.1` never silently opts into `vNext`. |
-| Semantic IDs | Public/exported declarations referenced outside their module require explicit IDs. IDs use a lowercase dotted ASCII contract, are package-wide unique, and are distinct from names/paths. Local symbols receive non-public compiler IDs. Public changes require an explicit alias/deprecation/migration record. |
+| Semantic IDs | Initial public identity derives deterministically from separate package id, explicit namespace, stable owner identity, and ASCII source name; ordinary declarations do not author duplicate IDs. Baselined public changes require centralized alias/deprecation/migration records. Callable identity adds ordered resolved parameter and return types. Internal identities are package-and-namespace-scoped tooling identities; private/local symbols remain non-public compiler identities. |
 | Source and diagnostics | Every token and syntax/HIR/Core/projection node that can diagnose carries a file ID plus UTF-8 byte start/end and line/column rendering information. Diagnostics have stable category/code, severity, primary span, related spans, semantic IDs, and deterministic ordering. |
 | Types and ownership | `TypeRef` is a structured graph (primitive, named, applied generic, optional, result, function) resolved to an owning module/symbol; type meaning is never encoded only as a string. Every symbol has exactly one owner and declaration span. |
 | Nullability and identity | Non-null by default with explicit `Optional<T>`; immutable structural values and explicit mutable/reference identities follow the accepted core table above. |
@@ -768,13 +786,13 @@ The table is an implementation inventory, not a syntax proposal.
 | Source model | Parser receives one byte slice; tokens carry one integer byte offset | Source-set/file identities, strict UTF-8, durable spans, line mapping, related locations, and deterministic multi-file ordering |
 | Diagnostics | Formatted error strings with byte offsets | Structured code/category/severity, primary/related spans, semantic IDs, deterministic sort, and CLI/editor renderers over one diagnostic value |
 | Program/declarations | `Program` holds only `Interfaces` and `Classes`; `Struct` parses into `ClassDecl` | Distinct module, import, interface, class/reference, record/value, enum, union/result, function, test, action, and effect nodes |
-| Types | `TypeName` is a string; primitive checks and `List<T>` parse from spelling | Structured resolved `TypeRef`, generic arguments, named symbol identity/owner, optional/result/function types, capabilities, and profile validation |
-| Symbols/modules | One merged global interface/class namespace across sibling files | Explicit module/import graph, one symbol owner, visibility, deterministic binding, duplicate/ambiguity diagnostics, dependency lock |
+| Types | Structured unresolved/resolved `TypeRef` for existing primitive, named, and nested `List<T>` spellings; named refs carry analysis-local symbol identity | Optional/result/function types, generic constraints, capabilities, and profile validation on the same structured graph |
+| Symbols/modules | One deterministic frozen-legacy sibling-source-set symbol table with one owner and declaration span per interface/class | Explicit module/import graph, module-aware ownership/visibility, ambiguity diagnostics, and dependency lock |
 | Spans on AST | No AST node stores a source span | Spans on declarations, names, types, members, expressions, statements, contracts, effects, and lowered source maps |
 | Expressions | Literal, identifier, unary, binary, parentheses | Member/call/index/conditional/interpolation, typed match, bounded closures, collection construction/operations, conversions, and optional handling |
 | Statements/control flow | Expression-bodied methods only | Blocks, locals, assignment, branches, loops needed for self-hosting, return/match, and explicit action transition boundaries |
 | Runtime values | `Value` stores only string/int64/float64/bool | Full target-independent value model, fixed numeric families, bytes/scalars, records/unions/options/results, collections, and managed identities |
-| Type checking | Separate maps for interfaces/classes; primitive expression inference | Bound-symbol type checking, ownership/flow/nullability, generic constraints, effects/contracts, exhaustiveness, and backend/profile capability checks |
+| Type checking | One symbol table and resolved type graph drive legacy conformance plus primitive expression inference | Module-aware bound-symbol checking, ownership/flow/nullability, generic constraints, effects/contracts, exhaustiveness, and backend/profile capability checks |
 | Evaluation | Primitive expression evaluator | Pure reference semantics for constant folding/tests only; executable lowering goes through typed HIR/Core IR rather than a competing evaluator language |
 | Compilation | Direct workflow YAML, bindings JSON/env emission | Generic typed HIR -> Core IR pipeline, semantic projection, backend contract, reproducible manifests, then specialized Application/Service projections |
 | Entry/effects | CLI selects class/method; methods must remain pure | Explicit exported entrypoint plus inert typed effects and governed host bridges; no compile/editor execution |
@@ -808,7 +826,6 @@ than one declaration, so those counts intentionally overlap.
 These choices do not block the accepted foundation and must not be guessed by an implementation
 slice:
 
-- the public name and release number for the first post-`v0.0.0.1` language contract;
 - final keyword, casing, attribute, module/import, entrypoint, action/effect, contract, and test
   spellings after grammar prototypes are reviewed;
 - whether official compiler distributions are source-only, source plus signed stage artifacts, or
@@ -822,6 +839,12 @@ slice:
 No resolution may introduce manual memory, hidden effects, C# compatibility claims, target syntax,
 backend semantic drift, nondeterministic compilation, or implicit migration. A choice that would do
 so reopens this accepted packet and requires a founder decision.
+
+The accepted public identities are `PipeLang` for display, `pipelang` for machine-readable use,
+`v0.1.0` for the first explicit post-legacy language contract, `pipelang.compiler.v1` for the
+compiler contract, and `pipelang.semantic.v1` for the public semantic projection. Language,
+compiler, and projection versions advance independently. `v0.0.0.1` remains frozen and no package
+selects `v0.1.0` implicitly.
 
 ## Bounded Implementation Order
 
@@ -919,11 +942,126 @@ slices, then the broader engine/package validation required by the touched publi
 - Typed HIR, Core IR, the public semantic projection, Application IR, and Service IR remain distinct
   layers over one parser/binder/type contract.
 
-## Next Bounded Production Slice
+## Completed Bounded Production Slices (2026-08-16)
 
-Implement only steps 1-2 of **Bounded Implementation Order**: freeze the exact legacy inventory and
-introduce source-set/file identities, strict UTF-8 decoding, durable spans, and structured ordered
-diagnostics across the existing lexer/parser entrypoint and its CLI/editor consumers. Do not add
-modules, semantic IDs, new types/declarations/expressions, HIR/Core IR, effects, backends, or syntax
-in that slice. It requires a separate implementation authorization; this accepted design record
-does not grant it.
+The separately authorized steps 1-4 slices are implemented. Steps 1-2 froze the exact legacy inventory and
+introduced source-set/file identities, strict UTF-8 decoding, durable spans, and structured ordered
+diagnostics across the existing lexer/parser/compiler entrypoint and direct CLI, catalog,
+materialize, package-compile, and editor consumers. Step 3 replaced string-only static type plumbing
+with structured unresolved/resolved references and one declaration symbol table. Step 4 added the
+syntax-independent explicit module/import/dependency-lock binder while leaving the frozen parser and
+every production consumer on `v0.0.0.1`. These slices added no public module/import syntax, public
+semantic IDs, new types/declarations/expressions, HIR/Core IR, effects, or backends.
+
+### Step 1 compatibility checkpoint (2026-08-16)
+
+The separately authorized production slice established the frozen `v0.0.0.1` baseline before
+source/span plumbing. `tests/pipelangcompat/legacy_compat_test.go` proves that the fixture is the
+exact 45-file authored inventory, every file retains its parsed declaration/member/default
+projection, every public class retains its workflow YAML and bindings JSON/env artifacts, and the
+existing expression-bodied method retains its pure evaluation result. Existing focused compiler,
+application CLI, materialize, catalog, and editor fixtures remain the direct consumer coverage.
+The checkpoint is intentionally repository-level so the generic `src/lib` compiler does not learn
+checkout-only package or workflow paths.
+
+### Step 2 source/span/diagnostic checkpoint (2026-08-16)
+
+`src/lib/pipelang` now admits deterministic path-identified source sets, rejects invalid UTF-8,
+retains half-open file-aware byte spans on every token and existing AST node, resolves Unicode and
+UTF-16 editor positions, and returns ordered diagnostics with stable code/category/severity plus
+primary and optional related spans. `ParseFiles` preserves parse-only consumers while
+`AnalyzeFiles` is the shared parse/type contract for compilation and diagnostics. `dockpipe
+pipelang check` renders that contract as text or schema-1 JSON without evaluation or artifact
+emission, and the VS Code extension consumes the JSON contract for unsaved buffers through stdin.
+
+### Step 3 structured type/symbol checkpoint (2026-08-16)
+
+The completed step-3 slice replaced parser-created type strings with structured unresolved
+primitive, named, and applied `List<T>` references, including nested applications and exact source
+spans. One deterministic symbol-table contract now owns both legacy interfaces and classes under an
+explicit frozen sibling-source-set owner; every declared symbol has one analysis-local identity and
+declaration span. Focused checks prove named resolution, cross-kind duplicate detection, unknown-type
+locations, and conformance primary/related type spans. Type checking and invocation use resolved type
+graphs; compiler, evaluator, CLI, catalog, materialize, package-compile, and editor projections retain
+the frozen spellings and artifacts. The exact 45-source compatibility golden and affected offline
+consumer/editor checks pass. Analysis-local symbol IDs are deliberately non-semantic and are not
+persisted into legacy artifacts.
+
+### Step 4 module/import/dependency-lock checkpoint (2026-08-16)
+
+The completed step-4 slice introduced `ModuleSetInput` and `AnalyzeModuleSet` as the explicit,
+syntax-independent compiler seam for a non-legacy language contract, root module, complete source
+bytes, structured module/symbol imports, and a complete dependency lock. Locked module records carry
+direct dependency identities and a deterministic SHA-256 digest over normalized source identities
+plus exact bytes; missing or changed inputs diagnose and compilation never fetches. One symbol table
+now supports both the frozen legacy owner and deterministic module-aware owners, allowing equal local
+names in different modules while retaining one analysis-local symbol identity, visibility, owner,
+and declaration span per declaration. Explicit symbol imports resolve unqualified names; explicit
+module imports authorize qualified structured type references; no wildcard, relative, ambient, or
+implicit cross-module lookup exists.
+
+Focused tests cover input-order-independent symbol/lock queries, cross-module conformance, module and
+symbol import resolution, lock drift, duplicate module owners, undeclared dependencies, unknown and
+private imports, ambiguous symbol imports, import cycles, durable primary/related spans, and rejection
+of selecting the frozen legacy contract through the module lane. The exact 45-source compatibility
+golden plus affected compiler, CLI, catalog, materialize, package-compile, and editor checks retain
+their prior behavior and artifacts. This slice deliberately chooses no public post-legacy language
+name/release, module/import keyword or casing, manifest/YAML/schema shape, CLI selector, or editor
+grammar; those unresolved founder/product spellings remain unguessed.
+
+### Completed step 5 semantic identity/projection checkpoint (2026-08-16)
+
+The first syntax-independent implementation checkpoint established a distinct `SemanticID`,
+analysis-local `SymbolID`, semantic lock digest, diagnostic propagation, and deterministic semantic
+projection. It used explicit caller-supplied ID-to-span assignments and caller-supplied contract
+identities. Founder review subsequently accepted the public contract identities and superseded that
+assignment model with the derived-and-baselined identity contract above. The initial code and tests
+are preserved as predecessor work but are not the final step-5 contract.
+
+The completed checkpoint replaced missing-explicit-ID behavior with deterministic
+package/namespace/name derivation, reserved structured callable identity over ordered resolved
+parameter and return `TypeRef`s, represented centralized compatibility/migration input without
+production syntax, fixed the public contract constants, and retained deterministic structured
+diagnostics and projection bytes. Migration records retain every promised former name, canonicalize
+caller ordering into the semantic lock, reject missing/conflicting targets and identity cycles, and
+make former public top-level names resolve as deprecated aliases through the one symbol table.
+
+The public `pipelang.semantic.v1` projection is canonical deterministic JSON with separate
+`package_id` and semantic path fields, structured named/applied/callable identities, declaration
+source ranges, source and semantic lock digests, fixed compiler/language contracts, and explicit
+public/workspace views. The public view excludes private declarations and rejects absolute source
+paths; the workspace view may retain local source details. Private declarations remain
+analysis-local and identity-optional. No timestamp, host path, package version, dependency content
+digest, or analysis-local `SymbolID` becomes semantic identity.
+
+Focused proof passed with cached Go 1.25.13 and `GOTOOLCHAIN=local GOPROXY=off GOSUMDB=off
+GOWORK=off` plus writable `/tmp` caches:
+
+- `go test ./src/lib/pipelang ./tests/pipelangcompat`;
+- exact equality of the frozen 45-path inventory and current authored `.pipe` inventory, including
+  unchanged source, language-projection, emitted-artifact, and evaluation goldens;
+- affected PipeLang application/CLI/catalog/materialize/package-compile tests using only the
+  already-cached temporary `golang.org/x/sys v0.46.0` substitute because the checkout-pinned v0.28
+  source is absent from the read-only module cache; no checkout dependency file changed;
+- `go vet` over PipeLang and the affected internal consumers; and
+- the existing VS Code extension validation.
+
+The broad `src/lib/application` suite remains non-authoritative for this slice because its unrelated
+`TestRunWorkflowStepsModeCliWorkdirOverridesInheritedEnvMap` fixture names
+`/path/to/your/project`; the focused affected application suite passes. The frozen legacy lane,
+emitted artifacts, generated stores, dependency files, and protected ignored bytes did not change.
+
+## Exact Next Boundary
+
+Step 5 of **Bounded Implementation Order** is complete. The exact next boundary is step 6: establish
+typed HIR and target-neutral Core IR around one tiny pure executable function, lower through those
+representations into a deterministic Go backend, and prove there is no direct parser-to-Go path.
+That successor requires a separately granted objective and must preserve the frozen legacy lane and
+the completed source, `TypeRef`, symbol, module/import/lock, semantic-identity, diagnostic, and
+projection contracts.
+
+Step 6 is not authorized here. In particular, this checkpoint does not accept namespace, import,
+migration, `internal`, overload, generic, or ID syntax; implement overload resolution; add new
+types/declarations/expressions; add effects or executable application/service semantics; introduce
+Application IR or Service IR; mutate generated stores; or begin self-hosting. Exact production
+spellings remain later synchronized language slices.

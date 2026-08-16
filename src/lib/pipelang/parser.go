@@ -6,22 +6,41 @@ import (
 )
 
 type parser struct {
-	toks []token
-	idx  int
+	sources *SourceSet
+	file    *SourceFile
+	toks    []token
+	idx     int
 }
 
 func Parse(src []byte) (*Program, error) {
-	toks, err := lex(string(src))
+	return ParseFile("<input>", src)
+}
+
+func ParseFile(path string, src []byte) (*Program, error) {
+	sources, diagnostics := NewSourceSet([]SourceInput{{Path: path, Data: src}})
+	if diagnostics.HasErrors() {
+		return nil, diagnosticError(sources, diagnostics)
+	}
+	files := sources.Files()
+	if len(files) != 1 {
+		return nil, oneDiagnostic(sources, CodeInvalidProgram, CategorySource, Span{File: FileID(normalizeSourcePath(path))}, "source file is unavailable")
+	}
+	return parseSourceFile(sources, files[0])
+}
+
+func parseSourceFile(sources *SourceSet, file *SourceFile) (*Program, error) {
+	toks, err := lex(sources, file)
 	if err != nil {
 		return nil, err
 	}
-	p := &parser{toks: toks}
+	p := &parser{sources: sources, file: file, toks: toks}
 	return p.parseProgram()
 }
 
 func (p *parser) parseProgram() (*Program, error) {
-	prog := &Program{}
+	prog := &Program{Span: Span{File: p.file.ID, Start: 0, End: len(p.file.Text)}, sources: p.sources}
 	for p.peek().kind != tokEOF {
+		declStart := p.peek().span
 		anns, err := p.parseAnnotations()
 		if err != nil {
 			return nil, err
@@ -32,13 +51,13 @@ func (p *parser) parseProgram() (*Program, error) {
 		}
 		switch p.peek().kind {
 		case tokInterface:
-			i, err := p.parseInterface(vis, anns)
+			i, err := p.parseInterface(vis, anns, declStart)
 			if err != nil {
 				return nil, err
 			}
 			prog.Interfaces = append(prog.Interfaces, i)
 		case tokClass, tokStruct:
-			c, err := p.parseClass(vis, anns)
+			c, err := p.parseClass(vis, anns, declStart)
 			if err != nil {
 				return nil, err
 			}
@@ -53,7 +72,7 @@ func (p *parser) parseProgram() (*Program, error) {
 func (p *parser) parseAnnotations() ([]Annotation, error) {
 	var out []Annotation
 	for p.peek().kind == tokLBracket {
-		p.next()
+		start := p.next().span
 		nameTok, err := p.expect(tokIdent)
 		if err != nil {
 			return nil, err
@@ -65,10 +84,11 @@ func (p *parser) parseAnnotations() ([]Annotation, error) {
 		if err != nil {
 			return nil, err
 		}
-		if _, err := p.expect(tokRBracket); err != nil {
+		end, err := p.expect(tokRBracket)
+		if err != nil {
 			return nil, err
 		}
-		out = append(out, Annotation{Name: nameTok.lit, Value: value})
+		out = append(out, Annotation{Name: nameTok.lit, Value: value, Span: mergeSpans(start, end.span)})
 	}
 	return out, nil
 }
@@ -83,14 +103,14 @@ func (p *parser) parseAnnotationValue() (Value, error) {
 		p.next()
 		v, err := strconv.ParseInt(t.lit, 10, 64)
 		if err != nil {
-			return Value{}, err
+			return Value{}, oneDiagnostic(p.sources, CodeInvalidNumber, CategoryLexical, t.span, "invalid integer literal")
 		}
 		return Value{Type: TypeInt, Int: v}, nil
 	case tokFloat:
 		p.next()
 		v, err := strconv.ParseFloat(t.lit, 64)
 		if err != nil {
-			return Value{}, err
+			return Value{}, oneDiagnostic(p.sources, CodeInvalidNumber, CategoryLexical, t.span, "invalid float literal")
 		}
 		return Value{Type: TypeFloat, Float: v}, nil
 	case tokBool:
@@ -101,7 +121,7 @@ func (p *parser) parseAnnotationValue() (Value, error) {
 	}
 }
 
-func (p *parser) parseInterface(vis Visibility, anns []Annotation) (*InterfaceDecl, error) {
+func (p *parser) parseInterface(vis Visibility, anns []Annotation, start Span) (*InterfaceDecl, error) {
 	if _, err := p.expect(tokInterface); err != nil {
 		return nil, err
 	}
@@ -114,6 +134,7 @@ func (p *parser) parseInterface(vis Visibility, anns []Annotation) (*InterfaceDe
 	}
 	decl := &InterfaceDecl{Name: nameTok.lit, Visibility: normalizeVisibility(vis), Annotations: anns}
 	for p.peek().kind != tokRBrace {
+		memberStart := p.peek().span
 		memberAnns, err := p.parseAnnotations()
 		if err != nil {
 			return nil, err
@@ -127,7 +148,8 @@ func (p *parser) parseInterface(vis Visibility, anns []Annotation) (*InterfaceDe
 			return nil, err
 		}
 		if isMethod {
-			if _, err := p.expect(tokSemi); err != nil {
+			end, err := p.expect(tokSemi)
+			if err != nil {
 				return nil, err
 			}
 			decl.Methods = append(decl.Methods, MethodSig{
@@ -136,10 +158,12 @@ func (p *parser) parseInterface(vis Visibility, anns []Annotation) (*InterfaceDe
 				ReturnType:  t,
 				Name:        n,
 				Params:      params,
+				Span:        mergeSpans(memberStart, end.span),
 			})
 			continue
 		}
-		if _, err := p.expect(tokSemi); err != nil {
+		end, err := p.expect(tokSemi)
+		if err != nil {
 			return nil, err
 		}
 		decl.Fields = append(decl.Fields, FieldSig{
@@ -147,15 +171,18 @@ func (p *parser) parseInterface(vis Visibility, anns []Annotation) (*InterfaceDe
 			Annotations: memberAnns,
 			Type:        t,
 			Name:        n,
+			Span:        mergeSpans(memberStart, end.span),
 		})
 	}
-	if _, err := p.expect(tokRBrace); err != nil {
+	end, err := p.expect(tokRBrace)
+	if err != nil {
 		return nil, err
 	}
+	decl.Span = mergeSpans(start, end.span)
 	return decl, nil
 }
 
-func (p *parser) parseClass(vis Visibility, anns []Annotation) (*ClassDecl, error) {
+func (p *parser) parseClass(vis Visibility, anns []Annotation, start Span) (*ClassDecl, error) {
 	switch p.peek().kind {
 	case tokClass, tokStruct:
 		p.next()
@@ -173,12 +200,14 @@ func (p *parser) parseClass(vis Visibility, anns []Annotation) (*ClassDecl, erro
 		if err != nil {
 			return nil, err
 		}
-		decl.Implements = implTok.lit
+		implements := UnresolvedTypeRef{Kind: TypeRefNamed, Name: implTok.lit, Span: implTok.span}
+		decl.Implements = &implements
 	}
 	if _, err := p.expect(tokLBrace); err != nil {
 		return nil, err
 	}
 	for p.peek().kind != tokRBrace {
+		memberStart := p.peek().span
 		memberAnns, err := p.parseAnnotations()
 		if err != nil {
 			return nil, err
@@ -199,7 +228,8 @@ func (p *parser) parseClass(vis Visibility, anns []Annotation) (*ClassDecl, erro
 			if err != nil {
 				return nil, err
 			}
-			if _, err := p.expect(tokSemi); err != nil {
+			end, err := p.expect(tokSemi)
+			if err != nil {
 				return nil, err
 			}
 			decl.Methods = append(decl.Methods, MethodDecl{
@@ -209,6 +239,7 @@ func (p *parser) parseClass(vis Visibility, anns []Annotation) (*ClassDecl, erro
 				Name:        n,
 				Params:      params,
 				Body:        expr,
+				Span:        mergeSpans(memberStart, end.span),
 			})
 			continue
 		}
@@ -221,14 +252,18 @@ func (p *parser) parseClass(vis Visibility, anns []Annotation) (*ClassDecl, erro
 			}
 			f.Default = expr
 		}
-		if _, err := p.expect(tokSemi); err != nil {
+		end, err := p.expect(tokSemi)
+		if err != nil {
 			return nil, err
 		}
+		f.Span = mergeSpans(memberStart, end.span)
 		decl.Fields = append(decl.Fields, f)
 	}
-	if _, err := p.expect(tokRBrace); err != nil {
+	end, err := p.expect(tokRBrace)
+	if err != nil {
 		return nil, err
 	}
+	decl.Span = mergeSpans(start, end.span)
 	return decl, nil
 }
 
@@ -245,14 +280,14 @@ func (p *parser) parseOptionalVisibility() (Visibility, error) {
 	}
 }
 
-func (p *parser) parseTypedMemberHeader() (TypeName, string, []Param, bool, error) {
-	t, err := p.parseTypeName()
+func (p *parser) parseTypedMemberHeader() (UnresolvedTypeRef, string, []Param, bool, error) {
+	t, err := p.parseTypeRef()
 	if err != nil {
-		return "", "", nil, false, err
+		return UnresolvedTypeRef{}, "", nil, false, err
 	}
 	nameTok, err := p.expect(tokIdent)
 	if err != nil {
-		return "", "", nil, false, err
+		return UnresolvedTypeRef{}, "", nil, false, err
 	}
 	if p.peek().kind != tokLParen {
 		return t, nameTok.lit, nil, false, nil
@@ -261,15 +296,16 @@ func (p *parser) parseTypedMemberHeader() (TypeName, string, []Param, bool, erro
 	params := []Param{}
 	if p.peek().kind != tokRParen {
 		for {
-			pt, err := p.parseTypeName()
+			paramStart := p.peek().span
+			pt, err := p.parseTypeRef()
 			if err != nil {
-				return "", "", nil, false, err
+				return UnresolvedTypeRef{}, "", nil, false, err
 			}
 			pn, err := p.expect(tokIdent)
 			if err != nil {
-				return "", "", nil, false, err
+				return UnresolvedTypeRef{}, "", nil, false, err
 			}
-			params = append(params, Param{Type: pt, Name: pn.lit})
+			params = append(params, Param{Type: pt, Name: pn.lit, Span: mergeSpans(paramStart, pn.span)})
 			if p.peek().kind == tokComma {
 				p.next()
 				continue
@@ -278,33 +314,32 @@ func (p *parser) parseTypedMemberHeader() (TypeName, string, []Param, bool, erro
 		}
 	}
 	if _, err := p.expect(tokRParen); err != nil {
-		return "", "", nil, false, err
+		return UnresolvedTypeRef{}, "", nil, false, err
 	}
 	return t, nameTok.lit, params, true, nil
 }
 
-func (p *parser) parseTypeName() (TypeName, error) {
+func (p *parser) parseTypeRef() (UnresolvedTypeRef, error) {
 	tok, err := p.expect(tokIdent)
 	if err != nil {
-		return "", err
+		return UnresolvedTypeRef{}, err
 	}
-	typeName := tok.lit
+	if primitive, ok := primitiveType(tok.lit); ok {
+		return unresolvedPrimitive(primitive, tok.span), nil
+	}
 	if tok.lit == "List" && p.peek().kind == tokLT {
 		p.next()
-		inner, err := p.parseTypeName()
+		inner, err := p.parseTypeRef()
 		if err != nil {
-			return "", err
+			return UnresolvedTypeRef{}, err
 		}
-		if _, err := p.expect(tokGT); err != nil {
-			return "", err
+		end, err := p.expect(tokGT)
+		if err != nil {
+			return UnresolvedTypeRef{}, err
 		}
-		typeName = fmt.Sprintf("List<%s>", inner)
+		return UnresolvedTypeRef{Kind: TypeRefApplied, Name: "List", Arguments: []UnresolvedTypeRef{inner}, Span: mergeSpans(tok.span, end.span)}, nil
 	}
-	t := TypeName(typeName)
-	if !t.IsValid() {
-		return "", p.errf("unknown type %q", typeName)
-	}
-	return t, nil
+	return UnresolvedTypeRef{Kind: TypeRefNamed, Name: tok.lit, Span: tok.span}, nil
 }
 
 func (p *parser) parseExpr(minPrec int) (Expr, error) {
@@ -323,7 +358,7 @@ func (p *parser) parseExpr(minPrec int) (Expr, error) {
 		if err != nil {
 			return nil, err
 		}
-		left = &BinaryExpr{Op: opTok.lit, Left: left, Right: right}
+		left = &BinaryExpr{Op: opTok.lit, Left: left, Right: right, Span: mergeSpans(left.SourceSpan(), right.SourceSpan())}
 	}
 	return left, nil
 }
@@ -331,12 +366,12 @@ func (p *parser) parseExpr(minPrec int) (Expr, error) {
 func (p *parser) parseUnary() (Expr, error) {
 	switch p.peek().kind {
 	case tokBang, tokMinus:
-		op := p.next().lit
+		opTok := p.next()
 		ex, err := p.parseUnary()
 		if err != nil {
 			return nil, err
 		}
-		return &UnaryExpr{Op: op, Expr: ex}, nil
+		return &UnaryExpr{Op: opTok.lit, Expr: ex, Span: mergeSpans(opTok.span, ex.SourceSpan())}, nil
 	default:
 		return p.parsePrimary()
 	}
@@ -347,36 +382,38 @@ func (p *parser) parsePrimary() (Expr, error) {
 	switch t.kind {
 	case tokString:
 		p.next()
-		return &LiteralExpr{Value: Value{Type: TypeString, String: t.lit}}, nil
+		return &LiteralExpr{Value: Value{Type: TypeString, String: t.lit}, Span: t.span}, nil
 	case tokInt:
 		p.next()
 		v, err := strconv.ParseInt(t.lit, 10, 64)
 		if err != nil {
-			return nil, err
+			return nil, oneDiagnostic(p.sources, CodeInvalidNumber, CategoryLexical, t.span, "invalid integer literal")
 		}
-		return &LiteralExpr{Value: Value{Type: TypeInt, Int: v}}, nil
+		return &LiteralExpr{Value: Value{Type: TypeInt, Int: v}, Span: t.span}, nil
 	case tokFloat:
 		p.next()
 		v, err := strconv.ParseFloat(t.lit, 64)
 		if err != nil {
-			return nil, err
+			return nil, oneDiagnostic(p.sources, CodeInvalidNumber, CategoryLexical, t.span, "invalid float literal")
 		}
-		return &LiteralExpr{Value: Value{Type: TypeFloat, Float: v}}, nil
+		return &LiteralExpr{Value: Value{Type: TypeFloat, Float: v}, Span: t.span}, nil
 	case tokBool:
 		p.next()
-		return &LiteralExpr{Value: Value{Type: TypeBool, Bool: t.lit == "true"}}, nil
+		return &LiteralExpr{Value: Value{Type: TypeBool, Bool: t.lit == "true"}, Span: t.span}, nil
 	case tokIdent:
 		p.next()
-		return &IdentExpr{Name: t.lit}, nil
+		return &IdentExpr{Name: t.lit, Span: t.span}, nil
 	case tokLParen:
-		p.next()
+		start := p.next().span
 		ex, err := p.parseExpr(1)
 		if err != nil {
 			return nil, err
 		}
-		if _, err := p.expect(tokRParen); err != nil {
+		end, err := p.expect(tokRParen)
+		if err != nil {
 			return nil, err
 		}
+		setExprSpan(ex, mergeSpans(start, end.span))
 		return ex, nil
 	default:
 		return nil, p.errf("unexpected token %q in expression", t.lit)
@@ -404,7 +441,7 @@ func binaryPrecedence(k tokenKind) int {
 
 func (p *parser) peek() token {
 	if p.idx >= len(p.toks) {
-		return token{kind: tokEOF, pos: len(p.toks)}
+		return token{kind: tokEOF, span: Span{File: p.file.ID, Start: len(p.file.Text), End: len(p.file.Text)}}
 	}
 	return p.toks[p.idx]
 }
@@ -420,7 +457,7 @@ func (p *parser) next() token {
 func (p *parser) expect(k tokenKind) (token, error) {
 	t := p.peek()
 	if t.kind != k {
-		return token{}, p.errf("expected %s, got %q", tokenName(k), t.lit)
+		return token{}, oneDiagnostic(p.sources, CodeExpectedToken, CategorySyntax, t.span, fmt.Sprintf("expected %s, got %q", tokenName(k), t.lit))
 	}
 	p.next()
 	return t, nil
@@ -429,7 +466,7 @@ func (p *parser) expect(k tokenKind) (token, error) {
 func (p *parser) errf(format string, args ...any) error {
 	t := p.peek()
 	msg := fmt.Sprintf(format, args...)
-	return fmt.Errorf("parse error at %d: %s", t.pos, msg)
+	return oneDiagnostic(p.sources, CodeUnexpectedToken, CategorySyntax, t.span, msg)
 }
 
 func tokenName(k tokenKind) string {

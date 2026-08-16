@@ -142,6 +142,12 @@ The field paths in `view:` reference the PipeLang root model recursively. Entry 
 
 ## Commands
 
+Check a source set without evaluation or artifact emission:
+
+```bash
+dockpipe pipelang check --in workflows/mywf/model.pipe --format json
+```
+
 Compile artifacts:
 
 ```bash
@@ -159,6 +165,46 @@ Materialize all `.pipe` files under configured compile roots:
 ```bash
 dockpipe pipelang materialize --workdir .
 ```
+
+## Source and diagnostic contract
+
+All compiler entrypoints admit source through one deterministic source-set contract. File identity
+is the normalized source path, input must be strict UTF-8, and token/AST spans are half-open UTF-8
+byte ranges tied to that identity. Resolved diagnostics also expose one-based line, Unicode scalar
+column, and UTF-16 column values so CLI and editor rendering share the same locations.
+
+Diagnostics have stable `code`, `category`, and `severity` fields, one primary span, optional
+related spans, and deterministic file/span/code ordering. `pipelang check --format json` exposes
+schema 1 of that compiler result. It is offline and inert: it does not evaluate methods, emit
+workflow/bindings artifacts, refresh generated stores, or enter any runtime/resolver path. The
+legacy `compile`, `invoke`, catalog, and materialize paths use the same parser/source identities;
+their `v0.0.0.1` syntax and artifacts remain frozen.
+
+## Structured module-binding foundation
+
+The compiler library also has a syntax-independent module-binding query for the accepted future
+contract. `AnalyzeModuleSet` receives an explicit non-legacy language-contract identity, one root
+module, complete module source bytes, structured module/symbol imports with durable spans, and a
+complete dependency lock. Each locked module records its direct dependencies and a deterministic
+SHA-256 digest over normalized source identities plus exact source bytes. Missing bytes, digest
+drift, undeclared dependencies, duplicate module owners, unknown/private/ambiguous imports, and
+import cycles fail through the same ordered structured-diagnostic contract. Compilation remains
+offline and never fetches or repairs dependencies.
+
+This is a binder/input foundation, not a released source surface. No post-`v0.0.0.1` public name,
+version, module keyword, import spelling, manifest format, CLI selector, YAML field, or editor grammar
+is selected by it. The existing parser and every CLI/catalog/materialize/package/editor consumer
+remain on the frozen sibling-source-set lane until a separately reviewed migration chooses those
+public spellings explicitly.
+
+The next compiler-only foundation can additionally receive explicit semantic-ID assignments by
+declaration span. `AnalyzeSemanticModuleSet` validates lowercase dotted ASCII IDs, requires them for
+public modules/types/members, leaves private implementation declarations ID-optional, verifies a
+separate semantic-assignment digest in the dependency lock, and carries matching IDs through
+structured diagnostics. `BuildSemanticProjection` emits deterministic module, import, type, member,
+resolved-type, lock-digest, source-range, and diagnostic records without exposing analysis-local
+`SymbolID` values. Its language, compiler, and projection identities are explicit inputs; no first
+production values or source spellings have been selected yet.
 
 ## Artifacts
 

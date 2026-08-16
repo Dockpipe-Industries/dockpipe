@@ -6,340 +6,428 @@ import (
 )
 
 type checkedProgram struct {
-	program    *Program
-	interfaces map[string]*InterfaceDecl
-	classes    map[string]*ClassDecl
+	program *Program
+	symbols *SymbolTable
+	sources *SourceSet
+	modules *ModuleGraph
 }
 
 func Check(prog *Program) (*checkedProgram, error) {
 	if prog == nil {
-		return nil, fmt.Errorf("program is nil")
+		return checkProgram(nil, prog)
 	}
-	cp := &checkedProgram{
-		program:    prog,
-		interfaces: map[string]*InterfaceDecl{},
-		classes:    map[string]*ClassDecl{},
+	return checkProgramWithModules(prog.sources, prog, prog.modules)
+}
+
+func checkProgram(sources *SourceSet, prog *Program) (*checkedProgram, error) {
+	return checkProgramWithModules(sources, prog, nil)
+}
+
+func checkProgramWithModules(sources *SourceSet, prog *Program, modules *ModuleGraph) (*checkedProgram, error) {
+	if prog == nil {
+		return nil, oneDiagnostic(sources, CodeInvalidProgram, CategorySemantic, Span{}, "program is nil")
 	}
-	for _, i := range prog.Interfaces {
-		if i == nil {
-			continue
-		}
-		if strings.TrimSpace(i.Name) == "" {
-			return nil, fmt.Errorf("interface name is empty")
-		}
-		if _, ok := cp.interfaces[i.Name]; ok {
-			return nil, fmt.Errorf("duplicate interface %q", i.Name)
-		}
-		cp.interfaces[i.Name] = i
-		if !i.Visibility.IsValid() {
-			return nil, fmt.Errorf("interface %s has invalid visibility %q", i.Name, i.Visibility)
-		}
-		if err := validateInterface(i); err != nil {
-			return nil, err
+	symbols, err := buildSymbolTableWithOwners(sources, prog, modules)
+	if err != nil {
+		return nil, err
+	}
+	if diagnostics := bindModuleImports(sources, modules, symbols); diagnostics.HasErrors() {
+		return nil, diagnosticError(sources, diagnostics)
+	}
+	return checkProgramWithSymbols(sources, prog, modules, symbols)
+}
+
+func checkProgramWithSymbols(sources *SourceSet, prog *Program, modules *ModuleGraph, symbols *SymbolTable) (*checkedProgram, error) {
+	cp := &checkedProgram{program: prog, symbols: symbols, sources: sources, modules: modules}
+	for _, entry := range symbols.ordered {
+		switch entry.symbol.Kind {
+		case SymbolInterface:
+			decl := entry.interfaceDecl
+			if !decl.Visibility.IsValid() {
+				return nil, oneDiagnostic(sources, CodeInvalidDecl, CategorySemantic, decl.Span, fmt.Sprintf("interface %s has invalid visibility %q", decl.Name, decl.Visibility))
+			}
+			if err := cp.validateInterface(decl); err != nil {
+				return nil, err
+			}
+		case SymbolClass:
+			decl := entry.classDecl
+			if !decl.Visibility.IsValid() {
+				return nil, oneDiagnostic(sources, CodeInvalidDecl, CategorySemantic, decl.Span, fmt.Sprintf("class %s has invalid visibility %q", decl.Name, decl.Visibility))
+			}
+			if err := cp.validateClass(decl); err != nil {
+				return nil, err
+			}
 		}
 	}
-	for _, c := range prog.Classes {
-		if c == nil {
-			continue
-		}
-		if strings.TrimSpace(c.Name) == "" {
-			return nil, fmt.Errorf("class name is empty")
-		}
-		if _, ok := cp.classes[c.Name]; ok {
-			return nil, fmt.Errorf("duplicate class %q", c.Name)
-		}
-		cp.classes[c.Name] = c
-		if !c.Visibility.IsValid() {
-			return nil, fmt.Errorf("class %s has invalid visibility %q", c.Name, c.Visibility)
-		}
-		if err := validateClass(c); err != nil {
-			return nil, err
-		}
+	if len(prog.Classes) == 0 {
+		return nil, oneDiagnostic(sources, CodeEntrySelection, CategorySemantic, prog.Span, "no class declarations found")
 	}
-	if len(cp.classes) == 0 {
-		return nil, fmt.Errorf("no class declarations found")
-	}
-	for _, c := range prog.Classes {
-		if err := cp.validateImplements(c); err != nil {
+	for _, class := range prog.Classes {
+		if err := cp.validateImplements(class); err != nil {
 			return nil, err
 		}
 	}
 	return cp, nil
 }
 
-func validateInterface(i *InterfaceDecl) error {
-	seen := map[string]struct{}{}
-	for _, f := range i.Fields {
-		if normalizeVisibility(f.Visibility) != VisibilityPublic {
-			return fmt.Errorf("interface %s field %s must be public", i.Name, f.Name)
+func (cp *checkedProgram) resolveType(ref UnresolvedTypeRef, related ...RelatedSpan) (ResolvedTypeRef, error) {
+	owner := legacySourceSetOwner
+	if cp.modules != nil {
+		resolved, ok := cp.modules.ownerForSpan(ref.Span)
+		if !ok {
+			return ResolvedTypeRef{}, oneDiagnostic(cp.sources, CodeInvalidModule, CategorySemantic, ref.Span, "type reference has no owning module")
 		}
-		if !f.Type.IsValid() {
-			return fmt.Errorf("interface %s field %s has invalid type %q", i.Name, f.Name, f.Type)
-		}
-		if _, ok := seen[f.Name]; ok {
-			return fmt.Errorf("interface %s has duplicate member %q", i.Name, f.Name)
-		}
-		seen[f.Name] = struct{}{}
+		owner = resolved
 	}
-	for _, m := range i.Methods {
-		if normalizeVisibility(m.Visibility) != VisibilityPublic {
-			return fmt.Errorf("interface %s method %s must be public", i.Name, m.Name)
+	return resolveTypeRef(cp.sources, cp.symbols, cp.modules, owner, ref, related...)
+}
+
+func (cp *checkedProgram) validateInterface(decl *InterfaceDecl) error {
+	seen := map[string]Span{}
+	for _, field := range decl.Fields {
+		if normalizeVisibility(field.Visibility) != VisibilityPublic {
+			return oneDiagnostic(cp.sources, CodeInvalidMember, CategorySemantic, field.Span, fmt.Sprintf("interface %s field %s must be public", decl.Name, field.Name))
 		}
-		if !m.ReturnType.IsValid() {
-			return fmt.Errorf("interface %s method %s has invalid return type %q", i.Name, m.Name, m.ReturnType)
+		if _, err := cp.resolveType(field.Type, RelatedSpan{Span: field.Span, Message: "field declaration"}); err != nil {
+			return prefixDiagnostic(err, fmt.Sprintf("interface %s field %s: ", decl.Name, field.Name))
 		}
-		if _, ok := seen[m.Name]; ok {
-			return fmt.Errorf("interface %s has duplicate member %q", i.Name, m.Name)
+		if previous, ok := seen[field.Name]; ok {
+			return oneDiagnostic(cp.sources, CodeDuplicateMember, CategorySemantic, field.Span, fmt.Sprintf("interface %s has duplicate member %q", decl.Name, field.Name), RelatedSpan{Span: previous, Message: "first member"})
 		}
-		seen[m.Name] = struct{}{}
-		if err := validateParams(i.Name, m.Name, m.Params); err != nil {
+		seen[field.Name] = field.Span
+	}
+	for _, method := range decl.Methods {
+		if normalizeVisibility(method.Visibility) != VisibilityPublic {
+			return oneDiagnostic(cp.sources, CodeInvalidMember, CategorySemantic, method.Span, fmt.Sprintf("interface %s method %s must be public", decl.Name, method.Name))
+		}
+		if _, err := cp.resolveType(method.ReturnType, RelatedSpan{Span: method.Span, Message: "method declaration"}); err != nil {
+			return prefixDiagnostic(err, fmt.Sprintf("interface %s method %s return: ", decl.Name, method.Name))
+		}
+		if previous, ok := seen[method.Name]; ok {
+			return oneDiagnostic(cp.sources, CodeDuplicateMember, CategorySemantic, method.Span, fmt.Sprintf("interface %s has duplicate member %q", decl.Name, method.Name), RelatedSpan{Span: previous, Message: "first member"})
+		}
+		seen[method.Name] = method.Span
+		if err := cp.validateParams(decl.Name, method.Name, method.Params); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func validateClass(c *ClassDecl) error {
-	seen := map[string]struct{}{}
-	fieldTypes := map[string]TypeName{}
-	for _, f := range c.Fields {
-		if !f.Visibility.IsValid() {
-			return fmt.Errorf("class %s field %s has invalid visibility %q", c.Name, f.Name, f.Visibility)
+func (cp *checkedProgram) validateClass(decl *ClassDecl) error {
+	seen := map[string]Span{}
+	fieldTypes := map[string]ResolvedTypeRef{}
+	for _, field := range decl.Fields {
+		if !field.Visibility.IsValid() {
+			return oneDiagnostic(cp.sources, CodeInvalidMember, CategorySemantic, field.Span, fmt.Sprintf("class %s field %s has invalid visibility %q", decl.Name, field.Name, field.Visibility))
 		}
-		if !f.Type.IsValid() {
-			return fmt.Errorf("class %s field %s has invalid type %q", c.Name, f.Name, f.Type)
+		fieldType, err := cp.resolveType(field.Type, RelatedSpan{Span: field.Span, Message: "field declaration"})
+		if err != nil {
+			return prefixDiagnostic(err, fmt.Sprintf("class %s field %s: ", decl.Name, field.Name))
 		}
-		if _, ok := seen[f.Name]; ok {
-			return fmt.Errorf("class %s has duplicate member %q", c.Name, f.Name)
+		if previous, ok := seen[field.Name]; ok {
+			return oneDiagnostic(cp.sources, CodeDuplicateMember, CategorySemantic, field.Span, fmt.Sprintf("class %s has duplicate member %q", decl.Name, field.Name), RelatedSpan{Span: previous, Message: "first member"})
 		}
-		seen[f.Name] = struct{}{}
-		fieldTypes[f.Name] = f.Type
+		seen[field.Name] = field.Span
+		fieldTypes[field.Name] = fieldType
 	}
-	for _, m := range c.Methods {
-		if !m.Visibility.IsValid() {
-			return fmt.Errorf("class %s method %s has invalid visibility %q", c.Name, m.Name, m.Visibility)
+	for _, method := range decl.Methods {
+		if !method.Visibility.IsValid() {
+			return oneDiagnostic(cp.sources, CodeInvalidMember, CategorySemantic, method.Span, fmt.Sprintf("class %s method %s has invalid visibility %q", decl.Name, method.Name, method.Visibility))
 		}
-		if !m.ReturnType.IsValid() {
-			return fmt.Errorf("class %s method %s has invalid return type %q", c.Name, m.Name, m.ReturnType)
+		if _, err := cp.resolveType(method.ReturnType, RelatedSpan{Span: method.Span, Message: "method declaration"}); err != nil {
+			return prefixDiagnostic(err, fmt.Sprintf("class %s method %s return: ", decl.Name, method.Name))
 		}
-		if _, ok := seen[m.Name]; ok {
-			return fmt.Errorf("class %s has duplicate member %q", c.Name, m.Name)
+		if previous, ok := seen[method.Name]; ok {
+			return oneDiagnostic(cp.sources, CodeDuplicateMember, CategorySemantic, method.Span, fmt.Sprintf("class %s has duplicate member %q", decl.Name, method.Name), RelatedSpan{Span: previous, Message: "first member"})
 		}
-		seen[m.Name] = struct{}{}
-		if err := validateParams(c.Name, m.Name, m.Params); err != nil {
+		seen[method.Name] = method.Span
+		if err := cp.validateParams(decl.Name, method.Name, method.Params); err != nil {
 			return err
 		}
 	}
-	for _, f := range c.Fields {
-		if f.Default == nil {
+	for _, field := range decl.Fields {
+		if field.Default == nil {
 			continue
 		}
-		t, err := inferExprType(f.Default, map[string]TypeName{})
+		inferred, err := inferExprType(cp.sources, field.Default, map[string]ResolvedTypeRef{})
 		if err != nil {
-			return fmt.Errorf("class %s field %s default: %w", c.Name, f.Name, err)
+			return prefixDiagnostic(err, fmt.Sprintf("class %s field %s default: ", decl.Name, field.Name))
 		}
-		if t != f.Type {
-			return fmt.Errorf("class %s field %s default type %s does not match %s", c.Name, f.Name, t, f.Type)
+		declared := fieldTypes[field.Name]
+		if !inferred.Equal(declared) {
+			return oneDiagnostic(cp.sources, CodeExpressionType, CategorySemantic, field.Default.SourceSpan(), fmt.Sprintf("class %s field %s default type %s does not match %s", decl.Name, field.Name, inferred, declared), RelatedSpan{Span: field.Type.Span, Message: "declared field type"})
 		}
 	}
-	for _, m := range c.Methods {
-		env := map[string]TypeName{}
-		for k, v := range fieldTypes {
-			env[k] = v
+	for _, method := range decl.Methods {
+		env := map[string]ResolvedTypeRef{}
+		for name, fieldType := range fieldTypes {
+			env[name] = fieldType
 		}
-		for _, p := range m.Params {
-			env[p.Name] = p.Type
+		for _, param := range method.Params {
+			paramType, err := cp.resolveType(param.Type, RelatedSpan{Span: param.Span, Message: "parameter declaration"})
+			if err != nil {
+				return err
+			}
+			env[param.Name] = paramType
 		}
-		t, err := inferExprType(m.Body, env)
+		inferred, err := inferExprType(cp.sources, method.Body, env)
 		if err != nil {
-			return fmt.Errorf("class %s method %s: %w", c.Name, m.Name, err)
+			return prefixDiagnostic(err, fmt.Sprintf("class %s method %s: ", decl.Name, method.Name))
 		}
-		if t != m.ReturnType {
-			return fmt.Errorf("class %s method %s returns %s but declared %s", c.Name, m.Name, t, m.ReturnType)
+		declared, err := cp.resolveType(method.ReturnType)
+		if err != nil {
+			return err
+		}
+		if !inferred.Equal(declared) {
+			return oneDiagnostic(cp.sources, CodeExpressionType, CategorySemantic, method.Body.SourceSpan(), fmt.Sprintf("class %s method %s returns %s but declared %s", decl.Name, method.Name, inferred, declared), RelatedSpan{Span: method.ReturnType.Span, Message: "declared return type"})
 		}
 	}
 	return nil
 }
 
-func validateParams(owner, method string, params []Param) error {
-	seen := map[string]struct{}{}
-	for _, p := range params {
-		if !p.Type.IsValid() {
-			return fmt.Errorf("%s method %s parameter %s has invalid type %q", owner, method, p.Name, p.Type)
+func (cp *checkedProgram) validateParams(owner, method string, params []Param) error {
+	seen := map[string]Span{}
+	for _, param := range params {
+		if _, err := cp.resolveType(param.Type, RelatedSpan{Span: param.Span, Message: "parameter declaration"}); err != nil {
+			return prefixDiagnostic(err, fmt.Sprintf("%s method %s parameter %s: ", owner, method, param.Name))
 		}
-		if _, ok := seen[p.Name]; ok {
-			return fmt.Errorf("%s method %s has duplicate parameter %q", owner, method, p.Name)
+		if previous, ok := seen[param.Name]; ok {
+			return oneDiagnostic(cp.sources, CodeDuplicateMember, CategorySemantic, param.Span, fmt.Sprintf("%s method %s has duplicate parameter %q", owner, method, param.Name), RelatedSpan{Span: previous, Message: "first parameter"})
 		}
-		seen[p.Name] = struct{}{}
+		seen[param.Name] = param.Span
 	}
 	return nil
 }
 
-func (cp *checkedProgram) validateImplements(c *ClassDecl) error {
-	if strings.TrimSpace(c.Implements) == "" {
+func (cp *checkedProgram) validateImplements(class *ClassDecl) error {
+	if class.Implements == nil {
 		return nil
 	}
-	if strings.TrimSpace(c.Implements) == "IComparable" {
+	name := strings.TrimSpace(class.Implements.Name)
+	if name == "IComparable" {
 		return nil
 	}
-	i, ok := cp.interfaces[c.Implements]
+	entry, err := cp.resolveNamedEntry(*class.Implements)
+	ok := err == nil
 	if !ok {
-		return fmt.Errorf("class %s implements unknown interface %q", c.Name, c.Implements)
+		if diagnostics, structured := AsDiagnostics(err); structured && len(diagnostics) > 0 {
+			diagnostic := diagnostics[0]
+			diagnostic.Code = CodeUnknownInterface
+			diagnostic.Message = fmt.Sprintf("class %s implements unknown interface %q", class.Name, name)
+			diagnostic.Related = append(diagnostic.Related, RelatedSpan{Span: class.Span, Message: "implementing class"})
+			return diagnosticError(cp.sources, Diagnostics{diagnostic})
+		}
+		return oneDiagnostic(cp.sources, CodeUnknownInterface, CategorySemantic, class.Implements.Span, fmt.Sprintf("class %s implements unknown interface %q", class.Name, name), RelatedSpan{Span: class.Span, Message: "implementing class"})
 	}
+	if entry.symbol.Kind != SymbolInterface {
+		return oneDiagnostic(cp.sources, CodeUnknownInterface, CategorySemantic, class.Implements.Span, fmt.Sprintf("class %s cannot implement non-interface %q", class.Name, name), RelatedSpan{Span: entry.symbol.DeclarationSpan, Message: "resolved class declaration"})
+	}
+	iface := entry.interfaceDecl
 	fields := map[string]FieldDecl{}
-	for _, f := range c.Fields {
-		fields[f.Name] = f
+	for _, field := range class.Fields {
+		fields[field.Name] = field
 	}
 	methods := map[string]MethodDecl{}
-	for _, m := range c.Methods {
-		methods[m.Name] = m
+	for _, method := range class.Methods {
+		methods[method.Name] = method
 	}
-	for _, f := range i.Fields {
-		cf, ok := fields[f.Name]
+	for _, required := range iface.Fields {
+		actual, ok := fields[required.Name]
 		if !ok {
-			return fmt.Errorf("class %s missing interface field %s.%s", c.Name, i.Name, f.Name)
+			return oneDiagnostic(cp.sources, CodeConformance, CategorySemantic, class.Span, fmt.Sprintf("class %s missing interface field %s.%s", class.Name, iface.Name, required.Name), RelatedSpan{Span: required.Span, Message: "required interface field"})
 		}
-		if normalizeVisibility(cf.Visibility) != VisibilityPublic {
-			return fmt.Errorf("class %s field %s must be public to satisfy interface %s", c.Name, f.Name, i.Name)
+		if normalizeVisibility(actual.Visibility) != VisibilityPublic {
+			return oneDiagnostic(cp.sources, CodeConformance, CategorySemantic, actual.Span, fmt.Sprintf("class %s field %s must be public to satisfy interface %s", class.Name, required.Name, iface.Name), RelatedSpan{Span: required.Span, Message: "required interface field"})
 		}
-		if cf.Type != f.Type {
-			return fmt.Errorf("class %s field %s type %s does not match interface %s", c.Name, f.Name, cf.Type, f.Type)
+		actualType, err := cp.resolveType(actual.Type)
+		if err != nil {
+			return err
+		}
+		requiredType, err := cp.resolveType(required.Type)
+		if err != nil {
+			return err
+		}
+		if !actualType.Equal(requiredType) {
+			return oneDiagnostic(cp.sources, CodeConformance, CategorySemantic, actual.Type.Span, fmt.Sprintf("class %s field %s type %s does not match interface %s", class.Name, required.Name, actualType, requiredType), RelatedSpan{Span: required.Type.Span, Message: "interface field type"})
 		}
 	}
-	for _, m := range i.Methods {
-		cm, ok := methods[m.Name]
+	for _, required := range iface.Methods {
+		actual, ok := methods[required.Name]
 		if !ok {
-			return fmt.Errorf("class %s missing interface method %s.%s", c.Name, i.Name, m.Name)
+			return oneDiagnostic(cp.sources, CodeConformance, CategorySemantic, class.Span, fmt.Sprintf("class %s missing interface method %s.%s", class.Name, iface.Name, required.Name), RelatedSpan{Span: required.Span, Message: "required interface method"})
 		}
-		if normalizeVisibility(cm.Visibility) != VisibilityPublic {
-			return fmt.Errorf("class %s method %s must be public to satisfy interface %s", c.Name, m.Name, i.Name)
+		if normalizeVisibility(actual.Visibility) != VisibilityPublic {
+			return oneDiagnostic(cp.sources, CodeConformance, CategorySemantic, actual.Span, fmt.Sprintf("class %s method %s must be public to satisfy interface %s", class.Name, required.Name, iface.Name), RelatedSpan{Span: required.Span, Message: "interface method signature"})
 		}
-		if cm.ReturnType != m.ReturnType {
-			return fmt.Errorf("class %s method %s return type %s does not match interface %s", c.Name, m.Name, cm.ReturnType, m.ReturnType)
+		actualReturn, err := cp.resolveType(actual.ReturnType)
+		if err != nil {
+			return err
 		}
-		if len(cm.Params) != len(m.Params) {
-			return fmt.Errorf("class %s method %s parameter count mismatch", c.Name, m.Name)
+		requiredReturn, err := cp.resolveType(required.ReturnType)
+		if err != nil {
+			return err
 		}
-		for idx := range cm.Params {
-			if cm.Params[idx].Type != m.Params[idx].Type {
-				return fmt.Errorf("class %s method %s parameter %d type %s does not match interface %s", c.Name, m.Name, idx+1, cm.Params[idx].Type, m.Params[idx].Type)
+		if !actualReturn.Equal(requiredReturn) {
+			return oneDiagnostic(cp.sources, CodeConformance, CategorySemantic, actual.ReturnType.Span, fmt.Sprintf("class %s method %s return type %s does not match interface %s", class.Name, required.Name, actualReturn, requiredReturn), RelatedSpan{Span: required.ReturnType.Span, Message: "interface method signature"})
+		}
+		if len(actual.Params) != len(required.Params) {
+			return oneDiagnostic(cp.sources, CodeConformance, CategorySemantic, actual.Span, fmt.Sprintf("class %s method %s parameter count mismatch", class.Name, required.Name), RelatedSpan{Span: required.Span, Message: "interface method signature"})
+		}
+		for idx := range actual.Params {
+			actualParam, err := cp.resolveType(actual.Params[idx].Type)
+			if err != nil {
+				return err
+			}
+			requiredParam, err := cp.resolveType(required.Params[idx].Type)
+			if err != nil {
+				return err
+			}
+			if !actualParam.Equal(requiredParam) {
+				return oneDiagnostic(cp.sources, CodeConformance, CategorySemantic, actual.Params[idx].Type.Span, fmt.Sprintf("class %s method %s parameter %d type %s does not match interface %s", class.Name, required.Name, idx+1, actualParam, iface.Name), RelatedSpan{Span: required.Params[idx].Type.Span, Message: "interface parameter type"})
 			}
 		}
 	}
 	return nil
 }
 
-func inferExprType(e Expr, env map[string]TypeName) (TypeName, error) {
-	switch n := e.(type) {
-	case *LiteralExpr:
-		return n.Value.Type, nil
-	case *IdentExpr:
-		t, ok := env[n.Name]
+func (cp *checkedProgram) resolveNamedEntry(ref UnresolvedTypeRef) (symbolEntry, error) {
+	owner := legacySourceSetOwner
+	if cp.modules != nil {
+		resolved, ok := cp.modules.ownerForSpan(ref.Span)
 		if !ok {
-			return "", fmt.Errorf("unknown identifier %q", n.Name)
+			return symbolEntry{}, oneDiagnostic(cp.sources, CodeInvalidModule, CategorySemantic, ref.Span, "type reference has no owning module")
 		}
-		return t, nil
+		owner = resolved
+		entry, code, related, ok := cp.modules.resolveNamed(cp.symbols, owner, ref)
+		if !ok {
+			return symbolEntry{}, oneDiagnostic(cp.sources, code, CategorySemantic, ref.Span, fmt.Sprintf("unknown type %q", ref.Name), related...)
+		}
+		return entry, nil
+	}
+	entry, ok := cp.symbols.lookupOwnedEntry(owner, ref.Name)
+	if !ok {
+		return symbolEntry{}, oneDiagnostic(cp.sources, CodeInvalidType, CategorySemantic, ref.Span, fmt.Sprintf("unknown type %q", ref.Name))
+	}
+	return entry, nil
+}
+
+func inferExprType(sources *SourceSet, expr Expr, env map[string]ResolvedTypeRef) (ResolvedTypeRef, error) {
+	switch node := expr.(type) {
+	case *LiteralExpr:
+		return resolvedPrimitive(node.Value.Type), nil
+	case *IdentExpr:
+		resolved, ok := env[node.Name]
+		if !ok {
+			return ResolvedTypeRef{}, oneDiagnostic(sources, CodeExpressionType, CategorySemantic, node.Span, fmt.Sprintf("unknown identifier %q", node.Name))
+		}
+		return resolved, nil
 	case *UnaryExpr:
-		t, err := inferExprType(n.Expr, env)
+		resolved, err := inferExprType(sources, node.Expr, env)
 		if err != nil {
-			return "", err
+			return ResolvedTypeRef{}, err
 		}
-		switch n.Op {
+		switch node.Op {
 		case "!":
-			if t != TypeBool {
-				return "", fmt.Errorf("operator ! expects bool, got %s", t)
+			if !resolved.Equal(resolvedPrimitive(TypeBool)) {
+				return ResolvedTypeRef{}, oneDiagnostic(sources, CodeExpressionType, CategorySemantic, node.Span, fmt.Sprintf("operator ! expects bool, got %s", resolved))
 			}
-			return TypeBool, nil
+			return resolvedPrimitive(TypeBool), nil
 		case "-":
-			if t != TypeInt && t != TypeFloat {
-				return "", fmt.Errorf("operator - expects int or float, got %s", t)
+			if !isResolvedNumeric(resolved) {
+				return ResolvedTypeRef{}, oneDiagnostic(sources, CodeExpressionType, CategorySemantic, node.Span, fmt.Sprintf("operator - expects int or float, got %s", resolved))
 			}
-			return t, nil
+			return resolved, nil
 		default:
-			return "", fmt.Errorf("unsupported unary operator %q", n.Op)
+			return ResolvedTypeRef{}, oneDiagnostic(sources, CodeExpressionType, CategorySemantic, node.Span, fmt.Sprintf("unsupported unary operator %q", node.Op))
 		}
 	case *BinaryExpr:
-		lt, err := inferExprType(n.Left, env)
+		left, err := inferExprType(sources, node.Left, env)
 		if err != nil {
-			return "", err
+			return ResolvedTypeRef{}, err
 		}
-		rt, err := inferExprType(n.Right, env)
+		right, err := inferExprType(sources, node.Right, env)
 		if err != nil {
-			return "", err
+			return ResolvedTypeRef{}, err
 		}
-		return inferBinaryType(n.Op, lt, rt)
+		return inferBinaryType(sources, node.Span, node.Op, left, right)
 	default:
-		return "", fmt.Errorf("unsupported expression")
+		span := Span{}
+		if expr != nil {
+			span = expr.SourceSpan()
+		}
+		return ResolvedTypeRef{}, oneDiagnostic(sources, CodeExpressionType, CategorySemantic, span, "unsupported expression")
 	}
 }
 
-func inferBinaryType(op string, lt, rt TypeName) (TypeName, error) {
+func inferBinaryType(sources *SourceSet, span Span, op string, left, right ResolvedTypeRef) (ResolvedTypeRef, error) {
 	switch op {
 	case "+":
-		if lt == TypeString && rt == TypeString {
-			return TypeString, nil
+		if left.Equal(resolvedPrimitive(TypeString)) && right.Equal(resolvedPrimitive(TypeString)) {
+			return resolvedPrimitive(TypeString), nil
 		}
-		if isNumeric(lt) && isNumeric(rt) {
-			if lt == TypeFloat || rt == TypeFloat {
-				return TypeFloat, nil
+		if isResolvedNumeric(left) && isResolvedNumeric(right) {
+			if left.Primitive == TypeFloat || right.Primitive == TypeFloat {
+				return resolvedPrimitive(TypeFloat), nil
 			}
-			return TypeInt, nil
+			return resolvedPrimitive(TypeInt), nil
 		}
 	case "-", "*":
-		if isNumeric(lt) && isNumeric(rt) {
-			if lt == TypeFloat || rt == TypeFloat {
-				return TypeFloat, nil
+		if isResolvedNumeric(left) && isResolvedNumeric(right) {
+			if left.Primitive == TypeFloat || right.Primitive == TypeFloat {
+				return resolvedPrimitive(TypeFloat), nil
 			}
-			return TypeInt, nil
+			return resolvedPrimitive(TypeInt), nil
 		}
 	case "/":
-		if isNumeric(lt) && isNumeric(rt) {
-			return TypeFloat, nil
+		if isResolvedNumeric(left) && isResolvedNumeric(right) {
+			return resolvedPrimitive(TypeFloat), nil
 		}
 	case "<", "<=", ">", ">=":
-		if isNumeric(lt) && isNumeric(rt) {
-			return TypeBool, nil
+		if isResolvedNumeric(left) && isResolvedNumeric(right) {
+			return resolvedPrimitive(TypeBool), nil
 		}
-		if lt == rt && !lt.IsPrimitive() {
-			return "", fmt.Errorf("IComparable is not implemented yet for type %s", lt)
+		if left.Equal(right) && !left.IsPrimitive() {
+			return ResolvedTypeRef{}, oneDiagnostic(sources, CodeExpressionType, CategorySemantic, span, fmt.Sprintf("IComparable is not implemented yet for type %s", left))
 		}
 	case "==", "!=":
-		if lt == rt {
-			return TypeBool, nil
+		if left.Equal(right) {
+			return resolvedPrimitive(TypeBool), nil
 		}
 	case "&&", "||":
-		if lt == TypeBool && rt == TypeBool {
-			return TypeBool, nil
+		if left.Equal(resolvedPrimitive(TypeBool)) && right.Equal(resolvedPrimitive(TypeBool)) {
+			return resolvedPrimitive(TypeBool), nil
 		}
 	}
-	return "", fmt.Errorf("invalid operand types for %q: %s and %s", op, lt, rt)
+	return ResolvedTypeRef{}, oneDiagnostic(sources, CodeExpressionType, CategorySemantic, span, fmt.Sprintf("invalid operand types for %q: %s and %s", op, left, right))
 }
 
-func isNumeric(t TypeName) bool {
-	return t == TypeInt || t == TypeFloat
+func isResolvedNumeric(ref ResolvedTypeRef) bool {
+	return ref.Kind == TypeRefPrimitive && (ref.Primitive == TypeInt || ref.Primitive == TypeFloat)
 }
 
 func pickEntryClass(cp *checkedProgram, name string) (*ClassDecl, error) {
 	if cp == nil {
-		return nil, fmt.Errorf("checked program is nil")
+		return nil, oneDiagnostic(nil, CodeInvalidProgram, CategorySemantic, Span{}, "checked program is nil")
 	}
 	if strings.TrimSpace(name) != "" {
-		c, ok := cp.classes[name]
-		if !ok {
-			return nil, fmt.Errorf("class %q not found", name)
+		entry, ok := cp.symbols.lookupEntry(name)
+		if !ok || entry.symbol.Kind != SymbolClass {
+			return nil, oneDiagnostic(cp.sources, CodeEntrySelection, CategorySemantic, cp.program.Span, fmt.Sprintf("class %q not found", name))
 		}
-		if normalizeVisibility(c.Visibility) != VisibilityPublic {
-			return nil, fmt.Errorf("class %q is private and cannot be referenced from CLI", name)
+		class := entry.classDecl
+		if normalizeVisibility(class.Visibility) != VisibilityPublic {
+			return nil, oneDiagnostic(cp.sources, CodeEntrySelection, CategorySemantic, class.Span, fmt.Sprintf("class %q is private and cannot be referenced from CLI", name))
 		}
-		return c, nil
+		return class, nil
 	}
 	if len(cp.program.Classes) == 0 {
-		return nil, fmt.Errorf("no class declarations found")
+		return nil, oneDiagnostic(cp.sources, CodeEntrySelection, CategorySemantic, cp.program.Span, "no class declarations found")
 	}
-	for _, c := range cp.program.Classes {
-		if normalizeVisibility(c.Visibility) == VisibilityPublic {
-			return c, nil
+	for _, class := range cp.program.Classes {
+		if normalizeVisibility(class.Visibility) == VisibilityPublic {
+			return class, nil
 		}
 	}
-	return nil, fmt.Errorf("no public class declarations found")
+	return nil, oneDiagnostic(cp.sources, CodeEntrySelection, CategorySemantic, cp.program.Span, "no public class declarations found")
 }

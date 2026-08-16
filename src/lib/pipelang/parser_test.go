@@ -139,10 +139,10 @@ public Struct ImageCollection : IImageCollection
 		t.Fatalf("interfaces=%d", len(prog.Interfaces))
 	}
 	fields := prog.Interfaces[1].Fields
-	if got := string(fields[0].Type); got != "List<string>" {
+	if got := fields[0].Type.String(); got != "List<string>" {
 		t.Fatalf("labels type=%q", got)
 	}
-	if got := string(fields[1].Type); got != "List<IImageResource>" {
+	if got := fields[1].Type.String(); got != "List<IImageResource>" {
 		t.Fatalf("images type=%q", got)
 	}
 }

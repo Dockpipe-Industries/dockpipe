@@ -50,10 +50,12 @@ const (
 type token struct {
 	kind tokenKind
 	lit  string
-	pos  int
+	span Span
 }
 
-func lex(src string) ([]token, error) {
+func lex(sources *SourceSet, file *SourceFile) ([]token, error) {
+	src := file.Text
+	span := func(start, end int) Span { return Span{File: file.ID, Start: start, End: end} }
 	out := make([]token, 0, 128)
 	i := 0
 	for i < len(src) {
@@ -78,19 +80,19 @@ func lex(src string) ([]token, error) {
 			lit := src[start:i]
 			switch lit {
 			case "Interface":
-				out = append(out, token{kind: tokInterface, lit: lit, pos: start})
+				out = append(out, token{kind: tokInterface, lit: lit, span: span(start, i)})
 			case "Class":
-				out = append(out, token{kind: tokClass, lit: lit, pos: start})
+				out = append(out, token{kind: tokClass, lit: lit, span: span(start, i)})
 			case "Struct":
-				out = append(out, token{kind: tokStruct, lit: lit, pos: start})
+				out = append(out, token{kind: tokStruct, lit: lit, span: span(start, i)})
 			case "public":
-				out = append(out, token{kind: tokPublic, lit: lit, pos: start})
+				out = append(out, token{kind: tokPublic, lit: lit, span: span(start, i)})
 			case "private":
-				out = append(out, token{kind: tokPrivate, lit: lit, pos: start})
+				out = append(out, token{kind: tokPrivate, lit: lit, span: span(start, i)})
 			case "true", "false":
-				out = append(out, token{kind: tokBool, lit: lit, pos: start})
+				out = append(out, token{kind: tokBool, lit: lit, span: span(start, i)})
 			default:
-				out = append(out, token{kind: tokIdent, lit: lit, pos: start})
+				out = append(out, token{kind: tokIdent, lit: lit, span: span(start, i)})
 			}
 			continue
 		}
@@ -105,7 +107,7 @@ func lex(src string) ([]token, error) {
 				isFloat = true
 				i++
 				if i >= len(src) || !isDigit(src[i]) {
-					return nil, fmt.Errorf("invalid float literal at %d", start)
+					return nil, oneDiagnostic(sources, CodeInvalidNumber, CategoryLexical, span(start, i), "invalid float literal")
 				}
 				for i < len(src) && isDigit(src[i]) {
 					i++
@@ -113,9 +115,9 @@ func lex(src string) ([]token, error) {
 			}
 			lit := src[start:i]
 			if isFloat {
-				out = append(out, token{kind: tokFloat, lit: lit, pos: start})
+				out = append(out, token{kind: tokFloat, lit: lit, span: span(start, i)})
 			} else {
-				out = append(out, token{kind: tokInt, lit: lit, pos: start})
+				out = append(out, token{kind: tokInt, lit: lit, span: span(start, i)})
 			}
 			continue
 		}
@@ -126,17 +128,17 @@ func lex(src string) ([]token, error) {
 			for i < len(src) {
 				if src[i] == '"' {
 					i++
-					out = append(out, token{kind: tokString, lit: b.String(), pos: start})
+					out = append(out, token{kind: tokString, lit: b.String(), span: span(start, i)})
 					goto next
 				}
 				if src[i] == '\\' {
 					if i+1 >= len(src) {
-						return nil, fmt.Errorf("unterminated escape at %d", start)
+						return nil, oneDiagnostic(sources, CodeUnterminatedText, CategoryLexical, span(start, len(src)), "unterminated escape sequence")
 					}
 					esc := src[i : i+2]
 					u, err := strconv.Unquote("\"" + esc + "\"")
 					if err != nil {
-						return nil, fmt.Errorf("invalid escape at %d", i)
+						return nil, oneDiagnostic(sources, CodeInvalidEscape, CategoryLexical, span(i, min(i+2, len(src))), "invalid escape sequence")
 					}
 					b.WriteString(u)
 					i += 2
@@ -145,104 +147,104 @@ func lex(src string) ([]token, error) {
 				b.WriteByte(src[i])
 				i++
 			}
-			return nil, fmt.Errorf("unterminated string at %d", start)
+			return nil, oneDiagnostic(sources, CodeUnterminatedText, CategoryLexical, span(start, len(src)), "unterminated string literal")
 		}
 
 		switch ch {
 		case '{':
-			out = append(out, token{kind: tokLBrace, lit: "{", pos: i})
+			out = append(out, token{kind: tokLBrace, lit: "{", span: span(i, i+1)})
 			i++
 		case '}':
-			out = append(out, token{kind: tokRBrace, lit: "}", pos: i})
+			out = append(out, token{kind: tokRBrace, lit: "}", span: span(i, i+1)})
 			i++
 		case '(':
-			out = append(out, token{kind: tokLParen, lit: "(", pos: i})
+			out = append(out, token{kind: tokLParen, lit: "(", span: span(i, i+1)})
 			i++
 		case ')':
-			out = append(out, token{kind: tokRParen, lit: ")", pos: i})
+			out = append(out, token{kind: tokRParen, lit: ")", span: span(i, i+1)})
 			i++
 		case '[':
-			out = append(out, token{kind: tokLBracket, lit: "[", pos: i})
+			out = append(out, token{kind: tokLBracket, lit: "[", span: span(i, i+1)})
 			i++
 		case ']':
-			out = append(out, token{kind: tokRBracket, lit: "]", pos: i})
+			out = append(out, token{kind: tokRBracket, lit: "]", span: span(i, i+1)})
 			i++
 		case ':':
-			out = append(out, token{kind: tokColon, lit: ":", pos: i})
+			out = append(out, token{kind: tokColon, lit: ":", span: span(i, i+1)})
 			i++
 		case ';':
-			out = append(out, token{kind: tokSemi, lit: ";", pos: i})
+			out = append(out, token{kind: tokSemi, lit: ";", span: span(i, i+1)})
 			i++
 		case ',':
-			out = append(out, token{kind: tokComma, lit: ",", pos: i})
+			out = append(out, token{kind: tokComma, lit: ",", span: span(i, i+1)})
 			i++
 		case '+':
-			out = append(out, token{kind: tokPlus, lit: "+", pos: i})
+			out = append(out, token{kind: tokPlus, lit: "+", span: span(i, i+1)})
 			i++
 		case '-':
-			out = append(out, token{kind: tokMinus, lit: "-", pos: i})
+			out = append(out, token{kind: tokMinus, lit: "-", span: span(i, i+1)})
 			i++
 		case '*':
-			out = append(out, token{kind: tokStar, lit: "*", pos: i})
+			out = append(out, token{kind: tokStar, lit: "*", span: span(i, i+1)})
 			i++
 		case '/':
-			out = append(out, token{kind: tokSlash, lit: "/", pos: i})
+			out = append(out, token{kind: tokSlash, lit: "/", span: span(i, i+1)})
 			i++
 		case '=':
 			if i+1 < len(src) && src[i+1] == '>' {
-				out = append(out, token{kind: tokArrow, lit: "=>", pos: i})
+				out = append(out, token{kind: tokArrow, lit: "=>", span: span(i, i+2)})
 				i += 2
 			} else if i+1 < len(src) && src[i+1] == '=' {
-				out = append(out, token{kind: tokEQ, lit: "==", pos: i})
+				out = append(out, token{kind: tokEQ, lit: "==", span: span(i, i+2)})
 				i += 2
 			} else {
-				out = append(out, token{kind: tokAssign, lit: "=", pos: i})
+				out = append(out, token{kind: tokAssign, lit: "=", span: span(i, i+1)})
 				i++
 			}
 		case '!':
 			if i+1 < len(src) && src[i+1] == '=' {
-				out = append(out, token{kind: tokNE, lit: "!=", pos: i})
+				out = append(out, token{kind: tokNE, lit: "!=", span: span(i, i+2)})
 				i += 2
 			} else {
-				out = append(out, token{kind: tokBang, lit: "!", pos: i})
+				out = append(out, token{kind: tokBang, lit: "!", span: span(i, i+1)})
 				i++
 			}
 		case '<':
 			if i+1 < len(src) && src[i+1] == '=' {
-				out = append(out, token{kind: tokLE, lit: "<=", pos: i})
+				out = append(out, token{kind: tokLE, lit: "<=", span: span(i, i+2)})
 				i += 2
 			} else {
-				out = append(out, token{kind: tokLT, lit: "<", pos: i})
+				out = append(out, token{kind: tokLT, lit: "<", span: span(i, i+1)})
 				i++
 			}
 		case '>':
 			if i+1 < len(src) && src[i+1] == '=' {
-				out = append(out, token{kind: tokGE, lit: ">=", pos: i})
+				out = append(out, token{kind: tokGE, lit: ">=", span: span(i, i+2)})
 				i += 2
 			} else {
-				out = append(out, token{kind: tokGT, lit: ">", pos: i})
+				out = append(out, token{kind: tokGT, lit: ">", span: span(i, i+1)})
 				i++
 			}
 		case '&':
 			if i+1 < len(src) && src[i+1] == '&' {
-				out = append(out, token{kind: tokAndAnd, lit: "&&", pos: i})
+				out = append(out, token{kind: tokAndAnd, lit: "&&", span: span(i, i+2)})
 				i += 2
 			} else {
-				return nil, fmt.Errorf("unexpected '&' at %d", i)
+				return nil, oneDiagnostic(sources, CodeUnexpectedChar, CategoryLexical, span(i, i+1), "unexpected character '&'")
 			}
 		case '|':
 			if i+1 < len(src) && src[i+1] == '|' {
-				out = append(out, token{kind: tokOrOr, lit: "||", pos: i})
+				out = append(out, token{kind: tokOrOr, lit: "||", span: span(i, i+2)})
 				i += 2
 			} else {
-				return nil, fmt.Errorf("unexpected '|' at %d", i)
+				return nil, oneDiagnostic(sources, CodeUnexpectedChar, CategoryLexical, span(i, i+1), "unexpected character '|'")
 			}
 		default:
-			return nil, fmt.Errorf("unexpected character %q at %d", ch, i)
+			return nil, oneDiagnostic(sources, CodeUnexpectedChar, CategoryLexical, span(i, i+1), fmt.Sprintf("unexpected character %q", ch))
 		}
 	next:
 	}
-	out = append(out, token{kind: tokEOF, pos: len(src)})
+	out = append(out, token{kind: tokEOF, span: span(len(src), len(src))})
 	return out, nil
 }
 
