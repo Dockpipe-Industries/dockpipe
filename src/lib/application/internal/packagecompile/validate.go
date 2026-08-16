@@ -151,10 +151,7 @@ func mergeCompiledPackageNamesFromConfiguredSources(out map[string]bool, repoRoo
 		if path == "" {
 			continue
 		}
-		kind := strings.ToLower(strings.TrimSpace(src.Kind))
-		if kind == "" {
-			kind = domain.PackageSourceKindStore
-		}
+		kind := domain.NormalizePackageSourceKind(src.Kind)
 		resolved := path
 		if !filepath.IsAbs(resolved) {
 			resolved = filepath.Join(repoRoot, filepath.Clean(resolved))

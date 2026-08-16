@@ -5,11 +5,6 @@ import (
 	"strings"
 )
 
-const (
-	PackageSourceKindStore      = "store"
-	PackageSourceKindTarballDir = "tarball_dir"
-)
-
 // EffectiveVaultString returns the vault mode for op inject. Workflow YAML wins when `vault:` is set;
 // otherwise secrets.vault from dockpipe.config.json applies when present.
 func EffectiveVaultString(wf *Workflow, cfg *DockpipeProjectConfig) string {
@@ -53,13 +48,8 @@ func ValidateDockpipeProjectConfig(c *DockpipeProjectConfig) error {
 			if strings.TrimSpace(src.Path) == "" {
 				return fmt.Errorf("packages.sources[%d].path: must not be empty", i)
 			}
-			kind := strings.ToLower(strings.TrimSpace(src.Kind))
-			if kind == "" {
-				kind = PackageSourceKindStore
-			}
-			switch kind {
-			case PackageSourceKindStore, PackageSourceKindTarballDir:
-			default:
+			kind := NormalizePackageSourceKind(src.Kind)
+			if !kind.IsValid() {
 				return fmt.Errorf("packages.sources[%d].kind: %q is not supported", i, src.Kind)
 			}
 		}

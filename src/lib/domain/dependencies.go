@@ -3,26 +3,18 @@ package domain
 import (
 	"fmt"
 	"strings"
+
+	modeldependency "dockpipe/src/lib/model/dependency"
 )
 
-type DependencySpec struct {
-	Host []HostDependency `yaml:"host,omitempty"`
-}
+// DependencySpec remains as a source-compatible Domain facade for the authored model.
+type DependencySpec = modeldependency.DependencySpec
 
-type HostDependency struct {
-	ID          string                    `yaml:"id,omitempty"`
-	Command     string                    `yaml:"command,omitempty"`
-	Description string                    `yaml:"description,omitempty"`
-	Required    *bool                     `yaml:"required,omitempty"`
-	Install     HostDependencyInstallHint `yaml:"install,omitempty"`
-}
+// HostDependency remains as a source-compatible Domain facade for the authored model.
+type HostDependency = modeldependency.HostDependency
 
-type HostDependencyInstallHint struct {
-	Windows string `yaml:"windows,omitempty"`
-	MacOS   string `yaml:"macos,omitempty"`
-	Linux   string `yaml:"linux,omitempty"`
-	Deb     string `yaml:"deb,omitempty"`
-}
+// HostDependencyInstallHint remains as a source-compatible Domain facade for the authored model.
+type HostDependencyInstallHint = modeldependency.HostDependencyInstallHint
 
 func ValidateDependencySpec(fieldPrefix string, deps DependencySpec) error {
 	seen := map[string]struct{}{}

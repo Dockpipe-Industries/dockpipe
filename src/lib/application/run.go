@@ -331,7 +331,7 @@ func Run(argv []string, baseEnviron []string) error {
 		envMap["DOCKPIPE_SESSION_WORKSPACE"] = gitSession.Storage.Workspace
 		if strings.TrimSpace(gitSession.Storage.Volume) != "" {
 			envMap["DOCKPIPE_SESSION_VOLUME"] = gitSession.Storage.Volume
-			if strings.EqualFold(strings.TrimSpace(gitSession.Storage.Backend), "docker_volume") {
+			if domain.NormalizeWorkspaceStorageBackend(gitSession.Storage.Backend) == domain.WorkspaceStorageBackendDockerVolume {
 				envMap["DOCKPIPE_SESSION_VOLUME_AUTHORITATIVE"] = "1"
 			}
 		}

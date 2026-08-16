@@ -78,12 +78,12 @@ func checkpointWorkflowGitSession(session *infrastructure.GitSession, wf *domain
 	if session == nil || wf == nil {
 		return nil
 	}
-	mode := strings.TrimSpace(wf.Workspace.Lifecycle.Checkpoint)
+	mode := domain.WorkspaceCheckpointMode(strings.TrimSpace(wf.Workspace.Lifecycle.Checkpoint))
 	if mode == "" {
-		mode = "auto"
+		mode = domain.WorkspaceCheckpointAuto
 	}
 	switch mode {
-	case "auto", "step":
+	case domain.WorkspaceCheckpointAuto, domain.WorkspaceCheckpointStep:
 		ids := map[string]string{
 			"session": session.SessionID,
 		}
@@ -104,7 +104,7 @@ func checkpointWorkflowGitSession(session *infrastructure.GitSession, wf *domain
 			return err
 		}
 		return nil
-	case "manual":
+	case domain.WorkspaceCheckpointManual:
 		return nil
 	default:
 		return fmt.Errorf("workspace.lifecycle.checkpoint must be manual, auto, or step")
@@ -115,7 +115,7 @@ func autoCleanupWorkflowGitSessionVolume(session *infrastructure.GitSession, wf 
 	if session == nil || wf == nil {
 		return nil
 	}
-	if !strings.EqualFold(strings.TrimSpace(session.Storage.Backend), "docker_volume") {
+	if domain.NormalizeWorkspaceStorageBackend(session.Storage.Backend) != domain.WorkspaceStorageBackendDockerVolume {
 		return nil
 	}
 	policy := strings.TrimSpace(os.Getenv("DOCKPIPE_SESSION_VOLUME_AUTOCLEANUP"))

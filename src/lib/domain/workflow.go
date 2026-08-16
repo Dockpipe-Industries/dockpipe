@@ -381,7 +381,7 @@ func (w *Workflow) AnyContainerStep() bool {
 		if !s.IsHostStep() {
 			return true
 		}
-		if hostBuiltinNeedsDocker(strings.TrimSpace(s.HostBuiltin)) {
+		if s.EffectiveHostBuiltin().NeedsDocker() {
 			return true
 		}
 	}
@@ -533,42 +533,48 @@ func (s *Step) UsesPackagedWorkflow() bool {
 }
 
 func (s *Step) KindName() string {
-	k := strings.ToLower(strings.TrimSpace(s.Kind))
-	if k != "" {
-		return k
-	}
-	return "container"
+	return string(s.EffectiveKind())
+}
+
+// EffectiveKind returns the normalized Domain value used for step decisions.
+func (s *Step) EffectiveKind() StepKind {
+	return NormalizeStepKind(s.Kind)
 }
 
 func (s *Step) CWDMode() string {
-	return normalizeStepPathScope(s.CWD, "source")
+	return string(s.EffectiveCWD())
+}
+
+// EffectiveCWD returns the effective root from which the step process starts.
+func (s *Step) EffectiveCWD() StepPathScope {
+	return normalizeStepPathScope(s.CWD, StepPathScopeSource)
 }
 
 func (s *Step) SourceScopeMode() string {
-	return normalizeStepPathScope(s.Scopes.Source, "source")
+	return string(s.EffectiveSourceScope())
+}
+
+// EffectiveSourceScope returns the effective source-facing root for the step.
+func (s *Step) EffectiveSourceScope() StepPathScope {
+	return normalizeStepPathScope(s.Scopes.Source, StepPathScopeSource)
 }
 
 func (s *Step) ArtifactsScopeMode() string {
-	return normalizeStepPathScope(s.Scopes.Artifacts, "artifacts")
+	return string(s.EffectiveArtifactsScope())
 }
 
-func normalizeStepPathScope(value, emptyDefault string) string {
-	v := strings.ToLower(strings.TrimSpace(value))
-	if v == "" {
-		return emptyDefault
-	}
-	switch v {
-	case "source", "repo", "workdir":
-		return "source"
-	case "artifacts", "artifact":
-		return "artifacts"
-	default:
-		return v
-	}
+// EffectiveArtifactsScope returns the effective artifact-facing root for the step.
+func (s *Step) EffectiveArtifactsScope() StepPathScope {
+	return normalizeStepPathScope(s.Scopes.Artifacts, StepPathScopeArtifacts)
+}
+
+// EffectiveHostBuiltin returns the trimmed Domain value used for host action decisions.
+func (s *Step) EffectiveHostBuiltin() StepHostBuiltin {
+	return NormalizeStepHostBuiltin(s.HostBuiltin)
 }
 
 func (s *Step) IsHostStep() bool {
-	return s.KindName() == "host"
+	return s.EffectiveKind() == StepKindHost
 }
 
 // RuntimeProfileName returns per-step isolation profile name (runtime: or resolver:).

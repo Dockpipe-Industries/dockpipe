@@ -109,6 +109,27 @@ func TestCreateSessionBranchManagedWorktreeAndCheckpoint(t *testing.T) {
 	git("worktree", "remove", "--force", session.Storage.Workspace)
 }
 
+func TestGitSessionWorkspaceWireFieldsRemainStrings(t *testing.T) {
+	var requestMode string = (GitSessionRequest{}).Mode
+	var requestStorage string = (GitSessionRequest{}).Storage
+	var requestCheckpoint string = (GitSessionRequest{}).Checkpoint
+	var requestPublish string = (GitSessionRequest{}).Publish
+	var storageMode string = (GitSessionStorage{}).Mode
+	var storageBackend string = (GitSessionStorage{}).Backend
+	var policyCheckpoint string = (GitSessionPolicy{}).Checkpoint
+	var policyPublish string = (GitSessionPolicy{}).Publish
+	_ = []string{
+		requestMode,
+		requestStorage,
+		requestCheckpoint,
+		requestPublish,
+		storageMode,
+		storageBackend,
+		policyCheckpoint,
+		policyPublish,
+	}
+}
+
 func TestCreateSessionBranchPreservesExplicitBranchName(t *testing.T) {
 	repo := initGitSessionTestRepo(t)
 	session, err := CreateSessionBranch(GitSessionRequest{
