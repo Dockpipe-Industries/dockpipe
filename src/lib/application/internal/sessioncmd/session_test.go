@@ -1,9 +1,11 @@
-package application
+package sessioncmd
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -28,7 +30,7 @@ func TestSessionCommandsListInspectSwitch(t *testing.T) {
 	defer removeSessionCommandWorktree(t, repo, session.Storage.Workspace)
 
 	listOut, err := captureStdout(t, func() error {
-		return cmdSession([]string{"list", "--workdir", repo})
+		return Run([]string{"list", "--workdir", repo})
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -38,7 +40,7 @@ func TestSessionCommandsListInspectSwitch(t *testing.T) {
 	}
 
 	inspectOut, err := captureStdout(t, func() error {
-		return cmdSession([]string{"inspect", "cmd", "--workdir", repo})
+		return Run([]string{"inspect", "cmd", "--workdir", repo})
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -51,7 +53,7 @@ func TestSessionCommandsListInspectSwitch(t *testing.T) {
 	}
 
 	inspectJSON, err := captureStdout(t, func() error {
-		return cmdSession([]string{"inspect", "cmd-session", "--workdir", repo, "--json"})
+		return Run([]string{"inspect", "cmd-session", "--workdir", repo, "--json"})
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -65,7 +67,7 @@ func TestSessionCommandsListInspectSwitch(t *testing.T) {
 	}
 
 	switchOut, err := captureStdout(t, func() error {
-		return cmdSession([]string{"switch", "cmd-session", "--workdir", repo})
+		return Run([]string{"switch", "cmd-session", "--workdir", repo})
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -110,7 +112,7 @@ func TestSessionCheckpointCommandUsesControlledRuntimeRequest(t *testing.T) {
 		t.Fatal(err)
 	}
 	out, err := captureStdout(t, func() error {
-		return cmdSession([]string{"checkpoint", session.SessionID, "--workdir", repo, "--request", requestPath, "--receipt", receiptPath, "--json"})
+		return Run([]string{"checkpoint", session.SessionID, "--workdir", repo, "--request", requestPath, "--receipt", receiptPath, "--json"})
 	})
 	if err != nil {
 		t.Fatalf("session checkpoint command: %v", err)
@@ -193,7 +195,7 @@ func TestSessionPublishCommandStrictRequestPublishesWithoutCheckpointOrUpstream(
 		t.Fatal(err)
 	}
 	out, err := captureStdout(t, func() error {
-		return cmdSession([]string{"publish", session.SessionID, "--workdir", repo,
+		return Run([]string{"publish", session.SessionID, "--workdir", repo,
 			"--checkpoint-request", checkpointRequestPath, "--checkpoint-receipt", checkpointReceiptPath,
 			"--request", publicationRequestPath, "--receipt", publicationReceiptPath, "--json"})
 	})
@@ -218,6 +220,49 @@ func TestSessionPublishCommandStrictRequestPublishesWithoutCheckpointOrUpstream(
 	if upstream, _ := exec.Command("git", "-C", session.Storage.Workspace, "config", "--get", "branch."+session.Repo.SessionRef+".remote").Output(); strings.TrimSpace(string(upstream)) != "" {
 		t.Fatalf("strict publication configured upstream: %q", upstream)
 	}
+}
+
+func TestRunUsageAndWorkerValidation(t *testing.T) {
+	helpOut, err := captureStdout(t, func() error { return Run(nil) })
+	if err != nil {
+		t.Fatal(err)
+	}
+	if helpOut != strings.TrimSpace(sessionUsageText) {
+		t.Fatalf("help output changed:\n%s", helpOut)
+	}
+	if err := Run([]string{"worker-acquire", "demo"}); err == nil || err.Error() != "--worker is required" {
+		t.Fatalf("worker-acquire validation = %v", err)
+	}
+	if err := Run([]string{"worker-release", "demo"}); err == nil || err.Error() != "--worker is required" {
+		t.Fatalf("worker-release validation = %v", err)
+	}
+	if err := Run([]string{"unknown"}); err == nil || err.Error() != "unknown session subcommand \"unknown\" (try: list, inspect, switch, checkpoint, publish, worker-acquire, or worker-release)" {
+		t.Fatalf("unknown validation = %v", err)
+	}
+}
+
+func captureStdout(t *testing.T, fn func() error) (string, error) {
+	t.Helper()
+	old := os.Stdout
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	os.Stdout = w
+	t.Cleanup(func() { os.Stdout = old })
+	runErr := fn()
+	if err := w.Close(); err != nil {
+		t.Fatal(err)
+	}
+	os.Stdout = old
+	var buf bytes.Buffer
+	if _, err := io.Copy(&buf, r); err != nil {
+		t.Fatal(err)
+	}
+	if err := r.Close(); err != nil {
+		t.Fatal(err)
+	}
+	return strings.TrimSpace(buf.String()), runErr
 }
 
 func sessionCommandSHA256(raw []byte) string {

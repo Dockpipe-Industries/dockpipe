@@ -1,4 +1,4 @@
-package infrastructure
+package envfile
 
 import (
 	"os"
@@ -6,8 +6,8 @@ import (
 	"testing"
 )
 
-// TestParseEnvFile parses dotenv lines: comments, spacing, quotes, and ignores invalid lines.
-func TestParseEnvFile(t *testing.T) {
+// TestParseFile parses dotenv lines: comments, spacing, quotes, and ignores invalid lines.
+func TestParseFile(t *testing.T) {
 	tmp := t.TempDir()
 	p := filepath.Join(tmp, ".env")
 	content := `
@@ -23,7 +23,7 @@ BADLINE
 	if err := os.WriteFile(p, []byte(content), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	m, err := ParseEnvFile(p)
+	m, err := ParseFile(p)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -32,5 +32,15 @@ BADLINE
 	}
 	if _, ok := m["BADLINE"]; ok {
 		t.Fatalf("BADLINE should be ignored: %#v", m)
+	}
+}
+
+func TestParseBytes(t *testing.T) {
+	m, err := ParseBytes([]byte("A=one\nB = 'two words'\nIGNORED\n"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if m["A"] != "one" || m["B"] != "two words" {
+		t.Fatalf("unexpected parse result: %#v", m)
 	}
 }

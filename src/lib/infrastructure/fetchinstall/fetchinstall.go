@@ -18,7 +18,7 @@ import (
 	"strings"
 	"time"
 
-	"dockpipe/src/lib/infrastructure"
+	"dockpipe/src/lib/infrastructure/operationrecord"
 )
 
 // DefaultManifestFile is fetched from the install base URL when version is "latest".
@@ -90,7 +90,7 @@ func InstallTemplatesCore(ctx context.Context, o CoreOptions) error {
 	}
 	var tarballURL string
 	var wantSHA string
-	if err := infrastructure.RunOperationWithOptions(os.Stderr, "install.core.resolve", "Resolving core install bundle…", resolveIDs, infrastructure.OperationOptions{Spinner: false, ProgressEvery: 5 * time.Second}, func() error {
+	if err := operationrecord.RunOperationWithOptions(os.Stderr, "install.core.resolve", "Resolving core install bundle…", resolveIDs, operationrecord.OperationOptions{Spinner: false, ProgressEvery: 5 * time.Second}, func() error {
 		var runErr error
 		tarballURL, wantSHA, runErr = resolveCoreTarballURL(ctx, o, manifestName, ver)
 		if runErr != nil {
@@ -121,7 +121,7 @@ func InstallTemplatesCore(ctx context.Context, o CoreOptions) error {
 	var body []byte
 	var hexSum string
 	var checksumStatus string
-	if err := infrastructure.RunOperationWithOptions(os.Stderr, "install.core.download", "Downloading core bundle…", downloadIDs, infrastructure.OperationOptions{Spinner: false, ProgressEvery: 5 * time.Second}, func() error {
+	if err := operationrecord.RunOperationWithOptions(os.Stderr, "install.core.download", "Downloading core bundle…", downloadIDs, operationrecord.OperationOptions{Spinner: false, ProgressEvery: 5 * time.Second}, func() error {
 		var runErr error
 		body, runErr = downloadBytes(ctx, client, tarballURL, ua, o.AllowInsecureHTTP)
 		if runErr != nil {
@@ -145,7 +145,7 @@ func InstallTemplatesCore(ctx context.Context, o CoreOptions) error {
 		"sha256":      hexSum,
 		"checksum":    checksumStatus,
 	}
-	return infrastructure.RunOperationWithOptions(os.Stderr, "install.core.extract", "Extracting core bundle…", extractIDs, infrastructure.OperationOptions{Spinner: false, ProgressEvery: 5 * time.Second}, func() error {
+	return operationrecord.RunOperationWithOptions(os.Stderr, "install.core.extract", "Extracting core bundle…", extractIDs, operationrecord.OperationOptions{Spinner: false, ProgressEvery: 5 * time.Second}, func() error {
 		if err := os.RemoveAll(destCore); err != nil {
 			return fmt.Errorf("remove existing templates/core: %w", err)
 		}

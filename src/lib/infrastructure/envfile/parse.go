@@ -1,4 +1,4 @@
-package infrastructure
+package envfile
 
 import (
 	"bufio"
@@ -7,8 +7,8 @@ import (
 	"strings"
 )
 
-// ParseEnvBytes parses KEY=VAL lines (dotenv-style) from UTF-8 bytes. Skips comments and blanks.
-func ParseEnvBytes(data []byte) (map[string]string, error) {
+// ParseBytes parses KEY=VAL lines (dotenv-style) from UTF-8 bytes. Skips comments and blanks.
+func ParseBytes(data []byte) (map[string]string, error) {
 	return parseEnvReader(bytes.NewReader(data))
 }
 

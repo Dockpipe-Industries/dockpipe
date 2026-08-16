@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"dockpipe/src/lib/application/internal/textvalue"
 	"dockpipe/src/lib/domain"
 	"dockpipe/src/lib/infrastructure"
 )
@@ -235,12 +236,7 @@ func prependPATHDir(currentPath, dir string) string {
 }
 
 func firstNonEmpty(ss ...string) string {
-	for _, s := range ss {
-		if strings.TrimSpace(s) != "" {
-			return s
-		}
-	}
-	return ""
+	return textvalue.FirstNonBlank(ss...)
 }
 
 func isTruthyString(v string) bool {

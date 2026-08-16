@@ -156,28 +156,6 @@ func printInitUsage() {
 	fmt.Print(renderUsageSections(initUsageSections, usageWidth()))
 }
 
-const runsUsageText = `dockpipe runs — inspect host-run and policy records
-
-While a kind: host workflow step runs a host script, dockpipe may write
-workdir/bin/.dockpipe/runs/<id>.json (and optional sidecars). Containerized runs
-may also write structured policy records under
-workdir/bin/.dockpipe/runs/policy/.
-
-Usage:
-  dockpipe runs list [--workdir <path>]
-  dockpipe runs events --event-log <path> [--json]
-  dockpipe runs events --event-log <path> --index [<path>] [--json]
-  dockpipe runs policy [--workdir <path>] [--workflow <name>] [--step <id>] [--json]
-
-  --workdir   Project directory (default: DOCKPIPE_WORKDIR or current directory)
-  --event-log Operation event JSONL path (events only; default: DOCKPIPE_EVENT_LOG)
-  --index     Rebuild JSON index from the JSONL ledger (events only; default: DOCKPIPE_EVENT_INDEX)
-  --workflow  Filter policy records by workflow name (policy only)
-  --step      Filter policy records by step id (policy only)
-  --json      Emit policy/index/events as JSON where supported
-
-`
-
 func usageWidth() int {
 	for _, f := range []*os.File{os.Stdout, os.Stderr} {
 		if f == nil {

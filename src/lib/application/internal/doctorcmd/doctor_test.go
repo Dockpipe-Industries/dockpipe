@@ -1,7 +1,9 @@
-package application
+package doctorcmd
 
 import (
+	"bytes"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -20,7 +22,7 @@ func withDoctorSeams(t *testing.T) {
 	oldGetwd := doctorGetwdFn
 	oldLoadConfig := doctorLoadProjectConfigFn
 	oldStat := doctorStatFn
-	oldOpLookPath := opLookPathFn
+	oldOpLookPath := doctorOpLookPathFn
 	t.Cleanup(func() {
 		doctorBashLookPathFn = oldBashLookPath
 		doctorDockerCheckFn = oldDockerCheck
@@ -29,7 +31,7 @@ func withDoctorSeams(t *testing.T) {
 		doctorGetwdFn = oldGetwd
 		doctorLoadProjectConfigFn = oldLoadConfig
 		doctorStatFn = oldStat
-		opLookPathFn = oldOpLookPath
+		doctorOpLookPathFn = oldOpLookPath
 	})
 }
 
@@ -69,7 +71,7 @@ func TestCmdDoctorEmitsOperationResults(t *testing.T) {
 			},
 		}, nil
 	}
-	opLookPathFn = func(file string) (string, error) {
+	doctorOpLookPathFn = func(file string) (string, error) {
 		if file != "op" {
 			t.Fatalf("unexpected op lookpath target %q", file)
 		}
@@ -77,7 +79,7 @@ func TestCmdDoctorEmitsOperationResults(t *testing.T) {
 	}
 
 	stderr, err := captureResultStderr(t, func() error {
-		return cmdDoctor(nil)
+		return Run(nil)
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -126,7 +128,7 @@ func TestCmdDoctorReturnsRequiredFailuresAndLogsOptionalIssues(t *testing.T) {
 	}
 
 	stderr, err := captureResultStderr(t, func() error {
-		return cmdDoctor(nil)
+		return Run(nil)
 	})
 	if err == nil {
 		t.Fatal("expected doctor failure")
@@ -160,4 +162,28 @@ func TestCmdDoctorReturnsRequiredFailuresAndLogsOptionalIssues(t *testing.T) {
 			t.Fatalf("expected stderr to contain %q, got:\n%s", want, stderr)
 		}
 	}
+}
+
+func captureResultStderr(t *testing.T, fn func() error) (string, error) {
+	t.Helper()
+	old := os.Stderr
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	os.Stderr = w
+	t.Cleanup(func() { os.Stderr = old })
+	runErr := fn()
+	if err := w.Close(); err != nil {
+		t.Fatal(err)
+	}
+	os.Stderr = old
+	var buf bytes.Buffer
+	if _, err := io.Copy(&buf, r); err != nil {
+		t.Fatal(err)
+	}
+	if err := r.Close(); err != nil {
+		t.Fatal(err)
+	}
+	return strings.TrimSpace(buf.String()), runErr
 }
