@@ -125,19 +125,6 @@ type ImageArtifactProvenance struct {
 	DockpipeVersion string `json:"dockpipe_version,omitempty" yaml:"dockpipe_version,omitempty"`
 }
 
-var (
-	validNetworkModes     = map[string]struct{}{"": {}, "offline": {}, "allowlist": {}, "restricted": {}, "internet": {}}
-	validEnforcementModes = map[string]struct{}{"": {}, "native": {}, "proxy": {}, "advisory": {}}
-	validFilesystemRoots  = map[string]struct{}{"": {}, "readonly": {}, "writable": {}}
-	validFilesystemWrites = map[string]struct{}{"": {}, "workspace-only": {}, "declared": {}}
-	validProcessUsers     = map[string]struct{}{"": {}, "auto": {}, "root": {}, "non-root": {}}
-	validImageSources     = map[string]struct{}{"": {}, "auto": {}, "build": {}, "registry": {}}
-	validAutoBuildModes   = map[string]struct{}{"": {}, "if-missing": {}, "if-stale": {}, "never": {}}
-	validPullPolicies     = map[string]struct{}{"": {}, "if-missing": {}, "never": {}}
-	validPolicyProfiles   = map[string]struct{}{"": {}, "secure-default": {}, "internet-client": {}, "build-online": {}, "sidecar-client": {}}
-	validArtifactStates   = map[string]struct{}{"": {}, "planned": {}, "materialized": {}, "referenced": {}, "cached": {}}
-)
-
 func ValidateCompiledRuntimeManifest(m *CompiledRuntimeManifest) error {
 	if m == nil {
 		return nil
@@ -151,7 +138,7 @@ func ValidateCompiledRuntimeManifest(m *CompiledRuntimeManifest) error {
 	if m.Kind != RuntimeManifestKind {
 		return fmt.Errorf("kind %q must be %q", m.Kind, RuntimeManifestKind)
 	}
-	if err := validateEnum("policy_profile", m.PolicyProfile, validPolicyProfiles); err != nil {
+	if err := validateEnum("policy_profile", PolicyProfile(m.PolicyProfile), validPolicyProfiles); err != nil {
 		return err
 	}
 	if err := ValidateCompiledSecurityPolicy(&m.Security); err != nil {
@@ -167,38 +154,40 @@ func ValidateCompiledSecurityPolicy(p *CompiledSecurityPolicy) error {
 	if p == nil {
 		return nil
 	}
-	if err := validateEnum("preset", p.Preset, validPolicyProfiles); err != nil {
+	if err := validateEnum("preset", PolicyProfile(p.Preset), validPolicyProfiles); err != nil {
 		return err
 	}
-	if err := validateEnum("network.mode", p.Network.Mode, validNetworkModes); err != nil {
+	if err := validateEnum("network.mode", NetworkMode(p.Network.Mode), validNetworkModes); err != nil {
 		return err
 	}
-	if err := validateEnum("network.enforcement", p.Network.Enforcement, validEnforcementModes); err != nil {
+	if err := validateEnum("network.enforcement", NetworkEnforcement(p.Network.Enforcement), validNetworkEnforcement); err != nil {
 		return err
 	}
-	if p.Network.Mode == "offline" && (len(p.Network.Allow) > 0 || len(p.Network.Block) > 0) {
+	mode := NetworkMode(strings.TrimSpace(p.Network.Mode))
+	enforcement := NetworkEnforcement(strings.TrimSpace(p.Network.Enforcement))
+	if mode == NetworkModeOffline && (len(p.Network.Allow) > 0 || len(p.Network.Block) > 0) {
 		return fmt.Errorf("network.mode offline cannot be combined with allow/block rules")
 	}
-	if p.Network.Mode == "allowlist" && len(p.Network.Allow) == 0 {
+	if mode == NetworkModeAllowlist && len(p.Network.Allow) == 0 {
 		return fmt.Errorf("network.mode allowlist requires at least one allow rule")
 	}
-	switch p.Network.Mode {
-	case "offline", "internet":
-		if p.Network.Enforcement != "" && p.Network.Enforcement != "native" {
+	switch mode {
+	case NetworkModeOffline, NetworkModeInternet:
+		if enforcement != "" && enforcement != NetworkEnforcementNative {
 			return fmt.Errorf("network.mode %s requires native enforcement", p.Network.Mode)
 		}
-	case "allowlist", "restricted":
-		if p.Network.Enforcement == "native" {
+	case NetworkModeAllowlist, NetworkModeRestricted:
+		if enforcement == NetworkEnforcementNative {
 			return fmt.Errorf("network.mode %s cannot use native enforcement", p.Network.Mode)
 		}
 	}
-	if err := validateEnum("filesystem.root", p.FS.Root, validFilesystemRoots); err != nil {
+	if err := validateEnum("filesystem.root", FilesystemRootPolicy(p.FS.Root), validFilesystemRoots); err != nil {
 		return err
 	}
-	if err := validateEnum("filesystem.writes", p.FS.Writes, validFilesystemWrites); err != nil {
+	if err := validateEnum("filesystem.writes", FilesystemWritePolicy(p.FS.Writes), validFilesystemWrites); err != nil {
 		return err
 	}
-	if err := validateEnum("process.user", p.Process.User, validProcessUsers); err != nil {
+	if err := validateEnum("process.user", ProcessUserPolicy(p.Process.User), validProcessUsers); err != nil {
 		return err
 	}
 	if p.Process.PIDLimit < 0 {
@@ -211,17 +200,17 @@ func ValidateCompiledImageSelection(i *CompiledImageSelection) error {
 	if i == nil {
 		return nil
 	}
-	if err := validateEnum("image.source", i.Source, validImageSources); err != nil {
+	if err := validateEnum("image.source", ImageSource(i.Source), validImageSources); err != nil {
 		return err
 	}
-	if err := validateEnum("image.auto_build", i.AutoBuild, validAutoBuildModes); err != nil {
+	if err := validateEnum("image.auto_build", ImageAutoBuildMode(i.AutoBuild), validImageAutoBuildModes); err != nil {
 		return err
 	}
-	if err := validateEnum("image.pull_policy", i.PullPolicy, validPullPolicies); err != nil {
+	if err := validateEnum("image.pull_policy", ImagePullPolicy(i.PullPolicy), validImagePullPolicies); err != nil {
 		return err
 	}
-	switch i.Source {
-	case "build":
+	switch ImageSource(strings.TrimSpace(i.Source)) {
+	case ImageSourceBuild:
 		if i.Build == nil {
 			return fmt.Errorf("image.source build requires build settings")
 		}
@@ -231,7 +220,7 @@ func ValidateCompiledImageSelection(i *CompiledImageSelection) error {
 		if strings.TrimSpace(i.Build.Dockerfile) == "" {
 			return fmt.Errorf("image.build.dockerfile is required for build source")
 		}
-	case "registry":
+	case ImageSourceRegistry:
 		if strings.TrimSpace(i.Ref) == "" {
 			return fmt.Errorf("image.source registry requires ref")
 		}
@@ -255,16 +244,17 @@ func ValidateImageArtifactManifest(m *ImageArtifactManifest) error {
 	if m.Kind != ImageArtifactManifestKind {
 		return fmt.Errorf("kind %q must be %q", m.Kind, ImageArtifactManifestKind)
 	}
-	if err := validateEnum("source", m.Source, validImageSources); err != nil {
+	if err := validateEnum("source", ImageSource(m.Source), validImageSources); err != nil {
 		return err
 	}
-	if err := validateEnum("artifact_state", m.ArtifactState, validArtifactStates); err != nil {
+	if err := validateEnum("artifact_state", ImageArtifactState(m.ArtifactState), validImageArtifactStates); err != nil {
 		return err
 	}
-	if m.Source == "build" && m.Build == nil {
+	source := ImageSource(strings.TrimSpace(m.Source))
+	if source == ImageSourceBuild && m.Build == nil {
 		return fmt.Errorf("build source requires build settings")
 	}
-	if m.Source == "registry" && strings.TrimSpace(m.ImageRef) == "" {
+	if source == ImageSourceRegistry && strings.TrimSpace(m.ImageRef) == "" {
 		return fmt.Errorf("registry source requires image_ref")
 	}
 	if strings.TrimSpace(m.Fingerprint) == "" {
@@ -273,8 +263,8 @@ func ValidateImageArtifactManifest(m *ImageArtifactManifest) error {
 	return nil
 }
 
-func validateEnum(field, value string, allowed map[string]struct{}) error {
-	value = strings.TrimSpace(value)
+func validateEnum[T ~string](field string, value T, allowed map[T]struct{}) error {
+	value = T(strings.TrimSpace(string(value)))
 	if _, ok := allowed[value]; ok {
 		return nil
 	}

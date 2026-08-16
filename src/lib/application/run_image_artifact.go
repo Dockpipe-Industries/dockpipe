@@ -51,7 +51,7 @@ func maybeSkipDockerBuildForArtifact(stateWorkdir, repoRoot, wfConfig, wfRoot, s
 			return false, "", err
 		}
 	}
-	if artifact == nil || artifact.Build == nil || artifact.Source != "build" {
+	if artifact == nil || artifact.Build == nil || domain.ImageSource(artifact.Source) != domain.ImageSourceBuild {
 		return false, "", nil
 	}
 	if strings.TrimSpace(artifact.SecurityManifestFingerprint) != strings.TrimSpace(policyFingerprint) {
@@ -107,8 +107,8 @@ func imageArtifactIndexMatchesExpected(indexed, expected *domain.ImageArtifactMa
 	if indexed == nil || expected == nil {
 		return false
 	}
-	state := strings.TrimSpace(indexed.ArtifactState)
-	if state != "materialized" && state != "cached" {
+	state := domain.ImageArtifactState(strings.TrimSpace(indexed.ArtifactState))
+	if state != domain.ImageArtifactMaterialized && state != domain.ImageArtifactCached {
 		return false
 	}
 	return strings.TrimSpace(indexed.Source) == strings.TrimSpace(expected.Source) &&
@@ -171,7 +171,7 @@ func persistMaterializedImageArtifactForRun(workdir, image string, artifact *dom
 	if artifact == nil {
 		return
 	}
-	artifact.ArtifactState = "materialized"
+	artifact.ArtifactState = string(domain.ImageArtifactMaterialized)
 	if err := persistCachedImageArtifactForIsolate(workdir, image, artifact); err != nil {
 		logImageArtifactOperationResult("run.image_artifact.cache", image, err)
 	}

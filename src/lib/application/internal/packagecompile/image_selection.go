@@ -30,9 +30,9 @@ func selectCompiledImageArtifact(workdir, sourceRoot, pkgName string, wf *domain
 			Dockerfile: relOrAbs(sourceRoot, filepath.Join(derived, "Dockerfile")),
 		}
 		sel := domain.CompiledImageSelection{
-			Source:    "build",
+			Source:    string(domain.ImageSourceBuild),
 			Ref:       ref,
-			AutoBuild: "if-stale",
+			AutoBuild: string(domain.ImageAutoBuildIfStale),
 			Build:     buildSpec,
 		}
 		artifact, err := buildImageArtifactManifest(sourceRoot, strings.TrimSpace(wf.Name), strings.TrimSpace(pkgName), imageKey, ref, derived, sourceRoot, policyFingerprint, provenance)
@@ -74,9 +74,9 @@ func selectCompiledImageArtifact(workdir, sourceRoot, pkgName string, wf *domain
 			Dockerfile: relOrAbs(manifestRoot, filepath.Join(dockerfileDir, "Dockerfile")),
 		}
 		sel := domain.CompiledImageSelection{
-			Source:    "build",
+			Source:    string(domain.ImageSourceBuild),
 			Ref:       ref,
-			AutoBuild: "if-stale",
+			AutoBuild: string(domain.ImageAutoBuildIfStale),
 			Build:     buildSpec,
 		}
 		artifact, err := buildImageArtifactManifest(manifestRoot, strings.TrimSpace(wf.Name), strings.TrimSpace(pkgName), identity, ref, dockerfileDir, contextDir, policyFingerprint, provenance)
@@ -97,9 +97,9 @@ func selectCompiledImageArtifact(workdir, sourceRoot, pkgName string, wf *domain
 			Dockerfile: relOrAbs(sourceRoot, filepath.Join(derived, "Dockerfile")),
 		}
 		sel := domain.CompiledImageSelection{
-			Source:    "build",
+			Source:    string(domain.ImageSourceBuild),
 			Ref:       ref,
-			AutoBuild: "if-stale",
+			AutoBuild: string(domain.ImageAutoBuildIfStale),
 			Build:     buildSpec,
 		}
 		artifact, err := buildImageArtifactManifest(sourceRoot, strings.TrimSpace(wf.Name), strings.TrimSpace(pkgName), identity, ref, derived, sourceRoot, policyFingerprint, provenance)
@@ -108,7 +108,7 @@ func selectCompiledImageArtifact(workdir, sourceRoot, pkgName string, wf *domain
 		}
 		return sel, artifact, nil
 	}
-	return registryImageSelection(strings.TrimSpace(wf.Name), strings.TrimSpace(pkgName), "", identity, identity, "never", policyFingerprint, provenance)
+	return registryImageSelection(strings.TrimSpace(wf.Name), strings.TrimSpace(pkgName), "", identity, identity, domain.ImagePullNever, policyFingerprint, provenance)
 }
 
 func selectCompiledImageArtifactForStep(workdir, sourceRoot, pkgName string, wf *domain.Workflow, pm *domain.PackageManifest, step domain.Step, stepID, policyFingerprint string) (domain.CompiledImageSelection, *domain.ImageArtifactManifest, error) {
@@ -131,9 +131,9 @@ func selectCompiledImageArtifactForStep(workdir, sourceRoot, pkgName string, wf 
 				Dockerfile: relOrAbs(sourceRoot, filepath.Join(derived, "Dockerfile")),
 			}
 			sel := domain.CompiledImageSelection{
-				Source:    "build",
+				Source:    string(domain.ImageSourceBuild),
 				Ref:       ref,
-				AutoBuild: "if-stale",
+				AutoBuild: string(domain.ImageAutoBuildIfStale),
 				Build:     buildSpec,
 			}
 			artifact, err := buildImageArtifactManifest(sourceRoot, strings.TrimSpace(wf.Name), strings.TrimSpace(pkgName), stepID, ref, derived, sourceRoot, policyFingerprint, provenance)
@@ -179,9 +179,9 @@ func selectCompiledImageArtifactForStep(workdir, sourceRoot, pkgName string, wf 
 			Dockerfile: relOrAbs(manifestRoot, filepath.Join(dockerfileDir, "Dockerfile")),
 		}
 		sel := domain.CompiledImageSelection{
-			Source:    "build",
+			Source:    string(domain.ImageSourceBuild),
 			Ref:       ref,
-			AutoBuild: "if-stale",
+			AutoBuild: string(domain.ImageAutoBuildIfStale),
 			Build:     buildSpec,
 		}
 		artifact, err := buildImageArtifactManifest(manifestRoot, strings.TrimSpace(wf.Name), strings.TrimSpace(pkgName), stepID, ref, dockerfileDir, contextDir, policyFingerprint, provenance)
@@ -202,9 +202,9 @@ func selectCompiledImageArtifactForStep(workdir, sourceRoot, pkgName string, wf 
 			Dockerfile: relOrAbs(sourceRoot, filepath.Join(derived, "Dockerfile")),
 		}
 		sel := domain.CompiledImageSelection{
-			Source:    "build",
+			Source:    string(domain.ImageSourceBuild),
 			Ref:       ref,
-			AutoBuild: "if-stale",
+			AutoBuild: string(domain.ImageAutoBuildIfStale),
 			Build:     buildSpec,
 		}
 		artifact, err := buildImageArtifactManifest(sourceRoot, strings.TrimSpace(wf.Name), strings.TrimSpace(pkgName), stepID, ref, derived, sourceRoot, policyFingerprint, provenance)
@@ -213,7 +213,7 @@ func selectCompiledImageArtifactForStep(workdir, sourceRoot, pkgName string, wf 
 		}
 		return sel, artifact, nil
 	}
-	return registryImageSelection(strings.TrimSpace(wf.Name), strings.TrimSpace(pkgName), stepID, stepID, identity, "never", policyFingerprint, provenance)
+	return registryImageSelection(strings.TrimSpace(wf.Name), strings.TrimSpace(pkgName), stepID, stepID, identity, domain.ImagePullNever, policyFingerprint, provenance)
 }
 
 func stepHasImageSelectionOverride(step domain.Step) bool {
@@ -288,7 +288,7 @@ func selectPackageImageArtifact(workflowName, packageName, stepID, imageKey stri
 	if ref == "" {
 		return domain.CompiledImageSelection{}, nil, false, nil
 	}
-	pullPolicy := firstNonEmptyString(strings.TrimSpace(pm.Image.PullPolicy), "never")
+	pullPolicy := domain.ImagePullPolicy(firstNonEmptyString(strings.TrimSpace(pm.Image.PullPolicy), string(domain.ImagePullNever)))
 	sel, artifact, err := registryImageSelection(workflowName, packageName, stepID, imageKey, ref, pullPolicy, policyFingerprint, provenance)
 	return sel, artifact, true, err
 }
@@ -303,21 +303,21 @@ func packageImageKey(pm *domain.PackageManifest, wf *domain.Workflow) string {
 	return "workflow-image"
 }
 
-func registryImageSelection(workflowName, packageName, stepID, imageKey, ref, pullPolicy, policyFingerprint string, provenance domain.ImageArtifactProvenance) (domain.CompiledImageSelection, *domain.ImageArtifactManifest, error) {
+func registryImageSelection(workflowName, packageName, stepID, imageKey, ref string, pullPolicy domain.ImagePullPolicy, policyFingerprint string, provenance domain.ImageArtifactProvenance) (domain.CompiledImageSelection, *domain.ImageArtifactManifest, error) {
 	provenance = imageartifact.NormalizeProvenance(provenance)
 	expectedDigest := registryExpectedDigest(ref)
 	sel := domain.CompiledImageSelection{
-		Source:         "registry",
+		Source:         string(domain.ImageSourceRegistry),
 		Ref:            ref,
-		PullPolicy:     pullPolicy,
+		PullPolicy:     string(pullPolicy),
 		ExpectedDigest: expectedDigest,
 	}
 	sourceFingerprint, err := domain.FingerprintJSON(struct {
-		StepID         string `json:"step_id,omitempty"`
-		ImageKey       string `json:"image_key"`
-		Ref            string `json:"ref"`
-		PullPolicy     string `json:"pull_policy"`
-		ExpectedDigest string `json:"expected_digest"`
+		StepID         string                 `json:"step_id,omitempty"`
+		ImageKey       string                 `json:"image_key"`
+		Ref            string                 `json:"ref"`
+		PullPolicy     domain.ImagePullPolicy `json:"pull_policy"`
+		ExpectedDigest string                 `json:"expected_digest"`
 	}{
 		StepID:         stepID,
 		ImageKey:       imageKey,
@@ -345,8 +345,8 @@ func registryImageSelection(workflowName, packageName, stepID, imageKey, ref, pu
 		PackageName:                 packageName,
 		StepID:                      stepID,
 		ImageKey:                    imageKey,
-		Source:                      "registry",
-		ArtifactState:               "referenced",
+		Source:                      string(domain.ImageSourceRegistry),
+		ArtifactState:               string(domain.ImageArtifactReferenced),
 		Fingerprint:                 fingerprint,
 		SourceFingerprint:           sourceFingerprint,
 		SecurityManifestFingerprint: policyFingerprint,

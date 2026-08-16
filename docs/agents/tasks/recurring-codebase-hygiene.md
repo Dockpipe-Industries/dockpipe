@@ -3630,3 +3630,41 @@ No checkout generated path changed. The protected ignored Python cache remains r
 8,408 bytes, SHA-256 `25632b7dad1855a5692207c9d4fc22b2e57203b2f9219182679d622bf3b63e10`.
 The objective is complete; no gate, second transport, staging, commit, push, publication, cleanup,
 migration, or compatibility authority was used.
+
+## Domain Vocabulary Cleanup — 2026-08-15
+
+State: `completed`. After the application-internal extraction and its reviewed commit series were
+pushed by the user, the user requested another cleanup pass focused on DDD, models, constants,
+enums, and class-like ownership. The admitted checkpoint was limited to a source-compatible domain
+vocabulary cleanup: preserve all exported Go struct field types and authored JSON/YAML/CLI bytes,
+introduce value types only for closed domain vocabularies, replace production decision literals
+with named constants, and keep behavior beside its owning package. No generic `Models` directory
+was created because `src/lib/domain` already owns DockPipe's model and validation layer; Go value
+types and package functions are the idiomatic equivalent of enum/model classes here.
+
+Created `src/lib/domain/runtime_policy_values.go` as the owner of ten closed vocabularies:
+`PolicyProfile`, `NetworkMode`, `NetworkEnforcement`, `FilesystemRootPolicy`,
+`FilesystemWritePolicy`, `ProcessUserPolicy`, `ImageSource`, `ImageAutoBuildMode`,
+`ImagePullPolicy`, and `ImageArtifactState`. Validation now converts exported string wire fields at
+the Domain boundary and checks typed allowed-value sets. Runtime policy compilation, image
+selection, image artifact materialization, and package image reporting branch on the domain values
+and use their named constants. `RuntimeKind` is now a value type with normalization and validity
+behavior while its existing constants, `ValidRuntimeKinds` string slice, unknown-value preservation,
+and `ResolverAssignments.RuntimeKind` string field remain source-compatible.
+
+Direct Domain tests prove the constant-to-wire mapping, known and unknown runtime-kind behavior,
+trimmed-value validation, non-mutation of authored values, and compile-time preservation of every
+exported string field touched by the cleanup. Focused tests passed for Domain, runtimepolicy,
+packagecompile, imageartifact, package image collection, planned/materialized image handling,
+registry pulls, runtime policy application, and step security overrides. Offline Go 1.25
+`go list -mod=readonly` and `go vet` passed for Domain, Application, and the three affected internal
+packages. Linux and Windows/amd64 compile-only proofs passed for Domain and Application; Windows
+binaries were not executed. The four `/tmp` verification binaries, including two unexpectedly
+large Application test binaries, were removed immediately after successful compile proof.
+
+`gofmt`, `git diff --check`, downward dependency checks, generated-checkout inventory, and protected
+cache verification pass. No schema, authored workflow, public help/error/log bytes, generated
+checkout artifacts, durable state, network, Docker, VM, staging, commit, push, publication, or
+compatibility behavior changed. Remaining obvious closed vocabularies—workspace lifecycle/storage
+and container mount modes—are a separate authored-runtime concern and were not folded into this
+checkpoint without their own focused dependency and behavior review.

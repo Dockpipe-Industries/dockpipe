@@ -6,38 +6,38 @@ import (
 	"dockpipe/src/lib/domain"
 )
 
-func NormalizeWorkflowPolicyProfile(wf *domain.Workflow) string {
+func NormalizeWorkflowPolicyProfile(wf *domain.Workflow) domain.PolicyProfile {
 	if wf == nil {
-		return "secure-default"
+		return domain.PolicyProfileSecureDefault
 	}
 	if p := strings.TrimSpace(wf.Security.Profile); p != "" {
-		return p
+		return domain.PolicyProfile(p)
 	}
-	return "secure-default"
+	return domain.PolicyProfileSecureDefault
 }
 
-func CompileSecurityPolicyForWorkflow(wf *domain.Workflow, profile string) (domain.CompiledSecurityPolicy, domain.PolicySources) {
+func CompileSecurityPolicyForWorkflow(wf *domain.Workflow, profile domain.PolicyProfile) (domain.CompiledSecurityPolicy, domain.PolicySources) {
 	security := engineDefaultSecurityPolicy()
 	baselineName, baseline := runtimeBaselineSecurityPolicy(wf)
 	mergeCompiledSecurityPolicy(&security, baseline)
 	mergeCompiledSecurityPolicy(&security, securityPolicyProfile(profile))
 	workflowOverride := applyWorkflowSecurityOverrides(&security, wf)
-	security.Preset = profile
-	security.Network.Enforcement = CompiledNetworkEnforcement(security.Network.Mode, profile)
+	security.Preset = string(profile)
+	security.Network.Enforcement = string(CompiledNetworkEnforcement(domain.NetworkMode(security.Network.Mode), profile))
 	security.Network.InternalDNS = true
 	return security, domain.PolicySources{
 		EngineDefault:    true,
 		RuntimeBaseline:  baselineName,
-		PolicyProfile:    profile,
+		PolicyProfile:    string(profile),
 		WorkflowOverride: workflowOverride,
 	}
 }
 
 func engineDefaultSecurityPolicy() domain.CompiledSecurityPolicy {
 	return domain.CompiledSecurityPolicy{
-		Preset: "secure-default",
+		Preset: string(domain.PolicyProfileSecureDefault),
 		Network: domain.CompiledNetworkPolicy{
-			Mode: "offline",
+			Mode: string(domain.NetworkModeOffline),
 		},
 	}
 }
@@ -52,12 +52,12 @@ func runtimeBaselineSecurityPolicy(wf *domain.Workflow) (string, domain.Compiled
 	name := firstNonEmptyString(strings.TrimSpace(wf.Runtime), strings.TrimSpace(wf.Isolate), strings.TrimSpace(wf.Resolver), "container-default")
 	return name, domain.CompiledSecurityPolicy{
 		FS: domain.CompiledFilesystemPolicy{
-			Root:      "readonly",
-			Writes:    "workspace-only",
+			Root:      string(domain.FilesystemRootReadonly),
+			Writes:    string(domain.FilesystemWritesWorkspaceOnly),
 			TempPaths: []string{"/tmp"},
 		},
 		Process: domain.CompiledProcessPolicy{
-			User:            "non-root",
+			User:            string(domain.ProcessUserNonRoot),
 			NoNewPrivileges: true,
 			DropCaps:        []string{"ALL"},
 			PIDLimit:        256,
@@ -75,25 +75,25 @@ func workflowUsesContainerSecurityPolicy(wf *domain.Workflow) bool {
 	return wf.AnyContainerStep()
 }
 
-func securityPolicyProfile(name string) domain.CompiledSecurityPolicy {
-	switch strings.TrimSpace(name) {
-	case "internet-client":
+func securityPolicyProfile(name domain.PolicyProfile) domain.CompiledSecurityPolicy {
+	switch domain.PolicyProfile(strings.TrimSpace(string(name))) {
+	case domain.PolicyProfileInternetClient:
 		return domain.CompiledSecurityPolicy{
-			Network: domain.CompiledNetworkPolicy{Mode: "internet"},
+			Network: domain.CompiledNetworkPolicy{Mode: string(domain.NetworkModeInternet)},
 		}
-	case "build-online":
+	case domain.PolicyProfileBuildOnline:
 		return domain.CompiledSecurityPolicy{
-			Network: domain.CompiledNetworkPolicy{Mode: "internet"},
+			Network: domain.CompiledNetworkPolicy{Mode: string(domain.NetworkModeInternet)},
 			FS: domain.CompiledFilesystemPolicy{
-				Root:          "writable",
-				Writes:        "declared",
+				Root:          string(domain.FilesystemRootWritable),
+				Writes:        string(domain.FilesystemWritesDeclared),
 				WritablePaths: []string{"/tmp", "/var/tmp"},
 				TempPaths:     []string{"/tmp", "/var/tmp"},
 			},
 		}
-	case "sidecar-client":
+	case domain.PolicyProfileSidecarClient:
 		return domain.CompiledSecurityPolicy{
-			Network: domain.CompiledNetworkPolicy{Mode: "restricted"},
+			Network: domain.CompiledNetworkPolicy{Mode: string(domain.NetworkModeRestricted)},
 		}
 	default:
 		return domain.CompiledSecurityPolicy{}
@@ -106,7 +106,7 @@ func applyWorkflowSecurityOverrides(dst *domain.CompiledSecurityPolicy, wf *doma
 	}
 	changed := false
 	if v := strings.TrimSpace(wf.Security.Network.Mode); v != "" {
-		dst.Network.Mode = v
+		dst.Network.Mode = string(domain.NetworkMode(v))
 		changed = true
 	}
 	if len(wf.Security.Network.Allow) > 0 {
@@ -118,11 +118,11 @@ func applyWorkflowSecurityOverrides(dst *domain.CompiledSecurityPolicy, wf *doma
 		changed = true
 	}
 	if v := strings.TrimSpace(wf.Security.Filesystem.Root); v != "" {
-		dst.FS.Root = v
+		dst.FS.Root = string(domain.FilesystemRootPolicy(v))
 		changed = true
 	}
 	if v := strings.TrimSpace(wf.Security.Filesystem.Writes); v != "" {
-		dst.FS.Writes = v
+		dst.FS.Writes = string(domain.FilesystemWritePolicy(v))
 		changed = true
 	}
 	if len(wf.Security.Filesystem.WritablePaths) > 0 {
@@ -134,7 +134,7 @@ func applyWorkflowSecurityOverrides(dst *domain.CompiledSecurityPolicy, wf *doma
 		changed = true
 	}
 	if v := strings.TrimSpace(wf.Security.Process.User); v != "" {
-		dst.Process.User = v
+		dst.Process.User = string(domain.ProcessUserPolicy(v))
 		changed = true
 	}
 	if wf.Security.Process.PIDLimit > 0 {
@@ -158,7 +158,7 @@ func ApplyStepSecurityOverrides(dst *domain.CompiledSecurityPolicy, step domain.
 	}
 	changed := false
 	if v := strings.TrimSpace(step.Security.Network.Mode); v != "" {
-		dst.Network.Mode = v
+		dst.Network.Mode = string(domain.NetworkMode(v))
 		changed = true
 	}
 	if len(step.Security.Network.Allow) > 0 {
@@ -170,11 +170,11 @@ func ApplyStepSecurityOverrides(dst *domain.CompiledSecurityPolicy, step domain.
 		changed = true
 	}
 	if v := strings.TrimSpace(step.Security.Filesystem.Root); v != "" {
-		dst.FS.Root = v
+		dst.FS.Root = string(domain.FilesystemRootPolicy(v))
 		changed = true
 	}
 	if v := strings.TrimSpace(step.Security.Filesystem.Writes); v != "" {
-		dst.FS.Writes = v
+		dst.FS.Writes = string(domain.FilesystemWritePolicy(v))
 		changed = true
 	}
 	if len(step.Security.Filesystem.WritablePaths) > 0 {
@@ -186,7 +186,7 @@ func ApplyStepSecurityOverrides(dst *domain.CompiledSecurityPolicy, step domain.
 		changed = true
 	}
 	if v := strings.TrimSpace(step.Security.Process.User); v != "" {
-		dst.Process.User = v
+		dst.Process.User = string(domain.ProcessUserPolicy(v))
 		changed = true
 	}
 	if step.Security.Process.PIDLimit > 0 {
@@ -209,10 +209,10 @@ func mergeCompiledSecurityPolicy(dst *domain.CompiledSecurityPolicy, src domain.
 		return
 	}
 	if strings.TrimSpace(src.Preset) != "" {
-		dst.Preset = strings.TrimSpace(src.Preset)
+		dst.Preset = string(domain.PolicyProfile(strings.TrimSpace(src.Preset)))
 	}
 	if strings.TrimSpace(src.Network.Mode) != "" {
-		dst.Network.Mode = strings.TrimSpace(src.Network.Mode)
+		dst.Network.Mode = string(domain.NetworkMode(strings.TrimSpace(src.Network.Mode)))
 	}
 	if len(src.Network.Allow) > 0 {
 		dst.Network.Allow = append([]string(nil), src.Network.Allow...)
@@ -221,10 +221,10 @@ func mergeCompiledSecurityPolicy(dst *domain.CompiledSecurityPolicy, src domain.
 		dst.Network.Block = append([]string(nil), src.Network.Block...)
 	}
 	if strings.TrimSpace(src.FS.Root) != "" {
-		dst.FS.Root = strings.TrimSpace(src.FS.Root)
+		dst.FS.Root = string(domain.FilesystemRootPolicy(strings.TrimSpace(src.FS.Root)))
 	}
 	if strings.TrimSpace(src.FS.Writes) != "" {
-		dst.FS.Writes = strings.TrimSpace(src.FS.Writes)
+		dst.FS.Writes = string(domain.FilesystemWritePolicy(strings.TrimSpace(src.FS.Writes)))
 	}
 	if len(src.FS.WritablePaths) > 0 {
 		dst.FS.WritablePaths = append([]string(nil), src.FS.WritablePaths...)
@@ -233,7 +233,7 @@ func mergeCompiledSecurityPolicy(dst *domain.CompiledSecurityPolicy, src domain.
 		dst.FS.TempPaths = append([]string(nil), src.FS.TempPaths...)
 	}
 	if strings.TrimSpace(src.Process.User) != "" {
-		dst.Process.User = strings.TrimSpace(src.Process.User)
+		dst.Process.User = string(domain.ProcessUserPolicy(strings.TrimSpace(src.Process.User)))
 	}
 	if src.Process.NoNewPrivileges {
 		dst.Process.NoNewPrivileges = true
@@ -255,17 +255,17 @@ func mergeCompiledSecurityPolicy(dst *domain.CompiledSecurityPolicy, src domain.
 	}
 }
 
-func CompiledNetworkEnforcement(mode, profile string) string {
-	switch strings.TrimSpace(mode) {
-	case "offline", "internet":
-		return "native"
-	case "allowlist", "restricted":
-		if strings.TrimSpace(profile) == "sidecar-client" {
-			return "proxy"
+func CompiledNetworkEnforcement(mode domain.NetworkMode, profile domain.PolicyProfile) domain.NetworkEnforcement {
+	switch domain.NetworkMode(strings.TrimSpace(string(mode))) {
+	case domain.NetworkModeOffline, domain.NetworkModeInternet:
+		return domain.NetworkEnforcementNative
+	case domain.NetworkModeAllowlist, domain.NetworkModeRestricted:
+		if domain.PolicyProfile(strings.TrimSpace(string(profile))) == domain.PolicyProfileSidecarClient {
+			return domain.NetworkEnforcementProxy
 		}
-		return "advisory"
+		return domain.NetworkEnforcementAdvisory
 	default:
-		return "advisory"
+		return domain.NetworkEnforcementAdvisory
 	}
 }
 
@@ -281,10 +281,10 @@ func CompiledEnforcementSummaries(rm *domain.CompiledRuntimeManifest) []string {
 	if strings.TrimSpace(rm.PolicySources.RuntimeBaseline) == "host-only" {
 		lines = append(lines, "container security policy applies only to container steps; host-only steps remain outside Docker enforcement")
 	}
-	switch strings.TrimSpace(rm.Security.Network.Enforcement) {
-	case "proxy":
+	switch domain.NetworkEnforcement(strings.TrimSpace(rm.Security.Network.Enforcement)) {
+	case domain.NetworkEnforcementProxy:
 		lines = append([]string{"network policy requires a proxy-backed egress layer when this workflow runs"}, lines...)
-	case "advisory":
+	case domain.NetworkEnforcementAdvisory:
 		lines = append([]string{"network policy currently compiles as advisory until full Docker egress enforcement lands"}, lines...)
 	}
 	return lines
@@ -295,8 +295,8 @@ func CompiledRuleIDs(rm *domain.CompiledRuntimeManifest) []string {
 		return nil
 	}
 	rules := []string{
-		"security.profile." + firstNonEmptyString(strings.TrimSpace(rm.PolicyProfile), "secure-default"),
-		"network.mode." + firstNonEmptyString(strings.TrimSpace(rm.Security.Network.Mode), "offline"),
+		"security.profile." + firstNonEmptyString(strings.TrimSpace(rm.PolicyProfile), string(domain.PolicyProfileSecureDefault)),
+		"network.mode." + firstNonEmptyString(strings.TrimSpace(rm.Security.Network.Mode), string(domain.NetworkModeOffline)),
 	}
 	if strings.TrimSpace(rm.Security.FS.Root) != "" {
 		rules = append(rules, "filesystem.root."+strings.TrimSpace(rm.Security.FS.Root))

@@ -65,9 +65,9 @@ func FromResolverMap(m map[string]string) ResolverAssignments {
 	raw := strings.TrimSpace(firstNonEmptyKV(m, "DOCKPIPE_RUNTIME_TYPE"))
 	kind := ""
 	if raw != "" {
-		low := strings.ToLower(raw)
-		if IsValidRuntimeKind(low) {
-			kind = low
+		normalized := NormalizeRuntimeKind(raw)
+		if normalized.IsValid() {
+			kind = string(normalized)
 		} else {
 			kind = raw // unknown value preserved for forward compatibility
 		}
