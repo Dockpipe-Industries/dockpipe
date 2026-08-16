@@ -1,0 +1,70 @@
+{
+  "language_contract": "v0.1.0",
+  "compiler_contract": "pipelang.compiler.v1",
+  "functions": [
+    {
+      "identity": {
+        "package_id": "test.package",
+        "path": "app.root.root.ready",
+        "callable": {
+          "parameters": [
+            {
+              "kind": "primitive",
+              "primitive": "int"
+            }
+          ],
+          "returns": {
+            "kind": "primitive",
+            "primitive": "bool"
+          }
+        }
+      },
+      "name": "Ready",
+      "parameters": [
+        {
+          "position": 0,
+          "name": "count",
+          "type": {
+            "kind": "primitive",
+            "primitive": "int"
+          }
+        }
+      ],
+      "return_type": {
+        "kind": "primitive",
+        "primitive": "bool"
+      },
+      "body": {
+        "kind": "binary",
+        "type": {
+          "kind": "primitive",
+          "primitive": "bool"
+        },
+        "binary": {
+          "operator": "greater_than",
+          "left": {
+            "kind": "reference",
+            "type": {
+              "kind": "primitive",
+              "primitive": "int"
+            },
+            "parameter": 0
+          },
+          "right": {
+            "kind": "literal",
+            "type": {
+              "kind": "primitive",
+              "primitive": "int"
+            },
+            "literal": {
+              "string": "",
+              "int": 0,
+              "float": 0,
+              "bool": false
+            }
+          }
+        }
+      }
+    }
+  ]
+}

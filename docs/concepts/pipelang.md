@@ -206,6 +206,29 @@ resolved-type, lock-digest, source-range, and diagnostic records without exposin
 `SymbolID` values. Its language, compiler, and projection identities are explicit inputs; no first
 production values or source spellings have been selected yet.
 
+## Typed executable compiler foundation
+
+The separately governed first executable compiler slice uses the accepted `v0.1.0` structured
+semantic-module lane without adding public syntax or a CLI selector. One public expression-bodied
+pure method can be selected by its callable semantic identity and lowered through distinct layers:
+
+```text
+checked semantic analysis -> typed HIR -> normalized Core IR -> Go backend
+```
+
+Typed HIR retains bound ownership, stable semantic identity, resolved types, parameter bindings,
+and durable source spans without target details. Core IR removes parser/source and analysis-local
+concepts while preserving the typed function signature and normalized literal, parameter-reference,
+and operator nodes. The Go backend's only PipeLang dependency is Core IR; an architecture test
+rejects parser, AST/compiler-root, or HIR imports in that backend.
+
+The proven fixture is the existing-syntax pure function `Ready(int count) => count > 0`. Its HIR,
+Core, and generated-Go bytes are golden-tested; generated Go is compiled and executed under a
+temporary offline module, and its result matches the existing pure evaluator. The first backend
+fails explicitly on Core capabilities whose exact cross-target behavior belongs to the next numeric,
+text, value, equality, and evaluation-order slice. This foundation does not change the frozen
+`v0.0.0.1` compile/invoke artifacts or make executable Go a workflow/runtime backend.
+
 ## Artifacts
 
 Compile emits:
