@@ -209,6 +209,11 @@ kind: workflow
 # Optional — generic package script context for assets/scripts/* authoring:
 # script_contract:
 #   inject: [workdir, workflow_name, script_dir, package_root, assets_dir, dockpipe_bin]
+# Optional — maintained mixed packages own exact legacy cohort migration for these public owner ids.
+# Undeclared third-party public package scopes are conservatively imported whole:
+# package_state:
+#   compatibility_import: package-owned
+#   owner_ids: [my-package, my-resolver]
 # Optional — source-checkout build hook (installed tarballs should already ship their built artifacts):
 # build:
 #   source:
@@ -258,7 +263,7 @@ Usage:
   test      Run package-owned tests declared as test.script in package.yml for source checkouts.
   compile   Materialize core / resolvers / workflows into bin/.dockpipe/internal/packages/ (see compile --help).
 
-Optional repo-root dockpipe.config.json lists compile.workflows roots (resolver discovery uses the same list plus src/core/resolvers); compile.bundles merged into workflows when set; see docs/packages/package-model.md.
+Optional repo-root dockpipe.config.json lists compile.workflows roots (resolver discovery uses the same list plus src/core/resolvers); see docs/packages/package-model.md.
 
 Environment:
   DOCKPIPE_PACKAGES_ROOT   Override packages root (default: <workdir>/bin/.dockpipe/internal/packages).

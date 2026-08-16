@@ -1,15 +1,31 @@
-package application
+package wslbridge
 
 import (
 	"path/filepath"
 	"strings"
 )
 
+// Translator rewrites Windows host arguments for a dockpipe invocation forwarded into WSL.
+type Translator struct {
+	translatePath func(string) string
+	getwd         func() (string, error)
+}
+
+// New returns a Translator backed by the application-owned path and working-directory hooks.
+func New(translatePath func(string) string, getwd func() (string, error)) Translator {
+	return Translator{translatePath: translatePath, getwd: getwd}
+}
+
+// ForwardScript translates argv and builds the bash command executed inside WSL.
+func (t Translator) ForwardScript(wslWd string, argv []string) string {
+	return buildBashForwardScript(wslWd, translateBridgeArgv(t, argv))
+}
+
 // translateBridgeArgv rewrites path-like flag values and subcommand args from Windows
 // to WSL paths before exec'ing dockpipe inside Linux.
-func translateBridgeArgv(distro string, argv []string) []string {
+func translateBridgeArgv(t Translator, argv []string) []string {
 	before, after := splitArgvAtDoubleDash(argv)
-	before = translateDockpipeArgs(distro, before)
+	before = translateDockpipeArgs(t, before)
 	if after == nil {
 		return before
 	}
@@ -25,7 +41,7 @@ func splitArgvAtDoubleDash(argv []string) (before []string, after []string) {
 	return argv, nil
 }
 
-func translateDockpipeArgs(distro string, argv []string) []string {
+func translateDockpipeArgs(t Translator, argv []string) []string {
 	out := append([]string(nil), argv...)
 	// Pass 1: long flags with path (or env) values
 	for i := 0; i < len(out); {
@@ -34,22 +50,22 @@ func translateDockpipeArgs(distro string, argv []string) []string {
 		case "--data-dir", "--run", "--pre-script", "--act", "--action", "--workdir", "--work-path", "--bundle-out", "--env-file",
 			"--isolate", "--template", "--image", "--base-url", "--url", "--repo-root", "--out", "--workflows-dir", "--to":
 			if i+1 < len(out) {
-				out[i+1] = maybeTranslateWinPath(distro, out[i+1])
+				out[i+1] = maybeTranslateWinPath(t, out[i+1])
 			}
 			i += 2
 		case "--mount":
 			if i+1 < len(out) {
-				out[i+1] = translateMountSpec(distro, out[i+1])
+				out[i+1] = translateMountSpec(t, out[i+1])
 			}
 			i += 2
 		case "--build":
 			if i+1 < len(out) {
-				out[i+1] = maybeTranslateWinPath(distro, out[i+1])
+				out[i+1] = maybeTranslateWinPath(t, out[i+1])
 			}
 			i += 2
 		case "--env", "--var":
 			if i+1 < len(out) {
-				out[i+1] = translateEnvOrVarLine(distro, out[i+1])
+				out[i+1] = translateEnvOrVarLine(t, out[i+1])
 			}
 			i += 2
 		default:
@@ -62,25 +78,25 @@ func translateDockpipeArgs(distro string, argv []string) []string {
 	}
 	switch out[0] {
 	case "init":
-		translateInitSubcommandArgs(distro, out)
+		translateInitSubcommandArgs(t, out)
 	case "release":
 		if len(out) >= 2 && out[1] == "upload" {
-			translateReleaseUploadLocalPath(distro, out)
+			translateReleaseUploadLocalPath(t, out)
 		}
 	case "action", "pre":
 		if len(out) >= 2 && (out[1] == "init" || out[1] == "create") {
-			translateInitLikePositionals(distro, out, 2)
+			translateInitLikePositionals(t, out, 2)
 		}
 	case "template":
 		if len(out) >= 2 && (out[1] == "init" || out[1] == "create") {
-			translateInitLikePositionals(distro, out, 2)
+			translateInitLikePositionals(t, out, 2)
 		}
 	}
 	return out
 }
 
 // translateReleaseUploadLocalPath maps the local file argument for release upload (first non-flag after "upload").
-func translateReleaseUploadLocalPath(distro string, out []string) {
+func translateReleaseUploadLocalPath(t Translator, out []string) {
 	i := 2
 	for i < len(out) {
 		a := out[i]
@@ -100,28 +116,28 @@ func translateReleaseUploadLocalPath(distro string, out []string) {
 			i++
 			continue
 		}
-		out[i] = maybeTranslateWinPath(distro, out[i])
+		out[i] = maybeTranslateWinPath(t, out[i])
 		return
 	}
 }
 
 // translateInitSubcommandArgs maps Windows paths in dockpipe init --from <path> only.
 // The optional workflow name positional must not be rewritten (it is not a filesystem path).
-func translateInitSubcommandArgs(distro string, out []string) {
+func translateInitSubcommandArgs(t Translator, out []string) {
 	for i := 1; i < len(out); i++ {
 		if out[i] == "--from" && i+1 < len(out) {
 			i++
-			out[i] = maybeTranslateWinPath(distro, out[i])
+			out[i] = maybeTranslateWinPath(t, out[i])
 		}
 	}
 }
 
-func translateInitLikePositionals(distro string, out []string, start int) {
+func translateInitLikePositionals(t Translator, out []string, start int) {
 	for i := start; i < len(out); i++ {
 		if out[i] == "--from" {
 			if i+1 < len(out) {
 				i++
-				out[i] = maybeTranslateWinPath(distro, out[i])
+				out[i] = maybeTranslateWinPath(t, out[i])
 			}
 			continue
 		}
@@ -131,7 +147,7 @@ func translateInitLikePositionals(distro string, out []string, start int) {
 		if out[i] == "." {
 			continue
 		}
-		out[i] = maybeTranslateWinPath(distro, out[i])
+		out[i] = maybeTranslateWinPath(t, out[i])
 	}
 }
 
@@ -153,7 +169,7 @@ func isProbablyWindowsFilesystemPath(p string) bool {
 	return false
 }
 
-func maybeTranslateWinPath(distro, p string) string {
+func maybeTranslateWinPath(t Translator, p string) string {
 	p = strings.TrimSpace(p)
 	if p == "" || p == "." {
 		return p
@@ -171,7 +187,7 @@ func maybeTranslateWinPath(distro, p string) string {
 	}
 	pp := p
 	if !isProbablyWindowsFilesystemPath(p) && strings.Contains(p, `\`) {
-		wd, err := windowsGetwdFn()
+		wd, err := t.getwd()
 		if err != nil {
 			return p
 		}
@@ -184,21 +200,21 @@ func maybeTranslateWinPath(distro, p string) string {
 	if !isProbablyWindowsFilesystemPath(pp) && !strings.HasPrefix(pp, `\\`) {
 		return p
 	}
-	return winPathToWSL(distro, pp)
+	return t.translatePath(pp)
 }
 
-func translateEnvOrVarLine(distro, line string) string {
+func translateEnvOrVarLine(t Translator, line string) string {
 	key, val, ok := strings.Cut(line, "=")
 	if !ok {
 		return line
 	}
 	val = strings.TrimSpace(val)
 	unq := strings.Trim(val, `"'`)
-	t := maybeTranslateWinPath(distro, unq)
-	if t == unq {
+	translated := maybeTranslateWinPath(t, unq)
+	if translated == unq {
 		return line
 	}
-	return key + "=" + t
+	return key + "=" + translated
 }
 
 // splitDockerMountHostContainer splits "HOST:CONTAINER" where CONTAINER is a Unix-style path.
@@ -220,7 +236,7 @@ func splitDockerMountHostContainer(val string) (host, container string) {
 }
 
 // translateMountSpec maps host paths in -v style "HOST:CONTAINER" (and optional :ro / :rw suffix).
-func translateMountSpec(distro, val string) string {
+func translateMountSpec(t Translator, val string) string {
 	val = strings.TrimSpace(val)
 	orig := val
 	modeSuffix := ""
@@ -235,12 +251,12 @@ func translateMountSpec(distro, val string) string {
 	host, cont := splitDockerMountHostContainer(val)
 	if cont == "" {
 		if shouldTranslateMountHost(val) {
-			return maybeTranslateWinPath(distro, val) + modeSuffix
+			return maybeTranslateWinPath(t, val) + modeSuffix
 		}
 		return orig
 	}
 	if shouldTranslateMountHost(host) {
-		host = maybeTranslateWinPath(distro, host)
+		host = maybeTranslateWinPath(t, host)
 	}
 	return host + ":" + cont + modeSuffix
 }
@@ -251,4 +267,48 @@ func shouldTranslateMountHost(host string) bool {
 		return false
 	}
 	return isProbablyWindowsFilesystemPath(host) || strings.Contains(host, `\`)
+}
+
+// PathToWSLFallback maps C:\foo\bar to /mnt/c/foo/bar when wslpath fails.
+// It uses drive-letter parsing so it behaves the same on Windows and Linux.
+func PathToWSLFallback(winPath string) string {
+	// Normalize Windows separators; on Unix GOOS, filepath.Clean leaves slashes alone.
+	s := strings.TrimSpace(winPath)
+	s = strings.ReplaceAll(s, `\`, `/`)
+	// filepath.Clean turns "//server/share" into "/server/share" on Unix — breaks UNC.
+	if !isUNCPathNormalized(s) {
+		s = filepath.Clean(s)
+		// On Windows, Clean reintroduces '\' — WSL paths must use '/'.
+		s = strings.ReplaceAll(s, `\`, `/`)
+	}
+	if len(s) >= 2 && s[1] == ':' && s[0] != '/' {
+		drive := strings.ToLower(string(s[0]))
+		rest := strings.TrimPrefix(s[2:], "/")
+		if rest == "" {
+			return "/mnt/" + drive
+		}
+		return "/mnt/" + drive + "/" + rest
+	}
+	return s
+}
+
+func isUNCPathNormalized(s string) bool {
+	// After \ -> /, UNC is //server/share (not a triple slash).
+	return len(s) >= 3 && strings.HasPrefix(s, "//") && s[2] != '/'
+}
+
+func bashSingleQuote(s string) string {
+	return "'" + strings.ReplaceAll(s, "'", `'\''`) + "'"
+}
+
+func buildBashForwardScript(wslWd string, argv []string) string {
+	var sb strings.Builder
+	sb.WriteString("cd ")
+	sb.WriteString(bashSingleQuote(wslWd))
+	sb.WriteString(" && exec dockpipe")
+	for _, a := range argv {
+		sb.WriteString(" ")
+		sb.WriteString(bashSingleQuote(a))
+	}
+	return sb.String()
 }

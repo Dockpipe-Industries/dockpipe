@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"dockpipe/src/lib/application/internal/runtimepolicy"
 	"dockpipe/src/lib/domain"
 	"dockpipe/src/lib/infrastructure"
 )
@@ -746,7 +747,7 @@ func TestRunBlockingStepSkipsBuildWhenCompiledImageArtifactExists(t *testing.T) 
 	if err := os.WriteFile(filepath.Join(wd, "templates", "core", "assets", "images", "codex", "Dockerfile"), []byte("FROM alpine\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	policyFingerprint, err := defaultRuntimePolicyFingerprint()
+	policyFingerprint, err := runtimepolicy.DefaultRuntimePolicyFingerprint()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -922,7 +923,7 @@ func TestMaybeSkipDockerBuildUsesMaterializedImageIndex(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(buildDir, "Dockerfile"), []byte("FROM alpine\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	policyFingerprint, err := defaultRuntimePolicyFingerprint()
+	policyFingerprint, err := runtimepolicy.DefaultRuntimePolicyFingerprint()
 	if err != nil {
 		t.Fatal(err)
 	}

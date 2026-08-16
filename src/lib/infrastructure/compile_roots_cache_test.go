@@ -6,15 +6,19 @@ import (
 	"testing"
 )
 
-func TestBundleCompileRootsCachedNoImplicitDefault(t *testing.T) {
+func TestWorkflowCompileRootsCachedUsesCanonicalConfig(t *testing.T) {
 	t.Parallel()
 	repo := t.TempDir()
-	// No dockpipe.config.json — bundle roots must stay empty (no hardcoded maintainer paths).
-	if err := os.WriteFile(filepath.Join(repo, "README.md"), []byte("x\n"), 0o644); err != nil {
+	root := filepath.Join(repo, "vendor", "dockpipe-pkgs")
+	if err := os.MkdirAll(root, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	got := BundleCompileRootsCached(repo)
-	if len(got) != 0 {
-		t.Fatalf("expected no bundle roots without compile.bundles in config, got %v", got)
+	cfg := `{"schema":1,"compile":{"workflows":["vendor/dockpipe-pkgs"]}}`
+	if err := os.WriteFile(filepath.Join(repo, "dockpipe.config.json"), []byte(cfg), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	got := WorkflowCompileRootsCached(repo)
+	if len(got) != 1 || got[0] != root {
+		t.Fatalf("workflow roots = %v, want [%s]", got, root)
 	}
 }

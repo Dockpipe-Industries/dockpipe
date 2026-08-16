@@ -6,36 +6,56 @@ import (
 	"testing"
 )
 
-func TestEffectiveResolverCompileRootsMergesWorkflowsAndCore(t *testing.T) {
+func TestEffectiveWorkflowCompileRootsUsesCanonicalConfiguredRoots(t *testing.T) {
+	repo := t.TempDir()
+	for _, rel := range []string{"workflows", "vendor/packages"} {
+		if err := os.MkdirAll(filepath.Join(repo, rel), 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	roots := []string{"vendor/packages", "workflows", "missing"}
+	cfg := &DockpipeProjectConfig{Compile: DockpipeCompileConfig{Workflows: &roots}}
+	got := EffectiveWorkflowCompileRootsDetailed(cfg, repo)
+	want := []string{filepath.Join(repo, "vendor/packages"), filepath.Join(repo, "workflows")}
+	if len(got.Paths) != len(want) {
+		t.Fatalf("paths = %v, want %v", got.Paths, want)
+	}
+	for i := range want {
+		if got.Paths[i] != want[i] {
+			t.Fatalf("path %d = %q, want %q", i, got.Paths[i], want[i])
+		}
+	}
+	if len(got.MissingPaths) != 1 || got.MissingPaths[0] != filepath.Join(repo, "missing") {
+		t.Fatalf("missing paths = %v", got.MissingPaths)
+	}
+}
+
+func TestEffectiveResolverCompileRootsUsesWorkflowsBeforeCore(t *testing.T) {
 	repo := t.TempDir()
 	if err := os.MkdirAll(filepath.Join(repo, "workflows", "x"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(repo, "packages", "x"), 0o755); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.MkdirAll(filepath.Join(repo, "src", "core", "resolvers", "r1"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	wf := []string{"workflows"}
+	wf := []string{"workflows", "packages", filepath.Join("src", "core", "resolvers")}
 	cfg := &DockpipeProjectConfig{Compile: DockpipeCompileConfig{Workflows: &wf}}
 	got := EffectiveResolverCompileRoots(cfg, repo)
-	if len(got) != 2 {
-		t.Fatalf("want 2 roots (workflows + src/core/resolvers), got %v", got)
+	want := []string{
+		filepath.Join(repo, "workflows"),
+		filepath.Join(repo, "packages"),
+		filepath.Join(repo, "src", "core", "resolvers"),
 	}
-}
-
-func TestEffectiveResolverCompileRootsLegacyResolversMerged(t *testing.T) {
-	repo := t.TempDir()
-	if err := os.MkdirAll(filepath.Join(repo, "workflows"), 0o755); err != nil {
-		t.Fatal(err)
+	if len(got) != len(want) {
+		t.Fatalf("got %v want %v", got, want)
 	}
-	if err := os.MkdirAll(filepath.Join(repo, "extra", "resolvers"), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	wf := []string{"workflows"}
-	legacy := []string{"extra"}
-	cfg := &DockpipeProjectConfig{Compile: DockpipeCompileConfig{Workflows: &wf, Resolvers: &legacy}}
-	got := EffectiveResolverCompileRoots(cfg, repo)
-	if len(got) != 2 {
-		t.Fatalf("want workflows + legacy extra root, got %d: %v", len(got), got)
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("root %d = %q want %q", i, got[i], want[i])
+		}
 	}
 }
 

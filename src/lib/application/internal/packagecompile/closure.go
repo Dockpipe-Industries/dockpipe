@@ -1,4 +1,4 @@
-package application
+package packagecompile
 
 import (
 	"fmt"
@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 
+	"dockpipe/src/lib/application/internal/compileconfig"
 	"dockpipe/src/lib/domain"
 	"dockpipe/src/lib/infrastructure"
 
@@ -48,7 +49,7 @@ func logCompileClosureSkip(projectRoot, parentWorkflow, relation, missingRef, re
 // for the transitive closure of workflowName: config.yml inject:, package.yml depends, requires_resolvers,
 // resolver/runtime names on the workflow and steps, and nested delegate workflows from merged isolation profiles.
 // projectRoot is the DockPipe project directory (contains bin/.dockpipe and usually dockpipe.config.json).
-func compileClosureForWorkflow(projectRoot, workflowName string, force bool) error {
+func compileClosureForWorkflow(projectRoot, workflowName string, force bool, sourceBuild CoreSourceBuild) error {
 	repoRoot, err := infrastructure.RepoRoot()
 	if err != nil {
 		return err
@@ -57,7 +58,7 @@ func compileClosureForWorkflow(projectRoot, workflowName string, force bool) err
 	if err != nil {
 		return err
 	}
-	cfg, err := loadDockpipeProjectConfig(projectRoot)
+	cfg, err := compileconfig.Load(projectRoot)
 	if err != nil {
 		return err
 	}
@@ -77,7 +78,7 @@ func compileClosureForWorkflow(projectRoot, workflowName string, force bool) err
 		"resolver_count": strconv.Itoa(len(resNames)),
 	})
 	return infrastructure.RunOperationWithOptions(os.Stderr, "package.compile.for_workflow", "Compiling workflow dependency closure…", opIDs, infrastructure.OperationOptions{Spinner: false, ProgressEvery: packageCompileProgressEvery}, func() error {
-		if err := ensureCoreCompiled(projectRoot, cfg, force); err != nil {
+		if err := ensureCoreCompiled(projectRoot, cfg, force, sourceBuild); err != nil {
 			return err
 		}
 
@@ -125,7 +126,7 @@ func compileClosureForWorkflow(projectRoot, workflowName string, force bool) err
 	})
 }
 
-func ensureCoreCompiled(projectRoot string, cfg *domain.DockpipeProjectConfig, force bool) error {
+func ensureCoreCompiled(projectRoot string, cfg *domain.DockpipeProjectConfig, force bool, sourceBuild CoreSourceBuild) error {
 	if !force {
 		if tgz, err := infrastructure.FindLatestCoreTarball(projectRoot); err == nil && strings.TrimSpace(tgz) != "" {
 			return nil
@@ -135,14 +136,14 @@ func ensureCoreCompiled(projectRoot string, cfg *domain.DockpipeProjectConfig, f
 	if force {
 		args = append(args, "--force")
 	}
-	return cmdPackageCompileCore(args)
+	return cmdPackageCompileCore(args, sourceBuild)
 }
 
 // closureWorkflowOrderAndResolvers returns workflow source dirs in dependency order (dependencies first)
 // and a set of resolver profile names to compile.
 // dockpipeRepoRoot is the DockPipe engine checkout (templates/core); projectRoot is the project being compiled.
 func closureWorkflowOrderAndResolvers(dockpipeRepoRoot, projectRoot, startDir string, cfg *domain.DockpipeProjectConfig) ([]string, map[string]bool, error) {
-	wfRoots := effectiveWorkflowCompileRoots(cfg, projectRoot)
+	wfRoots := compileconfig.WorkflowRoots(cfg, projectRoot)
 	visited := make(map[string]bool)
 	var order []string
 	resNames := make(map[string]bool)
@@ -215,8 +216,8 @@ func closureWorkflowOrderAndResolvers(dockpipeRepoRoot, projectRoot, startDir st
 			}
 		}
 
-		addResolverName(resNames, EffectiveResolverProfileName(nil, &wf, true))
-		addResolverName(resNames, EffectiveRuntimeProfileName(nil, &wf, true))
+		addResolverName(resNames, strings.TrimSpace(wf.Resolver))
+		addResolverName(resNames, strings.TrimSpace(wf.Runtime))
 		if iso := strings.TrimSpace(wf.Isolate); iso != "" {
 			addResolverName(resNames, iso)
 		}
@@ -402,7 +403,7 @@ func dirExists(path string) bool {
 	return err == nil && st.IsDir()
 }
 
-func cmdPackageCompileForWorkflow(args []string) error {
+func cmdPackageCompileForWorkflow(args []string, sourceBuild CoreSourceBuild) error {
 	if len(args) > 0 && (args[0] == "--help" || args[0] == "-h") {
 		fmt.Print(packageCompileForWorkflowUsageText)
 		return nil
@@ -447,7 +448,7 @@ func cmdPackageCompileForWorkflow(args []string) error {
 	if strings.TrimSpace(wfName) == "" {
 		return fmt.Errorf("missing workflow name (use --workflow <name> or a positional name)")
 	}
-	return compileClosureForWorkflow(workdir, wfName, force)
+	return compileClosureForWorkflow(workdir, wfName, force, sourceBuild)
 }
 
 const packageCompileForWorkflowUsageText = `dockpipe package compile for-workflow <name>

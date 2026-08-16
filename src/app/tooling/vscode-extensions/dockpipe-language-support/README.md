@@ -57,7 +57,7 @@ make install-dockpipe-language-support
   `models/IR2InfraConfig`
 - PipeLang editor support understands interface/object field types and generic list shapes such as `List<string>` and `List<IImageResource>`.
 - Shared script support points authors at the canonical DockPipe SDK under `src/core/assets/scripts/lib/` and `dockpipe sdk`.
-- Workflow scripts can use `dockpipe scope` / SDK scope helpers for checkout, workflow artifact, and package state paths. Runtime env such as `DOCKPIPE_SOURCE_ROOT`, `DOCKPIPE_STEP_CWD`, `DOCKPIPE_OUTPUT_ROOT`, and `DOCKPIPE_ARTIFACT_ROOT` remains available for low-level integrations.
+- Workflow scripts can use `dockpipe scope` / SDK scope helpers for checkout, workflow artifacts, and durable owner-only package state. Package caches, build output, scratch, and run evidence use `PackageRuntimeDir` or shell SDK `path package-runtime`; runtime env such as `DOCKPIPE_SOURCE_ROOT`, `DOCKPIPE_STEP_CWD`, `DOCKPIPE_OUTPUT_ROOT`, and `DOCKPIPE_ARTIFACT_ROOT` remains available for low-level integrations.
 - DorkPipe agent workflow path lists can use `scope:...` references; the orchestration planner resolves them through `dockpipe scope` before writing prompts and task JSON.
 - `package.yml` may declare package-owned artwork via `icon:` and `artwork:` paths relative to the manifest.
 - `package.yml` may also declare a package-owned OCI image reference via `image:`; DockPipe compiles that into the effective runtime/image artifact manifests.

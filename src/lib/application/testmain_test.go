@@ -6,6 +6,11 @@ import (
 )
 
 func TestMain(m *testing.M) {
+	stateRoot, err := os.MkdirTemp("", "dockpipe-application-test-state-")
+	if err != nil {
+		panic(err)
+	}
+	os.Setenv("XDG_STATE_HOME", stateRoot)
 	// Tests often run with cwd = the dockpipe git checkout; without this, mergeOpInjectFromProjectIfEnabled
 	// would run op inject against the real dockpipe.config.json + vault template (needs `op` CLI).
 	if os.Getenv("DOCKPIPE_OP_INJECT") == "" {
@@ -20,5 +25,7 @@ func TestMain(m *testing.M) {
 	if os.Getenv("DOCKPIPE_SKIP_DOCKER_PREFLIGHT") == "" {
 		os.Setenv("DOCKPIPE_SKIP_DOCKER_PREFLIGHT", "1")
 	}
-	os.Exit(m.Run())
+	code := m.Run()
+	_ = os.RemoveAll(stateRoot)
+	os.Exit(code)
 }

@@ -281,9 +281,7 @@ const DOCKPIPE_PROJECT_TOP_LEVEL_KEY_DETAILS = {
 const DOCKPIPE_PROJECT_SECTION_KEY_DETAILS = {
   compile: {
     core_from: "Optional override for the core slice source passed to compile core.",
-    workflows: "Repo-relative or absolute roots scanned for workflows and resolver trees.",
-    resolvers: "Deprecated extra resolver roots; merged into effective workflow roots when present.",
-    bundles: "Deprecated extra bundle roots; merged into compile.workflows."
+    workflows: "Repo-relative or absolute roots scanned for workflows and resolver trees."
   },
   secrets: {
     vault_template: "Preferred env template file containing secret references such as op:// entries.",
@@ -469,10 +467,17 @@ const CORE_HELPER_PROFILES = {
       },
       {
         name: "dockpipe scope --package",
-        detail: "Print a package scope object.",
+        detail: "Print a durable package scope object.",
         insertText: 'dockpipe scope --package "$1"',
         filterText: "dockpipe scope package json package state",
-        documentation: "First-hand CLI command that prints a package scope object as JSON, or resolves a package path when suffix segments are provided."
+        documentation: "First-hand CLI command that prints owner-only durable project/package state as JSON, or resolves a validated path beneath it. Use package runtime for caches, build output, scratch, and run evidence."
+      },
+      {
+        name: "dockpipe_sdk path package-runtime",
+        detail: "Resolve disposable package runtime state.",
+        insertText: 'dockpipe_sdk path package-runtime "$1"',
+        filterText: "dockpipe sdk path package runtime cache build scratch disposable",
+        documentation: "Shell SDK path for collision-safe disposable package caches, build output, scratch, and run evidence under `bin/.dockpipe/`."
       },
       {
         name: "dockpipe scope artifacts",
@@ -690,9 +695,9 @@ const CORE_HELPER_PROFILES = {
       },
       {
         name: "dockpipe.PackageScope",
-        detail: "Load package scope object.",
+        detail: "Load durable package scope object.",
         insertText: 'dockpipe.PackageScope("$1")',
-        documentation: "Go SDK method for `dockpipe scope --package <name>`."
+        documentation: "Go SDK pass-through for owner-only durable `dockpipe scope --package <name>` state. Disposable package products use package runtime."
       }
     ]
   }

@@ -38,8 +38,27 @@ type DockpipeSecretsConfig struct {
 type DockpipeCompileConfig struct {
 	CoreFrom  *string   `json:"core_from,omitempty"` // optional override for compile core --from
 	Workflows *[]string `json:"workflows,omitempty"` // roots to scan for workflow/resolver trees (e.g. workflows/, packages/, custom vendor roots); same walk for tarballs and resolver discovery (+ src/core/resolvers, templates/core/resolvers)
-	Resolvers *[]string `json:"resolvers,omitempty"` // deprecated: merged into effective resolver roots if present (prefer compile.workflows only)
-	Bundles   *[]string `json:"bundles,omitempty"`   // deprecated: merged into compile.workflows (same config.yml walk)
+}
+
+// UnmarshalJSON rejects retired compile-root keys while preserving the project config's
+// forward-compatible handling of every other unknown key.
+func (c *DockpipeCompileConfig) UnmarshalJSON(data []byte) error {
+	type plain DockpipeCompileConfig
+	var keys map[string]json.RawMessage
+	if err := json.Unmarshal(data, &keys); err != nil {
+		return err
+	}
+	for _, retired := range []string{"resolvers", "bundles"} {
+		if _, ok := keys[retired]; ok {
+			return fmt.Errorf("compile.%s is not supported; use compile.workflows", retired)
+		}
+	}
+	var decoded plain
+	if err := json.Unmarshal(data, &decoded); err != nil {
+		return err
+	}
+	*c = DockpipeCompileConfig(decoded)
+	return nil
 }
 
 // DockpipePackagesConfig holds optional defaults for packaged workflows/resolvers and tarball resolution.

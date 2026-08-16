@@ -3,6 +3,7 @@ package application
 import (
 	"strings"
 
+	"dockpipe/src/lib/application/internal/runtimepolicy"
 	"dockpipe/src/lib/domain"
 	"dockpipe/src/lib/infrastructure"
 )
@@ -29,12 +30,12 @@ func buildRunPolicyRecord(workdir, wfName, wfConfig, stepID, imageRef, imageDeci
 	}
 	if rm != nil {
 		rec.PolicyFingerprint = strings.TrimSpace(rm.PolicyFingerprint)
-		rec.PolicySummary = summarizeCompiledRuntimeManifest(rm)
+		rec.PolicySummary = runtimepolicy.SummarizeCompiledRuntimeManifest(rm)
 		rec.NetworkMode = strings.TrimSpace(rm.Security.Network.Mode)
 		rec.NetworkEnforcement = strings.TrimSpace(rm.Security.Network.Enforcement)
 		rec.AppliedRuleIDs = append([]string(nil), rm.RuleIDs...)
 		rec.AdvisoryNotes = compactNonEmptyStrings(rm.EnforcementSummaries)
-		rec.EnforcementNotes = compactNonEmptyStrings(compiledRuntimeEnforcementLogLines(rm))
+		rec.EnforcementNotes = compactNonEmptyStrings(runtimepolicy.CompiledRuntimeEnforcementLogLines(rm))
 	}
 	return rec
 }

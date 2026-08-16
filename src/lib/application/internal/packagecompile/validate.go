@@ -1,4 +1,4 @@
-package application
+package packagecompile
 
 import (
 	"fmt"
@@ -7,6 +7,7 @@ import (
 	"sort"
 	"strings"
 
+	"dockpipe/src/lib/application/internal/compileconfig"
 	"dockpipe/src/lib/domain"
 	"dockpipe/src/lib/infrastructure"
 	"dockpipe/src/lib/infrastructure/packagebuild"
@@ -26,7 +27,7 @@ func validateCompileOutputsScoped(workdir string, requireWorkflowNamespace bool,
 	if err != nil {
 		return err
 	}
-	cfg, err := loadDockpipeProjectConfig(repoRoot)
+	cfg, err := compileconfig.Load(repoRoot)
 	if err != nil {
 		return err
 	}
@@ -118,7 +119,7 @@ func validateCompileOutputsScoped(workdir string, requireWorkflowNamespace bool,
 }
 
 func mergeCompiledPackageNamesFromCompileRoots(out map[string]bool, repoRoot string, cfg *domain.DockpipeProjectConfig) {
-	for _, root := range effectiveWorkflowCompileRoots(cfg, repoRoot) {
+	for _, root := range compileconfig.WorkflowRoots(cfg, repoRoot) {
 		_ = filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
 			if err != nil {
 				if filepath.Clean(path) == filepath.Clean(root) {
