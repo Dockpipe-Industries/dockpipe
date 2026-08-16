@@ -79,7 +79,7 @@ var mainUsageSections = []usageSection{
 			{"workflow validate|list", "Validate YAML or print the DockPipe-resolved workflow catalog"},
 			{"session list|inspect|switch|publish", "Inspect and publish runtime-owned Git session workspaces"},
 			{"catalog list", "Print the DockPipe-owned launcher/tooling catalog (workflows, resolvers, strategies, runtimes)"},
-			{"pipelang compile|invoke|materialize", "PipeLang typed authoring helpers"},
+			{"pipelang check|compile|invoke|materialize", "PipeLang typed authoring helpers"},
 			{"doctor", "Check docker, bash, and bundled assets"},
 			{"core script-path <dots>", "Print absolute path to a core asset (same as scripts/core.<dots> in YAML)"},
 			{"get <field> [--workdir]", "Print generic DockPipe context like workdir or dockpipe_bin"},

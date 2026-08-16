@@ -1,0 +1,106 @@
+const assert = require("assert");
+const Module = require("module");
+
+class Position {
+  constructor(line, character) {
+    this.line = line;
+    this.character = character;
+  }
+}
+
+class Range {
+  constructor(start, end) {
+    this.start = start;
+    this.end = end;
+  }
+}
+
+class Diagnostic {
+  constructor(range, message, severity) {
+    this.range = range;
+    this.message = message;
+    this.severity = severity;
+  }
+}
+
+class Location {
+  constructor(uri, range) {
+    this.uri = uri;
+    this.range = range;
+  }
+}
+
+class DiagnosticRelatedInformation {
+  constructor(location, message) {
+    this.location = location;
+    this.message = message;
+  }
+}
+
+class SemanticTokensLegend {
+  constructor(tokenTypes, tokenModifiers) {
+    this.tokenTypes = tokenTypes;
+    this.tokenModifiers = tokenModifiers;
+  }
+}
+
+const vscode = {
+  DiagnosticSeverity: { Error: 0, Warning: 1 },
+  Position,
+  Range,
+  Diagnostic,
+  Location,
+  DiagnosticRelatedInformation,
+  SemanticTokensLegend,
+  Uri: { file: (fileName) => ({ fsPath: fileName }) }
+};
+
+const originalLoad = Module._load;
+Module._load = function load(request, parent, isMain) {
+  if (request === "vscode") return vscode;
+  return originalLoad.call(this, request, parent, isMain);
+};
+const helpers = require("./extension").__test;
+Module._load = originalLoad;
+
+const diagnostics = helpers.pipeLangEditorDiagnostics(
+  { fileName: "/tmp/demo.pipe" },
+  [
+    {
+      code: "PL2002",
+      category: "syntax",
+      severity: "error",
+      message: "expected ;",
+      primary: {
+        file: "/tmp/demo.pipe",
+        start: { line: 2, column: 3, utf16_column: 4 },
+        end: { line: 2, column: 4, utf16_column: 5 }
+      },
+      related: [
+        {
+          message: "first declaration",
+          range: {
+            file: "/tmp/other.pipe",
+            start: { line: 1, column: 1, utf16_column: 1 },
+            end: { line: 1, column: 2, utf16_column: 2 }
+          }
+        }
+      ]
+    },
+    {
+      code: "PL1001",
+      severity: "error",
+      message: "sibling diagnostic",
+      primary: { file: "/tmp/other.pipe", start: {}, end: {} }
+    }
+  ]
+);
+
+assert.strictEqual(diagnostics.length, 1);
+assert.strictEqual(diagnostics[0].code, "PL2002");
+assert.strictEqual(diagnostics[0].source, "PipeLang");
+assert.strictEqual(diagnostics[0].range.start.line, 1);
+assert.strictEqual(diagnostics[0].range.start.character, 3);
+assert.strictEqual(diagnostics[0].range.end.character, 4);
+assert.strictEqual(diagnostics[0].relatedInformation.length, 1);
+assert.strictEqual(diagnostics[0].relatedInformation[0].location.uri.fsPath, "/tmp/other.pipe");

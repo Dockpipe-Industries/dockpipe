@@ -2,11 +2,7 @@ package pipelang
 
 import (
 	"fmt"
-	"strings"
 )
-
-// TypeName is a primitive type in PipeLang v0.0.0.1.
-type TypeName string
 
 type Visibility string
 
@@ -25,49 +21,6 @@ func normalizeVisibility(v Visibility) Visibility {
 func (v Visibility) IsValid() bool {
 	n := normalizeVisibility(v)
 	return n == VisibilityPublic || n == VisibilityPrivate
-}
-
-const (
-	TypeString TypeName = "string"
-	TypeInt    TypeName = "int"
-	TypeBool   TypeName = "bool"
-	TypeFloat  TypeName = "float"
-)
-
-func (t TypeName) IsValid() bool {
-	switch TypeName(strings.TrimSpace(string(t))) {
-	case TypeString, TypeInt, TypeBool, TypeFloat:
-		return true
-	}
-	name := strings.TrimSpace(string(t))
-	if name == "" {
-		return false
-	}
-	if inner, ok := t.ListElementType(); ok {
-		return inner.IsValid()
-	}
-	return isTypeIdentifier(name)
-}
-
-func (t TypeName) ListElementType() (TypeName, bool) {
-	name := strings.TrimSpace(string(t))
-	if !strings.HasPrefix(name, "List<") || !strings.HasSuffix(name, ">") {
-		return "", false
-	}
-	inner := strings.TrimSpace(name[len("List<") : len(name)-1])
-	if inner == "" {
-		return "", false
-	}
-	return TypeName(inner), true
-}
-
-func (t TypeName) IsPrimitive() bool {
-	switch TypeName(strings.TrimSpace(string(t))) {
-	case TypeString, TypeInt, TypeBool, TypeFloat:
-		return true
-	default:
-		return false
-	}
 }
 
 func isTypeIdentifier(name string) bool {
@@ -91,11 +44,15 @@ func isTypeIdentifier(name string) bool {
 type Program struct {
 	Interfaces []*InterfaceDecl
 	Classes    []*ClassDecl
+	Span       Span
+	sources    *SourceSet
+	modules    *ModuleGraph
 }
 
 type Annotation struct {
 	Name  string
 	Value Value
+	Span  Span
 }
 
 type InterfaceDecl struct {
@@ -104,72 +61,84 @@ type InterfaceDecl struct {
 	Annotations []Annotation
 	Fields      []FieldSig
 	Methods     []MethodSig
+	Span        Span
 }
 
 type ClassDecl struct {
 	Name        string
 	Visibility  Visibility
 	Annotations []Annotation
-	Implements  string
+	Implements  *UnresolvedTypeRef
 	Fields      []FieldDecl
 	Methods     []MethodDecl
+	Span        Span
 }
 
 type FieldSig struct {
 	Visibility  Visibility
 	Annotations []Annotation
-	Type        TypeName
+	Type        UnresolvedTypeRef
 	Name        string
+	Span        Span
 }
 
 type MethodSig struct {
 	Visibility  Visibility
 	Annotations []Annotation
-	ReturnType  TypeName
+	ReturnType  UnresolvedTypeRef
 	Name        string
 	Params      []Param
+	Span        Span
 }
 
 type FieldDecl struct {
 	Visibility  Visibility
 	Annotations []Annotation
-	Type        TypeName
+	Type        UnresolvedTypeRef
 	Name        string
 	Default     Expr
+	Span        Span
 }
 
 type MethodDecl struct {
 	Visibility  Visibility
 	Annotations []Annotation
-	ReturnType  TypeName
+	ReturnType  UnresolvedTypeRef
 	Name        string
 	Params      []Param
 	Body        Expr
+	Span        Span
 }
 
 type Param struct {
-	Type TypeName
+	Type UnresolvedTypeRef
 	Name string
+	Span Span
 }
 
 type Expr interface {
 	isExpr()
+	SourceSpan() Span
 }
 
 type (
 	LiteralExpr struct {
 		Value Value
+		Span  Span
 	}
 	IdentExpr struct {
 		Name string
+		Span Span
 	}
 	UnaryExpr struct {
 		Op   string
 		Expr Expr
+		Span Span
 	}
 	BinaryExpr struct {
 		Op          string
 		Left, Right Expr
+		Span        Span
 	}
 )
 
@@ -178,8 +147,26 @@ func (*IdentExpr) isExpr()   {}
 func (*UnaryExpr) isExpr()   {}
 func (*BinaryExpr) isExpr()  {}
 
+func (e *LiteralExpr) SourceSpan() Span { return e.Span }
+func (e *IdentExpr) SourceSpan() Span   { return e.Span }
+func (e *UnaryExpr) SourceSpan() Span   { return e.Span }
+func (e *BinaryExpr) SourceSpan() Span  { return e.Span }
+
+func setExprSpan(expr Expr, span Span) {
+	switch node := expr.(type) {
+	case *LiteralExpr:
+		node.Span = span
+	case *IdentExpr:
+		node.Span = span
+	case *UnaryExpr:
+		node.Span = span
+	case *BinaryExpr:
+		node.Span = span
+	}
+}
+
 type Value struct {
-	Type   TypeName
+	Type   PrimitiveType
 	String string
 	Int    int64
 	Float  float64
@@ -204,7 +191,7 @@ func (v Value) StringValue() string {
 	}
 }
 
-func ZeroValue(t TypeName) Value {
+func ZeroValue(t PrimitiveType) Value {
 	switch t {
 	case TypeString:
 		return Value{Type: TypeString, String: ""}

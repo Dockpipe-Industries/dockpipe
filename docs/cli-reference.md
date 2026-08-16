@@ -126,6 +126,7 @@ When a workflow also declares `view:`, that YAML remains a launcher/tooling pres
 
 | Command | Purpose |
 |---------|---------|
+| `dockpipe pipelang check --in <file.pipe> [--format text\|json] [--stdin]` | Strictly decode, parse, and type-check the source set without evaluating code or emitting artifacts. JSON is the stable structured diagnostic projection; `--stdin` replaces the selected file bytes for unsaved editor buffers. |
 | `dockpipe pipelang compile --in <file.pipe> [--entry <Class>] [--out <dir>]` | Parse + type-check PipeLang and emit artifacts: `<Class>.workflow.yml`, `<Class>.bindings.json`, `<Class>.bindings.env` (default out: `bin/.dockpipe/pipelang/`). |
 | `dockpipe pipelang invoke --in <file.pipe> [--class <Class>] --method <name> [--arg <value>]... [--format text|json|env]` | Invoke a PipeLang method through CLI only. No resolver/runtime execution path is used. |
 | `dockpipe pipelang materialize [--workdir <path>] [--from <root>]... [--force]` | Recursively compile `.pipe` files under roots into sidecar `.pipelang/` artifacts. Default roots are resolved from `dockpipe.config.json` `compile.workflows`. |

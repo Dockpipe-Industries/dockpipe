@@ -1,5 +1,6 @@
 // @ts-check
 const vscode = require("vscode");
+const childProcess = require("child_process");
 const fs = require("fs/promises");
 const path = require("path");
 const zlib = require("zlib");
@@ -1119,6 +1120,86 @@ async function readIfExists(filePath) {
   }
 }
 
+async function resolveDockpipeBinary(document) {
+  if (process.env.DOCKPIPE_BIN) {
+    return process.env.DOCKPIPE_BIN;
+  }
+  const folder = vscode.workspace.getWorkspaceFolder(document.uri);
+  if (folder) {
+    const name = process.platform === "win32" ? "dockpipe.exe" : "dockpipe";
+    const candidate = path.join(folder.uri.fsPath, "src", "bin", name);
+    try {
+      await fs.access(candidate);
+      return candidate;
+    } catch {
+      // Installed extensions fall back to the user's PATH.
+    }
+  }
+  return process.platform === "win32" ? "dockpipe.exe" : "dockpipe";
+}
+
+function runPipeLangCheck(document, binary) {
+  return new Promise((resolve) => {
+    const child = childProcess.spawn(
+      binary,
+      ["pipelang", "check", "--in", document.fileName, "--format", "json", "--stdin"],
+      { cwd: path.dirname(document.fileName), windowsHide: true, shell: false }
+    );
+    let stdout = "";
+    child.stdout.setEncoding("utf8");
+    child.stdout.on("data", (chunk) => { stdout += chunk; });
+    child.stdin.on("error", () => {});
+    child.on("error", () => resolve(null));
+    child.on("close", () => {
+      try {
+        const payload = JSON.parse(stdout);
+        resolve(payload && payload.schema === 1 && Array.isArray(payload.diagnostics) ? payload.diagnostics : null);
+      } catch {
+        resolve(null);
+      }
+    });
+    child.stdin.end(document.getText(), "utf8");
+  });
+}
+
+function pipeLangDiagnosticSeverity(severity) {
+  switch (severity) {
+    case "warning": return vscode.DiagnosticSeverity.Warning;
+    case "error":
+    default: return vscode.DiagnosticSeverity.Error;
+  }
+}
+
+function pipeLangPosition(position) {
+  const line = Math.max(0, Number(position?.line || 1) - 1);
+  const column = Math.max(0, Number(position?.utf16_column || position?.column || 1) - 1);
+  return new vscode.Position(line, column);
+}
+
+function pipeLangRange(range) {
+  return new vscode.Range(pipeLangPosition(range?.start), pipeLangPosition(range?.end));
+}
+
+function pipeLangEditorDiagnostics(document, diagnostics) {
+  const documentPath = path.normalize(document.fileName);
+  return diagnostics
+    .filter((item) => path.normalize(String(item?.primary?.file || "")) === documentPath)
+    .map((item) => {
+      const diagnostic = new vscode.Diagnostic(
+        pipeLangRange(item.primary),
+        String(item.message || "PipeLang diagnostic"),
+        pipeLangDiagnosticSeverity(item.severity)
+      );
+      diagnostic.code = String(item.code || "");
+      diagnostic.source = "PipeLang";
+      diagnostic.relatedInformation = (item.related || []).map((related) => new vscode.DiagnosticRelatedInformation(
+        new vscode.Location(vscode.Uri.file(String(related.range.file)), pipeLangRange(related.range)),
+        String(related.message || "related location")
+      ));
+      return diagnostic;
+    });
+}
+
 /**
  * @param {vscode.TextDocument} doc
  * @returns {Promise<ModelContext>}
@@ -1996,7 +2077,40 @@ function findTypeEntryModel(modelCtx, entry) {
 /** @param {vscode.ExtensionContext} context */
 function activate(context) {
   const yamlDiagnostics = vscode.languages.createDiagnosticCollection("dockpipe-yaml");
+  const pipeLangDiagnostics = vscode.languages.createDiagnosticCollection("pipelang");
+  const pipeLangRefreshTimers = new Map();
   context.subscriptions.push(yamlDiagnostics);
+  context.subscriptions.push(pipeLangDiagnostics);
+
+  const refreshPipeLangDiagnostics = async (doc) => {
+    if (!doc || doc.languageId !== "pipelang" || doc.uri.scheme !== "file") {
+      return;
+    }
+    const documentVersion = doc.version;
+    const binary = await resolveDockpipeBinary(doc);
+    const diagnostics = await runPipeLangCheck(doc, binary);
+    if (doc.version !== documentVersion) {
+      return;
+    }
+    if (diagnostics) {
+      pipeLangDiagnostics.set(doc.uri, pipeLangEditorDiagnostics(doc, diagnostics));
+    } else {
+      pipeLangDiagnostics.delete(doc.uri);
+    }
+  };
+
+  const schedulePipeLangDiagnostics = (doc) => {
+    if (!doc || doc.languageId !== "pipelang" || doc.uri.scheme !== "file") {
+      return;
+    }
+    const key = doc.uri.toString();
+    const existing = pipeLangRefreshTimers.get(key);
+    if (existing) clearTimeout(existing);
+    pipeLangRefreshTimers.set(key, setTimeout(() => {
+      pipeLangRefreshTimers.delete(key);
+      void refreshPipeLangDiagnostics(doc);
+    }, 150));
+  };
 
   const refreshYamlDiagnostics = (doc) => {
     if (!doc || doc.languageId !== "yaml" || !isDockpipeWorkflowFile(doc)) {
@@ -2007,12 +2121,23 @@ function activate(context) {
 
   for (const doc of vscode.workspace.textDocuments) {
     refreshYamlDiagnostics(doc);
+    schedulePipeLangDiagnostics(doc);
   }
 
   context.subscriptions.push(
     vscode.workspace.onDidOpenTextDocument(refreshYamlDiagnostics),
     vscode.workspace.onDidChangeTextDocument((e) => refreshYamlDiagnostics(e.document)),
-    vscode.workspace.onDidCloseTextDocument((doc) => yamlDiagnostics.delete(doc.uri))
+    vscode.workspace.onDidCloseTextDocument((doc) => yamlDiagnostics.delete(doc.uri)),
+    vscode.workspace.onDidOpenTextDocument(schedulePipeLangDiagnostics),
+    vscode.workspace.onDidChangeTextDocument((e) => schedulePipeLangDiagnostics(e.document)),
+    vscode.workspace.onDidSaveTextDocument(schedulePipeLangDiagnostics),
+    vscode.workspace.onDidCloseTextDocument((doc) => {
+      const key = doc.uri.toString();
+      const timer = pipeLangRefreshTimers.get(key);
+      if (timer) clearTimeout(timer);
+      pipeLangRefreshTimers.delete(key);
+      pipeLangDiagnostics.delete(doc.uri);
+    })
   );
 
   context.subscriptions.push(
@@ -2727,4 +2852,8 @@ function activate(context) {
 
 function deactivate() {}
 
-module.exports = { activate, deactivate };
+module.exports = {
+  activate,
+  deactivate,
+  __test: { pipeLangPosition, pipeLangRange, pipeLangEditorDiagnostics }
+};

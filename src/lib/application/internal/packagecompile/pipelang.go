@@ -18,7 +18,7 @@ func compileWorkflowOneFromPipe(workdir, workflowDir string, force bool) error {
 	}
 	entryClass := ""
 	if data, ok := files[pipePath]; ok {
-		if program, err := pipelang.Parse(data); err == nil && len(program.Classes) > 0 {
+		if program, err := pipelang.ParseFile(pipePath, data); err == nil && len(program.Classes) > 0 {
 			entryClass = program.Classes[0].Name
 		}
 	}
