@@ -11,6 +11,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"dockpipe/src/lib/infrastructure"
 )
 
 func TestCmdInstallCoreDryRunRequiresBaseOrURL(t *testing.T) {
@@ -59,6 +61,8 @@ func TestCmdInstallCoreEmitsOperationResults(t *testing.T) {
 	t.Setenv(envInstallAllowInsecureHTTP, "1")
 
 	dir := t.TempDir()
+	eventLog := filepath.Join(t.TempDir(), "events.jsonl")
+	t.Setenv(infrastructure.EnvDockpipeEventLog, eventLog)
 	stderr, err := captureResultStderr(t, func() error {
 		return cmdInstallCore([]string{"--workdir", dir, "--base-url", srv.URL})
 	})
@@ -87,6 +91,35 @@ func TestCmdInstallCoreEmitsOperationResults(t *testing.T) {
 	}
 	if string(got) != "content" {
 		t.Fatalf("installed file = %q want content", string(got))
+	}
+
+	events, err := infrastructure.ReadOperationEvents(eventLog)
+	if err != nil {
+		t.Fatalf("ReadOperationEvents: %v", err)
+	}
+	wantEvents := []struct {
+		unit   string
+		status string
+	}{
+		{"install.core", infrastructure.OperationStatusStart},
+		{"install.core.resolve", infrastructure.OperationStatusStart},
+		{"install.core.resolve", infrastructure.OperationStatusDone},
+		{"install.core.download", infrastructure.OperationStatusStart},
+		{"install.core.download", infrastructure.OperationStatusDone},
+		{"install.core.extract", infrastructure.OperationStatusStart},
+		{"install.core.extract", infrastructure.OperationStatusDone},
+		{"install.core", infrastructure.OperationStatusDone},
+	}
+	if len(events) != len(wantEvents) {
+		t.Fatalf("operation event count = %d want %d: %+v", len(events), len(wantEvents), events)
+	}
+	for i, want := range wantEvents {
+		if events[i].Unit != want.unit || events[i].Status != want.status {
+			t.Fatalf("operation event %d = %s/%s want %s/%s", i, events[i].Unit, events[i].Status, want.unit, want.status)
+		}
+	}
+	if events[4].IDs["checksum"] != "missing" || events[6].IDs["result"] != "installed" || events[7].IDs["result"] != "installed" {
+		t.Fatalf("nested operation event IDs changed: download=%+v extract=%+v install=%+v", events[4].IDs, events[6].IDs, events[7].IDs)
 	}
 }
 

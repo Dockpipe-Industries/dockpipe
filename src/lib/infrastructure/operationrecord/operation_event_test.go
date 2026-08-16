@@ -1,4 +1,4 @@
-package infrastructure
+package operationrecord
 
 import (
 	"encoding/json"
@@ -77,10 +77,10 @@ func TestAppendAndReadOperationEventsJSONL(t *testing.T) {
 }
 
 func TestLogOperationResultMirrorsToConfiguredEventLog(t *testing.T) {
-	oldNow := timeNowDockerFn
+	oldNow := timeNowFn
 	oldEnv := os.Getenv(EnvDockpipeEventLog)
 	t.Cleanup(func() {
-		timeNowDockerFn = oldNow
+		timeNowFn = oldNow
 		if oldEnv == "" {
 			os.Unsetenv(EnvDockpipeEventLog)
 		} else {
@@ -88,7 +88,7 @@ func TestLogOperationResultMirrorsToConfiguredEventLog(t *testing.T) {
 		}
 	})
 	now := time.Unix(1000, 0)
-	timeNowDockerFn = func() time.Time { return now }
+	timeNowFn = func() time.Time { return now }
 	path := filepath.Join(t.TempDir(), "events.jsonl")
 	os.Setenv(EnvDockpipeEventLog, path)
 	stderr, err := os.CreateTemp(t.TempDir(), "stderr")
@@ -117,12 +117,12 @@ func TestLogOperationResultMirrorsToConfiguredEventLog(t *testing.T) {
 }
 
 func TestRunOperationWithSpinnerMirrorsStartEventWithoutStartLine(t *testing.T) {
-	oldNow := timeNowDockerFn
-	oldTTY := isTerminalDockerFn
+	oldNow := timeNowFn
+	oldTTY := isTerminalFn
 	oldEnv := os.Getenv(EnvDockpipeEventLog)
 	t.Cleanup(func() {
-		timeNowDockerFn = oldNow
-		isTerminalDockerFn = oldTTY
+		timeNowFn = oldNow
+		isTerminalFn = oldTTY
 		if oldEnv == "" {
 			os.Unsetenv(EnvDockpipeEventLog)
 		} else {
@@ -130,12 +130,12 @@ func TestRunOperationWithSpinnerMirrorsStartEventWithoutStartLine(t *testing.T) 
 		}
 	})
 	now := time.Unix(1000, 0)
-	timeNowDockerFn = func() time.Time {
+	timeNowFn = func() time.Time {
 		current := now
 		now = now.Add(10 * time.Millisecond)
 		return current
 	}
-	isTerminalDockerFn = func(fd int) bool { return true }
+	isTerminalFn = func(fd int) bool { return true }
 	path := filepath.Join(t.TempDir(), "events.jsonl")
 	os.Setenv(EnvDockpipeEventLog, path)
 	stderr, err := os.CreateTemp(t.TempDir(), "stderr")

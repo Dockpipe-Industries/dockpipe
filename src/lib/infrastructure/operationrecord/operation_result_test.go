@@ -1,4 +1,4 @@
-package infrastructure
+package operationrecord
 
 import (
 	"errors"
@@ -9,19 +9,19 @@ import (
 )
 
 func TestRunOperationLogsStableResultLines(t *testing.T) {
-	oldNow := timeNowDockerFn
-	oldTTY := isTerminalDockerFn
+	oldNow := timeNowFn
+	oldTTY := isTerminalFn
 	t.Cleanup(func() {
-		timeNowDockerFn = oldNow
-		isTerminalDockerFn = oldTTY
+		timeNowFn = oldNow
+		isTerminalFn = oldTTY
 	})
 	now := time.Unix(1000, 0)
-	timeNowDockerFn = func() time.Time {
+	timeNowFn = func() time.Time {
 		current := now
 		now = now.Add(25 * time.Millisecond)
 		return current
 	}
-	isTerminalDockerFn = func(fd int) bool { return false }
+	isTerminalFn = func(fd int) bool { return false }
 	stderr, err := os.CreateTemp(t.TempDir(), "stderr")
 	if err != nil {
 		t.Fatal(err)
@@ -54,19 +54,19 @@ func TestRunOperationLogsStableResultLines(t *testing.T) {
 }
 
 func TestRunOperationLogsFailureResultLine(t *testing.T) {
-	oldNow := timeNowDockerFn
-	oldTTY := isTerminalDockerFn
+	oldNow := timeNowFn
+	oldTTY := isTerminalFn
 	t.Cleanup(func() {
-		timeNowDockerFn = oldNow
-		isTerminalDockerFn = oldTTY
+		timeNowFn = oldNow
+		isTerminalFn = oldTTY
 	})
 	now := time.Unix(1000, 0)
-	timeNowDockerFn = func() time.Time {
+	timeNowFn = func() time.Time {
 		current := now
 		now = now.Add(10 * time.Millisecond)
 		return current
 	}
-	isTerminalDockerFn = func(fd int) bool { return false }
+	isTerminalFn = func(fd int) bool { return false }
 	stderr, err := os.CreateTemp(t.TempDir(), "stderr")
 	if err != nil {
 		t.Fatal(err)
@@ -96,19 +96,19 @@ func TestRunOperationLogsFailureResultLine(t *testing.T) {
 }
 
 func TestRunOperationWithOptionsWithoutSpinnerStillLogsStartAndDoneOnTerminal(t *testing.T) {
-	oldNow := timeNowDockerFn
-	oldTTY := isTerminalDockerFn
+	oldNow := timeNowFn
+	oldTTY := isTerminalFn
 	t.Cleanup(func() {
-		timeNowDockerFn = oldNow
-		isTerminalDockerFn = oldTTY
+		timeNowFn = oldNow
+		isTerminalFn = oldTTY
 	})
 	now := time.Unix(1000, 0)
-	timeNowDockerFn = func() time.Time {
+	timeNowFn = func() time.Time {
 		current := now
 		now = now.Add(15 * time.Millisecond)
 		return current
 	}
-	isTerminalDockerFn = func(fd int) bool { return true }
+	isTerminalFn = func(fd int) bool { return true }
 	stderr, err := os.CreateTemp(t.TempDir(), "stderr")
 	if err != nil {
 		t.Fatal(err)
@@ -139,19 +139,19 @@ func TestRunOperationWithOptionsWithoutSpinnerStillLogsStartAndDoneOnTerminal(t 
 }
 
 func TestRunOperationWithOptionsWithoutSpinnerLogsProgressHeartbeat(t *testing.T) {
-	oldNow := timeNowDockerFn
-	oldTTY := isTerminalDockerFn
+	oldNow := timeNowFn
+	oldTTY := isTerminalFn
 	t.Cleanup(func() {
-		timeNowDockerFn = oldNow
-		isTerminalDockerFn = oldTTY
+		timeNowFn = oldNow
+		isTerminalFn = oldTTY
 	})
 	now := time.Unix(1000, 0)
-	timeNowDockerFn = func() time.Time {
+	timeNowFn = func() time.Time {
 		current := now
 		now = now.Add(5 * time.Millisecond)
 		return current
 	}
-	isTerminalDockerFn = func(fd int) bool { return true }
+	isTerminalFn = func(fd int) bool { return true }
 	stderr, err := os.CreateTemp(t.TempDir(), "stderr")
 	if err != nil {
 		t.Fatal(err)

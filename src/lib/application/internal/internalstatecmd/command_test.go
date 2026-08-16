@@ -1,6 +1,8 @@
-package application
+package internalstatecmd
 
 import (
+	"bytes"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -20,7 +22,7 @@ func TestInternalStatePrepareDurableCohort(t *testing.T) {
 	t.Setenv("XDG_STATE_HOME", filepath.Join(base, "durable"))
 	t.Setenv("HOME", filepath.Join(base, "home"))
 	out, err := captureStdout(t, func() error {
-		return cmdInternalState([]string{
+		return Run([]string{
 			"prepare-durable-cohort",
 			"--workdir", workdir,
 			"--owner", "vm/runtime/vmimage",
@@ -51,7 +53,7 @@ func TestInternalStatePrepareDurableCohort(t *testing.T) {
 }
 
 func TestInternalStateIsHiddenAndRejectsMalformedMappings(t *testing.T) {
-	if err := cmdInternalState([]string{"--help"}); err == nil || !strings.Contains(err.Error(), "unknown internal") {
+	if err := Run([]string{"--help"}); err == nil || !strings.Contains(err.Error(), "unknown internal") {
 		t.Fatalf("internal state unexpectedly exposed help: %v", err)
 	}
 	_, err := parseInternalDurableCohortArgs([]string{
@@ -71,7 +73,7 @@ func TestInternalStateIsHiddenAndRejectsMalformedMappings(t *testing.T) {
 func TestInternalStatePackageRuntimeIsCollisionSafeAndNonMutating(t *testing.T) {
 	workdir := filepath.Join(t.TempDir(), "checkout")
 	first, err := captureStdout(t, func() error {
-		return cmdInternalState([]string{
+		return Run([]string{
 			"package-runtime",
 			"--workdir", workdir,
 			"--owner", "Package.One/component/Worker",
@@ -82,7 +84,7 @@ func TestInternalStatePackageRuntimeIsCollisionSafeAndNonMutating(t *testing.T) 
 		t.Fatal(err)
 	}
 	second, err := captureStdout(t, func() error {
-		return cmdInternalState([]string{
+		return Run([]string{
 			"package-runtime",
 			"--workdir", workdir,
 			"--owner", "package-one-component-worker",
@@ -104,7 +106,7 @@ func TestInternalStatePackageRuntimeIsCollisionSafeAndNonMutating(t *testing.T) 
 	if _, err := os.Stat(filepath.Join(workdir, "bin", ".dockpipe")); !os.IsNotExist(err) {
 		t.Fatalf("package runtime lookup mutated checkout state: %v", err)
 	}
-	if err := cmdInternalState([]string{
+	if err := Run([]string{
 		"package-runtime",
 		"--workdir", workdir,
 		"--owner", "package-owner",
@@ -121,7 +123,7 @@ func TestInternalStatePackageRuntimeCanPreparePrivateRoot(t *testing.T) {
 		t.Fatal(err)
 	}
 	out, err := captureStdout(t, func() error {
-		return cmdInternalState([]string{
+		return Run([]string{
 			"package-runtime",
 			"--workdir", workdir,
 			"--owner", "package/dev-stack",
@@ -154,7 +156,7 @@ func TestInternalStatePrivateDirectoryRejectsLinksAndTraversal(t *testing.T) {
 		t.Fatal(err)
 	}
 	out, err := captureStdout(t, func() error {
-		return cmdInternalState([]string{"private-directory", "--root", root, "--path", "home/config"})
+		return Run([]string{"private-directory", "--root", root, "--path", "home/config"})
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -166,17 +168,41 @@ func TestInternalStatePrivateDirectoryRejectsLinksAndTraversal(t *testing.T) {
 	if info, err := os.Stat(want); err != nil || info.Mode().Perm() != 0o700 {
 		t.Fatalf("private directory mode = %v, %v", info, err)
 	}
-	if err := cmdInternalState([]string{"private-directory", "--root", root, "--path", "../escape"}); err == nil {
+	if err := Run([]string{"private-directory", "--root", root, "--path", "../escape"}); err == nil {
 		t.Fatal("private directory accepted traversal")
 	}
-	if err := cmdInternalState([]string{"private-directory", "--root", root, "--root", root, "--path", "child"}); err == nil {
+	if err := Run([]string{"private-directory", "--root", root, "--root", root, "--path", "child"}); err == nil {
 		t.Fatal("private directory accepted duplicate roots")
 	}
 	linkedRoot := filepath.Join(t.TempDir(), "linked")
 	if err := os.Symlink(root, linkedRoot); err != nil {
 		t.Skipf("symlink unavailable: %v", err)
 	}
-	if err := cmdInternalState([]string{"private-directory", "--root", linkedRoot, "--path", "child"}); err == nil {
+	if err := Run([]string{"private-directory", "--root", linkedRoot, "--path", "child"}); err == nil {
 		t.Fatal("private directory accepted a linked root")
 	}
+}
+
+func captureStdout(t *testing.T, fn func() error) (string, error) {
+	t.Helper()
+	old := os.Stdout
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	os.Stdout = w
+	t.Cleanup(func() { os.Stdout = old })
+	runErr := fn()
+	if err := w.Close(); err != nil {
+		t.Fatal(err)
+	}
+	os.Stdout = old
+	var buf bytes.Buffer
+	if _, err := io.Copy(&buf, r); err != nil {
+		t.Fatal(err)
+	}
+	if err := r.Close(); err != nil {
+		t.Fatal(err)
+	}
+	return strings.TrimSpace(buf.String()), runErr
 }

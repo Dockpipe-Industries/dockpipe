@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"dockpipe/src/lib/application/internal/shellquote"
 	"dockpipe/src/lib/infrastructure"
 )
 
@@ -223,8 +224,8 @@ func cmdSDKShellEnv(args []string) error {
 		return err
 	}
 
-	fmt.Printf("export DOCKPIPE_WORKDIR=%s\n", shellQuote(workdir))
-	fmt.Printf("source %s\n", shellQuote(sdkPath))
+	fmt.Printf("export DOCKPIPE_WORKDIR=%s\n", shellquote.POSIX(workdir))
+	fmt.Printf("source %s\n", shellquote.POSIX(sdkPath))
 	return nil
 }
 
@@ -360,8 +361,4 @@ func resolveShellSDKPath(workdir string) (string, error) {
 		return "", err
 	}
 	return filepath.Join(infrastructure.CoreDir(rr), "assets", "scripts", "lib", "dockpipe-sdk.sh"), nil
-}
-
-func shellQuote(s string) string {
-	return "'" + strings.ReplaceAll(s, "'", `'"'"'`) + "'"
 }

@@ -12,3 +12,14 @@ func FirstNonEmpty(values ...string) string {
 	}
 	return ""
 }
+
+// FirstNonBlank returns the first value containing non-whitespace bytes without
+// changing the selected value.
+func FirstNonBlank(values ...string) string {
+	for _, value := range values {
+		if strings.TrimSpace(value) != "" {
+			return value
+		}
+	}
+	return ""
+}
