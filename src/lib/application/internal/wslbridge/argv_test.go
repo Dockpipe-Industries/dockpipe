@@ -1,9 +1,14 @@
-package application
+package wslbridge
 
 import (
+	"os"
 	"reflect"
 	"testing"
 )
+
+func testTranslator() Translator {
+	return New(PathToWSLFallback, os.Getwd)
+}
 
 // TestSplitDockerMountHostContainer splits docker -v host:container[:opts] into host and container paths.
 func TestSplitDockerMountHostContainer(t *testing.T) {
@@ -29,7 +34,7 @@ func TestSplitDockerMountHostContainer(t *testing.T) {
 
 // TestTranslateMountSpec_fallbackDrive converts Windows drive paths in --mount for WSL.
 func TestTranslateMountSpec_fallbackDrive(t *testing.T) {
-	got := translateMountSpec("Ubuntu", `C:\proj:/work:ro`)
+	got := translateMountSpec(testTranslator(), `C:\proj:/work:ro`)
 	want := "/mnt/c/proj:/work:ro"
 	if got != want {
 		t.Fatalf("got %q want %q", got, want)
@@ -38,7 +43,7 @@ func TestTranslateMountSpec_fallbackDrive(t *testing.T) {
 
 // TestTranslateMountSpec_namedVolumeUnchanged leaves Docker named volumes unchanged in mount specs.
 func TestTranslateMountSpec_namedVolumeUnchanged(t *testing.T) {
-	got := translateMountSpec("Ubuntu", "mydata:/var/lib/data:ro")
+	got := translateMountSpec(testTranslator(), "mydata:/var/lib/data:ro")
 	want := "mydata:/var/lib/data:ro"
 	if got != want {
 		t.Fatalf("got %q want %q", got, want)
@@ -47,7 +52,7 @@ func TestTranslateMountSpec_namedVolumeUnchanged(t *testing.T) {
 
 // TestTranslateMountSpec_zSuffix preserves :Z/:z SELinux suffix after host path translation.
 func TestTranslateMountSpec_zSuffix(t *testing.T) {
-	got := translateMountSpec("Ubuntu", `C:\x:/work:Z`)
+	got := translateMountSpec(testTranslator(), `C:\x:/work:Z`)
 	want := "/mnt/c/x:/work:Z"
 	if got != want {
 		t.Fatalf("got %q want %q", got, want)
@@ -57,7 +62,7 @@ func TestTranslateMountSpec_zSuffix(t *testing.T) {
 // TestTranslateBridgeArgv_flagsAndDoubleDash translates path flags before -- and leaves command args after -- on Windows.
 func TestTranslateBridgeArgv_flagsAndDoubleDash(t *testing.T) {
 	in := []string{"--workdir", `C:\repo`, "--", "echo", `C:\nope`}
-	out := translateBridgeArgv("d", in)
+	out := translateBridgeArgv(testTranslator(), in)
 	if len(out) != 5 {
 		t.Fatalf("len %d", len(out))
 	}
@@ -71,7 +76,7 @@ func TestTranslateBridgeArgv_flagsAndDoubleDash(t *testing.T) {
 
 func TestTranslateBridgeArgv_doubleDashMultipleOnlyFirstSplit(t *testing.T) {
 	in := []string{"--workdir", `C:\a`, "--", "cmd", "--flag", `C:\b`}
-	out := translateBridgeArgv("d", in)
+	out := translateBridgeArgv(testTranslator(), in)
 	if !reflect.DeepEqual(out, []string{"--workdir", "/mnt/c/a", "--", "cmd", "--flag", `C:\b`}) {
 		t.Fatalf("got %#v", out)
 	}
@@ -80,7 +85,7 @@ func TestTranslateBridgeArgv_doubleDashMultipleOnlyFirstSplit(t *testing.T) {
 // TestTranslateBridgeArgv_noDoubleDash_allTranslated translates all path-like flags when there is no --.
 func TestTranslateBridgeArgv_noDoubleDash_allTranslated(t *testing.T) {
 	in := []string{"--data-dir", `C:\data`, "--workdir", `D:\w`}
-	out := translateBridgeArgv("d", in)
+	out := translateBridgeArgv(testTranslator(), in)
 	if !reflect.DeepEqual(out, []string{"--data-dir", "/mnt/c/data", "--workdir", "/mnt/d/w"}) {
 		t.Fatalf("got %#v", out)
 	}
@@ -89,7 +94,7 @@ func TestTranslateBridgeArgv_noDoubleDash_allTranslated(t *testing.T) {
 // TestTranslateBridgeArgv_mount translates host side of --mount bind specs.
 func TestTranslateBridgeArgv_mount(t *testing.T) {
 	in := []string{"--mount", `C:\Users\x:/work:rw`}
-	out := translateBridgeArgv("d", in)
+	out := translateBridgeArgv(testTranslator(), in)
 	if out[1] != "/mnt/c/Users/x:/work:rw" {
 		t.Fatalf("got %q", out[1])
 	}
@@ -98,7 +103,7 @@ func TestTranslateBridgeArgv_mount(t *testing.T) {
 // TestTranslateBridgeArgv_twoMounts translates each repeated --mount value.
 func TestTranslateBridgeArgv_twoMounts(t *testing.T) {
 	in := []string{"--mount", `C:\a:/a`, "--mount", `D:\b:/b`}
-	out := translateBridgeArgv("d", in)
+	out := translateBridgeArgv(testTranslator(), in)
 	if out[1] != "/mnt/c/a:/a" || out[3] != "/mnt/d/b:/b" {
 		t.Fatalf("got %#v", out)
 	}
@@ -107,7 +112,7 @@ func TestTranslateBridgeArgv_twoMounts(t *testing.T) {
 // TestTranslateBridgeArgv_envPath translates Windows paths in KEY=path --env values.
 func TestTranslateBridgeArgv_envPath(t *testing.T) {
 	in := []string{"--env", `HOST=C:\tmp`}
-	out := translateBridgeArgv("d", in)
+	out := translateBridgeArgv(testTranslator(), in)
 	if out[1] != "HOST=/mnt/c/tmp" {
 		t.Fatalf("got %q", out[1])
 	}
@@ -116,7 +121,7 @@ func TestTranslateBridgeArgv_envPath(t *testing.T) {
 // TestTranslateBridgeArgv_envURLValueUnchanged does not rewrite URL-looking --env values.
 func TestTranslateBridgeArgv_envURLValueUnchanged(t *testing.T) {
 	in := []string{"--env", `FETCH=https://example.com/x`}
-	out := translateBridgeArgv("d", in)
+	out := translateBridgeArgv(testTranslator(), in)
 	if out[1] != `FETCH=https://example.com/x` {
 		t.Fatalf("got %q", out[1])
 	}
@@ -125,7 +130,7 @@ func TestTranslateBridgeArgv_envURLValueUnchanged(t *testing.T) {
 // TestTranslateBridgeArgv_varPath translates Windows paths in --var KEY=path.
 func TestTranslateBridgeArgv_varPath(t *testing.T) {
 	in := []string{"--var", `OUT=C:\out.txt`}
-	out := translateBridgeArgv("d", in)
+	out := translateBridgeArgv(testTranslator(), in)
 	if out[1] != "OUT=/mnt/c/out.txt" {
 		t.Fatalf("got %q", out[1])
 	}
@@ -133,7 +138,6 @@ func TestTranslateBridgeArgv_varPath(t *testing.T) {
 
 // TestTranslateBridgeArgv_buildBundleEnvFileWorkPath translates paths for --build, --bundle-out, --env-file, --work-path, --run, --act.
 func TestTranslateBridgeArgv_buildBundleEnvFileWorkPath(t *testing.T) {
-	d := "distro"
 	cases := []struct {
 		name string
 		in   []string
@@ -172,7 +176,7 @@ func TestTranslateBridgeArgv_buildBundleEnvFileWorkPath(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			got := translateBridgeArgv(d, tc.in)
+			got := translateBridgeArgv(testTranslator(), tc.in)
 			if !reflect.DeepEqual(got, tc.want) {
 				t.Fatalf("got %#v want %#v", got, tc.want)
 			}
@@ -183,7 +187,7 @@ func TestTranslateBridgeArgv_buildBundleEnvFileWorkPath(t *testing.T) {
 // TestTranslateBridgeArgv_isolateDockerImageUnchanged keeps docker image refs like ubuntu:22.04 as-is.
 func TestTranslateBridgeArgv_isolateDockerImageUnchanged(t *testing.T) {
 	in := []string{"--isolate", "ubuntu:22.04"}
-	out := translateBridgeArgv("d", in)
+	out := translateBridgeArgv(testTranslator(), in)
 	if out[1] != "ubuntu:22.04" {
 		t.Fatalf("got %q", out[1])
 	}
@@ -192,7 +196,7 @@ func TestTranslateBridgeArgv_isolateDockerImageUnchanged(t *testing.T) {
 // TestTranslateBridgeArgv_isolateWindowsPathTranslated translates --isolate when the value is a Windows directory.
 func TestTranslateBridgeArgv_isolateWindowsPathTranslated(t *testing.T) {
 	in := []string{"--isolate", `C:\myctx`}
-	out := translateBridgeArgv("d", in)
+	out := translateBridgeArgv(testTranslator(), in)
 	if out[1] != "/mnt/c/myctx" {
 		t.Fatalf("got %q", out[1])
 	}
@@ -201,7 +205,7 @@ func TestTranslateBridgeArgv_isolateWindowsPathTranslated(t *testing.T) {
 // TestTranslateBridgeArgv_runURLUnchanged does not rewrite --run when the value is a URL.
 func TestTranslateBridgeArgv_runURLUnchanged(t *testing.T) {
 	in := []string{"--run", "https://example.com/x.yml"}
-	out := translateBridgeArgv("d", in)
+	out := translateBridgeArgv(testTranslator(), in)
 	if out[1] != "https://example.com/x.yml" {
 		t.Fatalf("got %q", out[1])
 	}
@@ -210,7 +214,7 @@ func TestTranslateBridgeArgv_runURLUnchanged(t *testing.T) {
 // TestTranslateBridgeArgv_mntPathNormalized leaves already-WSL /mnt/c paths unchanged.
 func TestTranslateBridgeArgv_mntPathNormalized(t *testing.T) {
 	in := []string{"--workdir", `/mnt/c/already/linux-style`}
-	out := translateBridgeArgv("d", in)
+	out := translateBridgeArgv(testTranslator(), in)
 	if out[1] != "/mnt/c/already/linux-style" {
 		t.Fatalf("got %q", out[1])
 	}
@@ -219,7 +223,7 @@ func TestTranslateBridgeArgv_mntPathNormalized(t *testing.T) {
 // TestTranslateBridgeArgv_linuxAbsUnchanged passes through POSIX absolute --workdir on the Linux side.
 func TestTranslateBridgeArgv_linuxAbsUnchanged(t *testing.T) {
 	in := []string{"--workdir", "/home/user/repo"}
-	out := translateBridgeArgv("d", in)
+	out := translateBridgeArgv(testTranslator(), in)
 	if out[1] != "/home/user/repo" {
 		t.Fatalf("got %q", out[1])
 	}
@@ -228,7 +232,7 @@ func TestTranslateBridgeArgv_linuxAbsUnchanged(t *testing.T) {
 // TestTranslateBridgeArgv_initWorkflowNameUnchanged does not rewrite the workflow name (not a path).
 func TestTranslateBridgeArgv_initWorkflowNameUnchanged(t *testing.T) {
 	in := []string{"init", `D:\looks-like-a-path`}
-	out := translateBridgeArgv("d", in)
+	out := translateBridgeArgv(testTranslator(), in)
 	if out[1] != `D:\looks-like-a-path` {
 		t.Fatalf("got %q", out[1])
 	}
@@ -237,7 +241,7 @@ func TestTranslateBridgeArgv_initWorkflowNameUnchanged(t *testing.T) {
 // TestTranslateBridgeArgv_initFromTranslatesLocalTemplatePath maps --from Windows dirs for dockpipe init.
 func TestTranslateBridgeArgv_initFromTranslatesLocalTemplatePath(t *testing.T) {
 	in := []string{"init", "mywf", "--from", `D:\src\tpl`}
-	out := translateBridgeArgv("d", in)
+	out := translateBridgeArgv(testTranslator(), in)
 	if !reflect.DeepEqual(out, []string{"init", "mywf", "--from", "/mnt/d/src/tpl"}) {
 		t.Fatalf("got %#v", out)
 	}
@@ -246,7 +250,7 @@ func TestTranslateBridgeArgv_initFromTranslatesLocalTemplatePath(t *testing.T) {
 // TestTranslateBridgeArgv_initTemplateNameUnchanged does not rewrite template name args for init.
 func TestTranslateBridgeArgv_initTemplateNameUnchanged(t *testing.T) {
 	in := []string{"init", "my-workflow"}
-	out := translateBridgeArgv("d", in)
+	out := translateBridgeArgv(testTranslator(), in)
 	if out[1] != "my-workflow" {
 		t.Fatalf("got %q", out[1])
 	}
@@ -255,7 +259,7 @@ func TestTranslateBridgeArgv_initTemplateNameUnchanged(t *testing.T) {
 // TestTranslateBridgeArgv_initFromURLUnchanged passes --from URL through (CLI rejects; bridge does not rewrite URLs).
 func TestTranslateBridgeArgv_initFromURLUnchanged(t *testing.T) {
 	in := []string{"init", "wf", "--from", "https://example.com/tpl"}
-	out := translateBridgeArgv("d", in)
+	out := translateBridgeArgv(testTranslator(), in)
 	if !reflect.DeepEqual(out, []string{"init", "wf", "--from", "https://example.com/tpl"}) {
 		t.Fatalf("got %#v", out)
 	}
@@ -264,7 +268,7 @@ func TestTranslateBridgeArgv_initFromURLUnchanged(t *testing.T) {
 // TestTranslateBridgeArgv_actionInitSkipsFrom translates action init output path but not bundled --from names.
 func TestTranslateBridgeArgv_actionInitSkipsFrom(t *testing.T) {
 	in := []string{"action", "init", "--from", "commit-worktree", `C:\a.sh`}
-	out := translateBridgeArgv("d", in)
+	out := translateBridgeArgv(testTranslator(), in)
 	if out[3] != "commit-worktree" {
 		t.Fatalf("from value: %q", out[3])
 	}
@@ -276,7 +280,7 @@ func TestTranslateBridgeArgv_actionInitSkipsFrom(t *testing.T) {
 // TestTranslateBridgeArgv_preInit translates pre init script destination path.
 func TestTranslateBridgeArgv_preInit(t *testing.T) {
 	in := []string{"pre", "init", "--from", "x", `C:\p.sh`}
-	out := translateBridgeArgv("d", in)
+	out := translateBridgeArgv(testTranslator(), in)
 	if out[4] != "/mnt/c/p.sh" {
 		t.Fatalf("got %#v", out)
 	}
@@ -285,7 +289,7 @@ func TestTranslateBridgeArgv_preInit(t *testing.T) {
 // TestTranslateBridgeArgv_templateInit translates template init directory argument.
 func TestTranslateBridgeArgv_templateInit(t *testing.T) {
 	in := []string{"template", "init", "--from", "init", `C:\w`}
-	out := translateBridgeArgv("d", in)
+	out := translateBridgeArgv(testTranslator(), in)
 	if out[4] != "/mnt/c/w" {
 		t.Fatalf("got %#v", out)
 	}
@@ -294,7 +298,7 @@ func TestTranslateBridgeArgv_templateInit(t *testing.T) {
 // TestTranslateBridgeArgv_actionCreate translates action create output script path.
 func TestTranslateBridgeArgv_actionCreate(t *testing.T) {
 	in := []string{"action", "create", `C:\x.sh`}
-	out := translateBridgeArgv("d", in)
+	out := translateBridgeArgv(testTranslator(), in)
 	if out[2] != "/mnt/c/x.sh" {
 		t.Fatalf("got %#v", out)
 	}
@@ -302,7 +306,7 @@ func TestTranslateBridgeArgv_actionCreate(t *testing.T) {
 
 func TestTranslateDockpipeArgs_workflowsDir(t *testing.T) {
 	in := []string{"--workflows-dir", `C:\wf`, "--workflow", "test"}
-	out := translateDockpipeArgs("Ubuntu", in)
+	out := translateDockpipeArgs(testTranslator(), in)
 	want := []string{"--workflows-dir", "/mnt/c/wf", "--workflow", "test"}
 	if !reflect.DeepEqual(out, want) {
 		t.Fatalf("got %#v", out)
@@ -311,7 +315,7 @@ func TestTranslateDockpipeArgs_workflowsDir(t *testing.T) {
 
 func TestTranslateDockpipeArgs_packageBuildRepoOut(t *testing.T) {
 	in := []string{"package", "build", "core", "--repo-root", `C:\rp`, "--out", `C:\out`}
-	out := translateDockpipeArgs("Ubuntu", in)
+	out := translateDockpipeArgs(testTranslator(), in)
 	want := []string{"package", "build", "core", "--repo-root", "/mnt/c/rp", "--out", "/mnt/c/out"}
 	if !reflect.DeepEqual(out, want) {
 		t.Fatalf("got %#v", out)
@@ -320,7 +324,7 @@ func TestTranslateDockpipeArgs_packageBuildRepoOut(t *testing.T) {
 
 func TestTranslateDockpipeArgs_releaseUpload(t *testing.T) {
 	in := []string{"release", "upload", "--bucket", "b", "--key", "k", `C:\release\artifacts\file.tar.gz`}
-	out := translateDockpipeArgs("Ubuntu", in)
+	out := translateDockpipeArgs(testTranslator(), in)
 	if len(out) != 7 {
 		t.Fatalf("len %d", len(out))
 	}

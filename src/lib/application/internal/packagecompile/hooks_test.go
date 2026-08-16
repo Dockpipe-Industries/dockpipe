@@ -1,4 +1,4 @@
-package application
+package packagecompile
 
 import (
 	"os"

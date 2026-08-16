@@ -60,6 +60,26 @@ func TestDockerfileDirBundledLayoutUsesBundledWorkflowImage(t *testing.T) {
 	}
 }
 
+func TestDockerfileDirUsesCanonicalWorkflowCompileRoot(t *testing.T) {
+	repo := t.TempDir()
+	root := filepath.Join(repo, "vendor", "packages")
+	dockerfile := filepath.Join(root, "codex", "assets", "images", "codex", "Dockerfile")
+	if err := os.MkdirAll(filepath.Dir(dockerfile), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(dockerfile, []byte("FROM scratch\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(repo, "dockpipe.config.json"), []byte(`{"compile":{"workflows":["vendor/packages"]}}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	got := DockerfileDir(repo, "codex")
+	if got != filepath.Dir(dockerfile) {
+		t.Fatalf("got %q want configured workflow image dir %q", got, filepath.Dir(dockerfile))
+	}
+}
+
 // TestMaybeVersionTag appends dockpipe-* image tags from VERSION file when missing.
 func TestMaybeVersionTag(t *testing.T) {
 	tmp := t.TempDir()

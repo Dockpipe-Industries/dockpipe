@@ -1,4 +1,4 @@
-package application
+package runtimepolicy
 
 import (
 	"encoding/base64"
@@ -12,10 +12,11 @@ import (
 
 	"dockpipe/src/lib/domain"
 	"dockpipe/src/lib/infrastructure"
+	"dockpipe/src/lib/infrastructure/packagebuild"
 )
 
-func applyCompiledRuntimePolicy(runOpts *infrastructure.RunOpts, wfConfig, wfRoot string) (*domain.CompiledRuntimeManifest, error) {
-	rm, err := loadCompiledRuntimeManifestForWorkflow(wfConfig, wfRoot)
+func ApplyCompiledRuntimePolicy(runOpts *infrastructure.RunOpts, wfConfig, wfRoot string) (*domain.CompiledRuntimeManifest, error) {
+	rm, err := LoadCompiledRuntimeManifestForWorkflow(wfConfig, wfRoot)
 	if err != nil {
 		return nil, err
 	}
@@ -23,7 +24,7 @@ func applyCompiledRuntimePolicy(runOpts *infrastructure.RunOpts, wfConfig, wfRoo
 		return nil, nil
 	}
 	if runOpts != nil {
-		if err := applyCompiledRuntimeManifest(runOpts, rm); err != nil {
+		if err := ApplyCompiledRuntimeManifest(runOpts, rm); err != nil {
 			return nil, err
 		}
 	}
@@ -31,12 +32,12 @@ func applyCompiledRuntimePolicy(runOpts *infrastructure.RunOpts, wfConfig, wfRoo
 }
 
 func effectiveCompiledRuntimePolicyForStep(wf *domain.Workflow, wfConfig, wfRoot string, step domain.Step, stepID string) (*domain.CompiledRuntimeManifest, error) {
-	if rm, err := loadCompiledRuntimeManifestForStep(wfConfig, wfRoot, stepID); err != nil {
+	if rm, err := LoadCompiledRuntimeManifestForStep(wfConfig, wfRoot, stepID); err != nil {
 		return nil, err
 	} else if rm != nil {
 		return rm, nil
 	}
-	rm, err := loadCompiledRuntimeManifestForWorkflow(wfConfig, wfRoot)
+	rm, err := LoadCompiledRuntimeManifestForWorkflow(wfConfig, wfRoot)
 	if err != nil {
 		return nil, err
 	}
@@ -50,18 +51,18 @@ func effectiveCompiledRuntimePolicyForStep(wf *domain.Workflow, wfConfig, wfRoot
 	}
 	profile := strings.TrimSpace(rm.PolicyProfile)
 	if profile == "" {
-		profile = normalizeWorkflowPolicyProfile(wf)
+		profile = NormalizeWorkflowPolicyProfile(wf)
 	}
 	if p := strings.TrimSpace(step.Security.Profile); p != "" {
 		profile = p
 	}
-	security, sources := compileSecurityPolicyForWorkflow(wf, profile)
-	stepOverride := applyStepSecurityOverrides(&security, step)
+	security, sources := CompileSecurityPolicyForWorkflow(wf, profile)
+	stepOverride := ApplyStepSecurityOverrides(&security, step)
 	if strings.TrimSpace(step.Security.Profile) != "" {
 		stepOverride = true
 	}
 	security.Preset = profile
-	security.Network.Enforcement = compiledNetworkEnforcement(security.Network.Mode, profile)
+	security.Network.Enforcement = CompiledNetworkEnforcement(security.Network.Mode, profile)
 	security.Network.InternalDNS = true
 
 	out := *rm
@@ -75,28 +76,28 @@ func effectiveCompiledRuntimePolicyForStep(wf *domain.Workflow, wfConfig, wfRoot
 		return nil, err
 	}
 	out.PolicyFingerprint = fp
-	out.EnforcementSummaries = compiledEnforcementSummaries(&out)
-	out.RuleIDs = compiledRuleIDs(&out)
+	out.EnforcementSummaries = CompiledEnforcementSummaries(&out)
+	out.RuleIDs = CompiledRuleIDs(&out)
 	if err := domain.ValidateCompiledRuntimeManifest(&out); err != nil {
 		return nil, err
 	}
 	return &out, nil
 }
 
-func applyCompiledRuntimePolicyForStep(runOpts *infrastructure.RunOpts, wf *domain.Workflow, wfConfig, wfRoot string, step domain.Step, stepID string) (*domain.CompiledRuntimeManifest, error) {
+func ApplyCompiledRuntimePolicyForStep(runOpts *infrastructure.RunOpts, wf *domain.Workflow, wfConfig, wfRoot string, step domain.Step, stepID string) (*domain.CompiledRuntimeManifest, error) {
 	rm, err := effectiveCompiledRuntimePolicyForStep(wf, wfConfig, wfRoot, step, stepID)
 	if err != nil {
 		return nil, err
 	}
 	if runOpts != nil {
-		if err := applyCompiledRuntimeManifest(runOpts, rm); err != nil {
+		if err := ApplyCompiledRuntimeManifest(runOpts, rm); err != nil {
 			return nil, err
 		}
 	}
 	return rm, nil
 }
 
-func applyCompiledRuntimeManifest(runOpts *infrastructure.RunOpts, rm *domain.CompiledRuntimeManifest) error {
+func ApplyCompiledRuntimeManifest(runOpts *infrastructure.RunOpts, rm *domain.CompiledRuntimeManifest) error {
 	if runOpts == nil || rm == nil {
 		return nil
 	}
@@ -170,7 +171,7 @@ func applyCompiledProcessPolicy(runOpts *infrastructure.RunOpts, policy domain.C
 	}
 }
 
-func summarizeCompiledRuntimeManifest(rm *domain.CompiledRuntimeManifest) string {
+func SummarizeCompiledRuntimeManifest(rm *domain.CompiledRuntimeManifest) string {
 	if rm == nil {
 		return ""
 	}
@@ -228,7 +229,7 @@ func applyCompiledProxyNetworkPolicy(runOpts *infrastructure.RunOpts, policy dom
 	if httpProxy == "" {
 		return fmt.Errorf("network policy requires proxy enforcement but no proxy URL is configured in the run environment (set DOCKPIPE_POLICY_PROXY_URL or DOCKPIPE_NETWORK_PROXY_URL)")
 	}
-	tokenizedHTTPProxy := policyProxyURLWithToken(httpProxy, policy)
+	tokenizedHTTPProxy := PolicyProxyURLWithToken(httpProxy, policy)
 	httpsProxy := firstNonEmptyString(
 		runOptEnvValue(runOpts, "DOCKPIPE_POLICY_PROXY_HTTPS_URL"),
 		runOptEnvValue(runOpts, "DOCKPIPE_NETWORK_PROXY_HTTPS_URL"),
@@ -240,7 +241,7 @@ func applyCompiledProxyNetworkPolicy(runOpts *infrastructure.RunOpts, policy dom
 		strings.TrimSpace(os.Getenv("https_proxy")),
 		tokenizedHTTPProxy,
 	)
-	tokenizedHTTPSProxy := policyProxyURLWithToken(httpsProxy, policy)
+	tokenizedHTTPSProxy := PolicyProxyURLWithToken(httpsProxy, policy)
 	noProxy := mergeNoProxyValues(
 		runOptEnvValue(runOpts, "DOCKPIPE_POLICY_PROXY_NO_PROXY"),
 		runOptEnvValue(runOpts, "DOCKPIPE_NETWORK_PROXY_NO_PROXY"),
@@ -279,7 +280,7 @@ type proxyPolicyToken struct {
 	Block   []string `json:"block,omitempty"`
 }
 
-func policyProxyURLWithToken(base string, policy domain.CompiledNetworkPolicy) string {
+func PolicyProxyURLWithToken(base string, policy domain.CompiledNetworkPolicy) string {
 	base = strings.TrimSpace(base)
 	if base == "" {
 		return ""
@@ -350,15 +351,15 @@ func summarizePolicyPatterns(values []string) string {
 	}
 }
 
-func compiledRuntimePolicyLogLines(rm *domain.CompiledRuntimeManifest) []string {
+func CompiledRuntimePolicyLogLines(rm *domain.CompiledRuntimeManifest) []string {
 	if rm == nil {
 		return nil
 	}
 	var lines []string
-	if summary := summarizeCompiledRuntimeManifest(rm); summary != "" {
+	if summary := SummarizeCompiledRuntimeManifest(rm); summary != "" {
 		lines = append(lines, summary)
 	}
-	lines = append(lines, compiledRuntimeEnforcementLogLines(rm)...)
+	lines = append(lines, CompiledRuntimeEnforcementLogLines(rm)...)
 	for _, note := range rm.EnforcementSummaries {
 		note = strings.TrimSpace(note)
 		if note != "" {
@@ -398,7 +399,7 @@ func compiledRuntimePolicyLogLines(rm *domain.CompiledRuntimeManifest) []string 
 	return lines
 }
 
-func compiledRuntimeEnforcementLogLines(rm *domain.CompiledRuntimeManifest) []string {
+func CompiledRuntimeEnforcementLogLines(rm *domain.CompiledRuntimeManifest) []string {
 	if rm == nil {
 		return nil
 	}
@@ -480,4 +481,108 @@ func mergeNoProxyValues(values ...string) string {
 		}
 	}
 	return strings.Join(out, ",")
+}
+
+func LoadCompiledRuntimeManifestForWorkflow(wfConfig, wfRoot string) (*domain.CompiledRuntimeManifest, error) {
+	if tarPath, entry, ok := infrastructure.SplitTarWorkflowURI(wfConfig); ok {
+		manifestEntry := filepath.ToSlash(filepath.Join(filepath.Dir(entry), domain.RuntimeManifestDirName, domain.RuntimeManifestFileName))
+		b, err := packagebuild.ReadFileFromTarGz(tarPath, manifestEntry)
+		if err != nil {
+			if strings.Contains(err.Error(), "not found") {
+				return nil, nil
+			}
+			return nil, err
+		}
+		var m domain.CompiledRuntimeManifest
+		if err := json.Unmarshal(b, &m); err != nil {
+			return nil, err
+		}
+		return &m, nil
+	}
+	if strings.TrimSpace(wfRoot) == "" {
+		return nil, nil
+	}
+	p := filepath.Join(wfRoot, domain.RuntimeManifestDirName, domain.RuntimeManifestFileName)
+	b, err := os.ReadFile(p)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	var m domain.CompiledRuntimeManifest
+	if err := json.Unmarshal(b, &m); err != nil {
+		return nil, err
+	}
+	return &m, nil
+}
+
+func LoadCompiledRuntimeManifestForStep(wfConfig, wfRoot, stepID string) (*domain.CompiledRuntimeManifest, error) {
+	stepID = strings.TrimSpace(stepID)
+	if stepID == "" {
+		return nil, nil
+	}
+	relPath := domain.RuntimeManifestPathForStep(stepID)
+	if tarPath, entry, ok := infrastructure.SplitTarWorkflowURI(wfConfig); ok {
+		manifestEntry := filepath.ToSlash(filepath.Join(filepath.Dir(entry), domain.RuntimeManifestDirName, relPath))
+		b, err := packagebuild.ReadFileFromTarGz(tarPath, manifestEntry)
+		if err != nil {
+			if strings.Contains(err.Error(), "not found") {
+				return nil, nil
+			}
+			return nil, err
+		}
+		var m domain.CompiledRuntimeManifest
+		if err := json.Unmarshal(b, &m); err != nil {
+			return nil, err
+		}
+		return &m, nil
+	}
+	if strings.TrimSpace(wfRoot) == "" {
+		return nil, nil
+	}
+	p := filepath.Join(wfRoot, domain.RuntimeManifestDirName, relPath)
+	b, err := os.ReadFile(p)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	var m domain.CompiledRuntimeManifest
+	if err := json.Unmarshal(b, &m); err != nil {
+		return nil, err
+	}
+	return &m, nil
+}
+
+func DefaultRuntimePolicyFingerprint() (string, error) {
+	return domain.FingerprintJSON(domain.CompiledSecurityPolicy{
+		Preset: "secure-default",
+		Network: domain.CompiledNetworkPolicy{
+			Mode:        "offline",
+			Enforcement: "native",
+			InternalDNS: true,
+		},
+		FS: domain.CompiledFilesystemPolicy{
+			Root:      "readonly",
+			Writes:    "workspace-only",
+			TempPaths: []string{"/tmp"},
+		},
+		Process: domain.CompiledProcessPolicy{
+			User:            "non-root",
+			NoNewPrivileges: true,
+			DropCaps:        []string{"ALL"},
+			PIDLimit:        256,
+		},
+	})
+}
+
+func firstNonEmptyString(values ...string) string {
+	for _, value := range values {
+		if strings.TrimSpace(value) != "" {
+			return strings.TrimSpace(value)
+		}
+	}
+	return ""
 }

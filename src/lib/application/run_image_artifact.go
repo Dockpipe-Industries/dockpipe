@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"dockpipe/src/lib/application/internal/runtimepolicy"
 	"dockpipe/src/lib/domain"
 	"dockpipe/src/lib/infrastructure"
 	"dockpipe/src/lib/infrastructure/packagebuild"
@@ -117,109 +118,14 @@ func imageArtifactIndexMatchesExpected(indexed, expected *domain.ImageArtifactMa
 }
 
 func runtimePolicyFingerprintForRun(wfConfig, wfRoot string) (string, error) {
-	rm, err := loadCompiledRuntimeManifestForWorkflow(wfConfig, wfRoot)
+	rm, err := runtimepolicy.LoadCompiledRuntimeManifestForWorkflow(wfConfig, wfRoot)
 	if err != nil {
 		return "", err
 	}
 	if rm != nil && strings.TrimSpace(rm.PolicyFingerprint) != "" {
 		return strings.TrimSpace(rm.PolicyFingerprint), nil
 	}
-	return defaultRuntimePolicyFingerprint()
-}
-
-func loadCompiledRuntimeManifestForWorkflow(wfConfig, wfRoot string) (*domain.CompiledRuntimeManifest, error) {
-	if tarPath, entry, ok := infrastructure.SplitTarWorkflowURI(wfConfig); ok {
-		manifestEntry := filepath.ToSlash(filepath.Join(filepath.Dir(entry), domain.RuntimeManifestDirName, domain.RuntimeManifestFileName))
-		b, err := packagebuild.ReadFileFromTarGz(tarPath, manifestEntry)
-		if err != nil {
-			if strings.Contains(err.Error(), "not found") {
-				return nil, nil
-			}
-			return nil, err
-		}
-		var m domain.CompiledRuntimeManifest
-		if err := json.Unmarshal(b, &m); err != nil {
-			return nil, err
-		}
-		return &m, nil
-	}
-	if strings.TrimSpace(wfRoot) == "" {
-		return nil, nil
-	}
-	p := filepath.Join(wfRoot, domain.RuntimeManifestDirName, domain.RuntimeManifestFileName)
-	b, err := os.ReadFile(p)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return nil, nil
-		}
-		return nil, err
-	}
-	var m domain.CompiledRuntimeManifest
-	if err := json.Unmarshal(b, &m); err != nil {
-		return nil, err
-	}
-	return &m, nil
-}
-
-func loadCompiledRuntimeManifestForStep(wfConfig, wfRoot, stepID string) (*domain.CompiledRuntimeManifest, error) {
-	stepID = strings.TrimSpace(stepID)
-	if stepID == "" {
-		return nil, nil
-	}
-	relPath := domain.RuntimeManifestPathForStep(stepID)
-	if tarPath, entry, ok := infrastructure.SplitTarWorkflowURI(wfConfig); ok {
-		manifestEntry := filepath.ToSlash(filepath.Join(filepath.Dir(entry), domain.RuntimeManifestDirName, relPath))
-		b, err := packagebuild.ReadFileFromTarGz(tarPath, manifestEntry)
-		if err != nil {
-			if strings.Contains(err.Error(), "not found") {
-				return nil, nil
-			}
-			return nil, err
-		}
-		var m domain.CompiledRuntimeManifest
-		if err := json.Unmarshal(b, &m); err != nil {
-			return nil, err
-		}
-		return &m, nil
-	}
-	if strings.TrimSpace(wfRoot) == "" {
-		return nil, nil
-	}
-	p := filepath.Join(wfRoot, domain.RuntimeManifestDirName, relPath)
-	b, err := os.ReadFile(p)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return nil, nil
-		}
-		return nil, err
-	}
-	var m domain.CompiledRuntimeManifest
-	if err := json.Unmarshal(b, &m); err != nil {
-		return nil, err
-	}
-	return &m, nil
-}
-
-func defaultRuntimePolicyFingerprint() (string, error) {
-	return domain.FingerprintJSON(domain.CompiledSecurityPolicy{
-		Preset: "secure-default",
-		Network: domain.CompiledNetworkPolicy{
-			Mode:        "offline",
-			Enforcement: "native",
-			InternalDNS: true,
-		},
-		FS: domain.CompiledFilesystemPolicy{
-			Root:      "readonly",
-			Writes:    "workspace-only",
-			TempPaths: []string{"/tmp"},
-		},
-		Process: domain.CompiledProcessPolicy{
-			User:            "non-root",
-			NoNewPrivileges: true,
-			DropCaps:        []string{"ALL"},
-			PIDLimit:        256,
-		},
-	})
+	return runtimepolicy.DefaultRuntimePolicyFingerprint()
 }
 
 func persistCachedImageArtifactForIsolate(stateWorkdir, image string, artifact *domain.ImageArtifactManifest) error {

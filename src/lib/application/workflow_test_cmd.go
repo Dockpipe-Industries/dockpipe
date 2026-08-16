@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"dockpipe/src/lib/application/internal/compileconfig"
 	"dockpipe/src/lib/domain"
 	"dockpipe/src/lib/infrastructure"
 )
@@ -108,11 +109,11 @@ func discoverWorkflowTestTargets(workdir, only string) ([]workflowTestTarget, er
 	if only != "" && strings.ContainsRune(only, os.PathListSeparator) {
 		return nil, fmt.Errorf("workflow test --only accepts one workflow name")
 	}
-	cfg, err := loadDockpipeProjectConfig(workdir)
+	cfg, err := compileconfig.Load(workdir)
 	if err != nil {
 		return nil, err
 	}
-	roots := effectiveWorkflowCompileRoots(cfg, workdir)
+	roots := compileconfig.WorkflowRoots(cfg, workdir)
 	seen := make(map[string]struct{})
 	var targets []workflowTestTarget
 	for _, root := range roots {

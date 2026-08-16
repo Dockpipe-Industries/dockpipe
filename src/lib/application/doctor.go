@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 
+	"dockpipe/src/lib/application/internal/compileconfig"
 	"dockpipe/src/lib/domain"
 	"dockpipe/src/lib/infrastructure"
 )
@@ -18,7 +19,7 @@ var doctorDockerCheckFn = infrastructure.DockerDoctorCheck
 var doctorRepoRootFn = infrastructure.RepoRoot
 var doctorResolveWorkflowConfigPathFn = infrastructure.ResolveWorkflowConfigPath
 var doctorGetwdFn = os.Getwd
-var doctorLoadProjectConfigFn = loadDockpipeProjectConfig
+var doctorLoadProjectConfigFn = compileconfig.Load
 var doctorStatFn = os.Stat
 
 func cmdDoctor(argv []string) error {

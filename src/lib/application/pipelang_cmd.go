@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 
+	"dockpipe/src/lib/application/internal/compileconfig"
 	"dockpipe/src/lib/infrastructure"
 	"dockpipe/src/lib/pipelang"
 )
@@ -282,11 +283,11 @@ func cmdPipeLangMaterialize(args []string) error {
 		}()
 
 		if len(from) == 0 {
-			cfg, err := loadDockpipeProjectConfig(repoRoot)
+			cfg, err := compileconfig.Load(repoRoot)
 			if err != nil {
 				return err
 			}
-			from = effectiveWorkflowCompileRoots(cfg, repoRoot)
+			from = compileconfig.WorkflowRoots(cfg, repoRoot)
 		}
 		roots := dedupeAbsExistingDirs(from)
 		ids["root_count"] = strconv.Itoa(len(roots))
@@ -369,7 +370,7 @@ Usage:
   dockpipe pipelang materialize [--workdir <path>] [--from <root>]... [--force]
 
 Default roots:
-  - dockpipe.config.json compile.workflows (plus merged compile.bundles)
+  - dockpipe.config.json compile.workflows
 
 Artifacts per source file:
   <workdir>/bin/.dockpipe/pipelang/<root-hash>/<relative-dir>/<base>.<EntryClass>.workflow.yml
