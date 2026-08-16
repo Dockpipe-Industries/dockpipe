@@ -1,0 +1,38 @@
+{
+  "fixture": "pipelang.semantic-verification",
+  "fixtureVersion": 1,
+  "nonNormative": true,
+  "source": {
+    "fileId": "module/deploy.pipe",
+    "utf8ByteSpan": {"start": 120, "end": 176},
+    "lineColumn": {"startLine": 8, "startColumn": 5, "endLine": 9, "endColumn": 22}
+  },
+  "semanticNode": {
+    "id": "deployment.refresh",
+    "kind": "effect-boundary",
+    "ownerModule": "example.deployment",
+    "typeRef": {"kind": "result", "ok": "deployment.snapshot", "error": "deployment.refresh-error"},
+    "effects": ["Network", "RemoteExecution"],
+    "contracts": ["deployment.refresh.requires-read-capability"]
+  },
+  "graphEdges": [
+    {"kind": "owned-by", "from": "deployment.refresh", "to": "example.deployment"},
+    {"kind": "effect", "from": "deployment.refresh", "to": "Network"},
+    {"kind": "covered-by-test", "from": "deployment.refresh", "to": "deployment.refresh.replay"},
+    {"kind": "projected-to-application-ir", "from": "deployment.refresh", "to": "application.dashboard.refresh"},
+    {"kind": "projected-to-service-ir", "from": "deployment.refresh", "to": "service.deployments.refresh"}
+  ],
+  "test": {
+    "id": "deployment.refresh.replay",
+    "kind": "property-and-replay",
+    "seed": "0000000000000042",
+    "effectResults": ["redacted-reference:fixture/deployment-list"],
+    "unrecordedEffectsAllowed": false
+  },
+  "changeClaims": [
+    {"claim": "effect-set-preserved", "expectedStatus": "contradicted"},
+    {"claim": "typed-result-preserved", "expectedStatus": "verified"},
+    {"claim": "production-latency-improved", "expectedStatus": "unverifiable"},
+    {"claim": "unrelated-module-is-safe", "expectedStatus": "out-of-scope"}
+  ]
+}

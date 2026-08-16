@@ -25,17 +25,23 @@ runtime, package, deployment, generated-state, or toolchain changes.
 
 - [TASK-021](pipelang-reactive-application-language.md) is the language prerequisite. It owns stable
   semantic IDs, types, optionals/collections/unions, contracts, effects/authority, determinism,
-  replay, semantic graphs, and compatibility.
+  replay, semantic graphs, typed HIR/Core IR, executable entrypoints, target profiles, self-hosting,
+  and compatibility.
 - [TASK-020](declarative-application-surfaces-and-target-builders.md) owns application surfaces and
   consumption of generated Qt clients. It does not own service or transport semantics.
-- TASK-022 owns service declarations, transport-neutral operation semantics, Service IR, resolver
-  capability negotiation, Go service generation, Qt client generation, schemas, service testing,
-  packaging, and deployment artifacts.
+- TASK-022 owns service declarations, transport-neutral operation semantics, the independently
+  versioned Service IR specialization over TASK-021's semantic/Core foundation, resolver capability
+  negotiation, Go service generation, Qt client generation, schemas, service testing, packaging,
+  and deployment artifacts.
 
 The architecture remains workflow = what, runtime = where, resolver = which platform/tool, and
 strategy = lifecycle wrapper. Service compilation is workflow/package intent. Go, HTTP, OpenAPI,
 Qt, containers, hosts, VMs, and remote execution are resolver/runtime outputs or selections rather
 than new engine primitives.
+
+TASK-021's deterministic Go backend lowers generic executable Core IR and seeds compiler bootstrap.
+TASK-022's Go service resolver is a separate specialization that consumes Service IR to add HTTP,
+service lifecycle, schema, and packaging behavior. Neither owns or modifies the other's semantics.
 
 ## Current Reusable Foundation
 
@@ -73,9 +79,12 @@ The Go backend resolver decides how those semantics become Go types, route regis
 handlers, JSON serialization, validation, middleware/adapters, error mapping, health, observability,
 startup/shutdown, and a standalone executable.
 
-PipeLang core and Service IR must not contain Go-specific concepts such as `http.Handler`,
-`context.Context`, goroutines, channels, middleware functions, package names, struct tags, module
-layouts, or Go zero-value behavior.
+PipeLang core and the shared semantic/Core projection must not contain Go-specific concepts such as
+`http.Handler`, `context.Context`, goroutines, channels, middleware functions, package names, struct
+tags, module layouts, or Go zero-value behavior. Service IR may carry explicit transport binding
+metadata, but
+HTTP realization and all Go/Qt/runtime behavior remain resolver-owned and cannot redefine language
+types, failures, effects, serialization, or memory semantics.
 
 The required pipeline is:
 
@@ -83,13 +92,19 @@ The required pipeline is:
 PipeLang source
     |
     v
-syntax tree
+lossless syntax trees
     |
     v
-typed semantic model from TASK-021
+module resolution and bound symbols
     |
     v
-versioned transport-neutral Service IR
+typed HIR from TASK-021
+    |
+    v
+target-neutral Core IR + versioned semantic projection
+    |
+    v
+versioned transport-neutral Service IR specialization
     |
     +----------------+----------------+----------------+----------------+
     |                |                |                |                |
@@ -98,8 +113,10 @@ Go backend      Qt/C++ client   OpenAPI/schema   in-memory service  build/deploy
 source/binary   source/artifact artifacts        and test fixtures  manifests
 ```
 
-Parser or typechecker code must not directly emit Go, C++, HTTP, OpenAPI, or deployment strings.
-Resolvers consume the stable Service IR and must pass semantic conformance tests.
+Parser, binder, or typechecker code must not directly emit Go, C++, HTTP, OpenAPI, or deployment
+strings. Service IR is built from the shared projection/Core identities rather than reparsing or
+copying language semantics. Resolvers consume the stable Service IR and must pass semantic
+conformance tests; a missing required capability fails rather than silently degrading.
 
 ## PipeLang Service Direction
 

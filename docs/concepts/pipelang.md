@@ -4,12 +4,19 @@ PipeLang is an optional typed authoring layer for DockPipe.
 
 It does not replace YAML workflows. YAML remains first-class.
 
+This page defines the frozen `v0.0.0.1` contract. The accepted future direction is a
+general-purpose, deterministic, target-neutral managed language that can eventually compile its own
+compiler. That direction is C#-familiar, not C#-compatible, and does not add pointers, manual memory,
+unsafe APIs, hidden host access, or target-specific syntax. No future direction described here
+changes existing source or artifact behavior without an explicit language-version migration.
+
 Use PipeLang for:
 - typed workflow/package configuration models
 - defaults and documentation summaries close to the model
 - launcher/editor metadata derived from those types
 
-Do not use PipeLang as a replacement for workflow execution logic. DockPipe still runs normal workflow YAML.
+In `v0.0.0.1`, do not use PipeLang as a replacement for workflow execution logic. DockPipe still
+runs normal workflow YAML.
 
 ## Scope in v0.0.0.1
 
@@ -30,6 +37,8 @@ Not supported in this version:
 - Runtime/resolver execution through methods
 - Hidden execution during compile
 - General-purpose scripting/runtime behavior
+
+These are version boundaries, not permanent limits on the language roadmap.
 
 Reserved/plumbed but not fully implemented yet:
 - `IComparable` for custom object comparison. The parser/type checker understands the contract boundary, but custom object comparisons should still fail clearly until the runtime semantics land.
@@ -169,7 +178,7 @@ echo "$PIPELANG_IMAGE"
 
 ## Architecture boundary
 
-PipeLang is an authoring/compiler feature.
+PipeLang `v0.0.0.1` is an authoring/compiler feature.
 
 DockPipe execution still uses compiled YAML and existing workflow execution paths.
 
@@ -181,3 +190,33 @@ Think of the layering as:
 - workflow YAML: execution plus optional authored `view:` metadata
 - launcher/tools: render the model/view contract
 - runner: consume the existing workflow/env contract
+
+## Accepted future compiler boundary
+
+Future executable PipeLang uses one compiler contract:
+
+```text
+source -> syntax -> module binding -> typed HIR -> Core IR
+                                             |          |
+                                             |          `-> executable backends (Go first)
+                                             `-> versioned semantic projection
+                                                          |- Application IR
+                                                          `- Service IR
+```
+
+Syntax trees, bound trees, typed HIR, and Core IR remain distinct compiler representations. The
+public semantic projection is independently versioned. Application IR and Service IR specialize
+the same semantic/Core foundation; neither reparses `.pipe` files nor defines language behavior.
+
+Pure compilation remains offline and deterministic. Executable entrypoints declare typed effects;
+ordinary external work still crosses the governed DockPipe workflow/package -> runtime -> resolver
+-> optional strategy boundary. Qt, Go, HTTP, browser, operating-system, and embedded behavior stays
+in target resolvers and cannot redefine or silently weaken PipeLang semantics.
+
+Go is the first deterministic native backend and bootstrap seed. Eventual self-hosting uses a
+pinned Go stage 0, a PipeLang stage 1, and a PipeLang stage 2; normalized semantic/Core artifacts,
+diagnostics, behavior, and target outputs must reproduce between stages 1 and 2. Full, constrained,
+and MCU target profiles select validated backend capabilities without changing source syntax.
+
+The complete accepted decisions, compatibility inventory, and bounded implementation order live in
+[TASK-021](../agents/tasks/pipelang-reactive-application-language.md).
