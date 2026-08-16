@@ -21,11 +21,47 @@ and already-pulled Ollama models.
   package orchestrator workflow, and Pipeon consumer path.
 - Claude direct prompts use a session/model-affine in-container stream worker with a one-shot fallback;
   measured repeated turns proved the intended low-latency reuse path.
+- Claude's supported Agent SDK now offers a richer local integration candidate than the original
+  CLI-only assumption. A bounded comparison against the current guarded stream worker is pending;
+  no migration is implied.
 - Workflow provider-pool leasing is implemented with normalized events, bounded queue/cancel behavior,
   worker reuse, and generic workflow consumption.
 - Remaining work is release and product hardening: prebuilt image publication/selection, richer lease
-  detail in status and Pipeon, deferred explicit session scope and live workflow smoke, and measured
-  Pipeon launch budgets.
+  detail in status and Pipeon, deferred explicit session scope and live workflow smoke, measured
+  Pipeon launch budgets, and the local Claude Agent SDK comparison below.
+
+## Claude Local Adapter Refresh (2026-08-12)
+
+Anthropic's supported local surfaces now materially exceed the earlier CLI `stream-json` baseline:
+
+- [Agent SDK streaming input](https://code.claude.com/docs/en/agent-sdk/streaming-vs-single-mode)
+  is the recommended persistent, interactive mode and supports long-lived input, interruption,
+  permission requests, and session management.
+- The SDK exposes structured streaming output,
+  [runtime approvals and user questions](https://code.claude.com/docs/en/agent-sdk/user-input),
+  permission modes, and [resumable sessions](https://code.claude.com/docs/en/agent-sdk/sessions).
+  It therefore deserves comparison with DorkPipe's current direct JSONL parsing rather than being
+  treated as a one-shot wrapper.
+- [Claude Code agent view](https://code.claude.com/docs/en/agent-view) uses a per-user local supervisor
+  with the same credentials as interactive Claude Code and supports attach, logs, stop, and respawn.
+  Its documented management surface is CLI/UI-oriented, not a stable provider integration protocol.
+  Treat its daemon files and private control channel as implementation details.
+- Anthropic-hosted Managed Agents is a separate remote execution model, not a replacement for this
+  guarded local/container lane. TASK-034 owns that optional path.
+
+Bounded next slice for TASK-012:
+
+1. Prototype `ClaudeSDKClient` inside the existing guarded Claude worker without changing the public
+   provider-pool CLI, MCP, Pipeon, session, or event contracts.
+2. Compare it with the current CLI stream worker for copied/allowlisted subscription authentication,
+   startup and repeated-turn latency, typed event coverage, approvals and user questions,
+   interruption, disk-backed resume, session affinity, health detection, and teardown.
+3. Prove the same workspace, tool, MCP, budget, and approval boundaries remain fail closed. Do not
+   adopt SDK defaults that widen the guarded worker's authority.
+4. Keep the current stream worker as the production baseline until the SDK path passes focused
+   offline tests and an explicitly approved guarded live smoke. Retain an explicit rollback path.
+
+This comparison does not block TASK-013 Codex App Server work or the supported-platform program.
 
 ## Current Startup Cost Centers
 
