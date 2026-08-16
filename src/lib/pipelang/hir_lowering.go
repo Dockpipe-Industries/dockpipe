@@ -1,0 +1,360 @@
+package pipelang
+
+import (
+	"fmt"
+
+	"dockpipe/src/lib/pipelang/coreir"
+	"dockpipe/src/lib/pipelang/hir"
+)
+
+// LowerSemanticMethodToHIR selects one checked v0.1.0 semantic method and
+// lowers its existing expression syntax into typed, target-independent HIR.
+func LowerSemanticMethodToHIR(analysis *Analysis, identity SemanticIdentity) (hir.Program, error) {
+	if analysis == nil {
+		return hir.Program{}, hirLoweringError(analysis, Span{}, identity, "typed HIR lowering requires a successful semantic module analysis")
+	}
+	if err := analysis.Error(); err != nil {
+		return hir.Program{}, err
+	}
+	if analysis.Program == nil || analysis.checked == nil || analysis.Modules == nil || analysis.SemanticIDs == nil {
+		return hir.Program{}, hirLoweringError(analysis, Span{}, identity, "typed HIR lowering requires a successful semantic module analysis")
+	}
+	if analysis.Modules.LanguageContract() != PipeLangLanguageContract {
+		return hir.Program{}, hirLoweringError(analysis, analysis.Program.Span, identity, fmt.Sprintf("typed HIR lowering requires language contract %q", PipeLangLanguageContract))
+	}
+	semantic, ok := analysis.SemanticIDs.LookupIdentity(identity)
+	if !ok || semantic.Kind != SemanticMethod {
+		return hir.Program{}, hirLoweringError(analysis, analysis.Program.Span, identity, fmt.Sprintf("semantic method %q was not found", identity.String()))
+	}
+
+	class, method := methodBySpan(analysis.Program, semantic.DeclarationSpan)
+	if class == nil || method == nil {
+		return hir.Program{}, hirLoweringError(analysis, semantic.DeclarationSpan, identity, "semantic method has no checked syntax declaration")
+	}
+	ownerSymbol, ok := symbolBySpan(analysis.Symbols, class.Span)
+	if !ok || ownerSymbol.Owner.Kind != SymbolOwnerModule {
+		return hir.Program{}, hirLoweringError(analysis, class.Span, identity, "semantic method owner has no bound module symbol")
+	}
+	ownerIdentity, ok := analysis.SemanticIDs.IdentityForSpan(class.Span)
+	if !ok || semanticIdentityKey(ownerIdentity) != semanticIdentityKey(semantic.Parent) {
+		return hir.Program{}, hirLoweringError(analysis, class.Span, identity, "semantic method owner identity is inconsistent")
+	}
+
+	functionIdentity := toHIRSemanticIdentity(identity)
+	parameters := make([]hir.Parameter, 0, len(method.Params))
+	bindings := make(map[string]hir.Binding, len(method.Params))
+	typeEnvironment := map[string]ResolvedTypeRef{}
+	for _, field := range class.Fields {
+		resolved, err := analysis.checked.resolveType(field.Type)
+		if err != nil {
+			return hir.Program{}, err
+		}
+		typeEnvironment[field.Name] = resolved
+	}
+	for position, parameter := range method.Params {
+		resolved, err := analysis.checked.resolveType(parameter.Type)
+		if err != nil {
+			return hir.Program{}, err
+		}
+		binding := hir.Binding{Kind: hir.BindingParameter, Function: functionIdentity, Position: position, Name: parameter.Name}
+		bindings[parameter.Name] = binding
+		typeEnvironment[parameter.Name] = resolved
+		parameters = append(parameters, hir.Parameter{
+			Binding: binding, Type: toHIRType(analysis, resolved), TypeSpan: toHIRSpan(parameter.Type.Span), Span: toHIRSpan(parameter.Span),
+		})
+	}
+	returnType, err := analysis.checked.resolveType(method.ReturnType)
+	if err != nil {
+		return hir.Program{}, err
+	}
+	body, err := lowerExprToHIR(analysis, identity, method.Body, bindings, typeEnvironment)
+	if err != nil {
+		return hir.Program{}, err
+	}
+	function := hir.Function{
+		Identity: functionIdentity,
+		Owner: hir.Owner{
+			Module: ownerSymbol.Owner.ID, SymbolID: uint32(ownerSymbol.ID), Identity: toHIRSemanticIdentity(ownerIdentity), SourceSpan: toHIRSpan(ownerSymbol.DeclarationSpan),
+		},
+		Name: method.Name, Parameters: parameters, ReturnType: toHIRType(analysis, returnType), ReturnTypeSpan: toHIRSpan(method.ReturnType.Span), Body: body, Span: toHIRSpan(method.Span),
+	}
+	return hir.Program{LanguageContract: coreir.LanguageContractV010, CompilerContract: coreir.CompilerContractV1, Functions: []hir.Function{function}}, nil
+}
+
+func lowerExprToHIR(analysis *Analysis, function SemanticIdentity, expression Expr, bindings map[string]hir.Binding, typeEnvironment map[string]ResolvedTypeRef) (hir.Expr, error) {
+	resolved, err := inferExprType(analysis.Sources, expression, typeEnvironment)
+	if err != nil {
+		return hir.Expr{}, err
+	}
+	result := hir.Expr{Type: toHIRType(analysis, resolved), Span: toHIRSpan(expression.SourceSpan())}
+	switch node := expression.(type) {
+	case *LiteralExpr:
+		result.Kind = hir.ExprLiteral
+		result.Literal = &hir.Literal{String: node.Value.String, Int: node.Value.Int, Float: node.Value.Float, Bool: node.Value.Bool}
+	case *IdentExpr:
+		binding, ok := bindings[node.Name]
+		if !ok {
+			return hir.Expr{}, hirLoweringError(analysis, node.Span, function, fmt.Sprintf("step-6 pure function references only parameters; %q is owned state", node.Name))
+		}
+		result.Kind = hir.ExprReference
+		bindingCopy := binding
+		result.Reference = &bindingCopy
+	case *UnaryExpr:
+		operand, err := lowerExprToHIR(analysis, function, node.Expr, bindings, typeEnvironment)
+		if err != nil {
+			return hir.Expr{}, err
+		}
+		operator, ok := hirUnaryOperator(node.Op)
+		if !ok {
+			return hir.Expr{}, hirLoweringError(analysis, node.Span, function, fmt.Sprintf("unsupported existing unary operator %q", node.Op))
+		}
+		result.Kind = hir.ExprUnary
+		result.Unary = &hir.Unary{Operator: operator, Operand: &operand}
+	case *BinaryExpr:
+		left, err := lowerExprToHIR(analysis, function, node.Left, bindings, typeEnvironment)
+		if err != nil {
+			return hir.Expr{}, err
+		}
+		right, err := lowerExprToHIR(analysis, function, node.Right, bindings, typeEnvironment)
+		if err != nil {
+			return hir.Expr{}, err
+		}
+		operator, ok := hirBinaryOperator(node.Op)
+		if !ok {
+			return hir.Expr{}, hirLoweringError(analysis, node.Span, function, fmt.Sprintf("unsupported existing binary operator %q", node.Op))
+		}
+		result.Kind = hir.ExprBinary
+		result.Binary = &hir.Binary{Operator: operator, Left: &left, Right: &right}
+	default:
+		return hir.Expr{}, hirLoweringError(analysis, expression.SourceSpan(), function, "unsupported checked expression")
+	}
+	return result, nil
+}
+
+// LowerHIRToCore removes analysis-local ownership and source information while
+// retaining semantic function identity, normalized types, parameters, values,
+// references, and operators in backend-neutral Core IR.
+func LowerHIRToCore(program hir.Program) (coreir.Program, error) {
+	core := coreir.Program{LanguageContract: program.LanguageContract, CompilerContract: program.CompilerContract, Functions: make([]coreir.Function, 0, len(program.Functions))}
+	for _, function := range program.Functions {
+		if function.Identity.PackageID == "" || function.Identity.Path == "" || function.Owner.SymbolID == 0 || function.Owner.Module == "" {
+			return coreir.Program{}, coreLoweringError(function.Span, "typed HIR function is missing bound semantic ownership")
+		}
+		parameters := make([]coreir.Parameter, 0, len(function.Parameters))
+		for position, parameter := range function.Parameters {
+			if parameter.Binding.Kind != hir.BindingParameter || parameter.Binding.Position != position || parameter.Binding.Function.PackageID != function.Identity.PackageID || parameter.Binding.Function.Path != function.Identity.Path {
+				return coreir.Program{}, coreLoweringError(parameter.Span, "typed HIR parameter binding is not normalized")
+			}
+			parameters = append(parameters, coreir.Parameter{Position: position, Name: parameter.Binding.Name, Type: hirTypeToCore(parameter.Type)})
+		}
+		body, err := hirExprToCore(function.Body, function.Parameters)
+		if err != nil {
+			return coreir.Program{}, err
+		}
+		core.Functions = append(core.Functions, coreir.Function{Identity: hirIdentityToCore(function.Identity), Name: function.Name, Parameters: parameters, ReturnType: hirTypeToCore(function.ReturnType), Body: body})
+	}
+	return core, nil
+}
+
+func hirExprToCore(expression hir.Expr, parameters []hir.Parameter) (coreir.Expr, error) {
+	result := coreir.Expr{Type: hirTypeToCore(expression.Type)}
+	switch expression.Kind {
+	case hir.ExprLiteral:
+		if expression.Literal == nil {
+			return coreir.Expr{}, coreLoweringError(expression.Span, "typed HIR literal has no value")
+		}
+		result.Kind = coreir.ExprLiteral
+		result.Literal = &coreir.Literal{String: expression.Literal.String, Int: expression.Literal.Int, Float: expression.Literal.Float, Bool: expression.Literal.Bool}
+	case hir.ExprReference:
+		if expression.Reference == nil || expression.Reference.Kind != hir.BindingParameter || expression.Reference.Position < 0 || expression.Reference.Position >= len(parameters) {
+			return coreir.Expr{}, coreLoweringError(expression.Span, "typed HIR reference has no bound parameter")
+		}
+		position := expression.Reference.Position
+		result.Kind = coreir.ExprReference
+		result.Parameter = &position
+	case hir.ExprUnary:
+		if expression.Unary == nil || expression.Unary.Operand == nil {
+			return coreir.Expr{}, coreLoweringError(expression.Span, "typed HIR unary expression is incomplete")
+		}
+		operand, err := hirExprToCore(*expression.Unary.Operand, parameters)
+		if err != nil {
+			return coreir.Expr{}, err
+		}
+		result.Kind = coreir.ExprUnary
+		result.Unary = &coreir.Unary{Operator: coreir.Operator(expression.Unary.Operator), Operand: &operand}
+	case hir.ExprBinary:
+		if expression.Binary == nil || expression.Binary.Left == nil || expression.Binary.Right == nil {
+			return coreir.Expr{}, coreLoweringError(expression.Span, "typed HIR binary expression is incomplete")
+		}
+		left, err := hirExprToCore(*expression.Binary.Left, parameters)
+		if err != nil {
+			return coreir.Expr{}, err
+		}
+		right, err := hirExprToCore(*expression.Binary.Right, parameters)
+		if err != nil {
+			return coreir.Expr{}, err
+		}
+		result.Kind = coreir.ExprBinary
+		result.Binary = &coreir.Binary{Operator: coreir.Operator(expression.Binary.Operator), Left: &left, Right: &right}
+	default:
+		return coreir.Expr{}, coreLoweringError(expression.Span, fmt.Sprintf("unsupported typed HIR expression kind %q", expression.Kind))
+	}
+	return result, nil
+}
+
+func methodBySpan(program *Program, span Span) (*ClassDecl, *MethodDecl) {
+	if program == nil {
+		return nil, nil
+	}
+	for _, class := range program.Classes {
+		for index := range class.Methods {
+			if class.Methods[index].Span == span {
+				return class, &class.Methods[index]
+			}
+		}
+	}
+	return nil, nil
+}
+
+func symbolBySpan(table *SymbolTable, span Span) (Symbol, bool) {
+	if table == nil {
+		return Symbol{}, false
+	}
+	for _, symbol := range table.Symbols() {
+		if symbol.DeclarationSpan == span {
+			return symbol, true
+		}
+	}
+	return Symbol{}, false
+}
+
+func toHIRType(analysis *Analysis, resolved ResolvedTypeRef) hir.Type {
+	result := hir.Type{Kind: hir.TypeKind(resolved.Kind), Primitive: hir.PrimitiveType(resolved.Primitive), SymbolID: uint32(resolved.Symbol), Name: resolved.Name}
+	if resolved.Kind == TypeRefNamed && analysis != nil && analysis.Symbols != nil && analysis.SemanticIDs != nil {
+		if symbol, ok := analysis.Symbols.LookupID(resolved.Symbol); ok {
+			if identity, ok := analysis.SemanticIDs.IdentityForSpan(symbol.DeclarationSpan); ok {
+				converted := toHIRSemanticIdentity(identity)
+				result.Identity = &converted
+			}
+		}
+	}
+	for _, argument := range resolved.Arguments {
+		result.Arguments = append(result.Arguments, toHIRType(analysis, argument))
+	}
+	return result
+}
+
+func toHIRSemanticIdentity(identity SemanticIdentity) hir.SemanticIdentity {
+	result := hir.SemanticIdentity{PackageID: string(identity.PackageID), Path: string(identity.Path)}
+	if identity.Callable != nil {
+		callable := hir.CallableIdentity{Returns: toHIRSemanticType(identity.Callable.Returns), Parameters: make([]hir.SemanticType, 0, len(identity.Callable.Parameters))}
+		for _, parameter := range identity.Callable.Parameters {
+			callable.Parameters = append(callable.Parameters, toHIRSemanticType(parameter))
+		}
+		result.Callable = &callable
+	}
+	return result
+}
+
+func toHIRSemanticType(identity SemanticTypeIdentity) hir.SemanticType {
+	result := hir.SemanticType{Kind: hir.TypeKind(identity.Kind), Primitive: hir.PrimitiveType(identity.Primitive), PackageID: string(identity.PackageID), Path: string(identity.Path), Name: identity.Name}
+	for _, argument := range identity.Arguments {
+		result.Arguments = append(result.Arguments, toHIRSemanticType(argument))
+	}
+	return result
+}
+
+func hirTypeToCore(value hir.Type) coreir.Type {
+	result := coreir.Type{Kind: coreir.TypeKind(value.Kind), Primitive: coreir.PrimitiveType(value.Primitive), Name: value.Name}
+	if value.Identity != nil {
+		identity := hirIdentityToCore(*value.Identity)
+		result.Identity = &identity
+	}
+	for _, argument := range value.Arguments {
+		result.Arguments = append(result.Arguments, hirTypeToCore(argument))
+	}
+	return result
+}
+
+func hirIdentityToCore(identity hir.SemanticIdentity) coreir.SemanticIdentity {
+	result := coreir.SemanticIdentity{PackageID: identity.PackageID, Path: identity.Path}
+	if identity.Callable != nil {
+		callable := coreir.CallableIdentity{Returns: hirSemanticTypeToCore(identity.Callable.Returns), Parameters: make([]coreir.SemanticType, 0, len(identity.Callable.Parameters))}
+		for _, parameter := range identity.Callable.Parameters {
+			callable.Parameters = append(callable.Parameters, hirSemanticTypeToCore(parameter))
+		}
+		result.Callable = &callable
+	}
+	return result
+}
+
+func hirSemanticTypeToCore(value hir.SemanticType) coreir.SemanticType {
+	result := coreir.SemanticType{Kind: coreir.TypeKind(value.Kind), Primitive: coreir.PrimitiveType(value.Primitive), PackageID: value.PackageID, Path: value.Path, Name: value.Name}
+	for _, argument := range value.Arguments {
+		result.Arguments = append(result.Arguments, hirSemanticTypeToCore(argument))
+	}
+	return result
+}
+
+func toHIRSpan(span Span) hir.SourceSpan {
+	return hir.SourceSpan{File: string(span.File), Start: span.Start, End: span.End}
+}
+
+func hirUnaryOperator(operator string) (hir.Operator, bool) {
+	switch operator {
+	case "!":
+		return hir.OperatorNot, true
+	case "-":
+		return hir.OperatorNegate, true
+	default:
+		return "", false
+	}
+}
+
+func hirBinaryOperator(operator string) (hir.Operator, bool) {
+	switch operator {
+	case "+":
+		return hir.OperatorAdd, true
+	case "-":
+		return hir.OperatorSubtract, true
+	case "*":
+		return hir.OperatorMultiply, true
+	case "/":
+		return hir.OperatorDivide, true
+	case "==":
+		return hir.OperatorEqual, true
+	case "!=":
+		return hir.OperatorNotEqual, true
+	case "<":
+		return hir.OperatorLessThan, true
+	case "<=":
+		return hir.OperatorLessOrEqual, true
+	case ">":
+		return hir.OperatorGreaterThan, true
+	case ">=":
+		return hir.OperatorGreaterOrEqual, true
+	case "&&":
+		return hir.OperatorAnd, true
+	case "||":
+		return hir.OperatorOr, true
+	default:
+		return "", false
+	}
+}
+
+func hirLoweringError(analysis *Analysis, span Span, identity SemanticIdentity, message string) error {
+	diagnostic := Diagnostic{Code: CodeHIRLowering, Category: CategorySemantic, Severity: SeverityError, Message: message, Primary: span}
+	if identity.IsValid() {
+		diagnostic.SemanticIDs = []SemanticID{identity.Path}
+		diagnostic.SemanticIdentities = []SemanticIdentity{identity}
+	}
+	var sources *SourceSet
+	if analysis != nil {
+		sources = analysis.Sources
+	}
+	return diagnosticError(sources, Diagnostics{diagnostic})
+}
+
+func coreLoweringError(span hir.SourceSpan, message string) error {
+	return oneDiagnostic(nil, CodeCoreLowering, CategorySemantic, Span{File: FileID(span.File), Start: span.Start, End: span.End}, message)
+}

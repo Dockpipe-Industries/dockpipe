@@ -5,8 +5,8 @@
 The `vNext` foundation decision packet in this record is **accepted** as of 2026-08-16. Acceptance
 fixes semantics, compiler boundaries, bootstrap stages, compatibility, and implementation order;
 examples and fixtures remain non-normative and accept no production syntax. Separately authorized
-bounded objectives have completed implementation-order steps 1 through 5. This record does not by
-itself authorize step 6 or any later language slice.
+bounded objectives have completed implementation-order steps 1 through 6. This record does not by
+itself authorize step 7 or any later language slice.
 
 ## Goal
 
@@ -1051,17 +1051,59 @@ The broad `src/lib/application` suite remains non-authoritative for this slice b
 `/path/to/your/project`; the focused affected application suite passes. The frozen legacy lane,
 emitted artifacts, generated stores, dependency files, and protected ignored bytes did not change.
 
+### Completed step 6 typed HIR/Core/Go checkpoint (2026-08-16)
+
+The separately authorized step-6 implementation checkpoint adds three cohesive generic compiler
+packages: target-independent typed HIR, normalized target-independent Core IR, and the first Go
+backend. `LowerSemanticMethodToHIR` accepts only a successful `v0.1.0` semantic module analysis and
+one public method semantic identity. The resulting HIR keeps the owning module and analysis-local
+class symbol, stable owner and callable semantic identities, resolved types, parameter bindings,
+and durable declaration/type/expression spans. No target spelling or Go representation enters HIR.
+
+`LowerHIRToCore` removes source spans and analysis-local symbols while preserving the callable
+identity, ordered typed signature, parameter positions, typed literals/references, and normalized
+existing unary/binary operators. The Go backend imports Core IR only, validates the fixed language
+and compiler contracts, orders functions deterministically, and emits formatted dependency-free Go
+for the primitive capability slice. It rejects missing identities, duplicate target names, named or
+applied types, division, and logical operators rather than silently choosing Go behavior before
+step 7 fixes the relevant failure and evaluation-order semantics.
+
+The first vertical fixture uses only existing expression-bodied method syntax:
+`Ready(int count) => count > 0`. HIR, Core, and generated-Go goldens prove the representation
+boundaries. The generated Go compiles and executes only under `/tmp`; its result matches the frozen
+pure evaluator for the same source and input. A source-architecture test rejects any Go-backend
+import of the PipeLang parser, AST/compiler root, HIR, `go/parser`, or `go/ast`, so a direct
+parser/AST-to-Go path fails the focused suite. HIR and Core lowering failures remain ordered
+PipeLang diagnostics with durable spans and semantic identities; unsupported Go capabilities use
+stable backend errors.
+
+Terminal proof passed with the cached Go 1.25.13 toolchain, the required offline environment, and
+writable `/tmp` caches:
+
+- focused HIR/Core/backend/diagnostic goldens plus exact
+  `go test ./src/lib/pipelang/... ./tests/pipelangcompat`;
+- compile and execution of generated Go only in a temporary `/tmp` module, with the same result as
+  the existing pure evaluator;
+- affected application PipeLang compile/check/invoke, catalog, materialize, workflow/package compile,
+  and CLI package checks using only a temporary `/tmp` modfile pinned to the already-cached
+  `golang.org/x/sys v0.46.0` source; checkout dependencies did not change; and
+- `go vet` across PipeLang, compatibility, and the affected application/internal/CLI packages.
+
+The exact 45-source inventory and its source, language-projection, artifact, and evaluation goldens
+did not drift. The semantic projection tests pass unchanged. This checkpoint changes no production
+syntax, CLI/YAML/schema/editor surface, generated store, runtime, or external state.
+
 ## Exact Next Boundary
 
-Step 5 of **Bounded Implementation Order** is complete. The exact next boundary is step 6: establish
-typed HIR and target-neutral Core IR around one tiny pure executable function, lower through those
-representations into a deterministic Go backend, and prove there is no direct parser-to-Go path.
-That successor requires a separately granted objective and must preserve the frozen legacy lane and
-the completed source, `TypeRef`, symbol, module/import/lock, semantic-identity, diagnostic, and
-projection contracts.
+Step 6 of **Bounded Implementation Order** is complete. The exact successor boundary is step 7: add
+the accepted fixed numeric, Unicode text,
+value/reference, equality, hashing, ordering, optional, result, record, union, and deterministic
+collection semantics in separately coherent vertical slices over the established HIR/Core/backend
+contracts.
 
-Step 6 is not authorized here. In particular, this checkpoint does not accept namespace, import,
-migration, `internal`, overload, generic, or ID syntax; implement overload resolution; add new
-types/declarations/expressions; add effects or executable application/service semantics; introduce
-Application IR or Service IR; mutate generated stores; or begin self-hosting. Exact production
-spellings remain later synchronized language slices.
+Step 7 is not authorized here. In particular, this checkpoint does not accept namespace, import,
+migration, `internal`, overload, generic, or ID production syntax; implement overload resolution;
+add new types/declarations/expressions/operators, blocks, locals, branches, or loops; add effects,
+entrypoints, actions/state, contracts/replay, executable application/service semantics, Application
+IR, Service IR, another backend, or self-hosting; mutate generated stores; or widen Go emission by
+guessing step-7 semantics. Exact production spellings remain later synchronized language slices.
