@@ -15,7 +15,7 @@ Read when using generated context, self-analysis artifacts, or DorkPipe MCP tool
 - If missing or stale, suggest refresh instead of silently regenerating.
 - Refresh only when the user asks.
 - Authored workflows should write generated files through `cwd: artifacts` or `dockpipe scope artifacts ...`.
-- Package state belongs under `dockpipe scope --package <name> ...`; workflow-run outputs do not.
+- Durable package continuity state belongs under `dockpipe scope --package <owner-id> ...`; workflow-run outputs, caches, and reproducible package products belong in artifact or package-runtime scope.
 - Pipeon binary: `packages/pipeon/resolvers/pipeon/bin/pipeon`.
 - Pipeon host apps: `packages/pipeon/apps/`.
 

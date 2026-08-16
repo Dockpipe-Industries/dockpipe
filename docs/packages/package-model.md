@@ -21,7 +21,7 @@ DockPipe has **four** package/artifact roots. Do not collapse them into one path
 5. **Source-level** resolution applies when you point at **authoring** trees: repo **`workflows/`**, **`templates/`**, **`src/core/…`**, etc. — normal edit/run **without** packaging.
 
 6. **Build (`dockpipe build` / `compile all`)** is considered successful only if:
-   - **`compile`** order is **core → resolvers → workflows** (legacy **`compile.bundles`** paths are merged into workflow roots),
+   - **`compile`** order is **core → resolvers → workflows**,
    - each **workflow** and **resolver** package resolves a **valid `namespace`** (from **`package.yml`**, **`config.yml` / `resolver.yaml`**, or repo-root **`dockpipe.config.json`** **`packages.namespace`** as a default),
    - every **`depends`** entry in **`package.yml`** names a package **already present** in the compiled store (names from **`package.yml`** under **`core/`**, **`resolvers/`**, **`workflows/`**).
 
@@ -31,7 +31,8 @@ DockPipe has **four** package/artifact roots. Do not collapse them into one path
 
 | Scope | Root | What belongs there |
 |------|------|--------------------|
-| **Project-local** | **`<workdir>/bin/.dockpipe/`** | Compile outputs, project package store, run records, project-scoped image artifact cache, package-scoped state. |
+| **Project-local disposable** | **`<workdir>/bin/.dockpipe/`** | Compile outputs, project package store, run records, caches, workflow artifacts, and package runtime products. The entire tree is disposable by convention. |
+| **Project/package durable** | OS state root keyed by stable project ID and exact package owner ID | Owner-only settings, credentials, continuity/recovery authority, and cumulative records that must survive ordinary clean. Resolve with `dockpipe scope --package <owner-id>`. |
 | **Global** | **`DOCKPIPE_GLOBAL_ROOT`** or **`GlobalDockpipeDataDir()`** | User-wide installed core, resolver/workflow packages, global image artifact metadata, global download cache. |
 | **Published remote** | Static origin / package registry / OCI registry | Versioned package tarballs and OCI image refs. |
 
@@ -65,7 +66,7 @@ A **workflow** is primarily **`config.yml`** (plus assets next to it). In that f
 | **Strategy** (lifecycle wrapper) | **`templates/core/strategies/<name>/`** | **`strategy`**, **`strategies:`** select host before/after scripts. |
 | **Domain workflows** (under maintainer packages) | Same as workflows: **`config.yml`** under e.g. **`dockpipe/dorkpipe/`** or nested under **`dockpipe/<group>/resolvers/<name>/`** (resolver-shaped trees include **`profile/`** + workflow assets) | **`scripts/…`** resolves via compiled **`dockpipe-workflow-*`** tarballs first, then source trees. |
 
-So **one repo** can ship **workflows**, **resolvers**, and **runtimes** / **strategies** / the rest of the spine via **`compile core`** ( **`templates/core`** or **`src/core`** ): list **`compile.workflows`** only as the entry point (legacy **`compile.bundles`** merged in; deprecated **`compile.resolvers`** merged if present). Resolver packaging uses the same roots as workflows plus flat **`src/core/resolvers`** and **`templates/core/resolvers`** when those exist. **Runtimes** still live under **core**; workflows only select them. **Compile** emits **`dockpipe-workflow-*`**, **`dockpipe-resolver-*`**, and **`core`** tarballs while **`package.yml`** records **`depends`**, **`namespace`**, and metadata. Step-by-step keys: **[../workflows/workflow-yaml.md](../workflows/workflow-yaml.md)**.
+So **one repo** can ship **workflows**, **resolvers**, and **runtimes** / **strategies** / the rest of the spine via **`compile core`** ( **`templates/core`** or **`src/core`** ): list **`compile.workflows`** as the entry point. Resolver packaging uses the same roots as workflows plus flat **`src/core/resolvers`** and **`templates/core/resolvers`** when those exist. **Runtimes** still live under **core**; workflows only select them. **Compile** emits **`dockpipe-workflow-*`**, **`dockpipe-resolver-*`**, and **`core`** tarballs while **`package.yml`** records **`depends`**, **`namespace`**, and metadata. Step-by-step keys: **[../workflows/workflow-yaml.md](../workflows/workflow-yaml.md)**.
 
 ### Local compile (`dockpipe build` / `dockpipe package compile` / `dockpipe compile`)
 
@@ -74,8 +75,6 @@ Materialize a **project-local** store under **`bin/.dockpipe/internal/packages/`
 **Repo-root `dockpipe.config.json` (optional)** — JSON with a **`compile`** object:
 
 - **`workflows`** — array of repo-relative (or absolute) **directories** to scan for named workflow folders (each with **`config.yml`**). Same roots drive **`dockpipe package compile resolvers`** (nested **`…/resolvers/<name>/`**) plus flat **`src/core/resolvers`** and **`templates/core/resolvers`** when present.
-- **`resolvers`** (deprecated) — optional extra roots merged into resolver compile; prefer listing everything under **`workflows`**.
-- **`bundles`** (deprecated) — merged into **`workflows`**; same recursive **`config.yml`** walk.
 - **`core_from`** — optional path override for **`compile core`** (same as **`--from`**).
 - **`secrets`** (optional) — not secrets themselves; pointers for humans and tooling:
   - **`op_inject_template`** — repo-relative or absolute path to a **mapping file** for **`op inject`** (e.g. **`.env.op.template`** with **`op://`** lines). **`dockpipe doctor`** reports whether that file exists when **`dockpipe.config.json`** is present in the current directory.
@@ -85,15 +84,15 @@ Materialize a **project-local** store under **`bin/.dockpipe/internal/packages/`
   - **`{ "kind": "tarball_dir", "path": "release/artifacts" }`** for a directory of **`dockpipe-*.tar.gz`** artifacts
   - these supplement local/global/system package roots and do **not** replace **`packages.tarball_dir`**, namespace filtering, or self-hosted S3/R2 package mirrors
 
-If **`dockpipe.config.json`** is **missing**, compile uses built-in defaults for each omitted key. **`dockpipe init`** seeds a starter JSON. **Maintainer package trees** (for example **`packages/`** in this repo) are **not** implied: add them explicitly under **`compile.workflows`** when you want them compiled (legacy **`compile.bundles`** is merged into **`compile.workflows`**).
+If **`dockpipe.config.json`** is **missing**, compile uses built-in defaults for each omitted key. **`dockpipe init`** seeds a starter JSON. **Maintainer package trees** (for example **`packages/`** in this repo) are **not** implied: add them explicitly under **`compile.workflows`** when you want them compiled.
 
 Compile steps:
 
 1. **`compile core`** — copies **`src/core`** (default when **`src/core/runtimes`** exists) or **`templates/core`**, or **`compile.core_from`** / **`--from`**, into **`packages/core/`** and writes **`package.yml`** (`kind: core`). **Omits** top-level **`resolvers/`**, **`bundles/`**, and **`workflows/`** from that copy so those slices stay separate packages.
-2. **`compile resolvers`** — repeatable **`--from`**; default roots are **`compile.workflows`** (plus legacy **`compile.bundles`** merged in), **`src/core/resolvers`**, and **`templates/core/resolvers`** when those directories exist; deprecated **`compile.resolvers`** entries are merged if present. **Pack roots** under each **`--from`** directory include: **`resolvers/`** (flat); **`packages/<group>/resolvers/`**; **`dockpipe/<group>/resolvers/`** (e.g. dockpipe repo: **`agent`**, **`ide`**, **`secrets`**, **`cloud/storage`**, …). Every immediate child of each pack root that contains **`profile/`** becomes **one** tarball (**`dockpipe-resolver-<name>-…`**) — the **store** still lists **separate** installable resolvers. **`src/core/resolvers`** stays a flat list (no nested **`resolvers/resolvers/`**). **Strategies** and **runtimes** are not packed from the same vendor folder as resolvers; keep lifecycle slices in **`compile core`** until a follow-up convention exists.
-3. **`compile workflows`** — every **`config.yml`** under each **`--from`** root (recursive walk). With no config, the default is **`workflows/`** when present. List maintainer roots (for example **`packages/`**) in **`compile.workflows`** when you want them compiled; legacy **`compile.bundles`** paths are merged into this list. **`dockpipe package compile bundles`** is an alias for **`compile workflows`**. Optional **`compile_hooks:`** in workflow/resolver `config.yml` is a list of **shell** strings run against the staged package copy **after** validation and **before** the tarball is written; DockPipe exports **`DOCKPIPE_COMPILE_WORKDIR`**, **`DOCKPIPE_COMPILE_SOURCE_DIR`**, **`DOCKPIPE_COMPILE_STAGING_DIR`**, and **`DOCKPIPE_COMPILE_KIND`** so hooks can read source-only inputs while writing packaged outputs into the staged tree (e.g. **`go build`**, codegen, asset bundling).
+2. **`compile resolvers`** — repeatable **`--from`**; default roots are **`compile.workflows`**, **`src/core/resolvers`**, and **`templates/core/resolvers`** when those directories exist. **Pack roots** under each **`--from`** directory include: **`resolvers/`** (flat); **`packages/<group>/resolvers/`**; **`dockpipe/<group>/resolvers/`** (e.g. dockpipe repo: **`agent`**, **`ide`**, **`secrets`**, **`cloud/storage`**, …). Every immediate child of each pack root that contains **`profile/`** becomes **one** tarball (**`dockpipe-resolver-<name>-…`**) — the **store** still lists **separate** installable resolvers. **`src/core/resolvers`** stays a flat list (no nested **`resolvers/resolvers/`**). **Strategies** and **runtimes** are not packed from the same vendor folder as resolvers; keep lifecycle slices in **`compile core`** until a follow-up convention exists.
+3. **`compile workflows`** — every **`config.yml`** under each **`--from`** root (recursive walk). With no config, the default is **`workflows/`** when present. List maintainer roots (for example **`packages/`**) in **`compile.workflows`** when you want them compiled. **`dockpipe package compile bundles`** is an alias for **`compile workflows`**. Optional **`compile_hooks:`** in workflow/resolver `config.yml` is a list of **shell** strings run against the staged package copy **after** validation and **before** the tarball is written; DockPipe exports **`DOCKPIPE_COMPILE_WORKDIR`**, **`DOCKPIPE_COMPILE_SOURCE_DIR`**, **`DOCKPIPE_COMPILE_STAGING_DIR`**, and **`DOCKPIPE_COMPILE_KIND`** so hooks can read source-only inputs while writing packaged outputs into the staged tree (e.g. **`go build`**, codegen, asset bundling).
 4. **`compile all`** — runs **core → resolvers → workflows** and emits compiled runtime/security/image manifests, but does not run Docker builds.
-5. **`dockpipe build`** — runs **compile all --force**, then prebuilds Dockerfile-backed image artifacts by default and records materialized receipts under **`bin/.dockpipe/internal/images/by-fingerprint/`**. **`dockpipe run`** can reuse those receipts before deciding whether a Docker build is needed. Use **`dockpipe build --no-images`** when you want manifest/package materialization only. **`dockpipe clean`** removes the compiled store; **`dockpipe rebuild`** runs **clean** then **build**.
+5. **`dockpipe build`** — runs **compile all --force**, then prebuilds Dockerfile-backed image artifacts by default and records materialized receipts under **`bin/.dockpipe/internal/images/by-fingerprint/`**. **`dockpipe run`** can reuse those receipts before deciding whether a Docker build is needed. Use **`dockpipe build --no-images`** when you want manifest/package materialization only. **`dockpipe clean --dry-run`** previews the exact checkout-local **`bin/.dockpipe/`** tree and logical bytes; ordinary **`dockpipe clean`** removes that complete disposable tree. **`dockpipe rebuild`** separately resets the resolved compiled store, including `DOCKPIPE_PACKAGES_ROOT`, through guarded target validation before building; ordinary clean never follows that override outside the checkout.
 
 The runner checks compiled package-store roots before authoring **`CoreDir`** so you can opt in to the compiled store per workdir. Edit **`package.yml`** after compile to add **namespaces**, **`depends`**, and metadata for store-shaped workflows.
 
@@ -182,6 +181,7 @@ Suggested subdirectories (mirror authoring concepts; not all are required):
 | **`depends`** | Other package **names** this package expects |
 | **`dependencies`** | Supported host platforms plus external host tools needed by this package's workflows/scripts, separate from package graph **`depends`** |
 | **`namespace`** | Author/org label for discovery and future namespaced installs (validated; see **`domain.ValidateNamespace`**) |
+| **`package_state`** | Optional maintained mixed-state contract: `compatibility_import: package-owned` plus exact `owner_ids`. Undeclared public owners use conservative whole-tree compatibility import. |
 | **`allow_clone`** | If **`true`**, **`dockpipe clone`** may export the compiled tree to **`workflows/`**; if false or omitted, clone is refused. |
 | **`distribution`** | Optional hint: **`source`** or **`binary`** (documentation for store pages). |
 | **`image`** | Optional normal OCI image reference for a workflow package. Compile records it into the effective runtime/image manifests; `run` may reuse or pull it according to compiled pull policy. |
@@ -206,9 +206,29 @@ The Go type **`domain.PackageManifest`** parses these keys; see **`src/lib/domai
 - **`workflows/`** (default project root), **`src/core/workflows/<name>/`** (bundled examples in the dockpipe repo), legacy **`templates/<name>/`** — YAML and assets you **build or clone**, commit, and run with **`--workflow`** as today.
 - No **`package.yml`** required; this is normal development.
 
-## 3. Project-local state (`bin/.dockpipe/`) and isolation
+## 3. Disposable runtime and durable package state
 
-**`bin/.dockpipe/`** is the **project-local** tree for generated state: host run records (**`bin/.dockpipe/runs/`**), workflow artifact roots, package-scoped state, handoffs, optional demo stubs, and **installed package material** under **`bin/.dockpipe/internal/`**. Step `outputs:` files are resolved under the selected workflow output/artifact scope. That keeps **transient and tool-owned** files out of the main authoring trees and the repo root.
+**`bin/.dockpipe/`** is the **project-local disposable** tree for generated state: host run records (**`bin/.dockpipe/runs/`**), workflow artifact roots, collision-safe package runtime directories, handoffs, optional demo stubs, caches, and **installed package material** under **`bin/.dockpipe/internal/`**. Step `outputs:` files are resolved under the selected workflow output/artifact scope. Every producer in this tree must tolerate its complete removal.
+
+Durable package state is separate. `dockpipe scope --package <owner-id>` and `dockpipe get package_state_dir` resolve an owner-only OS state directory keyed by stable project identity plus the exact trimmed, case-preserving owner ID. `DOCKPIPE_PACKAGES_ROOT`, `DOCKPIPE_GLOBAL_ROOT`, checkout basename, remote URL, and the legacy sanitized scope do not relocate or identify it. Public suffixes are validated as data and cannot traverse outside that root.
+
+On first public access, an undeclared third-party scope conservatively copies its complete validated legacy `bin/.dockpipe/packages/<sanitized-scope>` tree into durable state with byte inventory, source identity, owner-only permissions, interruption recovery, and atomic publication. Legacy bytes remain untouched; durable state wins after publication and divergence is reported without automatic merge. Maintained mixed packages instead declare exact package-owned migration aliases:
+
+```yaml
+package_state:
+  compatibility_import: package-owned
+  owner_ids: [my-package, my-resolver]
+```
+
+That declaration means package code exhaustively selects durable cohorts and leaves caches, build output, scratch, and unresolved cohorts in package runtime. DockPipe propagates the selected package manifest through package/workflow script context so the generic importer can match exact owner IDs without engine knowledge of maintained packages. It is not a retention label and does not authorize deleting or rewriting legacy state. Unknown scopes have no declaration and therefore import whole. There is no durable-to-legacy symlink or cross-project/name-folding heuristic.
+
+Package scripts should use `PackageRuntimeDir` or shell SDK `dockpipe_sdk path package-runtime <owner-id> ...` for disposable products. `DOCKPIPE_PACKAGE_STATE_DIR` is accepted only when it equals the resolved durable directory or names an independently existing owner-only override outside the checkout; workdir refresh clears inherited state authority.
+
+`dockpipe clean --dry-run` needs no project declaration. It deterministically reports the exact
+resolved checkout **`bin/.dockpipe/`** target, logical bytes, file count, and whether removal would
+occur. Ordinary clean removes that whole tree after rejecting links/reparse points, special files,
+filesystem substitutions, and unsafe boundaries. A missing tree is a reported no-op. Durable state
+and external `DOCKPIPE_PACKAGES_ROOT` stores remain outside ordinary clean authority.
 
 **`bin/.dockpipe/internal/packages/`** is the default store for **fetched or compiled** package trees (workflows, core slices, assets) — the same conceptual layout whether content arrived as a **`.tar.gz`** or from **`dockpipe package compile workflow`**. **Uncompressed** authoring under **`workflows/`** remains normal; **compile** validates and **materializes** into **`bin/.dockpipe/internal/...`** when you opt into the packaged path. Resolution order for **`--workflow`** is implemented in **`workflow_dirs.go`** (**`workflows/`** → **packages** → legacy **`templates/`** paths, etc.).
 

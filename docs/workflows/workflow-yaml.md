@@ -239,15 +239,19 @@ scope object, including `source_root`, `output_root`, and `dockpipe_bin`. Use
 `dockpipe scope artifacts <path>` to resolve under the workflow artifact root.
 Relative **`outputs:`** files resolve under the output/artifact scope, not the process cwd.
 
-Package state uses the same primitive:
+Durable package state uses the same primitive. It is owner-only OS state keyed by stable project
+identity and exact package owner ID, outside disposable `bin/.dockpipe/**`:
 
 ```bash
 dockpipe scope --package dorkpipe
-dockpipe scope --package dorkpipe training metrics.jsonl
+dockpipe scope --package acme.tool settings.json
 dockpipe scope workflow docs.orchestrate orchestrate
 ```
 
-The package scope object includes `root`, `state_root`, `workdir`, and `dockpipe_bin`.
+The package scope object includes the same durable path in `root` and `state_root`, plus `workdir`
+and `dockpipe_bin`. Package caches, build products, scratch, and run evidence use
+`PackageRuntimeDir` or shell SDK `dockpipe_sdk path package-runtime <owner-id> ...`; workflow
+artifacts remain under workflow scope.
 
 Resolver packages can expose resolver-owned paths through their profile, then scripts can read them
 without hardcoding provider-specific environment names:
