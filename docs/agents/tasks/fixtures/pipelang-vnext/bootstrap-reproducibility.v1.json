@@ -1,0 +1,29 @@
+{
+  "fixture": "pipelang.bootstrap-reproducibility",
+  "fixtureVersion": 1,
+  "nonNormative": true,
+  "lockedInputs": [
+    "compilerSourceDigest",
+    "dependencyLockDigest",
+    "standardLibraryDigest",
+    "languageContractVersion",
+    "compilerContractVersion",
+    "goToolchainDigest",
+    "goBackendDigest",
+    "targetProfile"
+  ],
+  "stages": [
+    {"id": "stage-0", "compiler": "reviewed-go-seed", "produces": "stage-1"},
+    {"id": "stage-1", "compiler": "stage-1", "produces": "stage-2"},
+    {"id": "stage-2", "compiler": "stage-2", "validates": "stage-1-vs-stage-2"}
+  ],
+  "requiredComparisons": [
+    {"left": "stage-1.normalizedSemanticProjection", "right": "stage-2.normalizedSemanticProjection", "relation": "byte-equal"},
+    {"left": "stage-1.normalizedCoreIr", "right": "stage-2.normalizedCoreIr", "relation": "byte-equal"},
+    {"left": "stage-1.orderedDiagnostics", "right": "stage-2.orderedDiagnostics", "relation": "byte-equal"},
+    {"left": "stage-1.normalizedNativeArtifacts", "right": "stage-2.normalizedNativeArtifacts", "relation": "byte-equal"},
+    {"left": "stage-1.conformanceResults", "right": "stage-2.conformanceResults", "relation": "behavior-equal"}
+  ],
+  "failurePolicy": "any-mismatch-fails-bootstrap",
+  "selfBlessingAllowed": false
+}

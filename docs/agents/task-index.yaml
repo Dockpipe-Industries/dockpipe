@@ -87,10 +87,10 @@ tasks:
       readiness: unclassified
       ownership: unclaimed
   - id: TASK-021
-    topic: PipeLang deterministic semantic and application language foundation
+    topic: PipeLang deterministic self-hosting managed language foundation
     path: docs/agents/tasks/pipelang-reactive-application-language.md
     dispatch:
-      readiness: unclassified
+      readiness: decision_ready
       ownership: unclaimed
   - id: TASK-022
     topic: Go-first PipeLang backend services and typed clients

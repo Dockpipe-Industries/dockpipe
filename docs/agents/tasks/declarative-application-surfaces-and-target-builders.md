@@ -10,16 +10,18 @@ This task tracks three related but distinct layers:
 
 1. **DockPipe Site Compiler**: the user-facing product capability for authoring and producing sites
    and application surfaces.
-2. **PipeLang application language**: target-neutral typed models, reactive state, computed values,
-   actions, governed effects, validation, and binding expressions owned by
+2. **PipeLang managed language**: the shared target-neutral semantic/Core foundation plus typed
+   models, reactive state, computed values, actions, governed effects, validation, and binding
+   expressions owned by
    [TASK-021](pipelang-reactive-application-language.md).
 3. **Generic DockPipe primitive**: a versioned normalized application/view contract plus
    target-agnostic building and artifact-manifest contracts.
 
 The accepted working product direction is that Qt becomes DockPipe's standard first-party
 application framework without becoming an engine dependency or the generic contract. PipeLang and
-YAML describe the application; a normalized Application IR separates authored semantics from
-targets; package-owned adapters produce Qt native, Qt WebAssembly, semantic web, or future outputs.
+YAML describe the application; a normalized Application IR specializes TASK-021's versioned
+semantic/Core projection and separates authored semantics from targets; package-owned adapters
+produce Qt native, Qt WebAssembly, semantic web, or future outputs.
 Qt Quick/QML plus generated C++ is the preferred standard-backend direction to validate because it
 is declarative, reactive, responsive, and shared across native and WebAssembly. The current Qt
 Widgets proof remains valid consumer evidence but does not by itself select Widgets as the final
@@ -87,22 +89,25 @@ belongs to separately selected resolver/workflow behavior, not to ordinary targe
 The intended compiler layering is:
 
 ```text
-.pipe types, state, actions and effects
-                 +
-YAML application composition and bindings
-                 +
-portable SCSS/theme rules and assets
-                 |
-                 v
-       DockPipe Application IR
-                 |
-       +---------+----------+
-       |                    |
-       v                    v
-Qt Quick/QML + C++      semantic HTML/CSS/JS
-       |                    |
-       v                    v
-Qt native / Qt WASM     static or interactive web
+.pipe source -> TASK-021 syntax/binding/typed HIR/Core IR
+                              |
+                              v
+             versioned semantic/Core projection
+                              +
+          YAML application composition and bindings
+                              +
+           portable theme rules and ordinary assets
+                              |
+                              v
+                  DockPipe Application IR
+                              |
+                    +---------+----------+
+                    |                    |
+                    v                    v
+             Qt Quick/QML + C++      semantic HTML/CSS/JS
+                    |                    |
+                    v                    v
+             Qt native / Qt WASM     static or interactive web
 ```
 
 The useful portability boundary is the Application IR, not HTML, C++, LLVM, or WebAssembly. HTML
@@ -179,10 +184,12 @@ versioning, type-system evolution, reactive state, pure computed properties, loc
 effects, safe expressions, parser/typechecker/compiler work, compatibility, diagnostics, and editor
 support. It is the first implementation dependency for this task.
 
-TASK-020 consumes only TASK-021's accepted versioned typed projection. Target adapters must not
-define missing language semantics, parse `.pipe` independently, or land permissive syntax on behalf
-of a renderer. This task retains ownership of portable application components, YAML composition,
-layout, accessibility, styling, Application IR integration, and target artifacts.
+TASK-020 consumes only TASK-021's accepted versioned semantic projection and referenced Core units.
+Application IR is a specialized, independently versioned projection over that foundation, not an
+internal compiler representation or parallel language model. Target adapters must not define
+missing language semantics, parse `.pipe` independently, or land permissive syntax on behalf of a
+renderer. This task retains ownership of portable application components, YAML composition, layout,
+accessibility, styling, Application IR integration, and target artifacts.
 
 ## Application IR Contract
 
@@ -198,9 +205,10 @@ The versioned IR should normalize at least:
 - source locations sufficient for diagnostics without requiring a backend to parse PipeLang or YAML.
 
 Backends consume only this IR and selected package-owned assets. They do not independently parse the
-repository, authored YAML, or PipeLang. Conformance is semantic rather than pixel-identical: targets
-must preserve state, action, validation, accessibility, and layout intent while using native target
-primitives.
+repository, authored YAML, or PipeLang. Qt, web, Go bridge, and other target behavior is selected and
+implemented by resolver-owned adapters. Conformance is semantic rather than pixel-identical:
+targets must preserve state, action, validation, accessibility, and layout intent while using
+native target primitives; missing required capability fails instead of degrading.
 
 ### Presentation escape hatches
 
@@ -286,7 +294,7 @@ Do not settle command spelling here. `dockpipe compile` already means DockPipe p
 
 When prioritized:
 
-1. Complete TASK-021's language decision packet and accept its versioned typed-projection fixture.
+1. Admit TASK-021's accepted language decision packet and versioned semantic/Core fixtures.
 2. Freeze the current normalized `types:` plus `view:` catalog projection as a fixture baseline.
 3. Define and version the target-neutral Application IR with source-mapped diagnostics, consuming
    the TASK-021 projection rather than reparsing PipeLang.
