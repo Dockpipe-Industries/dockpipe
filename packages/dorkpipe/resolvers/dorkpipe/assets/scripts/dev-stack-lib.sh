@@ -6,7 +6,7 @@ dorkpipe_stack_state_dir() {
     printf '%s\n' "$DORKPIPE_DEV_STACK_STATE_DIR"
     return 0
   fi
-  dockpipe scope --package dorkpipe dev-stack --workdir "${ROOT}"
+  dockpipe __state package-runtime --workdir "${ROOT}" --owner dorkpipe --path dev-stack
 }
 
 dorkpipe_stack_log_mode() {

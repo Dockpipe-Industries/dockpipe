@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"dockpipe/src/lib/infrastructure"
+	"dorkpipe.orchestrator/statepaths"
 	"gopkg.in/yaml.v3"
 )
 
@@ -133,6 +134,26 @@ func Run(args []string, env map[string]string, stdout, stderr io.Writer) error {
 		return errors.New("usage: orchestrate-helper <subcommand> [args]")
 	}
 	switch args[0] {
+	case "durable-metrics-path":
+		if len(args) != 2 {
+			return errors.New("usage: orchestrate-helper durable-metrics-path <workdir>")
+		}
+		path, err := statepaths.MetricsPath(args[1])
+		if err != nil {
+			return err
+		}
+		fmt.Fprintln(stdout, path)
+		return nil
+	case "durable-training-metrics-path":
+		if len(args) != 2 {
+			return errors.New("usage: orchestrate-helper durable-training-metrics-path <workdir>")
+		}
+		path, err := statepaths.TrainingMetricsPath(args[1])
+		if err != nil {
+			return err
+		}
+		fmt.Fprintln(stdout, path)
+		return nil
 	case "usage-number":
 		if len(args) != 3 {
 			return errors.New("usage: orchestrate-helper usage-number <cloud-usage.json> <key>")

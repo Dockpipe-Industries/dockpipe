@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -15,6 +16,7 @@ import (
 	"testing"
 	"time"
 
+	"dockpipe/src/lib/infrastructure"
 	"dorkpipe.orchestrator/appserversupervisor"
 	"dorkpipe.orchestrator/providersession"
 )
@@ -386,7 +388,7 @@ func TestProviderPoolCodexCLIPathPrefersExplicitEnv(t *testing.T) {
 }
 
 func TestProviderPoolCodexAppServerDispatchResumesOnlyVerifiedIdleAndNeverReplaysUnresolvedTurn(t *testing.T) {
-	root := t.TempDir()
+	root := providerPoolDurableTestWorkdir(t)
 	codexPath := filepath.Join(root, "codex.exe")
 	if err := os.WriteFile(codexPath, []byte("stub"), 0o644); err != nil {
 		t.Fatal(err)
@@ -622,7 +624,7 @@ func TestProviderPoolAppServerFallbackEligibilityFollowsTurnStartBoundary(t *tes
 		t.Fatal("proven pre-turn/start classification did not retain eligibility")
 	}
 
-	root := t.TempDir()
+	root := providerPoolDurableTestWorkdir(t)
 	opts := providerPoolPromptOptions{Workdir: root, Prompt: "fixture", SessionID: "readiness-session", SessionAdapter: providerPoolCodexAppServerAdapter}
 	if _, eligibility, err := runProviderPoolCodexAppServerPrompt(context.Background(), providerPoolPromptOptions{Workdir: "\x00", SessionID: opts.SessionID, Prompt: opts.Prompt}, "gpt-5.5", "codex", nil, 1); err == nil || !eligibility.allowsFallback() {
 		t.Fatalf("policy construction classification = %v, err=%v", eligibility, err)
@@ -714,7 +716,7 @@ func TestProviderPoolCodexAdapterRoutesStayExactAcrossOneShotFallback(t *testing
 		runProviderPoolCodexAppServerPromptFunc = originalAppServer
 		runProviderPoolCommandCaptureFunc = originalCapture
 	})
-	root := t.TempDir()
+	root := providerPoolDurableTestWorkdir(t)
 	codexPath := filepath.Join(root, "codex.exe")
 	if err := os.WriteFile(codexPath, []byte("stub"), 0o644); err != nil {
 		t.Fatal(err)
@@ -757,7 +759,7 @@ func TestProviderPoolCodexAdapterRoutesStayExactAcrossOneShotFallback(t *testing
 	}
 
 	for _, classification := range []providerPoolAppServerFallbackEligibility{providerPoolAppServerEligibleBeforeTurnStart, providerPoolAppServerDispatchedOrUnknown} {
-		caseRoot := t.TempDir()
+		caseRoot := providerPoolDurableTestWorkdir(t)
 		caseCodexPath := filepath.Join(caseRoot, "codex.exe")
 		if err := os.WriteFile(caseCodexPath, []byte("stub"), 0o644); err != nil {
 			t.Fatal(err)
@@ -804,7 +806,7 @@ func TestProviderPoolAppServerEligibleFallbackRemovesExactClaimBeforeOneExec(t *
 		{name: "recovered turn", completedTurn: 7},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			root := t.TempDir()
+			root := providerPoolDurableTestWorkdir(t)
 			codexPath := filepath.Join(root, "codex.exe")
 			if err := os.WriteFile(codexPath, []byte("stub"), 0o644); err != nil {
 				t.Fatal(err)
@@ -937,7 +939,7 @@ func TestProviderPoolAppServerFallbackRejectsNonExactOrUnremovableClaim(t *testi
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			root := t.TempDir()
+			root := providerPoolDurableTestWorkdir(t)
 			codexPath := filepath.Join(root, "codex.exe")
 			if err := os.WriteFile(codexPath, []byte("stub"), 0o644); err != nil {
 				t.Fatal(err)
@@ -967,7 +969,7 @@ func TestProviderPoolAppServerFallbackRejectsNonExactOrUnremovableClaim(t *testi
 	}
 
 	t.Run("removal failure", func(t *testing.T) {
-		root := t.TempDir()
+		root := providerPoolDurableTestWorkdir(t)
 		codexPath := filepath.Join(root, "codex.exe")
 		if err := os.WriteFile(codexPath, []byte("stub"), 0o644); err != nil {
 			t.Fatal(err)
@@ -1013,7 +1015,7 @@ func TestProviderPoolAppServerUnsafeAndExecAmbiguousOutcomesNeverReplay(t *testi
 		{name: "consumer missing result"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			root := t.TempDir()
+			root := providerPoolDurableTestWorkdir(t)
 			codexPath := filepath.Join(root, "codex.exe")
 			if err := os.WriteFile(codexPath, []byte("stub"), 0o644); err != nil {
 				t.Fatal(err)
@@ -1045,7 +1047,7 @@ func TestProviderPoolAppServerUnsafeAndExecAmbiguousOutcomesNeverReplay(t *testi
 	}
 
 	t.Run("ambiguous exec result", func(t *testing.T) {
-		root := t.TempDir()
+		root := providerPoolDurableTestWorkdir(t)
 		codexPath := filepath.Join(root, "codex.exe")
 		if err := os.WriteFile(codexPath, []byte("stub"), 0o644); err != nil {
 			t.Fatal(err)
@@ -2383,7 +2385,7 @@ func TestMergePromptTimingsPreservesProviderTiming(t *testing.T) {
 }
 
 func TestProviderPoolCodexSessionAdapterPinsFirstExplicitChoice(t *testing.T) {
-	root := t.TempDir()
+	root := providerPoolDurableTestWorkdir(t)
 	adapter, err := resolveProviderPoolCodexSessionAdapter(root, "pipeon-session-1", "")
 	if err != nil || adapter != providerPoolCodexExecAdapter {
 		t.Fatalf("unselected adapter = %q, err=%v", adapter, err)
@@ -2413,7 +2415,7 @@ func TestProviderPoolCodexSessionAdapterPinsFirstExplicitChoice(t *testing.T) {
 }
 
 func TestProviderPoolCodexSessionAdapterPinsUnavailableAppServerWithoutSubstitution(t *testing.T) {
-	root := t.TempDir()
+	root := providerPoolDurableTestWorkdir(t)
 	adapter, err := resolveProviderPoolCodexSessionAdapter(root, "pipeon-session-2", providerPoolCodexAppServerAdapter)
 	if err != nil || adapter != providerPoolCodexAppServerAdapter {
 		t.Fatalf("App Server adapter = %q, err=%v", adapter, err)
@@ -2424,7 +2426,7 @@ func TestProviderPoolCodexSessionAdapterPinsUnavailableAppServerWithoutSubstitut
 }
 
 func TestProviderPoolCodexSessionAdapterRejectsInvalidOrMalformedEvidence(t *testing.T) {
-	root := t.TempDir()
+	root := providerPoolDurableTestWorkdir(t)
 	if _, err := resolveProviderPoolCodexSessionAdapter(root, "", providerPoolCodexExecAdapter); err == nil {
 		t.Fatal("explicit adapter without a session id was accepted")
 	}
@@ -2443,6 +2445,80 @@ func TestProviderPoolCodexSessionAdapterRejectsInvalidOrMalformedEvidence(t *tes
 	}
 	if _, err := resolveProviderPoolCodexSessionAdapter(root, "pipeon-session-4", providerPoolCodexExecAdapter); err == nil {
 		t.Fatal("extended adapter binding was accepted")
+	}
+}
+
+func TestProviderPoolRecoveryAuthoritySurvivesMigrationRestartAndRetainsNoReplay(t *testing.T) {
+	root := providerPoolDurableTestWorkdir(t)
+	sessionID := "migrated-app-server-session"
+	digest := fmt.Sprintf("%x", sha256.Sum256([]byte(sessionID)))
+	legacy := filepath.Join(root, infrastructure.DockpipeDirRel, "packages", "dorkpipe", "provider-pools")
+	binding := providerPoolSessionAdapterBinding{Schema: 1, SessionID: sessionID, Adapter: providerPoolCodexAppServerAdapter}
+	state := providerPoolAppServerSessionState{Schema: 1, SessionID: sessionID, CompletedTurn: 7, ProviderSessionID: "thread-migrated", RecoveryEvidence: providerPoolCodexAppServerRecoveryEvidence(sessionID), Model: "gpt-5.5", ReasoningEffort: appserversupervisor.PinnedReasoningEffort}
+	claim := providerPoolAppServerTurnClaim{Schema: 1, SessionID: sessionID, PendingTurn: 8}
+	fixtures := map[string][]byte{
+		"sessions.json": []byte("{\"pipeon-resume\":\"provider-resume\"}\n"),
+		filepath.Join("session-adapters", digest+".json"):            mustProviderPoolRecoveryCandidateJSON(t, binding),
+		filepath.Join("app-server", "sessions", digest+".json"):      mustProviderPoolRecoveryCandidateJSON(t, state),
+		filepath.Join("app-server", "sessions", digest+".json.lock"): mustProviderPoolRecoveryCandidateJSON(t, claim),
+		filepath.Join("app-server", "snapshots", "restart.json"):     []byte("{\"snapshot\":true}\n"),
+		filepath.Join("app-server", "audit", "restart.audit.json"):   []byte("{\"audit\":true}\n"),
+		filepath.Join("app-server", "aggregates", "restart.json"):    []byte("{\"aggregate\":true}\n"),
+	}
+	for rel, raw := range fixtures {
+		path := filepath.Join(legacy, rel)
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, raw, 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	bindings, err := loadProviderPoolCodexBindings(root)
+	if err != nil || bindings["pipeon-resume"] != "provider-resume" {
+		t.Fatalf("migrated resume binding = %v, %v", bindings, err)
+	}
+	if adapter, err := resolveProviderPoolCodexSessionAdapter(root, sessionID, providerPoolCodexAppServerAdapter); err != nil || adapter != providerPoolCodexAppServerAdapter {
+		t.Fatalf("migrated immutable adapter = %q, %v", adapter, err)
+	}
+	if _, err := resolveProviderPoolCodexSessionAdapter(root, sessionID, providerPoolCodexExecAdapter); err == nil {
+		t.Fatal("migrated adapter pin allowed substitution")
+	}
+	if _, _, _, err := beginProviderPoolCodexAppServerTurn(root, sessionID, state.Model, state.ReasoningEffort); err == nil || !strings.Contains(err.Error(), "unresolved prior turn") {
+		t.Fatalf("migrated unresolved claim did not retain no-replay authority: %v", err)
+	}
+
+	legacyAfter := legacy + "-detached"
+	if err := os.Rename(legacy, legacyAfter); err != nil {
+		t.Fatal(err)
+	}
+	bindings, err = loadProviderPoolCodexBindings(root)
+	if err != nil || bindings["pipeon-resume"] != "provider-resume" {
+		t.Fatalf("restart lost durable resume binding = %v, %v", bindings, err)
+	}
+	if _, _, _, err := beginProviderPoolCodexAppServerTurn(root, sessionID, state.Model, state.ReasoningEffort); err == nil || !strings.Contains(err.Error(), "unresolved prior turn") {
+		t.Fatalf("restart lost durable no-replay claim: %v", err)
+	}
+	sessionPath, err := providerPoolCodexAppServerSessionPath(root, sessionID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	durableProviderRoot := filepath.Dir(filepath.Dir(filepath.Dir(sessionPath)))
+	for _, rel := range []string{
+		filepath.Join("app-server", "snapshots", "restart.json"),
+		filepath.Join("app-server", "audit", "restart.audit.json"),
+		filepath.Join("app-server", "aggregates", "restart.json"),
+	} {
+		if _, err := os.Stat(filepath.Join(durableProviderRoot, rel)); err != nil {
+			t.Fatalf("restart lost %s: %v", rel, err)
+		}
+	}
+	if err := os.WriteFile(filepath.Join(durableProviderRoot, "sessions.json"), []byte("{\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := loadProviderPoolCodexBindings(root); err == nil {
+		t.Fatal("malformed durable resume authority was treated as an empty mapping")
 	}
 }
 
@@ -2666,7 +2742,7 @@ func TestProviderPoolAppServerRecoveryCandidateFailsClosed(t *testing.T) {
 	})
 
 	t.Run("display and configured state cannot authorize", func(t *testing.T) {
-		root := t.TempDir()
+		root := providerPoolDurableTestWorkdir(t)
 		t.Setenv("DORKPIPE_PROVIDER_POOL_CODEX_ADAPTER", providerPoolCodexAppServerAdapter)
 		mustWriteRecoveryCandidateFixture(t, filepath.Join(root, "display-state.json"), []byte(`{"adapter":"codex_app_server","appServerStatus":{"state":"recovery_required","outcomeUnknown":true},"messages":["continue"],"terminal_summary":"recovered_idle","provider_available":true,"catalog_order":["codex"],"authenticated":true,"response_text":"ready"}`))
 		if got := classifyProviderPoolCodexAppServerRecoveryCandidate(root, "display-only", providerPoolCodexAppServerAdapter); got != providerPoolAppServerRecoveryNotCandidate {
@@ -2763,7 +2839,7 @@ func TestProviderPoolAppServerRecoveryAttemptFailuresRemainClosed(t *testing.T) 
 			constructCalls++
 			return nil, errors.New("unexpected constructor")
 		}
-		root := t.TempDir()
+		root := providerPoolDurableTestWorkdir(t)
 		mustWriteRecoveryCandidateFixture(t, filepath.Join(root, "display-only.json"), []byte(`{"appServerStatus":{"state":"recovery_required","outcomeUnknown":true},"messages":["continue"],"provider_available":true,"authenticated":true}`))
 		if observation, err := observeProviderPoolCodexAppServerRecoveryAttempt(context.Background(), root, "display-only", providerPoolCodexAppServerAdapter); err == nil || observation != providerPoolAppServerRecoveryAttemptNotObserved {
 			t.Fatalf("non-candidate observation = %v, err=%v", observation, err)
@@ -2937,11 +3013,17 @@ func inspectProviderPoolRecoveryTransitionOrderingFixture(t *testing.T, fixture 
 
 func mustRelativeRecoveryTransitionPath(t *testing.T, root, path string) string {
 	t.Helper()
-	relative, err := filepath.Rel(root, path)
-	if err != nil {
-		t.Fatal(err)
+	for prefix, base := range map[string]string{
+		"checkout": root,
+		"durable":  mustProviderPoolDurablePackageRoot(t, root),
+	} {
+		relative, err := filepath.Rel(base, path)
+		if err == nil && relative != ".." && !strings.HasPrefix(relative, ".."+string(filepath.Separator)) && !filepath.IsAbs(relative) {
+			return filepath.Join(prefix, relative)
+		}
 	}
-	return relative
+	t.Fatalf("recovery transition path %q is outside checkout and durable roots", path)
+	return ""
 }
 
 type providerPoolRecoveryCandidateFixture struct {
@@ -2958,7 +3040,7 @@ type providerPoolRecoveryCandidateFixture struct {
 
 func writeProviderPoolRecoveryCandidateFixture(t *testing.T, sessionID string, completedTurn uint64) providerPoolRecoveryCandidateFixture {
 	t.Helper()
-	root := t.TempDir()
+	root := providerPoolDurableTestWorkdir(t)
 	bindingPath, err := providerPoolSessionAdapterBindingPath(root, sessionID)
 	if err != nil {
 		t.Fatal(err)
@@ -2982,6 +3064,15 @@ func writeProviderPoolRecoveryCandidateFixture(t *testing.T, sessionID string, c
 	mustWriteRecoveryCandidateFixture(t, statePath, stateRaw)
 	mustWriteRecoveryCandidateFixture(t, statePath+".lock", claimRaw)
 	return providerPoolRecoveryCandidateFixture{root: root, sessionID: sessionID, bindingPath: bindingPath, statePath: statePath, claimPath: statePath + ".lock", stateRaw: stateRaw, state: state, claimRaw: claimRaw, claim: claim}
+}
+
+func providerPoolDurableTestWorkdir(t *testing.T) string {
+	t.Helper()
+	stateHome := t.TempDir()
+	t.Setenv("XDG_STATE_HOME", stateHome)
+	t.Setenv("LOCALAPPDATA", stateHome)
+	t.Setenv("HOME", stateHome)
+	return t.TempDir()
 }
 
 func mustProviderPoolRecoveryCandidateJSON(t *testing.T, value any) []byte {
@@ -3010,27 +3101,41 @@ func mustRemoveRecoveryCandidateFixture(t *testing.T, path string) {
 func snapshotProviderPoolRecoveryCandidateTree(t *testing.T, root string) map[string][]byte {
 	t.Helper()
 	snapshot := map[string][]byte{}
-	if err := filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-		if info.IsDir() {
+	for prefix, base := range map[string]string{
+		"checkout": root,
+		"durable":  mustProviderPoolDurablePackageRoot(t, root),
+	} {
+		if err := filepath.Walk(base, func(path string, info os.FileInfo, err error) error {
+			if err != nil {
+				return err
+			}
+			if info.IsDir() {
+				return nil
+			}
+			relative, err := filepath.Rel(base, path)
+			if err != nil {
+				return err
+			}
+			raw, err := os.ReadFile(path)
+			if err != nil {
+				return err
+			}
+			snapshot[filepath.Join(prefix, relative)] = raw
 			return nil
+		}); err != nil {
+			t.Fatal(err)
 		}
-		relative, err := filepath.Rel(root, path)
-		if err != nil {
-			return err
-		}
-		raw, err := os.ReadFile(path)
-		if err != nil {
-			return err
-		}
-		snapshot[relative] = raw
-		return nil
-	}); err != nil {
-		t.Fatal(err)
 	}
 	return snapshot
+}
+
+func mustProviderPoolDurablePackageRoot(t *testing.T, workdir string) string {
+	t.Helper()
+	root, err := infrastructure.ProjectPackageStateDir(workdir, "dorkpipe")
+	if err != nil {
+		t.Fatal(err)
+	}
+	return root
 }
 
 func containsAll(s string, parts ...string) bool {

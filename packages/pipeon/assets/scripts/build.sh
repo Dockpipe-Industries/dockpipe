@@ -56,7 +56,7 @@ DOCKPIPE_BIN="${DOCKPIPE_BIN:-$REPO_ROOT/src/bin/dockpipe}"
 BUILD_ROOT="$REPO_ROOT/bin/.dockpipe/build"
 
 PIPEON_DESKTOP_TARGET_DIR="${PIPEON_DESKTOP_TARGET_DIR:-$BUILD_ROOT/pipeon-desktop-target}"
-PIPEON_EXTENSIONS_DIR="${PIPEON_EXTENSIONS_DIR:-$("$DOCKPIPE_BIN" scope --package pipeon extensions --workdir "$REPO_ROOT")}"
+PIPEON_EXTENSIONS_DIR="${PIPEON_EXTENSIONS_DIR:-$("$DOCKPIPE_BIN" __state package-runtime --workdir "$REPO_ROOT" --owner pipeon --path extensions)}"
 PIPEON_VSCODE_EXT_SRC="$REPO_ROOT/packages/pipeon/resolvers/pipeon/vscode-extension"
 PIPEON_VSCODE_EXT_BUILD_DIR="${PIPEON_VSCODE_EXT_BUILD_DIR:-$BUILD_ROOT/pipeon-vscode-extension}"
 PIPEON_VSCODE_EXT_NPM_CACHE="${PIPEON_VSCODE_EXT_NPM_CACHE:-$BUILD_ROOT/npm-cache}"

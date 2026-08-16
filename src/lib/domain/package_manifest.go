@@ -76,6 +76,9 @@ type PackageManifest struct {
 	// ScriptContract declares generic package-level script context that DockPipe-aware tooling may inject for package assets.
 	// This is intentionally generic package/runtime context only, not package-specific tooling handles.
 	ScriptContract PackageScriptContract `yaml:"script_contract,omitempty"`
+	// PackageState declares package-owned compatibility migration for maintained mixed state.
+	// Undeclared public package scopes are conservatively imported whole by the engine.
+	PackageState PackageStateSpec `yaml:"package_state,omitempty"`
 	// Build declares optional package-owned authoring-tree build behavior.
 	// This is for source checkouts only; installed tarballs should already contain the artifacts they ship.
 	Build PackageBuildSpec `yaml:"build,omitempty"`
@@ -92,6 +95,11 @@ type PackageImageSpec struct {
 
 type PackageScriptContract struct {
 	Inject []string `yaml:"inject,omitempty"`
+}
+
+type PackageStateSpec struct {
+	CompatibilityImport string   `yaml:"compatibility_import,omitempty"`
+	OwnerIDs            []string `yaml:"owner_ids,omitempty"`
 }
 
 type PackageBuildSpec struct {
@@ -150,6 +158,9 @@ func ValidatePackageManifest(m *PackageManifest) error {
 			return err
 		}
 	}
+	if err := ValidatePackageStateSpec(&m.PackageState); err != nil {
+		return err
+	}
 	if err := ValidatePackageImageSpec(&m.Image); err != nil {
 		return err
 	}
@@ -166,6 +177,45 @@ func ValidatePackageManifest(m *PackageManifest) error {
 		return err
 	}
 	// kind-specific required fields kept minimal — capability / requires_capabilities are optional metadata.
+	return nil
+}
+
+// ValidatePackageStateSpec keeps the engine/package split explicit: maintained packages may own
+// exact cohort migration for declared durable owner IDs, while an absent declaration means that
+// the generic public compatibility importer must preserve the legacy scope whole.
+func ValidatePackageStateSpec(spec *PackageStateSpec) error {
+	if spec == nil {
+		return nil
+	}
+	mode := strings.TrimSpace(spec.CompatibilityImport)
+	if mode == "" {
+		if len(spec.OwnerIDs) != 0 {
+			return fmt.Errorf("package_state.owner_ids requires compatibility_import: package-owned")
+		}
+		return nil
+	}
+	if mode != "package-owned" {
+		return fmt.Errorf("package_state.compatibility_import: %q is invalid (expected package-owned)", mode)
+	}
+	if len(spec.OwnerIDs) == 0 {
+		return fmt.Errorf("package_state.owner_ids is required for package-owned compatibility import")
+	}
+	seen := map[string]bool{}
+	for _, raw := range spec.OwnerIDs {
+		ownerID := strings.TrimSpace(raw)
+		if ownerID == "" || ownerID != raw {
+			return fmt.Errorf("package_state.owner_ids contains an empty or untrimmed owner ID")
+		}
+		for _, character := range ownerID {
+			if character < 0x20 || character > 0x7e {
+				return fmt.Errorf("package_state.owner_ids owner %q must use printable ASCII", ownerID)
+			}
+		}
+		if seen[ownerID] {
+			return fmt.Errorf("package_state.owner_ids contains duplicate owner %q", ownerID)
+		}
+		seen[ownerID] = true
+	}
 	return nil
 }
 

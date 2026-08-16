@@ -66,7 +66,9 @@ dockpipe_resolve_dockpipe_bin() {
 
 dockpipe_sdk_refresh() {
   local root="${1:-}"
-  local resolved_root resolved_dockpipe resolved_workflow_name resolved_script_dir resolved_assets_dir resolved_package_root resolved_state_dir resolved_package_id resolved_package_state_dir resolved_artifact_root resolved_output_root
+  local resolved_root resolved_dockpipe resolved_workflow_name resolved_script_dir resolved_assets_dir resolved_package_root resolved_state_dir resolved_package_id resolved_package_state_dir resolved_artifact_root resolved_output_root inherited_package_state previous_sdk_root
+  inherited_package_state="${DOCKPIPE_PACKAGE_STATE_DIR:-}"
+  previous_sdk_root="${DOCKPIPE_SDK_ROOT:-}"
   resolved_root="$(dockpipe_repo_root "$root")"
   resolved_dockpipe="$(dockpipe_resolve_dockpipe_bin "$resolved_root" 2>/dev/null || true)"
   resolved_workflow_name="${DOCKPIPE_WORKFLOW_NAME:-}"
@@ -83,8 +85,20 @@ dockpipe_sdk_refresh() {
   if [[ -z "$resolved_package_id" && -n "$resolved_package_root" ]]; then
     resolved_package_id="$(basename "$resolved_package_root")"
   fi
-  resolved_package_id="$(__dockpipe_sdk_sanitize_scope "${resolved_package_id:-default}")"
-  resolved_package_state_dir="$(__dockpipe_sdk_normalize_host_path "${DOCKPIPE_PACKAGE_STATE_DIR:-$resolved_state_dir/packages/$resolved_package_id}")"
+  if [[ -n "$previous_sdk_root" && "$(__dockpipe_sdk_normalize_host_path "$previous_sdk_root")" != "$resolved_root" ]]; then
+    inherited_package_state=""
+  fi
+  resolved_package_state_dir=""
+  if [[ -n "$resolved_dockpipe" && -n "$resolved_package_id" ]]; then
+    if [[ -n "$inherited_package_state" ]]; then
+      resolved_package_state_dir="$(DOCKPIPE_WORKDIR="$resolved_root" DOCKPIPE_PACKAGE_ID="$resolved_package_id" DOCKPIPE_PACKAGE_ROOT="$resolved_package_root" DOCKPIPE_PACKAGE_STATE_DIR="$inherited_package_state" "$resolved_dockpipe" get package_state_dir --workdir "$resolved_root")" || return
+    else
+      resolved_package_state_dir="$(env -u DOCKPIPE_PACKAGE_STATE_DIR DOCKPIPE_WORKDIR="$resolved_root" DOCKPIPE_PACKAGE_ID="$resolved_package_id" DOCKPIPE_PACKAGE_ROOT="$resolved_package_root" "$resolved_dockpipe" get package_state_dir --workdir "$resolved_root")" || return
+    fi
+    resolved_package_state_dir="$(__dockpipe_sdk_normalize_host_path "$resolved_package_state_dir")"
+  elif [[ -n "$inherited_package_state" && -n "$resolved_package_id" ]]; then
+    resolved_package_state_dir="$(__dockpipe_sdk_normalize_host_path "$inherited_package_state")"
+  fi
 
   declare -gA dockpipe
   dockpipe=()
@@ -129,6 +143,7 @@ dockpipe_sdk_refresh() {
   if [[ -n "$resolved_package_id" ]]; then
     export DOCKPIPE_PACKAGE_ID="$resolved_package_id"
   fi
+  unset DOCKPIPE_PACKAGE_STATE_DIR
   if [[ -n "$resolved_package_state_dir" ]]; then
     export DOCKPIPE_PACKAGE_STATE_DIR="$resolved_package_state_dir"
   fi
@@ -279,8 +294,8 @@ dockpipe_sdk_package_state_dir() {
   local scope="${1:-}"
   shift || true
   if [[ -z "$scope" && -n "${DOCKPIPE_PACKAGE_STATE_DIR:-}" ]]; then
-    __dockpipe_sdk_join_path "$DOCKPIPE_PACKAGE_STATE_DIR" "$@"
-    return 0
+    __dockpipe_sdk_safe_state_join "$DOCKPIPE_PACKAGE_STATE_DIR" "$@"
+    return
   fi
   if [[ -z "$scope" ]]; then
     scope="${DOCKPIPE_PACKAGE_ID:-${dockpipe[package_id]:-}}"
@@ -288,8 +303,65 @@ dockpipe_sdk_package_state_dir() {
   if [[ -z "$scope" && -n "${dockpipe[package_root]:-}" ]]; then
     scope="$(basename "${dockpipe[package_root]}")"
   fi
-  scope="$(__dockpipe_sdk_sanitize_scope "${scope:-default}")"
-  __dockpipe_sdk_join_path "$(dockpipe_sdk_state_dir)/packages/$scope" "$@"
+  if [[ -z "$scope" ]]; then
+    echo "dockpipe sdk: package owner ID is required for durable package state" >&2
+    return 1
+  fi
+  local bin
+  bin="${dockpipe[dockpipe_bin]:-${DOCKPIPE_BIN:-}}"
+  if [[ -z "$bin" ]]; then
+    echo "dockpipe sdk: dockpipe binary is required to resolve durable package state" >&2
+    return 1
+  fi
+  "$bin" scope --package "$scope" "$@" --workdir "${dockpipe[workdir]:-${DOCKPIPE_WORKDIR:-$PWD}}"
+}
+
+__dockpipe_sdk_safe_state_join() {
+  local root="$1" part normalized
+  shift || true
+  for part in "$@"; do
+    normalized="${part//\\//}"
+    case "/$normalized/" in
+      *"/../"*|*"/./"*)
+        echo "dockpipe sdk: package-state path contains traversal" >&2
+        return 1
+        ;;
+    esac
+    case "$normalized" in
+      ""|/*|*:* )
+        echo "dockpipe sdk: package-state path is empty, absolute, or volume-qualified" >&2
+        return 1
+        ;;
+    esac
+  done
+  __dockpipe_sdk_join_path "$root" "$@"
+}
+
+__dockpipe_sdk_package_runtime_dir() {
+  local scope="${1:-${DOCKPIPE_PACKAGE_ID:-}}"
+  shift || true
+  if [[ -z "$scope" ]]; then
+    echo "dockpipe sdk: package runtime requires a package owner" >&2
+    return 1
+  fi
+  local suffix="" part bin
+  for part in "$@"; do
+    if [[ -z "$suffix" ]]; then
+      suffix="$part"
+    else
+      suffix="$suffix/$part"
+    fi
+  done
+  bin="$(dockpipe_sdk_get dockpipe_bin)"
+  if [[ -z "$bin" ]]; then
+    echo "dockpipe sdk: dockpipe binary not found; set DOCKPIPE_BIN or add dockpipe to PATH" >&2
+    return 1
+  fi
+  local args=(__state package-runtime --workdir "$(dockpipe_sdk_get workdir)" --owner "$scope")
+  if [[ -n "$suffix" ]]; then
+    args+=(--path "$suffix")
+  fi
+  "$bin" "${args[@]}"
 }
 
 dockpipe_sdk_workflow_state_dir() {
@@ -349,11 +421,15 @@ dockpipe_sdk_ci_artifact_dir() {
     workflow:*)
       dockpipe_sdk_scope workflow "${binding#workflow:}" "$workflow_suffix"
       ;;
-    package|package:dorkpipe|"")
-      dockpipe_sdk_package_state_dir dorkpipe ci "$package_suffix"
+    package)
+      __dockpipe_sdk_package_runtime_dir "${DOCKPIPE_PACKAGE_ID:-}" ci "$package_suffix"
       ;;
     package:*)
-      dockpipe_sdk_package_state_dir "${binding#package:}" ci "$package_suffix"
+      __dockpipe_sdk_package_runtime_dir "${binding#package:}" ci "$package_suffix"
+      ;;
+    "")
+      echo "dockpipe sdk: CI artifacts are unbound; set DOCKPIPE_CI_ARTIFACT_SCOPE to workflow:<name> or package:<name>, or set DOCKPIPE_CI_RAW_DIR/DOCKPIPE_CI_ANALYSIS_DIR" >&2
+      return 1
       ;;
     *)
       dockpipe_sdk_scope workflow "$binding" "$workflow_suffix"
@@ -370,8 +446,21 @@ dockpipe_sdk_bind_ci_artifacts() {
 }
 
 dockpipe_sdk_apply_artifact_bindings() {
-  export DOCKPIPE_CI_RAW_DIR="${DOCKPIPE_CI_RAW_DIR:-$(dockpipe_sdk_ci_artifact_dir raw)}"
-  export DOCKPIPE_CI_ANALYSIS_DIR="${DOCKPIPE_CI_ANALYSIS_DIR:-$(dockpipe_sdk_ci_artifact_dir analysis)}"
+  local binding="${DOCKPIPE_CI_ARTIFACT_SCOPE:-}"
+  if [[ -z "$binding" && -n "${DOCKPIPE_WORKFLOW_NAME:-${dockpipe[workflow_name]:-}}" ]]; then
+    binding="workflow"
+  fi
+  if [[ -z "$binding" ]]; then
+    if [[ -n "${DOCKPIPE_CI_RAW_DIR:-}" ]]; then
+      export DOCKPIPE_CI_RAW_DIR
+    fi
+    if [[ -n "${DOCKPIPE_CI_ANALYSIS_DIR:-}" ]]; then
+      export DOCKPIPE_CI_ANALYSIS_DIR
+    fi
+    return 0
+  fi
+  export DOCKPIPE_CI_RAW_DIR="${DOCKPIPE_CI_RAW_DIR:-$(dockpipe_sdk_ci_artifact_dir raw "$binding")}"
+  export DOCKPIPE_CI_ANALYSIS_DIR="${DOCKPIPE_CI_ANALYSIS_DIR:-$(dockpipe_sdk_ci_artifact_dir analysis "$binding")}"
 }
 
 dockpipe_workflow_name() {
@@ -987,7 +1076,7 @@ dockpipe_sdk() {
 dockpipe_sdk actions:
   init-script
   get <workdir|workflow_name|script_dir|package_root|assets_dir|dockpipe_bin|state_dir|artifact_root|output_root|package_id|package_state_dir>
-  path <state|build|package|workflow|output|ci> [scope] [suffix...]
+  path <state|build|package|package-runtime|workflow|output|ci> [scope] [suffix...]
   scope [scope|--package name] [suffix...]
   ci <raw|analysis> [suffix...]
   cd-workdir
@@ -1036,6 +1125,10 @@ EOF
         package)
           shift || true
           dockpipe_sdk_package_state_dir "$@"
+          ;;
+        package-runtime)
+          shift || true
+          __dockpipe_sdk_package_runtime_dir "$@"
           ;;
         workflow)
           shift || true

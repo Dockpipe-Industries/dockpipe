@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # PID 1 replacement for cursor-dev: bootstrap line, optional remote-session monitor, then sleep forever.
-# Writes package-state remote_active (0|1) on each poll so the host can read state without docker exec.
+# Writes runtime-owned remote_active (0|1) on each poll so the host can read state without docker exec.
 # Emits connect/disconnect lines to stdout → docker logs.
 set -uo pipefail
 
@@ -15,7 +15,10 @@ if [[ "${CURSOR_DEV_SESSION_TCP_GATE:-1}" == "1" ]] && ! command -v lsof >/dev/n
   printf '%s\n' "[dockpipe] cursor-dev: warning: lsof missing — TCP disconnect detection often fails (ss hides pid= in containers). Rebuild dockpipe-base-dev (templates/core/assets/images/base-dev/Dockerfile adds lsof+iproute2)."
 fi
 
-mkdir -p "$MARKER_DIR" 2>/dev/null || true
+if [[ -L "$MARKER_DIR" || ! -d "$MARKER_DIR" ]]; then
+  printf '%s\n' "[dockpipe] cursor-dev: unsafe runtime marker directory" >&2
+  exit 1
+fi
 
 if [[ -f /dockpipe-cursor-dev-common.sh ]]; then
   # shellcheck source=/dev/null

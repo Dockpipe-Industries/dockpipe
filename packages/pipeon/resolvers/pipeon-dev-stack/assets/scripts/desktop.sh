@@ -16,6 +16,7 @@ SCRIPT_DIR="$(dockpipe get script_dir)"
 source "$SCRIPT_DIR/common.sh"
 
 WORKDIR="$(pipeon_stack_workdir)"
+pipeon_stack_prepare_code_server_state
 CODE_SERVER_CONTAINER_NAME="${CODE_SERVER_CONTAINER_NAME:-$(pipeon_stack_code_server_name)}"
 DOCKER_STACK_PROJECT="${DORKPIPE_DEV_STACK_PROJECT:-$(pipeon_stack_compose_project)}"
 DOCKER_NETWORK_NAME="${DORKPIPE_DEV_STACK_NETWORK:-$(pipeon_stack_compose_network)}"
@@ -25,6 +26,10 @@ MCP_HTTP_CONTAINER_URL="${MCP_HTTP_CONTAINER_URL:-$(pipeon_stack_mcp_container_u
 PIPEON_HOST_MCP_CONTAINER_URL="${PIPEON_HOST_MCP_CONTAINER_URL:-$(pipeon_stack_host_mcp_container_url)}"
 PIPEON_HOST_MCP_API_KEY="${PIPEON_HOST_MCP_API_KEY:-}"
 CODE_SERVER_HOME="$(pipeon_stack_code_server_home)"
+CODE_SERVER_RUNTIME_USER_DATA="$(pipeon_stack_code_server_runtime_user_data)"
+CODE_SERVER_DURABLE_USER="$(pipeon_stack_code_server_user_dir)"
+CODE_SERVER_DURABLE_MACHINE="$(pipeon_stack_code_server_machine_dir)"
+CODE_SERVER_DURABLE_EXTENSIONS="$(pipeon_stack_code_server_extensions_dir)"
 CODE_SERVER_IMAGE="${CODE_SERVER_IMAGE:-dockpipe-code-server:latest}"
 CODE_SERVER_AUTH="${CODE_SERVER_AUTH:-none}"
 PIPEON_CODE_SERVER_SETTINGS_FILE="${PIPEON_CODE_SERVER_SETTINGS_FILE:-$(pipeon_stack_repo_root)/packages/pipeon/resolvers/pipeon/vscode-extension/code-server-user-settings.json}"
@@ -196,29 +201,37 @@ pipeon_configure_code_server_git() {
 }
 
 pipeon_seed_code_server_settings() {
-  local target_dir="$CODE_SERVER_HOME/.local/share/code-server/User"
+  local target_dir
+  target_dir="$(pipeon_stack_code_server_user_dir)"
   local target_path="$target_dir/settings.json"
   local defaults_path="${PIPEON_CODE_SERVER_SETTINGS_FILE:-}"
+  local temporary_path
 
-  mkdir -p "$target_dir"
+  if [[ -L "$target_path" || ( -e "$target_path" && ! -f "$target_path" ) ]]; then
+    echo "pipeon-dev-stack: code-server settings path is linked or not regular" >&2
+    return 1
+  fi
   if [[ -z "$defaults_path" ]] || [[ ! -f "$defaults_path" ]]; then
     return 0
   fi
+  temporary_path="$(mktemp "$target_dir/.settings.json.tmp.XXXXXX")"
+  chmod 600 "$temporary_path"
 
   if command -v python3 >/dev/null 2>&1; then
-    DEFAULTS_PATH="$defaults_path" TARGET_PATH="$target_path" python3 - <<'PY'
+    DEFAULTS_PATH="$defaults_path" EXISTING_PATH="$target_path" TARGET_PATH="$temporary_path" python3 - <<'PY'
 import json
 import os
 from pathlib import Path
 
 defaults_path = Path(os.environ["DEFAULTS_PATH"])
+existing_path = Path(os.environ["EXISTING_PATH"])
 target_path = Path(os.environ["TARGET_PATH"])
 
 defaults = json.loads(defaults_path.read_text(encoding="utf-8"))
 existing = {}
-if target_path.exists():
+if existing_path.exists():
     try:
-        existing = json.loads(target_path.read_text(encoding="utf-8"))
+        existing = json.loads(existing_path.read_text(encoding="utf-8"))
     except Exception:
         existing = {}
 
@@ -235,22 +248,20 @@ elif theme == "light":
     merged["workbench.colorTheme"] = "Default Light+"
 target_path.write_text(json.dumps(merged, indent=2) + "\n", encoding="utf-8")
 PY
-    return 0
-  fi
-
-  if command -v node >/dev/null 2>&1; then
-    DEFAULTS_PATH="$defaults_path" TARGET_PATH="$target_path" node - <<'NODE'
+  elif command -v node >/dev/null 2>&1; then
+    DEFAULTS_PATH="$defaults_path" EXISTING_PATH="$target_path" TARGET_PATH="$temporary_path" node - <<'NODE'
 const fs = require('fs');
 
 const defaultsPath = process.env.DEFAULTS_PATH;
+const existingPath = process.env.EXISTING_PATH;
 const targetPath = process.env.TARGET_PATH;
 
 const defaults = JSON.parse(fs.readFileSync(defaultsPath, 'utf8'));
 let existing = {};
 
-if (fs.existsSync(targetPath)) {
+if (fs.existsSync(existingPath)) {
   try {
-    existing = JSON.parse(fs.readFileSync(targetPath, 'utf8'));
+    existing = JSON.parse(fs.readFileSync(existingPath, 'utf8'));
   } catch {
     existing = {};
   }
@@ -269,20 +280,27 @@ if (theme === 'dark') {
 }
 fs.writeFileSync(targetPath, `${JSON.stringify(merged, null, 2)}\n`, 'utf8');
 NODE
-    return 0
+  else
+    cp "$defaults_path" "$temporary_path"
   fi
-
-  cp "$defaults_path" "$target_path"
+  chmod 600 "$temporary_path"
+  mv -f "$temporary_path" "$target_path"
 }
 
 pipeon_start_code_server() {
   local cid
-  local docker_workdir docker_home
+  local docker_workdir docker_home docker_cache docker_dotnet docker_user_data docker_user docker_machine docker_extensions
   local codex_available claude_available
   mkdir -p "$CODE_SERVER_HOME"
   pipeon_seed_code_server_settings
   docker_workdir="$(pipeon_stack_docker_host_path "$WORKDIR")"
   docker_home="$(pipeon_stack_docker_host_path "$CODE_SERVER_HOME")"
+  docker_cache="$(pipeon_stack_docker_host_path "$PIPEON_CODE_SERVER_RUNTIME_CACHE")"
+  docker_dotnet="$(pipeon_stack_docker_host_path "$PIPEON_CODE_SERVER_RUNTIME_DOTNET")"
+  docker_user_data="$(pipeon_stack_docker_host_path "$CODE_SERVER_RUNTIME_USER_DATA")"
+  docker_user="$(pipeon_stack_docker_host_path "$CODE_SERVER_DURABLE_USER")"
+  docker_machine="$(pipeon_stack_docker_host_path "$CODE_SERVER_DURABLE_MACHINE")"
+  docker_extensions="$(pipeon_stack_docker_host_path "$CODE_SERVER_DURABLE_EXTENSIONS")"
   codex_available="$(pipeon_host_command_flag codex)"
   claude_available="$(pipeon_host_command_flag claude)"
   if docker ps --format '{{.Names}}' | grep -qx "$CODE_SERVER_CONTAINER_NAME"; then
@@ -334,6 +352,12 @@ pipeon_start_code_server() {
       PIPEON_HOST_MCP_API_KEY="${PIPEON_HOST_MCP_API_KEY:-}" \
       DOCKER_WORKDIR="$docker_workdir" \
       DOCKER_HOME="$docker_home" \
+      DOCKER_CACHE="$docker_cache" \
+      DOCKER_DOTNET="$docker_dotnet" \
+      DOCKER_USER_DATA="$docker_user_data" \
+      DOCKER_USER="$docker_user" \
+      DOCKER_MACHINE="$docker_machine" \
+      DOCKER_EXTENSIONS="$docker_extensions" \
       CODE_SERVER_IMAGE="$CODE_SERVER_IMAGE" \
       pipeon_stack_powershell_hidden "$powershell_bin" -Command '
         $ErrorActionPreference = "Stop"
@@ -350,7 +374,11 @@ pipeon_start_code_server() {
           "-e", "XDG_CONFIG_HOME=/home/coder/.config",
           "-e", "XDG_DATA_HOME=/home/coder/.local/share",
           "-e", "DOTNET_CLI_HOME=/home/coder/.dotnet",
+          "-e", "NUGET_PACKAGES=/home/coder/.cache/nuget-packages",
           "-e", "GOCACHE=/home/coder/.cache/go-build",
+          "-e", "GOMODCACHE=/home/coder/.cache/go-mod",
+          "-e", "GOPATH=/home/coder/.cache/go-path",
+          "-e", "NPM_CONFIG_CACHE=/home/coder/.cache/npm",
           "-e", "GIT_CONFIG_GLOBAL=/home/coder/.gitconfig",
           "-e", "DOCKPIPE_PIPEON=$($env:DOCKPIPE_PIPEON)",
           "-e", "DOCKPIPE_PIPEON_ALLOW_PRERELEASE=$($env:DOCKPIPE_PIPEON_ALLOW_PRERELEASE)",
@@ -363,12 +391,18 @@ pipeon_start_code_server() {
           "-e", "PIPEON_HOST_MCP_API_KEY=$($env:PIPEON_HOST_MCP_API_KEY)",
           "--mount", "type=bind,src=$($env:DOCKER_WORKDIR),dst=/work",
           "--mount", "type=bind,src=$($env:DOCKER_HOME),dst=/home/coder",
+          "--mount", "type=bind,src=$($env:DOCKER_CACHE),dst=/home/coder/.cache",
+          "--mount", "type=bind,src=$($env:DOCKER_DOTNET),dst=/home/coder/.dotnet",
+          "--mount", "type=bind,src=$($env:DOCKER_USER_DATA),dst=/home/coder/.local/share/code-server",
+          "--mount", "type=bind,src=$($env:DOCKER_USER),dst=/home/coder/.local/share/code-server/User",
+          "--mount", "type=bind,src=$($env:DOCKER_MACHINE),dst=/home/coder/.local/share/code-server/Machine",
+          "--mount", "type=bind,src=$($env:DOCKER_EXTENSIONS),dst=/home/coder/.local/share/code-server-extensions",
           $env:CODE_SERVER_IMAGE,
           "--bind-addr", "0.0.0.0:8080",
           "--auth", $env:CODE_SERVER_AUTH,
           "--disable-workspace-trust",
           "--user-data-dir", "/home/coder/.local/share/code-server",
-          "--extensions-dir", "/opt/pipeon/extensions",
+          "--extensions-dir", "/home/coder/.local/share/code-server-extensions",
           "/work"
         )
         $cid = & $env:DOCKER_BIN @argsList
@@ -393,7 +427,11 @@ pipeon_start_code_server() {
     -e XDG_CONFIG_HOME=/home/coder/.config \
     -e XDG_DATA_HOME=/home/coder/.local/share \
     -e DOTNET_CLI_HOME=/home/coder/.dotnet \
+    -e NUGET_PACKAGES=/home/coder/.cache/nuget-packages \
     -e GOCACHE=/home/coder/.cache/go-build \
+    -e GOMODCACHE=/home/coder/.cache/go-mod \
+    -e GOPATH=/home/coder/.cache/go-path \
+    -e NPM_CONFIG_CACHE=/home/coder/.cache/npm \
     -e GIT_CONFIG_GLOBAL=/home/coder/.gitconfig \
     -e DOCKPIPE_PIPEON="${DOCKPIPE_PIPEON:-1}" \
     -e DOCKPIPE_PIPEON_ALLOW_PRERELEASE="${DOCKPIPE_PIPEON_ALLOW_PRERELEASE:-1}" \
@@ -406,6 +444,12 @@ pipeon_start_code_server() {
     -e PIPEON_HOST_MCP_API_KEY="${PIPEON_HOST_MCP_API_KEY:-}" \
     --mount "type=bind,src=${docker_workdir},dst=/work" \
     --mount "type=bind,src=${docker_home},dst=/home/coder" \
+    --mount "type=bind,src=${docker_cache},dst=/home/coder/.cache" \
+    --mount "type=bind,src=${docker_dotnet},dst=/home/coder/.dotnet" \
+    --mount "type=bind,src=${docker_user_data},dst=/home/coder/.local/share/code-server" \
+    --mount "type=bind,src=${docker_user},dst=/home/coder/.local/share/code-server/User" \
+    --mount "type=bind,src=${docker_machine},dst=/home/coder/.local/share/code-server/Machine" \
+    --mount "type=bind,src=${docker_extensions},dst=/home/coder/.local/share/code-server-extensions" \
     "$CODE_SERVER_IMAGE" \
     -lc '
       set -e
@@ -414,7 +458,7 @@ pipeon_start_code_server() {
         --auth "'"$CODE_SERVER_AUTH"'" \
         --disable-workspace-trust \
         --user-data-dir /home/coder/.local/share/code-server \
-        --extensions-dir /opt/pipeon/extensions \
+        --extensions-dir /home/coder/.local/share/code-server-extensions \
         /work
     '
   )"

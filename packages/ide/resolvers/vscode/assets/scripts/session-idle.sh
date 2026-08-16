@@ -9,7 +9,10 @@ remote_server_dir="${HOME:?HOME is required}/.vscode-server"
 
 printf '%s\n' "[dockpipe] vscode: idle @ /work — remote state lives under package state"
 
-mkdir -p "$MARKER_DIR" 2>/dev/null || true
+if [[ -L "$MARKER_DIR" || ! -d "$MARKER_DIR" ]]; then
+  printf '%s\n' "[dockpipe] vscode: unsafe runtime marker directory" >&2
+  exit 1
+fi
 
 if [[ -f /dockpipe-vscode-common.sh ]]; then
   # shellcheck source=/dev/null

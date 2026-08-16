@@ -24,3 +24,6 @@ test:
   script: tests/run.sh
 script_contract:
   inject: [workdir, workflow_name, script_dir, package_root, assets_dir, dockpipe_bin]
+package_state:
+  compatibility_import: package-owned
+  owner_ids: [cursor-dev, vscode]

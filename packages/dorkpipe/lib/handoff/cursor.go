@@ -30,8 +30,14 @@ func BuildCursor(workdir string, env map[string]string) (CursorResult, error) {
 	if err != nil {
 		return CursorResult{}, err
 	}
-	dest := statepaths.CursorPromptPath(root)
-	paste := statepaths.PastePromptPath(root)
+	dest, err := statepaths.CursorPromptPath(root)
+	if err != nil {
+		return CursorResult{}, err
+	}
+	paste, err := statepaths.PastePromptPath(root)
+	if err != nil {
+		return CursorResult{}, err
+	}
 	if fi, err := os.Stat(out); err != nil || !fi.IsDir() {
 		return CursorResult{}, fmt.Errorf("build-cursor-handoff: missing %s — run self-analysis-prep.sh and self-analysis-signals.sh first", out)
 	}
@@ -44,7 +50,10 @@ func BuildCursor(workdir string, env map[string]string) (CursorResult, error) {
 	hasVerifier := fileContains(spec, "kind: verifier")
 	_ = fileExists(filepath.Join(root, "packages", "dorkpipe", "lib", "examples", "full-bar.yaml"))
 	selfAnalysisRel := filepath.ToSlash(relativeTo(root, out))
-	metricsPath, _ := statepaths.MetricsPath(root)
+	metricsPath, err := statepaths.MetricsPath(root)
+	if err != nil {
+		return CursorResult{}, err
+	}
 	metricsRel := filepath.ToSlash(relativeTo(root, metricsPath))
 	metricsTailRel := filepath.ToSlash(relativeTo(root, filepath.Join(out, "signals_metrics_tail.txt")))
 	todoRel := filepath.ToSlash(relativeTo(root, filepath.Join(out, "signals_todo.txt")))

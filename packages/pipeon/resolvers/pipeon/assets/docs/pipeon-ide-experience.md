@@ -43,8 +43,8 @@ At session start and when the user’s question is **repo-scoped**, the runtime 
 
 1. **Repository facts** — e.g. layout, recent changes, key paths (from self-analysis or lightweight indexing if present).
 2. **CI / scan signals** — e.g. normalized findings from DorkPipe CI artifact state when available.
-3. **Structured user guidance** — e.g. `dockpipe scope --package dorkpipe analysis/insights.json` (accepted/pending items, scoped by path or topic).
-4. **Workflow / orchestration metadata** — e.g. `dockpipe scope --package dorkpipe run.json`, metrics tails, when relevant to “why did X happen” or “what ran last.”
+3. **Structured user guidance** — package-owned durable insights (accepted/pending items, scoped by path or topic), read through the DorkPipe learning facade.
+4. **Workflow / orchestration metadata** — e.g. disposable DorkPipe package-runtime run evidence plus durable metrics tails, when relevant to “why did X happen” or “what ran last.”
 5. **Handoff text** — optional short blocks (e.g. paste prompts) only when they add signal density, not as a second UI.
 
 **Rule:** Discovery is **best-effort**. If something is missing, the system says so briefly and continues—no blocking modal.

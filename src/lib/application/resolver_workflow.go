@@ -70,6 +70,9 @@ func runEmbeddedResolverWorkflowWithLoad(
 	prevStateDir := envMap[infrastructure.EnvStateDir]
 	prevPackageID := envMap[infrastructure.EnvPackageID]
 	prevPackageStateDir := envMap[infrastructure.EnvPackageStateDir]
+	prevPackageRoot := envMap["DOCKPIPE_PACKAGE_ROOT"]
+	prevPackageManifest := envMap["DOCKPIPE_PACKAGE_MANIFEST"]
+	applyPackageManifestContext(envMap, wfRoot)
 	if err := applyDockpipeStateEnv(envMap, wd, name); err != nil {
 		return err
 	}
@@ -77,6 +80,8 @@ func runEmbeddedResolverWorkflowWithLoad(
 		envMap[infrastructure.EnvStateDir] = prevStateDir
 		envMap[infrastructure.EnvPackageID] = prevPackageID
 		envMap[infrastructure.EnvPackageStateDir] = prevPackageStateDir
+		envMap["DOCKPIPE_PACKAGE_ROOT"] = prevPackageRoot
+		envMap["DOCKPIPE_PACKAGE_MANIFEST"] = prevPackageManifest
 	}()
 	if err := buildWorkflowEnvInto(envMap, subWf, wfPath, wfRoot, repoRoot, opts); err != nil {
 		return err

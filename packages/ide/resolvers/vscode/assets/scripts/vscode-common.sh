@@ -22,8 +22,71 @@ vscode_global_state_root() {
   dockpipe get state_dir
 }
 
-vscode_state_root() {
+vscode_legacy_state_root() {
   dockpipe scope --package vscode .
+}
+
+vscode_state_root() {
+  dockpipe __state package-runtime --workdir "${W:-$(pwd)}" --owner ide/resolver/vscode --ensure-private
+}
+
+vscode_prepare_state() {
+  local legacy_root home_status user_status
+  legacy_root="$(vscode_legacy_state_root)" || return
+  VSCODE_RUNTIME_ROOT="$(vscode_state_root)" || return
+  home_status="$(dockpipe __state prepare-durable-cohort \
+    --workdir "$W" \
+    --owner ide/resolver/vscode \
+    --cohort ide-user-home-v1 \
+    --instance workspace \
+    --run maintained-session \
+    --legacy-root "$legacy_root" \
+    --tree home=home \
+    --ignore home/.vscode-server \
+    --ignore home/.cache \
+    --ignore home/.dotnet \
+    --ignore home/.gocache \
+    --ignore home/.npm \
+    --ignore home/.nuget/packages \
+    --ignore home/go)" || return
+  IFS=$'\t' read -r VSCODE_DURABLE_HOME_ROOT _ <<<"$home_status"
+  user_status="$(dockpipe __state prepare-durable-cohort \
+    --workdir "$W" \
+    --owner ide/resolver/vscode \
+    --cohort ide-user-data-v1 \
+    --instance workspace \
+    --run maintained-session \
+    --legacy-root "$legacy_root" \
+    --tree home/.vscode-server/extensions=extensions \
+    --tree home/.vscode-server/data/User=user-data/User \
+    --tree home/.vscode-server/data/Machine=user-data/Machine \
+    --tree xdg-config=config \
+    --tree xdg-data=data)" || return
+  IFS=$'\t' read -r VSCODE_DURABLE_USER_ROOT _ <<<"$user_status"
+
+  VSCODE_DURABLE_HOME="$(dockpipe __state private-directory --root "$VSCODE_DURABLE_HOME_ROOT" --path home)" || return
+  VSCODE_DURABLE_EXTENSIONS="$(dockpipe __state private-directory --root "$VSCODE_DURABLE_USER_ROOT" --path extensions)" || return
+  VSCODE_DURABLE_USER="$(dockpipe __state private-directory --root "$VSCODE_DURABLE_USER_ROOT" --path user-data/User)" || return
+  VSCODE_DURABLE_MACHINE="$(dockpipe __state private-directory --root "$VSCODE_DURABLE_USER_ROOT" --path user-data/Machine)" || return
+  VSCODE_DURABLE_CONFIG="$(dockpipe __state private-directory --root "$VSCODE_DURABLE_USER_ROOT" --path config)" || return
+  VSCODE_DURABLE_DATA="$(dockpipe __state private-directory --root "$VSCODE_DURABLE_USER_ROOT" --path data)" || return
+  VSCODE_RUNTIME_HOME="$(dockpipe __state private-directory --root "$VSCODE_RUNTIME_ROOT" --path home)" || return
+  VSCODE_RUNTIME_SERVER="$(dockpipe __state private-directory --root "$VSCODE_RUNTIME_ROOT" --path home/.vscode-server)" || return
+  dockpipe __state private-directory --root "$VSCODE_RUNTIME_ROOT" --path home/.vscode-server/extensions >/dev/null || return
+  dockpipe __state private-directory --root "$VSCODE_RUNTIME_ROOT" --path home/.vscode-server/data/User >/dev/null || return
+  dockpipe __state private-directory --root "$VSCODE_RUNTIME_ROOT" --path home/.vscode-server/data/Machine >/dev/null || return
+  VSCODE_RUNTIME_CACHE="$(dockpipe __state private-directory --root "$VSCODE_RUNTIME_ROOT" --path xdg-cache)" || return
+  dockpipe __state private-directory --root "$VSCODE_RUNTIME_ROOT" --path xdg-config >/dev/null || return
+  dockpipe __state private-directory --root "$VSCODE_RUNTIME_ROOT" --path xdg-data >/dev/null || return
+  VSCODE_RUNTIME_DOTNET="$(dockpipe __state private-directory --root "$VSCODE_RUNTIME_ROOT" --path dotnet)" || return
+  VSCODE_RUNTIME_GOCACHE="$(dockpipe __state private-directory --root "$VSCODE_RUNTIME_ROOT" --path gocache)" || return
+  dockpipe __state private-directory --root "$VSCODE_RUNTIME_ROOT" --path gopath >/dev/null || return
+  dockpipe __state private-directory --root "$VSCODE_RUNTIME_ROOT" --path gomodcache >/dev/null || return
+  dockpipe __state private-directory --root "$VSCODE_RUNTIME_ROOT" --path nuget-packages >/dev/null || return
+  export VSCODE_RUNTIME_ROOT VSCODE_DURABLE_HOME_ROOT VSCODE_DURABLE_USER_ROOT
+  export VSCODE_DURABLE_HOME VSCODE_DURABLE_EXTENSIONS VSCODE_DURABLE_USER VSCODE_DURABLE_MACHINE
+  export VSCODE_DURABLE_CONFIG VSCODE_DURABLE_DATA VSCODE_RUNTIME_HOME VSCODE_RUNTIME_SERVER
+  export VSCODE_RUNTIME_CACHE VSCODE_RUNTIME_DOTNET VSCODE_RUNTIME_GOCACHE
 }
 
 vscode_container_state_root() {

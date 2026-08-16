@@ -323,7 +323,7 @@ func TestProviderPoolAppServerAggregateBoundedLoaderAndExactPathBinding(t *testi
 	}
 
 	t.Run("valid regular file", func(t *testing.T) {
-		root := t.TempDir()
+		root := providerPoolDurableTestWorkdir(t)
 		aggregate := providerPoolAppServerAggregateFixture()
 		raw, err := encodeProviderPoolAppServerAggregateCanonical(aggregate, 0)
 		if err != nil {
@@ -337,7 +337,7 @@ func TestProviderPoolAppServerAggregateBoundedLoaderAndExactPathBinding(t *testi
 	})
 
 	t.Run("bytes at substituted session path", func(t *testing.T) {
-		root := t.TempDir()
+		root := providerPoolDurableTestWorkdir(t)
 		aggregate := providerPoolAppServerAggregateFixture()
 		raw, err := encodeProviderPoolAppServerAggregateCanonical(aggregate, 0)
 		if err != nil {
@@ -350,7 +350,7 @@ func TestProviderPoolAppServerAggregateBoundedLoaderAndExactPathBinding(t *testi
 	})
 
 	t.Run("oversized regular file", func(t *testing.T) {
-		root := t.TempDir()
+		root := providerPoolDurableTestWorkdir(t)
 		aggregate := providerPoolAppServerAggregateFixture()
 		writeFixture(t, root, aggregate.PipeonSessionID, bytes.Repeat([]byte("x"), providerPoolAppServerAggregateMaxBytes+1))
 		if _, err := loadProviderPoolAppServerAggregate(root, aggregate.PipeonSessionID, 0); err == nil {
@@ -359,7 +359,7 @@ func TestProviderPoolAppServerAggregateBoundedLoaderAndExactPathBinding(t *testi
 	})
 
 	t.Run("non regular directory", func(t *testing.T) {
-		root := t.TempDir()
+		root := providerPoolDurableTestWorkdir(t)
 		aggregate := providerPoolAppServerAggregateFixture()
 		path, err := statepaths.ProviderPoolAppServerAggregatePath(root, aggregate.PipeonSessionID)
 		if err != nil {

@@ -56,7 +56,10 @@ func ComplianceSummary(workdir string) (string, error) {
 		b.WriteString(runSummary(runPath))
 	}
 
-	insightsPath := statepaths.InsightsPath(root)
+	insightsPath, err := statepaths.InsightsPath(root)
+	if err != nil {
+		return "", err
+	}
 	if fileExists(insightsPath) {
 		b.WriteString(fmt.Sprintf("\n--- %s (user guidance signals; not verified facts) ---\n", filepath.ToSlash(relativeTo(root, insightsPath))))
 		b.WriteString(insightsSummary(insightsPath))

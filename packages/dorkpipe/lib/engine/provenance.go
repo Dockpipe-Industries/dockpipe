@@ -45,7 +45,7 @@ type nodeOut struct {
 }
 
 func writeProvenance(workdir string, d *spec.Doc, phase1, esc []*workers.Result, sum confidence.Vector, escalRan bool, subst map[string]string, earlyStop bool) error {
-	dir, err := statepaths.PackageStateDir(workdir)
+	dir, err := statepaths.PackageRuntimeDir(workdir)
 	if err != nil {
 		return err
 	}
@@ -108,13 +108,6 @@ func toNodes(rs []*workers.Result) []nodeOut {
 }
 
 func appendMetricsJSONL(workdir string, name string, calibrated float64, escalated bool, earlyStop bool, results []*workers.Result) error {
-	dir, err := statepaths.PackageStateDir(workdir)
-	if err != nil {
-		return err
-	}
-	if err := os.MkdirAll(dir, 0o755); err != nil {
-		return err
-	}
 	skipped := 0
 	modelCalls := 0
 	var modelTotalDurationNS int64
@@ -150,7 +143,7 @@ func appendMetricsJSONL(workdir string, name string, calibrated float64, escalat
 	if err != nil {
 		return err
 	}
-	f, err := os.OpenFile(metricsPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o644)
+	f, err := os.OpenFile(metricsPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o600)
 	if err != nil {
 		return err
 	}

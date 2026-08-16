@@ -32,6 +32,7 @@ func scriptContextEnv(scriptAbs string) map[string]string {
 	out["DOCKPIPE_SCRIPT_DIR"] = scriptDir
 	if pkgRoot := nearestPackageRoot(scriptDir); pkgRoot != "" {
 		out["DOCKPIPE_PACKAGE_ROOT"] = pkgRoot
+		out["DOCKPIPE_PACKAGE_MANIFEST"] = filepath.Join(pkgRoot, infrastructure.PackageManifestFilename)
 	}
 	if assetsDir := nearestAssetsDir(scriptDir); assetsDir != "" {
 		out["DOCKPIPE_ASSETS_DIR"] = assetsDir

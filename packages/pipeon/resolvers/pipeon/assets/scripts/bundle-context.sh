@@ -8,7 +8,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/lib/enable.sh"
 
 ROOT="$(pwd)"
-OUT="$(pipeon_scope_path --package pipeon .)"
+OUT="$(pipeon_runtime_path pipeon "" "$ROOT")"
 CTX="$OUT/pipeon-context.md"
 mkdir -p "$OUT"
 
@@ -75,7 +75,7 @@ have_jq() { command -v jq >/dev/null 2>&1; }
 	echo ""
 	echo "## Orchestrator / run metadata (DorkPipe package scope)"
 	echo ""
-	DORKPIPE_SCOPE_DIR="$(pipeon_scope_path --package dorkpipe .)"
+	DORKPIPE_SCOPE_DIR="$(pipeon_runtime_path dorkpipe "" "$ROOT")"
 	if [[ -f "$DORKPIPE_SCOPE_DIR/run.json" ]] && have_jq; then
 		jq '{name, ts, policy}' "$DORKPIPE_SCOPE_DIR/run.json" 2>/dev/null | sed 's/^/    /' || true
 	else

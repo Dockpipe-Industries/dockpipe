@@ -3082,9 +3082,12 @@ func summarizeScanSignals(root string) string {
 }
 
 func summarizeGuidanceSignals(root string) string {
+	insightsPath, err := statepaths.InsightsPath(root)
+	if err != nil {
+		return ""
+	}
 	for _, candidate := range []string{
-		statepaths.InsightsPath(root),
-		filepath.Join(root, ".dockpipe", "analysis", "insights.json"),
+		insightsPath,
 	} {
 		b, err := os.ReadFile(candidate)
 		if err != nil {

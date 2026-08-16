@@ -15,6 +15,7 @@ import (
 	"strings"
 	"time"
 
+	"dockpipe/src/lib/infrastructure"
 	"dorkpipe.orchestrator/modelclient"
 	"dorkpipe.orchestrator/reasoning"
 	"dorkpipe.orchestrator/statepaths"
@@ -758,9 +759,15 @@ func collectEditCandidates(ctx context.Context, root, activeFile, message, artif
 }
 
 func readEditContextBundle(root string) (string, string) {
-	candidates := []string{
-		filepath.Join(root, "bin", ".dockpipe", "packages", "pipeon", "pipeon-context.md"),
+	runtimeRoot, err := infrastructure.PackageRuntimeDir(root, "pipeon")
+	if err != nil {
+		return "", ""
 	}
+	contextPath, err := infrastructure.JoinStatePath(runtimeRoot, "pipeon-context.md")
+	if err != nil {
+		return "", ""
+	}
+	candidates := []string{contextPath}
 	for _, p := range candidates {
 		b, err := os.ReadFile(p)
 		if err == nil {

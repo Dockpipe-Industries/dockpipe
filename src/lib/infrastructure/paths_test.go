@@ -196,9 +196,9 @@ func TestResolveWorkflowScriptResolvesScriptsPrefixToCoreWhenUserMissing(t *test
 	}
 }
 
-func TestResolveWorkflowScriptResolvesScriptsPrefixToBundlesDirWhenPresent(t *testing.T) {
+func TestResolveWorkflowScriptResolvesScriptsPrefixToConfiguredWorkflowRoot(t *testing.T) {
 	repo := t.TempDir()
-	cfg := `{"schema":1,"compile":{"bundles":["vendor/dockpipe-pkgs"]}}`
+	cfg := `{"schema":1,"compile":{"workflows":["vendor/dockpipe-pkgs"]}}`
 	if err := os.WriteFile(filepath.Join(repo, "dockpipe.config.json"), []byte(cfg), 0o644); err != nil {
 		t.Fatal(err)
 	}

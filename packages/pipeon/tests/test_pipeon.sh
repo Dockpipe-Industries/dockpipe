@@ -4,6 +4,7 @@
 set -euo pipefail
 
 ROOT="$(git rev-parse --show-toplevel)"
+DOCKPIPE_TEST_BIN="${DOCKPIPE_TEST_DOCKPIPE_BIN:-$ROOT/src/bin/dockpipe}"
 cd "$ROOT"
 PIPEON="$ROOT/packages/pipeon/resolvers/pipeon/bin/pipeon"
 test -x "$PIPEON" || {
@@ -39,7 +40,7 @@ if ! (cd "$tmp" && "$PIPEON" bundle >/dev/null); then
 	exit 1
 fi
 
-pipeon_context="$("$ROOT/src/bin/dockpipe" scope --package pipeon pipeon-context.md --workdir "$tmp")"
+pipeon_context="$("$DOCKPIPE_TEST_BIN" __state package-runtime --workdir "$tmp" --owner pipeon --path pipeon-context.md)"
 if [[ ! -f "$pipeon_context" ]]; then
 	echo "test_pipeon: missing pipeon-context.md" >&2
 	exit 1

@@ -10,6 +10,7 @@ cd "$PACKAGE_ROOT/tools"
 GOWORK=off GOCACHE="$VM_TEST_TMP/cache" GOTMPDIR="$VM_TEST_TMP/tmp" CGO_ENABLED=0 go test -mod=readonly ./...
 
 cd "$PACKAGE_ROOT"
+bash tests/test_vmimage_state_split.sh
 grep -Fq 'version: 1.3.4' package.yml
 grep -Fq 'const version = "1.3.4"' tools/cmd/dockpipe-qemu-controller/main.go
 grep -Fq 'models/QemuVmResolverConfig' resolvers/qemu/types.yml
