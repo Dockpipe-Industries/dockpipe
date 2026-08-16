@@ -10,6 +10,7 @@ import (
 	"strings"
 	"text/tabwriter"
 
+	"dockpipe/src/lib/domain"
 	"dockpipe/src/lib/infrastructure"
 )
 
@@ -342,7 +343,7 @@ func cmdSessionPublish(args []string) error {
 	if err != nil {
 		return err
 	}
-	if strings.EqualFold(strings.TrimSpace(session.Storage.Backend), "docker_volume") {
+	if domain.NormalizeWorkspaceStorageBackend(session.Storage.Backend) == domain.WorkspaceStorageBackendDockerVolume {
 		policy := strings.TrimSpace(os.Getenv("DOCKPIPE_SESSION_VOLUME_AUTOCLEANUP"))
 		if policy == "" {
 			policy = "true"

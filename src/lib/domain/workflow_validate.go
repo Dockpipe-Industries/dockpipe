@@ -137,31 +137,25 @@ func validateWorkflowStep(i int, s Step, w *Workflow) error {
 }
 
 func ValidateStepKind(i int, s Step) error {
-	switch s.KindName() {
-	case "container", "host":
+	if s.EffectiveKind().IsValid() {
 		return nil
-	default:
-		return fmt.Errorf("step %d: kind must be host or container", i+1)
 	}
+	return fmt.Errorf("step %d: kind must be host or container", i+1)
 }
 
 func ValidateStepCWD(i int, s Step) error {
-	switch s.CWDMode() {
-	case "source", "artifacts":
+	if s.EffectiveCWD().IsValid() {
 		return nil
-	default:
-		return fmt.Errorf("step %d: cwd must be source, repo, or artifacts", i+1)
 	}
+	return fmt.Errorf("step %d: cwd must be source, repo, or artifacts", i+1)
 }
 
 func ValidateStepScopes(i int, s Step) error {
-	for name, mode := range map[string]string{
-		"source":    s.SourceScopeMode(),
-		"artifacts": s.ArtifactsScopeMode(),
+	for name, scope := range map[string]StepPathScope{
+		"source":    s.EffectiveSourceScope(),
+		"artifacts": s.EffectiveArtifactsScope(),
 	} {
-		switch mode {
-		case "source", "artifacts":
-		default:
+		if !scope.IsValid() {
 			return fmt.Errorf("step %d: scopes.%s must be source, repo, or artifacts", i+1, name)
 		}
 	}
@@ -211,20 +205,20 @@ func ValidateWorkflowWorkspaceConfig(fieldPrefix string, cfg WorkflowWorkspaceCo
 	if cfg.IsEmpty() {
 		return nil
 	}
-	mode := strings.TrimSpace(cfg.Mode)
+	mode := WorkspaceMode(strings.TrimSpace(cfg.Mode))
 	if mode == "" {
-		mode = "managed"
+		mode = WorkspaceModeManaged
 	}
-	if err := validateEnum(fieldPrefix+".mode", mode, map[string]struct{}{"managed": {}, "bind": {}}); err != nil {
+	if err := validateEnum(fieldPrefix+".mode", mode, validWorkspaceModes); err != nil {
 		return err
 	}
-	if err := validateEnum(fieldPrefix+".lifecycle.checkpoint", cfg.Lifecycle.Checkpoint, map[string]struct{}{"": {}, "manual": {}, "auto": {}, "step": {}}); err != nil {
+	if err := validateEnum(fieldPrefix+".lifecycle.checkpoint", WorkspaceCheckpointMode(cfg.Lifecycle.Checkpoint), validWorkspaceCheckpointModes); err != nil {
 		return err
 	}
-	if err := validateEnum(fieldPrefix+".lifecycle.publish", cfg.Lifecycle.Publish, map[string]struct{}{"": {}, "none": {}, "branch": {}, "review": {}}); err != nil {
+	if err := validateEnum(fieldPrefix+".lifecycle.publish", WorkspacePublishMode(cfg.Lifecycle.Publish), validWorkspacePublishModes); err != nil {
 		return err
 	}
-	if err := validateEnum(fieldPrefix+".storage", cfg.Storage, map[string]struct{}{"": {}, "volume": {}, "worktree": {}, "clone": {}}); err != nil {
+	if err := validateEnum(fieldPrefix+".storage", WorkspaceStorage(cfg.Storage), validAuthoredWorkspaceStorages); err != nil {
 		return err
 	}
 	if strings.TrimSpace(cfg.Lifecycle.BranchPrefix) != "" && strings.ContainsAny(cfg.Lifecycle.BranchPrefix, " \t\r\n") {
@@ -280,7 +274,7 @@ func ValidateWorkflowContainerConfig(fieldPrefix string, cfg WorkflowContainerCo
 		if strings.TrimSpace(mount.Host) == "" || strings.TrimSpace(mount.Guest) == "" {
 			return fmt.Errorf("%s.mounts[%d] requires both host and guest", fieldPrefix, idx)
 		}
-		if err := validateEnum(fmt.Sprintf("%s.mounts[%d].mode", fieldPrefix, idx), mount.Mode, map[string]struct{}{"": {}, "ro": {}, "rw": {}}); err != nil {
+		if err := validateEnum(fmt.Sprintf("%s.mounts[%d].mode", fieldPrefix, idx), ContainerMountMode(mount.Mode), validContainerMountModes); err != nil {
 			return err
 		}
 	}
@@ -389,7 +383,7 @@ func ValidateStepVMField(i int, s Step) error {
 
 // ValidateStepHostBuiltin checks host_builtin steps (see Step.HostBuiltin).
 func ValidateStepHostBuiltin(i int, s Step) error {
-	b := strings.TrimSpace(s.HostBuiltin)
+	b := s.EffectiveHostBuiltin()
 	if b == "" {
 		return nil
 	}
@@ -402,12 +396,10 @@ func ValidateStepHostBuiltin(i int, s Step) error {
 	if len(s.Run) > 0 || s.PreScript != "" {
 		return fmt.Errorf("step %d: host_builtin cannot be combined with run: or pre_script", i+1)
 	}
-	switch b {
-	case "package_build_store", "compose_up", "compose_down", "compose_ps":
+	if b.IsValid() {
 		return nil
-	default:
-		return fmt.Errorf("step %d: unknown host_builtin %q (allowed: package_build_store, compose_up, compose_down, compose_ps)", i+1, b)
 	}
+	return fmt.Errorf("step %d: unknown host_builtin %q (allowed: package_build_store, compose_up, compose_down, compose_ps)", i+1, string(b))
 }
 
 func ValidateStepHostShape(i int, s Step) error {
@@ -430,24 +422,12 @@ func ValidateStepHostShape(i int, s Step) error {
 }
 
 func ValidateStepComposeBuiltin(i int, s Step, w *Workflow) error {
-	if !hostBuiltinNeedsCompose(strings.TrimSpace(s.HostBuiltin)) {
+	b := s.EffectiveHostBuiltin()
+	if !b.NeedsCompose() {
 		return nil
 	}
 	if w == nil || strings.TrimSpace(w.Compose.File) == "" {
-		return fmt.Errorf("step %d: host_builtin %q requires workflow compose.file", i+1, strings.TrimSpace(s.HostBuiltin))
+		return fmt.Errorf("step %d: host_builtin %q requires workflow compose.file", i+1, string(b))
 	}
 	return nil
-}
-
-func hostBuiltinNeedsDocker(b string) bool {
-	return hostBuiltinNeedsCompose(b)
-}
-
-func hostBuiltinNeedsCompose(b string) bool {
-	switch strings.TrimSpace(b) {
-	case "compose_up", "compose_down", "compose_ps":
-		return true
-	default:
-		return false
-	}
 }

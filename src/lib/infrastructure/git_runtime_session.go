@@ -8,6 +8,8 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"dockpipe/src/lib/domain"
 )
 
 type GitSessionRequest struct {
@@ -130,35 +132,35 @@ func CreateSessionBranch(req GitSessionRequest) (*GitSession, error) {
 	if err != nil {
 		return nil, fmt.Errorf("workspace source must be a git work tree: %w", err)
 	}
-	mode := strings.TrimSpace(req.Mode)
+	mode := domain.WorkspaceMode(strings.TrimSpace(req.Mode))
 	if mode == "" {
-		mode = "managed"
+		mode = domain.WorkspaceModeManaged
 	}
 	switch mode {
-	case "managed", "bind":
+	case domain.WorkspaceModeManaged, domain.WorkspaceModeBind:
 	default:
 		return nil, fmt.Errorf("workspace mode must be managed or bind, got %q", mode)
 	}
-	storage := strings.TrimSpace(req.Storage)
+	storage := domain.WorkspaceStorage(strings.TrimSpace(req.Storage))
 	if storage == "" {
-		if mode == "managed" {
-			storage = "worktree"
+		if mode == domain.WorkspaceModeManaged {
+			storage = domain.WorkspaceStorageWorktree
 		} else {
-			storage = "bind"
+			storage = domain.WorkspaceStorageBind
 		}
 	}
 	switch storage {
-	case "bind", "worktree", "volume", "clone":
+	case domain.WorkspaceStorageBind, domain.WorkspaceStorageWorktree, domain.WorkspaceStorageVolume, domain.WorkspaceStorageClone:
 	default:
 		return nil, fmt.Errorf("workspace storage must be bind, worktree, volume, or clone, got %q", storage)
 	}
-	if mode == "bind" && storage != "bind" {
+	if mode == domain.WorkspaceModeBind && storage != domain.WorkspaceStorageBind {
 		return nil, fmt.Errorf("workspace mode bind requires storage bind")
 	}
-	if mode == "managed" && storage == "bind" {
+	if mode == domain.WorkspaceModeManaged && storage == domain.WorkspaceStorageBind {
 		return nil, fmt.Errorf("workspace mode managed cannot use storage bind")
 	}
-	if storage == "clone" {
+	if storage == domain.WorkspaceStorageClone {
 		return nil, fmt.Errorf("workspace storage clone is reserved for distributed runtime support")
 	}
 	workspaceID := sanitizeSessionSegment(firstNonEmptyString(req.WorkspaceID, filepath.Base(top)))
@@ -178,7 +180,7 @@ func CreateSessionBranch(req GitSessionRequest) (*GitSession, error) {
 	if baseRef == "" {
 		baseRef = "HEAD"
 	}
-	if mode == "managed" {
+	if mode == domain.WorkspaceModeManaged {
 		if existing, err := findReusableManagedGitSession(top, branch); err != nil {
 			return nil, err
 		} else if existing != nil {
@@ -195,9 +197,9 @@ func CreateSessionBranch(req GitSessionRequest) (*GitSession, error) {
 	}
 	createIDs := map[string]string{
 		"branch":    branch,
-		"mode":      mode,
+		"mode":      string(mode),
 		"session":   sessionID,
-		"storage":   storage,
+		"storage":   string(storage),
 		"workspace": workspaceID,
 	}
 	preflightResult, err := RunOperationWithResult(os.Stderr, "session.create.preflight", "Preflighting Git session…", createIDs, func() error {
@@ -211,10 +213,10 @@ func CreateSessionBranch(req GitSessionRequest) (*GitSession, error) {
 	}
 
 	workspace := top
-	backend := "bind"
+	backend := domain.WorkspaceStorageBackendBind
 	volumeName := ""
-	if mode == "managed" {
-		backend = "worktree"
+	if mode == domain.WorkspaceModeManaged {
+		backend = domain.WorkspaceStorageBackendWorktree
 		workspace = filepath.Join(sessionDir, "workspace")
 		if _, err := os.Stat(workspace); os.IsNotExist(err) {
 			workspaceResult, err := RunOperationWithResult(os.Stderr, "session.create.workspace", "Creating Git session workspace…", createIDs, func() error {
@@ -227,8 +229,8 @@ func CreateSessionBranch(req GitSessionRequest) (*GitSession, error) {
 				return nil, err
 			}
 		}
-		if storage == "volume" {
-			backend = "docker_volume"
+		if storage == domain.WorkspaceStorageVolume {
+			backend = domain.WorkspaceStorageBackendDockerVolume
 			volumeName = dockerWorkspaceVolumeName(workspaceID, sessionID)
 			volumeIDs := map[string]string{
 				"branch":    branch,
@@ -296,8 +298,8 @@ func CreateSessionBranch(req GitSessionRequest) (*GitSession, error) {
 			SessionRef: branch,
 		},
 		Storage: GitSessionStorage{
-			Mode:         mode,
-			Backend:      backend,
+			Mode:         string(mode),
+			Backend:      string(backend),
 			Workspace:    workspace,
 			Metadata:     sessionDir,
 			EventLog:     gitSessionEventLogPath(sessionDir),
@@ -308,8 +310,8 @@ func CreateSessionBranch(req GitSessionRequest) (*GitSession, error) {
 		CreatedAt: now,
 		UpdatedAt: now,
 		Policy: GitSessionPolicy{
-			Checkpoint:    firstNonEmptyString(req.Checkpoint, "auto"),
-			Publish:       firstNonEmptyString(req.Publish, "review"),
+			Checkpoint:    firstNonEmptyString(req.Checkpoint, string(domain.WorkspaceCheckpointAuto)),
+			Publish:       firstNonEmptyString(req.Publish, string(domain.WorkspacePublishReview)),
 			AllowAgentGit: false,
 		},
 	}
@@ -362,7 +364,7 @@ func findReusableManagedGitSession(repo, branch string) (*GitSession, error) {
 		if session == nil {
 			continue
 		}
-		if strings.TrimSpace(session.Storage.Mode) != "managed" {
+		if domain.WorkspaceMode(strings.TrimSpace(session.Storage.Mode)) != domain.WorkspaceModeManaged {
 			continue
 		}
 		if strings.TrimSpace(session.Repo.SessionRef) != branch {
@@ -680,7 +682,7 @@ func CleanupSessionVolume(session *GitSession) error {
 	if session == nil {
 		return fmt.Errorf("session is nil")
 	}
-	if !strings.EqualFold(strings.TrimSpace(session.Storage.Backend), "docker_volume") {
+	if domain.NormalizeWorkspaceStorageBackend(session.Storage.Backend) != domain.WorkspaceStorageBackendDockerVolume {
 		return nil
 	}
 	volumeName := strings.TrimSpace(session.Storage.Volume)

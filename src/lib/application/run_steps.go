@@ -713,10 +713,13 @@ func applyStepCWDEnv(o *runStepsOpts, step domain.Step, envMap, dockerEnv map[st
 	}
 	defaultSourceRoot := envMap["DOCKPIPE_SOURCE_ROOT"]
 	defaultArtifactRoot := envMap["DOCKPIPE_ARTIFACT_ROOT"]
-	sourceRoot = stepScopeRoot(step.SourceScopeMode(), defaultSourceRoot, defaultArtifactRoot)
-	artifactRoot := stepScopeRoot(step.ArtifactsScopeMode(), defaultSourceRoot, defaultArtifactRoot)
-	stepCWD := stepScopeRoot(step.CWDMode(), defaultSourceRoot, defaultArtifactRoot)
-	if step.CWDMode() == "artifacts" {
+	sourceScope := step.EffectiveSourceScope()
+	artifactsScope := step.EffectiveArtifactsScope()
+	cwdScope := step.EffectiveCWD()
+	sourceRoot = stepScopeRoot(sourceScope, defaultSourceRoot, defaultArtifactRoot)
+	artifactRoot := stepScopeRoot(artifactsScope, defaultSourceRoot, defaultArtifactRoot)
+	stepCWD := stepScopeRoot(cwdScope, defaultSourceRoot, defaultArtifactRoot)
+	if cwdScope == domain.StepPathScopeArtifacts {
 		if err := os.MkdirAll(stepCWD, 0o755); err != nil {
 			return err
 		}
@@ -735,9 +738,9 @@ func applyStepCWDEnv(o *runStepsOpts, step domain.Step, envMap, dockerEnv map[st
 	return nil
 }
 
-func stepScopeRoot(mode, sourceRoot, artifactRoot string) string {
+func stepScopeRoot(mode domain.StepPathScope, sourceRoot, artifactRoot string) string {
 	switch mode {
-	case "artifacts":
+	case domain.StepPathScopeArtifacts:
 		return artifactRoot
 	default:
 		return sourceRoot
@@ -835,7 +838,7 @@ func stepVMEnvOverrides(o *runStepsOpts, step domain.Step) map[string]string {
 }
 
 func runStepHostBuiltin(o *runStepsOpts, step domain.Step) error {
-	b := strings.TrimSpace(step.HostBuiltin)
+	b := step.EffectiveHostBuiltin()
 	if b == "" {
 		return nil
 	}
@@ -844,7 +847,7 @@ func runStepHostBuiltin(o *runStepsOpts, step domain.Step) error {
 	}
 	fmt.Fprintf(os.Stderr, "[dockpipe] Host builtin: %s\n", b)
 	switch b {
-	case "package_build_store":
+	case domain.StepHostBuiltinPackageBuildStore:
 		wd := firstNonEmpty(o.envMap["DOCKPIPE_WORKDIR"], o.opts.Workdir)
 		if wd == "" {
 			wd = mustGetwd()
@@ -854,22 +857,22 @@ func runStepHostBuiltin(o *runStepsOpts, step domain.Step) error {
 			return err
 		}
 		return RunPackageBuildStoreFromEnv(wdAbs, o.envMap)
-	case "compose_up", "compose_down", "compose_ps":
+	case domain.StepHostBuiltinComposeUp, domain.StepHostBuiltinComposeDown, domain.StepHostBuiltinComposePS:
 		return runWorkflowComposeHostBuiltin(o, b)
 	default:
-		return fmt.Errorf("unknown host_builtin %q", b)
+		return fmt.Errorf("unknown host_builtin %q", string(b))
 	}
 }
 
-func runWorkflowComposeHostBuiltin(o *runStepsOpts, builtin string) error {
+func runWorkflowComposeHostBuiltin(o *runStepsOpts, builtin domain.StepHostBuiltin) error {
 	if o == nil || o.wf == nil {
 		return fmt.Errorf("compose builtin requires a workflow")
 	}
 	cfg := o.wf.Compose
 	file := resolveWorkflowRelativePath(cfg.File, o.wfRoot)
 	projectDir := resolveWorkflowRelativePath(cfg.ProjectDirectory, o.wfRoot)
-	action := strings.TrimPrefix(strings.TrimSpace(builtin), "compose_")
-	if action == "down" && !composeAutodownEnabled(cfg, o.envMap) {
+	action := builtin.ComposeAction()
+	if builtin == domain.StepHostBuiltinComposeDown && !composeAutodownEnabled(cfg, o.envMap) {
 		fmt.Fprintf(os.Stderr, "[dockpipe] Compose autodown disabled; leaving services running\n")
 		return nil
 	}
