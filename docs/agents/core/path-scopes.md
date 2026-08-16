@@ -13,6 +13,7 @@ changing `cwd`, `scopes`, `outputs`, or `dockpipe scope` behavior.
 | Workflow-run artifacts | `dockpipe scope artifacts ...`; do not write to repo-root `tmp/`, `.dockpipe/`, or package state. |
 | Artifacts from another workflow | `dockpipe scope workflow <name> ...`. |
 | Package-owned long-lived state | `dockpipe scope --package <name> ...`. |
+| Package-owned disposable cache/run/build state | `PackageRuntimeDir` or shell SDK `path package-runtime <owner-id> ...`. |
 | Resolver-owned auth/config paths | Declare them in the resolver profile and read with `dockpipe scope resolver <name> <field>`. |
 
 ## DorkPipe Agent YAML
@@ -34,7 +35,8 @@ needs a generated file path. Keep normal repository files as plain relative path
 - Do not introduce package/workflow-specific env vars for artifact roots when `dockpipe scope` can resolve the path.
 - Do not hardcode `bin/.dockpipe/...`, `tmp/...`, package names, workflow names, or resolver auth directories in scripts.
 - Keep generated workflow outputs under workflow artifact scope, not package scope.
-- Keep package state for package-owned caches, credentials, shared metrics, and durable package data.
+- Keep credentials, continuity authority, settings, and cumulative records in durable package state.
+- Keep caches, build products, scratch, run artifacts, and reproducible evidence in package runtime; `bin/.dockpipe/**` must tolerate complete removal.
 - Keep resolver auth/config defaults in resolver profiles, not workflow scripts.
 
 ## Surface Sync

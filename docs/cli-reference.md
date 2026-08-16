@@ -70,13 +70,19 @@ See **[packages/package-model.md](packages/package-model.md)** (**Clone, educati
 
 ## `dockpipe build` / `clean` / `rebuild`
 
-Familiar names for the **compiled package store** under **`bin/.dockpipe/internal/packages/`** (see **[packages/package-model.md](packages/package-model.md)**).
+Project build and cleanup commands (see **[packages/package-model.md](packages/package-model.md)**).
 
 | Command | Purpose |
 |---------|---------|
 | `dockpipe build [options]` | Rebuild the compiled package/workflow store under **`bin/.dockpipe/internal/packages/`** for the current project. In practice this is the main “refresh compiled state” command. It also materializes configured PipeLang roots and prebuilds Dockerfile-backed image artifacts unless you pass **`--no-images`**. If **`--workdir`** is omitted, the project directory is the folder containing **`dockpipe.config.json`** (walking up from the current directory), or the current directory if that file is absent. Options: **`--workdir`**, **`--for-workflow <name>`**, **`--images`**, **`--no-images`**. |
-| `dockpipe clean [--workdir <path>]` | **`rm -rf`** the packages root (default **`<workdir>/bin/.dockpipe/internal/packages`**; respects **`DOCKPIPE_PACKAGES_ROOT`**). Does not wipe other **`bin/.dockpipe/`** files. |
-| `dockpipe rebuild [options]` | **`clean`** (only **`--workdir`** is forwarded) then **`build`** with the full option set. |
+| `dockpipe clean [--workdir <path>] [--dry-run]` | Preview or remove the complete checkout-local disposable tree at **`<workdir>/bin/.dockpipe`**. Dry-run reports the exact resolved target, logical bytes, file count, and action without mutation. A missing tree is a reported no-op. Ordinary clean never follows **`DOCKPIPE_PACKAGES_ROOT`** outside the checkout. |
+| `dockpipe rebuild [options]` | Separately reset the resolved compiled store, including **`DOCKPIPE_PACKAGES_ROOT`**, then run **`build`**. The reset is reported and rejects filesystem roots, home/workdir authority, durable state, links/reparse points, filesystem substitutions, and unsafe trees. |
+
+Clean accepts only its exact checkout-local target. It rejects parent traversal, filesystem-root
+workdirs, workdir/ancestor or durable-state targets, links/reparse points, special files, and
+filesystem substitutions. Durable package state resolved by `dockpipe scope --package` remains
+outside the disposable tree and survives ordinary clean. Rebuild retains its separate guarded reset
+of the resolved compiled store for `DOCKPIPE_PACKAGES_ROOT` compatibility.
 
 ## `dockpipe package`
 
@@ -92,7 +98,7 @@ Inspect **installed** package metadata. Store-backed installs are intended to la
 | `dockpipe package build store [--workdir <path>] [--out <dir>] [--only <slice>] [--version <ver>]` | Gzip tar per compiled package under **`bin/.dockpipe/internal/packages/`** (after **`dockpipe build`**), archive paths **`core/`**, **`workflows/<name>/`**, **`resolvers/<name>/`**. **`--only bundles`** adds bundle packages. **`packages-store-manifest.json`** lists artifacts. Default **`--out`**: **`release/artifacts/`**. |
 | `dockpipe package compile workflow <source-dir> [--workdir <path>] [--name <n>] [--force]` | **`workflow validate`** on **`source-dir/config.yml`**, then copy the tree to **`bin/.dockpipe/internal/packages/workflows/<name>/`** (writes **`package.yml`** if missing, with **`allow_clone: true`** and **`distribution: source`** for local round-trips). |
 
-**Environment:** **`DOCKPIPE_PACKAGES_ROOT`** — override packages root (default **`<workdir>/bin/.dockpipe/internal/packages`**).
+**Environment:** **`DOCKPIPE_PACKAGES_ROOT`** — override the compiled package root (default **`<workdir>/bin/.dockpipe/internal/packages`**) for compile/build/rebuild. It does not relocate durable package state and ordinary clean does not use an external override.
 
 ## `dockpipe workflow test` and `dockpipe test`
 
@@ -122,7 +128,7 @@ When a workflow also declares `view:`, that YAML remains a launcher/tooling pres
 |---------|---------|
 | `dockpipe pipelang compile --in <file.pipe> [--entry <Class>] [--out <dir>]` | Parse + type-check PipeLang and emit artifacts: `<Class>.workflow.yml`, `<Class>.bindings.json`, `<Class>.bindings.env` (default out: `bin/.dockpipe/pipelang/`). |
 | `dockpipe pipelang invoke --in <file.pipe> [--class <Class>] --method <name> [--arg <value>]... [--format text|json|env]` | Invoke a PipeLang method through CLI only. No resolver/runtime execution path is used. |
-| `dockpipe pipelang materialize [--workdir <path>] [--from <root>]... [--force]` | Recursively compile `.pipe` files under roots into sidecar `.pipelang/` artifacts. Default roots are resolved from `dockpipe.config.json` `compile.workflows` (plus merged `compile.bundles`). |
+| `dockpipe pipelang materialize [--workdir <path>] [--from <root>]... [--force]` | Recursively compile `.pipe` files under roots into sidecar `.pipelang/` artifacts. Default roots are resolved from `dockpipe.config.json` `compile.workflows`. |
 
 Method support (v0.0.0.1): expression-bodied methods are parsed, type-checked, included in bindings metadata, and invocable only via `dockpipe pipelang invoke`.
 

@@ -5,6 +5,8 @@ skills:
   installed_codex:
     - dorkpipe-agentic-yaml
     - dorkpipe-core-review
+    - dorkpipe-objective-execution
+    - dorkpipe-one-shot-gate
     - dorkpipe-package-authoring
     - dorkpipe-task-execution
     - dorkpipe-task-handoff
@@ -50,6 +52,35 @@ tasks:
     validation:
       - go test ./src/lib/...
       - make build
+
+  compatibility_retirement:
+    read:
+      - AGENTS.md
+      - docs/agents/core/compatibility-retirement.md
+      - docs/agents/core/engine-boundary.md
+      - docs/agents/docs/docs-system.md
+      - docs/agents/core/validation-commands.md
+    optional:
+      - docs/compatibility-retirement.md
+      - docs/cli-reference.md
+      - docs/packages/package-model.md
+      - docs/workflows/workflow-yaml.md
+      - src/lib/infrastructure/schema/workflow.schema.json
+      - src/app/tooling/vscode-extensions/dockpipe-language-support/extension.js
+    skills:
+      - dorkpipe-core-review
+      - dorkpipe-token-optimization
+    escalate:
+      required_for:
+        - public compatibility behavior removal
+        - config, CLI, schema, or editor compatibility changes
+        - legacy layout, state migration, or cleanup
+        - package-owned compatibility changes
+    validation:
+      - rg -n "compat|legacy|alias|deprecated|ignored|no-op|noop" src packages workflows docs tests .github -S
+      - go test ./src/lib/domain ./src/lib/application ./src/lib/infrastructure
+      - ./src/bin/dockpipe package test --workdir . --only <package>
+      - git diff --check
 
   yaml_workflow_change:
     read:
@@ -310,12 +341,14 @@ tasks:
       - docs/agents/docs/skills.md
     skills:
       - dorkpipe-task-handoff
+      - dorkpipe-objective-execution
+      - dorkpipe-one-shot-gate
       - dorkpipe-token-optimization
     validation:
       - ./src/bin/dockpipe --package dorkpipe --workflow skills.render -- --list
-      - ./src/bin/dockpipe --package dorkpipe --workflow skills.render -- --target codex --dry-run --skills dorkpipe-task-handoff
+      - ./src/bin/dockpipe --package dorkpipe --workflow skills.render -- --target codex --dry-run --skills dorkpipe-objective-execution,dorkpipe-one-shot-gate,dorkpipe-task-handoff
 
-  task_execution:
+  objective_execution:
     read:
       - AGENTS.md
       - docs/agents/docs/session-handoffs.md
@@ -323,11 +356,37 @@ tasks:
       - docs/agents/task-index.yaml
       - docs/agents/workflows/planner-promotion-model.md
     skills:
-      - dorkpipe-task-execution
+      - dorkpipe-objective-execution
+      - dorkpipe-one-shot-gate
       - dorkpipe-task-handoff
     validation:
       - bash packages/dorkpipe/tests/test_task_skill_lifecycle.sh
-      - ./src/bin/dockpipe --package dorkpipe --workflow skills.render -- --target codex --dry-run --skills dorkpipe-task-execution,dorkpipe-task-handoff
+      - ./src/bin/dockpipe --package dorkpipe --workflow skills.render -- --target codex --dry-run --skills dorkpipe-objective-execution,dorkpipe-one-shot-gate,dorkpipe-task-handoff
+
+  one_shot_gate:
+    read:
+      - AGENTS.md
+      - docs/agents/docs/session-handoffs.md
+      - docs/agents/docs/skills.md
+      - docs/agents/runtime/safety-guardrails.md
+    skills:
+      - dorkpipe-one-shot-gate
+      - dorkpipe-task-handoff
+    validation:
+      - bash packages/dorkpipe/tests/test_task_skill_lifecycle.sh
+      - ./src/bin/dockpipe --package dorkpipe --workflow skills.render -- --target codex --dry-run --skills dorkpipe-one-shot-gate,dorkpipe-task-handoff
+
+  task_execution_compatibility:
+    read:
+      - AGENTS.md
+      - docs/agents/docs/session-handoffs.md
+      - docs/agents/docs/skills.md
+    skills:
+      - dorkpipe-task-execution
+      - dorkpipe-objective-execution
+      - dorkpipe-one-shot-gate
+    validation:
+      - bash packages/dorkpipe/tests/test_task_skill_lifecycle.sh
 
   safety_or_secrets:
     read:

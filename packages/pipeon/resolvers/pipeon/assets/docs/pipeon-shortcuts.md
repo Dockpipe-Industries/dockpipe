@@ -51,7 +51,7 @@ On macOS, use `cmd`/`ctrl` as you prefer; edit the `key` fields if they clash.
 
 ## 3. Pipeon CLI (from repo root)
 
-Use the resolver entrypoint (same as **`src/bin/pipeon`** → **`packages/pipeon/resolvers/pipeon/bin/pipeon`** after install):
+Use the package-owned resolver entrypoint at **`packages/pipeon/resolvers/pipeon/bin/pipeon`**:
 
 ```bash
 packages/pipeon/resolvers/pipeon/bin/pipeon status

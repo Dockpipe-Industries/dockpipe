@@ -90,8 +90,10 @@ In configuration, **`DOCKPIPE_RUNTIME_TYPE`** is the field that carries **`runti
 ## Core layout (filesystem)
 
 In the repository, the authored core tree is **`src/core/`**. Installed or materialized core keeps
-the same logical categories under its own core root. The core root contains **only** these category
-directories — **no loose files** at the root:
+the same logical categories under its own core root. The core root contains the five category
+directories below plus exactly two intentional source files: **`package.yml`** declares the core
+source-build package, and **`__init__.py`** preserves the documented Python SDK import path. No other
+loose root files are part of the core layout.
 
 | Directory | Role |
 |-----------|------|
