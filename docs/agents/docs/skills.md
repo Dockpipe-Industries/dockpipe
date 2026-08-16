@@ -11,7 +11,8 @@ Use:
 ```yaml
 skills:
   - dorkpipe-core-review
-  - dorkpipe-task-execution
+  - dorkpipe-objective-execution
+  - dorkpipe-one-shot-gate
   - dorkpipe-task-handoff
   - dorkpipe-token-optimization
 ```
@@ -23,6 +24,8 @@ skill for Codex, Claude, or another target.
 
 - `dorkpipe-agentic-yaml`
 - `dorkpipe-core-review`
+- `dorkpipe-objective-execution`
+- `dorkpipe-one-shot-gate`
 - `dorkpipe-package-authoring`
 - `dorkpipe-task-execution`
 - `dorkpipe-task-handoff`
@@ -52,3 +55,14 @@ Curated DorkPipe skill sources live in:
 ```text
 packages/dorkpipe/resolvers/dorkpipe/assets/skills/
 ```
+
+New governed work uses three lifecycle roles:
+
+- `dorkpipe-objective-execution` owns the bounded outcome across ordinary checkpoints and enforces
+  the receiving task's first-checkpoint and output budget.
+- `dorkpipe-one-shot-gate` consumes one separately approved gate and returns to the objective.
+- `dorkpipe-task-handoff` transports unchanged lifecycle state between tasks while keeping source
+  and receiver transport allowances distinct.
+
+`dorkpipe-task-execution` remains a compatibility router for existing task records. Do not use it
+as the controller for new objectives.

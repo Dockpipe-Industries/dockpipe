@@ -1,133 +1,116 @@
 # DorkPipe Task Handoff
 
-Create a high-fidelity handoff for one approved successor. Creating it authorizes execution of that exact slice in the fresh task; make the fresh task invoke `dorkpipe-task-execution` and stop the old task.
+Move existing lifecycle state into one fresh task. Handoff is transport only: it preserves authority,
+scope, evidence, and dirty-tree ownership but never chooses a new objective or consumes gate authority.
 
-## Decide when to hand off
+## Choose one mode
 
-- Hand off immediately when the user explicitly requests a new task/chat or carry-over.
-- Offer a handoff before starting a materially different next slice after a completed milestone, especially when the next action needs a new exact approval.
-- Use conversation length only as a heuristic; do not claim access to an exact remaining-token meter.
-- Do not interrupt a running command, live mutation, or incomplete read-back. Reach a safe boundary first.
-- Do not hand off for a tiny follow-up that is safer and clearer to finish in place.
+Every handoff declares exactly one mode:
 
-## Capture fresh state
+| Mode | Source state | Fresh task skill |
+| --- | --- | --- |
+| `continue_objective` | Active objective needs a user-requested or context-saving continuation | `dorkpipe-objective-execution` |
+| `enter_one_shot_gate` | Objective is `waiting_for_gate` and the exact gate task is approved | `dorkpipe-one-shot-gate` |
+| `resume_objective` | Gate reached a terminal state and the same objective remains active | `dorkpipe-objective-execution` |
 
-Re-read the minimum live state needed for the next task:
+Do not hand off after each objective checkpoint. Do not use handoff to rerank a backlog, invent the
+next slice, shrink `done_when`, broaden exclusions, or turn context into authority.
 
-- exact checkout, branch, HEAD, and worktree status;
-- unrelated user-owned staged, unstaged, and untracked files;
-- active task or decision record and the smallest routing docs;
-- completed commits, validations, evidence, and generated-artifact paths;
-- current blocker or next bounded outcome;
-- exact hashes, IDs, paths, nonces, budgets, attempt counts, and stop rules;
-- approval state: drafted, granted-but-unconsumed, consumed, expired, or replaced.
+## Capture current state
 
-Never infer current state only from conversation memory when a cheap read-only check exists.
+Re-read the minimum live state needed by the fresh task:
 
-## Prove one-shot readiness
+- exact checkout, branch, HEAD, and staged, unstaged, and untracked ownership;
+- lifecycle mode, stable objective id, current state, authority status, and next checkpoint;
+- `authorized_objective`, `done_when`, invariants, exclusions, and terminal policy;
+- completed proof, failed checks, generated artifacts, and protected bytes;
+- exact gate id, action, hashes, pins, non-consuming preflight coverage, attempt count, and read-back when applicable;
+- authority classification: drafted, granted-unconsumed, consumed, expired, or replaced.
 
-Before handing off an invocation that is single-use, no-retry, live, costly, destructive, or
-credential-bearing:
+Never infer cheap current state from conversation memory. Never copy secrets, private keys, access
+tokens, or resolved credentials; carry opaque references and sanitized hashes only.
 
-1. Enumerate every predicate evaluated before the first mutation. A fail-fast repair must cover the
-   remaining predicates, not only the first failure that was reached.
-2. Require a repeatable non-consuming preflight from the exact hash-pinned artifact, or an exact
-   checker proven to cover the same predicates. Compilation, schema validation, hashes, a narrow
-   diff, and predecessor success prove integrity, not execution readiness.
-3. Re-run that preflight against current state after the final artifact bytes are sealed. Record its
-   command, artifact hash, result, covered boundary, and state anchors without exposing secrets.
-4. Name checkpoint roles separately, such as `execution_checkout` and `promotion_source`. Never
-   require them to be equal merely because both are Git commits.
+## Preserve authority
 
-If full non-consuming proof is unavailable, do not hand off direct invocation or describe the
-artifact as execution-ready. Hand off a verification/repair slice instead and preserve the exact
-unreached or unverified predicates.
-
-## Compress without weakening
-
-Apply `dorkpipe-token-optimization` when available. Summarize durable milestones instead of replaying the transcript.
-
-- Aim for 500-900 tokens, excluding exact approval text or other protected payloads.
-- Preserve hash-pinned approval text and exact required user responses verbatim.
-- Never copy private keys, access tokens, credentials, or resolved secrets; carry references and hashes only.
-- Preserve negative facts such as `not executed`, `not consumed`, `no retry`, and `cleanup not authorized`.
-- Keep one canonical statement per fact; remove chronology that does not change the next action.
-- Link focused repo docs instead of copying broad policy.
-- Never compress away dirty-tree ownership, live-resource state, validation failures, or separate authority boundaries.
+- Objective authority survives `continue_objective`, `enter_one_shot_gate`, and `resume_objective` until the objective terminates or the user cancels it.
+- Gate authority exists only for the exact approved action and is consumed when invocation begins.
+- Spent gate authority returns as evidence, never as a reusable capability.
+- Creating an approved gate task preauthorizes one `resume_objective` handoff to the same objective because that transport grants no new execution authority.
+- A return handoff cannot enter another gate. The objective controller must classify any later gate and obtain its separate approval.
+- Handoff never grants commit, push, cleanup, publication, cost, credential, retry, or external resource authority.
 
 ## Write the continuation prompt
 
-Use this shape:
+Use the common envelope:
 
 ```text
 Continue directly in the saved checkout: <absolute cwd>. Do not create a worktree unless explicitly requested.
 
-Outcome:
-<one bounded next result>
+Handoff contract:
+mode: continue_objective | enter_one_shot_gate | resume_objective
+transport_authority: <user_requested | objective_context_policy | approved_gate_task_creation | preauthorized_gate_return>
+source_transport_limit: 1
+source_transport_consumed: true
+objective_id: <stable id>
+objective_authority: <state>
+objective_state: <state>
+context_pressure_signals: <hard signal | at least two soft signals | not_applicable>
+receiver_context_handoff_limit_per_task: 1 | <explicit override>
 
-Lifecycle contract:
-state: ready_for_execution
-execution_skill: dorkpipe-task-execution
-execution_authority: approved_task_creation
-authorized_slice: <same bounded result>
-inherited_invariants: <must remain true>
-explicit_exclusions: <out of scope and forbidden actions>
-acceptance_criteria: <proof required for completion>
-terminal_conditions: completed | blocked | failed_verification
-completion_policy: require_user_approval_before_successor | stop
-top_level_successor_limit: 1
-
-One-shot readiness:
-required: true | false
-status: verified_current | unverified | not_applicable
-artifact_sha256: <exact hash or not_applicable>
-preflight: <exact non-consuming command and result or why unavailable>
-coverage: <all predicates before first mutation or not_applicable>
-checkpoint_roles: <execution checkout, promotion/source, and other distinct owners>
-unverified_predicates: none | <exact list>
+Objective contract:
+<authorized objective, done_when, invariants, exclusions, verification and terminal policy>
 
 Anchors and protected state:
-<branch, HEAD, dirty-tree ownership, exact live or preserved resources>
+<live checkout and ownership evidence>
 
 Completed proof:
-<durable milestones, commits, validations, evidence, and exact readiness-proof coverage>
+<durable facts only>
 
 Pending boundary:
-<exact unresolved action, approval state, and why it has not run>
+<next checkpoint or exact gate action; do not invent a successor>
 
-Exact required user response:
-none — approving creation authorized this slice
+Receiver budget:
+<one first checkpoint; affected-anchor revalidation only; quiet focused proof; reassess before another seam or broad suite>
 
 First action:
-Invoke `dorkpipe-task-execution`, validate the recorded readiness proof, then perform the authorized slice.
+Invoke <specialized skill>, admit durable completed proof, revalidate only affected anchors, and execute the pending boundary first.
 
 Hard stops:
-<no retry, cleanup, unrelated mutation, authority transfer, or fallback>
+<unrelated mutation and separate authority boundaries>
 ```
 
-Make the prompt self-contained and execution-ready. Do not make the fresh task reopen the full prior conversation.
-Never turn `unverified` into `verified_current` through wording or compression.
+For `enter_one_shot_gate`, include the complete sealed gate contract after the objective contract.
+For `resume_objective`, include the immutable gate receipt, terminal state, attempt count, read-back,
+and consumed or unconsumed authority. Never compress `unverified` into `verified_current`.
 
-The old task must receive `Approve next slice: <exact short slice label>` before this handoff is created. That approval authorizes one task creation and execution of only the named slice. It does not authorize any separately gated live action, retry, cleanup, commit, push, cost, credential, or resource operation. Never infer approval from a broad backlog or suggested follow-up.
+Apply `dorkpipe-token-optimization` when available. Keep one canonical statement per fact and make
+the prompt self-contained without replaying chronology. Target 500-900 words unless an exact sealed
+gate contract or protected-state inventory genuinely requires more. Prefer counts plus a digest and
+only boundary-relevant paths over full inventories or per-file hashes.
 
-## Preserve authority boundaries
+## Set the receiver contract
 
-- Treat carried approval text as context, never as authorization in the fresh task.
-- State whether the old task's authorization was consumed.
-- Require only separately gated live-action, retry, cleanup, commit, push, cost, credential, or resource approvals in the fresh task; do not re-ask for slice execution approval.
-- Treat approved creation as execution authority only for the exact ordinary implementation and validation slice recorded in the lifecycle contract.
-- Never widen it into live action, retry, cleanup, commit, push, cost, credential, or resource authority.
-- If an approved action must finish before handoff, finish its exact read-back first or state that it remains unexecuted.
+The source task consumes its one creation authority when it creates the fresh task. That consumption
+does not consume the fresh task's own per-task context-handoff allowance. Carry
+`receiver_context_handoff_limit_per_task: 1` when the objective policy is per-task, and omit any hard
+stop such as "no second handoff." Add an objective-wide chain limit only when the user or objective
+contract explicitly supplied one.
 
-## Create the fresh task
+Require the fresh task to execute the pending boundary before expanding. After that checkpoint it
+must update durable state and reassess context pressure before another seam, materially different
+guidance set, or broad terminal suite. Completed proof is admitted, not replayed; only drift, new
+failure evidence, or a direct dependency of the pending checkpoint justifies reopening it.
 
-- Treat explicit invocation of `dorkpipe-task-handoff` with one exact successor slice as approval to create and execute that slice. Do not ask for a second confirmation unless the request asks for prompt-only output or says not to create the task.
-- Also treat an explicit `create/open/start the new task now` request naming one exact slice as approval to create the task and execute that slice there.
-- Ask one Yes/No question that names the exact slice, `Create a fresh task and execute <slice>?`, only when proactively offering a handoff that the user did not invoke or request. A positive response is the creation and slice-execution approval.
-- Put the recommended Yes option first when structured prompts are supported.
-- On approval, use the host-native task/thread creation capability, target the same project and saved checkout, preload the continuation prompt, and do not create a worktree unless requested.
-- After successful creation, report the new task and stop work in the old task.
-- The fresh task, not this task, invokes `dorkpipe-task-execution`. Never invoke both skills as a same-session loop.
-- If host task creation is unavailable, return the exact paste-ready prompt and say that creation could not be automated.
+## Create and stop
 
-Do not continue the next slice in the old task after a successful handoff.
+- When the user explicitly requests handoff or continuation, create one fresh task without a second confirmation.
+- For `continue_objective` with `context_handoff_policy: automatic_at_safe_boundary`, create one fresh task without another confirmation only after the objective skill records a hard signal or at least two soft signals and reaches a safe boundary.
+- For `continue_objective` with `context_handoff_policy: ask_before_transport`, ask once before task creation.
+- For `enter_one_shot_gate`, require exact gate approval before creation. Task creation authorizes only the sealed gate contract.
+- For `resume_objective`, use the single return authority included with gate task creation; do not ask for another micro-slice approval.
+- Use the host-native task capability, the same project and saved checkout, and no worktree unless requested.
+- After successful creation, report the new task and stop the old task.
+- If task creation is unavailable, return the exact paste-ready prompt and state that it was not created.
+
+Never invoke the fresh task's execution skill in the old task. Never create more than one task from
+one handoff authority. Never encode a consumed source transport as a consumed receiver transport.

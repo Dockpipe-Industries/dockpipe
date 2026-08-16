@@ -1,0 +1,3 @@
+name: dorkpipe-objective-execution
+description: Execute or receive a bounded governed objective through verified checkpoints without requiring approval between ordinary reversible steps. Use for long-running implementation, migration, cleanup, repair, or validation with a clear done condition, especially when work needs receiver budgets, context-preserving handoffs, or separately approved one-shot gates.
+short_description: Advance an objective through checkpoints
