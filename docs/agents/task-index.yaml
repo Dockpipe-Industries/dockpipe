@@ -164,6 +164,18 @@ tasks:
     dispatch:
       readiness: unclassified
       ownership: unclaimed
+  - id: TASK-034
+    topic: Claude Managed Agents remote provider adapter
+    path: docs/agents/tasks/claude-managed-agents-adapter.md
+    dispatch:
+      readiness: unclassified
+      ownership: unclaimed
+  - id: TASK-035
+    topic: Recurring codebase hygiene after feature cycles
+    path: docs/agents/tasks/recurring-codebase-hygiene.md
+    dispatch:
+      readiness: unclassified
+      ownership: unclaimed
 
 maintenance:
   - Treat this YAML file as the AI/backlog entrypoint.
