@@ -1,0 +1,3 @@
+name: dorkpipe-one-shot-gate
+description: Execute exactly one separately approved single-use, no-retry, externally mutating, costly, destructive, credential-bearing, or authority-consuming action; verify its result and return control to the active objective. Use only for a sealed gate packet whose task creation authorized that exact invocation.
+short_description: Run one approved gate exactly once
