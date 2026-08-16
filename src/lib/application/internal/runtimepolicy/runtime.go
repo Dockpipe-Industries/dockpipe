@@ -49,25 +49,25 @@ func effectiveCompiledRuntimePolicyForStep(wf *domain.Workflow, wfConfig, wfRoot
 		out.StepID = strings.TrimSpace(stepID)
 		return &out, nil
 	}
-	profile := strings.TrimSpace(rm.PolicyProfile)
+	profile := domain.PolicyProfile(strings.TrimSpace(rm.PolicyProfile))
 	if profile == "" {
 		profile = NormalizeWorkflowPolicyProfile(wf)
 	}
 	if p := strings.TrimSpace(step.Security.Profile); p != "" {
-		profile = p
+		profile = domain.PolicyProfile(p)
 	}
 	security, sources := CompileSecurityPolicyForWorkflow(wf, profile)
 	stepOverride := ApplyStepSecurityOverrides(&security, step)
 	if strings.TrimSpace(step.Security.Profile) != "" {
 		stepOverride = true
 	}
-	security.Preset = profile
-	security.Network.Enforcement = CompiledNetworkEnforcement(security.Network.Mode, profile)
+	security.Preset = string(profile)
+	security.Network.Enforcement = string(CompiledNetworkEnforcement(domain.NetworkMode(security.Network.Mode), profile))
 	security.Network.InternalDNS = true
 
 	out := *rm
 	out.StepID = strings.TrimSpace(stepID)
-	out.PolicyProfile = profile
+	out.PolicyProfile = string(profile)
 	sources.StepOverride = stepOverride
 	out.PolicySources = sources
 	out.Security = security
@@ -110,11 +110,11 @@ func ApplyCompiledRuntimeManifest(runOpts *infrastructure.RunOpts, rm *domain.Co
 }
 
 func applyCompiledNetworkPolicy(runOpts *infrastructure.RunOpts, policy domain.CompiledNetworkPolicy) error {
-	switch strings.TrimSpace(policy.Mode) {
-	case "offline":
+	switch domain.NetworkMode(strings.TrimSpace(policy.Mode)) {
+	case domain.NetworkModeOffline:
 		runOpts.NetworkMode = "none"
-	case "allowlist", "restricted":
-		if strings.TrimSpace(policy.Enforcement) == "proxy" {
+	case domain.NetworkModeAllowlist, domain.NetworkModeRestricted:
+		if domain.NetworkEnforcement(strings.TrimSpace(policy.Enforcement)) == domain.NetworkEnforcementProxy {
 			if err := applyCompiledProxyNetworkPolicy(runOpts, policy); err != nil {
 				return err
 			}
@@ -124,7 +124,7 @@ func applyCompiledNetworkPolicy(runOpts *infrastructure.RunOpts, policy domain.C
 }
 
 func applyCompiledFilesystemPolicy(runOpts *infrastructure.RunOpts, policy domain.CompiledFilesystemPolicy) {
-	if strings.TrimSpace(policy.Root) == "readonly" {
+	if domain.FilesystemRootPolicy(strings.TrimSpace(policy.Root)) == domain.FilesystemRootReadonly {
 		runOpts.ReadOnlyRootFS = true
 	}
 	for _, p := range append([]string{}, policy.TempPaths...) {
@@ -141,8 +141,8 @@ func applyCompiledFilesystemPolicy(runOpts *infrastructure.RunOpts, policy domai
 }
 
 func applyCompiledProcessPolicy(runOpts *infrastructure.RunOpts, policy domain.CompiledProcessPolicy) {
-	switch strings.TrimSpace(policy.User) {
-	case "root":
+	switch domain.ProcessUserPolicy(strings.TrimSpace(policy.User)) {
+	case domain.ProcessUserRoot:
 		runOpts.ContainerUser = "0:0"
 	}
 	if policy.NoNewPrivileges {
@@ -185,7 +185,7 @@ func SummarizeCompiledRuntimeManifest(rm *domain.CompiledRuntimeManifest) string
 			parts = append(parts, summary)
 		}
 	}
-	if strings.TrimSpace(rm.Security.FS.Root) == "readonly" {
+	if domain.FilesystemRootPolicy(strings.TrimSpace(rm.Security.FS.Root)) == domain.FilesystemRootReadonly {
 		parts = append(parts, "root=readonly")
 	}
 	if len(rm.Security.FS.TempPaths) > 0 {
@@ -263,7 +263,7 @@ func applyCompiledProxyNetworkPolicy(runOpts *infrastructure.RunOpts, policy dom
 		runOpts.ExtraEnv = upsertEnvPair(runOpts.ExtraEnv, "no_proxy", noProxy)
 	}
 	runOpts.ExtraEnv = upsertEnvPair(runOpts.ExtraEnv, "DOCKPIPE_POLICY_NETWORK_MODE", strings.TrimSpace(policy.Mode))
-	runOpts.ExtraEnv = upsertEnvPair(runOpts.ExtraEnv, "DOCKPIPE_POLICY_NETWORK_ENFORCEMENT", "proxy")
+	runOpts.ExtraEnv = upsertEnvPair(runOpts.ExtraEnv, "DOCKPIPE_POLICY_NETWORK_ENFORCEMENT", string(domain.NetworkEnforcementProxy))
 	if len(policy.Allow) > 0 {
 		runOpts.ExtraEnv = upsertEnvPair(runOpts.ExtraEnv, "DOCKPIPE_POLICY_NETWORK_ALLOW", strings.Join(policy.Allow, ","))
 	}
@@ -404,17 +404,17 @@ func CompiledRuntimeEnforcementLogLines(rm *domain.CompiledRuntimeManifest) []st
 		return nil
 	}
 	var lines []string
-	mode := strings.TrimSpace(rm.Security.Network.Mode)
-	enforcement := strings.TrimSpace(rm.Security.Network.Enforcement)
+	mode := domain.NetworkMode(strings.TrimSpace(rm.Security.Network.Mode))
+	enforcement := domain.NetworkEnforcement(strings.TrimSpace(rm.Security.Network.Enforcement))
 	if mode != "" {
 		switch enforcement {
-		case "native":
+		case domain.NetworkEnforcementNative:
 			lines = append(lines, fmt.Sprintf("policy enforcement: network %s is enforced natively by the Docker runtime", mode))
-		case "proxy":
+		case domain.NetworkEnforcementProxy:
 			lines = append(lines, fmt.Sprintf("policy enforcement: network %s requires a proxy-backed egress layer", mode))
-		case "advisory":
+		case domain.NetworkEnforcementAdvisory:
 			lines = append(lines, fmt.Sprintf("policy enforcement: network %s is advisory in this build; full egress filtering is not active yet", mode))
-			if len(rm.Security.Network.Allow) > 0 || len(rm.Security.Network.Block) > 0 || mode == "allowlist" || mode == "restricted" {
+			if len(rm.Security.Network.Allow) > 0 || len(rm.Security.Network.Block) > 0 || mode == domain.NetworkModeAllowlist || mode == domain.NetworkModeRestricted {
 				lines = append(lines, "policy coverage: domain allow/block rules are compiled for inspection but are not enforced natively by Docker")
 			}
 		}
@@ -558,19 +558,19 @@ func LoadCompiledRuntimeManifestForStep(wfConfig, wfRoot, stepID string) (*domai
 
 func DefaultRuntimePolicyFingerprint() (string, error) {
 	return domain.FingerprintJSON(domain.CompiledSecurityPolicy{
-		Preset: "secure-default",
+		Preset: string(domain.PolicyProfileSecureDefault),
 		Network: domain.CompiledNetworkPolicy{
-			Mode:        "offline",
-			Enforcement: "native",
+			Mode:        string(domain.NetworkModeOffline),
+			Enforcement: string(domain.NetworkEnforcementNative),
 			InternalDNS: true,
 		},
 		FS: domain.CompiledFilesystemPolicy{
-			Root:      "readonly",
-			Writes:    "workspace-only",
+			Root:      string(domain.FilesystemRootReadonly),
+			Writes:    string(domain.FilesystemWritesWorkspaceOnly),
 			TempPaths: []string{"/tmp"},
 		},
 		Process: domain.CompiledProcessPolicy{
-			User:            "non-root",
+			User:            string(domain.ProcessUserNonRoot),
 			NoNewPrivileges: true,
 			DropCaps:        []string{"ALL"},
 			PIDLimit:        256,

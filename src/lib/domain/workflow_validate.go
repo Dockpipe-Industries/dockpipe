@@ -242,25 +242,25 @@ func ValidateWorkflowWorkspaceConfig(fieldPrefix string, cfg WorkflowWorkspaceCo
 }
 
 func ValidateWorkflowSecurityConfig(fieldPrefix string, cfg WorkflowSecurityConfig) error {
-	if err := validateEnum(fieldPrefix+".profile", cfg.Profile, validPolicyProfiles); err != nil {
+	if err := validateEnum(fieldPrefix+".profile", PolicyProfile(cfg.Profile), validPolicyProfiles); err != nil {
 		return err
 	}
-	if err := validateEnum(fieldPrefix+".network.mode", cfg.Network.Mode, validNetworkModes); err != nil {
+	if err := validateEnum(fieldPrefix+".network.mode", NetworkMode(cfg.Network.Mode), validNetworkModes); err != nil {
 		return err
 	}
-	if strings.TrimSpace(cfg.Network.Mode) == "allowlist" && len(cfg.Network.Allow) == 0 {
+	if NetworkMode(strings.TrimSpace(cfg.Network.Mode)) == NetworkModeAllowlist && len(cfg.Network.Allow) == 0 {
 		return fmt.Errorf("%s.network.mode allowlist requires at least one allow rule", fieldPrefix)
 	}
-	if strings.TrimSpace(cfg.Network.Mode) == "offline" && (len(cfg.Network.Allow) > 0 || len(cfg.Network.Block) > 0) {
+	if NetworkMode(strings.TrimSpace(cfg.Network.Mode)) == NetworkModeOffline && (len(cfg.Network.Allow) > 0 || len(cfg.Network.Block) > 0) {
 		return fmt.Errorf("%s.network.mode offline cannot be combined with allow/block rules", fieldPrefix)
 	}
-	if err := validateEnum(fieldPrefix+".filesystem.root", cfg.Filesystem.Root, validFilesystemRoots); err != nil {
+	if err := validateEnum(fieldPrefix+".filesystem.root", FilesystemRootPolicy(cfg.Filesystem.Root), validFilesystemRoots); err != nil {
 		return err
 	}
-	if err := validateEnum(fieldPrefix+".filesystem.writes", cfg.Filesystem.Writes, validFilesystemWrites); err != nil {
+	if err := validateEnum(fieldPrefix+".filesystem.writes", FilesystemWritePolicy(cfg.Filesystem.Writes), validFilesystemWrites); err != nil {
 		return err
 	}
-	if err := validateEnum(fieldPrefix+".process.user", cfg.Process.User, validProcessUsers); err != nil {
+	if err := validateEnum(fieldPrefix+".process.user", ProcessUserPolicy(cfg.Process.User), validProcessUsers); err != nil {
 		return err
 	}
 	if cfg.Process.PIDLimit < 0 {

@@ -69,7 +69,7 @@ func compileWorkflowRuntimeArtifacts(workdir, sourceRoot, pkgName string, wf *do
 		PackageName:     strings.TrimSpace(pkgName),
 		RuntimeProfile:  strings.TrimSpace(wf.Runtime),
 		ResolverProfile: strings.TrimSpace(wf.Resolver),
-		PolicyProfile:   policyProfile,
+		PolicyProfile:   string(policyProfile),
 		PolicySources:   policySources,
 		Security:        security,
 	}
@@ -130,16 +130,16 @@ func compileStepRuntimeArtifacts(workdir, sourceRoot, pkgName string, wf *domain
 
 func compileStepRuntimeManifest(workdir, sourceRoot, pkgName string, wf *domain.Workflow, pm *domain.PackageManifest, step domain.Step, stepID string) (*domain.CompiledRuntimeManifest, *domain.ImageArtifactManifest, error) {
 	policyProfile := runtimepolicy.NormalizeWorkflowPolicyProfile(wf)
-	if p := strings.TrimSpace(step.Security.Profile); p != "" {
-		policyProfile = p
+	if p := strings.TrimSpace(string(step.Security.Profile)); p != "" {
+		policyProfile = domain.PolicyProfile(p)
 	}
 	security, policySources := runtimepolicy.CompileSecurityPolicyForWorkflow(wf, policyProfile)
 	stepOverride := runtimepolicy.ApplyStepSecurityOverrides(&security, step)
-	if strings.TrimSpace(step.Security.Profile) != "" {
+	if strings.TrimSpace(string(step.Security.Profile)) != "" {
 		stepOverride = true
 	}
-	security.Preset = policyProfile
-	security.Network.Enforcement = runtimepolicy.CompiledNetworkEnforcement(security.Network.Mode, policyProfile)
+	security.Preset = string(policyProfile)
+	security.Network.Enforcement = string(runtimepolicy.CompiledNetworkEnforcement(domain.NetworkMode(security.Network.Mode), policyProfile))
 	security.Network.InternalDNS = true
 
 	rm := &domain.CompiledRuntimeManifest{
@@ -150,11 +150,11 @@ func compileStepRuntimeManifest(workdir, sourceRoot, pkgName string, wf *domain.
 		StepID:          stepID,
 		RuntimeProfile:  firstNonEmptyString(strings.TrimSpace(step.Runtime), strings.TrimSpace(wf.Runtime)),
 		ResolverProfile: firstNonEmptyString(strings.TrimSpace(step.Resolver), strings.TrimSpace(wf.Resolver)),
-		PolicyProfile:   policyProfile,
+		PolicyProfile:   string(policyProfile),
 		PolicySources: domain.PolicySources{
 			EngineDefault:    policySources.EngineDefault,
 			RuntimeBaseline:  firstNonEmptyString(stepBaselineName(step, wf), policySources.RuntimeBaseline),
-			PolicyProfile:    policyProfile,
+			PolicyProfile:    string(policyProfile),
 			WorkflowOverride: policySources.WorkflowOverride,
 			StepOverride:     stepOverride,
 		},
