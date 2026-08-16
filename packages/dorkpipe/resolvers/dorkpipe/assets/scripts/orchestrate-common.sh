@@ -37,7 +37,7 @@ dorkpipe_orchestrate_init() {
   export DORKPIPE_ORCH_EXAMPLE_BRAIN_BASELINE="${DORKPIPE_ORCH_EXAMPLE_BRAIN_BASELINE:-${DOCKPIPE_ASSETS_DIR:-$(cd "${SCRIPT_DIR}/.." && pwd)}/docs/example-brain/baseline-rules.md}"
   export DORKPIPE_ORCH_LANE_PLAN_JSON="${DORKPIPE_ORCH_LANE_PLAN_JSON:-${DORKPIPE_ORCH_LANES_DIR}/plan.json}"
   export DORKPIPE_ORCH_TRAINING_METRICS_JSONL="${DORKPIPE_ORCH_TRAINING_METRICS_JSONL:-${DORKPIPE_ORCH_TRAINING_DIR}/metrics.jsonl}"
-  export DORKPIPE_ORCH_GLOBAL_TRAINING_METRICS="${DORKPIPE_ORCH_GLOBAL_TRAINING_METRICS:-$(dockpipe scope --package dorkpipe training metrics.jsonl)}"
+  export DORKPIPE_ORCH_GLOBAL_TRAINING_METRICS="${DORKPIPE_ORCH_GLOBAL_TRAINING_METRICS:-$("$(dorkpipe_orchestrate_helper_bin)" durable-training-metrics-path "${ROOT}")}"
   export DORKPIPE_ORCH_TRAINING_MODE="${DORKPIPE_ORCH_TRAINING_MODE:-observe}"
   export DORKPIPE_ORCH_LIVE_MODELS="${DORKPIPE_ORCH_LIVE_MODELS:-true}"
   export DORKPIPE_ORCH_CLOUD_LANES="${DORKPIPE_ORCH_CLOUD_LANES:-false}"
@@ -106,12 +106,12 @@ dorkpipe_orchestrate_helper_bin() {
   packaged_candidate="${DOCKPIPE_ASSETS_DIR:-}/tooling/bin/$(case "${OS:-}:${OSTYPE:-}:${MSYSTEM:-}" in Windows_NT:*|*:msys*:*|*:cygwin*:*|*:*:MINGW*) printf 'windows' ;; darwin*:*|*:darwin*:* ) printf 'darwin' ;; *) printf 'linux' ;; esac)/orchestrate-helper$(case "${OS:-}:${OSTYPE:-}:${MSYSTEM:-}" in Windows_NT:*|*:msys*:*|*:cygwin*:*|*:*:MINGW*) printf '.exe' ;; *) printf '' ;; esac)"
   helper_sources_stale="0"
   can_source_build="0"
-  if [[ -n "${source_repo_root:-}" && "${repo_root}" == "${source_repo_root}" ]] && [[ -d "${package_root}/lib/cmd/orchestrate-helper" ]] && [[ -d "${package_root}/lib/orchestrationhelper" ]]; then
+  if [[ -n "${source_repo_root:-}" && "${repo_root}" == "${source_repo_root}" ]] && [[ -d "${package_root}/lib/cmd/orchestrate-helper" ]] && [[ -d "${package_root}/lib/orchestrationhelper" ]] && [[ -d "${package_root}/lib/statepaths" ]]; then
     can_source_build="1"
   fi
   if [[ -x "${repo_candidate}" ]]; then
     if [[ "${can_source_build}" == "1" ]]; then
-      if ! find "${package_root}/lib/cmd/orchestrate-helper" "${package_root}/lib/orchestrationhelper" \
+      if ! find "${package_root}/lib/cmd/orchestrate-helper" "${package_root}/lib/orchestrationhelper" "${package_root}/lib/statepaths" \
         -type f \( -name '*.go' -o -name 'go.mod' -o -name 'go.sum' \) -newer "${repo_candidate}" -print -quit 2>/dev/null | grep -q .; then
         DORKPIPE_ORCH_HELPER_BIN="${repo_candidate}"
         export DORKPIPE_ORCH_HELPER_BIN
@@ -1659,6 +1659,7 @@ dorkpipe_orchestrate_record_training_metric() {
   printf '%s\n' "${metric}" >> "${DORKPIPE_ORCH_TRAINING_METRICS_JSONL}"
   if [[ -n "${DORKPIPE_ORCH_GLOBAL_TRAINING_METRICS:-}" && "${DORKPIPE_ORCH_GLOBAL_TRAINING_METRICS}" != "${DORKPIPE_ORCH_TRAINING_METRICS_JSONL}" ]]; then
     mkdir -p "$(dirname "${DORKPIPE_ORCH_GLOBAL_TRAINING_METRICS}")"
-    printf '%s\n' "${metric}" >> "${DORKPIPE_ORCH_GLOBAL_TRAINING_METRICS}"
+    (umask 077; printf '%s\n' "${metric}" >> "${DORKPIPE_ORCH_GLOBAL_TRAINING_METRICS}")
+    chmod 600 "${DORKPIPE_ORCH_GLOBAL_TRAINING_METRICS}"
   fi
 }

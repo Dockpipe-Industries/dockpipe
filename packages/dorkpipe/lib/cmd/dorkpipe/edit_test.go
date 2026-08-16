@@ -6,7 +6,42 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"dockpipe/src/lib/infrastructure"
 )
+
+func TestReadEditContextBundleUsesPipeonPackageRuntimeOnly(t *testing.T) {
+	root := t.TempDir()
+	runtimeRoot, err := infrastructure.PackageRuntimeDir(root, "pipeon")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(runtimeRoot, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	runtimeContext := filepath.Join(runtimeRoot, "pipeon-context.md")
+	if err := os.WriteFile(runtimeContext, []byte("runtime-context"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	legacyContext := filepath.Join(root, "bin", ".dockpipe", "packages", "pipeon", "pipeon-context.md")
+	if err := os.MkdirAll(filepath.Dir(legacyContext), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(legacyContext, []byte("legacy-context"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	path, content := readEditContextBundle(root)
+	if content != "runtime-context" || filepath.Clean(filepath.Join(root, path)) != filepath.Clean(runtimeContext) {
+		t.Fatalf("context bundle = %q from %q, want runtime path %q", content, path, runtimeContext)
+	}
+	if err := os.Remove(runtimeContext); err != nil {
+		t.Fatal(err)
+	}
+	path, content = readEditContextBundle(root)
+	if path != "" || content != "" {
+		t.Fatalf("context bundle fell back to legacy package state: %q from %q", content, path)
+	}
+}
 
 func TestLooksLikePackageCreation_TryYourHandPrompt(t *testing.T) {
 	t.Parallel()

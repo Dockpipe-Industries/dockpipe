@@ -28,6 +28,17 @@ pipeon_scope_path() {
 	pipeon_normalize_path "$(dockpipe scope "$@")"
 }
 
+pipeon_runtime_path() {
+	local owner="${1:?package owner}"
+	local suffix="${2:-}"
+	local workdir="${3:-${DOCKPIPE_WORKDIR:-$ROOT}}"
+	local args=(__state package-runtime --workdir "$workdir" --owner "$owner")
+	if [[ -n "$suffix" ]]; then
+		args+=(--path "$suffix")
+	fi
+	pipeon_normalize_path "$(dockpipe "${args[@]}")"
+}
+
 pipeon_version_from_repo() {
 	local root="${1:-}"
 	if [[ -z "$root" ]]; then

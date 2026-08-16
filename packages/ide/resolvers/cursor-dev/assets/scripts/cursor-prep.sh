@@ -3,7 +3,7 @@
 set -euo pipefail
 
 ROOT="$(pwd)"
-STATE_ROOT="$(dockpipe scope --package cursor-dev .)"
+STATE_ROOT="$(dockpipe __state package-runtime --workdir "$ROOT" --owner ide/resolver/cursor-dev --ensure-private)"
 DIR="$STATE_ROOT"
 mkdir -p "$DIR"
 

@@ -9,6 +9,8 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+
+	"dockpipe/src/lib/infrastructure"
 )
 
 func captureStdout(t *testing.T, fn func() error) (string, error) {
@@ -36,6 +38,8 @@ func captureStdout(t *testing.T, fn func() error) (string, error) {
 
 func TestCmdScopeWorkflowAndPackageObjects(t *testing.T) {
 	wd := t.TempDir()
+	t.Setenv("XDG_STATE_HOME", filepath.Join(wd, "durable"))
+	t.Setenv("HOME", filepath.Join(wd, "home"))
 	t.Setenv("DOCKPIPE_WORKDIR", wd)
 	t.Setenv("DOCKPIPE_BIN", filepath.Join(wd, "dockpipe"))
 	t.Setenv("DOCKPIPE_WORKFLOW_NAME", "Doctor/Check")
@@ -97,7 +101,7 @@ func TestCmdScopeWorkflowAndPackageObjects(t *testing.T) {
 	if err := json.Unmarshal([]byte(gotPackage), &pkg); err != nil {
 		t.Fatalf("package scope should be json: %v\n%s", err, gotPackage)
 	}
-	if pkg["kind"] != "package" || pkg["scope"] != "mypackage" || pkg["root"] != filepath.Join(wd, "bin", ".dockpipe", "packages", "mypackage") {
+	if pkg["kind"] != "package" || pkg["scope"] != "mypackage" || strings.HasPrefix(pkg["root"], filepath.Join(wd, "bin", ".dockpipe")) || pkg["state_root"] != pkg["root"] {
 		t.Fatalf("unexpected package scope: %#v", pkg)
 	}
 	if pkg["dockpipe_bin"] == "" {
@@ -110,13 +114,29 @@ func TestCmdScopeWorkflowAndPackageObjects(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if want := filepath.Join(wd, "bin", ".dockpipe", "packages", "mypackage", "training", "metrics.jsonl"); gotPackagePath != want {
+	if want := filepath.Join(pkg["root"], "training", "metrics.jsonl"); gotPackagePath != want {
 		t.Fatalf("package scope path = %q want %q", gotPackagePath, want)
+	}
+	gotPackageRoot, err := captureStdout(t, func() error {
+		return cmdScope([]string{"--package", "MyPackage", "."})
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if gotPackageRoot != pkg["root"] {
+		t.Fatalf("package compatibility root = %q want %q", gotPackageRoot, pkg["root"])
+	}
+	if _, err := captureStdout(t, func() error {
+		return cmdScope([]string{"--package", "MyPackage", "..", "escape"})
+	}); err == nil {
+		t.Fatal("package scope accepted traversal")
 	}
 }
 
 func TestCmdGetStateFields(t *testing.T) {
 	wd := t.TempDir()
+	t.Setenv("XDG_STATE_HOME", filepath.Join(wd, "durable"))
+	t.Setenv("HOME", filepath.Join(wd, "home"))
 	pkgRoot := filepath.Join(wd, "packages", "Pipeon Dev")
 	t.Setenv("DOCKPIPE_WORKDIR", wd)
 	t.Setenv("DOCKPIPE_PACKAGE_ROOT", pkgRoot)
@@ -143,8 +163,8 @@ func TestCmdGetStateFields(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if gotID != "pipeon-dev" {
-		t.Fatalf("package_id = %q want pipeon-dev", gotID)
+	if gotID != "Pipeon Dev" {
+		t.Fatalf("package_id = %q want %q", gotID, "Pipeon Dev")
 	}
 
 	gotPackageState, err := captureStdout(t, func() error {
@@ -153,7 +173,11 @@ func TestCmdGetStateFields(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if want := filepath.Join(wd, "bin", ".dockpipe", "packages", "pipeon-dev"); gotPackageState != want {
+	wantPackageState, err := infrastructure.ProjectPackageStateDir(wd, "Pipeon Dev")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := wantPackageState; gotPackageState != want {
 		t.Fatalf("package_state_dir = %q want %q", gotPackageState, want)
 	}
 

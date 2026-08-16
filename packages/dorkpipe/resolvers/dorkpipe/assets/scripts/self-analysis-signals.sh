@@ -2,8 +2,13 @@
 # Search-based signals (grounded).
 set -euo pipefail
 ROOT="$(pwd)"
-OUT="$(dockpipe scope --package dorkpipe self-analysis)"
-METRICS="$(dockpipe scope --package dorkpipe metrics.jsonl)"
+SCRIPT_DIR="$(dockpipe get script_dir)"
+# shellcheck source=/dev/null
+source "$SCRIPT_DIR/orchestrate-common.sh"
+eval "$(dockpipe sdk)"
+dockpipe_sdk init-script
+OUT="$(dockpipe __state package-runtime --workdir "$ROOT" --owner dorkpipe --path self-analysis)"
+METRICS="$("$(dorkpipe_orchestrate_helper_bin)" durable-metrics-path "$ROOT")"
 mkdir -p "$OUT"
 
 todo_hits() {
