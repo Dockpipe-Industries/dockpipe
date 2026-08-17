@@ -26,6 +26,8 @@ import (
 var _ func(coreir.Program) ([]byte, error) = gobackend.Generate
 
 const tinyPureFunctionSource = `public Class Root { public bool Ready(int count) => count > 0; }`
+const checkedAddSource = `public Class Root { public Result<int, ArithmeticError> Add(int left, int right) => left + right; }`
+const checkedSubtractSource = `public Class Root { public Result<int, ArithmeticError> Subtract(int left, int right) => left - right; }`
 
 func TestTinyPureFunctionLowersThroughTypedHIRCoreAndGo(t *testing.T) {
 	module := testModule("app.root", "root.pipe", tinyPureFunctionSource)
@@ -172,7 +174,7 @@ func TestV010NumericPolicyRejectsUncheckedArithmetic(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			analysis := AnalyzeSemanticModuleSet(semanticTestModuleSet("app.root", []ModuleInput{testModule("app.root", "root.pipe", test.source)}, nil))
 			diagnostic := assertDiagnosticCode(t, analysis, CodeNumericSemantics)
-			if !strings.Contains(diagnostic.Message, "checked Result failure semantics") {
+			if !strings.Contains(diagnostic.Message, "checked Result return") {
 				t.Fatalf("numeric arithmetic diagnostic = %#v", diagnostic)
 			}
 		})
@@ -261,9 +263,39 @@ func TestCheckedArithmeticHIRCoreEvaluatorAndGoConform(t *testing.T) {
 }
 
 func TestCheckedAddHIRCoreAndGoGoldens(t *testing.T) {
-	typed := hir.Program{LanguageContract: coreir.LanguageContractV010, CompilerContract: coreir.CompilerContractV1, Functions: []hir.Function{
-		hirCheckedBinaryFunction("Add", hir.OperatorAdd, hirInteger64()),
-	}}
+	module := testModule("app.root", "root.pipe", checkedAddSource)
+	input := semanticTestModuleSet("app.root", []ModuleInput{module}, nil)
+	input.LanguageContract = PipeLangLanguageContractV020
+	analysis := AnalyzeSemanticModuleSet(input)
+	if err := analysis.Error(); err != nil {
+		t.Fatal(err)
+	}
+	method := semanticMethodNamed(t, analysis, "Add")
+	if method.Identity.Callable == nil {
+		t.Fatal("checked Add has no callable identity")
+	}
+	returns := method.Identity.Callable.Returns
+	if returns.Kind != TypeRefApplied || returns.Name != "Result" || returns.PackageID != PipeLangBuiltinPackageID || returns.Path != PipeLangResultSemanticPath || len(returns.Arguments) != 2 || returns.Arguments[0].Primitive != TypeInt || returns.Arguments[1].Kind != TypeRefNamed || returns.Arguments[1].PackageID != PipeLangBuiltinPackageID || returns.Arguments[1].Path != PipeLangArithmeticErrorSemanticPath {
+		t.Fatalf("checked Add callable return = %#v", returns)
+	}
+	projection, err := BuildSemanticProjection(analysis)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if projection.LanguageContract != PipeLangLanguageContractV020 || projection.Schema != PipeLangSemanticProjectionVersion || projection.CompilerContract != PipeLangCompilerContract {
+		t.Fatalf("checked Add projection header = %#v", projection)
+	}
+	projected := projectedMemberNamed(t, projection.Modules[0].Types[0], "Add").Type
+	if projected.Kind != TypeRefApplied || projected.Name != "Result" || projected.Identity == nil || projected.Identity.PackageID != PipeLangBuiltinPackageID || projected.Identity.Path != PipeLangResultSemanticPath || len(projected.Arguments) != 2 || projected.Arguments[1].Identity == nil || projected.Arguments[1].Identity.PackageID != PipeLangBuiltinPackageID || projected.Arguments[1].Identity.Path != PipeLangArithmeticErrorSemanticPath {
+		t.Fatalf("checked Add projected return = %#v", projected)
+	}
+	typed, err := LowerSemanticMethodToHIR(analysis, method.Identity)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if typed.LanguageContract != coreir.LanguageContractV020 || len(typed.Functions) != 1 || typed.Functions[0].ReturnType.Kind != hir.TypeResult || typed.Functions[0].Body.Type.Kind != hir.TypeResult {
+		t.Fatalf("checked Add HIR = %#v", typed)
+	}
 	core, err := LowerHIRToCore(typed)
 	if err != nil {
 		t.Fatal(err)
@@ -272,9 +304,208 @@ func TestCheckedAddHIRCoreAndGoGoldens(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	for _, test := range []struct {
+		name      string
+		arguments []coreeval.Value
+		ok        bool
+		value     int64
+		failure   coreir.ArithmeticError
+	}{
+		{name: "success", arguments: coreIntArguments(2, 3), ok: true, value: 5},
+		{name: "overflow", arguments: coreIntArguments(math.MaxInt64, 1), failure: coreir.ArithmeticOverflow},
+	} {
+		outcome, evaluateErr := coreeval.Evaluate(core.Functions[0], test.arguments)
+		if evaluateErr != nil {
+			t.Fatalf("%s Core evaluation: %v", test.name, evaluateErr)
+		}
+		if outcome.OK != test.ok || outcome.Value.Int != test.value || outcome.Error != test.failure {
+			t.Fatalf("%s Core outcome = %#v", test.name, outcome)
+		}
+	}
+	compileAndRunCheckedAddGo(t, generated, gobackend.FunctionName(core.Functions[0]))
 	assertCompilerGolden(t, "checked-add.hir.json", canonicalJSON(t, typed))
 	assertCompilerGolden(t, "checked-add.core.json", canonicalJSON(t, core))
 	assertCompilerGolden(t, "checked-add.go", generated)
+}
+
+func TestCheckedSubtractHIRCoreAndGoGoldens(t *testing.T) {
+	module := testModule("app.root", "root.pipe", checkedSubtractSource)
+	input := semanticTestModuleSet("app.root", []ModuleInput{module}, nil)
+	input.LanguageContract = PipeLangLanguageContractV030
+	analysis := AnalyzeSemanticModuleSet(input)
+	if err := analysis.Error(); err != nil {
+		t.Fatal(err)
+	}
+	method := semanticMethodNamed(t, analysis, "Subtract")
+	if method.Identity.Callable == nil {
+		t.Fatal("checked Subtract has no callable identity")
+	}
+	callable := method.Identity.Callable
+	returns := callable.Returns
+	if len(callable.Parameters) != 2 || callable.Parameters[0].Primitive != TypeInt || callable.Parameters[1].Primitive != TypeInt || returns.Kind != TypeRefApplied || returns.Name != "Result" || returns.PackageID != PipeLangBuiltinPackageID || returns.Path != PipeLangResultSemanticPath || len(returns.Arguments) != 2 || returns.Arguments[0].Primitive != TypeInt || returns.Arguments[1].Kind != TypeRefNamed || returns.Arguments[1].PackageID != PipeLangBuiltinPackageID || returns.Arguments[1].Path != PipeLangArithmeticErrorSemanticPath {
+		t.Fatalf("checked Subtract callable identity = %#v", callable)
+	}
+	projection, err := BuildSemanticProjection(analysis)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if projection.LanguageContract != PipeLangLanguageContractV030 || projection.Schema != PipeLangSemanticProjectionVersion || projection.CompilerContract != PipeLangCompilerContract {
+		t.Fatalf("checked Subtract projection header = %#v", projection)
+	}
+	projected := projectedMemberNamed(t, projection.Modules[0].Types[0], "Subtract").Type
+	if projected.Kind != TypeRefApplied || projected.Name != "Result" || projected.Identity == nil || projected.Identity.PackageID != PipeLangBuiltinPackageID || projected.Identity.Path != PipeLangResultSemanticPath || len(projected.Arguments) != 2 || projected.Arguments[0].Primitive != TypeInt || projected.Arguments[1].Identity == nil || projected.Arguments[1].Identity.PackageID != PipeLangBuiltinPackageID || projected.Arguments[1].Identity.Path != PipeLangArithmeticErrorSemanticPath {
+		t.Fatalf("checked Subtract projected return = %#v", projected)
+	}
+	typed, err := LowerSemanticMethodToHIR(analysis, method.Identity)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if typed.LanguageContract != coreir.LanguageContractV030 || len(typed.Functions) != 1 || typed.Functions[0].ReturnType.Kind != hir.TypeResult || typed.Functions[0].Body.Type.Kind != hir.TypeResult || typed.Functions[0].Body.Binary == nil || typed.Functions[0].Body.Binary.Operator != hir.OperatorSubtract {
+		t.Fatalf("checked Subtract HIR = %#v", typed)
+	}
+	core, err := LowerHIRToCore(typed)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if core.Functions[0].Body.Binary == nil || core.Functions[0].Body.Binary.Operator != coreir.OperatorSubtract {
+		t.Fatalf("checked Subtract Core = %#v", core)
+	}
+	generated, err := gobackend.Generate(core)
+	if err != nil {
+		t.Fatal(err)
+	}
+	secondGenerated, err := gobackend.Generate(core)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(generated, secondGenerated) {
+		t.Fatal("checked Subtract generated Go is nondeterministic")
+	}
+	for _, test := range []struct {
+		name      string
+		arguments []coreeval.Value
+		ok        bool
+		value     int64
+		failure   coreir.ArithmeticError
+	}{
+		{name: "success", arguments: coreIntArguments(5, 3), ok: true, value: 2},
+		{name: "negative success", arguments: coreIntArguments(-5, -3), ok: true, value: -2},
+		{name: "minimum underflow", arguments: coreIntArguments(math.MinInt64, 1), failure: coreir.ArithmeticOverflow},
+		{name: "maximum overflow", arguments: coreIntArguments(math.MaxInt64, -1), failure: coreir.ArithmeticOverflow},
+	} {
+		outcome, evaluateErr := coreeval.Evaluate(core.Functions[0], test.arguments)
+		if evaluateErr != nil {
+			t.Fatalf("%s Core evaluation: %v", test.name, evaluateErr)
+		}
+		if outcome.OK != test.ok || outcome.Value.Int != test.value || outcome.Error != test.failure {
+			t.Fatalf("%s Core outcome = %#v", test.name, outcome)
+		}
+	}
+	compileAndRunCheckedSubtractGo(t, generated, gobackend.FunctionName(core.Functions[0]))
+	assertCompilerGolden(t, "checked-subtract.hir.json", canonicalJSON(t, typed))
+	assertCompilerGolden(t, "checked-subtract.core.json", canonicalJSON(t, core))
+	assertCompilerGolden(t, "checked-subtract.go", generated)
+}
+
+func TestV020CheckedAddRequiresExplicitExactDirectResult(t *testing.T) {
+	tests := []struct {
+		name   string
+		source string
+	}{
+		{name: "ordinary integer return", source: `public Class Root { public int Add(int left, int right) => left + right; }`},
+		{name: "nested addition", source: `public Class Root { public Result<int, ArithmeticError> Add(int left, int right) => 1 + (left + right); }`},
+		{name: "different arithmetic", source: `public Class Root { public Result<int, ArithmeticError> Add(int left, int right) => left - right; }`},
+		{name: "different success type", source: `public Class Root { public Result<float, ArithmeticError> Add(int left, int right) => left + right; }`},
+		{name: "different failure type", source: `public Class Root { public Result<int, Root> Add(int left, int right) => left + right; }`},
+		{name: "result field", source: `public Class Root { public Result<int, ArithmeticError> Value; }`},
+		{name: "result parameter", source: `public Class Root { public bool Check(Result<int, ArithmeticError> value) => true; }`},
+		{name: "interface result", source: `public Interface Math { public Result<int, ArithmeticError> Add(int left, int right); } public Class Root { public bool Ready() => true; }`},
+		{name: "bare arithmetic error", source: `public Class Root { public ArithmeticError Error() => 1; }`},
+		{name: "reserved declaration", source: `public Class ArithmeticError { public int Value; }`},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			input := semanticTestModuleSet("app.root", []ModuleInput{testModule("app.root", "root.pipe", test.source)}, nil)
+			input.LanguageContract = PipeLangLanguageContractV020
+			analysis := AnalyzeSemanticModuleSet(input)
+			if !analysis.Diagnostics.HasErrors() {
+				t.Fatal("invalid v0.2.0 Result shape was accepted")
+			}
+			if test.name == "ordinary integer return" || test.name == "nested addition" || test.name == "different arithmetic" {
+				assertDiagnosticCode(t, analysis, CodeNumericSemantics)
+			}
+		})
+	}
+}
+
+func TestV030CheckedSubtractRequiresExplicitExactDirectResult(t *testing.T) {
+	tests := []struct {
+		name   string
+		source string
+	}{
+		{name: "ordinary integer return", source: `public Class Root { public int Subtract(int left, int right) => left - right; }`},
+		{name: "nested subtraction", source: `public Class Root { public Result<int, ArithmeticError> Subtract(int left, int right) => 1 - (left - right); }`},
+		{name: "multiplication remains closed", source: `public Class Root { public Result<int, ArithmeticError> Multiply(int left, int right) => left * right; }`},
+		{name: "negation remains closed", source: `public Class Root { public Result<int, ArithmeticError> Negate(int value) => -value; }`},
+		{name: "division remains closed", source: `public Class Root { public Result<int, ArithmeticError> Divide(int left, int right) => left / right; }`},
+		{name: "different success type", source: `public Class Root { public Result<float, ArithmeticError> Subtract(int left, int right) => left - right; }`},
+		{name: "different failure type", source: `public Class Root { public Result<int, Root> Subtract(int left, int right) => left - right; }`},
+		{name: "result field", source: `public Class Root { public Result<int, ArithmeticError> Value; }`},
+		{name: "result parameter", source: `public Class Root { public bool Check(Result<int, ArithmeticError> value) => true; }`},
+		{name: "interface result", source: `public Interface Math { public Result<int, ArithmeticError> Subtract(int left, int right); } public Class Root { public bool Ready() => true; }`},
+		{name: "bare arithmetic error", source: `public Class Root { public ArithmeticError Error() => 1; }`},
+		{name: "reserved declaration", source: `public Class Result { public int Value; }`},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			input := semanticTestModuleSet("app.root", []ModuleInput{testModule("app.root", "root.pipe", test.source)}, nil)
+			input.LanguageContract = PipeLangLanguageContractV030
+			analysis := AnalyzeSemanticModuleSet(input)
+			if !analysis.Diagnostics.HasErrors() {
+				t.Fatal("invalid v0.3.0 Result shape was accepted")
+			}
+			if test.name == "ordinary integer return" || test.name == "nested subtraction" || strings.Contains(test.name, "remains closed") {
+				assertDiagnosticCode(t, analysis, CodeNumericSemantics)
+			}
+		})
+	}
+}
+
+func TestV030PreservesDirectCheckedAdd(t *testing.T) {
+	input := semanticTestModuleSet("app.root", []ModuleInput{testModule("app.root", "root.pipe", checkedAddSource)}, nil)
+	input.LanguageContract = PipeLangLanguageContractV030
+	analysis := AnalyzeSemanticModuleSet(input)
+	if err := analysis.Error(); err != nil {
+		t.Fatal(err)
+	}
+	method := semanticMethodNamed(t, analysis, "Add")
+	typed, err := LowerSemanticMethodToHIR(analysis, method.Identity)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if typed.Functions[0].Body.Binary == nil || typed.Functions[0].Body.Binary.Operator != hir.OperatorAdd {
+		t.Fatalf("v0.3.0 changed direct checked Add = %#v", typed.Functions[0].Body)
+	}
+}
+
+func TestCheckedSubtractRequiresExplicitV030Migration(t *testing.T) {
+	for _, contract := range []LanguageContract{PipeLangLanguageContractV010, PipeLangLanguageContractV020} {
+		input := semanticTestModuleSet("app.root", []ModuleInput{testModule("app.root", "root.pipe", checkedSubtractSource)}, nil)
+		input.LanguageContract = contract
+		analysis := AnalyzeSemanticModuleSet(input)
+		if !analysis.Diagnostics.HasErrors() {
+			t.Fatalf("%s implicitly accepted the v0.3.0 checked subtraction", contract)
+		}
+	}
+}
+
+func TestResultSourceSpellingRequiresExplicitV020Migration(t *testing.T) {
+	input := semanticTestModuleSet("app.root", []ModuleInput{testModule("app.root", "root.pipe", checkedAddSource)}, nil)
+	input.LanguageContract = PipeLangLanguageContractV010
+	analysis := AnalyzeSemanticModuleSet(input)
+	if !analysis.Diagnostics.HasErrors() {
+		t.Fatal("v0.1.0 implicitly accepted the v0.2.0 Result spelling")
+	}
 }
 
 func TestCheckedArithmeticHIRRejectsMalformedResultType(t *testing.T) {
@@ -621,6 +852,51 @@ func TestGeneratedCheckedArithmetic(t *testing.T) {
 }
 `, gobackend.PackageName,
 		names["Add"], names["Add"], names["Subtract"], names["Subtract"], names["Multiply"], names["Multiply"], names["Negate"], names["Negate"], names["Divide"], names["Divide"], names["Divide"], names["Divide"])
+	compileAndRunGeneratedGoFiles(t, generated, []byte(testSource))
+}
+
+func compileAndRunCheckedAddGo(t *testing.T, generated []byte, name string) {
+	t.Helper()
+	testSource := fmt.Sprintf(`package %s
+
+import (
+	"math"
+	"testing"
+)
+
+func TestGeneratedCheckedAdd(t *testing.T) {
+	if got := %s(2, 3); !got.OK || got.Value != 5 || got.Error != "" {
+		t.Fatalf("success: %%#v", got)
+	}
+	if got := %s(math.MaxInt64, 1); got.OK || got.Value != 0 || got.Error != PipeLangArithmeticOverflow {
+		t.Fatalf("overflow: %%#v", got)
+	}
+}
+`, gobackend.PackageName, name, name)
+	compileAndRunGeneratedGoFiles(t, generated, []byte(testSource))
+}
+
+func compileAndRunCheckedSubtractGo(t *testing.T, generated []byte, name string) {
+	t.Helper()
+	testSource := fmt.Sprintf(`package %s
+
+import (
+	"math"
+	"testing"
+)
+
+func TestGeneratedCheckedSubtract(t *testing.T) {
+	if got := %s(5, 3); !got.OK || got.Value != 2 || got.Error != "" {
+		t.Fatalf("success: %%#v", got)
+	}
+	if got := %s(math.MinInt64, 1); got.OK || got.Value != 0 || got.Error != PipeLangArithmeticOverflow {
+		t.Fatalf("minimum underflow: %%#v", got)
+	}
+	if got := %s(math.MaxInt64, -1); got.OK || got.Value != 0 || got.Error != PipeLangArithmeticOverflow {
+		t.Fatalf("maximum overflow: %%#v", got)
+	}
+}
+`, gobackend.PackageName, name, name, name)
 	compileAndRunGeneratedGoFiles(t, generated, []byte(testSource))
 }
 

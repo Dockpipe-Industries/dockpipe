@@ -6,10 +6,11 @@ import (
 )
 
 type parser struct {
-	sources *SourceSet
-	file    *SourceFile
-	toks    []token
-	idx     int
+	sources          *SourceSet
+	file             *SourceFile
+	languageContract LanguageContract
+	toks             []token
+	idx              int
 }
 
 func Parse(src []byte) (*Program, error) {
@@ -29,11 +30,15 @@ func ParseFile(path string, src []byte) (*Program, error) {
 }
 
 func parseSourceFile(sources *SourceSet, file *SourceFile) (*Program, error) {
+	return parseSourceFileWithLanguageContract(sources, file, LegacyLanguageContract)
+}
+
+func parseSourceFileWithLanguageContract(sources *SourceSet, file *SourceFile, languageContract LanguageContract) (*Program, error) {
 	toks, err := lex(sources, file)
 	if err != nil {
 		return nil, err
 	}
-	p := &parser{sources: sources, file: file, toks: toks}
+	p := &parser{sources: sources, file: file, languageContract: languageContract, toks: toks}
 	return p.parseProgram()
 }
 
@@ -338,6 +343,25 @@ func (p *parser) parseTypeRef() (UnresolvedTypeRef, error) {
 			return UnresolvedTypeRef{}, err
 		}
 		return UnresolvedTypeRef{Kind: TypeRefApplied, Name: "List", Arguments: []UnresolvedTypeRef{inner}, Span: mergeSpans(tok.span, end.span)}, nil
+	}
+	if tok.lit == "Result" && hasArithmeticResultSourceContract(p.languageContract) && p.peek().kind == tokLT {
+		p.next()
+		success, err := p.parseTypeRef()
+		if err != nil {
+			return UnresolvedTypeRef{}, err
+		}
+		if _, err := p.expect(tokComma); err != nil {
+			return UnresolvedTypeRef{}, err
+		}
+		failure, err := p.parseTypeRef()
+		if err != nil {
+			return UnresolvedTypeRef{}, err
+		}
+		end, err := p.expect(tokGT)
+		if err != nil {
+			return UnresolvedTypeRef{}, err
+		}
+		return UnresolvedTypeRef{Kind: TypeRefApplied, Name: "Result", Arguments: []UnresolvedTypeRef{success, failure}, Span: mergeSpans(tok.span, end.span)}, nil
 	}
 	return UnresolvedTypeRef{Kind: TypeRefNamed, Name: tok.lit, Span: tok.span}, nil
 }

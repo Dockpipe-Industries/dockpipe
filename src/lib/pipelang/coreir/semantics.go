@@ -24,8 +24,9 @@ func ArithmeticResult(success Type) Type {
 }
 
 // ArithmeticResultType is the single target-independent signature contract
-// for the bounded checked-arithmetic seed. Production source admission stays
-// closed until an explicit Result spelling and migration are accepted.
+// for bounded checked arithmetic. The v0.1.0 source lane remains closed; the
+// v0.2.0 maps only direct integer addition here; v0.3.0 additionally maps
+// direct integer subtraction. Other operations remain compiler-internal.
 func ArithmeticResultType(operator Operator, left Type, right *Type) (Type, error) {
 	integer64 := SignedInteger(64)
 	binary64 := BinaryFloat(64)

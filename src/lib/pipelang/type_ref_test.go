@@ -21,6 +21,64 @@ func TestParseCreatesStructuredNestedTypeRefsWithSpans(t *testing.T) {
 	}
 }
 
+func TestV020ParserCreatesVersionedResultTypeWithDurableSpans(t *testing.T) {
+	const source = `public Class Root { public Result<int, ArithmeticError> Add(int left, int right) => left + right; }`
+	sources, diagnostics := NewSourceSet([]SourceInput{{Path: "root.pipe", Data: []byte(source)}})
+	if diagnostics.HasErrors() {
+		t.Fatal(diagnostics)
+	}
+	program, err := parseSourceFileWithLanguageContract(sources, sources.Files()[0], PipeLangLanguageContractV020)
+	if err != nil {
+		t.Fatal(err)
+	}
+	result := program.Classes[0].Methods[0].ReturnType
+	if result.Kind != TypeRefApplied || result.String() != "Result<int,ArithmeticError>" || result.Span.File != "root.pipe" || len(result.Arguments) != 2 || result.Arguments[0].Kind != TypeRefPrimitive || result.Arguments[1].Kind != TypeRefNamed {
+		t.Fatalf("parsed Result = %#v", result)
+	}
+	for _, argument := range result.Arguments {
+		if !argument.Span.IsValid() || argument.Span.Start <= result.Span.Start || argument.Span.End >= result.Span.End {
+			t.Fatalf("Result argument span = %#v, result span = %#v", argument.Span, result.Span)
+		}
+	}
+	if _, err := ParseFile("root.pipe", []byte(source)); err == nil {
+		t.Fatal("frozen legacy parser implicitly accepted the v0.2.0 Result spelling")
+	}
+}
+
+func TestV020ParserRejectsMalformedResultType(t *testing.T) {
+	const source = `public Class Root { public Result<int ArithmeticError> Add(int left, int right) => left + right; }`
+	sources, diagnostics := NewSourceSet([]SourceInput{{Path: "root.pipe", Data: []byte(source)}})
+	if diagnostics.HasErrors() {
+		t.Fatal(diagnostics)
+	}
+	_, err := parseSourceFileWithLanguageContract(sources, sources.Files()[0], PipeLangLanguageContractV020)
+	if err == nil {
+		t.Fatal("malformed Result type was accepted")
+	}
+	structured, ok := AsDiagnostics(err)
+	if !ok || len(structured) != 1 || structured[0].Category != CategorySyntax || !structured[0].Primary.IsValid() {
+		t.Fatalf("malformed Result diagnostic = %#v (%v)", structured, err)
+	}
+}
+
+func TestV030ParserPreservesCheckedSubtractResultAndExpressionSpans(t *testing.T) {
+	const source = `public Class Root { public Result<int, ArithmeticError> Subtract(int left, int right) => left - right; }`
+	sources, diagnostics := NewSourceSet([]SourceInput{{Path: "root.pipe", Data: []byte(source)}})
+	if diagnostics.HasErrors() {
+		t.Fatal(diagnostics)
+	}
+	program, err := parseSourceFileWithLanguageContract(sources, sources.Files()[0], PipeLangLanguageContractV030)
+	if err != nil {
+		t.Fatal(err)
+	}
+	method := program.Classes[0].Methods[0]
+	result := method.ReturnType
+	binary, ok := method.Body.(*BinaryExpr)
+	if result.Kind != TypeRefApplied || result.String() != "Result<int,ArithmeticError>" || !result.Span.IsValid() || len(result.Arguments) != 2 || !result.Arguments[0].Span.IsValid() || !result.Arguments[1].Span.IsValid() || !ok || binary.Op != "-" || !binary.Span.IsValid() || !binary.Left.SourceSpan().IsValid() || !binary.Right.SourceSpan().IsValid() {
+		t.Fatalf("v0.3.0 checked subtraction parse = result %#v body %#v", result, method.Body)
+	}
+}
+
 func TestAnalyzeResolvesNamedTypesThroughOneOwnedSymbolTable(t *testing.T) {
 	analysis := AnalyzeFiles(map[string][]byte{
 		"a.pipe": []byte(`Interface Item { string Name; }`),

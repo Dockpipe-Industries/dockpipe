@@ -1,11 +1,11 @@
 {
-  "language_contract": "v0.2.0",
+  "language_contract": "v0.3.0",
   "compiler_contract": "pipelang.compiler.v1",
   "functions": [
     {
       "identity": {
         "package_id": "test.package",
-        "path": "app.root.root.add",
+        "path": "app.root.root.subtract",
         "callable": {
           "parameters": [
             {
@@ -36,7 +36,7 @@
           }
         }
       },
-      "name": "Add",
+      "name": "Subtract",
       "parameters": [
         {
           "position": 0,
@@ -98,7 +98,7 @@
           }
         },
         "binary": {
-          "operator": "add",
+          "operator": "subtract",
           "left": {
             "kind": "reference",
             "type": {

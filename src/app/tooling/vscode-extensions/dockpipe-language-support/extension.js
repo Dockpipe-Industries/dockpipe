@@ -5,6 +5,24 @@ const fs = require("fs/promises");
 const path = require("path");
 const zlib = require("zlib");
 
+const PIPELANG_COMPLETION_KEYWORDS = [
+  "public",
+  "private",
+  "Interface",
+  "Class",
+  "Struct",
+  "List",
+  "Result",
+  "ArithmeticError",
+  "IComparable",
+  "string",
+  "int",
+  "bool",
+  "float",
+  "true",
+  "false"
+];
+
 const DOCKPIPE_TOP_LEVEL_KEYS = [
   "name",
   "description",
@@ -2746,22 +2764,7 @@ function activate(context) {
       { language: "pipelang", scheme: "file" },
       {
         provideCompletionItems() {
-          const kws = [
-            "public",
-            "private",
-            "Interface",
-            "Class",
-            "Struct",
-            "List",
-            "IComparable",
-            "string",
-            "int",
-            "bool",
-            "float",
-            "true",
-            "false"
-          ];
-          return kws.map((k) => new vscode.CompletionItem(k, vscode.CompletionItemKind.Keyword));
+          return PIPELANG_COMPLETION_KEYWORDS.map((keyword) => new vscode.CompletionItem(keyword, vscode.CompletionItemKind.Keyword));
         }
       }
     )
@@ -2855,5 +2858,5 @@ function deactivate() {}
 module.exports = {
   activate,
   deactivate,
-  __test: { pipeLangPosition, pipeLangRange, pipeLangEditorDiagnostics }
+  __test: { PIPELANG_COMPLETION_KEYWORDS, pipeLangPosition, pipeLangRange, pipeLangEditorDiagnostics }
 };

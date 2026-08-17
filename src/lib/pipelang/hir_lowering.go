@@ -7,7 +7,7 @@ import (
 	"dockpipe/src/lib/pipelang/hir"
 )
 
-// LowerSemanticMethodToHIR selects one checked v0.1.0 semantic method and
+// LowerSemanticMethodToHIR selects one checked post-legacy semantic method and
 // lowers its existing expression syntax into typed, target-independent HIR.
 func LowerSemanticMethodToHIR(analysis *Analysis, identity SemanticIdentity) (hir.Program, error) {
 	if analysis == nil {
@@ -19,8 +19,8 @@ func LowerSemanticMethodToHIR(analysis *Analysis, identity SemanticIdentity) (hi
 	if analysis.Program == nil || analysis.checked == nil || analysis.Modules == nil || analysis.SemanticIDs == nil {
 		return hir.Program{}, hirLoweringError(analysis, Span{}, identity, "typed HIR lowering requires a successful semantic module analysis")
 	}
-	if analysis.Modules.LanguageContract() != PipeLangLanguageContract {
-		return hir.Program{}, hirLoweringError(analysis, analysis.Program.Span, identity, fmt.Sprintf("typed HIR lowering requires language contract %q", PipeLangLanguageContract))
+	if !isPipeLangSemanticContract(analysis.Modules.LanguageContract()) {
+		return hir.Program{}, hirLoweringError(analysis, analysis.Program.Span, identity, fmt.Sprintf("typed HIR lowering requires language contract %q, %q, or %q", PipeLangLanguageContractV010, PipeLangLanguageContractV020, PipeLangLanguageContractV030))
 	}
 	semantic, ok := analysis.SemanticIDs.LookupIdentity(identity)
 	if !ok || semantic.Kind != SemanticMethod {
@@ -67,7 +67,7 @@ func LowerSemanticMethodToHIR(analysis *Analysis, identity SemanticIdentity) (hi
 	if err != nil {
 		return hir.Program{}, err
 	}
-	body, err := lowerExprToHIR(analysis, identity, method.Body, bindings, typeEnvironment)
+	body, err := lowerMethodBodyToHIR(analysis, identity, method.Body, bindings, typeEnvironment, returnType)
 	if err != nil {
 		return hir.Program{}, err
 	}
@@ -78,7 +78,44 @@ func LowerSemanticMethodToHIR(analysis *Analysis, identity SemanticIdentity) (hi
 		},
 		Name: method.Name, Parameters: parameters, ReturnType: toHIRType(analysis, returnType), ReturnTypeSpan: toHIRSpan(method.ReturnType.Span), Body: body, Span: toHIRSpan(method.Span),
 	}
-	return hir.Program{LanguageContract: coreir.LanguageContractV010, CompilerContract: coreir.CompilerContractV1, Functions: []hir.Function{function}}, nil
+	return hir.Program{LanguageContract: string(analysis.Modules.LanguageContract()), CompilerContract: coreir.CompilerContractV1, Functions: []hir.Function{function}}, nil
+}
+
+func lowerMethodBodyToHIR(analysis *Analysis, function SemanticIdentity, expression Expr, bindings map[string]hir.Binding, typeEnvironment map[string]ResolvedTypeRef, returnType ResolvedTypeRef) (hir.Expr, error) {
+	if !hasArithmeticResultSourceContract(analysis.Modules.LanguageContract()) || !isResolvedIntArithmeticResult(returnType) {
+		return lowerExprToHIR(analysis, function, expression, bindings, typeEnvironment)
+	}
+	binary, ok := expression.(*BinaryExpr)
+	operator, accepted := checkedArithmeticHIROperator(analysis.Modules.LanguageContract(), binary)
+	if !ok || !accepted {
+		return hir.Expr{}, hirLoweringError(analysis, expression.SourceSpan(), function, fmt.Sprintf("%s Result method body is not a direct checked integer %s shape proven by semantic analysis", analysis.Modules.LanguageContract(), arithmeticSourceOperators(analysis.Modules.LanguageContract())))
+	}
+	left, err := lowerExprToHIR(analysis, function, binary.Left, bindings, typeEnvironment)
+	if err != nil {
+		return hir.Expr{}, err
+	}
+	right, err := lowerExprToHIR(analysis, function, binary.Right, bindings, typeEnvironment)
+	if err != nil {
+		return hir.Expr{}, err
+	}
+	return hir.Expr{
+		Kind: hir.ExprBinary, Type: toHIRType(analysis, returnType), Span: toHIRSpan(binary.Span),
+		Binary: &hir.Binary{Operator: operator, Left: &left, Right: &right},
+	}, nil
+}
+
+func checkedArithmeticHIROperator(contract LanguageContract, binary *BinaryExpr) (hir.Operator, bool) {
+	if binary == nil {
+		return "", false
+	}
+	switch binary.Op {
+	case "+":
+		return hir.OperatorAdd, true
+	case "-":
+		return hir.OperatorSubtract, contract == PipeLangLanguageContractV030
+	default:
+		return "", false
+	}
 }
 
 func lowerExprToHIR(analysis *Analysis, function SemanticIdentity, expression Expr, bindings map[string]hir.Binding, typeEnvironment map[string]ResolvedTypeRef) (hir.Expr, error) {
@@ -233,6 +270,15 @@ func symbolBySpan(table *SymbolTable, span Span) (Symbol, bool) {
 }
 
 func toHIRType(analysis *Analysis, resolved ResolvedTypeRef) hir.Type {
+	if isResolvedIntArithmeticResult(resolved) {
+		return hir.Type{
+			Kind:   hir.TypeResult,
+			Result: &hir.ResultType{Success: toHIRType(analysis, resolved.Arguments[0]), Failure: toHIRType(analysis, resolved.Arguments[1])},
+		}
+	}
+	if isResolvedArithmeticError(resolved) {
+		return hir.Type{Kind: hir.TypeArithmeticError}
+	}
 	result := hir.Type{Kind: hir.TypeKind(resolved.Kind), Primitive: hir.PrimitiveType(resolved.Primitive), SymbolID: uint32(resolved.Symbol), Name: resolved.Name}
 	if resolved.Kind == TypeRefPrimitive {
 		switch resolved.Primitive {

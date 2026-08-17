@@ -213,6 +213,9 @@ func resolveTypeRef(sources *SourceSet, symbols *SymbolTable, modules *ModuleGra
 		primitive, _ := primitiveType(ref.Name)
 		return resolvedPrimitive(primitive), nil
 	case TypeRefNamed:
+		if ref.Qualifier == "" && ref.Name == "ArithmeticError" && modules != nil && hasArithmeticResultSourceContract(modules.LanguageContract()) {
+			return resolvedArithmeticError(), nil
+		}
 		var entry symbolEntry
 		var ok bool
 		code := CodeInvalidType
@@ -229,6 +232,9 @@ func resolveTypeRef(sources *SourceSet, symbols *SymbolTable, modules *ModuleGra
 		symbol := entry.symbol
 		return ResolvedTypeRef{Kind: TypeRefNamed, Name: symbol.Name, Symbol: symbol.ID}, nil
 	case TypeRefApplied:
+		if ref.Name == "Result" && (modules == nil || !hasArithmeticResultSourceContract(modules.LanguageContract())) {
+			return ResolvedTypeRef{}, oneDiagnostic(sources, CodeInvalidType, CategorySemantic, ref.Span, fmt.Sprintf("type %q requires language contract %q", ref.String(), PipeLangLanguageContractV020), related...)
+		}
 		arguments := make([]ResolvedTypeRef, 0, len(ref.Arguments))
 		for _, argument := range ref.Arguments {
 			resolved, err := resolveTypeRef(sources, symbols, modules, owner, argument, related...)
@@ -236,6 +242,13 @@ func resolveTypeRef(sources *SourceSet, symbols *SymbolTable, modules *ModuleGra
 				return ResolvedTypeRef{}, err
 			}
 			arguments = append(arguments, resolved)
+		}
+		if ref.Name == "Result" {
+			resolved := ResolvedTypeRef{Kind: TypeRefApplied, Name: ref.Name, PackageID: PipeLangBuiltinPackageID, Path: PipeLangResultSemanticPath, Arguments: arguments}
+			if !isResolvedIntArithmeticResult(resolved) {
+				return ResolvedTypeRef{}, oneDiagnostic(sources, CodeInvalidType, CategorySemantic, ref.Span, fmt.Sprintf("language contract %q admits only Result<int,ArithmeticError> for checked arithmetic", modules.LanguageContract()), related...)
+			}
+			return resolved, nil
 		}
 		return ResolvedTypeRef{Kind: TypeRefApplied, Name: ref.Name, Arguments: arguments}, nil
 	default:

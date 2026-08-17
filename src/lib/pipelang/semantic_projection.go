@@ -102,8 +102,8 @@ func buildSemanticProjection(analysis *Analysis, view SemanticProjectionView) (*
 	if err := analysis.Error(); err != nil {
 		return nil, err
 	}
-	if analysis.Modules.languageContract != PipeLangLanguageContract {
-		return nil, projectionError(analysis, fmt.Sprintf("semantic projection requires language contract %q", PipeLangLanguageContract))
+	if !isPipeLangSemanticContract(analysis.Modules.languageContract) {
+		return nil, projectionError(analysis, fmt.Sprintf("semantic projection requires language contract %q, %q, or %q", PipeLangLanguageContractV010, PipeLangLanguageContractV020, PipeLangLanguageContractV030))
 	}
 	if view != SemanticProjectionPublic && view != SemanticProjectionWorkspace {
 		return nil, projectionError(analysis, fmt.Sprintf("invalid semantic projection view %q", view))
@@ -282,15 +282,25 @@ func projectMember(analysis *Analysis, kind SemanticKind, name string, visibilit
 func projectResolvedType(analysis *Analysis, resolved ResolvedTypeRef) (SemanticTypeRefProjection, error) {
 	projection := SemanticTypeRefProjection{Kind: resolved.Kind, Primitive: resolved.Primitive, Name: resolved.Name}
 	if resolved.Kind == TypeRefNamed {
-		symbol, ok := analysis.Symbols.LookupID(resolved.Symbol)
-		if !ok {
-			return SemanticTypeRefProjection{}, projectionError(analysis, fmt.Sprintf("resolved type %q has no symbol", resolved.Name))
+		if resolved.PackageID != "" || resolved.Path != "" {
+			if !resolved.PackageID.IsValid() || !resolved.Path.IsValid() || resolved.Symbol != 0 {
+				return SemanticTypeRefProjection{}, projectionError(analysis, fmt.Sprintf("resolved built-in type %q has an invalid semantic identity", resolved.Name))
+			}
+			projection.Identity = semanticIdentityPointer(SemanticIdentity{PackageID: resolved.PackageID, Path: resolved.Path})
+		} else {
+			symbol, ok := analysis.Symbols.LookupID(resolved.Symbol)
+			if !ok {
+				return SemanticTypeRefProjection{}, projectionError(analysis, fmt.Sprintf("resolved type %q has no symbol", resolved.Name))
+			}
+			identity, ok := analysis.SemanticIDs.IdentityForSpan(symbol.DeclarationSpan)
+			if !ok {
+				return SemanticTypeRefProjection{}, projectionError(analysis, fmt.Sprintf("resolved type %q has no semantic identity", resolved.Name))
+			}
+			projection.Identity = semanticIdentityPointer(identity)
 		}
-		identity, ok := analysis.SemanticIDs.IdentityForSpan(symbol.DeclarationSpan)
-		if !ok {
-			return SemanticTypeRefProjection{}, projectionError(analysis, fmt.Sprintf("resolved type %q has no semantic identity", resolved.Name))
-		}
-		projection.Identity = semanticIdentityPointer(identity)
+	}
+	if resolved.Kind == TypeRefApplied && resolved.PackageID != "" && resolved.Path != "" {
+		projection.Identity = semanticIdentityPointer(SemanticIdentity{PackageID: resolved.PackageID, Path: resolved.Path})
 	}
 	for _, argument := range resolved.Arguments {
 		projected, err := projectResolvedType(analysis, argument)

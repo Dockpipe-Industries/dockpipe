@@ -23,9 +23,16 @@ const (
 	TypeRefApplied   TypeRefKind = "applied"
 )
 
-// UnresolvedTypeRef is the structured source form of an existing v0.0.0.1 type
-// spelling. It accepts only primitives, named types, and the existing List<T>
-// application; it does not expand the language grammar.
+const (
+	PipeLangBuiltinPackageID            PackageID  = "pipelang"
+	PipeLangResultSemanticPath          SemanticID = "result"
+	PipeLangArithmeticErrorSemanticPath SemanticID = "arithmetic.error"
+)
+
+// UnresolvedTypeRef is the structured source form shared by the versioned
+// parsers. The frozen lane emits primitives, named types, and List<T>; the
+// explicit v0.2.0 and later arithmetic lanes additionally emit the bounded
+// Result<T,E> shape.
 type UnresolvedTypeRef struct {
 	Kind      TypeRefKind
 	Name      string
@@ -55,7 +62,17 @@ func (r UnresolvedTypeRef) IsValid() bool {
 	case TypeRefNamed:
 		return isTypeIdentifier(r.Name) && validModuleID(r.Qualifier, true) && len(r.Arguments) == 0
 	case TypeRefApplied:
-		return r.Name == "List" && r.Qualifier == "" && len(r.Arguments) == 1 && r.Arguments[0].IsValid()
+		if r.Qualifier != "" {
+			return false
+		}
+		switch r.Name {
+		case "List":
+			return len(r.Arguments) == 1 && r.Arguments[0].IsValid()
+		case "Result":
+			return len(r.Arguments) == 2 && r.Arguments[0].IsValid() && r.Arguments[1].IsValid()
+		default:
+			return false
+		}
 	default:
 		return false
 	}
@@ -85,13 +102,16 @@ func unresolvedPrimitive(t PrimitiveType, span Span) UnresolvedTypeRef {
 	return UnresolvedTypeRef{Kind: TypeRefPrimitive, Name: string(t), Span: span}
 }
 
-// ResolvedTypeRef is the checked form of a type reference. Named references
-// carry the identity of exactly one declaration in the analysis symbol table.
+// ResolvedTypeRef is the checked form of a type reference. Source-owned named
+// references carry one analysis symbol; language-owned types carry their fixed
+// package and semantic-path identity instead.
 type ResolvedTypeRef struct {
 	Kind      TypeRefKind
 	Primitive PrimitiveType
 	Name      string
 	Symbol    SymbolID
+	PackageID PackageID
+	Path      SemanticID
 	Arguments []ResolvedTypeRef
 }
 
@@ -111,7 +131,7 @@ func (r ResolvedTypeRef) String() string {
 }
 
 func (r ResolvedTypeRef) Equal(other ResolvedTypeRef) bool {
-	if r.Kind != other.Kind || r.Primitive != other.Primitive || r.Name != other.Name || r.Symbol != other.Symbol || len(r.Arguments) != len(other.Arguments) {
+	if r.Kind != other.Kind || r.Primitive != other.Primitive || r.Name != other.Name || r.Symbol != other.Symbol || r.PackageID != other.PackageID || r.Path != other.Path || len(r.Arguments) != len(other.Arguments) {
 		return false
 	}
 	for i := range r.Arguments {
@@ -128,4 +148,35 @@ func (r ResolvedTypeRef) IsPrimitive() bool {
 
 func resolvedPrimitive(t PrimitiveType) ResolvedTypeRef {
 	return ResolvedTypeRef{Kind: TypeRefPrimitive, Primitive: t}
+}
+
+func resolvedArithmeticError() ResolvedTypeRef {
+	return ResolvedTypeRef{Kind: TypeRefNamed, Name: "ArithmeticError", PackageID: PipeLangBuiltinPackageID, Path: PipeLangArithmeticErrorSemanticPath}
+}
+
+func resolvedArithmeticResult(success ResolvedTypeRef) ResolvedTypeRef {
+	return ResolvedTypeRef{
+		Kind: TypeRefApplied, Name: "Result", PackageID: PipeLangBuiltinPackageID, Path: PipeLangResultSemanticPath,
+		Arguments: []ResolvedTypeRef{success, resolvedArithmeticError()},
+	}
+}
+
+func isResolvedArithmeticError(ref ResolvedTypeRef) bool {
+	return ref.Kind == TypeRefNamed && ref.Name == "ArithmeticError" && ref.Symbol == 0 && ref.PackageID == PipeLangBuiltinPackageID && ref.Path == PipeLangArithmeticErrorSemanticPath && len(ref.Arguments) == 0
+}
+
+func isResolvedIntArithmeticResult(ref ResolvedTypeRef) bool {
+	return ref.Kind == TypeRefApplied && ref.Name == "Result" && ref.PackageID == PipeLangBuiltinPackageID && ref.Path == PipeLangResultSemanticPath && len(ref.Arguments) == 2 && ref.Arguments[0].Equal(resolvedPrimitive(TypeInt)) && isResolvedArithmeticError(ref.Arguments[1])
+}
+
+func containsResolvedArithmeticContractType(ref ResolvedTypeRef) bool {
+	if isResolvedArithmeticError(ref) || isResolvedIntArithmeticResult(ref) {
+		return true
+	}
+	for _, argument := range ref.Arguments {
+		if containsResolvedArithmeticContractType(argument) {
+			return true
+		}
+	}
+	return false
 }

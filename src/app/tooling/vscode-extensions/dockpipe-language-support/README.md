@@ -56,7 +56,7 @@ make install-dockpipe-language-support
 - When present, workflow `view:` stays a declarative launcher presentation layer over the typed model rather than replacing `vars:` / env mappings.
 - `types:` suggestions support the interface entrypoint pattern, for example:
   `models/IR2InfraConfig`
-- PipeLang editor support understands interface/object field types and generic list shapes such as `List<string>` and `List<IImageResource>`.
+- PipeLang editor support understands interface/object field types and generic list shapes such as `List<string>` and `List<IImageResource>`. It also highlights and completes the explicitly versioned arithmetic return spelling `Result<int, ArithmeticError>`; `v0.2.0` admits direct checked addition and `v0.3.0` additionally admits direct checked subtraction. Model-field traversal remains limited to the frozen data-model surface.
 - PipeLang diagnostics call `dockpipe pipelang check --stdin --format json` without a shell, so unsaved buffers are checked without source or generated-state writes. The extension prefers `DOCKPIPE_BIN`, then a workspace-local `src/bin/dockpipe`, then `dockpipe` from `PATH`.
 - Shared script support points authors at the canonical DockPipe SDK under `src/core/assets/scripts/lib/` and `dockpipe sdk`.
 - Workflow scripts can use `dockpipe scope` / SDK scope helpers for checkout, workflow artifacts, and durable owner-only package state. Package caches, build output, scratch, and run evidence use `PackageRuntimeDir` or shell SDK `path package-runtime`; runtime env such as `DOCKPIPE_SOURCE_ROOT`, `DOCKPIPE_STEP_CWD`, `DOCKPIPE_OUTPUT_ROOT`, and `DOCKPIPE_ARTIFACT_ROOT` remains available for low-level integrations.
