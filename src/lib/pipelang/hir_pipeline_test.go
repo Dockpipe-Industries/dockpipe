@@ -7,6 +7,7 @@ import (
 	"fmt"
 	goparser "go/parser"
 	gotoken "go/token"
+	"math"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -16,6 +17,7 @@ import (
 	"strings"
 	"testing"
 
+	"dockpipe/src/lib/pipelang/coreeval"
 	"dockpipe/src/lib/pipelang/coreir"
 	"dockpipe/src/lib/pipelang/gobackend"
 	"dockpipe/src/lib/pipelang/hir"
@@ -119,21 +121,23 @@ func TestHIRLoweringPreservesExistingAnalysisFailure(t *testing.T) {
 func TestGoBackendRejectsUnsupportedCoreCapability(t *testing.T) {
 	integer := coreInteger64()
 	floating := coreBinary64()
-	left := coreir.Expr{Kind: coreir.ExprLiteral, Type: integer, Literal: &coreir.Literal{Int: 4}}
-	right := coreir.Expr{Kind: coreir.ExprLiteral, Type: integer, Literal: &coreir.Literal{Int: 2}}
 	for _, operator := range []coreir.Operator{coreir.OperatorAdd, coreir.OperatorSubtract, coreir.OperatorMultiply, coreir.OperatorDivide} {
 		t.Run(string(operator), func(t *testing.T) {
+			operandType := integer
 			resultType := integer
 			if operator == coreir.OperatorDivide {
+				operandType = floating
 				resultType = floating
 			}
+			left := coreir.Expr{Kind: coreir.ExprLiteral, Type: operandType, Literal: &coreir.Literal{Int: 4, Float: 4}}
+			right := coreir.Expr{Kind: coreir.ExprLiteral, Type: operandType, Literal: &coreir.Literal{Int: 2, Float: 2}}
 			program := coreir.Program{LanguageContract: coreir.LanguageContractV010, CompilerContract: coreir.CompilerContractV1, Functions: []coreir.Function{{
 				Identity: coreir.SemanticIdentity{PackageID: "test.package", Path: "app.root.calculate"}, Name: "Calculate", ReturnType: resultType,
 				Body: coreir.Expr{Kind: coreir.ExprBinary, Type: resultType, Binary: &coreir.Binary{Operator: operator, Left: &left, Right: &right}},
 			}}}
 			_, err := gobackend.Generate(program)
 			var backendErr *gobackend.Error
-			if !errors.As(err, &backendErr) || backendErr.Code != "PLGO0001" || !strings.Contains(backendErr.Message, "checked Result failure semantics") {
+			if !errors.As(err, &backendErr) || backendErr.Code != "PLGO0001" || !strings.Contains(backendErr.Message, "invalid Result type") {
 				t.Fatalf("backend capability error = %#v (%v)", backendErr, err)
 			}
 		})
@@ -186,8 +190,101 @@ func TestGoBackendRejectsMismatchedNumericCoreOperands(t *testing.T) {
 	}}}
 	_, err := gobackend.Generate(program)
 	var backendErr *gobackend.Error
-	if !errors.As(err, &backendErr) || backendErr.Code != "PLGO0001" || !strings.Contains(backendErr.Message, "mismatched Core operand types") {
+	if !errors.As(err, &backendErr) || backendErr.Code != "PLGO0001" || !strings.Contains(backendErr.Message, "mismatched operand or result types") {
 		t.Fatalf("backend mismatch error = %#v (%v)", backendErr, err)
+	}
+}
+
+func TestCheckedArithmeticHIRCoreEvaluatorAndGoConform(t *testing.T) {
+	typed := hir.Program{LanguageContract: coreir.LanguageContractV010, CompilerContract: coreir.CompilerContractV1, Functions: []hir.Function{
+		hirCheckedBinaryFunction("Add", hir.OperatorAdd, hirInteger64()),
+		hirCheckedBinaryFunction("Subtract", hir.OperatorSubtract, hirInteger64()),
+		hirCheckedBinaryFunction("Multiply", hir.OperatorMultiply, hirInteger64()),
+		hirCheckedUnaryFunction("Negate", hir.OperatorNegate, hirInteger64()),
+		hirCheckedBinaryFunction("Divide", hir.OperatorDivide, hirBinary64()),
+	}}
+	core, err := LowerHIRToCore(typed)
+	if err != nil {
+		t.Fatal(err)
+	}
+	generated, err := gobackend.Generate(core)
+	if err != nil {
+		t.Fatal(err)
+	}
+	second, err := gobackend.Generate(core)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(generated, second) {
+		t.Fatal("checked arithmetic Go output is nondeterministic")
+	}
+	functions := map[string]coreir.Function{}
+	goNames := map[string]string{}
+	for _, function := range core.Functions {
+		functions[function.Name] = function
+		goNames[function.Name] = gobackend.FunctionName(function)
+	}
+	tests := []struct {
+		name      string
+		arguments []coreeval.Value
+		wantInt   int64
+		wantFloat float64
+		wantError coreir.ArithmeticError
+		wantNaN   bool
+	}{
+		{name: "Add", arguments: coreIntArguments(2, 3), wantInt: 5},
+		{name: "Add", arguments: coreIntArguments(math.MaxInt64, 1), wantError: coreir.ArithmeticOverflow},
+		{name: "Subtract", arguments: coreIntArguments(5, 3), wantInt: 2},
+		{name: "Subtract", arguments: coreIntArguments(math.MinInt64, 1), wantError: coreir.ArithmeticOverflow},
+		{name: "Multiply", arguments: coreIntArguments(-3, 4), wantInt: -12},
+		{name: "Multiply", arguments: coreIntArguments(math.MaxInt64, 2), wantError: coreir.ArithmeticOverflow},
+		{name: "Negate", arguments: coreIntArguments(5), wantInt: -5},
+		{name: "Negate", arguments: coreIntArguments(math.MinInt64), wantError: coreir.ArithmeticOverflow},
+		{name: "Divide", arguments: coreFloatArguments(6, 2), wantFloat: 3},
+		{name: "Divide", arguments: coreFloatArguments(1, 0), wantError: coreir.ArithmeticDivisionByZero},
+		{name: "Divide", arguments: coreFloatArguments(1, math.Copysign(0, -1)), wantError: coreir.ArithmeticDivisionByZero},
+		{name: "Divide", arguments: coreFloatArguments(math.NaN(), 2), wantNaN: true},
+	}
+	for _, test := range tests {
+		outcome, err := coreeval.Evaluate(functions[test.name], test.arguments)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if outcome.Error != test.wantError || outcome.OK != (test.wantError == "") {
+			t.Fatalf("%s outcome = %#v", test.name, outcome)
+		}
+		if outcome.OK && ((test.wantNaN && !math.IsNaN(outcome.Value.Float)) || (!test.wantNaN && test.name == "Divide" && outcome.Value.Float != test.wantFloat) || (test.name != "Divide" && outcome.Value.Int != test.wantInt)) {
+			t.Fatalf("%s outcome value = %#v", test.name, outcome.Value)
+		}
+	}
+	compileAndRunCheckedArithmeticGo(t, generated, goNames)
+}
+
+func TestCheckedAddHIRCoreAndGoGoldens(t *testing.T) {
+	typed := hir.Program{LanguageContract: coreir.LanguageContractV010, CompilerContract: coreir.CompilerContractV1, Functions: []hir.Function{
+		hirCheckedBinaryFunction("Add", hir.OperatorAdd, hirInteger64()),
+	}}
+	core, err := LowerHIRToCore(typed)
+	if err != nil {
+		t.Fatal(err)
+	}
+	generated, err := gobackend.Generate(core)
+	if err != nil {
+		t.Fatal(err)
+	}
+	assertCompilerGolden(t, "checked-add.hir.json", canonicalJSON(t, typed))
+	assertCompilerGolden(t, "checked-add.core.json", canonicalJSON(t, core))
+	assertCompilerGolden(t, "checked-add.go", generated)
+}
+
+func TestCheckedArithmeticHIRRejectsMalformedResultType(t *testing.T) {
+	function := hirCheckedBinaryFunction("Add", hir.OperatorAdd, hirInteger64())
+	function.ReturnType = hirInteger64()
+	function.Body.Type = hirInteger64()
+	_, err := LowerHIRToCore(hir.Program{LanguageContract: coreir.LanguageContractV010, CompilerContract: coreir.CompilerContractV1, Functions: []hir.Function{function}})
+	diagnostics, ok := AsDiagnostics(err)
+	if !ok || len(diagnostics) != 1 || diagnostics[0].Code != CodeCoreLowering || !strings.Contains(diagnostics[0].Message, "invalid Result type") {
+		t.Fatalf("malformed arithmetic HIR error = %#v (%v)", diagnostics, err)
 	}
 }
 
@@ -253,19 +350,28 @@ func TestBinary64ComparisonAndEqualityMatchReferenceEvaluator(t *testing.T) {
 }
 
 func TestGoBackendCannotImportParserASTOrHIR(t *testing.T) {
-	entries, err := os.ReadDir("gobackend")
+	assertCompilerPackageImportsOnlyCoreIR(t, "gobackend")
+}
+
+func TestCoreEvaluatorCannotImportParserASTHIROrBackend(t *testing.T) {
+	assertCompilerPackageImportsOnlyCoreIR(t, "coreeval")
+}
+
+func assertCompilerPackageImportsOnlyCoreIR(t *testing.T, directory string) {
+	t.Helper()
+	entries, err := os.ReadDir(directory)
 	if err != nil {
 		t.Fatal(err)
 	}
 	var files []string
 	for _, entry := range entries {
 		if !entry.IsDir() && strings.HasSuffix(entry.Name(), ".go") && !strings.HasSuffix(entry.Name(), "_test.go") {
-			files = append(files, filepath.Join("gobackend", entry.Name()))
+			files = append(files, filepath.Join(directory, entry.Name()))
 		}
 	}
 	sort.Strings(files)
 	if len(files) == 0 {
-		t.Fatal("Go backend has no source files")
+		t.Fatalf("%s has no source files", directory)
 	}
 	for _, path := range files {
 		parsed, err := goparser.ParseFile(gotoken.NewFileSet(), path, nil, goparser.ImportsOnly)
@@ -278,7 +384,7 @@ func TestGoBackendCannotImportParserASTOrHIR(t *testing.T) {
 				t.Fatal(err)
 			}
 			if name == "go/ast" || name == "go/parser" || (strings.HasPrefix(name, "dockpipe/src/lib/pipelang") && name != "dockpipe/src/lib/pipelang/coreir") {
-				t.Fatalf("%s imports forbidden parser/AST/HIR dependency %q; Go generation must consume Core IR only", path, name)
+				t.Fatalf("%s imports forbidden parser/AST/HIR/backend dependency %q; compiler consumers must accept Core IR only", path, name)
 			}
 		}
 	}
@@ -412,6 +518,110 @@ func coreInteger64() coreir.Type {
 
 func coreBinary64() coreir.Type {
 	return coreir.Type{Kind: coreir.TypeNumeric, Numeric: &coreir.NumericType{Representation: coreir.NumericBinaryFloat, Bits: 64}}
+}
+
+func hirInteger64() hir.Type {
+	return hir.Type{Kind: hir.TypeNumeric, Numeric: &hir.NumericType{Representation: hir.NumericInteger, Bits: 64, Signed: true}}
+}
+
+func hirBinary64() hir.Type {
+	return hir.Type{Kind: hir.TypeNumeric, Numeric: &hir.NumericType{Representation: hir.NumericBinaryFloat, Bits: 64}}
+}
+
+func hirArithmeticResult(success hir.Type) hir.Type {
+	return hir.Type{Kind: hir.TypeResult, Result: &hir.ResultType{Success: success, Failure: hir.Type{Kind: hir.TypeArithmeticError}}}
+}
+
+func hirCheckedBinaryFunction(name string, operator hir.Operator, operandType hir.Type) hir.Function {
+	identity := hir.SemanticIdentity{PackageID: "test.package", Path: "app.root.root." + strings.ToLower(name)}
+	span := hir.SourceSpan{File: "checked-arithmetic.fixture", Start: 1, End: 2}
+	parameters := make([]hir.Parameter, 2)
+	expressions := make([]hir.Expr, 2)
+	for position, parameterName := range []string{"left", "right"} {
+		binding := hir.Binding{Kind: hir.BindingParameter, Function: identity, Position: position, Name: parameterName}
+		parameters[position] = hir.Parameter{Binding: binding, Type: operandType, TypeSpan: span, Span: span}
+		bindingCopy := binding
+		expressions[position] = hir.Expr{Kind: hir.ExprReference, Type: operandType, Span: span, Reference: &bindingCopy}
+	}
+	resultType := hirArithmeticResult(operandType)
+	return hir.Function{
+		Identity: identity,
+		Owner:    hir.Owner{Module: "app.root", SymbolID: 1, Identity: hir.SemanticIdentity{PackageID: "test.package", Path: "app.root.root"}, SourceSpan: span},
+		Name:     name, Parameters: parameters, ReturnType: resultType, ReturnTypeSpan: span,
+		Body: hir.Expr{Kind: hir.ExprBinary, Type: resultType, Span: span, Binary: &hir.Binary{Operator: operator, Left: &expressions[0], Right: &expressions[1]}}, Span: span,
+	}
+}
+
+func hirCheckedUnaryFunction(name string, operator hir.Operator, operandType hir.Type) hir.Function {
+	identity := hir.SemanticIdentity{PackageID: "test.package", Path: "app.root.root." + strings.ToLower(name)}
+	span := hir.SourceSpan{File: "checked-arithmetic.fixture", Start: 1, End: 2}
+	binding := hir.Binding{Kind: hir.BindingParameter, Function: identity, Position: 0, Name: "value"}
+	operand := hir.Expr{Kind: hir.ExprReference, Type: operandType, Span: span, Reference: &binding}
+	resultType := hirArithmeticResult(operandType)
+	return hir.Function{
+		Identity: identity,
+		Owner:    hir.Owner{Module: "app.root", SymbolID: 1, Identity: hir.SemanticIdentity{PackageID: "test.package", Path: "app.root.root"}, SourceSpan: span},
+		Name:     name, Parameters: []hir.Parameter{{Binding: binding, Type: operandType, TypeSpan: span, Span: span}}, ReturnType: resultType, ReturnTypeSpan: span,
+		Body: hir.Expr{Kind: hir.ExprUnary, Type: resultType, Span: span, Unary: &hir.Unary{Operator: operator, Operand: &operand}}, Span: span,
+	}
+}
+
+func coreIntArguments(values ...int64) []coreeval.Value {
+	arguments := make([]coreeval.Value, len(values))
+	for index, value := range values {
+		arguments[index] = coreeval.Value{Type: coreInteger64(), Int: value}
+	}
+	return arguments
+}
+
+func coreFloatArguments(values ...float64) []coreeval.Value {
+	arguments := make([]coreeval.Value, len(values))
+	for index, value := range values {
+		arguments[index] = coreeval.Value{Type: coreBinary64(), Float: value}
+	}
+	return arguments
+}
+
+func compileAndRunCheckedArithmeticGo(t *testing.T, generated []byte, names map[string]string) {
+	t.Helper()
+	testSource := fmt.Sprintf(`package %s
+
+import (
+	"math"
+	"testing"
+)
+
+func TestGeneratedCheckedArithmetic(t *testing.T) {
+	assertInt := func(name string, got PipeLangArithmeticResult[int64], ok bool, value int64, arithmeticError PipeLangArithmeticError) {
+		t.Helper()
+		if got.OK != ok || got.Value != value || got.Error != arithmeticError {
+			t.Fatalf("%%s: got %%#v", name, got)
+		}
+	}
+	assertFloat := func(name string, got PipeLangArithmeticResult[float64], ok bool, value float64, arithmeticError PipeLangArithmeticError) {
+		t.Helper()
+		if got.OK != ok || got.Error != arithmeticError || (ok && got.Value != value) {
+			t.Fatalf("%%s: got %%#v", name, got)
+		}
+	}
+	assertInt("add", %s(2, 3), true, 5, "")
+	assertInt("add-overflow", %s(math.MaxInt64, 1), false, 0, PipeLangArithmeticOverflow)
+	assertInt("subtract", %s(5, 3), true, 2, "")
+	assertInt("subtract-overflow", %s(math.MinInt64, 1), false, 0, PipeLangArithmeticOverflow)
+	assertInt("multiply", %s(-3, 4), true, -12, "")
+	assertInt("multiply-overflow", %s(math.MaxInt64, 2), false, 0, PipeLangArithmeticOverflow)
+	assertInt("negate", %s(5), true, -5, "")
+	assertInt("negate-overflow", %s(math.MinInt64), false, 0, PipeLangArithmeticOverflow)
+	assertFloat("divide", %s(6, 2), true, 3, "")
+	assertFloat("divide-zero", %s(1, 0), false, 0, PipeLangArithmeticDivisionByZero)
+	assertFloat("divide-negative-zero", %s(1, math.Copysign(0, -1)), false, 0, PipeLangArithmeticDivisionByZero)
+	if got := %s(math.NaN(), 2); !got.OK || got.Error != "" || !math.IsNaN(got.Value) {
+		t.Fatalf("divide-nan: got %%#v", got)
+	}
+}
+`, gobackend.PackageName,
+		names["Add"], names["Add"], names["Subtract"], names["Subtract"], names["Multiply"], names["Multiply"], names["Negate"], names["Negate"], names["Divide"], names["Divide"], names["Divide"], names["Divide"])
+	compileAndRunGeneratedGoFiles(t, generated, []byte(testSource))
 }
 
 func reflectSemanticIdentities(left, right []SemanticIdentity) bool {

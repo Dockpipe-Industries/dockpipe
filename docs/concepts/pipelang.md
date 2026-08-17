@@ -240,6 +240,20 @@ recoverable arithmetic failures can be represented as typed `Result` values. The
 `v0.0.0.1` compile/invoke behavior and artifacts remain unchanged, and executable Go is not a
 workflow/runtime backend.
 
+The next compiler-internal slice establishes that missing representation without selecting public
+syntax. HIR and Core can carry `Result<Success, ArithmeticError>` structurally; Core owns the single
+checked-arithmetic signature and failure contract consumed by both an inert Core conformance
+evaluator and the Go backend. Signed 64-bit addition, subtraction, multiplication, and negation fail
+with `overflow`; binary64 division fails on positive or negative zero with `division_by_zero` and
+otherwise retains IEEE-754 behavior. Generated Go exposes an explicit result value and never uses a
+panic as a domain outcome. Boundary tests compare integer semantics against exact mathematical
+integers and execute the same success/failure cases through Core evaluation and generated Go.
+
+Production source arithmetic remains fail-closed. Existing declarations cannot silently change
+from returning a number to returning a result, and the compiler does not invent a `Result` spelling,
+an `ArithmeticError` source declaration, or implicit unwrapping. Those public type identities,
+spellings, and migration rules require a separately accepted synchronized language slice.
+
 ## Artifacts
 
 Compile emits:

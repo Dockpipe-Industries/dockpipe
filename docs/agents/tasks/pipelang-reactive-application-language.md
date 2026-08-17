@@ -1115,16 +1115,42 @@ recoverable-failure contract, so neither layer substitutes unchecked target arit
 before typed `Result` failure semantics exist. This slice changes no syntax, semantic projection,
 legacy artifact, public YAML/schema/editor surface, generated store, runtime, or dependency.
 
+### Completed step 7b compiler-internal arithmetic Result checkpoint (2026-08-16)
+
+The next bounded step-7 foundation adds structural `Result<Success, ArithmeticError>` types to typed
+HIR and Core without selecting production source spelling. Core owns one target-independent checked
+arithmetic signature and validation contract: signed 64-bit addition, subtraction, multiplication,
+and negation produce an integer result or `overflow`; binary64 division produces a binary64 result
+or `division_by_zero` for positive or negative zero. Other operand widths, signedness, implicit
+numeric conversions, nested fallible expressions, and error families fail closed.
+
+An inert `coreeval` package consumes Core IR only and serves as the semantic conformance evaluator.
+The Go backend consumes the same validated Core contract and emits explicit generic result values
+with stable `overflow` and `division_by_zero` errors; it never converts a target panic into a domain
+result. Exact HIR/Core/Go goldens cover checked addition. Boundary tests compare the centralized
+integer implementation with exact `math/big` results and prove evaluator/generated-Go agreement for
+success, every supported overflow family, negating the minimum integer, division by both signed
+zeros, and IEEE `NaN` propagation. Architecture tests prohibit both `coreeval` and the Go backend
+from importing parser, AST/compiler-root, HIR, or each other.
+
+The existing `v0.1.0` source checker intentionally continues to reject numeric arithmetic with
+structured `PL3028`: a source method declared to return `int` or `float` cannot silently become a
+fallible method. The frozen legacy evaluator and artifacts remain unchanged. This checkpoint adds no
+production `Result`/`ArithmeticError` spelling, implicit unwrap, branches or matching, public
+semantic projection, YAML/schema/editor surface, runtime, generated store, or dependency.
+
 ## Exact Next Boundary
 
-Step 7 of **Bounded Implementation Order** is underway through the completed fixed numeric
-representation and non-failing comparison/equality slice. The exact successor boundary is a
-separately bounded typed `Result`/arithmetic-failure slice that must model checked integer overflow,
-division failure, and successful arithmetic consistently in type checking, HIR, Core, the reference
-evaluator, and Go before numeric arithmetic can be enabled.
+Step 7 of **Bounded Implementation Order** is underway through the completed fixed numeric and
+compiler-internal checked-arithmetic Result slices. Numeric arithmetic is not yet admitted from
+production source. The exact successor boundary requires founder acceptance of the first public
+`Result` and arithmetic-error type identities/spellings, callable-signature and semantic-projection
+shape, explicit success/failure handling rule, and migration from the fail-closed `v0.1.0` seed.
+Only after that synchronized choice may source type checking lower arithmetic through the proven
+HIR/Core/evaluator/Go contract.
 
 No later step-7 slice is included here. In particular, this checkpoint does not add Unicode text,
-value/reference, hashing, total ordering, optional, result, record, union, or deterministic
+value/reference, hashing, total ordering, optional, general result, record, union, or deterministic
 collection production semantics; accept namespace, import,
 migration, `internal`, overload, generic, or ID production syntax; implement overload resolution;
 add new types/declarations/expressions/operators, blocks, locals, branches, or loops; add effects,

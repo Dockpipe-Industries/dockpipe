@@ -1,0 +1,189 @@
+{
+  "language_contract": "v0.1.0",
+  "compiler_contract": "pipelang.compiler.v1",
+  "functions": [
+    {
+      "identity": {
+        "package_id": "test.package",
+        "path": "app.root.root.add"
+      },
+      "owner": {
+        "module": "app.root",
+        "symbol_id": 1,
+        "identity": {
+          "package_id": "test.package",
+          "path": "app.root.root"
+        },
+        "source_span": {
+          "file": "checked-arithmetic.fixture",
+          "start": 1,
+          "end": 2
+        }
+      },
+      "name": "Add",
+      "parameters": [
+        {
+          "binding": {
+            "kind": "parameter",
+            "function": {
+              "package_id": "test.package",
+              "path": "app.root.root.add"
+            },
+            "position": 0,
+            "name": "left"
+          },
+          "type": {
+            "kind": "numeric",
+            "numeric": {
+              "representation": "integer",
+              "bits": 64,
+              "signed": true
+            }
+          },
+          "type_span": {
+            "file": "checked-arithmetic.fixture",
+            "start": 1,
+            "end": 2
+          },
+          "span": {
+            "file": "checked-arithmetic.fixture",
+            "start": 1,
+            "end": 2
+          }
+        },
+        {
+          "binding": {
+            "kind": "parameter",
+            "function": {
+              "package_id": "test.package",
+              "path": "app.root.root.add"
+            },
+            "position": 1,
+            "name": "right"
+          },
+          "type": {
+            "kind": "numeric",
+            "numeric": {
+              "representation": "integer",
+              "bits": 64,
+              "signed": true
+            }
+          },
+          "type_span": {
+            "file": "checked-arithmetic.fixture",
+            "start": 1,
+            "end": 2
+          },
+          "span": {
+            "file": "checked-arithmetic.fixture",
+            "start": 1,
+            "end": 2
+          }
+        }
+      ],
+      "return_type": {
+        "kind": "result",
+        "result": {
+          "success": {
+            "kind": "numeric",
+            "numeric": {
+              "representation": "integer",
+              "bits": 64,
+              "signed": true
+            }
+          },
+          "failure": {
+            "kind": "arithmetic_error"
+          }
+        }
+      },
+      "return_type_span": {
+        "file": "checked-arithmetic.fixture",
+        "start": 1,
+        "end": 2
+      },
+      "body": {
+        "kind": "binary",
+        "type": {
+          "kind": "result",
+          "result": {
+            "success": {
+              "kind": "numeric",
+              "numeric": {
+                "representation": "integer",
+                "bits": 64,
+                "signed": true
+              }
+            },
+            "failure": {
+              "kind": "arithmetic_error"
+            }
+          }
+        },
+        "span": {
+          "file": "checked-arithmetic.fixture",
+          "start": 1,
+          "end": 2
+        },
+        "binary": {
+          "operator": "add",
+          "left": {
+            "kind": "reference",
+            "type": {
+              "kind": "numeric",
+              "numeric": {
+                "representation": "integer",
+                "bits": 64,
+                "signed": true
+              }
+            },
+            "span": {
+              "file": "checked-arithmetic.fixture",
+              "start": 1,
+              "end": 2
+            },
+            "reference": {
+              "kind": "parameter",
+              "function": {
+                "package_id": "test.package",
+                "path": "app.root.root.add"
+              },
+              "position": 0,
+              "name": "left"
+            }
+          },
+          "right": {
+            "kind": "reference",
+            "type": {
+              "kind": "numeric",
+              "numeric": {
+                "representation": "integer",
+                "bits": 64,
+                "signed": true
+              }
+            },
+            "span": {
+              "file": "checked-arithmetic.fixture",
+              "start": 1,
+              "end": 2
+            },
+            "reference": {
+              "kind": "parameter",
+              "function": {
+                "package_id": "test.package",
+                "path": "app.root.root.add"
+              },
+              "position": 1,
+              "name": "right"
+            }
+          }
+        }
+      },
+      "span": {
+        "file": "checked-arithmetic.fixture",
+        "start": 1,
+        "end": 2
+      }
+    }
+  ]
+}

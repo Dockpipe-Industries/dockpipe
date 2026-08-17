@@ -1,0 +1,101 @@
+{
+  "language_contract": "v0.1.0",
+  "compiler_contract": "pipelang.compiler.v1",
+  "functions": [
+    {
+      "identity": {
+        "package_id": "test.package",
+        "path": "app.root.root.add"
+      },
+      "name": "Add",
+      "parameters": [
+        {
+          "position": 0,
+          "name": "left",
+          "type": {
+            "kind": "numeric",
+            "numeric": {
+              "representation": "integer",
+              "bits": 64,
+              "signed": true
+            }
+          }
+        },
+        {
+          "position": 1,
+          "name": "right",
+          "type": {
+            "kind": "numeric",
+            "numeric": {
+              "representation": "integer",
+              "bits": 64,
+              "signed": true
+            }
+          }
+        }
+      ],
+      "return_type": {
+        "kind": "result",
+        "result": {
+          "success": {
+            "kind": "numeric",
+            "numeric": {
+              "representation": "integer",
+              "bits": 64,
+              "signed": true
+            }
+          },
+          "failure": {
+            "kind": "arithmetic_error"
+          }
+        }
+      },
+      "body": {
+        "kind": "binary",
+        "type": {
+          "kind": "result",
+          "result": {
+            "success": {
+              "kind": "numeric",
+              "numeric": {
+                "representation": "integer",
+                "bits": 64,
+                "signed": true
+              }
+            },
+            "failure": {
+              "kind": "arithmetic_error"
+            }
+          }
+        },
+        "binary": {
+          "operator": "add",
+          "left": {
+            "kind": "reference",
+            "type": {
+              "kind": "numeric",
+              "numeric": {
+                "representation": "integer",
+                "bits": 64,
+                "signed": true
+              }
+            },
+            "parameter": 0
+          },
+          "right": {
+            "kind": "reference",
+            "type": {
+              "kind": "numeric",
+              "numeric": {
+                "representation": "integer",
+                "bits": 64,
+                "signed": true
+              }
+            },
+            "parameter": 1
+          }
+        }
+      }
+    }
+  ]
+}
