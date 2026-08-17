@@ -123,10 +123,17 @@ func (id SemanticTypeIdentity) isValid() bool {
 	case TypeRefNamed:
 		return id.PackageID.IsValid() && id.Path.IsValid() && id.Primitive == "" && id.Name == "" && len(id.Arguments) == 0
 	case TypeRefApplied:
-		if id.Name != "List" || id.Primitive != "" || id.PackageID != "" || id.Path != "" || len(id.Arguments) != 1 {
+		if id.Primitive != "" {
 			return false
 		}
-		return id.Arguments[0].isValid()
+		switch id.Name {
+		case "List":
+			return id.PackageID == "" && id.Path == "" && len(id.Arguments) == 1 && id.Arguments[0].isValid()
+		case "Result":
+			return id.PackageID == PipeLangBuiltinPackageID && id.Path == PipeLangResultSemanticPath && len(id.Arguments) == 2 && id.Arguments[0].isValid() && id.Arguments[1].Kind == TypeRefNamed && id.Arguments[1].PackageID == PipeLangBuiltinPackageID && id.Arguments[1].Path == PipeLangArithmeticErrorSemanticPath && id.Arguments[1].isValid()
+		default:
+			return false
+		}
 	default:
 		return false
 	}
@@ -619,15 +626,21 @@ func buildCallableIdentity(sources *SourceSet, symbols *SymbolTable, modules *Mo
 }
 
 func semanticTypeIdentity(symbols *SymbolTable, packageID PackageID, resolved ResolvedTypeRef) (SemanticTypeIdentity, error) {
-	identity := SemanticTypeIdentity{Kind: resolved.Kind, Primitive: resolved.Primitive, Name: resolved.Name}
+	identity := SemanticTypeIdentity{Kind: resolved.Kind, Primitive: resolved.Primitive, PackageID: resolved.PackageID, Path: resolved.Path, Name: resolved.Name}
 	if resolved.Kind == TypeRefNamed {
-		symbol, ok := symbols.LookupID(resolved.Symbol)
-		if !ok || symbol.SemanticID == "" {
-			return SemanticTypeIdentity{}, fmt.Errorf("resolved type %q has no semantic identity", resolved.Name)
+		if resolved.PackageID != "" || resolved.Path != "" {
+			if !resolved.PackageID.IsValid() || !resolved.Path.IsValid() || resolved.Symbol != 0 {
+				return SemanticTypeIdentity{}, fmt.Errorf("resolved built-in type %q has an invalid semantic identity", resolved.Name)
+			}
+		} else {
+			symbol, ok := symbols.LookupID(resolved.Symbol)
+			if !ok || symbol.SemanticID == "" {
+				return SemanticTypeIdentity{}, fmt.Errorf("resolved type %q has no semantic identity", resolved.Name)
+			}
+			identity.PackageID = packageID
+			identity.Path = symbol.SemanticID
 		}
 		identity.Name = ""
-		identity.PackageID = packageID
-		identity.Path = symbol.SemanticID
 	}
 	for _, argument := range resolved.Arguments {
 		projected, err := semanticTypeIdentity(symbols, packageID, argument)

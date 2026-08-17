@@ -16,17 +16,28 @@ import (
 type ModuleID string
 
 // LanguageContract is the explicit, manifest-or-source-selected language
-// identity. The semantic lane accepts only the fixed first post-legacy value;
-// the frozen legacy lane remains a separate compiler entrypoint.
+// identity. The semantic lane accepts only explicit supported post-legacy
+// values; the frozen legacy lane remains a separate compiler entrypoint.
 type LanguageContract string
 
 const (
-	LegacyLanguageContract   LanguageContract = "v0.0.0.1"
-	PipeLangLanguageContract LanguageContract = "v0.1.0"
-	PipeLangDisplayName                       = "PipeLang"
-	PipeLangMachineName                       = "pipelang"
-	PipeLangCompilerContract                  = "pipelang.compiler.v1"
+	LegacyLanguageContract       LanguageContract = "v0.0.0.1"
+	PipeLangLanguageContractV010 LanguageContract = "v0.1.0"
+	PipeLangLanguageContractV020 LanguageContract = "v0.2.0"
+	PipeLangLanguageContractV030 LanguageContract = "v0.3.0"
+	PipeLangLanguageContract                      = PipeLangLanguageContractV010 // compatibility name for the first post-legacy seed
+	PipeLangDisplayName                           = "PipeLang"
+	PipeLangMachineName                           = "pipelang"
+	PipeLangCompilerContract                      = "pipelang.compiler.v1"
 )
+
+func isPipeLangSemanticContract(contract LanguageContract) bool {
+	return contract == PipeLangLanguageContractV010 || contract == PipeLangLanguageContractV020 || contract == PipeLangLanguageContractV030
+}
+
+func hasArithmeticResultSourceContract(contract LanguageContract) bool {
+	return contract == PipeLangLanguageContractV020 || contract == PipeLangLanguageContractV030
+}
 
 // ImportKind distinguishes a namespace/module import from a single-symbol import.
 type ImportKind string
@@ -224,7 +235,7 @@ func analyzeModuleSet(input ModuleSetInput, requireSemanticIDs bool) *Analysis {
 		program.Span = Span{File: files[0].ID, Start: 0, End: len(files[0].Text)}
 	}
 	for _, file := range files {
-		parsed, err := parseSourceFile(sources, file)
+		parsed, err := parseSourceFileWithLanguageContract(sources, file, input.LanguageContract)
 		if err != nil {
 			if parsedDiagnostics, ok := AsDiagnostics(err); ok {
 				analysis.Diagnostics = append(analysis.Diagnostics, parsedDiagnostics...)
@@ -286,8 +297,8 @@ func prepareModuleGraph(input ModuleSetInput, sources *SourceSet, requireSemanti
 		diagnostics = append(diagnostics, moduleDiagnostic(CodeInvalidModule, Span{}, "language contract identity is empty or non-canonical"))
 	} else if input.LanguageContract == LegacyLanguageContract {
 		diagnostics = append(diagnostics, moduleDiagnostic(CodeInvalidModule, Span{}, "the frozen v0.0.0.1 contract uses the legacy source-set compiler lane"))
-	} else if requireSemanticIDs && input.LanguageContract != PipeLangLanguageContract {
-		diagnostics = append(diagnostics, moduleDiagnostic(CodeInvalidModule, Span{}, fmt.Sprintf("semantic analysis requires language contract %q", PipeLangLanguageContract)))
+	} else if requireSemanticIDs && !isPipeLangSemanticContract(input.LanguageContract) {
+		diagnostics = append(diagnostics, moduleDiagnostic(CodeInvalidModule, Span{}, fmt.Sprintf("semantic analysis requires language contract %q, %q, or %q", PipeLangLanguageContractV010, PipeLangLanguageContractV020, PipeLangLanguageContractV030)))
 	}
 	if !validModuleID(input.Root, false) {
 		diagnostics = append(diagnostics, moduleDiagnostic(CodeInvalidModule, Span{}, "root module identity is empty or non-canonical"))

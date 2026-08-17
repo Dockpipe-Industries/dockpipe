@@ -1,11 +1,40 @@
 {
-  "language_contract": "v0.1.0",
+  "language_contract": "v0.2.0",
   "compiler_contract": "pipelang.compiler.v1",
   "functions": [
     {
       "identity": {
         "package_id": "test.package",
-        "path": "app.root.root.add"
+        "path": "app.root.root.add",
+        "callable": {
+          "parameters": [
+            {
+              "kind": "primitive",
+              "primitive": "int"
+            },
+            {
+              "kind": "primitive",
+              "primitive": "int"
+            }
+          ],
+          "returns": {
+            "kind": "applied",
+            "package_id": "pipelang",
+            "path": "result",
+            "name": "Result",
+            "arguments": [
+              {
+                "kind": "primitive",
+                "primitive": "int"
+              },
+              {
+                "kind": "named",
+                "package_id": "pipelang",
+                "path": "arithmetic.error"
+              }
+            ]
+          }
+        }
       },
       "name": "Add",
       "parameters": [

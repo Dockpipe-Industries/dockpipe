@@ -30,7 +30,7 @@ const (
 )
 
 // NumericType is the target-independent representation selected by the
-// v0.1.0 semantic contract. Signed applies only to integer representations.
+// post-legacy semantic contracts. Signed applies only to integer representations.
 type NumericType struct {
 	Representation NumericRepresentation `json:"representation"`
 	Bits           int                   `json:"bits"`

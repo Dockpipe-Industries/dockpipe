@@ -1139,15 +1139,121 @@ fallible method. The frozen legacy evaluator and artifacts remain unchanged. Thi
 production `Result`/`ArithmeticError` spelling, implicit unwrap, branches or matching, public
 semantic projection, YAML/schema/editor surface, runtime, generated store, or dependency.
 
+### Completed step 7c public arithmetic Result contract (2026-08-16)
+
+The founder explicitly accepted the first production-source arithmetic result contract as a
+versioned migration from the fail-closed seed. The new language contract is `v0.2.0`; `v0.1.0`
+remains supported and continues to reject numeric arithmetic with `PL3028`. No source file, module,
+or package selects `v0.2.0` implicitly. The display and machine names remain `PipeLang` and
+`pipelang`, and the independently versioned compiler and public projection contracts remain
+`pipelang.compiler.v1` and `pipelang.semantic.v1`.
+
+The accepted source spelling is
+`Result<int, ArithmeticError> Add(int left, int right) => left + right;`. `Result` is the language
+built-in type constructor with semantic identity `pipelang:result`; `ArithmeticError` is the closed
+language built-in failure type with semantic identity `pipelang:arithmetic.error`. Callable identity
+and semantic projection use the existing structured applied-type shape: the identified `Result`
+constructor carries ordered success and failure arguments, and the failure argument carries the
+identified `ArithmeticError` type. This is not authority for a general Result library or
+user-defined generic declarations.
+
+Checked arithmetic already has the declared Result type; there is no conversion or implicit
+wrapping. In this bounded slice, the only admitted handling is returning one checked integer
+addition as the complete body of an expression-bodied method whose declared return is exactly
+`Result<int, ArithmeticError>`. No unwrap, propagation, nesting, extraction, matching, block,
+branch, or use as `int` is admitted. The observable outcomes are an explicit success value or the
+closed `overflow` error. Other arithmetic operators and the already-proven
+`division_by_zero` identity remain compiler-internal until separately synchronized source slices.
+
+The synchronized implementation gates the grammar on an explicitly selected `v0.2.0` module while
+the legacy parser and `v0.1.0` semantic lane retain their prior behavior. The parser preserves full
+type and argument spans; resolution fixes both built-in identities; callable identity and
+`pipelang.semantic.v1` project the identified applied type without an analysis-local symbol. The
+typechecker rejects ordinary integer returns, nesting, other arithmetic, other Result arguments,
+Result fields/parameters/interfaces, bare arithmetic errors, and declarations that shadow the two
+language-owned names. The accepted method lowers from checked source through typed HIR and Core,
+evaluates through `coreeval`, and generates deterministic compilable Go with identical success and
+overflow outcomes.
+
+Terminal proof passed with cached Go 1.25.13, the required offline environment, and writable `/tmp`
+caches:
+
+- exact `go test ./src/lib/pipelang/... ./tests/pipelangcompat`, including parser/type/identity/
+  projection/diagnostic coverage, source-derived HIR/Core/Go goldens, Core evaluation, and generated
+  Go compilation/execution under `/tmp`;
+- focused application PipeLang check/compile/invoke, catalog, materialize, representative workflow/
+  package compile, internal materialize/package-compile, and `src/cmd` tests through only the
+  temporary `/tmp` modfile pinned to cached `golang.org/x/sys v0.46.0`; checkout dependencies did
+  not change;
+- `go vet` across PipeLang, compatibility, and the affected application/internal/CLI packages; and
+- VS Code extension diagnostics plus durable Result/ArithmeticError grammar and completion checks.
+
+The broad application suite had only its two unrelated sandbox/topology failures: loopback listen
+is prohibited for `TestCmdInstallCoreEmitsOperationResults`, and
+`TestRunWorkflowStepsModeCliWorkdirOverridesInheritedEnvMap` names nonexistent
+`/path/to/your/project`. The focused affected suite is green. The exact 45-source compatibility
+inventory, legacy artifacts/evaluation, dependencies, generated stores, and protected ignored bytes
+did not change.
+
+### Completed step 7d direct checked-subtraction contract (2026-08-17)
+
+The founder selected the recommended new-version option for the next smallest public arithmetic
+slice. `v0.3.0` is an explicit migration that preserves `v0.2.0` as add-only and additionally admits
+exactly
+`Result<int, ArithmeticError> Subtract(int left, int right) => left - right;`. `v0.1.0` remains
+fail-closed with `PL3028`, and no source file, module, or package selects `v0.3.0` implicitly.
+
+The subtraction is the complete body of one expression-bodied class method. Its two operands are
+exactly `int`; its expression already has the declared `Result<int, ArithmeticError>` type; and its
+only observable outcomes are an explicit integer success or the existing closed `overflow` error.
+There is no conversion, wrapping, unwrapping, propagation, nesting, extraction, matching, block,
+branch, or use as an ordinary integer. Multiplication, negation, binary64 division, and general
+Result handling remain compiler-internal.
+
+The source contract reuses the language-owned `pipelang:result` and
+`pipelang:arithmetic.error` identities. Callable identity remains the structured ordered signature
+`(int, int) -> Result<int, ArithmeticError>`, and the public compiler/projection contracts remain
+`pipelang.compiler.v1` and `pipelang.semantic.v1`. Typed HIR and Core preserve the selected
+subtraction operator and target-independent Result type; Core evaluation and the Go backend consume
+that same contract rather than redefining failure behavior.
+
+The synchronized implementation explicitly gates `v0.3.0` through parsing, type resolution and
+checking, semantic callable identity and `pipelang.semantic.v1`, typed HIR, target-neutral Core,
+`coreeval`, and the deterministic Go backend. Source-derived HIR/Core/Go goldens preserve the
+subtraction operator and identified Result return. Core evaluation and compiled generated Go agree
+for ordinary and negative successes plus both signed overflow directions. Negative diagnostics
+prove `v0.1.0` and `v0.2.0` do not accept subtraction, `v0.2.0` remains add-only, and `v0.3.0`
+rejects nesting, multiplication, negation, division, alternate Result arguments, and unsupported
+Result placements.
+
+Terminal proof passed with cached Go 1.25.13, offline module lookup, and writable `/tmp` build and
+temporary caches:
+
+- exact `go test -count=1 ./src/lib/pipelang/... ./tests/pipelangcompat`;
+- focused application PipeLang/check/compile/invoke, catalog, representative workflow/package
+  compile, internal materialize/package-compile, and `src/cmd` tests through only the existing
+  temporary modfile pinned to cached `golang.org/x/sys v0.46.0`;
+- `go vet` across PipeLang, compatibility, and all affected application/internal/CLI packages;
+- VS Code extension diagnostics/completion/grammar validation, including subtraction highlighting;
+  and
+- `gofmt`, `git diff --check`, exact 45-source inventory and compatibility goldens, dependency-diff,
+  branch/stash, and protected ignored-byte proof.
+
+The previously admitted unrelated broad-application loopback and nonexistent-fixture failures were
+not reopened; the complete affected set is green. No generated store, dependency, runtime,
+credential, external state, commit, or publication changed. No later step-7 operator or
+Result-composition rule is authorized by this checkpoint.
+
 ## Exact Next Boundary
 
-Step 7 of **Bounded Implementation Order** is underway through the completed fixed numeric and
-compiler-internal checked-arithmetic Result slices. Numeric arithmetic is not yet admitted from
-production source. The exact successor boundary requires founder acceptance of the first public
-`Result` and arithmetic-error type identities/spellings, callable-signature and semantic-projection
-shape, explicit success/failure handling rule, and migration from the fail-closed `v0.1.0` seed.
-Only after that synchronized choice may source type checking lower arithmetic through the proven
-HIR/Core/evaluator/Go contract.
+Step 7 of **Bounded Implementation Order** is underway through the completed fixed numeric,
+compiler-internal checked-arithmetic Result, first production-source checked integer-add, and
+accepted direct checked-subtraction slices. `v0.2.0` admits only the exact explicit Result-returning
+addition recorded above; `v0.3.0` preserves that addition and additionally admits only the exact
+direct Result-returning subtraction recorded above. All other numeric arithmetic remains
+fail-closed from production source. Any next slice requires a new synchronized decision for its
+exact source spelling, Result handling/composition rule, semantic projection, migration, and
+bounded semantics before implementation.
 
 No later step-7 slice is included here. In particular, this checkpoint does not add Unicode text,
 value/reference, hashing, total ordering, optional, general result, record, union, or deterministic
@@ -1156,4 +1262,5 @@ migration, `internal`, overload, generic, or ID production syntax; implement ove
 add new types/declarations/expressions/operators, blocks, locals, branches, or loops; add effects,
 entrypoints, actions/state, contracts/replay, executable application/service semantics, Application
 IR, Service IR, another backend, or self-hosting; mutate generated stores; or widen Go emission by
-guessing step-7 semantics. Exact production spellings remain later synchronized language slices.
+guessing step-7 semantics. Exact successor production spellings remain later synchronized language
+slices.

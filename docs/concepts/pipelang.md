@@ -249,10 +249,32 @@ otherwise retains IEEE-754 behavior. Generated Go exposes an explicit result val
 panic as a domain outcome. Boundary tests compare integer semantics against exact mathematical
 integers and execute the same success/failure cases through Core evaluation and generated Go.
 
-Production source arithmetic remains fail-closed. Existing declarations cannot silently change
+Production source arithmetic remains fail-closed in `v0.1.0`. Existing declarations cannot silently change
 from returning a number to returning a result, and the compiler does not invent a `Result` spelling,
 an `ArithmeticError` source declaration, or implicit unwrapping. Those public type identities,
 spellings, and migration rules require a separately accepted synchronized language slice.
+
+That synchronized decision is now accepted for the first bounded production-source slice. An
+explicit `v0.2.0` module may declare
+`Result<int, ArithmeticError> Add(int left, int right) => left + right;`. The language-owned semantic
+identities are `pipelang:result` and `pipelang:arithmetic.error`; callable identity and
+`pipelang.semantic.v1` retain the existing structured applied-type representation. `v0.1.0`
+continues to reject arithmetic with `PL3028`, and no source or package migrates implicitly.
+
+In this first slice, the checked addition must be the complete expression-bodied method body and
+the declared return must match exactly. The expression itself produces the explicit result; there
+is no conversion, wrapping, unwrap, propagation, nesting, extraction, matching, or use as an
+ordinary integer. General results, other source arithmetic, and result-consumption syntax remain
+outside this contract.
+
+The next explicit contract, `v0.3.0`, preserves that `v0.2.0` addition unchanged and additionally
+admits exactly
+`Result<int, ArithmeticError> Subtract(int left, int right) => left - right;`. The subtraction must
+likewise be the complete expression-bodied method body and produces either an explicit integer
+success or the existing closed `overflow` error. It reuses `pipelang:result`,
+`pipelang:arithmetic.error`, `pipelang.compiler.v1`, and `pipelang.semantic.v1`; no source or package
+migrates implicitly. Multiplication, negation, division, nested fallible expressions, and general
+Result handling remain outside the production source contract.
 
 ## Artifacts
 

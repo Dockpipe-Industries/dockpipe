@@ -34,7 +34,7 @@ func (e *Error) Error() string {
 
 // Generate accepts Core IR only and returns deterministic, gofmt-formatted Go.
 func Generate(program coreir.Program) ([]byte, error) {
-	if program.LanguageContract != coreir.LanguageContractV010 || program.CompilerContract != coreir.CompilerContractV1 {
+	if (program.LanguageContract != coreir.LanguageContractV010 && program.LanguageContract != coreir.LanguageContractV020 && program.LanguageContract != coreir.LanguageContractV030) || program.CompilerContract != coreir.CompilerContractV1 {
 		return nil, &Error{Code: "PLGO0001", Message: fmt.Sprintf("unsupported Core IR contracts language=%q compiler=%q", program.LanguageContract, program.CompilerContract)}
 	}
 	functions := append([]coreir.Function(nil), program.Functions...)
@@ -212,7 +212,7 @@ func emitLiteral(typ coreir.Type, literal coreir.Literal) (string, error) {
 func goType(typ coreir.Type) (string, error) {
 	if typ.Kind == coreir.TypeResult {
 		if typ.Result == nil || typ.Result.Failure.Kind != coreir.TypeArithmeticError {
-			return "", fmt.Errorf("Go step-7b backend supports arithmetic Result failures only")
+			return "", fmt.Errorf("Go checked-arithmetic backend supports ArithmeticError Result failures only")
 		}
 		success, err := goType(typ.Result.Success)
 		if err != nil {
@@ -230,11 +230,11 @@ func goType(typ coreir.Type) (string, error) {
 		case typ.Numeric.Representation == coreir.NumericBinaryFloat && typ.Numeric.Bits == 64 && !typ.Numeric.Signed:
 			return "float64", nil
 		default:
-			return "", fmt.Errorf("Go step-7b backend does not support numeric representation %q/%d", typ.Numeric.Representation, typ.Numeric.Bits)
+			return "", fmt.Errorf("Go checked-arithmetic backend does not support numeric representation %q/%d", typ.Numeric.Representation, typ.Numeric.Bits)
 		}
 	}
 	if typ.Kind != coreir.TypePrimitive {
-		return "", fmt.Errorf("Go step-7b backend supports primitive, fixed numeric, and arithmetic Result types only, got %q", typ.Kind)
+		return "", fmt.Errorf("Go checked-arithmetic backend supports primitive, fixed numeric, and arithmetic Result types only, got %q", typ.Kind)
 	}
 	switch typ.Primitive {
 	case coreir.PrimitiveString:

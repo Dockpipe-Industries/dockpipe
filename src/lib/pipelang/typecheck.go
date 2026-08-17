@@ -40,6 +40,9 @@ func checkProgramWithModules(sources *SourceSet, prog *Program, modules *ModuleG
 func checkProgramWithSymbols(sources *SourceSet, prog *Program, modules *ModuleGraph, symbols *SymbolTable) (*checkedProgram, error) {
 	cp := &checkedProgram{program: prog, symbols: symbols, sources: sources, modules: modules}
 	for _, entry := range symbols.ordered {
+		if modules != nil && hasArithmeticResultSourceContract(modules.LanguageContract()) && (entry.symbol.Name == "Result" || entry.symbol.Name == "ArithmeticError") {
+			return nil, oneDiagnostic(sources, CodeInvalidDecl, CategorySemantic, entry.symbol.DeclarationSpan, fmt.Sprintf("type name %q is reserved by language contract %q", entry.symbol.Name, modules.LanguageContract()))
+		}
 		switch entry.symbol.Kind {
 		case SymbolInterface:
 			decl := entry.interfaceDecl
@@ -88,8 +91,12 @@ func (cp *checkedProgram) validateInterface(decl *InterfaceDecl) error {
 		if normalizeVisibility(field.Visibility) != VisibilityPublic {
 			return oneDiagnostic(cp.sources, CodeInvalidMember, CategorySemantic, field.Span, fmt.Sprintf("interface %s field %s must be public", decl.Name, field.Name))
 		}
-		if _, err := cp.resolveType(field.Type, RelatedSpan{Span: field.Span, Message: "field declaration"}); err != nil {
+		resolved, err := cp.resolveType(field.Type, RelatedSpan{Span: field.Span, Message: "field declaration"})
+		if err != nil {
 			return prefixDiagnostic(err, fmt.Sprintf("interface %s field %s: ", decl.Name, field.Name))
+		}
+		if containsResolvedArithmeticContractType(resolved) {
+			return oneDiagnostic(cp.sources, CodeInvalidType, CategorySemantic, field.Type.Span, fmt.Sprintf("the %s arithmetic Result is admitted only as a class method return type", cp.modules.LanguageContract()))
 		}
 		if previous, ok := seen[field.Name]; ok {
 			return oneDiagnostic(cp.sources, CodeDuplicateMember, CategorySemantic, field.Span, fmt.Sprintf("interface %s has duplicate member %q", decl.Name, field.Name), RelatedSpan{Span: previous, Message: "first member"})
@@ -100,8 +107,12 @@ func (cp *checkedProgram) validateInterface(decl *InterfaceDecl) error {
 		if normalizeVisibility(method.Visibility) != VisibilityPublic {
 			return oneDiagnostic(cp.sources, CodeInvalidMember, CategorySemantic, method.Span, fmt.Sprintf("interface %s method %s must be public", decl.Name, method.Name))
 		}
-		if _, err := cp.resolveType(method.ReturnType, RelatedSpan{Span: method.Span, Message: "method declaration"}); err != nil {
+		resolved, err := cp.resolveType(method.ReturnType, RelatedSpan{Span: method.Span, Message: "method declaration"})
+		if err != nil {
 			return prefixDiagnostic(err, fmt.Sprintf("interface %s method %s return: ", decl.Name, method.Name))
+		}
+		if containsResolvedArithmeticContractType(resolved) {
+			return oneDiagnostic(cp.sources, CodeInvalidType, CategorySemantic, method.ReturnType.Span, fmt.Sprintf("the %s arithmetic Result requires one checked class method body", cp.modules.LanguageContract()))
 		}
 		if previous, ok := seen[method.Name]; ok {
 			return oneDiagnostic(cp.sources, CodeDuplicateMember, CategorySemantic, method.Span, fmt.Sprintf("interface %s has duplicate member %q", decl.Name, method.Name), RelatedSpan{Span: previous, Message: "first member"})
@@ -125,6 +136,9 @@ func (cp *checkedProgram) validateClass(decl *ClassDecl) error {
 		if err != nil {
 			return prefixDiagnostic(err, fmt.Sprintf("class %s field %s: ", decl.Name, field.Name))
 		}
+		if containsResolvedArithmeticContractType(fieldType) {
+			return oneDiagnostic(cp.sources, CodeInvalidType, CategorySemantic, field.Type.Span, fmt.Sprintf("the %s arithmetic Result is admitted only as a class method return type", cp.modules.LanguageContract()))
+		}
 		if previous, ok := seen[field.Name]; ok {
 			return oneDiagnostic(cp.sources, CodeDuplicateMember, CategorySemantic, field.Span, fmt.Sprintf("class %s has duplicate member %q", decl.Name, field.Name), RelatedSpan{Span: previous, Message: "first member"})
 		}
@@ -135,8 +149,12 @@ func (cp *checkedProgram) validateClass(decl *ClassDecl) error {
 		if !method.Visibility.IsValid() {
 			return oneDiagnostic(cp.sources, CodeInvalidMember, CategorySemantic, method.Span, fmt.Sprintf("class %s method %s has invalid visibility %q", decl.Name, method.Name, method.Visibility))
 		}
-		if _, err := cp.resolveType(method.ReturnType, RelatedSpan{Span: method.Span, Message: "method declaration"}); err != nil {
+		resolved, err := cp.resolveType(method.ReturnType, RelatedSpan{Span: method.Span, Message: "method declaration"})
+		if err != nil {
 			return prefixDiagnostic(err, fmt.Sprintf("class %s method %s return: ", decl.Name, method.Name))
+		}
+		if containsResolvedArithmeticContractType(resolved) && !isResolvedIntArithmeticResult(resolved) {
+			return oneDiagnostic(cp.sources, CodeInvalidType, CategorySemantic, method.ReturnType.Span, fmt.Sprintf("the %s arithmetic slice admits only Result<int,ArithmeticError> as a class method return type", cp.modules.LanguageContract()))
 		}
 		if previous, ok := seen[method.Name]; ok {
 			return oneDiagnostic(cp.sources, CodeDuplicateMember, CategorySemantic, method.Span, fmt.Sprintf("class %s has duplicate member %q", decl.Name, method.Name), RelatedSpan{Span: previous, Message: "first member"})
@@ -171,13 +189,13 @@ func (cp *checkedProgram) validateClass(decl *ClassDecl) error {
 			}
 			env[param.Name] = paramType
 		}
-		inferred, err := cp.inferExprType(method.Body, env)
-		if err != nil {
-			return prefixDiagnostic(err, fmt.Sprintf("class %s method %s: ", decl.Name, method.Name))
-		}
 		declared, err := cp.resolveType(method.ReturnType)
 		if err != nil {
 			return err
+		}
+		inferred, err := cp.inferMethodBodyType(method.Body, env, declared)
+		if err != nil {
+			return prefixDiagnostic(err, fmt.Sprintf("class %s method %s: ", decl.Name, method.Name))
 		}
 		if !inferred.Equal(declared) {
 			return oneDiagnostic(cp.sources, CodeExpressionType, CategorySemantic, method.Body.SourceSpan(), fmt.Sprintf("class %s method %s returns %s but declared %s", decl.Name, method.Name, inferred, declared), RelatedSpan{Span: method.ReturnType.Span, Message: "declared return type"})
@@ -189,8 +207,12 @@ func (cp *checkedProgram) validateClass(decl *ClassDecl) error {
 func (cp *checkedProgram) validateParams(owner, method string, params []Param) error {
 	seen := map[string]Span{}
 	for _, param := range params {
-		if _, err := cp.resolveType(param.Type, RelatedSpan{Span: param.Span, Message: "parameter declaration"}); err != nil {
+		resolved, err := cp.resolveType(param.Type, RelatedSpan{Span: param.Span, Message: "parameter declaration"})
+		if err != nil {
 			return prefixDiagnostic(err, fmt.Sprintf("%s method %s parameter %s: ", owner, method, param.Name))
+		}
+		if containsResolvedArithmeticContractType(resolved) {
+			return oneDiagnostic(cp.sources, CodeInvalidType, CategorySemantic, param.Type.Span, fmt.Sprintf("the %s arithmetic Result is not admitted as a parameter type", cp.modules.LanguageContract()))
 		}
 		if previous, ok := seen[param.Name]; ok {
 			return oneDiagnostic(cp.sources, CodeDuplicateMember, CategorySemantic, param.Span, fmt.Sprintf("%s method %s has duplicate parameter %q", owner, method, param.Name), RelatedSpan{Span: previous, Message: "first parameter"})
@@ -317,8 +339,44 @@ func inferExprType(sources *SourceSet, expr Expr, env map[string]ResolvedTypeRef
 }
 
 func (cp *checkedProgram) inferExprType(expr Expr, env map[string]ResolvedTypeRef) (ResolvedTypeRef, error) {
-	strictNumeric := cp != nil && cp.modules != nil && cp.modules.LanguageContract() == PipeLangLanguageContract
+	strictNumeric := cp != nil && cp.modules != nil && isPipeLangSemanticContract(cp.modules.LanguageContract())
 	return inferExprTypeWithPolicy(cp.sources, expr, env, strictNumeric)
+}
+
+func (cp *checkedProgram) inferMethodBodyType(expr Expr, env map[string]ResolvedTypeRef, declared ResolvedTypeRef) (ResolvedTypeRef, error) {
+	if cp == nil || cp.modules == nil || !hasArithmeticResultSourceContract(cp.modules.LanguageContract()) || !isResolvedIntArithmeticResult(declared) {
+		return cp.inferExprType(expr, env)
+	}
+	binary, ok := expr.(*BinaryExpr)
+	contract := cp.modules.LanguageContract()
+	operatorAccepted := ok && binary.Op == "+"
+	if contract == PipeLangLanguageContractV030 {
+		operatorAccepted = ok && (binary.Op == "+" || binary.Op == "-")
+	}
+	if !operatorAccepted {
+		span := expr.SourceSpan()
+		return ResolvedTypeRef{}, oneDiagnostic(cp.sources, CodeNumericSemantics, CategorySemantic, span, fmt.Sprintf("%s admits only one direct checked integer %s as the complete Result<int,ArithmeticError> method body", contract, arithmeticSourceOperators(contract)))
+	}
+	left, err := inferExprTypeWithPolicy(cp.sources, binary.Left, env, true)
+	if err != nil {
+		return ResolvedTypeRef{}, err
+	}
+	right, err := inferExprTypeWithPolicy(cp.sources, binary.Right, env, true)
+	if err != nil {
+		return ResolvedTypeRef{}, err
+	}
+	integer := resolvedPrimitive(TypeInt)
+	if !left.Equal(integer) || !right.Equal(integer) {
+		return ResolvedTypeRef{}, oneDiagnostic(cp.sources, CodeNumericSemantics, CategorySemantic, binary.Span, fmt.Sprintf("checked integer operator %q requires int and int, got %s and %s", binary.Op, left, right))
+	}
+	return resolvedArithmeticResult(integer), nil
+}
+
+func arithmeticSourceOperators(contract LanguageContract) string {
+	if contract == PipeLangLanguageContractV030 {
+		return "addition or subtraction"
+	}
+	return "addition"
 }
 
 func inferExprTypeWithPolicy(sources *SourceSet, expr Expr, env map[string]ResolvedTypeRef, strictNumeric bool) (ResolvedTypeRef, error) {
@@ -347,7 +405,7 @@ func inferExprTypeWithPolicy(sources *SourceSet, expr Expr, env map[string]Resol
 				return ResolvedTypeRef{}, oneDiagnostic(sources, CodeExpressionType, CategorySemantic, node.Span, fmt.Sprintf("operator - expects int or float, got %s", resolved))
 			}
 			if strictNumeric {
-				return ResolvedTypeRef{}, oneDiagnostic(sources, CodeNumericSemantics, CategorySemantic, node.Span, "numeric negation requires checked Result failure semantics that are not yet available in v0.1.0")
+				return ResolvedTypeRef{}, oneDiagnostic(sources, CodeNumericSemantics, CategorySemantic, node.Span, "numeric negation requires an explicitly declared checked Result return")
 			}
 			return resolved, nil
 		default:
@@ -380,7 +438,7 @@ func inferBinaryTypeWithPolicy(sources *SourceSet, span Span, op string, left, r
 	if strictNumeric && isResolvedNumeric(left) && isResolvedNumeric(right) {
 		switch op {
 		case "+", "-", "*", "/":
-			return ResolvedTypeRef{}, oneDiagnostic(sources, CodeNumericSemantics, CategorySemantic, span, fmt.Sprintf("numeric operator %q requires checked Result failure semantics that are not yet available in v0.1.0", op))
+			return ResolvedTypeRef{}, oneDiagnostic(sources, CodeNumericSemantics, CategorySemantic, span, fmt.Sprintf("numeric operator %q requires an explicitly declared checked Result return", op))
 		case "<", "<=", ">", ">=", "==", "!=":
 			if !left.Equal(right) {
 				return ResolvedTypeRef{}, oneDiagnostic(sources, CodeNumericSemantics, CategorySemantic, span, fmt.Sprintf("numeric operator %q does not implicitly convert %s and %s", op, left, right))

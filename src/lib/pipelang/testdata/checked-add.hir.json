@@ -1,11 +1,40 @@
 {
-  "language_contract": "v0.1.0",
+  "language_contract": "v0.2.0",
   "compiler_contract": "pipelang.compiler.v1",
   "functions": [
     {
       "identity": {
         "package_id": "test.package",
-        "path": "app.root.root.add"
+        "path": "app.root.root.add",
+        "callable": {
+          "parameters": [
+            {
+              "kind": "primitive",
+              "primitive": "int"
+            },
+            {
+              "kind": "primitive",
+              "primitive": "int"
+            }
+          ],
+          "returns": {
+            "kind": "applied",
+            "package_id": "pipelang",
+            "path": "result",
+            "name": "Result",
+            "arguments": [
+              {
+                "kind": "primitive",
+                "primitive": "int"
+              },
+              {
+                "kind": "named",
+                "package_id": "pipelang",
+                "path": "arithmetic.error"
+              }
+            ]
+          }
+        }
       },
       "owner": {
         "module": "app.root",
@@ -15,9 +44,9 @@
           "path": "app.root.root"
         },
         "source_span": {
-          "file": "checked-arithmetic.fixture",
-          "start": 1,
-          "end": 2
+          "file": "root.pipe",
+          "start": 0,
+          "end": 99
         }
       },
       "name": "Add",
@@ -27,7 +56,36 @@
             "kind": "parameter",
             "function": {
               "package_id": "test.package",
-              "path": "app.root.root.add"
+              "path": "app.root.root.add",
+              "callable": {
+                "parameters": [
+                  {
+                    "kind": "primitive",
+                    "primitive": "int"
+                  },
+                  {
+                    "kind": "primitive",
+                    "primitive": "int"
+                  }
+                ],
+                "returns": {
+                  "kind": "applied",
+                  "package_id": "pipelang",
+                  "path": "result",
+                  "name": "Result",
+                  "arguments": [
+                    {
+                      "kind": "primitive",
+                      "primitive": "int"
+                    },
+                    {
+                      "kind": "named",
+                      "package_id": "pipelang",
+                      "path": "arithmetic.error"
+                    }
+                  ]
+                }
+              }
             },
             "position": 0,
             "name": "left"
@@ -41,14 +99,14 @@
             }
           },
           "type_span": {
-            "file": "checked-arithmetic.fixture",
-            "start": 1,
-            "end": 2
+            "file": "root.pipe",
+            "start": 60,
+            "end": 63
           },
           "span": {
-            "file": "checked-arithmetic.fixture",
-            "start": 1,
-            "end": 2
+            "file": "root.pipe",
+            "start": 60,
+            "end": 68
           }
         },
         {
@@ -56,7 +114,36 @@
             "kind": "parameter",
             "function": {
               "package_id": "test.package",
-              "path": "app.root.root.add"
+              "path": "app.root.root.add",
+              "callable": {
+                "parameters": [
+                  {
+                    "kind": "primitive",
+                    "primitive": "int"
+                  },
+                  {
+                    "kind": "primitive",
+                    "primitive": "int"
+                  }
+                ],
+                "returns": {
+                  "kind": "applied",
+                  "package_id": "pipelang",
+                  "path": "result",
+                  "name": "Result",
+                  "arguments": [
+                    {
+                      "kind": "primitive",
+                      "primitive": "int"
+                    },
+                    {
+                      "kind": "named",
+                      "package_id": "pipelang",
+                      "path": "arithmetic.error"
+                    }
+                  ]
+                }
+              }
             },
             "position": 1,
             "name": "right"
@@ -70,14 +157,14 @@
             }
           },
           "type_span": {
-            "file": "checked-arithmetic.fixture",
-            "start": 1,
-            "end": 2
+            "file": "root.pipe",
+            "start": 70,
+            "end": 73
           },
           "span": {
-            "file": "checked-arithmetic.fixture",
-            "start": 1,
-            "end": 2
+            "file": "root.pipe",
+            "start": 70,
+            "end": 79
           }
         }
       ],
@@ -98,9 +185,9 @@
         }
       },
       "return_type_span": {
-        "file": "checked-arithmetic.fixture",
-        "start": 1,
-        "end": 2
+        "file": "root.pipe",
+        "start": 27,
+        "end": 55
       },
       "body": {
         "kind": "binary",
@@ -121,9 +208,9 @@
           }
         },
         "span": {
-          "file": "checked-arithmetic.fixture",
-          "start": 1,
-          "end": 2
+          "file": "root.pipe",
+          "start": 84,
+          "end": 96
         },
         "binary": {
           "operator": "add",
@@ -138,15 +225,44 @@
               }
             },
             "span": {
-              "file": "checked-arithmetic.fixture",
-              "start": 1,
-              "end": 2
+              "file": "root.pipe",
+              "start": 84,
+              "end": 88
             },
             "reference": {
               "kind": "parameter",
               "function": {
                 "package_id": "test.package",
-                "path": "app.root.root.add"
+                "path": "app.root.root.add",
+                "callable": {
+                  "parameters": [
+                    {
+                      "kind": "primitive",
+                      "primitive": "int"
+                    },
+                    {
+                      "kind": "primitive",
+                      "primitive": "int"
+                    }
+                  ],
+                  "returns": {
+                    "kind": "applied",
+                    "package_id": "pipelang",
+                    "path": "result",
+                    "name": "Result",
+                    "arguments": [
+                      {
+                        "kind": "primitive",
+                        "primitive": "int"
+                      },
+                      {
+                        "kind": "named",
+                        "package_id": "pipelang",
+                        "path": "arithmetic.error"
+                      }
+                    ]
+                  }
+                }
               },
               "position": 0,
               "name": "left"
@@ -163,15 +279,44 @@
               }
             },
             "span": {
-              "file": "checked-arithmetic.fixture",
-              "start": 1,
-              "end": 2
+              "file": "root.pipe",
+              "start": 91,
+              "end": 96
             },
             "reference": {
               "kind": "parameter",
               "function": {
                 "package_id": "test.package",
-                "path": "app.root.root.add"
+                "path": "app.root.root.add",
+                "callable": {
+                  "parameters": [
+                    {
+                      "kind": "primitive",
+                      "primitive": "int"
+                    },
+                    {
+                      "kind": "primitive",
+                      "primitive": "int"
+                    }
+                  ],
+                  "returns": {
+                    "kind": "applied",
+                    "package_id": "pipelang",
+                    "path": "result",
+                    "name": "Result",
+                    "arguments": [
+                      {
+                        "kind": "primitive",
+                        "primitive": "int"
+                      },
+                      {
+                        "kind": "named",
+                        "package_id": "pipelang",
+                        "path": "arithmetic.error"
+                      }
+                    ]
+                  }
+                }
               },
               "position": 1,
               "name": "right"
@@ -180,9 +325,9 @@
         }
       },
       "span": {
-        "file": "checked-arithmetic.fixture",
-        "start": 1,
-        "end": 2
+        "file": "root.pipe",
+        "start": 20,
+        "end": 97
       }
     }
   ]
