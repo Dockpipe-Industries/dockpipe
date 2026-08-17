@@ -82,7 +82,7 @@ func LowerSemanticMethodToHIR(analysis *Analysis, identity SemanticIdentity) (hi
 }
 
 func lowerExprToHIR(analysis *Analysis, function SemanticIdentity, expression Expr, bindings map[string]hir.Binding, typeEnvironment map[string]ResolvedTypeRef) (hir.Expr, error) {
-	resolved, err := inferExprType(analysis.Sources, expression, typeEnvironment)
+	resolved, err := analysis.checked.inferExprType(expression, typeEnvironment)
 	if err != nil {
 		return hir.Expr{}, err
 	}
@@ -230,6 +230,18 @@ func symbolBySpan(table *SymbolTable, span Span) (Symbol, bool) {
 
 func toHIRType(analysis *Analysis, resolved ResolvedTypeRef) hir.Type {
 	result := hir.Type{Kind: hir.TypeKind(resolved.Kind), Primitive: hir.PrimitiveType(resolved.Primitive), SymbolID: uint32(resolved.Symbol), Name: resolved.Name}
+	if resolved.Kind == TypeRefPrimitive {
+		switch resolved.Primitive {
+		case TypeInt:
+			result.Kind = hir.TypeNumeric
+			result.Primitive = ""
+			result.Numeric = &hir.NumericType{Representation: hir.NumericInteger, Bits: 64, Signed: true}
+		case TypeFloat:
+			result.Kind = hir.TypeNumeric
+			result.Primitive = ""
+			result.Numeric = &hir.NumericType{Representation: hir.NumericBinaryFloat, Bits: 64}
+		}
+	}
 	if resolved.Kind == TypeRefNamed && analysis != nil && analysis.Symbols != nil && analysis.SemanticIDs != nil {
 		if symbol, ok := analysis.Symbols.LookupID(resolved.Symbol); ok {
 			if identity, ok := analysis.SemanticIDs.IdentityForSpan(symbol.DeclarationSpan); ok {
@@ -266,6 +278,9 @@ func toHIRSemanticType(identity SemanticTypeIdentity) hir.SemanticType {
 
 func hirTypeToCore(value hir.Type) coreir.Type {
 	result := coreir.Type{Kind: coreir.TypeKind(value.Kind), Primitive: coreir.PrimitiveType(value.Primitive), Name: value.Name}
+	if value.Numeric != nil {
+		result.Numeric = &coreir.NumericType{Representation: coreir.NumericRepresentation(value.Numeric.Representation), Bits: value.Numeric.Bits, Signed: value.Numeric.Signed}
+	}
 	if value.Identity != nil {
 		identity := hirIdentityToCore(*value.Identity)
 		result.Identity = &identity

@@ -150,7 +150,7 @@ func (cp *checkedProgram) validateClass(decl *ClassDecl) error {
 		if field.Default == nil {
 			continue
 		}
-		inferred, err := inferExprType(cp.sources, field.Default, map[string]ResolvedTypeRef{})
+		inferred, err := cp.inferExprType(field.Default, map[string]ResolvedTypeRef{})
 		if err != nil {
 			return prefixDiagnostic(err, fmt.Sprintf("class %s field %s default: ", decl.Name, field.Name))
 		}
@@ -171,7 +171,7 @@ func (cp *checkedProgram) validateClass(decl *ClassDecl) error {
 			}
 			env[param.Name] = paramType
 		}
-		inferred, err := inferExprType(cp.sources, method.Body, env)
+		inferred, err := cp.inferExprType(method.Body, env)
 		if err != nil {
 			return prefixDiagnostic(err, fmt.Sprintf("class %s method %s: ", decl.Name, method.Name))
 		}
@@ -313,6 +313,15 @@ func (cp *checkedProgram) resolveNamedEntry(ref UnresolvedTypeRef) (symbolEntry,
 }
 
 func inferExprType(sources *SourceSet, expr Expr, env map[string]ResolvedTypeRef) (ResolvedTypeRef, error) {
+	return inferExprTypeWithPolicy(sources, expr, env, false)
+}
+
+func (cp *checkedProgram) inferExprType(expr Expr, env map[string]ResolvedTypeRef) (ResolvedTypeRef, error) {
+	strictNumeric := cp != nil && cp.modules != nil && cp.modules.LanguageContract() == PipeLangLanguageContract
+	return inferExprTypeWithPolicy(cp.sources, expr, env, strictNumeric)
+}
+
+func inferExprTypeWithPolicy(sources *SourceSet, expr Expr, env map[string]ResolvedTypeRef, strictNumeric bool) (ResolvedTypeRef, error) {
 	switch node := expr.(type) {
 	case *LiteralExpr:
 		return resolvedPrimitive(node.Value.Type), nil
@@ -323,7 +332,7 @@ func inferExprType(sources *SourceSet, expr Expr, env map[string]ResolvedTypeRef
 		}
 		return resolved, nil
 	case *UnaryExpr:
-		resolved, err := inferExprType(sources, node.Expr, env)
+		resolved, err := inferExprTypeWithPolicy(sources, node.Expr, env, strictNumeric)
 		if err != nil {
 			return ResolvedTypeRef{}, err
 		}
@@ -337,20 +346,23 @@ func inferExprType(sources *SourceSet, expr Expr, env map[string]ResolvedTypeRef
 			if !isResolvedNumeric(resolved) {
 				return ResolvedTypeRef{}, oneDiagnostic(sources, CodeExpressionType, CategorySemantic, node.Span, fmt.Sprintf("operator - expects int or float, got %s", resolved))
 			}
+			if strictNumeric {
+				return ResolvedTypeRef{}, oneDiagnostic(sources, CodeNumericSemantics, CategorySemantic, node.Span, "numeric negation requires checked Result failure semantics that are not yet available in v0.1.0")
+			}
 			return resolved, nil
 		default:
 			return ResolvedTypeRef{}, oneDiagnostic(sources, CodeExpressionType, CategorySemantic, node.Span, fmt.Sprintf("unsupported unary operator %q", node.Op))
 		}
 	case *BinaryExpr:
-		left, err := inferExprType(sources, node.Left, env)
+		left, err := inferExprTypeWithPolicy(sources, node.Left, env, strictNumeric)
 		if err != nil {
 			return ResolvedTypeRef{}, err
 		}
-		right, err := inferExprType(sources, node.Right, env)
+		right, err := inferExprTypeWithPolicy(sources, node.Right, env, strictNumeric)
 		if err != nil {
 			return ResolvedTypeRef{}, err
 		}
-		return inferBinaryType(sources, node.Span, node.Op, left, right)
+		return inferBinaryTypeWithPolicy(sources, node.Span, node.Op, left, right, strictNumeric)
 	default:
 		span := Span{}
 		if expr != nil {
@@ -361,6 +373,20 @@ func inferExprType(sources *SourceSet, expr Expr, env map[string]ResolvedTypeRef
 }
 
 func inferBinaryType(sources *SourceSet, span Span, op string, left, right ResolvedTypeRef) (ResolvedTypeRef, error) {
+	return inferBinaryTypeWithPolicy(sources, span, op, left, right, false)
+}
+
+func inferBinaryTypeWithPolicy(sources *SourceSet, span Span, op string, left, right ResolvedTypeRef, strictNumeric bool) (ResolvedTypeRef, error) {
+	if strictNumeric && isResolvedNumeric(left) && isResolvedNumeric(right) {
+		switch op {
+		case "+", "-", "*", "/":
+			return ResolvedTypeRef{}, oneDiagnostic(sources, CodeNumericSemantics, CategorySemantic, span, fmt.Sprintf("numeric operator %q requires checked Result failure semantics that are not yet available in v0.1.0", op))
+		case "<", "<=", ">", ">=", "==", "!=":
+			if !left.Equal(right) {
+				return ResolvedTypeRef{}, oneDiagnostic(sources, CodeNumericSemantics, CategorySemantic, span, fmt.Sprintf("numeric operator %q does not implicitly convert %s and %s", op, left, right))
+			}
+		}
+	}
 	switch op {
 	case "+":
 		if left.Equal(resolvedPrimitive(TypeString)) && right.Equal(resolvedPrimitive(TypeString)) {

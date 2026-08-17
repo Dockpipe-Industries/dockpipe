@@ -20,9 +20,25 @@ type TypeKind string
 
 const (
 	TypePrimitive TypeKind = "primitive"
+	TypeNumeric   TypeKind = "numeric"
 	TypeNamed     TypeKind = "named"
 	TypeApplied   TypeKind = "applied"
 )
+
+type NumericRepresentation string
+
+const (
+	NumericInteger     NumericRepresentation = "integer"
+	NumericBinaryFloat NumericRepresentation = "binary_float"
+)
+
+// NumericType fully describes a backend-neutral fixed numeric value.
+// Signed applies only to integer representations.
+type NumericType struct {
+	Representation NumericRepresentation `json:"representation"`
+	Bits           int                   `json:"bits"`
+	Signed         bool                  `json:"signed,omitempty"`
+}
 
 type SemanticType struct {
 	Kind      TypeKind       `json:"kind"`
@@ -47,6 +63,7 @@ type SemanticIdentity struct {
 type Type struct {
 	Kind      TypeKind          `json:"kind"`
 	Primitive PrimitiveType     `json:"primitive,omitempty"`
+	Numeric   *NumericType      `json:"numeric,omitempty"`
 	Identity  *SemanticIdentity `json:"identity,omitempty"`
 	Name      string            `json:"name,omitempty"`
 	Arguments []Type            `json:"arguments,omitempty"`

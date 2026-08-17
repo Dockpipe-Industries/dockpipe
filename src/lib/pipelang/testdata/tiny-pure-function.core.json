@@ -25,8 +25,12 @@
           "position": 0,
           "name": "count",
           "type": {
-            "kind": "primitive",
-            "primitive": "int"
+            "kind": "numeric",
+            "numeric": {
+              "representation": "integer",
+              "bits": 64,
+              "signed": true
+            }
           }
         }
       ],
@@ -45,16 +49,24 @@
           "left": {
             "kind": "reference",
             "type": {
-              "kind": "primitive",
-              "primitive": "int"
+              "kind": "numeric",
+              "numeric": {
+                "representation": "integer",
+                "bits": 64,
+                "signed": true
+              }
             },
             "parameter": 0
           },
           "right": {
             "kind": "literal",
             "type": {
-              "kind": "primitive",
-              "primitive": "int"
+              "kind": "numeric",
+              "numeric": {
+                "representation": "integer",
+                "bits": 64,
+                "signed": true
+              }
             },
             "literal": {
               "string": "",
