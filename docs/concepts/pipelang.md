@@ -276,6 +276,14 @@ success or the existing closed `overflow` error. It reuses `pipelang:result`,
 migrates implicitly. Multiplication, negation, division, nested fallible expressions, and general
 Result handling remain outside the production source contract.
 
+The explicit `v0.4.0` contract preserves the prior addition and subtraction and additionally admits
+exactly
+`Result<int, ArithmeticError> Multiply(int left, int right) => left * right;`. Multiplication is the
+complete expression-bodied method body and produces either an explicit integer success or the same
+closed `overflow` error. It reuses the existing Result/error identities and compiler/projection
+contracts; no source or package migrates implicitly. Negation, division, nested fallible
+expressions, and general Result handling remain outside the production source contract.
+
 ## Artifacts
 
 Compile emits:

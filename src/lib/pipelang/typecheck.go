@@ -350,7 +350,9 @@ func (cp *checkedProgram) inferMethodBodyType(expr Expr, env map[string]Resolved
 	binary, ok := expr.(*BinaryExpr)
 	contract := cp.modules.LanguageContract()
 	operatorAccepted := ok && binary.Op == "+"
-	if contract == PipeLangLanguageContractV030 {
+	if contract == PipeLangLanguageContractV040 {
+		operatorAccepted = ok && (binary.Op == "+" || binary.Op == "-" || binary.Op == "*")
+	} else if contract == PipeLangLanguageContractV030 {
 		operatorAccepted = ok && (binary.Op == "+" || binary.Op == "-")
 	}
 	if !operatorAccepted {
@@ -373,6 +375,9 @@ func (cp *checkedProgram) inferMethodBodyType(expr Expr, env map[string]Resolved
 }
 
 func arithmeticSourceOperators(contract LanguageContract) string {
+	if contract == PipeLangLanguageContractV040 {
+		return "addition, subtraction, or multiplication"
+	}
 	if contract == PipeLangLanguageContractV030 {
 		return "addition or subtraction"
 	}
