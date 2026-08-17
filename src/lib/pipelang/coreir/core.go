@@ -19,10 +19,12 @@ const (
 type TypeKind string
 
 const (
-	TypePrimitive TypeKind = "primitive"
-	TypeNumeric   TypeKind = "numeric"
-	TypeNamed     TypeKind = "named"
-	TypeApplied   TypeKind = "applied"
+	TypePrimitive       TypeKind = "primitive"
+	TypeNumeric         TypeKind = "numeric"
+	TypeResult          TypeKind = "result"
+	TypeArithmeticError TypeKind = "arithmetic_error"
+	TypeNamed           TypeKind = "named"
+	TypeApplied         TypeKind = "applied"
 )
 
 type NumericRepresentation string
@@ -39,6 +41,20 @@ type NumericType struct {
 	Bits           int                   `json:"bits"`
 	Signed         bool                  `json:"signed,omitempty"`
 }
+
+// ResultType is a backend-neutral closed success/failure value. It is an IR
+// contract and does not choose a production source spelling.
+type ResultType struct {
+	Success Type `json:"success"`
+	Failure Type `json:"failure"`
+}
+
+type ArithmeticError string
+
+const (
+	ArithmeticOverflow       ArithmeticError = "overflow"
+	ArithmeticDivisionByZero ArithmeticError = "division_by_zero"
+)
 
 type SemanticType struct {
 	Kind      TypeKind       `json:"kind"`
@@ -64,6 +80,7 @@ type Type struct {
 	Kind      TypeKind          `json:"kind"`
 	Primitive PrimitiveType     `json:"primitive,omitempty"`
 	Numeric   *NumericType      `json:"numeric,omitempty"`
+	Result    *ResultType       `json:"result,omitempty"`
 	Identity  *SemanticIdentity `json:"identity,omitempty"`
 	Name      string            `json:"name,omitempty"`
 	Arguments []Type            `json:"arguments,omitempty"`

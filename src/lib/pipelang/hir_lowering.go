@@ -151,7 +151,11 @@ func LowerHIRToCore(program hir.Program) (coreir.Program, error) {
 		if err != nil {
 			return coreir.Program{}, err
 		}
-		core.Functions = append(core.Functions, coreir.Function{Identity: hirIdentityToCore(function.Identity), Name: function.Name, Parameters: parameters, ReturnType: hirTypeToCore(function.ReturnType), Body: body})
+		lowered := coreir.Function{Identity: hirIdentityToCore(function.Identity), Name: function.Name, Parameters: parameters, ReturnType: hirTypeToCore(function.ReturnType), Body: body}
+		if err := coreir.ValidateFunction(lowered); err != nil {
+			return coreir.Program{}, coreLoweringError(function.Span, err.Error())
+		}
+		core.Functions = append(core.Functions, lowered)
 	}
 	return core, nil
 }
@@ -280,6 +284,9 @@ func hirTypeToCore(value hir.Type) coreir.Type {
 	result := coreir.Type{Kind: coreir.TypeKind(value.Kind), Primitive: coreir.PrimitiveType(value.Primitive), Name: value.Name}
 	if value.Numeric != nil {
 		result.Numeric = &coreir.NumericType{Representation: coreir.NumericRepresentation(value.Numeric.Representation), Bits: value.Numeric.Bits, Signed: value.Numeric.Signed}
+	}
+	if value.Result != nil {
+		result.Result = &coreir.ResultType{Success: hirTypeToCore(value.Result.Success), Failure: hirTypeToCore(value.Result.Failure)}
 	}
 	if value.Identity != nil {
 		identity := hirIdentityToCore(*value.Identity)

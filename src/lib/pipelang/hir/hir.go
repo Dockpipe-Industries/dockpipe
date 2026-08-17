@@ -14,10 +14,12 @@ const (
 type TypeKind string
 
 const (
-	TypePrimitive TypeKind = "primitive"
-	TypeNumeric   TypeKind = "numeric"
-	TypeNamed     TypeKind = "named"
-	TypeApplied   TypeKind = "applied"
+	TypePrimitive       TypeKind = "primitive"
+	TypeNumeric         TypeKind = "numeric"
+	TypeResult          TypeKind = "result"
+	TypeArithmeticError TypeKind = "arithmetic_error"
+	TypeNamed           TypeKind = "named"
+	TypeApplied         TypeKind = "applied"
 )
 
 type NumericRepresentation string
@@ -33,6 +35,13 @@ type NumericType struct {
 	Representation NumericRepresentation `json:"representation"`
 	Bits           int                   `json:"bits"`
 	Signed         bool                  `json:"signed,omitempty"`
+}
+
+// ResultType is the target-independent shape of a successful value or a
+// closed failure value. No production source spelling is selected here.
+type ResultType struct {
+	Success Type `json:"success"`
+	Failure Type `json:"failure"`
 }
 
 type SemanticType struct {
@@ -65,6 +74,7 @@ type Type struct {
 	Kind      TypeKind          `json:"kind"`
 	Primitive PrimitiveType     `json:"primitive,omitempty"`
 	Numeric   *NumericType      `json:"numeric,omitempty"`
+	Result    *ResultType       `json:"result,omitempty"`
 	SymbolID  uint32            `json:"symbol_id,omitempty"`
 	Identity  *SemanticIdentity `json:"identity,omitempty"`
 	Name      string            `json:"name,omitempty"`
