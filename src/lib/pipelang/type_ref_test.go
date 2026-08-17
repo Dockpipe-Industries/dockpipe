@@ -79,6 +79,24 @@ func TestV030ParserPreservesCheckedSubtractResultAndExpressionSpans(t *testing.T
 	}
 }
 
+func TestV040ParserPreservesCheckedMultiplyResultAndExpressionSpans(t *testing.T) {
+	const source = `public Class Root { public Result<int, ArithmeticError> Multiply(int left, int right) => left * right; }`
+	sources, diagnostics := NewSourceSet([]SourceInput{{Path: "root.pipe", Data: []byte(source)}})
+	if diagnostics.HasErrors() {
+		t.Fatal(diagnostics)
+	}
+	program, err := parseSourceFileWithLanguageContract(sources, sources.Files()[0], PipeLangLanguageContractV040)
+	if err != nil {
+		t.Fatal(err)
+	}
+	method := program.Classes[0].Methods[0]
+	result := method.ReturnType
+	binary, ok := method.Body.(*BinaryExpr)
+	if result.Kind != TypeRefApplied || result.String() != "Result<int,ArithmeticError>" || !result.Span.IsValid() || len(result.Arguments) != 2 || !result.Arguments[0].Span.IsValid() || !result.Arguments[1].Span.IsValid() || !ok || binary.Op != "*" || !binary.Span.IsValid() || !binary.Left.SourceSpan().IsValid() || !binary.Right.SourceSpan().IsValid() {
+		t.Fatalf("v0.4.0 checked multiplication parse = result %#v body %#v", result, method.Body)
+	}
+}
+
 func TestAnalyzeResolvesNamedTypesThroughOneOwnedSymbolTable(t *testing.T) {
 	analysis := AnalyzeFiles(map[string][]byte{
 		"a.pipe": []byte(`Interface Item { string Name; }`),
