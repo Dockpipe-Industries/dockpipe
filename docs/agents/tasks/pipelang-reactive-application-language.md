@@ -1093,15 +1093,39 @@ The exact 45-source inventory and its source, language-projection, artifact, and
 did not drift. The semantic projection tests pass unchanged. This checkpoint changes no production
 syntax, CLI/YAML/schema/editor surface, generated store, runtime, or external state.
 
+### Completed step 7a fixed numeric comparison/equality checkpoint (2026-08-16)
+
+The first separately bounded step-7 slice makes executable numeric representation explicit without
+adding source syntax or changing stable semantic identities. Existing source `int` lowers to a
+target-independent signed two's-complement 64-bit HIR/Core type; existing source `float` lowers to
+an IEEE-754 binary64 HIR/Core type. The Go backend consumes those Core shapes directly and no longer
+infers width, signedness, or a mixed numeric conversion from source primitive names.
+
+The `v0.1.0` semantic module lane accepts the existing comparison and equality operators only when
+both numeric operands have the same resolved type. Mixed integer/float comparison or equality fails
+with deterministic structured diagnostic `PL3028`; the frozen legacy source-set lane retains its
+existing behavior. Generated binary64 comparison/equality is compiled and executed under `/tmp` and
+matches the existing pure evaluator for ordinary values, unordered and unequal `NaN`, and equal
+positive/negative zero. Malformed mixed-type Core operands fail in the backend instead of being
+coerced.
+
+Numeric addition, subtraction, multiplication, division, and negation remain fail-closed in both
+the `v0.1.0` checker and Go backend. Enabling them would require the accepted checked-overflow and
+recoverable-failure contract, so neither layer substitutes unchecked target arithmetic or a panic
+before typed `Result` failure semantics exist. This slice changes no syntax, semantic projection,
+legacy artifact, public YAML/schema/editor surface, generated store, runtime, or dependency.
+
 ## Exact Next Boundary
 
-Step 6 of **Bounded Implementation Order** is complete. The exact successor boundary is step 7: add
-the accepted fixed numeric, Unicode text,
-value/reference, equality, hashing, ordering, optional, result, record, union, and deterministic
-collection semantics in separately coherent vertical slices over the established HIR/Core/backend
-contracts.
+Step 7 of **Bounded Implementation Order** is underway through the completed fixed numeric
+representation and non-failing comparison/equality slice. The exact successor boundary is a
+separately bounded typed `Result`/arithmetic-failure slice that must model checked integer overflow,
+division failure, and successful arithmetic consistently in type checking, HIR, Core, the reference
+evaluator, and Go before numeric arithmetic can be enabled.
 
-Step 7 is not authorized here. In particular, this checkpoint does not accept namespace, import,
+No later step-7 slice is included here. In particular, this checkpoint does not add Unicode text,
+value/reference, hashing, total ordering, optional, result, record, union, or deterministic
+collection production semantics; accept namespace, import,
 migration, `internal`, overload, generic, or ID production syntax; implement overload resolution;
 add new types/declarations/expressions/operators, blocks, locals, branches, or loops; add effects,
 entrypoints, actions/state, contracts/replay, executable application/service semantics, Application

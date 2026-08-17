@@ -58,6 +58,7 @@ const (
 	CodeSemanticMigrationCycle  DiagnosticCode = "PL3025"
 	CodeHIRLowering             DiagnosticCode = "PL3026"
 	CodeCoreLowering            DiagnosticCode = "PL3027"
+	CodeNumericSemantics        DiagnosticCode = "PL3028"
 	CodeInvocation              DiagnosticCode = "PL4001"
 	CodeEvaluation              DiagnosticCode = "PL4002"
 )

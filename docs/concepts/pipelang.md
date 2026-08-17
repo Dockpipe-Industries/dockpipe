@@ -225,9 +225,20 @@ rejects parser, AST/compiler-root, or HIR imports in that backend.
 The proven fixture is the existing-syntax pure function `Ready(int count) => count > 0`. Its HIR,
 Core, and generated-Go bytes are golden-tested; generated Go is compiled and executed under a
 temporary offline module, and its result matches the existing pure evaluator. The first backend
-fails explicitly on Core capabilities whose exact cross-target behavior belongs to the next numeric,
-text, value, equality, and evaluation-order slice. This foundation does not change the frozen
-`v0.0.0.1` compile/invoke artifacts or make executable Go a workflow/runtime backend.
+fails explicitly on Core capabilities whose exact cross-target behavior belongs to later coherent
+language slices.
+
+The first numeric slice normalizes source-level `int` and `float` into explicit target-independent
+HIR/Core representations: signed two's-complement 64-bit integer and IEEE-754 binary64. Stable
+semantic callable identities retain their existing primitive names, while executable IR no longer
+asks a backend to infer numeric width or signedness. The `v0.1.0` semantic lane permits comparison
+and equality only between identical numeric representations and never inserts integer/float
+conversions. Generated Go is checked against the reference evaluator for ordinary comparisons,
+unordered and unequal `NaN`, and equal positive/negative zero. Numeric arithmetic, division, and
+negation remain rejected by both semantic analysis and the backend until checked overflow and other
+recoverable arithmetic failures can be represented as typed `Result` values. The frozen
+`v0.0.0.1` compile/invoke behavior and artifacts remain unchanged, and executable Go is not a
+workflow/runtime backend.
 
 ## Artifacts
 

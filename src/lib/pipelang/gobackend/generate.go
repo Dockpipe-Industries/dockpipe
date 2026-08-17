@@ -128,6 +128,9 @@ func emitExpr(expr coreir.Expr, parameters []coreir.Parameter) (string, error) {
 		if expr.Unary == nil || expr.Unary.Operand == nil {
 			return "", fmt.Errorf("unary node is incomplete")
 		}
+		if expr.Unary.Operator == coreir.OperatorNegate && isNumericType(expr.Unary.Operand.Type) {
+			return "", fmt.Errorf("numeric operator %q requires checked Result failure semantics outside the step-7a Go capability slice", expr.Unary.Operator)
+		}
 		operand, err := emitExpr(*expr.Unary.Operand, parameters)
 		if err != nil {
 			return "", err
@@ -141,8 +144,15 @@ func emitExpr(expr coreir.Expr, parameters []coreir.Parameter) (string, error) {
 		if expr.Binary == nil || expr.Binary.Left == nil || expr.Binary.Right == nil {
 			return "", fmt.Errorf("binary node is incomplete")
 		}
-		if expr.Binary.Operator == coreir.OperatorDivide || expr.Binary.Operator == coreir.OperatorAnd || expr.Binary.Operator == coreir.OperatorOr {
-			return "", fmt.Errorf("operator %q is outside the step-6 Go capability slice", expr.Binary.Operator)
+		switch expr.Binary.Operator {
+		case coreir.OperatorSubtract, coreir.OperatorMultiply, coreir.OperatorDivide:
+			return "", fmt.Errorf("numeric operator %q requires checked Result failure semantics outside the step-7a Go capability slice", expr.Binary.Operator)
+		case coreir.OperatorAdd:
+			if isNumericType(expr.Binary.Left.Type) || isNumericType(expr.Binary.Right.Type) {
+				return "", fmt.Errorf("numeric operator %q requires checked Result failure semantics outside the step-7a Go capability slice", expr.Binary.Operator)
+			}
+		case coreir.OperatorAnd, coreir.OperatorOr:
+			return "", fmt.Errorf("operator %q is outside the step-7a Go capability slice", expr.Binary.Operator)
 		}
 		left, err := emitExpr(*expr.Binary.Left, parameters)
 		if err != nil {
@@ -152,8 +162,9 @@ func emitExpr(expr coreir.Expr, parameters []coreir.Parameter) (string, error) {
 		if err != nil {
 			return "", err
 		}
-		left = coerceNumeric(left, expr.Binary.Left.Type, expr.Binary.Right.Type)
-		right = coerceNumeric(right, expr.Binary.Right.Type, expr.Binary.Left.Type)
+		if requiresEqualOperands(expr.Binary.Operator) && !typeEqual(expr.Binary.Left.Type, expr.Binary.Right.Type) {
+			return "", fmt.Errorf("operator %q has mismatched Core operand types", expr.Binary.Operator)
+		}
 		op, ok := mapBinaryOperator(expr.Binary.Operator)
 		if !ok {
 			return "", fmt.Errorf("unsupported binary operator %q", expr.Binary.Operator)
@@ -165,16 +176,25 @@ func emitExpr(expr coreir.Expr, parameters []coreir.Parameter) (string, error) {
 }
 
 func emitLiteral(typ coreir.Type, literal coreir.Literal) (string, error) {
+	if typ.Kind == coreir.TypeNumeric {
+		if typ.Numeric == nil {
+			return "", fmt.Errorf("numeric literal type has no representation")
+		}
+		switch {
+		case typ.Numeric.Representation == coreir.NumericInteger && typ.Numeric.Bits == 64 && typ.Numeric.Signed:
+			return fmt.Sprintf("int64(%d)", literal.Int), nil
+		case typ.Numeric.Representation == coreir.NumericBinaryFloat && typ.Numeric.Bits == 64 && !typ.Numeric.Signed:
+			return "float64(" + strconv.FormatFloat(literal.Float, 'g', -1, 64) + ")", nil
+		default:
+			return "", fmt.Errorf("unsupported numeric literal representation %q/%d", typ.Numeric.Representation, typ.Numeric.Bits)
+		}
+	}
 	if typ.Kind != coreir.TypePrimitive {
-		return "", fmt.Errorf("literal type %q is not primitive", typ.Kind)
+		return "", fmt.Errorf("literal type %q is unsupported", typ.Kind)
 	}
 	switch typ.Primitive {
 	case coreir.PrimitiveString:
 		return strconv.Quote(literal.String), nil
-	case coreir.PrimitiveInt:
-		return fmt.Sprintf("int64(%d)", literal.Int), nil
-	case coreir.PrimitiveFloat:
-		return "float64(" + strconv.FormatFloat(literal.Float, 'g', -1, 64) + ")", nil
 	case coreir.PrimitiveBool:
 		return strconv.FormatBool(literal.Bool), nil
 	default:
@@ -183,28 +203,30 @@ func emitLiteral(typ coreir.Type, literal coreir.Literal) (string, error) {
 }
 
 func goType(typ coreir.Type) (string, error) {
+	if typ.Kind == coreir.TypeNumeric {
+		if typ.Numeric == nil {
+			return "", fmt.Errorf("numeric Core type has no representation")
+		}
+		switch {
+		case typ.Numeric.Representation == coreir.NumericInteger && typ.Numeric.Bits == 64 && typ.Numeric.Signed:
+			return "int64", nil
+		case typ.Numeric.Representation == coreir.NumericBinaryFloat && typ.Numeric.Bits == 64 && !typ.Numeric.Signed:
+			return "float64", nil
+		default:
+			return "", fmt.Errorf("Go step-7a backend does not support numeric representation %q/%d", typ.Numeric.Representation, typ.Numeric.Bits)
+		}
+	}
 	if typ.Kind != coreir.TypePrimitive {
-		return "", fmt.Errorf("Go step-6 backend supports primitive types only, got %q", typ.Kind)
+		return "", fmt.Errorf("Go step-7a backend supports primitive and fixed numeric types only, got %q", typ.Kind)
 	}
 	switch typ.Primitive {
 	case coreir.PrimitiveString:
 		return "string", nil
-	case coreir.PrimitiveInt:
-		return "int64", nil
 	case coreir.PrimitiveBool:
 		return "bool", nil
-	case coreir.PrimitiveFloat:
-		return "float64", nil
 	default:
 		return "", fmt.Errorf("unsupported primitive type %q", typ.Primitive)
 	}
-}
-
-func coerceNumeric(value string, own, other coreir.Type) string {
-	if own.Kind == coreir.TypePrimitive && own.Primitive == coreir.PrimitiveInt && other.Kind == coreir.TypePrimitive && other.Primitive == coreir.PrimitiveFloat {
-		return "float64(" + value + ")"
-	}
-	return value
 }
 
 func mapUnaryOperator(operator coreir.Operator) (string, bool) {
@@ -216,6 +238,37 @@ func mapUnaryOperator(operator coreir.Operator) (string, bool) {
 	default:
 		return "", false
 	}
+}
+
+func isNumericType(value coreir.Type) bool {
+	return value.Kind == coreir.TypeNumeric && value.Numeric != nil
+}
+
+func requiresEqualOperands(operator coreir.Operator) bool {
+	switch operator {
+	case coreir.OperatorEqual, coreir.OperatorNotEqual, coreir.OperatorLessThan, coreir.OperatorLessOrEqual, coreir.OperatorGreaterThan, coreir.OperatorGreaterOrEqual:
+		return true
+	default:
+		return false
+	}
+}
+
+func typeEqual(left, right coreir.Type) bool {
+	if left.Kind != right.Kind || left.Primitive != right.Primitive || left.Name != right.Name || (left.Numeric == nil) != (right.Numeric == nil) || (left.Identity == nil) != (right.Identity == nil) || len(left.Arguments) != len(right.Arguments) {
+		return false
+	}
+	if left.Numeric != nil && *left.Numeric != *right.Numeric {
+		return false
+	}
+	if left.Identity != nil && identityKey(*left.Identity) != identityKey(*right.Identity) {
+		return false
+	}
+	for index := range left.Arguments {
+		if !typeEqual(left.Arguments[index], right.Arguments[index]) {
+			return false
+		}
+	}
+	return true
 }
 
 func mapBinaryOperator(operator coreir.Operator) (string, bool) {

@@ -57,8 +57,12 @@
             "name": "count"
           },
           "type": {
-            "kind": "primitive",
-            "primitive": "int"
+            "kind": "numeric",
+            "numeric": {
+              "representation": "integer",
+              "bits": 64,
+              "signed": true
+            }
           },
           "type_span": {
             "file": "root.pipe",
@@ -97,8 +101,12 @@
           "left": {
             "kind": "reference",
             "type": {
-              "kind": "primitive",
-              "primitive": "int"
+              "kind": "numeric",
+              "numeric": {
+                "representation": "integer",
+                "bits": 64,
+                "signed": true
+              }
             },
             "span": {
               "file": "root.pipe",
@@ -130,8 +138,12 @@
           "right": {
             "kind": "literal",
             "type": {
-              "kind": "primitive",
-              "primitive": "int"
+              "kind": "numeric",
+              "numeric": {
+                "representation": "integer",
+                "bits": 64,
+                "signed": true
+              }
             },
             "span": {
               "file": "root.pipe",

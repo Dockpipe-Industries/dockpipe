@@ -15,9 +15,25 @@ type TypeKind string
 
 const (
 	TypePrimitive TypeKind = "primitive"
+	TypeNumeric   TypeKind = "numeric"
 	TypeNamed     TypeKind = "named"
 	TypeApplied   TypeKind = "applied"
 )
+
+type NumericRepresentation string
+
+const (
+	NumericInteger     NumericRepresentation = "integer"
+	NumericBinaryFloat NumericRepresentation = "binary_float"
+)
+
+// NumericType is the target-independent representation selected by the
+// v0.1.0 semantic contract. Signed applies only to integer representations.
+type NumericType struct {
+	Representation NumericRepresentation `json:"representation"`
+	Bits           int                   `json:"bits"`
+	Signed         bool                  `json:"signed,omitempty"`
+}
 
 type SemanticType struct {
 	Kind      TypeKind       `json:"kind"`
@@ -48,6 +64,7 @@ type SourceSpan struct {
 type Type struct {
 	Kind      TypeKind          `json:"kind"`
 	Primitive PrimitiveType     `json:"primitive,omitempty"`
+	Numeric   *NumericType      `json:"numeric,omitempty"`
 	SymbolID  uint32            `json:"symbol_id,omitempty"`
 	Identity  *SemanticIdentity `json:"identity,omitempty"`
 	Name      string            `json:"name,omitempty"`
