@@ -172,21 +172,39 @@ type (
 		Fields []RecordConstructField
 		Span   Span
 	}
+	OptionalSomeExpr struct {
+		Value Expr
+		Span  Span
+	}
+	OptionalNoneExpr struct {
+		ValueType UnresolvedTypeRef
+		Span      Span
+	}
+	OptionalHasValueExpr struct {
+		Value Expr
+		Span  Span
+	}
 )
 
-func (*LiteralExpr) isExpr()         {}
-func (*IdentExpr) isExpr()           {}
-func (*UnaryExpr) isExpr()           {}
-func (*BinaryExpr) isExpr()          {}
-func (*FieldExpr) isExpr()           {}
-func (*RecordConstructExpr) isExpr() {}
+func (*LiteralExpr) isExpr()          {}
+func (*IdentExpr) isExpr()            {}
+func (*UnaryExpr) isExpr()            {}
+func (*BinaryExpr) isExpr()           {}
+func (*FieldExpr) isExpr()            {}
+func (*RecordConstructExpr) isExpr()  {}
+func (*OptionalSomeExpr) isExpr()     {}
+func (*OptionalNoneExpr) isExpr()     {}
+func (*OptionalHasValueExpr) isExpr() {}
 
-func (e *LiteralExpr) SourceSpan() Span         { return e.Span }
-func (e *IdentExpr) SourceSpan() Span           { return e.Span }
-func (e *UnaryExpr) SourceSpan() Span           { return e.Span }
-func (e *BinaryExpr) SourceSpan() Span          { return e.Span }
-func (e *FieldExpr) SourceSpan() Span           { return e.Span }
-func (e *RecordConstructExpr) SourceSpan() Span { return e.Span }
+func (e *LiteralExpr) SourceSpan() Span          { return e.Span }
+func (e *IdentExpr) SourceSpan() Span            { return e.Span }
+func (e *UnaryExpr) SourceSpan() Span            { return e.Span }
+func (e *BinaryExpr) SourceSpan() Span           { return e.Span }
+func (e *FieldExpr) SourceSpan() Span            { return e.Span }
+func (e *RecordConstructExpr) SourceSpan() Span  { return e.Span }
+func (e *OptionalSomeExpr) SourceSpan() Span     { return e.Span }
+func (e *OptionalNoneExpr) SourceSpan() Span     { return e.Span }
+func (e *OptionalHasValueExpr) SourceSpan() Span { return e.Span }
 
 func setExprSpan(expr Expr, span Span) {
 	switch node := expr.(type) {
@@ -201,6 +219,12 @@ func setExprSpan(expr Expr, span Span) {
 	case *FieldExpr:
 		node.Span = span
 	case *RecordConstructExpr:
+		node.Span = span
+	case *OptionalSomeExpr:
+		node.Span = span
+	case *OptionalNoneExpr:
+		node.Span = span
+	case *OptionalHasValueExpr:
 		node.Span = span
 	}
 }

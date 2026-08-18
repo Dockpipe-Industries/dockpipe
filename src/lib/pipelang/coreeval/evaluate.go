@@ -9,13 +9,19 @@ import (
 )
 
 type Value struct {
-	Type   coreir.Type
-	String string
-	Int    int64
-	Float  float64
-	Bool   bool
-	Result *Outcome
-	Record []Value
+	Type     coreir.Type
+	String   string
+	Int      int64
+	Float    float64
+	Bool     bool
+	Result   *Outcome
+	Record   []Value
+	Optional *OptionalValue
+}
+
+type OptionalValue struct {
+	Present bool
+	Value   *Value
 }
 
 type Outcome struct {
@@ -57,6 +63,9 @@ func evalExpr(expression coreir.Expr, arguments []Value) (Outcome, error) {
 		}
 		if expression.Type.Kind == coreir.TypeRecord {
 			return Outcome{OK: true, Value: cloneRecordValue(arguments[*expression.Parameter])}, nil
+		}
+		if expression.Type.Kind == coreir.TypeOptional {
+			return Outcome{OK: true, Value: cloneOptionalValue(arguments[*expression.Parameter])}, nil
 		}
 		return Outcome{OK: true, Value: arguments[*expression.Parameter]}, nil
 	case coreir.ExprUnary:
@@ -132,6 +141,32 @@ func evalExpr(expression coreir.Expr, arguments []Value) (Outcome, error) {
 			return Outcome{}, fmt.Errorf("record construction: %w", err)
 		}
 		return Outcome{OK: true, Value: cloneRecordValue(value)}, nil
+	case coreir.ExprOptionalSome:
+		value, err := evalExpr(*expression.Some.Value, arguments)
+		if err != nil || !value.OK {
+			return value, err
+		}
+		payload := value.Value
+		optional := Value{Type: expression.Type, Optional: &OptionalValue{Present: true, Value: &payload}}
+		if err := validateValue(optional); err != nil {
+			return Outcome{}, fmt.Errorf("optional some: %w", err)
+		}
+		return Outcome{OK: true, Value: cloneOptionalValue(optional)}, nil
+	case coreir.ExprOptionalNone:
+		optional := Value{Type: expression.Type, Optional: &OptionalValue{}}
+		if err := validateValue(optional); err != nil {
+			return Outcome{}, fmt.Errorf("optional none: %w", err)
+		}
+		return Outcome{OK: true, Value: optional}, nil
+	case coreir.ExprOptionalHasValue:
+		value, err := evalExpr(*expression.HasValue.Value, arguments)
+		if err != nil || !value.OK {
+			return value, err
+		}
+		if err := validateValue(value.Value); err != nil {
+			return Outcome{}, fmt.Errorf("optional has_value: %w", err)
+		}
+		return Outcome{OK: true, Value: Value{Type: expression.Type, Bool: value.Value.Optional.Present}}, nil
 	default:
 		return Outcome{}, fmt.Errorf("unsupported expression kind %q", expression.Kind)
 	}
@@ -173,6 +208,21 @@ func evalTextBinary(expression coreir.Expr, left, right string) (Outcome, error)
 }
 
 func validateValue(value Value) error {
+	if value.Type.Kind == coreir.TypeOptional {
+		if value.Type.Optional == nil || value.Optional == nil || value.Result != nil || len(value.Record) != 0 {
+			return fmt.Errorf("Optional value does not match its type")
+		}
+		if !value.Optional.Present {
+			if value.Optional.Value != nil {
+				return fmt.Errorf("absent Optional carries a value")
+			}
+			return nil
+		}
+		if value.Optional.Value == nil || !coreir.TypeEqual(value.Optional.Value.Type, value.Type.Optional.Value) {
+			return fmt.Errorf("present Optional value type does not match its payload type")
+		}
+		return validateValue(*value.Optional.Value)
+	}
 	if value.Type.Kind == coreir.TypeRecord {
 		if value.Type.Record == nil || value.Result != nil || len(value.Record) != len(value.Type.Record.Fields) {
 			return fmt.Errorf("record value does not match its field schema")
@@ -193,6 +243,9 @@ func validateValue(value Value) error {
 		}
 		if len(value.Record) != 0 {
 			return fmt.Errorf("non-record value carries record fields")
+		}
+		if value.Optional != nil {
+			return fmt.Errorf("non-Optional value carries an Optional payload")
 		}
 		if value.Type.Kind == coreir.TypePrimitive && value.Type.Primitive == coreir.PrimitiveString {
 			return coreir.ValidateText(value.String)
@@ -216,6 +269,19 @@ func validateValue(value Value) error {
 		return fmt.Errorf("failed Result carries an unknown arithmetic error")
 	}
 	return nil
+}
+
+func cloneOptionalValue(value Value) Value {
+	cloned := value
+	if value.Optional == nil {
+		return cloned
+	}
+	cloned.Optional = &OptionalValue{Present: value.Optional.Present}
+	if value.Optional.Value != nil {
+		payload := *value.Optional.Value
+		cloned.Optional.Value = &payload
+	}
+	return cloned
 }
 
 func equalValues(left, right Value) (bool, error) {

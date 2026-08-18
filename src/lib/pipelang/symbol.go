@@ -263,6 +263,16 @@ func resolveTypeRef(sources *SourceSet, symbols *SymbolTable, modules *ModuleGra
 			}
 			return resolved, nil
 		}
+		if ref.Name == "Optional" {
+			if modules == nil || !hasPrimitiveOptionalSourceContract(modules.LanguageContract()) {
+				return ResolvedTypeRef{}, oneDiagnostic(sources, CodeInvalidType, CategorySemantic, ref.Span, fmt.Sprintf("type %q requires language contract %q", ref.String(), PipeLangLanguageContractV130), related...)
+			}
+			resolved := resolvedOptional(arguments[0])
+			if !isResolvedPrimitiveOptional(resolved) {
+				return ResolvedTypeRef{}, oneDiagnostic(sources, CodeInvalidType, CategorySemantic, ref.Span, fmt.Sprintf("language contract %q admits Optional<T> only for string, int, float, or bool", modules.LanguageContract()), related...)
+			}
+			return resolved, nil
+		}
 		return ResolvedTypeRef{Kind: TypeRefApplied, Name: ref.Name, Arguments: arguments}, nil
 	default:
 		return ResolvedTypeRef{}, oneDiagnostic(sources, CodeInvalidType, CategorySemantic, ref.Span, fmt.Sprintf("invalid type %q", ref.String()), related...)

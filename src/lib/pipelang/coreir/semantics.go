@@ -59,13 +59,16 @@ func ArithmeticResultType(operator Operator, left Type, right *Type) (Type, erro
 }
 
 func TypeEqual(left, right Type) bool {
-	if left.Kind != right.Kind || left.Primitive != right.Primitive || left.Name != right.Name || (left.Numeric == nil) != (right.Numeric == nil) || (left.Result == nil) != (right.Result == nil) || (left.Record == nil) != (right.Record == nil) || (left.Identity == nil) != (right.Identity == nil) || len(left.Arguments) != len(right.Arguments) {
+	if left.Kind != right.Kind || left.Primitive != right.Primitive || left.Name != right.Name || (left.Numeric == nil) != (right.Numeric == nil) || (left.Result == nil) != (right.Result == nil) || (left.Optional == nil) != (right.Optional == nil) || (left.Record == nil) != (right.Record == nil) || (left.Identity == nil) != (right.Identity == nil) || len(left.Arguments) != len(right.Arguments) {
 		return false
 	}
 	if left.Numeric != nil && *left.Numeric != *right.Numeric {
 		return false
 	}
 	if left.Result != nil && (!TypeEqual(left.Result.Success, right.Result.Success) || !TypeEqual(left.Result.Failure, right.Result.Failure)) {
+		return false
+	}
+	if left.Optional != nil && !TypeEqual(left.Optional.Value, right.Optional.Value) {
 		return false
 	}
 	if left.Record != nil {
@@ -155,6 +158,11 @@ func ValidateFunction(function Function) error {
 			return err
 		}
 	}
+	if functionContainsOptional(function) {
+		if err := validateDirectOptionalFunction(function); err != nil {
+			return err
+		}
+	}
 	if !TypeEqual(function.ReturnType, function.Body.Type) {
 		return fmt.Errorf("function return type does not match its body type")
 	}
@@ -162,6 +170,18 @@ func ValidateFunction(function Function) error {
 }
 
 func validateType(value Type) error {
+	if value.Kind != TypeOptional && value.Optional != nil {
+		return fmt.Errorf("non-optional type carries an optional representation")
+	}
+	if value.Kind == TypeOptional {
+		if value.Optional == nil || !isPrimitiveOptionalValueType(value.Optional.Value) {
+			return fmt.Errorf("optional type requires one primitive value type")
+		}
+		if value.Primitive != "" || value.Numeric != nil || value.Result != nil || value.Record != nil || value.Identity != nil || value.Name != "" || len(value.Arguments) != 0 {
+			return fmt.Errorf("optional type carries a non-optional representation")
+		}
+		return nil
+	}
 	if value.Kind != TypeRecord {
 		return nil
 	}
@@ -194,6 +214,17 @@ func validateType(value Type) error {
 		}
 	}
 	return nil
+}
+
+func isPrimitiveOptionalValueType(value Type) bool {
+	if value.Kind == TypePrimitive {
+		return (value.Primitive == PrimitiveString || value.Primitive == PrimitiveBool) && value.Numeric == nil && value.Result == nil && value.Optional == nil && value.Record == nil && value.Identity == nil && value.Name == "" && len(value.Arguments) == 0
+	}
+	if value.Kind != TypeNumeric || value.Numeric == nil || value.Primitive != "" || value.Result != nil || value.Optional != nil || value.Record != nil || value.Identity != nil || value.Name != "" || len(value.Arguments) != 0 {
+		return false
+	}
+	return (value.Numeric.Representation == NumericInteger && value.Numeric.Bits == 64 && value.Numeric.Signed) ||
+		(value.Numeric.Representation == NumericBinaryFloat && value.Numeric.Bits == 64 && !value.Numeric.Signed)
 }
 
 func isPrimitiveRecordFieldType(value Type) bool {
@@ -362,8 +393,106 @@ func validateExpr(expression Expr, parameters []Parameter) error {
 				return fmt.Errorf("record construction field %d value type does not match its declaration", position)
 			}
 		}
+	case ExprOptionalSome:
+		if expression.Some == nil || expression.Some.Value == nil || expression.Type.Kind != TypeOptional || expression.Type.Optional == nil {
+			return fmt.Errorf("optional some expression is incomplete")
+		}
+		if err := validateType(expression.Type); err != nil {
+			return fmt.Errorf("optional some result type: %w", err)
+		}
+		if err := validateExpr(*expression.Some.Value, parameters); err != nil {
+			return fmt.Errorf("optional some value: %w", err)
+		}
+		if !TypeEqual(expression.Some.Value.Type, expression.Type.Optional.Value) {
+			return fmt.Errorf("optional some value type does not match its result type")
+		}
+	case ExprOptionalNone:
+		if expression.None == nil || expression.Type.Kind != TypeOptional || expression.Type.Optional == nil {
+			return fmt.Errorf("optional none expression is incomplete")
+		}
+		if err := validateType(expression.Type); err != nil {
+			return fmt.Errorf("optional none result type: %w", err)
+		}
+	case ExprOptionalHasValue:
+		boolean := Type{Kind: TypePrimitive, Primitive: PrimitiveBool}
+		if expression.HasValue == nil || expression.HasValue.Value == nil || !TypeEqual(expression.Type, boolean) {
+			return fmt.Errorf("optional has_value expression is incomplete or does not return bool")
+		}
+		if err := validateExpr(*expression.HasValue.Value, parameters); err != nil {
+			return fmt.Errorf("optional has_value operand: %w", err)
+		}
+		if expression.HasValue.Value.Type.Kind != TypeOptional {
+			return fmt.Errorf("optional has_value operand is not Optional")
+		}
 	default:
 		return fmt.Errorf("unsupported expression kind %q", expression.Kind)
+	}
+	return nil
+}
+
+func functionContainsOptional(function Function) bool {
+	if function.ReturnType.Kind == TypeOptional || exprContainsOptional(function.Body) {
+		return true
+	}
+	for _, parameter := range function.Parameters {
+		if parameter.Type.Kind == TypeOptional {
+			return true
+		}
+	}
+	return false
+}
+
+func exprContainsOptional(expression Expr) bool {
+	switch expression.Kind {
+	case ExprOptionalSome, ExprOptionalNone, ExprOptionalHasValue:
+		return true
+	case ExprUnary:
+		return expression.Unary != nil && expression.Unary.Operand != nil && exprContainsOptional(*expression.Unary.Operand)
+	case ExprBinary:
+		return expression.Binary != nil && expression.Binary.Left != nil && expression.Binary.Right != nil && (exprContainsOptional(*expression.Binary.Left) || exprContainsOptional(*expression.Binary.Right))
+	case ExprFieldProjection:
+		return expression.Field != nil && expression.Field.Receiver != nil && exprContainsOptional(*expression.Field.Receiver)
+	case ExprRecordConstruct:
+		if expression.Record != nil {
+			for _, field := range expression.Record.Fields {
+				if field.Value != nil && exprContainsOptional(*field.Value) {
+					return true
+				}
+			}
+		}
+	}
+	return false
+}
+
+func validateDirectOptionalFunction(function Function) error {
+	boolean := Type{Kind: TypePrimitive, Primitive: PrimitiveBool}
+	switch function.Body.Kind {
+	case ExprOptionalSome:
+		if function.Body.Some == nil || function.Body.Some.Value == nil || function.ReturnType.Kind != TypeOptional || function.ReturnType.Optional == nil || len(function.Parameters) != 1 {
+			return fmt.Errorf("optional some requires one primitive parameter and an Optional return")
+		}
+		value := function.Body.Some.Value
+		if value.Kind != ExprReference || value.Parameter == nil || *value.Parameter != 0 || !TypeEqual(function.Parameters[0].Type, function.ReturnType.Optional.Value) {
+			return fmt.Errorf("optional some value must be its sole corresponding direct parameter")
+		}
+	case ExprOptionalNone:
+		if function.Body.None == nil || function.ReturnType.Kind != TypeOptional || len(function.Parameters) != 0 {
+			return fmt.Errorf("optional none requires no parameters and an Optional return")
+		}
+	case ExprReference:
+		if function.ReturnType.Kind != TypeOptional || len(function.Parameters) != 1 || function.Body.Parameter == nil || *function.Body.Parameter != 0 || !TypeEqual(function.Parameters[0].Type, function.ReturnType) {
+			return fmt.Errorf("optional identity transport requires one identical direct parameter and return")
+		}
+	case ExprOptionalHasValue:
+		if function.Body.HasValue == nil || function.Body.HasValue.Value == nil || len(function.Parameters) != 1 || function.Parameters[0].Type.Kind != TypeOptional || !TypeEqual(function.ReturnType, boolean) {
+			return fmt.Errorf("optional has_value requires one Optional parameter and a bool return")
+		}
+		value := function.Body.HasValue.Value
+		if value.Kind != ExprReference || value.Parameter == nil || *value.Parameter != 0 || !TypeEqual(value.Type, function.Parameters[0].Type) {
+			return fmt.Errorf("optional has_value operand must be its sole direct parameter")
+		}
+	default:
+		return fmt.Errorf("Optional types are admitted only in direct some, none, identity transport, or has_value functions")
 	}
 	return nil
 }

@@ -31,6 +31,10 @@
         {
           "name": "constant.language.boolean.pipelang",
           "match": "\\b(true|false)\\b"
+        },
+        {
+          "name": "support.function.builtin.pipelang",
+          "match": "\\b(some|none|has_value)\\b"
         }
       ]
     },
@@ -38,7 +42,7 @@
       "patterns": [
         {
           "name": "storage.type.pipelang",
-          "match": "\\b(string|int|bool|float|List|Result|ArithmeticError|[A-Z][A-Za-z0-9_]*)\\b"
+          "match": "\\b(string|int|bool|float|List|Result|ArithmeticError|Optional|[A-Z][A-Za-z0-9_]*)\\b"
         }
       ]
     },

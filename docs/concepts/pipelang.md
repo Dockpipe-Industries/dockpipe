@@ -462,6 +462,34 @@ non-direct bodies use `PL3009`. Malformed HIR and Core remain `PL3026` and `PL30
 ordering, nesting, mutation, general member access, optionals, general Result handling, unions,
 collections, blocks, matching, calls, and indexing remain outside the production source contract.
 
+The explicit `v0.13.0` contract preserves every `v0.12.0` rule and adds one primitive optional
+value slice. `Optional<T>` has the fixed semantic identity `pipelang:optional`, projected as one
+applied argument, and admits only `string`, `int`, `float`, or `bool` for `T`. The complete public
+source surface is four exact direct class-method shapes:
+
+```pipelang
+public Class Values {
+    public Optional<string> Present(string value) => some(value);
+    public Optional<string> Absent() => none<string>();
+    public Optional<string> Forward(Optional<string> value) => value;
+    public bool HasValue(Optional<string> value) => has_value(value);
+}
+```
+
+`some(value)` carries the sole corresponding primitive parameter; `none<T>()` carries no payload;
+identity transport returns the sole identical optional parameter; and `has_value(value)` returns
+`true` only for the canonical present variant. Typed HIR and target-neutral Core retain an explicit
+tagged present-or-absent value. Core evaluation and generated Go agree on construction, transport,
+and presence inspection, validate strict UTF-8 present string payloads, and reject malformed or
+zero/nil optional representations rather than interpreting them as absence.
+
+`v0.1.0` through `v0.12.0` reject the type and intrinsic expressions without implicit migration.
+Invalid payload types, placements, or method signatures use `PL3006`; literals, computed values,
+nested expressions, mismatched construction, and other non-direct bodies use `PL3009`. Malformed
+HIR and Core remain `PL3026` and `PL3027`. Extraction or unwrapping, equality, defaults, optional
+record fields, nesting, chaining, fallback, propagation, matching, mutation, Result integration,
+unions, and collections remain outside the production source contract.
+
 ## Artifacts
 
 Compile emits:

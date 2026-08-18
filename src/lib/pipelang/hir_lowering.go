@@ -20,7 +20,7 @@ func LowerSemanticMethodToHIR(analysis *Analysis, identity SemanticIdentity) (hi
 		return hir.Program{}, hirLoweringError(analysis, Span{}, identity, "typed HIR lowering requires a successful semantic module analysis")
 	}
 	if !isPipeLangSemanticContract(analysis.Modules.LanguageContract()) {
-		return hir.Program{}, hirLoweringError(analysis, analysis.Program.Span, identity, fmt.Sprintf("typed HIR lowering requires language contract %q, %q, %q, %q, %q, %q, %q, %q, %q, %q, %q, or %q", PipeLangLanguageContractV010, PipeLangLanguageContractV020, PipeLangLanguageContractV030, PipeLangLanguageContractV040, PipeLangLanguageContractV050, PipeLangLanguageContractV060, PipeLangLanguageContractV070, PipeLangLanguageContractV080, PipeLangLanguageContractV090, PipeLangLanguageContractV100, PipeLangLanguageContractV110, PipeLangLanguageContractV120))
+		return hir.Program{}, hirLoweringError(analysis, analysis.Program.Span, identity, fmt.Sprintf("typed HIR lowering requires a supported post-legacy language contract through %q", PipeLangLanguageContractV130))
 	}
 	semantic, ok := analysis.SemanticIDs.LookupIdentity(identity)
 	if !ok || semantic.Kind != SemanticMethod {
@@ -142,7 +142,7 @@ func lowerMethodBodyToHIR(analysis *Analysis, function SemanticIdentity, express
 			Binary: &hir.Binary{Operator: hir.OperatorDivide, Left: &left, Right: &right},
 		}, nil
 	}
-	if unary, ok := expression.(*UnaryExpr); ok && (contract == PipeLangLanguageContractV050 || contract == PipeLangLanguageContractV060 || contract == PipeLangLanguageContractV070 || contract == PipeLangLanguageContractV080 || contract == PipeLangLanguageContractV090 || contract == PipeLangLanguageContractV100 || contract == PipeLangLanguageContractV110 || contract == PipeLangLanguageContractV120) && unary.Op == "-" {
+	if unary, ok := expression.(*UnaryExpr); ok && (contract == PipeLangLanguageContractV050 || contract == PipeLangLanguageContractV060 || contract == PipeLangLanguageContractV070 || contract == PipeLangLanguageContractV080 || contract == PipeLangLanguageContractV090 || contract == PipeLangLanguageContractV100 || contract == PipeLangLanguageContractV110 || contract == PipeLangLanguageContractV120 || contract == PipeLangLanguageContractV130) && unary.Op == "-" {
 		operand, err := lowerExprToHIR(analysis, function, unary.Expr, bindings, typeEnvironment)
 		if err != nil {
 			return hir.Expr{}, err
@@ -179,9 +179,9 @@ func checkedArithmeticHIROperator(contract LanguageContract, binary *BinaryExpr)
 	case "+":
 		return hir.OperatorAdd, true
 	case "-":
-		return hir.OperatorSubtract, contract == PipeLangLanguageContractV030 || contract == PipeLangLanguageContractV040 || contract == PipeLangLanguageContractV050 || contract == PipeLangLanguageContractV060 || contract == PipeLangLanguageContractV070 || contract == PipeLangLanguageContractV080 || contract == PipeLangLanguageContractV090 || contract == PipeLangLanguageContractV100 || contract == PipeLangLanguageContractV110 || contract == PipeLangLanguageContractV120
+		return hir.OperatorSubtract, contract == PipeLangLanguageContractV030 || contract == PipeLangLanguageContractV040 || contract == PipeLangLanguageContractV050 || contract == PipeLangLanguageContractV060 || contract == PipeLangLanguageContractV070 || contract == PipeLangLanguageContractV080 || contract == PipeLangLanguageContractV090 || contract == PipeLangLanguageContractV100 || contract == PipeLangLanguageContractV110 || contract == PipeLangLanguageContractV120 || contract == PipeLangLanguageContractV130
 	case "*":
-		return hir.OperatorMultiply, contract == PipeLangLanguageContractV040 || contract == PipeLangLanguageContractV050 || contract == PipeLangLanguageContractV060 || contract == PipeLangLanguageContractV070 || contract == PipeLangLanguageContractV080 || contract == PipeLangLanguageContractV090 || contract == PipeLangLanguageContractV100 || contract == PipeLangLanguageContractV110 || contract == PipeLangLanguageContractV120
+		return hir.OperatorMultiply, contract == PipeLangLanguageContractV040 || contract == PipeLangLanguageContractV050 || contract == PipeLangLanguageContractV060 || contract == PipeLangLanguageContractV070 || contract == PipeLangLanguageContractV080 || contract == PipeLangLanguageContractV090 || contract == PipeLangLanguageContractV100 || contract == PipeLangLanguageContractV110 || contract == PipeLangLanguageContractV120 || contract == PipeLangLanguageContractV130
 	default:
 		return "", false
 	}
@@ -297,6 +297,23 @@ func lowerExprToHIR(analysis *Analysis, function SemanticIdentity, expression Ex
 		}
 		result.Kind = hir.ExprRecordConstruct
 		result.Record = construction
+	case *OptionalSomeExpr:
+		value, err := lowerExprToHIR(analysis, function, node.Value, bindings, typeEnvironment)
+		if err != nil {
+			return hir.Expr{}, err
+		}
+		result.Kind = hir.ExprOptionalSome
+		result.Some = &hir.OptionalSome{Value: &value}
+	case *OptionalNoneExpr:
+		result.Kind = hir.ExprOptionalNone
+		result.None = &hir.OptionalNone{}
+	case *OptionalHasValueExpr:
+		value, err := lowerExprToHIR(analysis, function, node.Value, bindings, typeEnvironment)
+		if err != nil {
+			return hir.Expr{}, err
+		}
+		result.Kind = hir.ExprOptionalHasValue
+		result.HasValue = &hir.OptionalHasValue{Value: &value}
 	default:
 		return hir.Expr{}, hirLoweringError(analysis, expression.SourceSpan(), function, "unsupported checked expression")
 	}
@@ -309,6 +326,9 @@ func lowerExprToHIR(analysis *Analysis, function SemanticIdentity, expression Ex
 func LowerHIRToCore(program hir.Program) (coreir.Program, error) {
 	core := coreir.Program{LanguageContract: program.LanguageContract, CompilerContract: program.CompilerContract, Functions: make([]coreir.Function, 0, len(program.Functions))}
 	for _, function := range program.Functions {
+		if program.LanguageContract != coreir.LanguageContractV130 && hirFunctionContainsOptional(function) {
+			return coreir.Program{}, coreLoweringError(function.Span, fmt.Sprintf("primitive Optional HIR requires language contract %q", coreir.LanguageContractV130))
+		}
 		if function.Identity.PackageID == "" || function.Identity.Path == "" || function.Owner.SymbolID == 0 || function.Owner.Module == "" {
 			return coreir.Program{}, coreLoweringError(function.Span, "typed HIR function is missing bound semantic ownership")
 		}
@@ -330,6 +350,40 @@ func LowerHIRToCore(program hir.Program) (coreir.Program, error) {
 		core.Functions = append(core.Functions, lowered)
 	}
 	return core, nil
+}
+
+func hirFunctionContainsOptional(function hir.Function) bool {
+	if function.ReturnType.Kind == hir.TypeOptional || hirExprContainsOptional(function.Body) {
+		return true
+	}
+	for _, parameter := range function.Parameters {
+		if parameter.Type.Kind == hir.TypeOptional {
+			return true
+		}
+	}
+	return false
+}
+
+func hirExprContainsOptional(expression hir.Expr) bool {
+	switch expression.Kind {
+	case hir.ExprOptionalSome, hir.ExprOptionalNone, hir.ExprOptionalHasValue:
+		return true
+	case hir.ExprUnary:
+		return expression.Unary != nil && expression.Unary.Operand != nil && hirExprContainsOptional(*expression.Unary.Operand)
+	case hir.ExprBinary:
+		return expression.Binary != nil && expression.Binary.Left != nil && expression.Binary.Right != nil && (hirExprContainsOptional(*expression.Binary.Left) || hirExprContainsOptional(*expression.Binary.Right))
+	case hir.ExprFieldProjection:
+		return expression.Field != nil && expression.Field.Receiver != nil && hirExprContainsOptional(*expression.Field.Receiver)
+	case hir.ExprRecordConstruct:
+		if expression.Record != nil {
+			for _, field := range expression.Record.Fields {
+				if field.Value != nil && hirExprContainsOptional(*field.Value) {
+					return true
+				}
+			}
+		}
+	}
+	return false
 }
 
 func hirExprToCore(expression hir.Expr, parameters []hir.Parameter) (coreir.Expr, error) {
@@ -399,6 +453,32 @@ func hirExprToCore(expression hir.Expr, parameters []hir.Parameter) (coreir.Expr
 		}
 		result.Kind = coreir.ExprRecordConstruct
 		result.Record = construction
+	case hir.ExprOptionalSome:
+		if expression.Some == nil || expression.Some.Value == nil {
+			return coreir.Expr{}, coreLoweringError(expression.Span, "typed HIR optional some expression is incomplete")
+		}
+		value, err := hirExprToCore(*expression.Some.Value, parameters)
+		if err != nil {
+			return coreir.Expr{}, err
+		}
+		result.Kind = coreir.ExprOptionalSome
+		result.Some = &coreir.OptionalSome{Value: &value}
+	case hir.ExprOptionalNone:
+		if expression.None == nil {
+			return coreir.Expr{}, coreLoweringError(expression.Span, "typed HIR optional none expression is incomplete")
+		}
+		result.Kind = coreir.ExprOptionalNone
+		result.None = &coreir.OptionalNone{}
+	case hir.ExprOptionalHasValue:
+		if expression.HasValue == nil || expression.HasValue.Value == nil {
+			return coreir.Expr{}, coreLoweringError(expression.Span, "typed HIR optional has_value expression is incomplete")
+		}
+		value, err := hirExprToCore(*expression.HasValue.Value, parameters)
+		if err != nil {
+			return coreir.Expr{}, err
+		}
+		result.Kind = coreir.ExprOptionalHasValue
+		result.HasValue = &coreir.OptionalHasValue{Value: &value}
 	default:
 		return coreir.Expr{}, coreLoweringError(expression.Span, fmt.Sprintf("unsupported typed HIR expression kind %q", expression.Kind))
 	}
@@ -432,6 +512,9 @@ func symbolBySpan(table *SymbolTable, span Span) (Symbol, bool) {
 }
 
 func toHIRType(analysis *Analysis, resolved ResolvedTypeRef) hir.Type {
+	if isResolvedPrimitiveOptional(resolved) {
+		return hir.Type{Kind: hir.TypeOptional, Optional: &hir.OptionalType{Value: toHIRType(analysis, resolved.Arguments[0])}}
+	}
 	if isResolvedArithmeticResult(resolved) {
 		return hir.Type{
 			Kind:   hir.TypeResult,
@@ -515,6 +598,9 @@ func hirTypeToCore(value hir.Type) coreir.Type {
 	}
 	if value.Result != nil {
 		result.Result = &coreir.ResultType{Success: hirTypeToCore(value.Result.Success), Failure: hirTypeToCore(value.Result.Failure)}
+	}
+	if value.Optional != nil {
+		result.Optional = &coreir.OptionalType{Value: hirTypeToCore(value.Optional.Value)}
 	}
 	if value.Record != nil {
 		result.Record = &coreir.RecordType{Fields: make([]coreir.RecordField, 0, len(value.Record.Fields))}
