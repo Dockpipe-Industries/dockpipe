@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"reflect"
 	"runtime"
 	"sort"
 	"strconv"
@@ -31,6 +32,8 @@ const checkedSubtractSource = `public Class Root { public Result<int, Arithmetic
 const checkedMultiplySource = `public Class Root { public Result<int, ArithmeticError> Multiply(int left, int right) => left * right; }`
 const checkedNegateSource = `public Class Root { public Result<int, ArithmeticError> Negate(int value) => -value; }`
 const checkedDivideSource = `public Class Root { public Result<float, ArithmeticError> Divide(float left, float right) => left / right; }`
+const resultTransportIntSource = `public Class Root { public Result<int, ArithmeticError> Forward(Result<int, ArithmeticError> value) => value; }`
+const resultTransportFloatSource = `public Class Root { public Result<float, ArithmeticError> Forward(Result<float, ArithmeticError> value) => value; }`
 
 func TestTinyPureFunctionLowersThroughTypedHIRCoreAndGo(t *testing.T) {
 	module := testModule("app.root", "root.pipe", tinyPureFunctionSource)
@@ -661,6 +664,160 @@ func TestCheckedDivideHIRCoreAndGoGoldens(t *testing.T) {
 	assertCompilerGolden(t, "checked-divide.go", generated)
 }
 
+func TestV070ResultTransportHIRCoreAndGoGoldens(t *testing.T) {
+	module := testModule("app.root", "root.pipe", resultTransportIntSource)
+	input := semanticTestModuleSet("app.root", []ModuleInput{module}, nil)
+	input.LanguageContract = PipeLangLanguageContractV070
+	analysis := AnalyzeSemanticModuleSet(input)
+	if err := analysis.Error(); err != nil {
+		t.Fatal(err)
+	}
+	method := semanticMethodNamed(t, analysis, "Forward")
+	if method.Identity.Callable == nil || len(method.Identity.Callable.Parameters) != 1 || !reflect.DeepEqual(method.Identity.Callable.Parameters[0], method.Identity.Callable.Returns) || method.Identity.Callable.Returns.Kind != TypeRefApplied || method.Identity.Callable.Returns.PackageID != PipeLangBuiltinPackageID || method.Identity.Callable.Returns.Path != PipeLangResultSemanticPath || len(method.Identity.Callable.Returns.Arguments) != 2 || method.Identity.Callable.Returns.Arguments[0].Primitive != TypeInt || method.Identity.Callable.Returns.Arguments[1].PackageID != PipeLangBuiltinPackageID || method.Identity.Callable.Returns.Arguments[1].Path != PipeLangArithmeticErrorSemanticPath {
+		t.Fatalf("Result transport callable identity = %#v", method.Identity.Callable)
+	}
+	projection, err := BuildSemanticProjection(analysis)
+	if err != nil {
+		t.Fatal(err)
+	}
+	projected := projectedMemberNamed(t, projection.Modules[0].Types[0], "Forward")
+	if projection.LanguageContract != PipeLangLanguageContractV070 || len(projected.Parameters) != 1 || projected.Parameters[0].Type.Identity == nil || projected.Parameters[0].Type.Identity.PackageID != PipeLangBuiltinPackageID || projected.Parameters[0].Type.Identity.Path != PipeLangResultSemanticPath || !reflect.DeepEqual(projected.Parameters[0].Type, projected.Type) {
+		t.Fatalf("Result transport projection = %#v", projected)
+	}
+	typed, err := LowerSemanticMethodToHIR(analysis, method.Identity)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if typed.LanguageContract != coreir.LanguageContractV070 || len(typed.Functions) != 1 || len(typed.Functions[0].Parameters) != 1 || typed.Functions[0].Parameters[0].Type.Kind != hir.TypeResult || typed.Functions[0].Body.Kind != hir.ExprReference || typed.Functions[0].Body.Reference == nil || typed.Functions[0].Body.Reference.Position != 0 || !reflect.DeepEqual(typed.Functions[0].Parameters[0].Type, typed.Functions[0].ReturnType) || !reflect.DeepEqual(typed.Functions[0].Body.Type, typed.Functions[0].ReturnType) {
+		t.Fatalf("Result transport HIR = %#v", typed)
+	}
+	core, err := LowerHIRToCore(typed)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(core.Functions) != 1 || core.Functions[0].Body.Kind != coreir.ExprReference || core.Functions[0].Body.Parameter == nil || *core.Functions[0].Body.Parameter != 0 || !coreir.TypeEqual(core.Functions[0].Parameters[0].Type, core.Functions[0].ReturnType) {
+		t.Fatalf("Result transport Core = %#v", core)
+	}
+	generated, err := gobackend.Generate(core)
+	if err != nil {
+		t.Fatal(err)
+	}
+	secondGenerated, err := gobackend.Generate(core)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(generated, secondGenerated) {
+		t.Fatal("Result transport generated Go is nondeterministic")
+	}
+	resultType := core.Functions[0].ReturnType
+	for _, test := range []struct {
+		name    string
+		outcome coreeval.Outcome
+	}{
+		{name: "success", outcome: coreeval.Outcome{OK: true, Value: coreeval.Value{Type: resultType.Result.Success, Int: 42}}},
+		{name: "overflow", outcome: coreeval.Outcome{Value: coreeval.Value{Type: resultType.Result.Success}, Error: coreir.ArithmeticOverflow}},
+	} {
+		argument := coreeval.Value{Type: resultType, Result: &test.outcome}
+		actual, evaluateErr := coreeval.Evaluate(core.Functions[0], []coreeval.Value{argument})
+		if evaluateErr != nil {
+			t.Fatalf("%s Core evaluation: %v", test.name, evaluateErr)
+		}
+		if !reflect.DeepEqual(actual, test.outcome) {
+			t.Fatalf("%s Core outcome = %#v", test.name, actual)
+		}
+	}
+	for _, invalid := range []coreeval.Value{
+		{Type: resultType},
+		{Type: resultType, Result: &coreeval.Outcome{OK: true, Value: coreeval.Value{Type: resultType.Result.Success}, Error: coreir.ArithmeticOverflow}},
+		{Type: resultType, Result: &coreeval.Outcome{Value: coreeval.Value{Type: resultType.Result.Success}, Error: coreir.ArithmeticError("unknown")}},
+	} {
+		if _, evaluateErr := coreeval.Evaluate(core.Functions[0], []coreeval.Value{invalid}); evaluateErr == nil {
+			t.Fatalf("malformed Core Result argument was accepted: %#v", invalid)
+		}
+	}
+	compileAndRunResultTransportGo(t, generated, gobackend.FunctionName(core.Functions[0]), false)
+	assertCompilerGolden(t, "result-transport.hir.json", canonicalJSON(t, typed))
+	assertCompilerGolden(t, "result-transport.core.json", canonicalJSON(t, core))
+	assertCompilerGolden(t, "result-transport.go", generated)
+}
+
+func TestV070TransportsExistingFloatArithmeticResult(t *testing.T) {
+	input := semanticTestModuleSet("app.root", []ModuleInput{testModule("app.root", "root.pipe", resultTransportFloatSource)}, nil)
+	input.LanguageContract = PipeLangLanguageContractV070
+	analysis := AnalyzeSemanticModuleSet(input)
+	if err := analysis.Error(); err != nil {
+		t.Fatal(err)
+	}
+	method := semanticMethodNamed(t, analysis, "Forward")
+	typed, err := LowerSemanticMethodToHIR(analysis, method.Identity)
+	if err != nil {
+		t.Fatal(err)
+	}
+	core, err := LowerHIRToCore(typed)
+	if err != nil {
+		t.Fatal(err)
+	}
+	resultType := core.Functions[0].ReturnType
+	negativeZero := math.Copysign(0, -1)
+	success := coreeval.Outcome{OK: true, Value: coreeval.Value{Type: resultType.Result.Success, Float: negativeZero}}
+	actual, err := coreeval.Evaluate(core.Functions[0], []coreeval.Value{{Type: resultType, Result: &success}})
+	if err != nil || !actual.OK || actual.Error != "" || actual.Value.Float != 0 || !math.Signbit(actual.Value.Float) {
+		t.Fatalf("float Result transport Core outcome = %#v (%v)", actual, err)
+	}
+	failure := coreeval.Outcome{Value: coreeval.Value{Type: resultType.Result.Success}, Error: coreir.ArithmeticDivisionByZero}
+	actual, err = coreeval.Evaluate(core.Functions[0], []coreeval.Value{{Type: resultType, Result: &failure}})
+	if err != nil || !reflect.DeepEqual(actual, failure) {
+		t.Fatalf("float Result failure transport Core outcome = %#v (%v)", actual, err)
+	}
+	generated, err := gobackend.Generate(core)
+	if err != nil {
+		t.Fatal(err)
+	}
+	compileAndRunResultTransportGo(t, generated, gobackend.FunctionName(core.Functions[0]), true)
+}
+
+func TestV070ResultTransportRejectsExcludedForms(t *testing.T) {
+	tests := []struct {
+		name string
+		src  string
+		code DiagnosticCode
+	}{
+		{name: "different return", src: `public Class Root { public Result<float, ArithmeticError> Forward(Result<int, ArithmeticError> value) => value; }`, code: CodeInvalidType},
+		{name: "extra parameter", src: `public Class Root { public Result<int, ArithmeticError> Forward(Result<int, ArithmeticError> value, int other) => value; }`, code: CodeInvalidType},
+		{name: "non-Result return", src: `public Class Root { public bool Forward(Result<int, ArithmeticError> value) => true; }`, code: CodeInvalidType},
+		{name: "different body", src: `public Class Root { public Result<int, ArithmeticError> Forward(Result<int, ArithmeticError> value) => 1 + 2; }`, code: CodeExpressionType},
+		{name: "nested Result", src: `public Class Root { public Result<Result<int, ArithmeticError>, ArithmeticError> Forward(Result<Result<int, ArithmeticError>, ArithmeticError> value) => value; }`, code: CodeInvalidType},
+		{name: "result field", src: `public Class Root { public Result<int, ArithmeticError> Value; }`, code: CodeInvalidType},
+		{name: "interface result", src: `public Interface Transport { public Result<int, ArithmeticError> Forward(Result<int, ArithmeticError> value); } public Class Root { public bool Ready() => true; }`, code: CodeInvalidType},
+		{name: "alternate error", src: `public Class Other { public int Value; } public Class Root { public Result<int, Other> Forward(Result<int, Other> value) => value; }`, code: CodeInvalidType},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			input := semanticTestModuleSet("app.root", []ModuleInput{testModule("app.root", "root.pipe", test.src)}, nil)
+			input.LanguageContract = PipeLangLanguageContractV070
+			analysis := AnalyzeSemanticModuleSet(input)
+			if !analysis.Diagnostics.HasErrors() {
+				t.Fatal("excluded v0.7.0 Result form was accepted")
+			}
+			assertDiagnosticCode(t, analysis, test.code)
+		})
+	}
+}
+
+func TestResultTransportRequiresExplicitV070Migration(t *testing.T) {
+	for _, contract := range []LanguageContract{PipeLangLanguageContractV010, PipeLangLanguageContractV020, PipeLangLanguageContractV030, PipeLangLanguageContractV040, PipeLangLanguageContractV050, PipeLangLanguageContractV060} {
+		input := semanticTestModuleSet("app.root", []ModuleInput{testModule("app.root", "root.pipe", resultTransportIntSource)}, nil)
+		input.LanguageContract = contract
+		analysis := AnalyzeSemanticModuleSet(input)
+		if !analysis.Diagnostics.HasErrors() {
+			t.Fatalf("%s implicitly accepted Result transport", contract)
+		}
+		if contract != PipeLangLanguageContractV010 {
+			assertDiagnosticCode(t, analysis, CodeInvalidType)
+		}
+	}
+}
+
 func TestV020CheckedAddRequiresExplicitExactDirectResult(t *testing.T) {
 	tests := []struct {
 		name   string
@@ -926,6 +1083,44 @@ func TestV060PreservesPriorDirectCheckedArithmetic(t *testing.T) {
 			}
 			if typed.Functions[0].Body.Binary == nil || typed.Functions[0].Body.Binary.Operator != test.operator {
 				t.Fatalf("v0.6.0 changed direct checked %s = %#v", test.name, typed.Functions[0].Body)
+			}
+		})
+	}
+}
+
+func TestV070PreservesAllDirectCheckedArithmetic(t *testing.T) {
+	for _, test := range []struct {
+		name     string
+		source   string
+		operator hir.Operator
+		unary    bool
+	}{
+		{name: "Add", source: checkedAddSource, operator: hir.OperatorAdd},
+		{name: "Subtract", source: checkedSubtractSource, operator: hir.OperatorSubtract},
+		{name: "Multiply", source: checkedMultiplySource, operator: hir.OperatorMultiply},
+		{name: "Negate", source: checkedNegateSource, operator: hir.OperatorNegate, unary: true},
+		{name: "Divide", source: checkedDivideSource, operator: hir.OperatorDivide},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			input := semanticTestModuleSet("app.root", []ModuleInput{testModule("app.root", "root.pipe", test.source)}, nil)
+			input.LanguageContract = PipeLangLanguageContractV070
+			analysis := AnalyzeSemanticModuleSet(input)
+			if err := analysis.Error(); err != nil {
+				t.Fatal(err)
+			}
+			method := semanticMethodNamed(t, analysis, test.name)
+			typed, err := LowerSemanticMethodToHIR(analysis, method.Identity)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if test.unary {
+				if typed.Functions[0].Body.Unary == nil || typed.Functions[0].Body.Unary.Operator != test.operator {
+					t.Fatalf("v0.7.0 changed direct checked %s = %#v", test.name, typed.Functions[0].Body)
+				}
+				return
+			}
+			if typed.Functions[0].Body.Binary == nil || typed.Functions[0].Body.Binary.Operator != test.operator {
+				t.Fatalf("v0.7.0 changed direct checked %s = %#v", test.name, typed.Functions[0].Body)
 			}
 		})
 	}
@@ -1206,6 +1401,38 @@ func compileAndRunGeneratedGoFiles(t *testing.T, generated, generatedTest []byte
 	if err != nil {
 		t.Fatalf("compile/run generated Go: %v\n%s", err, output)
 	}
+}
+
+func compileAndRunResultTransportGo(t *testing.T, generated []byte, functionName string, floating bool) {
+	t.Helper()
+	typeName := "int64"
+	value := "int64(42)"
+	failure := "PipeLangArithmeticOverflow"
+	if floating {
+		typeName = "float64"
+		value = "math.Copysign(0, -1)"
+		failure = "PipeLangArithmeticDivisionByZero"
+	}
+	testSource := fmt.Sprintf(`package %s
+
+import (
+	"math"
+	"testing"
+)
+
+func TestGeneratedResultTransport(t *testing.T) {
+	_ = math.Copysign
+	success := PipeLangArithmeticResult[%s]{OK: true, Value: %s}
+	if got := %s(success); got != success {
+		t.Fatalf("success: got %%#v", got)
+	}
+	failure := PipeLangArithmeticResult[%s]{Error: %s}
+	if got := %s(failure); got != failure {
+		t.Fatalf("failure: got %%#v", got)
+	}
+}
+`, gobackend.PackageName, typeName, value, functionName, typeName, failure, functionName)
+	compileAndRunGeneratedGoFiles(t, generated, []byte(testSource))
 }
 
 func semanticMethodNamed(t *testing.T, analysis *Analysis, name string) SemanticDeclaration {

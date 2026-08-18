@@ -301,6 +301,24 @@ integer Result slice to this exact float Result return reuses `pipelang:result`,
 migrates implicitly, and nested fallible expressions and general Result handling remain outside the
 production source contract.
 
+The explicit `v0.7.0` contract preserves every direct checked-arithmetic method from `v0.6.0` and
+additionally makes the two existing arithmetic Result shapes transportable through one pure class
+method boundary. The exact admitted forms have one parameter whose type is identical to the method
+return and whose identifier is the complete body:
+
+```pipelang
+Result<int, ArithmeticError> ForwardInt(Result<int, ArithmeticError> value) => value;
+Result<float, ArithmeticError> ForwardFloat(Result<float, ArithmeticError> value) => value;
+```
+
+Method and parameter names remain source-owned. Both callable positions reuse `pipelang:result` and
+`pipelang:arithmetic.error`; HIR, Core evaluation, and generated Go preserve the same explicit
+success payload or closed arithmetic error without wrapping, unwrapping, conversion, or target
+exception behavior. `v0.1.0` through `v0.6.0` remain unchanged and no source or package selects
+`v0.7.0` implicitly. Result fields, interface signatures, extra or mismatched parameters, nested or
+alternate Result types, constructors, inspection, extraction, matching, propagation, and use as an
+ordinary `int` or `float` remain outside the production source contract.
+
 ## Artifacts
 
 Compile emits:
