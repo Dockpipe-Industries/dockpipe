@@ -27,8 +27,9 @@ func ArithmeticResult(success Type) Type {
 // for bounded checked arithmetic. The v0.1.0 source lane remains closed; the
 // v0.2.0 maps only direct integer addition here; v0.3.0 additionally maps
 // direct integer subtraction; v0.4.0 additionally maps direct integer
-// multiplication; v0.5.0 additionally maps direct integer negation. Other
-// operations remain compiler-internal.
+// multiplication; v0.5.0 additionally maps direct integer negation; v0.6.0
+// additionally maps direct binary64 division. Other operations remain
+// compiler-internal.
 func ArithmeticResultType(operator Operator, left Type, right *Type) (Type, error) {
 	integer64 := SignedInteger(64)
 	binary64 := BinaryFloat(64)

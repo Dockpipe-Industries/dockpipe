@@ -169,8 +169,20 @@ func isResolvedIntArithmeticResult(ref ResolvedTypeRef) bool {
 	return ref.Kind == TypeRefApplied && ref.Name == "Result" && ref.PackageID == PipeLangBuiltinPackageID && ref.Path == PipeLangResultSemanticPath && len(ref.Arguments) == 2 && ref.Arguments[0].Equal(resolvedPrimitive(TypeInt)) && isResolvedArithmeticError(ref.Arguments[1])
 }
 
+func isResolvedFloatArithmeticResult(ref ResolvedTypeRef) bool {
+	return ref.Kind == TypeRefApplied && ref.Name == "Result" && ref.PackageID == PipeLangBuiltinPackageID && ref.Path == PipeLangResultSemanticPath && len(ref.Arguments) == 2 && ref.Arguments[0].Equal(resolvedPrimitive(TypeFloat)) && isResolvedArithmeticError(ref.Arguments[1])
+}
+
+func isResolvedArithmeticResult(ref ResolvedTypeRef) bool {
+	return isResolvedIntArithmeticResult(ref) || isResolvedFloatArithmeticResult(ref)
+}
+
+func isResolvedSourceArithmeticResult(contract LanguageContract, ref ResolvedTypeRef) bool {
+	return isResolvedIntArithmeticResult(ref) || (contract == PipeLangLanguageContractV060 && isResolvedFloatArithmeticResult(ref))
+}
+
 func containsResolvedArithmeticContractType(ref ResolvedTypeRef) bool {
-	if isResolvedArithmeticError(ref) || isResolvedIntArithmeticResult(ref) {
+	if isResolvedArithmeticError(ref) || isResolvedArithmeticResult(ref) {
 		return true
 	}
 	for _, argument := range ref.Arguments {

@@ -153,8 +153,8 @@ func (cp *checkedProgram) validateClass(decl *ClassDecl) error {
 		if err != nil {
 			return prefixDiagnostic(err, fmt.Sprintf("class %s method %s return: ", decl.Name, method.Name))
 		}
-		if containsResolvedArithmeticContractType(resolved) && !isResolvedIntArithmeticResult(resolved) {
-			return oneDiagnostic(cp.sources, CodeInvalidType, CategorySemantic, method.ReturnType.Span, fmt.Sprintf("the %s arithmetic slice admits only Result<int,ArithmeticError> as a class method return type", cp.modules.LanguageContract()))
+		if containsResolvedArithmeticContractType(resolved) && !isResolvedSourceArithmeticResult(cp.modules.LanguageContract(), resolved) {
+			return oneDiagnostic(cp.sources, CodeInvalidType, CategorySemantic, method.ReturnType.Span, fmt.Sprintf("the %s arithmetic slice admits only its exact checked-arithmetic Result shapes as class method return types", cp.modules.LanguageContract()))
 		}
 		if previous, ok := seen[method.Name]; ok {
 			return oneDiagnostic(cp.sources, CodeDuplicateMember, CategorySemantic, method.Span, fmt.Sprintf("class %s has duplicate member %q", decl.Name, method.Name), RelatedSpan{Span: previous, Message: "first member"})
@@ -344,11 +344,30 @@ func (cp *checkedProgram) inferExprType(expr Expr, env map[string]ResolvedTypeRe
 }
 
 func (cp *checkedProgram) inferMethodBodyType(expr Expr, env map[string]ResolvedTypeRef, declared ResolvedTypeRef) (ResolvedTypeRef, error) {
-	if cp == nil || cp.modules == nil || !hasArithmeticResultSourceContract(cp.modules.LanguageContract()) || !isResolvedIntArithmeticResult(declared) {
+	if cp == nil || cp.modules == nil || !hasArithmeticResultSourceContract(cp.modules.LanguageContract()) || !isResolvedSourceArithmeticResult(cp.modules.LanguageContract(), declared) {
 		return cp.inferExprType(expr, env)
 	}
 	contract := cp.modules.LanguageContract()
-	if unary, unaryOK := expr.(*UnaryExpr); unaryOK && contract == PipeLangLanguageContractV050 && unary.Op == "-" {
+	if isResolvedFloatArithmeticResult(declared) {
+		binary, ok := expr.(*BinaryExpr)
+		if !ok || binary.Op != "/" {
+			return ResolvedTypeRef{}, oneDiagnostic(cp.sources, CodeNumericSemantics, CategorySemantic, expr.SourceSpan(), fmt.Sprintf("%s admits only one direct checked binary64 division as the complete Result<float,ArithmeticError> method body", contract))
+		}
+		left, err := inferExprTypeWithPolicy(cp.sources, binary.Left, env, true)
+		if err != nil {
+			return ResolvedTypeRef{}, err
+		}
+		right, err := inferExprTypeWithPolicy(cp.sources, binary.Right, env, true)
+		if err != nil {
+			return ResolvedTypeRef{}, err
+		}
+		binary64 := resolvedPrimitive(TypeFloat)
+		if !left.Equal(binary64) || !right.Equal(binary64) {
+			return ResolvedTypeRef{}, oneDiagnostic(cp.sources, CodeNumericSemantics, CategorySemantic, binary.Span, fmt.Sprintf("checked binary64 division requires float and float, got %s and %s", left, right))
+		}
+		return resolvedArithmeticResult(binary64), nil
+	}
+	if unary, unaryOK := expr.(*UnaryExpr); unaryOK && (contract == PipeLangLanguageContractV050 || contract == PipeLangLanguageContractV060) && unary.Op == "-" {
 		operand, err := inferExprTypeWithPolicy(cp.sources, unary.Expr, env, true)
 		if err != nil {
 			return ResolvedTypeRef{}, err
@@ -361,7 +380,7 @@ func (cp *checkedProgram) inferMethodBodyType(expr Expr, env map[string]Resolved
 	}
 	binary, ok := expr.(*BinaryExpr)
 	operatorAccepted := ok && binary.Op == "+"
-	if contract == PipeLangLanguageContractV040 || contract == PipeLangLanguageContractV050 {
+	if contract == PipeLangLanguageContractV040 || contract == PipeLangLanguageContractV050 || contract == PipeLangLanguageContractV060 {
 		operatorAccepted = ok && (binary.Op == "+" || binary.Op == "-" || binary.Op == "*")
 	} else if contract == PipeLangLanguageContractV030 {
 		operatorAccepted = ok && (binary.Op == "+" || binary.Op == "-")
@@ -386,7 +405,7 @@ func (cp *checkedProgram) inferMethodBodyType(expr Expr, env map[string]Resolved
 }
 
 func arithmeticSourceOperators(contract LanguageContract) string {
-	if contract == PipeLangLanguageContractV050 {
+	if contract == PipeLangLanguageContractV050 || contract == PipeLangLanguageContractV060 {
 		return "addition, subtraction, multiplication, or negation"
 	}
 	if contract == PipeLangLanguageContractV040 {

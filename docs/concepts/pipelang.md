@@ -291,6 +291,16 @@ expression-bodied method body and produces either an explicit integer success or
 compiler/projection contracts; no source or package migrates implicitly. Division, nested fallible
 expressions, and general Result handling remain outside the production source contract.
 
+The explicit `v0.6.0` contract preserves `v0.5.0` unchanged and additionally admits exactly
+`Result<float, ArithmeticError> Divide(float left, float right) => left / right;`. Division is the
+complete expression-bodied method body. A positive or negative zero divisor produces the existing
+closed `division_by_zero` error; every nonzero divisor produces an explicit binary64 success while
+retaining IEEE-754 behavior including `NaN`, infinities, and signed zero. The widening from the
+integer Result slice to this exact float Result return reuses `pipelang:result`,
+`pipelang:arithmetic.error`, `pipelang.compiler.v1`, and `pipelang.semantic.v1`. No source or package
+migrates implicitly, and nested fallible expressions and general Result handling remain outside the
+production source contract.
+
 ## Artifacts
 
 Compile emits:

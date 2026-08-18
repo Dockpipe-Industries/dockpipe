@@ -27,6 +27,7 @@ const (
 	PipeLangLanguageContractV030 LanguageContract = "v0.3.0"
 	PipeLangLanguageContractV040 LanguageContract = "v0.4.0"
 	PipeLangLanguageContractV050 LanguageContract = "v0.5.0"
+	PipeLangLanguageContractV060 LanguageContract = "v0.6.0"
 	PipeLangLanguageContract                      = PipeLangLanguageContractV010 // compatibility name for the first post-legacy seed
 	PipeLangDisplayName                           = "PipeLang"
 	PipeLangMachineName                           = "pipelang"
@@ -34,11 +35,11 @@ const (
 )
 
 func isPipeLangSemanticContract(contract LanguageContract) bool {
-	return contract == PipeLangLanguageContractV010 || contract == PipeLangLanguageContractV020 || contract == PipeLangLanguageContractV030 || contract == PipeLangLanguageContractV040 || contract == PipeLangLanguageContractV050
+	return contract == PipeLangLanguageContractV010 || contract == PipeLangLanguageContractV020 || contract == PipeLangLanguageContractV030 || contract == PipeLangLanguageContractV040 || contract == PipeLangLanguageContractV050 || contract == PipeLangLanguageContractV060
 }
 
 func hasArithmeticResultSourceContract(contract LanguageContract) bool {
-	return contract == PipeLangLanguageContractV020 || contract == PipeLangLanguageContractV030 || contract == PipeLangLanguageContractV040 || contract == PipeLangLanguageContractV050
+	return contract == PipeLangLanguageContractV020 || contract == PipeLangLanguageContractV030 || contract == PipeLangLanguageContractV040 || contract == PipeLangLanguageContractV050 || contract == PipeLangLanguageContractV060
 }
 
 // ImportKind distinguishes a namespace/module import from a single-symbol import.
@@ -300,7 +301,7 @@ func prepareModuleGraph(input ModuleSetInput, sources *SourceSet, requireSemanti
 	} else if input.LanguageContract == LegacyLanguageContract {
 		diagnostics = append(diagnostics, moduleDiagnostic(CodeInvalidModule, Span{}, "the frozen v0.0.0.1 contract uses the legacy source-set compiler lane"))
 	} else if requireSemanticIDs && !isPipeLangSemanticContract(input.LanguageContract) {
-		diagnostics = append(diagnostics, moduleDiagnostic(CodeInvalidModule, Span{}, fmt.Sprintf("semantic analysis requires language contract %q, %q, %q, %q, or %q", PipeLangLanguageContractV010, PipeLangLanguageContractV020, PipeLangLanguageContractV030, PipeLangLanguageContractV040, PipeLangLanguageContractV050)))
+		diagnostics = append(diagnostics, moduleDiagnostic(CodeInvalidModule, Span{}, fmt.Sprintf("semantic analysis requires language contract %q, %q, %q, %q, %q, or %q", PipeLangLanguageContractV010, PipeLangLanguageContractV020, PipeLangLanguageContractV030, PipeLangLanguageContractV040, PipeLangLanguageContractV050, PipeLangLanguageContractV060)))
 	}
 	if !validModuleID(input.Root, false) {
 		diagnostics = append(diagnostics, moduleDiagnostic(CodeInvalidModule, Span{}, "root module identity is empty or non-canonical"))

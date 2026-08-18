@@ -30,6 +30,7 @@ const checkedAddSource = `public Class Root { public Result<int, ArithmeticError
 const checkedSubtractSource = `public Class Root { public Result<int, ArithmeticError> Subtract(int left, int right) => left - right; }`
 const checkedMultiplySource = `public Class Root { public Result<int, ArithmeticError> Multiply(int left, int right) => left * right; }`
 const checkedNegateSource = `public Class Root { public Result<int, ArithmeticError> Negate(int value) => -value; }`
+const checkedDivideSource = `public Class Root { public Result<float, ArithmeticError> Divide(float left, float right) => left / right; }`
 
 func TestTinyPureFunctionLowersThroughTypedHIRCoreAndGo(t *testing.T) {
 	module := testModule("app.root", "root.pipe", tinyPureFunctionSource)
@@ -568,6 +569,98 @@ func TestCheckedNegateHIRCoreAndGoGoldens(t *testing.T) {
 	assertCompilerGolden(t, "checked-negate.go", generated)
 }
 
+func TestCheckedDivideHIRCoreAndGoGoldens(t *testing.T) {
+	module := testModule("app.root", "root.pipe", checkedDivideSource)
+	input := semanticTestModuleSet("app.root", []ModuleInput{module}, nil)
+	input.LanguageContract = PipeLangLanguageContractV060
+	analysis := AnalyzeSemanticModuleSet(input)
+	if err := analysis.Error(); err != nil {
+		t.Fatal(err)
+	}
+	method := semanticMethodNamed(t, analysis, "Divide")
+	if method.Identity.Callable == nil {
+		t.Fatal("checked Divide has no callable identity")
+	}
+	callable := method.Identity.Callable
+	returns := callable.Returns
+	if len(callable.Parameters) != 2 || callable.Parameters[0].Primitive != TypeFloat || callable.Parameters[1].Primitive != TypeFloat || returns.Kind != TypeRefApplied || returns.Name != "Result" || returns.PackageID != PipeLangBuiltinPackageID || returns.Path != PipeLangResultSemanticPath || len(returns.Arguments) != 2 || returns.Arguments[0].Primitive != TypeFloat || returns.Arguments[1].Kind != TypeRefNamed || returns.Arguments[1].PackageID != PipeLangBuiltinPackageID || returns.Arguments[1].Path != PipeLangArithmeticErrorSemanticPath {
+		t.Fatalf("checked Divide callable identity = %#v", callable)
+	}
+	projection, err := BuildSemanticProjection(analysis)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if projection.LanguageContract != PipeLangLanguageContractV060 || projection.Schema != PipeLangSemanticProjectionVersion || projection.CompilerContract != PipeLangCompilerContract {
+		t.Fatalf("checked Divide projection header = %#v", projection)
+	}
+	projected := projectedMemberNamed(t, projection.Modules[0].Types[0], "Divide").Type
+	if projected.Kind != TypeRefApplied || projected.Name != "Result" || projected.Identity == nil || projected.Identity.PackageID != PipeLangBuiltinPackageID || projected.Identity.Path != PipeLangResultSemanticPath || len(projected.Arguments) != 2 || projected.Arguments[0].Primitive != TypeFloat || projected.Arguments[1].Identity == nil || projected.Arguments[1].Identity.PackageID != PipeLangBuiltinPackageID || projected.Arguments[1].Identity.Path != PipeLangArithmeticErrorSemanticPath {
+		t.Fatalf("checked Divide projected return = %#v", projected)
+	}
+	typed, err := LowerSemanticMethodToHIR(analysis, method.Identity)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if typed.LanguageContract != coreir.LanguageContractV060 || len(typed.Functions) != 1 || typed.Functions[0].ReturnType.Kind != hir.TypeResult || typed.Functions[0].ReturnType.Result == nil || typed.Functions[0].ReturnType.Result.Success.Numeric == nil || typed.Functions[0].ReturnType.Result.Success.Numeric.Representation != hir.NumericBinaryFloat || typed.Functions[0].ReturnType.Result.Success.Numeric.Bits != 64 || typed.Functions[0].Body.Type.Kind != hir.TypeResult || typed.Functions[0].Body.Binary == nil || typed.Functions[0].Body.Binary.Operator != hir.OperatorDivide {
+		t.Fatalf("checked Divide HIR = %#v", typed)
+	}
+	core, err := LowerHIRToCore(typed)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if core.Functions[0].Body.Binary == nil || core.Functions[0].Body.Binary.Operator != coreir.OperatorDivide {
+		t.Fatalf("checked Divide Core = %#v", core)
+	}
+	generated, err := gobackend.Generate(core)
+	if err != nil {
+		t.Fatal(err)
+	}
+	secondGenerated, err := gobackend.Generate(core)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(generated, secondGenerated) {
+		t.Fatal("checked Divide generated Go is nondeterministic")
+	}
+	negativeZero := math.Copysign(0, -1)
+	for _, test := range []struct {
+		name      string
+		arguments []coreeval.Value
+		ok        bool
+		value     float64
+		failure   coreir.ArithmeticError
+		wantNaN   bool
+	}{
+		{name: "ordinary success", arguments: coreFloatArguments(7.5, 2.5), ok: true, value: 3},
+		{name: "positive zero divisor", arguments: coreFloatArguments(1, 0), failure: coreir.ArithmeticDivisionByZero},
+		{name: "negative zero divisor", arguments: coreFloatArguments(1, negativeZero), failure: coreir.ArithmeticDivisionByZero},
+		{name: "NaN dividend", arguments: coreFloatArguments(math.NaN(), 2), ok: true, wantNaN: true},
+		{name: "NaN divisor", arguments: coreFloatArguments(2, math.NaN()), ok: true, wantNaN: true},
+	} {
+		outcome, evaluateErr := coreeval.Evaluate(core.Functions[0], test.arguments)
+		if evaluateErr != nil {
+			t.Fatalf("%s Core evaluation: %v", test.name, evaluateErr)
+		}
+		valueMatches := outcome.Value.Float == test.value
+		if test.wantNaN {
+			valueMatches = math.IsNaN(outcome.Value.Float)
+		}
+		if outcome.OK != test.ok || outcome.Error != test.failure || (test.ok && !valueMatches) {
+			t.Fatalf("%s Core outcome = %#v", test.name, outcome)
+		}
+	}
+	if outcome, evaluateErr := coreeval.Evaluate(core.Functions[0], coreFloatArguments(math.Inf(1), 2)); evaluateErr != nil || !outcome.OK || outcome.Error != "" || !math.IsInf(outcome.Value.Float, 1) {
+		t.Fatalf("infinity Core outcome = %#v (%v)", outcome, evaluateErr)
+	}
+	if outcome, evaluateErr := coreeval.Evaluate(core.Functions[0], coreFloatArguments(negativeZero, 2)); evaluateErr != nil || !outcome.OK || outcome.Error != "" || outcome.Value.Float != 0 || !math.Signbit(outcome.Value.Float) {
+		t.Fatalf("signed-zero Core outcome = %#v (%v)", outcome, evaluateErr)
+	}
+	compileAndRunCheckedDivideGo(t, generated, gobackend.FunctionName(core.Functions[0]))
+	assertCompilerGolden(t, "checked-divide.hir.json", canonicalJSON(t, typed))
+	assertCompilerGolden(t, "checked-divide.core.json", canonicalJSON(t, core))
+	assertCompilerGolden(t, "checked-divide.go", generated)
+}
+
 func TestV020CheckedAddRequiresExplicitExactDirectResult(t *testing.T) {
 	tests := []struct {
 		name   string
@@ -695,6 +788,38 @@ func TestV050CheckedNegateRequiresExplicitExactDirectResult(t *testing.T) {
 	}
 }
 
+func TestV060CheckedDivideRequiresExplicitExactDirectResult(t *testing.T) {
+	tests := []struct {
+		name   string
+		source string
+	}{
+		{name: "ordinary float return", source: `public Class Root { public float Divide(float left, float right) => left / right; }`},
+		{name: "nested division", source: `public Class Root { public Result<float, ArithmeticError> Divide(float left, float right) => left / (right / 2.0); }`},
+		{name: "different arithmetic", source: `public Class Root { public Result<float, ArithmeticError> Divide(float left, float right) => left + right; }`},
+		{name: "integer operands", source: `public Class Root { public Result<float, ArithmeticError> Divide(int left, int right) => left / right; }`},
+		{name: "different success type", source: `public Class Root { public Result<int, ArithmeticError> Divide(float left, float right) => left / right; }`},
+		{name: "different failure type", source: `public Class Root { public Result<float, Root> Divide(float left, float right) => left / right; }`},
+		{name: "result field", source: `public Class Root { public Result<float, ArithmeticError> Value; }`},
+		{name: "result parameter", source: `public Class Root { public bool Check(Result<float, ArithmeticError> value) => true; }`},
+		{name: "interface result", source: `public Interface Math { public Result<float, ArithmeticError> Divide(float left, float right); } public Class Root { public bool Ready() => true; }`},
+		{name: "bare arithmetic error", source: `public Class Root { public ArithmeticError Error() => 1; }`},
+		{name: "reserved declaration", source: `public Class Result { public int Value; }`},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			input := semanticTestModuleSet("app.root", []ModuleInput{testModule("app.root", "root.pipe", test.source)}, nil)
+			input.LanguageContract = PipeLangLanguageContractV060
+			analysis := AnalyzeSemanticModuleSet(input)
+			if !analysis.Diagnostics.HasErrors() {
+				t.Fatal("invalid v0.6.0 Result shape was accepted")
+			}
+			if test.name == "ordinary float return" || test.name == "nested division" || test.name == "different arithmetic" || test.name == "integer operands" || test.name == "different success type" {
+				assertDiagnosticCode(t, analysis, CodeNumericSemantics)
+			}
+		})
+	}
+}
+
 func TestV030PreservesDirectCheckedAdd(t *testing.T) {
 	input := semanticTestModuleSet("app.root", []ModuleInput{testModule("app.root", "root.pipe", checkedAddSource)}, nil)
 	input.LanguageContract = PipeLangLanguageContractV030
@@ -769,6 +894,43 @@ func TestV050PreservesDirectCheckedAddSubtractAndMultiply(t *testing.T) {
 	}
 }
 
+func TestV060PreservesPriorDirectCheckedArithmetic(t *testing.T) {
+	for _, test := range []struct {
+		name     string
+		source   string
+		operator hir.Operator
+		unary    bool
+	}{
+		{name: "Add", source: checkedAddSource, operator: hir.OperatorAdd},
+		{name: "Subtract", source: checkedSubtractSource, operator: hir.OperatorSubtract},
+		{name: "Multiply", source: checkedMultiplySource, operator: hir.OperatorMultiply},
+		{name: "Negate", source: checkedNegateSource, operator: hir.OperatorNegate, unary: true},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			input := semanticTestModuleSet("app.root", []ModuleInput{testModule("app.root", "root.pipe", test.source)}, nil)
+			input.LanguageContract = PipeLangLanguageContractV060
+			analysis := AnalyzeSemanticModuleSet(input)
+			if err := analysis.Error(); err != nil {
+				t.Fatal(err)
+			}
+			method := semanticMethodNamed(t, analysis, test.name)
+			typed, err := LowerSemanticMethodToHIR(analysis, method.Identity)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if test.unary {
+				if typed.Functions[0].Body.Unary == nil || typed.Functions[0].Body.Unary.Operator != test.operator {
+					t.Fatalf("v0.6.0 changed direct checked %s = %#v", test.name, typed.Functions[0].Body)
+				}
+				return
+			}
+			if typed.Functions[0].Body.Binary == nil || typed.Functions[0].Body.Binary.Operator != test.operator {
+				t.Fatalf("v0.6.0 changed direct checked %s = %#v", test.name, typed.Functions[0].Body)
+			}
+		})
+	}
+}
+
 func TestCheckedSubtractRequiresExplicitV030Migration(t *testing.T) {
 	for _, contract := range []LanguageContract{PipeLangLanguageContractV010, PipeLangLanguageContractV020} {
 		input := semanticTestModuleSet("app.root", []ModuleInput{testModule("app.root", "root.pipe", checkedSubtractSource)}, nil)
@@ -798,6 +960,17 @@ func TestCheckedNegateRequiresExplicitV050Migration(t *testing.T) {
 		analysis := AnalyzeSemanticModuleSet(input)
 		if !analysis.Diagnostics.HasErrors() {
 			t.Fatalf("%s implicitly accepted the v0.5.0 checked negation", contract)
+		}
+	}
+}
+
+func TestCheckedDivideRequiresExplicitV060Migration(t *testing.T) {
+	for _, contract := range []LanguageContract{PipeLangLanguageContractV010, PipeLangLanguageContractV020, PipeLangLanguageContractV030, PipeLangLanguageContractV040, PipeLangLanguageContractV050} {
+		input := semanticTestModuleSet("app.root", []ModuleInput{testModule("app.root", "root.pipe", checkedDivideSource)}, nil)
+		input.LanguageContract = contract
+		analysis := AnalyzeSemanticModuleSet(input)
+		if !analysis.Diagnostics.HasErrors() {
+			t.Fatalf("%s implicitly accepted the v0.6.0 checked division", contract)
 		}
 	}
 }
@@ -1257,6 +1430,42 @@ func TestGeneratedCheckedNegate(t *testing.T) {
 	}
 }
 `, gobackend.PackageName, name, name, name, name)
+	compileAndRunGeneratedGoFiles(t, generated, []byte(testSource))
+}
+
+func compileAndRunCheckedDivideGo(t *testing.T, generated []byte, name string) {
+	t.Helper()
+	testSource := fmt.Sprintf(`package %s
+
+import (
+	"math"
+	"testing"
+)
+
+func TestGeneratedCheckedDivide(t *testing.T) {
+	if got := %s(7.5, 2.5); !got.OK || got.Value != 3 || got.Error != "" {
+		t.Fatalf("ordinary success: %%#v", got)
+	}
+	if got := %s(1, 0); got.OK || got.Value != 0 || got.Error != PipeLangArithmeticDivisionByZero {
+		t.Fatalf("positive zero divisor: %%#v", got)
+	}
+	if got := %s(1, math.Copysign(0, -1)); got.OK || got.Value != 0 || got.Error != PipeLangArithmeticDivisionByZero {
+		t.Fatalf("negative zero divisor: %%#v", got)
+	}
+	if got := %s(math.NaN(), 2); !got.OK || got.Error != "" || !math.IsNaN(got.Value) {
+		t.Fatalf("NaN dividend: %%#v", got)
+	}
+	if got := %s(2, math.NaN()); !got.OK || got.Error != "" || !math.IsNaN(got.Value) {
+		t.Fatalf("NaN divisor: %%#v", got)
+	}
+	if got := %s(math.Inf(1), 2); !got.OK || got.Error != "" || !math.IsInf(got.Value, 1) {
+		t.Fatalf("infinity: %%#v", got)
+	}
+	if got := %s(math.Copysign(0, -1), 2); !got.OK || got.Error != "" || got.Value != 0 || !math.Signbit(got.Value) {
+		t.Fatalf("signed zero: %%#v", got)
+	}
+}
+`, gobackend.PackageName, name, name, name, name, name, name, name)
 	compileAndRunGeneratedGoFiles(t, generated, []byte(testSource))
 }
 

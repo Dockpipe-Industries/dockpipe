@@ -115,6 +115,24 @@ func TestV050ParserPreservesCheckedNegateResultAndExpressionSpans(t *testing.T) 
 	}
 }
 
+func TestV060ParserPreservesCheckedDivideResultAndExpressionSpans(t *testing.T) {
+	const source = `public Class Root { public Result<float, ArithmeticError> Divide(float left, float right) => left / right; }`
+	sources, diagnostics := NewSourceSet([]SourceInput{{Path: "root.pipe", Data: []byte(source)}})
+	if diagnostics.HasErrors() {
+		t.Fatal(diagnostics)
+	}
+	program, err := parseSourceFileWithLanguageContract(sources, sources.Files()[0], PipeLangLanguageContractV060)
+	if err != nil {
+		t.Fatal(err)
+	}
+	method := program.Classes[0].Methods[0]
+	result := method.ReturnType
+	binary, ok := method.Body.(*BinaryExpr)
+	if result.Kind != TypeRefApplied || result.String() != "Result<float,ArithmeticError>" || !result.Span.IsValid() || len(result.Arguments) != 2 || !result.Arguments[0].Span.IsValid() || !result.Arguments[1].Span.IsValid() || !ok || binary.Op != "/" || !binary.Span.IsValid() || !binary.Left.SourceSpan().IsValid() || !binary.Right.SourceSpan().IsValid() {
+		t.Fatalf("v0.6.0 checked division parse = result %#v body %#v", result, method.Body)
+	}
+}
+
 func TestAnalyzeResolvesNamedTypesThroughOneOwnedSymbolTable(t *testing.T) {
 	analysis := AnalyzeFiles(map[string][]byte{
 		"a.pipe": []byte(`Interface Item { string Name; }`),

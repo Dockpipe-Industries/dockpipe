@@ -245,8 +245,8 @@ func resolveTypeRef(sources *SourceSet, symbols *SymbolTable, modules *ModuleGra
 		}
 		if ref.Name == "Result" {
 			resolved := ResolvedTypeRef{Kind: TypeRefApplied, Name: ref.Name, PackageID: PipeLangBuiltinPackageID, Path: PipeLangResultSemanticPath, Arguments: arguments}
-			if !isResolvedIntArithmeticResult(resolved) {
-				return ResolvedTypeRef{}, oneDiagnostic(sources, CodeInvalidType, CategorySemantic, ref.Span, fmt.Sprintf("language contract %q admits only Result<int,ArithmeticError> for checked arithmetic", modules.LanguageContract()), related...)
+			if !isResolvedSourceArithmeticResult(modules.LanguageContract(), resolved) {
+				return ResolvedTypeRef{}, oneDiagnostic(sources, CodeInvalidType, CategorySemantic, ref.Span, fmt.Sprintf("language contract %q admits only its exact checked-arithmetic Result return shapes", modules.LanguageContract()), related...)
 			}
 			return resolved, nil
 		}
