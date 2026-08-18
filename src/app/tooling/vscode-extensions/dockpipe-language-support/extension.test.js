@@ -109,7 +109,10 @@ assert.strictEqual(diagnostics[0].relatedInformation[0].location.uri.fsPath, "/t
 
 assert(helpers.PIPELANG_COMPLETION_KEYWORDS.includes("Result"));
 assert(helpers.PIPELANG_COMPLETION_KEYWORDS.includes("ArithmeticError"));
+assert(helpers.PIPELANG_COMPLETION_KEYWORDS.includes("Record"));
 const grammar = JSON.parse(fs.readFileSync(path.join(__dirname, "syntaxes", "pipelang.tmLanguage.json"), "utf8"));
+const keywordPattern = grammar.repository.keywords.patterns[0].match;
+assert(keywordPattern.includes("Record"));
 const typePattern = grammar.repository.types.patterns[0].match;
 assert(typePattern.includes("Result"));
 assert(typePattern.includes("ArithmeticError"));
@@ -118,6 +121,8 @@ assert(pipeLangReadme.includes("v0.7.0"));
 assert(pipeLangReadme.includes("identical Result parameter/return"));
 assert(pipeLangReadme.includes("v0.8.0"));
 assert(pipeLangReadme.includes("ordinal `string` ordering"));
+assert(pipeLangReadme.includes("v0.9.0"));
+assert(pipeLangReadme.includes("primitive immutable records"));
 const operatorPattern = grammar.repository.operators.patterns[0].match;
 assert(operatorPattern.includes("\\-"));
 assert(operatorPattern.includes("*"));

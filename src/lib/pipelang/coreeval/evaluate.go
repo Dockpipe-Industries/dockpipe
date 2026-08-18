@@ -15,6 +15,7 @@ type Value struct {
 	Float  float64
 	Bool   bool
 	Result *Outcome
+	Record []Value
 }
 
 type Outcome struct {
@@ -53,6 +54,9 @@ func evalExpr(expression coreir.Expr, arguments []Value) (Outcome, error) {
 				return Outcome{}, fmt.Errorf("Result reference has no canonical value")
 			}
 			return *result, nil
+		}
+		if expression.Type.Kind == coreir.TypeRecord {
+			return Outcome{OK: true, Value: cloneRecordValue(arguments[*expression.Parameter])}, nil
 		}
 		return Outcome{OK: true, Value: arguments[*expression.Parameter]}, nil
 	case coreir.ExprUnary:
@@ -132,9 +136,26 @@ func evalTextBinary(expression coreir.Expr, left, right string) (Outcome, error)
 }
 
 func validateValue(value Value) error {
+	if value.Type.Kind == coreir.TypeRecord {
+		if value.Type.Record == nil || value.Result != nil || len(value.Record) != len(value.Type.Record.Fields) {
+			return fmt.Errorf("record value does not match its field schema")
+		}
+		for index, field := range value.Type.Record.Fields {
+			if !coreir.TypeEqual(value.Record[index].Type, field.Type) {
+				return fmt.Errorf("record field %d type does not match its declaration", index)
+			}
+			if err := validateValue(value.Record[index]); err != nil {
+				return fmt.Errorf("record field %d: %w", index, err)
+			}
+		}
+		return nil
+	}
 	if value.Type.Kind != coreir.TypeResult {
 		if value.Result != nil {
 			return fmt.Errorf("non-Result value carries a Result outcome")
+		}
+		if len(value.Record) != 0 {
+			return fmt.Errorf("non-record value carries record fields")
 		}
 		if value.Type.Kind == coreir.TypePrimitive && value.Type.Primitive == coreir.PrimitiveString {
 			return coreir.ValidateText(value.String)
@@ -158,6 +179,19 @@ func validateValue(value Value) error {
 		return fmt.Errorf("failed Result carries an unknown arithmetic error")
 	}
 	return nil
+}
+
+func cloneRecordValue(value Value) Value {
+	cloned := value
+	cloned.Record = make([]Value, len(value.Record))
+	for index, field := range value.Record {
+		if field.Type.Kind == coreir.TypeRecord {
+			cloned.Record[index] = cloneRecordValue(field)
+		} else {
+			cloned.Record[index] = field
+		}
+	}
+	return cloned
 }
 
 func arithmeticOutcome(resultType coreir.Type, value Value, arithmeticError coreir.ArithmeticError) Outcome {

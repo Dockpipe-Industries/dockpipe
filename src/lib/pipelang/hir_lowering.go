@@ -20,7 +20,7 @@ func LowerSemanticMethodToHIR(analysis *Analysis, identity SemanticIdentity) (hi
 		return hir.Program{}, hirLoweringError(analysis, Span{}, identity, "typed HIR lowering requires a successful semantic module analysis")
 	}
 	if !isPipeLangSemanticContract(analysis.Modules.LanguageContract()) {
-		return hir.Program{}, hirLoweringError(analysis, analysis.Program.Span, identity, fmt.Sprintf("typed HIR lowering requires language contract %q, %q, %q, %q, %q, %q, %q, or %q", PipeLangLanguageContractV010, PipeLangLanguageContractV020, PipeLangLanguageContractV030, PipeLangLanguageContractV040, PipeLangLanguageContractV050, PipeLangLanguageContractV060, PipeLangLanguageContractV070, PipeLangLanguageContractV080))
+		return hir.Program{}, hirLoweringError(analysis, analysis.Program.Span, identity, fmt.Sprintf("typed HIR lowering requires language contract %q, %q, %q, %q, %q, %q, %q, %q, or %q", PipeLangLanguageContractV010, PipeLangLanguageContractV020, PipeLangLanguageContractV030, PipeLangLanguageContractV040, PipeLangLanguageContractV050, PipeLangLanguageContractV060, PipeLangLanguageContractV070, PipeLangLanguageContractV080, PipeLangLanguageContractV090))
 	}
 	semantic, ok := analysis.SemanticIDs.LookupIdentity(identity)
 	if !ok || semantic.Kind != SemanticMethod {
@@ -83,6 +83,17 @@ func LowerSemanticMethodToHIR(analysis *Analysis, identity SemanticIdentity) (hi
 
 func lowerMethodBodyToHIR(analysis *Analysis, function SemanticIdentity, expression Expr, bindings map[string]hir.Binding, typeEnvironment map[string]ResolvedTypeRef, returnType ResolvedTypeRef) (hir.Expr, error) {
 	contract := analysis.Modules.LanguageContract()
+	if analysis.checked.isResolvedRecordType(returnType) {
+		identifier, ok := expression.(*IdentExpr)
+		if !ok {
+			return hir.Expr{}, hirLoweringError(analysis, expression.SourceSpan(), function, fmt.Sprintf("%s primitive record transport body is not the direct parameter reference proven by semantic analysis", contract))
+		}
+		resolved, found := typeEnvironment[identifier.Name]
+		if !found || !resolved.Equal(returnType) {
+			return hir.Expr{}, hirLoweringError(analysis, expression.SourceSpan(), function, fmt.Sprintf("%s primitive record transport body does not reference its record parameter", contract))
+		}
+		return lowerExprToHIR(analysis, function, expression, bindings, typeEnvironment)
+	}
 	if !hasArithmeticResultSourceContract(contract) || !isResolvedSourceArithmeticResult(contract, returnType) {
 		if hasOrdinalTextOrderingSourceContract(contract) {
 			if binary, ok := directOrdinalTextOrderingHIRShape(expression, bindings, typeEnvironment, returnType); ok {
@@ -128,7 +139,7 @@ func lowerMethodBodyToHIR(analysis *Analysis, function SemanticIdentity, express
 			Binary: &hir.Binary{Operator: hir.OperatorDivide, Left: &left, Right: &right},
 		}, nil
 	}
-	if unary, ok := expression.(*UnaryExpr); ok && (contract == PipeLangLanguageContractV050 || contract == PipeLangLanguageContractV060 || contract == PipeLangLanguageContractV070 || contract == PipeLangLanguageContractV080) && unary.Op == "-" {
+	if unary, ok := expression.(*UnaryExpr); ok && (contract == PipeLangLanguageContractV050 || contract == PipeLangLanguageContractV060 || contract == PipeLangLanguageContractV070 || contract == PipeLangLanguageContractV080 || contract == PipeLangLanguageContractV090) && unary.Op == "-" {
 		operand, err := lowerExprToHIR(analysis, function, unary.Expr, bindings, typeEnvironment)
 		if err != nil {
 			return hir.Expr{}, err
@@ -165,9 +176,9 @@ func checkedArithmeticHIROperator(contract LanguageContract, binary *BinaryExpr)
 	case "+":
 		return hir.OperatorAdd, true
 	case "-":
-		return hir.OperatorSubtract, contract == PipeLangLanguageContractV030 || contract == PipeLangLanguageContractV040 || contract == PipeLangLanguageContractV050 || contract == PipeLangLanguageContractV060 || contract == PipeLangLanguageContractV070 || contract == PipeLangLanguageContractV080
+		return hir.OperatorSubtract, contract == PipeLangLanguageContractV030 || contract == PipeLangLanguageContractV040 || contract == PipeLangLanguageContractV050 || contract == PipeLangLanguageContractV060 || contract == PipeLangLanguageContractV070 || contract == PipeLangLanguageContractV080 || contract == PipeLangLanguageContractV090
 	case "*":
-		return hir.OperatorMultiply, contract == PipeLangLanguageContractV040 || contract == PipeLangLanguageContractV050 || contract == PipeLangLanguageContractV060 || contract == PipeLangLanguageContractV070 || contract == PipeLangLanguageContractV080
+		return hir.OperatorMultiply, contract == PipeLangLanguageContractV040 || contract == PipeLangLanguageContractV050 || contract == PipeLangLanguageContractV060 || contract == PipeLangLanguageContractV070 || contract == PipeLangLanguageContractV080 || contract == PipeLangLanguageContractV090
 	default:
 		return "", false
 	}
@@ -350,6 +361,26 @@ func toHIRType(analysis *Analysis, resolved ResolvedTypeRef) hir.Type {
 	if isResolvedArithmeticError(resolved) {
 		return hir.Type{Kind: hir.TypeArithmeticError}
 	}
+	if analysis != nil && analysis.checked != nil && analysis.checked.isResolvedRecordType(resolved) {
+		result := hir.Type{Kind: hir.TypeRecord, SymbolID: uint32(resolved.Symbol), Name: resolved.Name, Record: &hir.RecordType{Fields: []hir.RecordField{}}}
+		if symbol, ok := analysis.Symbols.LookupID(resolved.Symbol); ok {
+			if identity, ok := analysis.SemanticIDs.IdentityForSpan(symbol.DeclarationSpan); ok {
+				converted := toHIRSemanticIdentity(identity)
+				result.Identity = &converted
+			}
+		}
+		if entry, ok := analysis.Symbols.lookupIDEntry(resolved.Symbol); ok && entry.recordDecl != nil {
+			for _, field := range entry.recordDecl.Fields {
+				fieldType, err := analysis.checked.resolveType(field.Type)
+				if err != nil {
+					continue
+				}
+				identity, _ := analysis.SemanticIDs.IdentityForSpan(field.Span)
+				result.Record.Fields = append(result.Record.Fields, hir.RecordField{Identity: toHIRSemanticIdentity(identity), Name: field.Name, Type: toHIRType(analysis, fieldType)})
+			}
+		}
+		return result
+	}
 	result := hir.Type{Kind: hir.TypeKind(resolved.Kind), Primitive: hir.PrimitiveType(resolved.Primitive), SymbolID: uint32(resolved.Symbol), Name: resolved.Name}
 	if resolved.Kind == TypeRefPrimitive {
 		switch resolved.Primitive {
@@ -404,6 +435,12 @@ func hirTypeToCore(value hir.Type) coreir.Type {
 	}
 	if value.Result != nil {
 		result.Result = &coreir.ResultType{Success: hirTypeToCore(value.Result.Success), Failure: hirTypeToCore(value.Result.Failure)}
+	}
+	if value.Record != nil {
+		result.Record = &coreir.RecordType{Fields: make([]coreir.RecordField, 0, len(value.Record.Fields))}
+		for _, field := range value.Record.Fields {
+			result.Record.Fields = append(result.Record.Fields, coreir.RecordField{Identity: hirIdentityToCore(field.Identity), Name: field.Name, Type: hirTypeToCore(field.Type)})
+		}
 	}
 	if value.Identity != nil {
 		identity := hirIdentityToCore(*value.Identity)

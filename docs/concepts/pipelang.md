@@ -338,6 +338,37 @@ selects `v0.8.0` implicitly. Hashing, normalization/case/grapheme APIs, structur
 optionals, general Result handling, records, unions, collections, and broader expressions remain
 outside this production source contract.
 
+The explicit `v0.9.0` contract preserves every `v0.8.0` text and arithmetic Result rule and adds
+public, nonempty primitive immutable record declarations. Fields are public, have no defaults, and
+use only `string`, `int`, `float`, or `bool`:
+
+```pipelang
+public Record Row {
+    public string Id;
+    public int Count;
+    public float Ratio;
+    public bool Ready;
+}
+public Class Root {
+    public Row Forward(Row value) => value;
+}
+```
+
+Executable record use is limited to one class method with exactly one parameter, an identical
+record return type, and that parameter as the complete body. Record and field semantic identities
+are stable; semantic projection exposes the deterministic identity-ordered member surface, while
+typed HIR, target-neutral Core, Core evaluation, and generated Go retain declared field order and
+exact primitive types. String fields preserve the existing
+strict UTF-8 boundary. Records have value semantics: the Core evaluator does not expose a mutable
+field-vector alias, and generated Go transports the corresponding struct by value.
+
+`Record` is contextual only under explicit `v0.9.0`, so earlier contracts retain their source
+grammar and may still use `Record` as an identifier. No source or package migrates implicitly.
+Empty/private records, annotations, implemented interfaces, methods, private/nonprimitive fields,
+field defaults, class/interface record fields, mismatched transport signatures, construction,
+field access, mutation, equality, hashing, ordering, matching, nesting, Result integration,
+optionals, unions, and collections remain outside the production source contract.
+
 ## Artifacts
 
 Compile emits:

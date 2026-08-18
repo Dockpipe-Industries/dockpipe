@@ -60,6 +60,11 @@ func checkProgramWithSymbols(sources *SourceSet, prog *Program, modules *ModuleG
 			if err := cp.validateClass(decl); err != nil {
 				return nil, err
 			}
+		case SymbolRecord:
+			decl := entry.recordDecl
+			if err := cp.validateRecord(decl); err != nil {
+				return nil, err
+			}
 		}
 	}
 	if len(prog.Classes) == 0 {
@@ -71,6 +76,75 @@ func checkProgramWithSymbols(sources *SourceSet, prog *Program, modules *ModuleG
 		}
 	}
 	return cp, nil
+}
+
+func (cp *checkedProgram) isResolvedRecordType(ref ResolvedTypeRef) bool {
+	if cp == nil || cp.symbols == nil || ref.Kind != TypeRefNamed || ref.Symbol == 0 || ref.PackageID != "" || ref.Path != "" {
+		return false
+	}
+	entry, ok := cp.symbols.lookupIDEntry(ref.Symbol)
+	return ok && entry.symbol.Kind == SymbolRecord && entry.recordDecl != nil
+}
+
+func (cp *checkedProgram) containsResolvedRecordType(ref ResolvedTypeRef) bool {
+	if cp.isResolvedRecordType(ref) {
+		return true
+	}
+	for _, argument := range ref.Arguments {
+		if cp.containsResolvedRecordType(argument) {
+			return true
+		}
+	}
+	return false
+}
+
+func (cp *checkedProgram) validateRecord(decl *RecordDecl) error {
+	if decl == nil {
+		return oneDiagnostic(cp.sources, CodeInvalidDecl, CategorySemantic, Span{}, "record declaration is nil")
+	}
+	contract := cp.modules.LanguageContract()
+	if !hasPrimitiveRecordSourceContract(contract) {
+		return oneDiagnostic(cp.sources, CodeInvalidDecl, CategorySemantic, decl.Span, fmt.Sprintf("record %s requires language contract %q", decl.Name, PipeLangLanguageContractV090))
+	}
+	if normalizeVisibility(decl.Visibility) != VisibilityPublic {
+		return oneDiagnostic(cp.sources, CodeInvalidDecl, CategorySemantic, decl.Span, fmt.Sprintf("%s primitive record %s must be public", contract, decl.Name))
+	}
+	if len(decl.Annotations) != 0 {
+		return oneDiagnostic(cp.sources, CodeInvalidDecl, CategorySemantic, decl.Annotations[0].Span, fmt.Sprintf("%s primitive record %s does not admit annotations", contract, decl.Name))
+	}
+	if decl.Implements != nil {
+		return oneDiagnostic(cp.sources, CodeInvalidDecl, CategorySemantic, decl.Implements.Span, fmt.Sprintf("%s primitive record %s cannot implement another type", contract, decl.Name))
+	}
+	if len(decl.Methods) != 0 {
+		return oneDiagnostic(cp.sources, CodeInvalidMember, CategorySemantic, decl.Methods[0].Span, fmt.Sprintf("%s primitive record %s admits fields only", contract, decl.Name))
+	}
+	if len(decl.Fields) == 0 {
+		return oneDiagnostic(cp.sources, CodeInvalidDecl, CategorySemantic, decl.Span, fmt.Sprintf("%s primitive record %s requires at least one field", contract, decl.Name))
+	}
+	seen := map[string]Span{}
+	for _, field := range decl.Fields {
+		if normalizeVisibility(field.Visibility) != VisibilityPublic {
+			return oneDiagnostic(cp.sources, CodeInvalidMember, CategorySemantic, field.Span, fmt.Sprintf("%s primitive record %s field %s must be public", contract, decl.Name, field.Name))
+		}
+		if len(field.Annotations) != 0 {
+			return oneDiagnostic(cp.sources, CodeInvalidMember, CategorySemantic, field.Annotations[0].Span, fmt.Sprintf("%s primitive record %s field %s does not admit annotations", contract, decl.Name, field.Name))
+		}
+		if field.Default != nil {
+			return oneDiagnostic(cp.sources, CodeInvalidMember, CategorySemantic, field.Default.SourceSpan(), fmt.Sprintf("%s primitive record %s field %s does not admit a default", contract, decl.Name, field.Name))
+		}
+		resolved, err := cp.resolveType(field.Type, RelatedSpan{Span: field.Span, Message: "record field declaration"})
+		if err != nil {
+			return prefixDiagnostic(err, fmt.Sprintf("record %s field %s: ", decl.Name, field.Name))
+		}
+		if resolved.Kind != TypeRefPrimitive {
+			return oneDiagnostic(cp.sources, CodeInvalidType, CategorySemantic, field.Type.Span, fmt.Sprintf("%s primitive record %s field %s requires string, int, float, or bool", contract, decl.Name, field.Name))
+		}
+		if previous, ok := seen[field.Name]; ok {
+			return oneDiagnostic(cp.sources, CodeDuplicateMember, CategorySemantic, field.Span, fmt.Sprintf("record %s has duplicate field %q", decl.Name, field.Name), RelatedSpan{Span: previous, Message: "first field"})
+		}
+		seen[field.Name] = field.Span
+	}
+	return nil
 }
 
 func (cp *checkedProgram) resolveType(ref UnresolvedTypeRef, related ...RelatedSpan) (ResolvedTypeRef, error) {
@@ -98,6 +172,9 @@ func (cp *checkedProgram) validateInterface(decl *InterfaceDecl) error {
 		if containsResolvedArithmeticContractType(resolved) {
 			return oneDiagnostic(cp.sources, CodeInvalidType, CategorySemantic, field.Type.Span, fmt.Sprintf("the %s arithmetic Result is admitted only as a class method return type", cp.modules.LanguageContract()))
 		}
+		if cp.containsResolvedRecordType(resolved) {
+			return oneDiagnostic(cp.sources, CodeInvalidType, CategorySemantic, field.Type.Span, fmt.Sprintf("the %s primitive record is admitted only in one exact class identity-transport method", cp.modules.LanguageContract()))
+		}
 		if previous, ok := seen[field.Name]; ok {
 			return oneDiagnostic(cp.sources, CodeDuplicateMember, CategorySemantic, field.Span, fmt.Sprintf("interface %s has duplicate member %q", decl.Name, field.Name), RelatedSpan{Span: previous, Message: "first member"})
 		}
@@ -114,11 +191,14 @@ func (cp *checkedProgram) validateInterface(decl *InterfaceDecl) error {
 		if containsResolvedArithmeticContractType(resolved) {
 			return oneDiagnostic(cp.sources, CodeInvalidType, CategorySemantic, method.ReturnType.Span, fmt.Sprintf("the %s arithmetic Result requires one checked class method body", cp.modules.LanguageContract()))
 		}
+		if cp.containsResolvedRecordType(resolved) {
+			return oneDiagnostic(cp.sources, CodeInvalidType, CategorySemantic, method.ReturnType.Span, fmt.Sprintf("the %s primitive record requires one exact class identity-transport method", cp.modules.LanguageContract()))
+		}
 		if previous, ok := seen[method.Name]; ok {
 			return oneDiagnostic(cp.sources, CodeDuplicateMember, CategorySemantic, method.Span, fmt.Sprintf("interface %s has duplicate member %q", decl.Name, method.Name), RelatedSpan{Span: previous, Message: "first member"})
 		}
 		seen[method.Name] = method.Span
-		if err := cp.validateParams(decl.Name, method.Name, method.Params, false); err != nil {
+		if err := cp.validateParams(decl.Name, method.Name, method.Params, false, false); err != nil {
 			return err
 		}
 	}
@@ -138,6 +218,9 @@ func (cp *checkedProgram) validateClass(decl *ClassDecl) error {
 		}
 		if containsResolvedArithmeticContractType(fieldType) {
 			return oneDiagnostic(cp.sources, CodeInvalidType, CategorySemantic, field.Type.Span, fmt.Sprintf("the %s arithmetic Result is admitted only as a class method return type", cp.modules.LanguageContract()))
+		}
+		if cp.containsResolvedRecordType(fieldType) {
+			return oneDiagnostic(cp.sources, CodeInvalidType, CategorySemantic, field.Type.Span, fmt.Sprintf("the %s primitive record is admitted only in one exact identity-transport parameter and return", cp.modules.LanguageContract()))
 		}
 		if previous, ok := seen[field.Name]; ok {
 			return oneDiagnostic(cp.sources, CodeDuplicateMember, CategorySemantic, field.Span, fmt.Sprintf("class %s has duplicate member %q", decl.Name, field.Name), RelatedSpan{Span: previous, Message: "first member"})
@@ -164,7 +247,11 @@ func (cp *checkedProgram) validateClass(decl *ClassDecl) error {
 		if err != nil {
 			return err
 		}
-		if err := cp.validateParams(decl.Name, method.Name, method.Params, allowResultParameter); err != nil {
+		allowRecordParameter, err := cp.validateRecordTransportSignature(method, resolved)
+		if err != nil {
+			return err
+		}
+		if err := cp.validateParams(decl.Name, method.Name, method.Params, allowResultParameter, allowRecordParameter); err != nil {
 			return err
 		}
 	}
@@ -208,6 +295,27 @@ func (cp *checkedProgram) validateClass(decl *ClassDecl) error {
 	return nil
 }
 
+func (cp *checkedProgram) validateRecordTransportSignature(method MethodDecl, result ResolvedTypeRef) (bool, error) {
+	resolvedParameters := make([]ResolvedTypeRef, 0, len(method.Params))
+	hasRecord := cp.containsResolvedRecordType(result)
+	for _, param := range method.Params {
+		resolved, err := cp.resolveType(param.Type, RelatedSpan{Span: param.Span, Message: "parameter declaration"})
+		if err != nil {
+			return false, prefixDiagnostic(err, fmt.Sprintf("class method %s parameter %s: ", method.Name, param.Name))
+		}
+		resolvedParameters = append(resolvedParameters, resolved)
+		hasRecord = hasRecord || cp.containsResolvedRecordType(resolved)
+	}
+	if !hasRecord {
+		return false, nil
+	}
+	contract := cp.modules.LanguageContract()
+	if !hasPrimitiveRecordSourceContract(contract) || len(resolvedParameters) != 1 || !cp.isResolvedRecordType(result) || !resolvedParameters[0].Equal(result) {
+		return false, oneDiagnostic(cp.sources, CodeInvalidType, CategorySemantic, method.Span, fmt.Sprintf("the %s primitive record is admitted only as one parameter identical to the class method return type", contract))
+	}
+	return true, nil
+}
+
 func (cp *checkedProgram) validateResultTransportSignature(method MethodDecl, result ResolvedTypeRef) (bool, error) {
 	hasResultParameter := false
 	resolvedParameters := make([]ResolvedTypeRef, 0, len(method.Params))
@@ -229,7 +337,7 @@ func (cp *checkedProgram) validateResultTransportSignature(method MethodDecl, re
 	return true, nil
 }
 
-func (cp *checkedProgram) validateParams(owner, method string, params []Param, allowArithmeticResult bool) error {
+func (cp *checkedProgram) validateParams(owner, method string, params []Param, allowArithmeticResult, allowRecord bool) error {
 	seen := map[string]Span{}
 	for _, param := range params {
 		resolved, err := cp.resolveType(param.Type, RelatedSpan{Span: param.Span, Message: "parameter declaration"})
@@ -238,6 +346,9 @@ func (cp *checkedProgram) validateParams(owner, method string, params []Param, a
 		}
 		if containsResolvedArithmeticContractType(resolved) && !allowArithmeticResult {
 			return oneDiagnostic(cp.sources, CodeInvalidType, CategorySemantic, param.Type.Span, fmt.Sprintf("the %s arithmetic Result is not admitted as a parameter type", cp.modules.LanguageContract()))
+		}
+		if cp.containsResolvedRecordType(resolved) && !allowRecord {
+			return oneDiagnostic(cp.sources, CodeInvalidType, CategorySemantic, param.Type.Span, fmt.Sprintf("the %s primitive record is not admitted in this parameter position", cp.modules.LanguageContract()))
 		}
 		if previous, ok := seen[param.Name]; ok {
 			return oneDiagnostic(cp.sources, CodeDuplicateMember, CategorySemantic, param.Span, fmt.Sprintf("%s method %s has duplicate parameter %q", owner, method, param.Name), RelatedSpan{Span: previous, Message: "first parameter"})
@@ -407,7 +518,7 @@ func (cp *checkedProgram) inferMethodBodyType(method MethodDecl, env map[string]
 		}
 		return resolvedArithmeticResult(binary64), nil
 	}
-	if unary, unaryOK := expr.(*UnaryExpr); unaryOK && (contract == PipeLangLanguageContractV050 || contract == PipeLangLanguageContractV060 || contract == PipeLangLanguageContractV070 || contract == PipeLangLanguageContractV080) && unary.Op == "-" {
+	if unary, unaryOK := expr.(*UnaryExpr); unaryOK && (contract == PipeLangLanguageContractV050 || contract == PipeLangLanguageContractV060 || contract == PipeLangLanguageContractV070 || contract == PipeLangLanguageContractV080 || contract == PipeLangLanguageContractV090) && unary.Op == "-" {
 		operand, err := inferExprTypeWithPolicy(cp.sources, unary.Expr, env, true)
 		if err != nil {
 			return ResolvedTypeRef{}, err
@@ -420,7 +531,7 @@ func (cp *checkedProgram) inferMethodBodyType(method MethodDecl, env map[string]
 	}
 	binary, ok := expr.(*BinaryExpr)
 	operatorAccepted := ok && binary.Op == "+"
-	if contract == PipeLangLanguageContractV040 || contract == PipeLangLanguageContractV050 || contract == PipeLangLanguageContractV060 || contract == PipeLangLanguageContractV070 || contract == PipeLangLanguageContractV080 {
+	if contract == PipeLangLanguageContractV040 || contract == PipeLangLanguageContractV050 || contract == PipeLangLanguageContractV060 || contract == PipeLangLanguageContractV070 || contract == PipeLangLanguageContractV080 || contract == PipeLangLanguageContractV090 {
 		operatorAccepted = ok && (binary.Op == "+" || binary.Op == "-" || binary.Op == "*")
 	} else if contract == PipeLangLanguageContractV030 {
 		operatorAccepted = ok && (binary.Op == "+" || binary.Op == "-")
@@ -445,6 +556,20 @@ func (cp *checkedProgram) inferMethodBodyType(method MethodDecl, env map[string]
 }
 
 func (cp *checkedProgram) inferNonResultMethodBodyType(method MethodDecl, env map[string]ResolvedTypeRef, declared ResolvedTypeRef) (ResolvedTypeRef, error) {
+	if cp.isResolvedRecordType(declared) {
+		if len(method.Params) == 1 {
+			if identifier, ok := method.Body.(*IdentExpr); ok && identifier.Name == method.Params[0].Name {
+				resolved, err := cp.resolveType(method.Params[0].Type)
+				if err != nil {
+					return ResolvedTypeRef{}, err
+				}
+				if resolved.Equal(declared) {
+					return declared, nil
+				}
+			}
+		}
+		return ResolvedTypeRef{}, oneDiagnostic(cp.sources, CodeExpressionType, CategorySemantic, method.Body.SourceSpan(), fmt.Sprintf("%s primitive record transport requires its sole record parameter as the complete method body", cp.modules.LanguageContract()))
+	}
 	binary, directBinary := method.Body.(*BinaryExpr)
 	if cp != nil && cp.modules != nil && hasOrdinalTextOrderingSourceContract(cp.modules.LanguageContract()) && directBinary && isOrdinalTextOrderingOperator(binary.Op) {
 		left, err := inferExprTypeWithPolicy(cp.sources, binary.Left, env, true)
@@ -470,7 +595,7 @@ func (cp *checkedProgram) inferNonResultMethodBodyType(method MethodDecl, env ma
 				valid = valid && resolved.Equal(text)
 			}
 			if !valid {
-				return ResolvedTypeRef{}, oneDiagnostic(cp.sources, CodeExpressionType, CategorySemantic, method.Body.SourceSpan(), "v0.8.0 ordinal text ordering requires exactly two string parameters compared in declared order as the complete bool method body")
+				return ResolvedTypeRef{}, oneDiagnostic(cp.sources, CodeExpressionType, CategorySemantic, method.Body.SourceSpan(), fmt.Sprintf("%s ordinal text ordering requires exactly two string parameters compared in declared order as the complete bool method body", cp.modules.LanguageContract()))
 			}
 			return boolean, nil
 		}
@@ -488,7 +613,7 @@ func isOrdinalTextOrderingOperator(operator string) bool {
 }
 
 func arithmeticSourceOperators(contract LanguageContract) string {
-	if contract == PipeLangLanguageContractV050 || contract == PipeLangLanguageContractV060 || contract == PipeLangLanguageContractV070 || contract == PipeLangLanguageContractV080 {
+	if contract == PipeLangLanguageContractV050 || contract == PipeLangLanguageContractV060 || contract == PipeLangLanguageContractV070 || contract == PipeLangLanguageContractV080 || contract == PipeLangLanguageContractV090 {
 		return "addition, subtraction, multiplication, or negation"
 	}
 	if contract == PipeLangLanguageContractV040 {

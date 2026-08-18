@@ -44,6 +44,7 @@ func isTypeIdentifier(name string) bool {
 type Program struct {
 	Interfaces []*InterfaceDecl
 	Classes    []*ClassDecl
+	Records    []*RecordDecl
 	Span       Span
 	sources    *SourceSet
 	modules    *ModuleGraph
@@ -65,6 +66,20 @@ type InterfaceDecl struct {
 }
 
 type ClassDecl struct {
+	Name        string
+	Visibility  Visibility
+	Annotations []Annotation
+	Implements  *UnresolvedTypeRef
+	Fields      []FieldDecl
+	Methods     []MethodDecl
+	Span        Span
+}
+
+// RecordDecl is the distinct immutable value declaration introduced by the
+// explicit v0.9.0 contract. The parser retains excluded member shapes so the
+// checker can reject them with declaration-aware diagnostics; accepted
+// records contain public primitive fields only.
+type RecordDecl struct {
 	Name        string
 	Visibility  Visibility
 	Annotations []Annotation
