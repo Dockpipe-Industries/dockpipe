@@ -1276,16 +1276,48 @@ Integer negation, binary64 division, nested fallible expressions, general Result
 later language work remain excluded until separately accepted. No generated store, dependency,
 runtime, credential, external state, commit, or publication changed.
 
+### Completed step 7f direct checked-negation contract (2026-08-17)
+
+The founder selected a new explicit `v0.5.0` contract for the next smallest public arithmetic
+slice. It preserves `v0.4.0` unchanged and admits exactly
+`Result<int, ArithmeticError> Negate(int value) => -value;`. Negation is the complete body of one
+expression-bodied class method and produces either an explicit integer success or the existing
+closed `overflow` error for the minimum integer. It reuses `pipelang:result`,
+`pipelang:arithmetic.error`, `pipelang.compiler.v1`, and `pipelang.semantic.v1`; no source, module,
+or package migrates implicitly.
+
+The synchronized implementation gates this one unary operator through the existing
+version-selected parser/type/identity/projection/HIR/Core/evaluator/Go/docs/editor pipeline.
+Source-derived HIR/Core/Go goldens preserve the negation operator and identified Result return.
+Core evaluation and compiled generated Go agree for positive, negative, and zero successes plus
+minimum-integer overflow. Negative diagnostics prove that `v0.1.0` through `v0.4.0` do not admit
+negation and that `v0.5.0` still rejects nesting, binary64 division, alternate Result arguments,
+and unsupported Result placements.
+
+Terminal proof passed with cached Go 1.25.13, offline module lookup, and writable `/tmp` caches:
+
+- exact PipeLang and 45-source compatibility tests, including parser/type/identity/projection,
+  Core evaluation, generated-Go compilation/execution, and deterministic goldens;
+- affected PipeLang CLI, catalog, materialize, package-compile, internal, and `src/cmd` tests through
+  only the existing temporary modfile pinned to cached `golang.org/x/sys v0.46.0`;
+- `go vet` across PipeLang, compatibility, and the affected application/internal/CLI packages;
+- VS Code grammar/completion validation plus `gofmt`, `git diff --check`, frozen inventory,
+  dependency, branch/stash, and protected ignored-byte proof.
+
+Binary64 division, nested fallible expressions, general Result handling, and all later language
+work remain excluded until separately accepted. No generated store, dependency, runtime,
+credential, external state, commit, or publication changed.
+
 ## Exact Next Boundary
 
 Step 7 of **Bounded Implementation Order** is underway through the completed fixed numeric,
 compiler-internal checked-arithmetic Result, and direct production-source checked integer add,
-subtract, and multiply slices. `v0.2.0` admits only the exact explicit Result-returning addition;
-`v0.3.0` preserves addition and adds only the exact direct subtraction; `v0.4.0` preserves both and
-adds only the exact direct multiplication. Integer negation, binary64 division, and all other
-numeric arithmetic remain fail-closed from production source. Any next slice requires a new
-synchronized decision for its exact source spelling, Result handling/composition rule, semantic
-projection, migration, and bounded semantics before implementation.
+subtract, multiply, and negate slices. `v0.2.0` admits only the exact explicit Result-returning
+addition; `v0.3.0` adds only direct subtraction; `v0.4.0` adds only direct multiplication; and
+`v0.5.0` adds only direct integer negation while preserving every prior contract. Binary64 division
+and all other numeric arithmetic remain fail-closed from production source. Any next slice requires
+a new synchronized decision for its exact source spelling, Result handling/composition rule,
+semantic projection, migration, and bounded semantics before implementation.
 
 No later step-7 slice is included here. In particular, this checkpoint does not add Unicode text,
 value/reference, hashing, total ordering, optional, general result, record, union, or deterministic

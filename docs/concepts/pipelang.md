@@ -284,6 +284,13 @@ closed `overflow` error. It reuses the existing Result/error identities and comp
 contracts; no source or package migrates implicitly. Negation, division, nested fallible
 expressions, and general Result handling remain outside the production source contract.
 
+The explicit `v0.5.0` contract preserves the prior binary arithmetic and additionally admits exactly
+`Result<int, ArithmeticError> Negate(int value) => -value;`. Negation is the complete
+expression-bodied method body and produces either an explicit integer success or the same closed
+`overflow` error for the minimum integer. It reuses the existing Result/error identities and
+compiler/projection contracts; no source or package migrates implicitly. Division, nested fallible
+expressions, and general Result handling remain outside the production source contract.
+
 ## Artifacts
 
 Compile emits:

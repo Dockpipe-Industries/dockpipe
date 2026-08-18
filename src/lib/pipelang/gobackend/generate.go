@@ -34,7 +34,7 @@ func (e *Error) Error() string {
 
 // Generate accepts Core IR only and returns deterministic, gofmt-formatted Go.
 func Generate(program coreir.Program) ([]byte, error) {
-	if (program.LanguageContract != coreir.LanguageContractV010 && program.LanguageContract != coreir.LanguageContractV020 && program.LanguageContract != coreir.LanguageContractV030 && program.LanguageContract != coreir.LanguageContractV040) || program.CompilerContract != coreir.CompilerContractV1 {
+	if (program.LanguageContract != coreir.LanguageContractV010 && program.LanguageContract != coreir.LanguageContractV020 && program.LanguageContract != coreir.LanguageContractV030 && program.LanguageContract != coreir.LanguageContractV040 && program.LanguageContract != coreir.LanguageContractV050) || program.CompilerContract != coreir.CompilerContractV1 {
 		return nil, &Error{Code: "PLGO0001", Message: fmt.Sprintf("unsupported Core IR contracts language=%q compiler=%q", program.LanguageContract, program.CompilerContract)}
 	}
 	functions := append([]coreir.Function(nil), program.Functions...)

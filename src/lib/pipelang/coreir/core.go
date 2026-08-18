@@ -7,6 +7,7 @@ const (
 	LanguageContractV020 = "v0.2.0"
 	LanguageContractV030 = "v0.3.0"
 	LanguageContractV040 = "v0.4.0"
+	LanguageContractV050 = "v0.5.0"
 	CompilerContractV1   = "pipelang.compiler.v1"
 )
 

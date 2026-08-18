@@ -29,6 +29,7 @@ const tinyPureFunctionSource = `public Class Root { public bool Ready(int count)
 const checkedAddSource = `public Class Root { public Result<int, ArithmeticError> Add(int left, int right) => left + right; }`
 const checkedSubtractSource = `public Class Root { public Result<int, ArithmeticError> Subtract(int left, int right) => left - right; }`
 const checkedMultiplySource = `public Class Root { public Result<int, ArithmeticError> Multiply(int left, int right) => left * right; }`
+const checkedNegateSource = `public Class Root { public Result<int, ArithmeticError> Negate(int value) => -value; }`
 
 func TestTinyPureFunctionLowersThroughTypedHIRCoreAndGo(t *testing.T) {
 	module := testModule("app.root", "root.pipe", tinyPureFunctionSource)
@@ -488,6 +489,85 @@ func TestCheckedMultiplyHIRCoreAndGoGoldens(t *testing.T) {
 	assertCompilerGolden(t, "checked-multiply.go", generated)
 }
 
+func TestCheckedNegateHIRCoreAndGoGoldens(t *testing.T) {
+	module := testModule("app.root", "root.pipe", checkedNegateSource)
+	input := semanticTestModuleSet("app.root", []ModuleInput{module}, nil)
+	input.LanguageContract = PipeLangLanguageContractV050
+	analysis := AnalyzeSemanticModuleSet(input)
+	if err := analysis.Error(); err != nil {
+		t.Fatal(err)
+	}
+	method := semanticMethodNamed(t, analysis, "Negate")
+	if method.Identity.Callable == nil {
+		t.Fatal("checked Negate has no callable identity")
+	}
+	callable := method.Identity.Callable
+	returns := callable.Returns
+	if len(callable.Parameters) != 1 || callable.Parameters[0].Primitive != TypeInt || returns.Kind != TypeRefApplied || returns.Name != "Result" || returns.PackageID != PipeLangBuiltinPackageID || returns.Path != PipeLangResultSemanticPath || len(returns.Arguments) != 2 || returns.Arguments[0].Primitive != TypeInt || returns.Arguments[1].Kind != TypeRefNamed || returns.Arguments[1].PackageID != PipeLangBuiltinPackageID || returns.Arguments[1].Path != PipeLangArithmeticErrorSemanticPath {
+		t.Fatalf("checked Negate callable identity = %#v", callable)
+	}
+	projection, err := BuildSemanticProjection(analysis)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if projection.LanguageContract != PipeLangLanguageContractV050 || projection.Schema != PipeLangSemanticProjectionVersion || projection.CompilerContract != PipeLangCompilerContract {
+		t.Fatalf("checked Negate projection header = %#v", projection)
+	}
+	projected := projectedMemberNamed(t, projection.Modules[0].Types[0], "Negate").Type
+	if projected.Kind != TypeRefApplied || projected.Name != "Result" || projected.Identity == nil || projected.Identity.PackageID != PipeLangBuiltinPackageID || projected.Identity.Path != PipeLangResultSemanticPath || len(projected.Arguments) != 2 || projected.Arguments[0].Primitive != TypeInt || projected.Arguments[1].Identity == nil || projected.Arguments[1].Identity.PackageID != PipeLangBuiltinPackageID || projected.Arguments[1].Identity.Path != PipeLangArithmeticErrorSemanticPath {
+		t.Fatalf("checked Negate projected return = %#v", projected)
+	}
+	typed, err := LowerSemanticMethodToHIR(analysis, method.Identity)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if typed.LanguageContract != coreir.LanguageContractV050 || len(typed.Functions) != 1 || typed.Functions[0].ReturnType.Kind != hir.TypeResult || typed.Functions[0].Body.Type.Kind != hir.TypeResult || typed.Functions[0].Body.Unary == nil || typed.Functions[0].Body.Unary.Operator != hir.OperatorNegate {
+		t.Fatalf("checked Negate HIR = %#v", typed)
+	}
+	core, err := LowerHIRToCore(typed)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if core.Functions[0].Body.Unary == nil || core.Functions[0].Body.Unary.Operator != coreir.OperatorNegate {
+		t.Fatalf("checked Negate Core = %#v", core)
+	}
+	generated, err := gobackend.Generate(core)
+	if err != nil {
+		t.Fatal(err)
+	}
+	secondGenerated, err := gobackend.Generate(core)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(generated, secondGenerated) {
+		t.Fatal("checked Negate generated Go is nondeterministic")
+	}
+	for _, test := range []struct {
+		name      string
+		arguments []coreeval.Value
+		ok        bool
+		value     int64
+		failure   coreir.ArithmeticError
+	}{
+		{name: "positive success", arguments: coreIntArguments(5), ok: true, value: -5},
+		{name: "negative success", arguments: coreIntArguments(-5), ok: true, value: 5},
+		{name: "zero success", arguments: coreIntArguments(0), ok: true},
+		{name: "minimum overflow", arguments: coreIntArguments(math.MinInt64), failure: coreir.ArithmeticOverflow},
+	} {
+		outcome, evaluateErr := coreeval.Evaluate(core.Functions[0], test.arguments)
+		if evaluateErr != nil {
+			t.Fatalf("%s Core evaluation: %v", test.name, evaluateErr)
+		}
+		if outcome.OK != test.ok || outcome.Value.Int != test.value || outcome.Error != test.failure {
+			t.Fatalf("%s Core outcome = %#v", test.name, outcome)
+		}
+	}
+	compileAndRunCheckedNegateGo(t, generated, gobackend.FunctionName(core.Functions[0]))
+	assertCompilerGolden(t, "checked-negate.hir.json", canonicalJSON(t, typed))
+	assertCompilerGolden(t, "checked-negate.core.json", canonicalJSON(t, core))
+	assertCompilerGolden(t, "checked-negate.go", generated)
+}
+
 func TestV020CheckedAddRequiresExplicitExactDirectResult(t *testing.T) {
 	tests := []struct {
 		name   string
@@ -584,6 +664,37 @@ func TestV040CheckedMultiplyRequiresExplicitExactDirectResult(t *testing.T) {
 	}
 }
 
+func TestV050CheckedNegateRequiresExplicitExactDirectResult(t *testing.T) {
+	tests := []struct {
+		name   string
+		source string
+	}{
+		{name: "ordinary integer return", source: `public Class Root { public int Negate(int value) => -value; }`},
+		{name: "nested negation", source: `public Class Root { public Result<int, ArithmeticError> Negate(int value) => -(-value); }`},
+		{name: "division remains closed", source: `public Class Root { public Result<float, ArithmeticError> Divide(float left, float right) => left / right; }`},
+		{name: "different success type", source: `public Class Root { public Result<float, ArithmeticError> Negate(float value) => -value; }`},
+		{name: "different failure type", source: `public Class Root { public Result<int, Root> Negate(int value) => -value; }`},
+		{name: "result field", source: `public Class Root { public Result<int, ArithmeticError> Value; }`},
+		{name: "result parameter", source: `public Class Root { public bool Check(Result<int, ArithmeticError> value) => true; }`},
+		{name: "interface result", source: `public Interface Math { public Result<int, ArithmeticError> Negate(int value); } public Class Root { public bool Ready() => true; }`},
+		{name: "bare arithmetic error", source: `public Class Root { public ArithmeticError Error() => 1; }`},
+		{name: "reserved declaration", source: `public Class Result { public int Value; }`},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			input := semanticTestModuleSet("app.root", []ModuleInput{testModule("app.root", "root.pipe", test.source)}, nil)
+			input.LanguageContract = PipeLangLanguageContractV050
+			analysis := AnalyzeSemanticModuleSet(input)
+			if !analysis.Diagnostics.HasErrors() {
+				t.Fatal("invalid v0.5.0 Result shape was accepted")
+			}
+			if test.name == "ordinary integer return" || test.name == "nested negation" {
+				assertDiagnosticCode(t, analysis, CodeNumericSemantics)
+			}
+		})
+	}
+}
+
 func TestV030PreservesDirectCheckedAdd(t *testing.T) {
 	input := semanticTestModuleSet("app.root", []ModuleInput{testModule("app.root", "root.pipe", checkedAddSource)}, nil)
 	input.LanguageContract = PipeLangLanguageContractV030
@@ -629,6 +740,35 @@ func TestV040PreservesDirectCheckedAddAndSubtract(t *testing.T) {
 	}
 }
 
+func TestV050PreservesDirectCheckedAddSubtractAndMultiply(t *testing.T) {
+	for _, test := range []struct {
+		name     string
+		source   string
+		operator hir.Operator
+	}{
+		{name: "Add", source: checkedAddSource, operator: hir.OperatorAdd},
+		{name: "Subtract", source: checkedSubtractSource, operator: hir.OperatorSubtract},
+		{name: "Multiply", source: checkedMultiplySource, operator: hir.OperatorMultiply},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			input := semanticTestModuleSet("app.root", []ModuleInput{testModule("app.root", "root.pipe", test.source)}, nil)
+			input.LanguageContract = PipeLangLanguageContractV050
+			analysis := AnalyzeSemanticModuleSet(input)
+			if err := analysis.Error(); err != nil {
+				t.Fatal(err)
+			}
+			method := semanticMethodNamed(t, analysis, test.name)
+			typed, err := LowerSemanticMethodToHIR(analysis, method.Identity)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if typed.Functions[0].Body.Binary == nil || typed.Functions[0].Body.Binary.Operator != test.operator {
+				t.Fatalf("v0.5.0 changed direct checked %s = %#v", test.name, typed.Functions[0].Body)
+			}
+		})
+	}
+}
+
 func TestCheckedSubtractRequiresExplicitV030Migration(t *testing.T) {
 	for _, contract := range []LanguageContract{PipeLangLanguageContractV010, PipeLangLanguageContractV020} {
 		input := semanticTestModuleSet("app.root", []ModuleInput{testModule("app.root", "root.pipe", checkedSubtractSource)}, nil)
@@ -647,6 +787,17 @@ func TestCheckedMultiplyRequiresExplicitV040Migration(t *testing.T) {
 		analysis := AnalyzeSemanticModuleSet(input)
 		if !analysis.Diagnostics.HasErrors() {
 			t.Fatalf("%s implicitly accepted the v0.4.0 checked multiplication", contract)
+		}
+	}
+}
+
+func TestCheckedNegateRequiresExplicitV050Migration(t *testing.T) {
+	for _, contract := range []LanguageContract{PipeLangLanguageContractV010, PipeLangLanguageContractV020, PipeLangLanguageContractV030, PipeLangLanguageContractV040} {
+		input := semanticTestModuleSet("app.root", []ModuleInput{testModule("app.root", "root.pipe", checkedNegateSource)}, nil)
+		input.LanguageContract = contract
+		analysis := AnalyzeSemanticModuleSet(input)
+		if !analysis.Diagnostics.HasErrors() {
+			t.Fatalf("%s implicitly accepted the v0.5.0 checked negation", contract)
 		}
 	}
 }
@@ -1079,6 +1230,33 @@ func TestGeneratedCheckedMultiply(t *testing.T) {
 	}
 }
 `, gobackend.PackageName, name, name, name, name, name)
+	compileAndRunGeneratedGoFiles(t, generated, []byte(testSource))
+}
+
+func compileAndRunCheckedNegateGo(t *testing.T, generated []byte, name string) {
+	t.Helper()
+	testSource := fmt.Sprintf(`package %s
+
+import (
+	"math"
+	"testing"
+)
+
+func TestGeneratedCheckedNegate(t *testing.T) {
+	if got := %s(5); !got.OK || got.Value != -5 || got.Error != "" {
+		t.Fatalf("positive success: %%#v", got)
+	}
+	if got := %s(-5); !got.OK || got.Value != 5 || got.Error != "" {
+		t.Fatalf("negative success: %%#v", got)
+	}
+	if got := %s(0); !got.OK || got.Value != 0 || got.Error != "" {
+		t.Fatalf("zero success: %%#v", got)
+	}
+	if got := %s(math.MinInt64); got.OK || got.Value != 0 || got.Error != PipeLangArithmeticOverflow {
+		t.Fatalf("minimum overflow: %%#v", got)
+	}
+}
+`, gobackend.PackageName, name, name, name, name)
 	compileAndRunGeneratedGoFiles(t, generated, []byte(testSource))
 }
 
