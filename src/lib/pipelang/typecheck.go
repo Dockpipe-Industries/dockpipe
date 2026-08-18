@@ -313,8 +313,9 @@ func (cp *checkedProgram) validateRecordTransportSignature(method MethodDecl, re
 	identityTransport := len(resolvedParameters) == 1 && cp.isResolvedRecordType(result) && resolvedParameters[0].Equal(result)
 	fieldProjection := hasRecordFieldProjectionSourceContract(contract) && len(resolvedParameters) == 1 && cp.isResolvedRecordType(resolvedParameters[0]) && result.Kind == TypeRefPrimitive
 	recordConstruction := hasPrimitiveRecordConstructionSourceContract(contract) && cp.recordConstructionSignatureMatches(result, resolvedParameters)
-	if !hasPrimitiveRecordSourceContract(contract) || (!identityTransport && !fieldProjection && !recordConstruction) {
-		return false, oneDiagnostic(cp.sources, CodeInvalidType, CategorySemantic, method.Span, fmt.Sprintf("the %s primitive record is admitted only as one exact identity transport, one-hop primitive field projection, or direct declaration-ordered construction", contract))
+	recordEquality := hasPrimitiveRecordEqualitySourceContract(contract) && cp.recordEqualitySignatureMatches(result, resolvedParameters)
+	if !hasPrimitiveRecordSourceContract(contract) || (!identityTransport && !fieldProjection && !recordConstruction && !recordEquality) {
+		return false, oneDiagnostic(cp.sources, CodeInvalidType, CategorySemantic, method.Span, fmt.Sprintf("the %s primitive record is admitted only as one exact identity transport, one-hop primitive field projection, direct declaration-ordered construction, or direct structural equality", contract))
 	}
 	return true, nil
 }
@@ -334,6 +335,10 @@ func (cp *checkedProgram) recordConstructionSignatureMatches(result ResolvedType
 		}
 	}
 	return true
+}
+
+func (cp *checkedProgram) recordEqualitySignatureMatches(result ResolvedTypeRef, parameters []ResolvedTypeRef) bool {
+	return result.Equal(resolvedPrimitive(TypeBool)) && len(parameters) == 2 && cp.isResolvedRecordType(parameters[0]) && parameters[0].Equal(parameters[1])
 }
 
 func (cp *checkedProgram) validateResultTransportSignature(method MethodDecl, result ResolvedTypeRef) (bool, error) {
@@ -583,7 +588,7 @@ func (cp *checkedProgram) inferMethodBodyType(method MethodDecl, env map[string]
 		}
 		return resolvedArithmeticResult(binary64), nil
 	}
-	if unary, unaryOK := expr.(*UnaryExpr); unaryOK && (contract == PipeLangLanguageContractV050 || contract == PipeLangLanguageContractV060 || contract == PipeLangLanguageContractV070 || contract == PipeLangLanguageContractV080 || contract == PipeLangLanguageContractV090 || contract == PipeLangLanguageContractV100 || contract == PipeLangLanguageContractV110) && unary.Op == "-" {
+	if unary, unaryOK := expr.(*UnaryExpr); unaryOK && (contract == PipeLangLanguageContractV050 || contract == PipeLangLanguageContractV060 || contract == PipeLangLanguageContractV070 || contract == PipeLangLanguageContractV080 || contract == PipeLangLanguageContractV090 || contract == PipeLangLanguageContractV100 || contract == PipeLangLanguageContractV110 || contract == PipeLangLanguageContractV120) && unary.Op == "-" {
 		operand, err := inferExprTypeWithPolicy(cp.sources, unary.Expr, env, true)
 		if err != nil {
 			return ResolvedTypeRef{}, err
@@ -596,7 +601,7 @@ func (cp *checkedProgram) inferMethodBodyType(method MethodDecl, env map[string]
 	}
 	binary, ok := expr.(*BinaryExpr)
 	operatorAccepted := ok && binary.Op == "+"
-	if contract == PipeLangLanguageContractV040 || contract == PipeLangLanguageContractV050 || contract == PipeLangLanguageContractV060 || contract == PipeLangLanguageContractV070 || contract == PipeLangLanguageContractV080 || contract == PipeLangLanguageContractV090 || contract == PipeLangLanguageContractV100 || contract == PipeLangLanguageContractV110 {
+	if contract == PipeLangLanguageContractV040 || contract == PipeLangLanguageContractV050 || contract == PipeLangLanguageContractV060 || contract == PipeLangLanguageContractV070 || contract == PipeLangLanguageContractV080 || contract == PipeLangLanguageContractV090 || contract == PipeLangLanguageContractV100 || contract == PipeLangLanguageContractV110 || contract == PipeLangLanguageContractV120 {
 		operatorAccepted = ok && (binary.Op == "+" || binary.Op == "-" || binary.Op == "*")
 	} else if contract == PipeLangLanguageContractV030 {
 		operatorAccepted = ok && (binary.Op == "+" || binary.Op == "-")
@@ -640,6 +645,28 @@ func (cp *checkedProgram) inferNonResultMethodBodyType(method MethodDecl, env ma
 	}
 	if containsRecordConstruction(method.Body) {
 		return ResolvedTypeRef{}, oneDiagnostic(cp.sources, CodeExpressionType, CategorySemantic, method.Body.SourceSpan(), fmt.Sprintf("%s primitive record construction must be the complete body of a method returning that record", cp.modules.LanguageContract()))
+	}
+	if cp.modules != nil && hasPrimitiveRecordEqualitySourceContract(cp.modules.LanguageContract()) {
+		parameters := make([]ResolvedTypeRef, 0, len(method.Params))
+		for _, parameter := range method.Params {
+			resolved, err := cp.resolveType(parameter.Type)
+			if err != nil {
+				return ResolvedTypeRef{}, err
+			}
+			parameters = append(parameters, resolved)
+		}
+		if cp.recordEqualitySignatureMatches(declared, parameters) {
+			binary, directBinary := method.Body.(*BinaryExpr)
+			if !directBinary || (binary.Op != "==" && binary.Op != "!=") {
+				return ResolvedTypeRef{}, oneDiagnostic(cp.sources, CodeExpressionType, CategorySemantic, method.Body.SourceSpan(), fmt.Sprintf("%s primitive record equality requires exactly two identical record parameters compared in declared order with == or != as the complete bool method body", cp.modules.LanguageContract()))
+			}
+			leftIdentifier, leftOK := binary.Left.(*IdentExpr)
+			rightIdentifier, rightOK := binary.Right.(*IdentExpr)
+			if !leftOK || !rightOK || leftIdentifier.Name != method.Params[0].Name || rightIdentifier.Name != method.Params[1].Name {
+				return ResolvedTypeRef{}, oneDiagnostic(cp.sources, CodeExpressionType, CategorySemantic, method.Body.SourceSpan(), fmt.Sprintf("%s primitive record equality requires exactly two identical record parameters compared in declared order with == or != as the complete bool method body", cp.modules.LanguageContract()))
+			}
+			return resolvedPrimitive(TypeBool), nil
+		}
 	}
 	if cp.modules != nil && hasRecordFieldProjectionSourceContract(cp.modules.LanguageContract()) {
 		hasRecordParameter := false
@@ -776,7 +803,7 @@ func isOrdinalTextOrderingOperator(operator string) bool {
 }
 
 func arithmeticSourceOperators(contract LanguageContract) string {
-	if contract == PipeLangLanguageContractV050 || contract == PipeLangLanguageContractV060 || contract == PipeLangLanguageContractV070 || contract == PipeLangLanguageContractV080 || contract == PipeLangLanguageContractV090 || contract == PipeLangLanguageContractV100 || contract == PipeLangLanguageContractV110 {
+	if contract == PipeLangLanguageContractV050 || contract == PipeLangLanguageContractV060 || contract == PipeLangLanguageContractV070 || contract == PipeLangLanguageContractV080 || contract == PipeLangLanguageContractV090 || contract == PipeLangLanguageContractV100 || contract == PipeLangLanguageContractV110 || contract == PipeLangLanguageContractV120 {
 		return "addition, subtraction, multiplication, or negation"
 	}
 	if contract == PipeLangLanguageContractV040 {

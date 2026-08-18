@@ -150,6 +150,11 @@ func ValidateFunction(function Function) error {
 	if err := validateExpr(function.Body, function.Parameters); err != nil {
 		return err
 	}
+	if exprContainsRecordEquality(function.Body) {
+		if err := validateDirectRecordEquality(function); err != nil {
+			return err
+		}
+	}
 	if !TypeEqual(function.ReturnType, function.Body.Type) {
 		return fmt.Errorf("function return type does not match its body type")
 	}
@@ -281,6 +286,9 @@ func validateExpr(expression Expr, parameters []Parameter) error {
 			if !TypeEqual(expression.Binary.Left.Type, expression.Binary.Right.Type) || !TypeEqual(expression.Type, boolean) {
 				return fmt.Errorf("operator %q has mismatched operand or result types", operator)
 			}
+			if expression.Binary.Left.Type.Kind == TypeRecord && operator != OperatorEqual && operator != OperatorNotEqual {
+				return fmt.Errorf("record values support structural equality only, not operator %q", operator)
+			}
 		case OperatorAnd, OperatorOr:
 			boolean := Type{Kind: TypePrimitive, Primitive: PrimitiveBool}
 			if !TypeEqual(expression.Binary.Left.Type, boolean) || !TypeEqual(expression.Binary.Right.Type, boolean) || !TypeEqual(expression.Type, boolean) {
@@ -373,6 +381,51 @@ func exprContainsRecordConstruction(expression Expr) bool {
 	default:
 		return false
 	}
+}
+
+func exprContainsRecordEquality(expression Expr) bool {
+	switch expression.Kind {
+	case ExprBinary:
+		if expression.Binary == nil || expression.Binary.Left == nil || expression.Binary.Right == nil {
+			return false
+		}
+		if expression.Binary.Left.Type.Kind == TypeRecord || expression.Binary.Right.Type.Kind == TypeRecord {
+			return true
+		}
+		return exprContainsRecordEquality(*expression.Binary.Left) || exprContainsRecordEquality(*expression.Binary.Right)
+	case ExprUnary:
+		return expression.Unary != nil && expression.Unary.Operand != nil && exprContainsRecordEquality(*expression.Unary.Operand)
+	case ExprFieldProjection:
+		return expression.Field != nil && expression.Field.Receiver != nil && exprContainsRecordEquality(*expression.Field.Receiver)
+	case ExprRecordConstruct:
+		if expression.Record == nil {
+			return false
+		}
+		for _, field := range expression.Record.Fields {
+			if field.Value != nil && exprContainsRecordEquality(*field.Value) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func validateDirectRecordEquality(function Function) error {
+	boolean := Type{Kind: TypePrimitive, Primitive: PrimitiveBool}
+	if len(function.Parameters) != 2 || function.Body.Kind != ExprBinary || function.Body.Binary == nil || function.Body.Binary.Left == nil || function.Body.Binary.Right == nil {
+		return fmt.Errorf("record equality requires exactly two parameters and one direct binary body")
+	}
+	binary := function.Body.Binary
+	if binary.Operator != OperatorEqual && binary.Operator != OperatorNotEqual {
+		return fmt.Errorf("record equality requires operator %q or %q", OperatorEqual, OperatorNotEqual)
+	}
+	if function.Parameters[0].Type.Kind != TypeRecord || !TypeEqual(function.Parameters[0].Type, function.Parameters[1].Type) || !TypeEqual(function.ReturnType, boolean) || !TypeEqual(function.Body.Type, boolean) {
+		return fmt.Errorf("record equality requires two identical record parameters and a bool result")
+	}
+	if binary.Left.Kind != ExprReference || binary.Left.Parameter == nil || *binary.Left.Parameter != 0 || binary.Right.Kind != ExprReference || binary.Right.Parameter == nil || *binary.Right.Parameter != 1 {
+		return fmt.Errorf("record equality operands must reference the two parameters in declared order")
+	}
+	return nil
 }
 
 func isLiteralType(value Type) bool {

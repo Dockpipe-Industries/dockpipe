@@ -54,5 +54,12 @@
       "    new ${1:Row} { ${5:Id} = ${4:id} };"
     ],
     "description": "Create an exact v0.11.0 declaration-ordered primitive-record construction."
+  },
+  "PipeLang Record Equality": {
+    "prefix": "pipe-record-equality",
+    "body": [
+      "public bool ${1:Same}(${2:Row} ${3:left}, ${2:Row} ${4:right}) => ${3:left} ${5|==,!=|} ${4:right};"
+    ],
+    "description": "Create an exact v0.12.0 direct structural primitive-record equality method."
   }
 }
