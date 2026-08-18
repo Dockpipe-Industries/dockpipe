@@ -15,6 +15,7 @@ type SymbolKind string
 const (
 	SymbolInterface SymbolKind = "interface"
 	SymbolClass     SymbolKind = "class"
+	SymbolRecord    SymbolKind = "record"
 )
 
 type SymbolOwnerKind string
@@ -47,6 +48,7 @@ type symbolEntry struct {
 	symbol        Symbol
 	interfaceDecl *InterfaceDecl
 	classDecl     *ClassDecl
+	recordDecl    *RecordDecl
 }
 
 // SymbolTable is the one declaration namespace for both the frozen legacy lane
@@ -152,7 +154,7 @@ func buildSymbolTableWithOwners(sources *SourceSet, program *Program, modules *M
 	if program == nil {
 		return nil, oneDiagnostic(sources, CodeInvalidProgram, CategorySemantic, Span{}, "program is nil")
 	}
-	entries := make([]symbolEntry, 0, len(program.Interfaces)+len(program.Classes))
+	entries := make([]symbolEntry, 0, len(program.Interfaces)+len(program.Classes)+len(program.Records))
 	for _, decl := range program.Interfaces {
 		if decl != nil {
 			owner := legacySourceSetOwner
@@ -173,6 +175,17 @@ func buildSymbolTableWithOwners(sources *SourceSet, program *Program, modules *M
 				}
 			}
 			entries = append(entries, symbolEntry{symbol: Symbol{Kind: SymbolClass, Name: decl.Name, Owner: owner, Visibility: normalizeVisibility(decl.Visibility), DeclarationSpan: decl.Span}, classDecl: decl})
+		}
+	}
+	for _, decl := range program.Records {
+		if decl != nil {
+			owner := legacySourceSetOwner
+			if modules != nil {
+				if resolved, ok := modules.ownerForSpan(decl.Span); ok {
+					owner = resolved
+				}
+			}
+			entries = append(entries, symbolEntry{symbol: Symbol{Kind: SymbolRecord, Name: decl.Name, Owner: owner, Visibility: normalizeVisibility(decl.Visibility), DeclarationSpan: decl.Span}, recordDecl: decl})
 		}
 	}
 	sort.SliceStable(entries, func(i, j int) bool {

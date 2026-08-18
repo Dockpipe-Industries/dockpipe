@@ -19,9 +19,11 @@ This task tracks three related but distinct layers:
 
 The accepted working product direction is that Qt becomes DockPipe's standard first-party
 application framework without becoming an engine dependency or the generic contract. PipeLang and
-YAML describe the application; a normalized Application IR specializes TASK-021's versioned
-semantic/Core projection and separates authored semantics from targets; package-owned adapters
-produce Qt native, Qt WebAssembly, semantic web, or future outputs.
+YAML remain interoperable: the future PipeLang application surface owns typed application/view
+semantics, while YAML owns workflow composition, target intent, and current compatibility inputs. A
+normalized Application IR specializes TASK-021's versioned semantic/Core projection and separates
+authored semantics from targets; package-owned adapters produce Qt native, Qt WebAssembly, semantic
+web, or future outputs.
 Qt Quick/QML plus generated C++ is the preferred standard-backend direction to validate because it
 is declarative, reactive, responsive, and shared across native and WebAssembly. The current Qt
 Widgets proof remains valid consumer evidence but does not by itself select Widgets as the final
@@ -61,7 +63,99 @@ DockPipe already owns the normalized launcher/tooling contract:
 
 The Qt launcher therefore sits above the DockPipe CLI/catalog contract. It must continue consuming
 a DockPipe-normalized model and must not become an independent YAML parser or workflow engine.
-Moving hardcoded launcher screens to that model should be incremental, not a launcher rewrite.
+Replacing the launcher implementation with generated PipeLang/Application IR output must be
+incremental and parity-gated rather than a flag-day rewrite.
+
+## Accepted First Application Consumer (2026-08-18)
+
+The existing DockPipe Launcher is the first full application target for PipeLang, Application IR,
+and the standard Qt resolver. Its checked-in Qt/C++ implementation is the behavioral and
+presentation oracle. The end state is a PipeLang-authored native Qt launcher with one-to-one
+observable parity; this direction does not authorize a redesign, feature removal, or production
+language batch.
+
+Parity includes:
+
+| Surface | Required retained behavior |
+| --- | --- |
+| Native shell | Desktop-native startup, single-instance behavior, tray integration, show/hide, theme handling, and local/offline operation. |
+| Basic mode | Project selection, recent projects, app-workflow catalog, icon/list presentation, refresh, configure, and launch state. |
+| Advanced mode | Saved contexts, workflow/resolver/runtime/strategy settings, search, worktree discovery, launch/relaunch/stop, stop-all-for-repo, logs, and folder access. |
+| Docker observability | Existing container, network, volume, detail, status, log, automatic/manual refresh, inspect, start, and stop behavior. |
+| Workflow interaction | Catalog-derived typed inputs and views, prompt/file-picker bridge, subprocess status/output, and current failure reporting. |
+| Supporting dialogs | Launcher settings, package management, workflow launch/configuration, context editing, log viewing, and current disclaimers/about behavior. |
+
+### Frozen Docker-observability parity baseline
+
+The checked-in `DockerObservabilityWidget` is the exact oracle for the first launcher slice. This
+inventory freezes observable behavior; it does not require generated UI code to retain the current
+Qt Widgets structure or invoke Docker directly.
+
+The read-only snapshot has three independently successful or failed sections:
+
+| Section | Stable key and projected fields | Current discovery operation |
+| --- | --- | --- |
+| Containers | Container ID; name, normalized state, status text, image, ports, and relative creation text | `docker container ls --all --format {{json .}}` |
+| Networks | Network ID; name, driver, and scope | `docker network ls --format {{json .}}` |
+| Volumes | Volume name; driver and mountpoint | `docker volume ls --format {{json .}}`, followed by `docker volume inspect <name>` for the mountpoint |
+
+Container selection loads pretty-printed `docker inspect <id>` output and the last 200 lines from
+`docker logs --tail 200 <id>`. Network and volume selections load pretty-printed
+`docker network inspect <id>` and `docker volume inspect <name>` output. Detail requests are
+asynchronous and a late response for a formerly selected object must not replace the current
+selection. Invalid or non-object discovery lines are ignored, while command failures remain visible
+for their own section instead of discarding successful sections.
+
+The containers table retains Name, State, Image, Ports, and Created columns, single-row selection,
+status text/tooltips, and the existing state badge categories: `healthy`, `running`, `paused`,
+`restarting`, `exited`, `created`, and `other`. Search trims and Unicode-case-folds its input and
+matches the joined visible container columns. Networks retain Name, Driver, and Scope; volumes
+retain Name, Driver, and Mountpoint. All three retain count summaries, loading, empty, partial-error,
+and successful-refresh states.
+
+The view opens cold. Activation triggers the first refresh; while active and visible it performs a
+quiet refresh every four seconds, and manual refresh remains available. Only one snapshot refresh
+runs at a time; a requested refresh while one is running is coalesced, with an explicit request
+taking precedence over a quiet one. Applying a successful section updates rows by stable key,
+removes absent rows, preserves the selected object and scroll position when possible, reapplies the
+container filter, and refreshes details for a preserved selection.
+
+The current context menu exposes Inspect, Start, Stop, and Refresh. Start is unavailable for
+`healthy` or `running`; Stop is available for `healthy`, `running`, `paused`, or `restarting`.
+Current mutation parity is `docker start <id>` and `docker stop <id>` followed by refresh and detail
+reload, with command failures shown in status/log output. These operations are frozen as later
+observable parity only: the first replacement slice is read-only, and subsequent generated UI must
+request them through a DockPipe-owned capability adapter rather than embedding process authority.
+
+Parity proof must use deterministic adapter fixtures for complete, empty, partial-failure, stale
+detail, refresh-coalescing, selection-preservation, filtering, and state-action cases. A live Docker
+engine is useful integration evidence but cannot be the only acceptance oracle.
+
+The implementation order is vertical:
+
+1. freeze an executable/read-only parity inventory for the current launcher;
+2. reproduce Docker snapshots, details, and logs through typed records, optionals, deterministic
+   collections, and failures, without adding mutations;
+3. add refresh/start/stop through an explicit DockPipe capability adapter and operation-result
+   events rather than backend commands embedded in generated UI code;
+4. reproduce Pipeon discovery, configuration, launch, prompt, output, and stop behavior;
+5. reproduce VM workflows, settings, contexts, packages, and the remaining Basic/Advanced surfaces;
+6. qualify native desktop parity before making the generated launcher the default; and
+7. retain the current implementation as the fallback until the accepted parity matrix passes.
+
+The first milestone is native desktop Qt. A browser, PWA, remote service, account, or network
+connection must not be required to inspect or control the local Docker engine. After native parity,
+the same generic Application IR and resolver contracts may prove Qt WebAssembly and semantic-web
+outputs without making either output the local launcher runtime.
+
+Authored DockPipe YAML remains the durable workflow contract and read-only input to the initial
+replacement. The launcher consumes the normalized catalog/projection and stores only the same
+launcher/session preferences, drafts, and selections it owns today. It does not rewrite authored
+YAML, scan package trees, or duplicate workflow execution semantics.
+
+This accepted consumer is dependency evidence for TASK-021 and this task, not permission to batch
+records, optionals, collections, actions, effects, Application IR, Qt generation, and launcher
+migration into one change. Each prerequisite remains an explicit versioned vertical slice.
 
 ## Architecture Contract
 
@@ -125,8 +219,10 @@ to make the analogy literal.
 
 Ordinary users author only:
 
-- `.pipe` models, state, validation, computed values, actions, and governed effect declarations;
-- YAML application structure, components, bindings, actions, navigation, and target intent;
+- `.pipe` models, state, validation, computed values, actions, governed effect declarations, and,
+  after an explicit future contract, target-neutral declarative views/components/navigation;
+- YAML workflow composition, PipeLang entrypoint and binding references, runtime/resolver selection,
+  target intent, and compatibility `view:` metadata;
 - portable SCSS/theme rules from a documented supported subset; and
 - assets such as images, fonts, Markdown, and localization resources.
 
@@ -161,8 +257,9 @@ dist/
 
 ## Declarative Application Direction
 
-Extend the existing typed `types:` plus `view:` direction incrementally so a future versioned model
-can represent:
+Freeze the existing typed `types:` plus YAML `view:` direction as the compatibility baseline. Evolve
+the future versioned Application IR and explicitly accepted PipeLang view surface incrementally so
+they can represent:
 
 - pages, tabs, panels, sections, and layouts
 - typed fields and data bindings
@@ -175,7 +272,8 @@ can represent:
 
 Do not accept field names or YAML shapes in this backlog item. Any authored-surface proposal must be
 reviewed and then update authored schema, generated schema, language support, catalog JSON, CLI help,
-canonical docs, and tests together.
+canonical docs, and tests together. No current YAML `view:` consumer migrates implicitly, and future
+PipeLang view syntax must be accepted through TASK-021 before this task consumes it.
 
 ## PipeLang Dependency
 
@@ -306,8 +404,8 @@ When prioritized:
    adapter implementation.
 8. Refactor `static-html`, `qt-native`, and `qt-wasm` behind interchangeable package-owned target
    adapters with deterministic artifact manifests.
-9. Move one bounded launcher screen from hardcoded C++ to the normalized model without rewriting the
-   launcher.
+9. Move the read-only Docker observability screen through the normalized model as the first launcher
+   parity slice, then advance through the accepted launcher parity order above.
 10. Preserve explicit HTML/SCSS, QML, Qt stylesheet, and C++ escape hatches with declared
     portability loss.
 11. Return to `dockpipe-cloud` and migrate its proof onto the released contract.
@@ -326,7 +424,12 @@ When prioritized:
 - Workflow/runtime/resolver/strategy invariants remain explicit.
 - HTML, SCSS, QML, C++, templates, compilers, and framework tooling stay target-package assets.
 - No unreviewed YAML shape or CLI syntax is accepted by implication.
-- Launcher migration is incremental and continues through the normalized catalog contract.
+- Launcher migration is incremental, one-to-one parity-gated, and continues through normalized
+  catalog, Application IR, capability, and operation-result contracts.
+- The local native launcher remains usable without a browser, PWA, remote account, or network
+  dependency.
+- Generated UI code never embeds raw Docker, process, Git, filesystem, VM, package, or workflow
+  execution; selected DockPipe capabilities retain those authorities.
 - At least two adapters, or another convincing generic fixture, prove target independence.
 - `static-html` and the selected Qt implementation preserve the same typed bindings, actions,
   validation, accessibility, responsive intent, and governed effects from one IR fixture.

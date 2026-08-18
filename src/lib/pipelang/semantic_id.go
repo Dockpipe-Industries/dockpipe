@@ -157,6 +157,7 @@ const (
 	SemanticModule    SemanticKind = "module"
 	SemanticInterface SemanticKind = "interface"
 	SemanticClass     SemanticKind = "class"
+	SemanticRecord    SemanticKind = "record"
 	SemanticField     SemanticKind = "field"
 	SemanticMethod    SemanticKind = "method"
 )
@@ -292,6 +293,8 @@ func buildSemanticTable(sources *SourceSet, program *Program, graph *ModuleGraph
 		kind := SemanticClass
 		if entry.symbol.Kind == SymbolInterface {
 			kind = SemanticInterface
+		} else if entry.symbol.Kind == SymbolRecord {
+			kind = SemanticRecord
 		}
 		declaration := SemanticDeclaration{Kind: kind, Name: entry.symbol.Name, Module: ModuleID(entry.symbol.Owner.ID), Visibility: entry.symbol.Visibility, DeclarationSpan: entry.symbol.DeclarationSpan, required: entry.symbol.Visibility == VisibilityPublic}
 		table.addTarget(declaration)
@@ -310,6 +313,11 @@ func buildSemanticTable(sources *SourceSet, program *Program, graph *ModuleGraph
 			}
 			for _, method := range entry.classDecl.Methods {
 				table.addTarget(SemanticDeclaration{Kind: SemanticMethod, Name: method.Name, Module: declaration.Module, Visibility: method.Visibility, DeclarationSpan: method.Span, required: declaration.required && method.Visibility == VisibilityPublic, parentTarget: parent, unresolvedType: method.ReturnType, params: append([]Param(nil), method.Params...)})
+			}
+		}
+		if entry.recordDecl != nil {
+			for _, field := range entry.recordDecl.Fields {
+				table.addTarget(SemanticDeclaration{Kind: SemanticField, Name: field.Name, Module: declaration.Module, Visibility: field.Visibility, DeclarationSpan: field.Span, required: declaration.required && field.Visibility == VisibilityPublic, parentTarget: parent, unresolvedType: field.Type})
 			}
 		}
 	}
@@ -372,7 +380,7 @@ func buildSemanticTable(sources *SourceSet, program *Program, graph *ModuleGraph
 		}
 	}
 	for index := range table.ordered {
-		if table.ordered[index].Kind != SemanticClass && table.ordered[index].Kind != SemanticInterface {
+		if table.ordered[index].Kind != SemanticClass && table.ordered[index].Kind != SemanticInterface && table.ordered[index].Kind != SemanticRecord {
 			continue
 		}
 		declaration := &table.ordered[index]

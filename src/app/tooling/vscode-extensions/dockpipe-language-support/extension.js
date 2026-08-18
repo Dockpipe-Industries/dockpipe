@@ -11,6 +11,7 @@ const PIPELANG_COMPLETION_KEYWORDS = [
   "Interface",
   "Class",
   "Struct",
+  "Record",
   "List",
   "Result",
   "ArithmeticError",

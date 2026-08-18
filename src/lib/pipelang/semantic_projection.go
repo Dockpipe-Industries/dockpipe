@@ -103,7 +103,7 @@ func buildSemanticProjection(analysis *Analysis, view SemanticProjectionView) (*
 		return nil, err
 	}
 	if !isPipeLangSemanticContract(analysis.Modules.languageContract) {
-		return nil, projectionError(analysis, fmt.Sprintf("semantic projection requires language contract %q, %q, %q, %q, %q, %q, %q, or %q", PipeLangLanguageContractV010, PipeLangLanguageContractV020, PipeLangLanguageContractV030, PipeLangLanguageContractV040, PipeLangLanguageContractV050, PipeLangLanguageContractV060, PipeLangLanguageContractV070, PipeLangLanguageContractV080))
+		return nil, projectionError(analysis, fmt.Sprintf("semantic projection requires language contract %q, %q, %q, %q, %q, %q, %q, %q, or %q", PipeLangLanguageContractV010, PipeLangLanguageContractV020, PipeLangLanguageContractV030, PipeLangLanguageContractV040, PipeLangLanguageContractV050, PipeLangLanguageContractV060, PipeLangLanguageContractV070, PipeLangLanguageContractV080, PipeLangLanguageContractV090))
 	}
 	if view != SemanticProjectionPublic && view != SemanticProjectionWorkspace {
 		return nil, projectionError(analysis, fmt.Sprintf("invalid semantic projection view %q", view))
@@ -202,6 +202,20 @@ func projectSymbol(analysis *Analysis, entry symbolEntry, view SemanticProjectio
 				continue
 			}
 			member, err := projectMember(analysis, SemanticMethod, method.Name, method.Visibility, method.ReturnType, method.Params, method.Span)
+			if err != nil {
+				return SemanticTypeProjection{}, err
+			}
+			projection.Members = append(projection.Members, member)
+		}
+		sort.SliceStable(projection.Members, func(i, j int) bool {
+			return projectedMemberKey(projection.Members[i]) < projectedMemberKey(projection.Members[j])
+		})
+		return projection, nil
+	}
+	if entry.symbol.Kind == SymbolRecord {
+		projection.Kind = SemanticRecord
+		for _, field := range entry.recordDecl.Fields {
+			member, err := projectMember(analysis, SemanticField, field.Name, field.Visibility, field.Type, nil, field.Span)
 			if err != nil {
 				return SemanticTypeProjection{}, err
 			}

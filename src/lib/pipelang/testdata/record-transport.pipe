@@ -1,0 +1,9 @@
+public Record Row {
+    public string Id;
+    public int Count;
+    public float Ratio;
+    public bool Ready;
+}
+public Class Root {
+    public Row Forward(Row value) => value;
+}

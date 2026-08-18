@@ -5,8 +5,8 @@
 The `vNext` foundation decision packet in this record is **accepted** as of 2026-08-16. Acceptance
 fixes semantics, compiler boundaries, bootstrap stages, compatibility, and implementation order;
 examples and fixtures remain non-normative and accept no production syntax. Separately authorized
-bounded objectives have completed implementation-order steps 1 through 6. This record does not by
-itself authorize step 7 or any later language slice.
+bounded objectives have completed implementation-order steps 1 through 6 and step-7 slices 7a
+through 7j. This record does not by itself authorize another step-7 or later language slice.
 
 ## Goal
 
@@ -666,6 +666,36 @@ and exports depend on one changed field without loading or reparsing the entire 
 include source locations, compiler/language version, and enough dependency kind information to avoid
 presenting mere text matches as semantic impact.
 
+### Source-level debugging contract
+
+PipeLang is agent-friendly because ordinary deterministic programs are compact, explicit, typed,
+and machine-inspectable. Agents remain external language/tooling clients; no model, prompt, or
+agent runtime is built into ordinary language semantics.
+
+Source-level debugging requires more than backend symbols. The compiler/tooling contract must
+eventually provide:
+
+- stable generated symbol names derived from semantic identities;
+- complete source maps from `.pipe` spans through typed HIR, Core, specialized IR, and generated
+  target locations;
+- resolver-produced native debug information plus a reversible symbol/location manifest;
+- LSP navigation, diagnostics, completion, rename, and type inspection through compiler queries;
+- DAP breakpoint, stepping, stack, watch, and exception mapping at PipeLang source locations;
+- typed value projection that presents PipeLang values rather than target implementation layouts;
+- semantic breakpoints resilient to generated line movement;
+- deterministic, sanitized failure bundles with relevant source hashes/spans, semantic identities,
+  module/dependency evidence, stack/value snapshots, resolver/toolchain identities, and redacted
+  capability results;
+- read-only structured queries for frames, values, provenance, generated locations, and semantic
+  dependencies; and
+- differential Core/backend evidence that localizes semantic, resolver, or target-runtime drift.
+
+TASK-021 owns target-neutral spans, identities, value projection, Core evidence, and debug metadata.
+TASK-020/TASK-022 and target resolvers own Application/Service/native mappings. IDE and structured
+agent clients consume the same versioned evidence; neither scrapes console text as the canonical
+debug contract. Replay and effect traces remain separately gated later slices and must not be
+inferred by this debugging direction.
+
 ### Verifiable change manifests
 
 Agents and other tools may submit a proposed change manifest containing intent, touched semantic
@@ -898,6 +928,8 @@ Every shipped language slice needs proportionate coverage across:
 - catalog/workflow projection compatibility;
 - VS Code/Cursor syntax, completion, hover, and diagnostics;
 - semantic graph/impact query and independently verified change-manifest cases;
+- source-map/symbol/value-projection, semantic-breakpoint, sanitized debug-bundle determinism and
+  redaction, and Core/backend differential-debug cases for each enabled executable backend;
 - TASK-020 Application IR and TASK-022 Service IR integration fixtures with no target-specific
   language symbols;
 - Core IR conformance and differential results for each enabled backend/profile; and
@@ -927,6 +959,8 @@ slices, then the broader engine/package validation required by the touched publi
 - PipeLang contains no Qt, HTML, CSS, QML, JavaScript, C++, CMake, or WASM semantics.
 - AST/parser/typechecker/evaluator/compiler/CLI/docs/editor support stay synchronized.
 - Diagnostics carry stable source locations through the semantic projection.
+- Enabled executable backends retain reversible PipeLang source/symbol/value mappings and emit
+  deterministic sanitized debug evidence consumable by both IDE and structured tooling clients.
 - The semantic graph produces dependency-kind-aware impact results rather than text-match claims.
 - Change manifests are independently verified and never treated as trusted agent assertions.
 - External model invocation is an explicit typed resolver-backed effect and is absent from ordinary
@@ -1445,27 +1479,95 @@ structural value equality, optional, general Result handling, record, union, col
 expression, dependency, generated store, runtime, credential, external state, cleanup, commit, or
 publication changed.
 
+### Completed step 7j primitive immutable record contract (2026-08-18)
+
+The founder selected the recommended explicit `v0.9.0` record slice. It preserves every earlier
+text and arithmetic Result contract and admits public, nonempty record declarations whose public
+fields have no defaults and use only `string`, `int`, `float`, or `bool`. Executable use is exactly
+one class method with one parameter, an identical record return type, and that parameter identifier
+as the complete expression-bodied method body:
+
+```pipelang
+public Record Row {
+    public string Id;
+    public int Count;
+    public float Ratio;
+    public bool Ready;
+}
+public Class Root {
+    public Row Forward(Row value) => value;
+}
+```
+
+`Record` is contextual only under explicit `v0.9.0`; earlier contracts preserve their grammar and
+may continue to use `Record` as an identifier. Records and their fields receive stable semantic
+identities in the existing single symbol table. `pipelang.semantic.v1` projects the record and its
+deterministic identity-ordered member surface. Typed HIR and target-neutral Core carry the
+declaration-ordered identified schema and the direct
+parameter reference. Core evaluation validates the exact schema and primitive field values,
+preserves strict UTF-8 for `string`, and clones its field vector so immutable value transport cannot
+leak mutable aliasing. The Core-only Go backend emits one deterministic named struct, validates text
+fields, and returns that struct value directly.
+
+Negative diagnostics retain empty/private records, annotations, implemented interfaces, methods,
+private/nonprimitive/defaulted fields, class/interface record fields, extra or mismatched transport
+parameters, different bodies, construction, field access, mutation, equality, hashing, ordering,
+matching, nesting, Result integration, optionals, unions, and collections as excluded forms.
+`v0.1.0` through `v0.8.0` reject the new declaration without implicit migration. `v0.9.0` preserves
+direct add/subtract/multiply/negate/divide, arithmetic Result transport, and ordinal string ordering
+without changing `pipelang:result`, `pipelang:arithmetic.error`, `overflow`, `division_by_zero`,
+`pipelang.compiler.v1`, or `pipelang.semantic.v1`.
+
+Terminal proof passed with cached Go 1.25.13, offline module lookup, and writable `/tmp` caches:
+
+- exact PipeLang and 45-source compatibility tests, including parser/type/identity/projection,
+  source-derived HIR/Core/Go record goldens, Core/generated-Go agreement, malformed schema and UTF-8
+  boundaries, immutable Core value transport, explicit migration rejection, excluded forms, and
+  every frozen arithmetic Result/text behavior under `v0.9.0`;
+- affected catalog, PipeLang check/compile/invoke, materialize, package-compile, internal, and
+  `src/cmd` consumer checks through only the existing temporary modfile pinned to cached
+  `x/sys v0.46.0`;
+- `go vet` over PipeLang, compatibility, and affected application/internal/CLI packages, plus
+  Windows compile-only proof for those packages; and
+- VS Code grammar/completion/snippet/diagnostic validation, `gofmt`, `git diff --check`, engine
+  boundary, frozen inventory, dependency/generated-state, branch/stash, and protected ignored-byte
+  proof.
+
+The minimal pure source fixture is `src/lib/pipelang/testdata/record-transport.pipe`, with
+synchronized typed HIR, Core, and Go goldens. No constructor/member-access/operator/control-flow
+surface, dependency, generated store, runtime, credential, external state, cleanup, commit, or
+publication changed.
+
 ## Exact Next Boundary
 
 Step 7 of **Bounded Implementation Order** has completed the fixed numeric, compiler-internal
 checked-arithmetic Result, and direct production-source checked add, subtract, multiply, negate,
-binary64 divide, first-class arithmetic Result transport, and ordinal Unicode text ordering slices.
+binary64 divide, first-class arithmetic Result transport, ordinal Unicode text ordering, and
+primitive immutable record-identity transport slices.
 `v0.2.0` admits only the exact explicit Result-returning addition;
 `v0.3.0` adds only direct subtraction; `v0.4.0` adds only direct multiplication; `v0.5.0` adds only
 direct integer negation; `v0.6.0` adds only direct binary64 division; and `v0.7.0` adds only direct
 identity transport of one identical existing arithmetic Result parameter and return while preserving
 every prior contract. `v0.8.0` adds only `<`, `<=`, `>`, and `>=` ordinal scalar-sequence ordering
 in the exact two-parameter direct method shape while preserving prior text concatenation/equality.
+`v0.9.0` adds only public nonempty primitive immutable records and exact one-parameter identity
+transport while preserving every prior contract.
 All other numeric arithmetic and every Result construction, composition, or consumption form remain
 fail-closed from production source. Any next slice requires a new
 synchronized decision for its exact source spelling, type/value handling rule, semantic projection,
 migration, and bounded semantics before implementation.
 
+The first accepted application consumer is TASK-020's one-to-one DockPipe Launcher replacement,
+beginning with read-only Docker observability. Its typed snapshot requirements are dependency
+evidence when comparing remaining step-7 options. Completed primitive record transport satisfies
+one dependency but does not authorize optionals, collections, failures, richer record use, UI,
+actions, effects, or Qt behavior as one batch.
+
 No later step-7 slice is included here. In particular, this checkpoint does not add Result
 construction, inspection, extraction, wrapping, unwrapping, propagation, or matching; additional
 Unicode text construction/scalar/grapheme APIs, normalization/case operations, value/reference,
-hashing, general total-order capabilities, optional, general result, record, union, or deterministic
-collection production semantics; accept namespace, import,
+hashing, general total-order capabilities, optional, general result, record construction/access/
+mutation/equality, union, or deterministic collection production semantics; accept namespace, import,
 migration, `internal`, overload, generic, or ID production syntax; implement overload resolution;
 add new types/declarations/expressions/operators, blocks, locals, branches, or loops; add effects,
 entrypoints, actions/state, contracts/replay, executable application/service semantics, Application

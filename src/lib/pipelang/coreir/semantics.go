@@ -2,6 +2,7 @@ package coreir
 
 import (
 	"fmt"
+	"strings"
 	"unicode/utf8"
 )
 
@@ -58,7 +59,7 @@ func ArithmeticResultType(operator Operator, left Type, right *Type) (Type, erro
 }
 
 func TypeEqual(left, right Type) bool {
-	if left.Kind != right.Kind || left.Primitive != right.Primitive || left.Name != right.Name || (left.Numeric == nil) != (right.Numeric == nil) || (left.Result == nil) != (right.Result == nil) || (left.Identity == nil) != (right.Identity == nil) || len(left.Arguments) != len(right.Arguments) {
+	if left.Kind != right.Kind || left.Primitive != right.Primitive || left.Name != right.Name || (left.Numeric == nil) != (right.Numeric == nil) || (left.Result == nil) != (right.Result == nil) || (left.Record == nil) != (right.Record == nil) || (left.Identity == nil) != (right.Identity == nil) || len(left.Arguments) != len(right.Arguments) {
 		return false
 	}
 	if left.Numeric != nil && *left.Numeric != *right.Numeric {
@@ -66,6 +67,17 @@ func TypeEqual(left, right Type) bool {
 	}
 	if left.Result != nil && (!TypeEqual(left.Result.Success, right.Result.Success) || !TypeEqual(left.Result.Failure, right.Result.Failure)) {
 		return false
+	}
+	if left.Record != nil {
+		if len(left.Record.Fields) != len(right.Record.Fields) {
+			return false
+		}
+		for index := range left.Record.Fields {
+			leftField, rightField := left.Record.Fields[index], right.Record.Fields[index]
+			if leftField.Name != rightField.Name || leftField.Identity.PackageID != rightField.Identity.PackageID || leftField.Identity.Path != rightField.Identity.Path || !TypeEqual(leftField.Type, rightField.Type) {
+				return false
+			}
+		}
 	}
 	if left.Identity != nil && (left.Identity.PackageID != right.Identity.PackageID || left.Identity.Path != right.Identity.Path) {
 		return false
@@ -125,6 +137,12 @@ func ValidateFunction(function Function) error {
 		if parameter.Position != position {
 			return fmt.Errorf("parameter %d is not in normalized position order", position)
 		}
+		if err := validateType(parameter.Type); err != nil {
+			return fmt.Errorf("parameter %d type: %w", position, err)
+		}
+	}
+	if err := validateType(function.ReturnType); err != nil {
+		return fmt.Errorf("return type: %w", err)
 	}
 	if err := validateExpr(function.Body, function.Parameters); err != nil {
 		return err
@@ -133,6 +151,52 @@ func ValidateFunction(function Function) error {
 		return fmt.Errorf("function return type does not match its body type")
 	}
 	return nil
+}
+
+func validateType(value Type) error {
+	if value.Kind != TypeRecord {
+		return nil
+	}
+	if value.Record == nil || value.Identity == nil || value.Identity.PackageID == "" || value.Identity.Path == "" || value.Identity.Callable != nil || value.Name == "" || len(value.Record.Fields) == 0 {
+		return fmt.Errorf("record type has an invalid identity or field schema")
+	}
+	if value.Primitive != "" || value.Numeric != nil || value.Result != nil || len(value.Arguments) != 0 {
+		return fmt.Errorf("record type carries a non-record representation")
+	}
+	seenNames := map[string]struct{}{}
+	seenIdentities := map[string]struct{}{}
+	for index, field := range value.Record.Fields {
+		if field.Name == "" || field.Identity.PackageID == "" || field.Identity.Path == "" || field.Identity.Callable != nil {
+			return fmt.Errorf("record field %d has an invalid identity", index)
+		}
+		if field.Identity.PackageID != value.Identity.PackageID || !strings.HasPrefix(field.Identity.Path, value.Identity.Path+".") {
+			return fmt.Errorf("record field %d identity is outside its record identity", index)
+		}
+		if _, duplicate := seenNames[field.Name]; duplicate {
+			return fmt.Errorf("record field %d repeats name %q", index, field.Name)
+		}
+		seenNames[field.Name] = struct{}{}
+		identity := field.Identity.PackageID + "\x00" + field.Identity.Path
+		if _, duplicate := seenIdentities[identity]; duplicate {
+			return fmt.Errorf("record field %d repeats semantic identity", index)
+		}
+		seenIdentities[identity] = struct{}{}
+		if !isPrimitiveRecordFieldType(field.Type) {
+			return fmt.Errorf("record field %d has non-primitive type %q", index, field.Type.Kind)
+		}
+	}
+	return nil
+}
+
+func isPrimitiveRecordFieldType(value Type) bool {
+	if value.Kind == TypePrimitive {
+		return value.Primitive == PrimitiveString || value.Primitive == PrimitiveBool
+	}
+	if value.Kind != TypeNumeric || value.Numeric == nil {
+		return false
+	}
+	return (value.Numeric.Representation == NumericInteger && value.Numeric.Bits == 64 && value.Numeric.Signed) ||
+		(value.Numeric.Representation == NumericBinaryFloat && value.Numeric.Bits == 64 && !value.Numeric.Signed)
 }
 
 func validateExpr(expression Expr, parameters []Parameter) error {

@@ -67,11 +67,98 @@ func (p *parser) parseProgram() (*Program, error) {
 				return nil, err
 			}
 			prog.Classes = append(prog.Classes, c)
+		case tokIdent:
+			if p.peek().lit != "Record" || !hasPrimitiveRecordSourceContract(p.languageContract) {
+				return nil, p.errf("expected Interface, Class, or Struct")
+			}
+			r, err := p.parseRecord(vis, anns, declStart)
+			if err != nil {
+				return nil, err
+			}
+			prog.Records = append(prog.Records, r)
 		default:
 			return nil, p.errf("expected Interface, Class, or Struct")
 		}
 	}
 	return prog, nil
+}
+
+func (p *parser) parseRecord(vis Visibility, anns []Annotation, start Span) (*RecordDecl, error) {
+	keyword, err := p.expect(tokIdent)
+	if err != nil {
+		return nil, err
+	}
+	if keyword.lit != "Record" {
+		return nil, oneDiagnostic(p.sources, CodeUnexpectedToken, CategorySyntax, keyword.span, fmt.Sprintf("expected Record, got %q", keyword.lit))
+	}
+	nameTok, err := p.expect(tokIdent)
+	if err != nil {
+		return nil, err
+	}
+	decl := &RecordDecl{Name: nameTok.lit, Visibility: normalizeVisibility(vis), Annotations: anns}
+	if p.peek().kind == tokColon {
+		p.next()
+		implTok, err := p.expect(tokIdent)
+		if err != nil {
+			return nil, err
+		}
+		implements := UnresolvedTypeRef{Kind: TypeRefNamed, Name: implTok.lit, Span: implTok.span}
+		decl.Implements = &implements
+	}
+	if _, err := p.expect(tokLBrace); err != nil {
+		return nil, err
+	}
+	for p.peek().kind != tokRBrace {
+		memberStart := p.peek().span
+		memberAnns, err := p.parseAnnotations()
+		if err != nil {
+			return nil, err
+		}
+		memberVis, err := p.parseOptionalVisibility()
+		if err != nil {
+			return nil, err
+		}
+		t, n, params, isMethod, err := p.parseTypedMemberHeader()
+		if err != nil {
+			return nil, err
+		}
+		if isMethod {
+			if _, err := p.expect(tokArrow); err != nil {
+				return nil, err
+			}
+			expr, err := p.parseExpr(1)
+			if err != nil {
+				return nil, err
+			}
+			end, err := p.expect(tokSemi)
+			if err != nil {
+				return nil, err
+			}
+			decl.Methods = append(decl.Methods, MethodDecl{Visibility: normalizeVisibility(memberVis), Annotations: memberAnns, ReturnType: t, Name: n, Params: params, Body: expr, Span: mergeSpans(memberStart, end.span)})
+			continue
+		}
+		field := FieldDecl{Visibility: normalizeVisibility(memberVis), Annotations: memberAnns, Type: t, Name: n}
+		if p.peek().kind == tokAssign {
+			p.next()
+			expr, err := p.parseExpr(1)
+			if err != nil {
+				return nil, err
+			}
+			field.Default = expr
+		}
+		end, err := p.expect(tokSemi)
+		if err != nil {
+			return nil, err
+		}
+		field.Span = mergeSpans(memberStart, end.span)
+		decl.Fields = append(decl.Fields, field)
+	}
+	end, err := p.expect(tokRBrace)
+	if err != nil {
+		return nil, err
+	}
+	decl.Span = mergeSpans(start, end.span)
+	return decl, nil
 }
 
 func (p *parser) parseAnnotations() ([]Annotation, error) {

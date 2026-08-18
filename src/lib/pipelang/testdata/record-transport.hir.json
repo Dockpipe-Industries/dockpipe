@@ -1,0 +1,310 @@
+{
+  "language_contract": "v0.9.0",
+  "compiler_contract": "pipelang.compiler.v1",
+  "functions": [
+    {
+      "identity": {
+        "package_id": "test.package",
+        "path": "app.root.root.forward",
+        "callable": {
+          "parameters": [
+            {
+              "kind": "named",
+              "package_id": "test.package",
+              "path": "app.root.row"
+            }
+          ],
+          "returns": {
+            "kind": "named",
+            "package_id": "test.package",
+            "path": "app.root.row"
+          }
+        }
+      },
+      "owner": {
+        "module": "app.root",
+        "symbol_id": 2,
+        "identity": {
+          "package_id": "test.package",
+          "path": "app.root.root"
+        },
+        "source_span": {
+          "file": "root.pipe",
+          "start": 113,
+          "end": 178
+        }
+      },
+      "name": "Forward",
+      "parameters": [
+        {
+          "binding": {
+            "kind": "parameter",
+            "function": {
+              "package_id": "test.package",
+              "path": "app.root.root.forward",
+              "callable": {
+                "parameters": [
+                  {
+                    "kind": "named",
+                    "package_id": "test.package",
+                    "path": "app.root.row"
+                  }
+                ],
+                "returns": {
+                  "kind": "named",
+                  "package_id": "test.package",
+                  "path": "app.root.row"
+                }
+              }
+            },
+            "position": 0,
+            "name": "value"
+          },
+          "type": {
+            "kind": "record",
+            "record": {
+              "fields": [
+                {
+                  "identity": {
+                    "package_id": "test.package",
+                    "path": "app.root.row.id"
+                  },
+                  "name": "Id",
+                  "type": {
+                    "kind": "primitive",
+                    "primitive": "string"
+                  }
+                },
+                {
+                  "identity": {
+                    "package_id": "test.package",
+                    "path": "app.root.row.count"
+                  },
+                  "name": "Count",
+                  "type": {
+                    "kind": "numeric",
+                    "numeric": {
+                      "representation": "integer",
+                      "bits": 64,
+                      "signed": true
+                    }
+                  }
+                },
+                {
+                  "identity": {
+                    "package_id": "test.package",
+                    "path": "app.root.row.ratio"
+                  },
+                  "name": "Ratio",
+                  "type": {
+                    "kind": "numeric",
+                    "numeric": {
+                      "representation": "binary_float",
+                      "bits": 64
+                    }
+                  }
+                },
+                {
+                  "identity": {
+                    "package_id": "test.package",
+                    "path": "app.root.row.ready"
+                  },
+                  "name": "Ready",
+                  "type": {
+                    "kind": "primitive",
+                    "primitive": "bool"
+                  }
+                }
+              ]
+            },
+            "symbol_id": 1,
+            "identity": {
+              "package_id": "test.package",
+              "path": "app.root.row"
+            },
+            "name": "Row"
+          },
+          "type_span": {
+            "file": "root.pipe",
+            "start": 156,
+            "end": 159
+          },
+          "span": {
+            "file": "root.pipe",
+            "start": 156,
+            "end": 165
+          }
+        }
+      ],
+      "return_type": {
+        "kind": "record",
+        "record": {
+          "fields": [
+            {
+              "identity": {
+                "package_id": "test.package",
+                "path": "app.root.row.id"
+              },
+              "name": "Id",
+              "type": {
+                "kind": "primitive",
+                "primitive": "string"
+              }
+            },
+            {
+              "identity": {
+                "package_id": "test.package",
+                "path": "app.root.row.count"
+              },
+              "name": "Count",
+              "type": {
+                "kind": "numeric",
+                "numeric": {
+                  "representation": "integer",
+                  "bits": 64,
+                  "signed": true
+                }
+              }
+            },
+            {
+              "identity": {
+                "package_id": "test.package",
+                "path": "app.root.row.ratio"
+              },
+              "name": "Ratio",
+              "type": {
+                "kind": "numeric",
+                "numeric": {
+                  "representation": "binary_float",
+                  "bits": 64
+                }
+              }
+            },
+            {
+              "identity": {
+                "package_id": "test.package",
+                "path": "app.root.row.ready"
+              },
+              "name": "Ready",
+              "type": {
+                "kind": "primitive",
+                "primitive": "bool"
+              }
+            }
+          ]
+        },
+        "symbol_id": 1,
+        "identity": {
+          "package_id": "test.package",
+          "path": "app.root.row"
+        },
+        "name": "Row"
+      },
+      "return_type_span": {
+        "file": "root.pipe",
+        "start": 144,
+        "end": 147
+      },
+      "body": {
+        "kind": "reference",
+        "type": {
+          "kind": "record",
+          "record": {
+            "fields": [
+              {
+                "identity": {
+                  "package_id": "test.package",
+                  "path": "app.root.row.id"
+                },
+                "name": "Id",
+                "type": {
+                  "kind": "primitive",
+                  "primitive": "string"
+                }
+              },
+              {
+                "identity": {
+                  "package_id": "test.package",
+                  "path": "app.root.row.count"
+                },
+                "name": "Count",
+                "type": {
+                  "kind": "numeric",
+                  "numeric": {
+                    "representation": "integer",
+                    "bits": 64,
+                    "signed": true
+                  }
+                }
+              },
+              {
+                "identity": {
+                  "package_id": "test.package",
+                  "path": "app.root.row.ratio"
+                },
+                "name": "Ratio",
+                "type": {
+                  "kind": "numeric",
+                  "numeric": {
+                    "representation": "binary_float",
+                    "bits": 64
+                  }
+                }
+              },
+              {
+                "identity": {
+                  "package_id": "test.package",
+                  "path": "app.root.row.ready"
+                },
+                "name": "Ready",
+                "type": {
+                  "kind": "primitive",
+                  "primitive": "bool"
+                }
+              }
+            ]
+          },
+          "symbol_id": 1,
+          "identity": {
+            "package_id": "test.package",
+            "path": "app.root.row"
+          },
+          "name": "Row"
+        },
+        "span": {
+          "file": "root.pipe",
+          "start": 170,
+          "end": 175
+        },
+        "reference": {
+          "kind": "parameter",
+          "function": {
+            "package_id": "test.package",
+            "path": "app.root.root.forward",
+            "callable": {
+              "parameters": [
+                {
+                  "kind": "named",
+                  "package_id": "test.package",
+                  "path": "app.root.row"
+                }
+              ],
+              "returns": {
+                "kind": "named",
+                "package_id": "test.package",
+                "path": "app.root.row"
+              }
+            }
+          },
+          "position": 0,
+          "name": "value"
+        }
+      },
+      "span": {
+        "file": "root.pipe",
+        "start": 137,
+        "end": 176
+      }
+    }
+  ]
+}

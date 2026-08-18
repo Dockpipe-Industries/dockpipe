@@ -11,6 +11,7 @@ const (
 	LanguageContractV060 = "v0.6.0"
 	LanguageContractV070 = "v0.7.0"
 	LanguageContractV080 = "v0.8.0"
+	LanguageContractV090 = "v0.9.0"
 	CompilerContractV1   = "pipelang.compiler.v1"
 )
 
@@ -30,6 +31,7 @@ const (
 	TypeNumeric         TypeKind = "numeric"
 	TypeResult          TypeKind = "result"
 	TypeArithmeticError TypeKind = "arithmetic_error"
+	TypeRecord          TypeKind = "record"
 	TypeNamed           TypeKind = "named"
 	TypeApplied         TypeKind = "applied"
 )
@@ -54,6 +56,16 @@ type NumericType struct {
 type ResultType struct {
 	Success Type `json:"success"`
 	Failure Type `json:"failure"`
+}
+
+type RecordField struct {
+	Identity SemanticIdentity `json:"identity"`
+	Name     string           `json:"name"`
+	Type     Type             `json:"type"`
+}
+
+type RecordType struct {
+	Fields []RecordField `json:"fields"`
 }
 
 type ArithmeticError string
@@ -88,6 +100,7 @@ type Type struct {
 	Primitive PrimitiveType     `json:"primitive,omitempty"`
 	Numeric   *NumericType      `json:"numeric,omitempty"`
 	Result    *ResultType       `json:"result,omitempty"`
+	Record    *RecordType       `json:"record,omitempty"`
 	Identity  *SemanticIdentity `json:"identity,omitempty"`
 	Name      string            `json:"name,omitempty"`
 	Arguments []Type            `json:"arguments,omitempty"`

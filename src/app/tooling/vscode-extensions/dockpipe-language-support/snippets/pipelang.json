@@ -28,5 +28,16 @@
       "}"
     ],
     "description": "Create a PipeLang struct."
+  },
+  "PipeLang Record": {
+    "prefix": "pipe-record",
+    "body": [
+      "public Record ${1:Row}",
+      "{",
+      "    public string ${2:Id};",
+      "    public int ${3:Count};",
+      "}"
+    ],
+    "description": "Create a v0.9.0 PipeLang primitive immutable record."
   }
 }
