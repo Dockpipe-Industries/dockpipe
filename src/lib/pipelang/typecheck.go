@@ -197,7 +197,7 @@ func (cp *checkedProgram) validateClass(decl *ClassDecl) error {
 		if err != nil {
 			return err
 		}
-		inferred, err := cp.inferMethodBodyType(method.Body, env, declared)
+		inferred, err := cp.inferMethodBodyType(method, env, declared)
 		if err != nil {
 			return prefixDiagnostic(err, fmt.Sprintf("class %s method %s: ", decl.Name, method.Name))
 		}
@@ -223,7 +223,7 @@ func (cp *checkedProgram) validateResultTransportSignature(method MethodDecl, re
 		return false, nil
 	}
 	contract := cp.modules.LanguageContract()
-	if contract != PipeLangLanguageContractV070 || len(resolvedParameters) != 1 || !isResolvedSourceArithmeticResult(contract, result) || !resolvedParameters[0].Equal(result) {
+	if !hasResultTransportSourceContract(contract) || len(resolvedParameters) != 1 || !isResolvedSourceArithmeticResult(contract, result) || !resolvedParameters[0].Equal(result) {
 		return false, oneDiagnostic(cp.sources, CodeInvalidType, CategorySemantic, method.Span, fmt.Sprintf("the %s arithmetic Result parameter is admitted only as one parameter identical to the method return type", contract))
 	}
 	return true, nil
@@ -368,12 +368,13 @@ func (cp *checkedProgram) inferExprType(expr Expr, env map[string]ResolvedTypeRe
 	return inferExprTypeWithPolicy(cp.sources, expr, env, strictNumeric)
 }
 
-func (cp *checkedProgram) inferMethodBodyType(expr Expr, env map[string]ResolvedTypeRef, declared ResolvedTypeRef) (ResolvedTypeRef, error) {
+func (cp *checkedProgram) inferMethodBodyType(method MethodDecl, env map[string]ResolvedTypeRef, declared ResolvedTypeRef) (ResolvedTypeRef, error) {
+	expr := method.Body
 	if cp == nil || cp.modules == nil || !hasArithmeticResultSourceContract(cp.modules.LanguageContract()) || !isResolvedSourceArithmeticResult(cp.modules.LanguageContract(), declared) {
-		return cp.inferExprType(expr, env)
+		return cp.inferNonResultMethodBodyType(method, env, declared)
 	}
 	contract := cp.modules.LanguageContract()
-	if contract == PipeLangLanguageContractV070 {
+	if hasResultTransportSourceContract(contract) {
 		hasTransportInput := false
 		for _, resolved := range env {
 			hasTransportInput = hasTransportInput || resolved.Equal(declared)
@@ -384,7 +385,7 @@ func (cp *checkedProgram) inferMethodBodyType(expr Expr, env map[string]Resolved
 					return declared, nil
 				}
 			}
-			return ResolvedTypeRef{}, oneDiagnostic(cp.sources, CodeExpressionType, CategorySemantic, expr.SourceSpan(), "v0.7.0 Result transport requires the sole Result parameter as the complete method body")
+			return ResolvedTypeRef{}, oneDiagnostic(cp.sources, CodeExpressionType, CategorySemantic, expr.SourceSpan(), fmt.Sprintf("%s Result transport requires the sole Result parameter as the complete method body", contract))
 		}
 	}
 	if isResolvedFloatArithmeticResult(declared) {
@@ -406,7 +407,7 @@ func (cp *checkedProgram) inferMethodBodyType(expr Expr, env map[string]Resolved
 		}
 		return resolvedArithmeticResult(binary64), nil
 	}
-	if unary, unaryOK := expr.(*UnaryExpr); unaryOK && (contract == PipeLangLanguageContractV050 || contract == PipeLangLanguageContractV060 || contract == PipeLangLanguageContractV070) && unary.Op == "-" {
+	if unary, unaryOK := expr.(*UnaryExpr); unaryOK && (contract == PipeLangLanguageContractV050 || contract == PipeLangLanguageContractV060 || contract == PipeLangLanguageContractV070 || contract == PipeLangLanguageContractV080) && unary.Op == "-" {
 		operand, err := inferExprTypeWithPolicy(cp.sources, unary.Expr, env, true)
 		if err != nil {
 			return ResolvedTypeRef{}, err
@@ -419,7 +420,7 @@ func (cp *checkedProgram) inferMethodBodyType(expr Expr, env map[string]Resolved
 	}
 	binary, ok := expr.(*BinaryExpr)
 	operatorAccepted := ok && binary.Op == "+"
-	if contract == PipeLangLanguageContractV040 || contract == PipeLangLanguageContractV050 || contract == PipeLangLanguageContractV060 || contract == PipeLangLanguageContractV070 {
+	if contract == PipeLangLanguageContractV040 || contract == PipeLangLanguageContractV050 || contract == PipeLangLanguageContractV060 || contract == PipeLangLanguageContractV070 || contract == PipeLangLanguageContractV080 {
 		operatorAccepted = ok && (binary.Op == "+" || binary.Op == "-" || binary.Op == "*")
 	} else if contract == PipeLangLanguageContractV030 {
 		operatorAccepted = ok && (binary.Op == "+" || binary.Op == "-")
@@ -443,8 +444,51 @@ func (cp *checkedProgram) inferMethodBodyType(expr Expr, env map[string]Resolved
 	return resolvedArithmeticResult(integer), nil
 }
 
+func (cp *checkedProgram) inferNonResultMethodBodyType(method MethodDecl, env map[string]ResolvedTypeRef, declared ResolvedTypeRef) (ResolvedTypeRef, error) {
+	binary, directBinary := method.Body.(*BinaryExpr)
+	if cp != nil && cp.modules != nil && hasOrdinalTextOrderingSourceContract(cp.modules.LanguageContract()) && directBinary && isOrdinalTextOrderingOperator(binary.Op) {
+		left, err := inferExprTypeWithPolicy(cp.sources, binary.Left, env, true)
+		if err != nil {
+			return ResolvedTypeRef{}, err
+		}
+		right, err := inferExprTypeWithPolicy(cp.sources, binary.Right, env, true)
+		if err != nil {
+			return ResolvedTypeRef{}, err
+		}
+		text := resolvedPrimitive(TypeString)
+		if left.Equal(text) || right.Equal(text) {
+			boolean := resolvedPrimitive(TypeBool)
+			valid := declared.Equal(boolean) && left.Equal(text) && right.Equal(text) && len(method.Params) == 2
+			leftIdentifier, leftOK := binary.Left.(*IdentExpr)
+			rightIdentifier, rightOK := binary.Right.(*IdentExpr)
+			valid = valid && leftOK && rightOK && leftIdentifier.Name == method.Params[0].Name && rightIdentifier.Name == method.Params[1].Name
+			for _, parameter := range method.Params {
+				resolved, resolveErr := cp.resolveType(parameter.Type)
+				if resolveErr != nil {
+					return ResolvedTypeRef{}, resolveErr
+				}
+				valid = valid && resolved.Equal(text)
+			}
+			if !valid {
+				return ResolvedTypeRef{}, oneDiagnostic(cp.sources, CodeExpressionType, CategorySemantic, method.Body.SourceSpan(), "v0.8.0 ordinal text ordering requires exactly two string parameters compared in declared order as the complete bool method body")
+			}
+			return boolean, nil
+		}
+	}
+	return cp.inferExprType(method.Body, env)
+}
+
+func isOrdinalTextOrderingOperator(operator string) bool {
+	switch operator {
+	case "<", "<=", ">", ">=":
+		return true
+	default:
+		return false
+	}
+}
+
 func arithmeticSourceOperators(contract LanguageContract) string {
-	if contract == PipeLangLanguageContractV050 || contract == PipeLangLanguageContractV060 || contract == PipeLangLanguageContractV070 {
+	if contract == PipeLangLanguageContractV050 || contract == PipeLangLanguageContractV060 || contract == PipeLangLanguageContractV070 || contract == PipeLangLanguageContractV080 {
 		return "addition, subtraction, multiplication, or negation"
 	}
 	if contract == PipeLangLanguageContractV040 {

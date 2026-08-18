@@ -78,6 +78,9 @@ func evalExpr(expression coreir.Expr, arguments []Value) (Outcome, error) {
 		if err != nil || !right.OK {
 			return right, err
 		}
+		if expression.Binary.Left.Type.Kind == coreir.TypePrimitive && expression.Binary.Left.Type.Primitive == coreir.PrimitiveString {
+			return evalTextBinary(expression, left.Value.String, right.Value.String)
+		}
 		switch expression.Binary.Operator {
 		case coreir.OperatorAdd, coreir.OperatorSubtract, coreir.OperatorMultiply:
 			value, arithmeticError := coreir.CheckedInt64(expression.Binary.Operator, left.Value.Int, right.Value.Int)
@@ -93,10 +96,48 @@ func evalExpr(expression coreir.Expr, arguments []Value) (Outcome, error) {
 	}
 }
 
+func evalTextBinary(expression coreir.Expr, left, right string) (Outcome, error) {
+	operator := expression.Binary.Operator
+	if operator == coreir.OperatorAdd {
+		if err := coreir.ValidateText(left); err != nil {
+			return Outcome{}, err
+		}
+		if err := coreir.ValidateText(right); err != nil {
+			return Outcome{}, err
+		}
+		return Outcome{OK: true, Value: Value{Type: expression.Type, String: left + right}}, nil
+	}
+	comparison, err := coreir.CompareOrdinalText(left, right)
+	if err != nil {
+		return Outcome{}, err
+	}
+	var value bool
+	switch operator {
+	case coreir.OperatorEqual:
+		value = comparison == 0
+	case coreir.OperatorNotEqual:
+		value = comparison != 0
+	case coreir.OperatorLessThan:
+		value = comparison < 0
+	case coreir.OperatorLessOrEqual:
+		value = comparison <= 0
+	case coreir.OperatorGreaterThan:
+		value = comparison > 0
+	case coreir.OperatorGreaterOrEqual:
+		value = comparison >= 0
+	default:
+		return Outcome{}, fmt.Errorf("unsupported text operator %q", operator)
+	}
+	return Outcome{OK: true, Value: Value{Type: expression.Type, Bool: value}}, nil
+}
+
 func validateValue(value Value) error {
 	if value.Type.Kind != coreir.TypeResult {
 		if value.Result != nil {
 			return fmt.Errorf("non-Result value carries a Result outcome")
+		}
+		if value.Type.Kind == coreir.TypePrimitive && value.Type.Primitive == coreir.PrimitiveString {
+			return coreir.ValidateText(value.String)
 		}
 		return nil
 	}

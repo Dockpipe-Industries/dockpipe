@@ -1,0 +1,229 @@
+{
+  "language_contract": "v0.8.0",
+  "compiler_contract": "pipelang.compiler.v1",
+  "functions": [
+    {
+      "identity": {
+        "package_id": "test.package",
+        "path": "app.root.root.before",
+        "callable": {
+          "parameters": [
+            {
+              "kind": "primitive",
+              "primitive": "string"
+            },
+            {
+              "kind": "primitive",
+              "primitive": "string"
+            }
+          ],
+          "returns": {
+            "kind": "primitive",
+            "primitive": "bool"
+          }
+        }
+      },
+      "owner": {
+        "module": "app.root",
+        "symbol_id": 1,
+        "identity": {
+          "package_id": "test.package",
+          "path": "app.root.root"
+        },
+        "source_span": {
+          "file": "root.pipe",
+          "start": 0,
+          "end": 84
+        }
+      },
+      "name": "Before",
+      "parameters": [
+        {
+          "binding": {
+            "kind": "parameter",
+            "function": {
+              "package_id": "test.package",
+              "path": "app.root.root.before",
+              "callable": {
+                "parameters": [
+                  {
+                    "kind": "primitive",
+                    "primitive": "string"
+                  },
+                  {
+                    "kind": "primitive",
+                    "primitive": "string"
+                  }
+                ],
+                "returns": {
+                  "kind": "primitive",
+                  "primitive": "bool"
+                }
+              }
+            },
+            "position": 0,
+            "name": "left"
+          },
+          "type": {
+            "kind": "primitive",
+            "primitive": "string"
+          },
+          "type_span": {
+            "file": "root.pipe",
+            "start": 39,
+            "end": 45
+          },
+          "span": {
+            "file": "root.pipe",
+            "start": 39,
+            "end": 50
+          }
+        },
+        {
+          "binding": {
+            "kind": "parameter",
+            "function": {
+              "package_id": "test.package",
+              "path": "app.root.root.before",
+              "callable": {
+                "parameters": [
+                  {
+                    "kind": "primitive",
+                    "primitive": "string"
+                  },
+                  {
+                    "kind": "primitive",
+                    "primitive": "string"
+                  }
+                ],
+                "returns": {
+                  "kind": "primitive",
+                  "primitive": "bool"
+                }
+              }
+            },
+            "position": 1,
+            "name": "right"
+          },
+          "type": {
+            "kind": "primitive",
+            "primitive": "string"
+          },
+          "type_span": {
+            "file": "root.pipe",
+            "start": 52,
+            "end": 58
+          },
+          "span": {
+            "file": "root.pipe",
+            "start": 52,
+            "end": 64
+          }
+        }
+      ],
+      "return_type": {
+        "kind": "primitive",
+        "primitive": "bool"
+      },
+      "return_type_span": {
+        "file": "root.pipe",
+        "start": 27,
+        "end": 31
+      },
+      "body": {
+        "kind": "binary",
+        "type": {
+          "kind": "primitive",
+          "primitive": "bool"
+        },
+        "span": {
+          "file": "root.pipe",
+          "start": 69,
+          "end": 81
+        },
+        "binary": {
+          "operator": "less_than",
+          "left": {
+            "kind": "reference",
+            "type": {
+              "kind": "primitive",
+              "primitive": "string"
+            },
+            "span": {
+              "file": "root.pipe",
+              "start": 69,
+              "end": 73
+            },
+            "reference": {
+              "kind": "parameter",
+              "function": {
+                "package_id": "test.package",
+                "path": "app.root.root.before",
+                "callable": {
+                  "parameters": [
+                    {
+                      "kind": "primitive",
+                      "primitive": "string"
+                    },
+                    {
+                      "kind": "primitive",
+                      "primitive": "string"
+                    }
+                  ],
+                  "returns": {
+                    "kind": "primitive",
+                    "primitive": "bool"
+                  }
+                }
+              },
+              "position": 0,
+              "name": "left"
+            }
+          },
+          "right": {
+            "kind": "reference",
+            "type": {
+              "kind": "primitive",
+              "primitive": "string"
+            },
+            "span": {
+              "file": "root.pipe",
+              "start": 76,
+              "end": 81
+            },
+            "reference": {
+              "kind": "parameter",
+              "function": {
+                "package_id": "test.package",
+                "path": "app.root.root.before",
+                "callable": {
+                  "parameters": [
+                    {
+                      "kind": "primitive",
+                      "primitive": "string"
+                    },
+                    {
+                      "kind": "primitive",
+                      "primitive": "string"
+                    }
+                  ],
+                  "returns": {
+                    "kind": "primitive",
+                    "primitive": "bool"
+                  }
+                }
+              },
+              "position": 1,
+              "name": "right"
+            }
+          }
+        }
+      },
+      "span": {
+        "file": "root.pipe",
+        "start": 20,
+        "end": 82
+      }
+    }
+  ]
+}
