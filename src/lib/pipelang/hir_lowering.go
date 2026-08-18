@@ -20,7 +20,7 @@ func LowerSemanticMethodToHIR(analysis *Analysis, identity SemanticIdentity) (hi
 		return hir.Program{}, hirLoweringError(analysis, Span{}, identity, "typed HIR lowering requires a successful semantic module analysis")
 	}
 	if !isPipeLangSemanticContract(analysis.Modules.LanguageContract()) {
-		return hir.Program{}, hirLoweringError(analysis, analysis.Program.Span, identity, fmt.Sprintf("typed HIR lowering requires language contract %q, %q, %q, %q, %q, %q, %q, %q, %q, or %q", PipeLangLanguageContractV010, PipeLangLanguageContractV020, PipeLangLanguageContractV030, PipeLangLanguageContractV040, PipeLangLanguageContractV050, PipeLangLanguageContractV060, PipeLangLanguageContractV070, PipeLangLanguageContractV080, PipeLangLanguageContractV090, PipeLangLanguageContractV100))
+		return hir.Program{}, hirLoweringError(analysis, analysis.Program.Span, identity, fmt.Sprintf("typed HIR lowering requires language contract %q, %q, %q, %q, %q, %q, %q, %q, %q, %q, or %q", PipeLangLanguageContractV010, PipeLangLanguageContractV020, PipeLangLanguageContractV030, PipeLangLanguageContractV040, PipeLangLanguageContractV050, PipeLangLanguageContractV060, PipeLangLanguageContractV070, PipeLangLanguageContractV080, PipeLangLanguageContractV090, PipeLangLanguageContractV100, PipeLangLanguageContractV110))
 	}
 	semantic, ok := analysis.SemanticIDs.LookupIdentity(identity)
 	if !ok || semantic.Kind != SemanticMethod {
@@ -84,6 +84,9 @@ func LowerSemanticMethodToHIR(analysis *Analysis, identity SemanticIdentity) (hi
 func lowerMethodBodyToHIR(analysis *Analysis, function SemanticIdentity, expression Expr, bindings map[string]hir.Binding, typeEnvironment map[string]ResolvedTypeRef, returnType ResolvedTypeRef) (hir.Expr, error) {
 	contract := analysis.Modules.LanguageContract()
 	if analysis.checked.isResolvedRecordType(returnType) {
+		if _, ok := expression.(*RecordConstructExpr); ok && hasPrimitiveRecordConstructionSourceContract(contract) {
+			return lowerExprToHIR(analysis, function, expression, bindings, typeEnvironment)
+		}
 		identifier, ok := expression.(*IdentExpr)
 		if !ok {
 			return hir.Expr{}, hirLoweringError(analysis, expression.SourceSpan(), function, fmt.Sprintf("%s primitive record transport body is not the direct parameter reference proven by semantic analysis", contract))
@@ -139,7 +142,7 @@ func lowerMethodBodyToHIR(analysis *Analysis, function SemanticIdentity, express
 			Binary: &hir.Binary{Operator: hir.OperatorDivide, Left: &left, Right: &right},
 		}, nil
 	}
-	if unary, ok := expression.(*UnaryExpr); ok && (contract == PipeLangLanguageContractV050 || contract == PipeLangLanguageContractV060 || contract == PipeLangLanguageContractV070 || contract == PipeLangLanguageContractV080 || contract == PipeLangLanguageContractV090 || contract == PipeLangLanguageContractV100) && unary.Op == "-" {
+	if unary, ok := expression.(*UnaryExpr); ok && (contract == PipeLangLanguageContractV050 || contract == PipeLangLanguageContractV060 || contract == PipeLangLanguageContractV070 || contract == PipeLangLanguageContractV080 || contract == PipeLangLanguageContractV090 || contract == PipeLangLanguageContractV100 || contract == PipeLangLanguageContractV110) && unary.Op == "-" {
 		operand, err := lowerExprToHIR(analysis, function, unary.Expr, bindings, typeEnvironment)
 		if err != nil {
 			return hir.Expr{}, err
@@ -176,9 +179,9 @@ func checkedArithmeticHIROperator(contract LanguageContract, binary *BinaryExpr)
 	case "+":
 		return hir.OperatorAdd, true
 	case "-":
-		return hir.OperatorSubtract, contract == PipeLangLanguageContractV030 || contract == PipeLangLanguageContractV040 || contract == PipeLangLanguageContractV050 || contract == PipeLangLanguageContractV060 || contract == PipeLangLanguageContractV070 || contract == PipeLangLanguageContractV080 || contract == PipeLangLanguageContractV090 || contract == PipeLangLanguageContractV100
+		return hir.OperatorSubtract, contract == PipeLangLanguageContractV030 || contract == PipeLangLanguageContractV040 || contract == PipeLangLanguageContractV050 || contract == PipeLangLanguageContractV060 || contract == PipeLangLanguageContractV070 || contract == PipeLangLanguageContractV080 || contract == PipeLangLanguageContractV090 || contract == PipeLangLanguageContractV100 || contract == PipeLangLanguageContractV110
 	case "*":
-		return hir.OperatorMultiply, contract == PipeLangLanguageContractV040 || contract == PipeLangLanguageContractV050 || contract == PipeLangLanguageContractV060 || contract == PipeLangLanguageContractV070 || contract == PipeLangLanguageContractV080 || contract == PipeLangLanguageContractV090 || contract == PipeLangLanguageContractV100
+		return hir.OperatorMultiply, contract == PipeLangLanguageContractV040 || contract == PipeLangLanguageContractV050 || contract == PipeLangLanguageContractV060 || contract == PipeLangLanguageContractV070 || contract == PipeLangLanguageContractV080 || contract == PipeLangLanguageContractV090 || contract == PipeLangLanguageContractV100 || contract == PipeLangLanguageContractV110
 	default:
 		return "", false
 	}
@@ -263,6 +266,37 @@ func lowerExprToHIR(analysis *Analysis, function SemanticIdentity, expression Ex
 		}
 		result.Kind = hir.ExprFieldProjection
 		result.Field = &hir.FieldProjection{Receiver: &receiver, Identity: toHIRSemanticIdentity(identity), Name: node.Name, Position: position}
+	case *RecordConstructExpr:
+		constructed, err := analysis.checked.resolveType(node.Type)
+		if err != nil {
+			return hir.Expr{}, err
+		}
+		entry, ok := analysis.Symbols.lookupIDEntry(constructed.Symbol)
+		if !ok || entry.recordDecl == nil {
+			return hir.Expr{}, hirLoweringError(analysis, node.Type.Span, function, "record construction has no resolved record declaration")
+		}
+		recordIdentity, ok := analysis.SemanticIDs.IdentityForSpan(entry.recordDecl.Span)
+		if !ok {
+			return hir.Expr{}, hirLoweringError(analysis, node.Type.Span, function, "record construction has no semantic record identity")
+		}
+		construction := &hir.RecordConstruct{Identity: toHIRSemanticIdentity(recordIdentity), Fields: make([]hir.RecordConstructField, 0, len(node.Fields))}
+		for position, initialized := range node.Fields {
+			if position >= len(entry.recordDecl.Fields) {
+				return hir.Expr{}, hirLoweringError(analysis, initialized.Span, function, "record construction has more fields than its declaration")
+			}
+			field := entry.recordDecl.Fields[position]
+			fieldIdentity, ok := analysis.SemanticIDs.IdentityForSpan(field.Span)
+			if !ok {
+				return hir.Expr{}, hirLoweringError(analysis, initialized.NameSpan, function, fmt.Sprintf("record field %q has no semantic identity", initialized.Name))
+			}
+			value, err := lowerExprToHIR(analysis, function, initialized.Value, bindings, typeEnvironment)
+			if err != nil {
+				return hir.Expr{}, err
+			}
+			construction.Fields = append(construction.Fields, hir.RecordConstructField{Identity: toHIRSemanticIdentity(fieldIdentity), Name: initialized.Name, Position: position, Value: &value})
+		}
+		result.Kind = hir.ExprRecordConstruct
+		result.Record = construction
 	default:
 		return hir.Expr{}, hirLoweringError(analysis, expression.SourceSpan(), function, "unsupported checked expression")
 	}
@@ -348,6 +382,23 @@ func hirExprToCore(expression hir.Expr, parameters []hir.Parameter) (coreir.Expr
 		}
 		result.Kind = coreir.ExprFieldProjection
 		result.Field = &coreir.FieldProjection{Receiver: &receiver, Identity: hirIdentityToCore(expression.Field.Identity), Name: expression.Field.Name, Position: expression.Field.Position}
+	case hir.ExprRecordConstruct:
+		if expression.Record == nil {
+			return coreir.Expr{}, coreLoweringError(expression.Span, "typed HIR record construction is incomplete")
+		}
+		construction := &coreir.RecordConstruct{Identity: hirIdentityToCore(expression.Record.Identity), Fields: make([]coreir.RecordConstructField, 0, len(expression.Record.Fields))}
+		for _, field := range expression.Record.Fields {
+			if field.Value == nil {
+				return coreir.Expr{}, coreLoweringError(expression.Span, "typed HIR record construction field has no value")
+			}
+			value, err := hirExprToCore(*field.Value, parameters)
+			if err != nil {
+				return coreir.Expr{}, err
+			}
+			construction.Fields = append(construction.Fields, coreir.RecordConstructField{Identity: hirIdentityToCore(field.Identity), Name: field.Name, Position: field.Position, Value: &value})
+		}
+		result.Kind = coreir.ExprRecordConstruct
+		result.Record = construction
 	default:
 		return coreir.Expr{}, coreLoweringError(expression.Span, fmt.Sprintf("unsupported typed HIR expression kind %q", expression.Kind))
 	}

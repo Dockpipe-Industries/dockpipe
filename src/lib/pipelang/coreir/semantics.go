@@ -144,6 +144,9 @@ func ValidateFunction(function Function) error {
 	if err := validateType(function.ReturnType); err != nil {
 		return fmt.Errorf("return type: %w", err)
 	}
+	if exprContainsRecordConstruction(function.Body) && function.Body.Kind != ExprRecordConstruct {
+		return fmt.Errorf("record construction must be the complete function body")
+	}
 	if err := validateExpr(function.Body, function.Parameters); err != nil {
 		return err
 	}
@@ -311,10 +314,65 @@ func validateExpr(expression Expr, parameters []Parameter) error {
 		if !TypeEqual(expression.Type, field.Type) {
 			return fmt.Errorf("field projection result type does not match the declared field type")
 		}
+	case ExprRecordConstruct:
+		if expression.Record == nil {
+			return fmt.Errorf("record construction is incomplete")
+		}
+		if expression.Type.Kind != TypeRecord || expression.Type.Record == nil || expression.Type.Identity == nil {
+			return fmt.Errorf("record construction result is not an identified record")
+		}
+		if err := validateType(expression.Type); err != nil {
+			return fmt.Errorf("record construction result type: %w", err)
+		}
+		if expression.Record.Identity.PackageID != expression.Type.Identity.PackageID || expression.Record.Identity.Path != expression.Type.Identity.Path || expression.Record.Identity.Callable != nil {
+			return fmt.Errorf("record construction identity does not match its result type")
+		}
+		if len(expression.Record.Fields) != len(expression.Type.Record.Fields) {
+			return fmt.Errorf("record construction field count does not match its schema")
+		}
+		if len(parameters) != len(expression.Record.Fields) {
+			return fmt.Errorf("record construction requires one corresponding parameter per field")
+		}
+		for position, initialized := range expression.Record.Fields {
+			if initialized.Value == nil {
+				return fmt.Errorf("record construction field %d has no value", position)
+			}
+			if initialized.Position != position {
+				return fmt.Errorf("record construction field %d is not in declaration order", position)
+			}
+			declared := expression.Type.Record.Fields[position]
+			if initialized.Name != declared.Name || initialized.Identity.PackageID != declared.Identity.PackageID || initialized.Identity.Path != declared.Identity.Path || initialized.Identity.Callable != nil {
+				return fmt.Errorf("record construction field %d does not match its declared identity", position)
+			}
+			if err := validateExpr(*initialized.Value, parameters); err != nil {
+				return fmt.Errorf("record construction field %d: %w", position, err)
+			}
+			if initialized.Value.Kind != ExprReference || initialized.Value.Parameter == nil || *initialized.Value.Parameter != position {
+				return fmt.Errorf("record construction field %d value is not its corresponding direct parameter", position)
+			}
+			if !TypeEqual(initialized.Value.Type, declared.Type) {
+				return fmt.Errorf("record construction field %d value type does not match its declaration", position)
+			}
+		}
 	default:
 		return fmt.Errorf("unsupported expression kind %q", expression.Kind)
 	}
 	return nil
+}
+
+func exprContainsRecordConstruction(expression Expr) bool {
+	switch expression.Kind {
+	case ExprRecordConstruct:
+		return true
+	case ExprUnary:
+		return expression.Unary != nil && expression.Unary.Operand != nil && exprContainsRecordConstruction(*expression.Unary.Operand)
+	case ExprBinary:
+		return expression.Binary != nil && expression.Binary.Left != nil && expression.Binary.Right != nil && (exprContainsRecordConstruction(*expression.Binary.Left) || exprContainsRecordConstruction(*expression.Binary.Right))
+	case ExprFieldProjection:
+		return expression.Field != nil && expression.Field.Receiver != nil && exprContainsRecordConstruction(*expression.Field.Receiver)
+	default:
+		return false
+	}
 }
 
 func isLiteralType(value Type) bool {

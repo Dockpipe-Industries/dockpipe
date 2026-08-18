@@ -34,7 +34,7 @@ func (e *Error) Error() string {
 
 // Generate accepts Core IR only and returns deterministic, gofmt-formatted Go.
 func Generate(program coreir.Program) ([]byte, error) {
-	if (program.LanguageContract != coreir.LanguageContractV010 && program.LanguageContract != coreir.LanguageContractV020 && program.LanguageContract != coreir.LanguageContractV030 && program.LanguageContract != coreir.LanguageContractV040 && program.LanguageContract != coreir.LanguageContractV050 && program.LanguageContract != coreir.LanguageContractV060 && program.LanguageContract != coreir.LanguageContractV070 && program.LanguageContract != coreir.LanguageContractV080 && program.LanguageContract != coreir.LanguageContractV090 && program.LanguageContract != coreir.LanguageContractV100) || program.CompilerContract != coreir.CompilerContractV1 {
+	if (program.LanguageContract != coreir.LanguageContractV010 && program.LanguageContract != coreir.LanguageContractV020 && program.LanguageContract != coreir.LanguageContractV030 && program.LanguageContract != coreir.LanguageContractV040 && program.LanguageContract != coreir.LanguageContractV050 && program.LanguageContract != coreir.LanguageContractV060 && program.LanguageContract != coreir.LanguageContractV070 && program.LanguageContract != coreir.LanguageContractV080 && program.LanguageContract != coreir.LanguageContractV090 && program.LanguageContract != coreir.LanguageContractV100 && program.LanguageContract != coreir.LanguageContractV110) || program.CompilerContract != coreir.CompilerContractV1 {
 		return nil, &Error{Code: "PLGO0001", Message: fmt.Sprintf("unsupported Core IR contracts language=%q compiler=%q", program.LanguageContract, program.CompilerContract)}
 	}
 	functions := append([]coreir.Function(nil), program.Functions...)
@@ -65,7 +65,7 @@ func Generate(program coreir.Program) ([]byte, error) {
 		return nil, &Error{Code: "PLGO0001", Message: err.Error()}
 	}
 	for _, record := range records {
-		emitRecordType(&out, record)
+		emitRecordType(&out, record, programConstructsRecord(functions, record))
 	}
 	seen := map[string]string{}
 	seenIdentities := map[string]struct{}{}
@@ -230,6 +230,22 @@ func emitExpr(expr coreir.Expr, parameters []coreir.Parameter) (string, error) {
 			return "", err
 		}
 		return receiver + "." + recordGoFieldNames(receiverType)[expr.Field.Position], nil
+	case coreir.ExprRecordConstruct:
+		if expr.Record == nil || expr.Type.Kind != coreir.TypeRecord || expr.Type.Record == nil || len(expr.Record.Fields) != len(expr.Type.Record.Fields) {
+			return "", fmt.Errorf("record construction is incomplete or does not match its schema")
+		}
+		arguments := make([]string, 0, len(expr.Record.Fields))
+		for position, initialized := range expr.Record.Fields {
+			if initialized.Value == nil || initialized.Position != position {
+				return "", fmt.Errorf("record construction field %d is incomplete or out of order", position)
+			}
+			value, err := emitExpr(*initialized.Value, parameters)
+			if err != nil {
+				return "", err
+			}
+			arguments = append(arguments, value)
+		}
+		return recordConstructionName(expr.Type) + "(" + strings.Join(arguments, ", ") + ")", nil
 	default:
 		return "", fmt.Errorf("unsupported expression kind %q", expr.Kind)
 	}
@@ -432,7 +448,7 @@ func collectRecordTypes(functions []coreir.Function) ([]coreir.Type, error) {
 	return records, nil
 }
 
-func emitRecordType(out *strings.Builder, record coreir.Type) {
+func emitRecordType(out *strings.Builder, record coreir.Type, emitConstructor bool) {
 	typeName := recordGoTypeName(record)
 	fieldNames := recordGoFieldNames(record)
 	fmt.Fprintf(out, "type %s struct {\n", typeName)
@@ -448,6 +464,58 @@ func emitRecordType(out *strings.Builder, record coreir.Type) {
 		}
 	}
 	out.WriteString("}\n\n")
+	if !emitConstructor {
+		return
+	}
+	fmt.Fprintf(out, "func %s(", recordConstructionName(record))
+	for index, field := range record.Record.Fields {
+		if index > 0 {
+			out.WriteString(", ")
+		}
+		fieldType, _ := goType(field.Type)
+		fmt.Fprintf(out, "field%d %s", index, fieldType)
+	}
+	fmt.Fprintf(out, ") %s {\n", typeName)
+	fmt.Fprintf(out, "\tvalue := %s{\n", typeName)
+	for index, fieldName := range fieldNames {
+		fmt.Fprintf(out, "\t\t%s: field%d,\n", fieldName, index)
+	}
+	out.WriteString("\t}\n")
+	fmt.Fprintf(out, "\t%s(value)\n", recordValidationName(record))
+	out.WriteString("\treturn value\n")
+	out.WriteString("}\n\n")
+}
+
+func programConstructsRecord(functions []coreir.Function, record coreir.Type) bool {
+	for _, function := range functions {
+		if expressionConstructsRecord(function.Body, record) {
+			return true
+		}
+	}
+	return false
+}
+
+func expressionConstructsRecord(expression coreir.Expr, record coreir.Type) bool {
+	switch expression.Kind {
+	case coreir.ExprRecordConstruct:
+		if coreir.TypeEqual(expression.Type, record) {
+			return true
+		}
+		if expression.Record != nil {
+			for _, field := range expression.Record.Fields {
+				if field.Value != nil && expressionConstructsRecord(*field.Value, record) {
+					return true
+				}
+			}
+		}
+	case coreir.ExprUnary:
+		return expression.Unary != nil && expression.Unary.Operand != nil && expressionConstructsRecord(*expression.Unary.Operand, record)
+	case coreir.ExprBinary:
+		return expression.Binary != nil && expression.Binary.Left != nil && expression.Binary.Right != nil && (expressionConstructsRecord(*expression.Binary.Left, record) || expressionConstructsRecord(*expression.Binary.Right, record))
+	case coreir.ExprFieldProjection:
+		return expression.Field != nil && expression.Field.Receiver != nil && expressionConstructsRecord(*expression.Field.Receiver, record)
+	}
+	return false
 }
 
 func recordGoTypeName(record coreir.Type) string {
@@ -459,6 +527,10 @@ func recordGoTypeName(record coreir.Type) string {
 
 func recordValidationName(record coreir.Type) string {
 	return "pipelangValidate" + strings.TrimPrefix(recordGoTypeName(record), "PipeLang")
+}
+
+func recordConstructionName(record coreir.Type) string {
+	return "pipelangNew" + strings.TrimPrefix(recordGoTypeName(record), "PipeLang")
 }
 
 func recordGoFieldNames(record coreir.Type) []string {
@@ -493,6 +565,16 @@ func expressionNeedsTextSupport(expression coreir.Expr) bool {
 		return expressionNeedsTextSupport(*expression.Binary.Left) || expressionNeedsTextSupport(*expression.Binary.Right)
 	case coreir.ExprFieldProjection:
 		return expression.Field != nil && expression.Field.Receiver != nil && expressionNeedsTextSupport(*expression.Field.Receiver)
+	case coreir.ExprRecordConstruct:
+		if expression.Record == nil {
+			return false
+		}
+		for _, field := range expression.Record.Fields {
+			if field.Value != nil && expressionNeedsTextSupport(*field.Value) {
+				return true
+			}
+		}
+		return false
 	default:
 		return false
 	}

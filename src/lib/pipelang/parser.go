@@ -531,6 +531,9 @@ func (p *parser) parsePrimary() (Expr, error) {
 		p.next()
 		return &LiteralExpr{Value: Value{Type: TypeBool, Bool: t.lit == "true"}, Span: t.span}, nil
 	case tokIdent:
+		if t.lit == "new" && hasPrimitiveRecordConstructionSourceContract(p.languageContract) {
+			return p.parseRecordConstruction()
+		}
 		p.next()
 		return &IdentExpr{Name: t.lit, Span: t.span}, nil
 	case tokLParen:
@@ -548,6 +551,51 @@ func (p *parser) parsePrimary() (Expr, error) {
 	default:
 		return nil, p.errf("unexpected token %q in expression", t.lit)
 	}
+}
+
+func (p *parser) parseRecordConstruction() (Expr, error) {
+	start, err := p.expect(tokIdent)
+	if err != nil {
+		return nil, err
+	}
+	if start.lit != "new" {
+		return nil, oneDiagnostic(p.sources, CodeUnexpectedToken, CategorySyntax, start.span, fmt.Sprintf("expected new, got %q", start.lit))
+	}
+	typeName, err := p.expect(tokIdent)
+	if err != nil {
+		return nil, err
+	}
+	typeRef := UnresolvedTypeRef{Kind: TypeRefNamed, Name: typeName.lit, Span: typeName.span}
+	if _, err := p.expect(tokLBrace); err != nil {
+		return nil, err
+	}
+	fields := []RecordConstructField{}
+	for p.peek().kind != tokRBrace {
+		name, err := p.expect(tokIdent)
+		if err != nil {
+			return nil, err
+		}
+		if _, err := p.expect(tokAssign); err != nil {
+			return nil, err
+		}
+		value, err := p.parseExpr(1)
+		if err != nil {
+			return nil, err
+		}
+		fields = append(fields, RecordConstructField{Name: name.lit, NameSpan: name.span, Value: value, Span: mergeSpans(name.span, value.SourceSpan())})
+		if p.peek().kind != tokComma {
+			break
+		}
+		p.next()
+		if p.peek().kind == tokRBrace {
+			return nil, oneDiagnostic(p.sources, CodeExpectedToken, CategorySyntax, p.peek().span, "expected record field after comma")
+		}
+	}
+	end, err := p.expect(tokRBrace)
+	if err != nil {
+		return nil, err
+	}
+	return &RecordConstructExpr{Type: typeRef, Fields: fields, Span: mergeSpans(start.span, end.span)}, nil
 }
 
 func binaryPrecedence(k tokenKind) int {

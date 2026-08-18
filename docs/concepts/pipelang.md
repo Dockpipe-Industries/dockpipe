@@ -396,6 +396,36 @@ returns, nested or chained access, construction, mutation, equality, hashing, or
 record nesting, Result integration, optionals, unions, collections, calls, indexing, and general
 member access remain outside the production source contract.
 
+The explicit `v0.11.0` contract preserves every `v0.10.0` rule and adds exact construction of one
+existing public primitive record. The admitted form is one expression-bodied class method returning
+the record, with exactly one primitive parameter per field in declaration order and with the exact
+field types. Its initializer assigns every field exactly once, in declaration order, from the
+corresponding direct parameter:
+
+```pipelang
+public Record Row {
+    public string Id;
+    public bool Healthy;
+}
+public Class Rows {
+    public Row Create(string id, bool healthy) =>
+        new Row { Id = id, Healthy = healthy };
+}
+```
+
+Construction reuses the record and field semantic identities and the enclosing method's callable
+identity; it adds no constructor identity and does not change `pipelang.semantic.v1`. Typed HIR and
+target-neutral Core use `record_construct` with the record identity and each field's identity, name,
+declared position, and direct parameter value. Core evaluation and generated Go both validate the
+complete immutable record, including strict UTF-8 string fields, and retain declared field order.
+
+`v0.1.0` through `v0.10.0` reject this expression without implicit migration. Unknown fields use
+`PL3004`, duplicates use `PL3005`, and missing, extra, reordered, mismatched, or invalid signatures
+use `PL3006`; non-direct bodies or values use `PL3009`. Malformed HIR and Core remain `PL3026` and
+`PL3027`. Defaults, omitted or computed values, nesting, construction inside another expression,
+mutation, general member access, equality, hashing, ordering, matching, Result integration,
+optionals, unions, and collections remain outside the production source contract.
+
 ## Artifacts
 
 Compile emits:

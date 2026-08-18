@@ -312,10 +312,28 @@ func (cp *checkedProgram) validateRecordTransportSignature(method MethodDecl, re
 	contract := cp.modules.LanguageContract()
 	identityTransport := len(resolvedParameters) == 1 && cp.isResolvedRecordType(result) && resolvedParameters[0].Equal(result)
 	fieldProjection := hasRecordFieldProjectionSourceContract(contract) && len(resolvedParameters) == 1 && cp.isResolvedRecordType(resolvedParameters[0]) && result.Kind == TypeRefPrimitive
-	if !hasPrimitiveRecordSourceContract(contract) || (!identityTransport && !fieldProjection) {
-		return false, oneDiagnostic(cp.sources, CodeInvalidType, CategorySemantic, method.Span, fmt.Sprintf("the %s primitive record is admitted only as one exact identity transport or one-hop primitive field projection", contract))
+	recordConstruction := hasPrimitiveRecordConstructionSourceContract(contract) && cp.recordConstructionSignatureMatches(result, resolvedParameters)
+	if !hasPrimitiveRecordSourceContract(contract) || (!identityTransport && !fieldProjection && !recordConstruction) {
+		return false, oneDiagnostic(cp.sources, CodeInvalidType, CategorySemantic, method.Span, fmt.Sprintf("the %s primitive record is admitted only as one exact identity transport, one-hop primitive field projection, or direct declaration-ordered construction", contract))
 	}
 	return true, nil
+}
+
+func (cp *checkedProgram) recordConstructionSignatureMatches(result ResolvedTypeRef, parameters []ResolvedTypeRef) bool {
+	if !cp.isResolvedRecordType(result) {
+		return false
+	}
+	entry, ok := cp.symbols.lookupIDEntry(result.Symbol)
+	if !ok || entry.recordDecl == nil || len(parameters) != len(entry.recordDecl.Fields) {
+		return false
+	}
+	for index, field := range entry.recordDecl.Fields {
+		fieldType, err := cp.resolveType(field.Type)
+		if err != nil || !parameters[index].Equal(fieldType) {
+			return false
+		}
+	}
+	return true
 }
 
 func (cp *checkedProgram) validateResultTransportSignature(method MethodDecl, result ResolvedTypeRef) (bool, error) {
@@ -477,6 +495,19 @@ func inferExprType(sources *SourceSet, expr Expr, env map[string]ResolvedTypeRef
 }
 
 func (cp *checkedProgram) inferExprType(expr Expr, env map[string]ResolvedTypeRef) (ResolvedTypeRef, error) {
+	if construction, ok := expr.(*RecordConstructExpr); ok {
+		if cp == nil || cp.modules == nil || !hasPrimitiveRecordConstructionSourceContract(cp.modules.LanguageContract()) {
+			return ResolvedTypeRef{}, oneDiagnostic(cp.sources, CodeExpressionType, CategorySemantic, construction.Span, "primitive record construction requires language contract v0.11.0")
+		}
+		resolved, err := cp.resolveType(construction.Type)
+		if err != nil {
+			return ResolvedTypeRef{}, err
+		}
+		if !cp.isResolvedRecordType(resolved) {
+			return ResolvedTypeRef{}, oneDiagnostic(cp.sources, CodeInvalidType, CategorySemantic, construction.Type.Span, fmt.Sprintf("record construction requires an existing public primitive record, got %s", resolved))
+		}
+		return resolved, nil
+	}
 	if field, ok := expr.(*FieldExpr); ok {
 		if cp == nil || cp.modules == nil || !hasRecordFieldProjectionSourceContract(cp.modules.LanguageContract()) {
 			return ResolvedTypeRef{}, oneDiagnostic(cp.sources, CodeInvalidMember, CategorySemantic, field.NameSpan, "record field projection requires language contract v0.10.0")
@@ -552,7 +583,7 @@ func (cp *checkedProgram) inferMethodBodyType(method MethodDecl, env map[string]
 		}
 		return resolvedArithmeticResult(binary64), nil
 	}
-	if unary, unaryOK := expr.(*UnaryExpr); unaryOK && (contract == PipeLangLanguageContractV050 || contract == PipeLangLanguageContractV060 || contract == PipeLangLanguageContractV070 || contract == PipeLangLanguageContractV080 || contract == PipeLangLanguageContractV090 || contract == PipeLangLanguageContractV100) && unary.Op == "-" {
+	if unary, unaryOK := expr.(*UnaryExpr); unaryOK && (contract == PipeLangLanguageContractV050 || contract == PipeLangLanguageContractV060 || contract == PipeLangLanguageContractV070 || contract == PipeLangLanguageContractV080 || contract == PipeLangLanguageContractV090 || contract == PipeLangLanguageContractV100 || contract == PipeLangLanguageContractV110) && unary.Op == "-" {
 		operand, err := inferExprTypeWithPolicy(cp.sources, unary.Expr, env, true)
 		if err != nil {
 			return ResolvedTypeRef{}, err
@@ -565,7 +596,7 @@ func (cp *checkedProgram) inferMethodBodyType(method MethodDecl, env map[string]
 	}
 	binary, ok := expr.(*BinaryExpr)
 	operatorAccepted := ok && binary.Op == "+"
-	if contract == PipeLangLanguageContractV040 || contract == PipeLangLanguageContractV050 || contract == PipeLangLanguageContractV060 || contract == PipeLangLanguageContractV070 || contract == PipeLangLanguageContractV080 || contract == PipeLangLanguageContractV090 || contract == PipeLangLanguageContractV100 {
+	if contract == PipeLangLanguageContractV040 || contract == PipeLangLanguageContractV050 || contract == PipeLangLanguageContractV060 || contract == PipeLangLanguageContractV070 || contract == PipeLangLanguageContractV080 || contract == PipeLangLanguageContractV090 || contract == PipeLangLanguageContractV100 || contract == PipeLangLanguageContractV110 {
 		operatorAccepted = ok && (binary.Op == "+" || binary.Op == "-" || binary.Op == "*")
 	} else if contract == PipeLangLanguageContractV030 {
 		operatorAccepted = ok && (binary.Op == "+" || binary.Op == "-")
@@ -591,6 +622,9 @@ func (cp *checkedProgram) inferMethodBodyType(method MethodDecl, env map[string]
 
 func (cp *checkedProgram) inferNonResultMethodBodyType(method MethodDecl, env map[string]ResolvedTypeRef, declared ResolvedTypeRef) (ResolvedTypeRef, error) {
 	if cp.isResolvedRecordType(declared) {
+		if construction, ok := method.Body.(*RecordConstructExpr); ok && cp.modules != nil && hasPrimitiveRecordConstructionSourceContract(cp.modules.LanguageContract()) {
+			return cp.validateRecordConstruction(method, construction, env, declared)
+		}
 		if len(method.Params) == 1 {
 			if identifier, ok := method.Body.(*IdentExpr); ok && identifier.Name == method.Params[0].Name {
 				resolved, err := cp.resolveType(method.Params[0].Type)
@@ -603,6 +637,9 @@ func (cp *checkedProgram) inferNonResultMethodBodyType(method MethodDecl, env ma
 			}
 		}
 		return ResolvedTypeRef{}, oneDiagnostic(cp.sources, CodeExpressionType, CategorySemantic, method.Body.SourceSpan(), fmt.Sprintf("%s primitive record transport requires its sole record parameter as the complete method body", cp.modules.LanguageContract()))
+	}
+	if containsRecordConstruction(method.Body) {
+		return ResolvedTypeRef{}, oneDiagnostic(cp.sources, CodeExpressionType, CategorySemantic, method.Body.SourceSpan(), fmt.Sprintf("%s primitive record construction must be the complete body of a method returning that record", cp.modules.LanguageContract()))
 	}
 	if cp.modules != nil && hasRecordFieldProjectionSourceContract(cp.modules.LanguageContract()) {
 		hasRecordParameter := false
@@ -662,6 +699,73 @@ func (cp *checkedProgram) inferNonResultMethodBodyType(method MethodDecl, env ma
 	return cp.inferExprType(method.Body, env)
 }
 
+func (cp *checkedProgram) validateRecordConstruction(method MethodDecl, construction *RecordConstructExpr, env map[string]ResolvedTypeRef, declared ResolvedTypeRef) (ResolvedTypeRef, error) {
+	constructed, err := cp.resolveType(construction.Type)
+	if err != nil {
+		return ResolvedTypeRef{}, err
+	}
+	if !constructed.Equal(declared) {
+		return ResolvedTypeRef{}, oneDiagnostic(cp.sources, CodeInvalidType, CategorySemantic, construction.Type.Span, fmt.Sprintf("record construction type %s does not match declared return type %s", constructed, declared), RelatedSpan{Span: method.ReturnType.Span, Message: "declared return type"})
+	}
+	entry, ok := cp.symbols.lookupIDEntry(declared.Symbol)
+	if !ok || entry.recordDecl == nil {
+		return ResolvedTypeRef{}, oneDiagnostic(cp.sources, CodeInvalidType, CategorySemantic, construction.Type.Span, "record construction has no resolved record declaration")
+	}
+	declaredFields := entry.recordDecl.Fields
+	if len(construction.Fields) != len(declaredFields) {
+		return ResolvedTypeRef{}, oneDiagnostic(cp.sources, CodeInvalidType, CategorySemantic, construction.Span, fmt.Sprintf("record construction requires exactly %d declaration-ordered fields, got %d", len(declaredFields), len(construction.Fields)), RelatedSpan{Span: entry.recordDecl.Span, Message: "record declaration"})
+	}
+	seen := map[string]Span{}
+	for index, initialized := range construction.Fields {
+		if previous, duplicate := seen[initialized.Name]; duplicate {
+			return ResolvedTypeRef{}, oneDiagnostic(cp.sources, CodeDuplicateMember, CategorySemantic, initialized.NameSpan, fmt.Sprintf("record construction repeats field %q", initialized.Name), RelatedSpan{Span: previous, Message: "first field initializer"})
+		}
+		seen[initialized.Name] = initialized.NameSpan
+		declaredField := declaredFields[index]
+		if initialized.Name != declaredField.Name {
+			known := false
+			for _, candidate := range declaredFields {
+				known = known || candidate.Name == initialized.Name
+			}
+			if !known {
+				return ResolvedTypeRef{}, oneDiagnostic(cp.sources, CodeInvalidMember, CategorySemantic, initialized.NameSpan, fmt.Sprintf("record type %s has no field %q", declared, initialized.Name), RelatedSpan{Span: entry.recordDecl.Span, Message: "record declaration"})
+			}
+			return ResolvedTypeRef{}, oneDiagnostic(cp.sources, CodeInvalidType, CategorySemantic, initialized.NameSpan, fmt.Sprintf("record construction field %q is out of declaration order; expected %q", initialized.Name, declaredField.Name), RelatedSpan{Span: declaredField.Span, Message: "declared field position"})
+		}
+		identifier, direct := initialized.Value.(*IdentExpr)
+		if index >= len(method.Params) {
+			return ResolvedTypeRef{}, oneDiagnostic(cp.sources, CodeInvalidType, CategorySemantic, initialized.Value.SourceSpan(), fmt.Sprintf("record field %s has no corresponding parameter", initialized.Name), RelatedSpan{Span: method.Span, Message: "record construction method"})
+		}
+		if !direct || identifier.Name != method.Params[index].Name {
+			return ResolvedTypeRef{}, oneDiagnostic(cp.sources, CodeExpressionType, CategorySemantic, initialized.Value.SourceSpan(), fmt.Sprintf("record field %s requires its corresponding direct parameter %s", initialized.Name, method.Params[index].Name), RelatedSpan{Span: method.Params[index].Span, Message: "corresponding parameter"})
+		}
+		fieldType, err := cp.resolveType(declaredField.Type)
+		if err != nil {
+			return ResolvedTypeRef{}, err
+		}
+		parameterType, found := env[identifier.Name]
+		if !found || !parameterType.Equal(fieldType) {
+			return ResolvedTypeRef{}, oneDiagnostic(cp.sources, CodeInvalidType, CategorySemantic, identifier.Span, fmt.Sprintf("record field %s requires %s, got %s", initialized.Name, fieldType, parameterType), RelatedSpan{Span: declaredField.Type.Span, Message: "declared field type"})
+		}
+	}
+	return declared, nil
+}
+
+func containsRecordConstruction(expression Expr) bool {
+	switch node := expression.(type) {
+	case *RecordConstructExpr:
+		return true
+	case *UnaryExpr:
+		return containsRecordConstruction(node.Expr)
+	case *BinaryExpr:
+		return containsRecordConstruction(node.Left) || containsRecordConstruction(node.Right)
+	case *FieldExpr:
+		return containsRecordConstruction(node.Receiver)
+	default:
+		return false
+	}
+}
+
 func isOrdinalTextOrderingOperator(operator string) bool {
 	switch operator {
 	case "<", "<=", ">", ">=":
@@ -672,7 +776,7 @@ func isOrdinalTextOrderingOperator(operator string) bool {
 }
 
 func arithmeticSourceOperators(contract LanguageContract) string {
-	if contract == PipeLangLanguageContractV050 || contract == PipeLangLanguageContractV060 || contract == PipeLangLanguageContractV070 || contract == PipeLangLanguageContractV080 || contract == PipeLangLanguageContractV090 || contract == PipeLangLanguageContractV100 {
+	if contract == PipeLangLanguageContractV050 || contract == PipeLangLanguageContractV060 || contract == PipeLangLanguageContractV070 || contract == PipeLangLanguageContractV080 || contract == PipeLangLanguageContractV090 || contract == PipeLangLanguageContractV100 || contract == PipeLangLanguageContractV110 {
 		return "addition, subtraction, multiplication, or negation"
 	}
 	if contract == PipeLangLanguageContractV040 {
