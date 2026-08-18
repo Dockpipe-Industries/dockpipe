@@ -1,0 +1,6 @@
+public Record Row {
+    public string Id;
+}
+public Class Root {
+    public string IdOf(Row value) => value.Id;
+}

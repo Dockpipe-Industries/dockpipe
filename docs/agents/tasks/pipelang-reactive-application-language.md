@@ -6,7 +6,7 @@ The `vNext` foundation decision packet in this record is **accepted** as of 2026
 fixes semantics, compiler boundaries, bootstrap stages, compatibility, and implementation order;
 examples and fixtures remain non-normative and accept no production syntax. Separately authorized
 bounded objectives have completed implementation-order steps 1 through 6 and step-7 slices 7a
-through 7j. This record does not by itself authorize another step-7 or later language slice.
+through 7k. This record does not by itself authorize another step-7 or later language slice.
 
 ## Goal
 
@@ -1538,12 +1538,73 @@ synchronized typed HIR, Core, and Go goldens. No constructor/member-access/opera
 surface, dependency, generated store, runtime, credential, external state, cleanup, commit, or
 publication changed.
 
+### Completed step 7k one-hop primitive-record field projection contract (2026-08-18)
+
+The founder selected explicit `v0.10.0` one-hop read-only record field projection. It preserves
+every earlier arithmetic Result, ordinal text, and primitive immutable record identity-transport
+contract. The only new source form is one class method with exactly one existing primitive record
+parameter, the selected field's exact primitive return type, and direct `parameter.Field` as the
+complete body:
+
+```pipelang
+public Record Row {
+    public string Id;
+}
+public Class Root {
+    public string IdOf(Row value) => value.Id;
+}
+```
+
+The selected field reuses its `v0.9.0` semantic identity and declared record position; no new type
+identity or `pipelang.semantic.v1` schema was added. Typed HIR and target-neutral Core carry the
+receiver's identified record schema, field identity/name/position, and exact primitive result type.
+Core rejects schema, identity, position, name, or result-type drift before evaluation. `coreeval`
+validates the complete record and returns the declared field value. The Core-only Go backend
+validates every record parameter, then emits deterministic direct named-field access. Existing
+strict UTF-8 validation therefore applies before projecting a `string` field in both executable
+paths.
+
+`PL3004` reports unknown, inaccessible, chained, or non-record member selection; `PL3006` retains
+invalid record placement and signature rejection; `PL3009` reports a wrong return, extra expression,
+or non-direct body. Malformed typed HIR and Core remain `PL3026` and `PL3027` at their compiler
+boundaries. `v0.1.0` through `v0.9.0` reject member access without implicit migration. Construction,
+mutation, chaining, calls, indexing, record equality/hash/order, optionals, Result expansion,
+unions, deterministic collections, Step-8 control flow, effects, and application behavior remain
+excluded.
+
+The minimal pure source fixture is
+`src/lib/pipelang/testdata/record-field-projection.pipe`, with synchronized typed HIR, Core, and Go
+goldens. The focused proof covers all four primitive field types, semantic identity reuse, exact
+projection shape, Core/evaluator/backend agreement, deterministic generation, malformed IR,
+invalid UTF-8, excluded forms, explicit migration, and preservation of every frozen earlier
+language slice.
+
+Terminal proof passed with cached Go 1.25.13, offline module lookup, and writable `/tmp` caches:
+
+- exact PipeLang and 45-source compatibility tests, including the source-derived HIR/Core/Go
+  projection goldens, Core/generated-Go agreement, malformed HIR/Core rejection, explicit migration,
+  excluded forms, and all frozen arithmetic Result/text/record behavior under `v0.10.0`;
+- focused PipeLang check/compile/invoke, catalog, materialize, application/internal package-compile,
+  domain, and `src/cmd` checks using only the existing temporary modfile pinned to cached
+  `x/sys v0.46.0` where required;
+- `go vet`, Core-only backend/evaluator import-boundary checks, VS Code grammar/snippet/diagnostic
+  validation, and Windows compile-only proof across the affected packages; and
+- `gofmt`, `git diff --check`, exact inventory, dependency/generated-state absence, branch/stash,
+  TASK-020, and protected ignored-byte proof.
+
+The broad `src/lib/application` run again reached only its unrelated host-sensitive failures: the
+local-listener test is denied by this sandbox and the established inherited-workdir fixture names
+`/path/to/your/project`. Every affected focused application test and every application/internal
+package passed. No dependency, generated store, runtime, external state, cleanup, commit, push, or
+publication changed.
+
 ## Exact Next Boundary
 
 Step 7 of **Bounded Implementation Order** has completed the fixed numeric, compiler-internal
 checked-arithmetic Result, and direct production-source checked add, subtract, multiply, negate,
 binary64 divide, first-class arithmetic Result transport, ordinal Unicode text ordering, and
-primitive immutable record-identity transport slices.
+primitive immutable record-identity transport, and one-hop primitive-record field projection
+slices.
 `v0.2.0` admits only the exact explicit Result-returning addition;
 `v0.3.0` adds only direct subtraction; `v0.4.0` adds only direct multiplication; `v0.5.0` adds only
 direct integer negation; `v0.6.0` adds only direct binary64 division; and `v0.7.0` adds only direct
@@ -1552,6 +1613,8 @@ every prior contract. `v0.8.0` adds only `<`, `<=`, `>`, and `>=` ordinal scalar
 in the exact two-parameter direct method shape while preserving prior text concatenation/equality.
 `v0.9.0` adds only public nonempty primitive immutable records and exact one-parameter identity
 transport while preserving every prior contract.
+`v0.10.0` adds only direct one-hop read-only projection of one declared primitive field from the
+sole record parameter while preserving every prior contract.
 All other numeric arithmetic and every Result construction, composition, or consumption form remain
 fail-closed from production source. Any next slice requires a new
 synchronized decision for its exact source spelling, type/value handling rule, semantic projection,
@@ -1559,15 +1622,15 @@ migration, and bounded semantics before implementation.
 
 The first accepted application consumer is TASK-020's one-to-one DockPipe Launcher replacement,
 beginning with read-only Docker observability. Its typed snapshot requirements are dependency
-evidence when comparing remaining step-7 options. Completed primitive record transport satisfies
-one dependency but does not authorize optionals, collections, failures, richer record use, UI,
-actions, effects, or Qt behavior as one batch.
+evidence when comparing remaining step-7 options. Completed primitive record transport and one-hop
+field projection satisfy two dependencies but do not authorize construction, optionals,
+collections, failures, broader record use, UI, actions, effects, or Qt behavior as one batch.
 
 No later step-7 slice is included here. In particular, this checkpoint does not add Result
 construction, inspection, extraction, wrapping, unwrapping, propagation, or matching; additional
 Unicode text construction/scalar/grapheme APIs, normalization/case operations, value/reference,
-hashing, general total-order capabilities, optional, general result, record construction/access/
-mutation/equality, union, or deterministic collection production semantics; accept namespace, import,
+hashing, general total-order capabilities, optional, general result, record construction/chained or
+general access/mutation/equality, union, or deterministic collection production semantics; accept namespace, import,
 migration, `internal`, overload, generic, or ID production syntax; implement overload resolution;
 add new types/declarations/expressions/operators, blocks, locals, branches, or loops; add effects,
 entrypoints, actions/state, contracts/replay, executable application/service semantics, Application

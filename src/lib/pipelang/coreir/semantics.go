@@ -286,6 +286,31 @@ func validateExpr(expression Expr, parameters []Parameter) error {
 		default:
 			return fmt.Errorf("unsupported binary operator %q", operator)
 		}
+	case ExprFieldProjection:
+		if expression.Field == nil || expression.Field.Receiver == nil {
+			return fmt.Errorf("field projection is incomplete")
+		}
+		if err := validateExpr(*expression.Field.Receiver, parameters); err != nil {
+			return err
+		}
+		receiver := expression.Field.Receiver.Type
+		if receiver.Kind != TypeRecord || receiver.Record == nil {
+			return fmt.Errorf("field projection receiver is not a record")
+		}
+		if err := validateType(receiver); err != nil {
+			return fmt.Errorf("field projection receiver type: %w", err)
+		}
+		position := expression.Field.Position
+		if position < 0 || position >= len(receiver.Record.Fields) {
+			return fmt.Errorf("field projection has an invalid declared position")
+		}
+		field := receiver.Record.Fields[position]
+		if expression.Field.Name != field.Name || expression.Field.Identity.PackageID != field.Identity.PackageID || expression.Field.Identity.Path != field.Identity.Path || expression.Field.Identity.Callable != nil {
+			return fmt.Errorf("field projection does not match the record field identity at its declared position")
+		}
+		if !TypeEqual(expression.Type, field.Type) {
+			return fmt.Errorf("field projection result type does not match the declared field type")
+		}
 	default:
 		return fmt.Errorf("unsupported expression kind %q", expression.Kind)
 	}

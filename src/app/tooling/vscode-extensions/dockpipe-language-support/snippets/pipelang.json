@@ -39,5 +39,12 @@
       "}"
     ],
     "description": "Create a v0.9.0 PipeLang primitive immutable record."
+  },
+  "PipeLang Record Field Projection": {
+    "prefix": "pipe-record-field",
+    "body": [
+      "public ${1:string} ${2:IdOf}(${3:Row} ${4:value}) => ${4:value}.${5:Id};"
+    ],
+    "description": "Create a v0.10.0 one-hop read-only primitive-record field projection."
   }
 }

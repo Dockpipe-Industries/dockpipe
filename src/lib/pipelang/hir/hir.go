@@ -121,10 +121,11 @@ type Parameter struct {
 type ExprKind string
 
 const (
-	ExprLiteral   ExprKind = "literal"
-	ExprReference ExprKind = "reference"
-	ExprUnary     ExprKind = "unary"
-	ExprBinary    ExprKind = "binary"
+	ExprLiteral         ExprKind = "literal"
+	ExprReference       ExprKind = "reference"
+	ExprUnary           ExprKind = "unary"
+	ExprBinary          ExprKind = "binary"
+	ExprFieldProjection ExprKind = "field_projection"
 )
 
 type Operator string
@@ -164,14 +165,22 @@ type Binary struct {
 	Right    *Expr    `json:"right"`
 }
 
+type FieldProjection struct {
+	Receiver *Expr            `json:"receiver"`
+	Identity SemanticIdentity `json:"identity"`
+	Name     string           `json:"name"`
+	Position int              `json:"position"`
+}
+
 type Expr struct {
-	Kind      ExprKind   `json:"kind"`
-	Type      Type       `json:"type"`
-	Span      SourceSpan `json:"span"`
-	Literal   *Literal   `json:"literal,omitempty"`
-	Reference *Binding   `json:"reference,omitempty"`
-	Unary     *Unary     `json:"unary,omitempty"`
-	Binary    *Binary    `json:"binary,omitempty"`
+	Kind      ExprKind         `json:"kind"`
+	Type      Type             `json:"type"`
+	Span      SourceSpan       `json:"span"`
+	Literal   *Literal         `json:"literal,omitempty"`
+	Reference *Binding         `json:"reference,omitempty"`
+	Unary     *Unary           `json:"unary,omitempty"`
+	Binary    *Binary          `json:"binary,omitempty"`
+	Field     *FieldProjection `json:"field,omitempty"`
 }
 
 type Function struct {

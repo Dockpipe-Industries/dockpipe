@@ -95,6 +95,16 @@ func evalExpr(expression coreir.Expr, arguments []Value) (Outcome, error) {
 		default:
 			return Outcome{}, fmt.Errorf("operator %q is outside the arithmetic conformance evaluator", expression.Binary.Operator)
 		}
+	case coreir.ExprFieldProjection:
+		receiver, err := evalExpr(*expression.Field.Receiver, arguments)
+		if err != nil || !receiver.OK {
+			return receiver, err
+		}
+		position := expression.Field.Position
+		if position < 0 || position >= len(receiver.Value.Record) {
+			return Outcome{}, fmt.Errorf("record field projection position is outside the value")
+		}
+		return Outcome{OK: true, Value: receiver.Value.Record[position]}, nil
 	default:
 		return Outcome{}, fmt.Errorf("unsupported expression kind %q", expression.Kind)
 	}
