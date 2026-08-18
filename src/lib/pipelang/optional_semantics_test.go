@@ -227,6 +227,57 @@ public bool HasValue(Optional<%[1]s> value) => has_value(value);
 	}
 }
 
+func TestV130GoOptionalSupportNameAvoidsSourceFunctionCollisions(t *testing.T) {
+	source := `public Class Root {
+public Optional<string> Optional(string value) => some(value);
+public Optional<string> OptionalValue(string value) => some(value);
+}`
+	analysis := analyzeOptionalSource(t, source, PipeLangLanguageContractV130)
+	if err := analysis.Error(); err != nil {
+		t.Fatal(err)
+	}
+	var typed hir.Program
+	for index, name := range []string{"Optional", "OptionalValue"} {
+		lowered, err := LowerSemanticMethodToHIR(analysis, semanticMethodNamed(t, analysis, name).Identity)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if index == 0 {
+			typed = lowered
+		} else {
+			typed.Functions = append(typed.Functions, lowered.Functions...)
+		}
+	}
+	core, err := LowerHIRToCore(typed)
+	if err != nil {
+		t.Fatal(err)
+	}
+	generated, err := gobackend.Generate(core)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, expected := range [][]byte{
+		[]byte("type PipeLangOptionalValue2[T any] interface"),
+		[]byte("func PipeLangOptional(p0 string) PipeLangOptionalValue2[string]"),
+		[]byte("func PipeLangOptionalValue(p0 string) PipeLangOptionalValue2[string]"),
+	} {
+		if !bytes.Contains(generated, expected) {
+			t.Fatalf("generated Go does not contain %q:\n%s", expected, generated)
+		}
+	}
+	generatedTest := fmt.Sprintf(`package %s
+
+import "testing"
+
+func TestOptionalNameCollision(t *testing.T) {
+	if !pipelangHasValue(PipeLangOptional("value")) || !pipelangHasValue(PipeLangOptionalValue("value")) {
+		t.Fatal("generated Optional collision fallback disagrees")
+	}
+}
+`, gobackend.PackageName)
+	compileAndRunGeneratedGoFiles(t, generated, []byte(generatedTest))
+}
+
 func TestV130PrimitiveOptionalRejectsExcludedForms(t *testing.T) {
 	tests := []struct {
 		name string

@@ -55,6 +55,7 @@ func Generate(program coreir.Program) ([]byte, error) {
 	out.WriteString("package " + PackageName + "\n\n")
 	needsText := programNeedsTextSupport(functions)
 	needsOptional := programNeedsOptionalSupport(functions)
+	optionalTypeName := optionalGoTypeName(functions)
 	if needsOptional && program.LanguageContract != coreir.LanguageContractV130 {
 		return nil, &Error{Code: "PLGO0001", Message: fmt.Sprintf("primitive Optional Core requires language contract %q", coreir.LanguageContractV130)}
 	}
@@ -66,14 +67,14 @@ func Generate(program coreir.Program) ([]byte, error) {
 		emitArithmeticSupport(&out)
 	}
 	if needsOptional {
-		emitOptionalSupport(&out, needsText)
+		emitOptionalSupport(&out, needsText, optionalTypeName)
 	}
 	records, err := collectRecordTypes(functions)
 	if err != nil {
 		return nil, &Error{Code: "PLGO0001", Message: err.Error()}
 	}
 	for _, record := range records {
-		emitRecordType(&out, record, programConstructsRecord(functions, record))
+		emitRecordType(&out, record, programConstructsRecord(functions, record), optionalTypeName)
 	}
 	seen := map[string]string{}
 	seenIdentities := map[string]struct{}{}
@@ -94,7 +95,7 @@ func Generate(program coreir.Program) ([]byte, error) {
 			return nil, backendError(function, "PLGO0002", fmt.Sprintf("Go name %q collides with %s", name, previous))
 		}
 		seen[name] = identity
-		if err := emitFunction(&out, name, function); err != nil {
+		if err := emitFunction(&out, name, function, optionalTypeName); err != nil {
 			return nil, err
 		}
 	}
@@ -113,8 +114,8 @@ func FunctionName(function coreir.Function) string {
 	return "PipeLang" + exportedIdentifier(name)
 }
 
-func emitFunction(out *strings.Builder, name string, function coreir.Function) error {
-	result, err := goType(function.ReturnType)
+func emitFunction(out *strings.Builder, name string, function coreir.Function, optionalTypeName string) error {
+	result, err := goType(function.ReturnType, optionalTypeName)
 	if err != nil {
 		return backendError(function, "PLGO0001", err.Error())
 	}
@@ -123,7 +124,7 @@ func emitFunction(out *strings.Builder, name string, function coreir.Function) e
 		if parameter.Position != index {
 			return backendError(function, "PLGO0001", "parameters are not in normalized position order")
 		}
-		parameterType, err := goType(parameter.Type)
+		parameterType, err := goType(parameter.Type, optionalTypeName)
 		if err != nil {
 			return backendError(function, "PLGO0001", err.Error())
 		}
@@ -142,7 +143,7 @@ func emitFunction(out *strings.Builder, name string, function coreir.Function) e
 		}
 	}
 	out.WriteString("\treturn ")
-	body, err := emitExpr(function.Body, function.Parameters)
+	body, err := emitExpr(function.Body, function.Parameters, optionalTypeName)
 	if err != nil {
 		return backendError(function, "PLGO0001", err.Error())
 	}
@@ -151,7 +152,7 @@ func emitFunction(out *strings.Builder, name string, function coreir.Function) e
 	return nil
 }
 
-func emitExpr(expr coreir.Expr, parameters []coreir.Parameter) (string, error) {
+func emitExpr(expr coreir.Expr, parameters []coreir.Parameter, optionalTypeName string) (string, error) {
 	switch expr.Kind {
 	case coreir.ExprLiteral:
 		if expr.Literal == nil {
@@ -167,7 +168,7 @@ func emitExpr(expr coreir.Expr, parameters []coreir.Parameter) (string, error) {
 		if expr.Unary == nil || expr.Unary.Operand == nil {
 			return "", fmt.Errorf("unary node is incomplete")
 		}
-		operand, err := emitExpr(*expr.Unary.Operand, parameters)
+		operand, err := emitExpr(*expr.Unary.Operand, parameters, optionalTypeName)
 		if err != nil {
 			return "", err
 		}
@@ -187,11 +188,11 @@ func emitExpr(expr coreir.Expr, parameters []coreir.Parameter) (string, error) {
 		case coreir.OperatorAnd, coreir.OperatorOr:
 			return "", fmt.Errorf("operator %q is outside the step-7a Go capability slice", expr.Binary.Operator)
 		}
-		left, err := emitExpr(*expr.Binary.Left, parameters)
+		left, err := emitExpr(*expr.Binary.Left, parameters, optionalTypeName)
 		if err != nil {
 			return "", err
 		}
-		right, err := emitExpr(*expr.Binary.Right, parameters)
+		right, err := emitExpr(*expr.Binary.Right, parameters, optionalTypeName)
 		if err != nil {
 			return "", err
 		}
@@ -236,7 +237,7 @@ func emitExpr(expr coreir.Expr, parameters []coreir.Parameter) (string, error) {
 		if receiverType.Kind != coreir.TypeRecord || receiverType.Record == nil || expr.Field.Position < 0 || expr.Field.Position >= len(receiverType.Record.Fields) {
 			return "", fmt.Errorf("field projection has an invalid record schema or position")
 		}
-		receiver, err := emitExpr(*expr.Field.Receiver, parameters)
+		receiver, err := emitExpr(*expr.Field.Receiver, parameters, optionalTypeName)
 		if err != nil {
 			return "", err
 		}
@@ -250,7 +251,7 @@ func emitExpr(expr coreir.Expr, parameters []coreir.Parameter) (string, error) {
 			if initialized.Value == nil || initialized.Position != position {
 				return "", fmt.Errorf("record construction field %d is incomplete or out of order", position)
 			}
-			value, err := emitExpr(*initialized.Value, parameters)
+			value, err := emitExpr(*initialized.Value, parameters, optionalTypeName)
 			if err != nil {
 				return "", err
 			}
@@ -261,7 +262,7 @@ func emitExpr(expr coreir.Expr, parameters []coreir.Parameter) (string, error) {
 		if expr.Some == nil || expr.Some.Value == nil || expr.Type.Kind != coreir.TypeOptional {
 			return "", fmt.Errorf("optional some expression is incomplete")
 		}
-		value, err := emitExpr(*expr.Some.Value, parameters)
+		value, err := emitExpr(*expr.Some.Value, parameters, optionalTypeName)
 		if err != nil {
 			return "", err
 		}
@@ -270,7 +271,7 @@ func emitExpr(expr coreir.Expr, parameters []coreir.Parameter) (string, error) {
 		if expr.None == nil || expr.Type.Kind != coreir.TypeOptional || expr.Type.Optional == nil {
 			return "", fmt.Errorf("optional none expression is incomplete")
 		}
-		valueType, err := goType(expr.Type.Optional.Value)
+		valueType, err := goType(expr.Type.Optional.Value, optionalTypeName)
 		if err != nil {
 			return "", err
 		}
@@ -279,7 +280,7 @@ func emitExpr(expr coreir.Expr, parameters []coreir.Parameter) (string, error) {
 		if expr.HasValue == nil || expr.HasValue.Value == nil {
 			return "", fmt.Errorf("optional has_value expression is incomplete")
 		}
-		value, err := emitExpr(*expr.HasValue.Value, parameters)
+		value, err := emitExpr(*expr.HasValue.Value, parameters, optionalTypeName)
 		if err != nil {
 			return "", err
 		}
@@ -316,16 +317,16 @@ func emitLiteral(typ coreir.Type, literal coreir.Literal) (string, error) {
 	}
 }
 
-func goType(typ coreir.Type) (string, error) {
+func goType(typ coreir.Type, optionalTypeName string) (string, error) {
 	if typ.Kind == coreir.TypeOptional {
 		if typ.Optional == nil {
 			return "", fmt.Errorf("Go Optional backend requires a value type")
 		}
-		value, err := goType(typ.Optional.Value)
+		value, err := goType(typ.Optional.Value, optionalTypeName)
 		if err != nil {
 			return "", err
 		}
-		return "PipeLangOptional[" + value + "]", nil
+		return optionalTypeName + "[" + value + "]", nil
 	}
 	if typ.Kind == coreir.TypeRecord {
 		if typ.Record == nil || typ.Identity == nil || typ.Identity.PackageID == "" || typ.Identity.Path == "" {
@@ -337,7 +338,7 @@ func goType(typ coreir.Type) (string, error) {
 		if typ.Result == nil || typ.Result.Failure.Kind != coreir.TypeArithmeticError {
 			return "", fmt.Errorf("Go checked-arithmetic backend supports ArithmeticError Result failures only")
 		}
-		success, err := goType(typ.Result.Success)
+		success, err := goType(typ.Result.Success, optionalTypeName)
 		if err != nil {
 			return "", err
 		}
@@ -485,22 +486,42 @@ func expressionNeedsOptionalSupport(expression coreir.Expr) bool {
 	return false
 }
 
-func emitOptionalSupport(out *strings.Builder, validateText bool) {
-	out.WriteString("type PipeLangOptional[T any] interface {\n\tpipelangOptional(T)\n}\n\n")
+func emitOptionalSupport(out *strings.Builder, validateText bool, optionalTypeName string) {
+	fmt.Fprintf(out, "type %s[T any] interface {\n\tpipelangOptional(T)\n}\n\n", optionalTypeName)
 	out.WriteString("type pipelangOptionalSome[T any] struct {\n\tvalue T\n}\n\n")
 	out.WriteString("func (pipelangOptionalSome[T]) pipelangOptional(T) {}\n\n")
 	out.WriteString("type pipelangOptionalNone[T any] struct{}\n\n")
 	out.WriteString("func (pipelangOptionalNone[T]) pipelangOptional(T) {}\n\n")
-	out.WriteString("func pipelangSomeValue[T any](value T) PipeLangOptional[T] {\n\tresult := PipeLangOptional[T](pipelangOptionalSome[T]{value: value})\n\tpipelangValidateOptional(result)\n\treturn result\n}\n\n")
-	out.WriteString("func pipelangNoneValue[T any]() PipeLangOptional[T] {\n\treturn pipelangOptionalNone[T]{}\n}\n\n")
-	out.WriteString("func pipelangValidateOptional[T any](value PipeLangOptional[T]) {\n\tswitch typed := value.(type) {\n\tcase pipelangOptionalSome[T]:\n")
+	fmt.Fprintf(out, "func pipelangSomeValue[T any](value T) %s[T] {\n\tresult := %s[T](pipelangOptionalSome[T]{value: value})\n\tpipelangValidateOptional(result)\n\treturn result\n}\n\n", optionalTypeName, optionalTypeName)
+	fmt.Fprintf(out, "func pipelangNoneValue[T any]() %s[T] {\n\treturn pipelangOptionalNone[T]{}\n}\n\n", optionalTypeName)
+	fmt.Fprintf(out, "func pipelangValidateOptional[T any](value %s[T]) {\n\tswitch typed := value.(type) {\n\tcase pipelangOptionalSome[T]:\n", optionalTypeName)
 	if validateText {
 		out.WriteString("\t\tif text, ok := any(typed.value).(string); ok {\n\t\t\tpipelangValidateText(text)\n\t\t}\n")
 	} else {
 		out.WriteString("\t\t_ = typed\n")
 	}
 	out.WriteString("\tcase pipelangOptionalNone[T]:\n\tdefault:\n\t\tpanic(\"invalid PipeLang Optional value\")\n\t}\n}\n\n")
-	out.WriteString("func pipelangHasValue[T any](value PipeLangOptional[T]) bool {\n\tpipelangValidateOptional(value)\n\t_, present := value.(pipelangOptionalSome[T])\n\treturn present\n}\n\n")
+	fmt.Fprintf(out, "func pipelangHasValue[T any](value %s[T]) bool {\n\tpipelangValidateOptional(value)\n\t_, present := value.(pipelangOptionalSome[T])\n\treturn present\n}\n\n", optionalTypeName)
+}
+
+func optionalGoTypeName(functions []coreir.Function) string {
+	used := make(map[string]struct{}, len(functions))
+	for _, function := range functions {
+		used[FunctionName(function)] = struct{}{}
+	}
+	const base = "PipeLangOptional"
+	if _, collision := used[base]; !collision {
+		return base
+	}
+	for suffix := 1; ; suffix++ {
+		candidate := base + "Value"
+		if suffix > 1 {
+			candidate += strconv.Itoa(suffix)
+		}
+		if _, collision := used[candidate]; !collision {
+			return candidate
+		}
+	}
 }
 
 func collectRecordTypes(functions []coreir.Function) ([]coreir.Type, error) {
@@ -553,12 +574,12 @@ func collectRecordTypes(functions []coreir.Function) ([]coreir.Type, error) {
 	return records, nil
 }
 
-func emitRecordType(out *strings.Builder, record coreir.Type, emitConstructor bool) {
+func emitRecordType(out *strings.Builder, record coreir.Type, emitConstructor bool, optionalTypeName string) {
 	typeName := recordGoTypeName(record)
 	fieldNames := recordGoFieldNames(record)
 	fmt.Fprintf(out, "type %s struct {\n", typeName)
 	for index, field := range record.Record.Fields {
-		fieldType, _ := goType(field.Type)
+		fieldType, _ := goType(field.Type, optionalTypeName)
 		fmt.Fprintf(out, "\t%s %s\n", fieldNames[index], fieldType)
 	}
 	out.WriteString("}\n\n")
@@ -577,7 +598,7 @@ func emitRecordType(out *strings.Builder, record coreir.Type, emitConstructor bo
 		if index > 0 {
 			out.WriteString(", ")
 		}
-		fieldType, _ := goType(field.Type)
+		fieldType, _ := goType(field.Type, optionalTypeName)
 		fmt.Fprintf(out, "field%d %s", index, fieldType)
 	}
 	fmt.Fprintf(out, ") %s {\n", typeName)
