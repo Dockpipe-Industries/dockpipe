@@ -14,6 +14,7 @@ type Value struct {
 	Int    int64
 	Float  float64
 	Bool   bool
+	Result *Outcome
 }
 
 type Outcome struct {
@@ -33,6 +34,9 @@ func Evaluate(function coreir.Function, arguments []Value) (Outcome, error) {
 		if !coreir.TypeEqual(arguments[index].Type, function.Parameters[index].Type) {
 			return Outcome{}, fmt.Errorf("argument %d type does not match parameter", index)
 		}
+		if err := validateValue(arguments[index]); err != nil {
+			return Outcome{}, fmt.Errorf("argument %d: %w", index, err)
+		}
 	}
 	return evalExpr(function.Body, arguments)
 }
@@ -43,6 +47,13 @@ func evalExpr(expression coreir.Expr, arguments []Value) (Outcome, error) {
 		literal := expression.Literal
 		return Outcome{OK: true, Value: Value{Type: expression.Type, String: literal.String, Int: literal.Int, Float: literal.Float, Bool: literal.Bool}}, nil
 	case coreir.ExprReference:
+		if expression.Type.Kind == coreir.TypeResult {
+			result := arguments[*expression.Parameter].Result
+			if result == nil {
+				return Outcome{}, fmt.Errorf("Result reference has no canonical value")
+			}
+			return *result, nil
+		}
 		return Outcome{OK: true, Value: arguments[*expression.Parameter]}, nil
 	case coreir.ExprUnary:
 		operand, err := evalExpr(*expression.Unary.Operand, arguments)
@@ -80,6 +91,32 @@ func evalExpr(expression coreir.Expr, arguments []Value) (Outcome, error) {
 	default:
 		return Outcome{}, fmt.Errorf("unsupported expression kind %q", expression.Kind)
 	}
+}
+
+func validateValue(value Value) error {
+	if value.Type.Kind != coreir.TypeResult {
+		if value.Result != nil {
+			return fmt.Errorf("non-Result value carries a Result outcome")
+		}
+		return nil
+	}
+	if value.Type.Result == nil || value.Type.Result.Failure.Kind != coreir.TypeArithmeticError || value.Result == nil {
+		return fmt.Errorf("Result value has an invalid arithmetic Result shape")
+	}
+	result := value.Result
+	if !coreir.TypeEqual(result.Value.Type, value.Type.Result.Success) {
+		return fmt.Errorf("Result payload type does not match its success type")
+	}
+	if result.OK {
+		if result.Error != "" {
+			return fmt.Errorf("successful Result carries an error")
+		}
+		return nil
+	}
+	if result.Error != coreir.ArithmeticOverflow && result.Error != coreir.ArithmeticDivisionByZero {
+		return fmt.Errorf("failed Result carries an unknown arithmetic error")
+	}
+	return nil
 }
 
 func arithmeticOutcome(resultType coreir.Type, value Value, arithmeticError coreir.ArithmeticError) Outcome {

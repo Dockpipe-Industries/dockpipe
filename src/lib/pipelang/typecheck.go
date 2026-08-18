@@ -118,7 +118,7 @@ func (cp *checkedProgram) validateInterface(decl *InterfaceDecl) error {
 			return oneDiagnostic(cp.sources, CodeDuplicateMember, CategorySemantic, method.Span, fmt.Sprintf("interface %s has duplicate member %q", decl.Name, method.Name), RelatedSpan{Span: previous, Message: "first member"})
 		}
 		seen[method.Name] = method.Span
-		if err := cp.validateParams(decl.Name, method.Name, method.Params); err != nil {
+		if err := cp.validateParams(decl.Name, method.Name, method.Params, false); err != nil {
 			return err
 		}
 	}
@@ -160,7 +160,11 @@ func (cp *checkedProgram) validateClass(decl *ClassDecl) error {
 			return oneDiagnostic(cp.sources, CodeDuplicateMember, CategorySemantic, method.Span, fmt.Sprintf("class %s has duplicate member %q", decl.Name, method.Name), RelatedSpan{Span: previous, Message: "first member"})
 		}
 		seen[method.Name] = method.Span
-		if err := cp.validateParams(decl.Name, method.Name, method.Params); err != nil {
+		allowResultParameter, err := cp.validateResultTransportSignature(method, resolved)
+		if err != nil {
+			return err
+		}
+		if err := cp.validateParams(decl.Name, method.Name, method.Params, allowResultParameter); err != nil {
 			return err
 		}
 	}
@@ -204,14 +208,35 @@ func (cp *checkedProgram) validateClass(decl *ClassDecl) error {
 	return nil
 }
 
-func (cp *checkedProgram) validateParams(owner, method string, params []Param) error {
+func (cp *checkedProgram) validateResultTransportSignature(method MethodDecl, result ResolvedTypeRef) (bool, error) {
+	hasResultParameter := false
+	resolvedParameters := make([]ResolvedTypeRef, 0, len(method.Params))
+	for _, param := range method.Params {
+		resolved, err := cp.resolveType(param.Type, RelatedSpan{Span: param.Span, Message: "parameter declaration"})
+		if err != nil {
+			return false, prefixDiagnostic(err, fmt.Sprintf("class method %s parameter %s: ", method.Name, param.Name))
+		}
+		resolvedParameters = append(resolvedParameters, resolved)
+		hasResultParameter = hasResultParameter || containsResolvedArithmeticContractType(resolved)
+	}
+	if !hasResultParameter {
+		return false, nil
+	}
+	contract := cp.modules.LanguageContract()
+	if contract != PipeLangLanguageContractV070 || len(resolvedParameters) != 1 || !isResolvedSourceArithmeticResult(contract, result) || !resolvedParameters[0].Equal(result) {
+		return false, oneDiagnostic(cp.sources, CodeInvalidType, CategorySemantic, method.Span, fmt.Sprintf("the %s arithmetic Result parameter is admitted only as one parameter identical to the method return type", contract))
+	}
+	return true, nil
+}
+
+func (cp *checkedProgram) validateParams(owner, method string, params []Param, allowArithmeticResult bool) error {
 	seen := map[string]Span{}
 	for _, param := range params {
 		resolved, err := cp.resolveType(param.Type, RelatedSpan{Span: param.Span, Message: "parameter declaration"})
 		if err != nil {
 			return prefixDiagnostic(err, fmt.Sprintf("%s method %s parameter %s: ", owner, method, param.Name))
 		}
-		if containsResolvedArithmeticContractType(resolved) {
+		if containsResolvedArithmeticContractType(resolved) && !allowArithmeticResult {
 			return oneDiagnostic(cp.sources, CodeInvalidType, CategorySemantic, param.Type.Span, fmt.Sprintf("the %s arithmetic Result is not admitted as a parameter type", cp.modules.LanguageContract()))
 		}
 		if previous, ok := seen[param.Name]; ok {
@@ -348,6 +373,20 @@ func (cp *checkedProgram) inferMethodBodyType(expr Expr, env map[string]Resolved
 		return cp.inferExprType(expr, env)
 	}
 	contract := cp.modules.LanguageContract()
+	if contract == PipeLangLanguageContractV070 {
+		hasTransportInput := false
+		for _, resolved := range env {
+			hasTransportInput = hasTransportInput || resolved.Equal(declared)
+		}
+		if hasTransportInput {
+			if identifier, ok := expr.(*IdentExpr); ok {
+				if resolved, found := env[identifier.Name]; found && resolved.Equal(declared) {
+					return declared, nil
+				}
+			}
+			return ResolvedTypeRef{}, oneDiagnostic(cp.sources, CodeExpressionType, CategorySemantic, expr.SourceSpan(), "v0.7.0 Result transport requires the sole Result parameter as the complete method body")
+		}
+	}
 	if isResolvedFloatArithmeticResult(declared) {
 		binary, ok := expr.(*BinaryExpr)
 		if !ok || binary.Op != "/" {
@@ -367,7 +406,7 @@ func (cp *checkedProgram) inferMethodBodyType(expr Expr, env map[string]Resolved
 		}
 		return resolvedArithmeticResult(binary64), nil
 	}
-	if unary, unaryOK := expr.(*UnaryExpr); unaryOK && (contract == PipeLangLanguageContractV050 || contract == PipeLangLanguageContractV060) && unary.Op == "-" {
+	if unary, unaryOK := expr.(*UnaryExpr); unaryOK && (contract == PipeLangLanguageContractV050 || contract == PipeLangLanguageContractV060 || contract == PipeLangLanguageContractV070) && unary.Op == "-" {
 		operand, err := inferExprTypeWithPolicy(cp.sources, unary.Expr, env, true)
 		if err != nil {
 			return ResolvedTypeRef{}, err
@@ -380,7 +419,7 @@ func (cp *checkedProgram) inferMethodBodyType(expr Expr, env map[string]Resolved
 	}
 	binary, ok := expr.(*BinaryExpr)
 	operatorAccepted := ok && binary.Op == "+"
-	if contract == PipeLangLanguageContractV040 || contract == PipeLangLanguageContractV050 || contract == PipeLangLanguageContractV060 {
+	if contract == PipeLangLanguageContractV040 || contract == PipeLangLanguageContractV050 || contract == PipeLangLanguageContractV060 || contract == PipeLangLanguageContractV070 {
 		operatorAccepted = ok && (binary.Op == "+" || binary.Op == "-" || binary.Op == "*")
 	} else if contract == PipeLangLanguageContractV030 {
 		operatorAccepted = ok && (binary.Op == "+" || binary.Op == "-")
@@ -405,7 +444,7 @@ func (cp *checkedProgram) inferMethodBodyType(expr Expr, env map[string]Resolved
 }
 
 func arithmeticSourceOperators(contract LanguageContract) string {
-	if contract == PipeLangLanguageContractV050 || contract == PipeLangLanguageContractV060 {
+	if contract == PipeLangLanguageContractV050 || contract == PipeLangLanguageContractV060 || contract == PipeLangLanguageContractV070 {
 		return "addition, subtraction, multiplication, or negation"
 	}
 	if contract == PipeLangLanguageContractV040 {

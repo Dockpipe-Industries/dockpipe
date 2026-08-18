@@ -1348,19 +1348,68 @@ branch, general Result handling, or adjacent language surface. The frozen legacy
 contracts, compiler/projection identities, generated stores, dependencies, runtime, credentials,
 and external state remain unchanged.
 
+### Completed step 7h first-class arithmetic Result transport contract (2026-08-17)
+
+The founder selected the recommended new explicit `v0.7.0` contract. It preserves every
+`v0.2.0`-through-`v0.6.0` direct checked-arithmetic method unchanged and additionally admits one
+pure transport shape for each existing public arithmetic Result value:
+
+```pipelang
+Result<int, ArithmeticError> ForwardInt(Result<int, ArithmeticError> value) => value;
+Result<float, ArithmeticError> ForwardFloat(Result<float, ArithmeticError> value) => value;
+```
+
+Method and parameter names remain source-owned. The exact language rule requires one parameter,
+an identical parameter and return type, and that parameter identifier as the complete
+expression-bodied method body. It reuses `pipelang:result`, `pipelang:arithmetic.error`,
+`pipelang.compiler.v1`, and `pipelang.semantic.v1`; callable identity and semantic projection carry
+the same identified applied type in the ordered parameter and return positions. No source, module,
+or package migrates implicitly, and `v0.1.0` through `v0.6.0` retain their prior rejection.
+
+Typed HIR and target-neutral Core preserve the Result-typed parameter binding and direct reference.
+`coreeval` accepts only canonical success or closed arithmetic-failure values and returns the same
+success payload or error; malformed target-independent Result inputs fail validation. The Core-only
+Go backend emits the existing explicit generic arithmetic Result value as both parameter and return
+and forwards it directly. Integer success/`overflow`, binary64 signed-zero success, and
+`division_by_zero` pass unchanged through Core evaluation and compiled generated Go.
+
+Negative diagnostics keep Result fields, interface signatures, extra or mismatched parameters,
+nested or alternate Result types, non-Result returns, different bodies, construction, extraction,
+matching, wrapping, unwrapping, propagation, and ordinary numeric use closed. `PL3006` remains the
+placement/type diagnostic and `PL3028` remains exclusively the established checked-arithmetic
+failure-to-declare rule. No parser call/member/block/control-flow surface was added.
+
+Terminal proof passed with cached Go 1.25.13, offline module lookup, and writable `/tmp` caches:
+
+- exact `go test -count=1 ./src/lib/pipelang/... ./tests/pipelangcompat`, including parser/type/
+  identity/projection, HIR/Core/Go goldens, Core Result validation, generated-Go execution, explicit
+  migration rejection, and preservation of every earlier checked-arithmetic source slice;
+- affected PipeLang CLI/check/compile/invoke, catalog, materialize, representative workflow/package
+  compile, internal materialize/package-compile, and `src/cmd` tests through only the existing
+  temporary modfile pinned to cached `golang.org/x/sys v0.46.0`;
+- `go vet` across PipeLang, compatibility, and all affected application/internal/CLI packages; and
+- VS Code grammar/completion/diagnostic validation plus durable `v0.7.0` editor guidance, `gofmt`,
+  `git diff --check`, frozen inventory, dependency, generated-state, branch/stash, and protected
+  ignored-byte proof.
+
+No dependency, generated store, runtime, credential, external state, cleanup, commit, or
+publication changed.
+
 ## Exact Next Boundary
 
 Step 7 of **Bounded Implementation Order** has completed the fixed numeric, compiler-internal
 checked-arithmetic Result, and direct production-source checked add, subtract, multiply, negate,
-and binary64 divide slices. `v0.2.0` admits only the exact explicit Result-returning addition;
+binary64 divide, and first-class arithmetic Result transport slices. `v0.2.0` admits only the exact explicit Result-returning addition;
 `v0.3.0` adds only direct subtraction; `v0.4.0` adds only direct multiplication; `v0.5.0` adds only
-direct integer negation; and `v0.6.0` adds only direct binary64 division while preserving every
-prior contract. All other numeric arithmetic and every Result composition or consumption form
-remain fail-closed from production source. Any next slice requires a new synchronized decision for
-its exact source spelling, Result handling/composition rule, semantic projection, migration, and
-bounded semantics before implementation.
+direct integer negation; `v0.6.0` adds only direct binary64 division; and `v0.7.0` adds only direct
+identity transport of one identical existing arithmetic Result parameter and return while preserving
+every prior contract. All other numeric arithmetic and every Result construction, composition, or
+consumption form remain fail-closed from production source. Any next slice requires a new
+synchronized decision for its exact source spelling, type/value handling rule, semantic projection,
+migration, and bounded semantics before implementation.
 
-No later step-7 slice is included here. In particular, this checkpoint does not add Unicode text,
+No later step-7 slice is included here. In particular, this checkpoint does not add Result
+construction, inspection, extraction, wrapping, unwrapping, propagation, or matching; Unicode text,
 value/reference, hashing, total ordering, optional, general result, record, union, or deterministic
 collection production semantics; accept namespace, import,
 migration, `internal`, overload, generic, or ID production syntax; implement overload resolution;

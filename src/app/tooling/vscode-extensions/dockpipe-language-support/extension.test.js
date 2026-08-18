@@ -113,6 +113,9 @@ const grammar = JSON.parse(fs.readFileSync(path.join(__dirname, "syntaxes", "pip
 const typePattern = grammar.repository.types.patterns[0].match;
 assert(typePattern.includes("Result"));
 assert(typePattern.includes("ArithmeticError"));
+const pipeLangReadme = fs.readFileSync(path.join(__dirname, "README.md"), "utf8");
+assert(pipeLangReadme.includes("v0.7.0"));
+assert(pipeLangReadme.includes("identical Result parameter/return"));
 const operatorPattern = grammar.repository.operators.patterns[0].match;
 assert(operatorPattern.includes("\\-"));
 assert(operatorPattern.includes("*"));
