@@ -14,6 +14,7 @@ const PIPELANG_COMPLETION_KEYWORDS = [
   "Record",
   "List",
   "Result",
+  "Optional",
   "ArithmeticError",
   "IComparable",
   "string",
@@ -21,6 +22,9 @@ const PIPELANG_COMPLETION_KEYWORDS = [
   "bool",
   "float",
   "new",
+  "some",
+  "none",
+  "has_value",
   "true",
   "false"
 ];
