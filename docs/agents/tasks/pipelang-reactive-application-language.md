@@ -1308,16 +1308,57 @@ Binary64 division, nested fallible expressions, general Result handling, and all
 work remain excluded until separately accepted. No generated store, dependency, runtime,
 credential, external state, commit, or publication changed.
 
+### Completed step 7g direct checked-binary64-division contract (2026-08-17)
+
+The founder selected a new explicit `v0.6.0` contract for the final compiler-internal arithmetic
+source slice. It preserves `v0.5.0` unchanged and admits exactly
+`Result<float, ArithmeticError> Divide(float left, float right) => left / right;`. Division is the
+complete body of one expression-bodied class method. A positive or negative zero divisor produces
+the existing closed `division_by_zero` error; every nonzero divisor produces an explicit binary64
+success while retaining IEEE-754 behavior including `NaN`, infinities, and signed zero. It reuses
+`pipelang:result`, `pipelang:arithmetic.error`, `pipelang.compiler.v1`, and
+`pipelang.semantic.v1`; no source, module, or package migrates implicitly.
+
+The synchronized implementation makes the one contract-specific public widening from
+`Result<int, ArithmeticError>` to the exact `Result<float, ArithmeticError>` return and gates
+direct division through parsing, type resolution and checking, semantic callable identity and
+`pipelang.semantic.v1`, typed HIR, target-neutral Core, `coreeval`, and the deterministic Go
+backend. Source-derived HIR/Core/Go goldens preserve the division operator, binary64 operands, and
+identified Result return. Core evaluation and compiled generated Go agree for ordinary division,
+both signed-zero divisors, `NaN` operands, infinity, and signed-zero success. Negative diagnostics
+prove that `v0.1.0` through `v0.5.0` do not admit division and that `v0.6.0` rejects unchecked,
+nested, non-division, non-binary64, alternate Result, and unsupported Result-placement forms.
+
+Terminal proof passed with cached Go 1.25.13, offline module lookup, and writable `/tmp` caches:
+
+- exact `go test -count=1 ./src/lib/pipelang/... ./tests/pipelangcompat`, including parser/type/
+  identity/projection, Core evaluation, generated-Go compilation/execution, deterministic goldens,
+  and the frozen 45-source compatibility lane;
+- affected PipeLang CLI, catalog, materialize, package-compile, internal, and `src/cmd` checks
+  through only the existing temporary modfile pinned to cached `golang.org/x/sys v0.46.0`;
+- `go vet` across PipeLang, compatibility, and the affected application/internal/CLI packages;
+- VS Code grammar/completion validation plus `gofmt`, `git diff --check`, frozen inventory,
+  dependency, branch/stash, and protected ignored-byte proof.
+
+The admitted unrelated broad-application loopback and nonexistent-fixture failures were not
+reopened; the complete affected set is green.
+
+This slice adds no conversion, wrapping, unwrapping, propagation, extraction, matching, block,
+branch, general Result handling, or adjacent language surface. The frozen legacy lane, earlier
+contracts, compiler/projection identities, generated stores, dependencies, runtime, credentials,
+and external state remain unchanged.
+
 ## Exact Next Boundary
 
-Step 7 of **Bounded Implementation Order** is underway through the completed fixed numeric,
-compiler-internal checked-arithmetic Result, and direct production-source checked integer add,
-subtract, multiply, and negate slices. `v0.2.0` admits only the exact explicit Result-returning
-addition; `v0.3.0` adds only direct subtraction; `v0.4.0` adds only direct multiplication; and
-`v0.5.0` adds only direct integer negation while preserving every prior contract. Binary64 division
-and all other numeric arithmetic remain fail-closed from production source. Any next slice requires
-a new synchronized decision for its exact source spelling, Result handling/composition rule,
-semantic projection, migration, and bounded semantics before implementation.
+Step 7 of **Bounded Implementation Order** has completed the fixed numeric, compiler-internal
+checked-arithmetic Result, and direct production-source checked add, subtract, multiply, negate,
+and binary64 divide slices. `v0.2.0` admits only the exact explicit Result-returning addition;
+`v0.3.0` adds only direct subtraction; `v0.4.0` adds only direct multiplication; `v0.5.0` adds only
+direct integer negation; and `v0.6.0` adds only direct binary64 division while preserving every
+prior contract. All other numeric arithmetic and every Result composition or consumption form
+remain fail-closed from production source. Any next slice requires a new synchronized decision for
+its exact source spelling, Result handling/composition rule, semantic projection, migration, and
+bounded semantics before implementation.
 
 No later step-7 slice is included here. In particular, this checkpoint does not add Unicode text,
 value/reference, hashing, total ordering, optional, general result, record, union, or deterministic

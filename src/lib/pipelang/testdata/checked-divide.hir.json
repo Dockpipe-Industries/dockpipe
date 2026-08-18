@@ -1,0 +1,328 @@
+{
+  "language_contract": "v0.6.0",
+  "compiler_contract": "pipelang.compiler.v1",
+  "functions": [
+    {
+      "identity": {
+        "package_id": "test.package",
+        "path": "app.root.root.divide",
+        "callable": {
+          "parameters": [
+            {
+              "kind": "primitive",
+              "primitive": "float"
+            },
+            {
+              "kind": "primitive",
+              "primitive": "float"
+            }
+          ],
+          "returns": {
+            "kind": "applied",
+            "package_id": "pipelang",
+            "path": "result",
+            "name": "Result",
+            "arguments": [
+              {
+                "kind": "primitive",
+                "primitive": "float"
+              },
+              {
+                "kind": "named",
+                "package_id": "pipelang",
+                "path": "arithmetic.error"
+              }
+            ]
+          }
+        }
+      },
+      "owner": {
+        "module": "app.root",
+        "symbol_id": 1,
+        "identity": {
+          "package_id": "test.package",
+          "path": "app.root.root"
+        },
+        "source_span": {
+          "file": "root.pipe",
+          "start": 0,
+          "end": 108
+        }
+      },
+      "name": "Divide",
+      "parameters": [
+        {
+          "binding": {
+            "kind": "parameter",
+            "function": {
+              "package_id": "test.package",
+              "path": "app.root.root.divide",
+              "callable": {
+                "parameters": [
+                  {
+                    "kind": "primitive",
+                    "primitive": "float"
+                  },
+                  {
+                    "kind": "primitive",
+                    "primitive": "float"
+                  }
+                ],
+                "returns": {
+                  "kind": "applied",
+                  "package_id": "pipelang",
+                  "path": "result",
+                  "name": "Result",
+                  "arguments": [
+                    {
+                      "kind": "primitive",
+                      "primitive": "float"
+                    },
+                    {
+                      "kind": "named",
+                      "package_id": "pipelang",
+                      "path": "arithmetic.error"
+                    }
+                  ]
+                }
+              }
+            },
+            "position": 0,
+            "name": "left"
+          },
+          "type": {
+            "kind": "numeric",
+            "numeric": {
+              "representation": "binary_float",
+              "bits": 64
+            }
+          },
+          "type_span": {
+            "file": "root.pipe",
+            "start": 65,
+            "end": 70
+          },
+          "span": {
+            "file": "root.pipe",
+            "start": 65,
+            "end": 75
+          }
+        },
+        {
+          "binding": {
+            "kind": "parameter",
+            "function": {
+              "package_id": "test.package",
+              "path": "app.root.root.divide",
+              "callable": {
+                "parameters": [
+                  {
+                    "kind": "primitive",
+                    "primitive": "float"
+                  },
+                  {
+                    "kind": "primitive",
+                    "primitive": "float"
+                  }
+                ],
+                "returns": {
+                  "kind": "applied",
+                  "package_id": "pipelang",
+                  "path": "result",
+                  "name": "Result",
+                  "arguments": [
+                    {
+                      "kind": "primitive",
+                      "primitive": "float"
+                    },
+                    {
+                      "kind": "named",
+                      "package_id": "pipelang",
+                      "path": "arithmetic.error"
+                    }
+                  ]
+                }
+              }
+            },
+            "position": 1,
+            "name": "right"
+          },
+          "type": {
+            "kind": "numeric",
+            "numeric": {
+              "representation": "binary_float",
+              "bits": 64
+            }
+          },
+          "type_span": {
+            "file": "root.pipe",
+            "start": 77,
+            "end": 82
+          },
+          "span": {
+            "file": "root.pipe",
+            "start": 77,
+            "end": 88
+          }
+        }
+      ],
+      "return_type": {
+        "kind": "result",
+        "result": {
+          "success": {
+            "kind": "numeric",
+            "numeric": {
+              "representation": "binary_float",
+              "bits": 64
+            }
+          },
+          "failure": {
+            "kind": "arithmetic_error"
+          }
+        }
+      },
+      "return_type_span": {
+        "file": "root.pipe",
+        "start": 27,
+        "end": 57
+      },
+      "body": {
+        "kind": "binary",
+        "type": {
+          "kind": "result",
+          "result": {
+            "success": {
+              "kind": "numeric",
+              "numeric": {
+                "representation": "binary_float",
+                "bits": 64
+              }
+            },
+            "failure": {
+              "kind": "arithmetic_error"
+            }
+          }
+        },
+        "span": {
+          "file": "root.pipe",
+          "start": 93,
+          "end": 105
+        },
+        "binary": {
+          "operator": "divide",
+          "left": {
+            "kind": "reference",
+            "type": {
+              "kind": "numeric",
+              "numeric": {
+                "representation": "binary_float",
+                "bits": 64
+              }
+            },
+            "span": {
+              "file": "root.pipe",
+              "start": 93,
+              "end": 97
+            },
+            "reference": {
+              "kind": "parameter",
+              "function": {
+                "package_id": "test.package",
+                "path": "app.root.root.divide",
+                "callable": {
+                  "parameters": [
+                    {
+                      "kind": "primitive",
+                      "primitive": "float"
+                    },
+                    {
+                      "kind": "primitive",
+                      "primitive": "float"
+                    }
+                  ],
+                  "returns": {
+                    "kind": "applied",
+                    "package_id": "pipelang",
+                    "path": "result",
+                    "name": "Result",
+                    "arguments": [
+                      {
+                        "kind": "primitive",
+                        "primitive": "float"
+                      },
+                      {
+                        "kind": "named",
+                        "package_id": "pipelang",
+                        "path": "arithmetic.error"
+                      }
+                    ]
+                  }
+                }
+              },
+              "position": 0,
+              "name": "left"
+            }
+          },
+          "right": {
+            "kind": "reference",
+            "type": {
+              "kind": "numeric",
+              "numeric": {
+                "representation": "binary_float",
+                "bits": 64
+              }
+            },
+            "span": {
+              "file": "root.pipe",
+              "start": 100,
+              "end": 105
+            },
+            "reference": {
+              "kind": "parameter",
+              "function": {
+                "package_id": "test.package",
+                "path": "app.root.root.divide",
+                "callable": {
+                  "parameters": [
+                    {
+                      "kind": "primitive",
+                      "primitive": "float"
+                    },
+                    {
+                      "kind": "primitive",
+                      "primitive": "float"
+                    }
+                  ],
+                  "returns": {
+                    "kind": "applied",
+                    "package_id": "pipelang",
+                    "path": "result",
+                    "name": "Result",
+                    "arguments": [
+                      {
+                        "kind": "primitive",
+                        "primitive": "float"
+                      },
+                      {
+                        "kind": "named",
+                        "package_id": "pipelang",
+                        "path": "arithmetic.error"
+                      }
+                    ]
+                  }
+                }
+              },
+              "position": 1,
+              "name": "right"
+            }
+          }
+        }
+      },
+      "span": {
+        "file": "root.pipe",
+        "start": 20,
+        "end": 106
+      }
+    }
+  ]
+}

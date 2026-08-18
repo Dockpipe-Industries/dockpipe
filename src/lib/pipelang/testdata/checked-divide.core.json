@@ -1,0 +1,124 @@
+{
+  "language_contract": "v0.6.0",
+  "compiler_contract": "pipelang.compiler.v1",
+  "functions": [
+    {
+      "identity": {
+        "package_id": "test.package",
+        "path": "app.root.root.divide",
+        "callable": {
+          "parameters": [
+            {
+              "kind": "primitive",
+              "primitive": "float"
+            },
+            {
+              "kind": "primitive",
+              "primitive": "float"
+            }
+          ],
+          "returns": {
+            "kind": "applied",
+            "package_id": "pipelang",
+            "path": "result",
+            "name": "Result",
+            "arguments": [
+              {
+                "kind": "primitive",
+                "primitive": "float"
+              },
+              {
+                "kind": "named",
+                "package_id": "pipelang",
+                "path": "arithmetic.error"
+              }
+            ]
+          }
+        }
+      },
+      "name": "Divide",
+      "parameters": [
+        {
+          "position": 0,
+          "name": "left",
+          "type": {
+            "kind": "numeric",
+            "numeric": {
+              "representation": "binary_float",
+              "bits": 64
+            }
+          }
+        },
+        {
+          "position": 1,
+          "name": "right",
+          "type": {
+            "kind": "numeric",
+            "numeric": {
+              "representation": "binary_float",
+              "bits": 64
+            }
+          }
+        }
+      ],
+      "return_type": {
+        "kind": "result",
+        "result": {
+          "success": {
+            "kind": "numeric",
+            "numeric": {
+              "representation": "binary_float",
+              "bits": 64
+            }
+          },
+          "failure": {
+            "kind": "arithmetic_error"
+          }
+        }
+      },
+      "body": {
+        "kind": "binary",
+        "type": {
+          "kind": "result",
+          "result": {
+            "success": {
+              "kind": "numeric",
+              "numeric": {
+                "representation": "binary_float",
+                "bits": 64
+              }
+            },
+            "failure": {
+              "kind": "arithmetic_error"
+            }
+          }
+        },
+        "binary": {
+          "operator": "divide",
+          "left": {
+            "kind": "reference",
+            "type": {
+              "kind": "numeric",
+              "numeric": {
+                "representation": "binary_float",
+                "bits": 64
+              }
+            },
+            "parameter": 0
+          },
+          "right": {
+            "kind": "reference",
+            "type": {
+              "kind": "numeric",
+              "numeric": {
+                "representation": "binary_float",
+                "bits": 64
+              }
+            },
+            "parameter": 1
+          }
+        }
+      }
+    }
+  ]
+}

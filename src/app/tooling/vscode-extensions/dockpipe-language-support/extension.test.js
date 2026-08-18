@@ -116,3 +116,4 @@ assert(typePattern.includes("ArithmeticError"));
 const operatorPattern = grammar.repository.operators.patterns[0].match;
 assert(operatorPattern.includes("\\-"));
 assert(operatorPattern.includes("*"));
+assert(operatorPattern.includes("/"));
