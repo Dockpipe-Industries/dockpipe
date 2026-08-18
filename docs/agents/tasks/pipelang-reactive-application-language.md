@@ -6,7 +6,7 @@ The `vNext` foundation decision packet in this record is **accepted** as of 2026
 fixes semantics, compiler boundaries, bootstrap stages, compatibility, and implementation order;
 examples and fixtures remain non-normative and accept no production syntax. Separately authorized
 bounded objectives have completed implementation-order steps 1 through 6 and step-7 slices 7a
-through 7k. This record does not by itself authorize another step-7 or later language slice.
+through 7l. This record does not by itself authorize another step-7 or later language slice.
 
 ## Goal
 
@@ -1598,13 +1598,71 @@ local-listener test is denied by this sandbox and the established inherited-work
 package passed. No dependency, generated store, runtime, external state, cleanup, commit, push, or
 publication changed.
 
+### Completed step 7l primitive-record construction contract (2026-08-18)
+
+The founder selected the smallest independently useful record-value slice: explicit `v0.11.0`
+construction of one existing public primitive record. The exact source surface is one
+expression-bodied class method returning that record, with exactly one primitive parameter per
+field in declaration order and with the exact field types:
+
+```pipelang
+public Record Row {
+    public string Id;
+    public bool Healthy;
+}
+public Class Rows {
+    public Row Create(string id, bool healthy) =>
+        new Row { Id = id, Healthy = healthy };
+}
+```
+
+The initializer assigns every field exactly once, in declaration order, from the corresponding
+direct parameter. Omitted, extra, duplicate, reordered, defaulted, nested, or computed field
+values remain excluded. The expression reuses the existing record and field semantic identities
+and the enclosing callable identity; it creates no constructor identity and leaves
+`pipelang.semantic.v1` unchanged. Typed HIR and target-neutral Core carry `record_construct` with
+the record identity and ordered field identity/name/position/value projection. Core evaluation and
+the Core-only Go backend validate the complete immutable value and agree on all four primitive
+field types, including strict UTF-8 strings.
+
+`PL3004` reports unknown fields, `PL3005` reports duplicates, `PL3006` reports missing, extra,
+reordered, type, return, or signature mismatches, and `PL3009` reports non-direct bodies or values.
+Malformed typed HIR and Core remain `PL3026` and `PL3027`. `v0.1.0` through `v0.10.0` reject the
+new expression without implicit migration. All frozen checked arithmetic Result, Unicode text,
+record transport, and one-hop field-projection contracts remain available under `v0.11.0`.
+
+The minimal pure source fixture is `src/lib/pipelang/testdata/record-construction.pipe`, with
+synchronized typed HIR, Core, and Go goldens. Production construction syntax, semantic projection,
+Core evaluation, deterministic Go emission, diagnostics, editor grammar/completion/snippet support,
+and public documentation are implemented as this single slice. No application feature, nested
+record value, equality/hash/order, optional, general Result operation, union, collection, Step-8
+control flow, effect, backend, or generated-store behavior is included.
+
+Terminal proof passed with cached Go 1.25.13, offline module lookup, and writable `/tmp` caches:
+
+- exact PipeLang and 45-source compatibility tests, including source-derived HIR/Core/Go
+  construction goldens, semantic identity and projection checks, Core/generated-Go agreement,
+  malformed HIR/Core rejection, invalid UTF-8, excluded forms, explicit migration, and every frozen
+  earlier language slice under `v0.11.0`;
+- focused PipeLang check/compile/invoke, catalog, materialize, application/internal package-compile,
+  domain, and `src/cmd` checks using only the existing temporary modfile pinned to cached
+  `x/sys v0.46.0` where required;
+- `go vet`, Core-only backend/evaluator import-boundary checks, VS Code
+  grammar/completion/snippet/diagnostic validation, and Windows compile-only proof across the
+  affected packages; and
+- `gofmt`, `git diff --check`, exact inventory, dependency/generated-state absence, branch/stash,
+  TASK-020, and protected ignored-byte proof.
+
+No dependency, generated store, runtime, external state, cleanup, commit, push, or publication
+changed.
+
 ## Exact Next Boundary
 
 Step 7 of **Bounded Implementation Order** has completed the fixed numeric, compiler-internal
 checked-arithmetic Result, and direct production-source checked add, subtract, multiply, negate,
 binary64 divide, first-class arithmetic Result transport, ordinal Unicode text ordering, and
-primitive immutable record-identity transport, and one-hop primitive-record field projection
-slices.
+primitive immutable record-identity transport, one-hop primitive-record field projection, and
+exact primitive-record construction slices.
 `v0.2.0` admits only the exact explicit Result-returning addition;
 `v0.3.0` adds only direct subtraction; `v0.4.0` adds only direct multiplication; `v0.5.0` adds only
 direct integer negation; `v0.6.0` adds only direct binary64 division; and `v0.7.0` adds only direct
@@ -1615,6 +1673,8 @@ in the exact two-parameter direct method shape while preserving prior text conca
 transport while preserving every prior contract.
 `v0.10.0` adds only direct one-hop read-only projection of one declared primitive field from the
 sole record parameter while preserving every prior contract.
+`v0.11.0` adds only direct declaration-ordered construction of one existing public primitive
+record from one corresponding primitive parameter per field while preserving every prior contract.
 All other numeric arithmetic and every Result construction, composition, or consumption form remain
 fail-closed from production source. Any next slice requires a new
 synchronized decision for its exact source spelling, type/value handling rule, semantic projection,
@@ -1622,14 +1682,15 @@ migration, and bounded semantics before implementation.
 
 The first accepted application consumer is TASK-020's one-to-one DockPipe Launcher replacement,
 beginning with read-only Docker observability. Its typed snapshot requirements are dependency
-evidence when comparing remaining step-7 options. Completed primitive record transport and one-hop
-field projection satisfy two dependencies but do not authorize construction, optionals,
-collections, failures, broader record use, UI, actions, effects, or Qt behavior as one batch.
+evidence when comparing remaining step-7 options. Completed primitive record transport, one-hop
+field projection, and exact construction satisfy three dependencies but do not authorize nested or
+general record value use, optionals, collections, failures, UI, actions, effects, or Qt behavior as
+one batch.
 
 No later step-7 slice is included here. In particular, this checkpoint does not add Result
 construction, inspection, extraction, wrapping, unwrapping, propagation, or matching; additional
 Unicode text construction/scalar/grapheme APIs, normalization/case operations, value/reference,
-hashing, general total-order capabilities, optional, general result, record construction/chained or
+hashing, general total-order capabilities, optional, general result, record nesting/chained or
 general access/mutation/equality, union, or deterministic collection production semantics; accept namespace, import,
 migration, `internal`, overload, generic, or ID production syntax; implement overload resolution;
 add new types/declarations/expressions/operators, blocks, locals, branches, or loops; add effects,

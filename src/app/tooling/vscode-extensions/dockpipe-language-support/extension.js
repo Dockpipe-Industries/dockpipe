@@ -20,6 +20,7 @@ const PIPELANG_COMPLETION_KEYWORDS = [
   "int",
   "bool",
   "float",
+  "new",
   "true",
   "false"
 ];

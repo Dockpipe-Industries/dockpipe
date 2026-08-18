@@ -126,6 +126,7 @@ const (
 	ExprUnary           ExprKind = "unary"
 	ExprBinary          ExprKind = "binary"
 	ExprFieldProjection ExprKind = "field_projection"
+	ExprRecordConstruct ExprKind = "record_construct"
 )
 
 type Operator string
@@ -172,6 +173,18 @@ type FieldProjection struct {
 	Position int              `json:"position"`
 }
 
+type RecordConstructField struct {
+	Identity SemanticIdentity `json:"identity"`
+	Name     string           `json:"name"`
+	Position int              `json:"position"`
+	Value    *Expr            `json:"value"`
+}
+
+type RecordConstruct struct {
+	Identity SemanticIdentity       `json:"identity"`
+	Fields   []RecordConstructField `json:"fields"`
+}
+
 type Expr struct {
 	Kind      ExprKind         `json:"kind"`
 	Type      Type             `json:"type"`
@@ -181,6 +194,7 @@ type Expr struct {
 	Unary     *Unary           `json:"unary,omitempty"`
 	Binary    *Binary          `json:"binary,omitempty"`
 	Field     *FieldProjection `json:"field,omitempty"`
+	Record    *RecordConstruct `json:"record,omitempty"`
 }
 
 type Function struct {

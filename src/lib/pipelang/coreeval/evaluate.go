@@ -105,6 +105,23 @@ func evalExpr(expression coreir.Expr, arguments []Value) (Outcome, error) {
 			return Outcome{}, fmt.Errorf("record field projection position is outside the value")
 		}
 		return Outcome{OK: true, Value: receiver.Value.Record[position]}, nil
+	case coreir.ExprRecordConstruct:
+		fields := make([]Value, 0, len(expression.Record.Fields))
+		for position, initialized := range expression.Record.Fields {
+			value, err := evalExpr(*initialized.Value, arguments)
+			if err != nil {
+				return Outcome{}, fmt.Errorf("record construction field %d: %w", position, err)
+			}
+			if !value.OK {
+				return value, nil
+			}
+			fields = append(fields, value.Value)
+		}
+		value := Value{Type: expression.Type, Record: fields}
+		if err := validateValue(value); err != nil {
+			return Outcome{}, fmt.Errorf("record construction: %w", err)
+		}
+		return Outcome{OK: true, Value: cloneRecordValue(value)}, nil
 	default:
 		return Outcome{}, fmt.Errorf("unsupported expression kind %q", expression.Kind)
 	}

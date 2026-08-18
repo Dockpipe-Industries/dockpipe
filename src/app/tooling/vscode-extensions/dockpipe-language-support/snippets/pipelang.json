@@ -46,5 +46,13 @@
       "public ${1:string} ${2:IdOf}(${3:Row} ${4:value}) => ${4:value}.${5:Id};"
     ],
     "description": "Create a v0.10.0 one-hop read-only primitive-record field projection."
+  },
+  "PipeLang Record Construction": {
+    "prefix": "pipe-record-new",
+    "body": [
+      "public ${1:Row} ${2:Create}(${3:string} ${4:id}) =>",
+      "    new ${1:Row} { ${5:Id} = ${4:id} };"
+    ],
+    "description": "Create an exact v0.11.0 declaration-ordered primitive-record construction."
   }
 }

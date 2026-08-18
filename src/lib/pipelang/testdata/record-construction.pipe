@@ -1,0 +1,10 @@
+public Record Row {
+    public string Id;
+    public int Count;
+    public float Ratio;
+    public bool Ready;
+}
+public Class Root {
+    public Row Create(string id, int count, float ratio, bool ready) =>
+        new Row { Id = id, Count = count, Ratio = ratio, Ready = ready };
+}

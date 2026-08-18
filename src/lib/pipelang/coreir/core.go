@@ -13,6 +13,7 @@ const (
 	LanguageContractV080 = "v0.8.0"
 	LanguageContractV090 = "v0.9.0"
 	LanguageContractV100 = "v0.10.0"
+	LanguageContractV110 = "v0.11.0"
 	CompilerContractV1   = "pipelang.compiler.v1"
 )
 
@@ -121,6 +122,7 @@ const (
 	ExprUnary           ExprKind = "unary"
 	ExprBinary          ExprKind = "binary"
 	ExprFieldProjection ExprKind = "field_projection"
+	ExprRecordConstruct ExprKind = "record_construct"
 )
 
 type Operator string
@@ -167,6 +169,18 @@ type FieldProjection struct {
 	Position int              `json:"position"`
 }
 
+type RecordConstructField struct {
+	Identity SemanticIdentity `json:"identity"`
+	Name     string           `json:"name"`
+	Position int              `json:"position"`
+	Value    *Expr            `json:"value"`
+}
+
+type RecordConstruct struct {
+	Identity SemanticIdentity       `json:"identity"`
+	Fields   []RecordConstructField `json:"fields"`
+}
+
 type Expr struct {
 	Kind      ExprKind         `json:"kind"`
 	Type      Type             `json:"type"`
@@ -175,6 +189,7 @@ type Expr struct {
 	Unary     *Unary           `json:"unary,omitempty"`
 	Binary    *Binary          `json:"binary,omitempty"`
 	Field     *FieldProjection `json:"field,omitempty"`
+	Record    *RecordConstruct `json:"record,omitempty"`
 }
 
 type Function struct {
