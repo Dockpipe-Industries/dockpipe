@@ -490,6 +490,34 @@ HIR and Core remain `PL3026` and `PL3027`. Extraction or unwrapping, equality, d
 record fields, nesting, chaining, fallback, propagation, matching, mutation, Result integration,
 unions, and collections remain outside the production source contract.
 
+The explicit `v0.14.0` contract preserves every `v0.13.0` rule and adds one primitive Optional
+defaulting form. `value_or(Optional<T>, T) -> T` reuses the existing `pipelang:optional` semantic
+identity and admits only `string`, `int`, `float`, or `bool` for `T`. The complete added public
+source surface is one exact direct class-method shape:
+
+```pipelang
+public Class Values {
+    public string ValueOr(Optional<string> value, string fallback) =>
+        value_or(value, fallback);
+}
+```
+
+The method has exactly two parameters. Parameter 0 is the Optional operand, parameter 1 is the
+identically typed fallback, the return type is that same primitive `T`, and the body directly
+references those parameters in that order. Typed HIR and target-neutral Core carry an explicit
+`optional_value_or` node. Core evaluation and generated Go canonically validate both arguments
+before selecting the present payload or fallback. Strict UTF-8 therefore applies to a string
+fallback even when a present payload is selected. Binary64 payloads and fallbacks preserve their
+IEEE representation, including NaN and signed zero, without adding equality or ordering semantics.
+
+`v0.1.0` through `v0.13.0` reject `value_or` without implicit migration. Invalid payload types,
+placements, or method signatures use `PL3006`; literals, computed operands, reordered parameters,
+nested expressions, and other non-direct bodies use `PL3009`. Malformed HIR and Core remain
+`PL3026` and `PL3027`. Optional extraction beyond this exact defaulting form, equality, implicit
+defaults, record fields, nesting, chaining, propagation, matching, mutation, conversion,
+fallibility, Result composition, unions, collections, hashing, and ordering remain outside the
+production source contract.
+
 ## Artifacts
 
 Compile emits:

@@ -167,6 +167,23 @@ func evalExpr(expression coreir.Expr, arguments []Value) (Outcome, error) {
 			return Outcome{}, fmt.Errorf("optional has_value: %w", err)
 		}
 		return Outcome{OK: true, Value: Value{Type: expression.Type, Bool: value.Value.Optional.Present}}, nil
+	case coreir.ExprOptionalValueOr:
+		value, err := evalExpr(*expression.ValueOr.Value, arguments)
+		if err != nil || !value.OK {
+			return value, err
+		}
+		fallback, err := evalExpr(*expression.ValueOr.Fallback, arguments)
+		if err != nil || !fallback.OK {
+			return fallback, err
+		}
+		if err := validateValue(value.Value); err != nil {
+			return Outcome{}, fmt.Errorf("optional value_or: %w", err)
+		}
+		if value.Value.Optional.Present {
+			payload := *value.Value.Optional.Value
+			return Outcome{OK: true, Value: payload}, nil
+		}
+		return fallback, nil
 	default:
 		return Outcome{}, fmt.Errorf("unsupported expression kind %q", expression.Kind)
 	}

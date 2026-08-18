@@ -34,7 +34,7 @@
         },
         {
           "name": "support.function.builtin.pipelang",
-          "match": "\\b(some|none|has_value)\\b"
+          "match": "\\b(some|none|has_value|value_or)\\b"
         }
       ]
     },

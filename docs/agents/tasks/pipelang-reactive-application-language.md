@@ -6,7 +6,7 @@ The `vNext` foundation decision packet in this record is **accepted** as of 2026
 fixes semantics, compiler boundaries, bootstrap stages, compatibility, and implementation order;
 examples and fixtures remain non-normative and accept no production syntax. Separately authorized
 bounded objectives have completed implementation-order steps 1 through 6 and step-7 slices 7a
-through 7l. This record does not by itself authorize another step-7 or later language slice.
+through 7o. This record does not by itself authorize another step-7 or later language slice.
 
 ## Goal
 
@@ -1766,6 +1766,60 @@ Terminal proof passed with cached Go 1.25.13, offline module lookup, and writabl
 No dependency, generated store, runtime, external state, cleanup, commit, push, or publication
 changed.
 
+### Completed step 7o primitive Optional defaulting contract (2026-08-18)
+
+The founder selected explicit `v0.14.0` primitive Optional defaulting. The accepted public method
+has exactly two parameters and one direct expression body:
+
+```pipelang
+public Class Root {
+    public string ValueOr(Optional<string> value, string fallback) =>
+        value_or(value, fallback);
+}
+```
+
+`value_or(Optional<T>, T) -> T` admits exactly `string`, `int`, `float`, or `bool` for concrete
+`T`. Parameter 0 is the Optional operand, parameter 1 is the fallback, and the body directly
+references those parameters in that order. The form reuses the existing `pipelang:optional`
+semantic identity and leaves `pipelang.semantic.v1` unchanged. Typed HIR and target-neutral Core
+carry an explicit `optional_value_or` node; the deterministic evaluator and Core-only Go backend
+canonically validate both arguments before selecting the present payload or fallback. Strict UTF-8
+therefore applies even to an unselected string fallback. Binary64 values preserve NaN and signed
+zero payload behavior without adding equality or ordering semantics.
+
+`PL3006` reports invalid payload types, placements, or signatures; `PL3009` reports literals,
+computed operands, reordered parameters, nested expressions, or other non-direct bodies.
+Malformed typed HIR and Core remain `PL3026` and `PL3027`. `v0.1.0` through `v0.13.0` reject
+`value_or` without implicit migration. Every frozen arithmetic Result, ordinal Unicode text,
+primitive-record, and `v0.13.0` Optional construction/transport/inspection contract remains
+available under `v0.14.0`.
+
+The minimal pure source fixture is `src/lib/pipelang/testdata/optional-value-or.pipe`, with
+synchronized typed HIR, Core, and Go goldens. Optional extraction beyond this exact defaulting
+form, equality, implicit defaults, record fields, nesting, chaining, propagation, matching,
+mutation, conversion, fallibility, Result composition, unions, deterministic collections,
+hashing, ordering, Step-8 control flow, effects, application behavior, and additional backends
+remain excluded.
+
+Terminal proof passed with cached Go 1.25.13, offline module lookup, and writable `/tmp` caches:
+
+- exact PipeLang and 45-source compatibility tests, including source-derived Optional defaulting
+  HIR/Core/Go goldens, semantic identity/projection, all four primitive payloads,
+  Core/generated-Go agreement, canonical validation of both arguments, invalid UTF-8 in an
+  unselected fallback, NaN and signed-zero transport, malformed HIR/Core rejection, excluded
+  forms, explicit migration, and every frozen earlier language slice under `v0.14.0`;
+- focused PipeLang check/compile/invoke, catalog, materialize, application/internal
+  package-compile, domain, and `src/cmd` checks using only the existing temporary modfile pinned to
+  cached `x/sys v0.46.0` where required;
+- `go vet`, Core-only backend/evaluator import-boundary checks, VS Code
+  grammar/completion/snippet/diagnostic validation, and Windows compile-only proof across the
+  affected packages; and
+- `gofmt`, `git diff --check`, exact inventory, dependency/generated-state absence, branch/stash,
+  TASK-020, and protected ignored-byte proof.
+
+No dependency, generated store, runtime, external state, cleanup, commit, push, or publication
+changed.
+
 ## Exact Next Boundary
 
 Step 7 of **Bounded Implementation Order** has completed the fixed numeric, compiler-internal
@@ -1773,7 +1827,7 @@ checked-arithmetic Result, and direct production-source checked add, subtract, m
 binary64 divide, first-class arithmetic Result transport, ordinal Unicode text ordering, and
 primitive immutable record-identity transport, one-hop primitive-record field projection, and
 exact primitive-record construction and structural equality, plus primitive Optional
-construction, identity transport, and presence-inspection slices.
+construction, identity transport, presence inspection, and bounded defaulting slices.
 `v0.2.0` admits only the exact explicit Result-returning addition;
 `v0.3.0` adds only direct subtraction; `v0.4.0` adds only direct multiplication; `v0.5.0` adds only
 direct integer negation; `v0.6.0` adds only direct binary64 division; and `v0.7.0` adds only direct
@@ -1790,6 +1844,8 @@ record from one corresponding primitive parameter per field while preserving eve
 same existing public primitive record while preserving every prior contract.
 `v0.13.0` adds only `Optional<T>` for primitive `T` with exact direct `some(value)`, `none<T>()`,
 identity transport, and `has_value(value)` methods while preserving every prior contract.
+`v0.14.0` adds only exact two-parameter `value_or(Optional<T>, T) -> T` for primitive `T`, with
+both arguments canonically validated before selection, while preserving every prior contract.
 All other numeric arithmetic and every Result construction, composition, or consumption form remain
 fail-closed from production source. Any next slice requires a new
 synchronized decision for its exact source spelling, type/value handling rule, semantic projection,
@@ -1799,13 +1855,15 @@ The first accepted application consumer is TASK-020's one-to-one DockPipe Launch
 beginning with read-only Docker observability. Its typed snapshot requirements are dependency
 evidence when comparing remaining step-7 options. Completed primitive record transport, one-hop
 field projection, exact construction, structural equality, and primitive Optional presence satisfy
-five dependencies but do not authorize nested or general record value use, optional extraction or
-composition, collections, failures, UI, actions, effects, or Qt behavior as one batch.
+five dependencies; bounded primitive Optional defaulting satisfies a sixth. They do not authorize
+nested or general record value use, optional extraction beyond `value_or` or composition,
+collections, failures, UI, actions, effects, or Qt behavior as one batch.
 
 No later step-7 slice is included here. In particular, this checkpoint does not add Result
 construction, inspection, extraction, wrapping, unwrapping, propagation, or matching; additional
 Unicode text construction/scalar/grapheme APIs, normalization/case operations, value/reference,
-hashing, general total-order capabilities, optional extraction/equality/defaults/nesting/chaining,
+hashing, general total-order capabilities, optional extraction beyond `value_or`, equality,
+implicit defaults, nesting, chaining,
 general result, record nesting/chained or general access/mutation/hash/order, union, or deterministic collection production semantics; accept namespace, import,
 migration, `internal`, overload, generic, or ID production syntax; implement overload resolution;
 add new types/declarations/expressions/operators, blocks, locals, branches, or loops; add effects,
