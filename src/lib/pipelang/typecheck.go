@@ -40,7 +40,7 @@ func checkProgramWithModules(sources *SourceSet, prog *Program, modules *ModuleG
 func checkProgramWithSymbols(sources *SourceSet, prog *Program, modules *ModuleGraph, symbols *SymbolTable) (*checkedProgram, error) {
 	cp := &checkedProgram{program: prog, symbols: symbols, sources: sources, modules: modules}
 	for _, entry := range symbols.ordered {
-		if modules != nil && hasArithmeticResultSourceContract(modules.LanguageContract()) && (entry.symbol.Name == "Result" || entry.symbol.Name == "ArithmeticError") {
+		if modules != nil && ((hasArithmeticResultSourceContract(modules.LanguageContract()) && (entry.symbol.Name == "Result" || entry.symbol.Name == "ArithmeticError")) || (hasPrimitiveOptionalSourceContract(modules.LanguageContract()) && entry.symbol.Name == "Optional")) {
 			return nil, oneDiagnostic(sources, CodeInvalidDecl, CategorySemantic, entry.symbol.DeclarationSpan, fmt.Sprintf("type name %q is reserved by language contract %q", entry.symbol.Name, modules.LanguageContract()))
 		}
 		switch entry.symbol.Kind {
@@ -175,6 +175,9 @@ func (cp *checkedProgram) validateInterface(decl *InterfaceDecl) error {
 		if cp.containsResolvedRecordType(resolved) {
 			return oneDiagnostic(cp.sources, CodeInvalidType, CategorySemantic, field.Type.Span, fmt.Sprintf("the %s primitive record is admitted only in one exact class identity-transport method", cp.modules.LanguageContract()))
 		}
+		if containsResolvedOptional(resolved) {
+			return oneDiagnostic(cp.sources, CodeInvalidType, CategorySemantic, field.Type.Span, fmt.Sprintf("the %s primitive Optional is admitted only in exact class methods", cp.modules.LanguageContract()))
+		}
 		if previous, ok := seen[field.Name]; ok {
 			return oneDiagnostic(cp.sources, CodeDuplicateMember, CategorySemantic, field.Span, fmt.Sprintf("interface %s has duplicate member %q", decl.Name, field.Name), RelatedSpan{Span: previous, Message: "first member"})
 		}
@@ -198,7 +201,10 @@ func (cp *checkedProgram) validateInterface(decl *InterfaceDecl) error {
 			return oneDiagnostic(cp.sources, CodeDuplicateMember, CategorySemantic, method.Span, fmt.Sprintf("interface %s has duplicate member %q", decl.Name, method.Name), RelatedSpan{Span: previous, Message: "first member"})
 		}
 		seen[method.Name] = method.Span
-		if err := cp.validateParams(decl.Name, method.Name, method.Params, false, false); err != nil {
+		if containsResolvedOptional(resolved) {
+			return oneDiagnostic(cp.sources, CodeInvalidType, CategorySemantic, method.ReturnType.Span, fmt.Sprintf("the %s primitive Optional is not admitted in interface signatures", cp.modules.LanguageContract()))
+		}
+		if err := cp.validateParams(decl.Name, method.Name, method.Params, false, false, false); err != nil {
 			return err
 		}
 	}
@@ -221,6 +227,9 @@ func (cp *checkedProgram) validateClass(decl *ClassDecl) error {
 		}
 		if cp.containsResolvedRecordType(fieldType) {
 			return oneDiagnostic(cp.sources, CodeInvalidType, CategorySemantic, field.Type.Span, fmt.Sprintf("the %s primitive record is admitted only in one exact identity-transport parameter and return", cp.modules.LanguageContract()))
+		}
+		if containsResolvedOptional(fieldType) {
+			return oneDiagnostic(cp.sources, CodeInvalidType, CategorySemantic, field.Type.Span, fmt.Sprintf("the %s primitive Optional is admitted only in exact class methods", cp.modules.LanguageContract()))
 		}
 		if previous, ok := seen[field.Name]; ok {
 			return oneDiagnostic(cp.sources, CodeDuplicateMember, CategorySemantic, field.Span, fmt.Sprintf("class %s has duplicate member %q", decl.Name, field.Name), RelatedSpan{Span: previous, Message: "first member"})
@@ -251,13 +260,20 @@ func (cp *checkedProgram) validateClass(decl *ClassDecl) error {
 		if err != nil {
 			return err
 		}
-		if err := cp.validateParams(decl.Name, method.Name, method.Params, allowResultParameter, allowRecordParameter); err != nil {
+		allowOptionalParameter, err := cp.validateOptionalSignature(method, resolved)
+		if err != nil {
+			return err
+		}
+		if err := cp.validateParams(decl.Name, method.Name, method.Params, allowResultParameter, allowRecordParameter, allowOptionalParameter); err != nil {
 			return err
 		}
 	}
 	for _, field := range decl.Fields {
 		if field.Default == nil {
 			continue
+		}
+		if containsOptionalExpression(field.Default) {
+			return oneDiagnostic(cp.sources, CodeExpressionType, CategorySemantic, field.Default.SourceSpan(), fmt.Sprintf("%s primitive Optional expressions are admitted only as complete class method bodies", cp.modules.LanguageContract()))
 		}
 		inferred, err := cp.inferExprType(field.Default, map[string]ResolvedTypeRef{})
 		if err != nil {
@@ -362,7 +378,38 @@ func (cp *checkedProgram) validateResultTransportSignature(method MethodDecl, re
 	return true, nil
 }
 
-func (cp *checkedProgram) validateParams(owner, method string, params []Param, allowArithmeticResult, allowRecord bool) error {
+func (cp *checkedProgram) validateOptionalSignature(method MethodDecl, result ResolvedTypeRef) (bool, error) {
+	resolvedParameters := make([]ResolvedTypeRef, 0, len(method.Params))
+	hasOptional := containsResolvedOptional(result)
+	for _, param := range method.Params {
+		resolved, err := cp.resolveType(param.Type, RelatedSpan{Span: param.Span, Message: "parameter declaration"})
+		if err != nil {
+			return false, prefixDiagnostic(err, fmt.Sprintf("class method %s parameter %s: ", method.Name, param.Name))
+		}
+		resolvedParameters = append(resolvedParameters, resolved)
+		hasOptional = hasOptional || containsResolvedOptional(resolved)
+	}
+	if !hasOptional {
+		return false, nil
+	}
+	contract := cp.modules.LanguageContract()
+	if !hasPrimitiveOptionalSourceContract(contract) {
+		return false, oneDiagnostic(cp.sources, CodeInvalidType, CategorySemantic, method.Span, fmt.Sprintf("primitive Optional methods require language contract %q", PipeLangLanguageContractV130))
+	}
+	valid := false
+	if isResolvedPrimitiveOptional(result) {
+		valid = len(resolvedParameters) == 0 ||
+			(len(resolvedParameters) == 1 && (resolvedParameters[0].Equal(result.Arguments[0]) || resolvedParameters[0].Equal(result)))
+	} else if result.Equal(resolvedPrimitive(TypeBool)) {
+		valid = len(resolvedParameters) == 1 && isResolvedPrimitiveOptional(resolvedParameters[0])
+	}
+	if !valid {
+		return false, oneDiagnostic(cp.sources, CodeInvalidType, CategorySemantic, method.Span, fmt.Sprintf("the %s primitive Optional is admitted only as direct some, none, identity transport, or has_value class methods", contract))
+	}
+	return len(resolvedParameters) == 1 && isResolvedPrimitiveOptional(resolvedParameters[0]), nil
+}
+
+func (cp *checkedProgram) validateParams(owner, method string, params []Param, allowArithmeticResult, allowRecord, allowOptional bool) error {
 	seen := map[string]Span{}
 	for _, param := range params {
 		resolved, err := cp.resolveType(param.Type, RelatedSpan{Span: param.Span, Message: "parameter declaration"})
@@ -374,6 +421,9 @@ func (cp *checkedProgram) validateParams(owner, method string, params []Param, a
 		}
 		if cp.containsResolvedRecordType(resolved) && !allowRecord {
 			return oneDiagnostic(cp.sources, CodeInvalidType, CategorySemantic, param.Type.Span, fmt.Sprintf("the %s primitive record is not admitted in this parameter position", cp.modules.LanguageContract()))
+		}
+		if containsResolvedOptional(resolved) && !allowOptional {
+			return oneDiagnostic(cp.sources, CodeInvalidType, CategorySemantic, param.Type.Span, fmt.Sprintf("the %s primitive Optional is not admitted in this parameter position", cp.modules.LanguageContract()))
 		}
 		if previous, ok := seen[param.Name]; ok {
 			return oneDiagnostic(cp.sources, CodeDuplicateMember, CategorySemantic, param.Span, fmt.Sprintf("%s method %s has duplicate parameter %q", owner, method, param.Name), RelatedSpan{Span: previous, Message: "first parameter"})
@@ -500,6 +550,44 @@ func inferExprType(sources *SourceSet, expr Expr, env map[string]ResolvedTypeRef
 }
 
 func (cp *checkedProgram) inferExprType(expr Expr, env map[string]ResolvedTypeRef) (ResolvedTypeRef, error) {
+	switch optional := expr.(type) {
+	case *OptionalSomeExpr:
+		if cp == nil || cp.modules == nil || !hasPrimitiveOptionalSourceContract(cp.modules.LanguageContract()) {
+			return ResolvedTypeRef{}, oneDiagnostic(cp.sources, CodeExpressionType, CategorySemantic, optional.Span, "primitive Optional construction requires language contract v0.13.0")
+		}
+		value, err := cp.inferExprType(optional.Value, env)
+		if err != nil {
+			return ResolvedTypeRef{}, err
+		}
+		if value.Kind != TypeRefPrimitive {
+			return ResolvedTypeRef{}, oneDiagnostic(cp.sources, CodeInvalidType, CategorySemantic, optional.Value.SourceSpan(), fmt.Sprintf("some requires a primitive value, got %s", value))
+		}
+		return resolvedOptional(value), nil
+	case *OptionalNoneExpr:
+		if cp == nil || cp.modules == nil || !hasPrimitiveOptionalSourceContract(cp.modules.LanguageContract()) {
+			return ResolvedTypeRef{}, oneDiagnostic(cp.sources, CodeExpressionType, CategorySemantic, optional.Span, "primitive Optional construction requires language contract v0.13.0")
+		}
+		value, err := cp.resolveType(optional.ValueType)
+		if err != nil {
+			return ResolvedTypeRef{}, err
+		}
+		if value.Kind != TypeRefPrimitive {
+			return ResolvedTypeRef{}, oneDiagnostic(cp.sources, CodeInvalidType, CategorySemantic, optional.ValueType.Span, fmt.Sprintf("none requires a primitive type, got %s", value))
+		}
+		return resolvedOptional(value), nil
+	case *OptionalHasValueExpr:
+		if cp == nil || cp.modules == nil || !hasPrimitiveOptionalSourceContract(cp.modules.LanguageContract()) {
+			return ResolvedTypeRef{}, oneDiagnostic(cp.sources, CodeExpressionType, CategorySemantic, optional.Span, "primitive Optional inspection requires language contract v0.13.0")
+		}
+		value, err := cp.inferExprType(optional.Value, env)
+		if err != nil {
+			return ResolvedTypeRef{}, err
+		}
+		if !isResolvedPrimitiveOptional(value) {
+			return ResolvedTypeRef{}, oneDiagnostic(cp.sources, CodeInvalidType, CategorySemantic, optional.Value.SourceSpan(), fmt.Sprintf("has_value requires a primitive Optional, got %s", value))
+		}
+		return resolvedPrimitive(TypeBool), nil
+	}
 	if construction, ok := expr.(*RecordConstructExpr); ok {
 		if cp == nil || cp.modules == nil || !hasPrimitiveRecordConstructionSourceContract(cp.modules.LanguageContract()) {
 			return ResolvedTypeRef{}, oneDiagnostic(cp.sources, CodeExpressionType, CategorySemantic, construction.Span, "primitive record construction requires language contract v0.11.0")
@@ -551,6 +639,9 @@ func (cp *checkedProgram) resolveRecordField(record ResolvedTypeRef, name string
 
 func (cp *checkedProgram) inferMethodBodyType(method MethodDecl, env map[string]ResolvedTypeRef, declared ResolvedTypeRef) (ResolvedTypeRef, error) {
 	expr := method.Body
+	if inferred, handled, err := cp.inferOptionalMethodBodyType(method, env, declared); handled {
+		return inferred, err
+	}
 	if cp == nil || cp.modules == nil || !hasArithmeticResultSourceContract(cp.modules.LanguageContract()) || !isResolvedSourceArithmeticResult(cp.modules.LanguageContract(), declared) {
 		return cp.inferNonResultMethodBodyType(method, env, declared)
 	}
@@ -588,7 +679,7 @@ func (cp *checkedProgram) inferMethodBodyType(method MethodDecl, env map[string]
 		}
 		return resolvedArithmeticResult(binary64), nil
 	}
-	if unary, unaryOK := expr.(*UnaryExpr); unaryOK && (contract == PipeLangLanguageContractV050 || contract == PipeLangLanguageContractV060 || contract == PipeLangLanguageContractV070 || contract == PipeLangLanguageContractV080 || contract == PipeLangLanguageContractV090 || contract == PipeLangLanguageContractV100 || contract == PipeLangLanguageContractV110 || contract == PipeLangLanguageContractV120) && unary.Op == "-" {
+	if unary, unaryOK := expr.(*UnaryExpr); unaryOK && (contract == PipeLangLanguageContractV050 || contract == PipeLangLanguageContractV060 || contract == PipeLangLanguageContractV070 || contract == PipeLangLanguageContractV080 || contract == PipeLangLanguageContractV090 || contract == PipeLangLanguageContractV100 || contract == PipeLangLanguageContractV110 || contract == PipeLangLanguageContractV120 || contract == PipeLangLanguageContractV130) && unary.Op == "-" {
 		operand, err := inferExprTypeWithPolicy(cp.sources, unary.Expr, env, true)
 		if err != nil {
 			return ResolvedTypeRef{}, err
@@ -601,7 +692,7 @@ func (cp *checkedProgram) inferMethodBodyType(method MethodDecl, env map[string]
 	}
 	binary, ok := expr.(*BinaryExpr)
 	operatorAccepted := ok && binary.Op == "+"
-	if contract == PipeLangLanguageContractV040 || contract == PipeLangLanguageContractV050 || contract == PipeLangLanguageContractV060 || contract == PipeLangLanguageContractV070 || contract == PipeLangLanguageContractV080 || contract == PipeLangLanguageContractV090 || contract == PipeLangLanguageContractV100 || contract == PipeLangLanguageContractV110 || contract == PipeLangLanguageContractV120 {
+	if contract == PipeLangLanguageContractV040 || contract == PipeLangLanguageContractV050 || contract == PipeLangLanguageContractV060 || contract == PipeLangLanguageContractV070 || contract == PipeLangLanguageContractV080 || contract == PipeLangLanguageContractV090 || contract == PipeLangLanguageContractV100 || contract == PipeLangLanguageContractV110 || contract == PipeLangLanguageContractV120 || contract == PipeLangLanguageContractV130 {
 		operatorAccepted = ok && (binary.Op == "+" || binary.Op == "-" || binary.Op == "*")
 	} else if contract == PipeLangLanguageContractV030 {
 		operatorAccepted = ok && (binary.Op == "+" || binary.Op == "-")
@@ -623,6 +714,54 @@ func (cp *checkedProgram) inferMethodBodyType(method MethodDecl, env map[string]
 		return ResolvedTypeRef{}, oneDiagnostic(cp.sources, CodeNumericSemantics, CategorySemantic, binary.Span, fmt.Sprintf("checked integer operator %q requires int and int, got %s and %s", binary.Op, left, right))
 	}
 	return resolvedArithmeticResult(integer), nil
+}
+
+func (cp *checkedProgram) inferOptionalMethodBodyType(method MethodDecl, env map[string]ResolvedTypeRef, declared ResolvedTypeRef) (ResolvedTypeRef, bool, error) {
+	parameterTypes := make([]ResolvedTypeRef, 0, len(method.Params))
+	hasOptional := containsResolvedOptional(declared) || containsOptionalExpression(method.Body)
+	for _, parameter := range method.Params {
+		resolved, err := cp.resolveType(parameter.Type)
+		if err != nil {
+			return ResolvedTypeRef{}, true, err
+		}
+		parameterTypes = append(parameterTypes, resolved)
+		hasOptional = hasOptional || containsResolvedOptional(resolved)
+	}
+	if !hasOptional {
+		return ResolvedTypeRef{}, false, nil
+	}
+	contract := cp.modules.LanguageContract()
+	if !hasPrimitiveOptionalSourceContract(contract) {
+		return ResolvedTypeRef{}, true, oneDiagnostic(cp.sources, CodeInvalidType, CategorySemantic, method.Span, fmt.Sprintf("primitive Optional methods require language contract %q", PipeLangLanguageContractV130))
+	}
+	directParameter := func(expression Expr, position int) bool {
+		identifier, ok := expression.(*IdentExpr)
+		return ok && position < len(method.Params) && identifier.Name == method.Params[position].Name
+	}
+	switch body := method.Body.(type) {
+	case *OptionalSomeExpr:
+		valid := isResolvedPrimitiveOptional(declared) && len(parameterTypes) == 1 && parameterTypes[0].Equal(declared.Arguments[0]) && directParameter(body.Value, 0)
+		if valid {
+			return declared, true, nil
+		}
+	case *OptionalNoneExpr:
+		valueType, err := cp.resolveType(body.ValueType)
+		if err != nil {
+			return ResolvedTypeRef{}, true, err
+		}
+		if isResolvedPrimitiveOptional(declared) && len(parameterTypes) == 0 && valueType.Equal(declared.Arguments[0]) {
+			return declared, true, nil
+		}
+	case *IdentExpr:
+		if isResolvedPrimitiveOptional(declared) && len(parameterTypes) == 1 && parameterTypes[0].Equal(declared) && body.Name == method.Params[0].Name {
+			return declared, true, nil
+		}
+	case *OptionalHasValueExpr:
+		if declared.Equal(resolvedPrimitive(TypeBool)) && len(parameterTypes) == 1 && isResolvedPrimitiveOptional(parameterTypes[0]) && directParameter(body.Value, 0) {
+			return declared, true, nil
+		}
+	}
+	return ResolvedTypeRef{}, true, oneDiagnostic(cp.sources, CodeExpressionType, CategorySemantic, method.Body.SourceSpan(), fmt.Sprintf("%s primitive Optional requires one complete direct some, none, identity transport, or has_value method body", contract))
 }
 
 func (cp *checkedProgram) inferNonResultMethodBodyType(method MethodDecl, env map[string]ResolvedTypeRef, declared ResolvedTypeRef) (ResolvedTypeRef, error) {
@@ -793,6 +932,26 @@ func containsRecordConstruction(expression Expr) bool {
 	}
 }
 
+func containsOptionalExpression(expression Expr) bool {
+	switch node := expression.(type) {
+	case *OptionalSomeExpr, *OptionalNoneExpr, *OptionalHasValueExpr:
+		return true
+	case *UnaryExpr:
+		return containsOptionalExpression(node.Expr)
+	case *BinaryExpr:
+		return containsOptionalExpression(node.Left) || containsOptionalExpression(node.Right)
+	case *FieldExpr:
+		return containsOptionalExpression(node.Receiver)
+	case *RecordConstructExpr:
+		for _, field := range node.Fields {
+			if containsOptionalExpression(field.Value) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 func isOrdinalTextOrderingOperator(operator string) bool {
 	switch operator {
 	case "<", "<=", ">", ">=":
@@ -803,7 +962,7 @@ func isOrdinalTextOrderingOperator(operator string) bool {
 }
 
 func arithmeticSourceOperators(contract LanguageContract) string {
-	if contract == PipeLangLanguageContractV050 || contract == PipeLangLanguageContractV060 || contract == PipeLangLanguageContractV070 || contract == PipeLangLanguageContractV080 || contract == PipeLangLanguageContractV090 || contract == PipeLangLanguageContractV100 || contract == PipeLangLanguageContractV110 || contract == PipeLangLanguageContractV120 {
+	if contract == PipeLangLanguageContractV050 || contract == PipeLangLanguageContractV060 || contract == PipeLangLanguageContractV070 || contract == PipeLangLanguageContractV080 || contract == PipeLangLanguageContractV090 || contract == PipeLangLanguageContractV100 || contract == PipeLangLanguageContractV110 || contract == PipeLangLanguageContractV120 || contract == PipeLangLanguageContractV130 {
 		return "addition, subtraction, multiplication, or negation"
 	}
 	if contract == PipeLangLanguageContractV040 {

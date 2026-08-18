@@ -61,5 +61,15 @@
       "public bool ${1:Same}(${2:Row} ${3:left}, ${2:Row} ${4:right}) => ${3:left} ${5|==,!=|} ${4:right};"
     ],
     "description": "Create an exact v0.12.0 direct structural primitive-record equality method."
+  },
+  "PipeLang Primitive Optional": {
+    "prefix": "pipe-optional",
+    "body": [
+      "public Optional<${1:string}> ${2:Present}(${1:string} ${3:value}) => some(${3:value});",
+      "public Optional<${1:string}> ${4:Absent}() => none<${1:string}>();",
+      "public Optional<${1:string}> ${5:Forward}(Optional<${1:string}> ${3:value}) => ${3:value};",
+      "public bool ${6:HasValue}(Optional<${1:string}> ${3:value}) => has_value(${3:value});"
+    ],
+    "description": "Create the exact v0.13.0 primitive Optional construction, identity transport, and presence-inspection methods."
   }
 }

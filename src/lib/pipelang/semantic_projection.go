@@ -103,7 +103,7 @@ func buildSemanticProjection(analysis *Analysis, view SemanticProjectionView) (*
 		return nil, err
 	}
 	if !isPipeLangSemanticContract(analysis.Modules.languageContract) {
-		return nil, projectionError(analysis, fmt.Sprintf("semantic projection requires language contract %q, %q, %q, %q, %q, %q, %q, %q, %q, %q, %q, or %q", PipeLangLanguageContractV010, PipeLangLanguageContractV020, PipeLangLanguageContractV030, PipeLangLanguageContractV040, PipeLangLanguageContractV050, PipeLangLanguageContractV060, PipeLangLanguageContractV070, PipeLangLanguageContractV080, PipeLangLanguageContractV090, PipeLangLanguageContractV100, PipeLangLanguageContractV110, PipeLangLanguageContractV120))
+		return nil, projectionError(analysis, fmt.Sprintf("semantic projection requires a supported post-legacy language contract through %q", PipeLangLanguageContractV130))
 	}
 	if view != SemanticProjectionPublic && view != SemanticProjectionWorkspace {
 		return nil, projectionError(analysis, fmt.Sprintf("invalid semantic projection view %q", view))

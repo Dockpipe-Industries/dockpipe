@@ -15,6 +15,7 @@ const (
 	LanguageContractV100 = "v0.10.0"
 	LanguageContractV110 = "v0.11.0"
 	LanguageContractV120 = "v0.12.0"
+	LanguageContractV130 = "v0.13.0"
 	CompilerContractV1   = "pipelang.compiler.v1"
 )
 
@@ -35,6 +36,7 @@ const (
 	TypeResult          TypeKind = "result"
 	TypeArithmeticError TypeKind = "arithmetic_error"
 	TypeRecord          TypeKind = "record"
+	TypeOptional        TypeKind = "optional"
 	TypeNamed           TypeKind = "named"
 	TypeApplied         TypeKind = "applied"
 )
@@ -59,6 +61,10 @@ type NumericType struct {
 type ResultType struct {
 	Success Type `json:"success"`
 	Failure Type `json:"failure"`
+}
+
+type OptionalType struct {
+	Value Type `json:"value"`
 }
 
 type RecordField struct {
@@ -103,6 +109,7 @@ type Type struct {
 	Primitive PrimitiveType     `json:"primitive,omitempty"`
 	Numeric   *NumericType      `json:"numeric,omitempty"`
 	Result    *ResultType       `json:"result,omitempty"`
+	Optional  *OptionalType     `json:"optional,omitempty"`
 	Record    *RecordType       `json:"record,omitempty"`
 	Identity  *SemanticIdentity `json:"identity,omitempty"`
 	Name      string            `json:"name,omitempty"`
@@ -118,12 +125,15 @@ type Parameter struct {
 type ExprKind string
 
 const (
-	ExprLiteral         ExprKind = "literal"
-	ExprReference       ExprKind = "reference"
-	ExprUnary           ExprKind = "unary"
-	ExprBinary          ExprKind = "binary"
-	ExprFieldProjection ExprKind = "field_projection"
-	ExprRecordConstruct ExprKind = "record_construct"
+	ExprLiteral          ExprKind = "literal"
+	ExprReference        ExprKind = "reference"
+	ExprUnary            ExprKind = "unary"
+	ExprBinary           ExprKind = "binary"
+	ExprFieldProjection  ExprKind = "field_projection"
+	ExprRecordConstruct  ExprKind = "record_construct"
+	ExprOptionalSome     ExprKind = "optional_some"
+	ExprOptionalNone     ExprKind = "optional_none"
+	ExprOptionalHasValue ExprKind = "optional_has_value"
 )
 
 type Operator string
@@ -182,15 +192,28 @@ type RecordConstruct struct {
 	Fields   []RecordConstructField `json:"fields"`
 }
 
+type OptionalSome struct {
+	Value *Expr `json:"value"`
+}
+
+type OptionalNone struct{}
+
+type OptionalHasValue struct {
+	Value *Expr `json:"value"`
+}
+
 type Expr struct {
-	Kind      ExprKind         `json:"kind"`
-	Type      Type             `json:"type"`
-	Literal   *Literal         `json:"literal,omitempty"`
-	Parameter *int             `json:"parameter,omitempty"`
-	Unary     *Unary           `json:"unary,omitempty"`
-	Binary    *Binary          `json:"binary,omitempty"`
-	Field     *FieldProjection `json:"field,omitempty"`
-	Record    *RecordConstruct `json:"record,omitempty"`
+	Kind      ExprKind          `json:"kind"`
+	Type      Type              `json:"type"`
+	Literal   *Literal          `json:"literal,omitempty"`
+	Parameter *int              `json:"parameter,omitempty"`
+	Unary     *Unary            `json:"unary,omitempty"`
+	Binary    *Binary           `json:"binary,omitempty"`
+	Field     *FieldProjection  `json:"field,omitempty"`
+	Record    *RecordConstruct  `json:"record,omitempty"`
+	Some      *OptionalSome     `json:"some,omitempty"`
+	None      *OptionalNone     `json:"none,omitempty"`
+	HasValue  *OptionalHasValue `json:"has_value,omitempty"`
 }
 
 type Function struct {

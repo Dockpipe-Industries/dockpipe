@@ -450,6 +450,18 @@ func (p *parser) parseTypeRef() (UnresolvedTypeRef, error) {
 		}
 		return UnresolvedTypeRef{Kind: TypeRefApplied, Name: "Result", Arguments: []UnresolvedTypeRef{success, failure}, Span: mergeSpans(tok.span, end.span)}, nil
 	}
+	if tok.lit == "Optional" && hasPrimitiveOptionalSourceContract(p.languageContract) && p.peek().kind == tokLT {
+		p.next()
+		value, err := p.parseTypeRef()
+		if err != nil {
+			return UnresolvedTypeRef{}, err
+		}
+		end, err := p.expect(tokGT)
+		if err != nil {
+			return UnresolvedTypeRef{}, err
+		}
+		return UnresolvedTypeRef{Kind: TypeRefApplied, Name: "Optional", Arguments: []UnresolvedTypeRef{value}, Span: mergeSpans(tok.span, end.span)}, nil
+	}
 	return UnresolvedTypeRef{Kind: TypeRefNamed, Name: tok.lit, Span: tok.span}, nil
 }
 
@@ -534,6 +546,16 @@ func (p *parser) parsePrimary() (Expr, error) {
 		if t.lit == "new" && hasPrimitiveRecordConstructionSourceContract(p.languageContract) {
 			return p.parseRecordConstruction()
 		}
+		if hasPrimitiveOptionalSourceContract(p.languageContract) {
+			switch t.lit {
+			case "some":
+				return p.parseOptionalSome()
+			case "none":
+				return p.parseOptionalNone()
+			case "has_value":
+				return p.parseOptionalHasValue()
+			}
+		}
 		p.next()
 		return &IdentExpr{Name: t.lit, Span: t.span}, nil
 	case tokLParen:
@@ -551,6 +573,69 @@ func (p *parser) parsePrimary() (Expr, error) {
 	default:
 		return nil, p.errf("unexpected token %q in expression", t.lit)
 	}
+}
+
+func (p *parser) parseOptionalSome() (Expr, error) {
+	start, err := p.expect(tokIdent)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := p.expect(tokLParen); err != nil {
+		return nil, err
+	}
+	value, err := p.parseExpr(1)
+	if err != nil {
+		return nil, err
+	}
+	end, err := p.expect(tokRParen)
+	if err != nil {
+		return nil, err
+	}
+	return &OptionalSomeExpr{Value: value, Span: mergeSpans(start.span, end.span)}, nil
+}
+
+func (p *parser) parseOptionalNone() (Expr, error) {
+	start, err := p.expect(tokIdent)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := p.expect(tokLT); err != nil {
+		return nil, err
+	}
+	valueType, err := p.parseTypeRef()
+	if err != nil {
+		return nil, err
+	}
+	if _, err := p.expect(tokGT); err != nil {
+		return nil, err
+	}
+	if _, err := p.expect(tokLParen); err != nil {
+		return nil, err
+	}
+	end, err := p.expect(tokRParen)
+	if err != nil {
+		return nil, err
+	}
+	return &OptionalNoneExpr{ValueType: valueType, Span: mergeSpans(start.span, end.span)}, nil
+}
+
+func (p *parser) parseOptionalHasValue() (Expr, error) {
+	start, err := p.expect(tokIdent)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := p.expect(tokLParen); err != nil {
+		return nil, err
+	}
+	value, err := p.parseExpr(1)
+	if err != nil {
+		return nil, err
+	}
+	end, err := p.expect(tokRParen)
+	if err != nil {
+		return nil, err
+	}
+	return &OptionalHasValueExpr{Value: value, Span: mergeSpans(start.span, end.span)}, nil
 }
 
 func (p *parser) parseRecordConstruction() (Expr, error) {
