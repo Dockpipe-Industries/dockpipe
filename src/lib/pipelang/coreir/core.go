@@ -12,6 +12,7 @@ const (
 	LanguageContractV070 = "v0.7.0"
 	LanguageContractV080 = "v0.8.0"
 	LanguageContractV090 = "v0.9.0"
+	LanguageContractV100 = "v0.10.0"
 	CompilerContractV1   = "pipelang.compiler.v1"
 )
 
@@ -115,10 +116,11 @@ type Parameter struct {
 type ExprKind string
 
 const (
-	ExprLiteral   ExprKind = "literal"
-	ExprReference ExprKind = "reference"
-	ExprUnary     ExprKind = "unary"
-	ExprBinary    ExprKind = "binary"
+	ExprLiteral         ExprKind = "literal"
+	ExprReference       ExprKind = "reference"
+	ExprUnary           ExprKind = "unary"
+	ExprBinary          ExprKind = "binary"
+	ExprFieldProjection ExprKind = "field_projection"
 )
 
 type Operator string
@@ -158,13 +160,21 @@ type Binary struct {
 	Right    *Expr    `json:"right"`
 }
 
+type FieldProjection struct {
+	Receiver *Expr            `json:"receiver"`
+	Identity SemanticIdentity `json:"identity"`
+	Name     string           `json:"name"`
+	Position int              `json:"position"`
+}
+
 type Expr struct {
-	Kind      ExprKind `json:"kind"`
-	Type      Type     `json:"type"`
-	Literal   *Literal `json:"literal,omitempty"`
-	Parameter *int     `json:"parameter,omitempty"`
-	Unary     *Unary   `json:"unary,omitempty"`
-	Binary    *Binary  `json:"binary,omitempty"`
+	Kind      ExprKind         `json:"kind"`
+	Type      Type             `json:"type"`
+	Literal   *Literal         `json:"literal,omitempty"`
+	Parameter *int             `json:"parameter,omitempty"`
+	Unary     *Unary           `json:"unary,omitempty"`
+	Binary    *Binary          `json:"binary,omitempty"`
+	Field     *FieldProjection `json:"field,omitempty"`
 }
 
 type Function struct {

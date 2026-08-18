@@ -155,17 +155,25 @@ type (
 		Left, Right Expr
 		Span        Span
 	}
+	FieldExpr struct {
+		Receiver Expr
+		Name     string
+		NameSpan Span
+		Span     Span
+	}
 )
 
 func (*LiteralExpr) isExpr() {}
 func (*IdentExpr) isExpr()   {}
 func (*UnaryExpr) isExpr()   {}
 func (*BinaryExpr) isExpr()  {}
+func (*FieldExpr) isExpr()   {}
 
 func (e *LiteralExpr) SourceSpan() Span { return e.Span }
 func (e *IdentExpr) SourceSpan() Span   { return e.Span }
 func (e *UnaryExpr) SourceSpan() Span   { return e.Span }
 func (e *BinaryExpr) SourceSpan() Span  { return e.Span }
+func (e *FieldExpr) SourceSpan() Span   { return e.Span }
 
 func setExprSpan(expr Expr, span Span) {
 	switch node := expr.(type) {
@@ -176,6 +184,8 @@ func setExprSpan(expr Expr, span Span) {
 	case *UnaryExpr:
 		node.Span = span
 	case *BinaryExpr:
+		node.Span = span
+	case *FieldExpr:
 		node.Span = span
 	}
 }

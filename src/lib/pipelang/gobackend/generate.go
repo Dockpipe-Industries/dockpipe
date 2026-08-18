@@ -34,7 +34,7 @@ func (e *Error) Error() string {
 
 // Generate accepts Core IR only and returns deterministic, gofmt-formatted Go.
 func Generate(program coreir.Program) ([]byte, error) {
-	if (program.LanguageContract != coreir.LanguageContractV010 && program.LanguageContract != coreir.LanguageContractV020 && program.LanguageContract != coreir.LanguageContractV030 && program.LanguageContract != coreir.LanguageContractV040 && program.LanguageContract != coreir.LanguageContractV050 && program.LanguageContract != coreir.LanguageContractV060 && program.LanguageContract != coreir.LanguageContractV070 && program.LanguageContract != coreir.LanguageContractV080 && program.LanguageContract != coreir.LanguageContractV090) || program.CompilerContract != coreir.CompilerContractV1 {
+	if (program.LanguageContract != coreir.LanguageContractV010 && program.LanguageContract != coreir.LanguageContractV020 && program.LanguageContract != coreir.LanguageContractV030 && program.LanguageContract != coreir.LanguageContractV040 && program.LanguageContract != coreir.LanguageContractV050 && program.LanguageContract != coreir.LanguageContractV060 && program.LanguageContract != coreir.LanguageContractV070 && program.LanguageContract != coreir.LanguageContractV080 && program.LanguageContract != coreir.LanguageContractV090 && program.LanguageContract != coreir.LanguageContractV100) || program.CompilerContract != coreir.CompilerContractV1 {
 		return nil, &Error{Code: "PLGO0001", Message: fmt.Sprintf("unsupported Core IR contracts language=%q compiler=%q", program.LanguageContract, program.CompilerContract)}
 	}
 	functions := append([]coreir.Function(nil), program.Functions...)
@@ -125,11 +125,10 @@ func emitFunction(out *strings.Builder, name string, function coreir.Function) e
 		fmt.Fprintf(out, "p%d %s", index, parameterType)
 	}
 	fmt.Fprintf(out, ") %s {\n", result)
-	if function.ReturnType.Kind == coreir.TypeRecord {
-		if function.Body.Kind != coreir.ExprReference || function.Body.Parameter == nil {
-			return backendError(function, "PLGO0001", "record transport requires a direct parameter reference")
+	for index, parameter := range function.Parameters {
+		if parameter.Type.Kind == coreir.TypeRecord {
+			fmt.Fprintf(out, "\t%s(p%d)\n", recordValidationName(parameter.Type), index)
 		}
-		fmt.Fprintf(out, "\t%s(p%d)\n", recordValidationName(function.ReturnType), *function.Body.Parameter)
 	}
 	out.WriteString("\treturn ")
 	body, err := emitExpr(function.Body, function.Parameters)
@@ -218,6 +217,19 @@ func emitExpr(expr coreir.Expr, parameters []coreir.Parameter) (string, error) {
 			return "", fmt.Errorf("unsupported binary operator %q", expr.Binary.Operator)
 		}
 		return "(" + left + " " + op + " " + right + ")", nil
+	case coreir.ExprFieldProjection:
+		if expr.Field == nil || expr.Field.Receiver == nil {
+			return "", fmt.Errorf("field projection is incomplete")
+		}
+		receiverType := expr.Field.Receiver.Type
+		if receiverType.Kind != coreir.TypeRecord || receiverType.Record == nil || expr.Field.Position < 0 || expr.Field.Position >= len(receiverType.Record.Fields) {
+			return "", fmt.Errorf("field projection has an invalid record schema or position")
+		}
+		receiver, err := emitExpr(*expr.Field.Receiver, parameters)
+		if err != nil {
+			return "", err
+		}
+		return receiver + "." + recordGoFieldNames(receiverType)[expr.Field.Position], nil
 	default:
 		return "", fmt.Errorf("unsupported expression kind %q", expr.Kind)
 	}
@@ -479,6 +491,8 @@ func expressionNeedsTextSupport(expression coreir.Expr) bool {
 			return true
 		}
 		return expressionNeedsTextSupport(*expression.Binary.Left) || expressionNeedsTextSupport(*expression.Binary.Right)
+	case coreir.ExprFieldProjection:
+		return expression.Field != nil && expression.Field.Receiver != nil && expressionNeedsTextSupport(*expression.Field.Receiver)
 	default:
 		return false
 	}

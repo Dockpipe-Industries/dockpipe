@@ -310,8 +310,10 @@ func (cp *checkedProgram) validateRecordTransportSignature(method MethodDecl, re
 		return false, nil
 	}
 	contract := cp.modules.LanguageContract()
-	if !hasPrimitiveRecordSourceContract(contract) || len(resolvedParameters) != 1 || !cp.isResolvedRecordType(result) || !resolvedParameters[0].Equal(result) {
-		return false, oneDiagnostic(cp.sources, CodeInvalidType, CategorySemantic, method.Span, fmt.Sprintf("the %s primitive record is admitted only as one parameter identical to the class method return type", contract))
+	identityTransport := len(resolvedParameters) == 1 && cp.isResolvedRecordType(result) && resolvedParameters[0].Equal(result)
+	fieldProjection := hasRecordFieldProjectionSourceContract(contract) && len(resolvedParameters) == 1 && cp.isResolvedRecordType(resolvedParameters[0]) && result.Kind == TypeRefPrimitive
+	if !hasPrimitiveRecordSourceContract(contract) || (!identityTransport && !fieldProjection) {
+		return false, oneDiagnostic(cp.sources, CodeInvalidType, CategorySemantic, method.Span, fmt.Sprintf("the %s primitive record is admitted only as one exact identity transport or one-hop primitive field projection", contract))
 	}
 	return true, nil
 }
@@ -475,8 +477,40 @@ func inferExprType(sources *SourceSet, expr Expr, env map[string]ResolvedTypeRef
 }
 
 func (cp *checkedProgram) inferExprType(expr Expr, env map[string]ResolvedTypeRef) (ResolvedTypeRef, error) {
+	if field, ok := expr.(*FieldExpr); ok {
+		if cp == nil || cp.modules == nil || !hasRecordFieldProjectionSourceContract(cp.modules.LanguageContract()) {
+			return ResolvedTypeRef{}, oneDiagnostic(cp.sources, CodeInvalidMember, CategorySemantic, field.NameSpan, "record field projection requires language contract v0.10.0")
+		}
+		receiver, err := cp.inferExprType(field.Receiver, env)
+		if err != nil {
+			return ResolvedTypeRef{}, err
+		}
+		resolved, _, _, err := cp.resolveRecordField(receiver, field.Name, field.NameSpan)
+		return resolved, err
+	}
 	strictNumeric := cp != nil && cp.modules != nil && isPipeLangSemanticContract(cp.modules.LanguageContract())
 	return inferExprTypeWithPolicy(cp.sources, expr, env, strictNumeric)
+}
+
+func (cp *checkedProgram) resolveRecordField(record ResolvedTypeRef, name string, span Span) (ResolvedTypeRef, FieldDecl, int, error) {
+	if !cp.isResolvedRecordType(record) {
+		return ResolvedTypeRef{}, FieldDecl{}, 0, oneDiagnostic(cp.sources, CodeInvalidMember, CategorySemantic, span, fmt.Sprintf("cannot project field %q from non-record type %s", name, record))
+	}
+	entry, ok := cp.symbols.lookupIDEntry(record.Symbol)
+	if !ok || entry.recordDecl == nil {
+		return ResolvedTypeRef{}, FieldDecl{}, 0, oneDiagnostic(cp.sources, CodeInvalidMember, CategorySemantic, span, fmt.Sprintf("record field %q is inaccessible", name))
+	}
+	for position, field := range entry.recordDecl.Fields {
+		if field.Name != name {
+			continue
+		}
+		resolved, err := cp.resolveType(field.Type, RelatedSpan{Span: field.Span, Message: "record field declaration"})
+		if err != nil {
+			return ResolvedTypeRef{}, FieldDecl{}, 0, err
+		}
+		return resolved, field, position, nil
+	}
+	return ResolvedTypeRef{}, FieldDecl{}, 0, oneDiagnostic(cp.sources, CodeInvalidMember, CategorySemantic, span, fmt.Sprintf("record type %s has no field %q", record, name), RelatedSpan{Span: entry.recordDecl.Span, Message: "record declaration"})
 }
 
 func (cp *checkedProgram) inferMethodBodyType(method MethodDecl, env map[string]ResolvedTypeRef, declared ResolvedTypeRef) (ResolvedTypeRef, error) {
@@ -518,7 +552,7 @@ func (cp *checkedProgram) inferMethodBodyType(method MethodDecl, env map[string]
 		}
 		return resolvedArithmeticResult(binary64), nil
 	}
-	if unary, unaryOK := expr.(*UnaryExpr); unaryOK && (contract == PipeLangLanguageContractV050 || contract == PipeLangLanguageContractV060 || contract == PipeLangLanguageContractV070 || contract == PipeLangLanguageContractV080 || contract == PipeLangLanguageContractV090) && unary.Op == "-" {
+	if unary, unaryOK := expr.(*UnaryExpr); unaryOK && (contract == PipeLangLanguageContractV050 || contract == PipeLangLanguageContractV060 || contract == PipeLangLanguageContractV070 || contract == PipeLangLanguageContractV080 || contract == PipeLangLanguageContractV090 || contract == PipeLangLanguageContractV100) && unary.Op == "-" {
 		operand, err := inferExprTypeWithPolicy(cp.sources, unary.Expr, env, true)
 		if err != nil {
 			return ResolvedTypeRef{}, err
@@ -531,7 +565,7 @@ func (cp *checkedProgram) inferMethodBodyType(method MethodDecl, env map[string]
 	}
 	binary, ok := expr.(*BinaryExpr)
 	operatorAccepted := ok && binary.Op == "+"
-	if contract == PipeLangLanguageContractV040 || contract == PipeLangLanguageContractV050 || contract == PipeLangLanguageContractV060 || contract == PipeLangLanguageContractV070 || contract == PipeLangLanguageContractV080 || contract == PipeLangLanguageContractV090 {
+	if contract == PipeLangLanguageContractV040 || contract == PipeLangLanguageContractV050 || contract == PipeLangLanguageContractV060 || contract == PipeLangLanguageContractV070 || contract == PipeLangLanguageContractV080 || contract == PipeLangLanguageContractV090 || contract == PipeLangLanguageContractV100 {
 		operatorAccepted = ok && (binary.Op == "+" || binary.Op == "-" || binary.Op == "*")
 	} else if contract == PipeLangLanguageContractV030 {
 		operatorAccepted = ok && (binary.Op == "+" || binary.Op == "-")
@@ -569,6 +603,31 @@ func (cp *checkedProgram) inferNonResultMethodBodyType(method MethodDecl, env ma
 			}
 		}
 		return ResolvedTypeRef{}, oneDiagnostic(cp.sources, CodeExpressionType, CategorySemantic, method.Body.SourceSpan(), fmt.Sprintf("%s primitive record transport requires its sole record parameter as the complete method body", cp.modules.LanguageContract()))
+	}
+	if cp.modules != nil && hasRecordFieldProjectionSourceContract(cp.modules.LanguageContract()) {
+		hasRecordParameter := false
+		for _, parameter := range method.Params {
+			resolved, err := cp.resolveType(parameter.Type)
+			if err != nil {
+				return ResolvedTypeRef{}, err
+			}
+			hasRecordParameter = hasRecordParameter || cp.isResolvedRecordType(resolved)
+		}
+		if hasRecordParameter {
+			field, directField := method.Body.(*FieldExpr)
+			if !directField {
+				return ResolvedTypeRef{}, oneDiagnostic(cp.sources, CodeExpressionType, CategorySemantic, method.Body.SourceSpan(), fmt.Sprintf("%s primitive record field projection requires parameter.Field as the complete method body", cp.modules.LanguageContract()))
+			}
+			inferred, err := cp.inferExprType(field, env)
+			if err != nil {
+				return ResolvedTypeRef{}, err
+			}
+			receiver, directReceiver := field.Receiver.(*IdentExpr)
+			if len(method.Params) != 1 || !directReceiver || receiver.Name != method.Params[0].Name || !inferred.Equal(declared) {
+				return ResolvedTypeRef{}, oneDiagnostic(cp.sources, CodeExpressionType, CategorySemantic, method.Body.SourceSpan(), fmt.Sprintf("%s primitive record field projection requires the sole record parameter, one declared field, and that field's exact primitive return type", cp.modules.LanguageContract()))
+			}
+			return inferred, nil
+		}
 	}
 	binary, directBinary := method.Body.(*BinaryExpr)
 	if cp != nil && cp.modules != nil && hasOrdinalTextOrderingSourceContract(cp.modules.LanguageContract()) && directBinary && isOrdinalTextOrderingOperator(binary.Op) {
@@ -613,7 +672,7 @@ func isOrdinalTextOrderingOperator(operator string) bool {
 }
 
 func arithmeticSourceOperators(contract LanguageContract) string {
-	if contract == PipeLangLanguageContractV050 || contract == PipeLangLanguageContractV060 || contract == PipeLangLanguageContractV070 || contract == PipeLangLanguageContractV080 || contract == PipeLangLanguageContractV090 {
+	if contract == PipeLangLanguageContractV050 || contract == PipeLangLanguageContractV060 || contract == PipeLangLanguageContractV070 || contract == PipeLangLanguageContractV080 || contract == PipeLangLanguageContractV090 || contract == PipeLangLanguageContractV100 {
 		return "addition, subtraction, multiplication, or negation"
 	}
 	if contract == PipeLangLanguageContractV040 {

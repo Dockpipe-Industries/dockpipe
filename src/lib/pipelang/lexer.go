@@ -30,6 +30,7 @@ const (
 	tokColon
 	tokSemi
 	tokComma
+	tokDot
 	tokAssign
 	tokArrow
 	tokPlus
@@ -177,6 +178,9 @@ func lex(sources *SourceSet, file *SourceFile) ([]token, error) {
 			i++
 		case ',':
 			out = append(out, token{kind: tokComma, lit: ",", span: span(i, i+1)})
+			i++
+		case '.':
+			out = append(out, token{kind: tokDot, lit: ".", span: span(i, i+1)})
 			i++
 		case '+':
 			out = append(out, token{kind: tokPlus, lit: "+", span: span(i, i+1)})

@@ -484,8 +484,27 @@ func (p *parser) parseUnary() (Expr, error) {
 		}
 		return &UnaryExpr{Op: opTok.lit, Expr: ex, Span: mergeSpans(opTok.span, ex.SourceSpan())}, nil
 	default:
-		return p.parsePrimary()
+		return p.parsePostfix()
 	}
+}
+
+func (p *parser) parsePostfix() (Expr, error) {
+	expr, err := p.parsePrimary()
+	if err != nil {
+		return nil, err
+	}
+	if !hasRecordFieldProjectionSourceContract(p.languageContract) {
+		return expr, nil
+	}
+	for p.peek().kind == tokDot {
+		p.next()
+		name, err := p.expect(tokIdent)
+		if err != nil {
+			return nil, err
+		}
+		expr = &FieldExpr{Receiver: expr, Name: name.lit, NameSpan: name.span, Span: mergeSpans(expr.SourceSpan(), name.span)}
+	}
+	return expr, nil
 }
 
 func (p *parser) parsePrimary() (Expr, error) {
@@ -598,6 +617,8 @@ func tokenName(k tokenKind) string {
 		return ";"
 	case tokComma:
 		return ","
+	case tokDot:
+		return "."
 	case tokAssign:
 		return "="
 	case tokArrow:

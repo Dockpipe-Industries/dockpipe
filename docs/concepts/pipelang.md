@@ -369,6 +369,33 @@ field defaults, class/interface record fields, mismatched transport signatures, 
 field access, mutation, equality, hashing, ordering, matching, nesting, Result integration,
 optionals, unions, and collections remain outside the production source contract.
 
+The explicit `v0.10.0` contract preserves every `v0.9.0` rule and adds one-hop read-only field
+projection from an existing primitive record parameter. The exact admitted form is one class
+method with exactly one record parameter, the selected field's exact primitive return type, and a
+direct `parameter.Field` body:
+
+```pipelang
+public Record Row {
+    public string Id;
+}
+public Class Root {
+    public string IdOf(Row value) => value.Id;
+}
+```
+
+The projection reuses the record and field semantic identities established by `v0.9.0`; it adds no
+type identity and does not change `pipelang.semantic.v1`. Typed HIR and target-neutral Core carry
+the receiver's identified schema plus the selected field identity, name, declared position, and
+exact primitive result type. Core evaluation validates the complete record value before returning
+the field, and generated Go validates the record before direct named-field access. String fields
+retain the strict UTF-8 boundary.
+
+`v0.1.0` through `v0.9.0` do not accept the new member expression, and no source or package
+migrates implicitly. Unknown, inaccessible, or non-record members, extra parameters, mismatched
+returns, nested or chained access, construction, mutation, equality, hashing, ordering, matching,
+record nesting, Result integration, optionals, unions, collections, calls, indexing, and general
+member access remain outside the production source contract.
+
 ## Artifacts
 
 Compile emits:
