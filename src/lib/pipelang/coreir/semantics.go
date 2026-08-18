@@ -59,7 +59,7 @@ func ArithmeticResultType(operator Operator, left Type, right *Type) (Type, erro
 }
 
 func TypeEqual(left, right Type) bool {
-	if left.Kind != right.Kind || left.Primitive != right.Primitive || left.Name != right.Name || (left.Numeric == nil) != (right.Numeric == nil) || (left.Result == nil) != (right.Result == nil) || (left.Optional == nil) != (right.Optional == nil) || (left.Record == nil) != (right.Record == nil) || (left.Identity == nil) != (right.Identity == nil) || len(left.Arguments) != len(right.Arguments) {
+	if left.Kind != right.Kind || left.Primitive != right.Primitive || left.Name != right.Name || (left.Numeric == nil) != (right.Numeric == nil) || (left.Result == nil) != (right.Result == nil) || (left.Optional == nil) != (right.Optional == nil) || (left.List == nil) != (right.List == nil) || (left.Record == nil) != (right.Record == nil) || (left.Identity == nil) != (right.Identity == nil) || len(left.Arguments) != len(right.Arguments) {
 		return false
 	}
 	if left.Numeric != nil && *left.Numeric != *right.Numeric {
@@ -69,6 +69,9 @@ func TypeEqual(left, right Type) bool {
 		return false
 	}
 	if left.Optional != nil && !TypeEqual(left.Optional.Value, right.Optional.Value) {
+		return false
+	}
+	if left.List != nil && !TypeEqual(left.List.Element, right.List.Element) {
 		return false
 	}
 	if left.Record != nil {
@@ -163,6 +166,11 @@ func ValidateFunction(function Function) error {
 			return err
 		}
 	}
+	if functionContainsList(function) {
+		if err := validateDirectListFunction(function); err != nil {
+			return err
+		}
+	}
 	if !TypeEqual(function.ReturnType, function.Body.Type) {
 		return fmt.Errorf("function return type does not match its body type")
 	}
@@ -170,6 +178,21 @@ func ValidateFunction(function Function) error {
 }
 
 func validateType(value Type) error {
+	if value.Kind != TypeList && value.List != nil {
+		return fmt.Errorf("non-list type carries a list representation")
+	}
+	if value.Kind == TypeList {
+		if value.List == nil || value.List.Element.Kind != TypeRecord || value.Identity == nil || value.Identity.PackageID != BuiltinPackageID || value.Identity.Path != ListSemanticPath || value.Identity.Callable != nil || value.Name != "List" {
+			return fmt.Errorf("list type requires one identified primitive-record element type")
+		}
+		if err := validateType(value.List.Element); err != nil {
+			return fmt.Errorf("list element type: %w", err)
+		}
+		if value.Primitive != "" || value.Numeric != nil || value.Result != nil || value.Optional != nil || value.Record != nil || len(value.Arguments) != 0 {
+			return fmt.Errorf("list type carries a non-list representation")
+		}
+		return nil
+	}
 	if value.Kind != TypeOptional && value.Optional != nil {
 		return fmt.Errorf("non-optional type carries an optional representation")
 	}
@@ -177,7 +200,7 @@ func validateType(value Type) error {
 		if value.Optional == nil || !isPrimitiveOptionalValueType(value.Optional.Value) {
 			return fmt.Errorf("optional type requires one primitive value type")
 		}
-		if value.Primitive != "" || value.Numeric != nil || value.Result != nil || value.Record != nil || value.Identity != nil || value.Name != "" || len(value.Arguments) != 0 {
+		if value.Primitive != "" || value.Numeric != nil || value.Result != nil || value.List != nil || value.Record != nil || value.Identity != nil || value.Name != "" || len(value.Arguments) != 0 {
 			return fmt.Errorf("optional type carries a non-optional representation")
 		}
 		return nil
@@ -188,7 +211,7 @@ func validateType(value Type) error {
 	if value.Record == nil || value.Identity == nil || value.Identity.PackageID == "" || value.Identity.Path == "" || value.Identity.Callable != nil || value.Name == "" || len(value.Record.Fields) == 0 {
 		return fmt.Errorf("record type has an invalid identity or field schema")
 	}
-	if value.Primitive != "" || value.Numeric != nil || value.Result != nil || len(value.Arguments) != 0 {
+	if value.Primitive != "" || value.Numeric != nil || value.Result != nil || value.Optional != nil || value.List != nil || len(value.Arguments) != 0 {
 		return fmt.Errorf("record type carries a non-record representation")
 	}
 	seenNames := map[string]struct{}{}
@@ -440,8 +463,89 @@ func validateExpr(expression Expr, parameters []Parameter) error {
 		if !TypeEqual(expression.ValueOr.Value.Type.Optional.Value, expression.ValueOr.Fallback.Type) || !TypeEqual(expression.Type, expression.ValueOr.Fallback.Type) {
 			return fmt.Errorf("optional value_or payload, fallback, and result types do not match")
 		}
+	case ExprListEmpty:
+		if expression.ListEmpty == nil || expression.Type.Kind != TypeList || expression.Type.List == nil {
+			return fmt.Errorf("list empty expression is incomplete")
+		}
+		if err := validateType(expression.Type); err != nil {
+			return fmt.Errorf("list empty result type: %w", err)
+		}
+	case ExprListSingleton:
+		if expression.ListOne == nil || expression.ListOne.Value == nil || expression.Type.Kind != TypeList || expression.Type.List == nil {
+			return fmt.Errorf("list singleton expression is incomplete")
+		}
+		if err := validateType(expression.Type); err != nil {
+			return fmt.Errorf("list singleton result type: %w", err)
+		}
+		if err := validateExpr(*expression.ListOne.Value, parameters); err != nil {
+			return fmt.Errorf("list singleton value: %w", err)
+		}
+		if !TypeEqual(expression.ListOne.Value.Type, expression.Type.List.Element) {
+			return fmt.Errorf("list singleton value type does not match its element type")
+		}
 	default:
 		return fmt.Errorf("unsupported expression kind %q", expression.Kind)
+	}
+	return nil
+}
+
+func functionContainsList(function Function) bool {
+	if function.ReturnType.Kind == TypeList || exprContainsList(function.Body) {
+		return true
+	}
+	for _, parameter := range function.Parameters {
+		if parameter.Type.Kind == TypeList {
+			return true
+		}
+	}
+	return false
+}
+
+func exprContainsList(expression Expr) bool {
+	switch expression.Kind {
+	case ExprListEmpty, ExprListSingleton:
+		return true
+	case ExprUnary:
+		return expression.Unary != nil && expression.Unary.Operand != nil && exprContainsList(*expression.Unary.Operand)
+	case ExprBinary:
+		return expression.Binary != nil && expression.Binary.Left != nil && expression.Binary.Right != nil && (exprContainsList(*expression.Binary.Left) || exprContainsList(*expression.Binary.Right))
+	case ExprFieldProjection:
+		return expression.Field != nil && expression.Field.Receiver != nil && exprContainsList(*expression.Field.Receiver)
+	case ExprRecordConstruct:
+		if expression.Record != nil {
+			for _, field := range expression.Record.Fields {
+				if field.Value != nil && exprContainsList(*field.Value) {
+					return true
+				}
+			}
+		}
+	}
+	return false
+}
+
+func validateDirectListFunction(function Function) error {
+	if function.ReturnType.Kind != TypeList || function.ReturnType.List == nil {
+		return fmt.Errorf("record-list values are admitted only as direct list-returning functions")
+	}
+	switch function.Body.Kind {
+	case ExprListEmpty:
+		if function.Body.ListEmpty == nil || len(function.Parameters) != 0 {
+			return fmt.Errorf("empty_list requires no parameters and a record-list return")
+		}
+	case ExprListSingleton:
+		if function.Body.ListOne == nil || function.Body.ListOne.Value == nil || len(function.Parameters) != 1 {
+			return fmt.Errorf("list singleton requires one record parameter and a matching record-list return")
+		}
+		value := function.Body.ListOne.Value
+		if value.Kind != ExprReference || value.Parameter == nil || *value.Parameter != 0 || !TypeEqual(function.Parameters[0].Type, function.ReturnType.List.Element) || !TypeEqual(value.Type, function.Parameters[0].Type) {
+			return fmt.Errorf("list singleton value must be its sole corresponding direct record parameter")
+		}
+	case ExprReference:
+		if len(function.Parameters) != 1 || function.Body.Parameter == nil || *function.Body.Parameter != 0 || !TypeEqual(function.Parameters[0].Type, function.ReturnType) {
+			return fmt.Errorf("record-list identity transport requires one identical direct parameter and return")
+		}
+	default:
+		return fmt.Errorf("record-list values are admitted only in direct empty_list, singleton list, or identity-transport functions")
 	}
 	return nil
 }
@@ -476,6 +580,8 @@ func exprContainsOptional(expression Expr) bool {
 				}
 			}
 		}
+	case ExprListSingleton:
+		return expression.ListOne != nil && expression.ListOne.Value != nil && exprContainsOptional(*expression.ListOne.Value)
 	}
 	return false
 }
@@ -538,6 +644,8 @@ func exprContainsRecordConstruction(expression Expr) bool {
 		return expression.Binary != nil && expression.Binary.Left != nil && expression.Binary.Right != nil && (exprContainsRecordConstruction(*expression.Binary.Left) || exprContainsRecordConstruction(*expression.Binary.Right))
 	case ExprFieldProjection:
 		return expression.Field != nil && expression.Field.Receiver != nil && exprContainsRecordConstruction(*expression.Field.Receiver)
+	case ExprListSingleton:
+		return expression.ListOne != nil && expression.ListOne.Value != nil && exprContainsRecordConstruction(*expression.ListOne.Value)
 	default:
 		return false
 	}

@@ -78,5 +78,14 @@
       "public ${1:string} ${2:ValueOr}(Optional<${1:string}> ${3:value}, ${1:string} ${4:fallback}) => value_or(${3:value}, ${4:fallback});"
     ],
     "description": "Create the exact v0.14.0 two-parameter primitive Optional value_or defaulting method."
+  },
+  "PipeLang Record List": {
+    "prefix": "pipe-record-list",
+    "body": [
+      "public List<${1:Row}> ${2:EmptyRows}() => empty_list<${1:Row}>();",
+      "public List<${1:Row}> ${3:OneRow}(${1:Row} ${4:value}) => list(${4:value});",
+      "public List<${1:Row}> ${5:ForwardRows}(List<${1:Row}> ${6:values}) => ${6:values};"
+    ],
+    "description": "Create the exact v0.15.0 immutable record-list empty, singleton, and identity-transport methods."
   }
 }

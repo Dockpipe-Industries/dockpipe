@@ -273,6 +273,11 @@ func resolveTypeRef(sources *SourceSet, symbols *SymbolTable, modules *ModuleGra
 			}
 			return resolved, nil
 		}
+		if ref.Name == "List" && modules != nil && hasPrimitiveRecordListSourceContract(modules.LanguageContract()) && len(arguments) == 1 {
+			if entry, ok := symbols.lookupIDEntry(arguments[0].Symbol); ok && entry.symbol.Kind == SymbolRecord {
+				return resolvedRecordList(arguments[0]), nil
+			}
+		}
 		return ResolvedTypeRef{Kind: TypeRefApplied, Name: ref.Name, Arguments: arguments}, nil
 	default:
 		return ResolvedTypeRef{}, oneDiagnostic(sources, CodeInvalidType, CategorySemantic, ref.Span, fmt.Sprintf("invalid type %q", ref.String()), related...)

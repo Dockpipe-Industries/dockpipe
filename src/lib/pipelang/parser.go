@@ -560,6 +560,14 @@ func (p *parser) parsePrimary() (Expr, error) {
 				}
 			}
 		}
+		if hasPrimitiveRecordListSourceContract(p.languageContract) {
+			switch t.lit {
+			case "empty_list":
+				return p.parseListEmpty()
+			case "list":
+				return p.parseListSingleton()
+			}
+		}
 		p.next()
 		return &IdentExpr{Name: t.lit, Span: t.span}, nil
 	case tokLParen:
@@ -577,6 +585,50 @@ func (p *parser) parsePrimary() (Expr, error) {
 	default:
 		return nil, p.errf("unexpected token %q in expression", t.lit)
 	}
+}
+
+func (p *parser) parseListEmpty() (Expr, error) {
+	start, err := p.expect(tokIdent)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := p.expect(tokLT); err != nil {
+		return nil, err
+	}
+	elementType, err := p.parseTypeRef()
+	if err != nil {
+		return nil, err
+	}
+	if _, err := p.expect(tokGT); err != nil {
+		return nil, err
+	}
+	if _, err := p.expect(tokLParen); err != nil {
+		return nil, err
+	}
+	end, err := p.expect(tokRParen)
+	if err != nil {
+		return nil, err
+	}
+	return &ListEmptyExpr{ElementType: elementType, Span: mergeSpans(start.span, end.span)}, nil
+}
+
+func (p *parser) parseListSingleton() (Expr, error) {
+	start, err := p.expect(tokIdent)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := p.expect(tokLParen); err != nil {
+		return nil, err
+	}
+	value, err := p.parseExpr(1)
+	if err != nil {
+		return nil, err
+	}
+	end, err := p.expect(tokRParen)
+	if err != nil {
+		return nil, err
+	}
+	return &ListSingletonExpr{Value: value, Span: mergeSpans(start.span, end.span)}, nil
 }
 
 func (p *parser) parseOptionalSome() (Expr, error) {
