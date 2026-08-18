@@ -1,0 +1,479 @@
+{
+  "language_contract": "v0.12.0",
+  "compiler_contract": "pipelang.compiler.v1",
+  "functions": [
+    {
+      "identity": {
+        "package_id": "test.package",
+        "path": "app.root.root.same",
+        "callable": {
+          "parameters": [
+            {
+              "kind": "named",
+              "package_id": "test.package",
+              "path": "app.root.row"
+            },
+            {
+              "kind": "named",
+              "package_id": "test.package",
+              "path": "app.root.row"
+            }
+          ],
+          "returns": {
+            "kind": "primitive",
+            "primitive": "bool"
+          }
+        }
+      },
+      "owner": {
+        "module": "app.root",
+        "symbol_id": 2,
+        "identity": {
+          "package_id": "test.package",
+          "path": "app.root.root"
+        },
+        "source_span": {
+          "file": "record-equality.pipe",
+          "start": 113,
+          "end": 194
+        }
+      },
+      "name": "Same",
+      "parameters": [
+        {
+          "binding": {
+            "kind": "parameter",
+            "function": {
+              "package_id": "test.package",
+              "path": "app.root.root.same",
+              "callable": {
+                "parameters": [
+                  {
+                    "kind": "named",
+                    "package_id": "test.package",
+                    "path": "app.root.row"
+                  },
+                  {
+                    "kind": "named",
+                    "package_id": "test.package",
+                    "path": "app.root.row"
+                  }
+                ],
+                "returns": {
+                  "kind": "primitive",
+                  "primitive": "bool"
+                }
+              }
+            },
+            "position": 0,
+            "name": "left"
+          },
+          "type": {
+            "kind": "record",
+            "record": {
+              "fields": [
+                {
+                  "identity": {
+                    "package_id": "test.package",
+                    "path": "app.root.row.id"
+                  },
+                  "name": "Id",
+                  "type": {
+                    "kind": "primitive",
+                    "primitive": "string"
+                  }
+                },
+                {
+                  "identity": {
+                    "package_id": "test.package",
+                    "path": "app.root.row.count"
+                  },
+                  "name": "Count",
+                  "type": {
+                    "kind": "numeric",
+                    "numeric": {
+                      "representation": "integer",
+                      "bits": 64,
+                      "signed": true
+                    }
+                  }
+                },
+                {
+                  "identity": {
+                    "package_id": "test.package",
+                    "path": "app.root.row.ratio"
+                  },
+                  "name": "Ratio",
+                  "type": {
+                    "kind": "numeric",
+                    "numeric": {
+                      "representation": "binary_float",
+                      "bits": 64
+                    }
+                  }
+                },
+                {
+                  "identity": {
+                    "package_id": "test.package",
+                    "path": "app.root.row.ready"
+                  },
+                  "name": "Ready",
+                  "type": {
+                    "kind": "primitive",
+                    "primitive": "bool"
+                  }
+                }
+              ]
+            },
+            "symbol_id": 1,
+            "identity": {
+              "package_id": "test.package",
+              "path": "app.root.row"
+            },
+            "name": "Row"
+          },
+          "type_span": {
+            "file": "record-equality.pipe",
+            "start": 154,
+            "end": 157
+          },
+          "span": {
+            "file": "record-equality.pipe",
+            "start": 154,
+            "end": 162
+          }
+        },
+        {
+          "binding": {
+            "kind": "parameter",
+            "function": {
+              "package_id": "test.package",
+              "path": "app.root.root.same",
+              "callable": {
+                "parameters": [
+                  {
+                    "kind": "named",
+                    "package_id": "test.package",
+                    "path": "app.root.row"
+                  },
+                  {
+                    "kind": "named",
+                    "package_id": "test.package",
+                    "path": "app.root.row"
+                  }
+                ],
+                "returns": {
+                  "kind": "primitive",
+                  "primitive": "bool"
+                }
+              }
+            },
+            "position": 1,
+            "name": "right"
+          },
+          "type": {
+            "kind": "record",
+            "record": {
+              "fields": [
+                {
+                  "identity": {
+                    "package_id": "test.package",
+                    "path": "app.root.row.id"
+                  },
+                  "name": "Id",
+                  "type": {
+                    "kind": "primitive",
+                    "primitive": "string"
+                  }
+                },
+                {
+                  "identity": {
+                    "package_id": "test.package",
+                    "path": "app.root.row.count"
+                  },
+                  "name": "Count",
+                  "type": {
+                    "kind": "numeric",
+                    "numeric": {
+                      "representation": "integer",
+                      "bits": 64,
+                      "signed": true
+                    }
+                  }
+                },
+                {
+                  "identity": {
+                    "package_id": "test.package",
+                    "path": "app.root.row.ratio"
+                  },
+                  "name": "Ratio",
+                  "type": {
+                    "kind": "numeric",
+                    "numeric": {
+                      "representation": "binary_float",
+                      "bits": 64
+                    }
+                  }
+                },
+                {
+                  "identity": {
+                    "package_id": "test.package",
+                    "path": "app.root.row.ready"
+                  },
+                  "name": "Ready",
+                  "type": {
+                    "kind": "primitive",
+                    "primitive": "bool"
+                  }
+                }
+              ]
+            },
+            "symbol_id": 1,
+            "identity": {
+              "package_id": "test.package",
+              "path": "app.root.row"
+            },
+            "name": "Row"
+          },
+          "type_span": {
+            "file": "record-equality.pipe",
+            "start": 164,
+            "end": 167
+          },
+          "span": {
+            "file": "record-equality.pipe",
+            "start": 164,
+            "end": 173
+          }
+        }
+      ],
+      "return_type": {
+        "kind": "primitive",
+        "primitive": "bool"
+      },
+      "return_type_span": {
+        "file": "record-equality.pipe",
+        "start": 144,
+        "end": 148
+      },
+      "body": {
+        "kind": "binary",
+        "type": {
+          "kind": "primitive",
+          "primitive": "bool"
+        },
+        "span": {
+          "file": "record-equality.pipe",
+          "start": 178,
+          "end": 191
+        },
+        "binary": {
+          "operator": "equal",
+          "left": {
+            "kind": "reference",
+            "type": {
+              "kind": "record",
+              "record": {
+                "fields": [
+                  {
+                    "identity": {
+                      "package_id": "test.package",
+                      "path": "app.root.row.id"
+                    },
+                    "name": "Id",
+                    "type": {
+                      "kind": "primitive",
+                      "primitive": "string"
+                    }
+                  },
+                  {
+                    "identity": {
+                      "package_id": "test.package",
+                      "path": "app.root.row.count"
+                    },
+                    "name": "Count",
+                    "type": {
+                      "kind": "numeric",
+                      "numeric": {
+                        "representation": "integer",
+                        "bits": 64,
+                        "signed": true
+                      }
+                    }
+                  },
+                  {
+                    "identity": {
+                      "package_id": "test.package",
+                      "path": "app.root.row.ratio"
+                    },
+                    "name": "Ratio",
+                    "type": {
+                      "kind": "numeric",
+                      "numeric": {
+                        "representation": "binary_float",
+                        "bits": 64
+                      }
+                    }
+                  },
+                  {
+                    "identity": {
+                      "package_id": "test.package",
+                      "path": "app.root.row.ready"
+                    },
+                    "name": "Ready",
+                    "type": {
+                      "kind": "primitive",
+                      "primitive": "bool"
+                    }
+                  }
+                ]
+              },
+              "symbol_id": 1,
+              "identity": {
+                "package_id": "test.package",
+                "path": "app.root.row"
+              },
+              "name": "Row"
+            },
+            "span": {
+              "file": "record-equality.pipe",
+              "start": 178,
+              "end": 182
+            },
+            "reference": {
+              "kind": "parameter",
+              "function": {
+                "package_id": "test.package",
+                "path": "app.root.root.same",
+                "callable": {
+                  "parameters": [
+                    {
+                      "kind": "named",
+                      "package_id": "test.package",
+                      "path": "app.root.row"
+                    },
+                    {
+                      "kind": "named",
+                      "package_id": "test.package",
+                      "path": "app.root.row"
+                    }
+                  ],
+                  "returns": {
+                    "kind": "primitive",
+                    "primitive": "bool"
+                  }
+                }
+              },
+              "position": 0,
+              "name": "left"
+            }
+          },
+          "right": {
+            "kind": "reference",
+            "type": {
+              "kind": "record",
+              "record": {
+                "fields": [
+                  {
+                    "identity": {
+                      "package_id": "test.package",
+                      "path": "app.root.row.id"
+                    },
+                    "name": "Id",
+                    "type": {
+                      "kind": "primitive",
+                      "primitive": "string"
+                    }
+                  },
+                  {
+                    "identity": {
+                      "package_id": "test.package",
+                      "path": "app.root.row.count"
+                    },
+                    "name": "Count",
+                    "type": {
+                      "kind": "numeric",
+                      "numeric": {
+                        "representation": "integer",
+                        "bits": 64,
+                        "signed": true
+                      }
+                    }
+                  },
+                  {
+                    "identity": {
+                      "package_id": "test.package",
+                      "path": "app.root.row.ratio"
+                    },
+                    "name": "Ratio",
+                    "type": {
+                      "kind": "numeric",
+                      "numeric": {
+                        "representation": "binary_float",
+                        "bits": 64
+                      }
+                    }
+                  },
+                  {
+                    "identity": {
+                      "package_id": "test.package",
+                      "path": "app.root.row.ready"
+                    },
+                    "name": "Ready",
+                    "type": {
+                      "kind": "primitive",
+                      "primitive": "bool"
+                    }
+                  }
+                ]
+              },
+              "symbol_id": 1,
+              "identity": {
+                "package_id": "test.package",
+                "path": "app.root.row"
+              },
+              "name": "Row"
+            },
+            "span": {
+              "file": "record-equality.pipe",
+              "start": 186,
+              "end": 191
+            },
+            "reference": {
+              "kind": "parameter",
+              "function": {
+                "package_id": "test.package",
+                "path": "app.root.root.same",
+                "callable": {
+                  "parameters": [
+                    {
+                      "kind": "named",
+                      "package_id": "test.package",
+                      "path": "app.root.row"
+                    },
+                    {
+                      "kind": "named",
+                      "package_id": "test.package",
+                      "path": "app.root.row"
+                    }
+                  ],
+                  "returns": {
+                    "kind": "primitive",
+                    "primitive": "bool"
+                  }
+                }
+              },
+              "position": 1,
+              "name": "right"
+            }
+          }
+        }
+      },
+      "span": {
+        "file": "record-equality.pipe",
+        "start": 137,
+        "end": 192
+      }
+    }
+  ]
+}

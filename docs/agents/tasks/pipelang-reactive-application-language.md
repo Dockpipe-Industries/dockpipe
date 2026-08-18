@@ -1656,13 +1656,70 @@ Terminal proof passed with cached Go 1.25.13, offline module lookup, and writabl
 No dependency, generated store, runtime, external state, cleanup, commit, push, or publication
 changed.
 
+### Completed step 7m primitive-record structural equality contract (2026-08-18)
+
+The founder selected explicit `v0.12.0` structural equality for one existing public primitive
+record. The exact source surface is one expression-bodied class method returning `bool`, with
+exactly two parameters of the same record type and the two direct parameter references in declared
+order as the complete body:
+
+```pipelang
+public Record Row {
+    public string Id;
+    public int Count;
+}
+public Class Rows {
+    public bool Same(Row left, Row right) => left == right;
+    public bool Different(Row left, Row right) => left != right;
+}
+```
+
+Equality compares fields structurally in declaration order. Strings retain exact ordinal Unicode
+scalar-sequence equality, integers and booleans compare exactly, and binary64 fields use IEEE
+equality: NaN is unequal, including to itself, while positive and negative zero are equal. `!=` is
+the exact complement. The expression reuses the existing record, field, and callable semantic
+identities; it adds no operator or type identity and leaves `pipelang.semantic.v1` unchanged. Typed
+HIR and target-neutral Core carry the existing identified record operands and `eq` or `ne` binary
+operator. Core validation admits only the selected direct two-parameter shape. Core evaluation and
+the Core-only Go backend validate complete immutable values and agree on every primitive field
+kind, strict UTF-8 rejection, signed zero, and NaN.
+
+`PL3006` reports invalid record placement, parameter, or return signatures; `PL3009` reports
+ordered, repeated, projected, constructed, nested, or otherwise non-direct bodies. Malformed typed
+HIR and Core remain `PL3026` and `PL3027`. `v0.1.0` through `v0.11.0` reject record equality without
+implicit migration. All frozen checked-arithmetic Result, Unicode text, record identity transport,
+one-hop projection, and exact construction contracts remain available under `v0.12.0`.
+
+The minimal pure source fixture is `src/lib/pipelang/testdata/record-equality.pipe`, with
+synchronized typed HIR, Core, and Go goldens. Hashing, record ordering, nesting, general member
+access or comparison, mutation, optionals, Result expansion, unions, deterministic collections,
+Step-8 control flow, effects, application behavior, and additional backends remain excluded.
+
+Terminal proof passed with cached Go 1.25.13, offline module lookup, and writable `/tmp` caches:
+
+- exact PipeLang and 45-source compatibility tests, including source-derived HIR/Core/Go equality
+  goldens, identity/projection stability, Core/generated-Go agreement, malformed HIR/Core
+  rejection, invalid UTF-8, signed-zero and NaN behavior, excluded forms, explicit migration, and
+  every frozen earlier language slice under `v0.12.0`;
+- focused PipeLang check/compile/invoke, catalog, materialize, application/internal package-compile,
+  and `src/cmd` checks using only the existing temporary modfile pinned to cached `x/sys v0.46.0`
+  where required;
+- `go vet`, Core-only backend/evaluator import-boundary checks, VS Code
+  grammar/completion/snippet/diagnostic validation, and Windows compile-only proof across the
+  affected packages; and
+- `gofmt`, `git diff --check`, exact inventory, dependency/generated-state absence, branch/stash,
+  TASK-020, and protected ignored-byte proof.
+
+No dependency, generated store, runtime, external state, cleanup, commit, push, or publication
+changed.
+
 ## Exact Next Boundary
 
 Step 7 of **Bounded Implementation Order** has completed the fixed numeric, compiler-internal
 checked-arithmetic Result, and direct production-source checked add, subtract, multiply, negate,
 binary64 divide, first-class arithmetic Result transport, ordinal Unicode text ordering, and
 primitive immutable record-identity transport, one-hop primitive-record field projection, and
-exact primitive-record construction slices.
+exact primitive-record construction and structural equality slices.
 `v0.2.0` admits only the exact explicit Result-returning addition;
 `v0.3.0` adds only direct subtraction; `v0.4.0` adds only direct multiplication; `v0.5.0` adds only
 direct integer negation; `v0.6.0` adds only direct binary64 division; and `v0.7.0` adds only direct
@@ -1675,6 +1732,8 @@ transport while preserving every prior contract.
 sole record parameter while preserving every prior contract.
 `v0.11.0` adds only direct declaration-ordered construction of one existing public primitive
 record from one corresponding primitive parameter per field while preserving every prior contract.
+`v0.12.0` adds only direct structural `==` and complementary `!=` between two parameters of the
+same existing public primitive record while preserving every prior contract.
 All other numeric arithmetic and every Result construction, composition, or consumption form remain
 fail-closed from production source. Any next slice requires a new
 synchronized decision for its exact source spelling, type/value handling rule, semantic projection,
@@ -1683,15 +1742,15 @@ migration, and bounded semantics before implementation.
 The first accepted application consumer is TASK-020's one-to-one DockPipe Launcher replacement,
 beginning with read-only Docker observability. Its typed snapshot requirements are dependency
 evidence when comparing remaining step-7 options. Completed primitive record transport, one-hop
-field projection, and exact construction satisfy three dependencies but do not authorize nested or
-general record value use, optionals, collections, failures, UI, actions, effects, or Qt behavior as
-one batch.
+field projection, exact construction, and structural equality satisfy four dependencies but do not
+authorize nested or general record value use, optionals, collections, failures, UI, actions,
+effects, or Qt behavior as one batch.
 
 No later step-7 slice is included here. In particular, this checkpoint does not add Result
 construction, inspection, extraction, wrapping, unwrapping, propagation, or matching; additional
 Unicode text construction/scalar/grapheme APIs, normalization/case operations, value/reference,
 hashing, general total-order capabilities, optional, general result, record nesting/chained or
-general access/mutation/equality, union, or deterministic collection production semantics; accept namespace, import,
+general access/mutation/hash/order, union, or deterministic collection production semantics; accept namespace, import,
 migration, `internal`, overload, generic, or ID production syntax; implement overload resolution;
 add new types/declarations/expressions/operators, blocks, locals, branches, or loops; add effects,
 entrypoints, actions/state, contracts/replay, executable application/service semantics, Application

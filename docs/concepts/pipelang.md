@@ -426,6 +426,42 @@ use `PL3006`; non-direct bodies or values use `PL3009`. Malformed HIR and Core r
 mutation, general member access, equality, hashing, ordering, matching, Result integration,
 optionals, unions, and collections remain outside the production source contract.
 
+The explicit `v0.12.0` contract preserves every `v0.11.0` rule and adds structural equality and
+inequality for one existing public primitive record. The admitted form is one expression-bodied
+class method returning `bool`, with exactly two parameters of the same record type and a direct
+comparison of those parameters in declaration order:
+
+```pipelang
+public Record Row {
+    public string Id;
+    public int Count;
+    public float Ratio;
+    public bool Ready;
+}
+public Class Rows {
+    public bool Same(Row left, Row right) => left == right;
+    public bool Different(Row left, Row right) => left != right;
+}
+```
+
+Equality compares fields structurally in declaration order. Strings retain preserved ordinal
+scalar-sequence equality, integers and booleans compare exactly, and binary64 retains the pinned
+IEEE rules: NaN is unequal, while positive and negative zero compare equal. `!=` is the logical
+complement of that complete structural result. Both operands are validated against the identical
+record schema before evaluation.
+
+The comparison reuses the existing record, field, and callable identities; it adds no operator or
+type identity and does not change `pipelang.semantic.v1`. Typed HIR and target-neutral Core carry
+the existing `equal` or `not_equal` binary operator with the identified record operands. Core
+evaluation and generated Go agree on the structural result, validate strict UTF-8 string fields,
+and reject malformed operand order or schema before execution.
+
+`v0.1.0` through `v0.11.0` reject record equality without implicit migration. Invalid record
+signatures or placements use `PL3006`; reversed, repeated, nested, field-only, ordered, or otherwise
+non-direct bodies use `PL3009`. Malformed HIR and Core remain `PL3026` and `PL3027`. Hashing, record
+ordering, nesting, mutation, general member access, optionals, general Result handling, unions,
+collections, blocks, matching, calls, and indexing remain outside the production source contract.
+
 ## Artifacts
 
 Compile emits:

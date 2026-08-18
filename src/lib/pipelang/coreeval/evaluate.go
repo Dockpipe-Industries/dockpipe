@@ -85,6 +85,16 @@ func evalExpr(expression coreir.Expr, arguments []Value) (Outcome, error) {
 		if expression.Binary.Left.Type.Kind == coreir.TypePrimitive && expression.Binary.Left.Type.Primitive == coreir.PrimitiveString {
 			return evalTextBinary(expression, left.Value.String, right.Value.String)
 		}
+		if expression.Binary.Left.Type.Kind == coreir.TypeRecord {
+			equal, err := equalValues(left.Value, right.Value)
+			if err != nil {
+				return Outcome{}, err
+			}
+			if expression.Binary.Operator == coreir.OperatorNotEqual {
+				equal = !equal
+			}
+			return Outcome{OK: true, Value: Value{Type: expression.Type, Bool: equal}}, nil
+		}
 		switch expression.Binary.Operator {
 		case coreir.OperatorAdd, coreir.OperatorSubtract, coreir.OperatorMultiply:
 			value, arithmeticError := coreir.CheckedInt64(expression.Binary.Operator, left.Value.Int, right.Value.Int)
@@ -206,6 +216,49 @@ func validateValue(value Value) error {
 		return fmt.Errorf("failed Result carries an unknown arithmetic error")
 	}
 	return nil
+}
+
+func equalValues(left, right Value) (bool, error) {
+	if !coreir.TypeEqual(left.Type, right.Type) {
+		return false, fmt.Errorf("structural equality operands have different types")
+	}
+	if err := validateValue(left); err != nil {
+		return false, fmt.Errorf("left structural equality operand: %w", err)
+	}
+	if err := validateValue(right); err != nil {
+		return false, fmt.Errorf("right structural equality operand: %w", err)
+	}
+	switch left.Type.Kind {
+	case coreir.TypeRecord:
+		for index := range left.Record {
+			equal, err := equalValues(left.Record[index], right.Record[index])
+			if err != nil {
+				return false, fmt.Errorf("record field %d: %w", index, err)
+			}
+			if !equal {
+				return false, nil
+			}
+		}
+		return true, nil
+	case coreir.TypePrimitive:
+		switch left.Type.Primitive {
+		case coreir.PrimitiveString:
+			return left.String == right.String, nil
+		case coreir.PrimitiveBool:
+			return left.Bool == right.Bool, nil
+		}
+	case coreir.TypeNumeric:
+		if left.Type.Numeric == nil {
+			return false, fmt.Errorf("numeric equality operand has no representation")
+		}
+		switch left.Type.Numeric.Representation {
+		case coreir.NumericInteger:
+			return left.Int == right.Int, nil
+		case coreir.NumericBinaryFloat:
+			return left.Float == right.Float, nil
+		}
+	}
+	return false, fmt.Errorf("type %q is outside structural record equality", left.Type.Kind)
 }
 
 func cloneRecordValue(value Value) Value {
