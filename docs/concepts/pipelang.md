@@ -518,6 +518,35 @@ defaults, record fields, nesting, chaining, propagation, matching, mutation, con
 fallibility, Result composition, unions, collections, hashing, and ordering remain outside the
 production source contract.
 
+The explicit `v0.15.0` contract preserves every `v0.14.0` rule and adds one immutable record-list
+value slice. `List<R>` has the fixed semantic identity `pipelang:list`, projected with the existing
+identified public primitive record `R` as its sole applied argument. The complete added public
+source surface is three exact direct class-method shapes:
+
+```pipelang
+public Class Rows {
+    public List<Row> EmptyRows() => empty_list<Row>();
+    public List<Row> OneRow(Row value) => list(value);
+    public List<Row> ForwardRows(List<Row> values) => values;
+}
+```
+
+`empty_list<R>()` creates a canonical non-nil empty value, `list(value)` creates one element from
+the sole corresponding record parameter, and identity transport returns the sole identical
+`List<R>` parameter as an immutable value. Order and every record field value are preserved; list
+identity, equality, hashing, and ordering are not observable. Typed HIR and target-neutral Core
+carry explicit `list`, `list_empty`, and `list_singleton` representations. Core evaluation and the
+Core-only Go backend validate every element, including strict UTF-8 record fields, and copy list
+storage before transport so target slice aliasing cannot become PipeLang mutation.
+
+`v0.1.0` through `v0.14.0` reject these value forms without implicit migration. Invalid element
+types, placements, or method signatures use `PL3006`; literals, nested construction, mismatched
+types, and other non-direct bodies use `PL3009`. Malformed HIR and Core remain `PL3026` and
+`PL3027`. Primitive, optional, result, or nested-list elements; list fields; literals; append;
+indexing; count; iteration; filtering; sorting; equality; hashing; maps; sets; builders; mutation;
+record nesting; Step-8 control flow; effects; and Application IR remain outside the production
+source contract.
+
 ## Artifacts
 
 Compile emits:

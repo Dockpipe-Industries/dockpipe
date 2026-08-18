@@ -6,7 +6,7 @@ The `vNext` foundation decision packet in this record is **accepted** as of 2026
 fixes semantics, compiler boundaries, bootstrap stages, compatibility, and implementation order;
 examples and fixtures remain non-normative and accept no production syntax. Separately authorized
 bounded objectives have completed implementation-order steps 1 through 6 and step-7 slices 7a
-through 7o. This record does not by itself authorize another step-7 or later language slice.
+through 7p. This record does not by itself authorize another step-7 or later language slice.
 
 ## Goal
 
@@ -1820,6 +1820,62 @@ Terminal proof passed with cached Go 1.25.13, offline module lookup, and writabl
 No dependency, generated store, runtime, external state, cleanup, commit, push, or publication
 changed.
 
+### Completed step 7p deterministic primitive-record list contract (2026-08-18)
+
+The founder selected explicit `v0.15.0` deterministic primitive-record list values. The accepted
+public surface contains only these direct method shapes for one existing public primitive record
+`R`:
+
+```pipelang
+public List<ContainerRow> EmptyRows() => empty_list<ContainerRow>();
+public List<ContainerRow> OneRow(ContainerRow value) => list(value);
+public List<ContainerRow> ForwardRows(List<ContainerRow> values) => values;
+```
+
+`List<R>` is an immutable, ordered, non-null value whose elements retain the existing record
+identity and declaration-ordered primitive field values. It has the fixed semantic identity
+`pipelang:list` with the record identity as its sole structured type argument; the
+`pipelang.semantic.v1` schema remains unchanged. `empty_list<R>()` constructs the canonical empty
+value, `list(value)` constructs exactly one element from the sole `R` parameter, and direct
+identity transport returns the sole identical `List<R>` parameter. Typed HIR and target-neutral
+Core use explicit `list`, `list_empty`, and `list_singleton` forms. The deterministic evaluator and
+Core-only Go backend validate every record element, including strict UTF-8 for every string field,
+and copy list plus nested record storage at construction and transport boundaries so caller-owned
+storage cannot mutate the result. A nil list representation is invalid.
+
+`PL3006` reports invalid element types, list placement, nesting, fields, or signatures; `PL3009`
+reports literals, computed elements, non-direct bodies, or unsupported list operations. Malformed
+typed HIR and Core remain `PL3026` and `PL3027`. `v0.1.0` through `v0.14.0` reject the new source
+forms and executable representations without implicit migration, while every frozen earlier
+language contract remains available under `v0.15.0`.
+
+The minimal pure source fixture is `src/lib/pipelang/testdata/record-list.pipe`, with synchronized
+typed HIR, Core, and Go goldens. This slice gives TASK-020's first accepted read-only Docker
+observability consumer deterministic empty, singleton, and pass-through row collections without
+introducing application behavior. Primitive, nested, Optional, or Result list elements; list
+fields; multi-element source construction; append, indexing, count, iteration, filtering, sorting,
+equality, hashing, maps, sets, builders, mutation, Application IR, Step-8 control flow, effects, and
+additional backends remain excluded.
+
+Terminal proof passed with cached Go 1.25.13, offline module lookup, and writable `/tmp` caches:
+
+- the complete PipeLang package suite, including source-derived list HIR/Core/Go goldens, fixed
+  semantic identity/projection, parser spans, canonical non-null empty and singleton values,
+  list/record storage isolation, strict UTF-8 validation, malformed HIR/Core rejection, excluded
+  forms, explicit `v0.1.0` through `v0.14.0` migration rejection, and selected frozen `v0.14.0`
+  contracts under `v0.15.0`;
+- focused PipeLang check/compile/invoke, catalog, materialize, application/internal packagecompile,
+  domain, and `src/cmd` checks using only the existing temporary modfile pinned to cached
+  `x/sys v0.46.0` where required;
+- `go vet`, Core-only backend/evaluator import-boundary checks, VS Code
+  grammar/completion/snippet/diagnostic validation, and Windows compile-only proof across the
+  affected packages; and
+- `gofmt`, `git diff --check`, exact 45-source inventory, dependency/generated-state absence,
+  branch/stash, TASK-020, and protected ignored-byte proof.
+
+No dependency, generated store, runtime, external state, cleanup, commit, push, or publication
+changed.
+
 ## Exact Next Boundary
 
 Step 7 of **Bounded Implementation Order** has completed the fixed numeric, compiler-internal
@@ -1827,7 +1883,8 @@ checked-arithmetic Result, and direct production-source checked add, subtract, m
 binary64 divide, first-class arithmetic Result transport, ordinal Unicode text ordering, and
 primitive immutable record-identity transport, one-hop primitive-record field projection, and
 exact primitive-record construction and structural equality, plus primitive Optional
-construction, identity transport, presence inspection, and bounded defaulting slices.
+construction, identity transport, presence inspection, and bounded defaulting slices, plus
+deterministic empty, singleton, and identity transport of primitive-record lists.
 `v0.2.0` admits only the exact explicit Result-returning addition;
 `v0.3.0` adds only direct subtraction; `v0.4.0` adds only direct multiplication; `v0.5.0` adds only
 direct integer negation; `v0.6.0` adds only direct binary64 division; and `v0.7.0` adds only direct
@@ -1846,6 +1903,9 @@ same existing public primitive record while preserving every prior contract.
 identity transport, and `has_value(value)` methods while preserving every prior contract.
 `v0.14.0` adds only exact two-parameter `value_or(Optional<T>, T) -> T` for primitive `T`, with
 both arguments canonically validated before selection, while preserving every prior contract.
+`v0.15.0` adds only `List<R>` for one existing public primitive record `R`, with exact direct
+`empty_list<R>()`, `list(value)`, and identity transport methods, fixed `pipelang:list` identity,
+canonical per-element validation, and copied storage while preserving every prior contract.
 All other numeric arithmetic and every Result construction, composition, or consumption form remain
 fail-closed from production source. Any next slice requires a new
 synchronized decision for its exact source spelling, type/value handling rule, semantic projection,
@@ -1857,14 +1917,18 @@ evidence when comparing remaining step-7 options. Completed primitive record tra
 field projection, exact construction, structural equality, and primitive Optional presence satisfy
 five dependencies; bounded primitive Optional defaulting satisfies a sixth. They do not authorize
 nested or general record value use, optional extraction beyond `value_or` or composition,
-collections, failures, UI, actions, effects, or Qt behavior as one batch.
+arbitrary multi-element collection construction or collection consumption, failures, UI, actions,
+effects, or Qt behavior as one batch. The accepted list foundation satisfies only the read-only
+consumer's empty, singleton, and pass-through row-value boundary; iteration, filtering, sorting,
+counting, indexing, and application projection remain later decisions.
 
 No later step-7 slice is included here. In particular, this checkpoint does not add Result
 construction, inspection, extraction, wrapping, unwrapping, propagation, or matching; additional
 Unicode text construction/scalar/grapheme APIs, normalization/case operations, value/reference,
 hashing, general total-order capabilities, optional extraction beyond `value_or`, equality,
 implicit defaults, nesting, chaining,
-general result, record nesting/chained or general access/mutation/hash/order, union, or deterministic collection production semantics; accept namespace, import,
+general result, record nesting/chained or general access/mutation/hash/order, union, or additional
+deterministic collection production or consumption semantics; accept namespace, import,
 migration, `internal`, overload, generic, or ID production syntax; implement overload resolution;
 add new types/declarations/expressions/operators, blocks, locals, branches, or loops; add effects,
 entrypoints, actions/state, contracts/replay, executable application/service semantics, Application

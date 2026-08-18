@@ -16,6 +16,7 @@ type Value struct {
 	Bool     bool
 	Result   *Outcome
 	Record   []Value
+	List     []Value
 	Optional *OptionalValue
 }
 
@@ -66,6 +67,9 @@ func evalExpr(expression coreir.Expr, arguments []Value) (Outcome, error) {
 		}
 		if expression.Type.Kind == coreir.TypeOptional {
 			return Outcome{OK: true, Value: cloneOptionalValue(arguments[*expression.Parameter])}, nil
+		}
+		if expression.Type.Kind == coreir.TypeList {
+			return Outcome{OK: true, Value: cloneListValue(arguments[*expression.Parameter])}, nil
 		}
 		return Outcome{OK: true, Value: arguments[*expression.Parameter]}, nil
 	case coreir.ExprUnary:
@@ -184,6 +188,22 @@ func evalExpr(expression coreir.Expr, arguments []Value) (Outcome, error) {
 			return Outcome{OK: true, Value: payload}, nil
 		}
 		return fallback, nil
+	case coreir.ExprListEmpty:
+		value := Value{Type: expression.Type, List: make([]Value, 0)}
+		if err := validateValue(value); err != nil {
+			return Outcome{}, fmt.Errorf("list empty: %w", err)
+		}
+		return Outcome{OK: true, Value: value}, nil
+	case coreir.ExprListSingleton:
+		element, err := evalExpr(*expression.ListOne.Value, arguments)
+		if err != nil || !element.OK {
+			return element, err
+		}
+		value := Value{Type: expression.Type, List: []Value{element.Value}}
+		if err := validateValue(value); err != nil {
+			return Outcome{}, fmt.Errorf("list singleton: %w", err)
+		}
+		return Outcome{OK: true, Value: cloneListValue(value)}, nil
 	default:
 		return Outcome{}, fmt.Errorf("unsupported expression kind %q", expression.Kind)
 	}
@@ -225,8 +245,22 @@ func evalTextBinary(expression coreir.Expr, left, right string) (Outcome, error)
 }
 
 func validateValue(value Value) error {
+	if value.Type.Kind == coreir.TypeList {
+		if value.Type.List == nil || value.List == nil || value.Result != nil || value.Optional != nil || len(value.Record) != 0 {
+			return fmt.Errorf("list value does not match its element schema")
+		}
+		for index := range value.List {
+			if !coreir.TypeEqual(value.List[index].Type, value.Type.List.Element) {
+				return fmt.Errorf("list element %d type does not match its declaration", index)
+			}
+			if err := validateValue(value.List[index]); err != nil {
+				return fmt.Errorf("list element %d: %w", index, err)
+			}
+		}
+		return nil
+	}
 	if value.Type.Kind == coreir.TypeOptional {
-		if value.Type.Optional == nil || value.Optional == nil || value.Result != nil || len(value.Record) != 0 {
+		if value.Type.Optional == nil || value.Optional == nil || value.Result != nil || len(value.Record) != 0 || value.List != nil {
 			return fmt.Errorf("Optional value does not match its type")
 		}
 		if !value.Optional.Present {
@@ -241,7 +275,7 @@ func validateValue(value Value) error {
 		return validateValue(*value.Optional.Value)
 	}
 	if value.Type.Kind == coreir.TypeRecord {
-		if value.Type.Record == nil || value.Result != nil || len(value.Record) != len(value.Type.Record.Fields) {
+		if value.Type.Record == nil || value.Result != nil || len(value.Record) != len(value.Type.Record.Fields) || value.List != nil {
 			return fmt.Errorf("record value does not match its field schema")
 		}
 		for index, field := range value.Type.Record.Fields {
@@ -263,6 +297,9 @@ func validateValue(value Value) error {
 		}
 		if value.Optional != nil {
 			return fmt.Errorf("non-Optional value carries an Optional payload")
+		}
+		if value.List != nil {
+			return fmt.Errorf("non-list value carries list elements")
 		}
 		if value.Type.Kind == coreir.TypePrimitive && value.Type.Primitive == coreir.PrimitiveString {
 			return coreir.ValidateText(value.String)
@@ -355,6 +392,28 @@ func cloneRecordValue(value Value) Value {
 		}
 	}
 	return cloned
+}
+
+func cloneListValue(value Value) Value {
+	cloned := value
+	cloned.List = make([]Value, len(value.List))
+	for index, element := range value.List {
+		cloned.List[index] = cloneValue(element)
+	}
+	return cloned
+}
+
+func cloneValue(value Value) Value {
+	switch value.Type.Kind {
+	case coreir.TypeRecord:
+		return cloneRecordValue(value)
+	case coreir.TypeList:
+		return cloneListValue(value)
+	case coreir.TypeOptional:
+		return cloneOptionalValue(value)
+	default:
+		return value
+	}
 }
 
 func arithmeticOutcome(resultType coreir.Type, value Value, arithmeticError coreir.ArithmeticError) Outcome {

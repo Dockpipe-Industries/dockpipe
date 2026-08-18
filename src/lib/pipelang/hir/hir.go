@@ -20,6 +20,7 @@ const (
 	TypeArithmeticError TypeKind = "arithmetic_error"
 	TypeRecord          TypeKind = "record"
 	TypeOptional        TypeKind = "optional"
+	TypeList            TypeKind = "list"
 	TypeNamed           TypeKind = "named"
 	TypeApplied         TypeKind = "applied"
 )
@@ -48,6 +49,10 @@ type ResultType struct {
 
 type OptionalType struct {
 	Value Type `json:"value"`
+}
+
+type ListType struct {
+	Element Type `json:"element"`
 }
 
 type RecordField struct {
@@ -92,6 +97,7 @@ type Type struct {
 	Numeric   *NumericType      `json:"numeric,omitempty"`
 	Result    *ResultType       `json:"result,omitempty"`
 	Optional  *OptionalType     `json:"optional,omitempty"`
+	List      *ListType         `json:"list,omitempty"`
 	Record    *RecordType       `json:"record,omitempty"`
 	SymbolID  uint32            `json:"symbol_id,omitempty"`
 	Identity  *SemanticIdentity `json:"identity,omitempty"`
@@ -137,6 +143,8 @@ const (
 	ExprOptionalNone     ExprKind = "optional_none"
 	ExprOptionalHasValue ExprKind = "optional_has_value"
 	ExprOptionalValueOr  ExprKind = "optional_value_or"
+	ExprListEmpty        ExprKind = "list_empty"
+	ExprListSingleton    ExprKind = "list_singleton"
 )
 
 type Operator string
@@ -210,6 +218,12 @@ type OptionalValueOr struct {
 	Fallback *Expr `json:"fallback"`
 }
 
+type ListEmpty struct{}
+
+type ListSingleton struct {
+	Value *Expr `json:"value"`
+}
+
 type Expr struct {
 	Kind      ExprKind          `json:"kind"`
 	Type      Type              `json:"type"`
@@ -224,6 +238,8 @@ type Expr struct {
 	None      *OptionalNone     `json:"none,omitempty"`
 	HasValue  *OptionalHasValue `json:"has_value,omitempty"`
 	ValueOr   *OptionalValueOr  `json:"value_or,omitempty"`
+	ListEmpty *ListEmpty        `json:"list_empty,omitempty"`
+	ListOne   *ListSingleton    `json:"list_singleton,omitempty"`
 }
 
 type Function struct {

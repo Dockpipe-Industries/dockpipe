@@ -128,7 +128,7 @@ func (id SemanticTypeIdentity) isValid() bool {
 		}
 		switch id.Name {
 		case "List":
-			return id.PackageID == "" && id.Path == "" && len(id.Arguments) == 1 && id.Arguments[0].isValid()
+			return ((id.PackageID == "" && id.Path == "") || (id.PackageID == PipeLangBuiltinPackageID && id.Path == PipeLangListSemanticPath)) && len(id.Arguments) == 1 && id.Arguments[0].isValid()
 		case "Result":
 			return id.PackageID == PipeLangBuiltinPackageID && id.Path == PipeLangResultSemanticPath && len(id.Arguments) == 2 && id.Arguments[0].isValid() && id.Arguments[1].Kind == TypeRefNamed && id.Arguments[1].PackageID == PipeLangBuiltinPackageID && id.Arguments[1].Path == PipeLangArithmeticErrorSemanticPath && id.Arguments[1].isValid()
 		default:
