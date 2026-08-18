@@ -1395,22 +1395,76 @@ Terminal proof passed with cached Go 1.25.13, offline module lookup, and writabl
 No dependency, generated store, runtime, credential, external state, cleanup, commit, or
 publication changed.
 
+### Completed step 7i ordinal Unicode text ordering contract (2026-08-17)
+
+The founder selected the recommended explicit `v0.8.0` text slice. It preserves every earlier
+numeric and arithmetic Result contract and admits exactly one expression-bodied class method shape
+returning `bool`, with exactly two `string` parameters and one of `<`, `<=`, `>`, or `>=` comparing
+those parameters in declared order as the complete body:
+
+```pipelang
+bool Before(string left, string right) => left < right;
+```
+
+PipeLang strings remain immutable preserved Unicode scalar sequences. Equality and ordering are
+ordinal: comparison is lexicographic by scalar value and never normalizes, case-folds, applies a
+culture/locale, or delegates meaning to target collation. Existing string concatenation, equality,
+and inequality retain their prior-version source behavior and gain the same deterministic Core
+evaluator conformance. Invalid source UTF-8 remains `PL0001`; malformed host-provided string values
+fail the Core/backend infrastructure boundary rather than becoming language results.
+
+The slice adds no semantic type identity: callable identity and `pipelang.semantic.v1` continue to
+carry the existing primitive `string` parameters and `bool` return. Typed HIR and target-neutral
+Core preserve the selected relational operator. `coreeval` validates UTF-8 and compares scalar
+sequences explicitly. The Core-only Go backend emits deterministic UTF-8/scalar helpers rather than
+using host locale or collation, and malformed host text fails with a fixed infrastructure panic.
+
+`v0.1.0` through `v0.7.0` continue to reject string relational ordering with `PL3009`. `v0.8.0`
+also rejects extra or reordered parameters, literals in place of the declared parameters, mixed
+operands, wrong return types, and nested ordering. `PL3028` remains exclusively the established
+checked-arithmetic diagnostic, and v0.8.0 preserves direct add/subtract/multiply/negate/divide and
+v0.7.0 Result transport without changing `pipelang:result`, `pipelang:arithmetic.error`, `overflow`,
+`division_by_zero`, `pipelang.compiler.v1`, or `pipelang.semantic.v1`.
+
+Terminal proof passed with cached Go 1.25.13, offline module lookup, and writable `/tmp` caches:
+
+- exact PipeLang and 45-source compatibility tests, including parser/type/identity/projection,
+  source-derived HIR/Core/Go text-order goldens, Core/generated-Go scalar-order agreement, invalid
+  UTF-8 boundaries, explicit migration rejection, prior text-operation conformance, and frozen
+  arithmetic Result behavior;
+- affected PipeLang CLI/check/compile/invoke, catalog, materialize, package-compile, internal, and
+  `src/cmd` checks through only the existing temporary modfile pinned to cached `x/sys v0.46.0`;
+- `go vet` across PipeLang, compatibility, and the affected application/internal/CLI packages; and
+- VS Code grammar/diagnostic validation plus durable `v0.8.0` editor guidance, `gofmt`,
+  `git diff --check`, frozen inventory, dependency, generated-state, branch/stash, and protected
+  ignored-byte proof.
+
+The minimal pure source fixture is `src/lib/pipelang/testdata/text-order.pipe`, with synchronized
+typed HIR, Core, and Go goldens. No hash algorithm/capability, normalization/case/grapheme API,
+structural value equality, optional, general Result handling, record, union, collection, broader
+expression, dependency, generated store, runtime, credential, external state, cleanup, commit, or
+publication changed.
+
 ## Exact Next Boundary
 
 Step 7 of **Bounded Implementation Order** has completed the fixed numeric, compiler-internal
 checked-arithmetic Result, and direct production-source checked add, subtract, multiply, negate,
-binary64 divide, and first-class arithmetic Result transport slices. `v0.2.0` admits only the exact explicit Result-returning addition;
+binary64 divide, first-class arithmetic Result transport, and ordinal Unicode text ordering slices.
+`v0.2.0` admits only the exact explicit Result-returning addition;
 `v0.3.0` adds only direct subtraction; `v0.4.0` adds only direct multiplication; `v0.5.0` adds only
 direct integer negation; `v0.6.0` adds only direct binary64 division; and `v0.7.0` adds only direct
 identity transport of one identical existing arithmetic Result parameter and return while preserving
-every prior contract. All other numeric arithmetic and every Result construction, composition, or
-consumption form remain fail-closed from production source. Any next slice requires a new
+every prior contract. `v0.8.0` adds only `<`, `<=`, `>`, and `>=` ordinal scalar-sequence ordering
+in the exact two-parameter direct method shape while preserving prior text concatenation/equality.
+All other numeric arithmetic and every Result construction, composition, or consumption form remain
+fail-closed from production source. Any next slice requires a new
 synchronized decision for its exact source spelling, type/value handling rule, semantic projection,
 migration, and bounded semantics before implementation.
 
 No later step-7 slice is included here. In particular, this checkpoint does not add Result
-construction, inspection, extraction, wrapping, unwrapping, propagation, or matching; Unicode text,
-value/reference, hashing, total ordering, optional, general result, record, union, or deterministic
+construction, inspection, extraction, wrapping, unwrapping, propagation, or matching; additional
+Unicode text construction/scalar/grapheme APIs, normalization/case operations, value/reference,
+hashing, general total-order capabilities, optional, general result, record, union, or deterministic
 collection production semantics; accept namespace, import,
 migration, `internal`, overload, generic, or ID production syntax; implement overload resolution;
 add new types/declarations/expressions/operators, blocks, locals, branches, or loops; add effects,

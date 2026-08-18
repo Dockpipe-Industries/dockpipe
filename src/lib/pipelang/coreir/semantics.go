@@ -1,6 +1,9 @@
 package coreir
 
-import "fmt"
+import (
+	"fmt"
+	"unicode/utf8"
+)
 
 const (
 	maxInt64 = int64(9223372036854775807)
@@ -75,6 +78,46 @@ func TypeEqual(left, right Type) bool {
 	return true
 }
 
+// ValidateText enforces PipeLang's target-independent string invariant at
+// Core boundaries. PipeLang text is always a valid UTF-8 encoding of a
+// preserved Unicode scalar sequence.
+func ValidateText(value string) error {
+	if !utf8.ValidString(value) {
+		return fmt.Errorf("string value is not valid UTF-8")
+	}
+	return nil
+}
+
+// CompareOrdinalText compares preserved Unicode scalar sequences without
+// normalization, case folding, locale, or target collation.
+func CompareOrdinalText(left, right string) (int, error) {
+	if err := ValidateText(left); err != nil {
+		return 0, fmt.Errorf("left %w", err)
+	}
+	if err := ValidateText(right); err != nil {
+		return 0, fmt.Errorf("right %w", err)
+	}
+	for len(left) > 0 && len(right) > 0 {
+		leftScalar, leftWidth := utf8.DecodeRuneInString(left)
+		rightScalar, rightWidth := utf8.DecodeRuneInString(right)
+		if leftScalar < rightScalar {
+			return -1, nil
+		}
+		if leftScalar > rightScalar {
+			return 1, nil
+		}
+		left = left[leftWidth:]
+		right = right[rightWidth:]
+	}
+	if len(left) < len(right) {
+		return -1, nil
+	}
+	if len(left) > len(right) {
+		return 1, nil
+	}
+	return 0, nil
+}
+
 // ValidateFunction checks Core types and operator contracts before either a
 // semantic evaluator or a target backend consumes the function.
 func ValidateFunction(function Function) error {
@@ -97,6 +140,11 @@ func validateExpr(expression Expr, parameters []Parameter) error {
 	case ExprLiteral:
 		if expression.Literal == nil || !isLiteralType(expression.Type) {
 			return fmt.Errorf("literal has an invalid type")
+		}
+		if expression.Type.Kind == TypePrimitive && expression.Type.Primitive == PrimitiveString {
+			if err := ValidateText(expression.Literal.String); err != nil {
+				return fmt.Errorf("literal %w", err)
+			}
 		}
 	case ExprReference:
 		if expression.Parameter == nil || *expression.Parameter < 0 || *expression.Parameter >= len(parameters) {

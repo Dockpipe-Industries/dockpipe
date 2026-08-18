@@ -319,6 +319,25 @@ exception behavior. `v0.1.0` through `v0.6.0` remain unchanged and no source or 
 alternate Result types, constructors, inspection, extraction, matching, propagation, and use as an
 ordinary `int` or `float` remain outside the production source contract.
 
+The explicit `v0.8.0` contract preserves every earlier numeric and arithmetic Result rule and adds
+ordinal ordering for PipeLang `string` values. The exact admitted source shape is one expression-
+bodied class method returning `bool`, with exactly two `string` parameters, and one of `<`, `<=`,
+`>`, or `>=` comparing those parameters in declared order as the complete body:
+
+```pipelang
+bool Before(string left, string right) => left < right;
+```
+
+Strings remain immutable preserved Unicode scalar sequences. Ordering is lexicographic by scalar
+value; equality and ordering do not normalize, case-fold, apply culture rules, or use target
+collation. Existing string concatenation, equality, and inequality keep their prior-version source
+meaning and now share the same validated Core evaluator/backend text contract. Invalid UTF-8 cannot
+enter a PipeLang string value; a malformed host value is an infrastructure boundary failure.
+`v0.1.0` through `v0.7.0` continue to reject string relational ordering, and no source or package
+selects `v0.8.0` implicitly. Hashing, normalization/case/grapheme APIs, structural value equality,
+optionals, general Result handling, records, unions, collections, and broader expressions remain
+outside this production source contract.
+
 ## Artifacts
 
 Compile emits:

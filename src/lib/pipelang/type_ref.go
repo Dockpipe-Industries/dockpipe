@@ -178,7 +178,7 @@ func isResolvedArithmeticResult(ref ResolvedTypeRef) bool {
 }
 
 func isResolvedSourceArithmeticResult(contract LanguageContract, ref ResolvedTypeRef) bool {
-	return isResolvedIntArithmeticResult(ref) || ((contract == PipeLangLanguageContractV060 || contract == PipeLangLanguageContractV070) && isResolvedFloatArithmeticResult(ref))
+	return isResolvedIntArithmeticResult(ref) || ((contract == PipeLangLanguageContractV060 || contract == PipeLangLanguageContractV070 || contract == PipeLangLanguageContractV080) && isResolvedFloatArithmeticResult(ref))
 }
 
 func containsResolvedArithmeticContractType(ref ResolvedTypeRef) bool {
