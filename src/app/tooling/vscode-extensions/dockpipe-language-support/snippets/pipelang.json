@@ -71,5 +71,12 @@
       "public bool ${6:HasValue}(Optional<${1:string}> ${3:value}) => has_value(${3:value});"
     ],
     "description": "Create the exact v0.13.0 primitive Optional construction, identity transport, and presence-inspection methods."
+  },
+  "PipeLang Optional Defaulting": {
+    "prefix": "pipe-optional-value-or",
+    "body": [
+      "public ${1:string} ${2:ValueOr}(Optional<${1:string}> ${3:value}, ${1:string} ${4:fallback}) => value_or(${3:value}, ${4:fallback});"
+    ],
+    "description": "Create the exact v0.14.0 two-parameter primitive Optional value_or defaulting method."
   }
 }

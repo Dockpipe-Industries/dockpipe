@@ -16,6 +16,7 @@ const (
 	LanguageContractV110 = "v0.11.0"
 	LanguageContractV120 = "v0.12.0"
 	LanguageContractV130 = "v0.13.0"
+	LanguageContractV140 = "v0.14.0"
 	CompilerContractV1   = "pipelang.compiler.v1"
 )
 
@@ -134,6 +135,7 @@ const (
 	ExprOptionalSome     ExprKind = "optional_some"
 	ExprOptionalNone     ExprKind = "optional_none"
 	ExprOptionalHasValue ExprKind = "optional_has_value"
+	ExprOptionalValueOr  ExprKind = "optional_value_or"
 )
 
 type Operator string
@@ -202,6 +204,11 @@ type OptionalHasValue struct {
 	Value *Expr `json:"value"`
 }
 
+type OptionalValueOr struct {
+	Value    *Expr `json:"value"`
+	Fallback *Expr `json:"fallback"`
+}
+
 type Expr struct {
 	Kind      ExprKind          `json:"kind"`
 	Type      Type              `json:"type"`
@@ -214,6 +221,7 @@ type Expr struct {
 	Some      *OptionalSome     `json:"some,omitempty"`
 	None      *OptionalNone     `json:"none,omitempty"`
 	HasValue  *OptionalHasValue `json:"has_value,omitempty"`
+	ValueOr   *OptionalValueOr  `json:"value_or,omitempty"`
 }
 
 type Function struct {

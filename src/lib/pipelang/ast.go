@@ -184,6 +184,11 @@ type (
 		Value Expr
 		Span  Span
 	}
+	OptionalValueOrExpr struct {
+		Value    Expr
+		Fallback Expr
+		Span     Span
+	}
 )
 
 func (*LiteralExpr) isExpr()          {}
@@ -195,6 +200,7 @@ func (*RecordConstructExpr) isExpr()  {}
 func (*OptionalSomeExpr) isExpr()     {}
 func (*OptionalNoneExpr) isExpr()     {}
 func (*OptionalHasValueExpr) isExpr() {}
+func (*OptionalValueOrExpr) isExpr()  {}
 
 func (e *LiteralExpr) SourceSpan() Span          { return e.Span }
 func (e *IdentExpr) SourceSpan() Span            { return e.Span }
@@ -205,6 +211,7 @@ func (e *RecordConstructExpr) SourceSpan() Span  { return e.Span }
 func (e *OptionalSomeExpr) SourceSpan() Span     { return e.Span }
 func (e *OptionalNoneExpr) SourceSpan() Span     { return e.Span }
 func (e *OptionalHasValueExpr) SourceSpan() Span { return e.Span }
+func (e *OptionalValueOrExpr) SourceSpan() Span  { return e.Span }
 
 func setExprSpan(expr Expr, span Span) {
 	switch node := expr.(type) {
@@ -225,6 +232,8 @@ func setExprSpan(expr Expr, span Span) {
 	case *OptionalNoneExpr:
 		node.Span = span
 	case *OptionalHasValueExpr:
+		node.Span = span
+	case *OptionalValueOrExpr:
 		node.Span = span
 	}
 }

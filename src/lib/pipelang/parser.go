@@ -554,6 +554,10 @@ func (p *parser) parsePrimary() (Expr, error) {
 				return p.parseOptionalNone()
 			case "has_value":
 				return p.parseOptionalHasValue()
+			case "value_or":
+				if hasPrimitiveOptionalDefaultSourceContract(p.languageContract) {
+					return p.parseOptionalValueOr()
+				}
 			}
 		}
 		p.next()
@@ -636,6 +640,32 @@ func (p *parser) parseOptionalHasValue() (Expr, error) {
 		return nil, err
 	}
 	return &OptionalHasValueExpr{Value: value, Span: mergeSpans(start.span, end.span)}, nil
+}
+
+func (p *parser) parseOptionalValueOr() (Expr, error) {
+	start, err := p.expect(tokIdent)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := p.expect(tokLParen); err != nil {
+		return nil, err
+	}
+	value, err := p.parseExpr(1)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := p.expect(tokComma); err != nil {
+		return nil, err
+	}
+	fallback, err := p.parseExpr(1)
+	if err != nil {
+		return nil, err
+	}
+	end, err := p.expect(tokRParen)
+	if err != nil {
+		return nil, err
+	}
+	return &OptionalValueOrExpr{Value: value, Fallback: fallback, Span: mergeSpans(start.span, end.span)}, nil
 }
 
 func (p *parser) parseRecordConstruction() (Expr, error) {

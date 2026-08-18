@@ -1,0 +1,94 @@
+{
+  "language_contract": "v0.14.0",
+  "compiler_contract": "pipelang.compiler.v1",
+  "functions": [
+    {
+      "identity": {
+        "package_id": "test.package",
+        "path": "app.root.root.valueor",
+        "callable": {
+          "parameters": [
+            {
+              "kind": "applied",
+              "package_id": "pipelang",
+              "path": "optional",
+              "name": "Optional",
+              "arguments": [
+                {
+                  "kind": "primitive",
+                  "primitive": "string"
+                }
+              ]
+            },
+            {
+              "kind": "primitive",
+              "primitive": "string"
+            }
+          ],
+          "returns": {
+            "kind": "primitive",
+            "primitive": "string"
+          }
+        }
+      },
+      "name": "ValueOr",
+      "parameters": [
+        {
+          "position": 0,
+          "name": "value",
+          "type": {
+            "kind": "optional",
+            "optional": {
+              "value": {
+                "kind": "primitive",
+                "primitive": "string"
+              }
+            }
+          }
+        },
+        {
+          "position": 1,
+          "name": "fallback",
+          "type": {
+            "kind": "primitive",
+            "primitive": "string"
+          }
+        }
+      ],
+      "return_type": {
+        "kind": "primitive",
+        "primitive": "string"
+      },
+      "body": {
+        "kind": "optional_value_or",
+        "type": {
+          "kind": "primitive",
+          "primitive": "string"
+        },
+        "value_or": {
+          "value": {
+            "kind": "reference",
+            "type": {
+              "kind": "optional",
+              "optional": {
+                "value": {
+                  "kind": "primitive",
+                  "primitive": "string"
+                }
+              }
+            },
+            "parameter": 0
+          },
+          "fallback": {
+            "kind": "reference",
+            "type": {
+              "kind": "primitive",
+              "primitive": "string"
+            },
+            "parameter": 1
+          }
+        }
+      }
+    }
+  ]
+}

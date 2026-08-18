@@ -424,6 +424,22 @@ func validateExpr(expression Expr, parameters []Parameter) error {
 		if expression.HasValue.Value.Type.Kind != TypeOptional {
 			return fmt.Errorf("optional has_value operand is not Optional")
 		}
+	case ExprOptionalValueOr:
+		if expression.ValueOr == nil || expression.ValueOr.Value == nil || expression.ValueOr.Fallback == nil {
+			return fmt.Errorf("optional value_or expression is incomplete")
+		}
+		if err := validateExpr(*expression.ValueOr.Value, parameters); err != nil {
+			return fmt.Errorf("optional value_or operand: %w", err)
+		}
+		if err := validateExpr(*expression.ValueOr.Fallback, parameters); err != nil {
+			return fmt.Errorf("optional value_or fallback: %w", err)
+		}
+		if expression.ValueOr.Value.Type.Kind != TypeOptional || expression.ValueOr.Value.Type.Optional == nil {
+			return fmt.Errorf("optional value_or first operand is not Optional")
+		}
+		if !TypeEqual(expression.ValueOr.Value.Type.Optional.Value, expression.ValueOr.Fallback.Type) || !TypeEqual(expression.Type, expression.ValueOr.Fallback.Type) {
+			return fmt.Errorf("optional value_or payload, fallback, and result types do not match")
+		}
 	default:
 		return fmt.Errorf("unsupported expression kind %q", expression.Kind)
 	}
@@ -444,7 +460,7 @@ func functionContainsOptional(function Function) bool {
 
 func exprContainsOptional(expression Expr) bool {
 	switch expression.Kind {
-	case ExprOptionalSome, ExprOptionalNone, ExprOptionalHasValue:
+	case ExprOptionalSome, ExprOptionalNone, ExprOptionalHasValue, ExprOptionalValueOr:
 		return true
 	case ExprUnary:
 		return expression.Unary != nil && expression.Unary.Operand != nil && exprContainsOptional(*expression.Unary.Operand)
@@ -491,8 +507,23 @@ func validateDirectOptionalFunction(function Function) error {
 		if value.Kind != ExprReference || value.Parameter == nil || *value.Parameter != 0 || !TypeEqual(value.Type, function.Parameters[0].Type) {
 			return fmt.Errorf("optional has_value operand must be its sole direct parameter")
 		}
+	case ExprOptionalValueOr:
+		if function.Body.ValueOr == nil || function.Body.ValueOr.Value == nil || function.Body.ValueOr.Fallback == nil || len(function.Parameters) != 2 || function.Parameters[0].Type.Kind != TypeOptional || function.Parameters[0].Type.Optional == nil {
+			return fmt.Errorf("optional value_or requires one Optional parameter, one matching fallback parameter, and a primitive return")
+		}
+		value := function.Body.ValueOr.Value
+		fallback := function.Body.ValueOr.Fallback
+		if value.Kind != ExprReference || value.Parameter == nil || *value.Parameter != 0 || !TypeEqual(value.Type, function.Parameters[0].Type) {
+			return fmt.Errorf("optional value_or operand must be its first direct parameter")
+		}
+		if fallback.Kind != ExprReference || fallback.Parameter == nil || *fallback.Parameter != 1 || !TypeEqual(fallback.Type, function.Parameters[1].Type) {
+			return fmt.Errorf("optional value_or fallback must be its second direct parameter")
+		}
+		if !TypeEqual(function.Parameters[0].Type.Optional.Value, function.Parameters[1].Type) || !TypeEqual(function.ReturnType, function.Parameters[1].Type) {
+			return fmt.Errorf("optional value_or payload, fallback, and return types must match")
+		}
 	default:
-		return fmt.Errorf("Optional types are admitted only in direct some, none, identity transport, or has_value functions")
+		return fmt.Errorf("Optional types are admitted only in direct some, none, identity transport, has_value, or value_or functions")
 	}
 	return nil
 }
