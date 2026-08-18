@@ -347,10 +347,21 @@ func (cp *checkedProgram) inferMethodBodyType(expr Expr, env map[string]Resolved
 	if cp == nil || cp.modules == nil || !hasArithmeticResultSourceContract(cp.modules.LanguageContract()) || !isResolvedIntArithmeticResult(declared) {
 		return cp.inferExprType(expr, env)
 	}
-	binary, ok := expr.(*BinaryExpr)
 	contract := cp.modules.LanguageContract()
+	if unary, unaryOK := expr.(*UnaryExpr); unaryOK && contract == PipeLangLanguageContractV050 && unary.Op == "-" {
+		operand, err := inferExprTypeWithPolicy(cp.sources, unary.Expr, env, true)
+		if err != nil {
+			return ResolvedTypeRef{}, err
+		}
+		integer := resolvedPrimitive(TypeInt)
+		if !operand.Equal(integer) {
+			return ResolvedTypeRef{}, oneDiagnostic(cp.sources, CodeNumericSemantics, CategorySemantic, unary.Span, fmt.Sprintf("checked integer negation requires int, got %s", operand))
+		}
+		return resolvedArithmeticResult(integer), nil
+	}
+	binary, ok := expr.(*BinaryExpr)
 	operatorAccepted := ok && binary.Op == "+"
-	if contract == PipeLangLanguageContractV040 {
+	if contract == PipeLangLanguageContractV040 || contract == PipeLangLanguageContractV050 {
 		operatorAccepted = ok && (binary.Op == "+" || binary.Op == "-" || binary.Op == "*")
 	} else if contract == PipeLangLanguageContractV030 {
 		operatorAccepted = ok && (binary.Op == "+" || binary.Op == "-")
@@ -375,6 +386,9 @@ func (cp *checkedProgram) inferMethodBodyType(expr Expr, env map[string]Resolved
 }
 
 func arithmeticSourceOperators(contract LanguageContract) string {
+	if contract == PipeLangLanguageContractV050 {
+		return "addition, subtraction, multiplication, or negation"
+	}
 	if contract == PipeLangLanguageContractV040 {
 		return "addition, subtraction, or multiplication"
 	}

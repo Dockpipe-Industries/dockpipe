@@ -97,6 +97,24 @@ func TestV040ParserPreservesCheckedMultiplyResultAndExpressionSpans(t *testing.T
 	}
 }
 
+func TestV050ParserPreservesCheckedNegateResultAndExpressionSpans(t *testing.T) {
+	const source = `public Class Root { public Result<int, ArithmeticError> Negate(int value) => -value; }`
+	sources, diagnostics := NewSourceSet([]SourceInput{{Path: "root.pipe", Data: []byte(source)}})
+	if diagnostics.HasErrors() {
+		t.Fatal(diagnostics)
+	}
+	program, err := parseSourceFileWithLanguageContract(sources, sources.Files()[0], PipeLangLanguageContractV050)
+	if err != nil {
+		t.Fatal(err)
+	}
+	method := program.Classes[0].Methods[0]
+	result := method.ReturnType
+	unary, ok := method.Body.(*UnaryExpr)
+	if result.Kind != TypeRefApplied || result.String() != "Result<int,ArithmeticError>" || !result.Span.IsValid() || len(result.Arguments) != 2 || !result.Arguments[0].Span.IsValid() || !result.Arguments[1].Span.IsValid() || !ok || unary.Op != "-" || !unary.Span.IsValid() || !unary.Expr.SourceSpan().IsValid() {
+		t.Fatalf("v0.5.0 checked negation parse = result %#v body %#v", result, method.Body)
+	}
+}
+
 func TestAnalyzeResolvesNamedTypesThroughOneOwnedSymbolTable(t *testing.T) {
 	analysis := AnalyzeFiles(map[string][]byte{
 		"a.pipe": []byte(`Interface Item { string Name; }`),

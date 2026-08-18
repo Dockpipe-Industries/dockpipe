@@ -20,7 +20,7 @@ func LowerSemanticMethodToHIR(analysis *Analysis, identity SemanticIdentity) (hi
 		return hir.Program{}, hirLoweringError(analysis, Span{}, identity, "typed HIR lowering requires a successful semantic module analysis")
 	}
 	if !isPipeLangSemanticContract(analysis.Modules.LanguageContract()) {
-		return hir.Program{}, hirLoweringError(analysis, analysis.Program.Span, identity, fmt.Sprintf("typed HIR lowering requires language contract %q, %q, %q, or %q", PipeLangLanguageContractV010, PipeLangLanguageContractV020, PipeLangLanguageContractV030, PipeLangLanguageContractV040))
+		return hir.Program{}, hirLoweringError(analysis, analysis.Program.Span, identity, fmt.Sprintf("typed HIR lowering requires language contract %q, %q, %q, %q, or %q", PipeLangLanguageContractV010, PipeLangLanguageContractV020, PipeLangLanguageContractV030, PipeLangLanguageContractV040, PipeLangLanguageContractV050))
 	}
 	semantic, ok := analysis.SemanticIDs.LookupIdentity(identity)
 	if !ok || semantic.Kind != SemanticMethod {
@@ -85,6 +85,16 @@ func lowerMethodBodyToHIR(analysis *Analysis, function SemanticIdentity, express
 	if !hasArithmeticResultSourceContract(analysis.Modules.LanguageContract()) || !isResolvedIntArithmeticResult(returnType) {
 		return lowerExprToHIR(analysis, function, expression, bindings, typeEnvironment)
 	}
+	if unary, ok := expression.(*UnaryExpr); ok && analysis.Modules.LanguageContract() == PipeLangLanguageContractV050 && unary.Op == "-" {
+		operand, err := lowerExprToHIR(analysis, function, unary.Expr, bindings, typeEnvironment)
+		if err != nil {
+			return hir.Expr{}, err
+		}
+		return hir.Expr{
+			Kind: hir.ExprUnary, Type: toHIRType(analysis, returnType), Span: toHIRSpan(unary.Span),
+			Unary: &hir.Unary{Operator: hir.OperatorNegate, Operand: &operand},
+		}, nil
+	}
 	binary, ok := expression.(*BinaryExpr)
 	operator, accepted := checkedArithmeticHIROperator(analysis.Modules.LanguageContract(), binary)
 	if !ok || !accepted {
@@ -112,9 +122,9 @@ func checkedArithmeticHIROperator(contract LanguageContract, binary *BinaryExpr)
 	case "+":
 		return hir.OperatorAdd, true
 	case "-":
-		return hir.OperatorSubtract, contract == PipeLangLanguageContractV030 || contract == PipeLangLanguageContractV040
+		return hir.OperatorSubtract, contract == PipeLangLanguageContractV030 || contract == PipeLangLanguageContractV040 || contract == PipeLangLanguageContractV050
 	case "*":
-		return hir.OperatorMultiply, contract == PipeLangLanguageContractV040
+		return hir.OperatorMultiply, contract == PipeLangLanguageContractV040 || contract == PipeLangLanguageContractV050
 	default:
 		return "", false
 	}
