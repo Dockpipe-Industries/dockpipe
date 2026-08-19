@@ -213,6 +213,21 @@ func evalExpr(expression coreir.Expr, arguments []Value) (Outcome, error) {
 			return Outcome{}, fmt.Errorf("list count: %w", err)
 		}
 		return Outcome{OK: true, Value: Value{Type: expression.Type, Int: int64(len(value.Value.List))}}, nil
+	case coreir.ExprListAppend:
+		values, err := evalExpr(*expression.ListAppend.Values, arguments)
+		if err != nil || !values.OK {
+			return values, err
+		}
+		value, err := evalExpr(*expression.ListAppend.Value, arguments)
+		if err != nil || !value.OK {
+			return value, err
+		}
+		result := cloneListValue(values.Value)
+		result.List = append(result.List, cloneValue(value.Value))
+		if err := validateValue(result); err != nil {
+			return Outcome{}, fmt.Errorf("list append: %w", err)
+		}
+		return Outcome{OK: true, Value: result}, nil
 	default:
 		return Outcome{}, fmt.Errorf("unsupported expression kind %q", expression.Kind)
 	}

@@ -201,6 +201,11 @@ type (
 		Value Expr
 		Span  Span
 	}
+	ListAppendExpr struct {
+		Values Expr
+		Value  Expr
+		Span   Span
+	}
 )
 
 func (*LiteralExpr) isExpr()          {}
@@ -216,6 +221,7 @@ func (*OptionalValueOrExpr) isExpr()  {}
 func (*ListEmptyExpr) isExpr()        {}
 func (*ListSingletonExpr) isExpr()    {}
 func (*ListCountExpr) isExpr()        {}
+func (*ListAppendExpr) isExpr()       {}
 
 func (e *LiteralExpr) SourceSpan() Span          { return e.Span }
 func (e *IdentExpr) SourceSpan() Span            { return e.Span }
@@ -230,6 +236,7 @@ func (e *OptionalValueOrExpr) SourceSpan() Span  { return e.Span }
 func (e *ListEmptyExpr) SourceSpan() Span        { return e.Span }
 func (e *ListSingletonExpr) SourceSpan() Span    { return e.Span }
 func (e *ListCountExpr) SourceSpan() Span        { return e.Span }
+func (e *ListAppendExpr) SourceSpan() Span       { return e.Span }
 
 func setExprSpan(expr Expr, span Span) {
 	switch node := expr.(type) {
@@ -258,6 +265,8 @@ func setExprSpan(expr Expr, span Span) {
 	case *ListSingletonExpr:
 		node.Span = span
 	case *ListCountExpr:
+		node.Span = span
+	case *ListAppendExpr:
 		node.Span = span
 	}
 }
