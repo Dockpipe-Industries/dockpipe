@@ -1,0 +1,59 @@
+# TASK-035 Recurring codebase hygiene after feature cycles
+schema: 1
+id: TASK-035
+topic: Recurring codebase hygiene after feature cycles
+entrypoint: overview.md
+
+dispatch:
+  readiness: unclassified
+  ownership: unclaimed
+
+routes:
+  orientation:
+    read: [overview.md]
+  durable_package_state:
+    read: [durable-package-contract.md, durable-package-cohorts.md, durable-package-cutover.md]
+  ranked_hygiene:
+    read: [ranks-3-8.md, rank-9-compatibility.md, rank-10-core-hygiene.md]
+  structure_program:
+    read: [structure-plan.md, structure-refresh.md]
+    optional:
+      - structure-splits-application.md
+      - structure-splits-infrastructure.md
+      - durable-import.md
+  application_splits:
+    read:
+      - application-orchestration.md
+      - application-sdk.md
+      - application-reaudit.md
+      - single-workflow-compile.md
+  cleanup_and_vocabulary:
+    read: [cleanup-objectives.md, model-domain.md]
+  current_topology:
+    read: [topology.md]
+
+documents:
+  - {path: overview.md, role: cadence, ranking, baseline, and boundary evidence}
+  - {path: durable-package-contract.md, role: rank 1 and durable package-state contract}
+  - {path: durable-package-cohorts.md, role: durable package-state cohorts}
+  - {path: durable-package-cutover.md, role: VM identity, runtime, IDE, and public cutover}
+  - {path: ranks-3-8.md, role: completed ranked checkpoints 3 through 8}
+  - {path: rank-9-compatibility.md, role: compatibility retirement ledger and first retirements}
+  - {path: rank-10-core-hygiene.md, role: core source-hygiene audit and implementation}
+  - {path: structure-plan.md, role: application structure audit and ranked split plan}
+  - {path: structure-splits-application.md, role: application and domain responsibility splits}
+  - {path: structure-splits-infrastructure.md, role: infrastructure responsibility splits}
+  - {path: durable-import.md, role: durable-import audit and source-inventory split}
+  - {path: structure-refresh.md, role: refreshed structure audit and resolver split}
+  - {path: application-orchestration.md, role: PipeLang refresh and parallel run-step split}
+  - {path: application-sdk.md, role: SDK scope-projection audit and split}
+  - {path: application-reaudit.md, role: application re-audit and next-slice selection}
+  - {path: single-workflow-compile.md, role: single-workflow package compilation split}
+  - {path: cleanup-objectives.md, role: application cleanup objectives and vocabulary work}
+  - {path: model-domain.md, role: model/domain boundary checkpoints}
+  - {path: topology.md, role: current application/domain/infrastructure package topology}
+
+maintenance:
+  - Resolve document paths relative to this index; do not concatenate completed history by default.
+  - Keep the current topology route small and move new completed evidence into its owning branch.
+  - Keep dispatch metadata synchronized with docs/agents/task-index.yaml.

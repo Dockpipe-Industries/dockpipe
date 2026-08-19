@@ -51,10 +51,10 @@ Preferred pattern:
 - `docs/agents/<topic>.md` gives the minimal routing/safety layer for agents
 - `docs/agents/index.yaml` points to the right file set for the task
 
-For a large indexed backlog task with independently useful branches, prefer
-`docs/agents/tasks/<task>/index.yaml` plus focused Markdown files. The global task index points to
-the local index, which names the smallest read set for orientation, decisions, implementation, or
-history. Ordinary tasks remain one Markdown file.
+Each active indexed backlog task uses `docs/agents/tasks/<task>/index.yaml`. The global task index
+points to that local index, which names the smallest read set for orientation, decisions,
+implementation, or history. Keep ordinary tasks to one `overview.md`; split only independently
+useful branches.
 
 ## Token Optimization
 

@@ -4,85 +4,85 @@ description: AI entrypoint for the indexed cross-cutting backlog.
 tasks:
   - id: TASK-003
     topic: Managed session volume cleanup and retention
-    path: docs/agents/tasks/session-volume-cleanup.md
+    path: docs/agents/tasks/session-volume-cleanup/index.yaml
     dispatch:
       readiness: unclassified
       ownership: unclaimed
   - id: TASK-004
     topic: Qt app and VS Code extension compile performance
-    path: docs/agents/tasks/compile-performance-qt-vscode.md
+    path: docs/agents/tasks/compile-performance-qt-vscode/index.yaml
     dispatch:
       readiness: unclassified
       ownership: unclaimed
   - id: TASK-008
     topic: ForgePipe agentic app UI
-    path: docs/agents/tasks/agentic-app-ui.md
+    path: docs/agents/tasks/agentic-app-ui/index.yaml
     dispatch:
       readiness: unclassified
       ownership: unclaimed
   - id: TASK-009
     topic: Sandbox toolchain determinism
-    path: docs/agents/tasks/sandbox-toolchain-determinism.md
+    path: docs/agents/tasks/sandbox-toolchain-determinism/index.yaml
     dispatch:
       readiness: unclassified
       ownership: unclaimed
   - id: TASK-010
     topic: Declarative dependency install UX
-    path: docs/agents/tasks/declarative-dependency-install-ux.md
+    path: docs/agents/tasks/declarative-dependency-install-ux/index.yaml
     dispatch:
       readiness: unclassified
       ownership: unclaimed
   - id: TASK-011
     topic: Local Windows CI VM parity and guest tooling
-    path: docs/agents/tasks/local-windows-ci-vm-parity.md
+    path: docs/agents/tasks/local-windows-ci-vm-parity/index.yaml
     dispatch:
       readiness: unclassified
       ownership: unclaimed
   - id: TASK-012
     topic: Pipeon startup, provisioning, and DorkPipe provider pools
-    path: docs/agents/tasks/pipeon-startup-performance.md
+    path: docs/agents/tasks/pipeon-startup-performance/index.yaml
     dispatch:
       readiness: unclassified
       ownership: unclaimed
   - id: TASK-013
     topic: Codex App Server adapter for top-level orchestrators
-    path: docs/agents/tasks/codex-app-server-adapter.md
+    path: docs/agents/tasks/codex-app-server-adapter/index.yaml
     dispatch:
       readiness: unclassified
       ownership: unclaimed
   - id: TASK-014
     topic: Native Dev Container discovery and lifecycle for Pipeon and CLI
-    path: docs/agents/tasks/native-devcontainer-support.md
+    path: docs/agents/tasks/native-devcontainer-support/index.yaml
     dispatch:
       readiness: unclassified
       ownership: unclaimed
   - id: TASK-016
     topic: Guided game-development package and Unreal integration
-    path: docs/agents/tasks/guided-game-development-package.md
+    path: docs/agents/tasks/guided-game-development-package/index.yaml
     dispatch:
       readiness: unclassified
       ownership: unclaimed
   - id: TASK-017
     topic: Portable embedded execution target and MCU runtime
-    path: docs/agents/tasks/portable-embedded-execution-target.md
+    path: docs/agents/tasks/portable-embedded-execution-target/index.yaml
     dispatch:
       readiness: unclassified
       ownership: unclaimed
   - id: TASK-018
     topic: Cross-platform MIDI package and dual-host workflow
-    path: docs/agents/tasks/midi-dual-host-workflow.md
+    path: docs/agents/tasks/midi-dual-host-workflow/index.yaml
     dispatch:
       readiness: unclassified
       ownership: unclaimed
   - id: TASK-019
     topic: Freenet decentralized execution coordination
-    path: docs/agents/tasks/freenet-decentralized-execution.md
+    path: docs/agents/tasks/freenet-decentralized-execution/index.yaml
     dispatch:
       readiness: unclassified
       ownership: unclaimed
   - id: TASK-020
     topic: Declarative application surfaces and standalone target builders
-    path: docs/agents/tasks/declarative-application-surfaces-and-target-builders.md
+    path: docs/agents/tasks/declarative-application-surfaces-and-target-builders/index.yaml
     dispatch:
       readiness: unclassified
       ownership: unclaimed
@@ -94,85 +94,85 @@ tasks:
       ownership: unclaimed
   - id: TASK-022
     topic: Go-first PipeLang backend services and typed clients
-    path: docs/agents/tasks/go-first-pipelang-backend-services.md
+    path: docs/agents/tasks/go-first-pipelang-backend-services/index.yaml
     dispatch:
       readiness: unclassified
       ownership: unclaimed
   - id: TASK-023
     topic: Lightweight native host-sandbox runtime
-    path: docs/agents/tasks/host-sandbox-runtime.md
+    path: docs/agents/tasks/host-sandbox-runtime/index.yaml
     dispatch:
       readiness: decision_ready
       ownership: unclaimed
   - id: TASK-024
     topic: Fedora and Debian DockPipe support and qualification parity
-    path: docs/agents/tasks/linux-distribution-qualification-parity.md
+    path: docs/agents/tasks/linux-distribution-qualification-parity/index.yaml
     dispatch:
       readiness: unclassified
       ownership: unclaimed
   - id: TASK-025
     topic: DockPipe supported-platform program and qualification matrix
-    path: docs/agents/tasks/supported-platform-program.md
+    path: docs/agents/tasks/supported-platform-program/index.yaml
     dispatch:
       readiness: unclassified
       ownership: unclaimed
   - id: TASK-026
     topic: Enterprise Linux support for RHEL, Rocky Linux, and AlmaLinux
-    path: docs/agents/tasks/enterprise-linux-support.md
+    path: docs/agents/tasks/enterprise-linux-support/index.yaml
     dispatch:
       readiness: unclassified
       ownership: unclaimed
   - id: TASK-027
     topic: Alpine Linux musl and BusyBox support
-    path: docs/agents/tasks/alpine-linux-support.md
+    path: docs/agents/tasks/alpine-linux-support/index.yaml
     dispatch:
       readiness: unclassified
       ownership: unclaimed
   - id: TASK-028
     topic: Arch Linux rolling-release support
-    path: docs/agents/tasks/arch-linux-support.md
+    path: docs/agents/tasks/arch-linux-support/index.yaml
     dispatch:
       readiness: unclassified
       ownership: unclaimed
   - id: TASK-029
     topic: Amazon Linux cloud-host support
-    path: docs/agents/tasks/amazon-linux-support.md
+    path: docs/agents/tasks/amazon-linux-support/index.yaml
     dispatch:
       readiness: unclassified
       ownership: unclaimed
   - id: TASK-030
     topic: openSUSE Leap and Tumbleweed support
-    path: docs/agents/tasks/opensuse-support.md
+    path: docs/agents/tasks/opensuse-support/index.yaml
     dispatch:
       readiness: unclassified
       ownership: unclaimed
   - id: TASK-031
     topic: NixOS declarative-host support
-    path: docs/agents/tasks/nixos-support.md
+    path: docs/agents/tasks/nixos-support/index.yaml
     dispatch:
       readiness: unclassified
       ownership: unclaimed
   - id: TASK-032
     topic: Windows DockPipe platform support and qualification
-    path: docs/agents/tasks/windows-platform-support.md
+    path: docs/agents/tasks/windows-platform-support/index.yaml
     dispatch:
       readiness: unclassified
       ownership: unclaimed
   - id: TASK-033
     topic: macOS DockPipe platform support and qualification
-    path: docs/agents/tasks/macos-platform-support.md
+    path: docs/agents/tasks/macos-platform-support/index.yaml
     dispatch:
       readiness: unclassified
       ownership: unclaimed
   - id: TASK-034
     topic: Claude Managed Agents remote provider adapter
-    path: docs/agents/tasks/claude-managed-agents-adapter.md
+    path: docs/agents/tasks/claude-managed-agents-adapter/index.yaml
     dispatch:
       readiness: unclassified
       ownership: unclaimed
   - id: TASK-035
     topic: Recurring codebase hygiene after feature cycles
-    path: docs/agents/tasks/recurring-codebase-hygiene.md
+    path: docs/agents/tasks/recurring-codebase-hygiene/index.yaml
     dispatch:
       readiness: unclassified
       ownership: unclaimed
@@ -180,10 +180,10 @@ tasks:
 maintenance:
   - Treat this YAML file as the AI/backlog entrypoint.
   - Keep this index open-only; do not list closed items here.
-  - Put narrative task-specific status in the linked Markdown or task-local YAML index; keep only
-    dispatch readiness and ownership metadata in this index.
-  - Use a task-local index only when the task has independently loadable branches; route to the
-    smallest sufficient files and do not concatenate the folder by default.
+  - Point every active task at its task-local YAML index; keep only dispatch readiness and ownership
+    metadata in this global index.
+  - Keep small tasks in one overview and split only independently loadable branches; route to the
+    smallest sufficient files and do not concatenate task folders by default.
   - Move completed task files to docs/agents/tasks/closed/ with a short shipped summary and completion date.
   - When work materially completes or advances one of these items, update this index if needed and
     update the corresponding task file in the same change.

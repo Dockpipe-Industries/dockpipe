@@ -14,7 +14,7 @@ Keep the index and linked task files current when work materially completes or a
 those items.
 Do not keep closed items in the active YAML index.
 
-Use one Markdown file for an ordinary task. When a task has independently loadable contract,
-planning, current-boundary, and history branches, move it into a folder with a local `index.yaml`.
-Point the global task index at that local index and route agents to the smallest sufficient file
-set; do not load or concatenate the whole folder by default.
+Every active task owns a folder with a local `index.yaml`. Keep an ordinary task in one focused
+`overview.md`; add more files only when contract, planning, current-boundary, or history branches
+are independently loadable. Point the global task index at the local index and route agents to the
+smallest sufficient file set; do not load or concatenate the whole folder by default.
