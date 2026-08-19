@@ -251,6 +251,38 @@ func evalExpr(expression coreir.Expr, arguments []Value) (Outcome, error) {
 			return Outcome{}, fmt.Errorf("list at result: %w", err)
 		}
 		return Outcome{OK: true, Value: cloneOptionalValue(optional)}, nil
+	case coreir.ExprListFindByText:
+		values, err := evalExpr(*expression.ListFind.Values, arguments)
+		if err != nil || !values.OK {
+			return values, err
+		}
+		key, err := evalExpr(*expression.ListFind.Key, arguments)
+		if err != nil || !key.OK {
+			return key, err
+		}
+		if err := validateValue(values.Value); err != nil {
+			return Outcome{}, fmt.Errorf("list find_by: %w", err)
+		}
+		if err := validateValue(key.Value); err != nil {
+			return Outcome{}, fmt.Errorf("list find_by key: %w", err)
+		}
+		optional := Value{Type: expression.Type, Optional: &OptionalValue{}}
+		for _, record := range values.Value.List {
+			comparison, err := coreir.CompareOrdinalText(record.Record[expression.ListFind.Position].String, key.Value.String)
+			if err != nil {
+				return Outcome{}, fmt.Errorf("list find_by comparison: %w", err)
+			}
+			if comparison == 0 {
+				payload := cloneValue(record)
+				optional.Optional.Present = true
+				optional.Optional.Value = &payload
+				break
+			}
+		}
+		if err := validateValue(optional); err != nil {
+			return Outcome{}, fmt.Errorf("list find_by result: %w", err)
+		}
+		return Outcome{OK: true, Value: cloneOptionalValue(optional)}, nil
 	case coreir.ExprResultOK:
 		value, err := evalExpr(*expression.ResultOK.Value, arguments)
 		if err != nil || !value.OK {

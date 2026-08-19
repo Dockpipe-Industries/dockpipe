@@ -681,6 +681,38 @@ is admitted use `PL3009`; malformed HIR and Core remain `PL3026` and `PL3027`. K
 filtering, sorting, mapping, folding, mutation, selection preservation, Step-8 control flow,
 effects, Application IR, and additional backends remain outside the production source contract.
 
+The explicit `v0.21.0` contract preserves every `v0.20.0` rule and admits one stable-key,
+read-only record-list consumer:
+
+```pipelang
+public Optional<Row> FindRow(List<Row> values, string key) =>
+    find_by(values, Row.Id, key);
+```
+
+`find_by(List<R>, R.Field, string) -> Optional<R>` is admitted only for one existing public
+primitive record `R`. `R.Field` is a static selector naming one public `string` field on that same
+record type; it is not a runtime field value, lambda, predicate, comparer, or general member
+expression. The list and key are the first and second direct parameters. The complete list, every
+record field, and the key are validated before lookup. The first record whose selected field is
+ordinal-equal to the key returns canonical `some` with copied record storage; no match returns
+canonical `none`. Ordinal equality preserves Unicode scalar sequences without normalization,
+case-folding, locale, or target collation.
+
+The type reuses `pipelang:list`, `pipelang:optional`, primitive `string`, the existing record
+identity, and the selected field semantic identity. Callable identity remains exactly
+`(List<R>, string) -> Optional<R>`; `pipelang.compiler.v1` and `pipelang.semantic.v1` remain
+unchanged. Typed HIR and target-neutral Core carry one explicit `list_find_by_text` node with direct
+list/key references plus the selected field identity, name, and declaration position. The
+evaluator and Go backend consume only Core semantics.
+
+`v0.1.0` through `v0.20.0` reject `find_by` without implicit migration. Invalid list, selector,
+field, key, return, placement, or signature shapes use `PL3004`/`PL3006` as applicable; computed or
+otherwise non-direct operands after the exact signature is admitted use `PL3009`; malformed HIR
+and Core remain `PL3026` and `PL3027`. Lambdas, predicates, composite keys, normalization,
+case-insensitive or locale-sensitive matching, map/index construction, slicing, iteration,
+filtering, sorting, mutation, Application IR, Step-8 control flow, effects, and additional backends
+remain outside the production source contract.
+
 ## Artifacts
 
 Compile emits:

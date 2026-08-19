@@ -34,7 +34,7 @@ func (e *Error) Error() string {
 
 // Generate accepts Core IR only and returns deterministic, gofmt-formatted Go.
 func Generate(program coreir.Program) ([]byte, error) {
-	if (program.LanguageContract != coreir.LanguageContractV010 && program.LanguageContract != coreir.LanguageContractV020 && program.LanguageContract != coreir.LanguageContractV030 && program.LanguageContract != coreir.LanguageContractV040 && program.LanguageContract != coreir.LanguageContractV050 && program.LanguageContract != coreir.LanguageContractV060 && program.LanguageContract != coreir.LanguageContractV070 && program.LanguageContract != coreir.LanguageContractV080 && program.LanguageContract != coreir.LanguageContractV090 && program.LanguageContract != coreir.LanguageContractV100 && program.LanguageContract != coreir.LanguageContractV110 && program.LanguageContract != coreir.LanguageContractV120 && program.LanguageContract != coreir.LanguageContractV130 && program.LanguageContract != coreir.LanguageContractV140 && program.LanguageContract != coreir.LanguageContractV150 && program.LanguageContract != coreir.LanguageContractV160 && program.LanguageContract != coreir.LanguageContractV170 && program.LanguageContract != coreir.LanguageContractV180 && program.LanguageContract != coreir.LanguageContractV190 && program.LanguageContract != coreir.LanguageContractV200) || program.CompilerContract != coreir.CompilerContractV1 {
+	if (program.LanguageContract != coreir.LanguageContractV010 && program.LanguageContract != coreir.LanguageContractV020 && program.LanguageContract != coreir.LanguageContractV030 && program.LanguageContract != coreir.LanguageContractV040 && program.LanguageContract != coreir.LanguageContractV050 && program.LanguageContract != coreir.LanguageContractV060 && program.LanguageContract != coreir.LanguageContractV070 && program.LanguageContract != coreir.LanguageContractV080 && program.LanguageContract != coreir.LanguageContractV090 && program.LanguageContract != coreir.LanguageContractV100 && program.LanguageContract != coreir.LanguageContractV110 && program.LanguageContract != coreir.LanguageContractV120 && program.LanguageContract != coreir.LanguageContractV130 && program.LanguageContract != coreir.LanguageContractV140 && program.LanguageContract != coreir.LanguageContractV150 && program.LanguageContract != coreir.LanguageContractV160 && program.LanguageContract != coreir.LanguageContractV170 && program.LanguageContract != coreir.LanguageContractV180 && program.LanguageContract != coreir.LanguageContractV190 && program.LanguageContract != coreir.LanguageContractV200 && program.LanguageContract != coreir.LanguageContractV210) || program.CompilerContract != coreir.CompilerContractV1 {
 		return nil, &Error{Code: "PLGO0001", Message: fmt.Sprintf("unsupported Core IR contracts language=%q compiler=%q", program.LanguageContract, program.CompilerContract)}
 	}
 	functions := append([]coreir.Function(nil), program.Functions...)
@@ -61,31 +61,35 @@ func Generate(program coreir.Program) ([]byte, error) {
 	needsListCount := programNeedsListCount(functions)
 	needsListAppend := programNeedsListAppend(functions)
 	needsListAt := programNeedsListAt(functions)
+	needsListFindByText := programNeedsListFindByText(functions)
 	needsSnapshotResult := programNeedsSnapshotResult(functions)
 	optionalTypeName := optionalGoTypeName(functions)
-	if needsOptional && program.LanguageContract != coreir.LanguageContractV130 && program.LanguageContract != coreir.LanguageContractV140 && program.LanguageContract != coreir.LanguageContractV150 && program.LanguageContract != coreir.LanguageContractV160 && program.LanguageContract != coreir.LanguageContractV170 && program.LanguageContract != coreir.LanguageContractV180 && program.LanguageContract != coreir.LanguageContractV190 && program.LanguageContract != coreir.LanguageContractV200 {
+	if needsOptional && program.LanguageContract != coreir.LanguageContractV130 && program.LanguageContract != coreir.LanguageContractV140 && program.LanguageContract != coreir.LanguageContractV150 && program.LanguageContract != coreir.LanguageContractV160 && program.LanguageContract != coreir.LanguageContractV170 && program.LanguageContract != coreir.LanguageContractV180 && program.LanguageContract != coreir.LanguageContractV190 && program.LanguageContract != coreir.LanguageContractV200 && program.LanguageContract != coreir.LanguageContractV210 {
 		return nil, &Error{Code: "PLGO0001", Message: fmt.Sprintf("primitive Optional Core requires language contract %q", coreir.LanguageContractV130)}
 	}
-	if needsOptionalDefault && program.LanguageContract != coreir.LanguageContractV140 && program.LanguageContract != coreir.LanguageContractV150 && program.LanguageContract != coreir.LanguageContractV160 && program.LanguageContract != coreir.LanguageContractV170 && program.LanguageContract != coreir.LanguageContractV180 && program.LanguageContract != coreir.LanguageContractV190 && program.LanguageContract != coreir.LanguageContractV200 {
+	if needsOptionalDefault && program.LanguageContract != coreir.LanguageContractV140 && program.LanguageContract != coreir.LanguageContractV150 && program.LanguageContract != coreir.LanguageContractV160 && program.LanguageContract != coreir.LanguageContractV170 && program.LanguageContract != coreir.LanguageContractV180 && program.LanguageContract != coreir.LanguageContractV190 && program.LanguageContract != coreir.LanguageContractV200 && program.LanguageContract != coreir.LanguageContractV210 {
 		return nil, &Error{Code: "PLGO0001", Message: fmt.Sprintf("primitive Optional defaulting Core requires language contract %q", coreir.LanguageContractV140)}
 	}
-	if needsRecordOptional && program.LanguageContract != coreir.LanguageContractV180 && program.LanguageContract != coreir.LanguageContractV190 && program.LanguageContract != coreir.LanguageContractV200 {
+	if needsRecordOptional && program.LanguageContract != coreir.LanguageContractV180 && program.LanguageContract != coreir.LanguageContractV190 && program.LanguageContract != coreir.LanguageContractV200 && program.LanguageContract != coreir.LanguageContractV210 {
 		return nil, &Error{Code: "PLGO0001", Message: fmt.Sprintf("primitive-record Optional Core requires language contract %q", coreir.LanguageContractV180)}
 	}
-	if needsList && program.LanguageContract != coreir.LanguageContractV150 && program.LanguageContract != coreir.LanguageContractV160 && program.LanguageContract != coreir.LanguageContractV170 && program.LanguageContract != coreir.LanguageContractV180 && program.LanguageContract != coreir.LanguageContractV190 && program.LanguageContract != coreir.LanguageContractV200 {
+	if needsList && program.LanguageContract != coreir.LanguageContractV150 && program.LanguageContract != coreir.LanguageContractV160 && program.LanguageContract != coreir.LanguageContractV170 && program.LanguageContract != coreir.LanguageContractV180 && program.LanguageContract != coreir.LanguageContractV190 && program.LanguageContract != coreir.LanguageContractV200 && program.LanguageContract != coreir.LanguageContractV210 {
 		return nil, &Error{Code: "PLGO0001", Message: fmt.Sprintf("record-list Core requires language contract %q", coreir.LanguageContractV150)}
 	}
-	if needsListCount && program.LanguageContract != coreir.LanguageContractV160 && program.LanguageContract != coreir.LanguageContractV170 && program.LanguageContract != coreir.LanguageContractV180 && program.LanguageContract != coreir.LanguageContractV190 && program.LanguageContract != coreir.LanguageContractV200 {
+	if needsListCount && program.LanguageContract != coreir.LanguageContractV160 && program.LanguageContract != coreir.LanguageContractV170 && program.LanguageContract != coreir.LanguageContractV180 && program.LanguageContract != coreir.LanguageContractV190 && program.LanguageContract != coreir.LanguageContractV200 && program.LanguageContract != coreir.LanguageContractV210 {
 		return nil, &Error{Code: "PLGO0001", Message: fmt.Sprintf("record-list count Core requires language contract %q", coreir.LanguageContractV160)}
 	}
-	if needsListAppend && program.LanguageContract != coreir.LanguageContractV170 && program.LanguageContract != coreir.LanguageContractV180 && program.LanguageContract != coreir.LanguageContractV190 && program.LanguageContract != coreir.LanguageContractV200 {
+	if needsListAppend && program.LanguageContract != coreir.LanguageContractV170 && program.LanguageContract != coreir.LanguageContractV180 && program.LanguageContract != coreir.LanguageContractV190 && program.LanguageContract != coreir.LanguageContractV200 && program.LanguageContract != coreir.LanguageContractV210 {
 		return nil, &Error{Code: "PLGO0001", Message: fmt.Sprintf("record-list append Core requires language contract %q", coreir.LanguageContractV170)}
 	}
-	if needsSnapshotResult && program.LanguageContract != coreir.LanguageContractV190 && program.LanguageContract != coreir.LanguageContractV200 {
+	if needsSnapshotResult && program.LanguageContract != coreir.LanguageContractV190 && program.LanguageContract != coreir.LanguageContractV200 && program.LanguageContract != coreir.LanguageContractV210 {
 		return nil, &Error{Code: "PLGO0001", Message: fmt.Sprintf("snapshot Result Core requires language contract %q", coreir.LanguageContractV190)}
 	}
-	if needsListAt && program.LanguageContract != coreir.LanguageContractV200 {
+	if needsListAt && program.LanguageContract != coreir.LanguageContractV200 && program.LanguageContract != coreir.LanguageContractV210 {
 		return nil, &Error{Code: "PLGO0001", Message: fmt.Sprintf("record-list at Core requires language contract %q", coreir.LanguageContractV200)}
+	}
+	if needsListFindByText && program.LanguageContract != coreir.LanguageContractV210 {
+		return nil, &Error{Code: "PLGO0001", Message: fmt.Sprintf("record-list find_by Core requires language contract %q", coreir.LanguageContractV210)}
 	}
 	if needsText {
 		out.WriteString("import \"unicode/utf8\"\n\n")
@@ -109,7 +113,7 @@ func Generate(program coreir.Program) ([]byte, error) {
 		return nil, &Error{Code: "PLGO0001", Message: err.Error()}
 	}
 	for _, list := range lists {
-		emitListSupport(&out, list, programAppendsList(functions, list), programIndexesList(functions, list), optionalTypeName)
+		emitListSupport(&out, list, programAppendsList(functions, list), programIndexesList(functions, list), programFindsListByText(functions, list), optionalTypeName)
 	}
 	results, err := collectSnapshotResultTypes(functions)
 	if err != nil {
@@ -384,6 +388,11 @@ func emitExpr(expr coreir.Expr, parameters []coreir.Parameter, optionalTypeName 
 			return "", fmt.Errorf("list at expression is incomplete")
 		}
 		return fmt.Sprintf("%s(p%d, p%d)", listAtName(expr.ListAt.Values.Type), *expr.ListAt.Values.Parameter, *expr.ListAt.Index.Parameter), nil
+	case coreir.ExprListFindByText:
+		if expr.ListFind == nil || expr.ListFind.Values == nil || expr.ListFind.Key == nil || expr.ListFind.Values.Kind != coreir.ExprReference || expr.ListFind.Values.Parameter == nil || expr.ListFind.Key.Kind != coreir.ExprReference || expr.ListFind.Key.Parameter == nil || expr.ListFind.Values.Type.Kind != coreir.TypeList {
+			return "", fmt.Errorf("list find_by expression is incomplete")
+		}
+		return fmt.Sprintf("%s(p%d, p%d)", listFindByTextName(expr.ListFind.Values.Type, *expr.ListFind), *expr.ListFind.Values.Parameter, *expr.ListFind.Key.Parameter), nil
 	case coreir.ExprResultOK:
 		if expr.ResultOK == nil || expr.ResultOK.Value == nil || !isSnapshotResultType(expr.Type) {
 			return "", fmt.Errorf("result ok expression is incomplete")
@@ -693,6 +702,37 @@ func programNeedsListAt(functions []coreir.Function) bool {
 	return false
 }
 
+func programNeedsListFindByText(functions []coreir.Function) bool {
+	for _, function := range functions {
+		if expressionNeedsListFindByText(function.Body) {
+			return true
+		}
+	}
+	return false
+}
+
+func expressionNeedsListFindByText(expression coreir.Expr) bool {
+	switch expression.Kind {
+	case coreir.ExprListFindByText:
+		return true
+	case coreir.ExprUnary:
+		return expression.Unary != nil && expression.Unary.Operand != nil && expressionNeedsListFindByText(*expression.Unary.Operand)
+	case coreir.ExprBinary:
+		return expression.Binary != nil && expression.Binary.Left != nil && expression.Binary.Right != nil && (expressionNeedsListFindByText(*expression.Binary.Left) || expressionNeedsListFindByText(*expression.Binary.Right))
+	case coreir.ExprFieldProjection:
+		return expression.Field != nil && expression.Field.Receiver != nil && expressionNeedsListFindByText(*expression.Field.Receiver)
+	case coreir.ExprRecordConstruct:
+		if expression.Record != nil {
+			for _, field := range expression.Record.Fields {
+				if field.Value != nil && expressionNeedsListFindByText(*field.Value) {
+					return true
+				}
+			}
+		}
+	}
+	return false
+}
+
 func expressionNeedsListAt(expression coreir.Expr) bool {
 	switch expression.Kind {
 	case coreir.ExprListAt:
@@ -761,7 +801,7 @@ func expressionNeedsListCount(expression coreir.Expr) bool {
 
 func expressionNeedsOptionalSupport(expression coreir.Expr) bool {
 	switch expression.Kind {
-	case coreir.ExprOptionalSome, coreir.ExprOptionalNone, coreir.ExprOptionalHasValue, coreir.ExprOptionalValueOr, coreir.ExprListAt:
+	case coreir.ExprOptionalSome, coreir.ExprOptionalNone, coreir.ExprOptionalHasValue, coreir.ExprOptionalValueOr, coreir.ExprListAt, coreir.ExprListFindByText:
 		return true
 	case coreir.ExprUnary:
 		return expression.Unary != nil && expression.Unary.Operand != nil && expressionNeedsOptionalSupport(*expression.Unary.Operand)
@@ -1019,7 +1059,7 @@ func collectListTypes(functions []coreir.Function) ([]coreir.Type, error) {
 	return result, nil
 }
 
-func emitListSupport(out *strings.Builder, list coreir.Type, emitAppend, emitAt bool, optionalTypeName string) {
+func emitListSupport(out *strings.Builder, list coreir.Type, emitAppend, emitAt bool, findByText []coreir.ListFindByText, optionalTypeName string) {
 	element := list.List.Element
 	elementType := recordGoTypeName(element)
 	validation := listValidationName(list)
@@ -1035,6 +1075,10 @@ func emitListSupport(out *strings.Builder, list coreir.Type, emitAppend, emitAt 
 	}
 	if emitAt {
 		fmt.Fprintf(out, "func %s(values []%s, index int64) %s[%s] {\n\t%s(values)\n\tif index < 0 || uint64(index) >= uint64(len(values)) {\n\t\treturn pipelangNoneValue[%s]()\n\t}\n\treturn pipelangSomeValue(values[index])\n}\n\n", listAtName(list), elementType, optionalTypeName, elementType, validation, elementType)
+	}
+	fieldNames := recordGoFieldNames(element)
+	for _, selector := range findByText {
+		fmt.Fprintf(out, "func %s(values []%s, key string) %s[%s] {\n\t%s(values)\n\tpipelangValidateText(key)\n\tfor _, value := range values {\n\t\tif pipelangCompareOrdinalText(value.%s, key) == 0 {\n\t\t\treturn pipelangSomeValue(value)\n\t\t}\n\t}\n\treturn pipelangNoneValue[%s]()\n}\n\n", listFindByTextName(list, selector), elementType, optionalTypeName, elementType, validation, fieldNames[selector.Position], elementType)
 	}
 }
 
@@ -1100,6 +1144,27 @@ func expressionIndexesList(expression coreir.Expr, list coreir.Type) bool {
 	return false
 }
 
+func programFindsListByText(functions []coreir.Function, list coreir.Type) []coreir.ListFindByText {
+	byPosition := map[int]coreir.ListFindByText{}
+	for _, function := range functions {
+		expression := function.Body
+		if expression.Kind != coreir.ExprListFindByText || expression.ListFind == nil || expression.ListFind.Values == nil || !coreir.TypeEqual(expression.ListFind.Values.Type, list) {
+			continue
+		}
+		byPosition[expression.ListFind.Position] = *expression.ListFind
+	}
+	positions := make([]int, 0, len(byPosition))
+	for position := range byPosition {
+		positions = append(positions, position)
+	}
+	sort.Ints(positions)
+	result := make([]coreir.ListFindByText, 0, len(positions))
+	for _, position := range positions {
+		result = append(result, byPosition[position])
+	}
+	return result
+}
+
 func listHelperSuffix(list coreir.Type) string {
 	return strings.TrimPrefix(recordGoTypeName(list.List.Element), "PipeLangRecord")
 }
@@ -1114,6 +1179,9 @@ func listSingletonName(list coreir.Type) string {
 }
 func listAppendName(list coreir.Type) string { return "pipelangAppendList" + listHelperSuffix(list) }
 func listAtName(list coreir.Type) string     { return "pipelangAtList" + listHelperSuffix(list) }
+func listFindByTextName(list coreir.Type, selector coreir.ListFindByText) string {
+	return "pipelangFindByTextList" + listHelperSuffix(list) + "Field" + strconv.Itoa(selector.Position)
+}
 
 func isSnapshotResultType(value coreir.Type) bool {
 	return value.Kind == coreir.TypeResult && value.Result != nil && value.Result.Success.Kind == coreir.TypeList && value.Result.Success.List != nil && value.Result.Success.List.Element.Kind == coreir.TypeRecord && isTextType(value.Result.Failure)
@@ -1362,6 +1430,8 @@ func expressionNeedsTextSupport(expression coreir.Expr) bool {
 		return expression.ListCount != nil && expression.ListCount.Value != nil && expressionNeedsTextSupport(*expression.ListCount.Value)
 	case coreir.ExprListAppend:
 		return expression.ListAppend != nil && expression.ListAppend.Values != nil && expression.ListAppend.Value != nil && (expressionNeedsTextSupport(*expression.ListAppend.Values) || expressionNeedsTextSupport(*expression.ListAppend.Value))
+	case coreir.ExprListFindByText:
+		return true
 	case coreir.ExprResultOK:
 		return expression.ResultOK != nil && expression.ResultOK.Value != nil && expressionNeedsTextSupport(*expression.ResultOK.Value)
 	case coreir.ExprResultErr:

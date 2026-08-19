@@ -120,6 +120,13 @@
     ],
     "description": "Create the exact v0.20.0 total primitive-record List indexing method returning Optional<R>."
   },
+  "PipeLang Record List Find By Text": {
+    "prefix": "pipe-record-list-find-by-text",
+    "body": [
+      "public Optional<${1:Row}> ${2:FindRow}(List<${1:Row}> ${3:values}, string ${4:key}) => find_by(${3:values}, ${1:Row}.${5:Id}, ${4:key});"
+    ],
+    "description": "Create the exact v0.21.0 stable-key primitive-record List lookup by one public string field."
+  },
   "PipeLang Snapshot Result": {
     "prefix": "pipe-snapshot-result",
     "body": [

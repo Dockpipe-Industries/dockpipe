@@ -23,6 +23,7 @@ const (
 	LanguageContractV180 = "v0.18.0"
 	LanguageContractV190 = "v0.19.0"
 	LanguageContractV200 = "v0.20.0"
+	LanguageContractV210 = "v0.21.0"
 	CompilerContractV1   = "pipelang.compiler.v1"
 	BuiltinPackageID     = "pipelang"
 	ListSemanticPath     = "list"
@@ -155,6 +156,7 @@ const (
 	ExprListCount        ExprKind = "list_count"
 	ExprListAppend       ExprKind = "list_append"
 	ExprListAt           ExprKind = "list_at"
+	ExprListFindByText   ExprKind = "list_find_by_text"
 	ExprResultOK         ExprKind = "result_ok"
 	ExprResultErr        ExprKind = "result_err"
 	ExprResultIsOK       ExprKind = "result_is_ok"
@@ -253,6 +255,14 @@ type ListAt struct {
 	Index  *Expr `json:"index"`
 }
 
+type ListFindByText struct {
+	Values   *Expr            `json:"values"`
+	Field    SemanticIdentity `json:"field"`
+	Name     string           `json:"name"`
+	Position int              `json:"position"`
+	Key      *Expr            `json:"key"`
+}
+
 type ResultOK struct {
 	Value *Expr `json:"value"`
 }
@@ -293,6 +303,7 @@ type Expr struct {
 	ListCount  *ListCount        `json:"list_count,omitempty"`
 	ListAppend *ListAppend       `json:"list_append,omitempty"`
 	ListAt     *ListAt           `json:"list_at,omitempty"`
+	ListFind   *ListFindByText   `json:"list_find_by_text,omitempty"`
 	ResultOK   *ResultOK         `json:"result_ok,omitempty"`
 	ResultErr  *ResultErr        `json:"result_err,omitempty"`
 	ResultIsOK *ResultIsOK       `json:"result_is_ok,omitempty"`

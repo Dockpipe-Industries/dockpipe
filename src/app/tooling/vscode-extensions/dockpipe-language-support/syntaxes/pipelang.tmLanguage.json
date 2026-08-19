@@ -34,7 +34,7 @@
         },
         {
           "name": "support.function.builtin.pipelang",
-          "match": "\\b(some|none|has_value|value_or|empty_list|list|count|append|at|ok|err|is_ok|success_or|failure_or)\\b"
+          "match": "\\b(some|none|has_value|value_or|empty_list|list|count|append|at|find_by|ok|err|is_ok|success_or|failure_or)\\b"
         }
       ]
     },
