@@ -204,6 +204,15 @@ func evalExpr(expression coreir.Expr, arguments []Value) (Outcome, error) {
 			return Outcome{}, fmt.Errorf("list singleton: %w", err)
 		}
 		return Outcome{OK: true, Value: cloneListValue(value)}, nil
+	case coreir.ExprListCount:
+		value, err := evalExpr(*expression.ListCount.Value, arguments)
+		if err != nil || !value.OK {
+			return value, err
+		}
+		if err := validateValue(value.Value); err != nil {
+			return Outcome{}, fmt.Errorf("list count: %w", err)
+		}
+		return Outcome{OK: true, Value: Value{Type: expression.Type, Int: int64(len(value.Value.List))}}, nil
 	default:
 		return Outcome{}, fmt.Errorf("unsupported expression kind %q", expression.Kind)
 	}

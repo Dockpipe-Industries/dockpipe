@@ -566,6 +566,10 @@ func (p *parser) parsePrimary() (Expr, error) {
 				return p.parseListEmpty()
 			case "list":
 				return p.parseListSingleton()
+			case "count":
+				if hasPrimitiveRecordListCountSourceContract(p.languageContract) {
+					return p.parseListCount()
+				}
 			}
 		}
 		p.next()
@@ -629,6 +633,25 @@ func (p *parser) parseListSingleton() (Expr, error) {
 		return nil, err
 	}
 	return &ListSingletonExpr{Value: value, Span: mergeSpans(start.span, end.span)}, nil
+}
+
+func (p *parser) parseListCount() (Expr, error) {
+	start, err := p.expect(tokIdent)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := p.expect(tokLParen); err != nil {
+		return nil, err
+	}
+	value, err := p.parseExpr(1)
+	if err != nil {
+		return nil, err
+	}
+	end, err := p.expect(tokRParen)
+	if err != nil {
+		return nil, err
+	}
+	return &ListCountExpr{Value: value, Span: mergeSpans(start.span, end.span)}, nil
 }
 
 func (p *parser) parseOptionalSome() (Expr, error) {

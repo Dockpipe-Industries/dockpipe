@@ -28,6 +28,7 @@ const PIPELANG_COMPLETION_KEYWORDS = [
   "value_or",
   "empty_list",
   "list",
+  "count",
   "true",
   "false"
 ];

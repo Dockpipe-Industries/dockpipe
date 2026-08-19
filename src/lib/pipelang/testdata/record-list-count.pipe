@@ -1,0 +1,10 @@
+public Record ContainerRow {
+    public string Id;
+    public string Name;
+    public bool Running;
+}
+
+public Class Root {
+    public int CountRows(List<ContainerRow> values) =>
+        count(values);
+}

@@ -87,5 +87,12 @@
       "public List<${1:Row}> ${5:ForwardRows}(List<${1:Row}> ${6:values}) => ${6:values};"
     ],
     "description": "Create the exact v0.15.0 immutable record-list empty, singleton, and identity-transport methods."
+  },
+  "PipeLang Record List Count": {
+    "prefix": "pipe-record-list-count",
+    "body": [
+      "public int ${1:CountRows}(List<${2:Row}> ${3:values}) => count(${3:values});"
+    ],
+    "description": "Create the exact v0.16.0 direct primitive-record List cardinality method."
   }
 }

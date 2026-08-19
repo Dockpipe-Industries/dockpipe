@@ -483,6 +483,16 @@ func validateExpr(expression Expr, parameters []Parameter) error {
 		if !TypeEqual(expression.ListOne.Value.Type, expression.Type.List.Element) {
 			return fmt.Errorf("list singleton value type does not match its element type")
 		}
+	case ExprListCount:
+		if expression.ListCount == nil || expression.ListCount.Value == nil || !TypeEqual(expression.Type, SignedInteger(64)) {
+			return fmt.Errorf("list count expression is incomplete or does not return signed 64-bit int")
+		}
+		if err := validateExpr(*expression.ListCount.Value, parameters); err != nil {
+			return fmt.Errorf("list count operand: %w", err)
+		}
+		if expression.ListCount.Value.Type.Kind != TypeList {
+			return fmt.Errorf("list count operand is not a List")
+		}
 	default:
 		return fmt.Errorf("unsupported expression kind %q", expression.Kind)
 	}
@@ -503,7 +513,7 @@ func functionContainsList(function Function) bool {
 
 func exprContainsList(expression Expr) bool {
 	switch expression.Kind {
-	case ExprListEmpty, ExprListSingleton:
+	case ExprListEmpty, ExprListSingleton, ExprListCount:
 		return true
 	case ExprUnary:
 		return expression.Unary != nil && expression.Unary.Operand != nil && exprContainsList(*expression.Unary.Operand)
@@ -524,6 +534,16 @@ func exprContainsList(expression Expr) bool {
 }
 
 func validateDirectListFunction(function Function) error {
+	if function.Body.Kind == ExprListCount {
+		if function.Body.ListCount == nil || function.Body.ListCount.Value == nil || len(function.Parameters) != 1 || function.Parameters[0].Type.Kind != TypeList || !TypeEqual(function.ReturnType, SignedInteger(64)) {
+			return fmt.Errorf("count requires one record-list parameter and a signed 64-bit int return")
+		}
+		value := function.Body.ListCount.Value
+		if value.Kind != ExprReference || value.Parameter == nil || *value.Parameter != 0 || !TypeEqual(value.Type, function.Parameters[0].Type) {
+			return fmt.Errorf("count operand must be its sole direct record-list parameter")
+		}
+		return nil
+	}
 	if function.ReturnType.Kind != TypeList || function.ReturnType.List == nil {
 		return fmt.Errorf("record-list values are admitted only as direct list-returning functions")
 	}
@@ -582,6 +602,8 @@ func exprContainsOptional(expression Expr) bool {
 		}
 	case ExprListSingleton:
 		return expression.ListOne != nil && expression.ListOne.Value != nil && exprContainsOptional(*expression.ListOne.Value)
+	case ExprListCount:
+		return expression.ListCount != nil && expression.ListCount.Value != nil && exprContainsOptional(*expression.ListCount.Value)
 	}
 	return false
 }
@@ -646,6 +668,8 @@ func exprContainsRecordConstruction(expression Expr) bool {
 		return expression.Field != nil && expression.Field.Receiver != nil && exprContainsRecordConstruction(*expression.Field.Receiver)
 	case ExprListSingleton:
 		return expression.ListOne != nil && expression.ListOne.Value != nil && exprContainsRecordConstruction(*expression.ListOne.Value)
+	case ExprListCount:
+		return expression.ListCount != nil && expression.ListCount.Value != nil && exprContainsRecordConstruction(*expression.ListCount.Value)
 	default:
 		return false
 	}
@@ -665,6 +689,8 @@ func exprContainsRecordEquality(expression Expr) bool {
 		return expression.Unary != nil && expression.Unary.Operand != nil && exprContainsRecordEquality(*expression.Unary.Operand)
 	case ExprFieldProjection:
 		return expression.Field != nil && expression.Field.Receiver != nil && exprContainsRecordEquality(*expression.Field.Receiver)
+	case ExprListCount:
+		return expression.ListCount != nil && expression.ListCount.Value != nil && exprContainsRecordEquality(*expression.ListCount.Value)
 	case ExprRecordConstruct:
 		if expression.Record == nil {
 			return false

@@ -18,6 +18,7 @@ const (
 	LanguageContractV130 = "v0.13.0"
 	LanguageContractV140 = "v0.14.0"
 	LanguageContractV150 = "v0.15.0"
+	LanguageContractV160 = "v0.16.0"
 	CompilerContractV1   = "pipelang.compiler.v1"
 	BuiltinPackageID     = "pipelang"
 	ListSemanticPath     = "list"
@@ -147,6 +148,7 @@ const (
 	ExprOptionalValueOr  ExprKind = "optional_value_or"
 	ExprListEmpty        ExprKind = "list_empty"
 	ExprListSingleton    ExprKind = "list_singleton"
+	ExprListCount        ExprKind = "list_count"
 )
 
 type Operator string
@@ -226,6 +228,10 @@ type ListSingleton struct {
 	Value *Expr `json:"value"`
 }
 
+type ListCount struct {
+	Value *Expr `json:"value"`
+}
+
 type Expr struct {
 	Kind      ExprKind          `json:"kind"`
 	Type      Type              `json:"type"`
@@ -241,6 +247,7 @@ type Expr struct {
 	ValueOr   *OptionalValueOr  `json:"value_or,omitempty"`
 	ListEmpty *ListEmpty        `json:"list_empty,omitempty"`
 	ListOne   *ListSingleton    `json:"list_singleton,omitempty"`
+	ListCount *ListCount        `json:"list_count,omitempty"`
 }
 
 type Function struct {
