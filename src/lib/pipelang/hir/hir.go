@@ -146,6 +146,7 @@ const (
 	ExprListEmpty        ExprKind = "list_empty"
 	ExprListSingleton    ExprKind = "list_singleton"
 	ExprListCount        ExprKind = "list_count"
+	ExprListAppend       ExprKind = "list_append"
 )
 
 type Operator string
@@ -229,23 +230,29 @@ type ListCount struct {
 	Value *Expr `json:"value"`
 }
 
+type ListAppend struct {
+	Values *Expr `json:"values"`
+	Value  *Expr `json:"value"`
+}
+
 type Expr struct {
-	Kind      ExprKind          `json:"kind"`
-	Type      Type              `json:"type"`
-	Span      SourceSpan        `json:"span"`
-	Literal   *Literal          `json:"literal,omitempty"`
-	Reference *Binding          `json:"reference,omitempty"`
-	Unary     *Unary            `json:"unary,omitempty"`
-	Binary    *Binary           `json:"binary,omitempty"`
-	Field     *FieldProjection  `json:"field,omitempty"`
-	Record    *RecordConstruct  `json:"record,omitempty"`
-	Some      *OptionalSome     `json:"some,omitempty"`
-	None      *OptionalNone     `json:"none,omitempty"`
-	HasValue  *OptionalHasValue `json:"has_value,omitempty"`
-	ValueOr   *OptionalValueOr  `json:"value_or,omitempty"`
-	ListEmpty *ListEmpty        `json:"list_empty,omitempty"`
-	ListOne   *ListSingleton    `json:"list_singleton,omitempty"`
-	ListCount *ListCount        `json:"list_count,omitempty"`
+	Kind       ExprKind          `json:"kind"`
+	Type       Type              `json:"type"`
+	Span       SourceSpan        `json:"span"`
+	Literal    *Literal          `json:"literal,omitempty"`
+	Reference  *Binding          `json:"reference,omitempty"`
+	Unary      *Unary            `json:"unary,omitempty"`
+	Binary     *Binary           `json:"binary,omitempty"`
+	Field      *FieldProjection  `json:"field,omitempty"`
+	Record     *RecordConstruct  `json:"record,omitempty"`
+	Some       *OptionalSome     `json:"some,omitempty"`
+	None       *OptionalNone     `json:"none,omitempty"`
+	HasValue   *OptionalHasValue `json:"has_value,omitempty"`
+	ValueOr    *OptionalValueOr  `json:"value_or,omitempty"`
+	ListEmpty  *ListEmpty        `json:"list_empty,omitempty"`
+	ListOne    *ListSingleton    `json:"list_singleton,omitempty"`
+	ListCount  *ListCount        `json:"list_count,omitempty"`
+	ListAppend *ListAppend       `json:"list_append,omitempty"`
 }
 
 type Function struct {

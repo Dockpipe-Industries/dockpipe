@@ -94,5 +94,12 @@
       "public int ${1:CountRows}(List<${2:Row}> ${3:values}) => count(${3:values});"
     ],
     "description": "Create the exact v0.16.0 direct primitive-record List cardinality method."
+  },
+  "PipeLang Record List Append": {
+    "prefix": "pipe-record-list-append",
+    "body": [
+      "public List<${1:Row}> ${2:AppendRow}(List<${1:Row}> ${3:values}, ${1:Row} ${4:value}) => append(${3:values}, ${4:value});"
+    ],
+    "description": "Create the exact v0.17.0 immutable primitive-record List append method."
   }
 }

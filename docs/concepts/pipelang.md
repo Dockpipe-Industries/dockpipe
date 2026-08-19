@@ -547,6 +547,45 @@ indexing; count; iteration; filtering; sorting; equality; hashing; maps; sets; b
 record nesting; Step-8 control flow; effects; and Application IR remain outside the production
 source contract.
 
+The explicit `v0.16.0` contract preserves every `v0.15.0` rule and adds one direct immutable
+record-list cardinality operation:
+
+```pipelang
+public int CountRows(List<Row> values) => count(values);
+```
+
+`count(List<R>) -> int` requires exactly one `List<R>` parameter as the complete direct operand and
+returns its nonnegative signed-64-bit cardinality. The evaluator and Core-only Go backend validate
+the complete non-null list, every record element, and every strict UTF-8 string field before
+observing its length. Typed HIR and target-neutral Core carry `list_count`; the existing
+`pipelang:list` identity, record identities, `pipelang.compiler.v1`, and `pipelang.semantic.v1`
+remain unchanged. `v0.1.0` through `v0.15.0` reject the form without implicit migration.
+
+The explicit `v0.17.0` contract preserves every `v0.16.0` rule and adds one direct immutable
+record-list append operation:
+
+```pipelang
+public List<Row> AppendRow(List<Row> values, Row value) =>
+    append(values, value);
+```
+
+`append(List<R>, R) -> List<R>` requires exactly the existing record-list parameter first and one
+value of its existing public primitive record element type second. Both direct parameter references
+must appear in declaration order as the complete body. The result preserves every existing element
+in order and adds the new value last. Evaluation validates the complete input list and appended
+record, including every UTF-8 string field, then returns fresh list storage so caller-owned slices
+cannot mutate the result. A nil list or a cardinality that cannot grow within the signed-64-bit
+language boundary fails closed. Typed HIR and target-neutral Core carry `list_append`; the fixed
+`pipelang:list` identity and existing record/field/callable identities remain unchanged, and the Go
+backend consumes Core only.
+
+`v0.1.0` through `v0.16.0` reject `append` without implicit migration. Invalid element types,
+placements, or signatures use `PL3006`; computed, reordered, nested, or otherwise non-direct
+operands use `PL3009`. Malformed HIR and Core remain `PL3026` and `PL3027`. List literals, list
+fields, variadic construction, indexing, iteration, filtering, sorting, equality, hashing, maps,
+sets, builders, mutation, record nesting, Step-8 control flow, effects, and Application IR remain
+outside the production source contract.
+
 ## Artifacts
 
 Compile emits:

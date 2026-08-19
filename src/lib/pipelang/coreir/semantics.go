@@ -493,6 +493,25 @@ func validateExpr(expression Expr, parameters []Parameter) error {
 		if expression.ListCount.Value.Type.Kind != TypeList {
 			return fmt.Errorf("list count operand is not a List")
 		}
+	case ExprListAppend:
+		if expression.ListAppend == nil || expression.ListAppend.Values == nil || expression.ListAppend.Value == nil || expression.Type.Kind != TypeList || expression.Type.List == nil {
+			return fmt.Errorf("list append expression is incomplete")
+		}
+		if err := validateType(expression.Type); err != nil {
+			return fmt.Errorf("list append result type: %w", err)
+		}
+		if err := validateExpr(*expression.ListAppend.Values, parameters); err != nil {
+			return fmt.Errorf("list append values: %w", err)
+		}
+		if err := validateExpr(*expression.ListAppend.Value, parameters); err != nil {
+			return fmt.Errorf("list append value: %w", err)
+		}
+		if !TypeEqual(expression.ListAppend.Values.Type, expression.Type) {
+			return fmt.Errorf("list append values type does not match its result type")
+		}
+		if !TypeEqual(expression.ListAppend.Value.Type, expression.Type.List.Element) {
+			return fmt.Errorf("list append value type does not match its element type")
+		}
 	default:
 		return fmt.Errorf("unsupported expression kind %q", expression.Kind)
 	}
@@ -513,7 +532,7 @@ func functionContainsList(function Function) bool {
 
 func exprContainsList(expression Expr) bool {
 	switch expression.Kind {
-	case ExprListEmpty, ExprListSingleton, ExprListCount:
+	case ExprListEmpty, ExprListSingleton, ExprListCount, ExprListAppend:
 		return true
 	case ExprUnary:
 		return expression.Unary != nil && expression.Unary.Operand != nil && exprContainsList(*expression.Unary.Operand)
@@ -564,8 +583,20 @@ func validateDirectListFunction(function Function) error {
 		if len(function.Parameters) != 1 || function.Body.Parameter == nil || *function.Body.Parameter != 0 || !TypeEqual(function.Parameters[0].Type, function.ReturnType) {
 			return fmt.Errorf("record-list identity transport requires one identical direct parameter and return")
 		}
+	case ExprListAppend:
+		if function.Body.ListAppend == nil || function.Body.ListAppend.Values == nil || function.Body.ListAppend.Value == nil || len(function.Parameters) != 2 {
+			return fmt.Errorf("append requires one record-list parameter, one matching record parameter, and a matching record-list return")
+		}
+		values := function.Body.ListAppend.Values
+		value := function.Body.ListAppend.Value
+		if values.Kind != ExprReference || values.Parameter == nil || *values.Parameter != 0 || !TypeEqual(values.Type, function.Parameters[0].Type) || !TypeEqual(function.Parameters[0].Type, function.ReturnType) {
+			return fmt.Errorf("append values must be its first direct record-list parameter")
+		}
+		if value.Kind != ExprReference || value.Parameter == nil || *value.Parameter != 1 || !TypeEqual(value.Type, function.Parameters[1].Type) || !TypeEqual(function.Parameters[1].Type, function.ReturnType.List.Element) {
+			return fmt.Errorf("append value must be its second direct matching record parameter")
+		}
 	default:
-		return fmt.Errorf("record-list values are admitted only in direct empty_list, singleton list, or identity-transport functions")
+		return fmt.Errorf("record-list values are admitted only in direct empty_list, singleton list, identity-transport, or append functions")
 	}
 	return nil
 }
@@ -604,6 +635,8 @@ func exprContainsOptional(expression Expr) bool {
 		return expression.ListOne != nil && expression.ListOne.Value != nil && exprContainsOptional(*expression.ListOne.Value)
 	case ExprListCount:
 		return expression.ListCount != nil && expression.ListCount.Value != nil && exprContainsOptional(*expression.ListCount.Value)
+	case ExprListAppend:
+		return expression.ListAppend != nil && expression.ListAppend.Values != nil && expression.ListAppend.Value != nil && (exprContainsOptional(*expression.ListAppend.Values) || exprContainsOptional(*expression.ListAppend.Value))
 	}
 	return false
 }
@@ -670,6 +703,8 @@ func exprContainsRecordConstruction(expression Expr) bool {
 		return expression.ListOne != nil && expression.ListOne.Value != nil && exprContainsRecordConstruction(*expression.ListOne.Value)
 	case ExprListCount:
 		return expression.ListCount != nil && expression.ListCount.Value != nil && exprContainsRecordConstruction(*expression.ListCount.Value)
+	case ExprListAppend:
+		return expression.ListAppend != nil && expression.ListAppend.Values != nil && expression.ListAppend.Value != nil && (exprContainsRecordConstruction(*expression.ListAppend.Values) || exprContainsRecordConstruction(*expression.ListAppend.Value))
 	default:
 		return false
 	}
@@ -691,6 +726,8 @@ func exprContainsRecordEquality(expression Expr) bool {
 		return expression.Field != nil && expression.Field.Receiver != nil && exprContainsRecordEquality(*expression.Field.Receiver)
 	case ExprListCount:
 		return expression.ListCount != nil && expression.ListCount.Value != nil && exprContainsRecordEquality(*expression.ListCount.Value)
+	case ExprListAppend:
+		return expression.ListAppend != nil && expression.ListAppend.Values != nil && expression.ListAppend.Value != nil && (exprContainsRecordEquality(*expression.ListAppend.Values) || exprContainsRecordEquality(*expression.ListAppend.Value))
 	case ExprRecordConstruct:
 		if expression.Record == nil {
 			return false
