@@ -167,12 +167,18 @@ func ValidateFunction(function Function) error {
 			return err
 		}
 	}
-	if functionContainsOptional(function) && !snapshotResult {
+	listAt := function.Body.Kind == ExprListAt
+	if listAt {
+		if err := validateDirectListAtFunction(function); err != nil {
+			return err
+		}
+	}
+	if functionContainsOptional(function) && !snapshotResult && !listAt {
 		if err := validateDirectOptionalFunction(function); err != nil {
 			return err
 		}
 	}
-	if functionContainsList(function) && !snapshotResult {
+	if functionContainsList(function) && !snapshotResult && !listAt {
 		if err := validateDirectListFunction(function); err != nil {
 			return err
 		}
@@ -554,6 +560,25 @@ func validateExpr(expression Expr, parameters []Parameter) error {
 		if !TypeEqual(expression.ListAppend.Value.Type, expression.Type.List.Element) {
 			return fmt.Errorf("list append value type does not match its element type")
 		}
+	case ExprListAt:
+		if expression.ListAt == nil || expression.ListAt.Values == nil || expression.ListAt.Index == nil || expression.Type.Kind != TypeOptional || expression.Type.Optional == nil {
+			return fmt.Errorf("list at expression is incomplete")
+		}
+		if err := validateType(expression.Type); err != nil {
+			return fmt.Errorf("list at result type: %w", err)
+		}
+		if err := validateExpr(*expression.ListAt.Values, parameters); err != nil {
+			return fmt.Errorf("list at values: %w", err)
+		}
+		if err := validateExpr(*expression.ListAt.Index, parameters); err != nil {
+			return fmt.Errorf("list at index: %w", err)
+		}
+		if expression.ListAt.Values.Type.Kind != TypeList || expression.ListAt.Values.Type.List == nil || !TypeEqual(expression.ListAt.Values.Type.List.Element, expression.Type.Optional.Value) {
+			return fmt.Errorf("list at values element type does not match its Optional result")
+		}
+		if !TypeEqual(expression.ListAt.Index.Type, SignedInteger(64)) {
+			return fmt.Errorf("list at index is not signed 64-bit int")
+		}
 	case ExprResultOK:
 		if expression.ResultOK == nil || expression.ResultOK.Value == nil || !isSnapshotResultType(expression.Type) {
 			return fmt.Errorf("result ok expression is incomplete or has an invalid result type")
@@ -644,6 +669,8 @@ func exprContainsSnapshotResult(expression Expr) bool {
 		return expression.Binary != nil && expression.Binary.Left != nil && expression.Binary.Right != nil && (exprContainsSnapshotResult(*expression.Binary.Left) || exprContainsSnapshotResult(*expression.Binary.Right))
 	case ExprFieldProjection:
 		return expression.Field != nil && expression.Field.Receiver != nil && exprContainsSnapshotResult(*expression.Field.Receiver)
+	case ExprListAt:
+		return expression.ListAt != nil && expression.ListAt.Values != nil && expression.ListAt.Index != nil && (exprContainsSnapshotResult(*expression.ListAt.Values) || exprContainsSnapshotResult(*expression.ListAt.Index))
 	}
 	return false
 }
@@ -698,7 +725,7 @@ func functionContainsList(function Function) bool {
 
 func exprContainsList(expression Expr) bool {
 	switch expression.Kind {
-	case ExprListEmpty, ExprListSingleton, ExprListCount, ExprListAppend:
+	case ExprListEmpty, ExprListSingleton, ExprListCount, ExprListAppend, ExprListAt:
 		return true
 	case ExprUnary:
 		return expression.Unary != nil && expression.Unary.Operand != nil && exprContainsList(*expression.Unary.Operand)
@@ -767,6 +794,21 @@ func validateDirectListFunction(function Function) error {
 	return nil
 }
 
+func validateDirectListAtFunction(function Function) error {
+	if function.Body.ListAt == nil || function.Body.ListAt.Values == nil || function.Body.ListAt.Index == nil || len(function.Parameters) != 2 || function.Parameters[0].Type.Kind != TypeList || function.Parameters[0].Type.List == nil || !TypeEqual(function.Parameters[1].Type, SignedInteger(64)) || function.ReturnType.Kind != TypeOptional || function.ReturnType.Optional == nil || !TypeEqual(function.ReturnType.Optional.Value, function.Parameters[0].Type.List.Element) {
+		return fmt.Errorf("at requires direct List<R> and signed 64-bit int parameters with Optional<R> return")
+	}
+	values := function.Body.ListAt.Values
+	index := function.Body.ListAt.Index
+	if values.Kind != ExprReference || values.Parameter == nil || *values.Parameter != 0 || !TypeEqual(values.Type, function.Parameters[0].Type) {
+		return fmt.Errorf("at values must be its first direct record-list parameter")
+	}
+	if index.Kind != ExprReference || index.Parameter == nil || *index.Parameter != 1 || !TypeEqual(index.Type, function.Parameters[1].Type) {
+		return fmt.Errorf("at index must be its second direct signed 64-bit parameter")
+	}
+	return nil
+}
+
 func functionContainsOptional(function Function) bool {
 	if function.ReturnType.Kind == TypeOptional || exprContainsOptional(function.Body) {
 		return true
@@ -803,6 +845,8 @@ func exprContainsOptional(expression Expr) bool {
 		return expression.ListCount != nil && expression.ListCount.Value != nil && exprContainsOptional(*expression.ListCount.Value)
 	case ExprListAppend:
 		return expression.ListAppend != nil && expression.ListAppend.Values != nil && expression.ListAppend.Value != nil && (exprContainsOptional(*expression.ListAppend.Values) || exprContainsOptional(*expression.ListAppend.Value))
+	case ExprListAt:
+		return true
 	}
 	return false
 }
@@ -871,6 +915,8 @@ func exprContainsRecordConstruction(expression Expr) bool {
 		return expression.ListCount != nil && expression.ListCount.Value != nil && exprContainsRecordConstruction(*expression.ListCount.Value)
 	case ExprListAppend:
 		return expression.ListAppend != nil && expression.ListAppend.Values != nil && expression.ListAppend.Value != nil && (exprContainsRecordConstruction(*expression.ListAppend.Values) || exprContainsRecordConstruction(*expression.ListAppend.Value))
+	case ExprListAt:
+		return expression.ListAt != nil && expression.ListAt.Values != nil && expression.ListAt.Index != nil && (exprContainsRecordConstruction(*expression.ListAt.Values) || exprContainsRecordConstruction(*expression.ListAt.Index))
 	default:
 		return false
 	}
@@ -894,6 +940,8 @@ func exprContainsRecordEquality(expression Expr) bool {
 		return expression.ListCount != nil && expression.ListCount.Value != nil && exprContainsRecordEquality(*expression.ListCount.Value)
 	case ExprListAppend:
 		return expression.ListAppend != nil && expression.ListAppend.Values != nil && expression.ListAppend.Value != nil && (exprContainsRecordEquality(*expression.ListAppend.Values) || exprContainsRecordEquality(*expression.ListAppend.Value))
+	case ExprListAt:
+		return expression.ListAt != nil && expression.ListAt.Values != nil && expression.ListAt.Index != nil && (exprContainsRecordEquality(*expression.ListAt.Values) || exprContainsRecordEquality(*expression.ListAt.Index))
 	case ExprRecordConstruct:
 		if expression.Record == nil {
 			return false

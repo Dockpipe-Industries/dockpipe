@@ -2106,6 +2106,59 @@ Terminal proof passed with cached Go 1.25.13, offline module lookup, and writabl
 No dependency, generated store, runtime, external state, cleanup, commit, push, or publication
 changed.
 
+### Completed step 7u safe primitive-record list indexing (2026-08-18)
+
+The founder selected explicit `v0.20.0` safe zero-based indexing for one existing public primitive
+record `R`. The accepted public surface contains only this direct method shape:
+
+```pipelang
+public Optional<ContainerRow> RowAt(
+    List<ContainerRow> values,
+    int index
+) => at(values, index);
+```
+
+`at(List<R>, int) -> Optional<R>` reuses the fixed `pipelang:list` and `pipelang:optional`
+identities, the existing record identity, and signed 64-bit primitive `int`; callable identity
+preserves the exact two-parameter and return shape. `pipelang.compiler.v1` and
+`pipelang.semantic.v1` remain unchanged. Typed HIR and target-neutral Core carry one explicit
+`list_at` node with direct list and index references.
+
+The evaluator and Core-only Go backend validate the complete list and every record field before
+inspecting the index. Negative or out-of-range indexes return canonical `none`; an in-range index
+returns canonical `some` with copied record storage. Strict UTF-8 validation therefore rejects an
+invalid string in any selected or unselected record even when the index is absent. Nil or malformed
+list values remain invalid rather than becoming absence.
+
+`PL3006` reports invalid list, element, index, return, placement, or signature shapes; `PL3009`
+reports computed or otherwise non-direct operands and bodies after the exact signature is admitted.
+Malformed typed HIR and Core remain `PL3026` and `PL3027`. `v0.1.0` through `v0.19.0` reject the source and executable form
+without implicit migration, while every frozen earlier contract remains available under
+`v0.20.0`.
+
+The minimal pure source fixture is `src/lib/pipelang/testdata/record-list-at.pipe`, with
+synchronized typed HIR, Core, and Go goldens. This slice gives TASK-020's first read-only Docker
+observability consumer deterministic safe row selection by snapshot position without introducing
+application behavior. Key lookup, slicing, filtering, sorting, iteration, mutation, arbitrary
+collection consumption, Optional chaining or extraction beyond existing `value_or`, Application
+IR, Step-8 control flow, effects, and additional backends remain excluded.
+
+Terminal proof passed with cached Go 1.25.13, offline module lookup, and writable `/tmp` caches:
+
+- the complete PipeLang and exact 45-source compatibility suites, including parser spans,
+  structured identity/projection, source-derived HIR/Core/Go list-at goldens, evaluator and
+  generated-Go agreement for in-range, negative, and out-of-range indexes, caller-storage
+  isolation, complete selected and unselected element validation, strict UTF-8 rejection,
+  malformed HIR/Core rejection, deterministic exclusions, explicit `v0.1.0` through `v0.19.0`
+  migration rejection, and preserved `v0.19.0` snapshot-Result behavior;
+- focused application PipeLang consumer checks, editor grammar/snippet/diagnostic validation,
+  `go vet`, and Windows compile-only proof across affected packages; and
+- `gofmt`, `git diff --check`, exact 45-source inventory, dependency/generated-state absence,
+  Core-only backend/evaluator import-boundary checks, and engine/package-boundary review.
+
+No dependency, generated store, runtime, external state, cleanup, commit, push, or publication
+changed.
+
 ## Exact Next Boundary
 
 Step 7 of **Bounded Implementation Order** has completed the fixed numeric, compiler-internal
@@ -2120,6 +2173,7 @@ Exact Optional construction, identity transport, presence inspection, and bounde
 one existing public primitive record is also complete.
 Exact construction, identity transport, success inspection, and bounded success/failure defaulting
 for one `Result<List<R>, string>` read-only snapshot envelope is also complete.
+Exact safe zero-based indexing of one primitive-record list into `Optional<R>` is also complete.
 `v0.2.0` admits only the exact explicit Result-returning addition;
 `v0.3.0` adds only direct subtraction; `v0.4.0` adds only direct multiplication; `v0.5.0` adds only
 direct integer negation; `v0.6.0` adds only direct binary64 division; and `v0.7.0` adds only direct
@@ -2154,6 +2208,9 @@ value and record validation plus copied result storage while preserving every pr
 `failure_or` methods for `Result<List<R>, string>` where `R` is one existing public primitive
 record, with complete tagged payload/fallback validation plus copied list and record storage while
 preserving every prior contract.
+`v0.20.0` adds only exact direct `at(List<R>, int) -> Optional<R>` for one existing public
+primitive record `R`, with complete list and record validation before zero-based bounds selection,
+canonical absence, and copied selected-record storage while preserving every prior contract.
 All other numeric arithmetic and every other Result construction, composition, or consumption form
 remain fail-closed from production source. Any next slice requires a new
 synchronized decision for its exact source spelling, type/value handling rule, semantic projection,
@@ -2171,7 +2228,8 @@ consumer's empty, singleton, pass-through, count-summary, and deterministic mult
 boundary. The accepted record-Optional slice additionally satisfies typed absence/presence and
 deterministic whole-record fallback at that read-only boundary. The accepted snapshot-Result slice
 adds a typed whole-snapshot success/failure boundary plus deterministic cached-list and error
-fallback; iteration, filtering, sorting, indexing, propagation, matching, and application
+fallback. The accepted list-at slice additionally provides safe positional row selection;
+iteration, filtering, sorting, keyed or general indexing, propagation, matching, and application
 projection remain later decisions.
 
 No later step-7 slice is included here. In particular, this checkpoint does not add general Result

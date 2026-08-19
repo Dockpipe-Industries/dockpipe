@@ -574,6 +574,10 @@ func (p *parser) parsePrimary() (Expr, error) {
 				if hasPrimitiveRecordListAppendSourceContract(p.languageContract) {
 					return p.parseListAppend()
 				}
+			case "at":
+				if hasPrimitiveRecordListAtSourceContract(p.languageContract) {
+					return p.parseListAt()
+				}
 			}
 		}
 		if hasSnapshotResultSourceContract(p.languageContract) {
@@ -830,6 +834,32 @@ func (p *parser) parseListAppend() (Expr, error) {
 		return nil, err
 	}
 	return &ListAppendExpr{Values: values, Value: value, Span: mergeSpans(start.span, end.span)}, nil
+}
+
+func (p *parser) parseListAt() (Expr, error) {
+	start, err := p.expect(tokIdent)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := p.expect(tokLParen); err != nil {
+		return nil, err
+	}
+	values, err := p.parseExpr(1)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := p.expect(tokComma); err != nil {
+		return nil, err
+	}
+	index, err := p.parseExpr(1)
+	if err != nil {
+		return nil, err
+	}
+	end, err := p.expect(tokRParen)
+	if err != nil {
+		return nil, err
+	}
+	return &ListAtExpr{Values: values, Index: index, Span: mergeSpans(start.span, end.span)}, nil
 }
 
 func (p *parser) parseOptionalSome() (Expr, error) {

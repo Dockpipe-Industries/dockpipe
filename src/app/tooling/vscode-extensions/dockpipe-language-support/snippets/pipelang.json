@@ -113,6 +113,13 @@
     ],
     "description": "Create the exact v0.17.0 immutable primitive-record List append method."
   },
+  "PipeLang Record List At": {
+    "prefix": "pipe-record-list-at",
+    "body": [
+      "public Optional<${1:Row}> ${2:RowAt}(List<${1:Row}> ${3:values}, int ${4:index}) => at(${3:values}, ${4:index});"
+    ],
+    "description": "Create the exact v0.20.0 total primitive-record List indexing method returning Optional<R>."
+  },
   "PipeLang Snapshot Result": {
     "prefix": "pipe-snapshot-result",
     "body": [

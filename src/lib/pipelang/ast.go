@@ -206,6 +206,11 @@ type (
 		Value  Expr
 		Span   Span
 	}
+	ListAtExpr struct {
+		Values Expr
+		Index  Expr
+		Span   Span
+	}
 	ResultOKExpr struct {
 		SuccessType UnresolvedTypeRef
 		FailureType UnresolvedTypeRef
@@ -248,6 +253,7 @@ func (*ListEmptyExpr) isExpr()        {}
 func (*ListSingletonExpr) isExpr()    {}
 func (*ListCountExpr) isExpr()        {}
 func (*ListAppendExpr) isExpr()       {}
+func (*ListAtExpr) isExpr()           {}
 func (*ResultOKExpr) isExpr()         {}
 func (*ResultErrExpr) isExpr()        {}
 func (*ResultIsOKExpr) isExpr()       {}
@@ -268,6 +274,7 @@ func (e *ListEmptyExpr) SourceSpan() Span        { return e.Span }
 func (e *ListSingletonExpr) SourceSpan() Span    { return e.Span }
 func (e *ListCountExpr) SourceSpan() Span        { return e.Span }
 func (e *ListAppendExpr) SourceSpan() Span       { return e.Span }
+func (e *ListAtExpr) SourceSpan() Span           { return e.Span }
 func (e *ResultOKExpr) SourceSpan() Span         { return e.Span }
 func (e *ResultErrExpr) SourceSpan() Span        { return e.Span }
 func (e *ResultIsOKExpr) SourceSpan() Span       { return e.Span }
@@ -303,6 +310,8 @@ func setExprSpan(expr Expr, span Span) {
 	case *ListCountExpr:
 		node.Span = span
 	case *ListAppendExpr:
+		node.Span = span
+	case *ListAtExpr:
 		node.Span = span
 	case *ResultOKExpr:
 		node.Span = span

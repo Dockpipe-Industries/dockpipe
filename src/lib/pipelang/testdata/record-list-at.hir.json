@@ -1,0 +1,524 @@
+{
+  "language_contract": "v0.20.0",
+  "compiler_contract": "pipelang.compiler.v1",
+  "functions": [
+    {
+      "identity": {
+        "package_id": "test.package",
+        "path": "app.root.root.rowat",
+        "callable": {
+          "parameters": [
+            {
+              "kind": "applied",
+              "package_id": "pipelang",
+              "path": "list",
+              "name": "List",
+              "arguments": [
+                {
+                  "kind": "named",
+                  "package_id": "test.package",
+                  "path": "app.root.containerrow"
+                }
+              ]
+            },
+            {
+              "kind": "primitive",
+              "primitive": "int"
+            }
+          ],
+          "returns": {
+            "kind": "applied",
+            "package_id": "pipelang",
+            "path": "optional",
+            "name": "Optional",
+            "arguments": [
+              {
+                "kind": "named",
+                "package_id": "test.package",
+                "path": "app.root.containerrow"
+              }
+            ]
+          }
+        }
+      },
+      "owner": {
+        "module": "app.root",
+        "symbol_id": 2,
+        "identity": {
+          "package_id": "test.package",
+          "path": "app.root.root"
+        },
+        "source_span": {
+          "file": "record-list-at.pipe",
+          "start": 103,
+          "end": 246
+        }
+      },
+      "name": "RowAt",
+      "parameters": [
+        {
+          "binding": {
+            "kind": "parameter",
+            "function": {
+              "package_id": "test.package",
+              "path": "app.root.root.rowat",
+              "callable": {
+                "parameters": [
+                  {
+                    "kind": "applied",
+                    "package_id": "pipelang",
+                    "path": "list",
+                    "name": "List",
+                    "arguments": [
+                      {
+                        "kind": "named",
+                        "package_id": "test.package",
+                        "path": "app.root.containerrow"
+                      }
+                    ]
+                  },
+                  {
+                    "kind": "primitive",
+                    "primitive": "int"
+                  }
+                ],
+                "returns": {
+                  "kind": "applied",
+                  "package_id": "pipelang",
+                  "path": "optional",
+                  "name": "Optional",
+                  "arguments": [
+                    {
+                      "kind": "named",
+                      "package_id": "test.package",
+                      "path": "app.root.containerrow"
+                    }
+                  ]
+                }
+              }
+            },
+            "position": 0,
+            "name": "values"
+          },
+          "type": {
+            "kind": "list",
+            "list": {
+              "element": {
+                "kind": "record",
+                "record": {
+                  "fields": [
+                    {
+                      "identity": {
+                        "package_id": "test.package",
+                        "path": "app.root.containerrow.id"
+                      },
+                      "name": "Id",
+                      "type": {
+                        "kind": "primitive",
+                        "primitive": "string"
+                      }
+                    },
+                    {
+                      "identity": {
+                        "package_id": "test.package",
+                        "path": "app.root.containerrow.name"
+                      },
+                      "name": "Name",
+                      "type": {
+                        "kind": "primitive",
+                        "primitive": "string"
+                      }
+                    },
+                    {
+                      "identity": {
+                        "package_id": "test.package",
+                        "path": "app.root.containerrow.running"
+                      },
+                      "name": "Running",
+                      "type": {
+                        "kind": "primitive",
+                        "primitive": "bool"
+                      }
+                    }
+                  ]
+                },
+                "symbol_id": 1,
+                "identity": {
+                  "package_id": "test.package",
+                  "path": "app.root.containerrow"
+                },
+                "name": "ContainerRow"
+              }
+            },
+            "identity": {
+              "package_id": "pipelang",
+              "path": "list"
+            },
+            "name": "List"
+          },
+          "type_span": {
+            "file": "record-list-at.pipe",
+            "start": 172,
+            "end": 190
+          },
+          "span": {
+            "file": "record-list-at.pipe",
+            "start": 172,
+            "end": 197
+          }
+        },
+        {
+          "binding": {
+            "kind": "parameter",
+            "function": {
+              "package_id": "test.package",
+              "path": "app.root.root.rowat",
+              "callable": {
+                "parameters": [
+                  {
+                    "kind": "applied",
+                    "package_id": "pipelang",
+                    "path": "list",
+                    "name": "List",
+                    "arguments": [
+                      {
+                        "kind": "named",
+                        "package_id": "test.package",
+                        "path": "app.root.containerrow"
+                      }
+                    ]
+                  },
+                  {
+                    "kind": "primitive",
+                    "primitive": "int"
+                  }
+                ],
+                "returns": {
+                  "kind": "applied",
+                  "package_id": "pipelang",
+                  "path": "optional",
+                  "name": "Optional",
+                  "arguments": [
+                    {
+                      "kind": "named",
+                      "package_id": "test.package",
+                      "path": "app.root.containerrow"
+                    }
+                  ]
+                }
+              }
+            },
+            "position": 1,
+            "name": "index"
+          },
+          "type": {
+            "kind": "numeric",
+            "numeric": {
+              "representation": "integer",
+              "bits": 64,
+              "signed": true
+            }
+          },
+          "type_span": {
+            "file": "record-list-at.pipe",
+            "start": 207,
+            "end": 210
+          },
+          "span": {
+            "file": "record-list-at.pipe",
+            "start": 207,
+            "end": 216
+          }
+        }
+      ],
+      "return_type": {
+        "kind": "optional",
+        "optional": {
+          "value": {
+            "kind": "record",
+            "record": {
+              "fields": [
+                {
+                  "identity": {
+                    "package_id": "test.package",
+                    "path": "app.root.containerrow.id"
+                  },
+                  "name": "Id",
+                  "type": {
+                    "kind": "primitive",
+                    "primitive": "string"
+                  }
+                },
+                {
+                  "identity": {
+                    "package_id": "test.package",
+                    "path": "app.root.containerrow.name"
+                  },
+                  "name": "Name",
+                  "type": {
+                    "kind": "primitive",
+                    "primitive": "string"
+                  }
+                },
+                {
+                  "identity": {
+                    "package_id": "test.package",
+                    "path": "app.root.containerrow.running"
+                  },
+                  "name": "Running",
+                  "type": {
+                    "kind": "primitive",
+                    "primitive": "bool"
+                  }
+                }
+              ]
+            },
+            "symbol_id": 1,
+            "identity": {
+              "package_id": "test.package",
+              "path": "app.root.containerrow"
+            },
+            "name": "ContainerRow"
+          }
+        }
+      },
+      "return_type_span": {
+        "file": "record-list-at.pipe",
+        "start": 134,
+        "end": 156
+      },
+      "body": {
+        "kind": "list_at",
+        "type": {
+          "kind": "optional",
+          "optional": {
+            "value": {
+              "kind": "record",
+              "record": {
+                "fields": [
+                  {
+                    "identity": {
+                      "package_id": "test.package",
+                      "path": "app.root.containerrow.id"
+                    },
+                    "name": "Id",
+                    "type": {
+                      "kind": "primitive",
+                      "primitive": "string"
+                    }
+                  },
+                  {
+                    "identity": {
+                      "package_id": "test.package",
+                      "path": "app.root.containerrow.name"
+                    },
+                    "name": "Name",
+                    "type": {
+                      "kind": "primitive",
+                      "primitive": "string"
+                    }
+                  },
+                  {
+                    "identity": {
+                      "package_id": "test.package",
+                      "path": "app.root.containerrow.running"
+                    },
+                    "name": "Running",
+                    "type": {
+                      "kind": "primitive",
+                      "primitive": "bool"
+                    }
+                  }
+                ]
+              },
+              "symbol_id": 1,
+              "identity": {
+                "package_id": "test.package",
+                "path": "app.root.containerrow"
+              },
+              "name": "ContainerRow"
+            }
+          }
+        },
+        "span": {
+          "file": "record-list-at.pipe",
+          "start": 226,
+          "end": 243
+        },
+        "list_at": {
+          "values": {
+            "kind": "reference",
+            "type": {
+              "kind": "list",
+              "list": {
+                "element": {
+                  "kind": "record",
+                  "record": {
+                    "fields": [
+                      {
+                        "identity": {
+                          "package_id": "test.package",
+                          "path": "app.root.containerrow.id"
+                        },
+                        "name": "Id",
+                        "type": {
+                          "kind": "primitive",
+                          "primitive": "string"
+                        }
+                      },
+                      {
+                        "identity": {
+                          "package_id": "test.package",
+                          "path": "app.root.containerrow.name"
+                        },
+                        "name": "Name",
+                        "type": {
+                          "kind": "primitive",
+                          "primitive": "string"
+                        }
+                      },
+                      {
+                        "identity": {
+                          "package_id": "test.package",
+                          "path": "app.root.containerrow.running"
+                        },
+                        "name": "Running",
+                        "type": {
+                          "kind": "primitive",
+                          "primitive": "bool"
+                        }
+                      }
+                    ]
+                  },
+                  "symbol_id": 1,
+                  "identity": {
+                    "package_id": "test.package",
+                    "path": "app.root.containerrow"
+                  },
+                  "name": "ContainerRow"
+                }
+              },
+              "identity": {
+                "package_id": "pipelang",
+                "path": "list"
+              },
+              "name": "List"
+            },
+            "span": {
+              "file": "record-list-at.pipe",
+              "start": 229,
+              "end": 235
+            },
+            "reference": {
+              "kind": "parameter",
+              "function": {
+                "package_id": "test.package",
+                "path": "app.root.root.rowat",
+                "callable": {
+                  "parameters": [
+                    {
+                      "kind": "applied",
+                      "package_id": "pipelang",
+                      "path": "list",
+                      "name": "List",
+                      "arguments": [
+                        {
+                          "kind": "named",
+                          "package_id": "test.package",
+                          "path": "app.root.containerrow"
+                        }
+                      ]
+                    },
+                    {
+                      "kind": "primitive",
+                      "primitive": "int"
+                    }
+                  ],
+                  "returns": {
+                    "kind": "applied",
+                    "package_id": "pipelang",
+                    "path": "optional",
+                    "name": "Optional",
+                    "arguments": [
+                      {
+                        "kind": "named",
+                        "package_id": "test.package",
+                        "path": "app.root.containerrow"
+                      }
+                    ]
+                  }
+                }
+              },
+              "position": 0,
+              "name": "values"
+            }
+          },
+          "index": {
+            "kind": "reference",
+            "type": {
+              "kind": "numeric",
+              "numeric": {
+                "representation": "integer",
+                "bits": 64,
+                "signed": true
+              }
+            },
+            "span": {
+              "file": "record-list-at.pipe",
+              "start": 237,
+              "end": 242
+            },
+            "reference": {
+              "kind": "parameter",
+              "function": {
+                "package_id": "test.package",
+                "path": "app.root.root.rowat",
+                "callable": {
+                  "parameters": [
+                    {
+                      "kind": "applied",
+                      "package_id": "pipelang",
+                      "path": "list",
+                      "name": "List",
+                      "arguments": [
+                        {
+                          "kind": "named",
+                          "package_id": "test.package",
+                          "path": "app.root.containerrow"
+                        }
+                      ]
+                    },
+                    {
+                      "kind": "primitive",
+                      "primitive": "int"
+                    }
+                  ],
+                  "returns": {
+                    "kind": "applied",
+                    "package_id": "pipelang",
+                    "path": "optional",
+                    "name": "Optional",
+                    "arguments": [
+                      {
+                        "kind": "named",
+                        "package_id": "test.package",
+                        "path": "app.root.containerrow"
+                      }
+                    ]
+                  }
+                }
+              },
+              "position": 1,
+              "name": "index"
+            }
+          }
+        }
+      },
+      "span": {
+        "file": "record-list-at.pipe",
+        "start": 127,
+        "end": 244
+      }
+    }
+  ]
+}
