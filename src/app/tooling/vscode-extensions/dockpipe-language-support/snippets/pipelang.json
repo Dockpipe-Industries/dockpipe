@@ -141,6 +141,13 @@
     ],
     "description": "Create the exact v0.23.0 Unicode 17.0.0 full-default case-folded text containment method."
   },
+  "PipeLang Record List Case-Folded Filter": {
+    "prefix": "pipe-record-list-filter-contains-casefolded",
+    "body": [
+      "public List<${1:Row}> ${2:SearchRows}(List<${1:Row}> ${3:values}, string ${4:query}) => filter_contains_casefolded(${3:values}, ${1:Row}.${5:Name}, ${4:query});"
+    ],
+    "description": "Create the exact v0.24.0 stable-order primitive-record List filter using Unicode 17.0.0 full-default case-folded containment on one public string field."
+  },
   "PipeLang Snapshot Result": {
     "prefix": "pipe-snapshot-result",
     "body": [

@@ -279,3 +279,49 @@ No dependency, generated store, runtime, Docker, VM, credential, cleanup, commit
 publication, or other external state changed. The only network action was the separately approved
 single download of Unicode 17.0.0 `CaseFolding.txt`; its exact bytes are now pinned by the digest
 above.
+
+### Completed step 7y selected-field case-folded record-list filtering (2026-08-19)
+
+The founder selected explicit `v0.24.0` stable-order filtering by Unicode case-folded containment
+with this sole direct source shape:
+
+```pipelang
+public List<ContainerRow> SearchRows(
+    List<ContainerRow> values,
+    string query
+) => filter_contains_casefolded(values, ContainerRow.Name, query);
+```
+
+The method requires exactly one existing public primitive record `R`, direct `List<R>` and
+`string` parameters in declared order, a matching `List<R>` return, and one static public string
+field selector on `R`. Callable identity remains `(List<R>, string) -> List<R>` and reuses
+`pipelang:list`, primitive `string`, the record identity, and the selected field identity.
+`pipelang.compiler.v1` and `pipelang.semantic.v1` remain unchanged. Typed HIR and target-neutral
+Core carry the explicit `list_filter_contains_case_folded_text` node with direct list/query
+references plus field identity, name, and declaration position.
+
+The evaluator and Core-only Go backend completely validate the list, every record field, and query
+before applying the same pinned Unicode 17.0.0 full-default C/F case-fold table used by
+`contains_casefolded`. Every contiguous folded match is retained in stable input order, including
+duplicates. Empty queries retain all elements; no matches produce canonical non-nil empty storage;
+results use fresh copied list and record storage. No host Unicode API supplies language semantics.
+
+`v0.1.0` through `v0.23.0` reject the source, HIR, and Core form without implicit migration. The
+synchronized source fixture and typed HIR, Core, and Go goldens cover full multi-scalar folding,
+Kelvin and dotted-I mappings, no normalization, empty-query behavior, invalid UTF-8 and nil-list
+rejection, stable duplicate order, copied storage, selector identity validation, malformed HIR/Core
+rejection, deterministic emission, and preservation of the exact `v0.23.0` predicate.
+
+This supplies TASK-020's read-only Docker-observability consumer with deterministic search over one
+selected visible string field. Trimming, joined or multi-field search, normalization, locale
+tailoring, predicates, lambdas, sorting, general iteration, mutation, Application IR, Step-8
+control flow, effects, and additional backends remain excluded.
+
+Terminal proof passed with cached Go 1.25.13 and local/offline module inputs: the complete PipeLang
+suite; exact 45-source compatibility suite; affected domain, materialization, and application
+PipeLang tests; editor grammar/completion/snippet assertions; `go vet`; Windows/amd64 compile-only
+proof; `gofmt`; `git diff --check`; frozen inventory digest/count; unchanged dependency files; and
+Core-only evaluator/backend import-boundary checks. The application check used only a temporary
+`/tmp` modfile and local cached module proxy selecting cached `x/sys v0.46.0`; no checkout
+dependency, generated store, network, runtime, Docker, VM, credential, cleanup, commit, push,
+publication, or other external state changed.

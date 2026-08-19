@@ -26,6 +26,7 @@ const (
 	LanguageContractV210 = "v0.21.0"
 	LanguageContractV220 = "v0.22.0"
 	LanguageContractV230 = "v0.23.0"
+	LanguageContractV240 = "v0.24.0"
 	CompilerContractV1   = "pipelang.compiler.v1"
 	BuiltinPackageID     = "pipelang"
 	ListSemanticPath     = "list"
@@ -143,29 +144,30 @@ type Parameter struct {
 type ExprKind string
 
 const (
-	ExprLiteral                ExprKind = "literal"
-	ExprReference              ExprKind = "reference"
-	ExprUnary                  ExprKind = "unary"
-	ExprBinary                 ExprKind = "binary"
-	ExprTextContainsCaseFolded ExprKind = "text_contains_case_folded"
-	ExprFieldProjection        ExprKind = "field_projection"
-	ExprRecordConstruct        ExprKind = "record_construct"
-	ExprOptionalSome           ExprKind = "optional_some"
-	ExprOptionalNone           ExprKind = "optional_none"
-	ExprOptionalHasValue       ExprKind = "optional_has_value"
-	ExprOptionalValueOr        ExprKind = "optional_value_or"
-	ExprListEmpty              ExprKind = "list_empty"
-	ExprListSingleton          ExprKind = "list_singleton"
-	ExprListCount              ExprKind = "list_count"
-	ExprListAppend             ExprKind = "list_append"
-	ExprListAt                 ExprKind = "list_at"
-	ExprListFindByText         ExprKind = "list_find_by_text"
-	ExprListFilterByText       ExprKind = "list_filter_by_text"
-	ExprResultOK               ExprKind = "result_ok"
-	ExprResultErr              ExprKind = "result_err"
-	ExprResultIsOK             ExprKind = "result_is_ok"
-	ExprResultSuccessOr        ExprKind = "result_success_or"
-	ExprResultFailureOr        ExprKind = "result_failure_or"
+	ExprLiteral                      ExprKind = "literal"
+	ExprReference                    ExprKind = "reference"
+	ExprUnary                        ExprKind = "unary"
+	ExprBinary                       ExprKind = "binary"
+	ExprTextContainsCaseFolded       ExprKind = "text_contains_case_folded"
+	ExprFieldProjection              ExprKind = "field_projection"
+	ExprRecordConstruct              ExprKind = "record_construct"
+	ExprOptionalSome                 ExprKind = "optional_some"
+	ExprOptionalNone                 ExprKind = "optional_none"
+	ExprOptionalHasValue             ExprKind = "optional_has_value"
+	ExprOptionalValueOr              ExprKind = "optional_value_or"
+	ExprListEmpty                    ExprKind = "list_empty"
+	ExprListSingleton                ExprKind = "list_singleton"
+	ExprListCount                    ExprKind = "list_count"
+	ExprListAppend                   ExprKind = "list_append"
+	ExprListAt                       ExprKind = "list_at"
+	ExprListFindByText               ExprKind = "list_find_by_text"
+	ExprListFilterByText             ExprKind = "list_filter_by_text"
+	ExprListFilterContainsCaseFolded ExprKind = "list_filter_contains_case_folded_text"
+	ExprResultOK                     ExprKind = "result_ok"
+	ExprResultErr                    ExprKind = "result_err"
+	ExprResultIsOK                   ExprKind = "result_is_ok"
+	ExprResultSuccessOr              ExprKind = "result_success_or"
+	ExprResultFailureOr              ExprKind = "result_failure_or"
 )
 
 type Operator string
@@ -280,6 +282,14 @@ type ListFilterByText struct {
 	Key      *Expr            `json:"key"`
 }
 
+type ListFilterContainsCaseFolded struct {
+	Values   *Expr            `json:"values"`
+	Field    SemanticIdentity `json:"field"`
+	Name     string           `json:"name"`
+	Position int              `json:"position"`
+	Query    *Expr            `json:"query"`
+}
+
 type ResultOK struct {
 	Value *Expr `json:"value"`
 }
@@ -303,31 +313,32 @@ type ResultFailureOr struct {
 }
 
 type Expr struct {
-	Kind         ExprKind                `json:"kind"`
-	Type         Type                    `json:"type"`
-	Literal      *Literal                `json:"literal,omitempty"`
-	Parameter    *int                    `json:"parameter,omitempty"`
-	Unary        *Unary                  `json:"unary,omitempty"`
-	Binary       *Binary                 `json:"binary,omitempty"`
-	TextContains *TextContainsCaseFolded `json:"text_contains_case_folded,omitempty"`
-	Field        *FieldProjection        `json:"field,omitempty"`
-	Record       *RecordConstruct        `json:"record,omitempty"`
-	Some         *OptionalSome           `json:"some,omitempty"`
-	None         *OptionalNone           `json:"none,omitempty"`
-	HasValue     *OptionalHasValue       `json:"has_value,omitempty"`
-	ValueOr      *OptionalValueOr        `json:"value_or,omitempty"`
-	ListEmpty    *ListEmpty              `json:"list_empty,omitempty"`
-	ListOne      *ListSingleton          `json:"list_singleton,omitempty"`
-	ListCount    *ListCount              `json:"list_count,omitempty"`
-	ListAppend   *ListAppend             `json:"list_append,omitempty"`
-	ListAt       *ListAt                 `json:"list_at,omitempty"`
-	ListFind     *ListFindByText         `json:"list_find_by_text,omitempty"`
-	ListFilter   *ListFilterByText       `json:"list_filter_by_text,omitempty"`
-	ResultOK     *ResultOK               `json:"result_ok,omitempty"`
-	ResultErr    *ResultErr              `json:"result_err,omitempty"`
-	ResultIsOK   *ResultIsOK             `json:"result_is_ok,omitempty"`
-	SuccessOr    *ResultSuccessOr        `json:"result_success_or,omitempty"`
-	FailureOr    *ResultFailureOr        `json:"result_failure_or,omitempty"`
+	Kind                         ExprKind                      `json:"kind"`
+	Type                         Type                          `json:"type"`
+	Literal                      *Literal                      `json:"literal,omitempty"`
+	Parameter                    *int                          `json:"parameter,omitempty"`
+	Unary                        *Unary                        `json:"unary,omitempty"`
+	Binary                       *Binary                       `json:"binary,omitempty"`
+	TextContains                 *TextContainsCaseFolded       `json:"text_contains_case_folded,omitempty"`
+	Field                        *FieldProjection              `json:"field,omitempty"`
+	Record                       *RecordConstruct              `json:"record,omitempty"`
+	Some                         *OptionalSome                 `json:"some,omitempty"`
+	None                         *OptionalNone                 `json:"none,omitempty"`
+	HasValue                     *OptionalHasValue             `json:"has_value,omitempty"`
+	ValueOr                      *OptionalValueOr              `json:"value_or,omitempty"`
+	ListEmpty                    *ListEmpty                    `json:"list_empty,omitempty"`
+	ListOne                      *ListSingleton                `json:"list_singleton,omitempty"`
+	ListCount                    *ListCount                    `json:"list_count,omitempty"`
+	ListAppend                   *ListAppend                   `json:"list_append,omitempty"`
+	ListAt                       *ListAt                       `json:"list_at,omitempty"`
+	ListFind                     *ListFindByText               `json:"list_find_by_text,omitempty"`
+	ListFilter                   *ListFilterByText             `json:"list_filter_by_text,omitempty"`
+	ListFilterContainsCaseFolded *ListFilterContainsCaseFolded `json:"list_filter_contains_case_folded_text,omitempty"`
+	ResultOK                     *ResultOK                     `json:"result_ok,omitempty"`
+	ResultErr                    *ResultErr                    `json:"result_err,omitempty"`
+	ResultIsOK                   *ResultIsOK                   `json:"result_is_ok,omitempty"`
+	SuccessOr                    *ResultSuccessOr              `json:"result_success_or,omitempty"`
+	FailureOr                    *ResultFailureOr              `json:"result_failure_or,omitempty"`
 }
 
 type Function struct {

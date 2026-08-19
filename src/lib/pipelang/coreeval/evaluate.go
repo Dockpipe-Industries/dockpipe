@@ -326,6 +326,36 @@ func evalExpr(expression coreir.Expr, arguments []Value) (Outcome, error) {
 			return Outcome{}, fmt.Errorf("list filter_by result: %w", err)
 		}
 		return Outcome{OK: true, Value: cloneListValue(filtered)}, nil
+	case coreir.ExprListFilterContainsCaseFolded:
+		filter := expression.ListFilterContainsCaseFolded
+		values, err := evalExpr(*filter.Values, arguments)
+		if err != nil || !values.OK {
+			return values, err
+		}
+		query, err := evalExpr(*filter.Query, arguments)
+		if err != nil || !query.OK {
+			return query, err
+		}
+		if err := validateValue(values.Value); err != nil {
+			return Outcome{}, fmt.Errorf("list filter_contains_casefolded: %w", err)
+		}
+		if err := validateValue(query.Value); err != nil {
+			return Outcome{}, fmt.Errorf("list filter_contains_casefolded query: %w", err)
+		}
+		filtered := Value{Type: expression.Type, List: make([]Value, 0)}
+		for _, record := range values.Value.List {
+			contains, err := coreir.ContainsCaseFoldedText(record.Record[filter.Position].String, query.Value.String)
+			if err != nil {
+				return Outcome{}, fmt.Errorf("list filter_contains_casefolded comparison: %w", err)
+			}
+			if contains {
+				filtered.List = append(filtered.List, cloneValue(record))
+			}
+		}
+		if err := validateValue(filtered); err != nil {
+			return Outcome{}, fmt.Errorf("list filter_contains_casefolded result: %w", err)
+		}
+		return Outcome{OK: true, Value: cloneListValue(filtered)}, nil
 	case coreir.ExprResultOK:
 		value, err := evalExpr(*expression.ResultOK.Value, arguments)
 		if err != nil || !value.OK {

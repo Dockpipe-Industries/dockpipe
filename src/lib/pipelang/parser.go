@@ -589,6 +589,10 @@ func (p *parser) parsePrimary() (Expr, error) {
 				if hasPrimitiveRecordListFilterByTextSourceContract(p.languageContract) {
 					return p.parseListFilterByText()
 				}
+			case "filter_contains_casefolded":
+				if hasPrimitiveRecordListFilterContainsCaseFoldedSourceContract(p.languageContract) {
+					return p.parseListFilterContainsCaseFolded()
+				}
 			}
 		}
 		if hasSnapshotResultSourceContract(p.languageContract) {
@@ -989,6 +993,53 @@ func (p *parser) parseListFilterByText() (Expr, error) {
 		Field:      field.lit,
 		FieldSpan:  field.span,
 		Key:        key,
+		Span:       mergeSpans(start.span, end.span),
+	}, nil
+}
+
+func (p *parser) parseListFilterContainsCaseFolded() (Expr, error) {
+	start, err := p.expect(tokIdent)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := p.expect(tokLParen); err != nil {
+		return nil, err
+	}
+	values, err := p.parseExpr(1)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := p.expect(tokComma); err != nil {
+		return nil, err
+	}
+	recordName, err := p.expect(tokIdent)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := p.expect(tokDot); err != nil {
+		return nil, err
+	}
+	field, err := p.expect(tokIdent)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := p.expect(tokComma); err != nil {
+		return nil, err
+	}
+	query, err := p.parseExpr(1)
+	if err != nil {
+		return nil, err
+	}
+	end, err := p.expect(tokRParen)
+	if err != nil {
+		return nil, err
+	}
+	return &ListFilterContainsCaseFoldedExpr{
+		Values:     values,
+		RecordType: UnresolvedTypeRef{Kind: TypeRefNamed, Name: recordName.lit, Span: recordName.span},
+		Field:      field.lit,
+		FieldSpan:  field.span,
+		Query:      query,
 		Span:       mergeSpans(start.span, end.span),
 	}, nil
 }

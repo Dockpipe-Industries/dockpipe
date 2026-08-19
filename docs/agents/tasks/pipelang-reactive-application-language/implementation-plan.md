@@ -28,6 +28,40 @@ Each slice is independently reviewable and keeps syntax, semantics, diagnostics,
 editor, tests, and any enabled backend synchronized. No permissive parser, target-owned semantics,
 or syntax-first feature batch may skip the earlier foundations.
 
+## Future Mixed-Mode Native-Module Checkpoint
+
+Prepare a module-by-module strangler transition from evaluated Core to native machine-code
+artifacts without turning native execution into a second language contract. This is backlog
+preparation only: it authorizes no ABI, loader, backend, code generation, runtime, source, or
+migration change.
+
+Open this checkpoint only after step 10 has produced the shared semantic/Core projections and at
+least one representative TASK-020 Qt application or TASK-022 PipeServe service works end to end
+through the evaluator or current deterministic Go backend. The consumer must provide module-level
+timing/allocation evidence or a concrete standalone-deployment requirement; anticipated performance
+alone is not an implementation trigger.
+
+The first action is a source-backed founder decision packet with two or three mutually exclusive
+execution-boundary options, such as an isolated native process/capability, an in-process stable C
+ABI shared library, or selected-module AOT through an enabled backend. Do not preselect the boundary
+from this record. Each option must define isolation, call and error transport, canonical value
+marshalling, allocation/ownership, module and semantic identity, source/lock/compiler/profile/
+toolchain digest binding, capability authority, debug/source mapping, platform packaging, fallback,
+and version/migration behavior.
+
+Any accepted first implementation is limited to one pure, measured, low-dependency leaf module. The
+same unchanged PipeLang source and module identity must resolve to either evaluated or native
+execution; the evaluator remains the semantic oracle. Differential conformance must cover all
+inputs, failures, validation, observable ordering, and storage ownership, while benchmarks record
+build cost, startup, call overhead, throughput, allocations, and artifact size. Native selection
+must be reversible without changing source or weakening workflow/package/runtime/resolver authority.
+
+Exclude whole-runtime conversion, self-hosting by implication, multiple native modules, JIT and AOT
+as one batch, raw Go or C++ object-layout exposure, target-specific language semantics, unsafe/manual
+memory features, shared mutable aliases, callbacks, asynchronous effects, a general plugin ecosystem,
+and retirement of the Go seed or evaluator. Expansion remains one measured module at a time through
+separately accepted slices.
+
 ## Validation Matrix
 
 Every shipped language slice needs proportionate coverage across:
@@ -97,4 +131,3 @@ slices, then the broader engine/package validation required by the touched publi
   and fail rather than degrade on unsupported profiles.
 - Typed HIR, Core IR, the public semantic projection, Application IR, and Service IR remain distinct
   layers over one parser/binder/type contract.
-
