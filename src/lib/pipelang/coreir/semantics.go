@@ -162,6 +162,9 @@ func ValidateFunction(function Function) error {
 	if exprContainsListFilterContainsCaseFolded(function.Body) && function.Body.Kind != ExprListFilterContainsCaseFolded {
 		return fmt.Errorf("filter_contains_casefolded must be the complete function body")
 	}
+	if exprContainsListFilterJoinedContainsCaseFolded(function.Body) && function.Body.Kind != ExprListFilterJoinedContainsCaseFolded {
+		return fmt.Errorf("filter_joined_contains_casefolded must be the complete function body")
+	}
 	if err := validateExpr(function.Body, function.Parameters); err != nil {
 		return err
 	}
@@ -212,12 +215,18 @@ func ValidateFunction(function Function) error {
 			return err
 		}
 	}
+	listFilterJoinedContainsCaseFolded := function.Body.Kind == ExprListFilterJoinedContainsCaseFolded
+	if listFilterJoinedContainsCaseFolded {
+		if err := validateDirectListFilterJoinedContainsCaseFoldedFunction(function); err != nil {
+			return err
+		}
+	}
 	if functionContainsOptional(function) && !boundedResult && !listAt && !listFindByText {
 		if err := validateDirectOptionalFunction(function); err != nil {
 			return err
 		}
 	}
-	if functionContainsList(function) && !boundedResult && !listAt && !listFindByText && !listFilterByText && !listFilterContainsCaseFolded {
+	if functionContainsList(function) && !boundedResult && !listAt && !listFindByText && !listFilterByText && !listFilterContainsCaseFolded && !listFilterJoinedContainsCaseFolded {
 		if err := validateDirectListFunction(function); err != nil {
 			return err
 		}
@@ -747,6 +756,44 @@ func validateExpr(expression Expr, parameters []Parameter) error {
 		if !TypeEqual(field.Type, Type{Kind: TypePrimitive, Primitive: PrimitiveString}) {
 			return fmt.Errorf("list filter_contains_casefolded field is not string")
 		}
+	case ExprListFilterJoinedContainsCaseFolded:
+		filter := expression.ListFilterJoinedContainsCaseFolded
+		if filter == nil || filter.Values == nil || filter.Query == nil || len(filter.Selectors) != 5 || expression.Type.Kind != TypeList || expression.Type.List == nil {
+			return fmt.Errorf("list filter_joined_contains_casefolded expression is incomplete")
+		}
+		if err := validateType(expression.Type); err != nil {
+			return fmt.Errorf("list filter_joined_contains_casefolded result type: %w", err)
+		}
+		if err := validateExpr(*filter.Values, parameters); err != nil {
+			return fmt.Errorf("list filter_joined_contains_casefolded values: %w", err)
+		}
+		if err := validateExpr(*filter.Query, parameters); err != nil {
+			return fmt.Errorf("list filter_joined_contains_casefolded query: %w", err)
+		}
+		valuesType := filter.Values.Type
+		if valuesType.Kind != TypeList || valuesType.List == nil || valuesType.List.Element.Kind != TypeRecord || valuesType.List.Element.Record == nil || !TypeEqual(valuesType, expression.Type) {
+			return fmt.Errorf("list filter_joined_contains_casefolded values type does not match its record-list result")
+		}
+		if !TypeEqual(filter.Query.Type, Type{Kind: TypePrimitive, Primitive: PrimitiveString}) {
+			return fmt.Errorf("list filter_joined_contains_casefolded query is not string")
+		}
+		seen := map[int]struct{}{}
+		for _, selector := range filter.Selectors {
+			if selector.Position < 0 || selector.Position >= len(valuesType.List.Element.Record.Fields) {
+				return fmt.Errorf("list filter_joined_contains_casefolded field position is outside the record schema")
+			}
+			if _, exists := seen[selector.Position]; exists {
+				return fmt.Errorf("list filter_joined_contains_casefolded field selectors must be distinct")
+			}
+			seen[selector.Position] = struct{}{}
+			field := valuesType.List.Element.Record.Fields[selector.Position]
+			if field.Name != selector.Name || field.Identity.PackageID != selector.Field.PackageID || field.Identity.Path != selector.Field.Path || selector.Field.Callable != nil {
+				return fmt.Errorf("list filter_joined_contains_casefolded field identity does not match the record schema")
+			}
+			if !TypeEqual(field.Type, Type{Kind: TypePrimitive, Primitive: PrimitiveString}) {
+				return fmt.Errorf("list filter_joined_contains_casefolded field is not string")
+			}
+		}
 	case ExprResultOK:
 		if expression.ResultOK == nil || expression.ResultOK.Value == nil || !isBoundedValueResultType(expression.Type) {
 			return fmt.Errorf("result ok expression is incomplete or has an invalid result type")
@@ -845,6 +892,8 @@ func exprContainsBoundedValueResult(expression Expr) bool {
 		return expression.ListFilter != nil && expression.ListFilter.Values != nil && expression.ListFilter.Key != nil && (exprContainsBoundedValueResult(*expression.ListFilter.Values) || exprContainsBoundedValueResult(*expression.ListFilter.Key))
 	case ExprListFilterContainsCaseFolded:
 		return expression.ListFilterContainsCaseFolded != nil && expression.ListFilterContainsCaseFolded.Values != nil && expression.ListFilterContainsCaseFolded.Query != nil && (exprContainsBoundedValueResult(*expression.ListFilterContainsCaseFolded.Values) || exprContainsBoundedValueResult(*expression.ListFilterContainsCaseFolded.Query))
+	case ExprListFilterJoinedContainsCaseFolded:
+		return expression.ListFilterJoinedContainsCaseFolded != nil && expression.ListFilterJoinedContainsCaseFolded.Values != nil && expression.ListFilterJoinedContainsCaseFolded.Query != nil && (exprContainsBoundedValueResult(*expression.ListFilterJoinedContainsCaseFolded.Values) || exprContainsBoundedValueResult(*expression.ListFilterJoinedContainsCaseFolded.Query))
 	}
 	return false
 }
@@ -899,7 +948,7 @@ func functionContainsList(function Function) bool {
 
 func exprContainsList(expression Expr) bool {
 	switch expression.Kind {
-	case ExprListEmpty, ExprListSingleton, ExprListCount, ExprListAppend, ExprListAt, ExprListFindByText, ExprListFilterByText, ExprListFilterContainsCaseFolded:
+	case ExprListEmpty, ExprListSingleton, ExprListCount, ExprListAppend, ExprListAt, ExprListFindByText, ExprListFilterByText, ExprListFilterContainsCaseFolded, ExprListFilterJoinedContainsCaseFolded:
 		return true
 	case ExprUnary:
 		return expression.Unary != nil && expression.Unary.Operand != nil && exprContainsList(*expression.Unary.Operand)
@@ -1065,6 +1114,10 @@ func exprContainsTextCaseFolded(expression Expr) bool {
 		if expression.ListFilterContainsCaseFolded != nil {
 			children = append(children, expression.ListFilterContainsCaseFolded.Values, expression.ListFilterContainsCaseFolded.Query)
 		}
+	case ExprListFilterJoinedContainsCaseFolded:
+		if expression.ListFilterJoinedContainsCaseFolded != nil {
+			children = append(children, expression.ListFilterJoinedContainsCaseFolded.Values, expression.ListFilterJoinedContainsCaseFolded.Query)
+		}
 	case ExprResultOK:
 		if expression.ResultOK != nil {
 			children = append(children, expression.ResultOK.Value)
@@ -1161,6 +1214,10 @@ func exprContainsTextTrim(expression Expr) bool {
 	case ExprListFilterContainsCaseFolded:
 		if expression.ListFilterContainsCaseFolded != nil {
 			children = append(children, expression.ListFilterContainsCaseFolded.Values, expression.ListFilterContainsCaseFolded.Query)
+		}
+	case ExprListFilterJoinedContainsCaseFolded:
+		if expression.ListFilterJoinedContainsCaseFolded != nil {
+			children = append(children, expression.ListFilterJoinedContainsCaseFolded.Values, expression.ListFilterJoinedContainsCaseFolded.Query)
 		}
 	case ExprResultOK:
 		if expression.ResultOK != nil {
@@ -1280,6 +1337,107 @@ func exprContainsListFilterContainsCaseFolded(expression Expr) bool {
 	return false
 }
 
+func exprContainsListFilterJoinedContainsCaseFolded(expression Expr) bool {
+	if expression.Kind == ExprListFilterJoinedContainsCaseFolded {
+		return true
+	}
+	children := []*Expr{}
+	switch expression.Kind {
+	case ExprUnary:
+		if expression.Unary != nil {
+			children = append(children, expression.Unary.Operand)
+		}
+	case ExprBinary:
+		if expression.Binary != nil {
+			children = append(children, expression.Binary.Left, expression.Binary.Right)
+		}
+	case ExprTextContainsCaseFolded:
+		if expression.TextContains != nil {
+			children = append(children, expression.TextContains.Value, expression.TextContains.Query)
+		}
+	case ExprTextTrim:
+		if expression.TextTrim != nil {
+			children = append(children, expression.TextTrim.Value)
+		}
+	case ExprFieldProjection:
+		if expression.Field != nil {
+			children = append(children, expression.Field.Receiver)
+		}
+	case ExprRecordConstruct:
+		if expression.Record != nil {
+			for _, field := range expression.Record.Fields {
+				children = append(children, field.Value)
+			}
+		}
+	case ExprOptionalSome:
+		if expression.Some != nil {
+			children = append(children, expression.Some.Value)
+		}
+	case ExprOptionalHasValue:
+		if expression.HasValue != nil {
+			children = append(children, expression.HasValue.Value)
+		}
+	case ExprOptionalValueOr:
+		if expression.ValueOr != nil {
+			children = append(children, expression.ValueOr.Value, expression.ValueOr.Fallback)
+		}
+	case ExprListSingleton:
+		if expression.ListOne != nil {
+			children = append(children, expression.ListOne.Value)
+		}
+	case ExprListCount:
+		if expression.ListCount != nil {
+			children = append(children, expression.ListCount.Value)
+		}
+	case ExprListAppend:
+		if expression.ListAppend != nil {
+			children = append(children, expression.ListAppend.Values, expression.ListAppend.Value)
+		}
+	case ExprListAt:
+		if expression.ListAt != nil {
+			children = append(children, expression.ListAt.Values, expression.ListAt.Index)
+		}
+	case ExprListFindByText:
+		if expression.ListFind != nil {
+			children = append(children, expression.ListFind.Values, expression.ListFind.Key)
+		}
+	case ExprListFilterByText:
+		if expression.ListFilter != nil {
+			children = append(children, expression.ListFilter.Values, expression.ListFilter.Key)
+		}
+	case ExprListFilterContainsCaseFolded:
+		if expression.ListFilterContainsCaseFolded != nil {
+			children = append(children, expression.ListFilterContainsCaseFolded.Values, expression.ListFilterContainsCaseFolded.Query)
+		}
+	case ExprResultOK:
+		if expression.ResultOK != nil {
+			children = append(children, expression.ResultOK.Value)
+		}
+	case ExprResultErr:
+		if expression.ResultErr != nil {
+			children = append(children, expression.ResultErr.Error)
+		}
+	case ExprResultIsOK:
+		if expression.ResultIsOK != nil {
+			children = append(children, expression.ResultIsOK.Value)
+		}
+	case ExprResultSuccessOr:
+		if expression.SuccessOr != nil {
+			children = append(children, expression.SuccessOr.Value, expression.SuccessOr.Fallback)
+		}
+	case ExprResultFailureOr:
+		if expression.FailureOr != nil {
+			children = append(children, expression.FailureOr.Value, expression.FailureOr.Fallback)
+		}
+	}
+	for _, child := range children {
+		if child != nil && exprContainsListFilterJoinedContainsCaseFolded(*child) {
+			return true
+		}
+	}
+	return false
+}
+
 func validateDirectListAtFunction(function Function) error {
 	if function.Body.ListAt == nil || function.Body.ListAt.Values == nil || function.Body.ListAt.Index == nil || len(function.Parameters) != 2 || function.Parameters[0].Type.Kind != TypeList || function.Parameters[0].Type.List == nil || !TypeEqual(function.Parameters[1].Type, SignedInteger(64)) || function.ReturnType.Kind != TypeOptional || function.ReturnType.Optional == nil || !TypeEqual(function.ReturnType.Optional.Value, function.Parameters[0].Type.List.Element) {
 		return fmt.Errorf("at requires direct List<R> and signed 64-bit int parameters with Optional<R> return")
@@ -1341,6 +1499,21 @@ func validateDirectListFilterContainsCaseFoldedFunction(function Function) error
 	return nil
 }
 
+func validateDirectListFilterJoinedContainsCaseFoldedFunction(function Function) error {
+	filter := function.Body.ListFilterJoinedContainsCaseFolded
+	stringType := Type{Kind: TypePrimitive, Primitive: PrimitiveString}
+	if filter == nil || filter.Values == nil || filter.Query == nil || len(filter.Selectors) != 5 || len(function.Parameters) != 2 || function.Parameters[0].Type.Kind != TypeList || function.Parameters[0].Type.List == nil || function.Parameters[0].Type.List.Element.Kind != TypeRecord || !TypeEqual(function.Parameters[1].Type, stringType) || !TypeEqual(function.ReturnType, function.Parameters[0].Type) {
+		return fmt.Errorf("filter_joined_contains_casefolded requires direct List<R> and string parameters, exactly five selectors, and matching List<R> return")
+	}
+	if filter.Values.Kind != ExprReference || filter.Values.Parameter == nil || *filter.Values.Parameter != 0 || !TypeEqual(filter.Values.Type, function.Parameters[0].Type) {
+		return fmt.Errorf("filter_joined_contains_casefolded values must be its first direct record-list parameter")
+	}
+	if filter.Query.Kind != ExprReference || filter.Query.Parameter == nil || *filter.Query.Parameter != 1 || !TypeEqual(filter.Query.Type, function.Parameters[1].Type) {
+		return fmt.Errorf("filter_joined_contains_casefolded query must be its second direct string parameter")
+	}
+	return nil
+}
+
 func functionContainsOptional(function Function) bool {
 	if function.ReturnType.Kind == TypeOptional || exprContainsOptional(function.Body) {
 		return true
@@ -1385,6 +1558,8 @@ func exprContainsOptional(expression Expr) bool {
 		return expression.ListFilter != nil && expression.ListFilter.Values != nil && expression.ListFilter.Key != nil && (exprContainsOptional(*expression.ListFilter.Values) || exprContainsOptional(*expression.ListFilter.Key))
 	case ExprListFilterContainsCaseFolded:
 		return expression.ListFilterContainsCaseFolded != nil && expression.ListFilterContainsCaseFolded.Values != nil && expression.ListFilterContainsCaseFolded.Query != nil && (exprContainsOptional(*expression.ListFilterContainsCaseFolded.Values) || exprContainsOptional(*expression.ListFilterContainsCaseFolded.Query))
+	case ExprListFilterJoinedContainsCaseFolded:
+		return expression.ListFilterJoinedContainsCaseFolded != nil && expression.ListFilterJoinedContainsCaseFolded.Values != nil && expression.ListFilterJoinedContainsCaseFolded.Query != nil && (exprContainsOptional(*expression.ListFilterJoinedContainsCaseFolded.Values) || exprContainsOptional(*expression.ListFilterJoinedContainsCaseFolded.Query))
 	}
 	return false
 }
@@ -1461,6 +1636,8 @@ func exprContainsRecordConstruction(expression Expr) bool {
 		return expression.ListFilter != nil && expression.ListFilter.Values != nil && expression.ListFilter.Key != nil && (exprContainsRecordConstruction(*expression.ListFilter.Values) || exprContainsRecordConstruction(*expression.ListFilter.Key))
 	case ExprListFilterContainsCaseFolded:
 		return expression.ListFilterContainsCaseFolded != nil && expression.ListFilterContainsCaseFolded.Values != nil && expression.ListFilterContainsCaseFolded.Query != nil && (exprContainsRecordConstruction(*expression.ListFilterContainsCaseFolded.Values) || exprContainsRecordConstruction(*expression.ListFilterContainsCaseFolded.Query))
+	case ExprListFilterJoinedContainsCaseFolded:
+		return expression.ListFilterJoinedContainsCaseFolded != nil && expression.ListFilterJoinedContainsCaseFolded.Values != nil && expression.ListFilterJoinedContainsCaseFolded.Query != nil && (exprContainsRecordConstruction(*expression.ListFilterJoinedContainsCaseFolded.Values) || exprContainsRecordConstruction(*expression.ListFilterJoinedContainsCaseFolded.Query))
 	default:
 		return false
 	}
@@ -1492,6 +1669,8 @@ func exprContainsRecordEquality(expression Expr) bool {
 		return expression.ListFilter != nil && expression.ListFilter.Values != nil && expression.ListFilter.Key != nil && (exprContainsRecordEquality(*expression.ListFilter.Values) || exprContainsRecordEquality(*expression.ListFilter.Key))
 	case ExprListFilterContainsCaseFolded:
 		return expression.ListFilterContainsCaseFolded != nil && expression.ListFilterContainsCaseFolded.Values != nil && expression.ListFilterContainsCaseFolded.Query != nil && (exprContainsRecordEquality(*expression.ListFilterContainsCaseFolded.Values) || exprContainsRecordEquality(*expression.ListFilterContainsCaseFolded.Query))
+	case ExprListFilterJoinedContainsCaseFolded:
+		return expression.ListFilterJoinedContainsCaseFolded != nil && expression.ListFilterJoinedContainsCaseFolded.Values != nil && expression.ListFilterJoinedContainsCaseFolded.Query != nil && (exprContainsRecordEquality(*expression.ListFilterJoinedContainsCaseFolded.Values) || exprContainsRecordEquality(*expression.ListFilterJoinedContainsCaseFolded.Query))
 	case ExprRecordConstruct:
 		if expression.Record == nil {
 			return false

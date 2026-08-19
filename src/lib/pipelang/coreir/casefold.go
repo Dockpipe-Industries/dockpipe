@@ -58,6 +58,29 @@ func ContainsCaseFoldedText(value, query string) (bool, error) {
 	return strings.Contains(foldValidCaseText(value), foldValidCaseText(query)), nil
 }
 
+// ContainsJoinedCaseFoldedText validates exactly five selected field values
+// and the query, trims the query with the pinned Unicode White_Space contract,
+// joins the fields in selector order with one U+0020 SPACE, then performs the
+// same full-default case-folded contiguous containment check.
+func ContainsJoinedCaseFoldedText(fields []string, query string) (bool, error) {
+	if len(fields) != 5 {
+		return false, fmt.Errorf("joined value has %d fields, want 5", len(fields))
+	}
+	for index, field := range fields {
+		if err := ValidateText(field); err != nil {
+			return false, fmt.Errorf("field %d %w", index, err)
+		}
+	}
+	if err := ValidateText(query); err != nil {
+		return false, fmt.Errorf("query %w", err)
+	}
+	trimmed, err := TrimText(query)
+	if err != nil {
+		return false, fmt.Errorf("query %w", err)
+	}
+	return strings.Contains(foldValidCaseText(strings.Join(fields, " ")), foldValidCaseText(trimmed)), nil
+}
+
 func foldValidCaseText(value string) string {
 	var folded strings.Builder
 	folded.Grow(len(value))

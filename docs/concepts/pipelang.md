@@ -850,6 +850,43 @@ Normalization, case folding, locale tailoring, grapheme segmentation, scalar enu
 collapse, replacement, composition, trimming record fields or lists, Application IR, Step-8
 control flow, effects, and additional backends remain outside the production source contract.
 
+The explicit `v0.27.0` contract preserves every `v0.26.0` rule and admits only this exact direct
+five-field joined record-list search:
+
+```pipelang
+public List<ContainerRow> SearchRows(List<ContainerRow> values, string query) =>
+    filter_joined_contains_casefolded(
+        values,
+        ContainerRow.Name,
+        ContainerRow.State,
+        ContainerRow.Image,
+        ContainerRow.Ports,
+        ContainerRow.Created,
+        query
+    );
+```
+
+`filter_joined_contains_casefolded` requires exactly two direct parameters, `List<R>` then
+`string`, and the identical `List<R>` return. Its five selectors are distinct existing public
+`string` fields of the same existing public primitive record `R`; selectors are static source
+operands, not runtime field values. The complete list, every record and every field, and the query
+are validated as canonical values and strict UTF-8 before filtering. Selected field values are
+joined in source order with exactly one U+0020 SPACE. The query is trimmed with the pinned
+`v0.26.0` Unicode 17.0.0 `White_Space` rule, then joined text and query use the pinned `v0.23.0`
+Unicode 17.0.0 full-default C/F case-folded contiguous containment rule. An empty trimmed query
+retains every row; matches retain stable input order; no matches return canonical non-nil empty
+storage; results use fresh copied list and record storage.
+
+Callable identity remains `(List<R>, string) -> List<R>` and existing list, record, field, and
+primitive identities are reused. `pipelang.compiler.v1` and `pipelang.semantic.v1` remain
+unchanged. Typed HIR and target-neutral Core carry one explicit
+`list_filter_joined_contains_case_folded_text` node with direct list/query references and the five
+ordered field identities, names, and declaration positions. `v0.1.0` through `v0.26.0` reject the
+source, HIR, and executable Core forms without implicit migration. Arbitrary selector counts,
+field-selector values, predicates, regex, normalization, locale tailoring, sorting, nested/general
+composition, Application IR, Step-8 control flow, effects, and additional backends remain outside
+the production source contract.
+
 ## Artifacts
 
 Compile emits:

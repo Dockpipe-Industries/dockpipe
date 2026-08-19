@@ -596,6 +596,10 @@ func (p *parser) parsePrimary() (Expr, error) {
 				if hasPrimitiveRecordListFilterContainsCaseFoldedSourceContract(p.languageContract) {
 					return p.parseListFilterContainsCaseFolded()
 				}
+			case "filter_joined_contains_casefolded":
+				if hasPrimitiveRecordListFilterJoinedContainsCaseFoldedSourceContract(p.languageContract) {
+					return p.parseListFilterJoinedContainsCaseFolded()
+				}
 			}
 		}
 		if hasSnapshotResultSourceContract(p.languageContract) {
@@ -1063,6 +1067,57 @@ func (p *parser) parseListFilterContainsCaseFolded() (Expr, error) {
 		FieldSpan:  field.span,
 		Query:      query,
 		Span:       mergeSpans(start.span, end.span),
+	}, nil
+}
+
+func (p *parser) parseListFilterJoinedContainsCaseFolded() (Expr, error) {
+	start, err := p.expect(tokIdent)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := p.expect(tokLParen); err != nil {
+		return nil, err
+	}
+	values, err := p.parseExpr(1)
+	if err != nil {
+		return nil, err
+	}
+	selectors := make([]ListTextFieldSelector, 0, 5)
+	for range 5 {
+		if _, err := p.expect(tokComma); err != nil {
+			return nil, err
+		}
+		recordName, err := p.expect(tokIdent)
+		if err != nil {
+			return nil, err
+		}
+		if _, err := p.expect(tokDot); err != nil {
+			return nil, err
+		}
+		field, err := p.expect(tokIdent)
+		if err != nil {
+			return nil, err
+		}
+		selectors = append(selectors, ListTextFieldSelector{
+			RecordType: UnresolvedTypeRef{Kind: TypeRefNamed, Name: recordName.lit, Span: recordName.span},
+			Field:      field.lit,
+			FieldSpan:  field.span,
+		})
+	}
+	if _, err := p.expect(tokComma); err != nil {
+		return nil, err
+	}
+	query, err := p.parseExpr(1)
+	if err != nil {
+		return nil, err
+	}
+	end, err := p.expect(tokRParen)
+	if err != nil {
+		return nil, err
+	}
+	return &ListFilterJoinedContainsCaseFoldedExpr{
+		Values: values, Selectors: selectors, Query: query,
+		Span: mergeSpans(start.span, end.span),
 	}, nil
 }
 
