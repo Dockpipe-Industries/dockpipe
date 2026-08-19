@@ -620,6 +620,41 @@ hashing, ordering, implicit defaults, extraction beyond `value_or`, Optional/lis
 record nesting, Step-8 control flow, effects, Application IR, and additional backends remain outside
 the production source contract.
 
+The explicit `v0.19.0` contract preserves every `v0.18.0` rule and admits one bounded read-only
+snapshot envelope: `Result<List<R>, string>` for one existing public primitive record `R`. The
+complete added source surface is six exact direct class-method shapes:
+
+```pipelang
+public Result<List<Row>, string> RowsOk(List<Row> value) =>
+    ok<List<Row>, string>(value);
+public Result<List<Row>, string> RowsFailed(string error) =>
+    err<List<Row>, string>(error);
+public Result<List<Row>, string> ForwardRows(Result<List<Row>, string> value) => value;
+public bool RowsSucceeded(Result<List<Row>, string> value) => is_ok(value);
+public List<Row> RowsOr(Result<List<Row>, string> value, List<Row> fallback) =>
+    success_or(value, fallback);
+public string ErrorOr(Result<List<Row>, string> value, string fallback) =>
+    failure_or(value, fallback);
+```
+
+The type reuses `pipelang:result`, `pipelang:list`, the existing record identity, and primitive
+`string`; `pipelang.compiler.v1` and `pipelang.semantic.v1` remain unchanged. `ok` and `err`
+require explicit identical success/failure type arguments and their sole corresponding direct
+parameter. Identity transport returns the sole identical Result parameter. `is_ok` observes only
+the canonical tag. `success_or` and `failure_or` validate both the Result and fallback before
+selection. Evaluation and the Core-only Go backend validate every active payload, list element,
+record field, and strict UTF-8 string, then copy list and record storage for construction,
+transport, and success selection.
+
+Typed HIR and target-neutral Core carry explicit `result_ok`, `result_err`, `result_is_ok`,
+`result_success_or`, and `result_failure_or` nodes. `v0.1.0` through `v0.18.0` reject this envelope
+without implicit migration. Invalid payloads, placements, or signatures use `PL3006`; computed,
+reordered, additional, or otherwise non-direct bodies use `PL3009`; malformed HIR and Core remain
+`PL3026` and `PL3027`. General Result construction or consumption, arithmetic-Result construction,
+propagation, matching, chaining, fields, nesting, arbitrary payloads, list iteration/filtering/
+sorting/indexing, Step-8 control flow, effects, Application IR, and additional backends remain
+outside the production source contract.
+
 ## Artifacts
 
 Compile emits:

@@ -34,7 +34,7 @@ func (e *Error) Error() string {
 
 // Generate accepts Core IR only and returns deterministic, gofmt-formatted Go.
 func Generate(program coreir.Program) ([]byte, error) {
-	if (program.LanguageContract != coreir.LanguageContractV010 && program.LanguageContract != coreir.LanguageContractV020 && program.LanguageContract != coreir.LanguageContractV030 && program.LanguageContract != coreir.LanguageContractV040 && program.LanguageContract != coreir.LanguageContractV050 && program.LanguageContract != coreir.LanguageContractV060 && program.LanguageContract != coreir.LanguageContractV070 && program.LanguageContract != coreir.LanguageContractV080 && program.LanguageContract != coreir.LanguageContractV090 && program.LanguageContract != coreir.LanguageContractV100 && program.LanguageContract != coreir.LanguageContractV110 && program.LanguageContract != coreir.LanguageContractV120 && program.LanguageContract != coreir.LanguageContractV130 && program.LanguageContract != coreir.LanguageContractV140 && program.LanguageContract != coreir.LanguageContractV150 && program.LanguageContract != coreir.LanguageContractV160 && program.LanguageContract != coreir.LanguageContractV170 && program.LanguageContract != coreir.LanguageContractV180) || program.CompilerContract != coreir.CompilerContractV1 {
+	if (program.LanguageContract != coreir.LanguageContractV010 && program.LanguageContract != coreir.LanguageContractV020 && program.LanguageContract != coreir.LanguageContractV030 && program.LanguageContract != coreir.LanguageContractV040 && program.LanguageContract != coreir.LanguageContractV050 && program.LanguageContract != coreir.LanguageContractV060 && program.LanguageContract != coreir.LanguageContractV070 && program.LanguageContract != coreir.LanguageContractV080 && program.LanguageContract != coreir.LanguageContractV090 && program.LanguageContract != coreir.LanguageContractV100 && program.LanguageContract != coreir.LanguageContractV110 && program.LanguageContract != coreir.LanguageContractV120 && program.LanguageContract != coreir.LanguageContractV130 && program.LanguageContract != coreir.LanguageContractV140 && program.LanguageContract != coreir.LanguageContractV150 && program.LanguageContract != coreir.LanguageContractV160 && program.LanguageContract != coreir.LanguageContractV170 && program.LanguageContract != coreir.LanguageContractV180 && program.LanguageContract != coreir.LanguageContractV190) || program.CompilerContract != coreir.CompilerContractV1 {
 		return nil, &Error{Code: "PLGO0001", Message: fmt.Sprintf("unsupported Core IR contracts language=%q compiler=%q", program.LanguageContract, program.CompilerContract)}
 	}
 	functions := append([]coreir.Function(nil), program.Functions...)
@@ -60,24 +60,28 @@ func Generate(program coreir.Program) ([]byte, error) {
 	needsList := programNeedsListSupport(functions)
 	needsListCount := programNeedsListCount(functions)
 	needsListAppend := programNeedsListAppend(functions)
+	needsSnapshotResult := programNeedsSnapshotResult(functions)
 	optionalTypeName := optionalGoTypeName(functions)
-	if needsOptional && program.LanguageContract != coreir.LanguageContractV130 && program.LanguageContract != coreir.LanguageContractV140 && program.LanguageContract != coreir.LanguageContractV150 && program.LanguageContract != coreir.LanguageContractV160 && program.LanguageContract != coreir.LanguageContractV170 && program.LanguageContract != coreir.LanguageContractV180 {
+	if needsOptional && program.LanguageContract != coreir.LanguageContractV130 && program.LanguageContract != coreir.LanguageContractV140 && program.LanguageContract != coreir.LanguageContractV150 && program.LanguageContract != coreir.LanguageContractV160 && program.LanguageContract != coreir.LanguageContractV170 && program.LanguageContract != coreir.LanguageContractV180 && program.LanguageContract != coreir.LanguageContractV190 {
 		return nil, &Error{Code: "PLGO0001", Message: fmt.Sprintf("primitive Optional Core requires language contract %q", coreir.LanguageContractV130)}
 	}
-	if needsOptionalDefault && program.LanguageContract != coreir.LanguageContractV140 && program.LanguageContract != coreir.LanguageContractV150 && program.LanguageContract != coreir.LanguageContractV160 && program.LanguageContract != coreir.LanguageContractV170 && program.LanguageContract != coreir.LanguageContractV180 {
+	if needsOptionalDefault && program.LanguageContract != coreir.LanguageContractV140 && program.LanguageContract != coreir.LanguageContractV150 && program.LanguageContract != coreir.LanguageContractV160 && program.LanguageContract != coreir.LanguageContractV170 && program.LanguageContract != coreir.LanguageContractV180 && program.LanguageContract != coreir.LanguageContractV190 {
 		return nil, &Error{Code: "PLGO0001", Message: fmt.Sprintf("primitive Optional defaulting Core requires language contract %q", coreir.LanguageContractV140)}
 	}
-	if needsRecordOptional && program.LanguageContract != coreir.LanguageContractV180 {
+	if needsRecordOptional && program.LanguageContract != coreir.LanguageContractV180 && program.LanguageContract != coreir.LanguageContractV190 {
 		return nil, &Error{Code: "PLGO0001", Message: fmt.Sprintf("primitive-record Optional Core requires language contract %q", coreir.LanguageContractV180)}
 	}
-	if needsList && program.LanguageContract != coreir.LanguageContractV150 && program.LanguageContract != coreir.LanguageContractV160 && program.LanguageContract != coreir.LanguageContractV170 && program.LanguageContract != coreir.LanguageContractV180 {
+	if needsList && program.LanguageContract != coreir.LanguageContractV150 && program.LanguageContract != coreir.LanguageContractV160 && program.LanguageContract != coreir.LanguageContractV170 && program.LanguageContract != coreir.LanguageContractV180 && program.LanguageContract != coreir.LanguageContractV190 {
 		return nil, &Error{Code: "PLGO0001", Message: fmt.Sprintf("record-list Core requires language contract %q", coreir.LanguageContractV150)}
 	}
-	if needsListCount && program.LanguageContract != coreir.LanguageContractV160 && program.LanguageContract != coreir.LanguageContractV170 && program.LanguageContract != coreir.LanguageContractV180 {
+	if needsListCount && program.LanguageContract != coreir.LanguageContractV160 && program.LanguageContract != coreir.LanguageContractV170 && program.LanguageContract != coreir.LanguageContractV180 && program.LanguageContract != coreir.LanguageContractV190 {
 		return nil, &Error{Code: "PLGO0001", Message: fmt.Sprintf("record-list count Core requires language contract %q", coreir.LanguageContractV160)}
 	}
-	if needsListAppend && program.LanguageContract != coreir.LanguageContractV170 && program.LanguageContract != coreir.LanguageContractV180 {
+	if needsListAppend && program.LanguageContract != coreir.LanguageContractV170 && program.LanguageContract != coreir.LanguageContractV180 && program.LanguageContract != coreir.LanguageContractV190 {
 		return nil, &Error{Code: "PLGO0001", Message: fmt.Sprintf("record-list append Core requires language contract %q", coreir.LanguageContractV170)}
+	}
+	if needsSnapshotResult && program.LanguageContract != coreir.LanguageContractV190 {
+		return nil, &Error{Code: "PLGO0001", Message: fmt.Sprintf("snapshot Result Core requires language contract %q", coreir.LanguageContractV190)}
 	}
 	if needsText {
 		out.WriteString("import \"unicode/utf8\"\n\n")
@@ -102,6 +106,16 @@ func Generate(program coreir.Program) ([]byte, error) {
 	}
 	for _, list := range lists {
 		emitListSupport(&out, list, programAppendsList(functions, list))
+	}
+	results, err := collectSnapshotResultTypes(functions)
+	if err != nil {
+		return nil, &Error{Code: "PLGO0001", Message: err.Error()}
+	}
+	if len(results) > 0 {
+		emitSnapshotResultType(&out)
+		for _, result := range results {
+			emitSnapshotResultSupport(&out, result)
+		}
 	}
 	seen := map[string]string{}
 	seenIdentities := map[string]struct{}{}
@@ -171,6 +185,9 @@ func emitFunction(out *strings.Builder, name string, function coreir.Function, o
 		if parameter.Type.Kind == coreir.TypeList {
 			fmt.Fprintf(out, "\t%s(p%d)\n", listValidationName(parameter.Type), index)
 		}
+		if isSnapshotResultType(parameter.Type) {
+			fmt.Fprintf(out, "\t%s(p%d)\n", snapshotResultValidationName(parameter.Type), index)
+		}
 	}
 	out.WriteString("\treturn ")
 	body, err := emitExpr(function.Body, function.Parameters, optionalTypeName)
@@ -195,6 +212,9 @@ func emitExpr(expr coreir.Expr, parameters []coreir.Parameter, optionalTypeName 
 		}
 		if expr.Type.Kind == coreir.TypeList {
 			return fmt.Sprintf("%s(p%d)", listCloneName(expr.Type), *expr.Parameter), nil
+		}
+		if isSnapshotResultType(expr.Type) {
+			return fmt.Sprintf("%s(p%d)", snapshotResultCloneName(expr.Type), *expr.Parameter), nil
 		}
 		return fmt.Sprintf("p%d", *expr.Parameter), nil
 	case coreir.ExprUnary:
@@ -355,6 +375,59 @@ func emitExpr(expr coreir.Expr, parameters []coreir.Parameter, optionalTypeName 
 			return "", fmt.Errorf("list append expression is incomplete")
 		}
 		return fmt.Sprintf("%s(p%d, p%d)", listAppendName(expr.Type), *expr.ListAppend.Values.Parameter, *expr.ListAppend.Value.Parameter), nil
+	case coreir.ExprResultOK:
+		if expr.ResultOK == nil || expr.ResultOK.Value == nil || !isSnapshotResultType(expr.Type) {
+			return "", fmt.Errorf("result ok expression is incomplete")
+		}
+		value, err := emitExpr(*expr.ResultOK.Value, parameters, optionalTypeName)
+		if err != nil {
+			return "", err
+		}
+		return snapshotResultOKName(expr.Type) + "(" + value + ")", nil
+	case coreir.ExprResultErr:
+		if expr.ResultErr == nil || expr.ResultErr.Error == nil || !isSnapshotResultType(expr.Type) {
+			return "", fmt.Errorf("result err expression is incomplete")
+		}
+		failure, err := emitExpr(*expr.ResultErr.Error, parameters, optionalTypeName)
+		if err != nil {
+			return "", err
+		}
+		return snapshotResultErrName(expr.Type) + "(" + failure + ")", nil
+	case coreir.ExprResultIsOK:
+		if expr.ResultIsOK == nil || expr.ResultIsOK.Value == nil || !isSnapshotResultType(expr.ResultIsOK.Value.Type) {
+			return "", fmt.Errorf("result is_ok expression is incomplete")
+		}
+		value, err := emitExpr(*expr.ResultIsOK.Value, parameters, optionalTypeName)
+		if err != nil {
+			return "", err
+		}
+		return snapshotResultIsOKName(expr.ResultIsOK.Value.Type) + "(" + value + ")", nil
+	case coreir.ExprResultSuccessOr:
+		if expr.SuccessOr == nil || expr.SuccessOr.Value == nil || expr.SuccessOr.Fallback == nil || !isSnapshotResultType(expr.SuccessOr.Value.Type) {
+			return "", fmt.Errorf("result success_or expression is incomplete")
+		}
+		value, err := emitExpr(*expr.SuccessOr.Value, parameters, optionalTypeName)
+		if err != nil {
+			return "", err
+		}
+		fallback, err := emitExpr(*expr.SuccessOr.Fallback, parameters, optionalTypeName)
+		if err != nil {
+			return "", err
+		}
+		return snapshotResultSuccessOrName(expr.SuccessOr.Value.Type) + "(" + value + ", " + fallback + ")", nil
+	case coreir.ExprResultFailureOr:
+		if expr.FailureOr == nil || expr.FailureOr.Value == nil || expr.FailureOr.Fallback == nil || !isSnapshotResultType(expr.FailureOr.Value.Type) {
+			return "", fmt.Errorf("result failure_or expression is incomplete")
+		}
+		value, err := emitExpr(*expr.FailureOr.Value, parameters, optionalTypeName)
+		if err != nil {
+			return "", err
+		}
+		fallback, err := emitExpr(*expr.FailureOr.Fallback, parameters, optionalTypeName)
+		if err != nil {
+			return "", err
+		}
+		return snapshotResultFailureOrName(expr.FailureOr.Value.Type) + "(" + value + ", " + fallback + ")", nil
 	default:
 		return "", fmt.Errorf("unsupported expression kind %q", expr.Kind)
 	}
@@ -415,14 +488,24 @@ func goType(typ coreir.Type, optionalTypeName string) (string, error) {
 		return recordGoTypeName(typ), nil
 	}
 	if typ.Kind == coreir.TypeResult {
-		if typ.Result == nil || typ.Result.Failure.Kind != coreir.TypeArithmeticError {
-			return "", fmt.Errorf("Go checked-arithmetic backend supports ArithmeticError Result failures only")
+		if typ.Result == nil {
+			return "", fmt.Errorf("Go Result backend requires success and failure types")
 		}
 		success, err := goType(typ.Result.Success, optionalTypeName)
 		if err != nil {
 			return "", err
 		}
-		return "PipeLangArithmeticResult[" + success + "]", nil
+		if typ.Result.Failure.Kind == coreir.TypeArithmeticError {
+			return "PipeLangArithmeticResult[" + success + "]", nil
+		}
+		if !isSnapshotResultType(typ) {
+			return "", fmt.Errorf("Go Result backend supports only arithmetic and snapshot Result shapes")
+		}
+		failure, err := goType(typ.Result.Failure, optionalTypeName)
+		if err != nil {
+			return "", err
+		}
+		return "PipeLangResult[" + success + ", " + failure + "]", nil
 	}
 	if typ.Kind == coreir.TypeNumeric {
 		if typ.Numeric == nil {
@@ -530,6 +613,9 @@ func typeNeedsTextSupport(value coreir.Type) bool {
 	if value.List != nil {
 		return typeNeedsTextSupport(value.List.Element)
 	}
+	if value.Result != nil {
+		return typeNeedsTextSupport(value.Result.Success) || typeNeedsTextSupport(value.Result.Failure)
+	}
 	return false
 }
 
@@ -549,14 +635,24 @@ func programNeedsOptionalSupport(functions []coreir.Function) bool {
 
 func programNeedsListSupport(functions []coreir.Function) bool {
 	for _, function := range functions {
-		if function.ReturnType.Kind == coreir.TypeList || function.Body.Type.Kind == coreir.TypeList {
+		if typeContainsList(function.ReturnType) || typeContainsList(function.Body.Type) {
 			return true
 		}
 		for _, parameter := range function.Parameters {
-			if parameter.Type.Kind == coreir.TypeList {
+			if typeContainsList(parameter.Type) {
 				return true
 			}
 		}
+	}
+	return false
+}
+
+func typeContainsList(value coreir.Type) bool {
+	if value.Kind == coreir.TypeList {
+		return true
+	}
+	if value.Result != nil {
+		return typeContainsList(value.Result.Success) || typeContainsList(value.Result.Failure)
 	}
 	return false
 }
@@ -781,6 +877,12 @@ func collectRecordTypes(functions []coreir.Function) ([]coreir.Type, error) {
 	identityByGoName := map[string]string{}
 	var collect func(coreir.Type) error
 	collect = func(value coreir.Type) error {
+		if value.Kind == coreir.TypeResult && value.Result != nil {
+			if err := collect(value.Result.Success); err != nil {
+				return err
+			}
+			return collect(value.Result.Failure)
+		}
 		if value.Kind == coreir.TypeList && value.List != nil {
 			return collect(value.List.Element)
 		}
@@ -834,7 +936,14 @@ func collectRecordTypes(functions []coreir.Function) ([]coreir.Type, error) {
 
 func collectListTypes(functions []coreir.Function) ([]coreir.Type, error) {
 	byElement := map[string]coreir.Type{}
-	collect := func(value coreir.Type) error {
+	var collect func(coreir.Type) error
+	collect = func(value coreir.Type) error {
+		if value.Kind == coreir.TypeResult && value.Result != nil {
+			if err := collect(value.Result.Success); err != nil {
+				return err
+			}
+			return collect(value.Result.Failure)
+		}
 		if value.Kind != coreir.TypeList {
 			return nil
 		}
@@ -931,6 +1040,120 @@ func listSingletonName(list coreir.Type) string {
 	return "pipelangSingletonList" + listHelperSuffix(list)
 }
 func listAppendName(list coreir.Type) string { return "pipelangAppendList" + listHelperSuffix(list) }
+
+func isSnapshotResultType(value coreir.Type) bool {
+	return value.Kind == coreir.TypeResult && value.Result != nil && value.Result.Success.Kind == coreir.TypeList && value.Result.Success.List != nil && value.Result.Success.List.Element.Kind == coreir.TypeRecord && isTextType(value.Result.Failure)
+}
+
+func programNeedsSnapshotResult(functions []coreir.Function) bool {
+	for _, function := range functions {
+		if isSnapshotResultType(function.ReturnType) || isSnapshotResultType(function.Body.Type) {
+			return true
+		}
+		for _, parameter := range function.Parameters {
+			if isSnapshotResultType(parameter.Type) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func collectSnapshotResultTypes(functions []coreir.Function) ([]coreir.Type, error) {
+	byIdentity := map[string]coreir.Type{}
+	collect := func(value coreir.Type) error {
+		if !isSnapshotResultType(value) {
+			return nil
+		}
+		identity := value.Result.Success.List.Element.Identity
+		if identity == nil || identity.PackageID == "" || identity.Path == "" {
+			return fmt.Errorf("snapshot Result is missing its record element identity")
+		}
+		key := identity.PackageID + "\x00" + identity.Path
+		if previous, exists := byIdentity[key]; exists && !coreir.TypeEqual(previous, value) {
+			return fmt.Errorf("snapshot Result element identity %q has conflicting schemas", identity.Path)
+		}
+		byIdentity[key] = value
+		return nil
+	}
+	for _, function := range functions {
+		if err := collect(function.ReturnType); err != nil {
+			return nil, err
+		}
+		if err := collect(function.Body.Type); err != nil {
+			return nil, err
+		}
+		for _, parameter := range function.Parameters {
+			if err := collect(parameter.Type); err != nil {
+				return nil, err
+			}
+		}
+	}
+	keys := make([]string, 0, len(byIdentity))
+	for key := range byIdentity {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	results := make([]coreir.Type, 0, len(keys))
+	for _, key := range keys {
+		results = append(results, byIdentity[key])
+	}
+	return results, nil
+}
+
+func emitSnapshotResultType(out *strings.Builder) {
+	out.WriteString("type PipeLangResult[S, E any] struct {\n\tOK bool\n\tValue S\n\tError E\n}\n\n")
+}
+
+func snapshotResultSuffix(result coreir.Type) string {
+	return listHelperSuffix(result.Result.Success)
+}
+
+func snapshotResultValidationName(result coreir.Type) string {
+	return "pipelangValidateSnapshotResult" + snapshotResultSuffix(result)
+}
+
+func snapshotResultCloneName(result coreir.Type) string {
+	return "pipelangCloneSnapshotResult" + snapshotResultSuffix(result)
+}
+
+func snapshotResultOKName(result coreir.Type) string {
+	return "pipelangSnapshotResultOK" + snapshotResultSuffix(result)
+}
+
+func snapshotResultErrName(result coreir.Type) string {
+	return "pipelangSnapshotResultErr" + snapshotResultSuffix(result)
+}
+
+func snapshotResultIsOKName(result coreir.Type) string {
+	return "pipelangSnapshotResultIsOK" + snapshotResultSuffix(result)
+}
+
+func snapshotResultSuccessOrName(result coreir.Type) string {
+	return "pipelangSnapshotResultSuccessOr" + snapshotResultSuffix(result)
+}
+
+func snapshotResultFailureOrName(result coreir.Type) string {
+	return "pipelangSnapshotResultFailureOr" + snapshotResultSuffix(result)
+}
+
+func emitSnapshotResultSupport(out *strings.Builder, result coreir.Type) {
+	list := result.Result.Success
+	elementType := recordGoTypeName(list.List.Element)
+	resultType := fmt.Sprintf("PipeLangResult[[]%s, string]", elementType)
+	validate := snapshotResultValidationName(result)
+	fmt.Fprintf(out, "func %s(value %s) {\n", validate, resultType)
+	out.WriteString("\tif value.OK {\n")
+	fmt.Fprintf(out, "\t\t%s(value.Value)\n", listValidationName(list))
+	out.WriteString("\t\tif value.Error != \"\" {\n\t\t\tpanic(\"invalid PipeLang snapshot Result value\")\n\t\t}\n\t\treturn\n\t}\n")
+	out.WriteString("\tif value.Value != nil {\n\t\tpanic(\"invalid PipeLang snapshot Result value\")\n\t}\n\tpipelangValidateText(value.Error)\n}\n\n")
+	fmt.Fprintf(out, "func %s(value %s) %s {\n\t%s(value)\n\tif value.OK {\n\t\tvalue.Value = %s(value.Value)\n\t}\n\treturn value\n}\n\n", snapshotResultCloneName(result), resultType, resultType, validate, listCloneName(list))
+	fmt.Fprintf(out, "func %s(value []%s) %s {\n\treturn %s{OK: true, Value: %s(value)}\n}\n\n", snapshotResultOKName(result), elementType, resultType, resultType, listCloneName(list))
+	fmt.Fprintf(out, "func %s(failure string) %s {\n\tpipelangValidateText(failure)\n\treturn %s{Error: failure}\n}\n\n", snapshotResultErrName(result), resultType, resultType)
+	fmt.Fprintf(out, "func %s(value %s) bool {\n\t%s(value)\n\treturn value.OK\n}\n\n", snapshotResultIsOKName(result), resultType, validate)
+	fmt.Fprintf(out, "func %s(value %s, fallback []%s) []%s {\n\t%s(value)\n\t%s(fallback)\n\tif value.OK {\n\t\treturn %s(value.Value)\n\t}\n\treturn %s(fallback)\n}\n\n", snapshotResultSuccessOrName(result), resultType, elementType, elementType, validate, listValidationName(list), listCloneName(list), listCloneName(list))
+	fmt.Fprintf(out, "func %s(value %s, fallback string) string {\n\t%s(value)\n\tpipelangValidateText(fallback)\n\tif value.OK {\n\t\treturn fallback\n\t}\n\treturn value.Error\n}\n\n", snapshotResultFailureOrName(result), resultType, validate)
+}
 
 func emitRecordType(out *strings.Builder, record coreir.Type, emitConstructor bool, optionalTypeName string) {
 	typeName := recordGoTypeName(record)
@@ -1065,6 +1288,16 @@ func expressionNeedsTextSupport(expression coreir.Expr) bool {
 		return expression.ListCount != nil && expression.ListCount.Value != nil && expressionNeedsTextSupport(*expression.ListCount.Value)
 	case coreir.ExprListAppend:
 		return expression.ListAppend != nil && expression.ListAppend.Values != nil && expression.ListAppend.Value != nil && (expressionNeedsTextSupport(*expression.ListAppend.Values) || expressionNeedsTextSupport(*expression.ListAppend.Value))
+	case coreir.ExprResultOK:
+		return expression.ResultOK != nil && expression.ResultOK.Value != nil && expressionNeedsTextSupport(*expression.ResultOK.Value)
+	case coreir.ExprResultErr:
+		return true
+	case coreir.ExprResultIsOK:
+		return expression.ResultIsOK != nil && expression.ResultIsOK.Value != nil && expressionNeedsTextSupport(*expression.ResultIsOK.Value)
+	case coreir.ExprResultSuccessOr:
+		return expression.SuccessOr != nil && expression.SuccessOr.Value != nil && expression.SuccessOr.Fallback != nil && (expressionNeedsTextSupport(*expression.SuccessOr.Value) || expressionNeedsTextSupport(*expression.SuccessOr.Fallback))
+	case coreir.ExprResultFailureOr:
+		return true
 	default:
 		return false
 	}
@@ -1112,7 +1345,7 @@ func pipelangCompareOrdinalText(left, right string) int {
 
 func programNeedsArithmeticResult(functions []coreir.Function) bool {
 	for _, function := range functions {
-		if function.ReturnType.Kind == coreir.TypeResult {
+		if function.ReturnType.Kind == coreir.TypeResult && function.ReturnType.Result != nil && function.ReturnType.Result.Failure.Kind == coreir.TypeArithmeticError {
 			return true
 		}
 	}

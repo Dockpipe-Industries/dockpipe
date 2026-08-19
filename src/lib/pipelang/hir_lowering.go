@@ -20,7 +20,7 @@ func LowerSemanticMethodToHIR(analysis *Analysis, identity SemanticIdentity) (hi
 		return hir.Program{}, hirLoweringError(analysis, Span{}, identity, "typed HIR lowering requires a successful semantic module analysis")
 	}
 	if !isPipeLangSemanticContract(analysis.Modules.LanguageContract()) {
-		return hir.Program{}, hirLoweringError(analysis, analysis.Program.Span, identity, fmt.Sprintf("typed HIR lowering requires a supported post-legacy language contract through %q", PipeLangLanguageContractV180))
+		return hir.Program{}, hirLoweringError(analysis, analysis.Program.Span, identity, fmt.Sprintf("typed HIR lowering requires a supported post-legacy language contract through %q", PipeLangLanguageContractV190))
 	}
 	semantic, ok := analysis.SemanticIDs.LookupIdentity(identity)
 	if !ok || semantic.Kind != SemanticMethod {
@@ -83,6 +83,9 @@ func LowerSemanticMethodToHIR(analysis *Analysis, identity SemanticIdentity) (hi
 
 func lowerMethodBodyToHIR(analysis *Analysis, function SemanticIdentity, expression Expr, bindings map[string]hir.Binding, typeEnvironment map[string]ResolvedTypeRef, returnType ResolvedTypeRef) (hir.Expr, error) {
 	contract := analysis.Modules.LanguageContract()
+	if hasSnapshotResultSourceContract(contract) && (isResolvedSnapshotResult(returnType) || containsResultExpression(expression)) {
+		return lowerExprToHIR(analysis, function, expression, bindings, typeEnvironment)
+	}
 	if analysis.checked.isResolvedRecordType(returnType) {
 		if _, ok := expression.(*OptionalValueOrExpr); ok && hasPrimitiveRecordOptionalSourceContract(contract) {
 			return lowerExprToHIR(analysis, function, expression, bindings, typeEnvironment)
@@ -145,7 +148,7 @@ func lowerMethodBodyToHIR(analysis *Analysis, function SemanticIdentity, express
 			Binary: &hir.Binary{Operator: hir.OperatorDivide, Left: &left, Right: &right},
 		}, nil
 	}
-	if unary, ok := expression.(*UnaryExpr); ok && (contract == PipeLangLanguageContractV050 || contract == PipeLangLanguageContractV060 || contract == PipeLangLanguageContractV070 || contract == PipeLangLanguageContractV080 || contract == PipeLangLanguageContractV090 || contract == PipeLangLanguageContractV100 || contract == PipeLangLanguageContractV110 || contract == PipeLangLanguageContractV120 || contract == PipeLangLanguageContractV130 || contract == PipeLangLanguageContractV140 || contract == PipeLangLanguageContractV150 || contract == PipeLangLanguageContractV160 || contract == PipeLangLanguageContractV170 || contract == PipeLangLanguageContractV180) && unary.Op == "-" {
+	if unary, ok := expression.(*UnaryExpr); ok && (contract == PipeLangLanguageContractV050 || contract == PipeLangLanguageContractV060 || contract == PipeLangLanguageContractV070 || contract == PipeLangLanguageContractV080 || contract == PipeLangLanguageContractV090 || contract == PipeLangLanguageContractV100 || contract == PipeLangLanguageContractV110 || contract == PipeLangLanguageContractV120 || contract == PipeLangLanguageContractV130 || contract == PipeLangLanguageContractV140 || contract == PipeLangLanguageContractV150 || contract == PipeLangLanguageContractV160 || contract == PipeLangLanguageContractV170 || contract == PipeLangLanguageContractV180 || contract == PipeLangLanguageContractV190) && unary.Op == "-" {
 		operand, err := lowerExprToHIR(analysis, function, unary.Expr, bindings, typeEnvironment)
 		if err != nil {
 			return hir.Expr{}, err
@@ -182,9 +185,9 @@ func checkedArithmeticHIROperator(contract LanguageContract, binary *BinaryExpr)
 	case "+":
 		return hir.OperatorAdd, true
 	case "-":
-		return hir.OperatorSubtract, contract == PipeLangLanguageContractV030 || contract == PipeLangLanguageContractV040 || contract == PipeLangLanguageContractV050 || contract == PipeLangLanguageContractV060 || contract == PipeLangLanguageContractV070 || contract == PipeLangLanguageContractV080 || contract == PipeLangLanguageContractV090 || contract == PipeLangLanguageContractV100 || contract == PipeLangLanguageContractV110 || contract == PipeLangLanguageContractV120 || contract == PipeLangLanguageContractV130 || contract == PipeLangLanguageContractV140 || contract == PipeLangLanguageContractV150 || contract == PipeLangLanguageContractV160 || contract == PipeLangLanguageContractV170 || contract == PipeLangLanguageContractV180
+		return hir.OperatorSubtract, contract == PipeLangLanguageContractV030 || contract == PipeLangLanguageContractV040 || contract == PipeLangLanguageContractV050 || contract == PipeLangLanguageContractV060 || contract == PipeLangLanguageContractV070 || contract == PipeLangLanguageContractV080 || contract == PipeLangLanguageContractV090 || contract == PipeLangLanguageContractV100 || contract == PipeLangLanguageContractV110 || contract == PipeLangLanguageContractV120 || contract == PipeLangLanguageContractV130 || contract == PipeLangLanguageContractV140 || contract == PipeLangLanguageContractV150 || contract == PipeLangLanguageContractV160 || contract == PipeLangLanguageContractV170 || contract == PipeLangLanguageContractV180 || contract == PipeLangLanguageContractV190
 	case "*":
-		return hir.OperatorMultiply, contract == PipeLangLanguageContractV040 || contract == PipeLangLanguageContractV050 || contract == PipeLangLanguageContractV060 || contract == PipeLangLanguageContractV070 || contract == PipeLangLanguageContractV080 || contract == PipeLangLanguageContractV090 || contract == PipeLangLanguageContractV100 || contract == PipeLangLanguageContractV110 || contract == PipeLangLanguageContractV120 || contract == PipeLangLanguageContractV130 || contract == PipeLangLanguageContractV140 || contract == PipeLangLanguageContractV150 || contract == PipeLangLanguageContractV160 || contract == PipeLangLanguageContractV170 || contract == PipeLangLanguageContractV180
+		return hir.OperatorMultiply, contract == PipeLangLanguageContractV040 || contract == PipeLangLanguageContractV050 || contract == PipeLangLanguageContractV060 || contract == PipeLangLanguageContractV070 || contract == PipeLangLanguageContractV080 || contract == PipeLangLanguageContractV090 || contract == PipeLangLanguageContractV100 || contract == PipeLangLanguageContractV110 || contract == PipeLangLanguageContractV120 || contract == PipeLangLanguageContractV130 || contract == PipeLangLanguageContractV140 || contract == PipeLangLanguageContractV150 || contract == PipeLangLanguageContractV160 || contract == PipeLangLanguageContractV170 || contract == PipeLangLanguageContractV180 || contract == PipeLangLanguageContractV190
 	default:
 		return "", false
 	}
@@ -356,6 +359,49 @@ func lowerExprToHIR(analysis *Analysis, function SemanticIdentity, expression Ex
 		}
 		result.Kind = hir.ExprListAppend
 		result.ListAppend = &hir.ListAppend{Values: &values, Value: &value}
+	case *ResultOKExpr:
+		value, err := lowerExprToHIR(analysis, function, node.Value, bindings, typeEnvironment)
+		if err != nil {
+			return hir.Expr{}, err
+		}
+		result.Kind = hir.ExprResultOK
+		result.ResultOK = &hir.ResultOK{Value: &value}
+	case *ResultErrExpr:
+		failure, err := lowerExprToHIR(analysis, function, node.Error, bindings, typeEnvironment)
+		if err != nil {
+			return hir.Expr{}, err
+		}
+		result.Kind = hir.ExprResultErr
+		result.ResultErr = &hir.ResultErr{Error: &failure}
+	case *ResultIsOKExpr:
+		value, err := lowerExprToHIR(analysis, function, node.Value, bindings, typeEnvironment)
+		if err != nil {
+			return hir.Expr{}, err
+		}
+		result.Kind = hir.ExprResultIsOK
+		result.ResultIsOK = &hir.ResultIsOK{Value: &value}
+	case *ResultSuccessOrExpr:
+		value, err := lowerExprToHIR(analysis, function, node.Value, bindings, typeEnvironment)
+		if err != nil {
+			return hir.Expr{}, err
+		}
+		fallback, err := lowerExprToHIR(analysis, function, node.Fallback, bindings, typeEnvironment)
+		if err != nil {
+			return hir.Expr{}, err
+		}
+		result.Kind = hir.ExprResultSuccessOr
+		result.SuccessOr = &hir.ResultSuccessOr{Value: &value, Fallback: &fallback}
+	case *ResultFailureOrExpr:
+		value, err := lowerExprToHIR(analysis, function, node.Value, bindings, typeEnvironment)
+		if err != nil {
+			return hir.Expr{}, err
+		}
+		fallback, err := lowerExprToHIR(analysis, function, node.Fallback, bindings, typeEnvironment)
+		if err != nil {
+			return hir.Expr{}, err
+		}
+		result.Kind = hir.ExprResultFailureOr
+		result.FailureOr = &hir.ResultFailureOr{Value: &value, Fallback: &fallback}
 	default:
 		return hir.Expr{}, hirLoweringError(analysis, expression.SourceSpan(), function, "unsupported checked expression")
 	}
@@ -368,23 +414,26 @@ func lowerExprToHIR(analysis *Analysis, function SemanticIdentity, expression Ex
 func LowerHIRToCore(program hir.Program) (coreir.Program, error) {
 	core := coreir.Program{LanguageContract: program.LanguageContract, CompilerContract: program.CompilerContract, Functions: make([]coreir.Function, 0, len(program.Functions))}
 	for _, function := range program.Functions {
-		if program.LanguageContract != coreir.LanguageContractV130 && program.LanguageContract != coreir.LanguageContractV140 && program.LanguageContract != coreir.LanguageContractV150 && program.LanguageContract != coreir.LanguageContractV160 && program.LanguageContract != coreir.LanguageContractV170 && program.LanguageContract != coreir.LanguageContractV180 && hirFunctionContainsOptional(function) {
+		if program.LanguageContract != coreir.LanguageContractV130 && program.LanguageContract != coreir.LanguageContractV140 && program.LanguageContract != coreir.LanguageContractV150 && program.LanguageContract != coreir.LanguageContractV160 && program.LanguageContract != coreir.LanguageContractV170 && program.LanguageContract != coreir.LanguageContractV180 && program.LanguageContract != coreir.LanguageContractV190 && hirFunctionContainsOptional(function) {
 			return coreir.Program{}, coreLoweringError(function.Span, fmt.Sprintf("primitive Optional HIR requires language contract %q", coreir.LanguageContractV130))
 		}
-		if program.LanguageContract != coreir.LanguageContractV140 && program.LanguageContract != coreir.LanguageContractV150 && program.LanguageContract != coreir.LanguageContractV160 && program.LanguageContract != coreir.LanguageContractV170 && program.LanguageContract != coreir.LanguageContractV180 && hirExprContainsOptionalDefault(function.Body) {
+		if program.LanguageContract != coreir.LanguageContractV140 && program.LanguageContract != coreir.LanguageContractV150 && program.LanguageContract != coreir.LanguageContractV160 && program.LanguageContract != coreir.LanguageContractV170 && program.LanguageContract != coreir.LanguageContractV180 && program.LanguageContract != coreir.LanguageContractV190 && hirExprContainsOptionalDefault(function.Body) {
 			return coreir.Program{}, coreLoweringError(function.Span, fmt.Sprintf("primitive Optional defaulting HIR requires language contract %q", coreir.LanguageContractV140))
 		}
-		if program.LanguageContract != coreir.LanguageContractV150 && program.LanguageContract != coreir.LanguageContractV160 && program.LanguageContract != coreir.LanguageContractV170 && program.LanguageContract != coreir.LanguageContractV180 && hirFunctionContainsList(function) {
+		if program.LanguageContract != coreir.LanguageContractV150 && program.LanguageContract != coreir.LanguageContractV160 && program.LanguageContract != coreir.LanguageContractV170 && program.LanguageContract != coreir.LanguageContractV180 && program.LanguageContract != coreir.LanguageContractV190 && hirFunctionContainsList(function) {
 			return coreir.Program{}, coreLoweringError(function.Span, fmt.Sprintf("record-list HIR requires language contract %q", coreir.LanguageContractV150))
 		}
-		if program.LanguageContract != coreir.LanguageContractV160 && program.LanguageContract != coreir.LanguageContractV170 && program.LanguageContract != coreir.LanguageContractV180 && hirExprContainsListCount(function.Body) {
+		if program.LanguageContract != coreir.LanguageContractV160 && program.LanguageContract != coreir.LanguageContractV170 && program.LanguageContract != coreir.LanguageContractV180 && program.LanguageContract != coreir.LanguageContractV190 && hirExprContainsListCount(function.Body) {
 			return coreir.Program{}, coreLoweringError(function.Span, fmt.Sprintf("record-list count HIR requires language contract %q", coreir.LanguageContractV160))
 		}
-		if program.LanguageContract != coreir.LanguageContractV170 && program.LanguageContract != coreir.LanguageContractV180 && hirExprContainsListAppend(function.Body) {
+		if program.LanguageContract != coreir.LanguageContractV170 && program.LanguageContract != coreir.LanguageContractV180 && program.LanguageContract != coreir.LanguageContractV190 && hirExprContainsListAppend(function.Body) {
 			return coreir.Program{}, coreLoweringError(function.Span, fmt.Sprintf("record-list append HIR requires language contract %q", coreir.LanguageContractV170))
 		}
-		if program.LanguageContract != coreir.LanguageContractV180 && hirFunctionContainsRecordOptional(function) {
+		if program.LanguageContract != coreir.LanguageContractV180 && program.LanguageContract != coreir.LanguageContractV190 && hirFunctionContainsRecordOptional(function) {
 			return coreir.Program{}, coreLoweringError(function.Span, fmt.Sprintf("primitive-record Optional HIR requires language contract %q", coreir.LanguageContractV180))
+		}
+		if program.LanguageContract != coreir.LanguageContractV190 && hirFunctionContainsSnapshotResult(function) {
+			return coreir.Program{}, coreLoweringError(function.Span, fmt.Sprintf("snapshot Result HIR requires language contract %q", coreir.LanguageContractV190))
 		}
 		if function.Identity.PackageID == "" || function.Identity.Path == "" || function.Owner.SymbolID == 0 || function.Owner.Module == "" {
 			return coreir.Program{}, coreLoweringError(function.Span, "typed HIR function is missing bound semantic ownership")
@@ -417,6 +466,39 @@ func hirFunctionContainsList(function hir.Function) bool {
 		if parameter.Type.Kind == hir.TypeList {
 			return true
 		}
+	}
+	return false
+}
+
+func hirFunctionContainsSnapshotResult(function hir.Function) bool {
+	if hirTypeContainsSnapshotResult(function.ReturnType) || hirExprContainsSnapshotResult(function.Body) {
+		return true
+	}
+	for _, parameter := range function.Parameters {
+		if hirTypeContainsSnapshotResult(parameter.Type) {
+			return true
+		}
+	}
+	return false
+}
+
+func hirTypeContainsSnapshotResult(value hir.Type) bool {
+	return value.Kind == hir.TypeResult && value.Result != nil && value.Result.Success.Kind == hir.TypeList && value.Result.Failure.Kind == hir.TypePrimitive && value.Result.Failure.Primitive == hir.PrimitiveString
+}
+
+func hirExprContainsSnapshotResult(expression hir.Expr) bool {
+	if hirTypeContainsSnapshotResult(expression.Type) {
+		return true
+	}
+	switch expression.Kind {
+	case hir.ExprResultOK, hir.ExprResultErr, hir.ExprResultIsOK, hir.ExprResultSuccessOr, hir.ExprResultFailureOr:
+		return true
+	case hir.ExprUnary:
+		return expression.Unary != nil && expression.Unary.Operand != nil && hirExprContainsSnapshotResult(*expression.Unary.Operand)
+	case hir.ExprBinary:
+		return expression.Binary != nil && expression.Binary.Left != nil && expression.Binary.Right != nil && (hirExprContainsSnapshotResult(*expression.Binary.Left) || hirExprContainsSnapshotResult(*expression.Binary.Right))
+	case hir.ExprFieldProjection:
+		return expression.Field != nil && expression.Field.Receiver != nil && hirExprContainsSnapshotResult(*expression.Field.Receiver)
 	}
 	return false
 }
@@ -727,6 +809,64 @@ func hirExprToCore(expression hir.Expr, parameters []hir.Parameter) (coreir.Expr
 		}
 		result.Kind = coreir.ExprListAppend
 		result.ListAppend = &coreir.ListAppend{Values: &values, Value: &value}
+	case hir.ExprResultOK:
+		if expression.ResultOK == nil || expression.ResultOK.Value == nil {
+			return coreir.Expr{}, coreLoweringError(expression.Span, "typed HIR result ok expression is incomplete")
+		}
+		value, err := hirExprToCore(*expression.ResultOK.Value, parameters)
+		if err != nil {
+			return coreir.Expr{}, err
+		}
+		result.Kind = coreir.ExprResultOK
+		result.ResultOK = &coreir.ResultOK{Value: &value}
+	case hir.ExprResultErr:
+		if expression.ResultErr == nil || expression.ResultErr.Error == nil {
+			return coreir.Expr{}, coreLoweringError(expression.Span, "typed HIR result err expression is incomplete")
+		}
+		failure, err := hirExprToCore(*expression.ResultErr.Error, parameters)
+		if err != nil {
+			return coreir.Expr{}, err
+		}
+		result.Kind = coreir.ExprResultErr
+		result.ResultErr = &coreir.ResultErr{Error: &failure}
+	case hir.ExprResultIsOK:
+		if expression.ResultIsOK == nil || expression.ResultIsOK.Value == nil {
+			return coreir.Expr{}, coreLoweringError(expression.Span, "typed HIR result is_ok expression is incomplete")
+		}
+		value, err := hirExprToCore(*expression.ResultIsOK.Value, parameters)
+		if err != nil {
+			return coreir.Expr{}, err
+		}
+		result.Kind = coreir.ExprResultIsOK
+		result.ResultIsOK = &coreir.ResultIsOK{Value: &value}
+	case hir.ExprResultSuccessOr:
+		if expression.SuccessOr == nil || expression.SuccessOr.Value == nil || expression.SuccessOr.Fallback == nil {
+			return coreir.Expr{}, coreLoweringError(expression.Span, "typed HIR result success_or expression is incomplete")
+		}
+		value, err := hirExprToCore(*expression.SuccessOr.Value, parameters)
+		if err != nil {
+			return coreir.Expr{}, err
+		}
+		fallback, err := hirExprToCore(*expression.SuccessOr.Fallback, parameters)
+		if err != nil {
+			return coreir.Expr{}, err
+		}
+		result.Kind = coreir.ExprResultSuccessOr
+		result.SuccessOr = &coreir.ResultSuccessOr{Value: &value, Fallback: &fallback}
+	case hir.ExprResultFailureOr:
+		if expression.FailureOr == nil || expression.FailureOr.Value == nil || expression.FailureOr.Fallback == nil {
+			return coreir.Expr{}, coreLoweringError(expression.Span, "typed HIR result failure_or expression is incomplete")
+		}
+		value, err := hirExprToCore(*expression.FailureOr.Value, parameters)
+		if err != nil {
+			return coreir.Expr{}, err
+		}
+		fallback, err := hirExprToCore(*expression.FailureOr.Fallback, parameters)
+		if err != nil {
+			return coreir.Expr{}, err
+		}
+		result.Kind = coreir.ExprResultFailureOr
+		result.FailureOr = &coreir.ResultFailureOr{Value: &value, Fallback: &fallback}
 	default:
 		return coreir.Expr{}, coreLoweringError(expression.Span, fmt.Sprintf("unsupported typed HIR expression kind %q", expression.Kind))
 	}
@@ -767,7 +907,7 @@ func toHIRType(analysis *Analysis, resolved ResolvedTypeRef) hir.Type {
 	if isResolvedOptional(resolved) {
 		return hir.Type{Kind: hir.TypeOptional, Optional: &hir.OptionalType{Value: toHIRType(analysis, resolved.Arguments[0])}}
 	}
-	if isResolvedArithmeticResult(resolved) {
+	if isResolvedResult(resolved) {
 		return hir.Type{
 			Kind:   hir.TypeResult,
 			Result: &hir.ResultType{Success: toHIRType(analysis, resolved.Arguments[0]), Failure: toHIRType(analysis, resolved.Arguments[1])},

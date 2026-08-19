@@ -576,6 +576,20 @@ func (p *parser) parsePrimary() (Expr, error) {
 				}
 			}
 		}
+		if hasSnapshotResultSourceContract(p.languageContract) {
+			switch t.lit {
+			case "ok":
+				return p.parseResultOK()
+			case "err":
+				return p.parseResultErr()
+			case "is_ok":
+				return p.parseResultIsOK()
+			case "success_or":
+				return p.parseResultSuccessOr()
+			case "failure_or":
+				return p.parseResultFailureOr()
+			}
+		}
 		p.next()
 		return &IdentExpr{Name: t.lit, Span: t.span}, nil
 	case tokLParen:
@@ -593,6 +607,140 @@ func (p *parser) parsePrimary() (Expr, error) {
 	default:
 		return nil, p.errf("unexpected token %q in expression", t.lit)
 	}
+}
+
+func (p *parser) parseResultTypeArguments() (token, UnresolvedTypeRef, UnresolvedTypeRef, error) {
+	start, err := p.expect(tokIdent)
+	if err != nil {
+		return token{}, UnresolvedTypeRef{}, UnresolvedTypeRef{}, err
+	}
+	if _, err := p.expect(tokLT); err != nil {
+		return token{}, UnresolvedTypeRef{}, UnresolvedTypeRef{}, err
+	}
+	success, err := p.parseTypeRef()
+	if err != nil {
+		return token{}, UnresolvedTypeRef{}, UnresolvedTypeRef{}, err
+	}
+	if _, err := p.expect(tokComma); err != nil {
+		return token{}, UnresolvedTypeRef{}, UnresolvedTypeRef{}, err
+	}
+	failure, err := p.parseTypeRef()
+	if err != nil {
+		return token{}, UnresolvedTypeRef{}, UnresolvedTypeRef{}, err
+	}
+	if _, err := p.expect(tokGT); err != nil {
+		return token{}, UnresolvedTypeRef{}, UnresolvedTypeRef{}, err
+	}
+	return start, success, failure, nil
+}
+
+func (p *parser) parseResultOK() (Expr, error) {
+	start, success, failure, err := p.parseResultTypeArguments()
+	if err != nil {
+		return nil, err
+	}
+	if _, err := p.expect(tokLParen); err != nil {
+		return nil, err
+	}
+	value, err := p.parseExpr(1)
+	if err != nil {
+		return nil, err
+	}
+	end, err := p.expect(tokRParen)
+	if err != nil {
+		return nil, err
+	}
+	return &ResultOKExpr{SuccessType: success, FailureType: failure, Value: value, Span: mergeSpans(start.span, end.span)}, nil
+}
+
+func (p *parser) parseResultErr() (Expr, error) {
+	start, success, failure, err := p.parseResultTypeArguments()
+	if err != nil {
+		return nil, err
+	}
+	if _, err := p.expect(tokLParen); err != nil {
+		return nil, err
+	}
+	failureValue, err := p.parseExpr(1)
+	if err != nil {
+		return nil, err
+	}
+	end, err := p.expect(tokRParen)
+	if err != nil {
+		return nil, err
+	}
+	return &ResultErrExpr{SuccessType: success, FailureType: failure, Error: failureValue, Span: mergeSpans(start.span, end.span)}, nil
+}
+
+func (p *parser) parseResultIsOK() (Expr, error) {
+	start, err := p.expect(tokIdent)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := p.expect(tokLParen); err != nil {
+		return nil, err
+	}
+	value, err := p.parseExpr(1)
+	if err != nil {
+		return nil, err
+	}
+	end, err := p.expect(tokRParen)
+	if err != nil {
+		return nil, err
+	}
+	return &ResultIsOKExpr{Value: value, Span: mergeSpans(start.span, end.span)}, nil
+}
+
+func (p *parser) parseResultSuccessOr() (Expr, error) {
+	start, err := p.expect(tokIdent)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := p.expect(tokLParen); err != nil {
+		return nil, err
+	}
+	value, err := p.parseExpr(1)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := p.expect(tokComma); err != nil {
+		return nil, err
+	}
+	fallback, err := p.parseExpr(1)
+	if err != nil {
+		return nil, err
+	}
+	end, err := p.expect(tokRParen)
+	if err != nil {
+		return nil, err
+	}
+	return &ResultSuccessOrExpr{Value: value, Fallback: fallback, Span: mergeSpans(start.span, end.span)}, nil
+}
+
+func (p *parser) parseResultFailureOr() (Expr, error) {
+	start, err := p.expect(tokIdent)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := p.expect(tokLParen); err != nil {
+		return nil, err
+	}
+	value, err := p.parseExpr(1)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := p.expect(tokComma); err != nil {
+		return nil, err
+	}
+	fallback, err := p.parseExpr(1)
+	if err != nil {
+		return nil, err
+	}
+	end, err := p.expect(tokRParen)
+	if err != nil {
+		return nil, err
+	}
+	return &ResultFailureOrExpr{Value: value, Fallback: fallback, Span: mergeSpans(start.span, end.span)}, nil
 }
 
 func (p *parser) parseListEmpty() (Expr, error) {

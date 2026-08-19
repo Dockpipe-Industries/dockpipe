@@ -257,11 +257,16 @@ func resolveTypeRef(sources *SourceSet, symbols *SymbolTable, modules *ModuleGra
 			arguments = append(arguments, resolved)
 		}
 		if ref.Name == "Result" {
-			resolved := ResolvedTypeRef{Kind: TypeRefApplied, Name: ref.Name, PackageID: PipeLangBuiltinPackageID, Path: PipeLangResultSemanticPath, Arguments: arguments}
-			if !isResolvedSourceArithmeticResult(modules.LanguageContract(), resolved) {
-				return ResolvedTypeRef{}, oneDiagnostic(sources, CodeInvalidType, CategorySemantic, ref.Span, fmt.Sprintf("language contract %q admits only its exact checked-arithmetic Result return shapes", modules.LanguageContract()), related...)
+			resolved := resolvedResult(arguments[0], arguments[1])
+			if isResolvedSourceArithmeticResult(modules.LanguageContract(), resolved) {
+				return resolved, nil
 			}
-			return resolved, nil
+			if hasSnapshotResultSourceContract(modules.LanguageContract()) && isResolvedSnapshotResult(resolved) {
+				if entry, ok := symbols.lookupIDEntry(resolved.Arguments[0].Arguments[0].Symbol); ok && entry.symbol.Kind == SymbolRecord && entry.recordDecl != nil {
+					return resolved, nil
+				}
+			}
+			return ResolvedTypeRef{}, oneDiagnostic(sources, CodeInvalidType, CategorySemantic, ref.Span, fmt.Sprintf("language contract %q admits only its exact checked-arithmetic Result shapes or Result<List<R>,string> for one existing public primitive record", modules.LanguageContract()), related...)
 		}
 		if ref.Name == "Optional" {
 			if modules == nil || !hasPrimitiveOptionalSourceContract(modules.LanguageContract()) {
