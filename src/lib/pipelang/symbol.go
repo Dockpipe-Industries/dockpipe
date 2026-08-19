@@ -268,10 +268,15 @@ func resolveTypeRef(sources *SourceSet, symbols *SymbolTable, modules *ModuleGra
 				return ResolvedTypeRef{}, oneDiagnostic(sources, CodeInvalidType, CategorySemantic, ref.Span, fmt.Sprintf("type %q requires language contract %q", ref.String(), PipeLangLanguageContractV130), related...)
 			}
 			resolved := resolvedOptional(arguments[0])
-			if !isResolvedPrimitiveOptional(resolved) {
-				return ResolvedTypeRef{}, oneDiagnostic(sources, CodeInvalidType, CategorySemantic, ref.Span, fmt.Sprintf("language contract %q admits Optional<T> only for string, int, float, or bool", modules.LanguageContract()), related...)
+			if isResolvedPrimitiveOptional(resolved) {
+				return resolved, nil
 			}
-			return resolved, nil
+			if hasPrimitiveRecordOptionalSourceContract(modules.LanguageContract()) && isResolvedRecordOptional(resolved) {
+				if entry, ok := symbols.lookupIDEntry(arguments[0].Symbol); ok && entry.symbol.Kind == SymbolRecord && entry.recordDecl != nil {
+					return resolved, nil
+				}
+			}
+			return ResolvedTypeRef{}, oneDiagnostic(sources, CodeInvalidType, CategorySemantic, ref.Span, fmt.Sprintf("language contract %q admits Optional<T> only for string, int, float, bool, or one existing public primitive record", modules.LanguageContract()), related...)
 		}
 		if ref.Name == "List" && modules != nil && hasPrimitiveRecordListSourceContract(modules.LanguageContract()) && len(arguments) == 1 {
 			if entry, ok := symbols.lookupIDEntry(arguments[0].Symbol); ok && entry.symbol.Kind == SymbolRecord {

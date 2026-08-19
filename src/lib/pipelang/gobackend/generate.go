@@ -34,7 +34,7 @@ func (e *Error) Error() string {
 
 // Generate accepts Core IR only and returns deterministic, gofmt-formatted Go.
 func Generate(program coreir.Program) ([]byte, error) {
-	if (program.LanguageContract != coreir.LanguageContractV010 && program.LanguageContract != coreir.LanguageContractV020 && program.LanguageContract != coreir.LanguageContractV030 && program.LanguageContract != coreir.LanguageContractV040 && program.LanguageContract != coreir.LanguageContractV050 && program.LanguageContract != coreir.LanguageContractV060 && program.LanguageContract != coreir.LanguageContractV070 && program.LanguageContract != coreir.LanguageContractV080 && program.LanguageContract != coreir.LanguageContractV090 && program.LanguageContract != coreir.LanguageContractV100 && program.LanguageContract != coreir.LanguageContractV110 && program.LanguageContract != coreir.LanguageContractV120 && program.LanguageContract != coreir.LanguageContractV130 && program.LanguageContract != coreir.LanguageContractV140 && program.LanguageContract != coreir.LanguageContractV150 && program.LanguageContract != coreir.LanguageContractV160 && program.LanguageContract != coreir.LanguageContractV170) || program.CompilerContract != coreir.CompilerContractV1 {
+	if (program.LanguageContract != coreir.LanguageContractV010 && program.LanguageContract != coreir.LanguageContractV020 && program.LanguageContract != coreir.LanguageContractV030 && program.LanguageContract != coreir.LanguageContractV040 && program.LanguageContract != coreir.LanguageContractV050 && program.LanguageContract != coreir.LanguageContractV060 && program.LanguageContract != coreir.LanguageContractV070 && program.LanguageContract != coreir.LanguageContractV080 && program.LanguageContract != coreir.LanguageContractV090 && program.LanguageContract != coreir.LanguageContractV100 && program.LanguageContract != coreir.LanguageContractV110 && program.LanguageContract != coreir.LanguageContractV120 && program.LanguageContract != coreir.LanguageContractV130 && program.LanguageContract != coreir.LanguageContractV140 && program.LanguageContract != coreir.LanguageContractV150 && program.LanguageContract != coreir.LanguageContractV160 && program.LanguageContract != coreir.LanguageContractV170 && program.LanguageContract != coreir.LanguageContractV180) || program.CompilerContract != coreir.CompilerContractV1 {
 		return nil, &Error{Code: "PLGO0001", Message: fmt.Sprintf("unsupported Core IR contracts language=%q compiler=%q", program.LanguageContract, program.CompilerContract)}
 	}
 	functions := append([]coreir.Function(nil), program.Functions...)
@@ -56,23 +56,27 @@ func Generate(program coreir.Program) ([]byte, error) {
 	needsText := programNeedsTextSupport(functions)
 	needsOptional := programNeedsOptionalSupport(functions)
 	needsOptionalDefault := programNeedsOptionalDefault(functions)
+	needsRecordOptional := programNeedsRecordOptionalSupport(functions)
 	needsList := programNeedsListSupport(functions)
 	needsListCount := programNeedsListCount(functions)
 	needsListAppend := programNeedsListAppend(functions)
 	optionalTypeName := optionalGoTypeName(functions)
-	if needsOptional && program.LanguageContract != coreir.LanguageContractV130 && program.LanguageContract != coreir.LanguageContractV140 && program.LanguageContract != coreir.LanguageContractV150 && program.LanguageContract != coreir.LanguageContractV160 && program.LanguageContract != coreir.LanguageContractV170 {
+	if needsOptional && program.LanguageContract != coreir.LanguageContractV130 && program.LanguageContract != coreir.LanguageContractV140 && program.LanguageContract != coreir.LanguageContractV150 && program.LanguageContract != coreir.LanguageContractV160 && program.LanguageContract != coreir.LanguageContractV170 && program.LanguageContract != coreir.LanguageContractV180 {
 		return nil, &Error{Code: "PLGO0001", Message: fmt.Sprintf("primitive Optional Core requires language contract %q", coreir.LanguageContractV130)}
 	}
-	if needsOptionalDefault && program.LanguageContract != coreir.LanguageContractV140 && program.LanguageContract != coreir.LanguageContractV150 && program.LanguageContract != coreir.LanguageContractV160 && program.LanguageContract != coreir.LanguageContractV170 {
+	if needsOptionalDefault && program.LanguageContract != coreir.LanguageContractV140 && program.LanguageContract != coreir.LanguageContractV150 && program.LanguageContract != coreir.LanguageContractV160 && program.LanguageContract != coreir.LanguageContractV170 && program.LanguageContract != coreir.LanguageContractV180 {
 		return nil, &Error{Code: "PLGO0001", Message: fmt.Sprintf("primitive Optional defaulting Core requires language contract %q", coreir.LanguageContractV140)}
 	}
-	if needsList && program.LanguageContract != coreir.LanguageContractV150 && program.LanguageContract != coreir.LanguageContractV160 && program.LanguageContract != coreir.LanguageContractV170 {
+	if needsRecordOptional && program.LanguageContract != coreir.LanguageContractV180 {
+		return nil, &Error{Code: "PLGO0001", Message: fmt.Sprintf("primitive-record Optional Core requires language contract %q", coreir.LanguageContractV180)}
+	}
+	if needsList && program.LanguageContract != coreir.LanguageContractV150 && program.LanguageContract != coreir.LanguageContractV160 && program.LanguageContract != coreir.LanguageContractV170 && program.LanguageContract != coreir.LanguageContractV180 {
 		return nil, &Error{Code: "PLGO0001", Message: fmt.Sprintf("record-list Core requires language contract %q", coreir.LanguageContractV150)}
 	}
-	if needsListCount && program.LanguageContract != coreir.LanguageContractV160 && program.LanguageContract != coreir.LanguageContractV170 {
+	if needsListCount && program.LanguageContract != coreir.LanguageContractV160 && program.LanguageContract != coreir.LanguageContractV170 && program.LanguageContract != coreir.LanguageContractV180 {
 		return nil, &Error{Code: "PLGO0001", Message: fmt.Sprintf("record-list count Core requires language contract %q", coreir.LanguageContractV160)}
 	}
-	if needsListAppend && program.LanguageContract != coreir.LanguageContractV170 {
+	if needsListAppend && program.LanguageContract != coreir.LanguageContractV170 && program.LanguageContract != coreir.LanguageContractV180 {
 		return nil, &Error{Code: "PLGO0001", Message: fmt.Sprintf("record-list append Core requires language contract %q", coreir.LanguageContractV170)}
 	}
 	if needsText {
@@ -82,12 +86,12 @@ func Generate(program coreir.Program) ([]byte, error) {
 	if programNeedsArithmeticResult(functions) {
 		emitArithmeticSupport(&out)
 	}
-	if needsOptional {
-		emitOptionalSupport(&out, needsText, needsOptionalDefault, optionalTypeName)
-	}
 	records, err := collectRecordTypes(functions)
 	if err != nil {
 		return nil, &Error{Code: "PLGO0001", Message: err.Error()}
+	}
+	if needsOptional {
+		emitOptionalSupport(&out, needsText, needsOptionalDefault, needsRecordOptional, optionalTypeName, records)
 	}
 	for _, record := range records {
 		emitRecordType(&out, record, programConstructsRecord(functions, record), optionalTypeName)
@@ -650,6 +654,45 @@ func programNeedsOptionalDefault(functions []coreir.Function) bool {
 	return false
 }
 
+func programNeedsRecordOptionalSupport(functions []coreir.Function) bool {
+	for _, function := range functions {
+		if typeContainsRecordOptional(function.ReturnType) || expressionContainsRecordOptional(function.Body) {
+			return true
+		}
+		for _, parameter := range function.Parameters {
+			if typeContainsRecordOptional(parameter.Type) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func typeContainsRecordOptional(value coreir.Type) bool {
+	return value.Kind == coreir.TypeOptional && value.Optional != nil && value.Optional.Value.Kind == coreir.TypeRecord
+}
+
+func expressionContainsRecordOptional(expression coreir.Expr) bool {
+	if typeContainsRecordOptional(expression.Type) {
+		return true
+	}
+	switch expression.Kind {
+	case coreir.ExprUnary:
+		return expression.Unary != nil && expression.Unary.Operand != nil && expressionContainsRecordOptional(*expression.Unary.Operand)
+	case coreir.ExprBinary:
+		return expression.Binary != nil && expression.Binary.Left != nil && expression.Binary.Right != nil && (expressionContainsRecordOptional(*expression.Binary.Left) || expressionContainsRecordOptional(*expression.Binary.Right))
+	case coreir.ExprFieldProjection:
+		return expression.Field != nil && expression.Field.Receiver != nil && expressionContainsRecordOptional(*expression.Field.Receiver)
+	case coreir.ExprOptionalSome:
+		return expression.Some != nil && expression.Some.Value != nil && expressionContainsRecordOptional(*expression.Some.Value)
+	case coreir.ExprOptionalHasValue:
+		return expression.HasValue != nil && expression.HasValue.Value != nil && expressionContainsRecordOptional(*expression.HasValue.Value)
+	case coreir.ExprOptionalValueOr:
+		return expression.ValueOr != nil && expression.ValueOr.Value != nil && expression.ValueOr.Fallback != nil && (expressionContainsRecordOptional(*expression.ValueOr.Value) || expressionContainsRecordOptional(*expression.ValueOr.Fallback))
+	}
+	return false
+}
+
 func expressionNeedsOptionalDefault(expression coreir.Expr) bool {
 	switch expression.Kind {
 	case coreir.ExprOptionalValueOr:
@@ -672,16 +715,29 @@ func expressionNeedsOptionalDefault(expression coreir.Expr) bool {
 	return false
 }
 
-func emitOptionalSupport(out *strings.Builder, validateText, emitValueOr bool, optionalTypeName string) {
+func emitOptionalSupport(out *strings.Builder, validateText, emitValueOr, validateRecordPayloads bool, optionalTypeName string, records []coreir.Type) {
 	fmt.Fprintf(out, "type %s[T any] interface {\n\tpipelangOptional(T)\n}\n\n", optionalTypeName)
 	out.WriteString("type pipelangOptionalSome[T any] struct {\n\tvalue T\n}\n\n")
 	out.WriteString("func (pipelangOptionalSome[T]) pipelangOptional(T) {}\n\n")
 	out.WriteString("type pipelangOptionalNone[T any] struct{}\n\n")
 	out.WriteString("func (pipelangOptionalNone[T]) pipelangOptional(T) {}\n\n")
+	if validateRecordPayloads {
+		out.WriteString("func pipelangValidateOptionalPayload[T any](value T) {\n\tswitch typed := any(value).(type) {\n")
+		if validateText {
+			out.WriteString("\tcase string:\n\t\tpipelangValidateText(typed)\n")
+		}
+		out.WriteString("\tcase int64, float64, bool:\n\t\t_ = typed\n")
+		for _, record := range records {
+			fmt.Fprintf(out, "\tcase %s:\n\t\t%s(typed)\n", recordGoTypeName(record), recordValidationName(record))
+		}
+		out.WriteString("\tdefault:\n\t\tpanic(\"invalid PipeLang Optional payload\")\n\t}\n}\n\n")
+	}
 	fmt.Fprintf(out, "func pipelangSomeValue[T any](value T) %s[T] {\n\tresult := %s[T](pipelangOptionalSome[T]{value: value})\n\tpipelangValidateOptional(result)\n\treturn result\n}\n\n", optionalTypeName, optionalTypeName)
 	fmt.Fprintf(out, "func pipelangNoneValue[T any]() %s[T] {\n\treturn pipelangOptionalNone[T]{}\n}\n\n", optionalTypeName)
 	fmt.Fprintf(out, "func pipelangValidateOptional[T any](value %s[T]) {\n\tswitch typed := value.(type) {\n\tcase pipelangOptionalSome[T]:\n", optionalTypeName)
-	if validateText {
+	if validateRecordPayloads {
+		out.WriteString("\t\tpipelangValidateOptionalPayload(typed.value)\n")
+	} else if validateText {
 		out.WriteString("\t\tif text, ok := any(typed.value).(string); ok {\n\t\t\tpipelangValidateText(text)\n\t\t}\n")
 	} else {
 		out.WriteString("\t\t_ = typed\n")
@@ -692,7 +748,9 @@ func emitOptionalSupport(out *strings.Builder, validateText, emitValueOr bool, o
 		return
 	}
 	fmt.Fprintf(out, "func pipelangValueOr[T any](value %s[T], fallback T) T {\n\tpipelangValidateOptional(value)\n", optionalTypeName)
-	if validateText {
+	if validateRecordPayloads {
+		out.WriteString("\tpipelangValidateOptionalPayload(fallback)\n")
+	} else if validateText {
 		out.WriteString("\tif text, ok := any(fallback).(string); ok {\n\t\tpipelangValidateText(text)\n\t}\n")
 	}
 	out.WriteString("\tswitch typed := value.(type) {\n\tcase pipelangOptionalSome[T]:\n\t\treturn typed.value\n\tcase pipelangOptionalNone[T]:\n\t\treturn fallback\n\tdefault:\n\t\tpanic(\"invalid PipeLang Optional value\")\n\t}\n}\n\n")
@@ -725,6 +783,9 @@ func collectRecordTypes(functions []coreir.Function) ([]coreir.Type, error) {
 	collect = func(value coreir.Type) error {
 		if value.Kind == coreir.TypeList && value.List != nil {
 			return collect(value.List.Element)
+		}
+		if value.Kind == coreir.TypeOptional && value.Optional != nil {
+			return collect(value.Optional.Value)
 		}
 		if value.Kind != coreir.TypeRecord {
 			return nil

@@ -336,10 +336,25 @@ func (cp *checkedProgram) validateRecordTransportSignature(method MethodDecl, re
 	recordList := hasPrimitiveRecordListSourceContract(contract) && isResolvedRecordList(result) && (len(resolvedParameters) == 0 || (len(resolvedParameters) == 1 && (resolvedParameters[0].Equal(result.Arguments[0]) || resolvedParameters[0].Equal(result))))
 	recordListCount := hasPrimitiveRecordListCountSourceContract(contract) && result.Equal(resolvedPrimitive(TypeInt)) && len(resolvedParameters) == 1 && isResolvedRecordList(resolvedParameters[0])
 	recordListAppend := hasPrimitiveRecordListAppendSourceContract(contract) && isResolvedRecordList(result) && len(resolvedParameters) == 2 && resolvedParameters[0].Equal(result) && resolvedParameters[1].Equal(result.Arguments[0])
-	if !hasPrimitiveRecordSourceContract(contract) || (!identityTransport && !fieldProjection && !recordConstruction && !recordEquality && !recordList && !recordListCount && !recordListAppend) {
-		return false, oneDiagnostic(cp.sources, CodeInvalidType, CategorySemantic, method.Span, fmt.Sprintf("the %s primitive record is admitted only as one exact identity transport, one-hop primitive field projection, direct declaration-ordered construction, direct structural equality, or bounded record-list method", contract))
+	recordOptional := hasPrimitiveRecordOptionalSourceContract(contract) && cp.optionalRecordSignatureMatches(result, resolvedParameters)
+	if !hasPrimitiveRecordSourceContract(contract) || (!identityTransport && !fieldProjection && !recordConstruction && !recordEquality && !recordList && !recordListCount && !recordListAppend && !recordOptional) {
+		return false, oneDiagnostic(cp.sources, CodeInvalidType, CategorySemantic, method.Span, fmt.Sprintf("the %s primitive record is admitted only as one exact identity transport, one-hop primitive field projection, direct declaration-ordered construction, direct structural equality, bounded record-list method, or bounded Optional<R> method", contract))
 	}
 	return true, nil
+}
+
+func (cp *checkedProgram) isResolvedOptionalValue(contract LanguageContract, value ResolvedTypeRef) bool {
+	return isResolvedPrimitiveOptional(value) || (hasPrimitiveRecordOptionalSourceContract(contract) && isResolvedRecordOptional(value) && cp.isResolvedRecordType(value.Arguments[0]))
+}
+
+func (cp *checkedProgram) optionalRecordSignatureMatches(result ResolvedTypeRef, parameters []ResolvedTypeRef) bool {
+	if isResolvedRecordOptional(result) && cp.isResolvedRecordType(result.Arguments[0]) {
+		return len(parameters) == 0 || (len(parameters) == 1 && (parameters[0].Equal(result.Arguments[0]) || parameters[0].Equal(result)))
+	}
+	if result.Equal(resolvedPrimitive(TypeBool)) {
+		return len(parameters) == 1 && isResolvedRecordOptional(parameters[0]) && cp.isResolvedRecordType(parameters[0].Arguments[0])
+	}
+	return cp.isResolvedRecordType(result) && len(parameters) == 2 && isResolvedRecordOptional(parameters[0]) && parameters[0].Arguments[0].Equal(result) && parameters[1].Equal(result)
 }
 
 func (cp *checkedProgram) recordConstructionSignatureMatches(result ResolvedTypeRef, parameters []ResolvedTypeRef) bool {
@@ -403,16 +418,16 @@ func (cp *checkedProgram) validateOptionalSignature(method MethodDecl, result Re
 		return false, oneDiagnostic(cp.sources, CodeInvalidType, CategorySemantic, method.Span, fmt.Sprintf("primitive Optional methods require language contract %q", PipeLangLanguageContractV130))
 	}
 	valid := false
-	if isResolvedPrimitiveOptional(result) {
+	if cp.isResolvedOptionalValue(contract, result) {
 		valid = len(resolvedParameters) == 0 ||
 			(len(resolvedParameters) == 1 && (resolvedParameters[0].Equal(result.Arguments[0]) || resolvedParameters[0].Equal(result)))
-	} else if result.Kind == TypeRefPrimitive && hasPrimitiveOptionalDefaultSourceContract(contract) {
-		valid = len(resolvedParameters) == 2 && isResolvedPrimitiveOptional(resolvedParameters[0]) && resolvedParameters[0].Arguments[0].Equal(result) && resolvedParameters[1].Equal(result)
+	} else if hasPrimitiveOptionalDefaultSourceContract(contract) {
+		valid = len(resolvedParameters) == 2 && cp.isResolvedOptionalValue(contract, resolvedParameters[0]) && resolvedParameters[0].Arguments[0].Equal(result) && resolvedParameters[1].Equal(result)
 		if !valid && result.Equal(resolvedPrimitive(TypeBool)) {
-			valid = len(resolvedParameters) == 1 && isResolvedPrimitiveOptional(resolvedParameters[0])
+			valid = len(resolvedParameters) == 1 && cp.isResolvedOptionalValue(contract, resolvedParameters[0])
 		}
 	} else if result.Equal(resolvedPrimitive(TypeBool)) {
-		valid = len(resolvedParameters) == 1 && isResolvedPrimitiveOptional(resolvedParameters[0])
+		valid = len(resolvedParameters) == 1 && cp.isResolvedOptionalValue(contract, resolvedParameters[0])
 	}
 	if !valid {
 		forms := "direct some, none, identity transport, or has_value class methods"
@@ -422,7 +437,7 @@ func (cp *checkedProgram) validateOptionalSignature(method MethodDecl, result Re
 		return false, oneDiagnostic(cp.sources, CodeInvalidType, CategorySemantic, method.Span, fmt.Sprintf("the %s primitive Optional is admitted only as %s", contract, forms))
 	}
 	for _, parameter := range resolvedParameters {
-		if isResolvedPrimitiveOptional(parameter) {
+		if cp.isResolvedOptionalValue(contract, parameter) {
 			return true, nil
 		}
 	}
@@ -636,8 +651,8 @@ func (cp *checkedProgram) inferExprType(expr Expr, env map[string]ResolvedTypeRe
 		if err != nil {
 			return ResolvedTypeRef{}, err
 		}
-		if value.Kind != TypeRefPrimitive {
-			return ResolvedTypeRef{}, oneDiagnostic(cp.sources, CodeInvalidType, CategorySemantic, optional.Value.SourceSpan(), fmt.Sprintf("some requires a primitive value, got %s", value))
+		if value.Kind != TypeRefPrimitive && !(hasPrimitiveRecordOptionalSourceContract(cp.modules.LanguageContract()) && cp.isResolvedRecordType(value)) {
+			return ResolvedTypeRef{}, oneDiagnostic(cp.sources, CodeInvalidType, CategorySemantic, optional.Value.SourceSpan(), fmt.Sprintf("some requires a primitive or existing public primitive-record value, got %s", value))
 		}
 		return resolvedOptional(value), nil
 	case *OptionalNoneExpr:
@@ -648,8 +663,8 @@ func (cp *checkedProgram) inferExprType(expr Expr, env map[string]ResolvedTypeRe
 		if err != nil {
 			return ResolvedTypeRef{}, err
 		}
-		if value.Kind != TypeRefPrimitive {
-			return ResolvedTypeRef{}, oneDiagnostic(cp.sources, CodeInvalidType, CategorySemantic, optional.ValueType.Span, fmt.Sprintf("none requires a primitive type, got %s", value))
+		if value.Kind != TypeRefPrimitive && !(hasPrimitiveRecordOptionalSourceContract(cp.modules.LanguageContract()) && cp.isResolvedRecordType(value)) {
+			return ResolvedTypeRef{}, oneDiagnostic(cp.sources, CodeInvalidType, CategorySemantic, optional.ValueType.Span, fmt.Sprintf("none requires a primitive or existing public primitive-record type, got %s", value))
 		}
 		return resolvedOptional(value), nil
 	case *OptionalHasValueExpr:
@@ -660,8 +675,8 @@ func (cp *checkedProgram) inferExprType(expr Expr, env map[string]ResolvedTypeRe
 		if err != nil {
 			return ResolvedTypeRef{}, err
 		}
-		if !isResolvedPrimitiveOptional(value) {
-			return ResolvedTypeRef{}, oneDiagnostic(cp.sources, CodeInvalidType, CategorySemantic, optional.Value.SourceSpan(), fmt.Sprintf("has_value requires a primitive Optional, got %s", value))
+		if !cp.isResolvedOptionalValue(cp.modules.LanguageContract(), value) {
+			return ResolvedTypeRef{}, oneDiagnostic(cp.sources, CodeInvalidType, CategorySemantic, optional.Value.SourceSpan(), fmt.Sprintf("has_value requires an admitted Optional, got %s", value))
 		}
 		return resolvedPrimitive(TypeBool), nil
 	case *OptionalValueOrExpr:
@@ -672,8 +687,8 @@ func (cp *checkedProgram) inferExprType(expr Expr, env map[string]ResolvedTypeRe
 		if err != nil {
 			return ResolvedTypeRef{}, err
 		}
-		if !isResolvedPrimitiveOptional(value) {
-			return ResolvedTypeRef{}, oneDiagnostic(cp.sources, CodeInvalidType, CategorySemantic, optional.Value.SourceSpan(), fmt.Sprintf("value_or requires a primitive Optional first operand, got %s", value))
+		if !cp.isResolvedOptionalValue(cp.modules.LanguageContract(), value) {
+			return ResolvedTypeRef{}, oneDiagnostic(cp.sources, CodeInvalidType, CategorySemantic, optional.Value.SourceSpan(), fmt.Sprintf("value_or requires an admitted Optional first operand, got %s", value))
 		}
 		fallback, err := cp.inferExprType(optional.Fallback, env)
 		if err != nil {
@@ -778,7 +793,7 @@ func (cp *checkedProgram) inferMethodBodyType(method MethodDecl, env map[string]
 		}
 		return resolvedArithmeticResult(binary64), nil
 	}
-	if unary, unaryOK := expr.(*UnaryExpr); unaryOK && (contract == PipeLangLanguageContractV050 || contract == PipeLangLanguageContractV060 || contract == PipeLangLanguageContractV070 || contract == PipeLangLanguageContractV080 || contract == PipeLangLanguageContractV090 || contract == PipeLangLanguageContractV100 || contract == PipeLangLanguageContractV110 || contract == PipeLangLanguageContractV120 || contract == PipeLangLanguageContractV130 || contract == PipeLangLanguageContractV140 || contract == PipeLangLanguageContractV150 || contract == PipeLangLanguageContractV160 || contract == PipeLangLanguageContractV170) && unary.Op == "-" {
+	if unary, unaryOK := expr.(*UnaryExpr); unaryOK && (contract == PipeLangLanguageContractV050 || contract == PipeLangLanguageContractV060 || contract == PipeLangLanguageContractV070 || contract == PipeLangLanguageContractV080 || contract == PipeLangLanguageContractV090 || contract == PipeLangLanguageContractV100 || contract == PipeLangLanguageContractV110 || contract == PipeLangLanguageContractV120 || contract == PipeLangLanguageContractV130 || contract == PipeLangLanguageContractV140 || contract == PipeLangLanguageContractV150 || contract == PipeLangLanguageContractV160 || contract == PipeLangLanguageContractV170 || contract == PipeLangLanguageContractV180) && unary.Op == "-" {
 		operand, err := inferExprTypeWithPolicy(cp.sources, unary.Expr, env, true)
 		if err != nil {
 			return ResolvedTypeRef{}, err
@@ -791,7 +806,7 @@ func (cp *checkedProgram) inferMethodBodyType(method MethodDecl, env map[string]
 	}
 	binary, ok := expr.(*BinaryExpr)
 	operatorAccepted := ok && binary.Op == "+"
-	if contract == PipeLangLanguageContractV040 || contract == PipeLangLanguageContractV050 || contract == PipeLangLanguageContractV060 || contract == PipeLangLanguageContractV070 || contract == PipeLangLanguageContractV080 || contract == PipeLangLanguageContractV090 || contract == PipeLangLanguageContractV100 || contract == PipeLangLanguageContractV110 || contract == PipeLangLanguageContractV120 || contract == PipeLangLanguageContractV130 || contract == PipeLangLanguageContractV140 || contract == PipeLangLanguageContractV150 || contract == PipeLangLanguageContractV160 || contract == PipeLangLanguageContractV170 {
+	if contract == PipeLangLanguageContractV040 || contract == PipeLangLanguageContractV050 || contract == PipeLangLanguageContractV060 || contract == PipeLangLanguageContractV070 || contract == PipeLangLanguageContractV080 || contract == PipeLangLanguageContractV090 || contract == PipeLangLanguageContractV100 || contract == PipeLangLanguageContractV110 || contract == PipeLangLanguageContractV120 || contract == PipeLangLanguageContractV130 || contract == PipeLangLanguageContractV140 || contract == PipeLangLanguageContractV150 || contract == PipeLangLanguageContractV160 || contract == PipeLangLanguageContractV170 || contract == PipeLangLanguageContractV180 {
 		operatorAccepted = ok && (binary.Op == "+" || binary.Op == "-" || binary.Op == "*")
 	} else if contract == PipeLangLanguageContractV030 {
 		operatorAccepted = ok && (binary.Op == "+" || binary.Op == "-")
@@ -900,7 +915,7 @@ func (cp *checkedProgram) inferOptionalMethodBodyType(method MethodDecl, env map
 	}
 	switch body := method.Body.(type) {
 	case *OptionalSomeExpr:
-		valid := isResolvedPrimitiveOptional(declared) && len(parameterTypes) == 1 && parameterTypes[0].Equal(declared.Arguments[0]) && directParameter(body.Value, 0)
+		valid := cp.isResolvedOptionalValue(contract, declared) && len(parameterTypes) == 1 && parameterTypes[0].Equal(declared.Arguments[0]) && directParameter(body.Value, 0)
 		if valid {
 			return declared, true, nil
 		}
@@ -909,19 +924,19 @@ func (cp *checkedProgram) inferOptionalMethodBodyType(method MethodDecl, env map
 		if err != nil {
 			return ResolvedTypeRef{}, true, err
 		}
-		if isResolvedPrimitiveOptional(declared) && len(parameterTypes) == 0 && valueType.Equal(declared.Arguments[0]) {
+		if cp.isResolvedOptionalValue(contract, declared) && len(parameterTypes) == 0 && valueType.Equal(declared.Arguments[0]) {
 			return declared, true, nil
 		}
 	case *IdentExpr:
-		if isResolvedPrimitiveOptional(declared) && len(parameterTypes) == 1 && parameterTypes[0].Equal(declared) && body.Name == method.Params[0].Name {
+		if cp.isResolvedOptionalValue(contract, declared) && len(parameterTypes) == 1 && parameterTypes[0].Equal(declared) && body.Name == method.Params[0].Name {
 			return declared, true, nil
 		}
 	case *OptionalHasValueExpr:
-		if declared.Equal(resolvedPrimitive(TypeBool)) && len(parameterTypes) == 1 && isResolvedPrimitiveOptional(parameterTypes[0]) && directParameter(body.Value, 0) {
+		if declared.Equal(resolvedPrimitive(TypeBool)) && len(parameterTypes) == 1 && cp.isResolvedOptionalValue(contract, parameterTypes[0]) && directParameter(body.Value, 0) {
 			return declared, true, nil
 		}
 	case *OptionalValueOrExpr:
-		if hasPrimitiveOptionalDefaultSourceContract(contract) && declared.Kind == TypeRefPrimitive && len(parameterTypes) == 2 && isResolvedPrimitiveOptional(parameterTypes[0]) && parameterTypes[0].Arguments[0].Equal(declared) && parameterTypes[1].Equal(declared) && directParameter(body.Value, 0) && directParameter(body.Fallback, 1) {
+		if hasPrimitiveOptionalDefaultSourceContract(contract) && len(parameterTypes) == 2 && cp.isResolvedOptionalValue(contract, parameterTypes[0]) && parameterTypes[0].Arguments[0].Equal(declared) && parameterTypes[1].Equal(declared) && directParameter(body.Value, 0) && directParameter(body.Fallback, 1) {
 			return declared, true, nil
 		}
 	}
@@ -1168,7 +1183,7 @@ func isOrdinalTextOrderingOperator(operator string) bool {
 }
 
 func arithmeticSourceOperators(contract LanguageContract) string {
-	if contract == PipeLangLanguageContractV050 || contract == PipeLangLanguageContractV060 || contract == PipeLangLanguageContractV070 || contract == PipeLangLanguageContractV080 || contract == PipeLangLanguageContractV090 || contract == PipeLangLanguageContractV100 || contract == PipeLangLanguageContractV110 || contract == PipeLangLanguageContractV120 || contract == PipeLangLanguageContractV130 || contract == PipeLangLanguageContractV140 || contract == PipeLangLanguageContractV150 || contract == PipeLangLanguageContractV160 || contract == PipeLangLanguageContractV170 {
+	if contract == PipeLangLanguageContractV050 || contract == PipeLangLanguageContractV060 || contract == PipeLangLanguageContractV070 || contract == PipeLangLanguageContractV080 || contract == PipeLangLanguageContractV090 || contract == PipeLangLanguageContractV100 || contract == PipeLangLanguageContractV110 || contract == PipeLangLanguageContractV120 || contract == PipeLangLanguageContractV130 || contract == PipeLangLanguageContractV140 || contract == PipeLangLanguageContractV150 || contract == PipeLangLanguageContractV160 || contract == PipeLangLanguageContractV170 || contract == PipeLangLanguageContractV180 {
 		return "addition, subtraction, multiplication, or negation"
 	}
 	if contract == PipeLangLanguageContractV040 {
