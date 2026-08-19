@@ -173,9 +173,9 @@ func ValidateFunction(function Function) error {
 			return err
 		}
 	}
-	snapshotResult := functionContainsSnapshotResult(function)
-	if snapshotResult {
-		if err := validateDirectSnapshotResultFunction(function); err != nil {
+	boundedResult := functionContainsBoundedValueResult(function)
+	if boundedResult {
+		if err := validateDirectBoundedValueResultFunction(function); err != nil {
 			return err
 		}
 	}
@@ -203,12 +203,12 @@ func ValidateFunction(function Function) error {
 			return err
 		}
 	}
-	if functionContainsOptional(function) && !snapshotResult && !listAt && !listFindByText {
+	if functionContainsOptional(function) && !boundedResult && !listAt && !listFindByText {
 		if err := validateDirectOptionalFunction(function); err != nil {
 			return err
 		}
 	}
-	if functionContainsList(function) && !snapshotResult && !listAt && !listFindByText && !listFilterByText && !listFilterContainsCaseFolded {
+	if functionContainsList(function) && !boundedResult && !listAt && !listFindByText && !listFilterByText && !listFilterContainsCaseFolded {
 		if err := validateDirectListFunction(function); err != nil {
 			return err
 		}
@@ -233,8 +233,8 @@ func validateType(value Type) error {
 		if err := validateType(value.Result.Failure); err != nil {
 			return fmt.Errorf("result failure type: %w", err)
 		}
-		if !isArithmeticResultType(value) && !isSnapshotResultType(value) {
-			return fmt.Errorf("result type is outside the checked-arithmetic and snapshot envelopes")
+		if !isArithmeticResultType(value) && !isBoundedValueResultType(value) {
+			return fmt.Errorf("result type is outside the checked-arithmetic and bounded value envelopes")
 		}
 		if value.Primitive != "" || value.Numeric != nil || value.Optional != nil || value.List != nil || value.Record != nil || value.Identity != nil || value.Name != "" || len(value.Arguments) != 0 {
 			return fmt.Errorf("result type carries a non-result representation")
@@ -308,6 +308,15 @@ func isArithmeticResultType(value Type) bool {
 
 func isSnapshotResultType(value Type) bool {
 	return value.Kind == TypeResult && value.Result != nil && value.Result.Success.Kind == TypeList && value.Result.Success.List != nil && value.Result.Success.List.Element.Kind == TypeRecord && value.Result.Failure.Kind == TypePrimitive && value.Result.Failure.Primitive == PrimitiveString
+}
+
+func isTextResultType(value Type) bool {
+	text := Type{Kind: TypePrimitive, Primitive: PrimitiveString}
+	return value.Kind == TypeResult && value.Result != nil && TypeEqual(value.Result.Success, text) && TypeEqual(value.Result.Failure, text)
+}
+
+func isBoundedValueResultType(value Type) bool {
+	return isSnapshotResultType(value) || isTextResultType(value)
 }
 
 func isPrimitiveOptionalValueType(value Type) bool {
@@ -719,7 +728,7 @@ func validateExpr(expression Expr, parameters []Parameter) error {
 			return fmt.Errorf("list filter_contains_casefolded field is not string")
 		}
 	case ExprResultOK:
-		if expression.ResultOK == nil || expression.ResultOK.Value == nil || !isSnapshotResultType(expression.Type) {
+		if expression.ResultOK == nil || expression.ResultOK.Value == nil || !isBoundedValueResultType(expression.Type) {
 			return fmt.Errorf("result ok expression is incomplete or has an invalid result type")
 		}
 		if err := validateExpr(*expression.ResultOK.Value, parameters); err != nil {
@@ -729,7 +738,7 @@ func validateExpr(expression Expr, parameters []Parameter) error {
 			return fmt.Errorf("result ok value type does not match its success type")
 		}
 	case ExprResultErr:
-		if expression.ResultErr == nil || expression.ResultErr.Error == nil || !isSnapshotResultType(expression.Type) {
+		if expression.ResultErr == nil || expression.ResultErr.Error == nil || !isBoundedValueResultType(expression.Type) {
 			return fmt.Errorf("result err expression is incomplete or has an invalid result type")
 		}
 		if err := validateExpr(*expression.ResultErr.Error, parameters); err != nil {
@@ -746,8 +755,8 @@ func validateExpr(expression Expr, parameters []Parameter) error {
 		if err := validateExpr(*expression.ResultIsOK.Value, parameters); err != nil {
 			return fmt.Errorf("result is_ok value: %w", err)
 		}
-		if !isSnapshotResultType(expression.ResultIsOK.Value.Type) {
-			return fmt.Errorf("result is_ok operand is not a snapshot Result")
+		if !isBoundedValueResultType(expression.ResultIsOK.Value.Type) {
+			return fmt.Errorf("result is_ok operand is not a bounded value Result")
 		}
 	case ExprResultSuccessOr:
 		if expression.SuccessOr == nil || expression.SuccessOr.Value == nil || expression.SuccessOr.Fallback == nil {
@@ -760,7 +769,7 @@ func validateExpr(expression Expr, parameters []Parameter) error {
 			return fmt.Errorf("result success_or fallback: %w", err)
 		}
 		resultType := expression.SuccessOr.Value.Type
-		if !isSnapshotResultType(resultType) || !TypeEqual(expression.SuccessOr.Fallback.Type, resultType.Result.Success) || !TypeEqual(expression.Type, resultType.Result.Success) {
+		if !isBoundedValueResultType(resultType) || !TypeEqual(expression.SuccessOr.Fallback.Type, resultType.Result.Success) || !TypeEqual(expression.Type, resultType.Result.Success) {
 			return fmt.Errorf("result success_or operand, fallback, and return types do not match")
 		}
 	case ExprResultFailureOr:
@@ -774,7 +783,7 @@ func validateExpr(expression Expr, parameters []Parameter) error {
 			return fmt.Errorf("result failure_or fallback: %w", err)
 		}
 		resultType := expression.FailureOr.Value.Type
-		if !isSnapshotResultType(resultType) || !TypeEqual(expression.FailureOr.Fallback.Type, resultType.Result.Failure) || !TypeEqual(expression.Type, resultType.Result.Failure) {
+		if !isBoundedValueResultType(resultType) || !TypeEqual(expression.FailureOr.Fallback.Type, resultType.Result.Failure) || !TypeEqual(expression.Type, resultType.Result.Failure) {
 			return fmt.Errorf("result failure_or operand, fallback, and return types do not match")
 		}
 	default:
@@ -783,75 +792,75 @@ func validateExpr(expression Expr, parameters []Parameter) error {
 	return nil
 }
 
-func functionContainsSnapshotResult(function Function) bool {
-	if isSnapshotResultType(function.ReturnType) || exprContainsSnapshotResult(function.Body) {
+func functionContainsBoundedValueResult(function Function) bool {
+	if isBoundedValueResultType(function.ReturnType) || exprContainsBoundedValueResult(function.Body) {
 		return true
 	}
 	for _, parameter := range function.Parameters {
-		if isSnapshotResultType(parameter.Type) {
+		if isBoundedValueResultType(parameter.Type) {
 			return true
 		}
 	}
 	return false
 }
 
-func exprContainsSnapshotResult(expression Expr) bool {
-	if isSnapshotResultType(expression.Type) {
+func exprContainsBoundedValueResult(expression Expr) bool {
+	if isBoundedValueResultType(expression.Type) {
 		return true
 	}
 	switch expression.Kind {
 	case ExprResultOK, ExprResultErr, ExprResultIsOK, ExprResultSuccessOr, ExprResultFailureOr:
 		return true
 	case ExprUnary:
-		return expression.Unary != nil && expression.Unary.Operand != nil && exprContainsSnapshotResult(*expression.Unary.Operand)
+		return expression.Unary != nil && expression.Unary.Operand != nil && exprContainsBoundedValueResult(*expression.Unary.Operand)
 	case ExprBinary:
-		return expression.Binary != nil && expression.Binary.Left != nil && expression.Binary.Right != nil && (exprContainsSnapshotResult(*expression.Binary.Left) || exprContainsSnapshotResult(*expression.Binary.Right))
+		return expression.Binary != nil && expression.Binary.Left != nil && expression.Binary.Right != nil && (exprContainsBoundedValueResult(*expression.Binary.Left) || exprContainsBoundedValueResult(*expression.Binary.Right))
 	case ExprFieldProjection:
-		return expression.Field != nil && expression.Field.Receiver != nil && exprContainsSnapshotResult(*expression.Field.Receiver)
+		return expression.Field != nil && expression.Field.Receiver != nil && exprContainsBoundedValueResult(*expression.Field.Receiver)
 	case ExprListAt:
-		return expression.ListAt != nil && expression.ListAt.Values != nil && expression.ListAt.Index != nil && (exprContainsSnapshotResult(*expression.ListAt.Values) || exprContainsSnapshotResult(*expression.ListAt.Index))
+		return expression.ListAt != nil && expression.ListAt.Values != nil && expression.ListAt.Index != nil && (exprContainsBoundedValueResult(*expression.ListAt.Values) || exprContainsBoundedValueResult(*expression.ListAt.Index))
 	case ExprListFindByText:
-		return expression.ListFind != nil && expression.ListFind.Values != nil && expression.ListFind.Key != nil && (exprContainsSnapshotResult(*expression.ListFind.Values) || exprContainsSnapshotResult(*expression.ListFind.Key))
+		return expression.ListFind != nil && expression.ListFind.Values != nil && expression.ListFind.Key != nil && (exprContainsBoundedValueResult(*expression.ListFind.Values) || exprContainsBoundedValueResult(*expression.ListFind.Key))
 	case ExprListFilterByText:
-		return expression.ListFilter != nil && expression.ListFilter.Values != nil && expression.ListFilter.Key != nil && (exprContainsSnapshotResult(*expression.ListFilter.Values) || exprContainsSnapshotResult(*expression.ListFilter.Key))
+		return expression.ListFilter != nil && expression.ListFilter.Values != nil && expression.ListFilter.Key != nil && (exprContainsBoundedValueResult(*expression.ListFilter.Values) || exprContainsBoundedValueResult(*expression.ListFilter.Key))
 	case ExprListFilterContainsCaseFolded:
-		return expression.ListFilterContainsCaseFolded != nil && expression.ListFilterContainsCaseFolded.Values != nil && expression.ListFilterContainsCaseFolded.Query != nil && (exprContainsSnapshotResult(*expression.ListFilterContainsCaseFolded.Values) || exprContainsSnapshotResult(*expression.ListFilterContainsCaseFolded.Query))
+		return expression.ListFilterContainsCaseFolded != nil && expression.ListFilterContainsCaseFolded.Values != nil && expression.ListFilterContainsCaseFolded.Query != nil && (exprContainsBoundedValueResult(*expression.ListFilterContainsCaseFolded.Values) || exprContainsBoundedValueResult(*expression.ListFilterContainsCaseFolded.Query))
 	}
 	return false
 }
 
-func validateDirectSnapshotResultFunction(function Function) error {
+func validateDirectBoundedValueResultFunction(function Function) error {
 	directParameter := func(expression *Expr, position int) bool {
 		return expression != nil && expression.Kind == ExprReference && expression.Parameter != nil && *expression.Parameter == position && position < len(function.Parameters) && TypeEqual(expression.Type, function.Parameters[position].Type)
 	}
 	switch function.Body.Kind {
 	case ExprResultOK:
-		if !isSnapshotResultType(function.ReturnType) || function.Body.ResultOK == nil || len(function.Parameters) != 1 || !TypeEqual(function.Parameters[0].Type, function.ReturnType.Result.Success) || !directParameter(function.Body.ResultOK.Value, 0) {
-			return fmt.Errorf("snapshot Result ok requires one direct matching success parameter")
+		if !isBoundedValueResultType(function.ReturnType) || function.Body.ResultOK == nil || len(function.Parameters) != 1 || !TypeEqual(function.Parameters[0].Type, function.ReturnType.Result.Success) || !directParameter(function.Body.ResultOK.Value, 0) {
+			return fmt.Errorf("bounded Result ok requires one direct matching success parameter")
 		}
 	case ExprResultErr:
-		if !isSnapshotResultType(function.ReturnType) || function.Body.ResultErr == nil || len(function.Parameters) != 1 || !TypeEqual(function.Parameters[0].Type, function.ReturnType.Result.Failure) || !directParameter(function.Body.ResultErr.Error, 0) {
-			return fmt.Errorf("snapshot Result err requires one direct matching failure parameter")
+		if !isBoundedValueResultType(function.ReturnType) || function.Body.ResultErr == nil || len(function.Parameters) != 1 || !TypeEqual(function.Parameters[0].Type, function.ReturnType.Result.Failure) || !directParameter(function.Body.ResultErr.Error, 0) {
+			return fmt.Errorf("bounded Result err requires one direct matching failure parameter")
 		}
 	case ExprReference:
-		if !isSnapshotResultType(function.ReturnType) || len(function.Parameters) != 1 || !TypeEqual(function.Parameters[0].Type, function.ReturnType) || !directParameter(&function.Body, 0) {
-			return fmt.Errorf("snapshot Result identity requires one identical direct parameter and return")
+		if !isBoundedValueResultType(function.ReturnType) || len(function.Parameters) != 1 || !TypeEqual(function.Parameters[0].Type, function.ReturnType) || !directParameter(&function.Body, 0) {
+			return fmt.Errorf("bounded Result identity requires one identical direct parameter and return")
 		}
 	case ExprResultIsOK:
 		boolean := Type{Kind: TypePrimitive, Primitive: PrimitiveBool}
-		if function.Body.ResultIsOK == nil || len(function.Parameters) != 1 || !isSnapshotResultType(function.Parameters[0].Type) || !TypeEqual(function.ReturnType, boolean) || !directParameter(function.Body.ResultIsOK.Value, 0) {
-			return fmt.Errorf("snapshot Result is_ok requires one direct Result parameter and bool return")
+		if function.Body.ResultIsOK == nil || len(function.Parameters) != 1 || !isBoundedValueResultType(function.Parameters[0].Type) || !TypeEqual(function.ReturnType, boolean) || !directParameter(function.Body.ResultIsOK.Value, 0) {
+			return fmt.Errorf("bounded Result is_ok requires one direct Result parameter and bool return")
 		}
 	case ExprResultSuccessOr:
-		if function.Body.SuccessOr == nil || len(function.Parameters) != 2 || !isSnapshotResultType(function.Parameters[0].Type) || !TypeEqual(function.Parameters[0].Type.Result.Success, function.Parameters[1].Type) || !TypeEqual(function.ReturnType, function.Parameters[1].Type) || !directParameter(function.Body.SuccessOr.Value, 0) || !directParameter(function.Body.SuccessOr.Fallback, 1) {
-			return fmt.Errorf("snapshot Result success_or requires direct Result and matching success fallback parameters")
+		if function.Body.SuccessOr == nil || len(function.Parameters) != 2 || !isBoundedValueResultType(function.Parameters[0].Type) || !TypeEqual(function.Parameters[0].Type.Result.Success, function.Parameters[1].Type) || !TypeEqual(function.ReturnType, function.Parameters[1].Type) || !directParameter(function.Body.SuccessOr.Value, 0) || !directParameter(function.Body.SuccessOr.Fallback, 1) {
+			return fmt.Errorf("bounded Result success_or requires direct Result and matching success fallback parameters")
 		}
 	case ExprResultFailureOr:
-		if function.Body.FailureOr == nil || len(function.Parameters) != 2 || !isSnapshotResultType(function.Parameters[0].Type) || !TypeEqual(function.Parameters[0].Type.Result.Failure, function.Parameters[1].Type) || !TypeEqual(function.ReturnType, function.Parameters[1].Type) || !directParameter(function.Body.FailureOr.Value, 0) || !directParameter(function.Body.FailureOr.Fallback, 1) {
-			return fmt.Errorf("snapshot Result failure_or requires direct Result and matching failure fallback parameters")
+		if function.Body.FailureOr == nil || len(function.Parameters) != 2 || !isBoundedValueResultType(function.Parameters[0].Type) || !TypeEqual(function.Parameters[0].Type.Result.Failure, function.Parameters[1].Type) || !TypeEqual(function.ReturnType, function.Parameters[1].Type) || !directParameter(function.Body.FailureOr.Value, 0) || !directParameter(function.Body.FailureOr.Fallback, 1) {
+			return fmt.Errorf("bounded Result failure_or requires direct Result and matching failure fallback parameters")
 		}
 	default:
-		return fmt.Errorf("snapshot Result types are admitted only in direct ok, err, identity, is_ok, success_or, or failure_or functions")
+		return fmt.Errorf("bounded Result types are admitted only in direct ok, err, identity, is_ok, success_or, or failure_or functions")
 	}
 	return nil
 }

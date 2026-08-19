@@ -542,6 +542,9 @@ func validateValue(value Value) error {
 		}
 		return validateValue(result.Value)
 	}
+	if !resultSuccessPayloadIsCanonicalZero(result.Value) {
+		return fmt.Errorf("failed Result carries a non-canonical success payload")
+	}
 	if value.Type.Result.Failure.Kind == coreir.TypeArithmeticError {
 		if result.Failure != nil || (result.Error != coreir.ArithmeticOverflow && result.Error != coreir.ArithmeticDivisionByZero) {
 			return fmt.Errorf("failed Result carries an unknown arithmetic error")
@@ -552,6 +555,17 @@ func validateValue(value Value) error {
 		return fmt.Errorf("failed Result carries an invalid failure value")
 	}
 	return validateValue(*result.Failure)
+}
+
+func resultSuccessPayloadIsCanonicalZero(value Value) bool {
+	switch value.Type.Kind {
+	case coreir.TypeList:
+		return value.List == nil && value.Result == nil && value.Optional == nil && len(value.Record) == 0
+	case coreir.TypePrimitive:
+		return value.Type.Primitive == coreir.PrimitiveString && value.String == "" && value.Result == nil && value.Optional == nil && value.List == nil && len(value.Record) == 0
+	default:
+		return true
+	}
 }
 
 func cloneOptionalValue(value Value) Value {

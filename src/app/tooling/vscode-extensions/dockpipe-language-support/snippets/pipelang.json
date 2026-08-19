@@ -159,5 +159,17 @@
       "public string ${11:ErrorOr}(Result<List<${1:Row}>, string> ${7:result}, string ${12:fallbackError}) => failure_or(${7:result}, ${12:fallbackError});"
     ],
     "description": "Create the exact v0.19.0 read-only snapshot Result construction, identity, inspection, and bounded defaulting methods."
+  },
+  "PipeLang Text Result": {
+    "prefix": "pipe-text-result",
+    "body": [
+      "public Result<string, string> ${1:TextOk}(string ${2:value}) => ok<string, string>(${2:value});",
+      "public Result<string, string> ${3:TextFailed}(string ${4:error}) => err<string, string>(${4:error});",
+      "public Result<string, string> ${5:ForwardText}(Result<string, string> ${6:result}) => ${6:result};",
+      "public bool ${7:TextSucceeded}(Result<string, string> ${6:result}) => is_ok(${6:result});",
+      "public string ${8:TextOr}(Result<string, string> ${6:result}, string ${9:fallback}) => success_or(${6:result}, ${9:fallback});",
+      "public string ${10:ErrorOr}(Result<string, string> ${6:result}, string ${11:fallbackError}) => failure_or(${6:result}, ${11:fallbackError});"
+    ],
+    "description": "Create the exact v0.25.0 fallible text Result construction, identity, inspection, and bounded defaulting methods."
   }
 }

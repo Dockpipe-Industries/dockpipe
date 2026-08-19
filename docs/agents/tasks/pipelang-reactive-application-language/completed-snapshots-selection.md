@@ -325,3 +325,34 @@ Core-only evaluator/backend import-boundary checks. The application check used o
 `/tmp` modfile and local cached module proxy selecting cached `x/sys v0.46.0`; no checkout
 dependency, generated store, network, runtime, Docker, VM, credential, cleanup, commit, push,
 publication, or other external state changed.
+
+### Completed step 7z fallible text envelope (2026-08-19)
+
+The founder selected explicit `v0.25.0` construction, identity transport, success inspection, and
+bounded defaulting for `Result<string, string>` through the exact direct `ok<string, string>`,
+`err<string, string>`, Result parameter identity, `is_ok`, `success_or`, and `failure_or` method
+forms. The slice reuses `pipelang:result`, primitive `string`, and the existing Result HIR/Core
+expression kinds; `pipelang.compiler.v1` and `pipelang.semantic.v1` remain unchanged.
+
+The evaluator and Core-only Go backend completely validate tagged values and every supplied text
+payload or fallback as strict UTF-8 before selection. Failures carry a canonical empty success
+payload. `v0.1.0` through `v0.24.0` reject the source, HIR, and executable Core forms without
+implicit migration. Other Result types or source forms, `is_err`, unwrap, propagation, mapping,
+matching, effects, composition, Application IR, Step-8 control flow, and additional backends remain
+excluded.
+
+The synchronized fixture and tests cover semantic projection, all six typed HIR/Core expression
+kinds, evaluator behavior, deterministic generated Go and generated-code execution, strict UTF-8
+validation including unselected fallbacks, canonical tagged-value rejection, malformed HIR/Core,
+parser spans, explicit migration, and excluded source shapes. This gives TASK-020's first read-only
+Docker-observability consumer a bounded fallible text value for adapter status and diagnostic
+transport without introducing general Result composition or application semantics.
+
+Terminal proof passed with cached Go 1.25.13 and local/offline module inputs: the complete PipeLang
+suite; exact 45-source compatibility suite; affected application and `src/cmd` tests; editor
+grammar/completion/snippet assertions; `go vet`; Windows/amd64 compile-only proof; `gofmt`; `git
+diff --check`; frozen inventory digest/count; unchanged dependency files; and Core-only
+evaluator/backend import-boundary checks. The application and CLI checks used only a temporary
+`/tmp` modfile and the local cached module proxy selecting cached `x/sys v0.46.0`; no checkout
+dependency, generated store, network, runtime, Docker, VM, credential, cleanup, commit, push,
+publication, or other external state changed.
