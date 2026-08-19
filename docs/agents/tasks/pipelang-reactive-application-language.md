@@ -2041,6 +2041,71 @@ Terminal proof passed with cached Go 1.25.13, offline module lookup, and writabl
 No dependency, generated store, runtime, external state, cleanup, commit, push, or publication
 changed.
 
+### Completed step 7t read-only snapshot Result contract (2026-08-18)
+
+The founder selected explicit `v0.19.0` bounded snapshot Result values. The accepted public surface
+contains only these direct method shapes for one existing public primitive record `R`:
+
+```pipelang
+public Result<List<ContainerRow>, string> RowsOk(List<ContainerRow> value) =>
+    ok<List<ContainerRow>, string>(value);
+public Result<List<ContainerRow>, string> RowsFailed(string error) =>
+    err<List<ContainerRow>, string>(error);
+public Result<List<ContainerRow>, string> ForwardRows(
+    Result<List<ContainerRow>, string> value
+) => value;
+public bool RowsSucceeded(Result<List<ContainerRow>, string> value) => is_ok(value);
+public List<ContainerRow> RowsOr(
+    Result<List<ContainerRow>, string> value,
+    List<ContainerRow> fallback
+) => success_or(value, fallback);
+public string ErrorOr(
+    Result<List<ContainerRow>, string> value,
+    string fallback
+) => failure_or(value, fallback);
+```
+
+`Result<List<R>, string>` reuses the fixed `pipelang:result` and `pipelang:list` identities, the
+existing record identity, and primitive `string`; callable identity preserves each exact parameter
+and return shape. `pipelang.compiler.v1` and `pipelang.semantic.v1` remain unchanged. Typed HIR and
+target-neutral Core carry explicit `result_ok`, `result_err`, `result_is_ok`, `result_success_or`,
+and `result_failure_or` nodes. The evaluator and Core-only Go backend use canonical tagged values,
+validate every active payload plus every fallback before selection, validate all record fields and
+strict UTF-8 strings, and copy list and record storage for construction, identity transport, and
+selection.
+
+`PL3006` reports invalid payload, placement, or signature types; `PL3009` reports computed,
+reordered, additional, or otherwise non-direct operands and bodies. Malformed typed HIR and Core
+remain `PL3026` and `PL3027`. `v0.1.0` through `v0.18.0` reject the source and executable form
+without implicit migration, while every frozen earlier contract remains available under
+`v0.19.0`.
+
+The minimal pure source fixture is `src/lib/pipelang/testdata/snapshot-result.pipe`, with
+synchronized typed HIR, Core, and Go goldens. This slice gives TASK-020's first read-only Docker
+observability consumer one deterministic success/failure envelope for a complete row snapshot and
+bounded cached-snapshot or error fallback without introducing application behavior. General Result
+types, arithmetic-Result construction, propagation, matching, chaining, fields, nesting, arbitrary
+success/failure payloads, list iteration/filtering/sorting/indexing, Application IR, Step-8 control
+flow, effects, and additional backends remain excluded.
+
+Terminal proof passed with cached Go 1.25.13, offline module lookup, and writable `/tmp` caches:
+
+- the complete PipeLang and exact 45-source compatibility suites, including parser spans,
+  structured identity/projection, source-derived HIR/Core/Go snapshot-Result goldens, success/
+  failure/identity/inspection/fallback evaluator agreement, caller-storage isolation, complete
+  selected and unselected payload/fallback validation, strict UTF-8 rejection, malformed HIR/Core
+  rejection, deterministic exclusions, explicit `v0.1.0` through `v0.18.0` migration rejection,
+  and preserved `v0.1.0` through `v0.18.0` behavior;
+- focused application PipeLang check/compile/invoke/materialize, package-compile, and `src/cmd`
+  checks through only a temporary `/tmp` modfile mapped to cached `x/sys v0.46.0`;
+- `go vet`, Core-only backend/evaluator import-boundary checks, VS Code grammar/snippet/diagnostic
+  validation, and Windows compile-only proof across affected packages; and
+- `gofmt`, `git diff --check`, exact 45-source inventory, dependency/generated-state absence, and
+  engine/package-boundary review.
+
+No dependency, generated store, runtime, external state, cleanup, commit, push, or publication
+changed.
+
 ## Exact Next Boundary
 
 Step 7 of **Bounded Implementation Order** has completed the fixed numeric, compiler-internal
@@ -2053,6 +2118,8 @@ deterministic empty, singleton, identity transport, and cardinality of primitive
 Deterministic immutable append of one primitive record to a primitive-record list is also complete.
 Exact Optional construction, identity transport, presence inspection, and bounded defaulting for
 one existing public primitive record is also complete.
+Exact construction, identity transport, success inspection, and bounded success/failure defaulting
+for one `Result<List<R>, string>` read-only snapshot envelope is also complete.
 `v0.2.0` admits only the exact explicit Result-returning addition;
 `v0.3.0` adds only direct subtraction; `v0.4.0` adds only direct multiplication; `v0.5.0` adds only
 direct integer negation; `v0.6.0` adds only direct binary64 division; and `v0.7.0` adds only direct
@@ -2083,8 +2150,12 @@ preserving every prior contract.
 `v0.18.0` adds only exact direct `some`, `none`, identity transport, `has_value`, and `value_or`
 methods for `Optional<R>` where `R` is one existing public primitive record, with complete tagged
 value and record validation plus copied result storage while preserving every prior contract.
-All other numeric arithmetic and every Result construction, composition, or consumption form remain
-fail-closed from production source. Any next slice requires a new
+`v0.19.0` adds only exact direct `ok`, `err`, identity transport, `is_ok`, `success_or`, and
+`failure_or` methods for `Result<List<R>, string>` where `R` is one existing public primitive
+record, with complete tagged payload/fallback validation plus copied list and record storage while
+preserving every prior contract.
+All other numeric arithmetic and every other Result construction, composition, or consumption form
+remain fail-closed from production source. Any next slice requires a new
 synchronized decision for its exact source spelling, type/value handling rule, semantic projection,
 migration, and bounded semantics before implementation.
 
@@ -2098,11 +2169,14 @@ arbitrary multi-element collection construction or collection consumption, failu
 effects, or Qt behavior as one batch. The accepted list foundation now satisfies the read-only
 consumer's empty, singleton, pass-through, count-summary, and deterministic multi-row growth
 boundary. The accepted record-Optional slice additionally satisfies typed absence/presence and
-deterministic whole-record fallback at that read-only boundary; iteration, filtering, sorting,
-indexing, and application projection remain later decisions.
+deterministic whole-record fallback at that read-only boundary. The accepted snapshot-Result slice
+adds a typed whole-snapshot success/failure boundary plus deterministic cached-list and error
+fallback; iteration, filtering, sorting, indexing, propagation, matching, and application
+projection remain later decisions.
 
-No later step-7 slice is included here. In particular, this checkpoint does not add Result
-construction, inspection, extraction, wrapping, unwrapping, propagation, or matching; additional
+No later step-7 slice is included here. In particular, this checkpoint does not add general Result
+construction, inspection, extraction, wrapping, unwrapping, propagation, or matching beyond the
+exact accepted `Result<List<R>, string>` forms; additional
 Unicode text construction/scalar/grapheme APIs, normalization/case operations, value/reference,
 hashing, general total-order capabilities, optional extraction beyond `value_or`, equality,
 implicit defaults, nesting, chaining,

@@ -206,6 +206,32 @@ type (
 		Value  Expr
 		Span   Span
 	}
+	ResultOKExpr struct {
+		SuccessType UnresolvedTypeRef
+		FailureType UnresolvedTypeRef
+		Value       Expr
+		Span        Span
+	}
+	ResultErrExpr struct {
+		SuccessType UnresolvedTypeRef
+		FailureType UnresolvedTypeRef
+		Error       Expr
+		Span        Span
+	}
+	ResultIsOKExpr struct {
+		Value Expr
+		Span  Span
+	}
+	ResultSuccessOrExpr struct {
+		Value    Expr
+		Fallback Expr
+		Span     Span
+	}
+	ResultFailureOrExpr struct {
+		Value    Expr
+		Fallback Expr
+		Span     Span
+	}
 )
 
 func (*LiteralExpr) isExpr()          {}
@@ -222,6 +248,11 @@ func (*ListEmptyExpr) isExpr()        {}
 func (*ListSingletonExpr) isExpr()    {}
 func (*ListCountExpr) isExpr()        {}
 func (*ListAppendExpr) isExpr()       {}
+func (*ResultOKExpr) isExpr()         {}
+func (*ResultErrExpr) isExpr()        {}
+func (*ResultIsOKExpr) isExpr()       {}
+func (*ResultSuccessOrExpr) isExpr()  {}
+func (*ResultFailureOrExpr) isExpr()  {}
 
 func (e *LiteralExpr) SourceSpan() Span          { return e.Span }
 func (e *IdentExpr) SourceSpan() Span            { return e.Span }
@@ -237,6 +268,11 @@ func (e *ListEmptyExpr) SourceSpan() Span        { return e.Span }
 func (e *ListSingletonExpr) SourceSpan() Span    { return e.Span }
 func (e *ListCountExpr) SourceSpan() Span        { return e.Span }
 func (e *ListAppendExpr) SourceSpan() Span       { return e.Span }
+func (e *ResultOKExpr) SourceSpan() Span         { return e.Span }
+func (e *ResultErrExpr) SourceSpan() Span        { return e.Span }
+func (e *ResultIsOKExpr) SourceSpan() Span       { return e.Span }
+func (e *ResultSuccessOrExpr) SourceSpan() Span  { return e.Span }
+func (e *ResultFailureOrExpr) SourceSpan() Span  { return e.Span }
 
 func setExprSpan(expr Expr, span Span) {
 	switch node := expr.(type) {
@@ -267,6 +303,16 @@ func setExprSpan(expr Expr, span Span) {
 	case *ListCountExpr:
 		node.Span = span
 	case *ListAppendExpr:
+		node.Span = span
+	case *ResultOKExpr:
+		node.Span = span
+	case *ResultErrExpr:
+		node.Span = span
+	case *ResultIsOKExpr:
+		node.Span = span
+	case *ResultSuccessOrExpr:
+		node.Span = span
+	case *ResultFailureOrExpr:
 		node.Span = span
 	}
 }

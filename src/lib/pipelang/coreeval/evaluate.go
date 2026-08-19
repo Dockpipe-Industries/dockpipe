@@ -26,9 +26,10 @@ type OptionalValue struct {
 }
 
 type Outcome struct {
-	OK    bool
-	Value Value
-	Error coreir.ArithmeticError
+	OK      bool
+	Value   Value
+	Error   coreir.ArithmeticError
+	Failure *Value
 }
 
 func Evaluate(function coreir.Function, arguments []Value) (Outcome, error) {
@@ -60,7 +61,7 @@ func evalExpr(expression coreir.Expr, arguments []Value) (Outcome, error) {
 			if result == nil {
 				return Outcome{}, fmt.Errorf("Result reference has no canonical value")
 			}
-			return *result, nil
+			return cloneOutcome(*result), nil
 		}
 		if expression.Type.Kind == coreir.TypeRecord {
 			return Outcome{OK: true, Value: cloneRecordValue(arguments[*expression.Parameter])}, nil
@@ -228,9 +229,80 @@ func evalExpr(expression coreir.Expr, arguments []Value) (Outcome, error) {
 			return Outcome{}, fmt.Errorf("list append: %w", err)
 		}
 		return Outcome{OK: true, Value: result}, nil
+	case coreir.ExprResultOK:
+		value, err := evalExpr(*expression.ResultOK.Value, arguments)
+		if err != nil || !value.OK {
+			return value, err
+		}
+		if err := validateValue(value.Value); err != nil {
+			return Outcome{}, fmt.Errorf("result ok: %w", err)
+		}
+		return Outcome{OK: true, Value: cloneValue(value.Value)}, nil
+	case coreir.ExprResultErr:
+		failure, err := evalExpr(*expression.ResultErr.Error, arguments)
+		if err != nil || !failure.OK {
+			return failure, err
+		}
+		if err := validateValue(failure.Value); err != nil {
+			return Outcome{}, fmt.Errorf("result err: %w", err)
+		}
+		failureValue := cloneValue(failure.Value)
+		return Outcome{OK: false, Value: Value{Type: expression.Type.Result.Success}, Failure: &failureValue}, nil
+	case coreir.ExprResultIsOK:
+		result, err := directResultOperand(expression.ResultIsOK.Value, arguments)
+		if err != nil {
+			return Outcome{}, fmt.Errorf("result is_ok: %w", err)
+		}
+		return Outcome{OK: true, Value: Value{Type: expression.Type, Bool: result.OK}}, nil
+	case coreir.ExprResultSuccessOr:
+		result, err := directResultOperand(expression.SuccessOr.Value, arguments)
+		if err != nil {
+			return Outcome{}, fmt.Errorf("result success_or: %w", err)
+		}
+		fallback, err := evalExpr(*expression.SuccessOr.Fallback, arguments)
+		if err != nil || !fallback.OK {
+			return fallback, err
+		}
+		if err := validateValue(fallback.Value); err != nil {
+			return Outcome{}, fmt.Errorf("result success_or fallback: %w", err)
+		}
+		if result.OK {
+			return Outcome{OK: true, Value: cloneValue(result.Value)}, nil
+		}
+		return Outcome{OK: true, Value: cloneValue(fallback.Value)}, nil
+	case coreir.ExprResultFailureOr:
+		result, err := directResultOperand(expression.FailureOr.Value, arguments)
+		if err != nil {
+			return Outcome{}, fmt.Errorf("result failure_or: %w", err)
+		}
+		fallback, err := evalExpr(*expression.FailureOr.Fallback, arguments)
+		if err != nil || !fallback.OK {
+			return fallback, err
+		}
+		if err := validateValue(fallback.Value); err != nil {
+			return Outcome{}, fmt.Errorf("result failure_or fallback: %w", err)
+		}
+		if !result.OK {
+			return Outcome{OK: true, Value: cloneValue(*result.Failure)}, nil
+		}
+		return Outcome{OK: true, Value: cloneValue(fallback.Value)}, nil
 	default:
 		return Outcome{}, fmt.Errorf("unsupported expression kind %q", expression.Kind)
 	}
+}
+
+func directResultOperand(expression *coreir.Expr, arguments []Value) (Outcome, error) {
+	if expression == nil || expression.Kind != coreir.ExprReference || expression.Parameter == nil || *expression.Parameter < 0 || *expression.Parameter >= len(arguments) {
+		return Outcome{}, fmt.Errorf("operand is not a direct Result parameter")
+	}
+	argument := arguments[*expression.Parameter]
+	if err := validateValue(argument); err != nil {
+		return Outcome{}, err
+	}
+	if argument.Result == nil {
+		return Outcome{}, fmt.Errorf("Result parameter has no canonical value")
+	}
+	return cloneOutcome(*argument.Result), nil
 }
 
 func evalTextBinary(expression coreir.Expr, left, right string) (Outcome, error) {
@@ -330,23 +402,29 @@ func validateValue(value Value) error {
 		}
 		return nil
 	}
-	if value.Type.Result == nil || value.Type.Result.Failure.Kind != coreir.TypeArithmeticError || value.Result == nil {
-		return fmt.Errorf("Result value has an invalid arithmetic Result shape")
+	if value.Type.Result == nil || value.Result == nil {
+		return fmt.Errorf("Result value has an invalid Result shape")
 	}
 	result := value.Result
 	if !coreir.TypeEqual(result.Value.Type, value.Type.Result.Success) {
 		return fmt.Errorf("Result payload type does not match its success type")
 	}
 	if result.OK {
-		if result.Error != "" {
+		if result.Error != "" || result.Failure != nil {
 			return fmt.Errorf("successful Result carries an error")
+		}
+		return validateValue(result.Value)
+	}
+	if value.Type.Result.Failure.Kind == coreir.TypeArithmeticError {
+		if result.Failure != nil || (result.Error != coreir.ArithmeticOverflow && result.Error != coreir.ArithmeticDivisionByZero) {
+			return fmt.Errorf("failed Result carries an unknown arithmetic error")
 		}
 		return nil
 	}
-	if result.Error != coreir.ArithmeticOverflow && result.Error != coreir.ArithmeticDivisionByZero {
-		return fmt.Errorf("failed Result carries an unknown arithmetic error")
+	if result.Error != "" || result.Failure == nil || !coreir.TypeEqual(result.Failure.Type, value.Type.Result.Failure) {
+		return fmt.Errorf("failed Result carries an invalid failure value")
 	}
-	return nil
+	return validateValue(*result.Failure)
 }
 
 func cloneOptionalValue(value Value) Value {
@@ -435,9 +513,26 @@ func cloneValue(value Value) Value {
 		return cloneListValue(value)
 	case coreir.TypeOptional:
 		return cloneOptionalValue(value)
+	case coreir.TypeResult:
+		cloned := value
+		if value.Result != nil {
+			result := cloneOutcome(*value.Result)
+			cloned.Result = &result
+		}
+		return cloned
 	default:
 		return value
 	}
+}
+
+func cloneOutcome(value Outcome) Outcome {
+	cloned := value
+	cloned.Value = cloneValue(value.Value)
+	if value.Failure != nil {
+		failure := cloneValue(*value.Failure)
+		cloned.Failure = &failure
+	}
+	return cloned
 }
 
 func arithmeticOutcome(resultType coreir.Type, value Value, arithmeticError coreir.ArithmeticError) Outcome {

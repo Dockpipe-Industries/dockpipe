@@ -21,6 +21,7 @@ const (
 	LanguageContractV160 = "v0.16.0"
 	LanguageContractV170 = "v0.17.0"
 	LanguageContractV180 = "v0.18.0"
+	LanguageContractV190 = "v0.19.0"
 	CompilerContractV1   = "pipelang.compiler.v1"
 	BuiltinPackageID     = "pipelang"
 	ListSemanticPath     = "list"
@@ -152,6 +153,11 @@ const (
 	ExprListSingleton    ExprKind = "list_singleton"
 	ExprListCount        ExprKind = "list_count"
 	ExprListAppend       ExprKind = "list_append"
+	ExprResultOK         ExprKind = "result_ok"
+	ExprResultErr        ExprKind = "result_err"
+	ExprResultIsOK       ExprKind = "result_is_ok"
+	ExprResultSuccessOr  ExprKind = "result_success_or"
+	ExprResultFailureOr  ExprKind = "result_failure_or"
 )
 
 type Operator string
@@ -240,6 +246,28 @@ type ListAppend struct {
 	Value  *Expr `json:"value"`
 }
 
+type ResultOK struct {
+	Value *Expr `json:"value"`
+}
+
+type ResultErr struct {
+	Error *Expr `json:"error"`
+}
+
+type ResultIsOK struct {
+	Value *Expr `json:"value"`
+}
+
+type ResultSuccessOr struct {
+	Value    *Expr `json:"value"`
+	Fallback *Expr `json:"fallback"`
+}
+
+type ResultFailureOr struct {
+	Value    *Expr `json:"value"`
+	Fallback *Expr `json:"fallback"`
+}
+
 type Expr struct {
 	Kind       ExprKind          `json:"kind"`
 	Type       Type              `json:"type"`
@@ -257,6 +285,11 @@ type Expr struct {
 	ListOne    *ListSingleton    `json:"list_singleton,omitempty"`
 	ListCount  *ListCount        `json:"list_count,omitempty"`
 	ListAppend *ListAppend       `json:"list_append,omitempty"`
+	ResultOK   *ResultOK         `json:"result_ok,omitempty"`
+	ResultErr  *ResultErr        `json:"result_err,omitempty"`
+	ResultIsOK *ResultIsOK       `json:"result_is_ok,omitempty"`
+	SuccessOr  *ResultSuccessOr  `json:"result_success_or,omitempty"`
+	FailureOr  *ResultFailureOr  `json:"result_failure_or,omitempty"`
 }
 
 type Function struct {

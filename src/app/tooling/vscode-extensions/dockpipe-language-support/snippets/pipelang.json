@@ -112,5 +112,17 @@
       "public List<${1:Row}> ${2:AppendRow}(List<${1:Row}> ${3:values}, ${1:Row} ${4:value}) => append(${3:values}, ${4:value});"
     ],
     "description": "Create the exact v0.17.0 immutable primitive-record List append method."
+  },
+  "PipeLang Snapshot Result": {
+    "prefix": "pipe-snapshot-result",
+    "body": [
+      "public Result<List<${1:Row}>, string> ${2:RowsOk}(List<${1:Row}> ${3:value}) => ok<List<${1:Row}>, string>(${3:value});",
+      "public Result<List<${1:Row}>, string> ${4:RowsFailed}(string ${5:error}) => err<List<${1:Row}>, string>(${5:error});",
+      "public Result<List<${1:Row}>, string> ${6:ForwardRows}(Result<List<${1:Row}>, string> ${7:result}) => ${7:result};",
+      "public bool ${8:RowsSucceeded}(Result<List<${1:Row}>, string> ${7:result}) => is_ok(${7:result});",
+      "public List<${1:Row}> ${9:RowsOr}(Result<List<${1:Row}>, string> ${7:result}, List<${1:Row}> ${10:fallback}) => success_or(${7:result}, ${10:fallback});",
+      "public string ${11:ErrorOr}(Result<List<${1:Row}>, string> ${7:result}, string ${12:fallbackError}) => failure_or(${7:result}, ${12:fallbackError});"
+    ],
+    "description": "Create the exact v0.19.0 read-only snapshot Result construction, identity, inspection, and bounded defaulting methods."
   }
 }
