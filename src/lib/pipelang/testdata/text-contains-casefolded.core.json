@@ -1,0 +1,76 @@
+{
+  "language_contract": "v0.23.0",
+  "compiler_contract": "pipelang.compiler.v1",
+  "functions": [
+    {
+      "identity": {
+        "package_id": "test.package",
+        "path": "app.root.root.containscasefolded",
+        "callable": {
+          "parameters": [
+            {
+              "kind": "primitive",
+              "primitive": "string"
+            },
+            {
+              "kind": "primitive",
+              "primitive": "string"
+            }
+          ],
+          "returns": {
+            "kind": "primitive",
+            "primitive": "bool"
+          }
+        }
+      },
+      "name": "ContainsCaseFolded",
+      "parameters": [
+        {
+          "position": 0,
+          "name": "value",
+          "type": {
+            "kind": "primitive",
+            "primitive": "string"
+          }
+        },
+        {
+          "position": 1,
+          "name": "query",
+          "type": {
+            "kind": "primitive",
+            "primitive": "string"
+          }
+        }
+      ],
+      "return_type": {
+        "kind": "primitive",
+        "primitive": "bool"
+      },
+      "body": {
+        "kind": "text_contains_case_folded",
+        "type": {
+          "kind": "primitive",
+          "primitive": "bool"
+        },
+        "text_contains_case_folded": {
+          "value": {
+            "kind": "reference",
+            "type": {
+              "kind": "primitive",
+              "primitive": "string"
+            },
+            "parameter": 0
+          },
+          "query": {
+            "kind": "reference",
+            "type": {
+              "kind": "primitive",
+              "primitive": "string"
+            },
+            "parameter": 1
+          }
+        }
+      }
+    }
+  ]
+}

@@ -281,6 +281,9 @@ func (cp *checkedProgram) validateClass(decl *ClassDecl) error {
 		if containsResultExpression(field.Default) {
 			return oneDiagnostic(cp.sources, CodeExpressionType, CategorySemantic, field.Default.SourceSpan(), fmt.Sprintf("%s snapshot Result expressions are admitted only as complete class method bodies", cp.modules.LanguageContract()))
 		}
+		if containsCaseFoldedTextExpression(field.Default) {
+			return oneDiagnostic(cp.sources, CodeExpressionType, CategorySemantic, field.Default.SourceSpan(), fmt.Sprintf("%s contains_casefolded is admitted only as a complete class method body", cp.modules.LanguageContract()))
+		}
 		inferred, err := cp.inferExprType(field.Default, map[string]ResolvedTypeRef{})
 		if err != nil {
 			return prefixDiagnostic(err, fmt.Sprintf("class %s field %s default: ", decl.Name, field.Name))
@@ -621,6 +624,24 @@ func inferExprType(sources *SourceSet, expr Expr, env map[string]ResolvedTypeRef
 }
 
 func (cp *checkedProgram) inferExprType(expr Expr, env map[string]ResolvedTypeRef) (ResolvedTypeRef, error) {
+	if text, ok := expr.(*TextContainsCaseFoldedExpr); ok {
+		if cp == nil || cp.modules == nil || !hasCaseFoldedTextContainmentSourceContract(cp.modules.LanguageContract()) {
+			return ResolvedTypeRef{}, oneDiagnostic(cp.sources, CodeExpressionType, CategorySemantic, text.Span, "case-folded text containment requires language contract v0.23.0")
+		}
+		value, err := cp.inferExprType(text.Value, env)
+		if err != nil {
+			return ResolvedTypeRef{}, err
+		}
+		query, err := cp.inferExprType(text.Query, env)
+		if err != nil {
+			return ResolvedTypeRef{}, err
+		}
+		stringType := resolvedPrimitive(TypeString)
+		if !value.Equal(stringType) || !query.Equal(stringType) {
+			return ResolvedTypeRef{}, oneDiagnostic(cp.sources, CodeInvalidType, CategorySemantic, text.Span, fmt.Sprintf("contains_casefolded requires string and string, got %s and %s", value, query))
+		}
+		return resolvedPrimitive(TypeBool), nil
+	}
 	if cp != nil && cp.modules != nil && hasSnapshotResultSourceContract(cp.modules.LanguageContract()) {
 		switch result := expr.(type) {
 		case *ResultOKExpr:
@@ -982,7 +1003,7 @@ func (cp *checkedProgram) inferMethodBodyType(method MethodDecl, env map[string]
 		}
 		return resolvedArithmeticResult(binary64), nil
 	}
-	if unary, unaryOK := expr.(*UnaryExpr); unaryOK && (contract == PipeLangLanguageContractV050 || contract == PipeLangLanguageContractV060 || contract == PipeLangLanguageContractV070 || contract == PipeLangLanguageContractV080 || contract == PipeLangLanguageContractV090 || contract == PipeLangLanguageContractV100 || contract == PipeLangLanguageContractV110 || contract == PipeLangLanguageContractV120 || contract == PipeLangLanguageContractV130 || contract == PipeLangLanguageContractV140 || contract == PipeLangLanguageContractV150 || contract == PipeLangLanguageContractV160 || contract == PipeLangLanguageContractV170 || contract == PipeLangLanguageContractV180 || contract == PipeLangLanguageContractV190 || contract == PipeLangLanguageContractV200 || contract == PipeLangLanguageContractV210 || contract == PipeLangLanguageContractV220) && unary.Op == "-" {
+	if unary, unaryOK := expr.(*UnaryExpr); unaryOK && (contract == PipeLangLanguageContractV050 || contract == PipeLangLanguageContractV060 || contract == PipeLangLanguageContractV070 || contract == PipeLangLanguageContractV080 || contract == PipeLangLanguageContractV090 || contract == PipeLangLanguageContractV100 || contract == PipeLangLanguageContractV110 || contract == PipeLangLanguageContractV120 || contract == PipeLangLanguageContractV130 || contract == PipeLangLanguageContractV140 || contract == PipeLangLanguageContractV150 || contract == PipeLangLanguageContractV160 || contract == PipeLangLanguageContractV170 || contract == PipeLangLanguageContractV180 || contract == PipeLangLanguageContractV190 || contract == PipeLangLanguageContractV200 || contract == PipeLangLanguageContractV210 || contract == PipeLangLanguageContractV220 || contract == PipeLangLanguageContractV230) && unary.Op == "-" {
 		operand, err := inferExprTypeWithPolicy(cp.sources, unary.Expr, env, true)
 		if err != nil {
 			return ResolvedTypeRef{}, err
@@ -995,7 +1016,7 @@ func (cp *checkedProgram) inferMethodBodyType(method MethodDecl, env map[string]
 	}
 	binary, ok := expr.(*BinaryExpr)
 	operatorAccepted := ok && binary.Op == "+"
-	if contract == PipeLangLanguageContractV040 || contract == PipeLangLanguageContractV050 || contract == PipeLangLanguageContractV060 || contract == PipeLangLanguageContractV070 || contract == PipeLangLanguageContractV080 || contract == PipeLangLanguageContractV090 || contract == PipeLangLanguageContractV100 || contract == PipeLangLanguageContractV110 || contract == PipeLangLanguageContractV120 || contract == PipeLangLanguageContractV130 || contract == PipeLangLanguageContractV140 || contract == PipeLangLanguageContractV150 || contract == PipeLangLanguageContractV160 || contract == PipeLangLanguageContractV170 || contract == PipeLangLanguageContractV180 || contract == PipeLangLanguageContractV190 || contract == PipeLangLanguageContractV200 || contract == PipeLangLanguageContractV210 || contract == PipeLangLanguageContractV220 {
+	if contract == PipeLangLanguageContractV040 || contract == PipeLangLanguageContractV050 || contract == PipeLangLanguageContractV060 || contract == PipeLangLanguageContractV070 || contract == PipeLangLanguageContractV080 || contract == PipeLangLanguageContractV090 || contract == PipeLangLanguageContractV100 || contract == PipeLangLanguageContractV110 || contract == PipeLangLanguageContractV120 || contract == PipeLangLanguageContractV130 || contract == PipeLangLanguageContractV140 || contract == PipeLangLanguageContractV150 || contract == PipeLangLanguageContractV160 || contract == PipeLangLanguageContractV170 || contract == PipeLangLanguageContractV180 || contract == PipeLangLanguageContractV190 || contract == PipeLangLanguageContractV200 || contract == PipeLangLanguageContractV210 || contract == PipeLangLanguageContractV220 || contract == PipeLangLanguageContractV230 {
 		operatorAccepted = ok && (binary.Op == "+" || binary.Op == "-" || binary.Op == "*")
 	} else if contract == PipeLangLanguageContractV030 {
 		operatorAccepted = ok && (binary.Op == "+" || binary.Op == "-")
@@ -1260,6 +1281,30 @@ func (cp *checkedProgram) inferOptionalMethodBodyType(method MethodDecl, env map
 }
 
 func (cp *checkedProgram) inferNonResultMethodBodyType(method MethodDecl, env map[string]ResolvedTypeRef, declared ResolvedTypeRef) (ResolvedTypeRef, error) {
+	if cp != nil && cp.modules != nil && hasCaseFoldedTextContainmentSourceContract(cp.modules.LanguageContract()) {
+		if body, ok := method.Body.(*TextContainsCaseFoldedExpr); ok {
+			text := resolvedPrimitive(TypeString)
+			boolean := resolvedPrimitive(TypeBool)
+			valid := declared.Equal(boolean) && len(method.Params) == 2
+			for _, parameter := range method.Params {
+				resolved, err := cp.resolveType(parameter.Type)
+				if err != nil {
+					return ResolvedTypeRef{}, err
+				}
+				valid = valid && resolved.Equal(text)
+			}
+			value, valueOK := body.Value.(*IdentExpr)
+			query, queryOK := body.Query.(*IdentExpr)
+			valid = valid && valueOK && queryOK && value.Name == method.Params[0].Name && query.Name == method.Params[1].Name
+			if !valid {
+				return ResolvedTypeRef{}, oneDiagnostic(cp.sources, CodeExpressionType, CategorySemantic, method.Body.SourceSpan(), fmt.Sprintf("%s contains_casefolded requires exactly two string parameters in declared order as the complete bool method body", cp.modules.LanguageContract()))
+			}
+			return boolean, nil
+		}
+		if containsCaseFoldedTextExpression(method.Body) {
+			return ResolvedTypeRef{}, oneDiagnostic(cp.sources, CodeExpressionType, CategorySemantic, method.Body.SourceSpan(), fmt.Sprintf("%s contains_casefolded requires exactly two string parameters in declared order as the complete bool method body", cp.modules.LanguageContract()))
+		}
+	}
 	if cp.isResolvedRecordType(declared) {
 		if construction, ok := method.Body.(*RecordConstructExpr); ok && cp.modules != nil && hasPrimitiveRecordConstructionSourceContract(cp.modules.LanguageContract()) {
 			return cp.validateRecordConstruction(method, construction, env, declared)
@@ -1420,6 +1465,8 @@ func containsRecordConstruction(expression Expr) bool {
 		return containsRecordConstruction(node.Expr)
 	case *BinaryExpr:
 		return containsRecordConstruction(node.Left) || containsRecordConstruction(node.Right)
+	case *TextContainsCaseFoldedExpr:
+		return containsRecordConstruction(node.Value) || containsRecordConstruction(node.Query)
 	case *FieldExpr:
 		return containsRecordConstruction(node.Receiver)
 	case *ListSingletonExpr:
@@ -1457,6 +1504,8 @@ func containsOptionalExpression(expression Expr) bool {
 		return containsOptionalExpression(node.Expr)
 	case *BinaryExpr:
 		return containsOptionalExpression(node.Left) || containsOptionalExpression(node.Right)
+	case *TextContainsCaseFoldedExpr:
+		return containsOptionalExpression(node.Value) || containsOptionalExpression(node.Query)
 	case *FieldExpr:
 		return containsOptionalExpression(node.Receiver)
 	case *RecordConstructExpr:
@@ -1491,6 +1540,54 @@ func containsOptionalExpression(expression Expr) bool {
 	return false
 }
 
+func containsCaseFoldedTextExpression(expression Expr) bool {
+	switch node := expression.(type) {
+	case *TextContainsCaseFoldedExpr:
+		return true
+	case *UnaryExpr:
+		return containsCaseFoldedTextExpression(node.Expr)
+	case *BinaryExpr:
+		return containsCaseFoldedTextExpression(node.Left) || containsCaseFoldedTextExpression(node.Right)
+	case *FieldExpr:
+		return containsCaseFoldedTextExpression(node.Receiver)
+	case *RecordConstructExpr:
+		for _, field := range node.Fields {
+			if containsCaseFoldedTextExpression(field.Value) {
+				return true
+			}
+		}
+	case *OptionalSomeExpr:
+		return containsCaseFoldedTextExpression(node.Value)
+	case *OptionalHasValueExpr:
+		return containsCaseFoldedTextExpression(node.Value)
+	case *OptionalValueOrExpr:
+		return containsCaseFoldedTextExpression(node.Value) || containsCaseFoldedTextExpression(node.Fallback)
+	case *ListSingletonExpr:
+		return containsCaseFoldedTextExpression(node.Value)
+	case *ListCountExpr:
+		return containsCaseFoldedTextExpression(node.Value)
+	case *ListAppendExpr:
+		return containsCaseFoldedTextExpression(node.Values) || containsCaseFoldedTextExpression(node.Value)
+	case *ListAtExpr:
+		return containsCaseFoldedTextExpression(node.Values) || containsCaseFoldedTextExpression(node.Index)
+	case *ListFindByTextExpr:
+		return containsCaseFoldedTextExpression(node.Values) || containsCaseFoldedTextExpression(node.Key)
+	case *ListFilterByTextExpr:
+		return containsCaseFoldedTextExpression(node.Values) || containsCaseFoldedTextExpression(node.Key)
+	case *ResultOKExpr:
+		return containsCaseFoldedTextExpression(node.Value)
+	case *ResultErrExpr:
+		return containsCaseFoldedTextExpression(node.Error)
+	case *ResultIsOKExpr:
+		return containsCaseFoldedTextExpression(node.Value)
+	case *ResultSuccessOrExpr:
+		return containsCaseFoldedTextExpression(node.Value) || containsCaseFoldedTextExpression(node.Fallback)
+	case *ResultFailureOrExpr:
+		return containsCaseFoldedTextExpression(node.Value) || containsCaseFoldedTextExpression(node.Fallback)
+	}
+	return false
+}
+
 func containsListExpression(expression Expr) bool {
 	switch node := expression.(type) {
 	case *ListEmptyExpr, *ListSingletonExpr, *ListCountExpr, *ListAppendExpr, *ListAtExpr, *ListFindByTextExpr, *ListFilterByTextExpr:
@@ -1499,6 +1596,8 @@ func containsListExpression(expression Expr) bool {
 		return containsListExpression(node.Expr)
 	case *BinaryExpr:
 		return containsListExpression(node.Left) || containsListExpression(node.Right)
+	case *TextContainsCaseFoldedExpr:
+		return containsListExpression(node.Value) || containsListExpression(node.Query)
 	case *FieldExpr:
 		return containsListExpression(node.Receiver)
 	case *RecordConstructExpr:
@@ -1535,6 +1634,8 @@ func containsResultExpression(expression Expr) bool {
 		return containsResultExpression(node.Expr)
 	case *BinaryExpr:
 		return containsResultExpression(node.Left) || containsResultExpression(node.Right)
+	case *TextContainsCaseFoldedExpr:
+		return containsResultExpression(node.Value) || containsResultExpression(node.Query)
 	case *FieldExpr:
 		return containsResultExpression(node.Receiver)
 	case *RecordConstructExpr:
@@ -1575,7 +1676,7 @@ func isOrdinalTextOrderingOperator(operator string) bool {
 }
 
 func arithmeticSourceOperators(contract LanguageContract) string {
-	if contract == PipeLangLanguageContractV050 || contract == PipeLangLanguageContractV060 || contract == PipeLangLanguageContractV070 || contract == PipeLangLanguageContractV080 || contract == PipeLangLanguageContractV090 || contract == PipeLangLanguageContractV100 || contract == PipeLangLanguageContractV110 || contract == PipeLangLanguageContractV120 || contract == PipeLangLanguageContractV130 || contract == PipeLangLanguageContractV140 || contract == PipeLangLanguageContractV150 || contract == PipeLangLanguageContractV160 || contract == PipeLangLanguageContractV170 || contract == PipeLangLanguageContractV180 || contract == PipeLangLanguageContractV190 || contract == PipeLangLanguageContractV200 || contract == PipeLangLanguageContractV210 || contract == PipeLangLanguageContractV220 {
+	if contract == PipeLangLanguageContractV050 || contract == PipeLangLanguageContractV060 || contract == PipeLangLanguageContractV070 || contract == PipeLangLanguageContractV080 || contract == PipeLangLanguageContractV090 || contract == PipeLangLanguageContractV100 || contract == PipeLangLanguageContractV110 || contract == PipeLangLanguageContractV120 || contract == PipeLangLanguageContractV130 || contract == PipeLangLanguageContractV140 || contract == PipeLangLanguageContractV150 || contract == PipeLangLanguageContractV160 || contract == PipeLangLanguageContractV170 || contract == PipeLangLanguageContractV180 || contract == PipeLangLanguageContractV190 || contract == PipeLangLanguageContractV200 || contract == PipeLangLanguageContractV210 || contract == PipeLangLanguageContractV220 || contract == PipeLangLanguageContractV230 {
 		return "addition, subtraction, multiplication, or negation"
 	}
 	if contract == PipeLangLanguageContractV040 {

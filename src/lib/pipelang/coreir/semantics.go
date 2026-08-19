@@ -153,11 +153,20 @@ func ValidateFunction(function Function) error {
 	if exprContainsRecordConstruction(function.Body) && function.Body.Kind != ExprRecordConstruct {
 		return fmt.Errorf("record construction must be the complete function body")
 	}
+	if exprContainsTextCaseFolded(function.Body) && function.Body.Kind != ExprTextContainsCaseFolded {
+		return fmt.Errorf("contains_casefolded must be the complete function body")
+	}
 	if err := validateExpr(function.Body, function.Parameters); err != nil {
 		return err
 	}
 	if exprContainsRecordEquality(function.Body) {
 		if err := validateDirectRecordEquality(function); err != nil {
+			return err
+		}
+	}
+	textContainsCaseFolded := function.Body.Kind == ExprTextContainsCaseFolded
+	if textContainsCaseFolded {
+		if err := validateDirectTextContainsCaseFoldedFunction(function); err != nil {
 			return err
 		}
 	}
@@ -410,6 +419,21 @@ func validateExpr(expression Expr, parameters []Parameter) error {
 			}
 		default:
 			return fmt.Errorf("unsupported binary operator %q", operator)
+		}
+	case ExprTextContainsCaseFolded:
+		text := Type{Kind: TypePrimitive, Primitive: PrimitiveString}
+		boolean := Type{Kind: TypePrimitive, Primitive: PrimitiveBool}
+		if expression.TextContains == nil || expression.TextContains.Value == nil || expression.TextContains.Query == nil || !TypeEqual(expression.Type, boolean) {
+			return fmt.Errorf("contains_casefolded expression is incomplete or does not return bool")
+		}
+		if err := validateExpr(*expression.TextContains.Value, parameters); err != nil {
+			return fmt.Errorf("contains_casefolded value: %w", err)
+		}
+		if err := validateExpr(*expression.TextContains.Query, parameters); err != nil {
+			return fmt.Errorf("contains_casefolded query: %w", err)
+		}
+		if !TypeEqual(expression.TextContains.Value.Type, text) || !TypeEqual(expression.TextContains.Query.Type, text) {
+			return fmt.Errorf("contains_casefolded operands are not string")
 		}
 	case ExprFieldProjection:
 		if expression.Field == nil || expression.Field.Receiver == nil {
@@ -870,6 +894,112 @@ func validateDirectListFunction(function Function) error {
 		return fmt.Errorf("record-list values are admitted only in direct empty_list, singleton list, identity-transport, or append functions")
 	}
 	return nil
+}
+
+func validateDirectTextContainsCaseFoldedFunction(function Function) error {
+	text := Type{Kind: TypePrimitive, Primitive: PrimitiveString}
+	boolean := Type{Kind: TypePrimitive, Primitive: PrimitiveBool}
+	if function.Body.TextContains == nil || function.Body.TextContains.Value == nil || function.Body.TextContains.Query == nil || len(function.Parameters) != 2 || !TypeEqual(function.Parameters[0].Type, text) || !TypeEqual(function.Parameters[1].Type, text) || !TypeEqual(function.ReturnType, boolean) {
+		return fmt.Errorf("contains_casefolded requires two direct string parameters and a bool return")
+	}
+	value := function.Body.TextContains.Value
+	query := function.Body.TextContains.Query
+	if value.Kind != ExprReference || value.Parameter == nil || *value.Parameter != 0 || !TypeEqual(value.Type, function.Parameters[0].Type) {
+		return fmt.Errorf("contains_casefolded value must be its first direct string parameter")
+	}
+	if query.Kind != ExprReference || query.Parameter == nil || *query.Parameter != 1 || !TypeEqual(query.Type, function.Parameters[1].Type) {
+		return fmt.Errorf("contains_casefolded query must be its second direct string parameter")
+	}
+	return nil
+}
+
+func exprContainsTextCaseFolded(expression Expr) bool {
+	if expression.Kind == ExprTextContainsCaseFolded {
+		return true
+	}
+	children := []*Expr{}
+	switch expression.Kind {
+	case ExprUnary:
+		if expression.Unary != nil {
+			children = append(children, expression.Unary.Operand)
+		}
+	case ExprBinary:
+		if expression.Binary != nil {
+			children = append(children, expression.Binary.Left, expression.Binary.Right)
+		}
+	case ExprFieldProjection:
+		if expression.Field != nil {
+			children = append(children, expression.Field.Receiver)
+		}
+	case ExprRecordConstruct:
+		if expression.Record != nil {
+			for _, field := range expression.Record.Fields {
+				children = append(children, field.Value)
+			}
+		}
+	case ExprOptionalSome:
+		if expression.Some != nil {
+			children = append(children, expression.Some.Value)
+		}
+	case ExprOptionalHasValue:
+		if expression.HasValue != nil {
+			children = append(children, expression.HasValue.Value)
+		}
+	case ExprOptionalValueOr:
+		if expression.ValueOr != nil {
+			children = append(children, expression.ValueOr.Value, expression.ValueOr.Fallback)
+		}
+	case ExprListSingleton:
+		if expression.ListOne != nil {
+			children = append(children, expression.ListOne.Value)
+		}
+	case ExprListCount:
+		if expression.ListCount != nil {
+			children = append(children, expression.ListCount.Value)
+		}
+	case ExprListAppend:
+		if expression.ListAppend != nil {
+			children = append(children, expression.ListAppend.Values, expression.ListAppend.Value)
+		}
+	case ExprListAt:
+		if expression.ListAt != nil {
+			children = append(children, expression.ListAt.Values, expression.ListAt.Index)
+		}
+	case ExprListFindByText:
+		if expression.ListFind != nil {
+			children = append(children, expression.ListFind.Values, expression.ListFind.Key)
+		}
+	case ExprListFilterByText:
+		if expression.ListFilter != nil {
+			children = append(children, expression.ListFilter.Values, expression.ListFilter.Key)
+		}
+	case ExprResultOK:
+		if expression.ResultOK != nil {
+			children = append(children, expression.ResultOK.Value)
+		}
+	case ExprResultErr:
+		if expression.ResultErr != nil {
+			children = append(children, expression.ResultErr.Error)
+		}
+	case ExprResultIsOK:
+		if expression.ResultIsOK != nil {
+			children = append(children, expression.ResultIsOK.Value)
+		}
+	case ExprResultSuccessOr:
+		if expression.SuccessOr != nil {
+			children = append(children, expression.SuccessOr.Value, expression.SuccessOr.Fallback)
+		}
+	case ExprResultFailureOr:
+		if expression.FailureOr != nil {
+			children = append(children, expression.FailureOr.Value, expression.FailureOr.Fallback)
+		}
+	}
+	for _, child := range children {
+		if child != nil && exprContainsTextCaseFolded(*child) {
+			return true
+		}
+	}
+	return false
 }
 
 func validateDirectListAtFunction(function Function) error {
