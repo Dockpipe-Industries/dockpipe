@@ -773,6 +773,38 @@ Case-folded list filtering, multi-field search, normalization, locale-specific m
 composition, Application IR, Step-8 control flow, effects, and additional backends remain outside
 the production source contract.
 
+The explicit `v0.24.0` contract preserves every `v0.23.0` rule and admits one selected-field,
+stable-order case-folded record-list filter:
+
+```pipelang
+public List<Row> SearchRows(List<Row> values, string query) =>
+    filter_contains_casefolded(values, Row.Name, query);
+```
+
+`filter_contains_casefolded(List<R>, R.Field, string) -> List<R>` is admitted only for one existing
+public primitive record `R`. The first and second direct parameters are the complete list and query;
+`R.Field` statically identifies one public `string` field on the same record type. The complete list,
+every record field, and the strict-UTF-8 query are validated before filtering. The operation applies
+the exact pinned Unicode 17.0.0 full-default C/F folding from `contains_casefolded` to the selected
+field and query, then retains every contiguous folded match in stable input order, including
+duplicates. An empty query retains every element. No matches return a canonical non-nil empty list,
+and results use fresh copied list and record storage.
+
+The operation reuses `pipelang:list`, primitive `string`, the existing record identity, and the
+selected field semantic identity. Callable identity remains exactly `(List<R>, string) -> List<R>`;
+`pipelang.compiler.v1` and `pipelang.semantic.v1` remain unchanged. Typed HIR and target-neutral
+Core carry one explicit `list_filter_contains_case_folded_text` node with direct list/query
+references plus the selected field identity, name, and declaration position. The evaluator and
+Core-only Go backend consume the same digest-checked Unicode table and never infer semantics from a
+host case API.
+
+`v0.1.0` through `v0.23.0` reject the source and executable form without implicit migration.
+Invalid list, selector, field, query, return, placement, or signature shapes use `PL3004`/`PL3006`
+as applicable; computed or otherwise non-direct operands use `PL3009`; malformed HIR and Core
+remain `PL3026` and `PL3027`. Trimming, joined or multi-field search, normalization, locale
+tailoring, predicates, lambdas, sorting, general iteration, mutation, Application IR, Step-8
+control flow, effects, and additional backends remain outside the production source contract.
+
 ## Artifacts
 
 Compile emits:

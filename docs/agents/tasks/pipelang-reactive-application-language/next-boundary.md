@@ -18,6 +18,8 @@ Exact first-match lookup of one primitive-record list by one selected public str
 Exact stable-order filtering of one primitive-record list by one selected public string field into
 `List<R>` is also complete.
 Exact Unicode 17.0.0 full-default case-folded containment of two direct strings is also complete.
+Exact stable-order case-folded containment filtering of one primitive-record list by one selected
+public string field is also complete.
 `v0.2.0` admits only the exact explicit Result-returning addition;
 `v0.3.0` adds only direct subtraction; `v0.4.0` adds only direct multiplication; `v0.5.0` adds only
 direct integer negation; `v0.6.0` adds only direct binary64 division; and `v0.7.0` adds only direct
@@ -68,6 +70,12 @@ empty output, and fresh copied list/record storage while preserving every prior 
 over the folded contiguous scalar sequence; an empty query matches. It performs no normalization,
 locale tailoring, grapheme segmentation, or host-runtime case conversion and preserves every prior
 contract.
+`v0.24.0` adds only exact direct
+`filter_contains_casefolded(List<R>, R.Field, string) -> List<R>` for one existing public primitive
+record `R` and one selected public string field. It completely validates the list, every record,
+field, and UTF-8 query before applying the pinned `v0.23.0` Unicode 17.0.0 full-default C/F
+containment rule, retaining every match in stable input order with canonical non-nil empty output
+and fresh copied list/record storage while preserving every prior contract.
 All other numeric arithmetic and every other Result construction, composition, or consumption form
 remain fail-closed from production source. Any next slice requires a new
 synchronized decision for its exact source spelling, type/value handling rule, semantic projection,
@@ -89,9 +97,10 @@ fallback. The accepted list-at slice additionally provides safe positional row s
 accepted stable-key slice additionally provides first-match selection and detail lookup by the
 consumer's stable string identity. The accepted selected-field filter slice additionally provides
 stable exact-field snapshot subsets. The case-folded text predicate supplies deterministic
-human-entered status/log matching for that consumer without coupling it to list selection;
-iteration, predicate/multi-field/substring or case-folded list filtering, sorting, general indexing,
-propagation, matching, and application projection remain
+human-entered status/log matching, and the selected-field case-folded list filter now applies that
+predicate to one public string field while preserving adapter order. Trimming, joined or
+multi-field search, general predicates, sorting, general indexing, propagation, matching, and
+application projection remain
 later decisions.
 
 No later step-7 slice is included here. In particular, this checkpoint does not add general Result
@@ -101,7 +110,8 @@ Unicode text construction/scalar/grapheme APIs, normalization, locale-aware or a
 hashing, general total-order capabilities, optional extraction beyond `value_or`, equality,
 implicit defaults, nesting, chaining,
 general result, record nesting/chained or general access/mutation/hash/order, union, or additional
-deterministic collection production or consumption semantics beyond exact `filter_by`; accept namespace, import,
+deterministic collection production or consumption semantics beyond exact `filter_by` and
+`filter_contains_casefolded`; accept namespace, import,
 migration, `internal`, overload, generic, or ID production syntax; implement overload resolution;
 add new types/declarations/expressions/operators, blocks, locals, branches, or loops; add effects,
 entrypoints, actions/state, contracts/replay, executable application/service semantics, Application

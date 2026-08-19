@@ -33,6 +33,7 @@ const PIPELANG_COMPLETION_KEYWORDS = [
   "find_by",
   "filter_by",
   "contains_casefolded",
+  "filter_contains_casefolded",
   "true",
   "false"
 ];
