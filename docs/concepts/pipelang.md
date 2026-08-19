@@ -713,6 +713,39 @@ case-insensitive or locale-sensitive matching, map/index construction, slicing, 
 filtering, sorting, mutation, Application IR, Step-8 control flow, effects, and additional backends
 remain outside the production source contract.
 
+The explicit `v0.22.0` contract preserves every `v0.21.0` rule and admits one stable-order,
+read-only record-list filter:
+
+```pipelang
+public List<Row> FilterRows(List<Row> values, string key) =>
+    filter_by(values, Row.State, key);
+```
+
+`filter_by(List<R>, R.Field, string) -> List<R>` is admitted only for one existing public
+primitive record `R`. `R.Field` is the same static selector shape established by `find_by`: it
+names one public `string` field on the same record type and is not a runtime value, lambda,
+predicate, comparer, or general member expression. The list and key are the first and second direct
+parameters. The complete list, every record field, and the key are validated before filtering.
+Every ordinal-equal match is retained in input order, including duplicates. No matches return a
+canonical non-nil empty list. The result uses fresh copied list and record storage and retains the
+signed-64-bit cardinality boundary.
+
+The type reuses `pipelang:list`, primitive `string`, the existing record identity, and the selected
+field semantic identity. Callable identity remains exactly `(List<R>, string) -> List<R>`;
+`pipelang.compiler.v1` and `pipelang.semantic.v1` remain unchanged. Typed HIR and target-neutral
+Core carry one explicit `list_filter_by_text` node with direct list/key references plus the selected
+field identity, name, and declaration position. The evaluator and Go backend consume only Core
+semantics and preserve ordinal scalar-sequence equality without normalization, case-folding,
+locale, or target collation.
+
+`v0.1.0` through `v0.21.0` reject `filter_by` without implicit migration. Invalid list, selector,
+field, key, return, placement, or signature shapes use `PL3004`/`PL3006` as applicable; computed or
+otherwise non-direct operands after the exact signature is admitted use `PL3009`; malformed HIR
+and Core remain `PL3026` and `PL3027`. Lambdas, predicates, multi-field or substring search,
+normalization, case-folding, sorting, mapping, folding, general iteration, mutation, Application
+IR, Step-8 control flow, effects, and additional backends remain outside the production source
+contract.
+
 ## Artifacts
 
 Compile emits:
@@ -772,4 +805,4 @@ diagnostics, behavior, and target outputs must reproduce between stages 1 and 2.
 and MCU target profiles select validated backend capabilities without changing source syntax.
 
 The complete accepted decisions, compatibility inventory, and bounded implementation order live in
-[TASK-021](../agents/tasks/pipelang-reactive-application-language.md).
+[TASK-021](../agents/tasks/pipelang-reactive-application-language/overview.md).

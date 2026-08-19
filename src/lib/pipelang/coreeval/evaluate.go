@@ -283,6 +283,35 @@ func evalExpr(expression coreir.Expr, arguments []Value) (Outcome, error) {
 			return Outcome{}, fmt.Errorf("list find_by result: %w", err)
 		}
 		return Outcome{OK: true, Value: cloneOptionalValue(optional)}, nil
+	case coreir.ExprListFilterByText:
+		values, err := evalExpr(*expression.ListFilter.Values, arguments)
+		if err != nil || !values.OK {
+			return values, err
+		}
+		key, err := evalExpr(*expression.ListFilter.Key, arguments)
+		if err != nil || !key.OK {
+			return key, err
+		}
+		if err := validateValue(values.Value); err != nil {
+			return Outcome{}, fmt.Errorf("list filter_by: %w", err)
+		}
+		if err := validateValue(key.Value); err != nil {
+			return Outcome{}, fmt.Errorf("list filter_by key: %w", err)
+		}
+		filtered := Value{Type: expression.Type, List: make([]Value, 0)}
+		for _, record := range values.Value.List {
+			comparison, err := coreir.CompareOrdinalText(record.Record[expression.ListFilter.Position].String, key.Value.String)
+			if err != nil {
+				return Outcome{}, fmt.Errorf("list filter_by comparison: %w", err)
+			}
+			if comparison == 0 {
+				filtered.List = append(filtered.List, cloneValue(record))
+			}
+		}
+		if err := validateValue(filtered); err != nil {
+			return Outcome{}, fmt.Errorf("list filter_by result: %w", err)
+		}
+		return Outcome{OK: true, Value: cloneListValue(filtered)}, nil
 	case coreir.ExprResultOK:
 		value, err := evalExpr(*expression.ResultOK.Value, arguments)
 		if err != nil || !value.OK {

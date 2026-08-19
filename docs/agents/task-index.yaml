@@ -88,7 +88,7 @@ tasks:
       ownership: unclaimed
   - id: TASK-021
     topic: PipeLang deterministic self-hosting managed language foundation
-    path: docs/agents/tasks/pipelang-reactive-application-language.md
+    path: docs/agents/tasks/pipelang-reactive-application-language/index.yaml
     dispatch:
       readiness: decision_ready
       ownership: unclaimed
@@ -180,8 +180,10 @@ tasks:
 maintenance:
   - Treat this YAML file as the AI/backlog entrypoint.
   - Keep this index open-only; do not list closed items here.
-  - Put narrative task-specific status in the linked markdown; keep only dispatch readiness and
-    ownership metadata in this index.
+  - Put narrative task-specific status in the linked Markdown or task-local YAML index; keep only
+    dispatch readiness and ownership metadata in this index.
+  - Use a task-local index only when the task has independently loadable branches; route to the
+    smallest sufficient files and do not concatenate the folder by default.
   - Move completed task files to docs/agents/tasks/closed/ with a short shipped summary and completion date.
   - When work materially completes or advances one of these items, update this index if needed and
     update the corresponding task file in the same change.

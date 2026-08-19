@@ -1,0 +1,532 @@
+{
+  "language_contract": "v0.22.0",
+  "compiler_contract": "pipelang.compiler.v1",
+  "functions": [
+    {
+      "identity": {
+        "package_id": "test.package",
+        "path": "app.root.root.filterrows",
+        "callable": {
+          "parameters": [
+            {
+              "kind": "applied",
+              "package_id": "pipelang",
+              "path": "list",
+              "name": "List",
+              "arguments": [
+                {
+                  "kind": "named",
+                  "package_id": "test.package",
+                  "path": "app.root.containerrow"
+                }
+              ]
+            },
+            {
+              "kind": "primitive",
+              "primitive": "string"
+            }
+          ],
+          "returns": {
+            "kind": "applied",
+            "package_id": "pipelang",
+            "path": "list",
+            "name": "List",
+            "arguments": [
+              {
+                "kind": "named",
+                "package_id": "test.package",
+                "path": "app.root.containerrow"
+              }
+            ]
+          }
+        }
+      },
+      "owner": {
+        "module": "app.root",
+        "symbol_id": 2,
+        "identity": {
+          "package_id": "test.package",
+          "path": "app.root.root"
+        },
+        "source_span": {
+          "file": "record-list-filter-by-text.pipe",
+          "start": 103,
+          "end": 250
+        }
+      },
+      "name": "FilterRows",
+      "parameters": [
+        {
+          "binding": {
+            "kind": "parameter",
+            "function": {
+              "package_id": "test.package",
+              "path": "app.root.root.filterrows",
+              "callable": {
+                "parameters": [
+                  {
+                    "kind": "applied",
+                    "package_id": "pipelang",
+                    "path": "list",
+                    "name": "List",
+                    "arguments": [
+                      {
+                        "kind": "named",
+                        "package_id": "test.package",
+                        "path": "app.root.containerrow"
+                      }
+                    ]
+                  },
+                  {
+                    "kind": "primitive",
+                    "primitive": "string"
+                  }
+                ],
+                "returns": {
+                  "kind": "applied",
+                  "package_id": "pipelang",
+                  "path": "list",
+                  "name": "List",
+                  "arguments": [
+                    {
+                      "kind": "named",
+                      "package_id": "test.package",
+                      "path": "app.root.containerrow"
+                    }
+                  ]
+                }
+              }
+            },
+            "position": 0,
+            "name": "values"
+          },
+          "type": {
+            "kind": "list",
+            "list": {
+              "element": {
+                "kind": "record",
+                "record": {
+                  "fields": [
+                    {
+                      "identity": {
+                        "package_id": "test.package",
+                        "path": "app.root.containerrow.id"
+                      },
+                      "name": "Id",
+                      "type": {
+                        "kind": "primitive",
+                        "primitive": "string"
+                      }
+                    },
+                    {
+                      "identity": {
+                        "package_id": "test.package",
+                        "path": "app.root.containerrow.name"
+                      },
+                      "name": "Name",
+                      "type": {
+                        "kind": "primitive",
+                        "primitive": "string"
+                      }
+                    },
+                    {
+                      "identity": {
+                        "package_id": "test.package",
+                        "path": "app.root.containerrow.running"
+                      },
+                      "name": "Running",
+                      "type": {
+                        "kind": "primitive",
+                        "primitive": "bool"
+                      }
+                    }
+                  ]
+                },
+                "symbol_id": 1,
+                "identity": {
+                  "package_id": "test.package",
+                  "path": "app.root.containerrow"
+                },
+                "name": "ContainerRow"
+              }
+            },
+            "identity": {
+              "package_id": "pipelang",
+              "path": "list"
+            },
+            "name": "List"
+          },
+          "type_span": {
+            "file": "record-list-filter-by-text.pipe",
+            "start": 164,
+            "end": 182
+          },
+          "span": {
+            "file": "record-list-filter-by-text.pipe",
+            "start": 164,
+            "end": 189
+          }
+        },
+        {
+          "binding": {
+            "kind": "parameter",
+            "function": {
+              "package_id": "test.package",
+              "path": "app.root.root.filterrows",
+              "callable": {
+                "parameters": [
+                  {
+                    "kind": "applied",
+                    "package_id": "pipelang",
+                    "path": "list",
+                    "name": "List",
+                    "arguments": [
+                      {
+                        "kind": "named",
+                        "package_id": "test.package",
+                        "path": "app.root.containerrow"
+                      }
+                    ]
+                  },
+                  {
+                    "kind": "primitive",
+                    "primitive": "string"
+                  }
+                ],
+                "returns": {
+                  "kind": "applied",
+                  "package_id": "pipelang",
+                  "path": "list",
+                  "name": "List",
+                  "arguments": [
+                    {
+                      "kind": "named",
+                      "package_id": "test.package",
+                      "path": "app.root.containerrow"
+                    }
+                  ]
+                }
+              }
+            },
+            "position": 1,
+            "name": "key"
+          },
+          "type": {
+            "kind": "primitive",
+            "primitive": "string"
+          },
+          "type_span": {
+            "file": "record-list-filter-by-text.pipe",
+            "start": 191,
+            "end": 197
+          },
+          "span": {
+            "file": "record-list-filter-by-text.pipe",
+            "start": 191,
+            "end": 201
+          }
+        }
+      ],
+      "return_type": {
+        "kind": "list",
+        "list": {
+          "element": {
+            "kind": "record",
+            "record": {
+              "fields": [
+                {
+                  "identity": {
+                    "package_id": "test.package",
+                    "path": "app.root.containerrow.id"
+                  },
+                  "name": "Id",
+                  "type": {
+                    "kind": "primitive",
+                    "primitive": "string"
+                  }
+                },
+                {
+                  "identity": {
+                    "package_id": "test.package",
+                    "path": "app.root.containerrow.name"
+                  },
+                  "name": "Name",
+                  "type": {
+                    "kind": "primitive",
+                    "primitive": "string"
+                  }
+                },
+                {
+                  "identity": {
+                    "package_id": "test.package",
+                    "path": "app.root.containerrow.running"
+                  },
+                  "name": "Running",
+                  "type": {
+                    "kind": "primitive",
+                    "primitive": "bool"
+                  }
+                }
+              ]
+            },
+            "symbol_id": 1,
+            "identity": {
+              "package_id": "test.package",
+              "path": "app.root.containerrow"
+            },
+            "name": "ContainerRow"
+          }
+        },
+        "identity": {
+          "package_id": "pipelang",
+          "path": "list"
+        },
+        "name": "List"
+      },
+      "return_type_span": {
+        "file": "record-list-filter-by-text.pipe",
+        "start": 134,
+        "end": 152
+      },
+      "body": {
+        "kind": "list_filter_by_text",
+        "type": {
+          "kind": "list",
+          "list": {
+            "element": {
+              "kind": "record",
+              "record": {
+                "fields": [
+                  {
+                    "identity": {
+                      "package_id": "test.package",
+                      "path": "app.root.containerrow.id"
+                    },
+                    "name": "Id",
+                    "type": {
+                      "kind": "primitive",
+                      "primitive": "string"
+                    }
+                  },
+                  {
+                    "identity": {
+                      "package_id": "test.package",
+                      "path": "app.root.containerrow.name"
+                    },
+                    "name": "Name",
+                    "type": {
+                      "kind": "primitive",
+                      "primitive": "string"
+                    }
+                  },
+                  {
+                    "identity": {
+                      "package_id": "test.package",
+                      "path": "app.root.containerrow.running"
+                    },
+                    "name": "Running",
+                    "type": {
+                      "kind": "primitive",
+                      "primitive": "bool"
+                    }
+                  }
+                ]
+              },
+              "symbol_id": 1,
+              "identity": {
+                "package_id": "test.package",
+                "path": "app.root.containerrow"
+              },
+              "name": "ContainerRow"
+            }
+          },
+          "identity": {
+            "package_id": "pipelang",
+            "path": "list"
+          },
+          "name": "List"
+        },
+        "span": {
+          "file": "record-list-filter-by-text.pipe",
+          "start": 206,
+          "end": 247
+        },
+        "list_filter_by_text": {
+          "values": {
+            "kind": "reference",
+            "type": {
+              "kind": "list",
+              "list": {
+                "element": {
+                  "kind": "record",
+                  "record": {
+                    "fields": [
+                      {
+                        "identity": {
+                          "package_id": "test.package",
+                          "path": "app.root.containerrow.id"
+                        },
+                        "name": "Id",
+                        "type": {
+                          "kind": "primitive",
+                          "primitive": "string"
+                        }
+                      },
+                      {
+                        "identity": {
+                          "package_id": "test.package",
+                          "path": "app.root.containerrow.name"
+                        },
+                        "name": "Name",
+                        "type": {
+                          "kind": "primitive",
+                          "primitive": "string"
+                        }
+                      },
+                      {
+                        "identity": {
+                          "package_id": "test.package",
+                          "path": "app.root.containerrow.running"
+                        },
+                        "name": "Running",
+                        "type": {
+                          "kind": "primitive",
+                          "primitive": "bool"
+                        }
+                      }
+                    ]
+                  },
+                  "symbol_id": 1,
+                  "identity": {
+                    "package_id": "test.package",
+                    "path": "app.root.containerrow"
+                  },
+                  "name": "ContainerRow"
+                }
+              },
+              "identity": {
+                "package_id": "pipelang",
+                "path": "list"
+              },
+              "name": "List"
+            },
+            "span": {
+              "file": "record-list-filter-by-text.pipe",
+              "start": 216,
+              "end": 222
+            },
+            "reference": {
+              "kind": "parameter",
+              "function": {
+                "package_id": "test.package",
+                "path": "app.root.root.filterrows",
+                "callable": {
+                  "parameters": [
+                    {
+                      "kind": "applied",
+                      "package_id": "pipelang",
+                      "path": "list",
+                      "name": "List",
+                      "arguments": [
+                        {
+                          "kind": "named",
+                          "package_id": "test.package",
+                          "path": "app.root.containerrow"
+                        }
+                      ]
+                    },
+                    {
+                      "kind": "primitive",
+                      "primitive": "string"
+                    }
+                  ],
+                  "returns": {
+                    "kind": "applied",
+                    "package_id": "pipelang",
+                    "path": "list",
+                    "name": "List",
+                    "arguments": [
+                      {
+                        "kind": "named",
+                        "package_id": "test.package",
+                        "path": "app.root.containerrow"
+                      }
+                    ]
+                  }
+                }
+              },
+              "position": 0,
+              "name": "values"
+            }
+          },
+          "field": {
+            "package_id": "test.package",
+            "path": "app.root.containerrow.name"
+          },
+          "name": "Name",
+          "position": 1,
+          "key": {
+            "kind": "reference",
+            "type": {
+              "kind": "primitive",
+              "primitive": "string"
+            },
+            "span": {
+              "file": "record-list-filter-by-text.pipe",
+              "start": 243,
+              "end": 246
+            },
+            "reference": {
+              "kind": "parameter",
+              "function": {
+                "package_id": "test.package",
+                "path": "app.root.root.filterrows",
+                "callable": {
+                  "parameters": [
+                    {
+                      "kind": "applied",
+                      "package_id": "pipelang",
+                      "path": "list",
+                      "name": "List",
+                      "arguments": [
+                        {
+                          "kind": "named",
+                          "package_id": "test.package",
+                          "path": "app.root.containerrow"
+                        }
+                      ]
+                    },
+                    {
+                      "kind": "primitive",
+                      "primitive": "string"
+                    }
+                  ],
+                  "returns": {
+                    "kind": "applied",
+                    "package_id": "pipelang",
+                    "path": "list",
+                    "name": "List",
+                    "arguments": [
+                      {
+                        "kind": "named",
+                        "package_id": "test.package",
+                        "path": "app.root.containerrow"
+                      }
+                    ]
+                  }
+                }
+              },
+              "position": 1,
+              "name": "key"
+            }
+          }
+        }
+      },
+      "span": {
+        "file": "record-list-filter-by-text.pipe",
+        "start": 127,
+        "end": 248
+      }
+    }
+  ]
+}

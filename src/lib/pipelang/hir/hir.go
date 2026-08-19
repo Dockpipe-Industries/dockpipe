@@ -149,6 +149,7 @@ const (
 	ExprListAppend       ExprKind = "list_append"
 	ExprListAt           ExprKind = "list_at"
 	ExprListFindByText   ExprKind = "list_find_by_text"
+	ExprListFilterByText ExprKind = "list_filter_by_text"
 	ExprResultOK         ExprKind = "result_ok"
 	ExprResultErr        ExprKind = "result_err"
 	ExprResultIsOK       ExprKind = "result_is_ok"
@@ -255,6 +256,14 @@ type ListFindByText struct {
 	Key      *Expr            `json:"key"`
 }
 
+type ListFilterByText struct {
+	Values   *Expr            `json:"values"`
+	Field    SemanticIdentity `json:"field"`
+	Name     string           `json:"name"`
+	Position int              `json:"position"`
+	Key      *Expr            `json:"key"`
+}
+
 type ResultOK struct {
 	Value *Expr `json:"value"`
 }
@@ -297,6 +306,7 @@ type Expr struct {
 	ListAppend *ListAppend       `json:"list_append,omitempty"`
 	ListAt     *ListAt           `json:"list_at,omitempty"`
 	ListFind   *ListFindByText   `json:"list_find_by_text,omitempty"`
+	ListFilter *ListFilterByText `json:"list_filter_by_text,omitempty"`
 	ResultOK   *ResultOK         `json:"result_ok,omitempty"`
 	ResultErr  *ResultErr        `json:"result_err,omitempty"`
 	ResultIsOK *ResultIsOK       `json:"result_is_ok,omitempty"`

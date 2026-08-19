@@ -1,0 +1,95 @@
+schema: 1
+id: TASK-021
+topic: PipeLang deterministic self-hosting managed language foundation
+entrypoint: overview.md
+
+dispatch:
+  readiness: decision_ready
+  ownership: unclaimed
+
+state:
+  decision: accepted
+  current_language_contract: v0.22.0
+  completed_through: step 7w
+  authority: >-
+    This task record is decision and status evidence. It does not authorize another language slice,
+    implementation, migration, commit, push, publication, or external action.
+
+routes:
+  orientation:
+    read:
+      - overview.md
+      - next-boundary.md
+
+  next_founder_decision:
+    read:
+      - overview.md
+      - next-boundary.md
+      - implementation-plan.md
+    optional:
+      - compiler-contract.md
+      - language-surface.md
+      - fixture-migration-gaps.md
+
+  accepted_language_implementation:
+    read:
+      - overview.md
+      - compiler-contract.md
+      - implementation-plan.md
+      - next-boundary.md
+    optional:
+      - language-surface.md
+      - fixture-migration-gaps.md
+      - completed-snapshots-selection.md
+
+  canonical_contract_review:
+    read:
+      - compiler-contract.md
+      - language-surface.md
+      - fixture-migration-gaps.md
+      - implementation-plan.md
+
+  completed_history:
+    read:
+      - completed-foundation.md
+      - completed-arithmetic.md
+      - completed-text-records.md
+      - completed-optionals-lists.md
+      - completed-snapshots-selection.md
+
+history_by_slice:
+  steps_1_to_6: completed-foundation.md
+  steps_7a_to_7h: completed-arithmetic.md
+  steps_7i_to_7m: completed-text-records.md
+  steps_7n_to_7s: completed-optionals-lists.md
+  steps_7t_to_7w: completed-snapshots-selection.md
+
+documents:
+  - path: overview.md
+    role: status, goal, dependencies, ownership, and hard boundary
+  - path: compiler-contract.md
+    role: accepted compiler, Core, semantic, and verification contracts
+  - path: language-surface.md
+    role: required language surface and semantic tooling contracts
+  - path: fixture-migration-gaps.md
+    role: non-normative fixture, grammar gap, compatibility, and unresolved choices
+  - path: implementation-plan.md
+    role: bounded implementation order, validation matrix, and acceptance criteria
+  - path: completed-foundation.md
+    role: completed steps 1 through 6
+  - path: completed-arithmetic.md
+    role: completed steps 7a through 7h
+  - path: completed-text-records.md
+    role: completed steps 7i through 7m
+  - path: completed-optionals-lists.md
+    role: completed steps 7n through 7s
+  - path: completed-snapshots-selection.md
+    role: completed steps 7t through 7w
+  - path: next-boundary.md
+    role: exact current boundary and preserved contracts
+
+maintenance:
+  - Resolve document paths relative to this index.
+  - Load only the route needed for the current task; do not concatenate the folder by default.
+  - Keep durable contract text in its owning document and route to it instead of copying it.
+  - Update this index, the affected document, and docs/agents/task-index.yaml together when dispatch state changes.
