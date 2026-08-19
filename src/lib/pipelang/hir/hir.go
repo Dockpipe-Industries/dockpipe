@@ -147,6 +147,7 @@ const (
 	ExprListSingleton    ExprKind = "list_singleton"
 	ExprListCount        ExprKind = "list_count"
 	ExprListAppend       ExprKind = "list_append"
+	ExprListAt           ExprKind = "list_at"
 	ExprResultOK         ExprKind = "result_ok"
 	ExprResultErr        ExprKind = "result_err"
 	ExprResultIsOK       ExprKind = "result_is_ok"
@@ -240,6 +241,11 @@ type ListAppend struct {
 	Value  *Expr `json:"value"`
 }
 
+type ListAt struct {
+	Values *Expr `json:"values"`
+	Index  *Expr `json:"index"`
+}
+
 type ResultOK struct {
 	Value *Expr `json:"value"`
 }
@@ -280,6 +286,7 @@ type Expr struct {
 	ListOne    *ListSingleton    `json:"list_singleton,omitempty"`
 	ListCount  *ListCount        `json:"list_count,omitempty"`
 	ListAppend *ListAppend       `json:"list_append,omitempty"`
+	ListAt     *ListAt           `json:"list_at,omitempty"`
 	ResultOK   *ResultOK         `json:"result_ok,omitempty"`
 	ResultErr  *ResultErr        `json:"result_err,omitempty"`
 	ResultIsOK *ResultIsOK       `json:"result_is_ok,omitempty"`

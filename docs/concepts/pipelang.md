@@ -655,6 +655,32 @@ propagation, matching, chaining, fields, nesting, arbitrary payloads, list itera
 sorting/indexing, Step-8 control flow, effects, Application IR, and additional backends remain
 outside the production source contract.
 
+The explicit `v0.20.0` contract preserves every `v0.19.0` rule and admits one total, read-only
+record-list consumer:
+
+```pipelang
+public Optional<Row> RowAt(List<Row> values, int index) => at(values, index);
+```
+
+`at(List<R>, int) -> Optional<R>` is admitted only for one existing public primitive record `R`,
+with the list as the first direct parameter and a signed-64-bit index as the second direct parameter.
+Indexing is zero-based. A negative or out-of-range index returns canonical `none`; an in-range index
+returns canonical `some` containing a copied record. The complete list and every record field are
+validated before the index is inspected, including strict UTF-8 validation for every string field,
+so an invalid unselected element remains an infrastructure-boundary failure.
+
+The type reuses `pipelang:list`, `pipelang:optional`, and the existing record identity. Callable
+identity retains the exact `(List<R>, int) -> Optional<R>` shape; `pipelang.compiler.v1` and
+`pipelang.semantic.v1` remain unchanged. Typed HIR and target-neutral Core carry an explicit
+`list_at` node. The evaluator and Core-only Go backend consume only Core semantics and copy the
+selected record so caller-owned list or record storage cannot alias the result.
+
+`v0.1.0` through `v0.19.0` reject `at` without implicit migration. Invalid payloads, placements, or
+signature shapes use `PL3006`; computed or otherwise non-direct operands after the exact signature
+is admitted use `PL3009`; malformed HIR and Core remain `PL3026` and `PL3027`. Key lookup, slicing, iteration,
+filtering, sorting, mapping, folding, mutation, selection preservation, Step-8 control flow,
+effects, Application IR, and additional backends remain outside the production source contract.
+
 ## Artifacts
 
 Compile emits:

@@ -229,6 +229,28 @@ func evalExpr(expression coreir.Expr, arguments []Value) (Outcome, error) {
 			return Outcome{}, fmt.Errorf("list append: %w", err)
 		}
 		return Outcome{OK: true, Value: result}, nil
+	case coreir.ExprListAt:
+		values, err := evalExpr(*expression.ListAt.Values, arguments)
+		if err != nil || !values.OK {
+			return values, err
+		}
+		index, err := evalExpr(*expression.ListAt.Index, arguments)
+		if err != nil || !index.OK {
+			return index, err
+		}
+		if err := validateValue(values.Value); err != nil {
+			return Outcome{}, fmt.Errorf("list at: %w", err)
+		}
+		optional := Value{Type: expression.Type, Optional: &OptionalValue{}}
+		if index.Value.Int >= 0 && uint64(index.Value.Int) < uint64(len(values.Value.List)) {
+			payload := cloneValue(values.Value.List[index.Value.Int])
+			optional.Optional.Present = true
+			optional.Optional.Value = &payload
+		}
+		if err := validateValue(optional); err != nil {
+			return Outcome{}, fmt.Errorf("list at result: %w", err)
+		}
+		return Outcome{OK: true, Value: cloneOptionalValue(optional)}, nil
 	case coreir.ExprResultOK:
 		value, err := evalExpr(*expression.ResultOK.Value, arguments)
 		if err != nil || !value.OK {

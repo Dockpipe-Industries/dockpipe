@@ -339,9 +339,10 @@ func (cp *checkedProgram) validateRecordTransportSignature(method MethodDecl, re
 	recordList := hasPrimitiveRecordListSourceContract(contract) && isResolvedRecordList(result) && (len(resolvedParameters) == 0 || (len(resolvedParameters) == 1 && (resolvedParameters[0].Equal(result.Arguments[0]) || resolvedParameters[0].Equal(result))))
 	recordListCount := hasPrimitiveRecordListCountSourceContract(contract) && result.Equal(resolvedPrimitive(TypeInt)) && len(resolvedParameters) == 1 && isResolvedRecordList(resolvedParameters[0])
 	recordListAppend := hasPrimitiveRecordListAppendSourceContract(contract) && isResolvedRecordList(result) && len(resolvedParameters) == 2 && resolvedParameters[0].Equal(result) && resolvedParameters[1].Equal(result.Arguments[0])
+	recordListAt := hasPrimitiveRecordListAtSourceContract(contract) && isResolvedRecordOptional(result) && cp.isResolvedRecordType(result.Arguments[0]) && len(resolvedParameters) == 2 && isResolvedRecordList(resolvedParameters[0]) && resolvedParameters[0].Arguments[0].Equal(result.Arguments[0]) && resolvedParameters[1].Equal(resolvedPrimitive(TypeInt))
 	recordOptional := hasPrimitiveRecordOptionalSourceContract(contract) && cp.optionalRecordSignatureMatches(result, resolvedParameters)
 	snapshotResult := hasSnapshotResultSourceContract(contract) && cp.snapshotResultSignatureMatches(result, resolvedParameters)
-	if !hasPrimitiveRecordSourceContract(contract) || (!identityTransport && !fieldProjection && !recordConstruction && !recordEquality && !recordList && !recordListCount && !recordListAppend && !recordOptional && !snapshotResult) {
+	if !hasPrimitiveRecordSourceContract(contract) || (!identityTransport && !fieldProjection && !recordConstruction && !recordEquality && !recordList && !recordListCount && !recordListAppend && !recordListAt && !recordOptional && !snapshotResult) {
 		return false, oneDiagnostic(cp.sources, CodeInvalidType, CategorySemantic, method.Span, fmt.Sprintf("the %s primitive record is admitted only as one exact identity transport, one-hop primitive field projection, direct declaration-ordered construction, direct structural equality, bounded record-list method, or bounded Optional<R> method", contract))
 	}
 	return true, nil
@@ -446,7 +447,9 @@ func (cp *checkedProgram) validateOptionalSignature(method MethodDecl, result Re
 		return false, oneDiagnostic(cp.sources, CodeInvalidType, CategorySemantic, method.Span, fmt.Sprintf("primitive Optional methods require language contract %q", PipeLangLanguageContractV130))
 	}
 	valid := false
-	if cp.isResolvedOptionalValue(contract, result) {
+	if hasPrimitiveRecordListAtSourceContract(contract) && isResolvedRecordOptional(result) && cp.isResolvedRecordType(result.Arguments[0]) && len(resolvedParameters) == 2 && isResolvedRecordList(resolvedParameters[0]) && resolvedParameters[0].Arguments[0].Equal(result.Arguments[0]) && resolvedParameters[1].Equal(resolvedPrimitive(TypeInt)) {
+		valid = true
+	} else if cp.isResolvedOptionalValue(contract, result) {
 		valid = len(resolvedParameters) == 0 ||
 			(len(resolvedParameters) == 1 && (resolvedParameters[0].Equal(result.Arguments[0]) || resolvedParameters[0].Equal(result)))
 	} else if hasPrimitiveOptionalDefaultSourceContract(contract) {
@@ -701,6 +704,25 @@ func (cp *checkedProgram) inferExprType(expr Expr, env map[string]ResolvedTypeRe
 		}
 	}
 	switch list := expr.(type) {
+	case *ListAtExpr:
+		if cp == nil || cp.modules == nil || !hasPrimitiveRecordListAtSourceContract(cp.modules.LanguageContract()) {
+			return ResolvedTypeRef{}, oneDiagnostic(cp.sources, CodeExpressionType, CategorySemantic, list.Span, "record-list indexing requires language contract v0.20.0")
+		}
+		values, err := cp.inferExprType(list.Values, env)
+		if err != nil {
+			return ResolvedTypeRef{}, err
+		}
+		if !isResolvedRecordList(values) || !cp.isResolvedRecordType(values.Arguments[0]) {
+			return ResolvedTypeRef{}, oneDiagnostic(cp.sources, CodeInvalidType, CategorySemantic, list.Values.SourceSpan(), fmt.Sprintf("at requires one existing primitive-record List value first, got %s", values))
+		}
+		index, err := cp.inferExprType(list.Index, env)
+		if err != nil {
+			return ResolvedTypeRef{}, err
+		}
+		if !index.Equal(resolvedPrimitive(TypeInt)) {
+			return ResolvedTypeRef{}, oneDiagnostic(cp.sources, CodeInvalidType, CategorySemantic, list.Index.SourceSpan(), fmt.Sprintf("at requires a signed 64-bit int index second, got %s", index))
+		}
+		return resolvedOptional(values.Arguments[0]), nil
 	case *ListAppendExpr:
 		if cp == nil || cp.modules == nil || !hasPrimitiveRecordListAppendSourceContract(cp.modules.LanguageContract()) {
 			return ResolvedTypeRef{}, oneDiagnostic(cp.sources, CodeExpressionType, CategorySemantic, list.Span, "record-list append requires language contract v0.17.0")
@@ -911,7 +933,7 @@ func (cp *checkedProgram) inferMethodBodyType(method MethodDecl, env map[string]
 		}
 		return resolvedArithmeticResult(binary64), nil
 	}
-	if unary, unaryOK := expr.(*UnaryExpr); unaryOK && (contract == PipeLangLanguageContractV050 || contract == PipeLangLanguageContractV060 || contract == PipeLangLanguageContractV070 || contract == PipeLangLanguageContractV080 || contract == PipeLangLanguageContractV090 || contract == PipeLangLanguageContractV100 || contract == PipeLangLanguageContractV110 || contract == PipeLangLanguageContractV120 || contract == PipeLangLanguageContractV130 || contract == PipeLangLanguageContractV140 || contract == PipeLangLanguageContractV150 || contract == PipeLangLanguageContractV160 || contract == PipeLangLanguageContractV170 || contract == PipeLangLanguageContractV180 || contract == PipeLangLanguageContractV190) && unary.Op == "-" {
+	if unary, unaryOK := expr.(*UnaryExpr); unaryOK && (contract == PipeLangLanguageContractV050 || contract == PipeLangLanguageContractV060 || contract == PipeLangLanguageContractV070 || contract == PipeLangLanguageContractV080 || contract == PipeLangLanguageContractV090 || contract == PipeLangLanguageContractV100 || contract == PipeLangLanguageContractV110 || contract == PipeLangLanguageContractV120 || contract == PipeLangLanguageContractV130 || contract == PipeLangLanguageContractV140 || contract == PipeLangLanguageContractV150 || contract == PipeLangLanguageContractV160 || contract == PipeLangLanguageContractV170 || contract == PipeLangLanguageContractV180 || contract == PipeLangLanguageContractV190 || contract == PipeLangLanguageContractV200) && unary.Op == "-" {
 		operand, err := inferExprTypeWithPolicy(cp.sources, unary.Expr, env, true)
 		if err != nil {
 			return ResolvedTypeRef{}, err
@@ -924,7 +946,7 @@ func (cp *checkedProgram) inferMethodBodyType(method MethodDecl, env map[string]
 	}
 	binary, ok := expr.(*BinaryExpr)
 	operatorAccepted := ok && binary.Op == "+"
-	if contract == PipeLangLanguageContractV040 || contract == PipeLangLanguageContractV050 || contract == PipeLangLanguageContractV060 || contract == PipeLangLanguageContractV070 || contract == PipeLangLanguageContractV080 || contract == PipeLangLanguageContractV090 || contract == PipeLangLanguageContractV100 || contract == PipeLangLanguageContractV110 || contract == PipeLangLanguageContractV120 || contract == PipeLangLanguageContractV130 || contract == PipeLangLanguageContractV140 || contract == PipeLangLanguageContractV150 || contract == PipeLangLanguageContractV160 || contract == PipeLangLanguageContractV170 || contract == PipeLangLanguageContractV180 || contract == PipeLangLanguageContractV190 {
+	if contract == PipeLangLanguageContractV040 || contract == PipeLangLanguageContractV050 || contract == PipeLangLanguageContractV060 || contract == PipeLangLanguageContractV070 || contract == PipeLangLanguageContractV080 || contract == PipeLangLanguageContractV090 || contract == PipeLangLanguageContractV100 || contract == PipeLangLanguageContractV110 || contract == PipeLangLanguageContractV120 || contract == PipeLangLanguageContractV130 || contract == PipeLangLanguageContractV140 || contract == PipeLangLanguageContractV150 || contract == PipeLangLanguageContractV160 || contract == PipeLangLanguageContractV170 || contract == PipeLangLanguageContractV180 || contract == PipeLangLanguageContractV190 || contract == PipeLangLanguageContractV200 {
 		operatorAccepted = ok && (binary.Op == "+" || binary.Op == "-" || binary.Op == "*")
 	} else if contract == PipeLangLanguageContractV030 {
 		operatorAccepted = ok && (binary.Op == "+" || binary.Op == "-")
@@ -1052,12 +1074,20 @@ func (cp *checkedProgram) inferRecordListMethodBodyType(method MethodDecl, env m
 			return declared, true, nil
 		}
 	}
+	if hasPrimitiveRecordListAtSourceContract(contract) && isResolvedRecordOptional(declared) && cp.isResolvedRecordType(declared.Arguments[0]) {
+		if body, ok := method.Body.(*ListAtExpr); ok && len(parameterTypes) == 2 && isResolvedRecordList(parameterTypes[0]) && parameterTypes[0].Arguments[0].Equal(declared.Arguments[0]) && parameterTypes[1].Equal(resolvedPrimitive(TypeInt)) && directParameter(body.Values, 0) && directParameter(body.Index, 1) {
+			return declared, true, nil
+		}
+	}
 	forms := "empty_list, singleton list, or identity-transport"
 	if hasPrimitiveRecordListCountSourceContract(contract) {
 		forms += ", or count"
 	}
 	if hasPrimitiveRecordListAppendSourceContract(contract) {
 		forms += ", or append"
+	}
+	if hasPrimitiveRecordListAtSourceContract(contract) {
+		forms += ", or at"
 	}
 	return ResolvedTypeRef{}, true, oneDiagnostic(cp.sources, CodeExpressionType, CategorySemantic, method.Body.SourceSpan(), fmt.Sprintf("%s record-list methods require exact %s bodies", contract, forms))
 }
@@ -1287,6 +1317,8 @@ func containsRecordConstruction(expression Expr) bool {
 		return containsRecordConstruction(node.Value)
 	case *ListAppendExpr:
 		return containsRecordConstruction(node.Values) || containsRecordConstruction(node.Value)
+	case *ListAtExpr:
+		return containsRecordConstruction(node.Values) || containsRecordConstruction(node.Index)
 	case *ResultOKExpr:
 		return containsRecordConstruction(node.Value)
 	case *ResultErrExpr:
@@ -1324,6 +1356,8 @@ func containsOptionalExpression(expression Expr) bool {
 		return containsOptionalExpression(node.Value)
 	case *ListAppendExpr:
 		return containsOptionalExpression(node.Values) || containsOptionalExpression(node.Value)
+	case *ListAtExpr:
+		return containsOptionalExpression(node.Values) || containsOptionalExpression(node.Index)
 	case *ResultOKExpr:
 		return containsOptionalExpression(node.Value)
 	case *ResultErrExpr:
@@ -1340,7 +1374,7 @@ func containsOptionalExpression(expression Expr) bool {
 
 func containsListExpression(expression Expr) bool {
 	switch node := expression.(type) {
-	case *ListEmptyExpr, *ListSingletonExpr, *ListCountExpr, *ListAppendExpr:
+	case *ListEmptyExpr, *ListSingletonExpr, *ListCountExpr, *ListAppendExpr, *ListAtExpr:
 		return true
 	case *UnaryExpr:
 		return containsListExpression(node.Expr)
@@ -1402,6 +1436,8 @@ func containsResultExpression(expression Expr) bool {
 		return containsResultExpression(node.Value)
 	case *ListAppendExpr:
 		return containsResultExpression(node.Values) || containsResultExpression(node.Value)
+	case *ListAtExpr:
+		return containsResultExpression(node.Values) || containsResultExpression(node.Index)
 	}
 	return false
 }
@@ -1416,7 +1452,7 @@ func isOrdinalTextOrderingOperator(operator string) bool {
 }
 
 func arithmeticSourceOperators(contract LanguageContract) string {
-	if contract == PipeLangLanguageContractV050 || contract == PipeLangLanguageContractV060 || contract == PipeLangLanguageContractV070 || contract == PipeLangLanguageContractV080 || contract == PipeLangLanguageContractV090 || contract == PipeLangLanguageContractV100 || contract == PipeLangLanguageContractV110 || contract == PipeLangLanguageContractV120 || contract == PipeLangLanguageContractV130 || contract == PipeLangLanguageContractV140 || contract == PipeLangLanguageContractV150 || contract == PipeLangLanguageContractV160 || contract == PipeLangLanguageContractV170 || contract == PipeLangLanguageContractV180 || contract == PipeLangLanguageContractV190 {
+	if contract == PipeLangLanguageContractV050 || contract == PipeLangLanguageContractV060 || contract == PipeLangLanguageContractV070 || contract == PipeLangLanguageContractV080 || contract == PipeLangLanguageContractV090 || contract == PipeLangLanguageContractV100 || contract == PipeLangLanguageContractV110 || contract == PipeLangLanguageContractV120 || contract == PipeLangLanguageContractV130 || contract == PipeLangLanguageContractV140 || contract == PipeLangLanguageContractV150 || contract == PipeLangLanguageContractV160 || contract == PipeLangLanguageContractV170 || contract == PipeLangLanguageContractV180 || contract == PipeLangLanguageContractV190 || contract == PipeLangLanguageContractV200 {
 		return "addition, subtraction, multiplication, or negation"
 	}
 	if contract == PipeLangLanguageContractV040 {
