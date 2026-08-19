@@ -31,6 +31,7 @@ const PIPELANG_COMPLETION_KEYWORDS = [
   "count",
   "append",
   "find_by",
+  "filter_by",
   "true",
   "false"
 ];

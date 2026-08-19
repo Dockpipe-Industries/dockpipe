@@ -127,6 +127,13 @@
     ],
     "description": "Create the exact v0.21.0 stable-key primitive-record List lookup by one public string field."
   },
+  "PipeLang Record List Filter By Text": {
+    "prefix": "pipe-record-list-filter-by-text",
+    "body": [
+      "public List<${1:Row}> ${2:FilterRows}(List<${1:Row}> ${3:values}, string ${4:key}) => filter_by(${3:values}, ${1:Row}.${5:State}, ${4:key});"
+    ],
+    "description": "Create the exact v0.22.0 stable-order primitive-record List filter by one public string field."
+  },
   "PipeLang Snapshot Result": {
     "prefix": "pipe-snapshot-result",
     "body": [

@@ -13,7 +13,7 @@ This task tracks three related but distinct layers:
 2. **PipeLang managed language**: the shared target-neutral semantic/Core foundation plus typed
    models, reactive state, computed values, actions, governed effects, validation, and binding
    expressions owned by
-   [TASK-021](pipelang-reactive-application-language.md).
+   [TASK-021](pipelang-reactive-application-language/overview.md).
 3. **Generic DockPipe primitive**: a versioned normalized application/view contract plus
    target-agnostic building and artifact-manifest contracts.
 
@@ -277,7 +277,7 @@ PipeLang view syntax must be accepted through TASK-021 before this task consumes
 
 ## PipeLang Dependency
 
-[TASK-021](pipelang-reactive-application-language.md) owns the detailed PipeLang language gap,
+[TASK-021](pipelang-reactive-application-language/overview.md) owns the detailed PipeLang language gap,
 versioning, type-system evolution, reactive state, pure computed properties, local actions, governed
 effects, safe expressions, parser/typechecker/compiler work, compatibility, diagnostics, and editor
 support. It is the first implementation dependency for this task.
@@ -371,7 +371,7 @@ Do not settle command spelling here. `dockpipe compile` already means DockPipe p
 
 ## Related Ownership
 
-- [TASK-021](pipelang-reactive-application-language.md) owns the PipeLang language foundation and is
+- [TASK-021](pipelang-reactive-application-language/overview.md) owns the PipeLang language foundation and is
   the first implementation dependency for this task.
 - [TASK-022](go-first-pipelang-backend-services.md) owns transport-neutral backend services, the
   Go-first service resolver, schemas, and generated Qt/C++ clients. This task owns consuming those

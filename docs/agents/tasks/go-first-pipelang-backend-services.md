@@ -23,7 +23,7 @@ runtime, package, deployment, generated-state, or toolchain changes.
 
 ## Dependencies And Ownership
 
-- [TASK-021](pipelang-reactive-application-language.md) is the language prerequisite. It owns stable
+- [TASK-021](pipelang-reactive-application-language/overview.md) is the language prerequisite. It owns stable
   semantic IDs, types, optionals/collections/unions, contracts, effects/authority, determinism,
   replay, semantic graphs, typed HIR/Core IR, executable entrypoints, target profiles, self-hosting,
   and compatibility.
