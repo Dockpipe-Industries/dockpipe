@@ -79,6 +79,17 @@
     ],
     "description": "Create the exact v0.14.0 two-parameter primitive Optional value_or defaulting method."
   },
+  "PipeLang Primitive Record Optional": {
+    "prefix": "pipe-record-optional",
+    "body": [
+      "public Optional<${1:Row}> ${2:Present}(${1:Row} ${3:value}) => some(${3:value});",
+      "public Optional<${1:Row}> ${4:Absent}() => none<${1:Row}>();",
+      "public Optional<${1:Row}> ${5:Forward}(Optional<${1:Row}> ${3:value}) => ${3:value};",
+      "public bool ${6:HasValue}(Optional<${1:Row}> ${3:value}) => has_value(${3:value});",
+      "public ${1:Row} ${7:ValueOr}(Optional<${1:Row}> ${3:value}, ${1:Row} ${8:fallback}) => value_or(${3:value}, ${8:fallback});"
+    ],
+    "description": "Create the exact v0.18.0 primitive-record Optional construction, identity, inspection, and defaulting methods."
+  },
   "PipeLang Record List": {
     "prefix": "pipe-record-list",
     "body": [

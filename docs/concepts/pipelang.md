@@ -586,6 +586,40 @@ fields, variadic construction, indexing, iteration, filtering, sorting, equality
 sets, builders, mutation, record nesting, Step-8 control flow, effects, and Application IR remain
 outside the production source contract.
 
+The explicit `v0.18.0` contract preserves every `v0.17.0` rule and admits one existing public
+primitive record `R` as the payload of the existing fixed `pipelang:optional` identity. The complete
+added source surface is five exact direct class-method shapes:
+
+```pipelang
+public Optional<Row> PresentRow(Row value) => some(value);
+public Optional<Row> AbsentRow() => none<Row>();
+public Optional<Row> ForwardRow(Optional<Row> value) => value;
+public bool HasRow(Optional<Row> value) => has_value(value);
+public Row RowOr(Optional<Row> value, Row fallback) => value_or(value, fallback);
+```
+
+The type argument retains the existing record identity, so semantic projection represents
+`Optional<R>` as `pipelang:optional<R>` and callable identities retain their structured record and
+optional arguments. `some` accepts only the sole corresponding record parameter; `none` names the
+same record type; identity transport returns the sole identical Optional parameter; `has_value`
+observes only the canonical tag; and `value_or` takes the Optional first and the identical record
+fallback second. Both the Optional payload and fallback are validated before selection, including
+every record field and strict UTF-8 string value. Evaluation returns copied record storage so
+caller-owned values cannot introduce mutation through either the selected payload or fallback.
+
+Typed HIR and target-neutral Core reuse their explicit optional nodes with a structured record
+payload. The evaluator and Core-only Go backend consume those nodes without inspecting source or
+HIR, reject nil or malformed tagged values, and preserve `pipelang.compiler.v1` and
+`pipelang.semantic.v1`. `v0.1.0` through `v0.17.0` reject `Optional<R>` without implicit migration.
+Invalid payloads, placements, or signatures use `PL3006`; constructed, computed, reordered,
+additional, or otherwise non-direct bodies use `PL3009`; malformed HIR and Core remain `PL3026`
+and `PL3027`.
+
+Optional fields, Optional record construction from literals, nesting, chaining, equality,
+hashing, ordering, implicit defaults, extraction beyond `value_or`, Optional/list/Result payloads,
+record nesting, Step-8 control flow, effects, Application IR, and additional backends remain outside
+the production source contract.
+
 ## Artifacts
 
 Compile emits:

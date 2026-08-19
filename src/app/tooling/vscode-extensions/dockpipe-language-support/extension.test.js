@@ -160,6 +160,8 @@ assert(pipeLangReadme.includes("v0.16.0"));
 assert(pipeLangReadme.includes("`count(List<R>) -> int`"));
 assert(pipeLangReadme.includes("v0.17.0"));
 assert(pipeLangReadme.includes("`append(List<R>, R) -> List<R>`"));
+assert(pipeLangReadme.includes("v0.18.0"));
+assert(pipeLangReadme.includes("`Optional<R>`"));
 const operatorPattern = grammar.repository.operators.patterns[0].match;
 assert(operatorPattern.includes("\\-"));
 assert(operatorPattern.includes("*"));
@@ -186,3 +188,6 @@ assert.strictEqual(pipeLangSnippets["PipeLang Record List Count"].prefix, "pipe-
 assert(pipeLangSnippets["PipeLang Record List Count"].description.includes("v0.16.0"));
 assert.strictEqual(pipeLangSnippets["PipeLang Record List Append"].prefix, "pipe-record-list-append");
 assert(pipeLangSnippets["PipeLang Record List Append"].description.includes("v0.17.0"));
+assert.strictEqual(pipeLangSnippets["PipeLang Primitive Record Optional"].prefix, "pipe-record-optional");
+assert(pipeLangSnippets["PipeLang Primitive Record Optional"].description.includes("v0.18.0"));
+assert(pipeLangSnippets["PipeLang Primitive Record Optional"].body.some((line) => line.includes("value_or")));

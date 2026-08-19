@@ -197,8 +197,8 @@ func validateType(value Type) error {
 		return fmt.Errorf("non-optional type carries an optional representation")
 	}
 	if value.Kind == TypeOptional {
-		if value.Optional == nil || !isPrimitiveOptionalValueType(value.Optional.Value) {
-			return fmt.Errorf("optional type requires one primitive value type")
+		if value.Optional == nil || !isOptionalValueType(value.Optional.Value) {
+			return fmt.Errorf("optional type requires one primitive or primitive-record value type")
 		}
 		if value.Primitive != "" || value.Numeric != nil || value.Result != nil || value.List != nil || value.Record != nil || value.Identity != nil || value.Name != "" || len(value.Arguments) != 0 {
 			return fmt.Errorf("optional type carries a non-optional representation")
@@ -248,6 +248,13 @@ func isPrimitiveOptionalValueType(value Type) bool {
 	}
 	return (value.Numeric.Representation == NumericInteger && value.Numeric.Bits == 64 && value.Numeric.Signed) ||
 		(value.Numeric.Representation == NumericBinaryFloat && value.Numeric.Bits == 64 && !value.Numeric.Signed)
+}
+
+func isOptionalValueType(value Type) bool {
+	if isPrimitiveOptionalValueType(value) {
+		return true
+	}
+	return value.Kind == TypeRecord && validateType(value) == nil
 }
 
 func isPrimitiveRecordFieldType(value Type) bool {
@@ -646,7 +653,7 @@ func validateDirectOptionalFunction(function Function) error {
 	switch function.Body.Kind {
 	case ExprOptionalSome:
 		if function.Body.Some == nil || function.Body.Some.Value == nil || function.ReturnType.Kind != TypeOptional || function.ReturnType.Optional == nil || len(function.Parameters) != 1 {
-			return fmt.Errorf("optional some requires one primitive parameter and an Optional return")
+			return fmt.Errorf("optional some requires one matching value parameter and an Optional return")
 		}
 		value := function.Body.Some.Value
 		if value.Kind != ExprReference || value.Parameter == nil || *value.Parameter != 0 || !TypeEqual(function.Parameters[0].Type, function.ReturnType.Optional.Value) {
@@ -670,7 +677,7 @@ func validateDirectOptionalFunction(function Function) error {
 		}
 	case ExprOptionalValueOr:
 		if function.Body.ValueOr == nil || function.Body.ValueOr.Value == nil || function.Body.ValueOr.Fallback == nil || len(function.Parameters) != 2 || function.Parameters[0].Type.Kind != TypeOptional || function.Parameters[0].Type.Optional == nil {
-			return fmt.Errorf("optional value_or requires one Optional parameter, one matching fallback parameter, and a primitive return")
+			return fmt.Errorf("optional value_or requires one Optional parameter, one matching fallback parameter, and a matching return")
 		}
 		value := function.Body.ValueOr.Value
 		fallback := function.Body.ValueOr.Fallback

@@ -184,9 +184,9 @@ func evalExpr(expression coreir.Expr, arguments []Value) (Outcome, error) {
 			return Outcome{}, fmt.Errorf("optional value_or: %w", err)
 		}
 		if value.Value.Optional.Present {
-			payload := *value.Value.Optional.Value
-			return Outcome{OK: true, Value: payload}, nil
+			return Outcome{OK: true, Value: cloneValue(*value.Value.Optional.Value)}, nil
 		}
+		fallback.Value = cloneValue(fallback.Value)
 		return fallback, nil
 	case coreir.ExprListEmpty:
 		value := Value{Type: expression.Type, List: make([]Value, 0)}
@@ -356,7 +356,7 @@ func cloneOptionalValue(value Value) Value {
 	}
 	cloned.Optional = &OptionalValue{Present: value.Optional.Present}
 	if value.Optional.Value != nil {
-		payload := *value.Optional.Value
+		payload := cloneValue(*value.Optional.Value)
 		cloned.Optional.Value = &payload
 	}
 	return cloned
