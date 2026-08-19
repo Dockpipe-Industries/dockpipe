@@ -34,7 +34,7 @@ func (e *Error) Error() string {
 
 // Generate accepts Core IR only and returns deterministic, gofmt-formatted Go.
 func Generate(program coreir.Program) ([]byte, error) {
-	if (program.LanguageContract != coreir.LanguageContractV010 && program.LanguageContract != coreir.LanguageContractV020 && program.LanguageContract != coreir.LanguageContractV030 && program.LanguageContract != coreir.LanguageContractV040 && program.LanguageContract != coreir.LanguageContractV050 && program.LanguageContract != coreir.LanguageContractV060 && program.LanguageContract != coreir.LanguageContractV070 && program.LanguageContract != coreir.LanguageContractV080 && program.LanguageContract != coreir.LanguageContractV090 && program.LanguageContract != coreir.LanguageContractV100 && program.LanguageContract != coreir.LanguageContractV110 && program.LanguageContract != coreir.LanguageContractV120 && program.LanguageContract != coreir.LanguageContractV130 && program.LanguageContract != coreir.LanguageContractV140 && program.LanguageContract != coreir.LanguageContractV150) || program.CompilerContract != coreir.CompilerContractV1 {
+	if (program.LanguageContract != coreir.LanguageContractV010 && program.LanguageContract != coreir.LanguageContractV020 && program.LanguageContract != coreir.LanguageContractV030 && program.LanguageContract != coreir.LanguageContractV040 && program.LanguageContract != coreir.LanguageContractV050 && program.LanguageContract != coreir.LanguageContractV060 && program.LanguageContract != coreir.LanguageContractV070 && program.LanguageContract != coreir.LanguageContractV080 && program.LanguageContract != coreir.LanguageContractV090 && program.LanguageContract != coreir.LanguageContractV100 && program.LanguageContract != coreir.LanguageContractV110 && program.LanguageContract != coreir.LanguageContractV120 && program.LanguageContract != coreir.LanguageContractV130 && program.LanguageContract != coreir.LanguageContractV140 && program.LanguageContract != coreir.LanguageContractV150 && program.LanguageContract != coreir.LanguageContractV160) || program.CompilerContract != coreir.CompilerContractV1 {
 		return nil, &Error{Code: "PLGO0001", Message: fmt.Sprintf("unsupported Core IR contracts language=%q compiler=%q", program.LanguageContract, program.CompilerContract)}
 	}
 	functions := append([]coreir.Function(nil), program.Functions...)
@@ -57,15 +57,19 @@ func Generate(program coreir.Program) ([]byte, error) {
 	needsOptional := programNeedsOptionalSupport(functions)
 	needsOptionalDefault := programNeedsOptionalDefault(functions)
 	needsList := programNeedsListSupport(functions)
+	needsListCount := programNeedsListCount(functions)
 	optionalTypeName := optionalGoTypeName(functions)
-	if needsOptional && program.LanguageContract != coreir.LanguageContractV130 && program.LanguageContract != coreir.LanguageContractV140 && program.LanguageContract != coreir.LanguageContractV150 {
+	if needsOptional && program.LanguageContract != coreir.LanguageContractV130 && program.LanguageContract != coreir.LanguageContractV140 && program.LanguageContract != coreir.LanguageContractV150 && program.LanguageContract != coreir.LanguageContractV160 {
 		return nil, &Error{Code: "PLGO0001", Message: fmt.Sprintf("primitive Optional Core requires language contract %q", coreir.LanguageContractV130)}
 	}
-	if needsOptionalDefault && program.LanguageContract != coreir.LanguageContractV140 && program.LanguageContract != coreir.LanguageContractV150 {
+	if needsOptionalDefault && program.LanguageContract != coreir.LanguageContractV140 && program.LanguageContract != coreir.LanguageContractV150 && program.LanguageContract != coreir.LanguageContractV160 {
 		return nil, &Error{Code: "PLGO0001", Message: fmt.Sprintf("primitive Optional defaulting Core requires language contract %q", coreir.LanguageContractV140)}
 	}
-	if needsList && program.LanguageContract != coreir.LanguageContractV150 {
+	if needsList && program.LanguageContract != coreir.LanguageContractV150 && program.LanguageContract != coreir.LanguageContractV160 {
 		return nil, &Error{Code: "PLGO0001", Message: fmt.Sprintf("record-list Core requires language contract %q", coreir.LanguageContractV150)}
+	}
+	if needsListCount && program.LanguageContract != coreir.LanguageContractV160 {
+		return nil, &Error{Code: "PLGO0001", Message: fmt.Sprintf("record-list count Core requires language contract %q", coreir.LanguageContractV160)}
 	}
 	if needsText {
 		out.WriteString("import \"unicode/utf8\"\n\n")
@@ -333,6 +337,11 @@ func emitExpr(expr coreir.Expr, parameters []coreir.Parameter, optionalTypeName 
 			return "", err
 		}
 		return listSingletonName(expr.Type) + "(" + value + ")", nil
+	case coreir.ExprListCount:
+		if expr.ListCount == nil || expr.ListCount.Value == nil || expr.ListCount.Value.Kind != coreir.ExprReference || expr.ListCount.Value.Parameter == nil {
+			return "", fmt.Errorf("list count expression is incomplete")
+		}
+		return fmt.Sprintf("int64(len(p%d))", *expr.ListCount.Value.Parameter), nil
 	default:
 		return "", fmt.Errorf("unsupported expression kind %q", expr.Kind)
 	}
@@ -533,6 +542,37 @@ func programNeedsListSupport(functions []coreir.Function) bool {
 		for _, parameter := range function.Parameters {
 			if parameter.Type.Kind == coreir.TypeList {
 				return true
+			}
+		}
+	}
+	return false
+}
+
+func programNeedsListCount(functions []coreir.Function) bool {
+	for _, function := range functions {
+		if expressionNeedsListCount(function.Body) {
+			return true
+		}
+	}
+	return false
+}
+
+func expressionNeedsListCount(expression coreir.Expr) bool {
+	switch expression.Kind {
+	case coreir.ExprListCount:
+		return true
+	case coreir.ExprUnary:
+		return expression.Unary != nil && expression.Unary.Operand != nil && expressionNeedsListCount(*expression.Unary.Operand)
+	case coreir.ExprBinary:
+		return expression.Binary != nil && expression.Binary.Left != nil && expression.Binary.Right != nil && (expressionNeedsListCount(*expression.Binary.Left) || expressionNeedsListCount(*expression.Binary.Right))
+	case coreir.ExprFieldProjection:
+		return expression.Field != nil && expression.Field.Receiver != nil && expressionNeedsListCount(*expression.Field.Receiver)
+	case coreir.ExprRecordConstruct:
+		if expression.Record != nil {
+			for _, field := range expression.Record.Fields {
+				if field.Value != nil && expressionNeedsListCount(*field.Value) {
+					return true
+				}
 			}
 		}
 	}
@@ -884,6 +924,8 @@ func expressionNeedsTextSupport(expression coreir.Expr) bool {
 		return false
 	case coreir.ExprListSingleton:
 		return expression.ListOne != nil && expression.ListOne.Value != nil && expressionNeedsTextSupport(*expression.ListOne.Value)
+	case coreir.ExprListCount:
+		return expression.ListCount != nil && expression.ListCount.Value != nil && expressionNeedsTextSupport(*expression.ListCount.Value)
 	default:
 		return false
 	}

@@ -334,7 +334,8 @@ func (cp *checkedProgram) validateRecordTransportSignature(method MethodDecl, re
 	recordConstruction := hasPrimitiveRecordConstructionSourceContract(contract) && cp.recordConstructionSignatureMatches(result, resolvedParameters)
 	recordEquality := hasPrimitiveRecordEqualitySourceContract(contract) && cp.recordEqualitySignatureMatches(result, resolvedParameters)
 	recordList := hasPrimitiveRecordListSourceContract(contract) && isResolvedRecordList(result) && (len(resolvedParameters) == 0 || (len(resolvedParameters) == 1 && (resolvedParameters[0].Equal(result.Arguments[0]) || resolvedParameters[0].Equal(result))))
-	if !hasPrimitiveRecordSourceContract(contract) || (!identityTransport && !fieldProjection && !recordConstruction && !recordEquality && !recordList) {
+	recordListCount := hasPrimitiveRecordListCountSourceContract(contract) && result.Equal(resolvedPrimitive(TypeInt)) && len(resolvedParameters) == 1 && isResolvedRecordList(resolvedParameters[0])
+	if !hasPrimitiveRecordSourceContract(contract) || (!identityTransport && !fieldProjection && !recordConstruction && !recordEquality && !recordList && !recordListCount) {
 		return false, oneDiagnostic(cp.sources, CodeInvalidType, CategorySemantic, method.Span, fmt.Sprintf("the %s primitive record is admitted only as one exact identity transport, one-hop primitive field projection, direct declaration-ordered construction, direct structural equality, or bounded record-list method", contract))
 	}
 	return true, nil
@@ -569,6 +570,18 @@ func inferExprType(sources *SourceSet, expr Expr, env map[string]ResolvedTypeRef
 
 func (cp *checkedProgram) inferExprType(expr Expr, env map[string]ResolvedTypeRef) (ResolvedTypeRef, error) {
 	switch list := expr.(type) {
+	case *ListCountExpr:
+		if cp == nil || cp.modules == nil || !hasPrimitiveRecordListCountSourceContract(cp.modules.LanguageContract()) {
+			return ResolvedTypeRef{}, oneDiagnostic(cp.sources, CodeExpressionType, CategorySemantic, list.Span, "record-list count requires language contract v0.16.0")
+		}
+		value, err := cp.inferExprType(list.Value, env)
+		if err != nil {
+			return ResolvedTypeRef{}, err
+		}
+		if !isResolvedRecordList(value) {
+			return ResolvedTypeRef{}, oneDiagnostic(cp.sources, CodeInvalidType, CategorySemantic, list.Value.SourceSpan(), fmt.Sprintf("count requires one existing primitive-record List value, got %s", value))
+		}
+		return resolvedPrimitive(TypeInt), nil
 	case *ListEmptyExpr:
 		if cp == nil || cp.modules == nil || !hasPrimitiveRecordListSourceContract(cp.modules.LanguageContract()) {
 			return ResolvedTypeRef{}, oneDiagnostic(cp.sources, CodeExpressionType, CategorySemantic, list.Span, "record-list construction requires language contract v0.15.0")
@@ -745,7 +758,7 @@ func (cp *checkedProgram) inferMethodBodyType(method MethodDecl, env map[string]
 		}
 		return resolvedArithmeticResult(binary64), nil
 	}
-	if unary, unaryOK := expr.(*UnaryExpr); unaryOK && (contract == PipeLangLanguageContractV050 || contract == PipeLangLanguageContractV060 || contract == PipeLangLanguageContractV070 || contract == PipeLangLanguageContractV080 || contract == PipeLangLanguageContractV090 || contract == PipeLangLanguageContractV100 || contract == PipeLangLanguageContractV110 || contract == PipeLangLanguageContractV120 || contract == PipeLangLanguageContractV130 || contract == PipeLangLanguageContractV140 || contract == PipeLangLanguageContractV150) && unary.Op == "-" {
+	if unary, unaryOK := expr.(*UnaryExpr); unaryOK && (contract == PipeLangLanguageContractV050 || contract == PipeLangLanguageContractV060 || contract == PipeLangLanguageContractV070 || contract == PipeLangLanguageContractV080 || contract == PipeLangLanguageContractV090 || contract == PipeLangLanguageContractV100 || contract == PipeLangLanguageContractV110 || contract == PipeLangLanguageContractV120 || contract == PipeLangLanguageContractV130 || contract == PipeLangLanguageContractV140 || contract == PipeLangLanguageContractV150 || contract == PipeLangLanguageContractV160) && unary.Op == "-" {
 		operand, err := inferExprTypeWithPolicy(cp.sources, unary.Expr, env, true)
 		if err != nil {
 			return ResolvedTypeRef{}, err
@@ -758,7 +771,7 @@ func (cp *checkedProgram) inferMethodBodyType(method MethodDecl, env map[string]
 	}
 	binary, ok := expr.(*BinaryExpr)
 	operatorAccepted := ok && binary.Op == "+"
-	if contract == PipeLangLanguageContractV040 || contract == PipeLangLanguageContractV050 || contract == PipeLangLanguageContractV060 || contract == PipeLangLanguageContractV070 || contract == PipeLangLanguageContractV080 || contract == PipeLangLanguageContractV090 || contract == PipeLangLanguageContractV100 || contract == PipeLangLanguageContractV110 || contract == PipeLangLanguageContractV120 || contract == PipeLangLanguageContractV130 || contract == PipeLangLanguageContractV140 || contract == PipeLangLanguageContractV150 {
+	if contract == PipeLangLanguageContractV040 || contract == PipeLangLanguageContractV050 || contract == PipeLangLanguageContractV060 || contract == PipeLangLanguageContractV070 || contract == PipeLangLanguageContractV080 || contract == PipeLangLanguageContractV090 || contract == PipeLangLanguageContractV100 || contract == PipeLangLanguageContractV110 || contract == PipeLangLanguageContractV120 || contract == PipeLangLanguageContractV130 || contract == PipeLangLanguageContractV140 || contract == PipeLangLanguageContractV150 || contract == PipeLangLanguageContractV160 {
 		operatorAccepted = ok && (binary.Op == "+" || binary.Op == "-" || binary.Op == "*")
 	} else if contract == PipeLangLanguageContractV030 {
 		operatorAccepted = ok && (binary.Op == "+" || binary.Op == "-")
@@ -824,7 +837,16 @@ func (cp *checkedProgram) inferRecordListMethodBodyType(method MethodDecl, env m
 			}
 		}
 	}
-	return ResolvedTypeRef{}, true, oneDiagnostic(cp.sources, CodeExpressionType, CategorySemantic, method.Body.SourceSpan(), fmt.Sprintf("%s record-list methods require exact empty_list, singleton list, or identity-transport bodies", contract))
+	if hasPrimitiveRecordListCountSourceContract(contract) && declared.Equal(resolvedPrimitive(TypeInt)) {
+		if body, ok := method.Body.(*ListCountExpr); ok && len(parameterTypes) == 1 && isResolvedRecordList(parameterTypes[0]) && directParameter(body.Value, 0) {
+			return declared, true, nil
+		}
+	}
+	forms := "empty_list, singleton list, or identity-transport"
+	if hasPrimitiveRecordListCountSourceContract(contract) {
+		forms += ", or count"
+	}
+	return ResolvedTypeRef{}, true, oneDiagnostic(cp.sources, CodeExpressionType, CategorySemantic, method.Body.SourceSpan(), fmt.Sprintf("%s record-list methods require exact %s bodies", contract, forms))
 }
 
 func (cp *checkedProgram) inferOptionalMethodBodyType(method MethodDecl, env map[string]ResolvedTypeRef, declared ResolvedTypeRef) (ResolvedTypeRef, bool, error) {
@@ -1048,6 +1070,8 @@ func containsRecordConstruction(expression Expr) bool {
 		return containsRecordConstruction(node.Receiver)
 	case *ListSingletonExpr:
 		return containsRecordConstruction(node.Value)
+	case *ListCountExpr:
+		return containsRecordConstruction(node.Value)
 	default:
 		return false
 	}
@@ -1071,13 +1095,15 @@ func containsOptionalExpression(expression Expr) bool {
 		}
 	case *ListSingletonExpr:
 		return containsOptionalExpression(node.Value)
+	case *ListCountExpr:
+		return containsOptionalExpression(node.Value)
 	}
 	return false
 }
 
 func containsListExpression(expression Expr) bool {
 	switch node := expression.(type) {
-	case *ListEmptyExpr, *ListSingletonExpr:
+	case *ListEmptyExpr, *ListSingletonExpr, *ListCountExpr:
 		return true
 	case *UnaryExpr:
 		return containsListExpression(node.Expr)
@@ -1111,7 +1137,7 @@ func isOrdinalTextOrderingOperator(operator string) bool {
 }
 
 func arithmeticSourceOperators(contract LanguageContract) string {
-	if contract == PipeLangLanguageContractV050 || contract == PipeLangLanguageContractV060 || contract == PipeLangLanguageContractV070 || contract == PipeLangLanguageContractV080 || contract == PipeLangLanguageContractV090 || contract == PipeLangLanguageContractV100 || contract == PipeLangLanguageContractV110 || contract == PipeLangLanguageContractV120 || contract == PipeLangLanguageContractV130 || contract == PipeLangLanguageContractV140 || contract == PipeLangLanguageContractV150 {
+	if contract == PipeLangLanguageContractV050 || contract == PipeLangLanguageContractV060 || contract == PipeLangLanguageContractV070 || contract == PipeLangLanguageContractV080 || contract == PipeLangLanguageContractV090 || contract == PipeLangLanguageContractV100 || contract == PipeLangLanguageContractV110 || contract == PipeLangLanguageContractV120 || contract == PipeLangLanguageContractV130 || contract == PipeLangLanguageContractV140 || contract == PipeLangLanguageContractV150 || contract == PipeLangLanguageContractV160 {
 		return "addition, subtraction, multiplication, or negation"
 	}
 	if contract == PipeLangLanguageContractV040 {

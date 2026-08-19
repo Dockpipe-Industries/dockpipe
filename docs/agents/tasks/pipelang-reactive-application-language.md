@@ -6,7 +6,7 @@ The `vNext` foundation decision packet in this record is **accepted** as of 2026
 fixes semantics, compiler boundaries, bootstrap stages, compatibility, and implementation order;
 examples and fixtures remain non-normative and accept no production syntax. Separately authorized
 bounded objectives have completed implementation-order steps 1 through 6 and step-7 slices 7a
-through 7p. This record does not by itself authorize another step-7 or later language slice.
+through 7q. This record does not by itself authorize another step-7 or later language slice.
 
 ## Goal
 
@@ -1876,6 +1876,57 @@ Terminal proof passed with cached Go 1.25.13, offline module lookup, and writabl
 No dependency, generated store, runtime, external state, cleanup, commit, push, or publication
 changed.
 
+### Completed step 7q primitive-record list cardinality contract (2026-08-18)
+
+The founder selected explicit `v0.16.0` primitive-record list cardinality. The accepted public
+surface contains only this direct method shape for one existing public primitive record `R`:
+
+```pipelang
+public int CountRows(List<ContainerRow> values) => count(values);
+```
+
+`count(List<R>) -> int` requires exactly one `List<R>` parameter as the complete direct operand and
+returns its nonnegative signed-64-bit cardinality. The input remains an immutable, ordered,
+non-null list whose elements retain their existing record identities and declaration-ordered
+primitive fields. The evaluator and backend validate the complete list, every record element, and
+strict UTF-8 string field before observing its length; malformed or nil list representations fail
+closed.
+
+The expression reuses the existing `pipelang:list` and record identities. Callable identity remains
+the structured `(List<R>) -> int` signature, and `pipelang.compiler.v1` plus
+`pipelang.semantic.v1` remain unchanged. Typed HIR and target-neutral Core carry an explicit
+`list_count` node over the sole direct parameter. Core evaluation returns the validated cardinality,
+and the Core-only Go backend validates the parameter before deterministic `int64(len(...))`
+emission without inferring iteration or target collection semantics.
+
+`PL3006` reports invalid element, placement, or signature types; `PL3009` reports computed operands,
+extra expressions, or otherwise non-direct bodies. Malformed typed HIR and Core remain `PL3026` and
+`PL3027`. `v0.1.0` through `v0.15.0` reject the source and executable form without implicit
+migration, while every frozen earlier contract remains available under `v0.16.0`.
+
+The minimal pure source fixture is `src/lib/pipelang/testdata/record-list-count.pipe`, with
+synchronized typed HIR, Core, and Go goldens. This slice directly supplies TASK-020's frozen
+container, network, and volume count summaries. Multi-element construction, append, indexing,
+iteration, filtering, sorting, list equality/hash, maps, sets, builders, mutation, Application IR,
+Step-8 control flow, effects, and additional backends remain excluded.
+
+Terminal proof passed with cached Go 1.25.13, offline module lookup, and writable `/tmp` caches:
+
+- the complete PipeLang and exact 45-source compatibility suites, including parser spans,
+  semantic identity/projection, source-derived HIR/Core/Go cardinality goldens, empty and multi-row
+  evaluator agreement, per-element/UTF-8 validation, nil/malformed HIR/Core rejection, explicit
+  `v0.1.0` through `v0.15.0` migration rejection, and preserved `v0.15.0` list behavior;
+- focused application PipeLang check/compile/invoke, catalog, materialize, package-compile, domain,
+  and `src/cmd` checks through only a temporary `/tmp` modfile pinned to cached `x/sys v0.46.0`;
+- `go vet`, Core-only backend/evaluator import-boundary checks, VS Code
+  grammar/completion/snippet/diagnostic validation, and Windows compile-only proof across affected
+  packages; and
+- `gofmt`, `git diff --check`, exact 45-source inventory, dependency/generated-state absence, and
+  engine/package-boundary review.
+
+No dependency, generated store, runtime, external state, cleanup, commit, push, or publication
+changed.
+
 ## Exact Next Boundary
 
 Step 7 of **Bounded Implementation Order** has completed the fixed numeric, compiler-internal
@@ -1884,7 +1935,7 @@ binary64 divide, first-class arithmetic Result transport, ordinal Unicode text o
 primitive immutable record-identity transport, one-hop primitive-record field projection, and
 exact primitive-record construction and structural equality, plus primitive Optional
 construction, identity transport, presence inspection, and bounded defaulting slices, plus
-deterministic empty, singleton, and identity transport of primitive-record lists.
+deterministic empty, singleton, identity transport, and cardinality of primitive-record lists.
 `v0.2.0` admits only the exact explicit Result-returning addition;
 `v0.3.0` adds only direct subtraction; `v0.4.0` adds only direct multiplication; `v0.5.0` adds only
 direct integer negation; `v0.6.0` adds only direct binary64 division; and `v0.7.0` adds only direct
@@ -1906,6 +1957,9 @@ both arguments canonically validated before selection, while preserving every pr
 `v0.15.0` adds only `List<R>` for one existing public primitive record `R`, with exact direct
 `empty_list<R>()`, `list(value)`, and identity transport methods, fixed `pipelang:list` identity,
 canonical per-element validation, and copied storage while preserving every prior contract.
+`v0.16.0` adds only exact direct `count(List<R>) -> int` cardinality for one existing public
+primitive record `R`, with complete list/element validation and no implicit iteration semantics,
+while preserving every prior contract.
 All other numeric arithmetic and every Result construction, composition, or consumption form remain
 fail-closed from production source. Any next slice requires a new
 synchronized decision for its exact source spelling, type/value handling rule, semantic projection,
@@ -1918,9 +1972,9 @@ field projection, exact construction, structural equality, and primitive Optiona
 five dependencies; bounded primitive Optional defaulting satisfies a sixth. They do not authorize
 nested or general record value use, optional extraction beyond `value_or` or composition,
 arbitrary multi-element collection construction or collection consumption, failures, UI, actions,
-effects, or Qt behavior as one batch. The accepted list foundation satisfies only the read-only
-consumer's empty, singleton, and pass-through row-value boundary; iteration, filtering, sorting,
-counting, indexing, and application projection remain later decisions.
+effects, or Qt behavior as one batch. The accepted list foundation now satisfies the read-only
+consumer's empty, singleton, pass-through, and count-summary row-value boundary; iteration,
+filtering, sorting, indexing, and application projection remain later decisions.
 
 No later step-7 slice is included here. In particular, this checkpoint does not add Result
 construction, inspection, extraction, wrapping, unwrapping, propagation, or matching; additional
