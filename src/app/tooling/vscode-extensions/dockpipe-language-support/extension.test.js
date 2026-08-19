@@ -231,3 +231,8 @@ assert(pipeLangSnippets["PipeLang Primitive Record Optional"].body.some((line) =
 assert.strictEqual(pipeLangSnippets["PipeLang Snapshot Result"].prefix, "pipe-snapshot-result");
 assert(pipeLangSnippets["PipeLang Snapshot Result"].description.includes("v0.19.0"));
 assert(pipeLangSnippets["PipeLang Snapshot Result"].body.some((line) => line.includes("success_or")));
+assert(pipeLangReadme.includes("v0.25.0"));
+assert(pipeLangReadme.includes("Result<string, string>"));
+assert.strictEqual(pipeLangSnippets["PipeLang Text Result"].prefix, "pipe-text-result");
+assert(pipeLangSnippets["PipeLang Text Result"].description.includes("v0.25.0"));
+assert(pipeLangSnippets["PipeLang Text Result"].body.some((line) => line.includes("failure_or")));

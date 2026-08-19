@@ -20,6 +20,8 @@ Exact stable-order filtering of one primitive-record list by one selected public
 Exact Unicode 17.0.0 full-default case-folded containment of two direct strings is also complete.
 Exact stable-order case-folded containment filtering of one primitive-record list by one selected
 public string field is also complete.
+Exact construction, identity transport, success inspection, and bounded success/failure defaulting
+for `Result<string, string>` is also complete.
 `v0.2.0` admits only the exact explicit Result-returning addition;
 `v0.3.0` adds only direct subtraction; `v0.4.0` adds only direct multiplication; `v0.5.0` adds only
 direct integer negation; `v0.6.0` adds only direct binary64 division; and `v0.7.0` adds only direct
@@ -76,6 +78,11 @@ record `R` and one selected public string field. It completely validates the lis
 field, and UTF-8 query before applying the pinned `v0.23.0` Unicode 17.0.0 full-default C/F
 containment rule, retaining every match in stable input order with canonical non-nil empty output
 and fresh copied list/record storage while preserving every prior contract.
+`v0.25.0` adds only exact direct `ok`, `err`, identity transport, `is_ok`, `success_or`, and
+`failure_or` methods for `Result<string, string>`. It completely validates tagged payloads and both
+selected and unselected fallback text as strict UTF-8, requires the canonical empty success payload
+for failures, reuses the existing Result semantic identity and HIR/Core expression kinds, and
+preserves every prior contract.
 All other numeric arithmetic and every other Result construction, composition, or consumption form
 remain fail-closed from production source. Any next slice requires a new
 synchronized decision for its exact source spelling, type/value handling rule, semantic projection,
@@ -105,7 +112,7 @@ later decisions.
 
 No later step-7 slice is included here. In particular, this checkpoint does not add general Result
 construction, inspection, extraction, wrapping, unwrapping, propagation, or matching beyond the
-exact accepted `Result<List<R>, string>` forms; additional
+exact accepted `Result<List<R>, string>` and `Result<string, string>` forms; additional
 Unicode text construction/scalar/grapheme APIs, normalization, locale-aware or additional case operations, value/reference,
 hashing, general total-order capabilities, optional extraction beyond `value_or`, equality,
 implicit defaults, nesting, chaining,

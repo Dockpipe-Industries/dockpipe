@@ -245,8 +245,8 @@ func (cp *checkedProgram) validateClass(decl *ClassDecl) error {
 		if err != nil {
 			return prefixDiagnostic(err, fmt.Sprintf("class %s method %s return: ", decl.Name, method.Name))
 		}
-		if containsResolvedResult(resolved) && !isResolvedSourceArithmeticResult(cp.modules.LanguageContract(), resolved) && !(hasSnapshotResultSourceContract(cp.modules.LanguageContract()) && isResolvedSnapshotResult(resolved)) {
-			return oneDiagnostic(cp.sources, CodeInvalidType, CategorySemantic, method.ReturnType.Span, fmt.Sprintf("the %s Result slice admits only its exact checked-arithmetic or Result<List<R>,string> class method shapes", cp.modules.LanguageContract()))
+		if containsResolvedResult(resolved) && !isResolvedSourceArithmeticResult(cp.modules.LanguageContract(), resolved) && !isResolvedBoundedValueResult(cp.modules.LanguageContract(), resolved) {
+			return oneDiagnostic(cp.sources, CodeInvalidType, CategorySemantic, method.ReturnType.Span, fmt.Sprintf("the %s Result slice admits only its exact checked-arithmetic, Result<List<R>,string>, or v0.25.0 Result<string,string> class method shapes", cp.modules.LanguageContract()))
 		}
 		if previous, ok := seen[method.Name]; ok {
 			return oneDiagnostic(cp.sources, CodeDuplicateMember, CategorySemantic, method.Span, fmt.Sprintf("class %s has duplicate member %q", decl.Name, method.Name), RelatedSpan{Span: previous, Message: "first member"})
@@ -347,7 +347,7 @@ func (cp *checkedProgram) validateRecordTransportSignature(method MethodDecl, re
 	recordListFilterByText := hasPrimitiveRecordListFilterByTextSourceContract(contract) && isResolvedRecordList(result) && cp.isResolvedRecordType(result.Arguments[0]) && len(resolvedParameters) == 2 && resolvedParameters[0].Equal(result) && resolvedParameters[1].Equal(resolvedPrimitive(TypeString))
 	recordListFilterContainsCaseFolded := hasPrimitiveRecordListFilterContainsCaseFoldedSourceContract(contract) && isResolvedRecordList(result) && cp.isResolvedRecordType(result.Arguments[0]) && len(resolvedParameters) == 2 && resolvedParameters[0].Equal(result) && resolvedParameters[1].Equal(resolvedPrimitive(TypeString))
 	recordOptional := hasPrimitiveRecordOptionalSourceContract(contract) && cp.optionalRecordSignatureMatches(result, resolvedParameters)
-	snapshotResult := hasSnapshotResultSourceContract(contract) && cp.snapshotResultSignatureMatches(result, resolvedParameters)
+	snapshotResult := hasSnapshotResultSourceContract(contract) && cp.boundedResultSignatureMatches(result, resolvedParameters)
 	if !hasPrimitiveRecordSourceContract(contract) || (!identityTransport && !fieldProjection && !recordConstruction && !recordEquality && !recordList && !recordListCount && !recordListAppend && !recordListAt && !recordListFindByText && !recordListFilterByText && !recordListFilterContainsCaseFolded && !recordOptional && !snapshotResult) {
 		return false, oneDiagnostic(cp.sources, CodeInvalidType, CategorySemantic, method.Span, fmt.Sprintf("the %s primitive record is admitted only as one exact identity transport, one-hop primitive field projection, direct declaration-ordered construction, direct structural equality, bounded record-list method, or bounded Optional<R> method", contract))
 	}
@@ -389,18 +389,19 @@ func (cp *checkedProgram) recordEqualitySignatureMatches(result ResolvedTypeRef,
 	return result.Equal(resolvedPrimitive(TypeBool)) && len(parameters) == 2 && cp.isResolvedRecordType(parameters[0]) && parameters[0].Equal(parameters[1])
 }
 
-func (cp *checkedProgram) snapshotResultSignatureMatches(result ResolvedTypeRef, parameters []ResolvedTypeRef) bool {
-	if isResolvedSnapshotResult(result) {
+func (cp *checkedProgram) boundedResultSignatureMatches(result ResolvedTypeRef, parameters []ResolvedTypeRef) bool {
+	contract := cp.modules.LanguageContract()
+	if isResolvedBoundedValueResult(contract, result) {
 		return len(parameters) == 1 && (parameters[0].Equal(result.Arguments[0]) || parameters[0].Equal(result.Arguments[1]) || parameters[0].Equal(result))
 	}
 	if result.Equal(resolvedPrimitive(TypeBool)) {
-		return len(parameters) == 1 && isResolvedSnapshotResult(parameters[0])
+		return len(parameters) == 1 && isResolvedBoundedValueResult(contract, parameters[0])
 	}
 	if isResolvedRecordList(result) {
 		return len(parameters) == 2 && isResolvedSnapshotResult(parameters[0]) && parameters[0].Arguments[0].Equal(result) && parameters[1].Equal(result)
 	}
 	if result.Equal(resolvedPrimitive(TypeString)) {
-		return len(parameters) == 2 && isResolvedSnapshotResult(parameters[0]) && parameters[0].Arguments[1].Equal(result) && parameters[1].Equal(result)
+		return len(parameters) == 2 && isResolvedBoundedValueResult(contract, parameters[0]) && (parameters[0].Arguments[0].Equal(result) || parameters[0].Arguments[1].Equal(result)) && parameters[1].Equal(result)
 	}
 	return false
 }
@@ -422,14 +423,14 @@ func (cp *checkedProgram) validateResultSignature(method MethodDecl, result Reso
 		return false, nil
 	}
 	contract := cp.modules.LanguageContract()
-	if hasSnapshotResultSourceContract(contract) && cp.snapshotResultSignatureMatches(result, resolvedParameters) {
+	if hasSnapshotResultSourceContract(contract) && cp.boundedResultSignatureMatches(result, resolvedParameters) {
 		return hasResultParameter, nil
 	}
 	if isResolvedSourceArithmeticResult(contract, result) && !hasResultParameter {
 		return false, nil
 	}
 	if !hasResultTransportSourceContract(contract) || len(resolvedParameters) != 1 || !isResolvedSourceArithmeticResult(contract, result) || !resolvedParameters[0].Equal(result) {
-		return false, oneDiagnostic(cp.sources, CodeInvalidType, CategorySemantic, method.Span, fmt.Sprintf("the %s Result contract admits only exact checked-arithmetic transport or bounded snapshot Result methods", contract))
+		return false, oneDiagnostic(cp.sources, CodeInvalidType, CategorySemantic, method.Span, fmt.Sprintf("the %s Result contract admits only exact checked-arithmetic transport or bounded snapshot/text Result methods", contract))
 	}
 	return true, nil
 }
@@ -655,8 +656,8 @@ func (cp *checkedProgram) inferExprType(expr Expr, env map[string]ResolvedTypeRe
 				return ResolvedTypeRef{}, err
 			}
 			resolved := resolvedResult(success, failure)
-			if !isResolvedSnapshotResult(resolved) {
-				return ResolvedTypeRef{}, oneDiagnostic(cp.sources, CodeInvalidType, CategorySemantic, result.Span, fmt.Sprintf("ok admits only Result<List<R>,string>, got %s", resolved))
+			if !isResolvedBoundedValueResult(cp.modules.LanguageContract(), resolved) {
+				return ResolvedTypeRef{}, oneDiagnostic(cp.sources, CodeInvalidType, CategorySemantic, result.Span, fmt.Sprintf("ok admits only Result<List<R>,string> or v0.25.0 Result<string,string>, got %s", resolved))
 			}
 			value, err := cp.inferExprType(result.Value, env)
 			if err != nil {
@@ -676,8 +677,8 @@ func (cp *checkedProgram) inferExprType(expr Expr, env map[string]ResolvedTypeRe
 				return ResolvedTypeRef{}, err
 			}
 			resolved := resolvedResult(success, failure)
-			if !isResolvedSnapshotResult(resolved) {
-				return ResolvedTypeRef{}, oneDiagnostic(cp.sources, CodeInvalidType, CategorySemantic, result.Span, fmt.Sprintf("err admits only Result<List<R>,string>, got %s", resolved))
+			if !isResolvedBoundedValueResult(cp.modules.LanguageContract(), resolved) {
+				return ResolvedTypeRef{}, oneDiagnostic(cp.sources, CodeInvalidType, CategorySemantic, result.Span, fmt.Sprintf("err admits only Result<List<R>,string> or v0.25.0 Result<string,string>, got %s", resolved))
 			}
 			failureValue, err := cp.inferExprType(result.Error, env)
 			if err != nil {
@@ -692,8 +693,8 @@ func (cp *checkedProgram) inferExprType(expr Expr, env map[string]ResolvedTypeRe
 			if err != nil {
 				return ResolvedTypeRef{}, err
 			}
-			if !isResolvedSnapshotResult(value) {
-				return ResolvedTypeRef{}, oneDiagnostic(cp.sources, CodeInvalidType, CategorySemantic, result.Value.SourceSpan(), fmt.Sprintf("is_ok requires Result<List<R>,string>, got %s", value))
+			if !isResolvedBoundedValueResult(cp.modules.LanguageContract(), value) {
+				return ResolvedTypeRef{}, oneDiagnostic(cp.sources, CodeInvalidType, CategorySemantic, result.Value.SourceSpan(), fmt.Sprintf("is_ok requires a bounded snapshot/text Result, got %s", value))
 			}
 			return resolvedPrimitive(TypeBool), nil
 		case *ResultSuccessOrExpr:
@@ -701,8 +702,8 @@ func (cp *checkedProgram) inferExprType(expr Expr, env map[string]ResolvedTypeRe
 			if err != nil {
 				return ResolvedTypeRef{}, err
 			}
-			if !isResolvedSnapshotResult(value) {
-				return ResolvedTypeRef{}, oneDiagnostic(cp.sources, CodeInvalidType, CategorySemantic, result.Value.SourceSpan(), fmt.Sprintf("success_or requires Result<List<R>,string>, got %s", value))
+			if !isResolvedBoundedValueResult(cp.modules.LanguageContract(), value) {
+				return ResolvedTypeRef{}, oneDiagnostic(cp.sources, CodeInvalidType, CategorySemantic, result.Value.SourceSpan(), fmt.Sprintf("success_or requires a bounded snapshot/text Result, got %s", value))
 			}
 			fallback, err := cp.inferExprType(result.Fallback, env)
 			if err != nil {
@@ -717,8 +718,8 @@ func (cp *checkedProgram) inferExprType(expr Expr, env map[string]ResolvedTypeRe
 			if err != nil {
 				return ResolvedTypeRef{}, err
 			}
-			if !isResolvedSnapshotResult(value) {
-				return ResolvedTypeRef{}, oneDiagnostic(cp.sources, CodeInvalidType, CategorySemantic, result.Value.SourceSpan(), fmt.Sprintf("failure_or requires Result<List<R>,string>, got %s", value))
+			if !isResolvedBoundedValueResult(cp.modules.LanguageContract(), value) {
+				return ResolvedTypeRef{}, oneDiagnostic(cp.sources, CodeInvalidType, CategorySemantic, result.Value.SourceSpan(), fmt.Sprintf("failure_or requires a bounded snapshot/text Result, got %s", value))
 			}
 			fallback, err := cp.inferExprType(result.Fallback, env)
 			if err != nil {
@@ -980,7 +981,7 @@ func (cp *checkedProgram) resolveRecordField(record ResolvedTypeRef, name string
 
 func (cp *checkedProgram) inferMethodBodyType(method MethodDecl, env map[string]ResolvedTypeRef, declared ResolvedTypeRef) (ResolvedTypeRef, error) {
 	expr := method.Body
-	if inferred, handled, err := cp.inferSnapshotResultMethodBodyType(method, env, declared); handled {
+	if inferred, handled, err := cp.inferBoundedResultMethodBodyType(method, env, declared); handled {
 		return inferred, err
 	}
 	if inferred, handled, err := cp.inferRecordListMethodBodyType(method, env, declared); handled {
@@ -1026,7 +1027,7 @@ func (cp *checkedProgram) inferMethodBodyType(method MethodDecl, env map[string]
 		}
 		return resolvedArithmeticResult(binary64), nil
 	}
-	if unary, unaryOK := expr.(*UnaryExpr); unaryOK && (contract == PipeLangLanguageContractV050 || contract == PipeLangLanguageContractV060 || contract == PipeLangLanguageContractV070 || contract == PipeLangLanguageContractV080 || contract == PipeLangLanguageContractV090 || contract == PipeLangLanguageContractV100 || contract == PipeLangLanguageContractV110 || contract == PipeLangLanguageContractV120 || contract == PipeLangLanguageContractV130 || contract == PipeLangLanguageContractV140 || contract == PipeLangLanguageContractV150 || contract == PipeLangLanguageContractV160 || contract == PipeLangLanguageContractV170 || contract == PipeLangLanguageContractV180 || contract == PipeLangLanguageContractV190 || contract == PipeLangLanguageContractV200 || contract == PipeLangLanguageContractV210 || contract == PipeLangLanguageContractV220 || contract == PipeLangLanguageContractV240 || contract == PipeLangLanguageContractV230) && unary.Op == "-" {
+	if unary, unaryOK := expr.(*UnaryExpr); unaryOK && (contract == PipeLangLanguageContractV050 || contract == PipeLangLanguageContractV060 || contract == PipeLangLanguageContractV070 || contract == PipeLangLanguageContractV080 || contract == PipeLangLanguageContractV090 || contract == PipeLangLanguageContractV100 || contract == PipeLangLanguageContractV110 || contract == PipeLangLanguageContractV120 || contract == PipeLangLanguageContractV130 || contract == PipeLangLanguageContractV140 || contract == PipeLangLanguageContractV150 || contract == PipeLangLanguageContractV160 || contract == PipeLangLanguageContractV170 || contract == PipeLangLanguageContractV180 || contract == PipeLangLanguageContractV190 || contract == PipeLangLanguageContractV200 || contract == PipeLangLanguageContractV210 || contract == PipeLangLanguageContractV220 || contract == PipeLangLanguageContractV230 || contract == PipeLangLanguageContractV240 || contract == PipeLangLanguageContractV250) && unary.Op == "-" {
 		operand, err := inferExprTypeWithPolicy(cp.sources, unary.Expr, env, true)
 		if err != nil {
 			return ResolvedTypeRef{}, err
@@ -1039,7 +1040,7 @@ func (cp *checkedProgram) inferMethodBodyType(method MethodDecl, env map[string]
 	}
 	binary, ok := expr.(*BinaryExpr)
 	operatorAccepted := ok && binary.Op == "+"
-	if contract == PipeLangLanguageContractV040 || contract == PipeLangLanguageContractV050 || contract == PipeLangLanguageContractV060 || contract == PipeLangLanguageContractV070 || contract == PipeLangLanguageContractV080 || contract == PipeLangLanguageContractV090 || contract == PipeLangLanguageContractV100 || contract == PipeLangLanguageContractV110 || contract == PipeLangLanguageContractV120 || contract == PipeLangLanguageContractV130 || contract == PipeLangLanguageContractV140 || contract == PipeLangLanguageContractV150 || contract == PipeLangLanguageContractV160 || contract == PipeLangLanguageContractV170 || contract == PipeLangLanguageContractV180 || contract == PipeLangLanguageContractV190 || contract == PipeLangLanguageContractV200 || contract == PipeLangLanguageContractV210 || contract == PipeLangLanguageContractV220 || contract == PipeLangLanguageContractV240 || contract == PipeLangLanguageContractV230 {
+	if contract == PipeLangLanguageContractV040 || contract == PipeLangLanguageContractV050 || contract == PipeLangLanguageContractV060 || contract == PipeLangLanguageContractV070 || contract == PipeLangLanguageContractV080 || contract == PipeLangLanguageContractV090 || contract == PipeLangLanguageContractV100 || contract == PipeLangLanguageContractV110 || contract == PipeLangLanguageContractV120 || contract == PipeLangLanguageContractV130 || contract == PipeLangLanguageContractV140 || contract == PipeLangLanguageContractV150 || contract == PipeLangLanguageContractV160 || contract == PipeLangLanguageContractV170 || contract == PipeLangLanguageContractV180 || contract == PipeLangLanguageContractV190 || contract == PipeLangLanguageContractV200 || contract == PipeLangLanguageContractV210 || contract == PipeLangLanguageContractV220 || contract == PipeLangLanguageContractV230 || contract == PipeLangLanguageContractV240 || contract == PipeLangLanguageContractV250 {
 		operatorAccepted = ok && (binary.Op == "+" || binary.Op == "-" || binary.Op == "*")
 	} else if contract == PipeLangLanguageContractV030 {
 		operatorAccepted = ok && (binary.Op == "+" || binary.Op == "-")
@@ -1063,23 +1064,23 @@ func (cp *checkedProgram) inferMethodBodyType(method MethodDecl, env map[string]
 	return resolvedArithmeticResult(integer), nil
 }
 
-func (cp *checkedProgram) inferSnapshotResultMethodBodyType(method MethodDecl, env map[string]ResolvedTypeRef, declared ResolvedTypeRef) (ResolvedTypeRef, bool, error) {
+func (cp *checkedProgram) inferBoundedResultMethodBodyType(method MethodDecl, env map[string]ResolvedTypeRef, declared ResolvedTypeRef) (ResolvedTypeRef, bool, error) {
 	parameterTypes := make([]ResolvedTypeRef, 0, len(method.Params))
-	hasSnapshotResult := isResolvedSnapshotResult(declared) || containsResultExpression(method.Body)
+	contract := cp.modules.LanguageContract()
+	hasBoundedResult := isResolvedBoundedValueResult(contract, declared) || containsResultExpression(method.Body)
 	for _, parameter := range method.Params {
 		resolved, err := cp.resolveType(parameter.Type)
 		if err != nil {
 			return ResolvedTypeRef{}, true, err
 		}
 		parameterTypes = append(parameterTypes, resolved)
-		hasSnapshotResult = hasSnapshotResult || isResolvedSnapshotResult(resolved)
+		hasBoundedResult = hasBoundedResult || isResolvedBoundedValueResult(contract, resolved)
 	}
-	if !hasSnapshotResult {
+	if !hasBoundedResult {
 		return ResolvedTypeRef{}, false, nil
 	}
-	contract := cp.modules.LanguageContract()
-	if !hasSnapshotResultSourceContract(contract) || !cp.snapshotResultSignatureMatches(declared, parameterTypes) {
-		return ResolvedTypeRef{}, true, oneDiagnostic(cp.sources, CodeInvalidType, CategorySemantic, method.Span, fmt.Sprintf("%s snapshot Result requires one exact bounded signature", contract))
+	if !hasSnapshotResultSourceContract(contract) || !cp.boundedResultSignatureMatches(declared, parameterTypes) {
+		return ResolvedTypeRef{}, true, oneDiagnostic(cp.sources, CodeInvalidType, CategorySemantic, method.Span, fmt.Sprintf("%s bounded Result requires one exact snapshot or text signature", contract))
 	}
 	directParameter := func(expression Expr, position int) bool {
 		identifier, ok := expression.(*IdentExpr)
@@ -1097,23 +1098,23 @@ func (cp *checkedProgram) inferSnapshotResultMethodBodyType(method MethodDecl, e
 			return declared, true, nil
 		}
 	case *IdentExpr:
-		if isResolvedSnapshotResult(declared) && len(parameterTypes) == 1 && parameterTypes[0].Equal(declared) && body.Name == method.Params[0].Name {
+		if isResolvedBoundedValueResult(contract, declared) && len(parameterTypes) == 1 && parameterTypes[0].Equal(declared) && body.Name == method.Params[0].Name {
 			return declared, true, nil
 		}
 	case *ResultIsOKExpr:
-		if declared.Equal(resolvedPrimitive(TypeBool)) && len(parameterTypes) == 1 && isResolvedSnapshotResult(parameterTypes[0]) && directParameter(body.Value, 0) {
+		if declared.Equal(resolvedPrimitive(TypeBool)) && len(parameterTypes) == 1 && isResolvedBoundedValueResult(contract, parameterTypes[0]) && directParameter(body.Value, 0) {
 			return declared, true, nil
 		}
 	case *ResultSuccessOrExpr:
-		if isResolvedRecordList(declared) && len(parameterTypes) == 2 && isResolvedSnapshotResult(parameterTypes[0]) && parameterTypes[0].Arguments[0].Equal(declared) && parameterTypes[1].Equal(declared) && directParameter(body.Value, 0) && directParameter(body.Fallback, 1) {
+		if len(parameterTypes) == 2 && isResolvedBoundedValueResult(contract, parameterTypes[0]) && parameterTypes[0].Arguments[0].Equal(declared) && parameterTypes[1].Equal(declared) && directParameter(body.Value, 0) && directParameter(body.Fallback, 1) {
 			return declared, true, nil
 		}
 	case *ResultFailureOrExpr:
-		if declared.Equal(resolvedPrimitive(TypeString)) && len(parameterTypes) == 2 && isResolvedSnapshotResult(parameterTypes[0]) && parameterTypes[1].Equal(declared) && directParameter(body.Value, 0) && directParameter(body.Fallback, 1) {
+		if declared.Equal(resolvedPrimitive(TypeString)) && len(parameterTypes) == 2 && isResolvedBoundedValueResult(contract, parameterTypes[0]) && parameterTypes[0].Arguments[1].Equal(declared) && parameterTypes[1].Equal(declared) && directParameter(body.Value, 0) && directParameter(body.Fallback, 1) {
 			return declared, true, nil
 		}
 	}
-	return ResolvedTypeRef{}, true, oneDiagnostic(cp.sources, CodeExpressionType, CategorySemantic, method.Body.SourceSpan(), fmt.Sprintf("%s snapshot Result requires one complete direct ok, err, identity, is_ok, success_or, or failure_or method body", contract))
+	return ResolvedTypeRef{}, true, oneDiagnostic(cp.sources, CodeExpressionType, CategorySemantic, method.Body.SourceSpan(), fmt.Sprintf("%s bounded Result requires one complete direct ok, err, identity, is_ok, success_or, or failure_or method body", contract))
 }
 
 func (cp *checkedProgram) inferRecordListMethodBodyType(method MethodDecl, env map[string]ResolvedTypeRef, declared ResolvedTypeRef) (ResolvedTypeRef, bool, error) {
@@ -1738,7 +1739,7 @@ func isOrdinalTextOrderingOperator(operator string) bool {
 }
 
 func arithmeticSourceOperators(contract LanguageContract) string {
-	if contract == PipeLangLanguageContractV050 || contract == PipeLangLanguageContractV060 || contract == PipeLangLanguageContractV070 || contract == PipeLangLanguageContractV080 || contract == PipeLangLanguageContractV090 || contract == PipeLangLanguageContractV100 || contract == PipeLangLanguageContractV110 || contract == PipeLangLanguageContractV120 || contract == PipeLangLanguageContractV130 || contract == PipeLangLanguageContractV140 || contract == PipeLangLanguageContractV150 || contract == PipeLangLanguageContractV160 || contract == PipeLangLanguageContractV170 || contract == PipeLangLanguageContractV180 || contract == PipeLangLanguageContractV190 || contract == PipeLangLanguageContractV200 || contract == PipeLangLanguageContractV210 || contract == PipeLangLanguageContractV220 || contract == PipeLangLanguageContractV240 || contract == PipeLangLanguageContractV230 {
+	if contract == PipeLangLanguageContractV050 || contract == PipeLangLanguageContractV060 || contract == PipeLangLanguageContractV070 || contract == PipeLangLanguageContractV080 || contract == PipeLangLanguageContractV090 || contract == PipeLangLanguageContractV100 || contract == PipeLangLanguageContractV110 || contract == PipeLangLanguageContractV120 || contract == PipeLangLanguageContractV130 || contract == PipeLangLanguageContractV140 || contract == PipeLangLanguageContractV150 || contract == PipeLangLanguageContractV160 || contract == PipeLangLanguageContractV170 || contract == PipeLangLanguageContractV180 || contract == PipeLangLanguageContractV190 || contract == PipeLangLanguageContractV200 || contract == PipeLangLanguageContractV210 || contract == PipeLangLanguageContractV220 || contract == PipeLangLanguageContractV230 || contract == PipeLangLanguageContractV240 || contract == PipeLangLanguageContractV250 {
 		return "addition, subtraction, multiplication, or negation"
 	}
 	if contract == PipeLangLanguageContractV040 {

@@ -250,6 +250,15 @@ func isResolvedSnapshotResult(ref ResolvedTypeRef) bool {
 	return isResolvedResult(ref) && isResolvedRecordList(ref.Arguments[0]) && ref.Arguments[1].Equal(resolvedPrimitive(TypeString))
 }
 
+func isResolvedTextResult(ref ResolvedTypeRef) bool {
+	stringType := resolvedPrimitive(TypeString)
+	return isResolvedResult(ref) && ref.Arguments[0].Equal(stringType) && ref.Arguments[1].Equal(stringType)
+}
+
+func isResolvedBoundedValueResult(contract LanguageContract, ref ResolvedTypeRef) bool {
+	return isResolvedSnapshotResult(ref) || (hasTextResultSourceContract(contract) && isResolvedTextResult(ref))
+}
+
 func containsResolvedResult(ref ResolvedTypeRef) bool {
 	if isResolvedResult(ref) {
 		return true
@@ -263,7 +272,7 @@ func containsResolvedResult(ref ResolvedTypeRef) bool {
 }
 
 func isResolvedSourceArithmeticResult(contract LanguageContract, ref ResolvedTypeRef) bool {
-	return isResolvedIntArithmeticResult(ref) || ((contract == PipeLangLanguageContractV060 || contract == PipeLangLanguageContractV070 || contract == PipeLangLanguageContractV080 || contract == PipeLangLanguageContractV090 || contract == PipeLangLanguageContractV100 || contract == PipeLangLanguageContractV110 || contract == PipeLangLanguageContractV120 || contract == PipeLangLanguageContractV130 || contract == PipeLangLanguageContractV140 || contract == PipeLangLanguageContractV150 || contract == PipeLangLanguageContractV160 || contract == PipeLangLanguageContractV170 || contract == PipeLangLanguageContractV180 || contract == PipeLangLanguageContractV190 || contract == PipeLangLanguageContractV200 || contract == PipeLangLanguageContractV210 || contract == PipeLangLanguageContractV220 || contract == PipeLangLanguageContractV240 || contract == PipeLangLanguageContractV230) && isResolvedFloatArithmeticResult(ref))
+	return isResolvedIntArithmeticResult(ref) || ((contract == PipeLangLanguageContractV060 || contract == PipeLangLanguageContractV070 || contract == PipeLangLanguageContractV080 || contract == PipeLangLanguageContractV090 || contract == PipeLangLanguageContractV100 || contract == PipeLangLanguageContractV110 || contract == PipeLangLanguageContractV120 || contract == PipeLangLanguageContractV130 || contract == PipeLangLanguageContractV140 || contract == PipeLangLanguageContractV150 || contract == PipeLangLanguageContractV160 || contract == PipeLangLanguageContractV170 || contract == PipeLangLanguageContractV180 || contract == PipeLangLanguageContractV190 || contract == PipeLangLanguageContractV200 || contract == PipeLangLanguageContractV210 || contract == PipeLangLanguageContractV220 || contract == PipeLangLanguageContractV230 || contract == PipeLangLanguageContractV240 || contract == PipeLangLanguageContractV250) && isResolvedFloatArithmeticResult(ref))
 }
 
 func containsResolvedArithmeticContractType(ref ResolvedTypeRef) bool {

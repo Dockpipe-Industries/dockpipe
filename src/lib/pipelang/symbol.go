@@ -261,12 +261,15 @@ func resolveTypeRef(sources *SourceSet, symbols *SymbolTable, modules *ModuleGra
 			if isResolvedSourceArithmeticResult(modules.LanguageContract(), resolved) {
 				return resolved, nil
 			}
+			if hasTextResultSourceContract(modules.LanguageContract()) && isResolvedTextResult(resolved) {
+				return resolved, nil
+			}
 			if hasSnapshotResultSourceContract(modules.LanguageContract()) && isResolvedSnapshotResult(resolved) {
 				if entry, ok := symbols.lookupIDEntry(resolved.Arguments[0].Arguments[0].Symbol); ok && entry.symbol.Kind == SymbolRecord && entry.recordDecl != nil {
 					return resolved, nil
 				}
 			}
-			return ResolvedTypeRef{}, oneDiagnostic(sources, CodeInvalidType, CategorySemantic, ref.Span, fmt.Sprintf("language contract %q admits only its exact checked-arithmetic Result shapes or Result<List<R>,string> for one existing public primitive record", modules.LanguageContract()), related...)
+			return ResolvedTypeRef{}, oneDiagnostic(sources, CodeInvalidType, CategorySemantic, ref.Span, fmt.Sprintf("language contract %q admits only its exact checked-arithmetic Result shapes, Result<List<R>,string> for one existing public primitive record, or Result<string,string> at v0.25.0", modules.LanguageContract()), related...)
 		}
 		if ref.Name == "Optional" {
 			if modules == nil || !hasPrimitiveOptionalSourceContract(modules.LanguageContract()) {

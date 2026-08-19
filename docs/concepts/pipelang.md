@@ -805,6 +805,31 @@ remain `PL3026` and `PL3027`. Trimming, joined or multi-field search, normalizat
 tailoring, predicates, lambdas, sorting, general iteration, mutation, Application IR, Step-8
 control flow, effects, and additional backends remain outside the production source contract.
 
+The explicit `v0.25.0` contract preserves every `v0.24.0` rule and admits only this fallible text
+envelope:
+
+```pipelang
+public Result<string, string> TextOk(string value) => ok<string, string>(value);
+public Result<string, string> TextFailed(string error) => err<string, string>(error);
+public Result<string, string> ForwardText(Result<string, string> value) => value;
+public bool TextSucceeded(Result<string, string> value) => is_ok(value);
+public string TextOr(Result<string, string> value, string fallback) => success_or(value, fallback);
+public string ErrorOr(Result<string, string> value, string fallback) => failure_or(value, fallback);
+```
+
+These are complete direct method bodies with the exact parameter and return types shown. Success
+and failure construction, identity transport, inspection, and both defaulting operations validate
+their complete tagged value and all supplied text, including an unselected fallback, as strict
+UTF-8. Failed values carry the canonical empty success payload. The type reuses the existing
+`pipelang:result` identity with primitive `string` arguments; `pipelang.compiler.v1` and
+`pipelang.semantic.v1` remain unchanged. Typed HIR and target-neutral Core reuse the existing
+Result expression kinds, and the evaluator and Core-only Go backend apply the same rules.
+
+`v0.1.0` through `v0.24.0` reject these forms without implicit migration. Other Result argument
+types or source shapes, `is_err`, unwrap, propagation, mapping, matching, effects, composition,
+Application IR, Step-8 control flow, and additional backends remain outside the production source
+contract.
+
 ## Artifacts
 
 Compile emits:

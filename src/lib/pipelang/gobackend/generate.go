@@ -34,7 +34,7 @@ func (e *Error) Error() string {
 
 // Generate accepts Core IR only and returns deterministic, gofmt-formatted Go.
 func Generate(program coreir.Program) ([]byte, error) {
-	if (program.LanguageContract != coreir.LanguageContractV010 && program.LanguageContract != coreir.LanguageContractV020 && program.LanguageContract != coreir.LanguageContractV030 && program.LanguageContract != coreir.LanguageContractV040 && program.LanguageContract != coreir.LanguageContractV050 && program.LanguageContract != coreir.LanguageContractV060 && program.LanguageContract != coreir.LanguageContractV070 && program.LanguageContract != coreir.LanguageContractV080 && program.LanguageContract != coreir.LanguageContractV090 && program.LanguageContract != coreir.LanguageContractV100 && program.LanguageContract != coreir.LanguageContractV110 && program.LanguageContract != coreir.LanguageContractV120 && program.LanguageContract != coreir.LanguageContractV130 && program.LanguageContract != coreir.LanguageContractV140 && program.LanguageContract != coreir.LanguageContractV150 && program.LanguageContract != coreir.LanguageContractV160 && program.LanguageContract != coreir.LanguageContractV170 && program.LanguageContract != coreir.LanguageContractV180 && program.LanguageContract != coreir.LanguageContractV190 && program.LanguageContract != coreir.LanguageContractV200 && program.LanguageContract != coreir.LanguageContractV210 && program.LanguageContract != coreir.LanguageContractV220 && program.LanguageContract != coreir.LanguageContractV240 && program.LanguageContract != coreir.LanguageContractV230) || program.CompilerContract != coreir.CompilerContractV1 {
+	if (program.LanguageContract != coreir.LanguageContractV010 && program.LanguageContract != coreir.LanguageContractV020 && program.LanguageContract != coreir.LanguageContractV030 && program.LanguageContract != coreir.LanguageContractV040 && program.LanguageContract != coreir.LanguageContractV050 && program.LanguageContract != coreir.LanguageContractV060 && program.LanguageContract != coreir.LanguageContractV070 && program.LanguageContract != coreir.LanguageContractV080 && program.LanguageContract != coreir.LanguageContractV090 && program.LanguageContract != coreir.LanguageContractV100 && program.LanguageContract != coreir.LanguageContractV110 && program.LanguageContract != coreir.LanguageContractV120 && program.LanguageContract != coreir.LanguageContractV130 && program.LanguageContract != coreir.LanguageContractV140 && program.LanguageContract != coreir.LanguageContractV150 && program.LanguageContract != coreir.LanguageContractV160 && program.LanguageContract != coreir.LanguageContractV170 && program.LanguageContract != coreir.LanguageContractV180 && program.LanguageContract != coreir.LanguageContractV190 && program.LanguageContract != coreir.LanguageContractV200 && program.LanguageContract != coreir.LanguageContractV210 && program.LanguageContract != coreir.LanguageContractV220 && program.LanguageContract != coreir.LanguageContractV230 && program.LanguageContract != coreir.LanguageContractV240 && program.LanguageContract != coreir.LanguageContractV250) || program.CompilerContract != coreir.CompilerContractV1 {
 		return nil, &Error{Code: "PLGO0001", Message: fmt.Sprintf("unsupported Core IR contracts language=%q compiler=%q", program.LanguageContract, program.CompilerContract)}
 	}
 	functions := append([]coreir.Function(nil), program.Functions...)
@@ -66,41 +66,45 @@ func Generate(program coreir.Program) ([]byte, error) {
 	needsListFilterByText := programNeedsListFilterByText(functions)
 	needsListFilterContainsCaseFolded := programNeedsListFilterContainsCaseFolded(functions)
 	needsSnapshotResult := programNeedsSnapshotResult(functions)
+	needsTextResult := programNeedsTextResult(functions)
 	optionalTypeName := optionalGoTypeName(functions)
-	if needsOptional && program.LanguageContract != coreir.LanguageContractV130 && program.LanguageContract != coreir.LanguageContractV140 && program.LanguageContract != coreir.LanguageContractV150 && program.LanguageContract != coreir.LanguageContractV160 && program.LanguageContract != coreir.LanguageContractV170 && program.LanguageContract != coreir.LanguageContractV180 && program.LanguageContract != coreir.LanguageContractV190 && program.LanguageContract != coreir.LanguageContractV200 && program.LanguageContract != coreir.LanguageContractV210 && program.LanguageContract != coreir.LanguageContractV220 && program.LanguageContract != coreir.LanguageContractV240 && program.LanguageContract != coreir.LanguageContractV230 {
+	if needsOptional && program.LanguageContract != coreir.LanguageContractV130 && program.LanguageContract != coreir.LanguageContractV140 && program.LanguageContract != coreir.LanguageContractV150 && program.LanguageContract != coreir.LanguageContractV160 && program.LanguageContract != coreir.LanguageContractV170 && program.LanguageContract != coreir.LanguageContractV180 && program.LanguageContract != coreir.LanguageContractV190 && program.LanguageContract != coreir.LanguageContractV200 && program.LanguageContract != coreir.LanguageContractV210 && program.LanguageContract != coreir.LanguageContractV220 && program.LanguageContract != coreir.LanguageContractV230 && program.LanguageContract != coreir.LanguageContractV240 && program.LanguageContract != coreir.LanguageContractV250 {
 		return nil, &Error{Code: "PLGO0001", Message: fmt.Sprintf("primitive Optional Core requires language contract %q", coreir.LanguageContractV130)}
 	}
-	if needsOptionalDefault && program.LanguageContract != coreir.LanguageContractV140 && program.LanguageContract != coreir.LanguageContractV150 && program.LanguageContract != coreir.LanguageContractV160 && program.LanguageContract != coreir.LanguageContractV170 && program.LanguageContract != coreir.LanguageContractV180 && program.LanguageContract != coreir.LanguageContractV190 && program.LanguageContract != coreir.LanguageContractV200 && program.LanguageContract != coreir.LanguageContractV210 && program.LanguageContract != coreir.LanguageContractV220 && program.LanguageContract != coreir.LanguageContractV240 && program.LanguageContract != coreir.LanguageContractV230 {
+	if needsOptionalDefault && program.LanguageContract != coreir.LanguageContractV140 && program.LanguageContract != coreir.LanguageContractV150 && program.LanguageContract != coreir.LanguageContractV160 && program.LanguageContract != coreir.LanguageContractV170 && program.LanguageContract != coreir.LanguageContractV180 && program.LanguageContract != coreir.LanguageContractV190 && program.LanguageContract != coreir.LanguageContractV200 && program.LanguageContract != coreir.LanguageContractV210 && program.LanguageContract != coreir.LanguageContractV220 && program.LanguageContract != coreir.LanguageContractV230 && program.LanguageContract != coreir.LanguageContractV240 && program.LanguageContract != coreir.LanguageContractV250 {
 		return nil, &Error{Code: "PLGO0001", Message: fmt.Sprintf("primitive Optional defaulting Core requires language contract %q", coreir.LanguageContractV140)}
 	}
-	if needsRecordOptional && program.LanguageContract != coreir.LanguageContractV180 && program.LanguageContract != coreir.LanguageContractV190 && program.LanguageContract != coreir.LanguageContractV200 && program.LanguageContract != coreir.LanguageContractV210 && program.LanguageContract != coreir.LanguageContractV220 && program.LanguageContract != coreir.LanguageContractV240 && program.LanguageContract != coreir.LanguageContractV230 {
+	if needsRecordOptional && program.LanguageContract != coreir.LanguageContractV180 && program.LanguageContract != coreir.LanguageContractV190 && program.LanguageContract != coreir.LanguageContractV200 && program.LanguageContract != coreir.LanguageContractV210 && program.LanguageContract != coreir.LanguageContractV220 && program.LanguageContract != coreir.LanguageContractV230 && program.LanguageContract != coreir.LanguageContractV240 && program.LanguageContract != coreir.LanguageContractV250 {
 		return nil, &Error{Code: "PLGO0001", Message: fmt.Sprintf("primitive-record Optional Core requires language contract %q", coreir.LanguageContractV180)}
 	}
-	if needsList && program.LanguageContract != coreir.LanguageContractV150 && program.LanguageContract != coreir.LanguageContractV160 && program.LanguageContract != coreir.LanguageContractV170 && program.LanguageContract != coreir.LanguageContractV180 && program.LanguageContract != coreir.LanguageContractV190 && program.LanguageContract != coreir.LanguageContractV200 && program.LanguageContract != coreir.LanguageContractV210 && program.LanguageContract != coreir.LanguageContractV220 && program.LanguageContract != coreir.LanguageContractV240 && program.LanguageContract != coreir.LanguageContractV230 {
+	if needsList && program.LanguageContract != coreir.LanguageContractV150 && program.LanguageContract != coreir.LanguageContractV160 && program.LanguageContract != coreir.LanguageContractV170 && program.LanguageContract != coreir.LanguageContractV180 && program.LanguageContract != coreir.LanguageContractV190 && program.LanguageContract != coreir.LanguageContractV200 && program.LanguageContract != coreir.LanguageContractV210 && program.LanguageContract != coreir.LanguageContractV220 && program.LanguageContract != coreir.LanguageContractV230 && program.LanguageContract != coreir.LanguageContractV240 && program.LanguageContract != coreir.LanguageContractV250 {
 		return nil, &Error{Code: "PLGO0001", Message: fmt.Sprintf("record-list Core requires language contract %q", coreir.LanguageContractV150)}
 	}
-	if needsListCount && program.LanguageContract != coreir.LanguageContractV160 && program.LanguageContract != coreir.LanguageContractV170 && program.LanguageContract != coreir.LanguageContractV180 && program.LanguageContract != coreir.LanguageContractV190 && program.LanguageContract != coreir.LanguageContractV200 && program.LanguageContract != coreir.LanguageContractV210 && program.LanguageContract != coreir.LanguageContractV220 && program.LanguageContract != coreir.LanguageContractV240 && program.LanguageContract != coreir.LanguageContractV230 {
+	if needsListCount && program.LanguageContract != coreir.LanguageContractV160 && program.LanguageContract != coreir.LanguageContractV170 && program.LanguageContract != coreir.LanguageContractV180 && program.LanguageContract != coreir.LanguageContractV190 && program.LanguageContract != coreir.LanguageContractV200 && program.LanguageContract != coreir.LanguageContractV210 && program.LanguageContract != coreir.LanguageContractV220 && program.LanguageContract != coreir.LanguageContractV230 && program.LanguageContract != coreir.LanguageContractV240 && program.LanguageContract != coreir.LanguageContractV250 {
 		return nil, &Error{Code: "PLGO0001", Message: fmt.Sprintf("record-list count Core requires language contract %q", coreir.LanguageContractV160)}
 	}
-	if needsListAppend && program.LanguageContract != coreir.LanguageContractV170 && program.LanguageContract != coreir.LanguageContractV180 && program.LanguageContract != coreir.LanguageContractV190 && program.LanguageContract != coreir.LanguageContractV200 && program.LanguageContract != coreir.LanguageContractV210 && program.LanguageContract != coreir.LanguageContractV220 && program.LanguageContract != coreir.LanguageContractV240 && program.LanguageContract != coreir.LanguageContractV230 {
+	if needsListAppend && program.LanguageContract != coreir.LanguageContractV170 && program.LanguageContract != coreir.LanguageContractV180 && program.LanguageContract != coreir.LanguageContractV190 && program.LanguageContract != coreir.LanguageContractV200 && program.LanguageContract != coreir.LanguageContractV210 && program.LanguageContract != coreir.LanguageContractV220 && program.LanguageContract != coreir.LanguageContractV230 && program.LanguageContract != coreir.LanguageContractV240 && program.LanguageContract != coreir.LanguageContractV250 {
 		return nil, &Error{Code: "PLGO0001", Message: fmt.Sprintf("record-list append Core requires language contract %q", coreir.LanguageContractV170)}
 	}
-	if needsSnapshotResult && program.LanguageContract != coreir.LanguageContractV190 && program.LanguageContract != coreir.LanguageContractV200 && program.LanguageContract != coreir.LanguageContractV210 && program.LanguageContract != coreir.LanguageContractV220 && program.LanguageContract != coreir.LanguageContractV240 && program.LanguageContract != coreir.LanguageContractV230 {
+	if needsSnapshotResult && program.LanguageContract != coreir.LanguageContractV190 && program.LanguageContract != coreir.LanguageContractV200 && program.LanguageContract != coreir.LanguageContractV210 && program.LanguageContract != coreir.LanguageContractV220 && program.LanguageContract != coreir.LanguageContractV230 && program.LanguageContract != coreir.LanguageContractV240 && program.LanguageContract != coreir.LanguageContractV250 {
 		return nil, &Error{Code: "PLGO0001", Message: fmt.Sprintf("snapshot Result Core requires language contract %q", coreir.LanguageContractV190)}
 	}
-	if needsListAt && program.LanguageContract != coreir.LanguageContractV200 && program.LanguageContract != coreir.LanguageContractV210 && program.LanguageContract != coreir.LanguageContractV220 && program.LanguageContract != coreir.LanguageContractV240 && program.LanguageContract != coreir.LanguageContractV230 {
+	if needsTextResult && program.LanguageContract != coreir.LanguageContractV250 {
+		return nil, &Error{Code: "PLGO0001", Message: fmt.Sprintf("text Result Core requires language contract %q", coreir.LanguageContractV250)}
+	}
+	if needsListAt && program.LanguageContract != coreir.LanguageContractV200 && program.LanguageContract != coreir.LanguageContractV210 && program.LanguageContract != coreir.LanguageContractV220 && program.LanguageContract != coreir.LanguageContractV230 && program.LanguageContract != coreir.LanguageContractV240 && program.LanguageContract != coreir.LanguageContractV250 {
 		return nil, &Error{Code: "PLGO0001", Message: fmt.Sprintf("record-list at Core requires language contract %q", coreir.LanguageContractV200)}
 	}
-	if needsListFindByText && program.LanguageContract != coreir.LanguageContractV210 && program.LanguageContract != coreir.LanguageContractV220 && program.LanguageContract != coreir.LanguageContractV240 && program.LanguageContract != coreir.LanguageContractV230 {
+	if needsListFindByText && program.LanguageContract != coreir.LanguageContractV210 && program.LanguageContract != coreir.LanguageContractV220 && program.LanguageContract != coreir.LanguageContractV230 && program.LanguageContract != coreir.LanguageContractV240 && program.LanguageContract != coreir.LanguageContractV250 {
 		return nil, &Error{Code: "PLGO0001", Message: fmt.Sprintf("record-list find_by Core requires language contract %q", coreir.LanguageContractV210)}
 	}
-	if needsListFilterByText && program.LanguageContract != coreir.LanguageContractV220 && program.LanguageContract != coreir.LanguageContractV240 && program.LanguageContract != coreir.LanguageContractV230 {
+	if needsListFilterByText && program.LanguageContract != coreir.LanguageContractV220 && program.LanguageContract != coreir.LanguageContractV230 && program.LanguageContract != coreir.LanguageContractV240 && program.LanguageContract != coreir.LanguageContractV250 {
 		return nil, &Error{Code: "PLGO0001", Message: fmt.Sprintf("record-list filter_by Core requires language contract %q", coreir.LanguageContractV220)}
 	}
-	if needsCaseFoldedText && program.LanguageContract != coreir.LanguageContractV240 && program.LanguageContract != coreir.LanguageContractV230 {
+	if needsCaseFoldedText && program.LanguageContract != coreir.LanguageContractV230 && program.LanguageContract != coreir.LanguageContractV240 && program.LanguageContract != coreir.LanguageContractV250 {
 		return nil, &Error{Code: "PLGO0001", Message: fmt.Sprintf("contains_casefolded Core requires language contract %q", coreir.LanguageContractV230)}
 	}
-	if needsListFilterContainsCaseFolded && program.LanguageContract != coreir.LanguageContractV240 {
+	if needsListFilterContainsCaseFolded && program.LanguageContract != coreir.LanguageContractV240 && program.LanguageContract != coreir.LanguageContractV250 {
 		return nil, &Error{Code: "PLGO0001", Message: fmt.Sprintf("record-list filter_contains_casefolded Core requires language contract %q", coreir.LanguageContractV240)}
 	}
 	if needsText {
@@ -135,10 +139,13 @@ func Generate(program coreir.Program) ([]byte, error) {
 	if err != nil {
 		return nil, &Error{Code: "PLGO0001", Message: err.Error()}
 	}
-	if len(results) > 0 {
+	if len(results) > 0 || needsTextResult {
 		emitSnapshotResultType(&out)
 		for _, result := range results {
 			emitSnapshotResultSupport(&out, result)
+		}
+		if needsTextResult {
+			emitTextResultSupport(&out)
 		}
 	}
 	seen := map[string]string{}
@@ -209,8 +216,8 @@ func emitFunction(out *strings.Builder, name string, function coreir.Function, o
 		if parameter.Type.Kind == coreir.TypeList {
 			fmt.Fprintf(out, "\t%s(p%d)\n", listValidationName(parameter.Type), index)
 		}
-		if isSnapshotResultType(parameter.Type) {
-			fmt.Fprintf(out, "\t%s(p%d)\n", snapshotResultValidationName(parameter.Type), index)
+		if isBoundedValueResultType(parameter.Type) {
+			fmt.Fprintf(out, "\t%s(p%d)\n", boundedResultValidationName(parameter.Type), index)
 		}
 	}
 	out.WriteString("\treturn ")
@@ -237,8 +244,8 @@ func emitExpr(expr coreir.Expr, parameters []coreir.Parameter, optionalTypeName 
 		if expr.Type.Kind == coreir.TypeList {
 			return fmt.Sprintf("%s(p%d)", listCloneName(expr.Type), *expr.Parameter), nil
 		}
-		if isSnapshotResultType(expr.Type) {
-			return fmt.Sprintf("%s(p%d)", snapshotResultCloneName(expr.Type), *expr.Parameter), nil
+		if isBoundedValueResultType(expr.Type) {
+			return fmt.Sprintf("%s(p%d)", boundedResultCloneName(expr.Type), *expr.Parameter), nil
 		}
 		return fmt.Sprintf("p%d", *expr.Parameter), nil
 	case coreir.ExprUnary:
@@ -434,34 +441,34 @@ func emitExpr(expr coreir.Expr, parameters []coreir.Parameter, optionalTypeName 
 		}
 		return fmt.Sprintf("%s(p%d, p%d)", listFilterContainsCaseFoldedName(filter.Values.Type, *filter), *filter.Values.Parameter, *filter.Query.Parameter), nil
 	case coreir.ExprResultOK:
-		if expr.ResultOK == nil || expr.ResultOK.Value == nil || !isSnapshotResultType(expr.Type) {
+		if expr.ResultOK == nil || expr.ResultOK.Value == nil || !isBoundedValueResultType(expr.Type) {
 			return "", fmt.Errorf("result ok expression is incomplete")
 		}
 		value, err := emitExpr(*expr.ResultOK.Value, parameters, optionalTypeName)
 		if err != nil {
 			return "", err
 		}
-		return snapshotResultOKName(expr.Type) + "(" + value + ")", nil
+		return boundedResultOKName(expr.Type) + "(" + value + ")", nil
 	case coreir.ExprResultErr:
-		if expr.ResultErr == nil || expr.ResultErr.Error == nil || !isSnapshotResultType(expr.Type) {
+		if expr.ResultErr == nil || expr.ResultErr.Error == nil || !isBoundedValueResultType(expr.Type) {
 			return "", fmt.Errorf("result err expression is incomplete")
 		}
 		failure, err := emitExpr(*expr.ResultErr.Error, parameters, optionalTypeName)
 		if err != nil {
 			return "", err
 		}
-		return snapshotResultErrName(expr.Type) + "(" + failure + ")", nil
+		return boundedResultErrName(expr.Type) + "(" + failure + ")", nil
 	case coreir.ExprResultIsOK:
-		if expr.ResultIsOK == nil || expr.ResultIsOK.Value == nil || !isSnapshotResultType(expr.ResultIsOK.Value.Type) {
+		if expr.ResultIsOK == nil || expr.ResultIsOK.Value == nil || !isBoundedValueResultType(expr.ResultIsOK.Value.Type) {
 			return "", fmt.Errorf("result is_ok expression is incomplete")
 		}
 		value, err := emitExpr(*expr.ResultIsOK.Value, parameters, optionalTypeName)
 		if err != nil {
 			return "", err
 		}
-		return snapshotResultIsOKName(expr.ResultIsOK.Value.Type) + "(" + value + ")", nil
+		return boundedResultIsOKName(expr.ResultIsOK.Value.Type) + "(" + value + ")", nil
 	case coreir.ExprResultSuccessOr:
-		if expr.SuccessOr == nil || expr.SuccessOr.Value == nil || expr.SuccessOr.Fallback == nil || !isSnapshotResultType(expr.SuccessOr.Value.Type) {
+		if expr.SuccessOr == nil || expr.SuccessOr.Value == nil || expr.SuccessOr.Fallback == nil || !isBoundedValueResultType(expr.SuccessOr.Value.Type) {
 			return "", fmt.Errorf("result success_or expression is incomplete")
 		}
 		value, err := emitExpr(*expr.SuccessOr.Value, parameters, optionalTypeName)
@@ -472,9 +479,9 @@ func emitExpr(expr coreir.Expr, parameters []coreir.Parameter, optionalTypeName 
 		if err != nil {
 			return "", err
 		}
-		return snapshotResultSuccessOrName(expr.SuccessOr.Value.Type) + "(" + value + ", " + fallback + ")", nil
+		return boundedResultSuccessOrName(expr.SuccessOr.Value.Type) + "(" + value + ", " + fallback + ")", nil
 	case coreir.ExprResultFailureOr:
-		if expr.FailureOr == nil || expr.FailureOr.Value == nil || expr.FailureOr.Fallback == nil || !isSnapshotResultType(expr.FailureOr.Value.Type) {
+		if expr.FailureOr == nil || expr.FailureOr.Value == nil || expr.FailureOr.Fallback == nil || !isBoundedValueResultType(expr.FailureOr.Value.Type) {
 			return "", fmt.Errorf("result failure_or expression is incomplete")
 		}
 		value, err := emitExpr(*expr.FailureOr.Value, parameters, optionalTypeName)
@@ -485,7 +492,7 @@ func emitExpr(expr coreir.Expr, parameters []coreir.Parameter, optionalTypeName 
 		if err != nil {
 			return "", err
 		}
-		return snapshotResultFailureOrName(expr.FailureOr.Value.Type) + "(" + value + ", " + fallback + ")", nil
+		return boundedResultFailureOrName(expr.FailureOr.Value.Type) + "(" + value + ", " + fallback + ")", nil
 	default:
 		return "", fmt.Errorf("unsupported expression kind %q", expr.Kind)
 	}
@@ -556,8 +563,8 @@ func goType(typ coreir.Type, optionalTypeName string) (string, error) {
 		if typ.Result.Failure.Kind == coreir.TypeArithmeticError {
 			return "PipeLangArithmeticResult[" + success + "]", nil
 		}
-		if !isSnapshotResultType(typ) {
-			return "", fmt.Errorf("Go Result backend supports only arithmetic and snapshot Result shapes")
+		if !isBoundedValueResultType(typ) {
+			return "", fmt.Errorf("Go Result backend supports only arithmetic and bounded snapshot/text Result shapes")
 		}
 		failure, err := goType(typ.Result.Failure, optionalTypeName)
 		if err != nil {
@@ -1344,6 +1351,14 @@ func isSnapshotResultType(value coreir.Type) bool {
 	return value.Kind == coreir.TypeResult && value.Result != nil && value.Result.Success.Kind == coreir.TypeList && value.Result.Success.List != nil && value.Result.Success.List.Element.Kind == coreir.TypeRecord && isTextType(value.Result.Failure)
 }
 
+func isTextResultType(value coreir.Type) bool {
+	return value.Kind == coreir.TypeResult && value.Result != nil && isTextType(value.Result.Success) && isTextType(value.Result.Failure)
+}
+
+func isBoundedValueResultType(value coreir.Type) bool {
+	return isSnapshotResultType(value) || isTextResultType(value)
+}
+
 func programNeedsSnapshotResult(functions []coreir.Function) bool {
 	for _, function := range functions {
 		if isSnapshotResultType(function.ReturnType) || isSnapshotResultType(function.Body.Type) {
@@ -1351,6 +1366,20 @@ func programNeedsSnapshotResult(functions []coreir.Function) bool {
 		}
 		for _, parameter := range function.Parameters {
 			if isSnapshotResultType(parameter.Type) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func programNeedsTextResult(functions []coreir.Function) bool {
+	for _, function := range functions {
+		if isTextResultType(function.ReturnType) || isTextResultType(function.Body.Type) {
+			return true
+		}
+		for _, parameter := range function.Parameters {
+			if isTextResultType(parameter.Type) {
 				return true
 			}
 		}
@@ -1436,6 +1465,55 @@ func snapshotResultFailureOrName(result coreir.Type) string {
 	return "pipelangSnapshotResultFailureOr" + snapshotResultSuffix(result)
 }
 
+func boundedResultValidationName(result coreir.Type) string {
+	if isTextResultType(result) {
+		return "pipelangValidateTextResult"
+	}
+	return snapshotResultValidationName(result)
+}
+
+func boundedResultCloneName(result coreir.Type) string {
+	if isTextResultType(result) {
+		return "pipelangCloneTextResult"
+	}
+	return snapshotResultCloneName(result)
+}
+
+func boundedResultOKName(result coreir.Type) string {
+	if isTextResultType(result) {
+		return "pipelangTextResultOK"
+	}
+	return snapshotResultOKName(result)
+}
+
+func boundedResultErrName(result coreir.Type) string {
+	if isTextResultType(result) {
+		return "pipelangTextResultErr"
+	}
+	return snapshotResultErrName(result)
+}
+
+func boundedResultIsOKName(result coreir.Type) string {
+	if isTextResultType(result) {
+		return "pipelangTextResultIsOK"
+	}
+	return snapshotResultIsOKName(result)
+}
+
+func boundedResultSuccessOrName(result coreir.Type) string {
+	if isTextResultType(result) {
+		return "pipelangTextResultSuccessOr"
+	}
+	return snapshotResultSuccessOrName(result)
+}
+
+func boundedResultFailureOrName(result coreir.Type) string {
+	if isTextResultType(result) {
+		return "pipelangTextResultFailureOr"
+	}
+	return snapshotResultFailureOrName(result)
+}
+
 func emitSnapshotResultSupport(out *strings.Builder, result coreir.Type) {
 	list := result.Result.Success
 	elementType := recordGoTypeName(list.List.Element)
@@ -1452,6 +1530,19 @@ func emitSnapshotResultSupport(out *strings.Builder, result coreir.Type) {
 	fmt.Fprintf(out, "func %s(value %s) bool {\n\t%s(value)\n\treturn value.OK\n}\n\n", snapshotResultIsOKName(result), resultType, validate)
 	fmt.Fprintf(out, "func %s(value %s, fallback []%s) []%s {\n\t%s(value)\n\t%s(fallback)\n\tif value.OK {\n\t\treturn %s(value.Value)\n\t}\n\treturn %s(fallback)\n}\n\n", snapshotResultSuccessOrName(result), resultType, elementType, elementType, validate, listValidationName(list), listCloneName(list), listCloneName(list))
 	fmt.Fprintf(out, "func %s(value %s, fallback string) string {\n\t%s(value)\n\tpipelangValidateText(fallback)\n\tif value.OK {\n\t\treturn fallback\n\t}\n\treturn value.Error\n}\n\n", snapshotResultFailureOrName(result), resultType, validate)
+}
+
+func emitTextResultSupport(out *strings.Builder) {
+	const resultType = "PipeLangResult[string, string]"
+	out.WriteString("func pipelangValidateTextResult(value " + resultType + ") {\n")
+	out.WriteString("\tif value.OK {\n\t\tpipelangValidateText(value.Value)\n\t\tif value.Error != \"\" {\n\t\t\tpanic(\"invalid PipeLang text Result value\")\n\t\t}\n\t\treturn\n\t}\n")
+	out.WriteString("\tif value.Value != \"\" {\n\t\tpanic(\"invalid PipeLang text Result value\")\n\t}\n\tpipelangValidateText(value.Error)\n}\n\n")
+	out.WriteString("func pipelangCloneTextResult(value " + resultType + ") " + resultType + " {\n\tpipelangValidateTextResult(value)\n\treturn value\n}\n\n")
+	out.WriteString("func pipelangTextResultOK(value string) " + resultType + " {\n\tpipelangValidateText(value)\n\treturn " + resultType + "{OK: true, Value: value}\n}\n\n")
+	out.WriteString("func pipelangTextResultErr(failure string) " + resultType + " {\n\tpipelangValidateText(failure)\n\treturn " + resultType + "{Error: failure}\n}\n\n")
+	out.WriteString("func pipelangTextResultIsOK(value " + resultType + ") bool {\n\tpipelangValidateTextResult(value)\n\treturn value.OK\n}\n\n")
+	out.WriteString("func pipelangTextResultSuccessOr(value " + resultType + ", fallback string) string {\n\tpipelangValidateTextResult(value)\n\tpipelangValidateText(fallback)\n\tif value.OK {\n\t\treturn value.Value\n\t}\n\treturn fallback\n}\n\n")
+	out.WriteString("func pipelangTextResultFailureOr(value " + resultType + ", fallback string) string {\n\tpipelangValidateTextResult(value)\n\tpipelangValidateText(fallback)\n\tif value.OK {\n\t\treturn fallback\n\t}\n\treturn value.Error\n}\n\n")
 }
 
 func emitRecordType(out *strings.Builder, record coreir.Type, emitConstructor bool, optionalTypeName string) {
