@@ -211,6 +211,14 @@ type (
 		Index  Expr
 		Span   Span
 	}
+	ListFindByTextExpr struct {
+		Values     Expr
+		RecordType UnresolvedTypeRef
+		Field      string
+		FieldSpan  Span
+		Key        Expr
+		Span       Span
+	}
 	ResultOKExpr struct {
 		SuccessType UnresolvedTypeRef
 		FailureType UnresolvedTypeRef
@@ -254,6 +262,7 @@ func (*ListSingletonExpr) isExpr()    {}
 func (*ListCountExpr) isExpr()        {}
 func (*ListAppendExpr) isExpr()       {}
 func (*ListAtExpr) isExpr()           {}
+func (*ListFindByTextExpr) isExpr()   {}
 func (*ResultOKExpr) isExpr()         {}
 func (*ResultErrExpr) isExpr()        {}
 func (*ResultIsOKExpr) isExpr()       {}
@@ -275,6 +284,7 @@ func (e *ListSingletonExpr) SourceSpan() Span    { return e.Span }
 func (e *ListCountExpr) SourceSpan() Span        { return e.Span }
 func (e *ListAppendExpr) SourceSpan() Span       { return e.Span }
 func (e *ListAtExpr) SourceSpan() Span           { return e.Span }
+func (e *ListFindByTextExpr) SourceSpan() Span   { return e.Span }
 func (e *ResultOKExpr) SourceSpan() Span         { return e.Span }
 func (e *ResultErrExpr) SourceSpan() Span        { return e.Span }
 func (e *ResultIsOKExpr) SourceSpan() Span       { return e.Span }
@@ -312,6 +322,8 @@ func setExprSpan(expr Expr, span Span) {
 	case *ListAppendExpr:
 		node.Span = span
 	case *ListAtExpr:
+		node.Span = span
+	case *ListFindByTextExpr:
 		node.Span = span
 	case *ResultOKExpr:
 		node.Span = span

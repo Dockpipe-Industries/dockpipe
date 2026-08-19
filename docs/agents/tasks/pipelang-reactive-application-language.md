@@ -2159,6 +2159,67 @@ Terminal proof passed with cached Go 1.25.13, offline module lookup, and writabl
 No dependency, generated store, runtime, external state, cleanup, commit, push, or publication
 changed.
 
+### Completed step 7v stable-key primitive-record list lookup (2026-08-19)
+
+The founder selected explicit `v0.21.0` stable-key lookup for one existing public primitive record
+`R`. The accepted public surface contains only this direct method shape:
+
+```pipelang
+public Optional<ContainerRow> FindRow(
+    List<ContainerRow> values,
+    string key
+) => find_by(values, ContainerRow.Id, key);
+```
+
+`find_by(List<R>, R.Field, string) -> Optional<R>` reuses the fixed `pipelang:list` and
+`pipelang:optional` identities, primitive `string`, the existing record identity, and the selected
+field semantic identity. `R.Field` is a static selector for one public string field on the same
+record type, not a runtime value, lambda, predicate, comparer, or general member expression.
+Callable identity preserves the exact two-parameter and return shape. `pipelang.compiler.v1` and
+`pipelang.semantic.v1` remain unchanged. Typed HIR and target-neutral Core carry one explicit
+`list_find_by_text` node with direct list/key references and the selected field identity, name, and
+declaration position.
+
+The evaluator and Core-only Go backend validate the complete list, every record field, and the key
+before lookup. The first record whose selected field is ordinal-equal to the key returns canonical
+`some` with copied record storage; no match returns canonical `none`. Unicode scalar sequences are
+preserved without normalization, case-folding, locale, or target collation. Nil or malformed list,
+record, Optional, or string values remain invalid rather than becoming absence.
+
+`PL3004` reports unknown or inaccessible selector fields; `PL3006` reports invalid list, selector,
+field type, key, return, placement, or signature shapes; `PL3009` reports computed or otherwise
+non-direct list/key operands after the exact signature is admitted. Malformed typed HIR and Core
+remain `PL3026` and `PL3027`. `v0.1.0` through `v0.20.0` reject the source and executable form
+without implicit migration, while every frozen earlier contract remains available under
+`v0.21.0`.
+
+The minimal pure source fixture is
+`src/lib/pipelang/testdata/record-list-find-by-text.pipe`, with synchronized typed HIR, Core, and Go
+goldens. This slice gives TASK-020's first read-only Docker-observability consumer stable-ID row
+selection and detail lookup without introducing application behavior. Lambdas, predicates,
+composite keys, case-insensitive or normalized lookup, map/index construction, slicing, filtering,
+sorting, iteration, mutation, arbitrary collection consumption, Optional chaining or extraction
+beyond existing `value_or`, Application IR, Step-8 control flow, effects, and additional backends
+remain excluded.
+
+Terminal proof passed with cached Go 1.25.13, offline module lookup, and writable `/tmp` caches:
+
+- the complete PipeLang and exact 45-source compatibility suites, including parser selector spans,
+  structured field identity/projection, source-derived HIR/Core/Go `list_find_by_text` goldens,
+  evaluator and generated-Go agreement for first duplicate match, missing keys, alternate declared
+  string fields, and composed/decomposed Unicode keys, caller-storage isolation, complete selected
+  and unselected element validation, invalid-key UTF-8 rejection, malformed HIR/Core rejection,
+  deterministic exclusions, explicit `v0.1.0` through `v0.20.0` migration rejection, and preserved
+  `v0.20.0` list-at behavior;
+- focused application PipeLang/catalog consumers through a temporary `/tmp` modfile mapped only to
+  cached `x/sys v0.46.0`, editor grammar/completion/snippet/diagnostic validation, `go vet`, and
+  Windows compile-only proof across affected packages; and
+- `gofmt`, `git diff --check`, exact frozen inventory digest/count, dependency/generated-state
+  absence, Core-only backend/evaluator import-boundary checks, and engine/package-boundary review.
+
+No dependency, generated store, runtime, external state, cleanup, commit, push, or publication
+changed.
+
 ## Exact Next Boundary
 
 Step 7 of **Bounded Implementation Order** has completed the fixed numeric, compiler-internal
@@ -2174,6 +2235,8 @@ one existing public primitive record is also complete.
 Exact construction, identity transport, success inspection, and bounded success/failure defaulting
 for one `Result<List<R>, string>` read-only snapshot envelope is also complete.
 Exact safe zero-based indexing of one primitive-record list into `Optional<R>` is also complete.
+Exact first-match lookup of one primitive-record list by one selected public string field into
+`Optional<R>` is also complete.
 `v0.2.0` admits only the exact explicit Result-returning addition;
 `v0.3.0` adds only direct subtraction; `v0.4.0` adds only direct multiplication; `v0.5.0` adds only
 direct integer negation; `v0.6.0` adds only direct binary64 division; and `v0.7.0` adds only direct
@@ -2211,6 +2274,10 @@ preserving every prior contract.
 `v0.20.0` adds only exact direct `at(List<R>, int) -> Optional<R>` for one existing public
 primitive record `R`, with complete list and record validation before zero-based bounds selection,
 canonical absence, and copied selected-record storage while preserving every prior contract.
+`v0.21.0` adds only exact direct `find_by(List<R>, R.Field, string) -> Optional<R>` for one existing
+public primitive record `R` and one selected public string field, with complete list, record, and key
+validation before first ordinal-equal selection, canonical absence, and copied selected-record
+storage while preserving every prior contract.
 All other numeric arithmetic and every other Result construction, composition, or consumption form
 remain fail-closed from production source. Any next slice requires a new
 synchronized decision for its exact source spelling, type/value handling rule, semantic projection,
@@ -2228,9 +2295,10 @@ consumer's empty, singleton, pass-through, count-summary, and deterministic mult
 boundary. The accepted record-Optional slice additionally satisfies typed absence/presence and
 deterministic whole-record fallback at that read-only boundary. The accepted snapshot-Result slice
 adds a typed whole-snapshot success/failure boundary plus deterministic cached-list and error
-fallback. The accepted list-at slice additionally provides safe positional row selection;
-iteration, filtering, sorting, keyed or general indexing, propagation, matching, and application
-projection remain later decisions.
+fallback. The accepted list-at slice additionally provides safe positional row selection. The
+accepted stable-key slice additionally provides first-match selection and detail lookup by the
+consumer's stable string identity; iteration, filtering, sorting, general indexing, propagation,
+matching, and application projection remain later decisions.
 
 No later step-7 slice is included here. In particular, this checkpoint does not add general Result
 construction, inspection, extraction, wrapping, unwrapping, propagation, or matching beyond the

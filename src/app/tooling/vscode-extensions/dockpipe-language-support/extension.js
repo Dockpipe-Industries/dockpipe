@@ -30,6 +30,7 @@ const PIPELANG_COMPLETION_KEYWORDS = [
   "list",
   "count",
   "append",
+  "find_by",
   "true",
   "false"
 ];

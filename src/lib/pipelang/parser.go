@@ -578,6 +578,10 @@ func (p *parser) parsePrimary() (Expr, error) {
 				if hasPrimitiveRecordListAtSourceContract(p.languageContract) {
 					return p.parseListAt()
 				}
+			case "find_by":
+				if hasPrimitiveRecordListFindByTextSourceContract(p.languageContract) {
+					return p.parseListFindByText()
+				}
 			}
 		}
 		if hasSnapshotResultSourceContract(p.languageContract) {
@@ -860,6 +864,53 @@ func (p *parser) parseListAt() (Expr, error) {
 		return nil, err
 	}
 	return &ListAtExpr{Values: values, Index: index, Span: mergeSpans(start.span, end.span)}, nil
+}
+
+func (p *parser) parseListFindByText() (Expr, error) {
+	start, err := p.expect(tokIdent)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := p.expect(tokLParen); err != nil {
+		return nil, err
+	}
+	values, err := p.parseExpr(1)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := p.expect(tokComma); err != nil {
+		return nil, err
+	}
+	recordName, err := p.expect(tokIdent)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := p.expect(tokDot); err != nil {
+		return nil, err
+	}
+	field, err := p.expect(tokIdent)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := p.expect(tokComma); err != nil {
+		return nil, err
+	}
+	key, err := p.parseExpr(1)
+	if err != nil {
+		return nil, err
+	}
+	end, err := p.expect(tokRParen)
+	if err != nil {
+		return nil, err
+	}
+	return &ListFindByTextExpr{
+		Values:     values,
+		RecordType: UnresolvedTypeRef{Kind: TypeRefNamed, Name: recordName.lit, Span: recordName.span},
+		Field:      field.lit,
+		FieldSpan:  field.span,
+		Key:        key,
+		Span:       mergeSpans(start.span, end.span),
+	}, nil
 }
 
 func (p *parser) parseOptionalSome() (Expr, error) {

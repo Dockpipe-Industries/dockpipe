@@ -173,12 +173,18 @@ func ValidateFunction(function Function) error {
 			return err
 		}
 	}
-	if functionContainsOptional(function) && !snapshotResult && !listAt {
+	listFindByText := function.Body.Kind == ExprListFindByText
+	if listFindByText {
+		if err := validateDirectListFindByTextFunction(function); err != nil {
+			return err
+		}
+	}
+	if functionContainsOptional(function) && !snapshotResult && !listAt && !listFindByText {
 		if err := validateDirectOptionalFunction(function); err != nil {
 			return err
 		}
 	}
-	if functionContainsList(function) && !snapshotResult && !listAt {
+	if functionContainsList(function) && !snapshotResult && !listAt && !listFindByText {
 		if err := validateDirectListFunction(function); err != nil {
 			return err
 		}
@@ -579,6 +585,37 @@ func validateExpr(expression Expr, parameters []Parameter) error {
 		if !TypeEqual(expression.ListAt.Index.Type, SignedInteger(64)) {
 			return fmt.Errorf("list at index is not signed 64-bit int")
 		}
+	case ExprListFindByText:
+		if expression.ListFind == nil || expression.ListFind.Values == nil || expression.ListFind.Key == nil || expression.Type.Kind != TypeOptional || expression.Type.Optional == nil {
+			return fmt.Errorf("list find_by expression is incomplete")
+		}
+		if err := validateType(expression.Type); err != nil {
+			return fmt.Errorf("list find_by result type: %w", err)
+		}
+		if err := validateExpr(*expression.ListFind.Values, parameters); err != nil {
+			return fmt.Errorf("list find_by values: %w", err)
+		}
+		if err := validateExpr(*expression.ListFind.Key, parameters); err != nil {
+			return fmt.Errorf("list find_by key: %w", err)
+		}
+		valuesType := expression.ListFind.Values.Type
+		if valuesType.Kind != TypeList || valuesType.List == nil || valuesType.List.Element.Kind != TypeRecord || valuesType.List.Element.Record == nil || !TypeEqual(valuesType.List.Element, expression.Type.Optional.Value) {
+			return fmt.Errorf("list find_by values element type does not match its Optional record result")
+		}
+		if !TypeEqual(expression.ListFind.Key.Type, Type{Kind: TypePrimitive, Primitive: PrimitiveString}) {
+			return fmt.Errorf("list find_by key is not string")
+		}
+		position := expression.ListFind.Position
+		if position < 0 || position >= len(valuesType.List.Element.Record.Fields) {
+			return fmt.Errorf("list find_by field position is outside the record schema")
+		}
+		field := valuesType.List.Element.Record.Fields[position]
+		if field.Name != expression.ListFind.Name || field.Identity.PackageID != expression.ListFind.Field.PackageID || field.Identity.Path != expression.ListFind.Field.Path || expression.ListFind.Field.Callable != nil {
+			return fmt.Errorf("list find_by field identity does not match the record schema")
+		}
+		if !TypeEqual(field.Type, Type{Kind: TypePrimitive, Primitive: PrimitiveString}) {
+			return fmt.Errorf("list find_by field is not string")
+		}
 	case ExprResultOK:
 		if expression.ResultOK == nil || expression.ResultOK.Value == nil || !isSnapshotResultType(expression.Type) {
 			return fmt.Errorf("result ok expression is incomplete or has an invalid result type")
@@ -671,6 +708,8 @@ func exprContainsSnapshotResult(expression Expr) bool {
 		return expression.Field != nil && expression.Field.Receiver != nil && exprContainsSnapshotResult(*expression.Field.Receiver)
 	case ExprListAt:
 		return expression.ListAt != nil && expression.ListAt.Values != nil && expression.ListAt.Index != nil && (exprContainsSnapshotResult(*expression.ListAt.Values) || exprContainsSnapshotResult(*expression.ListAt.Index))
+	case ExprListFindByText:
+		return expression.ListFind != nil && expression.ListFind.Values != nil && expression.ListFind.Key != nil && (exprContainsSnapshotResult(*expression.ListFind.Values) || exprContainsSnapshotResult(*expression.ListFind.Key))
 	}
 	return false
 }
@@ -725,7 +764,7 @@ func functionContainsList(function Function) bool {
 
 func exprContainsList(expression Expr) bool {
 	switch expression.Kind {
-	case ExprListEmpty, ExprListSingleton, ExprListCount, ExprListAppend, ExprListAt:
+	case ExprListEmpty, ExprListSingleton, ExprListCount, ExprListAppend, ExprListAt, ExprListFindByText:
 		return true
 	case ExprUnary:
 		return expression.Unary != nil && expression.Unary.Operand != nil && exprContainsList(*expression.Unary.Operand)
@@ -809,6 +848,21 @@ func validateDirectListAtFunction(function Function) error {
 	return nil
 }
 
+func validateDirectListFindByTextFunction(function Function) error {
+	if function.Body.ListFind == nil || function.Body.ListFind.Values == nil || function.Body.ListFind.Key == nil || len(function.Parameters) != 2 || function.Parameters[0].Type.Kind != TypeList || function.Parameters[0].Type.List == nil || function.Parameters[0].Type.List.Element.Kind != TypeRecord || !TypeEqual(function.Parameters[1].Type, Type{Kind: TypePrimitive, Primitive: PrimitiveString}) || function.ReturnType.Kind != TypeOptional || function.ReturnType.Optional == nil || !TypeEqual(function.ReturnType.Optional.Value, function.Parameters[0].Type.List.Element) {
+		return fmt.Errorf("find_by requires direct List<R> and string parameters with Optional<R> return")
+	}
+	values := function.Body.ListFind.Values
+	key := function.Body.ListFind.Key
+	if values.Kind != ExprReference || values.Parameter == nil || *values.Parameter != 0 || !TypeEqual(values.Type, function.Parameters[0].Type) {
+		return fmt.Errorf("find_by values must be its first direct record-list parameter")
+	}
+	if key.Kind != ExprReference || key.Parameter == nil || *key.Parameter != 1 || !TypeEqual(key.Type, function.Parameters[1].Type) {
+		return fmt.Errorf("find_by key must be its second direct string parameter")
+	}
+	return nil
+}
+
 func functionContainsOptional(function Function) bool {
 	if function.ReturnType.Kind == TypeOptional || exprContainsOptional(function.Body) {
 		return true
@@ -846,6 +900,8 @@ func exprContainsOptional(expression Expr) bool {
 	case ExprListAppend:
 		return expression.ListAppend != nil && expression.ListAppend.Values != nil && expression.ListAppend.Value != nil && (exprContainsOptional(*expression.ListAppend.Values) || exprContainsOptional(*expression.ListAppend.Value))
 	case ExprListAt:
+		return true
+	case ExprListFindByText:
 		return true
 	}
 	return false
@@ -917,6 +973,8 @@ func exprContainsRecordConstruction(expression Expr) bool {
 		return expression.ListAppend != nil && expression.ListAppend.Values != nil && expression.ListAppend.Value != nil && (exprContainsRecordConstruction(*expression.ListAppend.Values) || exprContainsRecordConstruction(*expression.ListAppend.Value))
 	case ExprListAt:
 		return expression.ListAt != nil && expression.ListAt.Values != nil && expression.ListAt.Index != nil && (exprContainsRecordConstruction(*expression.ListAt.Values) || exprContainsRecordConstruction(*expression.ListAt.Index))
+	case ExprListFindByText:
+		return expression.ListFind != nil && expression.ListFind.Values != nil && expression.ListFind.Key != nil && (exprContainsRecordConstruction(*expression.ListFind.Values) || exprContainsRecordConstruction(*expression.ListFind.Key))
 	default:
 		return false
 	}
@@ -942,6 +1000,8 @@ func exprContainsRecordEquality(expression Expr) bool {
 		return expression.ListAppend != nil && expression.ListAppend.Values != nil && expression.ListAppend.Value != nil && (exprContainsRecordEquality(*expression.ListAppend.Values) || exprContainsRecordEquality(*expression.ListAppend.Value))
 	case ExprListAt:
 		return expression.ListAt != nil && expression.ListAt.Values != nil && expression.ListAt.Index != nil && (exprContainsRecordEquality(*expression.ListAt.Values) || exprContainsRecordEquality(*expression.ListAt.Index))
+	case ExprListFindByText:
+		return expression.ListFind != nil && expression.ListFind.Values != nil && expression.ListFind.Key != nil && (exprContainsRecordEquality(*expression.ListFind.Values) || exprContainsRecordEquality(*expression.ListFind.Key))
 	case ExprRecordConstruct:
 		if expression.Record == nil {
 			return false
