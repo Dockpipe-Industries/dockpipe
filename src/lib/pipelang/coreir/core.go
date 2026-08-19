@@ -28,6 +28,7 @@ const (
 	LanguageContractV230 = "v0.23.0"
 	LanguageContractV240 = "v0.24.0"
 	LanguageContractV250 = "v0.25.0"
+	LanguageContractV260 = "v0.26.0"
 	CompilerContractV1   = "pipelang.compiler.v1"
 	BuiltinPackageID     = "pipelang"
 	ListSemanticPath     = "list"
@@ -150,6 +151,7 @@ const (
 	ExprUnary                        ExprKind = "unary"
 	ExprBinary                       ExprKind = "binary"
 	ExprTextContainsCaseFolded       ExprKind = "text_contains_case_folded"
+	ExprTextTrim                     ExprKind = "text_trim"
 	ExprFieldProjection              ExprKind = "field_projection"
 	ExprRecordConstruct              ExprKind = "record_construct"
 	ExprOptionalSome                 ExprKind = "optional_some"
@@ -211,6 +213,10 @@ type Binary struct {
 type TextContainsCaseFolded struct {
 	Value *Expr `json:"value"`
 	Query *Expr `json:"query"`
+}
+
+type TextTrim struct {
+	Value *Expr `json:"value"`
 }
 
 type FieldProjection struct {
@@ -321,6 +327,7 @@ type Expr struct {
 	Unary                        *Unary                        `json:"unary,omitempty"`
 	Binary                       *Binary                       `json:"binary,omitempty"`
 	TextContains                 *TextContainsCaseFolded       `json:"text_contains_case_folded,omitempty"`
+	TextTrim                     *TextTrim                     `json:"text_trim,omitempty"`
 	Field                        *FieldProjection              `json:"field,omitempty"`
 	Record                       *RecordConstruct              `json:"record,omitempty"`
 	Some                         *OptionalSome                 `json:"some,omitempty"`

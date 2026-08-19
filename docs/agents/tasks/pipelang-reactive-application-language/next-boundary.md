@@ -22,6 +22,8 @@ Exact stable-order case-folded containment filtering of one primitive-record lis
 public string field is also complete.
 Exact construction, identity transport, success inspection, and bounded success/failure defaulting
 for `Result<string, string>` is also complete.
+Exact deterministic trimming of leading and trailing Unicode 17.0.0 `White_Space` from one direct
+strict-UTF-8 string is also complete.
 `v0.2.0` admits only the exact explicit Result-returning addition;
 `v0.3.0` adds only direct subtraction; `v0.4.0` adds only direct multiplication; `v0.5.0` adds only
 direct integer negation; `v0.6.0` adds only direct binary64 division; and `v0.7.0` adds only direct
@@ -83,6 +85,11 @@ and fresh copied list/record storage while preserving every prior contract.
 selected and unselected fallback text as strict UTF-8, requires the canonical empty success payload
 for failures, reuses the existing Result semantic identity and HIR/Core expression kinds, and
 preserves every prior contract.
+`v0.26.0` adds only exact direct `trim(string) -> string`. It validates the direct parameter as
+strict UTF-8, removes the maximal leading and trailing sequence of scalars in the pinned Unicode
+17.0.0 `White_Space` set, preserves interior scalars exactly, returns canonical empty text for an
+all-whitespace input, carries one explicit `text_trim` HIR/Core node, and preserves every prior
+contract.
 All other numeric arithmetic and every other Result construction, composition, or consumption form
 remain fail-closed from production source. Any next slice requires a new
 synchronized decision for its exact source spelling, type/value handling rule, semantic projection,
@@ -105,15 +112,17 @@ accepted stable-key slice additionally provides first-match selection and detail
 consumer's stable string identity. The accepted selected-field filter slice additionally provides
 stable exact-field snapshot subsets. The case-folded text predicate supplies deterministic
 human-entered status/log matching, and the selected-field case-folded list filter now applies that
-predicate to one public string field while preserving adapter order. Trimming, joined or
-multi-field search, general predicates, sorting, general indexing, propagation, matching, and
-application projection remain
+predicate to one public string field while preserving adapter order. Direct deterministic trimming
+now provides bounded whitespace cleanup for adapter-supplied labels, filters, and diagnostics.
+Joined or multi-field search, general predicates, sorting, general indexing, propagation, matching,
+and application projection remain
 later decisions.
 
 No later step-7 slice is included here. In particular, this checkpoint does not add general Result
 construction, inspection, extraction, wrapping, unwrapping, propagation, or matching beyond the
 exact accepted `Result<List<R>, string>` and `Result<string, string>` forms; additional
-Unicode text construction/scalar/grapheme APIs, normalization, locale-aware or additional case operations, value/reference,
+Unicode text construction/scalar/grapheme APIs, trim variants or composition, normalization,
+locale-aware or additional case operations, value/reference,
 hashing, general total-order capabilities, optional extraction beyond `value_or`, equality,
 implicit defaults, nesting, chaining,
 general result, record nesting/chained or general access/mutation/hash/order, union, or additional

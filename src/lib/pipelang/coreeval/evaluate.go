@@ -133,6 +133,16 @@ func evalExpr(expression coreir.Expr, arguments []Value) (Outcome, error) {
 			return Outcome{}, err
 		}
 		return Outcome{OK: true, Value: Value{Type: expression.Type, Bool: contains}}, nil
+	case coreir.ExprTextTrim:
+		value, err := evalExpr(*expression.TextTrim.Value, arguments)
+		if err != nil || !value.OK {
+			return value, err
+		}
+		trimmed, err := coreir.TrimText(value.Value.String)
+		if err != nil {
+			return Outcome{}, err
+		}
+		return Outcome{OK: true, Value: Value{Type: expression.Type, String: trimmed}}, nil
 	case coreir.ExprFieldProjection:
 		receiver, err := evalExpr(*expression.Field.Receiver, arguments)
 		if err != nil || !receiver.OK {

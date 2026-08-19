@@ -830,6 +830,26 @@ types or source shapes, `is_err`, unwrap, propagation, mapping, matching, effect
 Application IR, Step-8 control flow, and additional backends remain outside the production source
 contract.
 
+The explicit `v0.26.0` contract preserves every `v0.25.0` rule and admits only direct deterministic
+text trimming:
+
+```pipelang
+public string Trim(string value) => trim(value);
+```
+
+The method has exactly one direct `string` parameter, returns `string`, and uses `trim(value)` as
+its complete body. Both evaluator and Core-only Go backend reject invalid UTF-8, remove the maximal
+leading and trailing sequence of scalars in Unicode 17.0.0 `White_Space`, preserve every interior
+scalar exactly, and return `""` when the input contains only whitespace. The pinned set contains
+exactly 25 scalars in 10 source-ordered ranges; it does not include U+180E, U+200B, or U+FEFF.
+
+Callable and primitive-string identity are unchanged; `pipelang.compiler.v1` and
+`pipelang.semantic.v1` remain unchanged. Typed HIR and target-neutral Core carry one explicit
+`text_trim` node. `v0.1.0` through `v0.25.0` reject this form without implicit migration.
+Normalization, case folding, locale tailoring, grapheme segmentation, scalar enumeration,
+collapse, replacement, composition, trimming record fields or lists, Application IR, Step-8
+control flow, effects, and additional backends remain outside the production source contract.
+
 ## Artifacts
 
 Compile emits:

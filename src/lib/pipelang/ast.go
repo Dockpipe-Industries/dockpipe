@@ -160,6 +160,10 @@ type (
 		Query Expr
 		Span  Span
 	}
+	TextTrimExpr struct {
+		Value Expr
+		Span  Span
+	}
 	FieldExpr struct {
 		Receiver Expr
 		Name     string
@@ -273,6 +277,7 @@ func (*IdentExpr) isExpr()                        {}
 func (*UnaryExpr) isExpr()                        {}
 func (*BinaryExpr) isExpr()                       {}
 func (*TextContainsCaseFoldedExpr) isExpr()       {}
+func (*TextTrimExpr) isExpr()                     {}
 func (*FieldExpr) isExpr()                        {}
 func (*RecordConstructExpr) isExpr()              {}
 func (*OptionalSomeExpr) isExpr()                 {}
@@ -298,6 +303,7 @@ func (e *IdentExpr) SourceSpan() Span                        { return e.Span }
 func (e *UnaryExpr) SourceSpan() Span                        { return e.Span }
 func (e *BinaryExpr) SourceSpan() Span                       { return e.Span }
 func (e *TextContainsCaseFoldedExpr) SourceSpan() Span       { return e.Span }
+func (e *TextTrimExpr) SourceSpan() Span                     { return e.Span }
 func (e *FieldExpr) SourceSpan() Span                        { return e.Span }
 func (e *RecordConstructExpr) SourceSpan() Span              { return e.Span }
 func (e *OptionalSomeExpr) SourceSpan() Span                 { return e.Span }
@@ -329,6 +335,8 @@ func setExprSpan(expr Expr, span Span) {
 	case *BinaryExpr:
 		node.Span = span
 	case *TextContainsCaseFoldedExpr:
+		node.Span = span
+	case *TextTrimExpr:
 		node.Span = span
 	case *FieldExpr:
 		node.Span = span

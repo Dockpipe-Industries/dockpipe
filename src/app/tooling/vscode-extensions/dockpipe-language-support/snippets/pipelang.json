@@ -171,5 +171,12 @@
       "public string ${10:ErrorOr}(Result<string, string> ${6:result}, string ${11:fallbackError}) => failure_or(${6:result}, ${11:fallbackError});"
     ],
     "description": "Create the exact v0.25.0 fallible text Result construction, identity, inspection, and bounded defaulting methods."
+  },
+  "PipeLang Text Trim": {
+    "prefix": "pipe-text-trim",
+    "body": [
+      "public string ${1:Trim}(string ${2:value}) => trim(${2:value});"
+    ],
+    "description": "Create the exact v0.26.0 deterministic Unicode 17.0.0 White_Space text-trimming method."
   }
 }
