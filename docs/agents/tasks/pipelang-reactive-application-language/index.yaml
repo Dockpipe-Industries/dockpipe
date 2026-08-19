@@ -1,3 +1,4 @@
+# TASK-021 PipeLang deterministic self-hosting managed language foundation
 schema: 1
 id: TASK-021
 topic: PipeLang deterministic self-hosting managed language foundation
@@ -19,7 +20,6 @@ routes:
   orientation:
     read:
       - overview.md
-      - next-boundary.md
 
   next_founder_decision:
     read:

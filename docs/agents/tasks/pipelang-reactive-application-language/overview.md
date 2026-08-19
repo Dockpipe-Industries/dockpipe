@@ -21,8 +21,8 @@ stable semantic identities, explicit effects and authority, contracts/invariants
 replay metadata, governed effect declarations, test-generation metadata, and safe binding
 expressions. It compiles those semantics through one generic executable pipeline and publishes
 versioned semantic projections consumed by tooling. The Application IR in
-[TASK-020](../declarative-application-surfaces-and-target-builders.md) and Service IR in
-[TASK-022](../go-first-pipelang-backend-services.md) are specialized projections over that shared
+[TASK-020](../declarative-application-surfaces-and-target-builders/overview.md) and Service IR in
+[TASK-022](../go-first-pipelang-backend-services/overview.md) are specialized projections over that shared
 semantic/Core foundation, not independent language models.
 
 This is the durable design and bounded-progress record. It does not authorize additional parser,
@@ -38,7 +38,7 @@ TASK-021 owns the language and compiler contract. TASK-020 owns semantic applica
 layout/styling, Application IR integration, target adapters, and artifact manifests. Qt, HTML, CSS,
 QML, C++, CMake, and WebAssembly remain absent from PipeLang semantics.
 
-[TASK-022](../go-first-pipelang-backend-services.md) consumes the stable IDs, type, contract,
+[TASK-022](../go-first-pipelang-backend-services/overview.md) consumes the stable IDs, type, contract,
 effect/authority, determinism, replay, and semantic-graph foundations defined here to describe
 transport-neutral services. TASK-022 owns Service IR, Go backend and Qt client resolvers, schemas,
 service tests, packaging, and deployment artifacts; backend concerns do not widen PipeLang core by

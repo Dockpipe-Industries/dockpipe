@@ -1,0 +1,30 @@
+# TASK-022 Go-first PipeLang backend services and typed clients
+schema: 1
+id: TASK-022
+topic: Go-first PipeLang backend services and typed clients
+entrypoint: overview.md
+
+dispatch:
+  readiness: unclassified
+  ownership: unclaimed
+
+routes:
+  orientation:
+    read: [overview.md]
+  service_contract:
+    read: [overview.md, architecture-semantics.md]
+  backend_and_artifacts:
+    read: [overview.md, backends.md]
+    optional: [architecture-semantics.md]
+  implementation_planning:
+    read: [overview.md, plan.md]
+
+documents:
+  - {path: overview.md, role: goal, ownership, reusable foundation, and dependency boundary}
+  - {path: architecture-semantics.md, role: service semantics, identity, errors, transactions, and capability negotiation}
+  - {path: backends.md, role: Go backend, Qt client, schemas, tests, workflows, deployment, and first slice}
+  - {path: plan.md, role: implementation sequence, acceptance, and next design slice}
+
+maintenance:
+  - Resolve document paths relative to this index and load only the route needed.
+  - Keep dispatch metadata synchronized with docs/agents/task-index.yaml.

@@ -1,0 +1,29 @@
+# TASK-008 ForgePipe agentic app UI
+schema: 1
+id: TASK-008
+topic: ForgePipe agentic app UI
+entrypoint: overview.md
+
+dispatch:
+  readiness: unclassified
+  ownership: unclaimed
+
+routes:
+  orientation:
+    read: [overview.md]
+  product_and_ux:
+    read: [overview.md, product-ux.md]
+  delivery_and_open_work:
+    read: [overview.md, delivery.md]
+
+documents:
+  - path: overview.md
+    role: goal, decisions, product shape, and contract rule
+  - path: product-ux.md
+    role: launcher, remote, runtime, authoring, extension, and review UX
+  - path: delivery.md
+    role: documentation map, first slices, interim slice, and open work
+
+maintenance:
+  - Resolve document paths relative to this index and load only the route needed.
+  - Keep dispatch metadata synchronized with docs/agents/task-index.yaml.

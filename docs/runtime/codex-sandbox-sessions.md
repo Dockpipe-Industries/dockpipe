@@ -50,5 +50,5 @@ Do not replay pending prompts or remote mutations after a disconnect; ask for a 
 request.
 
 See [Git Runtime Sessions](git-runtime-sessions.md) for the managed-session ownership model and
-[Sandbox Toolchain Determinism](../agents/tasks/sandbox-toolchain-determinism.md) for executable
+[Sandbox Toolchain Determinism](../agents/tasks/sandbox-toolchain-determinism/overview.md) for executable
 discovery issues on sandboxed hosts.

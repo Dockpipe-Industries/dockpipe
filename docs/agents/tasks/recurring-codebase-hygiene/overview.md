@@ -1,0 +1,57 @@
+# TASK-035 Recurring Codebase Hygiene
+
+## Practice, Trigger, and Cadence
+
+This is a recurring feature-cycle practice, not a one-time refactor. Revisit this task after each
+material feature cycle lands and before the next large feature tranche or release checkpoint. Each
+pass should:
+
+1. re-read the current package/engine and generated-artifact rules;
+2. inspect current repository evidence before carrying a finding forward;
+3. update ranks, evidence, and disposition in this file;
+4. select at most one bounded cleanup slice whose value exceeds its regression and validation cost;
+5. obtain separate implementation authority, then validate that slice against its affected boundary.
+
+Feature work does not implicitly authorize cleanup. Generated state, compatibility behavior, public
+CLI behavior, package ownership, and long-running evidence lanes require their own explicit scope.
+Keep this task open while features continue to land; close individual findings when proven resolved
+or intentionally retained.
+
+## Ranking Model
+
+- **Leverage:** expected reduction in future defects, review effort, test time, disk churn, or stale
+  guidance.
+- **Risk:** regression or evidence-integrity risk if the cleanup is implemented incorrectly.
+- **Bounded validation:** the smallest credible proof for the candidate slice. It is a future
+  requirement, not evidence that the cleanup has already run.
+
+## Baseline Audit — 2026-08-13
+
+Baseline: `js/dev` at `6752dce7c0540d68cb95e1f718ba0998ea0eae35`. This pass was read-only
+outside this task documentation and did not remove generated state, run product tests, or implement
+any finding.
+
+| Rank | Finding and current evidence | Leverage | Risk | Bounded candidate slice and validation |
+| --- | --- | --- | --- | --- |
+| 1 | **Resolved 2026-08-14 — generic state setup no longer owns a DorkPipe package default.** Engine state setup and the core shell SDK now require workflow context or an explicit CI artifact binding; package hooks bind to the current package manifest name. DorkPipe's package tests declare `package:dorkpipe`, and repository CI exports its workflow-owned raw/analysis paths before invoking the DorkPipe normalizer. | Completed | Existing DorkPipe package and workflow artifact locations are retained through explicit owner bindings. | Completed as the only implementation slice in this pass. Focused state-env/SDK tests, the path guard, and all 16 DorkPipe workflow compiles passed. The full DorkPipe package command reached two unrelated fixture failures, recorded below. |
+| 2 | **Reopened 2026-08-14 — generated-state review added ceremony instead of enforcing the disposable-state contract.** Project authors should not enumerate generated paths, owners, retention classes, or ages. `bin/.dockpipe/**` is disposable by convention, but the current `PackageStateDir` helper also places package state there and DorkPipe uses it for provider-pool sessions, adapter bindings, App Server aggregates, metrics, and other records. Durable consumers must move before clean can truthfully remove the entire tree. | High: restore one obvious cleanup command and make package persistence ownership correct. | High: widening `dockpipe clean` before classifying and migrating durable package consumers could destroy active session or recovery state. | First classify every package-state consumer and move genuinely durable project/package state to an OS-appropriate durable root outside `bin/.dockpipe`; caches, build output, run artifacts, and reproducible evidence remain disposable. Then remove the uncommitted `generated_state` taxonomy and `prune-plan`, make `dockpipe clean --dry-run` preview the whole disposable tree, and make ordinary `dockpipe clean` remove it. Synchronize helpers, package-authoring rules, compatibility/migration behavior, docs, and focused tests through separately authorized bounded slices. |
+| 3 | **Resolved 2026-08-14 — the dead extensionless installer duplicate is removed.** Maintained-reference scans proved that direct callers use `src/scripts/install-record-deps.sh`; basename-only references are the public Make target or its delegation. The retained script includes the newer release-binary installation path. | Completed | The supported Make entrypoint and delegated target remain unchanged; the retained `.sh` file is byte-identical. | Completed as the only implementation slice in this pass. Removed only `src/scripts/install-record-deps`; retained `src/scripts/install-record-deps.sh`. Shell syntax, Make dry-run delegation, path/layout guards, maintained-reference scans, hashes, and owned diff checks passed without executing an installer. |
+| 4 | **Resolved 2026-08-14 — native SQLite publication evidence now shares only byte-identical cohort orchestration.** The baseline 16-file `sqliteevidence` package and its 25-file immediate parent contained 41 Go files and no non-Go executable source; the checkpoint adds one Go test helper. The Linux and Windows publication harnesses had one byte-identical 53-line state/cycle block; it now lives in a `linux || windows` test-only helper. | Completed | Platform gates, host qualification, VFS/filesystem and mount/DACL checks, child-process setup, fault boundaries, counters, final assertions, and logs remain in their existing platform files. Contention and failure-matrix orchestration remains separate because its root identities, metadata, code counters, validation faults, and child contracts differ. | Completed as the only implementation slice in this checkpoint. Ordinary focused tests passed offline with every `DORKPIPE_SQLITE_*` gate unset. Linux/amd64 and Windows/amd64 compile-only checks passed into `/tmp`; no produced binary or native evidence lane was executed. |
+| 5 | **Resolved 2026-08-14 — scheduler-sensitive test coordination now uses explicit barriers.** The transport read-timeout case retains its semantically necessary 25 ms deadline and durable-state assertion. Cloudflare no-ack evidence now ends with an explicit connection-close barrier and rejects a timeout at that barrier. The helper exits only after the parent releases it through a unique test-owned file rather than after a 50 ms sleep. | Completed | Production transport, readiness, timeout, process, and cleanup behavior is unchanged. Synchronous downstream rejection still precedes both the durable-state comparison and no-ack barrier; any buffered acknowledgement still fails the test. | Completed as the only implementation slice in this checkpoint. The two exact tests passed once, 12 repeated runs, three race-enabled runs, and a four-process loaded cohort of four runs each. Windows compile-only, formatting, references, layout, hashes, and owned/unrelated diff checks passed. |
+| 6 | **Resolved 2026-08-14 — removed launcher paths are no longer presented as current launchers.** Pipeon shortcut guidance names only its package-owned resolver entrypoint. Remaining `src/bin/pipeon` and `src/bin/mcpd` references are explicit negative layout guards or this completed historical record. | Completed | Package commands and launcher behavior are unchanged. | Completed as the only implementation slice in this checkpoint. Maintained-reference scans, local path claims, the repository-layout guard, formatting, hashes, and owned/unrelated diff checks passed. |
+| 7 | **Resolved 2026-08-14 — source-build result plumbing is package-neutral.** One core shell helper owns version lookup, Go cache/temp setup, timing, operation-result fallback, `go build`, and exit propagation. DorkPipe still declares its three tools and DorkPipe MCP still declares only `mcpd`; neither package imports the other package's source tree. | Completed | Source-build flags, paths, fields, fallback text, durations, failures, and exit codes are retained behind a neutral contract discovered beside the injected core SDK. | Completed as the only implementation slice in this checkpoint. Both focused contracts, real offline source hooks, the MCP package suite, layout/reference/syntax/ShellCheck/whitespace checks, hashes, and owned-state checks passed. The DorkPipe package suite retained two unrelated failures already recorded under rank 1. |
+| 8 | **Resolved 2026-08-14 — TASK-013 now separates active authority from immutable closed history.** `docs/agents/tasks/codex-app-server-adapter.md` retains current state, the pause/resume checkpoint, open gates, accepted decisions, implementation test matrix, and impact map in 1,723 lines. One reciprocal-linked archive retains the closed implementation and evidence history. | Completed | Both moved blocks are byte-identical to the authoritative 4,945-line source record and retain their original order; the archive is evidence-only and grants no authority. | Completed as the only implementation slice in this checkpoint. Exact whole-record reconstruction, reciprocal links/anchors, headings, references, layout, whitespace, protected hashes, `git diff --check`, and owned/unrelated state passed. |
+| 9 | **Resolved 2026-08-14 — maintained compatibility now has one retirement ledger.** `docs/compatibility-retirement.md` inventories 43 engine/config/editor, CLI, layout/state/Git, core, and first-party package surfaces. Each entry distinguishes active source, current promises and callers/fixtures, source introduction or unproven release floor, missing removal evidence, disposition, and one exact separately gated proof profile. | Completed | Inventory is not deprecation or removal authority; active-supported and recovery-only surfaces remain maintained. | Completed as the only implementation slice in this checkpoint. Canonical/compressed docs, router/reference links, 191 exact source anchors, ledger structure, JSON/YAML, focused engine/package/VM tests, protected hashes, whitespace, and owned-state checks passed. No compatibility behavior changed. |
+| 10 | **Resolved 2026-08-15 — generated Python caches no longer enter compiled or source-checkout-scaffolded core output.** The two core source-copy surfaces skip only `__pycache__` directories and `.pyc`/`.pyo` files; ordinary, hidden, ignored non-cache, and loose root source files remain eligible. The unused `line` local is gone, and the canonical layout plus guard now name the five category directories and the intentional `package.yml`/`__init__.py` root files exactly. | Completed | The generic copier, product/demo assets, dynamic resolution, and compatibility behavior are unchanged. | Completed as the only implementation slice in this checkpoint. Fabricated tarball/scaffold fixtures, full infrastructure tests, shell/layout/path checks, Windows compile-only, formatting, protected hashes, and owned-state validation passed. |
+
+## Negative and Boundary Evidence
+
+- The tracked-artifact scan found no committed compiled `.exe`, shared library, archive, package,
+  coverage, `node_modules`, or Rust `target` output. The tracked `packages/dorkpipe-mcp/bin/mcpd`
+  and `packages/pipeon/resolvers/pipeon/bin/pipeon` files are small shell launchers; they are not
+  generated binaries. `.staging/packages/README.md` is tracked documentation, not staged package
+  output.
+- The old nested MCP package/source paths are guarded by `tests/unit-tests/test_repo_layout.sh`; no
+  current production `src/lib/` or `src/cmd/` reference to the removed MCP ownership path was found.
+- The compatibility items above are debt candidates, not a conclusion that supported behavior is
+  dead. Removal requires evidence that the public contract and retained fixtures no longer need it.
