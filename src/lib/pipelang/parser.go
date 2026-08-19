@@ -549,6 +549,9 @@ func (p *parser) parsePrimary() (Expr, error) {
 		if t.lit == "contains_casefolded" && hasCaseFoldedTextContainmentSourceContract(p.languageContract) {
 			return p.parseTextContainsCaseFolded()
 		}
+		if t.lit == "trim" && hasTextTrimSourceContract(p.languageContract) {
+			return p.parseTextTrim()
+		}
 		if hasPrimitiveOptionalSourceContract(p.languageContract) {
 			switch t.lit {
 			case "some":
@@ -652,6 +655,25 @@ func (p *parser) parseTextContainsCaseFolded() (Expr, error) {
 		return nil, err
 	}
 	return &TextContainsCaseFoldedExpr{Value: value, Query: query, Span: mergeSpans(start.span, end.span)}, nil
+}
+
+func (p *parser) parseTextTrim() (Expr, error) {
+	start, err := p.expect(tokIdent)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := p.expect(tokLParen); err != nil {
+		return nil, err
+	}
+	value, err := p.parseExpr(1)
+	if err != nil {
+		return nil, err
+	}
+	end, err := p.expect(tokRParen)
+	if err != nil {
+		return nil, err
+	}
+	return &TextTrimExpr{Value: value, Span: mergeSpans(start.span, end.span)}, nil
 }
 
 func (p *parser) parseResultTypeArguments() (token, UnresolvedTypeRef, UnresolvedTypeRef, error) {

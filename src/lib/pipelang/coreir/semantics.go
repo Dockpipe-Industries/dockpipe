@@ -156,6 +156,9 @@ func ValidateFunction(function Function) error {
 	if exprContainsTextCaseFolded(function.Body) && function.Body.Kind != ExprTextContainsCaseFolded {
 		return fmt.Errorf("contains_casefolded must be the complete function body")
 	}
+	if exprContainsTextTrim(function.Body) && function.Body.Kind != ExprTextTrim {
+		return fmt.Errorf("trim must be the complete function body")
+	}
 	if exprContainsListFilterContainsCaseFolded(function.Body) && function.Body.Kind != ExprListFilterContainsCaseFolded {
 		return fmt.Errorf("filter_contains_casefolded must be the complete function body")
 	}
@@ -170,6 +173,12 @@ func ValidateFunction(function Function) error {
 	textContainsCaseFolded := function.Body.Kind == ExprTextContainsCaseFolded
 	if textContainsCaseFolded {
 		if err := validateDirectTextContainsCaseFoldedFunction(function); err != nil {
+			return err
+		}
+	}
+	textTrim := function.Body.Kind == ExprTextTrim
+	if textTrim {
+		if err := validateDirectTextTrimFunction(function); err != nil {
 			return err
 		}
 	}
@@ -452,6 +461,17 @@ func validateExpr(expression Expr, parameters []Parameter) error {
 		}
 		if !TypeEqual(expression.TextContains.Value.Type, text) || !TypeEqual(expression.TextContains.Query.Type, text) {
 			return fmt.Errorf("contains_casefolded operands are not string")
+		}
+	case ExprTextTrim:
+		text := Type{Kind: TypePrimitive, Primitive: PrimitiveString}
+		if expression.TextTrim == nil || expression.TextTrim.Value == nil || !TypeEqual(expression.Type, text) {
+			return fmt.Errorf("trim expression is incomplete or does not return string")
+		}
+		if err := validateExpr(*expression.TextTrim.Value, parameters); err != nil {
+			return fmt.Errorf("trim value: %w", err)
+		}
+		if !TypeEqual(expression.TextTrim.Value.Type, text) {
+			return fmt.Errorf("trim operand is not string")
 		}
 	case ExprFieldProjection:
 		if expression.Field == nil || expression.Field.Receiver == nil {
@@ -965,6 +985,18 @@ func validateDirectTextContainsCaseFoldedFunction(function Function) error {
 	return nil
 }
 
+func validateDirectTextTrimFunction(function Function) error {
+	text := Type{Kind: TypePrimitive, Primitive: PrimitiveString}
+	if function.Body.TextTrim == nil || function.Body.TextTrim.Value == nil || len(function.Parameters) != 1 || !TypeEqual(function.Parameters[0].Type, text) || !TypeEqual(function.ReturnType, text) {
+		return fmt.Errorf("trim requires one direct string parameter and a string return")
+	}
+	value := function.Body.TextTrim.Value
+	if value.Kind != ExprReference || value.Parameter == nil || *value.Parameter != 0 || !TypeEqual(value.Type, function.Parameters[0].Type) {
+		return fmt.Errorf("trim value must be its sole direct string parameter")
+	}
+	return nil
+}
+
 func exprContainsTextCaseFolded(expression Expr) bool {
 	if expression.Kind == ExprTextContainsCaseFolded {
 		return true
@@ -978,6 +1010,10 @@ func exprContainsTextCaseFolded(expression Expr) bool {
 	case ExprBinary:
 		if expression.Binary != nil {
 			children = append(children, expression.Binary.Left, expression.Binary.Right)
+		}
+	case ExprTextTrim:
+		if expression.TextTrim != nil {
+			children = append(children, expression.TextTrim.Value)
 		}
 	case ExprFieldProjection:
 		if expression.Field != nil {
@@ -1052,6 +1088,103 @@ func exprContainsTextCaseFolded(expression Expr) bool {
 	}
 	for _, child := range children {
 		if child != nil && exprContainsTextCaseFolded(*child) {
+			return true
+		}
+	}
+	return false
+}
+
+func exprContainsTextTrim(expression Expr) bool {
+	if expression.Kind == ExprTextTrim {
+		return true
+	}
+	children := []*Expr{}
+	switch expression.Kind {
+	case ExprUnary:
+		if expression.Unary != nil {
+			children = append(children, expression.Unary.Operand)
+		}
+	case ExprBinary:
+		if expression.Binary != nil {
+			children = append(children, expression.Binary.Left, expression.Binary.Right)
+		}
+	case ExprTextContainsCaseFolded:
+		if expression.TextContains != nil {
+			children = append(children, expression.TextContains.Value, expression.TextContains.Query)
+		}
+	case ExprFieldProjection:
+		if expression.Field != nil {
+			children = append(children, expression.Field.Receiver)
+		}
+	case ExprRecordConstruct:
+		if expression.Record != nil {
+			for _, field := range expression.Record.Fields {
+				children = append(children, field.Value)
+			}
+		}
+	case ExprOptionalSome:
+		if expression.Some != nil {
+			children = append(children, expression.Some.Value)
+		}
+	case ExprOptionalHasValue:
+		if expression.HasValue != nil {
+			children = append(children, expression.HasValue.Value)
+		}
+	case ExprOptionalValueOr:
+		if expression.ValueOr != nil {
+			children = append(children, expression.ValueOr.Value, expression.ValueOr.Fallback)
+		}
+	case ExprListSingleton:
+		if expression.ListOne != nil {
+			children = append(children, expression.ListOne.Value)
+		}
+	case ExprListCount:
+		if expression.ListCount != nil {
+			children = append(children, expression.ListCount.Value)
+		}
+	case ExprListAppend:
+		if expression.ListAppend != nil {
+			children = append(children, expression.ListAppend.Values, expression.ListAppend.Value)
+		}
+	case ExprListAt:
+		if expression.ListAt != nil {
+			children = append(children, expression.ListAt.Values, expression.ListAt.Index)
+		}
+	case ExprListFindByText:
+		if expression.ListFind != nil {
+			children = append(children, expression.ListFind.Values, expression.ListFind.Key)
+		}
+	case ExprListFilterByText:
+		if expression.ListFilter != nil {
+			children = append(children, expression.ListFilter.Values, expression.ListFilter.Key)
+		}
+	case ExprListFilterContainsCaseFolded:
+		if expression.ListFilterContainsCaseFolded != nil {
+			children = append(children, expression.ListFilterContainsCaseFolded.Values, expression.ListFilterContainsCaseFolded.Query)
+		}
+	case ExprResultOK:
+		if expression.ResultOK != nil {
+			children = append(children, expression.ResultOK.Value)
+		}
+	case ExprResultErr:
+		if expression.ResultErr != nil {
+			children = append(children, expression.ResultErr.Error)
+		}
+	case ExprResultIsOK:
+		if expression.ResultIsOK != nil {
+			children = append(children, expression.ResultIsOK.Value)
+		}
+	case ExprResultSuccessOr:
+		if expression.SuccessOr != nil {
+			children = append(children, expression.SuccessOr.Value, expression.SuccessOr.Fallback)
+		}
+	case ExprResultFailureOr:
+		if expression.FailureOr != nil {
+			children = append(children, expression.FailureOr.Value, expression.FailureOr.Fallback)
+		}
+	}
+	for _, child := range children {
+		if child != nil && exprContainsTextTrim(*child) {
 			return true
 		}
 	}

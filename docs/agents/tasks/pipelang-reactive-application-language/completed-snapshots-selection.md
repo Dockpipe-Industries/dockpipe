@@ -356,3 +356,43 @@ evaluator/backend import-boundary checks. The application and CLI checks used on
 `/tmp` modfile and the local cached module proxy selecting cached `x/sys v0.46.0`; no checkout
 dependency, generated store, network, runtime, Docker, VM, credential, cleanup, commit, push,
 publication, or other external state changed.
+
+### Completed step 7aa deterministic direct text trimming (2026-08-19)
+
+The founder selected explicit `v0.26.0` direct deterministic text trimming with this sole source
+shape:
+
+```pipelang
+public string Trim(string value) => trim(value);
+```
+
+The method requires exactly one direct `string` parameter, the identical primitive `string`
+return, and `trim(value)` as its complete body. Callable and primitive-string identities remain
+unchanged; `pipelang.compiler.v1` and `pipelang.semantic.v1` remain unchanged. Typed HIR and
+target-neutral Core carry one explicit `text_trim` node. `v0.1.0` through `v0.25.0` reject the
+source, HIR, and executable Core form without implicit migration.
+
+The evaluator and Core-only Go backend first reject invalid UTF-8, then remove the maximal leading
+and trailing sequence of scalars from the pinned Unicode 17.0.0 `White_Space` property. The exact
+table contains 25 scalars in 10 source-ordered ranges. Interior scalars are preserved byte-for-byte;
+all-whitespace input becomes canonical empty text. U+180E, U+200B, and U+FEFF remain ordinary text.
+No host whitespace API supplies the language semantics.
+
+The synchronized source fixture and typed HIR, Core, and Go goldens cover ASCII and non-ASCII
+boundaries, interior preservation, all-whitespace and empty values, explicit non-whitespace
+exclusions, strict UTF-8 rejection, malformed HIR/Core rejection, deterministic generated Go,
+generated-code execution, exact earlier-version rejection, and preservation of `v0.25.0` text
+Results. This gives TASK-020's first read-only Docker-observability consumer deterministic cleanup
+for adapter-supplied labels, filter text, and diagnostics without adding normalization, case
+folding, locale tailoring, grapheme segmentation, collapse, replacement, composition, field/list
+trimming, Application IR, Step-8 control flow, effects, or another backend.
+
+Terminal proof passed with cached Go 1.25.13 and local/offline module inputs: the complete PipeLang
+compiler, Core, evaluator, and backend suite; the exact 45-source compatibility suite; affected
+application PipeLang tests and materializer/package-compile/`src/cmd` compile seams; editor
+grammar/completion/snippet assertions; `go vet`; Windows/amd64 compile-only proof; `gofmt`; `git
+diff --check`; frozen inventory digest/count; unchanged dependency files; and Core-only
+evaluator/backend import-boundary checks. Application and CLI validation used only a temporary
+`/tmp` modfile and the local cached module proxy selecting cached `x/sys v0.46.0`; no checkout
+dependency, generated store, network, runtime, Docker, VM, credential, cleanup, commit, push,
+publication, or other external state changed.
