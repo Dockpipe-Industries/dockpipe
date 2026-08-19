@@ -244,6 +244,17 @@ type (
 		Query      Expr
 		Span       Span
 	}
+	ListTextFieldSelector struct {
+		RecordType UnresolvedTypeRef
+		Field      string
+		FieldSpan  Span
+	}
+	ListFilterJoinedContainsCaseFoldedExpr struct {
+		Values    Expr
+		Selectors []ListTextFieldSelector
+		Query     Expr
+		Span      Span
+	}
 	ResultOKExpr struct {
 		SuccessType UnresolvedTypeRef
 		FailureType UnresolvedTypeRef
@@ -272,57 +283,59 @@ type (
 	}
 )
 
-func (*LiteralExpr) isExpr()                      {}
-func (*IdentExpr) isExpr()                        {}
-func (*UnaryExpr) isExpr()                        {}
-func (*BinaryExpr) isExpr()                       {}
-func (*TextContainsCaseFoldedExpr) isExpr()       {}
-func (*TextTrimExpr) isExpr()                     {}
-func (*FieldExpr) isExpr()                        {}
-func (*RecordConstructExpr) isExpr()              {}
-func (*OptionalSomeExpr) isExpr()                 {}
-func (*OptionalNoneExpr) isExpr()                 {}
-func (*OptionalHasValueExpr) isExpr()             {}
-func (*OptionalValueOrExpr) isExpr()              {}
-func (*ListEmptyExpr) isExpr()                    {}
-func (*ListSingletonExpr) isExpr()                {}
-func (*ListCountExpr) isExpr()                    {}
-func (*ListAppendExpr) isExpr()                   {}
-func (*ListAtExpr) isExpr()                       {}
-func (*ListFindByTextExpr) isExpr()               {}
-func (*ListFilterByTextExpr) isExpr()             {}
-func (*ListFilterContainsCaseFoldedExpr) isExpr() {}
-func (*ResultOKExpr) isExpr()                     {}
-func (*ResultErrExpr) isExpr()                    {}
-func (*ResultIsOKExpr) isExpr()                   {}
-func (*ResultSuccessOrExpr) isExpr()              {}
-func (*ResultFailureOrExpr) isExpr()              {}
+func (*LiteralExpr) isExpr()                            {}
+func (*IdentExpr) isExpr()                              {}
+func (*UnaryExpr) isExpr()                              {}
+func (*BinaryExpr) isExpr()                             {}
+func (*TextContainsCaseFoldedExpr) isExpr()             {}
+func (*TextTrimExpr) isExpr()                           {}
+func (*FieldExpr) isExpr()                              {}
+func (*RecordConstructExpr) isExpr()                    {}
+func (*OptionalSomeExpr) isExpr()                       {}
+func (*OptionalNoneExpr) isExpr()                       {}
+func (*OptionalHasValueExpr) isExpr()                   {}
+func (*OptionalValueOrExpr) isExpr()                    {}
+func (*ListEmptyExpr) isExpr()                          {}
+func (*ListSingletonExpr) isExpr()                      {}
+func (*ListCountExpr) isExpr()                          {}
+func (*ListAppendExpr) isExpr()                         {}
+func (*ListAtExpr) isExpr()                             {}
+func (*ListFindByTextExpr) isExpr()                     {}
+func (*ListFilterByTextExpr) isExpr()                   {}
+func (*ListFilterContainsCaseFoldedExpr) isExpr()       {}
+func (*ListFilterJoinedContainsCaseFoldedExpr) isExpr() {}
+func (*ResultOKExpr) isExpr()                           {}
+func (*ResultErrExpr) isExpr()                          {}
+func (*ResultIsOKExpr) isExpr()                         {}
+func (*ResultSuccessOrExpr) isExpr()                    {}
+func (*ResultFailureOrExpr) isExpr()                    {}
 
-func (e *LiteralExpr) SourceSpan() Span                      { return e.Span }
-func (e *IdentExpr) SourceSpan() Span                        { return e.Span }
-func (e *UnaryExpr) SourceSpan() Span                        { return e.Span }
-func (e *BinaryExpr) SourceSpan() Span                       { return e.Span }
-func (e *TextContainsCaseFoldedExpr) SourceSpan() Span       { return e.Span }
-func (e *TextTrimExpr) SourceSpan() Span                     { return e.Span }
-func (e *FieldExpr) SourceSpan() Span                        { return e.Span }
-func (e *RecordConstructExpr) SourceSpan() Span              { return e.Span }
-func (e *OptionalSomeExpr) SourceSpan() Span                 { return e.Span }
-func (e *OptionalNoneExpr) SourceSpan() Span                 { return e.Span }
-func (e *OptionalHasValueExpr) SourceSpan() Span             { return e.Span }
-func (e *OptionalValueOrExpr) SourceSpan() Span              { return e.Span }
-func (e *ListEmptyExpr) SourceSpan() Span                    { return e.Span }
-func (e *ListSingletonExpr) SourceSpan() Span                { return e.Span }
-func (e *ListCountExpr) SourceSpan() Span                    { return e.Span }
-func (e *ListAppendExpr) SourceSpan() Span                   { return e.Span }
-func (e *ListAtExpr) SourceSpan() Span                       { return e.Span }
-func (e *ListFindByTextExpr) SourceSpan() Span               { return e.Span }
-func (e *ListFilterByTextExpr) SourceSpan() Span             { return e.Span }
-func (e *ListFilterContainsCaseFoldedExpr) SourceSpan() Span { return e.Span }
-func (e *ResultOKExpr) SourceSpan() Span                     { return e.Span }
-func (e *ResultErrExpr) SourceSpan() Span                    { return e.Span }
-func (e *ResultIsOKExpr) SourceSpan() Span                   { return e.Span }
-func (e *ResultSuccessOrExpr) SourceSpan() Span              { return e.Span }
-func (e *ResultFailureOrExpr) SourceSpan() Span              { return e.Span }
+func (e *LiteralExpr) SourceSpan() Span                            { return e.Span }
+func (e *IdentExpr) SourceSpan() Span                              { return e.Span }
+func (e *UnaryExpr) SourceSpan() Span                              { return e.Span }
+func (e *BinaryExpr) SourceSpan() Span                             { return e.Span }
+func (e *TextContainsCaseFoldedExpr) SourceSpan() Span             { return e.Span }
+func (e *TextTrimExpr) SourceSpan() Span                           { return e.Span }
+func (e *FieldExpr) SourceSpan() Span                              { return e.Span }
+func (e *RecordConstructExpr) SourceSpan() Span                    { return e.Span }
+func (e *OptionalSomeExpr) SourceSpan() Span                       { return e.Span }
+func (e *OptionalNoneExpr) SourceSpan() Span                       { return e.Span }
+func (e *OptionalHasValueExpr) SourceSpan() Span                   { return e.Span }
+func (e *OptionalValueOrExpr) SourceSpan() Span                    { return e.Span }
+func (e *ListEmptyExpr) SourceSpan() Span                          { return e.Span }
+func (e *ListSingletonExpr) SourceSpan() Span                      { return e.Span }
+func (e *ListCountExpr) SourceSpan() Span                          { return e.Span }
+func (e *ListAppendExpr) SourceSpan() Span                         { return e.Span }
+func (e *ListAtExpr) SourceSpan() Span                             { return e.Span }
+func (e *ListFindByTextExpr) SourceSpan() Span                     { return e.Span }
+func (e *ListFilterByTextExpr) SourceSpan() Span                   { return e.Span }
+func (e *ListFilterContainsCaseFoldedExpr) SourceSpan() Span       { return e.Span }
+func (e *ListFilterJoinedContainsCaseFoldedExpr) SourceSpan() Span { return e.Span }
+func (e *ResultOKExpr) SourceSpan() Span                           { return e.Span }
+func (e *ResultErrExpr) SourceSpan() Span                          { return e.Span }
+func (e *ResultIsOKExpr) SourceSpan() Span                         { return e.Span }
+func (e *ResultSuccessOrExpr) SourceSpan() Span                    { return e.Span }
+func (e *ResultFailureOrExpr) SourceSpan() Span                    { return e.Span }
 
 func setExprSpan(expr Expr, span Span) {
 	switch node := expr.(type) {
@@ -365,6 +378,8 @@ func setExprSpan(expr Expr, span Span) {
 	case *ListFilterByTextExpr:
 		node.Span = span
 	case *ListFilterContainsCaseFoldedExpr:
+		node.Span = span
+	case *ListFilterJoinedContainsCaseFoldedExpr:
 		node.Span = span
 	case *ResultOKExpr:
 		node.Span = span

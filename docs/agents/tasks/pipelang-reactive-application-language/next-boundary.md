@@ -24,6 +24,8 @@ Exact construction, identity transport, success inspection, and bounded success/
 for `Result<string, string>` is also complete.
 Exact deterministic trimming of leading and trailing Unicode 17.0.0 `White_Space` from one direct
 strict-UTF-8 string is also complete.
+Exact stable-order filtering of one primitive-record list by exactly five source-ordered public
+string fields and one trimmed case-folded query is also complete.
 `v0.2.0` admits only the exact explicit Result-returning addition;
 `v0.3.0` adds only direct subtraction; `v0.4.0` adds only direct multiplication; `v0.5.0` adds only
 direct integer negation; `v0.6.0` adds only direct binary64 division; and `v0.7.0` adds only direct
@@ -90,6 +92,19 @@ strict UTF-8, removes the maximal leading and trailing sequence of scalars in th
 17.0.0 `White_Space` set, preserves interior scalars exactly, returns canonical empty text for an
 all-whitespace input, carries one explicit `text_trim` HIR/Core node, and preserves every prior
 contract.
+`v0.27.0` adds only exact direct
+`filter_joined_contains_casefolded(List<R>, R.Field1, R.Field2, R.Field3, R.Field4, R.Field5,
+string) -> List<R>`. The two runtime operands are direct `List<R>` and `string` parameters; the five
+source-ordered selectors are distinct existing public string fields of the same existing primitive
+record `R`. It completely validates the query, list, records, and every field before filtering,
+joins selected strings with one U+0020 SPACE, trims the query with the pinned `v0.26.0` Unicode
+17.0.0 `White_Space` rule, then applies the pinned `v0.23.0` Unicode 17.0.0 full-default C/F
+case-folded contiguous containment rule. Empty trimmed query retains all rows; matches preserve
+stable order; empty output is canonical non-nil storage; result list and records are fresh copies.
+Typed HIR and target-neutral Core carry the explicit
+`list_filter_joined_contains_case_folded_text` node with five ordered field identities, names, and
+positions. `pipelang.compiler.v1`, `pipelang.semantic.v1`, and every earlier contract remain
+unchanged.
 All other numeric arithmetic and every other Result construction, composition, or consumption form
 remain fail-closed from production source. Any next slice requires a new
 synchronized decision for its exact source spelling, type/value handling rule, semantic projection,
@@ -113,10 +128,10 @@ consumer's stable string identity. The accepted selected-field filter slice addi
 stable exact-field snapshot subsets. The case-folded text predicate supplies deterministic
 human-entered status/log matching, and the selected-field case-folded list filter now applies that
 predicate to one public string field while preserving adapter order. Direct deterministic trimming
-now provides bounded whitespace cleanup for adapter-supplied labels, filters, and diagnostics.
-Joined or multi-field search, general predicates, sorting, general indexing, propagation, matching,
-and application projection remain
-later decisions.
+provides bounded whitespace cleanup for adapter-supplied labels, filters, and diagnostics. The
+exact five-field joined filter now supplies deterministic Name/State/Image/Ports/Created search.
+Arbitrary-count or other multi-field search, general predicates, sorting, general indexing,
+propagation, matching, and application projection remain later decisions.
 
 No later step-7 slice is included here. In particular, this checkpoint does not add general Result
 construction, inspection, extraction, wrapping, unwrapping, propagation, or matching beyond the
@@ -126,8 +141,8 @@ locale-aware or additional case operations, value/reference,
 hashing, general total-order capabilities, optional extraction beyond `value_or`, equality,
 implicit defaults, nesting, chaining,
 general result, record nesting/chained or general access/mutation/hash/order, union, or additional
-deterministic collection production or consumption semantics beyond exact `filter_by` and
-`filter_contains_casefolded`; accept namespace, import,
+deterministic collection production or consumption semantics beyond exact `filter_by`,
+`filter_contains_casefolded`, and `filter_joined_contains_casefolded`; accept namespace, import,
 migration, `internal`, overload, generic, or ID production syntax; implement overload resolution;
 add new types/declarations/expressions/operators, blocks, locals, branches, or loops; add effects,
 entrypoints, actions/state, contracts/replay, executable application/service semantics, Application

@@ -396,3 +396,43 @@ evaluator/backend import-boundary checks. Application and CLI validation used on
 `/tmp` modfile and the local cached module proxy selecting cached `x/sys v0.46.0`; no checkout
 dependency, generated store, network, runtime, Docker, VM, credential, cleanup, commit, push,
 publication, or other external state changed.
+
+### Completed step 7ab exact five-field joined case-folded filtering (2026-08-19)
+
+The founder selected explicit `v0.27.0` stable-order filtering of one primitive-record list by the
+joined values of exactly five distinct public string fields. The sole source form takes direct
+`List<R>` and `string` parameters, returns the same `List<R>`, and uses
+`filter_joined_contains_casefolded(values, R.Field1, R.Field2, R.Field3, R.Field4, R.Field5,
+query)` as its complete body. TASK-020's first read-only Docker-observability consumer fixes the
+five selectors as `ContainerRow.Name`, `.State`, `.Image`, `.Ports`, and `.Created`.
+
+The evaluator and Core-only Go backend validate the complete query and list, every record, and all
+selected and unselected fields before filtering. They join selected strings in source order with
+one U+0020 SPACE, trim the query with the pinned Unicode 17.0.0 `White_Space` contract, and apply
+the pinned Unicode 17.0.0 full-default C/F case-folded contiguous containment contract. An empty
+trimmed query retains all rows; stable input order and duplicates are preserved; no match produces
+canonical non-nil empty storage; and results use fresh copied list and record storage.
+
+Existing semantic identities and callable identity remain unchanged; `pipelang.compiler.v1` and
+`pipelang.semantic.v1` remain unchanged. Typed HIR and target-neutral Core carry the explicit
+`list_filter_joined_contains_case_folded_text` node with five ordered field identities, names, and
+declaration positions. `v0.1.0` through `v0.26.0` reject the source, HIR, and executable Core form
+without implicit migration. Arbitrary selector counts, runtime field-selector values, predicates,
+regex, normalization, locale tailoring, sorting, nested/general composition, Application IR,
+Step-8 behavior, effects, and additional backends remain excluded.
+
+The synchronized source fixture and tests cover semantic projection, AST spans and selector order,
+HIR/Core field identity and positions, cross-field and full-default Unicode matching, Unicode query
+trimming, empty-query and empty-result behavior, strict whole-list UTF-8 and nil-list rejection,
+stable copied results, malformed selector count/identity rejection, explicit v0.26 migration
+rejection, deterministic Go generation, and generated-code execution.
+
+Terminal proof passed with cached Go 1.25.0 and local/offline module inputs: the uncached complete
+PipeLang compiler, Core, evaluator, and backend suite; the frozen exact 45-source compatibility
+lane and inventory digest; affected application PipeLang tests and the `src/cmd` compile seam;
+editor grammar/completion/snippet assertions; `go vet`; Windows/amd64 compile-only proof; `gofmt`;
+`git diff --check`; unchanged dependency files; and Core-only evaluator/backend import boundaries.
+Application and CLI validation used only a temporary `/tmp` modfile and isolated module cache backed
+by the local cached module proxy selecting cached `x/sys v0.46.0`; no checkout dependency,
+generated store, network, runtime, Docker, VM, credential, cleanup, commit, push, publication, or
+other external state changed.

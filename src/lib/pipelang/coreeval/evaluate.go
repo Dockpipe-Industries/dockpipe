@@ -366,6 +366,42 @@ func evalExpr(expression coreir.Expr, arguments []Value) (Outcome, error) {
 			return Outcome{}, fmt.Errorf("list filter_contains_casefolded result: %w", err)
 		}
 		return Outcome{OK: true, Value: cloneListValue(filtered)}, nil
+	case coreir.ExprListFilterJoinedContainsCaseFolded:
+		filter := expression.ListFilterJoinedContainsCaseFolded
+		values, err := evalExpr(*filter.Values, arguments)
+		if err != nil || !values.OK {
+			return values, err
+		}
+		query, err := evalExpr(*filter.Query, arguments)
+		if err != nil || !query.OK {
+			return query, err
+		}
+		// Validate the complete list and query before examining any record so an
+		// invalid unselected field cannot be hidden by an earlier match decision.
+		if err := validateValue(values.Value); err != nil {
+			return Outcome{}, fmt.Errorf("list filter_joined_contains_casefolded: %w", err)
+		}
+		if err := validateValue(query.Value); err != nil {
+			return Outcome{}, fmt.Errorf("list filter_joined_contains_casefolded query: %w", err)
+		}
+		filtered := Value{Type: expression.Type, List: make([]Value, 0)}
+		fields := make([]string, len(filter.Selectors))
+		for _, record := range values.Value.List {
+			for index, selector := range filter.Selectors {
+				fields[index] = record.Record[selector.Position].String
+			}
+			contains, err := coreir.ContainsJoinedCaseFoldedText(fields, query.Value.String)
+			if err != nil {
+				return Outcome{}, fmt.Errorf("list filter_joined_contains_casefolded comparison: %w", err)
+			}
+			if contains {
+				filtered.List = append(filtered.List, cloneValue(record))
+			}
+		}
+		if err := validateValue(filtered); err != nil {
+			return Outcome{}, fmt.Errorf("list filter_joined_contains_casefolded result: %w", err)
+		}
+		return Outcome{OK: true, Value: cloneListValue(filtered)}, nil
 	case coreir.ExprResultOK:
 		value, err := evalExpr(*expression.ResultOK.Value, arguments)
 		if err != nil || !value.OK {

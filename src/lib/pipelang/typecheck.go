@@ -749,6 +749,28 @@ func (cp *checkedProgram) inferExprType(expr Expr, env map[string]ResolvedTypeRe
 		}
 	}
 	switch list := expr.(type) {
+	case *ListFilterJoinedContainsCaseFoldedExpr:
+		if cp == nil || cp.modules == nil || !hasPrimitiveRecordListFilterJoinedContainsCaseFoldedSourceContract(cp.modules.LanguageContract()) {
+			return ResolvedTypeRef{}, oneDiagnostic(cp.sources, CodeExpressionType, CategorySemantic, list.Span, "record-list joined-field case-folded filtering requires language contract v0.27.0")
+		}
+		values, err := cp.inferExprType(list.Values, env)
+		if err != nil {
+			return ResolvedTypeRef{}, err
+		}
+		if !isResolvedRecordList(values) || !cp.isResolvedRecordType(values.Arguments[0]) {
+			return ResolvedTypeRef{}, oneDiagnostic(cp.sources, CodeInvalidType, CategorySemantic, list.Values.SourceSpan(), fmt.Sprintf("filter_joined_contains_casefolded requires one existing primitive-record List value first, got %s", values))
+		}
+		if _, _, err := cp.resolveListFilterJoinedContainsCaseFoldedSelectors(list, values); err != nil {
+			return ResolvedTypeRef{}, err
+		}
+		query, err := cp.inferExprType(list.Query, env)
+		if err != nil {
+			return ResolvedTypeRef{}, err
+		}
+		if !query.Equal(resolvedPrimitive(TypeString)) {
+			return ResolvedTypeRef{}, oneDiagnostic(cp.sources, CodeInvalidType, CategorySemantic, list.Query.SourceSpan(), fmt.Sprintf("filter_joined_contains_casefolded requires a string query last, got %s", query))
+		}
+		return values, nil
 	case *ListFilterContainsCaseFoldedExpr:
 		if cp == nil || cp.modules == nil || !hasPrimitiveRecordListFilterContainsCaseFoldedSourceContract(cp.modules.LanguageContract()) {
 			return ResolvedTypeRef{}, oneDiagnostic(cp.sources, CodeExpressionType, CategorySemantic, list.Span, "record-list selected-field case-folded filtering requires language contract v0.24.0")
@@ -1044,7 +1066,7 @@ func (cp *checkedProgram) inferMethodBodyType(method MethodDecl, env map[string]
 		}
 		return resolvedArithmeticResult(binary64), nil
 	}
-	if unary, unaryOK := expr.(*UnaryExpr); unaryOK && (contract == PipeLangLanguageContractV050 || contract == PipeLangLanguageContractV060 || contract == PipeLangLanguageContractV070 || contract == PipeLangLanguageContractV080 || contract == PipeLangLanguageContractV090 || contract == PipeLangLanguageContractV100 || contract == PipeLangLanguageContractV110 || contract == PipeLangLanguageContractV120 || contract == PipeLangLanguageContractV130 || contract == PipeLangLanguageContractV140 || contract == PipeLangLanguageContractV150 || contract == PipeLangLanguageContractV160 || contract == PipeLangLanguageContractV170 || contract == PipeLangLanguageContractV180 || contract == PipeLangLanguageContractV190 || contract == PipeLangLanguageContractV200 || contract == PipeLangLanguageContractV210 || contract == PipeLangLanguageContractV220 || contract == PipeLangLanguageContractV230 || contract == PipeLangLanguageContractV240 || contract == PipeLangLanguageContractV260 || contract == PipeLangLanguageContractV250) && unary.Op == "-" {
+	if unary, unaryOK := expr.(*UnaryExpr); unaryOK && (contract == PipeLangLanguageContractV050 || contract == PipeLangLanguageContractV060 || contract == PipeLangLanguageContractV070 || contract == PipeLangLanguageContractV080 || contract == PipeLangLanguageContractV090 || contract == PipeLangLanguageContractV100 || contract == PipeLangLanguageContractV110 || contract == PipeLangLanguageContractV120 || contract == PipeLangLanguageContractV130 || contract == PipeLangLanguageContractV140 || contract == PipeLangLanguageContractV150 || contract == PipeLangLanguageContractV160 || contract == PipeLangLanguageContractV170 || contract == PipeLangLanguageContractV180 || contract == PipeLangLanguageContractV190 || contract == PipeLangLanguageContractV200 || contract == PipeLangLanguageContractV210 || contract == PipeLangLanguageContractV220 || contract == PipeLangLanguageContractV230 || contract == PipeLangLanguageContractV240 || contract == PipeLangLanguageContractV260 || contract == PipeLangLanguageContractV250 || contract == PipeLangLanguageContractV270) && unary.Op == "-" {
 		operand, err := inferExprTypeWithPolicy(cp.sources, unary.Expr, env, true)
 		if err != nil {
 			return ResolvedTypeRef{}, err
@@ -1057,7 +1079,7 @@ func (cp *checkedProgram) inferMethodBodyType(method MethodDecl, env map[string]
 	}
 	binary, ok := expr.(*BinaryExpr)
 	operatorAccepted := ok && binary.Op == "+"
-	if contract == PipeLangLanguageContractV040 || contract == PipeLangLanguageContractV050 || contract == PipeLangLanguageContractV060 || contract == PipeLangLanguageContractV070 || contract == PipeLangLanguageContractV080 || contract == PipeLangLanguageContractV090 || contract == PipeLangLanguageContractV100 || contract == PipeLangLanguageContractV110 || contract == PipeLangLanguageContractV120 || contract == PipeLangLanguageContractV130 || contract == PipeLangLanguageContractV140 || contract == PipeLangLanguageContractV150 || contract == PipeLangLanguageContractV160 || contract == PipeLangLanguageContractV170 || contract == PipeLangLanguageContractV180 || contract == PipeLangLanguageContractV190 || contract == PipeLangLanguageContractV200 || contract == PipeLangLanguageContractV210 || contract == PipeLangLanguageContractV220 || contract == PipeLangLanguageContractV230 || contract == PipeLangLanguageContractV240 || contract == PipeLangLanguageContractV260 || contract == PipeLangLanguageContractV250 {
+	if contract == PipeLangLanguageContractV040 || contract == PipeLangLanguageContractV050 || contract == PipeLangLanguageContractV060 || contract == PipeLangLanguageContractV070 || contract == PipeLangLanguageContractV080 || contract == PipeLangLanguageContractV090 || contract == PipeLangLanguageContractV100 || contract == PipeLangLanguageContractV110 || contract == PipeLangLanguageContractV120 || contract == PipeLangLanguageContractV130 || contract == PipeLangLanguageContractV140 || contract == PipeLangLanguageContractV150 || contract == PipeLangLanguageContractV160 || contract == PipeLangLanguageContractV170 || contract == PipeLangLanguageContractV180 || contract == PipeLangLanguageContractV190 || contract == PipeLangLanguageContractV200 || contract == PipeLangLanguageContractV210 || contract == PipeLangLanguageContractV220 || contract == PipeLangLanguageContractV230 || contract == PipeLangLanguageContractV240 || contract == PipeLangLanguageContractV260 || contract == PipeLangLanguageContractV250 || contract == PipeLangLanguageContractV270 {
 		operatorAccepted = ok && (binary.Op == "+" || binary.Op == "-" || binary.Op == "*")
 	} else if contract == PipeLangLanguageContractV030 {
 		operatorAccepted = ok && (binary.Op == "+" || binary.Op == "-")
@@ -1220,6 +1242,16 @@ func (cp *checkedProgram) inferRecordListMethodBodyType(method MethodDecl, env m
 			}
 		}
 	}
+	if hasPrimitiveRecordListFilterJoinedContainsCaseFoldedSourceContract(contract) && isResolvedRecordList(declared) && cp.isResolvedRecordType(declared.Arguments[0]) {
+		if body, ok := method.Body.(*ListFilterJoinedContainsCaseFoldedExpr); ok && len(parameterTypes) == 2 && parameterTypes[0].Equal(declared) && parameterTypes[1].Equal(resolvedPrimitive(TypeString)) {
+			if _, _, err := cp.resolveListFilterJoinedContainsCaseFoldedSelectors(body, parameterTypes[0]); err != nil {
+				return ResolvedTypeRef{}, true, err
+			}
+			if directParameter(body.Values, 0) && directParameter(body.Query, 1) {
+				return declared, true, nil
+			}
+		}
+	}
 	forms := "empty_list, singleton list, or identity-transport"
 	if hasPrimitiveRecordListCountSourceContract(contract) {
 		forms += ", or count"
@@ -1238,6 +1270,9 @@ func (cp *checkedProgram) inferRecordListMethodBodyType(method MethodDecl, env m
 	}
 	if hasPrimitiveRecordListFilterContainsCaseFoldedSourceContract(contract) {
 		forms += ", or filter_contains_casefolded"
+	}
+	if hasPrimitiveRecordListFilterJoinedContainsCaseFoldedSourceContract(contract) {
+		forms += ", or filter_joined_contains_casefolded"
 	}
 	return ResolvedTypeRef{}, true, oneDiagnostic(cp.sources, CodeExpressionType, CategorySemantic, method.Body.SourceSpan(), fmt.Sprintf("%s record-list methods require exact %s bodies", contract, forms))
 }
@@ -1294,6 +1329,38 @@ func (cp *checkedProgram) resolveListFilterContainsCaseFoldedSelector(expression
 		return FieldDecl{}, 0, oneDiagnostic(cp.sources, CodeInvalidType, CategorySemantic, expression.FieldSpan, fmt.Sprintf("filter_contains_casefolded selector %s.%s must identify one public string field", expression.RecordType.Name, expression.Field), RelatedSpan{Span: field.Span, Message: "record field declaration"})
 	}
 	return field, position, nil
+}
+
+func (cp *checkedProgram) resolveListFilterJoinedContainsCaseFoldedSelectors(expression *ListFilterJoinedContainsCaseFoldedExpr, values ResolvedTypeRef) ([]FieldDecl, []int, error) {
+	if len(expression.Selectors) != 5 {
+		return nil, nil, oneDiagnostic(cp.sources, CodeInvalidType, CategorySemantic, expression.Span, fmt.Sprintf("filter_joined_contains_casefolded requires exactly five public string field selectors, got %d", len(expression.Selectors)))
+	}
+	fields := make([]FieldDecl, 0, 5)
+	positions := make([]int, 0, 5)
+	selected := make(map[int]struct{}, 5)
+	for _, selector := range expression.Selectors {
+		record, err := cp.resolveType(selector.RecordType)
+		if err != nil {
+			return nil, nil, err
+		}
+		if !isResolvedRecordList(values) || !record.Equal(values.Arguments[0]) {
+			return nil, nil, oneDiagnostic(cp.sources, CodeInvalidType, CategorySemantic, selector.RecordType.Span, fmt.Sprintf("filter_joined_contains_casefolded selector type %s must match list element type %s", record, values.Arguments[0]))
+		}
+		fieldType, field, position, err := cp.resolveRecordField(record, selector.Field, selector.FieldSpan)
+		if err != nil {
+			return nil, nil, err
+		}
+		if normalizeVisibility(field.Visibility) != VisibilityPublic || !fieldType.Equal(resolvedPrimitive(TypeString)) {
+			return nil, nil, oneDiagnostic(cp.sources, CodeInvalidType, CategorySemantic, selector.FieldSpan, fmt.Sprintf("filter_joined_contains_casefolded selector %s.%s must identify one public string field", selector.RecordType.Name, selector.Field), RelatedSpan{Span: field.Span, Message: "record field declaration"})
+		}
+		if _, duplicate := selected[position]; duplicate {
+			return nil, nil, oneDiagnostic(cp.sources, CodeInvalidType, CategorySemantic, selector.FieldSpan, fmt.Sprintf("filter_joined_contains_casefolded selector %s.%s is duplicated", selector.RecordType.Name, selector.Field), RelatedSpan{Span: field.Span, Message: "record field declaration"})
+		}
+		selected[position] = struct{}{}
+		fields = append(fields, field)
+		positions = append(positions, position)
+	}
+	return fields, positions, nil
 }
 
 func (cp *checkedProgram) inferOptionalMethodBodyType(method MethodDecl, env map[string]ResolvedTypeRef, declared ResolvedTypeRef) (ResolvedTypeRef, bool, error) {
@@ -1579,6 +1646,8 @@ func containsRecordConstruction(expression Expr) bool {
 		return containsRecordConstruction(node.Values) || containsRecordConstruction(node.Key)
 	case *ListFilterContainsCaseFoldedExpr:
 		return containsRecordConstruction(node.Values) || containsRecordConstruction(node.Query)
+	case *ListFilterJoinedContainsCaseFoldedExpr:
+		return containsRecordConstruction(node.Values) || containsRecordConstruction(node.Query)
 	case *ResultOKExpr:
 		return containsRecordConstruction(node.Value)
 	case *ResultErrExpr:
@@ -1627,6 +1696,8 @@ func containsOptionalExpression(expression Expr) bool {
 	case *ListFilterByTextExpr:
 		return containsOptionalExpression(node.Values) || containsOptionalExpression(node.Key)
 	case *ListFilterContainsCaseFoldedExpr:
+		return containsOptionalExpression(node.Values) || containsOptionalExpression(node.Query)
+	case *ListFilterJoinedContainsCaseFoldedExpr:
 		return containsOptionalExpression(node.Values) || containsOptionalExpression(node.Query)
 	case *ResultOKExpr:
 		return containsOptionalExpression(node.Value)
@@ -1680,6 +1751,8 @@ func containsCaseFoldedTextExpression(expression Expr) bool {
 		return containsCaseFoldedTextExpression(node.Values) || containsCaseFoldedTextExpression(node.Key)
 	case *ListFilterContainsCaseFoldedExpr:
 		return containsCaseFoldedTextExpression(node.Values) || containsCaseFoldedTextExpression(node.Query)
+	case *ListFilterJoinedContainsCaseFoldedExpr:
+		return true
 	case *ResultOKExpr:
 		return containsCaseFoldedTextExpression(node.Value)
 	case *ResultErrExpr:
@@ -1732,6 +1805,8 @@ func containsTextTrimExpression(expression Expr) bool {
 		return containsTextTrimExpression(node.Values) || containsTextTrimExpression(node.Key)
 	case *ListFilterContainsCaseFoldedExpr:
 		return containsTextTrimExpression(node.Values) || containsTextTrimExpression(node.Query)
+	case *ListFilterJoinedContainsCaseFoldedExpr:
+		return containsTextTrimExpression(node.Values) || containsTextTrimExpression(node.Query)
 	case *ResultOKExpr:
 		return containsTextTrimExpression(node.Value)
 	case *ResultErrExpr:
@@ -1748,7 +1823,7 @@ func containsTextTrimExpression(expression Expr) bool {
 
 func containsListExpression(expression Expr) bool {
 	switch node := expression.(type) {
-	case *ListEmptyExpr, *ListSingletonExpr, *ListCountExpr, *ListAppendExpr, *ListAtExpr, *ListFindByTextExpr, *ListFilterByTextExpr, *ListFilterContainsCaseFoldedExpr:
+	case *ListEmptyExpr, *ListSingletonExpr, *ListCountExpr, *ListAppendExpr, *ListAtExpr, *ListFindByTextExpr, *ListFilterByTextExpr, *ListFilterContainsCaseFoldedExpr, *ListFilterJoinedContainsCaseFoldedExpr:
 		return true
 	case *UnaryExpr:
 		return containsListExpression(node.Expr)
@@ -1826,6 +1901,8 @@ func containsResultExpression(expression Expr) bool {
 		return containsResultExpression(node.Values) || containsResultExpression(node.Key)
 	case *ListFilterContainsCaseFoldedExpr:
 		return containsResultExpression(node.Values) || containsResultExpression(node.Query)
+	case *ListFilterJoinedContainsCaseFoldedExpr:
+		return containsResultExpression(node.Values) || containsResultExpression(node.Query)
 	}
 	return false
 }
@@ -1840,7 +1917,7 @@ func isOrdinalTextOrderingOperator(operator string) bool {
 }
 
 func arithmeticSourceOperators(contract LanguageContract) string {
-	if contract == PipeLangLanguageContractV050 || contract == PipeLangLanguageContractV060 || contract == PipeLangLanguageContractV070 || contract == PipeLangLanguageContractV080 || contract == PipeLangLanguageContractV090 || contract == PipeLangLanguageContractV100 || contract == PipeLangLanguageContractV110 || contract == PipeLangLanguageContractV120 || contract == PipeLangLanguageContractV130 || contract == PipeLangLanguageContractV140 || contract == PipeLangLanguageContractV150 || contract == PipeLangLanguageContractV160 || contract == PipeLangLanguageContractV170 || contract == PipeLangLanguageContractV180 || contract == PipeLangLanguageContractV190 || contract == PipeLangLanguageContractV200 || contract == PipeLangLanguageContractV210 || contract == PipeLangLanguageContractV220 || contract == PipeLangLanguageContractV230 || contract == PipeLangLanguageContractV240 || contract == PipeLangLanguageContractV260 || contract == PipeLangLanguageContractV250 {
+	if contract == PipeLangLanguageContractV050 || contract == PipeLangLanguageContractV060 || contract == PipeLangLanguageContractV070 || contract == PipeLangLanguageContractV080 || contract == PipeLangLanguageContractV090 || contract == PipeLangLanguageContractV100 || contract == PipeLangLanguageContractV110 || contract == PipeLangLanguageContractV120 || contract == PipeLangLanguageContractV130 || contract == PipeLangLanguageContractV140 || contract == PipeLangLanguageContractV150 || contract == PipeLangLanguageContractV160 || contract == PipeLangLanguageContractV170 || contract == PipeLangLanguageContractV180 || contract == PipeLangLanguageContractV190 || contract == PipeLangLanguageContractV200 || contract == PipeLangLanguageContractV210 || contract == PipeLangLanguageContractV220 || contract == PipeLangLanguageContractV230 || contract == PipeLangLanguageContractV240 || contract == PipeLangLanguageContractV260 || contract == PipeLangLanguageContractV250 || contract == PipeLangLanguageContractV270 {
 		return "addition, subtraction, multiplication, or negation"
 	}
 	if contract == PipeLangLanguageContractV040 {

@@ -178,5 +178,12 @@
       "public string ${1:Trim}(string ${2:value}) => trim(${2:value});"
     ],
     "description": "Create the exact v0.26.0 deterministic Unicode 17.0.0 White_Space text-trimming method."
+  },
+  "PipeLang Record List Joined Case-Folded Filter": {
+    "prefix": "pipe-record-list-filter-joined-contains-casefolded",
+    "body": [
+      "public List<${1:ContainerRow}> ${2:SearchRows}(List<${1:ContainerRow}> ${3:values}, string ${4:query}) => filter_joined_contains_casefolded(${3:values}, ${1:ContainerRow}.${5:Name}, ${1:ContainerRow}.${6:State}, ${1:ContainerRow}.${7:Image}, ${1:ContainerRow}.${8:Ports}, ${1:ContainerRow}.${9:Created}, ${4:query});"
+    ],
+    "description": "Create the exact v0.27.0 stable-order five-field joined Unicode case-folded record-list filter."
   }
 }
