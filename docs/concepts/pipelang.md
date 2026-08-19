@@ -746,6 +746,33 @@ normalization, case-folding, sorting, mapping, folding, general iteration, mutat
 IR, Step-8 control flow, effects, and additional backends remain outside the production source
 contract.
 
+The explicit `v0.23.0` contract preserves every `v0.22.0` rule and admits one direct, pure text
+predicate:
+
+```pipelang
+public bool ContainsCaseFolded(string value, string query) =>
+    contains_casefolded(value, query);
+```
+
+`contains_casefolded(string, string) -> bool` requires exactly two direct `string` parameters in
+the declared order, a `bool` return, and the operation as the complete method body. Both operands
+are validated as strict UTF-8 before processing. The operation applies Unicode 17.0.0 full default
+case folding using only the pinned C and F mappings from `CaseFolding.txt`, then tests contiguous
+scalar-sequence containment. An empty folded query matches. It excludes simple-only S mappings,
+Turkic T mappings, normalization, locale tailoring, grapheme segmentation, trimming, and host
+Unicode/case APIs. Thus `Straße` contains `STRASSE`, while decomposed `e\u0301` does not contain
+composed `é` solely through this operation.
+
+Callable identity remains exactly `(string, string) -> bool`; `pipelang.compiler.v1` and
+`pipelang.semantic.v1` remain unchanged. Typed HIR and target-neutral Core carry the explicit
+`text_contains_case_folded` node. The evaluator and Core-only Go backend consume the same embedded,
+digest-checked Unicode table and never substitute a target-runtime case algorithm. `v0.1.0`
+through `v0.22.0` reject the source and executable form without implicit migration. Computed,
+reordered, literal, nested, extra-parameter, non-string, and wrong-return forms remain rejected.
+Case-folded list filtering, multi-field search, normalization, locale-specific matching, lambdas,
+composition, Application IR, Step-8 control flow, effects, and additional backends remain outside
+the production source contract.
+
 ## Artifacts
 
 Compile emits:

@@ -134,6 +134,13 @@
     ],
     "description": "Create the exact v0.22.0 stable-order primitive-record List filter by one public string field."
   },
+  "PipeLang Case-Folded Text Contains": {
+    "prefix": "pipe-text-contains-casefolded",
+    "body": [
+      "public bool ${1:ContainsCaseFolded}(string ${2:value}, string ${3:query}) => contains_casefolded(${2:value}, ${3:query});"
+    ],
+    "description": "Create the exact v0.23.0 Unicode 17.0.0 full-default case-folded text containment method."
+  },
   "PipeLang Snapshot Result": {
     "prefix": "pipe-snapshot-result",
     "body": [

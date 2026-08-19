@@ -17,6 +17,7 @@ Exact first-match lookup of one primitive-record list by one selected public str
 `Optional<R>` is also complete.
 Exact stable-order filtering of one primitive-record list by one selected public string field into
 `List<R>` is also complete.
+Exact Unicode 17.0.0 full-default case-folded containment of two direct strings is also complete.
 `v0.2.0` admits only the exact explicit Result-returning addition;
 `v0.3.0` adds only direct subtraction; `v0.4.0` adds only direct multiplication; `v0.5.0` adds only
 direct integer negation; `v0.6.0` adds only direct binary64 division; and `v0.7.0` adds only direct
@@ -62,6 +63,11 @@ storage while preserving every prior contract.
 public primitive record `R` and one selected public string field, with complete list, record, and
 key validation before retaining every ordinal-equal match in stable input order, canonical non-nil
 empty output, and fresh copied list/record storage while preserving every prior contract.
+`v0.23.0` adds only exact direct `contains_casefolded(string, string) -> bool`, using pinned Unicode
+17.0.0 full default C/F mappings after complete UTF-8 validation of both operands. Containment is
+over the folded contiguous scalar sequence; an empty query matches. It performs no normalization,
+locale tailoring, grapheme segmentation, or host-runtime case conversion and preserves every prior
+contract.
 All other numeric arithmetic and every other Result construction, composition, or consumption form
 remain fail-closed from production source. Any next slice requires a new
 synchronized decision for its exact source spelling, type/value handling rule, semantic projection,
@@ -82,14 +88,16 @@ adds a typed whole-snapshot success/failure boundary plus deterministic cached-l
 fallback. The accepted list-at slice additionally provides safe positional row selection. The
 accepted stable-key slice additionally provides first-match selection and detail lookup by the
 consumer's stable string identity. The accepted selected-field filter slice additionally provides
-stable exact-field snapshot subsets; iteration, predicate/multi-field/substring or case-folded
-filtering, sorting, general indexing, propagation, matching, and application projection remain
+stable exact-field snapshot subsets. The case-folded text predicate supplies deterministic
+human-entered status/log matching for that consumer without coupling it to list selection;
+iteration, predicate/multi-field/substring or case-folded list filtering, sorting, general indexing,
+propagation, matching, and application projection remain
 later decisions.
 
 No later step-7 slice is included here. In particular, this checkpoint does not add general Result
 construction, inspection, extraction, wrapping, unwrapping, propagation, or matching beyond the
 exact accepted `Result<List<R>, string>` forms; additional
-Unicode text construction/scalar/grapheme APIs, normalization/case operations, value/reference,
+Unicode text construction/scalar/grapheme APIs, normalization, locale-aware or additional case operations, value/reference,
 hashing, general total-order capabilities, optional extraction beyond `value_or`, equality,
 implicit defaults, nesting, chaining,
 general result, record nesting/chained or general access/mutation/hash/order, union, or additional

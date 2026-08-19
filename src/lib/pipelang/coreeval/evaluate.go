@@ -119,6 +119,20 @@ func evalExpr(expression coreir.Expr, arguments []Value) (Outcome, error) {
 		default:
 			return Outcome{}, fmt.Errorf("operator %q is outside the arithmetic conformance evaluator", expression.Binary.Operator)
 		}
+	case coreir.ExprTextContainsCaseFolded:
+		value, err := evalExpr(*expression.TextContains.Value, arguments)
+		if err != nil || !value.OK {
+			return value, err
+		}
+		query, err := evalExpr(*expression.TextContains.Query, arguments)
+		if err != nil || !query.OK {
+			return query, err
+		}
+		contains, err := coreir.ContainsCaseFoldedText(value.Value.String, query.Value.String)
+		if err != nil {
+			return Outcome{}, err
+		}
+		return Outcome{OK: true, Value: Value{Type: expression.Type, Bool: contains}}, nil
 	case coreir.ExprFieldProjection:
 		receiver, err := evalExpr(*expression.Field.Receiver, arguments)
 		if err != nil || !receiver.OK {

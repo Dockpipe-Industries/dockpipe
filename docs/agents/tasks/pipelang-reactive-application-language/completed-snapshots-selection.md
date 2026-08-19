@@ -238,3 +238,44 @@ Terminal proof passed with cached Go 1.25.13, offline module lookup, and writabl
 No dependency, generated store, runtime, external state, cleanup, commit, push, or publication
 changed.
 
+### Completed step 7x Unicode case-folded text containment (2026-08-19)
+
+The founder selected explicit `v0.23.0` full-default case-folded containment with this sole direct
+source shape:
+
+```pipelang
+public bool ContainsCaseFolded(string value, string query) =>
+    contains_casefolded(value, query);
+```
+
+The method requires exactly two direct `string` parameters in declared order, a `bool` return, and
+the operation as its complete body. Callable identity remains `(string, string) -> bool`;
+`pipelang.compiler.v1` and `pipelang.semantic.v1` remain unchanged. Typed HIR and target-neutral
+Core carry one explicit `text_contains_case_folded` node. `v0.1.0` through `v0.22.0` reject the
+source, HIR, and Core form without implicit migration.
+
+The evaluator and Core-only Go backend validate both UTF-8 operands before applying the same pinned
+Unicode 17.0.0 full-default C/F case-fold table. They then perform contiguous scalar-sequence
+containment over the folded strings; an empty query matches. The checked-in Unicode data has
+SHA-256 `ff8d8fefbf123574205085d6714c36149eb946d717a0c585c27f0f4ef58c4183` and yields exactly 1,585
+source-sorted mappings. S/T mappings, normalization, locale tailoring, grapheme segmentation,
+trimming, and host Unicode/case conversion are excluded.
+
+The synchronized fixture and typed HIR, Core, and Go goldens prove full multi-scalar folding,
+dotted-I and Kelvin mappings, no normalization, empty-query behavior, invalid UTF-8 rejection,
+malformed HIR/Core rejection, deterministic Go emission, exact earlier-version rejection, and
+preservation of every earlier contract. This gives TASK-020's first read-only Docker-observability
+consumer a deterministic predicate for human-entered status/log matching without adding list
+filtering, multi-field search, lambdas, composition, Application IR, Step-8 control flow, effects,
+or another backend.
+
+Terminal proof passed with cached Go 1.25.13, offline module lookup, and writable `/tmp` caches:
+the complete PipeLang suite, exact 45-source compatibility suite, affected domain and PipeLang
+application tests, editor grammar/completion/snippet assertions, `go vet`, Windows compile-only
+proof, `gofmt`, and `git diff --check`. The application dependency seam used only a temporary
+`/tmp` modfile selecting the already cached `x/sys v0.46.0`; `go.mod` and `go.sum` are unchanged.
+
+No dependency, generated store, runtime, Docker, VM, credential, cleanup, commit, push,
+publication, or other external state changed. The only network action was the separately approved
+single download of Unicode 17.0.0 `CaseFolding.txt`; its exact bytes are now pinned by the digest
+above.
