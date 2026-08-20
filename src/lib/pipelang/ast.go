@@ -155,6 +155,13 @@ type (
 		Left, Right Expr
 		Span        Span
 	}
+	CallExpr struct {
+		Name       string
+		NameSpan   Span
+		Arguments  []Expr
+		TargetSpan Span
+		Span       Span
+	}
 	TextContainsCaseFoldedExpr struct {
 		Value Expr
 		Query Expr
@@ -333,6 +340,7 @@ func (*LiteralExpr) isExpr()                            {}
 func (*IdentExpr) isExpr()                              {}
 func (*UnaryExpr) isExpr()                              {}
 func (*BinaryExpr) isExpr()                             {}
+func (*CallExpr) isExpr()                               {}
 func (*TextContainsCaseFoldedExpr) isExpr()             {}
 func (*TextTrimExpr) isExpr()                           {}
 func (*FieldExpr) isExpr()                              {}
@@ -366,6 +374,7 @@ func (e *LiteralExpr) SourceSpan() Span                            { return e.Sp
 func (e *IdentExpr) SourceSpan() Span                              { return e.Span }
 func (e *UnaryExpr) SourceSpan() Span                              { return e.Span }
 func (e *BinaryExpr) SourceSpan() Span                             { return e.Span }
+func (e *CallExpr) SourceSpan() Span                               { return e.Span }
 func (e *TextContainsCaseFoldedExpr) SourceSpan() Span             { return e.Span }
 func (e *TextTrimExpr) SourceSpan() Span                           { return e.Span }
 func (e *FieldExpr) SourceSpan() Span                              { return e.Span }
@@ -404,6 +413,8 @@ func setExprSpan(expr Expr, span Span) {
 	case *UnaryExpr:
 		node.Span = span
 	case *BinaryExpr:
+		node.Span = span
+	case *CallExpr:
 		node.Span = span
 	case *TextContainsCaseFoldedExpr:
 		node.Span = span
@@ -462,6 +473,107 @@ func setExprSpan(expr Expr, span Span) {
 	case *ResultFailureOrExpr:
 		node.Span = span
 	}
+}
+
+func expressionChildren(expr Expr) []Expr {
+	switch node := expr.(type) {
+	case *UnaryExpr:
+		return []Expr{node.Expr}
+	case *BinaryExpr:
+		return []Expr{node.Left, node.Right}
+	case *CallExpr:
+		return append([]Expr(nil), node.Arguments...)
+	case *TextContainsCaseFoldedExpr:
+		return []Expr{node.Value, node.Query}
+	case *TextTrimExpr:
+		return []Expr{node.Value}
+	case *FieldExpr:
+		return []Expr{node.Receiver}
+	case *RecordConstructExpr:
+		children := make([]Expr, 0, len(node.Fields))
+		for _, field := range node.Fields {
+			children = append(children, field.Value)
+		}
+		return children
+	case *OptionalSomeExpr:
+		return []Expr{node.Value}
+	case *OptionalHasValueExpr:
+		return []Expr{node.Value}
+	case *OptionalValueOrExpr:
+		return []Expr{node.Value, node.Fallback}
+	case *PropagateExpr:
+		return []Expr{node.Value}
+	case *MatchExpr:
+		children := []Expr{node.Value}
+		for _, arm := range node.Arms {
+			children = append(children, arm.Body)
+		}
+		return children
+	case *ListSingletonExpr:
+		return []Expr{node.Value}
+	case *ListCountExpr:
+		return []Expr{node.Value}
+	case *ListAppendExpr:
+		return []Expr{node.Values, node.Value}
+	case *ListAtExpr:
+		return []Expr{node.Values, node.Index}
+	case *ListFindByTextExpr:
+		return []Expr{node.Values, node.Key}
+	case *ListFilterByTextExpr:
+		return []Expr{node.Values, node.Key}
+	case *ListFilterPredicateExpr:
+		return append([]Expr{node.Values}, node.Arguments...)
+	case *ListFilterContainsCaseFoldedExpr:
+		return []Expr{node.Values, node.Query}
+	case *ListFilterJoinedContainsCaseFoldedExpr:
+		return []Expr{node.Values, node.Query}
+	case *ListSortByOrdinalExpr:
+		return []Expr{node.Values}
+	case *ListSortByOrdinalsExpr:
+		return []Expr{node.Values}
+	case *ListSortByOrdinalDirectionsExpr:
+		return []Expr{node.Values}
+	case *ResultOKExpr:
+		return []Expr{node.Value}
+	case *ResultErrExpr:
+		return []Expr{node.Error}
+	case *ResultIsOKExpr:
+		return []Expr{node.Value}
+	case *ResultSuccessOrExpr:
+		return []Expr{node.Value, node.Fallback}
+	case *ResultFailureOrExpr:
+		return []Expr{node.Value, node.Fallback}
+	default:
+		return nil
+	}
+}
+
+func containsCallExpression(expr Expr) bool {
+	if _, ok := expr.(*CallExpr); ok {
+		return true
+	}
+	for _, child := range expressionChildren(expr) {
+		if containsCallExpression(child) {
+			return true
+		}
+	}
+	return false
+}
+
+func validPureCallPlacement(expr Expr) bool {
+	if !containsCallExpression(expr) {
+		return true
+	}
+	call, ok := expr.(*CallExpr)
+	if !ok {
+		return false
+	}
+	for _, argument := range call.Arguments {
+		if !validPureCallPlacement(argument) {
+			return false
+		}
+	}
+	return true
 }
 
 type Value struct {

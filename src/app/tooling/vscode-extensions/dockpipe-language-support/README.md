@@ -85,3 +85,5 @@ make install-dockpipe-language-support
 - `v0.34.0` adds contextual `propagate(carrier)` only inside the exact bounded `some(propagate(carrier))` or bounded Result `ok(...propagate(carrier))` method shapes, through `pipe-propagate`.
 
 - `v0.35.0` adds exhaustive bounded `match(value){ some(item) => item, none => fallback }` and `ok`/`err` arms through `pipe-match-optional`.
+
+- `v0.36.0` adds public same-class pure `Method(expression, ...)` calls with exact ordered signatures, parameter/arm-local closure, and an acyclic resolved call graph through `pipe-pure-call`. Class-owned state, cross-class/module calls, private targets, overloads, generics, lambdas, function values, recursion, blocks, locals, branches, effects, and entrypoints remain excluded.

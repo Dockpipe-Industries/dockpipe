@@ -17,6 +17,7 @@ public Class DockerApplication {
 	public Result<string, string> Logs(Result<string, string> value) => value;
 	public List<ContainerRow> FilterContainers(List<ContainerRow> rows, string query) => filter_joined_contains_casefolded(rows, ContainerRow.Name, ContainerRow.State, ContainerRow.Image, ContainerRow.Ports, ContainerRow.Created, query);
 	public List<ContainerRow> OrderContainers(List<ContainerRow> rows) => sort_by_ordinal(rows, ContainerRow.Name);
+	public List<ContainerRow> VisibleContainers(List<ContainerRow> rows, string query) => OrderContainers(FilterContainers(rows, query));
 	public List<NetworkRow> OrderNetworks(List<NetworkRow> rows) => sort_by_ordinal(rows, NetworkRow.Name);
 	public List<VolumeRow> OrderVolumes(List<VolumeRow> rows) => sort_by_ordinal(rows, VolumeRow.Name);
 }

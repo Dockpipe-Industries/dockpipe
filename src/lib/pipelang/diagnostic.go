@@ -63,6 +63,7 @@ const (
 	CodeMatchDuplicate          DiagnosticCode = "PL3030"
 	CodeMatchUnreachable        DiagnosticCode = "PL3031"
 	CodePropagation             DiagnosticCode = "PL3032"
+	CodePureCallCycle           DiagnosticCode = "PL3033"
 	CodeInvocation              DiagnosticCode = "PL4001"
 	CodeEvaluation              DiagnosticCode = "PL4002"
 )

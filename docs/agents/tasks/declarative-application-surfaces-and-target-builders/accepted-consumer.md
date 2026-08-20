@@ -109,6 +109,14 @@ The accepted language foundation can now forward optional selection/details abse
 
 PipeLang v0.35.0 exhaustive bounded matching supplies target-neutral consumption of Optional selection/details and Result section success/failure. TASK-020 adapters must consume the semantic/Core projection and must not infer tag, default, or error behavior.
 
+### PipeLang v0.36.0 same-class pure-call value
+
+The accepted language foundation can now compose the existing Docker row filter and ordinal order
+methods as `OrderContainers(FilterContainers(rows, query))`. The consumer fixture proves the
+resolved typed HIR/Core call graph, evaluator result, and Core-only Go generation. Application IR
+continues to bind filter and order identities explicitly and does not gain a new schema field,
+inference rule, runtime action, Docker behavior, UI policy, or target behavior from this slice.
+
 ### Accepted `dockpipe.application.v1` read-only projection
 
 The first Application IR boundary is an explicit, separately versioned projection of a public

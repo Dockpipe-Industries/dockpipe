@@ -24,10 +24,11 @@
 12. Validate full, constrained, and MCU profiles with resolver capability manifests and explicit
     unsupported-feature diagnostics before widening libraries or adding another backend.
 
-Step 8a is complete only for `v0.31.0` same-class named pure record predicates consumed by exact
-direct `filter(List<R>, PredicateName, P1, ...) -> List<R>`. It does not complete or authorize
-general functions/calls, blocks, locals, branches, loops, matching, propagation, effects, or the
-rest of step 8.
+Step 8a is complete for `v0.31.0` same-class named pure record predicates consumed by exact direct
+`filter(List<R>, PredicateName, P1, ...) -> List<R>`. Step 8b is complete for `v0.36.0` public
+same-class pure method calls with exact signatures and a closed acyclic call graph. These seams do
+not complete or authorize cross-class/module calls, overloads, generics, function values, lambdas,
+recursion, blocks, locals, branches, loops, effects, entrypoints, or the rest of step 8.
 
 Each slice is independently reviewable and keeps syntax, semantics, diagnostics, projection,
 editor, tests, and any enabled backend synchronized. No permissive parser, target-owned semantics,
@@ -150,6 +151,18 @@ Bounded propagation uses only `some(propagate(p))` and bounded `ok<T,E>(propagat
 ## Checkpoint v0.35.0 complete contract
 
 Exhaustive bounded matching is the exact direct-carrier `match` contract recorded in `next-boundary.md`. It adds explicit arm-local bindings, exact arm-type equality, deterministic PL3029–PL3031 diagnostics, evaluator/Core-only Go parity, unchanged identities, and no guards, destructuring, blocks, effects, or target behavior.
+
+## Checkpoint v0.36.0 complete contract
+
+Same-class pure calls use only `Method(expression, ...)` from a public expression-bodied method to
+one uniquely named public method on the same class. Arguments and return types match the target's
+declared ordered signature exactly; nested calls are accepted; self-recursion and every indirect
+cycle fail as `PL3033`. Typed HIR and target-neutral Core carry the resolved callable semantic
+identity and ordered operands, Core validates a closed same-owner acyclic call graph, the evaluator
+uses isolated copied call frames, and the Core-only Go backend emits only validated calls.
+`pipelang.compiler.v1`, `pipelang.semantic.v1`, and `dockpipe.application.v1` remain unchanged.
+Cross-class/module calls, overloads, generics, private callers or targets, lambdas, function values,
+effects, blocks, locals, branches, entrypoints, and target semantics remain excluded.
 
 ## Application IR checkpoint complete contract
 
