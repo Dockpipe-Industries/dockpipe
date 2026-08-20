@@ -1086,6 +1086,38 @@ func (p *parser) parseListFilterJoinedContainsCaseFolded() (Expr, error) {
 	if err != nil {
 		return nil, err
 	}
+	if p.languageContract == PipeLangLanguageContractV290 {
+		selectors := make([]ListTextFieldSelector, 0, 2)
+		for {
+			if _, err := p.expect(tokComma); err != nil {
+				return nil, err
+			}
+			name, err := p.expect(tokIdent)
+			if err != nil {
+				return nil, err
+			}
+			if p.peek().kind != tokDot {
+				end, err := p.expect(tokRParen)
+				if err != nil {
+					return nil, err
+				}
+				return &ListFilterJoinedContainsCaseFoldedExpr{
+					Values: values, Selectors: selectors, Query: &IdentExpr{Name: name.lit, Span: name.span},
+					Span: mergeSpans(start.span, end.span),
+				}, nil
+			}
+			p.next()
+			field, err := p.expect(tokIdent)
+			if err != nil {
+				return nil, err
+			}
+			selectors = append(selectors, ListTextFieldSelector{
+				RecordType: UnresolvedTypeRef{Kind: TypeRefNamed, Name: name.lit, Span: name.span},
+				Field:      field.lit,
+				FieldSpan:  field.span,
+			})
+		}
+	}
 	selectors := make([]ListTextFieldSelector, 0, 5)
 	for range 5 {
 		if _, err := p.expect(tokComma); err != nil {

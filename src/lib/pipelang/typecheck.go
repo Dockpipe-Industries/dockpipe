@@ -1081,7 +1081,7 @@ func (cp *checkedProgram) inferMethodBodyType(method MethodDecl, env map[string]
 		}
 		return resolvedArithmeticResult(binary64), nil
 	}
-	if unary, unaryOK := expr.(*UnaryExpr); unaryOK && (contract == PipeLangLanguageContractV050 || contract == PipeLangLanguageContractV060 || contract == PipeLangLanguageContractV070 || contract == PipeLangLanguageContractV080 || contract == PipeLangLanguageContractV090 || contract == PipeLangLanguageContractV100 || contract == PipeLangLanguageContractV110 || contract == PipeLangLanguageContractV120 || contract == PipeLangLanguageContractV130 || contract == PipeLangLanguageContractV140 || contract == PipeLangLanguageContractV150 || contract == PipeLangLanguageContractV160 || contract == PipeLangLanguageContractV170 || contract == PipeLangLanguageContractV180 || contract == PipeLangLanguageContractV190 || contract == PipeLangLanguageContractV200 || contract == PipeLangLanguageContractV210 || contract == PipeLangLanguageContractV220 || contract == PipeLangLanguageContractV230 || contract == PipeLangLanguageContractV240 || contract == PipeLangLanguageContractV260 || contract == PipeLangLanguageContractV250 || contract == PipeLangLanguageContractV270 || contract == PipeLangLanguageContractV280) && unary.Op == "-" {
+	if unary, unaryOK := expr.(*UnaryExpr); unaryOK && (contract == PipeLangLanguageContractV050 || contract == PipeLangLanguageContractV060 || contract == PipeLangLanguageContractV070 || contract == PipeLangLanguageContractV080 || contract == PipeLangLanguageContractV090 || contract == PipeLangLanguageContractV100 || contract == PipeLangLanguageContractV110 || contract == PipeLangLanguageContractV120 || contract == PipeLangLanguageContractV130 || contract == PipeLangLanguageContractV140 || contract == PipeLangLanguageContractV150 || contract == PipeLangLanguageContractV160 || contract == PipeLangLanguageContractV170 || contract == PipeLangLanguageContractV180 || contract == PipeLangLanguageContractV190 || contract == PipeLangLanguageContractV200 || contract == PipeLangLanguageContractV210 || contract == PipeLangLanguageContractV220 || contract == PipeLangLanguageContractV230 || contract == PipeLangLanguageContractV240 || contract == PipeLangLanguageContractV260 || contract == PipeLangLanguageContractV250 || contract == PipeLangLanguageContractV270 || contract == PipeLangLanguageContractV280 || contract == PipeLangLanguageContractV290) && unary.Op == "-" {
 		operand, err := inferExprTypeWithPolicy(cp.sources, unary.Expr, env, true)
 		if err != nil {
 			return ResolvedTypeRef{}, err
@@ -1094,7 +1094,7 @@ func (cp *checkedProgram) inferMethodBodyType(method MethodDecl, env map[string]
 	}
 	binary, ok := expr.(*BinaryExpr)
 	operatorAccepted := ok && binary.Op == "+"
-	if contract == PipeLangLanguageContractV040 || contract == PipeLangLanguageContractV050 || contract == PipeLangLanguageContractV060 || contract == PipeLangLanguageContractV070 || contract == PipeLangLanguageContractV080 || contract == PipeLangLanguageContractV090 || contract == PipeLangLanguageContractV100 || contract == PipeLangLanguageContractV110 || contract == PipeLangLanguageContractV120 || contract == PipeLangLanguageContractV130 || contract == PipeLangLanguageContractV140 || contract == PipeLangLanguageContractV150 || contract == PipeLangLanguageContractV160 || contract == PipeLangLanguageContractV170 || contract == PipeLangLanguageContractV180 || contract == PipeLangLanguageContractV190 || contract == PipeLangLanguageContractV200 || contract == PipeLangLanguageContractV210 || contract == PipeLangLanguageContractV220 || contract == PipeLangLanguageContractV230 || contract == PipeLangLanguageContractV240 || contract == PipeLangLanguageContractV260 || contract == PipeLangLanguageContractV250 || contract == PipeLangLanguageContractV270 || contract == PipeLangLanguageContractV280 {
+	if contract == PipeLangLanguageContractV040 || contract == PipeLangLanguageContractV050 || contract == PipeLangLanguageContractV060 || contract == PipeLangLanguageContractV070 || contract == PipeLangLanguageContractV080 || contract == PipeLangLanguageContractV090 || contract == PipeLangLanguageContractV100 || contract == PipeLangLanguageContractV110 || contract == PipeLangLanguageContractV120 || contract == PipeLangLanguageContractV130 || contract == PipeLangLanguageContractV140 || contract == PipeLangLanguageContractV150 || contract == PipeLangLanguageContractV160 || contract == PipeLangLanguageContractV170 || contract == PipeLangLanguageContractV180 || contract == PipeLangLanguageContractV190 || contract == PipeLangLanguageContractV200 || contract == PipeLangLanguageContractV210 || contract == PipeLangLanguageContractV220 || contract == PipeLangLanguageContractV230 || contract == PipeLangLanguageContractV240 || contract == PipeLangLanguageContractV260 || contract == PipeLangLanguageContractV250 || contract == PipeLangLanguageContractV270 || contract == PipeLangLanguageContractV280 || contract == PipeLangLanguageContractV290 {
 		operatorAccepted = ok && (binary.Op == "+" || binary.Op == "-" || binary.Op == "*")
 	} else if contract == PipeLangLanguageContractV030 {
 		operatorAccepted = ok && (binary.Op == "+" || binary.Op == "-")
@@ -1360,12 +1360,15 @@ func (cp *checkedProgram) resolveListFilterContainsCaseFoldedSelector(expression
 }
 
 func (cp *checkedProgram) resolveListFilterJoinedContainsCaseFoldedSelectors(expression *ListFilterJoinedContainsCaseFoldedExpr, values ResolvedTypeRef) ([]FieldDecl, []int, error) {
-	if len(expression.Selectors) != 5 {
+	if cp.modules.LanguageContract() == PipeLangLanguageContractV290 && len(expression.Selectors) < 2 {
+		return nil, nil, oneDiagnostic(cp.sources, CodeInvalidType, CategorySemantic, expression.Span, fmt.Sprintf("filter_joined_contains_casefolded requires at least two distinct public string field selectors, got %d", len(expression.Selectors)))
+	}
+	if cp.modules.LanguageContract() != PipeLangLanguageContractV290 && len(expression.Selectors) != 5 {
 		return nil, nil, oneDiagnostic(cp.sources, CodeInvalidType, CategorySemantic, expression.Span, fmt.Sprintf("filter_joined_contains_casefolded requires exactly five public string field selectors, got %d", len(expression.Selectors)))
 	}
-	fields := make([]FieldDecl, 0, 5)
-	positions := make([]int, 0, 5)
-	selected := make(map[int]struct{}, 5)
+	fields := make([]FieldDecl, 0, len(expression.Selectors))
+	positions := make([]int, 0, len(expression.Selectors))
+	selected := make(map[int]struct{}, len(expression.Selectors))
 	for _, selector := range expression.Selectors {
 		record, err := cp.resolveType(selector.RecordType)
 		if err != nil {
@@ -1973,7 +1976,7 @@ func isOrdinalTextOrderingOperator(operator string) bool {
 }
 
 func arithmeticSourceOperators(contract LanguageContract) string {
-	if contract == PipeLangLanguageContractV050 || contract == PipeLangLanguageContractV060 || contract == PipeLangLanguageContractV070 || contract == PipeLangLanguageContractV080 || contract == PipeLangLanguageContractV090 || contract == PipeLangLanguageContractV100 || contract == PipeLangLanguageContractV110 || contract == PipeLangLanguageContractV120 || contract == PipeLangLanguageContractV130 || contract == PipeLangLanguageContractV140 || contract == PipeLangLanguageContractV150 || contract == PipeLangLanguageContractV160 || contract == PipeLangLanguageContractV170 || contract == PipeLangLanguageContractV180 || contract == PipeLangLanguageContractV190 || contract == PipeLangLanguageContractV200 || contract == PipeLangLanguageContractV210 || contract == PipeLangLanguageContractV220 || contract == PipeLangLanguageContractV230 || contract == PipeLangLanguageContractV240 || contract == PipeLangLanguageContractV260 || contract == PipeLangLanguageContractV250 || contract == PipeLangLanguageContractV270 || contract == PipeLangLanguageContractV280 {
+	if contract == PipeLangLanguageContractV050 || contract == PipeLangLanguageContractV060 || contract == PipeLangLanguageContractV070 || contract == PipeLangLanguageContractV080 || contract == PipeLangLanguageContractV090 || contract == PipeLangLanguageContractV100 || contract == PipeLangLanguageContractV110 || contract == PipeLangLanguageContractV120 || contract == PipeLangLanguageContractV130 || contract == PipeLangLanguageContractV140 || contract == PipeLangLanguageContractV150 || contract == PipeLangLanguageContractV160 || contract == PipeLangLanguageContractV170 || contract == PipeLangLanguageContractV180 || contract == PipeLangLanguageContractV190 || contract == PipeLangLanguageContractV200 || contract == PipeLangLanguageContractV210 || contract == PipeLangLanguageContractV220 || contract == PipeLangLanguageContractV230 || contract == PipeLangLanguageContractV240 || contract == PipeLangLanguageContractV260 || contract == PipeLangLanguageContractV250 || contract == PipeLangLanguageContractV270 || contract == PipeLangLanguageContractV280 || contract == PipeLangLanguageContractV290 {
 		return "addition, subtraction, multiplication, or negation"
 	}
 	if contract == PipeLangLanguageContractV040 {

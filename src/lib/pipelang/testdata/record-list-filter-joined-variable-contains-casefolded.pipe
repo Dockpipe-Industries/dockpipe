@@ -1,0 +1,20 @@
+public Record NetworkRow {
+    public string Id;
+    public string Name;
+    public string Driver;
+    public string Scope;
+    public string Note;
+}
+
+public Class Root {
+    public List<NetworkRow> SearchRows(
+        List<NetworkRow> values,
+        string query
+    ) => filter_joined_contains_casefolded(
+        values,
+        NetworkRow.Name,
+        NetworkRow.Driver,
+        NetworkRow.Scope,
+        query
+    );
+}

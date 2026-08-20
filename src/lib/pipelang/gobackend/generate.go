@@ -34,7 +34,7 @@ func (e *Error) Error() string {
 
 // Generate accepts Core IR only and returns deterministic, gofmt-formatted Go.
 func Generate(program coreir.Program) ([]byte, error) {
-	if (program.LanguageContract != coreir.LanguageContractV010 && program.LanguageContract != coreir.LanguageContractV020 && program.LanguageContract != coreir.LanguageContractV030 && program.LanguageContract != coreir.LanguageContractV040 && program.LanguageContract != coreir.LanguageContractV050 && program.LanguageContract != coreir.LanguageContractV060 && program.LanguageContract != coreir.LanguageContractV070 && program.LanguageContract != coreir.LanguageContractV080 && program.LanguageContract != coreir.LanguageContractV090 && program.LanguageContract != coreir.LanguageContractV100 && program.LanguageContract != coreir.LanguageContractV110 && program.LanguageContract != coreir.LanguageContractV120 && program.LanguageContract != coreir.LanguageContractV130 && program.LanguageContract != coreir.LanguageContractV140 && program.LanguageContract != coreir.LanguageContractV150 && program.LanguageContract != coreir.LanguageContractV160 && program.LanguageContract != coreir.LanguageContractV170 && program.LanguageContract != coreir.LanguageContractV180 && program.LanguageContract != coreir.LanguageContractV190 && program.LanguageContract != coreir.LanguageContractV200 && program.LanguageContract != coreir.LanguageContractV210 && program.LanguageContract != coreir.LanguageContractV220 && program.LanguageContract != coreir.LanguageContractV230 && program.LanguageContract != coreir.LanguageContractV240 && program.LanguageContract != coreir.LanguageContractV250 && program.LanguageContract != coreir.LanguageContractV260 && program.LanguageContract != coreir.LanguageContractV270 && program.LanguageContract != coreir.LanguageContractV280) || program.CompilerContract != coreir.CompilerContractV1 {
+	if (program.LanguageContract != coreir.LanguageContractV010 && program.LanguageContract != coreir.LanguageContractV020 && program.LanguageContract != coreir.LanguageContractV030 && program.LanguageContract != coreir.LanguageContractV040 && program.LanguageContract != coreir.LanguageContractV050 && program.LanguageContract != coreir.LanguageContractV060 && program.LanguageContract != coreir.LanguageContractV070 && program.LanguageContract != coreir.LanguageContractV080 && program.LanguageContract != coreir.LanguageContractV090 && program.LanguageContract != coreir.LanguageContractV100 && program.LanguageContract != coreir.LanguageContractV110 && program.LanguageContract != coreir.LanguageContractV120 && program.LanguageContract != coreir.LanguageContractV130 && program.LanguageContract != coreir.LanguageContractV140 && program.LanguageContract != coreir.LanguageContractV150 && program.LanguageContract != coreir.LanguageContractV160 && program.LanguageContract != coreir.LanguageContractV170 && program.LanguageContract != coreir.LanguageContractV180 && program.LanguageContract != coreir.LanguageContractV190 && program.LanguageContract != coreir.LanguageContractV200 && program.LanguageContract != coreir.LanguageContractV210 && program.LanguageContract != coreir.LanguageContractV220 && program.LanguageContract != coreir.LanguageContractV230 && program.LanguageContract != coreir.LanguageContractV240 && program.LanguageContract != coreir.LanguageContractV250 && program.LanguageContract != coreir.LanguageContractV260 && program.LanguageContract != coreir.LanguageContractV270 && program.LanguageContract != coreir.LanguageContractV280 && program.LanguageContract != coreir.LanguageContractV290) || program.CompilerContract != coreir.CompilerContractV1 {
 		return nil, &Error{Code: "PLGO0001", Message: fmt.Sprintf("unsupported Core IR contracts language=%q compiler=%q", program.LanguageContract, program.CompilerContract)}
 	}
 	functions := append([]coreir.Function(nil), program.Functions...)
@@ -71,7 +71,7 @@ func Generate(program coreir.Program) ([]byte, error) {
 	needsSnapshotResult := programNeedsSnapshotResult(functions)
 	needsTextResult := programNeedsTextResult(functions)
 	optionalTypeName := optionalGoTypeName(functions)
-	if program.LanguageContract != coreir.LanguageContractV270 && program.LanguageContract != coreir.LanguageContractV280 {
+	if program.LanguageContract != coreir.LanguageContractV270 && program.LanguageContract != coreir.LanguageContractV280 && program.LanguageContract != coreir.LanguageContractV290 {
 		if needsOptional && program.LanguageContract != coreir.LanguageContractV130 && program.LanguageContract != coreir.LanguageContractV140 && program.LanguageContract != coreir.LanguageContractV150 && program.LanguageContract != coreir.LanguageContractV160 && program.LanguageContract != coreir.LanguageContractV170 && program.LanguageContract != coreir.LanguageContractV180 && program.LanguageContract != coreir.LanguageContractV190 && program.LanguageContract != coreir.LanguageContractV200 && program.LanguageContract != coreir.LanguageContractV210 && program.LanguageContract != coreir.LanguageContractV220 && program.LanguageContract != coreir.LanguageContractV230 && program.LanguageContract != coreir.LanguageContractV240 && program.LanguageContract != coreir.LanguageContractV250 && program.LanguageContract != coreir.LanguageContractV260 {
 			return nil, &Error{Code: "PLGO0001", Message: fmt.Sprintf("primitive Optional Core requires language contract %q", coreir.LanguageContractV130)}
 		}
@@ -115,10 +115,17 @@ func Generate(program coreir.Program) ([]byte, error) {
 			return nil, &Error{Code: "PLGO0001", Message: fmt.Sprintf("record-list filter_contains_casefolded Core requires language contract %q", coreir.LanguageContractV240)}
 		}
 	}
-	if needsListFilterJoinedContainsCaseFolded && program.LanguageContract != coreir.LanguageContractV270 && program.LanguageContract != coreir.LanguageContractV280 {
+	if needsListFilterJoinedContainsCaseFolded && program.LanguageContract != coreir.LanguageContractV270 && program.LanguageContract != coreir.LanguageContractV280 && program.LanguageContract != coreir.LanguageContractV290 {
 		return nil, &Error{Code: "PLGO0001", Message: fmt.Sprintf("record-list filter_joined_contains_casefolded Core requires language contract %q", coreir.LanguageContractV270)}
 	}
-	if needsListSortByOrdinalText && program.LanguageContract != coreir.LanguageContractV280 {
+	if needsListFilterJoinedContainsCaseFolded && program.LanguageContract != coreir.LanguageContractV290 {
+		for _, function := range functions {
+			if function.Body.Kind == coreir.ExprListFilterJoinedContainsCaseFolded && len(function.Body.ListFilterJoinedContainsCaseFolded.Selectors) != 5 {
+				return nil, backendError(function, "PLGO0001", "record-list filter_joined_contains_casefolded Core requires exactly five selectors before language contract v0.29.0")
+			}
+		}
+	}
+	if needsListSortByOrdinalText && program.LanguageContract != coreir.LanguageContractV280 && program.LanguageContract != coreir.LanguageContractV290 {
 		return nil, &Error{Code: "PLGO0001", Message: fmt.Sprintf("record-list sort_by_ordinal Core requires language contract %q", coreir.LanguageContractV280)}
 	}
 	if needsText {
@@ -472,7 +479,7 @@ func emitExpr(expr coreir.Expr, parameters []coreir.Parameter, optionalTypeName 
 		return fmt.Sprintf("%s(p%d, p%d)", listFilterContainsCaseFoldedName(filter.Values.Type, *filter), *filter.Values.Parameter, *filter.Query.Parameter), nil
 	case coreir.ExprListFilterJoinedContainsCaseFolded:
 		filter := expr.ListFilterJoinedContainsCaseFolded
-		if filter == nil || filter.Values == nil || filter.Query == nil || len(filter.Selectors) != 5 || filter.Values.Kind != coreir.ExprReference || filter.Values.Parameter == nil || filter.Query.Kind != coreir.ExprReference || filter.Query.Parameter == nil || filter.Values.Type.Kind != coreir.TypeList {
+		if filter == nil || filter.Values == nil || filter.Query == nil || len(filter.Selectors) < 2 || filter.Values.Kind != coreir.ExprReference || filter.Values.Parameter == nil || filter.Query.Kind != coreir.ExprReference || filter.Query.Parameter == nil || filter.Values.Type.Kind != coreir.TypeList {
 			return "", fmt.Errorf("list filter_joined_contains_casefolded expression is incomplete")
 		}
 		return fmt.Sprintf("%s(p%d, p%d)", listFilterJoinedContainsCaseFoldedName(filter.Values.Type, *filter), *filter.Values.Parameter, *filter.Query.Parameter), nil
