@@ -2,7 +2,7 @@
   "schema": "dockpipe.application.v1",
   "metadata": {
     "semantic_schema": "pipelang.semantic.v1",
-    "language_contract": "v0.36.0",
+    "language_contract": "v0.37.0",
     "compiler_contract": "pipelang.compiler.v1",
     "package_id": "docker.observability"
   },

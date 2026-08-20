@@ -244,5 +244,12 @@
       "public ${1:List<Row>} ${2:Compose}(${1:List<Row>} ${3:values}, string ${4:query}) => ${5:Order}(${6:Filter}(${3:values}, ${4:query}));"
     ],
     "description": "Create a v0.36.0 public same-class pure method composition with exact ordered types."
+  },
+  "PipeLang general pure-call composition": {
+    "prefix": "pipe-pure-call-compose",
+    "body": [
+      "public string ${1:SelectedName}(Optional<${2:Row}> ${3:value}) => match(${3:value}){ some(${4:row}) => ${5:Normalize}(${4:row}.${6:Name}), none => \"\" };"
+    ],
+    "description": "Create a v0.37.0 same-class pure call inside an already admitted match-arm expression."
   }
 }

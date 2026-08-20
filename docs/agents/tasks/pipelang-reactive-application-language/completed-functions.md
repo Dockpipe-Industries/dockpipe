@@ -44,3 +44,20 @@ only the language-contract value advances. The exact 45-source legacy inventory 
 Cross-class/module calls, private callers or targets, overloads, generics, function values, lambdas,
 recursion, blocks, locals, branches, effects, entrypoints, and target-specific behavior remain
 excluded.
+
+## Step 8c — general pure-call composition (`v0.37.0`)
+
+Production source may use the already resolved same-class pure call node throughout expressions
+that the language already admits as eager and pure, including match-arm bodies, record and Optional
+construction, text operations, and arithmetic or comparison operands. Match carriers and
+propagation operands remain direct references. The v0.36.0 same-class ownership, public visibility,
+exact signature, participant closure, and acyclic call-graph rules remain exact.
+
+Typed HIR and target-neutral Core reuse the existing call node and dependency closure. Core
+recursively validates nested placement, target identity, signature, ownership, and cycles; the
+evaluator keeps isolated copied frames, and the Go backend consumes Core only. The Docker
+observability consumer proves an `Optional<ContainerRow>` match whose `some` arm calls a text
+normalization helper. `pipelang.compiler.v1`, `pipelang.semantic.v1`, and
+`dockpipe.application.v1` keep their schemas and advance only language-contract metadata. The
+45-source legacy inventory remains exact. Cross-class/module calls, blocks, locals, branches,
+loops, effects, recursion, and target-specific behavior remain excluded.

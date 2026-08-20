@@ -337,6 +337,28 @@ entrypoints, async behavior, Application IR semantics, runtime behavior, and tar
 semantics. Any next language seam requires another source-backed founder decision and separate
 implementation approval.
 
+## Accepted v0.37.0 boundary — general pure-call composition
+
+`v0.37.0` removes only the v0.36.0 placement restriction that limited a call to the complete method
+body or a directly nested call argument. The same resolved call node may appear throughout
+expressions already admitted as eager and pure, including match-arm bodies, record and Optional
+construction, text operations, and arithmetic or comparison operands. Match carriers and
+propagation operands remain direct references. No new control-flow form or evaluation order is
+introduced.
+
+Semantic analysis retains the uniquely named public same-class target, exact ordered signature,
+parameter/arm-local closure, and deterministic `PL3033` cycle rejection. Typed HIR and
+target-neutral Core reuse the existing call node and transitive dependency closure. Core validates
+nested placement recursively; the evaluator uses isolated copied call frames; the Go backend emits
+only Core-validated calls and performs no semantic inference.
+
+TASK-020's Docker observability fixture proves an `Optional<ContainerRow>` selection match whose
+`some` arm calls `NormalizeName(row.Name)`. `pipelang.compiler.v1`, `pipelang.semantic.v1`, and
+`dockpipe.application.v1` retain their schema shapes; only language-contract metadata advances.
+All 45 frozen legacy sources remain exact. Cross-class/module calls, private targets, overloads,
+generics, function values, lambdas, recursion, blocks, locals, branches, loops, effects,
+entrypoints, runtime behavior, and target-specific semantics remain excluded.
+
 ## Accepted first Application IR boundary — `dockpipe.application.v1`
 
 The first target-neutral read-only Application IR consumes only a canonical public

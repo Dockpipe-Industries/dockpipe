@@ -508,7 +508,7 @@ func (p *parser) parsePostfix() (Expr, error) {
 	if !hasRecordFieldProjectionSourceContract(p.languageContract) {
 		return expr, nil
 	}
-	for p.peek().kind == tokDot || ((p.languageContract == PipeLangLanguageContractV330 || p.languageContract == PipeLangLanguageContractV340 || p.languageContract == PipeLangLanguageContractV350 || p.languageContract == PipeLangLanguageContractV360) && p.peek().kind == tokLBracket) {
+	for p.peek().kind == tokDot || ((p.languageContract == PipeLangLanguageContractV330 || p.languageContract == PipeLangLanguageContractV340 || p.languageContract == PipeLangLanguageContractV350 || p.languageContract == PipeLangLanguageContractV360 || p.languageContract == PipeLangLanguageContractV370) && p.peek().kind == tokLBracket) {
 		if p.peek().kind == tokLBracket {
 			p.next()
 			index, err := p.parseExpr(1)
@@ -1327,7 +1327,7 @@ func (p *parser) parseListSortByOrdinal() (Expr, error) {
 	if err != nil {
 		return nil, err
 	}
-	if p.languageContract == PipeLangLanguageContractV320 || p.languageContract == PipeLangLanguageContractV330 || p.languageContract == PipeLangLanguageContractV340 || p.languageContract == PipeLangLanguageContractV350 || p.languageContract == PipeLangLanguageContractV360 {
+	if p.languageContract == PipeLangLanguageContractV320 || p.languageContract == PipeLangLanguageContractV330 || p.languageContract == PipeLangLanguageContractV340 || p.languageContract == PipeLangLanguageContractV350 || p.languageContract == PipeLangLanguageContractV360 || p.languageContract == PipeLangLanguageContractV370 {
 		if _, err := p.expect(tokComma); err != nil {
 			return nil, err
 		}

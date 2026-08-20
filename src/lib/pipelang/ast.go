@@ -576,6 +576,34 @@ func validPureCallPlacement(expr Expr) bool {
 	return true
 }
 
+// validGeneralPureCallPlacement admits calls anywhere in the existing pure
+// expression tree while retaining the direct-carrier boundaries established
+// for propagation and matching.
+func validGeneralPureCallPlacement(expr Expr) bool {
+	switch node := expr.(type) {
+	case *PropagateExpr:
+		_, direct := node.Value.(*IdentExpr)
+		return direct
+	case *MatchExpr:
+		if _, direct := node.Value.(*IdentExpr); !direct {
+			return false
+		}
+		for _, arm := range node.Arms {
+			if !validGeneralPureCallPlacement(arm.Body) {
+				return false
+			}
+		}
+		return true
+	default:
+		for _, child := range expressionChildren(expr) {
+			if !validGeneralPureCallPlacement(child) {
+				return false
+			}
+		}
+		return true
+	}
+}
+
 type Value struct {
 	Type   PrimitiveType
 	String string

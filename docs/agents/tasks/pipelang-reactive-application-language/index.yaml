@@ -10,8 +10,8 @@ dispatch:
 
 state:
   decision: accepted
-  current_language_contract: v0.36.0
-  completed_through: v0.36.0 same-class pure calls and dockpipe.application.v1 projection
+  current_language_contract: v0.37.0
+  completed_through: v0.37.0 general pure-call composition and dockpipe.application.v1 consumer proof
   authority: >-
     This task record is decision and status evidence. It does not authorize another language slice,
     implementation, migration, commit, push, publication, or external action.
@@ -65,7 +65,7 @@ history_by_slice:
   steps_7i_to_7m: completed-text-records.md
   steps_7n_to_7s: completed-optionals-lists.md
   steps_7t_to_7ae: completed-snapshots-selection.md
-  steps_8a_to_8b: completed-functions.md
+  steps_8a_to_8c: completed-functions.md
 
 documents:
   - path: overview.md
@@ -89,7 +89,7 @@ documents:
   - path: completed-snapshots-selection.md
     role: completed steps 7t through 7ae
   - path: completed-functions.md
-    role: completed step 8a named pure record predicate filtering and step 8b same-class pure calls
+    role: completed steps 8a named pure record predicate filtering, 8b same-class pure calls, and 8c general pure-call composition
   - path: next-boundary.md
     role: exact current boundary and preserved contracts
 

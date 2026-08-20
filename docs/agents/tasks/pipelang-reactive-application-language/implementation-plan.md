@@ -26,7 +26,9 @@
 
 Step 8a is complete for `v0.31.0` same-class named pure record predicates consumed by exact direct
 `filter(List<R>, PredicateName, P1, ...) -> List<R>`. Step 8b is complete for `v0.36.0` public
-same-class pure method calls with exact signatures and a closed acyclic call graph. These seams do
+same-class pure method calls with exact signatures and a closed acyclic call graph. Step 8c is
+complete for `v0.37.0` composition of those calls throughout already admitted eager pure
+expressions, with direct match and propagation carriers preserved. These seams do
 not complete or authorize cross-class/module calls, overloads, generics, function values, lambdas,
 recursion, blocks, locals, branches, loops, effects, entrypoints, or the rest of step 8.
 
@@ -163,6 +165,16 @@ uses isolated copied call frames, and the Core-only Go backend emits only valida
 `pipelang.compiler.v1`, `pipelang.semantic.v1`, and `dockpipe.application.v1` remain unchanged.
 Cross-class/module calls, overloads, generics, private callers or targets, lambdas, function values,
 effects, blocks, locals, branches, entrypoints, and target semantics remain excluded.
+
+## Checkpoint v0.37.0 complete contract
+
+General pure-call composition reuses the v0.36.0 resolved call identity, exact ordered signature,
+same-class ownership, participant closure, and acyclic dependency graph throughout already
+admitted eager pure expressions and match-arm bodies. Match carriers and propagation operands stay
+direct references. HIR/Core retain the same call node, Core validates placement recursively, the
+evaluator uses isolated copied frames, and the Go backend emits from Core only. The consumer proves
+an Optional record match arm calling a normalization helper. Public schema shapes and the exact
+45-source legacy inventory remain unchanged.
 
 ## Application IR checkpoint complete contract
 

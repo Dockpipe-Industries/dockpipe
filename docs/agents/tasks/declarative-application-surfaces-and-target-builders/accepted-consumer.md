@@ -117,6 +117,15 @@ resolved typed HIR/Core call graph, evaluator result, and Core-only Go generatio
 continues to bind filter and order identities explicitly and does not gain a new schema field,
 inference rule, runtime action, Docker behavior, UI policy, or target behavior from this slice.
 
+### PipeLang v0.37.0 general pure-call composition value
+
+The Docker observability fixture now proves Optional record selection consumption as
+`match(value){ some(row) => NormalizeName(row.Name), none => "" }`. The resolved helper call stays
+inside PipeLang HIR/Core and is evaluated or generated without Application IR inference. The
+`dockpipe.application.v1` schema and its existing role bindings remain unchanged; only recorded
+language-contract metadata advances. This adds no adapter policy, runtime action, Docker behavior,
+UI behavior, or target semantics.
+
 ### Accepted `dockpipe.application.v1` read-only projection
 
 The first Application IR boundary is an explicit, separately versioned projection of a public
