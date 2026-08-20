@@ -332,7 +332,7 @@ func hasPrimitiveRecordListSortByOrdinalsSourceContract(contract LanguageContrac
 }
 
 func hasNamedRecordPredicateSourceContract(contract LanguageContract) bool {
-	return contract == PipeLangLanguageContractV310
+	return isV310OrEarlierCapability(contract)
 }
 
 // ImportKind distinguishes a namespace/module import from a single-symbol import.

@@ -34,18 +34,10 @@ func (e *Error) Error() string {
 
 // Generate accepts Core IR only and returns deterministic, gofmt-formatted Go.
 func Generate(program coreir.Program) ([]byte, error) {
-	for _, function := range program.Functions {
-		if function.Body.Kind == coreir.ExprListFilterPredicate && program.LanguageContract != coreir.LanguageContractV310 {
-			return nil, backendError(function, "PLGO0001", fmt.Sprintf("named record predicate filtering requires language contract %q", coreir.LanguageContractV310))
-		}
-	}
-	if program.LanguageContract == coreir.LanguageContractV320 || program.LanguageContract == coreir.LanguageContractV330 || program.LanguageContract == coreir.LanguageContractV340 || program.LanguageContract == coreir.LanguageContractV350 {
-		program.LanguageContract = coreir.LanguageContractV300
-	}
 	if err := coreir.ValidateProgram(program); err != nil {
 		return nil, &Error{Code: "PLGO0001", Message: err.Error()}
 	}
-	if program.LanguageContract == coreir.LanguageContractV310 {
+	if program.LanguageContract == coreir.LanguageContractV310 || program.LanguageContract == coreir.LanguageContractV320 || program.LanguageContract == coreir.LanguageContractV330 || program.LanguageContract == coreir.LanguageContractV340 || program.LanguageContract == coreir.LanguageContractV350 {
 		program.LanguageContract = coreir.LanguageContractV300
 	}
 	return generate(program)
@@ -87,6 +79,7 @@ func generate(program coreir.Program) ([]byte, error) {
 	needsListFilterJoinedContainsCaseFolded := programNeedsListFilterJoinedContainsCaseFolded(functions)
 	needsListSortByOrdinalText := programNeedsListSortByOrdinalText(functions)
 	needsListSortByOrdinalTexts := programNeedsListSortByOrdinalTexts(functions)
+	needsListSortByOrdinalDirections := programNeedsListSortByOrdinalDirections(functions)
 	needsSnapshotResult := programNeedsSnapshotResult(functions)
 	needsTextResult := programNeedsTextResult(functions)
 	optionalTypeName := optionalGoTypeName(functions)
@@ -151,9 +144,9 @@ func generate(program coreir.Program) ([]byte, error) {
 		return nil, &Error{Code: "PLGO0001", Message: fmt.Sprintf("multi-key record-list sort_by_ordinal Core requires language contract %q", coreir.LanguageContractV300)}
 	}
 	if needsText {
-		if needsCaseFoldedText || needsListSortByOrdinalText || needsListSortByOrdinalTexts {
+		if needsCaseFoldedText || needsListSortByOrdinalText || needsListSortByOrdinalTexts || needsListSortByOrdinalDirections {
 			out.WriteString("import (\n")
-			if needsListSortByOrdinalText || needsListSortByOrdinalTexts {
+			if needsListSortByOrdinalText || needsListSortByOrdinalTexts || needsListSortByOrdinalDirections {
 				out.WriteString("\t\"sort\"\n")
 			}
 			if needsCaseFoldedText {
@@ -166,14 +159,14 @@ func generate(program coreir.Program) ([]byte, error) {
 		emitTextSupport(&out, needsCaseFoldedText, needsTextTrim)
 	}
 	if programNeedsArithmeticResult(functions) {
-		emitArithmeticSupport(&out)
+		emitArithmeticSupport(&out, programNeedsArithmeticMatch(functions))
 	}
 	records, err := collectRecordTypes(functions)
 	if err != nil {
 		return nil, &Error{Code: "PLGO0001", Message: err.Error()}
 	}
 	if needsOptional {
-		emitOptionalSupport(&out, needsText, needsOptionalDefault, needsRecordOptional, program.LanguageContract == coreir.LanguageContractV340, optionalTypeName, records)
+		emitOptionalSupport(&out, needsText, needsOptionalDefault, needsRecordOptional, programNeedsOptionalPropagation(functions), optionalTypeName, records)
 	}
 	for _, record := range records {
 		emitRecordType(&out, record, programConstructsRecord(functions, record), optionalTypeName)
@@ -271,6 +264,9 @@ func emitFunction(out *strings.Builder, name string, function coreir.Function, o
 		}
 		if isBoundedValueResultType(parameter.Type) {
 			fmt.Fprintf(out, "\t%s(p%d)\n", boundedResultValidationName(parameter.Type), index)
+		}
+		if function.Body.Kind == coreir.ExprMatch && isArithmeticResultType(parameter.Type) {
+			fmt.Fprintf(out, "\tpipelangValidateArithmeticResult(p%d)\n", index)
 		}
 	}
 	if function.Body.Kind == coreir.ExprOptionalSome && function.Body.Some != nil && function.Body.Some.Value != nil && function.Body.Some.Value.Kind == coreir.ExprPropagate {
@@ -677,7 +673,7 @@ func emitExpr(expr coreir.Expr, parameters []coreir.Parameter, optionalTypeName 
 				} else if arm.Tag == "err" {
 					source = "matched.Error"
 				}
-				prefix = fmt.Sprintf("p%d := %s; ", *arm.Binding, source)
+				prefix = fmt.Sprintf("p%d := %s; _ = p%d; ", *arm.Binding, source, *arm.Binding)
 			}
 			body, e := emitExpr(*arm.Body, scoped, optionalTypeName)
 			if e != nil {
@@ -699,7 +695,7 @@ func emitExpr(expr coreir.Expr, parameters []coreir.Parameter, optionalTypeName 
 			}
 			if carrier.Kind == coreir.TypeOptional && arm.Binding != nil {
 				payloadGo, _ := goType(carrier.Optional.Value, optionalTypeName)
-				prefix = fmt.Sprintf("typed := matched.(pipelangOptionalSome[%s]); p%d := typed.value; ", payloadGo, *arm.Binding)
+				prefix = fmt.Sprintf("typed := matched.(pipelangOptionalSome[%s]); p%d := typed.value; _ = p%d; ", payloadGo, *arm.Binding, *arm.Binding)
 			}
 			fmt.Fprintf(&out, "if %s { %sreturn %s }; ", condition, prefix, body)
 		}
@@ -1017,6 +1013,24 @@ func programNeedsListSortByOrdinalText(functions []coreir.Function) bool {
 func programNeedsListSortByOrdinalTexts(functions []coreir.Function) bool {
 	for _, function := range functions {
 		if function.Body.Kind == coreir.ExprListSortByOrdinalTexts {
+			return true
+		}
+	}
+	return false
+}
+
+func programNeedsListSortByOrdinalDirections(functions []coreir.Function) bool {
+	for _, function := range functions {
+		if function.Body.Kind == coreir.ExprListSortByOrdinalDirections {
+			return true
+		}
+	}
+	return false
+}
+
+func programNeedsOptionalPropagation(functions []coreir.Function) bool {
+	for _, function := range functions {
+		if function.Body.Kind == coreir.ExprOptionalSome && function.Body.Some != nil && function.Body.Some.Value != nil && function.Body.Some.Value.Kind == coreir.ExprPropagate {
 			return true
 		}
 	}
@@ -2232,8 +2246,46 @@ func pipelangContainsCaseFoldedText(value, query string) bool {
 
 func programNeedsArithmeticResult(functions []coreir.Function) bool {
 	for _, function := range functions {
-		if function.ReturnType.Kind == coreir.TypeResult && function.ReturnType.Result != nil && function.ReturnType.Result.Failure.Kind == coreir.TypeArithmeticError {
+		if typeNeedsArithmeticResult(function.ReturnType) {
 			return true
+		}
+		for _, parameter := range function.Parameters {
+			if typeNeedsArithmeticResult(parameter.Type) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func typeNeedsArithmeticResult(typ coreir.Type) bool {
+	if typ.Kind == coreir.TypeResult && typ.Result != nil {
+		if typ.Result.Failure.Kind == coreir.TypeArithmeticError {
+			return true
+		}
+		return typeNeedsArithmeticResult(typ.Result.Success) || typeNeedsArithmeticResult(typ.Result.Failure)
+	}
+	if typ.Kind == coreir.TypeOptional && typ.Optional != nil {
+		return typeNeedsArithmeticResult(typ.Optional.Value)
+	}
+	if typ.Kind == coreir.TypeList && typ.List != nil {
+		return typeNeedsArithmeticResult(typ.List.Element)
+	}
+	return false
+}
+
+func isArithmeticResultType(typ coreir.Type) bool {
+	return typ.Kind == coreir.TypeResult && typ.Result != nil && typ.Result.Failure.Kind == coreir.TypeArithmeticError
+}
+
+func programNeedsArithmeticMatch(functions []coreir.Function) bool {
+	for _, function := range functions {
+		if function.Body.Kind == coreir.ExprMatch {
+			for _, parameter := range function.Parameters {
+				if isArithmeticResultType(parameter.Type) {
+					return true
+				}
+			}
 		}
 	}
 	return false
@@ -2254,7 +2306,7 @@ func arithmeticHelperName(operator coreir.Operator) (string, bool) {
 	}
 }
 
-func emitArithmeticSupport(out *strings.Builder) {
+func emitArithmeticSupport(out *strings.Builder, emitMatchValidation bool) {
 	out.WriteString(`type PipeLangArithmeticError string
 
 const (
@@ -2267,7 +2319,26 @@ type PipeLangArithmeticResult[T any] struct {
 	Value T
 	Error PipeLangArithmeticError
 }
+`)
 
+	if emitMatchValidation {
+		out.WriteString(`
+func pipelangValidateArithmeticResult[T comparable](value PipeLangArithmeticResult[T]) {
+	var zero T
+	if value.OK {
+		if value.Error != "" {
+			panic("invalid PipeLang arithmetic Result value")
+		}
+		return
+	}
+	if value.Value != zero || (value.Error != PipeLangArithmeticOverflow && value.Error != PipeLangArithmeticDivisionByZero) {
+		panic("invalid PipeLang arithmetic Result value")
+	}
+}
+`)
+	}
+
+	out.WriteString(`
 func pipelangCheckedAddInt64(left, right int64) PipeLangArithmeticResult[int64] {
 	const maximum = int64(9223372036854775807)
 	const minimum = -maximum - 1
