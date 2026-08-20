@@ -248,6 +248,8 @@ assert(pipeLangReadme.includes("`filter_joined_contains_casefolded(List<R>, R.Na
 assert(pipeLangReadme.includes("`sort_by_ordinal(List<R>, R.Field) -> List<R>`"));
 assert(pipeLangReadme.includes("`v0.29.0`"));
 assert(pipeLangReadme.includes("`filter_joined_contains_casefolded(List<R>, R.Field1, R.Field2, ..., string) -> List<R>`"));
+assert(pipeLangReadme.includes("`v0.30.0`"));
+assert(pipeLangReadme.includes("`sort_by_ordinal(List<R>, R.Field1, R.Field2, ...) -> List<R>`"));
 assert.strictEqual(pipeLangSnippets["PipeLang Text Trim"].prefix, "pipe-text-trim");
 assert(pipeLangSnippets["PipeLang Text Trim"].description.includes("v0.26.0"));
 assert(pipeLangSnippets["PipeLang Text Trim"].body.some((line) => line.includes("trim(")));
@@ -257,3 +259,6 @@ assert(pipeLangSnippets["PipeLang Record List Joined Case-Folded Filter"].descri
 assert.strictEqual(pipeLangSnippets["PipeLang Record List Ordinal Sort"].prefix, "pipe-record-list-sort-by-ordinal");
 assert(pipeLangSnippets["PipeLang Record List Ordinal Sort"].description.includes("v0.28.0"));
 assert(pipeLangSnippets["PipeLang Record List Ordinal Sort"].body.some((line) => line.includes("sort_by_ordinal(")));
+assert.strictEqual(pipeLangSnippets["PipeLang Record List Multi-Key Ordinal Sort"].prefix, "pipe-record-list-sort-by-ordinals");
+assert(pipeLangSnippets["PipeLang Record List Multi-Key Ordinal Sort"].description.includes("v0.30.0"));
+assert(pipeLangSnippets["PipeLang Record List Multi-Key Ordinal Sort"].body.some((line) => line.includes("sort_by_ordinal(")));

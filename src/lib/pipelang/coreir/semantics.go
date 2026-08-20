@@ -165,7 +165,7 @@ func ValidateFunction(function Function) error {
 	if exprContainsListFilterJoinedContainsCaseFolded(function.Body) && function.Body.Kind != ExprListFilterJoinedContainsCaseFolded {
 		return fmt.Errorf("filter_joined_contains_casefolded must be the complete function body")
 	}
-	if exprContainsListSortByOrdinalText(function.Body) && function.Body.Kind != ExprListSortByOrdinalText {
+	if exprContainsListSortByOrdinalText(function.Body) && function.Body.Kind != ExprListSortByOrdinalText && function.Body.Kind != ExprListSortByOrdinalTexts {
 		return fmt.Errorf("sort_by_ordinal must be the complete function body")
 	}
 	if err := validateExpr(function.Body, function.Parameters); err != nil {
@@ -230,12 +230,18 @@ func ValidateFunction(function Function) error {
 			return err
 		}
 	}
-	if functionContainsOptional(function) && !boundedResult && !listAt && !listFindByText && !listSortByOrdinalText {
+	listSortByOrdinalTexts := function.Body.Kind == ExprListSortByOrdinalTexts
+	if listSortByOrdinalTexts {
+		if err := validateDirectListSortByOrdinalTextsFunction(function); err != nil {
+			return err
+		}
+	}
+	if functionContainsOptional(function) && !boundedResult && !listAt && !listFindByText && !listSortByOrdinalText && !listSortByOrdinalTexts {
 		if err := validateDirectOptionalFunction(function); err != nil {
 			return err
 		}
 	}
-	if functionContainsList(function) && !boundedResult && !listAt && !listFindByText && !listFilterByText && !listFilterContainsCaseFolded && !listFilterJoinedContainsCaseFolded && !listSortByOrdinalText {
+	if functionContainsList(function) && !boundedResult && !listAt && !listFindByText && !listFilterByText && !listFilterContainsCaseFolded && !listFilterJoinedContainsCaseFolded && !listSortByOrdinalText && !listSortByOrdinalTexts {
 		if err := validateDirectListFunction(function); err != nil {
 			return err
 		}
@@ -828,6 +834,38 @@ func validateExpr(expression Expr, parameters []Parameter) error {
 		if !TypeEqual(field.Type, Type{Kind: TypePrimitive, Primitive: PrimitiveString}) {
 			return fmt.Errorf("list sort_by_ordinal field is not string")
 		}
+	case ExprListSortByOrdinalTexts:
+		sorted := expression.ListSortByOrdinalTexts
+		if sorted == nil || sorted.Values == nil || len(sorted.Selectors) < 2 || expression.Type.Kind != TypeList || expression.Type.List == nil {
+			return fmt.Errorf("multi-key list sort_by_ordinal expression is incomplete")
+		}
+		if err := validateType(expression.Type); err != nil {
+			return fmt.Errorf("multi-key list sort_by_ordinal result type: %w", err)
+		}
+		if err := validateExpr(*sorted.Values, parameters); err != nil {
+			return fmt.Errorf("multi-key list sort_by_ordinal values: %w", err)
+		}
+		valuesType := sorted.Values.Type
+		if valuesType.Kind != TypeList || valuesType.List == nil || valuesType.List.Element.Kind != TypeRecord || valuesType.List.Element.Record == nil || !TypeEqual(valuesType, expression.Type) {
+			return fmt.Errorf("multi-key list sort_by_ordinal values type does not match its record-list result")
+		}
+		seen := map[int]struct{}{}
+		for _, selector := range sorted.Selectors {
+			if selector.Position < 0 || selector.Position >= len(valuesType.List.Element.Record.Fields) {
+				return fmt.Errorf("multi-key list sort_by_ordinal field position is outside the record schema")
+			}
+			if _, exists := seen[selector.Position]; exists {
+				return fmt.Errorf("multi-key list sort_by_ordinal field selectors must be distinct")
+			}
+			seen[selector.Position] = struct{}{}
+			field := valuesType.List.Element.Record.Fields[selector.Position]
+			if field.Name != selector.Name || field.Identity.PackageID != selector.Field.PackageID || field.Identity.Path != selector.Field.Path || selector.Field.Callable != nil {
+				return fmt.Errorf("multi-key list sort_by_ordinal field identity does not match the record schema")
+			}
+			if !TypeEqual(field.Type, Type{Kind: TypePrimitive, Primitive: PrimitiveString}) {
+				return fmt.Errorf("multi-key list sort_by_ordinal field is not string")
+			}
+		}
 	case ExprResultOK:
 		if expression.ResultOK == nil || expression.ResultOK.Value == nil || !isBoundedValueResultType(expression.Type) {
 			return fmt.Errorf("result ok expression is incomplete or has an invalid result type")
@@ -930,6 +968,8 @@ func exprContainsBoundedValueResult(expression Expr) bool {
 		return expression.ListFilterJoinedContainsCaseFolded != nil && expression.ListFilterJoinedContainsCaseFolded.Values != nil && expression.ListFilterJoinedContainsCaseFolded.Query != nil && (exprContainsBoundedValueResult(*expression.ListFilterJoinedContainsCaseFolded.Values) || exprContainsBoundedValueResult(*expression.ListFilterJoinedContainsCaseFolded.Query))
 	case ExprListSortByOrdinalText:
 		return expression.ListSortByOrdinalText != nil && expression.ListSortByOrdinalText.Values != nil && exprContainsBoundedValueResult(*expression.ListSortByOrdinalText.Values)
+	case ExprListSortByOrdinalTexts:
+		return expression.ListSortByOrdinalTexts != nil && expression.ListSortByOrdinalTexts.Values != nil && exprContainsBoundedValueResult(*expression.ListSortByOrdinalTexts.Values)
 	}
 	return false
 }
@@ -984,7 +1024,7 @@ func functionContainsList(function Function) bool {
 
 func exprContainsList(expression Expr) bool {
 	switch expression.Kind {
-	case ExprListEmpty, ExprListSingleton, ExprListCount, ExprListAppend, ExprListAt, ExprListFindByText, ExprListFilterByText, ExprListFilterContainsCaseFolded, ExprListFilterJoinedContainsCaseFolded, ExprListSortByOrdinalText:
+	case ExprListEmpty, ExprListSingleton, ExprListCount, ExprListAppend, ExprListAt, ExprListFindByText, ExprListFilterByText, ExprListFilterContainsCaseFolded, ExprListFilterJoinedContainsCaseFolded, ExprListSortByOrdinalText, ExprListSortByOrdinalTexts:
 		return true
 	case ExprUnary:
 		return expression.Unary != nil && expression.Unary.Operand != nil && exprContainsList(*expression.Unary.Operand)
@@ -1475,7 +1515,7 @@ func exprContainsListFilterJoinedContainsCaseFolded(expression Expr) bool {
 }
 
 func exprContainsListSortByOrdinalText(expression Expr) bool {
-	if expression.Kind == ExprListSortByOrdinalText {
+	if expression.Kind == ExprListSortByOrdinalText || expression.Kind == ExprListSortByOrdinalTexts {
 		return true
 	}
 	children := []*Expr{}
@@ -1666,6 +1706,17 @@ func validateDirectListSortByOrdinalTextFunction(function Function) error {
 	return nil
 }
 
+func validateDirectListSortByOrdinalTextsFunction(function Function) error {
+	sorted := function.Body.ListSortByOrdinalTexts
+	if sorted == nil || sorted.Values == nil || len(sorted.Selectors) < 2 || len(function.Parameters) != 1 || function.Parameters[0].Type.Kind != TypeList || function.Parameters[0].Type.List == nil || function.Parameters[0].Type.List.Element.Kind != TypeRecord || !TypeEqual(function.ReturnType, function.Parameters[0].Type) {
+		return fmt.Errorf("multi-key sort_by_ordinal requires one direct List<R> parameter, at least two selectors, and matching List<R> return")
+	}
+	if sorted.Values.Kind != ExprReference || sorted.Values.Parameter == nil || *sorted.Values.Parameter != 0 || !TypeEqual(sorted.Values.Type, function.Parameters[0].Type) {
+		return fmt.Errorf("multi-key sort_by_ordinal values must be its sole direct record-list parameter")
+	}
+	return nil
+}
+
 func functionContainsOptional(function Function) bool {
 	if function.ReturnType.Kind == TypeOptional || exprContainsOptional(function.Body) {
 		return true
@@ -1714,6 +1765,8 @@ func exprContainsOptional(expression Expr) bool {
 		return expression.ListFilterJoinedContainsCaseFolded != nil && expression.ListFilterJoinedContainsCaseFolded.Values != nil && expression.ListFilterJoinedContainsCaseFolded.Query != nil && (exprContainsOptional(*expression.ListFilterJoinedContainsCaseFolded.Values) || exprContainsOptional(*expression.ListFilterJoinedContainsCaseFolded.Query))
 	case ExprListSortByOrdinalText:
 		return expression.ListSortByOrdinalText != nil && expression.ListSortByOrdinalText.Values != nil && exprContainsOptional(*expression.ListSortByOrdinalText.Values)
+	case ExprListSortByOrdinalTexts:
+		return expression.ListSortByOrdinalTexts != nil && expression.ListSortByOrdinalTexts.Values != nil && exprContainsOptional(*expression.ListSortByOrdinalTexts.Values)
 	}
 	return false
 }
@@ -1794,6 +1847,8 @@ func exprContainsRecordConstruction(expression Expr) bool {
 		return expression.ListFilterJoinedContainsCaseFolded != nil && expression.ListFilterJoinedContainsCaseFolded.Values != nil && expression.ListFilterJoinedContainsCaseFolded.Query != nil && (exprContainsRecordConstruction(*expression.ListFilterJoinedContainsCaseFolded.Values) || exprContainsRecordConstruction(*expression.ListFilterJoinedContainsCaseFolded.Query))
 	case ExprListSortByOrdinalText:
 		return expression.ListSortByOrdinalText != nil && expression.ListSortByOrdinalText.Values != nil && exprContainsRecordConstruction(*expression.ListSortByOrdinalText.Values)
+	case ExprListSortByOrdinalTexts:
+		return expression.ListSortByOrdinalTexts != nil && expression.ListSortByOrdinalTexts.Values != nil && exprContainsRecordConstruction(*expression.ListSortByOrdinalTexts.Values)
 	default:
 		return false
 	}
@@ -1829,6 +1884,8 @@ func exprContainsRecordEquality(expression Expr) bool {
 		return expression.ListFilterJoinedContainsCaseFolded != nil && expression.ListFilterJoinedContainsCaseFolded.Values != nil && expression.ListFilterJoinedContainsCaseFolded.Query != nil && (exprContainsRecordEquality(*expression.ListFilterJoinedContainsCaseFolded.Values) || exprContainsRecordEquality(*expression.ListFilterJoinedContainsCaseFolded.Query))
 	case ExprListSortByOrdinalText:
 		return expression.ListSortByOrdinalText != nil && expression.ListSortByOrdinalText.Values != nil && exprContainsRecordEquality(*expression.ListSortByOrdinalText.Values)
+	case ExprListSortByOrdinalTexts:
+		return expression.ListSortByOrdinalTexts != nil && expression.ListSortByOrdinalTexts.Values != nil && exprContainsRecordEquality(*expression.ListSortByOrdinalTexts.Values)
 	case ExprRecordConstruct:
 		if expression.Record == nil {
 			return false
