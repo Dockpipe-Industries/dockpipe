@@ -51,6 +51,89 @@ func Evaluate(function coreir.Function, arguments []Value) (Outcome, error) {
 	return evalExpr(function.Body, arguments)
 }
 
+func EvaluateProgram(program coreir.Program, identity coreir.SemanticIdentity, arguments []Value) (Outcome, error) {
+	if err := coreir.ValidateProgram(program); err != nil {
+		return Outcome{}, err
+	}
+	functions := make(map[string]coreir.Function, len(program.Functions))
+	var selected *coreir.Function
+	for index := range program.Functions {
+		function := program.Functions[index]
+		functions[function.Identity.PackageID+"\x00"+function.Identity.Path] = function
+		if function.Identity.PackageID == identity.PackageID && function.Identity.Path == identity.Path {
+			selected = &function
+		}
+	}
+	if selected == nil {
+		return Outcome{}, fmt.Errorf("selected function semantic identity was not found")
+	}
+	if len(arguments) != len(selected.Parameters) {
+		return Outcome{}, fmt.Errorf("function expects %d arguments, got %d", len(selected.Parameters), len(arguments))
+	}
+	for index := range arguments {
+		if !coreir.TypeEqual(arguments[index].Type, selected.Parameters[index].Type) {
+			return Outcome{}, fmt.Errorf("argument %d type does not match parameter", index)
+		}
+		if err := validateValue(arguments[index]); err != nil {
+			return Outcome{}, fmt.Errorf("argument %d: %w", index, err)
+		}
+	}
+	return evalProgramExpr(selected.Body, arguments, functions)
+}
+
+func evalProgramExpr(expression coreir.Expr, arguments []Value, functions map[string]coreir.Function) (Outcome, error) {
+	if expression.Kind != coreir.ExprListFilterPredicate {
+		return evalExpr(expression, arguments)
+	}
+	filter := expression.ListFilterPredicate
+	values, err := evalExpr(*filter.Values, arguments)
+	if err != nil || !values.OK {
+		return values, err
+	}
+	evaluated := make([]Value, len(filter.Arguments))
+	for index, argument := range filter.Arguments {
+		value, err := evalExpr(*argument, arguments)
+		if err != nil || !value.OK {
+			return value, err
+		}
+		evaluated[index] = cloneValue(value.Value)
+	}
+	if err := validateValue(values.Value); err != nil {
+		return Outcome{}, fmt.Errorf("named predicate filter values: %w", err)
+	}
+	for index := range evaluated {
+		if err := validateValue(evaluated[index]); err != nil {
+			return Outcome{}, fmt.Errorf("named predicate filter argument %d: %w", index+1, err)
+		}
+	}
+	target, ok := functions[filter.Predicate.PackageID+"\x00"+filter.Predicate.Path]
+	if !ok {
+		return Outcome{}, fmt.Errorf("named predicate target was not found")
+	}
+	filtered := Value{Type: expression.Type, List: make([]Value, 0)}
+	for _, record := range values.Value.List {
+		predicateArguments := make([]Value, 1, len(evaluated)+1)
+		predicateArguments[0] = cloneValue(record)
+		for _, value := range evaluated {
+			predicateArguments = append(predicateArguments, cloneValue(value))
+		}
+		outcome, err := evalExpr(target.Body, predicateArguments)
+		if err != nil {
+			return Outcome{}, fmt.Errorf("named predicate %s: %w", target.Name, err)
+		}
+		if !outcome.OK || !coreir.TypeEqual(outcome.Value.Type, coreir.Type{Kind: coreir.TypePrimitive, Primitive: coreir.PrimitiveBool}) {
+			return Outcome{}, fmt.Errorf("named predicate %s did not return bool", target.Name)
+		}
+		if outcome.Value.Bool {
+			filtered.List = append(filtered.List, cloneValue(record))
+		}
+	}
+	if err := validateValue(filtered); err != nil {
+		return Outcome{}, fmt.Errorf("named predicate filter result: %w", err)
+	}
+	return Outcome{OK: true, Value: cloneListValue(filtered)}, nil
+}
+
 func evalExpr(expression coreir.Expr, arguments []Value) (Outcome, error) {
 	switch expression.Kind {
 	case coreir.ExprLiteral:
@@ -93,6 +176,12 @@ func evalExpr(expression coreir.Expr, arguments []Value) (Outcome, error) {
 		if err != nil || !left.OK {
 			return left, err
 		}
+		if expression.Binary.Operator == coreir.OperatorAnd && !left.Value.Bool {
+			return Outcome{OK: true, Value: Value{Type: expression.Type, Bool: false}}, nil
+		}
+		if expression.Binary.Operator == coreir.OperatorOr && left.Value.Bool {
+			return Outcome{OK: true, Value: Value{Type: expression.Type, Bool: true}}, nil
+		}
 		right, err := evalExpr(*expression.Binary.Right, arguments)
 		if err != nil || !right.OK {
 			return right, err
@@ -117,9 +206,17 @@ func evalExpr(expression coreir.Expr, arguments []Value) (Outcome, error) {
 		case coreir.OperatorDivide:
 			value, arithmeticError := coreir.CheckedDivideBinary64(left.Value.Float, right.Value.Float)
 			return arithmeticOutcome(expression.Type, Value{Float: value}, arithmeticError), nil
+		case coreir.OperatorAnd:
+			return Outcome{OK: true, Value: Value{Type: expression.Type, Bool: left.Value.Bool && right.Value.Bool}}, nil
+		case coreir.OperatorOr:
+			return Outcome{OK: true, Value: Value{Type: expression.Type, Bool: left.Value.Bool || right.Value.Bool}}, nil
+		case coreir.OperatorEqual, coreir.OperatorNotEqual, coreir.OperatorLessThan, coreir.OperatorLessOrEqual, coreir.OperatorGreaterThan, coreir.OperatorGreaterOrEqual:
+			return evalPrimitiveComparison(expression, left.Value, right.Value)
 		default:
-			return Outcome{}, fmt.Errorf("operator %q is outside the arithmetic conformance evaluator", expression.Binary.Operator)
+			return Outcome{}, fmt.Errorf("operator %q is outside the conformance evaluator", expression.Binary.Operator)
 		}
+	case coreir.ExprListFilterPredicate:
+		return Outcome{}, fmt.Errorf("named predicate filtering requires EvaluateProgram")
 	case coreir.ExprTextContainsCaseFolded:
 		value, err := evalExpr(*expression.TextContains.Value, arguments)
 		if err != nil || !value.OK {
@@ -540,6 +637,61 @@ func directResultOperand(expression *coreir.Expr, arguments []Value) (Outcome, e
 		return Outcome{}, fmt.Errorf("Result parameter has no canonical value")
 	}
 	return cloneOutcome(*argument.Result), nil
+}
+
+func evalPrimitiveComparison(expression coreir.Expr, left, right Value) (Outcome, error) {
+	comparison := 0
+	switch expression.Binary.Left.Type.Primitive {
+	case coreir.PrimitiveBool:
+		if left.Bool != right.Bool {
+			if !left.Bool {
+				comparison = -1
+			} else {
+				comparison = 1
+			}
+		}
+	case coreir.PrimitiveInt:
+		if left.Int < right.Int {
+			comparison = -1
+		} else if left.Int > right.Int {
+			comparison = 1
+		}
+	case coreir.PrimitiveFloat:
+		result := false
+		switch expression.Binary.Operator {
+		case coreir.OperatorEqual:
+			result = left.Float == right.Float
+		case coreir.OperatorNotEqual:
+			result = left.Float != right.Float
+		case coreir.OperatorLessThan:
+			result = left.Float < right.Float
+		case coreir.OperatorLessOrEqual:
+			result = left.Float <= right.Float
+		case coreir.OperatorGreaterThan:
+			result = left.Float > right.Float
+		case coreir.OperatorGreaterOrEqual:
+			result = left.Float >= right.Float
+		}
+		return Outcome{OK: true, Value: Value{Type: expression.Type, Bool: result}}, nil
+	default:
+		return Outcome{}, fmt.Errorf("primitive comparison type is unsupported")
+	}
+	result := false
+	switch expression.Binary.Operator {
+	case coreir.OperatorEqual:
+		result = comparison == 0
+	case coreir.OperatorNotEqual:
+		result = comparison != 0
+	case coreir.OperatorLessThan:
+		result = comparison < 0
+	case coreir.OperatorLessOrEqual:
+		result = comparison <= 0
+	case coreir.OperatorGreaterThan:
+		result = comparison > 0
+	case coreir.OperatorGreaterOrEqual:
+		result = comparison >= 0
+	}
+	return Outcome{OK: true, Value: Value{Type: expression.Type, Bool: result}}, nil
 }
 
 func evalTextBinary(expression coreir.Expr, left, right string) (Outcome, error) {

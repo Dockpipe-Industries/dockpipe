@@ -34,7 +34,7 @@
         },
         {
           "name": "support.function.builtin.pipelang",
-          "match": "\\b(some|none|has_value|value_or|empty_list|list|count|append|at|find_by|filter_by|contains_casefolded|filter_contains_casefolded|filter_joined_contains_casefolded|sort_by_ordinal|trim|ok|err|is_ok|success_or|failure_or)\\b"
+          "match": "\\b(some|none|has_value|value_or|empty_list|list|count|append|at|find_by|filter_by|filter|contains_casefolded|filter_contains_casefolded|filter_joined_contains_casefolded|sort_by_ordinal|trim|ok|err|is_ok|success_or|failure_or)\\b"
         }
       ]
     },

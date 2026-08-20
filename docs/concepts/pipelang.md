@@ -973,6 +973,39 @@ numeric/record sorting, normalization, case folding, locale collation, mutation,
 nested/general composition, Application IR, Step-8 control flow or matching, effects, and
 additional backends remain outside the production contract.
 
+The explicit `v0.31.0` contract preserves every `v0.30.0` rule and adds the first bounded
+Step-8 function seam: a same-class named pure record predicate consumed by a direct stable filter.
+
+```pipelang
+public bool Matches(ContainerRow row, string query)
+    => contains_casefolded(row.Name, trim(query))
+       || contains_casefolded(row.State, trim(query));
+
+public List<ContainerRow> Search(List<ContainerRow> values, string query)
+    => filter(values, Matches, query);
+```
+
+The exact general spelling is `filter(values, PredicateName, argument1, ...)`. `PredicateName`
+must uniquely resolve in the same public class to a public
+`bool PredicateName(R item, P1, ...)`, where `R` is the list's existing public primitive record
+and every remaining parameter is primitive and exactly matches the corresponding direct filter
+argument. The predicate body is limited to literals, its primitive parameters, one-hop public
+primitive fields of `item`, logical not/and/or, equality and ordering comparisons, and nested use
+of the already accepted pure `contains_casefolded` and `trim` operations. Class state, arbitrary
+calls, record construction, lambdas, closures, function values, overloads, effects, async,
+Optional/Result predicates, and nested/general collection composition remain excluded.
+
+Typed HIR and target-neutral Core carry an explicit `list_filter_predicate` node with the
+predicate's existing semantic method identity, name, direct list operand, and ordered primitive
+operands. Predicate parameters are local bindings and create no new public identity kind.
+`pipelang.compiler.v1` and `pipelang.semantic.v1` remain unchanged. Core validation resolves the
+predicate identity within the same lowered program. The evaluator and deterministic Core-only Go
+backend validate the complete list, every record and field, and every primitive argument before
+iteration; invoke the predicate exactly once per row in source order; require `bool`; fail
+atomically; and return a stable, canonical non-nil, freshly copied list. `v0.1.0` through
+`v0.30.0` reject `filter` without implicit migration. General functions/calls, matching,
+propagation, Application IR, UI/runtime behavior, and additional backends remain later decisions.
+
 ## Artifacts
 
 Compile emits:

@@ -139,6 +139,7 @@ func CompareOrdinalText(left, right string) (int, error) {
 // ValidateFunction checks Core types and operator contracts before either a
 // semantic evaluator or a target backend consumes the function.
 func ValidateFunction(function Function) error {
+	namedPredicate := isNamedPredicateFunction(function)
 	for position, parameter := range function.Parameters {
 		if parameter.Position != position {
 			return fmt.Errorf("parameter %d is not in normalized position order", position)
@@ -153,10 +154,10 @@ func ValidateFunction(function Function) error {
 	if exprContainsRecordConstruction(function.Body) && function.Body.Kind != ExprRecordConstruct {
 		return fmt.Errorf("record construction must be the complete function body")
 	}
-	if exprContainsTextCaseFolded(function.Body) && function.Body.Kind != ExprTextContainsCaseFolded {
+	if exprContainsTextCaseFolded(function.Body) && function.Body.Kind != ExprTextContainsCaseFolded && !namedPredicate {
 		return fmt.Errorf("contains_casefolded must be the complete function body")
 	}
-	if exprContainsTextTrim(function.Body) && function.Body.Kind != ExprTextTrim {
+	if exprContainsTextTrim(function.Body) && function.Body.Kind != ExprTextTrim && !namedPredicate {
 		return fmt.Errorf("trim must be the complete function body")
 	}
 	if exprContainsListFilterContainsCaseFolded(function.Body) && function.Body.Kind != ExprListFilterContainsCaseFolded {
@@ -212,6 +213,12 @@ func ValidateFunction(function Function) error {
 			return err
 		}
 	}
+	listFilterPredicate := function.Body.Kind == ExprListFilterPredicate
+	if listFilterPredicate {
+		if err := validateDirectListFilterPredicateFunction(function); err != nil {
+			return err
+		}
+	}
 	listFilterContainsCaseFolded := function.Body.Kind == ExprListFilterContainsCaseFolded
 	if listFilterContainsCaseFolded {
 		if err := validateDirectListFilterContainsCaseFoldedFunction(function); err != nil {
@@ -241,13 +248,164 @@ func ValidateFunction(function Function) error {
 			return err
 		}
 	}
-	if functionContainsList(function) && !boundedResult && !listAt && !listFindByText && !listFilterByText && !listFilterContainsCaseFolded && !listFilterJoinedContainsCaseFolded && !listSortByOrdinalText && !listSortByOrdinalTexts {
+	if functionContainsList(function) && !boundedResult && !listAt && !listFindByText && !listFilterByText && !listFilterPredicate && !listFilterContainsCaseFolded && !listFilterJoinedContainsCaseFolded && !listSortByOrdinalText && !listSortByOrdinalTexts {
 		if err := validateDirectListFunction(function); err != nil {
 			return err
 		}
 	}
 	if !TypeEqual(function.ReturnType, function.Body.Type) {
 		return fmt.Errorf("function return type does not match its body type")
+	}
+	return nil
+}
+
+func ValidateProgram(program Program) error {
+	functions := make(map[string]Function, len(program.Functions))
+	for _, function := range program.Functions {
+		if err := ValidateFunction(function); err != nil {
+			return fmt.Errorf("function %s: %w", function.Name, err)
+		}
+		key := function.Identity.PackageID + "\x00" + function.Identity.Path
+		if _, exists := functions[key]; exists {
+			return fmt.Errorf("duplicate function semantic identity")
+		}
+		functions[key] = function
+	}
+	for _, function := range program.Functions {
+		filter := function.Body.ListFilterPredicate
+		if function.Body.Kind != ExprListFilterPredicate || filter == nil {
+			continue
+		}
+		if program.LanguageContract != LanguageContractV310 {
+			return fmt.Errorf("function %s named predicate filtering requires language contract %q", function.Name, LanguageContractV310)
+		}
+		target, ok := functions[filter.Predicate.PackageID+"\x00"+filter.Predicate.Path]
+		if !ok {
+			return fmt.Errorf("function %s named predicate target was not found", function.Name)
+		}
+		if !isNamedPredicateFunction(target) || target.Name != filter.PredicateName || semanticOwnerPath(target.Identity.Path) != semanticOwnerPath(function.Identity.Path) || !callableIdentityEqual(filter.Predicate.Callable, target.Identity.Callable) {
+			return fmt.Errorf("function %s named predicate target is invalid", function.Name)
+		}
+		if len(target.Parameters) != len(filter.Arguments)+1 || function.Body.Type.List == nil || !TypeEqual(target.Parameters[0].Type, function.Body.Type.List.Element) {
+			return fmt.Errorf("function %s named predicate signature does not match its filter", function.Name)
+		}
+		for position, argument := range filter.Arguments {
+			if argument == nil || !TypeEqual(argument.Type, target.Parameters[position+1].Type) {
+				return fmt.Errorf("function %s named predicate argument %d type mismatch", function.Name, position+1)
+			}
+		}
+	}
+	return nil
+}
+
+func semanticOwnerPath(path string) string {
+	if position := strings.LastIndexByte(path, '.'); position >= 0 {
+		return path[:position]
+	}
+	return ""
+}
+
+func callableIdentityEqual(left, right *CallableIdentity) bool {
+	if left == nil || right == nil {
+		return left == right
+	}
+	if len(left.Parameters) != len(right.Parameters) || !semanticTypeEqual(left.Returns, right.Returns) {
+		return false
+	}
+	for index := range left.Parameters {
+		if !semanticTypeEqual(left.Parameters[index], right.Parameters[index]) {
+			return false
+		}
+	}
+	return true
+}
+
+func semanticTypeEqual(left, right SemanticType) bool {
+	if left.Kind != right.Kind || left.Primitive != right.Primitive || left.PackageID != right.PackageID || left.Path != right.Path || left.Name != right.Name || len(left.Arguments) != len(right.Arguments) {
+		return false
+	}
+	for index := range left.Arguments {
+		if !semanticTypeEqual(left.Arguments[index], right.Arguments[index]) {
+			return false
+		}
+	}
+	return true
+}
+
+func isNamedPredicateFunction(function Function) bool {
+	if !TypeEqual(function.ReturnType, Type{Kind: TypePrimitive, Primitive: PrimitiveBool}) || len(function.Parameters) < 2 || function.Parameters[0].Type.Kind != TypeRecord {
+		return false
+	}
+	for _, parameter := range function.Parameters[1:] {
+		if parameter.Type.Kind != TypePrimitive {
+			return false
+		}
+	}
+	return validateNamedPredicateExpr(function.Body, 0) == nil
+}
+
+func validateNamedPredicateExpr(expression Expr, rowPosition int) error {
+	switch expression.Kind {
+	case ExprLiteral:
+		return nil
+	case ExprReference:
+		if expression.Parameter == nil || *expression.Parameter == rowPosition {
+			return fmt.Errorf("predicate record parameter requires one-hop field projection")
+		}
+		return nil
+	case ExprFieldProjection:
+		if expression.Field == nil || expression.Field.Receiver == nil || expression.Field.Receiver.Kind != ExprReference || expression.Field.Receiver.Parameter == nil || *expression.Field.Receiver.Parameter != rowPosition || expression.Type.Kind != TypePrimitive {
+			return fmt.Errorf("predicate field projection must be one-hop primitive record data")
+		}
+		return nil
+	case ExprUnary:
+		if expression.Unary == nil || expression.Unary.Operator != OperatorNot || expression.Unary.Operand == nil {
+			return fmt.Errorf("predicate unary expression must be logical not")
+		}
+		return validateNamedPredicateExpr(*expression.Unary.Operand, rowPosition)
+	case ExprBinary:
+		if expression.Binary == nil || expression.Binary.Left == nil || expression.Binary.Right == nil {
+			return fmt.Errorf("predicate binary expression is incomplete")
+		}
+		switch expression.Binary.Operator {
+		case OperatorAnd, OperatorOr, OperatorEqual, OperatorNotEqual, OperatorLessThan, OperatorLessOrEqual, OperatorGreaterThan, OperatorGreaterOrEqual:
+		default:
+			return fmt.Errorf("predicate binary operator is not admitted")
+		}
+		if err := validateNamedPredicateExpr(*expression.Binary.Left, rowPosition); err != nil {
+			return err
+		}
+		return validateNamedPredicateExpr(*expression.Binary.Right, rowPosition)
+	case ExprTextContainsCaseFolded:
+		if expression.TextContains == nil || expression.TextContains.Value == nil || expression.TextContains.Query == nil {
+			return fmt.Errorf("predicate contains_casefolded is incomplete")
+		}
+		if err := validateNamedPredicateExpr(*expression.TextContains.Value, rowPosition); err != nil {
+			return err
+		}
+		return validateNamedPredicateExpr(*expression.TextContains.Query, rowPosition)
+	case ExprTextTrim:
+		if expression.TextTrim == nil || expression.TextTrim.Value == nil {
+			return fmt.Errorf("predicate trim is incomplete")
+		}
+		return validateNamedPredicateExpr(*expression.TextTrim.Value, rowPosition)
+	default:
+		return fmt.Errorf("predicate expression kind %q is not admitted", expression.Kind)
+	}
+}
+
+func validateDirectListFilterPredicateFunction(function Function) error {
+	filter := function.Body.ListFilterPredicate
+	if filter == nil || filter.Values == nil || function.ReturnType.Kind != TypeList || function.ReturnType.List == nil || len(function.Parameters) < 2 || !TypeEqual(function.Parameters[0].Type, function.ReturnType) || filter.Predicate.PackageID == "" || filter.Predicate.Path == "" || filter.Predicate.Callable == nil || filter.PredicateName == "" || len(filter.Arguments) != len(function.Parameters)-1 {
+		return fmt.Errorf("named predicate filter requires one direct record List followed by direct primitive arguments")
+	}
+	if filter.Values.Kind != ExprReference || filter.Values.Parameter == nil || *filter.Values.Parameter != 0 {
+		return fmt.Errorf("named predicate filter values must be direct parameter 0")
+	}
+	for position, argument := range filter.Arguments {
+		if argument == nil || argument.Kind != ExprReference || argument.Parameter == nil || *argument.Parameter != position+1 || !TypeEqual(argument.Type, function.Parameters[position+1].Type) || argument.Type.Kind != TypePrimitive {
+			return fmt.Errorf("named predicate filter argument %d must be a direct matching primitive parameter", position+1)
+		}
 	}
 	return nil
 }
@@ -739,6 +897,25 @@ func validateExpr(expression Expr, parameters []Parameter) error {
 		if !TypeEqual(field.Type, Type{Kind: TypePrimitive, Primitive: PrimitiveString}) {
 			return fmt.Errorf("list filter_by field is not string")
 		}
+	case ExprListFilterPredicate:
+		filter := expression.ListFilterPredicate
+		if filter == nil || filter.Values == nil || expression.Type.Kind != TypeList || expression.Type.List == nil || filter.Predicate.PackageID == "" || filter.Predicate.Path == "" || filter.Predicate.Callable == nil || filter.PredicateName == "" {
+			return fmt.Errorf("named predicate list filter expression is incomplete")
+		}
+		if err := validateExpr(*filter.Values, parameters); err != nil {
+			return fmt.Errorf("named predicate list filter values: %w", err)
+		}
+		if !TypeEqual(filter.Values.Type, expression.Type) {
+			return fmt.Errorf("named predicate list filter values type does not match result")
+		}
+		for position, argument := range filter.Arguments {
+			if argument == nil {
+				return fmt.Errorf("named predicate list filter argument %d is nil", position+1)
+			}
+			if err := validateExpr(*argument, parameters); err != nil {
+				return fmt.Errorf("named predicate list filter argument %d: %w", position+1, err)
+			}
+		}
 	case ExprListFilterContainsCaseFolded:
 		filter := expression.ListFilterContainsCaseFolded
 		if filter == nil || filter.Values == nil || filter.Query == nil || expression.Type.Kind != TypeList || expression.Type.List == nil {
@@ -1024,7 +1201,7 @@ func functionContainsList(function Function) bool {
 
 func exprContainsList(expression Expr) bool {
 	switch expression.Kind {
-	case ExprListEmpty, ExprListSingleton, ExprListCount, ExprListAppend, ExprListAt, ExprListFindByText, ExprListFilterByText, ExprListFilterContainsCaseFolded, ExprListFilterJoinedContainsCaseFolded, ExprListSortByOrdinalText, ExprListSortByOrdinalTexts:
+	case ExprListEmpty, ExprListSingleton, ExprListCount, ExprListAppend, ExprListAt, ExprListFindByText, ExprListFilterByText, ExprListFilterPredicate, ExprListFilterContainsCaseFolded, ExprListFilterJoinedContainsCaseFolded, ExprListSortByOrdinalText, ExprListSortByOrdinalTexts:
 		return true
 	case ExprUnary:
 		return expression.Unary != nil && expression.Unary.Operand != nil && exprContainsList(*expression.Unary.Operand)

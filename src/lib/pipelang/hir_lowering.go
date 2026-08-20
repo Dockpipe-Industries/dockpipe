@@ -20,7 +20,7 @@ func LowerSemanticMethodToHIR(analysis *Analysis, identity SemanticIdentity) (hi
 		return hir.Program{}, hirLoweringError(analysis, Span{}, identity, "typed HIR lowering requires a successful semantic module analysis")
 	}
 	if !isPipeLangSemanticContract(analysis.Modules.LanguageContract()) {
-		return hir.Program{}, hirLoweringError(analysis, analysis.Program.Span, identity, fmt.Sprintf("typed HIR lowering requires a supported post-legacy language contract through %q", PipeLangLanguageContractV300))
+		return hir.Program{}, hirLoweringError(analysis, analysis.Program.Span, identity, fmt.Sprintf("typed HIR lowering requires a supported post-legacy language contract through %q", PipeLangLanguageContractV310))
 	}
 	semantic, ok := analysis.SemanticIDs.LookupIdentity(identity)
 	if !ok || semantic.Kind != SemanticMethod {
@@ -78,7 +78,35 @@ func LowerSemanticMethodToHIR(analysis *Analysis, identity SemanticIdentity) (hi
 		},
 		Name: method.Name, Parameters: parameters, ReturnType: toHIRType(analysis, returnType), ReturnTypeSpan: toHIRSpan(method.ReturnType.Span), Body: body, Span: toHIRSpan(method.Span),
 	}
-	return hir.Program{LanguageContract: string(analysis.Modules.LanguageContract()), CompilerContract: coreir.CompilerContractV1, Functions: []hir.Function{function}}, nil
+	program := hir.Program{LanguageContract: string(analysis.Modules.LanguageContract()), CompilerContract: coreir.CompilerContractV1, Functions: []hir.Function{function}}
+	if filter, ok := method.Body.(*ListFilterPredicateExpr); ok {
+		predicate, err := analysis.checked.resolveNamedRecordPredicate(*method, filter.Predicate, filter.PredicateSpan)
+		if err != nil {
+			return hir.Program{}, err
+		}
+		predicateIdentity, ok := analysis.SemanticIDs.IdentityForSpan(predicate.Span)
+		if !ok {
+			return hir.Program{}, hirLoweringError(analysis, filter.PredicateSpan, identity, fmt.Sprintf("predicate method %q has no semantic identity", filter.Predicate))
+		}
+		predicateProgram, err := LowerSemanticMethodToHIR(analysis, predicateIdentity)
+		if err != nil {
+			return hir.Program{}, err
+		}
+		program.Functions = append(predicateProgram.Functions, program.Functions...)
+	}
+	return program, nil
+}
+
+func methodByIdentity(analysis *Analysis, identity SemanticIdentity) *MethodDecl {
+	if analysis == nil || analysis.SemanticIDs == nil || analysis.Program == nil {
+		return nil
+	}
+	semantic, ok := analysis.SemanticIDs.LookupIdentity(identity)
+	if !ok {
+		return nil
+	}
+	_, method := methodBySpan(analysis.Program, semantic.DeclarationSpan)
+	return method
 }
 
 func lowerMethodBodyToHIR(analysis *Analysis, function SemanticIdentity, expression Expr, bindings map[string]hir.Binding, typeEnvironment map[string]ResolvedTypeRef, returnType ResolvedTypeRef) (hir.Expr, error) {
@@ -148,6 +176,13 @@ func lowerMethodBodyToHIR(analysis *Analysis, function SemanticIdentity, express
 			Binary: &hir.Binary{Operator: hir.OperatorDivide, Left: &left, Right: &right},
 		}, nil
 	}
+	if unary, ok := expression.(*UnaryExpr); ok && contract == PipeLangLanguageContractV310 && unary.Op == "-" {
+		operand, err := lowerExprToHIR(analysis, function, unary.Expr, bindings, typeEnvironment)
+		if err != nil {
+			return hir.Expr{}, err
+		}
+		return hir.Expr{Kind: hir.ExprUnary, Type: toHIRType(analysis, returnType), Span: toHIRSpan(unary.Span), Unary: &hir.Unary{Operator: hir.OperatorNegate, Operand: &operand}}, nil
+	}
 	if unary, ok := expression.(*UnaryExpr); ok && (contract == PipeLangLanguageContractV050 || contract == PipeLangLanguageContractV060 || contract == PipeLangLanguageContractV070 || contract == PipeLangLanguageContractV080 || contract == PipeLangLanguageContractV090 || contract == PipeLangLanguageContractV100 || contract == PipeLangLanguageContractV110 || contract == PipeLangLanguageContractV120 || contract == PipeLangLanguageContractV130 || contract == PipeLangLanguageContractV140 || contract == PipeLangLanguageContractV150 || contract == PipeLangLanguageContractV160 || contract == PipeLangLanguageContractV170 || contract == PipeLangLanguageContractV180 || contract == PipeLangLanguageContractV190 || contract == PipeLangLanguageContractV200 || contract == PipeLangLanguageContractV210 || contract == PipeLangLanguageContractV220 || contract == PipeLangLanguageContractV230 || contract == PipeLangLanguageContractV240 || contract == PipeLangLanguageContractV260 || contract == PipeLangLanguageContractV250 || contract == PipeLangLanguageContractV270 || contract == PipeLangLanguageContractV280 || contract == PipeLangLanguageContractV290 || contract == PipeLangLanguageContractV300) && unary.Op == "-" {
 		operand, err := lowerExprToHIR(analysis, function, unary.Expr, bindings, typeEnvironment)
 		if err != nil {
@@ -181,6 +216,16 @@ func checkedArithmeticHIROperator(contract LanguageContract, binary *BinaryExpr)
 	if binary == nil {
 		return "", false
 	}
+	if contract == PipeLangLanguageContractV310 {
+		switch binary.Op {
+		case "+":
+			return hir.OperatorAdd, true
+		case "-":
+			return hir.OperatorSubtract, true
+		case "*":
+			return hir.OperatorMultiply, true
+		}
+	}
 	switch binary.Op {
 	case "+":
 		return hir.OperatorAdd, true
@@ -210,7 +255,21 @@ func directOrdinalTextOrderingHIRShape(expression Expr, bindings map[string]hir.
 }
 
 func lowerExprToHIR(analysis *Analysis, function SemanticIdentity, expression Expr, bindings map[string]hir.Binding, typeEnvironment map[string]ResolvedTypeRef) (hir.Expr, error) {
-	resolved, err := analysis.checked.inferExprType(expression, typeEnvironment)
+	var resolved ResolvedTypeRef
+	var err error
+	if filter, ok := expression.(*ListFilterPredicateExpr); ok {
+		resolved, err = analysis.checked.inferExprType(filter.Values, typeEnvironment)
+	} else if caller := methodByIdentity(analysis, function); caller != nil && hasNamedRecordPredicateSourceContract(analysis.Modules.LanguageContract()) && len(caller.Params) > 0 {
+		returnType, returnErr := analysis.checked.resolveType(caller.ReturnType)
+		rowType, rowErr := analysis.checked.resolveType(caller.Params[0].Type)
+		if returnErr == nil && rowErr == nil && returnType.Equal(resolvedPrimitive(TypeBool)) && analysis.checked.isResolvedRecordType(rowType) {
+			resolved, err = analysis.checked.inferNamedPredicateExprType(expression, typeEnvironment)
+		} else {
+			resolved, err = analysis.checked.inferExprType(expression, typeEnvironment)
+		}
+	} else {
+		resolved, err = analysis.checked.inferExprType(expression, typeEnvironment)
+	}
 	if err != nil {
 		return hir.Expr{}, err
 	}
@@ -434,6 +493,33 @@ func lowerExprToHIR(analysis *Analysis, function SemanticIdentity, expression Ex
 		}
 		result.Kind = hir.ExprListFilterByText
 		result.ListFilter = &hir.ListFilterByText{Values: &values, Field: toHIRSemanticIdentity(fieldIdentity), Name: node.Field, Position: position, Key: &key}
+	case *ListFilterPredicateExpr:
+		caller := methodByIdentity(analysis, function)
+		if caller == nil {
+			return hir.Expr{}, hirLoweringError(analysis, node.Span, function, "named predicate filter has no owning method")
+		}
+		predicate, err := analysis.checked.resolveNamedRecordPredicate(*caller, node.Predicate, node.PredicateSpan)
+		if err != nil {
+			return hir.Expr{}, err
+		}
+		predicateIdentity, ok := analysis.SemanticIDs.IdentityForSpan(predicate.Span)
+		if !ok {
+			return hir.Expr{}, hirLoweringError(analysis, node.PredicateSpan, function, fmt.Sprintf("predicate method %q has no semantic identity", node.Predicate))
+		}
+		values, err := lowerExprToHIR(analysis, function, node.Values, bindings, typeEnvironment)
+		if err != nil {
+			return hir.Expr{}, err
+		}
+		arguments := make([]*hir.Expr, 0, len(node.Arguments))
+		for _, argument := range node.Arguments {
+			lowered, err := lowerExprToHIR(analysis, function, argument, bindings, typeEnvironment)
+			if err != nil {
+				return hir.Expr{}, err
+			}
+			arguments = append(arguments, &lowered)
+		}
+		result.Kind = hir.ExprListFilterPredicate
+		result.ListFilterPredicate = &hir.ListFilterPredicate{Values: &values, Predicate: toHIRSemanticIdentity(predicateIdentity), PredicateName: predicate.Name, Arguments: arguments}
 	case *ListFilterContainsCaseFoldedExpr:
 		valuesType, err := analysis.checked.inferExprType(node.Values, typeEnvironment)
 		if err != nil {
@@ -581,7 +667,7 @@ func lowerExprToHIR(analysis *Analysis, function SemanticIdentity, expression Ex
 func LowerHIRToCore(program hir.Program) (coreir.Program, error) {
 	core := coreir.Program{LanguageContract: program.LanguageContract, CompilerContract: program.CompilerContract, Functions: make([]coreir.Function, 0, len(program.Functions))}
 	for _, function := range program.Functions {
-		if program.LanguageContract != coreir.LanguageContractV270 && program.LanguageContract != coreir.LanguageContractV280 && program.LanguageContract != coreir.LanguageContractV290 && program.LanguageContract != coreir.LanguageContractV300 {
+		if program.LanguageContract != coreir.LanguageContractV270 && program.LanguageContract != coreir.LanguageContractV280 && program.LanguageContract != coreir.LanguageContractV290 && program.LanguageContract != coreir.LanguageContractV300 && program.LanguageContract != coreir.LanguageContractV310 {
 			if program.LanguageContract != coreir.LanguageContractV130 && program.LanguageContract != coreir.LanguageContractV140 && program.LanguageContract != coreir.LanguageContractV150 && program.LanguageContract != coreir.LanguageContractV160 && program.LanguageContract != coreir.LanguageContractV170 && program.LanguageContract != coreir.LanguageContractV180 && program.LanguageContract != coreir.LanguageContractV190 && program.LanguageContract != coreir.LanguageContractV200 && program.LanguageContract != coreir.LanguageContractV210 && program.LanguageContract != coreir.LanguageContractV220 && program.LanguageContract != coreir.LanguageContractV230 && program.LanguageContract != coreir.LanguageContractV240 && program.LanguageContract != coreir.LanguageContractV250 && program.LanguageContract != coreir.LanguageContractV260 && hirFunctionContainsOptional(function) {
 				return coreir.Program{}, coreLoweringError(function.Span, fmt.Sprintf("primitive Optional HIR requires language contract %q", coreir.LanguageContractV130))
 			}
@@ -625,17 +711,20 @@ func LowerHIRToCore(program hir.Program) (coreir.Program, error) {
 				return coreir.Program{}, coreLoweringError(function.Span, fmt.Sprintf("record-list filter_contains_casefolded HIR requires language contract %q", coreir.LanguageContractV240))
 			}
 		}
-		if program.LanguageContract != coreir.LanguageContractV270 && program.LanguageContract != coreir.LanguageContractV280 && program.LanguageContract != coreir.LanguageContractV290 && program.LanguageContract != coreir.LanguageContractV300 && hirExprContainsListFilterJoinedContainsCaseFolded(function.Body) {
+		if program.LanguageContract != coreir.LanguageContractV270 && program.LanguageContract != coreir.LanguageContractV280 && program.LanguageContract != coreir.LanguageContractV290 && program.LanguageContract != coreir.LanguageContractV300 && program.LanguageContract != coreir.LanguageContractV310 && hirExprContainsListFilterJoinedContainsCaseFolded(function.Body) {
 			return coreir.Program{}, coreLoweringError(function.Span, fmt.Sprintf("record-list filter_joined_contains_casefolded HIR requires language contract %q", coreir.LanguageContractV270))
 		}
-		if program.LanguageContract != coreir.LanguageContractV290 && program.LanguageContract != coreir.LanguageContractV300 && function.Body.Kind == hir.ExprListFilterJoinedContainsCaseFolded && (function.Body.ListFilterJoinedContainsCaseFolded == nil || len(function.Body.ListFilterJoinedContainsCaseFolded.Selectors) != 5) {
+		if program.LanguageContract != coreir.LanguageContractV290 && program.LanguageContract != coreir.LanguageContractV300 && program.LanguageContract != coreir.LanguageContractV310 && function.Body.Kind == hir.ExprListFilterJoinedContainsCaseFolded && (function.Body.ListFilterJoinedContainsCaseFolded == nil || len(function.Body.ListFilterJoinedContainsCaseFolded.Selectors) != 5) {
 			return coreir.Program{}, coreLoweringError(function.Span, "record-list filter_joined_contains_casefolded HIR requires exactly five selectors before language contract v0.29.0")
 		}
-		if program.LanguageContract != coreir.LanguageContractV280 && program.LanguageContract != coreir.LanguageContractV290 && program.LanguageContract != coreir.LanguageContractV300 && hirExprContainsListSortByOrdinalText(function.Body) {
+		if program.LanguageContract != coreir.LanguageContractV280 && program.LanguageContract != coreir.LanguageContractV290 && program.LanguageContract != coreir.LanguageContractV300 && program.LanguageContract != coreir.LanguageContractV310 && hirExprContainsListSortByOrdinalText(function.Body) {
 			return coreir.Program{}, coreLoweringError(function.Span, fmt.Sprintf("record-list sort_by_ordinal HIR requires language contract %q", coreir.LanguageContractV280))
 		}
-		if program.LanguageContract != coreir.LanguageContractV300 && hirExprContainsListSortByOrdinalTexts(function.Body) {
+		if program.LanguageContract != coreir.LanguageContractV300 && program.LanguageContract != coreir.LanguageContractV310 && hirExprContainsListSortByOrdinalTexts(function.Body) {
 			return coreir.Program{}, coreLoweringError(function.Span, fmt.Sprintf("multi-key record-list sort_by_ordinal HIR requires language contract %q", coreir.LanguageContractV300))
+		}
+		if program.LanguageContract != coreir.LanguageContractV310 && function.Body.Kind == hir.ExprListFilterPredicate {
+			return coreir.Program{}, coreLoweringError(function.Span, fmt.Sprintf("named record predicate filter HIR requires language contract %q", coreir.LanguageContractV310))
 		}
 		if function.Identity.PackageID == "" || function.Identity.Path == "" || function.Owner.SymbolID == 0 || function.Owner.Module == "" {
 			return coreir.Program{}, coreLoweringError(function.Span, "typed HIR function is missing bound semantic ownership")
@@ -656,6 +745,9 @@ func LowerHIRToCore(program hir.Program) (coreir.Program, error) {
 			return coreir.Program{}, coreLoweringError(function.Span, err.Error())
 		}
 		core.Functions = append(core.Functions, lowered)
+	}
+	if err := coreir.ValidateProgram(core); err != nil {
+		return coreir.Program{}, coreLoweringError(hir.SourceSpan{}, err.Error())
 	}
 	return core, nil
 }
@@ -757,6 +849,11 @@ func hirExprContainsTextTrim(expression hir.Expr) bool {
 	case hir.ExprListFilterByText:
 		if expression.ListFilter != nil {
 			children = append(children, expression.ListFilter.Values, expression.ListFilter.Key)
+		}
+	case hir.ExprListFilterPredicate:
+		if expression.ListFilterPredicate != nil {
+			children = append(children, expression.ListFilterPredicate.Values)
+			children = append(children, expression.ListFilterPredicate.Arguments...)
 		}
 	case hir.ExprListFilterContainsCaseFolded:
 		if expression.ListFilterContainsCaseFolded != nil {
@@ -868,7 +965,7 @@ func hirExprContainsBoundedValueResult(expression hir.Expr) bool {
 
 func hirExprContainsList(expression hir.Expr) bool {
 	switch expression.Kind {
-	case hir.ExprListEmpty, hir.ExprListSingleton, hir.ExprListCount, hir.ExprListAppend, hir.ExprListAt, hir.ExprListFindByText, hir.ExprListFilterByText, hir.ExprListFilterContainsCaseFolded, hir.ExprListFilterJoinedContainsCaseFolded, hir.ExprListSortByOrdinalText, hir.ExprListSortByOrdinalTexts:
+	case hir.ExprListEmpty, hir.ExprListSingleton, hir.ExprListCount, hir.ExprListAppend, hir.ExprListAt, hir.ExprListFindByText, hir.ExprListFilterByText, hir.ExprListFilterPredicate, hir.ExprListFilterContainsCaseFolded, hir.ExprListFilterJoinedContainsCaseFolded, hir.ExprListSortByOrdinalText, hir.ExprListSortByOrdinalTexts:
 		return true
 	case hir.ExprUnary:
 		return expression.Unary != nil && expression.Unary.Operand != nil && hirExprContainsList(*expression.Unary.Operand)
@@ -1087,6 +1184,11 @@ func hirExprContainsListFilterJoinedContainsCaseFolded(expression hir.Expr) bool
 	case hir.ExprListFilterByText:
 		if expression.ListFilter != nil {
 			children = append(children, expression.ListFilter.Values, expression.ListFilter.Key)
+		}
+	case hir.ExprListFilterPredicate:
+		if expression.ListFilterPredicate != nil {
+			children = append(children, expression.ListFilterPredicate.Values)
+			children = append(children, expression.ListFilterPredicate.Arguments...)
 		}
 	case hir.ExprListFilterContainsCaseFolded:
 		if expression.ListFilterContainsCaseFolded != nil {
@@ -1435,6 +1537,28 @@ func hirExprToCore(expression hir.Expr, parameters []hir.Parameter) (coreir.Expr
 		}
 		result.Kind = coreir.ExprListFilterByText
 		result.ListFilter = &coreir.ListFilterByText{Values: &values, Field: hirIdentityToCore(expression.ListFilter.Field), Name: expression.ListFilter.Name, Position: expression.ListFilter.Position, Key: &key}
+	case hir.ExprListFilterPredicate:
+		filter := expression.ListFilterPredicate
+		if filter == nil || filter.Values == nil || filter.Predicate.PackageID == "" || filter.Predicate.Path == "" {
+			return coreir.Expr{}, coreLoweringError(expression.Span, "typed HIR named record predicate filter expression is incomplete")
+		}
+		values, err := hirExprToCore(*filter.Values, parameters)
+		if err != nil {
+			return coreir.Expr{}, err
+		}
+		arguments := make([]*coreir.Expr, 0, len(filter.Arguments))
+		for _, argument := range filter.Arguments {
+			if argument == nil {
+				return coreir.Expr{}, coreLoweringError(expression.Span, "typed HIR named record predicate filter argument is nil")
+			}
+			lowered, err := hirExprToCore(*argument, parameters)
+			if err != nil {
+				return coreir.Expr{}, err
+			}
+			arguments = append(arguments, &lowered)
+		}
+		result.Kind = coreir.ExprListFilterPredicate
+		result.ListFilterPredicate = &coreir.ListFilterPredicate{Values: &values, Predicate: hirIdentityToCore(filter.Predicate), PredicateName: filter.PredicateName, Arguments: arguments}
 	case hir.ExprListFilterContainsCaseFolded:
 		if expression.ListFilterContainsCaseFolded == nil || expression.ListFilterContainsCaseFolded.Values == nil || expression.ListFilterContainsCaseFolded.Query == nil {
 			return coreir.Expr{}, coreLoweringError(expression.Span, "typed HIR record-list filter_contains_casefolded expression is incomplete")
