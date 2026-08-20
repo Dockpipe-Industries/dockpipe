@@ -37,7 +37,7 @@ func Generate(program coreir.Program) ([]byte, error) {
 	if err := coreir.ValidateProgram(program); err != nil {
 		return nil, &Error{Code: "PLGO0001", Message: err.Error()}
 	}
-	if program.LanguageContract == coreir.LanguageContractV310 || program.LanguageContract == coreir.LanguageContractV320 || program.LanguageContract == coreir.LanguageContractV330 || program.LanguageContract == coreir.LanguageContractV340 || program.LanguageContract == coreir.LanguageContractV350 {
+	if program.LanguageContract == coreir.LanguageContractV310 || program.LanguageContract == coreir.LanguageContractV320 || program.LanguageContract == coreir.LanguageContractV330 || program.LanguageContract == coreir.LanguageContractV340 || program.LanguageContract == coreir.LanguageContractV350 || program.LanguageContract == coreir.LanguageContractV360 {
 		program.LanguageContract = coreir.LanguageContractV300
 	}
 	return generate(program)
@@ -390,6 +390,22 @@ func emitExpr(expr coreir.Expr, parameters []coreir.Parameter, optionalTypeName 
 			return "", fmt.Errorf("unsupported binary operator %q", expr.Binary.Operator)
 		}
 		return "(" + left + " " + op + " " + right + ")", nil
+	case coreir.ExprCall:
+		if expr.Call == nil || expr.Call.TargetName == "" {
+			return "", fmt.Errorf("pure call is incomplete")
+		}
+		arguments := make([]string, 0, len(expr.Call.Arguments))
+		for position, argument := range expr.Call.Arguments {
+			if argument == nil {
+				return "", fmt.Errorf("pure call argument %d is missing", position+1)
+			}
+			emitted, err := emitExpr(*argument, parameters, optionalTypeName)
+			if err != nil {
+				return "", err
+			}
+			arguments = append(arguments, emitted)
+		}
+		return "PipeLang" + exportedIdentifier(expr.Call.TargetName) + "(" + strings.Join(arguments, ", ") + ")", nil
 	case coreir.ExprTextContainsCaseFolded:
 		if expr.TextContains == nil || expr.TextContains.Value == nil || expr.TextContains.Query == nil {
 			return "", fmt.Errorf("contains_casefolded expression is incomplete")

@@ -237,5 +237,12 @@
       "public ${1:string} ${2:Read}(Optional<${1:string}> ${3:value}) => match(${3:value}){ some(${4:item}) => ${4:item}, none => ${5:\"missing\"} };"
     ],
     "description": "Create the exact v0.35.0 exhaustive bounded Optional match."
+  },
+  "PipeLang same-class pure call": {
+    "prefix": "pipe-pure-call",
+    "body": [
+      "public ${1:List<Row>} ${2:Compose}(${1:List<Row>} ${3:values}, string ${4:query}) => ${5:Order}(${6:Filter}(${3:values}, ${4:query}));"
+    ],
+    "description": "Create a v0.36.0 public same-class pure method composition with exact ordered types."
   }
 }

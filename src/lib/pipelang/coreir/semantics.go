@@ -140,6 +140,10 @@ func CompareOrdinalText(left, right string) (int, error) {
 // semantic evaluator or a target backend consumes the function.
 func ValidateFunction(function Function) error {
 	namedPredicate := isNamedPredicateFunction(function)
+	composed := exprContainsCall(function.Body)
+	if composed && !validCallPlacement(function.Body) {
+		return fmt.Errorf("pure calls must be the complete function body or directly nested call arguments")
+	}
 	for position, parameter := range function.Parameters {
 		if parameter.Position != position {
 			return fmt.Errorf("parameter %d is not in normalized position order", position)
@@ -151,110 +155,110 @@ func ValidateFunction(function Function) error {
 	if err := validateType(function.ReturnType); err != nil {
 		return fmt.Errorf("return type: %w", err)
 	}
-	if exprContainsRecordConstruction(function.Body) && function.Body.Kind != ExprRecordConstruct {
+	if !composed && exprContainsRecordConstruction(function.Body) && function.Body.Kind != ExprRecordConstruct {
 		return fmt.Errorf("record construction must be the complete function body")
 	}
-	if exprContainsTextCaseFolded(function.Body) && function.Body.Kind != ExprTextContainsCaseFolded && !namedPredicate {
+	if !composed && exprContainsTextCaseFolded(function.Body) && function.Body.Kind != ExprTextContainsCaseFolded && !namedPredicate {
 		return fmt.Errorf("contains_casefolded must be the complete function body")
 	}
-	if exprContainsTextTrim(function.Body) && function.Body.Kind != ExprTextTrim && !namedPredicate {
+	if !composed && exprContainsTextTrim(function.Body) && function.Body.Kind != ExprTextTrim && !namedPredicate {
 		return fmt.Errorf("trim must be the complete function body")
 	}
-	if exprContainsListFilterContainsCaseFolded(function.Body) && function.Body.Kind != ExprListFilterContainsCaseFolded {
+	if !composed && exprContainsListFilterContainsCaseFolded(function.Body) && function.Body.Kind != ExprListFilterContainsCaseFolded {
 		return fmt.Errorf("filter_contains_casefolded must be the complete function body")
 	}
-	if exprContainsListFilterJoinedContainsCaseFolded(function.Body) && function.Body.Kind != ExprListFilterJoinedContainsCaseFolded {
+	if !composed && exprContainsListFilterJoinedContainsCaseFolded(function.Body) && function.Body.Kind != ExprListFilterJoinedContainsCaseFolded {
 		return fmt.Errorf("filter_joined_contains_casefolded must be the complete function body")
 	}
-	if exprContainsListSortByOrdinalText(function.Body) && function.Body.Kind != ExprListSortByOrdinalText && function.Body.Kind != ExprListSortByOrdinalTexts && function.Body.Kind != ExprListSortByOrdinalDirections {
+	if !composed && exprContainsListSortByOrdinalText(function.Body) && function.Body.Kind != ExprListSortByOrdinalText && function.Body.Kind != ExprListSortByOrdinalTexts && function.Body.Kind != ExprListSortByOrdinalDirections {
 		return fmt.Errorf("sort_by_ordinal must be the complete function body")
 	}
 	if err := validateExpr(function.Body, function.Parameters); err != nil {
 		return err
 	}
-	if exprContainsRecordEquality(function.Body) {
+	if !composed && exprContainsRecordEquality(function.Body) {
 		if err := validateDirectRecordEquality(function); err != nil {
 			return err
 		}
 	}
-	textContainsCaseFolded := function.Body.Kind == ExprTextContainsCaseFolded
+	textContainsCaseFolded := !composed && function.Body.Kind == ExprTextContainsCaseFolded
 	if textContainsCaseFolded {
 		if err := validateDirectTextContainsCaseFoldedFunction(function); err != nil {
 			return err
 		}
 	}
-	textTrim := function.Body.Kind == ExprTextTrim
+	textTrim := !composed && function.Body.Kind == ExprTextTrim
 	if textTrim {
 		if err := validateDirectTextTrimFunction(function); err != nil {
 			return err
 		}
 	}
-	boundedResult := functionContainsBoundedValueResult(function)
+	boundedResult := !composed && functionContainsBoundedValueResult(function)
 	if boundedResult {
 		if err := validateDirectBoundedValueResultFunction(function); err != nil {
 			return err
 		}
 	}
-	listAt := function.Body.Kind == ExprListAt
+	listAt := !composed && function.Body.Kind == ExprListAt
 	if listAt {
 		if err := validateDirectListAtFunction(function); err != nil {
 			return err
 		}
 	}
-	listFindByText := function.Body.Kind == ExprListFindByText
+	listFindByText := !composed && function.Body.Kind == ExprListFindByText
 	if listFindByText {
 		if err := validateDirectListFindByTextFunction(function); err != nil {
 			return err
 		}
 	}
-	listFilterByText := function.Body.Kind == ExprListFilterByText
+	listFilterByText := !composed && function.Body.Kind == ExprListFilterByText
 	if listFilterByText {
 		if err := validateDirectListFilterByTextFunction(function); err != nil {
 			return err
 		}
 	}
-	listFilterPredicate := function.Body.Kind == ExprListFilterPredicate
+	listFilterPredicate := !composed && function.Body.Kind == ExprListFilterPredicate
 	if listFilterPredicate {
 		if err := validateDirectListFilterPredicateFunction(function); err != nil {
 			return err
 		}
 	}
-	listFilterContainsCaseFolded := function.Body.Kind == ExprListFilterContainsCaseFolded
+	listFilterContainsCaseFolded := !composed && function.Body.Kind == ExprListFilterContainsCaseFolded
 	if listFilterContainsCaseFolded {
 		if err := validateDirectListFilterContainsCaseFoldedFunction(function); err != nil {
 			return err
 		}
 	}
-	listFilterJoinedContainsCaseFolded := function.Body.Kind == ExprListFilterJoinedContainsCaseFolded
+	listFilterJoinedContainsCaseFolded := !composed && function.Body.Kind == ExprListFilterJoinedContainsCaseFolded
 	if listFilterJoinedContainsCaseFolded {
 		if err := validateDirectListFilterJoinedContainsCaseFoldedFunction(function); err != nil {
 			return err
 		}
 	}
-	listSortByOrdinalText := function.Body.Kind == ExprListSortByOrdinalText
+	listSortByOrdinalText := !composed && function.Body.Kind == ExprListSortByOrdinalText
 	if listSortByOrdinalText {
 		if err := validateDirectListSortByOrdinalTextFunction(function); err != nil {
 			return err
 		}
 	}
-	listSortByOrdinalTexts := function.Body.Kind == ExprListSortByOrdinalTexts
+	listSortByOrdinalTexts := !composed && function.Body.Kind == ExprListSortByOrdinalTexts
 	if listSortByOrdinalTexts {
 		if err := validateDirectListSortByOrdinalTextsFunction(function); err != nil {
 			return err
 		}
 	}
-	listSortByOrdinalDirections := function.Body.Kind == ExprListSortByOrdinalDirections
+	listSortByOrdinalDirections := !composed && function.Body.Kind == ExprListSortByOrdinalDirections
 	if listSortByOrdinalDirections {
 		if err := validateDirectListSortByOrdinalDirectionsFunction(function); err != nil {
 			return err
 		}
 	}
-	if functionContainsOptional(function) && !boundedResult && !listAt && !listFindByText && !listSortByOrdinalText && !listSortByOrdinalTexts {
+	if !composed && functionContainsOptional(function) && !boundedResult && !listAt && !listFindByText && !listSortByOrdinalText && !listSortByOrdinalTexts {
 		if err := validateDirectOptionalFunction(function); err != nil {
 			return err
 		}
 	}
-	if functionContainsList(function) && !boundedResult && !listAt && !listFindByText && !listFilterByText && !listFilterPredicate && !listFilterContainsCaseFolded && !listFilterJoinedContainsCaseFolded && !listSortByOrdinalText && !listSortByOrdinalTexts && !listSortByOrdinalDirections {
+	if !composed && functionContainsList(function) && !boundedResult && !listAt && !listFindByText && !listFilterByText && !listFilterPredicate && !listFilterContainsCaseFolded && !listFilterJoinedContainsCaseFolded && !listSortByOrdinalText && !listSortByOrdinalTexts && !listSortByOrdinalDirections {
 		if err := validateDirectListFunction(function); err != nil {
 			return err
 		}
@@ -278,6 +282,9 @@ func ValidateProgram(program Program) error {
 		functions[key] = function
 	}
 	for _, function := range program.Functions {
+		if err := validatePureCalls(program.LanguageContract, function, functions); err != nil {
+			return err
+		}
 		filter := function.Body.ListFilterPredicate
 		if function.Body.Kind != ExprListFilterPredicate || filter == nil {
 			continue
@@ -301,7 +308,246 @@ func ValidateProgram(program Program) error {
 			}
 		}
 	}
+	state := make(map[string]uint8, len(functions))
+	var visit func(Function) error
+	visit = func(function Function) error {
+		key := function.Identity.PackageID + "\x00" + function.Identity.Path
+		state[key] = 1
+		var walk func(Expr) error
+		walk = func(expression Expr) error {
+			if expression.Kind == ExprCall && expression.Call != nil {
+				targetKey := expression.Call.Target.PackageID + "\x00" + expression.Call.Target.Path
+				if state[targetKey] == 1 {
+					return fmt.Errorf("function %s pure call graph contains a cycle", function.Name)
+				}
+				if state[targetKey] == 0 {
+					if err := visit(functions[targetKey]); err != nil {
+						return err
+					}
+				}
+			}
+			for _, child := range expressionChildren(expression) {
+				if child != nil {
+					if err := walk(*child); err != nil {
+						return err
+					}
+				}
+			}
+			return nil
+		}
+		if err := walk(function.Body); err != nil {
+			return err
+		}
+		state[key] = 2
+		return nil
+	}
+	for _, function := range program.Functions {
+		key := function.Identity.PackageID + "\x00" + function.Identity.Path
+		if state[key] == 0 {
+			if err := visit(function); err != nil {
+				return err
+			}
+		}
+	}
 	return nil
+}
+
+func validatePureCalls(contract string, function Function, functions map[string]Function) error {
+	var walk func(Expr) error
+	walk = func(expression Expr) error {
+		if expression.Kind == ExprCall {
+			if contract != LanguageContractV360 {
+				return fmt.Errorf("function %s pure calls require language contract %q", function.Name, LanguageContractV360)
+			}
+			call := expression.Call
+			if call == nil || call.TargetName == "" || call.Target.PackageID == "" || call.Target.Path == "" || call.Target.Callable == nil {
+				return fmt.Errorf("function %s pure call is incomplete", function.Name)
+			}
+			target, ok := functions[call.Target.PackageID+"\x00"+call.Target.Path]
+			if !ok {
+				return fmt.Errorf("function %s pure call target was not found", function.Name)
+			}
+			if target.Name != call.TargetName || target.Identity.PackageID != function.Identity.PackageID || semanticOwnerPath(target.Identity.Path) != semanticOwnerPath(function.Identity.Path) || !callableIdentityEqual(call.Target.Callable, target.Identity.Callable) {
+				return fmt.Errorf("function %s pure call target is invalid", function.Name)
+			}
+			if len(call.Arguments) != len(target.Parameters) {
+				return fmt.Errorf("function %s pure call argument count mismatch", function.Name)
+			}
+			for position, argument := range call.Arguments {
+				if argument == nil || !TypeEqual(argument.Type, target.Parameters[position].Type) {
+					return fmt.Errorf("function %s pure call argument %d type mismatch", function.Name, position+1)
+				}
+			}
+			if !TypeEqual(expression.Type, target.ReturnType) {
+				return fmt.Errorf("function %s pure call result type mismatch", function.Name)
+			}
+		}
+		for _, child := range expressionChildren(expression) {
+			if child != nil {
+				if err := walk(*child); err != nil {
+					return err
+				}
+			}
+		}
+		return nil
+	}
+	return walk(function.Body)
+}
+
+func exprContainsCall(expression Expr) bool {
+	if expression.Kind == ExprCall {
+		return true
+	}
+	for _, child := range expressionChildren(expression) {
+		if child != nil && exprContainsCall(*child) {
+			return true
+		}
+	}
+	return false
+}
+
+func validCallPlacement(expression Expr) bool {
+	if !exprContainsCall(expression) {
+		return true
+	}
+	if expression.Kind != ExprCall || expression.Call == nil {
+		return false
+	}
+	for _, argument := range expression.Call.Arguments {
+		if argument == nil || !validCallPlacement(*argument) {
+			return false
+		}
+	}
+	return true
+}
+
+func expressionChildren(expression Expr) []*Expr {
+	children := []*Expr{}
+	switch expression.Kind {
+	case ExprUnary:
+		if expression.Unary != nil {
+			children = append(children, expression.Unary.Operand)
+		}
+	case ExprBinary:
+		if expression.Binary != nil {
+			children = append(children, expression.Binary.Left, expression.Binary.Right)
+		}
+	case ExprCall:
+		if expression.Call != nil {
+			children = append(children, expression.Call.Arguments...)
+		}
+	case ExprTextContainsCaseFolded:
+		if expression.TextContains != nil {
+			children = append(children, expression.TextContains.Value, expression.TextContains.Query)
+		}
+	case ExprTextTrim:
+		if expression.TextTrim != nil {
+			children = append(children, expression.TextTrim.Value)
+		}
+	case ExprFieldProjection:
+		if expression.Field != nil {
+			children = append(children, expression.Field.Receiver)
+		}
+	case ExprRecordConstruct:
+		if expression.Record != nil {
+			for _, field := range expression.Record.Fields {
+				children = append(children, field.Value)
+			}
+		}
+	case ExprOptionalSome:
+		if expression.Some != nil {
+			children = append(children, expression.Some.Value)
+		}
+	case ExprOptionalHasValue:
+		if expression.HasValue != nil {
+			children = append(children, expression.HasValue.Value)
+		}
+	case ExprOptionalValueOr:
+		if expression.ValueOr != nil {
+			children = append(children, expression.ValueOr.Value, expression.ValueOr.Fallback)
+		}
+	case ExprPropagate:
+		if expression.Propagate != nil {
+			children = append(children, expression.Propagate.Value)
+		}
+	case ExprMatch:
+		if expression.Match != nil {
+			children = append(children, expression.Match.Value)
+			for _, arm := range expression.Match.Arms {
+				children = append(children, arm.Body)
+			}
+		}
+	case ExprListSingleton:
+		if expression.ListOne != nil {
+			children = append(children, expression.ListOne.Value)
+		}
+	case ExprListCount:
+		if expression.ListCount != nil {
+			children = append(children, expression.ListCount.Value)
+		}
+	case ExprListAppend:
+		if expression.ListAppend != nil {
+			children = append(children, expression.ListAppend.Values, expression.ListAppend.Value)
+		}
+	case ExprListAt:
+		if expression.ListAt != nil {
+			children = append(children, expression.ListAt.Values, expression.ListAt.Index)
+		}
+	case ExprListFindByText:
+		if expression.ListFind != nil {
+			children = append(children, expression.ListFind.Values, expression.ListFind.Key)
+		}
+	case ExprListFilterByText:
+		if expression.ListFilter != nil {
+			children = append(children, expression.ListFilter.Values, expression.ListFilter.Key)
+		}
+	case ExprListFilterPredicate:
+		if expression.ListFilterPredicate != nil {
+			children = append(children, expression.ListFilterPredicate.Values)
+			children = append(children, expression.ListFilterPredicate.Arguments...)
+		}
+	case ExprListFilterContainsCaseFolded:
+		if expression.ListFilterContainsCaseFolded != nil {
+			children = append(children, expression.ListFilterContainsCaseFolded.Values, expression.ListFilterContainsCaseFolded.Query)
+		}
+	case ExprListFilterJoinedContainsCaseFolded:
+		if expression.ListFilterJoinedContainsCaseFolded != nil {
+			children = append(children, expression.ListFilterJoinedContainsCaseFolded.Values, expression.ListFilterJoinedContainsCaseFolded.Query)
+		}
+	case ExprListSortByOrdinalText:
+		if expression.ListSortByOrdinalText != nil {
+			children = append(children, expression.ListSortByOrdinalText.Values)
+		}
+	case ExprListSortByOrdinalTexts:
+		if expression.ListSortByOrdinalTexts != nil {
+			children = append(children, expression.ListSortByOrdinalTexts.Values)
+		}
+	case ExprListSortByOrdinalDirections:
+		if expression.ListSortByOrdinalDirections != nil {
+			children = append(children, expression.ListSortByOrdinalDirections.Values)
+		}
+	case ExprResultOK:
+		if expression.ResultOK != nil {
+			children = append(children, expression.ResultOK.Value)
+		}
+	case ExprResultErr:
+		if expression.ResultErr != nil {
+			children = append(children, expression.ResultErr.Error)
+		}
+	case ExprResultIsOK:
+		if expression.ResultIsOK != nil {
+			children = append(children, expression.ResultIsOK.Value)
+		}
+	case ExprResultSuccessOr:
+		if expression.SuccessOr != nil {
+			children = append(children, expression.SuccessOr.Value, expression.SuccessOr.Fallback)
+		}
+	case ExprResultFailureOr:
+		if expression.FailureOr != nil {
+			children = append(children, expression.FailureOr.Value, expression.FailureOr.Fallback)
+		}
+	}
+	return children
 }
 
 func semanticOwnerPath(path string) string {
@@ -328,7 +574,7 @@ func callableIdentityEqual(left, right *CallableIdentity) bool {
 
 func isV310OrLaterContract(contract string) bool {
 	switch contract {
-	case LanguageContractV310, LanguageContractV320, LanguageContractV330, LanguageContractV340, LanguageContractV350:
+	case LanguageContractV310, LanguageContractV320, LanguageContractV330, LanguageContractV340, LanguageContractV350, LanguageContractV360:
 		return true
 	default:
 		return false
@@ -643,6 +889,18 @@ func validateExpr(expression Expr, parameters []Parameter) error {
 			}
 		default:
 			return fmt.Errorf("unsupported binary operator %q", operator)
+		}
+	case ExprCall:
+		if expression.Call == nil || expression.Call.TargetName == "" || expression.Call.Target.PackageID == "" || expression.Call.Target.Path == "" || expression.Call.Target.Callable == nil {
+			return fmt.Errorf("pure call is incomplete")
+		}
+		for position, argument := range expression.Call.Arguments {
+			if argument == nil {
+				return fmt.Errorf("pure call argument %d is missing", position+1)
+			}
+			if err := validateExpr(*argument, parameters); err != nil {
+				return fmt.Errorf("pure call argument %d: %w", position+1, err)
+			}
 		}
 	case ExprTextContainsCaseFolded:
 		text := Type{Kind: TypePrimitive, Primitive: PrimitiveString}

@@ -508,7 +508,7 @@ func (p *parser) parsePostfix() (Expr, error) {
 	if !hasRecordFieldProjectionSourceContract(p.languageContract) {
 		return expr, nil
 	}
-	for p.peek().kind == tokDot || ((p.languageContract == PipeLangLanguageContractV330 || p.languageContract == PipeLangLanguageContractV340 || p.languageContract == PipeLangLanguageContractV350) && p.peek().kind == tokLBracket) {
+	for p.peek().kind == tokDot || ((p.languageContract == PipeLangLanguageContractV330 || p.languageContract == PipeLangLanguageContractV340 || p.languageContract == PipeLangLanguageContractV350 || p.languageContract == PipeLangLanguageContractV360) && p.peek().kind == tokLBracket) {
 		if p.peek().kind == tokLBracket {
 			p.next()
 			index, err := p.parseExpr(1)
@@ -655,6 +655,9 @@ func (p *parser) parsePrimary() (Expr, error) {
 				return p.parseResultFailureOr()
 			}
 		}
+		if hasPureCallSourceContract(p.languageContract) && p.peekAt(1).kind == tokLParen {
+			return p.parsePureCall()
+		}
 		p.next()
 		return &IdentExpr{Name: t.lit, Span: t.span}, nil
 	case tokLParen:
@@ -672,6 +675,33 @@ func (p *parser) parsePrimary() (Expr, error) {
 	default:
 		return nil, p.errf("unexpected token %q in expression", t.lit)
 	}
+}
+
+func (p *parser) parsePureCall() (Expr, error) {
+	name, err := p.expect(tokIdent)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := p.expect(tokLParen); err != nil {
+		return nil, err
+	}
+	arguments := []Expr{}
+	for p.peek().kind != tokRParen {
+		argument, err := p.parseExpr(1)
+		if err != nil {
+			return nil, err
+		}
+		arguments = append(arguments, argument)
+		if p.peek().kind != tokComma {
+			break
+		}
+		p.next()
+	}
+	end, err := p.expect(tokRParen)
+	if err != nil {
+		return nil, err
+	}
+	return &CallExpr{Name: name.lit, NameSpan: name.span, Arguments: arguments, Span: mergeSpans(name.span, end.span)}, nil
 }
 
 func (p *parser) parseMatch() (Expr, error) {
@@ -1297,7 +1327,7 @@ func (p *parser) parseListSortByOrdinal() (Expr, error) {
 	if err != nil {
 		return nil, err
 	}
-	if p.languageContract == PipeLangLanguageContractV320 || p.languageContract == PipeLangLanguageContractV330 || p.languageContract == PipeLangLanguageContractV340 || p.languageContract == PipeLangLanguageContractV350 {
+	if p.languageContract == PipeLangLanguageContractV320 || p.languageContract == PipeLangLanguageContractV330 || p.languageContract == PipeLangLanguageContractV340 || p.languageContract == PipeLangLanguageContractV350 || p.languageContract == PipeLangLanguageContractV360 {
 		if _, err := p.expect(tokComma); err != nil {
 			return nil, err
 		}
@@ -1596,6 +1626,14 @@ func (p *parser) peek() token {
 		return token{kind: tokEOF, span: Span{File: p.file.ID, Start: len(p.file.Text), End: len(p.file.Text)}}
 	}
 	return p.toks[p.idx]
+}
+
+func (p *parser) peekAt(offset int) token {
+	position := p.idx + offset
+	if position < 0 || position >= len(p.toks) {
+		return token{kind: tokEOF, span: Span{File: p.file.ID, Start: len(p.file.Text), End: len(p.file.Text)}}
+	}
+	return p.toks[position]
 }
 
 func (p *parser) next() token {

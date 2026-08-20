@@ -6,8 +6,8 @@ The `vNext` foundation decision packet in this record is **accepted** as of 2026
 fixes semantics, compiler boundaries, bootstrap stages, compatibility, and implementation order;
 examples and fixtures remain non-normative and accept no production syntax. Separately authorized
 bounded objectives have completed implementation-order steps 1 through 6, step-7 slices 7a
-through 7ae, and the first bounded Step-8 function seam at step 8a. The current explicit language
-contract is `v0.35.0`; the separately versioned read-only projection is
+through 7ae, and bounded Step-8 function seams 8a and 8b. The current explicit language
+contract is `v0.36.0`; the separately versioned read-only projection is
 `dockpipe.application.v1`; the frozen `v0.0.0.1` lane remains unchanged. This record does not by itself
 authorize another language slice.
 

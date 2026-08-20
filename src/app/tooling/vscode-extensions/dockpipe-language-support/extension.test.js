@@ -269,3 +269,8 @@ assert(pipeLangSnippets["PipeLang Record List Multi-Key Ordinal Sort"].body.some
 assert.strictEqual(pipeLangSnippets["PipeLang Named Record Predicate Filter"].prefix, "pipe-record-list-filter-predicate");
 assert(pipeLangSnippets["PipeLang Named Record Predicate Filter"].description.includes("v0.31.0"));
 assert(pipeLangSnippets["PipeLang Named Record Predicate Filter"].body.some((line) => line.includes("filter(")));
+assert(pipeLangReadme.includes("`v0.36.0`"));
+assert(pipeLangReadme.includes("same-class pure"));
+assert.strictEqual(pipeLangSnippets["PipeLang same-class pure call"].prefix, "pipe-pure-call");
+assert(pipeLangSnippets["PipeLang same-class pure call"].description.includes("v0.36.0"));
+assert(pipeLangSnippets["PipeLang same-class pure call"].body.some((line) => line.includes("Order") && line.includes("Filter")));

@@ -307,6 +307,36 @@ editor, and compatibility slice. Earlier source remains exact. Guards, destructu
 open unions, fallthrough, blocks, effects, implicit conversion, target errors, actions, and
 Application IR are excluded.
 
+## Accepted v0.36.0 boundary — same-class pure calls
+
+`v0.36.0` adds only `Method(expression, ...)` inside a public expression-bodied method. The target
+must be one uniquely named public method declared by the same class. Semantic analysis resolves the
+target before lowering, requires exact ordered argument types and the exact declared return type,
+and rejects private callers or targets, missing targets, arity/type mismatches, direct recursion,
+and indirect cycles. Every call participant is closed over parameters and match-arm bindings rather
+than class-owned state. Calls may nest, and arguments may use expressions already admitted by the
+language contract. `PL3033` is the deterministic call-cycle diagnostic.
+
+Typed HIR and target-neutral Core carry an explicit `call` node with the existing callable semantic
+identity, source target name, and ordered typed operands. Lowering closes the transitive call graph
+and includes each dependency once. Core independently validates target presence, same-class owner,
+exact callable identity and signature, and acyclicity. The evaluator validates and copies argument
+values into isolated call frames. The deterministic Go backend consumes only validated Core and
+emits calls without resolving or inferring source semantics.
+
+TASK-020's Docker observability fixture proves
+`OrderContainers(FilterContainers(rows, query))` while the separately versioned
+`dockpipe.application.v1` projection keeps its existing explicit filter/order bindings. The public
+`pipelang.semantic.v1`, `pipelang.compiler.v1`, and `dockpipe.application.v1` schema shapes remain
+unchanged; only their recorded language-contract value advances. All 45 frozen legacy sources
+remain exact.
+
+This slice excludes cross-class or cross-module calls, private callers or targets, overloads,
+generics, function values, lambdas, recursion, blocks, locals, branches, loops, effects,
+entrypoints, async behavior, Application IR semantics, runtime behavior, and target-specific
+semantics. Any next language seam requires another source-backed founder decision and separate
+implementation approval.
+
 ## Accepted first Application IR boundary — `dockpipe.application.v1`
 
 The first target-neutral read-only Application IR consumes only a canonical public

@@ -48,7 +48,7 @@ func Evaluate(function coreir.Function, arguments []Value) (Outcome, error) {
 			return Outcome{}, fmt.Errorf("argument %d: %w", index, err)
 		}
 	}
-	outcome, err := evalExpr(function.Body, arguments)
+	outcome, err := evalExprWithProgram(function.Body, arguments, nil)
 	if err == nil && !outcome.OK && outcome.Failure != nil && outcome.Failure.Type.Kind == coreir.TypeOptional {
 		return Outcome{OK: true, Value: cloneOptionalValue(*outcome.Failure)}, nil
 	}
@@ -82,21 +82,21 @@ func EvaluateProgram(program coreir.Program, identity coreir.SemanticIdentity, a
 			return Outcome{}, fmt.Errorf("argument %d: %w", index, err)
 		}
 	}
-	return evalProgramExpr(selected.Body, arguments, functions)
+	return evalExprWithProgram(selected.Body, arguments, functions)
 }
 
 func evalProgramExpr(expression coreir.Expr, arguments []Value, functions map[string]coreir.Function) (Outcome, error) {
 	if expression.Kind != coreir.ExprListFilterPredicate {
-		return evalExpr(expression, arguments)
+		return evalExprWithProgram(expression, arguments, functions)
 	}
 	filter := expression.ListFilterPredicate
-	values, err := evalExpr(*filter.Values, arguments)
+	values, err := evalExprWithProgram(*filter.Values, arguments, functions)
 	if err != nil || !values.OK {
 		return values, err
 	}
 	evaluated := make([]Value, len(filter.Arguments))
 	for index, argument := range filter.Arguments {
-		value, err := evalExpr(*argument, arguments)
+		value, err := evalExprWithProgram(*argument, arguments, functions)
 		if err != nil || !value.OK {
 			return value, err
 		}
@@ -121,7 +121,7 @@ func evalProgramExpr(expression coreir.Expr, arguments []Value, functions map[st
 		for _, value := range evaluated {
 			predicateArguments = append(predicateArguments, cloneValue(value))
 		}
-		outcome, err := evalExpr(target.Body, predicateArguments)
+		outcome, err := evalExprWithProgram(target.Body, predicateArguments, functions)
 		if err != nil {
 			return Outcome{}, fmt.Errorf("named predicate %s: %w", target.Name, err)
 		}
@@ -138,7 +138,7 @@ func evalProgramExpr(expression coreir.Expr, arguments []Value, functions map[st
 	return Outcome{OK: true, Value: cloneListValue(filtered)}, nil
 }
 
-func evalExpr(expression coreir.Expr, arguments []Value) (Outcome, error) {
+func evalExprWithProgram(expression coreir.Expr, arguments []Value, functions map[string]coreir.Function) (Outcome, error) {
 	switch expression.Kind {
 	case coreir.ExprLiteral:
 		literal := expression.Literal
@@ -162,7 +162,7 @@ func evalExpr(expression coreir.Expr, arguments []Value) (Outcome, error) {
 		}
 		return Outcome{OK: true, Value: arguments[*expression.Parameter]}, nil
 	case coreir.ExprUnary:
-		operand, err := evalExpr(*expression.Unary.Operand, arguments)
+		operand, err := evalExprWithProgram(*expression.Unary.Operand, arguments, functions)
 		if err != nil || !operand.OK {
 			return operand, err
 		}
@@ -176,7 +176,7 @@ func evalExpr(expression coreir.Expr, arguments []Value) (Outcome, error) {
 			return Outcome{}, fmt.Errorf("unsupported unary operator %q", expression.Unary.Operator)
 		}
 	case coreir.ExprBinary:
-		left, err := evalExpr(*expression.Binary.Left, arguments)
+		left, err := evalExprWithProgram(*expression.Binary.Left, arguments, functions)
 		if err != nil || !left.OK {
 			return left, err
 		}
@@ -186,7 +186,7 @@ func evalExpr(expression coreir.Expr, arguments []Value) (Outcome, error) {
 		if expression.Binary.Operator == coreir.OperatorOr && left.Value.Bool {
 			return Outcome{OK: true, Value: Value{Type: expression.Type, Bool: true}}, nil
 		}
-		right, err := evalExpr(*expression.Binary.Right, arguments)
+		right, err := evalExprWithProgram(*expression.Binary.Right, arguments, functions)
 		if err != nil || !right.OK {
 			return right, err
 		}
@@ -219,14 +219,50 @@ func evalExpr(expression coreir.Expr, arguments []Value) (Outcome, error) {
 		default:
 			return Outcome{}, fmt.Errorf("operator %q is outside the conformance evaluator", expression.Binary.Operator)
 		}
+	case coreir.ExprCall:
+		if functions == nil || expression.Call == nil {
+			return Outcome{}, fmt.Errorf("pure call requires a validated Core program")
+		}
+		target, ok := functions[expression.Call.Target.PackageID+"\x00"+expression.Call.Target.Path]
+		if !ok {
+			return Outcome{}, fmt.Errorf("pure call target was not found")
+		}
+		callArguments := make([]Value, len(expression.Call.Arguments))
+		for position, argument := range expression.Call.Arguments {
+			outcome, err := evalExprWithProgram(*argument, arguments, functions)
+			if err != nil || !outcome.OK {
+				return outcome, err
+			}
+			if err := validateValue(outcome.Value); err != nil {
+				return Outcome{}, fmt.Errorf("pure call argument %d: %w", position+1, err)
+			}
+			callArguments[position] = cloneValue(outcome.Value)
+		}
+		outcome, err := evalExprWithProgram(target.Body, callArguments, functions)
+		if err != nil {
+			return Outcome{}, fmt.Errorf("pure call %s: %w", target.Name, err)
+		}
+		if outcome.OK {
+			if err := validateValue(outcome.Value); err != nil {
+				return Outcome{}, fmt.Errorf("pure call %s result: %w", target.Name, err)
+			}
+		} else if outcome.Failure != nil {
+			if err := validateValue(*outcome.Failure); err != nil {
+				return Outcome{}, fmt.Errorf("pure call %s failure: %w", target.Name, err)
+			}
+		}
+		return cloneOutcome(outcome), nil
 	case coreir.ExprListFilterPredicate:
-		return Outcome{}, fmt.Errorf("named predicate filtering requires EvaluateProgram")
+		if functions == nil {
+			return Outcome{}, fmt.Errorf("named predicate filtering requires EvaluateProgram")
+		}
+		return evalProgramExpr(expression, arguments, functions)
 	case coreir.ExprTextContainsCaseFolded:
-		value, err := evalExpr(*expression.TextContains.Value, arguments)
+		value, err := evalExprWithProgram(*expression.TextContains.Value, arguments, functions)
 		if err != nil || !value.OK {
 			return value, err
 		}
-		query, err := evalExpr(*expression.TextContains.Query, arguments)
+		query, err := evalExprWithProgram(*expression.TextContains.Query, arguments, functions)
 		if err != nil || !query.OK {
 			return query, err
 		}
@@ -236,7 +272,7 @@ func evalExpr(expression coreir.Expr, arguments []Value) (Outcome, error) {
 		}
 		return Outcome{OK: true, Value: Value{Type: expression.Type, Bool: contains}}, nil
 	case coreir.ExprTextTrim:
-		value, err := evalExpr(*expression.TextTrim.Value, arguments)
+		value, err := evalExprWithProgram(*expression.TextTrim.Value, arguments, functions)
 		if err != nil || !value.OK {
 			return value, err
 		}
@@ -246,7 +282,7 @@ func evalExpr(expression coreir.Expr, arguments []Value) (Outcome, error) {
 		}
 		return Outcome{OK: true, Value: Value{Type: expression.Type, String: trimmed}}, nil
 	case coreir.ExprFieldProjection:
-		receiver, err := evalExpr(*expression.Field.Receiver, arguments)
+		receiver, err := evalExprWithProgram(*expression.Field.Receiver, arguments, functions)
 		if err != nil || !receiver.OK {
 			return receiver, err
 		}
@@ -258,7 +294,7 @@ func evalExpr(expression coreir.Expr, arguments []Value) (Outcome, error) {
 	case coreir.ExprRecordConstruct:
 		fields := make([]Value, 0, len(expression.Record.Fields))
 		for position, initialized := range expression.Record.Fields {
-			value, err := evalExpr(*initialized.Value, arguments)
+			value, err := evalExprWithProgram(*initialized.Value, arguments, functions)
 			if err != nil {
 				return Outcome{}, fmt.Errorf("record construction field %d: %w", position, err)
 			}
@@ -273,7 +309,7 @@ func evalExpr(expression coreir.Expr, arguments []Value) (Outcome, error) {
 		}
 		return Outcome{OK: true, Value: cloneRecordValue(value)}, nil
 	case coreir.ExprOptionalSome:
-		value, err := evalExpr(*expression.Some.Value, arguments)
+		value, err := evalExprWithProgram(*expression.Some.Value, arguments, functions)
 		if err != nil || !value.OK {
 			return value, err
 		}
@@ -290,7 +326,7 @@ func evalExpr(expression coreir.Expr, arguments []Value) (Outcome, error) {
 		}
 		return Outcome{OK: true, Value: optional}, nil
 	case coreir.ExprOptionalHasValue:
-		value, err := evalExpr(*expression.HasValue.Value, arguments)
+		value, err := evalExprWithProgram(*expression.HasValue.Value, arguments, functions)
 		if err != nil || !value.OK {
 			return value, err
 		}
@@ -299,11 +335,11 @@ func evalExpr(expression coreir.Expr, arguments []Value) (Outcome, error) {
 		}
 		return Outcome{OK: true, Value: Value{Type: expression.Type, Bool: value.Value.Optional.Present}}, nil
 	case coreir.ExprOptionalValueOr:
-		value, err := evalExpr(*expression.ValueOr.Value, arguments)
+		value, err := evalExprWithProgram(*expression.ValueOr.Value, arguments, functions)
 		if err != nil || !value.OK {
 			return value, err
 		}
-		fallback, err := evalExpr(*expression.ValueOr.Fallback, arguments)
+		fallback, err := evalExprWithProgram(*expression.ValueOr.Fallback, arguments, functions)
 		if err != nil || !fallback.OK {
 			return fallback, err
 		}
@@ -322,7 +358,7 @@ func evalExpr(expression coreir.Expr, arguments []Value) (Outcome, error) {
 		}
 		return Outcome{OK: true, Value: value}, nil
 	case coreir.ExprListSingleton:
-		element, err := evalExpr(*expression.ListOne.Value, arguments)
+		element, err := evalExprWithProgram(*expression.ListOne.Value, arguments, functions)
 		if err != nil || !element.OK {
 			return element, err
 		}
@@ -332,7 +368,7 @@ func evalExpr(expression coreir.Expr, arguments []Value) (Outcome, error) {
 		}
 		return Outcome{OK: true, Value: cloneListValue(value)}, nil
 	case coreir.ExprListCount:
-		value, err := evalExpr(*expression.ListCount.Value, arguments)
+		value, err := evalExprWithProgram(*expression.ListCount.Value, arguments, functions)
 		if err != nil || !value.OK {
 			return value, err
 		}
@@ -341,11 +377,11 @@ func evalExpr(expression coreir.Expr, arguments []Value) (Outcome, error) {
 		}
 		return Outcome{OK: true, Value: Value{Type: expression.Type, Int: int64(len(value.Value.List))}}, nil
 	case coreir.ExprListAppend:
-		values, err := evalExpr(*expression.ListAppend.Values, arguments)
+		values, err := evalExprWithProgram(*expression.ListAppend.Values, arguments, functions)
 		if err != nil || !values.OK {
 			return values, err
 		}
-		value, err := evalExpr(*expression.ListAppend.Value, arguments)
+		value, err := evalExprWithProgram(*expression.ListAppend.Value, arguments, functions)
 		if err != nil || !value.OK {
 			return value, err
 		}
@@ -356,11 +392,11 @@ func evalExpr(expression coreir.Expr, arguments []Value) (Outcome, error) {
 		}
 		return Outcome{OK: true, Value: result}, nil
 	case coreir.ExprListAt:
-		values, err := evalExpr(*expression.ListAt.Values, arguments)
+		values, err := evalExprWithProgram(*expression.ListAt.Values, arguments, functions)
 		if err != nil || !values.OK {
 			return values, err
 		}
-		index, err := evalExpr(*expression.ListAt.Index, arguments)
+		index, err := evalExprWithProgram(*expression.ListAt.Index, arguments, functions)
 		if err != nil || !index.OK {
 			return index, err
 		}
@@ -378,11 +414,11 @@ func evalExpr(expression coreir.Expr, arguments []Value) (Outcome, error) {
 		}
 		return Outcome{OK: true, Value: cloneOptionalValue(optional)}, nil
 	case coreir.ExprListFindByText:
-		values, err := evalExpr(*expression.ListFind.Values, arguments)
+		values, err := evalExprWithProgram(*expression.ListFind.Values, arguments, functions)
 		if err != nil || !values.OK {
 			return values, err
 		}
-		key, err := evalExpr(*expression.ListFind.Key, arguments)
+		key, err := evalExprWithProgram(*expression.ListFind.Key, arguments, functions)
 		if err != nil || !key.OK {
 			return key, err
 		}
@@ -410,11 +446,11 @@ func evalExpr(expression coreir.Expr, arguments []Value) (Outcome, error) {
 		}
 		return Outcome{OK: true, Value: cloneOptionalValue(optional)}, nil
 	case coreir.ExprListFilterByText:
-		values, err := evalExpr(*expression.ListFilter.Values, arguments)
+		values, err := evalExprWithProgram(*expression.ListFilter.Values, arguments, functions)
 		if err != nil || !values.OK {
 			return values, err
 		}
-		key, err := evalExpr(*expression.ListFilter.Key, arguments)
+		key, err := evalExprWithProgram(*expression.ListFilter.Key, arguments, functions)
 		if err != nil || !key.OK {
 			return key, err
 		}
@@ -440,11 +476,11 @@ func evalExpr(expression coreir.Expr, arguments []Value) (Outcome, error) {
 		return Outcome{OK: true, Value: cloneListValue(filtered)}, nil
 	case coreir.ExprListFilterContainsCaseFolded:
 		filter := expression.ListFilterContainsCaseFolded
-		values, err := evalExpr(*filter.Values, arguments)
+		values, err := evalExprWithProgram(*filter.Values, arguments, functions)
 		if err != nil || !values.OK {
 			return values, err
 		}
-		query, err := evalExpr(*filter.Query, arguments)
+		query, err := evalExprWithProgram(*filter.Query, arguments, functions)
 		if err != nil || !query.OK {
 			return query, err
 		}
@@ -470,11 +506,11 @@ func evalExpr(expression coreir.Expr, arguments []Value) (Outcome, error) {
 		return Outcome{OK: true, Value: cloneListValue(filtered)}, nil
 	case coreir.ExprListFilterJoinedContainsCaseFolded:
 		filter := expression.ListFilterJoinedContainsCaseFolded
-		values, err := evalExpr(*filter.Values, arguments)
+		values, err := evalExprWithProgram(*filter.Values, arguments, functions)
 		if err != nil || !values.OK {
 			return values, err
 		}
-		query, err := evalExpr(*filter.Query, arguments)
+		query, err := evalExprWithProgram(*filter.Query, arguments, functions)
 		if err != nil || !query.OK {
 			return query, err
 		}
@@ -506,7 +542,7 @@ func evalExpr(expression coreir.Expr, arguments []Value) (Outcome, error) {
 		return Outcome{OK: true, Value: cloneListValue(filtered)}, nil
 	case coreir.ExprListSortByOrdinalText:
 		sortedExpr := expression.ListSortByOrdinalText
-		values, err := evalExpr(*sortedExpr.Values, arguments)
+		values, err := evalExprWithProgram(*sortedExpr.Values, arguments, functions)
 		if err != nil || !values.OK {
 			return values, err
 		}
@@ -535,7 +571,7 @@ func evalExpr(expression coreir.Expr, arguments []Value) (Outcome, error) {
 		return Outcome{OK: true, Value: cloneListValue(sorted)}, nil
 	case coreir.ExprListSortByOrdinalTexts:
 		sortedExpr := expression.ListSortByOrdinalTexts
-		values, err := evalExpr(*sortedExpr.Values, arguments)
+		values, err := evalExprWithProgram(*sortedExpr.Values, arguments, functions)
 		if err != nil || !values.OK {
 			return values, err
 		}
@@ -569,7 +605,7 @@ func evalExpr(expression coreir.Expr, arguments []Value) (Outcome, error) {
 		return Outcome{OK: true, Value: cloneListValue(sorted)}, nil
 	case coreir.ExprListSortByOrdinalDirections:
 		spec := expression.ListSortByOrdinalDirections
-		values, err := evalExpr(*spec.Values, arguments)
+		values, err := evalExprWithProgram(*spec.Values, arguments, functions)
 		if err != nil || !values.OK {
 			return values, err
 		}
@@ -602,7 +638,7 @@ func evalExpr(expression coreir.Expr, arguments []Value) (Outcome, error) {
 		}
 		return Outcome{OK: true, Value: cloneListValue(sorted)}, nil
 	case coreir.ExprResultOK:
-		value, err := evalExpr(*expression.ResultOK.Value, arguments)
+		value, err := evalExprWithProgram(*expression.ResultOK.Value, arguments, functions)
 		if err != nil || !value.OK {
 			return value, err
 		}
@@ -611,7 +647,7 @@ func evalExpr(expression coreir.Expr, arguments []Value) (Outcome, error) {
 		}
 		return Outcome{OK: true, Value: cloneValue(value.Value)}, nil
 	case coreir.ExprResultErr:
-		failure, err := evalExpr(*expression.ResultErr.Error, arguments)
+		failure, err := evalExprWithProgram(*expression.ResultErr.Error, arguments, functions)
 		if err != nil || !failure.OK {
 			return failure, err
 		}
@@ -631,7 +667,7 @@ func evalExpr(expression coreir.Expr, arguments []Value) (Outcome, error) {
 		if err != nil {
 			return Outcome{}, fmt.Errorf("result success_or: %w", err)
 		}
-		fallback, err := evalExpr(*expression.SuccessOr.Fallback, arguments)
+		fallback, err := evalExprWithProgram(*expression.SuccessOr.Fallback, arguments, functions)
 		if err != nil || !fallback.OK {
 			return fallback, err
 		}
@@ -643,7 +679,7 @@ func evalExpr(expression coreir.Expr, arguments []Value) (Outcome, error) {
 		}
 		return Outcome{OK: true, Value: cloneValue(fallback.Value)}, nil
 	case coreir.ExprPropagate:
-		propagated, err := evalExpr(*expression.Propagate.Value, arguments)
+		propagated, err := evalExprWithProgram(*expression.Propagate.Value, arguments, functions)
 		if err != nil || !propagated.OK {
 			return propagated, err
 		}
@@ -665,7 +701,7 @@ func evalExpr(expression coreir.Expr, arguments []Value) (Outcome, error) {
 		if expression.Match == nil || expression.Match.Value == nil {
 			return Outcome{}, fmt.Errorf("match is incomplete")
 		}
-		carrier, err := evalExpr(*expression.Match.Value, arguments)
+		carrier, err := evalExprWithProgram(*expression.Match.Value, arguments, functions)
 		var resultCarrier *Outcome
 		if expression.Match.Value.Type.Kind == coreir.TypeResult {
 			r, e := directResultOperand(expression.Match.Value, arguments)
@@ -718,7 +754,7 @@ func evalExpr(expression coreir.Expr, arguments []Value) (Outcome, error) {
 				}
 				scoped = append(append([]Value{}, arguments...), cloneValue(*payload))
 			}
-			return evalExpr(*arm.Body, scoped)
+			return evalExprWithProgram(*arm.Body, scoped, functions)
 		}
 		return Outcome{}, fmt.Errorf("match has no selected arm")
 	case coreir.ExprResultFailureOr:
@@ -726,7 +762,7 @@ func evalExpr(expression coreir.Expr, arguments []Value) (Outcome, error) {
 		if err != nil {
 			return Outcome{}, fmt.Errorf("result failure_or: %w", err)
 		}
-		fallback, err := evalExpr(*expression.FailureOr.Fallback, arguments)
+		fallback, err := evalExprWithProgram(*expression.FailureOr.Fallback, arguments, functions)
 		if err != nil || !fallback.OK {
 			return fallback, err
 		}

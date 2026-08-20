@@ -12,14 +12,16 @@ import (
 const safeIndexSource = `public Record Row { public string Id; } public Class Root { public Optional<Row> RowAt(List<Row> values, int index) => values[index]; }`
 
 func TestLaterContractsPreserveDirectionalSortAndSafeIndexing(t *testing.T) {
-	for name, source := range map[string]string{
-		"directional sort": `public Record Row { public string Name; } public Class Root { public List<Row> Sort(List<Row> values) => sort_by_ordinal(values, Row.Name, descending); }`,
-		"safe indexing":    safeIndexSource,
-	} {
-		input := semanticTestModuleSet("app.root", []ModuleInput{testModule("app.root", "root.pipe", source)}, nil)
-		input.LanguageContract = PipeLangLanguageContractV350
-		if err := AnalyzeSemanticModuleSet(input).Error(); err != nil {
-			t.Fatalf("v0.35.0 rejected %s accepted by an earlier contract: %v", name, err)
+	for _, contract := range []LanguageContract{PipeLangLanguageContractV350, PipeLangLanguageContractV360} {
+		for name, source := range map[string]string{
+			"directional sort": `public Record Row { public string Name; } public Class Root { public List<Row> Sort(List<Row> values) => sort_by_ordinal(values, Row.Name, descending); }`,
+			"safe indexing":    safeIndexSource,
+		} {
+			input := semanticTestModuleSet("app.root", []ModuleInput{testModule("app.root", "root.pipe", source)}, nil)
+			input.LanguageContract = contract
+			if err := AnalyzeSemanticModuleSet(input).Error(); err != nil {
+				t.Fatalf("%s rejected %s accepted by an earlier contract: %v", contract, name, err)
+			}
 		}
 	}
 }

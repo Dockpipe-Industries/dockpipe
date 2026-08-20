@@ -5,10 +5,14 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"dockpipe/src/lib/pipelang"
+	"dockpipe/src/lib/pipelang/coreeval"
 	"dockpipe/src/lib/pipelang/coreir"
+	"dockpipe/src/lib/pipelang/gobackend"
+	"dockpipe/src/lib/pipelang/hir"
 )
 
 func TestDockerObservabilityGoldenUsesCanonicalSemanticAndCore(t *testing.T) {
@@ -17,7 +21,7 @@ func TestDockerObservabilityGoldenUsesCanonicalSemanticAndCore(t *testing.T) {
 		t.Fatal(err)
 	}
 	module := pipelang.ModuleInput{ID: "app.root", Namespace: "app.root", DeclarationSpan: pipelang.Span{File: "docker-observability.pipe"}, Sources: []pipelang.SourceInput{{Path: "docker-observability.pipe", Data: source}}}
-	input := pipelang.ModuleSetInput{LanguageContract: pipelang.PipeLangLanguageContractV350, PackageID: "docker.observability", Root: "app.root", Modules: []pipelang.ModuleInput{module}}
+	input := pipelang.ModuleSetInput{LanguageContract: pipelang.PipeLangLanguageContractV360, PackageID: "docker.observability", Root: "app.root", Modules: []pipelang.ModuleInput{module}}
 	input.Lock.Modules = []pipelang.LockedModule{{ID: module.ID, SourceSHA256: pipelang.ModuleSourceSHA256(module.Sources), SemanticSHA256: pipelang.ModuleSemanticSHA256(input.PackageID, module.Namespace, nil)}}
 	analysis := pipelang.AnalyzeSemanticModuleSet(input)
 	if err := analysis.Error(); err != nil {
@@ -39,6 +43,49 @@ func TestDockerObservabilityGoldenUsesCanonicalSemanticAndCore(t *testing.T) {
 		}
 		t.Fatalf("missing member %s", name)
 		return pipelang.SemanticMemberProjection{}
+	}
+	visible := find("VisibleContainers")
+	visibleHIR, err := pipelang.LowerSemanticMethodToHIR(analysis, *visible.Identity)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(visibleHIR.Functions) != 3 || visibleHIR.Functions[2].Body.Kind != hir.ExprCall {
+		t.Fatalf("VisibleContainers HIR is not a closed three-function call graph: %#v", visibleHIR)
+	}
+	visibleCore, err := pipelang.LowerHIRToCore(visibleHIR)
+	if err != nil {
+		t.Fatal(err)
+	}
+	visibleGo, err := gobackend.Generate(visibleCore)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(visibleGo), "PipeLangOrderContainers(PipeLangFilterContainers(") {
+		t.Fatalf("VisibleContainers generated Go lost validated composition:\n%s", visibleGo)
+	}
+	var visibleFunction coreir.Function
+	for _, function := range visibleCore.Functions {
+		if function.Name == "VisibleContainers" {
+			visibleFunction = function
+		}
+	}
+	listType := visibleFunction.Parameters[0].Type
+	rowType := listType.List.Element
+	textType := coreir.Type{Kind: coreir.TypePrimitive, Primitive: coreir.PrimitiveString}
+	row := func(values ...string) coreeval.Value {
+		fields := make([]coreeval.Value, len(values))
+		for index, value := range values {
+			fields[index] = coreeval.Value{Type: rowType.Record.Fields[index].Type, String: value}
+		}
+		return coreeval.Value{Type: rowType, Record: fields}
+	}
+	rows := coreeval.Value{Type: listType, List: []coreeval.Value{
+		row("2", "beta", "running", "Up", "dockpipe:b", "", "later"),
+		row("1", "Alpha", "running", "Up", "dockpipe:a", "", "earlier"),
+	}}
+	outcome, err := coreeval.EvaluateProgram(visibleCore, coreir.SemanticIdentity{PackageID: string(visible.Identity.PackageID), Path: string(visible.Identity.Path)}, []coreeval.Value{rows, {Type: textType, String: ""}})
+	if err != nil || !outcome.OK || len(outcome.Value.List) != 2 || outcome.Value.List[0].Record[1].String != "Alpha" {
+		t.Fatalf("VisibleContainers consumer result = %#v, %v", outcome, err)
 	}
 	typeID := func(name string) Identity {
 		for _, m := range semantic.Modules {
@@ -138,7 +185,7 @@ func TestDockerObservabilityGoldenUsesCanonicalSemanticAndCore(t *testing.T) {
 	if err = json.Unmarshal(raw, &checked); err != nil {
 		t.Fatal(err)
 	}
-	if len(checked.Sections) != 3 || len(app.Sections) != 3 || app.Selection == nil || app.Details == nil || app.Logs == nil || app.Metadata.LanguageContract != "v0.35.0" {
+	if len(checked.Sections) != 3 || len(app.Sections) != 3 || app.Selection == nil || app.Details == nil || app.Logs == nil || app.Metadata.LanguageContract != "v0.36.0" {
 		t.Fatalf("incomplete fixture: %#v", app)
 	}
 	bad := spec
@@ -184,7 +231,7 @@ func ownedField(p *pipelang.SemanticProjection, row Identity, name string) Locat
 }
 
 func TestProjectRejectsUnknownIdentityAtItsSource(t *testing.T) {
-	_, err := Project(&pipelang.SemanticProjection{Schema: pipelang.PipeLangSemanticProjectionVersion, CompilerContract: pipelang.PipeLangCompilerContract, LanguageContract: pipelang.PipeLangLanguageContractV350, View: pipelang.SemanticProjectionPublic}, &coreir.Program{CompilerContract: pipelang.PipeLangCompilerContract, LanguageContract: "v0.35.0"}, Spec{Identity: LocatedIdentity{Identity: Identity{"p", "missing"}, Source: pipelang.SourceRange{File: "model.pipe"}}})
+	_, err := Project(&pipelang.SemanticProjection{Schema: pipelang.PipeLangSemanticProjectionVersion, CompilerContract: pipelang.PipeLangCompilerContract, LanguageContract: pipelang.PipeLangLanguageContractV360, View: pipelang.SemanticProjectionPublic}, &coreir.Program{CompilerContract: pipelang.PipeLangCompilerContract, LanguageContract: "v0.36.0"}, Spec{Identity: LocatedIdentity{Identity: Identity{"p", "missing"}, Source: pipelang.SourceRange{File: "model.pipe"}}})
 	v, ok := err.(*ValidationError)
 	if !ok || v.Source.File != "model.pipe" {
 		t.Fatalf("expected located rejection, got %v", err)

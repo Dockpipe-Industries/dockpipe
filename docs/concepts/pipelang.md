@@ -1103,6 +1103,25 @@ exceptions, implicit conversions, arbitrary Results, effects, blocks, or target-
 
 
 PipeLang v0.35.0 adds exhaustive bounded matching over existing Optional and Result values with explicit `some`/`none` or `ok`/`err` arms and a bounded final `_` wildcard. Matching is pure, source-located, target-neutral Core control flow.
+
+### PipeLang v0.36.0: same-class pure calls
+
+Public expression-bodied methods may call one uniquely named public method on the same class using
+`Method(expression, ...)`. Ordered argument types and the return type must match the resolved target
+exactly. Call participants are closed over parameters and match-arm bindings rather than class-owned
+state. Calls may nest and their arguments may use already admitted expressions. Private callers or
+targets, missing or ambiguous targets, overloads, cross-class/module calls, and every direct or
+indirect recursive cycle are rejected; `PL3033` reports cycles.
+
+Typed HIR and target-neutral Core carry the resolved callable semantic identity, target name, and
+ordered typed operands. Lowering includes the closed transitive dependency graph once, Core proves
+same-owner identity, signature equality, target presence, and acyclicity, the evaluator uses
+isolated copied call frames, and the Go backend emits only Core-validated calls. The compiler,
+semantic projection, and Application IR schema versions remain `pipelang.compiler.v1`,
+`pipelang.semantic.v1`, and `dockpipe.application.v1`; their language-contract metadata advances to
+`v0.36.0`. Blocks, locals, branches, lambdas, function values, generics, effects, entrypoints, and
+target-specific semantics remain outside this contract.
+
 ### Target-neutral Application IR
 
 `dockpipe.application.v1` is not a language feature or target generator. It consumes the public

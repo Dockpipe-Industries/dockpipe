@@ -563,14 +563,14 @@
         "source": {
           "file": "docker-observability.pipe",
           "start": {
-            "offset": 1442,
-            "line": 20,
+            "offset": 1577,
+            "line": 21,
             "column": 2,
             "utf16_column": 2
           },
           "end": {
-            "offset": 1545,
-            "line": 20,
+            "offset": 1680,
+            "line": 21,
             "column": 105,
             "utf16_column": 105
           }
@@ -753,14 +753,14 @@
         "source": {
           "file": "docker-observability.pipe",
           "start": {
-            "offset": 1547,
-            "line": 21,
+            "offset": 1682,
+            "line": 22,
             "column": 2,
             "utf16_column": 2
           },
           "end": {
-            "offset": 1646,
-            "line": 21,
+            "offset": 1781,
+            "line": 22,
             "column": 101,
             "utf16_column": 101
           }
