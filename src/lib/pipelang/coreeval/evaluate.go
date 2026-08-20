@@ -4,6 +4,7 @@ package coreeval
 
 import (
 	"fmt"
+	"sort"
 
 	"dockpipe/src/lib/pipelang/coreir"
 )
@@ -402,6 +403,35 @@ func evalExpr(expression coreir.Expr, arguments []Value) (Outcome, error) {
 			return Outcome{}, fmt.Errorf("list filter_joined_contains_casefolded result: %w", err)
 		}
 		return Outcome{OK: true, Value: cloneListValue(filtered)}, nil
+	case coreir.ExprListSortByOrdinalText:
+		sortedExpr := expression.ListSortByOrdinalText
+		values, err := evalExpr(*sortedExpr.Values, arguments)
+		if err != nil || !values.OK {
+			return values, err
+		}
+		if err := validateValue(values.Value); err != nil {
+			return Outcome{}, fmt.Errorf("list sort_by_ordinal: %w", err)
+		}
+		sorted := cloneListValue(values.Value)
+		var compareErr error
+		sort.SliceStable(sorted.List, func(left, right int) bool {
+			if compareErr != nil {
+				return false
+			}
+			comparison, err := coreir.CompareOrdinalText(sorted.List[left].Record[sortedExpr.Position].String, sorted.List[right].Record[sortedExpr.Position].String)
+			if err != nil {
+				compareErr = err
+				return false
+			}
+			return comparison < 0
+		})
+		if compareErr != nil {
+			return Outcome{}, fmt.Errorf("list sort_by_ordinal comparison: %w", compareErr)
+		}
+		if err := validateValue(sorted); err != nil {
+			return Outcome{}, fmt.Errorf("list sort_by_ordinal result: %w", err)
+		}
+		return Outcome{OK: true, Value: cloneListValue(sorted)}, nil
 	case coreir.ExprResultOK:
 		value, err := evalExpr(*expression.ResultOK.Value, arguments)
 		if err != nil || !value.OK {

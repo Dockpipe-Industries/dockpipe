@@ -35,6 +35,7 @@ const PIPELANG_COMPLETION_KEYWORDS = [
   "contains_casefolded",
   "filter_contains_casefolded",
   "filter_joined_contains_casefolded",
+  "sort_by_ordinal",
   "trim",
   "true",
   "false"

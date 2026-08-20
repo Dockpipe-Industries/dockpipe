@@ -600,6 +600,10 @@ func (p *parser) parsePrimary() (Expr, error) {
 				if hasPrimitiveRecordListFilterJoinedContainsCaseFoldedSourceContract(p.languageContract) {
 					return p.parseListFilterJoinedContainsCaseFolded()
 				}
+			case "sort_by_ordinal":
+				if hasPrimitiveRecordListSortByOrdinalSourceContract(p.languageContract) {
+					return p.parseListSortByOrdinal()
+				}
 			}
 		}
 		if hasSnapshotResultSourceContract(p.languageContract) {
@@ -1118,6 +1122,45 @@ func (p *parser) parseListFilterJoinedContainsCaseFolded() (Expr, error) {
 	return &ListFilterJoinedContainsCaseFoldedExpr{
 		Values: values, Selectors: selectors, Query: query,
 		Span: mergeSpans(start.span, end.span),
+	}, nil
+}
+
+func (p *parser) parseListSortByOrdinal() (Expr, error) {
+	start, err := p.expect(tokIdent)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := p.expect(tokLParen); err != nil {
+		return nil, err
+	}
+	values, err := p.parseExpr(1)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := p.expect(tokComma); err != nil {
+		return nil, err
+	}
+	recordName, err := p.expect(tokIdent)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := p.expect(tokDot); err != nil {
+		return nil, err
+	}
+	field, err := p.expect(tokIdent)
+	if err != nil {
+		return nil, err
+	}
+	end, err := p.expect(tokRParen)
+	if err != nil {
+		return nil, err
+	}
+	return &ListSortByOrdinalExpr{
+		Values:     values,
+		RecordType: UnresolvedTypeRef{Kind: TypeRefNamed, Name: recordName.lit, Span: recordName.span},
+		Field:      field.lit,
+		FieldSpan:  field.span,
+		Span:       mergeSpans(start.span, end.span),
 	}, nil
 }
 

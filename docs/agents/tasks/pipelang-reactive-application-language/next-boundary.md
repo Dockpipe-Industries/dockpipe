@@ -26,6 +26,8 @@ Exact deterministic trimming of leading and trailing Unicode 17.0.0 `White_Space
 strict-UTF-8 string is also complete.
 Exact stable-order filtering of one primitive-record list by exactly five source-ordered public
 string fields and one trimmed case-folded query is also complete.
+Exact stable ascending ordinal sorting of one primitive-record list by one selected public string
+field is also complete.
 `v0.2.0` admits only the exact explicit Result-returning addition;
 `v0.3.0` adds only direct subtraction; `v0.4.0` adds only direct multiplication; `v0.5.0` adds only
 direct integer negation; `v0.6.0` adds only direct binary64 division; and `v0.7.0` adds only direct
@@ -105,6 +107,14 @@ Typed HIR and target-neutral Core carry the explicit
 `list_filter_joined_contains_case_folded_text` node with five ordered field identities, names, and
 positions. `pipelang.compiler.v1`, `pipelang.semantic.v1`, and every earlier contract remain
 unchanged.
+`v0.28.0` adds only exact direct `sort_by_ordinal(List<R>, R.Field) -> List<R>` for one existing
+public primitive record `R` and one selected public string field. It completely validates the list,
+every record, and every selected and unselected field before returning a stable ascending sort under
+the existing `v0.8.0` ordinal Unicode scalar-sequence order. Equal keys retain input order; empty
+output is canonical non-nil storage; result list and records are fresh copies. Typed HIR and
+target-neutral Core carry the explicit `list_sort_by_ordinal_text` node with the field identity,
+name, and declaration position. `pipelang.compiler.v1`, `pipelang.semantic.v1`, and every earlier
+contract remain unchanged.
 All other numeric arithmetic and every other Result construction, composition, or consumption form
 remain fail-closed from production source. Any next slice requires a new
 synchronized decision for its exact source spelling, type/value handling rule, semantic projection,
@@ -130,7 +140,10 @@ human-entered status/log matching, and the selected-field case-folded list filte
 predicate to one public string field while preserving adapter order. Direct deterministic trimming
 provides bounded whitespace cleanup for adapter-supplied labels, filters, and diagnostics. The
 exact five-field joined filter now supplies deterministic Name/State/Image/Ports/Created search.
-Arbitrary-count or other multi-field search, general predicates, sorting, general indexing,
+The exact one-field ordinal sort now supplies a target-neutral deterministic collection-ordering
+primitive, but applying it to the first launcher would require a separate TASK-020 parity decision
+because the checked-in oracle does not expose table sorting. Arbitrary-count or other multi-field
+search, general predicates, descending or multi-key sorting, general indexing,
 propagation, matching, and application projection remain later decisions.
 
 No later step-7 slice is included here. In particular, this checkpoint does not add general Result
@@ -142,8 +155,9 @@ hashing, general total-order capabilities, optional extraction beyond `value_or`
 implicit defaults, nesting, chaining,
 general result, record nesting/chained or general access/mutation/hash/order, union, or additional
 deterministic collection production or consumption semantics beyond exact `filter_by`,
-`filter_contains_casefolded`, and `filter_joined_contains_casefolded`; accept namespace, import,
-migration, `internal`, overload, generic, or ID production syntax; implement overload resolution;
+`filter_contains_casefolded`, `filter_joined_contains_casefolded`, and `sort_by_ordinal`; accept
+namespace, import, migration, `internal`, overload, generic, or ID production syntax; implement
+overload resolution;
 add new types/declarations/expressions/operators, blocks, locals, branches, or loops; add effects,
 entrypoints, actions/state, contracts/replay, executable application/service semantics, Application
 IR, Service IR, another backend, or self-hosting; mutate generated stores; or widen Go emission by

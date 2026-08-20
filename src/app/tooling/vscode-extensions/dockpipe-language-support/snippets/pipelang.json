@@ -185,5 +185,12 @@
       "public List<${1:ContainerRow}> ${2:SearchRows}(List<${1:ContainerRow}> ${3:values}, string ${4:query}) => filter_joined_contains_casefolded(${3:values}, ${1:ContainerRow}.${5:Name}, ${1:ContainerRow}.${6:State}, ${1:ContainerRow}.${7:Image}, ${1:ContainerRow}.${8:Ports}, ${1:ContainerRow}.${9:Created}, ${4:query});"
     ],
     "description": "Create the exact v0.27.0 stable-order five-field joined Unicode case-folded record-list filter."
+  },
+  "PipeLang Record List Ordinal Sort": {
+    "prefix": "pipe-record-list-sort-by-ordinal",
+    "body": [
+      "public List<${1:Row}> ${2:SortRows}(List<${1:Row}> ${3:values}) => sort_by_ordinal(${3:values}, ${1:Row}.${4:Name});"
+    ],
+    "description": "Create the exact v0.28.0 stable ascending ordinal string-field record-list sort."
   }
 }

@@ -34,7 +34,7 @@ func (e *Error) Error() string {
 
 // Generate accepts Core IR only and returns deterministic, gofmt-formatted Go.
 func Generate(program coreir.Program) ([]byte, error) {
-	if (program.LanguageContract != coreir.LanguageContractV010 && program.LanguageContract != coreir.LanguageContractV020 && program.LanguageContract != coreir.LanguageContractV030 && program.LanguageContract != coreir.LanguageContractV040 && program.LanguageContract != coreir.LanguageContractV050 && program.LanguageContract != coreir.LanguageContractV060 && program.LanguageContract != coreir.LanguageContractV070 && program.LanguageContract != coreir.LanguageContractV080 && program.LanguageContract != coreir.LanguageContractV090 && program.LanguageContract != coreir.LanguageContractV100 && program.LanguageContract != coreir.LanguageContractV110 && program.LanguageContract != coreir.LanguageContractV120 && program.LanguageContract != coreir.LanguageContractV130 && program.LanguageContract != coreir.LanguageContractV140 && program.LanguageContract != coreir.LanguageContractV150 && program.LanguageContract != coreir.LanguageContractV160 && program.LanguageContract != coreir.LanguageContractV170 && program.LanguageContract != coreir.LanguageContractV180 && program.LanguageContract != coreir.LanguageContractV190 && program.LanguageContract != coreir.LanguageContractV200 && program.LanguageContract != coreir.LanguageContractV210 && program.LanguageContract != coreir.LanguageContractV220 && program.LanguageContract != coreir.LanguageContractV230 && program.LanguageContract != coreir.LanguageContractV240 && program.LanguageContract != coreir.LanguageContractV250 && program.LanguageContract != coreir.LanguageContractV260 && program.LanguageContract != coreir.LanguageContractV270) || program.CompilerContract != coreir.CompilerContractV1 {
+	if (program.LanguageContract != coreir.LanguageContractV010 && program.LanguageContract != coreir.LanguageContractV020 && program.LanguageContract != coreir.LanguageContractV030 && program.LanguageContract != coreir.LanguageContractV040 && program.LanguageContract != coreir.LanguageContractV050 && program.LanguageContract != coreir.LanguageContractV060 && program.LanguageContract != coreir.LanguageContractV070 && program.LanguageContract != coreir.LanguageContractV080 && program.LanguageContract != coreir.LanguageContractV090 && program.LanguageContract != coreir.LanguageContractV100 && program.LanguageContract != coreir.LanguageContractV110 && program.LanguageContract != coreir.LanguageContractV120 && program.LanguageContract != coreir.LanguageContractV130 && program.LanguageContract != coreir.LanguageContractV140 && program.LanguageContract != coreir.LanguageContractV150 && program.LanguageContract != coreir.LanguageContractV160 && program.LanguageContract != coreir.LanguageContractV170 && program.LanguageContract != coreir.LanguageContractV180 && program.LanguageContract != coreir.LanguageContractV190 && program.LanguageContract != coreir.LanguageContractV200 && program.LanguageContract != coreir.LanguageContractV210 && program.LanguageContract != coreir.LanguageContractV220 && program.LanguageContract != coreir.LanguageContractV230 && program.LanguageContract != coreir.LanguageContractV240 && program.LanguageContract != coreir.LanguageContractV250 && program.LanguageContract != coreir.LanguageContractV260 && program.LanguageContract != coreir.LanguageContractV270 && program.LanguageContract != coreir.LanguageContractV280) || program.CompilerContract != coreir.CompilerContractV1 {
 		return nil, &Error{Code: "PLGO0001", Message: fmt.Sprintf("unsupported Core IR contracts language=%q compiler=%q", program.LanguageContract, program.CompilerContract)}
 	}
 	functions := append([]coreir.Function(nil), program.Functions...)
@@ -67,10 +67,11 @@ func Generate(program coreir.Program) ([]byte, error) {
 	needsListFilterByText := programNeedsListFilterByText(functions)
 	needsListFilterContainsCaseFolded := programNeedsListFilterContainsCaseFolded(functions)
 	needsListFilterJoinedContainsCaseFolded := programNeedsListFilterJoinedContainsCaseFolded(functions)
+	needsListSortByOrdinalText := programNeedsListSortByOrdinalText(functions)
 	needsSnapshotResult := programNeedsSnapshotResult(functions)
 	needsTextResult := programNeedsTextResult(functions)
 	optionalTypeName := optionalGoTypeName(functions)
-	if program.LanguageContract != coreir.LanguageContractV270 {
+	if program.LanguageContract != coreir.LanguageContractV270 && program.LanguageContract != coreir.LanguageContractV280 {
 		if needsOptional && program.LanguageContract != coreir.LanguageContractV130 && program.LanguageContract != coreir.LanguageContractV140 && program.LanguageContract != coreir.LanguageContractV150 && program.LanguageContract != coreir.LanguageContractV160 && program.LanguageContract != coreir.LanguageContractV170 && program.LanguageContract != coreir.LanguageContractV180 && program.LanguageContract != coreir.LanguageContractV190 && program.LanguageContract != coreir.LanguageContractV200 && program.LanguageContract != coreir.LanguageContractV210 && program.LanguageContract != coreir.LanguageContractV220 && program.LanguageContract != coreir.LanguageContractV230 && program.LanguageContract != coreir.LanguageContractV240 && program.LanguageContract != coreir.LanguageContractV250 && program.LanguageContract != coreir.LanguageContractV260 {
 			return nil, &Error{Code: "PLGO0001", Message: fmt.Sprintf("primitive Optional Core requires language contract %q", coreir.LanguageContractV130)}
 		}
@@ -114,12 +115,22 @@ func Generate(program coreir.Program) ([]byte, error) {
 			return nil, &Error{Code: "PLGO0001", Message: fmt.Sprintf("record-list filter_contains_casefolded Core requires language contract %q", coreir.LanguageContractV240)}
 		}
 	}
-	if needsListFilterJoinedContainsCaseFolded && program.LanguageContract != coreir.LanguageContractV270 {
+	if needsListFilterJoinedContainsCaseFolded && program.LanguageContract != coreir.LanguageContractV270 && program.LanguageContract != coreir.LanguageContractV280 {
 		return nil, &Error{Code: "PLGO0001", Message: fmt.Sprintf("record-list filter_joined_contains_casefolded Core requires language contract %q", coreir.LanguageContractV270)}
 	}
+	if needsListSortByOrdinalText && program.LanguageContract != coreir.LanguageContractV280 {
+		return nil, &Error{Code: "PLGO0001", Message: fmt.Sprintf("record-list sort_by_ordinal Core requires language contract %q", coreir.LanguageContractV280)}
+	}
 	if needsText {
-		if needsCaseFoldedText {
-			out.WriteString("import (\n\t\"strings\"\n\t\"unicode/utf8\"\n)\n\n")
+		if needsCaseFoldedText || needsListSortByOrdinalText {
+			out.WriteString("import (\n")
+			if needsListSortByOrdinalText {
+				out.WriteString("\t\"sort\"\n")
+			}
+			if needsCaseFoldedText {
+				out.WriteString("\t\"strings\"\n")
+			}
+			out.WriteString("\t\"unicode/utf8\"\n)\n\n")
 		} else {
 			out.WriteString("import \"unicode/utf8\"\n\n")
 		}
@@ -143,7 +154,7 @@ func Generate(program coreir.Program) ([]byte, error) {
 		return nil, &Error{Code: "PLGO0001", Message: err.Error()}
 	}
 	for _, list := range lists {
-		emitListSupport(&out, list, programAppendsList(functions, list), programIndexesList(functions, list), programFindsListByText(functions, list), programFiltersListByText(functions, list), programFiltersListContainsCaseFolded(functions, list), programFiltersListJoinedContainsCaseFolded(functions, list), optionalTypeName)
+		emitListSupport(&out, list, programAppendsList(functions, list), programIndexesList(functions, list), programFindsListByText(functions, list), programFiltersListByText(functions, list), programFiltersListContainsCaseFolded(functions, list), programFiltersListJoinedContainsCaseFolded(functions, list), programSortsListByOrdinalText(functions, list), optionalTypeName)
 	}
 	results, err := collectSnapshotResultTypes(functions)
 	if err != nil {
@@ -465,6 +476,12 @@ func emitExpr(expr coreir.Expr, parameters []coreir.Parameter, optionalTypeName 
 			return "", fmt.Errorf("list filter_joined_contains_casefolded expression is incomplete")
 		}
 		return fmt.Sprintf("%s(p%d, p%d)", listFilterJoinedContainsCaseFoldedName(filter.Values.Type, *filter), *filter.Values.Parameter, *filter.Query.Parameter), nil
+	case coreir.ExprListSortByOrdinalText:
+		sorted := expr.ListSortByOrdinalText
+		if sorted == nil || sorted.Values == nil || sorted.Values.Kind != coreir.ExprReference || sorted.Values.Parameter == nil || sorted.Values.Type.Kind != coreir.TypeList {
+			return "", fmt.Errorf("list sort_by_ordinal expression is incomplete")
+		}
+		return fmt.Sprintf("%s(p%d)", listSortByOrdinalTextName(sorted.Values.Type, *sorted), *sorted.Values.Parameter), nil
 	case coreir.ExprResultOK:
 		if expr.ResultOK == nil || expr.ResultOK.Value == nil || !isBoundedValueResultType(expr.Type) {
 			return "", fmt.Errorf("result ok expression is incomplete")
@@ -812,6 +829,15 @@ func programNeedsListFilterJoinedContainsCaseFolded(functions []coreir.Function)
 
 func expressionNeedsListFilterJoinedContainsCaseFolded(expression coreir.Expr) bool {
 	return expression.Kind == coreir.ExprListFilterJoinedContainsCaseFolded
+}
+
+func programNeedsListSortByOrdinalText(functions []coreir.Function) bool {
+	for _, function := range functions {
+		if function.Body.Kind == coreir.ExprListSortByOrdinalText {
+			return true
+		}
+	}
+	return false
 }
 
 func expressionNeedsListFilterContainsCaseFolded(expression coreir.Expr) bool {
@@ -1206,7 +1232,7 @@ func collectListTypes(functions []coreir.Function) ([]coreir.Type, error) {
 	return result, nil
 }
 
-func emitListSupport(out *strings.Builder, list coreir.Type, emitAppend, emitAt bool, findByText []coreir.ListFindByText, filterByText []coreir.ListFilterByText, filterContainsCaseFolded []coreir.ListFilterContainsCaseFolded, filterJoinedContainsCaseFolded []coreir.ListFilterJoinedContainsCaseFolded, optionalTypeName string) {
+func emitListSupport(out *strings.Builder, list coreir.Type, emitAppend, emitAt bool, findByText []coreir.ListFindByText, filterByText []coreir.ListFilterByText, filterContainsCaseFolded []coreir.ListFilterContainsCaseFolded, filterJoinedContainsCaseFolded []coreir.ListFilterJoinedContainsCaseFolded, sortByOrdinalText []coreir.ListSortByOrdinalText, optionalTypeName string) {
 	element := list.List.Element
 	elementType := recordGoTypeName(element)
 	validation := listValidationName(list)
@@ -1239,6 +1265,9 @@ func emitListSupport(out *strings.Builder, list coreir.Type, emitAppend, emitAt 
 			selected = append(selected, "value."+fieldNames[selector.Position])
 		}
 		fmt.Fprintf(out, "func %s(values []%s, query string) []%s {\n\t%s(values)\n\tpipelangValidateText(query)\n\tquery = pipelangTrimText(query)\n\tresult := make([]%s, 0, len(values))\n\tfor _, value := range values {\n\t\tjoined := strings.Join([]string{%s}, \" \")\n\t\tif pipelangContainsCaseFoldedText(joined, query) {\n\t\t\tresult = append(result, value)\n\t\t}\n\t}\n\treturn result\n}\n\n", listFilterJoinedContainsCaseFoldedName(list, filter), elementType, elementType, validation, elementType, strings.Join(selected, ", "))
+	}
+	for _, selector := range sortByOrdinalText {
+		fmt.Fprintf(out, "func %s(values []%s) []%s {\n\t%s(values)\n\tresult := make([]%s, len(values))\n\tcopy(result, values)\n\tsort.SliceStable(result, func(left, right int) bool {\n\t\treturn pipelangCompareOrdinalText(result[left].%s, result[right].%s) < 0\n\t})\n\treturn result\n}\n\n", listSortByOrdinalTextName(list, selector), elementType, elementType, validation, elementType, fieldNames[selector.Position], fieldNames[selector.Position])
 	}
 }
 
@@ -1390,6 +1419,28 @@ func programFiltersListJoinedContainsCaseFolded(functions []coreir.Function, lis
 	return result
 }
 
+func programSortsListByOrdinalText(functions []coreir.Function, list coreir.Type) []coreir.ListSortByOrdinalText {
+	byPosition := map[int]coreir.ListSortByOrdinalText{}
+	for _, function := range functions {
+		expression := function.Body
+		sorted := expression.ListSortByOrdinalText
+		if expression.Kind != coreir.ExprListSortByOrdinalText || sorted == nil || sorted.Values == nil || !coreir.TypeEqual(sorted.Values.Type, list) {
+			continue
+		}
+		byPosition[sorted.Position] = *sorted
+	}
+	positions := make([]int, 0, len(byPosition))
+	for position := range byPosition {
+		positions = append(positions, position)
+	}
+	sort.Ints(positions)
+	result := make([]coreir.ListSortByOrdinalText, 0, len(positions))
+	for _, position := range positions {
+		result = append(result, byPosition[position])
+	}
+	return result
+}
+
 func listFilterJoinedPositions(filter coreir.ListFilterJoinedContainsCaseFolded) string {
 	positions := make([]string, 0, len(filter.Selectors))
 	for _, selector := range filter.Selectors {
@@ -1423,6 +1474,9 @@ func listFilterContainsCaseFoldedName(list coreir.Type, selector coreir.ListFilt
 }
 func listFilterJoinedContainsCaseFoldedName(list coreir.Type, filter coreir.ListFilterJoinedContainsCaseFolded) string {
 	return "pipelangFilterJoinedContainsCaseFoldedList" + listHelperSuffix(list) + "Fields" + listFilterJoinedPositions(filter)
+}
+func listSortByOrdinalTextName(list coreir.Type, selector coreir.ListSortByOrdinalText) string {
+	return "pipelangSortByOrdinalTextList" + listHelperSuffix(list) + "Field" + strconv.Itoa(selector.Position)
 }
 
 func isSnapshotResultType(value coreir.Type) bool {
@@ -1763,6 +1817,8 @@ func expressionNeedsTextSupport(expression coreir.Expr) bool {
 	case coreir.ExprListFilterByText:
 		return true
 	case coreir.ExprListFilterContainsCaseFolded, coreir.ExprListFilterJoinedContainsCaseFolded:
+		return true
+	case coreir.ExprListSortByOrdinalText:
 		return true
 	case coreir.ExprResultOK:
 		return expression.ResultOK != nil && expression.ResultOK.Value != nil && expressionNeedsTextSupport(*expression.ResultOK.Value)

@@ -49,6 +49,7 @@ const (
 	PipeLangLanguageContractV250 LanguageContract = "v0.25.0"
 	PipeLangLanguageContractV260 LanguageContract = "v0.26.0"
 	PipeLangLanguageContractV270 LanguageContract = "v0.27.0"
+	PipeLangLanguageContractV280 LanguageContract = "v0.28.0"
 	PipeLangLanguageContract                      = PipeLangLanguageContractV010 // compatibility name for the first post-legacy seed
 	PipeLangDisplayName                           = "PipeLang"
 	PipeLangMachineName                           = "pipelang"
@@ -56,11 +57,11 @@ const (
 )
 
 func isPipeLangSemanticContract(contract LanguageContract) bool {
-	return contract == PipeLangLanguageContractV010 || contract == PipeLangLanguageContractV020 || contract == PipeLangLanguageContractV030 || contract == PipeLangLanguageContractV040 || contract == PipeLangLanguageContractV050 || contract == PipeLangLanguageContractV060 || contract == PipeLangLanguageContractV070 || contract == PipeLangLanguageContractV080 || contract == PipeLangLanguageContractV090 || contract == PipeLangLanguageContractV100 || contract == PipeLangLanguageContractV110 || contract == PipeLangLanguageContractV120 || contract == PipeLangLanguageContractV130 || contract == PipeLangLanguageContractV140 || contract == PipeLangLanguageContractV150 || contract == PipeLangLanguageContractV160 || contract == PipeLangLanguageContractV170 || contract == PipeLangLanguageContractV180 || contract == PipeLangLanguageContractV190 || contract == PipeLangLanguageContractV200 || contract == PipeLangLanguageContractV210 || contract == PipeLangLanguageContractV220 || contract == PipeLangLanguageContractV230 || contract == PipeLangLanguageContractV240 || contract == PipeLangLanguageContractV250 || contract == PipeLangLanguageContractV260 || contract == PipeLangLanguageContractV270
+	return contract == PipeLangLanguageContractV010 || contract == PipeLangLanguageContractV020 || contract == PipeLangLanguageContractV030 || contract == PipeLangLanguageContractV040 || contract == PipeLangLanguageContractV050 || contract == PipeLangLanguageContractV060 || contract == PipeLangLanguageContractV070 || contract == PipeLangLanguageContractV080 || contract == PipeLangLanguageContractV090 || contract == PipeLangLanguageContractV100 || contract == PipeLangLanguageContractV110 || contract == PipeLangLanguageContractV120 || contract == PipeLangLanguageContractV130 || contract == PipeLangLanguageContractV140 || contract == PipeLangLanguageContractV150 || contract == PipeLangLanguageContractV160 || contract == PipeLangLanguageContractV170 || contract == PipeLangLanguageContractV180 || contract == PipeLangLanguageContractV190 || contract == PipeLangLanguageContractV200 || contract == PipeLangLanguageContractV210 || contract == PipeLangLanguageContractV220 || contract == PipeLangLanguageContractV230 || contract == PipeLangLanguageContractV240 || contract == PipeLangLanguageContractV250 || contract == PipeLangLanguageContractV260 || contract == PipeLangLanguageContractV270 || contract == PipeLangLanguageContractV280
 }
 
 func hasArithmeticResultSourceContract(contract LanguageContract) bool {
-	if contract == PipeLangLanguageContractV270 {
+	if contract == PipeLangLanguageContractV280 || contract == PipeLangLanguageContractV270 {
 		return true
 	}
 	if contract == PipeLangLanguageContractV260 || contract == PipeLangLanguageContractV250 || contract == PipeLangLanguageContractV240 || contract == PipeLangLanguageContractV230 || contract == PipeLangLanguageContractV220 || contract == PipeLangLanguageContractV210 {
@@ -70,7 +71,7 @@ func hasArithmeticResultSourceContract(contract LanguageContract) bool {
 }
 
 func hasResultTransportSourceContract(contract LanguageContract) bool {
-	if contract == PipeLangLanguageContractV270 {
+	if contract == PipeLangLanguageContractV280 || contract == PipeLangLanguageContractV270 {
 		return true
 	}
 	if contract == PipeLangLanguageContractV260 || contract == PipeLangLanguageContractV250 || contract == PipeLangLanguageContractV240 || contract == PipeLangLanguageContractV230 || contract == PipeLangLanguageContractV220 || contract == PipeLangLanguageContractV210 {
@@ -80,7 +81,7 @@ func hasResultTransportSourceContract(contract LanguageContract) bool {
 }
 
 func hasOrdinalTextOrderingSourceContract(contract LanguageContract) bool {
-	if contract == PipeLangLanguageContractV270 {
+	if contract == PipeLangLanguageContractV280 || contract == PipeLangLanguageContractV270 {
 		return true
 	}
 	if contract == PipeLangLanguageContractV260 || contract == PipeLangLanguageContractV250 || contract == PipeLangLanguageContractV240 || contract == PipeLangLanguageContractV230 || contract == PipeLangLanguageContractV220 || contract == PipeLangLanguageContractV210 {
@@ -90,7 +91,7 @@ func hasOrdinalTextOrderingSourceContract(contract LanguageContract) bool {
 }
 
 func hasPrimitiveRecordSourceContract(contract LanguageContract) bool {
-	if contract == PipeLangLanguageContractV270 {
+	if contract == PipeLangLanguageContractV280 || contract == PipeLangLanguageContractV270 {
 		return true
 	}
 	if contract == PipeLangLanguageContractV260 || contract == PipeLangLanguageContractV250 || contract == PipeLangLanguageContractV240 || contract == PipeLangLanguageContractV230 || contract == PipeLangLanguageContractV220 || contract == PipeLangLanguageContractV210 {
@@ -100,7 +101,7 @@ func hasPrimitiveRecordSourceContract(contract LanguageContract) bool {
 }
 
 func hasRecordFieldProjectionSourceContract(contract LanguageContract) bool {
-	if contract == PipeLangLanguageContractV270 {
+	if contract == PipeLangLanguageContractV280 || contract == PipeLangLanguageContractV270 {
 		return true
 	}
 	if contract == PipeLangLanguageContractV260 || contract == PipeLangLanguageContractV250 || contract == PipeLangLanguageContractV240 || contract == PipeLangLanguageContractV230 || contract == PipeLangLanguageContractV220 || contract == PipeLangLanguageContractV210 {
@@ -110,7 +111,7 @@ func hasRecordFieldProjectionSourceContract(contract LanguageContract) bool {
 }
 
 func hasPrimitiveRecordConstructionSourceContract(contract LanguageContract) bool {
-	if contract == PipeLangLanguageContractV270 {
+	if contract == PipeLangLanguageContractV280 || contract == PipeLangLanguageContractV270 {
 		return true
 	}
 	if contract == PipeLangLanguageContractV260 || contract == PipeLangLanguageContractV250 || contract == PipeLangLanguageContractV240 || contract == PipeLangLanguageContractV230 || contract == PipeLangLanguageContractV220 || contract == PipeLangLanguageContractV210 {
@@ -120,7 +121,7 @@ func hasPrimitiveRecordConstructionSourceContract(contract LanguageContract) boo
 }
 
 func hasPrimitiveRecordEqualitySourceContract(contract LanguageContract) bool {
-	if contract == PipeLangLanguageContractV270 {
+	if contract == PipeLangLanguageContractV280 || contract == PipeLangLanguageContractV270 {
 		return true
 	}
 	if contract == PipeLangLanguageContractV260 || contract == PipeLangLanguageContractV250 || contract == PipeLangLanguageContractV240 || contract == PipeLangLanguageContractV230 || contract == PipeLangLanguageContractV220 || contract == PipeLangLanguageContractV210 {
@@ -130,7 +131,7 @@ func hasPrimitiveRecordEqualitySourceContract(contract LanguageContract) bool {
 }
 
 func hasPrimitiveOptionalSourceContract(contract LanguageContract) bool {
-	if contract == PipeLangLanguageContractV270 {
+	if contract == PipeLangLanguageContractV280 || contract == PipeLangLanguageContractV270 {
 		return true
 	}
 	if contract == PipeLangLanguageContractV260 || contract == PipeLangLanguageContractV250 || contract == PipeLangLanguageContractV240 || contract == PipeLangLanguageContractV230 || contract == PipeLangLanguageContractV220 || contract == PipeLangLanguageContractV210 {
@@ -140,7 +141,7 @@ func hasPrimitiveOptionalSourceContract(contract LanguageContract) bool {
 }
 
 func hasPrimitiveOptionalDefaultSourceContract(contract LanguageContract) bool {
-	if contract == PipeLangLanguageContractV270 {
+	if contract == PipeLangLanguageContractV280 || contract == PipeLangLanguageContractV270 {
 		return true
 	}
 	if contract == PipeLangLanguageContractV260 || contract == PipeLangLanguageContractV250 || contract == PipeLangLanguageContractV240 || contract == PipeLangLanguageContractV230 || contract == PipeLangLanguageContractV220 || contract == PipeLangLanguageContractV210 {
@@ -150,7 +151,7 @@ func hasPrimitiveOptionalDefaultSourceContract(contract LanguageContract) bool {
 }
 
 func hasPrimitiveRecordOptionalSourceContract(contract LanguageContract) bool {
-	if contract == PipeLangLanguageContractV270 {
+	if contract == PipeLangLanguageContractV280 || contract == PipeLangLanguageContractV270 {
 		return true
 	}
 	if contract == PipeLangLanguageContractV260 || contract == PipeLangLanguageContractV250 || contract == PipeLangLanguageContractV240 || contract == PipeLangLanguageContractV230 || contract == PipeLangLanguageContractV220 || contract == PipeLangLanguageContractV210 {
@@ -160,7 +161,7 @@ func hasPrimitiveRecordOptionalSourceContract(contract LanguageContract) bool {
 }
 
 func hasPrimitiveRecordListSourceContract(contract LanguageContract) bool {
-	if contract == PipeLangLanguageContractV270 {
+	if contract == PipeLangLanguageContractV280 || contract == PipeLangLanguageContractV270 {
 		return true
 	}
 	if contract == PipeLangLanguageContractV260 || contract == PipeLangLanguageContractV250 || contract == PipeLangLanguageContractV240 || contract == PipeLangLanguageContractV230 || contract == PipeLangLanguageContractV220 || contract == PipeLangLanguageContractV210 {
@@ -170,7 +171,7 @@ func hasPrimitiveRecordListSourceContract(contract LanguageContract) bool {
 }
 
 func hasPrimitiveRecordListCountSourceContract(contract LanguageContract) bool {
-	if contract == PipeLangLanguageContractV270 {
+	if contract == PipeLangLanguageContractV280 || contract == PipeLangLanguageContractV270 {
 		return true
 	}
 	if contract == PipeLangLanguageContractV260 || contract == PipeLangLanguageContractV250 || contract == PipeLangLanguageContractV240 || contract == PipeLangLanguageContractV230 || contract == PipeLangLanguageContractV220 || contract == PipeLangLanguageContractV210 {
@@ -180,7 +181,7 @@ func hasPrimitiveRecordListCountSourceContract(contract LanguageContract) bool {
 }
 
 func hasPrimitiveRecordListAppendSourceContract(contract LanguageContract) bool {
-	if contract == PipeLangLanguageContractV270 {
+	if contract == PipeLangLanguageContractV280 || contract == PipeLangLanguageContractV270 {
 		return true
 	}
 	if contract == PipeLangLanguageContractV260 || contract == PipeLangLanguageContractV250 || contract == PipeLangLanguageContractV240 || contract == PipeLangLanguageContractV230 || contract == PipeLangLanguageContractV220 || contract == PipeLangLanguageContractV210 {
@@ -190,7 +191,7 @@ func hasPrimitiveRecordListAppendSourceContract(contract LanguageContract) bool 
 }
 
 func hasSnapshotResultSourceContract(contract LanguageContract) bool {
-	if contract == PipeLangLanguageContractV270 {
+	if contract == PipeLangLanguageContractV280 || contract == PipeLangLanguageContractV270 {
 		return true
 	}
 	if contract == PipeLangLanguageContractV260 || contract == PipeLangLanguageContractV250 || contract == PipeLangLanguageContractV240 || contract == PipeLangLanguageContractV230 || contract == PipeLangLanguageContractV220 || contract == PipeLangLanguageContractV210 {
@@ -200,35 +201,39 @@ func hasSnapshotResultSourceContract(contract LanguageContract) bool {
 }
 
 func hasPrimitiveRecordListAtSourceContract(contract LanguageContract) bool {
-	return contract == PipeLangLanguageContractV200 || contract == PipeLangLanguageContractV210 || contract == PipeLangLanguageContractV220 || contract == PipeLangLanguageContractV230 || contract == PipeLangLanguageContractV240 || contract == PipeLangLanguageContractV250 || contract == PipeLangLanguageContractV260 || contract == PipeLangLanguageContractV270
+	return contract == PipeLangLanguageContractV200 || contract == PipeLangLanguageContractV210 || contract == PipeLangLanguageContractV220 || contract == PipeLangLanguageContractV230 || contract == PipeLangLanguageContractV240 || contract == PipeLangLanguageContractV250 || contract == PipeLangLanguageContractV260 || contract == PipeLangLanguageContractV270 || contract == PipeLangLanguageContractV280
 }
 
 func hasPrimitiveRecordListFindByTextSourceContract(contract LanguageContract) bool {
-	return contract == PipeLangLanguageContractV210 || contract == PipeLangLanguageContractV220 || contract == PipeLangLanguageContractV230 || contract == PipeLangLanguageContractV240 || contract == PipeLangLanguageContractV250 || contract == PipeLangLanguageContractV260 || contract == PipeLangLanguageContractV270
+	return contract == PipeLangLanguageContractV210 || contract == PipeLangLanguageContractV220 || contract == PipeLangLanguageContractV230 || contract == PipeLangLanguageContractV240 || contract == PipeLangLanguageContractV250 || contract == PipeLangLanguageContractV260 || contract == PipeLangLanguageContractV270 || contract == PipeLangLanguageContractV280
 }
 
 func hasPrimitiveRecordListFilterByTextSourceContract(contract LanguageContract) bool {
-	return contract == PipeLangLanguageContractV220 || contract == PipeLangLanguageContractV230 || contract == PipeLangLanguageContractV240 || contract == PipeLangLanguageContractV250 || contract == PipeLangLanguageContractV260 || contract == PipeLangLanguageContractV270
+	return contract == PipeLangLanguageContractV220 || contract == PipeLangLanguageContractV230 || contract == PipeLangLanguageContractV240 || contract == PipeLangLanguageContractV250 || contract == PipeLangLanguageContractV260 || contract == PipeLangLanguageContractV270 || contract == PipeLangLanguageContractV280
 }
 
 func hasCaseFoldedTextContainmentSourceContract(contract LanguageContract) bool {
-	return contract == PipeLangLanguageContractV230 || contract == PipeLangLanguageContractV240 || contract == PipeLangLanguageContractV250 || contract == PipeLangLanguageContractV260 || contract == PipeLangLanguageContractV270
+	return contract == PipeLangLanguageContractV230 || contract == PipeLangLanguageContractV240 || contract == PipeLangLanguageContractV250 || contract == PipeLangLanguageContractV260 || contract == PipeLangLanguageContractV270 || contract == PipeLangLanguageContractV280
 }
 
 func hasPrimitiveRecordListFilterContainsCaseFoldedSourceContract(contract LanguageContract) bool {
-	return contract == PipeLangLanguageContractV240 || contract == PipeLangLanguageContractV250 || contract == PipeLangLanguageContractV260 || contract == PipeLangLanguageContractV270
+	return contract == PipeLangLanguageContractV240 || contract == PipeLangLanguageContractV250 || contract == PipeLangLanguageContractV260 || contract == PipeLangLanguageContractV270 || contract == PipeLangLanguageContractV280
 }
 
 func hasTextResultSourceContract(contract LanguageContract) bool {
-	return contract == PipeLangLanguageContractV250 || contract == PipeLangLanguageContractV260 || contract == PipeLangLanguageContractV270
+	return contract == PipeLangLanguageContractV250 || contract == PipeLangLanguageContractV260 || contract == PipeLangLanguageContractV270 || contract == PipeLangLanguageContractV280
 }
 
 func hasTextTrimSourceContract(contract LanguageContract) bool {
-	return contract == PipeLangLanguageContractV260 || contract == PipeLangLanguageContractV270
+	return contract == PipeLangLanguageContractV260 || contract == PipeLangLanguageContractV270 || contract == PipeLangLanguageContractV280
 }
 
 func hasPrimitiveRecordListFilterJoinedContainsCaseFoldedSourceContract(contract LanguageContract) bool {
-	return contract == PipeLangLanguageContractV270
+	return contract == PipeLangLanguageContractV270 || contract == PipeLangLanguageContractV280
+}
+
+func hasPrimitiveRecordListSortByOrdinalSourceContract(contract LanguageContract) bool {
+	return contract == PipeLangLanguageContractV280
 }
 
 // ImportKind distinguishes a namespace/module import from a single-symbol import.
@@ -491,7 +496,7 @@ func prepareModuleGraph(input ModuleSetInput, sources *SourceSet, requireSemanti
 	} else if input.LanguageContract == LegacyLanguageContract {
 		diagnostics = append(diagnostics, moduleDiagnostic(CodeInvalidModule, Span{}, "the frozen v0.0.0.1 contract uses the legacy source-set compiler lane"))
 	} else if requireSemanticIDs && !isPipeLangSemanticContract(input.LanguageContract) {
-		diagnostics = append(diagnostics, moduleDiagnostic(CodeInvalidModule, Span{}, fmt.Sprintf("semantic analysis requires a supported post-legacy language contract through %q", PipeLangLanguageContractV270)))
+		diagnostics = append(diagnostics, moduleDiagnostic(CodeInvalidModule, Span{}, fmt.Sprintf("semantic analysis requires a supported post-legacy language contract through %q", PipeLangLanguageContractV280)))
 	}
 	if !validModuleID(input.Root, false) {
 		diagnostics = append(diagnostics, moduleDiagnostic(CodeInvalidModule, Span{}, "root module identity is empty or non-canonical"))

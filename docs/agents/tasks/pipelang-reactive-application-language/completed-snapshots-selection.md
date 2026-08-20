@@ -436,3 +436,39 @@ Application and CLI validation used only a temporary `/tmp` modfile and isolated
 by the local cached module proxy selecting cached `x/sys v0.46.0`; no checkout dependency,
 generated store, network, runtime, Docker, VM, credential, cleanup, commit, push, publication, or
 other external state changed.
+
+### Completed step 7ac exact stable ordinal record-list sorting (2026-08-19)
+
+The founder selected explicit `v0.28.0` stable ascending sorting of one primitive-record list by
+one selected public string field. The sole source form takes one direct `List<R>` parameter,
+returns the same `List<R>`, and uses `sort_by_ordinal(values, R.Field)` as its complete body.
+
+The evaluator and Core-only Go backend validate the complete list, every record, and all selected
+and unselected fields before sorting. They use the existing `v0.8.0` ordinal Unicode
+scalar-sequence order with no normalization, case folding, locale collation, or host-runtime
+ordering. Equal keys preserve input order. Empty input produces canonical non-nil empty storage;
+all results use fresh copied list and record storage.
+
+Existing semantic identities and callable identity remain unchanged; `pipelang.compiler.v1` and
+`pipelang.semantic.v1` remain unchanged. Typed HIR and target-neutral Core carry the explicit
+`list_sort_by_ordinal_text` node with the selected field identity, name, and declaration position.
+`v0.1.0` through `v0.27.0` reject the source, HIR, and executable Core form without implicit
+migration. Descending or direction arguments, multi-key sorting, arbitrary comparers or predicates,
+numeric/record sorting, mutation, general indexing, nested/general composition, Application IR,
+Step-8 behavior, effects, and additional backends remain excluded.
+
+The synchronized source fixture and tests cover semantic projection, AST and source spans,
+HIR/Core field identity and position, ascending ordinal and non-normalized ordering, equal-key
+stability, strict whole-list UTF-8 and nil-list rejection, canonical empty and copied results,
+malformed selector identity/position rejection, explicit v0.27 migration rejection, deterministic
+Go generation, generated-code execution, and preservation of the complete v0.27 joined-filter
+contract.
+
+Terminal proof passed with cached Go 1.25.13 and local/offline module inputs: the uncached complete
+PipeLang compiler, Core, evaluator, and backend suite; the exact 45-source compatibility suite and
+frozen inventory digest; affected application PipeLang tests and the `src/cmd` compile seam; editor
+grammar/completion/snippet assertions; `go vet`; Windows/amd64 compile-only proof; `gofmt`; `git
+diff --check`; unchanged dependency files; and Core-only evaluator/backend import-boundary checks.
+Application and CLI validation used only a temporary `/tmp` modfile and the local cached module
+proxy selecting cached `x/sys v0.46.0`; no checkout dependency, generated store, network, runtime,
+Docker, VM, credential, cleanup, push, publication, or other external state changed.
