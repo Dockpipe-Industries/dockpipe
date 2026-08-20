@@ -1086,7 +1086,7 @@ func (p *parser) parseListFilterJoinedContainsCaseFolded() (Expr, error) {
 	if err != nil {
 		return nil, err
 	}
-	if p.languageContract == PipeLangLanguageContractV290 {
+	if p.languageContract == PipeLangLanguageContractV290 || p.languageContract == PipeLangLanguageContractV300 {
 		selectors := make([]ListTextFieldSelector, 0, 2)
 		for {
 			if _, err := p.expect(tokComma); err != nil {
@@ -1168,6 +1168,38 @@ func (p *parser) parseListSortByOrdinal() (Expr, error) {
 	values, err := p.parseExpr(1)
 	if err != nil {
 		return nil, err
+	}
+	if p.languageContract == PipeLangLanguageContractV300 {
+		selectors := make([]ListTextFieldSelector, 0, 2)
+		for {
+			if _, err := p.expect(tokComma); err != nil {
+				return nil, err
+			}
+			recordName, err := p.expect(tokIdent)
+			if err != nil {
+				return nil, err
+			}
+			if _, err := p.expect(tokDot); err != nil {
+				return nil, err
+			}
+			field, err := p.expect(tokIdent)
+			if err != nil {
+				return nil, err
+			}
+			selectors = append(selectors, ListTextFieldSelector{
+				RecordType: UnresolvedTypeRef{Kind: TypeRefNamed, Name: recordName.lit, Span: recordName.span},
+				Field:      field.lit,
+				FieldSpan:  field.span,
+			})
+			if p.peek().kind == tokRParen {
+				end := p.next()
+				if len(selectors) == 1 {
+					selector := selectors[0]
+					return &ListSortByOrdinalExpr{Values: values, RecordType: selector.RecordType, Field: selector.Field, FieldSpan: selector.FieldSpan, Span: mergeSpans(start.span, end.span)}, nil
+				}
+				return &ListSortByOrdinalsExpr{Values: values, Selectors: selectors, Span: mergeSpans(start.span, end.span)}, nil
+			}
+		}
 	}
 	if _, err := p.expect(tokComma); err != nil {
 		return nil, err

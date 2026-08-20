@@ -192,5 +192,12 @@
       "public List<${1:Row}> ${2:SortRows}(List<${1:Row}> ${3:values}) => sort_by_ordinal(${3:values}, ${1:Row}.${4:Name});"
     ],
     "description": "Create the exact v0.28.0 stable ascending ordinal string-field record-list sort."
+  },
+  "PipeLang Record List Multi-Key Ordinal Sort": {
+    "prefix": "pipe-record-list-sort-by-ordinals",
+    "body": [
+      "public List<${1:Row}> ${2:SortRows}(List<${1:Row}> ${3:values}) => sort_by_ordinal(${3:values}, ${1:Row}.${4:State}, ${1:Row}.${5:Name});"
+    ],
+    "description": "Create the exact v0.30.0 stable ascending lexicographic ordinal string-field record-list sort."
   }
 }

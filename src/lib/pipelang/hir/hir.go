@@ -155,6 +155,7 @@ const (
 	ExprListFilterContainsCaseFolded       ExprKind = "list_filter_contains_case_folded_text"
 	ExprListFilterJoinedContainsCaseFolded ExprKind = "list_filter_joined_contains_case_folded_text"
 	ExprListSortByOrdinalText              ExprKind = "list_sort_by_ordinal_text"
+	ExprListSortByOrdinalTexts             ExprKind = "list_sort_by_ordinal_texts"
 	ExprResultOK                           ExprKind = "result_ok"
 	ExprResultErr                          ExprKind = "result_err"
 	ExprResultIsOK                         ExprKind = "result_is_ok"
@@ -305,6 +306,11 @@ type ListSortByOrdinalText struct {
 	Position int              `json:"position"`
 }
 
+type ListSortByOrdinalTexts struct {
+	Values    *Expr                   `json:"values"`
+	Selectors []ListTextFieldSelector `json:"selectors"`
+}
+
 type ResultOK struct {
 	Value *Expr `json:"value"`
 }
@@ -353,6 +359,7 @@ type Expr struct {
 	ListFilterContainsCaseFolded       *ListFilterContainsCaseFolded       `json:"list_filter_contains_case_folded_text,omitempty"`
 	ListFilterJoinedContainsCaseFolded *ListFilterJoinedContainsCaseFolded `json:"list_filter_joined_contains_case_folded_text,omitempty"`
 	ListSortByOrdinalText              *ListSortByOrdinalText              `json:"list_sort_by_ordinal_text,omitempty"`
+	ListSortByOrdinalTexts             *ListSortByOrdinalTexts             `json:"list_sort_by_ordinal_texts,omitempty"`
 	ResultOK                           *ResultOK                           `json:"result_ok,omitempty"`
 	ResultErr                          *ResultErr                          `json:"result_err,omitempty"`
 	ResultIsOK                         *ResultIsOK                         `json:"result_is_ok,omitempty"`

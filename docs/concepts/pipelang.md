@@ -944,6 +944,35 @@ through `v0.26.0` still reject the form. Zero/one selector, selector values, dup
 regex, normalization, locale tailoring, sorting, nested/general composition, Application IR,
 Step-8 control flow, effects, and additional backends remain outside the production contract.
 
+The explicit `v0.30.0` contract preserves every `v0.29.0` rule and widens only the existing direct
+stable ordinal record-list sort to a record-bounded variable selector count:
+
+```pipelang
+public List<ContainerRow> SortRows(List<ContainerRow> values) =>
+    sort_by_ordinal(values, ContainerRow.State, ContainerRow.Name);
+```
+
+`sort_by_ordinal` still requires one direct `List<R>` parameter, the identical `List<R>` return,
+and one or more static selectors naming distinct public `string` fields of the same existing public
+primitive record `R`. One selector preserves the exact `v0.28.0` behavior and projection. With two
+or more selectors, comparison is stable ascending lexicographic order: selected fields are compared
+in source order under the existing ordinal Unicode scalar-sequence rule, and the first unequal field
+decides the row order. Rows equal across every selector retain input order. The complete list, every
+record, and every selected and unselected field are validated as canonical strict-UTF-8 values
+before sorting. Empty input returns canonical non-nil empty storage, and every result uses fresh
+copied list and record storage.
+
+Callable, list, record, field, and primitive identities remain unchanged. `pipelang.compiler.v1`
+and `pipelang.semantic.v1` remain unchanged. The one-selector form continues to use
+`list_sort_by_ordinal_text`; typed HIR and target-neutral Core use the explicit
+`list_sort_by_ordinal_texts` node only for two or more selectors, carrying their ordered identities,
+names, and declaration positions. `v0.28.0` and `v0.29.0` retain their exact one-selector rule, and
+earlier versions continue to reject sorting without implicit migration. Descending or per-key
+direction arguments, dynamic or duplicate selectors, arbitrary comparers or predicates,
+numeric/record sorting, normalization, case folding, locale collation, mutation, general indexing,
+nested/general composition, Application IR, Step-8 control flow or matching, effects, and
+additional backends remain outside the production contract.
+
 ## Artifacts
 
 Compile emits:

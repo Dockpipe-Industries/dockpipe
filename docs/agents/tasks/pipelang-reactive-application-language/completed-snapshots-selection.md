@@ -509,3 +509,46 @@ the frozen inventory digest; and Core-only evaluator/backend import boundaries. 
 validation used only a temporary `/tmp` modfile selecting cached `x/sys v0.46.0`; no checkout
 dependency, generated store, network, runtime, Docker, VM, credential, cleanup, commit, push,
 publication, or other external state changed.
+
+### Completed step 7ae variable-count multi-key ordinal record-list sorting (2026-08-19)
+
+The founder selected explicit `v0.30.0` stable ascending lexicographic ordinal sorting of one
+primitive-record list by two or more distinct public string fields. The source form keeps
+`sort_by_ordinal(values, R.Field1, R.Field2, ...)` as its complete body, with one direct `List<R>`
+parameter and the same `List<R>` return type. Selector count is bounded by the selected record's
+declared public string fields. `v0.28.0` and `v0.29.0` retain their exact one-selector contract
+without implicit migration; one-selector source under `v0.30.0` also preserves that exact behavior
+and projection.
+
+The evaluator and Core-only Go backend validate the complete list, every record, and every selected
+and unselected field before sorting. Selectors are compared in source order using the existing
+ordinal Unicode scalar-sequence rule, and the first unequal field decides the result. Rows equal
+across all selected fields preserve input order. Empty input produces canonical non-nil empty
+storage, and every result uses fresh copied list and record storage.
+
+Existing semantic identities and callable identity remain unchanged; `pipelang.compiler.v1` and
+`pipelang.semantic.v1` remain unchanged. One-key source continues to lower through
+`list_sort_by_ordinal_text`; typed HIR and target-neutral Core use the explicit
+`list_sort_by_ordinal_texts` node only for two or more selectors and carry the complete ordered
+field identities, names, and declaration positions.
+
+Zero-selector and duplicate/private/non-string/cross-record selectors, runtime selector values,
+descending or per-key direction, arbitrary comparers or predicates, numeric/record sorting,
+normalization, case folding, locale tailoring, mutation, nested or general composition,
+Application IR, Step-8 behavior, effects, and additional backends remain excluded.
+
+The synchronized source fixture and typed HIR, Core, and Go goldens cover semantic projection,
+parser spans and selector order, ordered HIR/Core field identities and declaration positions,
+lexicographic ordinal sorting and equal-key stability, complete strict-UTF-8 and nil-list rejection,
+canonical non-nil empty and copied results, malformed HIR/Core rejection, explicit `v0.29.0`
+migration rejection, deterministic Go generation, generated-code execution, and preservation of
+the variable joined-filter and one-key sort contracts under `v0.30.0`.
+
+Terminal proof passed with cached Go 1.25.0 and local/offline module inputs: the complete PipeLang
+compiler, Core, evaluator, and backend suite; the frozen exact 45-source compatibility lane and
+inventory digest; affected application PipeLang/materialization tests; the `src/cmd` compile seam;
+editor assertions; PipeLang `go vet`; Windows/amd64 compile-only proof; `gofmt`; `git diff --check`;
+unchanged dependency files; unchanged protected ignored bytes; and Core-only evaluator/backend
+import boundaries. Application and CLI validation used only a temporary `/tmp` modfile selecting
+cached `x/sys v0.46.0`; no checkout dependency, generated store, network, runtime, Docker, VM,
+credential, cleanup, commit, push, publication, or other external state changed.

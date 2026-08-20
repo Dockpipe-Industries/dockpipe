@@ -34,7 +34,7 @@ func (e *Error) Error() string {
 
 // Generate accepts Core IR only and returns deterministic, gofmt-formatted Go.
 func Generate(program coreir.Program) ([]byte, error) {
-	if (program.LanguageContract != coreir.LanguageContractV010 && program.LanguageContract != coreir.LanguageContractV020 && program.LanguageContract != coreir.LanguageContractV030 && program.LanguageContract != coreir.LanguageContractV040 && program.LanguageContract != coreir.LanguageContractV050 && program.LanguageContract != coreir.LanguageContractV060 && program.LanguageContract != coreir.LanguageContractV070 && program.LanguageContract != coreir.LanguageContractV080 && program.LanguageContract != coreir.LanguageContractV090 && program.LanguageContract != coreir.LanguageContractV100 && program.LanguageContract != coreir.LanguageContractV110 && program.LanguageContract != coreir.LanguageContractV120 && program.LanguageContract != coreir.LanguageContractV130 && program.LanguageContract != coreir.LanguageContractV140 && program.LanguageContract != coreir.LanguageContractV150 && program.LanguageContract != coreir.LanguageContractV160 && program.LanguageContract != coreir.LanguageContractV170 && program.LanguageContract != coreir.LanguageContractV180 && program.LanguageContract != coreir.LanguageContractV190 && program.LanguageContract != coreir.LanguageContractV200 && program.LanguageContract != coreir.LanguageContractV210 && program.LanguageContract != coreir.LanguageContractV220 && program.LanguageContract != coreir.LanguageContractV230 && program.LanguageContract != coreir.LanguageContractV240 && program.LanguageContract != coreir.LanguageContractV250 && program.LanguageContract != coreir.LanguageContractV260 && program.LanguageContract != coreir.LanguageContractV270 && program.LanguageContract != coreir.LanguageContractV280 && program.LanguageContract != coreir.LanguageContractV290) || program.CompilerContract != coreir.CompilerContractV1 {
+	if (program.LanguageContract != coreir.LanguageContractV010 && program.LanguageContract != coreir.LanguageContractV020 && program.LanguageContract != coreir.LanguageContractV030 && program.LanguageContract != coreir.LanguageContractV040 && program.LanguageContract != coreir.LanguageContractV050 && program.LanguageContract != coreir.LanguageContractV060 && program.LanguageContract != coreir.LanguageContractV070 && program.LanguageContract != coreir.LanguageContractV080 && program.LanguageContract != coreir.LanguageContractV090 && program.LanguageContract != coreir.LanguageContractV100 && program.LanguageContract != coreir.LanguageContractV110 && program.LanguageContract != coreir.LanguageContractV120 && program.LanguageContract != coreir.LanguageContractV130 && program.LanguageContract != coreir.LanguageContractV140 && program.LanguageContract != coreir.LanguageContractV150 && program.LanguageContract != coreir.LanguageContractV160 && program.LanguageContract != coreir.LanguageContractV170 && program.LanguageContract != coreir.LanguageContractV180 && program.LanguageContract != coreir.LanguageContractV190 && program.LanguageContract != coreir.LanguageContractV200 && program.LanguageContract != coreir.LanguageContractV210 && program.LanguageContract != coreir.LanguageContractV220 && program.LanguageContract != coreir.LanguageContractV230 && program.LanguageContract != coreir.LanguageContractV240 && program.LanguageContract != coreir.LanguageContractV250 && program.LanguageContract != coreir.LanguageContractV260 && program.LanguageContract != coreir.LanguageContractV270 && program.LanguageContract != coreir.LanguageContractV280 && program.LanguageContract != coreir.LanguageContractV290 && program.LanguageContract != coreir.LanguageContractV300) || program.CompilerContract != coreir.CompilerContractV1 {
 		return nil, &Error{Code: "PLGO0001", Message: fmt.Sprintf("unsupported Core IR contracts language=%q compiler=%q", program.LanguageContract, program.CompilerContract)}
 	}
 	functions := append([]coreir.Function(nil), program.Functions...)
@@ -68,10 +68,11 @@ func Generate(program coreir.Program) ([]byte, error) {
 	needsListFilterContainsCaseFolded := programNeedsListFilterContainsCaseFolded(functions)
 	needsListFilterJoinedContainsCaseFolded := programNeedsListFilterJoinedContainsCaseFolded(functions)
 	needsListSortByOrdinalText := programNeedsListSortByOrdinalText(functions)
+	needsListSortByOrdinalTexts := programNeedsListSortByOrdinalTexts(functions)
 	needsSnapshotResult := programNeedsSnapshotResult(functions)
 	needsTextResult := programNeedsTextResult(functions)
 	optionalTypeName := optionalGoTypeName(functions)
-	if program.LanguageContract != coreir.LanguageContractV270 && program.LanguageContract != coreir.LanguageContractV280 && program.LanguageContract != coreir.LanguageContractV290 {
+	if program.LanguageContract != coreir.LanguageContractV270 && program.LanguageContract != coreir.LanguageContractV280 && program.LanguageContract != coreir.LanguageContractV290 && program.LanguageContract != coreir.LanguageContractV300 {
 		if needsOptional && program.LanguageContract != coreir.LanguageContractV130 && program.LanguageContract != coreir.LanguageContractV140 && program.LanguageContract != coreir.LanguageContractV150 && program.LanguageContract != coreir.LanguageContractV160 && program.LanguageContract != coreir.LanguageContractV170 && program.LanguageContract != coreir.LanguageContractV180 && program.LanguageContract != coreir.LanguageContractV190 && program.LanguageContract != coreir.LanguageContractV200 && program.LanguageContract != coreir.LanguageContractV210 && program.LanguageContract != coreir.LanguageContractV220 && program.LanguageContract != coreir.LanguageContractV230 && program.LanguageContract != coreir.LanguageContractV240 && program.LanguageContract != coreir.LanguageContractV250 && program.LanguageContract != coreir.LanguageContractV260 {
 			return nil, &Error{Code: "PLGO0001", Message: fmt.Sprintf("primitive Optional Core requires language contract %q", coreir.LanguageContractV130)}
 		}
@@ -115,23 +116,26 @@ func Generate(program coreir.Program) ([]byte, error) {
 			return nil, &Error{Code: "PLGO0001", Message: fmt.Sprintf("record-list filter_contains_casefolded Core requires language contract %q", coreir.LanguageContractV240)}
 		}
 	}
-	if needsListFilterJoinedContainsCaseFolded && program.LanguageContract != coreir.LanguageContractV270 && program.LanguageContract != coreir.LanguageContractV280 && program.LanguageContract != coreir.LanguageContractV290 {
+	if needsListFilterJoinedContainsCaseFolded && program.LanguageContract != coreir.LanguageContractV270 && program.LanguageContract != coreir.LanguageContractV280 && program.LanguageContract != coreir.LanguageContractV290 && program.LanguageContract != coreir.LanguageContractV300 {
 		return nil, &Error{Code: "PLGO0001", Message: fmt.Sprintf("record-list filter_joined_contains_casefolded Core requires language contract %q", coreir.LanguageContractV270)}
 	}
-	if needsListFilterJoinedContainsCaseFolded && program.LanguageContract != coreir.LanguageContractV290 {
+	if needsListFilterJoinedContainsCaseFolded && program.LanguageContract != coreir.LanguageContractV290 && program.LanguageContract != coreir.LanguageContractV300 {
 		for _, function := range functions {
 			if function.Body.Kind == coreir.ExprListFilterJoinedContainsCaseFolded && len(function.Body.ListFilterJoinedContainsCaseFolded.Selectors) != 5 {
 				return nil, backendError(function, "PLGO0001", "record-list filter_joined_contains_casefolded Core requires exactly five selectors before language contract v0.29.0")
 			}
 		}
 	}
-	if needsListSortByOrdinalText && program.LanguageContract != coreir.LanguageContractV280 && program.LanguageContract != coreir.LanguageContractV290 {
+	if needsListSortByOrdinalText && program.LanguageContract != coreir.LanguageContractV280 && program.LanguageContract != coreir.LanguageContractV290 && program.LanguageContract != coreir.LanguageContractV300 {
 		return nil, &Error{Code: "PLGO0001", Message: fmt.Sprintf("record-list sort_by_ordinal Core requires language contract %q", coreir.LanguageContractV280)}
 	}
+	if needsListSortByOrdinalTexts && program.LanguageContract != coreir.LanguageContractV300 {
+		return nil, &Error{Code: "PLGO0001", Message: fmt.Sprintf("multi-key record-list sort_by_ordinal Core requires language contract %q", coreir.LanguageContractV300)}
+	}
 	if needsText {
-		if needsCaseFoldedText || needsListSortByOrdinalText {
+		if needsCaseFoldedText || needsListSortByOrdinalText || needsListSortByOrdinalTexts {
 			out.WriteString("import (\n")
-			if needsListSortByOrdinalText {
+			if needsListSortByOrdinalText || needsListSortByOrdinalTexts {
 				out.WriteString("\t\"sort\"\n")
 			}
 			if needsCaseFoldedText {
@@ -161,7 +165,7 @@ func Generate(program coreir.Program) ([]byte, error) {
 		return nil, &Error{Code: "PLGO0001", Message: err.Error()}
 	}
 	for _, list := range lists {
-		emitListSupport(&out, list, programAppendsList(functions, list), programIndexesList(functions, list), programFindsListByText(functions, list), programFiltersListByText(functions, list), programFiltersListContainsCaseFolded(functions, list), programFiltersListJoinedContainsCaseFolded(functions, list), programSortsListByOrdinalText(functions, list), optionalTypeName)
+		emitListSupport(&out, list, programAppendsList(functions, list), programIndexesList(functions, list), programFindsListByText(functions, list), programFiltersListByText(functions, list), programFiltersListContainsCaseFolded(functions, list), programFiltersListJoinedContainsCaseFolded(functions, list), programSortsListByOrdinalText(functions, list), programSortsListByOrdinalTexts(functions, list), optionalTypeName)
 	}
 	results, err := collectSnapshotResultTypes(functions)
 	if err != nil {
@@ -489,6 +493,12 @@ func emitExpr(expr coreir.Expr, parameters []coreir.Parameter, optionalTypeName 
 			return "", fmt.Errorf("list sort_by_ordinal expression is incomplete")
 		}
 		return fmt.Sprintf("%s(p%d)", listSortByOrdinalTextName(sorted.Values.Type, *sorted), *sorted.Values.Parameter), nil
+	case coreir.ExprListSortByOrdinalTexts:
+		sorted := expr.ListSortByOrdinalTexts
+		if sorted == nil || sorted.Values == nil || len(sorted.Selectors) < 2 || sorted.Values.Kind != coreir.ExprReference || sorted.Values.Parameter == nil || sorted.Values.Type.Kind != coreir.TypeList {
+			return "", fmt.Errorf("multi-key list sort_by_ordinal expression is incomplete")
+		}
+		return fmt.Sprintf("%s(p%d)", listSortByOrdinalTextsName(sorted.Values.Type, *sorted), *sorted.Values.Parameter), nil
 	case coreir.ExprResultOK:
 		if expr.ResultOK == nil || expr.ResultOK.Value == nil || !isBoundedValueResultType(expr.Type) {
 			return "", fmt.Errorf("result ok expression is incomplete")
@@ -841,6 +851,15 @@ func expressionNeedsListFilterJoinedContainsCaseFolded(expression coreir.Expr) b
 func programNeedsListSortByOrdinalText(functions []coreir.Function) bool {
 	for _, function := range functions {
 		if function.Body.Kind == coreir.ExprListSortByOrdinalText {
+			return true
+		}
+	}
+	return false
+}
+
+func programNeedsListSortByOrdinalTexts(functions []coreir.Function) bool {
+	for _, function := range functions {
+		if function.Body.Kind == coreir.ExprListSortByOrdinalTexts {
 			return true
 		}
 	}
@@ -1239,7 +1258,7 @@ func collectListTypes(functions []coreir.Function) ([]coreir.Type, error) {
 	return result, nil
 }
 
-func emitListSupport(out *strings.Builder, list coreir.Type, emitAppend, emitAt bool, findByText []coreir.ListFindByText, filterByText []coreir.ListFilterByText, filterContainsCaseFolded []coreir.ListFilterContainsCaseFolded, filterJoinedContainsCaseFolded []coreir.ListFilterJoinedContainsCaseFolded, sortByOrdinalText []coreir.ListSortByOrdinalText, optionalTypeName string) {
+func emitListSupport(out *strings.Builder, list coreir.Type, emitAppend, emitAt bool, findByText []coreir.ListFindByText, filterByText []coreir.ListFilterByText, filterContainsCaseFolded []coreir.ListFilterContainsCaseFolded, filterJoinedContainsCaseFolded []coreir.ListFilterJoinedContainsCaseFolded, sortByOrdinalText []coreir.ListSortByOrdinalText, sortByOrdinalTexts []coreir.ListSortByOrdinalTexts, optionalTypeName string) {
 	element := list.List.Element
 	elementType := recordGoTypeName(element)
 	validation := listValidationName(list)
@@ -1275,6 +1294,13 @@ func emitListSupport(out *strings.Builder, list coreir.Type, emitAppend, emitAt 
 	}
 	for _, selector := range sortByOrdinalText {
 		fmt.Fprintf(out, "func %s(values []%s) []%s {\n\t%s(values)\n\tresult := make([]%s, len(values))\n\tcopy(result, values)\n\tsort.SliceStable(result, func(left, right int) bool {\n\t\treturn pipelangCompareOrdinalText(result[left].%s, result[right].%s) < 0\n\t})\n\treturn result\n}\n\n", listSortByOrdinalTextName(list, selector), elementType, elementType, validation, elementType, fieldNames[selector.Position], fieldNames[selector.Position])
+	}
+	for _, sorted := range sortByOrdinalTexts {
+		var comparisons strings.Builder
+		for _, selector := range sorted.Selectors {
+			fmt.Fprintf(&comparisons, "\t\tif comparison := pipelangCompareOrdinalText(result[left].%s, result[right].%s); comparison != 0 {\n\t\t\treturn comparison < 0\n\t\t}\n", fieldNames[selector.Position], fieldNames[selector.Position])
+		}
+		fmt.Fprintf(out, "func %s(values []%s) []%s {\n\t%s(values)\n\tresult := make([]%s, len(values))\n\tcopy(result, values)\n\tsort.SliceStable(result, func(left, right int) bool {\n%s\t\treturn false\n\t})\n\treturn result\n}\n\n", listSortByOrdinalTextsName(list, sorted), elementType, elementType, validation, elementType, comparisons.String())
 	}
 }
 
@@ -1448,9 +1474,39 @@ func programSortsListByOrdinalText(functions []coreir.Function, list coreir.Type
 	return result
 }
 
+func programSortsListByOrdinalTexts(functions []coreir.Function, list coreir.Type) []coreir.ListSortByOrdinalTexts {
+	byPositions := map[string]coreir.ListSortByOrdinalTexts{}
+	for _, function := range functions {
+		expression := function.Body
+		sorted := expression.ListSortByOrdinalTexts
+		if expression.Kind != coreir.ExprListSortByOrdinalTexts || sorted == nil || sorted.Values == nil || !coreir.TypeEqual(sorted.Values.Type, list) {
+			continue
+		}
+		byPositions[listSortByOrdinalPositions(*sorted)] = *sorted
+	}
+	keys := make([]string, 0, len(byPositions))
+	for key := range byPositions {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	result := make([]coreir.ListSortByOrdinalTexts, 0, len(keys))
+	for _, key := range keys {
+		result = append(result, byPositions[key])
+	}
+	return result
+}
+
 func listFilterJoinedPositions(filter coreir.ListFilterJoinedContainsCaseFolded) string {
 	positions := make([]string, 0, len(filter.Selectors))
 	for _, selector := range filter.Selectors {
+		positions = append(positions, strconv.Itoa(selector.Position))
+	}
+	return strings.Join(positions, "_")
+}
+
+func listSortByOrdinalPositions(sorted coreir.ListSortByOrdinalTexts) string {
+	positions := make([]string, 0, len(sorted.Selectors))
+	for _, selector := range sorted.Selectors {
 		positions = append(positions, strconv.Itoa(selector.Position))
 	}
 	return strings.Join(positions, "_")
@@ -1484,6 +1540,9 @@ func listFilterJoinedContainsCaseFoldedName(list coreir.Type, filter coreir.List
 }
 func listSortByOrdinalTextName(list coreir.Type, selector coreir.ListSortByOrdinalText) string {
 	return "pipelangSortByOrdinalTextList" + listHelperSuffix(list) + "Field" + strconv.Itoa(selector.Position)
+}
+func listSortByOrdinalTextsName(list coreir.Type, sorted coreir.ListSortByOrdinalTexts) string {
+	return "pipelangSortByOrdinalTextsList" + listHelperSuffix(list) + "Fields" + listSortByOrdinalPositions(sorted)
 }
 
 func isSnapshotResultType(value coreir.Type) bool {
@@ -1825,7 +1884,7 @@ func expressionNeedsTextSupport(expression coreir.Expr) bool {
 		return true
 	case coreir.ExprListFilterContainsCaseFolded, coreir.ExprListFilterJoinedContainsCaseFolded:
 		return true
-	case coreir.ExprListSortByOrdinalText:
+	case coreir.ExprListSortByOrdinalText, coreir.ExprListSortByOrdinalTexts:
 		return true
 	case coreir.ExprResultOK:
 		return expression.ResultOK != nil && expression.ResultOK.Value != nil && expressionNeedsTextSupport(*expression.ResultOK.Value)

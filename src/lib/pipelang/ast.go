@@ -262,6 +262,11 @@ type (
 		FieldSpan  Span
 		Span       Span
 	}
+	ListSortByOrdinalsExpr struct {
+		Values    Expr
+		Selectors []ListTextFieldSelector
+		Span      Span
+	}
 	ResultOKExpr struct {
 		SuccessType UnresolvedTypeRef
 		FailureType UnresolvedTypeRef
@@ -312,6 +317,7 @@ func (*ListFilterByTextExpr) isExpr()                   {}
 func (*ListFilterContainsCaseFoldedExpr) isExpr()       {}
 func (*ListFilterJoinedContainsCaseFoldedExpr) isExpr() {}
 func (*ListSortByOrdinalExpr) isExpr()                  {}
+func (*ListSortByOrdinalsExpr) isExpr()                 {}
 func (*ResultOKExpr) isExpr()                           {}
 func (*ResultErrExpr) isExpr()                          {}
 func (*ResultIsOKExpr) isExpr()                         {}
@@ -340,6 +346,7 @@ func (e *ListFilterByTextExpr) SourceSpan() Span                   { return e.Sp
 func (e *ListFilterContainsCaseFoldedExpr) SourceSpan() Span       { return e.Span }
 func (e *ListFilterJoinedContainsCaseFoldedExpr) SourceSpan() Span { return e.Span }
 func (e *ListSortByOrdinalExpr) SourceSpan() Span                  { return e.Span }
+func (e *ListSortByOrdinalsExpr) SourceSpan() Span                 { return e.Span }
 func (e *ResultOKExpr) SourceSpan() Span                           { return e.Span }
 func (e *ResultErrExpr) SourceSpan() Span                          { return e.Span }
 func (e *ResultIsOKExpr) SourceSpan() Span                         { return e.Span }
@@ -391,6 +398,8 @@ func setExprSpan(expr Expr, span Span) {
 	case *ListFilterJoinedContainsCaseFoldedExpr:
 		node.Span = span
 	case *ListSortByOrdinalExpr:
+		node.Span = span
+	case *ListSortByOrdinalsExpr:
 		node.Span = span
 	case *ResultOKExpr:
 		node.Span = span

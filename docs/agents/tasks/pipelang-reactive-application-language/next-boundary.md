@@ -30,6 +30,9 @@ Exact stable ascending ordinal sorting of one primitive-record list by one selec
 field is also complete.
 Exact stable-order joined case-folded filtering by a record-bounded variable count of two or more
 source-ordered distinct public string fields is also complete.
+Exact stable ascending lexicographic ordinal sorting of one primitive-record list by a
+record-bounded variable count of two or more source-ordered distinct public string fields is also
+complete.
 `v0.2.0` admits only the exact explicit Result-returning addition;
 `v0.3.0` adds only direct subtraction; `v0.4.0` adds only direct multiplication; `v0.5.0` adds only
 direct integer negation; `v0.6.0` adds only direct binary64 division; and `v0.7.0` adds only direct
@@ -129,6 +132,18 @@ HIR and target-neutral Core reuse the explicit `list_filter_joined_contains_case
 and its ordered field identities, names, and positions. `v0.27.0` and `v0.28.0` retain their exact
 five-selector rule. `pipelang.compiler.v1`, `pipelang.semantic.v1`, and every earlier contract
 remain unchanged.
+`v0.30.0` widens only exact direct
+`sort_by_ordinal(List<R>, R.Field1, R.Field2, ...) -> List<R>` to two or more source-ordered
+selectors, bounded by the distinct public string fields of the same existing primitive record `R`.
+It completely validates the list, every record, and every selected and unselected field before
+returning a stable ascending lexicographic sort under the existing `v0.8.0` ordinal Unicode
+scalar-sequence order. The first unequal selected field decides each comparison; rows equal across
+all selectors retain input order. Empty output is canonical non-nil storage, and result lists and
+records are fresh copies. One-selector source under `v0.30.0` preserves the exact `v0.28.0`
+`list_sort_by_ordinal_text` HIR/Core projection; two or more selectors use the explicit
+`list_sort_by_ordinal_texts` node with ordered field identities, names, and declaration positions.
+`v0.28.0` and `v0.29.0` retain their exact one-selector rule. `pipelang.compiler.v1`,
+`pipelang.semantic.v1`, and every earlier contract remain unchanged.
 All other numeric arithmetic and every other Result construction, composition, or consumption form
 remain fail-closed from production source. Any next slice requires a new
 synchronized decision for its exact source spelling, type/value handling rule, semantic projection,
@@ -156,10 +171,10 @@ provides bounded whitespace cleanup for adapter-supplied labels, filters, and di
 exact five-field joined filter now supplies deterministic Name/State/Image/Ports/Created search.
 The variable-selector extension removes the language-level five-field arity coupling for future
 separately accepted projections without changing the frozen launcher behavior by implication.
-The exact one-field ordinal sort now supplies a target-neutral deterministic collection-ordering
-primitive, but applying it to the first launcher would require a separate TASK-020 parity decision
-because the checked-in oracle does not expose table sorting. Dynamic field selection, general
-predicates, descending or multi-key sorting, general indexing,
+The exact one-field and multi-key ordinal sorts now supply target-neutral deterministic
+collection-ordering primitives, but applying either to the first launcher would require a separate
+TASK-020 parity decision because the checked-in oracle does not expose table sorting. Dynamic field
+selection, general predicates, descending or per-key direction sorting, general indexing,
 propagation, matching, and application projection remain later decisions.
 
 No later step-7 slice is included here. In particular, this checkpoint does not add general Result
