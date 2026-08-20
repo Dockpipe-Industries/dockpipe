@@ -59,6 +59,10 @@ const (
 	CodeHIRLowering             DiagnosticCode = "PL3026"
 	CodeCoreLowering            DiagnosticCode = "PL3027"
 	CodeNumericSemantics        DiagnosticCode = "PL3028"
+	CodeMatchNonExhaustive      DiagnosticCode = "PL3029"
+	CodeMatchDuplicate          DiagnosticCode = "PL3030"
+	CodeMatchUnreachable        DiagnosticCode = "PL3031"
+	CodePropagation             DiagnosticCode = "PL3032"
 	CodeInvocation              DiagnosticCode = "PL4001"
 	CodeEvaluation              DiagnosticCode = "PL4002"
 )

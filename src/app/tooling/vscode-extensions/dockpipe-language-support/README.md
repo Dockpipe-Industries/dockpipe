@@ -77,3 +77,11 @@ make install-dockpipe-language-support
   `DOCKPIPE_WORKDIR`, `DOCKPIPE_WORKFLOW_NAME`, `DOCKPIPE_SCRIPT_DIR`,
   `DOCKPIPE_PACKAGE_ROOT`, and `DOCKPIPE_ASSETS_DIR`. Workflow step cwd/scope support also injects
   `DOCKPIPE_SOURCE_ROOT`, `DOCKPIPE_ARTIFACT_ROOT`, `DOCKPIPE_OUTPUT_ROOT`, and `DOCKPIPE_STEP_CWD`.
+
+- `v0.32.0` adds explicit selector/direction pairs: `sort_by_ordinal(values, Row.State, descending, Row.Name, ascending)`. Directions are contextual, sorting remains stable ordinal and fully validated, and earlier ascending forms remain exact.
+
+- `v0.33.0` adds only exact safe postfix `values[index] -> Optional<R>` for a primitive-record list and signed `int` in the direct two-parameter method shape, through `pipe-record-list-index`. Negative and out-of-bounds indices return `none`; `at(values, index)` remains compatible.
+
+- `v0.34.0` adds contextual `propagate(carrier)` only inside the exact bounded `some(propagate(carrier))` or bounded Result `ok(...propagate(carrier))` method shapes, through `pipe-propagate`.
+
+- `v0.35.0` adds exhaustive bounded `match(value){ some(item) => item, none => fallback }` and `ok`/`err` arms through `pipe-match-optional`.

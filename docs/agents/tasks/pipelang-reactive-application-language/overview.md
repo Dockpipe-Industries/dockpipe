@@ -7,7 +7,8 @@ fixes semantics, compiler boundaries, bootstrap stages, compatibility, and imple
 examples and fixtures remain non-normative and accept no production syntax. Separately authorized
 bounded objectives have completed implementation-order steps 1 through 6, step-7 slices 7a
 through 7ae, and the first bounded Step-8 function seam at step 8a. The current explicit language
-contract is `v0.31.0`; the frozen `v0.0.0.1` lane remains unchanged. This record does not by itself
+contract is `v0.35.0`; the separately versioned read-only projection is
+`dockpipe.application.v1`; the frozen `v0.0.0.1` lane remains unchanged. This record does not by itself
 authorize another language slice.
 
 ## Goal

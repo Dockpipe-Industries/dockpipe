@@ -39,6 +39,9 @@ func Generate(program coreir.Program) ([]byte, error) {
 			return nil, backendError(function, "PLGO0001", fmt.Sprintf("named record predicate filtering requires language contract %q", coreir.LanguageContractV310))
 		}
 	}
+	if program.LanguageContract == coreir.LanguageContractV320 || program.LanguageContract == coreir.LanguageContractV330 || program.LanguageContract == coreir.LanguageContractV340 || program.LanguageContract == coreir.LanguageContractV350 {
+		program.LanguageContract = coreir.LanguageContractV300
+	}
 	if err := coreir.ValidateProgram(program); err != nil {
 		return nil, &Error{Code: "PLGO0001", Message: err.Error()}
 	}
@@ -170,7 +173,7 @@ func generate(program coreir.Program) ([]byte, error) {
 		return nil, &Error{Code: "PLGO0001", Message: err.Error()}
 	}
 	if needsOptional {
-		emitOptionalSupport(&out, needsText, needsOptionalDefault, needsRecordOptional, optionalTypeName, records)
+		emitOptionalSupport(&out, needsText, needsOptionalDefault, needsRecordOptional, program.LanguageContract == coreir.LanguageContractV340, optionalTypeName, records)
 	}
 	for _, record := range records {
 		emitRecordType(&out, record, programConstructsRecord(functions, record), optionalTypeName)
@@ -269,6 +272,26 @@ func emitFunction(out *strings.Builder, name string, function coreir.Function, o
 		if isBoundedValueResultType(parameter.Type) {
 			fmt.Fprintf(out, "\t%s(p%d)\n", boundedResultValidationName(parameter.Type), index)
 		}
+	}
+	if function.Body.Kind == coreir.ExprOptionalSome && function.Body.Some != nil && function.Body.Some.Value != nil && function.Body.Some.Value.Kind == coreir.ExprPropagate {
+		propagation := function.Body.Some.Value.Propagate
+		if propagation == nil || propagation.Value == nil || propagation.Value.Parameter == nil {
+			return backendError(function, "PLGO0001", "Optional propagation is not a direct parameter")
+		}
+		valueType, err := goType(function.Body.Type.Optional.Value, optionalTypeName)
+		if err != nil {
+			return backendError(function, "PLGO0001", err.Error())
+		}
+		fmt.Fprintf(out, "\tvalue, present := pipelangPropagateOptional(p%d)\n\tif !present { return pipelangNoneValue[%s]() }\n\treturn pipelangSomeValue(value)\n}\n\n", *propagation.Value.Parameter, valueType)
+		return nil
+	}
+	if function.Body.Kind == coreir.ExprResultOK && function.Body.ResultOK != nil && function.Body.ResultOK.Value != nil && function.Body.ResultOK.Value.Kind == coreir.ExprPropagate {
+		propagation := function.Body.ResultOK.Value.Propagate
+		if propagation == nil || propagation.Value == nil || propagation.Value.Parameter == nil {
+			return backendError(function, "PLGO0001", "Result propagation is not a direct parameter")
+		}
+		fmt.Fprintf(out, "\tif !p%d.OK { return %s(p%d) }\n\treturn %s(p%d.Value)\n}\n\n", *propagation.Value.Parameter, boundedResultCloneName(function.ReturnType), *propagation.Value.Parameter, boundedResultOKName(function.ReturnType), *propagation.Value.Parameter)
+		return nil
 	}
 	out.WriteString("\treturn ")
 	body, err := emitExpr(function.Body, function.Parameters, optionalTypeName)
@@ -551,6 +574,22 @@ func emitExpr(expr coreir.Expr, parameters []coreir.Parameter, optionalTypeName 
 			return "", fmt.Errorf("multi-key list sort_by_ordinal expression is incomplete")
 		}
 		return fmt.Sprintf("%s(p%d)", listSortByOrdinalTextsName(sorted.Values.Type, *sorted), *sorted.Values.Parameter), nil
+	case coreir.ExprListSortByOrdinalDirections:
+		sorted := expr.ListSortByOrdinalDirections
+		if sorted == nil || sorted.Values == nil || sorted.Values.Parameter == nil || sorted.Values.Type.List == nil {
+			return "", fmt.Errorf("directional list sort_by_ordinal expression is incomplete")
+		}
+		element := recordGoTypeName(sorted.Values.Type.List.Element)
+		fields := recordGoFieldNames(sorted.Values.Type.List.Element)
+		var comparisons strings.Builder
+		for _, selector := range sorted.Selectors {
+			op := "<"
+			if selector.Direction == "descending" {
+				op = ">"
+			}
+			fmt.Fprintf(&comparisons, "if comparison := pipelangCompareOrdinalText(result[left].%s, result[right].%s); comparison != 0 { return comparison %s 0 }; ", fields[selector.Position], fields[selector.Position], op)
+		}
+		return fmt.Sprintf("func() []%s { values := p%d; %s(values); result := make([]%s, len(values)); copy(result, values); sort.SliceStable(result, func(left, right int) bool { %s return false }); return result }()", element, *sorted.Values.Parameter, listValidationName(sorted.Values.Type), element, comparisons.String()), nil
 	case coreir.ExprResultOK:
 		if expr.ResultOK == nil || expr.ResultOK.Value == nil || !isBoundedValueResultType(expr.Type) {
 			return "", fmt.Errorf("result ok expression is incomplete")
@@ -604,6 +643,68 @@ func emitExpr(expr coreir.Expr, parameters []coreir.Parameter, optionalTypeName 
 			return "", err
 		}
 		return boundedResultFailureOrName(expr.FailureOr.Value.Type) + "(" + value + ", " + fallback + ")", nil
+	case coreir.ExprMatch:
+		if expr.Match == nil || expr.Match.Value == nil {
+			return "", fmt.Errorf("match expression is incomplete")
+		}
+		value, err := emitExpr(*expr.Match.Value, parameters, optionalTypeName)
+		if err != nil {
+			return "", err
+		}
+		resultType, err := goType(expr.Type, optionalTypeName)
+		if err != nil {
+			return "", err
+		}
+		var out strings.Builder
+		fmt.Fprintf(&out, "func() %s { matched := %s; ", resultType, value)
+		carrier := expr.Match.Value.Type
+		for _, arm := range expr.Match.Arms {
+			scoped := parameters
+			prefix := ""
+			if arm.Binding != nil {
+				var payload coreir.Type
+				if carrier.Kind == coreir.TypeOptional {
+					payload = carrier.Optional.Value
+				} else if arm.Tag == "ok" {
+					payload = carrier.Result.Success
+				} else {
+					payload = carrier.Result.Failure
+				}
+				scoped = append(append([]coreir.Parameter{}, parameters...), coreir.Parameter{Position: len(parameters), Name: "match", Type: payload})
+				source := "matched.Value"
+				if carrier.Kind == coreir.TypeOptional {
+					source = "matched.value"
+				} else if arm.Tag == "err" {
+					source = "matched.Error"
+				}
+				prefix = fmt.Sprintf("p%d := %s; ", *arm.Binding, source)
+			}
+			body, e := emitExpr(*arm.Body, scoped, optionalTypeName)
+			if e != nil {
+				return "", e
+			}
+			condition := "true"
+			if carrier.Kind == coreir.TypeResult {
+				if arm.Tag == "ok" {
+					condition = "matched.OK"
+				} else if arm.Tag == "err" {
+					condition = "!matched.OK"
+				}
+			} else if arm.Tag == "some" {
+				payloadGo, _ := goType(carrier.Optional.Value, optionalTypeName)
+				condition = fmt.Sprintf("func() bool { _, ok := matched.(pipelangOptionalSome[%s]); return ok }()", payloadGo)
+			} else if arm.Tag == "none" {
+				payloadGo, _ := goType(carrier.Optional.Value, optionalTypeName)
+				condition = fmt.Sprintf("func() bool { _, ok := matched.(pipelangOptionalNone[%s]); return ok }()", payloadGo)
+			}
+			if carrier.Kind == coreir.TypeOptional && arm.Binding != nil {
+				payloadGo, _ := goType(carrier.Optional.Value, optionalTypeName)
+				prefix = fmt.Sprintf("typed := matched.(pipelangOptionalSome[%s]); p%d := typed.value; ", payloadGo, *arm.Binding)
+			}
+			fmt.Fprintf(&out, "if %s { %sreturn %s }; ", condition, prefix, body)
+		}
+		out.WriteString("panic(\"non-exhaustive PipeLang match\") }()")
+		return out.String(), nil
 	default:
 		return "", fmt.Errorf("unsupported expression kind %q", expr.Kind)
 	}
@@ -1146,7 +1247,7 @@ func expressionNeedsOptionalDefault(expression coreir.Expr) bool {
 	return false
 }
 
-func emitOptionalSupport(out *strings.Builder, validateText, emitValueOr, validateRecordPayloads bool, optionalTypeName string, records []coreir.Type) {
+func emitOptionalSupport(out *strings.Builder, validateText, emitValueOr, validateRecordPayloads, emitPropagation bool, optionalTypeName string, records []coreir.Type) {
 	fmt.Fprintf(out, "type %s[T any] interface {\n\tpipelangOptional(T)\n}\n\n", optionalTypeName)
 	out.WriteString("type pipelangOptionalSome[T any] struct {\n\tvalue T\n}\n\n")
 	out.WriteString("func (pipelangOptionalSome[T]) pipelangOptional(T) {}\n\n")
@@ -1175,6 +1276,9 @@ func emitOptionalSupport(out *strings.Builder, validateText, emitValueOr, valida
 	}
 	out.WriteString("\tcase pipelangOptionalNone[T]:\n\tdefault:\n\t\tpanic(\"invalid PipeLang Optional value\")\n\t}\n}\n\n")
 	fmt.Fprintf(out, "func pipelangHasValue[T any](value %s[T]) bool {\n\tpipelangValidateOptional(value)\n\t_, present := value.(pipelangOptionalSome[T])\n\treturn present\n}\n\n", optionalTypeName)
+	if emitPropagation {
+		fmt.Fprintf(out, "func pipelangPropagateOptional[T any](value %s[T]) (T, bool) {\n\tpipelangValidateOptional(value)\n\ttyped, present := value.(pipelangOptionalSome[T])\n\tif !present { var zero T; return zero, false }\n\treturn typed.value, true\n}\n\n", optionalTypeName)
+	}
 	if !emitValueOr {
 		return
 	}

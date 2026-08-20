@@ -1066,3 +1066,48 @@ and MCU target profiles select validated backend capabilities without changing s
 
 The complete accepted decisions, compatibility inventory, and bounded implementation order live in
 [TASK-021](../agents/tasks/pipelang-reactive-application-language/overview.md).
+
+### PipeLang v0.32.0: explicit per-key ordinal direction
+
+The `v0.32.0` directional form pairs each selected public string field with a contextual direction:
+
+```pipelang
+public List<ContainerRow> SortRows(List<ContainerRow> values) =>
+    sort_by_ordinal(values, ContainerRow.State, descending, ContainerRow.Name, ascending);
+```
+
+There must be one or more distinct selector/direction pairs. Sorting validates the complete value,
+uses stable ordinal Unicode scalar-sequence comparison in pair order, returns copied storage and a
+canonical non-nil empty list, and preserves input order when all keys compare equal. Typed HIR and
+Core expose `list_sort_by_ordinal_directions`; earlier ascending spellings and nodes remain versioned
+compatibility contracts.
+
+
+### PipeLang v0.33.0: safe general indexing
+
+The bounded postfix form `values[index]` is available only in an exact two-parameter method
+`Optional<R> M(List<R> values, int index)`, where `R` is an existing public primitive record. It returns
+`none` for negative or out-of-bounds indices and a copied `some` record otherwise, after complete input
+validation. It lowers to the existing target-neutral `list_at` HIR/Core operation; `at(values, index)`
+remains compatible. Other receiver or index types, chaining, slicing, defaults, exceptions, and unchecked
+access are excluded.
+
+### PipeLang v0.34.0: bounded propagation
+
+The contextual `propagate(carrier)` expression is accepted only as the direct payload of a complete
+`some(...)` or bounded `ok<T, E>(...)` method body whose return type exactly equals the direct
+parameter carrier. It extracts presence/success and returns absence/failure through explicit
+source-located HIR/Core propagation control flow. Optional primitives and primitive records plus the
+existing snapshot/text Result forms are the complete matrix. `PL3032` diagnoses misuse. There are no
+exceptions, implicit conversions, arbitrary Results, effects, blocks, or target-specific errors.
+
+
+PipeLang v0.35.0 adds exhaustive bounded matching over existing Optional and Result values with explicit `some`/`none` or `ok`/`err` arms and a bounded final `_` wildcard. Matching is pure, source-located, target-neutral Core control flow.
+### Target-neutral Application IR
+
+`dockpipe.application.v1` is not a language feature or target generator. It consumes the public
+`pipelang.semantic.v1` projection, its matching Core program, and explicit stable-identity choices
+for read-only snapshot sections, rows, keys, columns, filtering, ordering, selection, details, and logs.
+Consumers therefore cannot reparse source or infer language semantics in an adapter.
+Filter, order, section Result, selection, details, and logs roles are explicit semantic identities
+that must also resolve to contract-matching Core functions.

@@ -1,0 +1,22 @@
+public Record ContainerRow {
+    public string Id; public string Name; public string State; public string Status;
+    public string Image; public string Ports; public string Created;
+}
+public Record NetworkRow { public string Id; public string Name; public string Driver; public string Scope; }
+public Record VolumeRow { public string Name; public string Driver; public string Mountpoint; }
+public Record DockerSnapshot {
+	public string Identity;
+}
+public Class DockerApplication {
+    public DockerSnapshot Project(DockerSnapshot snapshot) => snapshot;
+	public Result<List<ContainerRow>, string> Containers(Result<List<ContainerRow>, string> value) => value;
+	public Result<List<NetworkRow>, string> Networks(Result<List<NetworkRow>, string> value) => value;
+	public Result<List<VolumeRow>, string> Volumes(Result<List<VolumeRow>, string> value) => value;
+	public Optional<ContainerRow> Selection(Optional<ContainerRow> value) => value;
+	public Result<string, string> Details(Result<string, string> value) => value;
+	public Result<string, string> Logs(Result<string, string> value) => value;
+	public List<ContainerRow> FilterContainers(List<ContainerRow> rows, string query) => filter_joined_contains_casefolded(rows, ContainerRow.Name, ContainerRow.State, ContainerRow.Image, ContainerRow.Ports, ContainerRow.Created, query);
+	public List<ContainerRow> OrderContainers(List<ContainerRow> rows) => sort_by_ordinal(rows, ContainerRow.Name);
+	public List<NetworkRow> OrderNetworks(List<NetworkRow> rows) => sort_by_ordinal(rows, NetworkRow.Name);
+	public List<VolumeRow> OrderVolumes(List<VolumeRow> rows) => sort_by_ordinal(rows, VolumeRow.Name);
+}

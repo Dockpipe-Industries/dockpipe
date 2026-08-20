@@ -166,7 +166,7 @@ func ValidateFunction(function Function) error {
 	if exprContainsListFilterJoinedContainsCaseFolded(function.Body) && function.Body.Kind != ExprListFilterJoinedContainsCaseFolded {
 		return fmt.Errorf("filter_joined_contains_casefolded must be the complete function body")
 	}
-	if exprContainsListSortByOrdinalText(function.Body) && function.Body.Kind != ExprListSortByOrdinalText && function.Body.Kind != ExprListSortByOrdinalTexts {
+	if exprContainsListSortByOrdinalText(function.Body) && function.Body.Kind != ExprListSortByOrdinalText && function.Body.Kind != ExprListSortByOrdinalTexts && function.Body.Kind != ExprListSortByOrdinalDirections {
 		return fmt.Errorf("sort_by_ordinal must be the complete function body")
 	}
 	if err := validateExpr(function.Body, function.Parameters); err != nil {
@@ -243,12 +243,18 @@ func ValidateFunction(function Function) error {
 			return err
 		}
 	}
+	listSortByOrdinalDirections := function.Body.Kind == ExprListSortByOrdinalDirections
+	if listSortByOrdinalDirections {
+		if err := validateDirectListSortByOrdinalDirectionsFunction(function); err != nil {
+			return err
+		}
+	}
 	if functionContainsOptional(function) && !boundedResult && !listAt && !listFindByText && !listSortByOrdinalText && !listSortByOrdinalTexts {
 		if err := validateDirectOptionalFunction(function); err != nil {
 			return err
 		}
 	}
-	if functionContainsList(function) && !boundedResult && !listAt && !listFindByText && !listFilterByText && !listFilterPredicate && !listFilterContainsCaseFolded && !listFilterJoinedContainsCaseFolded && !listSortByOrdinalText && !listSortByOrdinalTexts {
+	if functionContainsList(function) && !boundedResult && !listAt && !listFindByText && !listFilterByText && !listFilterPredicate && !listFilterContainsCaseFolded && !listFilterJoinedContainsCaseFolded && !listSortByOrdinalText && !listSortByOrdinalTexts && !listSortByOrdinalDirections {
 		if err := validateDirectListFunction(function); err != nil {
 			return err
 		}
@@ -1043,6 +1049,28 @@ func validateExpr(expression Expr, parameters []Parameter) error {
 				return fmt.Errorf("multi-key list sort_by_ordinal field is not string")
 			}
 		}
+	case ExprListSortByOrdinalDirections:
+		sorted := expression.ListSortByOrdinalDirections
+		if sorted == nil || sorted.Values == nil || len(sorted.Selectors) < 1 {
+			return fmt.Errorf("directional list sort_by_ordinal expression is incomplete")
+		}
+		plain := make([]ListTextFieldSelector, 0, len(sorted.Selectors))
+		for _, s := range sorted.Selectors {
+			if s.Direction != "ascending" && s.Direction != "descending" {
+				return fmt.Errorf("directional list sort_by_ordinal direction is invalid")
+			}
+			plain = append(plain, s.ListTextFieldSelector)
+		}
+		legacy := expression
+		legacy.Kind = ExprListSortByOrdinalTexts
+		legacy.ListSortByOrdinalDirections = nil
+		legacy.ListSortByOrdinalTexts = &ListSortByOrdinalTexts{Values: sorted.Values, Selectors: plain}
+		if len(plain) == 1 {
+			legacy.Kind = ExprListSortByOrdinalText
+			legacy.ListSortByOrdinalTexts = nil
+			legacy.ListSortByOrdinalText = &ListSortByOrdinalText{Values: sorted.Values, Field: plain[0].Field, Name: plain[0].Name, Position: plain[0].Position}
+		}
+		return validateExpr(legacy, parameters)
 	case ExprResultOK:
 		if expression.ResultOK == nil || expression.ResultOK.Value == nil || !isBoundedValueResultType(expression.Type) {
 			return fmt.Errorf("result ok expression is incomplete or has an invalid result type")
@@ -1053,6 +1081,24 @@ func validateExpr(expression Expr, parameters []Parameter) error {
 		if !TypeEqual(expression.ResultOK.Value.Type, expression.Type.Result.Success) {
 			return fmt.Errorf("result ok value type does not match its success type")
 		}
+	case ExprPropagate:
+		if expression.Propagate == nil || expression.Propagate.Value == nil {
+			return fmt.Errorf("propagate expression is incomplete")
+		}
+		if err := validateExpr(*expression.Propagate.Value, parameters); err != nil {
+			return fmt.Errorf("propagate value: %w", err)
+		}
+		carrier := expression.Propagate.Carrier
+		if !TypeEqual(carrier, expression.Propagate.Value.Type) {
+			return fmt.Errorf("propagate carrier does not match operand")
+		}
+		if carrier.Kind == TypeOptional && carrier.Optional != nil && TypeEqual(expression.Type, carrier.Optional.Value) {
+			break
+		}
+		if isBoundedValueResultType(carrier) && TypeEqual(expression.Type, carrier.Result.Success) {
+			break
+		}
+		return fmt.Errorf("propagate requires a matching Optional or bounded Result carrier")
 	case ExprResultErr:
 		if expression.ResultErr == nil || expression.ResultErr.Error == nil || !isBoundedValueResultType(expression.Type) {
 			return fmt.Errorf("result err expression is incomplete or has an invalid result type")
@@ -1101,6 +1147,45 @@ func validateExpr(expression Expr, parameters []Parameter) error {
 		resultType := expression.FailureOr.Value.Type
 		if !isBoundedValueResultType(resultType) || !TypeEqual(expression.FailureOr.Fallback.Type, resultType.Result.Failure) || !TypeEqual(expression.Type, resultType.Result.Failure) {
 			return fmt.Errorf("result failure_or operand, fallback, and return types do not match")
+		}
+	case ExprMatch:
+		if expression.Match == nil || expression.Match.Value == nil || len(expression.Match.Arms) == 0 {
+			return fmt.Errorf("match expression is incomplete")
+		}
+		if err := validateExpr(*expression.Match.Value, parameters); err != nil {
+			return fmt.Errorf("match value: %w", err)
+		}
+		carrier := expression.Match.Value.Type
+		if carrier.Kind != TypeOptional && carrier.Kind != TypeResult {
+			return fmt.Errorf("match value is not tagged")
+		}
+		for _, arm := range expression.Match.Arms {
+			if arm.Body == nil {
+				return fmt.Errorf("match arm has no body")
+			}
+			scoped := parameters
+			if arm.Binding != nil {
+				var payload Type
+				if carrier.Kind == TypeOptional && arm.Tag == "some" {
+					payload = carrier.Optional.Value
+				} else if carrier.Kind == TypeResult && arm.Tag == "ok" {
+					payload = carrier.Result.Success
+				} else if carrier.Kind == TypeResult && arm.Tag == "err" {
+					payload = carrier.Result.Failure
+				} else {
+					return fmt.Errorf("match arm binding has no payload")
+				}
+				if *arm.Binding != len(parameters) {
+					return fmt.Errorf("match arm binding position is not canonical")
+				}
+				scoped = append(append([]Parameter{}, parameters...), Parameter{Position: len(parameters), Name: "match", Type: payload})
+			}
+			if err := validateExpr(*arm.Body, scoped); err != nil {
+				return fmt.Errorf("match arm: %w", err)
+			}
+			if !TypeEqual(arm.Body.Type, expression.Type) {
+				return fmt.Errorf("match arm type does not match expression")
+			}
 		}
 	default:
 		return fmt.Errorf("unsupported expression kind %q", expression.Kind)
@@ -1157,7 +1242,9 @@ func validateDirectBoundedValueResultFunction(function Function) error {
 	}
 	switch function.Body.Kind {
 	case ExprResultOK:
-		if !isBoundedValueResultType(function.ReturnType) || function.Body.ResultOK == nil || len(function.Parameters) != 1 || !TypeEqual(function.Parameters[0].Type, function.ReturnType.Result.Success) || !directParameter(function.Body.ResultOK.Value, 0) {
+		propagated := len(function.Parameters) == 1 && function.Body.ResultOK != nil && function.Body.ResultOK.Value != nil && function.Body.ResultOK.Value.Kind == ExprPropagate && function.Body.ResultOK.Value.Propagate != nil && directParameter(function.Body.ResultOK.Value.Propagate.Value, 0) && TypeEqual(function.Parameters[0].Type, function.ReturnType)
+		legacy := len(function.Parameters) == 1 && function.Body.ResultOK != nil && TypeEqual(function.Parameters[0].Type, function.ReturnType.Result.Success) && directParameter(function.Body.ResultOK.Value, 0)
+		if !isBoundedValueResultType(function.ReturnType) || len(function.Parameters) != 1 || (!legacy && !propagated) {
 			return fmt.Errorf("bounded Result ok requires one direct matching success parameter")
 		}
 	case ExprResultErr:
@@ -1180,6 +1267,10 @@ func validateDirectBoundedValueResultFunction(function Function) error {
 	case ExprResultFailureOr:
 		if function.Body.FailureOr == nil || len(function.Parameters) != 2 || !isBoundedValueResultType(function.Parameters[0].Type) || !TypeEqual(function.Parameters[0].Type.Result.Failure, function.Parameters[1].Type) || !TypeEqual(function.ReturnType, function.Parameters[1].Type) || !directParameter(function.Body.FailureOr.Value, 0) || !directParameter(function.Body.FailureOr.Fallback, 1) {
 			return fmt.Errorf("bounded Result failure_or requires direct Result and matching failure fallback parameters")
+		}
+	case ExprMatch:
+		if function.Body.Match == nil || len(function.Parameters) != 1 || !isBoundedValueResultType(function.Parameters[0].Type) || !directParameter(function.Body.Match.Value, 0) {
+			return fmt.Errorf("bounded Result match requires one direct Result parameter")
 		}
 	default:
 		return fmt.Errorf("bounded Result types are admitted only in direct ok, err, identity, is_ok, success_or, or failure_or functions")
@@ -1894,6 +1985,17 @@ func validateDirectListSortByOrdinalTextsFunction(function Function) error {
 	return nil
 }
 
+func validateDirectListSortByOrdinalDirectionsFunction(function Function) error {
+	sorted := function.Body.ListSortByOrdinalDirections
+	if sorted == nil || sorted.Values == nil || len(sorted.Selectors) < 1 || len(function.Parameters) != 1 || function.Parameters[0].Type.Kind != TypeList || !TypeEqual(function.ReturnType, function.Parameters[0].Type) {
+		return fmt.Errorf("directional sort_by_ordinal requires one direct List<R> parameter, selector/direction pairs, and matching List<R> return")
+	}
+	if sorted.Values.Kind != ExprReference || sorted.Values.Parameter == nil || *sorted.Values.Parameter != 0 {
+		return fmt.Errorf("directional sort_by_ordinal values must be its sole direct record-list parameter")
+	}
+	return nil
+}
+
 func functionContainsOptional(function Function) bool {
 	if function.ReturnType.Kind == TypeOptional || exprContainsOptional(function.Body) {
 		return true
@@ -1956,7 +2058,9 @@ func validateDirectOptionalFunction(function Function) error {
 			return fmt.Errorf("optional some requires one matching value parameter and an Optional return")
 		}
 		value := function.Body.Some.Value
-		if value.Kind != ExprReference || value.Parameter == nil || *value.Parameter != 0 || !TypeEqual(function.Parameters[0].Type, function.ReturnType.Optional.Value) {
+		propagated := value.Kind == ExprPropagate && value.Propagate != nil && value.Propagate.Value != nil && value.Propagate.Value.Kind == ExprReference && value.Propagate.Value.Parameter != nil && *value.Propagate.Value.Parameter == 0 && TypeEqual(function.Parameters[0].Type, function.ReturnType)
+		legacy := value.Kind == ExprReference && value.Parameter != nil && *value.Parameter == 0 && TypeEqual(function.Parameters[0].Type, function.ReturnType.Optional.Value)
+		if !legacy && !propagated {
 			return fmt.Errorf("optional some value must be its sole corresponding direct parameter")
 		}
 	case ExprOptionalNone:
@@ -1989,6 +2093,10 @@ func validateDirectOptionalFunction(function Function) error {
 		}
 		if !TypeEqual(function.Parameters[0].Type.Optional.Value, function.Parameters[1].Type) || !TypeEqual(function.ReturnType, function.Parameters[1].Type) {
 			return fmt.Errorf("optional value_or payload, fallback, and return types must match")
+		}
+	case ExprMatch:
+		if function.Body.Match == nil || function.Body.Match.Value == nil || len(function.Parameters) != 1 || function.Body.Match.Value.Kind != ExprReference || function.Body.Match.Value.Parameter == nil || *function.Body.Match.Value.Parameter != 0 {
+			return fmt.Errorf("match requires one direct tagged parameter")
 		}
 	default:
 		return fmt.Errorf("Optional types are admitted only in direct some, none, identity transport, has_value, or value_or functions")

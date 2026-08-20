@@ -198,6 +198,22 @@ type (
 		Fallback Expr
 		Span     Span
 	}
+	PropagateExpr struct {
+		Value Expr
+		Span  Span
+	}
+	MatchArm struct {
+		Tag         string
+		Binding     string
+		PatternSpan Span
+		Body        Expr
+		Span        Span
+	}
+	MatchExpr struct {
+		Value Expr
+		Arms  []MatchArm
+		Span  Span
+	}
 	ListEmptyExpr struct {
 		ElementType UnresolvedTypeRef
 		Span        Span
@@ -216,9 +232,10 @@ type (
 		Span   Span
 	}
 	ListAtExpr struct {
-		Values Expr
-		Index  Expr
-		Span   Span
+		Values  Expr
+		Index   Expr
+		Postfix bool
+		Span    Span
 	}
 	ListFindByTextExpr struct {
 		Values     Expr
@@ -274,6 +291,16 @@ type (
 		Selectors []ListTextFieldSelector
 		Span      Span
 	}
+	ListDirectionalTextFieldSelector struct {
+		ListTextFieldSelector
+		Direction     string
+		DirectionSpan Span
+	}
+	ListSortByOrdinalDirectionsExpr struct {
+		Values    Expr
+		Selectors []ListDirectionalTextFieldSelector
+		Span      Span
+	}
 	ResultOKExpr struct {
 		SuccessType UnresolvedTypeRef
 		FailureType UnresolvedTypeRef
@@ -314,6 +341,8 @@ func (*OptionalSomeExpr) isExpr()                       {}
 func (*OptionalNoneExpr) isExpr()                       {}
 func (*OptionalHasValueExpr) isExpr()                   {}
 func (*OptionalValueOrExpr) isExpr()                    {}
+func (*PropagateExpr) isExpr()                          {}
+func (*MatchExpr) isExpr()                              {}
 func (*ListEmptyExpr) isExpr()                          {}
 func (*ListSingletonExpr) isExpr()                      {}
 func (*ListCountExpr) isExpr()                          {}
@@ -326,6 +355,7 @@ func (*ListFilterContainsCaseFoldedExpr) isExpr()       {}
 func (*ListFilterJoinedContainsCaseFoldedExpr) isExpr() {}
 func (*ListSortByOrdinalExpr) isExpr()                  {}
 func (*ListSortByOrdinalsExpr) isExpr()                 {}
+func (*ListSortByOrdinalDirectionsExpr) isExpr()        {}
 func (*ResultOKExpr) isExpr()                           {}
 func (*ResultErrExpr) isExpr()                          {}
 func (*ResultIsOKExpr) isExpr()                         {}
@@ -344,6 +374,8 @@ func (e *OptionalSomeExpr) SourceSpan() Span                       { return e.Sp
 func (e *OptionalNoneExpr) SourceSpan() Span                       { return e.Span }
 func (e *OptionalHasValueExpr) SourceSpan() Span                   { return e.Span }
 func (e *OptionalValueOrExpr) SourceSpan() Span                    { return e.Span }
+func (e *PropagateExpr) SourceSpan() Span                          { return e.Span }
+func (e *MatchExpr) SourceSpan() Span                              { return e.Span }
 func (e *ListEmptyExpr) SourceSpan() Span                          { return e.Span }
 func (e *ListSingletonExpr) SourceSpan() Span                      { return e.Span }
 func (e *ListCountExpr) SourceSpan() Span                          { return e.Span }
@@ -356,6 +388,7 @@ func (e *ListFilterContainsCaseFoldedExpr) SourceSpan() Span       { return e.Sp
 func (e *ListFilterJoinedContainsCaseFoldedExpr) SourceSpan() Span { return e.Span }
 func (e *ListSortByOrdinalExpr) SourceSpan() Span                  { return e.Span }
 func (e *ListSortByOrdinalsExpr) SourceSpan() Span                 { return e.Span }
+func (e *ListSortByOrdinalDirectionsExpr) SourceSpan() Span        { return e.Span }
 func (e *ResultOKExpr) SourceSpan() Span                           { return e.Span }
 func (e *ResultErrExpr) SourceSpan() Span                          { return e.Span }
 func (e *ResultIsOKExpr) SourceSpan() Span                         { return e.Span }
@@ -388,6 +421,10 @@ func setExprSpan(expr Expr, span Span) {
 		node.Span = span
 	case *OptionalValueOrExpr:
 		node.Span = span
+	case *PropagateExpr:
+		node.Span = span
+	case *MatchExpr:
+		node.Span = span
 	case *ListEmptyExpr:
 		node.Span = span
 	case *ListSingletonExpr:
@@ -411,6 +448,8 @@ func setExprSpan(expr Expr, span Span) {
 	case *ListSortByOrdinalExpr:
 		node.Span = span
 	case *ListSortByOrdinalsExpr:
+		node.Span = span
+	case *ListSortByOrdinalDirectionsExpr:
 		node.Span = span
 	case *ResultOKExpr:
 		node.Span = span

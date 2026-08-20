@@ -1,0 +1,828 @@
+{
+  "identity": {
+    "package_id": "docker.observability",
+    "path": "app.root.dockerapplication.project",
+    "source": {
+      "file": "docker-observability.pipe",
+      "start": {
+        "offset": 486,
+        "line": 11,
+        "column": 5,
+        "utf16_column": 5
+      },
+      "end": {
+        "offset": 553,
+        "line": 11,
+        "column": 72,
+        "utf16_column": 72
+      }
+    }
+  },
+  "snapshot_type": {
+    "package_id": "docker.observability",
+    "path": "app.root.dockersnapshot",
+    "source": {
+      "file": "",
+      "start": {
+        "offset": 0,
+        "line": 0,
+        "column": 0,
+        "utf16_column": 0
+      },
+      "end": {
+        "offset": 0,
+        "line": 0,
+        "column": 0,
+        "utf16_column": 0
+      }
+    }
+  },
+  "sections": [
+    {
+      "identity": {
+        "package_id": "docker.observability",
+        "path": "app.root.dockerapplication.containers",
+        "source": {
+          "file": "docker-observability.pipe",
+          "start": {
+            "offset": 555,
+            "line": 12,
+            "column": 2,
+            "utf16_column": 2
+          },
+          "end": {
+            "offset": 659,
+            "line": 12,
+            "column": 106,
+            "utf16_column": 106
+          }
+        }
+      },
+      "result_type": {
+        "package_id": "docker.observability",
+        "path": "app.root.dockerapplication.containers",
+        "source": {
+          "file": "docker-observability.pipe",
+          "start": {
+            "offset": 555,
+            "line": 12,
+            "column": 2,
+            "utf16_column": 2
+          },
+          "end": {
+            "offset": 659,
+            "line": 12,
+            "column": 106,
+            "utf16_column": 106
+          }
+        }
+      },
+      "row_type": {
+        "package_id": "docker.observability",
+        "path": "app.root.containerrow",
+        "source": {
+          "file": "",
+          "start": {
+            "offset": 0,
+            "line": 0,
+            "column": 0,
+            "utf16_column": 0
+          },
+          "end": {
+            "offset": 0,
+            "line": 0,
+            "column": 0,
+            "utf16_column": 0
+          }
+        }
+      },
+      "key": {
+        "package_id": "docker.observability",
+        "path": "app.root.containerrow.id",
+        "source": {
+          "file": "docker-observability.pipe",
+          "start": {
+            "offset": 33,
+            "line": 2,
+            "column": 5,
+            "utf16_column": 5
+          },
+          "end": {
+            "offset": 50,
+            "line": 2,
+            "column": 22,
+            "utf16_column": 22
+          }
+        }
+      },
+      "columns": [
+        {
+          "field": {
+            "package_id": "docker.observability",
+            "path": "app.root.containerrow.name",
+            "source": {
+              "file": "docker-observability.pipe",
+              "start": {
+                "offset": 51,
+                "line": 2,
+                "column": 23,
+                "utf16_column": 23
+              },
+              "end": {
+                "offset": 70,
+                "line": 2,
+                "column": 42,
+                "utf16_column": 42
+              }
+            }
+          },
+          "label": "Name"
+        },
+        {
+          "field": {
+            "package_id": "docker.observability",
+            "path": "app.root.containerrow.state",
+            "source": {
+              "file": "docker-observability.pipe",
+              "start": {
+                "offset": 71,
+                "line": 2,
+                "column": 43,
+                "utf16_column": 43
+              },
+              "end": {
+                "offset": 91,
+                "line": 2,
+                "column": 63,
+                "utf16_column": 63
+              }
+            }
+          },
+          "label": "State"
+        },
+        {
+          "field": {
+            "package_id": "docker.observability",
+            "path": "app.root.containerrow.image",
+            "source": {
+              "file": "docker-observability.pipe",
+              "start": {
+                "offset": 118,
+                "line": 3,
+                "column": 5,
+                "utf16_column": 5
+              },
+              "end": {
+                "offset": 138,
+                "line": 3,
+                "column": 25,
+                "utf16_column": 25
+              }
+            }
+          },
+          "label": "Image"
+        },
+        {
+          "field": {
+            "package_id": "docker.observability",
+            "path": "app.root.containerrow.ports",
+            "source": {
+              "file": "docker-observability.pipe",
+              "start": {
+                "offset": 139,
+                "line": 3,
+                "column": 26,
+                "utf16_column": 26
+              },
+              "end": {
+                "offset": 159,
+                "line": 3,
+                "column": 46,
+                "utf16_column": 46
+              }
+            }
+          },
+          "label": "Ports"
+        },
+        {
+          "field": {
+            "package_id": "docker.observability",
+            "path": "app.root.containerrow.created",
+            "source": {
+              "file": "docker-observability.pipe",
+              "start": {
+                "offset": 160,
+                "line": 3,
+                "column": 47,
+                "utf16_column": 47
+              },
+              "end": {
+                "offset": 182,
+                "line": 3,
+                "column": 69,
+                "utf16_column": 69
+              }
+            }
+          },
+          "label": "Created"
+        }
+      ],
+      "filter_fields": [
+        {
+          "package_id": "docker.observability",
+          "path": "app.root.containerrow.name",
+          "source": {
+            "file": "docker-observability.pipe",
+            "start": {
+              "offset": 51,
+              "line": 2,
+              "column": 23,
+              "utf16_column": 23
+            },
+            "end": {
+              "offset": 70,
+              "line": 2,
+              "column": 42,
+              "utf16_column": 42
+            }
+          }
+        },
+        {
+          "package_id": "docker.observability",
+          "path": "app.root.containerrow.state",
+          "source": {
+            "file": "docker-observability.pipe",
+            "start": {
+              "offset": 71,
+              "line": 2,
+              "column": 43,
+              "utf16_column": 43
+            },
+            "end": {
+              "offset": 91,
+              "line": 2,
+              "column": 63,
+              "utf16_column": 63
+            }
+          }
+        },
+        {
+          "package_id": "docker.observability",
+          "path": "app.root.containerrow.image",
+          "source": {
+            "file": "docker-observability.pipe",
+            "start": {
+              "offset": 118,
+              "line": 3,
+              "column": 5,
+              "utf16_column": 5
+            },
+            "end": {
+              "offset": 138,
+              "line": 3,
+              "column": 25,
+              "utf16_column": 25
+            }
+          }
+        },
+        {
+          "package_id": "docker.observability",
+          "path": "app.root.containerrow.ports",
+          "source": {
+            "file": "docker-observability.pipe",
+            "start": {
+              "offset": 139,
+              "line": 3,
+              "column": 26,
+              "utf16_column": 26
+            },
+            "end": {
+              "offset": 159,
+              "line": 3,
+              "column": 46,
+              "utf16_column": 46
+            }
+          }
+        },
+        {
+          "package_id": "docker.observability",
+          "path": "app.root.containerrow.created",
+          "source": {
+            "file": "docker-observability.pipe",
+            "start": {
+              "offset": 160,
+              "line": 3,
+              "column": 47,
+              "utf16_column": 47
+            },
+            "end": {
+              "offset": 182,
+              "line": 3,
+              "column": 69,
+              "utf16_column": 69
+            }
+          }
+        }
+      ],
+      "order": [
+        {
+          "field": {
+            "package_id": "docker.observability",
+            "path": "app.root.containerrow.name",
+            "source": {
+              "file": "docker-observability.pipe",
+              "start": {
+                "offset": 51,
+                "line": 2,
+                "column": 23,
+                "utf16_column": 23
+              },
+              "end": {
+                "offset": 70,
+                "line": 2,
+                "column": 42,
+                "utf16_column": 42
+              }
+            }
+          },
+          "direction": "ascending"
+        }
+      ],
+      "filter": {
+        "package_id": "docker.observability",
+        "path": "app.root.dockerapplication.filtercontainers",
+        "source": {
+          "file": "docker-observability.pipe",
+          "start": {
+            "offset": 1094,
+            "line": 18,
+            "column": 2,
+            "utf16_column": 2
+          },
+          "end": {
+            "offset": 1327,
+            "line": 18,
+            "column": 235,
+            "utf16_column": 235
+          }
+        }
+      },
+      "order_binding": {
+        "package_id": "docker.observability",
+        "path": "app.root.dockerapplication.ordercontainers",
+        "source": {
+          "file": "docker-observability.pipe",
+          "start": {
+            "offset": 1329,
+            "line": 19,
+            "column": 2,
+            "utf16_column": 2
+          },
+          "end": {
+            "offset": 1440,
+            "line": 19,
+            "column": 113,
+            "utf16_column": 113
+          }
+        }
+      }
+    },
+    {
+      "identity": {
+        "package_id": "docker.observability",
+        "path": "app.root.dockerapplication.networks",
+        "source": {
+          "file": "docker-observability.pipe",
+          "start": {
+            "offset": 661,
+            "line": 13,
+            "column": 2,
+            "utf16_column": 2
+          },
+          "end": {
+            "offset": 759,
+            "line": 13,
+            "column": 100,
+            "utf16_column": 100
+          }
+        }
+      },
+      "result_type": {
+        "package_id": "docker.observability",
+        "path": "app.root.dockerapplication.networks",
+        "source": {
+          "file": "docker-observability.pipe",
+          "start": {
+            "offset": 661,
+            "line": 13,
+            "column": 2,
+            "utf16_column": 2
+          },
+          "end": {
+            "offset": 759,
+            "line": 13,
+            "column": 100,
+            "utf16_column": 100
+          }
+        }
+      },
+      "row_type": {
+        "package_id": "docker.observability",
+        "path": "app.root.networkrow",
+        "source": {
+          "file": "",
+          "start": {
+            "offset": 0,
+            "line": 0,
+            "column": 0,
+            "utf16_column": 0
+          },
+          "end": {
+            "offset": 0,
+            "line": 0,
+            "column": 0,
+            "utf16_column": 0
+          }
+        }
+      },
+      "key": {
+        "package_id": "docker.observability",
+        "path": "app.root.networkrow.id",
+        "source": {
+          "file": "docker-observability.pipe",
+          "start": {
+            "offset": 212,
+            "line": 5,
+            "column": 28,
+            "utf16_column": 28
+          },
+          "end": {
+            "offset": 229,
+            "line": 5,
+            "column": 45,
+            "utf16_column": 45
+          }
+        }
+      },
+      "columns": [
+        {
+          "field": {
+            "package_id": "docker.observability",
+            "path": "app.root.networkrow.name",
+            "source": {
+              "file": "docker-observability.pipe",
+              "start": {
+                "offset": 230,
+                "line": 5,
+                "column": 46,
+                "utf16_column": 46
+              },
+              "end": {
+                "offset": 249,
+                "line": 5,
+                "column": 65,
+                "utf16_column": 65
+              }
+            }
+          },
+          "label": "Name"
+        },
+        {
+          "field": {
+            "package_id": "docker.observability",
+            "path": "app.root.networkrow.driver",
+            "source": {
+              "file": "docker-observability.pipe",
+              "start": {
+                "offset": 250,
+                "line": 5,
+                "column": 66,
+                "utf16_column": 66
+              },
+              "end": {
+                "offset": 271,
+                "line": 5,
+                "column": 87,
+                "utf16_column": 87
+              }
+            }
+          },
+          "label": "Driver"
+        },
+        {
+          "field": {
+            "package_id": "docker.observability",
+            "path": "app.root.networkrow.scope",
+            "source": {
+              "file": "docker-observability.pipe",
+              "start": {
+                "offset": 272,
+                "line": 5,
+                "column": 88,
+                "utf16_column": 88
+              },
+              "end": {
+                "offset": 292,
+                "line": 5,
+                "column": 108,
+                "utf16_column": 108
+              }
+            }
+          },
+          "label": "Scope"
+        }
+      ],
+      "filter_fields": [],
+      "order": [
+        {
+          "field": {
+            "package_id": "docker.observability",
+            "path": "app.root.networkrow.name",
+            "source": {
+              "file": "docker-observability.pipe",
+              "start": {
+                "offset": 230,
+                "line": 5,
+                "column": 46,
+                "utf16_column": 46
+              },
+              "end": {
+                "offset": 249,
+                "line": 5,
+                "column": 65,
+                "utf16_column": 65
+              }
+            }
+          },
+          "direction": "ascending"
+        }
+      ],
+      "order_binding": {
+        "package_id": "docker.observability",
+        "path": "app.root.dockerapplication.ordernetworks",
+        "source": {
+          "file": "docker-observability.pipe",
+          "start": {
+            "offset": 1442,
+            "line": 20,
+            "column": 2,
+            "utf16_column": 2
+          },
+          "end": {
+            "offset": 1545,
+            "line": 20,
+            "column": 105,
+            "utf16_column": 105
+          }
+        }
+      }
+    },
+    {
+      "identity": {
+        "package_id": "docker.observability",
+        "path": "app.root.dockerapplication.volumes",
+        "source": {
+          "file": "docker-observability.pipe",
+          "start": {
+            "offset": 761,
+            "line": 14,
+            "column": 2,
+            "utf16_column": 2
+          },
+          "end": {
+            "offset": 856,
+            "line": 14,
+            "column": 97,
+            "utf16_column": 97
+          }
+        }
+      },
+      "result_type": {
+        "package_id": "docker.observability",
+        "path": "app.root.dockerapplication.volumes",
+        "source": {
+          "file": "docker-observability.pipe",
+          "start": {
+            "offset": 761,
+            "line": 14,
+            "column": 2,
+            "utf16_column": 2
+          },
+          "end": {
+            "offset": 856,
+            "line": 14,
+            "column": 97,
+            "utf16_column": 97
+          }
+        }
+      },
+      "row_type": {
+        "package_id": "docker.observability",
+        "path": "app.root.volumerow",
+        "source": {
+          "file": "",
+          "start": {
+            "offset": 0,
+            "line": 0,
+            "column": 0,
+            "utf16_column": 0
+          },
+          "end": {
+            "offset": 0,
+            "line": 0,
+            "column": 0,
+            "utf16_column": 0
+          }
+        }
+      },
+      "key": {
+        "package_id": "docker.observability",
+        "path": "app.root.volumerow.name",
+        "source": {
+          "file": "docker-observability.pipe",
+          "start": {
+            "offset": 321,
+            "line": 6,
+            "column": 27,
+            "utf16_column": 27
+          },
+          "end": {
+            "offset": 340,
+            "line": 6,
+            "column": 46,
+            "utf16_column": 46
+          }
+        }
+      },
+      "columns": [
+        {
+          "field": {
+            "package_id": "docker.observability",
+            "path": "app.root.volumerow.name",
+            "source": {
+              "file": "docker-observability.pipe",
+              "start": {
+                "offset": 321,
+                "line": 6,
+                "column": 27,
+                "utf16_column": 27
+              },
+              "end": {
+                "offset": 340,
+                "line": 6,
+                "column": 46,
+                "utf16_column": 46
+              }
+            }
+          },
+          "label": "Name"
+        },
+        {
+          "field": {
+            "package_id": "docker.observability",
+            "path": "app.root.volumerow.driver",
+            "source": {
+              "file": "docker-observability.pipe",
+              "start": {
+                "offset": 341,
+                "line": 6,
+                "column": 47,
+                "utf16_column": 47
+              },
+              "end": {
+                "offset": 362,
+                "line": 6,
+                "column": 68,
+                "utf16_column": 68
+              }
+            }
+          },
+          "label": "Driver"
+        },
+        {
+          "field": {
+            "package_id": "docker.observability",
+            "path": "app.root.volumerow.mountpoint",
+            "source": {
+              "file": "docker-observability.pipe",
+              "start": {
+                "offset": 363,
+                "line": 6,
+                "column": 69,
+                "utf16_column": 69
+              },
+              "end": {
+                "offset": 388,
+                "line": 6,
+                "column": 94,
+                "utf16_column": 94
+              }
+            }
+          },
+          "label": "Mountpoint"
+        }
+      ],
+      "filter_fields": [],
+      "order": [
+        {
+          "field": {
+            "package_id": "docker.observability",
+            "path": "app.root.volumerow.name",
+            "source": {
+              "file": "docker-observability.pipe",
+              "start": {
+                "offset": 321,
+                "line": 6,
+                "column": 27,
+                "utf16_column": 27
+              },
+              "end": {
+                "offset": 340,
+                "line": 6,
+                "column": 46,
+                "utf16_column": 46
+              }
+            }
+          },
+          "direction": "ascending"
+        }
+      ],
+      "order_binding": {
+        "package_id": "docker.observability",
+        "path": "app.root.dockerapplication.ordervolumes",
+        "source": {
+          "file": "docker-observability.pipe",
+          "start": {
+            "offset": 1547,
+            "line": 21,
+            "column": 2,
+            "utf16_column": 2
+          },
+          "end": {
+            "offset": 1646,
+            "line": 21,
+            "column": 101,
+            "utf16_column": 101
+          }
+        }
+      }
+    }
+  ],
+  "selection": {
+    "package_id": "docker.observability",
+    "path": "app.root.dockerapplication.selection",
+    "source": {
+      "file": "docker-observability.pipe",
+      "start": {
+        "offset": 858,
+        "line": 15,
+        "column": 2,
+        "utf16_column": 2
+      },
+      "end": {
+        "offset": 937,
+        "line": 15,
+        "column": 81,
+        "utf16_column": 81
+      }
+    }
+  },
+  "details": {
+    "package_id": "docker.observability",
+    "path": "app.root.dockerapplication.details",
+    "source": {
+      "file": "docker-observability.pipe",
+      "start": {
+        "offset": 939,
+        "line": 16,
+        "column": 2,
+        "utf16_column": 2
+      },
+      "end": {
+        "offset": 1016,
+        "line": 16,
+        "column": 79,
+        "utf16_column": 79
+      }
+    }
+  },
+  "logs": {
+    "package_id": "docker.observability",
+    "path": "app.root.dockerapplication.logs",
+    "source": {
+      "file": "docker-observability.pipe",
+      "start": {
+        "offset": 1018,
+        "line": 17,
+        "column": 2,
+        "utf16_column": 2
+      },
+      "end": {
+        "offset": 1092,
+        "line": 17,
+        "column": 76,
+        "utf16_column": 76
+      }
+    }
+  }
+}

@@ -508,7 +508,20 @@ func (p *parser) parsePostfix() (Expr, error) {
 	if !hasRecordFieldProjectionSourceContract(p.languageContract) {
 		return expr, nil
 	}
-	for p.peek().kind == tokDot {
+	for p.peek().kind == tokDot || ((p.languageContract == PipeLangLanguageContractV330 || p.languageContract == PipeLangLanguageContractV340 || p.languageContract == PipeLangLanguageContractV350) && p.peek().kind == tokLBracket) {
+		if p.peek().kind == tokLBracket {
+			p.next()
+			index, err := p.parseExpr(1)
+			if err != nil {
+				return nil, err
+			}
+			end, err := p.expect(tokRBracket)
+			if err != nil {
+				return nil, err
+			}
+			expr = &ListAtExpr{Values: expr, Index: index, Postfix: true, Span: mergeSpans(expr.SourceSpan(), end.span)}
+			continue
+		}
 		p.next()
 		name, err := p.expect(tokIdent)
 		if err != nil {
@@ -543,6 +556,24 @@ func (p *parser) parsePrimary() (Expr, error) {
 		p.next()
 		return &LiteralExpr{Value: Value{Type: TypeBool, Bool: t.lit == "true"}, Span: t.span}, nil
 	case tokIdent:
+		if t.lit == "match" && hasMatchSourceContract(p.languageContract) {
+			return p.parseMatch()
+		}
+		if t.lit == "propagate" && hasPropagationSourceContract(p.languageContract) {
+			start := p.next()
+			if _, err := p.expect(tokLParen); err != nil {
+				return nil, err
+			}
+			value, err := p.parseExpr(1)
+			if err != nil {
+				return nil, err
+			}
+			end, err := p.expect(tokRParen)
+			if err != nil {
+				return nil, err
+			}
+			return &PropagateExpr{Value: value, Span: mergeSpans(start.span, end.span)}, nil
+		}
 		if t.lit == "new" && hasPrimitiveRecordConstructionSourceContract(p.languageContract) {
 			return p.parseRecordConstruction()
 		}
@@ -641,6 +672,64 @@ func (p *parser) parsePrimary() (Expr, error) {
 	default:
 		return nil, p.errf("unexpected token %q in expression", t.lit)
 	}
+}
+
+func (p *parser) parseMatch() (Expr, error) {
+	start := p.next()
+	if _, err := p.expect(tokLParen); err != nil {
+		return nil, err
+	}
+	value, err := p.parseExpr(1)
+	if err != nil {
+		return nil, err
+	}
+	if _, err = p.expect(tokRParen); err != nil {
+		return nil, err
+	}
+	if _, err = p.expect(tokLBrace); err != nil {
+		return nil, err
+	}
+	arms := []MatchArm{}
+	for p.peek().kind != tokRBrace {
+		pattern := p.peek()
+		if pattern.kind != tokIdent {
+			return nil, p.errf("expected match pattern")
+		}
+		p.next()
+		arm := MatchArm{Tag: pattern.lit, PatternSpan: pattern.span}
+		if p.peek().kind == tokLParen {
+			p.next()
+			binding, e := p.expect(tokIdent)
+			if e != nil {
+				return nil, e
+			}
+			arm.Binding = binding.lit
+			if _, e = p.expect(tokRParen); e != nil {
+				return nil, e
+			}
+		}
+		if _, err = p.expect(tokArrow); err != nil {
+			return nil, err
+		}
+		arm.Body, err = p.parseExpr(1)
+		if err != nil {
+			return nil, err
+		}
+		arm.Span = mergeSpans(pattern.span, arm.Body.SourceSpan())
+		arms = append(arms, arm)
+		if p.peek().kind == tokComma {
+			p.next()
+			continue
+		}
+		if p.peek().kind != tokRBrace {
+			return nil, p.errf("expected comma or closing brace")
+		}
+	}
+	end, err := p.expect(tokRBrace)
+	if err != nil {
+		return nil, err
+	}
+	return &MatchExpr{Value: value, Arms: arms, Span: mergeSpans(start.span, end.span)}, nil
 }
 
 func (p *parser) parseTextContainsCaseFolded() (Expr, error) {
@@ -1207,6 +1296,88 @@ func (p *parser) parseListSortByOrdinal() (Expr, error) {
 	values, err := p.parseExpr(1)
 	if err != nil {
 		return nil, err
+	}
+	if p.languageContract == PipeLangLanguageContractV320 || p.languageContract == PipeLangLanguageContractV330 || p.languageContract == PipeLangLanguageContractV340 || p.languageContract == PipeLangLanguageContractV350 {
+		if _, err := p.expect(tokComma); err != nil {
+			return nil, err
+		}
+		recordName, err := p.expect(tokIdent)
+		if err != nil {
+			return nil, err
+		}
+		if _, err := p.expect(tokDot); err != nil {
+			return nil, err
+		}
+		field, err := p.expect(tokIdent)
+		if err != nil {
+			return nil, err
+		}
+		first := ListTextFieldSelector{RecordType: UnresolvedTypeRef{Kind: TypeRefNamed, Name: recordName.lit, Span: recordName.span}, Field: field.lit, FieldSpan: field.span}
+		if p.peek().kind == tokRParen {
+			end := p.next()
+			return &ListSortByOrdinalExpr{Values: values, RecordType: first.RecordType, Field: first.Field, FieldSpan: first.FieldSpan, Span: mergeSpans(start.span, end.span)}, nil
+		}
+		if _, err := p.expect(tokComma); err != nil {
+			return nil, err
+		}
+		next, err := p.expect(tokIdent)
+		if err != nil {
+			return nil, err
+		}
+		if next.lit == "ascending" || next.lit == "descending" {
+			directional := []ListDirectionalTextFieldSelector{{ListTextFieldSelector: first, Direction: next.lit, DirectionSpan: next.span}}
+			for p.peek().kind != tokRParen {
+				if _, err := p.expect(tokComma); err != nil {
+					return nil, err
+				}
+				rn, err := p.expect(tokIdent)
+				if err != nil {
+					return nil, err
+				}
+				if _, err := p.expect(tokDot); err != nil {
+					return nil, err
+				}
+				f, err := p.expect(tokIdent)
+				if err != nil {
+					return nil, err
+				}
+				if _, err := p.expect(tokComma); err != nil {
+					return nil, err
+				}
+				d, err := p.expect(tokIdent)
+				if err != nil {
+					return nil, err
+				}
+				if d.lit != "ascending" && d.lit != "descending" {
+					return nil, oneDiagnostic(p.sources, CodeUnexpectedToken, CategorySyntax, d.span, fmt.Sprintf("expected ascending or descending, got %q", d.lit))
+				}
+				directional = append(directional, ListDirectionalTextFieldSelector{ListTextFieldSelector: ListTextFieldSelector{RecordType: UnresolvedTypeRef{Kind: TypeRefNamed, Name: rn.lit, Span: rn.span}, Field: f.lit, FieldSpan: f.span}, Direction: d.lit, DirectionSpan: d.span})
+			}
+			end := p.next()
+			return &ListSortByOrdinalDirectionsExpr{Values: values, Selectors: directional, Span: mergeSpans(start.span, end.span)}, nil
+		}
+		legacy := []ListTextFieldSelector{first}
+		for {
+			if _, err := p.expect(tokDot); err != nil {
+				return nil, err
+			}
+			f, err := p.expect(tokIdent)
+			if err != nil {
+				return nil, err
+			}
+			legacy = append(legacy, ListTextFieldSelector{RecordType: UnresolvedTypeRef{Kind: TypeRefNamed, Name: next.lit, Span: next.span}, Field: f.lit, FieldSpan: f.span})
+			if p.peek().kind == tokRParen {
+				end := p.next()
+				return &ListSortByOrdinalsExpr{Values: values, Selectors: legacy, Span: mergeSpans(start.span, end.span)}, nil
+			}
+			if _, err := p.expect(tokComma); err != nil {
+				return nil, err
+			}
+			next, err = p.expect(tokIdent)
+			if err != nil {
+				return nil, err
+			}
+		}
 	}
 	if p.languageContract == PipeLangLanguageContractV300 || p.languageContract == PipeLangLanguageContractV310 {
 		selectors := make([]ListTextFieldSelector, 0, 2)
