@@ -34,6 +34,10 @@ const (
 	LanguageContractV290 = "v0.29.0"
 	LanguageContractV300 = "v0.30.0"
 	LanguageContractV310 = "v0.31.0"
+	LanguageContractV320 = "v0.32.0"
+	LanguageContractV330 = "v0.33.0"
+	LanguageContractV340 = "v0.34.0"
+	LanguageContractV350 = "v0.35.0"
 	CompilerContractV1   = "pipelang.compiler.v1"
 	BuiltinPackageID     = "pipelang"
 	ListSemanticPath     = "list"
@@ -163,6 +167,8 @@ const (
 	ExprOptionalNone                       ExprKind = "optional_none"
 	ExprOptionalHasValue                   ExprKind = "optional_has_value"
 	ExprOptionalValueOr                    ExprKind = "optional_value_or"
+	ExprPropagate                          ExprKind = "propagate"
+	ExprMatch                              ExprKind = "match"
 	ExprListEmpty                          ExprKind = "list_empty"
 	ExprListSingleton                      ExprKind = "list_singleton"
 	ExprListCount                          ExprKind = "list_count"
@@ -175,6 +181,7 @@ const (
 	ExprListFilterJoinedContainsCaseFolded ExprKind = "list_filter_joined_contains_case_folded_text"
 	ExprListSortByOrdinalText              ExprKind = "list_sort_by_ordinal_text"
 	ExprListSortByOrdinalTexts             ExprKind = "list_sort_by_ordinal_texts"
+	ExprListSortByOrdinalDirections        ExprKind = "list_sort_by_ordinal_directions"
 	ExprResultOK                           ExprKind = "result_ok"
 	ExprResultErr                          ExprKind = "result_err"
 	ExprResultIsOK                         ExprKind = "result_is_ok"
@@ -261,6 +268,10 @@ type OptionalValueOr struct {
 	Value    *Expr `json:"value"`
 	Fallback *Expr `json:"fallback"`
 }
+type Propagate struct {
+	Value   *Expr `json:"value"`
+	Carrier Type  `json:"carrier"`
+}
 
 type ListEmpty struct{}
 
@@ -336,6 +347,24 @@ type ListSortByOrdinalTexts struct {
 	Values    *Expr                   `json:"values"`
 	Selectors []ListTextFieldSelector `json:"selectors"`
 }
+type ListDirectionalTextFieldSelector struct {
+	ListTextFieldSelector
+	Direction string `json:"direction"`
+}
+type ListSortByOrdinalDirections struct {
+	Values    *Expr                              `json:"values"`
+	Selectors []ListDirectionalTextFieldSelector `json:"selectors"`
+}
+
+type MatchArm struct {
+	Tag     string `json:"tag"`
+	Binding *int   `json:"binding,omitempty"`
+	Body    *Expr  `json:"body"`
+}
+type Match struct {
+	Value *Expr      `json:"value"`
+	Arms  []MatchArm `json:"arms"`
+}
 
 type ResultOK struct {
 	Value *Expr `json:"value"`
@@ -374,6 +403,8 @@ type Expr struct {
 	None                               *OptionalNone                       `json:"none,omitempty"`
 	HasValue                           *OptionalHasValue                   `json:"has_value,omitempty"`
 	ValueOr                            *OptionalValueOr                    `json:"value_or,omitempty"`
+	Propagate                          *Propagate                          `json:"propagate,omitempty"`
+	Match                              *Match                              `json:"match,omitempty"`
 	ListEmpty                          *ListEmpty                          `json:"list_empty,omitempty"`
 	ListOne                            *ListSingleton                      `json:"list_singleton,omitempty"`
 	ListCount                          *ListCount                          `json:"list_count,omitempty"`
@@ -386,6 +417,7 @@ type Expr struct {
 	ListFilterJoinedContainsCaseFolded *ListFilterJoinedContainsCaseFolded `json:"list_filter_joined_contains_case_folded_text,omitempty"`
 	ListSortByOrdinalText              *ListSortByOrdinalText              `json:"list_sort_by_ordinal_text,omitempty"`
 	ListSortByOrdinalTexts             *ListSortByOrdinalTexts             `json:"list_sort_by_ordinal_texts,omitempty"`
+	ListSortByOrdinalDirections        *ListSortByOrdinalDirections        `json:"list_sort_by_ordinal_directions,omitempty"`
 	ResultOK                           *ResultOK                           `json:"result_ok,omitempty"`
 	ResultErr                          *ResultErr                          `json:"result_err,omitempty"`
 	ResultIsOK                         *ResultIsOK                         `json:"result_is_ok,omitempty"`

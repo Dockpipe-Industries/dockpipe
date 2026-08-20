@@ -10,8 +10,8 @@ dispatch:
 
 state:
   decision: accepted
-  current_language_contract: v0.31.0
-  completed_through: step 8a
+  current_language_contract: v0.35.0
+  completed_through: v0.35.0 exhaustive bounded matching and dockpipe.application.v1 projection
   authority: >-
     This task record is decision and status evidence. It does not authorize another language slice,
     implementation, migration, commit, push, publication, or external action.

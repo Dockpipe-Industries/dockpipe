@@ -1,0 +1,235 @@
+{
+  "schema": "dockpipe.application.v1",
+  "metadata": {
+    "semantic_schema": "pipelang.semantic.v1",
+    "language_contract": "v0.35.0",
+    "compiler_contract": "pipelang.compiler.v1",
+    "package_id": "docker.observability"
+  },
+  "identity": {
+    "package_id": "docker.observability",
+    "path": "app.root.dockerapplication.project"
+  },
+  "snapshot_type": {
+    "package_id": "docker.observability",
+    "path": "app.root.dockersnapshot"
+  },
+  "sections": [
+    {
+      "identity": {
+        "package_id": "docker.observability",
+        "path": "app.root.dockerapplication.containers"
+      },
+      "result_type": {
+        "package_id": "docker.observability",
+        "path": "app.root.dockerapplication.containers"
+      },
+      "row_type": {
+        "package_id": "docker.observability",
+        "path": "app.root.containerrow"
+      },
+      "key": {
+        "package_id": "docker.observability",
+        "path": "app.root.containerrow.id"
+      },
+      "columns": [
+        {
+          "field": {
+            "package_id": "docker.observability",
+            "path": "app.root.containerrow.name"
+          },
+          "label": "Name"
+        },
+        {
+          "field": {
+            "package_id": "docker.observability",
+            "path": "app.root.containerrow.state"
+          },
+          "label": "State"
+        },
+        {
+          "field": {
+            "package_id": "docker.observability",
+            "path": "app.root.containerrow.image"
+          },
+          "label": "Image"
+        },
+        {
+          "field": {
+            "package_id": "docker.observability",
+            "path": "app.root.containerrow.ports"
+          },
+          "label": "Ports"
+        },
+        {
+          "field": {
+            "package_id": "docker.observability",
+            "path": "app.root.containerrow.created"
+          },
+          "label": "Created"
+        }
+      ],
+      "filter_fields": [
+        {
+          "package_id": "docker.observability",
+          "path": "app.root.containerrow.name"
+        },
+        {
+          "package_id": "docker.observability",
+          "path": "app.root.containerrow.state"
+        },
+        {
+          "package_id": "docker.observability",
+          "path": "app.root.containerrow.image"
+        },
+        {
+          "package_id": "docker.observability",
+          "path": "app.root.containerrow.ports"
+        },
+        {
+          "package_id": "docker.observability",
+          "path": "app.root.containerrow.created"
+        }
+      ],
+      "order": [
+        {
+          "field": {
+            "package_id": "docker.observability",
+            "path": "app.root.containerrow.name"
+          },
+          "direction": "ascending"
+        }
+      ],
+      "filter": {
+        "package_id": "docker.observability",
+        "path": "app.root.dockerapplication.filtercontainers"
+      },
+      "order_binding": {
+        "package_id": "docker.observability",
+        "path": "app.root.dockerapplication.ordercontainers"
+      }
+    },
+    {
+      "identity": {
+        "package_id": "docker.observability",
+        "path": "app.root.dockerapplication.networks"
+      },
+      "result_type": {
+        "package_id": "docker.observability",
+        "path": "app.root.dockerapplication.networks"
+      },
+      "row_type": {
+        "package_id": "docker.observability",
+        "path": "app.root.networkrow"
+      },
+      "key": {
+        "package_id": "docker.observability",
+        "path": "app.root.networkrow.id"
+      },
+      "columns": [
+        {
+          "field": {
+            "package_id": "docker.observability",
+            "path": "app.root.networkrow.name"
+          },
+          "label": "Name"
+        },
+        {
+          "field": {
+            "package_id": "docker.observability",
+            "path": "app.root.networkrow.driver"
+          },
+          "label": "Driver"
+        },
+        {
+          "field": {
+            "package_id": "docker.observability",
+            "path": "app.root.networkrow.scope"
+          },
+          "label": "Scope"
+        }
+      ],
+      "filter_fields": [],
+      "order": [
+        {
+          "field": {
+            "package_id": "docker.observability",
+            "path": "app.root.networkrow.name"
+          },
+          "direction": "ascending"
+        }
+      ],
+      "order_binding": {
+        "package_id": "docker.observability",
+        "path": "app.root.dockerapplication.ordernetworks"
+      }
+    },
+    {
+      "identity": {
+        "package_id": "docker.observability",
+        "path": "app.root.dockerapplication.volumes"
+      },
+      "result_type": {
+        "package_id": "docker.observability",
+        "path": "app.root.dockerapplication.volumes"
+      },
+      "row_type": {
+        "package_id": "docker.observability",
+        "path": "app.root.volumerow"
+      },
+      "key": {
+        "package_id": "docker.observability",
+        "path": "app.root.volumerow.name"
+      },
+      "columns": [
+        {
+          "field": {
+            "package_id": "docker.observability",
+            "path": "app.root.volumerow.name"
+          },
+          "label": "Name"
+        },
+        {
+          "field": {
+            "package_id": "docker.observability",
+            "path": "app.root.volumerow.driver"
+          },
+          "label": "Driver"
+        },
+        {
+          "field": {
+            "package_id": "docker.observability",
+            "path": "app.root.volumerow.mountpoint"
+          },
+          "label": "Mountpoint"
+        }
+      ],
+      "filter_fields": [],
+      "order": [
+        {
+          "field": {
+            "package_id": "docker.observability",
+            "path": "app.root.volumerow.name"
+          },
+          "direction": "ascending"
+        }
+      ],
+      "order_binding": {
+        "package_id": "docker.observability",
+        "path": "app.root.dockerapplication.ordervolumes"
+      }
+    }
+  ],
+  "selection": {
+    "package_id": "docker.observability",
+    "path": "app.root.dockerapplication.selection"
+  },
+  "details": {
+    "package_id": "docker.observability",
+    "path": "app.root.dockerapplication.details"
+  },
+  "logs": {
+    "package_id": "docker.observability",
+    "path": "app.root.dockerapplication.logs"
+  }
+}

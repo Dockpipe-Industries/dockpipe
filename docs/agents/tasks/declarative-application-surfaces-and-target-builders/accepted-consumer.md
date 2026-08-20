@@ -89,3 +89,41 @@ This accepted consumer is dependency evidence for TASK-021 and this task, not pe
 records, optionals, collections, actions, effects, Application IR, Qt generation, and launcher
 migration into one change. Each prerequisite remains an explicit versioned vertical slice.
 
+
+### PipeLang v0.32.0 directional-ordering value
+
+The accepted language foundation now provides explicit ascending, descending, and mixed per-key
+ordinal row ordering through the target-neutral `list_sort_by_ordinal_directions` Core node. This is
+sufficient for deterministic read-only Docker-observability row projections that require reverse or
+mixed ordering. It does not itself change the frozen launcher oracle, select a UI ordering policy,
+produce Application IR, or authorize runtime/target behavior.
+
+
+PipeLang v0.33.0 additionally provides bounded postfix `rows[index] -> Optional<R>` selection for the read-only snapshot model. It reuses canonical `list_at` semantics and adds no adapter, runtime, refresh, action, or UI behavior.
+
+
+### PipeLang v0.34.0 bounded-propagation value
+
+The accepted language foundation can now forward optional selection/details absence and the exact read-only section snapshot/text Result failures without inventing defaults or target-owned error behavior. The consumer still requires a separately versioned Application IR projection and gains no runtime, refresh, action, or UI behavior from this language slice.
+
+
+PipeLang v0.35.0 exhaustive bounded matching supplies target-neutral consumption of Optional selection/details and Result section success/failure. TASK-020 adapters must consume the semantic/Core projection and must not infer tag, default, or error behavior.
+
+### Accepted `dockpipe.application.v1` read-only projection
+
+The first Application IR boundary is an explicit, separately versioned projection of a public
+`pipelang.semantic.v1` projection and its matching target-neutral Core program. An authored spec
+names the application function, snapshot record, section `Result<List<Row>, string>` and row
+records, stable string row key, visible columns, string filter/order fields, optional selection,
+and `Result<string, string>` details/log identities. Filtering and ordering name explicit
+Core-backed callables with `(List<Row>, string) -> List<Row>` and `(List<Row>) -> List<Row>`
+signatures; the Application adapter never reconstructs either operation from field metadata.
+Every identity must exist in the semantic projection; the application function must also exist in
+Core. Rejections retain the spec source range. Sections are canonicalized by stable identity and
+JSON uses deterministic field and slice order.
+
+The projection contains typed metadata and references only. It does not reparse or evaluate
+PipeLang, infer fields or error semantics, invoke Docker, refresh, perform actions, generate target
+code, migrate the launcher, or grant runtime authority. This is one independently reviewable slice
+because its schema, explicit input contract, validation, canonicalization, and frozen consumer
+shape can be reviewed without a runtime or UI.

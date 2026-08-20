@@ -136,3 +136,27 @@ slices, then the broader engine/package validation required by the touched publi
   and fail rather than degrade on unsupported profiles.
 - Typed HIR, Core IR, the public semantic projection, Application IR, and Service IR remain distinct
   layers over one parser/binder/type contract.
+
+
+## Checkpoint v0.33.0 complete contract
+
+The v0.32.0 per-key ordinal sorting direction is the exact paired `sort_by_ordinal(values, R.Field, ascending|descending, ...)` contract recorded in `next-boundary.md`; it is one bounded pure ordering slice and preserves all earlier nodes and source contracts.
+
+
+## Checkpoint v0.34.0 complete contract
+
+Bounded propagation uses only `some(propagate(p))` and bounded `ok<T,E>(propagate(p))` over one direct identical carrier parameter. It has explicit HIR/Core control flow, deterministic evaluator and Core-only Go behavior, unchanged semantic identities, `PL3032` misuse diagnostics, and no exceptions, effects, matching, blocks, arbitrary Results, or target behavior. This is one coherent version boundary because syntax, carrier typing, early failure/absence, IR, execution, editor support, and compatibility are reviewed together.
+
+## Checkpoint v0.35.0 complete contract
+
+Exhaustive bounded matching is the exact direct-carrier `match` contract recorded in `next-boundary.md`. It adds explicit arm-local bindings, exact arm-type equality, deterministic PL3029–PL3031 diagnostics, evaluator/Core-only Go parity, unchanged identities, and no guards, destructuring, blocks, effects, or target behavior.
+
+## Application IR checkpoint complete contract
+
+`dockpipe.application.v1` consumes the canonical public semantic projection plus the matching Core
+program and an explicit source-located stable-identity spec. It projects typed snapshot, section
+Result, row/key/column, optional selection/details, filtering, ordering, and contract metadata into
+deterministic JSON. Validation rejects missing identities, mismatched contracts, duplicate
+sections, empty columns, and invalid directions. It changes no PipeLang language, HIR, Core,
+evaluator, backend, or stable identity; it adds no parsing, inference, runtime, target, Docker,
+refresh, action, launcher, or CLI behavior.

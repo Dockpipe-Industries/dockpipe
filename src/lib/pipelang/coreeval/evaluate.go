@@ -48,7 +48,11 @@ func Evaluate(function coreir.Function, arguments []Value) (Outcome, error) {
 			return Outcome{}, fmt.Errorf("argument %d: %w", index, err)
 		}
 	}
-	return evalExpr(function.Body, arguments)
+	outcome, err := evalExpr(function.Body, arguments)
+	if err == nil && !outcome.OK && outcome.Failure != nil && outcome.Failure.Type.Kind == coreir.TypeOptional {
+		return Outcome{OK: true, Value: cloneOptionalValue(*outcome.Failure)}, nil
+	}
+	return outcome, err
 }
 
 func EvaluateProgram(program coreir.Program, identity coreir.SemanticIdentity, arguments []Value) (Outcome, error) {
@@ -563,6 +567,40 @@ func evalExpr(expression coreir.Expr, arguments []Value) (Outcome, error) {
 			return Outcome{}, fmt.Errorf("multi-key list sort_by_ordinal result: %w", err)
 		}
 		return Outcome{OK: true, Value: cloneListValue(sorted)}, nil
+	case coreir.ExprListSortByOrdinalDirections:
+		spec := expression.ListSortByOrdinalDirections
+		values, err := evalExpr(*spec.Values, arguments)
+		if err != nil || !values.OK {
+			return values, err
+		}
+		if err := validateValue(values.Value); err != nil {
+			return Outcome{}, fmt.Errorf("directional list sort_by_ordinal: %w", err)
+		}
+		sorted := cloneListValue(values.Value)
+		var compareErr error
+		sort.SliceStable(sorted.List, func(left, right int) bool {
+			for _, selector := range spec.Selectors {
+				comparison, e := coreir.CompareOrdinalText(sorted.List[left].Record[selector.Position].String, sorted.List[right].Record[selector.Position].String)
+				if e != nil {
+					compareErr = e
+					return false
+				}
+				if comparison != 0 {
+					if selector.Direction == "descending" {
+						return comparison > 0
+					}
+					return comparison < 0
+				}
+			}
+			return false
+		})
+		if compareErr != nil {
+			return Outcome{}, compareErr
+		}
+		if err := validateValue(sorted); err != nil {
+			return Outcome{}, err
+		}
+		return Outcome{OK: true, Value: cloneListValue(sorted)}, nil
 	case coreir.ExprResultOK:
 		value, err := evalExpr(*expression.ResultOK.Value, arguments)
 		if err != nil || !value.OK {
@@ -604,6 +642,85 @@ func evalExpr(expression coreir.Expr, arguments []Value) (Outcome, error) {
 			return Outcome{OK: true, Value: cloneValue(result.Value)}, nil
 		}
 		return Outcome{OK: true, Value: cloneValue(fallback.Value)}, nil
+	case coreir.ExprPropagate:
+		propagated, err := evalExpr(*expression.Propagate.Value, arguments)
+		if err != nil || !propagated.OK {
+			return propagated, err
+		}
+		if expression.Propagate.Carrier.Kind == coreir.TypeResult {
+			return propagated, nil
+		}
+		if propagated.Value.Type.Kind == coreir.TypeOptional {
+			if propagated.Value.Optional == nil {
+				return Outcome{}, fmt.Errorf("propagate Optional has no canonical value")
+			}
+			if !propagated.Value.Optional.Present {
+				carrier := cloneOptionalValue(propagated.Value)
+				return Outcome{Failure: &carrier}, nil
+			}
+			return Outcome{OK: true, Value: cloneValue(*propagated.Value.Optional.Value)}, nil
+		}
+		return Outcome{}, fmt.Errorf("propagate operand is not a carrier")
+	case coreir.ExprMatch:
+		if expression.Match == nil || expression.Match.Value == nil {
+			return Outcome{}, fmt.Errorf("match is incomplete")
+		}
+		carrier, err := evalExpr(*expression.Match.Value, arguments)
+		var resultCarrier *Outcome
+		if expression.Match.Value.Type.Kind == coreir.TypeResult {
+			r, e := directResultOperand(expression.Match.Value, arguments)
+			if e != nil {
+				return Outcome{}, e
+			}
+			resultCarrier = &r
+			carrier = Outcome{OK: true, Value: Value{Type: expression.Match.Value.Type}}
+		}
+		if err != nil || !carrier.OK {
+			return carrier, err
+		}
+		tag := ""
+		var payload *Value
+		if carrier.Value.Type.Kind == coreir.TypeOptional {
+			if carrier.Value.Optional == nil {
+				return Outcome{}, fmt.Errorf("match Optional has no canonical value")
+			}
+			if carrier.Value.Optional.Present {
+				tag = "some"
+				payload = carrier.Value.Optional.Value
+			} else {
+				tag = "none"
+			}
+		} else if carrier.Value.Type.Kind == coreir.TypeResult {
+			if resultCarrier == nil {
+				return Outcome{}, fmt.Errorf("match Result has no canonical value")
+			}
+			if resultCarrier.OK {
+				tag = "ok"
+				payload = &resultCarrier.Value
+			} else {
+				tag = "err"
+				payload = resultCarrier.Failure
+			}
+		} else {
+			return Outcome{}, fmt.Errorf("match operand is not tagged")
+		}
+		for _, arm := range expression.Match.Arms {
+			if arm.Tag != tag && arm.Tag != "_" {
+				continue
+			}
+			if arm.Body == nil {
+				return Outcome{}, fmt.Errorf("match arm has no body")
+			}
+			scoped := arguments
+			if arm.Binding != nil {
+				if payload == nil {
+					return Outcome{}, fmt.Errorf("match binding has no payload")
+				}
+				scoped = append(append([]Value{}, arguments...), cloneValue(*payload))
+			}
+			return evalExpr(*arm.Body, scoped)
+		}
+		return Outcome{}, fmt.Errorf("match has no selected arm")
 	case coreir.ExprResultFailureOr:
 		result, err := directResultOperand(expression.FailureOr.Value, arguments)
 		if err != nil {

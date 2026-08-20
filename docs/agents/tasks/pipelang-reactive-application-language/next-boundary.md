@@ -209,3 +209,119 @@ entrypoints, actions/state, contracts/replay, executable application/service sem
 IR, Service IR, another backend, or self-hosting; mutate generated stores; or widen Go emission by
 guessing successor semantics. Exact successor production spellings remain later synchronized language
 slices.
+
+## Accepted v0.32.0 boundary — per-key ordinal sorting direction
+
+`v0.32.0` adds only the paired direct spelling
+`sort_by_ordinal(values, R.Field1, ascending|descending, ...) -> List<R>`, with one or more
+source-ordered selector/direction pairs. `ascending` and `descending` are contextual identifiers
+only in those direction positions. The method still has exactly one direct `List<R>` parameter and
+the identical `List<R>` return, and its body is exactly this call. Every selector names a distinct
+public `string` field on the same existing primitive record. The complete input list, every record,
+and every field are validated before stable lexicographic ordinal Unicode scalar-sequence sorting.
+Equality at every key preserves source order. Empty results are non-nil, and all result/list/record
+storage is copied. The semantic projection changes only its explicit language-contract value;
+field and method stable identities are unchanged.
+
+Typed HIR and target-neutral Core use the dedicated `list_sort_by_ordinal_directions` expression,
+whose ordered selectors carry field semantic identity, source name, declaration position, and the
+canonical `ascending` or `descending` direction. The evaluator and Core-only Go backend validate
+before comparison and apply the same direction independently at each key. The legacy one-key
+`list_sort_by_ordinal_text` and ascending multi-key `list_sort_by_ordinal_texts` nodes and every
+v0.28.0/v0.30.0 source remain exact under their prior contracts; v0.32.0 intentionally requires
+explicit direction pairs and performs no implicit migration.
+
+This independently reviewable slice gives TASK-020 deterministic target-neutral descending and
+mixed-key row ordering without introducing dynamic selectors, direction values outside this call,
+comparers, normalization, case folding, locale tailoring, mutation, composition, general ordering,
+indexing, propagation, matching, Application IR, runtime behavior, or target behavior.
+
+
+## Accepted v0.33.0 boundary — safe general indexing
+
+`v0.33.0` adds only postfix `values[index] -> Optional<R>` for an existing primitive-record
+`List<R>` receiver and signed 64-bit `int` index. The enclosing method is exactly
+`Optional<R> M(List<R> values, int index) => values[index];`: two direct parameters in receiver/index
+order, no computed operands, nesting, or chaining. Negative and out-of-bounds indices produce canonical
+`none`; there are no panics, exceptions, defaults, negative-index translation, or target semantics. The
+complete non-nil list and every record/field are validated before selection; a present record and all
+list/record storage are copied.
+
+The semantic projection changes only its explicit language-contract value; callable, parameter, record,
+field, List, and Optional stable identities are unchanged. Typed HIR and target-neutral Core deliberately
+reuse the existing `list_at` node with direct list/index references, so the evaluator and Core-only Go
+backend retain identical deterministic validation, absence, and copying behavior. TASK-020 gains concise
+safe optional row selection without adapter-inferred bounds behavior. The v0.20.0 `at(values, index)`
+spelling and node remain accepted unchanged; earlier contracts do not accept postfix indexing.
+
+This is one coherent independently reviewable syntax-to-existing-semantics slice. It excludes primitive,
+nested, Optional, Result, string, map, and arbitrary receivers; non-int indices; literals, slicing, ranges,
+negative-index magic, unchecked access, defaults, mutation, composition, chaining, propagation, matching,
+Application IR, runtime behavior, and target behavior.
+
+## Accepted v0.34.0 boundary — bounded propagation
+
+`v0.34.0` adds only the contextual expression `propagate(carrier)` as the direct payload of the
+complete method body `some(propagate(carrier))` or `ok<T, E>(propagate(carrier))`. `carrier` is one
+direct parameter and must have the identical enclosing return carrier type. The Optional matrix is
+exactly the already admitted `Optional<T>` primitive and public primitive-record forms; the Result
+matrix is exactly the already admitted `Result<List<R>, string>` and `Result<string, string>` forms.
+On presence/success, propagation extracts a canonically validated, copied payload and the explicit
+outer constructor rebuilds the identical carrier. On absence/failure it returns the identical
+canonical carrier immediately without evaluating a later expression. Misuse is source-located as
+`PL3032`; `PL3029`–`PL3031` remain reserved for bounded matching diagnostics.
+
+Typed HIR and target-neutral Core carry an explicit `propagate` node containing its operand, inner
+success type, carrier type, and source span in HIR. Core validation proves the carrier/inner
+relationship. The evaluator and Core-only Go backend validate the complete input carrier before
+branching, preserve absence/failure exactly, and copy present/success record/list storage through the
+existing constructors and clone helpers. The semantic projection and public identities are
+unchanged because `propagate` is method-body control flow, not a declaration. This supplies TASK-020
+a bounded way to forward optional selection/details and read-only section failure without defaults.
+
+This independently reviewable slice adds no postfix operator, implicit conversion, exception,
+arbitrary Result, nested carrier, async/effect behavior, target-owned error semantics, matching,
+blocks, locals, or general early return. Every v0.1.0–v0.33.0 source remains unchanged and does not
+recognize `propagate` contextually.
+
+## Accepted v0.35.0 boundary — exhaustive bounded matching
+
+`v0.35.0` adds only `match(directTaggedParameter){ arms }` for every already admitted
+`Optional<T>` and `Result<T,E>` carrier, including checked-arithmetic Results. Optional arms are
+`some(binding) => expression` and `none => expression`; Result arms are `ok(binding) => expression`
+and `err(binding) => expression`. A final `_ => expression` is the only wildcard. Payload patterns
+require exactly one arm-local binding, absence has none, and every arm expression must have exactly
+the declared method return type—there are no conversions or inferred common supertypes. `PL3029`
+reports a missing tag, `PL3030` a duplicate tag, and `PL3031` any arm following `_`, deterministically
+at the pattern or complete match span.
+
+Typed HIR and target-neutral Core carry a dedicated `match` node, source-ordered arms, and explicit
+arm-local bindings distinct from parameters. The evaluator and Core-only Go backend validate the
+complete carrier, select exactly one arm, bind a validated copied payload, and evaluate only that
+arm. Matching changes no semantic declaration or stable identity; only the semantic projection's
+language-contract value advances. TASK-020 can now consume optional selection/details and explicit
+section success/failure without adapter-inferred defaults or tag semantics.
+
+This is one coherent independently reviewable syntax, typing, control-flow, diagnostics, execution,
+editor, and compatibility slice. Earlier source remains exact. Guards, destructuring, literals,
+open unions, fallthrough, blocks, effects, implicit conversion, target errors, actions, and
+Application IR are excluded.
+
+## Accepted first Application IR boundary — `dockpipe.application.v1`
+
+The first target-neutral read-only Application IR consumes only a canonical public
+`pipelang.semantic.v1` projection, its contract-matching Core program, and an explicit
+source-located stable-identity spec. The spec names one application Core function and typed
+snapshot record; each section names its Result type, row record, stable key, visible columns,
+filter fields, and ascending/descending ordinal order; Optional row selection and Result text
+details/log identities are explicit. All identities must exist in the semantic projection and the application identity
+must exist in Core. Sections are sorted by identity, declared column/filter/order sequences remain
+stable, empty slices are non-nil, and canonical indented JSON is deterministic. Invalid inputs are
+rejected at the spec source range. PipeLang semantics and identities are unchanged. Parsing,
+evaluation, semantic inference, targets, Docker, refresh, actions, services, launcher migration,
+and CLI behavior are excluded.
+
+Filter and order behavior is bound, not inferred: their explicit identities must resolve both to
+semantic callables and Core functions with exact `(List<Row>, string) -> List<Row>` and
+`(List<Row>) -> List<Row>` signatures. Section Result, selection, details, and logs roles are also
+explicit Core-backed method identities with their recorded structured return types.

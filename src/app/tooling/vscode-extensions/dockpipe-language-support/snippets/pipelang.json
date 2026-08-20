@@ -207,5 +207,35 @@
       "public List<${2:Row}> ${6:SearchRows}(List<${2:Row}> ${7:values}, string ${4:query}) => filter(${7:values}, ${1:Matches}, ${4:query});"
     ],
     "description": "Create the exact v0.31.0 same-class named pure record predicate and stable copied record-list filter."
+  },
+  "PipeLang Directional Record List Ordinal Sort": {
+    "prefix": "pipe-record-list-sort-by-directions",
+    "body": [
+      "public List<${1:Row}> ${2:SortRows}(List<${1:Row}> ${3:values}) => sort_by_ordinal(${3:values}, ${1:Row}.${4:State}, ${5:descending}, ${1:Row}.${6:Name}, ${7:ascending});"
+    ],
+    "description": "Create the exact v0.32.0 stable per-key directional ordinal record-list sort."
+  },
+  "PipeLang Safe Record List Index": {
+    "prefix": "pipe-record-list-index",
+    "body": [
+      "public Optional<${1:Row}> ${2:RowAt}(List<${1:Row}> ${3:values}, int ${4:index}) => ${3:values}[${4:index}];"
+    ],
+    "description": "Create the exact v0.33.0 safe postfix record-list indexing method."
+  },
+  "PipeLang bounded propagation": {
+    "prefix": "pipe-propagate",
+    "body": [
+      "public Optional<${1:string}> ${2:Forward}(Optional<${1:string}> value) {",
+      "  return some(propagate(value));",
+      "}"
+    ],
+    "description": "Create the exact v0.34.0 bounded Optional propagation method."
+  },
+  "PipeLang exhaustive Optional match": {
+    "prefix": "pipe-match-optional",
+    "body": [
+      "public ${1:string} ${2:Read}(Optional<${1:string}> ${3:value}) => match(${3:value}){ some(${4:item}) => ${4:item}, none => ${5:\"missing\"} };"
+    ],
+    "description": "Create the exact v0.35.0 exhaustive bounded Optional match."
   }
 }

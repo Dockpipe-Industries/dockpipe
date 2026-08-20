@@ -408,6 +408,48 @@ func lowerExprToHIR(analysis *Analysis, function SemanticIdentity, expression Ex
 		}
 		result.Kind = hir.ExprOptionalValueOr
 		result.ValueOr = &hir.OptionalValueOr{Value: &value, Fallback: &fallback}
+	case *PropagateExpr:
+		value, err := lowerExprToHIR(analysis, function, node.Value, bindings, typeEnvironment)
+		if err != nil {
+			return hir.Expr{}, err
+		}
+		result.Kind = hir.ExprPropagate
+		result.Propagate = &hir.Propagate{Value: &value, Carrier: value.Type}
+	case *MatchExpr:
+		value, err := lowerExprToHIR(analysis, function, node.Value, bindings, typeEnvironment)
+		if err != nil {
+			return hir.Expr{}, err
+		}
+		matched := &hir.Match{Value: &value, Arms: make([]hir.MatchArm, 0, len(node.Arms))}
+		carrier, _ := analysis.checked.inferExprType(node.Value, typeEnvironment)
+		for _, arm := range node.Arms {
+			armBindings := make(map[string]hir.Binding, len(bindings)+1)
+			for k, v := range bindings {
+				armBindings[k] = v
+			}
+			armEnv := make(map[string]ResolvedTypeRef, len(typeEnvironment)+1)
+			for k, v := range typeEnvironment {
+				armEnv[k] = v
+			}
+			var binding *hir.Binding
+			if arm.Binding != "" {
+				payload := carrier.Arguments[0]
+				if arm.Tag == "err" {
+					payload = carrier.Arguments[1]
+				}
+				b := hir.Binding{Kind: hir.BindingMatchArm, Function: toHIRSemanticIdentity(function), Position: len(bindings), Name: arm.Binding}
+				binding = &b
+				armBindings[arm.Binding] = b
+				armEnv[arm.Binding] = payload
+			}
+			body, e := lowerExprToHIR(analysis, function, arm.Body, armBindings, armEnv)
+			if e != nil {
+				return hir.Expr{}, e
+			}
+			matched.Arms = append(matched.Arms, hir.MatchArm{Tag: arm.Tag, Binding: binding, Body: &body})
+		}
+		result.Kind = hir.ExprMatch
+		result.Match = matched
 	case *ListEmptyExpr:
 		result.Kind = hir.ExprListEmpty
 		result.ListEmpty = &hir.ListEmpty{}
@@ -589,6 +631,45 @@ func lowerExprToHIR(analysis *Analysis, function SemanticIdentity, expression Ex
 		}
 		result.Kind = hir.ExprListSortByOrdinalText
 		result.ListSortByOrdinalText = &hir.ListSortByOrdinalText{Values: &values, Field: toHIRSemanticIdentity(fieldIdentity), Name: node.Field, Position: position}
+	case *ListSortByOrdinalDirectionsExpr:
+		valuesType, err := analysis.checked.inferExprType(node.Values, typeEnvironment)
+		if err != nil {
+			return hir.Expr{}, err
+		}
+		plain := &ListSortByOrdinalsExpr{Values: node.Values, Span: node.Span}
+		for _, s := range node.Selectors {
+			plain.Selectors = append(plain.Selectors, s.ListTextFieldSelector)
+		}
+		var fields []FieldDecl
+		var positions []int
+		if len(plain.Selectors) == 1 {
+			single := &ListSortByOrdinalExpr{Values: node.Values, RecordType: plain.Selectors[0].RecordType, Field: plain.Selectors[0].Field, FieldSpan: plain.Selectors[0].FieldSpan, Span: node.Span}
+			f, p, e := analysis.checked.resolveListSortByOrdinalSelector(single, valuesType)
+			if e != nil {
+				return hir.Expr{}, e
+			}
+			fields = []FieldDecl{f}
+			positions = []int{p}
+		} else {
+			fields, positions, err = analysis.checked.resolveListSortByOrdinalsSelectors(plain, valuesType)
+			if err != nil {
+				return hir.Expr{}, err
+			}
+		}
+		selectors := make([]hir.ListDirectionalTextFieldSelector, 0, len(fields))
+		for i, field := range fields {
+			id, ok := analysis.SemanticIDs.IdentityForSpan(field.Span)
+			if !ok {
+				return hir.Expr{}, hirLoweringError(analysis, node.Selectors[i].FieldSpan, function, "record field has no semantic identity")
+			}
+			selectors = append(selectors, hir.ListDirectionalTextFieldSelector{ListTextFieldSelector: hir.ListTextFieldSelector{Field: toHIRSemanticIdentity(id), Name: node.Selectors[i].Field, Position: positions[i]}, Direction: node.Selectors[i].Direction})
+		}
+		values, err := lowerExprToHIR(analysis, function, node.Values, bindings, typeEnvironment)
+		if err != nil {
+			return hir.Expr{}, err
+		}
+		result.Kind = hir.ExprListSortByOrdinalDirections
+		result.ListSortByOrdinalDirections = &hir.ListSortByOrdinalDirections{Values: &values, Selectors: selectors}
 	case *ListSortByOrdinalsExpr:
 		valuesType, err := analysis.checked.inferExprType(node.Values, typeEnvironment)
 		if err != nil {
@@ -667,7 +748,7 @@ func lowerExprToHIR(analysis *Analysis, function SemanticIdentity, expression Ex
 func LowerHIRToCore(program hir.Program) (coreir.Program, error) {
 	core := coreir.Program{LanguageContract: program.LanguageContract, CompilerContract: program.CompilerContract, Functions: make([]coreir.Function, 0, len(program.Functions))}
 	for _, function := range program.Functions {
-		if program.LanguageContract != coreir.LanguageContractV270 && program.LanguageContract != coreir.LanguageContractV280 && program.LanguageContract != coreir.LanguageContractV290 && program.LanguageContract != coreir.LanguageContractV300 && program.LanguageContract != coreir.LanguageContractV310 {
+		if program.LanguageContract != coreir.LanguageContractV270 && program.LanguageContract != coreir.LanguageContractV280 && program.LanguageContract != coreir.LanguageContractV290 && program.LanguageContract != coreir.LanguageContractV300 && program.LanguageContract != coreir.LanguageContractV310 && program.LanguageContract != coreir.LanguageContractV320 && program.LanguageContract != coreir.LanguageContractV330 && program.LanguageContract != coreir.LanguageContractV340 && program.LanguageContract != coreir.LanguageContractV350 {
 			if program.LanguageContract != coreir.LanguageContractV130 && program.LanguageContract != coreir.LanguageContractV140 && program.LanguageContract != coreir.LanguageContractV150 && program.LanguageContract != coreir.LanguageContractV160 && program.LanguageContract != coreir.LanguageContractV170 && program.LanguageContract != coreir.LanguageContractV180 && program.LanguageContract != coreir.LanguageContractV190 && program.LanguageContract != coreir.LanguageContractV200 && program.LanguageContract != coreir.LanguageContractV210 && program.LanguageContract != coreir.LanguageContractV220 && program.LanguageContract != coreir.LanguageContractV230 && program.LanguageContract != coreir.LanguageContractV240 && program.LanguageContract != coreir.LanguageContractV250 && program.LanguageContract != coreir.LanguageContractV260 && hirFunctionContainsOptional(function) {
 				return coreir.Program{}, coreLoweringError(function.Span, fmt.Sprintf("primitive Optional HIR requires language contract %q", coreir.LanguageContractV130))
 			}
@@ -711,19 +792,19 @@ func LowerHIRToCore(program hir.Program) (coreir.Program, error) {
 				return coreir.Program{}, coreLoweringError(function.Span, fmt.Sprintf("record-list filter_contains_casefolded HIR requires language contract %q", coreir.LanguageContractV240))
 			}
 		}
-		if program.LanguageContract != coreir.LanguageContractV270 && program.LanguageContract != coreir.LanguageContractV280 && program.LanguageContract != coreir.LanguageContractV290 && program.LanguageContract != coreir.LanguageContractV300 && program.LanguageContract != coreir.LanguageContractV310 && hirExprContainsListFilterJoinedContainsCaseFolded(function.Body) {
+		if program.LanguageContract != coreir.LanguageContractV270 && program.LanguageContract != coreir.LanguageContractV280 && program.LanguageContract != coreir.LanguageContractV290 && program.LanguageContract != coreir.LanguageContractV300 && program.LanguageContract != coreir.LanguageContractV310 && program.LanguageContract != coreir.LanguageContractV320 && program.LanguageContract != coreir.LanguageContractV330 && program.LanguageContract != coreir.LanguageContractV340 && program.LanguageContract != coreir.LanguageContractV350 && hirExprContainsListFilterJoinedContainsCaseFolded(function.Body) {
 			return coreir.Program{}, coreLoweringError(function.Span, fmt.Sprintf("record-list filter_joined_contains_casefolded HIR requires language contract %q", coreir.LanguageContractV270))
 		}
-		if program.LanguageContract != coreir.LanguageContractV290 && program.LanguageContract != coreir.LanguageContractV300 && program.LanguageContract != coreir.LanguageContractV310 && function.Body.Kind == hir.ExprListFilterJoinedContainsCaseFolded && (function.Body.ListFilterJoinedContainsCaseFolded == nil || len(function.Body.ListFilterJoinedContainsCaseFolded.Selectors) != 5) {
+		if program.LanguageContract != coreir.LanguageContractV290 && program.LanguageContract != coreir.LanguageContractV300 && program.LanguageContract != coreir.LanguageContractV310 && program.LanguageContract != coreir.LanguageContractV320 && program.LanguageContract != coreir.LanguageContractV330 && program.LanguageContract != coreir.LanguageContractV340 && program.LanguageContract != coreir.LanguageContractV350 && function.Body.Kind == hir.ExprListFilterJoinedContainsCaseFolded && (function.Body.ListFilterJoinedContainsCaseFolded == nil || len(function.Body.ListFilterJoinedContainsCaseFolded.Selectors) != 5) {
 			return coreir.Program{}, coreLoweringError(function.Span, "record-list filter_joined_contains_casefolded HIR requires exactly five selectors before language contract v0.29.0")
 		}
-		if program.LanguageContract != coreir.LanguageContractV280 && program.LanguageContract != coreir.LanguageContractV290 && program.LanguageContract != coreir.LanguageContractV300 && program.LanguageContract != coreir.LanguageContractV310 && hirExprContainsListSortByOrdinalText(function.Body) {
+		if program.LanguageContract != coreir.LanguageContractV280 && program.LanguageContract != coreir.LanguageContractV290 && program.LanguageContract != coreir.LanguageContractV300 && program.LanguageContract != coreir.LanguageContractV310 && program.LanguageContract != coreir.LanguageContractV320 && program.LanguageContract != coreir.LanguageContractV330 && program.LanguageContract != coreir.LanguageContractV340 && program.LanguageContract != coreir.LanguageContractV350 && hirExprContainsListSortByOrdinalText(function.Body) {
 			return coreir.Program{}, coreLoweringError(function.Span, fmt.Sprintf("record-list sort_by_ordinal HIR requires language contract %q", coreir.LanguageContractV280))
 		}
-		if program.LanguageContract != coreir.LanguageContractV300 && program.LanguageContract != coreir.LanguageContractV310 && hirExprContainsListSortByOrdinalTexts(function.Body) {
+		if program.LanguageContract != coreir.LanguageContractV300 && program.LanguageContract != coreir.LanguageContractV310 && program.LanguageContract != coreir.LanguageContractV320 && program.LanguageContract != coreir.LanguageContractV330 && program.LanguageContract != coreir.LanguageContractV340 && program.LanguageContract != coreir.LanguageContractV350 && hirExprContainsListSortByOrdinalTexts(function.Body) {
 			return coreir.Program{}, coreLoweringError(function.Span, fmt.Sprintf("multi-key record-list sort_by_ordinal HIR requires language contract %q", coreir.LanguageContractV300))
 		}
-		if program.LanguageContract != coreir.LanguageContractV310 && function.Body.Kind == hir.ExprListFilterPredicate {
+		if program.LanguageContract != coreir.LanguageContractV310 && program.LanguageContract != coreir.LanguageContractV320 && program.LanguageContract != coreir.LanguageContractV330 && program.LanguageContract != coreir.LanguageContractV340 && program.LanguageContract != coreir.LanguageContractV350 && function.Body.Kind == hir.ExprListFilterPredicate {
 			return coreir.Program{}, coreLoweringError(function.Span, fmt.Sprintf("named record predicate filter HIR requires language contract %q", coreir.LanguageContractV310))
 		}
 		if function.Identity.PackageID == "" || function.Identity.Path == "" || function.Owner.SymbolID == 0 || function.Owner.Module == "" {
@@ -965,7 +1046,7 @@ func hirExprContainsBoundedValueResult(expression hir.Expr) bool {
 
 func hirExprContainsList(expression hir.Expr) bool {
 	switch expression.Kind {
-	case hir.ExprListEmpty, hir.ExprListSingleton, hir.ExprListCount, hir.ExprListAppend, hir.ExprListAt, hir.ExprListFindByText, hir.ExprListFilterByText, hir.ExprListFilterPredicate, hir.ExprListFilterContainsCaseFolded, hir.ExprListFilterJoinedContainsCaseFolded, hir.ExprListSortByOrdinalText, hir.ExprListSortByOrdinalTexts:
+	case hir.ExprListEmpty, hir.ExprListSingleton, hir.ExprListCount, hir.ExprListAppend, hir.ExprListAt, hir.ExprListFindByText, hir.ExprListFilterByText, hir.ExprListFilterPredicate, hir.ExprListFilterContainsCaseFolded, hir.ExprListFilterJoinedContainsCaseFolded, hir.ExprListSortByOrdinalText, hir.ExprListSortByOrdinalTexts, hir.ExprListSortByOrdinalDirections:
 		return true
 	case hir.ExprUnary:
 		return expression.Unary != nil && expression.Unary.Operand != nil && hirExprContainsList(*expression.Unary.Operand)
@@ -1334,12 +1415,38 @@ func hirExprToCore(expression hir.Expr, parameters []hir.Parameter) (coreir.Expr
 		result.Kind = coreir.ExprLiteral
 		result.Literal = &coreir.Literal{String: expression.Literal.String, Int: expression.Literal.Int, Float: expression.Literal.Float, Bool: expression.Literal.Bool}
 	case hir.ExprReference:
-		if expression.Reference == nil || expression.Reference.Kind != hir.BindingParameter || expression.Reference.Position < 0 || expression.Reference.Position >= len(parameters) {
+		if expression.Reference == nil || (expression.Reference.Kind != hir.BindingParameter && expression.Reference.Kind != hir.BindingMatchArm) || expression.Reference.Position < 0 || expression.Reference.Position > len(parameters) {
 			return coreir.Expr{}, coreLoweringError(expression.Span, "typed HIR reference has no bound parameter")
 		}
 		position := expression.Reference.Position
 		result.Kind = coreir.ExprReference
 		result.Parameter = &position
+	case hir.ExprMatch:
+		if expression.Match == nil || expression.Match.Value == nil {
+			return coreir.Expr{}, coreLoweringError(expression.Span, "typed HIR match is incomplete")
+		}
+		value, err := hirExprToCore(*expression.Match.Value, parameters)
+		if err != nil {
+			return coreir.Expr{}, err
+		}
+		matched := &coreir.Match{Value: &value, Arms: make([]coreir.MatchArm, 0, len(expression.Match.Arms))}
+		for _, arm := range expression.Match.Arms {
+			if arm.Body == nil {
+				return coreir.Expr{}, coreLoweringError(expression.Span, "typed HIR match arm has no body")
+			}
+			body, e := hirExprToCore(*arm.Body, parameters)
+			if e != nil {
+				return coreir.Expr{}, e
+			}
+			var binding *int
+			if arm.Binding != nil {
+				pos := arm.Binding.Position
+				binding = &pos
+			}
+			matched.Arms = append(matched.Arms, coreir.MatchArm{Tag: arm.Tag, Binding: binding, Body: &body})
+		}
+		result.Kind = coreir.ExprMatch
+		result.Match = matched
 	case hir.ExprUnary:
 		if expression.Unary == nil || expression.Unary.Operand == nil {
 			return coreir.Expr{}, coreLoweringError(expression.Span, "typed HIR unary expression is incomplete")
@@ -1455,6 +1562,16 @@ func hirExprToCore(expression hir.Expr, parameters []hir.Parameter) (coreir.Expr
 		}
 		result.Kind = coreir.ExprOptionalValueOr
 		result.ValueOr = &coreir.OptionalValueOr{Value: &value, Fallback: &fallback}
+	case hir.ExprPropagate:
+		if expression.Propagate == nil || expression.Propagate.Value == nil {
+			return coreir.Expr{}, coreLoweringError(expression.Span, "propagate expression is incomplete")
+		}
+		value, err := hirExprToCore(*expression.Propagate.Value, parameters)
+		if err != nil {
+			return coreir.Expr{}, err
+		}
+		result.Kind = coreir.ExprPropagate
+		result.Propagate = &coreir.Propagate{Value: &value, Carrier: hirTypeToCore(expression.Propagate.Carrier)}
 	case hir.ExprListEmpty:
 		if expression.ListEmpty == nil {
 			return coreir.Expr{}, coreLoweringError(expression.Span, "typed HIR list empty expression is incomplete")
@@ -1618,6 +1735,21 @@ func hirExprToCore(expression hir.Expr, parameters []hir.Parameter) (coreir.Expr
 		}
 		result.Kind = coreir.ExprListSortByOrdinalTexts
 		result.ListSortByOrdinalTexts = &coreir.ListSortByOrdinalTexts{Values: &values, Selectors: selectors}
+	case hir.ExprListSortByOrdinalDirections:
+		sorted := expression.ListSortByOrdinalDirections
+		if sorted == nil || sorted.Values == nil {
+			return coreir.Expr{}, coreLoweringError(expression.Span, "typed HIR directional sort expression is incomplete")
+		}
+		values, err := hirExprToCore(*sorted.Values, parameters)
+		if err != nil {
+			return coreir.Expr{}, err
+		}
+		selectors := make([]coreir.ListDirectionalTextFieldSelector, 0, len(sorted.Selectors))
+		for _, s := range sorted.Selectors {
+			selectors = append(selectors, coreir.ListDirectionalTextFieldSelector{ListTextFieldSelector: coreir.ListTextFieldSelector{Field: hirIdentityToCore(s.Field), Name: s.Name, Position: s.Position}, Direction: s.Direction})
+		}
+		result.Kind = coreir.ExprListSortByOrdinalDirections
+		result.ListSortByOrdinalDirections = &coreir.ListSortByOrdinalDirections{Values: &values, Selectors: selectors}
 	case hir.ExprResultOK:
 		if expression.ResultOK == nil || expression.ResultOK.Value == nil {
 			return coreir.Expr{}, coreLoweringError(expression.Span, "typed HIR result ok expression is incomplete")
