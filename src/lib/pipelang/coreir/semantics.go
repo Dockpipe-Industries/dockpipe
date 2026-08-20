@@ -282,7 +282,7 @@ func ValidateProgram(program Program) error {
 		if function.Body.Kind != ExprListFilterPredicate || filter == nil {
 			continue
 		}
-		if program.LanguageContract != LanguageContractV310 {
+		if !isV310OrLaterContract(program.LanguageContract) {
 			return fmt.Errorf("function %s named predicate filtering requires language contract %q", function.Name, LanguageContractV310)
 		}
 		target, ok := functions[filter.Predicate.PackageID+"\x00"+filter.Predicate.Path]
@@ -324,6 +324,15 @@ func callableIdentityEqual(left, right *CallableIdentity) bool {
 		}
 	}
 	return true
+}
+
+func isV310OrLaterContract(contract string) bool {
+	switch contract {
+	case LanguageContractV310, LanguageContractV320, LanguageContractV330, LanguageContractV340, LanguageContractV350:
+		return true
+	default:
+		return false
+	}
 }
 
 func semanticTypeEqual(left, right SemanticType) bool {
@@ -1159,7 +1168,42 @@ func validateExpr(expression Expr, parameters []Parameter) error {
 		if carrier.Kind != TypeOptional && carrier.Kind != TypeResult {
 			return fmt.Errorf("match value is not tagged")
 		}
+		tags := []string{"some", "none"}
+		payloadTags := map[string]bool{"some": true}
+		if carrier.Kind == TypeResult {
+			tags = []string{"ok", "err"}
+			payloadTags = map[string]bool{"ok": true, "err": true}
+		}
+		seen := map[string]bool{}
+		wildcard := false
 		for _, arm := range expression.Match.Arms {
+			if wildcard {
+				return fmt.Errorf("match arm is unreachable after wildcard")
+			}
+			if arm.Tag == "_" {
+				wildcard = true
+				if arm.Binding != nil {
+					return fmt.Errorf("match wildcard cannot bind a payload")
+				}
+			} else {
+				valid := false
+				for _, tag := range tags {
+					if arm.Tag == tag {
+						valid = true
+						break
+					}
+				}
+				if !valid {
+					return fmt.Errorf("match arm tag %q is invalid for its carrier", arm.Tag)
+				}
+				if seen[arm.Tag] {
+					return fmt.Errorf("duplicate match arm tag %q", arm.Tag)
+				}
+				seen[arm.Tag] = true
+				if payloadTags[arm.Tag] != (arm.Binding != nil) {
+					return fmt.Errorf("match arm tag %q has an invalid payload binding", arm.Tag)
+				}
+			}
 			if arm.Body == nil {
 				return fmt.Errorf("match arm has no body")
 			}
@@ -1185,6 +1229,13 @@ func validateExpr(expression Expr, parameters []Parameter) error {
 			}
 			if !TypeEqual(arm.Body.Type, expression.Type) {
 				return fmt.Errorf("match arm type does not match expression")
+			}
+		}
+		if !wildcard {
+			for _, tag := range tags {
+				if !seen[tag] {
+					return fmt.Errorf("match is not exhaustive; missing %s arm", tag)
+				}
 			}
 		}
 	default:
