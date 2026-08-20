@@ -913,6 +913,37 @@ direction arguments, multi-key sorting, arbitrary comparers or predicates, numer
 in-place mutation, general indexing, nested/general composition, Application IR, Step-8 control
 flow or matching, effects, and additional backends remain outside the production source contract.
 
+The explicit `v0.29.0` contract preserves every `v0.28.0` rule and widens only the existing direct
+joined record-list search to a record-bounded variable selector count:
+
+```pipelang
+public List<NetworkRow> SearchRows(List<NetworkRow> values, string query) =>
+    filter_joined_contains_casefolded(
+        values,
+        NetworkRow.Name,
+        NetworkRow.Driver,
+        NetworkRow.Scope,
+        query
+    );
+```
+
+`filter_joined_contains_casefolded` still requires exactly two direct runtime parameters,
+`List<R>` then `string`, and the identical `List<R>` return. It now accepts two or more distinct
+static selectors, bounded by the public `string` fields of the same existing primitive record `R`.
+The complete list, every record and selected or unselected field, and the query are validated before
+filtering. Selected strings are joined in source order with one U+0020 SPACE; the query is trimmed
+under v0.26.0; both operands use the pinned v0.23.0 Unicode 17.0.0 full-default case-folded
+containment rule. Stable input order, canonical non-nil empty output, and fresh copied list/record
+storage remain mandatory.
+
+Callable, list, record, field, and primitive identities remain unchanged. `pipelang.compiler.v1`
+and `pipelang.semantic.v1` remain unchanged. Typed HIR and target-neutral Core reuse the existing
+`list_filter_joined_contains_case_folded_text` node and its ordered selector identities, names, and
+declaration positions. `v0.27.0` and `v0.28.0` retain their exact five-selector rule; `v0.1.0`
+through `v0.26.0` still reject the form. Zero/one selector, selector values, duplicates, predicates,
+regex, normalization, locale tailoring, sorting, nested/general composition, Application IR,
+Step-8 control flow, effects, and additional backends remain outside the production contract.
+
 ## Artifacts
 
 Compile emits:

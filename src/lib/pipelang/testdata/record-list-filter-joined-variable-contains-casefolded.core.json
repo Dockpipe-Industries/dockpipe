@@ -1,0 +1,412 @@
+{
+  "language_contract": "v0.29.0",
+  "compiler_contract": "pipelang.compiler.v1",
+  "functions": [
+    {
+      "identity": {
+        "package_id": "test.package",
+        "path": "app.root.root.searchrows",
+        "callable": {
+          "parameters": [
+            {
+              "kind": "applied",
+              "package_id": "pipelang",
+              "path": "list",
+              "name": "List",
+              "arguments": [
+                {
+                  "kind": "named",
+                  "package_id": "test.package",
+                  "path": "app.root.networkrow"
+                }
+              ]
+            },
+            {
+              "kind": "primitive",
+              "primitive": "string"
+            }
+          ],
+          "returns": {
+            "kind": "applied",
+            "package_id": "pipelang",
+            "path": "list",
+            "name": "List",
+            "arguments": [
+              {
+                "kind": "named",
+                "package_id": "test.package",
+                "path": "app.root.networkrow"
+              }
+            ]
+          }
+        }
+      },
+      "name": "SearchRows",
+      "parameters": [
+        {
+          "position": 0,
+          "name": "values",
+          "type": {
+            "kind": "list",
+            "list": {
+              "element": {
+                "kind": "record",
+                "record": {
+                  "fields": [
+                    {
+                      "identity": {
+                        "package_id": "test.package",
+                        "path": "app.root.networkrow.id"
+                      },
+                      "name": "Id",
+                      "type": {
+                        "kind": "primitive",
+                        "primitive": "string"
+                      }
+                    },
+                    {
+                      "identity": {
+                        "package_id": "test.package",
+                        "path": "app.root.networkrow.name"
+                      },
+                      "name": "Name",
+                      "type": {
+                        "kind": "primitive",
+                        "primitive": "string"
+                      }
+                    },
+                    {
+                      "identity": {
+                        "package_id": "test.package",
+                        "path": "app.root.networkrow.driver"
+                      },
+                      "name": "Driver",
+                      "type": {
+                        "kind": "primitive",
+                        "primitive": "string"
+                      }
+                    },
+                    {
+                      "identity": {
+                        "package_id": "test.package",
+                        "path": "app.root.networkrow.scope"
+                      },
+                      "name": "Scope",
+                      "type": {
+                        "kind": "primitive",
+                        "primitive": "string"
+                      }
+                    },
+                    {
+                      "identity": {
+                        "package_id": "test.package",
+                        "path": "app.root.networkrow.note"
+                      },
+                      "name": "Note",
+                      "type": {
+                        "kind": "primitive",
+                        "primitive": "string"
+                      }
+                    }
+                  ]
+                },
+                "identity": {
+                  "package_id": "test.package",
+                  "path": "app.root.networkrow"
+                },
+                "name": "NetworkRow"
+              }
+            },
+            "identity": {
+              "package_id": "pipelang",
+              "path": "list"
+            },
+            "name": "List"
+          }
+        },
+        {
+          "position": 1,
+          "name": "query",
+          "type": {
+            "kind": "primitive",
+            "primitive": "string"
+          }
+        }
+      ],
+      "return_type": {
+        "kind": "list",
+        "list": {
+          "element": {
+            "kind": "record",
+            "record": {
+              "fields": [
+                {
+                  "identity": {
+                    "package_id": "test.package",
+                    "path": "app.root.networkrow.id"
+                  },
+                  "name": "Id",
+                  "type": {
+                    "kind": "primitive",
+                    "primitive": "string"
+                  }
+                },
+                {
+                  "identity": {
+                    "package_id": "test.package",
+                    "path": "app.root.networkrow.name"
+                  },
+                  "name": "Name",
+                  "type": {
+                    "kind": "primitive",
+                    "primitive": "string"
+                  }
+                },
+                {
+                  "identity": {
+                    "package_id": "test.package",
+                    "path": "app.root.networkrow.driver"
+                  },
+                  "name": "Driver",
+                  "type": {
+                    "kind": "primitive",
+                    "primitive": "string"
+                  }
+                },
+                {
+                  "identity": {
+                    "package_id": "test.package",
+                    "path": "app.root.networkrow.scope"
+                  },
+                  "name": "Scope",
+                  "type": {
+                    "kind": "primitive",
+                    "primitive": "string"
+                  }
+                },
+                {
+                  "identity": {
+                    "package_id": "test.package",
+                    "path": "app.root.networkrow.note"
+                  },
+                  "name": "Note",
+                  "type": {
+                    "kind": "primitive",
+                    "primitive": "string"
+                  }
+                }
+              ]
+            },
+            "identity": {
+              "package_id": "test.package",
+              "path": "app.root.networkrow"
+            },
+            "name": "NetworkRow"
+          }
+        },
+        "identity": {
+          "package_id": "pipelang",
+          "path": "list"
+        },
+        "name": "List"
+      },
+      "body": {
+        "kind": "list_filter_joined_contains_case_folded_text",
+        "type": {
+          "kind": "list",
+          "list": {
+            "element": {
+              "kind": "record",
+              "record": {
+                "fields": [
+                  {
+                    "identity": {
+                      "package_id": "test.package",
+                      "path": "app.root.networkrow.id"
+                    },
+                    "name": "Id",
+                    "type": {
+                      "kind": "primitive",
+                      "primitive": "string"
+                    }
+                  },
+                  {
+                    "identity": {
+                      "package_id": "test.package",
+                      "path": "app.root.networkrow.name"
+                    },
+                    "name": "Name",
+                    "type": {
+                      "kind": "primitive",
+                      "primitive": "string"
+                    }
+                  },
+                  {
+                    "identity": {
+                      "package_id": "test.package",
+                      "path": "app.root.networkrow.driver"
+                    },
+                    "name": "Driver",
+                    "type": {
+                      "kind": "primitive",
+                      "primitive": "string"
+                    }
+                  },
+                  {
+                    "identity": {
+                      "package_id": "test.package",
+                      "path": "app.root.networkrow.scope"
+                    },
+                    "name": "Scope",
+                    "type": {
+                      "kind": "primitive",
+                      "primitive": "string"
+                    }
+                  },
+                  {
+                    "identity": {
+                      "package_id": "test.package",
+                      "path": "app.root.networkrow.note"
+                    },
+                    "name": "Note",
+                    "type": {
+                      "kind": "primitive",
+                      "primitive": "string"
+                    }
+                  }
+                ]
+              },
+              "identity": {
+                "package_id": "test.package",
+                "path": "app.root.networkrow"
+              },
+              "name": "NetworkRow"
+            }
+          },
+          "identity": {
+            "package_id": "pipelang",
+            "path": "list"
+          },
+          "name": "List"
+        },
+        "list_filter_joined_contains_case_folded_text": {
+          "values": {
+            "kind": "reference",
+            "type": {
+              "kind": "list",
+              "list": {
+                "element": {
+                  "kind": "record",
+                  "record": {
+                    "fields": [
+                      {
+                        "identity": {
+                          "package_id": "test.package",
+                          "path": "app.root.networkrow.id"
+                        },
+                        "name": "Id",
+                        "type": {
+                          "kind": "primitive",
+                          "primitive": "string"
+                        }
+                      },
+                      {
+                        "identity": {
+                          "package_id": "test.package",
+                          "path": "app.root.networkrow.name"
+                        },
+                        "name": "Name",
+                        "type": {
+                          "kind": "primitive",
+                          "primitive": "string"
+                        }
+                      },
+                      {
+                        "identity": {
+                          "package_id": "test.package",
+                          "path": "app.root.networkrow.driver"
+                        },
+                        "name": "Driver",
+                        "type": {
+                          "kind": "primitive",
+                          "primitive": "string"
+                        }
+                      },
+                      {
+                        "identity": {
+                          "package_id": "test.package",
+                          "path": "app.root.networkrow.scope"
+                        },
+                        "name": "Scope",
+                        "type": {
+                          "kind": "primitive",
+                          "primitive": "string"
+                        }
+                      },
+                      {
+                        "identity": {
+                          "package_id": "test.package",
+                          "path": "app.root.networkrow.note"
+                        },
+                        "name": "Note",
+                        "type": {
+                          "kind": "primitive",
+                          "primitive": "string"
+                        }
+                      }
+                    ]
+                  },
+                  "identity": {
+                    "package_id": "test.package",
+                    "path": "app.root.networkrow"
+                  },
+                  "name": "NetworkRow"
+                }
+              },
+              "identity": {
+                "package_id": "pipelang",
+                "path": "list"
+              },
+              "name": "List"
+            },
+            "parameter": 0
+          },
+          "selectors": [
+            {
+              "field": {
+                "package_id": "test.package",
+                "path": "app.root.networkrow.name"
+              },
+              "name": "Name",
+              "position": 1
+            },
+            {
+              "field": {
+                "package_id": "test.package",
+                "path": "app.root.networkrow.driver"
+              },
+              "name": "Driver",
+              "position": 2
+            },
+            {
+              "field": {
+                "package_id": "test.package",
+                "path": "app.root.networkrow.scope"
+              },
+              "name": "Scope",
+              "position": 3
+            }
+          ],
+          "query": {
+            "kind": "reference",
+            "type": {
+              "kind": "primitive",
+              "primitive": "string"
+            },
+            "parameter": 1
+          }
+        }
+      }
+    }
+  ]
+}

@@ -472,3 +472,40 @@ diff --check`; unchanged dependency files; and Core-only evaluator/backend impor
 Application and CLI validation used only a temporary `/tmp` modfile and the local cached module
 proxy selecting cached `x/sys v0.46.0`; no checkout dependency, generated store, network, runtime,
 Docker, VM, credential, cleanup, push, publication, or other external state changed.
+
+### Completed step 7ad variable-count joined case-folded filtering (2026-08-19)
+
+The founder selected explicit `v0.29.0` variable-count joined case-folded filtering of one
+primitive-record list by two or more distinct public string fields. The source form keeps
+`filter_joined_contains_casefolded(values, R.Field1, R.Field2, ..., query)` as its complete body,
+with direct `List<R>` and `string` parameters and the same `List<R>` return type. Selector count is
+bounded by the selected record's declared public string fields. `v0.27.0` and `v0.28.0` retain
+their exact five-selector contract without implicit migration.
+
+Existing AST, typed HIR, and target-neutral Core joined-filter nodes now carry the complete ordered
+selector slice; no semantic or compiler schema identity changed. The evaluator and Core-only Go
+backend preserve full input validation, source-order joining with U+0020 SPACE, pinned Unicode
+17.0.0 query trimming and full-default case-folded containment, stable result order, canonical
+non-nil empty output, and fresh copied list and record storage. Field identities, names, and
+declaration positions remain explicit through HIR and Core.
+
+Zero- or one-selector forms, duplicate/private/non-string/cross-record selectors, runtime selector
+values, normalization, locale tailoring, regex, arbitrary predicates, sorting changes, nested or
+general composition, Application IR, Step-8 behavior, effects, and additional backends remain
+excluded.
+
+The synchronized source fixture and tests cover semantic projection, parser spans and exclusions,
+three-field ordered HIR/Core identity, cross-field and pinned Unicode matching, Unicode query
+trimming, empty-query and empty-result behavior, strict whole-list UTF-8 and nil-list rejection,
+stable copied results, malformed HIR/Core rejection, explicit `v0.28.0` migration rejection,
+deterministic Go generation, generated-code execution, and preservation of `v0.28.0` ordinal
+sorting and the accepted five-field joined filter under `v0.29.0`.
+
+Terminal proof passed with cached Go 1.25.13 and local/offline module inputs: the uncached complete
+PipeLang compiler, Core, evaluator, backend, and exact 45-source compatibility suites; affected
+application PipeLang and package-compile tests; the `src/cmd` compile seam; editor assertions; `go
+vet`; Windows/amd64 compile-only proof; `gofmt`; `git diff --check`; unchanged dependency files;
+the frozen inventory digest; and Core-only evaluator/backend import boundaries. Application and CLI
+validation used only a temporary `/tmp` modfile selecting cached `x/sys v0.46.0`; no checkout
+dependency, generated store, network, runtime, Docker, VM, credential, cleanup, commit, push,
+publication, or other external state changed.

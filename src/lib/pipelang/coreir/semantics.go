@@ -767,7 +767,7 @@ func validateExpr(expression Expr, parameters []Parameter) error {
 		}
 	case ExprListFilterJoinedContainsCaseFolded:
 		filter := expression.ListFilterJoinedContainsCaseFolded
-		if filter == nil || filter.Values == nil || filter.Query == nil || len(filter.Selectors) != 5 || expression.Type.Kind != TypeList || expression.Type.List == nil {
+		if filter == nil || filter.Values == nil || filter.Query == nil || len(filter.Selectors) < 2 || expression.Type.Kind != TypeList || expression.Type.List == nil {
 			return fmt.Errorf("list filter_joined_contains_casefolded expression is incomplete")
 		}
 		if err := validateType(expression.Type); err != nil {
@@ -1643,8 +1643,8 @@ func validateDirectListFilterContainsCaseFoldedFunction(function Function) error
 func validateDirectListFilterJoinedContainsCaseFoldedFunction(function Function) error {
 	filter := function.Body.ListFilterJoinedContainsCaseFolded
 	stringType := Type{Kind: TypePrimitive, Primitive: PrimitiveString}
-	if filter == nil || filter.Values == nil || filter.Query == nil || len(filter.Selectors) != 5 || len(function.Parameters) != 2 || function.Parameters[0].Type.Kind != TypeList || function.Parameters[0].Type.List == nil || function.Parameters[0].Type.List.Element.Kind != TypeRecord || !TypeEqual(function.Parameters[1].Type, stringType) || !TypeEqual(function.ReturnType, function.Parameters[0].Type) {
-		return fmt.Errorf("filter_joined_contains_casefolded requires direct List<R> and string parameters, exactly five selectors, and matching List<R> return")
+	if filter == nil || filter.Values == nil || filter.Query == nil || len(filter.Selectors) < 2 || len(function.Parameters) != 2 || function.Parameters[0].Type.Kind != TypeList || function.Parameters[0].Type.List == nil || function.Parameters[0].Type.List.Element.Kind != TypeRecord || !TypeEqual(function.Parameters[1].Type, stringType) || !TypeEqual(function.ReturnType, function.Parameters[0].Type) {
+		return fmt.Errorf("filter_joined_contains_casefolded requires direct List<R> and string parameters, at least two selectors, and matching List<R> return")
 	}
 	if filter.Values.Kind != ExprReference || filter.Values.Parameter == nil || *filter.Values.Parameter != 0 || !TypeEqual(filter.Values.Type, function.Parameters[0].Type) {
 		return fmt.Errorf("filter_joined_contains_casefolded values must be its first direct record-list parameter")
