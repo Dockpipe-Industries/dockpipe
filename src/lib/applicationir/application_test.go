@@ -21,7 +21,7 @@ func TestDockerObservabilityGoldenUsesCanonicalSemanticAndCore(t *testing.T) {
 		t.Fatal(err)
 	}
 	module := pipelang.ModuleInput{ID: "app.root", Namespace: "app.root", DeclarationSpan: pipelang.Span{File: "docker-observability.pipe"}, Sources: []pipelang.SourceInput{{Path: "docker-observability.pipe", Data: source}}}
-	input := pipelang.ModuleSetInput{LanguageContract: pipelang.PipeLangLanguageContractV360, PackageID: "docker.observability", Root: "app.root", Modules: []pipelang.ModuleInput{module}}
+	input := pipelang.ModuleSetInput{LanguageContract: pipelang.PipeLangLanguageContractV370, PackageID: "docker.observability", Root: "app.root", Modules: []pipelang.ModuleInput{module}}
 	input.Lock.Modules = []pipelang.LockedModule{{ID: module.ID, SourceSHA256: pipelang.ModuleSourceSHA256(module.Sources), SemanticSHA256: pipelang.ModuleSemanticSHA256(input.PackageID, module.Namespace, nil)}}
 	analysis := pipelang.AnalyzeSemanticModuleSet(input)
 	if err := analysis.Error(); err != nil {
@@ -86,6 +86,34 @@ func TestDockerObservabilityGoldenUsesCanonicalSemanticAndCore(t *testing.T) {
 	outcome, err := coreeval.EvaluateProgram(visibleCore, coreir.SemanticIdentity{PackageID: string(visible.Identity.PackageID), Path: string(visible.Identity.Path)}, []coreeval.Value{rows, {Type: textType, String: ""}})
 	if err != nil || !outcome.OK || len(outcome.Value.List) != 2 || outcome.Value.List[0].Record[1].String != "Alpha" {
 		t.Fatalf("VisibleContainers consumer result = %#v, %v", outcome, err)
+	}
+	selectedName := find("SelectedName")
+	selectedNameHIR, err := pipelang.LowerSemanticMethodToHIR(analysis, *selectedName.Identity)
+	if err != nil {
+		t.Fatal(err)
+	}
+	selectedNameFunction := selectedNameHIR.Functions[len(selectedNameHIR.Functions)-1]
+	if selectedNameFunction.Body.Kind != hir.ExprMatch || selectedNameFunction.Body.Match.Arms[0].Body.Kind != hir.ExprCall {
+		t.Fatalf("SelectedName HIR lost composed match-arm call: %#v", selectedNameFunction.Body)
+	}
+	selectedNameCore, err := pipelang.LowerHIRToCore(selectedNameHIR)
+	if err != nil {
+		t.Fatal(err)
+	}
+	selectedNameCoreFunction := selectedNameCore.Functions[len(selectedNameCore.Functions)-1]
+	selectedRowType := selectedNameCoreFunction.Parameters[0].Type
+	selectedPayload := row("3", "  worker  ", "running", "Up", "dockpipe:worker", "", "now")
+	selectedValue := coreeval.Value{Type: selectedRowType, Optional: &coreeval.OptionalValue{Present: true, Value: &selectedPayload}}
+	selectedOutcome, err := coreeval.EvaluateProgram(selectedNameCore, coreir.SemanticIdentity{PackageID: string(selectedName.Identity.PackageID), Path: string(selectedName.Identity.Path)}, []coreeval.Value{selectedValue})
+	if err != nil || !selectedOutcome.OK || selectedOutcome.Value.String != "worker" {
+		t.Fatalf("SelectedName consumer result = %#v, %v", selectedOutcome, err)
+	}
+	selectedGo, err := gobackend.Generate(selectedNameCore)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(selectedGo), "return PipeLangNormalizeName(") {
+		t.Fatalf("SelectedName generated Go lost match-arm call:\n%s", selectedGo)
 	}
 	typeID := func(name string) Identity {
 		for _, m := range semantic.Modules {
@@ -185,7 +213,7 @@ func TestDockerObservabilityGoldenUsesCanonicalSemanticAndCore(t *testing.T) {
 	if err = json.Unmarshal(raw, &checked); err != nil {
 		t.Fatal(err)
 	}
-	if len(checked.Sections) != 3 || len(app.Sections) != 3 || app.Selection == nil || app.Details == nil || app.Logs == nil || app.Metadata.LanguageContract != "v0.36.0" {
+	if len(checked.Sections) != 3 || len(app.Sections) != 3 || app.Selection == nil || app.Details == nil || app.Logs == nil || app.Metadata.LanguageContract != "v0.37.0" {
 		t.Fatalf("incomplete fixture: %#v", app)
 	}
 	bad := spec
@@ -231,7 +259,7 @@ func ownedField(p *pipelang.SemanticProjection, row Identity, name string) Locat
 }
 
 func TestProjectRejectsUnknownIdentityAtItsSource(t *testing.T) {
-	_, err := Project(&pipelang.SemanticProjection{Schema: pipelang.PipeLangSemanticProjectionVersion, CompilerContract: pipelang.PipeLangCompilerContract, LanguageContract: pipelang.PipeLangLanguageContractV360, View: pipelang.SemanticProjectionPublic}, &coreir.Program{CompilerContract: pipelang.PipeLangCompilerContract, LanguageContract: "v0.36.0"}, Spec{Identity: LocatedIdentity{Identity: Identity{"p", "missing"}, Source: pipelang.SourceRange{File: "model.pipe"}}})
+	_, err := Project(&pipelang.SemanticProjection{Schema: pipelang.PipeLangSemanticProjectionVersion, CompilerContract: pipelang.PipeLangCompilerContract, LanguageContract: pipelang.PipeLangLanguageContractV370, View: pipelang.SemanticProjectionPublic}, &coreir.Program{CompilerContract: pipelang.PipeLangCompilerContract, LanguageContract: "v0.37.0"}, Spec{Identity: LocatedIdentity{Identity: Identity{"p", "missing"}, Source: pipelang.SourceRange{File: "model.pipe"}}})
 	v, ok := err.(*ValidationError)
 	if !ok || v.Source.File != "model.pipe" {
 		t.Fatalf("expected located rejection, got %v", err)

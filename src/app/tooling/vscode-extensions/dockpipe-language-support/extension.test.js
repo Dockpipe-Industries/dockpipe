@@ -274,3 +274,8 @@ assert(pipeLangReadme.includes("same-class pure"));
 assert.strictEqual(pipeLangSnippets["PipeLang same-class pure call"].prefix, "pipe-pure-call");
 assert(pipeLangSnippets["PipeLang same-class pure call"].description.includes("v0.36.0"));
 assert(pipeLangSnippets["PipeLang same-class pure call"].body.some((line) => line.includes("Order") && line.includes("Filter")));
+assert(pipeLangReadme.includes("`v0.37.0`"));
+assert(pipeLangReadme.includes("match-arm bodies"));
+assert.strictEqual(pipeLangSnippets["PipeLang general pure-call composition"].prefix, "pipe-pure-call-compose");
+assert(pipeLangSnippets["PipeLang general pure-call composition"].description.includes("v0.37.0"));
+assert(pipeLangSnippets["PipeLang general pure-call composition"].body.some((line) => line.includes("match(") && line.includes("Normalize")));

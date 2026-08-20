@@ -1122,6 +1122,23 @@ semantic projection, and Application IR schema versions remain `pipelang.compile
 `v0.36.0`. Blocks, locals, branches, lambdas, function values, generics, effects, entrypoints, and
 target-specific semantics remain outside this contract.
 
+### PipeLang v0.37.0: general pure-call composition
+
+The same resolved calls may appear throughout expressions already admitted as eager and pure,
+including match-arm bodies, record construction, Optional construction, text operations, and
+arithmetic or comparison operands. Match carriers and propagation operands remain direct
+references, so composition does not add hidden control flow or change their established ownership
+rules. The uniquely named public same-class target, exact ordered signature, parameter/arm-local
+closure, and acyclic call graph rules from `v0.36.0` remain unchanged.
+
+Typed HIR and target-neutral Core reuse the resolved `call` node and recursively validate every
+nested expression. The evaluator retains isolated copied call frames, and the Go backend continues
+to emit only validated Core. The Docker observability consumer proves an Optional record match arm
+calling a text-normalization helper. Compiler, semantic projection, and Application IR schema
+shapes remain unchanged; only their language-contract metadata advances to `v0.37.0`. Cross-class
+or cross-module calls, private targets, overloads, recursion, blocks, locals, branches, loops,
+effects, entrypoints, and target-specific semantics remain excluded.
+
 ### Target-neutral Application IR
 
 `dockpipe.application.v1` is not a language feature or target generator. It consumes the public

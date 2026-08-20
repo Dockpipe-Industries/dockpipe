@@ -141,9 +141,6 @@ func CompareOrdinalText(left, right string) (int, error) {
 func ValidateFunction(function Function) error {
 	namedPredicate := isNamedPredicateFunction(function)
 	composed := exprContainsCall(function.Body)
-	if composed && !validCallPlacement(function.Body) {
-		return fmt.Errorf("pure calls must be the complete function body or directly nested call arguments")
-	}
 	for position, parameter := range function.Parameters {
 		if parameter.Position != position {
 			return fmt.Errorf("parameter %d is not in normalized position order", position)
@@ -282,6 +279,9 @@ func ValidateProgram(program Program) error {
 		functions[key] = function
 	}
 	for _, function := range program.Functions {
+		if err := validatePureCallPlacement(program.LanguageContract, function); err != nil {
+			return err
+		}
 		if err := validatePureCalls(program.LanguageContract, function, functions); err != nil {
 			return err
 		}
@@ -356,8 +356,8 @@ func validatePureCalls(contract string, function Function, functions map[string]
 	var walk func(Expr) error
 	walk = func(expression Expr) error {
 		if expression.Kind == ExprCall {
-			if contract != LanguageContractV360 {
-				return fmt.Errorf("function %s pure calls require language contract %q", function.Name, LanguageContractV360)
+			if contract != LanguageContractV360 && contract != LanguageContractV370 {
+				return fmt.Errorf("function %s pure calls require language contract %q or later", function.Name, LanguageContractV360)
 			}
 			call := expression.Call
 			if call == nil || call.TargetName == "" || call.Target.PackageID == "" || call.Target.Path == "" || call.Target.Callable == nil {
@@ -419,6 +419,53 @@ func validCallPlacement(expression Expr) bool {
 		}
 	}
 	return true
+}
+
+func validGeneralCallPlacement(expression Expr) bool {
+	switch expression.Kind {
+	case ExprPropagate:
+		return expression.Propagate != nil && directReference(expression.Propagate.Value)
+	case ExprMatch:
+		if expression.Match == nil || !directReference(expression.Match.Value) {
+			return false
+		}
+		for _, arm := range expression.Match.Arms {
+			if arm.Body == nil || !validGeneralCallPlacement(*arm.Body) {
+				return false
+			}
+		}
+		return true
+	default:
+		for _, child := range expressionChildren(expression) {
+			if child == nil || !validGeneralCallPlacement(*child) {
+				return false
+			}
+		}
+		return true
+	}
+}
+
+func directReference(expression *Expr) bool {
+	return expression != nil && expression.Kind == ExprReference && expression.Parameter != nil
+}
+
+func validatePureCallPlacement(contract string, function Function) error {
+	if !exprContainsCall(function.Body) {
+		return nil
+	}
+	switch contract {
+	case LanguageContractV360:
+		if !validCallPlacement(function.Body) {
+			return fmt.Errorf("function %s pure calls must be the complete body or directly nested call arguments under %s", function.Name, LanguageContractV360)
+		}
+	case LanguageContractV370:
+		if !validGeneralCallPlacement(function.Body) {
+			return fmt.Errorf("function %s composed pure calls retain direct match and propagate carriers", function.Name)
+		}
+	default:
+		return fmt.Errorf("function %s pure calls require language contract %q or later", function.Name, LanguageContractV360)
+	}
+	return nil
 }
 
 func expressionChildren(expression Expr) []*Expr {
@@ -574,7 +621,7 @@ func callableIdentityEqual(left, right *CallableIdentity) bool {
 
 func isV310OrLaterContract(contract string) bool {
 	switch contract {
-	case LanguageContractV310, LanguageContractV320, LanguageContractV330, LanguageContractV340, LanguageContractV350, LanguageContractV360:
+	case LanguageContractV310, LanguageContractV320, LanguageContractV330, LanguageContractV340, LanguageContractV350, LanguageContractV360, LanguageContractV370:
 		return true
 	default:
 		return false
