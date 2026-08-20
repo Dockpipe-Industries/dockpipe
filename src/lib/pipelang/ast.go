@@ -236,6 +236,13 @@ type (
 		Key        Expr
 		Span       Span
 	}
+	ListFilterPredicateExpr struct {
+		Values        Expr
+		Predicate     string
+		PredicateSpan Span
+		Arguments     []Expr
+		Span          Span
+	}
 	ListFilterContainsCaseFoldedExpr struct {
 		Values     Expr
 		RecordType UnresolvedTypeRef
@@ -314,6 +321,7 @@ func (*ListAppendExpr) isExpr()                         {}
 func (*ListAtExpr) isExpr()                             {}
 func (*ListFindByTextExpr) isExpr()                     {}
 func (*ListFilterByTextExpr) isExpr()                   {}
+func (*ListFilterPredicateExpr) isExpr()                {}
 func (*ListFilterContainsCaseFoldedExpr) isExpr()       {}
 func (*ListFilterJoinedContainsCaseFoldedExpr) isExpr() {}
 func (*ListSortByOrdinalExpr) isExpr()                  {}
@@ -343,6 +351,7 @@ func (e *ListAppendExpr) SourceSpan() Span                         { return e.Sp
 func (e *ListAtExpr) SourceSpan() Span                             { return e.Span }
 func (e *ListFindByTextExpr) SourceSpan() Span                     { return e.Span }
 func (e *ListFilterByTextExpr) SourceSpan() Span                   { return e.Span }
+func (e *ListFilterPredicateExpr) SourceSpan() Span                { return e.Span }
 func (e *ListFilterContainsCaseFoldedExpr) SourceSpan() Span       { return e.Span }
 func (e *ListFilterJoinedContainsCaseFoldedExpr) SourceSpan() Span { return e.Span }
 func (e *ListSortByOrdinalExpr) SourceSpan() Span                  { return e.Span }
@@ -392,6 +401,8 @@ func setExprSpan(expr Expr, span Span) {
 	case *ListFindByTextExpr:
 		node.Span = span
 	case *ListFilterByTextExpr:
+		node.Span = span
+	case *ListFilterPredicateExpr:
 		node.Span = span
 	case *ListFilterContainsCaseFoldedExpr:
 		node.Span = span

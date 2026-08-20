@@ -568,6 +568,10 @@ func (p *parser) parsePrimary() (Expr, error) {
 		}
 		if hasPrimitiveRecordListSourceContract(p.languageContract) {
 			switch t.lit {
+			case "filter":
+				if hasNamedRecordPredicateSourceContract(p.languageContract) {
+					return p.parseListFilterPredicate()
+				}
 			case "empty_list":
 				return p.parseListEmpty()
 			case "list":
@@ -1027,6 +1031,41 @@ func (p *parser) parseListFilterByText() (Expr, error) {
 	}, nil
 }
 
+func (p *parser) parseListFilterPredicate() (Expr, error) {
+	start, err := p.expect(tokIdent)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := p.expect(tokLParen); err != nil {
+		return nil, err
+	}
+	values, err := p.parseExpr(1)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := p.expect(tokComma); err != nil {
+		return nil, err
+	}
+	predicate, err := p.expect(tokIdent)
+	if err != nil {
+		return nil, err
+	}
+	arguments := []Expr{}
+	for p.peek().kind == tokComma {
+		p.next()
+		argument, err := p.parseExpr(1)
+		if err != nil {
+			return nil, err
+		}
+		arguments = append(arguments, argument)
+	}
+	end, err := p.expect(tokRParen)
+	if err != nil {
+		return nil, err
+	}
+	return &ListFilterPredicateExpr{Values: values, Predicate: predicate.lit, PredicateSpan: predicate.span, Arguments: arguments, Span: mergeSpans(start.span, end.span)}, nil
+}
+
 func (p *parser) parseListFilterContainsCaseFolded() (Expr, error) {
 	start, err := p.expect(tokIdent)
 	if err != nil {
@@ -1086,7 +1125,7 @@ func (p *parser) parseListFilterJoinedContainsCaseFolded() (Expr, error) {
 	if err != nil {
 		return nil, err
 	}
-	if p.languageContract == PipeLangLanguageContractV290 || p.languageContract == PipeLangLanguageContractV300 {
+	if p.languageContract == PipeLangLanguageContractV290 || p.languageContract == PipeLangLanguageContractV300 || p.languageContract == PipeLangLanguageContractV310 {
 		selectors := make([]ListTextFieldSelector, 0, 2)
 		for {
 			if _, err := p.expect(tokComma); err != nil {
@@ -1169,7 +1208,7 @@ func (p *parser) parseListSortByOrdinal() (Expr, error) {
 	if err != nil {
 		return nil, err
 	}
-	if p.languageContract == PipeLangLanguageContractV300 {
+	if p.languageContract == PipeLangLanguageContractV300 || p.languageContract == PipeLangLanguageContractV310 {
 		selectors := make([]ListTextFieldSelector, 0, 2)
 		for {
 			if _, err := p.expect(tokComma); err != nil {

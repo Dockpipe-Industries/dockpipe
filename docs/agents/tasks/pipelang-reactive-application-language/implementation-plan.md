@@ -24,6 +24,11 @@
 12. Validate full, constrained, and MCU profiles with resolver capability manifests and explicit
     unsupported-feature diagnostics before widening libraries or adding another backend.
 
+Step 8a is complete only for `v0.31.0` same-class named pure record predicates consumed by exact
+direct `filter(List<R>, PredicateName, P1, ...) -> List<R>`. It does not complete or authorize
+general functions/calls, blocks, locals, branches, loops, matching, propagation, effects, or the
+rest of step 8.
+
 Each slice is independently reviewable and keeps syntax, semantics, diagnostics, projection,
 editor, tests, and any enabled backend synchronized. No permissive parser, target-owned semantics,
 or syntax-first feature batch may skip the earlier foundations.

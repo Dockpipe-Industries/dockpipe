@@ -349,9 +349,19 @@ func (cp *checkedProgram) validateRecordTransportSignature(method MethodDecl, re
 	recordListFindByText := hasPrimitiveRecordListFindByTextSourceContract(contract) && isResolvedRecordOptional(result) && cp.isResolvedRecordType(result.Arguments[0]) && len(resolvedParameters) == 2 && isResolvedRecordList(resolvedParameters[0]) && resolvedParameters[0].Arguments[0].Equal(result.Arguments[0]) && resolvedParameters[1].Equal(resolvedPrimitive(TypeString))
 	recordListFilterByText := hasPrimitiveRecordListFilterByTextSourceContract(contract) && isResolvedRecordList(result) && cp.isResolvedRecordType(result.Arguments[0]) && len(resolvedParameters) == 2 && resolvedParameters[0].Equal(result) && resolvedParameters[1].Equal(resolvedPrimitive(TypeString))
 	recordListFilterContainsCaseFolded := hasPrimitiveRecordListFilterContainsCaseFoldedSourceContract(contract) && isResolvedRecordList(result) && cp.isResolvedRecordType(result.Arguments[0]) && len(resolvedParameters) == 2 && resolvedParameters[0].Equal(result) && resolvedParameters[1].Equal(resolvedPrimitive(TypeString))
+	namedPredicate := false
+	recordListFilterPredicate := false
+	if hasNamedRecordPredicateSourceContract(contract) {
+		namedPredicate = result.Equal(resolvedPrimitive(TypeBool)) && len(resolvedParameters) >= 2 && cp.isResolvedRecordType(resolvedParameters[0])
+		recordListFilterPredicate = isResolvedRecordList(result) && cp.isResolvedRecordType(result.Arguments[0]) && len(resolvedParameters) >= 2 && resolvedParameters[0].Equal(result)
+		for _, parameter := range resolvedParameters[1:] {
+			namedPredicate = namedPredicate && parameter.Kind == TypeRefPrimitive
+			recordListFilterPredicate = recordListFilterPredicate && parameter.Kind == TypeRefPrimitive
+		}
+	}
 	recordOptional := hasPrimitiveRecordOptionalSourceContract(contract) && cp.optionalRecordSignatureMatches(result, resolvedParameters)
 	snapshotResult := hasSnapshotResultSourceContract(contract) && cp.boundedResultSignatureMatches(result, resolvedParameters)
-	if !hasPrimitiveRecordSourceContract(contract) || (!identityTransport && !fieldProjection && !recordConstruction && !recordEquality && !recordList && !recordListCount && !recordListAppend && !recordListAt && !recordListFindByText && !recordListFilterByText && !recordListFilterContainsCaseFolded && !recordOptional && !snapshotResult) {
+	if !hasPrimitiveRecordSourceContract(contract) || (!identityTransport && !fieldProjection && !recordConstruction && !recordEquality && !recordList && !recordListCount && !recordListAppend && !recordListAt && !recordListFindByText && !recordListFilterByText && !recordListFilterContainsCaseFolded && !namedPredicate && !recordListFilterPredicate && !recordOptional && !snapshotResult) {
 		return false, oneDiagnostic(cp.sources, CodeInvalidType, CategorySemantic, method.Span, fmt.Sprintf("the %s primitive record is admitted only as one exact identity transport, one-hop primitive field projection, direct declaration-ordered construction, direct structural equality, bounded record-list method, or bounded Optional<R> method", contract))
 	}
 	return true, nil
@@ -1096,6 +1106,17 @@ func (cp *checkedProgram) inferMethodBodyType(method MethodDecl, env map[string]
 		}
 		return resolvedArithmeticResult(binary64), nil
 	}
+	if unary, unaryOK := expr.(*UnaryExpr); unaryOK && contract == PipeLangLanguageContractV310 && unary.Op == "-" {
+		operand, err := inferExprTypeWithPolicy(cp.sources, unary.Expr, env, true)
+		if err != nil {
+			return ResolvedTypeRef{}, err
+		}
+		integer := resolvedPrimitive(TypeInt)
+		if !operand.Equal(integer) {
+			return ResolvedTypeRef{}, oneDiagnostic(cp.sources, CodeNumericSemantics, CategorySemantic, unary.Span, fmt.Sprintf("checked integer negation requires int, got %s", operand))
+		}
+		return resolvedArithmeticResult(integer), nil
+	}
 	if unary, unaryOK := expr.(*UnaryExpr); unaryOK && (contract == PipeLangLanguageContractV050 || contract == PipeLangLanguageContractV060 || contract == PipeLangLanguageContractV070 || contract == PipeLangLanguageContractV080 || contract == PipeLangLanguageContractV090 || contract == PipeLangLanguageContractV100 || contract == PipeLangLanguageContractV110 || contract == PipeLangLanguageContractV120 || contract == PipeLangLanguageContractV130 || contract == PipeLangLanguageContractV140 || contract == PipeLangLanguageContractV150 || contract == PipeLangLanguageContractV160 || contract == PipeLangLanguageContractV170 || contract == PipeLangLanguageContractV180 || contract == PipeLangLanguageContractV190 || contract == PipeLangLanguageContractV200 || contract == PipeLangLanguageContractV210 || contract == PipeLangLanguageContractV220 || contract == PipeLangLanguageContractV230 || contract == PipeLangLanguageContractV240 || contract == PipeLangLanguageContractV260 || contract == PipeLangLanguageContractV250 || contract == PipeLangLanguageContractV270 || contract == PipeLangLanguageContractV280 || contract == PipeLangLanguageContractV290 || contract == PipeLangLanguageContractV300) && unary.Op == "-" {
 		operand, err := inferExprTypeWithPolicy(cp.sources, unary.Expr, env, true)
 		if err != nil {
@@ -1109,6 +1130,9 @@ func (cp *checkedProgram) inferMethodBodyType(method MethodDecl, env map[string]
 	}
 	binary, ok := expr.(*BinaryExpr)
 	operatorAccepted := ok && binary.Op == "+"
+	if contract == PipeLangLanguageContractV310 {
+		operatorAccepted = ok && (binary.Op == "+" || binary.Op == "-" || binary.Op == "*")
+	}
 	if contract == PipeLangLanguageContractV040 || contract == PipeLangLanguageContractV050 || contract == PipeLangLanguageContractV060 || contract == PipeLangLanguageContractV070 || contract == PipeLangLanguageContractV080 || contract == PipeLangLanguageContractV090 || contract == PipeLangLanguageContractV100 || contract == PipeLangLanguageContractV110 || contract == PipeLangLanguageContractV120 || contract == PipeLangLanguageContractV130 || contract == PipeLangLanguageContractV140 || contract == PipeLangLanguageContractV150 || contract == PipeLangLanguageContractV160 || contract == PipeLangLanguageContractV170 || contract == PipeLangLanguageContractV180 || contract == PipeLangLanguageContractV190 || contract == PipeLangLanguageContractV200 || contract == PipeLangLanguageContractV210 || contract == PipeLangLanguageContractV220 || contract == PipeLangLanguageContractV230 || contract == PipeLangLanguageContractV240 || contract == PipeLangLanguageContractV260 || contract == PipeLangLanguageContractV250 || contract == PipeLangLanguageContractV270 || contract == PipeLangLanguageContractV280 || contract == PipeLangLanguageContractV290 || contract == PipeLangLanguageContractV300 {
 		operatorAccepted = ok && (binary.Op == "+" || binary.Op == "-" || binary.Op == "*")
 	} else if contract == PipeLangLanguageContractV030 {
@@ -1262,6 +1286,38 @@ func (cp *checkedProgram) inferRecordListMethodBodyType(method MethodDecl, env m
 			}
 		}
 	}
+	if hasNamedRecordPredicateSourceContract(contract) && isResolvedRecordList(declared) && cp.isResolvedRecordType(declared.Arguments[0]) {
+		if body, ok := method.Body.(*ListFilterPredicateExpr); ok && len(parameterTypes) >= 1 && parameterTypes[0].Equal(declared) && len(body.Arguments) == len(parameterTypes)-1 {
+			predicate, err := cp.resolveNamedRecordPredicate(method, body.Predicate, body.PredicateSpan)
+			if err != nil {
+				return ResolvedTypeRef{}, true, err
+			}
+			valid := normalizeVisibility(predicate.Visibility) == VisibilityPublic && len(predicate.Params) == len(parameterTypes) && directParameter(body.Values, 0)
+			predicateReturn, err := cp.resolveType(predicate.ReturnType)
+			if err != nil {
+				return ResolvedTypeRef{}, true, err
+			}
+			valid = valid && predicateReturn.Equal(resolvedPrimitive(TypeBool))
+			for position, parameter := range predicate.Params {
+				resolved, err := cp.resolveType(parameter.Type)
+				if err != nil {
+					return ResolvedTypeRef{}, true, err
+				}
+				expected := declared.Arguments[0]
+				if position > 0 {
+					expected = parameterTypes[position]
+				}
+				valid = valid && resolved.Equal(expected)
+				if position > 0 {
+					valid = valid && directParameter(body.Arguments[position-1], position)
+				}
+			}
+			if valid {
+				return declared, true, nil
+			}
+			return ResolvedTypeRef{}, true, oneDiagnostic(cp.sources, CodeExpressionType, CategorySemantic, body.Span, "filter requires a same-class public bool predicate whose record and primitive parameters exactly match the direct filter operands")
+		}
+	}
 	if hasPrimitiveRecordListFilterContainsCaseFoldedSourceContract(contract) && isResolvedRecordList(declared) && cp.isResolvedRecordType(declared.Arguments[0]) {
 		if body, ok := method.Body.(*ListFilterContainsCaseFoldedExpr); ok && len(parameterTypes) == 2 && parameterTypes[0].Equal(declared) && parameterTypes[1].Equal(resolvedPrimitive(TypeString)) {
 			if _, _, err := cp.resolveListFilterContainsCaseFoldedSelector(body, parameterTypes[0]); err != nil {
@@ -1316,6 +1372,9 @@ func (cp *checkedProgram) inferRecordListMethodBodyType(method MethodDecl, env m
 	if hasPrimitiveRecordListFilterByTextSourceContract(contract) {
 		forms += ", or filter_by"
 	}
+	if hasNamedRecordPredicateSourceContract(contract) {
+		forms += ", or filter"
+	}
 	if hasPrimitiveRecordListFilterContainsCaseFoldedSourceContract(contract) {
 		forms += ", or filter_contains_casefolded"
 	}
@@ -1326,6 +1385,28 @@ func (cp *checkedProgram) inferRecordListMethodBodyType(method MethodDecl, env m
 		forms += ", or sort_by_ordinal"
 	}
 	return ResolvedTypeRef{}, true, oneDiagnostic(cp.sources, CodeExpressionType, CategorySemantic, method.Body.SourceSpan(), fmt.Sprintf("%s record-list methods require exact %s bodies", contract, forms))
+}
+
+func (cp *checkedProgram) resolveNamedRecordPredicate(caller MethodDecl, name string, span Span) (MethodDecl, error) {
+	for _, class := range cp.program.Classes {
+		ownsCaller := false
+		for _, method := range class.Methods {
+			if method.Name == caller.Name && method.Span == caller.Span {
+				ownsCaller = true
+				break
+			}
+		}
+		if !ownsCaller {
+			continue
+		}
+		for _, method := range class.Methods {
+			if method.Name == name {
+				return method, nil
+			}
+		}
+		return MethodDecl{}, oneDiagnostic(cp.sources, CodeInvalidMember, CategorySemantic, span, fmt.Sprintf("class %s has no predicate method %q", class.Name, name), RelatedSpan{Span: class.Span, Message: "owning class declaration"})
+	}
+	return MethodDecl{}, oneDiagnostic(cp.sources, CodeInvalidMember, CategorySemantic, span, fmt.Sprintf("predicate %q has no owning class", name))
 }
 
 func (cp *checkedProgram) resolveListFindByTextSelector(expression *ListFindByTextExpr, values ResolvedTypeRef) (FieldDecl, int, error) {
@@ -1383,10 +1464,10 @@ func (cp *checkedProgram) resolveListFilterContainsCaseFoldedSelector(expression
 }
 
 func (cp *checkedProgram) resolveListFilterJoinedContainsCaseFoldedSelectors(expression *ListFilterJoinedContainsCaseFoldedExpr, values ResolvedTypeRef) ([]FieldDecl, []int, error) {
-	if (cp.modules.LanguageContract() == PipeLangLanguageContractV290 || cp.modules.LanguageContract() == PipeLangLanguageContractV300) && len(expression.Selectors) < 2 {
+	if (cp.modules.LanguageContract() == PipeLangLanguageContractV290 || cp.modules.LanguageContract() == PipeLangLanguageContractV300 || cp.modules.LanguageContract() == PipeLangLanguageContractV310) && len(expression.Selectors) < 2 {
 		return nil, nil, oneDiagnostic(cp.sources, CodeInvalidType, CategorySemantic, expression.Span, fmt.Sprintf("filter_joined_contains_casefolded requires at least two distinct public string field selectors, got %d", len(expression.Selectors)))
 	}
-	if cp.modules.LanguageContract() != PipeLangLanguageContractV290 && cp.modules.LanguageContract() != PipeLangLanguageContractV300 && len(expression.Selectors) != 5 {
+	if cp.modules.LanguageContract() != PipeLangLanguageContractV290 && cp.modules.LanguageContract() != PipeLangLanguageContractV300 && cp.modules.LanguageContract() != PipeLangLanguageContractV310 && len(expression.Selectors) != 5 {
 		return nil, nil, oneDiagnostic(cp.sources, CodeInvalidType, CategorySemantic, expression.Span, fmt.Sprintf("filter_joined_contains_casefolded requires exactly five public string field selectors, got %d", len(expression.Selectors)))
 	}
 	fields := make([]FieldDecl, 0, len(expression.Selectors))
@@ -1524,6 +1605,36 @@ func (cp *checkedProgram) inferOptionalMethodBodyType(method MethodDecl, env map
 }
 
 func (cp *checkedProgram) inferNonResultMethodBodyType(method MethodDecl, env map[string]ResolvedTypeRef, declared ResolvedTypeRef) (ResolvedTypeRef, error) {
+	if cp != nil && cp.modules != nil && hasNamedRecordPredicateSourceContract(cp.modules.LanguageContract()) && declared.Equal(resolvedPrimitive(TypeBool)) && len(method.Params) >= 2 {
+		rowType, err := cp.resolveType(method.Params[0].Type)
+		if err != nil {
+			return ResolvedTypeRef{}, err
+		}
+		if cp.isResolvedRecordType(rowType) {
+			owner := cp.ownerClassForMethod(method)
+			validSignature := owner != nil && normalizeVisibility(owner.Visibility) == VisibilityPublic && normalizeVisibility(method.Visibility) == VisibilityPublic
+			allowed := make(map[string]struct{}, len(method.Params)-1)
+			for _, parameter := range method.Params[1:] {
+				resolved, err := cp.resolveType(parameter.Type)
+				if err != nil {
+					return ResolvedTypeRef{}, err
+				}
+				validSignature = validSignature && resolved.Kind == TypeRefPrimitive
+				allowed[parameter.Name] = struct{}{}
+			}
+			if !validSignature || !isNamedPredicateExpression(method.Body, method.Params[0].Name, allowed) {
+				return ResolvedTypeRef{}, oneDiagnostic(cp.sources, CodeExpressionType, CategorySemantic, method.Body.SourceSpan(), fmt.Sprintf("%s named record predicates require one public same-class bool method over a primitive record followed by primitive parameters and a bounded pure predicate body", cp.modules.LanguageContract()))
+			}
+			inferred, err := cp.inferNamedPredicateExprType(method.Body, env)
+			if err != nil {
+				return ResolvedTypeRef{}, err
+			}
+			if !inferred.Equal(declared) {
+				return ResolvedTypeRef{}, oneDiagnostic(cp.sources, CodeExpressionType, CategorySemantic, method.Body.SourceSpan(), fmt.Sprintf("named record predicate returns %s, expected bool", inferred))
+			}
+			return inferred, nil
+		}
+	}
 	if cp != nil && cp.modules != nil && hasTextTrimSourceContract(cp.modules.LanguageContract()) {
 		if body, ok := method.Body.(*TextTrimExpr); ok {
 			text := resolvedPrimitive(TypeString)
@@ -1668,6 +1779,97 @@ func (cp *checkedProgram) inferNonResultMethodBodyType(method MethodDecl, env ma
 		}
 	}
 	return cp.inferExprType(method.Body, env)
+}
+
+func (cp *checkedProgram) inferNamedPredicateExprType(expression Expr, env map[string]ResolvedTypeRef) (ResolvedTypeRef, error) {
+	switch node := expression.(type) {
+	case *LiteralExpr, *IdentExpr, *FieldExpr:
+		return cp.inferExprType(expression, env)
+	case *TextTrimExpr:
+		value, err := cp.inferNamedPredicateExprType(node.Value, env)
+		if err != nil {
+			return ResolvedTypeRef{}, err
+		}
+		if !value.Equal(resolvedPrimitive(TypeString)) {
+			return ResolvedTypeRef{}, oneDiagnostic(cp.sources, CodeInvalidType, CategorySemantic, node.Span, fmt.Sprintf("trim requires string, got %s", value))
+		}
+		return resolvedPrimitive(TypeString), nil
+	case *TextContainsCaseFoldedExpr:
+		value, err := cp.inferNamedPredicateExprType(node.Value, env)
+		if err != nil {
+			return ResolvedTypeRef{}, err
+		}
+		query, err := cp.inferNamedPredicateExprType(node.Query, env)
+		if err != nil {
+			return ResolvedTypeRef{}, err
+		}
+		if !value.Equal(resolvedPrimitive(TypeString)) || !query.Equal(resolvedPrimitive(TypeString)) {
+			return ResolvedTypeRef{}, oneDiagnostic(cp.sources, CodeInvalidType, CategorySemantic, node.Span, "contains_casefolded requires two strings")
+		}
+		return resolvedPrimitive(TypeBool), nil
+	case *UnaryExpr:
+		operand, err := cp.inferNamedPredicateExprType(node.Expr, env)
+		if err != nil {
+			return ResolvedTypeRef{}, err
+		}
+		if node.Op != "!" || !operand.Equal(resolvedPrimitive(TypeBool)) {
+			return ResolvedTypeRef{}, oneDiagnostic(cp.sources, CodeExpressionType, CategorySemantic, node.Span, "named predicate unary expression requires bool logical not")
+		}
+		return resolvedPrimitive(TypeBool), nil
+	case *BinaryExpr:
+		left, err := cp.inferNamedPredicateExprType(node.Left, env)
+		if err != nil {
+			return ResolvedTypeRef{}, err
+		}
+		right, err := cp.inferNamedPredicateExprType(node.Right, env)
+		if err != nil {
+			return ResolvedTypeRef{}, err
+		}
+		if left.Equal(resolvedPrimitive(TypeString)) && right.Equal(left) && isOrdinalTextOrderingOperator(node.Op) {
+			return resolvedPrimitive(TypeBool), nil
+		}
+		return inferBinaryTypeWithPolicy(cp.sources, node.Span, node.Op, left, right, true)
+	}
+	return ResolvedTypeRef{}, oneDiagnostic(cp.sources, CodeExpressionType, CategorySemantic, expression.SourceSpan(), "unsupported named predicate expression")
+}
+
+func (cp *checkedProgram) ownerClassForMethod(target MethodDecl) *ClassDecl {
+	if cp == nil || cp.program == nil {
+		return nil
+	}
+	for _, class := range cp.program.Classes {
+		for _, method := range class.Methods {
+			if method.Name == target.Name && method.Span == target.Span {
+				return class
+			}
+		}
+	}
+	return nil
+}
+
+func isNamedPredicateExpression(expression Expr, row string, allowed map[string]struct{}) bool {
+	switch node := expression.(type) {
+	case *LiteralExpr:
+		return true
+	case *IdentExpr:
+		_, ok := allowed[node.Name]
+		return ok
+	case *FieldExpr:
+		receiver, ok := node.Receiver.(*IdentExpr)
+		return ok && receiver.Name == row
+	case *UnaryExpr:
+		return node.Op == "!" && isNamedPredicateExpression(node.Expr, row, allowed)
+	case *BinaryExpr:
+		switch node.Op {
+		case "&&", "||", "==", "!=", "<", "<=", ">", ">=":
+			return isNamedPredicateExpression(node.Left, row, allowed) && isNamedPredicateExpression(node.Right, row, allowed)
+		}
+	case *TextTrimExpr:
+		return isNamedPredicateExpression(node.Value, row, allowed)
+	case *TextContainsCaseFoldedExpr:
+		return isNamedPredicateExpression(node.Value, row, allowed) && isNamedPredicateExpression(node.Query, row, allowed)
+	}
+	return false
 }
 
 func (cp *checkedProgram) validateRecordConstruction(method MethodDecl, construction *RecordConstructExpr, env map[string]ResolvedTypeRef, declared ResolvedTypeRef) (ResolvedTypeRef, error) {
@@ -1861,6 +2063,15 @@ func containsCaseFoldedTextExpression(expression Expr) bool {
 		return containsCaseFoldedTextExpression(node.Values) || containsCaseFoldedTextExpression(node.Key)
 	case *ListFilterByTextExpr:
 		return containsCaseFoldedTextExpression(node.Values) || containsCaseFoldedTextExpression(node.Key)
+	case *ListFilterPredicateExpr:
+		if containsCaseFoldedTextExpression(node.Values) {
+			return true
+		}
+		for _, argument := range node.Arguments {
+			if containsCaseFoldedTextExpression(argument) {
+				return true
+			}
+		}
 	case *ListFilterContainsCaseFoldedExpr:
 		return containsCaseFoldedTextExpression(node.Values) || containsCaseFoldedTextExpression(node.Query)
 	case *ListFilterJoinedContainsCaseFoldedExpr:
@@ -1919,6 +2130,15 @@ func containsTextTrimExpression(expression Expr) bool {
 		return containsTextTrimExpression(node.Values) || containsTextTrimExpression(node.Key)
 	case *ListFilterByTextExpr:
 		return containsTextTrimExpression(node.Values) || containsTextTrimExpression(node.Key)
+	case *ListFilterPredicateExpr:
+		if containsTextTrimExpression(node.Values) {
+			return true
+		}
+		for _, argument := range node.Arguments {
+			if containsTextTrimExpression(argument) {
+				return true
+			}
+		}
 	case *ListFilterContainsCaseFoldedExpr:
 		return containsTextTrimExpression(node.Values) || containsTextTrimExpression(node.Query)
 	case *ListFilterJoinedContainsCaseFoldedExpr:
@@ -1943,7 +2163,7 @@ func containsTextTrimExpression(expression Expr) bool {
 
 func containsListExpression(expression Expr) bool {
 	switch node := expression.(type) {
-	case *ListEmptyExpr, *ListSingletonExpr, *ListCountExpr, *ListAppendExpr, *ListAtExpr, *ListFindByTextExpr, *ListFilterByTextExpr, *ListFilterContainsCaseFoldedExpr, *ListFilterJoinedContainsCaseFoldedExpr, *ListSortByOrdinalExpr, *ListSortByOrdinalsExpr:
+	case *ListEmptyExpr, *ListSingletonExpr, *ListCountExpr, *ListAppendExpr, *ListAtExpr, *ListFindByTextExpr, *ListFilterByTextExpr, *ListFilterPredicateExpr, *ListFilterContainsCaseFoldedExpr, *ListFilterJoinedContainsCaseFoldedExpr, *ListSortByOrdinalExpr, *ListSortByOrdinalsExpr:
 		return true
 	case *UnaryExpr:
 		return containsListExpression(node.Expr)
@@ -2041,6 +2261,9 @@ func isOrdinalTextOrderingOperator(operator string) bool {
 }
 
 func arithmeticSourceOperators(contract LanguageContract) string {
+	if contract == PipeLangLanguageContractV310 {
+		return "addition, subtraction, multiplication, or negation"
+	}
 	if contract == PipeLangLanguageContractV050 || contract == PipeLangLanguageContractV060 || contract == PipeLangLanguageContractV070 || contract == PipeLangLanguageContractV080 || contract == PipeLangLanguageContractV090 || contract == PipeLangLanguageContractV100 || contract == PipeLangLanguageContractV110 || contract == PipeLangLanguageContractV120 || contract == PipeLangLanguageContractV130 || contract == PipeLangLanguageContractV140 || contract == PipeLangLanguageContractV150 || contract == PipeLangLanguageContractV160 || contract == PipeLangLanguageContractV170 || contract == PipeLangLanguageContractV180 || contract == PipeLangLanguageContractV190 || contract == PipeLangLanguageContractV200 || contract == PipeLangLanguageContractV210 || contract == PipeLangLanguageContractV220 || contract == PipeLangLanguageContractV230 || contract == PipeLangLanguageContractV240 || contract == PipeLangLanguageContractV260 || contract == PipeLangLanguageContractV250 || contract == PipeLangLanguageContractV270 || contract == PipeLangLanguageContractV280 || contract == PipeLangLanguageContractV290 || contract == PipeLangLanguageContractV300 {
 		return "addition, subtraction, multiplication, or negation"
 	}

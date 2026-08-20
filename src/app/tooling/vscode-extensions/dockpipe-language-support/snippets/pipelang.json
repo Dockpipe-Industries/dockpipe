@@ -199,5 +199,13 @@
       "public List<${1:Row}> ${2:SortRows}(List<${1:Row}> ${3:values}) => sort_by_ordinal(${3:values}, ${1:Row}.${4:State}, ${1:Row}.${5:Name});"
     ],
     "description": "Create the exact v0.30.0 stable ascending lexicographic ordinal string-field record-list sort."
+  },
+  "PipeLang Named Record Predicate Filter": {
+    "prefix": "pipe-record-list-filter-predicate",
+    "body": [
+      "public bool ${1:Matches}(${2:Row} ${3:row}, string ${4:query}) => contains_casefolded(${3:row}.${5:Name}, trim(${4:query}));",
+      "public List<${2:Row}> ${6:SearchRows}(List<${2:Row}> ${7:values}, string ${4:query}) => filter(${7:values}, ${1:Matches}, ${4:query});"
+    ],
+    "description": "Create the exact v0.31.0 same-class named pure record predicate and stable copied record-list filter."
   }
 }

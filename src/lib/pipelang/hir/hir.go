@@ -152,6 +152,7 @@ const (
 	ExprListAt                             ExprKind = "list_at"
 	ExprListFindByText                     ExprKind = "list_find_by_text"
 	ExprListFilterByText                   ExprKind = "list_filter_by_text"
+	ExprListFilterPredicate                ExprKind = "list_filter_predicate"
 	ExprListFilterContainsCaseFolded       ExprKind = "list_filter_contains_case_folded_text"
 	ExprListFilterJoinedContainsCaseFolded ExprKind = "list_filter_joined_contains_case_folded_text"
 	ExprListSortByOrdinalText              ExprKind = "list_sort_by_ordinal_text"
@@ -279,6 +280,13 @@ type ListFilterByText struct {
 	Key      *Expr            `json:"key"`
 }
 
+type ListFilterPredicate struct {
+	Values        *Expr            `json:"values"`
+	Predicate     SemanticIdentity `json:"predicate"`
+	PredicateName string           `json:"predicate_name"`
+	Arguments     []*Expr          `json:"arguments"`
+}
+
 type ListFilterContainsCaseFolded struct {
 	Values   *Expr            `json:"values"`
 	Field    SemanticIdentity `json:"field"`
@@ -356,6 +364,7 @@ type Expr struct {
 	ListAt                             *ListAt                             `json:"list_at,omitempty"`
 	ListFind                           *ListFindByText                     `json:"list_find_by_text,omitempty"`
 	ListFilter                         *ListFilterByText                   `json:"list_filter_by_text,omitempty"`
+	ListFilterPredicate                *ListFilterPredicate                `json:"list_filter_predicate,omitempty"`
 	ListFilterContainsCaseFolded       *ListFilterContainsCaseFolded       `json:"list_filter_contains_case_folded_text,omitempty"`
 	ListFilterJoinedContainsCaseFolded *ListFilterJoinedContainsCaseFolded `json:"list_filter_joined_contains_case_folded_text,omitempty"`
 	ListSortByOrdinalText              *ListSortByOrdinalText              `json:"list_sort_by_ordinal_text,omitempty"`

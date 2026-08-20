@@ -5,9 +5,10 @@
 The `vNext` foundation decision packet in this record is **accepted** as of 2026-08-16. Acceptance
 fixes semantics, compiler boundaries, bootstrap stages, compatibility, and implementation order;
 examples and fixtures remain non-normative and accept no production syntax. Separately authorized
-bounded objectives have completed implementation-order steps 1 through 6 and step-7 slices 7a
-through 7ae. The current explicit language contract is `v0.30.0`; the frozen `v0.0.0.1` lane remains
-unchanged. This record does not by itself authorize another step-7 or later language slice.
+bounded objectives have completed implementation-order steps 1 through 6, step-7 slices 7a
+through 7ae, and the first bounded Step-8 function seam at step 8a. The current explicit language
+contract is `v0.31.0`; the frozen `v0.0.0.1` lane remains unchanged. This record does not by itself
+authorize another language slice.
 
 ## Goal
 

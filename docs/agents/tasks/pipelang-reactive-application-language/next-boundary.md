@@ -1,6 +1,6 @@
 ## Exact Next Boundary
 
-Step 7 of **Bounded Implementation Order** has completed the fixed numeric, compiler-internal
+Steps 7 and 8a of **Bounded Implementation Order** have completed the fixed numeric, compiler-internal
 checked-arithmetic Result, and direct production-source checked add, subtract, multiply, negate,
 binary64 divide, first-class arithmetic Result transport, ordinal Unicode text ordering, and
 primitive immutable record-identity transport, one-hop primitive-record field projection, and
@@ -144,6 +144,18 @@ records are fresh copies. One-selector source under `v0.30.0` preserves the exac
 `list_sort_by_ordinal_texts` node with ordered field identities, names, and declaration positions.
 `v0.28.0` and `v0.29.0` retain their exact one-selector rule. `pipelang.compiler.v1`,
 `pipelang.semantic.v1`, and every earlier contract remain unchanged.
+`v0.31.0` adds only exact direct
+`filter(List<R>, PredicateName, P1, ...) -> List<R>` and a same-public-class public
+`bool PredicateName(R item, P1, ...)` whose trailing parameters are primitive. The filter list and
+arguments are direct declared parameters in order. The predicate is a bounded pure expression over
+literals, trailing primitive parameters, one-hop public primitive fields of `item`, logical and
+comparison operators, `contains_casefolded`, and `trim`. Typed HIR and target-neutral Core carry an
+explicit `list_filter_predicate` node with the predicate method's existing semantic identity and
+ordered operands; local predicate bindings create no new public identity. Core validation resolves
+the target within the lowered program. Evaluation and deterministic Core-only Go validate all
+arguments and the complete list before iteration, invoke the predicate once per row in input order,
+require bool, fail atomically, and produce stable canonical non-nil fresh copied output.
+`pipelang.compiler.v1`, `pipelang.semantic.v1`, and every earlier contract remain unchanged.
 All other numeric arithmetic and every other Result construction, composition, or consumption form
 remain fail-closed from production source. Any next slice requires a new
 synchronized decision for its exact source spelling, type/value handling rule, semantic projection,
@@ -151,7 +163,7 @@ migration, and bounded semantics before implementation.
 
 The first accepted application consumer is TASK-020's one-to-one DockPipe Launcher replacement,
 beginning with read-only Docker observability. Its typed snapshot requirements are dependency
-evidence when comparing remaining step-7 options. Completed primitive record transport, one-hop
+evidence when comparing remaining successor options. Completed primitive record transport, one-hop
 field projection, exact construction, structural equality, and primitive Optional presence satisfy
 five dependencies; bounded primitive Optional defaulting satisfies a sixth. They do not authorize
 nested or general record value use, optional extraction beyond `value_or` or composition,
@@ -173,11 +185,13 @@ The variable-selector extension removes the language-level five-field arity coup
 separately accepted projections without changing the frozen launcher behavior by implication.
 The exact one-field and multi-key ordinal sorts now supply target-neutral deterministic
 collection-ordering primitives, but applying either to the first launcher would require a separate
-TASK-020 parity decision because the checked-in oracle does not expose table sorting. Dynamic field
-selection, general predicates, descending or per-key direction sorting, general indexing,
+TASK-020 parity decision because the checked-in oracle does not expose table sorting. The named
+predicate filter now supplies reusable deterministic combined row visibility/state filtering
+without authorizing any UI or adapter projection. Dynamic field selection, general functions and
+lambdas, descending or per-key direction sorting, general indexing,
 propagation, matching, and application projection remain later decisions.
 
-No later step-7 slice is included here. In particular, this checkpoint does not add general Result
+No broader Step-8 slice is included here. In particular, this checkpoint does not add general Result
 construction, inspection, extraction, wrapping, unwrapping, propagation, or matching beyond the
 exact accepted `Result<List<R>, string>` and `Result<string, string>` forms; additional
 Unicode text construction/scalar/grapheme APIs, trim variants or composition, normalization,
@@ -186,11 +200,12 @@ hashing, general total-order capabilities, optional extraction beyond `value_or`
 implicit defaults, nesting, chaining,
 general result, record nesting/chained or general access/mutation/hash/order, union, or additional
 deterministic collection production or consumption semantics beyond exact `filter_by`,
-`filter_contains_casefolded`, `filter_joined_contains_casefolded`, and `sort_by_ordinal`; accept
+`filter_contains_casefolded`, `filter_joined_contains_casefolded`, `sort_by_ordinal`, and the bounded
+named-predicate `filter`; accept
 namespace, import, migration, `internal`, overload, generic, or ID production syntax; implement
 overload resolution;
 add new types/declarations/expressions/operators, blocks, locals, branches, or loops; add effects,
 entrypoints, actions/state, contracts/replay, executable application/service semantics, Application
 IR, Service IR, another backend, or self-hosting; mutate generated stores; or widen Go emission by
-guessing step-7 semantics. Exact successor production spellings remain later synchronized language
+guessing successor semantics. Exact successor production spellings remain later synchronized language
 slices.

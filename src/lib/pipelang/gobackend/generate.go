@@ -34,6 +34,21 @@ func (e *Error) Error() string {
 
 // Generate accepts Core IR only and returns deterministic, gofmt-formatted Go.
 func Generate(program coreir.Program) ([]byte, error) {
+	for _, function := range program.Functions {
+		if function.Body.Kind == coreir.ExprListFilterPredicate && program.LanguageContract != coreir.LanguageContractV310 {
+			return nil, backendError(function, "PLGO0001", fmt.Sprintf("named record predicate filtering requires language contract %q", coreir.LanguageContractV310))
+		}
+	}
+	if err := coreir.ValidateProgram(program); err != nil {
+		return nil, &Error{Code: "PLGO0001", Message: err.Error()}
+	}
+	if program.LanguageContract == coreir.LanguageContractV310 {
+		program.LanguageContract = coreir.LanguageContractV300
+	}
+	return generate(program)
+}
+
+func generate(program coreir.Program) ([]byte, error) {
 	if (program.LanguageContract != coreir.LanguageContractV010 && program.LanguageContract != coreir.LanguageContractV020 && program.LanguageContract != coreir.LanguageContractV030 && program.LanguageContract != coreir.LanguageContractV040 && program.LanguageContract != coreir.LanguageContractV050 && program.LanguageContract != coreir.LanguageContractV060 && program.LanguageContract != coreir.LanguageContractV070 && program.LanguageContract != coreir.LanguageContractV080 && program.LanguageContract != coreir.LanguageContractV090 && program.LanguageContract != coreir.LanguageContractV100 && program.LanguageContract != coreir.LanguageContractV110 && program.LanguageContract != coreir.LanguageContractV120 && program.LanguageContract != coreir.LanguageContractV130 && program.LanguageContract != coreir.LanguageContractV140 && program.LanguageContract != coreir.LanguageContractV150 && program.LanguageContract != coreir.LanguageContractV160 && program.LanguageContract != coreir.LanguageContractV170 && program.LanguageContract != coreir.LanguageContractV180 && program.LanguageContract != coreir.LanguageContractV190 && program.LanguageContract != coreir.LanguageContractV200 && program.LanguageContract != coreir.LanguageContractV210 && program.LanguageContract != coreir.LanguageContractV220 && program.LanguageContract != coreir.LanguageContractV230 && program.LanguageContract != coreir.LanguageContractV240 && program.LanguageContract != coreir.LanguageContractV250 && program.LanguageContract != coreir.LanguageContractV260 && program.LanguageContract != coreir.LanguageContractV270 && program.LanguageContract != coreir.LanguageContractV280 && program.LanguageContract != coreir.LanguageContractV290 && program.LanguageContract != coreir.LanguageContractV300) || program.CompilerContract != coreir.CompilerContractV1 {
 		return nil, &Error{Code: "PLGO0001", Message: fmt.Sprintf("unsupported Core IR contracts language=%q compiler=%q", program.LanguageContract, program.CompilerContract)}
 	}
@@ -239,6 +254,9 @@ func emitFunction(out *strings.Builder, name string, function coreir.Function, o
 	}
 	fmt.Fprintf(out, ") %s {\n", result)
 	for index, parameter := range function.Parameters {
+		if generatedNamedPredicate(function) && parameter.Type.Kind == coreir.TypePrimitive && parameter.Type.Primitive == coreir.PrimitiveString {
+			fmt.Fprintf(out, "\tpipelangValidateText(p%d)\n", index)
+		}
 		if parameter.Type.Kind == coreir.TypeRecord {
 			fmt.Fprintf(out, "\t%s(p%d)\n", recordValidationName(parameter.Type), index)
 		}
@@ -260,6 +278,18 @@ func emitFunction(out *strings.Builder, name string, function coreir.Function, o
 	out.WriteString(body)
 	out.WriteString("\n}\n\n")
 	return nil
+}
+
+func generatedNamedPredicate(function coreir.Function) bool {
+	if function.ReturnType.Kind != coreir.TypePrimitive || function.ReturnType.Primitive != coreir.PrimitiveBool || len(function.Parameters) < 2 || function.Parameters[0].Type.Kind != coreir.TypeRecord {
+		return false
+	}
+	for _, parameter := range function.Parameters[1:] {
+		if parameter.Type.Kind != coreir.TypePrimitive {
+			return false
+		}
+	}
+	return true
 }
 
 func emitExpr(expr coreir.Expr, parameters []coreir.Parameter, optionalTypeName string) (string, error) {
@@ -299,10 +329,6 @@ func emitExpr(expr coreir.Expr, parameters []coreir.Parameter, optionalTypeName 
 	case coreir.ExprBinary:
 		if expr.Binary == nil || expr.Binary.Left == nil || expr.Binary.Right == nil {
 			return "", fmt.Errorf("binary node is incomplete")
-		}
-		switch expr.Binary.Operator {
-		case coreir.OperatorAnd, coreir.OperatorOr:
-			return "", fmt.Errorf("operator %q is outside the step-7a Go capability slice", expr.Binary.Operator)
 		}
 		left, err := emitExpr(*expr.Binary.Left, parameters, optionalTypeName)
 		if err != nil {
@@ -475,6 +501,32 @@ func emitExpr(expr coreir.Expr, parameters []coreir.Parameter, optionalTypeName 
 			return "", fmt.Errorf("list filter_by expression is incomplete")
 		}
 		return fmt.Sprintf("%s(p%d, p%d)", listFilterByTextName(expr.ListFilter.Values.Type, *expr.ListFilter), *expr.ListFilter.Values.Parameter, *expr.ListFilter.Key.Parameter), nil
+	case coreir.ExprListFilterPredicate:
+		filter := expr.ListFilterPredicate
+		if filter == nil || filter.Values == nil || filter.Values.Kind != coreir.ExprReference || filter.Values.Parameter == nil || filter.Values.Type.Kind != coreir.TypeList || filter.Values.Type.List == nil || filter.PredicateName == "" {
+			return "", fmt.Errorf("named record predicate filter expression is incomplete")
+		}
+		elementType, err := goType(filter.Values.Type.List.Element, optionalTypeName)
+		if err != nil {
+			return "", err
+		}
+		callArguments := []string{"value"}
+		var body strings.Builder
+		fmt.Fprintf(&body, "func() []%s {\n", elementType)
+		for position, argument := range filter.Arguments {
+			if argument == nil || argument.Kind != coreir.ExprReference || argument.Parameter == nil {
+				return "", fmt.Errorf("named record predicate filter argument %d is not a direct parameter", position+1)
+			}
+			if argument.Type.Kind == coreir.TypePrimitive && argument.Type.Primitive == coreir.PrimitiveString {
+				fmt.Fprintf(&body, "pipelangValidateText(p%d)\n", *argument.Parameter)
+			}
+			callArguments = append(callArguments, fmt.Sprintf("p%d", *argument.Parameter))
+		}
+		fmt.Fprintf(&body, "result := make([]%s, 0, len(p%d))\n", elementType, *filter.Values.Parameter)
+		fmt.Fprintf(&body, "for _, value := range p%d {\n", *filter.Values.Parameter)
+		fmt.Fprintf(&body, "if PipeLang%s(%s) { result = append(result, value) }\n", exportedIdentifier(filter.PredicateName), strings.Join(callArguments, ", "))
+		body.WriteString("}\nreturn result\n}()")
+		return body.String(), nil
 	case coreir.ExprListFilterContainsCaseFolded:
 		filter := expr.ListFilterContainsCaseFolded
 		if filter == nil || filter.Values == nil || filter.Query == nil || filter.Values.Kind != coreir.ExprReference || filter.Values.Parameter == nil || filter.Query.Kind != coreir.ExprReference || filter.Query.Parameter == nil || filter.Values.Type.Kind != coreir.TypeList {
@@ -697,6 +749,10 @@ func mapBinaryOperator(operator coreir.Operator) (string, bool) {
 		return ">", true
 	case coreir.OperatorGreaterOrEqual:
 		return ">=", true
+	case coreir.OperatorAnd:
+		return "&&", true
+	case coreir.OperatorOr:
+		return "||", true
 	default:
 		return "", false
 	}
