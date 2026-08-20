@@ -887,6 +887,32 @@ field-selector values, predicates, regex, normalization, locale tailoring, sorti
 composition, Application IR, Step-8 control flow, effects, and additional backends remain outside
 the production source contract.
 
+The explicit `v0.28.0` contract preserves every `v0.27.0` rule and admits only this exact direct
+stable ordinal record-list sort:
+
+```pipelang
+public List<ContainerRow> SortRows(List<ContainerRow> values) =>
+    sort_by_ordinal(values, ContainerRow.Name);
+```
+
+`sort_by_ordinal` requires exactly one direct `List<R>` parameter and the identical `List<R>`
+return. Its sole selector is one existing public `string` field of the same existing public
+primitive record `R`; the selector is a static source operand, not a runtime field value. The
+complete list, every record, and every selected and unselected field are validated as canonical
+values and strict UTF-8 before sorting. Results are ascending under the existing `v0.8.0` ordinal
+Unicode scalar-sequence order. Equal keys retain input order. Empty input returns canonical non-nil
+empty storage, and every result uses fresh copied list and record storage. No normalization, case
+folding, locale collation, or host-runtime ordering participates.
+
+Callable identity remains `(List<R>) -> List<R>` and existing list, record, field, and primitive
+identities are reused. `pipelang.compiler.v1` and `pipelang.semantic.v1` remain unchanged. Typed HIR
+and target-neutral Core carry one explicit `list_sort_by_ordinal_text` node with the direct list
+reference and selected field identity, name, and declaration position. `v0.1.0` through `v0.27.0`
+reject the source, HIR, and executable Core forms without implicit migration. Descending or
+direction arguments, multi-key sorting, arbitrary comparers or predicates, numeric/record sorting,
+in-place mutation, general indexing, nested/general composition, Application IR, Step-8 control
+flow or matching, effects, and additional backends remain outside the production source contract.
+
 ## Artifacts
 
 Compile emits:
