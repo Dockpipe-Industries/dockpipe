@@ -40,6 +40,7 @@ const (
 	LanguageContractV350 = "v0.35.0"
 	LanguageContractV360 = "v0.36.0"
 	LanguageContractV370 = "v0.37.0"
+	LanguageContractV380 = "v0.38.0"
 	CompilerContractV1   = "pipelang.compiler.v1"
 	BuiltinPackageID     = "pipelang"
 	ListSemanticPath     = "list"
@@ -161,6 +162,7 @@ const (
 	ExprReference                          ExprKind = "reference"
 	ExprUnary                              ExprKind = "unary"
 	ExprBinary                             ExprKind = "binary"
+	ExprConditional                        ExprKind = "conditional"
 	ExprCall                               ExprKind = "call"
 	ExprTextContainsCaseFolded             ExprKind = "text_contains_case_folded"
 	ExprTextTrim                           ExprKind = "text_trim"
@@ -227,6 +229,12 @@ type Binary struct {
 	Operator Operator `json:"operator"`
 	Left     *Expr    `json:"left"`
 	Right    *Expr    `json:"right"`
+}
+
+type Conditional struct {
+	Condition *Expr `json:"condition"`
+	WhenTrue  *Expr `json:"when_true"`
+	WhenFalse *Expr `json:"when_false"`
 }
 
 type Call struct {
@@ -404,6 +412,7 @@ type Expr struct {
 	Parameter                          *int                                `json:"parameter,omitempty"`
 	Unary                              *Unary                              `json:"unary,omitempty"`
 	Binary                             *Binary                             `json:"binary,omitempty"`
+	Conditional                        *Conditional                        `json:"conditional,omitempty"`
 	Call                               *Call                               `json:"call,omitempty"`
 	TextContains                       *TextContainsCaseFolded             `json:"text_contains_case_folded,omitempty"`
 	TextTrim                           *TextTrim                           `json:"text_trim,omitempty"`

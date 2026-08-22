@@ -483,6 +483,21 @@ func (p *parser) parseExpr(minPrec int) (Expr, error) {
 		}
 		left = &BinaryExpr{Op: opTok.lit, Left: left, Right: right, Span: mergeSpans(left.SourceSpan(), right.SourceSpan())}
 	}
+	if minPrec == 1 && hasConditionalSourceContract(p.languageContract) && p.peek().kind == tokQuestion {
+		p.next()
+		whenTrue, err := p.parseExpr(1)
+		if err != nil {
+			return nil, err
+		}
+		if _, err := p.expect(tokColon); err != nil {
+			return nil, err
+		}
+		whenFalse, err := p.parseExpr(1)
+		if err != nil {
+			return nil, err
+		}
+		left = &ConditionalExpr{Condition: left, WhenTrue: whenTrue, WhenFalse: whenFalse, Span: mergeSpans(left.SourceSpan(), whenFalse.SourceSpan())}
+	}
 	return left, nil
 }
 
@@ -508,7 +523,7 @@ func (p *parser) parsePostfix() (Expr, error) {
 	if !hasRecordFieldProjectionSourceContract(p.languageContract) {
 		return expr, nil
 	}
-	for p.peek().kind == tokDot || ((p.languageContract == PipeLangLanguageContractV330 || p.languageContract == PipeLangLanguageContractV340 || p.languageContract == PipeLangLanguageContractV350 || p.languageContract == PipeLangLanguageContractV360 || p.languageContract == PipeLangLanguageContractV370) && p.peek().kind == tokLBracket) {
+	for p.peek().kind == tokDot || ((p.languageContract == PipeLangLanguageContractV330 || p.languageContract == PipeLangLanguageContractV340 || p.languageContract == PipeLangLanguageContractV350 || p.languageContract == PipeLangLanguageContractV360 || p.languageContract == PipeLangLanguageContractV370 || p.languageContract == PipeLangLanguageContractV380) && p.peek().kind == tokLBracket) {
 		if p.peek().kind == tokLBracket {
 			p.next()
 			index, err := p.parseExpr(1)
@@ -1327,7 +1342,7 @@ func (p *parser) parseListSortByOrdinal() (Expr, error) {
 	if err != nil {
 		return nil, err
 	}
-	if p.languageContract == PipeLangLanguageContractV320 || p.languageContract == PipeLangLanguageContractV330 || p.languageContract == PipeLangLanguageContractV340 || p.languageContract == PipeLangLanguageContractV350 || p.languageContract == PipeLangLanguageContractV360 || p.languageContract == PipeLangLanguageContractV370 {
+	if p.languageContract == PipeLangLanguageContractV320 || p.languageContract == PipeLangLanguageContractV330 || p.languageContract == PipeLangLanguageContractV340 || p.languageContract == PipeLangLanguageContractV350 || p.languageContract == PipeLangLanguageContractV360 || p.languageContract == PipeLangLanguageContractV370 || p.languageContract == PipeLangLanguageContractV380 {
 		if _, err := p.expect(tokComma); err != nil {
 			return nil, err
 		}

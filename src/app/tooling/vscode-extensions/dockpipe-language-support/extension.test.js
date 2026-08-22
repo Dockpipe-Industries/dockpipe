@@ -279,3 +279,8 @@ assert(pipeLangReadme.includes("match-arm bodies"));
 assert.strictEqual(pipeLangSnippets["PipeLang general pure-call composition"].prefix, "pipe-pure-call-compose");
 assert(pipeLangSnippets["PipeLang general pure-call composition"].description.includes("v0.37.0"));
 assert(pipeLangSnippets["PipeLang general pure-call composition"].body.some((line) => line.includes("match(") && line.includes("Normalize")));
+assert(pipeLangReadme.includes("`v0.38.0`"));
+assert(pipeLangReadme.includes("only the selected branch executes"));
+assert.strictEqual(pipeLangSnippets["PipeLang bounded conditional expression"].prefix, "pipe-conditional");
+assert(pipeLangSnippets["PipeLang bounded conditional expression"].description.includes("v0.38.0"));
+assert(pipeLangSnippets["PipeLang bounded conditional expression"].body.some((line) => line.includes("?") && line.includes(":")));

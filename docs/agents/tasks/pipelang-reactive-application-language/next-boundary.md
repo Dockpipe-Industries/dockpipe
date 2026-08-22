@@ -359,6 +359,26 @@ All 45 frozen legacy sources remain exact. Cross-class/module calls, private tar
 generics, function values, lambdas, recursion, blocks, locals, branches, loops, effects,
 entrypoints, runtime behavior, and target-specific semantics remain excluded.
 
+## Accepted v0.38.0 boundary — bounded conditional expression
+
+`v0.38.0` admits exactly one `condition ? whenTrue : whenFalse` node per method. The condition is
+exactly `bool`; both branches are statically checked and must have the exact same admitted type;
+only the selected branch executes. The three operands may contain existing eager pure expressions,
+including resolved v0.37.0 same-class calls, but may not contain another conditional, match, or
+propagation node. Match and propagation retain their established direct-carrier boundaries.
+
+Typed HIR and target-neutral Core represent the condition and both branches explicitly. Core
+independently validates the one-node bound, placement, operand exclusions, condition type, and
+branch/result equality. The evaluator selects one branch; the Go backend emits only from validated
+Core and performs no semantic inference. TASK-020's Docker observability fixture proves
+`name == "" ? fallback : NormalizeName(name)`. Public compiler, semantic projection, and
+Application IR schema shapes remain unchanged; only language-contract metadata advances, and all
+45 frozen legacy sources remain exact.
+
+This boundary adds no `if` statement, block, local, mutation, implicit conversion, pattern guard,
+effect, action, runtime policy, Application IR inference, or target behavior. Any further language
+seam requires another source-backed founder decision and separate implementation approval.
+
 ## Accepted first Application IR boundary — `dockpipe.application.v1`
 
 The first target-neutral read-only Application IR consumes only a canonical public

@@ -126,6 +126,15 @@ inside PipeLang HIR/Core and is evaluated or generated without Application IR in
 language-contract metadata advances. This adds no adapter policy, runtime action, Docker behavior,
 UI behavior, or target semantics.
 
+### PipeLang v0.38.0 bounded conditional value
+
+The Docker observability fixture now proves the exactly typed lazy expression
+`name == "" ? fallback : NormalizeName(name)`. Empty names select the fallback; non-empty names
+select the existing resolved normalization call. The conditional remains wholly in PipeLang
+HIR/Core and adds no Application IR field, inference rule, adapter policy, runtime action, Docker
+behavior, UI behavior, or target semantics. The `dockpipe.application.v1` schema is unchanged; only
+its recorded language-contract metadata advances.
+
 ### Accepted `dockpipe.application.v1` read-only projection
 
 The first Application IR boundary is an explicit, separately versioned projection of a public

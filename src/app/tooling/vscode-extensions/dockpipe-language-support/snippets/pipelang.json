@@ -251,5 +251,12 @@
       "public string ${1:SelectedName}(Optional<${2:Row}> ${3:value}) => match(${3:value}){ some(${4:row}) => ${5:Normalize}(${4:row}.${6:Name}), none => \"\" };"
     ],
     "description": "Create a v0.37.0 same-class pure call inside an already admitted match-arm expression."
+  },
+  "PipeLang bounded conditional expression": {
+    "prefix": "pipe-conditional",
+    "body": [
+      "${1:condition} ? ${2:whenTrue} : ${3:whenFalse}"
+    ],
+    "description": "Create one v0.38.0 exactly typed lazy conditional expression."
   }
 }
