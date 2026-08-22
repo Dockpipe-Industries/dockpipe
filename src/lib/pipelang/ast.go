@@ -155,6 +155,12 @@ type (
 		Left, Right Expr
 		Span        Span
 	}
+	ConditionalExpr struct {
+		Condition Expr
+		WhenTrue  Expr
+		WhenFalse Expr
+		Span      Span
+	}
 	CallExpr struct {
 		Name       string
 		NameSpan   Span
@@ -340,6 +346,7 @@ func (*LiteralExpr) isExpr()                            {}
 func (*IdentExpr) isExpr()                              {}
 func (*UnaryExpr) isExpr()                              {}
 func (*BinaryExpr) isExpr()                             {}
+func (*ConditionalExpr) isExpr()                        {}
 func (*CallExpr) isExpr()                               {}
 func (*TextContainsCaseFoldedExpr) isExpr()             {}
 func (*TextTrimExpr) isExpr()                           {}
@@ -374,6 +381,7 @@ func (e *LiteralExpr) SourceSpan() Span                            { return e.Sp
 func (e *IdentExpr) SourceSpan() Span                              { return e.Span }
 func (e *UnaryExpr) SourceSpan() Span                              { return e.Span }
 func (e *BinaryExpr) SourceSpan() Span                             { return e.Span }
+func (e *ConditionalExpr) SourceSpan() Span                        { return e.Span }
 func (e *CallExpr) SourceSpan() Span                               { return e.Span }
 func (e *TextContainsCaseFoldedExpr) SourceSpan() Span             { return e.Span }
 func (e *TextTrimExpr) SourceSpan() Span                           { return e.Span }
@@ -413,6 +421,8 @@ func setExprSpan(expr Expr, span Span) {
 	case *UnaryExpr:
 		node.Span = span
 	case *BinaryExpr:
+		node.Span = span
+	case *ConditionalExpr:
 		node.Span = span
 	case *CallExpr:
 		node.Span = span
@@ -481,6 +491,8 @@ func expressionChildren(expr Expr) []Expr {
 		return []Expr{node.Expr}
 	case *BinaryExpr:
 		return []Expr{node.Left, node.Right}
+	case *ConditionalExpr:
+		return []Expr{node.Condition, node.WhenTrue, node.WhenFalse}
 	case *CallExpr:
 		return append([]Expr(nil), node.Arguments...)
 	case *TextContainsCaseFoldedExpr:
@@ -558,6 +570,61 @@ func containsCallExpression(expr Expr) bool {
 		}
 	}
 	return false
+}
+
+func containsConditionalExpression(expr Expr) bool {
+	if _, ok := expr.(*ConditionalExpr); ok {
+		return true
+	}
+	for _, child := range expressionChildren(expr) {
+		if containsConditionalExpression(child) {
+			return true
+		}
+	}
+	return false
+}
+
+func countConditionalExpressions(expr Expr) int {
+	count := 0
+	if _, ok := expr.(*ConditionalExpr); ok {
+		count++
+	}
+	for _, child := range expressionChildren(expr) {
+		count += countConditionalExpressions(child)
+	}
+	return count
+}
+
+func validConditionalOperand(expr Expr) bool {
+	switch expr.(type) {
+	case *ConditionalExpr, *PropagateExpr, *MatchExpr:
+		return false
+	}
+	for _, child := range expressionChildren(expr) {
+		if !validConditionalOperand(child) {
+			return false
+		}
+	}
+	return true
+}
+
+func validBoundedConditionalExpression(expr Expr) bool {
+	if countConditionalExpressions(expr) != 1 {
+		return false
+	}
+	valid := false
+	var walk func(Expr)
+	walk = func(current Expr) {
+		if conditional, ok := current.(*ConditionalExpr); ok {
+			valid = validConditionalOperand(conditional.Condition) && validConditionalOperand(conditional.WhenTrue) && validConditionalOperand(conditional.WhenFalse)
+			return
+		}
+		for _, child := range expressionChildren(current) {
+			walk(child)
+		}
+	}
+	walk(expr)
+	return valid
 }
 
 func validPureCallPlacement(expr Expr) bool {

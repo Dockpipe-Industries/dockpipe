@@ -21,5 +21,6 @@ public Class DockerApplication {
 	public List<NetworkRow> OrderNetworks(List<NetworkRow> rows) => sort_by_ordinal(rows, NetworkRow.Name);
 	public List<VolumeRow> OrderVolumes(List<VolumeRow> rows) => sort_by_ordinal(rows, VolumeRow.Name);
 	public string NormalizeName(string value) => trim(value);
+	public string DisplayName(string name, string fallback) => name == "" ? fallback : NormalizeName(name);
 	public string SelectedName(Optional<ContainerRow> value) => match(value){ some(row) => NormalizeName(row.Name), none => "" };
 }

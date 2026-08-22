@@ -219,6 +219,32 @@ func evalExprWithProgram(expression coreir.Expr, arguments []Value, functions ma
 		default:
 			return Outcome{}, fmt.Errorf("operator %q is outside the conformance evaluator", expression.Binary.Operator)
 		}
+	case coreir.ExprConditional:
+		if expression.Conditional == nil || expression.Conditional.Condition == nil || expression.Conditional.WhenTrue == nil || expression.Conditional.WhenFalse == nil {
+			return Outcome{}, fmt.Errorf("conditional expression is incomplete")
+		}
+		condition, err := evalExprWithProgram(*expression.Conditional.Condition, arguments, functions)
+		if err != nil || !condition.OK {
+			return condition, err
+		}
+		branch := expression.Conditional.WhenFalse
+		if condition.Value.Bool {
+			branch = expression.Conditional.WhenTrue
+		}
+		outcome, err := evalExprWithProgram(*branch, arguments, functions)
+		if err != nil {
+			return Outcome{}, err
+		}
+		if outcome.OK {
+			if err := validateValue(outcome.Value); err != nil {
+				return Outcome{}, fmt.Errorf("conditional result: %w", err)
+			}
+		} else if outcome.Failure != nil {
+			if err := validateValue(*outcome.Failure); err != nil {
+				return Outcome{}, fmt.Errorf("conditional failure: %w", err)
+			}
+		}
+		return cloneOutcome(outcome), nil
 	case coreir.ExprCall:
 		if functions == nil || expression.Call == nil {
 			return Outcome{}, fmt.Errorf("pure call requires a validated Core program")

@@ -61,3 +61,22 @@ normalization helper. `pipelang.compiler.v1`, `pipelang.semantic.v1`, and
 `dockpipe.application.v1` keep their schemas and advance only language-contract metadata. The
 45-source legacy inventory remains exact. Cross-class/module calls, blocks, locals, branches,
 loops, effects, recursion, and target-specific behavior remain excluded.
+
+## Step 8d — bounded conditional expression (`v0.38.0`)
+
+Production source admits `condition ? whenTrue : whenFalse` with exactly one conditional node per
+method. The condition must be `bool`, both branches are fully and statically checked with exactly
+the same admitted type, and evaluation executes only the selected branch. Each operand is limited
+to existing eager pure expressions; nested conditionals plus match and propagation nodes inside an
+operand remain excluded. Existing v0.37.0 resolved same-class pure calls retain their exact
+identity, signature, ownership, closure, and cycle rules when used in an operand.
+
+Typed HIR and target-neutral Core carry an explicit conditional node with the typed condition and
+both typed branches. Core independently validates count, placement, operand exclusions, condition
+type, and exact branch/result equality. The evaluator evaluates one branch, and the Core-only Go
+backend emits a typed lazy choice without reconstructing semantics. The Docker observability
+consumer proves `name == "" ? fallback : NormalizeName(name)` without adding an Application IR
+field or rule. Public schema shapes remain unchanged, language-contract metadata advances to
+`v0.38.0`, and the exact 45-source legacy inventory remains frozen. Statements, blocks, locals,
+mutation, conversions, guards, effects, actions, runtime behavior, and target-specific behavior
+remain excluded.

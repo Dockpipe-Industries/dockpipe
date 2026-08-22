@@ -44,7 +44,7 @@ func TestReviewGeneratedDirectionalSortCompiles(t *testing.T) {
 }
 
 func TestReviewGeneratedOptionalPropagationCompiles(t *testing.T) {
-	for _, contract := range []LanguageContract{PipeLangLanguageContractV340, PipeLangLanguageContractV350, PipeLangLanguageContractV360, PipeLangLanguageContractV370} {
+	for _, contract := range []LanguageContract{PipeLangLanguageContractV340, PipeLangLanguageContractV350, PipeLangLanguageContractV360, PipeLangLanguageContractV370, PipeLangLanguageContractV380} {
 		t.Run(string(contract), func(t *testing.T) {
 			program := reviewCore(t, contract, `public Class Root { public Optional<string> Forward(Optional<string> value) => some(propagate(value)); }`, "Forward")
 			reviewCompileGenerated(t, program)
@@ -53,7 +53,7 @@ func TestReviewGeneratedOptionalPropagationCompiles(t *testing.T) {
 }
 
 func TestReviewGeneratedSafeIndexCompilesAcrossContracts(t *testing.T) {
-	for _, contract := range []LanguageContract{PipeLangLanguageContractV330, PipeLangLanguageContractV340, PipeLangLanguageContractV350, PipeLangLanguageContractV360, PipeLangLanguageContractV370} {
+	for _, contract := range []LanguageContract{PipeLangLanguageContractV330, PipeLangLanguageContractV340, PipeLangLanguageContractV350, PipeLangLanguageContractV360, PipeLangLanguageContractV370, PipeLangLanguageContractV380} {
 		t.Run(string(contract), func(t *testing.T) {
 			program := reviewCore(t, contract, `public Record Row { public string Id; } public Class Root { public Optional<Row> RowAt(List<Row> values, int index) => values[index]; }`, "RowAt")
 			reviewCompileGenerated(t, program)
@@ -62,7 +62,7 @@ func TestReviewGeneratedSafeIndexCompilesAcrossContracts(t *testing.T) {
 }
 
 func TestReviewLegacyAtCompilesAcrossLaterContracts(t *testing.T) {
-	for _, contract := range []LanguageContract{PipeLangLanguageContractV330, PipeLangLanguageContractV340, PipeLangLanguageContractV350, PipeLangLanguageContractV360, PipeLangLanguageContractV370} {
+	for _, contract := range []LanguageContract{PipeLangLanguageContractV330, PipeLangLanguageContractV340, PipeLangLanguageContractV350, PipeLangLanguageContractV360, PipeLangLanguageContractV370, PipeLangLanguageContractV380} {
 		t.Run(string(contract), func(t *testing.T) {
 			program := reviewCore(t, contract, `public Record Row { public string Id; } public Class Root { public Optional<Row> RowAt(List<Row> values, int index) => at(values, index); }`, "RowAt")
 			reviewCompileGenerated(t, program)
@@ -75,7 +75,7 @@ func TestReviewLaterContractsPreserveNamedPredicate(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, contract := range []LanguageContract{PipeLangLanguageContractV320, PipeLangLanguageContractV330, PipeLangLanguageContractV340, PipeLangLanguageContractV350, PipeLangLanguageContractV360, PipeLangLanguageContractV370} {
+	for _, contract := range []LanguageContract{PipeLangLanguageContractV320, PipeLangLanguageContractV330, PipeLangLanguageContractV340, PipeLangLanguageContractV350, PipeLangLanguageContractV360, PipeLangLanguageContractV370, PipeLangLanguageContractV380} {
 		t.Run(string(contract), func(t *testing.T) {
 			input := semanticTestModuleSet("app.root", []ModuleInput{testModule("app.root", "record-list-filter-predicate.pipe", string(source))}, nil)
 			input.LanguageContract = contract

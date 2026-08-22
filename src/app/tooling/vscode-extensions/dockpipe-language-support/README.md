@@ -89,3 +89,5 @@ make install-dockpipe-language-support
 - `v0.36.0` adds public same-class pure `Method(expression, ...)` calls with exact ordered signatures, parameter/arm-local closure, and an acyclic resolved call graph through `pipe-pure-call`. Class-owned state, cross-class/module calls, private targets, overloads, generics, lambdas, function values, recursion, blocks, locals, branches, effects, and entrypoints remain excluded.
 
 - `v0.37.0` permits those resolved same-class pure calls throughout already admitted eager pure expressions and match-arm bodies through `pipe-pure-call-compose`. Match and propagation carriers stay direct, and all v0.36.0 identity, signature, closure, and acyclicity rules remain exact.
+
+- `v0.38.0` adds one exactly typed lazy `condition ? whenTrue : whenFalse` expression per method through `pipe-conditional`. Both branches are checked, only the selected branch executes, and nested conditional, match, and propagation operands remain excluded.

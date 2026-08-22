@@ -140,7 +140,7 @@ func CompareOrdinalText(left, right string) (int, error) {
 // semantic evaluator or a target backend consumes the function.
 func ValidateFunction(function Function) error {
 	namedPredicate := isNamedPredicateFunction(function)
-	composed := exprContainsCall(function.Body)
+	composed := exprContainsCall(function.Body) || exprContainsConditional(function.Body)
 	for position, parameter := range function.Parameters {
 		if parameter.Position != position {
 			return fmt.Errorf("parameter %d is not in normalized position order", position)
@@ -279,6 +279,9 @@ func ValidateProgram(program Program) error {
 		functions[key] = function
 	}
 	for _, function := range program.Functions {
+		if err := validateConditionalContract(program.LanguageContract, function); err != nil {
+			return err
+		}
 		if err := validatePureCallPlacement(program.LanguageContract, function); err != nil {
 			return err
 		}
@@ -356,7 +359,7 @@ func validatePureCalls(contract string, function Function, functions map[string]
 	var walk func(Expr) error
 	walk = func(expression Expr) error {
 		if expression.Kind == ExprCall {
-			if contract != LanguageContractV360 && contract != LanguageContractV370 {
+			if contract != LanguageContractV360 && contract != LanguageContractV370 && contract != LanguageContractV380 {
 				return fmt.Errorf("function %s pure calls require language contract %q or later", function.Name, LanguageContractV360)
 			}
 			call := expression.Call
@@ -404,6 +407,73 @@ func exprContainsCall(expression Expr) bool {
 		}
 	}
 	return false
+}
+
+func exprContainsConditional(expression Expr) bool {
+	if expression.Kind == ExprConditional {
+		return true
+	}
+	for _, child := range expressionChildren(expression) {
+		if child != nil && exprContainsConditional(*child) {
+			return true
+		}
+	}
+	return false
+}
+
+func countConditionalExpressions(expression Expr) int {
+	count := 0
+	if expression.Kind == ExprConditional {
+		count++
+	}
+	for _, child := range expressionChildren(expression) {
+		if child != nil {
+			count += countConditionalExpressions(*child)
+		}
+	}
+	return count
+}
+
+func validConditionalOperand(expression Expr) bool {
+	if expression.Kind == ExprConditional || expression.Kind == ExprMatch || expression.Kind == ExprPropagate {
+		return false
+	}
+	for _, child := range expressionChildren(expression) {
+		if child == nil || !validConditionalOperand(*child) {
+			return false
+		}
+	}
+	return true
+}
+
+func validateConditionalContract(contract string, function Function) error {
+	if !exprContainsConditional(function.Body) {
+		return nil
+	}
+	if contract != LanguageContractV380 {
+		return fmt.Errorf("function %s conditional expressions require language contract %q", function.Name, LanguageContractV380)
+	}
+	if countConditionalExpressions(function.Body) != 1 {
+		return fmt.Errorf("function %s admits exactly one conditional expression", function.Name)
+	}
+	var conditional *Conditional
+	var walk func(Expr)
+	walk = func(expression Expr) {
+		if expression.Kind == ExprConditional {
+			conditional = expression.Conditional
+			return
+		}
+		for _, child := range expressionChildren(expression) {
+			if child != nil {
+				walk(*child)
+			}
+		}
+	}
+	walk(function.Body)
+	if conditional == nil || conditional.Condition == nil || conditional.WhenTrue == nil || conditional.WhenFalse == nil || !validConditionalOperand(*conditional.Condition) || !validConditionalOperand(*conditional.WhenTrue) || !validConditionalOperand(*conditional.WhenFalse) {
+		return fmt.Errorf("function %s conditional operands must be existing eager pure expressions without nested conditionals, match, or propagate", function.Name)
+	}
+	return nil
 }
 
 func validCallPlacement(expression Expr) bool {
@@ -458,7 +528,7 @@ func validatePureCallPlacement(contract string, function Function) error {
 		if !validCallPlacement(function.Body) {
 			return fmt.Errorf("function %s pure calls must be the complete body or directly nested call arguments under %s", function.Name, LanguageContractV360)
 		}
-	case LanguageContractV370:
+	case LanguageContractV370, LanguageContractV380:
 		if !validGeneralCallPlacement(function.Body) {
 			return fmt.Errorf("function %s composed pure calls retain direct match and propagate carriers", function.Name)
 		}
@@ -478,6 +548,10 @@ func expressionChildren(expression Expr) []*Expr {
 	case ExprBinary:
 		if expression.Binary != nil {
 			children = append(children, expression.Binary.Left, expression.Binary.Right)
+		}
+	case ExprConditional:
+		if expression.Conditional != nil {
+			children = append(children, expression.Conditional.Condition, expression.Conditional.WhenTrue, expression.Conditional.WhenFalse)
 		}
 	case ExprCall:
 		if expression.Call != nil {
@@ -597,6 +671,19 @@ func expressionChildren(expression Expr) []*Expr {
 	return children
 }
 
+// WalkExpression visits a Core expression and its operands in deterministic
+// pre-order. Returning false from visit skips that expression's descendants.
+func WalkExpression(expression Expr, visit func(Expr) bool) {
+	if visit == nil || !visit(expression) {
+		return
+	}
+	for _, child := range expressionChildren(expression) {
+		if child != nil {
+			WalkExpression(*child, visit)
+		}
+	}
+}
+
 func semanticOwnerPath(path string) string {
 	if position := strings.LastIndexByte(path, '.'); position >= 0 {
 		return path[:position]
@@ -621,7 +708,7 @@ func callableIdentityEqual(left, right *CallableIdentity) bool {
 
 func isV310OrLaterContract(contract string) bool {
 	switch contract {
-	case LanguageContractV310, LanguageContractV320, LanguageContractV330, LanguageContractV340, LanguageContractV350, LanguageContractV360, LanguageContractV370:
+	case LanguageContractV310, LanguageContractV320, LanguageContractV330, LanguageContractV340, LanguageContractV350, LanguageContractV360, LanguageContractV370, LanguageContractV380:
 		return true
 	default:
 		return false
@@ -936,6 +1023,27 @@ func validateExpr(expression Expr, parameters []Parameter) error {
 			}
 		default:
 			return fmt.Errorf("unsupported binary operator %q", operator)
+		}
+	case ExprConditional:
+		conditional := expression.Conditional
+		boolean := Type{Kind: TypePrimitive, Primitive: PrimitiveBool}
+		if conditional == nil || conditional.Condition == nil || conditional.WhenTrue == nil || conditional.WhenFalse == nil {
+			return fmt.Errorf("conditional expression is incomplete")
+		}
+		if err := validateExpr(*conditional.Condition, parameters); err != nil {
+			return fmt.Errorf("conditional condition: %w", err)
+		}
+		if err := validateExpr(*conditional.WhenTrue, parameters); err != nil {
+			return fmt.Errorf("conditional true branch: %w", err)
+		}
+		if err := validateExpr(*conditional.WhenFalse, parameters); err != nil {
+			return fmt.Errorf("conditional false branch: %w", err)
+		}
+		if !TypeEqual(conditional.Condition.Type, boolean) {
+			return fmt.Errorf("conditional condition is not bool")
+		}
+		if !TypeEqual(conditional.WhenTrue.Type, conditional.WhenFalse.Type) || !TypeEqual(expression.Type, conditional.WhenTrue.Type) {
+			return fmt.Errorf("conditional branches and result must have exactly the same type")
 		}
 	case ExprCall:
 		if expression.Call == nil || expression.Call.TargetName == "" || expression.Call.Target.PackageID == "" || expression.Call.Target.Path == "" || expression.Call.Target.Callable == nil {

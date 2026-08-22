@@ -1139,6 +1139,20 @@ shapes remain unchanged; only their language-contract metadata advances to `v0.3
 or cross-module calls, private targets, overloads, recursion, blocks, locals, branches, loops,
 effects, entrypoints, and target-specific semantics remain excluded.
 
+### PipeLang v0.38.0: bounded conditional expression
+
+One `condition ? whenTrue : whenFalse` expression is admitted per method. The condition must be
+`bool`; both branches are statically checked and have exactly the same admitted type; evaluation
+executes only the selected branch. Operands may use existing eager pure expressions, including
+resolved v0.37.0 same-class calls, but may not contain nested conditionals, match, or propagation.
+
+Typed HIR and target-neutral Core carry the condition and both branches explicitly. Core validates
+the bound, placement, operand exclusions, and exact types; the evaluator selects one branch; the
+Core-only Go backend emits the same lazy choice without inference. Compiler, semantic projection,
+and Application IR schema shapes remain unchanged; only their language-contract metadata advances
+to `v0.38.0`. `if` statements, blocks, locals, mutation, conversions, pattern guards, effects,
+actions, runtime behavior, and target-specific semantics remain excluded.
+
 ### Target-neutral Application IR
 
 `dockpipe.application.v1` is not a language feature or target generator. It consumes the public

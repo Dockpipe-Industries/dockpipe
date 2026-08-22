@@ -28,9 +28,11 @@ Step 8a is complete for `v0.31.0` same-class named pure record predicates consum
 `filter(List<R>, PredicateName, P1, ...) -> List<R>`. Step 8b is complete for `v0.36.0` public
 same-class pure method calls with exact signatures and a closed acyclic call graph. Step 8c is
 complete for `v0.37.0` composition of those calls throughout already admitted eager pure
-expressions, with direct match and propagation carriers preserved. These seams do
-not complete or authorize cross-class/module calls, overloads, generics, function values, lambdas,
-recursion, blocks, locals, branches, loops, effects, entrypoints, or the rest of step 8.
+expressions, with direct match and propagation carriers preserved. Step 8d is complete for one
+exactly typed lazy `condition ? whenTrue : whenFalse` expression per method under `v0.38.0`. These
+seams do not complete or authorize cross-class/module calls, overloads, generics, function values,
+lambdas, recursion, blocks, locals, branch statements, loops, effects, entrypoints, or the rest of
+step 8.
 
 Each slice is independently reviewable and keeps syntax, semantics, diagnostics, projection,
 editor, tests, and any enabled backend synchronized. No permissive parser, target-owned semantics,
@@ -175,6 +177,17 @@ direct references. HIR/Core retain the same call node, Core validates placement 
 evaluator uses isolated copied frames, and the Go backend emits from Core only. The consumer proves
 an Optional record match arm calling a normalization helper. Public schema shapes and the exact
 45-source legacy inventory remain unchanged.
+
+## Checkpoint v0.38.0 complete contract
+
+One method may contain one `condition ? whenTrue : whenFalse` expression. The condition is exactly
+`bool`; both branches are statically checked and have the same admitted type; only the selected
+branch executes. Conditional operands may use existing eager pure expressions, including resolved
+v0.37.0 calls, but may not contain another conditional, match, or propagation node. Typed HIR and
+target-neutral Core carry the three typed operands explicitly, Core independently validates the
+bounded shape and types, the evaluator selects one branch, and the Core-only Go backend emits the
+same lazy choice without inference. Public schema shapes and the exact 45-source legacy inventory
+remain unchanged; only language-contract metadata advances.
 
 ## Application IR checkpoint complete contract
 

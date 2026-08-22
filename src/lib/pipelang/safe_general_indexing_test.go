@@ -12,7 +12,7 @@ import (
 const safeIndexSource = `public Record Row { public string Id; } public Class Root { public Optional<Row> RowAt(List<Row> values, int index) => values[index]; }`
 
 func TestLaterContractsPreserveDirectionalSortAndSafeIndexing(t *testing.T) {
-	for _, contract := range []LanguageContract{PipeLangLanguageContractV350, PipeLangLanguageContractV360, PipeLangLanguageContractV370} {
+	for _, contract := range []LanguageContract{PipeLangLanguageContractV350, PipeLangLanguageContractV360, PipeLangLanguageContractV370, PipeLangLanguageContractV380} {
 		for name, source := range map[string]string{
 			"directional sort": `public Record Row { public string Name; } public Class Root { public List<Row> Sort(List<Row> values) => sort_by_ordinal(values, Row.Name, descending); }`,
 			"safe indexing":    safeIndexSource,

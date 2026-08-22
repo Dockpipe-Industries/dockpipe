@@ -21,7 +21,7 @@ func TestDockerObservabilityGoldenUsesCanonicalSemanticAndCore(t *testing.T) {
 		t.Fatal(err)
 	}
 	module := pipelang.ModuleInput{ID: "app.root", Namespace: "app.root", DeclarationSpan: pipelang.Span{File: "docker-observability.pipe"}, Sources: []pipelang.SourceInput{{Path: "docker-observability.pipe", Data: source}}}
-	input := pipelang.ModuleSetInput{LanguageContract: pipelang.PipeLangLanguageContractV370, PackageID: "docker.observability", Root: "app.root", Modules: []pipelang.ModuleInput{module}}
+	input := pipelang.ModuleSetInput{LanguageContract: pipelang.PipeLangLanguageContractV380, PackageID: "docker.observability", Root: "app.root", Modules: []pipelang.ModuleInput{module}}
 	input.Lock.Modules = []pipelang.LockedModule{{ID: module.ID, SourceSHA256: pipelang.ModuleSourceSHA256(module.Sources), SemanticSHA256: pipelang.ModuleSemanticSHA256(input.PackageID, module.Namespace, nil)}}
 	analysis := pipelang.AnalyzeSemanticModuleSet(input)
 	if err := analysis.Error(); err != nil {
@@ -114,6 +114,35 @@ func TestDockerObservabilityGoldenUsesCanonicalSemanticAndCore(t *testing.T) {
 	}
 	if !strings.Contains(string(selectedGo), "return PipeLangNormalizeName(") {
 		t.Fatalf("SelectedName generated Go lost match-arm call:\n%s", selectedGo)
+	}
+	displayName := find("DisplayName")
+	displayNameHIR, err := pipelang.LowerSemanticMethodToHIR(analysis, *displayName.Identity)
+	if err != nil {
+		t.Fatal(err)
+	}
+	displayNameFunction := displayNameHIR.Functions[len(displayNameHIR.Functions)-1]
+	if displayNameFunction.Body.Kind != hir.ExprConditional || displayNameFunction.Body.Conditional == nil || displayNameFunction.Body.Conditional.WhenFalse.Kind != hir.ExprCall {
+		t.Fatalf("DisplayName HIR lost conditional helper call: %#v", displayNameFunction.Body)
+	}
+	displayNameCore, err := pipelang.LowerHIRToCore(displayNameHIR)
+	if err != nil {
+		t.Fatal(err)
+	}
+	displayNameCoreFunction := displayNameCore.Functions[len(displayNameCore.Functions)-1]
+	displayOutcome, err := coreeval.EvaluateProgram(displayNameCore, coreir.SemanticIdentity{PackageID: string(displayName.Identity.PackageID), Path: string(displayName.Identity.Path)}, []coreeval.Value{{Type: displayNameCoreFunction.Parameters[0].Type, String: ""}, {Type: displayNameCoreFunction.Parameters[1].Type, String: "container-3"}})
+	if err != nil || !displayOutcome.OK || displayOutcome.Value.String != "container-3" {
+		t.Fatalf("DisplayName fallback result = %#v, %v", displayOutcome, err)
+	}
+	displayOutcome, err = coreeval.EvaluateProgram(displayNameCore, coreir.SemanticIdentity{PackageID: string(displayName.Identity.PackageID), Path: string(displayName.Identity.Path)}, []coreeval.Value{{Type: displayNameCoreFunction.Parameters[0].Type, String: "  worker  "}, {Type: displayNameCoreFunction.Parameters[1].Type, String: "container-3"}})
+	if err != nil || !displayOutcome.OK || displayOutcome.Value.String != "worker" {
+		t.Fatalf("DisplayName normalized result = %#v, %v", displayOutcome, err)
+	}
+	displayGo, err := gobackend.Generate(displayNameCore)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(displayGo), "if pipelangCompareOrdinalText(p0, \"\") == 0") || !strings.Contains(string(displayGo), "return PipeLangNormalizeName(p0)") {
+		t.Fatalf("DisplayName generated Go lost conditional helper call:\n%s", displayGo)
 	}
 	typeID := func(name string) Identity {
 		for _, m := range semantic.Modules {
@@ -213,7 +242,7 @@ func TestDockerObservabilityGoldenUsesCanonicalSemanticAndCore(t *testing.T) {
 	if err = json.Unmarshal(raw, &checked); err != nil {
 		t.Fatal(err)
 	}
-	if len(checked.Sections) != 3 || len(app.Sections) != 3 || app.Selection == nil || app.Details == nil || app.Logs == nil || app.Metadata.LanguageContract != "v0.37.0" {
+	if len(checked.Sections) != 3 || len(app.Sections) != 3 || app.Selection == nil || app.Details == nil || app.Logs == nil || app.Metadata.LanguageContract != "v0.38.0" {
 		t.Fatalf("incomplete fixture: %#v", app)
 	}
 	bad := spec

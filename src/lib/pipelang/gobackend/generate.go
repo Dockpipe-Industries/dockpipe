@@ -37,7 +37,7 @@ func Generate(program coreir.Program) ([]byte, error) {
 	if err := coreir.ValidateProgram(program); err != nil {
 		return nil, &Error{Code: "PLGO0001", Message: err.Error()}
 	}
-	if program.LanguageContract == coreir.LanguageContractV310 || program.LanguageContract == coreir.LanguageContractV320 || program.LanguageContract == coreir.LanguageContractV330 || program.LanguageContract == coreir.LanguageContractV340 || program.LanguageContract == coreir.LanguageContractV350 || program.LanguageContract == coreir.LanguageContractV360 || program.LanguageContract == coreir.LanguageContractV370 {
+	if program.LanguageContract == coreir.LanguageContractV310 || program.LanguageContract == coreir.LanguageContractV320 || program.LanguageContract == coreir.LanguageContractV330 || program.LanguageContract == coreir.LanguageContractV340 || program.LanguageContract == coreir.LanguageContractV350 || program.LanguageContract == coreir.LanguageContractV360 || program.LanguageContract == coreir.LanguageContractV370 || program.LanguageContract == coreir.LanguageContractV380 {
 		program.LanguageContract = coreir.LanguageContractV300
 	}
 	return generate(program)
@@ -390,6 +390,27 @@ func emitExpr(expr coreir.Expr, parameters []coreir.Parameter, optionalTypeName 
 			return "", fmt.Errorf("unsupported binary operator %q", expr.Binary.Operator)
 		}
 		return "(" + left + " " + op + " " + right + ")", nil
+	case coreir.ExprConditional:
+		if expr.Conditional == nil || expr.Conditional.Condition == nil || expr.Conditional.WhenTrue == nil || expr.Conditional.WhenFalse == nil {
+			return "", fmt.Errorf("conditional expression is incomplete")
+		}
+		condition, err := emitExpr(*expr.Conditional.Condition, parameters, optionalTypeName)
+		if err != nil {
+			return "", err
+		}
+		whenTrue, err := emitExpr(*expr.Conditional.WhenTrue, parameters, optionalTypeName)
+		if err != nil {
+			return "", err
+		}
+		whenFalse, err := emitExpr(*expr.Conditional.WhenFalse, parameters, optionalTypeName)
+		if err != nil {
+			return "", err
+		}
+		resultType, err := goType(expr.Type, optionalTypeName)
+		if err != nil {
+			return "", err
+		}
+		return fmt.Sprintf("func() %s { if %s { return %s }; return %s }()", resultType, condition, whenTrue, whenFalse), nil
 	case coreir.ExprCall:
 		if expr.Call == nil || expr.Call.TargetName == "" {
 			return "", fmt.Errorf("pure call is incomplete")
@@ -1014,12 +1035,12 @@ func programNeedsListFilterJoinedContainsCaseFolded(functions []coreir.Function)
 }
 
 func expressionNeedsListFilterJoinedContainsCaseFolded(expression coreir.Expr) bool {
-	return expression.Kind == coreir.ExprListFilterJoinedContainsCaseFolded
+	return expressionContainsKind(expression, coreir.ExprListFilterJoinedContainsCaseFolded)
 }
 
 func programNeedsListSortByOrdinalText(functions []coreir.Function) bool {
 	for _, function := range functions {
-		if function.Body.Kind == coreir.ExprListSortByOrdinalText {
+		if expressionContainsKind(function.Body, coreir.ExprListSortByOrdinalText) {
 			return true
 		}
 	}
@@ -1028,7 +1049,7 @@ func programNeedsListSortByOrdinalText(functions []coreir.Function) bool {
 
 func programNeedsListSortByOrdinalTexts(functions []coreir.Function) bool {
 	for _, function := range functions {
-		if function.Body.Kind == coreir.ExprListSortByOrdinalTexts {
+		if expressionContainsKind(function.Body, coreir.ExprListSortByOrdinalTexts) {
 			return true
 		}
 	}
@@ -1037,11 +1058,23 @@ func programNeedsListSortByOrdinalTexts(functions []coreir.Function) bool {
 
 func programNeedsListSortByOrdinalDirections(functions []coreir.Function) bool {
 	for _, function := range functions {
-		if function.Body.Kind == coreir.ExprListSortByOrdinalDirections {
+		if expressionContainsKind(function.Body, coreir.ExprListSortByOrdinalDirections) {
 			return true
 		}
 	}
 	return false
+}
+
+func expressionContainsKind(expression coreir.Expr, kind coreir.ExprKind) bool {
+	found := false
+	coreir.WalkExpression(expression, func(current coreir.Expr) bool {
+		if current.Kind == kind {
+			found = true
+			return false
+		}
+		return true
+	})
+	return found
 }
 
 func programNeedsOptionalPropagation(functions []coreir.Function) bool {
@@ -1054,157 +1087,41 @@ func programNeedsOptionalPropagation(functions []coreir.Function) bool {
 }
 
 func expressionNeedsListFilterContainsCaseFolded(expression coreir.Expr) bool {
-	switch expression.Kind {
-	case coreir.ExprListFilterContainsCaseFolded:
-		return true
-	case coreir.ExprUnary:
-		return expression.Unary != nil && expression.Unary.Operand != nil && expressionNeedsListFilterContainsCaseFolded(*expression.Unary.Operand)
-	case coreir.ExprBinary:
-		return expression.Binary != nil && expression.Binary.Left != nil && expression.Binary.Right != nil && (expressionNeedsListFilterContainsCaseFolded(*expression.Binary.Left) || expressionNeedsListFilterContainsCaseFolded(*expression.Binary.Right))
-	case coreir.ExprFieldProjection:
-		return expression.Field != nil && expression.Field.Receiver != nil && expressionNeedsListFilterContainsCaseFolded(*expression.Field.Receiver)
-	case coreir.ExprRecordConstruct:
-		if expression.Record != nil {
-			for _, field := range expression.Record.Fields {
-				if field.Value != nil && expressionNeedsListFilterContainsCaseFolded(*field.Value) {
-					return true
-				}
-			}
-		}
-	}
-	return false
+	return expressionContainsKind(expression, coreir.ExprListFilterContainsCaseFolded)
 }
 
 func expressionNeedsListFilterByText(expression coreir.Expr) bool {
-	switch expression.Kind {
-	case coreir.ExprListFilterByText:
-		return true
-	case coreir.ExprUnary:
-		return expression.Unary != nil && expression.Unary.Operand != nil && expressionNeedsListFilterByText(*expression.Unary.Operand)
-	case coreir.ExprBinary:
-		return expression.Binary != nil && expression.Binary.Left != nil && expression.Binary.Right != nil && (expressionNeedsListFilterByText(*expression.Binary.Left) || expressionNeedsListFilterByText(*expression.Binary.Right))
-	case coreir.ExprFieldProjection:
-		return expression.Field != nil && expression.Field.Receiver != nil && expressionNeedsListFilterByText(*expression.Field.Receiver)
-	case coreir.ExprRecordConstruct:
-		if expression.Record != nil {
-			for _, field := range expression.Record.Fields {
-				if field.Value != nil && expressionNeedsListFilterByText(*field.Value) {
-					return true
-				}
-			}
-		}
-	}
-	return false
+	return expressionContainsKind(expression, coreir.ExprListFilterByText)
 }
 
 func expressionNeedsListFindByText(expression coreir.Expr) bool {
-	switch expression.Kind {
-	case coreir.ExprListFindByText:
-		return true
-	case coreir.ExprUnary:
-		return expression.Unary != nil && expression.Unary.Operand != nil && expressionNeedsListFindByText(*expression.Unary.Operand)
-	case coreir.ExprBinary:
-		return expression.Binary != nil && expression.Binary.Left != nil && expression.Binary.Right != nil && (expressionNeedsListFindByText(*expression.Binary.Left) || expressionNeedsListFindByText(*expression.Binary.Right))
-	case coreir.ExprFieldProjection:
-		return expression.Field != nil && expression.Field.Receiver != nil && expressionNeedsListFindByText(*expression.Field.Receiver)
-	case coreir.ExprRecordConstruct:
-		if expression.Record != nil {
-			for _, field := range expression.Record.Fields {
-				if field.Value != nil && expressionNeedsListFindByText(*field.Value) {
-					return true
-				}
-			}
-		}
-	}
-	return false
+	return expressionContainsKind(expression, coreir.ExprListFindByText)
 }
 
 func expressionNeedsListAt(expression coreir.Expr) bool {
-	switch expression.Kind {
-	case coreir.ExprListAt:
-		return true
-	case coreir.ExprUnary:
-		return expression.Unary != nil && expression.Unary.Operand != nil && expressionNeedsListAt(*expression.Unary.Operand)
-	case coreir.ExprBinary:
-		return expression.Binary != nil && expression.Binary.Left != nil && expression.Binary.Right != nil && (expressionNeedsListAt(*expression.Binary.Left) || expressionNeedsListAt(*expression.Binary.Right))
-	case coreir.ExprFieldProjection:
-		return expression.Field != nil && expression.Field.Receiver != nil && expressionNeedsListAt(*expression.Field.Receiver)
-	case coreir.ExprRecordConstruct:
-		if expression.Record != nil {
-			for _, field := range expression.Record.Fields {
-				if field.Value != nil && expressionNeedsListAt(*field.Value) {
-					return true
-				}
-			}
-		}
-	}
-	return false
+	return expressionContainsKind(expression, coreir.ExprListAt)
 }
 
 func expressionNeedsListAppend(expression coreir.Expr) bool {
-	switch expression.Kind {
-	case coreir.ExprListAppend:
-		return true
-	case coreir.ExprUnary:
-		return expression.Unary != nil && expression.Unary.Operand != nil && expressionNeedsListAppend(*expression.Unary.Operand)
-	case coreir.ExprBinary:
-		return expression.Binary != nil && expression.Binary.Left != nil && expression.Binary.Right != nil && (expressionNeedsListAppend(*expression.Binary.Left) || expressionNeedsListAppend(*expression.Binary.Right))
-	case coreir.ExprFieldProjection:
-		return expression.Field != nil && expression.Field.Receiver != nil && expressionNeedsListAppend(*expression.Field.Receiver)
-	case coreir.ExprRecordConstruct:
-		if expression.Record != nil {
-			for _, field := range expression.Record.Fields {
-				if field.Value != nil && expressionNeedsListAppend(*field.Value) {
-					return true
-				}
-			}
-		}
-	}
-	return false
+	return expressionContainsKind(expression, coreir.ExprListAppend)
 }
 
 func expressionNeedsListCount(expression coreir.Expr) bool {
-	switch expression.Kind {
-	case coreir.ExprListCount:
-		return true
-	case coreir.ExprUnary:
-		return expression.Unary != nil && expression.Unary.Operand != nil && expressionNeedsListCount(*expression.Unary.Operand)
-	case coreir.ExprBinary:
-		return expression.Binary != nil && expression.Binary.Left != nil && expression.Binary.Right != nil && (expressionNeedsListCount(*expression.Binary.Left) || expressionNeedsListCount(*expression.Binary.Right))
-	case coreir.ExprFieldProjection:
-		return expression.Field != nil && expression.Field.Receiver != nil && expressionNeedsListCount(*expression.Field.Receiver)
-	case coreir.ExprRecordConstruct:
-		if expression.Record != nil {
-			for _, field := range expression.Record.Fields {
-				if field.Value != nil && expressionNeedsListCount(*field.Value) {
-					return true
-				}
-			}
-		}
-	}
-	return false
+	return expressionContainsKind(expression, coreir.ExprListCount)
 }
 
 func expressionNeedsOptionalSupport(expression coreir.Expr) bool {
-	switch expression.Kind {
-	case coreir.ExprOptionalSome, coreir.ExprOptionalNone, coreir.ExprOptionalHasValue, coreir.ExprOptionalValueOr, coreir.ExprListAt, coreir.ExprListFindByText:
-		return true
-	case coreir.ExprUnary:
-		return expression.Unary != nil && expression.Unary.Operand != nil && expressionNeedsOptionalSupport(*expression.Unary.Operand)
-	case coreir.ExprBinary:
-		return expression.Binary != nil && expression.Binary.Left != nil && expression.Binary.Right != nil && (expressionNeedsOptionalSupport(*expression.Binary.Left) || expressionNeedsOptionalSupport(*expression.Binary.Right))
-	case coreir.ExprFieldProjection:
-		return expression.Field != nil && expression.Field.Receiver != nil && expressionNeedsOptionalSupport(*expression.Field.Receiver)
-	case coreir.ExprRecordConstruct:
-		if expression.Record != nil {
-			for _, field := range expression.Record.Fields {
-				if field.Value != nil && expressionNeedsOptionalSupport(*field.Value) {
-					return true
-				}
-			}
+	found := false
+	coreir.WalkExpression(expression, func(current coreir.Expr) bool {
+		switch current.Kind {
+		case coreir.ExprOptionalSome, coreir.ExprOptionalNone, coreir.ExprOptionalHasValue, coreir.ExprOptionalValueOr, coreir.ExprListAt, coreir.ExprListFindByText:
+			found = true
+			return false
+		default:
+			return true
 		}
-	}
-	return false
+	})
+	return found
 }
 
 func programNeedsOptionalDefault(functions []coreir.Function) bool {
@@ -1256,25 +1173,7 @@ func expressionContainsRecordOptional(expression coreir.Expr) bool {
 }
 
 func expressionNeedsOptionalDefault(expression coreir.Expr) bool {
-	switch expression.Kind {
-	case coreir.ExprOptionalValueOr:
-		return true
-	case coreir.ExprUnary:
-		return expression.Unary != nil && expression.Unary.Operand != nil && expressionNeedsOptionalDefault(*expression.Unary.Operand)
-	case coreir.ExprBinary:
-		return expression.Binary != nil && expression.Binary.Left != nil && expression.Binary.Right != nil && (expressionNeedsOptionalDefault(*expression.Binary.Left) || expressionNeedsOptionalDefault(*expression.Binary.Right))
-	case coreir.ExprFieldProjection:
-		return expression.Field != nil && expression.Field.Receiver != nil && expressionNeedsOptionalDefault(*expression.Field.Receiver)
-	case coreir.ExprRecordConstruct:
-		if expression.Record != nil {
-			for _, field := range expression.Record.Fields {
-				if field.Value != nil && expressionNeedsOptionalDefault(*field.Value) {
-					return true
-				}
-			}
-		}
-	}
-	return false
+	return expressionContainsKind(expression, coreir.ExprOptionalValueOr)
 }
 
 func emitOptionalSupport(out *strings.Builder, validateText, emitValueOr, validateRecordPayloads, emitPropagation bool, optionalTypeName string, records []coreir.Type) {
@@ -1504,25 +1403,15 @@ func programAppendsList(functions []coreir.Function, list coreir.Type) bool {
 }
 
 func expressionAppendsList(expression coreir.Expr, list coreir.Type) bool {
-	switch expression.Kind {
-	case coreir.ExprListAppend:
-		return coreir.TypeEqual(expression.Type, list)
-	case coreir.ExprUnary:
-		return expression.Unary != nil && expression.Unary.Operand != nil && expressionAppendsList(*expression.Unary.Operand, list)
-	case coreir.ExprBinary:
-		return expression.Binary != nil && expression.Binary.Left != nil && expression.Binary.Right != nil && (expressionAppendsList(*expression.Binary.Left, list) || expressionAppendsList(*expression.Binary.Right, list))
-	case coreir.ExprFieldProjection:
-		return expression.Field != nil && expression.Field.Receiver != nil && expressionAppendsList(*expression.Field.Receiver, list)
-	case coreir.ExprRecordConstruct:
-		if expression.Record != nil {
-			for _, field := range expression.Record.Fields {
-				if field.Value != nil && expressionAppendsList(*field.Value, list) {
-					return true
-				}
-			}
+	found := false
+	coreir.WalkExpression(expression, func(current coreir.Expr) bool {
+		if current.Kind == coreir.ExprListAppend && coreir.TypeEqual(current.Type, list) {
+			found = true
+			return false
 		}
-	}
-	return false
+		return true
+	})
+	return found
 }
 
 func programIndexesList(functions []coreir.Function, list coreir.Type) bool {
@@ -1535,35 +1424,26 @@ func programIndexesList(functions []coreir.Function, list coreir.Type) bool {
 }
 
 func expressionIndexesList(expression coreir.Expr, list coreir.Type) bool {
-	switch expression.Kind {
-	case coreir.ExprListAt:
-		return expression.ListAt != nil && expression.ListAt.Values != nil && coreir.TypeEqual(expression.ListAt.Values.Type, list)
-	case coreir.ExprUnary:
-		return expression.Unary != nil && expression.Unary.Operand != nil && expressionIndexesList(*expression.Unary.Operand, list)
-	case coreir.ExprBinary:
-		return expression.Binary != nil && expression.Binary.Left != nil && expression.Binary.Right != nil && (expressionIndexesList(*expression.Binary.Left, list) || expressionIndexesList(*expression.Binary.Right, list))
-	case coreir.ExprFieldProjection:
-		return expression.Field != nil && expression.Field.Receiver != nil && expressionIndexesList(*expression.Field.Receiver, list)
-	case coreir.ExprRecordConstruct:
-		if expression.Record != nil {
-			for _, field := range expression.Record.Fields {
-				if field.Value != nil && expressionIndexesList(*field.Value, list) {
-					return true
-				}
-			}
+	found := false
+	coreir.WalkExpression(expression, func(current coreir.Expr) bool {
+		if current.Kind == coreir.ExprListAt && current.ListAt != nil && current.ListAt.Values != nil && coreir.TypeEqual(current.ListAt.Values.Type, list) {
+			found = true
+			return false
 		}
-	}
-	return false
+		return true
+	})
+	return found
 }
 
 func programFindsListByText(functions []coreir.Function, list coreir.Type) []coreir.ListFindByText {
 	byPosition := map[int]coreir.ListFindByText{}
 	for _, function := range functions {
-		expression := function.Body
-		if expression.Kind != coreir.ExprListFindByText || expression.ListFind == nil || expression.ListFind.Values == nil || !coreir.TypeEqual(expression.ListFind.Values.Type, list) {
-			continue
-		}
-		byPosition[expression.ListFind.Position] = *expression.ListFind
+		coreir.WalkExpression(function.Body, func(expression coreir.Expr) bool {
+			if expression.Kind == coreir.ExprListFindByText && expression.ListFind != nil && expression.ListFind.Values != nil && coreir.TypeEqual(expression.ListFind.Values.Type, list) {
+				byPosition[expression.ListFind.Position] = *expression.ListFind
+			}
+			return true
+		})
 	}
 	positions := make([]int, 0, len(byPosition))
 	for position := range byPosition {
@@ -1580,11 +1460,12 @@ func programFindsListByText(functions []coreir.Function, list coreir.Type) []cor
 func programFiltersListByText(functions []coreir.Function, list coreir.Type) []coreir.ListFilterByText {
 	byPosition := map[int]coreir.ListFilterByText{}
 	for _, function := range functions {
-		expression := function.Body
-		if expression.Kind != coreir.ExprListFilterByText || expression.ListFilter == nil || expression.ListFilter.Values == nil || !coreir.TypeEqual(expression.ListFilter.Values.Type, list) {
-			continue
-		}
-		byPosition[expression.ListFilter.Position] = *expression.ListFilter
+		coreir.WalkExpression(function.Body, func(expression coreir.Expr) bool {
+			if expression.Kind == coreir.ExprListFilterByText && expression.ListFilter != nil && expression.ListFilter.Values != nil && coreir.TypeEqual(expression.ListFilter.Values.Type, list) {
+				byPosition[expression.ListFilter.Position] = *expression.ListFilter
+			}
+			return true
+		})
 	}
 	positions := make([]int, 0, len(byPosition))
 	for position := range byPosition {
@@ -1601,12 +1482,13 @@ func programFiltersListByText(functions []coreir.Function, list coreir.Type) []c
 func programFiltersListContainsCaseFolded(functions []coreir.Function, list coreir.Type) []coreir.ListFilterContainsCaseFolded {
 	byPosition := map[int]coreir.ListFilterContainsCaseFolded{}
 	for _, function := range functions {
-		expression := function.Body
-		filter := expression.ListFilterContainsCaseFolded
-		if expression.Kind != coreir.ExprListFilterContainsCaseFolded || filter == nil || filter.Values == nil || !coreir.TypeEqual(filter.Values.Type, list) {
-			continue
-		}
-		byPosition[filter.Position] = *filter
+		coreir.WalkExpression(function.Body, func(expression coreir.Expr) bool {
+			filter := expression.ListFilterContainsCaseFolded
+			if expression.Kind == coreir.ExprListFilterContainsCaseFolded && filter != nil && filter.Values != nil && coreir.TypeEqual(filter.Values.Type, list) {
+				byPosition[filter.Position] = *filter
+			}
+			return true
+		})
 	}
 	positions := make([]int, 0, len(byPosition))
 	for position := range byPosition {
@@ -1623,12 +1505,13 @@ func programFiltersListContainsCaseFolded(functions []coreir.Function, list core
 func programFiltersListJoinedContainsCaseFolded(functions []coreir.Function, list coreir.Type) []coreir.ListFilterJoinedContainsCaseFolded {
 	byPositions := map[string]coreir.ListFilterJoinedContainsCaseFolded{}
 	for _, function := range functions {
-		expression := function.Body
-		filter := expression.ListFilterJoinedContainsCaseFolded
-		if expression.Kind != coreir.ExprListFilterJoinedContainsCaseFolded || filter == nil || filter.Values == nil || !coreir.TypeEqual(filter.Values.Type, list) {
-			continue
-		}
-		byPositions[listFilterJoinedPositions(*filter)] = *filter
+		coreir.WalkExpression(function.Body, func(expression coreir.Expr) bool {
+			filter := expression.ListFilterJoinedContainsCaseFolded
+			if expression.Kind == coreir.ExprListFilterJoinedContainsCaseFolded && filter != nil && filter.Values != nil && coreir.TypeEqual(filter.Values.Type, list) {
+				byPositions[listFilterJoinedPositions(*filter)] = *filter
+			}
+			return true
+		})
 	}
 	keys := make([]string, 0, len(byPositions))
 	for key := range byPositions {
@@ -1645,12 +1528,13 @@ func programFiltersListJoinedContainsCaseFolded(functions []coreir.Function, lis
 func programSortsListByOrdinalText(functions []coreir.Function, list coreir.Type) []coreir.ListSortByOrdinalText {
 	byPosition := map[int]coreir.ListSortByOrdinalText{}
 	for _, function := range functions {
-		expression := function.Body
-		sorted := expression.ListSortByOrdinalText
-		if expression.Kind != coreir.ExprListSortByOrdinalText || sorted == nil || sorted.Values == nil || !coreir.TypeEqual(sorted.Values.Type, list) {
-			continue
-		}
-		byPosition[sorted.Position] = *sorted
+		coreir.WalkExpression(function.Body, func(expression coreir.Expr) bool {
+			sorted := expression.ListSortByOrdinalText
+			if expression.Kind == coreir.ExprListSortByOrdinalText && sorted != nil && sorted.Values != nil && coreir.TypeEqual(sorted.Values.Type, list) {
+				byPosition[sorted.Position] = *sorted
+			}
+			return true
+		})
 	}
 	positions := make([]int, 0, len(byPosition))
 	for position := range byPosition {
@@ -1667,12 +1551,13 @@ func programSortsListByOrdinalText(functions []coreir.Function, list coreir.Type
 func programSortsListByOrdinalTexts(functions []coreir.Function, list coreir.Type) []coreir.ListSortByOrdinalTexts {
 	byPositions := map[string]coreir.ListSortByOrdinalTexts{}
 	for _, function := range functions {
-		expression := function.Body
-		sorted := expression.ListSortByOrdinalTexts
-		if expression.Kind != coreir.ExprListSortByOrdinalTexts || sorted == nil || sorted.Values == nil || !coreir.TypeEqual(sorted.Values.Type, list) {
-			continue
-		}
-		byPositions[listSortByOrdinalPositions(*sorted)] = *sorted
+		coreir.WalkExpression(function.Body, func(expression coreir.Expr) bool {
+			sorted := expression.ListSortByOrdinalTexts
+			if expression.Kind == coreir.ExprListSortByOrdinalTexts && sorted != nil && sorted.Values != nil && coreir.TypeEqual(sorted.Values.Type, list) {
+				byPositions[listSortByOrdinalPositions(*sorted)] = *sorted
+			}
+			return true
+		})
 	}
 	keys := make([]string, 0, len(byPositions))
 	for key := range byPositions {
@@ -1981,26 +1866,15 @@ func programConstructsRecord(functions []coreir.Function, record coreir.Type) bo
 }
 
 func expressionConstructsRecord(expression coreir.Expr, record coreir.Type) bool {
-	switch expression.Kind {
-	case coreir.ExprRecordConstruct:
-		if coreir.TypeEqual(expression.Type, record) {
-			return true
+	found := false
+	coreir.WalkExpression(expression, func(current coreir.Expr) bool {
+		if current.Kind == coreir.ExprRecordConstruct && coreir.TypeEqual(current.Type, record) {
+			found = true
+			return false
 		}
-		if expression.Record != nil {
-			for _, field := range expression.Record.Fields {
-				if field.Value != nil && expressionConstructsRecord(*field.Value, record) {
-					return true
-				}
-			}
-		}
-	case coreir.ExprUnary:
-		return expression.Unary != nil && expression.Unary.Operand != nil && expressionConstructsRecord(*expression.Unary.Operand, record)
-	case coreir.ExprBinary:
-		return expression.Binary != nil && expression.Binary.Left != nil && expression.Binary.Right != nil && (expressionConstructsRecord(*expression.Binary.Left, record) || expressionConstructsRecord(*expression.Binary.Right, record))
-	case coreir.ExprFieldProjection:
-		return expression.Field != nil && expression.Field.Receiver != nil && expressionConstructsRecord(*expression.Field.Receiver, record)
-	}
-	return false
+		return true
+	})
+	return found
 }
 
 func recordGoTypeName(record coreir.Type) string {
@@ -2037,58 +1911,24 @@ func recordGoFieldNames(record coreir.Type) []string {
 }
 
 func expressionNeedsTextSupport(expression coreir.Expr) bool {
-	switch expression.Kind {
-	case coreir.ExprTextContainsCaseFolded, coreir.ExprTextTrim:
-		return true
-	case coreir.ExprUnary:
-		return expression.Unary != nil && expression.Unary.Operand != nil && expressionNeedsTextSupport(*expression.Unary.Operand)
-	case coreir.ExprBinary:
-		if expression.Binary == nil || expression.Binary.Left == nil || expression.Binary.Right == nil {
+	found := false
+	coreir.WalkExpression(expression, func(current coreir.Expr) bool {
+		switch current.Kind {
+		case coreir.ExprTextContainsCaseFolded, coreir.ExprTextTrim, coreir.ExprListFindByText, coreir.ExprListFilterByText,
+			coreir.ExprListFilterContainsCaseFolded, coreir.ExprListFilterJoinedContainsCaseFolded,
+			coreir.ExprListSortByOrdinalText, coreir.ExprListSortByOrdinalTexts, coreir.ExprResultErr,
+			coreir.ExprResultFailureOr:
+			found = true
 			return false
-		}
-		if isTextType(expression.Binary.Left.Type) && isTextType(expression.Binary.Right.Type) {
-			return true
-		}
-		return expressionNeedsTextSupport(*expression.Binary.Left) || expressionNeedsTextSupport(*expression.Binary.Right)
-	case coreir.ExprFieldProjection:
-		return expression.Field != nil && expression.Field.Receiver != nil && expressionNeedsTextSupport(*expression.Field.Receiver)
-	case coreir.ExprRecordConstruct:
-		if expression.Record == nil {
-			return false
-		}
-		for _, field := range expression.Record.Fields {
-			if field.Value != nil && expressionNeedsTextSupport(*field.Value) {
-				return true
+		case coreir.ExprBinary:
+			if current.Binary != nil && current.Binary.Left != nil && current.Binary.Right != nil && isTextType(current.Binary.Left.Type) && isTextType(current.Binary.Right.Type) {
+				found = true
+				return false
 			}
 		}
-		return false
-	case coreir.ExprListSingleton:
-		return expression.ListOne != nil && expression.ListOne.Value != nil && expressionNeedsTextSupport(*expression.ListOne.Value)
-	case coreir.ExprListCount:
-		return expression.ListCount != nil && expression.ListCount.Value != nil && expressionNeedsTextSupport(*expression.ListCount.Value)
-	case coreir.ExprListAppend:
-		return expression.ListAppend != nil && expression.ListAppend.Values != nil && expression.ListAppend.Value != nil && (expressionNeedsTextSupport(*expression.ListAppend.Values) || expressionNeedsTextSupport(*expression.ListAppend.Value))
-	case coreir.ExprListFindByText:
 		return true
-	case coreir.ExprListFilterByText:
-		return true
-	case coreir.ExprListFilterContainsCaseFolded, coreir.ExprListFilterJoinedContainsCaseFolded:
-		return true
-	case coreir.ExprListSortByOrdinalText, coreir.ExprListSortByOrdinalTexts:
-		return true
-	case coreir.ExprResultOK:
-		return expression.ResultOK != nil && expression.ResultOK.Value != nil && expressionNeedsTextSupport(*expression.ResultOK.Value)
-	case coreir.ExprResultErr:
-		return true
-	case coreir.ExprResultIsOK:
-		return expression.ResultIsOK != nil && expression.ResultIsOK.Value != nil && expressionNeedsTextSupport(*expression.ResultIsOK.Value)
-	case coreir.ExprResultSuccessOr:
-		return expression.SuccessOr != nil && expression.SuccessOr.Value != nil && expression.SuccessOr.Fallback != nil && (expressionNeedsTextSupport(*expression.SuccessOr.Value) || expressionNeedsTextSupport(*expression.SuccessOr.Fallback))
-	case coreir.ExprResultFailureOr:
-		return true
-	default:
-		return false
-	}
+	})
+	return found
 }
 
 func programNeedsCaseFoldedText(functions []coreir.Function) bool {
@@ -2110,50 +1950,13 @@ func programNeedsTextTrim(functions []coreir.Function) bool {
 }
 
 func expressionNeedsTextTrim(expression coreir.Expr) bool {
-	if expression.Kind == coreir.ExprTextTrim || expression.Kind == coreir.ExprListFilterJoinedContainsCaseFolded {
-		return true
-	}
-	switch expression.Kind {
-	case coreir.ExprUnary:
-		return expression.Unary != nil && expression.Unary.Operand != nil && expressionNeedsTextTrim(*expression.Unary.Operand)
-	case coreir.ExprBinary:
-		return expression.Binary != nil && expression.Binary.Left != nil && expression.Binary.Right != nil && (expressionNeedsTextTrim(*expression.Binary.Left) || expressionNeedsTextTrim(*expression.Binary.Right))
-	case coreir.ExprTextContainsCaseFolded:
-		return expression.TextContains != nil && expression.TextContains.Value != nil && expression.TextContains.Query != nil && (expressionNeedsTextTrim(*expression.TextContains.Value) || expressionNeedsTextTrim(*expression.TextContains.Query))
-	case coreir.ExprFieldProjection:
-		return expression.Field != nil && expression.Field.Receiver != nil && expressionNeedsTextTrim(*expression.Field.Receiver)
-	case coreir.ExprRecordConstruct:
-		if expression.Record != nil {
-			for _, field := range expression.Record.Fields {
-				if field.Value != nil && expressionNeedsTextTrim(*field.Value) {
-					return true
-				}
-			}
-		}
-	}
-	return false
+	return expressionContainsKind(expression, coreir.ExprTextTrim) || expressionContainsKind(expression, coreir.ExprListFilterJoinedContainsCaseFolded)
 }
 
 func expressionNeedsCaseFoldedText(expression coreir.Expr) bool {
-	switch expression.Kind {
-	case coreir.ExprTextContainsCaseFolded, coreir.ExprListFilterContainsCaseFolded, coreir.ExprListFilterJoinedContainsCaseFolded:
-		return true
-	case coreir.ExprUnary:
-		return expression.Unary != nil && expression.Unary.Operand != nil && expressionNeedsCaseFoldedText(*expression.Unary.Operand)
-	case coreir.ExprBinary:
-		return expression.Binary != nil && expression.Binary.Left != nil && expression.Binary.Right != nil && (expressionNeedsCaseFoldedText(*expression.Binary.Left) || expressionNeedsCaseFoldedText(*expression.Binary.Right))
-	case coreir.ExprFieldProjection:
-		return expression.Field != nil && expression.Field.Receiver != nil && expressionNeedsCaseFoldedText(*expression.Field.Receiver)
-	case coreir.ExprRecordConstruct:
-		if expression.Record != nil {
-			for _, field := range expression.Record.Fields {
-				if field.Value != nil && expressionNeedsCaseFoldedText(*field.Value) {
-					return true
-				}
-			}
-		}
-	}
-	return false
+	return expressionContainsKind(expression, coreir.ExprTextContainsCaseFolded) ||
+		expressionContainsKind(expression, coreir.ExprListFilterContainsCaseFolded) ||
+		expressionContainsKind(expression, coreir.ExprListFilterJoinedContainsCaseFolded)
 }
 
 func emitTextSupport(out *strings.Builder, emitCaseFold, emitTrim bool) {
