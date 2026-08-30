@@ -21,7 +21,7 @@ func TestDockerObservabilityGoldenUsesCanonicalSemanticAndCore(t *testing.T) {
 		t.Fatal(err)
 	}
 	module := pipelang.ModuleInput{ID: "app.root", Namespace: "app.root", DeclarationSpan: pipelang.Span{File: "docker-observability.pipe"}, Sources: []pipelang.SourceInput{{Path: "docker-observability.pipe", Data: source}}}
-	input := pipelang.ModuleSetInput{LanguageContract: pipelang.PipeLangLanguageContractV390, PackageID: "docker.observability", Root: "app.root", Modules: []pipelang.ModuleInput{module}}
+	input := pipelang.ModuleSetInput{LanguageContract: pipelang.PipeLangLanguageContractV400, PackageID: "docker.observability", Root: "app.root", Modules: []pipelang.ModuleInput{module}}
 	input.Lock.Modules = []pipelang.LockedModule{{ID: module.ID, SourceSHA256: pipelang.ModuleSourceSHA256(module.Sources), SemanticSHA256: pipelang.ModuleSemanticSHA256(input.PackageID, module.Namespace, nil)}}
 	analysis := pipelang.AnalyzeSemanticModuleSet(input)
 	if err := analysis.Error(); err != nil {
@@ -121,8 +121,8 @@ func TestDockerObservabilityGoldenUsesCanonicalSemanticAndCore(t *testing.T) {
 		t.Fatal(err)
 	}
 	displayNameFunction := displayNameHIR.Functions[len(displayNameHIR.Functions)-1]
-	if displayNameFunction.Body.Kind != hir.ExprImmutableLocal || displayNameFunction.Body.ImmutableLocal == nil || displayNameFunction.Body.ImmutableLocal.Initializer.Kind != hir.ExprCall || displayNameFunction.Body.ImmutableLocal.Return.Kind != hir.ExprConditional {
-		t.Fatalf("DisplayName HIR lost immutable normalization local and conditional fallback: %#v", displayNameFunction.Body)
+	if displayNameFunction.Body.Kind != hir.ExprImmutableLocal || displayNameFunction.Body.ImmutableLocal == nil || displayNameFunction.Body.ImmutableLocal.Initializer.Kind != hir.ExprCall || displayNameFunction.Body.ImmutableLocal.Return.Kind != hir.ExprImmutableLocal || displayNameFunction.Body.ImmutableLocal.Return.ImmutableLocal == nil || displayNameFunction.Body.ImmutableLocal.Return.ImmutableLocal.Initializer.Kind != hir.ExprConditional {
+		t.Fatalf("DisplayName HIR lost ordered immutable normalization and selection locals: %#v", displayNameFunction.Body)
 	}
 	displayNameCore, err := pipelang.LowerHIRToCore(displayNameHIR)
 	if err != nil {
@@ -145,8 +145,8 @@ func TestDockerObservabilityGoldenUsesCanonicalSemanticAndCore(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(displayGo), "p2 := PipeLangNormalizeName(p0)") || !strings.Contains(string(displayGo), "if pipelangCompareOrdinalText(p2, \"\") == 0") {
-		t.Fatalf("DisplayName generated Go lost immutable normalization local and conditional fallback:\n%s", displayGo)
+	if !strings.Contains(string(displayGo), "p2 := PipeLangNormalizeName(p0)") || !strings.Contains(string(displayGo), "p3 := func() string") || !strings.Contains(string(displayGo), "if pipelangCompareOrdinalText(p2, \"\") == 0") {
+		t.Fatalf("DisplayName generated Go lost ordered immutable normalization and selection locals:\n%s", displayGo)
 	}
 	typeID := func(name string) Identity {
 		for _, m := range semantic.Modules {
@@ -246,7 +246,7 @@ func TestDockerObservabilityGoldenUsesCanonicalSemanticAndCore(t *testing.T) {
 	if err = json.Unmarshal(raw, &checked); err != nil {
 		t.Fatal(err)
 	}
-	if len(checked.Sections) != 3 || len(app.Sections) != 3 || app.Selection == nil || app.Details == nil || app.Logs == nil || app.Metadata.LanguageContract != "v0.39.0" {
+	if len(checked.Sections) != 3 || len(app.Sections) != 3 || app.Selection == nil || app.Details == nil || app.Logs == nil || app.Metadata.LanguageContract != "v0.40.0" {
 		t.Fatalf("incomplete fixture: %#v", app)
 	}
 	bad := spec

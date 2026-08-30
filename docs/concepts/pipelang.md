@@ -1172,6 +1172,26 @@ language-contract metadata advances to `v0.39.0`. Type inference, multiple local
 shadowing, propagation, early return, statement branches, nested blocks, loops, effects, actions, runtime
 behavior, and target-specific semantics remain excluded.
 
+### PipeLang v0.40.0: ordered immutable locals
+
+One public pure method block may contain one or more source-ordered explicitly typed immutable
+locals followed by one terminal return:
+`{ T1 first = expression1; T2 second = expression2; ... return expression; }`. Each initializer
+must exactly match its declared type and evaluates eagerly exactly once. A binding enters scope
+only after its initializer, so later initializers may use earlier locals while self-reference,
+forward reference, duplicate names, and field/parameter shadowing fail. The terminal expression
+must exactly match the method return type. Contextual propagation remains excluded throughout the
+block.
+
+Typed HIR and target-neutral Core encode the source sequence as right-nested `immutable_local`
+nodes with contiguous positions. Core independently rejects locals outside the one top-level
+sequence, validates exact types and parameter/prior-local shadowing, and preserves v0.39.0's single-local form.
+The evaluator and Core-only Go backend evaluate and copy locals once in source order. Compiler,
+semantic projection, and Application IR schema identities and shapes remain unchanged; only their
+language-contract metadata advances to `v0.40.0`. Inference, reassignment, propagation, early
+returns, statement branches, nested blocks, loops, effects, actions, runtime behavior, and
+target-specific semantics remain excluded.
+
 ### Target-neutral Application IR
 
 `dockpipe.application.v1` is not a language feature or target generator. It consumes the public

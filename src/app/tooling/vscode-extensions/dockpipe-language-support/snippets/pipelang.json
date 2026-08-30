@@ -268,5 +268,16 @@
       "}"
     ],
     "description": "Create one v0.39.0 explicitly typed immutable local followed by a terminal return."
+  },
+  "PipeLang ordered immutable locals method": {
+    "prefix": "pipe-immutable-locals",
+    "body": [
+      "public ${1:string} ${2:Method}(${1:string} ${3:value}) {",
+      "\t${1:string} ${4:first} = ${5:expression};",
+      "\t${1:string} ${6:second} = ${7:${4:first}};",
+      "\treturn ${8:${6:second}};",
+      "}"
+    ],
+    "description": "Create a v0.40.0 source-ordered sequence of explicitly typed immutable locals followed by a terminal return."
   }
 }

@@ -23,7 +23,8 @@ public Class DockerApplication {
 	public string NormalizeName(string value) => trim(value);
 	public string DisplayName(string name, string fallback) {
 		string normalized = NormalizeName(name);
-		return normalized == "" ? fallback : normalized;
+		string selected = normalized == "" ? fallback : normalized;
+		return selected;
 	}
 	public string SelectedName(Optional<ContainerRow> value) => match(value){ some(row) => NormalizeName(row.Name), none => "" };
 }
