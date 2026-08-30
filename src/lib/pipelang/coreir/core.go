@@ -41,6 +41,7 @@ const (
 	LanguageContractV360 = "v0.36.0"
 	LanguageContractV370 = "v0.37.0"
 	LanguageContractV380 = "v0.38.0"
+	LanguageContractV390 = "v0.39.0"
 	CompilerContractV1   = "pipelang.compiler.v1"
 	BuiltinPackageID     = "pipelang"
 	ListSemanticPath     = "list"
@@ -163,6 +164,7 @@ const (
 	ExprUnary                              ExprKind = "unary"
 	ExprBinary                             ExprKind = "binary"
 	ExprConditional                        ExprKind = "conditional"
+	ExprImmutableLocal                     ExprKind = "immutable_local"
 	ExprCall                               ExprKind = "call"
 	ExprTextContainsCaseFolded             ExprKind = "text_contains_case_folded"
 	ExprTextTrim                           ExprKind = "text_trim"
@@ -235,6 +237,14 @@ type Conditional struct {
 	Condition *Expr `json:"condition"`
 	WhenTrue  *Expr `json:"when_true"`
 	WhenFalse *Expr `json:"when_false"`
+}
+
+type ImmutableLocal struct {
+	Position    int    `json:"position"`
+	Name        string `json:"name"`
+	Type        Type   `json:"type"`
+	Initializer *Expr  `json:"initializer"`
+	Return      *Expr  `json:"return"`
 }
 
 type Call struct {
@@ -413,6 +423,7 @@ type Expr struct {
 	Unary                              *Unary                              `json:"unary,omitempty"`
 	Binary                             *Binary                             `json:"binary,omitempty"`
 	Conditional                        *Conditional                        `json:"conditional,omitempty"`
+	ImmutableLocal                     *ImmutableLocal                     `json:"immutable_local,omitempty"`
 	Call                               *Call                               `json:"call,omitempty"`
 	TextContains                       *TextContainsCaseFolded             `json:"text_contains_case_folded,omitempty"`
 	TextTrim                           *TextTrim                           `json:"text_trim,omitempty"`

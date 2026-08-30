@@ -1153,6 +1153,25 @@ and Application IR schema shapes remain unchanged; only their language-contract 
 to `v0.38.0`. `if` statements, blocks, locals, mutation, conversions, pattern guards, effects,
 actions, runtime behavior, and target-specific semantics remain excluded.
 
+### PipeLang v0.39.0: immutable local plus terminal return
+
+One public pure method may replace its expression body with exactly
+`{ T name = initializer; return expression; }`. The local type is explicit and must exactly match
+the initializer. Initialization is eager and occurs once before the local enters scope. The local
+is immutable, cannot shadow a field or parameter, and has no public semantic identity. The return
+expression may use the local, parameters, and existing admitted eager pure expressions, including
+checked arithmetic whose explicit `Result` type is carried by the local declaration. Contextual
+propagation remains confined to its established complete-method carrier shape and is not admitted
+inside the local initializer or return.
+
+Typed HIR and target-neutral Core represent the binding, initializer, and return with an explicit
+`immutable_local` node. Core validates the one-node top-level shape, lexical scope, and exact types;
+the evaluator and Core-only Go backend preserve the same single-evaluation behavior. Compiler,
+semantic projection, and Application IR schema shapes remain unchanged; only their
+language-contract metadata advances to `v0.39.0`. Type inference, multiple locals, reassignment,
+shadowing, propagation, early return, statement branches, nested blocks, loops, effects, actions, runtime
+behavior, and target-specific semantics remain excluded.
+
 ### Target-neutral Application IR
 
 `dockpipe.application.v1` is not a language feature or target generator. It consumes the public

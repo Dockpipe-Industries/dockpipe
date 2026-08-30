@@ -140,7 +140,7 @@ func CompareOrdinalText(left, right string) (int, error) {
 // semantic evaluator or a target backend consumes the function.
 func ValidateFunction(function Function) error {
 	namedPredicate := isNamedPredicateFunction(function)
-	composed := exprContainsCall(function.Body) || exprContainsConditional(function.Body)
+	composed := exprContainsCall(function.Body) || exprContainsConditional(function.Body) || function.Body.Kind == ExprImmutableLocal
 	for position, parameter := range function.Parameters {
 		if parameter.Position != position {
 			return fmt.Errorf("parameter %d is not in normalized position order", position)
@@ -269,6 +269,9 @@ func ValidateFunction(function Function) error {
 func ValidateProgram(program Program) error {
 	functions := make(map[string]Function, len(program.Functions))
 	for _, function := range program.Functions {
+		if err := validateImmutableLocalContract(program.LanguageContract, function); err != nil {
+			return err
+		}
 		if err := ValidateFunction(function); err != nil {
 			return fmt.Errorf("function %s: %w", function.Name, err)
 		}
@@ -359,7 +362,7 @@ func validatePureCalls(contract string, function Function, functions map[string]
 	var walk func(Expr) error
 	walk = func(expression Expr) error {
 		if expression.Kind == ExprCall {
-			if contract != LanguageContractV360 && contract != LanguageContractV370 && contract != LanguageContractV380 {
+			if contract != LanguageContractV360 && contract != LanguageContractV370 && contract != LanguageContractV380 && contract != LanguageContractV390 {
 				return fmt.Errorf("function %s pure calls require language contract %q or later", function.Name, LanguageContractV360)
 			}
 			call := expression.Call
@@ -446,11 +449,52 @@ func validConditionalOperand(expression Expr) bool {
 	return true
 }
 
+func validateImmutableLocalContract(contract string, function Function) error {
+	count := 0
+	var walk func(Expr)
+	walk = func(expression Expr) {
+		if expression.Kind == ExprImmutableLocal {
+			count++
+		}
+		for _, child := range expressionChildren(expression) {
+			if child != nil {
+				walk(*child)
+			}
+		}
+	}
+	walk(function.Body)
+	if count == 0 {
+		return nil
+	}
+	if contract != LanguageContractV390 {
+		return fmt.Errorf("function %s immutable local requires language contract %q", function.Name, LanguageContractV390)
+	}
+	if count != 1 || function.Body.Kind != ExprImmutableLocal {
+		return fmt.Errorf("function %s admits exactly one top-level immutable local", function.Name)
+	}
+	if exprContainsPropagation(function.Body) {
+		return fmt.Errorf("function %s immutable local initializer and return exclude propagation", function.Name)
+	}
+	return nil
+}
+
+func exprContainsPropagation(expression Expr) bool {
+	if expression.Kind == ExprPropagate {
+		return true
+	}
+	for _, child := range expressionChildren(expression) {
+		if child != nil && exprContainsPropagation(*child) {
+			return true
+		}
+	}
+	return false
+}
+
 func validateConditionalContract(contract string, function Function) error {
 	if !exprContainsConditional(function.Body) {
 		return nil
 	}
-	if contract != LanguageContractV380 {
+	if contract != LanguageContractV380 && contract != LanguageContractV390 {
 		return fmt.Errorf("function %s conditional expressions require language contract %q", function.Name, LanguageContractV380)
 	}
 	if countConditionalExpressions(function.Body) != 1 {
@@ -528,7 +572,7 @@ func validatePureCallPlacement(contract string, function Function) error {
 		if !validCallPlacement(function.Body) {
 			return fmt.Errorf("function %s pure calls must be the complete body or directly nested call arguments under %s", function.Name, LanguageContractV360)
 		}
-	case LanguageContractV370, LanguageContractV380:
+	case LanguageContractV370, LanguageContractV380, LanguageContractV390:
 		if !validGeneralCallPlacement(function.Body) {
 			return fmt.Errorf("function %s composed pure calls retain direct match and propagate carriers", function.Name)
 		}
@@ -552,6 +596,10 @@ func expressionChildren(expression Expr) []*Expr {
 	case ExprConditional:
 		if expression.Conditional != nil {
 			children = append(children, expression.Conditional.Condition, expression.Conditional.WhenTrue, expression.Conditional.WhenFalse)
+		}
+	case ExprImmutableLocal:
+		if expression.ImmutableLocal != nil {
+			children = append(children, expression.ImmutableLocal.Initializer, expression.ImmutableLocal.Return)
 		}
 	case ExprCall:
 		if expression.Call != nil {
@@ -708,7 +756,7 @@ func callableIdentityEqual(left, right *CallableIdentity) bool {
 
 func isV310OrLaterContract(contract string) bool {
 	switch contract {
-	case LanguageContractV310, LanguageContractV320, LanguageContractV330, LanguageContractV340, LanguageContractV350, LanguageContractV360, LanguageContractV370, LanguageContractV380:
+	case LanguageContractV310, LanguageContractV320, LanguageContractV330, LanguageContractV340, LanguageContractV350, LanguageContractV360, LanguageContractV370, LanguageContractV380, LanguageContractV390:
 		return true
 	default:
 		return false
@@ -1044,6 +1092,27 @@ func validateExpr(expression Expr, parameters []Parameter) error {
 		}
 		if !TypeEqual(conditional.WhenTrue.Type, conditional.WhenFalse.Type) || !TypeEqual(expression.Type, conditional.WhenTrue.Type) {
 			return fmt.Errorf("conditional branches and result must have exactly the same type")
+		}
+	case ExprImmutableLocal:
+		local := expression.ImmutableLocal
+		if local == nil || local.Name == "" || local.Initializer == nil || local.Return == nil || local.Position != len(parameters) {
+			return fmt.Errorf("immutable local is incomplete or not canonically positioned")
+		}
+		if err := validateType(local.Type); err != nil {
+			return fmt.Errorf("immutable local type: %w", err)
+		}
+		if err := validateExpr(*local.Initializer, parameters); err != nil {
+			return fmt.Errorf("immutable local initializer: %w", err)
+		}
+		if !TypeEqual(local.Initializer.Type, local.Type) {
+			return fmt.Errorf("immutable local initializer type does not match its declaration")
+		}
+		scoped := append(append([]Parameter{}, parameters...), Parameter{Position: local.Position, Name: local.Name, Type: local.Type})
+		if err := validateExpr(*local.Return, scoped); err != nil {
+			return fmt.Errorf("immutable local return: %w", err)
+		}
+		if !TypeEqual(local.Return.Type, expression.Type) {
+			return fmt.Errorf("immutable local return type does not match its expression")
 		}
 	case ExprCall:
 		if expression.Call == nil || expression.Call.TargetName == "" || expression.Call.Target.PackageID == "" || expression.Call.Target.Path == "" || expression.Call.Target.Callable == nil {

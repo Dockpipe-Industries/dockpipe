@@ -161,6 +161,14 @@ type (
 		WhenFalse Expr
 		Span      Span
 	}
+	ImmutableLocalExpr struct {
+		Type        UnresolvedTypeRef
+		Name        string
+		NameSpan    Span
+		Initializer Expr
+		Return      Expr
+		Span        Span
+	}
 	CallExpr struct {
 		Name       string
 		NameSpan   Span
@@ -347,6 +355,7 @@ func (*IdentExpr) isExpr()                              {}
 func (*UnaryExpr) isExpr()                              {}
 func (*BinaryExpr) isExpr()                             {}
 func (*ConditionalExpr) isExpr()                        {}
+func (*ImmutableLocalExpr) isExpr()                     {}
 func (*CallExpr) isExpr()                               {}
 func (*TextContainsCaseFoldedExpr) isExpr()             {}
 func (*TextTrimExpr) isExpr()                           {}
@@ -382,6 +391,7 @@ func (e *IdentExpr) SourceSpan() Span                              { return e.Sp
 func (e *UnaryExpr) SourceSpan() Span                              { return e.Span }
 func (e *BinaryExpr) SourceSpan() Span                             { return e.Span }
 func (e *ConditionalExpr) SourceSpan() Span                        { return e.Span }
+func (e *ImmutableLocalExpr) SourceSpan() Span                     { return e.Span }
 func (e *CallExpr) SourceSpan() Span                               { return e.Span }
 func (e *TextContainsCaseFoldedExpr) SourceSpan() Span             { return e.Span }
 func (e *TextTrimExpr) SourceSpan() Span                           { return e.Span }
@@ -423,6 +433,8 @@ func setExprSpan(expr Expr, span Span) {
 	case *BinaryExpr:
 		node.Span = span
 	case *ConditionalExpr:
+		node.Span = span
+	case *ImmutableLocalExpr:
 		node.Span = span
 	case *CallExpr:
 		node.Span = span
@@ -493,6 +505,8 @@ func expressionChildren(expr Expr) []Expr {
 		return []Expr{node.Left, node.Right}
 	case *ConditionalExpr:
 		return []Expr{node.Condition, node.WhenTrue, node.WhenFalse}
+	case *ImmutableLocalExpr:
+		return []Expr{node.Initializer, node.Return}
 	case *CallExpr:
 		return append([]Expr(nil), node.Arguments...)
 	case *TextContainsCaseFoldedExpr:

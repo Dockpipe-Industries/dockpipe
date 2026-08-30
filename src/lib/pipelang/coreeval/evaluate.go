@@ -245,6 +245,34 @@ func evalExprWithProgram(expression coreir.Expr, arguments []Value, functions ma
 			}
 		}
 		return cloneOutcome(outcome), nil
+	case coreir.ExprImmutableLocal:
+		local := expression.ImmutableLocal
+		if local == nil || local.Initializer == nil || local.Return == nil || local.Position != len(arguments) {
+			return Outcome{}, fmt.Errorf("immutable local is incomplete or not canonically positioned")
+		}
+		initialized, err := evalExprWithProgram(*local.Initializer, arguments, functions)
+		if err != nil {
+			return Outcome{}, err
+		}
+		var value Value
+		if local.Type.Kind == coreir.TypeResult {
+			canonical := cloneOutcome(initialized)
+			value = Value{Type: local.Type, Result: &canonical}
+		} else {
+			if !initialized.OK {
+				return initialized, nil
+			}
+			value = cloneValue(initialized.Value)
+		}
+		if err := validateValue(value); err != nil {
+			return Outcome{}, fmt.Errorf("immutable local initializer: %w", err)
+		}
+		scoped := append(append([]Value{}, arguments...), cloneValue(value))
+		outcome, err := evalExprWithProgram(*local.Return, scoped, functions)
+		if err != nil {
+			return Outcome{}, err
+		}
+		return cloneOutcome(outcome), nil
 	case coreir.ExprCall:
 		if functions == nil || expression.Call == nil {
 			return Outcome{}, fmt.Errorf("pure call requires a validated Core program")
@@ -742,6 +770,7 @@ func evalExprWithProgram(expression coreir.Expr, arguments []Value, functions ma
 		}
 		tag := ""
 		var payload *Value
+		var arithmeticFailure Value
 		if carrier.Value.Type.Kind == coreir.TypeOptional {
 			if carrier.Value.Optional == nil {
 				return Outcome{}, fmt.Errorf("match Optional has no canonical value")
@@ -761,7 +790,12 @@ func evalExprWithProgram(expression coreir.Expr, arguments []Value, functions ma
 				payload = &resultCarrier.Value
 			} else {
 				tag = "err"
-				payload = resultCarrier.Failure
+				if carrier.Value.Type.Result.Failure.Kind == coreir.TypeArithmeticError {
+					arithmeticFailure = Value{Type: carrier.Value.Type.Result.Failure, String: string(resultCarrier.Error)}
+					payload = &arithmeticFailure
+				} else {
+					payload = resultCarrier.Failure
+				}
 			}
 		} else {
 			return Outcome{}, fmt.Errorf("match operand is not tagged")

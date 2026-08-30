@@ -379,6 +379,31 @@ This boundary adds no `if` statement, block, local, mutation, implicit conversio
 effect, action, runtime policy, Application IR inference, or target behavior. Any further language
 seam requires another source-backed founder decision and separate implementation approval.
 
+## Accepted v0.39.0 boundary — immutable local plus terminal return
+
+`v0.39.0` admits exactly one method block of the form
+`{ T name = initializer; return expression; }`. The local type is explicit and must exactly match
+the initializer. Initialization is eager and occurs exactly once before the local enters lexical
+scope. The return expression may reference parameters, the local, and existing admitted pure
+expressions. An explicit checked-arithmetic `Result` local supplies the required result context.
+Contextual propagation remains confined to its established complete-method carrier shape and is
+excluded from both local expressions. The local cannot shadow a field or parameter and has no
+public semantic identity.
+
+Typed HIR and target-neutral Core carry one explicit `immutable_local` node containing the
+analysis-local binding, declared type, initializer, and terminal return. Core independently
+validates the single top-level node, canonical binding position, initializer scope and type, and
+return type. The evaluator copies the initialized value into the local frame once; the Core-only Go
+backend emits an equivalent typed lexical binding. TASK-020's Docker observability fixture proves
+normalization into one local followed by the existing bounded fallback conditional. Compiler,
+semantic projection, and Application IR schema shapes remain unchanged; only language-contract
+metadata advances, and all 45 frozen legacy sources remain exact.
+
+This boundary adds no inference, multiple locals, reassignment, shadowing, propagation, early return, `if`
+statement, nested block, loop, effect, action, runtime policy, Application IR inference, or target
+behavior. Any further language seam requires another source-backed founder decision and separate
+implementation approval.
+
 ## Accepted first Application IR boundary — `dockpipe.application.v1`
 
 The first target-neutral read-only Application IR consumes only a canonical public

@@ -67,7 +67,7 @@ func TestV320SortDirectionsAreContextualAndRequired(t *testing.T) {
 }
 
 func TestLaterContractsPreserveLegacyAndDirectionalOrdinalSortSpellings(t *testing.T) {
-	contracts := []LanguageContract{PipeLangLanguageContractV330, PipeLangLanguageContractV340, PipeLangLanguageContractV350, PipeLangLanguageContractV360, PipeLangLanguageContractV370, PipeLangLanguageContractV380}
+	contracts := []LanguageContract{PipeLangLanguageContractV330, PipeLangLanguageContractV340, PipeLangLanguageContractV350, PipeLangLanguageContractV360, PipeLangLanguageContractV370, PipeLangLanguageContractV380, PipeLangLanguageContractV390}
 	legacySources := []struct {
 		source string
 		kind   hir.ExprKind
