@@ -32,9 +32,14 @@ expressions, with direct match and propagation carriers preserved. Step 8d is co
 exactly typed lazy `condition ? whenTrue : whenFalse` expression per method under `v0.38.0`. Step 8e
 is complete for one explicitly typed immutable local followed by one terminal return under
 `v0.39.0`. Step 8f is complete for one or more source-ordered explicitly typed immutable locals
-followed by one terminal return under `v0.40.0`. These seams do not complete or authorize inference,
+followed by one terminal return under `v0.40.0`. Step 8g is complete for exactly one
+`T name = propagate(carrier);` first local under `v0.41.0`, where `carrier` is the sole direct
+parameter, its bounded carrier type exactly equals the method return type, and `T` exactly equals
+its payload type. These seams do not complete or authorize inference,
 reassignment, shadowing, cross-class/module calls, overloads, generics, function values, lambdas,
-recursion, general blocks, branch statements, loops, effects, entrypoints, or the rest of step 8.
+recursion, general blocks, branch statements, loops, effects, entrypoints, additional or nested
+propagation, computed propagation operands, propagation from prior locals, arbitrary `Result`
+carriers, or the rest of step 8.
 
 Each slice is independently reviewable and keeps syntax, semantics, diagnostics, projection,
 editor, tests, and any enabled backend synchronized. No permissive parser, target-owned semantics,
@@ -224,6 +229,26 @@ Application IR schema identities and shapes remain unchanged; only language-cont
 advances. Inference, reassignment, propagation inside the block, early returns, statement branches,
 nested blocks, loops, effects, actions, runtime behavior, and target-specific behavior remain
 excluded.
+
+## Checkpoint v0.41.0 complete contract
+
+One public pure method block may place exactly one `T name = propagate(carrier);` declaration as
+its first immutable local. `carrier` is the method's sole direct parameter, its carrier type
+exactly equals the method return type, and `T` exactly equals the carried payload type. The carrier
+is limited to `Optional<T>` for an admitted primitive or record, `Result<List<R>, string>`, or
+`Result<string, string>`. Presence or success binds a validated copied payload and continues
+through the remaining ordered locals and terminal return; absence or failure immediately returns
+the identical canonical carrier.
+
+Typed HIR and target-neutral Core reuse the existing `propagate` and right-nested
+`immutable_local` nodes. Core independently validates the first-local placement, single
+occurrence, direct-parameter identity, exact carrier and payload types, and bounded carrier matrix.
+The evaluator and Core-only Go backend preserve the same short-circuit and copied-value semantics.
+Public compiler, semantic, and Application IR schema identities and shapes remain unchanged; only
+language-contract metadata advances. No second or nested propagation, computed operand,
+propagation from a prior local, arbitrary `Result` including checked arithmetic, inference,
+reassignment, early return, statement branch, nested block, loop, effect, action, runtime, target,
+adapter, UI, or deployment behavior enters by implication.
 
 ## Application IR checkpoint complete contract
 

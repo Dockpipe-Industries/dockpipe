@@ -609,6 +609,17 @@ func countConditionalExpressions(expr Expr) int {
 	return count
 }
 
+func countPropagationExpressions(expr Expr) int {
+	count := 0
+	if _, ok := expr.(*PropagateExpr); ok {
+		count++
+	}
+	for _, child := range expressionChildren(expr) {
+		count += countPropagationExpressions(child)
+	}
+	return count
+}
+
 func validConditionalOperand(expr Expr) bool {
 	switch expr.(type) {
 	case *ConditionalExpr, *PropagateExpr, *MatchExpr:

@@ -121,3 +121,23 @@ identities and shapes; only language-contract metadata advances. The exact 45-so
 remains frozen. Inference, reassignment, propagation inside the block, early return, statement
 branches, nested blocks, loops, effects, actions, runtime behavior, and target-specific behavior
 remain excluded.
+
+## Step 8g — block-scoped bounded propagation (`v0.41.0`)
+
+Production source admits exactly one `T name = propagate(carrier);` declaration as the first local
+of an ordered immutable-local method block. `carrier` is the method's sole direct parameter and
+its carrier type exactly equals the method return type. `T` exactly equals the payload type. The
+carrier matrix is limited to an `Optional` primitive or record, `Result<List<R>, string>`, or
+`Result<string, string>`. Presence or success binds a validated copied payload before later locals
+and the terminal return; absence or failure immediately returns the identical canonical carrier.
+
+Typed HIR and target-neutral Core reuse the existing `propagate` and `immutable_local` nodes. Core
+independently validates placement, occurrence count, direct parameter identity, exact types, and
+the bounded carrier matrix. The evaluator and Core-only Go backend preserve short-circuit and
+copied-value semantics. The Docker observability Application IR consumer proves the text-Result
+shape end to end. `pipelang.compiler.v1`, `pipelang.semantic.v1`, and
+`dockpipe.application.v1` retain their identities and schema shapes; only language-contract
+metadata advances. The exact 45-source legacy lane remains frozen. Additional or nested
+propagation, computed operands, propagation from prior locals, arbitrary `Result` carriers,
+inference, reassignment, early returns, statement branches, nested blocks, loops, effects, actions,
+runtime behavior, and target-specific behavior remain excluded.

@@ -431,6 +431,31 @@ branch, nested block, loop, effect, action, runtime policy, Application IR infer
 behavior. Any further language seam requires another source-backed founder decision and separate
 implementation approval.
 
+## Accepted v0.41.0 boundary — block-scoped bounded propagation
+
+`v0.41.0` admits exactly one declaration spelled `T name = propagate(carrier);` as the first
+immutable local of a public pure method block. `carrier` must be the method's sole direct
+parameter, and its carrier type must exactly equal the method return type. `T` must exactly equal
+the carried payload type. When the carrier is present or successful, evaluation copies the
+validated payload into `name`, then evaluates later ordered locals and the terminal return. When
+the carrier is absent or failed, evaluation immediately returns the identical canonical carrier.
+
+The carrier matrix is closed: `Optional<T>` where `T` is an already admitted primitive or record,
+`Result<List<R>, string>`, and `Result<string, string>`. Typed HIR and target-neutral Core reuse the
+existing `propagate` expression and canonically positioned right-nested `immutable_local` nodes.
+Core independently proves the first-local placement, single propagation occurrence, direct sole
+parameter operand, exact carrier and payload types, and bounded carrier shape. The evaluator and
+Core-only Go backend preserve the same short-circuit and copied-value behavior. TASK-020's Docker
+observability consumer proves the text-Result form through `dockpipe.application.v1`.
+
+Compiler, semantic projection, and Application IR schema identities and shapes remain unchanged;
+only language-contract metadata advances, and all 45 frozen legacy sources remain exact. No
+second or nested propagation, computed operand, propagation from a prior local, arbitrary `Result`
+including checked-arithmetic results, inference, reassignment, early return, statement branch,
+nested block, loop, effect, action, runtime policy, target behavior, adapter, UI, or deployment
+behavior enters by implication. Any further language seam requires another source-backed founder
+decision and separate implementation approval.
+
 ## Accepted first Application IR boundary — `dockpipe.application.v1`
 
 The first target-neutral read-only Application IR consumes only a canonical public

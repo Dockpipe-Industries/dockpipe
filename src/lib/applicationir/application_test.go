@@ -21,7 +21,7 @@ func TestDockerObservabilityGoldenUsesCanonicalSemanticAndCore(t *testing.T) {
 		t.Fatal(err)
 	}
 	module := pipelang.ModuleInput{ID: "app.root", Namespace: "app.root", DeclarationSpan: pipelang.Span{File: "docker-observability.pipe"}, Sources: []pipelang.SourceInput{{Path: "docker-observability.pipe", Data: source}}}
-	input := pipelang.ModuleSetInput{LanguageContract: pipelang.PipeLangLanguageContractV400, PackageID: "docker.observability", Root: "app.root", Modules: []pipelang.ModuleInput{module}}
+	input := pipelang.ModuleSetInput{LanguageContract: pipelang.PipeLangLanguageContractV410, PackageID: "docker.observability", Root: "app.root", Modules: []pipelang.ModuleInput{module}}
 	input.Lock.Modules = []pipelang.LockedModule{{ID: module.ID, SourceSHA256: pipelang.ModuleSourceSHA256(module.Sources), SemanticSHA256: pipelang.ModuleSemanticSHA256(input.PackageID, module.Namespace, nil)}}
 	analysis := pipelang.AnalyzeSemanticModuleSet(input)
 	if err := analysis.Error(); err != nil {
@@ -148,6 +148,40 @@ func TestDockerObservabilityGoldenUsesCanonicalSemanticAndCore(t *testing.T) {
 	if !strings.Contains(string(displayGo), "p2 := PipeLangNormalizeName(p0)") || !strings.Contains(string(displayGo), "p3 := func() string") || !strings.Contains(string(displayGo), "if pipelangCompareOrdinalText(p2, \"\") == 0") {
 		t.Fatalf("DisplayName generated Go lost ordered immutable normalization and selection locals:\n%s", displayGo)
 	}
+	details := find("Details")
+	detailsHIR, err := pipelang.LowerSemanticMethodToHIR(analysis, *details.Identity)
+	if err != nil {
+		t.Fatal(err)
+	}
+	detailsFunction := detailsHIR.Functions[len(detailsHIR.Functions)-1]
+	if detailsFunction.Body.Kind != hir.ExprImmutableLocal || detailsFunction.Body.ImmutableLocal == nil || detailsFunction.Body.ImmutableLocal.Initializer.Kind != hir.ExprPropagate {
+		t.Fatalf("Details HIR lost block-scoped propagation: %#v", detailsFunction.Body)
+	}
+	detailsCore, err := pipelang.LowerHIRToCore(detailsHIR)
+	if err != nil {
+		t.Fatal(err)
+	}
+	detailsCoreFunction := detailsCore.Functions[len(detailsCore.Functions)-1]
+	resultType := detailsCoreFunction.ReturnType
+	detailsText := resultType.Result.Success
+	success := coreeval.Value{Type: resultType, Result: &coreeval.Outcome{OK: true, Value: coreeval.Value{Type: detailsText, String: "inspect"}}}
+	detailsOutcome, err := coreeval.EvaluateProgram(detailsCore, coreir.SemanticIdentity{PackageID: string(details.Identity.PackageID), Path: string(details.Identity.Path)}, []coreeval.Value{success})
+	if err != nil || !detailsOutcome.OK || detailsOutcome.Value.String != "inspect" {
+		t.Fatalf("Details success = %#v, %v", detailsOutcome, err)
+	}
+	failureText := coreeval.Value{Type: detailsText, String: "unavailable"}
+	failure := coreeval.Value{Type: resultType, Result: &coreeval.Outcome{Value: coreeval.Value{Type: detailsText}, Failure: &failureText}}
+	detailsOutcome, err = coreeval.EvaluateProgram(detailsCore, coreir.SemanticIdentity{PackageID: string(details.Identity.PackageID), Path: string(details.Identity.Path)}, []coreeval.Value{failure})
+	if err != nil || detailsOutcome.OK || detailsOutcome.Failure == nil || detailsOutcome.Failure.String != "unavailable" {
+		t.Fatalf("Details failure = %#v, %v", detailsOutcome, err)
+	}
+	detailsGo, err := gobackend.Generate(detailsCore)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(detailsGo), "if !p0.OK") || !strings.Contains(string(detailsGo), "p1 := p0.Value") {
+		t.Fatalf("Details generated Go lost block-scoped propagation:\n%s", detailsGo)
+	}
 	typeID := func(name string) Identity {
 		for _, m := range semantic.Modules {
 			for _, x := range m.Types {
@@ -246,7 +280,7 @@ func TestDockerObservabilityGoldenUsesCanonicalSemanticAndCore(t *testing.T) {
 	if err = json.Unmarshal(raw, &checked); err != nil {
 		t.Fatal(err)
 	}
-	if len(checked.Sections) != 3 || len(app.Sections) != 3 || app.Selection == nil || app.Details == nil || app.Logs == nil || app.Metadata.LanguageContract != "v0.40.0" {
+	if len(checked.Sections) != 3 || len(app.Sections) != 3 || app.Selection == nil || app.Details == nil || app.Logs == nil || app.Metadata.LanguageContract != "v0.41.0" {
 		t.Fatalf("incomplete fixture: %#v", app)
 	}
 	bad := spec
