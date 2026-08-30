@@ -31,9 +31,10 @@ complete for `v0.37.0` composition of those calls throughout already admitted ea
 expressions, with direct match and propagation carriers preserved. Step 8d is complete for one
 exactly typed lazy `condition ? whenTrue : whenFalse` expression per method under `v0.38.0`. Step 8e
 is complete for one explicitly typed immutable local followed by one terminal return under
-`v0.39.0`. These seams do not complete or authorize multiple locals, inference, reassignment,
-shadowing, cross-class/module calls, overloads, generics, function values, lambdas, recursion,
-general blocks, branch statements, loops, effects, entrypoints, or the rest of step 8.
+`v0.39.0`. Step 8f is complete for one or more source-ordered explicitly typed immutable locals
+followed by one terminal return under `v0.40.0`. These seams do not complete or authorize inference,
+reassignment, shadowing, cross-class/module calls, overloads, generics, function values, lambdas,
+recursion, general blocks, branch statements, loops, effects, entrypoints, or the rest of step 8.
 
 Each slice is independently reviewable and keeps syntax, semantics, diagnostics, projection,
 editor, tests, and any enabled backend synchronized. No permissive parser, target-owned semantics,
@@ -203,6 +204,26 @@ Typed HIR and target-neutral Core carry an explicit `immutable_local` node, anal
 initializer, and return. Core validates canonical scope and exact types; the evaluator and
 Core-only Go backend evaluate the initializer once and return from the scoped expression. Public
 identities and schema shapes remain unchanged; only language-contract metadata advances.
+
+## Checkpoint v0.40.0 complete contract
+
+One public pure method may use
+`{ T1 first = expression1; T2 second = expression2; ... return expression; }` with one or more
+source-ordered explicitly typed immutable locals. Initializers evaluate eagerly exactly once in
+source order. Each local enters scope only after its initializer, so later initializers may use
+earlier locals while self-reference, forward reference, duplicate names, and field/parameter
+shadowing fail. Every initializer exactly matches its declared type and the terminal expression
+exactly matches the method return type.
+
+Typed HIR and target-neutral Core represent the sequence as canonically positioned right-nested
+`immutable_local` nodes. Core proves that every local belongs to the one top-level sequence,
+validates contiguous positions and parameter/prior-local shadowing independently, and rejects locals in initializers or
+other expression positions. The evaluator and Core-only Go backend preserve source order,
+once-only initialization, lexical scope, and copied value storage. Public compiler, semantic, and
+Application IR schema identities and shapes remain unchanged; only language-contract metadata
+advances. Inference, reassignment, propagation inside the block, early returns, statement branches,
+nested blocks, loops, effects, actions, runtime behavior, and target-specific behavior remain
+excluded.
 
 ## Application IR checkpoint complete contract
 

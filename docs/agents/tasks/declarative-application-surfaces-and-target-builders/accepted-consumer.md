@@ -145,6 +145,16 @@ adapter inference, runtime policy, Docker behavior, UI behavior, or target seman
 `dockpipe.application.v1` schema remains unchanged; only recorded language-contract metadata
 advances.
 
+### PipeLang v0.40.0 ordered-immutable-local value
+
+The same read-only Docker observability fixture now proves
+`{ string normalized = NormalizeName(name); string selected = normalized == "" ? fallback : normalized; return selected; }`.
+The normalization and selection initializers each evaluate once in source order; `selected` can
+see `normalized`, and the terminal return sees both lexical bindings. This adds no Application IR
+field, state, action, adapter inference, runtime policy, Docker behavior, UI behavior, or target
+semantics. The `dockpipe.application.v1` schema remains unchanged; only recorded
+language-contract metadata advances.
+
 ### Accepted `dockpipe.application.v1` read-only projection
 
 The first Application IR boundary is an explicit, separately versioned projection of a public

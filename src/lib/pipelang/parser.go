@@ -364,23 +364,41 @@ func (p *parser) parseMethodBody() (Expr, Span, error) {
 		return nil, Span{}, oneDiagnostic(p.sources, CodeUnexpectedToken, CategorySyntax, p.peek().span, "method blocks require language contract v0.39.0")
 	}
 	start := p.next()
-	localType, err := p.parseTypeRef()
-	if err != nil {
-		return nil, Span{}, err
+	type localDeclaration struct {
+		typeRef     UnresolvedTypeRef
+		name        token
+		initializer Expr
 	}
-	name, err := p.expect(tokIdent)
-	if err != nil {
-		return nil, Span{}, err
-	}
-	if _, err := p.expect(tokAssign); err != nil {
-		return nil, Span{}, err
-	}
-	initializer, err := p.parseExpr(1)
-	if err != nil {
-		return nil, Span{}, err
-	}
-	if _, err := p.expect(tokSemi); err != nil {
-		return nil, Span{}, err
+	locals := make([]localDeclaration, 0, 1)
+	for {
+		if p.peek().kind == tokIdent && p.peek().lit == "return" {
+			if len(locals) == 0 {
+				return nil, Span{}, oneDiagnostic(p.sources, CodeUnexpectedToken, CategorySyntax, p.peek().span, "method blocks require at least one immutable local declaration")
+			}
+			break
+		}
+		if len(locals) > 0 && !hasImmutableLocalSequenceSourceContract(p.languageContract) {
+			return nil, Span{}, oneDiagnostic(p.sources, CodeUnexpectedToken, CategorySyntax, p.peek().span, "expected return after the v0.39.0 immutable local")
+		}
+		localType, err := p.parseTypeRef()
+		if err != nil {
+			return nil, Span{}, err
+		}
+		name, err := p.expect(tokIdent)
+		if err != nil {
+			return nil, Span{}, err
+		}
+		if _, err := p.expect(tokAssign); err != nil {
+			return nil, Span{}, err
+		}
+		initializer, err := p.parseExpr(1)
+		if err != nil {
+			return nil, Span{}, err
+		}
+		if _, err := p.expect(tokSemi); err != nil {
+			return nil, Span{}, err
+		}
+		locals = append(locals, localDeclaration{typeRef: localType, name: name, initializer: initializer})
 	}
 	returnKeyword, err := p.expect(tokIdent)
 	if err != nil {
@@ -400,8 +418,16 @@ func (p *parser) parseMethodBody() (Expr, Span, error) {
 	if err != nil {
 		return nil, Span{}, err
 	}
-	span := mergeSpans(start.span, end.span)
-	return &ImmutableLocalExpr{Type: localType, Name: name.lit, NameSpan: name.span, Initializer: initializer, Return: returned, Span: span}, end.span, nil
+	body := returned
+	for index := len(locals) - 1; index >= 0; index-- {
+		local := locals[index]
+		localStart := local.typeRef.Span
+		if index == 0 {
+			localStart = start.span
+		}
+		body = &ImmutableLocalExpr{Type: local.typeRef, Name: local.name.lit, NameSpan: local.name.span, Initializer: local.initializer, Return: body, Span: mergeSpans(localStart, end.span)}
+	}
+	return body, end.span, nil
 }
 
 func (p *parser) parseOptionalVisibility() (Visibility, error) {
@@ -568,7 +594,7 @@ func (p *parser) parsePostfix() (Expr, error) {
 	if !hasRecordFieldProjectionSourceContract(p.languageContract) {
 		return expr, nil
 	}
-	for p.peek().kind == tokDot || ((p.languageContract == PipeLangLanguageContractV330 || p.languageContract == PipeLangLanguageContractV340 || p.languageContract == PipeLangLanguageContractV350 || p.languageContract == PipeLangLanguageContractV360 || p.languageContract == PipeLangLanguageContractV370 || p.languageContract == PipeLangLanguageContractV380 || p.languageContract == PipeLangLanguageContractV390) && p.peek().kind == tokLBracket) {
+	for p.peek().kind == tokDot || ((p.languageContract == PipeLangLanguageContractV330 || p.languageContract == PipeLangLanguageContractV340 || p.languageContract == PipeLangLanguageContractV350 || p.languageContract == PipeLangLanguageContractV360 || p.languageContract == PipeLangLanguageContractV370 || p.languageContract == PipeLangLanguageContractV380 || p.languageContract == PipeLangLanguageContractV390 || p.languageContract == PipeLangLanguageContractV400) && p.peek().kind == tokLBracket) {
 		if p.peek().kind == tokLBracket {
 			p.next()
 			index, err := p.parseExpr(1)
@@ -1387,7 +1413,7 @@ func (p *parser) parseListSortByOrdinal() (Expr, error) {
 	if err != nil {
 		return nil, err
 	}
-	if p.languageContract == PipeLangLanguageContractV320 || p.languageContract == PipeLangLanguageContractV330 || p.languageContract == PipeLangLanguageContractV340 || p.languageContract == PipeLangLanguageContractV350 || p.languageContract == PipeLangLanguageContractV360 || p.languageContract == PipeLangLanguageContractV370 || p.languageContract == PipeLangLanguageContractV380 || p.languageContract == PipeLangLanguageContractV390 {
+	if p.languageContract == PipeLangLanguageContractV320 || p.languageContract == PipeLangLanguageContractV330 || p.languageContract == PipeLangLanguageContractV340 || p.languageContract == PipeLangLanguageContractV350 || p.languageContract == PipeLangLanguageContractV360 || p.languageContract == PipeLangLanguageContractV370 || p.languageContract == PipeLangLanguageContractV380 || p.languageContract == PipeLangLanguageContractV390 || p.languageContract == PipeLangLanguageContractV400 {
 		if _, err := p.expect(tokComma); err != nil {
 			return nil, err
 		}

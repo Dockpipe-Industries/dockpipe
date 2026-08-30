@@ -404,6 +404,33 @@ statement, nested block, loop, effect, action, runtime policy, Application IR in
 behavior. Any further language seam requires another source-backed founder decision and separate
 implementation approval.
 
+## Accepted v0.40.0 boundary — ordered immutable locals
+
+`v0.40.0` widens only the v0.39.0 method block to one or more source-ordered declarations followed
+by one terminal return:
+`{ T1 first = expression1; T2 second = expression2; ... return expression; }`. Every local type is
+explicit and must exactly match its initializer. Initializers evaluate eagerly exactly once in
+source order. A local enters lexical scope only after its initializer, so a later initializer may
+reference earlier locals while self-reference and forward reference fail. Local names are unique
+within the sequence and cannot shadow fields or parameters. Locals remain immutable and have no
+public semantic identity.
+
+Typed HIR and target-neutral Core reuse the explicit `immutable_local` node as one right-nested
+top-level sequence with contiguous binding positions after the parameters. Core independently
+proves that every local is in that sequence, validates exact initializer and return types, and
+rejects parameter/prior-local shadowing or a local in any initializer or non-sequence expression position. The evaluator
+and Core-only Go backend evaluate and copy each initialized value once, extend lexical scope in
+order, and evaluate the terminal return only after the sequence completes. TASK-020's Docker
+observability fixture proves normalization into one local, conditional selection into a second,
+and return of the selected value.
+
+Compiler, semantic projection, and Application IR schema identities and shapes remain unchanged;
+only language-contract metadata advances, and all 45 frozen legacy sources remain exact. This
+boundary adds no inference, reassignment, propagation inside the block, early return, statement
+branch, nested block, loop, effect, action, runtime policy, Application IR inference, or target
+behavior. Any further language seam requires another source-backed founder decision and separate
+implementation approval.
+
 ## Accepted first Application IR boundary — `dockpipe.application.v1`
 
 The first target-neutral read-only Application IR consumes only a canonical public

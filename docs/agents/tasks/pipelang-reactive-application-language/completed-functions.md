@@ -100,3 +100,24 @@ existing bounded fallback conditional. Public schema shapes remain unchanged, la
 metadata advances to `v0.39.0`, and the exact 45-source legacy inventory remains frozen. Inference,
 multiple locals, reassignment, shadowing, propagation, early return, statement branches, nested blocks, loops,
 effects, actions, runtime behavior, and target-specific behavior remain excluded.
+
+## Step 8f — ordered immutable locals (`v0.40.0`)
+
+Production source widens the v0.39.0 public pure method block to one or more source-ordered
+explicitly typed immutable local declarations followed by one terminal return. Initializers
+evaluate eagerly exactly once in source order and must exactly match their declared types. Each
+local enters scope only after its initializer; later initializers may use earlier locals, while
+self-reference, forward reference, duplicate names, and field/parameter shadowing fail. The
+terminal expression must exactly match the method return type.
+
+Typed HIR and target-neutral Core reuse right-nested `immutable_local` nodes with contiguous local
+positions. Core independently proves that every local is part of the single top-level sequence,
+rejects local nodes inside initializers or other expression positions, and validates exact types
+and parameter/prior-local shadowing. The evaluator and Core-only Go backend preserve source order, once-only evaluation,
+lexical scope, and copied values. The Docker observability consumer proves normalization into one
+local, conditional fallback selection into a later local, and return of that later binding.
+`pipelang.compiler.v1`, `pipelang.semantic.v1`, and `dockpipe.application.v1` keep their schema
+identities and shapes; only language-contract metadata advances. The exact 45-source legacy lane
+remains frozen. Inference, reassignment, propagation inside the block, early return, statement
+branches, nested blocks, loops, effects, actions, runtime behavior, and target-specific behavior
+remain excluded.

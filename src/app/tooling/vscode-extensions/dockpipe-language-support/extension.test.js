@@ -291,3 +291,8 @@ assert(pipeLangReadme.includes("Initialization is eager"));
 assert.strictEqual(pipeLangSnippets["PipeLang immutable local method"].prefix, "pipe-immutable-local");
 assert(pipeLangSnippets["PipeLang immutable local method"].description.includes("v0.39.0"));
 assert(pipeLangSnippets["PipeLang immutable local method"].body.some((line) => line.includes("return")));
+assert(pipeLangReadme.includes("`v0.40.0`"));
+assert(pipeLangReadme.includes("once in order"));
+assert.strictEqual(pipeLangSnippets["PipeLang ordered immutable locals method"].prefix, "pipe-immutable-locals");
+assert(pipeLangSnippets["PipeLang ordered immutable locals method"].description.includes("v0.40.0"));
+assert.strictEqual(pipeLangSnippets["PipeLang ordered immutable locals method"].body.filter((line) => line.includes(" = ")).length, 2);

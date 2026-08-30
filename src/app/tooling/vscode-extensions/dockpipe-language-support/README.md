@@ -93,3 +93,5 @@ make install-dockpipe-language-support
 - `v0.38.0` adds one exactly typed lazy `condition ? whenTrue : whenFalse` expression per method through `pipe-conditional`. Both branches are checked, only the selected branch executes, and nested conditional, match, and propagation operands remain excluded.
 
 - `v0.39.0` adds one explicitly typed immutable local plus one terminal return through `pipe-immutable-local`. Initialization is eager and occurs once; an explicit checked-arithmetic `Result` local supplies arithmetic result context. Inference, shadowing, reassignment, multiple locals, contextual propagation, early returns, statement branches, and loops remain excluded.
+
+- `v0.40.0` adds source-ordered explicitly typed immutable locals through `pipe-immutable-locals`. Initializers run eagerly once in order; each local enters scope after its initializer, and later initializers may use earlier locals. Inference, reassignment, shadowing, contextual propagation, early returns, statement branches, and loops remain excluded.

@@ -88,6 +88,100 @@ func TestGeneratedImmutableLocal(t *testing.T) {
 `, gobackend.PackageName)))
 }
 
+func TestV400OrderedImmutableLocalsPipeline(t *testing.T) {
+	source := `public Class Root {
+		public string Normalize(string value) => trim(value);
+		public string DisplayName(string name, string fallback) {
+			string normalized = Normalize(name);
+			string selected = normalized == "" ? fallback : normalized;
+			string displayed = Normalize(selected);
+			return displayed;
+		}
+	}`
+	input := semanticTestModuleSet("app.root", []ModuleInput{testModule("app.root", "ordered-immutable-locals.pipe", source)}, nil)
+	input.LanguageContract = PipeLangLanguageContractV400
+	analysis := AnalyzeSemanticModuleSet(input)
+	if err := analysis.Error(); err != nil {
+		t.Fatal(err)
+	}
+	projection, err := BuildSemanticProjection(analysis)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if projection.LanguageContract != PipeLangLanguageContractV400 {
+		t.Fatalf("projection language contract = %q", projection.LanguageContract)
+	}
+
+	identity := semanticMethodNamed(t, analysis, "DisplayName").Identity
+	typed, err := LowerSemanticMethodToHIR(analysis, identity)
+	if err != nil {
+		t.Fatal(err)
+	}
+	function := hirFunctionNamed(t, typed, "DisplayName")
+	first := function.Body.ImmutableLocal
+	if typed.LanguageContract != coreir.LanguageContractV400 || function.Body.Kind != hir.ExprImmutableLocal || first == nil || first.Binding.Position != 2 || first.Initializer.Kind != hir.ExprCall {
+		t.Fatalf("DisplayName first HIR local = %#v", function.Body)
+	}
+	second := first.Return.ImmutableLocal
+	if first.Return.Kind != hir.ExprImmutableLocal || second == nil || second.Binding.Position != 3 || second.Initializer.Kind != hir.ExprConditional {
+		t.Fatalf("DisplayName second HIR local = %#v", first.Return)
+	}
+	third := second.Return.ImmutableLocal
+	if second.Return.Kind != hir.ExprImmutableLocal || third == nil || third.Binding.Position != 4 || third.Initializer.Kind != hir.ExprCall || third.Return.Kind != hir.ExprReference {
+		t.Fatalf("DisplayName third HIR local = %#v", second.Return)
+	}
+
+	core, err := LowerHIRToCore(typed)
+	if err != nil {
+		t.Fatal(err)
+	}
+	coreFunction := coreFunctionNamed(t, core, "DisplayName")
+	coreFirst := coreFunction.Body.ImmutableLocal
+	if coreFunction.Body.Kind != coreir.ExprImmutableLocal || coreFirst == nil || coreFirst.Position != 2 {
+		t.Fatalf("DisplayName first Core local = %#v", coreFunction.Body)
+	}
+	coreSecond := coreFirst.Return.ImmutableLocal
+	coreThird := coreSecond.Return.ImmutableLocal
+	if coreSecond == nil || coreSecond.Position != 3 || coreThird == nil || coreThird.Position != 4 || coreThird.Return.Kind != coreir.ExprReference {
+		t.Fatalf("DisplayName Core sequence = %#v", coreFunction.Body)
+	}
+
+	text := coreir.Type{Kind: coreir.TypePrimitive, Primitive: coreir.PrimitiveString}
+	for _, test := range []struct {
+		name, fallback, want string
+	}{
+		{name: "  name  ", fallback: "fallback", want: "name"},
+		{name: "   ", fallback: "  fallback  ", want: "fallback"},
+	} {
+		outcome, evalErr := coreeval.EvaluateProgram(core, coreir.SemanticIdentity{PackageID: string(identity.PackageID), Path: string(identity.Path)}, []coreeval.Value{{Type: text, String: test.name}, {Type: text, String: test.fallback}})
+		if evalErr != nil || !outcome.OK || outcome.Value.String != test.want {
+			t.Fatalf("DisplayName(%q) = %#v, %v", test.name, outcome, evalErr)
+		}
+	}
+	generated, err := gobackend.Generate(core)
+	if err != nil {
+		t.Fatal(err)
+	}
+	generatedAgain, err := gobackend.Generate(core)
+	if err != nil || string(generated) != string(generatedAgain) {
+		t.Fatalf("ordered immutable locals generated Go is nondeterministic: %v", err)
+	}
+	for _, fragment := range []string{"p2 := PipeLangNormalize(p0)", "p3 := func() string", "p4 := PipeLangNormalize(p3)"} {
+		if !strings.Contains(string(generated), fragment) {
+			t.Fatalf("generated Go lacks ordered immutable local %q:\n%s", fragment, generated)
+		}
+	}
+	compileAndRunGeneratedGoFiles(t, generated, []byte(fmt.Sprintf(`package %s
+
+import "testing"
+
+func TestGeneratedOrderedImmutableLocals(t *testing.T) {
+	if got := PipeLangDisplayName("  name  ", "fallback"); got != "name" { t.Fatalf("name = %%q", got) }
+	if got := PipeLangDisplayName("   ", "  fallback  "); got != "fallback" { t.Fatalf("fallback = %%q", got) }
+}
+`, gobackend.PackageName)))
+}
+
 func TestV390ImmutableLocalSupportsExistingCollectionExpressions(t *testing.T) {
 	source := `public Record Row { public string Name; }
 	public Class Root {
@@ -192,7 +286,11 @@ func TestV390ImmutableLocalRejectsInvalidSourceShapes(t *testing.T) {
 		{name: "field shadow", contract: PipeLangLanguageContractV390, source: `public Class Root { public string Name; public string Clean(string value) { string Name = value; return Name; } }`, message: "shadows an existing binding"},
 		{name: "self reference", contract: PipeLangLanguageContractV390, source: `public Class Root { public string Clean(string value) { string local = local; return value; } }`, message: "unknown identifier"},
 		{name: "second local", contract: PipeLangLanguageContractV390, source: `public Class Root { public string Clean(string value) { string first = value; string second = value; return first; } }`, message: "expected return"},
+		{name: "duplicate local", contract: PipeLangLanguageContractV400, source: `public Class Root { public string Clean(string value) { string first = value; string first = value; return first; } }`, message: "shadows an existing binding"},
+		{name: "forward reference", contract: PipeLangLanguageContractV400, source: `public Class Root { public string Clean(string value) { string first = second; string second = value; return first; } }`, message: "unknown identifier"},
+		{name: "later initializer type", contract: PipeLangLanguageContractV400, source: `public Class Root { public string Clean(string value) { string first = value; bool second = first; return first; } }`, message: "initializer has type"},
 		{name: "propagation", contract: PipeLangLanguageContractV390, source: `public Class Root { public Optional<string> Read(Optional<string> value) { string local = propagate(value); return some(local); } }`, message: "exclude propagation"},
+		{name: "sequence propagation", contract: PipeLangLanguageContractV400, source: `public Class Root { public Optional<string> Read(Optional<string> value) { string local = propagate(value); string copy = local; return some(copy); } }`, message: "exclude propagation"},
 		{name: "private method", contract: PipeLangLanguageContractV390, source: `public Class Root { private string Clean(string value) { string local = value; return local; } }`, message: "only in public methods"},
 	}
 	for _, test := range cases {
@@ -263,5 +361,56 @@ func TestV390ImmutableLocalCoreRejectsInvalidShapes(t *testing.T) {
 	propagation.Functions[0] = bad
 	if err := coreir.ValidateProgram(propagation); err == nil || !strings.Contains(err.Error(), "exclude propagation") {
 		t.Fatalf("propagation error = %v", err)
+	}
+}
+
+func TestV400ImmutableLocalCoreRejectsNonCanonicalSequence(t *testing.T) {
+	source := `public Class Root { public string Clean(string value) { string first = value; string second = first; return second; } }`
+	input := semanticTestModuleSet("app.root", []ModuleInput{testModule("app.root", "ordered-immutable-locals-core.pipe", source)}, nil)
+	input.LanguageContract = PipeLangLanguageContractV400
+	analysis := AnalyzeSemanticModuleSet(input)
+	if err := analysis.Error(); err != nil {
+		t.Fatal(err)
+	}
+	typed, err := LowerSemanticMethodToHIR(analysis, semanticMethodNamed(t, analysis, "Clean").Identity)
+	if err != nil {
+		t.Fatal(err)
+	}
+	program, err := LowerHIRToCore(typed)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	prior := program
+	prior.LanguageContract = coreir.LanguageContractV390
+	if err := coreir.ValidateProgram(prior); err == nil || !strings.Contains(err.Error(), "exactly one top-level") {
+		t.Fatalf("prior contract error = %v", err)
+	}
+
+	duplicate := program
+	duplicate.Functions = append([]coreir.Function(nil), program.Functions...)
+	function := duplicate.Functions[0]
+	outer := *function.Body.ImmutableLocal
+	innerExpr := *outer.Return
+	inner := *innerExpr.ImmutableLocal
+	inner.Name = outer.Name
+	innerExpr.ImmutableLocal = &inner
+	outer.Return = &innerExpr
+	function.Body.ImmutableLocal = &outer
+	duplicate.Functions[0] = function
+	if err := coreir.ValidateProgram(duplicate); err == nil || !strings.Contains(err.Error(), "shadows an existing binding") {
+		t.Fatalf("duplicate local error = %v", err)
+	}
+
+	nestedInitializer := program
+	nestedInitializer.Functions = append([]coreir.Function(nil), program.Functions...)
+	function = nestedInitializer.Functions[0]
+	outer = *function.Body.ImmutableLocal
+	innerExpr = *outer.Return
+	outer.Initializer = &innerExpr
+	function.Body.ImmutableLocal = &outer
+	nestedInitializer.Functions[0] = function
+	if err := coreir.ValidateProgram(nestedInitializer); err == nil || !strings.Contains(err.Error(), "ordered immutable-local sequence") {
+		t.Fatalf("nested initializer error = %v", err)
 	}
 }

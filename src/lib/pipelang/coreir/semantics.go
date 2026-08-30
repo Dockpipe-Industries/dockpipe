@@ -362,7 +362,7 @@ func validatePureCalls(contract string, function Function, functions map[string]
 	var walk func(Expr) error
 	walk = func(expression Expr) error {
 		if expression.Kind == ExprCall {
-			if contract != LanguageContractV360 && contract != LanguageContractV370 && contract != LanguageContractV380 && contract != LanguageContractV390 {
+			if contract != LanguageContractV360 && contract != LanguageContractV370 && contract != LanguageContractV380 && contract != LanguageContractV390 && contract != LanguageContractV400 {
 				return fmt.Errorf("function %s pure calls require language contract %q or later", function.Name, LanguageContractV360)
 			}
 			call := expression.Call
@@ -466,11 +466,22 @@ func validateImmutableLocalContract(contract string, function Function) error {
 	if count == 0 {
 		return nil
 	}
-	if contract != LanguageContractV390 {
+	if contract != LanguageContractV390 && contract != LanguageContractV400 {
 		return fmt.Errorf("function %s immutable local requires language contract %q", function.Name, LanguageContractV390)
 	}
-	if count != 1 || function.Body.Kind != ExprImmutableLocal {
+	if contract == LanguageContractV390 && (count != 1 || function.Body.Kind != ExprImmutableLocal) {
 		return fmt.Errorf("function %s admits exactly one top-level immutable local", function.Name)
+	}
+	if contract == LanguageContractV400 {
+		sequenceCount := 0
+		body := function.Body
+		for body.Kind == ExprImmutableLocal && body.ImmutableLocal != nil && body.ImmutableLocal.Return != nil {
+			sequenceCount++
+			body = *body.ImmutableLocal.Return
+		}
+		if sequenceCount == 0 || sequenceCount != count {
+			return fmt.Errorf("function %s admits only one top-level ordered immutable-local sequence", function.Name)
+		}
 	}
 	if exprContainsPropagation(function.Body) {
 		return fmt.Errorf("function %s immutable local initializer and return exclude propagation", function.Name)
@@ -494,7 +505,7 @@ func validateConditionalContract(contract string, function Function) error {
 	if !exprContainsConditional(function.Body) {
 		return nil
 	}
-	if contract != LanguageContractV380 && contract != LanguageContractV390 {
+	if contract != LanguageContractV380 && contract != LanguageContractV390 && contract != LanguageContractV400 {
 		return fmt.Errorf("function %s conditional expressions require language contract %q", function.Name, LanguageContractV380)
 	}
 	if countConditionalExpressions(function.Body) != 1 {
@@ -572,7 +583,7 @@ func validatePureCallPlacement(contract string, function Function) error {
 		if !validCallPlacement(function.Body) {
 			return fmt.Errorf("function %s pure calls must be the complete body or directly nested call arguments under %s", function.Name, LanguageContractV360)
 		}
-	case LanguageContractV370, LanguageContractV380, LanguageContractV390:
+	case LanguageContractV370, LanguageContractV380, LanguageContractV390, LanguageContractV400:
 		if !validGeneralCallPlacement(function.Body) {
 			return fmt.Errorf("function %s composed pure calls retain direct match and propagate carriers", function.Name)
 		}
@@ -756,7 +767,7 @@ func callableIdentityEqual(left, right *CallableIdentity) bool {
 
 func isV310OrLaterContract(contract string) bool {
 	switch contract {
-	case LanguageContractV310, LanguageContractV320, LanguageContractV330, LanguageContractV340, LanguageContractV350, LanguageContractV360, LanguageContractV370, LanguageContractV380, LanguageContractV390:
+	case LanguageContractV310, LanguageContractV320, LanguageContractV330, LanguageContractV340, LanguageContractV350, LanguageContractV360, LanguageContractV370, LanguageContractV380, LanguageContractV390, LanguageContractV400:
 		return true
 	default:
 		return false
@@ -1097,6 +1108,11 @@ func validateExpr(expression Expr, parameters []Parameter) error {
 		local := expression.ImmutableLocal
 		if local == nil || local.Name == "" || local.Initializer == nil || local.Return == nil || local.Position != len(parameters) {
 			return fmt.Errorf("immutable local is incomplete or not canonically positioned")
+		}
+		for _, binding := range parameters {
+			if binding.Name == local.Name {
+				return fmt.Errorf("immutable local %q shadows an existing binding", local.Name)
+			}
 		}
 		if err := validateType(local.Type); err != nil {
 			return fmt.Errorf("immutable local type: %w", err)
