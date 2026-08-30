@@ -30,6 +30,9 @@ Route tasks to the smallest sufficient context set while preserving repo-specifi
 - Avoid generic AI-agent advice.
 - Avoid target-specific skill routing.
 - Avoid shadow copies of `docs/*.md` under `docs/agents/`.
+- Warn the user when repeated context loading is wasting the conversation, then continue unless the
+  user requests a handoff.
+- Do not create automatic handoffs, per-task transport budgets, or checkpoint-sized micro-slices.
 
 ## Review
 

@@ -2,9 +2,12 @@
 set -euo pipefail
 
 dorkpipe_orchestrate_init() {
+  local requested_root="${ROOT:-}"
   eval "$(dockpipe sdk)"
   dockpipe_sdk init-script
-  export ROOT="${ROOT:-$(dockpipe_sdk get workdir)}"
+  # The package runner exports its own DOCKPIPE_WORKDIR. Preserve an explicit consumer ROOT across
+  # SDK initialization so relative workflow inputs remain scoped to the consumer checkout.
+  export ROOT="${requested_root:-$(dockpipe_sdk get workdir)}"
   export DORKPIPE_ORCH_WORKFLOW="${DORKPIPE_ORCH_WORKFLOW:-${DOCKPIPE_WORKFLOW_NAME:-docs.orchestrate}}"
   default_orch_root="$(dockpipe scope artifacts orchestrate)"
   export DORKPIPE_ORCH_ROOT="${DORKPIPE_ORCH_ROOT:-${default_orch_root}}"

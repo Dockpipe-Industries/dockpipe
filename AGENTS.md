@@ -63,9 +63,7 @@ Installed Codex skills expected here:
 - `dorkpipe-agentic-yaml`
 - `dorkpipe-core-review`
 - `dorkpipe-objective-execution`
-- `dorkpipe-one-shot-gate`
 - `dorkpipe-package-authoring`
-- `dorkpipe-task-execution`
 - `dorkpipe-task-handoff`
 - `dorkpipe-token-optimization`
 - `dorkpipe-yaml-workflows`

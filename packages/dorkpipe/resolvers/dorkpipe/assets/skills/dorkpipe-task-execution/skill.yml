@@ -1,3 +1,0 @@
-name: dorkpipe-task-execution
-description: Route legacy DockPipe lifecycle contracts that name dorkpipe-task-execution to dorkpipe-objective-execution or dorkpipe-one-shot-gate without executing a second control loop. Use only for compatibility with existing handoffs and task records; new work should name the specialized skill directly.
-short_description: Route legacy task lifecycle contracts

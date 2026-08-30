@@ -1,61 +1,66 @@
 # Objective Execution And Session Handoffs
 
-Use `dorkpipe-objective-execution` for a bounded outcome that requires multiple ordinary checkpoints.
-The objective remains active until its observable `done_when` passes, it is genuinely blocked, its
-required verification fails, or the user cancels it. Do not ask for a new approval or task after
-each source edit, test group, audit pass, or other retryable local checkpoint.
+Use `dorkpipe-objective-execution` for a bounded outcome that requires multiple checkpoints. Keep
+one objective in the current task until its observable `done_when` passes, it is genuinely blocked,
+required verification fails, or the user cancels it. Do not ask for a new approval or create a task
+after each edit, test, audit, deployment step, credential check, failure, or retry.
 
-Use `dorkpipe-one-shot-gate` only for a separately approved single-use, no-retry,
-authority-consuming, materially costly, destructive, externally mutating, or credential-bearing
-action. The objective skill seals the gate packet but never invokes it. The gate skill invokes once,
-performs bounded read-back, and returns to the same objective.
+## Authority and execution
 
-Use `dorkpipe-task-handoff` as transport only. It has three modes:
+Objective authority covers the ordinary reversible implementation and verification needed to reach
+`done_when`. Respect `AGENTS.md`, live repository state, dirty-tree ownership, and explicit
+exclusions throughout.
 
-- `continue_objective`: preserve the active objective in a fresh task after a user request or when
-  context pressure makes continuation materially clearer;
-- `enter_one_shot_gate`: carry one approved sealed gate into its isolated execution task;
-- `resume_objective`: carry the terminal gate receipt back to the unchanged active objective.
+External, destructive, publishing, costly, credential-refreshing, or otherwise consequential
+actions require explicit user or repository authority. Once the exact action is authorized, keep
+its preparation, invocation, read-back, repair, and evidence-supported retry inside the same
+objective and task. Do not manufacture approval seals, reuse policies, attempt budgets, or a
+DorkPipe-wide no-retry rule.
 
-Objective authority survives all three modes. Gate authority is consumed when invocation begins.
-Creating the approved gate task also preauthorizes one transport-only `resume_objective` handoff,
-which prevents the gate task from stranding the objective or asking for another micro-slice. A later
-gate still needs separate approval after the objective controller receives and classifies the first
-gate result.
+Classify failures from evidence:
 
-The objective skill infers context pressure without claiming an exact token meter. At a safe
-checkpoint boundary it may automatically use `continue_objective` when the host has compacted the
-conversation, required state needs repeated reconstruction, or at least two weaker pressure signals
-show that a compact continuation will preserve the objective more reliably. It must finish safely
-in place when only bounded terminal proof remains and must never hand off during mutation or
-read-back. Another implementation seam, materially different guidance set, or broad exploratory
-audit is not "nearly complete".
+- no external effect: repair readiness and retry while the action remains in scope;
+- idempotent or reconcilable effect: use the documented idempotency or reconciliation mechanism;
+- partial or unknown effect: perform bounded read-back first, then retry only when evidence shows it
+  is safe;
+- real external attempt limit or consumed capability: respect that actual system constraint.
+
+A failed preflight with no external effect may be corrected and rerun. Credential refresh still
+requires explicit authority when it changes a profile, but it does not require a new task.
+
+## Context pressure
+
+The objective skill does not claim an exact remaining-token meter. It watches for compaction,
+repeatedly reopened constraints, tool output dominating useful context, materially different
+upcoming seams, and corrections caused by buried guidance.
+
+When context is becoming wasteful, tell the user briefly that a handoff would make continuation
+cleaner. Keep working in the current task unless the user requests the handoff. Never create a task
+automatically because the conversation is long or because an external action is next.
+
+## User-requested handoff
+
+Use `dorkpipe-task-handoff` only after the user requests a fresh task or continuation. It has one
+mode: `continue_objective`.
+
+The handoff transports the same objective id, authority, `done_when`, invariants, exclusions,
+dirty-tree ownership, completed proof, effect and retry evidence, and next checkpoint. It grants no
+new execution scope. Create exactly one fresh task for that user request, use the same saved checkout
+without a worktree unless requested, then stop the old task.
 
 A continuation receiver admits durable completed proof, revalidates only affected live anchors, and
-executes the single pending boundary first. After that checkpoint it updates durable state and
-reassesses context pressure before opening another seam or broad terminal suite. Successful checks
-stay quiet; noisy checks keep full output in a task-owned temporary log and surface only a bounded
-failure excerpt.
-
-The one-handoff limit is per task. The source task consumes its creation authority, while the fresh
-task receives its own outgoing context-handoff allowance under the same objective policy. Do not
-write "no second handoff" unless the user or objective contract explicitly defines an objective-wide
-chain limit. If such a chain limit prevents safe continuation, checkpoint and stop for missing
-transport authority instead of forcing the remaining objective through an overloaded task.
-
-`dorkpipe-task-execution` is a compatibility router for legacy contracts. New work names the
-specialized skill directly.
+executes the single pending boundary first. It does not replay chronology or rerun passed proof
+without drift, new failure evidence, or a direct dependency.
 
 ## Handoff boundaries
 
-- Re-read live checkout, dirty-tree ownership, objective state, authority state, and gate attempt
-  state before transport.
-- Never transfer secrets or resolved credentials; carry opaque references and sanitized hashes.
+- Re-read the minimum live checkout, ownership, objective, and effect state needed for transport.
+- Never transfer secrets or resolved credentials; carry opaque references and sanitized evidence.
+- Never claim ephemeral browser, UI, agent-session, or temporary-token state survives transport.
 - Never turn handoff context into commit, push, cleanup, publication, cost, credential, retry, or
   external-resource authority.
 - Do not interrupt a running mutation or incomplete read-back. Reach a safe boundary first.
-- After successful task creation, stop the old task. Do not run the fresh task's execution skill in
-  the old task.
+- After successful task creation, stop the old task.
 - Do not create a worktree unless explicitly requested.
 
 ## Normal completion
@@ -79,14 +84,14 @@ validation, task-documentation, and permitted commit decisions are autonomous.
 
 ## Compact continuation prompt
 
-Carry a self-contained lifecycle record, not a status sentence or transcript replay. It must state:
+Carry a self-contained lifecycle record, not a status sentence or transcript replay. State:
 
-- handoff mode, stable objective id, objective authority, current state, and specialized skill;
-- bounded objective, observable `done_when`, current checkpoint, exclusions, and terminal rules;
+- `mode: continue_objective`, the stable objective id, authority, state, and execution skill;
+- bounded objective, observable `done_when`, pending checkpoint, exclusions, and terminal rules;
 - live checkout anchors, dirty-tree ownership, protected state, and completed proof;
-- gate id, exact action, readiness coverage, attempt count, authority consumption, and read-back when applicable;
-- explicit hard stops and whether task creation itself authorizes execution or only transport.
+- authorized external actions, readiness, observed effects, safe retry evidence, and read-back;
+- explicit hard stops and the first receiver action.
 
 Keep it compact enough for a fresh agent to execute without reopening the previous conversation.
 Target 500-900 words for an ordinary continuation, using counts and digests instead of full
-inventories or per-file hashes unless exact boundary proof requires them.
+inventories unless exact boundary proof requires them.
