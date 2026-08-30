@@ -1192,6 +1192,29 @@ language-contract metadata advances to `v0.40.0`. Inference, reassignment, propa
 returns, statement branches, nested blocks, loops, effects, actions, runtime behavior, and
 target-specific semantics remain excluded.
 
+### PipeLang v0.41.0: block-scoped bounded propagation
+
+One public pure method block may use exactly one declaration of the form
+`T name = propagate(carrier);` as its first immutable local. `carrier` must be the method's sole
+direct parameter, and its carrier type must exactly equal the method return type. The declaration
+type `T` must exactly equal the carried payload type. Presence or success copies the validated
+payload into the local and continues through the remaining ordered locals and terminal return;
+absence or failure immediately returns the identical canonical carrier.
+
+The admitted carriers are the existing bounded propagation matrix only: `Optional<T>` for an
+already admitted primitive or record `T`, `Result<List<R>, string>`, and
+`Result<string, string>`. Typed HIR and target-neutral Core reuse the existing `propagate` and
+right-nested `immutable_local` nodes; Core independently validates the first-local placement,
+single occurrence, direct-parameter identity, exact carrier and payload types, and bounded carrier
+shape. The evaluator and Core-only Go backend preserve the same short-circuit and copied-value
+semantics. Compiler, semantic projection, and Application IR schema identities and shapes remain
+unchanged; only their language-contract metadata advances to `v0.41.0`.
+
+No second or nested propagation, computed operand, propagation from a prior local, arbitrary
+`Result` (including checked-arithmetic results), inference, reassignment, early return, statement
+branch, nested block, loop, effect, action, runtime behavior, target behavior, adapter, UI, or
+deployment behavior enters by implication.
+
 ### Target-neutral Application IR
 
 `dockpipe.application.v1` is not a language feature or target generator. It consumes the public

@@ -13,7 +13,10 @@ public Class DockerApplication {
 	public Result<List<NetworkRow>, string> Networks(Result<List<NetworkRow>, string> value) => value;
 	public Result<List<VolumeRow>, string> Volumes(Result<List<VolumeRow>, string> value) => value;
 	public Optional<ContainerRow> Selection(Optional<ContainerRow> value) => value;
-	public Result<string, string> Details(Result<string, string> value) => value;
+	public Result<string, string> Details(Result<string, string> value) {
+		string details = propagate(value);
+		return ok<string, string>(details);
+	}
 	public Result<string, string> Logs(Result<string, string> value) => value;
 	public List<ContainerRow> FilterContainers(List<ContainerRow> rows, string query) => filter_joined_contains_casefolded(rows, ContainerRow.Name, ContainerRow.State, ContainerRow.Image, ContainerRow.Ports, ContainerRow.Created, query);
 	public List<ContainerRow> OrderContainers(List<ContainerRow> rows) => sort_by_ordinal(rows, ContainerRow.Name);

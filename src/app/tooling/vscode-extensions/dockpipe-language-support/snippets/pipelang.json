@@ -279,5 +279,16 @@
       "}"
     ],
     "description": "Create a v0.40.0 source-ordered sequence of explicitly typed immutable locals followed by a terminal return."
+  },
+  "PipeLang block-scoped propagation method": {
+    "prefix": "pipe-block-propagate",
+    "body": [
+      "public Optional<${1:string}> ${2:Method}(Optional<${1:string}> ${3:carrier}) {",
+      "\t${1:string} ${4:value} = propagate(${3:carrier});",
+      "\t${1:string} ${5:result} = ${6:${4:value}};",
+      "\treturn some(${5:result});",
+      "}"
+    ],
+    "description": "Create one v0.41.0 first-local bounded propagation followed by ordered immutable locals and a terminal carrier return."
   }
 }

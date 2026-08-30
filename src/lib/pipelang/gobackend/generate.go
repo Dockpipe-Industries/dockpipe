@@ -37,7 +37,7 @@ func Generate(program coreir.Program) ([]byte, error) {
 	if err := coreir.ValidateProgram(program); err != nil {
 		return nil, &Error{Code: "PLGO0001", Message: err.Error()}
 	}
-	if program.LanguageContract == coreir.LanguageContractV310 || program.LanguageContract == coreir.LanguageContractV320 || program.LanguageContract == coreir.LanguageContractV330 || program.LanguageContract == coreir.LanguageContractV340 || program.LanguageContract == coreir.LanguageContractV350 || program.LanguageContract == coreir.LanguageContractV360 || program.LanguageContract == coreir.LanguageContractV370 || program.LanguageContract == coreir.LanguageContractV380 || program.LanguageContract == coreir.LanguageContractV390 || program.LanguageContract == coreir.LanguageContractV400 {
+	if program.LanguageContract == coreir.LanguageContractV310 || program.LanguageContract == coreir.LanguageContractV320 || program.LanguageContract == coreir.LanguageContractV330 || program.LanguageContract == coreir.LanguageContractV340 || program.LanguageContract == coreir.LanguageContractV350 || program.LanguageContract == coreir.LanguageContractV360 || program.LanguageContract == coreir.LanguageContractV370 || program.LanguageContract == coreir.LanguageContractV380 || program.LanguageContract == coreir.LanguageContractV390 || program.LanguageContract == coreir.LanguageContractV400 || program.LanguageContract == coreir.LanguageContractV410 {
 		program.LanguageContract = coreir.LanguageContractV300
 	}
 	return generate(program)
@@ -289,6 +289,11 @@ func emitFunction(out *strings.Builder, name string, function coreir.Function, o
 		fmt.Fprintf(out, "\tif !p%d.OK { return %s(p%d) }\n\treturn %s(p%d.Value)\n}\n\n", *propagation.Value.Parameter, boundedResultCloneName(function.ReturnType), *propagation.Value.Parameter, boundedResultOKName(function.ReturnType), *propagation.Value.Parameter)
 		return nil
 	}
+	if emitted, err := emitBlockPropagationFunction(out, function, optionalTypeName); err != nil {
+		return backendError(function, "PLGO0001", err.Error())
+	} else if emitted {
+		return nil
+	}
 	out.WriteString("\treturn ")
 	body, err := emitExpr(function.Body, function.Parameters, optionalTypeName)
 	if err != nil {
@@ -297,6 +302,43 @@ func emitFunction(out *strings.Builder, name string, function coreir.Function, o
 	out.WriteString(body)
 	out.WriteString("\n}\n\n")
 	return nil
+}
+
+func emitBlockPropagationFunction(out *strings.Builder, function coreir.Function, optionalTypeName string) (bool, error) {
+	local := function.Body.ImmutableLocal
+	if function.Body.Kind != coreir.ExprImmutableLocal || local == nil || local.Initializer == nil || local.Initializer.Kind != coreir.ExprPropagate {
+		return false, nil
+	}
+	propagated := local.Initializer.Propagate
+	if propagated == nil || propagated.Value == nil || propagated.Value.Parameter == nil || len(function.Parameters) != 1 || *propagated.Value.Parameter != 0 || local.Return == nil {
+		return false, fmt.Errorf("block propagation is not canonical")
+	}
+	var initialized string
+	switch function.ReturnType.Kind {
+	case coreir.TypeOptional:
+		valueType, err := goType(local.Type, optionalTypeName)
+		if err != nil {
+			return false, err
+		}
+		fmt.Fprintf(out, "\tpropagated, present := pipelangPropagateOptional(p0)\n\tif !present { return pipelangNoneValue[%s]() }\n", valueType)
+		initialized = "propagated"
+	case coreir.TypeResult:
+		fmt.Fprintf(out, "\tif !p0.OK { return %s(p0) }\n", boundedResultCloneName(function.ReturnType))
+		initialized = "p0.Value"
+		if local.Type.Kind == coreir.TypeList {
+			initialized = fmt.Sprintf("%s(%s)", listCloneName(local.Type), initialized)
+		}
+	default:
+		return false, fmt.Errorf("block propagation carrier is unsupported")
+	}
+	fmt.Fprintf(out, "\tp%d := %s\n", local.Position, initialized)
+	scoped := append(append([]coreir.Parameter{}, function.Parameters...), coreir.Parameter{Position: local.Position, Name: local.Name, Type: local.Type})
+	returned, err := emitExpr(*local.Return, scoped, optionalTypeName)
+	if err != nil {
+		return false, err
+	}
+	fmt.Fprintf(out, "\treturn %s\n}\n\n", returned)
+	return true, nil
 }
 
 func generatedNamedPredicate(function coreir.Function) bool {
@@ -1132,7 +1174,7 @@ func expressionContainsType(expression coreir.Expr, predicate func(coreir.Type) 
 
 func programNeedsOptionalPropagation(functions []coreir.Function) bool {
 	for _, function := range functions {
-		if function.Body.Kind == coreir.ExprOptionalSome && function.Body.Some != nil && function.Body.Some.Value != nil && function.Body.Some.Value.Kind == coreir.ExprPropagate {
+		if expressionContainsKind(function.Body, coreir.ExprPropagate) && function.ReturnType.Kind == coreir.TypeOptional {
 			return true
 		}
 	}

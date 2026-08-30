@@ -362,7 +362,7 @@ func validatePureCalls(contract string, function Function, functions map[string]
 	var walk func(Expr) error
 	walk = func(expression Expr) error {
 		if expression.Kind == ExprCall {
-			if contract != LanguageContractV360 && contract != LanguageContractV370 && contract != LanguageContractV380 && contract != LanguageContractV390 && contract != LanguageContractV400 {
+			if contract != LanguageContractV360 && contract != LanguageContractV370 && contract != LanguageContractV380 && contract != LanguageContractV390 && contract != LanguageContractV400 && contract != LanguageContractV410 {
 				return fmt.Errorf("function %s pure calls require language contract %q or later", function.Name, LanguageContractV360)
 			}
 			call := expression.Call
@@ -466,13 +466,13 @@ func validateImmutableLocalContract(contract string, function Function) error {
 	if count == 0 {
 		return nil
 	}
-	if contract != LanguageContractV390 && contract != LanguageContractV400 {
+	if contract != LanguageContractV390 && contract != LanguageContractV400 && contract != LanguageContractV410 {
 		return fmt.Errorf("function %s immutable local requires language contract %q", function.Name, LanguageContractV390)
 	}
 	if contract == LanguageContractV390 && (count != 1 || function.Body.Kind != ExprImmutableLocal) {
 		return fmt.Errorf("function %s admits exactly one top-level immutable local", function.Name)
 	}
-	if contract == LanguageContractV400 {
+	if contract == LanguageContractV400 || contract == LanguageContractV410 {
 		sequenceCount := 0
 		body := function.Body
 		for body.Kind == ExprImmutableLocal && body.ImmutableLocal != nil && body.ImmutableLocal.Return != nil {
@@ -483,8 +483,52 @@ func validateImmutableLocalContract(contract string, function Function) error {
 			return fmt.Errorf("function %s admits only one top-level ordered immutable-local sequence", function.Name)
 		}
 	}
-	if exprContainsPropagation(function.Body) {
+	if exprContainsPropagation(function.Body) && contract != LanguageContractV410 {
 		return fmt.Errorf("function %s immutable local initializer and return exclude propagation", function.Name)
+	}
+	if exprContainsPropagation(function.Body) {
+		return validateBlockPropagationContract(function)
+	}
+	return nil
+}
+
+func countPropagationExpressions(expression Expr) int {
+	count := 0
+	if expression.Kind == ExprPropagate {
+		count++
+	}
+	for _, child := range expressionChildren(expression) {
+		if child != nil {
+			count += countPropagationExpressions(*child)
+		}
+	}
+	return count
+}
+
+func validateBlockPropagationContract(function Function) error {
+	first := function.Body.ImmutableLocal
+	if function.Body.Kind != ExprImmutableLocal || first == nil || first.Initializer == nil || first.Initializer.Kind != ExprPropagate || first.Initializer.Propagate == nil || countPropagationExpressions(function.Body) != 1 {
+		return fmt.Errorf("function %s admits exactly one propagation as the first immutable-local initializer", function.Name)
+	}
+	propagated := first.Initializer.Propagate
+	if len(function.Parameters) != 1 || !directReference(propagated.Value) || *propagated.Value.Parameter != 0 {
+		return fmt.Errorf("function %s block propagation requires its sole direct carrier parameter", function.Name)
+	}
+	carrier := function.ReturnType
+	if !TypeEqual(function.Parameters[0].Type, carrier) || !TypeEqual(propagated.Carrier, carrier) || !TypeEqual(propagated.Value.Type, carrier) {
+		return fmt.Errorf("function %s propagated carrier parameter and return type must be identical", function.Name)
+	}
+	var payload Type
+	switch {
+	case carrier.Kind == TypeOptional && carrier.Optional != nil && isOptionalValueType(carrier.Optional.Value):
+		payload = carrier.Optional.Value
+	case isBoundedValueResultType(carrier):
+		payload = carrier.Result.Success
+	default:
+		return fmt.Errorf("function %s block propagation requires an admitted Optional or bounded Result", function.Name)
+	}
+	if !TypeEqual(first.Type, payload) || !TypeEqual(first.Initializer.Type, payload) {
+		return fmt.Errorf("function %s first immutable local type must match the propagated success payload", function.Name)
 	}
 	return nil
 }
@@ -505,7 +549,7 @@ func validateConditionalContract(contract string, function Function) error {
 	if !exprContainsConditional(function.Body) {
 		return nil
 	}
-	if contract != LanguageContractV380 && contract != LanguageContractV390 && contract != LanguageContractV400 {
+	if contract != LanguageContractV380 && contract != LanguageContractV390 && contract != LanguageContractV400 && contract != LanguageContractV410 {
 		return fmt.Errorf("function %s conditional expressions require language contract %q", function.Name, LanguageContractV380)
 	}
 	if countConditionalExpressions(function.Body) != 1 {
@@ -583,7 +627,7 @@ func validatePureCallPlacement(contract string, function Function) error {
 		if !validCallPlacement(function.Body) {
 			return fmt.Errorf("function %s pure calls must be the complete body or directly nested call arguments under %s", function.Name, LanguageContractV360)
 		}
-	case LanguageContractV370, LanguageContractV380, LanguageContractV390, LanguageContractV400:
+	case LanguageContractV370, LanguageContractV380, LanguageContractV390, LanguageContractV400, LanguageContractV410:
 		if !validGeneralCallPlacement(function.Body) {
 			return fmt.Errorf("function %s composed pure calls retain direct match and propagate carriers", function.Name)
 		}
@@ -767,7 +811,7 @@ func callableIdentityEqual(left, right *CallableIdentity) bool {
 
 func isV310OrLaterContract(contract string) bool {
 	switch contract {
-	case LanguageContractV310, LanguageContractV320, LanguageContractV330, LanguageContractV340, LanguageContractV350, LanguageContractV360, LanguageContractV370, LanguageContractV380, LanguageContractV390, LanguageContractV400:
+	case LanguageContractV310, LanguageContractV320, LanguageContractV330, LanguageContractV340, LanguageContractV350, LanguageContractV360, LanguageContractV370, LanguageContractV380, LanguageContractV390, LanguageContractV400, LanguageContractV410:
 		return true
 	default:
 		return false

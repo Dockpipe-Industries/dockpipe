@@ -296,3 +296,8 @@ assert(pipeLangReadme.includes("once in order"));
 assert.strictEqual(pipeLangSnippets["PipeLang ordered immutable locals method"].prefix, "pipe-immutable-locals");
 assert(pipeLangSnippets["PipeLang ordered immutable locals method"].description.includes("v0.40.0"));
 assert.strictEqual(pipeLangSnippets["PipeLang ordered immutable locals method"].body.filter((line) => line.includes(" = ")).length, 2);
+assert(pipeLangReadme.includes("`v0.41.0`"));
+assert(pipeLangReadme.includes("sole direct Optional or bounded Result carrier"));
+assert.strictEqual(pipeLangSnippets["PipeLang block-scoped propagation method"].prefix, "pipe-block-propagate");
+assert(pipeLangSnippets["PipeLang block-scoped propagation method"].description.includes("v0.41.0"));
+assert(pipeLangSnippets["PipeLang block-scoped propagation method"].body.some((line) => line.includes("= propagate(")));

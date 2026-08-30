@@ -49,10 +49,7 @@ func Evaluate(function coreir.Function, arguments []Value) (Outcome, error) {
 		}
 	}
 	outcome, err := evalExprWithProgram(function.Body, arguments, nil)
-	if err == nil && !outcome.OK && outcome.Failure != nil && outcome.Failure.Type.Kind == coreir.TypeOptional {
-		return Outcome{OK: true, Value: cloneOptionalValue(*outcome.Failure)}, nil
-	}
-	return outcome, err
+	return completeFunctionOutcome(function.ReturnType, outcome, err)
 }
 
 func EvaluateProgram(program coreir.Program, identity coreir.SemanticIdentity, arguments []Value) (Outcome, error) {
@@ -82,7 +79,15 @@ func EvaluateProgram(program coreir.Program, identity coreir.SemanticIdentity, a
 			return Outcome{}, fmt.Errorf("argument %d: %w", index, err)
 		}
 	}
-	return evalExprWithProgram(selected.Body, arguments, functions)
+	outcome, err := evalExprWithProgram(selected.Body, arguments, functions)
+	return completeFunctionOutcome(selected.ReturnType, outcome, err)
+}
+
+func completeFunctionOutcome(returnType coreir.Type, outcome Outcome, err error) (Outcome, error) {
+	if err == nil && returnType.Kind == coreir.TypeOptional && !outcome.OK && outcome.Failure != nil && coreir.TypeEqual(outcome.Failure.Type, returnType) {
+		return Outcome{OK: true, Value: cloneOptionalValue(*outcome.Failure)}, nil
+	}
+	return outcome, err
 }
 
 func evalProgramExpr(expression coreir.Expr, arguments []Value, functions map[string]coreir.Function) (Outcome, error) {
