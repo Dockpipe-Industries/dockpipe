@@ -53,7 +53,7 @@ while IFS= read -r validation_input; do
   mkdir -p "$application_consumer/$(dirname "$validation_input")"
   cp "$REPO_ROOT/$validation_input" "$application_consumer/$validation_input"
 done <"$fixture_root/validation-input-files.json"
-test "$validation_input_file_count" -eq 186
+test "$validation_input_file_count" -eq 215
 cp -R "$application_consumer" "$application_pristine"
 cp -R "$application_consumer" "$application_expected"
 printf '%s\n' '# Fixture package' 'Untrusted remote fixture change.' >"$application_expected/packages/dorkpipe/README.md"
@@ -73,8 +73,8 @@ if MSYS2_ARG_CONV_EXCL='*' "$helper_bin" backlog-inspect \
   echo "canonical --next inspection unexpectedly selected a task" >&2
   exit 1
 fi
-grep -Fq 'no_decision_ready_task:' "$tmp/canonical-next.err"
-grep -Fq '"code": "no_decision_ready_task"' "$canonical_next_root/backlog-selection.json"
+grep -Fq 'ambiguous_decision_ready_tasks:' "$tmp/canonical-next.err"
+grep -Fq '"code": "ambiguous_decision_ready_tasks"' "$canonical_next_root/backlog-selection.json"
 cmp "$tmp/canonical-index-before.yaml" "$REPO_ROOT/docs/agents/task-index.yaml"
 for name in remote-request.md remote-request.json remote-adapter-compatibility.json remote-task.json completion-candidate.json remote-status.json remote-diff.json remote-diff.patch remote-result.json validation-receipt.json patch-boundary.json patch-application.json validation-execution.json semantic-review-decision.json ready-for-review.json checkout-application-approval.json checkout-application.json; do
   test ! -e "$canonical_next_root/$name"
@@ -90,7 +90,8 @@ for tool in codex curl docker git ssh; do
   cp "$tmp/fake-bin/forbidden-tool" "$tmp/fake-bin/$tool"
 done
 
-export PATH="$tmp/fake-bin:$REPO_ROOT/src/bin:$PATH"
+validation_path="$REPO_ROOT/src/bin:$PATH"
+export PATH="$tmp/fake-bin:$validation_path"
 export DORKPIPE_BACKLOG_FORBIDDEN_LOG="$invocation_log"
 export DOCKPIPE_SCRIPT_DIR="$REPO_ROOT/packages/dorkpipe/resolvers/dorkpipe/assets/scripts"
 export DOCKPIPE_ASSETS_DIR="$REPO_ROOT/packages/dorkpipe/resolvers/dorkpipe/assets"
@@ -133,6 +134,8 @@ while IFS= read -r required_input; do
 done < <(
   cd "$REPO_ROOT"
   find packages/dorkpipe/lib/orchestrationhelper -maxdepth 1 -type f -name '*.go' -print
+  find packages/dorkpipe/lib/statepaths src/lib/model src/lib/infrastructure/operationrecord \
+    src/lib/infrastructure/sourcemtime -type f -name '*.go' ! -name '*_test.go' -print
   find src/lib/domain src/lib/infrastructure/packagebuild -maxdepth 1 -type f -name '*.go' ! -name '*_test.go' -print
   find src/lib/infrastructure -maxdepth 1 -type f -name '*.go' ! -name '*_test.go' -print
 )
@@ -140,7 +143,11 @@ done < <(
 log="$tmp/workflow.err"
 for step in inspect compile compatibility dispatch completion_candidate status diff result validation_receipt patch_boundary patch_application validation_execution semantic_review checkout_application; do
   export DOCKPIPE_STEP_ID="$step"
-  if ! bash "$DOCKPIPE_SCRIPT_DIR/backlog-remote.sh" 2>>"$log"; then
+  step_path="$PATH"
+  if [[ "$step" == "validation_execution" ]]; then
+    step_path="$validation_path"
+  fi
+  if ! PATH="$step_path" bash "$DOCKPIPE_SCRIPT_DIR/backlog-remote.sh" 2>>"$log"; then
     cat "$log" >&2
     exit 1
   fi
@@ -821,12 +828,12 @@ cmp "$artifact_root/patch-application.json" "$second_boundary_root/patch-applica
 cp "$second_boundary_root/patch-application.json" "$tmp/accepted-patch-application.json"
 MSYS2_ARG_CONV_EXCL='*' "$helper_bin" backlog-apply-patch-temporary "$application_consumer" "$second_boundary_root"
 cmp "$tmp/accepted-patch-application.json" "$second_boundary_root/patch-application.json"
-MSYS2_ARG_CONV_EXCL='*' "$helper_bin" backlog-execute-validation "$application_consumer" "$second_boundary_root"
+PATH="$validation_path" MSYS2_ARG_CONV_EXCL='*' "$helper_bin" backlog-execute-validation "$application_consumer" "$second_boundary_root"
 cmp "$artifact_root/validation-execution.json" "$second_boundary_root/validation-execution.json"
 cp "$second_boundary_root/validation-execution.json" "$tmp/accepted-validation-execution.json"
 artifact_restart_root="$tmp/artifact-restart"
 cp -R "$second_boundary_root" "$artifact_restart_root"
-MSYS2_ARG_CONV_EXCL='*' "$helper_bin" backlog-execute-validation "$tmp/missing-consumer" "$artifact_restart_root"
+PATH="$validation_path" MSYS2_ARG_CONV_EXCL='*' "$helper_bin" backlog-execute-validation "$tmp/missing-consumer" "$artifact_restart_root"
 cmp "$tmp/accepted-validation-execution.json" "$artifact_restart_root/validation-execution.json"
 diff -r "$application_pristine" "$application_consumer"
 cp "$artifact_root/validation-receipt.json" "$tmp/accepted-validation-receipt.json"

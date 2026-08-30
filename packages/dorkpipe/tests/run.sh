@@ -5,12 +5,16 @@ set -euo pipefail
 ROOT="$(git rev-parse --show-toplevel)"
 DIR="$ROOT/packages/dorkpipe/tests"
 export DOCKPIPE_CI_ARTIFACT_SCOPE="${DOCKPIPE_CI_ARTIFACT_SCOPE:-package:dorkpipe}"
+export DOCKPIPE_TEST_DOCKPIPE_BIN="${DOCKPIPE_TEST_DOCKPIPE_BIN:-$ROOT/src/bin/dockpipe}"
 eval "$("$ROOT/src/bin/dockpipe" sdk --workdir "$ROOT")"
 export TMPDIR="${DORKPIPE_PACKAGE_TEST_TMPDIR:-$ROOT/bin/.dockpipe/tmp/package-tests}"
 mkdir -p "$TMPDIR"
 mkdir -p "$(dockpipe_sdk path build go-cache)" "$(dockpipe_sdk path build go-tmp)"
 export GOCACHE="${GOCACHE:-$(dockpipe_sdk path build go-cache)}"
 export GOTMPDIR="${GOTMPDIR:-$(dockpipe_sdk path build go-tmp)}"
+# Preserve the admitted Go module/toolchain cache before isolating HOME. Without this, Go derives
+# GOMODCACHE from the temporary test home and offline package tests lose already-cached modules.
+export GOMODCACHE="${GOMODCACHE:-$(go env GOMODCACHE)}"
 TEST_HOME="${TMPDIR:-/tmp}/dorkpipe-package-test-home-${RANDOM}-${RANDOM}"
 mkdir -p "$TEST_HOME"
 export HOME="$TEST_HOME"
@@ -30,7 +34,7 @@ if DOCKPIPE_ASSETS_DIR="$ROOT/packages/dorkpipe/resolvers/dorkpipe/assets" \
 	DOCKPIPE_WORKFLOW_NAME="skills.render.smoke" \
 	DOCKPIPE_WORKFLOW_CONFIG="$ROOT/packages/dorkpipe/workflows/skills.render/config.yml" \
 	DOCKPIPE_STEP_ID="render" \
-	DOCKPIPE_ARGS_JSON='["--target","generic","--output","/tmp/dorkpipe-skills-render-test","--dry-run","--skills","dorkpipe-core-review,dorkpipe-objective-execution,dorkpipe-one-shot-gate,dorkpipe-task-execution,dorkpipe-task-handoff"]' \
+	DOCKPIPE_ARGS_JSON='["--target","generic","--output","/tmp/dorkpipe-skills-render-test","--dry-run","--skills","dorkpipe-core-review,dorkpipe-objective-execution,dorkpipe-task-handoff"]' \
 	bash "$ROOT/packages/dorkpipe/resolvers/dorkpipe/assets/scripts/skills-render.sh"; then
 	echo "dorkpipe skills.render smoke OK"
 else

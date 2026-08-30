@@ -24,8 +24,9 @@ Keep routing precise while preserving repository-specific safety rules.
 
 ## Handoff And Tool Output
 
-- Target 500-900 words for an ordinary continuation packet. Exceed this only for an exact sealed
-  gate contract or protected-state inventory that cannot be represented safely by counts and digests.
+- Create a continuation packet only after the user requests handoff. Target 500-900 words for an
+  ordinary packet; exceed this only for protected state that cannot be represented safely by counts
+  and digests.
 - Carry one canonical statement per fact. Preserve authority, exclusions, dirty ownership, failed
   proof, and the next boundary; remove chronology and explanations of already-completed work.
 - Prefer affected paths, counts, and digests over full inventories and per-file hashes.
@@ -33,12 +34,12 @@ Keep routing precise while preserving repository-specific safety rules.
   proof without drift, new failure evidence, or a direct dependency.
 - Keep successful commands quiet. For predictably noisy checks, retain full output in a task-owned
   temporary log and return only exit status plus the relevant failure excerpt.
-- Treat a per-task handoff limit as resetting in the fresh task. Never compress it into an
-  objective-wide "no second handoff" rule unless that chain limit is explicit.
+- Do not invent transport limits. One user request creates one fresh task; any later handoff needs
+  another user request.
 
-## Completed slices
+## Completed objectives
 
-When editing handoff guidance, use [Session Handoffs](../../../../../../../docs/agents/docs/session-handoffs.md) as the canonical checklist. The global AGENTS.md rule makes its commit question and compact next-slice prompt mandatory for every completed slice; do not duplicate the checklist here.
+When editing handoff guidance, use [Session Handoffs](../../../../../../../docs/agents/docs/session-handoffs.md) as the canonical checklist. Do not convert checkpoints into micro-slices or require a handoff after ordinary progress.
 
 ## Review Pass
 

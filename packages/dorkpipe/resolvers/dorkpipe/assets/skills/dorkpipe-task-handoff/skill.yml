@@ -1,3 +1,3 @@
 name: dorkpipe-task-handoff
-description: Transport an active DorkPipe objective or sealed one-shot gate into exactly one fresh task with a compact receiver budget and explicit per-task continuation authority. Use for user-requested or context-saving continuation, entry into an approved gate, and the preauthorized return from that gate without redefining scope or manufacturing authority.
-short_description: Transport objective state between tasks
+description: Carry an active DorkPipe objective into one fresh task after the user requests a handoff, preserving scope, completed proof, repository state, and the next productive step without replaying chronology or creating new authority.
+short_description: Hand off an active objective

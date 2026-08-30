@@ -6,9 +6,7 @@ skills:
     - dorkpipe-agentic-yaml
     - dorkpipe-core-review
     - dorkpipe-objective-execution
-    - dorkpipe-one-shot-gate
     - dorkpipe-package-authoring
-    - dorkpipe-task-execution
     - dorkpipe-task-handoff
     - dorkpipe-token-optimization
     - dorkpipe-yaml-workflows
@@ -342,11 +340,10 @@ tasks:
     skills:
       - dorkpipe-task-handoff
       - dorkpipe-objective-execution
-      - dorkpipe-one-shot-gate
       - dorkpipe-token-optimization
     validation:
       - ./src/bin/dockpipe --package dorkpipe --workflow skills.render -- --list
-      - ./src/bin/dockpipe --package dorkpipe --workflow skills.render -- --target codex --dry-run --skills dorkpipe-objective-execution,dorkpipe-one-shot-gate,dorkpipe-task-handoff
+      - ./src/bin/dockpipe --package dorkpipe --workflow skills.render -- --target codex --dry-run --skills dorkpipe-objective-execution,dorkpipe-task-handoff
 
   objective_execution:
     read:
@@ -357,36 +354,10 @@ tasks:
       - docs/agents/workflows/planner-promotion-model.md
     skills:
       - dorkpipe-objective-execution
-      - dorkpipe-one-shot-gate
       - dorkpipe-task-handoff
     validation:
       - bash packages/dorkpipe/tests/test_task_skill_lifecycle.sh
-      - ./src/bin/dockpipe --package dorkpipe --workflow skills.render -- --target codex --dry-run --skills dorkpipe-objective-execution,dorkpipe-one-shot-gate,dorkpipe-task-handoff
-
-  one_shot_gate:
-    read:
-      - AGENTS.md
-      - docs/agents/docs/session-handoffs.md
-      - docs/agents/docs/skills.md
-      - docs/agents/runtime/safety-guardrails.md
-    skills:
-      - dorkpipe-one-shot-gate
-      - dorkpipe-task-handoff
-    validation:
-      - bash packages/dorkpipe/tests/test_task_skill_lifecycle.sh
-      - ./src/bin/dockpipe --package dorkpipe --workflow skills.render -- --target codex --dry-run --skills dorkpipe-one-shot-gate,dorkpipe-task-handoff
-
-  task_execution_compatibility:
-    read:
-      - AGENTS.md
-      - docs/agents/docs/session-handoffs.md
-      - docs/agents/docs/skills.md
-    skills:
-      - dorkpipe-task-execution
-      - dorkpipe-objective-execution
-      - dorkpipe-one-shot-gate
-    validation:
-      - bash packages/dorkpipe/tests/test_task_skill_lifecycle.sh
+      - ./src/bin/dockpipe --package dorkpipe --workflow skills.render -- --target codex --dry-run --skills dorkpipe-objective-execution,dorkpipe-task-handoff
 
   safety_or_secrets:
     read:
