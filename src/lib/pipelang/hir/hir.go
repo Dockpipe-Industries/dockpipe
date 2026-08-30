@@ -117,6 +117,7 @@ type BindingKind string
 const (
 	BindingParameter BindingKind = "parameter"
 	BindingMatchArm  BindingKind = "match_arm"
+	BindingLocal     BindingKind = "local"
 )
 
 type Binding struct {
@@ -141,6 +142,7 @@ const (
 	ExprUnary                              ExprKind = "unary"
 	ExprBinary                             ExprKind = "binary"
 	ExprConditional                        ExprKind = "conditional"
+	ExprImmutableLocal                     ExprKind = "immutable_local"
 	ExprCall                               ExprKind = "call"
 	ExprTextContainsCaseFolded             ExprKind = "text_contains_case_folded"
 	ExprTextTrim                           ExprKind = "text_trim"
@@ -213,6 +215,15 @@ type Conditional struct {
 	Condition *Expr `json:"condition"`
 	WhenTrue  *Expr `json:"when_true"`
 	WhenFalse *Expr `json:"when_false"`
+}
+
+type ImmutableLocal struct {
+	Binding     Binding    `json:"binding"`
+	Type        Type       `json:"type"`
+	TypeSpan    SourceSpan `json:"type_span"`
+	NameSpan    SourceSpan `json:"name_span"`
+	Initializer *Expr      `json:"initializer"`
+	Return      *Expr      `json:"return"`
 }
 
 type Call struct {
@@ -392,6 +403,7 @@ type Expr struct {
 	Unary                              *Unary                              `json:"unary,omitempty"`
 	Binary                             *Binary                             `json:"binary,omitempty"`
 	Conditional                        *Conditional                        `json:"conditional,omitempty"`
+	ImmutableLocal                     *ImmutableLocal                     `json:"immutable_local,omitempty"`
 	Call                               *Call                               `json:"call,omitempty"`
 	TextContains                       *TextContainsCaseFolded             `json:"text_contains_case_folded,omitempty"`
 	TextTrim                           *TextTrim                           `json:"text_trim,omitempty"`

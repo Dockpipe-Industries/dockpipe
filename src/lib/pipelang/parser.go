@@ -123,18 +123,11 @@ func (p *parser) parseRecord(vis Visibility, anns []Annotation, start Span) (*Re
 			return nil, err
 		}
 		if isMethod {
-			if _, err := p.expect(tokArrow); err != nil {
-				return nil, err
-			}
-			expr, err := p.parseExpr(1)
+			expr, end, err := p.parseMethodBody()
 			if err != nil {
 				return nil, err
 			}
-			end, err := p.expect(tokSemi)
-			if err != nil {
-				return nil, err
-			}
-			decl.Methods = append(decl.Methods, MethodDecl{Visibility: normalizeVisibility(memberVis), Annotations: memberAnns, ReturnType: t, Name: n, Params: params, Body: expr, Span: mergeSpans(memberStart, end.span)})
+			decl.Methods = append(decl.Methods, MethodDecl{Visibility: normalizeVisibility(memberVis), Annotations: memberAnns, ReturnType: t, Name: n, Params: params, Body: expr, Span: mergeSpans(memberStart, end)})
 			continue
 		}
 		field := FieldDecl{Visibility: normalizeVisibility(memberVis), Annotations: memberAnns, Type: t, Name: n}
@@ -313,14 +306,7 @@ func (p *parser) parseClass(vis Visibility, anns []Annotation, start Span) (*Cla
 			return nil, err
 		}
 		if isMethod {
-			if _, err := p.expect(tokArrow); err != nil {
-				return nil, err
-			}
-			expr, err := p.parseExpr(1)
-			if err != nil {
-				return nil, err
-			}
-			end, err := p.expect(tokSemi)
+			expr, end, err := p.parseMethodBody()
 			if err != nil {
 				return nil, err
 			}
@@ -331,7 +317,7 @@ func (p *parser) parseClass(vis Visibility, anns []Annotation, start Span) (*Cla
 				Name:        n,
 				Params:      params,
 				Body:        expr,
-				Span:        mergeSpans(memberStart, end.span),
+				Span:        mergeSpans(memberStart, end),
 			})
 			continue
 		}
@@ -357,6 +343,65 @@ func (p *parser) parseClass(vis Visibility, anns []Annotation, start Span) (*Cla
 	}
 	decl.Span = mergeSpans(start, end.span)
 	return decl, nil
+}
+
+func (p *parser) parseMethodBody() (Expr, Span, error) {
+	if p.peek().kind != tokLBrace {
+		if _, err := p.expect(tokArrow); err != nil {
+			return nil, Span{}, err
+		}
+		expr, err := p.parseExpr(1)
+		if err != nil {
+			return nil, Span{}, err
+		}
+		end, err := p.expect(tokSemi)
+		if err != nil {
+			return nil, Span{}, err
+		}
+		return expr, end.span, nil
+	}
+	if !hasImmutableLocalSourceContract(p.languageContract) {
+		return nil, Span{}, oneDiagnostic(p.sources, CodeUnexpectedToken, CategorySyntax, p.peek().span, "method blocks require language contract v0.39.0")
+	}
+	start := p.next()
+	localType, err := p.parseTypeRef()
+	if err != nil {
+		return nil, Span{}, err
+	}
+	name, err := p.expect(tokIdent)
+	if err != nil {
+		return nil, Span{}, err
+	}
+	if _, err := p.expect(tokAssign); err != nil {
+		return nil, Span{}, err
+	}
+	initializer, err := p.parseExpr(1)
+	if err != nil {
+		return nil, Span{}, err
+	}
+	if _, err := p.expect(tokSemi); err != nil {
+		return nil, Span{}, err
+	}
+	returnKeyword, err := p.expect(tokIdent)
+	if err != nil {
+		return nil, Span{}, err
+	}
+	if returnKeyword.lit != "return" {
+		return nil, Span{}, oneDiagnostic(p.sources, CodeUnexpectedToken, CategorySyntax, returnKeyword.span, fmt.Sprintf("expected return, got %q", returnKeyword.lit))
+	}
+	returned, err := p.parseExpr(1)
+	if err != nil {
+		return nil, Span{}, err
+	}
+	if _, err := p.expect(tokSemi); err != nil {
+		return nil, Span{}, err
+	}
+	end, err := p.expect(tokRBrace)
+	if err != nil {
+		return nil, Span{}, err
+	}
+	span := mergeSpans(start.span, end.span)
+	return &ImmutableLocalExpr{Type: localType, Name: name.lit, NameSpan: name.span, Initializer: initializer, Return: returned, Span: span}, end.span, nil
 }
 
 func (p *parser) parseOptionalVisibility() (Visibility, error) {
@@ -523,7 +568,7 @@ func (p *parser) parsePostfix() (Expr, error) {
 	if !hasRecordFieldProjectionSourceContract(p.languageContract) {
 		return expr, nil
 	}
-	for p.peek().kind == tokDot || ((p.languageContract == PipeLangLanguageContractV330 || p.languageContract == PipeLangLanguageContractV340 || p.languageContract == PipeLangLanguageContractV350 || p.languageContract == PipeLangLanguageContractV360 || p.languageContract == PipeLangLanguageContractV370 || p.languageContract == PipeLangLanguageContractV380) && p.peek().kind == tokLBracket) {
+	for p.peek().kind == tokDot || ((p.languageContract == PipeLangLanguageContractV330 || p.languageContract == PipeLangLanguageContractV340 || p.languageContract == PipeLangLanguageContractV350 || p.languageContract == PipeLangLanguageContractV360 || p.languageContract == PipeLangLanguageContractV370 || p.languageContract == PipeLangLanguageContractV380 || p.languageContract == PipeLangLanguageContractV390) && p.peek().kind == tokLBracket) {
 		if p.peek().kind == tokLBracket {
 			p.next()
 			index, err := p.parseExpr(1)
@@ -1342,7 +1387,7 @@ func (p *parser) parseListSortByOrdinal() (Expr, error) {
 	if err != nil {
 		return nil, err
 	}
-	if p.languageContract == PipeLangLanguageContractV320 || p.languageContract == PipeLangLanguageContractV330 || p.languageContract == PipeLangLanguageContractV340 || p.languageContract == PipeLangLanguageContractV350 || p.languageContract == PipeLangLanguageContractV360 || p.languageContract == PipeLangLanguageContractV370 || p.languageContract == PipeLangLanguageContractV380 {
+	if p.languageContract == PipeLangLanguageContractV320 || p.languageContract == PipeLangLanguageContractV330 || p.languageContract == PipeLangLanguageContractV340 || p.languageContract == PipeLangLanguageContractV350 || p.languageContract == PipeLangLanguageContractV360 || p.languageContract == PipeLangLanguageContractV370 || p.languageContract == PipeLangLanguageContractV380 || p.languageContract == PipeLangLanguageContractV390 {
 		if _, err := p.expect(tokComma); err != nil {
 			return nil, err
 		}

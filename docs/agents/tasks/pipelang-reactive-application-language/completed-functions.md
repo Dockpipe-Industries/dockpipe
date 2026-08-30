@@ -80,3 +80,23 @@ field or rule. Public schema shapes remain unchanged, language-contract metadata
 `v0.38.0`, and the exact 45-source legacy inventory remains frozen. Statements, blocks, locals,
 mutation, conversions, guards, effects, actions, runtime behavior, and target-specific behavior
 remain excluded.
+
+## Step 8e — immutable local plus terminal return (`v0.39.0`)
+
+Production source admits exactly one public pure method block shaped as
+`{ T name = initializer; return expression; }`. `T` is explicit; the eagerly evaluated initializer
+must have exactly that type. The local enters scope only after initialization, may not shadow a
+field or parameter, is immutable, and has no public semantic identity. The terminal return may use
+the local, parameters, and all existing admitted eager pure expressions. An explicit
+checked-arithmetic `Result` local provides arithmetic result context. Contextual propagation stays
+confined to its established complete-method carrier shape and is excluded inside this block.
+
+Typed HIR and target-neutral Core carry an explicit `immutable_local` node with one analysis-local
+binding, its type, initializer, and return. Core independently validates the top-level one-node
+bound, canonical scope, and exact types. The evaluator initializes and copies the value once before
+evaluating the return; the Core-only Go backend emits the same typed lexical scope. The Docker
+observability consumer proves an existing normalization call captured once and consumed by the
+existing bounded fallback conditional. Public schema shapes remain unchanged, language-contract
+metadata advances to `v0.39.0`, and the exact 45-source legacy inventory remains frozen. Inference,
+multiple locals, reassignment, shadowing, propagation, early return, statement branches, nested blocks, loops,
+effects, actions, runtime behavior, and target-specific behavior remain excluded.

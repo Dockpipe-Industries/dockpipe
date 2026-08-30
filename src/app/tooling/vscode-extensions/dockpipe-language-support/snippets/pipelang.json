@@ -258,5 +258,15 @@
       "${1:condition} ? ${2:whenTrue} : ${3:whenFalse}"
     ],
     "description": "Create one v0.38.0 exactly typed lazy conditional expression."
+  },
+  "PipeLang immutable local method": {
+    "prefix": "pipe-immutable-local",
+    "body": [
+      "public ${1:string} ${2:Method}(${1:string} ${3:value}) {",
+      "\t${1:string} ${4:local} = ${5:expression};",
+      "\treturn ${6:${4:local}};",
+      "}"
+    ],
+    "description": "Create one v0.39.0 explicitly typed immutable local followed by a terminal return."
   }
 }

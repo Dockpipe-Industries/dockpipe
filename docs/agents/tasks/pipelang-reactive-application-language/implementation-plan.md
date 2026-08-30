@@ -29,10 +29,11 @@ Step 8a is complete for `v0.31.0` same-class named pure record predicates consum
 same-class pure method calls with exact signatures and a closed acyclic call graph. Step 8c is
 complete for `v0.37.0` composition of those calls throughout already admitted eager pure
 expressions, with direct match and propagation carriers preserved. Step 8d is complete for one
-exactly typed lazy `condition ? whenTrue : whenFalse` expression per method under `v0.38.0`. These
-seams do not complete or authorize cross-class/module calls, overloads, generics, function values,
-lambdas, recursion, blocks, locals, branch statements, loops, effects, entrypoints, or the rest of
-step 8.
+exactly typed lazy `condition ? whenTrue : whenFalse` expression per method under `v0.38.0`. Step 8e
+is complete for one explicitly typed immutable local followed by one terminal return under
+`v0.39.0`. These seams do not complete or authorize multiple locals, inference, reassignment,
+shadowing, cross-class/module calls, overloads, generics, function values, lambdas, recursion,
+general blocks, branch statements, loops, effects, entrypoints, or the rest of step 8.
 
 Each slice is independently reviewable and keeps syntax, semantics, diagnostics, projection,
 editor, tests, and any enabled backend synchronized. No permissive parser, target-owned semantics,
@@ -188,6 +189,20 @@ target-neutral Core carry the three typed operands explicitly, Core independentl
 bounded shape and types, the evaluator selects one branch, and the Core-only Go backend emits the
 same lazy choice without inference. Public schema shapes and the exact 45-source legacy inventory
 remain unchanged; only language-contract metadata advances.
+
+## Checkpoint v0.39.0 complete contract
+
+One public pure method may use `{ T name = initializer; return expression; }` instead of an
+expression body. `T` is explicit and must exactly match the eagerly evaluated initializer. The
+local enters scope only after initialization, cannot shadow a field or parameter, and is immutable.
+The terminal return may reference the local, parameters, and existing admitted eager pure
+expressions. An explicit checked-arithmetic `Result` local supplies arithmetic result context;
+contextual propagation remains excluded from the initializer and return because it retains its
+established complete-method carrier shape.
+Typed HIR and target-neutral Core carry an explicit `immutable_local` node, analysis-local binding,
+initializer, and return. Core validates canonical scope and exact types; the evaluator and
+Core-only Go backend evaluate the initializer once and return from the scoped expression. Public
+identities and schema shapes remain unchanged; only language-contract metadata advances.
 
 ## Application IR checkpoint complete contract
 

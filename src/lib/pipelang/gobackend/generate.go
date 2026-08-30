@@ -37,7 +37,7 @@ func Generate(program coreir.Program) ([]byte, error) {
 	if err := coreir.ValidateProgram(program); err != nil {
 		return nil, &Error{Code: "PLGO0001", Message: err.Error()}
 	}
-	if program.LanguageContract == coreir.LanguageContractV310 || program.LanguageContract == coreir.LanguageContractV320 || program.LanguageContract == coreir.LanguageContractV330 || program.LanguageContract == coreir.LanguageContractV340 || program.LanguageContract == coreir.LanguageContractV350 || program.LanguageContract == coreir.LanguageContractV360 || program.LanguageContract == coreir.LanguageContractV370 || program.LanguageContract == coreir.LanguageContractV380 {
+	if program.LanguageContract == coreir.LanguageContractV310 || program.LanguageContract == coreir.LanguageContractV320 || program.LanguageContract == coreir.LanguageContractV330 || program.LanguageContract == coreir.LanguageContractV340 || program.LanguageContract == coreir.LanguageContractV350 || program.LanguageContract == coreir.LanguageContractV360 || program.LanguageContract == coreir.LanguageContractV370 || program.LanguageContract == coreir.LanguageContractV380 || program.LanguageContract == coreir.LanguageContractV390 {
 		program.LanguageContract = coreir.LanguageContractV300
 	}
 	return generate(program)
@@ -411,6 +411,25 @@ func emitExpr(expr coreir.Expr, parameters []coreir.Parameter, optionalTypeName 
 			return "", err
 		}
 		return fmt.Sprintf("func() %s { if %s { return %s }; return %s }()", resultType, condition, whenTrue, whenFalse), nil
+	case coreir.ExprImmutableLocal:
+		local := expr.ImmutableLocal
+		if local == nil || local.Initializer == nil || local.Return == nil || local.Position != len(parameters) || local.Name == "" {
+			return "", fmt.Errorf("immutable local is incomplete or not canonically positioned")
+		}
+		initializer, err := emitExpr(*local.Initializer, parameters, optionalTypeName)
+		if err != nil {
+			return "", err
+		}
+		scoped := append(append([]coreir.Parameter{}, parameters...), coreir.Parameter{Position: local.Position, Name: local.Name, Type: local.Type})
+		returned, err := emitExpr(*local.Return, scoped, optionalTypeName)
+		if err != nil {
+			return "", err
+		}
+		resultType, err := goType(expr.Type, optionalTypeName)
+		if err != nil {
+			return "", err
+		}
+		return fmt.Sprintf("func() %s { p%d := %s; return %s }()", resultType, local.Position, initializer, returned), nil
 	case coreir.ExprCall:
 		if expr.Call == nil || expr.Call.TargetName == "" {
 			return "", fmt.Errorf("pure call is incomplete")
@@ -901,6 +920,17 @@ func programNeedsTextSupport(functions []coreir.Function) bool {
 		if typeNeedsTextSupport(function.ReturnType) || expressionNeedsTextSupport(function.Body) {
 			return true
 		}
+		needsBodyText := false
+		coreir.WalkExpression(function.Body, func(expression coreir.Expr) bool {
+			if typeNeedsTextSupport(expression.Type) {
+				needsBodyText = true
+				return false
+			}
+			return true
+		})
+		if needsBodyText {
+			return true
+		}
 		for _, parameter := range function.Parameters {
 			if typeNeedsTextSupport(parameter.Type) {
 				return true
@@ -950,6 +980,17 @@ func programNeedsOptionalSupport(functions []coreir.Function) bool {
 func programNeedsListSupport(functions []coreir.Function) bool {
 	for _, function := range functions {
 		if typeContainsList(function.ReturnType) || typeContainsList(function.Body.Type) {
+			return true
+		}
+		needsBodyList := false
+		coreir.WalkExpression(function.Body, func(expression coreir.Expr) bool {
+			if typeContainsList(expression.Type) {
+				needsBodyList = true
+				return false
+			}
+			return true
+		})
+		if needsBodyList {
 			return true
 		}
 		for _, parameter := range function.Parameters {
@@ -1077,6 +1118,18 @@ func expressionContainsKind(expression coreir.Expr, kind coreir.ExprKind) bool {
 	return found
 }
 
+func expressionContainsType(expression coreir.Expr, predicate func(coreir.Type) bool) bool {
+	found := false
+	coreir.WalkExpression(expression, func(current coreir.Expr) bool {
+		if predicate(current.Type) {
+			found = true
+			return false
+		}
+		return true
+	})
+	return found
+}
+
 func programNeedsOptionalPropagation(functions []coreir.Function) bool {
 	for _, function := range functions {
 		if function.Body.Kind == coreir.ExprOptionalSome && function.Body.Some != nil && function.Body.Some.Value != nil && function.Body.Some.Value.Kind == coreir.ExprPropagate {
@@ -1152,24 +1205,7 @@ func typeContainsRecordOptional(value coreir.Type) bool {
 }
 
 func expressionContainsRecordOptional(expression coreir.Expr) bool {
-	if typeContainsRecordOptional(expression.Type) {
-		return true
-	}
-	switch expression.Kind {
-	case coreir.ExprUnary:
-		return expression.Unary != nil && expression.Unary.Operand != nil && expressionContainsRecordOptional(*expression.Unary.Operand)
-	case coreir.ExprBinary:
-		return expression.Binary != nil && expression.Binary.Left != nil && expression.Binary.Right != nil && (expressionContainsRecordOptional(*expression.Binary.Left) || expressionContainsRecordOptional(*expression.Binary.Right))
-	case coreir.ExprFieldProjection:
-		return expression.Field != nil && expression.Field.Receiver != nil && expressionContainsRecordOptional(*expression.Field.Receiver)
-	case coreir.ExprOptionalSome:
-		return expression.Some != nil && expression.Some.Value != nil && expressionContainsRecordOptional(*expression.Some.Value)
-	case coreir.ExprOptionalHasValue:
-		return expression.HasValue != nil && expression.HasValue.Value != nil && expressionContainsRecordOptional(*expression.HasValue.Value)
-	case coreir.ExprOptionalValueOr:
-		return expression.ValueOr != nil && expression.ValueOr.Value != nil && expression.ValueOr.Fallback != nil && (expressionContainsRecordOptional(*expression.ValueOr.Value) || expressionContainsRecordOptional(*expression.ValueOr.Fallback))
-	}
-	return false
+	return expressionContainsType(expression, typeContainsRecordOptional)
 }
 
 func expressionNeedsOptionalDefault(expression coreir.Expr) bool {
@@ -1284,6 +1320,16 @@ func collectRecordTypes(functions []coreir.Function) ([]coreir.Type, error) {
 		if err := collect(function.ReturnType); err != nil {
 			return nil, err
 		}
+		var expressionErr error
+		coreir.WalkExpression(function.Body, func(expression coreir.Expr) bool {
+			if expressionErr == nil {
+				expressionErr = collect(expression.Type)
+			}
+			return expressionErr == nil
+		})
+		if expressionErr != nil {
+			return nil, expressionErr
+		}
 		for _, parameter := range function.Parameters {
 			if err := collect(parameter.Type); err != nil {
 				return nil, err
@@ -1328,6 +1374,16 @@ func collectListTypes(functions []coreir.Function) ([]coreir.Type, error) {
 	for _, function := range functions {
 		if err := collect(function.ReturnType); err != nil {
 			return nil, err
+		}
+		var expressionErr error
+		coreir.WalkExpression(function.Body, func(expression coreir.Expr) bool {
+			if expressionErr == nil {
+				expressionErr = collect(expression.Type)
+			}
+			return expressionErr == nil
+		})
+		if expressionErr != nil {
+			return nil, expressionErr
 		}
 		for _, parameter := range function.Parameters {
 			if err := collect(parameter.Type); err != nil {
@@ -1634,7 +1690,7 @@ func isBoundedValueResultType(value coreir.Type) bool {
 
 func programNeedsSnapshotResult(functions []coreir.Function) bool {
 	for _, function := range functions {
-		if isSnapshotResultType(function.ReturnType) || isSnapshotResultType(function.Body.Type) {
+		if isSnapshotResultType(function.ReturnType) || expressionContainsType(function.Body, isSnapshotResultType) {
 			return true
 		}
 		for _, parameter := range function.Parameters {
@@ -1648,7 +1704,7 @@ func programNeedsSnapshotResult(functions []coreir.Function) bool {
 
 func programNeedsTextResult(functions []coreir.Function) bool {
 	for _, function := range functions {
-		if isTextResultType(function.ReturnType) || isTextResultType(function.Body.Type) {
+		if isTextResultType(function.ReturnType) || expressionContainsType(function.Body, isTextResultType) {
 			return true
 		}
 		for _, parameter := range function.Parameters {
@@ -1681,8 +1737,15 @@ func collectSnapshotResultTypes(functions []coreir.Function) ([]coreir.Type, err
 		if err := collect(function.ReturnType); err != nil {
 			return nil, err
 		}
-		if err := collect(function.Body.Type); err != nil {
-			return nil, err
+		var expressionErr error
+		coreir.WalkExpression(function.Body, func(expression coreir.Expr) bool {
+			if expressionErr == nil {
+				expressionErr = collect(expression.Type)
+			}
+			return expressionErr == nil
+		})
+		if expressionErr != nil {
+			return nil, expressionErr
 		}
 		for _, parameter := range function.Parameters {
 			if err := collect(parameter.Type); err != nil {
@@ -2065,7 +2128,7 @@ func pipelangContainsCaseFoldedText(value, query string) bool {
 
 func programNeedsArithmeticResult(functions []coreir.Function) bool {
 	for _, function := range functions {
-		if typeNeedsArithmeticResult(function.ReturnType) {
+		if typeNeedsArithmeticResult(function.ReturnType) || expressionContainsType(function.Body, typeNeedsArithmeticResult) {
 			return true
 		}
 		for _, parameter := range function.Parameters {
@@ -2099,12 +2162,16 @@ func isArithmeticResultType(typ coreir.Type) bool {
 
 func programNeedsArithmeticMatch(functions []coreir.Function) bool {
 	for _, function := range functions {
-		if function.Body.Kind == coreir.ExprMatch {
-			for _, parameter := range function.Parameters {
-				if isArithmeticResultType(parameter.Type) {
-					return true
-				}
+		found := false
+		coreir.WalkExpression(function.Body, func(expression coreir.Expr) bool {
+			if expression.Kind == coreir.ExprMatch && expression.Match != nil && expression.Match.Value != nil && isArithmeticResultType(expression.Match.Value.Type) {
+				found = true
+				return false
 			}
+			return true
+		})
+		if found {
+			return true
 		}
 	}
 	return false
