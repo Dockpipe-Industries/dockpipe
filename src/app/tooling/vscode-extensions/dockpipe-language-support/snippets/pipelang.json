@@ -413,5 +413,27 @@
       "}"
     ],
     "description": "Create exactly two v0.49.0 non-overlapping adjacent helper-call carrier and canonical match-local pairs."
+  },
+  "PipeLang dependent second-carrier match method": {
+    "prefix": "pipe-dependent-second-carrier-match",
+    "body": [
+      "public Optional<${1:Row}> ${2:FindPrimary}(List<${1:Row}> ${3:rows}, string ${4:id}) => find_by(${3:rows}, ${1:Row}.${5:Id}, ${4:id});",
+      "public Optional<${1:Row}> ${6:ConfirmSecondary}(string ${7:first}, List<${1:Row}> ${3:rows}, string ${4:id}) => ${7:first} == \"\" ? none<${1:Row}>() : find_by(${3:rows}, ${1:Row}.${5:Id}, ${4:id});",
+      "",
+      "public string ${8:SelectedName}(List<${1:Row}> ${3:rows}, string ${4:id}) {",
+      "\tOptional<${1:Row}> ${9:firstCarrier} = ${2:FindPrimary}(${3:rows}, ${4:id});",
+      "\tstring ${7:first} = match(${9:firstCarrier}) {",
+      "\t\tsome(${10:firstRow}) => ${10:firstRow}.${11:Name},",
+      "\t\tnone => \"\"",
+      "\t};",
+      "\tOptional<${1:Row}> ${12:secondCarrier} = ${6:ConfirmSecondary}(${7:first}, ${3:rows}, ${4:id});",
+      "\tstring ${13:selected} = match(${12:secondCarrier}) {",
+      "\t\tsome(${14:secondRow}) => ${14:secondRow}.${11:Name},",
+      "\t\tnone => ${7:first}",
+      "\t};",
+      "\treturn ${15:NormalizeName}(${13:selected});",
+      "}"
+    ],
+    "description": "Create the exact v0.50.0 four-local dependent second-carrier match form."
   }
 }

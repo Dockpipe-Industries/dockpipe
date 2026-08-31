@@ -666,6 +666,30 @@ runtimes; targets; adapters; UI; and deployment behavior remain excluded. No sta
 runtime, action, target, adapter, UI, or deployment behavior enters by implication. Any successor
 requires a new founder decision and separate implementation approval.
 
+## Accepted v0.50.0 boundary — dependent second-carrier matching
+
+`v0.50.0` adds one new exact two-match spelling:
+`C1 firstCarrier = Helper1(p1, ..., pn); T1 first = match(firstCarrier) { ... };`
+`C2 secondCarrier = Helper2(first, p1, ..., pn); T2 second = match(secondCarrier) { ... };`.
+These are four contiguous explicitly typed locals. Ordinary locals may appear before or after the
+stage only. `Helper1` keeps the v0.49 exact caller signature. `Helper2` resolves uniquely to a
+public pure same-class method whose first parameter exactly matches the first selected local,
+followed by every caller parameter directly once in declaration order. Both pairs keep the closed
+carrier matrix and canonical arms.
+
+HIR and Core reuse existing nodes; Core independently verifies the four-local stage, binding
+positions, exact helper ownership/signatures, carriers, arms, local types, and continuation. All
+locals and helpers evaluate once in source order, every complete carrier is validated, and only
+selected arms evaluate. Docker observability proves `ConfirmSelection(selected, rows, id)` without
+schema change. Public compiler, semantic, and Application IR identities and shapes stay stable;
+only language metadata advances, and the exact 45-source lane remains frozen.
+
+Existing zero-match, one-match, and independent v0.49 two-pair forms remain exact. Other local
+argument arrangements, computed/reordered/repeated arguments, split stages, third/nested/terminal
+matches, propagation changes, arbitrary Result widening, statements, effects, actions, runtimes,
+targets, adapters, UI, and deployment remain excluded. No behavior enters by implication. Any
+successor requires a new founder decision and separate implementation approval.
+
 ## Accepted v0.49.0 boundary — bounded two-carrier matching
 
 `v0.49.0` widens only the occurrence count accepted through v0.48. One public pure method with one

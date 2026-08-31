@@ -65,7 +65,10 @@ under `v0.49.0`: one public pure method may contain exactly two non-overlapping
 v0.48-compatible adjacent helper-call carrier and match-local pairs. Ordinary locals may surround
 or separate the pairs but cannot split either pair. Both pairs evaluate in source order, each
 helper and selected local initializes once, each complete carrier is validated, and only each
-selected arm evaluates. Existing zero-match and one-match forms remain unchanged. These
+selected arm evaluates. Existing zero-match and one-match forms remain unchanged. Step 8p is
+complete under `v0.50.0`: one new form makes those two pairs a contiguous four-local stage and
+passes the first selected local as the second helper's first direct argument, followed by every
+caller parameter once in declaration order. Existing v0.49 independent pairs remain exact. These
 seams do not complete or authorize inference,
 reassignment, shadowing, cross-class/module calls, overloads, generics, function values, lambdas,
 recursion, general blocks, branch statements, loops, effects, entrypoints, additional or nested
@@ -482,6 +485,28 @@ omitted/extra helper arguments, propagation changes, Result construction/default
 widening, cross-owner/private/overloaded/generic helpers, wildcard or reversed arms, guards,
 inference, reassignment, statements, effects, actions, runtimes, targets, adapters, UI, and
 deployment behavior remain excluded. No behavior enters by implication.
+
+## Checkpoint v0.50.0 complete contract
+
+One new public pure method form is exactly
+`C1 firstCarrier = Helper1(p1, ..., pn); T1 first = match(firstCarrier) { ... };`
+`C2 secondCarrier = Helper2(first, p1, ..., pn); T2 second = match(secondCarrier) { ... };`
+as four contiguous explicitly typed locals. Ordinary locals may appear before or after the stage,
+not inside it. `Helper1` retains the v0.49 caller signature. `Helper2` is a uniquely resolved public
+pure same-class method whose first parameter exactly matches `T1`, followed by the caller's exact
+parameter signature. Both pairs retain the closed carrier matrix and canonical arms.
+
+Typed HIR and Core reuse existing nodes. Core independently validates the four-local stage,
+binding positions, helper ownership and signatures, carrier types, arms, local typing, and
+continuation. Evaluation and Core-only Go preserve once-only source order, complete-carrier
+validation, and selected-arm-only evaluation. Public compiler, semantic, and Application IR schema
+identities and shapes remain unchanged; metadata advances to `v0.50.0`; the exact 45-source lane is
+frozen. Docker observability proves `ConfirmSelection(selected, rows, id)` before normalization.
+
+Existing zero-match, one-match, and v0.49 independent two-pair forms remain exact. Other local
+argument arrangements, computed/reordered/repeated arguments, split stages, third/nested/terminal
+matches, propagation changes, arbitrary Result widening, statements, effects, actions, runtimes,
+targets, adapters, UI, and deployment remain excluded. No behavior enters by implication.
 
 ## Application IR checkpoint complete contract
 

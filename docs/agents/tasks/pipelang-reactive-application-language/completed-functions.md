@@ -338,3 +338,28 @@ omitted/extra arguments, propagation changes, Result construction/defaulting or 
 cross-owner/private/overloaded/generic helpers, wildcard/reversed arms, guards, inference,
 reassignment, statements, effects, actions, runtimes, targets, adapters, UI, and deployment behavior
 remain excluded. No behavior enters by implication.
+
+## Step 8p — dependent second-carrier matching (`v0.50.0`)
+
+Production source adds one exact four-local form:
+`C1 firstCarrier = Helper1(p1, ..., pn); T1 first = match(firstCarrier) { ... };`
+`C2 secondCarrier = Helper2(first, p1, ..., pn); T2 second = match(secondCarrier) { ... };`.
+The locals are contiguous; ordinary locals may surround but not split the stage. `Helper1` keeps
+the exact v0.49 caller signature. `Helper2` resolves uniquely to a public pure same-class method
+whose first parameter has the selected local's exact type and whose remaining parameters exactly
+match every caller parameter in declaration order. Both pairs keep the closed Optional,
+`Result<List<R>, string>`, `Result<string, string>`, and checked-arithmetic Result matrix and
+canonical source-ordered arms.
+
+Typed HIR and Core reuse `immutable_local`, `call`, `reference`, and `match`. Core independently
+checks binding positions, adjacency, helper identities and signatures, carriers, arms, local types,
+and continuation. Evaluator and deterministic Core-only Go prove once-only source order,
+complete-carrier validation, and selected-arm-only execution. Docker observability proves
+`ConfirmSelection(selected, rows, id)` with no Application IR schema change. Public compiler,
+semantic, and Application IR identities and shapes remain stable; metadata advances to `v0.50.0`;
+the exact 45-source lane remains frozen.
+
+Existing zero-match, one-match, and independent v0.49 two-pair forms remain exact. Other argument
+arrangements, computed/reordered/repeated arguments, split stages, third/nested/terminal matches,
+propagation changes, arbitrary Result widening, statements, effects, actions, runtimes, targets,
+adapters, UI, and deployment remain excluded. No behavior enters by implication.

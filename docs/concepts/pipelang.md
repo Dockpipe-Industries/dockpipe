@@ -1458,6 +1458,40 @@ arbitrary widening, cross-owner/private/overloaded/generic helpers, wildcard or 
 guards, inference, reassignment, statements, effects, actions, runtimes, targets, adapters, UI, and
 deployment behavior remain excluded. No behavior enters by implication.
 
+### PipeLang v0.50.0: dependent second-carrier matching
+
+One new two-match form requires exactly four contiguous explicitly typed locals:
+
+```text
+C1 firstCarrier = Helper1(p1, ..., pn);
+T1 first = match(firstCarrier) { canonicalArms };
+C2 secondCarrier = Helper2(first, p1, ..., pn);
+T2 second = match(secondCarrier) { canonicalArms };
+return admittedExpression;
+```
+
+`Helper1` retains the v0.49 exact caller signature. `Helper2` resolves uniquely to a public pure
+same-class method whose first parameter exactly matches `T1`, followed by every caller parameter
+directly once in declaration order. Ordinary locals may appear only before or after this four-local
+stage. Both pairs retain the closed v0.48 carrier matrix and canonical source-ordered arms. All
+locals and helpers evaluate eagerly once in source order, every complete carrier is validated, and
+only selected arms evaluate.
+
+Typed HIR and target-neutral Core reuse `immutable_local`, `call`, `reference`, and `match`; Core
+independently validates the four-local stage, local and parameter binding positions, exact helper
+ownership/signatures, carrier types, arms, local types, and continuation. The evaluator and
+deterministic Core-only Go backend preserve those semantics. Docker observability proves
+`ConfirmSelection(selected, rows, id)` after the first selection match. `pipelang.compiler.v1`,
+`pipelang.semantic.v1`, and `dockpipe.application.v1` identities and shapes remain unchanged; only
+language-contract metadata advances to `v0.50.0`, and the exact 45-source lane remains frozen.
+
+Existing zero-match, one-match, and v0.49 independent two-pair forms remain exact. Other local
+argument arrangements, computed/reordered/repeated arguments, gaps inside the four-local stage,
+third/nested/terminal/argument matches, propagation changes, Result construction/defaulting or
+arbitrary widening, cross-owner/private/overloaded/generic helpers, wildcards, reversed arms,
+guards, inference, reassignment, statements, effects, actions, runtimes, targets, adapters, UI, and
+deployment remain excluded. No behavior enters by implication.
+
 ### Target-neutral Application IR
 
 `dockpipe.application.v1` is not a language feature or target generator. It consumes the public

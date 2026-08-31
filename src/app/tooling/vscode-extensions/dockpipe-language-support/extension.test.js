@@ -355,3 +355,9 @@ assert(pipeLangSnippets["PipeLang bounded two-carrier match method"].body.some((
 assert(pipeLangSnippets["PipeLang bounded two-carrier match method"].body.some((line) => line.includes("string ${9:first} = match(${8:firstCarrier})")));
 assert(pipeLangSnippets["PipeLang bounded two-carrier match method"].body.some((line) => line.includes("Optional<${1:Row}> ${12:secondCarrier} = ${6:FindSecondary}(${3:rows}, ${4:id})")));
 assert(pipeLangSnippets["PipeLang bounded two-carrier match method"].body.some((line) => line.includes("string ${13:selected} = match(${12:secondCarrier})")));
+assert(pipeLangReadme.includes("`v0.50.0`"));
+assert(pipeLangReadme.includes("exactly four contiguous locals"));
+assert.strictEqual(pipeLangSnippets["PipeLang dependent second-carrier match method"].prefix, "pipe-dependent-second-carrier-match");
+assert(pipeLangSnippets["PipeLang dependent second-carrier match method"].description.includes("v0.50.0"));
+assert(pipeLangSnippets["PipeLang dependent second-carrier match method"].body.some((line) => line.includes("${6:ConfirmSecondary}(string ${7:first}, List<${1:Row}> ${3:rows}, string ${4:id})")));
+assert(pipeLangSnippets["PipeLang dependent second-carrier match method"].body.some((line) => line.includes("${12:secondCarrier} = ${6:ConfirmSecondary}(${7:first}, ${3:rows}, ${4:id})")));
