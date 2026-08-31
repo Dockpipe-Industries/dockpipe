@@ -290,5 +290,17 @@
       "}"
     ],
     "description": "Create one v0.41.0 first-local bounded propagation followed by ordered immutable locals and a terminal carrier return."
+  },
+  "PipeLang prior-local helper propagation method": {
+    "prefix": "pipe-prior-local-propagate",
+    "body": [
+      "public Result<string, string> ${1:Method}(string ${2:input}) {",
+      "\tResult<string, string> ${3:carrier} = ${4:Helper}(${2:input});",
+      "\tstring ${5:value} = propagate(${3:carrier});",
+      "\tstring ${6:result} = ${7:${5:value}};",
+      "\treturn ok<string, string>(${6:result});",
+      "}"
+    ],
+    "description": "Create one v0.42.0 same-class helper call followed immediately by bounded prior-local propagation and a terminal carrier return."
   }
 }

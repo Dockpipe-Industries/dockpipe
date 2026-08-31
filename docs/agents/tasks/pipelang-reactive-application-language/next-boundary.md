@@ -456,6 +456,39 @@ nested block, loop, effect, action, runtime policy, target behavior, adapter, UI
 behavior enters by implication. Any further language seam requires another source-backed founder
 decision and separate implementation approval.
 
+## Accepted v0.42.0 boundary — prior-local helper propagation
+
+`v0.42.0` admits exactly the first-two-local spelling
+`C carrier = Helper(input); T value = propagate(carrier);` in one public pure method block. The
+method has exactly one direct parameter `input`. `Helper` must resolve under the existing v0.36.0
+same-class public pure-call contract, take exactly that parameter type, and return carrier `C`; the
+call argument is exactly the method parameter. `C` must equal the enclosing method return type.
+The second initializer propagates a direct reference to the immediately preceding `carrier` local,
+and `T` exactly equals the carried payload. Helper evaluation occurs once before propagation.
+Presence or success binds a validated copied payload and continues through any later v0.40.0
+ordered locals and the terminal return; absence or failure immediately returns the identical
+canonical helper carrier.
+
+The carrier matrix remains closed to v0.41.0: `Optional<T>` for an admitted primitive or record,
+`Result<List<R>, string>`, and `Result<string, string>`. Typed HIR and target-neutral Core reuse the
+existing `call`, right-nested `immutable_local`, and `propagate` nodes. Core independently proves
+canonical local positions, one direct helper argument, the resolved same-owner callable and exact
+signature, a closed acyclic call graph, one propagation occurrence, the direct prior-local
+reference, and exact carrier/payload types. The evaluator and Core-only Go backend preserve
+once-only helper evaluation, short-circuit, canonical carrier return, and copied storage.
+TASK-020's Docker observability fixture proves `Details(string)` calling
+`ValidateDetails(string) -> Result<string, string>`, propagating the helper Result, trimming the
+payload, and returning the rebuilt Result through unchanged `dockpipe.application.v1` schema.
+
+Compiler, semantic projection, and Application IR schema identities and shapes remain unchanged;
+only language-contract metadata advances, and all 45 frozen legacy sources remain exact. The
+v0.41.0 direct-parameter first-local spelling remains unchanged. This slice adds no direct
+`propagate(Helper(...))`, multiple or nested propagation, more than one helper argument, computed
+helper arguments, propagation from any non-immediately-preceding local, arbitrary Result including
+checked arithmetic, inference, reassignment, early return, statement branch, nested block, loop,
+effect, action, runtime policy, target behavior, adapter, UI, or deployment behavior. Any further
+language seam requires another source-backed founder decision and separate implementation approval.
+
 ## Accepted first Application IR boundary — `dockpipe.application.v1`
 
 The first target-neutral read-only Application IR consumes only a canonical public

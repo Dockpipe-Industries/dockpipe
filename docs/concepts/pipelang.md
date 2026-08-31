@@ -1215,6 +1215,32 @@ No second or nested propagation, computed operand, propagation from a prior loca
 branch, nested block, loop, effect, action, runtime behavior, target behavior, adapter, UI, or
 deployment behavior enters by implication.
 
+### PipeLang v0.42.0: prior-local helper propagation
+
+One public pure method block may use exactly
+`C carrier = Helper(input); T value = propagate(carrier);` as its first two immutable locals. The
+method has one direct parameter `input`; `Helper` resolves to one uniquely named public pure method
+on the same class, takes exactly the input type, and returns bounded carrier `C`. The call argument
+is the direct parameter, `C` exactly equals the enclosing method return type, and `T` exactly
+equals the carrier payload. The helper evaluates once. Presence or success copies the validated
+payload into `value` and continues through later ordered locals and the terminal return; absence or
+failure returns the identical canonical helper carrier immediately.
+
+The carrier matrix remains the v0.41.0 Optional primitive/record,
+`Result<List<R>, string>`, and `Result<string, string>` matrix. Typed HIR and target-neutral Core
+reuse `call`, right-nested `immutable_local`, and `propagate`. Core independently validates exact
+positions, the sole direct helper argument, resolved same-class callable signature and acyclic call
+graph, the direct immediately preceding carrier-local operand, the single propagation occurrence,
+and exact carrier/payload types. The evaluator and Core-only Go backend preserve once-only helper
+evaluation, short-circuit, canonical carrier return, and copied values. Compiler, semantic
+projection, and Application IR schema identities and shapes remain unchanged; only their
+language-contract metadata advances to `v0.42.0`. The exact 45-source legacy lane remains frozen.
+
+Direct `propagate(Helper(...))`, multiple/nested propagation, extra or computed helper arguments,
+propagation from another local, arbitrary Results including checked arithmetic, inference,
+reassignment, early returns, statement branches, nested blocks, loops, effects, actions, runtime,
+target, adapter, UI, and deployment behavior remain excluded.
+
 ### Target-neutral Application IR
 
 `dockpipe.application.v1` is not a language feature or target generator. It consumes the public

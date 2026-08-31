@@ -362,7 +362,7 @@ func validatePureCalls(contract string, function Function, functions map[string]
 	var walk func(Expr) error
 	walk = func(expression Expr) error {
 		if expression.Kind == ExprCall {
-			if contract != LanguageContractV360 && contract != LanguageContractV370 && contract != LanguageContractV380 && contract != LanguageContractV390 && contract != LanguageContractV400 && contract != LanguageContractV410 {
+			if contract != LanguageContractV360 && contract != LanguageContractV370 && contract != LanguageContractV380 && contract != LanguageContractV390 && contract != LanguageContractV400 && contract != LanguageContractV410 && contract != LanguageContractV420 {
 				return fmt.Errorf("function %s pure calls require language contract %q or later", function.Name, LanguageContractV360)
 			}
 			call := expression.Call
@@ -466,13 +466,13 @@ func validateImmutableLocalContract(contract string, function Function) error {
 	if count == 0 {
 		return nil
 	}
-	if contract != LanguageContractV390 && contract != LanguageContractV400 && contract != LanguageContractV410 {
+	if contract != LanguageContractV390 && contract != LanguageContractV400 && contract != LanguageContractV410 && contract != LanguageContractV420 {
 		return fmt.Errorf("function %s immutable local requires language contract %q", function.Name, LanguageContractV390)
 	}
 	if contract == LanguageContractV390 && (count != 1 || function.Body.Kind != ExprImmutableLocal) {
 		return fmt.Errorf("function %s admits exactly one top-level immutable local", function.Name)
 	}
-	if contract == LanguageContractV400 || contract == LanguageContractV410 {
+	if contract == LanguageContractV400 || contract == LanguageContractV410 || contract == LanguageContractV420 {
 		sequenceCount := 0
 		body := function.Body
 		for body.Kind == ExprImmutableLocal && body.ImmutableLocal != nil && body.ImmutableLocal.Return != nil {
@@ -483,10 +483,13 @@ func validateImmutableLocalContract(contract string, function Function) error {
 			return fmt.Errorf("function %s admits only one top-level ordered immutable-local sequence", function.Name)
 		}
 	}
-	if exprContainsPropagation(function.Body) && contract != LanguageContractV410 {
+	if exprContainsPropagation(function.Body) && contract != LanguageContractV410 && contract != LanguageContractV420 {
 		return fmt.Errorf("function %s immutable local initializer and return exclude propagation", function.Name)
 	}
 	if exprContainsPropagation(function.Body) {
+		if contract == LanguageContractV420 && function.Body.Kind == ExprImmutableLocal && function.Body.ImmutableLocal != nil && function.Body.ImmutableLocal.Initializer != nil && function.Body.ImmutableLocal.Initializer.Kind != ExprPropagate {
+			return validatePriorLocalBlockPropagationContract(function)
+		}
 		return validateBlockPropagationContract(function)
 	}
 	return nil
@@ -533,6 +536,42 @@ func validateBlockPropagationContract(function Function) error {
 	return nil
 }
 
+func validatePriorLocalBlockPropagationContract(function Function) error {
+	first := function.Body.ImmutableLocal
+	if function.Body.Kind != ExprImmutableLocal || first == nil || first.Initializer == nil || first.Initializer.Kind != ExprCall || first.Initializer.Call == nil || first.Return == nil || first.Return.Kind != ExprImmutableLocal || first.Return.ImmutableLocal == nil || countPropagationExpressions(function.Body) != 1 {
+		return fmt.Errorf("function %s prior-local propagation requires one helper-call carrier local followed immediately by one propagation local", function.Name)
+	}
+	second := first.Return.ImmutableLocal
+	if second.Initializer == nil || second.Initializer.Kind != ExprPropagate || second.Initializer.Propagate == nil {
+		return fmt.Errorf("function %s prior-local propagation requires propagation as the second immutable-local initializer", function.Name)
+	}
+	called := first.Initializer.Call
+	if len(function.Parameters) != 1 || len(called.Arguments) != 1 || !directReference(called.Arguments[0]) || *called.Arguments[0].Parameter != 0 {
+		return fmt.Errorf("function %s prior-local propagation requires one helper call over its sole direct parameter", function.Name)
+	}
+	propagated := second.Initializer.Propagate
+	if !directReference(propagated.Value) || *propagated.Value.Parameter != first.Position {
+		return fmt.Errorf("function %s prior-local propagation requires a direct reference to the immediately preceding helper-call carrier local", function.Name)
+	}
+	carrier := function.ReturnType
+	if first.Position != len(function.Parameters) || second.Position != first.Position+1 || !TypeEqual(first.Type, carrier) || !TypeEqual(first.Initializer.Type, carrier) || !TypeEqual(propagated.Carrier, carrier) || !TypeEqual(propagated.Value.Type, carrier) {
+		return fmt.Errorf("function %s helper-call carrier local and return type must be identical", function.Name)
+	}
+	var payload Type
+	switch {
+	case carrier.Kind == TypeOptional && carrier.Optional != nil && isOptionalValueType(carrier.Optional.Value):
+		payload = carrier.Optional.Value
+	case isBoundedValueResultType(carrier):
+		payload = carrier.Result.Success
+	default:
+		return fmt.Errorf("function %s prior-local propagation requires an admitted Optional or bounded Result", function.Name)
+	}
+	if !TypeEqual(second.Type, payload) || !TypeEqual(second.Initializer.Type, payload) {
+		return fmt.Errorf("function %s second immutable local type must match the propagated success payload", function.Name)
+	}
+	return nil
+}
+
 func exprContainsPropagation(expression Expr) bool {
 	if expression.Kind == ExprPropagate {
 		return true
@@ -549,7 +588,7 @@ func validateConditionalContract(contract string, function Function) error {
 	if !exprContainsConditional(function.Body) {
 		return nil
 	}
-	if contract != LanguageContractV380 && contract != LanguageContractV390 && contract != LanguageContractV400 && contract != LanguageContractV410 {
+	if contract != LanguageContractV380 && contract != LanguageContractV390 && contract != LanguageContractV400 && contract != LanguageContractV410 && contract != LanguageContractV420 {
 		return fmt.Errorf("function %s conditional expressions require language contract %q", function.Name, LanguageContractV380)
 	}
 	if countConditionalExpressions(function.Body) != 1 {
@@ -627,7 +666,7 @@ func validatePureCallPlacement(contract string, function Function) error {
 		if !validCallPlacement(function.Body) {
 			return fmt.Errorf("function %s pure calls must be the complete body or directly nested call arguments under %s", function.Name, LanguageContractV360)
 		}
-	case LanguageContractV370, LanguageContractV380, LanguageContractV390, LanguageContractV400, LanguageContractV410:
+	case LanguageContractV370, LanguageContractV380, LanguageContractV390, LanguageContractV400, LanguageContractV410, LanguageContractV420:
 		if !validGeneralCallPlacement(function.Body) {
 			return fmt.Errorf("function %s composed pure calls retain direct match and propagate carriers", function.Name)
 		}
@@ -811,7 +850,7 @@ func callableIdentityEqual(left, right *CallableIdentity) bool {
 
 func isV310OrLaterContract(contract string) bool {
 	switch contract {
-	case LanguageContractV310, LanguageContractV320, LanguageContractV330, LanguageContractV340, LanguageContractV350, LanguageContractV360, LanguageContractV370, LanguageContractV380, LanguageContractV390, LanguageContractV400, LanguageContractV410:
+	case LanguageContractV310, LanguageContractV320, LanguageContractV330, LanguageContractV340, LanguageContractV350, LanguageContractV360, LanguageContractV370, LanguageContractV380, LanguageContractV390, LanguageContractV400, LanguageContractV410, LanguageContractV420:
 		return true
 	default:
 		return false
