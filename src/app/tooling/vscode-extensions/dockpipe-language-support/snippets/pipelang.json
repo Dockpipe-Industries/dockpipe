@@ -374,5 +374,22 @@
       "}"
     ],
     "description": "Create one v0.47.0 bounded helper-carrier match after an ordinary immutable local, followed by a terminal continuation."
+  },
+  "PipeLang prior-local carrier match method": {
+    "prefix": "pipe-prior-local-carrier-match",
+    "body": [
+      "public Optional<${1:Row}> ${2:FindSelection}(List<${1:Row}> ${3:rows}, string ${4:id}) => find_by(${3:rows}, ${1:Row}.${5:Id}, ${4:id});",
+      "",
+      "public string ${6:SelectedName}(List<${1:Row}> ${3:rows}, string ${4:id}) {",
+      "\tstring ${7:fallback} = \"\";",
+      "\tOptional<${1:Row}> ${8:selection} = ${2:FindSelection}(${3:rows}, ${4:id});",
+      "\tstring ${9:selected} = match(${8:selection}) {",
+      "\t\tsome(${10:row}) => ${10:row}.${11:Name},",
+      "\t\tnone => ${7:fallback}",
+      "\t};",
+      "\treturn ${12:NormalizeName}(${9:selected});",
+      "}"
+    ],
+    "description": "Create one v0.48.0 adjacent helper-call carrier local and canonical match local, followed by a terminal continuation."
   }
 }

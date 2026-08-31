@@ -340,3 +340,10 @@ assert(pipeLangSnippets["PipeLang later-local helper match method"].description.
 assert(pipeLangSnippets["PipeLang later-local helper match method"].body.some((line) => line.includes("string ${7:fallback} = \"\"")));
 assert(pipeLangSnippets["PipeLang later-local helper match method"].body.some((line) => line.includes("string ${8:selected} = match(${2:FindSelection}(${3:rows}, ${4:id}))")));
 assert(pipeLangSnippets["PipeLang later-local helper match method"].body.some((line) => line.includes("none => ${7:fallback}")));
+assert(pipeLangReadme.includes("`v0.48.0`"));
+assert(pipeLangReadme.includes("immediately following typed local"));
+assert.strictEqual(pipeLangSnippets["PipeLang prior-local carrier match method"].prefix, "pipe-prior-local-carrier-match");
+assert(pipeLangSnippets["PipeLang prior-local carrier match method"].description.includes("v0.48.0"));
+assert(pipeLangSnippets["PipeLang prior-local carrier match method"].body.some((line) => line.includes("Optional<${1:Row}> ${8:selection} = ${2:FindSelection}(${3:rows}, ${4:id})")));
+assert(pipeLangSnippets["PipeLang prior-local carrier match method"].body.some((line) => line.includes("string ${9:selected} = match(${8:selection})")));
+assert(pipeLangSnippets["PipeLang prior-local carrier match method"].body.some((line) => line.includes("return ${12:NormalizeName}(${9:selected})")));

@@ -633,6 +633,39 @@ runtimes; targets; adapters; UI; and deployment behavior remain excluded. No sta
 runtime, action, target, adapter, UI, or deployment behavior enters by implication. Any successor
 requires a new founder decision and separate implementation approval.
 
+## Accepted v0.48.0 boundary — prior-local carrier matching
+
+`v0.48.0` widens only the local spelling accepted through v0.47. After zero or more ordinary
+locals, one explicitly typed carrier local is initialized by `Helper(p1, ..., pn)` and the
+immediately adjacent explicitly typed local is initialized by exactly one `match(carrier)`. The
+caller is public and pure with one or more parameters; every parameter is passed directly once in
+declaration order to one uniquely resolved public pure same-class exact-signature helper. The
+carrier matrix stays closed to admitted Optional primitive/record, `Result<List<R>, string>`,
+`Result<string, string>`, and checked-arithmetic `Result<int, ArithmeticError>` or
+`Result<float, ArithmeticError>`. Arms retain exact canonical source order and bindings.
+
+Typed HIR and target-neutral Core reuse `immutable_local`, `call`, `reference`, and `match`. Core
+independently proves adjacency, the exact carrier-local reference, one match, direct parameter
+positions/types, same-owner exact signature, the closed carrier matrix, canonical arms/bindings,
+exact local typing, and continuation scope. Earlier locals evaluate eagerly once; the helper and
+carrier local evaluate once; the complete carrier is validated; only the selected arm evaluates;
+the copied result initializes the matched local once; and later locals plus the terminal return
+continue. The evaluator and deterministic Core-only Go backend preserve the same semantics.
+
+`pipelang.compiler.v1`, `pipelang.semantic.v1`, and `dockpipe.application.v1` identities and shapes
+remain stable; only language-contract metadata advances, and the exact 45-source legacy lane
+remains frozen. TASK-020 proves the exact source spelling through `SelectedNameById`: a fallback
+local precedes `Optional<ContainerRow> selection = FindSelection(rows, id);`, immediately followed
+by `string selected = match(selection) { ... };`, without Application IR schema change.
+
+Non-adjacent, terminal-return, argument, nested, or multiple matches; checked-arithmetic matching
+as a complete method body; computed/reordered/omitted/extra helper arguments; propagation changes;
+Result construction/defaulting or arbitrary widening; cross-owner/private/overloaded/generic
+helpers; wildcards or reversed arms; guards; inference; reassignment; statements; effects; actions;
+runtimes; targets; adapters; UI; and deployment behavior remain excluded. No statement, effect,
+runtime, action, target, adapter, UI, or deployment behavior enters by implication. Any successor
+requires a new founder decision and separate implementation approval.
+
 ## Accepted first Application IR boundary — `dockpipe.application.v1`
 
 The first target-neutral read-only Application IR consumes only a canonical public

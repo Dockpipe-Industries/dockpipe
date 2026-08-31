@@ -1381,6 +1381,38 @@ defaulting, or arbitrary widening; cross-owner/private/overloaded/generic helper
 reversed arms; guards; inference; reassignment; statements; effects; actions; runtimes; targets;
 adapters; UI; and deployment behavior remain excluded.
 
+### PipeLang v0.48.0: prior-local carrier matching
+
+After zero or more ordinary locals, one public pure method with one or more parameters may declare
+an explicitly typed carrier local initialized by `Helper(p1, ..., pn)` and then an immediately
+adjacent explicitly typed local initialized by exactly one `match(carrier)`. Every caller parameter
+is passed directly once in declaration order to one uniquely resolved public pure same-class helper
+with the exact caller signature. The closed carrier matrix remains admitted Optional
+primitive/record, `Result<List<R>, string>`, `Result<string, string>`, and checked-arithmetic
+`Result<int, ArithmeticError>` or `Result<float, ArithmeticError>`, with exact canonical arm order,
+bindings, and matched-local result type.
+
+Earlier ordinary locals evaluate eagerly once in source order. The helper initializes the carrier
+local once, the full carrier is validated, only the selected arm evaluates, and its copied result
+initializes the adjacent matched local once. Existing later locals and the terminal return then
+continue. Typed HIR and target-neutral Core reuse `immutable_local`, `call`, `reference`, and
+`match`; Core independently validates adjacency, one match, the exact carrier reference, direct
+argument positions/types, exact same-owner signature, the closed carrier matrix, canonical
+arms/bindings, local typing, and continuation scope. The evaluator and deterministic Core-only Go
+backend preserve the same semantics.
+
+The Docker observability consumer proves the exact source shape through `SelectedNameById`: a
+fallback local is followed by `Optional<ContainerRow> selection = FindSelection(rows, id);` and
+`string selected = match(selection) { ... };`. `pipelang.compiler.v1`,
+`pipelang.semantic.v1`, and `dockpipe.application.v1` identities and shapes remain unchanged; only
+language-contract metadata advances to `v0.48.0`, and the exact 45-source lane remains frozen.
+
+Non-adjacent, terminal-return, argument, nested, or multiple matches; top-level checked-arithmetic
+matching; computed/reordered/omitted/extra helper arguments; propagation changes; Result
+construction, defaulting, or arbitrary widening; cross-owner/private/overloaded/generic helpers;
+wildcard or reversed arms; guards; inference; reassignment; statements; effects; actions; runtimes;
+targets; adapters; UI; and deployment behavior remain excluded. No behavior enters by implication.
+
 ### Target-neutral Application IR
 
 `dockpipe.application.v1` is not a language feature or target generator. It consumes the public

@@ -57,7 +57,10 @@ composition additionally admits existing checked-arithmetic `Result<int, Arithme
 construction. Step 8m is complete under `v0.47.0`: exactly one v0.46-compatible helper-carrier
 match may initialize any explicitly typed immutable local after zero or more ordinary locals. All
 earlier locals evaluate eagerly once in source order; the helper and selected local initialize
-once; only the selected arm evaluates; and later locals plus the terminal return continue. These
+once; only the selected arm evaluates; and later locals plus the terminal return continue. Step 8n
+is complete under `v0.48.0`: after zero or more ordinary locals, one explicitly typed local may
+call that exact helper and the immediately adjacent typed local may use the single canonical
+`match(carrier)`; the carrier local and selected local each initialize once. These
 seams do not complete or authorize inference,
 reassignment, shadowing, cross-class/module calls, overloads, generics, function values, lambdas,
 recursion, general blocks, branch statements, loops, effects, entrypoints, additional or nested
@@ -416,6 +419,33 @@ as the complete method body remains excluded. Computed/reordered/omitted/extra a
 propagation changes; Result construction, defaulting, or arbitrary widening; cross-owner/private/
 overloaded/generic helpers; wildcard or reversed arms; guards; inference; reassignment; statements;
 effects; actions; runtimes; targets; adapters; UI; and deployment behavior remain excluded.
+
+## Checkpoint v0.48.0 complete contract
+
+After zero or more ordinary locals, one public pure method with one or more parameters may declare
+an explicitly typed carrier local initialized by one uniquely resolved public pure same-class
+exact-signature `Helper(p1, ..., pn)` and an immediately adjacent explicitly typed local initialized
+by exactly one canonical `match(carrier)`. Every caller parameter is passed directly once in
+declaration order. The carrier matrix remains closed to admitted Optional primitive/record,
+`Result<List<R>, string>`, `Result<string, string>`, and checked-arithmetic
+`Result<int, ArithmeticError>` or `Result<float, ArithmeticError>`.
+
+Typed HIR and target-neutral Core reuse `immutable_local`, `call`, `reference`, and `match`. Core
+independently validates adjacency, one match, the exact carrier reference, direct arguments,
+same-owner exact signature, closed carrier matrix, canonical arms/bindings, local typing, and
+continuation scope. Earlier locals, the carrier local, and matched local initialize eagerly once in
+source order; the complete carrier is validated; only the selected arm evaluates; and later locals
+plus the terminal return continue. `pipelang.compiler.v1`, `pipelang.semantic.v1`, and
+`dockpipe.application.v1` identities and shapes remain unchanged; only language-contract metadata
+advances, and the exact 45-source lane remains frozen. The Docker observability consumer proves a
+fallback, adjacent `selection` carrier, `match(selection)`, and normalization continuation.
+
+Non-adjacent, terminal-return, argument, nested, or multiple matches remain excluded. Top-level
+checked-arithmetic matching; computed/reordered/omitted/extra arguments; propagation changes;
+Result construction/defaulting or arbitrary widening; cross-owner/private/overloaded/generic
+helpers; wildcard or reversed arms; guards; inference; reassignment; statements; effects; actions;
+runtimes; targets; adapters; UI; and deployment behavior remain excluded. No behavior enters by
+implication.
 
 ## Application IR checkpoint complete contract
 
