@@ -1268,6 +1268,29 @@ arms; guards; blocks or locals added by this slice; propagation changes; inferen
 statement branches; loops; effects; actions; runtime; target; adapter; UI; and deployment behavior
 remain excluded.
 
+### PipeLang v0.44.0: general bounded helper-carrier matching
+
+One public pure caller with one or more parameters may return exactly one top-level
+`match(Helper(...))`. Every caller parameter is passed directly once in declaration order to one
+uniquely resolved public pure same-class helper with the exact parameter signature. The helper
+returns admitted `Optional<T>`, `Result<List<R>, string>`, or `Result<string, string>`. Optional
+arms are exact source-ordered `some(binding)` then binding-free `none`; Result arms are exact
+source-ordered `ok(binding)` then `err(binding)`. Both arm expressions exactly match the declared
+caller return type.
+
+The helper evaluates once. The complete carrier is validated, the selected payload is copied into
+its arm binding, and only the selected arm evaluates. Typed HIR and target-neutral Core reuse the
+existing `call` and `match` nodes; Core independently validates the complete contract. The Docker
+observability consumer proves `SelectedNameById(List<ContainerRow>, string)` composing
+`FindSelection(List<ContainerRow>, string)` through unchanged `dockpipe.application.v1` identity
+and shape. `pipelang.compiler.v1` and `pipelang.semantic.v1` also remain unchanged; only
+language-contract metadata advances to `v0.44.0`, and the exact 45-source lane stays frozen.
+
+Arithmetic Results, computed/reordered/omitted/extra arguments, cross-owner calls, overloads,
+generics, nested or multiple matches, wildcard or reversed arms, guards, propagation changes, new
+blocks, locals or statements, effects, actions, runtimes, targets, adapters, UI, and deployment
+behavior remain excluded.
+
 ### Target-neutral Application IR
 
 `dockpipe.application.v1` is not a language feature or target generator. It consumes the public

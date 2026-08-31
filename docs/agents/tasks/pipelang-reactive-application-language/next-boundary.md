@@ -515,6 +515,32 @@ or local, propagation change, inference, reassignment, statement branch, loop, e
 runtime policy, target behavior, adapter, UI, or deployment behavior. Any further language seam
 requires another source-backed founder decision and separate implementation approval.
 
+## Accepted v0.44.0 boundary — general bounded helper-carrier matching
+
+`v0.44.0` admits exactly one complete top-level `match(Helper(...))` in a public pure caller with
+one or more parameters. Every caller parameter is passed directly, once, and in declaration order
+to a uniquely resolved public pure same-class helper with the exact parameter signature. Its
+carrier is closed to admitted `Optional<T>`, `Result<List<R>, string>`, or
+`Result<string, string>`. Optional arms are exact source-ordered `some(binding)` then binding-free
+`none`; Result arms are exact source-ordered `ok(binding)` then `err(binding)`. Both arm expressions
+exactly match the caller return type. The helper evaluates once, the complete carrier is validated,
+the selected payload is copied, and only the selected arm evaluates.
+
+Typed HIR and target-neutral Core reuse existing `call` and `match` nodes. Core independently
+proves top-level placement, one match, direct parameter position and type, exact same-owner target
+signature, closed carrier matrix, canonical arms, bindings, and the closed acyclic call graph. The
+evaluator and deterministic Core-only backend preserve once-only evaluation and lazy selection.
+TASK-020 proves the exact two-parameter Optional composition through `SelectedNameById` and
+`FindSelection` while `pipelang.compiler.v1`, `pipelang.semantic.v1`, and
+`dockpipe.application.v1` identities and shapes remain stable. Only language-contract metadata
+advances; the exact 45-source legacy lane remains frozen.
+
+Arithmetic Results, computed/reordered/omitted/extra helper arguments, cross-owner calls,
+overloads, generics, nested or multiple matches, wildcard or reversed arms, guards, propagation
+changes, new blocks, locals or statements, effects, actions, runtimes, targets, adapters, UI, and
+deployment behavior remain excluded. Any successor requires a new founder decision and separate
+implementation approval.
+
 ## Accepted first Application IR boundary — `dockpipe.application.v1`
 
 The first target-neutral read-only Application IR consumes only a canonical public

@@ -34,4 +34,6 @@ public Class DockerApplication {
 		return selected;
 	}
 	public string SelectedName(Optional<ContainerRow> value) => match(value){ some(row) => NormalizeName(row.Name), none => "" };
+	public Optional<ContainerRow> FindSelection(List<ContainerRow> rows, string id) => find_by(rows, ContainerRow.Id, id);
+	public string SelectedNameById(List<ContainerRow> rows, string id) => match(FindSelection(rows, id)){ some(row) => NormalizeName(row.Name), none => "" };
 }

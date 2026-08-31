@@ -314,3 +314,10 @@ assert(pipeLangSnippets["PipeLang helper-result match method"].description.inclu
 assert(pipeLangSnippets["PipeLang helper-result match method"].body.some((line) => line.includes("match(${1:Validate}(${2:input}))")));
 assert(pipeLangSnippets["PipeLang helper-result match method"].body.some((line) => line.includes("ok(${5:value})")));
 assert(pipeLangSnippets["PipeLang helper-result match method"].body.some((line) => line.includes("err(${6:error})")));
+assert(pipeLangReadme.includes("`v0.44.0`"));
+assert(pipeLangReadme.includes("every parameter directly once in declaration order"));
+assert.strictEqual(pipeLangSnippets["PipeLang general helper-carrier match method"].prefix, "pipe-helper-carrier-match");
+assert(pipeLangSnippets["PipeLang general helper-carrier match method"].description.includes("v0.44.0"));
+assert(pipeLangSnippets["PipeLang general helper-carrier match method"].body.some((line) => line.includes("match(${2:FindSelection}(${3:rows}, ${4:id}))")));
+assert(pipeLangSnippets["PipeLang general helper-carrier match method"].body.some((line) => line.includes("some(${7:row})")));
+assert(pipeLangSnippets["PipeLang general helper-carrier match method"].body.some((line) => line.includes("none =>")));

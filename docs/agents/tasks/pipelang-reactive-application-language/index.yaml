@@ -10,8 +10,8 @@ dispatch:
 
 state:
   decision: accepted
-  current_language_contract: v0.43.0
-  completed_through: v0.43.0 helper-result matching composition plus inherited pure-call, matching, propagation, ordered immutable-local, and dockpipe.application.v1 consumer proof
+  current_language_contract: v0.44.0
+  completed_through: v0.44.0 general bounded helper-carrier matching plus inherited pure-call, matching, propagation, ordered immutable-local, and dockpipe.application.v1 consumer proof
   authority: >-
     This task record is decision and status evidence. It does not authorize another language slice,
     implementation, migration, commit, push, publication, or external action.
@@ -65,7 +65,7 @@ history_by_slice:
   steps_7i_to_7m: completed-text-records.md
   steps_7n_to_7s: completed-optionals-lists.md
   steps_7t_to_7ae: completed-snapshots-selection.md
-  steps_8a_to_8i: completed-functions.md
+  steps_8a_to_8j: completed-functions.md
 
 documents:
   - path: overview.md
