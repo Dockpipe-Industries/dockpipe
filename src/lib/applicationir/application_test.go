@@ -21,7 +21,7 @@ func TestDockerObservabilityGoldenUsesCanonicalSemanticAndCore(t *testing.T) {
 		t.Fatal(err)
 	}
 	module := pipelang.ModuleInput{ID: "app.root", Namespace: "app.root", DeclarationSpan: pipelang.Span{File: "docker-observability.pipe"}, Sources: []pipelang.SourceInput{{Path: "docker-observability.pipe", Data: source}}}
-	input := pipelang.ModuleSetInput{LanguageContract: pipelang.PipeLangLanguageContractV490, PackageID: "docker.observability", Root: "app.root", Modules: []pipelang.ModuleInput{module}}
+	input := pipelang.ModuleSetInput{LanguageContract: pipelang.PipeLangLanguageContractV500, PackageID: "docker.observability", Root: "app.root", Modules: []pipelang.ModuleInput{module}}
 	input.Lock.Modules = []pipelang.LockedModule{{ID: module.ID, SourceSHA256: pipelang.ModuleSourceSHA256(module.Sources), SemanticSHA256: pipelang.ModuleSemanticSHA256(input.PackageID, module.Namespace, nil)}}
 	analysis := pipelang.AnalyzeSemanticModuleSet(input)
 	if err := analysis.Error(); err != nil {
@@ -134,7 +134,7 @@ func TestDockerObservabilityGoldenUsesCanonicalSemanticAndCore(t *testing.T) {
 		t.Fatalf("SelectedNameById HIR lost first prior-local helper-carrier match: %#v", selectedNameByIDFunction.Body)
 	}
 	selectedNameByIDConfirmationCarrier := selectedNameByIDLocal.Return.ImmutableLocal
-	if selectedNameByIDConfirmationCarrier == nil || selectedNameByIDConfirmationCarrier.Initializer.Kind != hir.ExprCall || selectedNameByIDConfirmationCarrier.Return == nil || selectedNameByIDConfirmationCarrier.Return.Kind != hir.ExprImmutableLocal {
+	if selectedNameByIDConfirmationCarrier == nil || selectedNameByIDConfirmationCarrier.Initializer.Kind != hir.ExprCall || selectedNameByIDConfirmationCarrier.Initializer.Call == nil || len(selectedNameByIDConfirmationCarrier.Initializer.Call.Arguments) != 3 || selectedNameByIDConfirmationCarrier.Initializer.Call.Arguments[0].Kind != hir.ExprReference || selectedNameByIDConfirmationCarrier.Initializer.Call.Arguments[0].Reference == nil || selectedNameByIDConfirmationCarrier.Initializer.Call.Arguments[0].Reference.Kind != hir.BindingLocal || selectedNameByIDConfirmationCarrier.Initializer.Call.Arguments[0].Reference.Position != selectedNameByIDLocal.Binding.Position || selectedNameByIDConfirmationCarrier.Return == nil || selectedNameByIDConfirmationCarrier.Return.Kind != hir.ExprImmutableLocal {
 		t.Fatalf("SelectedNameById HIR lost second carrier local: %#v", selectedNameByIDFunction.Body)
 	}
 	selectedNameByIDConfirmed := selectedNameByIDConfirmationCarrier.Return.ImmutableLocal
@@ -354,7 +354,7 @@ func TestDockerObservabilityGoldenUsesCanonicalSemanticAndCore(t *testing.T) {
 	if err = json.Unmarshal(raw, &checked); err != nil {
 		t.Fatal(err)
 	}
-	if len(checked.Sections) != 3 || len(app.Sections) != 3 || app.Selection == nil || app.Details == nil || app.Logs == nil || app.Metadata.LanguageContract != "v0.49.0" {
+	if len(checked.Sections) != 3 || len(app.Sections) != 3 || app.Selection == nil || app.Details == nil || app.Logs == nil || app.Metadata.LanguageContract != "v0.50.0" {
 		t.Fatalf("incomplete fixture: %#v", app)
 	}
 	bad := spec
