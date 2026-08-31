@@ -1320,6 +1320,37 @@ overloads; generics; wildcard or reversed arms; guards; propagation changes; inf
 reassignment; early returns; statement branches; loops; effects; actions; runtimes; targets;
 adapters; UI; and deployment behavior remain excluded.
 
+### PipeLang v0.46.0: checked-arithmetic helper matching in the first local
+
+One public pure method with one or more parameters may use exactly one v0.45-compatible first-local
+`match(Helper(...))` where the helper returns an already admitted
+`Result<int, ArithmeticError>` or `Result<float, ArithmeticError>`. Every caller parameter remains
+the corresponding direct helper argument exactly once in declaration order. The helper is one
+uniquely resolved public pure same-class method with the exact caller signature. Arms remain exact
+source-ordered `ok(binding)` then `err(binding)`, and both expressions exactly match the declared
+local type.
+
+The complete checked-arithmetic Result is validated before selection. The helper evaluates once,
+only the selected arm evaluates, and its copied result initializes the first local once. Existing
+ordered locals and the terminal return may consume that value. Typed HIR and target-neutral Core
+reuse `immutable_local`, `call`, and `match`; Core independently validates placement, occurrence,
+direct argument positions/types, exact same-owner signature, the int-or-binary64 arithmetic Result
+shape, canonical arms/bindings, local typing, and continuation scope. The evaluator and
+deterministic Core-only Go backend preserve the same semantics, including deterministic error-arm
+selection for integer overflow and binary64 division by zero.
+
+`pipelang.compiler.v1`, `pipelang.semantic.v1`, and `dockpipe.application.v1` identities and shapes
+remain unchanged; only language-contract metadata advances to `v0.46.0`, and the exact 45-source
+lane remains frozen. The checked-arithmetic form supplies a compiler-shaped pure consumer while the
+existing read-only Application IR fixture proves unchanged projection compatibility.
+
+Checked-arithmetic helper matching as a complete method body, later local, terminal return,
+argument, or nested expression; multiple matches; computed/reordered/omitted/extra helper
+arguments; arithmetic Result propagation, construction, defaulting, or arbitrary Result widening;
+cross-owner calls; overloads; generics; wildcards or reversed arms; guards; inference;
+reassignment; early returns; statements; loops; effects; actions; runtimes; targets; adapters; UI;
+and deployment behavior remain excluded.
+
 ### Target-neutral Application IR
 
 `dockpipe.application.v1` is not a language feature or target generator. It consumes the public

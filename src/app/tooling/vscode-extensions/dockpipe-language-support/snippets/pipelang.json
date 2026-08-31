@@ -343,5 +343,20 @@
       "}"
     ],
     "description": "Create one v0.45.0 v0.44-compatible helper-carrier match as the first immutable-local initializer, followed by a terminal continuation."
+  },
+  "PipeLang checked-arithmetic helper match local method": {
+    "prefix": "pipe-checked-arithmetic-helper-match-local",
+    "body": [
+      "public Result<int, ArithmeticError> ${1:Add}(int ${2:left}, int ${3:right}) => ${2:left} + ${3:right};",
+      "",
+      "public int ${4:AddOrZero}(int ${2:left}, int ${3:right}) {",
+      "\tint ${5:selected} = match(${1:Add}(${2:left}, ${3:right})) {",
+      "\t\tok(${6:value}) => ${6:value},",
+      "\t\terr(${7:problem}) => 0",
+      "\t};",
+      "\treturn ${5:selected};",
+      "}"
+    ],
+    "description": "Create one v0.46.0 checked-arithmetic Result helper match as the first immutable-local initializer with exact ordered ok and err arms."
   }
 }

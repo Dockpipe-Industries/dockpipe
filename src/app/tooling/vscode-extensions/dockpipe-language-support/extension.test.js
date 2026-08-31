@@ -327,3 +327,9 @@ assert.strictEqual(pipeLangSnippets["PipeLang helper-carrier match local method"
 assert(pipeLangSnippets["PipeLang helper-carrier match local method"].description.includes("v0.45.0"));
 assert(pipeLangSnippets["PipeLang helper-carrier match local method"].body.some((line) => line.includes("string ${7:selected} = match(${2:FindSelection}(${3:rows}, ${4:id}))")));
 assert(pipeLangSnippets["PipeLang helper-carrier match local method"].body.some((line) => line.includes("return ${10:NormalizeName}(${7:selected})")));
+assert(pipeLangReadme.includes("`v0.46.0`"));
+assert(pipeLangReadme.includes("Result<int, ArithmeticError>"));
+assert.strictEqual(pipeLangSnippets["PipeLang checked-arithmetic helper match local method"].prefix, "pipe-checked-arithmetic-helper-match-local");
+assert(pipeLangSnippets["PipeLang checked-arithmetic helper match local method"].description.includes("v0.46.0"));
+assert(pipeLangSnippets["PipeLang checked-arithmetic helper match local method"].body.some((line) => line.includes("int ${5:selected} = match(${1:Add}(${2:left}, ${3:right}))")));
+assert(pipeLangSnippets["PipeLang checked-arithmetic helper match local method"].body.some((line) => line.includes("err(${7:problem}) => 0")));

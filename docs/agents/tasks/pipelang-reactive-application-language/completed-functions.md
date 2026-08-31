@@ -232,3 +232,26 @@ first local initializer, multiple matches, computed/reordered/omitted/extra argu
 Results, cross-owner calls, overloads, generics, wildcard/reversed arms, guards, propagation
 changes, inference, reassignment, early returns, statement branches, loops, effects, actions,
 runtime, target, adapter, UI, and deployment behavior remain excluded.
+
+## Step 8l — checked-arithmetic helper matching in the first local (`v0.46.0`)
+
+Production source widens only the v0.45 first-local helper-carrier matrix to the already admitted
+checked-arithmetic `Result<int, ArithmeticError>` and `Result<float, ArithmeticError>` shapes. The
+caller still has one or more parameters, passes every parameter directly once in declaration order,
+and resolves one public pure same-class helper with that exact signature. The one match remains the
+first explicitly typed immutable-local initializer, with exact source-ordered `ok(binding)` then
+`err(binding)` arms whose expressions exactly match the declared local type.
+
+Typed HIR and target-neutral Core reuse `immutable_local`, `call`, and `match`; Core independently
+validates the complete checked-arithmetic composition. The evaluator and deterministic Core-only Go
+backend validate the complete Result, call the helper once, copy the selected payload, evaluate only
+the selected arm, and preserve existing ordered continuation. Integer overflow and binary64
+division-by-zero consumer cases select the error arm deterministically. Public compiler, semantic,
+and Application IR identities/shapes remain stable; only language-contract metadata advances, and
+the exact 45-source lane stays frozen.
+
+Top-level, later-local, terminal-return, argument, nested, or multiple checked-arithmetic matches;
+computed/reordered/omitted/extra arguments; propagation, new Result construction/defaulting,
+arbitrary Results, cross-owner calls, overloads, generics, wildcards, reversed arms, guards,
+inference, reassignment, statements, effects, actions, runtimes, targets, adapters, UI, and
+deployment behavior remain excluded.

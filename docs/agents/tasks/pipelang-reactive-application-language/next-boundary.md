@@ -157,7 +157,7 @@ arguments and the complete list before iteration, invoke the predicate once per 
 require bool, fail atomically, and produce stable canonical non-nil fresh copied output.
 `pipelang.compiler.v1`, `pipelang.semantic.v1`, and every earlier contract remain unchanged.
 All other numeric arithmetic and every other Result construction, composition, or consumption form
-remain fail-closed from production source. Any next slice requires a new
+beyond the exact accepted checked-arithmetic helper match remain fail-closed from production source. Any next slice requires a new
 synchronized decision for its exact source spelling, type/value handling rule, semantic projection,
 migration, and bounded semantics before implementation.
 
@@ -564,6 +564,38 @@ advances, and the exact 45-source legacy lane remains frozen.
 Match in later locals, the terminal return, arguments, or nested positions; multiple matches;
 computed/reordered/omitted/extra helper arguments; arithmetic Results; cross-owner calls;
 overloads; generics; wildcard or reversed arms; guards; propagation changes; inference;
+reassignment; early returns; statement branches; loops; effects; actions; runtimes; targets;
+adapters; UI; and deployment behavior remain excluded. Any successor requires a new founder
+decision and separate implementation approval.
+
+## Accepted v0.46.0 boundary — checked-arithmetic helper matching in the first local
+
+`v0.46.0` widens only the v0.45 first-local helper-carrier matrix to the already admitted
+checked-arithmetic `Result<int, ArithmeticError>` and `Result<float, ArithmeticError>` shapes. One
+public pure caller with one or more parameters may initialize its first explicitly typed immutable
+local with exactly one `match(Helper(...))`. Every caller parameter is passed directly once in
+declaration order to one uniquely resolved public pure same-class helper with the exact caller
+signature. Arms are exact source-ordered `ok(binding)` then `err(binding)`, and both arm expressions
+exactly match the declared local type.
+
+Typed HIR and target-neutral Core reuse `immutable_local`, `call`, and `match`. Core independently
+proves first-local placement, one match, direct parameter positions/types, same-owner target and
+exact signature, an existing int-or-binary64 checked-arithmetic carrier, canonical arms/bindings,
+exact local typing, and continuation scope. The evaluator and deterministic Core-only backend
+validate the complete Result, evaluate the helper once, copy the selected payload into the local
+once, evaluate only the selected arm, and execute existing ordered locals plus the terminal return.
+Integer overflow and binary64 division-by-zero select the error arm deterministically.
+
+`pipelang.compiler.v1`, `pipelang.semantic.v1`, and `dockpipe.application.v1` identities and shapes
+remain stable; only language-contract metadata advances, and the exact 45-source legacy lane
+remains frozen. TASK-020 continues to project unchanged through `dockpipe.application.v1`; the new
+checked-arithmetic composition supplies compiler-shaped self-hosting value rather than UI or adapter
+semantics.
+
+Checked-arithmetic helper matching as the complete method body, in a later local, the terminal
+return, arguments, or nested positions; multiple matches; computed/reordered/omitted/extra helper
+arguments; arithmetic Result propagation, construction, defaulting, or arbitrary Result widening;
+cross-owner calls; overloads; generics; wildcards or reversed arms; guards; inference;
 reassignment; early returns; statement branches; loops; effects; actions; runtimes; targets;
 adapters; UI; and deployment behavior remain excluded. Any successor requires a new founder
 decision and separate implementation approval.
