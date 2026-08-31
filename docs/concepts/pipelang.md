@@ -1241,6 +1241,33 @@ propagation from another local, arbitrary Results including checked arithmetic, 
 reassignment, early returns, statement branches, nested blocks, loops, effects, actions, runtime,
 target, adapter, UI, and deployment behavior remain excluded.
 
+### PipeLang v0.43.0: helper-result matching composition
+
+One public pure method may return the result of exactly one top-level
+`match(Helper(input)) { ok(value) => whenOk, err(error) => whenErr }` expression. The method has
+one direct `string` parameter and returns `string`. `Helper` resolves to one uniquely named public
+pure method on the same class, takes that direct parameter as its sole argument, and returns
+`Result<string, string>`. The helper evaluates once; the complete carrier is validated before its
+tag is selected, the selected payload is copied into its arm binding, and only the selected arm
+evaluates. Arms must appear exactly as source-ordered `ok(binding)` then `err(binding)` with no
+wildcard.
+
+Typed HIR and target-neutral Core reuse the existing `call` and `match` nodes. Core independently
+validates the top-level placement, sole direct helper argument, exact same-owner callable
+signature, text Result carrier, complete ordered arms, unique bindings, and closed acyclic call
+graph. The evaluator and deterministic Core-only Go backend preserve once-only helper evaluation,
+complete-carrier validation, copied payloads, and lazy arm selection. The Docker observability
+consumer proves `DetailsMessage(string)` composing `ValidateDetails(string)` through the unchanged
+`dockpipe.application.v1` schema. Compiler, semantic projection, and Application IR schema
+identities and shapes remain unchanged; only language-contract metadata advances to `v0.43.0`.
+The exact 45-source legacy lane remains frozen.
+
+Optional, list, or arithmetic Result helper carriers; additional or computed helper arguments;
+additional caller parameters; cross-class/module calls; nested matches; reversed arms; wildcard
+arms; guards; blocks or locals added by this slice; propagation changes; inference; reassignment;
+statement branches; loops; effects; actions; runtime; target; adapter; UI; and deployment behavior
+remain excluded.
+
 ### Target-neutral Application IR
 
 `dockpipe.application.v1` is not a language feature or target generator. It consumes the public

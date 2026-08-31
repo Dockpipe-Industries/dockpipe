@@ -489,6 +489,32 @@ checked arithmetic, inference, reassignment, early return, statement branch, nes
 effect, action, runtime policy, target behavior, adapter, UI, or deployment behavior. Any further
 language seam requires another source-backed founder decision and separate implementation approval.
 
+## Accepted v0.43.0 boundary — helper-result matching composition
+
+`v0.43.0` admits exactly one top-level
+`match(Helper(input)) { ok(value) => whenOk, err(error) => whenErr }` expression in a public pure
+method with one direct `string` parameter and `string` return. `Helper` resolves to one uniquely
+named public pure same-class method, takes that direct parameter as its sole argument, and returns
+exactly `Result<string, string>`. It evaluates once. The complete carrier is validated before tag
+selection, the selected payload is copied into its unique arm binding, and only the selected arm
+expression evaluates. Arms must be exhaustive, wildcard-free, and source ordered `ok` then `err`.
+
+Typed HIR and target-neutral Core reuse the existing `call` and `match` nodes. Core independently
+proves top-level placement, one match occurrence, the sole direct helper argument, exact same-owner
+caller/helper signatures, a closed acyclic call graph, the text Result carrier, ordered arm tags,
+and unique bindings. The evaluator and Core-only Go backend preserve complete-carrier validation,
+once-only helper evaluation, copied payloads, and lazy arm selection. TASK-020's Docker observability
+fixture proves `DetailsMessage(string)` composing `ValidateDetails(string)` through unchanged
+`dockpipe.application.v1` identity and shape.
+
+Compiler, semantic projection, and Application IR schema identities and shapes remain unchanged;
+only language-contract metadata advances, and all 45 frozen legacy sources remain exact. This slice
+adds no Optional/list/arithmetic Result helper carrier, extra or computed helper argument, extra
+caller parameter, cross-class/module call, nested match, reversed or wildcard arm, guard, new block
+or local, propagation change, inference, reassignment, statement branch, loop, effect, action,
+runtime policy, target behavior, adapter, UI, or deployment behavior. Any further language seam
+requires another source-backed founder decision and separate implementation approval.
+
 ## Accepted first Application IR boundary — `dockpipe.application.v1`
 
 The first target-neutral read-only Application IR consumes only a canonical public

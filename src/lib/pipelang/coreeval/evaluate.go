@@ -763,11 +763,19 @@ func evalExprWithProgram(expression coreir.Expr, arguments []Value, functions ma
 		carrier, err := evalExprWithProgram(*expression.Match.Value, arguments, functions)
 		var resultCarrier *Outcome
 		if expression.Match.Value.Type.Kind == coreir.TypeResult {
-			r, e := directResultOperand(expression.Match.Value, arguments)
-			if e != nil {
-				return Outcome{}, e
+			if err != nil {
+				return Outcome{}, err
 			}
-			resultCarrier = &r
+			if expression.Match.Value.Kind == coreir.ExprReference {
+				r, e := directResultOperand(expression.Match.Value, arguments)
+				if e != nil {
+					return Outcome{}, e
+				}
+				resultCarrier = &r
+			} else {
+				r := cloneOutcome(carrier)
+				resultCarrier = &r
+			}
 			carrier = Outcome{OK: true, Value: Value{Type: expression.Match.Value.Type}}
 		}
 		if err != nil || !carrier.OK {

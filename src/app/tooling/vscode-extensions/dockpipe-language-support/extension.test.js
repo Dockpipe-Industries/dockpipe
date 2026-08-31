@@ -307,3 +307,10 @@ assert.strictEqual(pipeLangSnippets["PipeLang prior-local helper propagation met
 assert(pipeLangSnippets["PipeLang prior-local helper propagation method"].description.includes("v0.42.0"));
 assert(pipeLangSnippets["PipeLang prior-local helper propagation method"].body.some((line) => line.includes("= ${4:Helper}(${2:input})")));
 assert(pipeLangSnippets["PipeLang prior-local helper propagation method"].body.some((line) => line.includes("= propagate(${3:carrier})")));
+assert(pipeLangReadme.includes("`v0.43.0`"));
+assert(pipeLangReadme.includes("source-ordered `ok(binding)` then `err(binding)`"));
+assert.strictEqual(pipeLangSnippets["PipeLang helper-result match method"].prefix, "pipe-helper-result-match");
+assert(pipeLangSnippets["PipeLang helper-result match method"].description.includes("v0.43.0"));
+assert(pipeLangSnippets["PipeLang helper-result match method"].body.some((line) => line.includes("match(${1:Validate}(${2:input}))")));
+assert(pipeLangSnippets["PipeLang helper-result match method"].body.some((line) => line.includes("ok(${5:value})")));
+assert(pipeLangSnippets["PipeLang helper-result match method"].body.some((line) => line.includes("err(${6:error})")));
