@@ -1413,6 +1413,51 @@ construction, defaulting, or arbitrary widening; cross-owner/private/overloaded/
 wildcard or reversed arms; guards; inference; reassignment; statements; effects; actions; runtimes;
 targets; adapters; UI; and deployment behavior remain excluded. No behavior enters by implication.
 
+### PipeLang v0.49.0: bounded two-carrier matching
+
+One public pure method with one or more parameters may contain exactly two non-overlapping
+v0.48-compatible adjacent helper-carrier pairs:
+
+```text
+C1 firstCarrier = Helper1(p1, ..., pn);
+T1 first = match(firstCarrier) { canonicalArms };
+
+C2 secondCarrier = Helper2(p1, ..., pn);
+T2 second = match(secondCarrier) { canonicalArms };
+
+return admittedExpression;
+```
+
+Zero or more ordinary explicitly typed immutable locals may appear before, between, or after the
+pairs, but no local may split a helper-call carrier local from its immediately adjacent matching
+local. Each helper independently receives every caller parameter directly once in declaration
+order and resolves uniquely to a public pure same-class method with the exact caller signature.
+Each pair independently uses the unchanged v0.48 Optional primitive/record,
+`Result<List<R>, string>`, `Result<string, string>`, or checked-arithmetic Result carrier matrix and
+its exact canonical source-ordered arms.
+
+All locals, helpers, carriers, and selected locals evaluate eagerly exactly once in source order.
+Each complete carrier is validated and only its selected arm evaluates. The second pair and its
+arms may reference prior locals, including the first selected local, under existing immutable scope
+rules. Matching does not propagate or skip the second pair. Typed HIR and target-neutral Core reuse
+`immutable_local`, `call`, `reference`, and `match`; Core independently validates exactly two
+matches, both non-overlapping adjacent pairs, carrier references, helper identities/signatures,
+direct arguments, carrier types, arm order/bindings, local types, and continuation scope. The
+evaluator and deterministic Core-only Go backend preserve the same behavior.
+
+The Docker observability consumer proves `FindSelection(rows, id)` and
+`ConfirmSelection(rows, id)` through two adjacent carrier/match pairs before normalization.
+`pipelang.compiler.v1`, `pipelang.semantic.v1`, and `dockpipe.application.v1` identities and shapes
+remain unchanged; only language-contract metadata advances to `v0.49.0`, and the exact 45-source
+lane remains frozen.
+
+Existing zero-match and one-match methods remain exact. A third match, non-adjacent or overlapping
+pairs, terminal-return/argument/nested matching, non-helper or computed carriers, computed/
+reordered/omitted/extra helper arguments, propagation changes, Result construction/defaulting or
+arbitrary widening, cross-owner/private/overloaded/generic helpers, wildcard or reversed arms,
+guards, inference, reassignment, statements, effects, actions, runtimes, targets, adapters, UI, and
+deployment behavior remain excluded. No behavior enters by implication.
+
 ### Target-neutral Application IR
 
 `dockpipe.application.v1` is not a language feature or target generator. It consumes the public

@@ -21,7 +21,7 @@ func TestDockerObservabilityGoldenUsesCanonicalSemanticAndCore(t *testing.T) {
 		t.Fatal(err)
 	}
 	module := pipelang.ModuleInput{ID: "app.root", Namespace: "app.root", DeclarationSpan: pipelang.Span{File: "docker-observability.pipe"}, Sources: []pipelang.SourceInput{{Path: "docker-observability.pipe", Data: source}}}
-	input := pipelang.ModuleSetInput{LanguageContract: pipelang.PipeLangLanguageContractV480, PackageID: "docker.observability", Root: "app.root", Modules: []pipelang.ModuleInput{module}}
+	input := pipelang.ModuleSetInput{LanguageContract: pipelang.PipeLangLanguageContractV490, PackageID: "docker.observability", Root: "app.root", Modules: []pipelang.ModuleInput{module}}
 	input.Lock.Modules = []pipelang.LockedModule{{ID: module.ID, SourceSHA256: pipelang.ModuleSourceSHA256(module.Sources), SemanticSHA256: pipelang.ModuleSemanticSHA256(input.PackageID, module.Namespace, nil)}}
 	analysis := pipelang.AnalyzeSemanticModuleSet(input)
 	if err := analysis.Error(); err != nil {
@@ -130,8 +130,16 @@ func TestDockerObservabilityGoldenUsesCanonicalSemanticAndCore(t *testing.T) {
 		t.Fatalf("SelectedNameById HIR lost carrier local: %#v", selectedNameByIDFunction.Body)
 	}
 	selectedNameByIDLocal := selectedNameByIDCarrier.Return.ImmutableLocal
-	if selectedNameByIDCarrier.Initializer.Kind != hir.ExprCall || selectedNameByIDCarrier.Initializer.Call == nil || len(selectedNameByIDCarrier.Initializer.Call.Arguments) != 2 || selectedNameByIDLocal == nil || selectedNameByIDLocal.Initializer.Kind != hir.ExprMatch || selectedNameByIDLocal.Initializer.Match == nil || selectedNameByIDLocal.Initializer.Match.Value == nil || selectedNameByIDLocal.Initializer.Match.Value.Kind != hir.ExprReference || selectedNameByIDLocal.Initializer.Match.Value.Reference == nil || selectedNameByIDLocal.Initializer.Match.Value.Reference.Kind != hir.BindingLocal || selectedNameByIDLocal.Initializer.Match.Value.Reference.Position != selectedNameByIDCarrier.Binding.Position || selectedNameByIDLocal.Return == nil || selectedNameByIDLocal.Return.Kind != hir.ExprCall {
-		t.Fatalf("SelectedNameById HIR lost prior-local helper-carrier match and continuation: %#v", selectedNameByIDFunction.Body)
+	if selectedNameByIDCarrier.Initializer.Kind != hir.ExprCall || selectedNameByIDCarrier.Initializer.Call == nil || len(selectedNameByIDCarrier.Initializer.Call.Arguments) != 2 || selectedNameByIDLocal == nil || selectedNameByIDLocal.Initializer.Kind != hir.ExprMatch || selectedNameByIDLocal.Initializer.Match == nil || selectedNameByIDLocal.Initializer.Match.Value == nil || selectedNameByIDLocal.Initializer.Match.Value.Kind != hir.ExprReference || selectedNameByIDLocal.Initializer.Match.Value.Reference == nil || selectedNameByIDLocal.Initializer.Match.Value.Reference.Kind != hir.BindingLocal || selectedNameByIDLocal.Initializer.Match.Value.Reference.Position != selectedNameByIDCarrier.Binding.Position || selectedNameByIDLocal.Return == nil || selectedNameByIDLocal.Return.Kind != hir.ExprImmutableLocal {
+		t.Fatalf("SelectedNameById HIR lost first prior-local helper-carrier match: %#v", selectedNameByIDFunction.Body)
+	}
+	selectedNameByIDConfirmationCarrier := selectedNameByIDLocal.Return.ImmutableLocal
+	if selectedNameByIDConfirmationCarrier == nil || selectedNameByIDConfirmationCarrier.Initializer.Kind != hir.ExprCall || selectedNameByIDConfirmationCarrier.Return == nil || selectedNameByIDConfirmationCarrier.Return.Kind != hir.ExprImmutableLocal {
+		t.Fatalf("SelectedNameById HIR lost second carrier local: %#v", selectedNameByIDFunction.Body)
+	}
+	selectedNameByIDConfirmed := selectedNameByIDConfirmationCarrier.Return.ImmutableLocal
+	if selectedNameByIDConfirmed == nil || selectedNameByIDConfirmed.Initializer.Kind != hir.ExprMatch || selectedNameByIDConfirmed.Initializer.Match == nil || selectedNameByIDConfirmed.Initializer.Match.Value == nil || selectedNameByIDConfirmed.Initializer.Match.Value.Kind != hir.ExprReference || selectedNameByIDConfirmed.Initializer.Match.Value.Reference == nil || selectedNameByIDConfirmed.Initializer.Match.Value.Reference.Kind != hir.BindingLocal || selectedNameByIDConfirmed.Initializer.Match.Value.Reference.Position != selectedNameByIDConfirmationCarrier.Binding.Position || selectedNameByIDConfirmed.Return == nil || selectedNameByIDConfirmed.Return.Kind != hir.ExprCall {
+		t.Fatalf("SelectedNameById HIR lost second prior-local helper-carrier match and continuation: %#v", selectedNameByIDFunction.Body)
 	}
 	selectedNameByIDCore, err := pipelang.LowerHIRToCore(selectedNameByIDHIR)
 	if err != nil {
@@ -151,8 +159,8 @@ func TestDockerObservabilityGoldenUsesCanonicalSemanticAndCore(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(selectedNameByIDGo), "p3 := PipeLangFindSelection(pipelangCloneListDockerObservabilityAppRootContainerrow(p0), p1)") || !strings.Contains(string(selectedNameByIDGo), "matched := p3") || !strings.Contains(string(selectedNameByIDGo), "matched.(pipelangOptionalSome[") || !strings.Contains(string(selectedNameByIDGo), "p4 := func() string") || !strings.Contains(string(selectedNameByIDGo), "return PipeLangNormalizeName(p4)") {
-		t.Fatalf("SelectedNameById generated Go lost prior-local helper-carrier match continuation:\n%s", selectedNameByIDGo)
+	if strings.Count(string(selectedNameByIDGo), " := PipeLangFindSelection(") != 1 || strings.Count(string(selectedNameByIDGo), " := PipeLangConfirmSelection(") != 1 || strings.Count(string(selectedNameByIDGo), "matched := ") != 2 || !strings.Contains(string(selectedNameByIDGo), "matched.(pipelangOptionalSome[") || !strings.Contains(string(selectedNameByIDGo), "return PipeLangNormalizeName(") {
+		t.Fatalf("SelectedNameById generated Go lost bounded two-carrier match continuation:\n%s", selectedNameByIDGo)
 	}
 	displayName := find("DisplayName")
 	displayNameHIR, err := pipelang.LowerSemanticMethodToHIR(analysis, *displayName.Identity)
@@ -346,7 +354,7 @@ func TestDockerObservabilityGoldenUsesCanonicalSemanticAndCore(t *testing.T) {
 	if err = json.Unmarshal(raw, &checked); err != nil {
 		t.Fatal(err)
 	}
-	if len(checked.Sections) != 3 || len(app.Sections) != 3 || app.Selection == nil || app.Details == nil || app.Logs == nil || app.Metadata.LanguageContract != "v0.48.0" {
+	if len(checked.Sections) != 3 || len(app.Sections) != 3 || app.Selection == nil || app.Details == nil || app.Logs == nil || app.Metadata.LanguageContract != "v0.49.0" {
 		t.Fatalf("incomplete fixture: %#v", app)
 	}
 	bad := spec

@@ -307,3 +307,34 @@ matches; computed/reordered/omitted/extra arguments; propagation changes; Result
 defaulting, or arbitrary widening; cross-owner/private/overloaded/generic helpers; wildcards or
 reversed arms; guards; inference; reassignment; statements; effects; actions; runtimes; targets;
 adapters; UI; and deployment behavior remain excluded. No behavior enters by implication.
+
+## Step 8o — bounded two-carrier matching (`v0.49.0`)
+
+Production source widens only the v0.48 match occurrence count. One public pure caller with one or
+more parameters may contain exactly two non-overlapping adjacent pairs, each spelled as one
+explicitly typed helper-call carrier local immediately followed by one explicitly typed canonical
+`match(carrier)` local. Zero or more ordinary locals may appear before, between, or after the pairs,
+but cannot split a pair. Every helper independently receives every caller parameter directly once
+in declaration order and resolves to a uniquely named public pure same-class method with the exact
+caller signature. Both pairs independently retain the v0.48 closed carrier matrix and arm rules.
+
+Typed HIR and target-neutral Core reuse `immutable_local`, `call`, `reference`, and `match`; Core
+independently validates the two-match bound, pair adjacency and non-overlap, exact carrier
+references, direct arguments, helper ownership/signatures, carrier types, canonical arms/bindings,
+local typing, and continuation scope. Surrounding locals, helpers, carriers, and selected locals
+evaluate eagerly once in source order. Each full carrier is validated and only its selected arm
+evaluates. The second pair and its arms may consume prior immutable locals, including the first
+selected result. Matching remains non-propagating. The evaluator and deterministic Core-only Go
+backend preserve the same behavior and call each helper once.
+
+Docker observability proves two exact-signature selection helpers and two adjacent pairs before
+normalization without changing `dockpipe.application.v1`. Public `pipelang.compiler.v1`,
+`pipelang.semantic.v1`, and `dockpipe.application.v1` identities and shapes remain stable; only
+language-contract metadata advances, and the exact 45-source legacy lane stays frozen.
+
+Existing zero-match and one-match methods remain exact. A third match, a split or overlapping pair,
+terminal-return/argument/nested matching, non-helper or computed carriers, computed/reordered/
+omitted/extra arguments, propagation changes, Result construction/defaulting or arbitrary widening,
+cross-owner/private/overloaded/generic helpers, wildcard/reversed arms, guards, inference,
+reassignment, statements, effects, actions, runtimes, targets, adapters, UI, and deployment behavior
+remain excluded. No behavior enters by implication.
