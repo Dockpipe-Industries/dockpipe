@@ -690,6 +690,33 @@ matches, propagation changes, arbitrary Result widening, statements, effects, ac
 targets, adapters, UI, and deployment remain excluded. No behavior enters by implication. Any
 successor requires a new founder decision and separate implementation approval.
 
+## Accepted v0.51.0 boundary — general dependent carrier chains
+
+`v0.51.0` extends the v0.50 dependency rule to one exact chain of `k >= 2` pairs:
+`C1 carrier1 = Helper1(p1, ..., pn); T1 value1 = match(carrier1) { ... };`, then
+`Ci carrierI = HelperI(valueI-1, p1, ..., pn); Ti valueI = match(carrierI) { ... };` for every
+later stage. All `2k` explicitly typed locals are contiguous. Ordinary locals may appear before or
+after only. `Helper1` keeps the exact caller signature. Every later helper resolves uniquely to a
+public pure same-class method receiving the immediately preceding selected local, followed by every
+caller parameter directly once in declaration order. All pairs retain the closed carrier matrix and
+canonical arms.
+
+HIR and Core reuse `immutable_local`, `call`, `reference`, and `match`; Core independently verifies
+the complete chain, immediate-predecessor dependencies, binding and argument positions, exact
+helper ownership/signatures, carriers, arms, local types, and continuation. All locals and helpers
+evaluate once in source order, every complete carrier is validated, and only selected arms
+evaluate. Docker observability proves `FinalizeSelection(confirmed, rows, id)` as a third stage
+without schema change. Public compiler, semantic, and Application IR identities and shapes stay
+stable; only language metadata advances, and the exact 45-source lane remains frozen.
+
+Existing zero-match, one-match, v0.49 independent two-pair, and v0.50 dependent two-stage forms
+remain exact. Gaps, mixed independent/dependent chains, non-immediate dependencies, fan-in,
+computed/reordered/repeated/omitted/extra arguments, third matches outside the exact chain,
+nested/terminal/argument matches, propagation changes, arbitrary Result widening, statements,
+effects, actions, runtimes, targets, adapters, UI, and deployment remain excluded. No behavior
+enters by implication. Any successor requires a new founder decision and separate implementation
+approval.
+
 ## Accepted v0.49.0 boundary — bounded two-carrier matching
 
 `v0.49.0` widens only the occurrence count accepted through v0.48. One public pure method with one

@@ -21,7 +21,7 @@ func TestDockerObservabilityGoldenUsesCanonicalSemanticAndCore(t *testing.T) {
 		t.Fatal(err)
 	}
 	module := pipelang.ModuleInput{ID: "app.root", Namespace: "app.root", DeclarationSpan: pipelang.Span{File: "docker-observability.pipe"}, Sources: []pipelang.SourceInput{{Path: "docker-observability.pipe", Data: source}}}
-	input := pipelang.ModuleSetInput{LanguageContract: pipelang.PipeLangLanguageContractV500, PackageID: "docker.observability", Root: "app.root", Modules: []pipelang.ModuleInput{module}}
+	input := pipelang.ModuleSetInput{LanguageContract: pipelang.PipeLangLanguageContractV510, PackageID: "docker.observability", Root: "app.root", Modules: []pipelang.ModuleInput{module}}
 	input.Lock.Modules = []pipelang.LockedModule{{ID: module.ID, SourceSHA256: pipelang.ModuleSourceSHA256(module.Sources), SemanticSHA256: pipelang.ModuleSemanticSHA256(input.PackageID, module.Namespace, nil)}}
 	analysis := pipelang.AnalyzeSemanticModuleSet(input)
 	if err := analysis.Error(); err != nil {
@@ -138,8 +138,16 @@ func TestDockerObservabilityGoldenUsesCanonicalSemanticAndCore(t *testing.T) {
 		t.Fatalf("SelectedNameById HIR lost second carrier local: %#v", selectedNameByIDFunction.Body)
 	}
 	selectedNameByIDConfirmed := selectedNameByIDConfirmationCarrier.Return.ImmutableLocal
-	if selectedNameByIDConfirmed == nil || selectedNameByIDConfirmed.Initializer.Kind != hir.ExprMatch || selectedNameByIDConfirmed.Initializer.Match == nil || selectedNameByIDConfirmed.Initializer.Match.Value == nil || selectedNameByIDConfirmed.Initializer.Match.Value.Kind != hir.ExprReference || selectedNameByIDConfirmed.Initializer.Match.Value.Reference == nil || selectedNameByIDConfirmed.Initializer.Match.Value.Reference.Kind != hir.BindingLocal || selectedNameByIDConfirmed.Initializer.Match.Value.Reference.Position != selectedNameByIDConfirmationCarrier.Binding.Position || selectedNameByIDConfirmed.Return == nil || selectedNameByIDConfirmed.Return.Kind != hir.ExprCall {
-		t.Fatalf("SelectedNameById HIR lost second prior-local helper-carrier match and continuation: %#v", selectedNameByIDFunction.Body)
+	if selectedNameByIDConfirmed == nil || selectedNameByIDConfirmed.Initializer.Kind != hir.ExprMatch || selectedNameByIDConfirmed.Initializer.Match == nil || selectedNameByIDConfirmed.Initializer.Match.Value == nil || selectedNameByIDConfirmed.Initializer.Match.Value.Kind != hir.ExprReference || selectedNameByIDConfirmed.Initializer.Match.Value.Reference == nil || selectedNameByIDConfirmed.Initializer.Match.Value.Reference.Kind != hir.BindingLocal || selectedNameByIDConfirmed.Initializer.Match.Value.Reference.Position != selectedNameByIDConfirmationCarrier.Binding.Position || selectedNameByIDConfirmed.Return == nil || selectedNameByIDConfirmed.Return.Kind != hir.ExprImmutableLocal {
+		t.Fatalf("SelectedNameById HIR lost second prior-local helper-carrier match: %#v", selectedNameByIDFunction.Body)
+	}
+	selectedNameByIDFinalizationCarrier := selectedNameByIDConfirmed.Return.ImmutableLocal
+	if selectedNameByIDFinalizationCarrier == nil || selectedNameByIDFinalizationCarrier.Initializer.Kind != hir.ExprCall || selectedNameByIDFinalizationCarrier.Initializer.Call == nil || len(selectedNameByIDFinalizationCarrier.Initializer.Call.Arguments) != 3 || selectedNameByIDFinalizationCarrier.Initializer.Call.Arguments[0].Kind != hir.ExprReference || selectedNameByIDFinalizationCarrier.Initializer.Call.Arguments[0].Reference == nil || selectedNameByIDFinalizationCarrier.Initializer.Call.Arguments[0].Reference.Kind != hir.BindingLocal || selectedNameByIDFinalizationCarrier.Initializer.Call.Arguments[0].Reference.Position != selectedNameByIDConfirmed.Binding.Position || selectedNameByIDFinalizationCarrier.Return == nil || selectedNameByIDFinalizationCarrier.Return.Kind != hir.ExprImmutableLocal {
+		t.Fatalf("SelectedNameById HIR lost third carrier local: %#v", selectedNameByIDFunction.Body)
+	}
+	selectedNameByIDFinalized := selectedNameByIDFinalizationCarrier.Return.ImmutableLocal
+	if selectedNameByIDFinalized == nil || selectedNameByIDFinalized.Initializer.Kind != hir.ExprMatch || selectedNameByIDFinalized.Initializer.Match == nil || selectedNameByIDFinalized.Initializer.Match.Value == nil || selectedNameByIDFinalized.Initializer.Match.Value.Kind != hir.ExprReference || selectedNameByIDFinalized.Initializer.Match.Value.Reference == nil || selectedNameByIDFinalized.Initializer.Match.Value.Reference.Kind != hir.BindingLocal || selectedNameByIDFinalized.Initializer.Match.Value.Reference.Position != selectedNameByIDFinalizationCarrier.Binding.Position || selectedNameByIDFinalized.Return == nil || selectedNameByIDFinalized.Return.Kind != hir.ExprCall {
+		t.Fatalf("SelectedNameById HIR lost third prior-local helper-carrier match and continuation: %#v", selectedNameByIDFunction.Body)
 	}
 	selectedNameByIDCore, err := pipelang.LowerHIRToCore(selectedNameByIDHIR)
 	if err != nil {
@@ -159,8 +167,8 @@ func TestDockerObservabilityGoldenUsesCanonicalSemanticAndCore(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if strings.Count(string(selectedNameByIDGo), " := PipeLangFindSelection(") != 1 || strings.Count(string(selectedNameByIDGo), " := PipeLangConfirmSelection(") != 1 || strings.Count(string(selectedNameByIDGo), "matched := ") != 2 || !strings.Contains(string(selectedNameByIDGo), "matched.(pipelangOptionalSome[") || !strings.Contains(string(selectedNameByIDGo), "return PipeLangNormalizeName(") {
-		t.Fatalf("SelectedNameById generated Go lost bounded two-carrier match continuation:\n%s", selectedNameByIDGo)
+	if strings.Count(string(selectedNameByIDGo), " := PipeLangFindSelection(") != 1 || strings.Count(string(selectedNameByIDGo), " := PipeLangConfirmSelection(") != 1 || strings.Count(string(selectedNameByIDGo), " := PipeLangFinalizeSelection(") != 1 || strings.Count(string(selectedNameByIDGo), "matched := ") != 3 || !strings.Contains(string(selectedNameByIDGo), "matched.(pipelangOptionalSome[") || !strings.Contains(string(selectedNameByIDGo), "return PipeLangNormalizeName(") {
+		t.Fatalf("SelectedNameById generated Go lost dependent carrier chain continuation:\n%s", selectedNameByIDGo)
 	}
 	displayName := find("DisplayName")
 	displayNameHIR, err := pipelang.LowerSemanticMethodToHIR(analysis, *displayName.Identity)
@@ -354,7 +362,7 @@ func TestDockerObservabilityGoldenUsesCanonicalSemanticAndCore(t *testing.T) {
 	if err = json.Unmarshal(raw, &checked); err != nil {
 		t.Fatal(err)
 	}
-	if len(checked.Sections) != 3 || len(app.Sections) != 3 || app.Selection == nil || app.Details == nil || app.Logs == nil || app.Metadata.LanguageContract != "v0.50.0" {
+	if len(checked.Sections) != 3 || len(app.Sections) != 3 || app.Selection == nil || app.Details == nil || app.Logs == nil || app.Metadata.LanguageContract != "v0.51.0" {
 		t.Fatalf("incomplete fixture: %#v", app)
 	}
 	bad := spec

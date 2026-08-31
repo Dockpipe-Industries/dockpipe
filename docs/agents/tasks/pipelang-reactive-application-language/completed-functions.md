@@ -363,3 +363,30 @@ Existing zero-match, one-match, and independent v0.49 two-pair forms remain exac
 arrangements, computed/reordered/repeated arguments, split stages, third/nested/terminal matches,
 propagation changes, arbitrary Result widening, statements, effects, actions, runtimes, targets,
 adapters, UI, and deployment remain excluded. No behavior enters by implication.
+
+## Step 8q — general dependent carrier chains (`v0.51.0`)
+
+Production source admits one exact dependent chain of two or more adjacent carrier/match pairs:
+`C1 carrier1 = Helper1(p1, ..., pn); T1 value1 = match(carrier1) { ... };`, followed by
+`Ci carrierI = HelperI(valueI-1, p1, ..., pn); Ti valueI = match(carrierI) { ... };` for every
+later stage. All `2k` explicitly typed locals are contiguous. Ordinary locals may appear before or
+after only. The first helper retains the exact caller signature; every later helper is a uniquely
+resolved public pure same-class method receiving only the immediately preceding selected local,
+then every caller parameter directly once in declaration order. The existing closed Optional,
+bounded Result, and checked-arithmetic carrier matrix and canonical arms remain unchanged.
+
+Typed HIR and target-neutral Core reuse `immutable_local`, `call`, `reference`, and `match`. Core
+independently verifies the complete contiguous chain, immediate-predecessor dependency, argument
+positions, exact helper identities/signatures, carriers, arms, local types, and continuation.
+Evaluation and deterministic Core-only Go preserve once-only source order, complete-carrier
+validation, and selected-arm-only evaluation. Docker observability proves a third
+`FinalizeSelection(confirmed, rows, id)` stage before normalization. Public compiler, semantic,
+and Application IR identities and shapes remain stable; metadata advances to `v0.51.0`; the exact
+45-source lane remains frozen.
+
+Existing zero-match, one-match, v0.49 independent two-pair, and v0.50 dependent two-stage forms
+remain exact. Gaps, mixed independent/dependent chains, non-immediate dependencies, fan-in,
+computed/reordered/repeated/omitted/extra arguments, third matches outside this chain, nested,
+terminal, or argument matches, propagation changes, arbitrary Result widening, statements,
+effects, actions, runtimes, targets, adapters, UI, and deployment remain excluded. No behavior
+enters by implication.

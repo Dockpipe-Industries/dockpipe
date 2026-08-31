@@ -361,3 +361,9 @@ assert.strictEqual(pipeLangSnippets["PipeLang dependent second-carrier match met
 assert(pipeLangSnippets["PipeLang dependent second-carrier match method"].description.includes("v0.50.0"));
 assert(pipeLangSnippets["PipeLang dependent second-carrier match method"].body.some((line) => line.includes("${6:ConfirmSecondary}(string ${7:first}, List<${1:Row}> ${3:rows}, string ${4:id})")));
 assert(pipeLangSnippets["PipeLang dependent second-carrier match method"].body.some((line) => line.includes("${12:secondCarrier} = ${6:ConfirmSecondary}(${7:first}, ${3:rows}, ${4:id})")));
+assert(pipeLangReadme.includes("`v0.51.0`"));
+assert(pipeLangReadme.includes("contiguous chain of two or more"));
+assert.strictEqual(pipeLangSnippets["PipeLang dependent carrier chain method"].prefix, "pipe-dependent-carrier-chain");
+assert(pipeLangSnippets["PipeLang dependent carrier chain method"].description.includes("v0.51.0"));
+assert(pipeLangSnippets["PipeLang dependent carrier chain method"].body.some((line) => line.includes("${8:FinalizeTertiary}(string ${9:second}, List<${1:Row}> ${3:rows}, string ${4:id})")));
+assert(pipeLangSnippets["PipeLang dependent carrier chain method"].body.some((line) => line.includes("${16:thirdCarrier} = ${8:FinalizeTertiary}(${9:second}, ${3:rows}, ${4:id})")));
