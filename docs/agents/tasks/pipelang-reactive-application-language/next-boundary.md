@@ -541,6 +541,33 @@ changes, new blocks, locals or statements, effects, actions, runtimes, targets, 
 deployment behavior remain excluded. Any successor requires a new founder decision and separate
 implementation approval.
 
+## Accepted v0.45.0 boundary — first-local helper-carrier matching
+
+`v0.45.0` admits exactly one v0.44-compatible `match(Helper(...))` as the initializer of the first
+explicitly typed immutable local in a public pure caller with one or more parameters. Every caller
+parameter is passed directly, once, and in declaration order to one uniquely resolved public pure
+same-class helper with the exact parameter signature. Its carrier remains closed to admitted
+`Optional<T>`, `Result<List<R>, string>`, or `Result<string, string>`. Optional arms remain exact
+source-ordered `some(binding)` then binding-free `none`; Result arms remain exact source-ordered
+`ok(binding)` then `err(binding)`. Both arm expressions exactly match the declared local type.
+
+Typed HIR and target-neutral Core reuse `immutable_local`, `call`, and `match`. Core independently
+proves first-local placement, one match, direct parameter position and type, exact same-owner target
+signature, closed carrier matrix, canonical arms and bindings, exact local typing, and continuation
+scope. The evaluator and deterministic Core-only backend validate the complete carrier, evaluate
+the helper once, copy the selected result into the local once, evaluate only the selected arm, then
+execute existing ordered locals and the terminal return. TASK-020 proves selection followed by
+existing normalization through unchanged `dockpipe.application.v1`; `pipelang.compiler.v1` and
+`pipelang.semantic.v1` also retain their identities and shapes. Only language-contract metadata
+advances, and the exact 45-source legacy lane remains frozen.
+
+Match in later locals, the terminal return, arguments, or nested positions; multiple matches;
+computed/reordered/omitted/extra helper arguments; arithmetic Results; cross-owner calls;
+overloads; generics; wildcard or reversed arms; guards; propagation changes; inference;
+reassignment; early returns; statement branches; loops; effects; actions; runtimes; targets;
+adapters; UI; and deployment behavior remain excluded. Any successor requires a new founder
+decision and separate implementation approval.
+
 ## Accepted first Application IR boundary — `dockpipe.application.v1`
 
 The first target-neutral read-only Application IR consumes only a canonical public

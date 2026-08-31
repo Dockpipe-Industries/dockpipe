@@ -723,6 +723,24 @@ func validHelperCarrierMatchPureCallPlacement(expr Expr) bool {
 	return true
 }
 
+// validHelperCarrierMatchLocalPureCallPlacement widens only the first
+// immutable-local initializer to one v0.44-compatible helper-carrier match.
+// Existing top-level helper matches and all other v0.44 call placement remain
+// valid without allowing matches in later locals or the terminal return.
+func validHelperCarrierMatchLocalPureCallPlacement(expr Expr) bool {
+	local, ok := expr.(*ImmutableLocalExpr)
+	if !ok {
+		return validHelperCarrierMatchPureCallPlacement(expr)
+	}
+	if match, matched := local.Initializer.(*MatchExpr); matched {
+		if !validHelperCarrierMatchPureCallPlacement(match) {
+			return false
+		}
+		return validGeneralPureCallPlacement(local.Return)
+	}
+	return validHelperCarrierMatchPureCallPlacement(expr)
+}
+
 func countMatchExpressions(expr Expr) int {
 	count := 0
 	if _, ok := expr.(*MatchExpr); ok {

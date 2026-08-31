@@ -321,3 +321,9 @@ assert(pipeLangSnippets["PipeLang general helper-carrier match method"].descript
 assert(pipeLangSnippets["PipeLang general helper-carrier match method"].body.some((line) => line.includes("match(${2:FindSelection}(${3:rows}, ${4:id}))")));
 assert(pipeLangSnippets["PipeLang general helper-carrier match method"].body.some((line) => line.includes("some(${7:row})")));
 assert(pipeLangSnippets["PipeLang general helper-carrier match method"].body.some((line) => line.includes("none =>")));
+assert(pipeLangReadme.includes("`v0.45.0`"));
+assert(pipeLangReadme.includes("first explicitly typed immutable local"));
+assert.strictEqual(pipeLangSnippets["PipeLang helper-carrier match local method"].prefix, "pipe-helper-carrier-match-local");
+assert(pipeLangSnippets["PipeLang helper-carrier match local method"].description.includes("v0.45.0"));
+assert(pipeLangSnippets["PipeLang helper-carrier match local method"].body.some((line) => line.includes("string ${7:selected} = match(${2:FindSelection}(${3:rows}, ${4:id}))")));
+assert(pipeLangSnippets["PipeLang helper-carrier match local method"].body.some((line) => line.includes("return ${10:NormalizeName}(${7:selected})")));

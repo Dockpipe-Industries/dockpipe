@@ -169,7 +169,7 @@ func TestV370ComposedRecordConstructionRetainsExistingShape(t *testing.T) {
 
 func TestV370CompositionDoesNotMigrateV360(t *testing.T) {
 	source := `public Class Root { public string Normalize(string value) => trim(value); public string Read(string value) => trim(Normalize(value)); }`
-	for _, contract := range []LanguageContract{PipeLangLanguageContractV360, PipeLangLanguageContractV370, PipeLangLanguageContractV380, PipeLangLanguageContractV390, PipeLangLanguageContractV400, PipeLangLanguageContractV410, PipeLangLanguageContractV420, PipeLangLanguageContractV430, PipeLangLanguageContractV440} {
+	for _, contract := range []LanguageContract{PipeLangLanguageContractV360, PipeLangLanguageContractV370, PipeLangLanguageContractV380, PipeLangLanguageContractV390, PipeLangLanguageContractV400, PipeLangLanguageContractV410, PipeLangLanguageContractV420, PipeLangLanguageContractV430, PipeLangLanguageContractV440, PipeLangLanguageContractV450} {
 		input := semanticTestModuleSet("app.root", []ModuleInput{testModule("app.root", "versioned-composition.pipe", source)}, nil)
 		input.LanguageContract = contract
 		analysis := AnalyzeSemanticModuleSet(input)

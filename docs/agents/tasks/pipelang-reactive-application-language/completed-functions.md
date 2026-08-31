@@ -210,3 +210,25 @@ only language-contract metadata advances, and the exact 45-source lane stays fro
 Results, computed/reordered/omitted/extra arguments, cross-owner calls, overloads, generics,
 nested/multiple matches, wildcard/reversed arms, guards, propagation changes, new blocks/locals,
 statements, effects, actions, runtime, target, adapter, UI, and deployment behavior remain excluded.
+
+## Step 8k — first-local helper-carrier matching (`v0.45.0`)
+
+Production source admits exactly one v0.44-compatible `match(Helper(...))` as the initializer of
+the first explicitly typed immutable local in a public pure caller with one or more parameters.
+Every caller parameter is passed directly, once, and in declaration order to one uniquely resolved
+public pure same-class helper with the exact parameter signature. The helper returns admitted
+`Optional<T>`, `Result<List<R>, string>`, or `Result<string, string>`. Optional arms remain exact
+source-ordered `some(binding)` then binding-free `none`; Result arms remain exact source-ordered
+`ok(binding)` then `err(binding)`. Both arms exactly typecheck to the declared local type.
+
+Typed HIR and target-neutral Core reuse `immutable_local`, `call`, and `match`; Core independently
+validates the complete source contract and continuation scope. The evaluator and deterministic
+Core-only Go backend preserve complete-carrier validation, once-only helper/local evaluation,
+copied selected payloads, lazy arm selection, and existing ordered-local continuation semantics.
+The Docker observability consumer proves selection followed by `NormalizeName` without changing
+`dockpipe.application.v1`. Public schema identities and shapes remain stable; only
+language-contract metadata advances, and the exact 45-source lane stays frozen. Match outside the
+first local initializer, multiple matches, computed/reordered/omitted/extra arguments, arithmetic
+Results, cross-owner calls, overloads, generics, wildcard/reversed arms, guards, propagation
+changes, inference, reassignment, early returns, statement branches, loops, effects, actions,
+runtime, target, adapter, UI, and deployment behavior remain excluded.

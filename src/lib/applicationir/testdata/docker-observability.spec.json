@@ -354,14 +354,14 @@
         "source": {
           "file": "docker-observability.pipe",
           "start": {
-            "offset": 1094,
-            "line": 18,
+            "offset": 1514,
+            "line": 25,
             "column": 2,
             "utf16_column": 2
           },
           "end": {
-            "offset": 1327,
-            "line": 18,
+            "offset": 1747,
+            "line": 25,
             "column": 235,
             "utf16_column": 235
           }
@@ -373,14 +373,14 @@
         "source": {
           "file": "docker-observability.pipe",
           "start": {
-            "offset": 1329,
-            "line": 19,
+            "offset": 1749,
+            "line": 26,
             "column": 2,
             "utf16_column": 2
           },
           "end": {
-            "offset": 1440,
-            "line": 19,
+            "offset": 1860,
+            "line": 26,
             "column": 113,
             "utf16_column": 113
           }
@@ -563,14 +563,14 @@
         "source": {
           "file": "docker-observability.pipe",
           "start": {
-            "offset": 1577,
-            "line": 21,
+            "offset": 1997,
+            "line": 28,
             "column": 2,
             "utf16_column": 2
           },
           "end": {
-            "offset": 1680,
-            "line": 21,
+            "offset": 2100,
+            "line": 28,
             "column": 105,
             "utf16_column": 105
           }
@@ -753,14 +753,14 @@
         "source": {
           "file": "docker-observability.pipe",
           "start": {
-            "offset": 1682,
-            "line": 22,
+            "offset": 2102,
+            "line": 29,
             "column": 2,
             "utf16_column": 2
           },
           "end": {
-            "offset": 1781,
-            "line": 22,
+            "offset": 2201,
+            "line": 29,
             "column": 101,
             "utf16_column": 101
           }
@@ -793,16 +793,16 @@
     "source": {
       "file": "docker-observability.pipe",
       "start": {
-        "offset": 939,
-        "line": 16,
+        "offset": 1083,
+        "line": 17,
         "column": 2,
         "utf16_column": 2
       },
       "end": {
-        "offset": 1016,
-        "line": 16,
-        "column": 79,
-        "utf16_column": 79
+        "offset": 1305,
+        "line": 22,
+        "column": 3,
+        "utf16_column": 3
       }
     }
   },
@@ -812,14 +812,14 @@
     "source": {
       "file": "docker-observability.pipe",
       "start": {
-        "offset": 1018,
-        "line": 17,
+        "offset": 1438,
+        "line": 24,
         "column": 2,
         "utf16_column": 2
       },
       "end": {
-        "offset": 1092,
-        "line": 17,
+        "offset": 1512,
+        "line": 24,
         "column": 76,
         "utf16_column": 76
       }
