@@ -347,3 +347,11 @@ assert(pipeLangSnippets["PipeLang prior-local carrier match method"].description
 assert(pipeLangSnippets["PipeLang prior-local carrier match method"].body.some((line) => line.includes("Optional<${1:Row}> ${8:selection} = ${2:FindSelection}(${3:rows}, ${4:id})")));
 assert(pipeLangSnippets["PipeLang prior-local carrier match method"].body.some((line) => line.includes("string ${9:selected} = match(${8:selection})")));
 assert(pipeLangSnippets["PipeLang prior-local carrier match method"].body.some((line) => line.includes("return ${12:NormalizeName}(${9:selected})")));
+assert(pipeLangReadme.includes("`v0.49.0`"));
+assert(pipeLangReadme.includes("exactly two non-overlapping"));
+assert.strictEqual(pipeLangSnippets["PipeLang bounded two-carrier match method"].prefix, "pipe-two-carrier-matches");
+assert(pipeLangSnippets["PipeLang bounded two-carrier match method"].description.includes("v0.49.0"));
+assert(pipeLangSnippets["PipeLang bounded two-carrier match method"].body.some((line) => line.includes("Optional<${1:Row}> ${8:firstCarrier} = ${2:FindPrimary}(${3:rows}, ${4:id})")));
+assert(pipeLangSnippets["PipeLang bounded two-carrier match method"].body.some((line) => line.includes("string ${9:first} = match(${8:firstCarrier})")));
+assert(pipeLangSnippets["PipeLang bounded two-carrier match method"].body.some((line) => line.includes("Optional<${1:Row}> ${12:secondCarrier} = ${6:FindSecondary}(${3:rows}, ${4:id})")));
+assert(pipeLangSnippets["PipeLang bounded two-carrier match method"].body.some((line) => line.includes("string ${13:selected} = match(${12:secondCarrier})")));

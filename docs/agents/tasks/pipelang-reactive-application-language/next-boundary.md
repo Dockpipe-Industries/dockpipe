@@ -666,6 +666,42 @@ runtimes; targets; adapters; UI; and deployment behavior remain excluded. No sta
 runtime, action, target, adapter, UI, or deployment behavior enters by implication. Any successor
 requires a new founder decision and separate implementation approval.
 
+## Accepted v0.49.0 boundary — bounded two-carrier matching
+
+`v0.49.0` widens only the occurrence count accepted through v0.48. One public pure method with one
+or more parameters may contain exactly two non-overlapping adjacent helper-carrier pairs:
+`C1 firstCarrier = Helper1(p1, ..., pn); T1 first = match(firstCarrier) { ... };` followed later by
+`C2 secondCarrier = Helper2(p1, ..., pn); T2 second = match(secondCarrier) { ... };`. Zero or more
+ordinary immutable locals may appear before, between, or after the pairs, but no local may split a
+carrier from its match local. Every helper receives every caller parameter directly once in
+declaration order and resolves uniquely to a public pure same-class method with that exact signature.
+Each pair independently retains the v0.48 Optional primitive/record, `Result<List<R>, string>`,
+`Result<string, string>`, and checked-arithmetic Result matrix plus canonical source-ordered arms.
+
+Typed HIR and target-neutral Core reuse `immutable_local`, `call`, `reference`, and `match`. Core
+independently proves exactly two matches, exactly two non-overlapping adjacent pairs, each exact
+carrier reference, direct parameter positions/types, same-owner exact signatures, closed carrier
+types, canonical arms/bindings, exact local typing, and continuation scope. All surrounding locals,
+helpers, carriers, and selected locals evaluate eagerly once in source order. Each complete carrier
+is validated and only its selected arm evaluates. Both pairs complete before later locals and the
+terminal return; the second pair and its arms may use prior locals under existing immutable scope.
+
+`pipelang.compiler.v1`, `pipelang.semantic.v1`, and `dockpipe.application.v1` identities and shapes
+remain stable; only language-contract metadata advances, and the exact 45-source lane remains
+frozen. TASK-020's Docker observability fixture proves `FindSelection(rows, id)` and
+`ConfirmSelection(rows, id)` as two exact-signature helpers, each stored in an adjacent carrier and
+canonical match-local pair before the normalized terminal return, without Application IR schema
+change.
+
+Existing zero-match and one-match forms remain exact. A third match, non-adjacent or overlapping
+pairs, terminal-return/argument/nested matching, non-helper or computed carriers, computed/
+reordered/omitted/extra helper arguments, propagation changes, Result construction/defaulting or
+arbitrary widening, cross-owner/private/overloaded/generic helpers, wildcard or reversed arms,
+guards, inference, reassignment, statements, effects, actions, runtimes, targets, adapters, UI, and
+deployment behavior remain excluded. No statement, effect, runtime, action, target, adapter, UI,
+or deployment behavior enters by implication. Any successor requires a new founder decision and
+separate implementation approval.
+
 ## Accepted first Application IR boundary — `dockpipe.application.v1`
 
 The first target-neutral read-only Application IR consumes only a canonical public

@@ -60,7 +60,12 @@ earlier locals evaluate eagerly once in source order; the helper and selected lo
 once; only the selected arm evaluates; and later locals plus the terminal return continue. Step 8n
 is complete under `v0.48.0`: after zero or more ordinary locals, one explicitly typed local may
 call that exact helper and the immediately adjacent typed local may use the single canonical
-`match(carrier)`; the carrier local and selected local each initialize once. These
+`match(carrier)`; the carrier local and selected local each initialize once. Step 8o is complete
+under `v0.49.0`: one public pure method may contain exactly two non-overlapping
+v0.48-compatible adjacent helper-call carrier and match-local pairs. Ordinary locals may surround
+or separate the pairs but cannot split either pair. Both pairs evaluate in source order, each
+helper and selected local initializes once, each complete carrier is validated, and only each
+selected arm evaluates. Existing zero-match and one-match forms remain unchanged. These
 seams do not complete or authorize inference,
 reassignment, shadowing, cross-class/module calls, overloads, generics, function values, lambdas,
 recursion, general blocks, branch statements, loops, effects, entrypoints, additional or nested
@@ -446,6 +451,37 @@ Result construction/defaulting or arbitrary widening; cross-owner/private/overlo
 helpers; wildcard or reversed arms; guards; inference; reassignment; statements; effects; actions;
 runtimes; targets; adapters; UI; and deployment behavior remain excluded. No behavior enters by
 implication.
+
+## Checkpoint v0.49.0 complete contract
+
+One public pure method with one or more parameters may contain exactly two non-overlapping
+v0.48-compatible adjacent pairs:
+`C1 firstCarrier = Helper1(p1, ..., pn); T1 first = match(firstCarrier) { ... };` and
+`C2 secondCarrier = Helper2(p1, ..., pn); T2 second = match(secondCarrier) { ... };`.
+Zero or more ordinary immutable locals may appear before, between, or after the pairs, but no local
+may split a carrier from its matching local. Each helper independently receives every caller
+parameter directly once in declaration order and resolves to a public pure same-class exact-signature
+method. Each pair independently uses the unchanged v0.48 carrier matrix and canonical arms.
+
+Typed HIR and target-neutral Core reuse `immutable_local`, `call`, `reference`, and `match`. Core
+independently validates exactly two top-level matches, two non-overlapping adjacent pairs, exact
+carrier references, direct arguments, same-owner signatures, closed carriers, canonical arms and
+bindings, local typing, and continuation scope. Locals and pairs evaluate eagerly once in source
+order; each full carrier is validated; only its selected arm evaluates; and both matches complete
+before the terminal return. The second pair and its arms may consume prior locals, including the
+first selected local, under existing immutable scope rules. Matching remains non-propagating.
+
+`pipelang.compiler.v1`, `pipelang.semantic.v1`, and `dockpipe.application.v1` identities and shapes
+remain unchanged; only language-contract metadata advances, and the exact 45-source lane remains
+frozen. Docker observability proves two exact-signature selection helpers, two adjacent carrier/match
+pairs, prior-local reuse, evaluator behavior, and deterministic Core-only Go without schema change.
+
+Existing zero-match and one-match methods remain exact. A third match, a split or overlapping pair,
+terminal-return/argument/nested matching, non-helper or computed carriers, computed/reordered/
+omitted/extra helper arguments, propagation changes, Result construction/defaulting or arbitrary
+widening, cross-owner/private/overloaded/generic helpers, wildcard or reversed arms, guards,
+inference, reassignment, statements, effects, actions, runtimes, targets, adapters, UI, and
+deployment behavior remain excluded. No behavior enters by implication.
 
 ## Application IR checkpoint complete contract
 

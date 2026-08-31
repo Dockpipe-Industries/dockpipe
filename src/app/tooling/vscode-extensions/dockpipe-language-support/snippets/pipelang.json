@@ -391,5 +391,27 @@
       "}"
     ],
     "description": "Create one v0.48.0 adjacent helper-call carrier local and canonical match local, followed by a terminal continuation."
+  },
+  "PipeLang bounded two-carrier match method": {
+    "prefix": "pipe-two-carrier-matches",
+    "body": [
+      "public Optional<${1:Row}> ${2:FindPrimary}(List<${1:Row}> ${3:rows}, string ${4:id}) => find_by(${3:rows}, ${1:Row}.${5:Id}, ${4:id});",
+      "public Optional<${1:Row}> ${6:FindSecondary}(List<${1:Row}> ${3:rows}, string ${4:id}) => find_by(${3:rows}, ${1:Row}.${5:Id}, ${4:id});",
+      "",
+      "public string ${7:SelectedName}(List<${1:Row}> ${3:rows}, string ${4:id}) {",
+      "\tOptional<${1:Row}> ${8:firstCarrier} = ${2:FindPrimary}(${3:rows}, ${4:id});",
+      "\tstring ${9:first} = match(${8:firstCarrier}) {",
+      "\t\tsome(${10:firstRow}) => ${10:firstRow}.${11:Name},",
+      "\t\tnone => \"\"",
+      "\t};",
+      "\tOptional<${1:Row}> ${12:secondCarrier} = ${6:FindSecondary}(${3:rows}, ${4:id});",
+      "\tstring ${13:selected} = match(${12:secondCarrier}) {",
+      "\t\tsome(${14:secondRow}) => ${14:secondRow}.${11:Name},",
+      "\t\tnone => ${9:first}",
+      "\t};",
+      "\treturn ${15:NormalizeName}(${13:selected});",
+      "}"
+    ],
+    "description": "Create exactly two v0.49.0 non-overlapping adjacent helper-call carrier and canonical match-local pairs."
   }
 }
