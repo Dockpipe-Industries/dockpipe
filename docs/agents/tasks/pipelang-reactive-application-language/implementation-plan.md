@@ -35,11 +35,14 @@ is complete for one explicitly typed immutable local followed by one terminal re
 followed by one terminal return under `v0.40.0`. Step 8g is complete for exactly one
 `T name = propagate(carrier);` first local under `v0.41.0`, where `carrier` is the sole direct
 parameter, its bounded carrier type exactly equals the method return type, and `T` exactly equals
-its payload type. These seams do not complete or authorize inference,
+its payload type. Step 8h is complete for exactly one prior-local helper propagation under
+`v0.42.0`: the first local is one resolved public same-class helper call over the method's sole
+direct parameter, the second local propagates that first carrier local, and the bounded carrier
+exactly equals the method return type. These seams do not complete or authorize inference,
 reassignment, shadowing, cross-class/module calls, overloads, generics, function values, lambdas,
 recursion, general blocks, branch statements, loops, effects, entrypoints, additional or nested
-propagation, computed propagation operands, propagation from prior locals, arbitrary `Result`
-carriers, or the rest of step 8.
+propagation, arbitrary computed propagation operands, propagation from any other prior local,
+arbitrary `Result` carriers, or the rest of step 8.
 
 Each slice is independently reviewable and keeps syntax, semantics, diagnostics, projection,
 editor, tests, and any enabled backend synchronized. No permissive parser, target-owned semantics,
@@ -249,6 +252,31 @@ language-contract metadata advances. No second or nested propagation, computed o
 propagation from a prior local, arbitrary `Result` including checked arithmetic, inference,
 reassignment, early return, statement branch, nested block, loop, effect, action, runtime, target,
 adapter, UI, or deployment behavior enters by implication.
+
+## Checkpoint v0.42.0 complete contract
+
+One public pure method block may place exactly
+`C carrier = Helper(input); T value = propagate(carrier);` as its first two immutable locals.
+The method has one direct parameter `input`; `Helper` resolves to one uniquely named public pure
+method on the same class with exactly that parameter type and bounded carrier return `C`. The call
+argument is the direct method parameter. `C` exactly equals the enclosing method return type, and
+`T` exactly equals its success/presence payload. The carrier matrix remains the v0.41.0 matrix:
+an admitted primitive/record Optional, `Result<List<R>, string>`, or
+`Result<string, string>`. Helper evaluation occurs once. Presence or success copies the validated
+payload into `value` and continues through later ordered locals and the terminal return; absence or
+failure immediately returns the identical canonical helper carrier.
+
+Typed HIR and target-neutral Core reuse the existing `call`, `immutable_local`, and `propagate`
+nodes. Core independently validates the first-call/second-propagation positions, sole direct
+argument, direct reference to the immediately preceding carrier local, exact carrier/payload
+types, bounded carrier matrix, resolved same-class callable signature, and closed acyclic call
+graph. The evaluator and Core-only Go backend preserve once-only helper evaluation, short-circuit,
+and copied-value semantics. Public compiler, semantic, and Application IR schema identities and
+shapes remain unchanged; only language-contract metadata advances. No direct
+`propagate(Helper(...))`, multiple/nested propagation, additional helper argument, propagation from
+another local, arbitrary computed carrier, arbitrary Result, inference, reassignment, early return,
+statement branch, nested block, loop, effect, action, runtime, target, adapter, UI, or deployment
+behavior enters by implication.
 
 ## Application IR checkpoint complete contract
 

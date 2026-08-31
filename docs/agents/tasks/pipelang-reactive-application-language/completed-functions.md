@@ -141,3 +141,29 @@ metadata advances. The exact 45-source legacy lane remains frozen. Additional or
 propagation, computed operands, propagation from prior locals, arbitrary `Result` carriers,
 inference, reassignment, early returns, statement branches, nested blocks, loops, effects, actions,
 runtime behavior, and target-specific behavior remain excluded.
+
+## Step 8h — prior-local helper propagation (`v0.42.0`)
+
+Production source admits exactly
+`C carrier = Helper(input); T value = propagate(carrier);` as the first two locals of one public
+pure ordered-local method block. The method has one direct parameter. The first initializer is one
+resolved public same-class pure call using that parameter as its sole direct argument. The helper
+return carrier `C` exactly equals the enclosing method return, and `T` exactly equals its payload.
+The carrier matrix remains the v0.41.0 Optional primitive/record,
+`Result<List<R>, string>`, and `Result<string, string>` matrix. Success or presence binds a
+validated copied payload before later locals and the terminal return; failure or absence returns
+the identical canonical helper carrier immediately.
+
+Typed HIR and target-neutral Core reuse `call`, `immutable_local`, and `propagate`. Core validates
+canonical positions, the sole direct call argument, resolved exact same-owner signature, acyclic
+call closure, one propagation, the direct immediately preceding carrier-local reference, and exact
+carrier/payload types. The evaluator and Core-only Go backend preserve once-only helper evaluation,
+short-circuit, and copied values. The Docker observability consumer proves
+`ValidateDetails(string) -> Result<string, string>` composed by `Details(string)` through
+`dockpipe.application.v1`. `pipelang.compiler.v1`, `pipelang.semantic.v1`, and
+`dockpipe.application.v1` retain their identities and schema shapes; only language-contract
+metadata advances. The exact 45-source lane and every v0.41.0 source remain unchanged. Direct
+call-inside-propagate, additional or nested propagation, computed/extra helper arguments,
+propagation from another local, arbitrary Results, inference, reassignment, early returns,
+statement branches, nested blocks, loops, effects, actions, runtime behavior, and target-specific
+behavior remain excluded.

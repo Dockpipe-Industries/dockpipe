@@ -301,3 +301,9 @@ assert(pipeLangReadme.includes("sole direct Optional or bounded Result carrier")
 assert.strictEqual(pipeLangSnippets["PipeLang block-scoped propagation method"].prefix, "pipe-block-propagate");
 assert(pipeLangSnippets["PipeLang block-scoped propagation method"].description.includes("v0.41.0"));
 assert(pipeLangSnippets["PipeLang block-scoped propagation method"].body.some((line) => line.includes("= propagate(")));
+assert(pipeLangReadme.includes("`v0.42.0`"));
+assert(pipeLangReadme.includes("immediately preceding bounded carrier"));
+assert.strictEqual(pipeLangSnippets["PipeLang prior-local helper propagation method"].prefix, "pipe-prior-local-propagate");
+assert(pipeLangSnippets["PipeLang prior-local helper propagation method"].description.includes("v0.42.0"));
+assert(pipeLangSnippets["PipeLang prior-local helper propagation method"].body.some((line) => line.includes("= ${4:Helper}(${2:input})")));
+assert(pipeLangSnippets["PipeLang prior-local helper propagation method"].body.some((line) => line.includes("= propagate(${3:carrier})")));

@@ -37,7 +37,7 @@ func Generate(program coreir.Program) ([]byte, error) {
 	if err := coreir.ValidateProgram(program); err != nil {
 		return nil, &Error{Code: "PLGO0001", Message: err.Error()}
 	}
-	if program.LanguageContract == coreir.LanguageContractV310 || program.LanguageContract == coreir.LanguageContractV320 || program.LanguageContract == coreir.LanguageContractV330 || program.LanguageContract == coreir.LanguageContractV340 || program.LanguageContract == coreir.LanguageContractV350 || program.LanguageContract == coreir.LanguageContractV360 || program.LanguageContract == coreir.LanguageContractV370 || program.LanguageContract == coreir.LanguageContractV380 || program.LanguageContract == coreir.LanguageContractV390 || program.LanguageContract == coreir.LanguageContractV400 || program.LanguageContract == coreir.LanguageContractV410 {
+	if program.LanguageContract == coreir.LanguageContractV310 || program.LanguageContract == coreir.LanguageContractV320 || program.LanguageContract == coreir.LanguageContractV330 || program.LanguageContract == coreir.LanguageContractV340 || program.LanguageContract == coreir.LanguageContractV350 || program.LanguageContract == coreir.LanguageContractV360 || program.LanguageContract == coreir.LanguageContractV370 || program.LanguageContract == coreir.LanguageContractV380 || program.LanguageContract == coreir.LanguageContractV390 || program.LanguageContract == coreir.LanguageContractV400 || program.LanguageContract == coreir.LanguageContractV410 || program.LanguageContract == coreir.LanguageContractV420 {
 		program.LanguageContract = coreir.LanguageContractV300
 	}
 	return generate(program)
@@ -306,7 +306,13 @@ func emitFunction(out *strings.Builder, name string, function coreir.Function, o
 
 func emitBlockPropagationFunction(out *strings.Builder, function coreir.Function, optionalTypeName string) (bool, error) {
 	local := function.Body.ImmutableLocal
-	if function.Body.Kind != coreir.ExprImmutableLocal || local == nil || local.Initializer == nil || local.Initializer.Kind != coreir.ExprPropagate {
+	if function.Body.Kind != coreir.ExprImmutableLocal || local == nil || local.Initializer == nil {
+		return false, nil
+	}
+	if local.Initializer.Kind == coreir.ExprCall && local.Return != nil && local.Return.Kind == coreir.ExprImmutableLocal && local.Return.ImmutableLocal != nil && local.Return.ImmutableLocal.Initializer != nil && local.Return.ImmutableLocal.Initializer.Kind == coreir.ExprPropagate {
+		return emitPriorLocalBlockPropagationFunction(out, function, optionalTypeName)
+	}
+	if local.Initializer.Kind != coreir.ExprPropagate {
 		return false, nil
 	}
 	propagated := local.Initializer.Propagate
@@ -334,6 +340,49 @@ func emitBlockPropagationFunction(out *strings.Builder, function coreir.Function
 	fmt.Fprintf(out, "\tp%d := %s\n", local.Position, initialized)
 	scoped := append(append([]coreir.Parameter{}, function.Parameters...), coreir.Parameter{Position: local.Position, Name: local.Name, Type: local.Type})
 	returned, err := emitExpr(*local.Return, scoped, optionalTypeName)
+	if err != nil {
+		return false, err
+	}
+	fmt.Fprintf(out, "\treturn %s\n}\n\n", returned)
+	return true, nil
+}
+
+func emitPriorLocalBlockPropagationFunction(out *strings.Builder, function coreir.Function, optionalTypeName string) (bool, error) {
+	first := function.Body.ImmutableLocal
+	if first == nil || first.Initializer == nil || first.Initializer.Kind != coreir.ExprCall || first.Return == nil || first.Return.Kind != coreir.ExprImmutableLocal || first.Return.ImmutableLocal == nil {
+		return false, fmt.Errorf("prior-local block propagation is not canonical")
+	}
+	second := first.Return.ImmutableLocal
+	if second.Initializer == nil || second.Initializer.Kind != coreir.ExprPropagate || second.Initializer.Propagate == nil || second.Return == nil || second.Initializer.Propagate.Value == nil || second.Initializer.Propagate.Value.Parameter == nil || *second.Initializer.Propagate.Value.Parameter != first.Position {
+		return false, fmt.Errorf("prior-local block propagation is not canonical")
+	}
+	called, err := emitExpr(*first.Initializer, function.Parameters, optionalTypeName)
+	if err != nil {
+		return false, err
+	}
+	fmt.Fprintf(out, "\tp%d := %s\n", first.Position, called)
+	carrierName := fmt.Sprintf("p%d", first.Position)
+	var initialized string
+	switch function.ReturnType.Kind {
+	case coreir.TypeOptional:
+		valueType, err := goType(second.Type, optionalTypeName)
+		if err != nil {
+			return false, err
+		}
+		fmt.Fprintf(out, "\tpropagated, present := pipelangPropagateOptional(%s)\n\tif !present { return pipelangNoneValue[%s]() }\n", carrierName, valueType)
+		initialized = "propagated"
+	case coreir.TypeResult:
+		fmt.Fprintf(out, "\tif !%s.OK { return %s(%s) }\n", carrierName, boundedResultCloneName(function.ReturnType), carrierName)
+		initialized = carrierName + ".Value"
+		if second.Type.Kind == coreir.TypeList {
+			initialized = fmt.Sprintf("%s(%s)", listCloneName(second.Type), initialized)
+		}
+	default:
+		return false, fmt.Errorf("prior-local block propagation carrier is unsupported")
+	}
+	fmt.Fprintf(out, "\tp%d := %s\n", second.Position, initialized)
+	scoped := append(append([]coreir.Parameter{}, function.Parameters...), coreir.Parameter{Position: first.Position, Name: first.Name, Type: first.Type}, coreir.Parameter{Position: second.Position, Name: second.Name, Type: second.Type})
+	returned, err := emitExpr(*second.Return, scoped, optionalTypeName)
 	if err != nil {
 		return false, err
 	}
