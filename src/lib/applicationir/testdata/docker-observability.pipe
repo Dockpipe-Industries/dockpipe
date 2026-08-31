@@ -36,12 +36,15 @@ public Class DockerApplication {
 	public string SelectedName(Optional<ContainerRow> value) => match(value){ some(row) => NormalizeName(row.Name), none => "" };
 	public Optional<ContainerRow> FindSelection(List<ContainerRow> rows, string id) => find_by(rows, ContainerRow.Id, id);
 	public Optional<ContainerRow> ConfirmSelection(string selected, List<ContainerRow> rows, string id) => selected == "" ? none<ContainerRow>() : find_by(rows, ContainerRow.Id, id);
+	public Optional<ContainerRow> FinalizeSelection(string confirmed, List<ContainerRow> rows, string id) => confirmed == "" ? none<ContainerRow>() : find_by(rows, ContainerRow.Id, id);
 	public string SelectedNameById(List<ContainerRow> rows, string id) {
 		string fallback = "";
 		Optional<ContainerRow> selection = FindSelection(rows, id);
 		string selected = match(selection){ some(row) => row.Name, none => fallback };
 		Optional<ContainerRow> confirmation = ConfirmSelection(selected, rows, id);
 		string confirmed = match(confirmation){ some(row) => row.Name, none => selected };
-		return NormalizeName(confirmed);
+		Optional<ContainerRow> finalization = FinalizeSelection(confirmed, rows, id);
+		string finalized = match(finalization){ some(row) => row.Name, none => confirmed };
+		return NormalizeName(finalized);
 	}
 }

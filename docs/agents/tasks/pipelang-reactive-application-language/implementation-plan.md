@@ -68,8 +68,11 @@ helper and selected local initializes once, each complete carrier is validated, 
 selected arm evaluates. Existing zero-match and one-match forms remain unchanged. Step 8p is
 complete under `v0.50.0`: one new form makes those two pairs a contiguous four-local stage and
 passes the first selected local as the second helper's first direct argument, followed by every
-caller parameter once in declaration order. Existing v0.49 independent pairs remain exact. These
-seams do not complete or authorize inference,
+caller parameter once in declaration order. Existing v0.49 independent pairs remain exact. Step
+8q is complete under `v0.51.0`: the same dependency rule extends to one contiguous chain of
+two or more carrier/match pairs. Every later helper receives only the immediately preceding
+selected local before the unchanged direct caller signature; all pairs remain contiguous and use
+the existing closed carrier matrix. These seams do not complete or authorize inference,
 reassignment, shadowing, cross-class/module calls, overloads, generics, function values, lambdas,
 recursion, general blocks, branch statements, loops, effects, entrypoints, additional or nested
 propagation, arbitrary computed propagation operands, propagation from any other prior local,
@@ -507,6 +510,32 @@ Existing zero-match, one-match, and v0.49 independent two-pair forms remain exac
 argument arrangements, computed/reordered/repeated arguments, split stages, third/nested/terminal
 matches, propagation changes, arbitrary Result widening, statements, effects, actions, runtimes,
 targets, adapters, UI, and deployment remain excluded. No behavior enters by implication.
+
+## Checkpoint v0.51.0 complete contract
+
+One public pure method may contain one contiguous dependent chain of `k >= 2` carrier/match pairs:
+`C1 carrier1 = Helper1(p1, ..., pn); T1 value1 = match(carrier1) { ... };`, followed by
+`Ci carrierI = HelperI(valueI-1, p1, ..., pn); Ti valueI = match(carrierI) { ... };` for each later
+stage. All `2k` locals are explicitly typed and contiguous; ordinary locals may occur only before
+or after. `Helper1` keeps the exact caller signature. Every later helper resolves uniquely to a
+public pure same-class method whose first parameter exactly matches the immediately preceding
+selected local and whose remaining parameters exactly match the caller declaration order. Every
+pair retains the closed carrier matrix and canonical arms.
+
+Typed HIR and Core reuse existing nodes. Core independently validates chain contiguity,
+immediate-predecessor dependencies, binding positions, helper ownership/signatures, carriers,
+arms, local types, and continuation. Evaluation and Core-only Go preserve once-only source order,
+complete-carrier validation, and selected-arm-only evaluation. Public compiler, semantic, and
+Application IR schema identities and shapes remain unchanged; metadata advances to `v0.51.0`;
+the exact 45-source lane is frozen. Docker observability proves
+`FinalizeSelection(confirmed, rows, id)` as the third stage before normalization.
+
+Existing zero-match, one-match, v0.49 independent two-pair, and v0.50 dependent two-stage forms
+remain exact. Gaps, mixed independent/dependent chains, non-immediate dependencies, fan-in,
+computed/reordered/repeated/omitted/extra arguments, third matches outside this exact chain,
+nested/terminal/argument matches, propagation changes, arbitrary Result widening, statements,
+effects, actions, runtimes, targets, adapters, UI, and deployment remain excluded. No behavior
+enters by implication.
 
 ## Application IR checkpoint complete contract
 
