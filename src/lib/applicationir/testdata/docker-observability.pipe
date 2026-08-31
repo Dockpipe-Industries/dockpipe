@@ -20,6 +20,7 @@ public Class DockerApplication {
 		string cleaned = trim(details);
 		return ok<string, string>(cleaned);
 	}
+	public string DetailsMessage(string raw) => match(ValidateDetails(raw)){ ok(details) => trim(details), err(problem) => problem };
 	public Result<string, string> Logs(Result<string, string> value) => value;
 	public List<ContainerRow> FilterContainers(List<ContainerRow> rows, string query) => filter_joined_contains_casefolded(rows, ContainerRow.Name, ContainerRow.State, ContainerRow.Image, ContainerRow.Ports, ContainerRow.Created, query);
 	public List<ContainerRow> OrderContainers(List<ContainerRow> rows) => sort_by_ordinal(rows, ContainerRow.Name);

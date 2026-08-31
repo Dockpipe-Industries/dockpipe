@@ -21,7 +21,7 @@ func TestDockerObservabilityGoldenUsesCanonicalSemanticAndCore(t *testing.T) {
 		t.Fatal(err)
 	}
 	module := pipelang.ModuleInput{ID: "app.root", Namespace: "app.root", DeclarationSpan: pipelang.Span{File: "docker-observability.pipe"}, Sources: []pipelang.SourceInput{{Path: "docker-observability.pipe", Data: source}}}
-	input := pipelang.ModuleSetInput{LanguageContract: pipelang.PipeLangLanguageContractV420, PackageID: "docker.observability", Root: "app.root", Modules: []pipelang.ModuleInput{module}}
+	input := pipelang.ModuleSetInput{LanguageContract: pipelang.PipeLangLanguageContractV430, PackageID: "docker.observability", Root: "app.root", Modules: []pipelang.ModuleInput{module}}
 	input.Lock.Modules = []pipelang.LockedModule{{ID: module.ID, SourceSHA256: pipelang.ModuleSourceSHA256(module.Sources), SemanticSHA256: pipelang.ModuleSemanticSHA256(input.PackageID, module.Namespace, nil)}}
 	analysis := pipelang.AnalyzeSemanticModuleSet(input)
 	if err := analysis.Error(); err != nil {
@@ -179,6 +179,36 @@ func TestDockerObservabilityGoldenUsesCanonicalSemanticAndCore(t *testing.T) {
 	if !strings.Contains(string(detailsGo), "p1 := PipeLangValidateDetails(p0)") || !strings.Contains(string(detailsGo), "if !p1.OK") || !strings.Contains(string(detailsGo), "p2 := p1.Value") || !strings.Contains(string(detailsGo), "p3 := pipelangTrimText(p2)") {
 		t.Fatalf("Details generated Go lost prior-local helper propagation:\n%s", detailsGo)
 	}
+	detailsMessage := find("DetailsMessage")
+	detailsMessageHIR, err := pipelang.LowerSemanticMethodToHIR(analysis, *detailsMessage.Identity)
+	if err != nil {
+		t.Fatal(err)
+	}
+	detailsMessageFunction := detailsMessageHIR.Functions[len(detailsMessageHIR.Functions)-1]
+	if detailsMessageFunction.Body.Kind != hir.ExprMatch || detailsMessageFunction.Body.Match == nil || detailsMessageFunction.Body.Match.Value == nil || detailsMessageFunction.Body.Match.Value.Kind != hir.ExprCall {
+		t.Fatalf("DetailsMessage HIR lost helper-result match: %#v", detailsMessageFunction.Body)
+	}
+	detailsMessageCore, err := pipelang.LowerHIRToCore(detailsMessageHIR)
+	if err != nil {
+		t.Fatal(err)
+	}
+	detailsMessageCoreFunction := detailsMessageCore.Functions[len(detailsMessageCore.Functions)-1]
+	detailsMessageEntry := coreir.SemanticIdentity{PackageID: string(detailsMessage.Identity.PackageID), Path: string(detailsMessage.Identity.Path)}
+	detailsMessageOutcome, err := coreeval.EvaluateProgram(detailsMessageCore, detailsMessageEntry, []coreeval.Value{{Type: detailsMessageCoreFunction.Parameters[0].Type, String: "  inspect  "}})
+	if err != nil || !detailsMessageOutcome.OK || detailsMessageOutcome.Value.String != "inspect" {
+		t.Fatalf("DetailsMessage success = %#v, %v", detailsMessageOutcome, err)
+	}
+	detailsMessageOutcome, err = coreeval.EvaluateProgram(detailsMessageCore, detailsMessageEntry, []coreeval.Value{{Type: detailsMessageCoreFunction.Parameters[0].Type, String: ""}})
+	if err != nil || !detailsMessageOutcome.OK || detailsMessageOutcome.Value.String != "details unavailable" {
+		t.Fatalf("DetailsMessage failure arm = %#v, %v", detailsMessageOutcome, err)
+	}
+	detailsMessageGo, err := gobackend.Generate(detailsMessageCore)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(detailsMessageGo), "matched := PipeLangValidateDetails(p0)") || !strings.Contains(string(detailsMessageGo), "if matched.OK") || !strings.Contains(string(detailsMessageGo), "if !matched.OK") {
+		t.Fatalf("DetailsMessage generated Go lost helper-result match:\n%s", detailsMessageGo)
+	}
 	typeID := func(name string) Identity {
 		for _, m := range semantic.Modules {
 			for _, x := range m.Types {
@@ -277,7 +307,7 @@ func TestDockerObservabilityGoldenUsesCanonicalSemanticAndCore(t *testing.T) {
 	if err = json.Unmarshal(raw, &checked); err != nil {
 		t.Fatal(err)
 	}
-	if len(checked.Sections) != 3 || len(app.Sections) != 3 || app.Selection == nil || app.Details == nil || app.Logs == nil || app.Metadata.LanguageContract != "v0.42.0" {
+	if len(checked.Sections) != 3 || len(app.Sections) != 3 || app.Selection == nil || app.Details == nil || app.Logs == nil || app.Metadata.LanguageContract != "v0.43.0" {
 		t.Fatalf("incomplete fixture: %#v", app)
 	}
 	bad := spec

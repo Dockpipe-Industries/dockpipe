@@ -38,7 +38,11 @@ parameter, its bounded carrier type exactly equals the method return type, and `
 its payload type. Step 8h is complete for exactly one prior-local helper propagation under
 `v0.42.0`: the first local is one resolved public same-class helper call over the method's sole
 direct parameter, the second local propagates that first carrier local, and the bounded carrier
-exactly equals the method return type. These seams do not complete or authorize inference,
+exactly equals the method return type. Step 8i is complete for one top-level
+`match(Helper(input))` under `v0.43.0`: the one-parameter public pure caller returns `string`, the
+resolved same-class public pure helper takes that direct `string` parameter and returns
+`Result<string, string>`, and exact source-ordered bound `ok` then `err` arms select the copied
+payload. These seams do not complete or authorize inference,
 reassignment, shadowing, cross-class/module calls, overloads, generics, function values, lambdas,
 recursion, general blocks, branch statements, loops, effects, entrypoints, additional or nested
 propagation, arbitrary computed propagation operands, propagation from any other prior local,
@@ -277,6 +281,26 @@ shapes remain unchanged; only language-contract metadata advances. No direct
 another local, arbitrary computed carrier, arbitrary Result, inference, reassignment, early return,
 statement branch, nested block, loop, effect, action, runtime, target, adapter, UI, or deployment
 behavior enters by implication.
+
+## Checkpoint v0.43.0 complete contract
+
+One public pure method with one direct `string` parameter and `string` return may use exactly one
+top-level `match(Helper(input)) { ok(value) => whenOk, err(error) => whenErr }` expression. `Helper`
+resolves to one uniquely named public pure same-class method, takes the direct parameter as its
+sole argument, and returns exactly `Result<string, string>`. It evaluates once. The complete Result
+is validated, the selected payload is copied into its unique arm binding, and only the selected arm
+expression evaluates. Arms are exact, exhaustive, source ordered, and wildcard-free.
+
+Typed HIR and target-neutral Core reuse `call` and `match`. Core independently validates placement,
+occurrence count, direct argument identity, exact caller/helper signatures, same ownership, closed
+acyclic calls, carrier type, ordered arm tags, and bindings. The evaluator and Core-only Go backend
+preserve complete-carrier validation, once-only helper evaluation, copied payloads, and lazy arm
+selection. Public compiler, semantic, and Application IR schema identities and shapes remain
+unchanged; only language-contract metadata advances. Optional/list/arithmetic Result helpers,
+extra or computed arguments, extra caller parameters, cross-owner calls, nested matches, reversed
+or wildcard arms, guards, new blocks/locals, propagation changes, inference, reassignment,
+statements, loops, effects, actions, runtime, targets, adapters, UI, and deployment behavior do not
+enter by implication.
 
 ## Application IR checkpoint complete contract
 

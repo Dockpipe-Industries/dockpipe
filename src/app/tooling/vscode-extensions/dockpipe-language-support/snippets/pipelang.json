@@ -302,5 +302,18 @@
       "}"
     ],
     "description": "Create one v0.42.0 same-class helper call followed immediately by bounded prior-local propagation and a terminal carrier return."
+  },
+  "PipeLang helper-result match method": {
+    "prefix": "pipe-helper-result-match",
+    "body": [
+      "public Result<string, string> ${1:Validate}(string ${2:input}) => ${3:validation};",
+      "",
+      "public string ${4:Resolve}(string ${2:input}) =>",
+      "\tmatch(${1:Validate}(${2:input})) {",
+      "\t\tok(${5:value}) => ${5:value},",
+      "\t\terr(${6:error}) => ${6:error}",
+      "\t};"
+    ],
+    "description": "Create one v0.43.0 same-class Result<string, string> helper call matched by exact ordered ok and err binding arms."
   }
 }

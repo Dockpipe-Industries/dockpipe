@@ -167,3 +167,25 @@ call-inside-propagate, additional or nested propagation, computed/extra helper a
 propagation from another local, arbitrary Results, inference, reassignment, early returns,
 statement branches, nested blocks, loops, effects, actions, runtime behavior, and target-specific
 behavior remain excluded.
+
+## Step 8i — helper-result matching composition (`v0.43.0`)
+
+Production source admits exactly one top-level
+`match(Helper(input)) { ok(value) => whenOk, err(error) => whenErr }` expression in a public pure
+method with one direct `string` parameter and `string` return. The uniquely named public pure
+same-class helper takes that direct parameter as its sole argument and returns exactly
+`Result<string, string>`. It evaluates once; the complete carrier is validated, the selected
+payload is copied into its unique binding, and only the selected arm evaluates. Arms are exact,
+exhaustive, wildcard-free, and source ordered `ok` then `err`.
+
+Typed HIR and target-neutral Core reuse `call` and `match`. Core independently validates canonical
+placement, one match, the sole direct argument, exact same-owner signatures, closed acyclic calls,
+the text Result carrier, ordered arm tags, and unique bindings. The evaluator and Core-only Go
+backend preserve complete-carrier validation, once-only helper evaluation, copied payloads, and
+lazy arm selection. The Docker observability consumer proves `DetailsMessage(string)` composing
+`ValidateDetails(string)` without changing `dockpipe.application.v1`. Public compiler, semantic,
+and Application IR schema identities and shapes remain unchanged; only language-contract metadata
+advances. The exact 45-source lane remains frozen. Other helper carriers, extra/computed arguments,
+extra caller parameters, cross-owner calls, nested matches, reversed/wildcard arms, guards, new
+blocks/locals, propagation changes, inference, reassignment, statements, loops, effects, actions,
+runtime behavior, and target-specific behavior remain excluded.
