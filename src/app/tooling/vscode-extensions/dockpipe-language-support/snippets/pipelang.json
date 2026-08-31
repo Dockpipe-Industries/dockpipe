@@ -315,5 +315,18 @@
       "\t};"
     ],
     "description": "Create one v0.43.0 same-class Result<string, string> helper call matched by exact ordered ok and err binding arms."
+  },
+  "PipeLang general helper-carrier match method": {
+    "prefix": "pipe-helper-carrier-match",
+    "body": [
+      "public Optional<${1:Row}> ${2:FindSelection}(List<${1:Row}> ${3:rows}, string ${4:id}) => find_by(${3:rows}, ${1:Row}.${5:Id}, ${4:id});",
+      "",
+      "public string ${6:SelectedName}(List<${1:Row}> ${3:rows}, string ${4:id}) =>",
+      "\tmatch(${2:FindSelection}(${3:rows}, ${4:id})) {",
+      "\t\tsome(${7:row}) => ${8:NormalizeName}(${7:row}.${9:Name}),",
+      "\t\tnone => \"\"",
+      "\t};"
+    ],
+    "description": "Create one v0.44.0 exact-parameter same-class Optional helper call matched by ordered some(binding) and binding-free none arms."
   }
 }

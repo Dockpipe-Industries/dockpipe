@@ -696,21 +696,24 @@ func validGeneralPureCallPlacement(expr Expr) bool {
 	}
 }
 
-// validHelperResultMatchPureCallPlacement widens only the complete method-body
-// match carrier to one helper call over a direct reference. Existing arm
-// expressions retain v0.37.0 general pure-call composition and its direct
-// nested-control-flow carrier boundaries.
-func validHelperResultMatchPureCallPlacement(expr Expr) bool {
+// validHelperCarrierMatchPureCallPlacement widens only the complete
+// method-body match carrier to one helper call over one or more direct
+// references. Exact caller-to-helper parameter correspondence is checked by
+// semantic analysis. Arm expressions retain v0.37.0 general pure-call
+// composition and its direct nested-control-flow carrier boundaries.
+func validHelperCarrierMatchPureCallPlacement(expr Expr) bool {
 	match, ok := expr.(*MatchExpr)
 	if !ok {
 		return validGeneralPureCallPlacement(expr)
 	}
 	call, ok := match.Value.(*CallExpr)
-	if !ok || len(call.Arguments) != 1 {
+	if !ok || len(call.Arguments) == 0 {
 		return validGeneralPureCallPlacement(expr)
 	}
-	if _, direct := call.Arguments[0].(*IdentExpr); !direct {
-		return false
+	for _, argument := range call.Arguments {
+		if _, direct := argument.(*IdentExpr); !direct {
+			return false
+		}
 	}
 	for _, arm := range match.Arms {
 		if !validGeneralPureCallPlacement(arm.Body) {

@@ -189,3 +189,24 @@ advances. The exact 45-source lane remains frozen. Other helper carriers, extra/
 extra caller parameters, cross-owner calls, nested matches, reversed/wildcard arms, guards, new
 blocks/locals, propagation changes, inference, reassignment, statements, loops, effects, actions,
 runtime behavior, and target-specific behavior remain excluded.
+
+## Step 8j — general bounded helper-carrier matching (`v0.44.0`)
+
+Production source admits exactly one complete top-level `match(Helper(...))` in a public pure
+caller with one or more parameters. Every caller parameter is passed directly, once, and in
+declaration order to one uniquely resolved public pure same-class helper with the exact parameter
+signature. The helper returns admitted `Optional<T>`, `Result<List<R>, string>`, or
+`Result<string, string>`. Optional arms are exact source-ordered `some(binding)` then binding-free
+`none`; Result arms are exact source-ordered `ok(binding)` then `err(binding)`. Both arms exactly
+typecheck to the caller return. The helper evaluates once, the complete carrier is validated, the
+selected payload is copied, and only the selected arm evaluates.
+
+Typed HIR and target-neutral Core reuse `call` and `match`; Core independently validates the
+source contract. The evaluator and deterministic Core-only Go backend preserve its value and lazy
+selection semantics. The Docker observability consumer proves two-parameter
+`SelectedNameById(List<ContainerRow>, string)` composing `FindSelection(List<ContainerRow>, string)`
+without changing `dockpipe.application.v1`. Public schema identities and shapes remain stable;
+only language-contract metadata advances, and the exact 45-source lane stays frozen. Arithmetic
+Results, computed/reordered/omitted/extra arguments, cross-owner calls, overloads, generics,
+nested/multiple matches, wildcard/reversed arms, guards, propagation changes, new blocks/locals,
+statements, effects, actions, runtime, target, adapter, UI, and deployment behavior remain excluded.

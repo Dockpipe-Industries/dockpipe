@@ -42,7 +42,14 @@ exactly equals the method return type. Step 8i is complete for one top-level
 `match(Helper(input))` under `v0.43.0`: the one-parameter public pure caller returns `string`, the
 resolved same-class public pure helper takes that direct `string` parameter and returns
 `Result<string, string>`, and exact source-ordered bound `ok` then `err` arms select the copied
-payload. These seams do not complete or authorize inference,
+payload. Step 8j is complete for general bounded helper-carrier matching under `v0.44.0`. One
+public pure caller with one or more parameters may use exactly one top-level
+`match(Helper(...))`; every caller parameter is passed directly once in declaration order to one
+resolved public pure same-class helper with the exact parameter signature. The helper carrier is
+closed to admitted `Optional<T>`, `Result<List<R>, string>`, or `Result<string, string>`. Optional
+arms are exact source-ordered `some(binding)` then binding-free `none`; Result arms are exact
+source-ordered `ok(binding)` then `err(binding)`. Both arms exactly typecheck to the declared caller
+return. These seams do not complete or authorize inference,
 reassignment, shadowing, cross-class/module calls, overloads, generics, function values, lambdas,
 recursion, general blocks, branch statements, loops, effects, entrypoints, additional or nested
 propagation, arbitrary computed propagation operands, propagation from any other prior local,
@@ -301,6 +308,26 @@ extra or computed arguments, extra caller parameters, cross-owner calls, nested 
 or wildcard arms, guards, new blocks/locals, propagation changes, inference, reassignment,
 statements, loops, effects, actions, runtime, targets, adapters, UI, and deployment behavior do not
 enter by implication.
+
+## Checkpoint v0.44.0 complete contract
+
+One public pure method with one or more parameters may use exactly one complete top-level
+`match(Helper(...))`. Every caller parameter is the corresponding direct helper argument exactly
+once and in declaration order. `Helper` is one uniquely resolved public pure same-class method
+with that exact parameter list and returns either admitted `Optional<T>`,
+`Result<List<R>, string>`, or `Result<string, string>`. Optional arms are exact source-ordered
+`some(binding)` then binding-free `none`; Result arms are exact source-ordered `ok(binding)` then
+`err(binding)`. Both arm expressions exactly match the caller return type.
+
+Typed HIR and target-neutral Core reuse `call` and `match`. Core independently validates placement,
+occurrence count, direct argument positions and types, same ownership, exact target signature,
+closed carrier matrix, canonical arms, and bindings. The evaluator and deterministic Core-only Go
+backend validate the complete carrier, evaluate the helper once, copy the selected payload, and
+evaluate only the selected arm. Compiler, semantic, and Application IR identities and shapes stay
+unchanged; only language-contract metadata advances. Arithmetic Results, computed/reordered/
+omitted/extra arguments, cross-owner calls, overloads, generics, nested or multiple matches,
+wildcards, reversed arms, guards, propagation changes, blocks, locals, statements, effects,
+actions, runtimes, targets, adapters, UI, and deployment behavior remain excluded.
 
 ## Application IR checkpoint complete contract
 

@@ -288,6 +288,14 @@ func evalExprWithProgram(expression coreir.Expr, arguments []Value, functions ma
 		}
 		callArguments := make([]Value, len(expression.Call.Arguments))
 		for position, argument := range expression.Call.Arguments {
+			if argument != nil && argument.Kind == coreir.ExprReference && argument.Parameter != nil && argument.Type.Kind == coreir.TypeResult {
+				carrier := arguments[*argument.Parameter]
+				if err := validateValue(carrier); err != nil {
+					return Outcome{}, fmt.Errorf("pure call argument %d: %w", position+1, err)
+				}
+				callArguments[position] = cloneValue(carrier)
+				continue
+			}
 			outcome, err := evalExprWithProgram(*argument, arguments, functions)
 			if err != nil || !outcome.OK {
 				return outcome, err
