@@ -1135,6 +1135,9 @@ func cloneRecordValue(value Value) Value {
 
 func cloneListValue(value Value) Value {
 	cloned := value
+	if value.List == nil {
+		return cloned
+	}
 	cloned.List = make([]Value, len(value.List))
 	for index, element := range value.List {
 		cloned.List[index] = cloneValue(element)
