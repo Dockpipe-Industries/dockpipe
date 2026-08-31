@@ -1291,6 +1291,35 @@ generics, nested or multiple matches, wildcard or reversed arms, guards, propaga
 blocks, locals or statements, effects, actions, runtimes, targets, adapters, UI, and deployment
 behavior remain excluded.
 
+### PipeLang v0.45.0: first-local helper-carrier matching
+
+One public pure method with one or more parameters may use exactly one v0.44-compatible
+`match(Helper(...))` as the initializer of its first explicitly typed immutable local. Every caller
+parameter is still passed directly once in declaration order to one uniquely resolved public pure
+same-class helper with the exact parameter signature. The helper carrier remains closed to admitted
+`Optional<T>`, `Result<List<R>, string>`, or `Result<string, string>`, with the exact v0.44 arm
+ordering and bindings. Both arm expressions have the exact declared local type.
+
+The helper evaluates once, the complete carrier is validated, only the selected arm evaluates, and
+its copied result initializes the first local once. Existing v0.40 ordered immutable locals and the
+terminal return may then consume that local. Typed HIR and target-neutral Core reuse the existing
+`immutable_local`, `call`, and `match` nodes; Core independently validates the first-local placement,
+single match, direct argument positions and types, exact same-owner signature, closed carrier
+matrix, canonical arms and bindings, local type, and continuation scope. The evaluator and
+deterministic Core-only Go backend preserve the same evaluation order and copied-value semantics.
+
+The Docker observability consumer proves `SelectedNameById(List<ContainerRow>, string)` by matching
+`FindSelection(List<ContainerRow>, string)` into a first `string selected` local and then calling
+`NormalizeName(selected)`. `pipelang.compiler.v1`, `pipelang.semantic.v1`, and
+`dockpipe.application.v1` identities and shapes remain unchanged; only language-contract metadata
+advances to `v0.45.0`, and the exact 45-source lane remains frozen.
+
+Match in later locals, the terminal return, arguments, or nested positions; multiple matches;
+computed/reordered/omitted/extra helper arguments; arithmetic Results; cross-owner calls;
+overloads; generics; wildcard or reversed arms; guards; propagation changes; inference;
+reassignment; early returns; statement branches; loops; effects; actions; runtimes; targets;
+adapters; UI; and deployment behavior remain excluded.
+
 ### Target-neutral Application IR
 
 `dockpipe.application.v1` is not a language feature or target generator. It consumes the public

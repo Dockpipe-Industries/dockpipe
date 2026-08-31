@@ -21,7 +21,7 @@ func TestDockerObservabilityGoldenUsesCanonicalSemanticAndCore(t *testing.T) {
 		t.Fatal(err)
 	}
 	module := pipelang.ModuleInput{ID: "app.root", Namespace: "app.root", DeclarationSpan: pipelang.Span{File: "docker-observability.pipe"}, Sources: []pipelang.SourceInput{{Path: "docker-observability.pipe", Data: source}}}
-	input := pipelang.ModuleSetInput{LanguageContract: pipelang.PipeLangLanguageContractV440, PackageID: "docker.observability", Root: "app.root", Modules: []pipelang.ModuleInput{module}}
+	input := pipelang.ModuleSetInput{LanguageContract: pipelang.PipeLangLanguageContractV450, PackageID: "docker.observability", Root: "app.root", Modules: []pipelang.ModuleInput{module}}
 	input.Lock.Modules = []pipelang.LockedModule{{ID: module.ID, SourceSHA256: pipelang.ModuleSourceSHA256(module.Sources), SemanticSHA256: pipelang.ModuleSemanticSHA256(input.PackageID, module.Namespace, nil)}}
 	analysis := pipelang.AnalyzeSemanticModuleSet(input)
 	if err := analysis.Error(); err != nil {
@@ -121,8 +121,9 @@ func TestDockerObservabilityGoldenUsesCanonicalSemanticAndCore(t *testing.T) {
 		t.Fatal(err)
 	}
 	selectedNameByIDFunction := selectedNameByIDHIR.Functions[len(selectedNameByIDHIR.Functions)-1]
-	if selectedNameByIDFunction.Body.Kind != hir.ExprMatch || selectedNameByIDFunction.Body.Match == nil || selectedNameByIDFunction.Body.Match.Value == nil || selectedNameByIDFunction.Body.Match.Value.Kind != hir.ExprCall || len(selectedNameByIDFunction.Body.Match.Value.Call.Arguments) != 2 {
-		t.Fatalf("SelectedNameById HIR lost two-parameter helper-carrier match: %#v", selectedNameByIDFunction.Body)
+	selectedNameByIDLocal := selectedNameByIDFunction.Body.ImmutableLocal
+	if selectedNameByIDFunction.Body.Kind != hir.ExprImmutableLocal || selectedNameByIDLocal == nil || selectedNameByIDLocal.Initializer.Kind != hir.ExprMatch || selectedNameByIDLocal.Initializer.Match == nil || selectedNameByIDLocal.Initializer.Match.Value == nil || selectedNameByIDLocal.Initializer.Match.Value.Kind != hir.ExprCall || len(selectedNameByIDLocal.Initializer.Match.Value.Call.Arguments) != 2 || selectedNameByIDLocal.Return.Kind != hir.ExprCall {
+		t.Fatalf("SelectedNameById HIR lost first-local helper-carrier match and continuation: %#v", selectedNameByIDFunction.Body)
 	}
 	selectedNameByIDCore, err := pipelang.LowerHIRToCore(selectedNameByIDHIR)
 	if err != nil {
@@ -142,8 +143,8 @@ func TestDockerObservabilityGoldenUsesCanonicalSemanticAndCore(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(selectedNameByIDGo), "matched := PipeLangFindSelection(pipelangCloneListDockerObservabilityAppRootContainerrow(p0), p1)") || !strings.Contains(string(selectedNameByIDGo), "matched.(pipelangOptionalSome[") {
-		t.Fatalf("SelectedNameById generated Go lost helper-carrier match:\n%s", selectedNameByIDGo)
+	if !strings.Contains(string(selectedNameByIDGo), "matched := PipeLangFindSelection(pipelangCloneListDockerObservabilityAppRootContainerrow(p0), p1)") || !strings.Contains(string(selectedNameByIDGo), "matched.(pipelangOptionalSome[") || !strings.Contains(string(selectedNameByIDGo), "p2 := func() string") || !strings.Contains(string(selectedNameByIDGo), "return PipeLangNormalizeName(p2)") {
+		t.Fatalf("SelectedNameById generated Go lost helper-carrier match local continuation:\n%s", selectedNameByIDGo)
 	}
 	displayName := find("DisplayName")
 	displayNameHIR, err := pipelang.LowerSemanticMethodToHIR(analysis, *displayName.Identity)
@@ -337,7 +338,7 @@ func TestDockerObservabilityGoldenUsesCanonicalSemanticAndCore(t *testing.T) {
 	if err = json.Unmarshal(raw, &checked); err != nil {
 		t.Fatal(err)
 	}
-	if len(checked.Sections) != 3 || len(app.Sections) != 3 || app.Selection == nil || app.Details == nil || app.Logs == nil || app.Metadata.LanguageContract != "v0.44.0" {
+	if len(checked.Sections) != 3 || len(app.Sections) != 3 || app.Selection == nil || app.Details == nil || app.Logs == nil || app.Metadata.LanguageContract != "v0.45.0" {
 		t.Fatalf("incomplete fixture: %#v", app)
 	}
 	bad := spec

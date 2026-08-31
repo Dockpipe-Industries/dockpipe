@@ -47,6 +47,7 @@ const (
 	LanguageContractV420 = "v0.42.0"
 	LanguageContractV430 = "v0.43.0"
 	LanguageContractV440 = "v0.44.0"
+	LanguageContractV450 = "v0.45.0"
 	CompilerContractV1   = "pipelang.compiler.v1"
 	BuiltinPackageID     = "pipelang"
 	ListSemanticPath     = "list"

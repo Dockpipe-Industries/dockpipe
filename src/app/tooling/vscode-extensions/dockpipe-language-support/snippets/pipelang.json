@@ -328,5 +328,20 @@
       "\t};"
     ],
     "description": "Create one v0.44.0 exact-parameter same-class Optional helper call matched by ordered some(binding) and binding-free none arms."
+  },
+  "PipeLang helper-carrier match local method": {
+    "prefix": "pipe-helper-carrier-match-local",
+    "body": [
+      "public Optional<${1:Row}> ${2:FindSelection}(List<${1:Row}> ${3:rows}, string ${4:id}) => find_by(${3:rows}, ${1:Row}.${5:Id}, ${4:id});",
+      "",
+      "public string ${6:SelectedName}(List<${1:Row}> ${3:rows}, string ${4:id}) {",
+      "\tstring ${7:selected} = match(${2:FindSelection}(${3:rows}, ${4:id})) {",
+      "\t\tsome(${8:row}) => ${8:row}.${9:Name},",
+      "\t\tnone => \"\"",
+      "\t};",
+      "\treturn ${10:NormalizeName}(${7:selected});",
+      "}"
+    ],
+    "description": "Create one v0.45.0 v0.44-compatible helper-carrier match as the first immutable-local initializer, followed by a terminal continuation."
   }
 }

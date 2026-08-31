@@ -49,7 +49,9 @@ resolved public pure same-class helper with the exact parameter signature. The h
 closed to admitted `Optional<T>`, `Result<List<R>, string>`, or `Result<string, string>`. Optional
 arms are exact source-ordered `some(binding)` then binding-free `none`; Result arms are exact
 source-ordered `ok(binding)` then `err(binding)`. Both arms exactly typecheck to the declared caller
-return. These seams do not complete or authorize inference,
+return. Step 8k is complete for one v0.44-compatible helper-carrier match as the initializer of the
+first explicitly typed immutable local under `v0.45.0`; later existing ordered locals and the
+terminal return may consume that local. These seams do not complete or authorize inference,
 reassignment, shadowing, cross-class/module calls, overloads, generics, function values, lambdas,
 recursion, general blocks, branch statements, loops, effects, entrypoints, additional or nested
 propagation, arbitrary computed propagation operands, propagation from any other prior local,
@@ -328,6 +330,32 @@ unchanged; only language-contract metadata advances. Arithmetic Results, compute
 omitted/extra arguments, cross-owner calls, overloads, generics, nested or multiple matches,
 wildcards, reversed arms, guards, propagation changes, blocks, locals, statements, effects,
 actions, runtimes, targets, adapters, UI, and deployment behavior remain excluded.
+
+## Checkpoint v0.45.0 complete contract
+
+One public pure method with one or more parameters may place exactly one v0.44-compatible
+`match(Helper(...))` as the initializer of its first explicitly typed immutable local. Every caller
+parameter is the corresponding direct helper argument exactly once in declaration order. The
+helper remains one uniquely resolved public pure same-class method with the exact signature and an
+admitted `Optional<T>`, `Result<List<R>, string>`, or `Result<string, string>` return. Optional arms
+remain exact source-ordered `some(binding)` then binding-free `none`; Result arms remain exact
+source-ordered `ok(binding)` then `err(binding)`. Both arm expressions exactly match the declared
+local type.
+
+Typed HIR and target-neutral Core reuse `immutable_local`, `call`, and `match`. Core independently
+validates the first-local placement, one match, direct helper arguments, same ownership, exact
+target signature, closed carrier matrix, canonical arms and bindings, local type, and continuation
+scope. The evaluator and deterministic Core-only Go backend validate the complete carrier,
+evaluate the helper once, copy the selected result into the local once, evaluate only the selected
+arm, and then execute existing ordered locals plus the terminal return. Compiler, semantic, and
+Application IR identities and shapes stay unchanged; only language-contract metadata advances.
+The exact 45-source lane remains frozen.
+
+Match in later locals, the terminal return, arguments, or nested positions; multiple matches;
+computed/reordered/omitted/extra helper arguments; arithmetic Results; cross-owner calls;
+overloads; generics; wildcard or reversed arms; guards; propagation changes; inference;
+reassignment; early returns; statement branches; loops; effects; actions; runtimes; targets;
+adapters; UI; and deployment behavior remain excluded.
 
 ## Application IR checkpoint complete contract
 
