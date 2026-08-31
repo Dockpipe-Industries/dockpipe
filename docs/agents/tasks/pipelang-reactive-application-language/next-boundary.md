@@ -600,6 +600,39 @@ reassignment; early returns; statement branches; loops; effects; actions; runtim
 adapters; UI; and deployment behavior remain excluded. Any successor requires a new founder
 decision and separate implementation approval.
 
+## Accepted v0.47.0 boundary — later-local helper-carrier matching
+
+`v0.47.0` widens only the v0.45/v0.46 local placement: one existing helper-carrier match may
+initialize any explicitly typed immutable local after zero or more ordinary locals in the existing
+ordered sequence. One public pure caller has one or more parameters, and every parameter is passed
+directly once in declaration order to one uniquely resolved public pure same-class exact-signature
+helper. The carrier matrix stays closed to admitted Optional primitive/record,
+`Result<List<R>, string>`, `Result<string, string>`, and checked-arithmetic
+`Result<int, ArithmeticError>` or `Result<float, ArithmeticError>`. Optional arms remain exact
+source-ordered `some(binding)` then binding-free `none`; Result arms remain exact source-ordered
+`ok(binding)` then `err(binding)`. Both arms exactly match the declared local type.
+
+Typed HIR and target-neutral Core reuse `immutable_local`, `call`, and `match`. Core independently
+proves one local match, direct parameter positions/types, same-owner target and exact signature,
+the closed carrier matrix, canonical arms/bindings, exact local typing, and continuation scope.
+Earlier ordinary locals evaluate eagerly once in source order. The helper evaluates once, the full
+carrier is validated, only the selected arm evaluates, and its copied result initializes the
+matched local once before later locals and the terminal return continue.
+
+`pipelang.compiler.v1`, `pipelang.semantic.v1`, and `dockpipe.application.v1` identities and shapes
+remain stable; only language-contract metadata advances, and the exact 45-source legacy lane
+remains frozen. TASK-020 proves the widened placement through `SelectedNameById`: an ordinary
+fallback local precedes the existing Optional helper match, while the Application IR schema and
+semantic identities remain unchanged.
+
+Terminal-return, argument, nested, or multiple matches; checked-arithmetic matching as the complete
+method body; computed/reordered/omitted/extra helper arguments; propagation changes; Result
+construction/defaulting or arbitrary widening; cross-owner/private/overloaded/generic helpers;
+wildcards or reversed arms; guards; inference; reassignment; statements; effects; actions;
+runtimes; targets; adapters; UI; and deployment behavior remain excluded. No statement, effect,
+runtime, action, target, adapter, UI, or deployment behavior enters by implication. Any successor
+requires a new founder decision and separate implementation approval.
+
 ## Accepted first Application IR boundary — `dockpipe.application.v1`
 
 The first target-neutral read-only Application IR consumes only a canonical public

@@ -358,5 +358,21 @@
       "}"
     ],
     "description": "Create one v0.46.0 checked-arithmetic Result helper match as the first immutable-local initializer with exact ordered ok and err arms."
+  },
+  "PipeLang later-local helper match method": {
+    "prefix": "pipe-later-local-helper-match",
+    "body": [
+      "public Optional<${1:Row}> ${2:FindSelection}(List<${1:Row}> ${3:rows}, string ${4:id}) => find_by(${3:rows}, ${1:Row}.${5:Id}, ${4:id});",
+      "",
+      "public string ${6:SelectedName}(List<${1:Row}> ${3:rows}, string ${4:id}) {",
+      "\tstring ${7:fallback} = \"\";",
+      "\tstring ${8:selected} = match(${2:FindSelection}(${3:rows}, ${4:id})) {",
+      "\t\tsome(${9:row}) => ${9:row}.${10:Name},",
+      "\t\tnone => ${7:fallback}",
+      "\t};",
+      "\treturn ${11:NormalizeName}(${8:selected});",
+      "}"
+    ],
+    "description": "Create one v0.47.0 bounded helper-carrier match after an ordinary immutable local, followed by a terminal continuation."
   }
 }
