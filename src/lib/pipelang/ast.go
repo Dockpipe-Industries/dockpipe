@@ -741,6 +741,33 @@ func validHelperCarrierMatchLocalPureCallPlacement(expr Expr) bool {
 	return validHelperCarrierMatchPureCallPlacement(expr)
 }
 
+// validHelperCarrierMatchLaterLocalPureCallPlacement preserves the inherited
+// complete-body helper match while admitting one helper-carrier match as any
+// immutable-local initializer in the existing ordered local sequence. The
+// terminal return retains the general v0.37 call-placement rules, so a helper
+// match cannot enter there by implication.
+func validHelperCarrierMatchLaterLocalPureCallPlacement(expr Expr) bool {
+	local, ok := expr.(*ImmutableLocalExpr)
+	if !ok {
+		return validHelperCarrierMatchPureCallPlacement(expr)
+	}
+	return validHelperCarrierMatchLocalSequence(local)
+}
+
+func validHelperCarrierMatchLocalSequence(local *ImmutableLocalExpr) bool {
+	if match, matched := local.Initializer.(*MatchExpr); matched {
+		if !validHelperCarrierMatchPureCallPlacement(match) {
+			return false
+		}
+	} else if !validGeneralPureCallPlacement(local.Initializer) {
+		return false
+	}
+	if next, ok := local.Return.(*ImmutableLocalExpr); ok {
+		return validHelperCarrierMatchLocalSequence(next)
+	}
+	return validGeneralPureCallPlacement(local.Return)
+}
+
 func countMatchExpressions(expr Expr) int {
 	count := 0
 	if _, ok := expr.(*MatchExpr); ok {

@@ -333,3 +333,10 @@ assert.strictEqual(pipeLangSnippets["PipeLang checked-arithmetic helper match lo
 assert(pipeLangSnippets["PipeLang checked-arithmetic helper match local method"].description.includes("v0.46.0"));
 assert(pipeLangSnippets["PipeLang checked-arithmetic helper match local method"].body.some((line) => line.includes("int ${5:selected} = match(${1:Add}(${2:left}, ${3:right}))")));
 assert(pipeLangSnippets["PipeLang checked-arithmetic helper match local method"].body.some((line) => line.includes("err(${7:problem}) => 0")));
+assert(pipeLangReadme.includes("`v0.47.0`"));
+assert(pipeLangReadme.includes("any explicitly typed immutable local"));
+assert.strictEqual(pipeLangSnippets["PipeLang later-local helper match method"].prefix, "pipe-later-local-helper-match");
+assert(pipeLangSnippets["PipeLang later-local helper match method"].description.includes("v0.47.0"));
+assert(pipeLangSnippets["PipeLang later-local helper match method"].body.some((line) => line.includes("string ${7:fallback} = \"\"")));
+assert(pipeLangSnippets["PipeLang later-local helper match method"].body.some((line) => line.includes("string ${8:selected} = match(${2:FindSelection}(${3:rows}, ${4:id}))")));
+assert(pipeLangSnippets["PipeLang later-local helper match method"].body.some((line) => line.includes("none => ${7:fallback}")));

@@ -1351,6 +1351,36 @@ cross-owner calls; overloads; generics; wildcards or reversed arms; guards; infe
 reassignment; early returns; statements; loops; effects; actions; runtimes; targets; adapters; UI;
 and deployment behavior remain excluded.
 
+### PipeLang v0.47.0: later-local helper-carrier matching
+
+One public pure method with one or more parameters may use exactly one v0.46-compatible
+`match(Helper(...))` as any explicitly typed immutable-local initializer after zero or more ordinary
+locals. Every caller parameter remains the corresponding direct helper argument exactly once in
+declaration order to one uniquely resolved public pure same-class exact-signature helper. The
+closed carrier matrix remains admitted Optional primitive/record, `Result<List<R>, string>`,
+`Result<string, string>`, and checked-arithmetic `Result<int, ArithmeticError>` or
+`Result<float, ArithmeticError>`, with exact canonical arm order, bindings, and local result type.
+
+Earlier ordinary locals evaluate eagerly once in source order. The helper evaluates once, the full
+carrier is validated, only the selected arm evaluates, and its copied result initializes the match
+local once. Existing later locals and the terminal return then continue. Typed HIR and
+target-neutral Core reuse `immutable_local`, `call`, and `match`; Core independently validates the
+placement, single occurrence, direct argument positions/types, exact same-owner signature, closed
+carrier matrix, canonical arms/bindings, local typing, and continuation scope. The evaluator and
+deterministic Core-only Go backend preserve the same semantics.
+
+The Docker observability consumer proves this placement through `SelectedNameById`: an ordinary
+`string fallback` local precedes the Optional helper match, and the selected local can consume it.
+`pipelang.compiler.v1`, `pipelang.semantic.v1`, and `dockpipe.application.v1` identities and shapes
+remain unchanged; only language-contract metadata advances to `v0.47.0`, and the exact 45-source
+lane remains frozen.
+
+Terminal-return, argument, nested, or multiple matches; top-level checked-arithmetic matching;
+computed/reordered/omitted/extra helper arguments; propagation changes; Result construction,
+defaulting, or arbitrary widening; cross-owner/private/overloaded/generic helpers; wildcard or
+reversed arms; guards; inference; reassignment; statements; effects; actions; runtimes; targets;
+adapters; UI; and deployment behavior remain excluded.
+
 ### Target-neutral Application IR
 
 `dockpipe.application.v1` is not a language feature or target generator. It consumes the public

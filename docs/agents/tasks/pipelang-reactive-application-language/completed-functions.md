@@ -255,3 +255,29 @@ computed/reordered/omitted/extra arguments; propagation, new Result construction
 arbitrary Results, cross-owner calls, overloads, generics, wildcards, reversed arms, guards,
 inference, reassignment, statements, effects, actions, runtimes, targets, adapters, UI, and
 deployment behavior remain excluded.
+
+## Step 8m — later-local helper-carrier matching (`v0.47.0`)
+
+Production source widens only the v0.45/v0.46 local placement. One public pure caller with one or
+more parameters may use exactly one existing `match(Helper(...))` as any explicitly typed
+immutable-local initializer after zero or more ordinary locals. Every caller parameter is passed
+directly once in declaration order to one uniquely resolved public pure same-class helper with the
+exact caller signature. The carrier matrix remains closed to admitted Optional primitive/record,
+`Result<List<R>, string>`, `Result<string, string>`, and checked-arithmetic
+`Result<int, ArithmeticError>` or `Result<float, ArithmeticError>`, with exact canonical arm order,
+bindings, and declared-local result typing.
+
+Typed HIR and target-neutral Core reuse `immutable_local`, `call`, and `match`; Core independently
+validates the complete source contract and continuation scope. Earlier ordinary locals evaluate
+eagerly once in source order. The evaluator and deterministic Core-only Go backend validate the
+full carrier, call the helper once, copy the selected result into the local once, evaluate only the
+selected arm, and preserve later ordered locals plus the terminal return. The Docker observability
+consumer proves an ordinary fallback local before `SelectedNameById` matches `FindSelection`, with
+unchanged `dockpipe.application.v1` shape. Public compiler, semantic, and Application IR identities
+remain stable; only language-contract metadata advances, and the exact 45-source lane stays frozen.
+
+Terminal-return, argument, nested, or multiple matches; top-level checked-arithmetic matches;
+computed/reordered/omitted/extra arguments; propagation changes; Result construction/defaulting or
+arbitrary widening; cross-owner/private/overloaded/generic helpers; wildcards or reversed arms;
+guards; inference; reassignment; statements; effects; actions; runtimes; targets; adapters; UI;
+and deployment behavior remain excluded.
