@@ -1633,6 +1633,38 @@ reordered, repeated, omitted, or extra helper arguments, additional propagation,
 widening, inference, reassignment, statements, effects, actions, runtimes, targets, adapters, UI,
 and deployment remain excluded. No behavior enters by implication.
 
+### PipeLang v0.55.0: direct-parameter checked propagation
+
+`v0.55.0` adds the existing checked-arithmetic Results to the inherited first-local direct-carrier
+propagation form:
+
+```pipe
+public Result<int, ArithmeticError> Continue(Result<int, ArithmeticError> carrier) {
+    int value = propagate(carrier);
+    return value + 0;
+}
+```
+
+The identical form is admitted for `Result<float, ArithmeticError>` with a `float` payload and an
+already admitted checked binary64 division continuation. The carrier is the method's sole direct
+parameter and exactly equals its return type. Propagation is the first typed local, whose type
+exactly equals the success payload. The complete carrier is validated before branching; canonical
+success is copied, while canonical `overflow` or `division_by_zero` returns immediately without
+evaluating the continuation.
+
+Typed HIR and target-neutral Core reuse `immutable_local`, `reference`, `propagate`, and checked
+arithmetic nodes. The evaluator and deterministic Core-only Go preserve the same validation,
+copying, and short-circuit semantics. `pipelang.compiler.v1`, `pipelang.semantic.v1`, and
+`dockpipe.application.v1` identities and shapes remain unchanged; only language-contract metadata
+advances to `v0.55.0`. A compiler-cursor fixture proves a checked cursor Result supplied by a
+caller can be consumed without losing overflow. The exact 45-source legacy lane remains frozen.
+
+Additional parameters, helper or computed propagation operands, later or split placement,
+additional propagation, mismatched carrier/payload types, arbitrary Result widening, inference,
+reassignment, statements, effects, actions, runtimes, targets, adapters, UI, and deployment remain
+excluded. The v0.54 helper form and every earlier source contract remain exact. No behavior enters
+by implication.
+
 ### Target-neutral Application IR
 
 `dockpipe.application.v1` is not a language feature or target generator. It consumes the public

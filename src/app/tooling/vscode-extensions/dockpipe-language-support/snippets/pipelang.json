@@ -517,5 +517,15 @@
       "}"
     ],
     "description": "Create one exact v0.54.0 checked-arithmetic helper propagation form with immediate canonical failure return."
+  },
+  "PipeLang direct checked-arithmetic propagation method": {
+    "prefix": "pipe-direct-checked-arithmetic-propagation",
+    "body": [
+      "public Result<int, ArithmeticError> ${1:Continue}(Result<int, ArithmeticError> ${2:carrier}) {",
+      "\tint ${3:value} = propagate(${2:carrier});",
+      "\treturn ${3:value} + 0;",
+      "}"
+    ],
+    "description": "Create one exact v0.55.0 sole-direct-parameter checked-arithmetic propagation form with immediate canonical failure return."
   }
 }

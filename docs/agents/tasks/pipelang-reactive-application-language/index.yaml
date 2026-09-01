@@ -10,8 +10,8 @@ dispatch:
 
 state:
   decision: accepted
-  current_language_contract: v0.54.0
-  completed_through: v0.54.0 checked-arithmetic helper propagation plus multi-parameter propagation, cumulative and immediate dependent chains, dependent and independent two-carrier forms, prior-local and later-local helper matching, checked arithmetic, pure calls, matching, propagation, ordered immutable locals, and dockpipe.application.v1 consumer proof
+  current_language_contract: v0.55.0
+  completed_through: v0.55.0 direct-parameter checked propagation plus checked-arithmetic helper propagation, multi-parameter propagation, cumulative and immediate dependent chains, dependent and independent two-carrier forms, prior-local and later-local helper matching, checked arithmetic, pure calls, matching, propagation, ordered immutable locals, and dockpipe.application.v1 consumer proof
   authority: >-
     This task record is decision and status evidence. It does not authorize another language slice,
     implementation, migration, commit, push, publication, or external action.
@@ -65,7 +65,7 @@ history_by_slice:
   steps_7i_to_7m: completed-text-records.md
   steps_7n_to_7s: completed-optionals-lists.md
   steps_7t_to_7ae: completed-snapshots-selection.md
-  steps_8a_to_8t: completed-functions.md
+  steps_8a_to_8u: completed-functions.md
 
 documents:
   - path: overview.md
@@ -89,7 +89,7 @@ documents:
   - path: completed-snapshots-selection.md
     role: completed steps 7t through 7ae
   - path: completed-functions.md
-    role: completed steps 8a named pure record predicate filtering through 8s multi-parameter helper propagation
+    role: completed steps 8a named pure record predicate filtering through 8u direct-parameter checked propagation
   - path: next-boundary.md
     role: exact current boundary and preserved contracts
 
