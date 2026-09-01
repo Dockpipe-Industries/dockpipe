@@ -1598,6 +1598,41 @@ carrier or payload types, cross-owner/private/overloaded/generic helpers, arbitr
 inference, reassignment, statements, effects, actions, runtimes, targets, adapters, UI, and
 deployment. No behavior enters by implication.
 
+### PipeLang v0.54.0: checked-arithmetic helper propagation
+
+`v0.54.0` adds exactly the existing checked-arithmetic carriers to the v0.53 prior-local helper
+propagation form:
+
+```pipe
+public Result<int, ArithmeticError> Add(int left, int right) => left + right;
+
+public Result<int, ArithmeticError> Resolve(int left, int right) {
+    Result<int, ArithmeticError> carrier = Add(left, right);
+    int value = propagate(carrier);
+    return value + 0;
+}
+```
+
+The identical form is admitted for `Result<float, ArithmeticError>` with a `float` payload and an
+already admitted checked binary64 division expression as the terminal return. The helper call is
+the first typed local, propagation is the immediately adjacent second local, and every caller
+parameter is passed directly once in declaration order to one uniquely resolved public pure
+same-class helper. The helper carrier exactly equals the caller return type and the propagated local
+exactly equals its success payload.
+
+The helper evaluates once and the complete arithmetic Result is validated. Canonical success is
+copied into the payload local; canonical `overflow` or `division_by_zero` returns immediately and
+the continuation is not evaluated. `pipelang.compiler.v1`, `pipelang.semantic.v1`, and
+`dockpipe.application.v1` identities and shapes remain unchanged; only language-contract metadata
+advances to `v0.54.0`. A compiler-cursor fixture proves `Advance(cursor, width)` can call
+`AddOffset(cursor, width)` and propagate overflow unchanged, providing a concrete self-hosting
+consumer. The exact 45-source legacy lane remains frozen.
+
+Direct-parameter arithmetic propagation, `propagate(Helper(...))`, later or split pairs, computed,
+reordered, repeated, omitted, or extra helper arguments, additional propagation, arbitrary Result
+widening, inference, reassignment, statements, effects, actions, runtimes, targets, adapters, UI,
+and deployment remain excluded. No behavior enters by implication.
+
 ### Target-neutral Application IR
 
 `dockpipe.application.v1` is not a language feature or target generator. It consumes the public
