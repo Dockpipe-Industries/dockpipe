@@ -742,6 +742,32 @@ arbitrary Result widening, statements, effects, actions, runtimes, targets, adap
 deployment remain excluded. No behavior enters by implication. Any successor requires a new
 founder decision and separate implementation approval.
 
+## Accepted v0.53.0 boundary — multi-parameter helper propagation
+
+`v0.53.0` widens only the v0.42 prior-local propagation helper signature. One public pure method
+with at least two parameters may spell `C carrier = Helper(p1, ..., pn); T value =
+propagate(carrier); return admittedExpression;`. The helper call is the first immutable-local
+initializer, the propagation local is immediately adjacent, and the uniquely resolved public pure
+same-class helper receives every caller parameter directly once in declaration order. `C` equals
+the method return carrier and `T` equals its payload. The inherited one-parameter v0.42 form and
+closed Optional primitive/record, `Result<List<R>, string>`, and `Result<string, string>` carrier
+matrix remain exact.
+
+HIR and Core reuse `immutable_local`, `call`, `reference`, and `propagate`; Core independently
+checks argument positions, helper identity/signature, adjacency, carrier/payload types, and the
+single propagation. Evaluation and Core-only Go call the helper once, validate the complete
+carrier, copy success, and return canonical absence/failure otherwise. Docker observability proves
+`ResolveSelection(rows, id)` calling `FindSelection(rows, id)` without schema change.
+`pipelang.compiler.v1`, `pipelang.semantic.v1`, and `dockpipe.application.v1` identities and shapes
+stay stable; only language metadata advances, and the exact 45-source lane remains frozen.
+
+Computed/reordered/repeated/omitted/extra arguments, a non-first carrier, an intervening local,
+non-adjacent or additional propagation, mismatched carriers/payloads,
+cross-owner/private/overloaded/generic helpers, arbitrary Result widening, inference,
+reassignment, statements, effects, actions, runtimes, targets, adapters, UI, and deployment remain
+excluded. No behavior enters by implication. Any successor requires a new founder decision and
+separate implementation approval.
+
 ## Accepted v0.49.0 boundary — bounded two-carrier matching
 
 `v0.49.0` widens only the occurrence count accepted through v0.48. One public pure method with one

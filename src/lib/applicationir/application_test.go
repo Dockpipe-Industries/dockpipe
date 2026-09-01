@@ -21,7 +21,7 @@ func TestDockerObservabilityGoldenUsesCanonicalSemanticAndCore(t *testing.T) {
 		t.Fatal(err)
 	}
 	module := pipelang.ModuleInput{ID: "app.root", Namespace: "app.root", DeclarationSpan: pipelang.Span{File: "docker-observability.pipe"}, Sources: []pipelang.SourceInput{{Path: "docker-observability.pipe", Data: source}}}
-	input := pipelang.ModuleSetInput{LanguageContract: pipelang.PipeLangLanguageContractV520, PackageID: "docker.observability", Root: "app.root", Modules: []pipelang.ModuleInput{module}}
+	input := pipelang.ModuleSetInput{LanguageContract: pipelang.PipeLangLanguageContractV530, PackageID: "docker.observability", Root: "app.root", Modules: []pipelang.ModuleInput{module}}
 	input.Lock.Modules = []pipelang.LockedModule{{ID: module.ID, SourceSHA256: pipelang.ModuleSourceSHA256(module.Sources), SemanticSHA256: pipelang.ModuleSemanticSHA256(input.PackageID, module.Namespace, nil)}}
 	analysis := pipelang.AnalyzeSemanticModuleSet(input)
 	if err := analysis.Error(); err != nil {
@@ -114,6 +114,46 @@ func TestDockerObservabilityGoldenUsesCanonicalSemanticAndCore(t *testing.T) {
 	}
 	if !strings.Contains(string(selectedGo), "return PipeLangNormalizeName(") {
 		t.Fatalf("SelectedName generated Go lost match-arm call:\n%s", selectedGo)
+	}
+	resolveSelection := find("ResolveSelection")
+	resolveSelectionHIR, err := pipelang.LowerSemanticMethodToHIR(analysis, *resolveSelection.Identity)
+	if err != nil {
+		t.Fatal(err)
+	}
+	resolveSelectionFunction := resolveSelectionHIR.Functions[len(resolveSelectionHIR.Functions)-1]
+	resolveCarrier := resolveSelectionFunction.Body.ImmutableLocal
+	if resolveSelectionHIR.LanguageContract != coreir.LanguageContractV530 || resolveCarrier == nil || resolveCarrier.Initializer.Kind != hir.ExprCall || resolveCarrier.Initializer.Call == nil || len(resolveCarrier.Initializer.Call.Arguments) != 2 || resolveCarrier.Return == nil || resolveCarrier.Return.Kind != hir.ExprImmutableLocal {
+		t.Fatalf("ResolveSelection HIR lost multi-parameter helper carrier: %#v", resolveSelectionFunction.Body)
+	}
+	for position, argument := range resolveCarrier.Initializer.Call.Arguments {
+		if argument.Kind != hir.ExprReference || argument.Reference == nil || argument.Reference.Kind != hir.BindingParameter || argument.Reference.Position != position {
+			t.Fatalf("ResolveSelection helper argument %d = %#v", position, argument)
+		}
+	}
+	resolveSelected := resolveCarrier.Return.ImmutableLocal
+	if resolveSelected == nil || resolveSelected.Initializer.Kind != hir.ExprPropagate || resolveSelected.Initializer.Propagate == nil || resolveSelected.Initializer.Propagate.Value == nil || resolveSelected.Initializer.Propagate.Value.Kind != hir.ExprReference || resolveSelected.Initializer.Propagate.Value.Reference == nil || resolveSelected.Initializer.Propagate.Value.Reference.Kind != hir.BindingLocal || resolveSelected.Initializer.Propagate.Value.Reference.Position != resolveCarrier.Binding.Position {
+		t.Fatalf("ResolveSelection HIR lost adjacent propagation local: %#v", resolveSelectionFunction.Body)
+	}
+	resolveSelectionCore, err := pipelang.LowerHIRToCore(resolveSelectionHIR)
+	if err != nil {
+		t.Fatal(err)
+	}
+	resolveSelectionCoreFunction := resolveSelectionCore.Functions[len(resolveSelectionCore.Functions)-1]
+	resolveEntry := coreir.SemanticIdentity{PackageID: string(resolveSelection.Identity.PackageID), Path: string(resolveSelection.Identity.Path)}
+	resolveOutcome, err := coreeval.EvaluateProgram(resolveSelectionCore, resolveEntry, []coreeval.Value{rows, {Type: resolveSelectionCoreFunction.Parameters[1].Type, String: "2"}})
+	if err != nil || !resolveOutcome.OK || resolveOutcome.Value.Optional == nil || !resolveOutcome.Value.Optional.Present || resolveOutcome.Value.Optional.Value.Record[1].String != "beta" {
+		t.Fatalf("ResolveSelection present result = %#v, %v", resolveOutcome, err)
+	}
+	resolveOutcome, err = coreeval.EvaluateProgram(resolveSelectionCore, resolveEntry, []coreeval.Value{rows, {Type: resolveSelectionCoreFunction.Parameters[1].Type, String: "missing"}})
+	if err != nil || !resolveOutcome.OK || resolveOutcome.Value.Optional == nil || resolveOutcome.Value.Optional.Present {
+		t.Fatalf("ResolveSelection absent result = %#v, %v", resolveOutcome, err)
+	}
+	resolveSelectionGo, err := gobackend.Generate(resolveSelectionCore)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Count(string(resolveSelectionGo), " := PipeLangFindSelection(") != 1 || !strings.Contains(string(resolveSelectionGo), "pipelangCloneListDockerObservabilityAppRootContainerrow(p0), p1") || !strings.Contains(string(resolveSelectionGo), "pipelangPropagateOptional(") {
+		t.Fatalf("ResolveSelection generated Go lost once-only multi-parameter propagation:\n%s", resolveSelectionGo)
 	}
 	selectedNameByID := find("SelectedNameById")
 	selectedNameByIDHIR, err := pipelang.LowerSemanticMethodToHIR(analysis, *selectedNameByID.Identity)
@@ -362,7 +402,7 @@ func TestDockerObservabilityGoldenUsesCanonicalSemanticAndCore(t *testing.T) {
 	if err = json.Unmarshal(raw, &checked); err != nil {
 		t.Fatal(err)
 	}
-	if len(checked.Sections) != 3 || len(app.Sections) != 3 || app.Selection == nil || app.Details == nil || app.Logs == nil || app.Metadata.LanguageContract != "v0.52.0" {
+	if len(checked.Sections) != 3 || len(app.Sections) != 3 || app.Selection == nil || app.Details == nil || app.Logs == nil || app.Metadata.LanguageContract != "v0.53.0" {
 		t.Fatalf("incomplete fixture: %#v", app)
 	}
 	bad := spec

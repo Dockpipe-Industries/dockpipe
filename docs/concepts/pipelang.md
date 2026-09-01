@@ -1566,6 +1566,38 @@ matches outside the chain, nested/terminal/argument matches, propagation changes
 widening, statements, effects, actions, runtimes, targets, adapters, UI, and deployment remain
 excluded. No behavior enters by implication.
 
+### PipeLang v0.53.0: multi-parameter helper propagation
+
+A public pure method with at least two parameters may use this exact source form:
+
+```text
+C carrier = Helper(p1, ..., pn);
+T value = propagate(carrier);
+return admittedExpression;
+```
+
+The carrier call is the first immutable-local initializer, the propagation local is immediately
+adjacent, and the public pure same-class helper receives every caller parameter directly once in
+declaration order. `C` is identical to the method return carrier and `T` is its success payload.
+The carrier remains limited to Optional primitive/record, `Result<List<R>, string>`, or
+`Result<string, string>`. The inherited one-parameter v0.42 form remains exact.
+
+Typed HIR and target-neutral Core reuse `immutable_local`, `call`, `reference`, and `propagate`;
+Core independently verifies parameter positions, helper identity/signature, adjacency, carrier,
+payload, and once-only propagation. The evaluator and deterministic Core-only Go backend call the
+helper once, validate the complete carrier, copy its payload on success, and return the canonical
+absent or failure carrier otherwise. Docker observability proves
+`ResolveSelection(List<ContainerRow>, string)` calling `FindSelection(rows, id)` without an
+Application IR schema change. `pipelang.compiler.v1`, `pipelang.semantic.v1`, and
+`dockpipe.application.v1` identities and shapes remain unchanged; only language-contract metadata
+advances to `v0.53.0`, and the exact 45-source legacy lane remains frozen.
+
+Computed, reordered, repeated, omitted, or extra helper arguments remain rejected, as do a
+non-first carrier local, an intervening local, a non-adjacent or additional propagation, mismatched
+carrier or payload types, cross-owner/private/overloaded/generic helpers, arbitrary Result widening,
+inference, reassignment, statements, effects, actions, runtimes, targets, adapters, UI, and
+deployment. No behavior enters by implication.
+
 ### Target-neutral Application IR
 
 `dockpipe.application.v1` is not a language feature or target generator. It consumes the public

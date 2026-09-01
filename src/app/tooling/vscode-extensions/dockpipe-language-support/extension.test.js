@@ -373,3 +373,9 @@ assert.strictEqual(pipeLangSnippets["PipeLang cumulative fan-in carrier chain me
 assert(pipeLangSnippets["PipeLang cumulative fan-in carrier chain method"].description.includes("v0.52.0"));
 assert(pipeLangSnippets["PipeLang cumulative fan-in carrier chain method"].body.some((line) => line.includes("${8:FinalizeHistory}(string ${7:first}, string ${9:second}, List<${1:Row}> ${3:rows}, string ${4:id})")));
 assert(pipeLangSnippets["PipeLang cumulative fan-in carrier chain method"].body.some((line) => line.includes("${16:thirdCarrier} = ${8:FinalizeHistory}(${7:first}, ${9:second}, ${3:rows}, ${4:id})")));
+assert(pipeLangReadme.includes("`v0.53.0`"));
+assert(pipeLangReadme.includes("every caller parameter directly once in declaration order"));
+assert.strictEqual(pipeLangSnippets["PipeLang multi-parameter helper propagation method"].prefix, "pipe-multi-parameter-helper-propagation");
+assert(pipeLangSnippets["PipeLang multi-parameter helper propagation method"].description.includes("v0.53.0"));
+assert(pipeLangSnippets["PipeLang multi-parameter helper propagation method"].body.some((line) => line.includes("${2:Find}(${3:rows}, ${4:id})")));
+assert(pipeLangSnippets["PipeLang multi-parameter helper propagation method"].body.some((line) => line.includes("${8:selected} = propagate(${7:carrier})")));
