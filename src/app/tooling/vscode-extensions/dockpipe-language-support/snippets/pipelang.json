@@ -527,5 +527,15 @@
       "}"
     ],
     "description": "Create one exact v0.55.0 sole-direct-parameter checked-arithmetic propagation form with immediate canonical failure return."
+  },
+  "PipeLang multi-parameter direct checked-arithmetic propagation method": {
+    "prefix": "pipe-multi-parameter-direct-checked-propagation",
+    "body": [
+      "public Result<int, ArithmeticError> ${1:Advance}(Result<int, ArithmeticError> ${2:carrier}, int ${3:operand}) {",
+      "\tint ${4:value} = propagate(${2:carrier});",
+      "\treturn ${4:value} + ${3:operand};",
+      "}"
+    ],
+    "description": "Create one exact v0.56.0 carrier-plus-payload direct checked-arithmetic propagation form with immediate canonical failure return."
   }
 }

@@ -391,3 +391,9 @@ assert.strictEqual(pipeLangSnippets["PipeLang direct checked-arithmetic propagat
 assert(pipeLangSnippets["PipeLang direct checked-arithmetic propagation method"].description.includes("v0.55.0"));
 assert(pipeLangSnippets["PipeLang direct checked-arithmetic propagation method"].body.some((line) => line.includes("Result<int, ArithmeticError> ${2:carrier}")));
 assert(pipeLangSnippets["PipeLang direct checked-arithmetic propagation method"].body.some((line) => line.includes("int ${3:value} = propagate(${2:carrier})")));
+assert(pipeLangReadme.includes("`v0.56.0`"));
+assert(pipeLangReadme.includes("multi-parameter direct checked propagation"));
+assert.strictEqual(pipeLangSnippets["PipeLang multi-parameter direct checked-arithmetic propagation method"].prefix, "pipe-multi-parameter-direct-checked-propagation");
+assert(pipeLangSnippets["PipeLang multi-parameter direct checked-arithmetic propagation method"].description.includes("v0.56.0"));
+assert(pipeLangSnippets["PipeLang multi-parameter direct checked-arithmetic propagation method"].body.some((line) => line.includes("Result<int, ArithmeticError> ${2:carrier}, int ${3:operand}")));
+assert(pipeLangSnippets["PipeLang multi-parameter direct checked-arithmetic propagation method"].body.some((line) => line.includes("return ${4:value} + ${3:operand}")));
