@@ -75,7 +75,10 @@ selected local before the unchanged direct caller signature; all pairs remain co
 the existing closed carrier matrix. Step 8r is complete under `v0.52.0`: a chain of at least three
 pairs may instead use one method-wide cumulative mode where every later helper receives all prior
 selected locals exactly once in chain order, followed by the unchanged direct caller signature.
-The inherited immediate-only mode remains exact and modes cannot mix. These seams do not complete or authorize inference,
+The inherited immediate-only mode remains exact and modes cannot mix. Step 8s is complete under
+`v0.53.0`: the v0.42 prior-local propagation form accepts two or more caller parameters when its
+first helper call receives every parameter directly once in declaration order. The inherited
+one-parameter form remains exact. These seams do not complete or authorize inference,
 reassignment, shadowing, cross-class/module calls, overloads, generics, function values, lambdas,
 recursion, general blocks, branch statements, loops, effects, entrypoints, additional or nested
 propagation, arbitrary computed propagation operands, propagation from any other prior local,
@@ -562,6 +565,29 @@ omitted/extra prior selections, mixed modes, gaps, non-chain dependencies, compu
 matches outside the exact chain, nested/terminal/argument matches, propagation changes, arbitrary
 Result widening, statements, effects, actions, runtimes, targets, adapters, UI, and deployment
 remain excluded. No behavior enters by implication.
+
+## Checkpoint v0.53.0 complete contract
+
+One public pure method with at least two parameters may use exactly `C carrier = Helper(p1, ...,
+pn); T value = propagate(carrier); return admittedExpression;`. The helper call is the first typed
+local initializer; the propagation local is immediately adjacent; and every caller parameter is
+passed directly once in declaration order. The helper is a uniquely resolved public pure
+same-class method. `C` equals the method return carrier, `T` equals its success payload, and the
+carrier remains Optional primitive/record, `Result<List<R>, string>`, or
+`Result<string, string>`. The inherited one-parameter v0.42 form remains exact.
+
+Typed HIR and Core reuse existing nodes. Core independently verifies direct parameter positions,
+helper ownership/signature, adjacency, carrier/payload types, and exactly one propagation.
+Evaluation and Core-only Go call the helper once, validate the full carrier, copy the payload on
+success, and return canonical absence/failure otherwise. Public compiler, semantic, and
+Application IR identities and shapes remain unchanged; metadata advances to `v0.53.0`; the exact
+45-source lane is frozen. Docker observability proves `ResolveSelection(rows, id)` without
+Application IR schema change.
+
+Computed/reordered/repeated/omitted/extra arguments, a later or split carrier pair, a non-carrier
+helper result, extra propagation, cross-owner/private/overloaded/generic helpers, arbitrary Result
+widening, inference, reassignment, statements, effects, actions, runtimes, targets, adapters, UI,
+and deployment remain excluded. No behavior enters by implication.
 
 ## Application IR checkpoint complete contract
 

@@ -491,5 +491,18 @@
       "}"
     ],
     "description": "Create an exact v0.52.0 cumulative fan-in carrier chain with three stages."
+  },
+  "PipeLang multi-parameter helper propagation method": {
+    "prefix": "pipe-multi-parameter-helper-propagation",
+    "body": [
+      "public Optional<${1:Row}> ${2:Find}(List<${1:Row}> ${3:rows}, string ${4:id}) => find_by(${3:rows}, ${1:Row}.${5:Id}, ${4:id});",
+      "",
+      "public Optional<${1:Row}> ${6:Resolve}(List<${1:Row}> ${3:rows}, string ${4:id}) {",
+      "\tOptional<${1:Row}> ${7:carrier} = ${2:Find}(${3:rows}, ${4:id});",
+      "\t${1:Row} ${8:selected} = propagate(${7:carrier});",
+      "\treturn some(${8:selected});",
+      "}"
+    ],
+    "description": "Create one exact v0.53.0 multi-parameter helper propagation form over the closed Optional carrier matrix."
   }
 }

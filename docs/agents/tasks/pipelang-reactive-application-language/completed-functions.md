@@ -414,3 +414,24 @@ repeated/omitted/extra prior selections, per-stage mode mixing, gaps, non-chain 
 computed arguments, matches outside the chain, nested/terminal/argument matches, propagation
 changes, arbitrary Result widening, statements, effects, actions, runtimes, targets, adapters, UI,
 and deployment remain excluded. No behavior enters by implication.
+
+## Step 8s — multi-parameter helper propagation (`v0.53.0`)
+
+Production source widens the exact v0.42 prior-local helper propagation form to methods with two
+or more parameters: `C carrier = Helper(p1, ..., pn); T value = propagate(carrier); return
+admittedExpression;`. The helper call remains the first typed local initializer, propagation is
+immediately adjacent, and every caller parameter is passed directly once in declaration order to a
+unique public pure same-class helper. `C` remains identical to the method return carrier and `T` to
+its payload. The inherited one-parameter form and closed carrier matrix remain exact.
+
+Typed HIR and target-neutral Core reuse existing nodes and Core independently verifies the full
+shape. Evaluation and deterministic Core-only Go call the helper once, validate the complete
+carrier, copy success, and preserve canonical absence/failure. Docker observability proves
+`ResolveSelection(rows, id)` over `FindSelection(rows, id)`. Public compiler, semantic, and
+Application IR identities and shapes remain stable; metadata advances to `v0.53.0`; the exact
+45-source lane remains frozen.
+
+Computed/reordered/repeated/omitted/extra arguments, later or split propagation pairs, extra
+propagation, mismatched carriers/payloads, cross-owner/private/overloaded/generic helpers,
+arbitrary Result widening, inference, reassignment, statements, effects, actions, runtimes,
+targets, adapters, UI, and deployment remain excluded. No behavior enters by implication.
