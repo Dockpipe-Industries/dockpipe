@@ -90,7 +90,10 @@ terminal checked arithmetic expression. Step 8v is complete under `v0.56.0`: tha
 form additionally admits exactly one second direct parameter whose type equals the carrier payload.
 The propagated local is the left operand and the second parameter is the right operand of one
 checked integer add, subtract, or multiply, or checked binary64 divide. `propagate(Helper(...))`
-remains excluded. These seams do not complete or authorize inference,
+remains excluded. Step 8w is complete under `v0.57.0`: one exact three-parameter method propagates
+the incoming arithmetic Result, stores one checked Result from the first payload operation,
+propagates that explicit carrier, and returns a second checked payload operation. These seams do
+not complete or authorize inference,
 reassignment, shadowing, cross-class/module calls, overloads, generics, function values, lambdas,
 recursion, general blocks, branch statements, loops, effects, entrypoints, additional or nested
 propagation, arbitrary computed propagation operands, propagation from any other prior local,
@@ -672,6 +675,32 @@ negation as the new two-parameter form, helper or computed propagation operands,
 additional propagation, arbitrary Result widening, inference, reassignment, statements, effects,
 actions, runtimes, targets, adapters, UI, and deployment remain excluded. No behavior enters by
 implication.
+
+## Checkpoint v0.57.0 complete contract
+
+One public pure method additionally uses exactly `Result<int, ArithmeticError> AdvanceTwice(
+Result<int, ArithmeticError> carrier, int first, int second) { int value = propagate(carrier);
+Result<int, ArithmeticError> nextCarrier = value + first; int next = propagate(nextCarrier);
+return next + second; }`. Each integer checked stage independently admits add, subtract, or
+multiply. The identical `float` form admits binary64 divide at both stages. The carrier is the
+first parameter and method return; the second and third parameters exactly equal its payload.
+
+Typed HIR and target-neutral Core reuse the existing immutable-local, reference, propagation, and
+checked-arithmetic nodes. Core independently validates parameter order/count/types, both direct
+carrier references, all three local positions/types, the two exact local/parameter operand pairs,
+exactly two propagation points, and the operator matrix. Evaluation and deterministic Core-only Go
+validate the incoming carrier, copy success, evaluate and validate the intermediate checked Result
+once, copy its success, and then evaluate the terminal checked operation. Incoming failure and
+first-stage failure return before any later stage; terminal overflow or division-by-zero remains
+canonical. Public compiler, semantic, and Application IR identities and shapes remain unchanged;
+metadata advances to `v0.57.0`; a compiler-cursor fixture proves two checked width advances; the
+exact 45-source lane remains frozen.
+
+The inherited v0.54-v0.56 forms remain exact. A fourth parameter, reordered or mismatched
+parameters, reversed/repeated/literal/computed operands, a missing or additional carrier/local/
+propagation stage, direct propagation of a computed expression, helper propagation, arbitrary
+Result widening, inference, reassignment, statements, effects, actions, runtimes, targets,
+adapters, UI, and deployment remain excluded. No behavior enters by implication.
 
 ## Application IR checkpoint complete contract
 

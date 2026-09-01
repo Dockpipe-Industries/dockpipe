@@ -498,3 +498,26 @@ parameters, reversed/repeated/literal/computed operands, helper/computed propaga
 later/split or additional propagation, arbitrary Result widening, inference, reassignment,
 statements, effects, actions, runtimes, targets, adapters, UI, and deployment remain excluded. No
 behavior enters by implication.
+
+## Step 8w — two-stage checked propagation (`v0.57.0`)
+
+Production source additionally admits exactly `Result<int, ArithmeticError> AdvanceTwice(
+Result<int, ArithmeticError> carrier, int first, int second) { int value = propagate(carrier);
+Result<int, ArithmeticError> nextCarrier = value + first; int next = propagate(nextCarrier);
+return next + second; }`. Each integer checked stage independently admits add, subtract, or
+multiply; the identical `float` form admits binary64 divide at both stages. The complete incoming
+carrier is validated and propagated, the first checked Result initializes one explicit carrier
+local and is validated and propagated, and the terminal checked operation runs only after both
+successes.
+
+Typed HIR and target-neutral Core reuse existing nodes and independently verify the exact
+three-parameter, three-local, two-propagation form. Evaluation and deterministic Core-only Go copy
+success at each stage and preserve incoming, intermediate, and terminal arithmetic failures without
+evaluating later stages. Public compiler, semantic, and Application IR identities and shapes remain
+stable; metadata advances to `v0.57.0`; a compiler-cursor fixture proves two checked width advances;
+the exact 45-source lane remains frozen.
+
+The inherited v0.54-v0.56 forms remain exact. Fourth/reordered/mismatched parameters,
+reversed/repeated/literal/computed operands, missing/additional stages, computed or helper
+propagation operands, arbitrary Results, inference, reassignment, statements, effects, actions,
+runtimes, targets, adapters, UI, and deployment remain excluded. No behavior enters by implication.

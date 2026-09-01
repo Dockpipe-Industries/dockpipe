@@ -37,7 +37,7 @@ func Generate(program coreir.Program) ([]byte, error) {
 	if err := coreir.ValidateProgram(program); err != nil {
 		return nil, &Error{Code: "PLGO0001", Message: err.Error()}
 	}
-	if program.LanguageContract == coreir.LanguageContractV560 || program.LanguageContract == coreir.LanguageContractV550 || program.LanguageContract == coreir.LanguageContractV540 || program.LanguageContract == coreir.LanguageContractV530 || program.LanguageContract == coreir.LanguageContractV520 || program.LanguageContract == coreir.LanguageContractV510 || program.LanguageContract == coreir.LanguageContractV500 || program.LanguageContract == coreir.LanguageContractV490 || program.LanguageContract == coreir.LanguageContractV310 || program.LanguageContract == coreir.LanguageContractV320 || program.LanguageContract == coreir.LanguageContractV330 || program.LanguageContract == coreir.LanguageContractV340 || program.LanguageContract == coreir.LanguageContractV350 || program.LanguageContract == coreir.LanguageContractV360 || program.LanguageContract == coreir.LanguageContractV370 || program.LanguageContract == coreir.LanguageContractV380 || program.LanguageContract == coreir.LanguageContractV390 || program.LanguageContract == coreir.LanguageContractV400 || program.LanguageContract == coreir.LanguageContractV410 || program.LanguageContract == coreir.LanguageContractV420 || program.LanguageContract == coreir.LanguageContractV430 || program.LanguageContract == coreir.LanguageContractV440 || program.LanguageContract == coreir.LanguageContractV450 || program.LanguageContract == coreir.LanguageContractV460 || program.LanguageContract == coreir.LanguageContractV470 || program.LanguageContract == coreir.LanguageContractV480 {
+	if program.LanguageContract == coreir.LanguageContractV570 || program.LanguageContract == coreir.LanguageContractV560 || program.LanguageContract == coreir.LanguageContractV550 || program.LanguageContract == coreir.LanguageContractV540 || program.LanguageContract == coreir.LanguageContractV530 || program.LanguageContract == coreir.LanguageContractV520 || program.LanguageContract == coreir.LanguageContractV510 || program.LanguageContract == coreir.LanguageContractV500 || program.LanguageContract == coreir.LanguageContractV490 || program.LanguageContract == coreir.LanguageContractV310 || program.LanguageContract == coreir.LanguageContractV320 || program.LanguageContract == coreir.LanguageContractV330 || program.LanguageContract == coreir.LanguageContractV340 || program.LanguageContract == coreir.LanguageContractV350 || program.LanguageContract == coreir.LanguageContractV360 || program.LanguageContract == coreir.LanguageContractV370 || program.LanguageContract == coreir.LanguageContractV380 || program.LanguageContract == coreir.LanguageContractV390 || program.LanguageContract == coreir.LanguageContractV400 || program.LanguageContract == coreir.LanguageContractV410 || program.LanguageContract == coreir.LanguageContractV420 || program.LanguageContract == coreir.LanguageContractV430 || program.LanguageContract == coreir.LanguageContractV440 || program.LanguageContract == coreir.LanguageContractV450 || program.LanguageContract == coreir.LanguageContractV460 || program.LanguageContract == coreir.LanguageContractV470 || program.LanguageContract == coreir.LanguageContractV480 {
 		program.LanguageContract = coreir.LanguageContractV300
 	}
 	return generate(program)
@@ -315,6 +315,9 @@ func emitBlockPropagationFunction(out *strings.Builder, function coreir.Function
 	if local.Initializer.Kind != coreir.ExprPropagate {
 		return false, nil
 	}
+	if len(function.Parameters) == 3 && isArithmeticResultType(function.ReturnType) {
+		return emitTwoStageCheckedPropagationFunction(out, function, optionalTypeName)
+	}
 	propagated := local.Initializer.Propagate
 	canonicalParameters := len(function.Parameters) == 1 || (len(function.Parameters) == 2 && isArithmeticResultType(function.ReturnType))
 	if propagated == nil || propagated.Value == nil || propagated.Value.Parameter == nil || !canonicalParameters || *propagated.Value.Parameter != 0 || local.Return == nil {
@@ -345,6 +348,41 @@ func emitBlockPropagationFunction(out *strings.Builder, function coreir.Function
 	fmt.Fprintf(out, "\tp%d := %s\n", local.Position, initialized)
 	scoped := append(append([]coreir.Parameter{}, function.Parameters...), coreir.Parameter{Position: local.Position, Name: local.Name, Type: local.Type})
 	returned, err := emitExpr(*local.Return, scoped, optionalTypeName)
+	if err != nil {
+		return false, err
+	}
+	fmt.Fprintf(out, "\treturn %s\n}\n\n", returned)
+	return true, nil
+}
+
+func emitTwoStageCheckedPropagationFunction(out *strings.Builder, function coreir.Function, optionalTypeName string) (bool, error) {
+	first := function.Body.ImmutableLocal
+	if first == nil || first.Initializer == nil || first.Initializer.Propagate == nil || first.Return == nil || first.Return.ImmutableLocal == nil {
+		return false, fmt.Errorf("two-stage checked propagation is not canonical")
+	}
+	checkedCarrier := first.Return.ImmutableLocal
+	if checkedCarrier.Initializer == nil || checkedCarrier.Return == nil || checkedCarrier.Return.ImmutableLocal == nil {
+		return false, fmt.Errorf("two-stage checked propagation is not canonical")
+	}
+	second := checkedCarrier.Return.ImmutableLocal
+	if second.Initializer == nil || second.Initializer.Propagate == nil || second.Return == nil {
+		return false, fmt.Errorf("two-stage checked propagation is not canonical")
+	}
+	fmt.Fprint(out, "\tpipelangValidateArithmeticResult(p0)\n\tif !p0.OK { return p0 }\n")
+	fmt.Fprintf(out, "\tp%d := p0.Value\n", first.Position)
+	firstScope := append(append([]coreir.Parameter{}, function.Parameters...), coreir.Parameter{Position: first.Position, Name: first.Name, Type: first.Type})
+	checked, err := emitExpr(*checkedCarrier.Initializer, firstScope, optionalTypeName)
+	if err != nil {
+		return false, err
+	}
+	fmt.Fprintf(out, "\tp%d := %s\n", checkedCarrier.Position, checked)
+	fmt.Fprintf(out, "\tpipelangValidateArithmeticResult(p%d)\n\tif !p%d.OK { return p%d }\n", checkedCarrier.Position, checkedCarrier.Position, checkedCarrier.Position)
+	fmt.Fprintf(out, "\tp%d := p%d.Value\n", second.Position, checkedCarrier.Position)
+	secondScope := append(firstScope,
+		coreir.Parameter{Position: checkedCarrier.Position, Name: checkedCarrier.Name, Type: checkedCarrier.Type},
+		coreir.Parameter{Position: second.Position, Name: second.Name, Type: second.Type},
+	)
+	returned, err := emitExpr(*second.Return, secondScope, optionalTypeName)
 	if err != nil {
 		return false, err
 	}
