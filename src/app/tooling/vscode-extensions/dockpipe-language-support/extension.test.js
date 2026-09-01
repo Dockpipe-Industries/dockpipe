@@ -367,3 +367,9 @@ assert.strictEqual(pipeLangSnippets["PipeLang dependent carrier chain method"].p
 assert(pipeLangSnippets["PipeLang dependent carrier chain method"].description.includes("v0.51.0"));
 assert(pipeLangSnippets["PipeLang dependent carrier chain method"].body.some((line) => line.includes("${8:FinalizeTertiary}(string ${9:second}, List<${1:Row}> ${3:rows}, string ${4:id})")));
 assert(pipeLangSnippets["PipeLang dependent carrier chain method"].body.some((line) => line.includes("${16:thirdCarrier} = ${8:FinalizeTertiary}(${9:second}, ${3:rows}, ${4:id})")));
+assert(pipeLangReadme.includes("`v0.52.0`"));
+assert(pipeLangReadme.includes("every prior selected local"));
+assert.strictEqual(pipeLangSnippets["PipeLang cumulative fan-in carrier chain method"].prefix, "pipe-cumulative-fan-in-chain");
+assert(pipeLangSnippets["PipeLang cumulative fan-in carrier chain method"].description.includes("v0.52.0"));
+assert(pipeLangSnippets["PipeLang cumulative fan-in carrier chain method"].body.some((line) => line.includes("${8:FinalizeHistory}(string ${7:first}, string ${9:second}, List<${1:Row}> ${3:rows}, string ${4:id})")));
+assert(pipeLangSnippets["PipeLang cumulative fan-in carrier chain method"].body.some((line) => line.includes("${16:thirdCarrier} = ${8:FinalizeHistory}(${7:first}, ${9:second}, ${3:rows}, ${4:id})")));

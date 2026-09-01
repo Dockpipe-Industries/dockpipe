@@ -463,5 +463,33 @@
       "}"
     ],
     "description": "Create an exact v0.51.0 contiguous dependent carrier chain with three stages."
+  },
+  "PipeLang cumulative fan-in carrier chain method": {
+    "prefix": "pipe-cumulative-fan-in-chain",
+    "body": [
+      "public Optional<${1:Row}> ${2:FindPrimary}(List<${1:Row}> ${3:rows}, string ${4:id}) => find_by(${3:rows}, ${1:Row}.${5:Id}, ${4:id});",
+      "public Optional<${1:Row}> ${6:ConfirmSecondary}(string ${7:first}, List<${1:Row}> ${3:rows}, string ${4:id}) => ${7:first} == \"\" ? none<${1:Row}>() : find_by(${3:rows}, ${1:Row}.${5:Id}, ${4:id});",
+      "public Optional<${1:Row}> ${8:FinalizeHistory}(string ${7:first}, string ${9:second}, List<${1:Row}> ${3:rows}, string ${4:id}) => ${7:first} == \"\" || ${9:second} == \"\" ? none<${1:Row}>() : find_by(${3:rows}, ${1:Row}.${5:Id}, ${4:id});",
+      "",
+      "public string ${10:SelectedName}(List<${1:Row}> ${3:rows}, string ${4:id}) {",
+      "\tOptional<${1:Row}> ${11:firstCarrier} = ${2:FindPrimary}(${3:rows}, ${4:id});",
+      "\tstring ${7:first} = match(${11:firstCarrier}) {",
+      "\t\tsome(${12:firstRow}) => ${12:firstRow}.${13:Name},",
+      "\t\tnone => \"\"",
+      "\t};",
+      "\tOptional<${1:Row}> ${14:secondCarrier} = ${6:ConfirmSecondary}(${7:first}, ${3:rows}, ${4:id});",
+      "\tstring ${9:second} = match(${14:secondCarrier}) {",
+      "\t\tsome(${15:secondRow}) => ${15:secondRow}.${13:Name},",
+      "\t\tnone => ${7:first}",
+      "\t};",
+      "\tOptional<${1:Row}> ${16:thirdCarrier} = ${8:FinalizeHistory}(${7:first}, ${9:second}, ${3:rows}, ${4:id});",
+      "\tstring ${17:selected} = match(${16:thirdCarrier}) {",
+      "\t\tsome(${18:thirdRow}) => ${18:thirdRow}.${13:Name},",
+      "\t\tnone => ${9:second}",
+      "\t};",
+      "\treturn ${19:NormalizeName}(${17:selected});",
+      "}"
+    ],
+    "description": "Create an exact v0.52.0 cumulative fan-in carrier chain with three stages."
   }
 }

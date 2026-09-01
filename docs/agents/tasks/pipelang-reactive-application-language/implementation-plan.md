@@ -72,7 +72,10 @@ caller parameter once in declaration order. Existing v0.49 independent pairs rem
 8q is complete under `v0.51.0`: the same dependency rule extends to one contiguous chain of
 two or more carrier/match pairs. Every later helper receives only the immediately preceding
 selected local before the unchanged direct caller signature; all pairs remain contiguous and use
-the existing closed carrier matrix. These seams do not complete or authorize inference,
+the existing closed carrier matrix. Step 8r is complete under `v0.52.0`: a chain of at least three
+pairs may instead use one method-wide cumulative mode where every later helper receives all prior
+selected locals exactly once in chain order, followed by the unchanged direct caller signature.
+The inherited immediate-only mode remains exact and modes cannot mix. These seams do not complete or authorize inference,
 reassignment, shadowing, cross-class/module calls, overloads, generics, function values, lambdas,
 recursion, general blocks, branch statements, loops, effects, entrypoints, additional or nested
 propagation, arbitrary computed propagation operands, propagation from any other prior local,
@@ -536,6 +539,29 @@ computed/reordered/repeated/omitted/extra arguments, third matches outside this 
 nested/terminal/argument matches, propagation changes, arbitrary Result widening, statements,
 effects, actions, runtimes, targets, adapters, UI, and deployment remain excluded. No behavior
 enters by implication.
+
+## Checkpoint v0.52.0 complete contract
+
+One public pure method may additionally contain one cumulative chain of `k >= 3` contiguous
+carrier/match pairs. Stage one retains `Helper1(p1, ..., pn)`. Each later stage has the exact source
+spelling `Ci carrierI = HelperI(value1, ..., valueI-1, p1, ..., pn); Ti valueI =
+match(carrierI) { canonical arms };`: every prior selected local appears directly once in chain
+order, followed by every caller parameter directly once in declaration order. A method uses either
+this cumulative mode or the inherited v0.51 immediate-only mode; per-stage mixing is rejected.
+
+Typed HIR and Core reuse existing nodes. Core independently validates chain contiguity, cumulative
+binding positions, exact helper ownership and signatures, carrier types, arms, local typing, and
+continuation. Evaluation and Core-only Go preserve once-only source order, complete-carrier
+validation, and selected-arm-only evaluation. Public compiler, semantic, and Application IR schema
+identities and shapes remain unchanged; metadata advances to `v0.52.0`; the exact 45-source lane is
+frozen. Docker observability proves the cumulative third helper receives `selected, confirmed,
+rows, id` before normalization.
+
+All inherited forms remain exact. Fewer than three cumulative pairs, partial/reordered/repeated/
+omitted/extra prior selections, mixed modes, gaps, non-chain dependencies, computed arguments,
+matches outside the exact chain, nested/terminal/argument matches, propagation changes, arbitrary
+Result widening, statements, effects, actions, runtimes, targets, adapters, UI, and deployment
+remain excluded. No behavior enters by implication.
 
 ## Application IR checkpoint complete contract
 

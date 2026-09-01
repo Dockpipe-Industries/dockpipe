@@ -390,3 +390,27 @@ computed/reordered/repeated/omitted/extra arguments, third matches outside this 
 terminal, or argument matches, propagation changes, arbitrary Result widening, statements,
 effects, actions, runtimes, targets, adapters, UI, and deployment remain excluded. No behavior
 enters by implication.
+
+## Step 8r — cumulative fan-in carrier chains (`v0.52.0`)
+
+Production source additionally admits one cumulative chain of `k >= 3` contiguous carrier/match
+pairs. The first helper receives every caller parameter directly once in declaration order. At
+stage `i`, every later helper receives `value1, ..., valueI-1` directly once in chain order,
+followed by every caller parameter directly once in declaration order. The whole method uses
+either this cumulative mode or the inherited v0.51 immediate-only mode; stages cannot mix modes.
+The closed carrier matrix, canonical arms, and explicit typed-local spelling remain unchanged.
+
+Typed HIR and target-neutral Core reuse `immutable_local`, `call`, `reference`, and `match`. Core
+independently verifies the complete contiguous chain, cumulative binding order, exact helper
+ownership/signatures, carrier types, arms, local types, and continuation. Evaluation and
+deterministic Core-only Go preserve once-only source order, complete-carrier validation, and
+selected-arm-only evaluation. Docker observability proves a cumulative third stage receiving both
+prior selections before `rows` and `id`. Public compiler, semantic, and Application IR identities
+and shapes remain stable; metadata advances to `v0.52.0`; the exact 45-source lane remains frozen.
+
+Existing zero-match, one-match, v0.49 independent two-pair, v0.50 dependent two-stage, and v0.51
+immediate-only chain forms remain exact. Fewer than three cumulative pairs, partial/reordered/
+repeated/omitted/extra prior selections, per-stage mode mixing, gaps, non-chain dependencies,
+computed arguments, matches outside the chain, nested/terminal/argument matches, propagation
+changes, arbitrary Result widening, statements, effects, actions, runtimes, targets, adapters, UI,
+and deployment remain excluded. No behavior enters by implication.
