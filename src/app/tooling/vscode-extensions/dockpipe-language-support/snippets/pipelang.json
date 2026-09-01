@@ -537,5 +537,17 @@
       "}"
     ],
     "description": "Create one exact v0.56.0 carrier-plus-payload direct checked-arithmetic propagation form with immediate canonical failure return."
+  },
+  "PipeLang two-stage checked-arithmetic propagation method": {
+    "prefix": "pipe-two-stage-checked-propagation",
+    "body": [
+      "public Result<int, ArithmeticError> ${1:AdvanceTwice}(Result<int, ArithmeticError> ${2:carrier}, int ${3:first}, int ${4:second}) {",
+      "\tint ${5:value} = propagate(${2:carrier});",
+      "\tResult<int, ArithmeticError> ${6:nextCarrier} = ${5:value} + ${3:first};",
+      "\tint ${7:next} = propagate(${6:nextCarrier});",
+      "\treturn ${7:next} + ${4:second};",
+      "}"
+    ],
+    "description": "Create the exact v0.57.0 two-stage checked propagation form with an explicit intermediate carrier and canonical failure at either stage."
   }
 }

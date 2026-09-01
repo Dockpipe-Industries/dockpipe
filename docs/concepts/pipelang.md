@@ -1701,6 +1701,43 @@ additional propagation, arbitrary Result widening, inference, reassignment, stat
 actions, runtimes, targets, adapters, UI, and deployment remain excluded. No behavior enters by
 implication.
 
+### PipeLang v0.57.0: two-stage checked propagation
+
+`v0.57.0` adds one exact two-stage form:
+
+```pipe
+public Result<int, ArithmeticError> AdvanceTwice(
+    Result<int, ArithmeticError> carrier,
+    int first,
+    int second
+) {
+    int value = propagate(carrier);
+    Result<int, ArithmeticError> nextCarrier = value + first;
+    int next = propagate(nextCarrier);
+    return next + second;
+}
+```
+
+Each integer checked stage independently admits `+`, `-`, or `*`; the identical `float` form uses
+`/` at both stages. The incoming Result is the first parameter and method return, and the second and
+third parameters exactly equal its payload. The complete incoming carrier is validated and
+propagated, the first checked operation initializes one explicit Result local, that complete carrier
+is validated and propagated, and only then does the terminal checked operation evaluate. Incoming,
+intermediate, and terminal failures retain canonical `overflow` or `division_by_zero` behavior.
+
+Typed HIR and target-neutral Core reuse existing immutable-local, reference, propagation, and
+checked-arithmetic nodes. The evaluator and deterministic Core-only Go preserve exact evaluation
+order, copied success values, validation, and short-circuiting. `pipelang.compiler.v1`,
+`pipelang.semantic.v1`, and `dockpipe.application.v1` identities and shapes remain unchanged; only
+language-contract metadata advances to `v0.57.0`. A compiler-cursor fixture proves two checked
+width advances. The exact 45-source legacy lane remains frozen.
+
+The inherited v0.54-v0.56 forms remain exact. A fourth parameter, reordered/mismatched parameters,
+reversed/repeated/literal/computed operands, missing/additional stages, direct propagation of a
+computed expression, helper propagation, arbitrary Results, inference, reassignment, statements,
+effects, actions, runtimes, targets, adapters, UI, and deployment remain excluded. No behavior
+enters by implication.
+
 ### Target-neutral Application IR
 
 `dockpipe.application.v1` is not a language feature or target generator. It consumes the public

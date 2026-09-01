@@ -397,3 +397,9 @@ assert.strictEqual(pipeLangSnippets["PipeLang multi-parameter direct checked-ari
 assert(pipeLangSnippets["PipeLang multi-parameter direct checked-arithmetic propagation method"].description.includes("v0.56.0"));
 assert(pipeLangSnippets["PipeLang multi-parameter direct checked-arithmetic propagation method"].body.some((line) => line.includes("Result<int, ArithmeticError> ${2:carrier}, int ${3:operand}")));
 assert(pipeLangSnippets["PipeLang multi-parameter direct checked-arithmetic propagation method"].body.some((line) => line.includes("return ${4:value} + ${3:operand}")));
+assert(pipeLangReadme.includes("`v0.57.0`"));
+assert(pipeLangReadme.includes("two-stage checked propagation"));
+assert.strictEqual(pipeLangSnippets["PipeLang two-stage checked-arithmetic propagation method"].prefix, "pipe-two-stage-checked-propagation");
+assert(pipeLangSnippets["PipeLang two-stage checked-arithmetic propagation method"].description.includes("v0.57.0"));
+assert(pipeLangSnippets["PipeLang two-stage checked-arithmetic propagation method"].body.some((line) => line.includes("Result<int, ArithmeticError> ${6:nextCarrier} = ${5:value} + ${3:first}")));
+assert(pipeLangSnippets["PipeLang two-stage checked-arithmetic propagation method"].body.some((line) => line.includes("int ${7:next} = propagate(${6:nextCarrier})")));

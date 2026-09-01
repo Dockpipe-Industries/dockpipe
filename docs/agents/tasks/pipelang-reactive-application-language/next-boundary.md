@@ -844,6 +844,35 @@ additional propagation, arbitrary Result widening, inference, reassignment, stat
 actions, runtimes, targets, adapters, UI, and deployment remain excluded. No behavior enters by
 implication. Any successor requires a new founder decision and separate implementation approval.
 
+## Accepted v0.57.0 boundary — two-stage checked propagation
+
+`v0.57.0` adds one exact three-parameter, two-stage form to direct checked propagation. One public
+pure method spells `Result<int, ArithmeticError> AdvanceTwice(Result<int, ArithmeticError> carrier,
+int first, int second) { int value = propagate(carrier); Result<int, ArithmeticError> nextCarrier =
+value + first; int next = propagate(nextCarrier); return next + second; }`. Each integer checked
+stage independently admits add, subtract, or multiply. The identical `float` form admits binary64
+divide at both stages. The carrier is the first parameter and method return; both remaining
+parameters exactly equal its success payload.
+
+HIR and Core reuse `immutable_local`, `reference`, `propagate`, and checked arithmetic. Core
+independently verifies parameter order/count/types, the three exact local positions/types, the
+incoming and intermediate direct carrier references, the two exact local/parameter operand pairs,
+exactly two propagation points, and the operator matrix. Evaluation and deterministic Core-only Go
+validate the complete incoming carrier, copy success, evaluate and validate the intermediate Result
+once, copy success again, and only then evaluate the terminal checked operation. Incoming failure
+and intermediate overflow or division-by-zero return before later evaluation; terminal failure
+remains canonical. `pipelang.compiler.v1`, `pipelang.semantic.v1`, and
+`dockpipe.application.v1` identities and shapes stay stable; only language metadata advances. A
+compiler-cursor fixture proves two checked width advances, and the exact 45-source lane remains
+frozen.
+
+The inherited v0.54-v0.56 forms remain exact. A fourth parameter, reordered/mismatched parameters,
+reversed/repeated/literal/computed operands, a missing/additional carrier/local/propagation stage,
+direct propagation of a computed expression, helper propagation, arbitrary Result widening,
+inference, reassignment, statements, effects, actions, runtimes, targets, adapters, UI, and
+deployment remain excluded. No behavior enters by implication. Any successor requires a new
+founder decision and separate implementation approval.
+
 ## Accepted v0.49.0 boundary — bounded two-carrier matching
 
 `v0.49.0` widens only the occurrence count accepted through v0.48. One public pure method with one
