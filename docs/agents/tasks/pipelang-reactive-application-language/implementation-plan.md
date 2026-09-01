@@ -93,7 +93,11 @@ checked integer add, subtract, or multiply, or checked binary64 divide. `propaga
 remains excluded. Step 8w is complete under `v0.57.0`: one exact three-parameter method propagates
 the incoming arithmetic Result, stores one checked Result from the first payload operation,
 propagates that explicit carrier, and returns a second checked payload operation. These seams do
-not complete or authorize inference,
+not complete or authorize inference. Step 8x is complete under `v0.58.0`: that two-stage shape
+generalizes to a contiguous chain of `K >= 2` checked stages, with one incoming arithmetic Result
+followed by exactly `K` payload parameters; every non-terminal stage explicitly stores and then
+propagates its checked Result before the terminal checked operation. These seams do not complete
+or authorize inference,
 reassignment, shadowing, cross-class/module calls, overloads, generics, function values, lambdas,
 recursion, general blocks, branch statements, loops, effects, entrypoints, additional or nested
 propagation, arbitrary computed propagation operands, propagation from any other prior local,
@@ -699,6 +703,33 @@ exact 45-source lane remains frozen.
 The inherited v0.54-v0.56 forms remain exact. A fourth parameter, reordered or mismatched
 parameters, reversed/repeated/literal/computed operands, a missing or additional carrier/local/
 propagation stage, direct propagation of a computed expression, helper propagation, arbitrary
+Result widening, inference, reassignment, statements, effects, actions, runtimes, targets,
+adapters, UI, and deployment remain excluded. No behavior enters by implication.
+
+## Checkpoint v0.58.0 complete contract
+
+One public pure method additionally uses a contiguous checked-propagation chain of `K >= 2`
+stages. Its exact source shape is `Result<T, ArithmeticError> F(Result<T, ArithmeticError>
+carrier, T operand1, ..., T operandK)`, followed by `T value0 = propagate(carrier);` and, for every
+non-terminal stage `i`, the adjacent pair `Result<T, ArithmeticError> carrierI = valueI-1 opI
+operandI; T valueI = propagate(carrierI);`; the terminal return is `valueK-1 opK operandK`.
+`T` is exactly `int` or `float`. Every integer stage independently admits add, subtract, or
+multiply; every float stage admits binary64 divide only.
+
+Typed HIR and target-neutral Core reuse existing immutable-local, reference, propagation, and
+checked-arithmetic nodes. Core independently validates the parameter sequence, exact contiguous
+alternating local pairs, direct preceding-payload/local and matching parameter operands, propagation
+count, carrier types, and operator matrix for arbitrary admitted chain length. Evaluation and
+deterministic Core-only Go validate every complete carrier once, copy each success, and return a
+canonical incoming or intermediate failure before any later stage; the terminal checked failure is
+preserved. Public compiler, semantic, and Application IR identities and shapes remain unchanged;
+metadata advances to `v0.58.0`; a compiler-cursor fixture proves three checked advances and the
+Docker-observability Application IR consumer advances metadata only; the exact 45-source lane
+remains frozen.
+
+The inherited v0.54-v0.57 forms remain exact. Fewer than two stages, a missing or additional local
+inside the chain, ordinary-local gaps, reordered/mismatched parameters, reversed/repeated/literal/
+computed operands, direct propagation of a computed expression, helper propagation, arbitrary
 Result widening, inference, reassignment, statements, effects, actions, runtimes, targets,
 adapters, UI, and deployment remain excluded. No behavior enters by implication.
 
