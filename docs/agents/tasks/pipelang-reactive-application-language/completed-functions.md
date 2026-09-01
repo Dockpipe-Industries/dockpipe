@@ -435,3 +435,24 @@ Computed/reordered/repeated/omitted/extra arguments, later or split propagation 
 propagation, mismatched carriers/payloads, cross-owner/private/overloaded/generic helpers,
 arbitrary Result widening, inference, reassignment, statements, effects, actions, runtimes,
 targets, adapters, UI, and deployment remain excluded. No behavior enters by implication.
+
+## Step 8t — checked-arithmetic helper propagation (`v0.54.0`)
+
+Production source admits exactly `Result<int, ArithmeticError> carrier = Helper(p1, ..., pn); int
+value = propagate(carrier); return admittedCheckedArithmeticExpression;`, plus the identical
+`float` form. The helper call is the first typed local, propagation is immediately adjacent, and
+every caller parameter is passed directly once in declaration order to one unique public pure
+same-class helper. The helper carrier equals the method return type and the propagated local equals
+its payload.
+
+Typed HIR and target-neutral Core reuse existing nodes and Core independently verifies the exact
+composition. Evaluation and deterministic Core-only Go call the helper once, validate the complete
+arithmetic Result, copy success, and return canonical overflow or division-by-zero before the
+continuation. Public compiler, semantic, and Application IR identities and shapes remain stable;
+metadata advances to `v0.54.0`; a compiler-cursor fixture proves checked offset propagation as a
+concrete self-hosting consumer; the exact 45-source lane remains frozen.
+
+Direct-parameter or call-inside-propagate forms, later/split pairs, computed/reordered/repeated/
+omitted/extra arguments, extra propagation, other Result carriers, inference, reassignment,
+statements, effects, actions, runtimes, targets, adapters, UI, and deployment remain excluded. No
+behavior enters by implication.

@@ -37,7 +37,7 @@ func Generate(program coreir.Program) ([]byte, error) {
 	if err := coreir.ValidateProgram(program); err != nil {
 		return nil, &Error{Code: "PLGO0001", Message: err.Error()}
 	}
-	if program.LanguageContract == coreir.LanguageContractV530 || program.LanguageContract == coreir.LanguageContractV520 || program.LanguageContract == coreir.LanguageContractV510 || program.LanguageContract == coreir.LanguageContractV500 || program.LanguageContract == coreir.LanguageContractV490 || program.LanguageContract == coreir.LanguageContractV310 || program.LanguageContract == coreir.LanguageContractV320 || program.LanguageContract == coreir.LanguageContractV330 || program.LanguageContract == coreir.LanguageContractV340 || program.LanguageContract == coreir.LanguageContractV350 || program.LanguageContract == coreir.LanguageContractV360 || program.LanguageContract == coreir.LanguageContractV370 || program.LanguageContract == coreir.LanguageContractV380 || program.LanguageContract == coreir.LanguageContractV390 || program.LanguageContract == coreir.LanguageContractV400 || program.LanguageContract == coreir.LanguageContractV410 || program.LanguageContract == coreir.LanguageContractV420 || program.LanguageContract == coreir.LanguageContractV430 || program.LanguageContract == coreir.LanguageContractV440 || program.LanguageContract == coreir.LanguageContractV450 || program.LanguageContract == coreir.LanguageContractV460 || program.LanguageContract == coreir.LanguageContractV470 || program.LanguageContract == coreir.LanguageContractV480 {
+	if program.LanguageContract == coreir.LanguageContractV540 || program.LanguageContract == coreir.LanguageContractV530 || program.LanguageContract == coreir.LanguageContractV520 || program.LanguageContract == coreir.LanguageContractV510 || program.LanguageContract == coreir.LanguageContractV500 || program.LanguageContract == coreir.LanguageContractV490 || program.LanguageContract == coreir.LanguageContractV310 || program.LanguageContract == coreir.LanguageContractV320 || program.LanguageContract == coreir.LanguageContractV330 || program.LanguageContract == coreir.LanguageContractV340 || program.LanguageContract == coreir.LanguageContractV350 || program.LanguageContract == coreir.LanguageContractV360 || program.LanguageContract == coreir.LanguageContractV370 || program.LanguageContract == coreir.LanguageContractV380 || program.LanguageContract == coreir.LanguageContractV390 || program.LanguageContract == coreir.LanguageContractV400 || program.LanguageContract == coreir.LanguageContractV410 || program.LanguageContract == coreir.LanguageContractV420 || program.LanguageContract == coreir.LanguageContractV430 || program.LanguageContract == coreir.LanguageContractV440 || program.LanguageContract == coreir.LanguageContractV450 || program.LanguageContract == coreir.LanguageContractV460 || program.LanguageContract == coreir.LanguageContractV470 || program.LanguageContract == coreir.LanguageContractV480 {
 		program.LanguageContract = coreir.LanguageContractV300
 	}
 	return generate(program)
@@ -159,7 +159,7 @@ func generate(program coreir.Program) ([]byte, error) {
 		emitTextSupport(&out, needsCaseFoldedText, needsTextTrim)
 	}
 	if programNeedsArithmeticResult(functions) {
-		emitArithmeticSupport(&out, programNeedsArithmeticMatch(functions))
+		emitArithmeticSupport(&out, programNeedsArithmeticValidation(functions))
 	}
 	records, err := collectRecordTypes(functions)
 	if err != nil {
@@ -372,7 +372,11 @@ func emitPriorLocalBlockPropagationFunction(out *strings.Builder, function corei
 		fmt.Fprintf(out, "\tpropagated, present := pipelangPropagateOptional(%s)\n\tif !present { return pipelangNoneValue[%s]() }\n", carrierName, valueType)
 		initialized = "propagated"
 	case coreir.TypeResult:
-		fmt.Fprintf(out, "\tif !%s.OK { return %s(%s) }\n", carrierName, boundedResultCloneName(function.ReturnType), carrierName)
+		if isArithmeticResultType(function.ReturnType) {
+			fmt.Fprintf(out, "\tpipelangValidateArithmeticResult(%s)\n\tif !%s.OK { return %s }\n", carrierName, carrierName, carrierName)
+		} else {
+			fmt.Fprintf(out, "\tif !%s.OK { return %s(%s) }\n", carrierName, boundedResultCloneName(function.ReturnType), carrierName)
+		}
 		initialized = carrierName + ".Value"
 		if second.Type.Kind == coreir.TypeList {
 			initialized = fmt.Sprintf("%s(%s)", listCloneName(second.Type), initialized)
@@ -2251,11 +2255,15 @@ func isArithmeticResultType(typ coreir.Type) bool {
 	return typ.Kind == coreir.TypeResult && typ.Result != nil && typ.Result.Failure.Kind == coreir.TypeArithmeticError
 }
 
-func programNeedsArithmeticMatch(functions []coreir.Function) bool {
+func programNeedsArithmeticValidation(functions []coreir.Function) bool {
 	for _, function := range functions {
 		found := false
 		coreir.WalkExpression(function.Body, func(expression coreir.Expr) bool {
 			if expression.Kind == coreir.ExprMatch && expression.Match != nil && expression.Match.Value != nil && isArithmeticResultType(expression.Match.Value.Type) {
+				found = true
+				return false
+			}
+			if expression.Kind == coreir.ExprPropagate && expression.Propagate != nil && isArithmeticResultType(expression.Propagate.Carrier) {
 				found = true
 				return false
 			}

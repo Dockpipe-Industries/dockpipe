@@ -78,7 +78,12 @@ selected locals exactly once in chain order, followed by the unchanged direct ca
 The inherited immediate-only mode remains exact and modes cannot mix. Step 8s is complete under
 `v0.53.0`: the v0.42 prior-local propagation form accepts two or more caller parameters when its
 first helper call receives every parameter directly once in declaration order. The inherited
-one-parameter form remains exact. These seams do not complete or authorize inference,
+one-parameter form remains exact. Step 8t is complete under `v0.54.0`: that exact first-two-local
+form additionally admits an existing `Result<int, ArithmeticError>` or
+`Result<float, ArithmeticError>` helper carrier. The helper evaluates once, the complete carrier
+is validated, success is copied, and canonical arithmetic failure returns before the terminal
+checked arithmetic expression. Direct-parameter arithmetic propagation and
+`propagate(Helper(...))` remain excluded. These seams do not complete or authorize inference,
 reassignment, shadowing, cross-class/module calls, overloads, generics, function values, lambdas,
 recursion, general blocks, branch statements, loops, effects, entrypoints, additional or nested
 propagation, arbitrary computed propagation operands, propagation from any other prior local,
@@ -586,6 +591,29 @@ Application IR schema change.
 
 Computed/reordered/repeated/omitted/extra arguments, a later or split carrier pair, a non-carrier
 helper result, extra propagation, cross-owner/private/overloaded/generic helpers, arbitrary Result
+widening, inference, reassignment, statements, effects, actions, runtimes, targets, adapters, UI,
+and deployment remain excluded. No behavior enters by implication.
+
+## Checkpoint v0.54.0 complete contract
+
+One public pure method uses exactly `Result<int, ArithmeticError> carrier = Helper(p1, ..., pn);
+int value = propagate(carrier); return admittedCheckedArithmeticExpression;`, or the identical
+`float` form. The helper call is the first typed local, propagation is the immediately adjacent
+second local, and every caller parameter is passed directly once in declaration order to one
+uniquely resolved public pure same-class helper. The helper carrier equals the method return type
+and the propagated local equals its success payload.
+
+Typed HIR and target-neutral Core reuse existing immutable-local, call, reference, propagation,
+and arithmetic nodes. Core independently verifies the exact pair, parameter positions, helper
+identity/signature, carrier/payload types, one propagation, and checked continuation. Evaluation
+and deterministic Core-only Go call the helper once, validate the complete arithmetic Result, copy
+success, and return canonical overflow or division-by-zero before the continuation. Public
+compiler, semantic, and Application IR identities and shapes remain unchanged; metadata advances
+to `v0.54.0`; a compiler-cursor consumer proves checked offset propagation; the exact 45-source
+lane remains frozen.
+
+Direct-parameter arithmetic propagation, call-inside-propagate, later or split pairs, computed,
+reordered, repeated, omitted, or extra helper arguments, additional propagation, arbitrary Result
 widening, inference, reassignment, statements, effects, actions, runtimes, targets, adapters, UI,
 and deployment remain excluded. No behavior enters by implication.
 

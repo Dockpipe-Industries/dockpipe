@@ -768,6 +768,31 @@ reassignment, statements, effects, actions, runtimes, targets, adapters, UI, and
 excluded. No behavior enters by implication. Any successor requires a new founder decision and
 separate implementation approval.
 
+## Accepted v0.54.0 boundary — checked-arithmetic helper propagation
+
+`v0.54.0` widens only the exact v0.53 prior-local helper propagation carrier matrix. One public
+pure method spells `Result<int, ArithmeticError> carrier = Helper(p1, ..., pn); int value =
+propagate(carrier); return admittedCheckedArithmeticExpression;`, or the identical `float` form.
+The helper call is the first typed local, propagation is the immediately adjacent second local,
+and every caller parameter is passed directly once in declaration order to one uniquely resolved
+public pure same-class helper. The helper carrier equals the method return type and the propagated
+local equals its success payload.
+
+HIR and Core reuse `immutable_local`, `call`, `reference`, `propagate`, and checked arithmetic;
+Core independently checks exact placement, argument positions, helper identity/signature,
+carrier/payload types, one propagation, and the continuation. Evaluation and deterministic
+Core-only Go call the helper once, validate the complete arithmetic Result, copy success, and
+return canonical overflow or division-by-zero before evaluating the continuation.
+`pipelang.compiler.v1`, `pipelang.semantic.v1`, and `dockpipe.application.v1` identities and shapes
+stay stable; only language metadata advances. A compiler-cursor fixture proves checked offset
+propagation as a concrete self-hosting consumer, and the exact 45-source lane remains frozen.
+
+Direct-parameter arithmetic propagation, `propagate(Helper(...))`, later or split pairs, computed,
+reordered, repeated, omitted, or extra arguments, additional propagation, arbitrary Result
+widening, inference, reassignment, statements, effects, actions, runtimes, targets, adapters, UI,
+and deployment remain excluded. No behavior enters by implication. Any successor requires a new
+founder decision and separate implementation approval.
+
 ## Accepted v0.49.0 boundary — bounded two-carrier matching
 
 `v0.49.0` widens only the occurrence count accepted through v0.48. One public pure method with one

@@ -504,5 +504,18 @@
       "}"
     ],
     "description": "Create one exact v0.53.0 multi-parameter helper propagation form over the closed Optional carrier matrix."
+  },
+  "PipeLang checked-arithmetic helper propagation method": {
+    "prefix": "pipe-checked-arithmetic-helper-propagation",
+    "body": [
+      "public Result<int, ArithmeticError> ${1:Add}(int ${2:left}, int ${3:right}) => ${2:left} + ${3:right};",
+      "",
+      "public Result<int, ArithmeticError> ${4:Resolve}(int ${2:left}, int ${3:right}) {",
+      "\tResult<int, ArithmeticError> ${5:carrier} = ${1:Add}(${2:left}, ${3:right});",
+      "\tint ${6:value} = propagate(${5:carrier});",
+      "\treturn ${6:value} + 0;",
+      "}"
+    ],
+    "description": "Create one exact v0.54.0 checked-arithmetic helper propagation form with immediate canonical failure return."
   }
 }
