@@ -86,8 +86,11 @@ checked arithmetic expression. Step 8u is complete under `v0.55.0`: the inherite
 sole-direct-parameter first-local propagation form additionally admits an existing
 `Result<int, ArithmeticError>` or `Result<float, ArithmeticError>` carrier. The complete direct
 carrier is validated, success is copied, and canonical arithmetic failure returns before the
-terminal checked arithmetic expression. `propagate(Helper(...))` remains excluded. These seams do
-not complete or authorize inference,
+terminal checked arithmetic expression. Step 8v is complete under `v0.56.0`: that direct checked
+form additionally admits exactly one second direct parameter whose type equals the carrier payload.
+The propagated local is the left operand and the second parameter is the right operand of one
+checked integer add, subtract, or multiply, or checked binary64 divide. `propagate(Helper(...))`
+remains excluded. These seams do not complete or authorize inference,
 reassignment, shadowing, cross-class/module calls, overloads, generics, function values, lambdas,
 recursion, general blocks, branch statements, loops, effects, entrypoints, additional or nested
 propagation, arbitrary computed propagation operands, propagation from any other prior local,
@@ -643,6 +646,32 @@ Additional parameters, helper or computed operands, later or split propagation, 
 propagation, mismatched carrier/payload types, arbitrary Result widening, inference, reassignment,
 statements, effects, actions, runtimes, targets, adapters, UI, and deployment remain excluded. The
 v0.54 helper form and every earlier contract remain exact. No behavior enters by implication.
+
+## Checkpoint v0.56.0 complete contract
+
+One public pure method additionally uses exactly `Result<int, ArithmeticError> Advance(Result<int,
+ArithmeticError> carrier, int operand) { int value = propagate(carrier); return value + operand; }`.
+The integer operator may be add, subtract, or multiply. The identical `float` form admits only
+binary64 divide. The arithmetic Result is the first parameter and equals the return type; the
+second and only other parameter exactly equals its payload. Propagation is the first typed local,
+and the terminal expression uses that local as its left operand and the second parameter as its
+right operand.
+
+Typed HIR and target-neutral Core reuse existing immutable-local, reference, propagation, and
+checked-arithmetic nodes. Core independently validates parameter order/count/types, first-local
+placement, the direct carrier reference, exact operands, one propagation, and the operator matrix.
+Evaluation and deterministic Core-only Go validate the complete carrier, copy success, preserve
+canonical incoming failure without evaluating the continuation, and produce canonical overflow or
+division-by-zero from the continuation. Public compiler, semantic, and Application IR identities
+and shapes remain unchanged; metadata advances to `v0.56.0`; a compiler-cursor fixture proves
+checked cursor plus width advancement; the exact 45-source lane remains frozen.
+
+The inherited v0.55 sole-carrier and v0.54 helper forms remain exact. A third parameter, reordered
+carrier/operand, mismatched operand type, reversed/repeated/literal/computed operands, unary
+negation as the new two-parameter form, helper or computed propagation operands, later/split or
+additional propagation, arbitrary Result widening, inference, reassignment, statements, effects,
+actions, runtimes, targets, adapters, UI, and deployment remain excluded. No behavior enters by
+implication.
 
 ## Application IR checkpoint complete contract
 

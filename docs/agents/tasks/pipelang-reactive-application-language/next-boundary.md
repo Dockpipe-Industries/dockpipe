@@ -818,6 +818,32 @@ reassignment, statements, effects, actions, runtimes, targets, adapters, UI, and
 excluded. The v0.54 helper form and every earlier contract remain exact. No behavior enters by
 implication. Any successor requires a new founder decision and separate implementation approval.
 
+## Accepted v0.56.0 boundary — multi-parameter direct checked propagation
+
+`v0.56.0` widens only the v0.55 direct checked-propagation caller signature and binary
+continuation. One public pure method spells `Result<int, ArithmeticError> Advance(Result<int,
+ArithmeticError> carrier, int operand) { int value = propagate(carrier); return value + operand; }`.
+The integer operator may be add, subtract, or multiply. The identical `float` form admits only
+binary64 divide. The arithmetic Result is the first parameter and exactly equals the return type;
+the second and only other parameter exactly equals its payload. Propagation remains the first typed
+local. Its local is the continuation's left operand and the second direct parameter is the right.
+
+HIR and Core reuse `immutable_local`, `reference`, `propagate`, and checked arithmetic. Core
+independently verifies parameter order/count/types, first-local placement, the direct carrier,
+exact local/parameter operands, one propagation, and the operator matrix. Evaluation and
+deterministic Core-only Go validate the complete carrier, copy success, return canonical incoming
+failure before the continuation, and preserve checked overflow or division-by-zero from the
+continuation. `pipelang.compiler.v1`, `pipelang.semantic.v1`, and `dockpipe.application.v1`
+identities and shapes stay stable; only language metadata advances. A compiler-cursor fixture
+proves checked cursor plus width advancement, and the exact 45-source lane remains frozen.
+
+The inherited v0.55 sole-carrier and v0.54 helper forms remain exact. A third parameter, reordered
+carrier/operand, mismatched operand type, reversed/repeated/literal/computed operands, unary
+negation as the new two-parameter form, helper or computed propagation operands, later/split or
+additional propagation, arbitrary Result widening, inference, reassignment, statements, effects,
+actions, runtimes, targets, adapters, UI, and deployment remain excluded. No behavior enters by
+implication. Any successor requires a new founder decision and separate implementation approval.
+
 ## Accepted v0.49.0 boundary — bounded two-carrier matching
 
 `v0.49.0` widens only the occurrence count accepted through v0.48. One public pure method with one

@@ -1665,6 +1665,42 @@ reassignment, statements, effects, actions, runtimes, targets, adapters, UI, and
 excluded. The v0.54 helper form and every earlier source contract remain exact. No behavior enters
 by implication.
 
+### PipeLang v0.56.0: multi-parameter direct checked propagation
+
+`v0.56.0` adds one exact two-parameter form to direct checked propagation:
+
+```pipe
+public Result<int, ArithmeticError> Advance(
+    Result<int, ArithmeticError> carrier,
+    int operand
+) {
+    int value = propagate(carrier);
+    return value + operand;
+}
+```
+
+The integer operator may be `+`, `-`, or `*`. The identical `float` form admits only `/`. The
+arithmetic Result is the first parameter and exactly equals the method return type; the second and
+only other parameter exactly equals its success payload. Propagation remains the first typed local.
+The continuation uses that local as its left operand and the second direct parameter as its right
+operand. The complete carrier is validated before branching; canonical incoming failure returns
+without evaluating the continuation, while the continuation retains checked overflow or
+division-by-zero behavior.
+
+Typed HIR and target-neutral Core reuse `immutable_local`, `reference`, `propagate`, and checked
+arithmetic nodes. The evaluator and deterministic Core-only Go preserve the same validation,
+copying, operand order, and short-circuit semantics. `pipelang.compiler.v1`,
+`pipelang.semantic.v1`, and `dockpipe.application.v1` identities and shapes remain unchanged; only
+language-contract metadata advances to `v0.56.0`. A compiler-cursor fixture proves checked cursor
+plus width advancement. The exact 45-source legacy lane remains frozen.
+
+The inherited v0.55 sole-carrier and v0.54 helper forms remain exact. A third parameter, reordered
+carrier/operand, mismatched operand type, reversed/repeated/literal/computed operands, unary
+negation as the new two-parameter form, helper or computed propagation operands, later/split or
+additional propagation, arbitrary Result widening, inference, reassignment, statements, effects,
+actions, runtimes, targets, adapters, UI, and deployment remain excluded. No behavior enters by
+implication.
+
 ### Target-neutral Application IR
 
 `dockpipe.application.v1` is not a language feature or target generator. It consumes the public

@@ -476,3 +476,25 @@ Additional parameters, helper or computed operands, later/split propagation, ext
 other Result carriers, inference, reassignment, statements, effects, actions, runtimes, targets,
 adapters, UI, and deployment remain excluded. The v0.54 helper form remains exact. No behavior
 enters by implication.
+
+## Step 8v — multi-parameter direct checked propagation (`v0.56.0`)
+
+Production source additionally admits exactly `Result<int, ArithmeticError> Advance(Result<int,
+ArithmeticError> carrier, int operand) { int value = propagate(carrier); return value + operand; }`.
+The integer operator may be add, subtract, or multiply; the identical `float` form admits only
+binary64 divide. The carrier is the first parameter and method return, the second and only other
+parameter exactly matches its payload, propagation remains the first typed local, and the
+continuation uses the local on the left and second parameter on the right.
+
+Typed HIR and target-neutral Core reuse existing nodes and independently verify the exact form.
+Evaluation and deterministic Core-only Go validate the complete carrier, copy success, preserve
+canonical incoming failure before continuation evaluation, and retain checked continuation
+failure. Public compiler, semantic, and Application IR identities and shapes remain stable;
+metadata advances to `v0.56.0`; a compiler-cursor fixture proves checked cursor plus width
+advancement; the exact 45-source lane remains frozen.
+
+The inherited v0.55 sole-carrier and v0.54 helper forms remain exact. Third/reordered/mismatched
+parameters, reversed/repeated/literal/computed operands, helper/computed propagation operands,
+later/split or additional propagation, arbitrary Result widening, inference, reassignment,
+statements, effects, actions, runtimes, targets, adapters, UI, and deployment remain excluded. No
+behavior enters by implication.
