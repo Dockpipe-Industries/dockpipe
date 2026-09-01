@@ -717,6 +717,31 @@ effects, actions, runtimes, targets, adapters, UI, and deployment remain exclude
 enters by implication. Any successor requires a new founder decision and separate implementation
 approval.
 
+## Accepted v0.52.0 boundary — cumulative fan-in carrier chains
+
+`v0.52.0` adds one cumulative chain of `k >= 3` contiguous carrier/match pairs. Stage one is
+`C1 carrier1 = Helper1(p1, ..., pn); T1 value1 = match(carrier1) { canonical arms };`. Every later
+stage is exactly `Ci carrierI = HelperI(value1, ..., valueI-1, p1, ..., pn); Ti valueI =
+match(carrierI) { canonical arms };`: all prior selected locals occur directly once in chain order,
+followed by every caller parameter directly once in declaration order. A method uses either this
+cumulative mode or the inherited v0.51 immediate-only mode; modes cannot mix between stages.
+
+HIR and Core reuse `immutable_local`, `call`, `reference`, and `match`; Core independently verifies
+the complete chain, cumulative binding positions, helper ownership/signatures, carriers, arms,
+local types, and continuation. All locals and helpers evaluate once in source order, every complete
+carrier is validated, and only selected arms evaluate. Docker observability proves
+`FinalizeSelectionHistory(selected, confirmed, rows, id)` as the cumulative third stage without
+schema change. `pipelang.compiler.v1`, `pipelang.semantic.v1`, and `dockpipe.application.v1`
+identities and shapes stay stable; only language metadata advances, and the exact 45-source lane
+remains frozen.
+
+All inherited forms remain exact. Fewer than three cumulative pairs, partial/reordered/repeated/
+omitted/extra prior selections, per-stage mode mixing, gaps, non-chain dependencies, computed
+arguments, matches outside the chain, nested/terminal/argument matches, propagation changes,
+arbitrary Result widening, statements, effects, actions, runtimes, targets, adapters, UI, and
+deployment remain excluded. No behavior enters by implication. Any successor requires a new
+founder decision and separate implementation approval.
+
 ## Accepted v0.49.0 boundary — bounded two-carrier matching
 
 `v0.49.0` widens only the occurrence count accepted through v0.48. One public pure method with one
