@@ -385,3 +385,9 @@ assert.strictEqual(pipeLangSnippets["PipeLang checked-arithmetic helper propagat
 assert(pipeLangSnippets["PipeLang checked-arithmetic helper propagation method"].description.includes("v0.54.0"));
 assert(pipeLangSnippets["PipeLang checked-arithmetic helper propagation method"].body.some((line) => line.includes("Result<int, ArithmeticError> ${5:carrier} = ${1:Add}(${2:left}, ${3:right})")));
 assert(pipeLangSnippets["PipeLang checked-arithmetic helper propagation method"].body.some((line) => line.includes("int ${6:value} = propagate(${5:carrier})")));
+assert(pipeLangReadme.includes("`v0.55.0`"));
+assert(pipeLangReadme.includes("direct-parameter checked propagation"));
+assert.strictEqual(pipeLangSnippets["PipeLang direct checked-arithmetic propagation method"].prefix, "pipe-direct-checked-arithmetic-propagation");
+assert(pipeLangSnippets["PipeLang direct checked-arithmetic propagation method"].description.includes("v0.55.0"));
+assert(pipeLangSnippets["PipeLang direct checked-arithmetic propagation method"].body.some((line) => line.includes("Result<int, ArithmeticError> ${2:carrier}")));
+assert(pipeLangSnippets["PipeLang direct checked-arithmetic propagation method"].body.some((line) => line.includes("int ${3:value} = propagate(${2:carrier})")));

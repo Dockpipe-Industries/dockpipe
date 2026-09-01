@@ -793,6 +793,31 @@ widening, inference, reassignment, statements, effects, actions, runtimes, targe
 and deployment remain excluded. No behavior enters by implication. Any successor requires a new
 founder decision and separate implementation approval.
 
+## Accepted v0.55.0 boundary — direct-parameter checked propagation
+
+`v0.55.0` widens only the inherited v0.41 first-local direct-parameter propagation carrier matrix.
+One public pure method spells `Result<int, ArithmeticError> Continue(Result<int, ArithmeticError>
+carrier) { int value = propagate(carrier); return admittedCheckedArithmeticExpression; }`, or the
+identical `float` form. The arithmetic Result is the method's sole direct parameter and exactly
+equals its return type. Propagation is the first typed local, whose declared type exactly equals the
+success payload. The terminal return is one already admitted checked add, subtract, multiply,
+negate, or binary64 divide expression.
+
+HIR and Core reuse `immutable_local`, `reference`, `propagate`, and checked arithmetic. Core
+independently verifies first-local placement, the sole direct carrier reference, carrier/return and
+payload/local equality, one propagation, and the checked continuation. Evaluation and
+deterministic Core-only Go validate the complete arithmetic Result, copy success, and return
+canonical overflow or division-by-zero before evaluating the continuation.
+`pipelang.compiler.v1`, `pipelang.semantic.v1`, and `dockpipe.application.v1` identities and shapes
+stay stable; only language metadata advances. A compiler-cursor fixture proves consumption of a
+checked cursor Result passed by the caller, and the exact 45-source lane remains frozen.
+
+Additional parameters, helper or computed propagation operands, later or split placement,
+additional propagation, mismatched carrier/payload types, arbitrary Result widening, inference,
+reassignment, statements, effects, actions, runtimes, targets, adapters, UI, and deployment remain
+excluded. The v0.54 helper form and every earlier contract remain exact. No behavior enters by
+implication. Any successor requires a new founder decision and separate implementation approval.
+
 ## Accepted v0.49.0 boundary — bounded two-carrier matching
 
 `v0.49.0` widens only the occurrence count accepted through v0.48. One public pure method with one

@@ -456,3 +456,23 @@ Direct-parameter or call-inside-propagate forms, later/split pairs, computed/reo
 omitted/extra arguments, extra propagation, other Result carriers, inference, reassignment,
 statements, effects, actions, runtimes, targets, adapters, UI, and deployment remain excluded. No
 behavior enters by implication.
+
+## Step 8u — direct-parameter checked propagation (`v0.55.0`)
+
+Production source admits exactly `Result<int, ArithmeticError> Continue(Result<int,
+ArithmeticError> carrier) { int value = propagate(carrier); return
+admittedCheckedArithmeticExpression; }`, plus the identical `float` form. The carrier is the sole
+direct parameter and method return, propagation is the first typed local, and the local exactly
+matches the success payload.
+
+Typed HIR and target-neutral Core reuse existing nodes and Core independently verifies the exact
+composition. Evaluation and deterministic Core-only Go validate the complete arithmetic Result,
+copy success, and return canonical overflow or division-by-zero before the continuation. Public
+compiler, semantic, and Application IR identities and shapes remain stable; metadata advances to
+`v0.55.0`; a compiler-cursor fixture proves consumption of a caller-supplied checked Result; the
+exact 45-source lane remains frozen.
+
+Additional parameters, helper or computed operands, later/split propagation, extra propagation,
+other Result carriers, inference, reassignment, statements, effects, actions, runtimes, targets,
+adapters, UI, and deployment remain excluded. The v0.54 helper form remains exact. No behavior
+enters by implication.
