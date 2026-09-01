@@ -1738,6 +1738,46 @@ computed expression, helper propagation, arbitrary Results, inference, reassignm
 effects, actions, runtimes, targets, adapters, UI, and deployment remain excluded. No behavior
 enters by implication.
 
+### PipeLang v0.58.0: generalized checked-propagation chains
+
+`v0.58.0` generalizes the v0.57 shape to a contiguous chain of two or more checked stages:
+
+```pipe
+public Result<int, ArithmeticError> AdvanceThree(
+    Result<int, ArithmeticError> carrier,
+    int first,
+    int second,
+    int third
+) {
+    int value = propagate(carrier);
+    Result<int, ArithmeticError> secondCarrier = value + first;
+    int secondValue = propagate(secondCarrier);
+    Result<int, ArithmeticError> thirdCarrier = secondValue - second;
+    int thirdValue = propagate(thirdCarrier);
+    return thirdValue * third;
+}
+```
+
+For `K >= 2` stages, the method takes the arithmetic Result first and exactly `K` matching payload
+parameters. Every non-terminal checked operation must initialize an explicit Result local and the
+immediately following local must propagate that carrier; the terminal checked operation uses the
+last propagated payload and final parameter. Integer stages independently admit `+`, `-`, or `*`;
+the identical `float` form uses `/` at every stage. Each complete carrier is validated once,
+success is copied, and incoming or intermediate failure returns before any later operation.
+
+Typed HIR and target-neutral Core reuse existing nodes and validate the full parameter/local chain
+independently. The evaluator and deterministic Core-only Go preserve exact source order and
+canonical overflow or division-by-zero. `pipelang.compiler.v1`, `pipelang.semantic.v1`, and
+`dockpipe.application.v1` identities and shapes remain unchanged; only language-contract metadata
+advances to `v0.58.0`. A three-stage compiler-cursor fixture and metadata-only Application IR
+consumer prove the boundary. The exact 45-source legacy lane remains frozen.
+
+The inherited v0.54-v0.57 forms remain exact. Fewer than two stages, missing/additional chain
+locals, ordinary-local gaps, reordered/mismatched parameters, reversed/repeated/literal/computed
+operands, direct computed propagation, helper propagation, arbitrary Results, inference,
+reassignment, statements, effects, actions, runtimes, targets, adapters, UI, and deployment remain
+excluded. No behavior enters by implication.
+
 ### Target-neutral Application IR
 
 `dockpipe.application.v1` is not a language feature or target generator. It consumes the public

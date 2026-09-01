@@ -403,3 +403,9 @@ assert.strictEqual(pipeLangSnippets["PipeLang two-stage checked-arithmetic propa
 assert(pipeLangSnippets["PipeLang two-stage checked-arithmetic propagation method"].description.includes("v0.57.0"));
 assert(pipeLangSnippets["PipeLang two-stage checked-arithmetic propagation method"].body.some((line) => line.includes("Result<int, ArithmeticError> ${6:nextCarrier} = ${5:value} + ${3:first}")));
 assert(pipeLangSnippets["PipeLang two-stage checked-arithmetic propagation method"].body.some((line) => line.includes("int ${7:next} = propagate(${6:nextCarrier})")));
+assert(pipeLangReadme.includes("`v0.58.0`"));
+assert(pipeLangReadme.includes("generalized checked-propagation chains"));
+assert.strictEqual(pipeLangSnippets["PipeLang generalized checked-arithmetic propagation chain"].prefix, "pipe-checked-propagation-chain");
+assert(pipeLangSnippets["PipeLang generalized checked-arithmetic propagation chain"].description.includes("v0.58.0"));
+assert(pipeLangSnippets["PipeLang generalized checked-arithmetic propagation chain"].body.some((line) => line.includes("Result<int, ArithmeticError> ${9:thirdCarrier} = ${8:secondValue} - ${4:second}")));
+assert(pipeLangSnippets["PipeLang generalized checked-arithmetic propagation chain"].body.some((line) => line.includes("return ${10:thirdValue} * ${5:third}")));

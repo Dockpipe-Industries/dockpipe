@@ -10,8 +10,8 @@ dispatch:
 
 state:
   decision: accepted
-  current_language_contract: v0.57.0
-  completed_through: v0.57.0 two-stage checked propagation plus multi-parameter direct, direct, and helper checked propagation, multi-parameter propagation, cumulative and immediate dependent chains, dependent and independent two-carrier forms, prior-local and later-local helper matching, checked arithmetic, pure calls, matching, propagation, ordered immutable locals, and dockpipe.application.v1 consumer proof
+  current_language_contract: v0.58.0
+  completed_through: v0.58.0 generalized checked-propagation chains plus two-stage, multi-parameter direct, direct, and helper checked propagation, multi-parameter propagation, cumulative and immediate dependent chains, dependent and independent two-carrier forms, prior-local and later-local helper matching, checked arithmetic, pure calls, matching, propagation, ordered immutable locals, and dockpipe.application.v1 consumer proof
   authority: >-
     This task record is decision and status evidence. It does not authorize another language slice,
     implementation, migration, commit, push, publication, or external action.
@@ -65,7 +65,7 @@ history_by_slice:
   steps_7i_to_7m: completed-text-records.md
   steps_7n_to_7s: completed-optionals-lists.md
   steps_7t_to_7ae: completed-snapshots-selection.md
-  steps_8a_to_8w: completed-functions.md
+  steps_8a_to_8x: completed-functions.md
 
 documents:
   - path: overview.md
@@ -89,7 +89,7 @@ documents:
   - path: completed-snapshots-selection.md
     role: completed steps 7t through 7ae
   - path: completed-functions.md
-    role: completed steps 8a named pure record predicate filtering through 8w two-stage checked propagation
+    role: completed steps 8a named pure record predicate filtering through 8x generalized checked-propagation chains
   - path: next-boundary.md
     role: exact current boundary and preserved contracts
 

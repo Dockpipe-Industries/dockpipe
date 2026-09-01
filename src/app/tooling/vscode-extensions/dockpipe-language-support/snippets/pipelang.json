@@ -549,5 +549,19 @@
       "}"
     ],
     "description": "Create the exact v0.57.0 two-stage checked propagation form with an explicit intermediate carrier and canonical failure at either stage."
+  },
+  "PipeLang generalized checked-arithmetic propagation chain": {
+    "prefix": "pipe-checked-propagation-chain",
+    "body": [
+      "public Result<int, ArithmeticError> ${1:AdvanceThree}(Result<int, ArithmeticError> ${2:carrier}, int ${3:first}, int ${4:second}, int ${5:third}) {",
+      "\tint ${6:value} = propagate(${2:carrier});",
+      "\tResult<int, ArithmeticError> ${7:secondCarrier} = ${6:value} + ${3:first};",
+      "\tint ${8:secondValue} = propagate(${7:secondCarrier});",
+      "\tResult<int, ArithmeticError> ${9:thirdCarrier} = ${8:secondValue} - ${4:second};",
+      "\tint ${10:thirdValue} = propagate(${9:thirdCarrier});",
+      "\treturn ${10:thirdValue} * ${5:third};",
+      "}"
+    ],
+    "description": "Create a v0.58.0 contiguous checked-propagation chain with three stages and canonical failure at every carrier."
   }
 }

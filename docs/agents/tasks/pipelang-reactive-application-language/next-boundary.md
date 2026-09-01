@@ -873,6 +873,35 @@ inference, reassignment, statements, effects, actions, runtimes, targets, adapte
 deployment remain excluded. No behavior enters by implication. Any successor requires a new
 founder decision and separate implementation approval.
 
+## Accepted v0.58.0 boundary — generalized checked-propagation chains
+
+`v0.58.0` generalizes only the exact v0.57 two-stage direct checked-propagation shape to a
+contiguous chain of `K >= 2` stages. One public pure method has exact signature
+`Result<T, ArithmeticError> F(Result<T, ArithmeticError> carrier, T operand1, ..., T operandK)`.
+It begins with `T value0 = propagate(carrier);`. Every non-terminal stage `i` is spelled as the
+adjacent pair `Result<T, ArithmeticError> carrierI = valueI-1 opI operandI; T valueI =
+propagate(carrierI);`. The terminal return is exactly `valueK-1 opK operandK`. `T` is exactly
+`int` or `float`; every integer stage independently admits add, subtract, or multiply, while every
+float stage admits binary64 divide only.
+
+HIR and Core reuse `immutable_local`, `reference`, `propagate`, and checked arithmetic. Core
+independently verifies the parameter sequence, exact contiguous alternating local pairs, direct
+preceding-payload/local and matching parameter operands, carrier and payload types, propagation
+count, and operator matrix for the admitted chain length. Evaluation and deterministic Core-only Go
+validate every complete carrier once, copy each success, and return an incoming or intermediate
+canonical failure before any later stage; terminal overflow or division-by-zero remains canonical.
+`pipelang.compiler.v1`, `pipelang.semantic.v1`, and `dockpipe.application.v1` identities and shapes
+stay stable; only language metadata advances. A three-stage compiler-cursor fixture and metadata-only
+Docker-observability Application IR consumption prove the consumer boundary, and the exact
+45-source lane remains frozen.
+
+The inherited v0.54-v0.57 forms remain exact. Fewer than two stages, missing/additional chain
+locals, ordinary-local gaps, reordered/mismatched parameters, reversed/repeated/literal/computed
+operands, direct propagation of a computed expression, helper propagation, arbitrary Result
+widening, inference, reassignment, statements, effects, actions, runtimes, targets, adapters, UI,
+and deployment remain excluded. No behavior enters by implication. Any successor requires a new
+founder decision and separate implementation approval.
+
 ## Accepted v0.49.0 boundary — bounded two-carrier matching
 
 `v0.49.0` widens only the occurrence count accepted through v0.48. One public pure method with one

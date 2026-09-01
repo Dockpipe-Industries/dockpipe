@@ -521,3 +521,28 @@ The inherited v0.54-v0.56 forms remain exact. Fourth/reordered/mismatched parame
 reversed/repeated/literal/computed operands, missing/additional stages, computed or helper
 propagation operands, arbitrary Results, inference, reassignment, statements, effects, actions,
 runtimes, targets, adapters, UI, and deployment remain excluded. No behavior enters by implication.
+
+## Step 8x — generalized checked-propagation chains (`v0.58.0`)
+
+Production source additionally admits a contiguous chain of `K >= 2` checked stages. One public
+pure method has exact signature `Result<T, ArithmeticError> F(Result<T, ArithmeticError> carrier,
+T operand1, ..., T operandK)`, begins with `T value0 = propagate(carrier);`, spells every
+non-terminal stage as an adjacent explicit checked-Result local followed immediately by propagation
+of that local, and ends with the checked operation over the last propagated payload and final direct
+parameter. `T` is exactly `int` or `float`; integer stages independently admit add, subtract, or
+multiply, while float stages admit binary64 divide only.
+
+Typed HIR and target-neutral Core reuse existing nodes and independently verify the exact parameter
+sequence, contiguous alternating locals, carrier and payload types, direct operand positions,
+propagation count, and stage operator matrix. Evaluation and deterministic Core-only Go validate
+each complete carrier once, copy success at each stage, short-circuit incoming and intermediate
+failures before later evaluation, and preserve terminal arithmetic failures. Public compiler,
+semantic, and Application IR identities and shapes remain stable; metadata advances to `v0.58.0`;
+a three-stage compiler-cursor fixture and metadata-only Docker-observability Application IR
+consumption prove the boundary; the exact 45-source lane remains frozen.
+
+The inherited v0.54-v0.57 forms remain exact. Fewer than two stages, missing or additional chain
+locals, ordinary-local gaps, reordered/mismatched parameters, reversed/repeated/literal/computed
+operands, computed or helper propagation, arbitrary Results, inference, reassignment, statements,
+effects, actions, runtimes, targets, adapters, UI, and deployment remain excluded. No behavior
+enters by implication.
