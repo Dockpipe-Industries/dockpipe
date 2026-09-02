@@ -409,3 +409,9 @@ assert.strictEqual(pipeLangSnippets["PipeLang generalized checked-arithmetic pro
 assert(pipeLangSnippets["PipeLang generalized checked-arithmetic propagation chain"].description.includes("v0.58.0"));
 assert(pipeLangSnippets["PipeLang generalized checked-arithmetic propagation chain"].body.some((line) => line.includes("Result<int, ArithmeticError> ${9:thirdCarrier} = ${8:secondValue} - ${4:second}")));
 assert(pipeLangSnippets["PipeLang generalized checked-arithmetic propagation chain"].body.some((line) => line.includes("return ${10:thirdValue} * ${5:third}")));
+assert(pipeLangReadme.includes("`v0.59.0`"));
+assert(pipeLangReadme.includes("bounded cross-payload Result propagation"));
+assert.strictEqual(pipeLangSnippets["PipeLang bounded cross-payload Result propagation method"].prefix, "pipe-cross-payload-result");
+assert(pipeLangSnippets["PipeLang bounded cross-payload Result propagation method"].description.includes("v0.59.0"));
+assert(pipeLangSnippets["PipeLang bounded cross-payload Result propagation method"].body.some((line) => line.includes("string ${4:source} = propagate(${3:scanned})")));
+assert(pipeLangSnippets["PipeLang bounded cross-payload Result propagation method"].body.some((line) => line.includes("return ${5:ParseTokens}(${4:source})")));

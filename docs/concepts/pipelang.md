@@ -1778,6 +1778,40 @@ operands, direct computed propagation, helper propagation, arbitrary Results, in
 reassignment, statements, effects, actions, runtimes, targets, adapters, UI, and deployment remain
 excluded. No behavior enters by implication.
 
+### PipeLang v0.59.0: bounded cross-payload Result propagation
+
+`v0.59.0` adds one exact target-shaping propagation form:
+
+```pipe
+public Result<List<Token>, string> Parse(Result<string, string> scanned) {
+    string source = propagate(scanned);
+    return ParseTokens(source);
+}
+```
+
+The public pure method has exactly one direct `Result<T, string>` parameter and returns
+`Result<U, string>`, where `T` and `U` are distinct and each is either `string` or `List<R>` for
+an existing public primitive-field record `R`. Its first and only local propagates the direct
+parameter into an explicitly typed `T` value. Its terminal expression calls one resolved public
+pure same-class helper exactly once with that direct local; the helper signature is exactly
+`T -> Result<U, string>`.
+
+The complete incoming carrier is validated once. Success copies `T` and invokes the helper once;
+the helper's complete target carrier is then validated and copied normally. Failure skips the
+helper and constructs the canonical target-shaped `Result<U, string>` failure, preserving the
+validated copied error text while using the canonical zero `U` payload (empty text or a nil list).
+Typed HIR and target-neutral Core reuse existing immutable-local, propagation, reference, and call
+nodes. `pipelang.compiler.v1`, `pipelang.semantic.v1`, and `dockpipe.application.v1` identities and
+shapes remain unchanged; only language metadata advances to `v0.59.0`. The exact 45-source legacy
+lane remains frozen.
+
+The inherited v0.54-v0.58 forms remain exact. Same-payload propagation gains no new spelling.
+Arbitrary failure types, Optional or arithmetic carriers, extra parameters or locals, additional
+propagation, computed carriers, `propagate(Helper(...))`, helper propagation, helper arguments other
+than the direct propagated local, private/cross-class/mismatched/overloaded/generic helpers,
+inference, reassignment, statements, effects, actions, runtimes, targets, adapters, UI, and
+deployment remain excluded. No behavior enters by implication.
+
 ### Target-neutral Application IR
 
 `dockpipe.application.v1` is not a language feature or target generator. It consumes the public
