@@ -87,6 +87,10 @@ func completeFunctionOutcome(returnType coreir.Type, outcome Outcome, err error)
 	if err == nil && returnType.Kind == coreir.TypeOptional && !outcome.OK && outcome.Failure != nil && coreir.TypeEqual(outcome.Failure.Type, returnType) {
 		return Outcome{OK: true, Value: cloneOptionalValue(*outcome.Failure)}, nil
 	}
+	if err == nil && returnType.Kind == coreir.TypeResult && returnType.Result != nil && !outcome.OK && outcome.Failure != nil && coreir.TypeEqual(outcome.Failure.Type, returnType.Result.Failure) && !coreir.TypeEqual(outcome.Value.Type, returnType.Result.Success) {
+		failure := cloneValue(*outcome.Failure)
+		return Outcome{OK: false, Value: Value{Type: returnType.Result.Success}, Failure: &failure}, nil
+	}
 	return outcome, err
 }
 
@@ -306,6 +310,7 @@ func evalExprWithProgram(expression coreir.Expr, arguments []Value, functions ma
 			callArguments[position] = cloneValue(outcome.Value)
 		}
 		outcome, err := evalExprWithProgram(target.Body, callArguments, functions)
+		outcome, err = completeFunctionOutcome(target.ReturnType, outcome, err)
 		if err != nil {
 			return Outcome{}, fmt.Errorf("pure call %s: %w", target.Name, err)
 		}

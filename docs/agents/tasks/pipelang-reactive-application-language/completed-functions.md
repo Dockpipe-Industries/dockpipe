@@ -546,3 +546,28 @@ locals, ordinary-local gaps, reordered/mismatched parameters, reversed/repeated/
 operands, computed or helper propagation, arbitrary Results, inference, reassignment, statements,
 effects, actions, runtimes, targets, adapters, UI, and deployment remain excluded. No behavior
 enters by implication.
+
+## Step 8y — bounded cross-payload Result propagation (`v0.59.0`)
+
+Production source additionally admits exactly one public pure method shaped as `Result<U, string>
+F(Result<T, string> carrier) { T value = propagate(carrier); return Helper(value); }`. `T` and `U`
+are distinct and each is exactly `string` or `List<R>` for an existing public primitive-field
+record. The first and only typed local propagates the sole direct parameter; the terminal helper is
+one resolved public pure same-class `T -> Result<U, string>` method and receives the direct local
+exactly once.
+
+Typed HIR and target-neutral Core reuse existing nodes and independently verify the exact bounded
+source/target Results, distinct payloads, string failure, parameter/local positions and types, one
+propagation, terminal call, direct local argument, callable owner, and helper signature. Evaluation
+and deterministic Core-only Go validate and copy complete carriers, invoke the helper exactly once
+on success, and on incoming failure skip it while constructing a canonical target-shaped failure
+with the preserved copied error string. Public compiler, semantic, and Application IR identities
+and shapes remain stable; metadata advances to `v0.59.0`; compiler-pipeline payload-matrix and
+metadata-only Docker-observability Application IR consumption prove the boundary; the exact
+45-source lane remains frozen.
+
+The inherited v0.54-v0.58 forms remain exact. Same-payload propagation gains no new spelling.
+Arbitrary errors, Optional/arithmetic carriers, extra parameters/locals/propagations, computed
+carriers, helper propagation, non-direct/private/cross-class/mismatched/overloaded/generic helpers,
+inference, reassignment, statements, effects, actions, runtimes, targets, adapters, UI, and
+deployment remain excluded. No behavior enters by implication.

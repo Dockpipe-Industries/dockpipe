@@ -96,7 +96,11 @@ propagates that explicit carrier, and returns a second checked payload operation
 not complete or authorize inference. Step 8x is complete under `v0.58.0`: that two-stage shape
 generalizes to a contiguous chain of `K >= 2` checked stages, with one incoming arithmetic Result
 followed by exactly `K` payload parameters; every non-terminal stage explicitly stores and then
-propagates its checked Result before the terminal checked operation. These seams do not complete
+propagates its checked Result before the terminal checked operation. Step 8y is complete under
+`v0.59.0`: one public pure method may propagate a sole direct bounded `Result<T, string>` into its
+first and only typed local and terminally call one exact same-class `T -> Result<U, string>` helper,
+where `T != U` and both are text or an existing primitive-record list. Incoming failure is
+canonically reshaped to the target Result without invoking the helper. These seams do not complete
 or authorize inference,
 reassignment, shadowing, cross-class/module calls, overloads, generics, function values, lambdas,
 recursion, general blocks, branch statements, loops, effects, entrypoints, additional or nested
@@ -732,6 +736,34 @@ inside the chain, ordinary-local gaps, reordered/mismatched parameters, reversed
 computed operands, direct propagation of a computed expression, helper propagation, arbitrary
 Result widening, inference, reassignment, statements, effects, actions, runtimes, targets,
 adapters, UI, and deployment remain excluded. No behavior enters by implication.
+
+## Checkpoint v0.59.0 complete contract
+
+One public pure method additionally takes exactly one direct `Result<T, string>` parameter and
+returns `Result<U, string>`, where `T != U` and each payload is exactly `string` or `List<R>` for an
+existing public primitive-field record. Its body is exactly `T value = propagate(carrier); return
+Helper(value);`. The propagation initializes the first and only typed local; the terminal helper is
+one resolved public pure same-class method with exact signature `T -> Result<U, string>` and receives
+only the direct propagated local.
+
+Typed HIR and target-neutral Core reuse existing immutable-local, reference, propagation, and call
+nodes. Core independently validates the source and target bounded Results, distinct payloads,
+shared string failure type, direct parameter/local positions and types, sole propagation, terminal
+call placement, direct local argument, same-owner callable identity, and exact helper signature.
+Evaluation and deterministic Core-only Go validate the complete input carrier once, copy success,
+invoke and validate the helper once, or on failure skip the helper and construct the canonical
+target-shaped failure with copied validated error text and zero target payload. Public compiler,
+semantic, and Application IR identities and shapes remain unchanged; metadata advances to
+`v0.59.0`; a compiler-pipeline fixture proves text-to-record-list, record-list-to-text, and
+record-list-to-distinct-record-list forms; the Docker-observability Application IR consumer advances
+metadata only; the exact 45-source lane remains frozen.
+
+The inherited v0.54-v0.58 forms remain exact. Same-payload propagation receives no new spelling.
+Arbitrary error types, Optional or arithmetic carriers, extra parameters/locals/propagations,
+computed carriers, `propagate(Helper(...))`, helper propagation, non-direct helper arguments,
+private/cross-class/mismatched/overloaded/generic helpers, inference, reassignment, statements,
+effects, actions, runtimes, targets, adapters, UI, and deployment remain excluded. No behavior
+enters by implication.
 
 ## Application IR checkpoint complete contract
 

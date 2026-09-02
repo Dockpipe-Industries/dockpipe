@@ -563,5 +563,15 @@
       "}"
     ],
     "description": "Create a v0.58.0 contiguous checked-propagation chain with three stages and canonical failure at every carrier."
+  },
+  "PipeLang bounded cross-payload Result propagation method": {
+    "prefix": "pipe-cross-payload-result",
+    "body": [
+      "public Result<List<${1:Token}>, string> ${2:Parse}(Result<string, string> ${3:scanned}) {",
+      "\tstring ${4:source} = propagate(${3:scanned});",
+      "\treturn ${5:ParseTokens}(${4:source});",
+      "}"
+    ],
+    "description": "Create the exact v0.59.0 bounded cross-payload Result propagation form with canonical target-shaped failure."
   }
 }
