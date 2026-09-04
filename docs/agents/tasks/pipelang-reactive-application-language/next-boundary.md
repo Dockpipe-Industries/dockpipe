@@ -991,6 +991,38 @@ reassignment, statements, branches, loops, effects, actions, runtimes, targets, 
 deployment remain excluded. No behavior enters by implication. Any successor requires a new
 founder decision and separate implementation approval.
 
+## Accepted v0.62.0 boundary — contextual bounded cross-payload Result propagation chains
+
+`v0.62.0` adds one exact contextual form to the v0.61 generalized chain. One public pure method
+takes exactly `Result<T0, string> carrier, string context` and returns `Result<TK, string>`.
+The first local directly propagates `carrier`. Every helper receives the immediately preceding
+payload local first and the unchanged direct `context` parameter second, and has the exact
+`(Ti-1, string) -> Result<Ti, string>` signature. Every non-terminal helper Result remains an
+explicit local immediately followed by its direct propagation local. The chain remains `K >= 2`;
+payloads remain text or lists of existing public primitive-field records; adjacent payloads differ;
+and all helpers remain resolved, public, pure, and same-class.
+
+HIR and Core reuse `immutable_local`, `reference`, `propagate`, and `call`. Core independently
+verifies the two exact caller parameters, direct string context identity, arbitrary admitted chain
+length, exact contiguous local positions and types, direct carrier, preceding-payload, and context
+references, adjacent payload inequality, shared string failure, same owner, callable identities,
+and exact helper signatures. Evaluation and deterministic Core-only Go validate and copy every
+complete carrier once and pass the validated context once to every invoked helper. Any failure
+skips all later helpers and constructs the canonical final-target-shaped failure with preserved
+copied error text. `pipelang.compiler.v1`, `pipelang.semantic.v1`, and
+`dockpipe.application.v1` identities and shapes stay stable; only language metadata advances. A
+four-stage contextual compiler-pipeline fixture plus metadata-only Docker-observability Application
+IR consumption prove the boundary, and the exact 45-source lane remains frozen.
+
+The inherited v0.54-v0.61 forms remain exact. Missing, reordered, repeated, computed, non-string,
+stage-specific, or additional context arguments; a third caller parameter; fewer than two stages;
+same-payload adjacent stages; missing/additional/gapped locals; computed carriers;
+`propagate(Helper(...))`; helper propagation; arbitrary error types; Optional/arithmetic carriers;
+private/cross-class/mismatched/overloaded/generic helpers; inference; reassignment; statements;
+branches; loops; effects; actions; runtimes; targets; adapters; UI; and deployment remain excluded.
+No behavior enters by implication. Any successor requires a new founder decision and separate
+implementation approval.
+
 ## Accepted v0.49.0 boundary — bounded two-carrier matching
 
 `v0.49.0` widens only the occurrence count accepted through v0.48. One public pure method with one

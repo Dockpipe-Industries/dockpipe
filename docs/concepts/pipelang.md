@@ -1887,6 +1887,42 @@ the direct preceding payload local, private/cross-class/mismatched/overloaded/ge
 inference, reassignment, statements, branches, loops, effects, actions, runtimes, targets, adapters,
 UI, and deployment remain excluded. No behavior enters by implication.
 
+### PipeLang v0.62.0: contextual bounded cross-payload Result propagation chains
+
+`v0.62.0` adds exactly one direct `string` context parameter to the v0.61 generalized chain:
+
+```pipe
+public Result<string, string> Compile(Result<string, string> scanned, string context) {
+    string source = propagate(scanned);
+    Result<List<Token>, string> tokenized = BuildTokens(source, context);
+    List<Token> tokens = propagate(tokenized);
+    Result<List<SyntaxNode>, string> parsed = BuildSyntax(tokens, context);
+    List<SyntaxNode> syntax = propagate(parsed);
+    return EmitSource(syntax, context);
+}
+```
+
+Every helper receives the immediately preceding payload local first and the same direct `context`
+parameter second. Its exact signature is `(Ti-1, string) -> Result<Ti, string>`. The chain remains
+public, pure, same-class, contiguous, and at least two stages long. Every non-terminal Result is an
+explicit local immediately followed by its direct propagation local; payloads remain `string` or
+`List<R>` for an existing public primitive-field record; adjacent payloads differ; and the shared
+failure type remains `string`.
+
+Every invoked helper receives the validated context exactly once. Every complete carrier is
+validated and copied once, and incoming or intermediate failure skips every later helper while
+producing the canonical final-target-shaped failure. Typed HIR and target-neutral Core reuse the
+existing immutable-local, reference, propagation, and call nodes. `pipelang.compiler.v1`,
+`pipelang.semantic.v1`, and `dockpipe.application.v1` identities and shapes remain unchanged; only
+language metadata advances to `v0.62.0`. The exact 45-source legacy lane remains frozen.
+
+The inherited v0.54-v0.61 forms remain exact. Missing, reordered, repeated, computed, non-string,
+stage-specific, or additional context arguments; a third caller parameter; same-payload adjacent
+stages; gapped or additional locals; computed carriers; `propagate(Helper(...))`; helper
+propagation; arbitrary error types; Optional/arithmetic carriers; private/cross-class/mismatched/
+overloaded/generic helpers; inference; reassignment; statements; branches; loops; effects; actions;
+runtimes; targets; adapters; UI; and deployment remain excluded. No behavior enters by implication.
+
 ### Target-neutral Application IR
 
 `dockpipe.application.v1` is not a language feature or target generator. It consumes the public

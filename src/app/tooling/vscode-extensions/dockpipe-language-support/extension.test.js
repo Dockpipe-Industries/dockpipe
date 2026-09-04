@@ -429,3 +429,10 @@ assert(pipeLangSnippets["PipeLang generalized cross-payload Result propagation c
 assert(pipeLangSnippets["PipeLang generalized cross-payload Result propagation chain"].body.some((line) => line.includes("Result<List<${8:SyntaxNode}>, string> ${9:parsed} = ${10:BuildSyntax}(${7:tokens})")));
 assert(pipeLangSnippets["PipeLang generalized cross-payload Result propagation chain"].body.some((line) => line.includes("List<${8:SyntaxNode}> ${11:syntax} = propagate(${9:parsed})")));
 assert(pipeLangSnippets["PipeLang generalized cross-payload Result propagation chain"].body.some((line) => line.includes("return ${12:EmitSource}(${11:syntax})")));
+assert(pipeLangReadme.includes("`v0.62.0`"));
+assert(pipeLangReadme.includes("contextual bounded cross-payload Result propagation"));
+assert.strictEqual(pipeLangSnippets["PipeLang contextual cross-payload Result propagation chain"].prefix, "pipe-contextual-cross-payload-result-chain");
+assert(pipeLangSnippets["PipeLang contextual cross-payload Result propagation chain"].description.includes("v0.62.0"));
+assert(pipeLangSnippets["PipeLang contextual cross-payload Result propagation chain"].body.some((line) => line.includes("Result<string, string> ${2:scanned}, string ${3:context}")));
+assert(pipeLangSnippets["PipeLang contextual cross-payload Result propagation chain"].body.some((line) => line.includes("${7:BuildTokens}(${4:source}, ${3:context})")));
+assert(pipeLangSnippets["PipeLang contextual cross-payload Result propagation chain"].body.some((line) => line.includes("return ${13:EmitSource}(${12:syntax}, ${3:context})")));

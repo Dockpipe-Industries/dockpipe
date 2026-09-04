@@ -623,3 +623,30 @@ propagation, arbitrary errors, Optional/arithmetic carriers, non-direct/private/
 mismatched/overloaded/generic helpers, inference, reassignment, statements, branches, loops,
 effects, actions, runtimes, targets, adapters, UI, and deployment remain excluded. No behavior
 enters by implication.
+
+## Step 8ab — contextual bounded cross-payload Result propagation chains (`v0.62.0`)
+
+Production source additionally admits the v0.61 generalized chain with exactly one second direct
+`string` context parameter. The caller has exact signature `Result<TK, string>
+F(Result<T0, string> carrier, string context)`. Every helper receives the immediately preceding
+payload local first and the unchanged `context` parameter second, and has the exact
+`(Ti-1, string) -> Result<Ti, string>` signature. All explicit carrier locals, direct propagation
+locals, bounded payloads, shared string failure, adjacent payload inequality, chain length,
+visibility, purity, and ownership rules remain unchanged.
+
+Typed HIR and target-neutral Core reuse existing nodes and independently verify both caller
+parameters, the direct string context reference at every helper, contiguous alternating locals,
+bounded carriers and payloads, adjacent payload inequality, callable owners, and exact helper
+signatures. Evaluation and deterministic Core-only Go pass the validated context once to every
+invoked helper, validate and copy each complete carrier once, and reshape any incoming or
+intermediate failure to the canonical final target without invoking later stages. Public compiler,
+semantic, and Application IR identities and shapes remain stable; metadata advances to `v0.62.0`;
+a four-stage contextual compiler-pipeline fixture and metadata-only Docker-observability Application
+IR consumption prove the boundary; the exact 45-source lane remains frozen.
+
+The inherited v0.54-v0.61 forms remain exact. Missing, reordered, repeated, computed, non-string,
+stage-specific, or additional context arguments; a third caller parameter; same-payload adjacent
+stages; missing/additional/gapped locals; computed or helper propagation; arbitrary errors;
+Optional/arithmetic carriers; non-direct/private/cross-class/mismatched/overloaded/generic helpers;
+inference; reassignment; statements; branches; loops; effects; actions; runtimes; targets; adapters;
+UI; and deployment remain excluded. No behavior enters by implication.

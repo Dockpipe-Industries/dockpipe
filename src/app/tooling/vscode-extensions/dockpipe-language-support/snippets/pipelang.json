@@ -599,5 +599,19 @@
       "}"
     ],
     "description": "Create a v0.61.0 generalized bounded cross-payload Result propagation chain with explicit carriers and canonical target-shaped failure at every stage."
+  },
+  "PipeLang contextual cross-payload Result propagation chain": {
+    "prefix": "pipe-contextual-cross-payload-result-chain",
+    "body": [
+      "public Result<string, string> ${1:Compile}(Result<string, string> ${2:scanned}, string ${3:context}) {",
+      "\tstring ${4:source} = propagate(${2:scanned});",
+      "\tResult<List<${5:Token}>, string> ${6:tokenized} = ${7:BuildTokens}(${4:source}, ${3:context});",
+      "\tList<${5:Token}> ${8:tokens} = propagate(${6:tokenized});",
+      "\tResult<List<${9:SyntaxNode}>, string> ${10:parsed} = ${11:BuildSyntax}(${8:tokens}, ${3:context});",
+      "\tList<${9:SyntaxNode}> ${12:syntax} = propagate(${10:parsed});",
+      "\treturn ${13:EmitSource}(${12:syntax}, ${3:context});",
+      "}"
+    ],
+    "description": "Create the exact v0.62.0 contextual bounded cross-payload Result propagation chain with one direct string context argument at every stage."
   }
 }

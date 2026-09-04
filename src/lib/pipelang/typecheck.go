@@ -317,9 +317,9 @@ func (cp *checkedProgram) validateClass(decl *ClassDecl) error {
 				return oneDiagnostic(cp.sources, CodePropagation, CategorySemantic, method.Body.SourceSpan(), fmt.Sprintf("%s immutable local initializer and return exclude propagation", cp.modules.LanguageContract()))
 			}
 		}
-		if (contract == PipeLangLanguageContractV480 || contract == PipeLangLanguageContractV490 || contract == PipeLangLanguageContractV500 || contract == PipeLangLanguageContractV510 || (contract == PipeLangLanguageContractV610 || contract == PipeLangLanguageContractV600 || contract == PipeLangLanguageContractV590 || contract == PipeLangLanguageContractV580) || contract == PipeLangLanguageContractV570 || contract == PipeLangLanguageContractV560 || contract == PipeLangLanguageContractV550 || contract == PipeLangLanguageContractV540 || contract == PipeLangLanguageContractV530 || contract == PipeLangLanguageContractV520) && countMatchExpressions(method.Body) != 0 {
+		if (contract == PipeLangLanguageContractV480 || contract == PipeLangLanguageContractV490 || contract == PipeLangLanguageContractV500 || contract == PipeLangLanguageContractV510 || (contract == PipeLangLanguageContractV620 || contract == PipeLangLanguageContractV610 || contract == PipeLangLanguageContractV600 || contract == PipeLangLanguageContractV590 || contract == PipeLangLanguageContractV580) || contract == PipeLangLanguageContractV570 || contract == PipeLangLanguageContractV560 || contract == PipeLangLanguageContractV550 || contract == PipeLangLanguageContractV540 || contract == PipeLangLanguageContractV530 || contract == PipeLangLanguageContractV520) && countMatchExpressions(method.Body) != 0 {
 			var err error
-			if (contract == PipeLangLanguageContractV610 || contract == PipeLangLanguageContractV600 || contract == PipeLangLanguageContractV590 || contract == PipeLangLanguageContractV580) || contract == PipeLangLanguageContractV570 || contract == PipeLangLanguageContractV560 || contract == PipeLangLanguageContractV550 || contract == PipeLangLanguageContractV540 || contract == PipeLangLanguageContractV530 || contract == PipeLangLanguageContractV520 {
+			if (contract == PipeLangLanguageContractV620 || contract == PipeLangLanguageContractV610 || contract == PipeLangLanguageContractV600 || contract == PipeLangLanguageContractV590 || contract == PipeLangLanguageContractV580) || contract == PipeLangLanguageContractV570 || contract == PipeLangLanguageContractV560 || contract == PipeLangLanguageContractV550 || contract == PipeLangLanguageContractV540 || contract == PipeLangLanguageContractV530 || contract == PipeLangLanguageContractV520 {
 				err = cp.validateV520MatchMethod(method)
 			} else if contract == PipeLangLanguageContractV510 {
 				err = cp.validateV510MatchMethod(method)
@@ -334,7 +334,7 @@ func (cp *checkedProgram) validateClass(decl *ClassDecl) error {
 				return err
 			}
 		}
-		if contract != PipeLangLanguageContractV480 && contract != PipeLangLanguageContractV490 && contract != PipeLangLanguageContractV500 && contract != PipeLangLanguageContractV510 && (contract != PipeLangLanguageContractV610 && contract != PipeLangLanguageContractV600 && contract != PipeLangLanguageContractV590 && contract != PipeLangLanguageContractV580) && contract != PipeLangLanguageContractV570 && contract != PipeLangLanguageContractV560 && contract != PipeLangLanguageContractV550 && contract != PipeLangLanguageContractV540 && contract != PipeLangLanguageContractV530 && contract != PipeLangLanguageContractV520 {
+		if contract != PipeLangLanguageContractV480 && contract != PipeLangLanguageContractV490 && contract != PipeLangLanguageContractV500 && contract != PipeLangLanguageContractV510 && (contract != PipeLangLanguageContractV620 && contract != PipeLangLanguageContractV610 && contract != PipeLangLanguageContractV600 && contract != PipeLangLanguageContractV590 && contract != PipeLangLanguageContractV580) && contract != PipeLangLanguageContractV570 && contract != PipeLangLanguageContractV560 && contract != PipeLangLanguageContractV550 && contract != PipeLangLanguageContractV540 && contract != PipeLangLanguageContractV530 && contract != PipeLangLanguageContractV520 {
 			if _, _, priorLocalCarrier := findPriorLocalCarrierMatch(method.Body); priorLocalCarrier {
 				return oneDiagnostic(cp.sources, CodeExpressionType, CategorySemantic, method.Body.SourceSpan(), "prior-local carrier matching requires language contract v0.48.0")
 			}
@@ -346,7 +346,7 @@ func (cp *checkedProgram) validateClass(decl *ClassDecl) error {
 			if (contract == PipeLangLanguageContractV370 || contract == PipeLangLanguageContractV380 || contract == PipeLangLanguageContractV390 || contract == PipeLangLanguageContractV400 || contract == PipeLangLanguageContractV410 || contract == PipeLangLanguageContractV420) && !validGeneralPureCallPlacement(method.Body) {
 				return oneDiagnostic(cp.sources, CodeExpressionType, CategorySemantic, method.Body.SourceSpan(), fmt.Sprintf("%s composed pure calls retain direct match and propagate carriers", contract))
 			}
-			if contract == PipeLangLanguageContractV430 || contract == PipeLangLanguageContractV440 || contract == PipeLangLanguageContractV450 || contract == PipeLangLanguageContractV460 || contract == PipeLangLanguageContractV470 || contract == PipeLangLanguageContractV480 || contract == PipeLangLanguageContractV490 || contract == PipeLangLanguageContractV500 || contract == PipeLangLanguageContractV510 || (contract == PipeLangLanguageContractV610 || contract == PipeLangLanguageContractV600 || contract == PipeLangLanguageContractV590 || contract == PipeLangLanguageContractV580) || contract == PipeLangLanguageContractV570 || contract == PipeLangLanguageContractV560 || contract == PipeLangLanguageContractV550 || contract == PipeLangLanguageContractV540 || contract == PipeLangLanguageContractV530 || contract == PipeLangLanguageContractV520 {
+			if contract == PipeLangLanguageContractV430 || contract == PipeLangLanguageContractV440 || contract == PipeLangLanguageContractV450 || contract == PipeLangLanguageContractV460 || contract == PipeLangLanguageContractV470 || contract == PipeLangLanguageContractV480 || contract == PipeLangLanguageContractV490 || contract == PipeLangLanguageContractV500 || contract == PipeLangLanguageContractV510 || (contract == PipeLangLanguageContractV620 || contract == PipeLangLanguageContractV610 || contract == PipeLangLanguageContractV600 || contract == PipeLangLanguageContractV590 || contract == PipeLangLanguageContractV580) || contract == PipeLangLanguageContractV570 || contract == PipeLangLanguageContractV560 || contract == PipeLangLanguageContractV550 || contract == PipeLangLanguageContractV540 || contract == PipeLangLanguageContractV530 || contract == PipeLangLanguageContractV520 {
 				if contract == PipeLangLanguageContractV450 || contract == PipeLangLanguageContractV460 || contract == PipeLangLanguageContractV470 {
 					if _, _, _, helperCarrier := findHelperCarrierMatchLocal(method.Body); helperCarrier {
 						if err := cp.validateHelperCarrierMatchLocalMethod(method); err != nil {
@@ -370,7 +370,7 @@ func (cp *checkedProgram) validateClass(decl *ClassDecl) error {
 				validPlacement := validHelperCarrierMatchPureCallPlacement(method.Body)
 				if contract == PipeLangLanguageContractV450 || contract == PipeLangLanguageContractV460 {
 					validPlacement = validHelperCarrierMatchLocalPureCallPlacement(method.Body)
-				} else if contract == PipeLangLanguageContractV470 || contract == PipeLangLanguageContractV480 || contract == PipeLangLanguageContractV490 || contract == PipeLangLanguageContractV500 || contract == PipeLangLanguageContractV510 || (contract == PipeLangLanguageContractV610 || contract == PipeLangLanguageContractV600 || contract == PipeLangLanguageContractV590 || contract == PipeLangLanguageContractV580) || contract == PipeLangLanguageContractV570 || contract == PipeLangLanguageContractV560 || contract == PipeLangLanguageContractV550 || contract == PipeLangLanguageContractV540 || contract == PipeLangLanguageContractV530 || contract == PipeLangLanguageContractV520 {
+				} else if contract == PipeLangLanguageContractV470 || contract == PipeLangLanguageContractV480 || contract == PipeLangLanguageContractV490 || contract == PipeLangLanguageContractV500 || contract == PipeLangLanguageContractV510 || (contract == PipeLangLanguageContractV620 || contract == PipeLangLanguageContractV610 || contract == PipeLangLanguageContractV600 || contract == PipeLangLanguageContractV590 || contract == PipeLangLanguageContractV580) || contract == PipeLangLanguageContractV570 || contract == PipeLangLanguageContractV560 || contract == PipeLangLanguageContractV550 || contract == PipeLangLanguageContractV540 || contract == PipeLangLanguageContractV530 || contract == PipeLangLanguageContractV520 {
 					validPlacement = validHelperCarrierMatchLaterLocalPureCallPlacement(method.Body)
 				}
 				if !validPlacement {
@@ -395,7 +395,7 @@ func (cp *checkedProgram) validateClass(decl *ClassDecl) error {
 					if contract == PipeLangLanguageContractV510 {
 						return oneDiagnostic(cp.sources, CodeExpressionType, CategorySemantic, method.Body.SourceSpan(), "v0.51.0 admits inherited bounded matches or one contiguous dependent carrier chain")
 					}
-					if (contract == PipeLangLanguageContractV610 || contract == PipeLangLanguageContractV600 || contract == PipeLangLanguageContractV590 || contract == PipeLangLanguageContractV580) || contract == PipeLangLanguageContractV570 || contract == PipeLangLanguageContractV560 || contract == PipeLangLanguageContractV550 || contract == PipeLangLanguageContractV540 || contract == PipeLangLanguageContractV530 || contract == PipeLangLanguageContractV520 {
+					if (contract == PipeLangLanguageContractV620 || contract == PipeLangLanguageContractV610 || contract == PipeLangLanguageContractV600 || contract == PipeLangLanguageContractV590 || contract == PipeLangLanguageContractV580) || contract == PipeLangLanguageContractV570 || contract == PipeLangLanguageContractV560 || contract == PipeLangLanguageContractV550 || contract == PipeLangLanguageContractV540 || contract == PipeLangLanguageContractV530 || contract == PipeLangLanguageContractV520 {
 						return oneDiagnostic(cp.sources, CodeExpressionType, CategorySemantic, method.Body.SourceSpan(), "v0.52.0 admits inherited bounded matches, one v0.51 immediate-only chain, or one cumulative fan-in chain")
 					}
 					return oneDiagnostic(cp.sources, CodeExpressionType, CategorySemantic, method.Body.SourceSpan(), fmt.Sprintf("%s admits helper calls only as one complete match carrier over direct caller parameters; nested match and computed carriers remain excluded", contract))
@@ -885,12 +885,15 @@ func (cp *checkedProgram) validateBlockPropagationMethod(method MethodDecl, decl
 	}
 	if _, direct := outer.Initializer.(*PropagateExpr); direct {
 		contract := cp.modules.LanguageContract()
-		if (contract == PipeLangLanguageContractV610 || contract == PipeLangLanguageContractV600 || contract == PipeLangLanguageContractV590) && len(method.Params) > 0 {
+		if (contract == PipeLangLanguageContractV620 || contract == PipeLangLanguageContractV610 || contract == PipeLangLanguageContractV600 || contract == PipeLangLanguageContractV590) && len(method.Params) > 0 {
 			carrier, err := cp.resolveType(method.Params[0].Type, RelatedSpan{Span: method.Params[0].Span, Message: "cross-payload Result carrier"})
 			if err != nil {
 				return err
 			}
-			if contract == PipeLangLanguageContractV610 && countPropagationExpressions(method.Body) >= 2 && isResolvedBoundedValueResult(contract, carrier) && isResolvedBoundedValueResult(contract, declared) {
+			if contract == PipeLangLanguageContractV620 && len(method.Params) >= 2 && countPropagationExpressions(method.Body) >= 2 && isResolvedBoundedValueResult(contract, carrier) && isResolvedBoundedValueResult(contract, declared) {
+				return cp.validateContextualCrossPayloadResultPropagation(method, declared, outer, carrier)
+			}
+			if (contract == PipeLangLanguageContractV620 || contract == PipeLangLanguageContractV610) && countPropagationExpressions(method.Body) >= 2 && isResolvedBoundedValueResult(contract, carrier) && isResolvedBoundedValueResult(contract, declared) {
 				return cp.validateGeneralizedCrossPayloadResultPropagation(method, declared, outer, carrier)
 			}
 			if contract == PipeLangLanguageContractV600 && countPropagationExpressions(method.Body) == 2 && isResolvedBoundedValueResult(contract, carrier) && isResolvedBoundedValueResult(contract, declared) {
@@ -900,7 +903,7 @@ func (cp *checkedProgram) validateBlockPropagationMethod(method MethodDecl, decl
 				return cp.validateCrossPayloadResultPropagation(method, declared, outer, carrier)
 			}
 		}
-		if (contract == PipeLangLanguageContractV610 || contract == PipeLangLanguageContractV600 || contract == PipeLangLanguageContractV590 || contract == PipeLangLanguageContractV580) && isResolvedSourceArithmeticResult(contract, declared) && (len(method.Params) >= 3 || countPropagationExpressions(method.Body) != 1) {
+		if (contract == PipeLangLanguageContractV620 || contract == PipeLangLanguageContractV610 || contract == PipeLangLanguageContractV600 || contract == PipeLangLanguageContractV590 || contract == PipeLangLanguageContractV580) && isResolvedSourceArithmeticResult(contract, declared) && (len(method.Params) >= 3 || countPropagationExpressions(method.Body) != 1) {
 			return cp.validateCheckedPropagationChain(method, declared, outer)
 		}
 		if contract == PipeLangLanguageContractV570 && isResolvedSourceArithmeticResult(contract, declared) && (len(method.Params) == 3 || countPropagationExpressions(method.Body) != 1) {
@@ -908,7 +911,7 @@ func (cp *checkedProgram) validateBlockPropagationMethod(method MethodDecl, decl
 		}
 		return cp.validateDirectParameterBlockPropagation(method, declared, outer)
 	}
-	if ((cp.modules.LanguageContract() == PipeLangLanguageContractV610 || cp.modules.LanguageContract() == PipeLangLanguageContractV600 || cp.modules.LanguageContract() == PipeLangLanguageContractV590 || cp.modules.LanguageContract() == PipeLangLanguageContractV580) || cp.modules.LanguageContract() == PipeLangLanguageContractV570 || cp.modules.LanguageContract() == PipeLangLanguageContractV560 || cp.modules.LanguageContract() == PipeLangLanguageContractV550) && isResolvedSourceArithmeticResult(cp.modules.LanguageContract(), declared) {
+	if ((cp.modules.LanguageContract() == PipeLangLanguageContractV620 || cp.modules.LanguageContract() == PipeLangLanguageContractV610 || cp.modules.LanguageContract() == PipeLangLanguageContractV600 || cp.modules.LanguageContract() == PipeLangLanguageContractV590 || cp.modules.LanguageContract() == PipeLangLanguageContractV580) || cp.modules.LanguageContract() == PipeLangLanguageContractV570 || cp.modules.LanguageContract() == PipeLangLanguageContractV560 || cp.modules.LanguageContract() == PipeLangLanguageContractV550) && isResolvedSourceArithmeticResult(cp.modules.LanguageContract(), declared) {
 		if _, helper := outer.Initializer.(*CallExpr); !helper {
 			return cp.validateDirectParameterBlockPropagation(method, declared, outer)
 		}
@@ -920,14 +923,40 @@ func (cp *checkedProgram) validateBlockPropagationMethod(method MethodDecl, decl
 }
 
 func (cp *checkedProgram) validateGeneralizedCrossPayloadResultPropagation(method MethodDecl, declared ResolvedTypeRef, first *ImmutableLocalExpr, sourceCarrier ResolvedTypeRef) error {
+	return cp.validateCrossPayloadResultPropagationChain(method, declared, first, sourceCarrier, false)
+}
+
+func (cp *checkedProgram) validateContextualCrossPayloadResultPropagation(method MethodDecl, declared ResolvedTypeRef, first *ImmutableLocalExpr, sourceCarrier ResolvedTypeRef) error {
+	return cp.validateCrossPayloadResultPropagationChain(method, declared, first, sourceCarrier, true)
+}
+
+func (cp *checkedProgram) validateCrossPayloadResultPropagationChain(method MethodDecl, declared ResolvedTypeRef, first *ImmutableLocalExpr, sourceCarrier ResolvedTypeRef, contextual bool) error {
+	feature := "v0.61.0 generalized cross-payload Result propagation"
+	expectedParameters := 1
+	if contextual {
+		feature = "v0.62.0 contextual cross-payload Result propagation"
+		expectedParameters = 2
+	}
 	fail := func(span Span, detail string) error {
-		return oneDiagnostic(cp.sources, CodePropagation, CategorySemantic, span, "v0.61.0 generalized cross-payload Result propagation "+detail)
+		return oneDiagnostic(cp.sources, CodePropagation, CategorySemantic, span, feature+" "+detail)
 	}
 	propagationCount := countPropagationExpressions(method.Body)
-	if normalizeVisibility(method.Visibility) != VisibilityPublic || len(method.Params) != 1 || propagationCount < 2 {
+	if normalizeVisibility(method.Visibility) != VisibilityPublic || len(method.Params) != expectedParameters || propagationCount < 2 {
+		if contextual {
+			return fail(method.Span, "requires one public pure method with one direct carrier, one direct string context parameter, and at least two propagations")
+		}
 		return fail(method.Span, "requires one public pure method with exactly one direct carrier parameter and at least two propagations")
 	}
-	if !isResolvedBoundedValueResult(PipeLangLanguageContractV610, sourceCarrier) || !isResolvedBoundedValueResult(PipeLangLanguageContractV610, declared) {
+	if contextual {
+		contextType, err := cp.resolveType(method.Params[1].Type, RelatedSpan{Span: method.Params[1].Span, Message: "contextual cross-payload string parameter"})
+		if err != nil {
+			return err
+		}
+		if !contextType.Equal(resolvedPrimitive(TypeString)) {
+			return fail(method.Params[1].Type.Span, "requires the second direct parameter to be exactly string")
+		}
+	}
+	if !isResolvedBoundedValueResult(cp.modules.LanguageContract(), sourceCarrier) || !isResolvedBoundedValueResult(cp.modules.LanguageContract(), declared) {
 		return fail(method.Body.SourceSpan(), "requires admitted source and target Results with string failure payloads")
 	}
 	firstPropagation, ok := first.Initializer.(*PropagateExpr)
@@ -957,7 +986,7 @@ func (cp *checkedProgram) validateGeneralizedCrossPayloadResultPropagation(metho
 			if payloadType.Equal(declared.Arguments[0]) {
 				return fail(terminal.Span, "requires adjacent distinct admitted payloads")
 			}
-			if err := cp.validateGeneralizedCrossPayloadHelper(method, terminal, payloadLocal.Name, payloadType, declared, stage); err != nil {
+			if err := cp.validateGeneralizedCrossPayloadHelper(method, terminal, payloadLocal.Name, payloadType, declared, stage, contextual, feature); err != nil {
 				return err
 			}
 			return nil
@@ -971,14 +1000,14 @@ func (cp *checkedProgram) validateGeneralizedCrossPayloadResultPropagation(metho
 		if err != nil {
 			return err
 		}
-		if !isResolvedBoundedValueResult(PipeLangLanguageContractV610, carrierType) || !carrierType.Arguments[1].Equal(sourceCarrier.Arguments[1]) || carrierType.Arguments[0].Equal(payloadType) {
+		if !isResolvedBoundedValueResult(cp.modules.LanguageContract(), carrierType) || !carrierType.Arguments[1].Equal(sourceCarrier.Arguments[1]) || carrierType.Arguments[0].Equal(payloadType) {
 			return fail(carrierLocal.Type.Span, fmt.Sprintf("stage %d requires an adjacent-distinct admitted payload with the shared string failure type", stage))
 		}
 		call, ok := carrierLocal.Initializer.(*CallExpr)
 		if !ok {
 			return fail(carrierLocal.Initializer.SourceSpan(), fmt.Sprintf("stage %d carrier must be initialized by one helper call", stage))
 		}
-		if err := cp.validateGeneralizedCrossPayloadHelper(method, call, payloadLocal.Name, payloadType, carrierType, stage); err != nil {
+		if err := cp.validateGeneralizedCrossPayloadHelper(method, call, payloadLocal.Name, payloadType, carrierType, stage, contextual, feature); err != nil {
 			return err
 		}
 		nextPayload, ok := carrierLocal.Return.(*ImmutableLocalExpr)
@@ -1004,31 +1033,56 @@ func (cp *checkedProgram) validateGeneralizedCrossPayloadResultPropagation(metho
 	}
 }
 
-func (cp *checkedProgram) validateGeneralizedCrossPayloadHelper(method MethodDecl, call *CallExpr, expectedArgument string, parameterType, returnType ResolvedTypeRef, stage int) error {
+func (cp *checkedProgram) validateGeneralizedCrossPayloadHelper(method MethodDecl, call *CallExpr, expectedArgument string, parameterType, returnType ResolvedTypeRef, stage int, contextual bool, feature string) error {
 	fail := func(span Span, detail string) error {
-		return oneDiagnostic(cp.sources, CodePropagation, CategorySemantic, span, fmt.Sprintf("v0.61.0 generalized cross-payload Result propagation stage %d helper %s", stage, detail))
+		return oneDiagnostic(cp.sources, CodePropagation, CategorySemantic, span, fmt.Sprintf("%s stage %d helper %s", feature, stage, detail))
 	}
-	if len(call.Arguments) != 1 {
+	expectedArguments := 1
+	if contextual {
+		expectedArguments = 2
+	}
+	if len(call.Arguments) != expectedArguments {
+		if contextual {
+			return fail(call.Span, "requires the direct preceding payload local followed by the direct string context parameter")
+		}
 		return fail(call.Span, "requires the direct preceding payload local as its sole argument")
 	}
 	argument, ok := call.Arguments[0].(*IdentExpr)
 	if !ok || argument.Name != expectedArgument {
-		return fail(call.Arguments[0].SourceSpan(), "requires the direct preceding payload local as its sole argument")
+		return fail(call.Arguments[0].SourceSpan(), "requires the direct preceding payload local as the first argument")
+	}
+	if contextual {
+		context, ok := call.Arguments[1].(*IdentExpr)
+		if !ok || context.Name != method.Params[1].Name {
+			return fail(call.Arguments[1].SourceSpan(), "requires the direct string context parameter as the second argument")
+		}
 	}
 	callerOwner, _ := methodBySpan(cp.program, method.Span)
 	helperOwner, helper := methodBySpan(cp.program, call.TargetSpan)
-	if callerOwner == nil || helperOwner == nil || helper == nil || callerOwner.Span != helperOwner.Span || normalizeVisibility(helper.Visibility) != VisibilityPublic || len(helper.Params) != 1 {
+	if callerOwner == nil || helperOwner == nil || helper == nil || callerOwner.Span != helperOwner.Span || normalizeVisibility(helper.Visibility) != VisibilityPublic || len(helper.Params) != expectedArguments {
 		return fail(call.NameSpan, "must resolve to one public pure same-class method")
 	}
 	helperParameter, err := cp.resolveType(helper.Params[0].Type, RelatedSpan{Span: helper.Params[0].Span, Message: "cross-payload helper parameter"})
 	if err != nil {
 		return err
 	}
+	if contextual {
+		helperContext, err := cp.resolveType(helper.Params[1].Type, RelatedSpan{Span: helper.Params[1].Span, Message: "cross-payload helper context parameter"})
+		if err != nil {
+			return err
+		}
+		if !helperContext.Equal(resolvedPrimitive(TypeString)) {
+			return fail(helper.Params[1].Type.Span, "requires the second helper parameter to be exactly string")
+		}
+	}
 	helperResult, err := cp.resolveType(helper.ReturnType, RelatedSpan{Span: helper.ReturnType.Span, Message: "cross-payload helper result"})
 	if err != nil {
 		return err
 	}
 	if !helperParameter.Equal(parameterType) || !helperResult.Equal(returnType) {
+		if contextual {
+			return fail(call.Span, "requires the exact payload-and-string-context-to-Result signature")
+		}
 		return fail(call.Span, "requires the exact payload-to-Result signature")
 	}
 	return nil
@@ -1280,16 +1334,16 @@ func (cp *checkedProgram) validateDirectParameterBlockPropagation(method MethodD
 		return oneDiagnostic(cp.sources, CodePropagation, CategorySemantic, propagated.Span, "propagated carrier parameter and method return type must be identical", RelatedSpan{Span: method.ReturnType.Span, Message: "method return carrier"})
 	}
 	contract := cp.modules.LanguageContract()
-	allowArithmetic := ((contract == PipeLangLanguageContractV610 || contract == PipeLangLanguageContractV600 || contract == PipeLangLanguageContractV590 || contract == PipeLangLanguageContractV580) || contract == PipeLangLanguageContractV570 || contract == PipeLangLanguageContractV560 || contract == PipeLangLanguageContractV550) && isResolvedSourceArithmeticResult(contract, carrier)
-	multiParameterArithmetic := ((contract == PipeLangLanguageContractV610 || contract == PipeLangLanguageContractV600 || contract == PipeLangLanguageContractV590 || contract == PipeLangLanguageContractV580) || contract == PipeLangLanguageContractV570 || contract == PipeLangLanguageContractV560) && allowArithmetic && len(method.Params) == 2
+	allowArithmetic := ((contract == PipeLangLanguageContractV620 || contract == PipeLangLanguageContractV610 || contract == PipeLangLanguageContractV600 || contract == PipeLangLanguageContractV590 || contract == PipeLangLanguageContractV580) || contract == PipeLangLanguageContractV570 || contract == PipeLangLanguageContractV560 || contract == PipeLangLanguageContractV550) && isResolvedSourceArithmeticResult(contract, carrier)
+	multiParameterArithmetic := ((contract == PipeLangLanguageContractV620 || contract == PipeLangLanguageContractV610 || contract == PipeLangLanguageContractV600 || contract == PipeLangLanguageContractV590 || contract == PipeLangLanguageContractV580) || contract == PipeLangLanguageContractV570 || contract == PipeLangLanguageContractV560) && allowArithmetic && len(method.Params) == 2
 	if len(method.Params) != 1 && !multiParameterArithmetic {
-		if ((contract == PipeLangLanguageContractV610 || contract == PipeLangLanguageContractV600 || contract == PipeLangLanguageContractV590 || contract == PipeLangLanguageContractV580) || contract == PipeLangLanguageContractV570 || contract == PipeLangLanguageContractV560) && allowArithmetic {
+		if ((contract == PipeLangLanguageContractV620 || contract == PipeLangLanguageContractV610 || contract == PipeLangLanguageContractV600 || contract == PipeLangLanguageContractV590 || contract == PipeLangLanguageContractV580) || contract == PipeLangLanguageContractV570 || contract == PipeLangLanguageContractV560) && allowArithmetic {
 			return oneDiagnostic(cp.sources, CodePropagation, CategorySemantic, propagated.Value.SourceSpan(), "v0.56.0 direct checked-arithmetic propagation requires either the inherited sole carrier parameter or exactly carrier and payload operand parameters")
 		}
 		return oneDiagnostic(cp.sources, CodePropagation, CategorySemantic, propagated.Value.SourceSpan(), "v0.41.0 block propagation requires the method's sole direct carrier parameter")
 	}
 	if !cp.isResolvedOptionalValue(contract, carrier) && !isResolvedBoundedValueResult(contract, carrier) && !allowArithmetic {
-		if (contract == PipeLangLanguageContractV610 || contract == PipeLangLanguageContractV600 || contract == PipeLangLanguageContractV590 || contract == PipeLangLanguageContractV580) || contract == PipeLangLanguageContractV570 || contract == PipeLangLanguageContractV560 || contract == PipeLangLanguageContractV550 {
+		if (contract == PipeLangLanguageContractV620 || contract == PipeLangLanguageContractV610 || contract == PipeLangLanguageContractV600 || contract == PipeLangLanguageContractV590 || contract == PipeLangLanguageContractV580) || contract == PipeLangLanguageContractV570 || contract == PipeLangLanguageContractV560 || contract == PipeLangLanguageContractV550 {
 			return oneDiagnostic(cp.sources, CodePropagation, CategorySemantic, propagated.Value.SourceSpan(), fmt.Sprintf("v0.55.0 block propagation requires an admitted Optional, bounded Result, or checked-arithmetic Result, got %s", carrier))
 		}
 		return oneDiagnostic(cp.sources, CodePropagation, CategorySemantic, propagated.Value.SourceSpan(), fmt.Sprintf("v0.41.0 block propagation requires an admitted Optional or bounded Result, got %s", carrier))
@@ -1432,7 +1486,7 @@ func (cp *checkedProgram) validatePriorLocalBlockPropagation(method MethodDecl, 
 		return oneDiagnostic(cp.sources, CodePropagation, CategorySemantic, second.Initializer.SourceSpan(), "v0.42.0 prior-local propagation requires propagation as the second immutable-local initializer")
 	}
 	contract := cp.modules.LanguageContract()
-	if (contract == PipeLangLanguageContractV610 || contract == PipeLangLanguageContractV600 || contract == PipeLangLanguageContractV590 || contract == PipeLangLanguageContractV580) || contract == PipeLangLanguageContractV570 || contract == PipeLangLanguageContractV560 || contract == PipeLangLanguageContractV550 || contract == PipeLangLanguageContractV540 || contract == PipeLangLanguageContractV530 {
+	if (contract == PipeLangLanguageContractV620 || contract == PipeLangLanguageContractV610 || contract == PipeLangLanguageContractV600 || contract == PipeLangLanguageContractV590 || contract == PipeLangLanguageContractV580) || contract == PipeLangLanguageContractV570 || contract == PipeLangLanguageContractV560 || contract == PipeLangLanguageContractV550 || contract == PipeLangLanguageContractV540 || contract == PipeLangLanguageContractV530 {
 		if len(method.Params) == 0 || !directCallerArguments(called.Arguments, method.Params) {
 			return oneDiagnostic(cp.sources, CodePropagation, CategorySemantic, called.SourceSpan(), fmt.Sprintf("%s multi-parameter helper propagation requires every caller parameter directly once in declaration order", contract))
 		}
@@ -1453,9 +1507,9 @@ func (cp *checkedProgram) validatePriorLocalBlockPropagation(method MethodDecl, 
 	if !carrier.Equal(declared) {
 		return oneDiagnostic(cp.sources, CodePropagation, CategorySemantic, outer.Type.Span, "helper-call carrier local and method return type must be identical", RelatedSpan{Span: method.ReturnType.Span, Message: "method return carrier"})
 	}
-	allowArithmetic := ((contract == PipeLangLanguageContractV610 || contract == PipeLangLanguageContractV600 || contract == PipeLangLanguageContractV590 || contract == PipeLangLanguageContractV580) || contract == PipeLangLanguageContractV570 || contract == PipeLangLanguageContractV560 || contract == PipeLangLanguageContractV550 || contract == PipeLangLanguageContractV540) && isResolvedSourceArithmeticResult(contract, carrier)
+	allowArithmetic := ((contract == PipeLangLanguageContractV620 || contract == PipeLangLanguageContractV610 || contract == PipeLangLanguageContractV600 || contract == PipeLangLanguageContractV590 || contract == PipeLangLanguageContractV580) || contract == PipeLangLanguageContractV570 || contract == PipeLangLanguageContractV560 || contract == PipeLangLanguageContractV550 || contract == PipeLangLanguageContractV540) && isResolvedSourceArithmeticResult(contract, carrier)
 	if !cp.isResolvedOptionalValue(contract, carrier) && !isResolvedBoundedValueResult(contract, carrier) && !allowArithmetic {
-		if (contract == PipeLangLanguageContractV610 || contract == PipeLangLanguageContractV600 || contract == PipeLangLanguageContractV590 || contract == PipeLangLanguageContractV580) || contract == PipeLangLanguageContractV570 || contract == PipeLangLanguageContractV560 || contract == PipeLangLanguageContractV550 || contract == PipeLangLanguageContractV540 {
+		if (contract == PipeLangLanguageContractV620 || contract == PipeLangLanguageContractV610 || contract == PipeLangLanguageContractV600 || contract == PipeLangLanguageContractV590 || contract == PipeLangLanguageContractV580) || contract == PipeLangLanguageContractV570 || contract == PipeLangLanguageContractV560 || contract == PipeLangLanguageContractV550 || contract == PipeLangLanguageContractV540 {
 			return oneDiagnostic(cp.sources, CodePropagation, CategorySemantic, outer.Type.Span, fmt.Sprintf("v0.54.0 prior-local propagation requires an admitted Optional, bounded Result, or checked-arithmetic Result, got %s", carrier))
 		}
 		return oneDiagnostic(cp.sources, CodePropagation, CategorySemantic, outer.Type.Span, fmt.Sprintf("v0.42.0 prior-local propagation requires an admitted Optional or bounded Result, got %s", carrier))
@@ -1545,12 +1599,12 @@ func (cp *checkedProgram) validateRecordTransportSignature(method MethodDecl, re
 	boundedConditional := hasConditionalSourceContract(contract) && containsConditionalExpression(method.Body) && validBoundedConditionalExpression(method.Body)
 	_, immutableLocal := method.Body.(*ImmutableLocalExpr)
 	composedRecordOptionalMatch := false
-	if ((contract == PipeLangLanguageContractV610 || contract == PipeLangLanguageContractV600 || contract == PipeLangLanguageContractV590 || contract == PipeLangLanguageContractV580) || contract == PipeLangLanguageContractV570 || contract == PipeLangLanguageContractV560 || contract == PipeLangLanguageContractV550 || contract == PipeLangLanguageContractV540 || contract == PipeLangLanguageContractV530 || contract == PipeLangLanguageContractV520 || contract == PipeLangLanguageContractV510 || contract == PipeLangLanguageContractV500 || contract == PipeLangLanguageContractV490 || contract == PipeLangLanguageContractV370 || contract == PipeLangLanguageContractV380 || contract == PipeLangLanguageContractV390 || contract == PipeLangLanguageContractV400 || contract == PipeLangLanguageContractV410 || contract == PipeLangLanguageContractV420 || contract == PipeLangLanguageContractV430 || contract == PipeLangLanguageContractV440 || contract == PipeLangLanguageContractV450 || contract == PipeLangLanguageContractV460 || contract == PipeLangLanguageContractV470 || contract == PipeLangLanguageContractV480) && containsCallExpression(method.Body) && result.Kind == TypeRefPrimitive && len(resolvedParameters) == 1 {
+	if ((contract == PipeLangLanguageContractV620 || contract == PipeLangLanguageContractV610 || contract == PipeLangLanguageContractV600 || contract == PipeLangLanguageContractV590 || contract == PipeLangLanguageContractV580) || contract == PipeLangLanguageContractV570 || contract == PipeLangLanguageContractV560 || contract == PipeLangLanguageContractV550 || contract == PipeLangLanguageContractV540 || contract == PipeLangLanguageContractV530 || contract == PipeLangLanguageContractV520 || contract == PipeLangLanguageContractV510 || contract == PipeLangLanguageContractV500 || contract == PipeLangLanguageContractV490 || contract == PipeLangLanguageContractV370 || contract == PipeLangLanguageContractV380 || contract == PipeLangLanguageContractV390 || contract == PipeLangLanguageContractV400 || contract == PipeLangLanguageContractV410 || contract == PipeLangLanguageContractV420 || contract == PipeLangLanguageContractV430 || contract == PipeLangLanguageContractV440 || contract == PipeLangLanguageContractV450 || contract == PipeLangLanguageContractV460 || contract == PipeLangLanguageContractV470 || contract == PipeLangLanguageContractV480) && containsCallExpression(method.Body) && result.Kind == TypeRefPrimitive && len(resolvedParameters) == 1 {
 		_, matchBody := method.Body.(*MatchExpr)
 		composedRecordOptionalMatch = matchBody && isResolvedRecordOptional(resolvedParameters[0]) && cp.isResolvedRecordType(resolvedParameters[0].Arguments[0])
 	}
 	_, helperCarrierMatch := method.Body.(*MatchExpr)
-	helperCarrierMatch = helperCarrierMatch && ((contract == PipeLangLanguageContractV610 || contract == PipeLangLanguageContractV600 || contract == PipeLangLanguageContractV590 || contract == PipeLangLanguageContractV580) || contract == PipeLangLanguageContractV570 || contract == PipeLangLanguageContractV560 || contract == PipeLangLanguageContractV550 || contract == PipeLangLanguageContractV540 || contract == PipeLangLanguageContractV530 || contract == PipeLangLanguageContractV520 || contract == PipeLangLanguageContractV510 || contract == PipeLangLanguageContractV500 || contract == PipeLangLanguageContractV490 || contract == PipeLangLanguageContractV440 || contract == PipeLangLanguageContractV450 || contract == PipeLangLanguageContractV460 || contract == PipeLangLanguageContractV470 || contract == PipeLangLanguageContractV480) && containsCallExpression(method.Body)
+	helperCarrierMatch = helperCarrierMatch && ((contract == PipeLangLanguageContractV620 || contract == PipeLangLanguageContractV610 || contract == PipeLangLanguageContractV600 || contract == PipeLangLanguageContractV590 || contract == PipeLangLanguageContractV580) || contract == PipeLangLanguageContractV570 || contract == PipeLangLanguageContractV560 || contract == PipeLangLanguageContractV550 || contract == PipeLangLanguageContractV540 || contract == PipeLangLanguageContractV530 || contract == PipeLangLanguageContractV520 || contract == PipeLangLanguageContractV510 || contract == PipeLangLanguageContractV500 || contract == PipeLangLanguageContractV490 || contract == PipeLangLanguageContractV440 || contract == PipeLangLanguageContractV450 || contract == PipeLangLanguageContractV460 || contract == PipeLangLanguageContractV470 || contract == PipeLangLanguageContractV480) && containsCallExpression(method.Body)
 	if !hasPrimitiveRecordSourceContract(contract) || (!identityTransport && !fieldProjection && !recordConstruction && !recordEquality && !recordList && !recordListCount && !recordListAppend && !recordListAt && !recordListFindByText && !recordListFilterByText && !recordListFilterContainsCaseFolded && !namedPredicate && !recordListFilterPredicate && !recordOptional && !snapshotResult && !dependentCarrierHelper && !composedRecordOptionalMatch && !helperCarrierMatch && !boundedConditional && !immutableLocal) {
 		return false, oneDiagnostic(cp.sources, CodeInvalidType, CategorySemantic, method.Span, fmt.Sprintf("the %s primitive record is admitted only as one exact identity transport, one-hop primitive field projection, direct declaration-ordered construction, direct structural equality, bounded record-list method, or bounded Optional<R> method", contract))
 	}
@@ -1717,7 +1771,7 @@ func (cp *checkedProgram) validateOptionalSignature(method MethodDecl, result Re
 }
 
 func (cp *checkedProgram) dependentCarrierHelperSignature(method MethodDecl, result ResolvedTypeRef, parameters []ResolvedTypeRef) bool {
-	if cp == nil || cp.modules == nil || (cp.modules.LanguageContract() != PipeLangLanguageContractV500 && cp.modules.LanguageContract() != PipeLangLanguageContractV510 && (cp.modules.LanguageContract() != PipeLangLanguageContractV610 && cp.modules.LanguageContract() != PipeLangLanguageContractV600 && cp.modules.LanguageContract() != PipeLangLanguageContractV590 && cp.modules.LanguageContract() != PipeLangLanguageContractV580) && cp.modules.LanguageContract() != PipeLangLanguageContractV570 && cp.modules.LanguageContract() != PipeLangLanguageContractV560 && cp.modules.LanguageContract() != PipeLangLanguageContractV550 && cp.modules.LanguageContract() != PipeLangLanguageContractV540 && cp.modules.LanguageContract() != PipeLangLanguageContractV530 && cp.modules.LanguageContract() != PipeLangLanguageContractV520) || normalizeVisibility(method.Visibility) != VisibilityPublic {
+	if cp == nil || cp.modules == nil || (cp.modules.LanguageContract() != PipeLangLanguageContractV500 && cp.modules.LanguageContract() != PipeLangLanguageContractV510 && (cp.modules.LanguageContract() != PipeLangLanguageContractV620 && cp.modules.LanguageContract() != PipeLangLanguageContractV610 && cp.modules.LanguageContract() != PipeLangLanguageContractV600 && cp.modules.LanguageContract() != PipeLangLanguageContractV590 && cp.modules.LanguageContract() != PipeLangLanguageContractV580) && cp.modules.LanguageContract() != PipeLangLanguageContractV570 && cp.modules.LanguageContract() != PipeLangLanguageContractV560 && cp.modules.LanguageContract() != PipeLangLanguageContractV550 && cp.modules.LanguageContract() != PipeLangLanguageContractV540 && cp.modules.LanguageContract() != PipeLangLanguageContractV530 && cp.modules.LanguageContract() != PipeLangLanguageContractV520) || normalizeVisibility(method.Visibility) != VisibilityPublic {
 		return false
 	}
 	owner := cp.ownerClassForMethod(method)
@@ -1735,7 +1789,7 @@ func (cp *checkedProgram) dependentCarrierHelperSignature(method MethodDecl, res
 				continue
 			}
 			selectedCount := 1
-			if ((cp.modules.LanguageContract() == PipeLangLanguageContractV610 || cp.modules.LanguageContract() == PipeLangLanguageContractV600 || cp.modules.LanguageContract() == PipeLangLanguageContractV590 || cp.modules.LanguageContract() == PipeLangLanguageContractV580) || cp.modules.LanguageContract() == PipeLangLanguageContractV570 || cp.modules.LanguageContract() == PipeLangLanguageContractV560 || cp.modules.LanguageContract() == PipeLangLanguageContractV550 || cp.modules.LanguageContract() == PipeLangLanguageContractV540 || cp.modules.LanguageContract() == PipeLangLanguageContractV530 || cp.modules.LanguageContract() == PipeLangLanguageContractV520) && len(parameters) == len(caller.Params)+position {
+			if ((cp.modules.LanguageContract() == PipeLangLanguageContractV620 || cp.modules.LanguageContract() == PipeLangLanguageContractV610 || cp.modules.LanguageContract() == PipeLangLanguageContractV600 || cp.modules.LanguageContract() == PipeLangLanguageContractV590 || cp.modules.LanguageContract() == PipeLangLanguageContractV580) || cp.modules.LanguageContract() == PipeLangLanguageContractV570 || cp.modules.LanguageContract() == PipeLangLanguageContractV560 || cp.modules.LanguageContract() == PipeLangLanguageContractV550 || cp.modules.LanguageContract() == PipeLangLanguageContractV540 || cp.modules.LanguageContract() == PipeLangLanguageContractV530 || cp.modules.LanguageContract() == PipeLangLanguageContractV520) && len(parameters) == len(caller.Params)+position {
 				selectedCount = position
 			}
 			if len(parameters) != len(caller.Params)+selectedCount {
@@ -2007,7 +2061,7 @@ func (cp *checkedProgram) inferExprType(expr Expr, env map[string]ResolvedTypeRe
 			return ResolvedTypeRef{}, err
 		}
 		directCarrier := direct && identifier.Name != "" && (cp.isResolvedOptionalValue(cp.modules.LanguageContract(), carrier) || isResolvedBoundedValueResult(cp.modules.LanguageContract(), carrier) || isResolvedSourceArithmeticResult(cp.modules.LanguageContract(), carrier))
-		helperCarrier := helperResult && ((hasGeneralHelperCarrierMatchSourceContract(cp.modules.LanguageContract()) && (cp.isResolvedOptionalValue(cp.modules.LanguageContract(), carrier) || isResolvedBoundedValueResult(cp.modules.LanguageContract(), carrier) || ((cp.modules.LanguageContract() == PipeLangLanguageContractV460 || cp.modules.LanguageContract() == PipeLangLanguageContractV470 || cp.modules.LanguageContract() == PipeLangLanguageContractV480 || cp.modules.LanguageContract() == PipeLangLanguageContractV490 || cp.modules.LanguageContract() == PipeLangLanguageContractV500 || cp.modules.LanguageContract() == PipeLangLanguageContractV510 || (cp.modules.LanguageContract() == PipeLangLanguageContractV610 || cp.modules.LanguageContract() == PipeLangLanguageContractV600 || cp.modules.LanguageContract() == PipeLangLanguageContractV590 || cp.modules.LanguageContract() == PipeLangLanguageContractV580) || cp.modules.LanguageContract() == PipeLangLanguageContractV570 || cp.modules.LanguageContract() == PipeLangLanguageContractV560 || cp.modules.LanguageContract() == PipeLangLanguageContractV550 || cp.modules.LanguageContract() == PipeLangLanguageContractV540 || cp.modules.LanguageContract() == PipeLangLanguageContractV530 || cp.modules.LanguageContract() == PipeLangLanguageContractV520) && isResolvedSourceArithmeticResult(cp.modules.LanguageContract(), carrier)))) || (hasHelperResultMatchSourceContract(cp.modules.LanguageContract()) && isResolvedTextResult(carrier)))
+		helperCarrier := helperResult && ((hasGeneralHelperCarrierMatchSourceContract(cp.modules.LanguageContract()) && (cp.isResolvedOptionalValue(cp.modules.LanguageContract(), carrier) || isResolvedBoundedValueResult(cp.modules.LanguageContract(), carrier) || ((cp.modules.LanguageContract() == PipeLangLanguageContractV460 || cp.modules.LanguageContract() == PipeLangLanguageContractV470 || cp.modules.LanguageContract() == PipeLangLanguageContractV480 || cp.modules.LanguageContract() == PipeLangLanguageContractV490 || cp.modules.LanguageContract() == PipeLangLanguageContractV500 || cp.modules.LanguageContract() == PipeLangLanguageContractV510 || (cp.modules.LanguageContract() == PipeLangLanguageContractV620 || cp.modules.LanguageContract() == PipeLangLanguageContractV610 || cp.modules.LanguageContract() == PipeLangLanguageContractV600 || cp.modules.LanguageContract() == PipeLangLanguageContractV590 || cp.modules.LanguageContract() == PipeLangLanguageContractV580) || cp.modules.LanguageContract() == PipeLangLanguageContractV570 || cp.modules.LanguageContract() == PipeLangLanguageContractV560 || cp.modules.LanguageContract() == PipeLangLanguageContractV550 || cp.modules.LanguageContract() == PipeLangLanguageContractV540 || cp.modules.LanguageContract() == PipeLangLanguageContractV530 || cp.modules.LanguageContract() == PipeLangLanguageContractV520) && isResolvedSourceArithmeticResult(cp.modules.LanguageContract(), carrier)))) || (hasHelperResultMatchSourceContract(cp.modules.LanguageContract()) && isResolvedTextResult(carrier)))
 		if !directCarrier && !helperCarrier {
 			return ResolvedTypeRef{}, oneDiagnostic(cp.sources, CodeInvalidType, CategorySemantic, match.Value.SourceSpan(), "match requires one direct Optional or admitted Result parameter")
 		}
@@ -2207,7 +2261,7 @@ func (cp *checkedProgram) inferExprType(expr Expr, env map[string]ResolvedTypeRe
 	}
 	switch list := expr.(type) {
 	case *ListSortByOrdinalDirectionsExpr:
-		if cp == nil || cp.modules == nil || ((cp.modules.LanguageContract() != PipeLangLanguageContractV610 && cp.modules.LanguageContract() != PipeLangLanguageContractV600 && cp.modules.LanguageContract() != PipeLangLanguageContractV590 && cp.modules.LanguageContract() != PipeLangLanguageContractV580) && cp.modules.LanguageContract() != PipeLangLanguageContractV570 && cp.modules.LanguageContract() != PipeLangLanguageContractV560 && cp.modules.LanguageContract() != PipeLangLanguageContractV550 && cp.modules.LanguageContract() != PipeLangLanguageContractV540 && cp.modules.LanguageContract() != PipeLangLanguageContractV530 && cp.modules.LanguageContract() != PipeLangLanguageContractV520 && cp.modules.LanguageContract() != PipeLangLanguageContractV510 && cp.modules.LanguageContract() != PipeLangLanguageContractV500 && cp.modules.LanguageContract() != PipeLangLanguageContractV490 && cp.modules.LanguageContract() != PipeLangLanguageContractV320 && cp.modules.LanguageContract() != PipeLangLanguageContractV330 && cp.modules.LanguageContract() != PipeLangLanguageContractV340 && cp.modules.LanguageContract() != PipeLangLanguageContractV350 && cp.modules.LanguageContract() != PipeLangLanguageContractV360 && cp.modules.LanguageContract() != PipeLangLanguageContractV370 && cp.modules.LanguageContract() != PipeLangLanguageContractV380 && cp.modules.LanguageContract() != PipeLangLanguageContractV390 && cp.modules.LanguageContract() != PipeLangLanguageContractV400 && cp.modules.LanguageContract() != PipeLangLanguageContractV410 && cp.modules.LanguageContract() != PipeLangLanguageContractV420 && cp.modules.LanguageContract() != PipeLangLanguageContractV430 && cp.modules.LanguageContract() != PipeLangLanguageContractV440 && cp.modules.LanguageContract() != PipeLangLanguageContractV450 && cp.modules.LanguageContract() != PipeLangLanguageContractV460 && cp.modules.LanguageContract() != PipeLangLanguageContractV470 && cp.modules.LanguageContract() != PipeLangLanguageContractV480) {
+		if cp == nil || cp.modules == nil || ((cp.modules.LanguageContract() != PipeLangLanguageContractV620 && cp.modules.LanguageContract() != PipeLangLanguageContractV610 && cp.modules.LanguageContract() != PipeLangLanguageContractV600 && cp.modules.LanguageContract() != PipeLangLanguageContractV590 && cp.modules.LanguageContract() != PipeLangLanguageContractV580) && cp.modules.LanguageContract() != PipeLangLanguageContractV570 && cp.modules.LanguageContract() != PipeLangLanguageContractV560 && cp.modules.LanguageContract() != PipeLangLanguageContractV550 && cp.modules.LanguageContract() != PipeLangLanguageContractV540 && cp.modules.LanguageContract() != PipeLangLanguageContractV530 && cp.modules.LanguageContract() != PipeLangLanguageContractV520 && cp.modules.LanguageContract() != PipeLangLanguageContractV510 && cp.modules.LanguageContract() != PipeLangLanguageContractV500 && cp.modules.LanguageContract() != PipeLangLanguageContractV490 && cp.modules.LanguageContract() != PipeLangLanguageContractV320 && cp.modules.LanguageContract() != PipeLangLanguageContractV330 && cp.modules.LanguageContract() != PipeLangLanguageContractV340 && cp.modules.LanguageContract() != PipeLangLanguageContractV350 && cp.modules.LanguageContract() != PipeLangLanguageContractV360 && cp.modules.LanguageContract() != PipeLangLanguageContractV370 && cp.modules.LanguageContract() != PipeLangLanguageContractV380 && cp.modules.LanguageContract() != PipeLangLanguageContractV390 && cp.modules.LanguageContract() != PipeLangLanguageContractV400 && cp.modules.LanguageContract() != PipeLangLanguageContractV410 && cp.modules.LanguageContract() != PipeLangLanguageContractV420 && cp.modules.LanguageContract() != PipeLangLanguageContractV430 && cp.modules.LanguageContract() != PipeLangLanguageContractV440 && cp.modules.LanguageContract() != PipeLangLanguageContractV450 && cp.modules.LanguageContract() != PipeLangLanguageContractV460 && cp.modules.LanguageContract() != PipeLangLanguageContractV470 && cp.modules.LanguageContract() != PipeLangLanguageContractV480) {
 			return ResolvedTypeRef{}, oneDiagnostic(cp.sources, CodeExpressionType, CategorySemantic, list.Span, "directional record-list ordinal sorting requires language contract v0.32.0")
 		}
 		values, err := cp.inferExprType(list.Values, env)
@@ -2352,7 +2406,7 @@ func (cp *checkedProgram) inferExprType(expr Expr, env map[string]ResolvedTypeRe
 		if cp == nil || cp.modules == nil || !hasPrimitiveRecordListAtSourceContract(cp.modules.LanguageContract()) {
 			return ResolvedTypeRef{}, oneDiagnostic(cp.sources, CodeExpressionType, CategorySemantic, list.Span, "record-list indexing requires language contract v0.20.0")
 		}
-		if list.Postfix && (cp.modules.LanguageContract() != PipeLangLanguageContractV610 && cp.modules.LanguageContract() != PipeLangLanguageContractV600 && cp.modules.LanguageContract() != PipeLangLanguageContractV590 && cp.modules.LanguageContract() != PipeLangLanguageContractV580) && cp.modules.LanguageContract() != PipeLangLanguageContractV570 && cp.modules.LanguageContract() != PipeLangLanguageContractV560 && cp.modules.LanguageContract() != PipeLangLanguageContractV550 && cp.modules.LanguageContract() != PipeLangLanguageContractV540 && cp.modules.LanguageContract() != PipeLangLanguageContractV530 && cp.modules.LanguageContract() != PipeLangLanguageContractV520 && cp.modules.LanguageContract() != PipeLangLanguageContractV510 && cp.modules.LanguageContract() != PipeLangLanguageContractV500 && cp.modules.LanguageContract() != PipeLangLanguageContractV490 && cp.modules.LanguageContract() != PipeLangLanguageContractV330 && cp.modules.LanguageContract() != PipeLangLanguageContractV340 && cp.modules.LanguageContract() != PipeLangLanguageContractV350 && cp.modules.LanguageContract() != PipeLangLanguageContractV360 && cp.modules.LanguageContract() != PipeLangLanguageContractV370 && cp.modules.LanguageContract() != PipeLangLanguageContractV380 && cp.modules.LanguageContract() != PipeLangLanguageContractV390 && cp.modules.LanguageContract() != PipeLangLanguageContractV400 && cp.modules.LanguageContract() != PipeLangLanguageContractV410 && cp.modules.LanguageContract() != PipeLangLanguageContractV420 && cp.modules.LanguageContract() != PipeLangLanguageContractV430 && cp.modules.LanguageContract() != PipeLangLanguageContractV440 && cp.modules.LanguageContract() != PipeLangLanguageContractV450 && cp.modules.LanguageContract() != PipeLangLanguageContractV460 && cp.modules.LanguageContract() != PipeLangLanguageContractV470 && cp.modules.LanguageContract() != PipeLangLanguageContractV480 {
+		if list.Postfix && (cp.modules.LanguageContract() != PipeLangLanguageContractV620 && cp.modules.LanguageContract() != PipeLangLanguageContractV610 && cp.modules.LanguageContract() != PipeLangLanguageContractV600 && cp.modules.LanguageContract() != PipeLangLanguageContractV590 && cp.modules.LanguageContract() != PipeLangLanguageContractV580) && cp.modules.LanguageContract() != PipeLangLanguageContractV570 && cp.modules.LanguageContract() != PipeLangLanguageContractV560 && cp.modules.LanguageContract() != PipeLangLanguageContractV550 && cp.modules.LanguageContract() != PipeLangLanguageContractV540 && cp.modules.LanguageContract() != PipeLangLanguageContractV530 && cp.modules.LanguageContract() != PipeLangLanguageContractV520 && cp.modules.LanguageContract() != PipeLangLanguageContractV510 && cp.modules.LanguageContract() != PipeLangLanguageContractV500 && cp.modules.LanguageContract() != PipeLangLanguageContractV490 && cp.modules.LanguageContract() != PipeLangLanguageContractV330 && cp.modules.LanguageContract() != PipeLangLanguageContractV340 && cp.modules.LanguageContract() != PipeLangLanguageContractV350 && cp.modules.LanguageContract() != PipeLangLanguageContractV360 && cp.modules.LanguageContract() != PipeLangLanguageContractV370 && cp.modules.LanguageContract() != PipeLangLanguageContractV380 && cp.modules.LanguageContract() != PipeLangLanguageContractV390 && cp.modules.LanguageContract() != PipeLangLanguageContractV400 && cp.modules.LanguageContract() != PipeLangLanguageContractV410 && cp.modules.LanguageContract() != PipeLangLanguageContractV420 && cp.modules.LanguageContract() != PipeLangLanguageContractV430 && cp.modules.LanguageContract() != PipeLangLanguageContractV440 && cp.modules.LanguageContract() != PipeLangLanguageContractV450 && cp.modules.LanguageContract() != PipeLangLanguageContractV460 && cp.modules.LanguageContract() != PipeLangLanguageContractV470 && cp.modules.LanguageContract() != PipeLangLanguageContractV480 {
 			return ResolvedTypeRef{}, oneDiagnostic(cp.sources, CodeExpressionType, CategorySemantic, list.Span, "postfix safe indexing requires language contract v0.33.0")
 		}
 		values, err := cp.inferExprType(list.Values, env)
@@ -2601,7 +2655,7 @@ func (cp *checkedProgram) resolveRecordField(record ResolvedTypeRef, name string
 func (cp *checkedProgram) inferMethodBodyType(method MethodDecl, env map[string]ResolvedTypeRef, declared ResolvedTypeRef) (ResolvedTypeRef, error) {
 	expr := method.Body
 	if _, ok := expr.(*ImmutableLocalExpr); ok {
-		if cp != nil && cp.modules != nil && ((cp.modules.LanguageContract() == PipeLangLanguageContractV610 || cp.modules.LanguageContract() == PipeLangLanguageContractV600 || cp.modules.LanguageContract() == PipeLangLanguageContractV590 || cp.modules.LanguageContract() == PipeLangLanguageContractV580) || cp.modules.LanguageContract() == PipeLangLanguageContractV570 || cp.modules.LanguageContract() == PipeLangLanguageContractV560 || cp.modules.LanguageContract() == PipeLangLanguageContractV550 || cp.modules.LanguageContract() == PipeLangLanguageContractV540) && isResolvedSourceArithmeticResult(cp.modules.LanguageContract(), declared) && containsPropagationExpression(expr) {
+		if cp != nil && cp.modules != nil && ((cp.modules.LanguageContract() == PipeLangLanguageContractV620 || cp.modules.LanguageContract() == PipeLangLanguageContractV610 || cp.modules.LanguageContract() == PipeLangLanguageContractV600 || cp.modules.LanguageContract() == PipeLangLanguageContractV590 || cp.modules.LanguageContract() == PipeLangLanguageContractV580) || cp.modules.LanguageContract() == PipeLangLanguageContractV570 || cp.modules.LanguageContract() == PipeLangLanguageContractV560 || cp.modules.LanguageContract() == PipeLangLanguageContractV550 || cp.modules.LanguageContract() == PipeLangLanguageContractV540) && isResolvedSourceArithmeticResult(cp.modules.LanguageContract(), declared) && containsPropagationExpression(expr) {
 			return cp.inferCheckedArithmeticPropagationBlock(expr, env, declared)
 		}
 		return cp.inferExprType(expr, env)
@@ -2681,7 +2735,7 @@ func (cp *checkedProgram) inferMethodBodyType(method MethodDecl, env map[string]
 		}
 		return resolvedArithmeticResult(binary64), nil
 	}
-	if unary, unaryOK := expr.(*UnaryExpr); unaryOK && ((contract == PipeLangLanguageContractV610 || contract == PipeLangLanguageContractV600 || contract == PipeLangLanguageContractV590 || contract == PipeLangLanguageContractV580) || contract == PipeLangLanguageContractV570 || contract == PipeLangLanguageContractV560 || contract == PipeLangLanguageContractV550 || contract == PipeLangLanguageContractV540 || contract == PipeLangLanguageContractV530 || contract == PipeLangLanguageContractV520 || contract == PipeLangLanguageContractV510 || contract == PipeLangLanguageContractV500 || contract == PipeLangLanguageContractV490 || contract == PipeLangLanguageContractV310 || contract == PipeLangLanguageContractV320 || contract == PipeLangLanguageContractV330 || contract == PipeLangLanguageContractV340 || contract == PipeLangLanguageContractV350 || contract == PipeLangLanguageContractV360 || contract == PipeLangLanguageContractV370 || contract == PipeLangLanguageContractV380 || contract == PipeLangLanguageContractV390 || contract == PipeLangLanguageContractV400 || contract == PipeLangLanguageContractV410 || contract == PipeLangLanguageContractV420 || contract == PipeLangLanguageContractV430 || contract == PipeLangLanguageContractV440 || contract == PipeLangLanguageContractV450 || contract == PipeLangLanguageContractV460 || contract == PipeLangLanguageContractV470 || contract == PipeLangLanguageContractV480) && unary.Op == "-" {
+	if unary, unaryOK := expr.(*UnaryExpr); unaryOK && ((contract == PipeLangLanguageContractV620 || contract == PipeLangLanguageContractV610 || contract == PipeLangLanguageContractV600 || contract == PipeLangLanguageContractV590 || contract == PipeLangLanguageContractV580) || contract == PipeLangLanguageContractV570 || contract == PipeLangLanguageContractV560 || contract == PipeLangLanguageContractV550 || contract == PipeLangLanguageContractV540 || contract == PipeLangLanguageContractV530 || contract == PipeLangLanguageContractV520 || contract == PipeLangLanguageContractV510 || contract == PipeLangLanguageContractV500 || contract == PipeLangLanguageContractV490 || contract == PipeLangLanguageContractV310 || contract == PipeLangLanguageContractV320 || contract == PipeLangLanguageContractV330 || contract == PipeLangLanguageContractV340 || contract == PipeLangLanguageContractV350 || contract == PipeLangLanguageContractV360 || contract == PipeLangLanguageContractV370 || contract == PipeLangLanguageContractV380 || contract == PipeLangLanguageContractV390 || contract == PipeLangLanguageContractV400 || contract == PipeLangLanguageContractV410 || contract == PipeLangLanguageContractV420 || contract == PipeLangLanguageContractV430 || contract == PipeLangLanguageContractV440 || contract == PipeLangLanguageContractV450 || contract == PipeLangLanguageContractV460 || contract == PipeLangLanguageContractV470 || contract == PipeLangLanguageContractV480) && unary.Op == "-" {
 		operand, err := inferExprTypeWithPolicy(cp.sources, unary.Expr, env, true)
 		if err != nil {
 			return ResolvedTypeRef{}, err
@@ -2705,7 +2759,7 @@ func (cp *checkedProgram) inferMethodBodyType(method MethodDecl, env map[string]
 	}
 	binary, ok := expr.(*BinaryExpr)
 	operatorAccepted := ok && binary.Op == "+"
-	if (contract == PipeLangLanguageContractV610 || contract == PipeLangLanguageContractV600 || contract == PipeLangLanguageContractV590 || contract == PipeLangLanguageContractV580) || contract == PipeLangLanguageContractV570 || contract == PipeLangLanguageContractV560 || contract == PipeLangLanguageContractV550 || contract == PipeLangLanguageContractV540 || contract == PipeLangLanguageContractV530 || contract == PipeLangLanguageContractV520 || contract == PipeLangLanguageContractV510 || contract == PipeLangLanguageContractV500 || contract == PipeLangLanguageContractV490 || contract == PipeLangLanguageContractV310 || contract == PipeLangLanguageContractV320 || contract == PipeLangLanguageContractV330 || contract == PipeLangLanguageContractV340 || contract == PipeLangLanguageContractV350 || contract == PipeLangLanguageContractV360 || contract == PipeLangLanguageContractV370 || contract == PipeLangLanguageContractV380 || contract == PipeLangLanguageContractV390 || contract == PipeLangLanguageContractV400 || contract == PipeLangLanguageContractV410 || contract == PipeLangLanguageContractV420 || contract == PipeLangLanguageContractV430 || contract == PipeLangLanguageContractV440 || contract == PipeLangLanguageContractV450 || contract == PipeLangLanguageContractV460 || contract == PipeLangLanguageContractV470 || contract == PipeLangLanguageContractV480 {
+	if (contract == PipeLangLanguageContractV620 || contract == PipeLangLanguageContractV610 || contract == PipeLangLanguageContractV600 || contract == PipeLangLanguageContractV590 || contract == PipeLangLanguageContractV580) || contract == PipeLangLanguageContractV570 || contract == PipeLangLanguageContractV560 || contract == PipeLangLanguageContractV550 || contract == PipeLangLanguageContractV540 || contract == PipeLangLanguageContractV530 || contract == PipeLangLanguageContractV520 || contract == PipeLangLanguageContractV510 || contract == PipeLangLanguageContractV500 || contract == PipeLangLanguageContractV490 || contract == PipeLangLanguageContractV310 || contract == PipeLangLanguageContractV320 || contract == PipeLangLanguageContractV330 || contract == PipeLangLanguageContractV340 || contract == PipeLangLanguageContractV350 || contract == PipeLangLanguageContractV360 || contract == PipeLangLanguageContractV370 || contract == PipeLangLanguageContractV380 || contract == PipeLangLanguageContractV390 || contract == PipeLangLanguageContractV400 || contract == PipeLangLanguageContractV410 || contract == PipeLangLanguageContractV420 || contract == PipeLangLanguageContractV430 || contract == PipeLangLanguageContractV440 || contract == PipeLangLanguageContractV450 || contract == PipeLangLanguageContractV460 || contract == PipeLangLanguageContractV470 || contract == PipeLangLanguageContractV480 {
 		operatorAccepted = ok && (binary.Op == "+" || binary.Op == "-" || binary.Op == "*")
 	}
 	if contract == PipeLangLanguageContractV040 || contract == PipeLangLanguageContractV050 || contract == PipeLangLanguageContractV060 || contract == PipeLangLanguageContractV070 || contract == PipeLangLanguageContractV080 || contract == PipeLangLanguageContractV090 || contract == PipeLangLanguageContractV100 || contract == PipeLangLanguageContractV110 || contract == PipeLangLanguageContractV120 || contract == PipeLangLanguageContractV130 || contract == PipeLangLanguageContractV140 || contract == PipeLangLanguageContractV150 || contract == PipeLangLanguageContractV160 || contract == PipeLangLanguageContractV170 || contract == PipeLangLanguageContractV180 || contract == PipeLangLanguageContractV190 || contract == PipeLangLanguageContractV200 || contract == PipeLangLanguageContractV210 || contract == PipeLangLanguageContractV220 || contract == PipeLangLanguageContractV230 || contract == PipeLangLanguageContractV240 || contract == PipeLangLanguageContractV260 || contract == PipeLangLanguageContractV250 || contract == PipeLangLanguageContractV270 || contract == PipeLangLanguageContractV280 || contract == PipeLangLanguageContractV290 || contract == PipeLangLanguageContractV300 {
@@ -2753,7 +2807,7 @@ func (cp *checkedProgram) inferCheckedArithmeticPropagationBlock(expr Expr, env 
 	var initialized ResolvedTypeRef
 	if isResolvedSourceArithmeticResult(cp.modules.LanguageContract(), localType) {
 		initializerEnv := env
-		if (cp.modules.LanguageContract() == PipeLangLanguageContractV610 || cp.modules.LanguageContract() == PipeLangLanguageContractV600 || cp.modules.LanguageContract() == PipeLangLanguageContractV590 || cp.modules.LanguageContract() == PipeLangLanguageContractV580) || cp.modules.LanguageContract() == PipeLangLanguageContractV570 {
+		if (cp.modules.LanguageContract() == PipeLangLanguageContractV620 || cp.modules.LanguageContract() == PipeLangLanguageContractV610 || cp.modules.LanguageContract() == PipeLangLanguageContractV600 || cp.modules.LanguageContract() == PipeLangLanguageContractV590 || cp.modules.LanguageContract() == PipeLangLanguageContractV580) || cp.modules.LanguageContract() == PipeLangLanguageContractV570 {
 			initializerEnv = make(map[string]ResolvedTypeRef, len(env))
 			for name, resolved := range env {
 				if !resolved.Equal(declared) {
@@ -2999,7 +3053,7 @@ func (cp *checkedProgram) inferRecordListMethodBodyType(method MethodDecl, env m
 				return declared, true, nil
 			}
 		}
-		if body, ok := method.Body.(*ListSortByOrdinalDirectionsExpr); ok && ((contract == PipeLangLanguageContractV610 || contract == PipeLangLanguageContractV600 || contract == PipeLangLanguageContractV590 || contract == PipeLangLanguageContractV580) || contract == PipeLangLanguageContractV570 || contract == PipeLangLanguageContractV560 || contract == PipeLangLanguageContractV550 || contract == PipeLangLanguageContractV540 || contract == PipeLangLanguageContractV530 || contract == PipeLangLanguageContractV520 || contract == PipeLangLanguageContractV510 || contract == PipeLangLanguageContractV500 || contract == PipeLangLanguageContractV490 || contract == PipeLangLanguageContractV320 || contract == PipeLangLanguageContractV330 || contract == PipeLangLanguageContractV340 || contract == PipeLangLanguageContractV350 || contract == PipeLangLanguageContractV360 || contract == PipeLangLanguageContractV370 || contract == PipeLangLanguageContractV380 || contract == PipeLangLanguageContractV390 || contract == PipeLangLanguageContractV400 || contract == PipeLangLanguageContractV410 || contract == PipeLangLanguageContractV420 || contract == PipeLangLanguageContractV430 || contract == PipeLangLanguageContractV440 || contract == PipeLangLanguageContractV450 || contract == PipeLangLanguageContractV460 || contract == PipeLangLanguageContractV470 || contract == PipeLangLanguageContractV480) && len(parameterTypes) == 1 && parameterTypes[0].Equal(declared) {
+		if body, ok := method.Body.(*ListSortByOrdinalDirectionsExpr); ok && ((contract == PipeLangLanguageContractV620 || contract == PipeLangLanguageContractV610 || contract == PipeLangLanguageContractV600 || contract == PipeLangLanguageContractV590 || contract == PipeLangLanguageContractV580) || contract == PipeLangLanguageContractV570 || contract == PipeLangLanguageContractV560 || contract == PipeLangLanguageContractV550 || contract == PipeLangLanguageContractV540 || contract == PipeLangLanguageContractV530 || contract == PipeLangLanguageContractV520 || contract == PipeLangLanguageContractV510 || contract == PipeLangLanguageContractV500 || contract == PipeLangLanguageContractV490 || contract == PipeLangLanguageContractV320 || contract == PipeLangLanguageContractV330 || contract == PipeLangLanguageContractV340 || contract == PipeLangLanguageContractV350 || contract == PipeLangLanguageContractV360 || contract == PipeLangLanguageContractV370 || contract == PipeLangLanguageContractV380 || contract == PipeLangLanguageContractV390 || contract == PipeLangLanguageContractV400 || contract == PipeLangLanguageContractV410 || contract == PipeLangLanguageContractV420 || contract == PipeLangLanguageContractV430 || contract == PipeLangLanguageContractV440 || contract == PipeLangLanguageContractV450 || contract == PipeLangLanguageContractV460 || contract == PipeLangLanguageContractV470 || contract == PipeLangLanguageContractV480) && len(parameterTypes) == 1 && parameterTypes[0].Equal(declared) {
 			if directParameter(body.Values, 0) {
 				return declared, true, nil
 			}
@@ -4044,7 +4098,7 @@ func isOrdinalTextOrderingOperator(operator string) bool {
 }
 
 func arithmeticSourceOperators(contract LanguageContract) string {
-	if (contract == PipeLangLanguageContractV610 || contract == PipeLangLanguageContractV600 || contract == PipeLangLanguageContractV590 || contract == PipeLangLanguageContractV580) || contract == PipeLangLanguageContractV570 || contract == PipeLangLanguageContractV560 || contract == PipeLangLanguageContractV550 || contract == PipeLangLanguageContractV540 || contract == PipeLangLanguageContractV530 || contract == PipeLangLanguageContractV520 || contract == PipeLangLanguageContractV510 || contract == PipeLangLanguageContractV500 || contract == PipeLangLanguageContractV490 || contract == PipeLangLanguageContractV310 || contract == PipeLangLanguageContractV320 || contract == PipeLangLanguageContractV330 || contract == PipeLangLanguageContractV340 || contract == PipeLangLanguageContractV350 || contract == PipeLangLanguageContractV360 || contract == PipeLangLanguageContractV370 || contract == PipeLangLanguageContractV380 || contract == PipeLangLanguageContractV390 || contract == PipeLangLanguageContractV400 || contract == PipeLangLanguageContractV410 || contract == PipeLangLanguageContractV420 || contract == PipeLangLanguageContractV430 || contract == PipeLangLanguageContractV440 || contract == PipeLangLanguageContractV450 || contract == PipeLangLanguageContractV460 || contract == PipeLangLanguageContractV470 || contract == PipeLangLanguageContractV480 {
+	if (contract == PipeLangLanguageContractV620 || contract == PipeLangLanguageContractV610 || contract == PipeLangLanguageContractV600 || contract == PipeLangLanguageContractV590 || contract == PipeLangLanguageContractV580) || contract == PipeLangLanguageContractV570 || contract == PipeLangLanguageContractV560 || contract == PipeLangLanguageContractV550 || contract == PipeLangLanguageContractV540 || contract == PipeLangLanguageContractV530 || contract == PipeLangLanguageContractV520 || contract == PipeLangLanguageContractV510 || contract == PipeLangLanguageContractV500 || contract == PipeLangLanguageContractV490 || contract == PipeLangLanguageContractV310 || contract == PipeLangLanguageContractV320 || contract == PipeLangLanguageContractV330 || contract == PipeLangLanguageContractV340 || contract == PipeLangLanguageContractV350 || contract == PipeLangLanguageContractV360 || contract == PipeLangLanguageContractV370 || contract == PipeLangLanguageContractV380 || contract == PipeLangLanguageContractV390 || contract == PipeLangLanguageContractV400 || contract == PipeLangLanguageContractV410 || contract == PipeLangLanguageContractV420 || contract == PipeLangLanguageContractV430 || contract == PipeLangLanguageContractV440 || contract == PipeLangLanguageContractV450 || contract == PipeLangLanguageContractV460 || contract == PipeLangLanguageContractV470 || contract == PipeLangLanguageContractV480 {
 		return "addition, subtraction, multiplication, or negation"
 	}
 	if contract == PipeLangLanguageContractV050 || contract == PipeLangLanguageContractV060 || contract == PipeLangLanguageContractV070 || contract == PipeLangLanguageContractV080 || contract == PipeLangLanguageContractV090 || contract == PipeLangLanguageContractV100 || contract == PipeLangLanguageContractV110 || contract == PipeLangLanguageContractV120 || contract == PipeLangLanguageContractV130 || contract == PipeLangLanguageContractV140 || contract == PipeLangLanguageContractV150 || contract == PipeLangLanguageContractV160 || contract == PipeLangLanguageContractV170 || contract == PipeLangLanguageContractV180 || contract == PipeLangLanguageContractV190 || contract == PipeLangLanguageContractV200 || contract == PipeLangLanguageContractV210 || contract == PipeLangLanguageContractV220 || contract == PipeLangLanguageContractV230 || contract == PipeLangLanguageContractV240 || contract == PipeLangLanguageContractV260 || contract == PipeLangLanguageContractV250 || contract == PipeLangLanguageContractV270 || contract == PipeLangLanguageContractV280 || contract == PipeLangLanguageContractV290 || contract == PipeLangLanguageContractV300 {
