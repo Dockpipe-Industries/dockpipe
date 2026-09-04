@@ -1111,6 +1111,37 @@ branches; loops; effects; actions; runtimes; targets; adapters; UI; and deployme
 No behavior enters by implication. Any successor requires a new founder decision and separate
 implementation approval.
 
+## Accepted v0.66.0 boundary — generalized contextual bounded Result propagation
+
+`v0.66.0` generalizes the v0.62 contextual chain to permit equal or different payload types at any
+adjacent transition. One public pure method takes exactly `Result<T0, string> carrier, string
+context`, returns `Result<TK, string>`, and contains `K >= 2` helper stages. The first local directly
+propagates `carrier`. Every non-terminal helper Result remains an explicit local immediately
+followed by its direct propagation local, and the terminal expression is the final helper call.
+Every `Ti` is exactly `string` or `List<R>` for an existing public primitive-field record. Every
+helper remains resolved, public, pure, same-class, and exact
+`(Ti, string) -> Result<Ti+1, string>`, with the immediately preceding payload first and the
+unchanged direct context second.
+
+HIR and Core reuse `immutable_local`, `reference`, `propagate`, and `call`. Core independently
+verifies the two exact caller parameters, arbitrary admitted chain length, contiguous alternating
+locals, bounded payloads, shared string failure, direct carrier/payload/context references, same
+owner, callable identities, and exact helper signatures. Evaluation and deterministic Core-only Go
+validate and copy every reached carrier once. Each failure skips every later helper and becomes a
+canonical final-shaped failure with copied validated error text. Success passes the unchanged
+validated context once to each reached helper. `pipelang.compiler.v1`, `pipelang.semantic.v1`, and
+`dockpipe.application.v1` identities and shapes stay stable; only language metadata advances. Mixed
+and all-equal compiler-pipeline fixtures plus metadata-only Docker-observability Application IR
+consumption prove the boundary, and the exact 45-source lane remains frozen.
+
+The inherited v0.54-v0.65 forms remain exact. Fewer than two contextual helper stages; a missing,
+reordered, repeated, computed, non-string, stage-specific, or additional context; a third caller
+parameter; missing, additional, or gapped locals; computed carriers; `propagate(Helper(...))`;
+arbitrary error types; Optional/arithmetic carriers; private, cross-class, mismatched, overloaded,
+or generic helpers; inference; reassignment; statements; branches; loops; effects; actions;
+runtimes; targets; adapters; UI; and deployment remain excluded. No behavior enters by implication.
+Any successor requires a new founder decision and separate implementation approval.
+
 ## Accepted v0.49.0 boundary — bounded two-carrier matching
 
 `v0.49.0` widens only the occurrence count accepted through v0.48. One public pure method with one

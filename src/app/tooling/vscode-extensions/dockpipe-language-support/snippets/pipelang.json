@@ -645,5 +645,19 @@
       "}"
     ],
     "description": "Create the exact v0.65.0 two-stage contextual bounded Result propagation form where either or both adjacent payload types may be equal."
+  },
+  "PipeLang generalized contextual bounded Result propagation": {
+    "prefix": "pipe-generalized-contextual-bounded-result",
+    "body": [
+      "public Result<${1:string}, string> ${2:Compile}(Result<${3:string}, string> ${4:input}, string ${5:context}) {",
+      "\t${3:string} ${6:first} = propagate(${4:input});",
+      "\tResult<${7:string}, string> ${8:secondCarrier} = ${9:First}(${6:first}, ${5:context});",
+      "\t${7:string} ${10:second} = propagate(${8:secondCarrier});",
+      "\tResult<${11:string}, string> ${12:thirdCarrier} = ${13:Second}(${10:second}, ${5:context});",
+      "\t${11:string} ${14:third} = propagate(${12:thirdCarrier});",
+      "\treturn ${15:Third}(${14:third}, ${5:context});",
+      "}"
+    ],
+    "description": "Create a v0.66.0 generalized contextual bounded Result propagation chain with K >= 2 stages and equal or different adjacent payload types."
   }
 }
