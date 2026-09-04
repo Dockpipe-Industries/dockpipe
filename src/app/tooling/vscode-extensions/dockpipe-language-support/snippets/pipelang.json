@@ -890,5 +890,28 @@
       "}"
     ],
     "description": "Create the v0.80.0 symmetric depth-two terminal topology with exactly two expanded leaves and six return paths."
+  },
+  "PipeLang terminal tree through depth three": {
+    "prefix": "pipe-terminal-tree",
+    "body": [
+      "public string ${1:Select}(string raw, bool enabled, bool normalize, bool detailed) {",
+      "\tstring shared = trim(raw);",
+      "\tif (enabled) {",
+      "\t\tif (normalize) {",
+      "\t\t\tstring selected = shared;",
+      "\t\t\tif (detailed) {",
+      "\t\t\t\treturn selected + \"!\";",
+      "\t\t\t} else {",
+      "\t\t\t\treturn selected;",
+      "\t\t\t}",
+      "\t\t} else {",
+      "\t\t\treturn raw;",
+      "\t\t}",
+      "\t} else {",
+      "\t\treturn \"disabled\";",
+      "\t}",
+      "}"
+    ],
+    "description": "Create a v0.81.0 asymmetric terminal tree through depth three with typed immutable locals and four return paths."
   }
 }

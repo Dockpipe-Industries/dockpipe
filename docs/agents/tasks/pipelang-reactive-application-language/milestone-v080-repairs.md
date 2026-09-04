@@ -8,8 +8,8 @@ separate slices before further language expansion. This is repair work within th
 ## Objective and boundaries
 
 - Objective: `TASK-021-PipeLang-v0.80-milestone-repairs`.
-- State: **completed** on 2026-09-04; all six repairs and terminal checks passed. R6 is
-  uncommitted for founder review; no successor language slice is selected.
+- State: **completed** on 2026-09-04; all six repairs and terminal checks passed. all six repairs are
+  reviewed and committed; no successor language slice is selected.
 - Authority: the founder's 2026-09-04 request to address all six findings and document them here.
 - Completion: all six repairs have focused regression proof, compiler/consumer compatibility
   checks pass, and this record contains the completed evidence and remaining limitations.
@@ -29,7 +29,7 @@ separate slices before further language expansion. This is repair work within th
 | R3 | P2 | Enforce supported compiler/language identities and feature-version gates at Core program admission. | Unknown identities independently rejected; representative downgraded features rejected consistently by Core, evaluator, and backend. | Complete, committed |
 | R4 | P2 | Make Core type validation exhaustive over supported kinds and representations. | Unknown kinds, unsupported numeric widths, contradictory/nested representations, unused parameters and expression types rejected; accepted types retained. | Complete, committed |
 | R5 | P2 | Generate canonical argument validation from parameter types independently of function body shape. | Invalid UTF-8 and malformed arithmetic Results rejected in identity/unused/unselected cases; evaluator/generated-Go agreement and helper emission. | Complete, committed |
-| R6 | P2 | Allocate or check generated names against the entire Go package namespace, including runtime declarations. | Legal source/runtime-name collision examples generate compilable deterministic Go; call targets agree with allocated declarations. | Complete, uncommitted |
+| R6 | P2 | Allocate or check generated names against the entire Go package namespace, including runtime declarations. | Legal source/runtime-name collision examples generate compilable deterministic Go; call targets agree with allocated declarations. | Complete, committed |
 
 R1 and R2 are the review's recommended blockers for further compiler expansion. All six remain
 required by the founder's repair request. The Core and host-value admission repairs must precede
@@ -444,9 +444,25 @@ this objective. The other 28 admission fixtures retain evaluator/generated-Go co
 Logs, the negative-control overlay, a temporary mechanical-edit helper, and caches are under
 `/tmp/pipelang-r6-proof`; compiled generated Go uses temporary test modules. No generated store,
 runtime artifact, or tracked golden was refreshed. R6 implementation, regressions, canonical
-documentation, this record, the overview, and both TASK-021 indexes are uncommitted for founder
-review. No push, publication, credentials, Docker/cloud/live operation, or successor selection
+documentation, this record, the overview, and both TASK-021 indexes were uncommitted at the
+original founder-review boundary; the commit read-back below supersedes that status. No push, publication, credentials, Docker/cloud/live operation, or successor selection
 occurred. Repository-wide suites/builds, standalone editor execution tests, sustained fuzzing,
 stack-exhaustion testing, and the exhaustive feature/version cross-product were not run.
 All six requested repairs meet this objective's completion criteria; remaining language work
 requires its own founder decision and authority.
+
+
+### Founder review and next-slice handoff — 2026-09-04
+
+The founder confirmed review and commit, then requested the next compiler-slice task with
+`dorkpipe-task-handoff`. Read-back verified commit
+`acbd10f88207d0a226ec24a073948362691adb8c` (`Complete PipeLang v0.80 milestone repairs`),
+parent `163a6effba408bc8ad6c4b5d88dc594b8817d483`, branch `js/pipelang`, and a clean saved
+checkout. The commit contains all nine R6 implementation, regression, and documentation files.
+All six repairs are now reviewed and committed. Existing terminal proof is admitted without
+replay because the compiler postimages match that verified commit.
+
+The same-checkout successor continues the founder's compiler work at the next-slice decision
+boundary in [next-boundary.md](next-boundary.md). No new language seam is selected here.
+The handoff-status edits are documentation-only and remain uncommitted; this handoff performs
+no additional commit, push, publication, or worktree operation.

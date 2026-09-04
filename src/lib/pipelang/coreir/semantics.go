@@ -274,7 +274,7 @@ func ValidateProgram(program Program) error {
 		return err
 	}
 	inheritedContract := program.LanguageContract
-	if inheritedContract == LanguageContractV800 || inheritedContract == LanguageContractV790 || inheritedContract == LanguageContractV780 || inheritedContract == LanguageContractV770 || inheritedContract == LanguageContractV760 || inheritedContract == LanguageContractV750 || inheritedContract == LanguageContractV740 {
+	if inheritedContract == LanguageContractV810 || inheritedContract == LanguageContractV800 || inheritedContract == LanguageContractV790 || inheritedContract == LanguageContractV780 || inheritedContract == LanguageContractV770 || inheritedContract == LanguageContractV760 || inheritedContract == LanguageContractV750 || inheritedContract == LanguageContractV740 {
 		inheritedContract = LanguageContractV730
 	}
 	functions := make(map[string]Function, len(program.Functions))
@@ -611,6 +611,24 @@ func validV800TwoExpandedTerminalIf(expression Expr) bool {
 	return validExpandedDepthThreeTerminalIf(expression, 2)
 }
 
+// Validate topology independently of source analysis. ValidateFunction separately
+// enforces types, binding positions, and lexical references throughout the tree.
+func validV810TerminalTree(expression Expr, remaining int) bool {
+	_, tail, valid := terminalBranchTail(expression)
+	if !valid {
+		return false
+	}
+	if tail.Kind != ExprConditional {
+		return validConditionalOperand(tail)
+	}
+	conditional := tail.Conditional
+	return remaining > 0 && conditional != nil && conditional.TerminalStatement &&
+		conditional.Condition != nil && conditional.WhenTrue != nil && conditional.WhenFalse != nil &&
+		validConditionalOperand(*conditional.Condition) &&
+		validV810TerminalTree(*conditional.WhenTrue, remaining-1) &&
+		validV810TerminalTree(*conditional.WhenFalse, remaining-1)
+}
+
 func validExpandedDepthThreeTerminalIf(expression Expr, expandedLeaves int) bool {
 	_, tail, valid := terminalBranchTail(expression)
 	outer := tail.Conditional
@@ -651,6 +669,12 @@ func validExpandedDepthThreeTerminalIf(expression Expr, expandedLeaves int) bool
 }
 
 func validateImmutableLocalContract(contract string, function Function) error {
+	if contract == LanguageContractV810 {
+		if countTerminalIfStatements(function.Body) > 0 && validV810TerminalTree(function.Body, 3) {
+			return nil
+		}
+		return validateImmutableLocalContract(LanguageContractV800, function)
+	}
 	if contract == LanguageContractV800 {
 		if validV800TwoExpandedTerminalIf(function.Body) {
 			return nil
@@ -1297,6 +1321,12 @@ func exprContainsPropagation(expression Expr) bool {
 }
 
 func validateConditionalContract(contract string, function Function) error {
+	if contract == LanguageContractV810 {
+		if countTerminalIfStatements(function.Body) > 0 && validV810TerminalTree(function.Body, 3) {
+			return nil
+		}
+		return validateConditionalContract(LanguageContractV800, function)
+	}
 	if contract == LanguageContractV800 {
 		if validV800TwoExpandedTerminalIf(function.Body) {
 			return nil

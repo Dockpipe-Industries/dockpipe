@@ -1,8 +1,63 @@
 ## Exact Next Boundary
 
-The immediate work is the founder-requested [six v0.80 milestone repairs](milestone-v080-repairs.md).
-Complete those repairs before moving to another language slice. The accepted language boundaries
-below remain unchanged; they do not select a successor.
+The [six v0.80 milestone repairs](milestone-v080-repairs.md) are complete, reviewed, and committed
+at `acbd10f88207d0a226ec24a073948362691adb8c`. The founder requested continuation to the next
+compiler slice on 2026-09-04. Option A is now implemented and verified as `v0.81.0`;
+earlier accepted language boundaries below remain unchanged.
+
+- Objective: `TASK-021-next-compiler-slice`.
+- State: `completed`; option A selected, separately approved, implemented, and verified on 2026-09-04.
+- Authority: the founder requested this continuation, selected A, and separately said `approved`.
+- Pending boundary: founder review of the uncommitted `v0.81.0` implementation. No successor
+  language seam is selected or authorized. Completion evidence is in
+  [step 8au](completed-functions.md#step-8au-terminal-trees-through-depth-three-v0810).
+- Admit the completed milestone proof; reopen it only for drift, a new failure, or a direct
+  dependency. The documented numeric-comparison evaluator limitation remains open and is not
+  automatically selected as the next slice.
+- Preserve the saved checkout, public identities, internal Core capabilities, and frozen 45-source
+  lane. No commit, push, publication, worktree, generated-store refresh, credentials, live operation,
+  or automatic future handoff is authorized by this continuation.
+
+### Completed option A — terminal trees through depth three
+
+This separately approved scope is complete. The [canonical language contract](../../../concepts/pipelang.md#pipelang-v0810-terminal-trees-through-depth-three)
+owns public behavior; the completion record owns proof and deferred findings.
+Alternatives B (exactly three expanded leaves) and C (numeric-comparison evaluator parity) were
+not selected as the objective.
+
+- **Source:** admit any terminal binary `if/else` tree with one to three decisions along a path,
+  including asymmetric trees and three or four expanded leaves on the symmetric depth-two base.
+  Each scope has zero or more finite, source-ordered, explicitly typed immutable locals followed
+  by either a terminal `if/else` or an exact-type return. This bounds the branching tree to seven
+  decisions and eight return paths; it does not add a new limit on local-sequence length.
+- **Semantics:** conditions are `bool`; every return exactly matches the declared method type.
+  A binding enters scope after its initializer and is visible only in its lexical descendants.
+  Preserve rejection of self/forward references, duplicates, shadowing, and sibling/escaping
+  references. Root locals execute eagerly once; selected-path locals execute once in order;
+  unselected branches do not execute. Operand forms retain the existing terminal-tree restrictions.
+- **Representations:** source analysis produces typed HIR, then target-neutral Core using existing
+  terminal `conditional` and `immutable_local` nodes. Core independently validates depth, complete
+  branches, terminal placement, types, positions, and lexical references. The evaluator and
+  Core-only Go backend consume validated Core; semantic/Application IR consumers use their
+  existing identities without reparsing or inferring language behavior.
+- **Value:** compiler parser/typechecker routines can express bounded decisions in their natural
+  asymmetric shapes without manufacturing a symmetric tree.
+- **Exclusions:** depth four, fallthrough, nonterminal/early returns, assignment, loops, effects,
+  inference, and new combinations with matching, propagation, or conditional expressions.
+  Existing accepted forms remain exact, including combinations already admitted by earlier
+  contracts. Numeric-comparison evaluator repair is deferred. No runtime, action, target, adapter,
+  UI, deployment, or self-hosted compiler implementation is included.
+- **Completion proof:** enumerate all 25 terminal branching shapes through depth three (excluding
+  the no-decision leaf) and every return path; cover root/branch/leaf local sequences, exact typing,
+  source spans, lexical visibility, eager order, and branch laziness. Require source rejection
+  tests, independent malformed-Core rejection including backend refusal, HIR/Core structure,
+  deterministic evaluator/generated-Go agreement, repeated artifact identity, semantic projection,
+  and an Application IR consumer fixture exercising newly admitted shapes. Preserve all accepted
+  versioned forms, internal Core capabilities, public compiler/semantic/Application IR identities,
+  and the frozen exact 45-source lane. Run focused checks followed by terminal PipeLang,
+  Application IR, compatibility, affected application/CLI, vet, formatting, editor syntax, and
+  documentation checks. Synchronize canonical language docs and task state with the approved
+  implementation. Continue ordinary checkpoints in this task without automatic handoff.
 
 Steps 7 and 8a of **Bounded Implementation Order** have completed the fixed numeric, compiler-internal
 checked-arithmetic Result, and direct production-source checked add, subtract, multiply, negate,

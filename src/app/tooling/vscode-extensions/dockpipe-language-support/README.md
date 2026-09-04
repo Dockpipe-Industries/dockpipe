@@ -1,5 +1,11 @@
 # DockPipe Language Support (VS Code)
 
+PipeLang `v0.81.0` adds `pipe-terminal-tree`: symmetric or asymmetric terminal `if/else`
+trees through depth three, with optional ordered typed immutable locals in each scope.
+At most seven decisions yield eight return paths; only the selected path executes.
+Depth four, fallthrough, assignment, loops, effects, inference, and new combinations with
+conditional expressions, matching, or propagation remain excluded. Earlier forms are unchanged.
+
 PipeLang `v0.80.0` adds `pipe-two-expanded-terminal-if`: exactly two of the four leaves
 on the symmetric depth-two base expand into terminal `if/else` decisions. All six leaf pairs
 are supported, with optional root locals and finite typed local sequences in each lexical scope.

@@ -23,8 +23,13 @@ func loadReviewApplicationFixture(t *testing.T) reviewApplicationFixture {
 	if err != nil {
 		t.Fatal(err)
 	}
+	return loadReviewApplicationSource(t, source, pipelang.PipeLangLanguageContractV800)
+}
+
+func loadReviewApplicationSource(t *testing.T, source []byte, contract pipelang.LanguageContract) reviewApplicationFixture {
+	t.Helper()
 	module := pipelang.ModuleInput{ID: "app.root", Namespace: "app.root", DeclarationSpan: pipelang.Span{File: "docker-observability.pipe"}, Sources: []pipelang.SourceInput{{Path: "docker-observability.pipe", Data: source}}}
-	input := pipelang.ModuleSetInput{LanguageContract: pipelang.PipeLangLanguageContractV800, PackageID: "docker.observability", Root: "app.root", Modules: []pipelang.ModuleInput{module}}
+	input := pipelang.ModuleSetInput{LanguageContract: contract, PackageID: "docker.observability", Root: "app.root", Modules: []pipelang.ModuleInput{module}}
 	input.Lock.Modules = []pipelang.LockedModule{{ID: module.ID, SourceSHA256: pipelang.ModuleSourceSHA256(module.Sources), SemanticSHA256: pipelang.ModuleSemanticSHA256(input.PackageID, module.Namespace, nil)}}
 	analysis := pipelang.AnalyzeSemanticModuleSet(input)
 	if err := analysis.Error(); err != nil {

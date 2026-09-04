@@ -898,6 +898,9 @@ func validExpandedDepthThreeTerminalIf(expr Expr, expandedLeaves int) bool {
 }
 
 func validTerminalIfStatement(contract LanguageContract, expr Expr) bool {
+	if contract == PipeLangLanguageContractV810 {
+		return validV810TerminalTree(expr, 3) || validTerminalIfStatement(PipeLangLanguageContractV800, expr)
+	}
 	if contract == PipeLangLanguageContractV800 {
 		return validTerminalIfStatement(PipeLangLanguageContractV790, expr) || validV800TwoExpandedTerminalIf(expr)
 	}
@@ -954,6 +957,24 @@ func validTerminalIfStatement(contract LanguageContract, expr Expr) bool {
 	return locals >= minimumTopLevelLocals && countImmutableLocalExpressions(expr) == locals+branchLocals &&
 		countTerminalIfStatements(expr) == 1 && conditionalCount >= 1 && conditionalCount <= 2 &&
 		validTrue && validFalse && validConditionalExpressions(expr)
+}
+
+// The new topology rule only widens terminal trees. Earlier expression/statement
+// combinations still pass through their own versioned rules.
+func validV810TerminalTree(expr Expr, remaining int) bool {
+	_, tail, valid := terminalBranchTail(expr)
+	if !valid || tail == nil {
+		return false
+	}
+	conditional, ok := tail.(*ConditionalExpr)
+	if !ok {
+		return validConditionalOperand(tail)
+	}
+	return remaining > 0 && conditional.TerminalStatement && conditional.Condition != nil &&
+		conditional.WhenTrue != nil && conditional.WhenFalse != nil &&
+		validConditionalOperand(conditional.Condition) &&
+		validV810TerminalTree(conditional.WhenTrue, remaining-1) &&
+		validV810TerminalTree(conditional.WhenFalse, remaining-1)
 }
 
 func validPureCallPlacement(expr Expr) bool {

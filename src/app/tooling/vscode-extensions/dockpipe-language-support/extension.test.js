@@ -557,3 +557,10 @@ assert.strictEqual(twoExpanded.prefix, "pipe-two-expanded-terminal-if");
 assert(twoExpanded.description.includes("v0.80.0"));
 assert.strictEqual(twoExpanded.body.filter((line) => line.includes("if (")).length, 5);
 assert.strictEqual(twoExpanded.body.filter((line) => line.includes("return ")).length, 6);
+
+assert(pipeLangReadme.includes("`v0.81.0`"));
+const terminalTree = pipeLangSnippets["PipeLang terminal tree through depth three"];
+assert.strictEqual(terminalTree.prefix, "pipe-terminal-tree");
+assert(terminalTree.description.includes("v0.81.0"));
+assert.strictEqual(terminalTree.body.filter((line) => line.includes("if (")).length, 3);
+assert.strictEqual(terminalTree.body.filter((line) => line.includes("return ")).length, 4);

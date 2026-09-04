@@ -1,7 +1,9 @@
 ## Bounded Implementation Order
 
-Before further language expansion, complete the [six v0.80 milestone repair slices](milestone-v080-repairs.md)
-requested on 2026-09-04. That focused record owns their sequence and acceptance proof.
+The [six v0.80 milestone repair slices](milestone-v080-repairs.md) requested on 2026-09-04
+are complete and committed. The separately selected and approved `v0.81.0` terminal-tree slice
+is also complete; [step 8au](completed-functions.md#step-8au-terminal-trees-through-depth-three-v0810)
+owns its proof and deferred findings.
 
 1. Freeze all 45 current files and current emitted artifacts as the `v0.0.0.1` compatibility lane.
 2. Introduce source-set/file identities, strict UTF-8, full spans, and structured diagnostics without
@@ -1444,3 +1446,12 @@ Core independently validates topology, types, scope, and terminal placement; the
 malformed Core. HIR/Core node shapes and public compiler, semantic, and Application IR identities
 remain stable. A third expansion, depth four, or an asymmetric depth-three base is not admitted.
 Any successor requires a fresh founder selection and separate implementation approval.
+
+## Checkpoint v0.81.0 complete contract
+
+Step 8au admits any terminal binary `if/else` tree through depth three, including asymmetric
+shapes, with finite typed immutable-local sequences in each scope. See the
+[canonical contract](../../../concepts/pipelang.md#pipelang-v0810-terminal-trees-through-depth-three)
+for exact semantics and exclusions and the [completion record](completed-functions.md#step-8au-terminal-trees-through-depth-three-v0810)
+for compiler/consumer proof. Existing HIR/Core nodes and public identities remain stable.
+No successor, commit, push, publication, or live operation is authorized by completion.

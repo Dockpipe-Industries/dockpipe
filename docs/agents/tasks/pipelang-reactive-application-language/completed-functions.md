@@ -1135,3 +1135,65 @@ is the only regenerated tracked artifact. The broader application/repository sui
 operations were not run. Package/engine boundaries are preserved. No commit, push, publication,
 worktree, generated-store refresh, credential change, or external operation occurred.
 Implementation is complete; any successor remains a separate founder decision.
+
+## Step 8au: terminal trees through depth three (v0.81.0)
+
+The founder selected option A and separately approved implementation on 2026-09-04.
+`TASK-021-next-compiler-slice` is complete in the saved checkout on `js/pipelang`, based on
+`acbd10f88207d0a226ec24a073948362691adb8c`; this slice remains uncommitted for review.
+The [canonical contract](../../../concepts/pipelang.md#pipelang-v0810-terminal-trees-through-depth-three)
+owns source behavior and exclusions. Any terminal tree through depth three is admitted, including
+asymmetric trees and three/four expanded leaves, with finite ordered typed immutable locals.
+The compiler reuses terminal `conditional` and `immutable_local` HIR/Core nodes. Core independently
+validates topology; structural type/binding checks remain mandatory before evaluation or generation.
+Earlier exact version gates, internal Core capabilities, compiler/semantic/Application IR
+identities, and the frozen 45-source lane remain intact. Package/engine boundaries are preserved.
+
+### Completion proof — 2026-09-04
+
+`terminal_tree_test.go` enumerates all 25 branching shapes with root and branch/leaf locals
+independently present/absent (100 configurations). Eight boolean input combinations cover every
+return path per configuration, comparing Core evaluation with executed pristine generated Go.
+Separate instrumented Go copies observe initializer and condition order, eager root execution,
+and unselected-path laziness for every shape. Repeat compilation checks Core/semantic/Go byte
+identity. Source rejection tests check located diagnostics; forged Core tests check missing
+branches, terminal flags, exact types, binding positions, shadowing, and depth-four rejection,
+including backend refusal. Existing terminal shapes retain exact Go bytes under the new version;
+new shapes remain rejected under `v0.80.0`. Core admission checks cover all 81 versions and the
+existing feature fixtures; source-level expression inheritance covers propagation, matching,
+helper composition, and checked Result argument transport.
+
+The Application IR test compiles an asymmetric depth-three snapshot entrypoint through the
+canonical semantic/HIR/Core pipeline, projects it through the existing application spec, checks
+stable application identity/schema and deterministic output, and executes all four paths through
+both Core evaluation and generated Go. Existing application and compiler goldens are unchanged.
+The editor gains an asymmetric terminal-tree snippet and matching documentation/checks.
+
+Pinned cached Go 1.25.13, `GOTOOLCHAIN=local`, `GOPROXY=off`, `GOSUMDB=off`, and writable temporary
+caches were used. Terminal commands passed:
+
+- `go test ./src/lib/pipelang/... ./src/lib/applicationir ./tests/pipelangcompat -count=1`;
+- `go test ./src/lib/application -run 'PipeLang|TestCompileWorkflowsBatchSupportsConfigPipe' -count=1`;
+- `go test ./src/cmd -count=1`;
+- `go vet ./src/lib/pipelang/... ./src/lib/applicationir`;
+- `node --check src/app/tooling/vscode-extensions/dockpipe-language-support/extension.js` and
+  `node src/app/tooling/vscode-extensions/dockpipe-language-support/extension.test.js`;
+- changed Go formatting, task YAML/state/document-route checks, and `git diff --check`.
+
+Logs and isolated baseline overlays are under `/tmp/pipelang-v081-proof`; generated Go test
+modules are temporary and removed by test helpers. No generated store or tracked golden was
+refreshed. No worktree, stash operation, commit, push, publication, credential, or live operation
+occurred. Repository-wide builds/suites, interactive editor execution, sustained fuzzing,
+stack-exhaustion testing, and exhaustive feature/version combinations were not run.
+
+### Deferred findings
+
+The previously documented normalized numeric-comparison evaluator limitation remains open.
+An additional inheritance probe of the existing v0.56 multi-parameter checked-propagation fixture,
+changing only its language metadata to `v0.80.0`, fails with `PL3028` at `return value + operand`.
+A read-only Go overlay of the committed `acbd10f8` production sources reproduces the rejection;
+the same probe at `v0.81.0` retains it. The fixture still passes at its original accepted version
+in the full suite. This is a pre-existing source-admission gap, distinct from numeric comparison,
+and was not repaired or admitted as new syntax by the terminal-tree objective. Evidence:
+`baseline-checked-probe.log` and `current-checked-probe.log` in the temporary proof directory.
+Neither deferred finding selects or authorizes a successor objective.
