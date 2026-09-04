@@ -1285,6 +1285,29 @@ fallthrough, other early returns, loops, effects, inference, actions, runtimes, 
 UI, and deployment remain excluded. No successor is implied; another slice requires a new founder
 decision and separate implementation approval.
 
+## Accepted v0.72.0 boundary — general terminal-branch local sequences
+
+`v0.72.0` removes only the v0.71 per-branch local count ceiling. Either terminal branch may contain
+any finite source-ordered sequence of explicitly typed immutable locals followed by its return.
+Each local enters scope only after its initializer, so later locals may reference earlier locals in
+that branch while self-reference, forward reference, duplicate names, and shadowing remain invalid.
+Opposing branches retain independent lexical scopes, may reuse names and canonical binding
+positions, evaluate only when selected, and cannot leak bindings. One or more top-level ordered
+immutable locals still precede the terminal conditional.
+
+Typed HIR and target-neutral Core continue to represent each branch sequence as nested
+`immutable_local` nodes inside the terminal `conditional`. Core independently verifies the complete
+root sequence, exact types, canonical positions, lexical references, and unique terminal placement.
+Evaluation and deterministic Core-only Go preserve source order and selected-branch execution.
+`pipelang.compiler.v1`, `pipelang.semantic.v1`, and `dockpipe.application.v1` remain stable; only
+language metadata advances to `v0.72.0`. The exact 45-source lane remains frozen.
+
+The inherited v0.69 direct-return, v0.70 one-local, and v0.71 two-local forms remain exact. Nested
+branches, zero top-level locals, escaping bindings, propagation, matching, assignment, fallthrough,
+other early returns, loops, effects, inference, actions, runtimes, targets, adapters, UI, and
+deployment remain excluded. No successor is implied; another slice requires a new founder decision
+and separate implementation approval.
+
 ## Accepted v0.49.0 boundary — bounded two-carrier matching
 
 `v0.49.0` widens only the occurrence count accepted through v0.48. One public pure method with one
