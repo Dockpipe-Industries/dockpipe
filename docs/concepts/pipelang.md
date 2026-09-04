@@ -2201,6 +2201,35 @@ targets, adapters, UI, and deployment remain excluded. `pipelang.compiler.v1`,
 `pipelang.semantic.v1`, and `dockpipe.application.v1` remain unchanged; only language metadata
 advances to `v0.70.0`. The exact 45-source legacy lane remains frozen.
 
+### PipeLang v0.71.0: two-local terminal-branch sequences
+
+`v0.71.0` widens only the v0.70 per-branch local cap from one to two:
+
+```pipe
+public string Select(string raw, bool normalize) {
+    string cleaned = raw;
+    if (normalize) {
+        string prepared = trim(cleaned);
+        string selected = Normalize(prepared);
+        return selected;
+    } else {
+        return raw;
+    }
+}
+```
+
+Either branch may contain zero, one, or two explicitly typed ordered immutable locals immediately
+before its return. A second local may reference the first local in that branch. Opposing branches
+remain independent lexical scopes and may reuse names and binding positions. Branch initializers
+run in source order only when their branch is selected, and bindings cannot escape. One or more
+top-level ordered immutable locals remain required.
+
+A third branch local, nested branches, zero top-level locals, propagation, matching, assignment,
+fallthrough, other early returns, loops, effects, inference, actions, runtimes, targets, adapters,
+UI, and deployment remain excluded. `pipelang.compiler.v1`, `pipelang.semantic.v1`, and
+`dockpipe.application.v1` remain unchanged; only language metadata advances to `v0.71.0`. The
+exact 45-source legacy lane remains frozen.
+
 ### Target-neutral Application IR
 
 `dockpipe.application.v1` is not a language feature or target generator. It consumes the public

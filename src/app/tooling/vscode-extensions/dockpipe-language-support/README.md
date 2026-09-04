@@ -1,5 +1,10 @@
 # DockPipe Language Support (VS Code)
 
+PipeLang `v0.71.0` adds a second ordered lexical immutable local per terminal branch through
+`pipe-terminal-if-branch-locals`. The second local may reference the first in its branch; a third
+branch local, nested branches, zero top-level locals, propagation, matching, assignment,
+fallthrough, effects, inference, and deployment remain excluded.
+
 Language support for DockPipe authoring:
 
 - `.pipe` PipeLang syntax highlighting

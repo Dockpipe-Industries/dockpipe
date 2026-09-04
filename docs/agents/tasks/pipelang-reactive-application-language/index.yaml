@@ -10,8 +10,8 @@ dispatch:
 
 state:
   decision: accepted
-  current_language_contract: v0.70.0
-  completed_through: v0.70.0 lexical terminal-branch locals plus v0.69.0 terminal statement-level if/else after ordered immutable locals, generalized one-stage and multi-stage shared-context Result propagation, generalized contextual bounded Result propagation, exact two-stage and one-stage contextual bounded propagation, contextual and generalized cross-payload chains, exact two-stage and one-stage cross-payload Result propagation, generalized checked-propagation chains, two-stage, multi-parameter direct, direct, and helper checked propagation, multi-parameter propagation, cumulative and immediate dependent chains, dependent and independent two-carrier forms, prior-local and later-local helper matching, checked arithmetic, pure calls, matching, propagation, ordered immutable locals, and dockpipe.application.v1 consumer proof
+  current_language_contract: v0.71.0
+  completed_through: v0.71.0 two-local terminal-branch sequences plus v0.70.0 lexical terminal-branch locals and v0.69.0 terminal statement-level if/else after ordered immutable locals, generalized one-stage and multi-stage shared-context Result propagation, generalized contextual bounded Result propagation, exact two-stage and one-stage contextual bounded propagation, contextual and generalized cross-payload chains, exact two-stage and one-stage cross-payload Result propagation, generalized checked-propagation chains, two-stage, multi-parameter direct, direct, and helper checked propagation, multi-parameter propagation, cumulative and immediate dependent chains, dependent and independent two-carrier forms, prior-local and later-local helper matching, checked arithmetic, pure calls, matching, propagation, ordered immutable locals, and dockpipe.application.v1 consumer proof
   authority: >-
     This task record is decision and status evidence. It does not authorize another language slice,
     implementation, migration, commit, push, publication, or external action.

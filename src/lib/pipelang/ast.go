@@ -701,13 +701,20 @@ func countImmutableLocalExpressions(expr Expr) int {
 	return count
 }
 
-func terminalBranchLocalShape(expr Expr) (int, bool) {
-	count := countImmutableLocalExpressions(expr)
-	if count == 0 {
-		return 0, true
+func terminalBranchLocalShape(expr Expr, limit int) (int, bool) {
+	count := 0
+	current := expr
+	for {
+		local, ok := current.(*ImmutableLocalExpr)
+		if !ok {
+			return count, count <= limit
+		}
+		count++
+		if count > limit || local.Initializer == nil || local.Return == nil {
+			return count, false
+		}
+		current = local.Return
 	}
-	local, ok := expr.(*ImmutableLocalExpr)
-	return count, ok && count == 1 && local.Return != nil
 }
 
 func validTerminalIfStatement(contract LanguageContract, expr Expr) bool {
@@ -725,17 +732,20 @@ func validTerminalIfStatement(contract LanguageContract, expr Expr) bool {
 	if !ok || !conditional.TerminalStatement {
 		return false
 	}
-	trueLocals, validTrue := terminalBranchLocalShape(conditional.WhenTrue)
-	falseLocals, validFalse := terminalBranchLocalShape(conditional.WhenFalse)
-	branchLocals := trueLocals + falseLocals
-	validBranchLocals := branchLocals == 0
+	branchLocalLimit := 0
 	if hasBranchLocalSourceContract(contract) {
-		validBranchLocals = branchLocals <= 2
+		branchLocalLimit = 1
 	}
+	if hasTwoBranchLocalsSourceContract(contract) {
+		branchLocalLimit = 2
+	}
+	trueLocals, validTrue := terminalBranchLocalShape(conditional.WhenTrue, branchLocalLimit)
+	falseLocals, validFalse := terminalBranchLocalShape(conditional.WhenFalse, branchLocalLimit)
+	branchLocals := trueLocals + falseLocals
 	conditionalCount := countConditionalExpressions(expr)
 	return locals >= 1 && countImmutableLocalExpressions(expr) == locals+branchLocals &&
 		countTerminalIfStatements(expr) == 1 && conditionalCount >= 1 && conditionalCount <= 2 &&
-		validTrue && validFalse && validBranchLocals && validConditionalExpressions(expr)
+		validTrue && validFalse && validConditionalExpressions(expr)
 }
 
 func validPureCallPlacement(expr Expr) bool {

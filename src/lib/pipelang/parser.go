@@ -496,30 +496,54 @@ func (p *parser) parseTerminalReturnBranch(branch string) (Expr, Span, error) {
 	if !hasBranchLocalSourceContract(p.languageContract) {
 		return nil, Span{}, oneDiagnostic(p.sources, CodeUnexpectedToken, CategorySyntax, p.peek().span, fmt.Sprintf("v0.69.0 terminal %s branch requires return, got %q", branch, p.peek().lit))
 	}
-	localType, err := p.parseTypeRef()
-	if err != nil {
-		return nil, Span{}, err
+	type branchLocalDeclaration struct {
+		typeRef     UnresolvedTypeRef
+		name        token
+		initializer Expr
 	}
-	name, err := p.expect(tokIdent)
-	if err != nil {
-		return nil, Span{}, err
+	limit := 1
+	if hasTwoBranchLocalsSourceContract(p.languageContract) {
+		limit = 2
 	}
-	if _, err := p.expect(tokAssign); err != nil {
-		return nil, Span{}, err
-	}
-	initializer, err := p.parseExpr(1)
-	if err != nil {
-		return nil, Span{}, err
-	}
-	if _, err := p.expect(tokSemi); err != nil {
-		return nil, Span{}, err
+	locals := make([]branchLocalDeclaration, 0, limit)
+	for !(p.peek().kind == tokIdent && p.peek().lit == "return") {
+		if len(locals) == limit {
+			return nil, Span{}, oneDiagnostic(p.sources, CodeUnexpectedToken, CategorySyntax, p.peek().span, fmt.Sprintf("%s terminal %s branch permits at most %d explicitly typed immutable locals before return, got %q", p.languageContract, branch, limit, p.peek().lit))
+		}
+		localType, err := p.parseTypeRef()
+		if err != nil {
+			return nil, Span{}, err
+		}
+		name, err := p.expect(tokIdent)
+		if err != nil {
+			return nil, Span{}, err
+		}
+		if _, err := p.expect(tokAssign); err != nil {
+			return nil, Span{}, err
+		}
+		initializer, err := p.parseExpr(1)
+		if err != nil {
+			return nil, Span{}, err
+		}
+		if _, err := p.expect(tokSemi); err != nil {
+			return nil, Span{}, err
+		}
+		locals = append(locals, branchLocalDeclaration{typeRef: localType, name: name, initializer: initializer})
 	}
 	returned, end, err := p.parseTerminalBranchReturn(branch)
 	if err != nil {
 		return nil, Span{}, err
 	}
-	local := &ImmutableLocalExpr{Type: localType, Name: name.lit, NameSpan: name.span, Initializer: initializer, Return: returned, Span: mergeSpans(start.span, end)}
-	return local, end, nil
+	body := returned
+	for index := len(locals) - 1; index >= 0; index-- {
+		local := locals[index]
+		localStart := local.typeRef.Span
+		if index == 0 {
+			localStart = start.span
+		}
+		body = &ImmutableLocalExpr{Type: local.typeRef, Name: local.name.lit, NameSpan: local.name.span, Initializer: local.initializer, Return: body, Span: mergeSpans(localStart, end)}
+	}
+	return body, end, nil
 }
 
 func (p *parser) parseTerminalBranchReturn(branch string) (Expr, Span, error) {
@@ -528,7 +552,7 @@ func (p *parser) parseTerminalBranchReturn(branch string) (Expr, Span, error) {
 		return nil, Span{}, err
 	}
 	if keyword.lit != "return" {
-		return nil, Span{}, oneDiagnostic(p.sources, CodeUnexpectedToken, CategorySyntax, keyword.span, fmt.Sprintf("v0.70.0 terminal %s branch permits at most one explicitly typed immutable local before return, got %q", branch, keyword.lit))
+		return nil, Span{}, oneDiagnostic(p.sources, CodeUnexpectedToken, CategorySyntax, keyword.span, fmt.Sprintf("%s terminal %s branch requires return, got %q", p.languageContract, branch, keyword.lit))
 	}
 	returned, err := p.parseExpr(1)
 	if err != nil {
@@ -708,7 +732,7 @@ func (p *parser) parsePostfix() (Expr, error) {
 	if !hasRecordFieldProjectionSourceContract(p.languageContract) {
 		return expr, nil
 	}
-	for p.peek().kind == tokDot || (((p.languageContract == PipeLangLanguageContractV700 || p.languageContract == PipeLangLanguageContractV690 || p.languageContract == PipeLangLanguageContractV680 || p.languageContract == PipeLangLanguageContractV670 || p.languageContract == PipeLangLanguageContractV660 || p.languageContract == PipeLangLanguageContractV650 || p.languageContract == PipeLangLanguageContractV640 || p.languageContract == PipeLangLanguageContractV630 || p.languageContract == PipeLangLanguageContractV620 || p.languageContract == PipeLangLanguageContractV610 || p.languageContract == PipeLangLanguageContractV600 || p.languageContract == PipeLangLanguageContractV590 || p.languageContract == PipeLangLanguageContractV580) || p.languageContract == PipeLangLanguageContractV570 || p.languageContract == PipeLangLanguageContractV560 || p.languageContract == PipeLangLanguageContractV550 || p.languageContract == PipeLangLanguageContractV540 || p.languageContract == PipeLangLanguageContractV530 || p.languageContract == PipeLangLanguageContractV520 || p.languageContract == PipeLangLanguageContractV510 || p.languageContract == PipeLangLanguageContractV500 || p.languageContract == PipeLangLanguageContractV490 || p.languageContract == PipeLangLanguageContractV330 || p.languageContract == PipeLangLanguageContractV340 || p.languageContract == PipeLangLanguageContractV350 || p.languageContract == PipeLangLanguageContractV360 || p.languageContract == PipeLangLanguageContractV370 || p.languageContract == PipeLangLanguageContractV380 || p.languageContract == PipeLangLanguageContractV390 || p.languageContract == PipeLangLanguageContractV400 || p.languageContract == PipeLangLanguageContractV410 || p.languageContract == PipeLangLanguageContractV420 || p.languageContract == PipeLangLanguageContractV430 || p.languageContract == PipeLangLanguageContractV440 || p.languageContract == PipeLangLanguageContractV450 || p.languageContract == PipeLangLanguageContractV460 || p.languageContract == PipeLangLanguageContractV470 || p.languageContract == PipeLangLanguageContractV480) && p.peek().kind == tokLBracket) {
+	for p.peek().kind == tokDot || (((p.languageContract == PipeLangLanguageContractV710 || p.languageContract == PipeLangLanguageContractV700 || p.languageContract == PipeLangLanguageContractV690 || p.languageContract == PipeLangLanguageContractV680 || p.languageContract == PipeLangLanguageContractV670 || p.languageContract == PipeLangLanguageContractV660 || p.languageContract == PipeLangLanguageContractV650 || p.languageContract == PipeLangLanguageContractV640 || p.languageContract == PipeLangLanguageContractV630 || p.languageContract == PipeLangLanguageContractV620 || p.languageContract == PipeLangLanguageContractV610 || p.languageContract == PipeLangLanguageContractV600 || p.languageContract == PipeLangLanguageContractV590 || p.languageContract == PipeLangLanguageContractV580) || p.languageContract == PipeLangLanguageContractV570 || p.languageContract == PipeLangLanguageContractV560 || p.languageContract == PipeLangLanguageContractV550 || p.languageContract == PipeLangLanguageContractV540 || p.languageContract == PipeLangLanguageContractV530 || p.languageContract == PipeLangLanguageContractV520 || p.languageContract == PipeLangLanguageContractV510 || p.languageContract == PipeLangLanguageContractV500 || p.languageContract == PipeLangLanguageContractV490 || p.languageContract == PipeLangLanguageContractV330 || p.languageContract == PipeLangLanguageContractV340 || p.languageContract == PipeLangLanguageContractV350 || p.languageContract == PipeLangLanguageContractV360 || p.languageContract == PipeLangLanguageContractV370 || p.languageContract == PipeLangLanguageContractV380 || p.languageContract == PipeLangLanguageContractV390 || p.languageContract == PipeLangLanguageContractV400 || p.languageContract == PipeLangLanguageContractV410 || p.languageContract == PipeLangLanguageContractV420 || p.languageContract == PipeLangLanguageContractV430 || p.languageContract == PipeLangLanguageContractV440 || p.languageContract == PipeLangLanguageContractV450 || p.languageContract == PipeLangLanguageContractV460 || p.languageContract == PipeLangLanguageContractV470 || p.languageContract == PipeLangLanguageContractV480) && p.peek().kind == tokLBracket) {
 		if p.peek().kind == tokLBracket {
 			p.next()
 			index, err := p.parseExpr(1)
@@ -1527,7 +1551,7 @@ func (p *parser) parseListSortByOrdinal() (Expr, error) {
 	if err != nil {
 		return nil, err
 	}
-	if (p.languageContract == PipeLangLanguageContractV700 || p.languageContract == PipeLangLanguageContractV690 || p.languageContract == PipeLangLanguageContractV680 || p.languageContract == PipeLangLanguageContractV670 || p.languageContract == PipeLangLanguageContractV660 || p.languageContract == PipeLangLanguageContractV650 || p.languageContract == PipeLangLanguageContractV640 || p.languageContract == PipeLangLanguageContractV630 || p.languageContract == PipeLangLanguageContractV620 || p.languageContract == PipeLangLanguageContractV610 || p.languageContract == PipeLangLanguageContractV600 || p.languageContract == PipeLangLanguageContractV590 || p.languageContract == PipeLangLanguageContractV580) || p.languageContract == PipeLangLanguageContractV570 || p.languageContract == PipeLangLanguageContractV560 || p.languageContract == PipeLangLanguageContractV550 || p.languageContract == PipeLangLanguageContractV540 || p.languageContract == PipeLangLanguageContractV530 || p.languageContract == PipeLangLanguageContractV520 || p.languageContract == PipeLangLanguageContractV510 || p.languageContract == PipeLangLanguageContractV500 || p.languageContract == PipeLangLanguageContractV490 || p.languageContract == PipeLangLanguageContractV320 || p.languageContract == PipeLangLanguageContractV330 || p.languageContract == PipeLangLanguageContractV340 || p.languageContract == PipeLangLanguageContractV350 || p.languageContract == PipeLangLanguageContractV360 || p.languageContract == PipeLangLanguageContractV370 || p.languageContract == PipeLangLanguageContractV380 || p.languageContract == PipeLangLanguageContractV390 || p.languageContract == PipeLangLanguageContractV400 || p.languageContract == PipeLangLanguageContractV410 || p.languageContract == PipeLangLanguageContractV420 || p.languageContract == PipeLangLanguageContractV430 || p.languageContract == PipeLangLanguageContractV440 || p.languageContract == PipeLangLanguageContractV450 || p.languageContract == PipeLangLanguageContractV460 || p.languageContract == PipeLangLanguageContractV470 || p.languageContract == PipeLangLanguageContractV480 {
+	if (p.languageContract == PipeLangLanguageContractV710 || p.languageContract == PipeLangLanguageContractV700 || p.languageContract == PipeLangLanguageContractV690 || p.languageContract == PipeLangLanguageContractV680 || p.languageContract == PipeLangLanguageContractV670 || p.languageContract == PipeLangLanguageContractV660 || p.languageContract == PipeLangLanguageContractV650 || p.languageContract == PipeLangLanguageContractV640 || p.languageContract == PipeLangLanguageContractV630 || p.languageContract == PipeLangLanguageContractV620 || p.languageContract == PipeLangLanguageContractV610 || p.languageContract == PipeLangLanguageContractV600 || p.languageContract == PipeLangLanguageContractV590 || p.languageContract == PipeLangLanguageContractV580) || p.languageContract == PipeLangLanguageContractV570 || p.languageContract == PipeLangLanguageContractV560 || p.languageContract == PipeLangLanguageContractV550 || p.languageContract == PipeLangLanguageContractV540 || p.languageContract == PipeLangLanguageContractV530 || p.languageContract == PipeLangLanguageContractV520 || p.languageContract == PipeLangLanguageContractV510 || p.languageContract == PipeLangLanguageContractV500 || p.languageContract == PipeLangLanguageContractV490 || p.languageContract == PipeLangLanguageContractV320 || p.languageContract == PipeLangLanguageContractV330 || p.languageContract == PipeLangLanguageContractV340 || p.languageContract == PipeLangLanguageContractV350 || p.languageContract == PipeLangLanguageContractV360 || p.languageContract == PipeLangLanguageContractV370 || p.languageContract == PipeLangLanguageContractV380 || p.languageContract == PipeLangLanguageContractV390 || p.languageContract == PipeLangLanguageContractV400 || p.languageContract == PipeLangLanguageContractV410 || p.languageContract == PipeLangLanguageContractV420 || p.languageContract == PipeLangLanguageContractV430 || p.languageContract == PipeLangLanguageContractV440 || p.languageContract == PipeLangLanguageContractV450 || p.languageContract == PipeLangLanguageContractV460 || p.languageContract == PipeLangLanguageContractV470 || p.languageContract == PipeLangLanguageContractV480 {
 		if _, err := p.expect(tokComma); err != nil {
 			return nil, err
 		}

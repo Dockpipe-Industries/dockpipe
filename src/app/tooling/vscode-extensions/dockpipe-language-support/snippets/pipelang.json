@@ -706,5 +706,20 @@
       "}"
     ],
     "description": "Create the exact v0.70.0 terminal if/else form with one lexical immutable local in a selected branch."
+  },
+  "PipeLang terminal if/else with two branch locals": {
+    "prefix": "pipe-terminal-if-branch-locals",
+    "body": [
+      "public ${1:string} ${2:Select}(${1:string} ${3:raw}, bool ${4:normalize}) {",
+      "\t${1:string} ${5:cleaned} = ${3:raw};",
+      "\tif (${4:normalize}) {",
+      "\t\t${1:string} ${6:prepared} = trim(${5:cleaned});",
+      "\t\t${1:string} ${7:selected} = ${6:prepared};",
+      "\t\treturn ${7:selected};",
+      "\t}",
+      "\telse { return ${3:raw}; }",
+      "}"
+    ],
+    "description": "Create the exact v0.71.0 terminal if/else form with two ordered lexical immutable locals in a selected branch."
   }
 }
