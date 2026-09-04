@@ -2,7 +2,8 @@
 
 Current work: the founder requested [six v0.80 milestone repair slices](milestone-v080-repairs.md)
 on 2026-09-04 before further language expansion. That record owns the findings, repair scope,
-per-slice state, and verification. The language contract remains `v0.80.0`.
+per-slice state, and verification. All six repairs and terminal checks are complete; R6 is
+uncommitted for founder review. No successor is selected. The language contract remains `v0.80.0`.
 
 ## Decision Status
 

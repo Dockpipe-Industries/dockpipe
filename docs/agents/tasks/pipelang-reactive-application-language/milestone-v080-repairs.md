@@ -8,6 +8,8 @@ separate slices before further language expansion. This is repair work within th
 ## Objective and boundaries
 
 - Objective: `TASK-021-PipeLang-v0.80-milestone-repairs`.
+- State: **completed** on 2026-09-04; all six repairs and terminal checks passed. R6 is
+  uncommitted for founder review; no successor language slice is selected.
 - Authority: the founder's 2026-09-04 request to address all six findings and document them here.
 - Completion: all six repairs have focused regression proof, compiler/consumer compatibility
   checks pass, and this record contains the completed evidence and remaining limitations.
@@ -26,8 +28,8 @@ separate slices before further language expansion. This is repair work within th
 | R2 | P1 | Memoize semantic-to-HIR dependency lowering across one shared dependency graph. | Each reachable method lowered once, shared acyclic graph scaling, deterministic order/output, cycle rejection retained. | Complete, committed |
 | R3 | P2 | Enforce supported compiler/language identities and feature-version gates at Core program admission. | Unknown identities independently rejected; representative downgraded features rejected consistently by Core, evaluator, and backend. | Complete, committed |
 | R4 | P2 | Make Core type validation exhaustive over supported kinds and representations. | Unknown kinds, unsupported numeric widths, contradictory/nested representations, unused parameters and expression types rejected; accepted types retained. | Complete, committed |
-| R5 | P2 | Generate canonical argument validation from parameter types independently of function body shape. | Invalid UTF-8 and malformed arithmetic Results rejected in identity/unused/unselected cases; evaluator/generated-Go agreement and helper emission. | Complete, uncommitted |
-| R6 | P2 | Allocate or check generated names against the entire Go package namespace, including runtime declarations. | Legal source/runtime-name collision examples generate compilable deterministic Go; call targets agree with allocated declarations. | Pending |
+| R5 | P2 | Generate canonical argument validation from parameter types independently of function body shape. | Invalid UTF-8 and malformed arithmetic Results rejected in identity/unused/unselected cases; evaluator/generated-Go agreement and helper emission. | Complete, committed |
+| R6 | P2 | Allocate or check generated names against the entire Go package namespace, including runtime declarations. | Legal source/runtime-name collision examples generate compilable deterministic Go; call targets agree with allocated declarations. | Complete, uncommitted |
 
 R1 and R2 are the review's recommended blockers for further compiler expansion. All six remain
 required by the founder's repair request. The Core and host-value admission repairs must precede
@@ -356,9 +358,95 @@ controls, candidate goldens, and cache are under `/tmp/pipelang-r5-proof`; gener
 temporary modules and the existing temporary generated-Go cache. The 13 tracked Go goldens are
 intentional test artifacts; no generated store or runtime artifact was refreshed.
 
-R5 is complete and uncommitted for founder review. R6 remains pending and was not implemented.
+R5 was complete and uncommitted at its original review boundary. It was subsequently committed as
+`163a6effba408bc8ad6c4b5d88dc594b8817d483` (`Enforce canonical argument validation across evaluator
+and Go backend`), verified with a clean saved checkout at R6 admission on 2026-09-04. This
+supersedes the earlier uncommitted status. R6 was still pending at that checkpoint.
 The pre-existing numeric-comparison evaluator limitation remains outside this slice. CLI/editor,
 unrelated repository suites, sustained fuzzing, and stack-exhaustion checks were not run; the
 six-repair terminal verification remains pending. Package/engine boundaries were preserved.
 No commit, push, publication, worktree, destructive cleanup, credentials, or live operation was
 performed in R5.
+
+
+### R6 completed — 2026-09-04
+
+The receiver verified `/home/jamie/source/dockpipe`, branch `js/pipelang`, HEAD
+`163a6effba408bc8ad6c4b5d88dc594b8817d483`, and no staged, unstaged, or untracked entries.
+R1–R5's durable proof was admitted. No worktree, cleanup, stash operation, or commit was performed.
+
+`src/lib/pipelang/gobackend/names.go` adds per-generation identity-based name allocation.
+It inventories the actual emitted Go support with the Go token scanner, including types,
+constants, variables, helpers, and import names, before allocating source functions. A final
+namespace check rejects any duplicated emitted declaration. Receiver methods stay outside the
+package namespace; comments, strings, fields, generic parameters, and local declarations do not
+reserve package names. The backend retains the parser/AST import prohibition and accepts Core only.
+
+`generate.go` now resolves ordinary and predicate calls through the same semantic identity map
+as function declarations. Record identities receive deterministic distinct Go type names, and
+record constructors/validators, Optional payload checks, list helpers, bounded Result helpers,
+and all type references consume those allocated names through the generation context. Preferred
+noncolliding names and the existing Optional fallback remain unchanged. Collisions receive
+stable numeric suffixes in sorted identity order. No source-name restriction, Core mutation,
+language form, compiler/semantic/Application IR identity, or package/engine boundary changed.
+
+`Generate` retains its existing source/error API. `GenerateWithNames` additionally returns
+function identity/name bindings for host callers; `FunctionName` remains a context-free preferred
+name and is documented accordingly. Existing uses of that helper are noncolliding fixture tests;
+there is no production call target left that reconstructs a function name from source spelling.
+The canonical contract is documented in `docs/concepts/pipelang.md`.
+
+Tracked regressions in `go_namespace_test.go` and `gobackend/names_test.go` cover:
+
+- legal source functions colliding with arithmetic runtime types and both error constants,
+  including direct host entrypoints, ordinary calls, success, overflow, and evaluator agreement;
+- a source function named `Result` alongside the text Result runtime;
+- same-named methods owned by different classes, with distinct calls and returned values;
+- a legal source predicate whose name collides with its emitted record type, with compiled
+  filtering proving identity-based target selection;
+- distinct supported Core record identities that normalize to the same Go spelling, including
+  constructors, primitive fields, Optional validation, lists, and snapshot Results (this identity
+  mutation is a Core probe, not newly accepted source syntax);
+- byte-identical output and bindings under reversed function order, repeated generation,
+  agreement between both generation APIs, and unchanged serialized Core inputs;
+- every emitted package declaration category, grouped declarations, imports, method scope,
+  and rejection of duplicate declarations without confusing strings or locals with package names.
+
+The focused regression command passed:
+`go test ./src/lib/pipelang/gobackend ./src/lib/pipelang -run '^Test(GoNamespace|PackageNamespace|GoBackendCannotImport|Optional.*Collision)' -count=1`.
+The existing `TestV130GoOptionalSupportNameAvoidsSourceFunctionCollisions` also passed in the full
+suite. A temporary overlay restored the pre-R6 backend emission without reverting tracked source.
+The original plain-generation reproduction failed Go compilation with
+`PipeLangArithmeticResult redeclared in this block`; the same-name method and normalized record
+cases failed the old backend's collision checks. The overlay adapter only connects the new
+result API to old emission for the negative control; it is not production code.
+
+### Six-repair terminal verification — passed, 2026-09-04
+
+Cached Go 1.25.13 was used with `GOTOOLCHAIN=local`, `GOPROXY=off`, `GOSUMDB=off`, and a writable
+`/tmp/pipelang-r6-proof/cache`. Generated test modules also set `GOWORK=off` and use the existing
+temporary generated-Go cache. Commands completed successfully:
+
+- `go test ./src/lib/pipelang/... ./src/lib/applicationir ./tests/pipelangcompat -count=1`;
+- `go test ./src/lib/application -run 'PipeLang|TestCompileWorkflowsBatchSupportsConfigPipe' -count=1`;
+- `go test ./src/cmd -count=1`;
+- `go vet ./src/lib/pipelang/... ./src/lib/applicationir`;
+- JavaScript syntax checking of the language-support extension, changed Go formatting, task
+  YAML and document-route consistency, and `git diff --check`.
+
+These suites include R1–R6 regressions, Core-only backend dependency guards, generated-Go
+execution, unchanged HIR/Core/Go/semantic/Application IR goldens, accepted v0.80 and internal
+v0.1 capabilities, and the exact frozen 45-source compatibility inventory and digests. R6 adds
+no golden changes. The tiny-pure-function fixture retains its exact Go golden and normalized
+int64 executable types; its pre-existing numeric-comparison evaluator limitation remains outside
+this objective. The other 28 admission fixtures retain evaluator/generated-Go comparisons.
+
+Logs, the negative-control overlay, a temporary mechanical-edit helper, and caches are under
+`/tmp/pipelang-r6-proof`; compiled generated Go uses temporary test modules. No generated store,
+runtime artifact, or tracked golden was refreshed. R6 implementation, regressions, canonical
+documentation, this record, the overview, and both TASK-021 indexes are uncommitted for founder
+review. No push, publication, credentials, Docker/cloud/live operation, or successor selection
+occurred. Repository-wide suites/builds, standalone editor execution tests, sustained fuzzing,
+stack-exhaustion testing, and the exhaustive feature/version cross-product were not run.
+All six requested repairs meet this objective's completion criteria; remaining language work
+requires its own founder decision and authority.

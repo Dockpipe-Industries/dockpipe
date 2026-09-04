@@ -222,6 +222,18 @@ concepts while preserving the typed function signature and normalized literal, p
 and operator nodes. The Go backend's only PipeLang dependency is Core IR; an architecture test
 rejects parser, AST/compiler-root, or HIR imports in that backend.
 
+Generated Go names belong to one package namespace, including runtime types, constants,
+variables, helpers, imports, record declarations, and source functions. The backend allocates
+colliding function and record names deterministically by semantic identity, retaining existing
+noncolliding names and the existing Optional runtime-name fallback. Calls and named predicates
+use the same identity-to-name bindings as declarations; record helpers and nested carrier types
+use the allocated record names. Legal source names such as `ArithmeticResult` remain legal.
+`gobackend.GenerateWithNames` returns generated source plus function identity/name bindings for
+host entrypoints. The context-free `FunctionName` helper returns only a preferred name; consumers
+that may encounter collisions must use the returned bindings. Allocation does not rewrite Core
+or public semantic identities. The backend checks the complete emitted package namespace before
+returning Go source.
+
 Core program admission accepts only `pipelang.compiler.v1` and the exact supported language
 identities `v0.1.0` through `v0.80.0`. `coreir.ValidateProgram` checks feature availability in
 signatures and nested expressions, together with the existing composition and topology contracts.

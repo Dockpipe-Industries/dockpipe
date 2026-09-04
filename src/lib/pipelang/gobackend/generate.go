@@ -32,19 +32,11 @@ func (e *Error) Error() string {
 	return fmt.Sprintf("%s: function %s: %s", e.Code, e.Function, e.Message)
 }
 
-// Generate accepts Core IR only and returns deterministic, gofmt-formatted Go.
-func Generate(program coreir.Program) ([]byte, error) {
+func (g *generator) generate(program coreir.Program) ([]byte, error) {
 	if err := coreir.ValidateProgram(program); err != nil {
 		return nil, &Error{Code: "PLGO0001", Message: err.Error()}
 	}
-	functions := append([]coreir.Function(nil), program.Functions...)
-	sort.SliceStable(functions, func(i, j int) bool {
-		left, right := identityKey(functions[i].Identity), identityKey(functions[j].Identity)
-		if left != right {
-			return left < right
-		}
-		return functions[i].Name < functions[j].Name
-	})
+	functions := sortedFunctions(program.Functions)
 	for _, function := range functions {
 		if err := coreir.ValidateFunction(function); err != nil {
 			return nil, backendError(function, "PLGO0001", err.Error())
@@ -86,18 +78,19 @@ func Generate(program coreir.Program) ([]byte, error) {
 	if err != nil {
 		return nil, &Error{Code: "PLGO0001", Message: err.Error()}
 	}
+	g.allocateRecords(records)
 	if needsOptional {
-		emitOptionalSupport(&out, needsText, needsOptionalDefault, needsRecordOptional, programNeedsOptionalPropagation(functions), optionalTypeName, records)
+		g.emitOptionalSupport(&out, needsText, needsOptionalDefault, needsRecordOptional, programNeedsOptionalPropagation(functions), optionalTypeName, records)
 	}
 	for _, record := range records {
-		emitRecordType(&out, record, programConstructsRecord(functions, record), optionalTypeName)
+		g.emitRecordType(&out, record, programConstructsRecord(functions, record), optionalTypeName)
 	}
 	lists, err := collectListTypes(functions)
 	if err != nil {
 		return nil, &Error{Code: "PLGO0001", Message: err.Error()}
 	}
 	for _, list := range lists {
-		emitListSupport(&out, list, programAppendsList(functions, list), programIndexesList(functions, list), programFindsListByText(functions, list), programFiltersListByText(functions, list), programFiltersListContainsCaseFolded(functions, list), programFiltersListJoinedContainsCaseFolded(functions, list), programSortsListByOrdinalText(functions, list), programSortsListByOrdinalTexts(functions, list), optionalTypeName)
+		g.emitListSupport(&out, list, programAppendsList(functions, list), programIndexesList(functions, list), programFindsListByText(functions, list), programFiltersListByText(functions, list), programFiltersListContainsCaseFolded(functions, list), programFiltersListJoinedContainsCaseFolded(functions, list), programSortsListByOrdinalText(functions, list), programSortsListByOrdinalTexts(functions, list), optionalTypeName)
 	}
 	results, err := collectSnapshotResultTypes(functions)
 	if err != nil {
@@ -106,13 +99,17 @@ func Generate(program coreir.Program) ([]byte, error) {
 	if len(results) > 0 || needsTextResult {
 		emitSnapshotResultType(&out)
 		for _, result := range results {
-			emitSnapshotResultSupport(&out, result)
+			g.emitSnapshotResultSupport(&out, result)
 		}
 		if needsTextResult {
 			emitTextResultSupport(&out)
 		}
 	}
-	seen := map[string]string{}
+	used, err := packageNames([]byte(out.String()))
+	if err != nil {
+		return nil, &Error{Code: "PLGO0002", Message: err.Error()}
+	}
+	g.allocateFunctions(functions, used)
 	seenIdentities := map[string]struct{}{}
 	for _, function := range functions {
 		identity := identityKey(function.Identity)
@@ -126,14 +123,13 @@ func Generate(program coreir.Program) ([]byte, error) {
 		if err := coreir.ValidateFunction(function); err != nil {
 			return nil, backendError(function, "PLGO0001", err.Error())
 		}
-		name := FunctionName(function)
-		if previous, ok := seen[name]; ok {
-			return nil, backendError(function, "PLGO0002", fmt.Sprintf("Go name %q collides with %s", name, previous))
-		}
-		seen[name] = identity
-		if err := emitFunction(&out, name, function, optionalTypeName); err != nil {
+		name := g.functionNames[identityKey(function.Identity)]
+		if err := g.emitFunction(&out, name, function, optionalTypeName); err != nil {
 			return nil, err
 		}
+	}
+	if _, err := packageNames([]byte(out.String())); err != nil {
+		return nil, &Error{Code: "PLGO0002", Message: err.Error()}
 	}
 	formatted, err := format.Source([]byte(out.String()))
 	if err != nil {
@@ -142,6 +138,8 @@ func Generate(program coreir.Program) ([]byte, error) {
 	return formatted, nil
 }
 
+// FunctionName returns the preferred name without package context. Use
+// GenerateWithNames for the allocated name when embedding generated functions.
 func FunctionName(function coreir.Function) string {
 	name := strings.TrimSpace(function.Name)
 	if name == "" {
@@ -150,8 +148,8 @@ func FunctionName(function coreir.Function) string {
 	return "PipeLang" + exportedIdentifier(name)
 }
 
-func emitFunction(out *strings.Builder, name string, function coreir.Function, optionalTypeName string) error {
-	result, err := goType(function.ReturnType, optionalTypeName)
+func (g *generator) emitFunction(out *strings.Builder, name string, function coreir.Function, optionalTypeName string) error {
+	result, err := g.goType(function.ReturnType, optionalTypeName)
 	if err != nil {
 		return backendError(function, "PLGO0001", err.Error())
 	}
@@ -160,7 +158,7 @@ func emitFunction(out *strings.Builder, name string, function coreir.Function, o
 		if parameter.Position != index {
 			return backendError(function, "PLGO0001", "parameters are not in normalized position order")
 		}
-		parameterType, err := goType(parameter.Type, optionalTypeName)
+		parameterType, err := g.goType(parameter.Type, optionalTypeName)
 		if err != nil {
 			return backendError(function, "PLGO0001", err.Error())
 		}
@@ -177,16 +175,16 @@ func emitFunction(out *strings.Builder, name string, function coreir.Function, o
 			fmt.Fprintf(out, "\tpipelangValidateText(p%d)\n", index)
 		}
 		if parameter.Type.Kind == coreir.TypeRecord {
-			fmt.Fprintf(out, "\t%s(p%d)\n", recordValidationName(parameter.Type), index)
+			fmt.Fprintf(out, "\t%s(p%d)\n", g.recordValidationName(parameter.Type), index)
 		}
 		if parameter.Type.Kind == coreir.TypeOptional {
 			fmt.Fprintf(out, "\tpipelangValidateOptional(p%d)\n", index)
 		}
 		if parameter.Type.Kind == coreir.TypeList {
-			fmt.Fprintf(out, "\t%s(p%d)\n", listValidationName(parameter.Type), index)
+			fmt.Fprintf(out, "\t%s(p%d)\n", g.listValidationName(parameter.Type), index)
 		}
 		if isBoundedValueResultType(parameter.Type) {
-			fmt.Fprintf(out, "\t%s(p%d)\n", boundedResultValidationName(parameter.Type), index)
+			fmt.Fprintf(out, "\t%s(p%d)\n", g.boundedResultValidationName(parameter.Type), index)
 		}
 		if isArithmeticResultType(parameter.Type) {
 			fmt.Fprintf(out, "\tpipelangValidateArithmeticResult(p%d)\n", index)
@@ -197,7 +195,7 @@ func emitFunction(out *strings.Builder, name string, function coreir.Function, o
 		if propagation == nil || propagation.Value == nil || propagation.Value.Parameter == nil {
 			return backendError(function, "PLGO0001", "Optional propagation is not a direct parameter")
 		}
-		valueType, err := goType(function.Body.Type.Optional.Value, optionalTypeName)
+		valueType, err := g.goType(function.Body.Type.Optional.Value, optionalTypeName)
 		if err != nil {
 			return backendError(function, "PLGO0001", err.Error())
 		}
@@ -209,16 +207,16 @@ func emitFunction(out *strings.Builder, name string, function coreir.Function, o
 		if propagation == nil || propagation.Value == nil || propagation.Value.Parameter == nil {
 			return backendError(function, "PLGO0001", "Result propagation is not a direct parameter")
 		}
-		fmt.Fprintf(out, "\tif !p%d.OK { return %s(p%d) }\n\treturn %s(p%d.Value)\n}\n\n", *propagation.Value.Parameter, boundedResultCloneName(function.ReturnType), *propagation.Value.Parameter, boundedResultOKName(function.ReturnType), *propagation.Value.Parameter)
+		fmt.Fprintf(out, "\tif !p%d.OK { return %s(p%d) }\n\treturn %s(p%d.Value)\n}\n\n", *propagation.Value.Parameter, g.boundedResultCloneName(function.ReturnType), *propagation.Value.Parameter, g.boundedResultOKName(function.ReturnType), *propagation.Value.Parameter)
 		return nil
 	}
-	if emitted, err := emitBlockPropagationFunction(out, function, optionalTypeName); err != nil {
+	if emitted, err := g.emitBlockPropagationFunction(out, function, optionalTypeName); err != nil {
 		return backendError(function, "PLGO0001", err.Error())
 	} else if emitted {
 		return nil
 	}
 	out.WriteString("\treturn ")
-	body, err := emitExpr(function.Body, function.Parameters, optionalTypeName)
+	body, err := g.emitExpr(function.Body, function.Parameters, optionalTypeName)
 	if err != nil {
 		return backendError(function, "PLGO0001", err.Error())
 	}
@@ -227,13 +225,13 @@ func emitFunction(out *strings.Builder, name string, function coreir.Function, o
 	return nil
 }
 
-func emitBlockPropagationFunction(out *strings.Builder, function coreir.Function, optionalTypeName string) (bool, error) {
+func (g *generator) emitBlockPropagationFunction(out *strings.Builder, function coreir.Function, optionalTypeName string) (bool, error) {
 	local := function.Body.ImmutableLocal
 	if function.Body.Kind != coreir.ExprImmutableLocal || local == nil || local.Initializer == nil {
 		return false, nil
 	}
 	if local.Initializer.Kind == coreir.ExprCall && local.Return != nil && local.Return.Kind == coreir.ExprImmutableLocal && local.Return.ImmutableLocal != nil && local.Return.ImmutableLocal.Initializer != nil && local.Return.ImmutableLocal.Initializer.Kind == coreir.ExprPropagate {
-		return emitPriorLocalBlockPropagationFunction(out, function, optionalTypeName)
+		return g.emitPriorLocalBlockPropagationFunction(out, function, optionalTypeName)
 	}
 	if local.Initializer.Kind != coreir.ExprPropagate {
 		return false, nil
@@ -243,16 +241,16 @@ func emitBlockPropagationFunction(out *strings.Builder, function coreir.Function
 		contextualChain = function.Parameters[position].Type.Kind == coreir.TypePrimitive && function.Parameters[position].Type.Primitive == coreir.PrimitiveString
 	}
 	if (len(function.Parameters) == 1 || contextualChain) && isBoundedValueResultType(function.Parameters[0].Type) && isBoundedValueResultType(function.ReturnType) && local.Return != nil && local.Return.Kind == coreir.ExprImmutableLocal && local.Return.ImmutableLocal != nil && local.Return.ImmutableLocal.Initializer != nil && local.Return.ImmutableLocal.Initializer.Kind == coreir.ExprCall && local.Return.ImmutableLocal.Return != nil && local.Return.ImmutableLocal.Return.Kind == coreir.ExprImmutableLocal && local.Return.ImmutableLocal.Return.ImmutableLocal != nil && local.Return.ImmutableLocal.Return.ImmutableLocal.Initializer != nil && local.Return.ImmutableLocal.Return.ImmutableLocal.Initializer.Kind == coreir.ExprPropagate {
-		return emitCrossPayloadResultPropagationChainFunction(out, function, optionalTypeName)
+		return g.emitCrossPayloadResultPropagationChainFunction(out, function, optionalTypeName)
 	}
 	if contextualChain && isBoundedValueResultType(function.Parameters[0].Type) && isBoundedValueResultType(function.ReturnType) {
-		return emitCrossPayloadResultPropagationFunction(out, function, optionalTypeName)
+		return g.emitCrossPayloadResultPropagationFunction(out, function, optionalTypeName)
 	}
 	if len(function.Parameters) == 1 && isBoundedValueResultType(function.Parameters[0].Type) && isBoundedValueResultType(function.ReturnType) && !coreir.TypeEqual(function.Parameters[0].Type.Result.Success, function.ReturnType.Result.Success) {
-		return emitCrossPayloadResultPropagationFunction(out, function, optionalTypeName)
+		return g.emitCrossPayloadResultPropagationFunction(out, function, optionalTypeName)
 	}
 	if len(function.Parameters) >= 3 && isArithmeticResultType(function.ReturnType) {
-		return emitCheckedPropagationChainFunction(out, function, optionalTypeName)
+		return g.emitCheckedPropagationChainFunction(out, function, optionalTypeName)
 	}
 	propagated := local.Initializer.Propagate
 	canonicalParameters := len(function.Parameters) == 1 || (len(function.Parameters) == 2 && isArithmeticResultType(function.ReturnType))
@@ -262,7 +260,7 @@ func emitBlockPropagationFunction(out *strings.Builder, function coreir.Function
 	var initialized string
 	switch function.ReturnType.Kind {
 	case coreir.TypeOptional:
-		valueType, err := goType(local.Type, optionalTypeName)
+		valueType, err := g.goType(local.Type, optionalTypeName)
 		if err != nil {
 			return false, err
 		}
@@ -272,18 +270,18 @@ func emitBlockPropagationFunction(out *strings.Builder, function coreir.Function
 		if isArithmeticResultType(function.ReturnType) {
 			fmt.Fprint(out, "\tpipelangValidateArithmeticResult(p0)\n\tif !p0.OK { return p0 }\n")
 		} else {
-			fmt.Fprintf(out, "\tif !p0.OK { return %s(p0) }\n", boundedResultCloneName(function.ReturnType))
+			fmt.Fprintf(out, "\tif !p0.OK { return %s(p0) }\n", g.boundedResultCloneName(function.ReturnType))
 		}
 		initialized = "p0.Value"
 		if local.Type.Kind == coreir.TypeList {
-			initialized = fmt.Sprintf("%s(%s)", listCloneName(local.Type), initialized)
+			initialized = fmt.Sprintf("%s(%s)", g.listCloneName(local.Type), initialized)
 		}
 	default:
 		return false, fmt.Errorf("block propagation carrier is unsupported")
 	}
 	fmt.Fprintf(out, "\tp%d := %s\n", local.Position, initialized)
 	scoped := append(append([]coreir.Parameter{}, function.Parameters...), coreir.Parameter{Position: local.Position, Name: local.Name, Type: local.Type})
-	returned, err := emitExpr(*local.Return, scoped, optionalTypeName)
+	returned, err := g.emitExpr(*local.Return, scoped, optionalTypeName)
 	if err != nil {
 		return false, err
 	}
@@ -291,7 +289,7 @@ func emitBlockPropagationFunction(out *strings.Builder, function coreir.Function
 	return true, nil
 }
 
-func emitCrossPayloadResultPropagationChainFunction(out *strings.Builder, function coreir.Function, optionalTypeName string) (bool, error) {
+func (g *generator) emitCrossPayloadResultPropagationChainFunction(out *strings.Builder, function coreir.Function, optionalTypeName string) (bool, error) {
 	first := function.Body.ImmutableLocal
 	if first == nil || first.Initializer == nil || first.Initializer.Propagate == nil || first.Return == nil || first.Return.Kind != coreir.ExprImmutableLocal || first.Return.ImmutableLocal == nil {
 		return false, fmt.Errorf("cross-payload Result propagation chain is not canonical")
@@ -300,10 +298,10 @@ func emitCrossPayloadResultPropagationChainFunction(out *strings.Builder, functi
 	for position := 1; position < len(function.Parameters); position++ {
 		fmt.Fprintf(out, "\tpipelangValidateText(p%d)\n", position)
 	}
-	fmt.Fprintf(out, "\tif !p0.OK { return %s(p0.Error) }\n", boundedResultErrName(function.ReturnType))
+	fmt.Fprintf(out, "\tif !p0.OK { return %s(p0.Error) }\n", g.boundedResultErrName(function.ReturnType))
 	firstValue := "p0.Value"
 	if first.Type.Kind == coreir.TypeList {
-		firstValue = fmt.Sprintf("%s(%s)", listCloneName(first.Type), firstValue)
+		firstValue = fmt.Sprintf("%s(%s)", g.listCloneName(first.Type), firstValue)
 	}
 	fmt.Fprintf(out, "\tp%d := %s\n", first.Position, firstValue)
 	scope := append(append([]coreir.Parameter{}, function.Parameters...), coreir.Parameter{Position: first.Position, Name: first.Name, Type: first.Type})
@@ -314,11 +312,11 @@ func emitCrossPayloadResultPropagationChainFunction(out *strings.Builder, functi
 			return false, fmt.Errorf("cross-payload Result propagation chain stage %d has no continuation", stage)
 		}
 		if payloadLocal.Return.Kind == coreir.ExprCall {
-			returned, err := emitExpr(*payloadLocal.Return, scope, optionalTypeName)
+			returned, err := g.emitExpr(*payloadLocal.Return, scope, optionalTypeName)
 			if err != nil {
 				return false, err
 			}
-			fmt.Fprintf(out, "\treturn %s(%s)\n}\n\n", boundedResultCloneName(function.ReturnType), returned)
+			fmt.Fprintf(out, "\treturn %s(%s)\n}\n\n", g.boundedResultCloneName(function.ReturnType), returned)
 			return true, nil
 		}
 		if payloadLocal.Return.Kind != coreir.ExprImmutableLocal || payloadLocal.Return.ImmutableLocal == nil {
@@ -328,19 +326,19 @@ func emitCrossPayloadResultPropagationChainFunction(out *strings.Builder, functi
 		if carrierLocal.Initializer == nil || carrierLocal.Initializer.Kind != coreir.ExprCall || carrierLocal.Return == nil || carrierLocal.Return.Kind != coreir.ExprImmutableLocal || carrierLocal.Return.ImmutableLocal == nil {
 			return false, fmt.Errorf("cross-payload Result propagation chain stage %d is not canonical", stage)
 		}
-		called, err := emitExpr(*carrierLocal.Initializer, scope, optionalTypeName)
+		called, err := g.emitExpr(*carrierLocal.Initializer, scope, optionalTypeName)
 		if err != nil {
 			return false, err
 		}
-		fmt.Fprintf(out, "\tp%d := %s(%s)\n", carrierLocal.Position, boundedResultCloneName(carrierLocal.Type), called)
-		fmt.Fprintf(out, "\tif !p%d.OK { return %s(p%d.Error) }\n", carrierLocal.Position, boundedResultErrName(function.ReturnType), carrierLocal.Position)
+		fmt.Fprintf(out, "\tp%d := %s(%s)\n", carrierLocal.Position, g.boundedResultCloneName(carrierLocal.Type), called)
+		fmt.Fprintf(out, "\tif !p%d.OK { return %s(p%d.Error) }\n", carrierLocal.Position, g.boundedResultErrName(function.ReturnType), carrierLocal.Position)
 		nextPayload := carrierLocal.Return.ImmutableLocal
 		if nextPayload.Initializer == nil || nextPayload.Initializer.Kind != coreir.ExprPropagate {
 			return false, fmt.Errorf("cross-payload Result propagation chain stage %d has no canonical propagation local", stage)
 		}
 		nextValue := fmt.Sprintf("p%d.Value", carrierLocal.Position)
 		if nextPayload.Type.Kind == coreir.TypeList {
-			nextValue = fmt.Sprintf("%s(%s)", listCloneName(nextPayload.Type), nextValue)
+			nextValue = fmt.Sprintf("%s(%s)", g.listCloneName(nextPayload.Type), nextValue)
 		}
 		fmt.Fprintf(out, "\tp%d := %s\n", nextPayload.Position, nextValue)
 		scope = append(scope,
@@ -352,7 +350,7 @@ func emitCrossPayloadResultPropagationChainFunction(out *strings.Builder, functi
 	}
 }
 
-func emitCrossPayloadResultPropagationFunction(out *strings.Builder, function coreir.Function, optionalTypeName string) (bool, error) {
+func (g *generator) emitCrossPayloadResultPropagationFunction(out *strings.Builder, function coreir.Function, optionalTypeName string) (bool, error) {
 	local := function.Body.ImmutableLocal
 	if local == nil || local.Initializer == nil || local.Initializer.Propagate == nil || local.Initializer.Propagate.Value == nil || local.Initializer.Propagate.Value.Parameter == nil || *local.Initializer.Propagate.Value.Parameter != 0 || local.Return == nil {
 		return false, fmt.Errorf("cross-payload Result propagation is not canonical")
@@ -360,22 +358,22 @@ func emitCrossPayloadResultPropagationFunction(out *strings.Builder, function co
 	for position := 1; position < len(function.Parameters); position++ {
 		fmt.Fprintf(out, "\tpipelangValidateText(p%d)\n", position)
 	}
-	fmt.Fprintf(out, "\tif !p0.OK { return %s(p0.Error) }\n", boundedResultErrName(function.ReturnType))
+	fmt.Fprintf(out, "\tif !p0.OK { return %s(p0.Error) }\n", g.boundedResultErrName(function.ReturnType))
 	initialized := "p0.Value"
 	if local.Type.Kind == coreir.TypeList {
-		initialized = fmt.Sprintf("%s(%s)", listCloneName(local.Type), initialized)
+		initialized = fmt.Sprintf("%s(%s)", g.listCloneName(local.Type), initialized)
 	}
 	fmt.Fprintf(out, "\tp%d := %s\n", local.Position, initialized)
 	scoped := append(append([]coreir.Parameter{}, function.Parameters...), coreir.Parameter{Position: local.Position, Name: local.Name, Type: local.Type})
-	returned, err := emitExpr(*local.Return, scoped, optionalTypeName)
+	returned, err := g.emitExpr(*local.Return, scoped, optionalTypeName)
 	if err != nil {
 		return false, err
 	}
-	fmt.Fprintf(out, "\treturn %s(%s)\n}\n\n", boundedResultCloneName(function.ReturnType), returned)
+	fmt.Fprintf(out, "\treturn %s(%s)\n}\n\n", g.boundedResultCloneName(function.ReturnType), returned)
 	return true, nil
 }
 
-func emitCheckedPropagationChainFunction(out *strings.Builder, function coreir.Function, optionalTypeName string) (bool, error) {
+func (g *generator) emitCheckedPropagationChainFunction(out *strings.Builder, function coreir.Function, optionalTypeName string) (bool, error) {
 	first := function.Body.ImmutableLocal
 	stageCount := len(function.Parameters) - 1
 	if stageCount < 2 || first == nil || first.Initializer == nil || first.Initializer.Propagate == nil {
@@ -393,7 +391,7 @@ func emitCheckedPropagationChainFunction(out *strings.Builder, function coreir.F
 		if checkedCarrier.Initializer == nil || checkedCarrier.Return == nil || checkedCarrier.Return.Kind != coreir.ExprImmutableLocal || checkedCarrier.Return.ImmutableLocal == nil {
 			return false, fmt.Errorf("checked propagation chain stage %d is not canonical", stage)
 		}
-		checked, err := emitExpr(*checkedCarrier.Initializer, scope, optionalTypeName)
+		checked, err := g.emitExpr(*checkedCarrier.Initializer, scope, optionalTypeName)
 		if err != nil {
 			return false, err
 		}
@@ -413,7 +411,7 @@ func emitCheckedPropagationChainFunction(out *strings.Builder, function coreir.F
 	if payloadLocal.Return == nil {
 		return false, fmt.Errorf("checked propagation chain has no terminal checked stage")
 	}
-	returned, err := emitExpr(*payloadLocal.Return, scope, optionalTypeName)
+	returned, err := g.emitExpr(*payloadLocal.Return, scope, optionalTypeName)
 	if err != nil {
 		return false, err
 	}
@@ -421,7 +419,7 @@ func emitCheckedPropagationChainFunction(out *strings.Builder, function coreir.F
 	return true, nil
 }
 
-func emitPriorLocalBlockPropagationFunction(out *strings.Builder, function coreir.Function, optionalTypeName string) (bool, error) {
+func (g *generator) emitPriorLocalBlockPropagationFunction(out *strings.Builder, function coreir.Function, optionalTypeName string) (bool, error) {
 	first := function.Body.ImmutableLocal
 	if first == nil || first.Initializer == nil || first.Initializer.Kind != coreir.ExprCall || first.Return == nil || first.Return.Kind != coreir.ExprImmutableLocal || first.Return.ImmutableLocal == nil {
 		return false, fmt.Errorf("prior-local block propagation is not canonical")
@@ -430,7 +428,7 @@ func emitPriorLocalBlockPropagationFunction(out *strings.Builder, function corei
 	if second.Initializer == nil || second.Initializer.Kind != coreir.ExprPropagate || second.Initializer.Propagate == nil || second.Return == nil || second.Initializer.Propagate.Value == nil || second.Initializer.Propagate.Value.Parameter == nil || *second.Initializer.Propagate.Value.Parameter != first.Position {
 		return false, fmt.Errorf("prior-local block propagation is not canonical")
 	}
-	called, err := emitExpr(*first.Initializer, function.Parameters, optionalTypeName)
+	called, err := g.emitExpr(*first.Initializer, function.Parameters, optionalTypeName)
 	if err != nil {
 		return false, err
 	}
@@ -439,7 +437,7 @@ func emitPriorLocalBlockPropagationFunction(out *strings.Builder, function corei
 	var initialized string
 	switch function.ReturnType.Kind {
 	case coreir.TypeOptional:
-		valueType, err := goType(second.Type, optionalTypeName)
+		valueType, err := g.goType(second.Type, optionalTypeName)
 		if err != nil {
 			return false, err
 		}
@@ -449,18 +447,18 @@ func emitPriorLocalBlockPropagationFunction(out *strings.Builder, function corei
 		if isArithmeticResultType(function.ReturnType) {
 			fmt.Fprintf(out, "\tpipelangValidateArithmeticResult(%s)\n\tif !%s.OK { return %s }\n", carrierName, carrierName, carrierName)
 		} else {
-			fmt.Fprintf(out, "\tif !%s.OK { return %s(%s) }\n", carrierName, boundedResultCloneName(function.ReturnType), carrierName)
+			fmt.Fprintf(out, "\tif !%s.OK { return %s(%s) }\n", carrierName, g.boundedResultCloneName(function.ReturnType), carrierName)
 		}
 		initialized = carrierName + ".Value"
 		if second.Type.Kind == coreir.TypeList {
-			initialized = fmt.Sprintf("%s(%s)", listCloneName(second.Type), initialized)
+			initialized = fmt.Sprintf("%s(%s)", g.listCloneName(second.Type), initialized)
 		}
 	default:
 		return false, fmt.Errorf("prior-local block propagation carrier is unsupported")
 	}
 	fmt.Fprintf(out, "\tp%d := %s\n", second.Position, initialized)
 	scoped := append(append([]coreir.Parameter{}, function.Parameters...), coreir.Parameter{Position: first.Position, Name: first.Name, Type: first.Type}, coreir.Parameter{Position: second.Position, Name: second.Name, Type: second.Type})
-	returned, err := emitExpr(*second.Return, scoped, optionalTypeName)
+	returned, err := g.emitExpr(*second.Return, scoped, optionalTypeName)
 	if err != nil {
 		return false, err
 	}
@@ -468,7 +466,7 @@ func emitPriorLocalBlockPropagationFunction(out *strings.Builder, function corei
 	return true, nil
 }
 
-func emitExpr(expr coreir.Expr, parameters []coreir.Parameter, optionalTypeName string) (string, error) {
+func (g *generator) emitExpr(expr coreir.Expr, parameters []coreir.Parameter, optionalTypeName string) (string, error) {
 	switch expr.Kind {
 	case coreir.ExprLiteral:
 		if expr.Literal == nil {
@@ -480,17 +478,17 @@ func emitExpr(expr coreir.Expr, parameters []coreir.Parameter, optionalTypeName 
 			return "", fmt.Errorf("reference has invalid parameter position")
 		}
 		if expr.Type.Kind == coreir.TypeList {
-			return fmt.Sprintf("%s(p%d)", listCloneName(expr.Type), *expr.Parameter), nil
+			return fmt.Sprintf("%s(p%d)", g.listCloneName(expr.Type), *expr.Parameter), nil
 		}
 		if isBoundedValueResultType(expr.Type) {
-			return fmt.Sprintf("%s(p%d)", boundedResultCloneName(expr.Type), *expr.Parameter), nil
+			return fmt.Sprintf("%s(p%d)", g.boundedResultCloneName(expr.Type), *expr.Parameter), nil
 		}
 		return fmt.Sprintf("p%d", *expr.Parameter), nil
 	case coreir.ExprUnary:
 		if expr.Unary == nil || expr.Unary.Operand == nil {
 			return "", fmt.Errorf("unary node is incomplete")
 		}
-		operand, err := emitExpr(*expr.Unary.Operand, parameters, optionalTypeName)
+		operand, err := g.emitExpr(*expr.Unary.Operand, parameters, optionalTypeName)
 		if err != nil {
 			return "", err
 		}
@@ -506,11 +504,11 @@ func emitExpr(expr coreir.Expr, parameters []coreir.Parameter, optionalTypeName 
 		if expr.Binary == nil || expr.Binary.Left == nil || expr.Binary.Right == nil {
 			return "", fmt.Errorf("binary node is incomplete")
 		}
-		left, err := emitExpr(*expr.Binary.Left, parameters, optionalTypeName)
+		left, err := g.emitExpr(*expr.Binary.Left, parameters, optionalTypeName)
 		if err != nil {
 			return "", err
 		}
-		right, err := emitExpr(*expr.Binary.Right, parameters, optionalTypeName)
+		right, err := g.emitExpr(*expr.Binary.Right, parameters, optionalTypeName)
 		if err != nil {
 			return "", err
 		}
@@ -551,19 +549,19 @@ func emitExpr(expr coreir.Expr, parameters []coreir.Parameter, optionalTypeName 
 		if expr.Conditional == nil || expr.Conditional.Condition == nil || expr.Conditional.WhenTrue == nil || expr.Conditional.WhenFalse == nil {
 			return "", fmt.Errorf("conditional expression is incomplete")
 		}
-		condition, err := emitExpr(*expr.Conditional.Condition, parameters, optionalTypeName)
+		condition, err := g.emitExpr(*expr.Conditional.Condition, parameters, optionalTypeName)
 		if err != nil {
 			return "", err
 		}
-		whenTrue, err := emitExpr(*expr.Conditional.WhenTrue, parameters, optionalTypeName)
+		whenTrue, err := g.emitExpr(*expr.Conditional.WhenTrue, parameters, optionalTypeName)
 		if err != nil {
 			return "", err
 		}
-		whenFalse, err := emitExpr(*expr.Conditional.WhenFalse, parameters, optionalTypeName)
+		whenFalse, err := g.emitExpr(*expr.Conditional.WhenFalse, parameters, optionalTypeName)
 		if err != nil {
 			return "", err
 		}
-		resultType, err := goType(expr.Type, optionalTypeName)
+		resultType, err := g.goType(expr.Type, optionalTypeName)
 		if err != nil {
 			return "", err
 		}
@@ -573,16 +571,16 @@ func emitExpr(expr coreir.Expr, parameters []coreir.Parameter, optionalTypeName 
 		if local == nil || local.Initializer == nil || local.Return == nil || local.Position != len(parameters) || local.Name == "" {
 			return "", fmt.Errorf("immutable local is incomplete or not canonically positioned")
 		}
-		initializer, err := emitExpr(*local.Initializer, parameters, optionalTypeName)
+		initializer, err := g.emitExpr(*local.Initializer, parameters, optionalTypeName)
 		if err != nil {
 			return "", err
 		}
 		scoped := append(append([]coreir.Parameter{}, parameters...), coreir.Parameter{Position: local.Position, Name: local.Name, Type: local.Type})
-		returned, err := emitExpr(*local.Return, scoped, optionalTypeName)
+		returned, err := g.emitExpr(*local.Return, scoped, optionalTypeName)
 		if err != nil {
 			return "", err
 		}
-		resultType, err := goType(expr.Type, optionalTypeName)
+		resultType, err := g.goType(expr.Type, optionalTypeName)
 		if err != nil {
 			return "", err
 		}
@@ -597,22 +595,26 @@ func emitExpr(expr coreir.Expr, parameters []coreir.Parameter, optionalTypeName 
 			if argument == nil {
 				return "", fmt.Errorf("pure call argument %d is missing", position+1)
 			}
-			emitted, err := emitExpr(*argument, parameters, optionalTypeName)
+			emitted, err := g.emitExpr(*argument, parameters, optionalTypeName)
 			if err != nil {
 				return "", err
 			}
 			arguments = append(arguments, emitted)
 		}
-		return "PipeLang" + exportedIdentifier(expr.Call.TargetName) + "(" + strings.Join(arguments, ", ") + ")", nil
+		target, ok := g.functionNames[identityKey(expr.Call.Target)]
+		if !ok {
+			return "", fmt.Errorf("pure call target has no allocated Go name")
+		}
+		return target + "(" + strings.Join(arguments, ", ") + ")", nil
 	case coreir.ExprTextContainsCaseFolded:
 		if expr.TextContains == nil || expr.TextContains.Value == nil || expr.TextContains.Query == nil {
 			return "", fmt.Errorf("contains_casefolded expression is incomplete")
 		}
-		value, err := emitExpr(*expr.TextContains.Value, parameters, optionalTypeName)
+		value, err := g.emitExpr(*expr.TextContains.Value, parameters, optionalTypeName)
 		if err != nil {
 			return "", err
 		}
-		query, err := emitExpr(*expr.TextContains.Query, parameters, optionalTypeName)
+		query, err := g.emitExpr(*expr.TextContains.Query, parameters, optionalTypeName)
 		if err != nil {
 			return "", err
 		}
@@ -621,7 +623,7 @@ func emitExpr(expr coreir.Expr, parameters []coreir.Parameter, optionalTypeName 
 		if expr.TextTrim == nil || expr.TextTrim.Value == nil {
 			return "", fmt.Errorf("trim expression is incomplete")
 		}
-		value, err := emitExpr(*expr.TextTrim.Value, parameters, optionalTypeName)
+		value, err := g.emitExpr(*expr.TextTrim.Value, parameters, optionalTypeName)
 		if err != nil {
 			return "", err
 		}
@@ -634,7 +636,7 @@ func emitExpr(expr coreir.Expr, parameters []coreir.Parameter, optionalTypeName 
 		if receiverType.Kind != coreir.TypeRecord || receiverType.Record == nil || expr.Field.Position < 0 || expr.Field.Position >= len(receiverType.Record.Fields) {
 			return "", fmt.Errorf("field projection has an invalid record schema or position")
 		}
-		receiver, err := emitExpr(*expr.Field.Receiver, parameters, optionalTypeName)
+		receiver, err := g.emitExpr(*expr.Field.Receiver, parameters, optionalTypeName)
 		if err != nil {
 			return "", err
 		}
@@ -648,18 +650,18 @@ func emitExpr(expr coreir.Expr, parameters []coreir.Parameter, optionalTypeName 
 			if initialized.Value == nil || initialized.Position != position {
 				return "", fmt.Errorf("record construction field %d is incomplete or out of order", position)
 			}
-			value, err := emitExpr(*initialized.Value, parameters, optionalTypeName)
+			value, err := g.emitExpr(*initialized.Value, parameters, optionalTypeName)
 			if err != nil {
 				return "", err
 			}
 			arguments = append(arguments, value)
 		}
-		return recordConstructionName(expr.Type) + "(" + strings.Join(arguments, ", ") + ")", nil
+		return g.recordConstructionName(expr.Type) + "(" + strings.Join(arguments, ", ") + ")", nil
 	case coreir.ExprOptionalSome:
 		if expr.Some == nil || expr.Some.Value == nil || expr.Type.Kind != coreir.TypeOptional {
 			return "", fmt.Errorf("optional some expression is incomplete")
 		}
-		value, err := emitExpr(*expr.Some.Value, parameters, optionalTypeName)
+		value, err := g.emitExpr(*expr.Some.Value, parameters, optionalTypeName)
 		if err != nil {
 			return "", err
 		}
@@ -668,7 +670,7 @@ func emitExpr(expr coreir.Expr, parameters []coreir.Parameter, optionalTypeName 
 		if expr.None == nil || expr.Type.Kind != coreir.TypeOptional || expr.Type.Optional == nil {
 			return "", fmt.Errorf("optional none expression is incomplete")
 		}
-		valueType, err := goType(expr.Type.Optional.Value, optionalTypeName)
+		valueType, err := g.goType(expr.Type.Optional.Value, optionalTypeName)
 		if err != nil {
 			return "", err
 		}
@@ -677,7 +679,7 @@ func emitExpr(expr coreir.Expr, parameters []coreir.Parameter, optionalTypeName 
 		if expr.HasValue == nil || expr.HasValue.Value == nil {
 			return "", fmt.Errorf("optional has_value expression is incomplete")
 		}
-		value, err := emitExpr(*expr.HasValue.Value, parameters, optionalTypeName)
+		value, err := g.emitExpr(*expr.HasValue.Value, parameters, optionalTypeName)
 		if err != nil {
 			return "", err
 		}
@@ -686,11 +688,11 @@ func emitExpr(expr coreir.Expr, parameters []coreir.Parameter, optionalTypeName 
 		if expr.ValueOr == nil || expr.ValueOr.Value == nil || expr.ValueOr.Fallback == nil {
 			return "", fmt.Errorf("optional value_or expression is incomplete")
 		}
-		value, err := emitExpr(*expr.ValueOr.Value, parameters, optionalTypeName)
+		value, err := g.emitExpr(*expr.ValueOr.Value, parameters, optionalTypeName)
 		if err != nil {
 			return "", err
 		}
-		fallback, err := emitExpr(*expr.ValueOr.Fallback, parameters, optionalTypeName)
+		fallback, err := g.emitExpr(*expr.ValueOr.Fallback, parameters, optionalTypeName)
 		if err != nil {
 			return "", err
 		}
@@ -699,16 +701,16 @@ func emitExpr(expr coreir.Expr, parameters []coreir.Parameter, optionalTypeName 
 		if expr.ListEmpty == nil || expr.Type.Kind != coreir.TypeList {
 			return "", fmt.Errorf("list empty expression is incomplete")
 		}
-		return listEmptyName(expr.Type) + "()", nil
+		return g.listEmptyName(expr.Type) + "()", nil
 	case coreir.ExprListSingleton:
 		if expr.ListOne == nil || expr.ListOne.Value == nil || expr.Type.Kind != coreir.TypeList {
 			return "", fmt.Errorf("list singleton expression is incomplete")
 		}
-		value, err := emitExpr(*expr.ListOne.Value, parameters, optionalTypeName)
+		value, err := g.emitExpr(*expr.ListOne.Value, parameters, optionalTypeName)
 		if err != nil {
 			return "", err
 		}
-		return listSingletonName(expr.Type) + "(" + value + ")", nil
+		return g.listSingletonName(expr.Type) + "(" + value + ")", nil
 	case coreir.ExprListCount:
 		if expr.ListCount == nil || expr.ListCount.Value == nil || expr.ListCount.Value.Kind != coreir.ExprReference || expr.ListCount.Value.Parameter == nil {
 			return "", fmt.Errorf("list count expression is incomplete")
@@ -718,28 +720,28 @@ func emitExpr(expr coreir.Expr, parameters []coreir.Parameter, optionalTypeName 
 		if expr.ListAppend == nil || expr.ListAppend.Values == nil || expr.ListAppend.Value == nil || expr.ListAppend.Values.Kind != coreir.ExprReference || expr.ListAppend.Values.Parameter == nil || expr.ListAppend.Value.Kind != coreir.ExprReference || expr.ListAppend.Value.Parameter == nil {
 			return "", fmt.Errorf("list append expression is incomplete")
 		}
-		return fmt.Sprintf("%s(p%d, p%d)", listAppendName(expr.Type), *expr.ListAppend.Values.Parameter, *expr.ListAppend.Value.Parameter), nil
+		return fmt.Sprintf("%s(p%d, p%d)", g.listAppendName(expr.Type), *expr.ListAppend.Values.Parameter, *expr.ListAppend.Value.Parameter), nil
 	case coreir.ExprListAt:
 		if expr.ListAt == nil || expr.ListAt.Values == nil || expr.ListAt.Index == nil || expr.ListAt.Values.Kind != coreir.ExprReference || expr.ListAt.Values.Parameter == nil || expr.ListAt.Index.Kind != coreir.ExprReference || expr.ListAt.Index.Parameter == nil || expr.ListAt.Values.Type.Kind != coreir.TypeList {
 			return "", fmt.Errorf("list at expression is incomplete")
 		}
-		return fmt.Sprintf("%s(p%d, p%d)", listAtName(expr.ListAt.Values.Type), *expr.ListAt.Values.Parameter, *expr.ListAt.Index.Parameter), nil
+		return fmt.Sprintf("%s(p%d, p%d)", g.listAtName(expr.ListAt.Values.Type), *expr.ListAt.Values.Parameter, *expr.ListAt.Index.Parameter), nil
 	case coreir.ExprListFindByText:
 		if expr.ListFind == nil || expr.ListFind.Values == nil || expr.ListFind.Key == nil || expr.ListFind.Values.Kind != coreir.ExprReference || expr.ListFind.Values.Parameter == nil || expr.ListFind.Key.Kind != coreir.ExprReference || expr.ListFind.Key.Parameter == nil || expr.ListFind.Values.Type.Kind != coreir.TypeList {
 			return "", fmt.Errorf("list find_by expression is incomplete")
 		}
-		return fmt.Sprintf("%s(p%d, p%d)", listFindByTextName(expr.ListFind.Values.Type, *expr.ListFind), *expr.ListFind.Values.Parameter, *expr.ListFind.Key.Parameter), nil
+		return fmt.Sprintf("%s(p%d, p%d)", g.listFindByTextName(expr.ListFind.Values.Type, *expr.ListFind), *expr.ListFind.Values.Parameter, *expr.ListFind.Key.Parameter), nil
 	case coreir.ExprListFilterByText:
 		if expr.ListFilter == nil || expr.ListFilter.Values == nil || expr.ListFilter.Key == nil || expr.ListFilter.Values.Kind != coreir.ExprReference || expr.ListFilter.Values.Parameter == nil || expr.ListFilter.Key.Kind != coreir.ExprReference || expr.ListFilter.Key.Parameter == nil || expr.ListFilter.Values.Type.Kind != coreir.TypeList {
 			return "", fmt.Errorf("list filter_by expression is incomplete")
 		}
-		return fmt.Sprintf("%s(p%d, p%d)", listFilterByTextName(expr.ListFilter.Values.Type, *expr.ListFilter), *expr.ListFilter.Values.Parameter, *expr.ListFilter.Key.Parameter), nil
+		return fmt.Sprintf("%s(p%d, p%d)", g.listFilterByTextName(expr.ListFilter.Values.Type, *expr.ListFilter), *expr.ListFilter.Values.Parameter, *expr.ListFilter.Key.Parameter), nil
 	case coreir.ExprListFilterPredicate:
 		filter := expr.ListFilterPredicate
 		if filter == nil || filter.Values == nil || filter.Values.Kind != coreir.ExprReference || filter.Values.Parameter == nil || filter.Values.Type.Kind != coreir.TypeList || filter.Values.Type.List == nil || filter.PredicateName == "" {
 			return "", fmt.Errorf("named record predicate filter expression is incomplete")
 		}
-		elementType, err := goType(filter.Values.Type.List.Element, optionalTypeName)
+		elementType, err := g.goType(filter.Values.Type.List.Element, optionalTypeName)
 		if err != nil {
 			return "", err
 		}
@@ -757,7 +759,11 @@ func emitExpr(expr coreir.Expr, parameters []coreir.Parameter, optionalTypeName 
 		}
 		fmt.Fprintf(&body, "result := make([]%s, 0, len(p%d))\n", elementType, *filter.Values.Parameter)
 		fmt.Fprintf(&body, "for _, value := range p%d {\n", *filter.Values.Parameter)
-		fmt.Fprintf(&body, "if PipeLang%s(%s) { result = append(result, value) }\n", exportedIdentifier(filter.PredicateName), strings.Join(callArguments, ", "))
+		target, ok := g.functionNames[identityKey(filter.Predicate)]
+		if !ok {
+			return "", fmt.Errorf("predicate target has no allocated Go name")
+		}
+		fmt.Fprintf(&body, "if %s(%s) { result = append(result, value) }\n", target, strings.Join(callArguments, ", "))
 		body.WriteString("}\nreturn result\n}()")
 		return body.String(), nil
 	case coreir.ExprListFilterContainsCaseFolded:
@@ -765,31 +771,31 @@ func emitExpr(expr coreir.Expr, parameters []coreir.Parameter, optionalTypeName 
 		if filter == nil || filter.Values == nil || filter.Query == nil || filter.Values.Kind != coreir.ExprReference || filter.Values.Parameter == nil || filter.Query.Kind != coreir.ExprReference || filter.Query.Parameter == nil || filter.Values.Type.Kind != coreir.TypeList {
 			return "", fmt.Errorf("list filter_contains_casefolded expression is incomplete")
 		}
-		return fmt.Sprintf("%s(p%d, p%d)", listFilterContainsCaseFoldedName(filter.Values.Type, *filter), *filter.Values.Parameter, *filter.Query.Parameter), nil
+		return fmt.Sprintf("%s(p%d, p%d)", g.listFilterContainsCaseFoldedName(filter.Values.Type, *filter), *filter.Values.Parameter, *filter.Query.Parameter), nil
 	case coreir.ExprListFilterJoinedContainsCaseFolded:
 		filter := expr.ListFilterJoinedContainsCaseFolded
 		if filter == nil || filter.Values == nil || filter.Query == nil || len(filter.Selectors) < 2 || filter.Values.Kind != coreir.ExprReference || filter.Values.Parameter == nil || filter.Query.Kind != coreir.ExprReference || filter.Query.Parameter == nil || filter.Values.Type.Kind != coreir.TypeList {
 			return "", fmt.Errorf("list filter_joined_contains_casefolded expression is incomplete")
 		}
-		return fmt.Sprintf("%s(p%d, p%d)", listFilterJoinedContainsCaseFoldedName(filter.Values.Type, *filter), *filter.Values.Parameter, *filter.Query.Parameter), nil
+		return fmt.Sprintf("%s(p%d, p%d)", g.listFilterJoinedContainsCaseFoldedName(filter.Values.Type, *filter), *filter.Values.Parameter, *filter.Query.Parameter), nil
 	case coreir.ExprListSortByOrdinalText:
 		sorted := expr.ListSortByOrdinalText
 		if sorted == nil || sorted.Values == nil || sorted.Values.Kind != coreir.ExprReference || sorted.Values.Parameter == nil || sorted.Values.Type.Kind != coreir.TypeList {
 			return "", fmt.Errorf("list sort_by_ordinal expression is incomplete")
 		}
-		return fmt.Sprintf("%s(p%d)", listSortByOrdinalTextName(sorted.Values.Type, *sorted), *sorted.Values.Parameter), nil
+		return fmt.Sprintf("%s(p%d)", g.listSortByOrdinalTextName(sorted.Values.Type, *sorted), *sorted.Values.Parameter), nil
 	case coreir.ExprListSortByOrdinalTexts:
 		sorted := expr.ListSortByOrdinalTexts
 		if sorted == nil || sorted.Values == nil || len(sorted.Selectors) < 2 || sorted.Values.Kind != coreir.ExprReference || sorted.Values.Parameter == nil || sorted.Values.Type.Kind != coreir.TypeList {
 			return "", fmt.Errorf("multi-key list sort_by_ordinal expression is incomplete")
 		}
-		return fmt.Sprintf("%s(p%d)", listSortByOrdinalTextsName(sorted.Values.Type, *sorted), *sorted.Values.Parameter), nil
+		return fmt.Sprintf("%s(p%d)", g.listSortByOrdinalTextsName(sorted.Values.Type, *sorted), *sorted.Values.Parameter), nil
 	case coreir.ExprListSortByOrdinalDirections:
 		sorted := expr.ListSortByOrdinalDirections
 		if sorted == nil || sorted.Values == nil || sorted.Values.Parameter == nil || sorted.Values.Type.List == nil {
 			return "", fmt.Errorf("directional list sort_by_ordinal expression is incomplete")
 		}
-		element := recordGoTypeName(sorted.Values.Type.List.Element)
+		element := g.recordGoTypeName(sorted.Values.Type.List.Element)
 		fields := recordGoFieldNames(sorted.Values.Type.List.Element)
 		var comparisons strings.Builder
 		for _, selector := range sorted.Selectors {
@@ -799,69 +805,69 @@ func emitExpr(expr coreir.Expr, parameters []coreir.Parameter, optionalTypeName 
 			}
 			fmt.Fprintf(&comparisons, "if comparison := pipelangCompareOrdinalText(result[left].%s, result[right].%s); comparison != 0 { return comparison %s 0 }; ", fields[selector.Position], fields[selector.Position], op)
 		}
-		return fmt.Sprintf("func() []%s { values := p%d; %s(values); result := make([]%s, len(values)); copy(result, values); sort.SliceStable(result, func(left, right int) bool { %s return false }); return result }()", element, *sorted.Values.Parameter, listValidationName(sorted.Values.Type), element, comparisons.String()), nil
+		return fmt.Sprintf("func() []%s { values := p%d; %s(values); result := make([]%s, len(values)); copy(result, values); sort.SliceStable(result, func(left, right int) bool { %s return false }); return result }()", element, *sorted.Values.Parameter, g.listValidationName(sorted.Values.Type), element, comparisons.String()), nil
 	case coreir.ExprResultOK:
 		if expr.ResultOK == nil || expr.ResultOK.Value == nil || !isBoundedValueResultType(expr.Type) {
 			return "", fmt.Errorf("result ok expression is incomplete")
 		}
-		value, err := emitExpr(*expr.ResultOK.Value, parameters, optionalTypeName)
+		value, err := g.emitExpr(*expr.ResultOK.Value, parameters, optionalTypeName)
 		if err != nil {
 			return "", err
 		}
-		return boundedResultOKName(expr.Type) + "(" + value + ")", nil
+		return g.boundedResultOKName(expr.Type) + "(" + value + ")", nil
 	case coreir.ExprResultErr:
 		if expr.ResultErr == nil || expr.ResultErr.Error == nil || !isBoundedValueResultType(expr.Type) {
 			return "", fmt.Errorf("result err expression is incomplete")
 		}
-		failure, err := emitExpr(*expr.ResultErr.Error, parameters, optionalTypeName)
+		failure, err := g.emitExpr(*expr.ResultErr.Error, parameters, optionalTypeName)
 		if err != nil {
 			return "", err
 		}
-		return boundedResultErrName(expr.Type) + "(" + failure + ")", nil
+		return g.boundedResultErrName(expr.Type) + "(" + failure + ")", nil
 	case coreir.ExprResultIsOK:
 		if expr.ResultIsOK == nil || expr.ResultIsOK.Value == nil || !isBoundedValueResultType(expr.ResultIsOK.Value.Type) {
 			return "", fmt.Errorf("result is_ok expression is incomplete")
 		}
-		value, err := emitExpr(*expr.ResultIsOK.Value, parameters, optionalTypeName)
+		value, err := g.emitExpr(*expr.ResultIsOK.Value, parameters, optionalTypeName)
 		if err != nil {
 			return "", err
 		}
-		return boundedResultIsOKName(expr.ResultIsOK.Value.Type) + "(" + value + ")", nil
+		return g.boundedResultIsOKName(expr.ResultIsOK.Value.Type) + "(" + value + ")", nil
 	case coreir.ExprResultSuccessOr:
 		if expr.SuccessOr == nil || expr.SuccessOr.Value == nil || expr.SuccessOr.Fallback == nil || !isBoundedValueResultType(expr.SuccessOr.Value.Type) {
 			return "", fmt.Errorf("result success_or expression is incomplete")
 		}
-		value, err := emitExpr(*expr.SuccessOr.Value, parameters, optionalTypeName)
+		value, err := g.emitExpr(*expr.SuccessOr.Value, parameters, optionalTypeName)
 		if err != nil {
 			return "", err
 		}
-		fallback, err := emitExpr(*expr.SuccessOr.Fallback, parameters, optionalTypeName)
+		fallback, err := g.emitExpr(*expr.SuccessOr.Fallback, parameters, optionalTypeName)
 		if err != nil {
 			return "", err
 		}
-		return boundedResultSuccessOrName(expr.SuccessOr.Value.Type) + "(" + value + ", " + fallback + ")", nil
+		return g.boundedResultSuccessOrName(expr.SuccessOr.Value.Type) + "(" + value + ", " + fallback + ")", nil
 	case coreir.ExprResultFailureOr:
 		if expr.FailureOr == nil || expr.FailureOr.Value == nil || expr.FailureOr.Fallback == nil || !isBoundedValueResultType(expr.FailureOr.Value.Type) {
 			return "", fmt.Errorf("result failure_or expression is incomplete")
 		}
-		value, err := emitExpr(*expr.FailureOr.Value, parameters, optionalTypeName)
+		value, err := g.emitExpr(*expr.FailureOr.Value, parameters, optionalTypeName)
 		if err != nil {
 			return "", err
 		}
-		fallback, err := emitExpr(*expr.FailureOr.Fallback, parameters, optionalTypeName)
+		fallback, err := g.emitExpr(*expr.FailureOr.Fallback, parameters, optionalTypeName)
 		if err != nil {
 			return "", err
 		}
-		return boundedResultFailureOrName(expr.FailureOr.Value.Type) + "(" + value + ", " + fallback + ")", nil
+		return g.boundedResultFailureOrName(expr.FailureOr.Value.Type) + "(" + value + ", " + fallback + ")", nil
 	case coreir.ExprMatch:
 		if expr.Match == nil || expr.Match.Value == nil {
 			return "", fmt.Errorf("match expression is incomplete")
 		}
-		value, err := emitExpr(*expr.Match.Value, parameters, optionalTypeName)
+		value, err := g.emitExpr(*expr.Match.Value, parameters, optionalTypeName)
 		if err != nil {
 			return "", err
 		}
-		resultType, err := goType(expr.Type, optionalTypeName)
+		resultType, err := g.goType(expr.Type, optionalTypeName)
 		if err != nil {
 			return "", err
 		}
@@ -889,7 +895,7 @@ func emitExpr(expr coreir.Expr, parameters []coreir.Parameter, optionalTypeName 
 				}
 				prefix = fmt.Sprintf("p%d := %s; _ = p%d; ", *arm.Binding, source, *arm.Binding)
 			}
-			body, e := emitExpr(*arm.Body, scoped, optionalTypeName)
+			body, e := g.emitExpr(*arm.Body, scoped, optionalTypeName)
 			if e != nil {
 				return "", e
 			}
@@ -901,14 +907,14 @@ func emitExpr(expr coreir.Expr, parameters []coreir.Parameter, optionalTypeName 
 					condition = "!matched.OK"
 				}
 			} else if arm.Tag == "some" {
-				payloadGo, _ := goType(carrier.Optional.Value, optionalTypeName)
+				payloadGo, _ := g.goType(carrier.Optional.Value, optionalTypeName)
 				condition = fmt.Sprintf("func() bool { _, ok := matched.(pipelangOptionalSome[%s]); return ok }()", payloadGo)
 			} else if arm.Tag == "none" {
-				payloadGo, _ := goType(carrier.Optional.Value, optionalTypeName)
+				payloadGo, _ := g.goType(carrier.Optional.Value, optionalTypeName)
 				condition = fmt.Sprintf("func() bool { _, ok := matched.(pipelangOptionalNone[%s]); return ok }()", payloadGo)
 			}
 			if carrier.Kind == coreir.TypeOptional && arm.Binding != nil {
-				payloadGo, _ := goType(carrier.Optional.Value, optionalTypeName)
+				payloadGo, _ := g.goType(carrier.Optional.Value, optionalTypeName)
 				prefix = fmt.Sprintf("typed := matched.(pipelangOptionalSome[%s]); p%d := typed.value; _ = p%d; ", payloadGo, *arm.Binding, *arm.Binding)
 			}
 			fmt.Fprintf(&out, "if %s { %sreturn %s }; ", condition, prefix, body)
@@ -947,12 +953,12 @@ func emitLiteral(typ coreir.Type, literal coreir.Literal) (string, error) {
 	}
 }
 
-func goType(typ coreir.Type, optionalTypeName string) (string, error) {
+func (g *generator) goType(typ coreir.Type, optionalTypeName string) (string, error) {
 	if typ.Kind == coreir.TypeList {
 		if typ.List == nil || typ.List.Element.Kind != coreir.TypeRecord {
 			return "", fmt.Errorf("Go list backend requires one record element type")
 		}
-		element, err := goType(typ.List.Element, optionalTypeName)
+		element, err := g.goType(typ.List.Element, optionalTypeName)
 		if err != nil {
 			return "", err
 		}
@@ -962,7 +968,7 @@ func goType(typ coreir.Type, optionalTypeName string) (string, error) {
 		if typ.Optional == nil {
 			return "", fmt.Errorf("Go Optional backend requires a value type")
 		}
-		value, err := goType(typ.Optional.Value, optionalTypeName)
+		value, err := g.goType(typ.Optional.Value, optionalTypeName)
 		if err != nil {
 			return "", err
 		}
@@ -972,13 +978,13 @@ func goType(typ coreir.Type, optionalTypeName string) (string, error) {
 		if typ.Record == nil || typ.Identity == nil || typ.Identity.PackageID == "" || typ.Identity.Path == "" {
 			return "", fmt.Errorf("Go record backend requires an identified record schema")
 		}
-		return recordGoTypeName(typ), nil
+		return g.recordGoTypeName(typ), nil
 	}
 	if typ.Kind == coreir.TypeResult {
 		if typ.Result == nil {
 			return "", fmt.Errorf("Go Result backend requires success and failure types")
 		}
-		success, err := goType(typ.Result.Success, optionalTypeName)
+		success, err := g.goType(typ.Result.Success, optionalTypeName)
 		if err != nil {
 			return "", err
 		}
@@ -988,7 +994,7 @@ func goType(typ coreir.Type, optionalTypeName string) (string, error) {
 		if !isBoundedValueResultType(typ) {
 			return "", fmt.Errorf("Go Result backend supports only arithmetic and bounded snapshot/text Result shapes")
 		}
-		failure, err := goType(typ.Result.Failure, optionalTypeName)
+		failure, err := g.goType(typ.Result.Failure, optionalTypeName)
 		if err != nil {
 			return "", err
 		}
@@ -1370,7 +1376,7 @@ func expressionNeedsOptionalDefault(expression coreir.Expr) bool {
 	return expressionContainsKind(expression, coreir.ExprOptionalValueOr)
 }
 
-func emitOptionalSupport(out *strings.Builder, validateText, emitValueOr, validateRecordPayloads, emitPropagation bool, optionalTypeName string, records []coreir.Type) {
+func (g *generator) emitOptionalSupport(out *strings.Builder, validateText, emitValueOr, validateRecordPayloads, emitPropagation bool, optionalTypeName string, records []coreir.Type) {
 	fmt.Fprintf(out, "type %s[T any] interface {\n\tpipelangOptional(T)\n}\n\n", optionalTypeName)
 	out.WriteString("type pipelangOptionalSome[T any] struct {\n\tvalue T\n}\n\n")
 	out.WriteString("func (pipelangOptionalSome[T]) pipelangOptional(T) {}\n\n")
@@ -1383,7 +1389,7 @@ func emitOptionalSupport(out *strings.Builder, validateText, emitValueOr, valida
 		}
 		out.WriteString("\tcase int64, float64, bool:\n\t\t_ = typed\n")
 		for _, record := range records {
-			fmt.Fprintf(out, "\tcase %s:\n\t\t%s(typed)\n", recordGoTypeName(record), recordValidationName(record))
+			fmt.Fprintf(out, "\tcase %s:\n\t\t%s(typed)\n", g.recordGoTypeName(record), g.recordValidationName(record))
 		}
 		out.WriteString("\tdefault:\n\t\tpanic(\"invalid PipeLang Optional payload\")\n\t}\n}\n\n")
 	}
@@ -1436,7 +1442,6 @@ func optionalGoTypeName(functions []coreir.Function) string {
 
 func collectRecordTypes(functions []coreir.Function) ([]coreir.Type, error) {
 	byIdentity := map[string]coreir.Type{}
-	identityByGoName := map[string]string{}
 	var collect func(coreir.Type) error
 	collect = func(value coreir.Type) error {
 		if value.Kind == coreir.TypeResult && value.Result != nil {
@@ -1462,11 +1467,6 @@ func collectRecordTypes(functions []coreir.Function) ([]coreir.Type, error) {
 			return fmt.Errorf("record identity %q has conflicting schemas", value.Identity.Path)
 		}
 		byIdentity[key] = value
-		goName := recordGoTypeName(value)
-		if previous, exists := identityByGoName[goName]; exists && previous != key {
-			return fmt.Errorf("record identities collide on generated Go name %q", goName)
-		}
-		identityByGoName[goName] = key
 		for _, field := range value.Record.Fields {
 			if err := collect(field.Type); err != nil {
 				return err
@@ -1561,49 +1561,49 @@ func collectListTypes(functions []coreir.Function) ([]coreir.Type, error) {
 	return result, nil
 }
 
-func emitListSupport(out *strings.Builder, list coreir.Type, emitAppend, emitAt bool, findByText []coreir.ListFindByText, filterByText []coreir.ListFilterByText, filterContainsCaseFolded []coreir.ListFilterContainsCaseFolded, filterJoinedContainsCaseFolded []coreir.ListFilterJoinedContainsCaseFolded, sortByOrdinalText []coreir.ListSortByOrdinalText, sortByOrdinalTexts []coreir.ListSortByOrdinalTexts, optionalTypeName string) {
+func (g *generator) emitListSupport(out *strings.Builder, list coreir.Type, emitAppend, emitAt bool, findByText []coreir.ListFindByText, filterByText []coreir.ListFilterByText, filterContainsCaseFolded []coreir.ListFilterContainsCaseFolded, filterJoinedContainsCaseFolded []coreir.ListFilterJoinedContainsCaseFolded, sortByOrdinalText []coreir.ListSortByOrdinalText, sortByOrdinalTexts []coreir.ListSortByOrdinalTexts, optionalTypeName string) {
 	element := list.List.Element
-	elementType := recordGoTypeName(element)
-	validation := listValidationName(list)
+	elementType := g.recordGoTypeName(element)
+	validation := g.listValidationName(list)
 	fmt.Fprintf(out, "func %s(values []%s) {\n", validation, elementType)
 	out.WriteString("\tif values == nil {\n\t\tpanic(\"invalid PipeLang List value\")\n\t}\n")
-	fmt.Fprintf(out, "\tfor _, value := range values {\n\t\t%s(value)\n\t}\n", recordValidationName(element))
+	fmt.Fprintf(out, "\tfor _, value := range values {\n\t\t%s(value)\n\t}\n", g.recordValidationName(element))
 	out.WriteString("}\n\n")
-	fmt.Fprintf(out, "func %s(values []%s) []%s {\n\t%s(values)\n\tresult := make([]%s, len(values))\n\tcopy(result, values)\n\treturn result\n}\n\n", listCloneName(list), elementType, elementType, validation, elementType)
-	fmt.Fprintf(out, "func %s() []%s {\n\treturn make([]%s, 0)\n}\n\n", listEmptyName(list), elementType, elementType)
-	fmt.Fprintf(out, "func %s(value %s) []%s {\n\t%s(value)\n\treturn []%s{value}\n}\n\n", listSingletonName(list), elementType, elementType, recordValidationName(element), elementType)
+	fmt.Fprintf(out, "func %s(values []%s) []%s {\n\t%s(values)\n\tresult := make([]%s, len(values))\n\tcopy(result, values)\n\treturn result\n}\n\n", g.listCloneName(list), elementType, elementType, validation, elementType)
+	fmt.Fprintf(out, "func %s() []%s {\n\treturn make([]%s, 0)\n}\n\n", g.listEmptyName(list), elementType, elementType)
+	fmt.Fprintf(out, "func %s(value %s) []%s {\n\t%s(value)\n\treturn []%s{value}\n}\n\n", g.listSingletonName(list), elementType, elementType, g.recordValidationName(element), elementType)
 	if emitAppend {
-		fmt.Fprintf(out, "func %s(values []%s, value %s) []%s {\n\t%s(values)\n\t%s(value)\n\tif uint64(len(values)) == uint64(^uint64(0)>>1) {\n\t\tpanic(\"PipeLang List cardinality exceeds signed 64-bit range\")\n\t}\n\tresult := make([]%s, len(values)+1)\n\tcopy(result, values)\n\tresult[len(values)] = value\n\treturn result\n}\n\n", listAppendName(list), elementType, elementType, elementType, validation, recordValidationName(element), elementType)
+		fmt.Fprintf(out, "func %s(values []%s, value %s) []%s {\n\t%s(values)\n\t%s(value)\n\tif uint64(len(values)) == uint64(^uint64(0)>>1) {\n\t\tpanic(\"PipeLang List cardinality exceeds signed 64-bit range\")\n\t}\n\tresult := make([]%s, len(values)+1)\n\tcopy(result, values)\n\tresult[len(values)] = value\n\treturn result\n}\n\n", g.listAppendName(list), elementType, elementType, elementType, validation, g.recordValidationName(element), elementType)
 	}
 	if emitAt {
-		fmt.Fprintf(out, "func %s(values []%s, index int64) %s[%s] {\n\t%s(values)\n\tif index < 0 || uint64(index) >= uint64(len(values)) {\n\t\treturn pipelangNoneValue[%s]()\n\t}\n\treturn pipelangSomeValue(values[index])\n}\n\n", listAtName(list), elementType, optionalTypeName, elementType, validation, elementType)
+		fmt.Fprintf(out, "func %s(values []%s, index int64) %s[%s] {\n\t%s(values)\n\tif index < 0 || uint64(index) >= uint64(len(values)) {\n\t\treturn pipelangNoneValue[%s]()\n\t}\n\treturn pipelangSomeValue(values[index])\n}\n\n", g.listAtName(list), elementType, optionalTypeName, elementType, validation, elementType)
 	}
 	fieldNames := recordGoFieldNames(element)
 	for _, selector := range findByText {
-		fmt.Fprintf(out, "func %s(values []%s, key string) %s[%s] {\n\t%s(values)\n\tpipelangValidateText(key)\n\tfor _, value := range values {\n\t\tif pipelangCompareOrdinalText(value.%s, key) == 0 {\n\t\t\treturn pipelangSomeValue(value)\n\t\t}\n\t}\n\treturn pipelangNoneValue[%s]()\n}\n\n", listFindByTextName(list, selector), elementType, optionalTypeName, elementType, validation, fieldNames[selector.Position], elementType)
+		fmt.Fprintf(out, "func %s(values []%s, key string) %s[%s] {\n\t%s(values)\n\tpipelangValidateText(key)\n\tfor _, value := range values {\n\t\tif pipelangCompareOrdinalText(value.%s, key) == 0 {\n\t\t\treturn pipelangSomeValue(value)\n\t\t}\n\t}\n\treturn pipelangNoneValue[%s]()\n}\n\n", g.listFindByTextName(list, selector), elementType, optionalTypeName, elementType, validation, fieldNames[selector.Position], elementType)
 	}
 	for _, selector := range filterByText {
-		fmt.Fprintf(out, "func %s(values []%s, key string) []%s {\n\t%s(values)\n\tpipelangValidateText(key)\n\tresult := make([]%s, 0, len(values))\n\tfor _, value := range values {\n\t\tif pipelangCompareOrdinalText(value.%s, key) == 0 {\n\t\t\tresult = append(result, value)\n\t\t}\n\t}\n\treturn result\n}\n\n", listFilterByTextName(list, selector), elementType, elementType, validation, elementType, fieldNames[selector.Position])
+		fmt.Fprintf(out, "func %s(values []%s, key string) []%s {\n\t%s(values)\n\tpipelangValidateText(key)\n\tresult := make([]%s, 0, len(values))\n\tfor _, value := range values {\n\t\tif pipelangCompareOrdinalText(value.%s, key) == 0 {\n\t\t\tresult = append(result, value)\n\t\t}\n\t}\n\treturn result\n}\n\n", g.listFilterByTextName(list, selector), elementType, elementType, validation, elementType, fieldNames[selector.Position])
 	}
 	for _, selector := range filterContainsCaseFolded {
-		fmt.Fprintf(out, "func %s(values []%s, query string) []%s {\n\t%s(values)\n\tpipelangValidateText(query)\n\tresult := make([]%s, 0, len(values))\n\tfor _, value := range values {\n\t\tif pipelangContainsCaseFoldedText(value.%s, query) {\n\t\t\tresult = append(result, value)\n\t\t}\n\t}\n\treturn result\n}\n\n", listFilterContainsCaseFoldedName(list, selector), elementType, elementType, validation, elementType, fieldNames[selector.Position])
+		fmt.Fprintf(out, "func %s(values []%s, query string) []%s {\n\t%s(values)\n\tpipelangValidateText(query)\n\tresult := make([]%s, 0, len(values))\n\tfor _, value := range values {\n\t\tif pipelangContainsCaseFoldedText(value.%s, query) {\n\t\t\tresult = append(result, value)\n\t\t}\n\t}\n\treturn result\n}\n\n", g.listFilterContainsCaseFoldedName(list, selector), elementType, elementType, validation, elementType, fieldNames[selector.Position])
 	}
 	for _, filter := range filterJoinedContainsCaseFolded {
 		selected := make([]string, 0, len(filter.Selectors))
 		for _, selector := range filter.Selectors {
 			selected = append(selected, "value."+fieldNames[selector.Position])
 		}
-		fmt.Fprintf(out, "func %s(values []%s, query string) []%s {\n\t%s(values)\n\tpipelangValidateText(query)\n\tquery = pipelangTrimText(query)\n\tresult := make([]%s, 0, len(values))\n\tfor _, value := range values {\n\t\tjoined := strings.Join([]string{%s}, \" \")\n\t\tif pipelangContainsCaseFoldedText(joined, query) {\n\t\t\tresult = append(result, value)\n\t\t}\n\t}\n\treturn result\n}\n\n", listFilterJoinedContainsCaseFoldedName(list, filter), elementType, elementType, validation, elementType, strings.Join(selected, ", "))
+		fmt.Fprintf(out, "func %s(values []%s, query string) []%s {\n\t%s(values)\n\tpipelangValidateText(query)\n\tquery = pipelangTrimText(query)\n\tresult := make([]%s, 0, len(values))\n\tfor _, value := range values {\n\t\tjoined := strings.Join([]string{%s}, \" \")\n\t\tif pipelangContainsCaseFoldedText(joined, query) {\n\t\t\tresult = append(result, value)\n\t\t}\n\t}\n\treturn result\n}\n\n", g.listFilterJoinedContainsCaseFoldedName(list, filter), elementType, elementType, validation, elementType, strings.Join(selected, ", "))
 	}
 	for _, selector := range sortByOrdinalText {
-		fmt.Fprintf(out, "func %s(values []%s) []%s {\n\t%s(values)\n\tresult := make([]%s, len(values))\n\tcopy(result, values)\n\tsort.SliceStable(result, func(left, right int) bool {\n\t\treturn pipelangCompareOrdinalText(result[left].%s, result[right].%s) < 0\n\t})\n\treturn result\n}\n\n", listSortByOrdinalTextName(list, selector), elementType, elementType, validation, elementType, fieldNames[selector.Position], fieldNames[selector.Position])
+		fmt.Fprintf(out, "func %s(values []%s) []%s {\n\t%s(values)\n\tresult := make([]%s, len(values))\n\tcopy(result, values)\n\tsort.SliceStable(result, func(left, right int) bool {\n\t\treturn pipelangCompareOrdinalText(result[left].%s, result[right].%s) < 0\n\t})\n\treturn result\n}\n\n", g.listSortByOrdinalTextName(list, selector), elementType, elementType, validation, elementType, fieldNames[selector.Position], fieldNames[selector.Position])
 	}
 	for _, sorted := range sortByOrdinalTexts {
 		var comparisons strings.Builder
 		for _, selector := range sorted.Selectors {
 			fmt.Fprintf(&comparisons, "\t\tif comparison := pipelangCompareOrdinalText(result[left].%s, result[right].%s); comparison != 0 {\n\t\t\treturn comparison < 0\n\t\t}\n", fieldNames[selector.Position], fieldNames[selector.Position])
 		}
-		fmt.Fprintf(out, "func %s(values []%s) []%s {\n\t%s(values)\n\tresult := make([]%s, len(values))\n\tcopy(result, values)\n\tsort.SliceStable(result, func(left, right int) bool {\n%s\t\treturn false\n\t})\n\treturn result\n}\n\n", listSortByOrdinalTextsName(list, sorted), elementType, elementType, validation, elementType, comparisons.String())
+		fmt.Fprintf(out, "func %s(values []%s) []%s {\n\t%s(values)\n\tresult := make([]%s, len(values))\n\tcopy(result, values)\n\tsort.SliceStable(result, func(left, right int) bool {\n%s\t\treturn false\n\t})\n\treturn result\n}\n\n", g.listSortByOrdinalTextsName(list, sorted), elementType, elementType, validation, elementType, comparisons.String())
 	}
 }
 
@@ -1801,37 +1801,45 @@ func listSortByOrdinalPositions(sorted coreir.ListSortByOrdinalTexts) string {
 	return strings.Join(positions, "_")
 }
 
-func listHelperSuffix(list coreir.Type) string {
-	return strings.TrimPrefix(recordGoTypeName(list.List.Element), "PipeLangRecord")
+func (g *generator) listHelperSuffix(list coreir.Type) string {
+	return strings.TrimPrefix(g.recordGoTypeName(list.List.Element), "PipeLangRecord")
 }
 
-func listValidationName(list coreir.Type) string {
-	return "pipelangValidateList" + listHelperSuffix(list)
+func (g *generator) listValidationName(list coreir.Type) string {
+	return "pipelangValidateList" + g.listHelperSuffix(list)
 }
-func listCloneName(list coreir.Type) string { return "pipelangCloneList" + listHelperSuffix(list) }
-func listEmptyName(list coreir.Type) string { return "pipelangEmptyList" + listHelperSuffix(list) }
-func listSingletonName(list coreir.Type) string {
-	return "pipelangSingletonList" + listHelperSuffix(list)
+func (g *generator) listCloneName(list coreir.Type) string {
+	return "pipelangCloneList" + g.listHelperSuffix(list)
 }
-func listAppendName(list coreir.Type) string { return "pipelangAppendList" + listHelperSuffix(list) }
-func listAtName(list coreir.Type) string     { return "pipelangAtList" + listHelperSuffix(list) }
-func listFindByTextName(list coreir.Type, selector coreir.ListFindByText) string {
-	return "pipelangFindByTextList" + listHelperSuffix(list) + "Field" + strconv.Itoa(selector.Position)
+func (g *generator) listEmptyName(list coreir.Type) string {
+	return "pipelangEmptyList" + g.listHelperSuffix(list)
 }
-func listFilterByTextName(list coreir.Type, selector coreir.ListFilterByText) string {
-	return "pipelangFilterByTextList" + listHelperSuffix(list) + "Field" + strconv.Itoa(selector.Position)
+func (g *generator) listSingletonName(list coreir.Type) string {
+	return "pipelangSingletonList" + g.listHelperSuffix(list)
 }
-func listFilterContainsCaseFoldedName(list coreir.Type, selector coreir.ListFilterContainsCaseFolded) string {
-	return "pipelangFilterContainsCaseFoldedList" + listHelperSuffix(list) + "Field" + strconv.Itoa(selector.Position)
+func (g *generator) listAppendName(list coreir.Type) string {
+	return "pipelangAppendList" + g.listHelperSuffix(list)
 }
-func listFilterJoinedContainsCaseFoldedName(list coreir.Type, filter coreir.ListFilterJoinedContainsCaseFolded) string {
-	return "pipelangFilterJoinedContainsCaseFoldedList" + listHelperSuffix(list) + "Fields" + listFilterJoinedPositions(filter)
+func (g *generator) listAtName(list coreir.Type) string {
+	return "pipelangAtList" + g.listHelperSuffix(list)
 }
-func listSortByOrdinalTextName(list coreir.Type, selector coreir.ListSortByOrdinalText) string {
-	return "pipelangSortByOrdinalTextList" + listHelperSuffix(list) + "Field" + strconv.Itoa(selector.Position)
+func (g *generator) listFindByTextName(list coreir.Type, selector coreir.ListFindByText) string {
+	return "pipelangFindByTextList" + g.listHelperSuffix(list) + "Field" + strconv.Itoa(selector.Position)
 }
-func listSortByOrdinalTextsName(list coreir.Type, sorted coreir.ListSortByOrdinalTexts) string {
-	return "pipelangSortByOrdinalTextsList" + listHelperSuffix(list) + "Fields" + listSortByOrdinalPositions(sorted)
+func (g *generator) listFilterByTextName(list coreir.Type, selector coreir.ListFilterByText) string {
+	return "pipelangFilterByTextList" + g.listHelperSuffix(list) + "Field" + strconv.Itoa(selector.Position)
+}
+func (g *generator) listFilterContainsCaseFoldedName(list coreir.Type, selector coreir.ListFilterContainsCaseFolded) string {
+	return "pipelangFilterContainsCaseFoldedList" + g.listHelperSuffix(list) + "Field" + strconv.Itoa(selector.Position)
+}
+func (g *generator) listFilterJoinedContainsCaseFoldedName(list coreir.Type, filter coreir.ListFilterJoinedContainsCaseFolded) string {
+	return "pipelangFilterJoinedContainsCaseFoldedList" + g.listHelperSuffix(list) + "Fields" + listFilterJoinedPositions(filter)
+}
+func (g *generator) listSortByOrdinalTextName(list coreir.Type, selector coreir.ListSortByOrdinalText) string {
+	return "pipelangSortByOrdinalTextList" + g.listHelperSuffix(list) + "Field" + strconv.Itoa(selector.Position)
+}
+func (g *generator) listSortByOrdinalTextsName(list coreir.Type, sorted coreir.ListSortByOrdinalTexts) string {
+	return "pipelangSortByOrdinalTextsList" + g.listHelperSuffix(list) + "Fields" + listSortByOrdinalPositions(sorted)
 }
 
 func isSnapshotResultType(value coreir.Type) bool {
@@ -1927,103 +1935,103 @@ func emitSnapshotResultType(out *strings.Builder) {
 	out.WriteString("type PipeLangResult[S, E any] struct {\n\tOK bool\n\tValue S\n\tError E\n}\n\n")
 }
 
-func snapshotResultSuffix(result coreir.Type) string {
-	return listHelperSuffix(result.Result.Success)
+func (g *generator) snapshotResultSuffix(result coreir.Type) string {
+	return g.listHelperSuffix(result.Result.Success)
 }
 
-func snapshotResultValidationName(result coreir.Type) string {
-	return "pipelangValidateSnapshotResult" + snapshotResultSuffix(result)
+func (g *generator) snapshotResultValidationName(result coreir.Type) string {
+	return "pipelangValidateSnapshotResult" + g.snapshotResultSuffix(result)
 }
 
-func snapshotResultCloneName(result coreir.Type) string {
-	return "pipelangCloneSnapshotResult" + snapshotResultSuffix(result)
+func (g *generator) snapshotResultCloneName(result coreir.Type) string {
+	return "pipelangCloneSnapshotResult" + g.snapshotResultSuffix(result)
 }
 
-func snapshotResultOKName(result coreir.Type) string {
-	return "pipelangSnapshotResultOK" + snapshotResultSuffix(result)
+func (g *generator) snapshotResultOKName(result coreir.Type) string {
+	return "pipelangSnapshotResultOK" + g.snapshotResultSuffix(result)
 }
 
-func snapshotResultErrName(result coreir.Type) string {
-	return "pipelangSnapshotResultErr" + snapshotResultSuffix(result)
+func (g *generator) snapshotResultErrName(result coreir.Type) string {
+	return "pipelangSnapshotResultErr" + g.snapshotResultSuffix(result)
 }
 
-func snapshotResultIsOKName(result coreir.Type) string {
-	return "pipelangSnapshotResultIsOK" + snapshotResultSuffix(result)
+func (g *generator) snapshotResultIsOKName(result coreir.Type) string {
+	return "pipelangSnapshotResultIsOK" + g.snapshotResultSuffix(result)
 }
 
-func snapshotResultSuccessOrName(result coreir.Type) string {
-	return "pipelangSnapshotResultSuccessOr" + snapshotResultSuffix(result)
+func (g *generator) snapshotResultSuccessOrName(result coreir.Type) string {
+	return "pipelangSnapshotResultSuccessOr" + g.snapshotResultSuffix(result)
 }
 
-func snapshotResultFailureOrName(result coreir.Type) string {
-	return "pipelangSnapshotResultFailureOr" + snapshotResultSuffix(result)
+func (g *generator) snapshotResultFailureOrName(result coreir.Type) string {
+	return "pipelangSnapshotResultFailureOr" + g.snapshotResultSuffix(result)
 }
 
-func boundedResultValidationName(result coreir.Type) string {
+func (g *generator) boundedResultValidationName(result coreir.Type) string {
 	if isTextResultType(result) {
 		return "pipelangValidateTextResult"
 	}
-	return snapshotResultValidationName(result)
+	return g.snapshotResultValidationName(result)
 }
 
-func boundedResultCloneName(result coreir.Type) string {
+func (g *generator) boundedResultCloneName(result coreir.Type) string {
 	if isTextResultType(result) {
 		return "pipelangCloneTextResult"
 	}
-	return snapshotResultCloneName(result)
+	return g.snapshotResultCloneName(result)
 }
 
-func boundedResultOKName(result coreir.Type) string {
+func (g *generator) boundedResultOKName(result coreir.Type) string {
 	if isTextResultType(result) {
 		return "pipelangTextResultOK"
 	}
-	return snapshotResultOKName(result)
+	return g.snapshotResultOKName(result)
 }
 
-func boundedResultErrName(result coreir.Type) string {
+func (g *generator) boundedResultErrName(result coreir.Type) string {
 	if isTextResultType(result) {
 		return "pipelangTextResultErr"
 	}
-	return snapshotResultErrName(result)
+	return g.snapshotResultErrName(result)
 }
 
-func boundedResultIsOKName(result coreir.Type) string {
+func (g *generator) boundedResultIsOKName(result coreir.Type) string {
 	if isTextResultType(result) {
 		return "pipelangTextResultIsOK"
 	}
-	return snapshotResultIsOKName(result)
+	return g.snapshotResultIsOKName(result)
 }
 
-func boundedResultSuccessOrName(result coreir.Type) string {
+func (g *generator) boundedResultSuccessOrName(result coreir.Type) string {
 	if isTextResultType(result) {
 		return "pipelangTextResultSuccessOr"
 	}
-	return snapshotResultSuccessOrName(result)
+	return g.snapshotResultSuccessOrName(result)
 }
 
-func boundedResultFailureOrName(result coreir.Type) string {
+func (g *generator) boundedResultFailureOrName(result coreir.Type) string {
 	if isTextResultType(result) {
 		return "pipelangTextResultFailureOr"
 	}
-	return snapshotResultFailureOrName(result)
+	return g.snapshotResultFailureOrName(result)
 }
 
-func emitSnapshotResultSupport(out *strings.Builder, result coreir.Type) {
+func (g *generator) emitSnapshotResultSupport(out *strings.Builder, result coreir.Type) {
 	list := result.Result.Success
-	elementType := recordGoTypeName(list.List.Element)
+	elementType := g.recordGoTypeName(list.List.Element)
 	resultType := fmt.Sprintf("PipeLangResult[[]%s, string]", elementType)
-	validate := snapshotResultValidationName(result)
+	validate := g.snapshotResultValidationName(result)
 	fmt.Fprintf(out, "func %s(value %s) {\n", validate, resultType)
 	out.WriteString("\tif value.OK {\n")
-	fmt.Fprintf(out, "\t\t%s(value.Value)\n", listValidationName(list))
+	fmt.Fprintf(out, "\t\t%s(value.Value)\n", g.listValidationName(list))
 	out.WriteString("\t\tif value.Error != \"\" {\n\t\t\tpanic(\"invalid PipeLang snapshot Result value\")\n\t\t}\n\t\treturn\n\t}\n")
 	out.WriteString("\tif value.Value != nil {\n\t\tpanic(\"invalid PipeLang snapshot Result value\")\n\t}\n\tpipelangValidateText(value.Error)\n}\n\n")
-	fmt.Fprintf(out, "func %s(value %s) %s {\n\t%s(value)\n\tif value.OK {\n\t\tvalue.Value = %s(value.Value)\n\t}\n\treturn value\n}\n\n", snapshotResultCloneName(result), resultType, resultType, validate, listCloneName(list))
-	fmt.Fprintf(out, "func %s(value []%s) %s {\n\treturn %s{OK: true, Value: %s(value)}\n}\n\n", snapshotResultOKName(result), elementType, resultType, resultType, listCloneName(list))
-	fmt.Fprintf(out, "func %s(failure string) %s {\n\tpipelangValidateText(failure)\n\treturn %s{Error: failure}\n}\n\n", snapshotResultErrName(result), resultType, resultType)
-	fmt.Fprintf(out, "func %s(value %s) bool {\n\t%s(value)\n\treturn value.OK\n}\n\n", snapshotResultIsOKName(result), resultType, validate)
-	fmt.Fprintf(out, "func %s(value %s, fallback []%s) []%s {\n\t%s(value)\n\t%s(fallback)\n\tif value.OK {\n\t\treturn %s(value.Value)\n\t}\n\treturn %s(fallback)\n}\n\n", snapshotResultSuccessOrName(result), resultType, elementType, elementType, validate, listValidationName(list), listCloneName(list), listCloneName(list))
-	fmt.Fprintf(out, "func %s(value %s, fallback string) string {\n\t%s(value)\n\tpipelangValidateText(fallback)\n\tif value.OK {\n\t\treturn fallback\n\t}\n\treturn value.Error\n}\n\n", snapshotResultFailureOrName(result), resultType, validate)
+	fmt.Fprintf(out, "func %s(value %s) %s {\n\t%s(value)\n\tif value.OK {\n\t\tvalue.Value = %s(value.Value)\n\t}\n\treturn value\n}\n\n", g.snapshotResultCloneName(result), resultType, resultType, validate, g.listCloneName(list))
+	fmt.Fprintf(out, "func %s(value []%s) %s {\n\treturn %s{OK: true, Value: %s(value)}\n}\n\n", g.snapshotResultOKName(result), elementType, resultType, resultType, g.listCloneName(list))
+	fmt.Fprintf(out, "func %s(failure string) %s {\n\tpipelangValidateText(failure)\n\treturn %s{Error: failure}\n}\n\n", g.snapshotResultErrName(result), resultType, resultType)
+	fmt.Fprintf(out, "func %s(value %s) bool {\n\t%s(value)\n\treturn value.OK\n}\n\n", g.snapshotResultIsOKName(result), resultType, validate)
+	fmt.Fprintf(out, "func %s(value %s, fallback []%s) []%s {\n\t%s(value)\n\t%s(fallback)\n\tif value.OK {\n\t\treturn %s(value.Value)\n\t}\n\treturn %s(fallback)\n}\n\n", g.snapshotResultSuccessOrName(result), resultType, elementType, elementType, validate, g.listValidationName(list), g.listCloneName(list), g.listCloneName(list))
+	fmt.Fprintf(out, "func %s(value %s, fallback string) string {\n\t%s(value)\n\tpipelangValidateText(fallback)\n\tif value.OK {\n\t\treturn fallback\n\t}\n\treturn value.Error\n}\n\n", g.snapshotResultFailureOrName(result), resultType, validate)
 }
 
 func emitTextResultSupport(out *strings.Builder) {
@@ -2039,16 +2047,16 @@ func emitTextResultSupport(out *strings.Builder) {
 	out.WriteString("func pipelangTextResultFailureOr(value " + resultType + ", fallback string) string {\n\tpipelangValidateTextResult(value)\n\tpipelangValidateText(fallback)\n\tif value.OK {\n\t\treturn fallback\n\t}\n\treturn value.Error\n}\n\n")
 }
 
-func emitRecordType(out *strings.Builder, record coreir.Type, emitConstructor bool, optionalTypeName string) {
-	typeName := recordGoTypeName(record)
+func (g *generator) emitRecordType(out *strings.Builder, record coreir.Type, emitConstructor bool, optionalTypeName string) {
+	typeName := g.recordGoTypeName(record)
 	fieldNames := recordGoFieldNames(record)
 	fmt.Fprintf(out, "type %s struct {\n", typeName)
 	for index, field := range record.Record.Fields {
-		fieldType, _ := goType(field.Type, optionalTypeName)
+		fieldType, _ := g.goType(field.Type, optionalTypeName)
 		fmt.Fprintf(out, "\t%s %s\n", fieldNames[index], fieldType)
 	}
 	out.WriteString("}\n\n")
-	fmt.Fprintf(out, "func %s(value %s) {\n", recordValidationName(record), typeName)
+	fmt.Fprintf(out, "func %s(value %s) {\n", g.recordValidationName(record), typeName)
 	for index, field := range record.Record.Fields {
 		if isTextType(field.Type) {
 			fmt.Fprintf(out, "\tpipelangValidateText(value.%s)\n", fieldNames[index])
@@ -2058,12 +2066,12 @@ func emitRecordType(out *strings.Builder, record coreir.Type, emitConstructor bo
 	if !emitConstructor {
 		return
 	}
-	fmt.Fprintf(out, "func %s(", recordConstructionName(record))
+	fmt.Fprintf(out, "func %s(", g.recordConstructionName(record))
 	for index, field := range record.Record.Fields {
 		if index > 0 {
 			out.WriteString(", ")
 		}
-		fieldType, _ := goType(field.Type, optionalTypeName)
+		fieldType, _ := g.goType(field.Type, optionalTypeName)
 		fmt.Fprintf(out, "field%d %s", index, fieldType)
 	}
 	fmt.Fprintf(out, ") %s {\n", typeName)
@@ -2072,7 +2080,7 @@ func emitRecordType(out *strings.Builder, record coreir.Type, emitConstructor bo
 		fmt.Fprintf(out, "\t\t%s: field%d,\n", fieldName, index)
 	}
 	out.WriteString("\t}\n")
-	fmt.Fprintf(out, "\t%s(value)\n", recordValidationName(record))
+	fmt.Fprintf(out, "\t%s(value)\n", g.recordValidationName(record))
 	out.WriteString("\treturn value\n")
 	out.WriteString("}\n\n")
 }
@@ -2098,19 +2106,19 @@ func expressionConstructsRecord(expression coreir.Expr, record coreir.Type) bool
 	return found
 }
 
-func recordGoTypeName(record coreir.Type) string {
+func (g *generator) recordGoTypeName(record coreir.Type) string {
 	if record.Identity == nil {
 		return "PipeLangRecordInvalid"
 	}
-	return "PipeLangRecord" + exportedIdentifier(record.Identity.PackageID+"_"+record.Identity.Path)
+	return g.recordNames[identityKey(*record.Identity)]
 }
 
-func recordValidationName(record coreir.Type) string {
-	return "pipelangValidate" + strings.TrimPrefix(recordGoTypeName(record), "PipeLang")
+func (g *generator) recordValidationName(record coreir.Type) string {
+	return "pipelangValidate" + strings.TrimPrefix(g.recordGoTypeName(record), "PipeLang")
 }
 
-func recordConstructionName(record coreir.Type) string {
-	return "pipelangNew" + strings.TrimPrefix(recordGoTypeName(record), "PipeLang")
+func (g *generator) recordConstructionName(record coreir.Type) string {
+	return "pipelangNew" + strings.TrimPrefix(g.recordGoTypeName(record), "PipeLang")
 }
 
 func recordGoFieldNames(record coreir.Type) []string {
@@ -2481,4 +2489,16 @@ func exportedIdentifier(value string) string {
 		return "Function"
 	}
 	return out.String()
+}
+
+func sortedFunctions(input []coreir.Function) []coreir.Function {
+	functions := append([]coreir.Function(nil), input...)
+	sort.SliceStable(functions, func(i, j int) bool {
+		left, right := identityKey(functions[i].Identity), identityKey(functions[j].Identity)
+		if left != right {
+			return left < right
+		}
+		return functions[i].Name < functions[j].Name
+	})
+	return functions
 }
