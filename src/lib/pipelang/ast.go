@@ -811,8 +811,12 @@ func validV760RootLocalNestedTerminalIf(expr Expr) bool {
 }
 
 func validV770SymmetricRootLocalNestedTerminalIf(expr Expr) bool {
+	return validSymmetricNestedTerminalIf(expr, true)
+}
+
+func validSymmetricNestedTerminalIf(expr Expr, requireRoot bool) bool {
 	locals, tail, valid := terminalBranchTail(expr)
-	if !valid || locals == 0 {
+	if !valid || (requireRoot && locals == 0) {
 		return false
 	}
 	outer, ok := tail.(*ConditionalExpr)
@@ -841,6 +845,9 @@ func validV770SymmetricRootLocalNestedTerminalIf(expr Expr) bool {
 }
 
 func validTerminalIfStatement(contract LanguageContract, expr Expr) bool {
+	if contract == PipeLangLanguageContractV780 {
+		return validTerminalIfStatement(PipeLangLanguageContractV770, expr) || validSymmetricNestedTerminalIf(expr, false)
+	}
 	if contract == PipeLangLanguageContractV770 {
 		return validTerminalIfStatement(PipeLangLanguageContractV760, expr) || validV770SymmetricRootLocalNestedTerminalIf(expr)
 	}

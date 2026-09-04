@@ -1026,3 +1026,39 @@ additional nesting, conditional expressions within the topology, propagation, ma
 assignment, fallthrough, other early returns, loops, effects, inference, actions, runtimes,
 targets, adapters, UI, and deployment remain excluded. No successor is implied; another slice
 requires a new founder decision and separate implementation approval.
+
+## Step 8ar — rootless symmetric depth-two terminal branching (`v0.78.0`)
+
+`v0.78.0` additionally permits the exact symmetric depth-two terminal `if/else` topology
+without a preceding root immutable local. Both outer branches end in exactly one inner terminal
+`if/else`. Each outer branch and each inner leaf admits zero or more source-ordered, explicitly
+typed immutable locals. All three conditions are `bool`; every leaf returns exactly the declared
+method type. Bindings enter scope after their initializer. Self/forward references, duplicates,
+shadowing, cross-branch references, and escaping bindings remain invalid. Only the selected outer
+branch, its inner condition, and its selected leaf execute.
+
+The compiler reuses terminal `conditional` and `immutable_local` HIR/Core representations. Core
+independently checks exact topology, types, lexical bindings, and canonical positions; the Go
+backend refuses malformed Core. Existing rootful v0.77 and earlier accepted forms retain their
+behavior. `pipelang.compiler.v1`, `pipelang.semantic.v1`, and `dockpipe.application.v1` identities
+and shapes remain stable; only language metadata advances. The exact 45-source compatibility
+lane remains frozen.
+
+Third-level/additional nesting, conditional expressions within this topology, propagation,
+matching, assignment, fallthrough, other early returns, loops, effects, and inference remain
+excluded. This slice adds no workflow, runtime, action, target, adapter, UI, or deployment behavior.
+
+The founder selected option A and separately approved implementation in the receiving task.
+Offline proof with cached Go 1.25.14 passed: the PipeLang/Core and Application IR suites;
+focused PipeLang application CLI tests and the full `src/cmd` suite; the exact 45-source inventory, source, language, artifact, and
+execution compatibility checks; and vet for affected compiler/Application IR/application/CLI
+packages. New tests cover all four evaluator and deterministic generated-Go compile/run paths,
+v0.77 source/Core/backend gates, v0.69-v0.77 inheritance, zero and multiple branch/leaf locals,
+source scope/type exclusions, and malformed Core/backend refusal. Editor tests, JavaScript syntax,
+JSON/YAML parsing, and diff checks passed. TASK-020's rootless `DisplayMode` consumer retains all
+four outcomes; its canonical golden changes only language metadata to v0.78.0.
+
+A broader application-suite run was stopped without a result; it is not claimed as proof.
+Generated Go, logs, and caches were temporary. No generated store refresh, commit, push,
+publication, credentials, or external operation was performed. Any successor requires a fresh
+founder decision and separate implementation approval.

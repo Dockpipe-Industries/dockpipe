@@ -1381,3 +1381,24 @@ deterministic JSON. Validation rejects missing identities, mismatched contracts,
 sections, empty columns, and invalid directions. It changes no PipeLang language, HIR, Core,
 evaluator, backend, or stable identity; it adds no parsing, inference, runtime, target, Docker,
 refresh, action, launcher, or CLI behavior.
+
+## Checkpoint v0.78.0 complete contract
+
+`v0.78.0` additionally permits the exact symmetric depth-two terminal `if/else` topology
+without a preceding root immutable local. Both outer branches end in exactly one inner terminal
+`if/else`. Each outer branch and each inner leaf admits zero or more source-ordered, explicitly
+typed immutable locals. All three conditions are `bool`; every leaf returns exactly the declared
+method type. Bindings enter scope after their initializer. Self/forward references, duplicates,
+shadowing, cross-branch references, and escaping bindings remain invalid. Only the selected outer
+branch, its inner condition, and its selected leaf execute.
+
+The compiler reuses terminal `conditional` and `immutable_local` HIR/Core representations. Core
+independently checks exact topology, types, lexical bindings, and canonical positions; the Go
+backend refuses malformed Core. Existing rootful v0.77 and earlier accepted forms retain their
+behavior. `pipelang.compiler.v1`, `pipelang.semantic.v1`, and `dockpipe.application.v1` identities
+and shapes remain stable; only language metadata advances. The exact 45-source compatibility
+lane remains frozen.
+
+Third-level/additional nesting, conditional expressions within this topology, propagation,
+matching, assignment, fallthrough, other early returns, loops, effects, and inference remain
+excluded. This slice adds no workflow, runtime, action, target, adapter, UI, or deployment behavior.

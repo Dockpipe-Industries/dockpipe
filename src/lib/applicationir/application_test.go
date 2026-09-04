@@ -21,7 +21,7 @@ func TestDockerObservabilityGoldenUsesCanonicalSemanticAndCore(t *testing.T) {
 		t.Fatal(err)
 	}
 	module := pipelang.ModuleInput{ID: "app.root", Namespace: "app.root", DeclarationSpan: pipelang.Span{File: "docker-observability.pipe"}, Sources: []pipelang.SourceInput{{Path: "docker-observability.pipe", Data: source}}}
-	input := pipelang.ModuleSetInput{LanguageContract: pipelang.PipeLangLanguageContractV770, PackageID: "docker.observability", Root: "app.root", Modules: []pipelang.ModuleInput{module}}
+	input := pipelang.ModuleSetInput{LanguageContract: pipelang.PipeLangLanguageContractV780, PackageID: "docker.observability", Root: "app.root", Modules: []pipelang.ModuleInput{module}}
 	input.Lock.Modules = []pipelang.LockedModule{{ID: module.ID, SourceSHA256: pipelang.ModuleSourceSHA256(module.Sources), SemanticSHA256: pipelang.ModuleSemanticSHA256(input.PackageID, module.Namespace, nil)}}
 	analysis := pipelang.AnalyzeSemanticModuleSet(input)
 	if err := analysis.Error(); err != nil {
@@ -122,7 +122,7 @@ func TestDockerObservabilityGoldenUsesCanonicalSemanticAndCore(t *testing.T) {
 	}
 	resolveSelectionFunction := resolveSelectionHIR.Functions[len(resolveSelectionHIR.Functions)-1]
 	resolveCarrier := resolveSelectionFunction.Body.ImmutableLocal
-	if resolveSelectionHIR.LanguageContract != coreir.LanguageContractV770 || resolveCarrier == nil || resolveCarrier.Initializer.Kind != hir.ExprCall || resolveCarrier.Initializer.Call == nil || len(resolveCarrier.Initializer.Call.Arguments) != 2 || resolveCarrier.Return == nil || resolveCarrier.Return.Kind != hir.ExprImmutableLocal {
+	if resolveSelectionHIR.LanguageContract != coreir.LanguageContractV780 || resolveCarrier == nil || resolveCarrier.Initializer.Kind != hir.ExprCall || resolveCarrier.Initializer.Call == nil || len(resolveCarrier.Initializer.Call.Arguments) != 2 || resolveCarrier.Return == nil || resolveCarrier.Return.Kind != hir.ExprImmutableLocal {
 		t.Fatalf("ResolveSelection HIR lost multi-parameter helper carrier: %#v", resolveSelectionFunction.Body)
 	}
 	for position, argument := range resolveCarrier.Initializer.Call.Arguments {
@@ -249,11 +249,10 @@ func TestDockerObservabilityGoldenUsesCanonicalSemanticAndCore(t *testing.T) {
 		t.Fatal(err)
 	}
 	displayModeFunction := displayModeHIR.Functions[len(displayModeHIR.Functions)-1]
-	displayModeRoot := displayModeFunction.Body.ImmutableLocal
-	if displayModeFunction.Body.Kind != hir.ExprImmutableLocal || displayModeRoot == nil || displayModeRoot.Return == nil || displayModeRoot.Return.Conditional == nil || !displayModeRoot.Return.Conditional.TerminalStatement {
-		t.Fatalf("DisplayMode HIR lost shared root local before the bounded nested terminal decision: %#v", displayModeFunction.Body)
+	displayModeOuter := displayModeFunction.Body.Conditional
+	if displayModeFunction.Body.Kind != hir.ExprConditional || displayModeOuter == nil || !displayModeOuter.TerminalStatement {
+		t.Fatalf("DisplayMode HIR lost rootless symmetric terminal decision: %#v", displayModeFunction.Body)
 	}
-	displayModeOuter := displayModeRoot.Return.Conditional
 	displayModeTrueInner := displayModeOuter.WhenTrue.ImmutableLocal.Return.Conditional
 	displayModeFalseInner := displayModeOuter.WhenFalse.ImmutableLocal.Return.Conditional
 	if displayModeTrueInner == nil || displayModeFalseInner == nil || displayModeTrueInner.WhenTrue == nil || displayModeTrueInner.WhenTrue.ImmutableLocal == nil || displayModeTrueInner.WhenTrue.ImmutableLocal.Return == nil || displayModeTrueInner.WhenTrue.ImmutableLocal.Return.ImmutableLocal == nil || displayModeTrueInner.WhenFalse == nil || displayModeTrueInner.WhenFalse.ImmutableLocal == nil || displayModeFalseInner.WhenTrue == nil || displayModeFalseInner.WhenTrue.ImmutableLocal == nil || displayModeFalseInner.WhenFalse == nil || displayModeFalseInner.WhenFalse.ImmutableLocal == nil {
@@ -278,7 +277,7 @@ func TestDockerObservabilityGoldenUsesCanonicalSemanticAndCore(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(displayModeGo), "p3 := p0") || !strings.Contains(string(displayModeGo), "if p1 {") || !strings.Contains(string(displayModeGo), "p4 := pipelangTrimText(p3)") || strings.Count(string(displayModeGo), "if p2 {") != 2 || !strings.Contains(string(displayModeGo), "p5 := PipeLangNormalizeName(p4)") || !strings.Contains(string(displayModeGo), "p6 := p5") || !strings.Contains(string(displayModeGo), "return p6") {
+	if !strings.Contains(string(displayModeGo), "if p1 {") || !strings.Contains(string(displayModeGo), "p3 := pipelangTrimText(p0)") || strings.Count(string(displayModeGo), "if p2 {") != 2 || !strings.Contains(string(displayModeGo), "p4 := PipeLangNormalizeName(p3)") || !strings.Contains(string(displayModeGo), "p5 := p4") || !strings.Contains(string(displayModeGo), "return p5") {
 		t.Fatalf("DisplayMode generated Go lost symmetric bounded nested terminal decisions:\n%s", displayModeGo)
 	}
 	details := find("Details")
@@ -440,7 +439,7 @@ func TestDockerObservabilityGoldenUsesCanonicalSemanticAndCore(t *testing.T) {
 	if err = json.Unmarshal(raw, &checked); err != nil {
 		t.Fatal(err)
 	}
-	if len(checked.Sections) != 3 || len(app.Sections) != 3 || app.Selection == nil || app.Details == nil || app.Logs == nil || app.Metadata.LanguageContract != "v0.77.0" {
+	if len(checked.Sections) != 3 || len(app.Sections) != 3 || app.Selection == nil || app.Details == nil || app.Logs == nil || app.Metadata.LanguageContract != "v0.78.0" {
 		t.Fatalf("incomplete fixture: %#v", app)
 	}
 	bad := spec

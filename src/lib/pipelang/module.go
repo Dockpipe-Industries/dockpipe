@@ -99,6 +99,7 @@ const (
 	PipeLangLanguageContractV750 LanguageContract = "v0.75.0"
 	PipeLangLanguageContractV760 LanguageContract = "v0.76.0"
 	PipeLangLanguageContractV770 LanguageContract = "v0.77.0"
+	PipeLangLanguageContractV780 LanguageContract = "v0.78.0"
 	PipeLangLanguageContract                      = PipeLangLanguageContractV010 // compatibility name for the first post-legacy seed
 	PipeLangDisplayName                           = "PipeLang"
 	PipeLangMachineName                           = "pipelang"
@@ -106,7 +107,7 @@ const (
 )
 
 func isV740OrLaterSourceContract(contract LanguageContract) bool {
-	return contract == PipeLangLanguageContractV770 || contract == PipeLangLanguageContractV760 || contract == PipeLangLanguageContractV750 || contract == PipeLangLanguageContractV740
+	return contract == PipeLangLanguageContractV780 || contract == PipeLangLanguageContractV770 || contract == PipeLangLanguageContractV760 || contract == PipeLangLanguageContractV750 || contract == PipeLangLanguageContractV740
 }
 
 func isPipeLangSemanticContract(contract LanguageContract) bool {
@@ -124,11 +125,11 @@ func inheritedLanguageContract(contract LanguageContract) LanguageContract {
 }
 
 func hasTerminalIfSourceContract(contract LanguageContract) bool {
-	return contract == PipeLangLanguageContractV770 || contract == PipeLangLanguageContractV760 || contract == PipeLangLanguageContractV750 || contract == PipeLangLanguageContractV740 || contract == PipeLangLanguageContractV730 || contract == PipeLangLanguageContractV720 || contract == PipeLangLanguageContractV710 || contract == PipeLangLanguageContractV700 || contract == PipeLangLanguageContractV690
+	return contract == PipeLangLanguageContractV780 || contract == PipeLangLanguageContractV770 || contract == PipeLangLanguageContractV760 || contract == PipeLangLanguageContractV750 || contract == PipeLangLanguageContractV740 || contract == PipeLangLanguageContractV730 || contract == PipeLangLanguageContractV720 || contract == PipeLangLanguageContractV710 || contract == PipeLangLanguageContractV700 || contract == PipeLangLanguageContractV690
 }
 
 func hasBranchLocalSourceContract(contract LanguageContract) bool {
-	return contract == PipeLangLanguageContractV770 || contract == PipeLangLanguageContractV760 || contract == PipeLangLanguageContractV750 || contract == PipeLangLanguageContractV740 || contract == PipeLangLanguageContractV730 || contract == PipeLangLanguageContractV720 || contract == PipeLangLanguageContractV710 || contract == PipeLangLanguageContractV700
+	return contract == PipeLangLanguageContractV780 || contract == PipeLangLanguageContractV770 || contract == PipeLangLanguageContractV760 || contract == PipeLangLanguageContractV750 || contract == PipeLangLanguageContractV740 || contract == PipeLangLanguageContractV730 || contract == PipeLangLanguageContractV720 || contract == PipeLangLanguageContractV710 || contract == PipeLangLanguageContractV700
 }
 
 func hasTwoBranchLocalsSourceContract(contract LanguageContract) bool {
@@ -136,7 +137,7 @@ func hasTwoBranchLocalsSourceContract(contract LanguageContract) bool {
 }
 
 func hasGeneralBranchLocalSequenceSourceContract(contract LanguageContract) bool {
-	return contract == PipeLangLanguageContractV770 || contract == PipeLangLanguageContractV760 || contract == PipeLangLanguageContractV750 || contract == PipeLangLanguageContractV740 || contract == PipeLangLanguageContractV730 || contract == PipeLangLanguageContractV720
+	return contract == PipeLangLanguageContractV780 || contract == PipeLangLanguageContractV770 || contract == PipeLangLanguageContractV760 || contract == PipeLangLanguageContractV750 || contract == PipeLangLanguageContractV740 || contract == PipeLangLanguageContractV730 || contract == PipeLangLanguageContractV720
 }
 
 func isV310OrEarlierCapability(contract LanguageContract) bool {
@@ -765,7 +766,7 @@ func prepareModuleGraph(input ModuleSetInput, sources *SourceSet, requireSemanti
 	} else if input.LanguageContract == LegacyLanguageContract {
 		diagnostics = append(diagnostics, moduleDiagnostic(CodeInvalidModule, Span{}, "the frozen v0.0.0.1 contract uses the legacy source-set compiler lane"))
 	} else if requireSemanticIDs && !isPipeLangSemanticContract(input.LanguageContract) {
-		diagnostics = append(diagnostics, moduleDiagnostic(CodeInvalidModule, Span{}, fmt.Sprintf("semantic analysis requires a supported post-legacy language contract through %q", PipeLangLanguageContractV770)))
+		diagnostics = append(diagnostics, moduleDiagnostic(CodeInvalidModule, Span{}, fmt.Sprintf("semantic analysis requires a supported post-legacy language contract through %q", PipeLangLanguageContractV780)))
 	}
 	if !validModuleID(input.Root, false) {
 		diagnostics = append(diagnostics, moduleDiagnostic(CodeInvalidModule, Span{}, "root module identity is empty or non-canonical"))

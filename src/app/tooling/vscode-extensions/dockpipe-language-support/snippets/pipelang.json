@@ -825,5 +825,23 @@
       "}"
     ],
     "description": "Create the v0.77.0 symmetric depth-two terminal if/else with a shared typed immutable root local."
+  },
+  "PipeLang rootless symmetric nested terminal if/else": {
+    "prefix": "pipe-rootless-symmetric-nested-terminal-if",
+    "body": [
+      "public ${1:string} ${2:Select}(${1:string} ${3:raw}, bool ${4:outer}, bool ${5:left}, bool ${6:right}) {",
+      "\tif (${4:outer}) {",
+      "\t\t${1:string} ${8:trueValue} = ${3:raw};",
+      "\t\tif (${5:left}) { ${1:string} ${9:selectedTrue} = ${8:trueValue}; return ${9:selectedTrue}; }",
+      "\t\telse { return ${10:\"outer-true\"}; }",
+      "\t}",
+      "\telse {",
+      "\t\t${1:string} ${11:falseValue} = ${3:raw};",
+      "\t\tif (${6:right}) { ${1:string} ${12:selectedFalse} = ${11:falseValue}; return ${12:selectedFalse}; }",
+      "\t\telse { return ${13:\"outer-false\"}; }",
+      "\t}",
+      "}"
+    ],
+    "description": "Create the v0.78.0 rootless symmetric depth-two terminal if/else with typed lexical branch and leaf locals."
   }
 }

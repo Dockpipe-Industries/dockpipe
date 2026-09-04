@@ -1,5 +1,12 @@
 # DockPipe Language Support (VS Code)
 
+PipeLang `v0.78.0` adds rootless symmetric depth-two terminal branching through
+`pipe-rootless-symmetric-nested-terminal-if`. Both outer branches end in one inner terminal
+`if/else`; typed branch and leaf local sequences retain lexical scope and selected-path execution.
+No root local is required. All v0.77 forms remain supported. Additional nesting, conditional
+expressions within the topology, propagation, matching, assignment, fallthrough, effects, and
+inference remain excluded.
+
 PipeLang `v0.77.0` permits one or more source-ordered explicitly typed immutable root locals before
 an outer terminal `if/else` whose two branches each end in exactly one inner terminal `if/else`
 through `pipe-symmetric-nested-terminal-if`. Root locals evaluate eagerly once and remain visible
