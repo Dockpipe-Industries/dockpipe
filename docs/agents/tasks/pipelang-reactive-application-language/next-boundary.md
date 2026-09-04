@@ -1405,6 +1405,30 @@ loops, effects, inference, actions, runtimes, targets, adapters, UI, and deploym
 excluded. No successor is implied; another slice requires a new founder decision and separate
 implementation approval.
 
+## Accepted v0.77.0 boundary — symmetric depth-two terminal branching
+
+`v0.77.0` permits one or more source-ordered explicitly typed immutable root locals before an outer
+terminal `if/else` whose two branches each end in exactly one inner terminal `if/else`. Each outer
+branch and each inner leaf may contain any finite source-ordered immutable-local sequence. Root
+locals evaluate eagerly once before the outer condition and remain visible to both inner decisions
+and every leaf. Outer-branch locals remain confined to their own inner decision and leaves;
+inner-leaf locals remain confined to their selected leaf. All three conditions are `bool`, every
+return has the exact declared method type, and only the selected outer branch, its inner condition,
+and selected leaf execute.
+
+Typed HIR and target-neutral Core reuse the existing terminal `conditional` and `immutable_local`
+nodes. Core independently validates the required root sequence, exact three-conditional symmetric
+topology, complete branch-local sequences, exact typing, canonical positions, and lexical
+references. Evaluation and deterministic Core-only Go preserve eager root order and selected-branch
+execution. `pipelang.compiler.v1`, `pipelang.semantic.v1`, and `dockpipe.application.v1` remain
+stable; only language metadata advances to `v0.77.0`. The exact 45-source lane remains frozen.
+
+All v0.69-v0.76 forms remain exact. The symmetric topology without a root local, third-level or
+additional nesting, conditional expressions within the topology, propagation, matching,
+assignment, fallthrough, other early returns, loops, effects, inference, actions, runtimes,
+targets, adapters, UI, and deployment remain excluded. No successor is implied; another slice
+requires a new founder decision and separate implementation approval.
+
 ## Accepted v0.49.0 boundary — bounded two-carrier matching
 
 `v0.49.0` widens only the occurrence count accepted through v0.48. One public pure method with one

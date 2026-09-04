@@ -2404,6 +2404,40 @@ UI, and deployment remain excluded. `pipelang.compiler.v1`, `pipelang.semantic.v
 `dockpipe.application.v1` remain unchanged; only language metadata advances to `v0.76.0`. The
 45-source legacy lane remains frozen.
 
+### PipeLang v0.77.0: symmetric depth-two terminal `if/else`
+
+`v0.77.0` permits one or more explicitly typed immutable root locals before an outer terminal
+`if/else` whose two branches each end in exactly one inner terminal `if/else`:
+
+```pipe
+public string Select(string raw, bool outer, bool left, bool right) {
+    string shared = trim(raw);
+    if (outer) {
+        string trueValue = shared;
+        if (left) { return trueValue; }
+        else { return "outer-true"; }
+    } else {
+        string falseValue = shared;
+        if (right) { return falseValue; }
+        else { return "outer-false"; }
+    }
+}
+```
+
+Root locals evaluate eagerly once before the outer condition. Only the selected outer branch, its
+locals, its inner condition, and its selected leaf evaluate. Root bindings are visible throughout;
+outer-branch bindings remain within that branch and its inner leaves; inner-leaf bindings remain
+within the selected leaf. All three conditions are `bool`, and every return has the exact declared
+method type.
+
+Typed HIR and target-neutral Core reuse the existing terminal `conditional` and `immutable_local`
+nodes; no node or schema identity changes. All v0.69-v0.76 forms remain exact. The symmetric
+topology without a root local, third-level or additional nesting, conditional expressions within
+the topology, propagation, matching, assignment, fallthrough, other early returns, loops, effects,
+inference, actions, runtimes, targets, adapters, UI, and deployment remain excluded.
+`pipelang.compiler.v1`, `pipelang.semantic.v1`, and `dockpipe.application.v1` remain unchanged; only
+language metadata advances to `v0.77.0`. The 45-source legacy lane remains frozen.
+
 ### Target-neutral Application IR
 
 `dockpipe.application.v1` is not a language feature or target generator. It consumes the public

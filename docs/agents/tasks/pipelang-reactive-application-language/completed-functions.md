@@ -1001,3 +1001,28 @@ root-local nested form, propagation, matching, assignment, fallthrough, other ea
 loops, effects, inference, actions, runtimes, targets, adapters, UI, and deployment remain
 excluded. No successor is implied; another slice requires a new founder decision and separate
 implementation approval.
+
+## Step 8aq — symmetric depth-two terminal branching (`v0.77.0`)
+
+Production source permits one or more source-ordered explicitly typed immutable root locals before
+an outer terminal `if/else` whose two branches each end in exactly one inner terminal `if/else`.
+Each outer branch and each inner leaf may contain any finite source-ordered immutable-local sequence.
+Root locals evaluate eagerly once before the outer condition and remain visible everywhere.
+Outer-branch locals are visible only to that branch's inner condition and leaves; inner-leaf locals
+remain local to their selected leaf. All three conditions are `bool`, every return has the exact
+declared method type, and only the selected outer branch, its inner condition, and selected leaf
+execute.
+
+Typed HIR and target-neutral Core reuse terminal `conditional` and nested `immutable_local` nodes.
+Source and Core validation prove the required root sequence, exact three-conditional symmetric
+topology, complete local sequences, exact typing, canonical positions, lexical references, and
+excluded shapes. Evaluation and deterministic Core-only Go prove all four selected paths.
+`pipelang.compiler.v1`, `pipelang.semantic.v1`, and `dockpipe.application.v1` stay stable;
+Application IR advances only its language metadata to `v0.77.0` while exercising both inner
+decisions; the exact 45-source compatibility lane remains frozen.
+
+All v0.69-v0.76 forms remain valid. The symmetric topology without a root local, third-level or
+additional nesting, conditional expressions within the topology, propagation, matching,
+assignment, fallthrough, other early returns, loops, effects, inference, actions, runtimes,
+targets, adapters, UI, and deployment remain excluded. No successor is implied; another slice
+requires a new founder decision and separate implementation approval.

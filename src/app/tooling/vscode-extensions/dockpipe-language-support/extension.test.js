@@ -526,3 +526,9 @@ assert.strictEqual(pipeLangSnippets["PipeLang root locals before nested terminal
 assert(pipeLangSnippets["PipeLang root locals before nested terminal if/else"].description.includes("v0.76.0"));
 assert(pipeLangSnippets["PipeLang root locals before nested terminal if/else"].body.some((line) => line.includes("${1:string} ${6:shared}")));
 assert(pipeLangSnippets["PipeLang root locals before nested terminal if/else"].body.some((line) => line.includes("if (${4:enabled}) {")));
+assert(pipeLangReadme.includes("`v0.77.0`"));
+assert(pipeLangReadme.includes("two branches each end"));
+assert.strictEqual(pipeLangSnippets["PipeLang symmetric nested terminal if/else"].prefix, "pipe-symmetric-nested-terminal-if");
+assert(pipeLangSnippets["PipeLang symmetric nested terminal if/else"].description.includes("v0.77.0"));
+assert(pipeLangSnippets["PipeLang symmetric nested terminal if/else"].body.some((line) => line.includes("if (${5:left})")));
+assert(pipeLangSnippets["PipeLang symmetric nested terminal if/else"].body.some((line) => line.includes("if (${6:right})")));

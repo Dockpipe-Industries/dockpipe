@@ -810,7 +810,40 @@ func validV760RootLocalNestedTerminalIf(expr Expr) bool {
 	return valid && locals > 0 && validV750NestedTerminalIf(tail)
 }
 
+func validV770SymmetricRootLocalNestedTerminalIf(expr Expr) bool {
+	locals, tail, valid := terminalBranchTail(expr)
+	if !valid || locals == 0 {
+		return false
+	}
+	outer, ok := tail.(*ConditionalExpr)
+	if !ok || !outer.TerminalStatement || outer.Condition == nil || outer.WhenTrue == nil || outer.WhenFalse == nil || !validConditionalOperand(outer.Condition) {
+		return false
+	}
+	validInnerLeaf := func(branch Expr) bool {
+		_, leaf, valid := terminalBranchTail(branch)
+		if !valid {
+			return false
+		}
+		if _, nested := leaf.(*ConditionalExpr); nested {
+			return false
+		}
+		return validConditionalOperand(leaf)
+	}
+	validNested := func(branch Expr) bool {
+		_, nestedTail, valid := terminalBranchTail(branch)
+		nested, ok := nestedTail.(*ConditionalExpr)
+		if !valid || !ok || !nested.TerminalStatement || nested.Condition == nil || nested.WhenTrue == nil || nested.WhenFalse == nil {
+			return false
+		}
+		return validConditionalOperand(nested.Condition) && validInnerLeaf(nested.WhenTrue) && validInnerLeaf(nested.WhenFalse)
+	}
+	return countConditionalExpressions(expr) == 3 && countTerminalIfStatements(expr) == 3 && validNested(outer.WhenTrue) && validNested(outer.WhenFalse)
+}
+
 func validTerminalIfStatement(contract LanguageContract, expr Expr) bool {
+	if contract == PipeLangLanguageContractV770 {
+		return validTerminalIfStatement(PipeLangLanguageContractV760, expr) || validV770SymmetricRootLocalNestedTerminalIf(expr)
+	}
 	if contract == PipeLangLanguageContractV760 {
 		return validTerminalIfStatement(PipeLangLanguageContractV750, expr) || validV760RootLocalNestedTerminalIf(expr)
 	}
