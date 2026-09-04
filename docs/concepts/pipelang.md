@@ -1119,8 +1119,10 @@ does not implicitly propagate or skip later argument evaluation. Arguments enter
 call frames; only explicitly authored propagation can short-circuit that continuation.
 
 Typed HIR and target-neutral Core carry the resolved callable semantic identity, target name, and
-ordered typed operands. Lowering includes the closed transitive dependency graph once, Core proves
-same-owner identity, signature equality, target presence, and acyclicity, the evaluator uses
+ordered typed operands. Each semantic-to-HIR lowering request visits every reachable method once,
+including shared callees and named predicates, and emits the closed graph in deterministic
+dependency-first discovery order. Core proves same-owner identity, signature equality, target
+presence, and acyclicity, the evaluator uses
 isolated copied call frames, and the Go backend emits only Core-validated calls. The compiler,
 semantic projection, and Application IR schema versions remain `pipelang.compiler.v1`,
 `pipelang.semantic.v1`, and `dockpipe.application.v1`; their language-contract metadata advances to
