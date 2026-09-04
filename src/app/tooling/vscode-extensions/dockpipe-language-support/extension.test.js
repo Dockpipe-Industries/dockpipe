@@ -532,3 +532,11 @@ assert.strictEqual(pipeLangSnippets["PipeLang symmetric nested terminal if/else"
 assert(pipeLangSnippets["PipeLang symmetric nested terminal if/else"].description.includes("v0.77.0"));
 assert(pipeLangSnippets["PipeLang symmetric nested terminal if/else"].body.some((line) => line.includes("if (${5:left})")));
 assert(pipeLangSnippets["PipeLang symmetric nested terminal if/else"].body.some((line) => line.includes("if (${6:right})")));
+
+assert(pipeLangReadme.includes("`v0.78.0`"));
+const rootlessSymmetric = pipeLangSnippets["PipeLang rootless symmetric nested terminal if/else"];
+assert.strictEqual(rootlessSymmetric.prefix, "pipe-rootless-symmetric-nested-terminal-if");
+assert(rootlessSymmetric.description.includes("v0.78.0"));
+assert(rootlessSymmetric.body[1].includes("if (${4:outer})"));
+assert(rootlessSymmetric.body.some((line) => line.includes("if (${5:left})")));
+assert(rootlessSymmetric.body.some((line) => line.includes("if (${6:right})")));

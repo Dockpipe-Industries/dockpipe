@@ -2438,6 +2438,42 @@ inference, actions, runtimes, targets, adapters, UI, and deployment remain exclu
 `pipelang.compiler.v1`, `pipelang.semantic.v1`, and `dockpipe.application.v1` remain unchanged; only
 language metadata advances to `v0.77.0`. The 45-source legacy lane remains frozen.
 
+### PipeLang v0.78.0: rootless symmetric depth-two terminal `if/else`
+
+`v0.78.0` additionally permits the exact symmetric depth-two terminal `if/else` topology
+without a preceding root immutable local. Both outer branches end in exactly one inner terminal
+`if/else`. Each outer branch and each inner leaf admits zero or more source-ordered, explicitly
+typed immutable locals. All three conditions are `bool`; every leaf returns exactly the declared
+method type. Bindings enter scope after their initializer. Self/forward references, duplicates,
+shadowing, cross-branch references, and escaping bindings remain invalid. Only the selected outer
+branch, its inner condition, and its selected leaf execute.
+
+The compiler reuses terminal `conditional` and `immutable_local` HIR/Core representations. Core
+independently checks exact topology, types, lexical bindings, and canonical positions; the Go
+backend refuses malformed Core. Existing rootful v0.77 and earlier accepted forms retain their
+behavior. `pipelang.compiler.v1`, `pipelang.semantic.v1`, and `dockpipe.application.v1` identities
+and shapes remain stable; only language metadata advances. The exact 45-source compatibility
+lane remains frozen.
+
+Third-level/additional nesting, conditional expressions within this topology, propagation,
+matching, assignment, fallthrough, other early returns, loops, effects, and inference remain
+excluded. This slice adds no workflow, runtime, action, target, adapter, UI, or deployment behavior.
+
+```pipe
+public string Select(string raw, bool outer, bool left, bool right) {
+    if (outer) {
+        string value = raw;
+        if (left) { return value; }
+        else { return "outer-true"; }
+    } else {
+        string value = trim(raw);
+        if (right) { return value; }
+        else { return "outer-false"; }
+    }
+}
+```
+
+
 ### Target-neutral Application IR
 
 `dockpipe.application.v1` is not a language feature or target generator. It consumes the public

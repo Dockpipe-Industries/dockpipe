@@ -268,7 +268,7 @@ func ValidateFunction(function Function) error {
 
 func ValidateProgram(program Program) error {
 	inheritedContract := program.LanguageContract
-	if inheritedContract == LanguageContractV770 || inheritedContract == LanguageContractV760 || inheritedContract == LanguageContractV750 || inheritedContract == LanguageContractV740 {
+	if inheritedContract == LanguageContractV780 || inheritedContract == LanguageContractV770 || inheritedContract == LanguageContractV760 || inheritedContract == LanguageContractV750 || inheritedContract == LanguageContractV740 {
 		inheritedContract = LanguageContractV730
 	}
 	functions := make(map[string]Function, len(program.Functions))
@@ -570,9 +570,13 @@ func validV760RootLocalNestedTerminalIf(expression Expr) bool {
 }
 
 func validV770SymmetricRootLocalNestedTerminalIf(expression Expr) bool {
+	return validSymmetricNestedTerminalIf(expression, true)
+}
+
+func validSymmetricNestedTerminalIf(expression Expr, requireRoot bool) bool {
 	locals, tail, valid := terminalBranchTail(expression)
 	outer := tail.Conditional
-	if !valid || locals == 0 || tail.Kind != ExprConditional || outer == nil || !outer.TerminalStatement || outer.Condition == nil || outer.WhenTrue == nil || outer.WhenFalse == nil || !validConditionalOperand(*outer.Condition) {
+	if !valid || (requireRoot && locals == 0) || tail.Kind != ExprConditional || outer == nil || !outer.TerminalStatement || outer.Condition == nil || outer.WhenTrue == nil || outer.WhenFalse == nil || !validConditionalOperand(*outer.Condition) {
 		return false
 	}
 	validInnerLeaf := func(branch Expr) bool {
@@ -591,6 +595,12 @@ func validV770SymmetricRootLocalNestedTerminalIf(expression Expr) bool {
 }
 
 func validateImmutableLocalContract(contract string, function Function) error {
+	if contract == LanguageContractV780 {
+		if validSymmetricNestedTerminalIf(function.Body, false) {
+			return nil
+		}
+		return validateImmutableLocalContract(LanguageContractV770, function)
+	}
 	count := countImmutableLocalExpressions(function.Body)
 	if count == 0 {
 		return nil
@@ -1213,6 +1223,12 @@ func exprContainsPropagation(expression Expr) bool {
 }
 
 func validateConditionalContract(contract string, function Function) error {
+	if contract == LanguageContractV780 {
+		if validSymmetricNestedTerminalIf(function.Body, false) {
+			return nil
+		}
+		return validateConditionalContract(LanguageContractV770, function)
+	}
 	if !exprContainsConditional(function.Body) {
 		return nil
 	}
