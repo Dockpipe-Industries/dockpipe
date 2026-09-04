@@ -204,6 +204,15 @@ by return, including the direct-return form. Branch scopes, eager source order w
 branch, and selected-branch-only evaluation remain exact. This seam does not admit nested branches,
 propagation, matching, assignment, fallthrough, other early returns, loops, effects, or inference.
 
+Step 8an is complete using `v0.74.0`: the complete v0.73 terminal form may contain exactly one
+inner terminal `if/else` at the end of exactly one outer branch after zero or more explicitly typed
+ordered immutable locals. The sibling outer branch retains the v0.73 branch form, inner leaves
+return directly, outer-branch locals remain visible to the inner condition and leaves, and both
+levels evaluate only their selected branch. This seam does not admit top-level locals for the new
+topology, inner locals, nesting in both outer branches, another nested decision, third-level
+nesting, conditional expressions within the topology, propagation, matching, assignment,
+fallthrough, other early returns, loops, effects, or inference.
+
 Each slice is independently reviewable and keeps syntax, semantics, diagnostics, projection,
 editor, tests, and any enabled backend synchronized. No permissive parser, target-owned semantics,
 or syntax-first feature batch may skip the earlier foundations.
@@ -1233,6 +1242,31 @@ the exact 45-source lane remains frozen.
 
 The inherited v0.69-v0.72 forms with top-level locals remain exact. Ordinary zero-local blocks,
 nested branches, escaping bindings, propagation, matching, assignment, fallthrough, other early
+returns, loops, effects, inference, actions, runtimes, targets, adapters, UI, and deployment remain
+excluded. No behavior enters by implication. Any successor requires a new founder decision and
+separate implementation approval.
+
+## Checkpoint v0.74.0 complete contract
+
+One public pure method additionally admits exactly one nested terminal decision at the end of
+exactly one outer branch of a complete terminal `if/else` body. Zero or more explicitly typed
+immutable locals may precede the inner decision in that selected outer branch. The sibling outer
+branch retains the v0.73 direct-or-local sequence; both inner leaves return directly. Both
+conditions are `bool`, every leaf has the exact declared return type, and outer-branch locals are
+lexically visible to the inner condition and leaves after their initializer.
+
+Typed HIR and target-neutral Core reuse the existing terminal `conditional` and nested
+`immutable_local` expressions; no node or schema identity changes. Core independently validates
+exactly two terminal conditionals, nesting in exactly one outer branch, direct inner leaves, exact
+types, canonical positions, lexical references, and the excluded topology. Evaluation and
+deterministic Core-only Go preserve source order and selected-branch execution at both levels.
+`pipelang.compiler.v1`, `pipelang.semantic.v1`, and `dockpipe.application.v1` remain stable;
+metadata advances to `v0.74.0`; compiler-pipeline, malformed-Core, generated-Go, editor, and
+metadata-only Application IR fixtures prove the boundary; the exact 45-source lane remains frozen.
+
+The inherited v0.69-v0.73 forms remain exact. Top-level locals for the nested topology, inner
+locals, nesting in both outer branches, another nested decision, third-level nesting, conditional
+expressions within the topology, propagation, matching, assignment, fallthrough, other early
 returns, loops, effects, inference, actions, runtimes, targets, adapters, UI, and deployment remain
 excluded. No behavior enters by implication. Any successor requires a new founder decision and
 separate implementation approval.

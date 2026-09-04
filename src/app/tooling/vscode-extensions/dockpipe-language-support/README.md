@@ -1,5 +1,14 @@
 # DockPipe Language Support (VS Code)
 
+PipeLang `v0.74.0` adds one bounded nested terminal decision through `pipe-nested-terminal-if`.
+Exactly one outer branch may end in one inner terminal `if/else` after any finite sequence of
+explicitly typed immutable locals; the sibling outer branch retains the v0.73 branch form and the
+inner leaves return directly. Both conditions are `bool`, all leaves have the declared return type,
+outer-branch locals remain visible to the inner condition and leaves, and only selected branches
+evaluate. Inner locals, nesting in both outer branches, third-level nesting, propagation, matching,
+conditional expressions within this topology, assignment, fallthrough, effects, inference, and
+deployment remain excluded.
+
 PipeLang `v0.73.0` removes the top-level-local prerequisite from terminal `if/else` methods via
 `pipe-direct-terminal-if`. The terminal conditional may now be the complete method body while each
 branch retains the existing finite ordered immutable-local sequence. Nested branches, propagation,

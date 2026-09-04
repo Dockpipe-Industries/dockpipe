@@ -2291,6 +2291,41 @@ adapters, UI, and deployment remain excluded. `pipelang.compiler.v1`, `pipelang.
 `dockpipe.application.v1` remain unchanged; only language metadata advances to `v0.73.0`. The exact
 45-source legacy lane remains frozen.
 
+### PipeLang v0.74.0: bounded nested terminal `if/else`
+
+`v0.74.0` adds one bounded nested decision to the direct v0.73 terminal form. The complete method
+body has no top-level immutable locals. Exactly one outer branch may end in exactly one inner
+terminal `if/else` after zero or more source-ordered, explicitly typed immutable locals; the sibling
+outer branch retains the v0.73 branch form, and both inner leaves return directly:
+
+```pipe
+public string Select(string raw, bool enabled, bool normalize) {
+    if (enabled) {
+        string cleaned = trim(raw);
+        if (normalize) {
+            return cleaned;
+        } else {
+            return raw;
+        }
+    } else {
+        return "disabled";
+    }
+}
+```
+
+Both conditions must be `bool`, and every leaf must have the exact declared return type. Outer-
+branch locals enter scope after their initializer and remain visible to the inner condition and
+both inner leaves. Evaluation remains source ordered and selected-branch-only at both levels.
+
+Typed HIR and target-neutral Core reuse the existing terminal `conditional` and `immutable_local`
+nodes; no node or schema identity changes. Inner locals, nesting in both outer branches, a second
+nested decision, third-level nesting, top-level locals for the new topology, propagation, matching,
+conditional expressions within the topology, assignment, fallthrough, other early returns, loops,
+effects, inference, actions, runtimes, targets, adapters, UI, and deployment remain excluded.
+`pipelang.compiler.v1`, `pipelang.semantic.v1`, and `dockpipe.application.v1` remain unchanged; only
+language metadata advances to `v0.74.0`. The inherited v0.69-v0.73 forms remain exact, and the
+45-source legacy lane remains frozen.
+
 ### Target-neutral Application IR
 
 `dockpipe.application.v1` is not a language feature or target generator. It consumes the public

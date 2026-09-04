@@ -508,3 +508,9 @@ assert.strictEqual(pipeLangSnippets["PipeLang direct terminal if/else"].prefix, 
 assert(pipeLangSnippets["PipeLang direct terminal if/else"].description.includes("v0.73.0"));
 assert(pipeLangSnippets["PipeLang direct terminal if/else"].body.some((line) => line.includes("if (${4:normalize}) {")));
 assert(pipeLangSnippets["PipeLang direct terminal if/else"].body.some((line) => line.includes("else { return ${3:raw}; }")));
+assert(pipeLangReadme.includes("`v0.74.0`"));
+assert(pipeLangReadme.includes("one bounded nested terminal decision"));
+assert.strictEqual(pipeLangSnippets["PipeLang nested terminal if/else"].prefix, "pipe-nested-terminal-if");
+assert(pipeLangSnippets["PipeLang nested terminal if/else"].description.includes("v0.74.0"));
+assert(pipeLangSnippets["PipeLang nested terminal if/else"].body.some((line) => line.includes("if (${5:normalize}) {")));
+assert(pipeLangSnippets["PipeLang nested terminal if/else"].body.some((line) => line.includes("return ${6:cleaned};")));
