@@ -671,5 +671,15 @@
       "}"
     ],
     "description": "Create a v0.67.0 generalized shared-context Result propagation chain with K >= 2 stages and N >= 1 ordered direct string contexts."
+  },
+  "PipeLang generalized one-stage shared-context Result propagation": {
+    "prefix": "pipe-generalized-one-stage-shared-context-result",
+    "body": [
+      "public Result<${1:string}, string> ${2:Compile}(Result<${3:string}, string> ${4:input}, string ${5:phase}, string ${6:scope}) {",
+      "\t${3:string} ${7:value} = propagate(${4:input});",
+      "\treturn ${8:Next}(${7:value}, ${5:phase}, ${6:scope});",
+      "}"
+    ],
+    "description": "Create a v0.68.0 generalized one-stage shared-context Result propagation form with N >= 1 ordered direct string contexts."
   }
 }

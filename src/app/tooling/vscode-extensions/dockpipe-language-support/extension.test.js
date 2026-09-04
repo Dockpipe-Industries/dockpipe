@@ -469,3 +469,9 @@ assert(pipeLangSnippets["PipeLang generalized shared-context Result propagation"
 assert(pipeLangSnippets["PipeLang generalized shared-context Result propagation"].body.some((line) => line.includes("string ${5:phase}, string ${6:scope}")));
 assert(pipeLangSnippets["PipeLang generalized shared-context Result propagation"].body.some((line) => line.includes("${10:First}(${7:first}, ${5:phase}, ${6:scope})")));
 assert(pipeLangSnippets["PipeLang generalized shared-context Result propagation"].body.some((line) => line.includes("return ${12:Second}(${11:second}, ${5:phase}, ${6:scope})")));
+assert(pipeLangReadme.includes("`v0.68.0`"));
+assert(pipeLangReadme.includes("generalizes one-stage shared context arity"));
+assert.strictEqual(pipeLangSnippets["PipeLang generalized one-stage shared-context Result propagation"].prefix, "pipe-generalized-one-stage-shared-context-result");
+assert(pipeLangSnippets["PipeLang generalized one-stage shared-context Result propagation"].description.includes("v0.68.0"));
+assert(pipeLangSnippets["PipeLang generalized one-stage shared-context Result propagation"].body.some((line) => line.includes("string ${5:phase}, string ${6:scope}")));
+assert(pipeLangSnippets["PipeLang generalized one-stage shared-context Result propagation"].body.some((line) => line.includes("return ${8:Next}(${7:value}, ${5:phase}, ${6:scope})")));

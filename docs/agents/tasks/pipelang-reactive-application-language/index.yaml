@@ -10,8 +10,8 @@ dispatch:
 
 state:
   decision: accepted
-  current_language_contract: v0.67.0
-  completed_through: v0.67.0 generalized shared-context Result propagation with arbitrary ordered direct string context vectors plus v0.66.0 generalized contextual bounded Result propagation, exact two-stage and one-stage contextual bounded propagation, contextual and generalized cross-payload chains, exact two-stage and one-stage cross-payload Result propagation, generalized checked-propagation chains, two-stage, multi-parameter direct, direct, and helper checked propagation, multi-parameter propagation, cumulative and immediate dependent chains, dependent and independent two-carrier forms, prior-local and later-local helper matching, checked arithmetic, pure calls, matching, propagation, ordered immutable locals, and dockpipe.application.v1 consumer proof
+  current_language_contract: v0.68.0
+  completed_through: v0.68.0 generalized one-stage shared-context Result propagation with arbitrary ordered direct string context vectors plus v0.67.0 generalized multi-stage shared-context Result propagation, generalized contextual bounded Result propagation, exact two-stage and one-stage contextual bounded propagation, contextual and generalized cross-payload chains, exact two-stage and one-stage cross-payload Result propagation, generalized checked-propagation chains, two-stage, multi-parameter direct, direct, and helper checked propagation, multi-parameter propagation, cumulative and immediate dependent chains, dependent and independent two-carrier forms, prior-local and later-local helper matching, checked arithmetic, pure calls, matching, propagation, ordered immutable locals, and dockpipe.application.v1 consumer proof
   authority: >-
     This task record is decision and status evidence. It does not authorize another language slice,
     implementation, migration, commit, push, publication, or external action.
@@ -89,7 +89,7 @@ documents:
   - path: completed-snapshots-selection.md
     role: completed steps 7t through 7ae
   - path: completed-functions.md
-    role: completed steps 8a named pure record predicate filtering through 8ag generalized shared-context Result propagation
+    role: completed steps 8a named pure record predicate filtering through 8ah generalized one-stage shared-context Result propagation
   - path: next-boundary.md
     role: exact current boundary and preserved contracts
 

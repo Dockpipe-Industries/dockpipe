@@ -785,3 +785,29 @@ additional, or gapped locals; computed carriers; `propagate(Helper(...))`; arbit
 Optional/arithmetic carriers; private, cross-class, mismatched, overloaded, or generic helpers;
 inference; reassignment; statements; branches; loops; effects; actions; runtimes; targets; adapters;
 UI; and deployment remain excluded. No behavior enters by implication.
+
+## Step 8ah — generalized one-stage shared-context Result propagation (`v0.68.0`)
+
+Production source generalizes the v0.64 one-stage contextual bounded Result form to one direct
+bounded Result carrier followed by `N >= 1` direct `string` context parameters. The first and only
+typed local directly propagates the carrier, and the terminal helper receives that payload followed
+by every unchanged context exactly once in caller declaration order. Source and target payloads may
+match or differ and remain exactly `string` or `List<R>` for an existing public primitive-field
+record. The helper remains resolved, public, pure, same-class, and exact
+`(T0, string...) -> Result<T1, string>`.
+
+Typed HIR and target-neutral Core reuse existing nodes and preserve parameter positions. Core
+independently validates arbitrary admitted context count, the complete ordered context vector, the
+single direct propagation, bounded payloads, shared string failure, direct references, helper
+ownership, callable identity, and exact signature. Evaluation and deterministic Core-only Go
+validate the direct inputs, copy the reached carrier once, preserve every context unchanged, and
+short-circuit incoming failure into the canonical target Result without invoking the helper. Public
+compiler, semantic, and Application IR identities and shapes remain stable; metadata advances to
+`v0.68.0`; one-stage multi-context compiler-pipeline fixtures and metadata-only Application IR
+consumption prove the boundary; the exact 45-source lane remains frozen.
+
+The inherited v0.54-v0.67 forms remain exact. Missing, reordered, repeated, computed, non-string, or
+stage-specific contexts; additional or gapped locals; computed carriers; `propagate(Helper(...))`;
+arbitrary errors; Optional/arithmetic carriers; private, cross-class, mismatched, overloaded, or
+generic helpers; inference; reassignment; statements; branches; loops; effects; actions; runtimes;
+targets; adapters; UI; and deployment remain excluded. No behavior enters by implication.
