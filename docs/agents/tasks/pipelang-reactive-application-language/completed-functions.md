@@ -951,3 +951,27 @@ expressions within the topology, propagation, matching, assignment, fallthrough,
 returns, loops, effects, inference, actions, runtimes, targets, adapters, UI, and deployment remain
 excluded. No successor is implied; another slice requires a new founder decision and separate
 implementation approval.
+
+## Step 8ao — inner terminal-leaf immutable-local sequences (`v0.75.0`)
+
+Production source widens only the inner leaves of the exact v0.74 one-branch nested topology.
+Either inner leaf may contain any finite source-ordered sequence of explicitly typed immutable
+locals before its return. Each local enters scope only after its initializer; later locals may
+reference earlier locals in the same leaf, while self-reference, forward reference, duplicate
+names, shadowing, cross-leaf references, and escaping bindings remain invalid. Outer-branch locals
+remain visible to the inner condition and both leaves. Both conditions remain `bool`, every return
+retains the exact declared method type, and evaluation remains selected-branch-only.
+
+Typed HIR and target-neutral Core reuse terminal `conditional` and nested `immutable_local` nodes.
+Source and Core validation prove the exact two-conditional topology, one nested outer branch,
+complete inner-leaf local sequences, exact typing, canonical positions, lexical references, and
+the excluded shapes. Evaluation and deterministic Core-only Go prove every selected path.
+`pipelang.compiler.v1`, `pipelang.semantic.v1`, and `dockpipe.application.v1` stay stable;
+Application IR changes only its language metadata to `v0.75.0`; the exact 45-source compatibility
+lane remains frozen.
+
+The inherited v0.69-v0.74 forms remain valid. Top-level locals for the nested topology, nesting in
+both outer branches, another nested decision, third-level nesting, conditional expressions within
+the topology, propagation, matching, assignment, fallthrough, other early returns, loops, effects,
+inference, actions, runtimes, targets, adapters, UI, and deployment remain excluded. No successor
+is implied; another slice requires a new founder decision and separate implementation approval.

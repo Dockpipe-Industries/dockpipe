@@ -96,6 +96,7 @@ const (
 	PipeLangLanguageContractV720 LanguageContract = "v0.72.0"
 	PipeLangLanguageContractV730 LanguageContract = "v0.73.0"
 	PipeLangLanguageContractV740 LanguageContract = "v0.74.0"
+	PipeLangLanguageContractV750 LanguageContract = "v0.75.0"
 	PipeLangLanguageContract                      = PipeLangLanguageContractV010 // compatibility name for the first post-legacy seed
 	PipeLangDisplayName                           = "PipeLang"
 	PipeLangMachineName                           = "pipelang"
@@ -103,25 +104,25 @@ const (
 )
 
 func isPipeLangSemanticContract(contract LanguageContract) bool {
-	if contract == PipeLangLanguageContractV740 {
+	if contract == PipeLangLanguageContractV750 || contract == PipeLangLanguageContractV740 {
 		return true
 	}
 	return contract == PipeLangLanguageContractV730 || contract == PipeLangLanguageContractV720 || contract == PipeLangLanguageContractV710 || contract == PipeLangLanguageContractV700 || contract == PipeLangLanguageContractV690 || contract == PipeLangLanguageContractV680 || contract == PipeLangLanguageContractV670 || contract == PipeLangLanguageContractV660 || contract == PipeLangLanguageContractV650 || contract == PipeLangLanguageContractV640 || contract == PipeLangLanguageContractV630 || contract == PipeLangLanguageContractV620 || contract == PipeLangLanguageContractV610 || contract == PipeLangLanguageContractV600 || contract == PipeLangLanguageContractV590 || contract == PipeLangLanguageContractV580 || contract == PipeLangLanguageContractV570 || contract == PipeLangLanguageContractV560 || contract == PipeLangLanguageContractV550 || contract == PipeLangLanguageContractV540 || contract == PipeLangLanguageContractV530 || contract == PipeLangLanguageContractV520 || contract == PipeLangLanguageContractV510 || contract == PipeLangLanguageContractV500 || contract == PipeLangLanguageContractV490 || contract == PipeLangLanguageContractV480 || contract == PipeLangLanguageContractV470 || contract == PipeLangLanguageContractV460 || contract == PipeLangLanguageContractV450 || contract == PipeLangLanguageContractV440 || contract == PipeLangLanguageContractV430 || contract == PipeLangLanguageContractV420 || contract == PipeLangLanguageContractV410 || contract == PipeLangLanguageContractV400 || contract == PipeLangLanguageContractV390 || contract == PipeLangLanguageContractV380 || contract == PipeLangLanguageContractV370 || contract == PipeLangLanguageContractV360 || contract == PipeLangLanguageContractV350 || contract == PipeLangLanguageContractV340 || contract == PipeLangLanguageContractV010 || contract == PipeLangLanguageContractV020 || contract == PipeLangLanguageContractV030 || contract == PipeLangLanguageContractV040 || contract == PipeLangLanguageContractV050 || contract == PipeLangLanguageContractV060 || contract == PipeLangLanguageContractV070 || contract == PipeLangLanguageContractV080 || contract == PipeLangLanguageContractV090 || contract == PipeLangLanguageContractV100 || contract == PipeLangLanguageContractV110 || contract == PipeLangLanguageContractV120 || contract == PipeLangLanguageContractV130 || contract == PipeLangLanguageContractV140 || contract == PipeLangLanguageContractV150 || contract == PipeLangLanguageContractV160 || contract == PipeLangLanguageContractV170 || contract == PipeLangLanguageContractV180 || contract == PipeLangLanguageContractV190 || contract == PipeLangLanguageContractV200 || contract == PipeLangLanguageContractV210 || contract == PipeLangLanguageContractV220 || contract == PipeLangLanguageContractV230 || contract == PipeLangLanguageContractV240 || contract == PipeLangLanguageContractV250 || contract == PipeLangLanguageContractV260 || contract == PipeLangLanguageContractV270 || contract == PipeLangLanguageContractV280 || contract == PipeLangLanguageContractV290 || contract == PipeLangLanguageContractV300 || contract == PipeLangLanguageContractV310 || contract == PipeLangLanguageContractV320 || contract == PipeLangLanguageContractV330
 }
 
 func inheritedLanguageContract(contract LanguageContract) LanguageContract {
-	if contract == PipeLangLanguageContractV740 {
+	if contract == PipeLangLanguageContractV750 || contract == PipeLangLanguageContractV740 {
 		return PipeLangLanguageContractV730
 	}
 	return contract
 }
 
 func hasTerminalIfSourceContract(contract LanguageContract) bool {
-	return contract == PipeLangLanguageContractV740 || contract == PipeLangLanguageContractV730 || contract == PipeLangLanguageContractV720 || contract == PipeLangLanguageContractV710 || contract == PipeLangLanguageContractV700 || contract == PipeLangLanguageContractV690
+	return contract == PipeLangLanguageContractV750 || contract == PipeLangLanguageContractV740 || contract == PipeLangLanguageContractV730 || contract == PipeLangLanguageContractV720 || contract == PipeLangLanguageContractV710 || contract == PipeLangLanguageContractV700 || contract == PipeLangLanguageContractV690
 }
 
 func hasBranchLocalSourceContract(contract LanguageContract) bool {
-	return contract == PipeLangLanguageContractV740 || contract == PipeLangLanguageContractV730 || contract == PipeLangLanguageContractV720 || contract == PipeLangLanguageContractV710 || contract == PipeLangLanguageContractV700
+	return contract == PipeLangLanguageContractV750 || contract == PipeLangLanguageContractV740 || contract == PipeLangLanguageContractV730 || contract == PipeLangLanguageContractV720 || contract == PipeLangLanguageContractV710 || contract == PipeLangLanguageContractV700
 }
 
 func hasTwoBranchLocalsSourceContract(contract LanguageContract) bool {
@@ -129,11 +130,11 @@ func hasTwoBranchLocalsSourceContract(contract LanguageContract) bool {
 }
 
 func hasGeneralBranchLocalSequenceSourceContract(contract LanguageContract) bool {
-	return contract == PipeLangLanguageContractV740 || contract == PipeLangLanguageContractV730 || contract == PipeLangLanguageContractV720
+	return contract == PipeLangLanguageContractV750 || contract == PipeLangLanguageContractV740 || contract == PipeLangLanguageContractV730 || contract == PipeLangLanguageContractV720
 }
 
 func isV310OrEarlierCapability(contract LanguageContract) bool {
-	if contract == PipeLangLanguageContractV740 {
+	if contract == PipeLangLanguageContractV750 || contract == PipeLangLanguageContractV740 {
 		return true
 	}
 	if contract == PipeLangLanguageContractV730 || contract == PipeLangLanguageContractV720 || contract == PipeLangLanguageContractV710 || contract == PipeLangLanguageContractV700 || contract == PipeLangLanguageContractV690 || contract == PipeLangLanguageContractV680 || contract == PipeLangLanguageContractV670 || contract == PipeLangLanguageContractV660 || contract == PipeLangLanguageContractV650 || contract == PipeLangLanguageContractV640 || contract == PipeLangLanguageContractV630 || contract == PipeLangLanguageContractV620 || contract == PipeLangLanguageContractV610 || contract == PipeLangLanguageContractV600 || contract == PipeLangLanguageContractV590 || contract == PipeLangLanguageContractV580 || contract == PipeLangLanguageContractV570 || contract == PipeLangLanguageContractV560 || contract == PipeLangLanguageContractV550 || contract == PipeLangLanguageContractV540 || contract == PipeLangLanguageContractV530 || contract == PipeLangLanguageContractV520 || contract == PipeLangLanguageContractV510 || contract == PipeLangLanguageContractV500 || contract == PipeLangLanguageContractV490 {
@@ -143,7 +144,7 @@ func isV310OrEarlierCapability(contract LanguageContract) bool {
 }
 
 func hasMatchSourceContract(contract LanguageContract) bool {
-	if contract == PipeLangLanguageContractV740 {
+	if contract == PipeLangLanguageContractV750 || contract == PipeLangLanguageContractV740 {
 		return true
 	}
 	if contract == PipeLangLanguageContractV730 || contract == PipeLangLanguageContractV720 || contract == PipeLangLanguageContractV710 || contract == PipeLangLanguageContractV700 || contract == PipeLangLanguageContractV690 || contract == PipeLangLanguageContractV680 || contract == PipeLangLanguageContractV670 || contract == PipeLangLanguageContractV660 || contract == PipeLangLanguageContractV650 || contract == PipeLangLanguageContractV640 || contract == PipeLangLanguageContractV630 || contract == PipeLangLanguageContractV620 || contract == PipeLangLanguageContractV610 || contract == PipeLangLanguageContractV600 || contract == PipeLangLanguageContractV590 || contract == PipeLangLanguageContractV580 || contract == PipeLangLanguageContractV570 || contract == PipeLangLanguageContractV560 || contract == PipeLangLanguageContractV550 || contract == PipeLangLanguageContractV540 || contract == PipeLangLanguageContractV530 || contract == PipeLangLanguageContractV520 || contract == PipeLangLanguageContractV510 || contract == PipeLangLanguageContractV500 || contract == PipeLangLanguageContractV490 {
@@ -153,7 +154,7 @@ func hasMatchSourceContract(contract LanguageContract) bool {
 }
 
 func hasPropagationSourceContract(contract LanguageContract) bool {
-	if contract == PipeLangLanguageContractV740 {
+	if contract == PipeLangLanguageContractV750 || contract == PipeLangLanguageContractV740 {
 		return true
 	}
 	if contract == PipeLangLanguageContractV730 || contract == PipeLangLanguageContractV720 || contract == PipeLangLanguageContractV710 || contract == PipeLangLanguageContractV700 || contract == PipeLangLanguageContractV690 || contract == PipeLangLanguageContractV680 || contract == PipeLangLanguageContractV670 || contract == PipeLangLanguageContractV660 || contract == PipeLangLanguageContractV650 || contract == PipeLangLanguageContractV640 || contract == PipeLangLanguageContractV630 || contract == PipeLangLanguageContractV620 || contract == PipeLangLanguageContractV610 || contract == PipeLangLanguageContractV600 || contract == PipeLangLanguageContractV590 || contract == PipeLangLanguageContractV580 || contract == PipeLangLanguageContractV570 || contract == PipeLangLanguageContractV560 || contract == PipeLangLanguageContractV550 || contract == PipeLangLanguageContractV540 || contract == PipeLangLanguageContractV530 || contract == PipeLangLanguageContractV520 || contract == PipeLangLanguageContractV510 || contract == PipeLangLanguageContractV500 || contract == PipeLangLanguageContractV490 {
@@ -163,7 +164,7 @@ func hasPropagationSourceContract(contract LanguageContract) bool {
 }
 
 func hasPureCallSourceContract(contract LanguageContract) bool {
-	if contract == PipeLangLanguageContractV740 {
+	if contract == PipeLangLanguageContractV750 || contract == PipeLangLanguageContractV740 {
 		return true
 	}
 	if contract == PipeLangLanguageContractV730 || contract == PipeLangLanguageContractV720 || contract == PipeLangLanguageContractV710 || contract == PipeLangLanguageContractV700 || contract == PipeLangLanguageContractV690 || contract == PipeLangLanguageContractV680 || contract == PipeLangLanguageContractV670 || contract == PipeLangLanguageContractV660 || contract == PipeLangLanguageContractV650 || contract == PipeLangLanguageContractV640 || contract == PipeLangLanguageContractV630 || contract == PipeLangLanguageContractV620 || contract == PipeLangLanguageContractV610 || contract == PipeLangLanguageContractV600 || contract == PipeLangLanguageContractV590 || contract == PipeLangLanguageContractV580 || contract == PipeLangLanguageContractV570 || contract == PipeLangLanguageContractV560 || contract == PipeLangLanguageContractV550 || contract == PipeLangLanguageContractV540 || contract == PipeLangLanguageContractV530 || contract == PipeLangLanguageContractV520 || contract == PipeLangLanguageContractV510 || contract == PipeLangLanguageContractV500 || contract == PipeLangLanguageContractV490 {
@@ -173,7 +174,7 @@ func hasPureCallSourceContract(contract LanguageContract) bool {
 }
 
 func hasConditionalSourceContract(contract LanguageContract) bool {
-	if contract == PipeLangLanguageContractV740 {
+	if contract == PipeLangLanguageContractV750 || contract == PipeLangLanguageContractV740 {
 		return true
 	}
 	if contract == PipeLangLanguageContractV730 || contract == PipeLangLanguageContractV720 || contract == PipeLangLanguageContractV710 || contract == PipeLangLanguageContractV700 || contract == PipeLangLanguageContractV690 || contract == PipeLangLanguageContractV680 || contract == PipeLangLanguageContractV670 || contract == PipeLangLanguageContractV660 || contract == PipeLangLanguageContractV650 || contract == PipeLangLanguageContractV640 || contract == PipeLangLanguageContractV630 || contract == PipeLangLanguageContractV620 || contract == PipeLangLanguageContractV610 || contract == PipeLangLanguageContractV600 || contract == PipeLangLanguageContractV590 || contract == PipeLangLanguageContractV580 || contract == PipeLangLanguageContractV570 || contract == PipeLangLanguageContractV560 || contract == PipeLangLanguageContractV550 || contract == PipeLangLanguageContractV540 || contract == PipeLangLanguageContractV530 || contract == PipeLangLanguageContractV520 || contract == PipeLangLanguageContractV510 || contract == PipeLangLanguageContractV500 || contract == PipeLangLanguageContractV490 {
@@ -183,7 +184,7 @@ func hasConditionalSourceContract(contract LanguageContract) bool {
 }
 
 func hasImmutableLocalSourceContract(contract LanguageContract) bool {
-	if contract == PipeLangLanguageContractV740 {
+	if contract == PipeLangLanguageContractV750 || contract == PipeLangLanguageContractV740 {
 		return true
 	}
 	if contract == PipeLangLanguageContractV730 || contract == PipeLangLanguageContractV720 || contract == PipeLangLanguageContractV710 || contract == PipeLangLanguageContractV700 || contract == PipeLangLanguageContractV690 || contract == PipeLangLanguageContractV680 || contract == PipeLangLanguageContractV670 || contract == PipeLangLanguageContractV660 || contract == PipeLangLanguageContractV650 || contract == PipeLangLanguageContractV640 || contract == PipeLangLanguageContractV630 || contract == PipeLangLanguageContractV620 || contract == PipeLangLanguageContractV610 || contract == PipeLangLanguageContractV600 || contract == PipeLangLanguageContractV590 || contract == PipeLangLanguageContractV580 || contract == PipeLangLanguageContractV570 || contract == PipeLangLanguageContractV560 || contract == PipeLangLanguageContractV550 || contract == PipeLangLanguageContractV540 || contract == PipeLangLanguageContractV530 || contract == PipeLangLanguageContractV520 || contract == PipeLangLanguageContractV510 || contract == PipeLangLanguageContractV500 || contract == PipeLangLanguageContractV490 {
@@ -193,7 +194,7 @@ func hasImmutableLocalSourceContract(contract LanguageContract) bool {
 }
 
 func hasImmutableLocalSequenceSourceContract(contract LanguageContract) bool {
-	if contract == PipeLangLanguageContractV740 {
+	if contract == PipeLangLanguageContractV750 || contract == PipeLangLanguageContractV740 {
 		return true
 	}
 	if contract == PipeLangLanguageContractV730 || contract == PipeLangLanguageContractV720 || contract == PipeLangLanguageContractV710 || contract == PipeLangLanguageContractV700 || contract == PipeLangLanguageContractV690 || contract == PipeLangLanguageContractV680 || contract == PipeLangLanguageContractV670 || contract == PipeLangLanguageContractV660 || contract == PipeLangLanguageContractV650 || contract == PipeLangLanguageContractV640 || contract == PipeLangLanguageContractV630 || contract == PipeLangLanguageContractV620 || contract == PipeLangLanguageContractV610 || contract == PipeLangLanguageContractV600 || contract == PipeLangLanguageContractV590 || contract == PipeLangLanguageContractV580 || contract == PipeLangLanguageContractV570 || contract == PipeLangLanguageContractV560 || contract == PipeLangLanguageContractV550 || contract == PipeLangLanguageContractV540 || contract == PipeLangLanguageContractV530 || contract == PipeLangLanguageContractV520 || contract == PipeLangLanguageContractV510 || contract == PipeLangLanguageContractV500 || contract == PipeLangLanguageContractV490 {
@@ -203,7 +204,7 @@ func hasImmutableLocalSequenceSourceContract(contract LanguageContract) bool {
 }
 
 func hasBlockPropagationSourceContract(contract LanguageContract) bool {
-	if contract == PipeLangLanguageContractV740 {
+	if contract == PipeLangLanguageContractV750 || contract == PipeLangLanguageContractV740 {
 		return true
 	}
 	if contract == PipeLangLanguageContractV730 || contract == PipeLangLanguageContractV720 || contract == PipeLangLanguageContractV710 || contract == PipeLangLanguageContractV700 || contract == PipeLangLanguageContractV690 || contract == PipeLangLanguageContractV680 || contract == PipeLangLanguageContractV670 || contract == PipeLangLanguageContractV660 || contract == PipeLangLanguageContractV650 || contract == PipeLangLanguageContractV640 || contract == PipeLangLanguageContractV630 || contract == PipeLangLanguageContractV620 || contract == PipeLangLanguageContractV610 || contract == PipeLangLanguageContractV600 || contract == PipeLangLanguageContractV590 || contract == PipeLangLanguageContractV580 || contract == PipeLangLanguageContractV570 || contract == PipeLangLanguageContractV560 || contract == PipeLangLanguageContractV550 || contract == PipeLangLanguageContractV540 || contract == PipeLangLanguageContractV530 || contract == PipeLangLanguageContractV520 || contract == PipeLangLanguageContractV510 || contract == PipeLangLanguageContractV500 || contract == PipeLangLanguageContractV490 {
@@ -213,7 +214,7 @@ func hasBlockPropagationSourceContract(contract LanguageContract) bool {
 }
 
 func hasPriorLocalPropagationSourceContract(contract LanguageContract) bool {
-	if contract == PipeLangLanguageContractV740 {
+	if contract == PipeLangLanguageContractV750 || contract == PipeLangLanguageContractV740 {
 		return true
 	}
 	if contract == PipeLangLanguageContractV730 || contract == PipeLangLanguageContractV720 || contract == PipeLangLanguageContractV710 || contract == PipeLangLanguageContractV700 || contract == PipeLangLanguageContractV690 || contract == PipeLangLanguageContractV680 || contract == PipeLangLanguageContractV670 || contract == PipeLangLanguageContractV660 || contract == PipeLangLanguageContractV650 || contract == PipeLangLanguageContractV640 || contract == PipeLangLanguageContractV630 || contract == PipeLangLanguageContractV620 || contract == PipeLangLanguageContractV610 || contract == PipeLangLanguageContractV600 || contract == PipeLangLanguageContractV590 || contract == PipeLangLanguageContractV580 || contract == PipeLangLanguageContractV570 || contract == PipeLangLanguageContractV560 || contract == PipeLangLanguageContractV550 || contract == PipeLangLanguageContractV540 || contract == PipeLangLanguageContractV530 || contract == PipeLangLanguageContractV520 || contract == PipeLangLanguageContractV510 || contract == PipeLangLanguageContractV500 || contract == PipeLangLanguageContractV490 {
@@ -223,7 +224,7 @@ func hasPriorLocalPropagationSourceContract(contract LanguageContract) bool {
 }
 
 func hasHelperResultMatchSourceContract(contract LanguageContract) bool {
-	if contract == PipeLangLanguageContractV740 {
+	if contract == PipeLangLanguageContractV750 || contract == PipeLangLanguageContractV740 {
 		return true
 	}
 	if contract == PipeLangLanguageContractV730 || contract == PipeLangLanguageContractV720 || contract == PipeLangLanguageContractV710 || contract == PipeLangLanguageContractV700 || contract == PipeLangLanguageContractV690 || contract == PipeLangLanguageContractV680 || contract == PipeLangLanguageContractV670 || contract == PipeLangLanguageContractV660 || contract == PipeLangLanguageContractV650 || contract == PipeLangLanguageContractV640 || contract == PipeLangLanguageContractV630 || contract == PipeLangLanguageContractV620 || contract == PipeLangLanguageContractV610 || contract == PipeLangLanguageContractV600 || contract == PipeLangLanguageContractV590 || contract == PipeLangLanguageContractV580 || contract == PipeLangLanguageContractV570 || contract == PipeLangLanguageContractV560 || contract == PipeLangLanguageContractV550 || contract == PipeLangLanguageContractV540 || contract == PipeLangLanguageContractV530 || contract == PipeLangLanguageContractV520 || contract == PipeLangLanguageContractV510 || contract == PipeLangLanguageContractV500 || contract == PipeLangLanguageContractV490 {
@@ -233,7 +234,7 @@ func hasHelperResultMatchSourceContract(contract LanguageContract) bool {
 }
 
 func hasGeneralHelperCarrierMatchSourceContract(contract LanguageContract) bool {
-	if contract == PipeLangLanguageContractV740 {
+	if contract == PipeLangLanguageContractV750 || contract == PipeLangLanguageContractV740 {
 		return true
 	}
 	if contract == PipeLangLanguageContractV730 || contract == PipeLangLanguageContractV720 || contract == PipeLangLanguageContractV710 || contract == PipeLangLanguageContractV700 || contract == PipeLangLanguageContractV690 || contract == PipeLangLanguageContractV680 || contract == PipeLangLanguageContractV670 || contract == PipeLangLanguageContractV660 || contract == PipeLangLanguageContractV650 || contract == PipeLangLanguageContractV640 || contract == PipeLangLanguageContractV630 || contract == PipeLangLanguageContractV620 || contract == PipeLangLanguageContractV610 || contract == PipeLangLanguageContractV600 || contract == PipeLangLanguageContractV590 || contract == PipeLangLanguageContractV580 || contract == PipeLangLanguageContractV570 || contract == PipeLangLanguageContractV560 || contract == PipeLangLanguageContractV550 || contract == PipeLangLanguageContractV540 || contract == PipeLangLanguageContractV530 || contract == PipeLangLanguageContractV520 || contract == PipeLangLanguageContractV510 || contract == PipeLangLanguageContractV500 || contract == PipeLangLanguageContractV490 {
@@ -758,7 +759,7 @@ func prepareModuleGraph(input ModuleSetInput, sources *SourceSet, requireSemanti
 	} else if input.LanguageContract == LegacyLanguageContract {
 		diagnostics = append(diagnostics, moduleDiagnostic(CodeInvalidModule, Span{}, "the frozen v0.0.0.1 contract uses the legacy source-set compiler lane"))
 	} else if requireSemanticIDs && !isPipeLangSemanticContract(input.LanguageContract) {
-		diagnostics = append(diagnostics, moduleDiagnostic(CodeInvalidModule, Span{}, fmt.Sprintf("semantic analysis requires a supported post-legacy language contract through %q", PipeLangLanguageContractV740)))
+		diagnostics = append(diagnostics, moduleDiagnostic(CodeInvalidModule, Span{}, fmt.Sprintf("semantic analysis requires a supported post-legacy language contract through %q", PipeLangLanguageContractV750)))
 	}
 	if !validModuleID(input.Root, false) {
 		diagnostics = append(diagnostics, moduleDiagnostic(CodeInvalidModule, Span{}, "root module identity is empty or non-canonical"))
