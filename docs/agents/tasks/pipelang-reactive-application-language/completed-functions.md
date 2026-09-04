@@ -571,3 +571,28 @@ Arbitrary errors, Optional/arithmetic carriers, extra parameters/locals/propagat
 carriers, helper propagation, non-direct/private/cross-class/mismatched/overloaded/generic helpers,
 inference, reassignment, statements, effects, actions, runtimes, targets, adapters, UI, and
 deployment remain excluded. No behavior enters by implication.
+
+## Step 8z — two-stage bounded cross-payload Result propagation (`v0.60.0`)
+
+Production source additionally admits exactly one public pure method shaped as `Result<V, string>
+F(Result<T, string> carrier) { T first = propagate(carrier); Result<U, string> nextCarrier =
+First(first); U second = propagate(nextCarrier); return Second(second); }`. `T`, `U`, and `V` are
+text or a list of an existing public primitive-field record; adjacent payloads differ, while `T`
+may equal `V`. Both helpers are resolved public pure same-class methods with the exact adjacent
+payload-to-Result signatures and receive only their direct preceding payload locals.
+
+Typed HIR and target-neutral Core reuse existing nodes and independently verify the sole direct
+carrier, three exact locals, explicit intermediate carrier, adjacent payload inequality, string
+failure, two propagations, both direct local arguments, callable owners, and helper signatures.
+Evaluation and deterministic Core-only Go validate and copy each complete carrier once. Incoming
+failure skips both helpers and intermediate failure skips the terminal helper; both become canonical
+target-shaped failures with preserved copied error text. Public compiler, semantic, and Application
+IR identities and shapes remain stable; metadata advances to `v0.60.0`; compiler-pipeline and
+metadata-only Docker-observability Application IR consumption prove the boundary; the exact
+45-source lane remains frozen.
+
+The inherited v0.54-v0.59 forms remain exact. General Result chains, same-payload adjacent stages,
+extra parameters/locals, computed or helper propagation, arbitrary errors, Optional/arithmetic
+carriers, non-direct/private/cross-class/mismatched/overloaded/generic helpers, inference,
+reassignment, statements, branches, loops, effects, actions, runtimes, targets, adapters, UI, and
+deployment remain excluded. No behavior enters by implication.

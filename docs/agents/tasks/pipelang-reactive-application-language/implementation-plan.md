@@ -100,8 +100,12 @@ propagates its checked Result before the terminal checked operation. Step 8y is 
 `v0.59.0`: one public pure method may propagate a sole direct bounded `Result<T, string>` into its
 first and only typed local and terminally call one exact same-class `T -> Result<U, string>` helper,
 where `T != U` and both are text or an existing primitive-record list. Incoming failure is
-canonically reshaped to the target Result without invoking the helper. These seams do not complete
-or authorize inference,
+canonically reshaped to the target Result without invoking the helper. Step 8z is complete under
+`v0.60.0`: that bounded cross-payload flow admits exactly two adjacent stages through one explicit
+intermediate `Result<U, string>` local and its direct propagation. Both helpers remain exact public
+pure same-class calls; adjacent payloads differ, while source and target payloads may match.
+Incoming and intermediate failures are canonically reshaped to the target Result and skip every
+later helper. These seams do not complete or authorize inference,
 reassignment, shadowing, cross-class/module calls, overloads, generics, function values, lambdas,
 recursion, general blocks, branch statements, loops, effects, entrypoints, additional or nested
 propagation, arbitrary computed propagation operands, propagation from any other prior local,
@@ -764,6 +768,36 @@ computed carriers, `propagate(Helper(...))`, helper propagation, non-direct help
 private/cross-class/mismatched/overloaded/generic helpers, inference, reassignment, statements,
 effects, actions, runtimes, targets, adapters, UI, and deployment remain excluded. No behavior
 enters by implication.
+
+## Checkpoint v0.60.0 complete contract
+
+One public pure method additionally takes exactly one direct `Result<T, string>` parameter and
+returns `Result<V, string>`. Its body is exactly `T first = propagate(carrier);
+Result<U, string> nextCarrier = First(first); U second = propagate(nextCarrier); return
+Second(second);`. `T`, `U`, and `V` are each exactly `string` or `List<R>` for an existing public
+primitive-field record. Adjacent payloads differ (`T != U` and `U != V`); `T` may equal `V`.
+`First` and `Second` are resolved public pure same-class helpers with exact signatures
+`T -> Result<U, string>` and `U -> Result<V, string>` and receive only their direct preceding
+payload locals.
+
+Typed HIR and target-neutral Core reuse existing immutable-local, reference, propagation, and call
+nodes. Core independently validates the sole carrier, three exact local positions and types, two
+direct propagations, explicit intermediate carrier, adjacent payload inequality, shared string
+failure type, terminal call placement, same-owner callable identities, and both exact helper
+signatures. Evaluation and deterministic Core-only Go validate and copy each complete carrier once.
+Incoming failure skips both helpers; intermediate failure skips `Second`; both construct canonical
+target-shaped failures preserving copied validated error text. Public compiler, semantic, and
+Application IR identities and shapes remain unchanged; metadata advances to `v0.60.0`; a
+compiler-pipeline fixture proves text-to-list-to-distinct-list plus list-to-text-to-original-list;
+the Docker-observability Application IR consumer advances metadata only; the exact 45-source lane
+remains frozen.
+
+The inherited v0.54-v0.59 forms remain exact. General `K`-stage Result chains, same-payload adjacent
+stages, extra parameters or locals, computed carriers, `propagate(Helper(...))`, helper propagation,
+non-direct helper arguments, arbitrary failure types, Optional/arithmetic carriers,
+private/cross-class/mismatched/overloaded/generic helpers, inference, reassignment, statements,
+branches, loops, effects, actions, runtimes, targets, adapters, UI, and deployment remain excluded.
+No behavior enters by implication.
 
 ## Application IR checkpoint complete contract
 

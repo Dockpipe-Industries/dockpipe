@@ -37,7 +37,7 @@ func Generate(program coreir.Program) ([]byte, error) {
 	if err := coreir.ValidateProgram(program); err != nil {
 		return nil, &Error{Code: "PLGO0001", Message: err.Error()}
 	}
-	if (program.LanguageContract == coreir.LanguageContractV590 || program.LanguageContract == coreir.LanguageContractV580) || program.LanguageContract == coreir.LanguageContractV570 || program.LanguageContract == coreir.LanguageContractV560 || program.LanguageContract == coreir.LanguageContractV550 || program.LanguageContract == coreir.LanguageContractV540 || program.LanguageContract == coreir.LanguageContractV530 || program.LanguageContract == coreir.LanguageContractV520 || program.LanguageContract == coreir.LanguageContractV510 || program.LanguageContract == coreir.LanguageContractV500 || program.LanguageContract == coreir.LanguageContractV490 || program.LanguageContract == coreir.LanguageContractV310 || program.LanguageContract == coreir.LanguageContractV320 || program.LanguageContract == coreir.LanguageContractV330 || program.LanguageContract == coreir.LanguageContractV340 || program.LanguageContract == coreir.LanguageContractV350 || program.LanguageContract == coreir.LanguageContractV360 || program.LanguageContract == coreir.LanguageContractV370 || program.LanguageContract == coreir.LanguageContractV380 || program.LanguageContract == coreir.LanguageContractV390 || program.LanguageContract == coreir.LanguageContractV400 || program.LanguageContract == coreir.LanguageContractV410 || program.LanguageContract == coreir.LanguageContractV420 || program.LanguageContract == coreir.LanguageContractV430 || program.LanguageContract == coreir.LanguageContractV440 || program.LanguageContract == coreir.LanguageContractV450 || program.LanguageContract == coreir.LanguageContractV460 || program.LanguageContract == coreir.LanguageContractV470 || program.LanguageContract == coreir.LanguageContractV480 {
+	if (program.LanguageContract == coreir.LanguageContractV600 || program.LanguageContract == coreir.LanguageContractV590 || program.LanguageContract == coreir.LanguageContractV580) || program.LanguageContract == coreir.LanguageContractV570 || program.LanguageContract == coreir.LanguageContractV560 || program.LanguageContract == coreir.LanguageContractV550 || program.LanguageContract == coreir.LanguageContractV540 || program.LanguageContract == coreir.LanguageContractV530 || program.LanguageContract == coreir.LanguageContractV520 || program.LanguageContract == coreir.LanguageContractV510 || program.LanguageContract == coreir.LanguageContractV500 || program.LanguageContract == coreir.LanguageContractV490 || program.LanguageContract == coreir.LanguageContractV310 || program.LanguageContract == coreir.LanguageContractV320 || program.LanguageContract == coreir.LanguageContractV330 || program.LanguageContract == coreir.LanguageContractV340 || program.LanguageContract == coreir.LanguageContractV350 || program.LanguageContract == coreir.LanguageContractV360 || program.LanguageContract == coreir.LanguageContractV370 || program.LanguageContract == coreir.LanguageContractV380 || program.LanguageContract == coreir.LanguageContractV390 || program.LanguageContract == coreir.LanguageContractV400 || program.LanguageContract == coreir.LanguageContractV410 || program.LanguageContract == coreir.LanguageContractV420 || program.LanguageContract == coreir.LanguageContractV430 || program.LanguageContract == coreir.LanguageContractV440 || program.LanguageContract == coreir.LanguageContractV450 || program.LanguageContract == coreir.LanguageContractV460 || program.LanguageContract == coreir.LanguageContractV470 || program.LanguageContract == coreir.LanguageContractV480 {
 		program.LanguageContract = coreir.LanguageContractV300
 	}
 	return generate(program)
@@ -315,6 +315,9 @@ func emitBlockPropagationFunction(out *strings.Builder, function coreir.Function
 	if local.Initializer.Kind != coreir.ExprPropagate {
 		return false, nil
 	}
+	if len(function.Parameters) == 1 && isBoundedValueResultType(function.Parameters[0].Type) && isBoundedValueResultType(function.ReturnType) && local.Return != nil && local.Return.Kind == coreir.ExprImmutableLocal && local.Return.ImmutableLocal != nil && local.Return.ImmutableLocal.Initializer != nil && local.Return.ImmutableLocal.Initializer.Kind == coreir.ExprCall && local.Return.ImmutableLocal.Return != nil && local.Return.ImmutableLocal.Return.Kind == coreir.ExprImmutableLocal && local.Return.ImmutableLocal.Return.ImmutableLocal != nil && local.Return.ImmutableLocal.Return.ImmutableLocal.Initializer != nil && local.Return.ImmutableLocal.Return.ImmutableLocal.Initializer.Kind == coreir.ExprPropagate {
+		return emitTwoStageCrossPayloadResultPropagationFunction(out, function, optionalTypeName)
+	}
 	if len(function.Parameters) == 1 && isBoundedValueResultType(function.Parameters[0].Type) && isBoundedValueResultType(function.ReturnType) && !coreir.TypeEqual(function.Parameters[0].Type.Result.Success, function.ReturnType.Result.Success) {
 		return emitCrossPayloadResultPropagationFunction(out, function, optionalTypeName)
 	}
@@ -355,6 +358,50 @@ func emitBlockPropagationFunction(out *strings.Builder, function coreir.Function
 		return false, err
 	}
 	fmt.Fprintf(out, "\treturn %s\n}\n\n", returned)
+	return true, nil
+}
+
+func emitTwoStageCrossPayloadResultPropagationFunction(out *strings.Builder, function coreir.Function, optionalTypeName string) (bool, error) {
+	first := function.Body.ImmutableLocal
+	if first == nil || first.Initializer == nil || first.Initializer.Propagate == nil || first.Return == nil || first.Return.Kind != coreir.ExprImmutableLocal || first.Return.ImmutableLocal == nil {
+		return false, fmt.Errorf("two-stage cross-payload Result propagation is not canonical")
+	}
+	intermediate := first.Return.ImmutableLocal
+	if intermediate.Initializer == nil || intermediate.Initializer.Kind != coreir.ExprCall || intermediate.Return == nil || intermediate.Return.Kind != coreir.ExprImmutableLocal || intermediate.Return.ImmutableLocal == nil {
+		return false, fmt.Errorf("two-stage cross-payload Result propagation has no canonical intermediate carrier")
+	}
+	second := intermediate.Return.ImmutableLocal
+	if second.Initializer == nil || second.Initializer.Kind != coreir.ExprPropagate || second.Return == nil || second.Return.Kind != coreir.ExprCall {
+		return false, fmt.Errorf("two-stage cross-payload Result propagation has no canonical second stage")
+	}
+
+	fmt.Fprintf(out, "\tif !p0.OK { return %s(p0.Error) }\n", boundedResultErrName(function.ReturnType))
+	firstValue := "p0.Value"
+	if first.Type.Kind == coreir.TypeList {
+		firstValue = fmt.Sprintf("%s(%s)", listCloneName(first.Type), firstValue)
+	}
+	fmt.Fprintf(out, "\tp%d := %s\n", first.Position, firstValue)
+	scope := append(append([]coreir.Parameter{}, function.Parameters...), coreir.Parameter{Position: first.Position, Name: first.Name, Type: first.Type})
+	called, err := emitExpr(*intermediate.Initializer, scope, optionalTypeName)
+	if err != nil {
+		return false, err
+	}
+	fmt.Fprintf(out, "\tp%d := %s(%s)\n", intermediate.Position, boundedResultCloneName(intermediate.Type), called)
+	fmt.Fprintf(out, "\tif !p%d.OK { return %s(p%d.Error) }\n", intermediate.Position, boundedResultErrName(function.ReturnType), intermediate.Position)
+	secondValue := fmt.Sprintf("p%d.Value", intermediate.Position)
+	if second.Type.Kind == coreir.TypeList {
+		secondValue = fmt.Sprintf("%s(%s)", listCloneName(second.Type), secondValue)
+	}
+	fmt.Fprintf(out, "\tp%d := %s\n", second.Position, secondValue)
+	scope = append(scope,
+		coreir.Parameter{Position: intermediate.Position, Name: intermediate.Name, Type: intermediate.Type},
+		coreir.Parameter{Position: second.Position, Name: second.Name, Type: second.Type},
+	)
+	returned, err := emitExpr(*second.Return, scope, optionalTypeName)
+	if err != nil {
+		return false, err
+	}
+	fmt.Fprintf(out, "\treturn %s(%s)\n}\n\n", boundedResultCloneName(function.ReturnType), returned)
 	return true, nil
 }
 

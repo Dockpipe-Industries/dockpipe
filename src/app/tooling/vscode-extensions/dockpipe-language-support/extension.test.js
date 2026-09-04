@@ -415,3 +415,10 @@ assert.strictEqual(pipeLangSnippets["PipeLang bounded cross-payload Result propa
 assert(pipeLangSnippets["PipeLang bounded cross-payload Result propagation method"].description.includes("v0.59.0"));
 assert(pipeLangSnippets["PipeLang bounded cross-payload Result propagation method"].body.some((line) => line.includes("string ${4:source} = propagate(${3:scanned})")));
 assert(pipeLangSnippets["PipeLang bounded cross-payload Result propagation method"].body.some((line) => line.includes("return ${5:ParseTokens}(${4:source})")));
+assert(pipeLangReadme.includes("`v0.60.0`"));
+assert(pipeLangReadme.includes("two-stage bounded cross-payload Result propagation"));
+assert.strictEqual(pipeLangSnippets["PipeLang two-stage cross-payload Result propagation method"].prefix, "pipe-two-stage-cross-payload-result");
+assert(pipeLangSnippets["PipeLang two-stage cross-payload Result propagation method"].description.includes("v0.60.0"));
+assert(pipeLangSnippets["PipeLang two-stage cross-payload Result propagation method"].body.some((line) => line.includes("Result<List<${5:Token}>, string> ${6:tokenized} = ${7:BuildTokens}(${4:source})")));
+assert(pipeLangSnippets["PipeLang two-stage cross-payload Result propagation method"].body.some((line) => line.includes("List<${5:Token}> ${8:tokens} = propagate(${6:tokenized})")));
+assert(pipeLangSnippets["PipeLang two-stage cross-payload Result propagation method"].body.some((line) => line.includes("return ${9:BuildSyntax}(${8:tokens})")));
