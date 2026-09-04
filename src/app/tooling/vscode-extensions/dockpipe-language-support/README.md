@@ -1,5 +1,13 @@
 # DockPipe Language Support (VS Code)
 
+PipeLang `v0.80.0` adds `pipe-two-expanded-terminal-if`: exactly two of the four leaves
+on the symmetric depth-two base expand into terminal `if/else` decisions. All six leaf pairs
+are supported, with optional root locals and finite typed local sequences in each lexical scope.
+Five conditionals give six return paths, with lazy selected-path execution. A third expansion,
+depth four, asymmetric bases, conditional expressions within the topology, propagation, matching,
+assignment, fallthrough, other early returns, loops, effects, and inference remain excluded.
+Earlier versioned forms are unchanged.
+
 PipeLang `v0.79.0` adds bounded depth-three terminal branching through
 `pipe-bounded-depth-three-terminal-if`. An inherited rootful or rootless symmetric depth-two
 topology may expand exactly one of its four terminal leaves into one additional terminal

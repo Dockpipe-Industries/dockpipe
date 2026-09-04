@@ -1100,3 +1100,38 @@ five paths; its canonical Application IR golden changes only language metadata t
 Generated Go and Go caches were temporary under `/tmp`. No generated store refresh, commit, push,
 publication, credentials, or external operation was performed. Any successor requires a fresh
 founder decision and separate implementation approval.
+
+## Step 8at — two expanded terminal leaves (`v0.80.0`)
+
+The founder selected option A and separately approved implementation. The new form expands
+exactly two of four leaves on the symmetric depth-two base: five conditionals, six return paths,
+maximum depth three, optional root locals, and finite ordered typed locals in every lexical scope.
+All six leaf pairs are supported. Existing versioned forms and the frozen 45-source lane remain
+unchanged. See the [canonical contract](../../../concepts/pipelang.md#pipelang-v0800-two-expanded-terminal-leaves)
+for semantics and exclusions.
+
+The source and independent Core validators share their respective bounded topology classifier
+between v0.79 (one expansion) and v0.80 (two). HIR/Core keep their existing conditional and local
+nodes. Generated Go now emits a blank use for immutable locals, preserving initializer timing
+while allowing unused locals; this also repairs that backend limitation in inherited forms.
+
+Offline validation passed using cached Go 1.25.13 with network lookup disabled:
+
+- Full `./src/lib/pipelang/...` and `./src/lib/applicationir` suites.
+- Focused `./src/lib/application -run PipeLang`, full `./src/cmd`, and `./tests/pipelangcompat`.
+- Vet for PipeLang, Application IR, application, and CLI packages.
+- Editor tests, JavaScript syntax, changed JSON/YAML parsing, Go formatting, and diff whitespace.
+
+New proof covers all six pairs with rootful/rootless and zero/multiple branch-local sequences,
+all six evaluator and pristine generated-Go paths, v0.79 source/Core/backend rejection, inherited
+terminal forms, type/scope failures, malformed Core refusal, and deterministic output. A separate
+test instruments a copy of the generated pure helper to check root/path/leaf initializer order
+and that unselected branches do not execute. Pristine output is independently compiled and run.
+TASK-020's DisplayMode consumer covers all six paths; its regenerated Application IR golden
+changes only language metadata. Public identities and the exact 45-source compatibility hashes pass.
+
+Generated Go and test caches/logs are temporary under `/tmp`; the intended Application IR golden
+is the only regenerated tracked artifact. The broader application/repository suites and live
+operations were not run. Package/engine boundaries are preserved. No commit, push, publication,
+worktree, generated-store refresh, credential change, or external operation occurred.
+Implementation is complete; any successor remains a separate founder decision.

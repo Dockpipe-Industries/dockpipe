@@ -52,8 +52,14 @@ public Class DockerApplication {
 		} else {
 			string disabled = "";
 			if (normalize) {
-				string selected = disabled;
-				return selected;
+				string context = disabled;
+				if (detailed) {
+					string selected = raw;
+					return selected;
+				} else {
+					string selected = context;
+					return selected;
+				}
 			} else {
 				string selected = raw;
 				return selected;
