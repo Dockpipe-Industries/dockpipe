@@ -25,8 +25,8 @@ separate slices before further language expansion. This is repair work within th
 | R1 | P1 | Preserve computed Result carriers when evaluating call arguments; expected failure reaches the callee unless explicit propagation is authored. | Nested arithmetic and bounded Results, success/failure, recovery with a different caller return type, copied values, evaluator/generated-Go agreement. | Complete, committed |
 | R2 | P1 | Memoize semantic-to-HIR dependency lowering across one shared dependency graph. | Each reachable method lowered once, shared acyclic graph scaling, deterministic order/output, cycle rejection retained. | Complete, committed |
 | R3 | P2 | Enforce supported compiler/language identities and feature-version gates at Core program admission. | Unknown identities independently rejected; representative downgraded features rejected consistently by Core, evaluator, and backend. | Complete, committed |
-| R4 | P2 | Make Core type validation exhaustive over supported kinds and representations. | Unknown kinds, unsupported numeric widths, contradictory/nested representations, unused parameters and expression types rejected; accepted types retained. | Complete, uncommitted |
-| R5 | P2 | Generate canonical argument validation from parameter types independently of function body shape. | Invalid UTF-8 and malformed arithmetic Results rejected in identity/unused/unselected cases; evaluator/generated-Go agreement and helper emission. | Pending |
+| R4 | P2 | Make Core type validation exhaustive over supported kinds and representations. | Unknown kinds, unsupported numeric widths, contradictory/nested representations, unused parameters and expression types rejected; accepted types retained. | Complete, committed |
+| R5 | P2 | Generate canonical argument validation from parameter types independently of function body shape. | Invalid UTF-8 and malformed arithmetic Results rejected in identity/unused/unselected cases; evaluator/generated-Go agreement and helper emission. | Complete, uncommitted |
 | R6 | P2 | Allocate or check generated names against the entire Go package namespace, including runtime declarations. | Legal source/runtime-name collision examples generate compilable deterministic Go; call targets agree with allocated declarations. | Pending |
 
 R1 and R2 are the review's recommended blockers for further compiler expansion. All six remain
@@ -291,5 +291,74 @@ directories. No generated repository artifacts were added. CLI/editor, unrelated
 sustained fuzzing, and stack-exhaustion checks were not run; terminal verification for all six
 repairs remains pending. The numeric-comparison evaluator limitation remains outside this slice.
 
-R4 is complete and uncommitted for founder review. R5–R6 remain pending and were not implemented.
-No commit, push, publication, worktree, generated-store refresh, or live operation was performed.
+R4 was completed for founder review, then committed as
+`b60e5b50aae499707afe0c739a0ac14c02753a3a` (`Validate executable Core types exhaustively`).
+The R5 receiver verified that commit and a clean saved checkout on 2026-09-04; the earlier
+uncommitted status is superseded. R5–R6 were still pending at that checkpoint.
+
+
+### R5 completed — 2026-09-04
+
+`src/lib/pipelang/gobackend/generate.go` now emits canonical string and arithmetic Result
+argument validation from parameter types before any function body executes. The obsolete
+named-predicate string gate and top-level-match arithmetic gate are removed. Arithmetic validator
+discovery includes parameter types while retaining operation-driven helper discovery. Existing
+record, Optional, list, and bounded Result validators continue to validate their supported nested
+payloads; the current Core envelopes do not permit arithmetic Results inside those containers.
+No source form, language version, public compiler/semantic/Application IR identity, or backend
+package dependency changed.
+
+The R5 matrix also exposed a necessary evaluator consistency repair:
+`src/lib/pipelang/coreeval/evaluate.go` previously accepted nonzero numeric success payloads on
+failed arithmetic Results, although the existing generated validator rejected them. The evaluator
+now requires numeric zero and no nested carrier on those failures. Both signs of floating-point
+zero remain accepted; successful NaN and infinity payloads remain accepted and transported.
+This does not change numeric-comparison execution or the supported Core type envelopes.
+
+`src/lib/pipelang/argument_validation_test.go` verifies the source analysis -> typed HIR -> Core
+pipeline, both evaluator APIs, deterministic generation, and compiled generated-Go behavior for:
+
+- direct strings, int64/binary64 arithmetic Results, primitive records, Optional<string>,
+  Optional<Record>, record lists, text Results, and snapshot Results;
+- identity, unused-parameter, and both selected/unselected terminal-branch paths;
+- invalid UTF-8 byte sequences, unknown/missing arithmetic failure tags, errors on successful
+  carriers, and nonzero/NaN/infinity payloads on failed arithmetic carriers;
+- valid Unicode and preserved values, both supported arithmetic failure tags, signed zero,
+  successful NaN/infinity, present/absent Optionals, and empty/nonempty lists;
+- isolated unused-only string/arithmetic signatures with bool returns, proving helper/import
+  emission without another function, return type, match, propagation, or text operation.
+
+Temporary Go overlays restored the pre-R5 backend and evaluator separately while retaining the
+new regression matrix. The old backend accepted malformed direct strings and arithmetic Results
+in all three body shapes. The old evaluator accepted nonzero numeric payloads, NaN, and infinity
+on failed arithmetic carriers. Both negative controls failed as expected; tracked source was
+never reverted.
+
+Thirteen generated-Go goldens were updated after reviewing their exact diffs: only entry
+validation calls and the newly required arithmetic validation helper were added. Source, HIR,
+Core JSON, semantic, and Application IR goldens remain unchanged. The tiny fixture's exact Go
+bytes and normalized types remain unchanged, and internal v0.1 arithmetic capability is retained.
+
+Validation passed using cached Go 1.25.13 with `GOTOOLCHAIN=local`, `GOPROXY=off`, `GOSUMDB=off`,
+and a writable temporary cache:
+
+- `go test ./src/lib/pipelang -run '^TestCanonicalArgumentValidation' -count=1`, including the
+  final isolated helper checks;
+- `go test ./src/lib/pipelang/... ./src/lib/applicationir ./tests/pipelangcompat -count=1`;
+- `go test ./src/lib/application -run PipeLang -count=1`;
+- `go vet ./src/lib/pipelang/... ./src/lib/applicationir`;
+- Go formatting, task YAML/document-route consistency, and diff whitespace.
+
+The full suites retain generated-Go execution, unchanged Application IR goldens, and the frozen
+45-source compatibility lane. Canonical host-argument behavior is documented in
+`docs/concepts/pipelang.md`; both TASK-021 indexes mark R1–R5 complete and R6 next. Logs, negative
+controls, candidate goldens, and cache are under `/tmp/pipelang-r5-proof`; generated execution uses
+temporary modules and the existing temporary generated-Go cache. The 13 tracked Go goldens are
+intentional test artifacts; no generated store or runtime artifact was refreshed.
+
+R5 is complete and uncommitted for founder review. R6 remains pending and was not implemented.
+The pre-existing numeric-comparison evaluator limitation remains outside this slice. CLI/editor,
+unrelated repository suites, sustained fuzzing, and stack-exhaustion checks were not run; the
+six-repair terminal verification remains pending. Package/engine boundaries were preserved.
+No commit, push, publication, worktree, destructive cleanup, credentials, or live operation was
+performed in R5.

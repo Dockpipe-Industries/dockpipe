@@ -170,8 +170,10 @@ func emitFunction(out *strings.Builder, name string, function coreir.Function, o
 		fmt.Fprintf(out, "p%d %s", index, parameterType)
 	}
 	fmt.Fprintf(out, ") %s {\n", result)
+	// Host arguments must be canonical before any body executes, including
+	// identity transport and parameters used only by an unselected branch.
 	for index, parameter := range function.Parameters {
-		if generatedNamedPredicate(function) && parameter.Type.Kind == coreir.TypePrimitive && parameter.Type.Primitive == coreir.PrimitiveString {
+		if isTextType(parameter.Type) {
 			fmt.Fprintf(out, "\tpipelangValidateText(p%d)\n", index)
 		}
 		if parameter.Type.Kind == coreir.TypeRecord {
@@ -186,7 +188,7 @@ func emitFunction(out *strings.Builder, name string, function coreir.Function, o
 		if isBoundedValueResultType(parameter.Type) {
 			fmt.Fprintf(out, "\t%s(p%d)\n", boundedResultValidationName(parameter.Type), index)
 		}
-		if function.Body.Kind == coreir.ExprMatch && isArithmeticResultType(parameter.Type) {
+		if isArithmeticResultType(parameter.Type) {
 			fmt.Fprintf(out, "\tpipelangValidateArithmeticResult(p%d)\n", index)
 		}
 	}
@@ -464,18 +466,6 @@ func emitPriorLocalBlockPropagationFunction(out *strings.Builder, function corei
 	}
 	fmt.Fprintf(out, "\treturn %s\n}\n\n", returned)
 	return true, nil
-}
-
-func generatedNamedPredicate(function coreir.Function) bool {
-	if function.ReturnType.Kind != coreir.TypePrimitive || function.ReturnType.Primitive != coreir.PrimitiveBool || len(function.Parameters) < 2 || function.Parameters[0].Type.Kind != coreir.TypeRecord {
-		return false
-	}
-	for _, parameter := range function.Parameters[1:] {
-		if parameter.Type.Kind != coreir.TypePrimitive {
-			return false
-		}
-	}
-	return true
 }
 
 func emitExpr(expr coreir.Expr, parameters []coreir.Parameter, optionalTypeName string) (string, error) {
@@ -2330,6 +2320,11 @@ func isArithmeticResultType(typ coreir.Type) bool {
 
 func programNeedsArithmeticValidation(functions []coreir.Function) bool {
 	for _, function := range functions {
+		for _, parameter := range function.Parameters {
+			if typeNeedsArithmeticResult(parameter.Type) {
+				return true
+			}
+		}
 		found := false
 		coreir.WalkExpression(function.Body, func(expression coreir.Expr) bool {
 			if expression.Kind == coreir.ExprMatch && expression.Match != nil && expression.Match.Value != nil && isArithmeticResultType(expression.Match.Value.Type) {
@@ -2364,7 +2359,7 @@ func arithmeticHelperName(operator coreir.Operator) (string, bool) {
 	}
 }
 
-func emitArithmeticSupport(out *strings.Builder, emitMatchValidation bool) {
+func emitArithmeticSupport(out *strings.Builder, emitValidation bool) {
 	out.WriteString(`type PipeLangArithmeticError string
 
 const (
@@ -2379,7 +2374,7 @@ type PipeLangArithmeticResult[T any] struct {
 }
 `)
 
-	if emitMatchValidation {
+	if emitValidation {
 		out.WriteString(`
 func pipelangValidateArithmeticResult[T comparable](value PipeLangArithmeticResult[T]) {
 	var zero T

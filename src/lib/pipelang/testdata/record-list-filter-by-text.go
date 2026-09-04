@@ -89,5 +89,6 @@ func pipelangFilterByTextListTestPackageAppRootContainerrowField1(values []PipeL
 
 func PipeLangFilterRows(p0 []PipeLangRecordTestPackageAppRootContainerrow, p1 string) []PipeLangRecordTestPackageAppRootContainerrow {
 	pipelangValidateListTestPackageAppRootContainerrow(p0)
+	pipelangValidateText(p1)
 	return pipelangFilterByTextListTestPackageAppRootContainerrowField1(p0, p1)
 }
