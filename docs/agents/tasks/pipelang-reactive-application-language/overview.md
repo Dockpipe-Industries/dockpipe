@@ -1,5 +1,9 @@
 # TASK-021 PipeLang Deterministic Self-Hosting Managed Language Foundation
 
+Current work: the founder requested [six v0.80 milestone repair slices](milestone-v080-repairs.md)
+on 2026-09-04 before further language expansion. That record owns the findings, repair scope,
+per-slice state, and verification. The language contract remains `v0.80.0`.
+
 ## Decision Status
 
 The `vNext` foundation decision packet in this record is **accepted** as of 2026-08-16. Acceptance

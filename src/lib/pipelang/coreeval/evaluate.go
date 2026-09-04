@@ -292,22 +292,29 @@ func evalExprWithProgram(expression coreir.Expr, arguments []Value, functions ma
 		}
 		callArguments := make([]Value, len(expression.Call.Arguments))
 		for position, argument := range expression.Call.Arguments {
-			if argument != nil && argument.Kind == coreir.ExprReference && argument.Parameter != nil && argument.Type.Kind == coreir.TypeResult {
-				carrier := arguments[*argument.Parameter]
-				if err := validateValue(carrier); err != nil {
-					return Outcome{}, fmt.Errorf("pure call argument %d: %w", position+1, err)
-				}
-				callArguments[position] = cloneValue(carrier)
-				continue
-			}
 			outcome, err := evalExprWithProgram(*argument, arguments, functions)
-			if err != nil || !outcome.OK {
+			if err != nil {
 				return outcome, err
 			}
-			if err := validateValue(outcome.Value); err != nil {
+			var value Value
+			if argument.Type.Kind == coreir.TypeResult {
+				// A Result failure is an argument value, not implicit propagation.
+				// Preserve its carrier for computed expressions as well as references.
+				carrier := cloneOutcome(outcome)
+				value = Value{Type: argument.Type, Result: &carrier}
+			} else {
+				if !outcome.OK {
+					return outcome, nil
+				}
+				value = cloneValue(outcome.Value)
+			}
+			if !coreir.TypeEqual(value.Type, target.Parameters[position].Type) {
+				return Outcome{}, fmt.Errorf("pure call argument %d type does not match parameter", position+1)
+			}
+			if err := validateValue(value); err != nil {
 				return Outcome{}, fmt.Errorf("pure call argument %d: %w", position+1, err)
 			}
-			callArguments[position] = cloneValue(outcome.Value)
+			callArguments[position] = value
 		}
 		outcome, err := evalExprWithProgram(target.Body, callArguments, functions)
 		outcome, err = completeFunctionOutcome(target.ReturnType, outcome, err)

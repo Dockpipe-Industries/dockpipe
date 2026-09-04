@@ -1,5 +1,8 @@
 ## Bounded Implementation Order
 
+Before further language expansion, complete the [six v0.80 milestone repair slices](milestone-v080-repairs.md)
+requested on 2026-09-04. That focused record owns their sequence and acceptance proof.
+
 1. Freeze all 45 current files and current emitted artifacts as the `v0.0.0.1` compatibility lane.
 2. Introduce source-set/file identities, strict UTF-8, full spans, and structured diagnostics without
    adding syntax.

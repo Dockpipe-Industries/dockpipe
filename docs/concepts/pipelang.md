@@ -1113,6 +1113,11 @@ state. Calls may nest and their arguments may use already admitted expressions. 
 targets, missing or ambiguous targets, overloads, cross-class/module calls, and every direct or
 indirect recursive cycle are rejected; `PL3033` reports cycles.
 
+Result-valued arguments carry the complete success/failure value into the callee, whether they
+come from a reference or a computed expression such as a nested call. An expected Result failure
+does not implicitly propagate or skip later argument evaluation. Arguments enter isolated copied
+call frames; only explicitly authored propagation can short-circuit that continuation.
+
 Typed HIR and target-neutral Core carry the resolved callable semantic identity, target name, and
 ordered typed operands. Lowering includes the closed transitive dependency graph once, Core proves
 same-owner identity, signature equality, target presence, and acyclicity, the evaluator uses
