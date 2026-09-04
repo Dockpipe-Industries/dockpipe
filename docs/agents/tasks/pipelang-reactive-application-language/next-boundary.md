@@ -1081,6 +1081,36 @@ overloaded/generic helpers; inference; reassignment; statements; branches; loops
 runtimes; targets; adapters; UI; and deployment remain excluded. No behavior enters by implication.
 Any successor requires a new founder decision and separate implementation approval.
 
+## Accepted v0.65.0 boundary — exact two-stage contextual bounded Result propagation
+
+`v0.65.0` adds only the exact public pure method shape `Result<T2, string>
+F(Result<T0, string> carrier, string context) { T0 first = propagate(carrier); Result<T1, string>
+nextCarrier = First(first, context); T1 second = propagate(nextCarrier); return Second(second,
+context); }`. `T0`, `T1`, and `T2` are each exactly `string` or `List<R>` for an existing public
+primitive-field record. Either or both adjacent payload pairs may be equal. Both helpers are
+resolved public pure same-class methods with exact `(Ti, string) -> Result<Ti+1, string>` signatures,
+the immediately preceding payload first, and the unchanged direct context second.
+
+HIR and Core reuse `immutable_local`, `reference`, `propagate`, and `call`. Core independently
+verifies the two exact caller parameters, exact two-stage local sequence, bounded payloads, shared
+string failure, direct carrier/local/context references, same owner, callable identities, and exact
+helper signatures. Evaluation and deterministic Core-only Go validate and copy each reached carrier
+once. Each failure skips all later helpers and becomes a canonical final-shaped failure with copied
+validated error text. Success passes the unchanged validated context once to each helper.
+`pipelang.compiler.v1`, `pipelang.semantic.v1`, and `dockpipe.application.v1` identities and shapes
+stay stable; only language metadata advances. Compiler-pipeline fixtures plus metadata-only
+Docker-observability Application IR consumption prove the boundary, and the exact 45-source lane
+remains frozen.
+
+The inherited v0.54-v0.64 forms remain exact. Same-payload transitions in contextual chains with
+three or more stages; a missing, reordered, repeated, computed, non-string, or additional context;
+a third caller parameter; extra or gapped locals; additional propagation; computed carriers;
+`propagate(Helper(...))`; arbitrary error types; Optional/arithmetic carriers; private,
+cross-class, mismatched, overloaded, or generic helpers; inference; reassignment; statements;
+branches; loops; effects; actions; runtimes; targets; adapters; UI; and deployment remain excluded.
+No behavior enters by implication. Any successor requires a new founder decision and separate
+implementation approval.
+
 ## Accepted v0.49.0 boundary — bounded two-carrier matching
 
 `v0.49.0` widens only the occurrence count accepted through v0.48. One public pure method with one

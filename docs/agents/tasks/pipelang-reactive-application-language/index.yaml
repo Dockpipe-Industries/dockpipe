@@ -10,8 +10,8 @@ dispatch:
 
 state:
   decision: accepted
-  current_language_contract: v0.64.0
-  completed_through: v0.64.0 one-stage contextual same-payload Result propagation plus one-stage contextual cross-payload propagation, contextual and generalized cross-payload chains, exact two-stage and one-stage cross-payload Result propagation, generalized checked-propagation chains, two-stage, multi-parameter direct, direct, and helper checked propagation, multi-parameter propagation, cumulative and immediate dependent chains, dependent and independent two-carrier forms, prior-local and later-local helper matching, checked arithmetic, pure calls, matching, propagation, ordered immutable locals, and dockpipe.application.v1 consumer proof
+  current_language_contract: v0.65.0
+  completed_through: v0.65.0 exact two-stage contextual bounded Result propagation with bounded adjacent payload equality plus one-stage contextual same-payload and cross-payload propagation, contextual and generalized cross-payload chains, exact two-stage and one-stage cross-payload Result propagation, generalized checked-propagation chains, two-stage, multi-parameter direct, direct, and helper checked propagation, multi-parameter propagation, cumulative and immediate dependent chains, dependent and independent two-carrier forms, prior-local and later-local helper matching, checked arithmetic, pure calls, matching, propagation, ordered immutable locals, and dockpipe.application.v1 consumer proof
   authority: >-
     This task record is decision and status evidence. It does not authorize another language slice,
     implementation, migration, commit, push, publication, or external action.
@@ -89,7 +89,7 @@ documents:
   - path: completed-snapshots-selection.md
     role: completed steps 7t through 7ae
   - path: completed-functions.md
-    role: completed steps 8a named pure record predicate filtering through 8ad one-stage contextual same-payload Result propagation
+    role: completed steps 8a named pure record predicate filtering through 8ae exact two-stage contextual bounded Result propagation
   - path: next-boundary.md
     role: exact current boundary and preserved contracts
 
