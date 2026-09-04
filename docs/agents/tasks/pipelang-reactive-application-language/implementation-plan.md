@@ -119,7 +119,11 @@ additionally admits exactly one helper stage. The caller still takes only the di
 carrier and one direct string context; it propagates the carrier into its first and only typed
 local, then terminally calls one exact public pure same-class helper with that local followed by the
 unchanged context. Source and target payloads remain distinct. These seams do not complete or
-authorize inference,
+authorize inference. Step 8ad is complete under `v0.64.0`: the exact v0.63 one-stage contextual
+form additionally admits equal source and target payloads. The payload remains exactly `string` or
+`List<R>` for an existing public primitive-field record; the helper remains exact, public, pure,
+same-class, and `(T, string) -> Result<T, string>`. Multi-stage same-payload contextual chains remain
+excluded. These seams do not complete or authorize inference,
 reassignment, shadowing, cross-class/module calls, overloads, generics, function values, lambdas,
 recursion, general blocks, branch statements, loops, effects, entrypoints, additional or nested
 propagation, arbitrary computed propagation operands, propagation from any other prior local,
@@ -898,6 +902,32 @@ computed carriers; `propagate(Helper(...))`; helper propagation; arbitrary failu
 Optional/arithmetic carriers; private/cross-class/mismatched/overloaded/generic helpers; inference;
 reassignment; statements; branches; loops; effects; actions; runtimes; targets; adapters; UI; and
 deployment remain excluded. No behavior enters by implication.
+
+## Checkpoint v0.64.0 complete contract
+
+One public pure method additionally admits exactly
+`Result<T, string> F(Result<T, string> carrier, string context) { T value = propagate(carrier);
+return Helper(value, context); }`. `T` remains exactly `string` or `List<R>` for an existing public
+primitive-field record. `Helper` is one resolved public pure same-class method with exact signature
+`(T, string) -> Result<T, string>`. The propagated local and unchanged direct string context are its
+only arguments and remain in that order.
+
+Typed HIR and target-neutral Core reuse `immutable_local`, `reference`, `propagate`, and `call`.
+Core independently verifies the two exact caller parameters, single first-local propagation,
+bounded equal payloads, shared string failure, direct carrier/local/context identities, helper
+ownership, callable identity, and exact signature. Evaluation and deterministic Core-only Go
+validate and copy the complete incoming carrier once, skip the helper on failure, return canonical
+same-shaped failure, and pass validated context once on success. Public compiler, semantic, and
+Application IR identities and shapes remain unchanged; metadata advances to `v0.64.0`; string and
+record-list compiler-pipeline fixtures plus metadata-only Docker-observability Application IR
+consumption prove the boundary; the exact 45-source lane remains frozen.
+
+The inherited v0.54-v0.63 forms remain exact. Same-payload contextual chains with two or more
+stages; a missing, reordered, repeated, computed, non-string, or additional context; a third caller
+parameter; extra locals or propagation; computed carriers; `propagate(Helper(...))`; helper
+propagation; arbitrary failure types; Optional/arithmetic carriers; private/cross-class/mismatched/
+overloaded/generic helpers; inference; reassignment; statements; branches; loops; effects; actions;
+runtimes; targets; adapters; UI; and deployment remain excluded. No behavior enters by implication.
 
 ## Application IR checkpoint complete contract
 

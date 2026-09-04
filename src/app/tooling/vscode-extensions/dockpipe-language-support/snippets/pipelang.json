@@ -623,5 +623,15 @@
       "}"
     ],
     "description": "Create the exact v0.63.0 one-stage contextual bounded cross-payload Result propagation form with one direct unchanged string context argument."
+  },
+  "PipeLang one-stage contextual same-payload Result propagation": {
+    "prefix": "pipe-contextual-same-payload-result",
+    "body": [
+      "public Result<string, string> ${1:Normalize}(Result<string, string> ${2:input}, string ${3:context}) {",
+      "\tstring ${4:value} = propagate(${2:input});",
+      "\treturn ${5:NormalizeValue}(${4:value}, ${3:context});",
+      "}"
+    ],
+    "description": "Create the exact v0.64.0 one-stage contextual bounded same-payload Result propagation form with one direct unchanged string context argument."
   }
 }

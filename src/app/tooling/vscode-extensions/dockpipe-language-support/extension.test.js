@@ -442,3 +442,9 @@ assert.strictEqual(pipeLangSnippets["PipeLang one-stage contextual cross-payload
 assert(pipeLangSnippets["PipeLang one-stage contextual cross-payload Result propagation"].description.includes("v0.63.0"));
 assert(pipeLangSnippets["PipeLang one-stage contextual cross-payload Result propagation"].body.some((line) => line.includes("Result<string, string> ${3:scanned}, string ${4:context}")));
 assert(pipeLangSnippets["PipeLang one-stage contextual cross-payload Result propagation"].body.some((line) => line.includes("return ${6:BuildTokens}(${5:source}, ${4:context})")));
+assert(pipeLangReadme.includes("`v0.64.0`"));
+assert(pipeLangReadme.includes("one-stage contextual bounded same-payload Result"));
+assert.strictEqual(pipeLangSnippets["PipeLang one-stage contextual same-payload Result propagation"].prefix, "pipe-contextual-same-payload-result");
+assert(pipeLangSnippets["PipeLang one-stage contextual same-payload Result propagation"].description.includes("v0.64.0"));
+assert(pipeLangSnippets["PipeLang one-stage contextual same-payload Result propagation"].body.some((line) => line.includes("Result<string, string> ${1:Normalize}(Result<string, string> ${2:input}, string ${3:context})")));
+assert(pipeLangSnippets["PipeLang one-stage contextual same-payload Result propagation"].body.some((line) => line.includes("return ${5:NormalizeValue}(${4:value}, ${3:context})")));
