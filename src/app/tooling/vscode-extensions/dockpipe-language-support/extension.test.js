@@ -455,3 +455,10 @@ assert(pipeLangSnippets["PipeLang exact two-stage contextual bounded Result prop
 assert(pipeLangSnippets["PipeLang exact two-stage contextual bounded Result propagation"].body.some((line) => line.includes("Result<${1:string}, string> ${2:Normalize}(Result<${3:string}, string> ${4:input}, string ${5:context})")));
 assert(pipeLangSnippets["PipeLang exact two-stage contextual bounded Result propagation"].body.some((line) => line.includes("Result<${7:string}, string> ${8:nextCarrier} = ${9:First}(${6:first}, ${5:context})")));
 assert(pipeLangSnippets["PipeLang exact two-stage contextual bounded Result propagation"].body.some((line) => line.includes("return ${11:Second}(${10:second}, ${5:context})")));
+assert(pipeLangReadme.includes("`v0.66.0`"));
+assert(pipeLangReadme.includes("generalizes contextual bounded Result propagation"));
+assert.strictEqual(pipeLangSnippets["PipeLang generalized contextual bounded Result propagation"].prefix, "pipe-generalized-contextual-bounded-result");
+assert(pipeLangSnippets["PipeLang generalized contextual bounded Result propagation"].description.includes("v0.66.0"));
+assert(pipeLangSnippets["PipeLang generalized contextual bounded Result propagation"].body.some((line) => line.includes("Result<${7:string}, string> ${8:secondCarrier} = ${9:First}(${6:first}, ${5:context})")));
+assert(pipeLangSnippets["PipeLang generalized contextual bounded Result propagation"].body.some((line) => line.includes("Result<${11:string}, string> ${12:thirdCarrier} = ${13:Second}(${10:second}, ${5:context})")));
+assert(pipeLangSnippets["PipeLang generalized contextual bounded Result propagation"].body.some((line) => line.includes("return ${15:Third}(${14:third}, ${5:context})")));

@@ -730,3 +730,33 @@ a third caller parameter; extra or gapped locals; additional propagation; comput
 mismatched, overloaded, or generic helpers; inference; reassignment; statements; branches; loops;
 effects; actions; runtimes; targets; adapters; UI; and deployment remain excluded. No behavior
 enters by implication.
+
+## Step 8af — generalized contextual bounded Result propagation (`v0.66.0`)
+
+Production source generalizes the v0.62 contextual chain so any adjacent payload transition may
+preserve or change its payload type. One public pure method has exact signature
+`Result<TK, string> F(Result<T0, string> carrier, string context)` with `K >= 2`. It begins by
+directly propagating the carrier. Every non-terminal helper Result is stored in an explicit local
+immediately followed by its direct propagation local, and the final stage is one terminal helper
+call. Every `Ti` remains exactly text or a list of an existing public primitive-field record. Every
+helper remains resolved, public, pure, same-class, and exact
+`(Ti, string) -> Result<Ti+1, string>`, with the immediately preceding payload first and the same
+unchanged direct context second.
+
+Typed HIR and target-neutral Core reuse existing immutable-local, reference, propagation, and call
+nodes. Core independently validates arbitrary admitted chain length, the two exact caller
+parameters, contiguous alternating locals, bounded payloads, shared string failure, direct
+carrier/payload/context identities, helper ownership, callable identities, and exact signatures.
+Evaluation and deterministic Core-only Go validate and copy every reached carrier once, pass the
+validated context once to each reached helper, and reshape every failure into the canonical final
+Result before later helpers can run. Public compiler, semantic, and Application IR identities and
+shapes remain stable; metadata advances to `v0.66.0`; mixed and all-equal compiler-pipeline fixtures
+plus metadata-only Docker-observability Application IR consumption prove the boundary; the exact
+45-source lane remains frozen.
+
+The inherited v0.54-v0.65 forms remain exact. Fewer than two contextual helper stages; missing,
+reordered, repeated, computed, non-string, stage-specific, or additional context; a third caller
+parameter; missing, additional, or gapped locals; computed carriers; `propagate(Helper(...))`;
+arbitrary errors; Optional/arithmetic carriers; private, cross-class, mismatched, overloaded, or
+generic helpers; inference; reassignment; statements; branches; loops; effects; actions; runtimes;
+targets; adapters; UI; and deployment remain excluded. No behavior enters by implication.
