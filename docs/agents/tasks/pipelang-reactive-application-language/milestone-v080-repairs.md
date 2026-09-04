@@ -23,8 +23,8 @@ separate slices before further language expansion. This is repair work within th
 | Slice | Priority | Finding and bounded repair | Required regression evidence | State |
 | --- | --- | --- | --- | --- |
 | R1 | P1 | Preserve computed Result carriers when evaluating call arguments; expected failure reaches the callee unless explicit propagation is authored. | Nested arithmetic and bounded Results, success/failure, recovery with a different caller return type, copied values, evaluator/generated-Go agreement. | Complete, committed |
-| R2 | P1 | Memoize semantic-to-HIR dependency lowering across one shared dependency graph. | Each reachable method lowered once, shared acyclic graph scaling, deterministic order/output, cycle rejection retained. | Complete, uncommitted |
-| R3 | P2 | Enforce supported compiler/language identities and feature-version gates at Core program admission. | Unknown identities independently rejected; representative downgraded features rejected consistently by Core, evaluator, and backend. | Pending |
+| R2 | P1 | Memoize semantic-to-HIR dependency lowering across one shared dependency graph. | Each reachable method lowered once, shared acyclic graph scaling, deterministic order/output, cycle rejection retained. | Complete, committed |
+| R3 | P2 | Enforce supported compiler/language identities and feature-version gates at Core program admission. | Unknown identities independently rejected; representative downgraded features rejected consistently by Core, evaluator, and backend. | Complete, uncommitted |
 | R4 | P2 | Make Core type validation exhaustive over supported kinds and representations. | Unknown kinds, unsupported numeric widths, contradictory/nested representations, unused parameters and expression types rejected; accepted types retained. | Pending |
 | R5 | P2 | Generate canonical argument validation from parameter types independently of function body shape. | Invalid UTF-8 and malformed arithmetic Results rejected in identity/unused/unselected cases; evaluator/generated-Go agreement and helper emission. | Pending |
 | R6 | P2 | Allocate or check generated names against the entire Go package namespace, including runtime declarations. | Legal source/runtime-name collision examples generate compilable deterministic Go; call targets agree with allocated declarations. | Pending |
@@ -158,5 +158,69 @@ TASK-021 indexes mark R1/R2 complete and R3 next. Temporary overlay probes, benc
 and verification logs are under `/tmp/pipelang-r2-proof`; generated Go tests and caches also use
 `/tmp`. No generated repository artifacts were added. CLI/editor, unrelated repository suites,
 and deep-stack exhaustion testing were not run; all-six-slice terminal verification remains
-pending. R2 is complete and uncommitted, ready for founder review. R3–R6 remain pending and were
-not implemented in this slice. No commit, push, publication, or live operation was performed.
+pending. R2 was subsequently committed as `88c0e97f50d1b577c40ba3d74a713c5f10a2cf99`
+(`Memoize PipeLang dependency graph lowering`), verified at R3 admission on branch `js/pipelang`
+with a clean saved checkout. This supersedes the original uncommitted status; R2 proof was admitted
+without rework. R3–R6 were not implemented in the R2 slice.
+
+
+### R3 completed — 2026-09-04
+
+`src/lib/pipelang/coreir/admission.go` owns exact compiler/language identity admission and
+Core feature availability. `ValidateProgram` rejects missing, malformed, legacy-source-only,
+unknown, or future identities, including empty programs. An ordered allowlist recognizes only
+`pipelang.compiler.v1` with `v0.1.0` through `v0.80.0`. Feature checks inspect signatures and the
+complete expression tree, retaining the existing contextual checks for calls, matching, locals,
+propagation, and terminal topology. They include record/text/Optional/list/Result operations,
+joined-selector arity, and directional sorting. This is version admission, not R4's exhaustive
+validation of type kinds and representations.
+
+`gobackend.Generate` now relies on that Core admission without rewriting later language metadata
+to v0.30.0 or maintaining duplicate language gates. `coreeval.EvaluateProgram` already calls
+`ValidateProgram`, so all three program entrypoints reject the same invalid contract with the
+same underlying message before function lookup, execution, or generated output. The backend keeps
+its `PLGO0001` envelope. Function-only APIs have no program metadata and retain their existing
+structural validation; versioned artifacts must enter through the program APIs.
+
+The canonical Core contract differs from source syntax: checked arithmetic and arithmetic Result
+representation were already compiler-internal v0.1.0 capabilities. The first broad run caught an
+overly restrictive draft gate for those capabilities and pre-existing string concatenation; the
+repair preserves them. Likewise, v0.33.0 postfix indexing reuses v0.20.0 `list_at`. No source form,
+compiler/semantic/Application IR identity, or language version changed.
+
+`src/lib/pipelang/core_admission_test.go` records:
+
+- independent invalid compiler/language mutations on simple and trim programs, with and without
+  functions, plus the original trim-to-v0.1.0 reproduction;
+- 22 existing Core feature fixtures rejected one contract below their accepted boundary;
+- unchanged generated bytes and evaluator outcomes for all 28 normalized Core fixtures at their
+  original version and v0.80.0, including six arithmetic/transport fixtures also retained at v0.1.0;
+- admission and unchanged behavior for a source-lowered baseline function under all 80 supported
+  language identities; the historical pre-normalization tiny fixture is not used for this numeric
+  evaluator comparison;
+- text Results, directional sorting, propagation, matching, and nested trim, with accepted Core
+  evaluation and pristine generated-Go compilation before metadata downgrade;
+- rejection of a feature in an uncalled function and a type in an unused parameter.
+
+The final focused regressions passed. A temporary overlay restored the committed pre-R3 Core
+validator and Go backend while retaining the new tests: 48 independent identity mutations and
+22 downgraded feature fixtures failed because Core admitted them. The tracked implementation was
+never reverted. Full terminal checks for this slice passed using cached Go 1.25.13 with
+`GOTOOLCHAIN=local`, `GOPROXY=off`, `GOSUMDB=off`, and a temporary writable cache:
+
+- `go test ./src/lib/pipelang -run '^TestCoreAdmission' -count=1`;
+- `go test ./src/lib/pipelang/... ./src/lib/applicationir ./tests/pipelangcompat -count=1`;
+- `go test ./src/lib/application -run PipeLang -count=1`;
+- `go vet ./src/lib/pipelang/... ./src/lib/applicationir`;
+- Go formatting, task YAML/route consistency, and diff whitespace.
+
+Application IR goldens and the frozen 45-source compatibility lane passed without updates.
+`docs/concepts/pipelang.md` documents program admission; both TASK-021 indexes mark R1–R3 complete
+and R4 next. Package/engine boundaries remain intact. Logs, the negative-control overlay, and
+cache live under `/tmp/pipelang-r3-proof`; generated-Go checks use temporary directories. No
+generated repository artifacts were added. CLI/editor and unrelated repository suites, sustained
+fuzzing, exhaustive feature/version combinations, and stack-exhaustion checks were not run;
+all-six-slice terminal verification remains pending.
+
+R3 is complete and uncommitted for founder review. R4–R6 remain pending and were not implemented.
+No commit, push, publication, worktree, generated-store refresh, or live operation was performed.

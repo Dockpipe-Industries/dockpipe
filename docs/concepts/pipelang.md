@@ -222,6 +222,18 @@ concepts while preserving the typed function signature and normalized literal, p
 and operator nodes. The Go backend's only PipeLang dependency is Core IR; an architecture test
 rejects parser, AST/compiler-root, or HIR imports in that backend.
 
+Core program admission accepts only `pipelang.compiler.v1` and the exact supported language
+identities `v0.1.0` through `v0.80.0`. `coreir.ValidateProgram` checks feature availability in
+signatures and nested expressions, together with the existing composition and topology contracts.
+`coreeval.EvaluateProgram` and the Go backend use that same admission before executing or emitting
+anything, including when a disallowed feature occurs in an uncalled function or unused parameter.
+Unknown or missing identities and unsupported feature/version combinations fail explicitly. The
+backend does not rewrite language metadata or maintain a separate language-admission policy.
+Function-only validation/evaluation has no program metadata; use the program APIs for versioned
+artifact admission. Source-syntax gates remain distinct: checked arithmetic and arithmetic Result
+representation already belong to internal v0.1.0 Core, and v0.33.0 postfix indexing reuses the
+v0.20.0 `list_at` operation.
+
 The proven fixture is the existing-syntax pure function `Ready(int count) => count > 0`. Its HIR,
 Core, and generated-Go bytes are golden-tested; generated Go is compiled and executed under a
 temporary offline module, and its result matches the existing pure evaluator. The first backend
