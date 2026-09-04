@@ -1954,6 +1954,37 @@ Optional/arithmetic carriers; private/cross-class/mismatched/overloaded/generic 
 reassignment; statements; branches; loops; effects; actions; runtimes; targets; adapters; UI; and
 deployment remain excluded. No behavior enters by implication.
 
+### PipeLang v0.64.0: one-stage contextual same-payload Result propagation
+
+`v0.64.0` adds the payload-preserving counterpart to the exact v0.63 one-stage contextual form:
+
+```pipe
+public Result<string, string> Normalize(Result<string, string> input, string context) {
+    string value = propagate(input);
+    return NormalizeValue(value, context);
+}
+```
+
+The caller still has exactly one direct bounded Result carrier followed by one direct `string`
+context. The carrier is propagated into the first and only typed local. One resolved public pure
+same-class helper receives that direct local followed by the unchanged context and has exact
+signature `(T, string) -> Result<T, string>`. `T` is exactly `string` or `List<R>` for an existing
+public primitive-field record, and the shared failure type remains `string`.
+
+The incoming carrier is validated and copied once. Failure skips the helper and returns the
+canonical same-shaped Result with copied validated error text. Success passes validated context
+once and validates the helper Result once. Typed HIR and target-neutral Core reuse existing nodes;
+Core independently verifies the complete shape. `pipelang.compiler.v1`, `pipelang.semantic.v1`,
+and `dockpipe.application.v1` identities and shapes remain unchanged; only language metadata
+advances to `v0.64.0`. The exact 45-source legacy lane remains frozen.
+
+The inherited v0.54-v0.63 forms remain exact. Same-payload contextual chains with two or more
+stages; a missing, reordered, repeated, computed, non-string, or additional context; a third caller
+parameter; extra locals or propagation; computed carriers; `propagate(Helper(...))`; helper
+propagation; arbitrary error types; Optional/arithmetic carriers; private/cross-class/mismatched/
+overloaded/generic helpers; inference; reassignment; statements; branches; loops; effects; actions;
+runtimes; targets; adapters; UI; and deployment remain excluded. No behavior enters by implication.
+
 ### Target-neutral Application IR
 
 `dockpipe.application.v1` is not a language feature or target generator. It consumes the public
