@@ -659,5 +659,17 @@
       "}"
     ],
     "description": "Create a v0.66.0 generalized contextual bounded Result propagation chain with K >= 2 stages and equal or different adjacent payload types."
+  },
+  "PipeLang generalized shared-context Result propagation": {
+    "prefix": "pipe-generalized-shared-context-result",
+    "body": [
+      "public Result<${1:string}, string> ${2:Compile}(Result<${3:string}, string> ${4:input}, string ${5:phase}, string ${6:scope}) {",
+      "\t${3:string} ${7:first} = propagate(${4:input});",
+      "\tResult<${8:string}, string> ${9:secondCarrier} = ${10:First}(${7:first}, ${5:phase}, ${6:scope});",
+      "\t${8:string} ${11:second} = propagate(${9:secondCarrier});",
+      "\treturn ${12:Second}(${11:second}, ${5:phase}, ${6:scope});",
+      "}"
+    ],
+    "description": "Create a v0.67.0 generalized shared-context Result propagation chain with K >= 2 stages and N >= 1 ordered direct string contexts."
   }
 }

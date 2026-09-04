@@ -1142,6 +1142,35 @@ or generic helpers; inference; reassignment; statements; branches; loops; effect
 runtimes; targets; adapters; UI; and deployment remain excluded. No behavior enters by implication.
 Any successor requires a new founder decision and separate implementation approval.
 
+## Accepted v0.67.0 boundary — generalized shared-context Result propagation
+
+`v0.67.0` generalizes the v0.66 contextual chain to one direct bounded Result carrier followed by
+`N >= 1` direct `string` context parameters. The method still contains `K >= 2` helper stages and
+returns `Result<TK, string>`. Every helper receives the immediately preceding payload first and then
+every unchanged context exactly once in caller declaration order. Its exact signature is
+`(Ti, string...) -> Result<Ti+1, string>`. Every `Ti` remains `string` or `List<R>` for an existing
+public primitive-field record. Every non-terminal helper Result remains an explicit local
+immediately followed by direct propagation, and the final helper remains the terminal expression.
+
+HIR and Core reuse `immutable_local`, `reference`, `propagate`, and `call`. Core independently
+verifies arbitrary admitted stage and context counts, the complete ordered context vector at every
+helper call, contiguous alternating locals, bounded payloads, shared string failure, direct
+carrier/payload/context references, same owner, callable identities, and exact helper signatures.
+Evaluation and deterministic Core-only Go validate and copy every reached carrier once, pass every
+validated context unchanged to each reached helper, and reshape each failure into the canonical
+final Result before later helpers can run. `pipelang.compiler.v1`, `pipelang.semantic.v1`, and
+`dockpipe.application.v1` identities and shapes stay stable; only language metadata advances.
+Multi-context compiler-pipeline fixtures plus metadata-only Docker-observability Application IR
+consumption prove the boundary, and the exact 45-source lane remains frozen.
+
+The inherited v0.54-v0.66 forms remain exact. A contextual chain with no context; one-stage
+multi-context chains; missing, reordered, repeated, computed, non-string, or stage-specific
+contexts; missing, additional, or gapped locals; computed carriers; `propagate(Helper(...))`;
+arbitrary failure types; Optional/arithmetic carriers; private, cross-class, mismatched, overloaded,
+or generic helpers; inference; reassignment; statements; branches; loops; effects; actions;
+runtimes; targets; adapters; UI; and deployment remain excluded. No behavior enters by implication.
+Any successor requires a new founder decision and separate implementation approval.
+
 ## Accepted v0.49.0 boundary — bounded two-carrier matching
 
 `v0.49.0` widens only the occurrence count accepted through v0.48. One public pure method with one

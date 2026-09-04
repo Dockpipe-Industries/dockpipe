@@ -2062,6 +2062,48 @@ arbitrary error types; Optional/arithmetic carriers; private, cross-class, misma
 or generic helpers; inference; reassignment; statements; branches; loops; effects; actions;
 runtimes; targets; adapters; UI; and deployment remain excluded. No behavior enters by implication.
 
+### PipeLang v0.67.0: generalized shared-context Result propagation
+
+`v0.67.0` generalizes the v0.66 contextual `K >= 2` chain to one or more direct `string` context
+parameters:
+
+```pipe
+public Result<List<SyntaxNode>, string> Compile(
+    Result<string, string> input,
+    string phase,
+    string scope) {
+    string source = propagate(input);
+    Result<string, string> normalizedCarrier = Normalize(source, phase, scope);
+    string normalized = propagate(normalizedCarrier);
+    Result<List<Token>, string> tokenCarrier = Tokenize(normalized, phase, scope);
+    List<Token> tokens = propagate(tokenCarrier);
+    return Parse(tokens, phase, scope);
+}
+```
+
+The caller has one direct bounded Result carrier followed by `N >= 1` direct `string` contexts. The
+chain still has `K >= 2` helper stages. Every helper receives the immediately preceding payload
+first, then every unchanged context exactly once in caller declaration order, and has the exact
+`(Ti, string...) -> Result<Ti+1, string>` signature. Every payload remains `string` or `List<R>` for
+an existing public primitive-field record. Every non-terminal helper Result remains an explicit
+local immediately followed by direct propagation, and the final stage remains a terminal helper
+call.
+
+Typed HIR and target-neutral Core reuse existing nodes and preserve parameter positions. Core
+independently validates the complete ordered context vector on every stage. Evaluation and
+deterministic Core-only Go validate and copy every reached carrier once, pass every validated
+context unchanged to each reached helper, and reshape failures into the canonical final Result
+before later helpers can run. `pipelang.compiler.v1`, `pipelang.semantic.v1`, and
+`dockpipe.application.v1` identities and shapes remain unchanged; only language metadata advances
+to `v0.67.0`. The exact 45-source legacy lane remains frozen.
+
+The inherited v0.54-v0.66 forms remain exact. A contextual chain with no context; a one-stage chain
+with multiple contexts; missing, reordered, repeated, computed, non-string, or stage-specific
+contexts; missing, additional, or gapped locals; computed carriers; `propagate(Helper(...))`;
+arbitrary failure types; Optional/arithmetic carriers; private, cross-class, mismatched, overloaded,
+or generic helpers; inference; reassignment; statements; branches; loops; effects; actions;
+runtimes; targets; adapters; UI; and deployment remain excluded. No behavior enters by implication.
+
 ### Target-neutral Application IR
 
 `dockpipe.application.v1` is not a language feature or target generator. It consumes the public
