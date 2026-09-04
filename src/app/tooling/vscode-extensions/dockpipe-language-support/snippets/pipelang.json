@@ -737,5 +737,18 @@
       "}"
     ],
     "description": "Create the v0.72.0 terminal if/else form with a general ordered lexical immutable-local sequence in a selected branch."
+  },
+  "PipeLang direct terminal if/else": {
+    "prefix": "pipe-direct-terminal-if",
+    "body": [
+      "public ${1:string} ${2:Select}(${1:string} ${3:raw}, bool ${4:normalize}) {",
+      "\tif (${4:normalize}) {",
+      "\t\t${1:string} ${5:selected} = trim(${3:raw});",
+      "\t\treturn ${5:selected};",
+      "\t}",
+      "\telse { return ${3:raw}; }",
+      "}"
+    ],
+    "description": "Create the v0.73.0 terminal if/else form as the complete method body without a preceding top-level local."
   }
 }

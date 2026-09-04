@@ -197,6 +197,13 @@ terminal `conditional`; no schema identity changes. This seam does not admit nes
 top-level locals, propagation, matching, assignment, fallthrough, other early returns, loops,
 effects, or inference.
 
+Step 8am is complete using `v0.73.0`: the v0.72 terminal statement-level `if/else` may now be the
+complete public pure method body without a preceding top-level immutable local. Either branch
+retains its existing finite source-ordered sequence of explicitly typed immutable locals followed
+by return, including the direct-return form. Branch scopes, eager source order within the selected
+branch, and selected-branch-only evaluation remain exact. This seam does not admit nested branches,
+propagation, matching, assignment, fallthrough, other early returns, loops, effects, or inference.
+
 Each slice is independently reviewable and keeps syntax, semantics, diagnostics, projection,
 editor, tests, and any enabled backend synchronized. No permissive parser, target-owned semantics,
 or syntax-first feature batch may skip the earlier foundations.
@@ -1205,6 +1212,30 @@ branches, zero top-level locals, escaping bindings, propagation, matching, assig
 other early returns, loops, effects, inference, actions, runtimes, targets, adapters, UI, and
 deployment remain excluded. No behavior enters by implication. Any successor requires a new
 founder decision and separate implementation approval.
+
+## Checkpoint v0.73.0 complete contract
+
+One public pure method additionally admits the existing terminal statement-level `if/else` as its
+complete body, without a preceding top-level immutable local. Either branch may return directly or
+retain any finite source-ordered sequence of explicitly typed immutable locals followed by return.
+Each local enters scope only after its initializer; later locals may reference earlier locals within
+the same branch. Opposing branches remain independent lexical scopes, may reuse names and canonical
+binding positions, evaluate only when selected, and cannot leak bindings.
+
+Typed HIR and target-neutral Core reuse the existing terminal `conditional` root plus nested
+`immutable_local` expressions; no node or schema identity changes. Core independently validates
+the root terminal placement, complete branch sequences, exact types, canonical positions, lexical
+references, and absence of nested branching. Evaluation and deterministic Core-only Go preserve
+source order and selected-branch execution. `pipelang.compiler.v1`, `pipelang.semantic.v1`, and
+`dockpipe.application.v1` remain stable; metadata advances to `v0.73.0`; compiler-pipeline,
+malformed-Core, generated-Go, editor, and metadata-only Application IR fixtures prove the boundary;
+the exact 45-source lane remains frozen.
+
+The inherited v0.69-v0.72 forms with top-level locals remain exact. Ordinary zero-local blocks,
+nested branches, escaping bindings, propagation, matching, assignment, fallthrough, other early
+returns, loops, effects, inference, actions, runtimes, targets, adapters, UI, and deployment remain
+excluded. No behavior enters by implication. Any successor requires a new founder decision and
+separate implementation approval.
 
 ## Application IR checkpoint complete contract
 

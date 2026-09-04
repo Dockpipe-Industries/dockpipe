@@ -1,5 +1,11 @@
 # DockPipe Language Support (VS Code)
 
+PipeLang `v0.73.0` removes the top-level-local prerequisite from terminal `if/else` methods via
+`pipe-direct-terminal-if`. The terminal conditional may now be the complete method body while each
+branch retains the existing finite ordered immutable-local sequence. Nested branches, propagation,
+matching, assignment, fallthrough, other early returns, effects, inference, and deployment remain
+excluded.
+
 PipeLang `v0.72.0` generalizes terminal-branch locals through
 `pipe-terminal-if-branch-local-sequence`. Either branch may contain any finite source-ordered
 sequence of explicitly typed immutable locals before its return. Nested branches, zero top-level

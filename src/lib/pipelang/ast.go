@@ -746,7 +746,11 @@ func validTerminalIfStatement(contract LanguageContract, expr Expr) bool {
 	falseLocals, validFalse := terminalBranchLocalShape(conditional.WhenFalse, branchLocalLimit)
 	branchLocals := trueLocals + falseLocals
 	conditionalCount := countConditionalExpressions(expr)
-	return locals >= 1 && countImmutableLocalExpressions(expr) == locals+branchLocals &&
+	minimumTopLevelLocals := 1
+	if contract == PipeLangLanguageContractV730 {
+		minimumTopLevelLocals = 0
+	}
+	return locals >= minimumTopLevelLocals && countImmutableLocalExpressions(expr) == locals+branchLocals &&
 		countTerminalIfStatements(expr) == 1 && conditionalCount >= 1 && conditionalCount <= 2 &&
 		validTrue && validFalse && validConditionalExpressions(expr)
 }

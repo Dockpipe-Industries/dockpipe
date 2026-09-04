@@ -1308,6 +1308,29 @@ other early returns, loops, effects, inference, actions, runtimes, targets, adap
 deployment remain excluded. No successor is implied; another slice requires a new founder decision
 and separate implementation approval.
 
+## Accepted v0.73.0 boundary — direct terminal `if/else`
+
+`v0.73.0` removes only the v0.72 top-level-local prerequisite. One public pure method may use the
+existing terminal statement-level `if/else` as its complete body. Either branch may return directly
+or contain any finite source-ordered sequence of explicitly typed immutable locals followed by its
+return. Each branch local enters scope only after its initializer; later branch locals may reference
+earlier ones while self-reference, forward reference, duplicate names, and shadowing remain
+invalid. Opposing branches retain independent lexical scopes, may reuse names and canonical binding
+positions, evaluate only when selected, and cannot leak bindings.
+
+Typed HIR and target-neutral Core reuse the existing root `conditional` and nested
+`immutable_local` nodes. Core independently validates the unique root terminal placement, complete
+branch sequences, exact types, canonical positions, lexical references, and absence of nesting.
+Evaluation and deterministic Core-only Go preserve source order and selected-branch execution.
+`pipelang.compiler.v1`, `pipelang.semantic.v1`, and `dockpipe.application.v1` remain stable; only
+language metadata advances to `v0.73.0`. The exact 45-source lane remains frozen.
+
+The inherited v0.69-v0.72 forms with one or more top-level locals remain exact. Ordinary zero-local
+blocks, nested branches, escaping bindings, propagation, matching, assignment, fallthrough, other
+early returns, loops, effects, inference, actions, runtimes, targets, adapters, UI, and deployment
+remain excluded. No successor is implied; another slice requires a new founder decision and
+separate implementation approval.
+
 ## Accepted v0.49.0 boundary — bounded two-carrier matching
 
 `v0.49.0` widens only the occurrence count accepted through v0.48. One public pure method with one
