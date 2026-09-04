@@ -2104,6 +2104,44 @@ arbitrary failure types; Optional/arithmetic carriers; private, cross-class, mis
 or generic helpers; inference; reassignment; statements; branches; loops; effects; actions;
 runtimes; targets; adapters; UI; and deployment remain excluded. No behavior enters by implication.
 
+### PipeLang v0.68.0: generalized one-stage shared-context Result propagation
+
+`v0.68.0` generalizes the v0.64 one-stage contextual form to one or more direct `string` context
+parameters:
+
+```pipe
+public Result<List<Token>, string> Tokenize(
+    Result<string, string> input,
+    string phase,
+    string scope) {
+    string source = propagate(input);
+    return ScanTokens(source, phase, scope);
+}
+```
+
+The caller has one direct bounded Result carrier followed by `N >= 1` direct string contexts. Its
+first and only typed local directly propagates the carrier, and its terminal helper receives that
+payload followed by every unchanged context exactly once in caller declaration order. Source and
+target payloads may match or differ and remain `string` or `List<R>` for an existing public
+primitive-field record. The helper remains resolved, public, pure, same-class, and exact
+`(T0, string...) -> Result<T1, string>`.
+
+Typed HIR and target-neutral Core reuse existing nodes and preserve parameter positions. Core
+independently validates the complete ordered context vector, single propagation, exact helper
+signature, and bounded Result shape. Evaluation and deterministic Core-only Go validate direct
+inputs, copy the reached carrier once, pass every context unchanged, and return canonical
+target-shaped failure without invoking the helper when the incoming carrier fails.
+`pipelang.compiler.v1`, `pipelang.semantic.v1`, and `dockpipe.application.v1` identities and shapes
+remain unchanged; only language metadata advances to `v0.68.0`. The exact 45-source legacy lane
+remains frozen.
+
+The inherited v0.54-v0.67 forms remain exact. A contextual form with no context; missing,
+reordered, repeated, computed, non-string, or stage-specific contexts; additional or gapped locals;
+computed carriers; `propagate(Helper(...))`; arbitrary failure types; Optional/arithmetic carriers;
+private, cross-class, mismatched, overloaded, or generic helpers; inference; reassignment;
+statements; branches; loops; effects; actions; runtimes; targets; adapters; UI; and deployment remain
+excluded. No behavior enters by implication.
+
 ### Target-neutral Application IR
 
 `dockpipe.application.v1` is not a language feature or target generator. It consumes the public

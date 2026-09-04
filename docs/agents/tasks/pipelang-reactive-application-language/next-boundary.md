@@ -1171,6 +1171,35 @@ or generic helpers; inference; reassignment; statements; branches; loops; effect
 runtimes; targets; adapters; UI; and deployment remain excluded. No behavior enters by implication.
 Any successor requires a new founder decision and separate implementation approval.
 
+## Accepted v0.68.0 boundary — generalized one-stage shared-context Result propagation
+
+`v0.68.0` generalizes the v0.64 one-stage contextual bounded Result form to one direct bounded
+Result carrier followed by `N >= 1` direct `string` context parameters. The method returns
+`Result<T1, string>` and contains exactly one typed local initialized by direct propagation of the
+carrier followed by one terminal helper call. The helper receives the propagated payload first and
+then every unchanged context exactly once in caller declaration order. Its exact signature is
+`(T0, string...) -> Result<T1, string>`. `T0` and `T1` may match or differ and remain `string` or
+`List<R>` for an existing public primitive-field record.
+
+HIR and Core reuse `immutable_local`, `reference`, `propagate`, and `call`. Core independently
+verifies arbitrary admitted context count, the complete ordered direct context vector, the exact
+local and propagation placement, bounded payloads, shared string failure, direct references, same
+owner, callable identity, and helper signature. Evaluation and deterministic Core-only Go validate
+direct inputs, copy the reached carrier once, pass every context unchanged, and reshape incoming
+failure into the canonical target Result before the helper can run. `pipelang.compiler.v1`,
+`pipelang.semantic.v1`, and `dockpipe.application.v1` identities and shapes stay stable; only
+language metadata advances. One-stage multi-context compiler-pipeline fixtures plus metadata-only
+Docker-observability Application IR consumption prove the boundary, and the exact 45-source lane
+remains frozen.
+
+The inherited v0.54-v0.67 forms remain exact. A contextual form with no context; missing,
+reordered, repeated, computed, non-string, or stage-specific contexts; additional or gapped locals;
+computed carriers; `propagate(Helper(...))`; arbitrary failure types; Optional/arithmetic carriers;
+private, cross-class, mismatched, overloaded, or generic helpers; inference; reassignment;
+statements; branches; loops; effects; actions; runtimes; targets; adapters; UI; and deployment remain
+excluded. No behavior enters by implication. Any successor requires a new founder decision and
+separate implementation approval.
+
 ## Accepted v0.49.0 boundary — bounded two-carrier matching
 
 `v0.49.0` widens only the occurrence count accepted through v0.48. One public pure method with one
