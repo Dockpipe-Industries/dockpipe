@@ -46,7 +46,14 @@ public Class DockerApplication {
 				return selected;
 			}
 		} else {
-			return "";
+			string disabled = "";
+			if (normalize) {
+				string selected = disabled;
+				return selected;
+			} else {
+				string selected = shared;
+				return selected;
+			}
 		}
 	}
 	public string SelectedName(Optional<ContainerRow> value) => match(value){ some(row) => NormalizeName(row.Name), none => "" };

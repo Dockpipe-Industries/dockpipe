@@ -231,6 +231,14 @@ This seam does not admit nesting in both outer branches, another nested decision
 nesting, conditional expressions within the topology or root-local nested form, propagation,
 matching, assignment, fallthrough, other early returns, loops, effects, or inference.
 
+Step 8aq is complete using `v0.77.0`: after one or more source-ordered explicitly typed immutable
+root locals, both branches of the outer terminal `if/else` may now end in exactly one inner terminal
+`if/else`. Each outer branch and inner leaf retains its finite immutable-local sequence. Root locals
+evaluate eagerly once before the outer condition; only the selected outer branch, its inner
+condition, and its selected leaf evaluate. This seam does not admit the symmetric topology without
+a root local, third-level nesting, conditional expressions within the topology, propagation,
+matching, assignment, fallthrough, other early returns, loops, effects, or inference.
+
 Each slice is independently reviewable and keeps syntax, semantics, diagnostics, projection,
 editor, tests, and any enabled backend synchronized. No permissive parser, target-owned semantics,
 or syntax-first feature batch may skip the earlier foundations.
@@ -1339,6 +1347,30 @@ root-local nested form, propagation, matching, assignment, fallthrough, other ea
 loops, effects, inference, actions, runtimes, targets, adapters, UI, and deployment remain
 excluded. No behavior enters by implication. Any successor requires a new founder decision and
 separate implementation approval.
+
+## Checkpoint v0.77.0 complete contract
+
+One public pure method additionally permits one or more source-ordered explicitly typed immutable
+locals before an outer terminal `if/else` whose two branches each end in exactly one inner terminal
+`if/else`. Each outer branch and each inner leaf may retain any finite source-ordered sequence of
+explicitly typed immutable locals. Root bindings remain visible throughout; outer-branch bindings
+remain visible only to that branch's inner condition and leaves; inner-leaf bindings remain local
+to that leaf. All three conditions are `bool`, and every return has the exact method return type.
+
+Typed HIR and target-neutral Core reuse the existing terminal `conditional` and nested
+`immutable_local` expressions; no node or schema identity changes. Core independently validates
+the required root sequence, exact three-conditional symmetric topology, complete branch-local
+sequences, exact types, canonical positions, lexical references, and excluded shapes. Evaluation
+and deterministic Core-only Go preserve eager root order and selected-branch execution.
+`pipelang.compiler.v1`, `pipelang.semantic.v1`, and `dockpipe.application.v1` remain stable;
+metadata advances to `v0.77.0`; compiler-pipeline, malformed-Core, generated-Go, editor, and
+Application IR consumer fixtures prove the boundary; the exact 45-source lane remains frozen.
+
+All v0.69-v0.76 forms remain exact. The symmetric topology without a root local, third-level or
+additional nesting, conditional expressions within the topology, propagation, matching,
+assignment, fallthrough, other early returns, loops, effects, inference, actions, runtimes,
+targets, adapters, UI, and deployment remain excluded. No behavior enters by implication. Any
+successor requires a new founder decision and separate implementation approval.
 
 ## Application IR checkpoint complete contract
 

@@ -1,5 +1,13 @@
 # DockPipe Language Support (VS Code)
 
+PipeLang `v0.77.0` permits one or more source-ordered explicitly typed immutable root locals before
+an outer terminal `if/else` whose two branches each end in exactly one inner terminal `if/else`
+through `pipe-symmetric-nested-terminal-if`. Root locals evaluate eagerly once and remain visible
+throughout; outer-branch and inner-leaf bindings retain their independent lexical scopes. Only the
+selected outer branch, its inner condition, and its selected leaf evaluate. The symmetric topology
+without a root local, third-level nesting, conditional expressions within the topology,
+propagation, matching, assignment, fallthrough, effects, inference, and deployment remain excluded.
+
 PipeLang `v0.76.0` permits one or more source-ordered explicitly typed immutable locals before the
 exact v0.75 bounded nested terminal topology through `pipe-root-local-nested-terminal-if`. Root
 locals enter scope after their initializer, evaluate eagerly once before the outer condition, and
