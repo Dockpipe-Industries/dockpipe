@@ -928,3 +928,26 @@ nested branches, escaping bindings, propagation, matching, assignment, fallthrou
 returns, loops, effects, inference, actions, runtimes, targets, adapters, UI, and deployment remain
 excluded. No successor is implied; another slice requires a new founder decision and separate
 implementation approval.
+
+## Step 8an — bounded nested terminal `if/else` (`v0.74.0`)
+
+Production source adds one bounded nested decision to the complete v0.73 terminal form. The new
+topology has no top-level locals. Exactly one outer branch may end in exactly one inner terminal
+`if/else` after zero or more explicitly typed ordered immutable locals; the sibling outer branch is
+an inherited v0.73 branch, and both inner leaves return directly. Both conditions are `bool`, every
+leaf has the exact declared return type, and outer-branch locals enter scope in order and remain
+visible to the inner condition and leaves. Evaluation is selected-branch-only at both levels.
+
+Typed HIR and target-neutral Core reuse nested terminal `conditional` and `immutable_local` nodes.
+Source and Core validation prove the exact two-conditional topology, one nested outer branch, exact
+typing, canonical positions, lexical references, and direct inner leaves. Evaluation and
+deterministic Core-only Go prove all selected paths. `pipelang.compiler.v1`,
+`pipelang.semantic.v1`, and `dockpipe.application.v1` stay stable; Application IR changes only its
+language metadata to `v0.74.0`; the exact 45-source compatibility lane remains frozen.
+
+The inherited v0.69-v0.73 forms remain valid. Top-level locals for the nested topology, inner
+locals, nesting in both outer branches, another nested decision, third-level nesting, conditional
+expressions within the topology, propagation, matching, assignment, fallthrough, other early
+returns, loops, effects, inference, actions, runtimes, targets, adapters, UI, and deployment remain
+excluded. No successor is implied; another slice requires a new founder decision and separate
+implementation approval.

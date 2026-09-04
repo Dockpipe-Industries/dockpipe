@@ -267,6 +267,10 @@ func ValidateFunction(function Function) error {
 }
 
 func ValidateProgram(program Program) error {
+	inheritedContract := program.LanguageContract
+	if inheritedContract == LanguageContractV740 {
+		inheritedContract = LanguageContractV730
+	}
 	functions := make(map[string]Function, len(program.Functions))
 	for _, function := range program.Functions {
 		if err := validateImmutableLocalContract(program.LanguageContract, function); err != nil {
@@ -285,20 +289,20 @@ func ValidateProgram(program Program) error {
 		if err := validateConditionalContract(program.LanguageContract, function); err != nil {
 			return err
 		}
-		if err := validatePureCallPlacement(program.LanguageContract, function); err != nil {
+		if err := validatePureCallPlacement(inheritedContract, function); err != nil {
 			return err
 		}
-		if err := validatePureCalls(program.LanguageContract, function, functions); err != nil {
+		if err := validatePureCalls(inheritedContract, function, functions); err != nil {
 			return err
 		}
-		if err := validateHelperResultMatchContract(program.LanguageContract, function, functions); err != nil {
+		if err := validateHelperResultMatchContract(inheritedContract, function, functions); err != nil {
 			return err
 		}
 		filter := function.Body.ListFilterPredicate
 		if function.Body.Kind != ExprListFilterPredicate || filter == nil {
 			continue
 		}
-		if !isV310OrLaterContract(program.LanguageContract) {
+		if !isV310OrLaterContract(inheritedContract) {
 			return fmt.Errorf("function %s named predicate filtering requires language contract %q", function.Name, LanguageContractV310)
 		}
 		target, ok := functions[filter.Predicate.PackageID+"\x00"+filter.Predicate.Path]
@@ -440,6 +444,19 @@ func countConditionalExpressions(expression Expr) int {
 	return count
 }
 
+func countTerminalIfStatements(expression Expr) int {
+	count := 0
+	if expression.Kind == ExprConditional && expression.Conditional != nil && expression.Conditional.TerminalStatement {
+		count++
+	}
+	for _, child := range expressionChildren(expression) {
+		if child != nil {
+			count += countTerminalIfStatements(*child)
+		}
+	}
+	return count
+}
+
 func validConditionalOperand(expression Expr) bool {
 	if expression.Kind == ExprConditional || expression.Kind == ExprMatch || expression.Kind == ExprPropagate {
 		return false
@@ -479,10 +496,55 @@ func terminalBranchLocalShape(expression Expr, limit int) (int, bool) {
 	return count, limit < 0 || count <= limit
 }
 
+func terminalBranchTail(expression Expr) (int, Expr, bool) {
+	count := 0
+	current := expression
+	for current.Kind == ExprImmutableLocal {
+		local := current.ImmutableLocal
+		count++
+		if local == nil || local.Initializer == nil || local.Return == nil || !validConditionalOperand(*local.Initializer) {
+			return count, Expr{}, false
+		}
+		current = *local.Return
+	}
+	return count, current, true
+}
+
+func validV740NestedTerminalIf(expression Expr) bool {
+	outer := expression.Conditional
+	if expression.Kind != ExprConditional || outer == nil || !outer.TerminalStatement || outer.Condition == nil || outer.WhenTrue == nil || outer.WhenFalse == nil || !validConditionalOperand(*outer.Condition) {
+		return false
+	}
+	validNested := func(branch Expr) bool {
+		_, tail, valid := terminalBranchTail(branch)
+		nested := tail.Conditional
+		if !valid || tail.Kind != ExprConditional || nested == nil || !nested.TerminalStatement || nested.Condition == nil || nested.WhenTrue == nil || nested.WhenFalse == nil {
+			return false
+		}
+		if nested.WhenTrue.Kind == ExprImmutableLocal || nested.WhenFalse.Kind == ExprImmutableLocal {
+			return false
+		}
+		return validConditionalOperand(*nested.Condition) && validConditionalOperand(*nested.WhenTrue) && validConditionalOperand(*nested.WhenFalse)
+	}
+	validOrdinary := func(branch Expr) bool {
+		_, tail, valid := terminalBranchTail(branch)
+		return valid && tail.Kind != ExprConditional && validConditionalOperand(tail)
+	}
+	trueNested, falseNested := validNested(*outer.WhenTrue), validNested(*outer.WhenFalse)
+	return countConditionalExpressions(expression) == 2 && countTerminalIfStatements(expression) == 2 &&
+		((trueNested && validOrdinary(*outer.WhenFalse)) || (falseNested && validOrdinary(*outer.WhenTrue)))
+}
+
 func validateImmutableLocalContract(contract string, function Function) error {
 	count := countImmutableLocalExpressions(function.Body)
 	if count == 0 {
 		return nil
+	}
+	if contract == LanguageContractV740 {
+		if validV740NestedTerminalIf(function.Body) {
+			return nil
+		}
+		return validateImmutableLocalContract(LanguageContractV730, function)
 	}
 	if contract != LanguageContractV730 && contract != LanguageContractV720 && contract != LanguageContractV710 && contract != LanguageContractV700 && contract != LanguageContractV690 && contract != LanguageContractV680 && contract != LanguageContractV670 && contract != LanguageContractV660 && contract != LanguageContractV650 && contract != LanguageContractV640 && contract != LanguageContractV630 && contract != LanguageContractV620 && contract != LanguageContractV610 && contract != LanguageContractV600 && contract != LanguageContractV590 && contract != LanguageContractV580 && contract != LanguageContractV570 && contract != LanguageContractV560 && contract != LanguageContractV550 && contract != LanguageContractV540 && contract != LanguageContractV530 && contract != LanguageContractV520 && contract != LanguageContractV510 && contract != LanguageContractV500 && contract != LanguageContractV490 && contract != LanguageContractV390 && contract != LanguageContractV400 && contract != LanguageContractV410 && contract != LanguageContractV420 && contract != LanguageContractV430 && contract != LanguageContractV440 && contract != LanguageContractV450 && contract != LanguageContractV460 && contract != LanguageContractV470 && contract != LanguageContractV480 {
 		return fmt.Errorf("function %s immutable local requires language contract %q", function.Name, LanguageContractV390)
@@ -1071,6 +1133,15 @@ func exprContainsPropagation(expression Expr) bool {
 func validateConditionalContract(contract string, function Function) error {
 	if !exprContainsConditional(function.Body) {
 		return nil
+	}
+	if contract == LanguageContractV740 {
+		if countTerminalIfStatements(function.Body) > 1 {
+			if !validV740NestedTerminalIf(function.Body) || exprContainsPropagation(function.Body) || countMatchExpressions(function.Body) != 0 {
+				return fmt.Errorf("function %s v0.74.0 permits one complete outer terminal if/else with exactly one branch ending in one nested terminal if/else after any finite immutable-local sequence; nested leaves return directly, and propagation, match, additional nesting, and fallthrough are excluded", function.Name)
+			}
+			return nil
+		}
+		contract = LanguageContractV730
 	}
 	if (contract != LanguageContractV730 && contract != LanguageContractV720 && contract != LanguageContractV710 && contract != LanguageContractV700 && contract != LanguageContractV690 && contract != LanguageContractV680 && contract != LanguageContractV670 && contract != LanguageContractV660 && contract != LanguageContractV650 && contract != LanguageContractV640 && contract != LanguageContractV630 && contract != LanguageContractV620 && contract != LanguageContractV610 && contract != LanguageContractV600 && contract != LanguageContractV590 && contract != LanguageContractV580) && contract != LanguageContractV570 && contract != LanguageContractV560 && contract != LanguageContractV550 && contract != LanguageContractV540 && contract != LanguageContractV530 && contract != LanguageContractV520 && contract != LanguageContractV510 && contract != LanguageContractV500 && contract != LanguageContractV490 && contract != LanguageContractV380 && contract != LanguageContractV390 && contract != LanguageContractV400 && contract != LanguageContractV410 && contract != LanguageContractV420 && contract != LanguageContractV430 && contract != LanguageContractV440 && contract != LanguageContractV450 && contract != LanguageContractV460 && contract != LanguageContractV470 && contract != LanguageContractV480 {
 		return fmt.Errorf("function %s conditional expressions require language contract %q", function.Name, LanguageContractV380)

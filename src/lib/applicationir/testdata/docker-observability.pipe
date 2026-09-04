@@ -33,6 +33,15 @@ public Class DockerApplication {
 		string selected = normalized == "" ? fallback : normalized;
 		return selected;
 	}
+	public string DisplayMode(string raw, bool enabled, bool normalize) {
+		if (enabled) {
+			string cleaned = trim(raw);
+			if (normalize) { return NormalizeName(cleaned); }
+			else { return raw; }
+		} else {
+			return "";
+		}
+	}
 	public string SelectedName(Optional<ContainerRow> value) => match(value){ some(row) => NormalizeName(row.Name), none => "" };
 	public Optional<ContainerRow> FindSelection(List<ContainerRow> rows, string id) => find_by(rows, ContainerRow.Id, id);
 	public Optional<ContainerRow> ResolveSelection(List<ContainerRow> rows, string id) {

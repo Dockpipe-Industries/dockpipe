@@ -1331,6 +1331,30 @@ early returns, loops, effects, inference, actions, runtimes, targets, adapters, 
 remain excluded. No successor is implied; another slice requires a new founder decision and
 separate implementation approval.
 
+## Accepted v0.74.0 boundary — bounded nested terminal `if/else`
+
+`v0.74.0` adds one bounded nested decision to the complete v0.73 terminal form. The method has no
+top-level immutable locals. Exactly one outer branch may end in exactly one inner terminal
+`if/else` after zero or more explicitly typed ordered immutable locals; the sibling outer branch
+retains the v0.73 direct-or-local sequence, and both inner leaves return directly. Both conditions
+must be `bool`, all leaves must have the exact declared return type, and outer-branch locals remain
+visible to the inner condition and leaves after their initializer. Both levels evaluate only their
+selected branch.
+
+Typed HIR and target-neutral Core reuse the existing terminal `conditional` and
+`immutable_local` nodes. Core independently validates the exact two-conditional topology, nesting
+in exactly one outer branch, direct inner leaves, exact typing, canonical positions, and lexical
+references. Evaluation and deterministic Core-only Go preserve source order and selected-branch
+execution. `pipelang.compiler.v1`, `pipelang.semantic.v1`, and `dockpipe.application.v1` remain
+stable; only language metadata advances to `v0.74.0`. The exact 45-source lane remains frozen.
+
+The inherited v0.69-v0.73 forms remain exact. Top-level locals for the nested topology, inner
+locals, nesting in both outer branches, another nested decision, third-level nesting, conditional
+expressions within the topology, propagation, matching, assignment, fallthrough, other early
+returns, loops, effects, inference, actions, runtimes, targets, adapters, UI, and deployment remain
+excluded. No successor is implied; another slice requires a new founder decision and separate
+implementation approval.
+
 ## Accepted v0.49.0 boundary — bounded two-carrier matching
 
 `v0.49.0` widens only the occurrence count accepted through v0.48. One public pure method with one

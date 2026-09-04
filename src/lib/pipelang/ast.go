@@ -717,7 +717,60 @@ func terminalBranchLocalShape(expr Expr, limit int) (int, bool) {
 	}
 }
 
+func terminalBranchTail(expr Expr) (int, Expr, bool) {
+	count := 0
+	current := expr
+	for {
+		local, ok := current.(*ImmutableLocalExpr)
+		if !ok {
+			return count, current, current != nil
+		}
+		count++
+		if local.Initializer == nil || local.Return == nil || !validConditionalOperand(local.Initializer) {
+			return count, nil, false
+		}
+		current = local.Return
+	}
+}
+
+func validV740NestedTerminalIf(expr Expr) bool {
+	outer, ok := expr.(*ConditionalExpr)
+	if !ok || !outer.TerminalStatement || outer.Condition == nil || outer.WhenTrue == nil || outer.WhenFalse == nil || !validConditionalOperand(outer.Condition) {
+		return false
+	}
+	validNested := func(branch Expr) bool {
+		_, tail, valid := terminalBranchTail(branch)
+		nested, ok := tail.(*ConditionalExpr)
+		if !valid || !ok || !nested.TerminalStatement || nested.Condition == nil || nested.WhenTrue == nil || nested.WhenFalse == nil {
+			return false
+		}
+		if _, local := nested.WhenTrue.(*ImmutableLocalExpr); local {
+			return false
+		}
+		if _, local := nested.WhenFalse.(*ImmutableLocalExpr); local {
+			return false
+		}
+		return validConditionalOperand(nested.Condition) && validConditionalOperand(nested.WhenTrue) && validConditionalOperand(nested.WhenFalse)
+	}
+	validOrdinary := func(branch Expr) bool {
+		_, tail, valid := terminalBranchTail(branch)
+		if !valid {
+			return false
+		}
+		if _, nested := tail.(*ConditionalExpr); nested {
+			return false
+		}
+		return validConditionalOperand(tail)
+	}
+	trueNested, falseNested := validNested(outer.WhenTrue), validNested(outer.WhenFalse)
+	return countConditionalExpressions(expr) == 2 && countTerminalIfStatements(expr) == 2 &&
+		((trueNested && validOrdinary(outer.WhenFalse)) || (falseNested && validOrdinary(outer.WhenTrue)))
+}
+
 func validTerminalIfStatement(contract LanguageContract, expr Expr) bool {
+	if contract == PipeLangLanguageContractV740 {
+		return validTerminalIfStatement(PipeLangLanguageContractV730, expr) || validV740NestedTerminalIf(expr)
+	}
 	locals := 0
 	current := expr
 	for {

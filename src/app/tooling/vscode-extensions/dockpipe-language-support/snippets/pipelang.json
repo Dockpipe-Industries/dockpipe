@@ -750,5 +750,21 @@
       "}"
     ],
     "description": "Create the v0.73.0 terminal if/else form as the complete method body without a preceding top-level local."
+  },
+  "PipeLang nested terminal if/else": {
+    "prefix": "pipe-nested-terminal-if",
+    "body": [
+      "public ${1:string} ${2:Select}(${1:string} ${3:raw}, bool ${4:enabled}, bool ${5:normalize}) {",
+      "\tif (${4:enabled}) {",
+      "\t\t${1:string} ${6:cleaned} = trim(${3:raw});",
+      "\t\tif (${5:normalize}) {",
+      "\t\t\treturn ${6:cleaned};",
+      "\t\t}",
+      "\t\telse { return ${3:raw}; }",
+      "\t}",
+      "\telse { return ${7:\"disabled\"}; }",
+      "}"
+    ],
+    "description": "Create the v0.74.0 bounded terminal if/else with exactly one nested terminal decision and direct inner returns."
   }
 }
