@@ -1812,6 +1812,43 @@ than the direct propagated local, private/cross-class/mismatched/overloaded/gene
 inference, reassignment, statements, effects, actions, runtimes, targets, adapters, UI, and
 deployment remain excluded. No behavior enters by implication.
 
+### PipeLang v0.60.0: two-stage bounded cross-payload Result propagation
+
+`v0.60.0` adds one exact two-stage target-shaping propagation form:
+
+```pipe
+public Result<List<SyntaxNode>, string> Compile(Result<string, string> scanned) {
+    string source = propagate(scanned);
+    Result<List<Token>, string> tokenized = BuildTokens(source);
+    List<Token> tokens = propagate(tokenized);
+    return BuildSyntax(tokens);
+}
+```
+
+The public pure method has exactly one direct `Result<T, string>` parameter and returns
+`Result<V, string>`. Its first local propagates that carrier to `T`; its second local stores one
+exact public pure same-class `T -> Result<U, string>` helper call; its third local directly
+propagates that explicit carrier to `U`; and its terminal expression calls one exact public pure
+same-class `U -> Result<V, string>` helper. `T`, `U`, and `V` are each `string` or `List<R>` for an
+existing public primitive-field record. Adjacent payloads must differ; the source and target may be
+equal.
+
+Every complete carrier is validated once. Each successful text or list payload is copied before
+the next helper receives it. Incoming failure skips both helpers; intermediate failure skips the
+terminal helper. Either failure is reshaped to the canonical target `Result<V, string>`, preserving
+copied validated error text and the target payload's canonical zero. Typed HIR and target-neutral
+Core reuse existing immutable-local, propagation, reference, and call nodes.
+`pipelang.compiler.v1`, `pipelang.semantic.v1`, and `dockpipe.application.v1` identities and shapes
+remain unchanged; only language metadata advances to `v0.60.0`. The exact 45-source legacy lane
+remains frozen.
+
+The inherited v0.54-v0.59 forms remain exact. General `K`-stage Result chains, same-payload adjacent
+stages, extra parameters or locals, arbitrary failure types, computed carriers,
+`propagate(Helper(...))`, helper propagation, helper arguments other than the direct preceding
+payload local, private/cross-class/mismatched/overloaded/generic helpers, inference, reassignment,
+statements, branches, loops, effects, actions, runtimes, targets, adapters, UI, and deployment
+remain excluded. No behavior enters by implication.
+
 ### Target-neutral Application IR
 
 `dockpipe.application.v1` is not a language feature or target generator. It consumes the public
