@@ -1427,3 +1427,17 @@ conditional expressions within the topology, propagation, matching, assignment, 
 other early returns, loops, effects, and inference remain excluded. This slice adds no workflow,
 runtime, action, target, adapter, UI, or deployment behavior. Any successor requires a new founder
 decision and separate implementation approval.
+
+## Checkpoint v0.80.0 complete contract
+
+The founder selected option A and separately approved implementation. The new form expands
+exactly two of four leaves on the symmetric depth-two base: five conditionals, six return paths,
+maximum depth three, optional root locals, and finite ordered typed locals in every lexical scope.
+All six leaf pairs are supported. Existing versioned forms and the frozen 45-source lane remain
+unchanged. See the [canonical contract](../../../concepts/pipelang.md#pipelang-v0800-two-expanded-terminal-leaves)
+for semantics and exclusions.
+
+Core independently validates topology, types, scope, and terminal placement; the backend rejects
+malformed Core. HIR/Core node shapes and public compiler, semantic, and Application IR identities
+remain stable. A third expansion, depth four, or an asymmetric depth-three base is not admitted.
+Any successor requires a fresh founder selection and separate implementation approval.

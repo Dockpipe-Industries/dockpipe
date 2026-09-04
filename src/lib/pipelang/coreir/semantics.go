@@ -268,7 +268,7 @@ func ValidateFunction(function Function) error {
 
 func ValidateProgram(program Program) error {
 	inheritedContract := program.LanguageContract
-	if inheritedContract == LanguageContractV790 || inheritedContract == LanguageContractV780 || inheritedContract == LanguageContractV770 || inheritedContract == LanguageContractV760 || inheritedContract == LanguageContractV750 || inheritedContract == LanguageContractV740 {
+	if inheritedContract == LanguageContractV800 || inheritedContract == LanguageContractV790 || inheritedContract == LanguageContractV780 || inheritedContract == LanguageContractV770 || inheritedContract == LanguageContractV760 || inheritedContract == LanguageContractV750 || inheritedContract == LanguageContractV740 {
 		inheritedContract = LanguageContractV730
 	}
 	functions := make(map[string]Function, len(program.Functions))
@@ -595,6 +595,14 @@ func validSymmetricNestedTerminalIf(expression Expr, requireRoot bool) bool {
 }
 
 func validV790BoundedDepthThreeTerminalIf(expression Expr) bool {
+	return validExpandedDepthThreeTerminalIf(expression, 1)
+}
+
+func validV800TwoExpandedTerminalIf(expression Expr) bool {
+	return validExpandedDepthThreeTerminalIf(expression, 2)
+}
+
+func validExpandedDepthThreeTerminalIf(expression Expr, expandedLeaves int) bool {
 	_, tail, valid := terminalBranchTail(expression)
 	outer := tail.Conditional
 	if !valid || tail.Kind != ExprConditional || outer == nil || !outer.TerminalStatement || outer.Condition == nil || outer.WhenTrue == nil || outer.WhenFalse == nil || !validConditionalOperand(*outer.Condition) {
@@ -630,10 +638,19 @@ func validV790BoundedDepthThreeTerminalIf(expression Expr) bool {
 	}
 	trueThird, validTrue := classifyInner(*outer.WhenTrue)
 	falseThird, validFalse := classifyInner(*outer.WhenFalse)
-	return validTrue && validFalse && trueThird+falseThird == 1 && countConditionalExpressions(expression) == 4 && countTerminalIfStatements(expression) == 4
+	return validTrue && validFalse && trueThird+falseThird == expandedLeaves && countConditionalExpressions(expression) == 3+expandedLeaves && countTerminalIfStatements(expression) == 3+expandedLeaves
 }
 
 func validateImmutableLocalContract(contract string, function Function) error {
+	if contract == LanguageContractV800 {
+		if validV800TwoExpandedTerminalIf(function.Body) {
+			return nil
+		}
+		if countTerminalIfStatements(function.Body) >= 5 {
+			return fmt.Errorf("function %s v0.80.0 permits exactly two expanded leaves on a symmetric depth-two terminal base; additional expansion or depth, asymmetric bases, conditional expressions, propagation, match, and fallthrough are excluded", function.Name)
+		}
+		return validateImmutableLocalContract(LanguageContractV790, function)
+	}
 	if contract == LanguageContractV790 {
 		if validV790BoundedDepthThreeTerminalIf(function.Body) {
 			return nil
@@ -1271,6 +1288,15 @@ func exprContainsPropagation(expression Expr) bool {
 }
 
 func validateConditionalContract(contract string, function Function) error {
+	if contract == LanguageContractV800 {
+		if validV800TwoExpandedTerminalIf(function.Body) {
+			return nil
+		}
+		if countTerminalIfStatements(function.Body) >= 5 {
+			return fmt.Errorf("function %s v0.80.0 permits exactly two expanded leaves on a symmetric depth-two terminal base; additional expansion or depth, asymmetric bases, conditional expressions, propagation, match, and fallthrough are excluded", function.Name)
+		}
+		return validateConditionalContract(LanguageContractV790, function)
+	}
 	if contract == LanguageContractV790 {
 		if validV790BoundedDepthThreeTerminalIf(function.Body) {
 			return nil

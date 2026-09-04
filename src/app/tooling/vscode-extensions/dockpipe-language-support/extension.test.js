@@ -550,3 +550,10 @@ assert(boundedDepthThree.body.some((line) => line.includes("if (${4:outer})")));
 assert(boundedDepthThree.body.some((line) => line.includes("if (${5:left})")));
 assert(boundedDepthThree.body.some((line) => line.includes("if (${6:deep})")));
 assert(boundedDepthThree.body.some((line) => line.includes("if (${7:right})")));
+
+assert(pipeLangReadme.includes("`v0.80.0`"));
+const twoExpanded = pipeLangSnippets["PipeLang two-expanded terminal if/else"];
+assert.strictEqual(twoExpanded.prefix, "pipe-two-expanded-terminal-if");
+assert(twoExpanded.description.includes("v0.80.0"));
+assert.strictEqual(twoExpanded.body.filter((line) => line.includes("if (")).length, 5);
+assert.strictEqual(twoExpanded.body.filter((line) => line.includes("return ")).length, 6);

@@ -2514,6 +2514,30 @@ public string Select(string raw, bool outer, bool left, bool deep, bool right) {
 ```
 
 
+### PipeLang v0.80.0: two expanded terminal leaves
+
+`v0.80.0` additionally permits exactly two of the four leaves of the inherited symmetric
+depth-two terminal topology to expand into third-level terminal `if/else` decisions. All six
+pairs of leaf positions are supported. The new form has five conditionals and six return paths;
+maximum depth remains three. Root locals are optional. Every scope may contain finite ordered,
+explicitly typed immutable locals, including unused locals whose initializers still execute.
+Bindings enter scope after initialization and remain visible only to lexical descendants.
+Conditions are `bool`, returns exactly match the declared method type, and only the selected
+branch executes.
+
+Existing HIR/Core `conditional` and `immutable_local` nodes are reused. Core independently
+checks the exact topology, types, local positions, scope, and terminal placement; the Go backend
+refuses malformed Core. Generated Go preserves initializer execution for unused locals.
+All earlier versioned source forms remain unchanged. `pipelang.compiler.v1`,
+`pipelang.semantic.v1`, and `dockpipe.application.v1` identities and shapes stay stable;
+only language metadata advances. The frozen compatibility lane remains exactly 45 sources.
+
+A third or fourth expanded leaf, depth four, asymmetric depth-three bases, conditional expressions
+within this topology, propagation, matching, assignment, fallthrough, other early returns, loops,
+effects, and inference remain excluded. No workflow, runtime, action, target, adapter, UI, or
+deployment behavior is added. A successor requires a fresh founder decision and separate
+implementation approval.
+
 ### Target-neutral Application IR
 
 `dockpipe.application.v1` is not a language feature or target generator. It consumes the public

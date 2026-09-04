@@ -845,6 +845,14 @@ func validSymmetricNestedTerminalIf(expr Expr, requireRoot bool) bool {
 }
 
 func validV790BoundedDepthThreeTerminalIf(expr Expr) bool {
+	return validExpandedDepthThreeTerminalIf(expr, 1)
+}
+
+func validV800TwoExpandedTerminalIf(expr Expr) bool {
+	return validExpandedDepthThreeTerminalIf(expr, 2)
+}
+
+func validExpandedDepthThreeTerminalIf(expr Expr, expandedLeaves int) bool {
 	_, tail, valid := terminalBranchTail(expr)
 	outer, ok := tail.(*ConditionalExpr)
 	if !valid || !ok || !outer.TerminalStatement || outer.Condition == nil || outer.WhenTrue == nil || outer.WhenFalse == nil || !validConditionalOperand(outer.Condition) {
@@ -886,10 +894,13 @@ func validV790BoundedDepthThreeTerminalIf(expr Expr) bool {
 	}
 	trueThird, validTrue := classifyInner(outer.WhenTrue)
 	falseThird, validFalse := classifyInner(outer.WhenFalse)
-	return validTrue && validFalse && trueThird+falseThird == 1 && countConditionalExpressions(expr) == 4 && countTerminalIfStatements(expr) == 4
+	return validTrue && validFalse && trueThird+falseThird == expandedLeaves && countConditionalExpressions(expr) == 3+expandedLeaves && countTerminalIfStatements(expr) == 3+expandedLeaves
 }
 
 func validTerminalIfStatement(contract LanguageContract, expr Expr) bool {
+	if contract == PipeLangLanguageContractV800 {
+		return validTerminalIfStatement(PipeLangLanguageContractV790, expr) || validV800TwoExpandedTerminalIf(expr)
+	}
 	if contract == PipeLangLanguageContractV790 {
 		return validTerminalIfStatement(PipeLangLanguageContractV780, expr) || validV790BoundedDepthThreeTerminalIf(expr)
 	}
