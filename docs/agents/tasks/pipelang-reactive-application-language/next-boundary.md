@@ -1,5 +1,9 @@
 ## Exact Next Boundary
 
+The immediate work is the founder-requested [six v0.80 milestone repairs](milestone-v080-repairs.md).
+Complete those repairs before moving to another language slice. The accepted language boundaries
+below remain unchanged; they do not select a successor.
+
 Steps 7 and 8a of **Bounded Implementation Order** have completed the fixed numeric, compiler-internal
 checked-arithmetic Result, and direct production-source checked add, subtract, multiply, negate,
 binary64 divide, first-class arithmetic Result transport, ordinal Unicode text ordering, and
