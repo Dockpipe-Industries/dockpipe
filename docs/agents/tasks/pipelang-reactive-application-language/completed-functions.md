@@ -905,3 +905,26 @@ zero top-level locals, escaping bindings, propagation, match, assignment, fallth
 returns, loops, effects, inference, actions, runtimes, targets, adapters, UI, and deployment remain
 excluded. No successor is implied; another slice requires a new founder decision and separate
 implementation approval.
+
+## Step 8am — direct terminal `if/else` (`v0.73.0`)
+
+Production source removes only the v0.72 top-level-local prerequisite. One public pure method may
+use the existing terminal statement-level `if/else` as its complete body. Either branch may return
+directly or contain any finite source-ordered sequence of explicitly typed immutable locals followed
+by its return. Each local enters scope only after its initializer; later locals may reference
+earlier locals in the same branch. Opposing branches remain independent lexical scopes, may reuse
+names and canonical binding positions, evaluate only when selected, and cannot leak bindings.
+
+Typed HIR and target-neutral Core reuse the existing root `conditional` and nested
+`immutable_local` expressions; no new node or schema is introduced. Source and Core validation
+prove unique root terminal placement, complete branch sequences, exact typing, canonical positions,
+lexical references, and absence of nested branching. Evaluation and deterministic Core-only Go
+preserve source order and lazy selected-branch execution. `pipelang.compiler.v1`,
+`pipelang.semantic.v1`, and `dockpipe.application.v1` stay stable; Application IR changes only its
+language metadata to `v0.73.0`; the exact 45-source compatibility lane remains frozen.
+
+The inherited v0.69-v0.72 forms with top-level locals remain valid. Ordinary zero-local blocks,
+nested branches, escaping bindings, propagation, matching, assignment, fallthrough, other early
+returns, loops, effects, inference, actions, runtimes, targets, adapters, UI, and deployment remain
+excluded. No successor is implied; another slice requires a new founder decision and separate
+implementation approval.

@@ -2261,6 +2261,36 @@ excluded. `pipelang.compiler.v1`, `pipelang.semantic.v1`, and `dockpipe.applicat
 unchanged; only language metadata advances to `v0.72.0`. The exact 45-source legacy lane remains
 frozen.
 
+### PipeLang v0.73.0: direct terminal `if/else`
+
+`v0.73.0` removes only the v0.72 top-level-local prerequisite. The existing terminal conditional
+may be the complete public pure method body:
+
+```pipe
+public string Select(string raw, bool normalize) {
+    if (normalize) {
+        string cleaned = trim(raw);
+        string selected = cleaned;
+        return selected;
+    } else {
+        return raw;
+    }
+}
+```
+
+Either branch may return directly or retain any finite source-ordered sequence of explicitly typed
+immutable locals followed by its return. Each local enters scope only after its initializer; later
+locals may reference earlier locals in the same branch. Opposing branches remain independent
+lexical scopes, may reuse names and canonical binding positions, execute only when selected, and
+cannot leak bindings.
+
+Typed HIR and target-neutral Core reuse the existing root `conditional` and nested
+`immutable_local` nodes. Nested branches, propagation, matching, assignment, fallthrough, other
+early returns, ordinary zero-local blocks, loops, effects, inference, actions, runtimes, targets,
+adapters, UI, and deployment remain excluded. `pipelang.compiler.v1`, `pipelang.semantic.v1`, and
+`dockpipe.application.v1` remain unchanged; only language metadata advances to `v0.73.0`. The exact
+45-source legacy lane remains frozen.
+
 ### Target-neutral Application IR
 
 `dockpipe.application.v1` is not a language feature or target generator. It consumes the public
