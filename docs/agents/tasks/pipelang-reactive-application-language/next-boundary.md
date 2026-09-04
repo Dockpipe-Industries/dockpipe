@@ -1504,3 +1504,28 @@ lane remains frozen.
 Third-level/additional nesting, conditional expressions within this topology, propagation,
 matching, assignment, fallthrough, other early returns, loops, effects, and inference remain
 excluded. This slice adds no workflow, runtime, action, target, adapter, UI, or deployment behavior.
+
+## Accepted v0.79.0 boundary — bounded depth-three terminal branching
+
+`v0.79.0` additionally permits an inherited rootful v0.77 or rootless v0.78 symmetric depth-two
+terminal topology to replace exactly one of its four terminal leaves with one additional terminal
+`if/else`. The result has exactly four terminal conditionals and five terminal return paths. The
+expanded path may contain any finite source-ordered sequence of explicitly typed immutable locals
+before the third-level decision, and both new leaves may contain the same kind of local sequence.
+All conditions are `bool`; every leaf returns exactly the declared method type. Root, outer-branch,
+expanded-path, and leaf bindings retain their lexical descendant scopes and enter scope only after
+their initializer. Only the selected path executes.
+
+Typed HIR and target-neutral Core reuse the existing terminal `conditional` and `immutable_local`
+representations. Core independently validates the exact four-conditional topology, the single
+expanded leaf, all types, binding positions, lexical references, and terminal placement; the Go
+backend refuses malformed Core. Existing v0.78 and earlier forms remain exact.
+`pipelang.compiler.v1`, `pipelang.semantic.v1`, and `dockpipe.application.v1` identities and shapes
+remain stable; only language metadata advances. The exact 45-source compatibility lane remains
+frozen.
+
+A second expanded depth-two leaf, depth four or additional nesting, a non-symmetric depth-two base,
+conditional expressions within the topology, propagation, matching, assignment, fallthrough,
+other early returns, loops, effects, and inference remain excluded. This slice adds no workflow,
+runtime, action, target, adapter, UI, or deployment behavior. Any successor requires a new founder
+decision and separate implementation approval.

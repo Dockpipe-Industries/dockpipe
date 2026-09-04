@@ -1062,3 +1062,41 @@ A broader application-suite run was stopped without a result; it is not claimed 
 Generated Go, logs, and caches were temporary. No generated store refresh, commit, push,
 publication, credentials, or external operation was performed. Any successor requires a fresh
 founder decision and separate implementation approval.
+
+## Step 8as — bounded depth-three terminal branching (`v0.79.0`)
+
+`v0.79.0` additionally permits an inherited rootful v0.77 or rootless v0.78 symmetric depth-two
+terminal topology to replace exactly one of its four terminal leaves with one additional terminal
+`if/else`. The result has exactly four terminal conditionals and five terminal return paths. The
+expanded path may contain any finite source-ordered sequence of explicitly typed immutable locals
+before the third-level decision, and both new leaves may contain the same kind of local sequence.
+All conditions are `bool`; every leaf returns exactly the declared method type. Root, outer-branch,
+expanded-path, and leaf bindings retain their lexical descendant scopes and enter scope only after
+their initializer. Only the selected path executes.
+
+Typed HIR and target-neutral Core reuse the existing terminal `conditional` and `immutable_local`
+representations. Core independently validates the exact four-conditional topology, the single
+expanded leaf, all types, binding positions, lexical references, and terminal placement; the Go
+backend refuses malformed Core. Existing v0.78 and earlier forms remain exact.
+`pipelang.compiler.v1`, `pipelang.semantic.v1`, and `dockpipe.application.v1` identities and shapes
+remain stable; only language metadata advances. The exact 45-source compatibility lane remains
+frozen.
+
+A second expanded depth-two leaf, depth four or additional nesting, a non-symmetric depth-two base,
+conditional expressions within the topology, propagation, matching, assignment, fallthrough,
+other early returns, loops, effects, and inference remain excluded. This slice adds no workflow,
+runtime, action, target, adapter, UI, or deployment behavior.
+
+The founder selected option A and separately approved implementation. Offline proof with the
+cached Go 1.25.0 toolchain passed the full PipeLang/Core and Application IR suites, focused
+application PipeLang CLI tests, the full `src/cmd` suite, the exact frozen 45-source compatibility
+test, and vet for the affected compiler, Application IR, application, and CLI packages. New tests
+cover all five evaluator and deterministic generated-Go compile/run paths, rootful and rootless
+forms, the v0.78 source/Core/backend gate, v0.69-v0.78 inheritance, zero and multiple local
+sequences, source exclusions, and malformed Core/backend refusal. Editor assertions, JavaScript
+syntax, JSON/YAML parsing, and diff checks passed. TASK-020's `DisplayMode` consumer exercises all
+five paths; its canonical Application IR golden changes only language metadata to `v0.79.0`.
+
+Generated Go and Go caches were temporary under `/tmp`. No generated store refresh, commit, push,
+publication, credentials, or external operation was performed. Any successor requires a fresh
+founder decision and separate implementation approval.

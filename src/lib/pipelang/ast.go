@@ -844,7 +844,55 @@ func validSymmetricNestedTerminalIf(expr Expr, requireRoot bool) bool {
 	return countConditionalExpressions(expr) == 3 && countTerminalIfStatements(expr) == 3 && validNested(outer.WhenTrue) && validNested(outer.WhenFalse)
 }
 
+func validV790BoundedDepthThreeTerminalIf(expr Expr) bool {
+	_, tail, valid := terminalBranchTail(expr)
+	outer, ok := tail.(*ConditionalExpr)
+	if !valid || !ok || !outer.TerminalStatement || outer.Condition == nil || outer.WhenTrue == nil || outer.WhenFalse == nil || !validConditionalOperand(outer.Condition) {
+		return false
+	}
+	validLeaf := func(branch Expr) bool {
+		_, leaf, valid := terminalBranchTail(branch)
+		if !valid {
+			return false
+		}
+		if _, nested := leaf.(*ConditionalExpr); nested {
+			return false
+		}
+		return validConditionalOperand(leaf)
+	}
+	classifyDepthTwoLeaf := func(branch Expr) (int, bool) {
+		_, leaf, valid := terminalBranchTail(branch)
+		if !valid {
+			return 0, false
+		}
+		third, nested := leaf.(*ConditionalExpr)
+		if !nested {
+			return 0, validConditionalOperand(leaf)
+		}
+		if !third.TerminalStatement || third.Condition == nil || third.WhenTrue == nil || third.WhenFalse == nil || !validConditionalOperand(third.Condition) {
+			return 0, false
+		}
+		return 1, validLeaf(third.WhenTrue) && validLeaf(third.WhenFalse)
+	}
+	classifyInner := func(branch Expr) (int, bool) {
+		_, nestedTail, valid := terminalBranchTail(branch)
+		inner, ok := nestedTail.(*ConditionalExpr)
+		if !valid || !ok || !inner.TerminalStatement || inner.Condition == nil || inner.WhenTrue == nil || inner.WhenFalse == nil || !validConditionalOperand(inner.Condition) {
+			return 0, false
+		}
+		trueThird, validTrue := classifyDepthTwoLeaf(inner.WhenTrue)
+		falseThird, validFalse := classifyDepthTwoLeaf(inner.WhenFalse)
+		return trueThird + falseThird, validTrue && validFalse
+	}
+	trueThird, validTrue := classifyInner(outer.WhenTrue)
+	falseThird, validFalse := classifyInner(outer.WhenFalse)
+	return validTrue && validFalse && trueThird+falseThird == 1 && countConditionalExpressions(expr) == 4 && countTerminalIfStatements(expr) == 4
+}
+
 func validTerminalIfStatement(contract LanguageContract, expr Expr) bool {
+	if contract == PipeLangLanguageContractV790 {
+		return validTerminalIfStatement(PipeLangLanguageContractV780, expr) || validV790BoundedDepthThreeTerminalIf(expr)
+	}
 	if contract == PipeLangLanguageContractV780 {
 		return validTerminalIfStatement(PipeLangLanguageContractV770, expr) || validSymmetricNestedTerminalIf(expr, false)
 	}
