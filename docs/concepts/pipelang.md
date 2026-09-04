@@ -234,6 +234,16 @@ artifact admission. Source-syntax gates remain distinct: checked arithmetic and 
 representation already belong to internal v0.1.0 Core, and v0.33.0 postfix indexing reuses the
 v0.20.0 `list_at` operation.
 
+Executable Core type validation is exhaustive: primitives are `string`/`bool`; numerics are
+signed 64-bit integers or IEEE-754 binary64 (`signed: false`);
+`ArithmeticError` remains an internal type; records, Optional, record lists, and Results retain
+their existing bounded shapes. Every type carries only its kind's representation. Validation
+checks nested payloads and record fields, all parameter and return types, every expression type,
+local declarations, and propagation carriers, including unused or unselected code. Unknown kinds,
+source-only primitive `int`/`float` or named/applied executable types, unsupported numeric widths,
+and contradictory representations fail before evaluation or Go generation. Semantic callable
+identities continue to use source-level names independently of executable type normalization.
+
 The proven fixture is the existing-syntax pure function `Ready(int count) => count > 0`. Its HIR,
 Core, and generated-Go bytes are golden-tested; generated Go is compiled and executed under a
 temporary offline module, and its result matches the existing pure evaluator. The first backend

@@ -115,8 +115,8 @@ func TestCoreAdmissionFeatureFixtures(t *testing.T) {
 	}
 	for _, path := range paths {
 		name := strings.TrimSuffix(filepath.Base(path), ".core.json")
-		// The historical tiny fixture uses pre-normalization primitive numeric types.
-		// Exercise v0.1 through the current lowering path in SupportedVersions instead.
+		// This normalized fixture uses numeric comparison, which the evaluator
+		// does not yet execute. R4 separately covers its admission and Go golden.
 		if name == "tiny-pure-function" {
 			continue
 		}
