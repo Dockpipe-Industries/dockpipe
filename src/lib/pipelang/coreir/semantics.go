@@ -266,7 +266,13 @@ func ValidateFunction(function Function) error {
 	return nil
 }
 
+// ValidateProgram admits exact compiler/language identities and validates all
+// functions against their versioned Core feature and composition contracts.
 func ValidateProgram(program Program) error {
+	version, err := validateProgramIdentity(program)
+	if err != nil {
+		return err
+	}
 	inheritedContract := program.LanguageContract
 	if inheritedContract == LanguageContractV800 || inheritedContract == LanguageContractV790 || inheritedContract == LanguageContractV780 || inheritedContract == LanguageContractV770 || inheritedContract == LanguageContractV760 || inheritedContract == LanguageContractV750 || inheritedContract == LanguageContractV740 {
 		inheritedContract = LanguageContractV730
@@ -278,6 +284,9 @@ func ValidateProgram(program Program) error {
 		}
 		if err := ValidateFunction(function); err != nil {
 			return fmt.Errorf("function %s: %w", function.Name, err)
+		}
+		if err := validateFeatureContract(version, function); err != nil {
+			return err
 		}
 		key := function.Identity.PackageID + "\x00" + function.Identity.Path
 		if _, exists := functions[key]; exists {
