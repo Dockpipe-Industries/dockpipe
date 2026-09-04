@@ -235,7 +235,7 @@ or public semantic identities. The backend checks the complete emitted package n
 returning Go source.
 
 Core program admission accepts only `pipelang.compiler.v1` and the exact supported language
-identities `v0.1.0` through `v0.80.0`. `coreir.ValidateProgram` checks feature availability in
+identities `v0.1.0` through `v0.81.0`. `coreir.ValidateProgram` checks feature availability in
 signatures and nested expressions, together with the existing composition and topology contracts.
 `coreeval.EvaluateProgram` and the Go backend use that same admission before executing or emitting
 anything, including when a disallowed feature occurs in an uncalled function or unused parameter.
@@ -2587,6 +2587,51 @@ within this topology, propagation, matching, assignment, fallthrough, other earl
 effects, and inference remain excluded. No workflow, runtime, action, target, adapter, UI, or
 deployment behavior is added. A successor requires a fresh founder decision and separate
 implementation approval.
+
+### PipeLang v0.81.0: terminal trees through depth three
+
+`v0.81.0` admits any binary terminal `if/else` tree with at most three decisions along
+one root-to-return path. Both symmetric and asymmetric trees are supported, including three
+or four expanded leaves on the symmetric depth-two base. The bound permits at most seven
+conditionals and eight return paths. Each lexical scope admits zero or more finite,
+source-ordered, explicitly typed immutable locals followed by a terminal decision or return.
+There is no new limit on the number of local declarations.
+
+Every condition is `bool`, and every leaf returns exactly the declared method type. Bindings
+enter scope after initialization and remain visible only to lexical descendants. Self/forward
+references, duplicate names, shadowing, sibling references, and escaping bindings are invalid.
+Root initializers run eagerly once before the root condition; selected-path initializers and
+conditions run once in source order. Unselected branches do not execute, and unused locals
+still evaluate their initializers.
+
+```pipe
+public Class Classifier {
+    public string Select(string raw, bool enabled, bool normalize, bool detailed) {
+        string shared = trim(raw);
+        if (enabled) {
+            if (normalize) {
+                string selected = shared;
+                if (detailed) { return selected + "!"; } else { return selected; }
+            } else { return raw; }
+        } else { return "disabled"; }
+    }
+}
+```
+
+Source analysis produces typed HIR and target-neutral Core using the existing terminal
+`conditional` and `immutable_local` nodes. Core independently validates depth, complete branches,
+terminal placement, exact types, binding positions, and lexical scope. Evaluation and Core-only
+Go generation preserve the same behavior; the backend refuses malformed Core. Public
+`pipelang.compiler.v1`, `pipelang.semantic.v1`, and `dockpipe.application.v1` identities and
+shapes remain unchanged. Application IR consumes matching semantic/Core identities without
+reparsing source. Earlier versioned forms, internal Core capabilities, and the exact frozen
+45-source compatibility lane remain unchanged.
+
+Depth four, fallthrough, nonterminal/early returns, assignment, loops, effects, inference, and
+new combinations with conditional expressions, matching, or propagation remain excluded.
+Previously accepted expression/statement combinations remain available under their inherited
+rules. This slice adds no runtime, action, target, adapter, UI, deployment, or self-hosted compiler
+implementation. Numeric-comparison evaluator parity remains separate work.
 
 ### Target-neutral Application IR
 

@@ -1,9 +1,11 @@
 # TASK-021 PipeLang Deterministic Self-Hosting Managed Language Foundation
 
-Current work: the founder requested [six v0.80 milestone repair slices](milestone-v080-repairs.md)
-on 2026-09-04 before further language expansion. That record owns the findings, repair scope,
-per-slice state, and verification. All six repairs and terminal checks are complete; R6 is
-uncommitted for founder review. No successor is selected. The language contract remains `v0.80.0`.
+Current work: **v0.81.0 terminal trees through depth three is implemented and verified** after
+founder selection of A and separate implementation approval on 2026-09-04. The
+[completion record](completed-functions.md#step-8au-terminal-trees-through-depth-three-v0810)
+owns proof and deferred findings. Changes are uncommitted and ready for founder review;
+[next-boundary.md](next-boundary.md) records the completed objective without selecting a successor.
+The preceding [six milestone repairs](milestone-v080-repairs.md) remain committed at `acbd10f8`.
 
 ## Decision Status
 
@@ -11,8 +13,8 @@ The `vNext` foundation decision packet in this record is **accepted** as of 2026
 fixes semantics, compiler boundaries, bootstrap stages, compatibility, and implementation order;
 examples and fixtures remain non-normative and accept no production syntax. Separately authorized
 bounded objectives have completed implementation-order steps 1 through 6, step-7 slices 7a
-through 7ae, and bounded Step-8 function seams 8a through 8at. The current explicit language
-contract is `v0.80.0`; the separately versioned read-only projection is
+through 7ae, and bounded Step-8 function seams 8a through 8au. The current explicit language
+contract is `v0.81.0`; the separately versioned read-only projection is
 `dockpipe.application.v1`; the frozen `v0.0.0.1` lane remains unchanged. This record does not by itself
 authorize another language slice.
 
