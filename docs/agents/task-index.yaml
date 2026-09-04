@@ -88,7 +88,7 @@ tasks:
       ownership: unclaimed
   - id: TASK-021
     topic: PipeLang deterministic self-hosting managed language foundation
-    completed_language_contract: v0.78.0
+    completed_language_contract: v0.79.0
     path: docs/agents/tasks/pipelang-reactive-application-language/index.yaml
     dispatch:
       readiness: decision_ready

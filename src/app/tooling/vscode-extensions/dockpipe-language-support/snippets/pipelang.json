@@ -843,5 +843,27 @@
       "}"
     ],
     "description": "Create the v0.78.0 rootless symmetric depth-two terminal if/else with typed lexical branch and leaf locals."
+  },
+  "PipeLang bounded depth-three terminal if/else": {
+    "prefix": "pipe-bounded-depth-three-terminal-if",
+    "body": [
+      "public ${1:string} ${2:Select}(${1:string} ${3:raw}, bool ${4:outer}, bool ${5:left}, bool ${6:deep}, bool ${7:right}) {",
+      "\tif (${4:outer}) {",
+      "\t\t${1:string} ${8:trueValue} = ${3:raw};",
+      "\t\tif (${5:left}) {",
+      "\t\t\t${1:string} ${9:deepValue} = ${8:trueValue};",
+      "\t\t\tif (${6:deep}) { ${1:string} ${10:selectedDeep} = ${9:deepValue}; return ${10:selectedDeep}; }",
+      "\t\t\telse { return ${11:\"deep-false\"}; }",
+      "\t\t}",
+      "\t\telse { return ${12:\"outer-true\"}; }",
+      "\t}",
+      "\telse {",
+      "\t\t${1:string} ${13:falseValue} = ${3:raw};",
+      "\t\tif (${7:right}) { return ${13:falseValue}; }",
+      "\t\telse { return ${14:\"outer-false\"}; }",
+      "\t}",
+      "}"
+    ],
+    "description": "Create the v0.79.0 bounded depth-three terminal if/else by expanding exactly one leaf of a symmetric depth-two topology."
   }
 }

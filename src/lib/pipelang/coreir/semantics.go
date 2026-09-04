@@ -268,7 +268,7 @@ func ValidateFunction(function Function) error {
 
 func ValidateProgram(program Program) error {
 	inheritedContract := program.LanguageContract
-	if inheritedContract == LanguageContractV780 || inheritedContract == LanguageContractV770 || inheritedContract == LanguageContractV760 || inheritedContract == LanguageContractV750 || inheritedContract == LanguageContractV740 {
+	if inheritedContract == LanguageContractV790 || inheritedContract == LanguageContractV780 || inheritedContract == LanguageContractV770 || inheritedContract == LanguageContractV760 || inheritedContract == LanguageContractV750 || inheritedContract == LanguageContractV740 {
 		inheritedContract = LanguageContractV730
 	}
 	functions := make(map[string]Function, len(program.Functions))
@@ -594,7 +594,55 @@ func validSymmetricNestedTerminalIf(expression Expr, requireRoot bool) bool {
 	return countConditionalExpressions(expression) == 3 && countTerminalIfStatements(expression) == 3 && validNested(*outer.WhenTrue) && validNested(*outer.WhenFalse)
 }
 
+func validV790BoundedDepthThreeTerminalIf(expression Expr) bool {
+	_, tail, valid := terminalBranchTail(expression)
+	outer := tail.Conditional
+	if !valid || tail.Kind != ExprConditional || outer == nil || !outer.TerminalStatement || outer.Condition == nil || outer.WhenTrue == nil || outer.WhenFalse == nil || !validConditionalOperand(*outer.Condition) {
+		return false
+	}
+	validLeaf := func(branch Expr) bool {
+		_, leaf, valid := terminalBranchTail(branch)
+		return valid && leaf.Kind != ExprConditional && validConditionalOperand(leaf)
+	}
+	classifyDepthTwoLeaf := func(branch Expr) (int, bool) {
+		_, leaf, valid := terminalBranchTail(branch)
+		if !valid {
+			return 0, false
+		}
+		if leaf.Kind != ExprConditional {
+			return 0, validConditionalOperand(leaf)
+		}
+		third := leaf.Conditional
+		if third == nil || !third.TerminalStatement || third.Condition == nil || third.WhenTrue == nil || third.WhenFalse == nil || !validConditionalOperand(*third.Condition) {
+			return 0, false
+		}
+		return 1, validLeaf(*third.WhenTrue) && validLeaf(*third.WhenFalse)
+	}
+	classifyInner := func(branch Expr) (int, bool) {
+		_, nestedTail, valid := terminalBranchTail(branch)
+		inner := nestedTail.Conditional
+		if !valid || nestedTail.Kind != ExprConditional || inner == nil || !inner.TerminalStatement || inner.Condition == nil || inner.WhenTrue == nil || inner.WhenFalse == nil || !validConditionalOperand(*inner.Condition) {
+			return 0, false
+		}
+		trueThird, validTrue := classifyDepthTwoLeaf(*inner.WhenTrue)
+		falseThird, validFalse := classifyDepthTwoLeaf(*inner.WhenFalse)
+		return trueThird + falseThird, validTrue && validFalse
+	}
+	trueThird, validTrue := classifyInner(*outer.WhenTrue)
+	falseThird, validFalse := classifyInner(*outer.WhenFalse)
+	return validTrue && validFalse && trueThird+falseThird == 1 && countConditionalExpressions(expression) == 4 && countTerminalIfStatements(expression) == 4
+}
+
 func validateImmutableLocalContract(contract string, function Function) error {
+	if contract == LanguageContractV790 {
+		if validV790BoundedDepthThreeTerminalIf(function.Body) {
+			return nil
+		}
+		if countTerminalIfStatements(function.Body) >= 4 {
+			return fmt.Errorf("function %s v0.79.0 permits an inherited rootful or rootless symmetric depth-two terminal if/else with exactly one of its four leaves expanded into one third-level terminal if/else", function.Name)
+		}
+		return validateImmutableLocalContract(LanguageContractV780, function)
+	}
 	if contract == LanguageContractV780 {
 		if validSymmetricNestedTerminalIf(function.Body, false) {
 			return nil
@@ -1223,6 +1271,15 @@ func exprContainsPropagation(expression Expr) bool {
 }
 
 func validateConditionalContract(contract string, function Function) error {
+	if contract == LanguageContractV790 {
+		if validV790BoundedDepthThreeTerminalIf(function.Body) {
+			return nil
+		}
+		if countTerminalIfStatements(function.Body) >= 4 {
+			return fmt.Errorf("function %s v0.79.0 permits an inherited rootful or rootless symmetric depth-two terminal if/else with exactly one expanded leaf; additional expansion or depth, conditional expressions within the topology, propagation, match, and fallthrough are excluded", function.Name)
+		}
+		return validateConditionalContract(LanguageContractV780, function)
+	}
 	if contract == LanguageContractV780 {
 		if validSymmetricNestedTerminalIf(function.Body, false) {
 			return nil

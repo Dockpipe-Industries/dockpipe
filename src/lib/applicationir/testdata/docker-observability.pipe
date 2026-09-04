@@ -33,13 +33,18 @@ public Class DockerApplication {
 		string selected = normalized == "" ? fallback : normalized;
 		return selected;
 	}
-	public string DisplayMode(string raw, bool enabled, bool normalize) {
+	public string DisplayMode(string raw, bool enabled, bool normalize, bool detailed) {
 		if (enabled) {
 			string cleaned = trim(raw);
 			if (normalize) {
 				string normalized = NormalizeName(cleaned);
-				string selected = normalized;
-				return selected;
+				if (detailed) {
+					string selected = normalized;
+					return selected;
+				} else {
+					string selected = cleaned;
+					return selected;
+				}
 			} else {
 				string selected = raw;
 				return selected;

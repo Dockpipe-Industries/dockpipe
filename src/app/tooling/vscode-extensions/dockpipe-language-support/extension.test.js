@@ -540,3 +540,13 @@ assert(rootlessSymmetric.description.includes("v0.78.0"));
 assert(rootlessSymmetric.body[1].includes("if (${4:outer})"));
 assert(rootlessSymmetric.body.some((line) => line.includes("if (${5:left})")));
 assert(rootlessSymmetric.body.some((line) => line.includes("if (${6:right})")));
+
+assert(pipeLangReadme.includes("`v0.79.0`"));
+assert(pipeLangReadme.includes("exactly one of its four terminal leaves"));
+const boundedDepthThree = pipeLangSnippets["PipeLang bounded depth-three terminal if/else"];
+assert.strictEqual(boundedDepthThree.prefix, "pipe-bounded-depth-three-terminal-if");
+assert(boundedDepthThree.description.includes("v0.79.0"));
+assert(boundedDepthThree.body.some((line) => line.includes("if (${4:outer})")));
+assert(boundedDepthThree.body.some((line) => line.includes("if (${5:left})")));
+assert(boundedDepthThree.body.some((line) => line.includes("if (${6:deep})")));
+assert(boundedDepthThree.body.some((line) => line.includes("if (${7:right})")));
