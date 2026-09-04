@@ -707,10 +707,10 @@ func terminalBranchLocalShape(expr Expr, limit int) (int, bool) {
 	for {
 		local, ok := current.(*ImmutableLocalExpr)
 		if !ok {
-			return count, count <= limit
+			return count, limit < 0 || count <= limit
 		}
 		count++
-		if count > limit || local.Initializer == nil || local.Return == nil {
+		if (limit >= 0 && count > limit) || local.Initializer == nil || local.Return == nil {
 			return count, false
 		}
 		current = local.Return
@@ -738,6 +738,9 @@ func validTerminalIfStatement(contract LanguageContract, expr Expr) bool {
 	}
 	if hasTwoBranchLocalsSourceContract(contract) {
 		branchLocalLimit = 2
+	}
+	if hasGeneralBranchLocalSequenceSourceContract(contract) {
+		branchLocalLimit = -1
 	}
 	trueLocals, validTrue := terminalBranchLocalShape(conditional.WhenTrue, branchLocalLimit)
 	falseLocals, validFalse := terminalBranchLocalShape(conditional.WhenFalse, branchLocalLimit)

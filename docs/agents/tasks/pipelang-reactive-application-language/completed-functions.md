@@ -881,3 +881,27 @@ branches, zero top-level locals, escaping bindings, propagation, match, assignme
 other early returns, loops, effects, inference, actions, runtimes, targets, adapters, UI, and
 deployment remain excluded. No successor is implied; another slice requires a new founder decision
 and separate implementation approval.
+
+## Step 8al — general terminal-branch local sequences (`v0.72.0`)
+
+Production source removes only the v0.71 per-branch local count ceiling. Either terminal branch may
+contain any finite source-ordered sequence of explicitly typed immutable locals followed by its
+return. Each local enters scope only after its initializer, so later locals may reference earlier
+locals in the same branch while self-reference, forward reference, duplicate names, and shadowing
+remain invalid. Opposing branches retain independent lexical scopes, may reuse names and canonical
+binding positions, evaluate only when selected, and cannot leak bindings. One or more top-level
+ordered immutable locals remain required.
+
+Typed HIR and target-neutral Core continue to use nested `immutable_local` expressions inside the
+existing terminal `conditional`; no new node or schema is introduced. Source and Core validation
+prove the complete root sequence, declaration order, exact typing, canonical positions, lexical
+references, and unique terminal placement. Evaluation and deterministic Core-only Go preserve
+source order and lazy branch selection. `pipelang.compiler.v1`, `pipelang.semantic.v1`, and
+`dockpipe.application.v1` stay stable; Application IR changes only its language metadata to
+`v0.72.0`; the exact 45-source compatibility lane remains frozen.
+
+The inherited direct-return, one-local, and two-local branch forms remain valid. Nested branches,
+zero top-level locals, escaping bindings, propagation, match, assignment, fallthrough, other early
+returns, loops, effects, inference, actions, runtimes, targets, adapters, UI, and deployment remain
+excluded. No successor is implied; another slice requires a new founder decision and separate
+implementation approval.

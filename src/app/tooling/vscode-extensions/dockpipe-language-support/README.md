@@ -1,5 +1,11 @@
 # DockPipe Language Support (VS Code)
 
+PipeLang `v0.72.0` generalizes terminal-branch locals through
+`pipe-terminal-if-branch-local-sequence`. Either branch may contain any finite source-ordered
+sequence of explicitly typed immutable locals before its return. Nested branches, zero top-level
+locals, propagation, matching, assignment, fallthrough, effects, inference, and deployment remain
+excluded.
+
 PipeLang `v0.71.0` adds a second ordered lexical immutable local per terminal branch through
 `pipe-terminal-if-branch-locals`. The second local may reference the first in its branch; a third
 branch local, nested branches, zero top-level locals, propagation, matching, assignment,

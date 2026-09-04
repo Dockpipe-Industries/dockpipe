@@ -497,3 +497,8 @@ assert.strictEqual(pipeLangSnippets["PipeLang terminal if/else with two branch l
 assert(pipeLangSnippets["PipeLang terminal if/else with two branch locals"].description.includes("v0.71.0"));
 assert(pipeLangSnippets["PipeLang terminal if/else with two branch locals"].body.some((line) => line.includes("${1:string} ${6:prepared} = trim(${5:cleaned});")));
 assert(pipeLangSnippets["PipeLang terminal if/else with two branch locals"].body.some((line) => line.includes("${1:string} ${7:selected} = ${6:prepared};")));
+assert(pipeLangReadme.includes("`v0.72.0`"));
+assert(pipeLangReadme.includes("any finite source-ordered"));
+assert.strictEqual(pipeLangSnippets["PipeLang terminal if/else with a general branch-local sequence"].prefix, "pipe-terminal-if-branch-local-sequence");
+assert(pipeLangSnippets["PipeLang terminal if/else with a general branch-local sequence"].description.includes("v0.72.0"));
+assert(pipeLangSnippets["PipeLang terminal if/else with a general branch-local sequence"].body.some((line) => line.includes("${1:string} ${8:selected} = ${7:second};")));
