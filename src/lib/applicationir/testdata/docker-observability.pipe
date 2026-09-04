@@ -34,14 +34,15 @@ public Class DockerApplication {
 		return selected;
 	}
 	public string DisplayMode(string raw, bool enabled, bool normalize) {
+		string shared = raw;
 		if (enabled) {
-			string cleaned = trim(raw);
+			string cleaned = trim(shared);
 			if (normalize) {
 				string normalized = NormalizeName(cleaned);
 				string selected = normalized;
 				return selected;
 			} else {
-				string selected = raw;
+				string selected = shared;
 				return selected;
 			}
 		} else {

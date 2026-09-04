@@ -223,6 +223,14 @@ both outer branches, another nested decision, third-level nesting, conditional e
 the topology, propagation, matching, assignment, fallthrough, other early returns, loops, effects,
 or inference.
 
+Step 8ap is complete using `v0.76.0`: one or more source-ordered explicitly typed immutable locals
+may precede the exact v0.75 one-branch bounded nested terminal topology. Root locals enter scope
+only after their initializer, evaluate eagerly once before the outer condition, and remain visible
+to that condition and every descendant branch. The inherited rootless v0.75 form remains valid.
+This seam does not admit nesting in both outer branches, another nested decision, third-level
+nesting, conditional expressions within the topology or root-local nested form, propagation,
+matching, assignment, fallthrough, other early returns, loops, effects, or inference.
+
 Each slice is independently reviewable and keeps syntax, semantics, diagnostics, projection,
 editor, tests, and any enabled backend synchronized. No permissive parser, target-owned semantics,
 or syntax-first feature batch may skip the earlier foundations.
@@ -1306,6 +1314,31 @@ the topology, propagation, matching, assignment, fallthrough, other early return
 inference, actions, runtimes, targets, adapters, UI, and deployment remain excluded. No behavior
 enters by implication. Any successor requires a new founder decision and separate implementation
 approval.
+
+## Checkpoint v0.76.0 complete contract
+
+One public pure method additionally permits one or more source-ordered explicitly typed immutable
+locals before the exact v0.75 one-branch bounded nested terminal topology. Each root local enters
+scope only after its initializer, evaluates eagerly once before the outer condition, and remains
+visible to that condition, both outer branches, and every descendant branch. Self-reference,
+forward reference, duplicate names, shadowing, and escaping bindings remain invalid. Both
+conditions remain `bool`, and all returns retain the exact declared method type.
+
+Typed HIR and target-neutral Core reuse the existing terminal `conditional` and nested
+`immutable_local` expressions; no node or schema identity changes. Core independently validates
+the root sequence, exact two-conditional topology, nesting in exactly one outer branch, complete
+branch-local sequences, exact types, canonical positions, lexical references, and excluded shapes.
+Evaluation and deterministic Core-only Go preserve eager source order before selected-branch
+execution. `pipelang.compiler.v1`, `pipelang.semantic.v1`, and `dockpipe.application.v1` remain
+stable; metadata advances to `v0.76.0`; compiler-pipeline, malformed-Core, generated-Go, editor,
+and Application IR consumer fixtures prove the boundary; the exact 45-source lane remains frozen.
+
+The inherited rootless v0.75 and v0.69-v0.74 forms remain exact. Nesting in both outer branches,
+another nested decision, third-level nesting, conditional expressions within the topology or
+root-local nested form, propagation, matching, assignment, fallthrough, other early returns,
+loops, effects, inference, actions, runtimes, targets, adapters, UI, and deployment remain
+excluded. No behavior enters by implication. Any successor requires a new founder decision and
+separate implementation approval.
 
 ## Application IR checkpoint complete contract
 

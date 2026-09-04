@@ -268,7 +268,7 @@ func ValidateFunction(function Function) error {
 
 func ValidateProgram(program Program) error {
 	inheritedContract := program.LanguageContract
-	if inheritedContract == LanguageContractV750 || inheritedContract == LanguageContractV740 {
+	if inheritedContract == LanguageContractV760 || inheritedContract == LanguageContractV750 || inheritedContract == LanguageContractV740 {
 		inheritedContract = LanguageContractV730
 	}
 	functions := make(map[string]Function, len(program.Functions))
@@ -564,10 +564,24 @@ func validV750NestedTerminalIf(expression Expr) bool {
 		((trueNested && validOrdinary(*outer.WhenFalse)) || (falseNested && validOrdinary(*outer.WhenTrue)))
 }
 
+func validV760RootLocalNestedTerminalIf(expression Expr) bool {
+	locals, tail, valid := terminalBranchTail(expression)
+	return valid && locals > 0 && validV750NestedTerminalIf(tail)
+}
+
 func validateImmutableLocalContract(contract string, function Function) error {
 	count := countImmutableLocalExpressions(function.Body)
 	if count == 0 {
 		return nil
+	}
+	if contract == LanguageContractV760 {
+		if countTerminalIfStatements(function.Body) > 1 {
+			if validV750NestedTerminalIf(function.Body) || validV760RootLocalNestedTerminalIf(function.Body) {
+				return nil
+			}
+			return fmt.Errorf("function %s v0.76.0 permits one or more top-level typed immutable locals before the exact v0.75.0 one-branch nested terminal if/else; both nested leaves may contain finite local sequences", function.Name)
+		}
+		return validateImmutableLocalContract(LanguageContractV730, function)
 	}
 	if contract == LanguageContractV750 {
 		if countTerminalIfStatements(function.Body) > 1 {
@@ -1171,6 +1185,15 @@ func exprContainsPropagation(expression Expr) bool {
 func validateConditionalContract(contract string, function Function) error {
 	if !exprContainsConditional(function.Body) {
 		return nil
+	}
+	if contract == LanguageContractV760 {
+		if countTerminalIfStatements(function.Body) > 1 {
+			if (!validV750NestedTerminalIf(function.Body) && !validV760RootLocalNestedTerminalIf(function.Body)) || exprContainsPropagation(function.Body) || countMatchExpressions(function.Body) != 0 {
+				return fmt.Errorf("function %s v0.76.0 permits one or more top-level typed immutable locals before the exact v0.75.0 one-branch nested terminal if/else; both nested leaves may contain finite local sequences, while nesting in both outer branches, additional depth, propagation, match, conditional expressions within the topology, and fallthrough are excluded", function.Name)
+			}
+			return nil
+		}
+		contract = LanguageContractV730
 	}
 	if contract == LanguageContractV750 {
 		if countTerminalIfStatements(function.Body) > 1 {
