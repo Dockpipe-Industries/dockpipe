@@ -760,3 +760,28 @@ parameter; missing, additional, or gapped locals; computed carriers; `propagate(
 arbitrary errors; Optional/arithmetic carriers; private, cross-class, mismatched, overloaded, or
 generic helpers; inference; reassignment; statements; branches; loops; effects; actions; runtimes;
 targets; adapters; UI; and deployment remain excluded. No behavior enters by implication.
+
+## Step 8ag — generalized shared-context Result propagation (`v0.67.0`)
+
+Production source generalizes the v0.66 contextual `K >= 2` chain to one bounded Result carrier
+followed by `N >= 1` direct `string` context parameters. Every helper receives the immediately
+preceding payload followed by every unchanged context exactly once in caller declaration order and
+has the exact `(Ti, string...) -> Result<Ti+1, string>` signature. The explicit alternating
+helper-Result and propagation locals, terminal helper call, bounded text or primitive-record-list
+payloads, shared string failure, and public pure same-class ownership remain exact.
+
+Typed HIR and target-neutral Core reuse existing nodes and preserve parameter positions. Core
+independently validates arbitrary admitted stage and context counts plus the complete ordered
+context vector at every helper. Evaluation and deterministic Core-only Go validate and copy every
+reached carrier once, pass every validated context unchanged, and reshape failures into the
+canonical final Result before later helpers run. Public compiler, semantic, and Application IR
+identities and shapes remain stable; metadata advances to `v0.67.0`; multi-context
+compiler-pipeline fixtures and metadata-only Application IR consumption prove the boundary; the
+exact 45-source lane remains frozen.
+
+The inherited v0.54-v0.66 forms remain exact. No-context contextual chains; one-stage multi-context
+chains; missing, reordered, repeated, computed, non-string, or stage-specific contexts; missing,
+additional, or gapped locals; computed carriers; `propagate(Helper(...))`; arbitrary errors;
+Optional/arithmetic carriers; private, cross-class, mismatched, overloaded, or generic helpers;
+inference; reassignment; statements; branches; loops; effects; actions; runtimes; targets; adapters;
+UI; and deployment remain excluded. No behavior enters by implication.
