@@ -23,6 +23,8 @@ const PIPELANG_COMPLETION_KEYWORDS = [
   "float",
   "new",
   "return",
+  "if",
+  "else",
   "some",
   "none",
   "has_value",

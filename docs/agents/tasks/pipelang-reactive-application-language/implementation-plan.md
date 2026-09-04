@@ -160,6 +160,25 @@ cross-payload flows remain bounded to text or existing primitive-record lists wi
 failure. This seam does not admit computed or stage-specific contexts, new context types, new
 carriers, additional locals or propagation, blocks, effects, or inference.
 
+Step 8ai is complete under `v0.69.0`: one public pure method may contain one or more existing
+ordered immutable locals followed by exactly one terminal statement-level conditional of the form
+`if (condition) { return whenTrue; } else { return whenFalse; }`. The condition is `bool`, both
+branches have the declared method return type, and every local, condition, and branch value remains
+an already-admitted eager pure expression. Typed HIR and Core reuse the existing conditional node
+with an explicit terminal-statement marker; at most one preceding local initializer may retain the
+inherited bounded conditional expression. This seam does not admit a zero-local form, branch
+locals, nesting, missing `else`, fallthrough, returns elsewhere, propagation or matching in the
+method, assignment, loops, effects, or inference.
+
+Step 8aj is complete under `v0.70.0`: the v0.69 terminal statement-level `if/else` remains exact,
+while either terminal branch may now declare at most one explicitly typed immutable local and
+immediately return from that branch. One or more top-level ordered immutable locals remain
+required. Branch scopes are independent, may reuse a local name, evaluate only when selected, and
+cannot escape. Typed HIR and Core reuse the existing `immutable_local` nested in the terminal
+`conditional`; no schema identity changes. This seam does not admit nested branches, multiple
+locals in one branch, propagation, matching, assignment, fallthrough, other early returns, loops,
+effects, or inference.
+
 Each slice is independently reviewable and keeps syntax, semantics, diagnostics, projection,
 editor, tests, and any enabled backend synchronized. No permissive parser, target-owned semantics,
 or syntax-first feature batch may skip the earlier foundations.
@@ -1072,6 +1091,56 @@ stage-specific contexts; additional or gapped locals; computed carriers; `propag
 arbitrary failure types; Optional/arithmetic carriers; private, cross-class, mismatched, overloaded,
 or generic helpers; inference; reassignment; statements; branches; loops; effects; actions;
 runtimes; targets; adapters; UI; and deployment remain excluded. No behavior enters by implication.
+
+## Checkpoint v0.69.0 complete contract
+
+One public pure method additionally admits one or more existing ordered immutable locals followed by
+exactly one terminal statement-level `if/else`. The exact terminal shape is
+`if (condition) { return whenTrue; } else { return whenFalse; }`: `condition` is `bool`, and both
+branch values have the declared method return type. Locals, the condition, and both branch values
+remain already-admitted eager pure expressions and calls. At most one preceding local initializer
+may use the inherited bounded conditional expression.
+
+Typed HIR and target-neutral Core reuse `immutable_local` and `conditional`, with an explicit
+terminal-statement marker that is preserved through projection. Core independently verifies the
+required preceding local, unique terminal conditional, boolean condition, matching branch types,
+and absence of propagation or matching in the method. Evaluation and deterministic Core-only Go
+reuse existing conditional semantics and evaluate only the selected branch. `pipelang.compiler.v1`,
+`pipelang.semantic.v1`, and `dockpipe.application.v1` identities and shapes remain unchanged; only
+language metadata advances to `v0.69.0`. Terminal-if compiler-pipeline fixtures and metadata-only
+Docker-observability Application IR consumption prove the boundary; the exact 45-source lane
+remains frozen.
+
+The inherited v0.54-v0.68 forms remain exact. A zero-local terminal conditional; branch locals;
+nested conditionals; missing `else`; fallthrough or returns elsewhere; propagation or matching in
+the method; assignment, reassignment, shadowing, or inference; loops; effects; actions; runtimes;
+targets; adapters; UI; and deployment remain excluded. No behavior enters by implication. Any
+successor requires a new founder decision and separate implementation approval.
+
+## Checkpoint v0.70.0 complete contract
+
+One public pure method additionally admits at most one explicitly typed immutable local in either
+terminal `if/else` branch. The method still begins with one or more top-level ordered immutable
+locals and ends in the exact v0.69 terminal conditional. A branch is either `return expression;`
+or `Type name = expression; return expression;`. Both branches may use the local form; their scopes
+are independent and may reuse the same name. A branch initializer runs only when selected, and its
+binding cannot escape the branch. Conditions remain `bool`, explicit types remain exact, and only
+previously admitted eager pure expressions and calls are available.
+
+Typed HIR and target-neutral Core reuse `immutable_local` under the existing terminal
+`conditional`; Core independently verifies one root local at most in each branch, canonical binding
+positions, lexical references, matching return types, and the existing terminal placement.
+Evaluation and deterministic Core-only Go preserve selected-branch evaluation and lexical scope.
+`pipelang.compiler.v1`, `pipelang.semantic.v1`, and `dockpipe.application.v1` remain stable; only
+language metadata advances to `v0.70.0`. Compiler pipeline, malformed-Core, generated-Go,
+editor, and metadata-only Application IR fixtures prove the boundary; the exact 45-source lane
+remains frozen.
+
+The inherited v0.69 direct-return form remains exact. Nested branches, multiple locals per branch,
+escaping bindings, propagation, matching, assignment, fallthrough, other early returns, loops,
+effects, inference, actions, runtimes, targets, adapters, UI, and deployment remain excluded. No
+behavior enters by implication. Any successor requires a new founder decision and separate
+implementation approval.
 
 ## Application IR checkpoint complete contract
 

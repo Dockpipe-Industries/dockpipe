@@ -2142,6 +2142,65 @@ private, cross-class, mismatched, overloaded, or generic helpers; inference; rea
 statements; branches; loops; effects; actions; runtimes; targets; adapters; UI; and deployment remain
 excluded. No behavior enters by implication.
 
+### PipeLang v0.69.0: terminal statement-level `if/else`
+
+`v0.69.0` admits one terminal conditional after one or more ordered immutable locals:
+
+```pipe
+public string Select(string raw, bool normalize) {
+    string cleaned = trim(raw);
+    if (normalize) { return cleaned; }
+    else { return raw; }
+}
+```
+
+The condition is `bool`, both branches have the declared method return type, and all locals,
+condition values, and branch values remain already-admitted eager pure expressions or calls. At
+most one preceding local initializer may use the inherited bounded conditional expression. Typed
+HIR and target-neutral Core reuse the existing conditional representation with an explicit
+terminal-statement marker. Core independently validates the required preceding local, unique
+terminal placement, boolean condition, branch types, and absence of propagation or matching in the
+method. Evaluation and deterministic Core-only Go evaluate only the selected branch.
+`pipelang.compiler.v1`, `pipelang.semantic.v1`, and `dockpipe.application.v1` remain unchanged; only
+language metadata advances to `v0.69.0`. The exact 45-source legacy lane remains frozen.
+
+The inherited v0.54-v0.68 forms remain exact. Zero-local terminal conditionals, branch locals,
+nested branches, missing `else`, fallthrough or returns elsewhere, propagation or matching in the
+method, assignment, reassignment, shadowing, inference, loops, effects, actions, runtimes, targets,
+adapters, UI, and deployment remain excluded. No behavior enters by implication.
+
+### PipeLang v0.70.0: lexical terminal-branch locals
+
+`v0.70.0` preserves the v0.69 terminal `if/else` shape and permits either branch to declare at most
+one explicitly typed immutable local immediately before its return:
+
+```pipe
+public string Select(string raw, bool normalize) {
+    string cleaned = raw;
+    if (normalize) {
+        string selected = trim(cleaned);
+        return selected;
+    } else {
+        return raw;
+    }
+}
+```
+
+At least one top-level ordered immutable local still precedes the terminal branch. A branch may
+retain the direct-return form or use exactly one local; both branches may use locals, and equal
+names in opposing branches denote independent lexical bindings. A branch local is initialized only
+when its branch is selected and cannot be referenced by the condition, the opposing branch, or
+outside the terminal conditional. The condition remains `bool`, all explicit local and method
+types must match their values, and existing eager pure expressions and calls remain the only
+admitted computations. HIR and Core reuse `immutable_local` inside the existing terminal
+`conditional`; the evaluator and deterministic Core-only Go preserve selected-branch evaluation.
+
+Nested branches, multiple locals in one branch, escaping bindings, propagation, matching,
+assignment, fallthrough, other early returns, loops, effects, inference, actions, runtimes,
+targets, adapters, UI, and deployment remain excluded. `pipelang.compiler.v1`,
+`pipelang.semantic.v1`, and `dockpipe.application.v1` remain unchanged; only language metadata
+advances to `v0.70.0`. The exact 45-source legacy lane remains frozen.
+
 ### Target-neutral Application IR
 
 `dockpipe.application.v1` is not a language feature or target generator. It consumes the public
