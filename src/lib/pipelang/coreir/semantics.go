@@ -2245,6 +2245,20 @@ func validateDirectListFilterPredicateFunction(function Function) error {
 }
 
 func validateType(value Type) error {
+	// Executable Core types are normalized. SemanticType separately retains
+	// source-level primitive int/float and named/applied identities.
+	switch value.Kind {
+	case TypePrimitive, TypeNumeric, TypeArithmeticError, TypeResult, TypeOptional, TypeList, TypeRecord:
+	default:
+		return fmt.Errorf("unsupported Core type kind %q", value.Kind)
+	}
+	if (value.Kind != TypePrimitive && value.Primitive != "") ||
+		(value.Kind != TypeNumeric && value.Numeric != nil) ||
+		(value.Kind != TypeRecord && value.Record != nil) ||
+		(value.Kind != TypeRecord && value.Kind != TypeList && (value.Identity != nil || value.Name != "")) ||
+		len(value.Arguments) != 0 {
+		return fmt.Errorf("%s type carries a non-%s representation", value.Kind, value.Kind)
+	}
 	if value.Kind != TypeResult && value.Result != nil {
 		return fmt.Errorf("non-result type carries a result representation")
 	}
@@ -2252,14 +2266,14 @@ func validateType(value Type) error {
 		if value.Result == nil {
 			return fmt.Errorf("result type has no success/failure shape")
 		}
+		if !isArithmeticResultType(value) && !isBoundedValueResultType(value) {
+			return fmt.Errorf("result type is outside the checked-arithmetic and bounded value envelopes")
+		}
 		if err := validateType(value.Result.Success); err != nil {
 			return fmt.Errorf("result success type: %w", err)
 		}
 		if err := validateType(value.Result.Failure); err != nil {
 			return fmt.Errorf("result failure type: %w", err)
-		}
-		if !isArithmeticResultType(value) && !isBoundedValueResultType(value) {
-			return fmt.Errorf("result type is outside the checked-arithmetic and bounded value envelopes")
 		}
 		if value.Primitive != "" || value.Numeric != nil || value.Optional != nil || value.List != nil || value.Record != nil || value.Identity != nil || value.Name != "" || len(value.Arguments) != 0 {
 			return fmt.Errorf("result type carries a non-result representation")
@@ -2288,12 +2302,31 @@ func validateType(value Type) error {
 		if value.Optional == nil || !isOptionalValueType(value.Optional.Value) {
 			return fmt.Errorf("optional type requires one primitive or primitive-record value type")
 		}
+		if err := validateType(value.Optional.Value); err != nil {
+			return fmt.Errorf("optional value type: %w", err)
+		}
 		if value.Primitive != "" || value.Numeric != nil || value.Result != nil || value.List != nil || value.Record != nil || value.Identity != nil || value.Name != "" || len(value.Arguments) != 0 {
 			return fmt.Errorf("optional type carries a non-optional representation")
 		}
 		return nil
 	}
-	if value.Kind != TypeRecord {
+	switch value.Kind {
+	case TypePrimitive:
+		if value.Primitive != PrimitiveString && value.Primitive != PrimitiveBool {
+			return fmt.Errorf("unsupported Core primitive %q", value.Primitive)
+		}
+		return nil
+	case TypeNumeric:
+		if value.Numeric == nil {
+			return fmt.Errorf("numeric type has no representation")
+		}
+		numeric := value.Numeric
+		if numeric.Bits != 64 || !((numeric.Representation == NumericInteger && numeric.Signed) ||
+			(numeric.Representation == NumericBinaryFloat && !numeric.Signed)) {
+			return fmt.Errorf("unsupported Core numeric representation %q/%d signed=%t", numeric.Representation, numeric.Bits, numeric.Signed)
+		}
+		return nil
+	case TypeArithmeticError:
 		return nil
 	}
 	if value.Record == nil || value.Identity == nil || value.Identity.PackageID == "" || value.Identity.Path == "" || value.Identity.Callable != nil || value.Name == "" || len(value.Record.Fields) == 0 {
@@ -2322,6 +2355,9 @@ func validateType(value Type) error {
 		seenIdentities[identity] = struct{}{}
 		if !isPrimitiveRecordFieldType(field.Type) {
 			return fmt.Errorf("record field %d has non-primitive type %q", index, field.Type.Kind)
+		}
+		if err := validateType(field.Type); err != nil {
+			return fmt.Errorf("record field %d type: %w", index, err)
 		}
 	}
 	return nil
@@ -2381,6 +2417,9 @@ func isPrimitiveRecordFieldType(value Type) bool {
 }
 
 func validateExpr(expression Expr, parameters []Parameter) error {
+	if err := validateType(expression.Type); err != nil {
+		return fmt.Errorf("%s expression type: %w", expression.Kind, err)
+	}
 	switch expression.Kind {
 	case ExprLiteral:
 		if expression.Literal == nil || !isLiteralType(expression.Type) {
@@ -2983,6 +3022,9 @@ func validateExpr(expression Expr, parameters []Parameter) error {
 			return fmt.Errorf("propagate value: %w", err)
 		}
 		carrier := expression.Propagate.Carrier
+		if err := validateType(carrier); err != nil {
+			return fmt.Errorf("propagate carrier type: %w", err)
+		}
 		if !TypeEqual(carrier, expression.Propagate.Value.Type) {
 			return fmt.Errorf("propagate carrier does not match operand")
 		}
