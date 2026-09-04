@@ -650,3 +650,29 @@ stages; missing/additional/gapped locals; computed or helper propagation; arbitr
 Optional/arithmetic carriers; non-direct/private/cross-class/mismatched/overloaded/generic helpers;
 inference; reassignment; statements; branches; loops; effects; actions; runtimes; targets; adapters;
 UI; and deployment remain excluded. No behavior enters by implication.
+
+## Step 8ac — one-stage contextual bounded cross-payload Result propagation (`v0.63.0`)
+
+Production source additionally admits exactly one contextual helper stage. One public pure method
+has exact signature `Result<U, string> F(Result<T, string> carrier, string context)`, propagates the
+direct carrier into its first and only typed `T` local, then terminally calls one resolved public
+pure same-class `(T, string) -> Result<U, string>` helper with the local followed by the unchanged
+direct context. `T` and `U` remain distinct and each is text or a list of an existing public
+primitive-field record.
+
+Typed HIR and target-neutral Core reuse existing immutable-local, reference, propagation, and call
+nodes. Core independently validates the two exact caller parameters, one direct propagation, local
+position and type, bounded distinct payloads, shared string failure, direct context identity,
+callable owner, and exact helper signature. Evaluation and deterministic Core-only Go validate and
+copy the incoming carrier once, skip the helper on failure, construct the canonical target-shaped
+failure with copied error text, and pass the validated context once on success. Public compiler,
+semantic, and Application IR identities and shapes remain stable; metadata advances to `v0.63.0`;
+compiler-pipeline text/list matrix fixtures and metadata-only Docker-observability Application IR
+consumption prove the boundary; the exact 45-source lane remains frozen.
+
+The inherited v0.54-v0.62 forms remain exact. Same-payload flow; missing, reordered, repeated,
+computed, non-string, or additional context arguments; a third caller parameter; extra locals or
+propagation; computed or helper propagation; arbitrary errors; Optional/arithmetic carriers;
+non-direct/private/cross-class/mismatched/overloaded/generic helpers; inference; reassignment;
+statements; branches; loops; effects; actions; runtimes; targets; adapters; UI; and deployment
+remain excluded. No behavior enters by implication.

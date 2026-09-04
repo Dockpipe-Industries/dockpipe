@@ -1023,6 +1023,36 @@ branches; loops; effects; actions; runtimes; targets; adapters; UI; and deployme
 No behavior enters by implication. Any successor requires a new founder decision and separate
 implementation approval.
 
+## Accepted v0.63.0 boundary — one-stage contextual bounded cross-payload Result propagation
+
+`v0.63.0` adds only the exact public pure method shape `Result<U, string>
+F(Result<T, string> carrier, string context) { T value = propagate(carrier); return Helper(value,
+context); }`. `T` and `U` are distinct and each is exactly `string` or `List<R>` for an existing
+public primitive-field record. Propagation is the first and only typed local initializer. The
+terminal expression is one resolved public pure same-class helper call with exact signature
+`(T, string) -> Result<U, string>`, the direct propagated local first, and the unchanged direct
+context parameter second.
+
+HIR and Core reuse `immutable_local`, `reference`, `propagate`, and `call`. Core independently
+verifies the two exact caller parameters, bounded source and target carriers, distinct payloads,
+shared string failure, single propagation, exact local position and type, direct carrier/local/
+context references, same owner, callable identity, and exact helper signature. Evaluation and
+deterministic Core-only Go validate and copy the incoming carrier once. Success invokes and
+validates the helper once with validated context. Failure skips the helper and creates a canonical
+target-shaped failure with copied validated error text. `pipelang.compiler.v1`,
+`pipelang.semantic.v1`, and `dockpipe.application.v1` identities and shapes stay stable; only
+language metadata advances. Text-to-list and list-to-text compiler-pipeline fixtures plus
+metadata-only Docker-observability Application IR consumption prove the boundary, and the exact
+45-source lane remains frozen.
+
+The inherited v0.54-v0.62 forms remain exact. Same-payload flow, a missing/reordered/repeated/
+computed/non-string/additional context argument, a third caller parameter, extra locals or
+propagations, computed carriers, `propagate(Helper(...))`, helper propagation, arbitrary error
+types, Optional/arithmetic carriers, private/cross-class/mismatched/overloaded/generic helpers,
+inference, reassignment, statements, branches, loops, effects, actions, runtimes, targets,
+adapters, UI, and deployment remain excluded. No behavior enters by implication. Any successor
+requires a new founder decision and separate implementation approval.
+
 ## Accepted v0.49.0 boundary — bounded two-carrier matching
 
 `v0.49.0` widens only the occurrence count accepted through v0.48. One public pure method with one

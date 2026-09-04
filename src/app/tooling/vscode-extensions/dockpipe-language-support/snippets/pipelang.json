@@ -613,5 +613,15 @@
       "}"
     ],
     "description": "Create the exact v0.62.0 contextual bounded cross-payload Result propagation chain with one direct string context argument at every stage."
+  },
+  "PipeLang one-stage contextual cross-payload Result propagation": {
+    "prefix": "pipe-contextual-cross-payload-result",
+    "body": [
+      "public Result<List<${1:Token}>, string> ${2:Compile}(Result<string, string> ${3:scanned}, string ${4:context}) {",
+      "\tstring ${5:source} = propagate(${3:scanned});",
+      "\treturn ${6:BuildTokens}(${5:source}, ${4:context});",
+      "}"
+    ],
+    "description": "Create the exact v0.63.0 one-stage contextual bounded cross-payload Result propagation form with one direct unchanged string context argument."
   }
 }
