@@ -596,3 +596,30 @@ extra parameters/locals, computed or helper propagation, arbitrary errors, Optio
 carriers, non-direct/private/cross-class/mismatched/overloaded/generic helpers, inference,
 reassignment, statements, branches, loops, effects, actions, runtimes, targets, adapters, UI, and
 deployment remain excluded. No behavior enters by implication.
+
+## Step 8aa — generalized bounded cross-payload Result propagation chains (`v0.61.0`)
+
+Production source additionally admits a contiguous chain of `K >= 2` bounded cross-payload Result
+stages. One public pure method takes exactly one direct `Result<T0, string>` parameter, propagates
+it into `T0`, spells every non-terminal stage as an adjacent exact helper-Result local and direct
+propagation local, and terminally calls the final helper with the immediately preceding payload
+local. Every payload is text or a list of an existing public primitive-field record. Adjacent
+payloads differ; non-adjacent payloads may match. Every helper is public, pure, same-class, and has
+the exact adjacent payload-to-Result signature.
+
+Typed HIR and target-neutral Core reuse existing nodes and independently verify the sole direct
+carrier, arbitrary admitted chain length, contiguous alternating locals, bounded payloads, shared
+string failure, adjacent payload inequality, direct carrier and helper-argument references,
+callable owners, and exact helper signatures. Evaluation and deterministic Core-only Go validate
+and copy every complete carrier once. Any failure skips all later helpers and becomes a canonical
+final-target-shaped failure with preserved copied error text. Public compiler, semantic, and
+Application IR identities and shapes remain stable; metadata advances to `v0.61.0`; a four-stage
+compiler-pipeline fixture and metadata-only Docker-observability Application IR consumption prove
+the boundary; the exact 45-source lane remains frozen.
+
+The inherited v0.54-v0.60 forms remain exact. Fewer than two stages in the generalized form,
+same-payload adjacent stages, missing/additional/gapped locals, extra parameters, computed or helper
+propagation, arbitrary errors, Optional/arithmetic carriers, non-direct/private/cross-class/
+mismatched/overloaded/generic helpers, inference, reassignment, statements, branches, loops,
+effects, actions, runtimes, targets, adapters, UI, and deployment remain excluded. No behavior
+enters by implication.

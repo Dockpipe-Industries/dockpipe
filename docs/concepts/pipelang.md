@@ -1849,6 +1849,44 @@ payload local, private/cross-class/mismatched/overloaded/generic helpers, infere
 statements, branches, loops, effects, actions, runtimes, targets, adapters, UI, and deployment
 remain excluded. No behavior enters by implication.
 
+### PipeLang v0.61.0: generalized bounded cross-payload Result propagation chains
+
+`v0.61.0` generalizes the v0.60 form to `K >= 2` adjacent target-shaping stages:
+
+```pipe
+public Result<string, string> Compile(Result<string, string> scanned) {
+    string source = propagate(scanned);
+    Result<List<Token>, string> tokenized = BuildTokens(source);
+    List<Token> tokens = propagate(tokenized);
+    Result<List<SyntaxNode>, string> parsed = BuildSyntax(tokens);
+    List<SyntaxNode> syntax = propagate(parsed);
+    return EmitSource(syntax);
+}
+```
+
+The public pure method has exactly one direct `Result<T0, string>` parameter and returns
+`Result<TK, string>`. Its first local directly propagates the parameter. Every non-terminal helper
+stage is an adjacent pair containing an explicit `Result<Ti, string>` helper-call local followed
+immediately by a direct propagation local of type `Ti`; the terminal expression calls the final
+helper with the immediately preceding payload local. Every helper is public, pure, same-class, and
+has the exact adjacent `Ti-1 -> Result<Ti, string>` signature. Every payload is `string` or
+`List<R>` for an existing public primitive-field record, and adjacent payloads differ. Non-adjacent
+payloads may match.
+
+Every complete carrier is validated and copied once. Incoming or intermediate failure skips every
+later helper and is reshaped to the canonical final `Result<TK, string>` failure, preserving copied
+validated error text and the final payload's canonical zero. Typed HIR and target-neutral Core
+reuse existing immutable-local, propagation, reference, and call nodes. `pipelang.compiler.v1`,
+`pipelang.semantic.v1`, and `dockpipe.application.v1` identities and shapes remain unchanged; only
+language metadata advances to `v0.61.0`. The exact 45-source legacy lane remains frozen.
+
+The inherited v0.54-v0.60 forms remain exact. Fewer than two stages in the generalized form,
+same-payload adjacent stages, missing/additional/gapped locals, extra parameters, arbitrary failure
+types, computed carriers, `propagate(Helper(...))`, helper propagation, helper arguments other than
+the direct preceding payload local, private/cross-class/mismatched/overloaded/generic helpers,
+inference, reassignment, statements, branches, loops, effects, actions, runtimes, targets, adapters,
+UI, and deployment remain excluded. No behavior enters by implication.
+
 ### Target-neutral Application IR
 
 `dockpipe.application.v1` is not a language feature or target generator. It consumes the public

@@ -585,5 +585,19 @@
       "}"
     ],
     "description": "Create the exact v0.60.0 two-stage bounded cross-payload Result propagation form with canonical target-shaped failure at either carrier."
+  },
+  "PipeLang generalized cross-payload Result propagation chain": {
+    "prefix": "pipe-cross-payload-result-chain",
+    "body": [
+      "public Result<string, string> ${1:Compile}(Result<string, string> ${2:scanned}) {",
+      "\tstring ${3:source} = propagate(${2:scanned});",
+      "\tResult<List<${4:Token}>, string> ${5:tokenized} = ${6:BuildTokens}(${3:source});",
+      "\tList<${4:Token}> ${7:tokens} = propagate(${5:tokenized});",
+      "\tResult<List<${8:SyntaxNode}>, string> ${9:parsed} = ${10:BuildSyntax}(${7:tokens});",
+      "\tList<${8:SyntaxNode}> ${11:syntax} = propagate(${9:parsed});",
+      "\treturn ${12:EmitSource}(${11:syntax});",
+      "}"
+    ],
+    "description": "Create a v0.61.0 generalized bounded cross-payload Result propagation chain with explicit carriers and canonical target-shaped failure at every stage."
   }
 }
