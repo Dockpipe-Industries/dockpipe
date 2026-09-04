@@ -681,5 +681,30 @@
       "}"
     ],
     "description": "Create a v0.68.0 generalized one-stage shared-context Result propagation form with N >= 1 ordered direct string contexts."
+  },
+  "PipeLang terminal if/else": {
+    "prefix": "pipe-terminal-if",
+    "body": [
+      "public ${1:string} ${2:Select}(${1:string} ${3:raw}, bool ${4:normalize}) {",
+      "\t${1:string} ${5:cleaned} = trim(${3:raw});",
+      "\tif (${4:normalize}) { return ${5:cleaned}; }",
+      "\telse { return ${3:raw}; }",
+      "}"
+    ],
+    "description": "Create the exact v0.69.0 terminal if/else form after one or more ordered immutable locals."
+  },
+  "PipeLang terminal if/else with branch local": {
+    "prefix": "pipe-terminal-if-branch-local",
+    "body": [
+      "public ${1:string} ${2:Select}(${1:string} ${3:raw}, bool ${4:normalize}) {",
+      "\t${1:string} ${5:cleaned} = ${3:raw};",
+      "\tif (${4:normalize}) {",
+      "\t\t${1:string} ${6:selected} = trim(${5:cleaned});",
+      "\t\treturn ${6:selected};",
+      "\t}",
+      "\telse { return ${3:raw}; }",
+      "}"
+    ],
+    "description": "Create the exact v0.70.0 terminal if/else form with one lexical immutable local in a selected branch."
   }
 }

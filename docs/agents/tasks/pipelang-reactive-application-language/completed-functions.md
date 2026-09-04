@@ -811,3 +811,50 @@ stage-specific contexts; additional or gapped locals; computed carriers; `propag
 arbitrary errors; Optional/arithmetic carriers; private, cross-class, mismatched, overloaded, or
 generic helpers; inference; reassignment; statements; branches; loops; effects; actions; runtimes;
 targets; adapters; UI; and deployment remain excluded. No behavior enters by implication.
+
+## Step 8ai — terminal statement-level `if/else` (`v0.69.0`)
+
+Production source admits exactly one terminal statement-level conditional after one or more
+existing ordered immutable locals in a public pure method. Its exact shape is
+`if (condition) { return whenTrue; } else { return whenFalse; }`. The condition is `bool`; both
+branches have the declared method return type; and locals, condition, and branches remain
+already-admitted eager pure expressions and calls. At most one preceding local initializer may use
+the inherited bounded conditional expression.
+
+Typed HIR and target-neutral Core reuse the existing conditional representation with an explicit
+terminal-statement marker. Core independently validates the required preceding local, unique
+terminal placement, boolean condition, branch result types, and exclusion of propagation and
+matching within the method. Evaluation and deterministic Core-only Go reuse existing lazy branch
+selection, and generated Go remains Core-only. `pipelang.compiler.v1`, `pipelang.semantic.v1`, and
+`dockpipe.application.v1` stay stable; metadata advances to `v0.69.0`; terminal-if pipeline fixtures
+and metadata-only Application IR consumption prove the boundary; the exact 45-source lane remains
+frozen.
+
+The inherited v0.54-v0.68 forms remain exact. Zero-local forms, branch locals, nested branches,
+missing `else`, fallthrough or returns elsewhere, propagation or matching in the method,
+assignment, reassignment, shadowing, inference, loops, effects, actions, runtimes, targets,
+adapters, UI, and deployment remain excluded. No behavior enters by implication. Any successor
+requires a new founder decision and separate implementation approval.
+
+## Step 8aj — lexical terminal-branch locals (`v0.70.0`)
+
+Production source preserves the exact v0.69 terminal statement-level `if/else` and additionally
+permits either terminal branch to contain exactly one explicitly typed immutable local immediately
+followed by its return. At least one top-level ordered immutable local remains required. One or both
+branches may use the local form; opposing branches have independent lexical scopes and may reuse a
+name. Each branch local evaluates only when its branch is selected and cannot escape to the
+condition, sibling branch, or surrounding method scope.
+
+Typed HIR and target-neutral Core reuse the existing `immutable_local` expression nested within
+the terminal `conditional`; no new node or schema is introduced. Source and Core validation admit
+at most one root branch local per branch, preserve explicit declared types and bool conditions, and
+reject nested branch-local topology. Evaluation and deterministic Core-only Go preserve lexical
+scope and selected-branch evaluation. `pipelang.compiler.v1`, `pipelang.semantic.v1`, and
+`dockpipe.application.v1` stay stable; Application IR changes only its language metadata to
+`v0.70.0`; the exact 45-source compatibility lane remains frozen.
+
+The inherited direct-return terminal form remains valid. Nested branches, multiple locals per
+branch, escaping branch bindings, propagation, match, assignment, fallthrough, other early
+returns, loops, effects, inference, actions, runtimes, targets, adapters, UI, and deployment remain
+excluded. No successor is implied; another slice requires a new founder decision and separate
+implementation approval.

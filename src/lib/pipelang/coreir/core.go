@@ -71,6 +71,8 @@ const (
 	LanguageContractV660 = "v0.66.0"
 	LanguageContractV670 = "v0.67.0"
 	LanguageContractV680 = "v0.68.0"
+	LanguageContractV690 = "v0.69.0"
+	LanguageContractV700 = "v0.70.0"
 	CompilerContractV1   = "pipelang.compiler.v1"
 	BuiltinPackageID     = "pipelang"
 	ListSemanticPath     = "list"
@@ -263,9 +265,10 @@ type Binary struct {
 }
 
 type Conditional struct {
-	Condition *Expr `json:"condition"`
-	WhenTrue  *Expr `json:"when_true"`
-	WhenFalse *Expr `json:"when_false"`
+	Condition         *Expr `json:"condition"`
+	WhenTrue          *Expr `json:"when_true"`
+	WhenFalse         *Expr `json:"when_false"`
+	TerminalStatement bool  `json:"terminal_statement,omitempty"`
 }
 
 type ImmutableLocal struct {

@@ -156,10 +156,11 @@ type (
 		Span        Span
 	}
 	ConditionalExpr struct {
-		Condition Expr
-		WhenTrue  Expr
-		WhenFalse Expr
-		Span      Span
+		Condition         Expr
+		WhenTrue          Expr
+		WhenFalse         Expr
+		TerminalStatement bool
+		Span              Span
 	}
 	ImmutableLocalExpr struct {
 		Type        UnresolvedTypeRef
@@ -650,6 +651,91 @@ func validBoundedConditionalExpression(expr Expr) bool {
 	}
 	walk(expr)
 	return valid
+}
+
+func containsTerminalIfStatement(expr Expr) bool {
+	if conditional, ok := expr.(*ConditionalExpr); ok && conditional.TerminalStatement {
+		return true
+	}
+	for _, child := range expressionChildren(expr) {
+		if containsTerminalIfStatement(child) {
+			return true
+		}
+	}
+	return false
+}
+
+func countTerminalIfStatements(expr Expr) int {
+	count := 0
+	if conditional, ok := expr.(*ConditionalExpr); ok && conditional.TerminalStatement {
+		count++
+	}
+	for _, child := range expressionChildren(expr) {
+		count += countTerminalIfStatements(child)
+	}
+	return count
+}
+
+func validConditionalExpressions(expr Expr) bool {
+	if conditional, ok := expr.(*ConditionalExpr); ok {
+		if !validConditionalOperand(conditional.Condition) || !validConditionalOperand(conditional.WhenTrue) || !validConditionalOperand(conditional.WhenFalse) {
+			return false
+		}
+	}
+	for _, child := range expressionChildren(expr) {
+		if !validConditionalExpressions(child) {
+			return false
+		}
+	}
+	return true
+}
+
+func countImmutableLocalExpressions(expr Expr) int {
+	count := 0
+	if _, ok := expr.(*ImmutableLocalExpr); ok {
+		count++
+	}
+	for _, child := range expressionChildren(expr) {
+		count += countImmutableLocalExpressions(child)
+	}
+	return count
+}
+
+func terminalBranchLocalShape(expr Expr) (int, bool) {
+	count := countImmutableLocalExpressions(expr)
+	if count == 0 {
+		return 0, true
+	}
+	local, ok := expr.(*ImmutableLocalExpr)
+	return count, ok && count == 1 && local.Return != nil
+}
+
+func validTerminalIfStatement(contract LanguageContract, expr Expr) bool {
+	locals := 0
+	current := expr
+	for {
+		local, ok := current.(*ImmutableLocalExpr)
+		if !ok {
+			break
+		}
+		locals++
+		current = local.Return
+	}
+	conditional, ok := current.(*ConditionalExpr)
+	if !ok || !conditional.TerminalStatement {
+		return false
+	}
+	trueLocals, validTrue := terminalBranchLocalShape(conditional.WhenTrue)
+	falseLocals, validFalse := terminalBranchLocalShape(conditional.WhenFalse)
+	branchLocals := trueLocals + falseLocals
+	validBranchLocals := branchLocals == 0
+	if hasBranchLocalSourceContract(contract) {
+		validBranchLocals = branchLocals <= 2
+	}
+	conditionalCount := countConditionalExpressions(expr)
+	return locals >= 1 && countImmutableLocalExpressions(expr) == locals+branchLocals &&
+		countTerminalIfStatements(expr) == 1 && conditionalCount >= 1 && conditionalCount <= 2 &&
+		validTrue && validFalse && validBranchLocals && validConditionalExpressions(expr)
 }
 
 func validPureCallPlacement(expr Expr) bool {

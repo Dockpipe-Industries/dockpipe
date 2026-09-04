@@ -212,9 +212,10 @@ type Binary struct {
 }
 
 type Conditional struct {
-	Condition *Expr `json:"condition"`
-	WhenTrue  *Expr `json:"when_true"`
-	WhenFalse *Expr `json:"when_false"`
+	Condition         *Expr `json:"condition"`
+	WhenTrue          *Expr `json:"when_true"`
+	WhenFalse         *Expr `json:"when_false"`
+	TerminalStatement bool  `json:"terminal_statement,omitempty"`
 }
 
 type ImmutableLocal struct {
