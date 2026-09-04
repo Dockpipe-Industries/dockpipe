@@ -268,7 +268,7 @@ func ValidateFunction(function Function) error {
 
 func ValidateProgram(program Program) error {
 	inheritedContract := program.LanguageContract
-	if inheritedContract == LanguageContractV740 {
+	if inheritedContract == LanguageContractV750 || inheritedContract == LanguageContractV740 {
 		inheritedContract = LanguageContractV730
 	}
 	functions := make(map[string]Function, len(program.Functions))
@@ -535,10 +535,48 @@ func validV740NestedTerminalIf(expression Expr) bool {
 		((trueNested && validOrdinary(*outer.WhenFalse)) || (falseNested && validOrdinary(*outer.WhenTrue)))
 }
 
+func validV750NestedTerminalIf(expression Expr) bool {
+	outer := expression.Conditional
+	if expression.Kind != ExprConditional || outer == nil || !outer.TerminalStatement || outer.Condition == nil || outer.WhenTrue == nil || outer.WhenFalse == nil || !validConditionalOperand(*outer.Condition) {
+		return false
+	}
+	validInnerLeaf := func(branch Expr) bool {
+		_, tail, valid := terminalBranchTail(branch)
+		if !valid || tail.Kind == ExprConditional {
+			return false
+		}
+		return validConditionalOperand(tail)
+	}
+	validNested := func(branch Expr) bool {
+		_, tail, valid := terminalBranchTail(branch)
+		nested := tail.Conditional
+		if !valid || tail.Kind != ExprConditional || nested == nil || !nested.TerminalStatement || nested.Condition == nil || nested.WhenTrue == nil || nested.WhenFalse == nil {
+			return false
+		}
+		return validConditionalOperand(*nested.Condition) && validInnerLeaf(*nested.WhenTrue) && validInnerLeaf(*nested.WhenFalse)
+	}
+	validOrdinary := func(branch Expr) bool {
+		_, tail, valid := terminalBranchTail(branch)
+		return valid && tail.Kind != ExprConditional && validConditionalOperand(tail)
+	}
+	trueNested, falseNested := validNested(*outer.WhenTrue), validNested(*outer.WhenFalse)
+	return countConditionalExpressions(expression) == 2 && countTerminalIfStatements(expression) == 2 &&
+		((trueNested && validOrdinary(*outer.WhenFalse)) || (falseNested && validOrdinary(*outer.WhenTrue)))
+}
+
 func validateImmutableLocalContract(contract string, function Function) error {
 	count := countImmutableLocalExpressions(function.Body)
 	if count == 0 {
 		return nil
+	}
+	if contract == LanguageContractV750 {
+		if countTerminalIfStatements(function.Body) > 1 {
+			if validV750NestedTerminalIf(function.Body) {
+				return nil
+			}
+			return fmt.Errorf("function %s v0.75.0 permits one complete outer terminal if/else with exactly one branch ending in one nested terminal if/else; inner leaves may contain finite typed immutable-local sequences", function.Name)
+		}
+		return validateImmutableLocalContract(LanguageContractV730, function)
 	}
 	if contract == LanguageContractV740 {
 		if validV740NestedTerminalIf(function.Body) {
@@ -1133,6 +1171,15 @@ func exprContainsPropagation(expression Expr) bool {
 func validateConditionalContract(contract string, function Function) error {
 	if !exprContainsConditional(function.Body) {
 		return nil
+	}
+	if contract == LanguageContractV750 {
+		if countTerminalIfStatements(function.Body) > 1 {
+			if !validV750NestedTerminalIf(function.Body) || exprContainsPropagation(function.Body) || countMatchExpressions(function.Body) != 0 {
+				return fmt.Errorf("function %s v0.75.0 permits one complete outer terminal if/else with exactly one branch ending in one nested terminal if/else; inner leaves may contain finite typed immutable-local sequences, while propagation, match, additional nesting, and fallthrough are excluded", function.Name)
+			}
+			return nil
+		}
+		contract = LanguageContractV730
 	}
 	if contract == LanguageContractV740 {
 		if countTerminalIfStatements(function.Body) > 1 {

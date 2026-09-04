@@ -36,8 +36,14 @@ public Class DockerApplication {
 	public string DisplayMode(string raw, bool enabled, bool normalize) {
 		if (enabled) {
 			string cleaned = trim(raw);
-			if (normalize) { return NormalizeName(cleaned); }
-			else { return raw; }
+			if (normalize) {
+				string normalized = NormalizeName(cleaned);
+				string selected = normalized;
+				return selected;
+			} else {
+				string selected = raw;
+				return selected;
+			}
 		} else {
 			return "";
 		}

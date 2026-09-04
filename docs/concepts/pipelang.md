@@ -2326,6 +2326,45 @@ effects, inference, actions, runtimes, targets, adapters, UI, and deployment rem
 language metadata advances to `v0.74.0`. The inherited v0.69-v0.73 forms remain exact, and the
 45-source legacy lane remains frozen.
 
+### PipeLang v0.75.0: inner terminal-leaf immutable-local sequences
+
+`v0.75.0` widens only the inner leaves of the exact v0.74 nested terminal topology. Either inner
+leaf may contain any finite source-ordered sequence of explicitly typed immutable locals before its
+return:
+
+```pipe
+public string Select(string raw, bool enabled, bool normalize) {
+    if (enabled) {
+        string cleaned = trim(raw);
+        if (normalize) {
+            string normalized = trim(cleaned);
+            string selected = normalized;
+            return selected;
+        } else {
+            string selected = raw;
+            return selected;
+        }
+    } else {
+        return "disabled";
+    }
+}
+```
+
+Each inner-leaf local enters scope only after its initializer. Later locals may reference earlier
+locals in the same leaf; self-reference, forward reference, duplicate names, shadowing,
+cross-leaf references, and escaping bindings remain invalid. Outer-branch locals remain visible to
+the inner condition and both leaves. Both conditions remain `bool`, every return retains the exact
+declared method type, and evaluation remains source ordered and selected-branch-only.
+
+Typed HIR and target-neutral Core reuse the existing terminal `conditional` and `immutable_local`
+nodes; no node or schema identity changes. Top-level locals for the nested topology, nesting in both
+outer branches, another nested decision, third-level nesting, conditional expressions within the
+topology, propagation, matching, assignment, fallthrough, other early returns, loops, effects,
+inference, actions, runtimes, targets, adapters, UI, and deployment remain excluded.
+`pipelang.compiler.v1`, `pipelang.semantic.v1`, and `dockpipe.application.v1` remain unchanged; only
+language metadata advances to `v0.75.0`. The inherited v0.69-v0.74 forms remain exact, and the
+45-source legacy lane remains frozen.
+
 ### Target-neutral Application IR
 
 `dockpipe.application.v1` is not a language feature or target generator. It consumes the public

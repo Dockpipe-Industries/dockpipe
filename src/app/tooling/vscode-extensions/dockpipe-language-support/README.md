@@ -1,5 +1,15 @@
 # DockPipe Language Support (VS Code)
 
+PipeLang `v0.75.0` adds finite source-ordered sequences of explicitly typed immutable locals to
+either inner terminal leaf of the exact v0.74 nested topology through
+`pipe-nested-terminal-if-inner-locals`. Each inner-leaf local enters scope after its initializer;
+later locals in the same leaf may reference it, but bindings cannot cross into the sibling leaf or
+escape the inner decision. The outer-branch local sequence remains visible to the inner condition
+and both leaves, and only the selected outer branch, inner branch, and local sequence evaluate.
+Top-level locals for this topology, nesting in both outer branches, third-level nesting,
+conditional expressions within the topology, propagation, matching, assignment, fallthrough,
+effects, inference, and deployment remain excluded.
+
 PipeLang `v0.74.0` adds one bounded nested terminal decision through `pipe-nested-terminal-if`.
 Exactly one outer branch may end in one inner terminal `if/else` after any finite sequence of
 explicitly typed immutable locals; the sibling outer branch retains the v0.73 branch form and the
