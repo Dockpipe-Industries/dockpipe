@@ -365,7 +365,7 @@ func validatePureCalls(contract string, function Function, functions map[string]
 	var walk func(Expr) error
 	walk = func(expression Expr) error {
 		if expression.Kind == ExprCall {
-			if (contract != LanguageContractV700 && contract != LanguageContractV690 && contract != LanguageContractV680 && contract != LanguageContractV670 && contract != LanguageContractV660 && contract != LanguageContractV650 && contract != LanguageContractV640 && contract != LanguageContractV630 && contract != LanguageContractV620 && contract != LanguageContractV610 && contract != LanguageContractV600 && contract != LanguageContractV590 && contract != LanguageContractV580) && contract != LanguageContractV570 && contract != LanguageContractV560 && contract != LanguageContractV550 && contract != LanguageContractV540 && contract != LanguageContractV530 && contract != LanguageContractV520 && contract != LanguageContractV510 && contract != LanguageContractV500 && contract != LanguageContractV490 && contract != LanguageContractV360 && contract != LanguageContractV370 && contract != LanguageContractV380 && contract != LanguageContractV390 && contract != LanguageContractV400 && contract != LanguageContractV410 && contract != LanguageContractV420 && contract != LanguageContractV430 && contract != LanguageContractV440 && contract != LanguageContractV450 && contract != LanguageContractV460 && contract != LanguageContractV470 && contract != LanguageContractV480 {
+			if (contract != LanguageContractV710 && contract != LanguageContractV700 && contract != LanguageContractV690 && contract != LanguageContractV680 && contract != LanguageContractV670 && contract != LanguageContractV660 && contract != LanguageContractV650 && contract != LanguageContractV640 && contract != LanguageContractV630 && contract != LanguageContractV620 && contract != LanguageContractV610 && contract != LanguageContractV600 && contract != LanguageContractV590 && contract != LanguageContractV580) && contract != LanguageContractV570 && contract != LanguageContractV560 && contract != LanguageContractV550 && contract != LanguageContractV540 && contract != LanguageContractV530 && contract != LanguageContractV520 && contract != LanguageContractV510 && contract != LanguageContractV500 && contract != LanguageContractV490 && contract != LanguageContractV360 && contract != LanguageContractV370 && contract != LanguageContractV380 && contract != LanguageContractV390 && contract != LanguageContractV400 && contract != LanguageContractV410 && contract != LanguageContractV420 && contract != LanguageContractV430 && contract != LanguageContractV440 && contract != LanguageContractV450 && contract != LanguageContractV460 && contract != LanguageContractV470 && contract != LanguageContractV480 {
 				return fmt.Errorf("function %s pure calls require language contract %q or later", function.Name, LanguageContractV360)
 			}
 			call := expression.Call
@@ -465,13 +465,18 @@ func countImmutableLocalExpressions(expression Expr) int {
 	return count
 }
 
-func terminalBranchLocalShape(expression Expr) (int, bool) {
-	count := countImmutableLocalExpressions(expression)
-	if count == 0 {
-		return 0, true
+func terminalBranchLocalShape(expression Expr, limit int) (int, bool) {
+	count := 0
+	current := expression
+	for current.Kind == ExprImmutableLocal {
+		local := current.ImmutableLocal
+		count++
+		if count > limit || local == nil || local.Initializer == nil || local.Return == nil {
+			return count, false
+		}
+		current = *local.Return
 	}
-	return count, expression.Kind == ExprImmutableLocal && expression.ImmutableLocal != nil &&
-		count == 1 && expression.ImmutableLocal.Initializer != nil && expression.ImmutableLocal.Return != nil
+	return count, count <= limit
 }
 
 func validateImmutableLocalContract(contract string, function Function) error {
@@ -479,13 +484,13 @@ func validateImmutableLocalContract(contract string, function Function) error {
 	if count == 0 {
 		return nil
 	}
-	if contract != LanguageContractV700 && contract != LanguageContractV690 && contract != LanguageContractV680 && contract != LanguageContractV670 && contract != LanguageContractV660 && contract != LanguageContractV650 && contract != LanguageContractV640 && contract != LanguageContractV630 && contract != LanguageContractV620 && contract != LanguageContractV610 && contract != LanguageContractV600 && contract != LanguageContractV590 && contract != LanguageContractV580 && contract != LanguageContractV570 && contract != LanguageContractV560 && contract != LanguageContractV550 && contract != LanguageContractV540 && contract != LanguageContractV530 && contract != LanguageContractV520 && contract != LanguageContractV510 && contract != LanguageContractV500 && contract != LanguageContractV490 && contract != LanguageContractV390 && contract != LanguageContractV400 && contract != LanguageContractV410 && contract != LanguageContractV420 && contract != LanguageContractV430 && contract != LanguageContractV440 && contract != LanguageContractV450 && contract != LanguageContractV460 && contract != LanguageContractV470 && contract != LanguageContractV480 {
+	if contract != LanguageContractV710 && contract != LanguageContractV700 && contract != LanguageContractV690 && contract != LanguageContractV680 && contract != LanguageContractV670 && contract != LanguageContractV660 && contract != LanguageContractV650 && contract != LanguageContractV640 && contract != LanguageContractV630 && contract != LanguageContractV620 && contract != LanguageContractV610 && contract != LanguageContractV600 && contract != LanguageContractV590 && contract != LanguageContractV580 && contract != LanguageContractV570 && contract != LanguageContractV560 && contract != LanguageContractV550 && contract != LanguageContractV540 && contract != LanguageContractV530 && contract != LanguageContractV520 && contract != LanguageContractV510 && contract != LanguageContractV500 && contract != LanguageContractV490 && contract != LanguageContractV390 && contract != LanguageContractV400 && contract != LanguageContractV410 && contract != LanguageContractV420 && contract != LanguageContractV430 && contract != LanguageContractV440 && contract != LanguageContractV450 && contract != LanguageContractV460 && contract != LanguageContractV470 && contract != LanguageContractV480 {
 		return fmt.Errorf("function %s immutable local requires language contract %q", function.Name, LanguageContractV390)
 	}
 	if contract == LanguageContractV390 && (count != 1 || function.Body.Kind != ExprImmutableLocal) {
 		return fmt.Errorf("function %s admits exactly one top-level immutable local", function.Name)
 	}
-	if contract == LanguageContractV700 || contract == LanguageContractV690 || contract == LanguageContractV680 || contract == LanguageContractV670 || contract == LanguageContractV660 || contract == LanguageContractV650 || contract == LanguageContractV640 || contract == LanguageContractV630 || contract == LanguageContractV620 || contract == LanguageContractV610 || contract == LanguageContractV600 || contract == LanguageContractV590 || contract == LanguageContractV580 || contract == LanguageContractV570 || contract == LanguageContractV560 || contract == LanguageContractV550 || contract == LanguageContractV540 || contract == LanguageContractV530 || contract == LanguageContractV520 || contract == LanguageContractV510 || contract == LanguageContractV500 || contract == LanguageContractV490 || contract == LanguageContractV400 || contract == LanguageContractV410 || contract == LanguageContractV420 || contract == LanguageContractV430 || contract == LanguageContractV440 || contract == LanguageContractV450 || contract == LanguageContractV460 || contract == LanguageContractV470 || contract == LanguageContractV480 {
+	if contract == LanguageContractV710 || contract == LanguageContractV700 || contract == LanguageContractV690 || contract == LanguageContractV680 || contract == LanguageContractV670 || contract == LanguageContractV660 || contract == LanguageContractV650 || contract == LanguageContractV640 || contract == LanguageContractV630 || contract == LanguageContractV620 || contract == LanguageContractV610 || contract == LanguageContractV600 || contract == LanguageContractV590 || contract == LanguageContractV580 || contract == LanguageContractV570 || contract == LanguageContractV560 || contract == LanguageContractV550 || contract == LanguageContractV540 || contract == LanguageContractV530 || contract == LanguageContractV520 || contract == LanguageContractV510 || contract == LanguageContractV500 || contract == LanguageContractV490 || contract == LanguageContractV400 || contract == LanguageContractV410 || contract == LanguageContractV420 || contract == LanguageContractV430 || contract == LanguageContractV440 || contract == LanguageContractV450 || contract == LanguageContractV460 || contract == LanguageContractV470 || contract == LanguageContractV480 {
 		sequenceCount := 0
 		body := function.Body
 		for body.Kind == ExprImmutableLocal && body.ImmutableLocal != nil && body.ImmutableLocal.Return != nil {
@@ -494,47 +499,54 @@ func validateImmutableLocalContract(contract string, function Function) error {
 		}
 		branchLocals := 0
 		validBranches := true
-		if contract == LanguageContractV700 && body.Kind == ExprConditional && body.Conditional != nil && body.Conditional.TerminalStatement && body.Conditional.WhenTrue != nil && body.Conditional.WhenFalse != nil {
-			trueLocals, validTrue := terminalBranchLocalShape(*body.Conditional.WhenTrue)
-			falseLocals, validFalse := terminalBranchLocalShape(*body.Conditional.WhenFalse)
+		if (contract == LanguageContractV710 || contract == LanguageContractV700) && body.Kind == ExprConditional && body.Conditional != nil && body.Conditional.TerminalStatement && body.Conditional.WhenTrue != nil && body.Conditional.WhenFalse != nil {
+			limit := 1
+			if contract == LanguageContractV710 {
+				limit = 2
+			}
+			trueLocals, validTrue := terminalBranchLocalShape(*body.Conditional.WhenTrue, limit)
+			falseLocals, validFalse := terminalBranchLocalShape(*body.Conditional.WhenFalse, limit)
 			branchLocals = trueLocals + falseLocals
-			validBranches = validTrue && validFalse && branchLocals <= 2
+			validBranches = validTrue && validFalse
 		}
 		if sequenceCount == 0 || sequenceCount+branchLocals != count || !validBranches {
+			if contract == LanguageContractV710 && body.Kind == ExprConditional && body.Conditional != nil && body.Conditional.TerminalStatement {
+				return fmt.Errorf("function %s v0.71.0 terminal if/else permits at most two explicitly typed ordered immutable locals per branch", function.Name)
+			}
 			if contract == LanguageContractV700 && body.Kind == ExprConditional && body.Conditional != nil && body.Conditional.TerminalStatement {
 				return fmt.Errorf("function %s v0.70.0 terminal if/else permits at most one explicitly typed immutable local per branch", function.Name)
 			}
 			return fmt.Errorf("function %s admits only one top-level ordered immutable-local sequence", function.Name)
 		}
 	}
-	if exprContainsPropagation(function.Body) && contract != LanguageContractV700 && contract != LanguageContractV690 && contract != LanguageContractV680 && contract != LanguageContractV670 && contract != LanguageContractV660 && contract != LanguageContractV650 && contract != LanguageContractV640 && contract != LanguageContractV630 && contract != LanguageContractV620 && contract != LanguageContractV610 && contract != LanguageContractV600 && contract != LanguageContractV590 && contract != LanguageContractV580 && contract != LanguageContractV570 && contract != LanguageContractV560 && contract != LanguageContractV550 && contract != LanguageContractV540 && contract != LanguageContractV530 && contract != LanguageContractV520 && contract != LanguageContractV510 && contract != LanguageContractV500 && contract != LanguageContractV490 && contract != LanguageContractV410 && contract != LanguageContractV420 && contract != LanguageContractV430 && contract != LanguageContractV440 && contract != LanguageContractV450 && contract != LanguageContractV460 && contract != LanguageContractV470 && contract != LanguageContractV480 {
+	if exprContainsPropagation(function.Body) && contract != LanguageContractV710 && contract != LanguageContractV700 && contract != LanguageContractV690 && contract != LanguageContractV680 && contract != LanguageContractV670 && contract != LanguageContractV660 && contract != LanguageContractV650 && contract != LanguageContractV640 && contract != LanguageContractV630 && contract != LanguageContractV620 && contract != LanguageContractV610 && contract != LanguageContractV600 && contract != LanguageContractV590 && contract != LanguageContractV580 && contract != LanguageContractV570 && contract != LanguageContractV560 && contract != LanguageContractV550 && contract != LanguageContractV540 && contract != LanguageContractV530 && contract != LanguageContractV520 && contract != LanguageContractV510 && contract != LanguageContractV500 && contract != LanguageContractV490 && contract != LanguageContractV410 && contract != LanguageContractV420 && contract != LanguageContractV430 && contract != LanguageContractV440 && contract != LanguageContractV450 && contract != LanguageContractV460 && contract != LanguageContractV470 && contract != LanguageContractV480 {
 		return fmt.Errorf("function %s immutable local initializer and return exclude propagation", function.Name)
 	}
 	if exprContainsPropagation(function.Body) {
 		directFirst := function.Body.Kind == ExprImmutableLocal && function.Body.ImmutableLocal != nil && function.Body.ImmutableLocal.Initializer != nil && function.Body.ImmutableLocal.Initializer.Kind == ExprPropagate
-		oneStageContextual := ((contract == LanguageContractV700 || contract == LanguageContractV690 || contract == LanguageContractV680) && len(function.Parameters) >= 2) || ((contract == LanguageContractV670 || contract == LanguageContractV660 || contract == LanguageContractV650 || contract == LanguageContractV640 || contract == LanguageContractV630) && len(function.Parameters) == 2)
+		oneStageContextual := ((contract == LanguageContractV710 || contract == LanguageContractV700 || contract == LanguageContractV690 || contract == LanguageContractV680) && len(function.Parameters) >= 2) || ((contract == LanguageContractV670 || contract == LanguageContractV660 || contract == LanguageContractV650 || contract == LanguageContractV640 || contract == LanguageContractV630) && len(function.Parameters) == 2)
 		if oneStageContextual && directFirst && isBoundedValueResultType(function.Parameters[0].Type) && isBoundedValueResultType(function.ReturnType) && countPropagationExpressions(function.Body) == 1 {
 			return validateSingleStageContextualCrossPayloadResultPropagationContract(contract, function)
 		}
-		if (contract == LanguageContractV700 || contract == LanguageContractV690 || contract == LanguageContractV680 || contract == LanguageContractV670 || contract == LanguageContractV660 || contract == LanguageContractV650 || contract == LanguageContractV640 || contract == LanguageContractV630 || contract == LanguageContractV620) && directFirst && len(function.Parameters) >= 2 && isBoundedValueResultType(function.Parameters[0].Type) && isBoundedValueResultType(function.ReturnType) && countPropagationExpressions(function.Body) >= 2 {
+		if (contract == LanguageContractV710 || contract == LanguageContractV700 || contract == LanguageContractV690 || contract == LanguageContractV680 || contract == LanguageContractV670 || contract == LanguageContractV660 || contract == LanguageContractV650 || contract == LanguageContractV640 || contract == LanguageContractV630 || contract == LanguageContractV620) && directFirst && len(function.Parameters) >= 2 && isBoundedValueResultType(function.Parameters[0].Type) && isBoundedValueResultType(function.ReturnType) && countPropagationExpressions(function.Body) >= 2 {
 			return validateContextualCrossPayloadResultPropagationContract(contract, function)
 		}
-		if (contract == LanguageContractV700 || contract == LanguageContractV690 || contract == LanguageContractV680 || contract == LanguageContractV670 || contract == LanguageContractV660 || contract == LanguageContractV650 || contract == LanguageContractV640 || contract == LanguageContractV630 || contract == LanguageContractV620 || contract == LanguageContractV610) && directFirst && len(function.Parameters) > 0 && isBoundedValueResultType(function.Parameters[0].Type) && isBoundedValueResultType(function.ReturnType) && countPropagationExpressions(function.Body) >= 2 {
+		if (contract == LanguageContractV710 || contract == LanguageContractV700 || contract == LanguageContractV690 || contract == LanguageContractV680 || contract == LanguageContractV670 || contract == LanguageContractV660 || contract == LanguageContractV650 || contract == LanguageContractV640 || contract == LanguageContractV630 || contract == LanguageContractV620 || contract == LanguageContractV610) && directFirst && len(function.Parameters) > 0 && isBoundedValueResultType(function.Parameters[0].Type) && isBoundedValueResultType(function.ReturnType) && countPropagationExpressions(function.Body) >= 2 {
 			return validateGeneralizedCrossPayloadResultPropagationContract(function)
 		}
 		if contract == LanguageContractV600 && directFirst && len(function.Parameters) > 0 && isBoundedValueResultType(function.Parameters[0].Type) && isBoundedValueResultType(function.ReturnType) && countPropagationExpressions(function.Body) == 2 {
 			return validateTwoStageCrossPayloadResultPropagationContract(function)
 		}
-		if (contract == LanguageContractV700 || contract == LanguageContractV690 || contract == LanguageContractV680 || contract == LanguageContractV670 || contract == LanguageContractV660 || contract == LanguageContractV650 || contract == LanguageContractV640 || contract == LanguageContractV630 || contract == LanguageContractV620 || contract == LanguageContractV610 || contract == LanguageContractV600 || contract == LanguageContractV590) && directFirst && len(function.Parameters) > 0 && isBoundedValueResultType(function.Parameters[0].Type) && isBoundedValueResultType(function.ReturnType) && !TypeEqual(function.Parameters[0].Type.Result.Success, function.ReturnType.Result.Success) {
+		if (contract == LanguageContractV710 || contract == LanguageContractV700 || contract == LanguageContractV690 || contract == LanguageContractV680 || contract == LanguageContractV670 || contract == LanguageContractV660 || contract == LanguageContractV650 || contract == LanguageContractV640 || contract == LanguageContractV630 || contract == LanguageContractV620 || contract == LanguageContractV610 || contract == LanguageContractV600 || contract == LanguageContractV590) && directFirst && len(function.Parameters) > 0 && isBoundedValueResultType(function.Parameters[0].Type) && isBoundedValueResultType(function.ReturnType) && !TypeEqual(function.Parameters[0].Type.Result.Success, function.ReturnType.Result.Success) {
 			return validateCrossPayloadResultPropagationContract(contract, function)
 		}
-		if (contract == LanguageContractV700 || contract == LanguageContractV690 || contract == LanguageContractV680 || contract == LanguageContractV670 || contract == LanguageContractV660 || contract == LanguageContractV650 || contract == LanguageContractV640 || contract == LanguageContractV630 || contract == LanguageContractV620 || contract == LanguageContractV610 || contract == LanguageContractV600 || contract == LanguageContractV590 || contract == LanguageContractV580) && directFirst && (len(function.Parameters) >= 3 || countPropagationExpressions(function.Body) != 1) {
+		if (contract == LanguageContractV710 || contract == LanguageContractV700 || contract == LanguageContractV690 || contract == LanguageContractV680 || contract == LanguageContractV670 || contract == LanguageContractV660 || contract == LanguageContractV650 || contract == LanguageContractV640 || contract == LanguageContractV630 || contract == LanguageContractV620 || contract == LanguageContractV610 || contract == LanguageContractV600 || contract == LanguageContractV590 || contract == LanguageContractV580) && directFirst && (len(function.Parameters) >= 3 || countPropagationExpressions(function.Body) != 1) {
 			return validateCheckedPropagationChainContract(function)
 		}
 		if contract == LanguageContractV570 && directFirst && (len(function.Parameters) == 3 || countPropagationExpressions(function.Body) != 1) {
 			return validateTwoStageCheckedPropagationContract(function)
 		}
-		if ((contract == LanguageContractV700 || contract == LanguageContractV690 || contract == LanguageContractV680 || contract == LanguageContractV670 || contract == LanguageContractV660 || contract == LanguageContractV650 || contract == LanguageContractV640 || contract == LanguageContractV630 || contract == LanguageContractV620 || contract == LanguageContractV610 || contract == LanguageContractV600 || contract == LanguageContractV590 || contract == LanguageContractV580) || contract == LanguageContractV570 || contract == LanguageContractV560 || contract == LanguageContractV550 || contract == LanguageContractV540 || contract == LanguageContractV530 || contract == LanguageContractV520 || contract == LanguageContractV510 || contract == LanguageContractV500 || contract == LanguageContractV490 || contract == LanguageContractV420 || contract == LanguageContractV430 || contract == LanguageContractV440 || contract == LanguageContractV450 || contract == LanguageContractV460 || contract == LanguageContractV470 || contract == LanguageContractV480) && function.Body.Kind == ExprImmutableLocal && function.Body.ImmutableLocal != nil && function.Body.ImmutableLocal.Initializer != nil && function.Body.ImmutableLocal.Initializer.Kind != ExprPropagate {
+		if ((contract == LanguageContractV710 || contract == LanguageContractV700 || contract == LanguageContractV690 || contract == LanguageContractV680 || contract == LanguageContractV670 || contract == LanguageContractV660 || contract == LanguageContractV650 || contract == LanguageContractV640 || contract == LanguageContractV630 || contract == LanguageContractV620 || contract == LanguageContractV610 || contract == LanguageContractV600 || contract == LanguageContractV590 || contract == LanguageContractV580) || contract == LanguageContractV570 || contract == LanguageContractV560 || contract == LanguageContractV550 || contract == LanguageContractV540 || contract == LanguageContractV530 || contract == LanguageContractV520 || contract == LanguageContractV510 || contract == LanguageContractV500 || contract == LanguageContractV490 || contract == LanguageContractV420 || contract == LanguageContractV430 || contract == LanguageContractV440 || contract == LanguageContractV450 || contract == LanguageContractV460 || contract == LanguageContractV470 || contract == LanguageContractV480) && function.Body.Kind == ExprImmutableLocal && function.Body.ImmutableLocal != nil && function.Body.ImmutableLocal.Initializer != nil && function.Body.ImmutableLocal.Initializer.Kind != ExprPropagate {
 			return validatePriorLocalBlockPropagationContract(contract, function)
 		}
 		return validateBlockPropagationContract(contract, function)
@@ -553,13 +565,13 @@ func validateContextualCrossPayloadResultPropagationContract(contract string, fu
 func validateCrossPayloadResultPropagationChainContract(contract string, function Function, contextual bool) error {
 	feature := "v0.61.0 generalized cross-payload Result propagation"
 	expectedParameters := 1
-	multiContext := contextual && (contract == LanguageContractV700 || contract == LanguageContractV690 || contract == LanguageContractV680 || contract == LanguageContractV670)
+	multiContext := contextual && (contract == LanguageContractV710 || contract == LanguageContractV700 || contract == LanguageContractV690 || contract == LanguageContractV680 || contract == LanguageContractV670)
 	if contextual {
 		feature = "v0.62.0 contextual cross-payload Result propagation"
 		expectedParameters = 2
 	}
 	propagationCount := countPropagationExpressions(function.Body)
-	samePayloadAdmitted := contextual && (contract == LanguageContractV700 || contract == LanguageContractV690 || contract == LanguageContractV680 || contract == LanguageContractV670 || contract == LanguageContractV660 || (contract == LanguageContractV650 && propagationCount == 2))
+	samePayloadAdmitted := contextual && (contract == LanguageContractV710 || contract == LanguageContractV700 || contract == LanguageContractV690 || contract == LanguageContractV680 || contract == LanguageContractV670 || contract == LanguageContractV660 || (contract == LanguageContractV650 && propagationCount == 2))
 	if multiContext {
 		feature = "v0.67.0 generalized shared-context Result propagation"
 		expectedParameters = len(function.Parameters)
@@ -718,7 +730,7 @@ func validateSingleStageContextualCrossPayloadResultPropagationContract(contract
 func validateCrossPayloadResultPropagationFormContract(contract string, function Function, contextual bool) error {
 	feature := "v0.59.0 cross-payload Result propagation"
 	expectedParameters := 1
-	multiContext := contextual && (contract == LanguageContractV700 || contract == LanguageContractV690 || contract == LanguageContractV680)
+	multiContext := contextual && (contract == LanguageContractV710 || contract == LanguageContractV700 || contract == LanguageContractV690 || contract == LanguageContractV680)
 	if contextual {
 		feature = "v0.63.0 one-stage contextual cross-payload Result propagation"
 		if multiContext {
@@ -743,7 +755,7 @@ func validateCrossPayloadResultPropagationFormContract(contract string, function
 	}
 	carrier := function.Parameters[0].Type
 	target := function.ReturnType
-	samePayloadAdmitted := contextual && (contract == LanguageContractV700 || contract == LanguageContractV690 || contract == LanguageContractV680 || contract == LanguageContractV670 || contract == LanguageContractV660 || contract == LanguageContractV650 || contract == LanguageContractV640)
+	samePayloadAdmitted := contextual && (contract == LanguageContractV710 || contract == LanguageContractV700 || contract == LanguageContractV690 || contract == LanguageContractV680 || contract == LanguageContractV670 || contract == LanguageContractV660 || contract == LanguageContractV650 || contract == LanguageContractV640)
 	if (!samePayloadAdmitted && TypeEqual(carrier.Result.Success, target.Result.Success)) || !TypeEqual(carrier.Result.Failure, target.Result.Failure) || carrier.Result.Failure.Kind != TypePrimitive || carrier.Result.Failure.Primitive != PrimitiveString {
 		return fail("requires admitted payloads and the same string failure type; equal payloads require v0.64.0 contextual propagation")
 	}
@@ -866,10 +878,10 @@ func validateBlockPropagationContract(contract string, function Function) error 
 		payload = carrier.Optional.Value
 	case isBoundedValueResultType(carrier):
 		payload = carrier.Result.Success
-	case ((contract == LanguageContractV700 || contract == LanguageContractV690 || contract == LanguageContractV680 || contract == LanguageContractV670 || contract == LanguageContractV660 || contract == LanguageContractV650 || contract == LanguageContractV640 || contract == LanguageContractV630 || contract == LanguageContractV620 || contract == LanguageContractV610 || contract == LanguageContractV600 || contract == LanguageContractV590 || contract == LanguageContractV580) || contract == LanguageContractV570 || contract == LanguageContractV560 || contract == LanguageContractV550) && isArithmeticResultType(carrier):
+	case ((contract == LanguageContractV710 || contract == LanguageContractV700 || contract == LanguageContractV690 || contract == LanguageContractV680 || contract == LanguageContractV670 || contract == LanguageContractV660 || contract == LanguageContractV650 || contract == LanguageContractV640 || contract == LanguageContractV630 || contract == LanguageContractV620 || contract == LanguageContractV610 || contract == LanguageContractV600 || contract == LanguageContractV590 || contract == LanguageContractV580) || contract == LanguageContractV570 || contract == LanguageContractV560 || contract == LanguageContractV550) && isArithmeticResultType(carrier):
 		payload = carrier.Result.Success
 	default:
-		if (contract == LanguageContractV700 || contract == LanguageContractV690 || contract == LanguageContractV680 || contract == LanguageContractV670 || contract == LanguageContractV660 || contract == LanguageContractV650 || contract == LanguageContractV640 || contract == LanguageContractV630 || contract == LanguageContractV620 || contract == LanguageContractV610 || contract == LanguageContractV600 || contract == LanguageContractV590 || contract == LanguageContractV580) || contract == LanguageContractV570 || contract == LanguageContractV560 || contract == LanguageContractV550 {
+		if (contract == LanguageContractV710 || contract == LanguageContractV700 || contract == LanguageContractV690 || contract == LanguageContractV680 || contract == LanguageContractV670 || contract == LanguageContractV660 || contract == LanguageContractV650 || contract == LanguageContractV640 || contract == LanguageContractV630 || contract == LanguageContractV620 || contract == LanguageContractV610 || contract == LanguageContractV600 || contract == LanguageContractV590 || contract == LanguageContractV580) || contract == LanguageContractV570 || contract == LanguageContractV560 || contract == LanguageContractV550 {
 			return fmt.Errorf("function %s block propagation requires an admitted Optional, bounded Result, or checked-arithmetic Result", function.Name)
 		}
 		return fmt.Errorf("function %s block propagation requires an admitted Optional or bounded Result", function.Name)
@@ -877,9 +889,9 @@ func validateBlockPropagationContract(contract string, function Function) error 
 	if !TypeEqual(first.Type, payload) || !TypeEqual(first.Initializer.Type, payload) {
 		return fmt.Errorf("function %s first immutable local type must match the propagated success payload", function.Name)
 	}
-	multiParameterArithmetic := ((contract == LanguageContractV700 || contract == LanguageContractV690 || contract == LanguageContractV680 || contract == LanguageContractV670 || contract == LanguageContractV660 || contract == LanguageContractV650 || contract == LanguageContractV640 || contract == LanguageContractV630 || contract == LanguageContractV620 || contract == LanguageContractV610 || contract == LanguageContractV600 || contract == LanguageContractV590 || contract == LanguageContractV580) || contract == LanguageContractV570 || contract == LanguageContractV560) && isArithmeticResultType(carrier) && len(function.Parameters) == 2
+	multiParameterArithmetic := ((contract == LanguageContractV710 || contract == LanguageContractV700 || contract == LanguageContractV690 || contract == LanguageContractV680 || contract == LanguageContractV670 || contract == LanguageContractV660 || contract == LanguageContractV650 || contract == LanguageContractV640 || contract == LanguageContractV630 || contract == LanguageContractV620 || contract == LanguageContractV610 || contract == LanguageContractV600 || contract == LanguageContractV590 || contract == LanguageContractV580) || contract == LanguageContractV570 || contract == LanguageContractV560) && isArithmeticResultType(carrier) && len(function.Parameters) == 2
 	if len(function.Parameters) != 1 && !multiParameterArithmetic {
-		if ((contract == LanguageContractV700 || contract == LanguageContractV690 || contract == LanguageContractV680 || contract == LanguageContractV670 || contract == LanguageContractV660 || contract == LanguageContractV650 || contract == LanguageContractV640 || contract == LanguageContractV630 || contract == LanguageContractV620 || contract == LanguageContractV610 || contract == LanguageContractV600 || contract == LanguageContractV590 || contract == LanguageContractV580) || contract == LanguageContractV570 || contract == LanguageContractV560) && isArithmeticResultType(carrier) {
+		if ((contract == LanguageContractV710 || contract == LanguageContractV700 || contract == LanguageContractV690 || contract == LanguageContractV680 || contract == LanguageContractV670 || contract == LanguageContractV660 || contract == LanguageContractV650 || contract == LanguageContractV640 || contract == LanguageContractV630 || contract == LanguageContractV620 || contract == LanguageContractV610 || contract == LanguageContractV600 || contract == LanguageContractV590 || contract == LanguageContractV580) || contract == LanguageContractV570 || contract == LanguageContractV560) && isArithmeticResultType(carrier) {
 			return fmt.Errorf("function %s multi-parameter direct checked-arithmetic propagation requires exactly carrier and payload operand parameters", function.Name)
 		}
 		return fmt.Errorf("function %s block propagation requires its sole direct carrier parameter", function.Name)
@@ -891,7 +903,7 @@ func validateBlockPropagationContract(contract string, function Function) error 
 		if !isAdmittedMultiParameterCheckedArithmeticContinuation(*first.Return, payload, first.Position, 1) {
 			return fmt.Errorf("function %s multi-parameter direct checked-arithmetic propagation requires the propagated local as left operand and parameter 1 as right operand", function.Name)
 		}
-	} else if ((contract == LanguageContractV700 || contract == LanguageContractV690 || contract == LanguageContractV680 || contract == LanguageContractV670 || contract == LanguageContractV660 || contract == LanguageContractV650 || contract == LanguageContractV640 || contract == LanguageContractV630 || contract == LanguageContractV620 || contract == LanguageContractV610 || contract == LanguageContractV600 || contract == LanguageContractV590 || contract == LanguageContractV580) || contract == LanguageContractV570 || contract == LanguageContractV560 || contract == LanguageContractV550) && isArithmeticResultType(carrier) && !isAdmittedCheckedArithmeticContinuation(*first.Return, payload) {
+	} else if ((contract == LanguageContractV710 || contract == LanguageContractV700 || contract == LanguageContractV690 || contract == LanguageContractV680 || contract == LanguageContractV670 || contract == LanguageContractV660 || contract == LanguageContractV650 || contract == LanguageContractV640 || contract == LanguageContractV630 || contract == LanguageContractV620 || contract == LanguageContractV610 || contract == LanguageContractV600 || contract == LanguageContractV590 || contract == LanguageContractV580) || contract == LanguageContractV570 || contract == LanguageContractV560 || contract == LanguageContractV550) && isArithmeticResultType(carrier) && !isAdmittedCheckedArithmeticContinuation(*first.Return, payload) {
 		return fmt.Errorf("function %s direct checked-arithmetic propagation requires one admitted checked arithmetic continuation", function.Name)
 	}
 	return nil
@@ -969,7 +981,7 @@ func validatePriorLocalBlockPropagationContract(contract string, function Functi
 		return fmt.Errorf("function %s prior-local propagation requires propagation as the second immutable-local initializer", function.Name)
 	}
 	called := first.Initializer.Call
-	if (contract == LanguageContractV700 || contract == LanguageContractV690 || contract == LanguageContractV680 || contract == LanguageContractV670 || contract == LanguageContractV660 || contract == LanguageContractV650 || contract == LanguageContractV640 || contract == LanguageContractV630 || contract == LanguageContractV620 || contract == LanguageContractV610 || contract == LanguageContractV600 || contract == LanguageContractV590 || contract == LanguageContractV580) || contract == LanguageContractV570 || contract == LanguageContractV560 || contract == LanguageContractV550 || contract == LanguageContractV540 || contract == LanguageContractV530 {
+	if (contract == LanguageContractV710 || contract == LanguageContractV700 || contract == LanguageContractV690 || contract == LanguageContractV680 || contract == LanguageContractV670 || contract == LanguageContractV660 || contract == LanguageContractV650 || contract == LanguageContractV640 || contract == LanguageContractV630 || contract == LanguageContractV620 || contract == LanguageContractV610 || contract == LanguageContractV600 || contract == LanguageContractV590 || contract == LanguageContractV580) || contract == LanguageContractV570 || contract == LanguageContractV560 || contract == LanguageContractV550 || contract == LanguageContractV540 || contract == LanguageContractV530 {
 		if len(function.Parameters) == 0 || !directCallerArgumentReferences(called.Arguments, function.Parameters) {
 			return fmt.Errorf("function %s %s multi-parameter helper propagation requires every caller parameter directly once in declaration order", function.Name, contract)
 		}
@@ -990,10 +1002,10 @@ func validatePriorLocalBlockPropagationContract(contract string, function Functi
 		payload = carrier.Optional.Value
 	case isBoundedValueResultType(carrier):
 		payload = carrier.Result.Success
-	case ((contract == LanguageContractV700 || contract == LanguageContractV690 || contract == LanguageContractV680 || contract == LanguageContractV670 || contract == LanguageContractV660 || contract == LanguageContractV650 || contract == LanguageContractV640 || contract == LanguageContractV630 || contract == LanguageContractV620 || contract == LanguageContractV610 || contract == LanguageContractV600 || contract == LanguageContractV590 || contract == LanguageContractV580) || contract == LanguageContractV570 || contract == LanguageContractV560 || contract == LanguageContractV550 || contract == LanguageContractV540) && isArithmeticResultType(carrier):
+	case ((contract == LanguageContractV710 || contract == LanguageContractV700 || contract == LanguageContractV690 || contract == LanguageContractV680 || contract == LanguageContractV670 || contract == LanguageContractV660 || contract == LanguageContractV650 || contract == LanguageContractV640 || contract == LanguageContractV630 || contract == LanguageContractV620 || contract == LanguageContractV610 || contract == LanguageContractV600 || contract == LanguageContractV590 || contract == LanguageContractV580) || contract == LanguageContractV570 || contract == LanguageContractV560 || contract == LanguageContractV550 || contract == LanguageContractV540) && isArithmeticResultType(carrier):
 		payload = carrier.Result.Success
 	default:
-		if (contract == LanguageContractV700 || contract == LanguageContractV690 || contract == LanguageContractV680 || contract == LanguageContractV670 || contract == LanguageContractV660 || contract == LanguageContractV650 || contract == LanguageContractV640 || contract == LanguageContractV630 || contract == LanguageContractV620 || contract == LanguageContractV610 || contract == LanguageContractV600 || contract == LanguageContractV590 || contract == LanguageContractV580) || contract == LanguageContractV570 || contract == LanguageContractV560 || contract == LanguageContractV550 || contract == LanguageContractV540 {
+		if (contract == LanguageContractV710 || contract == LanguageContractV700 || contract == LanguageContractV690 || contract == LanguageContractV680 || contract == LanguageContractV670 || contract == LanguageContractV660 || contract == LanguageContractV650 || contract == LanguageContractV640 || contract == LanguageContractV630 || contract == LanguageContractV620 || contract == LanguageContractV610 || contract == LanguageContractV600 || contract == LanguageContractV590 || contract == LanguageContractV580) || contract == LanguageContractV570 || contract == LanguageContractV560 || contract == LanguageContractV550 || contract == LanguageContractV540 {
 			return fmt.Errorf("function %s prior-local propagation requires an admitted Optional, bounded Result, or checked-arithmetic Result", function.Name)
 		}
 		return fmt.Errorf("function %s prior-local propagation requires an admitted Optional or bounded Result", function.Name)
@@ -1001,7 +1013,7 @@ func validatePriorLocalBlockPropagationContract(contract string, function Functi
 	if !TypeEqual(second.Type, payload) || !TypeEqual(second.Initializer.Type, payload) {
 		return fmt.Errorf("function %s second immutable local type must match the propagated success payload", function.Name)
 	}
-	if ((contract == LanguageContractV700 || contract == LanguageContractV690 || contract == LanguageContractV680 || contract == LanguageContractV670 || contract == LanguageContractV660 || contract == LanguageContractV650 || contract == LanguageContractV640 || contract == LanguageContractV630 || contract == LanguageContractV620 || contract == LanguageContractV610 || contract == LanguageContractV600 || contract == LanguageContractV590 || contract == LanguageContractV580) || contract == LanguageContractV570 || contract == LanguageContractV560 || contract == LanguageContractV550 || contract == LanguageContractV540) && isArithmeticResultType(carrier) && !isAdmittedCheckedArithmeticContinuation(*second.Return, payload) {
+	if ((contract == LanguageContractV710 || contract == LanguageContractV700 || contract == LanguageContractV690 || contract == LanguageContractV680 || contract == LanguageContractV670 || contract == LanguageContractV660 || contract == LanguageContractV650 || contract == LanguageContractV640 || contract == LanguageContractV630 || contract == LanguageContractV620 || contract == LanguageContractV610 || contract == LanguageContractV600 || contract == LanguageContractV590 || contract == LanguageContractV580) || contract == LanguageContractV570 || contract == LanguageContractV560 || contract == LanguageContractV550 || contract == LanguageContractV540) && isArithmeticResultType(carrier) && !isAdmittedCheckedArithmeticContinuation(*second.Return, payload) {
 		return fmt.Errorf("function %s checked-arithmetic helper propagation requires one admitted checked arithmetic continuation", function.Name)
 	}
 	return nil
@@ -1051,11 +1063,11 @@ func validateConditionalContract(contract string, function Function) error {
 	if !exprContainsConditional(function.Body) {
 		return nil
 	}
-	if (contract != LanguageContractV700 && contract != LanguageContractV690 && contract != LanguageContractV680 && contract != LanguageContractV670 && contract != LanguageContractV660 && contract != LanguageContractV650 && contract != LanguageContractV640 && contract != LanguageContractV630 && contract != LanguageContractV620 && contract != LanguageContractV610 && contract != LanguageContractV600 && contract != LanguageContractV590 && contract != LanguageContractV580) && contract != LanguageContractV570 && contract != LanguageContractV560 && contract != LanguageContractV550 && contract != LanguageContractV540 && contract != LanguageContractV530 && contract != LanguageContractV520 && contract != LanguageContractV510 && contract != LanguageContractV500 && contract != LanguageContractV490 && contract != LanguageContractV380 && contract != LanguageContractV390 && contract != LanguageContractV400 && contract != LanguageContractV410 && contract != LanguageContractV420 && contract != LanguageContractV430 && contract != LanguageContractV440 && contract != LanguageContractV450 && contract != LanguageContractV460 && contract != LanguageContractV470 && contract != LanguageContractV480 {
+	if (contract != LanguageContractV710 && contract != LanguageContractV700 && contract != LanguageContractV690 && contract != LanguageContractV680 && contract != LanguageContractV670 && contract != LanguageContractV660 && contract != LanguageContractV650 && contract != LanguageContractV640 && contract != LanguageContractV630 && contract != LanguageContractV620 && contract != LanguageContractV610 && contract != LanguageContractV600 && contract != LanguageContractV590 && contract != LanguageContractV580) && contract != LanguageContractV570 && contract != LanguageContractV560 && contract != LanguageContractV550 && contract != LanguageContractV540 && contract != LanguageContractV530 && contract != LanguageContractV520 && contract != LanguageContractV510 && contract != LanguageContractV500 && contract != LanguageContractV490 && contract != LanguageContractV380 && contract != LanguageContractV390 && contract != LanguageContractV400 && contract != LanguageContractV410 && contract != LanguageContractV420 && contract != LanguageContractV430 && contract != LanguageContractV440 && contract != LanguageContractV450 && contract != LanguageContractV460 && contract != LanguageContractV470 && contract != LanguageContractV480 {
 		return fmt.Errorf("function %s conditional expressions require language contract %q", function.Name, LanguageContractV380)
 	}
 	conditionalCount := countConditionalExpressions(function.Body)
-	if conditionalCount != 1 && contract != LanguageContractV700 && contract != LanguageContractV690 {
+	if conditionalCount != 1 && contract != LanguageContractV710 && contract != LanguageContractV700 && contract != LanguageContractV690 {
 		return fmt.Errorf("function %s admits exactly one conditional expression", function.Name)
 	}
 	var terminalConditional *Conditional
@@ -1091,19 +1103,23 @@ func validateConditionalContract(contract string, function Function) error {
 			locals++
 			terminal = *terminal.ImmutableLocal.Return
 		}
-		branchLocals := 0
+		branchLocalLimit := 0
+		if contract == LanguageContractV700 {
+			branchLocalLimit = 1
+		}
+		if contract == LanguageContractV710 {
+			branchLocalLimit = 2
+		}
 		validBranches := terminal.Conditional != nil && terminal.Conditional.WhenTrue != nil && terminal.Conditional.WhenFalse != nil
 		if validBranches {
-			trueLocals, validTrue := terminalBranchLocalShape(*terminal.Conditional.WhenTrue)
-			falseLocals, validFalse := terminalBranchLocalShape(*terminal.Conditional.WhenFalse)
-			branchLocals = trueLocals + falseLocals
+			_, validTrue := terminalBranchLocalShape(*terminal.Conditional.WhenTrue, branchLocalLimit)
+			_, validFalse := terminalBranchLocalShape(*terminal.Conditional.WhenFalse, branchLocalLimit)
 			validBranches = validTrue && validFalse
 		}
-		validBranchContract := branchLocals == 0
-		if contract == LanguageContractV700 {
-			validBranchContract = branchLocals <= 2
-		}
-		if (contract != LanguageContractV700 && contract != LanguageContractV690) || terminalCount != 1 || conditionalCount > 2 || locals < 1 || terminal.Kind != ExprConditional || terminal.Conditional != terminalConditional || !validBranches || !validBranchContract || exprContainsPropagation(function.Body) || countMatchExpressions(function.Body) != 0 {
+		if (contract != LanguageContractV710 && contract != LanguageContractV700 && contract != LanguageContractV690) || terminalCount != 1 || conditionalCount > 2 || locals < 1 || terminal.Kind != ExprConditional || terminal.Conditional != terminalConditional || !validBranches || exprContainsPropagation(function.Body) || countMatchExpressions(function.Body) != 0 {
+			if contract == LanguageContractV710 {
+				return fmt.Errorf("function %s v0.71.0 terminal if/else permits at most two explicitly typed ordered immutable locals per branch; branch locals are lexical, and propagation, match, nested branches, three branch locals, and fallthrough are excluded", function.Name)
+			}
 			if contract == LanguageContractV700 {
 				return fmt.Errorf("function %s v0.70.0 terminal if/else permits at most one explicitly typed immutable local per branch; branch locals are lexical, and propagation, match, nested branches, multiple branch locals, and fallthrough are excluded", function.Name)
 			}
@@ -1225,11 +1241,11 @@ func validatePureCallPlacement(contract string, function Function) error {
 		if !validGeneralCallPlacement(function.Body) {
 			return fmt.Errorf("function %s composed pure calls retain direct match and propagate carriers", function.Name)
 		}
-	case LanguageContractV430, LanguageContractV440, LanguageContractV450, LanguageContractV460, LanguageContractV470, LanguageContractV480, LanguageContractV490, LanguageContractV500, LanguageContractV510, LanguageContractV520, LanguageContractV530, LanguageContractV540, LanguageContractV550, LanguageContractV560, LanguageContractV570, LanguageContractV580, LanguageContractV590, LanguageContractV600, LanguageContractV610, LanguageContractV620, LanguageContractV630, LanguageContractV640, LanguageContractV650, LanguageContractV660, LanguageContractV670, LanguageContractV680, LanguageContractV690, LanguageContractV700:
+	case LanguageContractV430, LanguageContractV440, LanguageContractV450, LanguageContractV460, LanguageContractV470, LanguageContractV480, LanguageContractV490, LanguageContractV500, LanguageContractV510, LanguageContractV520, LanguageContractV530, LanguageContractV540, LanguageContractV550, LanguageContractV560, LanguageContractV570, LanguageContractV580, LanguageContractV590, LanguageContractV600, LanguageContractV610, LanguageContractV620, LanguageContractV630, LanguageContractV640, LanguageContractV650, LanguageContractV660, LanguageContractV670, LanguageContractV680, LanguageContractV690, LanguageContractV700, LanguageContractV710:
 		valid := validHelperCarrierMatchCallPlacement(function.Body)
 		if contract == LanguageContractV450 || contract == LanguageContractV460 {
 			valid = validHelperCarrierMatchLocalCallPlacement(function.Body)
-		} else if contract == LanguageContractV470 || contract == LanguageContractV480 || contract == LanguageContractV490 || contract == LanguageContractV500 || contract == LanguageContractV510 || (contract == LanguageContractV700 || contract == LanguageContractV690 || contract == LanguageContractV680 || contract == LanguageContractV670 || contract == LanguageContractV660 || contract == LanguageContractV650 || contract == LanguageContractV640 || contract == LanguageContractV630 || contract == LanguageContractV620 || contract == LanguageContractV610 || contract == LanguageContractV600 || contract == LanguageContractV590 || contract == LanguageContractV580) || contract == LanguageContractV570 || contract == LanguageContractV560 || contract == LanguageContractV550 || contract == LanguageContractV540 || contract == LanguageContractV530 || contract == LanguageContractV520 {
+		} else if contract == LanguageContractV470 || contract == LanguageContractV480 || contract == LanguageContractV490 || contract == LanguageContractV500 || contract == LanguageContractV510 || (contract == LanguageContractV710 || contract == LanguageContractV700 || contract == LanguageContractV690 || contract == LanguageContractV680 || contract == LanguageContractV670 || contract == LanguageContractV660 || contract == LanguageContractV650 || contract == LanguageContractV640 || contract == LanguageContractV630 || contract == LanguageContractV620 || contract == LanguageContractV610 || contract == LanguageContractV600 || contract == LanguageContractV590 || contract == LanguageContractV580) || contract == LanguageContractV570 || contract == LanguageContractV560 || contract == LanguageContractV550 || contract == LanguageContractV540 || contract == LanguageContractV530 || contract == LanguageContractV520 {
 			valid = validHelperCarrierMatchLaterLocalCallPlacement(function.Body)
 		}
 		if !valid {
@@ -1254,7 +1270,7 @@ func validatePureCallPlacement(contract string, function Function) error {
 			if contract == LanguageContractV510 {
 				return fmt.Errorf("function %s v0.51.0 admits inherited bounded matches or one contiguous dependent carrier chain", function.Name)
 			}
-			if (contract == LanguageContractV700 || contract == LanguageContractV690 || contract == LanguageContractV680 || contract == LanguageContractV670 || contract == LanguageContractV660 || contract == LanguageContractV650 || contract == LanguageContractV640 || contract == LanguageContractV630 || contract == LanguageContractV620 || contract == LanguageContractV610 || contract == LanguageContractV600 || contract == LanguageContractV590 || contract == LanguageContractV580) || contract == LanguageContractV570 || contract == LanguageContractV560 || contract == LanguageContractV550 || contract == LanguageContractV540 || contract == LanguageContractV530 || contract == LanguageContractV520 {
+			if (contract == LanguageContractV710 || contract == LanguageContractV700 || contract == LanguageContractV690 || contract == LanguageContractV680 || contract == LanguageContractV670 || contract == LanguageContractV660 || contract == LanguageContractV650 || contract == LanguageContractV640 || contract == LanguageContractV630 || contract == LanguageContractV620 || contract == LanguageContractV610 || contract == LanguageContractV600 || contract == LanguageContractV590 || contract == LanguageContractV580) || contract == LanguageContractV570 || contract == LanguageContractV560 || contract == LanguageContractV550 || contract == LanguageContractV540 || contract == LanguageContractV530 || contract == LanguageContractV520 {
 				return fmt.Errorf("function %s v0.52.0 admits inherited bounded matches, one v0.51 immediate-only chain, or one cumulative fan-in chain", function.Name)
 			}
 			return fmt.Errorf("function %s %s admits helper calls only as one complete match carrier over direct caller parameters", function.Name, contract)
@@ -1279,7 +1295,7 @@ func countMatchExpressions(expression Expr) int {
 }
 
 func validateHelperResultMatchContract(contract string, function Function, functions map[string]Function) error {
-	if (contract == LanguageContractV700 || contract == LanguageContractV690 || contract == LanguageContractV680 || contract == LanguageContractV670 || contract == LanguageContractV660 || contract == LanguageContractV650 || contract == LanguageContractV640 || contract == LanguageContractV630 || contract == LanguageContractV620 || contract == LanguageContractV610 || contract == LanguageContractV600 || contract == LanguageContractV590 || contract == LanguageContractV580) || contract == LanguageContractV570 || contract == LanguageContractV560 || contract == LanguageContractV550 || contract == LanguageContractV540 || contract == LanguageContractV530 || contract == LanguageContractV520 {
+	if (contract == LanguageContractV710 || contract == LanguageContractV700 || contract == LanguageContractV690 || contract == LanguageContractV680 || contract == LanguageContractV670 || contract == LanguageContractV660 || contract == LanguageContractV650 || contract == LanguageContractV640 || contract == LanguageContractV630 || contract == LanguageContractV620 || contract == LanguageContractV610 || contract == LanguageContractV600 || contract == LanguageContractV590 || contract == LanguageContractV580) || contract == LanguageContractV570 || contract == LanguageContractV560 || contract == LanguageContractV550 || contract == LanguageContractV540 || contract == LanguageContractV530 || contract == LanguageContractV520 {
 		matchCount := countMatchExpressions(function.Body)
 		if matchCount == 0 {
 			return nil
@@ -1821,7 +1837,7 @@ func callableIdentityEqual(left, right *CallableIdentity) bool {
 
 func isV310OrLaterContract(contract string) bool {
 	switch contract {
-	case LanguageContractV310, LanguageContractV320, LanguageContractV330, LanguageContractV340, LanguageContractV350, LanguageContractV360, LanguageContractV370, LanguageContractV380, LanguageContractV390, LanguageContractV400, LanguageContractV410, LanguageContractV420, LanguageContractV430, LanguageContractV440, LanguageContractV450, LanguageContractV460, LanguageContractV470, LanguageContractV480, LanguageContractV490, LanguageContractV500, LanguageContractV510, LanguageContractV520, LanguageContractV530, LanguageContractV540, LanguageContractV550, LanguageContractV560, LanguageContractV570, LanguageContractV580, LanguageContractV590, LanguageContractV600, LanguageContractV610, LanguageContractV620, LanguageContractV630, LanguageContractV640, LanguageContractV650, LanguageContractV660, LanguageContractV670, LanguageContractV680, LanguageContractV690, LanguageContractV700:
+	case LanguageContractV310, LanguageContractV320, LanguageContractV330, LanguageContractV340, LanguageContractV350, LanguageContractV360, LanguageContractV370, LanguageContractV380, LanguageContractV390, LanguageContractV400, LanguageContractV410, LanguageContractV420, LanguageContractV430, LanguageContractV440, LanguageContractV450, LanguageContractV460, LanguageContractV470, LanguageContractV480, LanguageContractV490, LanguageContractV500, LanguageContractV510, LanguageContractV520, LanguageContractV530, LanguageContractV540, LanguageContractV550, LanguageContractV560, LanguageContractV570, LanguageContractV580, LanguageContractV590, LanguageContractV600, LanguageContractV610, LanguageContractV620, LanguageContractV630, LanguageContractV640, LanguageContractV650, LanguageContractV660, LanguageContractV670, LanguageContractV680, LanguageContractV690, LanguageContractV700, LanguageContractV710:
 		return true
 	default:
 		return false

@@ -1262,6 +1262,29 @@ assignment, fallthrough, other early returns, loops, effects, inference, actions
 targets, adapters, UI, and deployment remain excluded. No successor is implied; another slice
 requires a new founder decision and separate implementation approval.
 
+## Accepted v0.71.0 boundary — two-local terminal-branch sequences
+
+`v0.71.0` widens only the v0.70 per-branch local limit. Either terminal branch may contain at most
+two explicitly typed ordered immutable locals followed by its return. A second local may
+reference the first local in the same branch. Both branches may use the two-local form; their
+scopes remain independent, may reuse names and binding positions, and cannot escape to the
+condition, sibling branch, or surrounding method. One or more top-level ordered immutable locals
+still precede the terminal conditional. Initializers run in source order only when their branch is
+selected, and every declared type remains exact.
+
+Typed HIR and target-neutral Core reuse nested `immutable_local` nodes inside the terminal
+`conditional`. Core independently verifies a maximum of two root locals per branch, canonical
+binding positions, lexical references, exact types, and the existing unique terminal placement.
+Evaluation and deterministic Core-only Go preserve source order, lexical scope, and selected-branch
+execution. `pipelang.compiler.v1`, `pipelang.semantic.v1`, and `dockpipe.application.v1` remain
+stable; only language metadata advances to `v0.71.0`. The exact 45-source lane remains frozen.
+
+The inherited v0.69 direct-return and v0.70 one-local forms remain exact. A third branch local,
+nested branches, zero top-level locals, escaping bindings, propagation, matching, assignment,
+fallthrough, other early returns, loops, effects, inference, actions, runtimes, targets, adapters,
+UI, and deployment remain excluded. No successor is implied; another slice requires a new founder
+decision and separate implementation approval.
+
 ## Accepted v0.49.0 boundary — bounded two-carrier matching
 
 `v0.49.0` widens only the occurrence count accepted through v0.48. One public pure method with one

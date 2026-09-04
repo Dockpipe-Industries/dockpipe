@@ -179,6 +179,14 @@ cannot escape. Typed HIR and Core reuse the existing `immutable_local` nested in
 locals in one branch, propagation, matching, assignment, fallthrough, other early returns, loops,
 effects, or inference.
 
+Step 8ak is complete using `v0.71.0`: either v0.70 terminal branch may now contain at most two
+explicitly typed ordered immutable locals before its return. A second local may reference the
+first in the same branch; opposing branches remain independent lexical scopes, may reuse names,
+and only the selected branch evaluates. Typed HIR and Core continue to represent each sequence as
+nested `immutable_local` nodes inside the terminal `conditional`; no schema identity changes. This
+seam does not admit a third branch local, nested branches, zero top-level locals, propagation,
+matching, assignment, fallthrough, other early returns, loops, effects, or inference.
+
 Each slice is independently reviewable and keeps syntax, semantics, diagnostics, projection,
 editor, tests, and any enabled backend synchronized. No permissive parser, target-owned semantics,
 or syntax-first feature batch may skip the earlier foundations.
@@ -1141,6 +1149,28 @@ escaping bindings, propagation, matching, assignment, fallthrough, other early r
 effects, inference, actions, runtimes, targets, adapters, UI, and deployment remain excluded. No
 behavior enters by implication. Any successor requires a new founder decision and separate
 implementation approval.
+
+## Checkpoint v0.71.0 complete contract
+
+One public pure method additionally admits at most two explicitly typed ordered immutable locals
+inside either terminal `if/else` branch. One or more top-level ordered immutable locals and the
+exact v0.69 terminal placement remain required. A second branch local may reference the first;
+opposing branches remain independent lexical scopes, may reuse names and canonical binding
+positions, evaluate only when selected, and cannot leak bindings.
+
+Typed HIR and target-neutral Core reuse nested `immutable_local` expressions inside the existing
+terminal `conditional`. Core independently verifies a maximum of two root branch locals, exact
+types, canonical positions, lexical references, and terminal placement. Evaluation and
+deterministic Core-only Go preserve source order and lazy branch selection.
+`pipelang.compiler.v1`, `pipelang.semantic.v1`, and `dockpipe.application.v1` remain stable;
+metadata advances to `v0.71.0`; compiler-pipeline, malformed-Core, generated-Go, editor, and
+metadata-only Application IR fixtures prove the boundary; the exact 45-source lane remains frozen.
+
+The inherited v0.69 direct-return and v0.70 one-local forms remain exact. A third branch local,
+nested branches, zero top-level locals, escaping bindings, propagation, matching, assignment,
+fallthrough, other early returns, loops, effects, inference, actions, runtimes, targets, adapters,
+UI, and deployment remain excluded. No behavior enters by implication. Any successor requires a
+new founder decision and separate implementation approval.
 
 ## Application IR checkpoint complete contract
 

@@ -858,3 +858,26 @@ branch, escaping branch bindings, propagation, match, assignment, fallthrough, o
 returns, loops, effects, inference, actions, runtimes, targets, adapters, UI, and deployment remain
 excluded. No successor is implied; another slice requires a new founder decision and separate
 implementation approval.
+
+## Step 8ak — two-local terminal-branch sequences (`v0.71.0`)
+
+Production source widens only the v0.70 terminal-branch local limit. Either branch may now contain
+at most two explicitly typed ordered immutable locals immediately before its return. The second
+local may reference the first local in that branch. Opposing branches retain independent lexical
+scopes, may reuse the same names and binding positions, evaluate only when selected, and cannot
+leak bindings. One or more top-level ordered immutable locals remain required.
+
+Typed HIR and target-neutral Core represent the sequence as nested `immutable_local` expressions
+inside the existing terminal `conditional`; no new node or schema is introduced. Source and Core
+validation cap each branch independently at two locals and preserve declaration order, exact
+typing, canonical positions, lexical references, and terminal placement. Evaluation and
+deterministic Core-only Go preserve source order and lazy branch selection.
+`pipelang.compiler.v1`, `pipelang.semantic.v1`, and `dockpipe.application.v1` stay stable;
+Application IR changes only its language metadata to `v0.71.0`; the exact 45-source compatibility
+lane remains frozen.
+
+The inherited direct-return and one-local branch forms remain valid. A third branch local, nested
+branches, zero top-level locals, escaping bindings, propagation, match, assignment, fallthrough,
+other early returns, loops, effects, inference, actions, runtimes, targets, adapters, UI, and
+deployment remain excluded. No successor is implied; another slice requires a new founder decision
+and separate implementation approval.
