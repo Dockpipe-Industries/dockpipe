@@ -141,5 +141,6 @@ func pipelangFindByTextListTestPackageAppRootContainerrowField0(values []PipeLan
 
 func PipeLangFindRow(p0 []PipeLangRecordTestPackageAppRootContainerrow, p1 string) PipeLangOptional[PipeLangRecordTestPackageAppRootContainerrow] {
 	pipelangValidateListTestPackageAppRootContainerrow(p0)
+	pipelangValidateText(p1)
 	return pipelangFindByTextListTestPackageAppRootContainerrowField0(p0, p1)
 }

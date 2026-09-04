@@ -244,6 +244,15 @@ source-only primitive `int`/`float` or named/applied executable types, unsupport
 and contradictory representations fail before evaluation or Go generation. Semantic callable
 identities continue to use source-level names independently of executable type normalization.
 
+Host argument validation follows declared parameter types before the function body executes.
+The evaluator and generated Go reject invalid UTF-8 and malformed Result carriers even in
+identity functions, unused parameters, and unselected terminal branches. Existing validators
+also check text inside supported records, primitive/record Optionals, record lists, and
+text/snapshot Results. Arithmetic Results require an empty error on success, or a supported
+error tag and zero numeric payload on failure; either sign of floating-point zero is canonical.
+Successful binary64 payloads retain NaN and infinity. Generated validation helpers are discovered
+from parameter types as well as operations, without a match or propagation prerequisite.
+
 The proven fixture is the existing-syntax pure function `Ready(int count) => count > 0`. Its HIR,
 Core, and generated-Go bytes are golden-tested; generated Go is compiled and executed under a
 temporary offline module, and its result matches the existing pure evaluator. The first backend

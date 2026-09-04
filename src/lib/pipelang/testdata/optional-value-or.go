@@ -98,5 +98,6 @@ func pipelangValueOr[T any](value PipeLangOptional[T], fallback T) T {
 
 func PipeLangValueOr(p0 PipeLangOptional[string], p1 string) string {
 	pipelangValidateOptional(p0)
+	pipelangValidateText(p1)
 	return pipelangValueOr(p0, p1)
 }

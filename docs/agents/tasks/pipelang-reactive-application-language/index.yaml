@@ -13,8 +13,8 @@ state:
   current_language_contract: v0.80.0
   active_objective: TASK-021-PipeLang-v0.80-milestone-repairs
   repair_record: milestone-v080-repairs.md
-  completed_repair_slices: [R1, R2, R3, R4]
-  next_repair_slice: R5
+  completed_repair_slices: [R1, R2, R3, R4, R5]
+  next_repair_slice: R6
   completed_through: v0.80.0 two expanded terminal leaves plus v0.79.0 bounded depth-three terminal branching plus v0.78.0 rootless symmetric depth-two terminal branching plus v0.77.0 symmetric depth-two terminal branching with shared root immutable locals plus v0.76.0 shared root immutable-local sequences before the v0.75.0 bounded nested terminal topology, v0.75.0 inner terminal-leaf immutable-local sequences, v0.74.0 one-branch bounded nested terminal if/else, v0.73.0 direct terminal if/else without a top-level-local prerequisite, v0.72.0 general terminal-branch local sequences, v0.71.0 two-local terminal-branch sequences, v0.70.0 lexical terminal-branch locals, and v0.69.0 terminal statement-level if/else after ordered immutable locals, generalized one-stage and multi-stage shared-context Result propagation, generalized contextual bounded Result propagation, exact two-stage and one-stage contextual bounded propagation, contextual and generalized cross-payload chains, exact two-stage and one-stage cross-payload Result propagation, generalized checked-propagation chains, two-stage, multi-parameter direct, direct, and helper checked propagation, multi-parameter propagation, cumulative and immediate dependent chains, dependent and independent two-carrier forms, prior-local and later-local helper matching, checked arithmetic, pure calls, matching, propagation, ordered immutable locals, and dockpipe.application.v1 consumer proof
   authority: >-
     The founder requested six milestone repair slices on 2026-09-04; scope and completion evidence

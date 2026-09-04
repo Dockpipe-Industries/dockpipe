@@ -62,5 +62,6 @@ func pipelangNewRecordTestPackageAppRootRow(field0 string, field1 int64, field2 
 }
 
 func PipeLangCreate(p0 string, p1 int64, p2 float64, p3 bool) PipeLangRecordTestPackageAppRootRow {
+	pipelangValidateText(p0)
 	return pipelangNewRecordTestPackageAppRootRow(p0, p1, p2, p3)
 }

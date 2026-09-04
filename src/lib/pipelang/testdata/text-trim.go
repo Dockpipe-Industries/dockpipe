@@ -87,5 +87,6 @@ func pipelangTrimText(value string) string {
 }
 
 func PipeLangTrim(p0 string) string {
+	pipelangValidateText(p0)
 	return pipelangTrimText(p0)
 }

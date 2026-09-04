@@ -1067,6 +1067,16 @@ func validateValue(value Value) error {
 
 func resultSuccessPayloadIsCanonicalZero(value Value) bool {
 	switch value.Type.Kind {
+	case coreir.TypeNumeric:
+		// Arithmetic failures retain only the error tag. Match the generated
+		// carrier's numeric zero check, including acceptance of signed zero.
+		if value.Type.Numeric == nil || value.Result != nil || value.Optional != nil || value.List != nil || len(value.Record) != 0 {
+			return false
+		}
+		if value.Type.Numeric.Representation == coreir.NumericInteger {
+			return value.Int == 0
+		}
+		return value.Float == 0
 	case coreir.TypeList:
 		return value.List == nil && value.Result == nil && value.Optional == nil && len(value.Record) == 0
 	case coreir.TypePrimitive:

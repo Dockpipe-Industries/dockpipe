@@ -14,6 +14,19 @@ type PipeLangArithmeticResult[T any] struct {
 	Error PipeLangArithmeticError
 }
 
+func pipelangValidateArithmeticResult[T comparable](value PipeLangArithmeticResult[T]) {
+	var zero T
+	if value.OK {
+		if value.Error != "" {
+			panic("invalid PipeLang arithmetic Result value")
+		}
+		return
+	}
+	if value.Value != zero || (value.Error != PipeLangArithmeticOverflow && value.Error != PipeLangArithmeticDivisionByZero) {
+		panic("invalid PipeLang arithmetic Result value")
+	}
+}
+
 func pipelangCheckedAddInt64(left, right int64) PipeLangArithmeticResult[int64] {
 	const maximum = int64(9223372036854775807)
 	const minimum = -maximum - 1
@@ -65,5 +78,6 @@ func pipelangCheckedDivideBinary64(left, right float64) PipeLangArithmeticResult
 }
 
 func PipeLangForward(p0 PipeLangArithmeticResult[int64]) PipeLangArithmeticResult[int64] {
+	pipelangValidateArithmeticResult(p0)
 	return p0
 }
