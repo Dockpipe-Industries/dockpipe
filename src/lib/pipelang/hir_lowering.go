@@ -22,22 +22,93 @@ func LowerSemanticMethodToHIR(analysis *Analysis, identity SemanticIdentity) (hi
 	if !isPipeLangSemanticContract(analysis.Modules.LanguageContract()) {
 		return hir.Program{}, hirLoweringError(analysis, analysis.Program.Span, identity, fmt.Sprintf("typed HIR lowering requires a supported post-legacy language contract through %q", PipeLangLanguageContractV800))
 	}
+	return lowerSemanticMethodGraphToHIR(analysis, identity, lowerSemanticFunctionToHIR)
+}
+
+// lowerSemanticMethodGraphToHIR owns one dependency traversal. The function
+// lowerer handles only a method's body; shared callees and named predicates are
+// visited once, then emitted in the existing dependency-first discovery order.
+func lowerSemanticMethodGraphToHIR(analysis *Analysis, identity SemanticIdentity, lowerFunction func(*Analysis, SemanticIdentity) (hir.Function, error)) (hir.Program, error) {
+	program := hir.Program{LanguageContract: string(analysis.Modules.LanguageContract()), CompilerContract: coreir.CompilerContractV1}
+	active := make(map[string]bool)
+	complete := make(map[string]bool)
+	var visit func(SemanticIdentity) error
+	visit = func(identity SemanticIdentity) error {
+		key := semanticIdentityKey(identity)
+		if complete[key] {
+			return nil
+		}
+		if active[key] {
+			return hirLoweringError(analysis, analysis.Program.Span, identity, "typed HIR dependency graph contains a cycle")
+		}
+		active[key] = true
+		function, err := lowerFunction(analysis, identity)
+		if err != nil {
+			return err
+		}
+		method := methodByIdentity(analysis, identity)
+		var visitCalls func(Expr) error
+		visitCalls = func(expression Expr) error {
+			if call, ok := expression.(*CallExpr); ok {
+				targetIdentity, found := analysis.SemanticIDs.IdentityForSpan(call.TargetSpan)
+				if !found {
+					return hirLoweringError(analysis, call.NameSpan, identity, fmt.Sprintf("call target %q has no semantic identity", call.Name))
+				}
+				if err := visit(targetIdentity); err != nil {
+					return err
+				}
+			}
+			for _, child := range expressionChildren(expression) {
+				if err := visitCalls(child); err != nil {
+					return err
+				}
+			}
+			return nil
+		}
+		if err := visitCalls(method.Body); err != nil {
+			return err
+		}
+		if filter, ok := method.Body.(*ListFilterPredicateExpr); ok {
+			predicate, err := analysis.checked.resolveNamedRecordPredicate(*method, filter.Predicate, filter.PredicateSpan)
+			if err != nil {
+				return err
+			}
+			predicateIdentity, ok := analysis.SemanticIDs.IdentityForSpan(predicate.Span)
+			if !ok {
+				return hirLoweringError(analysis, filter.PredicateSpan, identity, fmt.Sprintf("predicate method %q has no semantic identity", filter.Predicate))
+			}
+			if err := visit(predicateIdentity); err != nil {
+				return err
+			}
+		}
+		delete(active, key)
+		complete[key] = true
+		program.Functions = append(program.Functions, function)
+		return nil
+	}
+	if err := visit(identity); err != nil {
+		return hir.Program{}, err
+	}
+	return program, nil
+}
+
+func lowerSemanticFunctionToHIR(analysis *Analysis, identity SemanticIdentity) (hir.Function, error) {
 	semantic, ok := analysis.SemanticIDs.LookupIdentity(identity)
 	if !ok || semantic.Kind != SemanticMethod {
-		return hir.Program{}, hirLoweringError(analysis, analysis.Program.Span, identity, fmt.Sprintf("semantic method %q was not found", identity.String()))
+		return hir.Function{}, hirLoweringError(analysis, analysis.Program.Span, identity, fmt.Sprintf("semantic method %q was not found", identity.String()))
 	}
 
 	class, method := methodBySpan(analysis.Program, semantic.DeclarationSpan)
 	if class == nil || method == nil {
-		return hir.Program{}, hirLoweringError(analysis, semantic.DeclarationSpan, identity, "semantic method has no checked syntax declaration")
+		return hir.Function{}, hirLoweringError(analysis, semantic.DeclarationSpan, identity, "semantic method has no checked syntax declaration")
 	}
 	ownerSymbol, ok := symbolBySpan(analysis.Symbols, class.Span)
 	if !ok || ownerSymbol.Owner.Kind != SymbolOwnerModule {
-		return hir.Program{}, hirLoweringError(analysis, class.Span, identity, "semantic method owner has no bound module symbol")
+		return hir.Function{}, hirLoweringError(analysis, class.Span, identity, "semantic method owner has no bound module symbol")
 	}
 	ownerIdentity, ok := analysis.SemanticIDs.IdentityForSpan(class.Span)
 	if !ok || semanticIdentityKey(ownerIdentity) != semanticIdentityKey(semantic.Parent) {
-		return hir.Program{}, hirLoweringError(analysis, class.Span, identity, "semantic method owner identity is inconsistent")
+		return hir.Function{}, hirLoweringError(analysis, class.Span, identity, "semantic method owner identity is inconsistent")
 	}
 
 	functionIdentity := toHIRSemanticIdentity(identity)
@@ -47,14 +118,14 @@ func LowerSemanticMethodToHIR(analysis *Analysis, identity SemanticIdentity) (hi
 	for _, field := range class.Fields {
 		resolved, err := analysis.checked.resolveType(field.Type)
 		if err != nil {
-			return hir.Program{}, err
+			return hir.Function{}, err
 		}
 		typeEnvironment[field.Name] = resolved
 	}
 	for position, parameter := range method.Params {
 		resolved, err := analysis.checked.resolveType(parameter.Type)
 		if err != nil {
-			return hir.Program{}, err
+			return hir.Function{}, err
 		}
 		binding := hir.Binding{Kind: hir.BindingParameter, Function: functionIdentity, Position: position, Name: parameter.Name}
 		bindings[parameter.Name] = binding
@@ -65,11 +136,11 @@ func LowerSemanticMethodToHIR(analysis *Analysis, identity SemanticIdentity) (hi
 	}
 	returnType, err := analysis.checked.resolveType(method.ReturnType)
 	if err != nil {
-		return hir.Program{}, err
+		return hir.Function{}, err
 	}
 	body, err := lowerMethodBodyToHIR(analysis, identity, method.Body, bindings, typeEnvironment, returnType)
 	if err != nil {
-		return hir.Program{}, err
+		return hir.Function{}, err
 	}
 	function := hir.Function{
 		Identity: functionIdentity,
@@ -78,82 +149,7 @@ func LowerSemanticMethodToHIR(analysis *Analysis, identity SemanticIdentity) (hi
 		},
 		Name: method.Name, Parameters: parameters, ReturnType: toHIRType(analysis, returnType), ReturnTypeSpan: toHIRSpan(method.ReturnType.Span), Body: body, Span: toHIRSpan(method.Span),
 	}
-	program := hir.Program{LanguageContract: string(analysis.Modules.LanguageContract()), CompilerContract: coreir.CompilerContractV1, Functions: []hir.Function{function}}
-	if filter, ok := method.Body.(*ListFilterPredicateExpr); ok {
-		predicate, err := analysis.checked.resolveNamedRecordPredicate(*method, filter.Predicate, filter.PredicateSpan)
-		if err != nil {
-			return hir.Program{}, err
-		}
-		predicateIdentity, ok := analysis.SemanticIDs.IdentityForSpan(predicate.Span)
-		if !ok {
-			return hir.Program{}, hirLoweringError(analysis, filter.PredicateSpan, identity, fmt.Sprintf("predicate method %q has no semantic identity", filter.Predicate))
-		}
-		predicateProgram, err := LowerSemanticMethodToHIR(analysis, predicateIdentity)
-		if err != nil {
-			return hir.Program{}, err
-		}
-		program.Functions = append(predicateProgram.Functions, program.Functions...)
-	}
-	if containsCallExpression(method.Body) {
-		dependencies := []hir.Function{}
-		seen := map[string]struct{}{semanticIdentityKey(identity): {}}
-		var appendDependencies func(Expr) error
-		appendDependencies = func(expression Expr) error {
-			if call, ok := expression.(*CallExpr); ok {
-				targetIdentity, found := analysis.SemanticIDs.IdentityForSpan(call.TargetSpan)
-				if !found {
-					return hirLoweringError(analysis, call.NameSpan, identity, fmt.Sprintf("call target %q has no semantic identity", call.Name))
-				}
-				key := semanticIdentityKey(targetIdentity)
-				if _, exists := seen[key]; !exists {
-					seen[key] = struct{}{}
-					dependency, err := LowerSemanticMethodToHIR(analysis, targetIdentity)
-					if err != nil {
-						return err
-					}
-					for _, lowered := range dependency.Functions {
-						loweredKey := lowered.Identity.PackageID + "\x00" + lowered.Identity.Path
-						duplicate := false
-						for _, existing := range dependencies {
-							if existing.Identity.PackageID+"\x00"+existing.Identity.Path == loweredKey {
-								duplicate = true
-								break
-							}
-						}
-						if !duplicate && loweredKey != function.Identity.PackageID+"\x00"+function.Identity.Path {
-							dependencies = append(dependencies, lowered)
-						}
-					}
-				}
-			}
-			for _, child := range expressionChildren(expression) {
-				if err := appendDependencies(child); err != nil {
-					return err
-				}
-			}
-			return nil
-		}
-		if err := appendDependencies(method.Body); err != nil {
-			return hir.Program{}, err
-		}
-		program.Functions = append(dependencies, program.Functions...)
-	}
-	program.Functions = uniqueHIRFunctions(program.Functions)
-	return program, nil
-}
-
-func uniqueHIRFunctions(functions []hir.Function) []hir.Function {
-	result := make([]hir.Function, 0, len(functions))
-	seen := make(map[string]struct{}, len(functions))
-	for _, function := range functions {
-		key := function.Identity.PackageID + "\x00" + function.Identity.Path
-		if _, exists := seen[key]; exists {
-			continue
-		}
-		seen[key] = struct{}{}
-		result = append(result, function)
-	}
-	return result
+	return function, nil
 }
 
 func methodByIdentity(analysis *Analysis, identity SemanticIdentity) *MethodDecl {

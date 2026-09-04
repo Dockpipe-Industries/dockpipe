@@ -22,8 +22,8 @@ separate slices before further language expansion. This is repair work within th
 
 | Slice | Priority | Finding and bounded repair | Required regression evidence | State |
 | --- | --- | --- | --- | --- |
-| R1 | P1 | Preserve computed Result carriers when evaluating call arguments; expected failure reaches the callee unless explicit propagation is authored. | Nested arithmetic and bounded Results, success/failure, recovery with a different caller return type, copied values, evaluator/generated-Go agreement. | Complete, uncommitted |
-| R2 | P1 | Memoize semantic-to-HIR dependency lowering across one shared dependency graph. | Each reachable method lowered once, shared acyclic graph scaling, deterministic order/output, cycle rejection retained. | Pending |
+| R1 | P1 | Preserve computed Result carriers when evaluating call arguments; expected failure reaches the callee unless explicit propagation is authored. | Nested arithmetic and bounded Results, success/failure, recovery with a different caller return type, copied values, evaluator/generated-Go agreement. | Complete, committed |
+| R2 | P1 | Memoize semantic-to-HIR dependency lowering across one shared dependency graph. | Each reachable method lowered once, shared acyclic graph scaling, deterministic order/output, cycle rejection retained. | Complete, uncommitted |
 | R3 | P2 | Enforce supported compiler/language identities and feature-version gates at Core program admission. | Unknown identities independently rejected; representative downgraded features rejected consistently by Core, evaluator, and backend. | Pending |
 | R4 | P2 | Make Core type validation exhaustive over supported kinds and representations. | Unknown kinds, unsupported numeric widths, contradictory/nested representations, unused parameters and expression types rejected; accepted types retained. | Pending |
 | R5 | P2 | Generate canonical argument validation from parameter types independently of function body shape. | Invalid UTF-8 and malformed arithmetic Results rejected in identity/unused/unselected cases; evaluator/generated-Go agreement and helper emission. | Pending |
@@ -105,6 +105,58 @@ now explicitly states Result argument transport semantics.
 
 CLI/editor and unrelated repository suites were not rerun for this evaluator-only repair;
 terminal verification for all six slices remains pending. Generated Go and caches/logs are
-temporary under `/tmp`. The repair and documentation are uncommitted. R2–R6 are still pending;
-R2 is the next repair slice. Current checkpoint: R1 is ready for founder review; no later slice
-has started.
+temporary under `/tmp`. R1 was subsequently committed as
+`06a81cac10978ece1cd1ae5f6f8c0aa78984f3ef` (`Preserve Result failures as pure-call arguments`),
+verified on receipt of the R2 continuation. That checkpoint supersedes the original uncommitted
+status; R1 implementation was admitted without rework.
+
+
+### R2 completed — 2026-09-04
+
+`src/lib/pipelang/hir_lowering.go` now separates single-method body lowering from one
+request-local dependency traversal. Completed semantic identities skip repeated body lowering;
+active identities reject cycles defensively. Ordinary calls and named predicate dependencies
+share the same traversal and produce one closed, dependency-first function list in the original
+discovery order. There is no persistent cache or cross-root state. Source admission, function
+bodies, public identities, language versions, and package/engine boundaries are unchanged.
+
+`src/lib/pipelang/hir_dependency_graph_test.go` records:
+
+- exact single-method lowering counts for shared Fibonacci-shaped graphs of 21, 25, 29, and
+  128 reachable methods, excluding an unreachable method;
+- fixed dependency order, repeated HIR/Core/generated-Go equality, and evaluator/generated-Go
+  agreement for both boolean inputs on the 21-method graph;
+- a named predicate shared by two filter helpers reached through nested calls, with deduplicated
+  closure and an independent second-root request;
+- retained direct/indirect source-cycle diagnostics and failed-analysis rejection, plus defensive
+  traversal rejection after deliberately making checked syntax cyclic;
+- a benchmark that excludes semantic analysis and measures HIR lowering without timing assertions.
+
+Focused regressions passed. A temporary Go overlay disabling the completed-method guard made the
+work-count regression fail immediately on the second lowering of `F1`; the tracked source retained
+the guard. Another overlay compared the committed R1 lowerer with this repair on a 13-method
+shared graph, nested calls, and shared named predicates. All 12 SHA-256 comparisons matched for
+serialized HIR, Core, semantic projection, and generated Go. Existing Application IR goldens and
+the frozen 45-source compatibility suite passed without updates.
+
+The benchmark (`-bench '^BenchmarkHIRSharedDependencyGraph$' -benchtime=200ms`) measured about
+0.44/0.54/1.00/4.96 ms and 3,092/3,716/4,342/19,800 allocations for 21/25/29/128 methods on this
+machine. These are observations, not performance thresholds or a claim that every compiler phase
+is linear. The deterministic work-count regression is the scaling acceptance criterion.
+
+Validation passed with cached Go 1.25.13, `GOTOOLCHAIN=local`, `GOPROXY=off`, `GOSUMDB=off`, and
+a writable temporary build cache:
+
+- `go test ./src/lib/pipelang -run '^TestHIR(Shared|Dependency)' -count=1`;
+- `go test ./src/lib/pipelang/... ./src/lib/applicationir ./tests/pipelangcompat -count=1`;
+- `go test ./src/lib/application -run PipeLang -count=1`;
+- `go vet ./src/lib/pipelang/... ./src/lib/applicationir`;
+- Go formatting, task YAML/route consistency, and diff whitespace.
+
+Canonical lowering behavior is clarified in `docs/concepts/pipelang.md`; the local and global
+TASK-021 indexes mark R1/R2 complete and R3 next. Temporary overlay probes, benchmark output,
+and verification logs are under `/tmp/pipelang-r2-proof`; generated Go tests and caches also use
+`/tmp`. No generated repository artifacts were added. CLI/editor, unrelated repository suites,
+and deep-stack exhaustion testing were not run; all-six-slice terminal verification remains
+pending. R2 is complete and uncommitted, ready for founder review. R3–R6 remain pending and were
+not implemented in this slice. No commit, push, publication, or live operation was performed.

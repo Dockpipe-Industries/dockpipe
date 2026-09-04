@@ -90,8 +90,8 @@ tasks:
     topic: PipeLang deterministic self-hosting managed language foundation
     completed_language_contract: v0.80.0
     active_objective: TASK-021-PipeLang-v0.80-milestone-repairs
-    completed_repair_slices: [R1]
-    next_repair_slice: R2
+    completed_repair_slices: [R1, R2]
+    next_repair_slice: R3
     path: docs/agents/tasks/pipelang-reactive-application-language/index.yaml
     dispatch:
       readiness: implementation_ready
