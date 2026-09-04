@@ -448,3 +448,10 @@ assert.strictEqual(pipeLangSnippets["PipeLang one-stage contextual same-payload 
 assert(pipeLangSnippets["PipeLang one-stage contextual same-payload Result propagation"].description.includes("v0.64.0"));
 assert(pipeLangSnippets["PipeLang one-stage contextual same-payload Result propagation"].body.some((line) => line.includes("Result<string, string> ${1:Normalize}(Result<string, string> ${2:input}, string ${3:context})")));
 assert(pipeLangSnippets["PipeLang one-stage contextual same-payload Result propagation"].body.some((line) => line.includes("return ${5:NormalizeValue}(${4:value}, ${3:context})")));
+assert(pipeLangReadme.includes("`v0.65.0`"));
+assert(pipeLangReadme.includes("exact two-stage contextual bounded Result propagation"));
+assert.strictEqual(pipeLangSnippets["PipeLang exact two-stage contextual bounded Result propagation"].prefix, "pipe-two-stage-contextual-bounded-result");
+assert(pipeLangSnippets["PipeLang exact two-stage contextual bounded Result propagation"].description.includes("v0.65.0"));
+assert(pipeLangSnippets["PipeLang exact two-stage contextual bounded Result propagation"].body.some((line) => line.includes("Result<${1:string}, string> ${2:Normalize}(Result<${3:string}, string> ${4:input}, string ${5:context})")));
+assert(pipeLangSnippets["PipeLang exact two-stage contextual bounded Result propagation"].body.some((line) => line.includes("Result<${7:string}, string> ${8:nextCarrier} = ${9:First}(${6:first}, ${5:context})")));
+assert(pipeLangSnippets["PipeLang exact two-stage contextual bounded Result propagation"].body.some((line) => line.includes("return ${11:Second}(${10:second}, ${5:context})")));

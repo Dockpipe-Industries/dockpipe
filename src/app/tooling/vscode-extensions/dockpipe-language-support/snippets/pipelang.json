@@ -633,5 +633,17 @@
       "}"
     ],
     "description": "Create the exact v0.64.0 one-stage contextual bounded same-payload Result propagation form with one direct unchanged string context argument."
+  },
+  "PipeLang exact two-stage contextual bounded Result propagation": {
+    "prefix": "pipe-two-stage-contextual-bounded-result",
+    "body": [
+      "public Result<${1:string}, string> ${2:Normalize}(Result<${3:string}, string> ${4:input}, string ${5:context}) {",
+      "\t${3:string} ${6:first} = propagate(${4:input});",
+      "\tResult<${7:string}, string> ${8:nextCarrier} = ${9:First}(${6:first}, ${5:context});",
+      "\t${7:string} ${10:second} = propagate(${8:nextCarrier});",
+      "\treturn ${11:Second}(${10:second}, ${5:context});",
+      "}"
+    ],
+    "description": "Create the exact v0.65.0 two-stage contextual bounded Result propagation form where either or both adjacent payload types may be equal."
   }
 }

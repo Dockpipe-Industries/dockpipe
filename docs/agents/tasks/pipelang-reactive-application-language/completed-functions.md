@@ -702,3 +702,31 @@ third caller parameter; extra locals or propagation; computed or helper propagat
 errors; Optional/arithmetic carriers; non-direct/private/cross-class/mismatched/overloaded/generic
 helpers; inference; reassignment; statements; branches; loops; effects; actions; runtimes; targets;
 adapters; UI; and deployment remain excluded. No behavior enters by implication.
+
+## Step 8ae — exact two-stage contextual bounded Result propagation (`v0.65.0`)
+
+Production source additionally admits the exact v0.62 two-stage contextual chain when either or
+both adjacent payload transitions preserve their payload type. One public pure method has exact
+signature `Result<T2, string> F(Result<T0, string> carrier, string context)`, propagates the direct
+carrier, calls a first helper into an immediately propagated helper-Result local, and terminally
+calls a second helper. `T0`, `T1`, and `T2` each remain exactly text or a list of an existing public
+primitive-field record. Both helpers are resolved public pure same-class methods with exact
+`(Ti, string) -> Result<Ti+1, string>` signatures and receive the unchanged direct context second.
+
+Typed HIR and target-neutral Core reuse existing immutable-local, reference, propagation, and call
+nodes. Core independently validates the two exact caller parameters, three exact locals, two direct
+propagations, adjacency, bounded payloads, shared string failure, direct context identity, helper
+ownership, callable identities, and exact signatures. Evaluation and deterministic Core-only Go
+validate and copy each carrier once, short-circuit failures into the canonical final Result shape,
+and pass validated context once per reached helper. Public compiler, semantic, and Application IR
+identities and shapes remain stable; metadata advances to `v0.65.0`; compiler-pipeline fixtures and
+metadata-only Docker-observability Application IR consumption prove the boundary; the exact
+45-source lane remains frozen.
+
+The inherited v0.54-v0.64 forms remain exact. Same-payload transitions in contextual chains with
+three or more stages; missing, reordered, repeated, computed, non-string, or additional context;
+a third caller parameter; extra or gapped locals; additional propagation; computed carriers;
+`propagate(Helper(...))`; arbitrary errors; Optional/arithmetic carriers; private, cross-class,
+mismatched, overloaded, or generic helpers; inference; reassignment; statements; branches; loops;
+effects; actions; runtimes; targets; adapters; UI; and deployment remain excluded. No behavior
+enters by implication.
