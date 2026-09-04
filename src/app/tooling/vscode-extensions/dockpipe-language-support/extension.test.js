@@ -520,3 +520,9 @@ assert.strictEqual(pipeLangSnippets["PipeLang nested terminal if/else with inner
 assert(pipeLangSnippets["PipeLang nested terminal if/else with inner locals"].description.includes("v0.75.0"));
 assert(pipeLangSnippets["PipeLang nested terminal if/else with inner locals"].body.some((line) => line.includes("${1:string} ${7:normalized}")));
 assert(pipeLangSnippets["PipeLang nested terminal if/else with inner locals"].body.some((line) => line.includes("return ${9:selectedFallback};")));
+assert(pipeLangReadme.includes("`v0.76.0`"));
+assert(pipeLangReadme.includes("before the outer condition"));
+assert.strictEqual(pipeLangSnippets["PipeLang root locals before nested terminal if/else"].prefix, "pipe-root-local-nested-terminal-if");
+assert(pipeLangSnippets["PipeLang root locals before nested terminal if/else"].description.includes("v0.76.0"));
+assert(pipeLangSnippets["PipeLang root locals before nested terminal if/else"].body.some((line) => line.includes("${1:string} ${6:shared}")));
+assert(pipeLangSnippets["PipeLang root locals before nested terminal if/else"].body.some((line) => line.includes("if (${4:enabled}) {")));

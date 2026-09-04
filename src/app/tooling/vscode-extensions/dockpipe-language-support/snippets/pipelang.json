@@ -787,5 +787,24 @@
       "}"
     ],
     "description": "Create the v0.75.0 bounded nested terminal if/else with finite typed immutable-local sequences in either inner leaf."
+  },
+  "PipeLang root locals before nested terminal if/else": {
+    "prefix": "pipe-root-local-nested-terminal-if",
+    "body": [
+      "public ${1:string} ${2:Select}(${1:string} ${3:raw}, bool ${4:enabled}, bool ${5:normalize}) {",
+      "\t${1:string} ${6:shared} = trim(${3:raw});",
+      "\t${1:string} ${7:selectedInput} = ${6:shared};",
+      "\tif (${4:enabled}) {",
+      "\t\t${1:string} ${8:cleaned} = ${7:selectedInput};",
+      "\t\tif (${5:normalize}) {",
+      "\t\t\t${1:string} ${9:normalized} = trim(${8:cleaned});",
+      "\t\t\treturn ${9:normalized};",
+      "\t\t}",
+      "\t\telse { return ${7:selectedInput}; }",
+      "\t}",
+      "\telse { return ${10:\"disabled\"}; }",
+      "}"
+    ],
+    "description": "Create the v0.76.0 bounded nested terminal if/else with source-ordered typed immutable locals before the outer condition."
   }
 }

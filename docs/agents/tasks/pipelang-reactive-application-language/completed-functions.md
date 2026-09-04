@@ -975,3 +975,29 @@ both outer branches, another nested decision, third-level nesting, conditional e
 the topology, propagation, matching, assignment, fallthrough, other early returns, loops, effects,
 inference, actions, runtimes, targets, adapters, UI, and deployment remain excluded. No successor
 is implied; another slice requires a new founder decision and separate implementation approval.
+
+## Step 8ap — shared root immutable-local sequences before bounded nested terminal branching (`v0.76.0`)
+
+Production source permits one or more source-ordered explicitly typed immutable locals before the
+exact v0.75 one-branch bounded nested terminal topology. Each root local enters scope only after
+its initializer, evaluates eagerly once before the outer condition, and remains visible to that
+condition, both outer branches, and every descendant branch. Self-reference, forward reference,
+duplicate names, shadowing, and escaping bindings remain invalid. Both conditions remain `bool`,
+every return retains the exact declared method type, and branch execution remains selected-only
+after the eager root sequence.
+
+Typed HIR and target-neutral Core reuse terminal `conditional` and nested `immutable_local` nodes.
+Source and Core validation prove the root sequence, exact two-conditional topology, one nested
+outer branch, complete branch-local sequences, exact typing, canonical positions, lexical
+references, and excluded shapes. Evaluation and deterministic Core-only Go prove every selected
+path after eager root evaluation. `pipelang.compiler.v1`, `pipelang.semantic.v1`, and
+`dockpipe.application.v1` stay stable; Application IR advances only its language metadata to
+`v0.76.0` while exercising a harmless shared root local; the exact 45-source compatibility lane
+remains frozen.
+
+The inherited rootless v0.75 and v0.69-v0.74 forms remain valid. Nesting in both outer branches,
+another nested decision, third-level nesting, conditional expressions within the topology or
+root-local nested form, propagation, matching, assignment, fallthrough, other early returns,
+loops, effects, inference, actions, runtimes, targets, adapters, UI, and deployment remain
+excluded. No successor is implied; another slice requires a new founder decision and separate
+implementation approval.

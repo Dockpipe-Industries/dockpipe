@@ -1380,6 +1380,31 @@ the topology, propagation, matching, assignment, fallthrough, other early return
 inference, actions, runtimes, targets, adapters, UI, and deployment remain excluded. No successor
 is implied; another slice requires a new founder decision and separate implementation approval.
 
+## Accepted v0.76.0 boundary — root immutable locals before bounded nested terminal branching
+
+`v0.76.0` permits one or more source-ordered explicitly typed immutable locals before the exact
+v0.75 one-branch bounded nested terminal topology. Each root local enters scope only after its
+initializer, evaluates eagerly once before the outer condition, and remains visible to that
+condition, both outer branches, and every descendant branch. Self-reference, forward reference,
+duplicate names, shadowing, and escaping bindings remain invalid. Both conditions remain `bool`,
+every return retains the exact declared method type, and branch execution remains selected-only
+after the eager root sequence.
+
+Typed HIR and target-neutral Core reuse the existing terminal `conditional` and `immutable_local`
+nodes. Core independently validates the root sequence, exact two-conditional topology, nesting in
+exactly one outer branch, complete branch-local sequences, exact typing, canonical positions, and
+lexical references. Evaluation and deterministic Core-only Go preserve eager source order before
+selected-branch execution. `pipelang.compiler.v1`, `pipelang.semantic.v1`, and
+`dockpipe.application.v1` remain stable; only language metadata advances to `v0.76.0`. The exact
+45-source lane remains frozen.
+
+The inherited rootless v0.75 and v0.69-v0.74 forms remain exact. Nesting in both outer branches,
+another nested decision, third-level nesting, conditional expressions within the topology or
+root-local nested form, propagation, matching, assignment, fallthrough, other early returns,
+loops, effects, inference, actions, runtimes, targets, adapters, UI, and deployment remain
+excluded. No successor is implied; another slice requires a new founder decision and separate
+implementation approval.
+
 ## Accepted v0.49.0 boundary — bounded two-carrier matching
 
 `v0.49.0` widens only the occurrence count accepted through v0.48. One public pure method with one

@@ -805,7 +805,15 @@ func validV750NestedTerminalIf(expr Expr) bool {
 		((trueNested && validOrdinary(outer.WhenFalse)) || (falseNested && validOrdinary(outer.WhenTrue)))
 }
 
+func validV760RootLocalNestedTerminalIf(expr Expr) bool {
+	locals, tail, valid := terminalBranchTail(expr)
+	return valid && locals > 0 && validV750NestedTerminalIf(tail)
+}
+
 func validTerminalIfStatement(contract LanguageContract, expr Expr) bool {
+	if contract == PipeLangLanguageContractV760 {
+		return validTerminalIfStatement(PipeLangLanguageContractV750, expr) || validV760RootLocalNestedTerminalIf(expr)
+	}
 	if contract == PipeLangLanguageContractV750 {
 		return validTerminalIfStatement(PipeLangLanguageContractV730, expr) || validV750NestedTerminalIf(expr)
 	}
