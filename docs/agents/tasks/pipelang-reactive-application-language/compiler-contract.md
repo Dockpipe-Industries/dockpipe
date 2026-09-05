@@ -200,6 +200,9 @@ boundaries executable as future fixture assertions without accepting syntax or s
 
 ## Accepted v0.82.0 composition boundary
 
+The separately approved [numeric-comparison evaluator repair](numeric-comparison-repair.md)
+restores conformance to existing normalized numeric semantics without advancing this version.
+
 The founder selected and separately approved one conditional local in terminal trees.
 The [canonical language contract](../../../concepts/pipelang.md#pipelang-v0820-conditional-local-in-terminal-trees)
 owns source semantics and exclusions. Existing HIR/Core nodes and public identities remain
