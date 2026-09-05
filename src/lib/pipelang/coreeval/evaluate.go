@@ -887,8 +887,11 @@ func directResultOperand(expression *coreir.Expr, arguments []Value) (Outcome, e
 
 func evalPrimitiveComparison(expression coreir.Expr, left, right Value) (Outcome, error) {
 	comparison := 0
-	switch expression.Binary.Left.Type.Primitive {
-	case coreir.PrimitiveBool:
+	typ := expression.Binary.Left.Type
+	// Executable numeric operands carry normalized representations; primitive
+	// int/float names belong to semantic identities, not executable Core types.
+	switch {
+	case typ.Kind == coreir.TypePrimitive && typ.Primitive == coreir.PrimitiveBool:
 		if left.Bool != right.Bool {
 			if !left.Bool {
 				comparison = -1
@@ -896,13 +899,13 @@ func evalPrimitiveComparison(expression coreir.Expr, left, right Value) (Outcome
 				comparison = 1
 			}
 		}
-	case coreir.PrimitiveInt:
+	case coreir.TypeEqual(typ, coreir.SignedInteger(64)):
 		if left.Int < right.Int {
 			comparison = -1
 		} else if left.Int > right.Int {
 			comparison = 1
 		}
-	case coreir.PrimitiveFloat:
+	case coreir.TypeEqual(typ, coreir.BinaryFloat(64)):
 		result := false
 		switch expression.Binary.Operator {
 		case coreir.OperatorEqual:

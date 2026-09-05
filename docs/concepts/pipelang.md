@@ -283,6 +283,12 @@ recoverable arithmetic failures can be represented as typed `Result` values. The
 `v0.0.0.1` compile/invoke behavior and artifacts remain unchanged, and executable Go is not a
 workflow/runtime backend.
 
+Numeric comparison evaluation dispatches on normalized signed-int64 and binary64 Core types,
+while public semantic identities retain source-level `int` and `float` names. The evaluator and
+Core-only Go preserve integer ordering without float conversion and IEEE comparison behavior for
+NaN, infinities, subnormals, and signed zero. The evaluator conformance repair after v0.82 changes
+no syntax, admitted types, language versions, or public schema identities.
+
 The next compiler-internal slice establishes that missing representation without selecting public
 syntax. HIR and Core can carry `Result<Success, ArithmeticError>` structurally; Core owns the single
 checked-arithmetic signature and failure contract consumed by both an inert Core conformance
@@ -2631,7 +2637,8 @@ Depth four, fallthrough, nonterminal/early returns, assignment, loops, effects, 
 new combinations with conditional expressions, matching, or propagation remain excluded.
 Previously accepted expression/statement combinations remain available under their inherited
 rules. This slice adds no runtime, action, target, adapter, UI, deployment, or self-hosted compiler
-implementation. Numeric-comparison evaluator parity remains separate work.
+implementation. Numeric-comparison evaluator parity was subsequently repaired under the existing
+contracts; it adds no language surface.
 
 ### Target-neutral Application IR
 
@@ -2681,5 +2688,5 @@ New ternaries in return, terminal-condition, or nested argument positions, neste
 ternaries, new matching/propagation combinations, depth four, fallthrough, early returns,
 assignment, loops, effects, and inference remain excluded. Prior accepted combinations retain
 their own rules. No runtime, action, target, adapter, UI, deployment, or self-hosted compiler
-implementation enters this slice. The numeric-comparison evaluator limitation and the separate
-checked-propagation source-admission gap remain deferred.
+implementation enters this slice. Numeric-comparison evaluator parity was subsequently repaired
+under the existing contracts. The separate checked-propagation source-admission gap remains deferred.

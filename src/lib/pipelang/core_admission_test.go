@@ -115,11 +115,6 @@ func TestCoreAdmissionFeatureFixtures(t *testing.T) {
 	}
 	for _, path := range paths {
 		name := strings.TrimSuffix(filepath.Base(path), ".core.json")
-		// This normalized fixture uses numeric comparison, which the evaluator
-		// does not yet execute. R4 separately covers its admission and Go golden.
-		if name == "tiny-pure-function" {
-			continue
-		}
 		t.Run(name, func(t *testing.T) {
 			program := admissionFixture(t, name)
 			if err := coreir.ValidateProgram(program); err != nil {

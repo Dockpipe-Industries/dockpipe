@@ -1,5 +1,9 @@
 ## Bounded Implementation Order
 
+The latest completed work is the [numeric-comparison evaluator repair](numeric-comparison-repair.md)
+under existing language versions. That record owns its focused and terminal proof; it adds no
+implementation-order step or new language boundary.
+
 The [six v0.80 milestone repair slices](milestone-v080-repairs.md) requested on 2026-09-04
 are complete and committed. The separately selected and approved `v0.81.0` terminal-tree slice
 is also complete; [step 8au](completed-functions.md#step-8au-terminal-trees-through-depth-three-v0810)

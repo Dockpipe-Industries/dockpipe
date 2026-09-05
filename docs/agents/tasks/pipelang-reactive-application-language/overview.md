@@ -1,6 +1,12 @@
 # TASK-021 PipeLang Deterministic Self-Hosting Managed Language Foundation
 
-Current work: **v0.82.0 conditional local in terminal trees is implemented and verified** after founder selection of A and separate implementation approval on 2026-09-04.
+Current work: **numeric-comparison evaluator parity is implemented and verified**, selected as A
+and separately approved on 2026-09-04. Changes remain uncommitted for founder review.
+The [repair record](numeric-comparison-repair.md) owns scope and proof. It repairs
+existing semantics without advancing the language version. The v0.82 implementation and proof
+are committed at `8bb75896`; historical uncommitted wording below is superseded.
+
+Prior work: **v0.82.0 conditional local in terminal trees is implemented and verified** after founder selection of A and separate implementation approval on 2026-09-04.
 [step 8av](completed-functions.md#step-8av-conditional-local-in-terminal-trees-v0820) owns completion
 proof; changes remain uncommitted for founder review. [next-boundary.md](next-boundary.md)
 records the completed objective without selecting a successor. The preceding v0.81 terminal-tree

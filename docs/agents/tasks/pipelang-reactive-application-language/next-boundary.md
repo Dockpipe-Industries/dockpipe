@@ -1,4 +1,14 @@
-## Completed current objective — conditional local in terminal trees
+## Completed current objective — numeric-comparison evaluator parity
+
+The founder selected A and separately approved implementation on 2026-09-04.
+[Numeric-comparison repair](numeric-comparison-repair.md) owns
+`TASK-021-next-compiler-slice-after-v082`, its scope, exclusions, and completion proof.
+State: `completed`; implementation and terminal proof passed. Changes remain uncommitted for review.
+Existing language contracts remain unchanged at v0.82; no successor is selected or authorized.
+The v0.82 implementation and proof are committed at `8bb75896`; historical uncommitted wording
+below is superseded.
+
+## Completed prior objective — conditional local in terminal trees
 
 - Objective: `TASK-021-next-compiler-slice-after-v081`.
 - State: `completed`; founder selected A and separately said `approved` on 2026-09-04.

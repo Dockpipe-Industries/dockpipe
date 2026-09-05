@@ -1256,3 +1256,13 @@ Repository-wide builds/suites, interactive editor execution, sustained fuzzing, 
 proof, and the exhaustive feature/version cross-product are outside this proof. Package/engine
 boundaries are preserved. No commit, push, publication, worktree, stash mutation, credential, or
 live operation is performed. No successor or automatic handoff is authorized.
+
+## Numeric-comparison evaluator parity after v0.82 — completed
+
+The founder selected A and separately approved the conformance repair on 2026-09-04.
+`TASK-021-next-compiler-slice-after-v082` is complete; the
+[repair record](numeric-comparison-repair.md) owns the reproduced failure, implementation,
+3,552 differential numeric cases, restored fixture coverage, consumer proof, and passed terminal
+verification. This resolves the numeric-comparison limitation recorded above without advancing
+the language version. The checked-propagation source-admission gap remains deferred. Changes are
+uncommitted for founder review; no successor is selected or authorized.
