@@ -1,10 +1,11 @@
 # TASK-021 PipeLang Deterministic Self-Hosting Managed Language Foundation
 
-Current work: **numeric-comparison evaluator parity is implemented and verified**, selected as A
-and separately approved on 2026-09-04. Changes remain uncommitted for founder review.
-The [repair record](numeric-comparison-repair.md) owns scope and proof. It repairs
-existing semantics without advancing the language version. The v0.82 implementation and proof
-are committed at `8bb75896`; historical uncommitted wording below is superseded.
+Current work: **checked-propagation inheritance repair is implemented and verified**, selected as A and separately
+approved on 2026-09-04. The [repair record](checked-propagation-inheritance-repair.md) owns scope
+and passed verification. Changes remain uncommitted for review; language metadata remains v0.82.0.
+
+The numeric-comparison repair and proof are committed at `fb2f480a`; its earlier uncommitted
+wording is superseded. The v0.82 implementation and proof are committed at `8bb75896`.
 
 Prior work: **v0.82.0 conditional local in terminal trees is implemented and verified** after founder selection of A and separate implementation approval on 2026-09-04.
 [step 8av](completed-functions.md#step-8av-conditional-local-in-terminal-trees-v0820) owns completion

@@ -1750,6 +1750,11 @@ copying, operand order, and short-circuit semantics. `pipelang.compiler.v1`,
 language-contract metadata advances to `v0.56.0`. A compiler-cursor fixture proves checked cursor
 plus width advancement. The exact 45-source legacy lane remains frozen.
 
+The exact two-parameter form is inherited through `v0.82.0`, including integer `+`, `-`, `*`
+and float `/`. Body and continuation inference use the inherited language contract, so advancing
+metadata does not lose the declared checked Result context. This conformance repair adds no
+language version, signature, placement, or operation.
+
 The inherited v0.55 sole-carrier and v0.54 helper forms remain exact. A third parameter, reordered
 carrier/operand, mismatched operand type, reversed/repeated/literal/computed operands, unary
 negation as the new two-parameter form, helper or computed propagation operands, later/split or
@@ -2689,4 +2694,5 @@ ternaries, new matching/propagation combinations, depth four, fallthrough, early
 assignment, loops, effects, and inference remain excluded. Prior accepted combinations retain
 their own rules. No runtime, action, target, adapter, UI, deployment, or self-hosted compiler
 implementation enters this slice. Numeric-comparison evaluator parity was subsequently repaired
-under the existing contracts. The separate checked-propagation source-admission gap remains deferred.
+under the existing contracts. The v0.56 two-parameter checked-propagation inheritance gap was subsequently repaired;
+later-version admission of multi-stage checked chains remains deferred.

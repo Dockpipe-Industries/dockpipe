@@ -1,6 +1,9 @@
 ## Bounded Implementation Order
 
-The latest completed work is the [numeric-comparison evaluator repair](numeric-comparison-repair.md)
+The latest completed work is the [checked-propagation inheritance repair](checked-propagation-inheritance-repair.md).
+It restores the exact v0.56 two-parameter form through v0.82 without adding a language boundary.
+
+The prior completed work is the [numeric-comparison evaluator repair](numeric-comparison-repair.md)
 under existing language versions. That record owns its focused and terminal proof; it adds no
 implementation-order step or new language boundary.
 
