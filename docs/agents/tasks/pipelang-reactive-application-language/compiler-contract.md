@@ -216,3 +216,12 @@ The [canonical language contract](../../../concepts/pipelang.md#pipelang-v0820-c
 owns source semantics and exclusions. Existing HIR/Core nodes and public identities remain
 stable; Core independently enforces the placement/count/depth constraints. The approved
 objective and verification boundary are in [next-boundary.md](next-boundary.md).
+
+
+## Accepted v0.83.0 composition boundary
+
+The founder selected and separately approved two conditional locals in terminal trees.
+The [canonical language contract](../../../concepts/pipelang.md#pipelang-v0830-two-conditional-locals-in-terminal-trees)
+owns exact semantics and exclusions. Existing typed HIR/Core nodes and public identities remain
+stable; source and Core independently enforce the method-wide occurrence bound and existing
+placement/depth/type/scope rules. [The objective record](two-conditional-locals.md) owns proof.

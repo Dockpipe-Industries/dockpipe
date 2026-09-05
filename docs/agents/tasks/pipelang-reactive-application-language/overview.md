@@ -1,6 +1,11 @@
 # TASK-021 PipeLang Deterministic Self-Hosting Managed Language Foundation
 
-Current work: **multi-stage checked-chain inheritance repair is implemented and verified**.
+Current work: **v0.83.0 two conditional locals in terminal trees is implemented and verified** after
+founder selection of A and separate implementation approval. [The objective record](two-conditional-locals.md)
+owns scope and passed focused/terminal proof. Changes remain uncommitted for review. The preceding checked-chain repair is committed at `776bfa9e`;
+its historical uncommitted wording below is superseded.
+
+Prior work: **multi-stage checked-chain inheritance repair is implemented and verified**.
 The founder selected A and separately approved implementation in this task. The
 [repair record](checked-chain-inheritance-repair.md) owns scope and passed terminal proof. Changes remain uncommitted for review.
 Language metadata remains v0.82.0. The prior checked-propagation inheritance repair is committed
@@ -22,8 +27,8 @@ The `vNext` foundation decision packet in this record is **accepted** as of 2026
 fixes semantics, compiler boundaries, bootstrap stages, compatibility, and implementation order;
 examples and fixtures remain non-normative and accept no production syntax. Separately authorized
 bounded objectives have completed implementation-order steps 1 through 6, step-7 slices 7a
-through 7ae, and bounded Step-8 function seams 8a through 8av. The current explicit language
-contract is `v0.82.0`; the separately versioned read-only projection is
+through 7ae, and bounded Step-8 function seams 8a through 8aw. The current explicit language
+contract is `v0.83.0`; the separately versioned read-only projection is
 `dockpipe.application.v1`; the frozen `v0.0.0.1` lane remains unchanged. This record does not by itself
 authorize another language slice.
 

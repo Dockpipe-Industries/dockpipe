@@ -898,6 +898,9 @@ func validExpandedDepthThreeTerminalIf(expr Expr, expandedLeaves int) bool {
 }
 
 func validTerminalIfStatement(contract LanguageContract, expr Expr) bool {
+	if contract == PipeLangLanguageContractV830 {
+		return validConditionalLocalTree(expr, 2) || validTerminalIfStatement(PipeLangLanguageContractV820, expr)
+	}
 	if contract == PipeLangLanguageContractV820 {
 		return validV820ConditionalLocalTree(expr) || validTerminalIfStatement(PipeLangLanguageContractV810, expr)
 	}
@@ -1148,9 +1151,13 @@ func ZeroValue(t PrimitiveType) Value {
 	}
 }
 
-// Count the single value choice across the whole method, including unselected scopes.
+// Count value choices across the whole method, including unselected scopes.
 // Terminal depth is separate from this nonterminal conditional.
 func validV820ConditionalLocalTree(expr Expr) bool {
+	return validConditionalLocalTree(expr, 1)
+}
+
+func validConditionalLocalTree(expr Expr, maxChoices int) bool {
 	choices := 0
 	var walk func(Expr, int) bool
 	walk = func(current Expr, remaining int) bool {
@@ -1164,7 +1171,7 @@ func validV820ConditionalLocalTree(expr Expr) bool {
 			}
 			if choice, ok := local.Initializer.(*ConditionalExpr); ok {
 				choices++
-				if choices > 1 || choice.TerminalStatement || choice.Condition == nil || choice.WhenTrue == nil || choice.WhenFalse == nil ||
+				if choices > maxChoices || choice.TerminalStatement || choice.Condition == nil || choice.WhenTrue == nil || choice.WhenFalse == nil ||
 					!validConditionalOperand(choice.Condition) || !validConditionalOperand(choice.WhenTrue) || !validConditionalOperand(choice.WhenFalse) {
 					return false
 				}
@@ -1183,5 +1190,5 @@ func validV820ConditionalLocalTree(expr Expr) bool {
 		return remaining > 0 && branch.TerminalStatement && branch.Condition != nil && branch.WhenTrue != nil && branch.WhenFalse != nil &&
 			validConditionalOperand(branch.Condition) && walk(branch.WhenTrue, remaining-1) && walk(branch.WhenFalse, remaining-1)
 	}
-	return containsTerminalIfStatement(expr) && walk(expr, 3) && choices == 1
+	return containsTerminalIfStatement(expr) && walk(expr, 3) && choices > 0
 }

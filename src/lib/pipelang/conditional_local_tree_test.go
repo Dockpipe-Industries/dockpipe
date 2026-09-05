@@ -16,8 +16,13 @@ import (
 
 func conditionalLocalTreeProgram(t *testing.T, source string, methods []string) (*Analysis, coreir.Program) {
 	t.Helper()
+	return conditionalLocalTreeProgramVersion(t, PipeLangLanguageContractV820, source, methods)
+}
+
+func conditionalLocalTreeProgramVersion(t *testing.T, contract LanguageContract, source string, methods []string) (*Analysis, coreir.Program) {
+	t.Helper()
 	input := semanticTestModuleSet("compiler.selfhosting", []ModuleInput{testModule("compiler.selfhosting", "conditional-local.pipe", source)}, nil)
-	input.LanguageContract = PipeLangLanguageContractV820
+	input.LanguageContract = contract
 	analysis := AnalyzeSemanticModuleSet(input)
 	if err := analysis.Error(); err != nil {
 		t.Fatal(err)
@@ -26,7 +31,7 @@ func conditionalLocalTreeProgram(t *testing.T, source string, methods []string) 
 	if err != nil {
 		t.Fatal(err)
 	}
-	if projection.LanguageContract != PipeLangLanguageContractV820 || projection.CompilerContract != PipeLangCompilerContract || projection.Schema != PipeLangSemanticProjectionVersion {
+	if projection.LanguageContract != contract || projection.CompilerContract != PipeLangCompilerContract || projection.Schema != PipeLangSemanticProjectionVersion {
 		t.Fatal("public identity drift")
 	}
 	var program coreir.Program
@@ -36,7 +41,7 @@ func conditionalLocalTreeProgram(t *testing.T, source string, methods []string) 
 		if err != nil {
 			t.Fatal(err)
 		}
-		if typed.LanguageContract != coreir.LanguageContractV820 {
+		if typed.LanguageContract != string(contract) {
 			t.Fatal("HIR contract drift")
 		}
 		lowered, err := LowerHIRToCore(typed)
