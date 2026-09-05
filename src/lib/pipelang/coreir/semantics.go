@@ -274,7 +274,7 @@ func ValidateProgram(program Program) error {
 		return err
 	}
 	inheritedContract := program.LanguageContract
-	if inheritedContract == LanguageContractV810 || inheritedContract == LanguageContractV800 || inheritedContract == LanguageContractV790 || inheritedContract == LanguageContractV780 || inheritedContract == LanguageContractV770 || inheritedContract == LanguageContractV760 || inheritedContract == LanguageContractV750 || inheritedContract == LanguageContractV740 {
+	if inheritedContract == LanguageContractV820 || inheritedContract == LanguageContractV810 || inheritedContract == LanguageContractV800 || inheritedContract == LanguageContractV790 || inheritedContract == LanguageContractV780 || inheritedContract == LanguageContractV770 || inheritedContract == LanguageContractV760 || inheritedContract == LanguageContractV750 || inheritedContract == LanguageContractV740 {
 		inheritedContract = LanguageContractV730
 	}
 	functions := make(map[string]Function, len(program.Functions))
@@ -669,6 +669,12 @@ func validExpandedDepthThreeTerminalIf(expression Expr, expandedLeaves int) bool
 }
 
 func validateImmutableLocalContract(contract string, function Function) error {
+	if contract == LanguageContractV820 {
+		if validV820ConditionalLocalTree(function.Body) {
+			return nil
+		}
+		return validateImmutableLocalContract(LanguageContractV810, function)
+	}
 	if contract == LanguageContractV810 {
 		if countTerminalIfStatements(function.Body) > 0 && validV810TerminalTree(function.Body, 3) {
 			return nil
@@ -1321,6 +1327,12 @@ func exprContainsPropagation(expression Expr) bool {
 }
 
 func validateConditionalContract(contract string, function Function) error {
+	if contract == LanguageContractV820 {
+		if validV820ConditionalLocalTree(function.Body) {
+			return nil
+		}
+		return validateConditionalContract(LanguageContractV810, function)
+	}
 	if contract == LanguageContractV810 {
 		if countTerminalIfStatements(function.Body) > 0 && validV810TerminalTree(function.Body, 3) {
 			return nil
@@ -4261,4 +4273,38 @@ func CheckedDivideBinary64(left, right float64) (float64, ArithmeticError) {
 		return 0, ArithmeticDivisionByZero
 	}
 	return left / right, ""
+}
+
+// This is independent of source admission. Structural validation still checks all
+// operand types, lexical references, and binding positions during program admission.
+func validV820ConditionalLocalTree(expression Expr) bool {
+	choices := 0
+	var walk func(Expr, int) bool
+	walk = func(current Expr, remaining int) bool {
+		for current.Kind == ExprImmutableLocal {
+			local := current.ImmutableLocal
+			if local == nil || local.Initializer == nil || local.Return == nil {
+				return false
+			}
+			initializer := *local.Initializer
+			if initializer.Kind == ExprConditional {
+				choice := initializer.Conditional
+				choices++
+				if choices > 1 || choice == nil || choice.TerminalStatement || choice.Condition == nil || choice.WhenTrue == nil || choice.WhenFalse == nil ||
+					!validConditionalOperand(*choice.Condition) || !validConditionalOperand(*choice.WhenTrue) || !validConditionalOperand(*choice.WhenFalse) {
+					return false
+				}
+			} else if !validConditionalOperand(initializer) {
+				return false
+			}
+			current = *local.Return
+		}
+		if current.Kind != ExprConditional {
+			return validConditionalOperand(current)
+		}
+		branch := current.Conditional
+		return remaining > 0 && branch != nil && branch.TerminalStatement && branch.Condition != nil && branch.WhenTrue != nil && branch.WhenFalse != nil &&
+			validConditionalOperand(*branch.Condition) && walk(*branch.WhenTrue, remaining-1) && walk(*branch.WhenFalse, remaining-1)
+	}
+	return countTerminalIfStatements(expression) > 0 && walk(expression, 3) && choices == 1
 }

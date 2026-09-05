@@ -1,4 +1,32 @@
-## Exact Next Boundary
+## Completed current objective — conditional local in terminal trees
+
+- Objective: `TASK-021-next-compiler-slice-after-v081`.
+- State: `completed`; founder selected A and separately said `approved` on 2026-09-04.
+  Implementation and terminal proof passed; changes remain uncommitted for founder review.
+  [Step 8av](completed-functions.md#step-8av-conditional-local-in-terminal-trees-v0820) records proof.
+  No successor is selected or authorized.
+- Execution skill: `dorkpipe-objective-execution`; authority: explicit founder approval.
+- Scope: `v0.82.0` adds at most one nonterminal ternary per method, only as the complete
+  initializer of one explicitly typed immutable local anywhere in a terminal tree through
+  depth three. Boolean condition, exact arm/local types, lexical descendant scope, lazy arm
+  evaluation, and source-ordered surrounding initializers are mandatory.
+- Representations: existing typed HIR/Core immutable-local and conditional nodes; independent
+  Core placement/count/depth/type/scope validation; evaluator and Core-only Go consume Core.
+- Completion criteria (passed): all 25 shapes, all lexical initializer positions and return paths, both arms,
+  eager order and laziness, source diagnostics, malformed-Core/backend refusal, deterministic
+  evaluator/pristine-Go agreement, and Application IR consumer proof pass; focused then terminal
+  compiler/consumer/45-source compatibility, CLI, vet, formatting, editor, and doc checks pass.
+- Preserve: accepted versioned forms and combinations, internal Core capabilities, public
+  compiler/semantic/Application IR identities, saved checkout, and exact frozen 45-source lane.
+- Exclude: new ternaries in return/condition/argument positions, nested or multiple ternaries,
+  deeper trees, new matching/propagation combinations, fallthrough, loops, mutation, effects,
+  unrelated repairs, commit, push, publication, generated-store refresh, credentials, live actions.
+- Checkpoints: automatic within this approved scope; handoff only if user requested.
+- Prior baseline: v0.81 implementation and proof committed at `c8dd8a9c70837eb6313240552e5172a78f76565c`;
+  the prior uncommitted wording below is superseded. Deferred numeric-comparison evaluator and
+  checked-propagation source-admission findings remain outside scope.
+
+## Prior v0.81 objective — completed and committed
 
 The [six v0.80 milestone repairs](milestone-v080-repairs.md) are complete, reviewed, and committed
 at `acbd10f88207d0a226ec24a073948362691adb8c`. The founder requested continuation to the next
@@ -8,8 +36,8 @@ earlier accepted language boundaries below remain unchanged.
 - Objective: `TASK-021-next-compiler-slice`.
 - State: `completed`; option A selected, separately approved, implemented, and verified on 2026-09-04.
 - Authority: the founder requested this continuation, selected A, and separately said `approved`.
-- Pending boundary: founder review of the uncommitted `v0.81.0` implementation. No successor
-  language seam is selected or authorized. Completion evidence is in
+- Prior boundary: v0.81 was reviewed and committed at `c8dd8a9c`; the approved v0.82
+  objective above supersedes this historical boundary. Completion evidence is in
   [step 8au](completed-functions.md#step-8au-terminal-trees-through-depth-three-v0810).
 - Admit the completed milestone proof; reopen it only for drift, a new failure, or a direct
   dependency. The documented numeric-comparison evaluator limitation remains open and is not

@@ -235,7 +235,7 @@ or public semantic identities. The backend checks the complete emitted package n
 returning Go source.
 
 Core program admission accepts only `pipelang.compiler.v1` and the exact supported language
-identities `v0.1.0` through `v0.81.0`. `coreir.ValidateProgram` checks feature availability in
+identities `v0.1.0` through `v0.82.0`. `coreir.ValidateProgram` checks feature availability in
 signatures and nested expressions, together with the existing composition and topology contracts.
 `coreeval.EvaluateProgram` and the Go backend use that same admission before executing or emitting
 anything, including when a disallowed feature occurs in an uncalled function or unused parameter.
@@ -2641,3 +2641,45 @@ for read-only snapshot sections, rows, keys, columns, filtering, ordering, selec
 Consumers therefore cannot reparse source or infer language semantics in an adapter.
 Filter, order, section Result, selection, details, and logs roles are explicit semantic identities
 that must also resolve to contract-matching Core functions.
+
+### PipeLang v0.82.0: conditional local in terminal trees
+
+`v0.82.0` adds at most one `condition ? whenTrue : whenFalse` expression per method,
+only as the complete initializer of one explicitly typed immutable local anywhere in a
+terminal `if/else` tree through depth three. The condition is `bool`; both arms have exactly
+the declared local type. Each arm uses existing eager pure operand forms, including same-class
+pure calls. Both arms are statically checked; only the selected arm executes.
+
+The value conditional does not consume terminal-tree depth. The one-occurrence bound is
+method-wide, including mutually exclusive branches. The binding enters scope after its
+initializer and is visible only in lexical descendants; self/forward references, duplicate or
+shadowed names, sibling references, and escaping bindings remain invalid. Root and selected-path
+locals run once in source order, including unused locals. An unselected terminal branch does
+not evaluate its local's ternary condition or either arm.
+
+```pipe
+public Class Classifier {
+    public string Select(string raw, bool enabled, bool detailed, bool normalize) {
+        if (enabled) {
+            string selected = normalize ? trim(raw) : raw;
+            if (detailed) { return selected + "!"; } else { return selected; }
+        } else { return "disabled"; }
+    }
+}
+```
+
+Typed HIR and target-neutral Core reuse `immutable_local` and `conditional`; the value choice
+has `terminal_statement: false`. Core independently validates initializer placement, occurrence
+count, terminal depth, complete branches, exact types, canonical binding positions, and lexical
+references. Core evaluation and deterministic Core-only Go generation preserve selected-arm
+execution. Backends and semantic/Application IR consumers do not reparse or infer source behavior.
+The public `pipelang.compiler.v1`, `pipelang.semantic.v1`, and `dockpipe.application.v1` identities
+and shapes remain stable; language metadata advances. Earlier exact versioned forms and accepted
+combinations, internal Core capabilities, and the frozen 45-source lane remain unchanged.
+
+New ternaries in return, terminal-condition, or nested argument positions, nested/multiple
+ternaries, new matching/propagation combinations, depth four, fallthrough, early returns,
+assignment, loops, effects, and inference remain excluded. Prior accepted combinations retain
+their own rules. No runtime, action, target, adapter, UI, deployment, or self-hosted compiler
+implementation enters this slice. The numeric-comparison evaluator limitation and the separate
+checked-propagation source-admission gap remain deferred.

@@ -1,11 +1,11 @@
 # TASK-021 PipeLang Deterministic Self-Hosting Managed Language Foundation
 
-Current work: **v0.81.0 terminal trees through depth three is implemented and verified** after
-founder selection of A and separate implementation approval on 2026-09-04. The
-[completion record](completed-functions.md#step-8au-terminal-trees-through-depth-three-v0810)
-owns proof and deferred findings. Changes are uncommitted and ready for founder review;
-[next-boundary.md](next-boundary.md) records the completed objective without selecting a successor.
-The preceding [six milestone repairs](milestone-v080-repairs.md) remain committed at `acbd10f8`.
+Current work: **v0.82.0 conditional local in terminal trees is implemented and verified** after founder selection of A and separate implementation approval on 2026-09-04.
+[step 8av](completed-functions.md#step-8av-conditional-local-in-terminal-trees-v0820) owns completion
+proof; changes remain uncommitted for founder review. [next-boundary.md](next-boundary.md)
+records the completed objective without selecting a successor. The preceding v0.81 terminal-tree
+slice and proof are committed at `c8dd8a9c`; its old uncommitted status is superseded.
+The six milestone repairs remain committed at `acbd10f8`.
 
 ## Decision Status
 
@@ -13,8 +13,8 @@ The `vNext` foundation decision packet in this record is **accepted** as of 2026
 fixes semantics, compiler boundaries, bootstrap stages, compatibility, and implementation order;
 examples and fixtures remain non-normative and accept no production syntax. Separately authorized
 bounded objectives have completed implementation-order steps 1 through 6, step-7 slices 7a
-through 7ae, and bounded Step-8 function seams 8a through 8au. The current explicit language
-contract is `v0.81.0`; the separately versioned read-only projection is
+through 7ae, and bounded Step-8 function seams 8a through 8av. The current explicit language
+contract is `v0.82.0`; the separately versioned read-only projection is
 `dockpipe.application.v1`; the frozen `v0.0.0.1` lane remains unchanged. This record does not by itself
 authorize another language slice.
 

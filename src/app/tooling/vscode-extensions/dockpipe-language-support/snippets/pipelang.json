@@ -913,5 +913,17 @@
       "}"
     ],
     "description": "Create a v0.81.0 asymmetric terminal tree through depth three with typed immutable locals and four return paths."
+  },
+  "PipeLang conditional local in terminal tree": {
+    "prefix": "pipe-conditional-local-tree",
+    "body": [
+      "public string ${1:Select}(string raw, bool enabled, bool detailed, bool normalize) {",
+      "\tif (enabled) {",
+      "\t\tstring selected = normalize ? trim(raw) : raw;",
+      "\t\tif (detailed) { return selected + \"!\"; } else { return selected; }",
+      "\t} else { return \"disabled\"; }",
+      "}"
+    ],
+    "description": "Create a v0.82.0 terminal tree with one lazy conditional as a complete typed immutable-local initializer."
   }
 }
