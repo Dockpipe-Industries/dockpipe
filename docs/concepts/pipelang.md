@@ -235,7 +235,7 @@ or public semantic identities. The backend checks the complete emitted package n
 returning Go source.
 
 Core program admission accepts only `pipelang.compiler.v1` and the exact supported language
-identities `v0.1.0` through `v0.83.0`. `coreir.ValidateProgram` checks feature availability in
+identities `v0.1.0` through `v0.84.0`. `coreir.ValidateProgram` checks feature availability in
 signatures and nested expressions, together with the existing composition and topology contracts.
 `coreeval.EvaluateProgram` and the Go backend use that same admission before executing or emitting
 anything, including when a disallowed feature occurs in an uncalled function or unused parameter.
@@ -2746,4 +2746,55 @@ combinations, internal Core capabilities, and the exact frozen 45-source lane ar
 A third or nested ternary, new ternaries in return/terminal-condition/argument positions, depth
 four, new matching/propagation combinations, fallthrough, early return, assignment, loops,
 effects, and inferred locals remain excluded. No runtime, target, UI, deployment, or self-hosted
+compiler implementation enters this slice.
+
+
+### PipeLang v0.84.0: finite conditional-local sequences
+
+`v0.84.0` removes the method-wide two-choice limit within terminal `if/else` trees through
+depth three. Any finite number of ternaries may initialize explicitly typed immutable locals,
+each as its complete initializer. Zero, one and two choices retain their accepted forms.
+A method with multiple choices still requires a terminal tree; straight-line multiple-choice
+bodies are not newly admitted. This is a source-language count generalization, not a promise
+of unlimited host resources or a change to target profiles.
+
+Choices may occur in the same scope, ancestor/descendant scopes, or separate branches.
+Their conditions and arms may depend on earlier bindings only where lexical scope permits.
+Every condition is `bool`, and both arms exactly match that local's declared supported type;
+different locals may have different types. Both arms are checked, but only the selected arm
+executes. Complete Optional and Result carriers, including absent and failed values and
+arithmetic Results selected from direct references, retain their representation without
+implicit unwrapping or propagation.
+
+```pipe
+public Class Classifier {
+    public string Select(string raw, bool clean, bool suffix, bool enabled) {
+        string normalized = clean ? trim(raw) : raw;
+        string selected = suffix && normalized != "" ? normalized + "!" : normalized;
+        string final = enabled && selected != "" ? selected + "?" : selected;
+        if (enabled) { return final; } else { return normalized; }
+    }
+}
+```
+
+Initializers execute once in source order, including unused locals. Unselected terminal
+branches execute neither their conditions nor their local initializers. A local enters scope
+after its initializer; self/forward references, duplicate names, shadowing, sibling references,
+and escaping bindings remain invalid. Value choices do not consume terminal-tree depth.
+
+Typed HIR and target-neutral Core retain `immutable_local` and `conditional` nodes, with
+`terminal_statement: false` for value choices. Source and Core independently validate placement
+and depth; typed lowering and Core structural admission enforce types and lexical bindings.
+For newly admitted bodies with more than two choices, the Core-only Go backend emits ordered
+local declarations and terminal branch statements to avoid deeply nested local closures. Earlier
+accepted forms keep their generated output. The evaluator and Go backend consume checked Core.
+Semantic and
+Application IR consumers do not parse source or infer semantics. The public
+`pipelang.compiler.v1`, `pipelang.semantic.v1`, and `dockpipe.application.v1` identities and
+shapes remain unchanged. Earlier version limits and combinations, internal Core capabilities,
+and the exact frozen 45-source compatibility lane are preserved.
+
+Nested ternaries, new return/terminal-condition/argument placements, depth four, new
+matching/propagation combinations, fallthrough, early returns, assignment, loops, effects,
+and inferred locals remain excluded. No runtime, target, UI, deployment, or self-hosted
 compiler implementation enters this slice.

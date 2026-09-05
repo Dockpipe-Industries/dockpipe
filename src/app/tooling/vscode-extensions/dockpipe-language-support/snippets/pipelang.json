@@ -938,5 +938,17 @@
       "}"
     ],
     "description": "Create a v0.83.0 terminal tree with two typed conditional locals and a dependent second choice."
+  },
+  "PipeLang finite conditional locals in terminal tree": {
+    "prefix": "pipe-finite-conditional-locals",
+    "body": [
+      "public string ${1:Select}(string raw, bool clean, bool suffix, bool enabled) {",
+      "\tstring normalized = clean ? trim(raw) : raw;",
+      "\tstring selected = suffix && normalized != \"\" ? normalized + \"!\" : normalized;",
+      "\tstring final = enabled && selected != \"\" ? selected + \"?\" : selected;",
+      "\tif (enabled) { return final; } else { return normalized; }",
+      "}"
+    ],
+    "description": "Create a v0.84.0 terminal tree with a finite sequence of typed conditional locals and dependent choices."
   }
 }

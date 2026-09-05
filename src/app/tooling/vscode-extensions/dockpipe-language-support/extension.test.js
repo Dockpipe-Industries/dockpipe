@@ -578,3 +578,10 @@ assert.strictEqual(twoConditionalLocals.prefix, "pipe-two-conditional-locals");
 assert(twoConditionalLocals.description.includes("v0.83.0"));
 assert.strictEqual(twoConditionalLocals.body.filter((line) => line.includes(" ? ")).length, 2);
 assert(twoConditionalLocals.body.some((line) => line.includes('suffix && normalized != "" ? normalized + "!" : normalized')));
+
+assert(pipeLangReadme.includes("`v0.84.0`"));
+const finiteConditionalLocals = pipeLangSnippets["PipeLang finite conditional locals in terminal tree"];
+assert.strictEqual(finiteConditionalLocals.prefix, "pipe-finite-conditional-locals");
+assert(finiteConditionalLocals.description.includes("v0.84.0"));
+assert.strictEqual(finiteConditionalLocals.body.filter((line) => line.includes(" ? ")).length, 3);
+assert(finiteConditionalLocals.body.some((line) => line.includes('enabled && selected != "" ? selected + "?" : selected')));

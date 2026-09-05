@@ -1,5 +1,12 @@
 # DockPipe Language Support (VS Code)
 
+PipeLang `v0.84.0` adds `pipe-finite-conditional-locals`: any finite number of lazy ternaries,
+each the complete initializer of a typed immutable local in a terminal tree through depth three.
+Later choices can depend on earlier in-scope bindings. Exact types, complete carriers, and
+ordered/unused initializers are preserved. Nested ternaries, new placements, straight-line
+multiple choices, deeper trees, and new matching/propagation combinations remain excluded.
+Earlier versions retain their limits.
+
 PipeLang `v0.83.0` adds `pipe-two-conditional-locals`: at most two lazy ternaries per method,
 each a complete typed immutable-local initializer within terminal trees through depth three.
 A later choice can depend on the first in lexical scope; exclusive branches still count toward

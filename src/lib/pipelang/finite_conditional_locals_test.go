@@ -1,0 +1,348 @@
+package pipelang
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"reflect"
+	"strings"
+	"testing"
+	"time"
+
+	"dockpipe/src/lib/pipelang/coreeval"
+	"dockpipe/src/lib/pipelang/coreir"
+	"dockpipe/src/lib/pipelang/gobackend"
+)
+
+const finiteConditionalLocalsSource = `public Class Choices {
+ public string Select(string raw, bool pick, bool finish, bool enabled) {
+  string first = pick ? trim(raw) : raw;
+  string second = finish && first != "" ? first + "!" : first;
+  string third = enabled && second != "" ? second + "?" : second;
+  if (enabled) { return third; } else { return first; }
+ }
+}`
+
+func TestV840FiniteConditionalLocalsAdmission(t *testing.T) {
+	input := semanticTestModuleSet("compiler.selfhosting", []ModuleInput{testModule("compiler.selfhosting", "finite.pipe", finiteConditionalLocalsSource)}, nil)
+	input.LanguageContract = LanguageContract("v0.84.0")
+	if err := AnalyzeSemanticModuleSet(input).Error(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestV840FiniteConditionalLocalsAllShapes(t *testing.T) {
+	methodsTotal, outcomes := 0, 0
+	trees := terminalTrees(3)[1:]
+	if len(trees) != 25 {
+		t.Fatal("shape inventory drift")
+	}
+	for shape, tree := range trees {
+		t.Run(fmt.Sprint(shape), func(t *testing.T) {
+			scopes := conditionalTreeScopes(tree, "R")
+			var source strings.Builder
+			source.WriteString(`public Class Choices {public string Echo(string value)=>value;public bool Check(string path,bool value)=>value;`)
+			type sample struct {
+				name    string
+				targets []string
+				unused  bool
+			}
+			var samples []sample
+			var methods []string
+			var layouts [][]string
+			for _, scope := range scopes {
+				layouts = append(layouts, []string{scope, scope, scope})
+			}
+			layouts = append(layouts, []string{"R", "RT", "RF"}, []string{"R", "R", scopes[len(scopes)-1]}, []string{"R", "RT", "RT", "RF", "RF"})
+			for _, targets := range layouts {
+				for _, unused := range []bool{false, true} {
+					name := fmt.Sprintf("Select%d", len(samples))
+					samples = append(samples, sample{name, targets, unused})
+					methods = append(methods, name)
+					source.WriteString(conditionalChoicesTreeMethod(tree, targets, unused, name))
+				}
+			}
+			source.WriteString("}")
+			analysis, program := conditionalLocalTreeProgramVersion(t, PipeLangLanguageContractV840, source.String(), methods)
+			againAnalysis, again := conditionalLocalTreeProgramVersion(t, PipeLangLanguageContractV840, source.String(), methods)
+			projection, err := BuildSemanticProjection(analysis)
+			if err != nil {
+				t.Fatal(err)
+			}
+			repeatedProjection, err := BuildSemanticProjection(againAnalysis)
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, pair := range [][2]any{{program, again}, {projection, repeatedProjection}} {
+				a, _ := json.Marshal(pair[0])
+				b, _ := json.Marshal(pair[1])
+				if !bytes.Equal(a, b) {
+					t.Fatal("nondeterministic Core/semantic output")
+				}
+			}
+			generated, err := gobackend.Generate(program)
+			if err != nil {
+				t.Fatal(err)
+			}
+			repeated, err := gobackend.Generate(again)
+			if err != nil || !bytes.Equal(generated, repeated) {
+				t.Fatal("nondeterministic Go")
+			}
+			var cases, orders strings.Builder
+			for _, sample := range samples {
+				function := coreFunctionNamed(t, program, sample.name)
+				if countConditionalExpressionsInCore(function.Body) != coreConditionalCount(function.Body)+len(sample.targets) {
+					t.Fatal("value conditionals absent from Core")
+				}
+				// Evaluate only the selected function's dependency closure.
+				evaluation := program
+				evaluation.Functions = []coreir.Function{coreFunctionNamed(t, program, "Echo"), coreFunctionNamed(t, program, "Check"), function}
+				var wantedValues, wantedTraces strings.Builder
+				for mask := 0; mask < 1<<(len(sample.targets)+3); mask++ {
+					want, trace := conditionalChoicesTreeExpected(tree, sample.targets, sample.unused, mask)
+					args := []coreeval.Value{{Type: function.Parameters[0].Type, String: "value"}}
+					for bit := 0; bit < len(sample.targets)+3; bit++ {
+						args = append(args, coreeval.Value{Type: function.Parameters[bit+1].Type, Bool: mask&(1<<bit) != 0})
+					}
+					got, err := coreeval.EvaluateProgram(evaluation, function.Identity, args)
+					if err != nil || !got.OK || got.Value.String != want {
+						t.Fatalf("%s mask %d: %#v %v want %q", sample.name, mask, got, err, want)
+					}
+					fmt.Fprintf(&wantedValues, "%q,", want)
+					var quoted []string
+					for _, event := range trace {
+						quoted = append(quoted, fmt.Sprintf("%q", event))
+					}
+					fmt.Fprintf(&wantedTraces, "{%s},", strings.Join(quoted, ","))
+					outcomes++
+				}
+				call := fmt.Sprintf("PipeLang%s(\"value\"", sample.name)
+				for bit := 0; bit < len(sample.targets)+3; bit++ {
+					call += fmt.Sprintf(",mask&%d!=0", 1<<bit)
+				}
+				call += ")"
+				fmt.Fprintf(&cases, "func Test%s(t *testing.T){wants:=[]string{%s};for mask,want:=range wants{if got:=%s;got!=want{t.Fatalf(\"mask %%d: %%q want %%q\",mask,got,want)}}}\n", sample.name, wantedValues.String(), call)
+				fmt.Fprintf(&orders, "func Test%s(t *testing.T){wants:=[][]string{%s};for mask,want:=range wants{v840Trace=nil;%s;if !reflect.DeepEqual(v840Trace,want){t.Fatalf(\"mask %%d: %%v want %%v\",mask,v840Trace,want)}}}\n", sample.name, wantedTraces.String(), call)
+			}
+			compileAndRunGeneratedGoFiles(t, generated, []byte(fmt.Sprintf("package %s\nimport \"testing\"\n%s", gobackend.PackageName, cases.String())))
+			observed := string(generated)
+			for marker, probe := range map[string]string{
+				"func PipeLangEcho(p0 string) string {":         "v840Trace=append(v840Trace,\"E:\"+p0)",
+				"func PipeLangCheck(p0 string, p1 bool) bool {": "v840Trace=append(v840Trace,\"C:\"+p0)",
+			} {
+				if strings.Count(observed, marker) != 1 {
+					t.Fatal("trace marker absent")
+				}
+				observed = strings.Replace(observed, marker, marker+"\n"+probe, 1)
+			}
+			compileAndRunGeneratedGoFiles(t, []byte(observed), []byte(fmt.Sprintf("package %s\nimport (\"testing\";\"reflect\")\nvar v840Trace []string\n%s", gobackend.PackageName, orders.String())))
+			methodsTotal += len(samples)
+		})
+	}
+	t.Logf("%d shapes, %d methods, %d evaluator/pristine-Go cases and ordered traces", len(trees), methodsTotal, outcomes)
+}
+
+func TestV840FiniteConditionalLocalsSourceRejection(t *testing.T) {
+	testConditionalLocalsSourceRejection(t, PipeLangLanguageContractV840)
+}
+
+func TestV840FiniteConditionalLocalsMalformedCore(t *testing.T) {
+	testConditionalLocalsMalformedCore(t, PipeLangLanguageContractV840)
+}
+
+func TestV840FiniteConditionalLocalsTypeMatrix(t *testing.T) {
+	testConditionalLocalsTypeMatrix(t, PipeLangLanguageContractV840)
+}
+
+func TestV840FiniteConditionalLocalsCarrierAndHostValues(t *testing.T) {
+	testConditionalLocalsCarrierAndHostValues(t, PipeLangLanguageContractV840)
+}
+
+func TestV840FiniteConditionalLocalsDifferentTypes(t *testing.T) {
+	testConditionalLocalsDifferentTypes(t, PipeLangLanguageContractV840)
+}
+
+func TestV840FiniteConditionalLocalsVersionBoundary(t *testing.T) {
+	for _, contract := range []LanguageContract{PipeLangLanguageContractV810, PipeLangLanguageContractV820, PipeLangLanguageContractV830, "v0.85.0", "unknown"} {
+		input := semanticTestModuleSet("compiler.selfhosting", []ModuleInput{testModule("compiler.selfhosting", "finite.pipe", finiteConditionalLocalsSource)}, nil)
+		input.LanguageContract = contract
+		if AnalyzeSemanticModuleSet(input).Error() == nil {
+			t.Fatalf("%s admitted three choices", contract)
+		}
+		_, program := conditionalLocalTreeProgramVersion(t, PipeLangLanguageContractV840, finiteConditionalLocalsSource, []string{"Select"})
+		if err := coreir.ValidateFunction(program.Functions[0]); err != nil {
+			t.Fatalf("internal Core narrowed: %v", err)
+		}
+		program.LanguageContract = string(contract)
+		assertAdmissionRejected(t, program, "")
+	}
+	// Multiple choices still require a terminal tree, even after removing the count limit.
+	source := strings.Replace(finiteConditionalLocalsSource, "if (enabled) { return third; } else { return first; }", "return third;", 1)
+	input := semanticTestModuleSet("compiler.selfhosting", []ModuleInput{testModule("compiler.selfhosting", "finite.pipe", source)}, nil)
+	input.LanguageContract = PipeLangLanguageContractV840
+	if AnalyzeSemanticModuleSet(input).Error() == nil {
+		t.Fatal("straight-line multiple choices admitted")
+	}
+	_, program := conditionalLocalTreeProgramVersion(t, PipeLangLanguageContractV840, finiteConditionalLocalsSource, []string{"Select"})
+	third := program.Functions[0].Body.ImmutableLocal.Return.ImmutableLocal.Return.ImmutableLocal
+	third.Return = third.Return.Conditional.WhenTrue
+	assertAdmissionRejected(t, program, "")
+}
+
+func TestV840FiniteConditionalLocalsThirdChoiceValidation(t *testing.T) {
+	for _, operand := range []string{"third", "missing", "true", "(pick ? second : raw)", "propagate(second)"} {
+		source := strings.Replace(finiteConditionalLocalsSource, "second + \"?\"", operand, 1)
+		input := semanticTestModuleSet("compiler.selfhosting", []ModuleInput{testModule("compiler.selfhosting", "finite.pipe", source)}, nil)
+		input.LanguageContract = PipeLangLanguageContractV840
+		if AnalyzeSemanticModuleSet(input).Error() == nil {
+			t.Fatalf("third initializer accepted %s", operand)
+		}
+	}
+	for _, mutation := range []string{"missing", "self", "type", "position", "nested", "terminal"} {
+		t.Run(mutation, func(t *testing.T) {
+			_, program := conditionalLocalTreeProgramVersion(t, PipeLangLanguageContractV840, finiteConditionalLocalsSource, []string{"Select"})
+			third := program.Functions[0].Body.ImmutableLocal.Return.ImmutableLocal.Return.ImmutableLocal
+			switch mutation {
+			case "missing":
+				third.Initializer.Conditional.WhenTrue = nil
+			case "self":
+				third.Initializer.Conditional.WhenTrue = third.Return.Conditional.WhenTrue
+			case "type":
+				third.Initializer.Conditional.WhenTrue = third.Initializer.Conditional.Condition
+			case "position":
+				third.Position = 999
+			case "nested":
+				c := third.Initializer.Conditional
+				c.WhenTrue = &coreir.Expr{Kind: coreir.ExprConditional, Type: third.Type, Conditional: &coreir.Conditional{Condition: c.Condition, WhenTrue: c.WhenFalse, WhenFalse: c.WhenFalse}}
+			case "terminal":
+				third.Initializer.Conditional.TerminalStatement = true
+			}
+			assertAdmissionRejected(t, program, "")
+		})
+	}
+}
+
+func TestV840FiniteConditionalLocalsDependentCondition(t *testing.T) {
+	_, program := conditionalLocalTreeProgramVersion(t, PipeLangLanguageContractV840, finiteConditionalLocalsSource, []string{"Select"})
+	function := coreFunctionNamed(t, program, "Select")
+	var checks strings.Builder
+	for _, raw := range []string{"", "   ", " ready ", "raw"} {
+		for mask := 0; mask < 8; mask++ {
+			first := raw
+			if mask&1 != 0 {
+				first = strings.TrimSpace(raw)
+			}
+			second := first
+			if mask&2 != 0 && first != "" {
+				second += "!"
+			}
+			want := first
+			if mask&4 != 0 {
+				want = second
+				if second != "" {
+					want += "?"
+				}
+			}
+			args := []coreeval.Value{{Type: function.Parameters[0].Type, String: raw}}
+			for bit := 0; bit < 3; bit++ {
+				args = append(args, coreeval.Value{Type: function.Parameters[bit+1].Type, Bool: mask&(1<<bit) != 0})
+			}
+			got, err := coreeval.EvaluateProgram(program, function.Identity, args)
+			standalone, se := coreeval.Evaluate(function, args)
+			if err != nil || !got.OK || got.Value.String != want || se != nil || !reflect.DeepEqual(got, standalone) {
+				t.Fatalf("dependent %q/%d: %#v %v / %#v %v", raw, mask, got, err, standalone, se)
+			}
+			fmt.Fprintf(&checks, "if got:=PipeLangSelect(%q,%t,%t,%t);got!=%q{t.Fatal(got)}\n", raw, mask&1 != 0, mask&2 != 0, mask&4 != 0, want)
+		}
+	}
+	generated, err := gobackend.Generate(program)
+	if err != nil {
+		t.Fatal(err)
+	}
+	compileAndRunGeneratedGoFiles(t, generated, []byte(fmt.Sprintf("package %s\nimport \"testing\"\nfunc TestDependent(t *testing.T){%s}", gobackend.PackageName, checks.String())))
+}
+
+func TestV840FiniteConditionalLocalsBoundedScale(t *testing.T) {
+	// A bounded resource observation, not a claim of exhaustive or asymptotic proof.
+	for _, count := range []int{3, 8, 32, 128, 256} {
+		t.Run(fmt.Sprint(count), func(t *testing.T) {
+			start := time.Now()
+			var source strings.Builder
+			source.WriteString("public Class Choices {public string Select(string raw,bool pick,bool enabled){")
+			previous := "raw"
+			for i := 0; i < count; i++ {
+				name := fmt.Sprintf("q%d", i)
+				fmt.Fprintf(&source, "string %s=pick ? %s+\"T\" : %s+\"F\";", name, previous, previous)
+				previous = name
+			}
+			fmt.Fprintf(&source, "if(enabled){return %s;}else{return raw;}}}", previous)
+			_, program := conditionalLocalTreeProgramVersion(t, PipeLangLanguageContractV840, source.String(), []string{"Select"})
+			function := program.Functions[0]
+			if countConditionalExpressionsInCore(function.Body) != count+1 {
+				t.Fatal("choice count changed")
+			}
+			var checks strings.Builder
+			for _, pick := range []bool{false, true} {
+				for _, enabled := range []bool{false, true} {
+					arm := "F"
+					if pick {
+						arm = "T"
+					}
+					want := "raw"
+					if enabled {
+						want += strings.Repeat(arm, count)
+					}
+					args := []coreeval.Value{{Type: function.Parameters[0].Type, String: "raw"}, {Type: function.Parameters[1].Type, Bool: pick}, {Type: function.Parameters[2].Type, Bool: enabled}}
+					got, err := coreeval.EvaluateProgram(program, function.Identity, args)
+					if err != nil || !got.OK || got.Value.String != want {
+						t.Fatalf("scale: %#v %v", got, err)
+					}
+					fmt.Fprintf(&checks, "if got:=PipeLangSelect(\"raw\",%t,%t);got!=%q{t.Fatal(got)}\n", pick, enabled, want)
+				}
+			}
+			generated, err := gobackend.Generate(program)
+			if err != nil {
+				t.Fatal(err)
+			}
+			compileAndRunGeneratedGoFiles(t, generated, []byte(fmt.Sprintf("package %s\nimport \"testing\"\nfunc TestScale(t *testing.T){%s}", gobackend.PackageName, checks.String())))
+			t.Logf("%d choices, %d source bytes, %d Go bytes, %s including pristine Go compile/run", count, source.Len(), len(generated), time.Since(start))
+		})
+	}
+}
+
+func TestV840FiniteConditionalLocalsTwoChoiceInheritance(t *testing.T) {
+	for _, source := range []string{twoConditionalLocalsSource, twoConditionalRulesSource} {
+		var baseline [][]byte
+		for _, contract := range []LanguageContract{PipeLangLanguageContractV830, PipeLangLanguageContractV840} {
+			analysis, program := conditionalLocalTreeProgramVersion(t, contract, source, []string{"Select"})
+			projection, err := BuildSemanticProjection(analysis)
+			if err != nil {
+				t.Fatal(err)
+			}
+			typed, err := LowerSemanticMethodToHIR(analysis, semanticMethodNamed(t, analysis, "Select").Identity)
+			if err != nil {
+				t.Fatal(err)
+			}
+			generated, err := gobackend.Generate(program)
+			if err != nil {
+				t.Fatal(err)
+			}
+			program.LanguageContract = coreir.LanguageContractV830
+			typed.LanguageContract = coreir.LanguageContractV830
+			projection.LanguageContract = PipeLangLanguageContractV830
+			artifacts := [][]byte{generated}
+			for _, value := range []any{program, typed, projection} {
+				data, err := json.Marshal(value)
+				if err != nil {
+					t.Fatal(err)
+				}
+				artifacts = append(artifacts, data)
+			}
+			if baseline == nil {
+				baseline = artifacts
+			} else if !reflect.DeepEqual(baseline, artifacts) {
+				t.Fatal("inherited two-choice HIR/Core/semantic/Go changed")
+			}
+		}
+	}
+}

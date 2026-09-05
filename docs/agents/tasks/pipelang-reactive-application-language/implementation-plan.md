@@ -1,3 +1,11 @@
+## Completed current objective — finite conditional-local sequences
+
+The founder selected A and separately approved implementation of v0.84.0.
+[finite-conditional-locals.md](finite-conditional-locals.md) owns the scope, exclusions, and
+verification. State: `completed`; implementation and terminal proof passed. v0.83 implementation and proof are committed at `08f01a47`;
+earlier uncommitted wording below is historical. No commit, push, publication, live action,
+or successor is authorized.
+
 ## Bounded Implementation Order
 
 The latest completed work is the [multi-stage checked-chain inheritance repair](checked-chain-inheritance-repair.md).
