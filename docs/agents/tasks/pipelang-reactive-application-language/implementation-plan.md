@@ -1455,3 +1455,15 @@ shapes, with finite typed immutable-local sequences in each scope. See the
 for exact semantics and exclusions and the [completion record](completed-functions.md#step-8au-terminal-trees-through-depth-three-v0810)
 for compiler/consumer proof. Existing HIR/Core nodes and public identities remain stable.
 No successor, commit, push, publication, or live operation is authorized by completion.
+
+## Checkpoint v0.82.0 complete contract
+
+Step 8av is complete; its [completion record](completed-functions.md#step-8av-conditional-local-in-terminal-trees-v0820)
+owns passed proof and deferred findings. The slice admits one lazy conditional only as a complete typed immutable-local initializer in
+an existing terminal tree through depth three. See the
+[canonical contract](../../../concepts/pipelang.md#pipelang-v0820-conditional-local-in-terminal-trees)
+for semantics and exclusions. Prove all 25 shapes, all lexical scopes, both arms and every path,
+ordered/unused locals, malformed source/Core refusal, exact type transport, deterministic
+artifacts, and Application IR consumption; then run terminal compiler/consumer/compatibility,
+CLI, vet, formatting, editor, and task documentation checks. Completion does not authorize
+commit, push, publication, live operations, or another slice.

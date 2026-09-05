@@ -1140,7 +1140,8 @@ Implementation is complete; any successor remains a separate founder decision.
 
 The founder selected option A and separately approved implementation on 2026-09-04.
 `TASK-021-next-compiler-slice` is complete in the saved checkout on `js/pipelang`, based on
-`acbd10f88207d0a226ec24a073948362691adb8c`; this slice remains uncommitted for review.
+`acbd10f88207d0a226ec24a073948362691adb8c`; later founder review and commit placed the
+complete slice at `c8dd8a9c70837eb6313240552e5172a78f76565c`, superseding its uncommitted status.
 The [canonical contract](../../../concepts/pipelang.md#pipelang-v0810-terminal-trees-through-depth-three)
 owns source behavior and exclusions. Any terminal tree through depth three is admitted, including
 asymmetric trees and three/four expanded leaves, with finite ordered typed immutable locals.
@@ -1197,3 +1198,61 @@ in the full suite. This is a pre-existing source-admission gap, distinct from nu
 and was not repaired or admitted as new syntax by the terminal-tree objective. Evidence:
 `baseline-checked-probe.log` and `current-checked-probe.log` in the temporary proof directory.
 Neither deferred finding selects or authorizes a successor objective.
+
+## Step 8av — conditional local in terminal trees (`v0.82.0`)
+
+The founder selected A and separately approved implementation on 2026-09-04.
+`TASK-021-next-compiler-slice-after-v081` is complete; implementation and terminal verification
+passed on 2026-09-04. Changes remain uncommitted for founder review.
+The saved checkout remains on `js/pipelang`, based on committed v0.81 at `c8dd8a9c`.
+The [canonical contract](../../../concepts/pipelang.md#pipelang-v0820-conditional-local-in-terminal-trees)
+owns behavior and exclusions; [next-boundary.md](next-boundary.md) owns the approved objective.
+
+Source and independent Core admission add one nonterminal conditional only as a complete
+immutable-local initializer within a terminal tree through depth three. The occurrence bound
+covers the whole method. Existing HIR/Core nodes, evaluator, and Core-only Go emission provide
+exact typing, lexical bindings, source-ordered initialization, and lazy selection. Explicit
+inherited-version predicates include v0.82; earlier exact forms retain their rules. Existing
+composite-signature restrictions are retained; the composite type matrix uses a root local.
+
+`conditional_local_tree_test.go` enumerates 25 shapes and all 235 lexical scope placements.
+Three local layouts produce 705 methods: the choice alone, surrounded by ordered locals, and
+unused after an earlier initializer. Sixteen boolean combinations per method give 11,280
+Core-evaluator/pristine-generated-Go comparisons and the same number of separate instrumented-Go
+trace checks. These cover both arms, every terminal path, eager root/local order, condition order,
+selected-arm execution, unused initializers, and unselected-terminal-path laziness. Repeat builds
+compare Core, semantic, and generated-Go artifacts. The 12-type matrix covers primitives,
+records, record lists, primitive/record Optionals, text/snapshot Results, and arithmetic Results.
+
+Located source diagnostics reject invalid placement, count, operand types, binding scope, depth,
+and excluded statements. Independent forged Core checks reject incomplete conditionals, terminal
+initializer flags, wrong types/positions, shadowing/self/escaping references, second/nested choices,
+argument/return/condition placement, and depth four; evaluator and backend both refuse them.
+Version proof rejects new composition under v0.81, preserves old terminal/expression Go bytes,
+and checks Core admission through all 82 accepted versions and existing feature fixtures.
+
+The Application IR consumer uses a conditional local in an asymmetric snapshot-entrypoint tree,
+executes all four terminal paths and both value-choice arms through Core and pristine Go, and
+checks stable schema/identity and deterministic projection. Existing goldens are unchanged.
+The editor adds `pipe-conditional-local-tree`; canonical docs and task routes record the slice.
+
+Focused shape, rejection, type/inheritance, Core admission, and consumer checks passed.
+Terminal commands passed on 2026-09-04:
+
+- `go test ./src/lib/pipelang/... ./src/lib/applicationir ./tests/pipelangcompat -count=1`;
+- `go test ./src/lib/application -run 'PipeLang|TestCompileWorkflowsBatchSupportsConfigPipe' -count=1`;
+- `go test ./src/cmd -count=1`;
+- `go vet ./src/lib/pipelang/... ./src/lib/applicationir ./src/lib/application ./src/cmd`;
+- editor `node --check .../extension.js` and `node .../extension.test.js`;
+- changed Go formatting, snippet JSON, task YAML/state/document routes, and `git diff --check`.
+
+Cached Go 1.25.13 runs with `GOTOOLCHAIN=local`, `GOPROXY=off`,
+`GOSUMDB=off`, and writable temporary caches. Logs/cache are under `/tmp/pipelang-v082-proof`;
+generated-Go test modules are temporary. No tracked golden or generated store is refreshed.
+
+The normalized numeric-comparison evaluator limitation and v0.56 checked-propagation fixture's
+later-version source-admission gap remain deferred. This slice does not repair either finding.
+Repository-wide builds/suites, interactive editor execution, sustained fuzzing, stack-exhaustion
+proof, and the exhaustive feature/version cross-product are outside this proof. Package/engine
+boundaries are preserved. No commit, push, publication, worktree, stash mutation, credential, or
+live operation is performed. No successor or automatic handoff is authorized.

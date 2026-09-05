@@ -1,5 +1,12 @@
 # DockPipe Language Support (VS Code)
 
+PipeLang `v0.82.0` adds `pipe-conditional-local-tree`: one lazy ternary as the complete
+initializer of one typed immutable local anywhere in a terminal tree through depth three.
+The occurrence limit is per method, including mutually exclusive branches. Both arms have the
+exact local type; only the selected arm runs. No new return/condition/argument placements,
+nested or multiple ternaries, matching, propagation, or deeper terminal trees are admitted.
+Earlier versioned forms remain unchanged.
+
 PipeLang `v0.81.0` adds `pipe-terminal-tree`: symmetric or asymmetric terminal `if/else`
 trees through depth three, with optional ordered typed immutable locals in each scope.
 At most seven decisions yield eight return paths; only the selected path executes.

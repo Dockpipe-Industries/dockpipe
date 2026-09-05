@@ -898,6 +898,9 @@ func validExpandedDepthThreeTerminalIf(expr Expr, expandedLeaves int) bool {
 }
 
 func validTerminalIfStatement(contract LanguageContract, expr Expr) bool {
+	if contract == PipeLangLanguageContractV820 {
+		return validV820ConditionalLocalTree(expr) || validTerminalIfStatement(PipeLangLanguageContractV810, expr)
+	}
 	if contract == PipeLangLanguageContractV810 {
 		return validV810TerminalTree(expr, 3) || validTerminalIfStatement(PipeLangLanguageContractV800, expr)
 	}
@@ -1143,4 +1146,42 @@ func ZeroValue(t PrimitiveType) Value {
 	default:
 		return Value{}
 	}
+}
+
+// Count the single value choice across the whole method, including unselected scopes.
+// Terminal depth is separate from this nonterminal conditional.
+func validV820ConditionalLocalTree(expr Expr) bool {
+	choices := 0
+	var walk func(Expr, int) bool
+	walk = func(current Expr, remaining int) bool {
+		for {
+			local, ok := current.(*ImmutableLocalExpr)
+			if !ok {
+				break
+			}
+			if local.Initializer == nil || local.Return == nil {
+				return false
+			}
+			if choice, ok := local.Initializer.(*ConditionalExpr); ok {
+				choices++
+				if choices > 1 || choice.TerminalStatement || choice.Condition == nil || choice.WhenTrue == nil || choice.WhenFalse == nil ||
+					!validConditionalOperand(choice.Condition) || !validConditionalOperand(choice.WhenTrue) || !validConditionalOperand(choice.WhenFalse) {
+					return false
+				}
+			} else if !validConditionalOperand(local.Initializer) {
+				return false
+			}
+			current = local.Return
+		}
+		if current == nil {
+			return false
+		}
+		branch, ok := current.(*ConditionalExpr)
+		if !ok {
+			return validConditionalOperand(current)
+		}
+		return remaining > 0 && branch.TerminalStatement && branch.Condition != nil && branch.WhenTrue != nil && branch.WhenFalse != nil &&
+			validConditionalOperand(branch.Condition) && walk(branch.WhenTrue, remaining-1) && walk(branch.WhenFalse, remaining-1)
+	}
+	return containsTerminalIfStatement(expr) && walk(expr, 3) && choices == 1
 }

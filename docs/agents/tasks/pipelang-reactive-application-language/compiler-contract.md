@@ -197,3 +197,11 @@ The non-production fixtures
 [`bootstrap-reproducibility.v1.json`](../fixtures/pipelang-vnext/bootstrap-reproducibility.v1.json), and
 [`semantic-verification.v1.json`](../fixtures/pipelang-vnext/semantic-verification.v1.json) make these
 boundaries executable as future fixture assertions without accepting syntax or schemas.
+
+## Accepted v0.82.0 composition boundary
+
+The founder selected and separately approved one conditional local in terminal trees.
+The [canonical language contract](../../../concepts/pipelang.md#pipelang-v0820-conditional-local-in-terminal-trees)
+owns source semantics and exclusions. Existing HIR/Core nodes and public identities remain
+stable; Core independently enforces the placement/count/depth constraints. The approved
+objective and verification boundary are in [next-boundary.md](next-boundary.md).

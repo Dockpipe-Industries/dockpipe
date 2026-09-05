@@ -564,3 +564,10 @@ assert.strictEqual(terminalTree.prefix, "pipe-terminal-tree");
 assert(terminalTree.description.includes("v0.81.0"));
 assert.strictEqual(terminalTree.body.filter((line) => line.includes("if (")).length, 3);
 assert.strictEqual(terminalTree.body.filter((line) => line.includes("return ")).length, 4);
+
+assert(pipeLangReadme.includes("`v0.82.0`"));
+const conditionalLocalTree = pipeLangSnippets["PipeLang conditional local in terminal tree"];
+assert.strictEqual(conditionalLocalTree.prefix, "pipe-conditional-local-tree");
+assert(conditionalLocalTree.description.includes("v0.82.0"));
+assert.strictEqual(conditionalLocalTree.body.filter((line) => line.includes(" ? ")).length, 1);
+assert(conditionalLocalTree.body.some((line) => line.includes("string selected = normalize ? trim(raw) : raw;")));
