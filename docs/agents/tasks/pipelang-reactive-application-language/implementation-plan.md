@@ -1,6 +1,10 @@
 ## Bounded Implementation Order
 
-The latest completed work is the [checked-propagation inheritance repair](checked-propagation-inheritance-repair.md).
+The latest completed work is the [multi-stage checked-chain inheritance repair](checked-chain-inheritance-repair.md).
+It restores the existing v0.57/v0.58 chains through v0.82 without adding a language boundary.
+The prior checked-propagation inheritance repair is committed at `46ce299a`.
+
+The prior completed work is the [checked-propagation inheritance repair](checked-propagation-inheritance-repair.md).
 It restores the exact v0.56 two-parameter form through v0.82 without adding a language boundary.
 
 The prior completed work is the [numeric-comparison evaluator repair](numeric-comparison-repair.md)

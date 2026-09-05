@@ -200,6 +200,10 @@ boundaries executable as future fixture assertions without accepting syntax or s
 
 ## Accepted v0.82.0 composition boundary
 
+The separately approved [multi-stage checked-chain inheritance repair](checked-chain-inheritance-repair.md)
+restores the accepted v0.57/v0.58 forms through v0.82. It preserves exact source/Core boundaries,
+internal Core capabilities, version metadata, and public identities.
+
 The separately approved [numeric-comparison evaluator repair](numeric-comparison-repair.md)
 restores conformance to existing normalized numeric semantics without advancing this version.
 

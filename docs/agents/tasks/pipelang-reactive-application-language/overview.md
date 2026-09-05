@@ -1,8 +1,10 @@
 # TASK-021 PipeLang Deterministic Self-Hosting Managed Language Foundation
 
-Current work: **checked-propagation inheritance repair is implemented and verified**, selected as A and separately
-approved on 2026-09-04. The [repair record](checked-propagation-inheritance-repair.md) owns scope
-and passed verification. Changes remain uncommitted for review; language metadata remains v0.82.0.
+Current work: **multi-stage checked-chain inheritance repair is implemented and verified**.
+The founder selected A and separately approved implementation in this task. The
+[repair record](checked-chain-inheritance-repair.md) owns scope and passed terminal proof. Changes remain uncommitted for review.
+Language metadata remains v0.82.0. The prior checked-propagation inheritance repair is committed
+at `46ce299a`; its historical uncommitted wording is superseded.
 
 The numeric-comparison repair and proof are committed at `fb2f480a`; its earlier uncommitted
 wording is superseded. The v0.82 implementation and proof are committed at `8bb75896`.

@@ -11,10 +11,10 @@ dispatch:
 state:
   decision: accepted
   current_language_contract: v0.82.0
-  active_objective: TASK-021-next-compiler-slice-after-numeric-comparison-repair
+  active_objective: TASK-021-next-compiler-slice-after-checked-propagation-inheritance-repair
   objective_state: completed
   selected_option: A
-  selected_scope: checked-propagation inheritance repair
+  selected_scope: multi-stage checked-chain inheritance repair
   implementation_approval: approved
   completed_repair_objective: TASK-021-PipeLang-v0.80-milestone-repairs
   repair_commit: acbd10f88207d0a226ec24a073948362691adb8c
@@ -23,14 +23,17 @@ state:
   next_repair_slice: null
   completed_through: v0.82.0 conditional local in terminal trees plus v0.81.0 terminal trees through depth three plus v0.80.0 two expanded terminal leaves plus v0.79.0 bounded depth-three terminal branching plus v0.78.0 rootless symmetric depth-two terminal branching plus v0.77.0 symmetric depth-two terminal branching with shared root immutable locals plus v0.76.0 shared root immutable-local sequences before the v0.75.0 bounded nested terminal topology, v0.75.0 inner terminal-leaf immutable-local sequences, v0.74.0 one-branch bounded nested terminal if/else, v0.73.0 direct terminal if/else without a top-level-local prerequisite, v0.72.0 general terminal-branch local sequences, v0.71.0 two-local terminal-branch sequences, v0.70.0 lexical terminal-branch locals, and v0.69.0 terminal statement-level if/else after ordered immutable locals, generalized one-stage and multi-stage shared-context Result propagation, generalized contextual bounded Result propagation, exact two-stage and one-stage contextual bounded propagation, contextual and generalized cross-payload chains, exact two-stage and one-stage cross-payload Result propagation, generalized checked-propagation chains, two-stage, multi-parameter direct, direct, and helper checked propagation, multi-parameter propagation, cumulative and immediate dependent chains, dependent and independent two-carrier forms, prior-local and later-local helper matching, checked arithmetic, pure calls, matching, propagation, ordered immutable locals, and dockpipe.application.v1 consumer proof
   authority: >-
-    After committed numeric-comparison repair at fb2f480a, the founder selected A,
-    checked-propagation inheritance repair, and separately approved implementation.
-    checked-propagation-inheritance-repair.md owns completed implementation and terminal proof.
-    Changes remain uncommitted for review; language metadata remains v0.82.0. No commit, push, publication, external action, or successor is authorized.
+    The founder selected A, multi-stage checked-chain inheritance repair, and separately
+    approved implementation in the receiving task. checked-chain-inheritance-repair.md owns
+    completed implementation and terminal proof. Changes remain uncommitted for review;
+    language metadata remains v0.82.0. The prior repair is committed at
+    46ce299a; its historical uncommitted wording is superseded. No commit, push, publication,
+    external action, or successor is authorized.
 
 routes:
   orientation:
     read:
+      - checked-chain-inheritance-repair.md
       - checked-propagation-inheritance-repair.md
       - overview.md
       - numeric-comparison-repair.md
@@ -46,6 +49,7 @@ routes:
 
   next_founder_decision:
     read:
+      - checked-chain-inheritance-repair.md
       - checked-propagation-inheritance-repair.md
       - numeric-comparison-repair.md
       - milestone-v080-repairs.md
@@ -59,6 +63,7 @@ routes:
 
   accepted_language_implementation:
     read:
+      - checked-chain-inheritance-repair.md
       - checked-propagation-inheritance-repair.md
       - numeric-comparison-repair.md
       - overview.md
@@ -97,6 +102,8 @@ history_by_slice:
   steps_8a_to_8av: completed-functions.md
 
 documents:
+  - path: checked-chain-inheritance-repair.md
+    role: approved repair of inherited multi-stage checked chains and its proof
   - path: checked-propagation-inheritance-repair.md
     role: approved repair of inherited direct checked propagation and its proof
   - path: numeric-comparison-repair.md

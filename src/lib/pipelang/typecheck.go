@@ -2958,9 +2958,10 @@ func (cp *checkedProgram) inferCheckedArithmeticPropagationBlock(expr Expr, env 
 		return ResolvedTypeRef{}, err
 	}
 	var initialized ResolvedTypeRef
-	if isResolvedSourceArithmeticResult(cp.modules.LanguageContract(), localType) {
+	contract := inheritedLanguageContract(cp.modules.LanguageContract())
+	if isResolvedSourceArithmeticResult(contract, localType) {
 		initializerEnv := env
-		if (cp.modules.LanguageContract() == PipeLangLanguageContractV730 || cp.modules.LanguageContract() == PipeLangLanguageContractV720 || cp.modules.LanguageContract() == PipeLangLanguageContractV710 || cp.modules.LanguageContract() == PipeLangLanguageContractV700 || cp.modules.LanguageContract() == PipeLangLanguageContractV690 || cp.modules.LanguageContract() == PipeLangLanguageContractV680 || cp.modules.LanguageContract() == PipeLangLanguageContractV670 || cp.modules.LanguageContract() == PipeLangLanguageContractV660 || cp.modules.LanguageContract() == PipeLangLanguageContractV650 || cp.modules.LanguageContract() == PipeLangLanguageContractV640 || cp.modules.LanguageContract() == PipeLangLanguageContractV630 || cp.modules.LanguageContract() == PipeLangLanguageContractV620 || cp.modules.LanguageContract() == PipeLangLanguageContractV610 || cp.modules.LanguageContract() == PipeLangLanguageContractV600 || cp.modules.LanguageContract() == PipeLangLanguageContractV590 || cp.modules.LanguageContract() == PipeLangLanguageContractV580) || cp.modules.LanguageContract() == PipeLangLanguageContractV570 {
+		if (contract == PipeLangLanguageContractV730 || contract == PipeLangLanguageContractV720 || contract == PipeLangLanguageContractV710 || contract == PipeLangLanguageContractV700 || contract == PipeLangLanguageContractV690 || contract == PipeLangLanguageContractV680 || contract == PipeLangLanguageContractV670 || contract == PipeLangLanguageContractV660 || contract == PipeLangLanguageContractV650 || contract == PipeLangLanguageContractV640 || contract == PipeLangLanguageContractV630 || contract == PipeLangLanguageContractV620 || contract == PipeLangLanguageContractV610 || contract == PipeLangLanguageContractV600 || contract == PipeLangLanguageContractV590 || contract == PipeLangLanguageContractV580) || contract == PipeLangLanguageContractV570 {
 			initializerEnv = make(map[string]ResolvedTypeRef, len(env))
 			for name, resolved := range env {
 				if !resolved.Equal(declared) {
