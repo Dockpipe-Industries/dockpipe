@@ -1,9 +1,18 @@
-## Completed current objective — numeric-comparison evaluator parity
+## Completed current objective — checked-propagation inheritance repair
+
+The founder selected A and separately approved implementation on 2026-09-04.
+[Checked-propagation inheritance repair](checked-propagation-inheritance-repair.md) owns
+`TASK-021-next-compiler-slice-after-numeric-comparison-repair`, its exact scope and proof.
+State: `completed`; implementation and terminal proof passed. Changes remain uncommitted for review.
+Language metadata remains v0.82.0. No successor is selected or authorized.
+The numeric-comparison repair is committed at `fb2f480a`, superseding its old uncommitted wording.
+
+## Completed prior objective — numeric-comparison evaluator parity
 
 The founder selected A and separately approved implementation on 2026-09-04.
 [Numeric-comparison repair](numeric-comparison-repair.md) owns
 `TASK-021-next-compiler-slice-after-v082`, its scope, exclusions, and completion proof.
-State: `completed`; implementation and terminal proof passed. Changes remain uncommitted for review.
+State: `completed`; implementation and terminal proof passed and are committed at `fb2f480a`.
 Existing language contracts remain unchanged at v0.82; no successor is selected or authorized.
 The v0.82 implementation and proof are committed at `8bb75896`; historical uncommitted wording
 below is superseded.
