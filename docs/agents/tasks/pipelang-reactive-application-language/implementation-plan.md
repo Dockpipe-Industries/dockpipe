@@ -1478,3 +1478,13 @@ ordered/unused locals, malformed source/Core refusal, exact type transport, dete
 artifacts, and Application IR consumption; then run terminal compiler/consumer/compatibility,
 CLI, vet, formatting, editor, and task documentation checks. Completion does not authorize
 commit, push, publication, live operations, or another slice.
+
+
+## Checkpoint v0.83.0 complete contract
+
+Step 8aw completed two conditional locals in terminal trees under the
+[canonical contract](../../../concepts/pipelang.md#pipelang-v0830-two-conditional-locals-in-terminal-trees).
+[two-conditional-locals.md](two-conditional-locals.md) owns scope, exclusions, and focused then
+terminal compiler/consumer proof. All 25 tree shapes, lexical scope pairs, dependent selections,
+ordered/unused locals, lazy arms, exact value transport, malformed source/Core rejection,
+version inheritance, deterministic artifacts, and executable Application IR consumption passed with terminal verification.

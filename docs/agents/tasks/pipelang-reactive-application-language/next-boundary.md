@@ -1,4 +1,12 @@
-## Completed current objective — multi-stage checked-chain inheritance repair
+## Completed current objective — two conditional locals in terminal trees
+
+The founder selected A and separately approved implementation of v0.83.0.
+[two-conditional-locals.md](two-conditional-locals.md) owns the objective, exclusions, and
+verification. The [canonical contract](../../../concepts/pipelang.md#pipelang-v0830-two-conditional-locals-in-terminal-trees)
+owns source/Core semantics. State: `completed`. The previous repair is committed at `776bfa9e`;
+its historical uncommitted wording below is superseded. No successor or commit is authorized.
+
+## Completed prior objective — multi-stage checked-chain inheritance repair
 
 The founder selected A and separately approved implementation in this task.
 [Multi-stage checked-chain inheritance repair](checked-chain-inheritance-repair.md) owns

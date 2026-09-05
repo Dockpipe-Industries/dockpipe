@@ -925,5 +925,18 @@
       "}"
     ],
     "description": "Create a v0.82.0 terminal tree with one lazy conditional as a complete typed immutable-local initializer."
+  },
+  "PipeLang two conditional locals in terminal tree": {
+    "prefix": "pipe-two-conditional-locals",
+    "body": [
+      "public string ${1:Select}(string raw, bool clean, bool suffix, bool enabled) {",
+      "\tstring normalized = clean ? trim(raw) : raw;",
+      "\tif (enabled) {",
+      "\t\tstring selected = suffix && normalized != \"\" ? normalized + \"!\" : normalized;",
+      "\t\treturn selected;",
+      "\t} else { return normalized; }",
+      "}"
+    ],
+    "description": "Create a v0.83.0 terminal tree with two typed conditional locals and a dependent second choice."
   }
 }

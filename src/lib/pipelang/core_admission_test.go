@@ -55,7 +55,7 @@ func TestCoreAdmissionIdentities(t *testing.T) {
 	for _, name := range []string{"tiny-pure-function", "text-trim"} {
 		for _, empty := range []bool{false, true} {
 			for _, identity := range []string{"compiler", "language"} {
-				for _, invalid := range []string{"", "unknown", "v0.83.0", "v0.01.0", "v0.1.1", "v0.0.0.1"} {
+				for _, invalid := range []string{"", "unknown", "v0.84.0", "v0.01.0", "v0.1.1", "v0.0.0.1"} {
 					t.Run(fmt.Sprintf("%s/empty=%v/%s/%s", name, empty, identity, invalid), func(t *testing.T) {
 						program := admissionFixture(t, name)
 						if empty {
@@ -145,7 +145,7 @@ func TestCoreAdmissionFeatureFixtures(t *testing.T) {
 				downgraded.LanguageContract = fmt.Sprintf("v0.%d.0", minor-1)
 				assertAdmissionRejected(t, downgraded, "requires language contract")
 			}
-			program.LanguageContract = coreir.LanguageContractV820
+			program.LanguageContract = coreir.LanguageContractV830
 			latest, err := gobackend.Generate(program)
 			if err != nil {
 				t.Fatal(err)
@@ -164,7 +164,7 @@ func TestCoreAdmissionSupportedVersions(t *testing.T) {
 		t.Fatal(err)
 	}
 	outcomes := admissionOutcomes(t, program)
-	for minor := 1; minor <= 82; minor++ {
+	for minor := 1; minor <= 83; minor++ {
 		t.Run(fmt.Sprint(minor), func(t *testing.T) {
 			program.LanguageContract = fmt.Sprintf("v0.%d.0", minor)
 			generated, err := gobackend.Generate(program)

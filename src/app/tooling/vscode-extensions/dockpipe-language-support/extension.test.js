@@ -571,3 +571,10 @@ assert.strictEqual(conditionalLocalTree.prefix, "pipe-conditional-local-tree");
 assert(conditionalLocalTree.description.includes("v0.82.0"));
 assert.strictEqual(conditionalLocalTree.body.filter((line) => line.includes(" ? ")).length, 1);
 assert(conditionalLocalTree.body.some((line) => line.includes("string selected = normalize ? trim(raw) : raw;")));
+
+assert(pipeLangReadme.includes("`v0.83.0`"));
+const twoConditionalLocals = pipeLangSnippets["PipeLang two conditional locals in terminal tree"];
+assert.strictEqual(twoConditionalLocals.prefix, "pipe-two-conditional-locals");
+assert(twoConditionalLocals.description.includes("v0.83.0"));
+assert.strictEqual(twoConditionalLocals.body.filter((line) => line.includes(" ? ")).length, 2);
+assert(twoConditionalLocals.body.some((line) => line.includes('suffix && normalized != "" ? normalized + "!" : normalized')));

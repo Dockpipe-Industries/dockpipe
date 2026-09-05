@@ -1266,3 +1266,15 @@ The founder selected A and separately approved the conformance repair on 2026-09
 verification. This resolves the numeric-comparison limitation recorded above without advancing
 the language version. The checked-propagation source-admission gap remains deferred. Changes are
 uncommitted for founder review; no successor is selected or authorized.
+
+
+## Step 8aw: two conditional locals in terminal trees (v0.83.0)
+
+Completed after founder selection of A and separate implementation approval. The
+[objective record](two-conditional-locals.md) owns scope, implementation findings, and passed
+focused/terminal proof. The [canonical contract](../../../concepts/pipelang.md#pipelang-v0830-two-conditional-locals-in-terminal-trees)
+owns semantics and exclusions. All 25 tree shapes and 2,652 scope-pair/layout methods pass
+84,864 evaluator/pristine-Go cases plus ordered traces; type/carrier, malformed-source/Core,
+version/inheritance, and executable Application IR checks pass. Public identities, internal Core
+capabilities, generic engine/package boundaries, and the frozen 45-source lane remain unchanged.
+Changes are uncommitted for review; no commit, push, live action, or successor is authorized.
