@@ -124,7 +124,23 @@ func (g *generator) generate(program coreir.Program) ([]byte, error) {
 			return nil, backendError(function, "PLGO0001", err.Error())
 		}
 		name := g.functionNames[identityKey(function.Identity)]
-		if err := g.emitFunction(&out, name, function, optionalTypeName); err != nil {
+		// Only newly admitted finite-choice bodies use statement emission. Keep
+		// previously accepted generated output byte-stable across versions.
+		finiteLocals := false
+		if program.LanguageContract == coreir.LanguageContractV840 {
+			choices := 0
+			coreir.WalkExpression(function.Body, func(expr coreir.Expr) bool {
+				if finiteLocals {
+					return false
+				}
+				if expr.Kind == coreir.ExprConditional && expr.Conditional != nil && !expr.Conditional.TerminalStatement {
+					choices++
+					finiteLocals = choices > 2
+				}
+				return !finiteLocals
+			})
+		}
+		if err := g.emitFunction(&out, name, function, optionalTypeName, finiteLocals); err != nil {
 			return nil, err
 		}
 	}
@@ -148,7 +164,7 @@ func FunctionName(function coreir.Function) string {
 	return "PipeLang" + exportedIdentifier(name)
 }
 
-func (g *generator) emitFunction(out *strings.Builder, name string, function coreir.Function, optionalTypeName string) error {
+func (g *generator) emitFunction(out *strings.Builder, name string, function coreir.Function, optionalTypeName string, finiteLocals bool) error {
 	result, err := g.goType(function.ReturnType, optionalTypeName)
 	if err != nil {
 		return backendError(function, "PLGO0001", err.Error())
@@ -190,6 +206,13 @@ func (g *generator) emitFunction(out *strings.Builder, name string, function cor
 			fmt.Fprintf(out, "\tpipelangValidateArithmeticResult(p%d)\n", index)
 		}
 	}
+	if finiteLocals {
+		if err := g.emitTerminalLocalStatements(out, function.Body, function.Parameters, optionalTypeName); err != nil {
+			return backendError(function, "PLGO0001", err.Error())
+		}
+		out.WriteString("}\n\n")
+		return nil
+	}
 	if function.Body.Kind == coreir.ExprOptionalSome && function.Body.Some != nil && function.Body.Some.Value != nil && function.Body.Some.Value.Kind == coreir.ExprPropagate {
 		propagation := function.Body.Some.Value.Propagate
 		if propagation == nil || propagation.Value == nil || propagation.Value.Parameter == nil {
@@ -222,6 +245,52 @@ func (g *generator) emitFunction(out *strings.Builder, name string, function cor
 	}
 	out.WriteString(body)
 	out.WriteString("\n}\n\n")
+	return nil
+}
+
+// emitTerminalLocalStatements preserves Core's ordered lexical locals and lazy
+// terminal branches without deeply nested closures that overwhelm the Go compiler.
+// Value initializers still use emitExpr and transport their complete Core values.
+func (g *generator) emitTerminalLocalStatements(out *strings.Builder, expression coreir.Expr, parameters []coreir.Parameter, optionalTypeName string) error {
+	scope := append([]coreir.Parameter{}, parameters...)
+	for expression.Kind == coreir.ExprImmutableLocal {
+		local := expression.ImmutableLocal
+		if local == nil || local.Initializer == nil || local.Return == nil || local.Position != len(scope) {
+			return fmt.Errorf("immutable local is incomplete or not canonically positioned")
+		}
+		initializer, err := g.emitExpr(*local.Initializer, scope, optionalTypeName)
+		if err != nil {
+			return err
+		}
+		fmt.Fprintf(out, "p%d := %s; _ = p%d\n", local.Position, initializer, local.Position)
+		scope = append(scope, coreir.Parameter{Position: local.Position, Name: local.Name, Type: local.Type})
+		expression = *local.Return
+	}
+	if expression.Kind == coreir.ExprConditional && expression.Conditional != nil && expression.Conditional.TerminalStatement {
+		branch := expression.Conditional
+		if branch.Condition == nil || branch.WhenTrue == nil || branch.WhenFalse == nil {
+			return fmt.Errorf("terminal conditional is incomplete")
+		}
+		condition, err := g.emitExpr(*branch.Condition, scope, optionalTypeName)
+		if err != nil {
+			return err
+		}
+		fmt.Fprintf(out, "if %s {\n", condition)
+		if err := g.emitTerminalLocalStatements(out, *branch.WhenTrue, scope, optionalTypeName); err != nil {
+			return err
+		}
+		out.WriteString("} else {\n")
+		if err := g.emitTerminalLocalStatements(out, *branch.WhenFalse, scope, optionalTypeName); err != nil {
+			return err
+		}
+		out.WriteString("}\n")
+		return nil
+	}
+	returned, err := g.emitExpr(expression, scope, optionalTypeName)
+	if err != nil {
+		return err
+	}
+	fmt.Fprintf(out, "return %s\n", returned)
 	return nil
 }
 

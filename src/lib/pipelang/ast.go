@@ -898,6 +898,9 @@ func validExpandedDepthThreeTerminalIf(expr Expr, expandedLeaves int) bool {
 }
 
 func validTerminalIfStatement(contract LanguageContract, expr Expr) bool {
+	if contract == PipeLangLanguageContractV840 {
+		return validConditionalLocalTree(expr, 0) || validTerminalIfStatement(PipeLangLanguageContractV830, expr)
+	}
 	if contract == PipeLangLanguageContractV830 {
 		return validConditionalLocalTree(expr, 2) || validTerminalIfStatement(PipeLangLanguageContractV820, expr)
 	}
@@ -1158,7 +1161,9 @@ func validV820ConditionalLocalTree(expr Expr) bool {
 }
 
 func validConditionalLocalTree(expr Expr, maxChoices int) bool {
+	// A zero bound admits finite sequences; historical callers retain their bounds.
 	choices := 0
+	hasChoices := false
 	var walk func(Expr, int) bool
 	walk = func(current Expr, remaining int) bool {
 		for {
@@ -1170,8 +1175,11 @@ func validConditionalLocalTree(expr Expr, maxChoices int) bool {
 				return false
 			}
 			if choice, ok := local.Initializer.(*ConditionalExpr); ok {
-				choices++
-				if choices > maxChoices || choice.TerminalStatement || choice.Condition == nil || choice.WhenTrue == nil || choice.WhenFalse == nil ||
+				hasChoices = true
+				if maxChoices > 0 {
+					choices++
+				}
+				if (maxChoices > 0 && choices > maxChoices) || choice.TerminalStatement || choice.Condition == nil || choice.WhenTrue == nil || choice.WhenFalse == nil ||
 					!validConditionalOperand(choice.Condition) || !validConditionalOperand(choice.WhenTrue) || !validConditionalOperand(choice.WhenFalse) {
 					return false
 				}
@@ -1190,5 +1198,5 @@ func validConditionalLocalTree(expr Expr, maxChoices int) bool {
 		return remaining > 0 && branch.TerminalStatement && branch.Condition != nil && branch.WhenTrue != nil && branch.WhenFalse != nil &&
 			validConditionalOperand(branch.Condition) && walk(branch.WhenTrue, remaining-1) && walk(branch.WhenFalse, remaining-1)
 	}
-	return containsTerminalIfStatement(expr) && walk(expr, 3) && choices > 0
+	return containsTerminalIfStatement(expr) && walk(expr, 3) && hasChoices
 }

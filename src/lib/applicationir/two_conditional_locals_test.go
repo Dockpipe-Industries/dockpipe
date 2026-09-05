@@ -19,6 +19,18 @@ import (
 )
 
 func TestV830TwoConditionalLocalsApplicationConsumer(t *testing.T) {
+	testConditionalLocalsApplicationConsumer(t, false)
+}
+
+func TestV840FiniteConditionalLocalsApplicationConsumer(t *testing.T) {
+	testConditionalLocalsApplicationConsumer(t, true)
+}
+
+func testConditionalLocalsApplicationConsumer(t *testing.T, finite bool) {
+	contract, prior, boundary := pipelang.PipeLangLanguageContractV830, pipelang.PipeLangLanguageContractV820, "one ternary"
+	if finite {
+		contract, prior, boundary = pipelang.PipeLangLanguageContractV840, pipelang.PipeLangLanguageContractV830, "at most two"
+	}
 	for _, descendant := range []bool{false, true} {
 		t.Run(fmt.Sprintf("descendant=%t", descendant), func(t *testing.T) {
 			source, err := os.ReadFile("testdata/docker-observability.pipe")
@@ -35,6 +47,10 @@ func TestV830TwoConditionalLocalsApplicationConsumer(t *testing.T) {
 			} else {
 				helper += choice + `if(enabled){return selected;}else{return normalized;}`
 			}
+			if finite {
+				helper = strings.Replace(helper, choice, choice+`string third=enabled && selected != "" ? selected+"?" : selected;string fourth=clean && third != "" ? third+"#" : third;`, 1)
+				helper = strings.Replace(helper, "return selected;", "return fourth;", 1)
+			}
 			helper += `}
    public DockerSnapshot Project(DockerSnapshot snapshot) {
     string key = snapshot.Identity;
@@ -48,19 +64,19 @@ func TestV830TwoConditionalLocalsApplicationConsumer(t *testing.T) {
 				t.Fatal("fixture target absent")
 			}
 			changed := []byte(strings.Replace(string(source), original, helper, 1))
-			// v0.82 must reject this consumer specifically at the one-choice bound.
+			// The prior version must reject this consumer at its retained choice bound.
 			module := pipelang.ModuleInput{ID: "app.root", Namespace: "app.root", DeclarationSpan: pipelang.Span{File: "docker-observability.pipe"}, Sources: []pipelang.SourceInput{{Path: "docker-observability.pipe", Data: changed}}}
-			input := pipelang.ModuleSetInput{LanguageContract: pipelang.PipeLangLanguageContractV820, PackageID: "docker.observability", Root: "app.root", Modules: []pipelang.ModuleInput{module}}
+			input := pipelang.ModuleSetInput{LanguageContract: prior, PackageID: "docker.observability", Root: "app.root", Modules: []pipelang.ModuleInput{module}}
 			input.Lock.Modules = []pipelang.LockedModule{{ID: module.ID, SourceSHA256: pipelang.ModuleSourceSHA256(module.Sources), SemanticSHA256: pipelang.ModuleSemanticSHA256(input.PackageID, module.Namespace, nil)}}
-			if err := pipelang.AnalyzeSemanticModuleSet(input).Error(); err == nil || !strings.Contains(err.Error(), "one ternary") {
-				t.Fatalf("v0.82 consumer boundary: %v", err)
+			if err := pipelang.AnalyzeSemanticModuleSet(input).Error(); err == nil || !strings.Contains(err.Error(), boundary) {
+				t.Fatalf("%s consumer boundary: %v", prior, err)
 			}
-			fixture := loadReviewApplicationSource(t, changed, pipelang.PipeLangLanguageContractV830)
-			again := loadReviewApplicationSource(t, changed, pipelang.PipeLangLanguageContractV830)
+			fixture := loadReviewApplicationSource(t, changed, contract)
+			again := loadReviewApplicationSource(t, changed, contract)
 			if !reflect.DeepEqual(fixture.semantic, again.semantic) || !reflect.DeepEqual(fixture.core, again.core) {
 				t.Fatal("nondeterministic semantic/Core")
 			}
-			if fixture.semantic.Schema != "pipelang.semantic.v1" || fixture.semantic.CompilerContract != "pipelang.compiler.v1" || fixture.core.CompilerContract != "pipelang.compiler.v1" || fixture.core.LanguageContract != "v0.83.0" {
+			if fixture.semantic.Schema != "pipelang.semantic.v1" || fixture.semantic.CompilerContract != "pipelang.compiler.v1" || fixture.core.CompilerContract != "pipelang.compiler.v1" || fixture.core.LanguageContract != string(contract) {
 				t.Fatal("identity drift")
 			}
 			app, err := Project(fixture.semantic, &fixture.core, fixture.spec)
@@ -71,7 +87,7 @@ func TestV830TwoConditionalLocalsApplicationConsumer(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			baseline := loadReviewApplicationSource(t, source, pipelang.PipeLangLanguageContractV830)
+			baseline := loadReviewApplicationSource(t, source, contract)
 			old, err := Project(baseline.semantic, &baseline.core, baseline.spec)
 			if err != nil {
 				t.Fatal(err)
@@ -121,6 +137,12 @@ func TestV830TwoConditionalLocalsApplicationConsumer(t *testing.T) {
 					want := normalized
 					if mask&2 != 0 && mask&4 != 0 && normalized != "" {
 						want += "!"
+					}
+					if finite && mask&4 != 0 && want != "" {
+						want += "?"
+						if mask&1 != 0 {
+							want += "#"
+						}
 					}
 					args := []coreeval.Value{{Type: choose.Parameters[0].Type, String: raw}}
 					for bit := 0; bit < 3; bit++ {

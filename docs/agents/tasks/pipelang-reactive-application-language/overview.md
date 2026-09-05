@@ -1,6 +1,14 @@
 # TASK-021 PipeLang Deterministic Self-Hosting Managed Language Foundation
 
-Current work: **v0.83.0 two conditional locals in terminal trees is implemented and verified** after
+## Completed current objective — finite conditional-local sequences
+
+The founder selected A and separately approved implementation of v0.84.0.
+[finite-conditional-locals.md](finite-conditional-locals.md) owns the scope, exclusions, and
+verification. State: `completed`; implementation and terminal proof passed. v0.83 implementation and proof are committed at `08f01a47`;
+earlier uncommitted wording below is historical. No commit, push, publication, live action,
+or successor is authorized.
+
+Prior work: **v0.83.0 two conditional locals in terminal trees is implemented and verified** after
 founder selection of A and separate implementation approval. [The objective record](two-conditional-locals.md)
 owns scope and passed focused/terminal proof. Changes remain uncommitted for review. The preceding checked-chain repair is committed at `776bfa9e`;
 its historical uncommitted wording below is superseded.
@@ -27,8 +35,8 @@ The `vNext` foundation decision packet in this record is **accepted** as of 2026
 fixes semantics, compiler boundaries, bootstrap stages, compatibility, and implementation order;
 examples and fixtures remain non-normative and accept no production syntax. Separately authorized
 bounded objectives have completed implementation-order steps 1 through 6, step-7 slices 7a
-through 7ae, and bounded Step-8 function seams 8a through 8aw. The current explicit language
-contract is `v0.83.0`; the separately versioned read-only projection is
+through 7ae, and bounded Step-8 function seams 8a through 8ax. Finite conditional-local sequences are implemented and verified.
+The current explicit language contract is `v0.84.0`; the separately versioned read-only projection is
 `dockpipe.application.v1`; the frozen `v0.0.0.1` lane remains unchanged. This record does not by itself
 authorize another language slice.
 

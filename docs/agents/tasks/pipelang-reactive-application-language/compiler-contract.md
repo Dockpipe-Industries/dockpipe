@@ -225,3 +225,12 @@ The [canonical language contract](../../../concepts/pipelang.md#pipelang-v0830-t
 owns exact semantics and exclusions. Existing typed HIR/Core nodes and public identities remain
 stable; source and Core independently enforce the method-wide occurrence bound and existing
 placement/depth/type/scope rules. [The objective record](two-conditional-locals.md) owns proof.
+
+
+## Accepted v0.84.0 composition boundary
+
+The founder selected and separately approved finite conditional-local sequences.
+The [canonical contract](../../../concepts/pipelang.md#pipelang-v0840-finite-conditional-local-sequences)
+owns source/Core semantics and exclusions. Existing HIR/Core nodes and public identities remain
+stable. Source and Core independently preserve placement/depth constraints while earlier versions
+retain their occurrence limits. [The objective record](finite-conditional-locals.md) owns proof.

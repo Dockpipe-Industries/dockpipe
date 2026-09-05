@@ -1278,3 +1278,22 @@ owns semantics and exclusions. All 25 tree shapes and 2,652 scope-pair/layout me
 version/inheritance, and executable Application IR checks pass. Public identities, internal Core
 capabilities, generic engine/package boundaries, and the frozen 45-source lane remain unchanged.
 Changes are uncommitted for review; no commit, push, live action, or successor is authorized.
+
+
+## Step 8ax: finite conditional-local sequences (v0.84.0)
+
+The founder selected A and separately approved implementation. The
+[objective record](finite-conditional-locals.md) owns scope, exclusions, the generated-Go scaling
+finding and fix, and passed focused/terminal evidence. The
+[canonical contract](../../../concepts/pipelang.md#pipelang-v0840-finite-conditional-local-sequences)
+owns semantics. Finite sequences of complete typed conditional-local initializers are accepted
+within terminal trees through depth three; prior version limits and other placement rules remain
+unchanged. Existing HIR/Core nodes and public identities are preserved. Newly admitted bodies
+use Core-only Go local/branch statements to avoid deeply nested local closures.
+
+All 25 shapes, 620 methods, and 49,280 evaluator/pristine-Go cases with ordered traces passed,
+as did supported types/carriers, dependent/unused locals, malformed source/Core, version refusal,
+normalized inherited artifacts, bounded scaling through 256 choices, and executable Application IR
+consumers. Terminal compiler/consumer/frozen-45-source compatibility, application integration, CLI,
+vet, formatting, editor, documentation and whitespace checks passed. Changes remain uncommitted;
+completion grants no successor, commit, publication, or live-operation authority.

@@ -274,7 +274,7 @@ func ValidateProgram(program Program) error {
 		return err
 	}
 	inheritedContract := program.LanguageContract
-	if inheritedContract == LanguageContractV830 || inheritedContract == LanguageContractV820 || inheritedContract == LanguageContractV810 || inheritedContract == LanguageContractV800 || inheritedContract == LanguageContractV790 || inheritedContract == LanguageContractV780 || inheritedContract == LanguageContractV770 || inheritedContract == LanguageContractV760 || inheritedContract == LanguageContractV750 || inheritedContract == LanguageContractV740 {
+	if inheritedContract == LanguageContractV840 || inheritedContract == LanguageContractV830 || inheritedContract == LanguageContractV820 || inheritedContract == LanguageContractV810 || inheritedContract == LanguageContractV800 || inheritedContract == LanguageContractV790 || inheritedContract == LanguageContractV780 || inheritedContract == LanguageContractV770 || inheritedContract == LanguageContractV760 || inheritedContract == LanguageContractV750 || inheritedContract == LanguageContractV740 {
 		inheritedContract = LanguageContractV730
 	}
 	functions := make(map[string]Function, len(program.Functions))
@@ -669,6 +669,12 @@ func validExpandedDepthThreeTerminalIf(expression Expr, expandedLeaves int) bool
 }
 
 func validateImmutableLocalContract(contract string, function Function) error {
+	if contract == LanguageContractV840 {
+		if validConditionalLocalTree(function.Body, 0) {
+			return nil
+		}
+		return validateImmutableLocalContract(LanguageContractV830, function)
+	}
 	if contract == LanguageContractV830 {
 		if validConditionalLocalTree(function.Body, 2) {
 			return nil
@@ -1333,6 +1339,12 @@ func exprContainsPropagation(expression Expr) bool {
 }
 
 func validateConditionalContract(contract string, function Function) error {
+	if contract == LanguageContractV840 {
+		if validConditionalLocalTree(function.Body, 0) {
+			return nil
+		}
+		return validateConditionalContract(LanguageContractV830, function)
+	}
 	if contract == LanguageContractV830 {
 		if validConditionalLocalTree(function.Body, 2) {
 			return nil
@@ -4294,7 +4306,9 @@ func validV820ConditionalLocalTree(expression Expr) bool {
 }
 
 func validConditionalLocalTree(expression Expr, maxChoices int) bool {
+	// A zero bound admits finite sequences; historical callers retain their bounds.
 	choices := 0
+	hasChoices := false
 	var walk func(Expr, int) bool
 	walk = func(current Expr, remaining int) bool {
 		for current.Kind == ExprImmutableLocal {
@@ -4305,8 +4319,11 @@ func validConditionalLocalTree(expression Expr, maxChoices int) bool {
 			initializer := *local.Initializer
 			if initializer.Kind == ExprConditional {
 				choice := initializer.Conditional
-				choices++
-				if choices > maxChoices || choice == nil || choice.TerminalStatement || choice.Condition == nil || choice.WhenTrue == nil || choice.WhenFalse == nil ||
+				hasChoices = true
+				if maxChoices > 0 {
+					choices++
+				}
+				if (maxChoices > 0 && choices > maxChoices) || choice == nil || choice.TerminalStatement || choice.Condition == nil || choice.WhenTrue == nil || choice.WhenFalse == nil ||
 					!validConditionalOperand(*choice.Condition) || !validConditionalOperand(*choice.WhenTrue) || !validConditionalOperand(*choice.WhenFalse) {
 					return false
 				}
@@ -4322,5 +4339,5 @@ func validConditionalLocalTree(expression Expr, maxChoices int) bool {
 		return remaining > 0 && branch != nil && branch.TerminalStatement && branch.Condition != nil && branch.WhenTrue != nil && branch.WhenFalse != nil &&
 			validConditionalOperand(*branch.Condition) && walk(*branch.WhenTrue, remaining-1) && walk(*branch.WhenFalse, remaining-1)
 	}
-	return countTerminalIfStatements(expression) > 0 && walk(expression, 3) && choices > 0
+	return countTerminalIfStatements(expression) > 0 && walk(expression, 3) && hasChoices
 }
