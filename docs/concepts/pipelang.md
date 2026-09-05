@@ -1801,6 +1801,10 @@ enters by implication.
 
 ### PipeLang v0.58.0: generalized checked-propagation chains
 
+The inherited v0.57 two-stage form and v0.58 generalized chains remain admitted through v0.82.
+The multi-stage inheritance repair aligns intermediate arithmetic-local inference with the existing
+inherited contract, preserving exact stage order and canonical failure behavior.
+
 `v0.58.0` generalizes the v0.57 shape to a contiguous chain of two or more checked stages:
 
 ```pipe
@@ -2695,4 +2699,5 @@ assignment, loops, effects, and inference remain excluded. Prior accepted combin
 their own rules. No runtime, action, target, adapter, UI, deployment, or self-hosted compiler
 implementation enters this slice. Numeric-comparison evaluator parity was subsequently repaired
 under the existing contracts. The v0.56 two-parameter checked-propagation inheritance gap was subsequently repaired;
-later-version admission of multi-stage checked chains remains deferred.
+the subsequent multi-stage checked-chain inheritance repair restores the existing v0.57/v0.58
+forms through v0.82 without changing syntax, Core rules, or language metadata.

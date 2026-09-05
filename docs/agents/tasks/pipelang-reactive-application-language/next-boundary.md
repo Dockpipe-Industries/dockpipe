@@ -1,4 +1,14 @@
-## Completed current objective — checked-propagation inheritance repair
+## Completed current objective — multi-stage checked-chain inheritance repair
+
+The founder selected A and separately approved implementation in this task.
+[Multi-stage checked-chain inheritance repair](checked-chain-inheritance-repair.md) owns
+`TASK-021-next-compiler-slice-after-checked-propagation-inheritance-repair`, its bounded scope
+and passed terminal proof. State: `completed`; changes remain uncommitted for review.
+Language metadata remains v0.82.0.
+The prior checked-propagation inheritance repair is committed at `46ce299a`, superseding its
+historical uncommitted wording below. No successor is selected or authorized.
+
+## Completed prior objective — checked-propagation inheritance repair
 
 The founder selected A and separately approved implementation on 2026-09-04.
 [Checked-propagation inheritance repair](checked-propagation-inheritance-repair.md) owns
