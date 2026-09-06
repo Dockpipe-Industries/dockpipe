@@ -1,3 +1,11 @@
+## Completed current objective — depth-three terminal-leaf returns
+
+Founder approved option A in this task.
+[depth-three-terminal-leaf-returns.md](depth-three-terminal-leaf-returns.md) owns scope,
+exclusions and validation. State: `completed`. Completed v0.93 is committed at
+`0a54e858`; its historical uncommitted wording is superseded.
+Commit, push, publication and successor selection remain separate.
+
 ## Completed current objective — depth-three straight-line returns
 
 Founder selected A and separately approved v0.93.0 implementation on 2026-09-06.

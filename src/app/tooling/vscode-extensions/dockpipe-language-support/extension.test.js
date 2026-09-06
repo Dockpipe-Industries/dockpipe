@@ -646,3 +646,10 @@ assert.strictEqual(depthThreeReturn.prefix, "pipe-depth-three-return");
 assert(depthThreeReturn.description.includes("v0.93.0"));
 assert(depthThreeReturn.body.join("\n").includes("return a ? (b ? (c ?"));
 assert(pipeLangReadme.includes("`v0.93.0`"));
+
+const depthThreeLeafReturn = pipeLangSnippets["Depth-three terminal-leaf return"];
+assert.strictEqual(depthThreeLeafReturn.prefix, "pipe-depth-three-leaf-return");
+assert(depthThreeLeafReturn.description.includes("v0.94.0"));
+assert(depthThreeLeafReturn.body.join("\n").includes("if (enabled) {"));
+assert(depthThreeLeafReturn.body.join("\n").includes("return a ? (b ? (c ?"));
+assert(pipeLangReadme.includes("`v0.94.0`"));

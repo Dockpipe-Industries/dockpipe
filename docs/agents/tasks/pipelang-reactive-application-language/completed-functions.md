@@ -1426,3 +1426,20 @@ caller-scale cases pass. Peak direct compiler RSS is 22.34765625 MiB and maximum
 time is 0.02207197801908478 seconds through 256 caller locals. All 624 validation cgroups
 are removed. Required affected integration, CLI, vet, editor, compatibility and documentation
 checks pass. Changes remain uncommitted; no successor, commit, push or publication is authorized.
+
+
+## Step 8bh: depth-three terminal-leaf returns (v0.94.0)
+
+Founder approved option A and clarified its scope on 2026-09-06. The
+[canonical contract](../../../concepts/pipelang.md#pipelang-v0940-depth-three-terminal-leaf-returns)
+owns semantics; [the completion record](depth-three-terminal-leaf-returns.md) owns scope,
+exclusions, contained verification and proof limits. State: `completed`.
+
+All 605 discovered compiler tests pass across 678 validation units after the documented
+scale-test assertion correction. All 623 inherited memory cases and 64 isolated caller-scale
+cases pass. Peak compiler RSS is 23.30078125 MiB; maximum compile time is
+0.021928373025730252 seconds through 256 caller locals. Closure depth is at most four,
+constant with caller size. Executable Application IR, frozen compatibility, affected
+application/CLI, vet and editor/docs checks pass. HIR/Core shapes, evaluator/backend
+production code, public identities and engine/package boundaries remain unchanged.
+Changes are uncommitted; no successor, commit, push or publication is authorized.

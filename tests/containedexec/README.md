@@ -183,3 +183,17 @@ layouts, not every independently assigned initializer vector at arbitrary length
 through 256 locals. Export with `PIPELANG_MEMORY_FIXTURES`, then use `matrix.py`
 for fresh normal-inlining measurements under the unchanged 128 MiB / 5 second
 warm ceilings. The eleven-version inherited local-sequence matrix remains separate.
+
+The v0.94 terminal-leaf return tests use
+`--split-test TestV940DepthThreeTerminalLeafReturnsLayouts=25` and
+`--split-test TestV940DepthThreeTerminalLeafReturnsSubsets=100`.
+Layouts pair the 25 statement shapes with the 25 return shapes, placing zero/one/three
+locals in each leaf and exhausting seven independent return bits and two shared
+initializer bits. Statement conditions reuse the outer initializer bit in this matrix.
+The separate subset matrix exercises every leaf subset of every statement shape with
+three independent statement-depth bits and three shared return bits in four rotations.
+The duplicated outer choice reaches depth three for nested rotations. These supplied
+matrices do not claim every independent statement/return/initializer assignment.
+`TestV940DepthThreeTerminalLeafReturnsMemory` exports 64 fixed terminal-helper caller
+cases through 256 locals for `matrix.py` with unchanged normal-inlining compiler ceilings.
+Keep it separate from the eleven inherited memory versions and the v0.92/v0.93 scale tests.

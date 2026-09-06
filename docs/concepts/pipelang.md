@@ -3173,3 +3173,42 @@ continues to admit equivalent older block artifacts at their original versions.
 Existing HIR/Core nodes, `pipelang.compiler.v1`, `pipelang.semantic.v1`,
 `dockpipe.application.v1` and the frozen 45-source lane remain unchanged. All v0.92
 forms are inherited. No runtime, action, target, adapter, UI or deployment behavior is added.
+
+
+### PipeLang v0.94.0: depth-three terminal-leaf returns
+
+`v0.94.0` permits complete ternary returns through depth three in any subset of
+leaves of existing terminal `if/else` trees through statement depth three. Either
+or both return arms may nest. Statement and return depths are counted separately:
+at most three statement decisions followed by at most three return decisions per path.
+
+```pipe
+public Class Choices {
+    public string Select(string raw, bool enabled, bool a, bool b, bool c) {
+        string normalized = a ? (b ? trim(raw) : raw) : raw;
+        if (enabled) {
+            return a ? (b ? (c ? normalized : raw) : "fallback") : raw;
+        } else {
+            return a ? raw : (b ? normalized : (c ? "fallback" : raw));
+        }
+    }
+}
+```
+
+Every lexical scope retains finite explicitly typed immutable locals, including complete
+depth-two ternary initializers. Reached locals execute once, eagerly in source order,
+including unused bindings. Bindings enter scope after initialization and remain visible
+only to lexical descendants. Conditions are `bool`; return arms exactly match the method
+return type. Only reached conditions and selected arms execute. Complete supported primitive,
+record, list, Optional and Result values are transported without implicit propagation.
+
+Source and target-neutral Core independently enforce placement, depth, hidden-local refusal,
+types and lexical references. Typed HIR/Core node shapes and public `pipelang.compiler.v1`,
+`pipelang.semantic.v1` and `dockpipe.application.v1` identities remain unchanged. Evaluation
+and Go generation consume validated Core. Executable Application IR consumption and the frozen
+45-source compatibility lane retain their contracts.
+
+All v0.93 and earlier forms are inherited. Straight-line returns retain depth three;
+initializers and expression-bodied methods retain depth two. Depth-four choices or statement
+trees, new ternaries in conditions/arguments, new matching/propagation combinations, inference,
+mutation, loops, effects and backends are excluded. No runtime or deployment behavior is added.
