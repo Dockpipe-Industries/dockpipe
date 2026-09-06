@@ -14,6 +14,7 @@ import (
 	"dockpipe/src/lib/pipelang/coreeval"
 	"dockpipe/src/lib/pipelang/coreir"
 	"dockpipe/src/lib/pipelang/gobackend"
+	"dockpipe/tests/containedexec"
 )
 
 func TestV810TerminalTreeApplicationConsumer(t *testing.T) {
@@ -110,10 +111,10 @@ func TestProject(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	command := exec.Command(filepath.Join(runtime.GOROOT(), "bin", "go"), "test", ".")
+	command := exec.Command(filepath.Join(runtime.GOROOT(), "bin", "go"), "test", "-count=1", "-p=1", "-timeout=25s", ".")
 	command.Dir = dir
 	command.Env = append(os.Environ(), "GOTOOLCHAIN=local", "GOPROXY=off", "GOSUMDB=off", "GOWORK=off")
-	if output, err := command.CombinedOutput(); err != nil {
+	if output, err := containedexec.CombinedOutput(command); err != nil {
 		t.Fatalf("generated consumer Go: %v\n%s", err, output)
 	}
 }

@@ -124,23 +124,8 @@ func (g *generator) generate(program coreir.Program) ([]byte, error) {
 			return nil, backendError(function, "PLGO0001", err.Error())
 		}
 		name := g.functionNames[identityKey(function.Identity)]
-		// Only newly admitted finite-choice bodies use statement emission. Keep
-		// previously accepted generated output byte-stable across versions.
-		finiteLocals := false
-		if program.LanguageContract == coreir.LanguageContractV840 {
-			choices := 0
-			coreir.WalkExpression(function.Body, func(expr coreir.Expr) bool {
-				if finiteLocals {
-					return false
-				}
-				if expr.Kind == coreir.ExprConditional && expr.Conditional != nil && !expr.Conditional.TerminalStatement {
-					choices++
-					finiteLocals = choices > 2
-				}
-				return !finiteLocals
-			})
-		}
-		if err := g.emitFunction(&out, name, function, optionalTypeName, finiteLocals); err != nil {
+
+		if err := g.emitFunction(&out, name, function, optionalTypeName); err != nil {
 			return nil, err
 		}
 	}
@@ -164,7 +149,7 @@ func FunctionName(function coreir.Function) string {
 	return "PipeLang" + exportedIdentifier(name)
 }
 
-func (g *generator) emitFunction(out *strings.Builder, name string, function coreir.Function, optionalTypeName string, finiteLocals bool) error {
+func (g *generator) emitFunction(out *strings.Builder, name string, function coreir.Function, optionalTypeName string) error {
 	result, err := g.goType(function.ReturnType, optionalTypeName)
 	if err != nil {
 		return backendError(function, "PLGO0001", err.Error())
@@ -206,13 +191,7 @@ func (g *generator) emitFunction(out *strings.Builder, name string, function cor
 			fmt.Fprintf(out, "\tpipelangValidateArithmeticResult(p%d)\n", index)
 		}
 	}
-	if finiteLocals {
-		if err := g.emitTerminalLocalStatements(out, function.Body, function.Parameters, optionalTypeName); err != nil {
-			return backendError(function, "PLGO0001", err.Error())
-		}
-		out.WriteString("}\n\n")
-		return nil
-	}
+
 	if function.Body.Kind == coreir.ExprOptionalSome && function.Body.Some != nil && function.Body.Some.Value != nil && function.Body.Some.Value.Kind == coreir.ExprPropagate {
 		propagation := function.Body.Some.Value.Propagate
 		if propagation == nil || propagation.Value == nil || propagation.Value.Parameter == nil {
@@ -238,6 +217,15 @@ func (g *generator) emitFunction(out *strings.Builder, name string, function cor
 	} else if emitted {
 		return nil
 	}
+	// Propagation owns early carrier returns above. Ordinary sequential locals
+	// use the same ordered block lowering at every language contract.
+	if hasLocalSequence(function.Body) {
+		if err := g.emitTerminalLocalStatements(out, function.Body, function.Parameters, optionalTypeName); err != nil {
+			return backendError(function, "PLGO0001", err.Error())
+		}
+		out.WriteString("}\n\n")
+		return nil
+	}
 	out.WriteString("\treturn ")
 	body, err := g.emitExpr(function.Body, function.Parameters, optionalTypeName)
 	if err != nil {
@@ -246,6 +234,13 @@ func (g *generator) emitFunction(out *strings.Builder, name string, function cor
 	out.WriteString(body)
 	out.WriteString("\n}\n\n")
 	return nil
+}
+
+// A single local retains its historical expression spelling. Two or more
+// sequential bindings must never wrap their continuation in one closure each.
+func hasLocalSequence(expr coreir.Expr) bool {
+	return expr.Kind == coreir.ExprImmutableLocal && expr.ImmutableLocal != nil &&
+		expr.ImmutableLocal.Return != nil && expr.ImmutableLocal.Return.Kind == coreir.ExprImmutableLocal
 }
 
 // emitTerminalLocalStatements preserves Core's ordered lexical locals and lazy
@@ -636,6 +631,23 @@ func (g *generator) emitExpr(expr coreir.Expr, parameters []coreir.Parameter, op
 		}
 		return fmt.Sprintf("func() %s { if %s { return %s }; return %s }()", resultType, condition, whenTrue, whenFalse), nil
 	case coreir.ExprImmutableLocal:
+		// Match arms, conditional branches, call arguments and propagation
+		// continuations also enter here. Flatten each lexical sequence inside
+		// one expression block; nesting now follows source scopes, not locals.
+		if hasLocalSequence(expr) {
+			resultType, err := g.goType(expr.Type, optionalTypeName)
+			if err != nil {
+				return "", err
+			}
+			var block strings.Builder
+			fmt.Fprintf(&block, "func() %s {\n", resultType)
+			if err := g.emitTerminalLocalStatements(&block, expr, parameters, optionalTypeName); err != nil {
+				return "", err
+			}
+			block.WriteString("}()")
+			return block.String(), nil
+		}
+
 		local := expr.ImmutableLocal
 		if local == nil || local.Initializer == nil || local.Return == nil || local.Position != len(parameters) || local.Name == "" {
 			return "", fmt.Errorf("immutable local is incomplete or not canonically positioned")
