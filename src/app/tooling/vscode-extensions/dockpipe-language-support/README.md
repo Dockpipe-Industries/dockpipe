@@ -287,3 +287,9 @@ execute eagerly once in source order, including unused locals; only selected con
 and arms execute. Nested arrow methods, deeper choices and new condition/argument or
 match/propagate placements remain excluded. This is syntax/snippet guidance, not a
 claim of interactive editor or semantic language-server verification.
+
+PipeLang `v0.92.0` adds complete depth-two ternary arrow-method bodies via
+`pipe-nested-arrow`. Either or both arms may contain one further choice. Conditions
+remain bool, result types exact, and only selected conditions/arms execute. Deeper
+choices and new condition/argument placements remain excluded. This is a syntax
+snippet; semantic diagnostics still require the compiler language-service path.

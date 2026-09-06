@@ -633,3 +633,10 @@ assert(nestedTreeInitializer.description.includes("v0.91.0"));
 assert(nestedTreeInitializer.body.join("\n").includes("if (enabled) {"));
 assert(nestedTreeInitializer.body.join("\n").includes("string selected = clean ? (fallback ?"));
 assert(pipeLangReadme.includes("`v0.91.0`"));
+
+const nestedArrow = pipeLangSnippets["Nested expression-bodied method"];
+assert.strictEqual(nestedArrow.prefix, "pipe-nested-arrow");
+assert(nestedArrow.description.includes("v0.92.0"));
+assert(nestedArrow.body.join("\n").includes("=>"));
+assert(nestedArrow.body.join("\n").includes("outer ? (left ?"));
+assert(pipeLangReadme.includes("`v0.92.0`"));

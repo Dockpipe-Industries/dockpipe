@@ -1,3 +1,11 @@
+## Completed current objective — nested expression-bodied methods
+
+Founder selected A and separately approved v0.92.0 implementation on 2026-09-06.
+[nested-arrow-methods.md](nested-arrow-methods.md) owns scope, exclusions and verification.
+State: `completed`. Completed v0.91.0 is committed at `b1fbc31b`; its historical
+uncommitted wording is superseded. Commit, push, publication and successor selection
+remain separate.
+
 ## Completed current objective — nested initializers throughout terminal trees
 
 Founder selected A and separately approved v0.91.0 implementation on 2026-09-06.

@@ -158,3 +158,16 @@ Export `TestCompilerMemoryLocalSequences/v0.91.0` and run `matrix.py` for 168 is
 normal-inlining compiler cases. Keep the 128 MiB / 5 second warm ceilings. Full runs
 now have eleven memory-version units (the ten above plus v0.91.0); run those units
 separately from the start rather than accumulating them in a single batch.
+
+The v0.92 arrow-method scale test is `TestV920NestedArrowMethodsMemory`. It crosses
+all four fixed arrow shapes, used/unused final caller locals, and 0/1/8/16/32/64/128/256
+locals: 64 cases. Every condition vector is evaluated and executed in pristine Go.
+Export with `PIPELANG_MEMORY_FIXTURES`, then use `matrix.py` for 64 fresh isolated
+normal-inlining compiler measurements with unchanged 128 MiB / 5 second ceilings.
+The arrow has no locals; these fixtures prove scaling of inherited caller sequences
+that repeatedly invoke it. The eleven-version inherited memory matrix remains separate.
+
+In full compiler runs, additionally use `--split-test TestV920NestedArrowMethodsTypes=4`,
+`--split-test TestV920NestedArrowMethodsCarriers=4` and
+`--split-test TestV920NestedArrowMethodsLayouts=4`. Each index identifies one of the four
+arrow shapes. Keep `TestV920NestedArrowMethodsMemory` in its own fresh unit.

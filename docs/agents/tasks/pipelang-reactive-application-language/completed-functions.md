@@ -1397,3 +1397,16 @@ identities, frozen compatibility and engine/package boundaries remain preserved.
 [Nested terminal initializers](nested-terminal-initializers.md) owns the exact scope, exclusions,
 575-test compiler proof, 200 layout partitions, 623-case memory regression matrix and 168 isolated
 measurements. All changes remain uncommitted; no successor is selected or authorized.
+
+## Step 8bf: nested expression-bodied methods (v0.92.0)
+
+Founder selected A and separately approved implementation on 2026-09-06. Public pure arrow
+methods admit complete depth-two ternaries in either or both arms. Source spelling converges
+with existing block-return HIR/Core semantics; types remain exact and selected arms lazy.
+[Nested arrow methods](nested-arrow-methods.md) owns scope, exclusions and completed proof;
+the [canonical language contract](../../../concepts/pipelang.md#pipelang-v0920-nested-expression-bodied-methods)
+owns semantics. All 584 compiler tests pass across 521 units, including the 623-case inherited
+memory matrix; all 64 new isolated scale measurements pass. Application IR, compatibility,
+affected application/CLI, vet and editor/docs checks pass. Public identities, HIR/Core shapes,
+evaluator/backend production code and engine/package boundaries remain unchanged. Changes
+are uncommitted; no successor is selected or authorized.

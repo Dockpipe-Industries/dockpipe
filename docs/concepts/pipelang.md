@@ -235,7 +235,7 @@ or public semantic identities. The backend checks the complete emitted package n
 returning Go source.
 
 Core program admission accepts only `pipelang.compiler.v1` and the exact supported language
-identities `v0.1.0` through `v0.91.0`. `coreir.ValidateProgram` checks feature availability in
+identities `v0.1.0` through `v0.92.0`. `coreir.ValidateProgram` checks feature availability in
 signatures and nested expressions, together with the existing composition and topology contracts.
 `coreeval.EvaluateProgram` and the Go backend use that same admission before executing or emitting
 anything, including when a disallowed feature occurs in an uncalled function or unused parameter.
@@ -3104,3 +3104,36 @@ Nested expression-bodied methods, depth-three value choices, depth-four statemen
 ternaries newly embedded in conditions/arguments, new match/propagate combinations,
 inference, mutation, fallthrough, loops, effects, targets and new backends remain
 excluded. Earlier language versions retain their exact admission and behavior.
+
+### PipeLang v0.92.0: nested expression-bodied methods
+
+`v0.92.0` additionally admits complete depth-two ternary bodies in public pure
+expression-bodied methods. Either or both arms may contain one further ternary;
+every path contains at most two decisions. The four shapes are a single choice,
+nesting in its true arm, nesting in its false arm, and nesting in both arms.
+
+```pipe
+public Class Choices {
+    public string Select(string raw, bool outer, bool left, bool right) =>
+        outer ? (left ? trim(raw) : raw) : (right ? "fallback" : raw);
+}
+```
+
+All conditions are `bool` and all result arms exactly match the declared method type.
+Conditions and operands retain the existing pure expression restrictions. Only reached
+conditions and selected arms execute. Supported primitives, records, lists, Optional
+and Result values retain complete-value transport, including computed checked Results
+without implicit propagation. Equivalent arrow and block returns lower to the same
+typed HIR (apart from source spans), target-neutral Core and deterministic Go.
+
+This is a source-spelling extension. Core has no arrow/block marker and already admits
+the equivalent depth-two block expression from v0.88. Earlier source versions continue
+to reject nested arrow bodies; their valid Core artifacts remain valid. Source and Core
+independently enforce the depth/placement/type boundary they represent. Public
+`pipelang.compiler.v1`, `pipelang.semantic.v1` and `dockpipe.application.v1` identities
+and HIR/Core shapes remain unchanged. The frozen 45-source compatibility lane remains exact.
+
+All v0.91 blocks and earlier forms are inherited. Depth-three choices, deeper statement
+trees, ternaries inside conditions or call arguments, new matching/propagation placements,
+inference, mutation, loops, effects and backends are excluded. No runtime, action, target,
+adapter, UI or deployment behavior is introduced.

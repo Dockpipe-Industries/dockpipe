@@ -555,10 +555,10 @@ func testConditionalLocalsTypeMatrix(t *testing.T, contract LanguageContract, ze
 				source = strings.Replace(source, "else{return shared;}", "else{return pick ? shared : right;}", 1)
 			}
 
-			if contract == PipeLangLanguageContractV880 || contract == PipeLangLanguageContractV890 || (contract == PipeLangLanguageContractV900 || contract == PipeLangLanguageContractV910) {
+			if contract == PipeLangLanguageContractV920 || contract == PipeLangLanguageContractV880 || contract == PipeLangLanguageContractV890 || (contract == PipeLangLanguageContractV900 || contract == PipeLangLanguageContractV910) {
 				locals := fmt.Sprintf("%s shared=pick ? left : right;", typ)
 				returned := "outer ? (inner ? shared : right) : (pick ? shared : right)"
-				if len(zeroOption) > 0 && zeroOption[0] {
+				if contract == PipeLangLanguageContractV920 || (len(zeroOption) > 0 && zeroOption[0]) {
 					locals = ""
 					returned = "outer ? (pick && inner ? left : right) : (pick ? left : right)"
 				}
@@ -577,6 +577,9 @@ func testConditionalLocalsTypeMatrix(t *testing.T, contract LanguageContract, ze
 			}
 			if contract == PipeLangLanguageContractV910 {
 				source = v910WrapSelect(source)
+			}
+			if contract == PipeLangLanguageContractV920 {
+				source = v920ArrowSelect(t, source, zeroOption[1:]...)
 			}
 			_, program := conditionalLocalTreeProgramVersion(t, contract, source, []string{"Select", "Echo"})
 			function := coreFunctionNamed(t, program, "Select")
@@ -769,10 +772,10 @@ func testConditionalLocalsCarrierAndHostValues(t *testing.T, contract LanguageCo
 				source = strings.Replace(source, "return a;", "return first ? value : fallback;", 1)
 			}
 
-			if contract == PipeLangLanguageContractV880 || contract == PipeLangLanguageContractV890 || (contract == PipeLangLanguageContractV900 || contract == PipeLangLanguageContractV910) {
+			if contract == PipeLangLanguageContractV920 || contract == PipeLangLanguageContractV880 || contract == PipeLangLanguageContractV890 || (contract == PipeLangLanguageContractV900 || contract == PipeLangLanguageContractV910) {
 				locals := fmt.Sprintf("%s a=first ? value : fallback;", typ)
 				returned := "enabled ? (second ? a : fallback) : (first ? a : fallback)"
-				if len(zeroOption) > 0 && zeroOption[0] {
+				if contract == PipeLangLanguageContractV920 || (len(zeroOption) > 0 && zeroOption[0]) {
 					locals = ""
 					returned = "enabled ? (first && second ? value : fallback) : (first ? value : fallback)"
 				}
@@ -788,6 +791,9 @@ func testConditionalLocalsCarrierAndHostValues(t *testing.T, contract LanguageCo
 				end := strings.Index(source[pos:], ";") + pos
 				returned := source[pos+1 : end+1]
 				source = source[:pos] + " if(" + v890TypeCondition(source) + "){" + returned + "}else{" + returned + "}" + source[end+1:]
+			}
+			if contract == PipeLangLanguageContractV920 {
+				source = v920ArrowSelect(t, source, zeroOption[1:]...)
 			}
 			_, program := conditionalLocalTreeProgramVersion(t, contract, source, []string{"Echo", "Select"})
 			function := coreFunctionNamed(t, program, "Select")
