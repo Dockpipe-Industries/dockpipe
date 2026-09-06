@@ -22,6 +22,7 @@ import (
 	"dockpipe/src/lib/pipelang/coreir"
 	"dockpipe/src/lib/pipelang/gobackend"
 	"dockpipe/src/lib/pipelang/hir"
+	"dockpipe/tests/containedexec"
 )
 
 var _ func(coreir.Program) ([]byte, error) = gobackend.Generate
@@ -1331,10 +1332,10 @@ func compileAndRunGeneratedGo(t *testing.T, generated []byte, functionName strin
 		}
 	}
 	goBinary := filepath.Join(runtime.GOROOT(), "bin", "go")
-	command := exec.Command(goBinary, "test", ".")
+	command := exec.Command(goBinary, "test", "-count=1", "-p=1", "-timeout=25s", ".")
 	command.Dir = dir
-	command.Env = append(os.Environ(), "GOTOOLCHAIN=local", "GOPROXY=off", "GOSUMDB=off", "GOWORK=off", "GOCACHE=/tmp/dockpipe-task021-generated-gocache", "GOTMPDIR=/tmp")
-	output, err := command.CombinedOutput()
+	command.Env = append(os.Environ(), "GOTOOLCHAIN=local", "GOPROXY=off", "GOSUMDB=off", "GOWORK=off")
+	output, err := containedexec.CombinedOutput(command)
 	if err != nil {
 		t.Fatalf("compile/run generated Go: %v\n%s", err, output)
 	}
@@ -1394,10 +1395,10 @@ func compileAndRunGeneratedGoFiles(t *testing.T, generated, generatedTest []byte
 		}
 	}
 	goBinary := filepath.Join(runtime.GOROOT(), "bin", "go")
-	command := exec.Command(goBinary, "test", ".")
+	command := exec.Command(goBinary, "test", "-count=1", "-p=1", "-timeout=25s", ".")
 	command.Dir = dir
-	command.Env = append(os.Environ(), "GOTOOLCHAIN=local", "GOPROXY=off", "GOSUMDB=off", "GOWORK=off", "GOCACHE=/tmp/dockpipe-task021-generated-gocache", "GOTMPDIR=/tmp")
-	output, err := command.CombinedOutput()
+	command.Env = append(os.Environ(), "GOTOOLCHAIN=local", "GOPROXY=off", "GOSUMDB=off", "GOWORK=off")
+	output, err := containedexec.CombinedOutput(command)
 	if err != nil {
 		t.Fatalf("compile/run generated Go: %v\n%s", err, output)
 	}

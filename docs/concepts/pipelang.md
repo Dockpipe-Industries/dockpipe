@@ -2785,9 +2785,15 @@ and escaping bindings remain invalid. Value choices do not consume terminal-tree
 Typed HIR and target-neutral Core retain `immutable_local` and `conditional` nodes, with
 `terminal_statement: false` for value choices. Source and Core independently validate placement
 and depth; typed lowering and Core structural admission enforce types and lexical bindings.
-For newly admitted bodies with more than two choices, the Core-only Go backend emits ordered
-local declarations and terminal branch statements to avoid deeply nested local closures. Earlier
-accepted forms keep their generated output. The evaluator and Go backend consume checked Core.
+The Core-only Go backend emits sequential locals as ordered declarations within a lexical
+block, including inherited zero/one/two-choice forms. Function bodies use statements; expression
+scopes such as branches and match arms use one block closure per scope. Local count no longer
+adds enclosing closures. Specialized propagation still owns early carrier returns. This resource
+correction intentionally changes generated Go for affected sequences; source admission, typed
+HIR, Core, semantic identities and evaluation behavior are unchanged. Single-local and
+unaffected golden outputs retain their existing spelling. The evaluator and Go backend consume
+checked Core. See [contained compiler validation](../../tests/containedexec/README.md) for
+resource ceilings, regression coverage and the required Linux process-tree containment.
 Semantic and
 Application IR consumers do not parse source or infer semantics. The public
 `pipelang.compiler.v1`, `pipelang.semantic.v1`, and `dockpipe.application.v1` identities and

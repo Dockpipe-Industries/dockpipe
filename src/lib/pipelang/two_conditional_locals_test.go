@@ -163,8 +163,36 @@ func TestV830TwoConditionalLocalsAllShapesScopePairs(t *testing.T) {
 				t.Fatal("nondeterministic Go")
 			}
 			var cases, orders strings.Builder
-			for _, sample := range samples {
+			// Keep every outcome and ordered trace, but compile at most 24
+			// sample methods together. The complete program above still proves
+			// deterministic generation; these pure functions share only helpers.
+			batch := program
+			batch.Functions = []coreir.Function{coreFunctionNamed(t, program, "Echo"), coreFunctionNamed(t, program, "Check")}
+			flush := func() {
+				batchGo, err := gobackend.Generate(batch)
+				if err != nil {
+					t.Fatal(err)
+				}
+
+				compileAndRunGeneratedGoFiles(t, batchGo, []byte(fmt.Sprintf("package %s\nimport \"testing\"\n%s", gobackend.PackageName, cases.String())))
+				observed := string(batchGo)
+				for marker, probe := range map[string]string{
+					"func PipeLangEcho(p0 string) string {":         "v830Trace=append(v830Trace,\"E:\"+p0)",
+					"func PipeLangCheck(p0 string, p1 bool) bool {": "v830Trace=append(v830Trace,\"C:\"+p0)",
+				} {
+					if strings.Count(observed, marker) != 1 {
+						t.Fatal("trace marker absent")
+					}
+					observed = strings.Replace(observed, marker, marker+"\n"+probe, 1)
+				}
+				compileAndRunGeneratedGoFiles(t, []byte(observed), []byte(fmt.Sprintf("package %s\nimport (\"testing\";\"reflect\")\nvar v830Trace []string\n%s", gobackend.PackageName, orders.String())))
+				cases.Reset()
+				orders.Reset()
+				batch.Functions = batch.Functions[:2]
+			}
+			for i, sample := range samples {
 				function := coreFunctionNamed(t, program, sample.name)
+				batch.Functions = append(batch.Functions, function)
 				if countConditionalExpressionsInCore(function.Body) != coreConditionalCount(function.Body)+2 {
 					t.Fatal("two value conditionals absent from Core")
 				}
@@ -193,19 +221,11 @@ func TestV830TwoConditionalLocalsAllShapesScopePairs(t *testing.T) {
 				call := fmt.Sprintf("PipeLang%s(\"value\",mask&1!=0,mask&2!=0,mask&4!=0,mask&8!=0,mask&16!=0)", sample.name)
 				fmt.Fprintf(&cases, "func Test%s(t *testing.T){wants:=[]string{%s};for mask,want:=range wants{if got:=%s;got!=want{t.Fatalf(\"mask %%d: %%q want %%q\",mask,got,want)}}}\n", sample.name, wantedValues.String(), call)
 				fmt.Fprintf(&orders, "func Test%s(t *testing.T){wants:=[][]string{%s};for mask,want:=range wants{v830Trace=nil;%s;if !reflect.DeepEqual(v830Trace,want){t.Fatalf(\"mask %%d: %%v want %%v\",mask,v830Trace,want)}}}\n", sample.name, wantedTraces.String(), call)
-			}
-			compileAndRunGeneratedGoFiles(t, generated, []byte(fmt.Sprintf("package %s\nimport \"testing\"\n%s", gobackend.PackageName, cases.String())))
-			observed := string(generated)
-			for marker, probe := range map[string]string{
-				"func PipeLangEcho(p0 string) string {":         "v830Trace=append(v830Trace,\"E:\"+p0)",
-				"func PipeLangCheck(p0 string, p1 bool) bool {": "v830Trace=append(v830Trace,\"C:\"+p0)",
-			} {
-				if strings.Count(observed, marker) != 1 {
-					t.Fatal("trace marker absent")
+				if (i+1)%24 == 0 || i+1 == len(samples) {
+					flush()
 				}
-				observed = strings.Replace(observed, marker, marker+"\n"+probe, 1)
+
 			}
-			compileAndRunGeneratedGoFiles(t, []byte(observed), []byte(fmt.Sprintf("package %s\nimport (\"testing\";\"reflect\")\nvar v830Trace []string\n%s", gobackend.PackageName, orders.String())))
 			methodsTotal += len(samples)
 		})
 	}
