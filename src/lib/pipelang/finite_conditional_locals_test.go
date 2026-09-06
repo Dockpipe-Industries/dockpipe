@@ -41,24 +41,25 @@ func TestV840FiniteConditionalLocalsAllShapes(t *testing.T) {
 
 func testFiniteConditionalLocalsLayouts(t *testing.T, contract LanguageContract, trees []*terminalTree, returnOption ...bool) {
 	returnChoice := len(returnOption) > 0 && returnOption[0]
-	independentReturn := contract == PipeLangLanguageContractV870
+	nestedReturn := contract == PipeLangLanguageContractV890
+	independentReturn := contract == PipeLangLanguageContractV870 || nestedReturn
 	extraBits := 3
 	if independentReturn {
 		extraBits = 4
+	}
+	if nestedReturn {
+		extraBits = 6
 	}
 	methodsTotal, outcomes := 0, 0
 	for shape, tree := range trees {
 		t.Run(fmt.Sprint(shape), func(t *testing.T) {
 			scopes := conditionalTreeScopes(tree, "R")
-			var source strings.Builder
-			source.WriteString(`public Class Choices {public string Echo(string value)=>value;public bool Check(string path,bool value)=>value;`)
 			type sample struct {
 				name    string
 				targets []string
 				unused  bool
 			}
 			var samples []sample
-			var methods []string
 			var layouts [][]string
 			for _, scope := range scopes {
 				layouts = append(layouts, []string{scope, scope, scope})
@@ -75,85 +76,101 @@ func testFiniteConditionalLocalsLayouts(t *testing.T, contract LanguageContract,
 				for _, unused := range []bool{false, true} {
 					name := fmt.Sprintf("Select%d", len(samples))
 					samples = append(samples, sample{name, targets, unused})
-					methods = append(methods, name)
-					source.WriteString(conditionalChoicesTreeMethod(tree, targets, unused, name, returnChoice, independentReturn))
 				}
 			}
-			source.WriteString("}")
-			analysis, program := conditionalLocalTreeProgramVersion(t, contract, source.String(), methods)
-			againAnalysis, again := conditionalLocalTreeProgramVersion(t, contract, source.String(), methods)
-			projection, err := BuildSemanticProjection(analysis)
-			if err != nil {
-				t.Fatal(err)
+			batchSize := len(samples)
+			if nestedReturn {
+				batchSize = 2
 			}
-			repeatedProjection, err := BuildSemanticProjection(againAnalysis)
-			if err != nil {
-				t.Fatal(err)
-			}
-			for _, pair := range [][2]any{{program, again}, {projection, repeatedProjection}} {
-				a, _ := json.Marshal(pair[0])
-				b, _ := json.Marshal(pair[1])
-				if !bytes.Equal(a, b) {
-					t.Fatal("nondeterministic Core/semantic output")
+			for start := 0; start < len(samples); start += batchSize {
+				end := start + batchSize
+				if end > len(samples) {
+					end = len(samples)
 				}
-			}
-			generated, err := gobackend.Generate(program)
-			if err != nil {
-				t.Fatal(err)
-			}
-			repeated, err := gobackend.Generate(again)
-			if err != nil || !bytes.Equal(generated, repeated) {
-				t.Fatal("nondeterministic Go")
-			}
-			var cases, orders strings.Builder
-			for _, sample := range samples {
-				function := coreFunctionNamed(t, program, sample.name)
-				if countConditionalExpressionsInCore(function.Body) != coreConditionalCount(function.Body)+len(sample.targets) {
-					t.Fatal("value conditionals absent from Core")
+				samples := samples[start:end]
+				var source strings.Builder
+				source.WriteString(`public Class Choices {public string Echo(string value)=>value;public bool Check(string path,bool value)=>value;`)
+				var methods []string
+				for _, sample := range samples {
+					methods = append(methods, sample.name)
+					source.WriteString(conditionalChoicesTreeMethod(tree, sample.targets, sample.unused, sample.name, returnChoice, independentReturn, nestedReturn))
 				}
-				// Evaluate only the selected function's dependency closure.
-				evaluation := program
-				evaluation.Functions = []coreir.Function{coreFunctionNamed(t, program, "Echo"), coreFunctionNamed(t, program, "Check"), function}
-				var wantedValues, wantedTraces strings.Builder
-				for mask := 0; mask < 1<<(len(sample.targets)+extraBits); mask++ {
-					want, trace := conditionalChoicesTreeExpected(tree, sample.targets, sample.unused, mask, returnChoice, independentReturn)
-					args := []coreeval.Value{{Type: function.Parameters[0].Type, String: "value"}}
+				source.WriteString("}")
+				analysis, program := conditionalLocalTreeProgramVersion(t, contract, source.String(), methods)
+				againAnalysis, again := conditionalLocalTreeProgramVersion(t, contract, source.String(), methods)
+				projection, err := BuildSemanticProjection(analysis)
+				if err != nil {
+					t.Fatal(err)
+				}
+				repeatedProjection, err := BuildSemanticProjection(againAnalysis)
+				if err != nil {
+					t.Fatal(err)
+				}
+				for _, pair := range [][2]any{{program, again}, {projection, repeatedProjection}} {
+					a, _ := json.Marshal(pair[0])
+					b, _ := json.Marshal(pair[1])
+					if !bytes.Equal(a, b) {
+						t.Fatal("nondeterministic Core/semantic output")
+					}
+				}
+				generated, err := gobackend.Generate(program)
+				if err != nil {
+					t.Fatal(err)
+				}
+				repeated, err := gobackend.Generate(again)
+				if err != nil || !bytes.Equal(generated, repeated) {
+					t.Fatal("nondeterministic Go")
+				}
+				var cases, orders strings.Builder
+				for _, sample := range samples {
+					function := coreFunctionNamed(t, program, sample.name)
+					if countConditionalExpressionsInCore(function.Body) != coreConditionalCount(function.Body)+len(sample.targets) {
+						t.Fatal("value conditionals absent from Core")
+					}
+					// Evaluate only the selected function's dependency closure.
+					evaluation := program
+					evaluation.Functions = []coreir.Function{coreFunctionNamed(t, program, "Echo"), coreFunctionNamed(t, program, "Check"), function}
+					var wantedValues, wantedTraces strings.Builder
+					for mask := 0; mask < 1<<(len(sample.targets)+extraBits); mask++ {
+						want, trace := conditionalChoicesTreeExpected(tree, sample.targets, sample.unused, mask, returnChoice, independentReturn, nestedReturn)
+						args := []coreeval.Value{{Type: function.Parameters[0].Type, String: "value"}}
+						for bit := 0; bit < len(sample.targets)+extraBits; bit++ {
+							args = append(args, coreeval.Value{Type: function.Parameters[bit+1].Type, Bool: mask&(1<<bit) != 0})
+						}
+						got, err := coreeval.EvaluateProgram(evaluation, function.Identity, args)
+						if err != nil || !got.OK || got.Value.String != want {
+							t.Fatalf("%s mask %d: %#v %v want %q", sample.name, mask, got, err, want)
+						}
+						fmt.Fprintf(&wantedValues, "%q,", want)
+						var quoted []string
+						for _, event := range trace {
+							quoted = append(quoted, fmt.Sprintf("%q", event))
+						}
+						fmt.Fprintf(&wantedTraces, "{%s},", strings.Join(quoted, ","))
+						outcomes++
+					}
+					call := fmt.Sprintf("PipeLang%s(\"value\"", sample.name)
 					for bit := 0; bit < len(sample.targets)+extraBits; bit++ {
-						args = append(args, coreeval.Value{Type: function.Parameters[bit+1].Type, Bool: mask&(1<<bit) != 0})
+						call += fmt.Sprintf(",mask&%d!=0", 1<<bit)
 					}
-					got, err := coreeval.EvaluateProgram(evaluation, function.Identity, args)
-					if err != nil || !got.OK || got.Value.String != want {
-						t.Fatalf("%s mask %d: %#v %v want %q", sample.name, mask, got, err, want)
-					}
-					fmt.Fprintf(&wantedValues, "%q,", want)
-					var quoted []string
-					for _, event := range trace {
-						quoted = append(quoted, fmt.Sprintf("%q", event))
-					}
-					fmt.Fprintf(&wantedTraces, "{%s},", strings.Join(quoted, ","))
-					outcomes++
+					call += ")"
+					fmt.Fprintf(&cases, "func Test%s(t *testing.T){wants:=[]string{%s};for mask,want:=range wants{if got:=%s;got!=want{t.Fatalf(\"mask %%d: %%q want %%q\",mask,got,want)}}}\n", sample.name, wantedValues.String(), call)
+					fmt.Fprintf(&orders, "func Test%s(t *testing.T){wants:=[][]string{%s};for mask,want:=range wants{v840Trace=nil;%s;if !reflect.DeepEqual(v840Trace,want){t.Fatalf(\"mask %%d: %%v want %%v\",mask,v840Trace,want)}}}\n", sample.name, wantedTraces.String(), call)
 				}
-				call := fmt.Sprintf("PipeLang%s(\"value\"", sample.name)
-				for bit := 0; bit < len(sample.targets)+extraBits; bit++ {
-					call += fmt.Sprintf(",mask&%d!=0", 1<<bit)
+				compileAndRunGeneratedGoFiles(t, generated, []byte(fmt.Sprintf("package %s\nimport \"testing\"\n%s", gobackend.PackageName, cases.String())))
+				observed := string(generated)
+				for marker, probe := range map[string]string{
+					"func PipeLangEcho(p0 string) string {":         "v840Trace=append(v840Trace,\"E:\"+p0)",
+					"func PipeLangCheck(p0 string, p1 bool) bool {": "v840Trace=append(v840Trace,\"C:\"+p0)",
+				} {
+					if strings.Count(observed, marker) != 1 {
+						t.Fatal("trace marker absent")
+					}
+					observed = strings.Replace(observed, marker, marker+"\n"+probe, 1)
 				}
-				call += ")"
-				fmt.Fprintf(&cases, "func Test%s(t *testing.T){wants:=[]string{%s};for mask,want:=range wants{if got:=%s;got!=want{t.Fatalf(\"mask %%d: %%q want %%q\",mask,got,want)}}}\n", sample.name, wantedValues.String(), call)
-				fmt.Fprintf(&orders, "func Test%s(t *testing.T){wants:=[][]string{%s};for mask,want:=range wants{v840Trace=nil;%s;if !reflect.DeepEqual(v840Trace,want){t.Fatalf(\"mask %%d: %%v want %%v\",mask,v840Trace,want)}}}\n", sample.name, wantedTraces.String(), call)
+				compileAndRunGeneratedGoFiles(t, []byte(observed), []byte(fmt.Sprintf("package %s\nimport (\"testing\";\"reflect\")\nvar v840Trace []string\n%s", gobackend.PackageName, orders.String())))
+				methodsTotal += len(samples)
 			}
-			compileAndRunGeneratedGoFiles(t, generated, []byte(fmt.Sprintf("package %s\nimport \"testing\"\n%s", gobackend.PackageName, cases.String())))
-			observed := string(generated)
-			for marker, probe := range map[string]string{
-				"func PipeLangEcho(p0 string) string {":         "v840Trace=append(v840Trace,\"E:\"+p0)",
-				"func PipeLangCheck(p0 string, p1 bool) bool {": "v840Trace=append(v840Trace,\"C:\"+p0)",
-			} {
-				if strings.Count(observed, marker) != 1 {
-					t.Fatal("trace marker absent")
-				}
-				observed = strings.Replace(observed, marker, marker+"\n"+probe, 1)
-			}
-			compileAndRunGeneratedGoFiles(t, []byte(observed), []byte(fmt.Sprintf("package %s\nimport (\"testing\";\"reflect\")\nvar v840Trace []string\n%s", gobackend.PackageName, orders.String())))
-			methodsTotal += len(samples)
 		})
 	}
 	t.Logf("%d shapes, %d methods, %d evaluator/pristine-Go cases and ordered traces", len(trees), methodsTotal, outcomes)
@@ -334,7 +351,7 @@ func TestV840FiniteConditionalLocalsBoundedScale(t *testing.T) {
 func TestV840FiniteConditionalLocalsTwoChoiceInheritance(t *testing.T) {
 	for _, source := range []string{twoConditionalLocalsSource, twoConditionalRulesSource} {
 		var baseline [][]byte
-		for _, contract := range []LanguageContract{PipeLangLanguageContractV830, PipeLangLanguageContractV840, PipeLangLanguageContractV850, PipeLangLanguageContractV860, PipeLangLanguageContractV870, PipeLangLanguageContractV880} {
+		for _, contract := range []LanguageContract{PipeLangLanguageContractV830, PipeLangLanguageContractV840, PipeLangLanguageContractV850, PipeLangLanguageContractV860, PipeLangLanguageContractV870, PipeLangLanguageContractV880, PipeLangLanguageContractV890} {
 			analysis, program := conditionalLocalTreeProgramVersion(t, contract, source, []string{"Select"})
 			projection, err := BuildSemanticProjection(analysis)
 			if err != nil {

@@ -1356,3 +1356,18 @@ The four-shape layout matrix passes 144 methods and 11,584 outcomes/traces. Supp
 carriers, malformed source/Core, inherited artifacts, executable Application IR, frozen
 compatibility, application/CLI, vet and editor/docs checks pass. Public identities and generic
 engine/package boundaries are preserved. Changes remain uncommitted; no successor is selected.
+
+
+## Step 8bc: nested terminal-leaf returns (v0.89.0)
+
+The separately selected and approved slice is complete. The
+[canonical language contract](../../../concepts/pipelang.md#pipelang-v0890-nested-terminal-leaf-returns)
+owns public behavior; [nested-terminal-leaf-returns.md](nested-terminal-leaf-returns.md)
+owns scope, exclusions, contained verification and reproduction. All 548 compiler tests
+pass in 267 final batches; 371 memory cases and 84 isolated normal-inlining measurements
+pass. All 100 leaf-subset/return-shape cases pass 5,776 methods and 369,664 outcomes;
+25 ordered-layout shapes pass 620 methods and 394,240 outcomes/traces. Supported types,
+carriers, malformed source/Core, inherited artifacts, executable Application IR, frozen
+compatibility, application/CLI, vet and editor/docs checks pass. All 400 validation cgroups
+are removed with zero swap and unchanged max/OOM/swap counters. Public identities and
+engine/package boundaries are preserved. Changes remain uncommitted; no successor is selected.

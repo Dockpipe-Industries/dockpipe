@@ -898,7 +898,10 @@ func validExpandedDepthThreeTerminalIf(expr Expr, expandedLeaves int) bool {
 }
 
 func validTerminalIfStatement(contract LanguageContract, expr Expr) bool {
-	if contract == PipeLangLanguageContractV880 || contract == PipeLangLanguageContractV870 {
+	if contract == PipeLangLanguageContractV890 && validNestedTerminalLeafReturns(expr) {
+		return true
+	}
+	if (contract == PipeLangLanguageContractV890 || contract == PipeLangLanguageContractV880) || contract == PipeLangLanguageContractV870 {
 		return validTerminalLeafConditionalReturns(expr) || validTerminalIfStatement(PipeLangLanguageContractV860, expr)
 	}
 	if contract == PipeLangLanguageContractV860 || contract == PipeLangLanguageContractV850 || contract == PipeLangLanguageContractV840 {
@@ -1295,6 +1298,14 @@ func validNestedStraightLineReturns(expr Expr) bool {
 
 // v0.87 counts statement depth independently of value choices at return leaves.
 func validTerminalLeafConditionalReturns(expr Expr) bool {
+	return validTerminalLeafReturnsDepth(expr, 1)
+}
+
+func validNestedTerminalLeafReturns(expr Expr) bool {
+	return validTerminalLeafReturnsDepth(expr, 2)
+}
+
+func validTerminalLeafReturnsDepth(expr Expr, returnDepth int) bool {
 	hasReturnChoice := false
 	var walk func(Expr, int) bool
 	walk = func(current Expr, remaining int) bool {
@@ -1304,6 +1315,9 @@ func validTerminalLeafConditionalReturns(expr Expr) bool {
 				break
 			}
 			if local.Initializer == nil || local.Return == nil {
+				return false
+			}
+			if returnDepth == 2 && countImmutableLocalExpressions(local.Initializer) != 0 {
 				return false
 			}
 			if choice, ok := local.Initializer.(*ConditionalExpr); ok {
@@ -1320,14 +1334,17 @@ func validTerminalLeafConditionalReturns(expr Expr) bool {
 		}
 		choice, ok := current.(*ConditionalExpr)
 		if !ok {
-			return validConditionalOperand(current)
+			return validConditionalOperand(current) && (returnDepth == 1 || countImmutableLocalExpressions(current) == 0)
 		}
 		if !choice.TerminalStatement {
 			hasReturnChoice = true
+			if returnDepth == 2 {
+				return validNestedStraightLineReturns(current)
+			}
 			return validReturnCompositionChoice(choice)
 		}
 		return remaining > 0 && choice.Condition != nil && choice.WhenTrue != nil && choice.WhenFalse != nil &&
-			validConditionalOperand(choice.Condition) && walk(choice.WhenTrue, remaining-1) && walk(choice.WhenFalse, remaining-1)
+			validConditionalOperand(choice.Condition) && (returnDepth == 1 || countImmutableLocalExpressions(choice.Condition) == 0) && walk(choice.WhenTrue, remaining-1) && walk(choice.WhenFalse, remaining-1)
 	}
 	return containsTerminalIfStatement(expr) && walk(expr, 3) && hasReturnChoice
 }

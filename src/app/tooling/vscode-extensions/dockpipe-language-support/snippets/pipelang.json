@@ -1004,5 +1004,21 @@
       "}"
     ],
     "description": "Create a v0.88.0 block-bodied method with lazy nested ternary returns through depth two and nonnested typed local initializers."
+  },
+  "PipeLang nested terminal-leaf returns": {
+    "prefix": "pipe-nested-leaf-return",
+    "body": [
+      "public Class ${1:Classifier} {",
+      "    public string ${2:Select}(string raw, bool clean, bool enabled, bool fallback) {",
+      "        string normalized = clean ? trim(raw) : raw;",
+      "        if (enabled) {",
+      "            return clean ? (fallback ? normalized : raw) : (fallback ? raw : \"\");",
+      "        } else {",
+      "            return fallback ? normalized : \"\";",
+      "        }",
+      "    }",
+      "}"
+    ],
+    "description": "Create a v0.89.0 terminal if/else tree with depth-two lazy ternary returns and nonnested typed local initializers."
   }
 }

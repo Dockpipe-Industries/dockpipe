@@ -174,7 +174,7 @@ func TestV860ConditionalReturnCompositionInheritance(t *testing.T) {
 		`public Class Choices {public string Select(string raw,bool pick){string a=trim(raw);return pick ? a : raw;}}`,
 		`public Class Choices {public string Select(string raw,bool pick)=>pick ? raw : trim(raw);}`} {
 		var baseline [][]byte
-		for _, contract := range []LanguageContract{PipeLangLanguageContractV850, PipeLangLanguageContractV860, PipeLangLanguageContractV870, PipeLangLanguageContractV880} {
+		for _, contract := range []LanguageContract{PipeLangLanguageContractV850, PipeLangLanguageContractV860, PipeLangLanguageContractV870, PipeLangLanguageContractV880, PipeLangLanguageContractV890} {
 			analysis, program := conditionalLocalTreeProgramVersion(t, contract, source, []string{"Select"})
 			typed, err := LowerSemanticMethodToHIR(analysis, semanticMethodNamed(t, analysis, "Select").Identity)
 			if err != nil {

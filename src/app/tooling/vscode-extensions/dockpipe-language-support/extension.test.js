@@ -613,3 +613,10 @@ assert(nestedReturn.description.includes("v0.88.0"));
 assert(nestedReturn.body.join("\n").includes('return enabled ? (clean ? normalized : raw) : (fallback ? "fallback" : "");'));
 assert(!nestedReturn.body.some((line) => line.includes("if (")));
 assert(pipeLangReadme.includes("`v0.88.0`"));
+
+const nestedLeafReturn = Object.values(pipeLangSnippets).find((snippet) => snippet.prefix === "pipe-nested-leaf-return");
+assert(nestedLeafReturn);
+assert(nestedLeafReturn.description.includes("v0.89.0"));
+assert(nestedLeafReturn.body.join("\n").includes('if (enabled) {'));
+assert(nestedLeafReturn.body.join("\n").includes('return clean ? (fallback ? normalized : raw) : (fallback ? raw : "");'));
+assert(pipeLangReadme.includes("`v0.89.0`"));

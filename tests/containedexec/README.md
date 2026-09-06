@@ -112,3 +112,13 @@ smaller fresh groups; keep the memory limits and service/child deadlines unchang
 
 The v0.88 layout test enumerates four numbered ternary shapes. Use
 `--split-test TestV880NestedStraightLineReturnsLayouts=4` for fresh per-shape accounting.
+
+The v0.89 nested-leaf subset test enumerates 100 numbered cases: all 25 statement-tree
+shapes crossed with four rotations of the bounded return shapes across leaves. Use
+`--split-test TestV890NestedTerminalLeafReturnsSubsets=100` and
+`--split-test TestV890NestedTerminalLeafReturnsLayouts=25`. Every leaf subset is exercised
+with six independent condition bits; the layout matrix separately checks eager ordered,
+unused, lexical and lazy traces with independent nested conditions. Its twelve root/branch
+scale families cross zero/one/two/three/all conditional initializers and unused final locals
+through 256 locals. Export `TestCompilerMemoryLocalSequences/v0.89.0` then use `matrix.py`
+for 84 fresh isolated normal-inlining compiler measurements under unchanged limits.

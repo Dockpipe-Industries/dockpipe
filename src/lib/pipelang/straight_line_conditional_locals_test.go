@@ -140,7 +140,7 @@ func TestV850StraightLineConditionalLocalsTreeInheritance(t *testing.T) {
 	for _, tree := range terminalTrees(3)[1:] {
 		source := `public Class Choices {public string Echo(string value)=>value;public bool Check(string path,bool value)=>value;` + conditionalChoicesTreeMethod(tree, []string{"R", "RT", "RF", "R"}, false, "Select") + `}`
 		var baseline [][]byte
-		for _, contract := range []LanguageContract{PipeLangLanguageContractV840, PipeLangLanguageContractV850, PipeLangLanguageContractV860, PipeLangLanguageContractV870, PipeLangLanguageContractV880} {
+		for _, contract := range []LanguageContract{PipeLangLanguageContractV840, PipeLangLanguageContractV850, PipeLangLanguageContractV860, PipeLangLanguageContractV870, PipeLangLanguageContractV880, PipeLangLanguageContractV890} {
 			analysis, program := conditionalLocalTreeProgramVersion(t, contract, source, []string{"Select"})
 			semantic, err := BuildSemanticProjection(analysis)
 			if err != nil {

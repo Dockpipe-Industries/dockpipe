@@ -34,7 +34,7 @@ func TestCheckedPropagationInheritanceAdmission(t *testing.T) {
 	for _, operation := range checkedInheritanceOperations {
 		t.Run(operation.name, func(t *testing.T) {
 			var baselineHIR, baselineCore, baselineSemantic, baselineGo []byte
-			for version := 56; version <= 88; version++ {
+			for version := 56; version <= 89; version++ {
 				contract := LanguageContract(fmt.Sprintf("v0.%d.0", version))
 				t.Run(string(contract), func(t *testing.T) {
 					source := checkedInheritanceSource(operation.typ, operation.op)
@@ -198,7 +198,7 @@ func checkedInheritanceOutcomes(t *testing.T, program coreir.Program, operation 
 
 func TestCheckedPropagationInheritanceRejection(t *testing.T) {
 	source := checkedInheritanceSource("int", "+")
-	for version := 56; version <= 88; version++ {
+	for version := 56; version <= 89; version++ {
 		contract := LanguageContract(fmt.Sprintf("v0.%d.0", version))
 		t.Run(string(contract), func(t *testing.T) {
 			for _, mutation := range []struct{ name, old, new string }{
