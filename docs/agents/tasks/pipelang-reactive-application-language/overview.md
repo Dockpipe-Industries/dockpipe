@@ -1,3 +1,11 @@
+## Completed current objective — nested initializers throughout terminal trees
+
+Founder selected A and separately approved v0.91.0 implementation on 2026-09-06.
+[nested-terminal-initializers.md](nested-terminal-initializers.md) owns scope, exclusions,
+containment and verification. State: `completed`. v0.90.0 is committed at `83cd8adc`;
+historical uncommitted wording below is superseded. Commit, push, publication and successor
+selection remain separate.
+
 ## Completed current objective — nested straight-line initializers
 
 Founder selected A and separately approved v0.90.0 implementation on 2026-09-06.
@@ -87,8 +95,8 @@ The `vNext` foundation decision packet in this record is **accepted** as of 2026
 fixes semantics, compiler boundaries, bootstrap stages, compatibility, and implementation order;
 examples and fixtures remain non-normative and accept no production syntax. Separately authorized
 bounded objectives have completed implementation-order steps 1 through 6, step-7 slices 7a
-through 7ae, and bounded Step-8 function seams 8a through 8bd. Nested straight-line initializers are implemented and verified.
-The current explicit language contract is `v0.90.0`; the separately versioned read-only projection is
+through 7ae, and bounded Step-8 function seams 8a through 8be. Nested initializers throughout terminal trees are implemented and verified.
+The current explicit language contract is `v0.91.0`; the separately versioned read-only projection is
 `dockpipe.application.v1`; the frozen `v0.0.0.1` lane remains unchanged. This record does not by itself
 authorize another language slice.
 

@@ -1384,3 +1384,16 @@ owns semantics. All 560 compiler tests have passing evidence, including 850 layo
 Application IR, compatibility, affected application, CLI, vet and editor/docs checks pass.
 Existing public identities, HIR/Core shapes, evaluator/backend production code and engine/package
 boundaries remain unchanged. No successor is selected; commit, push and publication remain separate.
+
+## Step 8be: nested initializers throughout terminal trees (v0.91.0)
+
+Founder selected A and separately approved implementation on 2026-09-06. Complete depth-two
+ternary initializers now compose with finite typed local sequences at every scope of existing
+terminal trees through statement depth three. Ordinary and depth-two returns remain supported.
+Source/Core placement checks, version/signature/HIR routing, compiler/consumer tests and
+editor/docs moved together. Existing node shapes, evaluator/backend production code, public
+identities, frozen compatibility and engine/package boundaries remain preserved.
+
+[Nested terminal initializers](nested-terminal-initializers.md) owns the exact scope, exclusions,
+575-test compiler proof, 200 layout partitions, 623-case memory regression matrix and 168 isolated
+measurements. All changes remain uncommitted; no successor is selected or authorized.

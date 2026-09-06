@@ -626,3 +626,10 @@ assert.strictEqual(nestedInitializer.prefix, "pipe-nested-initializers");
 assert(nestedInitializer.description.includes("v0.90.0"));
 assert(nestedInitializer.body.join("\n").includes("string selected = enabled ? (clean ?"));
 assert(pipeLangReadme.includes("`v0.90.0`"));
+
+const nestedTreeInitializer = pipeLangSnippets["Nested terminal initializers"];
+assert.strictEqual(nestedTreeInitializer.prefix, "pipe-nested-tree-initializers");
+assert(nestedTreeInitializer.description.includes("v0.91.0"));
+assert(nestedTreeInitializer.body.join("\n").includes("if (enabled) {"));
+assert(nestedTreeInitializer.body.join("\n").includes("string selected = clean ? (fallback ?"));
+assert(pipeLangReadme.includes("`v0.91.0`"));

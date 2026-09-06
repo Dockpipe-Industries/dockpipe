@@ -448,7 +448,7 @@ func TestV900NestedStraightLineInitializersRepresentations(t *testing.T) {
 func TestV900NestedStraightLineInitializersInheritance(t *testing.T) {
 	for _, source := range []string{nestedTerminalLeafReturnsSource, nestedStraightLineReturnsSource, terminalLeafConditionalReturnsSource, conditionalReturnCompositionSource, straightLineConditionalLocalsSource, finiteConditionalLocalsSource, twoConditionalLocalsSource, `public Class Choices {public string Select(string raw,bool pick)=>pick ? raw : trim(raw);}`} {
 		var baseline [][]byte
-		for _, contract := range []LanguageContract{PipeLangLanguageContractV890, PipeLangLanguageContractV900} {
+		for _, contract := range []LanguageContract{PipeLangLanguageContractV890, PipeLangLanguageContractV900, PipeLangLanguageContractV910} {
 			a, p := conditionalLocalTreeProgramVersion(t, contract, source, []string{"Select"})
 			h, err := LowerSemanticMethodToHIR(a, semanticMethodNamed(t, a, "Select").Identity)
 			if err != nil {

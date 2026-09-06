@@ -41,7 +41,8 @@ func TestV840FiniteConditionalLocalsAllShapes(t *testing.T) {
 
 func testFiniteConditionalLocalsLayouts(t *testing.T, contract LanguageContract, trees []*terminalTree, returnOption ...bool) {
 	returnChoice := len(returnOption) > 0 && returnOption[0]
-	nestedReturn := contract == PipeLangLanguageContractV890
+	nestedInitializer := contract == PipeLangLanguageContractV910
+	nestedReturn := contract == PipeLangLanguageContractV890 || (nestedInitializer && returnChoice)
 	independentReturn := contract == PipeLangLanguageContractV870 || nestedReturn
 	extraBits := 3
 	if independentReturn {
@@ -49,6 +50,9 @@ func testFiniteConditionalLocalsLayouts(t *testing.T, contract LanguageContract,
 	}
 	if nestedReturn {
 		extraBits = 6
+	}
+	if nestedInitializer {
+		extraBits += 2
 	}
 	methodsTotal, outcomes := 0, 0
 	for shape, tree := range trees {
@@ -72,15 +76,47 @@ func testFiniteConditionalLocalsLayouts(t *testing.T, contract LanguageContract,
 			} else {
 				layouts = append(layouts, []string{"R", "RT", "RF"}, []string{"R", "R", scopes[len(scopes)-1]}, []string{"R", "RT", "RT", "RF", "RF"})
 			}
+			if nestedInitializer {
+				layouts = append(layouts, []string{})
+				for _, scope := range scopes {
+					layouts = append(layouts, []string{scope}, []string{scope, scope})
+				}
+				slots := []string{"R", "RT", "RF"}
+				for subset := 1; subset < 7; subset++ {
+					var chosen []string
+					for i, scope := range slots {
+						if subset&(1<<i) != 0 {
+							chosen = append(chosen, scope)
+						}
+					}
+					layouts = append(layouts, chosen)
+				}
+			}
 			for _, targets := range layouts {
 				for _, unused := range []bool{false, true} {
 					name := fmt.Sprintf("Select%d", len(samples))
 					samples = append(samples, sample{name, targets, unused})
 				}
 			}
+			if nestedInitializer && len(returnOption) > 2 {
+				partition := 0
+				if returnOption[1] {
+					partition++
+				}
+				if returnOption[2] {
+					partition += 2
+				}
+				selected := samples[:0]
+				for i, sample := range samples {
+					if i%4 == partition {
+						selected = append(selected, sample)
+					}
+				}
+				samples = selected
+			}
 			batchSize := len(samples)
-			if nestedReturn {
-				batchSize = 2
+			if nestedReturn || nestedInitializer {
+				batchSize = 1
 			}
 			for start := 0; start < len(samples); start += batchSize {
 				end := start + batchSize
@@ -90,10 +126,10 @@ func testFiniteConditionalLocalsLayouts(t *testing.T, contract LanguageContract,
 				samples := samples[start:end]
 				var source strings.Builder
 				source.WriteString(`public Class Choices {public string Echo(string value)=>value;public bool Check(string path,bool value)=>value;`)
-				var methods []string
+				methods := []string{"Echo", "Check"}
 				for _, sample := range samples {
 					methods = append(methods, sample.name)
-					source.WriteString(conditionalChoicesTreeMethod(tree, sample.targets, sample.unused, sample.name, returnChoice, independentReturn, nestedReturn))
+					source.WriteString(conditionalChoicesTreeMethod(tree, sample.targets, sample.unused, sample.name, returnChoice, independentReturn, nestedReturn, nestedInitializer))
 				}
 				source.WriteString("}")
 				analysis, program := conditionalLocalTreeProgramVersion(t, contract, source.String(), methods)
@@ -124,7 +160,19 @@ func testFiniteConditionalLocalsLayouts(t *testing.T, contract LanguageContract,
 				var cases, orders strings.Builder
 				for _, sample := range samples {
 					function := coreFunctionNamed(t, program, sample.name)
-					if countConditionalExpressionsInCore(function.Body) != coreConditionalCount(function.Body)+len(sample.targets) {
+					expectedInitializers := len(sample.targets)
+					if nestedInitializer {
+						for i := range sample.targets {
+							shape := (i + 1) % 4
+							if shape&1 != 0 {
+								expectedInitializers++
+							}
+							if shape&2 != 0 {
+								expectedInitializers++
+							}
+						}
+					}
+					if countConditionalExpressionsInCore(function.Body) != coreConditionalCount(function.Body)+expectedInitializers {
 						t.Fatal("value conditionals absent from Core")
 					}
 					// Evaluate only the selected function's dependency closure.
@@ -132,7 +180,7 @@ func testFiniteConditionalLocalsLayouts(t *testing.T, contract LanguageContract,
 					evaluation.Functions = []coreir.Function{coreFunctionNamed(t, program, "Echo"), coreFunctionNamed(t, program, "Check"), function}
 					var wantedValues, wantedTraces strings.Builder
 					for mask := 0; mask < 1<<(len(sample.targets)+extraBits); mask++ {
-						want, trace := conditionalChoicesTreeExpected(tree, sample.targets, sample.unused, mask, returnChoice, independentReturn, nestedReturn)
+						want, trace := conditionalChoicesTreeExpected(tree, sample.targets, sample.unused, mask, returnChoice, independentReturn, nestedReturn, nestedInitializer)
 						args := []coreeval.Value{{Type: function.Parameters[0].Type, String: "value"}}
 						for bit := 0; bit < len(sample.targets)+extraBits; bit++ {
 							args = append(args, coreeval.Value{Type: function.Parameters[bit+1].Type, Bool: mask&(1<<bit) != 0})
@@ -351,7 +399,7 @@ func TestV840FiniteConditionalLocalsBoundedScale(t *testing.T) {
 func TestV840FiniteConditionalLocalsTwoChoiceInheritance(t *testing.T) {
 	for _, source := range []string{twoConditionalLocalsSource, twoConditionalRulesSource} {
 		var baseline [][]byte
-		for _, contract := range []LanguageContract{PipeLangLanguageContractV830, PipeLangLanguageContractV840, PipeLangLanguageContractV850, PipeLangLanguageContractV860, PipeLangLanguageContractV870, PipeLangLanguageContractV880, PipeLangLanguageContractV890, PipeLangLanguageContractV900} {
+		for _, contract := range []LanguageContract{PipeLangLanguageContractV830, PipeLangLanguageContractV840, PipeLangLanguageContractV850, PipeLangLanguageContractV860, PipeLangLanguageContractV870, PipeLangLanguageContractV880, PipeLangLanguageContractV890, PipeLangLanguageContractV900, PipeLangLanguageContractV910} {
 			analysis, program := conditionalLocalTreeProgramVersion(t, contract, source, []string{"Select"})
 			projection, err := BuildSemanticProjection(analysis)
 			if err != nil {

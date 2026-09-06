@@ -51,6 +51,10 @@ func TestV900NestedStraightLineInitializersApplicationConsumer(t *testing.T) {
 	testConditionalLocalsApplicationConsumer(t, true, true, true, false, true, false, true)
 }
 
+func TestV910NestedTerminalInitializersApplicationConsumer(t *testing.T) {
+	testConditionalLocalsApplicationConsumer(t, true, true, true, false, true, false, true, true)
+}
+
 func testConditionalLocalsApplicationConsumer(t *testing.T, finite bool, straightOption ...bool) {
 	straight := len(straightOption) > 0 && straightOption[0]
 	returnChoice := len(straightOption) > 1 && straightOption[1]
@@ -79,6 +83,10 @@ func testConditionalLocalsApplicationConsumer(t *testing.T, finite bool, straigh
 	nestedInitializers := len(straightOption) > 5 && straightOption[5]
 	if nestedInitializers {
 		contract, prior, boundary = pipelang.PipeLangLanguageContractV900, pipelang.PipeLangLanguageContractV890, "nested initializers"
+	}
+	nestedTreeInitializers := len(straightOption) > 6 && straightOption[6]
+	if nestedTreeInitializers {
+		contract, prior, boundary = pipelang.PipeLangLanguageContractV910, pipelang.PipeLangLanguageContractV900, "nested ternaries"
 	}
 	layouts := []bool{false, true}
 	if straight {
@@ -132,6 +140,11 @@ func testConditionalLocalsApplicationConsumer(t *testing.T, finite bool, straigh
 			if nestedInitializers {
 				helper = strings.Replace(helper, "normalized=clean ? trim(raw) : raw;", "normalized = clean ? (suffix ? trim(raw) : trim(raw)) : (enabled ? raw : raw);", 1)
 				helper = strings.Replace(helper, "selected=suffix && normalized != \"\" ? normalized+\"!\" : normalized;", "selected = suffix && normalized != \"\" ? (enabled ? normalized + \"!\" : normalized + \"!\") : normalized;", 1)
+			}
+			if nestedTreeInitializers {
+				open := strings.Index(helper, "{")
+				body := helper[open+1:]
+				helper = helper[:open+1] + "if(enabled){" + body + "}else{" + body + "}"
 			}
 			helper += `}
    public DockerSnapshot Project(DockerSnapshot snapshot) {
@@ -187,7 +200,11 @@ func testConditionalLocalsApplicationConsumer(t *testing.T, finite bool, straigh
 					choose = f
 				}
 			}
-			if project.Body.ImmutableLocal == nil || choose.Body.ImmutableLocal == nil {
+			choicePresent := choose.Body.ImmutableLocal != nil
+			if nestedTreeInitializers {
+				choicePresent = choose.Body.Conditional != nil && choose.Body.Conditional.TerminalStatement && choose.Body.Conditional.WhenTrue != nil && choose.Body.Conditional.WhenTrue.ImmutableLocal != nil && choose.Body.Conditional.WhenFalse != nil && choose.Body.Conditional.WhenFalse.ImmutableLocal != nil
+			}
+			if project.Body.ImmutableLocal == nil || !choicePresent {
 				t.Fatal("executable dependency missing")
 			}
 			generated, err := gobackend.Generate(fixture.core)

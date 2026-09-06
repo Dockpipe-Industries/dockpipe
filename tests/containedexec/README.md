@@ -139,3 +139,22 @@ subtests in separate fresh units using the final test binary and patterns such a
 The exact version inventory is v0.40.0, v0.72.0, v0.83.0, v0.84.0, v0.85.0, v0.86.0,
 v0.87.0, v0.88.0, v0.89.0 and v0.90.0. Retain the failed receipt and run other tests
 from its interrupted batch separately. Do not increase deadlines or memory limits.
+
+The v0.91 nested terminal initializer layout matrix crosses all 25 statement shapes
+with ordinary and depth-two leaf returns. Use
+`--split-test TestV910NestedTerminalInitializersLayouts=200`: each shape/return pair
+has four disjoint sample partitions, retaining the same cases under fresh accounting.
+Root/intermediate/leaf sequences cover zero/one/two/three choices, all subsets of the
+three root/left/right scope slots, selected five-local mixed layouts, and unused locals.
+Three-local sequences rotate the true-only, false-only and both-arm nested shapes;
+five-local sequences also contain a nonnested initializer. Each supplied condition
+vector is exhausted: statement, outer initializer, inner initializer and return bits
+are separate; the two inner initializer bits are shared across initializers. This is
+a bounded matrix, not every independent condition/shape assignment at arbitrary length.
+
+Its 24 scale families cross root/branch locals, ordinary/nested returns,
+zero/one/two/three/all nested choices and unused final locals through 256 locals.
+Export `TestCompilerMemoryLocalSequences/v0.91.0` and run `matrix.py` for 168 isolated
+normal-inlining compiler cases. Keep the 128 MiB / 5 second warm ceilings. Full runs
+now have eleven memory-version units (the ten above plus v0.91.0); run those units
+separately from the start rather than accumulating them in a single batch.

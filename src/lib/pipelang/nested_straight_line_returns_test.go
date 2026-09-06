@@ -382,7 +382,7 @@ func TestV880NestedStraightLineReturnsRepresentations(t *testing.T) {
 func TestV880NestedStraightLineReturnsInheritance(t *testing.T) {
 	for _, source := range []string{terminalLeafConditionalReturnsSource, conditionalReturnCompositionSource, straightLineConditionalLocalsSource, finiteConditionalLocalsSource, twoConditionalLocalsSource, `public Class Choices {public string Select(string raw,bool pick)=>pick ? raw : trim(raw);}`} {
 		var baseline [][]byte
-		for _, contract := range []LanguageContract{PipeLangLanguageContractV870, PipeLangLanguageContractV880, PipeLangLanguageContractV890, PipeLangLanguageContractV900} {
+		for _, contract := range []LanguageContract{PipeLangLanguageContractV870, PipeLangLanguageContractV880, PipeLangLanguageContractV890, PipeLangLanguageContractV900, PipeLangLanguageContractV910} {
 			a, p := conditionalLocalTreeProgramVersion(t, contract, source, []string{"Select"})
 			h, err := LowerSemanticMethodToHIR(a, semanticMethodNamed(t, a, "Select").Identity)
 			if err != nil {
