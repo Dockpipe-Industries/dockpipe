@@ -63,6 +63,10 @@ func TestV930DepthThreeReturnsApplicationConsumer(t *testing.T) {
 	testConditionalLocalsApplicationConsumer(t, true, true, true, false, true, false, true, false, false, true)
 }
 
+func TestV940DepthThreeTerminalLeafReturnsApplicationConsumer(t *testing.T) {
+	testConditionalLocalsApplicationConsumer(t, true, true, true, false, true, false, true, false, false, true, true)
+}
+
 func testConditionalLocalsApplicationConsumer(t *testing.T, finite bool, straightOption ...bool) {
 	straight := len(straightOption) > 0 && straightOption[0]
 	returnChoice := len(straightOption) > 1 && straightOption[1]
@@ -103,6 +107,10 @@ func testConditionalLocalsApplicationConsumer(t *testing.T, finite bool, straigh
 	depthThree := len(straightOption) > 8 && straightOption[8]
 	if depthThree {
 		contract, prior, boundary = pipelang.PipeLangLanguageContractV930, pipelang.PipeLangLanguageContractV920, "depth-two"
+	}
+	depthThreeLeaves := len(straightOption) > 9 && straightOption[9]
+	if depthThreeLeaves {
+		contract, prior, boundary = pipelang.PipeLangLanguageContractV940, pipelang.PipeLangLanguageContractV930, "nested ternaries"
 	}
 	layouts := []bool{false, true}
 	if straight {
@@ -173,6 +181,11 @@ func testConditionalLocalsApplicationConsumer(t *testing.T, finite bool, straigh
 					t.Fatal("depth-three consumer replacement missed")
 				}
 			}
+			if depthThreeLeaves {
+				open := strings.Index(helper, "{")
+				body := helper[open+1:]
+				helper = helper[:open+1] + "if(enabled){" + body + "}else{" + body + "}"
+			}
 			closing := "}"
 			if arrow {
 				closing = ""
@@ -232,11 +245,23 @@ func testConditionalLocalsApplicationConsumer(t *testing.T, finite bool, straigh
 				}
 			}
 			choicePresent := choose.Body.ImmutableLocal != nil
-			if nestedTreeInitializers {
+			if nestedTreeInitializers || depthThreeLeaves {
 				choicePresent = choose.Body.Conditional != nil && choose.Body.Conditional.TerminalStatement && choose.Body.Conditional.WhenTrue != nil && choose.Body.Conditional.WhenTrue.ImmutableLocal != nil && choose.Body.Conditional.WhenFalse != nil && choose.Body.Conditional.WhenFalse.ImmutableLocal != nil
 			}
 			if arrow {
 				choicePresent = choose.Body.Conditional != nil && !choose.Body.Conditional.TerminalStatement && choose.Body.Conditional.WhenTrue.Conditional != nil && choose.Body.Conditional.WhenFalse.Conditional != nil
+			}
+
+			if depthThreeLeaves && choicePresent {
+				for _, branch := range []*coreir.Expr{choose.Body.Conditional.WhenTrue, choose.Body.Conditional.WhenFalse} {
+					tail := branch
+					for tail != nil && tail.ImmutableLocal != nil {
+						tail = tail.ImmutableLocal.Return
+					}
+					if tail == nil || tail.Conditional == nil || tail.Conditional.WhenTrue == nil || tail.Conditional.WhenTrue.Conditional == nil || tail.Conditional.WhenTrue.Conditional.WhenTrue == nil || tail.Conditional.WhenTrue.Conditional.WhenTrue.Conditional == nil {
+						t.Fatal("depth-three leaf absent")
+					}
+				}
 			}
 			if project.Body.ImmutableLocal == nil || !choicePresent {
 				t.Fatal("executable dependency missing")

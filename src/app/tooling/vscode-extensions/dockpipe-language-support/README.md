@@ -300,3 +300,8 @@ Preceding typed immutable locals retain ordered eager execution. Initializers,
 arrow bodies and terminal-tree leaf returns retain depth two; conditions and
 arguments gain no new ternary placement. See the
 [canonical contract](../../../../../docs/concepts/pipelang.md#pipelang-v0930-depth-three-straight-line-returns).
+
+PipeLang `v0.94.0` adds `pipe-depth-three-leaf-return` for complete ternary returns
+through depth three in terminal-tree leaves. Statement trees retain depth three;
+initializers and arrow bodies retain depth two. Conditions remain bool, types exact,
+locals eagerly ordered and selected branches/arms lazy.

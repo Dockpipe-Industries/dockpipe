@@ -1,3 +1,9 @@
+## Completed current objective — depth-three terminal-leaf returns
+
+The [v0.94 scope](depth-three-terminal-leaf-returns.md) is complete.
+The [canonical contract](../../../concepts/pipelang.md#pipelang-v0940-depth-three-terminal-leaf-returns)
+owns semantics; the completion record owns independent source/Core, executable consumer and contained proof.
+
 ## Completed current objective — depth-three straight-line returns
 
 Founder selected A and separately approved v0.93.0 implementation on 2026-09-06.

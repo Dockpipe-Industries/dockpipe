@@ -1065,5 +1065,19 @@
       "}"
     ],
     "description": "Create a v0.93.0 block method with a complete ternary return through depth three."
+  },
+  "Depth-three terminal-leaf return": {
+    "prefix": "pipe-depth-three-leaf-return",
+    "body": [
+      "public string ${1:Select}(string raw, bool enabled, bool a, bool b, bool c) {",
+      "    string normalized = a ? (b ? trim(raw) : raw) : raw;",
+      "    if (enabled) {",
+      "        return a ? (b ? (c ? normalized : raw) : \"fallback\") : raw;",
+      "    } else {",
+      "        return raw;",
+      "    }",
+      "}"
+    ],
+    "description": "Create a v0.94.0 terminal branch with a complete ternary return through depth three."
   }
 }
