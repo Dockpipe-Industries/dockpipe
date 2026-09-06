@@ -898,7 +898,7 @@ func validExpandedDepthThreeTerminalIf(expr Expr, expandedLeaves int) bool {
 }
 
 func validTerminalIfStatement(contract LanguageContract, expr Expr) bool {
-	if contract == PipeLangLanguageContractV850 || contract == PipeLangLanguageContractV840 {
+	if contract == PipeLangLanguageContractV860 || contract == PipeLangLanguageContractV850 || contract == PipeLangLanguageContractV840 {
 		return validConditionalLocalTree(expr, 0) || validTerminalIfStatement(PipeLangLanguageContractV830, expr)
 	}
 	if contract == PipeLangLanguageContractV830 {
@@ -1222,4 +1222,34 @@ func validStraightLineConditionalLocals(expr Expr) bool {
 		}
 		expr = local.Return
 	}
+}
+
+// v0.86 adds only a complete return choice after a nonempty local sequence.
+func validConditionalReturnComposition(expr Expr) bool {
+	hasLocal := false
+	for {
+		local, ok := expr.(*ImmutableLocalExpr)
+		if !ok {
+			break
+		}
+		hasLocal = true
+		if local.Initializer == nil || local.Return == nil {
+			return false
+		}
+		if choice, ok := local.Initializer.(*ConditionalExpr); ok {
+			if !validReturnCompositionChoice(choice) {
+				return false
+			}
+		} else if !validConditionalOperand(local.Initializer) {
+			return false
+		}
+		expr = local.Return
+	}
+	choice, ok := expr.(*ConditionalExpr)
+	return hasLocal && ok && validReturnCompositionChoice(choice)
+}
+
+func validReturnCompositionChoice(choice *ConditionalExpr) bool {
+	return choice != nil && !choice.TerminalStatement && choice.Condition != nil && choice.WhenTrue != nil && choice.WhenFalse != nil &&
+		validConditionalOperand(choice.Condition) && validConditionalOperand(choice.WhenTrue) && validConditionalOperand(choice.WhenFalse)
 }

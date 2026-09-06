@@ -1308,3 +1308,20 @@ compiler, consumer, compatibility and contained scaling proof. The
 owns semantics and exclusions. Existing HIR/Core nodes, evaluator/backend behavior, public
 identities and the frozen 45-source lane are preserved. Implementation remains uncommitted;
 completion does not authorize commit, push, publication or a successor.
+
+
+## Step 8az: conditional return composition (v0.86.0)
+
+Founder selected A and separately approved implementation. Straight-line typed local sequences,
+including complete conditional initializers, may now end with a complete ternary return.
+Locals remain eager, once-only and ordered, including unused bindings; return arms are lazy,
+exactly typed, and preserve complete supported values/carriers. The
+[canonical contract](../../../concepts/pipelang.md#pipelang-v0860-conditional-return-composition)
+owns semantics and exclusions; [conditional-return-composition.md](conditional-return-composition.md)
+owns approval, containment and completion proof.
+
+All 513 compiler tests in 46 bounded batches, 161 old/new memory cases, and 42 fresh isolated
+v0.86 compiler measurements through 256 locals pass. Core/backend, Application IR, frozen
+45-source compatibility, application/CLI, vet, editor and documentation checks pass.
+No HIR/Core nodes, evaluator or backend production code, public identities, or generated store
+changed. Changes remain uncommitted; no successor, push, publication or live operation is implied.

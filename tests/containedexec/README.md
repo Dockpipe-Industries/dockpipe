@@ -35,6 +35,9 @@ locals with zero/one/two/three/all choices where admitted, v0.40/v0.72/v0.83/v0.
 branch scopes, dependent values and unused locals. v0.85 additionally crosses straight-line
 zero/one/two/three/all choices and unused final choices through 256 locals. Export names
 and isolated matrix family keys distinguish branch, straight-line and unused dimensions.
+v0.86 crosses the same six straight-line families with a complete ternary return,
+including ordinary-only locals, dependent choices and unused final choices; both return outcomes
+are exercised separately in each case. Versioned family identity keeps these measurements separate from v0.85.
 It asserts closure depth,
 evaluator/executable-Go parity, 128 MiB RSS and 5 seconds per warm direct compiler
 invocation. Export fixture modules with the command below, then run `matrix.py`

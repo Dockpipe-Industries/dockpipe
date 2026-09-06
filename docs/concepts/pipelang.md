@@ -235,7 +235,7 @@ or public semantic identities. The backend checks the complete emitted package n
 returning Go source.
 
 Core program admission accepts only `pipelang.compiler.v1` and the exact supported language
-identities `v0.1.0` through `v0.85.0`. `coreir.ValidateProgram` checks feature availability in
+identities `v0.1.0` through `v0.86.0`. `coreir.ValidateProgram` checks feature availability in
 signatures and nested expressions, together with the existing composition and topology contracts.
 `coreeval.EvaluateProgram` and the Go backend use that same admission before executing or emitting
 anything, including when a disallowed feature occurs in an uncalled function or unused parameter.
@@ -2840,3 +2840,43 @@ Earlier versions retain their placement/count limits and the frozen 45-source la
 Nested ternaries, new return/condition/argument placements, matching or propagation combinations,
 fallthrough, early returns, mutation, loops, effects, inference, deeper terminal trees and new
 backends remain excluded. This admits finite source sequences, not unlimited host resources.
+
+
+### PipeLang v0.86.0: conditional return composition
+
+`v0.86.0` additionally permits a complete ternary return after a nonempty finite sequence
+of explicitly typed immutable locals in a straight-line method. Initializers may be ordinary
+supported pure expressions or complete ternaries. This composes v0.85 conditional locals
+with a final selection without requiring an extra binding or terminal statement-level branch.
+
+```pipe
+public Class Classifier {
+    public string Select(string raw, bool clean, bool suffix, bool enabled) {
+        string normalized = clean ? trim(raw) : raw;
+        string selected = suffix && normalized != "" ? normalized + "!" : normalized;
+        return enabled && selected != "" ? selected : normalized;
+    }
+}
+```
+
+Every ternary condition is `bool`. Initializer arms exactly match the declared local type;
+return arms exactly match the declared method return type. Both arms are statically checked,
+and only the selected arm executes. All local initializers run eagerly once in source order,
+including unused locals, before the return condition. Bindings enter scope only after their
+initializer; later locals and the return may use earlier bindings. Self/forward references,
+duplicates, shadowing and escaping bindings remain invalid. Complete primitive, primitive-record,
+record-list, Optional and supported Result values retain absence/failure and exact carrier
+transport without implicit unwrapping, widening or propagation.
+
+Typed HIR and target-neutral Core reuse `immutable_local` and `conditional`. Source and Core
+independently validate the new straight-line placement; structural Core validation checks exact
+types, lexical references and canonical binding positions. Evaluation and deterministic Core-only
+Go retain eager local order and lazy return selection. Public `pipelang.compiler.v1`,
+`pipelang.semantic.v1` and `dockpipe.application.v1` identities and shapes remain unchanged.
+
+Earlier source versions retain their exact limits, including inherited single-choice expression
+placements and terminal trees through depth three. New ternary returns within those trees,
+nested ternaries, new argument/condition placements, new matching/propagation combinations,
+fallthrough, early returns, loops, mutation, effects, inference and new backends remain excluded.
+The frozen 45-source lane remains unchanged. Finite source sequences remain subject to host
+resource limits; contained regression proof measures through 256 locals.

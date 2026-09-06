@@ -1,3 +1,11 @@
+## Completed current objective — conditional return composition
+
+Founder selected A and separately approved implementation of v0.86.0 in this task.
+[conditional-return-composition.md](conditional-return-composition.md) owns the exact scope,
+exclusions, containment requirements and verification status. State: `completed`.
+The completed v0.85.0 slice is committed at `f94fdafa`; earlier uncommitted/baseline wording
+below is historical. Commit, push, publication and successor selection remain separate.
+
 ## Completed current objective — straight-line conditional locals
 
 The founder selected A and separately approved implementation of v0.85.0 in this task.

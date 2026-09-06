@@ -1,3 +1,11 @@
+## Completed current objective — conditional return composition
+
+Founder selected A and separately approved implementation of v0.86.0 in this task.
+[conditional-return-composition.md](conditional-return-composition.md) owns the exact scope,
+exclusions, containment requirements and verification status. State: `completed`.
+The completed v0.85.0 slice is committed at `f94fdafa`; earlier uncommitted/baseline wording
+below is historical. Commit, push, publication and successor selection remain separate.
+
 ## Completed current objective — straight-line conditional locals
 
 The founder selected A and separately approved implementation of v0.85.0 in this task.
@@ -1505,3 +1513,12 @@ Step 8aw completed two conditional locals in terminal trees under the
 terminal compiler/consumer proof. All 25 tree shapes, lexical scope pairs, dependent selections,
 ordered/unused locals, lazy arms, exact value transport, malformed source/Core rejection,
 version inheritance, deterministic artifacts, and executable Application IR consumption passed with terminal verification.
+
+
+## Checkpoint v0.86.0 complete contract
+
+Step 8az admits complete ternary returns after straight-line typed local sequences, including
+conditional initializers. The [canonical contract](../../../concepts/pipelang.md#pipelang-v0860-conditional-return-composition)
+owns the exact placement and exclusions. [conditional-return-composition.md](conditional-return-composition.md)
+records completed independent source/Core, evaluator/Core-only Go, consumer, inheritance,
+compatibility and contained resource proof. Any successor needs a fresh founder decision.
