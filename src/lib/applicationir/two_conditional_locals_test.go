@@ -55,6 +55,10 @@ func TestV910NestedTerminalInitializersApplicationConsumer(t *testing.T) {
 	testConditionalLocalsApplicationConsumer(t, true, true, true, false, true, false, true, true)
 }
 
+func TestV920NestedArrowMethodsApplicationConsumer(t *testing.T) {
+	testConditionalLocalsApplicationConsumer(t, false, true, false, false, false, false, false, false, true)
+}
+
 func testConditionalLocalsApplicationConsumer(t *testing.T, finite bool, straightOption ...bool) {
 	straight := len(straightOption) > 0 && straightOption[0]
 	returnChoice := len(straightOption) > 1 && straightOption[1]
@@ -87,6 +91,10 @@ func testConditionalLocalsApplicationConsumer(t *testing.T, finite bool, straigh
 	nestedTreeInitializers := len(straightOption) > 6 && straightOption[6]
 	if nestedTreeInitializers {
 		contract, prior, boundary = pipelang.PipeLangLanguageContractV910, pipelang.PipeLangLanguageContractV900, "nested ternaries"
+	}
+	arrow := len(straightOption) > 7 && straightOption[7]
+	if arrow {
+		contract, prior, boundary = pipelang.PipeLangLanguageContractV920, pipelang.PipeLangLanguageContractV910, "block-bodied method"
 	}
 	layouts := []bool{false, true}
 	if straight {
@@ -146,7 +154,15 @@ func testConditionalLocalsApplicationConsumer(t *testing.T, finite bool, straigh
 				body := helper[open+1:]
 				helper = helper[:open+1] + "if(enabled){" + body + "}else{" + body + "}"
 			}
-			helper += `}
+			if arrow {
+				helper = `public string ChooseKey(string raw,bool clean,bool suffix,bool enabled)=>
+ enabled ? (clean ? trim(raw) : raw) : (suffix ? raw+"!" : raw);`
+			}
+			closing := "}"
+			if arrow {
+				closing = ""
+			}
+			helper += closing + `
    public DockerSnapshot Project(DockerSnapshot snapshot) {
     string key = snapshot.Identity;
     bool clean = key != "raw";
@@ -204,6 +220,9 @@ func testConditionalLocalsApplicationConsumer(t *testing.T, finite bool, straigh
 			if nestedTreeInitializers {
 				choicePresent = choose.Body.Conditional != nil && choose.Body.Conditional.TerminalStatement && choose.Body.Conditional.WhenTrue != nil && choose.Body.Conditional.WhenTrue.ImmutableLocal != nil && choose.Body.Conditional.WhenFalse != nil && choose.Body.Conditional.WhenFalse.ImmutableLocal != nil
 			}
+			if arrow {
+				choicePresent = choose.Body.Conditional != nil && !choose.Body.Conditional.TerminalStatement && choose.Body.Conditional.WhenTrue.Conditional != nil && choose.Body.Conditional.WhenFalse.Conditional != nil
+			}
 			if project.Body.ImmutableLocal == nil || !choicePresent {
 				t.Fatal("executable dependency missing")
 			}
@@ -241,6 +260,16 @@ func testConditionalLocalsApplicationConsumer(t *testing.T, finite bool, straigh
 						want += "?"
 						if mask&1 != 0 && (!nestedReturns || mask&2 != 0) {
 							want += "#"
+						}
+					}
+					if arrow {
+						want = raw
+						if mask&4 != 0 {
+							if mask&1 != 0 {
+								want = strings.TrimSpace(raw)
+							}
+						} else if mask&2 != 0 {
+							want = raw + "!"
 						}
 					}
 					args := []coreeval.Value{{Type: choose.Parameters[0].Type, String: raw}}

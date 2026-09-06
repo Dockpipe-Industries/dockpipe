@@ -1,3 +1,11 @@
+## Completed current objective — nested expression-bodied methods
+
+Founder selected A and separately approved v0.92.0 implementation on 2026-09-06.
+[nested-arrow-methods.md](nested-arrow-methods.md) owns scope, exclusions and verification.
+State: `completed`. Completed v0.91.0 is committed at `b1fbc31b`; its historical
+uncommitted wording is superseded. Commit, push, publication and successor selection
+remain separate.
+
 ## Completed current objective — nested initializers throughout terminal trees
 
 Founder selected A and separately approved v0.91.0 implementation on 2026-09-06.
@@ -95,8 +103,8 @@ The `vNext` foundation decision packet in this record is **accepted** as of 2026
 fixes semantics, compiler boundaries, bootstrap stages, compatibility, and implementation order;
 examples and fixtures remain non-normative and accept no production syntax. Separately authorized
 bounded objectives have completed implementation-order steps 1 through 6, step-7 slices 7a
-through 7ae, and bounded Step-8 function seams 8a through 8be. Nested initializers throughout terminal trees are implemented and verified.
-The current explicit language contract is `v0.91.0`; the separately versioned read-only projection is
+through 7ae, and bounded Step-8 function seams 8a through 8bf. Nested expression-bodied methods are implemented and verified.
+The current explicit language contract is `v0.92.0`; the separately versioned read-only projection is
 `dockpipe.application.v1`; the frozen `v0.0.0.1` lane remains unchanged. This record does not by itself
 authorize another language slice.
 

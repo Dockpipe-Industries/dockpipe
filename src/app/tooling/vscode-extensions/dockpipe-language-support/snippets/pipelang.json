@@ -1047,5 +1047,13 @@
       "}"
     ],
     "description": "Create a v0.91.0 terminal tree with complete depth-two typed immutable-local initializers in root and branch scopes."
+  },
+  "Nested expression-bodied method": {
+    "prefix": "pipe-nested-arrow",
+    "body": [
+      "public string ${1:Select}(string raw, bool outer, bool left, bool right) =>",
+      "    outer ? (left ? trim(raw) : raw) : (right ? \"fallback\" : raw);"
+    ],
+    "description": "Create a v0.92.0 expression-bodied method with complete depth-two ternary choices."
   }
 }
