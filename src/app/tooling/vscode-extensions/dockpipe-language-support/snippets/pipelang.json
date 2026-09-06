@@ -1020,5 +1020,16 @@
       "}"
     ],
     "description": "Create a v0.89.0 terminal if/else tree with depth-two lazy ternary returns and nonnested typed local initializers."
+  },
+  "Nested straight-line initializers": {
+    "prefix": "pipe-nested-initializers",
+    "body": [
+      "public ${1:string} ${2:Select}(string raw, bool enabled, bool clean, bool fallback) {",
+      "  string selected = enabled ? (clean ? trim(raw) : raw) : (fallback ? \"fallback\" : \"\");",
+      "  string label = selected + \"!\";",
+      "  return clean ? (fallback ? label : selected) : raw;",
+      "}"
+    ],
+    "description": "Create a v0.90.0 straight-line block with complete depth-two ternary initializers and lazy selected arms."
   }
 }

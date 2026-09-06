@@ -1371,3 +1371,16 @@ carriers, malformed source/Core, inherited artifacts, executable Application IR,
 compatibility, application/CLI, vet and editor/docs checks pass. All 400 validation cgroups
 are removed with zero swap and unchanged max/OOM/swap counters. Public identities and
 engine/package boundaries are preserved. Changes remain uncommitted; no successor is selected.
+
+## Step 8bd: nested straight-line initializers (v0.90.0)
+
+Founder selected A and separately approved this scope. Complete depth-two ternary initializers
+now compose with finite explicitly typed immutable-local sequences and existing ordinary or
+nested returns in straight-line blocks. The [objective record](nested-straight-line-initializers.md)
+owns scope, exclusions, containment and completed proof; the
+[canonical language contract](../../../concepts/pipelang.md#pipelang-v0900-nested-straight-line-initializers)
+owns semantics. All 560 compiler tests have passing evidence, including 850 layout methods,
+72,000 outcomes/traces, the 455-case memory matrix and 84 fresh isolated compiler measurements.
+Application IR, compatibility, affected application, CLI, vet and editor/docs checks pass.
+Existing public identities, HIR/Core shapes, evaluator/backend production code and engine/package
+boundaries remain unchanged. No successor is selected; commit, push and publication remain separate.

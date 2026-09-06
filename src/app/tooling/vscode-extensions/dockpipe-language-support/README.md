@@ -271,3 +271,10 @@ example. Each scope retains finite typed locals and nonnested conditional initia
 reached locals are eager once in order and only selected conditions/arms execute.
 Exact types, lexical scope and complete carriers remain required. Nested initializers,
 deeper choices/trees, new condition/argument placements and effects remain excluded.
+
+PipeLang `v0.90.0` adds complete depth-two ternary initializers in finite typed local
+sequences in straight-line block methods. Use `pipe-nested-initializers`; later locals
+and existing returns may reuse selected values. Initializers execute eagerly once in
+order, including unused locals; nested conditions and arms are lazy. Nested initializers
+in statement trees, nested arrow methods, deeper choices and new condition/argument
+placements remain excluded. Exact types, lexical scope and complete carriers are preserved.

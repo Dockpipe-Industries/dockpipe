@@ -1,3 +1,11 @@
+## Completed current objective — nested straight-line initializers
+
+Founder selected A and separately approved v0.90.0 implementation on 2026-09-06.
+[nested-straight-line-initializers.md](nested-straight-line-initializers.md) owns scope,
+exclusions, containment and evidence. State: `completed`.
+The completed v0.89.0 slice is committed at `2560ee1b`; historical uncommitted wording
+below is superseded. Commit, push, publication and successor selection remain separate.
+
 ## Completed current objective — nested terminal-leaf returns
 
 Founder selected A and separately approved v0.89.0 implementation in this task.

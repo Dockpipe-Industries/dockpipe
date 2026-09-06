@@ -122,3 +122,20 @@ unused, lexical and lazy traces with independent nested conditions. Its twelve r
 scale families cross zero/one/two/three/all conditional initializers and unused final locals
 through 256 locals. Export `TestCompilerMemoryLocalSequences/v0.89.0` then use `matrix.py`
 for 84 fresh isolated normal-inlining compiler measurements under unchanged limits.
+
+The v0.90 initializer layout matrix enumerates 25 numbered cases: five initializer
+layouts (four uniform shapes and a mixed rotation) crossed with an ordinary return or
+one of four depth-two return shapes. Use
+`--split-test TestV900NestedStraightLineInitializersLayouts=25`. It covers local subsets,
+ordered/unused locals and lazy conditions/arms in two-method generated modules. Its
+12 scale families cross zero/one/two/three/all nested initializers and unused final
+locals with ordinary/nested returns through 256 locals. Export
+`TestCompilerMemoryLocalSequences/v0.90.0` for 84 fresh isolated measurements. Normal
+inlining and the existing 128 MiB / 5 second warm compiler ceilings remain unchanged.
+
+If the complete memory matrix exceeds a batch deadline, run its ten language-version
+subtests in separate fresh units using the final test binary and patterns such as
+`-test.run '^TestCompilerMemoryLocalSequences$/^v0\.90\.0$'`.
+The exact version inventory is v0.40.0, v0.72.0, v0.83.0, v0.84.0, v0.85.0, v0.86.0,
+v0.87.0, v0.88.0, v0.89.0 and v0.90.0. Retain the failed receipt and run other tests
+from its interrupted batch separately. Do not increase deadlines or memory limits.

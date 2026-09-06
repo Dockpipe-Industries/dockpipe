@@ -620,3 +620,9 @@ assert(nestedLeafReturn.description.includes("v0.89.0"));
 assert(nestedLeafReturn.body.join("\n").includes('if (enabled) {'));
 assert(nestedLeafReturn.body.join("\n").includes('return clean ? (fallback ? normalized : raw) : (fallback ? raw : "");'));
 assert(pipeLangReadme.includes("`v0.89.0`"));
+
+const nestedInitializer = pipeLangSnippets["Nested straight-line initializers"];
+assert.strictEqual(nestedInitializer.prefix, "pipe-nested-initializers");
+assert(nestedInitializer.description.includes("v0.90.0"));
+assert(nestedInitializer.body.join("\n").includes("string selected = enabled ? (clean ?"));
+assert(pipeLangReadme.includes("`v0.90.0`"));
