@@ -38,6 +38,9 @@ and isolated matrix family keys distinguish branch, straight-line and unused dim
 v0.86 crosses the same six straight-line families with a complete ternary return,
 including ordinary-only locals, dependent choices and unused final choices; both return outcomes
 are exercised separately in each case. Versioned family identity keeps these measurements separate from v0.85.
+v0.87 adds twelve root/branch families with zero/one/two/three/all conditional initializers
+and unused final choices before terminal-leaf ternary returns. Independent return conditions
+exercise both arms in reached branches through 256 locals.
 It asserts closure depth,
 evaluator/executable-Go parity, 128 MiB RSS and 5 seconds per warm direct compiler
 invocation. Export fixture modules with the command below, then run `matrix.py`
@@ -93,3 +96,13 @@ counter may increase normally during reclaim; distinguish that from `max`,
 `oom`, `oom_kill`, and swap events. Warm compiler-only measurements should keep
 the default controls so results remain comparable. This option does not alter
 Go's garbage collector, compiler flags, or persistent machine configuration.
+
+The v0.87 leaf-subset and ordered-layout tests use 25 asserted shapes each. Include
+`--split-test TestV870TerminalLeafConditionalReturnsSubsets=25` and
+`--split-test TestV870TerminalLeafConditionalReturnsLayouts=25` in their `suite.py`
+runs to retain fresh per-shape accounting. Subset modules contain at most 16 methods.
+
+Also split `TestV820ConditionalLocalAllShapesScopesAndPaths=25` in full runs so its
+exhaustive generated modules cannot share a deadline with the expanded memory matrix.
+If a previously grouped batch times out, retain its receipt and rerun only its tests in
+smaller fresh groups; keep the memory limits and service/child deadlines unchanged.

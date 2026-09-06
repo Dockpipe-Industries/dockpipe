@@ -1,3 +1,12 @@
+## Completed current objective — conditional returns in terminal-tree leaves
+
+Founder selected A and separately approved v0.87.0 implementation in this task.
+[terminal-leaf-conditional-returns.md](terminal-leaf-conditional-returns.md) owns the exact
+scope, exclusions, containment and verification. State: `completed`.
+The completed v0.86.0 slice is committed at `9db7ed28`; earlier uncommitted wording
+and baseline references below are historical. Commit, push, publication and successor
+selection remain separate.
+
 ## Completed current objective — conditional return composition
 
 Founder selected A and separately approved implementation of v0.86.0 in this task.
@@ -260,3 +269,14 @@ adds only complete ternary returns after straight-line typed locals. Independent
 placement checks reuse existing typed HIR/Core nodes; evaluator and Core-only Go retain their
 semantics. [The completion record](conditional-return-composition.md) owns contained proof.
 Public identities, all inherited forms and the frozen 45-source lane remain unchanged.
+
+
+## Accepted v0.87.0 leaf-return boundary
+
+[The canonical language contract](../../../concepts/pipelang.md#pipelang-v0870-conditional-returns-in-terminal-tree-leaves)
+admits complete nonnested ternary returns in leaves of terminal trees through statement depth
+three. Source and Core validate this placement independently and retain exact inherited contracts.
+The existing terminal-statement marker distinguishes statement depth from leaf value selection;
+HIR/Core nodes, evaluator and Go backend production code remain unchanged. Public identities
+and frozen compatibility are preserved. The [objective record](terminal-leaf-conditional-returns.md)
+owns completed source, consumer, adversarial and contained resource proof.

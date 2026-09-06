@@ -1,3 +1,9 @@
+PipeLang `v0.87.0` adds `pipe-terminal-leaf-return`: complete nonnested ternary returns
+in leaves of terminal if/else trees through depth three, with optional typed conditional
+locals in each scope. Selected branches and return arms stay lazy; reached initializers
+execute eagerly once in source order. Nested ternaries and new argument/condition placements
+remain excluded.
+
 PipeLang `v0.86.0` adds `pipe-conditional-return`: straight-line typed conditional locals
 followed by a complete ternary return. Locals execute eagerly once in source order; return arms
 are lazy and exactly match the method return type. Nested ternaries, new argument/condition

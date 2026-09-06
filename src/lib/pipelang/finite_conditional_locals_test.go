@@ -41,6 +41,11 @@ func TestV840FiniteConditionalLocalsAllShapes(t *testing.T) {
 
 func testFiniteConditionalLocalsLayouts(t *testing.T, contract LanguageContract, trees []*terminalTree, returnOption ...bool) {
 	returnChoice := len(returnOption) > 0 && returnOption[0]
+	independentReturn := contract == PipeLangLanguageContractV870
+	extraBits := 3
+	if independentReturn {
+		extraBits = 4
+	}
 	methodsTotal, outcomes := 0, 0
 	for shape, tree := range trees {
 		t.Run(fmt.Sprint(shape), func(t *testing.T) {
@@ -71,7 +76,7 @@ func testFiniteConditionalLocalsLayouts(t *testing.T, contract LanguageContract,
 					name := fmt.Sprintf("Select%d", len(samples))
 					samples = append(samples, sample{name, targets, unused})
 					methods = append(methods, name)
-					source.WriteString(conditionalChoicesTreeMethod(tree, targets, unused, name, returnChoice))
+					source.WriteString(conditionalChoicesTreeMethod(tree, targets, unused, name, returnChoice, independentReturn))
 				}
 			}
 			source.WriteString("}")
@@ -110,10 +115,10 @@ func testFiniteConditionalLocalsLayouts(t *testing.T, contract LanguageContract,
 				evaluation := program
 				evaluation.Functions = []coreir.Function{coreFunctionNamed(t, program, "Echo"), coreFunctionNamed(t, program, "Check"), function}
 				var wantedValues, wantedTraces strings.Builder
-				for mask := 0; mask < 1<<(len(sample.targets)+3); mask++ {
-					want, trace := conditionalChoicesTreeExpected(tree, sample.targets, sample.unused, mask, returnChoice)
+				for mask := 0; mask < 1<<(len(sample.targets)+extraBits); mask++ {
+					want, trace := conditionalChoicesTreeExpected(tree, sample.targets, sample.unused, mask, returnChoice, independentReturn)
 					args := []coreeval.Value{{Type: function.Parameters[0].Type, String: "value"}}
-					for bit := 0; bit < len(sample.targets)+3; bit++ {
+					for bit := 0; bit < len(sample.targets)+extraBits; bit++ {
 						args = append(args, coreeval.Value{Type: function.Parameters[bit+1].Type, Bool: mask&(1<<bit) != 0})
 					}
 					got, err := coreeval.EvaluateProgram(evaluation, function.Identity, args)
@@ -129,7 +134,7 @@ func testFiniteConditionalLocalsLayouts(t *testing.T, contract LanguageContract,
 					outcomes++
 				}
 				call := fmt.Sprintf("PipeLang%s(\"value\"", sample.name)
-				for bit := 0; bit < len(sample.targets)+3; bit++ {
+				for bit := 0; bit < len(sample.targets)+extraBits; bit++ {
 					call += fmt.Sprintf(",mask&%d!=0", 1<<bit)
 				}
 				call += ")"
@@ -175,7 +180,7 @@ func TestV840FiniteConditionalLocalsDifferentTypes(t *testing.T) {
 }
 
 func TestV840FiniteConditionalLocalsVersionBoundary(t *testing.T) {
-	for _, contract := range []LanguageContract{PipeLangLanguageContractV810, PipeLangLanguageContractV820, PipeLangLanguageContractV830, "v0.87.0", "unknown"} {
+	for _, contract := range []LanguageContract{PipeLangLanguageContractV810, PipeLangLanguageContractV820, PipeLangLanguageContractV830, "v0.88.0", "unknown"} {
 		input := semanticTestModuleSet("compiler.selfhosting", []ModuleInput{testModule("compiler.selfhosting", "finite.pipe", finiteConditionalLocalsSource)}, nil)
 		input.LanguageContract = contract
 		if AnalyzeSemanticModuleSet(input).Error() == nil {
@@ -329,7 +334,7 @@ func TestV840FiniteConditionalLocalsBoundedScale(t *testing.T) {
 func TestV840FiniteConditionalLocalsTwoChoiceInheritance(t *testing.T) {
 	for _, source := range []string{twoConditionalLocalsSource, twoConditionalRulesSource} {
 		var baseline [][]byte
-		for _, contract := range []LanguageContract{PipeLangLanguageContractV830, PipeLangLanguageContractV840, PipeLangLanguageContractV850, PipeLangLanguageContractV860} {
+		for _, contract := range []LanguageContract{PipeLangLanguageContractV830, PipeLangLanguageContractV840, PipeLangLanguageContractV850, PipeLangLanguageContractV860, PipeLangLanguageContractV870} {
 			analysis, program := conditionalLocalTreeProgramVersion(t, contract, source, []string{"Select"})
 			projection, err := BuildSemanticProjection(analysis)
 			if err != nil {

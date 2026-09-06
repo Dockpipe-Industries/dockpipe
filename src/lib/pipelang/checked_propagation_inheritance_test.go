@@ -34,7 +34,7 @@ func TestCheckedPropagationInheritanceAdmission(t *testing.T) {
 	for _, operation := range checkedInheritanceOperations {
 		t.Run(operation.name, func(t *testing.T) {
 			var baselineHIR, baselineCore, baselineSemantic, baselineGo []byte
-			for version := 56; version <= 86; version++ {
+			for version := 56; version <= 87; version++ {
 				contract := LanguageContract(fmt.Sprintf("v0.%d.0", version))
 				t.Run(string(contract), func(t *testing.T) {
 					source := checkedInheritanceSource(operation.typ, operation.op)
@@ -198,7 +198,7 @@ func checkedInheritanceOutcomes(t *testing.T, program coreir.Program, operation 
 
 func TestCheckedPropagationInheritanceRejection(t *testing.T) {
 	source := checkedInheritanceSource("int", "+")
-	for version := 56; version <= 86; version++ {
+	for version := 56; version <= 87; version++ {
 		contract := LanguageContract(fmt.Sprintf("v0.%d.0", version))
 		t.Run(string(contract), func(t *testing.T) {
 			for _, mutation := range []struct{ name, old, new string }{
@@ -248,7 +248,7 @@ func TestCheckedPropagationInheritanceRejection(t *testing.T) {
 			}
 		})
 	}
-	for _, version := range []LanguageContract{PipeLangLanguageContractV550, LanguageContract("v0.87.0")} {
+	for _, version := range []LanguageContract{PipeLangLanguageContractV550, LanguageContract("v0.88.0")} {
 		input := semanticTestModuleSet("compiler.cursor", []ModuleInput{testModule("compiler.cursor", "invalid.pipe", source)}, nil)
 		input.LanguageContract = version
 		if AnalyzeSemanticModuleSet(input).Error() == nil {

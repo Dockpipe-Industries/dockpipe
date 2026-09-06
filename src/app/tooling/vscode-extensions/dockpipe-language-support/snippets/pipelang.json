@@ -975,5 +975,22 @@
       "}"
     ],
     "description": "Create a v0.86.0 straight-line method with typed conditional locals and a lazy complete ternary return."
+  },
+  "PipeLang terminal-leaf conditional returns": {
+    "prefix": "pipe-terminal-leaf-return",
+    "body": [
+      "public Class ${1:Classifier} {",
+      "    public string ${2:Select}(string raw, bool clean, bool enabled, bool finish) {",
+      "        string normalized = clean ? trim(raw) : raw;",
+      "        if (enabled) {",
+      "            string selected = finish ? normalized + \"!\" : normalized;",
+      "            return clean ? selected : raw;",
+      "        } else {",
+      "            return finish ? normalized : raw;",
+      "        }",
+      "    }",
+      "}"
+    ],
+    "description": "Create a v0.87.0 terminal if/else tree with typed conditional locals and lazy complete ternary returns in its leaves."
   }
 }

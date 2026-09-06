@@ -1325,3 +1325,22 @@ v0.86 compiler measurements through 256 locals pass. Core/backend, Application I
 45-source compatibility, application/CLI, vet, editor and documentation checks pass.
 No HIR/Core nodes, evaluator or backend production code, public identities, or generated store
 changed. Changes remain uncommitted; no successor, push, publication or live operation is implied.
+
+
+## Step 8ba: conditional returns in terminal-tree leaves (v0.87.0)
+
+Founder selected A and separately approved implementation. Complete nonnested ternary returns
+may now occupy any subset of leaves of existing terminal trees through statement depth three,
+with zero or more typed immutable locals in each scope. Exact types, complete carriers, lexical
+scope, eager ordered/unused initializers and lazy branches/arms are retained. The
+[canonical contract](../../../concepts/pipelang.md#pipelang-v0870-conditional-returns-in-terminal-tree-leaves)
+owns semantics; [terminal-leaf-conditional-returns.md](terminal-leaf-conditional-returns.md)
+owns approval, exclusions, completed proof and reproduction.
+
+All 524 compiler tests, 245 old/new memory cases, 84 fresh direct compiler measurements through
+256 locals, Core/consumer/frozen compatibility, application/CLI, vet, editor/docs/format checks
+pass. A batch deadline was resolved by rerunning its exact tests in three smaller contained
+groups under unchanged limits. All 197 recorded cgroups were removed with unchanged max/OOM/swap
+counters. HIR/Core nodes, evaluator/backend production code, public identities, generic boundaries
+and the frozen 45-source lane remain unchanged. Changes remain uncommitted; no successor,
+commit, push, publication or live operation is implied.

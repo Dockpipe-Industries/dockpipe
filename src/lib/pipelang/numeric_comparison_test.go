@@ -36,7 +36,7 @@ func TestNumericComparisonParity(t *testing.T) {
 	integers := []int64{math.MinInt64, math.MinInt64 + 1, -(1 << 53) - 1, -1, 0, 1, 1 << 53, 1<<53 + 1, math.MaxInt64 - 1, math.MaxInt64}
 	floats := []float64{math.Inf(-1), -math.MaxFloat64, -1, -math.SmallestNonzeroFloat64, math.Copysign(0, -1), 0,
 		math.SmallestNonzeroFloat64, math.Nextafter(1, 0), 1, math.Nextafter(1, 2), math.MaxFloat64, math.Inf(1), math.NaN(), math.Float64frombits(0xfff8000000000001)}
-	for _, contract := range []LanguageContract{PipeLangLanguageContractV010, PipeLangLanguageContractV820, PipeLangLanguageContractV830, PipeLangLanguageContractV840, PipeLangLanguageContractV850, PipeLangLanguageContractV860} {
+	for _, contract := range []LanguageContract{PipeLangLanguageContractV010, PipeLangLanguageContractV820, PipeLangLanguageContractV830, PipeLangLanguageContractV840, PipeLangLanguageContractV850, PipeLangLanguageContractV860, PipeLangLanguageContractV870} {
 		for _, spelling := range []string{"int", "float"} {
 			t.Run(string(contract)+"/"+spelling, func(t *testing.T) {
 				var program coreir.Program
@@ -140,7 +140,7 @@ func TestNumericComparisonRejectsMalformedCore(t *testing.T) {
 }
 
 func TestNumericComparisonSourceBoundary(t *testing.T) {
-	for _, contract := range []LanguageContract{PipeLangLanguageContractV010, PipeLangLanguageContractV820, PipeLangLanguageContractV830, PipeLangLanguageContractV840, PipeLangLanguageContractV850, PipeLangLanguageContractV860} {
+	for _, contract := range []LanguageContract{PipeLangLanguageContractV010, PipeLangLanguageContractV820, PipeLangLanguageContractV830, PipeLangLanguageContractV840, PipeLangLanguageContractV850, PipeLangLanguageContractV860, PipeLangLanguageContractV870} {
 		for _, expression := range []string{"integer < floating", "floating == integer", "integer >= flag"} {
 			t.Run(string(contract)+"/"+expression, func(t *testing.T) {
 				source := "public Class Root { public bool Run(int integer, float floating, bool flag) => " + expression + "; }"

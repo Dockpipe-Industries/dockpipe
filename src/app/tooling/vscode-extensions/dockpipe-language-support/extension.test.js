@@ -599,3 +599,10 @@ assert(conditionalReturn);
 assert(conditionalReturn.description.includes("v0.86.0"));
 assert(conditionalReturn.body.join("\n").includes('return enabled && selected != "" ? selected : normalized;'));
 assert(pipeLangReadme.includes("`v0.86.0`"));
+
+const terminalLeafReturn = Object.values(pipeLangSnippets).find((snippet) => snippet.prefix === "pipe-terminal-leaf-return");
+assert(terminalLeafReturn);
+assert(terminalLeafReturn.description.includes("v0.87.0"));
+assert(terminalLeafReturn.body.join("\n").includes('return clean ? selected : raw;'));
+assert(terminalLeafReturn.body.join("\n").includes('return finish ? normalized : raw;'));
+assert(pipeLangReadme.includes("`v0.87.0`"));
