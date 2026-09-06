@@ -305,3 +305,9 @@ PipeLang `v0.94.0` adds `pipe-depth-three-leaf-return` for complete ternary retu
 through depth three in terminal-tree leaves. Statement trees retain depth three;
 initializers and arrow bodies retain depth two. Conditions remain bool, types exact,
 locals eagerly ordered and selected branches/arms lazy.
+
+PipeLang `v0.95.0` adds `pipe-depth-three-arrow` for complete ternary arrow bodies
+through depth three. Either or both arms may nest. Initializers retain depth two;
+statement trees and block returns retain depth three. Conditions are bool, arm types
+exact, and only reached conditions and selected arms execute. See the
+[canonical contract](../../../../../docs/concepts/pipelang.md#pipelang-v0950-depth-three-expression-bodied-methods).

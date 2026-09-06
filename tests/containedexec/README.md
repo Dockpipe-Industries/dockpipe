@@ -197,3 +197,13 @@ matrices do not claim every independent statement/return/initializer assignment.
 `TestV940DepthThreeTerminalLeafReturnsMemory` exports 64 fixed terminal-helper caller
 cases through 256 locals for `matrix.py` with unchanged normal-inlining compiler ceilings.
 Keep it separate from the eleven inherited memory versions and the v0.92/v0.93 scale tests.
+
+The v0.95 arrow layout matrix uses
+`--split-test TestV950DepthThreeArrowMethodsLayouts=25`. Each shape exhausts all
+128 independent condition vectors and checks normalized arrow/block HIR, exact Core/Go,
+evaluator/pristine-Go results and selected-condition/arm traces.
+`TestV950DepthThreeArrowMethodsMemory` exports 64 fixed-arrow caller cases through
+256 locals for `matrix.py`, checking closure depth against each zero-local baseline.
+Keep it in its own fresh unit, separate from inherited scale tests; normal inlining
+and the 128 MiB / 5 second warm ceilings remain unchanged. The scale matrix shares
+three condition bits and proves fixed-helper caller growth, not arbitrary trees.

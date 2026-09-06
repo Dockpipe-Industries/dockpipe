@@ -235,7 +235,7 @@ or public semantic identities. The backend checks the complete emitted package n
 returning Go source.
 
 Core program admission accepts only `pipelang.compiler.v1` and the exact supported language
-identities `v0.1.0` through `v0.93.0`. `coreir.ValidateProgram` checks feature availability in
+identities `v0.1.0` through `v0.95.0`. `coreir.ValidateProgram` checks feature availability in
 signatures and nested expressions, together with the existing composition and topology contracts.
 `coreeval.EvaluateProgram` and the Go backend use that same admission before executing or emitting
 anything, including when a disallowed feature occurs in an uncalled function or unused parameter.
@@ -3212,3 +3212,38 @@ All v0.93 and earlier forms are inherited. Straight-line returns retain depth th
 initializers and expression-bodied methods retain depth two. Depth-four choices or statement
 trees, new ternaries in conditions/arguments, new matching/propagation combinations, inference,
 mutation, loops, effects and backends are excluded. No runtime or deployment behavior is added.
+
+### PipeLang v0.95.0: depth-three expression-bodied methods
+
+`v0.95.0` additionally admits complete ternary bodies through depth three in public
+pure expression-bodied methods. Either or both arms may nest, with at most three
+decisions on each selected path. The equivalent block return has the same behavior.
+
+```pipe
+public Class Choices {
+    public string Select(string raw, bool a, bool b, bool c) =>
+        a ? (b ? (c ? trim(raw) : raw) : "fallback") : raw;
+}
+```
+
+Conditions remain `bool`; every arm exactly matches the declared return type.
+Only reached conditions and selected arms execute. Complete supported primitive,
+record, list, Optional and Result values are transported without implicit propagation.
+The source parser retains older versions' arrow restrictions. Core erases arrow/block
+spelling, so the existing v0.93/v0.94 depth-three block Core remains valid.
+
+All v0.94 and earlier forms are inherited. Initializers retain depth two; statement
+trees and straight-line/terminal-leaf returns retain depth three. Statement and return
+depths remain independent. Lexical scope, eager once-only source order of reached
+locals (including unused bindings), and lazy selected execution retain their contracts.
+Depth-four choices or statement trees, new ternaries in conditions/arguments, new
+matching/propagation placements, inference, mutation, loops, effects and backends
+remain excluded.
+
+Source and Core independently enforce depth, placement, exact types, scope and
+hidden-local refusal. Typed HIR/Core node shapes, evaluator and Go backend production
+code, and public `pipelang.compiler.v1`, `pipelang.semantic.v1` and
+`dockpipe.application.v1` identities remain unchanged. Evaluation and Go generation
+consume validated target-neutral Core. Executable Application IR and the frozen
+45-source compatibility lane retain their contracts. No runtime/deployment behavior
+is introduced.

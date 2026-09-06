@@ -555,7 +555,7 @@ func testConditionalLocalsTypeMatrix(t *testing.T, contract LanguageContract, ze
 				source = strings.Replace(source, "else{return shared;}", "else{return pick ? shared : right;}", 1)
 			}
 
-			if contract == PipeLangLanguageContractV940 || contract == PipeLangLanguageContractV930 || contract == PipeLangLanguageContractV920 || contract == PipeLangLanguageContractV880 || contract == PipeLangLanguageContractV890 || (contract == PipeLangLanguageContractV900 || contract == PipeLangLanguageContractV910) {
+			if contract == PipeLangLanguageContractV950 || contract == PipeLangLanguageContractV940 || contract == PipeLangLanguageContractV930 || contract == PipeLangLanguageContractV920 || contract == PipeLangLanguageContractV880 || contract == PipeLangLanguageContractV890 || (contract == PipeLangLanguageContractV900 || contract == PipeLangLanguageContractV910) {
 				locals := fmt.Sprintf("%s shared=pick ? left : right;", typ)
 				returned := "outer ? (inner ? shared : right) : (pick ? shared : right)"
 				if contract == PipeLangLanguageContractV920 || (len(zeroOption) > 0 && zeroOption[0]) {
@@ -578,11 +578,14 @@ func testConditionalLocalsTypeMatrix(t *testing.T, contract LanguageContract, ze
 			if contract == PipeLangLanguageContractV910 {
 				source = v910WrapSelect(source)
 			}
-			if contract == PipeLangLanguageContractV930 || contract == PipeLangLanguageContractV940 {
+			if contract == PipeLangLanguageContractV950 || contract == PipeLangLanguageContractV930 || contract == PipeLangLanguageContractV940 {
 				source = v930DeepenTypedReturn(t, source)
 				if contract == PipeLangLanguageContractV940 {
 					source = v940WrapBody(t, source, terminalTrees(1)[1], v890TypeCondition(source))
 				}
+			}
+			if contract == PipeLangLanguageContractV950 {
+				source = v920ArrowSelect(t, source)
 			}
 			if contract == PipeLangLanguageContractV920 {
 				source = v920ArrowSelect(t, source, zeroOption[1:]...)
@@ -778,7 +781,7 @@ func testConditionalLocalsCarrierAndHostValues(t *testing.T, contract LanguageCo
 				source = strings.Replace(source, "return a;", "return first ? value : fallback;", 1)
 			}
 
-			if contract == PipeLangLanguageContractV940 || contract == PipeLangLanguageContractV930 || contract == PipeLangLanguageContractV920 || contract == PipeLangLanguageContractV880 || contract == PipeLangLanguageContractV890 || (contract == PipeLangLanguageContractV900 || contract == PipeLangLanguageContractV910) {
+			if contract == PipeLangLanguageContractV950 || contract == PipeLangLanguageContractV940 || contract == PipeLangLanguageContractV930 || contract == PipeLangLanguageContractV920 || contract == PipeLangLanguageContractV880 || contract == PipeLangLanguageContractV890 || (contract == PipeLangLanguageContractV900 || contract == PipeLangLanguageContractV910) {
 				locals := fmt.Sprintf("%s a=first ? value : fallback;", typ)
 				returned := "enabled ? (second ? a : fallback) : (first ? a : fallback)"
 				if contract == PipeLangLanguageContractV920 || (len(zeroOption) > 0 && zeroOption[0]) {
@@ -798,11 +801,14 @@ func testConditionalLocalsCarrierAndHostValues(t *testing.T, contract LanguageCo
 				returned := source[pos+1 : end+1]
 				source = source[:pos] + " if(" + v890TypeCondition(source) + "){" + returned + "}else{" + returned + "}" + source[end+1:]
 			}
-			if contract == PipeLangLanguageContractV930 || contract == PipeLangLanguageContractV940 {
+			if contract == PipeLangLanguageContractV950 || contract == PipeLangLanguageContractV930 || contract == PipeLangLanguageContractV940 {
 				source = v930DeepenTypedReturn(t, source)
 				if contract == PipeLangLanguageContractV940 {
 					source = v940WrapBody(t, source, terminalTrees(1)[1], v890TypeCondition(source))
 				}
+			}
+			if contract == PipeLangLanguageContractV950 {
+				source = v920ArrowSelect(t, source)
 			}
 			if contract == PipeLangLanguageContractV920 {
 				source = v920ArrowSelect(t, source, zeroOption[1:]...)

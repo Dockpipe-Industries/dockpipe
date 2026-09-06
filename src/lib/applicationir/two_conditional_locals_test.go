@@ -67,6 +67,10 @@ func TestV940DepthThreeTerminalLeafReturnsApplicationConsumer(t *testing.T) {
 	testConditionalLocalsApplicationConsumer(t, true, true, true, false, true, false, true, false, false, true, true)
 }
 
+func TestV950DepthThreeArrowMethodsApplicationConsumer(t *testing.T) {
+	testConditionalLocalsApplicationConsumer(t, false, true, false, false, false, false, false, false, true, false, false, true)
+}
+
 func testConditionalLocalsApplicationConsumer(t *testing.T, finite bool, straightOption ...bool) {
 	straight := len(straightOption) > 0 && straightOption[0]
 	returnChoice := len(straightOption) > 1 && straightOption[1]
@@ -111,6 +115,10 @@ func testConditionalLocalsApplicationConsumer(t *testing.T, finite bool, straigh
 	depthThreeLeaves := len(straightOption) > 9 && straightOption[9]
 	if depthThreeLeaves {
 		contract, prior, boundary = pipelang.PipeLangLanguageContractV940, pipelang.PipeLangLanguageContractV930, "nested ternaries"
+	}
+	depthThreeArrow := len(straightOption) > 10 && straightOption[10]
+	if depthThreeArrow {
+		contract, prior, boundary = pipelang.PipeLangLanguageContractV950, pipelang.PipeLangLanguageContractV940, "block-bodied method"
 	}
 	layouts := []bool{false, true}
 	if straight {
@@ -186,6 +194,9 @@ func testConditionalLocalsApplicationConsumer(t *testing.T, finite bool, straigh
 				body := helper[open+1:]
 				helper = helper[:open+1] + "if(enabled){" + body + "}else{" + body + "}"
 			}
+			if depthThreeArrow {
+				helper = `public string ChooseKey(string raw,bool clean,bool suffix,bool enabled)=>enabled ? (clean ? (suffix ? trim(raw) : trim(raw)) : raw) : (suffix ? raw+"!" : raw);`
+			}
 			closing := "}"
 			if arrow {
 				closing = ""
@@ -252,6 +263,9 @@ func testConditionalLocalsApplicationConsumer(t *testing.T, finite bool, straigh
 				choicePresent = choose.Body.Conditional != nil && !choose.Body.Conditional.TerminalStatement && choose.Body.Conditional.WhenTrue.Conditional != nil && choose.Body.Conditional.WhenFalse.Conditional != nil
 			}
 
+			if depthThreeArrow && choicePresent {
+				choicePresent = choose.Body.Conditional.WhenTrue.Conditional.WhenTrue != nil && choose.Body.Conditional.WhenTrue.Conditional.WhenTrue.Conditional != nil
+			}
 			if depthThreeLeaves && choicePresent {
 				for _, branch := range []*coreir.Expr{choose.Body.Conditional.WhenTrue, choose.Body.Conditional.WhenFalse} {
 					tail := branch

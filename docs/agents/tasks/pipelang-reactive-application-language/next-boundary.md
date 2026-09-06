@@ -1,3 +1,11 @@
+## Completed current objective — depth-three expression-bodied methods
+
+Founder selected A and separately approved v0.95.0 implementation on 2026-09-06.
+[depth-three-arrow-methods.md](depth-three-arrow-methods.md) owns scope, exclusions
+and validation. State: `completed`. Completed v0.94 is committed at `ecb035e6`;
+its historical uncommitted wording is superseded. Commit, push, publication and
+successor selection remain separate.
+
 ## Completed current objective — depth-three terminal-leaf returns
 
 Founder approved option A in this task.
