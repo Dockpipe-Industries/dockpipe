@@ -55,7 +55,7 @@ func TestCoreAdmissionIdentities(t *testing.T) {
 	for _, name := range []string{"tiny-pure-function", "text-trim"} {
 		for _, empty := range []bool{false, true} {
 			for _, identity := range []string{"compiler", "language"} {
-				for _, invalid := range []string{"", "unknown", "v0.88.0", "v0.01.0", "v0.1.1", "v0.0.0.1"} {
+				for _, invalid := range []string{"", "unknown", "v0.99.0", "v0.01.0", "v0.1.1", "v0.0.0.1"} {
 					t.Run(fmt.Sprintf("%s/empty=%v/%s/%s", name, empty, identity, invalid), func(t *testing.T) {
 						program := admissionFixture(t, name)
 						if empty {

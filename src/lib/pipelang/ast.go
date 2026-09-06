@@ -898,7 +898,7 @@ func validExpandedDepthThreeTerminalIf(expr Expr, expandedLeaves int) bool {
 }
 
 func validTerminalIfStatement(contract LanguageContract, expr Expr) bool {
-	if contract == PipeLangLanguageContractV870 {
+	if contract == PipeLangLanguageContractV880 || contract == PipeLangLanguageContractV870 {
 		return validTerminalLeafConditionalReturns(expr) || validTerminalIfStatement(PipeLangLanguageContractV860, expr)
 	}
 	if contract == PipeLangLanguageContractV860 || contract == PipeLangLanguageContractV850 || contract == PipeLangLanguageContractV840 {
@@ -1255,6 +1255,42 @@ func validConditionalReturnComposition(expr Expr) bool {
 func validReturnCompositionChoice(choice *ConditionalExpr) bool {
 	return choice != nil && !choice.TerminalStatement && choice.Condition != nil && choice.WhenTrue != nil && choice.WhenFalse != nil &&
 		validConditionalOperand(choice.Condition) && validConditionalOperand(choice.WhenTrue) && validConditionalOperand(choice.WhenFalse)
+}
+
+// v0.88 adds a depth-two value choice only at the tail of a straight-line body.
+// Initializers and conditions retain the inherited nonnested operand contracts.
+func validNestedStraightLineReturns(expr Expr) bool {
+	for {
+		local, ok := expr.(*ImmutableLocalExpr)
+		if !ok {
+			break
+		}
+		if local.Initializer == nil || local.Return == nil || countImmutableLocalExpressions(local.Initializer) != 0 {
+			return false
+		}
+		if choice, ok := local.Initializer.(*ConditionalExpr); ok {
+			if !validReturnCompositionChoice(choice) {
+				return false
+			}
+		} else if !validConditionalOperand(local.Initializer) {
+			return false
+		}
+		expr = local.Return
+	}
+	if _, ok := expr.(*ConditionalExpr); !ok || countImmutableLocalExpressions(expr) != 0 {
+		return false
+	}
+	var walk func(Expr, int) bool
+	walk = func(current Expr, remaining int) bool {
+		choice, ok := current.(*ConditionalExpr)
+		if !ok {
+			return current != nil && validConditionalOperand(current)
+		}
+		return choice != nil && remaining > 0 && !choice.TerminalStatement &&
+			choice.Condition != nil && validConditionalOperand(choice.Condition) &&
+			walk(choice.WhenTrue, remaining-1) && walk(choice.WhenFalse, remaining-1)
+	}
+	return walk(expr, 2)
 }
 
 // v0.87 counts statement depth independently of value choices at return leaves.

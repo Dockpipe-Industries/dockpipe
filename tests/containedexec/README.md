@@ -41,6 +41,9 @@ are exercised separately in each case. Versioned family identity keeps these mea
 v0.87 adds twelve root/branch families with zero/one/two/three/all conditional initializers
 and unused final choices before terminal-leaf ternary returns. Independent return conditions
 exercise both arms in reached branches through 256 locals.
+v0.88 adds six straight-line families with depth-two return choices in both arms, crossing
+zero/one/two/three/all conditional initializers and unused final choices through 256 locals.
+All return paths execute separately.
 It asserts closure depth,
 evaluator/executable-Go parity, 128 MiB RSS and 5 seconds per warm direct compiler
 invocation. Export fixture modules with the command below, then run `matrix.py`
@@ -106,3 +109,6 @@ Also split `TestV820ConditionalLocalAllShapesScopesAndPaths=25` in full runs so 
 exhaustive generated modules cannot share a deadline with the expanded memory matrix.
 If a previously grouped batch times out, retain its receipt and rerun only its tests in
 smaller fresh groups; keep the memory limits and service/child deadlines unchanged.
+
+The v0.88 layout test enumerates four numbered ternary shapes. Use
+`--split-test TestV880NestedStraightLineReturnsLayouts=4` for fresh per-shape accounting.

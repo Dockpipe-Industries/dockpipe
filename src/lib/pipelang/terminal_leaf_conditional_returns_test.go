@@ -261,7 +261,7 @@ func TestV870TerminalLeafConditionalReturnsMalformedCore(t *testing.T) {
 }
 
 func TestV870TerminalLeafConditionalReturnsVersionBoundary(t *testing.T) {
-	for _, contract := range []LanguageContract{PipeLangLanguageContractV810, PipeLangLanguageContractV820, PipeLangLanguageContractV830, PipeLangLanguageContractV840, PipeLangLanguageContractV850, PipeLangLanguageContractV860, "v0.88.0", "unknown"} {
+	for _, contract := range []LanguageContract{PipeLangLanguageContractV810, PipeLangLanguageContractV820, PipeLangLanguageContractV830, PipeLangLanguageContractV840, PipeLangLanguageContractV850, PipeLangLanguageContractV860, "v0.99.0", "unknown"} {
 		input := semanticTestModuleSet("compiler.selfhosting", []ModuleInput{testModule("compiler.selfhosting", "leaf.pipe", terminalLeafConditionalReturnsSource)}, nil)
 		input.LanguageContract = contract
 		if AnalyzeSemanticModuleSet(input).Error() == nil {
@@ -279,7 +279,7 @@ func TestV870TerminalLeafConditionalReturnsVersionBoundary(t *testing.T) {
 func TestV870TerminalLeafConditionalReturnsInheritance(t *testing.T) {
 	for _, source := range []string{conditionalReturnCompositionSource, straightLineConditionalLocalsSource, finiteConditionalLocalsSource, twoConditionalLocalsSource} {
 		var baseline []byte
-		for _, contract := range []LanguageContract{PipeLangLanguageContractV860, PipeLangLanguageContractV870} {
+		for _, contract := range []LanguageContract{PipeLangLanguageContractV860, PipeLangLanguageContractV870, PipeLangLanguageContractV880} {
 			analysis, program := conditionalLocalTreeProgramVersion(t, contract, source, []string{"Select"})
 			typed, err := LowerSemanticMethodToHIR(analysis, semanticMethodNamed(t, analysis, "Select").Identity)
 			if err != nil {

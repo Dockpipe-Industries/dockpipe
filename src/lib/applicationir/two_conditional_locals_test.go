@@ -39,6 +39,10 @@ func TestV870TerminalLeafConditionalReturnsApplicationConsumer(t *testing.T) {
 	testConditionalLocalsApplicationConsumer(t, true, true, true, true)
 }
 
+func TestV880NestedStraightLineReturnsApplicationConsumer(t *testing.T) {
+	testConditionalLocalsApplicationConsumer(t, true, true, true, false, true)
+}
+
 func testConditionalLocalsApplicationConsumer(t *testing.T, finite bool, straightOption ...bool) {
 	straight := len(straightOption) > 0 && straightOption[0]
 	returnChoice := len(straightOption) > 1 && straightOption[1]
@@ -55,6 +59,10 @@ func testConditionalLocalsApplicationConsumer(t *testing.T, finite bool, straigh
 	leafReturns := len(straightOption) > 2 && straightOption[2]
 	if leafReturns {
 		contract, prior, boundary = pipelang.PipeLangLanguageContractV870, pipelang.PipeLangLanguageContractV860, "new return/condition/argument placements"
+	}
+	nestedReturns := len(straightOption) > 3 && straightOption[3]
+	if nestedReturns {
+		contract, prior, boundary = pipelang.PipeLangLanguageContractV880, pipelang.PipeLangLanguageContractV870, "nested ternaries"
 	}
 	layouts := []bool{false, true}
 	if straight {
@@ -94,6 +102,13 @@ func testConditionalLocalsApplicationConsumer(t *testing.T, finite bool, straigh
 			}
 			if leafReturns {
 				helper = strings.Replace(helper, "return enabled ? fourth : normalized;", "if(enabled){return fourth != \"\" ? fourth : normalized;}else{return clean ? normalized : raw;}", 1)
+			}
+			if nestedReturns {
+				before := helper
+				helper = strings.Replace(helper, "return enabled ? fourth : normalized;", `return enabled ? (suffix ? fourth : third) : (clean ? normalized : raw);`, 1)
+				if helper == before {
+					t.Fatal("nested consumer replacement missed")
+				}
 			}
 			helper += `}
    public DockerSnapshot Project(DockerSnapshot snapshot) {
@@ -184,7 +199,7 @@ func testConditionalLocalsApplicationConsumer(t *testing.T, finite bool, straigh
 					}
 					if finite && mask&4 != 0 && want != "" {
 						want += "?"
-						if mask&1 != 0 {
+						if mask&1 != 0 && (!nestedReturns || mask&2 != 0) {
 							want += "#"
 						}
 					}

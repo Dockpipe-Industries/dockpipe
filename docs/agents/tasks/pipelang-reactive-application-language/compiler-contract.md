@@ -1,3 +1,12 @@
+## Completed current objective — nested straight-line returns
+
+Founder selected A and separately approved v0.88.0 implementation in this task.
+[nested-straight-line-returns.md](nested-straight-line-returns.md) owns scope, exclusions,
+contained validation and current evidence. State: `completed`.
+The completed v0.87.0 slice is committed at `ff9fa296`; earlier uncommitted wording and
+baseline references below are historical. Commit, push, publication and successor selection
+remain separate.
+
 ## Completed current objective — conditional returns in terminal-tree leaves
 
 Founder selected A and separately approved v0.87.0 implementation in this task.
@@ -280,3 +289,12 @@ The existing terminal-statement marker distinguishes statement depth from leaf v
 HIR/Core nodes, evaluator and Go backend production code remain unchanged. Public identities
 and frozen compatibility are preserved. The [objective record](terminal-leaf-conditional-returns.md)
 owns completed source, consumer, adversarial and contained resource proof.
+
+## Accepted v0.88.0 nested-return boundary
+
+The [canonical language contract](../../../concepts/pipelang.md#pipelang-v0880-nested-straight-line-returns)
+owns block-bodied straight-line returns through two ternary levels, zero-or-more local scopes,
+exact types, complete carrier transport, eager initializers and lazy selected conditions/arms.
+Source and Core independently enforce semantic placement; the parser enforces source spelling.
+HIR/Core node shapes and public compiler/semantic/Application IR identities stay unchanged.
+[nested-straight-line-returns.md](nested-straight-line-returns.md) owns contained proof.

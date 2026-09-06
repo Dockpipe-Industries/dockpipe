@@ -274,7 +274,7 @@ func ValidateProgram(program Program) error {
 		return err
 	}
 	inheritedContract := program.LanguageContract
-	if (inheritedContract == LanguageContractV870 || inheritedContract == LanguageContractV860) || inheritedContract == LanguageContractV850 || inheritedContract == LanguageContractV840 || inheritedContract == LanguageContractV830 || inheritedContract == LanguageContractV820 || inheritedContract == LanguageContractV810 || inheritedContract == LanguageContractV800 || inheritedContract == LanguageContractV790 || inheritedContract == LanguageContractV780 || inheritedContract == LanguageContractV770 || inheritedContract == LanguageContractV760 || inheritedContract == LanguageContractV750 || inheritedContract == LanguageContractV740 {
+	if ((inheritedContract == LanguageContractV880 || inheritedContract == LanguageContractV870) || inheritedContract == LanguageContractV860) || inheritedContract == LanguageContractV850 || inheritedContract == LanguageContractV840 || inheritedContract == LanguageContractV830 || inheritedContract == LanguageContractV820 || inheritedContract == LanguageContractV810 || inheritedContract == LanguageContractV800 || inheritedContract == LanguageContractV790 || inheritedContract == LanguageContractV780 || inheritedContract == LanguageContractV770 || inheritedContract == LanguageContractV760 || inheritedContract == LanguageContractV750 || inheritedContract == LanguageContractV740 {
 		inheritedContract = LanguageContractV730
 	}
 	functions := make(map[string]Function, len(program.Functions))
@@ -669,7 +669,10 @@ func validExpandedDepthThreeTerminalIf(expression Expr, expandedLeaves int) bool
 }
 
 func validateImmutableLocalContract(contract string, function Function) error {
-	if contract == LanguageContractV870 {
+	if contract == LanguageContractV880 && validNestedStraightLineReturns(function.Body) {
+		return nil
+	}
+	if contract == LanguageContractV880 || contract == LanguageContractV870 {
 		if validTerminalLeafConditionalReturns(function.Body) {
 			return nil
 		}
@@ -1357,7 +1360,10 @@ func exprContainsPropagation(expression Expr) bool {
 }
 
 func validateConditionalContract(contract string, function Function) error {
-	if contract == LanguageContractV870 {
+	if contract == LanguageContractV880 && validNestedStraightLineReturns(function.Body) {
+		return nil
+	}
+	if contract == LanguageContractV880 || contract == LanguageContractV870 {
 		if validTerminalLeafConditionalReturns(function.Body) {
 			return nil
 		}
@@ -4428,6 +4434,46 @@ func validConditionalReturnComposition(expr Expr) bool {
 func validReturnCompositionChoice(choice *Conditional) bool {
 	return choice != nil && !choice.TerminalStatement && choice.Condition != nil && choice.WhenTrue != nil && choice.WhenFalse != nil &&
 		validConditionalOperand(*choice.Condition) && validConditionalOperand(*choice.WhenTrue) && validConditionalOperand(*choice.WhenFalse)
+}
+
+// Public v0.88 placement is checked independently of source admission. Core
+// normalizes block/arrow spelling; structural validation owns types and bindings.
+func validNestedStraightLineReturns(expr Expr) bool {
+	for expr.Kind == ExprImmutableLocal {
+		local := expr.ImmutableLocal
+		if local == nil || local.Initializer == nil || local.Return == nil {
+			return false
+		}
+		init := *local.Initializer
+		if countImmutableLocalExpressions(init) != 0 {
+			return false
+		}
+		if init.Kind == ExprConditional {
+			if !validReturnCompositionChoice(init.Conditional) {
+				return false
+			}
+		} else if !validConditionalOperand(init) {
+			return false
+		}
+		expr = *local.Return
+	}
+	if expr.Kind != ExprConditional || countImmutableLocalExpressions(expr) != 0 {
+		return false
+	}
+	var walk func(*Expr, int) bool
+	walk = func(current *Expr, remaining int) bool {
+		if current == nil {
+			return false
+		}
+		if current.Kind != ExprConditional {
+			return validConditionalOperand(*current)
+		}
+		choice := current.Conditional
+		return remaining > 0 && choice != nil && !choice.TerminalStatement &&
+			choice.Condition != nil && validConditionalOperand(*choice.Condition) &&
+			walk(choice.WhenTrue, remaining-1) && walk(choice.WhenFalse, remaining-1)
+	}
+	return walk(&expr, 2)
 }
 
 // Independent Core placement admission; structural validation owns exact types,

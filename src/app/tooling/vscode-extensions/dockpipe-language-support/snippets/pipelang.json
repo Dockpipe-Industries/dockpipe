@@ -992,5 +992,17 @@
       "}"
     ],
     "description": "Create a v0.87.0 terminal if/else tree with typed conditional locals and lazy complete ternary returns in its leaves."
+  },
+  "PipeLang nested straight-line returns": {
+    "prefix": "pipe-nested-return",
+    "body": [
+      "public Class ${1:Classifier} {",
+      "    public string ${2:Select}(string raw, bool clean, bool enabled, bool fallback) {",
+      "        string normalized = clean ? trim(raw) : raw;",
+      "        return enabled ? (clean ? normalized : raw) : (fallback ? \"fallback\" : \"\");",
+      "    }",
+      "}"
+    ],
+    "description": "Create a v0.88.0 block-bodied method with lazy nested ternary returns through depth two and nonnested typed local initializers."
   }
 }

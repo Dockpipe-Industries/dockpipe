@@ -180,7 +180,7 @@ func TestV840FiniteConditionalLocalsDifferentTypes(t *testing.T) {
 }
 
 func TestV840FiniteConditionalLocalsVersionBoundary(t *testing.T) {
-	for _, contract := range []LanguageContract{PipeLangLanguageContractV810, PipeLangLanguageContractV820, PipeLangLanguageContractV830, "v0.88.0", "unknown"} {
+	for _, contract := range []LanguageContract{PipeLangLanguageContractV810, PipeLangLanguageContractV820, PipeLangLanguageContractV830, "v0.99.0", "unknown"} {
 		input := semanticTestModuleSet("compiler.selfhosting", []ModuleInput{testModule("compiler.selfhosting", "finite.pipe", finiteConditionalLocalsSource)}, nil)
 		input.LanguageContract = contract
 		if AnalyzeSemanticModuleSet(input).Error() == nil {
@@ -334,7 +334,7 @@ func TestV840FiniteConditionalLocalsBoundedScale(t *testing.T) {
 func TestV840FiniteConditionalLocalsTwoChoiceInheritance(t *testing.T) {
 	for _, source := range []string{twoConditionalLocalsSource, twoConditionalRulesSource} {
 		var baseline [][]byte
-		for _, contract := range []LanguageContract{PipeLangLanguageContractV830, PipeLangLanguageContractV840, PipeLangLanguageContractV850, PipeLangLanguageContractV860, PipeLangLanguageContractV870} {
+		for _, contract := range []LanguageContract{PipeLangLanguageContractV830, PipeLangLanguageContractV840, PipeLangLanguageContractV850, PipeLangLanguageContractV860, PipeLangLanguageContractV870, PipeLangLanguageContractV880} {
 			analysis, program := conditionalLocalTreeProgramVersion(t, contract, source, []string{"Select"})
 			projection, err := BuildSemanticProjection(analysis)
 			if err != nil {

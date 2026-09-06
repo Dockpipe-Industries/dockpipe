@@ -1,3 +1,12 @@
+## Completed current objective — nested straight-line returns
+
+Founder selected A and separately approved v0.88.0 implementation in this task.
+[nested-straight-line-returns.md](nested-straight-line-returns.md) owns scope, exclusions,
+contained validation and current evidence. State: `completed`.
+The completed v0.87.0 slice is committed at `ff9fa296`; earlier uncommitted wording and
+baseline references below are historical. Commit, push, publication and successor selection
+remain separate.
+
 ## Completed current objective — conditional returns in terminal-tree leaves
 
 Founder selected A and separately approved v0.87.0 implementation in this task.
@@ -1542,3 +1551,12 @@ locals, lazy branches/arms, supported types/carriers, independent source/Core re
 contracts, executable Application IR and bounded scaling through 256 locals pass. The
 [canonical contract](../../../concepts/pipelang.md#pipelang-v0870-conditional-returns-in-terminal-tree-leaves)
 owns semantics and exclusions. No successor is selected or authorized.
+
+## Checkpoint v0.88.0 bounded implementation
+
+Implement only the [approved nested straight-line return scope](nested-straight-line-returns.md).
+Prove all four ternary shapes with zero/one/two/three/multiple ordered locals, conditional-local
+subsets, unused locals and independent selected-arm/condition traces. Cover all supported types
+and carriers both with and without locals, malformed source/Core, version refusal, inherited
+artifacts and executable Application IR. Retain contained compiler scaling through 256 locals
+and terminal affected compiler/consumer/compatibility, CLI, vet, editor and documentation checks.
