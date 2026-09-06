@@ -235,7 +235,7 @@ or public semantic identities. The backend checks the complete emitted package n
 returning Go source.
 
 Core program admission accepts only `pipelang.compiler.v1` and the exact supported language
-identities `v0.1.0` through `v0.84.0`. `coreir.ValidateProgram` checks feature availability in
+identities `v0.1.0` through `v0.85.0`. `coreir.ValidateProgram` checks feature availability in
 signatures and nested expressions, together with the existing composition and topology contracts.
 `coreeval.EvaluateProgram` and the Go backend use that same admission before executing or emitting
 anything, including when a disallowed feature occurs in an uncalled function or unused parameter.
@@ -2804,3 +2804,39 @@ Nested ternaries, new return/terminal-condition/argument placements, depth four,
 matching/propagation combinations, fallthrough, early returns, assignment, loops, effects,
 and inferred locals remain excluded. No runtime, target, UI, deployment, or self-hosted
 compiler implementation enters this slice.
+
+### PipeLang v0.85.0: straight-line conditional-local sequences
+
+`v0.85.0` additionally permits any finite sequence of explicitly typed immutable locals,
+including multiple complete ternary initializers, followed by an ordinary terminal return.
+No terminal `if/else` is required. Existing single-choice expression placements and all
+previously admitted terminal trees retain their exact contracts.
+
+```pipe
+public Class Classifier {
+    public string Select(string raw, bool clean, bool suffix, bool enabled) {
+        string normalized = clean ? trim(raw) : raw;
+        string selected = suffix && normalized != "" ? normalized + "!" : normalized;
+        string final = enabled && selected != "" ? selected + "?" : selected;
+        return final;
+    }
+}
+```
+
+Each condition is `bool`; both arms exactly match the local's declared supported type.
+Ordinary locals may precede, separate, and follow the choices. Later conditions and arms may
+use earlier locals, whose scope begins after initialization. Self/forward references,
+duplicates, and parameter shadowing remain invalid. All initializers execute eagerly once
+in source order, including unused bindings; only the selected ternary arm executes.
+Existing primitive, primitive-record/list, Optional, and Result values retain complete
+carrier transport, including absence and failure, without implicit unwrapping or propagation.
+
+Typed HIR and target-neutral Core reuse `immutable_local` and `conditional`; Core independently
+validates placement, types, canonical binding positions and scope. The evaluator and Core-only
+Go backend retain their existing behavior, including flat sequential-local emission. Compiler,
+semantic and Application IR schema identities remain unchanged; language metadata is `v0.85.0`.
+Earlier versions retain their placement/count limits and the frozen 45-source lane is unchanged.
+
+Nested ternaries, new return/condition/argument placements, matching or propagation combinations,
+fallthrough, early returns, mutation, loops, effects, inference, deeper terminal trees and new
+backends remain excluded. This admits finite source sequences, not unlimited host resources.

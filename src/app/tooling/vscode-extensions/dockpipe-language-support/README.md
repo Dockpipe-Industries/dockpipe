@@ -1,5 +1,11 @@
 # DockPipe Language Support (VS Code)
 
+PipeLang `v0.85.0` adds `pipe-straight-conditional-locals`: finite complete ternary
+initializers in typed immutable-local sequences followed by an ordinary return.
+Later choices may depend on earlier locals; initializers run once in order, including
+unused bindings, and arms remain lazy. Nested ternaries and new return/condition/argument
+placements or match/propagation combinations remain excluded. Earlier versions retain their limits.
+
 PipeLang `v0.84.0` adds `pipe-finite-conditional-locals`: any finite number of lazy ternaries,
 each the complete initializer of a typed immutable local in a terminal tree through depth three.
 Later choices can depend on earlier in-scope bindings. Exact types, complete carriers, and

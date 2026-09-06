@@ -1,3 +1,12 @@
+## Completed current objective — straight-line conditional locals
+
+The founder selected A and separately approved implementation of v0.85.0 in this task.
+[straight-line-conditional-locals.md](straight-line-conditional-locals.md) owns the exact scope,
+exclusions, containment requirements and verification status. State: `completed`.
+Baseline is clean `js/pipelang` at `a69a288b`, containing the completed compiler memory repair;
+earlier uncommitted/baseline wording below is historical. No successor, commit, push or
+publication is authorized by this approval.
+
 ## Completed current objective — finite conditional-local sequences
 
 The founder selected A and separately approved implementation of v0.84.0.
