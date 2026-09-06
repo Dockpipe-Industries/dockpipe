@@ -235,7 +235,7 @@ or public semantic identities. The backend checks the complete emitted package n
 returning Go source.
 
 Core program admission accepts only `pipelang.compiler.v1` and the exact supported language
-identities `v0.1.0` through `v0.92.0`. `coreir.ValidateProgram` checks feature availability in
+identities `v0.1.0` through `v0.93.0`. `coreir.ValidateProgram` checks feature availability in
 signatures and nested expressions, together with the existing composition and topology contracts.
 `coreeval.EvaluateProgram` and the Go backend use that same admission before executing or emitting
 anything, including when a disallowed feature occurs in an uncalled function or unused parameter.
@@ -3137,3 +3137,39 @@ All v0.91 blocks and earlier forms are inherited. Depth-three choices, deeper st
 trees, ternaries inside conditions or call arguments, new matching/propagation placements,
 inference, mutation, loops, effects and backends are excluded. No runtime, action, target,
 adapter, UI or deployment behavior is introduced.
+
+
+### PipeLang v0.93.0: depth-three straight-line returns
+
+`v0.93.0` adds complete ternary returns through depth three in public pure block
+methods, after zero or more existing explicitly typed immutable locals. Either or
+both arms may nest, with at most three decisions on any path. All 25 nonempty binary
+choice shapes through this depth are admitted.
+
+```pipe
+public Class Choices {
+    public string Select(string raw, bool a, bool b, bool c) {
+        string normalized = a ? (b ? trim(raw) : raw) : raw;
+        return a ? (b ? (c ? normalized : raw) : "fallback") : raw;
+    }
+}
+```
+
+Conditions remain `bool`; every result arm exactly matches the declared return type.
+Reached locals execute once, eagerly in source order, including unused bindings.
+Each binding enters lexical scope after its initializer. Only reached conditions and
+selected arms execute. Supported primitive, record, list, Optional and Result values
+retain complete transport, including computed checked Results without implicit propagation.
+
+The additional depth applies only to the complete straight-line return. Initializers,
+expression-bodied methods and terminal-tree leaf returns retain their depth-two bounds.
+Statement trees retain their depth-three bound. Conditional expressions inside conditions
+or call arguments, hidden local expressions, new matching/propagation combinations,
+inference, mutation, loops, effects and new backends remain excluded.
+
+The parser enforces the block-only source spelling. Source and Core independently
+validate their depth and placement contracts; Core erases arrow/block spelling and
+continues to admit equivalent older block artifacts at their original versions.
+Existing HIR/Core nodes, `pipelang.compiler.v1`, `pipelang.semantic.v1`,
+`dockpipe.application.v1` and the frozen 45-source lane remain unchanged. All v0.92
+forms are inherited. No runtime, action, target, adapter, UI or deployment behavior is added.

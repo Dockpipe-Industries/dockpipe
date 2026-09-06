@@ -171,3 +171,15 @@ In full compiler runs, additionally use `--split-test TestV920NestedArrowMethods
 `--split-test TestV920NestedArrowMethodsCarriers=4` and
 `--split-test TestV920NestedArrowMethodsLayouts=4`. Each index identifies one of the four
 arrow shapes. Keep `TestV920NestedArrowMethodsMemory` in its own fresh unit.
+
+The v0.93 return layout matrix enumerates 25 numbered shapes. Use
+`--split-test TestV930DepthThreeReturnsLayouts=25` for fresh per-shape accounting.
+Each shape crosses 0/1/3 preceding locals, used/unused final bindings, ordinary and
+nested conditional initializers, seven independent return-condition bits and two
+initializer-condition bits shared across locals. This proves the supplied bounded
+layouts, not every independently assigned initializer vector at arbitrary length.
+
+`TestV930DepthThreeReturnsMemory` separately measures 64 fixed-helper caller cases
+through 256 locals. Export with `PIPELANG_MEMORY_FIXTURES`, then use `matrix.py`
+for fresh normal-inlining measurements under the unchanged 128 MiB / 5 second
+warm ceilings. The eleven-version inherited local-sequence matrix remains separate.

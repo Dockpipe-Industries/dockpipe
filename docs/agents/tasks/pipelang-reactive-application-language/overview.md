@@ -1,3 +1,11 @@
+## Completed current objective — depth-three straight-line returns
+
+Founder selected A and separately approved v0.93.0 implementation on 2026-09-06.
+[depth-three-straight-line-returns.md](depth-three-straight-line-returns.md) owns scope,
+exclusions and validation. State: `completed`. Completed v0.92 is committed at
+`ab59a59e`; its historical uncommitted wording is superseded. Commit, push,
+publication and successor selection remain separate.
+
 ## Completed current objective — nested expression-bodied methods
 
 Founder selected A and separately approved v0.92.0 implementation on 2026-09-06.

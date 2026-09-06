@@ -640,3 +640,9 @@ assert(nestedArrow.description.includes("v0.92.0"));
 assert(nestedArrow.body.join("\n").includes("=>"));
 assert(nestedArrow.body.join("\n").includes("outer ? (left ?"));
 assert(pipeLangReadme.includes("`v0.92.0`"));
+
+const depthThreeReturn = pipeLangSnippets["Depth-three straight-line return"];
+assert.strictEqual(depthThreeReturn.prefix, "pipe-depth-three-return");
+assert(depthThreeReturn.description.includes("v0.93.0"));
+assert(depthThreeReturn.body.join("\n").includes("return a ? (b ? (c ?"));
+assert(pipeLangReadme.includes("`v0.93.0`"));

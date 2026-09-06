@@ -898,13 +898,13 @@ func validExpandedDepthThreeTerminalIf(expr Expr, expandedLeaves int) bool {
 }
 
 func validTerminalIfStatement(contract LanguageContract, expr Expr) bool {
-	if (contract == PipeLangLanguageContractV910 || contract == PipeLangLanguageContractV920) && validNestedTerminalInitializers(expr) {
+	if (contract == PipeLangLanguageContractV910 || (contract == PipeLangLanguageContractV920 || contract == PipeLangLanguageContractV930)) && validNestedTerminalInitializers(expr) {
 		return true
 	}
-	if (contract == PipeLangLanguageContractV890 || (contract == PipeLangLanguageContractV900 || (contract == PipeLangLanguageContractV910 || contract == PipeLangLanguageContractV920))) && validNestedTerminalLeafReturns(expr) {
+	if (contract == PipeLangLanguageContractV890 || (contract == PipeLangLanguageContractV900 || (contract == PipeLangLanguageContractV910 || (contract == PipeLangLanguageContractV920 || contract == PipeLangLanguageContractV930)))) && validNestedTerminalLeafReturns(expr) {
 		return true
 	}
-	if ((contract == PipeLangLanguageContractV890 || (contract == PipeLangLanguageContractV900 || (contract == PipeLangLanguageContractV910 || contract == PipeLangLanguageContractV920))) || contract == PipeLangLanguageContractV880) || contract == PipeLangLanguageContractV870 {
+	if ((contract == PipeLangLanguageContractV890 || (contract == PipeLangLanguageContractV900 || (contract == PipeLangLanguageContractV910 || (contract == PipeLangLanguageContractV920 || contract == PipeLangLanguageContractV930)))) || contract == PipeLangLanguageContractV880) || contract == PipeLangLanguageContractV870 {
 		return validTerminalLeafConditionalReturns(expr) || validTerminalIfStatement(PipeLangLanguageContractV860, expr)
 	}
 	if contract == PipeLangLanguageContractV860 || contract == PipeLangLanguageContractV850 || contract == PipeLangLanguageContractV840 {
@@ -1377,4 +1377,33 @@ func validTerminalLeafReturnsDepth(expr Expr, returnDepth, initializerDepth int)
 			validConditionalOperand(choice.Condition) && (returnDepth == 1 || countImmutableLocalExpressions(choice.Condition) == 0) && walk(choice.WhenTrue, remaining-1) && walk(choice.WhenFalse, remaining-1)
 	}
 	return containsTerminalIfStatement(expr) && walk(expr, 3) && (hasReturnChoice || initializerDepth == 2)
+}
+
+// Only the complete return of a straight-line method gains a third choice level.
+// Local initializers retain the inherited depth-two, local-free operand contract.
+func validDepthThreeStraightLineReturns(expr Expr) bool {
+	for {
+		local, ok := expr.(*ImmutableLocalExpr)
+		if !ok {
+			break
+		}
+		if local.Initializer == nil || local.Return == nil || countImmutableLocalExpressions(local.Initializer) != 0 ||
+			(!validConditionalOperand(local.Initializer) && !validNestedStraightLineReturns(local.Initializer)) {
+			return false
+		}
+		expr = local.Return
+	}
+	if _, ok := expr.(*ConditionalExpr); !ok || countImmutableLocalExpressions(expr) != 0 {
+		return false
+	}
+	var walk func(Expr, int) bool
+	walk = func(current Expr, remaining int) bool {
+		choice, ok := current.(*ConditionalExpr)
+		if !ok {
+			return current != nil && validConditionalOperand(current)
+		}
+		return choice != nil && remaining > 0 && !choice.TerminalStatement && choice.Condition != nil &&
+			validConditionalOperand(choice.Condition) && walk(choice.WhenTrue, remaining-1) && walk(choice.WhenFalse, remaining-1)
+	}
+	return walk(expr, 3)
 }
