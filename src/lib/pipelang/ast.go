@@ -898,7 +898,7 @@ func validExpandedDepthThreeTerminalIf(expr Expr, expandedLeaves int) bool {
 }
 
 func validTerminalIfStatement(contract LanguageContract, expr Expr) bool {
-	if contract == PipeLangLanguageContractV840 {
+	if contract == PipeLangLanguageContractV850 || contract == PipeLangLanguageContractV840 {
 		return validConditionalLocalTree(expr, 0) || validTerminalIfStatement(PipeLangLanguageContractV830, expr)
 	}
 	if contract == PipeLangLanguageContractV830 {
@@ -1199,4 +1199,27 @@ func validConditionalLocalTree(expr Expr, maxChoices int) bool {
 			validConditionalOperand(branch.Condition) && walk(branch.WhenTrue, remaining-1) && walk(branch.WhenFalse, remaining-1)
 	}
 	return containsTerminalIfStatement(expr) && walk(expr, 3) && hasChoices
+}
+
+// This additional placement leaves inherited single-choice expressions unchanged.
+func validStraightLineConditionalLocals(expr Expr) bool {
+	hasChoice := false
+	for {
+		local, ok := expr.(*ImmutableLocalExpr)
+		if !ok {
+			return hasChoice && expr != nil && validConditionalOperand(expr)
+		}
+		if local.Initializer == nil || local.Return == nil {
+			return false
+		}
+		if choice, ok := local.Initializer.(*ConditionalExpr); ok {
+			if choice.TerminalStatement || choice.Condition == nil || choice.WhenTrue == nil || choice.WhenFalse == nil || !validConditionalOperand(choice.Condition) || !validConditionalOperand(choice.WhenTrue) || !validConditionalOperand(choice.WhenFalse) {
+				return false
+			}
+			hasChoice = true
+		} else if !validConditionalOperand(local.Initializer) {
+			return false
+		}
+		expr = local.Return
+	}
 }

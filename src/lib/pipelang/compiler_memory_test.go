@@ -28,6 +28,12 @@ func TestCompilerMemoryLocalSequences(t *testing.T) {
 		branch, unused, straight bool
 	}
 	families := []family{
+		{PipeLangLanguageContractV850, 0, false, false, true},
+		{PipeLangLanguageContractV850, 1, false, false, true},
+		{PipeLangLanguageContractV850, 2, false, false, true},
+		{PipeLangLanguageContractV850, 3, false, false, true},
+		{PipeLangLanguageContractV850, -1, false, false, true},
+		{PipeLangLanguageContractV850, -1, false, true, true},
 		{PipeLangLanguageContractV840, 0, false, false, false},
 		{PipeLangLanguageContractV840, 1, false, false, false},
 		{PipeLangLanguageContractV840, 2, false, false, false},
@@ -48,7 +54,7 @@ func TestCompilerMemoryLocalSequences(t *testing.T) {
 		t.Fatalf("contained export bootstrap: %v\n%s", err, imports)
 	}
 	for _, f := range families {
-		label := fmt.Sprintf("%s/choices%d/branch%t", f.version, f.choices, f.branch)
+		label := fmt.Sprintf("%s/choices%d/branch%t/straight%t/unused%t", f.version, f.choices, f.branch, f.straight, f.unused)
 		// A failed family stops here; never continue increasing its source size.
 		t.Run(label, func(t *testing.T) {
 			for _, count := range []int{8, 16, 24, 32, 64, 128, 256} {
@@ -163,7 +169,7 @@ func TestCompilerMemoryLocalSequences(t *testing.T) {
 						if err := os.MkdirAll(fixture, 0700); err != nil {
 							t.Fatal(err)
 						}
-						metadata, _ := json.MarshalIndent(map[string]any{"locals": count, "choices": f.choices, "version": f.version, "branch": f.branch, "unused": f.unused, "source_bytes": source.Len(), "go_bytes": len(generated), "closure_depth": maximum, "compiler_rss_kib": measurement.MaxRSSKiB, "compiler_elapsed_s": measurement.Elapsed.Seconds()}, "", "  ")
+						metadata, _ := json.MarshalIndent(map[string]any{"locals": count, "choices": f.choices, "version": f.version, "branch": f.branch, "unused": f.unused, "straight": f.straight, "source_bytes": source.Len(), "go_bytes": len(generated), "closure_depth": maximum, "compiler_rss_kib": measurement.MaxRSSKiB, "compiler_elapsed_s": measurement.Elapsed.Seconds()}, "", "  ")
 						for name, data := range map[string][]byte{"source.pipe": []byte(source.String()), "generated.go": generated, "generated_test.go": testSource, "go.mod": []byte("module memory-regression\n\ngo 1.25\n"), "measurement.json": metadata, "importcfg": imports} {
 							if err := os.WriteFile(filepath.Join(fixture, name), data, 0600); err != nil {
 								t.Fatal(err)

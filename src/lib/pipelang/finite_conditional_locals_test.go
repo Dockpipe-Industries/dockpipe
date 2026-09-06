@@ -32,11 +32,15 @@ func TestV840FiniteConditionalLocalsAdmission(t *testing.T) {
 }
 
 func TestV840FiniteConditionalLocalsAllShapes(t *testing.T) {
-	methodsTotal, outcomes := 0, 0
 	trees := terminalTrees(3)[1:]
 	if len(trees) != 25 {
 		t.Fatal("shape inventory drift")
 	}
+	testFiniteConditionalLocalsLayouts(t, PipeLangLanguageContractV840, trees)
+}
+
+func testFiniteConditionalLocalsLayouts(t *testing.T, contract LanguageContract, trees []*terminalTree) {
+	methodsTotal, outcomes := 0, 0
 	for shape, tree := range trees {
 		t.Run(fmt.Sprint(shape), func(t *testing.T) {
 			scopes := conditionalTreeScopes(tree, "R")
@@ -53,7 +57,11 @@ func TestV840FiniteConditionalLocalsAllShapes(t *testing.T) {
 			for _, scope := range scopes {
 				layouts = append(layouts, []string{scope, scope, scope})
 			}
-			layouts = append(layouts, []string{"R", "RT", "RF"}, []string{"R", "R", scopes[len(scopes)-1]}, []string{"R", "RT", "RT", "RF", "RF"})
+			if tree == nil {
+				layouts = append(layouts, []string{"R"}, []string{"R", "R"}, []string{"R", "R", "R", "R", "R"})
+			} else {
+				layouts = append(layouts, []string{"R", "RT", "RF"}, []string{"R", "R", scopes[len(scopes)-1]}, []string{"R", "RT", "RT", "RF", "RF"})
+			}
 			for _, targets := range layouts {
 				for _, unused := range []bool{false, true} {
 					name := fmt.Sprintf("Select%d", len(samples))
@@ -63,8 +71,8 @@ func TestV840FiniteConditionalLocalsAllShapes(t *testing.T) {
 				}
 			}
 			source.WriteString("}")
-			analysis, program := conditionalLocalTreeProgramVersion(t, PipeLangLanguageContractV840, source.String(), methods)
-			againAnalysis, again := conditionalLocalTreeProgramVersion(t, PipeLangLanguageContractV840, source.String(), methods)
+			analysis, program := conditionalLocalTreeProgramVersion(t, contract, source.String(), methods)
+			againAnalysis, again := conditionalLocalTreeProgramVersion(t, contract, source.String(), methods)
 			projection, err := BuildSemanticProjection(analysis)
 			if err != nil {
 				t.Fatal(err)
@@ -163,7 +171,7 @@ func TestV840FiniteConditionalLocalsDifferentTypes(t *testing.T) {
 }
 
 func TestV840FiniteConditionalLocalsVersionBoundary(t *testing.T) {
-	for _, contract := range []LanguageContract{PipeLangLanguageContractV810, PipeLangLanguageContractV820, PipeLangLanguageContractV830, "v0.85.0", "unknown"} {
+	for _, contract := range []LanguageContract{PipeLangLanguageContractV810, PipeLangLanguageContractV820, PipeLangLanguageContractV830, "v0.86.0", "unknown"} {
 		input := semanticTestModuleSet("compiler.selfhosting", []ModuleInput{testModule("compiler.selfhosting", "finite.pipe", finiteConditionalLocalsSource)}, nil)
 		input.LanguageContract = contract
 		if AnalyzeSemanticModuleSet(input).Error() == nil {
@@ -313,7 +321,7 @@ func TestV840FiniteConditionalLocalsBoundedScale(t *testing.T) {
 func TestV840FiniteConditionalLocalsTwoChoiceInheritance(t *testing.T) {
 	for _, source := range []string{twoConditionalLocalsSource, twoConditionalRulesSource} {
 		var baseline [][]byte
-		for _, contract := range []LanguageContract{PipeLangLanguageContractV830, PipeLangLanguageContractV840} {
+		for _, contract := range []LanguageContract{PipeLangLanguageContractV830, PipeLangLanguageContractV840, PipeLangLanguageContractV850} {
 			analysis, program := conditionalLocalTreeProgramVersion(t, contract, source, []string{"Select"})
 			projection, err := BuildSemanticProjection(analysis)
 			if err != nil {

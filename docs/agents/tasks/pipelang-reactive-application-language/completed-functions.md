@@ -1297,3 +1297,14 @@ normalized inherited artifacts, bounded scaling through 256 choices, and executa
 consumers. Terminal compiler/consumer/frozen-45-source compatibility, application integration, CLI,
 vet, formatting, editor, documentation and whitespace checks passed. Changes remain uncommitted;
 completion grants no successor, commit, publication, or live-operation authority.
+
+
+## Step 8ay: straight-line conditional-local sequences (v0.85.0)
+
+Founder selected A and separately approved implementation. The
+[objective record](straight-line-conditional-locals.md) owns exact scope and completed
+compiler, consumer, compatibility and contained scaling proof. The
+[canonical contract](../../../concepts/pipelang.md#pipelang-v0850-straight-line-conditional-local-sequences)
+owns semantics and exclusions. Existing HIR/Core nodes, evaluator/backend behavior, public
+identities and the frozen 45-source lane are preserved. Implementation remains uncommitted;
+completion does not authorize commit, push, publication or a successor.

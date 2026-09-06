@@ -1,3 +1,12 @@
+## Completed current objective — straight-line conditional locals
+
+The founder selected A and separately approved implementation of v0.85.0 in this task.
+[straight-line-conditional-locals.md](straight-line-conditional-locals.md) owns the exact scope,
+exclusions, containment requirements and verification status. State: `completed`.
+Baseline is clean `js/pipelang` at `a69a288b`, containing the completed compiler memory repair;
+earlier uncommitted/baseline wording below is historical. No successor, commit, push or
+publication is authorized by this approval.
+
 # TASK-021 PipeLang Deterministic Self-Hosting Managed Language Foundation
 
 ## Completed current objective — finite conditional-local sequences
@@ -35,8 +44,8 @@ The `vNext` foundation decision packet in this record is **accepted** as of 2026
 fixes semantics, compiler boundaries, bootstrap stages, compatibility, and implementation order;
 examples and fixtures remain non-normative and accept no production syntax. Separately authorized
 bounded objectives have completed implementation-order steps 1 through 6, step-7 slices 7a
-through 7ae, and bounded Step-8 function seams 8a through 8ax. Finite conditional-local sequences are implemented and verified.
-The current explicit language contract is `v0.84.0`; the separately versioned read-only projection is
+through 7ae, and bounded Step-8 function seams 8a through 8ay. Straight-line conditional-local sequences are implemented and verified.
+The current explicit language contract is `v0.85.0`; the separately versioned read-only projection is
 `dockpipe.application.v1`; the frozen `v0.0.0.1` lane remains unchanged. This record does not by itself
 authorize another language slice.
 

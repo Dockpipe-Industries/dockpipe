@@ -23,7 +23,7 @@ def main():
     fixtures = []
     for path in args.fixtures.glob('*/measurement.json'):
         meta = json.loads(path.read_text())
-        family = (meta['version'], meta['choices'], meta['branch'])
+        family = (meta['version'], meta['choices'], meta['branch'], meta.get('straight', False), meta.get('unused', False))
         fixtures.append((family, meta['locals'], path.parent, meta))
     failed = set()
     rows = []

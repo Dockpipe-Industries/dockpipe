@@ -950,5 +950,17 @@
       "}"
     ],
     "description": "Create a v0.84.0 terminal tree with a finite sequence of typed conditional locals and dependent choices."
+  },
+  "PipeLang straight-line conditional locals": {
+    "prefix": "pipe-straight-conditional-locals",
+    "body": [
+      "public string ${1:Select}(string raw, bool clean, bool suffix, bool enabled) {",
+      "\tstring normalized = clean ? trim(raw) : raw;",
+      "\tstring selected = suffix && normalized != \"\" ? normalized + \"!\" : normalized;",
+      "\tstring final = enabled && selected != \"\" ? selected + \"?\" : selected;",
+      "\treturn final;",
+      "}"
+    ],
+    "description": "Create a v0.85.0 straight-line method with finite typed conditional locals and an ordinary return."
   }
 }

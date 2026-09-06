@@ -585,3 +585,11 @@ assert.strictEqual(finiteConditionalLocals.prefix, "pipe-finite-conditional-loca
 assert(finiteConditionalLocals.description.includes("v0.84.0"));
 assert.strictEqual(finiteConditionalLocals.body.filter((line) => line.includes(" ? ")).length, 3);
 assert(finiteConditionalLocals.body.some((line) => line.includes('enabled && selected != "" ? selected + "?" : selected')));
+
+assert(pipeLangReadme.includes("`v0.85.0`"));
+const straightConditionalLocals = pipeLangSnippets["PipeLang straight-line conditional locals"];
+assert.strictEqual(straightConditionalLocals.prefix, "pipe-straight-conditional-locals");
+assert(straightConditionalLocals.description.includes("v0.85.0"));
+assert.strictEqual(straightConditionalLocals.body.filter((line) => line.includes(" ? ")).length, 3);
+assert(straightConditionalLocals.body.some((line) => line.trim() === "return final;"));
+assert(!straightConditionalLocals.body.some((line) => line.includes("if (")));

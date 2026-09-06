@@ -27,12 +27,24 @@ func TestV840FiniteConditionalLocalsApplicationConsumer(t *testing.T) {
 	testConditionalLocalsApplicationConsumer(t, true)
 }
 
-func testConditionalLocalsApplicationConsumer(t *testing.T, finite bool) {
+func TestV850StraightLineConditionalLocalsApplicationConsumer(t *testing.T) {
+	testConditionalLocalsApplicationConsumer(t, true, true)
+}
+
+func testConditionalLocalsApplicationConsumer(t *testing.T, finite bool, straightOption ...bool) {
+	straight := len(straightOption) > 0 && straightOption[0]
 	contract, prior, boundary := pipelang.PipeLangLanguageContractV830, pipelang.PipeLangLanguageContractV820, "one ternary"
 	if finite {
 		contract, prior, boundary = pipelang.PipeLangLanguageContractV840, pipelang.PipeLangLanguageContractV830, "at most two"
 	}
-	for _, descendant := range []bool{false, true} {
+	if straight {
+		contract, prior, boundary = pipelang.PipeLangLanguageContractV850, pipelang.PipeLangLanguageContractV840, "exactly one conditional"
+	}
+	layouts := []bool{false, true}
+	if straight {
+		layouts = []bool{false}
+	}
+	for _, descendant := range layouts {
 		t.Run(fmt.Sprintf("descendant=%t", descendant), func(t *testing.T) {
 			source, err := os.ReadFile("testdata/docker-observability.pipe")
 			if err != nil {
@@ -51,6 +63,15 @@ func testConditionalLocalsApplicationConsumer(t *testing.T, finite bool) {
 			if finite {
 				helper = strings.Replace(helper, choice, choice+`string third=enabled && selected != "" ? selected+"?" : selected;string fourth=clean && third != "" ? third+"#" : third;`, 1)
 				helper = strings.Replace(helper, "return selected;", "return fourth;", 1)
+			}
+			if straight {
+				helper = `public string ChooseKey(string raw,bool clean,bool suffix,bool enabled){
+ string normalized=clean ? trim(raw) : raw;
+ string selected=suffix && normalized != "" ? normalized+"!" : normalized;
+ string third=enabled && selected != "" ? selected+"?" : selected;
+ string fourth=clean && third != "" ? third+"#" : third;
+ string result=enabled ? fourth : normalized;
+ return result;`
 			}
 			helper += `}
    public DockerSnapshot Project(DockerSnapshot snapshot) {

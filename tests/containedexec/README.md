@@ -32,7 +32,10 @@ short compiler processes; direct waited-child RSS retains their high-water mark.
 
 The source-admitted regression matrix independently crosses 8/16/24/32/64/128/256
 locals with zero/one/two/three/all choices where admitted, v0.40/v0.72/v0.83/v0.84,
-branch scopes, dependent values and unused locals. It asserts closure depth,
+branch scopes, dependent values and unused locals. v0.85 additionally crosses straight-line
+zero/one/two/three/all choices and unused final choices through 256 locals. Export names
+and isolated matrix family keys distinguish branch, straight-line and unused dimensions.
+It asserts closure depth,
 evaluator/executable-Go parity, 128 MiB RSS and 5 seconds per warm direct compiler
 invocation. Export fixture modules with the command below, then run `matrix.py`
 for a fresh cgroup and aggregate peak per compiler case:

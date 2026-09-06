@@ -274,7 +274,7 @@ func ValidateProgram(program Program) error {
 		return err
 	}
 	inheritedContract := program.LanguageContract
-	if inheritedContract == LanguageContractV840 || inheritedContract == LanguageContractV830 || inheritedContract == LanguageContractV820 || inheritedContract == LanguageContractV810 || inheritedContract == LanguageContractV800 || inheritedContract == LanguageContractV790 || inheritedContract == LanguageContractV780 || inheritedContract == LanguageContractV770 || inheritedContract == LanguageContractV760 || inheritedContract == LanguageContractV750 || inheritedContract == LanguageContractV740 {
+	if inheritedContract == LanguageContractV850 || inheritedContract == LanguageContractV840 || inheritedContract == LanguageContractV830 || inheritedContract == LanguageContractV820 || inheritedContract == LanguageContractV810 || inheritedContract == LanguageContractV800 || inheritedContract == LanguageContractV790 || inheritedContract == LanguageContractV780 || inheritedContract == LanguageContractV770 || inheritedContract == LanguageContractV760 || inheritedContract == LanguageContractV750 || inheritedContract == LanguageContractV740 {
 		inheritedContract = LanguageContractV730
 	}
 	functions := make(map[string]Function, len(program.Functions))
@@ -669,6 +669,12 @@ func validExpandedDepthThreeTerminalIf(expression Expr, expandedLeaves int) bool
 }
 
 func validateImmutableLocalContract(contract string, function Function) error {
+	if contract == LanguageContractV850 {
+		if validStraightLineConditionalLocals(function.Body) {
+			return nil
+		}
+		return validateImmutableLocalContract(LanguageContractV840, function)
+	}
 	if contract == LanguageContractV840 {
 		if validConditionalLocalTree(function.Body, 0) {
 			return nil
@@ -1339,6 +1345,12 @@ func exprContainsPropagation(expression Expr) bool {
 }
 
 func validateConditionalContract(contract string, function Function) error {
+	if contract == LanguageContractV850 {
+		if validStraightLineConditionalLocals(function.Body) {
+			return nil
+		}
+		return validateConditionalContract(LanguageContractV840, function)
+	}
 	if contract == LanguageContractV840 {
 		if validConditionalLocalTree(function.Body, 0) {
 			return nil
@@ -4340,4 +4352,28 @@ func validConditionalLocalTree(expression Expr, maxChoices int) bool {
 			validConditionalOperand(*branch.Condition) && walk(*branch.WhenTrue, remaining-1) && walk(*branch.WhenFalse, remaining-1)
 	}
 	return countTerminalIfStatements(expression) > 0 && walk(expression, 3) && hasChoices
+}
+
+// Public v0.85 placement is validated independently of the source AST. Structural
+// function validation still owns exact types, lexical references and positions.
+func validStraightLineConditionalLocals(expr Expr) bool {
+	hasChoice := false
+	for expr.Kind == ExprImmutableLocal {
+		local := expr.ImmutableLocal
+		if local == nil || local.Initializer == nil || local.Return == nil {
+			return false
+		}
+		init := *local.Initializer
+		if init.Kind == ExprConditional {
+			choice := init.Conditional
+			if choice == nil || choice.TerminalStatement || choice.Condition == nil || choice.WhenTrue == nil || choice.WhenFalse == nil || !validConditionalOperand(*choice.Condition) || !validConditionalOperand(*choice.WhenTrue) || !validConditionalOperand(*choice.WhenFalse) {
+				return false
+			}
+			hasChoice = true
+		} else if !validConditionalOperand(init) {
+			return false
+		}
+		expr = *local.Return
+	}
+	return hasChoice && validConditionalOperand(expr)
 }
