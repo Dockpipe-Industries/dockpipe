@@ -278,3 +278,12 @@ and existing returns may reuse selected values. Initializers execute eagerly onc
 order, including unused locals; nested conditions and arms are lazy. Nested initializers
 in statement trees, nested arrow methods, deeper choices and new condition/argument
 placements remain excluded. Exact types, lexical scope and complete carriers are preserved.
+
+PipeLang `v0.91.0` adds complete depth-two ternary initializers throughout terminal
+if/else trees through statement depth three. Root, intermediate and leaf scopes retain
+finite typed immutable-local sequences and ordinary/depth-two returns. The
+`pipe-nested-tree-initializers` snippet shows root and branch selections. Initializers
+execute eagerly once in source order, including unused locals; only selected conditions
+and arms execute. Nested arrow methods, deeper choices and new condition/argument or
+match/propagate placements remain excluded. This is syntax/snippet guidance, not a
+claim of interactive editor or semantic language-server verification.

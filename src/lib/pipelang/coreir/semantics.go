@@ -274,7 +274,7 @@ func ValidateProgram(program Program) error {
 		return err
 	}
 	inheritedContract := program.LanguageContract
-	if ((((inheritedContract == LanguageContractV890 || inheritedContract == LanguageContractV900) || inheritedContract == LanguageContractV880) || inheritedContract == LanguageContractV870) || inheritedContract == LanguageContractV860) || inheritedContract == LanguageContractV850 || inheritedContract == LanguageContractV840 || inheritedContract == LanguageContractV830 || inheritedContract == LanguageContractV820 || inheritedContract == LanguageContractV810 || inheritedContract == LanguageContractV800 || inheritedContract == LanguageContractV790 || inheritedContract == LanguageContractV780 || inheritedContract == LanguageContractV770 || inheritedContract == LanguageContractV760 || inheritedContract == LanguageContractV750 || inheritedContract == LanguageContractV740 {
+	if ((((inheritedContract == LanguageContractV890 || (inheritedContract == LanguageContractV900 || inheritedContract == LanguageContractV910)) || inheritedContract == LanguageContractV880) || inheritedContract == LanguageContractV870) || inheritedContract == LanguageContractV860) || inheritedContract == LanguageContractV850 || inheritedContract == LanguageContractV840 || inheritedContract == LanguageContractV830 || inheritedContract == LanguageContractV820 || inheritedContract == LanguageContractV810 || inheritedContract == LanguageContractV800 || inheritedContract == LanguageContractV790 || inheritedContract == LanguageContractV780 || inheritedContract == LanguageContractV770 || inheritedContract == LanguageContractV760 || inheritedContract == LanguageContractV750 || inheritedContract == LanguageContractV740 {
 		inheritedContract = LanguageContractV730
 	}
 	functions := make(map[string]Function, len(program.Functions))
@@ -669,16 +669,19 @@ func validExpandedDepthThreeTerminalIf(expression Expr, expandedLeaves int) bool
 }
 
 func validateImmutableLocalContract(contract string, function Function) error {
-	if contract == LanguageContractV900 && validNestedStraightLineInitializers(function.Body) {
+	if contract == LanguageContractV910 && validNestedTerminalInitializers(function.Body) {
 		return nil
 	}
-	if (contract == LanguageContractV890 || contract == LanguageContractV900) && validNestedTerminalLeafReturns(function.Body) {
+	if (contract == LanguageContractV900 || contract == LanguageContractV910) && validNestedStraightLineInitializers(function.Body) {
 		return nil
 	}
-	if ((contract == LanguageContractV890 || contract == LanguageContractV900) || contract == LanguageContractV880) && validNestedStraightLineReturns(function.Body) {
+	if (contract == LanguageContractV890 || (contract == LanguageContractV900 || contract == LanguageContractV910)) && validNestedTerminalLeafReturns(function.Body) {
 		return nil
 	}
-	if ((contract == LanguageContractV890 || contract == LanguageContractV900) || contract == LanguageContractV880) || contract == LanguageContractV870 {
+	if ((contract == LanguageContractV890 || (contract == LanguageContractV900 || contract == LanguageContractV910)) || contract == LanguageContractV880) && validNestedStraightLineReturns(function.Body) {
+		return nil
+	}
+	if ((contract == LanguageContractV890 || (contract == LanguageContractV900 || contract == LanguageContractV910)) || contract == LanguageContractV880) || contract == LanguageContractV870 {
 		if validTerminalLeafConditionalReturns(function.Body) {
 			return nil
 		}
@@ -1366,16 +1369,19 @@ func exprContainsPropagation(expression Expr) bool {
 }
 
 func validateConditionalContract(contract string, function Function) error {
-	if contract == LanguageContractV900 && validNestedStraightLineInitializers(function.Body) {
+	if contract == LanguageContractV910 && validNestedTerminalInitializers(function.Body) {
 		return nil
 	}
-	if (contract == LanguageContractV890 || contract == LanguageContractV900) && validNestedTerminalLeafReturns(function.Body) {
+	if (contract == LanguageContractV900 || contract == LanguageContractV910) && validNestedStraightLineInitializers(function.Body) {
 		return nil
 	}
-	if ((contract == LanguageContractV890 || contract == LanguageContractV900) || contract == LanguageContractV880) && validNestedStraightLineReturns(function.Body) {
+	if (contract == LanguageContractV890 || (contract == LanguageContractV900 || contract == LanguageContractV910)) && validNestedTerminalLeafReturns(function.Body) {
 		return nil
 	}
-	if ((contract == LanguageContractV890 || contract == LanguageContractV900) || contract == LanguageContractV880) || contract == LanguageContractV870 {
+	if ((contract == LanguageContractV890 || (contract == LanguageContractV900 || contract == LanguageContractV910)) || contract == LanguageContractV880) && validNestedStraightLineReturns(function.Body) {
+		return nil
+	}
+	if ((contract == LanguageContractV890 || (contract == LanguageContractV900 || contract == LanguageContractV910)) || contract == LanguageContractV880) || contract == LanguageContractV870 {
 		if validTerminalLeafConditionalReturns(function.Body) {
 			return nil
 		}
@@ -4510,14 +4516,19 @@ func validNestedStraightLineInitializers(expr Expr) bool {
 // Independent Core placement admission; structural validation owns exact types,
 // lexical references and canonical binding positions.
 func validTerminalLeafConditionalReturns(expr Expr) bool {
-	return validTerminalLeafReturnsDepth(expr, 1)
+	return validTerminalLeafReturnsDepth(expr, 1, 1)
 }
 
 func validNestedTerminalLeafReturns(expr Expr) bool {
-	return validTerminalLeafReturnsDepth(expr, 2)
+	return validTerminalLeafReturnsDepth(expr, 2, 1)
 }
 
-func validTerminalLeafReturnsDepth(expr Expr, returnDepth int) bool {
+// v0.91 counts statement depth separately from complete initializer/return choices.
+func validNestedTerminalInitializers(expr Expr) bool {
+	return validTerminalLeafReturnsDepth(expr, 2, 2)
+}
+
+func validTerminalLeafReturnsDepth(expr Expr, returnDepth, initializerDepth int) bool {
 	hasReturnChoice := false
 	var walk func(Expr, int) bool
 	walk = func(current Expr, remaining int) bool {
@@ -4531,7 +4542,7 @@ func validTerminalLeafReturnsDepth(expr Expr, returnDepth int) bool {
 				return false
 			}
 			if initializer.Kind == ExprConditional {
-				if !validReturnCompositionChoice(initializer.Conditional) {
+				if (initializerDepth == 2 && !validNestedStraightLineReturns(initializer)) || (initializerDepth == 1 && !validReturnCompositionChoice(initializer.Conditional)) {
 					return false
 				}
 			} else if !validConditionalOperand(initializer) {
@@ -4556,5 +4567,5 @@ func validTerminalLeafReturnsDepth(expr Expr, returnDepth int) bool {
 		return remaining > 0 && choice.Condition != nil && choice.WhenTrue != nil && choice.WhenFalse != nil &&
 			validConditionalOperand(*choice.Condition) && (returnDepth == 1 || countImmutableLocalExpressions(*choice.Condition) == 0) && walk(*choice.WhenTrue, remaining-1) && walk(*choice.WhenFalse, remaining-1)
 	}
-	return countTerminalIfStatements(expr) > 0 && walk(expr, 3) && hasReturnChoice
+	return countTerminalIfStatements(expr) > 0 && walk(expr, 3) && (hasReturnChoice || initializerDepth == 2)
 }

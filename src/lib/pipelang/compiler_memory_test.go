@@ -76,6 +76,14 @@ func TestCompilerMemoryLocalSequences(t *testing.T) {
 		}
 		families = append(families, family{PipeLangLanguageContractV900, -1, false, true, ordinary})
 	}
+	for _, branch := range []bool{false, true} {
+		for _, ordinary := range []bool{false, true} {
+			for _, choices := range []int{0, 1, 2, 3, -1} {
+				families = append(families, family{PipeLangLanguageContractV910, choices, branch, false, ordinary})
+			}
+			families = append(families, family{PipeLangLanguageContractV910, -1, branch, true, ordinary})
+		}
+	}
 	// Bootstrap export data separately; target code always compiles freshly.
 	goBinary := filepath.Join(runtime.GOROOT(), "bin", "go")
 	command := exec.Command(goBinary, "list", "-export", "-f", "packagefile {{.ImportPath}}={{.Export}}", "unicode/utf8")
@@ -90,7 +98,7 @@ func TestCompilerMemoryLocalSequences(t *testing.T) {
 			for _, count := range []int{8, 16, 24, 32, 64, 128, 256} {
 				ok := t.Run(fmt.Sprint(count), func(t *testing.T) {
 					var source strings.Builder
-					if f.version == PipeLangLanguageContractV900 || f.version == PipeLangLanguageContractV890 || f.version == PipeLangLanguageContractV880 || f.version == PipeLangLanguageContractV870 {
+					if f.version == PipeLangLanguageContractV910 || f.version == PipeLangLanguageContractV900 || f.version == PipeLangLanguageContractV890 || f.version == PipeLangLanguageContractV880 || f.version == PipeLangLanguageContractV870 {
 						source.WriteString("public Class Choices {public string Select(string raw,bool pick,bool enabled,bool finish){")
 					} else {
 						source.WriteString("public Class Choices {public string Select(string raw,bool pick,bool enabled){")
@@ -108,7 +116,7 @@ func TestCompilerMemoryLocalSequences(t *testing.T) {
 					for i := 0; i < count; i++ {
 						name := fmt.Sprintf("q%d", i)
 						if f.choices < 0 || i < f.choices {
-							if f.version == PipeLangLanguageContractV900 {
+							if f.version == PipeLangLanguageContractV900 || f.version == PipeLangLanguageContractV910 {
 								fmt.Fprintf(&source, `string %s=pick ? (finish ? %s+"T" : %s+"U") : (enabled ? %s+"F" : %s+"V");`, name, previous, previous, previous, previous)
 							} else {
 								fmt.Fprintf(&source, "string %s=pick ? %s+\"T\" : %s+\"F\";", name, previous, previous)
@@ -120,7 +128,16 @@ func TestCompilerMemoryLocalSequences(t *testing.T) {
 							previous = name
 						}
 					}
-					if f.version == PipeLangLanguageContractV900 {
+					if f.version == PipeLangLanguageContractV910 {
+						if !f.branch {
+							source.WriteString("if(enabled){")
+						}
+						if f.straight {
+							fmt.Fprintf(&source, "return %s;}else{return raw;}}}", previous)
+						} else {
+							fmt.Fprintf(&source, `return finish ? (pick ? %s+"A" : %s+"B") : (pick ? raw+"C" : raw+"D");}else{return finish ? (pick ? raw+"E" : raw+"F") : (pick ? raw+"G" : raw+"H");}}}`, previous, previous)
+						}
+					} else if f.version == PipeLangLanguageContractV900 {
 						if f.straight {
 							fmt.Fprintf(&source, "return %s;}}", previous)
 						} else {
@@ -182,7 +199,7 @@ func TestCompilerMemoryLocalSequences(t *testing.T) {
 					// A root statement wrapper and its branch-local block add two closures
 					// around v0.89's two value decisions; depth must remain independent of local count.
 					limit := 3
-					if f.version == PipeLangLanguageContractV890 && f.branch {
+					if (f.version == PipeLangLanguageContractV890 || f.version == PipeLangLanguageContractV910) && f.branch {
 						limit = 4
 					}
 					if maximum > limit {
@@ -192,7 +209,7 @@ func TestCompilerMemoryLocalSequences(t *testing.T) {
 					for _, pick := range []bool{false, true} {
 						for _, enabled := range []bool{false, true} {
 							finishes := []bool{true}
-							if f.version == PipeLangLanguageContractV900 || f.version == PipeLangLanguageContractV890 || f.version == PipeLangLanguageContractV880 || f.version == PipeLangLanguageContractV870 {
+							if f.version == PipeLangLanguageContractV910 || f.version == PipeLangLanguageContractV900 || f.version == PipeLangLanguageContractV890 || f.version == PipeLangLanguageContractV880 || f.version == PipeLangLanguageContractV870 {
 								finishes = []bool{false, true}
 							}
 							for _, finish := range finishes {
@@ -280,15 +297,58 @@ func TestCompilerMemoryLocalSequences(t *testing.T) {
 										}
 									}
 								}
+								if f.version == PipeLangLanguageContractV910 {
+									want = "raw"
+									if enabled && (f.straight || finish) {
+										for i := 0; i < count; i++ {
+											if f.unused && i == count-1 {
+												continue
+											}
+											suffix := "T"
+											if f.choices < 0 || i < f.choices {
+												if pick {
+													if !finish {
+														suffix = "U"
+													}
+												} else {
+													suffix = "F"
+												}
+											}
+											want += suffix
+										}
+									}
+									if !f.straight {
+										suffix := "H"
+										if enabled {
+											suffix = "D"
+											if finish {
+												suffix = "B"
+												if pick {
+													suffix = "A"
+												}
+											} else if pick {
+												suffix = "C"
+											}
+										} else if finish {
+											suffix = "F"
+											if pick {
+												suffix = "E"
+											}
+										} else if pick {
+											suffix = "G"
+										}
+										want += suffix
+									}
+								}
 								args := []coreeval.Value{{Type: function.Parameters[0].Type, String: "raw"}, {Type: function.Parameters[1].Type, Bool: pick}, {Type: function.Parameters[2].Type, Bool: enabled}}
-								if f.version == PipeLangLanguageContractV900 || f.version == PipeLangLanguageContractV890 || f.version == PipeLangLanguageContractV880 || f.version == PipeLangLanguageContractV870 {
+								if f.version == PipeLangLanguageContractV910 || f.version == PipeLangLanguageContractV900 || f.version == PipeLangLanguageContractV890 || f.version == PipeLangLanguageContractV880 || f.version == PipeLangLanguageContractV870 {
 									args = append(args, coreeval.Value{Type: function.Parameters[3].Type, Bool: finish})
 								}
 								got, err := coreeval.EvaluateProgram(program, function.Identity, args)
 								if err != nil || !got.OK || got.Value.String != want {
 									t.Fatalf("eval: %#v %v want %q", got, err, want)
 								}
-								if f.version == PipeLangLanguageContractV900 || f.version == PipeLangLanguageContractV890 || f.version == PipeLangLanguageContractV880 || f.version == PipeLangLanguageContractV870 {
+								if f.version == PipeLangLanguageContractV910 || f.version == PipeLangLanguageContractV900 || f.version == PipeLangLanguageContractV890 || f.version == PipeLangLanguageContractV880 || f.version == PipeLangLanguageContractV870 {
 									fmt.Fprintf(&checks, "if got:=PipeLangSelect(\"raw\",%t,%t,%t);got!=%q{t.Fatal(got)}\n", pick, enabled, finish, want)
 								} else {
 									fmt.Fprintf(&checks, "if got:=PipeLangSelect(\"raw\",%t,%t);got!=%q{t.Fatal(got)}\n", pick, enabled, want)

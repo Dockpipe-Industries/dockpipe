@@ -898,10 +898,13 @@ func validExpandedDepthThreeTerminalIf(expr Expr, expandedLeaves int) bool {
 }
 
 func validTerminalIfStatement(contract LanguageContract, expr Expr) bool {
-	if (contract == PipeLangLanguageContractV890 || contract == PipeLangLanguageContractV900) && validNestedTerminalLeafReturns(expr) {
+	if contract == PipeLangLanguageContractV910 && validNestedTerminalInitializers(expr) {
 		return true
 	}
-	if ((contract == PipeLangLanguageContractV890 || contract == PipeLangLanguageContractV900) || contract == PipeLangLanguageContractV880) || contract == PipeLangLanguageContractV870 {
+	if (contract == PipeLangLanguageContractV890 || (contract == PipeLangLanguageContractV900 || contract == PipeLangLanguageContractV910)) && validNestedTerminalLeafReturns(expr) {
+		return true
+	}
+	if ((contract == PipeLangLanguageContractV890 || (contract == PipeLangLanguageContractV900 || contract == PipeLangLanguageContractV910)) || contract == PipeLangLanguageContractV880) || contract == PipeLangLanguageContractV870 {
 		return validTerminalLeafConditionalReturns(expr) || validTerminalIfStatement(PipeLangLanguageContractV860, expr)
 	}
 	if contract == PipeLangLanguageContractV860 || contract == PipeLangLanguageContractV850 || contract == PipeLangLanguageContractV840 {
@@ -1320,14 +1323,19 @@ func validNestedStraightLineInitializers(expr Expr) bool {
 
 // v0.87 counts statement depth independently of value choices at return leaves.
 func validTerminalLeafConditionalReturns(expr Expr) bool {
-	return validTerminalLeafReturnsDepth(expr, 1)
+	return validTerminalLeafReturnsDepth(expr, 1, 1)
 }
 
 func validNestedTerminalLeafReturns(expr Expr) bool {
-	return validTerminalLeafReturnsDepth(expr, 2)
+	return validTerminalLeafReturnsDepth(expr, 2, 1)
 }
 
-func validTerminalLeafReturnsDepth(expr Expr, returnDepth int) bool {
+// v0.91 counts statement depth separately from complete initializer/return choices.
+func validNestedTerminalInitializers(expr Expr) bool {
+	return validTerminalLeafReturnsDepth(expr, 2, 2)
+}
+
+func validTerminalLeafReturnsDepth(expr Expr, returnDepth, initializerDepth int) bool {
 	hasReturnChoice := false
 	var walk func(Expr, int) bool
 	walk = func(current Expr, remaining int) bool {
@@ -1343,7 +1351,7 @@ func validTerminalLeafReturnsDepth(expr Expr, returnDepth int) bool {
 				return false
 			}
 			if choice, ok := local.Initializer.(*ConditionalExpr); ok {
-				if !validReturnCompositionChoice(choice) {
+				if (initializerDepth == 2 && !validNestedStraightLineReturns(local.Initializer)) || (initializerDepth == 1 && !validReturnCompositionChoice(choice)) {
 					return false
 				}
 			} else if !validConditionalOperand(local.Initializer) {
@@ -1368,5 +1376,5 @@ func validTerminalLeafReturnsDepth(expr Expr, returnDepth int) bool {
 		return remaining > 0 && choice.Condition != nil && choice.WhenTrue != nil && choice.WhenFalse != nil &&
 			validConditionalOperand(choice.Condition) && (returnDepth == 1 || countImmutableLocalExpressions(choice.Condition) == 0) && walk(choice.WhenTrue, remaining-1) && walk(choice.WhenFalse, remaining-1)
 	}
-	return containsTerminalIfStatement(expr) && walk(expr, 3) && hasReturnChoice
+	return containsTerminalIfStatement(expr) && walk(expr, 3) && (hasReturnChoice || initializerDepth == 2)
 }

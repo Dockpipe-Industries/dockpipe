@@ -1031,5 +1031,21 @@
       "}"
     ],
     "description": "Create a v0.90.0 straight-line block with complete depth-two ternary initializers and lazy selected arms."
+  },
+  "Nested terminal initializers": {
+    "prefix": "pipe-nested-tree-initializers",
+    "body": [
+      "public ${1:string} ${2:Select}(string raw, bool enabled, bool clean, bool fallback) {",
+      "  string normalized = clean ? (fallback ? trim(raw) : raw) : raw;",
+      "  if (enabled) {",
+      "    string selected = clean ? (fallback ? normalized : raw) : (fallback ? raw : \"\");",
+      "    return selected;",
+      "  } else {",
+      "    string selected = fallback ? (clean ? normalized : raw) : raw;",
+      "    return selected;",
+      "  }",
+      "}"
+    ],
+    "description": "Create a v0.91.0 terminal tree with complete depth-two typed immutable-local initializers in root and branch scopes."
   }
 }
