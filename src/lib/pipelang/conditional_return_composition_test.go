@@ -154,7 +154,7 @@ func TestV860ConditionalReturnCompositionMalformedCore(t *testing.T) {
 }
 
 func TestV860ConditionalReturnCompositionVersionBoundary(t *testing.T) {
-	for _, contract := range []LanguageContract{PipeLangLanguageContractV380, PipeLangLanguageContractV400, PipeLangLanguageContractV830, PipeLangLanguageContractV840, PipeLangLanguageContractV850, "v0.87.0", "unknown"} {
+	for _, contract := range []LanguageContract{PipeLangLanguageContractV380, PipeLangLanguageContractV400, PipeLangLanguageContractV830, PipeLangLanguageContractV840, PipeLangLanguageContractV850, "v0.88.0", "unknown"} {
 		input := semanticTestModuleSet("compiler.selfhosting", []ModuleInput{testModule("compiler.selfhosting", "return.pipe", conditionalReturnCompositionSource)}, nil)
 		input.LanguageContract = contract
 		if AnalyzeSemanticModuleSet(input).Error() == nil {
@@ -174,7 +174,7 @@ func TestV860ConditionalReturnCompositionInheritance(t *testing.T) {
 		`public Class Choices {public string Select(string raw,bool pick){string a=trim(raw);return pick ? a : raw;}}`,
 		`public Class Choices {public string Select(string raw,bool pick)=>pick ? raw : trim(raw);}`} {
 		var baseline [][]byte
-		for _, contract := range []LanguageContract{PipeLangLanguageContractV850, PipeLangLanguageContractV860} {
+		for _, contract := range []LanguageContract{PipeLangLanguageContractV850, PipeLangLanguageContractV860, PipeLangLanguageContractV870} {
 			analysis, program := conditionalLocalTreeProgramVersion(t, contract, source, []string{"Select"})
 			typed, err := LowerSemanticMethodToHIR(analysis, semanticMethodNamed(t, analysis, "Select").Identity)
 			if err != nil {

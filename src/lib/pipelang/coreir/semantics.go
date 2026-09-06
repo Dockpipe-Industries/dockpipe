@@ -274,7 +274,7 @@ func ValidateProgram(program Program) error {
 		return err
 	}
 	inheritedContract := program.LanguageContract
-	if inheritedContract == LanguageContractV860 || inheritedContract == LanguageContractV850 || inheritedContract == LanguageContractV840 || inheritedContract == LanguageContractV830 || inheritedContract == LanguageContractV820 || inheritedContract == LanguageContractV810 || inheritedContract == LanguageContractV800 || inheritedContract == LanguageContractV790 || inheritedContract == LanguageContractV780 || inheritedContract == LanguageContractV770 || inheritedContract == LanguageContractV760 || inheritedContract == LanguageContractV750 || inheritedContract == LanguageContractV740 {
+	if (inheritedContract == LanguageContractV870 || inheritedContract == LanguageContractV860) || inheritedContract == LanguageContractV850 || inheritedContract == LanguageContractV840 || inheritedContract == LanguageContractV830 || inheritedContract == LanguageContractV820 || inheritedContract == LanguageContractV810 || inheritedContract == LanguageContractV800 || inheritedContract == LanguageContractV790 || inheritedContract == LanguageContractV780 || inheritedContract == LanguageContractV770 || inheritedContract == LanguageContractV760 || inheritedContract == LanguageContractV750 || inheritedContract == LanguageContractV740 {
 		inheritedContract = LanguageContractV730
 	}
 	functions := make(map[string]Function, len(program.Functions))
@@ -669,6 +669,12 @@ func validExpandedDepthThreeTerminalIf(expression Expr, expandedLeaves int) bool
 }
 
 func validateImmutableLocalContract(contract string, function Function) error {
+	if contract == LanguageContractV870 {
+		if validTerminalLeafConditionalReturns(function.Body) {
+			return nil
+		}
+		return validateImmutableLocalContract(LanguageContractV860, function)
+	}
 	if contract == LanguageContractV860 {
 		if validConditionalReturnComposition(function.Body) {
 			return nil
@@ -1351,6 +1357,12 @@ func exprContainsPropagation(expression Expr) bool {
 }
 
 func validateConditionalContract(contract string, function Function) error {
+	if contract == LanguageContractV870 {
+		if validTerminalLeafConditionalReturns(function.Body) {
+			return nil
+		}
+		return validateConditionalContract(LanguageContractV860, function)
+	}
 	if contract == LanguageContractV860 {
 		if validConditionalReturnComposition(function.Body) {
 			return nil
@@ -4416,4 +4428,42 @@ func validConditionalReturnComposition(expr Expr) bool {
 func validReturnCompositionChoice(choice *Conditional) bool {
 	return choice != nil && !choice.TerminalStatement && choice.Condition != nil && choice.WhenTrue != nil && choice.WhenFalse != nil &&
 		validConditionalOperand(*choice.Condition) && validConditionalOperand(*choice.WhenTrue) && validConditionalOperand(*choice.WhenFalse)
+}
+
+// Independent Core placement admission; structural validation owns exact types,
+// lexical references and canonical binding positions.
+func validTerminalLeafConditionalReturns(expr Expr) bool {
+	hasReturnChoice := false
+	var walk func(Expr, int) bool
+	walk = func(current Expr, remaining int) bool {
+		for current.Kind == ExprImmutableLocal {
+			local := current.ImmutableLocal
+			if local == nil || local.Initializer == nil || local.Return == nil {
+				return false
+			}
+			initializer := *local.Initializer
+			if initializer.Kind == ExprConditional {
+				if !validReturnCompositionChoice(initializer.Conditional) {
+					return false
+				}
+			} else if !validConditionalOperand(initializer) {
+				return false
+			}
+			current = *local.Return
+		}
+		if current.Kind != ExprConditional {
+			return validConditionalOperand(current)
+		}
+		choice := current.Conditional
+		if choice == nil {
+			return false
+		}
+		if !choice.TerminalStatement {
+			hasReturnChoice = true
+			return validReturnCompositionChoice(choice)
+		}
+		return remaining > 0 && choice.Condition != nil && choice.WhenTrue != nil && choice.WhenFalse != nil &&
+			validConditionalOperand(*choice.Condition) && walk(*choice.WhenTrue, remaining-1) && walk(*choice.WhenFalse, remaining-1)
+	}
+	return countTerminalIfStatements(expr) > 0 && walk(expr, 3) && hasReturnChoice
 }

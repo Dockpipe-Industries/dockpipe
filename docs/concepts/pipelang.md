@@ -235,7 +235,7 @@ or public semantic identities. The backend checks the complete emitted package n
 returning Go source.
 
 Core program admission accepts only `pipelang.compiler.v1` and the exact supported language
-identities `v0.1.0` through `v0.86.0`. `coreir.ValidateProgram` checks feature availability in
+identities `v0.1.0` through `v0.87.0`. `coreir.ValidateProgram` checks feature availability in
 signatures and nested expressions, together with the existing composition and topology contracts.
 `coreeval.EvaluateProgram` and the Go backend use that same admission before executing or emitting
 anything, including when a disallowed feature occurs in an uncalled function or unused parameter.
@@ -2880,3 +2880,52 @@ nested ternaries, new argument/condition placements, new matching/propagation co
 fallthrough, early returns, loops, mutation, effects, inference and new backends remain excluded.
 The frozen 45-source lane remains unchanged. Finite source sequences remain subject to host
 resource limits; contained regression proof measures through 256 locals.
+
+
+### PipeLang v0.87.0: conditional returns in terminal-tree leaves
+
+`v0.87.0` additionally permits a complete nonnested ternary return in any subset of
+leaves of the existing terminal `if/else` trees through statement depth three. Every
+scope retains zero or more explicitly typed immutable locals, including complete
+conditional initializers. Neither a root local nor a conditional initializer is required.
+
+```pipe
+public Class Classifier {
+    public string Select(string raw, bool clean, bool enabled, bool finish) {
+        string normalized = clean ? trim(raw) : raw;
+        if (enabled) {
+            string selected = finish ? normalized + "!" : normalized;
+            return clean ? selected : raw;
+        } else {
+            return finish ? normalized : raw;
+        }
+    }
+}
+```
+
+Statement depth counts only terminal `if/else` decisions: at most three per path,
+seven per tree and eight return leaves. A leaf ternary adds one value selection,
+not another statement level. Ordinary and conditional returns can coexist across
+leaves. A leaf return can reference parameters and completed local bindings in its
+lexical ancestry. Self/forward references, duplicates, shadowing, sibling references
+and escaping bindings remain invalid.
+
+Every condition is `bool`; both return arms exactly match the declared method type.
+Both arms are checked statically. Root initializers execute eagerly once in source order;
+reached branch initializers, including unused bindings, execute once in order. Only
+selected statement branches, reached conditions and selected ternary arms execute.
+All supported primitives, primitive records, record lists, Optionals and Results retain
+complete-value transport without implicit unwrapping or propagation.
+
+Source and Core independently validate placement and statement depth. Structural Core
+validation retains exact types, lexical references and binding positions. Typed HIR and
+Core reuse `immutable_local` and `conditional` nodes and the existing terminal-statement
+marker; evaluation and deterministic Core-only Go consume validated Core. Public
+`pipelang.compiler.v1`, `pipelang.semantic.v1` and `dockpipe.application.v1` identities
+and shapes and the frozen 45-source lane remain unchanged.
+
+Earlier language versions retain their exact boundaries. This slice adds no nested
+ternaries, new argument/condition placements, deeper statement trees, new combinations
+with matching/propagation, fallthrough, early returns, loops, mutation, effects, inference
+or backends. Finite local sequences remain subject to host resource limits; regression
+proof measures through 256 locals rather than claiming exhaustive length coverage.

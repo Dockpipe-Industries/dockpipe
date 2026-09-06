@@ -1,3 +1,12 @@
+## Completed current objective — conditional returns in terminal-tree leaves
+
+Founder selected A and separately approved v0.87.0 implementation in this task.
+[terminal-leaf-conditional-returns.md](terminal-leaf-conditional-returns.md) owns the exact
+scope, exclusions, containment and verification. State: `completed`.
+The completed v0.86.0 slice is committed at `9db7ed28`; earlier uncommitted wording
+and baseline references below are historical. Commit, push, publication and successor
+selection remain separate.
+
 ## Completed current objective — conditional return composition
 
 Founder selected A and separately approved implementation of v0.86.0 in this task.

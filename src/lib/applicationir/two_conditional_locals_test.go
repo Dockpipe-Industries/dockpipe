@@ -35,6 +35,10 @@ func TestV860ConditionalReturnCompositionApplicationConsumer(t *testing.T) {
 	testConditionalLocalsApplicationConsumer(t, true, true, true)
 }
 
+func TestV870TerminalLeafConditionalReturnsApplicationConsumer(t *testing.T) {
+	testConditionalLocalsApplicationConsumer(t, true, true, true, true)
+}
+
 func testConditionalLocalsApplicationConsumer(t *testing.T, finite bool, straightOption ...bool) {
 	straight := len(straightOption) > 0 && straightOption[0]
 	returnChoice := len(straightOption) > 1 && straightOption[1]
@@ -47,6 +51,10 @@ func testConditionalLocalsApplicationConsumer(t *testing.T, finite bool, straigh
 	}
 	if returnChoice {
 		contract, prior, boundary = pipelang.PipeLangLanguageContractV860, pipelang.PipeLangLanguageContractV850, "ordinary return"
+	}
+	leafReturns := len(straightOption) > 2 && straightOption[2]
+	if leafReturns {
+		contract, prior, boundary = pipelang.PipeLangLanguageContractV870, pipelang.PipeLangLanguageContractV860, "new return/condition/argument placements"
 	}
 	layouts := []bool{false, true}
 	if straight {
@@ -83,6 +91,9 @@ func testConditionalLocalsApplicationConsumer(t *testing.T, finite bool, straigh
 			}
 			if returnChoice {
 				helper = strings.Replace(helper, "string result=enabled ? fourth : normalized;\n return result;", "return enabled ? fourth : normalized;", 1)
+			}
+			if leafReturns {
+				helper = strings.Replace(helper, "return enabled ? fourth : normalized;", "if(enabled){return fourth != \"\" ? fourth : normalized;}else{return clean ? normalized : raw;}", 1)
 			}
 			helper += `}
    public DockerSnapshot Project(DockerSnapshot snapshot) {

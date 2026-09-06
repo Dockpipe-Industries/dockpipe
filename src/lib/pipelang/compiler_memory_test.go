@@ -52,6 +52,12 @@ func TestCompilerMemoryLocalSequences(t *testing.T) {
 		{PipeLangLanguageContractV720, 0, true, true, false},
 		{PipeLangLanguageContractV840, 2, true, true, false},
 	}
+	for _, branch := range []bool{false, true} {
+		for _, choices := range []int{0, 1, 2, 3, -1} {
+			families = append(families, family{PipeLangLanguageContractV870, choices, branch, false, false})
+		}
+		families = append(families, family{PipeLangLanguageContractV870, -1, branch, true, false})
+	}
 	// Bootstrap export data separately; target code always compiles freshly.
 	goBinary := filepath.Join(runtime.GOROOT(), "bin", "go")
 	command := exec.Command(goBinary, "list", "-export", "-f", "packagefile {{.ImportPath}}={{.Export}}", "unicode/utf8")
@@ -66,7 +72,11 @@ func TestCompilerMemoryLocalSequences(t *testing.T) {
 			for _, count := range []int{8, 16, 24, 32, 64, 128, 256} {
 				ok := t.Run(fmt.Sprint(count), func(t *testing.T) {
 					var source strings.Builder
-					source.WriteString("public Class Choices {public string Select(string raw,bool pick,bool enabled){")
+					if f.version == PipeLangLanguageContractV870 {
+						source.WriteString("public Class Choices {public string Select(string raw,bool pick,bool enabled,bool finish){")
+					} else {
+						source.WriteString("public Class Choices {public string Select(string raw,bool pick,bool enabled){")
+					}
 					if f.branch {
 						if f.version == PipeLangLanguageContractV720 {
 							source.WriteString("string root=raw;")
@@ -88,7 +98,13 @@ func TestCompilerMemoryLocalSequences(t *testing.T) {
 							previous = name
 						}
 					}
-					if f.version == PipeLangLanguageContractV860 {
+					if f.version == PipeLangLanguageContractV870 {
+						if f.branch {
+							fmt.Fprintf(&source, "return finish ? %s : raw;}else{return finish ? raw : raw;}}}", previous)
+						} else {
+							fmt.Fprintf(&source, "if(enabled){return finish ? %s : raw;}else{return finish ? raw : raw;}}}", previous)
+						}
+					} else if f.version == PipeLangLanguageContractV860 {
 						fmt.Fprintf(&source, "return enabled ? %s : raw;}}", previous)
 					} else if f.straight {
 						fmt.Fprintf(&source, "return %s;}}", previous)
@@ -134,25 +150,38 @@ func TestCompilerMemoryLocalSequences(t *testing.T) {
 					var checks strings.Builder
 					for _, pick := range []bool{false, true} {
 						for _, enabled := range []bool{false, true} {
-							want := "raw"
-							if enabled || (f.straight && f.version != PipeLangLanguageContractV860) {
-								for i := 0; i < count; i++ {
-									if f.unused && i == count-1 {
-										continue
-									}
-									if !pick && (f.choices < 0 || i < f.choices) {
-										want += "F"
-									} else {
-										want += "T"
+							finishes := []bool{true}
+							if f.version == PipeLangLanguageContractV870 {
+								finishes = []bool{false, true}
+							}
+							for _, finish := range finishes {
+								want := "raw"
+								if (enabled && finish) || (f.straight && f.version != PipeLangLanguageContractV860) {
+									for i := 0; i < count; i++ {
+										if f.unused && i == count-1 {
+											continue
+										}
+										if !pick && (f.choices < 0 || i < f.choices) {
+											want += "F"
+										} else {
+											want += "T"
+										}
 									}
 								}
+								args := []coreeval.Value{{Type: function.Parameters[0].Type, String: "raw"}, {Type: function.Parameters[1].Type, Bool: pick}, {Type: function.Parameters[2].Type, Bool: enabled}}
+								if f.version == PipeLangLanguageContractV870 {
+									args = append(args, coreeval.Value{Type: function.Parameters[3].Type, Bool: finish})
+								}
+								got, err := coreeval.EvaluateProgram(program, function.Identity, args)
+								if err != nil || !got.OK || got.Value.String != want {
+									t.Fatalf("eval: %#v %v want %q", got, err, want)
+								}
+								if f.version == PipeLangLanguageContractV870 {
+									fmt.Fprintf(&checks, "if got:=PipeLangSelect(\"raw\",%t,%t,%t);got!=%q{t.Fatal(got)}\n", pick, enabled, finish, want)
+								} else {
+									fmt.Fprintf(&checks, "if got:=PipeLangSelect(\"raw\",%t,%t);got!=%q{t.Fatal(got)}\n", pick, enabled, want)
+								}
 							}
-							args := []coreeval.Value{{Type: function.Parameters[0].Type, String: "raw"}, {Type: function.Parameters[1].Type, Bool: pick}, {Type: function.Parameters[2].Type, Bool: enabled}}
-							got, err := coreeval.EvaluateProgram(program, function.Identity, args)
-							if err != nil || !got.OK || got.Value.String != want {
-								t.Fatalf("eval: %#v %v want %q", got, err, want)
-							}
-							fmt.Fprintf(&checks, "if got:=PipeLangSelect(\"raw\",%t,%t);got!=%q{t.Fatal(got)}\n", pick, enabled, want)
 						}
 					}
 					testSource := []byte(fmt.Sprintf("package %s\nimport \"testing\"\nfunc TestSequence(t *testing.T){%s}\n", gobackend.PackageName, checks.String()))

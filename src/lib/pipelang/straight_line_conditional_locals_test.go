@@ -122,7 +122,7 @@ func TestV850StraightLineConditionalLocalsMalformedCore(t *testing.T) {
 	}
 }
 func TestV850StraightLineConditionalLocalsVersionBoundary(t *testing.T) {
-	for _, contract := range []LanguageContract{PipeLangLanguageContractV380, PipeLangLanguageContractV400, PipeLangLanguageContractV830, PipeLangLanguageContractV840, "v0.87.0", "unknown"} {
+	for _, contract := range []LanguageContract{PipeLangLanguageContractV380, PipeLangLanguageContractV400, PipeLangLanguageContractV830, PipeLangLanguageContractV840, "v0.88.0", "unknown"} {
 		input := semanticTestModuleSet("compiler.selfhosting", []ModuleInput{testModule("compiler.selfhosting", "straight.pipe", straightLineConditionalLocalsSource)}, nil)
 		input.LanguageContract = contract
 		if AnalyzeSemanticModuleSet(input).Error() == nil {
@@ -140,7 +140,7 @@ func TestV850StraightLineConditionalLocalsTreeInheritance(t *testing.T) {
 	for _, tree := range terminalTrees(3)[1:] {
 		source := `public Class Choices {public string Echo(string value)=>value;public bool Check(string path,bool value)=>value;` + conditionalChoicesTreeMethod(tree, []string{"R", "RT", "RF", "R"}, false, "Select") + `}`
 		var baseline [][]byte
-		for _, contract := range []LanguageContract{PipeLangLanguageContractV840, PipeLangLanguageContractV850, PipeLangLanguageContractV860} {
+		for _, contract := range []LanguageContract{PipeLangLanguageContractV840, PipeLangLanguageContractV850, PipeLangLanguageContractV860, PipeLangLanguageContractV870} {
 			analysis, program := conditionalLocalTreeProgramVersion(t, contract, source, []string{"Select"})
 			semantic, err := BuildSemanticProjection(analysis)
 			if err != nil {

@@ -898,6 +898,9 @@ func validExpandedDepthThreeTerminalIf(expr Expr, expandedLeaves int) bool {
 }
 
 func validTerminalIfStatement(contract LanguageContract, expr Expr) bool {
+	if contract == PipeLangLanguageContractV870 {
+		return validTerminalLeafConditionalReturns(expr) || validTerminalIfStatement(PipeLangLanguageContractV860, expr)
+	}
 	if contract == PipeLangLanguageContractV860 || contract == PipeLangLanguageContractV850 || contract == PipeLangLanguageContractV840 {
 		return validConditionalLocalTree(expr, 0) || validTerminalIfStatement(PipeLangLanguageContractV830, expr)
 	}
@@ -1252,4 +1255,43 @@ func validConditionalReturnComposition(expr Expr) bool {
 func validReturnCompositionChoice(choice *ConditionalExpr) bool {
 	return choice != nil && !choice.TerminalStatement && choice.Condition != nil && choice.WhenTrue != nil && choice.WhenFalse != nil &&
 		validConditionalOperand(choice.Condition) && validConditionalOperand(choice.WhenTrue) && validConditionalOperand(choice.WhenFalse)
+}
+
+// v0.87 counts statement depth independently of value choices at return leaves.
+func validTerminalLeafConditionalReturns(expr Expr) bool {
+	hasReturnChoice := false
+	var walk func(Expr, int) bool
+	walk = func(current Expr, remaining int) bool {
+		for {
+			local, ok := current.(*ImmutableLocalExpr)
+			if !ok {
+				break
+			}
+			if local.Initializer == nil || local.Return == nil {
+				return false
+			}
+			if choice, ok := local.Initializer.(*ConditionalExpr); ok {
+				if !validReturnCompositionChoice(choice) {
+					return false
+				}
+			} else if !validConditionalOperand(local.Initializer) {
+				return false
+			}
+			current = local.Return
+		}
+		if current == nil {
+			return false
+		}
+		choice, ok := current.(*ConditionalExpr)
+		if !ok {
+			return validConditionalOperand(current)
+		}
+		if !choice.TerminalStatement {
+			hasReturnChoice = true
+			return validReturnCompositionChoice(choice)
+		}
+		return remaining > 0 && choice.Condition != nil && choice.WhenTrue != nil && choice.WhenFalse != nil &&
+			validConditionalOperand(choice.Condition) && walk(choice.WhenTrue, remaining-1) && walk(choice.WhenFalse, remaining-1)
+	}
+	return containsTerminalIfStatement(expr) && walk(expr, 3) && hasReturnChoice
 }
