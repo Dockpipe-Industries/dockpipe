@@ -1,3 +1,10 @@
+## v0.93.0 approved boundary
+
+Depth-three straight-line returns are complete.
+[The canonical contract](../../../concepts/pipelang.md#pipelang-v0930-depth-three-straight-line-returns)
+owns semantics; [the objective](depth-three-straight-line-returns.md) owns proof.
+Initializers, arrow bodies and terminal-tree leaf returns retain depth two.
+
 ## Completed current objective — nested expression-bodied methods
 
 Founder selected A and separately approved v0.92.0 implementation on 2026-09-06.

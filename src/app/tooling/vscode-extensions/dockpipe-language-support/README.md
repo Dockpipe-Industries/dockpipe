@@ -293,3 +293,10 @@ PipeLang `v0.92.0` adds complete depth-two ternary arrow-method bodies via
 remain bool, result types exact, and only selected conditions/arms execute. Deeper
 choices and new condition/argument placements remain excluded. This is a syntax
 snippet; semantic diagnostics still require the compiler language-service path.
+
+PipeLang `v0.93.0` adds `pipe-depth-three-return` for complete ternary returns
+through three decisions per path in straight-line public pure block methods.
+Preceding typed immutable locals retain ordered eager execution. Initializers,
+arrow bodies and terminal-tree leaf returns retain depth two; conditions and
+arguments gain no new ternary placement. See the
+[canonical contract](../../../../../docs/concepts/pipelang.md#pipelang-v0930-depth-three-straight-line-returns).

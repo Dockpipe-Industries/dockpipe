@@ -59,6 +59,10 @@ func TestV920NestedArrowMethodsApplicationConsumer(t *testing.T) {
 	testConditionalLocalsApplicationConsumer(t, false, true, false, false, false, false, false, false, true)
 }
 
+func TestV930DepthThreeReturnsApplicationConsumer(t *testing.T) {
+	testConditionalLocalsApplicationConsumer(t, true, true, true, false, true, false, true, false, false, true)
+}
+
 func testConditionalLocalsApplicationConsumer(t *testing.T, finite bool, straightOption ...bool) {
 	straight := len(straightOption) > 0 && straightOption[0]
 	returnChoice := len(straightOption) > 1 && straightOption[1]
@@ -95,6 +99,10 @@ func testConditionalLocalsApplicationConsumer(t *testing.T, finite bool, straigh
 	arrow := len(straightOption) > 7 && straightOption[7]
 	if arrow {
 		contract, prior, boundary = pipelang.PipeLangLanguageContractV920, pipelang.PipeLangLanguageContractV910, "block-bodied method"
+	}
+	depthThree := len(straightOption) > 8 && straightOption[8]
+	if depthThree {
+		contract, prior, boundary = pipelang.PipeLangLanguageContractV930, pipelang.PipeLangLanguageContractV920, "depth-two"
 	}
 	layouts := []bool{false, true}
 	if straight {
@@ -157,6 +165,13 @@ func testConditionalLocalsApplicationConsumer(t *testing.T, finite bool, straigh
 			if arrow {
 				helper = `public string ChooseKey(string raw,bool clean,bool suffix,bool enabled)=>
  enabled ? (clean ? trim(raw) : raw) : (suffix ? raw+"!" : raw);`
+			}
+			if depthThree {
+				before := helper
+				helper = strings.Replace(helper, "suffix ? fourth : third", "suffix ? (clean ? fourth : third) : third", 1)
+				if helper == before {
+					t.Fatal("depth-three consumer replacement missed")
+				}
 			}
 			closing := "}"
 			if arrow {

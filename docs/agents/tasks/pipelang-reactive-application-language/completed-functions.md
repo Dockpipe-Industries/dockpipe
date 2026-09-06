@@ -1410,3 +1410,19 @@ memory matrix; all 64 new isolated scale measurements pass. Application IR, comp
 affected application/CLI, vet and editor/docs checks pass. Public identities, HIR/Core shapes,
 evaluator/backend production code and engine/package boundaries remain unchanged. Changes
 are uncommitted; no successor is selected or authorized.
+
+
+## Step 8bg: depth-three straight-line returns (v0.93.0)
+
+Founder selected A and separately approved implementation on 2026-09-06.
+The [canonical contract](../../../concepts/pipelang.md#pipelang-v0930-depth-three-straight-line-returns)
+owns the bounded return semantics; [the completion record](depth-three-straight-line-returns.md)
+owns scope, exclusions, containment and proof. State: `completed`.
+
+All 25 return shapes, typed/carrier transport, ordered/unused/lazy execution, independent
+source/Core rejection, inherited identities and executable Application IR pass. All 593
+compiler tests pass across 549 units; all 623 inherited memory cases and 64 new isolated
+caller-scale cases pass. Peak direct compiler RSS is 22.34765625 MiB and maximum compile
+time is 0.02207197801908478 seconds through 256 caller locals. All 624 validation cgroups
+are removed. Required affected integration, CLI, vet, editor, compatibility and documentation
+checks pass. Changes remain uncommitted; no successor, commit, push or publication is authorized.
