@@ -312,7 +312,7 @@ func TestV920NestedArrowMethodsMalformedCore(t *testing.T) {
 			case "identity":
 				p.CompilerContract = "unknown"
 			case "version":
-				p.LanguageContract = "v0.95.0"
+				p.LanguageContract = "v0.96.0"
 			}
 			if coreir.ValidateProgram(p) == nil {
 				t.Fatal("malformed Core admitted")

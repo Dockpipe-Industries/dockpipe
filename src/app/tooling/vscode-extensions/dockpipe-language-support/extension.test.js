@@ -653,3 +653,9 @@ assert(depthThreeLeafReturn.description.includes("v0.94.0"));
 assert(depthThreeLeafReturn.body.join("\n").includes("if (enabled) {"));
 assert(depthThreeLeafReturn.body.join("\n").includes("return a ? (b ? (c ?"));
 assert(pipeLangReadme.includes("`v0.94.0`"));
+
+const depthThreeArrow = pipeLangSnippets["Depth-three expression-bodied method"];
+assert.strictEqual(depthThreeArrow.prefix, "pipe-depth-three-arrow");
+assert(depthThreeArrow.description.includes("v0.95.0"));
+assert(depthThreeArrow.body.join("\n").includes('a ? (b ? (c ? trim(raw) : raw) : "fallback") : raw;'));
+assert(pipeLangReadme.includes("`v0.95.0`"));

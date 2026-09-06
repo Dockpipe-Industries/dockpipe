@@ -1443,3 +1443,21 @@ constant with caller size. Executable Application IR, frozen compatibility, affe
 application/CLI, vet and editor/docs checks pass. HIR/Core shapes, evaluator/backend
 production code, public identities and engine/package boundaries remain unchanged.
 Changes are uncommitted; no successor, commit, push or publication is authorized.
+
+
+## Step 8bi: depth-three expression-bodied methods (v0.95.0)
+
+Founder selected A and separately approved implementation on 2026-09-06. The
+[canonical contract](../../../concepts/pipelang.md#pipelang-v0950-depth-three-expression-bodied-methods)
+owns semantics; [the completion record](depth-three-arrow-methods.md) owns scope,
+exclusions, contained verification and proof limits. State: `completed`.
+
+All 614 discovered compiler tests pass across 706 validation units, including the
+25 arrow shapes and 3,200 evaluator/pristine-Go outcomes plus lazy traces. All 623
+inherited memory cases and 64 isolated fixed-arrow caller-scale cases pass. Peak direct
+compiler RSS is 22.3671875 MiB and maximum elapsed time is 0.02210723899770528
+seconds through 256 locals. Closure depth is at most three and constant per helper.
+Executable Application IR, frozen compatibility, affected application/CLI, vet and
+editor/docs checks pass. HIR/Core shapes, evaluator/backend production code, public
+identities and engine/package boundaries are preserved. Changes remain uncommitted;
+no successor, commit, push or publication is authorized.

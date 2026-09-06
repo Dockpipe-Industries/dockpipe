@@ -1,3 +1,10 @@
+## v0.95.0 completed boundary
+
+[Depth-three expression-bodied methods](depth-three-arrow-methods.md) owns the approved
+scope and validation. The [canonical contract](../../../concepts/pipelang.md#pipelang-v0950-depth-three-expression-bodied-methods)
+owns semantics. Implementation and verification pass; the completion record owns evidence and limits.
+No successor is authorized.
+
 ## Completed current objective — depth-three terminal-leaf returns
 
 The [v0.94 scope](depth-three-terminal-leaf-returns.md) is complete.
