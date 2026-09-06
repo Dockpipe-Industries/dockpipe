@@ -593,3 +593,9 @@ assert(straightConditionalLocals.description.includes("v0.85.0"));
 assert.strictEqual(straightConditionalLocals.body.filter((line) => line.includes(" ? ")).length, 3);
 assert(straightConditionalLocals.body.some((line) => line.trim() === "return final;"));
 assert(!straightConditionalLocals.body.some((line) => line.includes("if (")));
+
+const conditionalReturn = Object.values(pipeLangSnippets).find((snippet) => snippet.prefix === "pipe-conditional-return");
+assert(conditionalReturn);
+assert(conditionalReturn.description.includes("v0.86.0"));
+assert(conditionalReturn.body.join("\n").includes('return enabled && selected != "" ? selected : normalized;'));
+assert(pipeLangReadme.includes("`v0.86.0`"));

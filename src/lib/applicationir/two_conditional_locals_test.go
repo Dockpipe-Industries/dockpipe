@@ -31,14 +31,22 @@ func TestV850StraightLineConditionalLocalsApplicationConsumer(t *testing.T) {
 	testConditionalLocalsApplicationConsumer(t, true, true)
 }
 
+func TestV860ConditionalReturnCompositionApplicationConsumer(t *testing.T) {
+	testConditionalLocalsApplicationConsumer(t, true, true, true)
+}
+
 func testConditionalLocalsApplicationConsumer(t *testing.T, finite bool, straightOption ...bool) {
 	straight := len(straightOption) > 0 && straightOption[0]
+	returnChoice := len(straightOption) > 1 && straightOption[1]
 	contract, prior, boundary := pipelang.PipeLangLanguageContractV830, pipelang.PipeLangLanguageContractV820, "one ternary"
 	if finite {
 		contract, prior, boundary = pipelang.PipeLangLanguageContractV840, pipelang.PipeLangLanguageContractV830, "at most two"
 	}
 	if straight {
 		contract, prior, boundary = pipelang.PipeLangLanguageContractV850, pipelang.PipeLangLanguageContractV840, "exactly one conditional"
+	}
+	if returnChoice {
+		contract, prior, boundary = pipelang.PipeLangLanguageContractV860, pipelang.PipeLangLanguageContractV850, "ordinary return"
 	}
 	layouts := []bool{false, true}
 	if straight {
@@ -72,6 +80,9 @@ func testConditionalLocalsApplicationConsumer(t *testing.T, finite bool, straigh
  string fourth=clean && third != "" ? third+"#" : third;
  string result=enabled ? fourth : normalized;
  return result;`
+			}
+			if returnChoice {
+				helper = strings.Replace(helper, "string result=enabled ? fourth : normalized;\n return result;", "return enabled ? fourth : normalized;", 1)
 			}
 			helper += `}
    public DockerSnapshot Project(DockerSnapshot snapshot) {

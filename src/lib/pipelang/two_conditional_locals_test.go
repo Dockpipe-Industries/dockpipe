@@ -36,7 +36,8 @@ func twoChoiceTreeMethod(tree *terminalTree, targets [2]string, unused bool, nam
 	return conditionalChoicesTreeMethod(tree, targets[:], unused, name)
 }
 
-func conditionalChoicesTreeMethod(tree *terminalTree, targets []string, unused bool, name string) string {
+func conditionalChoicesTreeMethod(tree *terminalTree, targets []string, unused bool, name string, returnOption ...bool) string {
+	returnChoice := len(returnOption) > 0 && returnOption[0]
 	var emit func(*terminalTree, string, string) string
 	emit = func(node *terminalTree, path, value string) string {
 		prefix := fmt.Sprintf("string b%s=Echo(%s+%q);", path, value, path+"B")
@@ -54,6 +55,9 @@ func conditionalChoicesTreeMethod(tree *terminalTree, targets []string, unused b
 			value = fmt.Sprintf("a%d%s", choice, path)
 		}
 		if node == nil {
+			if returnChoice {
+				return prefix + fmt.Sprintf("return Check(%q,d0 && %s!=\"\") ? Echo(%s+%q) : Echo(raw+%q);", "RETURN", value, value, ":R", ":fallback")
+			}
 			return prefix + fmt.Sprintf("return %s+%q;", value, ":"+path)
 		}
 		return prefix + fmt.Sprintf("if(Check(%q,d%d)){%s}else{%s}", path, len(path)-1, emit(node.yes, path+"T", value), emit(node.no, path+"F", value))
@@ -70,7 +74,8 @@ func twoChoiceTreeExpected(tree *terminalTree, targets [2]string, unused bool, m
 	return conditionalChoicesTreeExpected(tree, targets[:], unused, mask)
 }
 
-func conditionalChoicesTreeExpected(tree *terminalTree, targets []string, unused bool, mask int) (string, []string) {
+func conditionalChoicesTreeExpected(tree *terminalTree, targets []string, unused bool, mask int, returnOption ...bool) (string, []string) {
+	returnChoice := len(returnOption) > 0 && returnOption[0]
 	node, path, value := tree, "R", "value"
 	var trace []string
 	for depth := 0; ; depth++ {
@@ -94,6 +99,14 @@ func conditionalChoicesTreeExpected(tree *terminalTree, targets []string, unused
 			trace = append(trace, "E:"+value)
 		}
 		if node == nil {
+			if returnChoice {
+				trace = append(trace, "C:RETURN")
+				result := "value:fallback"
+				if mask&1 != 0 && value != "" {
+					result = value + ":R"
+				}
+				return result, append(trace, "E:"+result)
+			}
 			return value + ":" + path, trace
 		}
 		trace = append(trace, "C:"+path)
@@ -303,7 +316,7 @@ func testConditionalLocalsSourceRejection(t *testing.T, contract LanguageContrac
 		{"fallthrough", "return after;", ""},
 		{"early return", "string before = branch;", "return raw; string before = branch;"},
 	} {
-		if contract == PipeLangLanguageContractV840 && strings.HasPrefix(tc.name, "third ") {
+		if (contract == PipeLangLanguageContractV840 || contract == PipeLangLanguageContractV850 || contract == PipeLangLanguageContractV860) && strings.HasPrefix(tc.name, "third ") {
 			continue
 		}
 		t.Run(tc.name, func(t *testing.T) {
@@ -403,7 +416,7 @@ func testConditionalLocalsMalformedCore(t *testing.T, contract LanguageContract)
 			b.WhenTrue = &copy
 		}},
 	} {
-		if contract == PipeLangLanguageContractV840 && strings.HasPrefix(tc.name, "third ") {
+		if (contract == PipeLangLanguageContractV840 || contract == PipeLangLanguageContractV850 || contract == PipeLangLanguageContractV860) && strings.HasPrefix(tc.name, "third ") {
 			continue
 		}
 		t.Run(tc.name, func(t *testing.T) {
@@ -452,7 +465,7 @@ func testConditionalLocalsTypeMatrix(t *testing.T, contract LanguageContract) {
 				source = strings.Replace(source, "if(outer)", fmt.Sprintf("%[1]s third=pick ? shared : right;%[1]s fourth=pick ? third : right;if(outer)", typ), 1)
 				source = strings.Replace(source, "chosen=inner ? shared", "chosen=inner ? fourth", 1)
 			}
-			if contract == PipeLangLanguageContractV850 {
+			if contract == PipeLangLanguageContractV850 || contract == PipeLangLanguageContractV860 {
 				source = fmt.Sprintf(`public Record Row {public string Name;}public Class Typed {
  public %[1]s Echo(%[1]s value)=>value;
  public %[1]s Select(%[1]s left,%[1]s right,bool pick,bool outer,bool inner){
@@ -460,6 +473,9 @@ func testConditionalLocalsTypeMatrix(t *testing.T, contract LanguageContract) {
  %[1]s chosen=inner ? shared : right;
  %[1]s result=outer ? chosen : shared;
  return result;}}`, typ)
+				if contract == PipeLangLanguageContractV860 {
+					source = strings.Replace(source, fmt.Sprintf("%s result=outer ? chosen : shared;\n return result;", typ), "return outer ? chosen : shared;", 1)
+				}
 			}
 			_, program := conditionalLocalTreeProgramVersion(t, contract, source, []string{"Select", "Echo"})
 			function := coreFunctionNamed(t, program, "Select")
@@ -530,7 +546,7 @@ func TestTypedChoice(t *testing.T){
 }
 
 func TestV830TwoConditionalLocalsVersionBoundary(t *testing.T) {
-	for _, contract := range []LanguageContract{PipeLangLanguageContractV810, PipeLangLanguageContractV820, "v0.86.0", "unknown"} {
+	for _, contract := range []LanguageContract{PipeLangLanguageContractV810, PipeLangLanguageContractV820, "v0.87.0", "unknown"} {
 		input := semanticTestModuleSet("compiler.selfhosting", []ModuleInput{testModule("compiler.selfhosting", "two.pipe", twoConditionalLocalsSource)}, nil)
 		input.LanguageContract = contract
 		if AnalyzeSemanticModuleSet(input).Error() == nil {
@@ -554,7 +570,7 @@ func TestV830TwoConditionalLocalsInheritance(t *testing.T) {
 	compare := func(source string, methods []string) {
 		t.Helper()
 		var baseline [][]byte
-		for _, contract := range []LanguageContract{PipeLangLanguageContractV820, PipeLangLanguageContractV830, PipeLangLanguageContractV840, PipeLangLanguageContractV850} {
+		for _, contract := range []LanguageContract{PipeLangLanguageContractV820, PipeLangLanguageContractV830, PipeLangLanguageContractV840, PipeLangLanguageContractV850, PipeLangLanguageContractV860} {
 			analysis, program := conditionalLocalTreeProgramVersion(t, contract, source, methods)
 			projection, err := BuildSemanticProjection(analysis)
 			if err != nil {
@@ -635,7 +651,7 @@ func testConditionalLocalsCarrierAndHostValues(t *testing.T, contract LanguageCo
 				source = strings.Replace(source, "if(enabled)", fmt.Sprintf("%[1]s c=first ? a : fallback;%[1]s d=first ? c : fallback;if(enabled)", typ), 1)
 				source = strings.Replace(source, "b=second ? a", "b=second ? d", 1)
 			}
-			if contract == PipeLangLanguageContractV850 {
+			if contract == PipeLangLanguageContractV850 || contract == PipeLangLanguageContractV860 {
 				source = fmt.Sprintf(`public Record Row {public string Name;}public Class Choices {
  public %[1]s Echo(%[1]s value)=>value;
  public %[1]s Select(%[1]s value,%[1]s fallback,bool first,bool second,bool enabled){
@@ -643,6 +659,9 @@ func testConditionalLocalsCarrierAndHostValues(t *testing.T, contract LanguageCo
  %[1]s b=second ? a : fallback;
  %[1]s c=enabled ? b : a;
  return c;}}`, typ)
+				if contract == PipeLangLanguageContractV860 {
+					source = strings.Replace(source, fmt.Sprintf("%s c=enabled ? b : a;\n return c;", typ), "return enabled ? b : a;", 1)
+				}
 			}
 			_, program := conditionalLocalTreeProgramVersion(t, contract, source, []string{"Echo", "Select"})
 			function := coreFunctionNamed(t, program, "Select")
@@ -728,8 +747,11 @@ func testConditionalLocalsDifferentTypes(t *testing.T, contract LanguageContract
 		source = strings.Replace(source, "if(enabled)", "bool on=enabled ? true : false;string final=on ? label : raw;if(on)", 1)
 		source = strings.Replace(source, "return label;", "return final;", 1)
 	}
-	if contract == PipeLangLanguageContractV850 {
+	if contract == PipeLangLanguageContractV850 || contract == PipeLangLanguageContractV860 {
 		source = strings.Replace(source, "if(enabled){return label;}else{return raw;}", "string result=enabled ? label : raw;return result;", 1)
+	}
+	if contract == PipeLangLanguageContractV860 {
+		source = strings.Replace(source, "string result=enabled ? label : raw;return result;", "return enabled ? label : raw;", 1)
 	}
 	_, program := conditionalLocalTreeProgramVersion(t, contract, source, []string{"Select"})
 	function := coreFunctionNamed(t, program, "Select")

@@ -10,26 +10,27 @@ dispatch:
 
 state:
   decision: accepted
-  current_language_contract: v0.85.0
-  active_objective: TASK-021-straight-line-conditional-locals
+  current_language_contract: v0.86.0
+  active_objective: TASK-021-conditional-return-composition
   objective_state: completed
   selected_option: A
-  selected_scope: finite conditional locals in straight-line methods
+  selected_scope: complete ternary returns after straight-line conditional locals
   implementation_approval: approved
   completed_repair_objective: TASK-021-PipeLang-v0.80-milestone-repairs
   repair_commit: acbd10f88207d0a226ec24a073948362691adb8c
   repair_record: milestone-v080-repairs.md
   completed_repair_slices: [R1, R2, R3, R4, R5, R6]
   next_repair_slice: null
-  completed_through: v0.85.0 straight-line conditional-local sequences plus v0.84.0 finite conditional-local sequences plus v0.83.0 two conditional locals in terminal trees plus v0.82.0 conditional local in terminal trees plus v0.81.0 terminal trees through depth three plus v0.80.0 two expanded terminal leaves plus v0.79.0 bounded depth-three terminal branching plus v0.78.0 rootless symmetric depth-two terminal branching plus v0.77.0 symmetric depth-two terminal branching with shared root immutable locals plus v0.76.0 shared root immutable-local sequences before the v0.75.0 bounded nested terminal topology, v0.75.0 inner terminal-leaf immutable-local sequences, v0.74.0 one-branch bounded nested terminal if/else, v0.73.0 direct terminal if/else without a top-level-local prerequisite, v0.72.0 general terminal-branch local sequences, v0.71.0 two-local terminal-branch sequences, v0.70.0 lexical terminal-branch locals, and v0.69.0 terminal statement-level if/else after ordered immutable locals, generalized one-stage and multi-stage shared-context Result propagation, generalized contextual bounded Result propagation, exact two-stage and one-stage contextual bounded propagation, contextual and generalized cross-payload chains, exact two-stage and one-stage cross-payload Result propagation, generalized checked-propagation chains, two-stage, multi-parameter direct, direct, and helper checked propagation, multi-parameter propagation, cumulative and immediate dependent chains, dependent and independent two-carrier forms, prior-local and later-local helper matching, checked arithmetic, pure calls, matching, propagation, ordered immutable locals, and dockpipe.application.v1 consumer proof
+  completed_through: v0.86.0 conditional return composition plus v0.85.0 straight-line conditional-local sequences plus v0.84.0 finite conditional-local sequences plus v0.83.0 two conditional locals in terminal trees plus v0.82.0 conditional local in terminal trees plus v0.81.0 terminal trees through depth three plus v0.80.0 two expanded terminal leaves plus v0.79.0 bounded depth-three terminal branching plus v0.78.0 rootless symmetric depth-two terminal branching plus v0.77.0 symmetric depth-two terminal branching with shared root immutable locals plus v0.76.0 shared root immutable-local sequences before the v0.75.0 bounded nested terminal topology, v0.75.0 inner terminal-leaf immutable-local sequences, v0.74.0 one-branch bounded nested terminal if/else, v0.73.0 direct terminal if/else without a top-level-local prerequisite, v0.72.0 general terminal-branch local sequences, v0.71.0 two-local terminal-branch sequences, v0.70.0 lexical terminal-branch locals, and v0.69.0 terminal statement-level if/else after ordered immutable locals, generalized one-stage and multi-stage shared-context Result propagation, generalized contextual bounded Result propagation, exact two-stage and one-stage contextual bounded propagation, contextual and generalized cross-payload chains, exact two-stage and one-stage cross-payload Result propagation, generalized checked-propagation chains, two-stage, multi-parameter direct, direct, and helper checked propagation, multi-parameter propagation, cumulative and immediate dependent chains, dependent and independent two-carrier forms, prior-local and later-local helper matching, checked arithmetic, pure calls, matching, propagation, ordered immutable locals, and dockpipe.application.v1 consumer proof
   authority: >-
     Founder selected A and separately approved implementation in the current task.
-    straight-line-conditional-locals.md owns this scope and contained validation.
+    conditional-return-composition.md owns this scope and contained validation.
     Commit, push, publication and successor selection remain separate.
 
 routes:
   orientation:
     read:
+      - conditional-return-composition.md
       - straight-line-conditional-locals.md
       - compiler-memory-repair.md
       - finite-conditional-locals.md
@@ -50,6 +51,7 @@ routes:
 
   next_founder_decision:
     read:
+      - conditional-return-composition.md
       - straight-line-conditional-locals.md
       - finite-conditional-locals.md
       - two-conditional-locals.md
@@ -67,6 +69,7 @@ routes:
 
   accepted_language_implementation:
     read:
+      - conditional-return-composition.md
       - straight-line-conditional-locals.md
       - finite-conditional-locals.md
       - two-conditional-locals.md
@@ -85,6 +88,7 @@ routes:
 
   canonical_contract_review:
     read:
+      - conditional-return-composition.md
       - straight-line-conditional-locals.md
       - compiler-contract.md
       - language-surface.md
@@ -110,6 +114,8 @@ history_by_slice:
   steps_8a_to_8aw: completed-functions.md
 
 documents:
+  - path: conditional-return-composition.md
+    role: approved conditional-return composition scope and proof
   - path: straight-line-conditional-locals.md
     role: approved straight-line conditional-local scope and proof
   - path: compiler-memory-repair.md
@@ -147,7 +153,7 @@ documents:
   - path: completed-snapshots-selection.md
     role: completed steps 7t through 7ae
   - path: completed-functions.md
-    role: completed steps 8a named pure record predicate filtering through 8ay straight-line conditional-local sequences
+    role: completed steps 8a named pure record predicate filtering through 8az conditional return composition
   - path: next-boundary.md
     role: exact current boundary and preserved contracts
 

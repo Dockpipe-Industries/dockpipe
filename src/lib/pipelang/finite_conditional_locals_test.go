@@ -39,7 +39,8 @@ func TestV840FiniteConditionalLocalsAllShapes(t *testing.T) {
 	testFiniteConditionalLocalsLayouts(t, PipeLangLanguageContractV840, trees)
 }
 
-func testFiniteConditionalLocalsLayouts(t *testing.T, contract LanguageContract, trees []*terminalTree) {
+func testFiniteConditionalLocalsLayouts(t *testing.T, contract LanguageContract, trees []*terminalTree, returnOption ...bool) {
+	returnChoice := len(returnOption) > 0 && returnOption[0]
 	methodsTotal, outcomes := 0, 0
 	for shape, tree := range trees {
 		t.Run(fmt.Sprint(shape), func(t *testing.T) {
@@ -58,6 +59,9 @@ func testFiniteConditionalLocalsLayouts(t *testing.T, contract LanguageContract,
 				layouts = append(layouts, []string{scope, scope, scope})
 			}
 			if tree == nil {
+				if returnChoice {
+					layouts = append(layouts, []string{})
+				}
 				layouts = append(layouts, []string{"R"}, []string{"R", "R"}, []string{"R", "R", "R", "R", "R"})
 			} else {
 				layouts = append(layouts, []string{"R", "RT", "RF"}, []string{"R", "R", scopes[len(scopes)-1]}, []string{"R", "RT", "RT", "RF", "RF"})
@@ -67,7 +71,7 @@ func testFiniteConditionalLocalsLayouts(t *testing.T, contract LanguageContract,
 					name := fmt.Sprintf("Select%d", len(samples))
 					samples = append(samples, sample{name, targets, unused})
 					methods = append(methods, name)
-					source.WriteString(conditionalChoicesTreeMethod(tree, targets, unused, name))
+					source.WriteString(conditionalChoicesTreeMethod(tree, targets, unused, name, returnChoice))
 				}
 			}
 			source.WriteString("}")
@@ -107,7 +111,7 @@ func testFiniteConditionalLocalsLayouts(t *testing.T, contract LanguageContract,
 				evaluation.Functions = []coreir.Function{coreFunctionNamed(t, program, "Echo"), coreFunctionNamed(t, program, "Check"), function}
 				var wantedValues, wantedTraces strings.Builder
 				for mask := 0; mask < 1<<(len(sample.targets)+3); mask++ {
-					want, trace := conditionalChoicesTreeExpected(tree, sample.targets, sample.unused, mask)
+					want, trace := conditionalChoicesTreeExpected(tree, sample.targets, sample.unused, mask, returnChoice)
 					args := []coreeval.Value{{Type: function.Parameters[0].Type, String: "value"}}
 					for bit := 0; bit < len(sample.targets)+3; bit++ {
 						args = append(args, coreeval.Value{Type: function.Parameters[bit+1].Type, Bool: mask&(1<<bit) != 0})
@@ -171,7 +175,7 @@ func TestV840FiniteConditionalLocalsDifferentTypes(t *testing.T) {
 }
 
 func TestV840FiniteConditionalLocalsVersionBoundary(t *testing.T) {
-	for _, contract := range []LanguageContract{PipeLangLanguageContractV810, PipeLangLanguageContractV820, PipeLangLanguageContractV830, "v0.86.0", "unknown"} {
+	for _, contract := range []LanguageContract{PipeLangLanguageContractV810, PipeLangLanguageContractV820, PipeLangLanguageContractV830, "v0.87.0", "unknown"} {
 		input := semanticTestModuleSet("compiler.selfhosting", []ModuleInput{testModule("compiler.selfhosting", "finite.pipe", finiteConditionalLocalsSource)}, nil)
 		input.LanguageContract = contract
 		if AnalyzeSemanticModuleSet(input).Error() == nil {
@@ -231,7 +235,11 @@ func TestV840FiniteConditionalLocalsThirdChoiceValidation(t *testing.T) {
 }
 
 func TestV840FiniteConditionalLocalsDependentCondition(t *testing.T) {
-	_, program := conditionalLocalTreeProgramVersion(t, PipeLangLanguageContractV840, finiteConditionalLocalsSource, []string{"Select"})
+	testConditionalLocalsDependentCondition(t, PipeLangLanguageContractV840, finiteConditionalLocalsSource)
+}
+
+func testConditionalLocalsDependentCondition(t *testing.T, contract LanguageContract, source string) {
+	_, program := conditionalLocalTreeProgramVersion(t, contract, source, []string{"Select"})
 	function := coreFunctionNamed(t, program, "Select")
 	var checks strings.Builder
 	for _, raw := range []string{"", "   ", " ready ", "raw"} {
@@ -321,7 +329,7 @@ func TestV840FiniteConditionalLocalsBoundedScale(t *testing.T) {
 func TestV840FiniteConditionalLocalsTwoChoiceInheritance(t *testing.T) {
 	for _, source := range []string{twoConditionalLocalsSource, twoConditionalRulesSource} {
 		var baseline [][]byte
-		for _, contract := range []LanguageContract{PipeLangLanguageContractV830, PipeLangLanguageContractV840, PipeLangLanguageContractV850} {
+		for _, contract := range []LanguageContract{PipeLangLanguageContractV830, PipeLangLanguageContractV840, PipeLangLanguageContractV850, PipeLangLanguageContractV860} {
 			analysis, program := conditionalLocalTreeProgramVersion(t, contract, source, []string{"Select"})
 			projection, err := BuildSemanticProjection(analysis)
 			if err != nil {

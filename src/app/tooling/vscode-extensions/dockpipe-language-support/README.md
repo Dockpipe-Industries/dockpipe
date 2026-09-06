@@ -1,3 +1,8 @@
+PipeLang `v0.86.0` adds `pipe-conditional-return`: straight-line typed conditional locals
+followed by a complete ternary return. Locals execute eagerly once in source order; return arms
+are lazy and exactly match the method return type. Nested ternaries, new argument/condition
+placements and terminal-tree return choices remain excluded. Existing snippets retain their contracts.
+
 # DockPipe Language Support (VS Code)
 
 PipeLang `v0.85.0` adds `pipe-straight-conditional-locals`: finite complete ternary

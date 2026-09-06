@@ -962,5 +962,18 @@
       "}"
     ],
     "description": "Create a v0.85.0 straight-line method with finite typed conditional locals and an ordinary return."
+  },
+  "PipeLang conditional return composition": {
+    "prefix": "pipe-conditional-return",
+    "body": [
+      "public Class ${1:Classifier} {",
+      "    public string ${2:Select}(string raw, bool clean, bool suffix, bool enabled) {",
+      "        string normalized = clean ? trim(raw) : raw;",
+      "        string selected = suffix && normalized != \"\" ? normalized + \"!\" : normalized;",
+      "        return enabled && selected != \"\" ? selected : normalized;",
+      "    }",
+      "}"
+    ],
+    "description": "Create a v0.86.0 straight-line method with typed conditional locals and a lazy complete ternary return."
   }
 }

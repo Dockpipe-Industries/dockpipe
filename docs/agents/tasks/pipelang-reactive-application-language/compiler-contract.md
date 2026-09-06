@@ -1,3 +1,11 @@
+## Completed current objective — conditional return composition
+
+Founder selected A and separately approved implementation of v0.86.0 in this task.
+[conditional-return-composition.md](conditional-return-composition.md) owns the exact scope,
+exclusions, containment requirements and verification status. State: `completed`.
+The completed v0.85.0 slice is committed at `f94fdafa`; earlier uncommitted/baseline wording
+below is historical. Commit, push, publication and successor selection remain separate.
+
 ## Completed current objective — straight-line conditional locals
 
 The founder selected A and separately approved implementation of v0.85.0 in this task.
@@ -243,3 +251,12 @@ The [canonical contract](../../../concepts/pipelang.md#pipelang-v0840-finite-con
 owns source/Core semantics and exclusions. Existing HIR/Core nodes and public identities remain
 stable. Source and Core independently preserve placement/depth constraints while earlier versions
 retain their occurrence limits. [The objective record](finite-conditional-locals.md) owns proof.
+
+
+## Accepted v0.86.0 composition boundary
+
+The [canonical conditional-return contract](../../../concepts/pipelang.md#pipelang-v0860-conditional-return-composition)
+adds only complete ternary returns after straight-line typed locals. Independent source/Core
+placement checks reuse existing typed HIR/Core nodes; evaluator and Core-only Go retain their
+semantics. [The completion record](conditional-return-composition.md) owns contained proof.
+Public identities, all inherited forms and the frozen 45-source lane remain unchanged.

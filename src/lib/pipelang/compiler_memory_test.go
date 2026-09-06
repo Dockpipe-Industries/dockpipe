@@ -28,6 +28,12 @@ func TestCompilerMemoryLocalSequences(t *testing.T) {
 		branch, unused, straight bool
 	}
 	families := []family{
+		{PipeLangLanguageContractV860, 0, false, false, true},
+		{PipeLangLanguageContractV860, 1, false, false, true},
+		{PipeLangLanguageContractV860, 2, false, false, true},
+		{PipeLangLanguageContractV860, 3, false, false, true},
+		{PipeLangLanguageContractV860, -1, false, false, true},
+		{PipeLangLanguageContractV860, -1, false, true, true},
 		{PipeLangLanguageContractV850, 0, false, false, true},
 		{PipeLangLanguageContractV850, 1, false, false, true},
 		{PipeLangLanguageContractV850, 2, false, false, true},
@@ -82,7 +88,9 @@ func TestCompilerMemoryLocalSequences(t *testing.T) {
 							previous = name
 						}
 					}
-					if f.straight {
+					if f.version == PipeLangLanguageContractV860 {
+						fmt.Fprintf(&source, "return enabled ? %s : raw;}}", previous)
+					} else if f.straight {
 						fmt.Fprintf(&source, "return %s;}}", previous)
 					} else if f.branch {
 						fmt.Fprintf(&source, "return %s;}else{return raw;}}}", previous)
@@ -127,7 +135,7 @@ func TestCompilerMemoryLocalSequences(t *testing.T) {
 					for _, pick := range []bool{false, true} {
 						for _, enabled := range []bool{false, true} {
 							want := "raw"
-							if enabled || f.straight {
+							if enabled || (f.straight && f.version != PipeLangLanguageContractV860) {
 								for i := 0; i < count; i++ {
 									if f.unused && i == count-1 {
 										continue
