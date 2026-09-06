@@ -235,7 +235,7 @@ or public semantic identities. The backend checks the complete emitted package n
 returning Go source.
 
 Core program admission accepts only `pipelang.compiler.v1` and the exact supported language
-identities `v0.1.0` through `v0.87.0`. `coreir.ValidateProgram` checks feature availability in
+identities `v0.1.0` through `v0.88.0`. `coreir.ValidateProgram` checks feature availability in
 signatures and nested expressions, together with the existing composition and topology contracts.
 `coreeval.EvaluateProgram` and the Go backend use that same admission before executing or emitting
 anything, including when a disallowed feature occurs in an uncalled function or unused parameter.
@@ -2929,3 +2929,45 @@ ternaries, new argument/condition placements, deeper statement trees, new combin
 with matching/propagation, fallthrough, early returns, loops, mutation, effects, inference
 or backends. Finite local sequences remain subject to host resource limits; regression
 proof measures through 256 locals rather than claiming exhaustive length coverage.
+
+### PipeLang v0.88.0: nested straight-line returns
+
+`v0.88.0` additionally admits a complete ternary return in a straight-line block-bodied
+method with zero or more explicitly typed immutable locals. Either or both result arms may
+contain one further complete ternary, with at most two ternary decisions along any return
+path. This covers a nonnested root choice, nesting in the true arm, nesting in the false arm,
+and nesting in both arms. Parentheses can make nested arms explicit:
+
+```pipe
+public Class Choice {
+  public string Select(string raw, bool clean, bool enabled, bool fallback) {
+    string normalized = clean ? trim(raw) : raw;
+    return enabled ? (clean ? normalized : raw) : (fallback ? "fallback" : "");
+  }
+  public string Label(bool enabled, bool detailed) {
+    return enabled ? (detailed ? "enabled in detail" : "enabled") : "disabled";
+  }
+}
+```
+
+Each condition has type `bool`; every final arm exactly matches the declared method return
+type. All existing supported values and carriers travel intact. Locals retain the inherited
+nonnested initializer forms, lexical scope and exact types. Every local initializer executes
+eagerly once in source order, including unused locals. The return evaluates the outer condition
+once, then only the selected arm and any condition within that arm. Unselected nested conditions
+and result arms never execute. No binding escapes its lexical scope.
+
+Source analysis produces typed HIR and target-neutral Core using existing `immutable_local`
+and value `conditional` nodes. Source and Core independently validate placement and the depth-two
+bound; structural validation checks types, bindings and canonical positions. The parser enforces
+block spelling for newly admitted nested returns. Core normalizes block/arrow spelling and carries
+no source-spelling marker. The evaluator and Core-only Go backend consume validated Core.
+`pipelang.compiler.v1`, `pipelang.semantic.v1`, and `dockpipe.application.v1` identities and shapes
+remain stable; language metadata advances and the exact frozen 45-source lane stays unchanged.
+
+Depth-three return choices, nested initializers, nested choices within statement `if/else` trees,
+nested expression-bodied methods, new condition/argument placements, new matching/propagation
+combinations, ordinary zero-local block returns, fallthrough, mutation, inference, loops and effects
+remain excluded. Inherited accepted forms remain exact, including nonnested leaf returns in
+statement trees through depth three. This slice adds no backend, runtime, action, UI or deployment
+behavior.

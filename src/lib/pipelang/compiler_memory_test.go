@@ -28,6 +28,12 @@ func TestCompilerMemoryLocalSequences(t *testing.T) {
 		branch, unused, straight bool
 	}
 	families := []family{
+		{PipeLangLanguageContractV880, 0, false, false, true},
+		{PipeLangLanguageContractV880, 1, false, false, true},
+		{PipeLangLanguageContractV880, 2, false, false, true},
+		{PipeLangLanguageContractV880, 3, false, false, true},
+		{PipeLangLanguageContractV880, -1, false, false, true},
+		{PipeLangLanguageContractV880, -1, false, true, true},
 		{PipeLangLanguageContractV860, 0, false, false, true},
 		{PipeLangLanguageContractV860, 1, false, false, true},
 		{PipeLangLanguageContractV860, 2, false, false, true},
@@ -72,7 +78,7 @@ func TestCompilerMemoryLocalSequences(t *testing.T) {
 			for _, count := range []int{8, 16, 24, 32, 64, 128, 256} {
 				ok := t.Run(fmt.Sprint(count), func(t *testing.T) {
 					var source strings.Builder
-					if f.version == PipeLangLanguageContractV870 {
+					if f.version == PipeLangLanguageContractV880 || f.version == PipeLangLanguageContractV870 {
 						source.WriteString("public Class Choices {public string Select(string raw,bool pick,bool enabled,bool finish){")
 					} else {
 						source.WriteString("public Class Choices {public string Select(string raw,bool pick,bool enabled){")
@@ -98,7 +104,9 @@ func TestCompilerMemoryLocalSequences(t *testing.T) {
 							previous = name
 						}
 					}
-					if f.version == PipeLangLanguageContractV870 {
+					if f.version == PipeLangLanguageContractV880 {
+						fmt.Fprintf(&source, "return enabled ? (finish ? %s+\"A\" : raw+\"B\") : (pick ? raw+\"C\" : raw+\"D\");}}", previous)
+					} else if f.version == PipeLangLanguageContractV870 {
 						if f.branch {
 							fmt.Fprintf(&source, "return finish ? %s : raw;}else{return finish ? raw : raw;}}}", previous)
 						} else {
@@ -151,12 +159,12 @@ func TestCompilerMemoryLocalSequences(t *testing.T) {
 					for _, pick := range []bool{false, true} {
 						for _, enabled := range []bool{false, true} {
 							finishes := []bool{true}
-							if f.version == PipeLangLanguageContractV870 {
+							if f.version == PipeLangLanguageContractV880 || f.version == PipeLangLanguageContractV870 {
 								finishes = []bool{false, true}
 							}
 							for _, finish := range finishes {
 								want := "raw"
-								if (enabled && finish) || (f.straight && f.version != PipeLangLanguageContractV860) {
+								if (enabled && finish) || (f.straight && f.version != PipeLangLanguageContractV860 && f.version != PipeLangLanguageContractV880) {
 									for i := 0; i < count; i++ {
 										if f.unused && i == count-1 {
 											continue
@@ -168,15 +176,28 @@ func TestCompilerMemoryLocalSequences(t *testing.T) {
 										}
 									}
 								}
+								if f.version == PipeLangLanguageContractV880 {
+									if enabled {
+										if finish {
+											want += "A"
+										} else {
+											want += "B"
+										}
+									} else if pick {
+										want += "C"
+									} else {
+										want += "D"
+									}
+								}
 								args := []coreeval.Value{{Type: function.Parameters[0].Type, String: "raw"}, {Type: function.Parameters[1].Type, Bool: pick}, {Type: function.Parameters[2].Type, Bool: enabled}}
-								if f.version == PipeLangLanguageContractV870 {
+								if f.version == PipeLangLanguageContractV880 || f.version == PipeLangLanguageContractV870 {
 									args = append(args, coreeval.Value{Type: function.Parameters[3].Type, Bool: finish})
 								}
 								got, err := coreeval.EvaluateProgram(program, function.Identity, args)
 								if err != nil || !got.OK || got.Value.String != want {
 									t.Fatalf("eval: %#v %v want %q", got, err, want)
 								}
-								if f.version == PipeLangLanguageContractV870 {
+								if f.version == PipeLangLanguageContractV880 || f.version == PipeLangLanguageContractV870 {
 									fmt.Fprintf(&checks, "if got:=PipeLangSelect(\"raw\",%t,%t,%t);got!=%q{t.Fatal(got)}\n", pick, enabled, finish, want)
 								} else {
 									fmt.Fprintf(&checks, "if got:=PipeLangSelect(\"raw\",%t,%t);got!=%q{t.Fatal(got)}\n", pick, enabled, want)

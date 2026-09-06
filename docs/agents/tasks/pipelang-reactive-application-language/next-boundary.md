@@ -1,3 +1,12 @@
+## Completed current objective — nested straight-line returns
+
+Founder selected A and separately approved v0.88.0 implementation in this task.
+[nested-straight-line-returns.md](nested-straight-line-returns.md) owns scope, exclusions,
+contained validation and current evidence. State: `completed`.
+The completed v0.87.0 slice is committed at `ff9fa296`; earlier uncommitted wording and
+baseline references below are historical. Commit, push, publication and successor selection
+remain separate.
+
 ## Completed current objective — conditional returns in terminal-tree leaves
 
 Founder selected A and separately approved v0.87.0 implementation in this task.

@@ -1,3 +1,8 @@
+PipeLang `v0.88.0` adds `pipe-nested-return`: a complete straight-line block return may
+nest ternaries in either or both arms through depth two, after zero or more typed locals.
+Initializers remain nonnested. Nested choices in statement trees, expression-bodied methods,
+conditions and arguments remain excluded. Only selected conditions and arms execute.
+
 PipeLang `v0.87.0` adds `pipe-terminal-leaf-return`: complete nonnested ternary returns
 in leaves of terminal if/else trees through depth three, with optional typed conditional
 locals in each scope. Selected branches and return arms stay lazy; reached initializers

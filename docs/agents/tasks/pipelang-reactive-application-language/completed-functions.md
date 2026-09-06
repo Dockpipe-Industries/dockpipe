@@ -1344,3 +1344,15 @@ groups under unchanged limits. All 197 recorded cgroups were removed with unchan
 counters. HIR/Core nodes, evaluator/backend production code, public identities, generic boundaries
 and the frozen 45-source lane remain unchanged. Changes remain uncommitted; no successor,
 commit, push, publication or live operation is implied.
+
+## Step 8bb: nested straight-line returns (v0.88.0)
+
+The separately selected and approved slice is complete. The
+[canonical language contract](../../../concepts/pipelang.md#pipelang-v0880-nested-straight-line-returns)
+owns public behavior; [nested-straight-line-returns.md](nested-straight-line-returns.md) owns
+scope, exclusions, contained verification and reproduction. All 535 compiler tests pass in
+141 final batches; 287 memory cases and 42 isolated normal-inlining measurements pass.
+The four-shape layout matrix passes 144 methods and 11,584 outcomes/traces. Supported types,
+carriers, malformed source/Core, inherited artifacts, executable Application IR, frozen
+compatibility, application/CLI, vet and editor/docs checks pass. Public identities and generic
+engine/package boundaries are preserved. Changes remain uncommitted; no successor is selected.
