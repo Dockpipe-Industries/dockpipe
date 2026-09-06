@@ -898,10 +898,10 @@ func validExpandedDepthThreeTerminalIf(expr Expr, expandedLeaves int) bool {
 }
 
 func validTerminalIfStatement(contract LanguageContract, expr Expr) bool {
-	if contract == PipeLangLanguageContractV890 && validNestedTerminalLeafReturns(expr) {
+	if (contract == PipeLangLanguageContractV890 || contract == PipeLangLanguageContractV900) && validNestedTerminalLeafReturns(expr) {
 		return true
 	}
-	if (contract == PipeLangLanguageContractV890 || contract == PipeLangLanguageContractV880) || contract == PipeLangLanguageContractV870 {
+	if ((contract == PipeLangLanguageContractV890 || contract == PipeLangLanguageContractV900) || contract == PipeLangLanguageContractV880) || contract == PipeLangLanguageContractV870 {
 		return validTerminalLeafConditionalReturns(expr) || validTerminalIfStatement(PipeLangLanguageContractV860, expr)
 	}
 	if contract == PipeLangLanguageContractV860 || contract == PipeLangLanguageContractV850 || contract == PipeLangLanguageContractV840 {
@@ -1294,6 +1294,28 @@ func validNestedStraightLineReturns(expr Expr) bool {
 			walk(choice.WhenTrue, remaining-1) && walk(choice.WhenFalse, remaining-1)
 	}
 	return walk(expr, 2)
+}
+
+// v0.90 permits complete depth-two initializers only in a straight-line local
+// sequence. Reuse the value-choice bound, never the statement-tree admission.
+func validNestedStraightLineInitializers(expr Expr) bool {
+	hasLocal := false
+	for {
+		local, ok := expr.(*ImmutableLocalExpr)
+		if !ok {
+			break
+		}
+		hasLocal = true
+		if local.Initializer == nil || local.Return == nil || countImmutableLocalExpressions(local.Initializer) != 0 {
+			return false
+		}
+		if !validNestedStraightLineReturns(local.Initializer) && !validConditionalOperand(local.Initializer) {
+			return false
+		}
+		expr = local.Return
+	}
+	return hasLocal && expr != nil && countImmutableLocalExpressions(expr) == 0 &&
+		(validNestedStraightLineReturns(expr) || validConditionalOperand(expr))
 }
 
 // v0.87 counts statement depth independently of value choices at return leaves.

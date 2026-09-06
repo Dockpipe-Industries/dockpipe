@@ -279,7 +279,7 @@ func TestV870TerminalLeafConditionalReturnsVersionBoundary(t *testing.T) {
 func TestV870TerminalLeafConditionalReturnsInheritance(t *testing.T) {
 	for _, source := range []string{conditionalReturnCompositionSource, straightLineConditionalLocalsSource, finiteConditionalLocalsSource, twoConditionalLocalsSource} {
 		var baseline []byte
-		for _, contract := range []LanguageContract{PipeLangLanguageContractV860, PipeLangLanguageContractV870, PipeLangLanguageContractV880, PipeLangLanguageContractV890} {
+		for _, contract := range []LanguageContract{PipeLangLanguageContractV860, PipeLangLanguageContractV870, PipeLangLanguageContractV880, PipeLangLanguageContractV890, PipeLangLanguageContractV900} {
 			analysis, program := conditionalLocalTreeProgramVersion(t, contract, source, []string{"Select"})
 			typed, err := LowerSemanticMethodToHIR(analysis, semanticMethodNamed(t, analysis, "Select").Identity)
 			if err != nil {

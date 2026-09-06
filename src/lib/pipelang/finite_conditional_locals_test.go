@@ -351,7 +351,7 @@ func TestV840FiniteConditionalLocalsBoundedScale(t *testing.T) {
 func TestV840FiniteConditionalLocalsTwoChoiceInheritance(t *testing.T) {
 	for _, source := range []string{twoConditionalLocalsSource, twoConditionalRulesSource} {
 		var baseline [][]byte
-		for _, contract := range []LanguageContract{PipeLangLanguageContractV830, PipeLangLanguageContractV840, PipeLangLanguageContractV850, PipeLangLanguageContractV860, PipeLangLanguageContractV870, PipeLangLanguageContractV880, PipeLangLanguageContractV890} {
+		for _, contract := range []LanguageContract{PipeLangLanguageContractV830, PipeLangLanguageContractV840, PipeLangLanguageContractV850, PipeLangLanguageContractV860, PipeLangLanguageContractV870, PipeLangLanguageContractV880, PipeLangLanguageContractV890, PipeLangLanguageContractV900} {
 			analysis, program := conditionalLocalTreeProgramVersion(t, contract, source, []string{"Select"})
 			projection, err := BuildSemanticProjection(analysis)
 			if err != nil {

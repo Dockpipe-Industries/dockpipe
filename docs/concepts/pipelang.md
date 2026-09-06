@@ -235,7 +235,7 @@ or public semantic identities. The backend checks the complete emitted package n
 returning Go source.
 
 Core program admission accepts only `pipelang.compiler.v1` and the exact supported language
-identities `v0.1.0` through `v0.89.0`. `coreir.ValidateProgram` checks feature availability in
+identities `v0.1.0` through `v0.90.0`. `coreir.ValidateProgram` checks feature availability in
 signatures and nested expressions, together with the existing composition and topology contracts.
 `coreeval.EvaluateProgram` and the Go backend use that same admission before executing or emitting
 anything, including when a disallowed feature occurs in an uncalled function or unused parameter.
@@ -3017,3 +3017,43 @@ Depth-four statement trees, depth-three ternaries, nested initializers, nested a
 methods, ordinary zero-local block returns, new condition/argument placements, new matching/
 propagation combinations, fallthrough, mutation, inference, loops and effects remain excluded.
 This adds no backend, runtime, action, UI or deployment behavior.
+
+### PipeLang v0.90.0: nested straight-line initializers
+
+`v0.90.0` additionally permits any subset of a finite sequence of explicitly typed
+immutable locals in a straight-line block method to use complete ternary initializers
+through depth two. Either or both arms may contain one further ternary; the bound is
+per initializer path. Ordinary and nonnested initializers may surround these choices.
+The final return may be an inherited ordinary expression or complete ternary through
+depth two. Later initializers and the return may use prior selected values.
+
+```pipe
+public Class Choice {
+  public string Select(string raw, bool clean, bool enabled, bool fallback) {
+    string selected = enabled ? (clean ? trim(raw) : raw) : (fallback ? "fallback" : "");
+    string label = selected + "!";
+    return clean ? (fallback ? label : selected) : raw;
+  }
+}
+```
+
+Conditions are bool and every initializer arm exactly matches the declared local type.
+Bindings enter scope only after their initializer; self/forward references, duplicates,
+shadowing and escaping references remain invalid. Every local initializer executes eagerly
+once in source order, including unused locals. Within each initializer, only the selected
+conditions and arms execute. Supported values and Optional/Result carriers travel intact;
+an unused failed Result is not implicit propagation. Return selection retains its own
+independent depth-two limit and lazy semantics.
+
+Source and Core independently validate placement, depth and absence of hidden local
+expressions inside initializers, conditions, return arms or ordinary sibling operands.
+Typed HIR and Core reuse existing immutable-local and value-conditional representations;
+Core structural checks own exact types, bindings and positions. The evaluator and Core-only
+Go backend consume validated Core. Generic internal Core local expressions remain valid.
+Public `pipelang.compiler.v1`, `pipelang.semantic.v1` and `dockpipe.application.v1` identities
+and shapes, all inherited contracts and the frozen 45-source lane remain unchanged.
+
+Nested initializers before or within statement trees, nested arrow-bodied methods,
+depth-three ternaries, new condition/argument or matching/propagation placements,
+ordinary zero-local block returns, mutation, inference, fallthrough, loops and effects
+remain excluded. No backend, runtime, action, UI or deployment behavior is added.
