@@ -311,3 +311,9 @@ through depth three. Either or both arms may nest. Initializers retain depth two
 statement trees and block returns retain depth three. Conditions are bool, arm types
 exact, and only reached conditions and selected arms execute. See the
 [canonical contract](../../../../../docs/concepts/pipelang.md#pipelang-v0950-depth-three-expression-bodied-methods).
+
+PipeLang `v0.96.0` adds `pipe-depth-three-initializer` for complete ternary initializers
+through depth three in straight-line typed-local sequences. Initializers before/inside
+statement trees retain depth two. Reached locals execute eagerly once in order, including
+unused locals; only selected arms execute. See the
+[canonical contract](../../../../../docs/concepts/pipelang.md#pipelang-v0960-depth-three-straight-line-initializers).

@@ -307,7 +307,7 @@ func TestV950DepthThreeArrowMethodsMalformedCore(t *testing.T) {
 			case "identity":
 				p.CompilerContract = "unknown"
 			case "version":
-				p.LanguageContract = "v0.96.0"
+				p.LanguageContract = "v0.97.0"
 			case "downgrade":
 				p.LanguageContract = coreir.LanguageContractV920
 			case "initializer":

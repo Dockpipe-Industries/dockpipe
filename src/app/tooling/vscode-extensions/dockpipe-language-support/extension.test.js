@@ -659,3 +659,9 @@ assert.strictEqual(depthThreeArrow.prefix, "pipe-depth-three-arrow");
 assert(depthThreeArrow.description.includes("v0.95.0"));
 assert(depthThreeArrow.body.join("\n").includes('a ? (b ? (c ? trim(raw) : raw) : "fallback") : raw;'));
 assert(pipeLangReadme.includes("`v0.95.0`"));
+
+const depthThreeInitializer = pipeLangSnippets["Depth-three straight-line initializer"];
+assert.strictEqual(depthThreeInitializer.prefix, "pipe-depth-three-initializer");
+assert(depthThreeInitializer.description.includes("v0.96.0"));
+assert(depthThreeInitializer.body.join("\n").includes('string selected = a ? (b ? (c ? trim(raw) : raw) : "fallback") : raw;'));
+assert(pipeLangReadme.includes("`v0.96.0`"));

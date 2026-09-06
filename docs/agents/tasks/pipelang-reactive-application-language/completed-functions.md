@@ -1461,3 +1461,21 @@ Executable Application IR, frozen compatibility, affected application/CLI, vet a
 editor/docs checks pass. HIR/Core shapes, evaluator/backend production code, public
 identities and engine/package boundaries are preserved. Changes remain uncommitted;
 no successor, commit, push or publication is authorized.
+
+
+## Step 8bj: depth-three straight-line initializers (v0.96.0)
+
+Founder selected A and separately approved implementation on 2026-09-06. The
+[canonical contract](../../../concepts/pipelang.md#pipelang-v0960-depth-three-straight-line-initializers)
+owns semantics; [the completion record](depth-three-straight-line-initializers.md) owns
+scope, exclusions, contained verification and proof limits. State: `completed`.
+
+All 623 discovered compiler tests pass across 733 validation units, including 25 choice
+shapes, 404 supplied layouts and 103,424 evaluator/pristine-Go outcomes plus execution
+traces. All 623 inherited memory cases and 64 isolated direct-initializer scale cases
+pass through 256 locals. Peak direct compiler RSS is 107.24609375 MiB and maximum
+elapsed time is 0.7012646869989112 seconds. Closure depth never exceeds each one-local
+baseline. Executable Application IR, frozen compatibility, affected application/CLI,
+vet and editor/docs checks pass. HIR/Core shapes, evaluator/backend production code,
+public identities and engine/package boundaries are preserved. Changes remain uncommitted;
+no successor, commit, push or publication is authorized by completion.

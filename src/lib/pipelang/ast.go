@@ -898,16 +898,16 @@ func validExpandedDepthThreeTerminalIf(expr Expr, expandedLeaves int) bool {
 }
 
 func validTerminalIfStatement(contract LanguageContract, expr Expr) bool {
-	if (contract == PipeLangLanguageContractV940 || contract == PipeLangLanguageContractV950) && validDepthThreeTerminalLeafReturns(expr) {
+	if (contract == PipeLangLanguageContractV940 || (contract == PipeLangLanguageContractV950 || contract == PipeLangLanguageContractV960)) && validDepthThreeTerminalLeafReturns(expr) {
 		return true
 	}
-	if (contract == PipeLangLanguageContractV910 || (contract == PipeLangLanguageContractV920 || (contract == PipeLangLanguageContractV930 || (contract == PipeLangLanguageContractV940 || contract == PipeLangLanguageContractV950)))) && validNestedTerminalInitializers(expr) {
+	if (contract == PipeLangLanguageContractV910 || (contract == PipeLangLanguageContractV920 || (contract == PipeLangLanguageContractV930 || (contract == PipeLangLanguageContractV940 || (contract == PipeLangLanguageContractV950 || contract == PipeLangLanguageContractV960))))) && validNestedTerminalInitializers(expr) {
 		return true
 	}
-	if (contract == PipeLangLanguageContractV890 || (contract == PipeLangLanguageContractV900 || (contract == PipeLangLanguageContractV910 || (contract == PipeLangLanguageContractV920 || (contract == PipeLangLanguageContractV930 || (contract == PipeLangLanguageContractV940 || contract == PipeLangLanguageContractV950)))))) && validNestedTerminalLeafReturns(expr) {
+	if (contract == PipeLangLanguageContractV890 || (contract == PipeLangLanguageContractV900 || (contract == PipeLangLanguageContractV910 || (contract == PipeLangLanguageContractV920 || (contract == PipeLangLanguageContractV930 || (contract == PipeLangLanguageContractV940 || (contract == PipeLangLanguageContractV950 || contract == PipeLangLanguageContractV960))))))) && validNestedTerminalLeafReturns(expr) {
 		return true
 	}
-	if ((contract == PipeLangLanguageContractV890 || (contract == PipeLangLanguageContractV900 || (contract == PipeLangLanguageContractV910 || (contract == PipeLangLanguageContractV920 || (contract == PipeLangLanguageContractV930 || (contract == PipeLangLanguageContractV940 || contract == PipeLangLanguageContractV950)))))) || contract == PipeLangLanguageContractV880) || contract == PipeLangLanguageContractV870 {
+	if ((contract == PipeLangLanguageContractV890 || (contract == PipeLangLanguageContractV900 || (contract == PipeLangLanguageContractV910 || (contract == PipeLangLanguageContractV920 || (contract == PipeLangLanguageContractV930 || (contract == PipeLangLanguageContractV940 || (contract == PipeLangLanguageContractV950 || contract == PipeLangLanguageContractV960))))))) || contract == PipeLangLanguageContractV880) || contract == PipeLangLanguageContractV870 {
 		return validTerminalLeafConditionalReturns(expr) || validTerminalIfStatement(PipeLangLanguageContractV860, expr)
 	}
 	if contract == PipeLangLanguageContractV860 || contract == PipeLangLanguageContractV850 || contract == PipeLangLanguageContractV840 {
@@ -1418,4 +1418,23 @@ func validDepthThreeStraightLineReturns(expr Expr) bool {
 // depths remain independently bounded. Hidden local operands remain forbidden.
 func validDepthThreeTerminalLeafReturns(expr Expr) bool {
 	return validTerminalLeafReturnsDepth(expr, 3, 2)
+}
+
+// v0.96 admits depth-three complete initializers only in straight-line local sequences.
+func validDepthThreeStraightLineInitializers(expr Expr) bool {
+	hasLocal := false
+	for {
+		local, ok := expr.(*ImmutableLocalExpr)
+		if !ok {
+			break
+		}
+		hasLocal = true
+		if local.Initializer == nil || local.Return == nil || countImmutableLocalExpressions(local.Initializer) != 0 ||
+			(!validConditionalOperand(local.Initializer) && !validDepthThreeStraightLineReturns(local.Initializer)) {
+			return false
+		}
+		expr = local.Return
+	}
+	return hasLocal && expr != nil && countImmutableLocalExpressions(expr) == 0 &&
+		(validConditionalOperand(expr) || validDepthThreeStraightLineReturns(expr))
 }

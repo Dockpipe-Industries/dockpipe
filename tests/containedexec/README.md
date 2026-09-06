@@ -207,3 +207,19 @@ evaluator/pristine-Go results and selected-condition/arm traces.
 Keep it in its own fresh unit, separate from inherited scale tests; normal inlining
 and the 128 MiB / 5 second warm ceilings remain unchanged. The scale matrix shares
 three condition bits and proves fixed-helper caller growth, not arbitrary trees.
+
+The v0.96 straight-line initializer layout matrix uses
+`--split-test TestV960DepthThreeStraightLineInitializersLayouts=25`. Each shape
+crosses all subsets of three dependent local slots and used/unused final bindings.
+Every case exhausts seven independent initializer bits plus an independent return bit;
+initializer bits are shared across locals. Even subset masks use ordinary returns;
+odd masks use depth-three returns. This bounded matrix does not claim every independent
+condition or shape assignment across arbitrary-length sequences.
+`TestV960DepthThreeStraightLineInitializersMemory` exports 64 cases through 256 locals
+whose initializers contain the new choices directly, without a helper-call boundary.
+Four fixed shapes cross used/unused final locals and 1/8/16/24/32/64/128/256 locals;
+three condition bits are shared. Closure depth must not exceed each one-local baseline; multi-local statement emission
+may reduce it. The last layout shape also covers five-local mixed-shape masks 21/31.
+Run `matrix.py` for fresh normal-inlining compiler measurements with the unchanged
+128 MiB / 5 second warm ceilings. Keep this test in its own unit, separate from
+inherited memory and fixed-helper scale tests.
