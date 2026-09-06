@@ -1,3 +1,12 @@
+## Completed current objective — nested terminal-leaf returns
+
+Founder selected A and separately approved v0.89.0 implementation in this task.
+[nested-terminal-leaf-returns.md](nested-terminal-leaf-returns.md) owns scope, exclusions,
+contained validation and evidence. State: `completed`.
+The completed v0.88.0 slice is committed at `a8df6cc5`; earlier uncommitted wording and
+baseline references below are historical. Commit, push, publication and successor selection
+remain separate.
+
 ## Required Language Surface
 
 ### Stable semantic identities

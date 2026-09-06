@@ -43,6 +43,10 @@ func TestV880NestedStraightLineReturnsApplicationConsumer(t *testing.T) {
 	testConditionalLocalsApplicationConsumer(t, true, true, true, false, true)
 }
 
+func TestV890NestedTerminalLeafReturnsApplicationConsumer(t *testing.T) {
+	testConditionalLocalsApplicationConsumer(t, true, true, true, false, true, true)
+}
+
 func testConditionalLocalsApplicationConsumer(t *testing.T, finite bool, straightOption ...bool) {
 	straight := len(straightOption) > 0 && straightOption[0]
 	returnChoice := len(straightOption) > 1 && straightOption[1]
@@ -63,6 +67,10 @@ func testConditionalLocalsApplicationConsumer(t *testing.T, finite bool, straigh
 	nestedReturns := len(straightOption) > 3 && straightOption[3]
 	if nestedReturns {
 		contract, prior, boundary = pipelang.PipeLangLanguageContractV880, pipelang.PipeLangLanguageContractV870, "nested ternaries"
+	}
+	nestedLeaves := len(straightOption) > 4 && straightOption[4]
+	if nestedLeaves {
+		contract, prior, boundary = pipelang.PipeLangLanguageContractV890, pipelang.PipeLangLanguageContractV880, "nested ternaries"
 	}
 	layouts := []bool{false, true}
 	if straight {
@@ -109,6 +117,9 @@ func testConditionalLocalsApplicationConsumer(t *testing.T, finite bool, straigh
 				if helper == before {
 					t.Fatal("nested consumer replacement missed")
 				}
+			}
+			if nestedLeaves {
+				helper = strings.Replace(helper, "return enabled ? (suffix ? fourth : third) : (clean ? normalized : raw);", "if(enabled){return suffix ? (clean ? fourth : fourth) : third;}else{return clean ? normalized : (suffix ? raw : raw);}", 1)
 			}
 			helper += `}
    public DockerSnapshot Project(DockerSnapshot snapshot) {

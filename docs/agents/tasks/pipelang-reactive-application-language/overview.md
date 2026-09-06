@@ -1,3 +1,12 @@
+## Completed current objective — nested terminal-leaf returns
+
+Founder selected A and separately approved v0.89.0 implementation in this task.
+[nested-terminal-leaf-returns.md](nested-terminal-leaf-returns.md) owns scope, exclusions,
+contained validation and evidence. State: `completed`.
+The completed v0.88.0 slice is committed at `a8df6cc5`; earlier uncommitted wording and
+baseline references below are historical. Commit, push, publication and successor selection
+remain separate.
+
 ## Completed current objective — nested straight-line returns
 
 Founder selected A and separately approved v0.88.0 implementation in this task.
@@ -70,8 +79,8 @@ The `vNext` foundation decision packet in this record is **accepted** as of 2026
 fixes semantics, compiler boundaries, bootstrap stages, compatibility, and implementation order;
 examples and fixtures remain non-normative and accept no production syntax. Separately authorized
 bounded objectives have completed implementation-order steps 1 through 6, step-7 slices 7a
-through 7ae, and bounded Step-8 function seams 8a through 8bb. Nested straight-line returns are implemented and verified.
-The current explicit language contract is `v0.88.0`; the separately versioned read-only projection is
+through 7ae, and bounded Step-8 function seams 8a through 8bc. Nested terminal-leaf returns are implemented and verified.
+The current explicit language contract is `v0.89.0`; the separately versioned read-only projection is
 `dockpipe.application.v1`; the frozen `v0.0.0.1` lane remains unchanged. This record does not by itself
 authorize another language slice.
 
