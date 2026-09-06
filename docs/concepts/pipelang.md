@@ -235,7 +235,7 @@ or public semantic identities. The backend checks the complete emitted package n
 returning Go source.
 
 Core program admission accepts only `pipelang.compiler.v1` and the exact supported language
-identities `v0.1.0` through `v0.95.0`. `coreir.ValidateProgram` checks feature availability in
+identities `v0.1.0` through `v0.96.0`. `coreir.ValidateProgram` checks feature availability in
 signatures and nested expressions, together with the existing composition and topology contracts.
 `coreeval.EvaluateProgram` and the Go backend use that same admission before executing or emitting
 anything, including when a disallowed feature occurs in an uncalled function or unused parameter.
@@ -3247,3 +3247,42 @@ code, and public `pipelang.compiler.v1`, `pipelang.semantic.v1` and
 consume validated target-neutral Core. Executable Application IR and the frozen
 45-source compatibility lane retain their contracts. No runtime/deployment behavior
 is introduced.
+
+### PipeLang v0.96.0: depth-three straight-line initializers
+
+`v0.96.0` additionally permits any subset of a finite sequence of explicitly typed
+immutable locals in a straight-line public pure block method to use complete ternary
+initializers through depth three. Either or both arms may nest, with at most three
+choices per initializer path. Ordinary and shallower initializers may surround them.
+Later locals and inherited ordinary or depth-three returns may reuse selected values.
+
+```pipe
+public Class Choices {
+    public string Select(string raw, bool a, bool b, bool c) {
+        string selected = a ? (b ? (c ? trim(raw) : raw) : "fallback") : raw;
+        string label = selected + "!";
+        return label;
+    }
+}
+```
+
+Conditions are `bool`; every arm exactly matches the declared local type. Bindings
+enter scope only after their initializer. Self/forward references, duplicates, shadowing
+and escaping references remain invalid. Every local executes eagerly once in source
+order, including unused bindings. Only reached conditions and selected arms execute
+inside a choice. Complete supported primitive, record, list, Optional and Result values
+travel intact; a failed Result is not implicit propagation.
+
+All v0.95 and earlier forms are inherited. Initializers before or inside terminal
+statement trees retain depth two. Statement trees, arrow bodies and straight-line or
+terminal-leaf returns retain depth three. Initializer and return bounds are independent.
+Depth-four choices/statements, new ternaries in conditions or arguments, new matching
+or propagation placements, inference, mutation, loops, effects and backends remain excluded.
+
+Source and Core independently validate depth, placement, types, scope and hidden-local
+refusal. Generic internal Core local expressions retain their contract. Typed HIR/Core
+node shapes, evaluator and Go backend production code, public `pipelang.compiler.v1`,
+`pipelang.semantic.v1` and `dockpipe.application.v1` identities remain unchanged.
+Evaluation and Go generation consume validated target-neutral Core. Executable
+Application IR and frozen 45-source compatibility retain their contracts. No runtime
+or deployment behavior is introduced.

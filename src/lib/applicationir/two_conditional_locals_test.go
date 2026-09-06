@@ -71,6 +71,10 @@ func TestV950DepthThreeArrowMethodsApplicationConsumer(t *testing.T) {
 	testConditionalLocalsApplicationConsumer(t, false, true, false, false, false, false, false, false, true, false, false, true)
 }
 
+func TestV960DepthThreeStraightLineInitializersApplicationConsumer(t *testing.T) {
+	testConditionalLocalsApplicationConsumer(t, true, true, true, false, true, false, false, false, false, true, false, false, true)
+}
+
 func testConditionalLocalsApplicationConsumer(t *testing.T, finite bool, straightOption ...bool) {
 	straight := len(straightOption) > 0 && straightOption[0]
 	returnChoice := len(straightOption) > 1 && straightOption[1]
@@ -120,6 +124,11 @@ func testConditionalLocalsApplicationConsumer(t *testing.T, finite bool, straigh
 	if depthThreeArrow {
 		contract, prior, boundary = pipelang.PipeLangLanguageContractV950, pipelang.PipeLangLanguageContractV940, "block-bodied method"
 	}
+	depthThreeInitializers := len(straightOption) > 11 && straightOption[11]
+	if depthThreeInitializers {
+		contract, prior, boundary = pipelang.PipeLangLanguageContractV960, pipelang.PipeLangLanguageContractV950, "initializers retain depth two"
+	}
+
 	layouts := []bool{false, true}
 	if straight {
 		layouts = []bool{false}
@@ -172,6 +181,10 @@ func testConditionalLocalsApplicationConsumer(t *testing.T, finite bool, straigh
 			if nestedInitializers {
 				helper = strings.Replace(helper, "normalized=clean ? trim(raw) : raw;", "normalized = clean ? (suffix ? trim(raw) : trim(raw)) : (enabled ? raw : raw);", 1)
 				helper = strings.Replace(helper, "selected=suffix && normalized != \"\" ? normalized+\"!\" : normalized;", "selected = suffix && normalized != \"\" ? (enabled ? normalized + \"!\" : normalized + \"!\") : normalized;", 1)
+			}
+			if depthThreeInitializers {
+				helper = strings.Replace(helper, "normalized=clean ? trim(raw) : raw;", `normalized=clean ? (suffix ? (enabled ? trim(raw) : trim(raw)) : trim(raw)) : (enabled ? (suffix ? raw : raw) : raw);`, 1)
+				helper = strings.Replace(helper, `selected=suffix && normalized != "" ? normalized+"!" : normalized;`, `selected=suffix && normalized != "" ? (enabled ? (clean ? normalized+"!" : normalized+"!") : normalized+"!") : normalized;`, 1)
 			}
 			if nestedTreeInitializers {
 				open := strings.Index(helper, "{")
@@ -275,6 +288,12 @@ func testConditionalLocalsApplicationConsumer(t *testing.T, finite bool, straigh
 					if tail == nil || tail.Conditional == nil || tail.Conditional.WhenTrue == nil || tail.Conditional.WhenTrue.Conditional == nil || tail.Conditional.WhenTrue.Conditional.WhenTrue == nil || tail.Conditional.WhenTrue.Conditional.WhenTrue.Conditional == nil {
 						t.Fatal("depth-three leaf absent")
 					}
+				}
+			}
+			if depthThreeInitializers {
+				init := choose.Body.ImmutableLocal.Initializer
+				if init.Conditional == nil || init.Conditional.WhenTrue.Conditional == nil || init.Conditional.WhenTrue.Conditional.WhenTrue.Conditional == nil {
+					t.Fatal("depth-three initializer absent")
 				}
 			}
 			if project.Body.ImmutableLocal == nil || !choicePresent {

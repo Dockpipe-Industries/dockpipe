@@ -1,3 +1,10 @@
+## v0.96.0 completed boundary
+
+[Depth-three straight-line initializers](depth-three-straight-line-initializers.md) owns
+scope and validation. The [canonical contract](../../../concepts/pipelang.md#pipelang-v0960-depth-three-straight-line-initializers)
+owns semantics. Implementation and verification pass; the completion record owns evidence and limits.
+No successor is authorized.
+
 ## v0.95.0 completed boundary
 
 [Depth-three expression-bodied methods](depth-three-arrow-methods.md) owns the approved
