@@ -120,6 +120,7 @@ func TestV930DepthThreeReturnsLayouts(t *testing.T) {
 	}
 	for shape, tree := range shapes {
 		t.Run(fmt.Sprint(shape), func(t *testing.T) {
+			enterFiniteShape(t)
 			// Zero locals and mixed dependent ordinary/depth-two locals, including an unused tail.
 			for _, count := range []int{0, 1, 3} {
 				for _, unused := range []bool{false, true} {
@@ -171,6 +172,7 @@ func TestV930DepthThreeReturnsLayouts(t *testing.T) {
 						t.Fatal("nondeterministic Go")
 					}
 					f := coreFunctionNamed(t, p, "Select")
+					prepared := prepareConformanceProgram(t, p)
 					var checks, orders strings.Builder
 					for localMask := 0; localMask < 4; localMask++ {
 						for mask := 0; mask < 128; mask++ {
@@ -212,7 +214,7 @@ func TestV930DepthThreeReturnsLayouts(t *testing.T) {
 								call += fmt.Sprintf(",%t", flag)
 							}
 							call += ")"
-							got, err := coreeval.EvaluateProgram(p, f.Identity, args)
+							got, err := prepared.Evaluate(f.Identity, args)
 							if err != nil || !got.OK || got.Value.String != want {
 								t.Fatalf("%d/%d: %#v %v want %q", localMask, mask, got, err, want)
 							}

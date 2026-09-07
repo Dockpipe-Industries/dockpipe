@@ -147,6 +147,7 @@ func TestV900NestedStraightLineInitializersLayouts(t *testing.T) {
 					f := coreFunctionNamed(t, program, s.name)
 					evaluation := program
 					evaluation.Functions = []coreir.Function{coreFunctionNamed(t, program, "Echo"), coreFunctionNamed(t, program, "Check"), f}
+					prepared := prepareConformanceProgram(t, evaluation)
 					var wants, traces strings.Builder
 					for mask := 0; mask < 1<<(s.count+3); mask++ {
 						previous := "raw"
@@ -208,7 +209,7 @@ func TestV900NestedStraightLineInitializersLayouts(t *testing.T) {
 						for bit := 0; bit < s.count+3; bit++ {
 							args = append(args, coreeval.Value{Type: f.Parameters[bit+1].Type, Bool: mask&(1<<bit) != 0})
 						}
-						got, err := coreeval.EvaluateProgram(evaluation, f.Identity, args)
+						got, err := prepared.Evaluate(f.Identity, args)
 						if err != nil || !got.OK || got.Value.String != want {
 							t.Fatalf("%s/%d: %#v %v want %q", s.name, mask, got, err, want)
 						}

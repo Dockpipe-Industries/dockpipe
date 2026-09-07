@@ -22,7 +22,6 @@ import (
 	"dockpipe/src/lib/pipelang/coreir"
 	"dockpipe/src/lib/pipelang/gobackend"
 	"dockpipe/src/lib/pipelang/hir"
-	"dockpipe/tests/containedexec"
 )
 
 var _ func(coreir.Program) ([]byte, error) = gobackend.Generate
@@ -1316,29 +1315,8 @@ func assertCompilerGolden(t *testing.T, name string, actual []byte) {
 
 func compileAndRunGeneratedGo(t *testing.T, generated []byte, functionName string, expected bool) {
 	t.Helper()
-	dir, err := os.MkdirTemp("/tmp", "pipelang-generated-go-")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(dir)
-	files := map[string][]byte{
-		"go.mod":            []byte("module pipelang-generated-check\n\ngo 1.25\n"),
-		"generated.go":      generated,
-		"generated_test.go": []byte(fmt.Sprintf("package %s\n\nimport \"testing\"\n\nfunc TestGenerated(t *testing.T) { if got := %s(2); got != %t { t.Fatalf(\"got %%v\", got) } }\n", gobackend.PackageName, functionName, expected)),
-	}
-	for name, payload := range files {
-		if err := os.WriteFile(filepath.Join(dir, name), payload, 0o600); err != nil {
-			t.Fatal(err)
-		}
-	}
-	goBinary := filepath.Join(runtime.GOROOT(), "bin", "go")
-	command := exec.Command(goBinary, "test", "-count=1", "-p=1", "-timeout=25s", ".")
-	command.Dir = dir
-	command.Env = append(os.Environ(), "GOTOOLCHAIN=local", "GOPROXY=off", "GOSUMDB=off", "GOWORK=off")
-	output, err := containedexec.CombinedOutput(command)
-	if err != nil {
-		t.Fatalf("compile/run generated Go: %v\n%s", err, output)
-	}
+	checks := fmt.Sprintf("package %s\n\nimport \"testing\"\n\nfunc TestGenerated(t *testing.T) { if got := %s(2); got != %t { t.Fatalf(\"got %%v\", got) } }\n", gobackend.PackageName, functionName, expected)
+	compileAndRunGeneratedGoFiles(t, generated, []byte(checks))
 }
 
 func compileAndRunNumericConformanceGo(t *testing.T, generated []byte, names map[string]string) {
@@ -1384,6 +1362,9 @@ func compileAndRunGeneratedGoFiles(t *testing.T, generated, generatedTest []byte
 
 func compileAndRunGeneratedGoFilesWithFixtures(t *testing.T, generated, generatedTest []byte, fixtures map[string][]byte) {
 	t.Helper()
+	if queueGeneratedBatch(t, generated, generatedTest, fixtures) {
+		return
+	}
 	dir, err := os.MkdirTemp("/tmp", "pipelang-generated-go-")
 	if err != nil {
 		t.Fatal(err)
@@ -1412,7 +1393,7 @@ func compileAndRunGeneratedGoFilesWithFixtures(t *testing.T, generated, generate
 	command := exec.Command(goBinary, "test", "-count=1", "-p=1", "-timeout=25s", ".")
 	command.Dir = dir
 	command.Env = append(os.Environ(), "GOTOOLCHAIN=local", "GOPROXY=off", "GOSUMDB=off", "GOWORK=off")
-	output, measurement, err := containedexec.Measure(command)
+	output, measurement, err := measureGeneratedBuild(command)
 	if os.Getenv("PIPELANG_PERFORMANCE_PROFILE") == "1" {
 		fixtureBytes := 0
 		for _, payload := range fixtures {

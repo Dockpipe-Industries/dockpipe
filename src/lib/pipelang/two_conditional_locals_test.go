@@ -284,6 +284,7 @@ func TestV830TwoConditionalLocalsAllShapesScopePairs(t *testing.T) {
 				// Evaluate only the selected function's dependency closure.
 				evaluation := program
 				evaluation.Functions = []coreir.Function{coreFunctionNamed(t, program, "Echo"), coreFunctionNamed(t, program, "Check"), function}
+				prepared := prepareConformanceProgram(t, evaluation)
 				var wantedValues, wantedTraces strings.Builder
 				for mask := 0; mask < 32; mask++ {
 					want, trace := twoChoiceTreeExpected(tree, sample.targets, sample.unused, mask)
@@ -291,7 +292,7 @@ func TestV830TwoConditionalLocalsAllShapesScopePairs(t *testing.T) {
 					for bit := 0; bit < 5; bit++ {
 						args = append(args, coreeval.Value{Type: function.Parameters[bit+1].Type, Bool: mask&(1<<bit) != 0})
 					}
-					got, err := coreeval.EvaluateProgram(evaluation, function.Identity, args)
+					got, err := prepared.Evaluate(function.Identity, args)
 					if err != nil || !got.OK || got.Value.String != want {
 						t.Fatalf("%s mask %d: %#v %v want %q", sample.name, mask, got, err, want)
 					}

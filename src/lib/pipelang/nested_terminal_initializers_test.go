@@ -50,6 +50,7 @@ func TestV910NestedTerminalInitializersLayouts(t *testing.T) {
 	}
 	for layout := 0; layout < 200; layout++ {
 		t.Run(fmt.Sprint(layout), func(t *testing.T) {
+			enterFiniteShape(t)
 			testFiniteConditionalLocalsLayouts(t, PipeLangLanguageContractV910, trees[(layout/4)%25:(layout/4)%25+1], layout >= 100, layout&1 != 0, layout&2 != 0)
 		})
 	}

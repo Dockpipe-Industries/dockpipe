@@ -181,6 +181,7 @@ func TestV820ConditionalLocalAllShapesScopesAndPaths(t *testing.T) {
 			if err != nil || !bytes.Equal(generated, repeated) {
 				t.Fatal("Go artifact drift")
 			}
+			prepared := prepareConformanceProgram(t, program)
 			var cases, orders strings.Builder
 			for _, scope := range conditionalTreeScopes(tree, "R") {
 				for layout := 0; layout < 3; layout++ {
@@ -196,7 +197,7 @@ func TestV820ConditionalLocalAllShapesScopesAndPaths(t *testing.T) {
 						for bit := 0; bit < 4; bit++ {
 							args = append(args, coreeval.Value{Type: function.Parameters[bit+1].Type, Bool: mask&(1<<bit) != 0})
 						}
-						outcome, err := coreeval.EvaluateProgram(program, function.Identity, args)
+						outcome, err := prepared.Evaluate(function.Identity, args)
 						if err != nil || !outcome.OK || outcome.Value.String != want {
 							t.Fatalf("%s mask%d: %#v %v want %q", name, mask, outcome, err, want)
 						}
