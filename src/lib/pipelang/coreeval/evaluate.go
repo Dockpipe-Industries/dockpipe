@@ -57,15 +57,15 @@ func EvaluateProgram(program coreir.Program, identity coreir.SemanticIdentity, a
 		return Outcome{}, err
 	}
 	functions := make(map[string]coreir.Function, len(program.Functions))
-	var selected *coreir.Function
-	for index := range program.Functions {
-		function := program.Functions[index]
+	for _, function := range program.Functions {
 		functions[function.Identity.PackageID+"\x00"+function.Identity.Path] = function
-		if function.Identity.PackageID == identity.PackageID && function.Identity.Path == identity.Path {
-			selected = &function
-		}
 	}
-	if selected == nil {
+	return evaluateWithFunctions(functions, identity, arguments)
+}
+
+func evaluateWithFunctions(functions map[string]coreir.Function, identity coreir.SemanticIdentity, arguments []Value) (Outcome, error) {
+	selected, ok := functions[identity.PackageID+"\x00"+identity.Path]
+	if !ok || selected.Identity.PackageID != identity.PackageID || selected.Identity.Path != identity.Path {
 		return Outcome{}, fmt.Errorf("selected function semantic identity was not found")
 	}
 	if len(arguments) != len(selected.Parameters) {

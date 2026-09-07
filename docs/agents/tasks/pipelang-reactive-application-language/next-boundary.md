@@ -1,3 +1,12 @@
+## Completed objective — conformance performance
+
+The user authorized profiling and reversible implementation in three slices.
+[conformance-performance.md](conformance-performance.md) owns the completed three-slice proof.
+All original coverage and resource ceilings are preserved; representative layouts are 26.6–30.4%
+faster, and full terminal summed unit time decreases 11.5%. Batching was rejected on memory evidence.
+v0.96 is complete and committed at `35680d50`; historical uncommitted wording is superseded.
+No additional implementation approval or successor selection is pending.
+
 ## Completed current objective — depth-three straight-line initializers
 
 Founder selected A and separately approved v0.96.0 implementation on 2026-09-06.

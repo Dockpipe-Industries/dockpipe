@@ -246,6 +246,17 @@ artifact admission. Source-syntax gates remain distinct: checked arithmetic and 
 representation already belong to internal v0.1.0 Core, and v0.33.0 postfix indexing reuses the
 v0.20.0 `list_at` operation.
 
+For repeated offline conformance calls, `coreeval.PrepareProgram` owns a deep copy of the
+Core graph, validates that snapshot once, and builds private function lookups.
+`PreparedProgram.Evaluate` uses the same evaluator and checks argument types and complete
+carrier values on every invocation. Input mutation after preparation and mutation of returned
+values (including type metadata) cannot change the snapshot. Preparation must not race with
+input mutation; completed preparations may be shared by concurrent callers. There is no global
+cache or skip-validation switch. Existing `EvaluateProgram` still validates each supplied
+program on every call. Preparation costs an additional owned graph and pays off only across
+repeated calls; it changes no language or serialized compiler/semantic/Application IR contract.
+
+
 Executable Core type validation is exhaustive: primitives are `string`/`bool`; numerics are
 signed 64-bit integers or IEEE-754 binary64 (`signed: false`);
 `ArithmeticError` remains an internal type; records, Optional, record lists, and Results retain

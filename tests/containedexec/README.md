@@ -223,3 +223,32 @@ may reduce it. The last layout shape also covers five-local mixed-shape masks 21
 Run `matrix.py` for fresh normal-inlining compiler measurements with the unchanged
 128 MiB / 5 second warm ceilings. Keep this test in its own unit, separate from
 inherited memory and fixed-helper scale tests.
+
+## Opt-in conformance profiling
+
+`PIPELANG_PERFORMANCE_PROFILE=1` enables `TestConformancePerformanceProfile` and logs
+per-child generated build/run time and waited-child RSS in the shared generated-Go helper.
+The profile uses the existing nested-layout source builders, measures analysis, HIR/Core
+lowering, Core validation, ordinary/prepared evaluation, preparation and Go generation with
+allocations, and reports retained preparation memory. Lowering APIs include their existing
+validation; these API-boundary timings are not additive exclusive phases. The ordinary test
+inventory discovers this opt-in test but skips it unless explicitly enabled. Timing is never
+an acceptance assertion in ordinary tests.
+
+Run the compiled test binary through `run.py`, for example:
+
+```sh
+python3 tests/containedexec/run.py \
+  --output /tmp/compiler-proof/phases --cache /tmp/compiler-proof/cache --timeout 180 \
+  -- env PIPELANG_PERFORMANCE_PROFILE=1 /tmp/compiler-proof/pipelang.test \
+  -test.run '^TestConformancePerformanceProfile$' -test.v -test.timeout=170s
+```
+
+For end-to-end profiles, select an existing numbered layout and add `-test.cpuprofile` and
+`-test.memprofile` with absolute temporary paths. The CPU/heap profiles cover the harness,
+not compiler children. Generated build/run measurements include the Go driver, compilation,
+linking and execution. Use the independent `matrix.py` direct-compiler lane for compiler-only
+resource claims. Compare repeated warm runs with identical containment and private cache;
+report aggregate peaks separately from allocations and retained heap. Never add concurrent
+unit times and label that sum overall wall time. Nested layouts retain one sample per module:
+two-method batching was rejected after measuring increased aggregate memory.

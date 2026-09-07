@@ -11,10 +11,10 @@ dispatch:
 state:
   decision: accepted
   current_language_contract: v0.96.0
-  active_objective: TASK-021-depth-three-straight-line-initializers
+  active_objective: TASK-021-conformance-performance
   objective_state: completed
-  selected_option: A
-  selected_scope: depth-three straight-line initializers
+  selected_option: null
+  selected_scope: conformance performance in three slices
   implementation_approval: approved
   completed_repair_objective: TASK-021-PipeLang-v0.80-milestone-repairs
   repair_commit: acbd10f88207d0a226ec24a073948362691adb8c
@@ -23,13 +23,19 @@ state:
   next_repair_slice: null
   completed_through: v0.96.0 depth-three straight-line initializers plus v0.95.0 depth-three expression-bodied methods plus v0.94.0 depth-three terminal-leaf returns plus v0.93.0 depth-three straight-line returns plus v0.92.0 nested expression-bodied methods plus v0.91.0 nested initializers throughout terminal trees plus v0.90.0 nested straight-line initializers plus v0.89.0 nested terminal-leaf returns plus v0.88.0 nested straight-line returns plus v0.87.0 conditional returns in terminal-tree leaves plus v0.86.0 conditional return composition plus v0.85.0 straight-line conditional-local sequences plus v0.84.0 finite conditional-local sequences plus v0.83.0 two conditional locals in terminal trees plus v0.82.0 conditional local in terminal trees plus v0.81.0 terminal trees through depth three plus v0.80.0 two expanded terminal leaves plus v0.79.0 bounded depth-three terminal branching plus v0.78.0 rootless symmetric depth-two terminal branching plus v0.77.0 symmetric depth-two terminal branching with shared root immutable locals plus v0.76.0 shared root immutable-local sequences before the v0.75.0 bounded nested terminal topology, v0.75.0 inner terminal-leaf immutable-local sequences, v0.74.0 one-branch bounded nested terminal if/else, v0.73.0 direct terminal if/else without a top-level-local prerequisite, v0.72.0 general terminal-branch local sequences, v0.71.0 two-local terminal-branch sequences, v0.70.0 lexical terminal-branch locals, and v0.69.0 terminal statement-level if/else after ordered immutable locals, generalized one-stage and multi-stage shared-context Result propagation, generalized contextual bounded Result propagation, exact two-stage and one-stage contextual bounded propagation, contextual and generalized cross-payload chains, exact two-stage and one-stage cross-payload Result propagation, generalized checked-propagation chains, two-stage, multi-parameter direct, direct, and helper checked propagation, multi-parameter propagation, cumulative and immediate dependent chains, dependent and independent two-carrier forms, prior-local and later-local helper matching, checked arithmetic, pure calls, matching, propagation, ordered immutable locals, and dockpipe.application.v1 consumer proof
   authority: >-
-    Founder selected A and separately approved implementation in the current task.
-    depth-three-straight-line-initializers.md owns this scope and contained validation.
+    The user explicitly authorized the three-slice conformance performance objective.
+    conformance-performance.md owns scope and contained validation.
     Commit, push, publication and successor selection remain separate.
 
 routes:
+  conformance_performance:
+    read:
+      - conformance-performance.md
+      - compiler-contract.md
+
   orientation:
     read:
+      - conformance-performance.md
       - depth-three-straight-line-initializers.md
       - depth-three-arrow-methods.md
       - depth-three-terminal-leaf-returns.md
@@ -154,6 +160,8 @@ history_by_slice:
   steps_8a_to_8aw: completed-functions.md
 
 documents:
+  - path: conformance-performance.md
+    role: authorized three-slice profiling, harness and evaluator performance objective and proof
   - path: depth-three-straight-line-initializers.md
     role: approved depth-three straight-line initializer scope and proof
   - path: depth-three-arrow-methods.md
