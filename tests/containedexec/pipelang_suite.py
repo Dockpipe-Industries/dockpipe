@@ -95,6 +95,7 @@ def main():
     parser.add_argument('--parallel-shapes', action='store_true', help='Run up to four independent finite shapes within each unchanged contained unit')
     parser.add_argument('--audit-generated', action='store_true', help='Log queued generated source/fixture identities and native timings')
     parser.add_argument('--test-family', help='Run one discovered family and explicitly report partial-suite proof')
+    parser.add_argument('--shared-export', type=Path, help='Fresh private directory for the bounded v0.91 shared-runtime experiment')
     parser.add_argument('--native-bundle', action=argparse.BooleanOptionalAction, default=None,
                         help='Shared v0.91 native bundles; default for retained-cache runs on Linux')
     parser.add_argument('--workers', type=int, choices=[1, 2], default=2)
@@ -107,6 +108,11 @@ def main():
         parser.error('larger shape batches require explicit compiled artifact reuse')
     if args.native_bundle and args.compiled_cache is None:
         parser.error('native bundles require explicit compiled artifact reuse')
+    if args.shared_export and (not args.native_bundle or args.test_family != 'TestV910NestedTerminalInitializersLayouts'
+                               or not args.shared_export.is_absolute() or args.shared_export.is_symlink()
+                               or not args.shared_export.is_dir() or args.shared_export.stat().st_mode & 0o777 != 0o700
+                               or any(args.shared_export.iterdir())):
+        parser.error('shared export requires the complete v0.91 bundle family and a fresh absolute private directory')
     if args.parallel_shapes and (args.compiled_cache is None or args.shape_batch_size == 1):
         parser.error('parallel shapes require grouped retained-artifact execution')
     for name in ['output', 'cache', 'compiled_cache']:
@@ -181,6 +187,8 @@ def main():
             command += ['-test.parallel=4']
         if args.compiled_cache:
             environment += ['GOENV=off', 'PIPELANG_GENERATED_BATCH=1', 'PIPELANG_COMPILED_CACHE=' + str(args.compiled_cache)]
+        if args.shared_export:
+            environment += ['PIPELANG_SHARED_EXPORT=' + str(args.shared_export)]
         if names == ['TestV960DepthThreeStraightLineInitializersMemory']:
             environment += ['PIPELANG_MEMORY_FIXTURES=' + str(output / 'fixtures')]
         if environment:
