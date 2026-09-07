@@ -261,3 +261,66 @@ shape/partition units, normal compiler flags, direct-compiler resource matrices 
 containment controls remain unchanged. `TestFiniteConditionalOracleTransport` checks
 empty values/traces, escaping, Unicode and repeated events. Opt-in generated build/run
 measurements report fixture bytes separately from compiled source and test bytes.
+
+## Complete reruns with retained executables
+
+`pipelang_suite.py` builds the current root test harness, discovers all tests,
+fuzz seed functions and examples, and executes the full current PipeLang inventory
+with at most two contained workers. Use a fresh receipt directory per run. The
+first pass populates a private executable cache; the second groups up to 25
+numbered shapes per unit to amortize process startup and toolchain verification:
+
+```sh
+python3 tests/containedexec/pipelang_suite.py \
+  --go /absolute/go --output /tmp/compiler-proof/populate \
+  --cache /tmp/compiler-proof/cache --compiled-cache /tmp/compiler-proof/executables
+python3 tests/containedexec/pipelang_suite.py \
+  --go /absolute/go --output /tmp/compiler-proof/rerun \
+  --cache /tmp/compiler-proof/cache --compiled-cache /tmp/compiler-proof/executables \
+  --shape-batch-size 25 --parallel-shapes
+```
+
+This is executable reuse, never test-result reuse. The opt-in test-helper settings
+are `GOENV=off`, `PIPELANG_GENERATED_BATCH=1`, and an absolute
+`PIPELANG_COMPILED_CACHE` directory with mode 0700. Ordinary test invocations retain
+the synchronous generated-Go path. Nonempty `GOFLAGS` retains the original synchronous harness (including coverage
+and other explicit build modes).
+The key binds exact generated source, oracle Go code, module/driver code, explicit
+build settings, and a content fingerprint of the pinned toolchain binaries and
+library source. Binary digests are checked on lookup and before every execution.
+Invalid entries are quarantined inside the private cache and rebuilt. Per-artifact
+kernel locks serialize lookup, repair, publication and execution across workers;
+locks release automatically when a worker exits. Current
+runtime oracle fixtures are always written and consumed afresh; fixture outcomes
+are never stored in the cache. Do not edit toolchain files during a run.
+
+Compile-only compatibility checks may also retain their compiled package; the
+driver still runs and changed invalid source must fail compilation.
+
+Eligible inert generated modules share one link in batches of at most four
+packages (also bounded by source/fixture size). Source and check bytes stay intact
+in separate packages; each original module's checks execute in a fresh native
+process with a fresh cwd and current original files. A registered test cleanup
+flushes queued checks before their owning test can pass. Initialization,
+compiler directives, special testing entrypoints, unsupported imports and
+observable testing/package names retain the original synchronous harness.
+
+Every direct compiler resource probe still compiles and measures its current
+input with normal inlining and the existing 128 MiB/5-second ceilings. Those
+resource cases retain separate units. Grouped execution uses the documented
+700 MiB temporary reclaim threshold under unchanged hard/proactive/swap/task
+limits. The runner records build time, complete execution time, every unit,
+source digests and the discovered/selected inventory; any failure or source drift
+makes the run fail. Report population and complete rerun timings separately.
+The executable cache and all receipt/build/fixture files are temporary artifacts,
+not source-controlled package state.
+
+The optional `--parallel-shapes` mode schedules at most four independent heavy
+shape cases per unit (`PIPELANG_PARALLEL_SHAPES=1`). Shape slots remain held until
+all generated-check cleanups finish. The common finite-layout helper merges
+per-shape method/vector totals after completion; independent subset/layout
+callbacks keep their own counters. Generated Go build/link commands are limited
+to one per unit, while retained executables and reference evaluations may run
+concurrently. Direct compiler resource matrices retain their sequential case
+execution and the existing two-unit worker limit. Race checks and identical
+named-case/vector inventories are required before accepting this mode.

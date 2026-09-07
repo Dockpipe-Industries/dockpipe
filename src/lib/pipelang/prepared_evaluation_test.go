@@ -150,3 +150,15 @@ func TestPreparedExactIdentityPair(t *testing.T) {
 		}
 	}
 }
+
+// Positive vector matrices hold the Core program fixed while inputs vary.
+// Preparation still owns and validates the complete graph; each invocation
+// retains argument/carrier validation and its independent expected outcome.
+func prepareConformanceProgram(t *testing.T, program coreir.Program) *coreeval.PreparedProgram {
+	t.Helper()
+	prepared, err := coreeval.PrepareProgram(program)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return prepared
+}

@@ -1,3 +1,12 @@
+## Completed performance pass — 30-second target remains unmet
+
+The user requested a roughly 30-second target without compromising design. The saved checkout
+baseline is `87c1df6e`; previous optimization and its proof are committed.
+[conformance-execution-performance.md](conformance-execution-performance.md#final-evidence) records
+a complete retained-artifact rerun at 326.532 seconds, 6.54 times faster than 35.6 minutes.
+All inherited cases, independent oracles, fixture bytes and resource ceilings are preserved.
+This measures a warm rerun, not clean compilation. Changes remain uncommitted for review.
+
 ## Completed objective — further conformance performance
 
 The user authorized further optimization after the committed three-slice baseline `04c07808`.

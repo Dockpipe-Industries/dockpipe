@@ -48,7 +48,7 @@ func Evaluate(function coreir.Function, arguments []Value) (Outcome, error) {
 			return Outcome{}, fmt.Errorf("argument %d: %w", index, err)
 		}
 	}
-	outcome, err := evalExprWithProgram(function.Body, arguments, nil)
+	outcome, err := evalExprWithProgram(function.Body, &argumentFrame{values: arguments}, nil)
 	return completeFunctionOutcome(function.ReturnType, outcome, err)
 }
 
@@ -79,7 +79,7 @@ func evaluateWithFunctions(functions map[string]coreir.Function, identity coreir
 			return Outcome{}, fmt.Errorf("argument %d: %w", index, err)
 		}
 	}
-	outcome, err := evalExprWithProgram(selected.Body, arguments, functions)
+	outcome, err := evalExprWithProgram(selected.Body, &argumentFrame{values: arguments}, functions)
 	return completeFunctionOutcome(selected.ReturnType, outcome, err)
 }
 
@@ -94,7 +94,7 @@ func completeFunctionOutcome(returnType coreir.Type, outcome Outcome, err error)
 	return outcome, err
 }
 
-func evalProgramExpr(expression coreir.Expr, arguments []Value, functions map[string]coreir.Function) (Outcome, error) {
+func evalProgramExpr(expression coreir.Expr, arguments *argumentFrame, functions map[string]coreir.Function) (Outcome, error) {
 	if expression.Kind != coreir.ExprListFilterPredicate {
 		return evalExprWithProgram(expression, arguments, functions)
 	}
@@ -130,7 +130,7 @@ func evalProgramExpr(expression coreir.Expr, arguments []Value, functions map[st
 		for _, value := range evaluated {
 			predicateArguments = append(predicateArguments, cloneValue(value))
 		}
-		outcome, err := evalExprWithProgram(target.Body, predicateArguments, functions)
+		outcome, err := evalExprWithProgram(target.Body, &argumentFrame{values: predicateArguments, owned: true}, functions)
 		if err != nil {
 			return Outcome{}, fmt.Errorf("named predicate %s: %w", target.Name, err)
 		}
@@ -147,29 +147,29 @@ func evalProgramExpr(expression coreir.Expr, arguments []Value, functions map[st
 	return Outcome{OK: true, Value: cloneListValue(filtered)}, nil
 }
 
-func evalExprWithProgram(expression coreir.Expr, arguments []Value, functions map[string]coreir.Function) (Outcome, error) {
+func evalExprWithProgram(expression coreir.Expr, arguments *argumentFrame, functions map[string]coreir.Function) (Outcome, error) {
 	switch expression.Kind {
 	case coreir.ExprLiteral:
 		literal := expression.Literal
 		return Outcome{OK: true, Value: Value{Type: expression.Type, String: literal.String, Int: literal.Int, Float: literal.Float, Bool: literal.Bool}}, nil
 	case coreir.ExprReference:
 		if expression.Type.Kind == coreir.TypeResult {
-			result := arguments[*expression.Parameter].Result
+			result := arguments.values[*expression.Parameter].Result
 			if result == nil {
 				return Outcome{}, fmt.Errorf("Result reference has no canonical value")
 			}
 			return cloneOutcome(*result), nil
 		}
 		if expression.Type.Kind == coreir.TypeRecord {
-			return Outcome{OK: true, Value: cloneRecordValue(arguments[*expression.Parameter])}, nil
+			return Outcome{OK: true, Value: cloneRecordValue(arguments.values[*expression.Parameter])}, nil
 		}
 		if expression.Type.Kind == coreir.TypeOptional {
-			return Outcome{OK: true, Value: cloneOptionalValue(arguments[*expression.Parameter])}, nil
+			return Outcome{OK: true, Value: cloneOptionalValue(arguments.values[*expression.Parameter])}, nil
 		}
 		if expression.Type.Kind == coreir.TypeList {
-			return Outcome{OK: true, Value: cloneListValue(arguments[*expression.Parameter])}, nil
+			return Outcome{OK: true, Value: cloneListValue(arguments.values[*expression.Parameter])}, nil
 		}
-		return Outcome{OK: true, Value: arguments[*expression.Parameter]}, nil
+		return Outcome{OK: true, Value: arguments.values[*expression.Parameter]}, nil
 	case coreir.ExprUnary:
 		operand, err := evalExprWithProgram(*expression.Unary.Operand, arguments, functions)
 		if err != nil || !operand.OK {
@@ -256,7 +256,7 @@ func evalExprWithProgram(expression coreir.Expr, arguments []Value, functions ma
 		return cloneOutcome(outcome), nil
 	case coreir.ExprImmutableLocal:
 		local := expression.ImmutableLocal
-		if local == nil || local.Initializer == nil || local.Return == nil || local.Position != len(arguments) {
+		if local == nil || local.Initializer == nil || local.Return == nil || local.Position != len(arguments.values) {
 			return Outcome{}, fmt.Errorf("immutable local is incomplete or not canonically positioned")
 		}
 		initialized, err := evalExprWithProgram(*local.Initializer, arguments, functions)
@@ -276,8 +276,9 @@ func evalExprWithProgram(expression coreir.Expr, arguments []Value, functions ma
 		if err := validateValue(value); err != nil {
 			return Outcome{}, fmt.Errorf("immutable local initializer: %w", err)
 		}
-		scoped := append(append([]Value{}, arguments...), cloneValue(value))
-		outcome, err := evalExprWithProgram(*local.Return, scoped, functions)
+		arguments.push(cloneValue(value))
+		outcome, err := evalExprWithProgram(*local.Return, arguments, functions)
+		arguments.pop()
 		if err != nil {
 			return Outcome{}, err
 		}
@@ -316,7 +317,7 @@ func evalExprWithProgram(expression coreir.Expr, arguments []Value, functions ma
 			}
 			callArguments[position] = value
 		}
-		outcome, err := evalExprWithProgram(target.Body, callArguments, functions)
+		outcome, err := evalExprWithProgram(target.Body, &argumentFrame{values: callArguments, owned: true}, functions)
 		outcome, err = completeFunctionOutcome(target.ReturnType, outcome, err)
 		if err != nil {
 			return Outcome{}, fmt.Errorf("pure call %s: %w", target.Name, err)
@@ -840,14 +841,17 @@ func evalExprWithProgram(expression coreir.Expr, arguments []Value, functions ma
 			if arm.Body == nil {
 				return Outcome{}, fmt.Errorf("match arm has no body")
 			}
-			scoped := arguments
 			if arm.Binding != nil {
 				if payload == nil {
 					return Outcome{}, fmt.Errorf("match binding has no payload")
 				}
-				scoped = append(append([]Value{}, arguments...), cloneValue(*payload))
+				arguments.push(cloneValue(*payload))
 			}
-			return evalExprWithProgram(*arm.Body, scoped, functions)
+			outcome, err := evalExprWithProgram(*arm.Body, arguments, functions)
+			if arm.Binding != nil {
+				arguments.pop()
+			}
+			return outcome, err
 		}
 		return Outcome{}, fmt.Errorf("match has no selected arm")
 	case coreir.ExprResultFailureOr:
@@ -871,11 +875,11 @@ func evalExprWithProgram(expression coreir.Expr, arguments []Value, functions ma
 	}
 }
 
-func directResultOperand(expression *coreir.Expr, arguments []Value) (Outcome, error) {
-	if expression == nil || expression.Kind != coreir.ExprReference || expression.Parameter == nil || *expression.Parameter < 0 || *expression.Parameter >= len(arguments) {
+func directResultOperand(expression *coreir.Expr, arguments *argumentFrame) (Outcome, error) {
+	if expression == nil || expression.Kind != coreir.ExprReference || expression.Parameter == nil || *expression.Parameter < 0 || *expression.Parameter >= len(arguments.values) {
 		return Outcome{}, fmt.Errorf("operand is not a direct Result parameter")
 	}
-	argument := arguments[*expression.Parameter]
+	argument := arguments.values[*expression.Parameter]
 	if err := validateValue(argument); err != nil {
 		return Outcome{}, err
 	}

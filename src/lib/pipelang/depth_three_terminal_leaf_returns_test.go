@@ -205,6 +205,7 @@ func TestV940DepthThreeTerminalLeafReturnsLayouts(t *testing.T) {
 	}
 	for shape, tree := range shapes {
 		t.Run(fmt.Sprint(shape), func(t *testing.T) {
+			enterFiniteShape(t)
 			// Zero locals and mixed dependent ordinary/depth-two locals, including an unused tail.
 			for _, count := range []int{0, 1, 3} {
 				for _, unused := range []bool{false, true} {
@@ -256,6 +257,7 @@ func TestV940DepthThreeTerminalLeafReturnsLayouts(t *testing.T) {
 						t.Fatal("nondeterministic Go")
 					}
 					f := coreFunctionNamed(t, p, "Select")
+					prepared := prepareConformanceProgram(t, p)
 					var checks, orders strings.Builder
 					for localMask := 0; localMask < 4; localMask++ {
 						for mask := 0; mask < 128; mask++ {
@@ -297,7 +299,7 @@ func TestV940DepthThreeTerminalLeafReturnsLayouts(t *testing.T) {
 								call += fmt.Sprintf(",%t", flag)
 							}
 							call += ")"
-							got, err := coreeval.EvaluateProgram(p, f.Identity, args)
+							got, err := prepared.Evaluate(f.Identity, args)
 							if err != nil || !got.OK || got.Value.String != want {
 								t.Fatalf("%d/%d: %#v %v want %q", localMask, mask, got, err, want)
 							}
@@ -379,6 +381,7 @@ func TestV940DepthThreeTerminalLeafReturnsSubsets(t *testing.T) {
 		tree := trees[shape/4]
 		variant := shape % 4
 		t.Run(fmt.Sprint(shape), func(t *testing.T) {
+			enterFiniteShape(t)
 			leaves := []string{}
 			var inventory func(*terminalTree, string)
 			inventory = func(n *terminalTree, p string) {
@@ -428,6 +431,7 @@ func TestV940DepthThreeTerminalLeafReturnsSubsets(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
+				prepared := prepareConformanceProgram(t, program)
 				for subset := start; subset < end; subset++ {
 					name := fmt.Sprintf("Select%d", subset)
 					f := coreFunctionNamed(t, program, name)
@@ -477,7 +481,7 @@ func TestV940DepthThreeTerminalLeafReturnsSubsets(t *testing.T) {
 						for bit := 0; bit < 6; bit++ {
 							args = append(args, coreeval.Value{Type: f.Parameters[bit].Type, Bool: mask&(1<<bit) != 0})
 						}
-						got, err := coreeval.EvaluateProgram(program, f.Identity, args)
+						got, err := prepared.Evaluate(f.Identity, args)
 						if err != nil || !got.OK || got.Value.String != want {
 							t.Fatalf("subset %d mask %d: %#v %v want %s", subset, mask, got, err, want)
 						}

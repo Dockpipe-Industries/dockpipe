@@ -80,6 +80,7 @@ func TestV960DepthThreeStraightLineInitializersLayouts(t *testing.T) {
 	}
 	for shape, tree := range shapes {
 		t.Run(fmt.Sprint(shape), func(t *testing.T) {
+			enterFiniteShape(t)
 			masks := []int{0, 1, 2, 3, 4, 5, 6, 7}
 			if shape == 24 {
 				masks = append(masks, 21, 31)
@@ -146,6 +147,7 @@ func TestV960DepthThreeStraightLineInitializersLayouts(t *testing.T) {
 						t.Fatal("nondeterministic Go")
 					}
 					f := coreFunctionNamed(t, p, "Select")
+					prepared := prepareConformanceProgram(t, p)
 					var checks, orders strings.Builder
 					for mask := 0; mask < 128; mask++ {
 						for _, finish := range []bool{false, true} {
@@ -194,7 +196,7 @@ func TestV960DepthThreeStraightLineInitializersLayouts(t *testing.T) {
 							}
 							args = append(args, coreeval.Value{Type: f.Parameters[8].Type, Bool: finish})
 							call += fmt.Sprintf(",%t)", finish)
-							got, err := coreeval.EvaluateProgram(p, f.Identity, args)
+							got, err := prepared.Evaluate(f.Identity, args)
 							if err != nil || !got.OK || got.Value.String != want {
 								t.Fatalf("%d/%d: %#v %v want %q", choices, mask, got, err, want)
 							}

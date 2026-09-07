@@ -4,8 +4,10 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"os"
 	"reflect"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -39,6 +41,21 @@ func TestV840FiniteConditionalLocalsAllShapes(t *testing.T) {
 	testFiniteConditionalLocalsLayouts(t, PipeLangLanguageContractV840, trees)
 }
 
+var finiteShapeSlots = make(chan struct{}, 4)
+
+func parallelFiniteShapes() bool {
+	return os.Getenv("PIPELANG_PARALLEL_SHAPES") == "1" && os.Getenv("PIPELANG_COMPILED_CACHE") != "" && os.Getenv("PIPELANG_GENERATED_BATCH") == "1" && os.Getenv("GOENV") == "off" && os.Getenv("GOFLAGS") == ""
+}
+
+func enterFiniteShape(t *testing.T) {
+	if !parallelFiniteShapes() {
+		return
+	}
+	t.Parallel()
+	finiteShapeSlots <- struct{}{}
+	t.Cleanup(func() { <-finiteShapeSlots })
+}
+
 func testFiniteConditionalLocalsLayouts(t *testing.T, contract LanguageContract, trees []*terminalTree, returnOption ...bool) {
 	returnChoice := len(returnOption) > 0 && returnOption[0]
 	nestedInitializer := contract == PipeLangLanguageContractV910
@@ -55,8 +72,25 @@ func testFiniteConditionalLocalsLayouts(t *testing.T, contract LanguageContract,
 		extraBits += 2
 	}
 	methodsTotal, outcomes := 0, 0
+	var totals sync.Mutex
+	parallel := len(trees) > 1 && parallelFiniteShapes()
+	logTotals := func() {
+		totals.Lock()
+		defer totals.Unlock()
+		t.Logf("%d shapes, %d methods, %d evaluator/pristine-Go cases and ordered traces", len(trees), methodsTotal, outcomes)
+	}
+	if parallel {
+		t.Cleanup(logTotals)
+	}
+
 	for shape, tree := range trees {
 		t.Run(fmt.Sprint(shape), func(t *testing.T) {
+			if parallel {
+				enterFiniteShape(t)
+			}
+			shapeMethods, shapeOutcomes := 0, 0
+			defer func() { totals.Lock(); methodsTotal += shapeMethods; outcomes += shapeOutcomes; totals.Unlock() }()
+
 			scopes := conditionalTreeScopes(tree, "R")
 			type sample struct {
 				name    string
@@ -197,7 +231,7 @@ func testFiniteConditionalLocalsLayouts(t *testing.T, contract LanguageContract,
 							t.Fatalf("%s mask %d: %#v %v want %q", sample.name, mask, got, err, want)
 						}
 						oracle = append(oracle, finiteConditionalOracleCase{want, append([]string{}, trace...)})
-						outcomes++
+						shapeOutcomes++
 					}
 					call := fmt.Sprintf("PipeLang%s(\"value\"", sample.name)
 					for bit := 0; bit < len(sample.targets)+extraBits; bit++ {
@@ -224,11 +258,13 @@ func testFiniteConditionalLocalsLayouts(t *testing.T, contract LanguageContract,
 					observed = strings.Replace(observed, marker, marker+"\n"+probe, 1)
 				}
 				compileAndRunGeneratedGoFilesWithFixtures(t, []byte(observed), []byte(fmt.Sprintf("package %s\nimport (\"testing\";\"reflect\";\"encoding/json\";\"os\")\nvar v840Trace []string\n%s\n%s", gobackend.PackageName, finiteConditionalOracleLoader, orders.String())), fixtures)
-				methodsTotal += len(samples)
+				shapeMethods += len(samples)
 			}
 		})
 	}
-	t.Logf("%d shapes, %d methods, %d evaluator/pristine-Go cases and ordered traces", len(trees), methodsTotal, outcomes)
+	if !parallel {
+		logTotals()
+	}
 }
 
 // Oracle data is produced by the independent tree model, then loaded by the
