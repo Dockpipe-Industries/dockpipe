@@ -212,3 +212,79 @@ ignored file contents. Changes remain unstaged and uncommitted.
 Exact toolchain used: `/home/jamie/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.25.13.linux-amd64/bin/go`.
 The private cache is `/tmp/pipelang-performance-proof/cache`. Source and final-evidence manifests
 are retained alongside the receipts for review, with no generated artifacts added to the repository.
+
+## Further performance pass
+
+- objective_id: `TASK-021-conformance-performance-followup`; state: `completed`.
+- execution_skill: `dorkpipe-objective-execution`; execution_authority: explicit user request to try further, including native code where bottlenecks justify it.
+- Authorized outcome: further reduce conformance time without losing cases, independent result/trace oracles, deterministic artifacts, pristine/instrumented executable checks or resource proof.
+- Done when a measured improvement survives focused correctness/resource checks and one complete affected terminal validation; reject candidates that do not justify their cost.
+- Inherit all exclusions, language/identity invariants, containment and Git boundaries above. Automatic checkpoints; handoff only on user request; context-pressure policy warn and continue.
+- Admission: clean saved checkout `js/pipelang` at `04c07808221a4002ce08db7282d102aec7d97f92`; all 16 previous manifest paths match. Both protected stashes and the 108166-path ignored inventory are unchanged. This externally created commit supersedes earlier uncommitted wording.
+- Previous completed proof is the baseline, not a new run. Further artifacts: `/tmp/pipelang-performance-followup`.
+
+The corrected profiles show generated build/link/run dominating representative wall time, while the Go evaluator is already compiled to native machine code. First investigate moving bulky independent oracle tables out of Go literals into runtime fixture data, preserving exact values, trace order, vector counts and separate generated executions. Assembly is justified only by a measured remaining computation hotspot; it cannot remove repeated compiler/linker work.
+
+Focused candidate evidence: JSON fixtures alone reduced three-run median v0.89/24 to
+21.049 s and v0.91/164 to 10.206 s. Four-method batches reduced those medians further to
+10.589 s and 4.883 s. Host load varied; these are observations, not universal timings.
+Representative batching peaks remain below the original literal-table implementation.
+Retain the bounded four-method candidate; no production compiler or evaluator changes.
+The new transport test and both small v0.85/v0.86 layout cases pass. Seven deliberate
+fixture faults fail visibly: missing file, invalid JSON, missing vector, wrong value,
+changed trace order, removed repeated event and nil replacing an empty trace. Each
+executes in a fresh contained unit; expected failure receipts are labeled separately.
+Complete affected terminal validation passed after final Go edits.
+
+### Follow-up final evidence
+
+The retained implementation changes only two compiler test files and their task/test guidance.
+Independent oracle values and ordered traces become per-method JSON fixtures, loaded once by
+each generated test with an exact vector-count assertion. Nested layouts use at most four methods
+per module. Every method/vector remains present, and pristine and trace-instrumented generated
+modules still compile and execute separately. `-count=1` prevents test-result cache reuse. The
+source generator, independent oracle model, production compiler and evaluator are unchanged.
+
+Final alternating before/after measurements use the admitted previous binary and the exact final
+binary, cached offline Go 1.25.13, the same private cache, three repetitions, normal inlining,
+and unchanged containment. Repetition zero includes CPU/allocation profiles on both sides.
+
+| Workload | Before seconds | After seconds | Median reduction | Before/after aggregate peak range |
+| --- | --- | --- | --- | --- |
+| v0.89 layout 24, 36 methods, 21504 vectors/traces | 24.898, 25.567, 24.689 | 11.102, 9.420, 9.466 | 62.0% | 200–216 / 165–169 MiB |
+| v0.91 layout 164, 19 methods, 23808 vectors/traces | 17.538, 17.296, 17.196 | 4.382, 4.441, 4.355 | 74.7% | 229–254 / 111–126 MiB |
+
+Generated child invocations fall from 72 to 18 and from 38 to 10 respectively, while every
+method retains both executable checks. Generated build/link/run still takes about 7.8 seconds
+of the median 9.47-second v0.89 run and 3.39 seconds of the median 4.38-second v0.91 run.
+These measurements support reducing compiler/linker work; no measured kernel justifies adding
+handwritten assembly or an architecture-specific implementation in this pass. Go execution is
+already native. No language contract, compiler flags, machine settings or resource ceilings change.
+
+The complete final compiler run discovers 628 functions (all 627 inherited plus the transport
+regression), and all 733 fresh units pass. Actual overall wall time is 2136.733 seconds (35.6
+minutes), versus the previous 3421.903 seconds (57.0 minutes): 37.6% lower on this host.
+Summed concurrent unit time falls from 6721.473 to 4149.942 seconds (38.3%); do not present
+summed time as wall time. All 200 v0.91 layout units pass in 828.293 summed seconds versus
+3009.039 previously (72.5% lower). Shared-host timing variation remains a measurement limitation.
+
+All inherited named pass/skip outcomes and all 278 finite-layout inventory messages match.
+All 64 exported compiler fixture sources are byte-identical to the admitted baseline. Existing
+isolated direct-compiler, consumer/Application IR, frozen-45 compatibility, CLI and evaluator race
+proof is retained because production source and fixture bytes are unchanged; those unaffected
+suites/matrices were not replayed. The complete compiler suite, focused transport/small layouts,
+seven deliberate fixture-fault checks and Go vet passed freshly. The normal opt-in profiling test
+continues to skip outside its explicit profiling invocation, as in the baseline.
+
+The final audit accepts 772 temporary units, including the seven expected test failures: all
+units are removed, memory hard-limit/OOM and swap counters remain unchanged, and zero swap is
+used. Compiler-only limits remain 128 MiB/5 seconds; build/test/vet aggregate measurements are
+separate. Both protected stashes, HEAD and the ignored-path inventory are unchanged. No generated
+artifacts are added to the checkout. Temporary binaries, profiles, fixture exports and receipts
+remain under `/tmp/pipelang-performance-followup`; per-execution generated fixture directories
+are removed by the existing test helper. Generic package/engine boundaries are preserved.
+
+Evidence: `final-evidence.json`, `performance-summary.json`, `terminal-summary.json`,
+`terminal-suite.json`, `final-measurements.json`, `faults.json` and `vet.json` in that temporary
+proof directory. Documentation routes, YAML parsing, Go formatting and diff checks pass.
+The follow-up is complete and uncommitted; no successor implementation is selected.

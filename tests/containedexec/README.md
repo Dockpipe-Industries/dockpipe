@@ -252,3 +252,12 @@ resource claims. Compare repeated warm runs with identical containment and priva
 report aggregate peaks separately from allocations and retained heap. Never add concurrent
 unit times and label that sum overall wall time. Nested layouts retain one sample per module:
 two-method batching was rejected after measuring increased aggregate memory.
+
+Finite conditional-local layout tests store independent result and ordered-trace oracles
+in temporary per-method JSON fixtures. Generated tests verify the exact vector count and
+compare every value or ordered trace. Nested layouts use at most four methods per module;
+pristine and instrumented generated modules still compile and run separately. Numbered
+shape/partition units, normal compiler flags, direct-compiler resource matrices and all
+containment controls remain unchanged. `TestFiniteConditionalOracleTransport` checks
+empty values/traces, escaping, Unicode and repeated events. Opt-in generated build/run
+measurements report fixture bytes separately from compiled source and test bytes.
