@@ -654,3 +654,631 @@ Reviewable evidence: `/tmp/pipelang-shared-runtime-followup/final-evidence.json`
 `plugin-replay-error.log`, and the exact compressed corpora. Compression is useful here, but
 these tested representations fail the strict objective. Stronger native sharing with preserved
 DWARF and immutable loading remains unproven; this result is not a lower-bound proof.
+
+
+## Research/native-code continuation and requested handoff (2026-09-07)
+
+The user explicitly reopened this objective: "keep pushing", research compression breakthroughs
+and unconventional approaches, including whether a measured bottleneck could benefit from native
+machine code in the Go-based workflow. The user expects autonomous useful work while away for a
+couple of hours and explicitly requested `dorkpipe-task-handoff`. State: **executing**. Transport
+one continuation to this saved checkout; do not create a worktree or automatically hand off again.
+
+Public web research and bounded reversible profiling/implementation experiments are authorized.
+The historical offline-only research restriction is superseded; native builds/tests retain the
+pinned offline toolchain and established containment. Research primary papers, official codec/Go
+sources and reproducible benchmarks; distinguish promising ideas from demonstrated improvements.
+Go already produces native code, so investigate assembly/C/SIMD or a custom reconstruction path
+only against a measured bottleneck, including call-boundary costs, portability and debug support.
+This permission covers isolated experiments and appropriate harness/codec optimizations, not a
+production language/backend redesign, loss of generated-Go coverage or weaker correctness proof.
+
+Pending checkpoint: admit completed evidence, identify the remaining time/storage components,
+research relevant compression/native-execution techniques, then select and measure the strongest
+in-scope candidate on a small representative probe. Continue productive checkpoints automatically;
+a research list alone is insufficient. Preserve the complete v0.91 family checkpoint before any
+promotion or broader-family expansion. Keep the original whole-suite 30-second and 14,391,156-byte
+assessment targets, independent current oracles, every vector/compiler probe, exact invalidation,
+fresh processes/fixtures, state isolation, debugging, and complete support/storage accounting.
+Do not treat a failed speculative probe as proof that the objective is impossible.
+
+Live handoff admission is now clean commit `0f07ab8de053503613b846d3397c9868a6eba950` on
+`js/pipelang`: the previous experiment edits have been committed since the last response.
+Comparison with `family-current/source-hashes.json` finds no proof-relevant source drift, so admit
+the recorded proof rather than replay it. Only the three task-record files changed to reopen this
+objective are uncommitted handoff-owned changes. Both protected stashes and the exact ignored
+inventory remain unchanged. Evidence and current anchors are local files under
+`/tmp/pipelang-shared-runtime-followup`; the receiver must verify access, not assume ephemeral
+browser or process state survived. No units remain active and disposable experiment caches are gone.
+No commit, push, protected-cache cleanup, paid service, credential action, external publication,
+installed-toolchain modification or persistent host change is authorized by this continuation.
+
+### Receiver checkpoint: exact DWARF precompression
+
+Receiver admission verifies HEAD/branch, both stashes, the ignored inventory and all 198
+proof-source hashes. The accepted complete suite remains admitted. The existing warm CPU
+profile uses AVX2 SHA-256 already; handwritten hashing assembly is not supported by that
+evidence. Primary codec research and local Go linker inspection instead support exposing
+zlib-compressed DWARF before outer compression, then reproducing the original compressed
+sections with the pinned Go writer. All eight size-quantile samples round-trip exactly.
+For 55,144,886 original bytes, raw XZ occupies 13,506,176 bytes and exposed XZ 5,543,928;
+exposed Zstd level 12 occupies 8,785,152. Original-ELF reconstruction adds 0.530 seconds
+across eight helper processes. This is a micro-probe, not a native replay or target result.
+Evidence and primary-source links: `/tmp/pipelang-precompression-probe/research.md`,
+`recode.go`, `probe.py`, `sample.json`, `build.json`, and `small.json`. Both units exited
+with zero swap/OOM; small-probe aggregate peak was 711,487,488 bytes. State remains
+executing: proceed to the complete 200-bundle checkpoint with exact reconstruction,
+current oracles, matched replay and full support/storage accounting before reassessment.
+
+### Complete precompression result: smaller representation, slower native replay
+
+State: **failed_verification against the original targets**. The complete 200-bundle
+prototype is correct and reviewable, but is not promoted. The whole-suite 30-second rerun
+and 14,391,156-byte retained-storage goals remain unmet. This is a measured limitation of
+these representations, not proof that a different approach cannot succeed.
+
+The approach follows [reversible precompression](https://github.com/schnaader/precomp-cpp/blob/master/README.md):
+expose nested compressed data before outer compression. The local pinned Go linker uses
+`zlib.BestSpeed`; the small native Go helper reproduces every original compressed section
+and executable hash. The original 1,302,426,120 executable bytes include 277,348,331 bytes
+of compressed DWARF. Exposing those sections produces 1,875,560,785 bytes before packing.
+Twenty ten-bundle shards were populated in 242.164 seconds, with serial helper/codec
+commands inside each of at most two contained units. Every codec child stayed below its
+30-second deadline. This population timing is not a rerun measurement.
+
+| Complete family representation | XZ/LZMA2 | Zstandard level 12 |
+| --- | ---: | ---: |
+| Exact reconstructed-code archives | 123,964,208 B | 205,640,582 B |
+| Common input/Go/C/Python support and inherited manifests | 136,704,685 B | 136,704,685 B |
+| Additional helper, codec, source and validation support archive | 4,471,620 B | 4,471,620 B |
+| Candidate identities and shard manifests | 209,173 B | 209,173 B |
+| Complete representation | **265,349,686 B** | **347,026,060 B** |
+
+The additional support archive contains 418 explicitly hashed paths, including the native
+helper and its source, installed codec executables/dependencies, all current proof-source
+files and source-validation records. The inherited support deliberately retains the earlier
+Go/C/Python overcapture; this is conservative accounting, not a minimal-support lower bound.
+Including every root JSON receipt and the fresh source-identity record raises the retained
+totals to 270,574,786 B and 352,251,160 B, respectively, before the final storage receipt
+itself. Coexisting raw/alternative experimental files are counted separately below.
+
+Compared with the previous exact-byte packing, XZ archive bytes fall from 303,033,116 to
+123,964,208 (59.1%); the complete representation falls from 439,737,801 to 265,349,686
+(39.7%). The latter still exceeds the entire whole-suite storage target by 18.4 times.
+These family measurements cannot be extrapolated to whole-suite success.
+
+| Matched native replay, four 50-bundle units, two units/four shape workers | First | Second |
+| --- | ---: | ---: |
+| Original retained executables | 13.330 s | 12.724 s |
+| Exposed DWARF + XZ + exact native reconstruction | 21.090 s | 21.186 s |
+| Exposed DWARF + Zstandard + exact native reconstruction | 20.338 s | 20.252 s |
+
+Order: baseline/XZ/Zstd/Zstd/XZ/baseline. No build, compression or unrelated checksum pass
+overlapped these measurements. Both lanes perform identical current-source, archive,
+helper, build-settings and toolchain identity checks. These checks differ from the previous
+experiment, so only the new matched controls establish the slowdown. Reconstruction uses
+a sealed helper, verifies the exact original executable hash and seals native code before
+execution. Every original package runs in a fresh process and fixture directory; mutable
+state is never carried between cases. All six inventories match: **2,064 packages, 9,704
+named native tests including 7,640 subtests**, with the original DWARF bytes intact.
+
+Exact reconstruction consumes 16.88–17.48 summed worker-seconds per candidate replay;
+this overlaps decoding/native execution and must not be added to wall time. Actual native
+process durations remain similar across controls/candidates. Faster Zstandard decoding
+does not erase the reconstruction and data-movement cost. The earlier AVX2 hashing profile
+and researched FastCDC/VectorCDC results do not justify claiming an assembly breakthrough
+for this workload; source links and the candidate selection rationale are in `research.md`.
+
+The fresh end-to-end family invocation passed in 45.479 seconds, with all 2,064 independently
+regenerated source/fixture audit records identical to the admitted exports and zero native
+cache misses. The accepted 634-test, 101-unit, 623-direct-compiler whole-suite proof remains
+admitted at approximately 272 seconds. No original test/vector/resource probe was removed,
+no pass outcome was reused, and no new whole-suite, race, vet or cold-host result is claimed.
+
+Nine fault checks pass: current source, archive, reconstructed body, toolchain and settings
+mutations reject; wrong current value and ordered trace cause actual native failures without
+rebuild; sealed helper writes and truncation reject. All **59 contained units** completed,
+their cgroups were removed, swap stayed zero, and no max/OOM/OOM-kill event increased.
+Maximum aggregate peak was 736,182,272 bytes under the unchanged 1 GiB hard/800 MiB
+proactive controls. Audit and codec checks remain Linux ELF64 little-endian evidence only.
+
+Terminal cleanup removed exactly 3,930,794,723 bytes from the new disposable helper cache,
+expanded packing staging and redundant sample streams after the audit passed. The cleanup
+receipt names all 23 targets. The new evidence root retains 1,852,543,335 file bytes before
+its final storage receipt; previous experiment roots remain 3,787,205,641 and 1,713,830,465
+bytes. The general Go cache remains 29,293,264,619 bytes and the protected native cache
+remains 2,719 entries / 12,691,799,961 bytes. No shared/protected cache was pruned.
+
+Reviewable prototype and receipts: `/tmp/pipelang-precompression-probe/{recode.go,replay.py,
+populate.py,compare.py,faults.py,research.md,final-evidence.json,identity.json,storage-final.json,
+cleanup.json}`, plus both complete packed corpora and `family-current/`. Repository changes
+are confined to the three task records; production language, backend, harness defaults and
+package/engine boundaries are unchanged. HEAD, branch, both protected stashes, all 198 proof
+source hashes and the 108,166-entry ignored inventory match admission. No commit, push,
+promotion, broader-family run, worktree or persistent host/toolchain change occurred.
+
+## Approved bounded whole-suite pass and requested handoff (2026-09-07)
+
+After the precompression result, the user accepted the recommendation to prioritize full-suite
+execution costs, agreed that a bounded foundation pass should precede more language slices,
+then explicitly approved proceeding and invoked `dorkpipe-task-handoff`. The same objective
+is **executing** with this user-approved next phase. The prior compression candidate's failed
+target verification remains historical evidence; no compression format is promoted.
+
+Authorized objective: build a complete time breakdown of the approximately 272-second suite
+(direct compiler probes, current source/Core/oracle work, binary/toolchain validation, native
+execution, process/containment startup and scheduling). Admit existing proof and profiles;
+collect only the missing measurements needed to distinguish computation from waiting and
+identify the largest avoidable cost. Implement the strongest bounded improvement if supported
+by evidence, then verify the complete suite once after the final material change. Preserve all
+tests/vectors, current independent values and ordered traces, generated-Go execution, exact
+invalidation, fresh processes/fixtures, mutable-state isolation, debugging and compiler-resource
+measurements. Keep aggregate-memory and complete retained-storage accounting in the comparison.
+
+Done when the breakdown is recorded and either one supported optimization has complete
+correctness/resource and matched full-suite performance proof, or measurements establish why
+the examined dominant costs offer no justified bounded change. Report that result and return
+to language-slice planning under existing selection/approval gates. Do not turn this into
+indefinite codec research, start a new language contract, or make 30 seconds / 1/1000 storage a
+prerequisite for resuming language progress. Those original targets remain visible and unproven;
+the user explicitly accepted a bounded useful pass rather than waiting for both to be reached.
+
+First receiver checkpoint: analyze durable suite receipts/profiles, define and collect the
+missing component timings, then select the strongest evidenced optimization. No implementation
+seam is preselected. A new instrumented full run is justified only by a concrete measurement
+gap; do not replay unchanged correctness proof for admission. Keep successful output quiet and
+failures bounded. After focused proof, run the final complete suite with all original probes;
+if no code changes are justified, preserve the admitted correctness proof and document the
+measured limitation without a ceremonial repeat.
+
+Transport exactly one fresh task into `/home/jamie/source/dockpipe`, with no worktree. Admission
+still matches HEAD `0f07ab8de053503613b846d3397c9868a6eba950`, branch `js/pipelang`, both
+protected stashes, all 198 proof-source hashes and the 108,166-entry ignored inventory. The
+three task-record files are the only unstaged handoff-owned changes; nothing is staged or
+untracked. All 59 new contained units are removed. Existing evidence remains accessible under
+`/tmp/pipelang-{execution-performance,bundle-promotion,shared-runtime-experiment,shared-runtime-followup,
+precompression-probe}`. The receiver must reclaim these files directly, not assume live process
+or browser state survives. Public primary-source research remains authorized; native validation
+stays pinned, offline and contained. No commit, push, worktree/stash mutation, broad/protected
+cache cleanup, paid service, credential/publication action, installed-toolchain patch or
+persistent host change is authorized. Another handoff requires another user request.
+
+### Whole-suite receiver: measurement gap and selected candidate
+
+Admission matches the handoff's HEAD, branch, stashes, 108,166 ignored entries and all
+198 current proof-source hashes. Existing full-suite correctness remains admitted. Its
+binary predates three later export/logging harness edits, so a current-source timed
+baseline is required for a matched implementation comparison, not admission replay.
+
+Existing logs contain 623 direct compiler measurements totaling 12.992 summed seconds,
+49.596 seconds of direct generated build/run calls and 72.450 seconds of grouped native
+calls (overlapping worker time, not additive suite wall time). The opt-in performance
+benchmark itself occupies 22.83 seconds. Targeted CPU profiles of units 97, 10 and 70
+separate v0.83 source/HIR generation, compiler-memory source work and prepared v0.91
+oracle evaluation. In unit 10, `inferExprType` accounts for 7.91/19.44 sampled CPU
+seconds (40.7%), with scope-map construction and GC prominent. Source inspection finds
+one growing environment copy per immutable local, repeated during HIR tail inference.
+
+Selected bounded candidate: clone the input type environment once per consecutive
+immutable-local sequence, then extend only that private copy. Keep initializer order,
+shadow/type diagnostics, recursive branch isolation and every compiler probe. No
+cross-call memoization, result cache, language contract or backend redesign is proposed.
+First collect a current-source full baseline with per-unit CPU profiles, cgroup CPU,
+subprocess and outer-launch timing. This fills the whole-suite computation/waiting gap;
+final verification will use the identical instrumentation and limits. Evidence lives
+under `/tmp/pipelang-wholesuite-pass`; initial profiles used the admitted test binary
+and all six profile/analysis units exited with unchanged limits, zero swap and removed
+cgroups. CPU samples and summed worker intervals must not be presented as wall time.
+
+The fresh instrumented baseline passes 634 tests in 101 execution units plus build/list:
+307.972 seconds overall, 306.169 execution, zero cache misses and unchanged source.
+Disjoint harness CPU samples total 812.36 seconds: source/HIR/Core 251.02, background
+GC 138.99, evaluator 106.76, executable validation 100.03, toolchain validation 51.90,
+Go generation 39.04, native harness/fixtures 27.01, separate Core validation 9.28,
+other runtime/harness 88.33. Classification uses profile stack membership and reports
+one category per sample; cumulative function timings overlap these categories.
+`inferExprType` totals 111.78 cumulative sampled seconds across the complete suite.
+The cgroups used 1,068.20 CPU seconds; 1,021.98 child CPU seconds include external
+compiler/native/manager children absent from the Go harness samples. Sampling and
+launcher processes account for part of the difference, not merely idle waiting.
+
+Logged intervals cover 7,743 fresh native calls (82.046 summed seconds), 263 direct
+build/run calls (59.470), and 623 logged direct compiler probes (14.006). Later
+memory fixtures also retain their independent compiler checks; these logged durations
+are not a claim that every external child has a separate timing line. Total outer
+unit intervals are 611.426 seconds, with 596.697 seconds inside measured workloads
+and 14.729 seconds in outer startup/report/cleanup. Two workers overlap these totals.
+The 0.912-second difference between twice execution wall and summed outer intervals
+bounds the lane imbalance/gaps for this run. CPU profiles add shutdown/measurement
+cost, so compare only with equally instrumented final proof, not the old 272 seconds.
+
+The candidate changes only generic inference of consecutive immutable locals, plus
+an isolation test. Focused source-rejection/dependency tests, the new success/error/
+shadow/nil/shared-map checks under race detection, Core/evaluator/Go-backend checks,
+Application IR and frozen compatibility all pass. The HIR package has no standalone
+tests. Source, expected values, generated bytes, argument checks and direct compiler
+commands remain unchanged. Terminal complete-suite verification is next after vet.
+
+
+### Bounded whole-suite pass complete: private inference scopes
+
+State: **completed** for the user-approved bounded performance phase. The historical
+compression candidate remains unpromoted and failed against the original targets.
+No next language contract is selected or implemented. Resume language-slice planning
+with separate founder selection/implementation approval; depth-three terminal-tree
+initializers are a natural candidate because v0.96 still limits that placement to
+depth two. This observation is not a new scope decision.
+
+`typecheck.go` now copies the caller's environment once for each consecutive immutable
+local sequence. Each initializer still sees exactly its preceding bindings; type and
+shadow checks execute in their original order. Recursive branches get private scopes,
+and neither success nor failure changes the caller map. `typecheck_scope_test.go`
+checks sibling names, an error after validated locals, shadowing, nil input scopes and
+eight concurrent callers sharing one read-only environment. No persistent cache,
+invalidation rule, source contract, generated code or native execution path changes.
+Generic compiler/package boundaries are preserved.
+
+| Matched warm full-suite measurement | Before | After |
+| --- | ---: | ---: |
+| Overall wall time, CPU profiling enabled | 307.972 s | **273.530 s** |
+| Execution wall time | 306.169 s | 271.918 s |
+| Summed cgroup CPU | 1,068.197 s | 948.638 s |
+| Sampled harness CPU | 812.360 s | 685.120 s |
+| Cumulative type-inference CPU samples | 111.780 s | 25.850 s |
+| Source/HIR/Core CPU category | 251.020 s | 171.680 s |
+| Background GC CPU category | 138.990 s | 84.600 s |
+| Summed memory-test unit wall intervals | 184.853 s | 96.718 s |
+| Maximum per-unit aggregate memory peak | 734,728,192 B | 734,617,600 B |
+| Conservative simultaneous two-unit peak upper bound | 1,469,255,680 B | 1,469,140,992 B |
+| Original / total discovered tests | 634 / 634 | 634 / 635 |
+| Execution units, plus build/list | 101 + 2 | 102 + 2 |
+
+The observed matched wall-time reduction is **34.441 seconds (11.2%)**. Type-inference
+CPU falls 76.9%; the v0.87 memory unit falls from 15.000 to 6.868 seconds and its
+aggregate peak from 425,025,536 to 398,766,080 bytes. The new test creates one extra
+planner unit. This is one before/after pair on a shared host with the same pinned
+Go, caches, profiling, audit flags, two units/four shape workers and all original
+probes. It is not a cold-host benchmark or a promised universal speedup. Do not
+compare the profiled 273.530 seconds directly with the historical unprofiled 272.063.
+
+The remaining final CPU categories are evaluator 112.31, executable validation 103.31,
+toolchain validation 53.54, Go generation 41.00, native harness/fixtures 28.39,
+separate Core validation 9.88 and other runtime/harness 80.41 sampled seconds.
+Summed fresh native intervals rise from 82.046 to 90.859 seconds and direct build/run
+intervals from 59.470 to 65.303; logged compiler intervals remain 14.006/13.943.
+These overlap workers and include child startup/containment checks. The remaining
+external compiler/native CPU is included in cgroup accounting; it is not silently
+assigned to the harness CPU categories. No evidence supports removing current oracle
+work, toolchain/binary validation or fresh processes. Further optimization is deferred
+under the user's bounded-pass decision, rather than claiming these costs irreducible.
+
+Terminal verification ran once after the last material source change. It passes all
+635 tests, with all 634 inherited named outcomes/statuses, vector inventory, generated
+source/fixture audit hashes and native artifact keys identical. All 623 logged direct
+compiler measurements remain, as do the later memory fixtures' original probes; all
+64 exported fixture sets retain identical nonmeasurement bytes. Both complete runs
+have 3,105 native cache hits, zero misses and exactly the same 2,719 live entries.
+Fresh processes, fixture directories, independent expected values and ordered traces,
+per-case state isolation, exact invalidation and DWARF debugging remain unchanged.
+Focused checks, race detection, Core/evaluator/backend, Application IR, frozen
+compatibility and compiler vet pass. No broad repository CI/build, sustained fuzzing,
+new non-Linux, interactive editor, deployment or production operations were run.
+
+Every new recorded unit (targeted profiles, profile summaries, focused/race/downstream/
+vet and both full runs) completed and removed its cgroup. Hard memory stays 1 GiB,
+swap zero, task count 128, proactive stop 800 MiB, grouped/build high 700 MiB, and
+GOMAXPROCS=4. No max/OOM/OOM-kill/swap events increased. Two-unit figures above sum
+the two largest individual peaks: they are conservative bounds, not sampled simultaneous
+peaks. Native 25-second and measurement 30-second deadlines and bootstrap allowances
+remain intact. No compiler or profiling workload ran uncontained.
+
+Storage is measured over nonoverlapping retained roots, including all older execution,
+bundle, sharing and compression evidence, the general Go cache, new proof files and
+the complete pinned Go toolchain. Logical retained file bytes rise from
+50,225,466,806 to **50,390,680,020** before the final receipt/documentation writes.
+The native cache remains exactly **12,691,799,961 bytes**. Go build/race cache storage
+rises 136,240,376 bytes to 29,503,182,882; new experiment evidence rises 28,972,838
+bytes to 59,185,537. Earlier experiment roots are unchanged. These are retained logical
+bytes, not deduplicated physical-disk blocks or a minimal deployable representation.
+No storage was moved elsewhere or pruned; the 30-second and 14,391,156-byte goals
+remain unproven, as accepted for resuming language work.
+
+Receipts and reproduction: `/tmp/pipelang-wholesuite-pass/{full_profile.py,measure.py,
+analyze.py,compare.py,before-analysis.json,after-analysis.json,comparison.json,
+storage-before.json,storage-after.json}`, plus per-unit logs/CPU profiles and
+focused/race/downstream/vet receipts. `full_profile.py <fresh-output-name>` runs the
+canonical launcher with identical instrumentation; every retained profile is freshly
+collected and no pass outcome is reused. The profile reader partitions stack samples
+into disjoint categories; cumulative function timings are explicitly separate.
+
+Final anchors remain HEAD `0f07ab8de053503613b846d3397c9868a6eba950`, branch
+`js/pipelang`, both protected stashes and the exact 108,166-entry ignored inventory.
+Only `typecheck.go` differs among the 198 admitted proof-source files; the new test
+and three task records are the remaining owned changes. Nothing is staged. No commit,
+push, worktree/stash mutation, cache cleanup, installed-toolchain or persistent host
+change occurred. User-requested handoff transport was used to receive this objective;
+no further task was created.
+
+
+### Latest user direction: keep iterating (2026-09-07)
+
+After the inference pass was fully recorded and its 217 units audited, Jamie's side
+conversation relayed “just keep iterating.” The same objective is **executing** again
+under that explicit direction: continue measured, bounded deterministic improvements
+with correctness, complete-suite timing, aggregate memory and complete retained-storage
+proof. Existing exclusions and all language/native-test invariants remain. No particular
+compression/ML idea is selected. The completed inference result above remains admitted.
+
+Next measured candidate: final profiles assign 103.31 CPU seconds to executable
+validation. Ordinary four-case batches currently hash the same cached binary on lookup
+and again before each of their fresh children; the existing v0.91 shared-oracle lane
+instead executes an immutable, hash-verified kernel-sealed snapshot. Evaluate extending
+that existing mechanism only to Linux retained batches with more than one case. Preserve
+all source/toolchain/settings identities, lookup corruption repair, fresh processes and
+fixture directories; measure the added transient snapshot memory. The largest admitted
+native executable is 12,643,426 bytes, below the existing 64 MiB sealing bound. Use the
+completed 635-test profiled run as the matched baseline. Do not repeat it for admission.
+
+The ordinary-batch candidate passes focused checks: actual multi-case native children
+observe the sealed memfd executable, repeated current fixtures execute afresh, wrong
+oracles fail, changed generated source misses the cache, and corruption is quarantined
+and rebuilt. Existing source/settings-key checks, special-harness rejection and sealed
+snapshot write/grow/shrink/path-replacement/wrong-digest faults pass. No retained native
+cache format or generated program changes. The compiler's completed inference/downstream/
+race proof remains admitted; the new change is test harness execution only. Next run
+complete verification with the previous 273.530-second profiled run as the matched
+baseline, then audit every original outcome, fixture/key and memory/storage receipt.
+
+### Ordinary-batch sealing checkpoint verified
+
+The complete 635-test / 102-unit run passes at **257.545 seconds**, versus 273.530
+for the admitted inference baseline: 15.986 seconds (5.8%) faster in this matched pair.
+Sampled executable-validation CPU falls from 103.31 to 68.96 seconds; total harness
+CPU from 685.12 to 637.69 and cgroup CPU from 948.638 to 890.330. Maximum per-unit
+aggregate peak is 632,209,408 bytes, with conservative two-unit upper bound
+1,219,260,416 bytes; no increased memory/swap/OOM event or remaining cgroup occurs.
+Do not attribute every shared-host memory/timing difference to this change.
+
+All 635 named outcomes, vector/source/fixture identities, 623 logged direct compiler
+probes, 64 exported fixture sets and all native keys remain identical. Both runs have
+7,743 fresh batched native calls, 263 direct build/run calls, 3,105 retained-cache hits
+and zero misses; no native cache bytes were added. Source/settings/corruption/current-
+oracle fault checks and vet pass. The final full run follows the last material change.
+The cumulative audit now verifies 323 contained units across both checkpoints.
+
+Nonoverlapping retained storage is 50,514,079,014 logical bytes before subsequent
+receipts. Native bytes remain 12,691,799,961; Go build/race cache is 29,597,702,400;
+new proof root is 88,065,013. All earlier experiment roots stay unchanged. The
+123,398,994-byte increase over the preceding storage snapshot is recorded support/build
+and proof data, not moved or hidden native storage. No cleanup occurred. Evidence:
+`sealing-analysis.json`, `comparison-sealing.json`, `storage-sealing.json`,
+`final-evidence-sealing.json` and `sealing/` under `/tmp/pipelang-wholesuite-pass`.
+
+Under “keep iterating,” the next bounded candidate is exact semantic-key formatting.
+The latest complete profile still attributes 77.97 sampled CPU seconds cumulatively
+to `semanticIdentityKey`, including 63.21 in `writeCanonicalKeyField`. Replace general
+`fmt` formatting of nonnegative lengths with decimal integer conversion and direct
+builder writes. Preserve the historical byte-length framing and every key byte;
+verify recursive type/callable encodings against the historical reference before a
+matched full run. No identity schema, lookup policy, memoization or language change
+is selected. The completed sealing proof is admitted before changing this seam.
+
+Exact-key candidate focused proof passes the historical formatter oracle across nested
+identities, zero/one and 9/10/99/100/128 parameter counts, byte-length boundaries,
+Unicode, NUL and invalid UTF-8. Semantic identity/dependency checks, Core/evaluator/
+backend, Application IR, frozen compatibility and vet pass. Only integer formatting
+inside the existing encoding changes; the key schema and all bytes remain identical.
+Proceed to one complete profiled verification after these final source changes,
+matched against the admitted 257.545-second sealing run.
+
+### Exact-key first result: CPU gain, wall-time result unresolved
+
+The candidate passes 636 tests in 102 units and every inherited outcome, native key,
+fixture and compiler-probe audit. Key-construction CPU falls 77.97 → 26.28 sampled
+seconds; source/HIR/Core CPU 167.58 → 121.43 and total harness CPU 637.69 → 607.73.
+However complete wall time is 260.512 versus 257.545 seconds, so no full-suite speedup
+is claimed. Cgroup CPU is 878.513 seconds; native/direct build-run intervals also rise.
+The new encoding reference test takes only 0.13 seconds. Maximum per-unit aggregate
+peak is 734,691,328 bytes, still within the unchanged controls, and all 430 cumulative
+units are removed with no adverse memory/swap/OOM events. Retained logical storage is
+50,655,912,135 bytes; native cache unchanged, Go cache 29,710,698,291 and proof root
+116,902,243. Receipts are `keys-analysis.json`, `comparison-keys.json`,
+`storage-keys.json` and `final-evidence-keys.json`.
+
+One confirmation pair is justified by the unresolved end-to-end performance result,
+not by a need to replay passed correctness. Both runs retain the same current 636-test
+inventory. The control builds with Go's explicit source overlay replacing only
+`semantic_id.go` with bytes whose SHA256 matches the admitted sealing source hash;
+the candidate uses current source. Every other test/helper, generated oracle, source
+contract, cache, profile flag and limit is identical. The read-only control replacement
+and overlay are retained under `/tmp/pipelang-wholesuite-pass/semantic_id.control.go`,
+`keys-control-overlay.json` and `keys-control-identity.json`; the checkout is unchanged.
+This isolates the key formatter without weakening source provenance or inventing a
+wall-time claim from CPU samples. Record the pair, then decide from its evidence.
+
+### Exact-key confirmation accepted
+
+Both confirmation runs pass the identical **636 tests / 102 execution units** and
+all outcome/vector/source/fixture/native-key/probe comparisons. The historical-format
+control takes 251.810 seconds overall and 246.631 in suite execution; current code
+234.384 overall and **233.035 execution**. The control's one-time overlay build/list
+cost is 5.179 seconds versus 1.349 for the warm candidate, so the defensible matched
+execution improvement is **13.595 seconds (5.5%)**, not all 17.426 overall seconds.
+
+Key-construction CPU again falls 76.09 → 25.06 sampled seconds, total harness CPU
+618.68 → 567.88 and cgroup CPU 863.377 → 810.051. Source/HIR/Core CPU falls
+163.41 → 112.77; executable validation stays 67.50/67.49 and evaluator 106.90/108.09.
+This confirms a repeatable formatter reduction without attributing unrelated child
+variation to it. The earlier 260.512-second result remains recorded; that run had
+304 permitted memory-high events in one v0.96 layout unit, unlike the original
+sealing baseline. No hard-limit/OOM/swap failures occurred in either pair.
+
+Control/candidate maximum aggregate peaks are 734,593,024 / 734,756,864 bytes and
+conservative two-unit bounds 1,469,100,032 / 1,469,251,584. All 638 cumulative units
+completed and removed their cgroups. Native retained bytes remain 12,691,799,961.
+Complete retained logical storage is 50,880,783,353 bytes before later receipts,
+including Go cache 29,878,018,650 and new evidence 174,453,102; earlier roots remain
+unchanged. The confirmation pair's extra build artifacts and profiles are included.
+The exact formatter change is retained; no identity/key bytes or language contracts
+changed. Proof: `keys_control/`, `keys_confirm/`, their analysis receipts,
+`comparison-keys_confirm.json`, `final-evidence-keys_confirm.json` and
+`storage-keys_confirm.json` under `/tmp/pipelang-wholesuite-pass`.
+
+### Next measured checkpoint: validate while creating the sealed snapshot
+
+The confirmed profile still spends 67.49 sampled CPU seconds in executable validation.
+Source inspection finds that sealed retained batches first hash the cache file on
+lookup, then read/hash the same file again while constructing the immutable snapshot.
+The next bounded candidate combines those checks: validate cache identity/metadata,
+then hash the snapshot bytes once and execute only that sealed descriptor. A digest
+mismatch must still quarantine/rebuild the corrupt entry; snapshot/containment resource
+failures must fail closed without mislabeling a sound cache entry as corrupt. Keep
+single-case/non-Linux path validation unchanged. No source/toolchain/settings check,
+pass outcome, fresh child/fixture, mutable-state isolation or debugging byte may be
+removed. Admit the completed key proof before implementation and measure the result
+against `keys_confirm/` with the same 636 tests and profiling settings.
+
+The combined snapshot candidate passes current-oracle/source/settings/corruption checks
+for both ordinary batches and shared-oracle bundles, existing sealing faults and vet.
+An added assertion in the existing snapshot test proves that exceeding the snapshot
+size budget returns an error rather than a repairable miss and leaves its cache entry
+intact. Research-export invocations retain the admitted lookup/path-export/seal order;
+normal runs use the combined read. No test inventory or native key changes are expected.
+Proceed to complete matched verification against `keys_confirm/` after these final edits.
+
+### Combined snapshot-read candidate not retained
+
+Correctness/resource verification passes all 636 tests and all inherited inventories,
+with 745 cumulative units removed and no hard-limit/OOM/swap failures. However full
+wall time is **240.482 seconds versus 234.384**, execution 239.138 versus 233.035.
+Executable-validation CPU falls 67.49 → 54.34 sampled seconds, but total harness CPU
+567.88 → 562.80 and cgroup CPU **810.051 → 810.893** are effectively unchanged.
+Peak per-unit aggregate memory is 606,048,256 bytes. This pair does not establish an
+end-to-end benefit sufficient to retain additional cache failure-classification code.
+The candidate is deferred, not claimed impossible, and no repeated full timing is
+required merely to chase a favorable result.
+
+The five candidate-owned postimages were retained in
+`/tmp/pipelang-wholesuite-pass/rejected-snapshot-source/`, then restored byte-for-byte
+to `keys_confirm/source-hashes.json`. All current source hashes again match that
+verified baseline, including the ordinary-batch sealing and exact-key improvements.
+The added snapshot-budget assertion was prototype proof, not an original conformance
+vector; it remains in the preserved candidate source/receipt. No user-owned bytes were
+reverted. `snapshot-reversion.json` records exact restoration, so admit the completed
+636-test key-confirmation proof without a ceremonial rerun.
+
+Retained logical storage for this experiment is 51,022,130,852 bytes before reversion
+receipts and preserved source copies: Go cache 29,990,625,310, new proof root
+203,193,941, native cache unchanged at 12,691,799,961. No caches were pruned or moved.
+`comparison-snapshot.json`, `snapshot-analysis.json`, `final-evidence-snapshot.json`
+and `storage-snapshot.json` preserve the successful correctness and unsuccessful
+performance evidence. The objective remains executing under the user's iteration
+direction; the current accepted source is the confirmed key-formatting baseline.
+
+### Next bounded probe: read-only evaluator expression traversal
+
+The accepted key-confirmation profiles attribute 67.15 sampled CPU seconds to recursive
+`evalExprWithProgram`; 26.94 are `duffcopy`/`memmove` samples under it. Line-level
+accounting (`evaluator-lines.json`) shows that these include both expression argument
+copies and Outcome/Value copies. Do not claim all copying is removable: carrier/value
+ownership and independent results must remain unchanged.
+
+Probe only passing already validated, read-only expression nodes by reference inside
+the private recursive evaluator. Retain the existing entry wrapper, public APIs,
+argument/carrier validation, frame ownership, returned-value cloning and prepared
+snapshot isolation. First collect a focused accepted-baseline phase benchmark, then
+compare the candidate before any complete run. If focused measurements do not justify
+this bounded change, restore the accepted source and defer it. This is not evaluator
+bytecode compilation, memoization or a language/backend redesign.
+
+The focused accepted/candidate phase comparison is positive for prepared evaluation:
+small 16,383 → 15,277 ns/op (6.7%), large 24,489 → 22,625 ns/op (7.6%). Allocation
+bytes/counts remain 14,744/43 and 19,656/61. Ordinary evaluation, which revalidates the
+whole Core graph, is 349,707/361,311 and 485,736/494,332 ns/op; no ordinary-call gain
+is claimed. All evaluator tests under race detection and prepared ownership/metadata/
+exact-identity checks pass. The change is one private read-only recursive helper with
+the old value-entry wrapper retained; it does not eliminate Outcome/Value cloning.
+`eval-phase-comparison.json` records this small-probe evidence. It justifies a complete
+run to test suite-scale value, not a prediction of the final speedup.
+
+### Evaluator traversal candidate not retained
+
+The candidate passes all 636 tests and every source/fixture/key/probe inventory, but
+full wall time is **251.453 seconds versus 234.384** for the accepted baseline.
+Execution is 249.463 versus 233.035; total sampled harness CPU 584.44 versus 567.88,
+cgroup CPU 841.799 versus 810.051. Evaluator-category CPU decreases only 108.09 →
+103.71, insufficient to improve the complete result. Maximum per-unit aggregate peak
+is 734,515,200 bytes; conservative two-unit bound 1,468,968,960. Focused race,
+ownership, downstream and vet checks all pass, but the private-recursion refactor is
+not retained on a microbenchmark result alone. No further full rerun is justified
+merely to seek a favorable timing.
+
+The candidate is preserved in `rejected-evaluator-source/evaluate.go`, and production
+`coreeval/evaluate.go` is restored exactly to the accepted `keys_confirm/` source hash.
+All execution-source hashes match that completed 636-test proof. The only difference
+in its source-snapshot set is a README prose clarification that shared-oracle bundles
+also use sealing; the historical prose preimage hash and every planner split declaration
+are verified unchanged. `evaluator-reversion.json` records restoration and this docs-only
+exception. The accepted evaluator implementation and its ownership semantics remain intact.
+
+`evaluator-analysis.json`, `comparison-evaluator.json`, `final-evidence-evaluator.json`
+and `storage-evaluator.json` preserve the experiment. All **854** temporary units in
+this task have completed and their cgroups are removed. Hard memory, task, swap,
+proactive, compiler/native timeouts and concurrency limits remained unchanged; no
+max/OOM/OOM-kill or swap event increased. Temporary memory-high reclaim is separately
+recorded and is not mislabeled as an OOM or hard-limit failure.
+
+### Iteration batch completed; resume language planning
+
+Under the user's “keep iterating” direction, five bounded implementations were measured.
+Three are retained: one private inference scope per consecutive local sequence,
+sealed execution for ordinary retained Linux batches, and exact decimal semantic-key
+formatting. Two are rejected at suite scale: combined snapshot lookup and read-only
+recursive expression references. Their source, successful correctness proof, timing
+limitations and storage remain reviewable; neither is silently promoted or erased.
+
+The retained complete profiled run is **234.384 seconds**, versus 307.972 for the
+current-source starting control (23.9% observed reduction with the same profiling,
+cache and resource settings, while adding two tests). The extra same-inventory key
+confirmation proves 5.5% execution improvement for that step; the control's additional
+build cost is separately disclosed above. These are observed warm shared-host runs,
+not a universal/cold-host claim or a comparison against the historical unprofiled
+272.063-second run. All original 634 tests plus two regressions pass, retaining every
+native process, current oracle/ordered trace, compiler probe and artifact identity.
+
+The remaining measured costs include current evaluator work (108.09 sampled CPU
+seconds in the accepted run), source/HIR/Core (112.77), exact toolchain validation
+(49.20), executable validation (67.49), GC (78.88) and other harness/runtime work.
+Repeated validation removal, result reuse, shared mutable execution or broad runtime/
+backend restructuring is not authorized by these results. The two subsequent probes
+show why small local savings cannot be assumed to improve the complete suite. Defer
+those unproven paths and larger allocation/runtime work rather than keep making
+changes without demonstrated suite-scale value. This concludes the current bounded
+iteration batch; it does not assert a lower bound or that further progress is impossible.
+
+Complete retained logical storage after the final experiment is 51,159,651,908 bytes
+before its final restoration/closure receipts: Go build/race cache 30,099,243,733,
+new proof root 232,096,574, unchanged native cache **12,691,799,961**. All older
+experiment roots and the pinned toolchain are included and unchanged. Relative to the
+first current-source baseline inventory, retained bytes increased 934,185,102; this is
+reported build/proof storage, not hidden support or a storage optimization. No cache
+cleanup or relocation occurred. The original **30-second / 14,391,156-byte** goals
+remain unmet; the user accepted that they need not block language progress.
+
+State: **completed** for this iteration batch. The next language contract remains
+unselected and requires the existing founder selection/implementation approval. A
+natural planning candidate remains depth-three terminal-tree initializers after v0.96;
+no successor was implemented or created. Final owned code areas are `typecheck.go`,
+`semantic_id.go`, ordinary batch execution and its cache-oracle regression test, plus
+the two new scope/key regression files. README and the three task records document
+behavior/proof. Generic engine/package boundaries are intact. All edits remain
+unstaged and uncommitted in the saved checkout; no worktree, stash mutation, commit,
+push, publication, installed-toolchain patch or persistent host change occurred.
+
+Final closure audit: `closure-evidence.json` verifies all 854 removed units, exact
+accepted execution-source hashes, the prose-only README exception, unchanged HEAD,
+protected stashes and ignored inventory, empty staging, valid task YAML and clean
+`git diff --check`. `storage-closure.json` accounts for **51,159,706,591 logical bytes**
+across all nonoverlapping retained roots, including 232,151,257 in the new proof root
+and unchanged native/cache/toolchain roots. Increase from the initial inventory is
+934,239,785 bytes. The snapshot excludes its own subsequently written receipt.

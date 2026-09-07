@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"sort"
+	"strconv"
 	"strings"
 )
 
@@ -825,7 +826,7 @@ func semanticIdentityKey(identity SemanticIdentity) string {
 
 func semanticCallableKey(callable CallableIdentity) string {
 	var key strings.Builder
-	writeCanonicalKeyField(&key, fmt.Sprintf("%d", len(callable.Parameters)))
+	writeCanonicalKeyField(&key, strconv.Itoa(len(callable.Parameters)))
 	for _, parameter := range callable.Parameters {
 		writeCanonicalKeyField(&key, semanticTypeKey(parameter))
 	}
@@ -835,7 +836,7 @@ func semanticCallableKey(callable CallableIdentity) string {
 
 func semanticTypeKey(identity SemanticTypeIdentity) string {
 	var key strings.Builder
-	for _, field := range []string{string(identity.Kind), string(identity.Primitive), string(identity.PackageID), string(identity.Path), identity.Name, fmt.Sprintf("%d", len(identity.Arguments))} {
+	for _, field := range []string{string(identity.Kind), string(identity.Primitive), string(identity.PackageID), string(identity.Path), identity.Name, strconv.Itoa(len(identity.Arguments))} {
 		writeCanonicalKeyField(&key, field)
 	}
 	for _, argument := range identity.Arguments {
@@ -845,7 +846,8 @@ func semanticTypeKey(identity SemanticTypeIdentity) string {
 }
 
 func writeCanonicalKeyField(key *strings.Builder, value string) {
-	fmt.Fprintf(key, "%d:", len(value))
+	key.WriteString(strconv.Itoa(len(value)))
+	key.WriteByte(':')
 	key.WriteString(value)
 }
 

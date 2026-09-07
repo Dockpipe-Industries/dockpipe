@@ -338,7 +338,10 @@ func runGeneratedBatch(t *testing.T, cases []generatedBatchCase) {
 		exportGeneratedSharedExperiment(t, root, dir, binary, key)
 	}
 	var sealed *os.File
-	if sharedOracle != nil {
+	// Reuse one immutable snapshot across a retained batch's fresh children.
+	// This preserves exact executed bytes without rehashing the same binary for
+	// every case. Single-case and non-Linux batches retain path revalidation.
+	if sharedOracle != nil || (cacheRoot != "" && len(cases) > 1 && runtime.GOOS == "linux") {
 		var expected string
 		var err error
 		if cacheRoot != "" {

@@ -287,7 +287,10 @@ the synchronous generated-Go path. Nonempty `GOFLAGS` retains the original synch
 and other explicit build modes).
 The key binds exact generated source, oracle Go code, module/driver code, explicit
 build settings, and a content fingerprint of the pinned toolchain binaries and
-library source. Binary digests are checked on lookup and before every execution.
+library source. Binary digests are checked on lookup. Linux retained batches with
+multiple cases, and shared-oracle bundles, then hash and kernel-seal one immutable
+executable snapshot; every fresh child executes that verified descriptor. Ordinary
+single-case and other-platform batches recheck the digest before each path execution.
 Invalid entries are quarantined inside the private cache and rebuilt. Per-artifact
 kernel locks serialize lookup, repair, publication and execution across workers;
 locks release automatically when a worker exits. Current

@@ -12,9 +12,9 @@ state:
   decision: accepted
   current_language_contract: v0.96.0
   active_objective: TASK-021-conformance-shared-runtime-experiment
-  objective_state: failed_verification
+  objective_state: completed
   selected_option: null
-  selected_scope: Plugin and exact compressed-native continuation measured; full v0.91 correctness preserved, strict size and speed targets unmet; no promotion
+  selected_scope: Five measured iterations complete; inference scopes, ordinary batch sealing and exact-key formatting retained; no next language slice selected
   implementation_approval: approved
   completed_repair_objective: TASK-021-PipeLang-v0.80-milestone-repairs
   repair_commit: acbd10f88207d0a226ec24a073948362691adb8c
@@ -26,7 +26,9 @@ state:
     The user explicitly approved the shared native runtime experiment and requested continuation in this saved checkout.
     conformance-execution-performance.md owns the bounded experiment, preserved invariants and contained validation.
     The complete v0.91 family follows a small feasibility probe; reassess before expansion.
-    No commit, push, worktree or stash mutation, broad cache cleanup, network or persistent machine changes.
+    Public web research is now explicitly authorized; native validation remains contained and offline.
+    The latest user approval redirects this continuation to one bounded full-suite performance pass before further language slices.
+    No commit, push, worktree or stash mutation, broad cache cleanup or persistent machine changes.
 
 routes:
   conformance_performance:
