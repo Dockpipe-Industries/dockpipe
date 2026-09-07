@@ -381,3 +381,52 @@ To run only the complete 200-layout family, add
 The summary explicitly marks this as partial-suite proof and retains the full
 discovery count separately from the selected test count. A family-only result
 must not be reported as a new whole-suite runtime.
+
+### Bounded shared-library experiment
+
+`--shared-export /absolute/fresh-private-directory` exports the complete v0.91
+bundle family's current generated source, checks and fixtures while executing its
+normal retained baseline. It requires `--test-family
+TestV910NestedTerminalInitializersLayouts` and native bundles. The destination
+must already exist, be empty and have mode 0700. An existing export is never
+overwritten. The flag is an experimental evidence path, not a new default lane.
+
+`shared_runtime_probe.py` compares those exact bundles against Go's
+`-linkshared` facilities in Linux GOPATH mode. Each original package still runs
+in its own fresh process and fixture directory. Shared libraries and executables
+are hash-verified into sealed memory files; the system loader resolves library
+names through private links to inherited sealed descriptors. Source and build
+settings are checked separately from current runtime fixtures. No pass result
+is retained. `test_shared_runtime_probe.py` exercises invalidation and sealing.
+
+The prototype expects a private evidence root containing `settings.json`,
+`compiler-closure.json`, `std-pkg`, and `gopath/src/pipelang-generated-check/oracle`.
+Prepare the oracle from an exported `oracle/oracle.go`. With the pinned offline
+toolchain, private `GOPATH`/`GOBIN`, `GO111MODULE=off`, and `GOENV=off`, build
+`go install -p=1 -buildmode=shared -pkgdir=<root>/std-pkg std`, then
+`go install -p=1 -linkshared -buildmode=shared -pkgdir=<root>/std-pkg ./oracle`
+from the private generated-check directory. Run both through `run.py`, using the
+existing bootstrap allowance only for the first command. Module-mode sharing
+does not support this prototype. No source under the installed toolchain is edited.
+
+`shared_runtime_settings.py --root <root> --go <absolute-go> --output
+<root>/settings.json` records exact Go and selected GCC support bytes after
+preparation. `compiler-closure.json` has the same `toolchain` map shape for any
+additional audited compiler inputs (an empty map when the settings snapshot is
+complete). Build with `shared_runtime_probe.py build --root <root> --exports
+<exports> --go <absolute-go> --start N --stop M --receipt <fresh-json>`, serially
+in small fresh contained units. Replay with `run`, `--lane baseline|candidate`
+and a freshly regenerated export. Both lanes check the same source identity.
+Use at most two units, each with at most four shape workers. Every native child
+retains the 25-second test and 30-second process deadline.
+
+This measures the native replay phase of the full family; evaluator/oracle
+generation, root harness build and compressed reconstruction are separate costs.
+Count all program binaries, both libraries, manifests, source/fixtures, package
+archives and compiler/reconstruction support, including coexistence with any
+compressed representation. Go 1.25.13 forces `-w` with `-linkshared`; the explicit `-w=false` probe fails
+with `dwarf: missing type (no data): type:unsafe.Pointer`. The prototype therefore
+cannot replace the debug-bearing baseline binaries, which must remain retained
+and counted. Shared-library support and compact storage are experimental results,
+not whole-suite target claims. The TASK-021 performance
+record links the measured evidence and limitations.

@@ -334,6 +334,9 @@ func runGeneratedBatch(t *testing.T, cases []generatedBatchCase) {
 	if cacheRoot != "" {
 		t.Logf("generated_compiled_artifact packages=%d cache_hit=%t key=%s", len(cases), hit, key)
 	}
+	if root := os.Getenv("PIPELANG_SHARED_EXPORT"); root != "" && sharedOracle != nil {
+		exportGeneratedSharedExperiment(t, root, dir, binary, key)
+	}
 	var sealed *os.File
 	if sharedOracle != nil {
 		var expected string
