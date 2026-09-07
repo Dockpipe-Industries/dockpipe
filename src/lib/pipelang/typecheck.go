@@ -2165,34 +2165,43 @@ func inferExprType(sources *SourceSet, expr Expr, env map[string]ResolvedTypeRef
 
 func (cp *checkedProgram) inferExprType(expr Expr, env map[string]ResolvedTypeRef) (ResolvedTypeRef, error) {
 	if local, ok := expr.(*ImmutableLocalExpr); ok {
-		if cp == nil || cp.modules == nil || !hasImmutableLocalSourceContract(cp.modules.LanguageContract()) {
-			return ResolvedTypeRef{}, oneDiagnostic(cp.sources, CodeExpressionType, CategorySemantic, local.Span, "immutable local blocks require language contract v0.39.0")
-		}
-		if _, exists := env[local.Name]; exists {
-			return ResolvedTypeRef{}, oneDiagnostic(cp.sources, CodeExpressionType, CategorySemantic, local.NameSpan, fmt.Sprintf("immutable local %q shadows an existing binding", local.Name))
-		}
-		declared, err := cp.resolveType(local.Type, RelatedSpan{Span: local.Span, Message: "immutable local declaration"})
-		if err != nil {
-			return ResolvedTypeRef{}, err
-		}
-		var initialized ResolvedTypeRef
-		if isResolvedSourceArithmeticResult(cp.modules.LanguageContract(), declared) {
-			initialized, err = cp.inferMethodBodyType(MethodDecl{Body: local.Initializer, ReturnType: local.Type}, env, declared)
-		} else {
-			initialized, err = cp.inferExprType(local.Initializer, env)
-		}
-		if err != nil {
-			return ResolvedTypeRef{}, err
-		}
-		if !initialized.Equal(declared) {
-			return ResolvedTypeRef{}, oneDiagnostic(cp.sources, CodeExpressionType, CategorySemantic, local.Initializer.SourceSpan(), fmt.Sprintf("immutable local %s initializer has type %s, declared %s", local.Name, initialized, declared), RelatedSpan{Span: local.Type.Span, Message: "declared local type"})
-		}
+		// One private scope per consecutive sequence preserves caller and branch
+		// isolation without copying every preceding binding for each local.
 		scoped := make(map[string]ResolvedTypeRef, len(env)+1)
 		for name, resolved := range env {
 			scoped[name] = resolved
 		}
-		scoped[local.Name] = declared
-		return cp.inferExprType(local.Return, scoped)
+		env = scoped
+		for {
+			if cp == nil || cp.modules == nil || !hasImmutableLocalSourceContract(cp.modules.LanguageContract()) {
+				return ResolvedTypeRef{}, oneDiagnostic(cp.sources, CodeExpressionType, CategorySemantic, local.Span, "immutable local blocks require language contract v0.39.0")
+			}
+			if _, exists := env[local.Name]; exists {
+				return ResolvedTypeRef{}, oneDiagnostic(cp.sources, CodeExpressionType, CategorySemantic, local.NameSpan, fmt.Sprintf("immutable local %q shadows an existing binding", local.Name))
+			}
+			declared, err := cp.resolveType(local.Type, RelatedSpan{Span: local.Span, Message: "immutable local declaration"})
+			if err != nil {
+				return ResolvedTypeRef{}, err
+			}
+			var initialized ResolvedTypeRef
+			if isResolvedSourceArithmeticResult(cp.modules.LanguageContract(), declared) {
+				initialized, err = cp.inferMethodBodyType(MethodDecl{Body: local.Initializer, ReturnType: local.Type}, env, declared)
+			} else {
+				initialized, err = cp.inferExprType(local.Initializer, env)
+			}
+			if err != nil {
+				return ResolvedTypeRef{}, err
+			}
+			if !initialized.Equal(declared) {
+				return ResolvedTypeRef{}, oneDiagnostic(cp.sources, CodeExpressionType, CategorySemantic, local.Initializer.SourceSpan(), fmt.Sprintf("immutable local %s initializer has type %s, declared %s", local.Name, initialized, declared), RelatedSpan{Span: local.Type.Span, Message: "declared local type"})
+			}
+			env[local.Name] = declared
+			next, consecutive := local.Return.(*ImmutableLocalExpr)
+			if !consecutive {
+				return cp.inferExprType(local.Return, env)
+			}
+			local = next
+		}
 	}
 	if conditional, ok := expr.(*ConditionalExpr); ok {
 		if cp == nil || cp.modules == nil || !hasConditionalSourceContract(cp.modules.LanguageContract()) {

@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -14,6 +15,8 @@ import (
 
 func TestGeneratedArtifactReuseExecutesCurrentOracle(t *testing.T) {
 	if mode := os.Getenv("PIPELANG_ARTIFACT_PROBE"); mode != "" {
+		batch := strings.HasPrefix(mode, "batch-")
+		mode = strings.TrimPrefix(mode, "batch-")
 		source := "package generated\nfunc Value() string { return \"one\" }\n"
 		if mode == "source" {
 			source = strings.ReplaceAll(source, "one", "two")
@@ -36,7 +39,17 @@ func TestCurrentOracle(t *testing.T) {
 		if mode == "oracle" {
 			fixture = []byte("changed")
 		}
-		compileAndRunGeneratedGoFilesWithFixtures(t, []byte(source), checks, map[string][]byte{"oracle.txt": fixture})
+		if batch {
+			checks = bytes.Replace(checks, []byte(`"os"; "testing"`), []byte(`"os"; "testing"; "strings"`), 1)
+			checks = bytes.Replace(checks, []byte(`data, err :=`), []byte(`path, err := os.Readlink("/proc/self/exe")
+ if err != nil || !strings.Contains(path, "memfd:pipelang-native-bundle") { t.Fatalf("batch did not execute sealed bytes: %s %v", path, err) }
+ data, err :=`), 1)
+			for i := 0; i < 4; i++ {
+				compileAndRunGeneratedGoFilesWithFixtures(t, []byte(source), checks, map[string][]byte{"oracle.txt": fixture})
+			}
+		} else {
+			compileAndRunGeneratedGoFilesWithFixtures(t, []byte(source), checks, map[string][]byte{"oracle.txt": fixture})
+		}
 		return
 	}
 	root := t.TempDir()
@@ -113,6 +126,12 @@ func TestCurrentOracle(t *testing.T) {
 	run("repeat", false, true)
 	run("oracle", true, true)
 	run("source", true, false)
+	if runtime.GOOS == "linux" {
+		run("batch-initial", false, false)
+		run("batch-repeat", false, true)
+		run("batch-oracle", true, true)
+		run("batch-source", true, false)
+	}
 	entries, err := os.ReadDir(root)
 	if err != nil {
 		t.Fatal(err)
@@ -132,6 +151,9 @@ func TestCurrentOracle(t *testing.T) {
 		}
 	}
 	run("repaired", false, false)
+	if runtime.GOOS == "linux" {
+		run("batch-repaired", false, false)
+	}
 }
 
 func TestGeneratedBatchPreservesSpecialHarnesses(t *testing.T) {
