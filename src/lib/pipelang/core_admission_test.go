@@ -39,6 +39,10 @@ func assertAdmissionRejected(t *testing.T, program coreir.Program, want string) 
 	if evaluation == nil || evaluation.Error() != validation.Error() {
 		t.Fatalf("evaluation = %v; Core = %v", evaluation, validation)
 	}
+	_, preparation := coreeval.PrepareProgram(program)
+	if preparation == nil || preparation.Error() != validation.Error() {
+		t.Fatalf("preparation = %v; Core = %v", preparation, validation)
+	}
 	generated, generation := gobackend.Generate(program)
 	backend, ok := generation.(*gobackend.Error)
 	if !ok || backend.Code != "PLGO0001" || backend.Message != validation.Error() || generated != nil {

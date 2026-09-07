@@ -79,6 +79,10 @@ public Class Root {
 					program.Functions = append(program.Functions, lowered.Functions...)
 				}
 			}
+			prepared, err := coreeval.PrepareProgram(program)
+			if err != nil {
+				t.Fatal(err)
+			}
 			parameterType := coreFunctionNamed(t, program, "Echo").Parameters[0].Type
 			cases := canonicalHostArguments(parameterType)
 			generated, err := gobackend.Generate(program)
@@ -107,6 +111,7 @@ public Class Root {
 						}
 						for _, evaluate := range []func() (coreeval.Outcome, error){
 							func() (coreeval.Outcome, error) { return coreeval.Evaluate(function, arguments) },
+							func() (coreeval.Outcome, error) { return prepared.Evaluate(function.Identity, arguments) },
 							func() (coreeval.Outcome, error) {
 								return coreeval.EvaluateProgram(program, function.Identity, arguments)
 							},

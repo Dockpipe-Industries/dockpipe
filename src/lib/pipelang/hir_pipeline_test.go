@@ -1398,7 +1398,10 @@ func compileAndRunGeneratedGoFiles(t *testing.T, generated, generatedTest []byte
 	command := exec.Command(goBinary, "test", "-count=1", "-p=1", "-timeout=25s", ".")
 	command.Dir = dir
 	command.Env = append(os.Environ(), "GOTOOLCHAIN=local", "GOPROXY=off", "GOSUMDB=off", "GOWORK=off")
-	output, err := containedexec.CombinedOutput(command)
+	output, measurement, err := containedexec.Measure(command)
+	if os.Getenv("PIPELANG_PERFORMANCE_PROFILE") == "1" {
+		t.Logf("generated_build_run source_bytes=%d test_bytes=%d elapsed_ns=%d waited_child_rss_kib=%d", len(generated), len(generatedTest), measurement.Elapsed.Nanoseconds(), measurement.MaxRSSKiB)
+	}
 	if err != nil {
 		t.Fatalf("compile/run generated Go: %v\n%s", err, output)
 	}

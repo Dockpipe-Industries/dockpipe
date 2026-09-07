@@ -178,6 +178,10 @@ func testFiniteConditionalLocalsLayouts(t *testing.T, contract LanguageContract,
 					// Evaluate only the selected function's dependency closure.
 					evaluation := program
 					evaluation.Functions = []coreir.Function{coreFunctionNamed(t, program, "Echo"), coreFunctionNamed(t, program, "Check"), function}
+					prepared, err := coreeval.PrepareProgram(evaluation)
+					if err != nil {
+						t.Fatal(err)
+					}
 					var wantedValues, wantedTraces strings.Builder
 					for mask := 0; mask < 1<<(len(sample.targets)+extraBits); mask++ {
 						want, trace := conditionalChoicesTreeExpected(tree, sample.targets, sample.unused, mask, returnChoice, independentReturn, nestedReturn, nestedInitializer)
@@ -185,7 +189,7 @@ func testFiniteConditionalLocalsLayouts(t *testing.T, contract LanguageContract,
 						for bit := 0; bit < len(sample.targets)+extraBits; bit++ {
 							args = append(args, coreeval.Value{Type: function.Parameters[bit+1].Type, Bool: mask&(1<<bit) != 0})
 						}
-						got, err := coreeval.EvaluateProgram(evaluation, function.Identity, args)
+						got, err := prepared.Evaluate(function.Identity, args)
 						if err != nil || !got.OK || got.Value.String != want {
 							t.Fatalf("%s mask %d: %#v %v want %q", sample.name, mask, got, err, want)
 						}
