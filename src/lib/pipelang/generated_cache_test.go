@@ -128,6 +128,21 @@ func generatedArtifactKey(dir string) (string, error) {
 	return hex.EncodeToString(h.Sum(nil)), nil
 }
 
+func generatedArtifactExpectedDigest(root, key string) (string, error) {
+	data, err := os.ReadFile(filepath.Join(root, key, "record.json"))
+	if err != nil {
+		return "", err
+	}
+	var record generatedCacheRecord
+	if err := json.Unmarshal(data, &record); err != nil {
+		return "", err
+	}
+	if record.Version != generatedCacheVersion || record.Key != key {
+		return "", fmt.Errorf("compiled artifact identity changed before sealing")
+	}
+	return record.BinarySHA256, nil
+}
+
 func readGeneratedArtifact(root, key string) (string, bool) {
 	dir := filepath.Join(root, key)
 	data, err := os.ReadFile(filepath.Join(dir, "record.json"))

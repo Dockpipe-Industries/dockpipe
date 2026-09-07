@@ -2,6 +2,7 @@ package pipelang
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"fmt"
 	"go/ast"
 	goparser "go/parser"
@@ -10,6 +11,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -33,6 +35,7 @@ type generatedBatchCase struct {
 	source, checks []byte
 	fixtures       map[string][]byte
 	tests          []string
+	sharedOracle   []byte
 }
 type generatedBatchQueue struct {
 	cases []generatedBatchCase
@@ -47,7 +50,7 @@ var generatedBatches = struct {
 // Only inert generated packages are eligible for shared linking. Keep the direct
 // path for custom initialization, compiler directives, special testing entrypoints
 // or unsupported imports; changing another package's initialization is not proof.
-func generatedBatchTests(source, checks []byte) ([]string, bool) {
+func generatedBatchTests(source, checks []byte, sharedOracle ...bool) ([]string, bool) {
 	var tests []string
 	var packageName string
 	for index, data := range [][]byte{source, checks} {
@@ -70,6 +73,10 @@ func generatedBatchTests(source, checks []byte) ([]string, bool) {
 			}
 			switch name {
 			case "testing", "reflect", "math", "strings", "unicode/utf8", "sort", "encoding/json", "os", "strconv", "fmt", "bytes", "errors":
+			case "pipelang-generated-check/oracle":
+				if len(sharedOracle) == 0 || !sharedOracle[0] {
+					return nil, false
+				}
 			default:
 				return nil, false
 			}
@@ -123,6 +130,10 @@ func generatedBatchTests(source, checks []byte) ([]string, bool) {
 }
 
 func queueGeneratedBatch(t *testing.T, source, checks []byte, fixtures map[string][]byte) bool {
+	return queueGeneratedBatchWithOracle(t, source, checks, fixtures, nil)
+}
+
+func queueGeneratedBatchWithOracle(t *testing.T, source, checks []byte, fixtures map[string][]byte, sharedOracle []byte) bool {
 	if os.Getenv("PIPELANG_GENERATED_BATCH") != "1" || os.Getenv("GOFLAGS") != "" {
 		return false
 	}
@@ -133,11 +144,11 @@ func queueGeneratedBatch(t *testing.T, source, checks []byte, fixtures map[strin
 			return false
 		}
 	}
-	tests, ok := generatedBatchTests(source, checks)
+	tests, ok := generatedBatchTests(source, checks, len(sharedOracle) != 0)
 	if !ok {
 		return false
 	}
-	item := generatedBatchCase{source: bytes.Clone(source), checks: bytes.Clone(checks), fixtures: make(map[string][]byte), tests: tests}
+	item := generatedBatchCase{source: bytes.Clone(source), checks: bytes.Clone(checks), fixtures: make(map[string][]byte), tests: tests, sharedOracle: bytes.Clone(sharedOracle)}
 	size := len(source) + len(checks)
 	for name, data := range fixtures {
 		if filepath.Base(name) != name || name == "." || name == ".." || name == "generated.go" || name == "generated_test.go" || name == "checks.go" || name == "go.mod" {
@@ -168,7 +179,11 @@ func queueGeneratedBatch(t *testing.T, source, checks []byte, fixtures map[strin
 		sourceBytes += len(item.source) + len(item.checks)
 	}
 	var ready []generatedBatchCase
-	if len(queue.cases) >= 4 || queue.bytes >= 8<<20 || sourceBytes >= 512<<10 {
+	limit, fixtureLimit := 4, 8<<20
+	if len(sharedOracle) != 0 {
+		limit, fixtureLimit = 32, 32<<20
+	}
+	if len(queue.cases) >= limit || queue.bytes >= fixtureLimit || sourceBytes >= 512<<10 {
 		ready = queue.cases
 		queue.cases = nil
 		queue.bytes = 0
@@ -183,6 +198,22 @@ func runGeneratedBatch(t *testing.T, cases []generatedBatchCase) {
 	if len(cases) == 0 {
 		return
 	}
+	if os.Getenv("PIPELANG_BUNDLE_AUDIT") == "1" {
+		for _, item := range cases {
+			fixtureHash := sha256.New()
+			names := make([]string, 0, len(item.fixtures))
+			for name := range item.fixtures {
+				names = append(names, name)
+			}
+			sort.Strings(names)
+			for _, name := range names {
+				data := item.fixtures[name]
+				fmt.Fprintf(fixtureHash, "%d:%s:%d:", len(name), name, len(data))
+				fixtureHash.Write(data)
+			}
+			t.Logf("generated_case_audit source=%x fixtures=%x tests=%q", sha256.Sum256(item.source), fixtureHash.Sum(nil), item.tests)
+		}
+	}
 	dir, err := os.MkdirTemp("/tmp", "pipelang-linked-go-")
 	if err != nil {
 		t.Fatal(err)
@@ -194,6 +225,22 @@ func runGeneratedBatch(t *testing.T, cases []generatedBatchCase) {
 		}
 	}
 	write("go.mod", []byte("module pipelang-generated-check\n\ngo 1.25\n"))
+	var sharedOracle []byte
+	for _, item := range cases {
+		if len(item.sharedOracle) == 0 {
+			continue
+		}
+		if sharedOracle != nil && !bytes.Equal(sharedOracle, item.sharedOracle) {
+			t.Fatal("mixed shared oracle definitions")
+		}
+		sharedOracle = item.sharedOracle
+	}
+	if sharedOracle != nil {
+		if err := os.Mkdir(filepath.Join(dir, "oracle"), 0700); err != nil {
+			t.Fatal(err)
+		}
+		write("oracle/oracle.go", sharedOracle)
+	}
 	var imports, checks strings.Builder
 	imports.WriteString("package linkedcheck\nimport (\"testing\"\n")
 	for i, item := range cases {
@@ -249,6 +296,27 @@ func runGeneratedBatch(t *testing.T, cases []generatedBatchCase) {
 		command := exec.Command(filepath.Join(runtime.GOROOT(), "bin", "go"), "test", "-c", "-p=1", "-o", binary, ".")
 		command.Dir = dir
 		command.Env = append(os.Environ(), "GOROOT="+runtime.GOROOT(), "GOTOOLCHAIN=local", "GOPROXY=off", "GOSUMDB=off", "GOWORK=off")
+		if sharedOracle != nil {
+			buildCache := os.Getenv("PIPELANG_BUNDLE_BUILD_CACHE")
+			if !filepath.IsAbs(buildCache) {
+				t.Fatal("bundle population requires an absolute disposable PIPELANG_BUNDLE_BUILD_CACHE")
+			}
+			if err := os.MkdirAll(buildCache, 0700); err != nil {
+				t.Fatal(err)
+			}
+			info, err := os.Lstat(buildCache)
+			if err != nil || !info.IsDir() || info.Mode().Perm() != 0700 {
+				t.Fatal("bundle build cache must be a private directory")
+			}
+			command.Env = append(command.Env, "GOCACHE="+buildCache)
+			// Populate standard dependencies separately so each compiler command keeps
+			// the existing 30-second deadline even when this disposable cache is empty.
+			prepare := exec.Command(filepath.Join(runtime.GOROOT(), "bin", "go"), "build", "-p=1", "testing", "encoding/json", "reflect", "strings")
+			prepare.Dir, prepare.Env = command.Dir, command.Env
+			if output, _, err := measureGeneratedBuild(prepare); err != nil {
+				t.Fatalf("prepare disposable bundle build cache: %v\n%s", err, output)
+			}
+		}
 		output, measurement, err := measureGeneratedBuild(command)
 		if err != nil {
 			t.Fatalf("link %d generated packages: %v\n%s", len(cases), err, output)
@@ -265,6 +333,24 @@ func runGeneratedBatch(t *testing.T, cases []generatedBatchCase) {
 	}
 	if cacheRoot != "" {
 		t.Logf("generated_compiled_artifact packages=%d cache_hit=%t key=%s", len(cases), hit, key)
+	}
+	var sealed *os.File
+	if sharedOracle != nil {
+		var expected string
+		var err error
+		if cacheRoot != "" {
+			expected, err = generatedArtifactExpectedDigest(cacheRoot, key)
+		} else {
+			expected, err = generatedFileDigest(binary)
+		}
+		if err != nil {
+			t.Fatal(err)
+		}
+		sealed, err = sealGeneratedExecutable(binary, expected)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer sealed.Close()
 	}
 	// Each original generated module still executes in a new contained child.
 	// Its fixture cwd and package globals are isolated; no test result is cached.
@@ -286,13 +372,20 @@ func runGeneratedBatch(t *testing.T, cases []generatedBatchCase) {
 				t.Fatal(err)
 			}
 		}
-		if cacheRoot != "" {
+		if cacheRoot != "" && sealed == nil {
 			if _, ok := readGeneratedArtifact(cacheRoot, key); !ok {
 				t.Fatal("compiled artifact changed before execution")
 			}
 		}
 
-		command := exec.Command(binary, "-test.run", fmt.Sprintf("^TestCase%04d$", i), "-test.count=1", "-test.timeout=25s", "-test.v")
+		executable := binary
+		if sealed != nil {
+			executable = "/proc/self/fd/3"
+		}
+		command := exec.Command(executable, "-test.run", fmt.Sprintf("^TestCase%04d$", i), "-test.count=1", "-test.timeout=25s", "-test.v")
+		if sealed != nil {
+			command.ExtraFiles = []*os.File{sealed}
+		}
 		command.Dir = execution
 		output, measurement, err := containedexec.Measure(command)
 		if err != nil {
