@@ -182,3 +182,239 @@ The optional cache/parallel lane requires the documented contained Linux environ
 test helpers retain their synchronous fallback. No clean-from-scratch terminal timing is claimed.
 Changes remain uncommitted. No push, publication, worktree, stash mutation, cloud operation or
 persistent machine change occurred. This closes the validated pass without selecting a successor.
+
+
+## Cache compaction follow-up
+
+- Objective: `TASK-021-conformance-cache-compaction`; state: `failed_verification`. Authority: explicit user request for the same rerun performance at 1/1000 of the retained cache size. No qualifying implementation was accepted.
+- Baseline: clean saved checkout at `55e262e6ffbb66d9510fd7d0a90b0f0a43ec8705`, containing the previous performance pass.
+- Done when retained storage is at most 1/1000 of admission with unchanged complete rerun performance, current oracles and invalidation still pass, and migration preserves proof. These conditions have not been met.
+- Preserve exact executable bytes, all proof vectors and direct compiler resource controls. Compression is a storage representation change, not permission to omit tests or debugging content.
+- Keep bounded containment and offline toolchain controls. No commit, push, worktree, stash mutation, unrelated cleanup or machine changes. Cache migration within the explicitly identified private cache is authorized by the user's reduction request.
+- Evidence: `/tmp/pipelang-cache-compaction`; admit prior completed language proof and profile only the cache/harness changes.
+
+### Strict target and measured experiments
+
+The user superseded the initial roughly-half-size approach with **1/1000 size at the same
+performance**. Admission measures 14,390,546,687 executable bytes across 3079 entries, or
+14,413,168,640 allocated bytes including metadata. The executable-byte target is approximately
+14.39 MB. Preserve the admitted 326.532-second complete rerun as the performance reference;
+no new full-run performance claim is made.
+
+| Experiment | Measured result | Acceptance |
+| --- | --- | --- |
+| Fixed-block deduplication plus fast zlib, 24 executable sample | 62.2–62.9 MB from 109.2 MB | Rejected: far above the strict storage target |
+| Shared reference executable with installed zstd dictionary mode | 57.95 MB from 109.2 MB at level 3 | Rejected: insufficient reduction |
+| Standard gzip storage prototype with legacy migration | Focused storage, corruption, invalidation and current-oracle checks passed in 13.984 s | Parked outside checkout after the user rejected approximately half size; no cache migration performed |
+| All generated native function bodies, excluding shared runtime/debugging/other ELF data, compressed together with LZMA2 | 392,865,167 bytes reduced to 57,732,408 bytes | Still exceeds the target even before required executable data |
+| Reversible direct-branch address normalization, function-body deduplication and LZMA2 | 42,549,440 payload bytes plus 380,252 index bytes | Still exceeds the target; not an executable cache |
+
+The full corpus contains 257,974,257 bytes of native oracle/test-harness functions and
+134,890,910 bytes of generated program functions. Normalization was reversed and compared
+byte for byte for every extracted function. It leaves 136229 unique bodies totaling
+382,755,649 bytes before compression. The experiment is specific to the current ELF64/x86-64
+cache; it is not a portable runtime implementation or an information-theoretic lower bound.
+These code-only experiments omit mandatory runtime, data and executable reconstruction state,
+so their sizes must not be advertised as a usable cache size or an achieved reduction.
+
+The evidence rules out the tested packing approaches for this requirement. A stronger shared
+code representation or an architectural change to native oracle construction remains unproven;
+neither the 1000-fold reduction nor unchanged rerun performance has been established. Do not
+silently substitute a smaller target, cached outcomes, interpreted evaluator parity, omitted
+compiler probes, or storage moved into another cache.
+
+The gzip prototype is preserved in `/tmp/pipelang-cache-compaction/gzip-prototype` for inspection,
+but all five affected harness source files were restored to the admitted commit before closing
+this investigation. The retained cache is unchanged and the previous full proof remains the
+accepted implementation. No new runtime dependency, migration, commit or push was performed.
+Experiment input/metric manifests, scripts and containment receipts remain under the same
+`/tmp` evidence directory; disposable compressed experiment corpora were removed after recording
+sizes. Initial sample filename collision and unsupported zstd patch-mode failures remain as
+supplementary receipts, with corrected supported-mode runs passing. Production and generic
+engine/package boundaries are unchanged. The strict optimization objective remains unfulfilled.
+
+Final read-only audit passed: all 3079 retained executable digests match their manifests,
+executable bytes remain 14,390,546,687, source/test harness matches HEAD, and protected Git/ignored
+state is unchanged. The audit used canonical containment (42.247 s, zero swap, unit removed).
+`git diff --check` passes. Only the five task/routing documentation files remain modified.
+
+
+## Shared native bundle prototype
+
+- Objective: `TASK-021-conformance-native-bundle`; state: `completed`; authority: user accepted the proposed substantial-family prototype and said progress is progress.
+- Done when a v0.91 layout-family prototype shares native checking code and links bounded bundles, retains every oracle/vector and fresh-process execution, and has measured retained footprint and matched rerun timing. The 1/1000 full-cache target remains an aspiration, not an acceptance claim for a partial-family prototype.
+- Preserve independent expectations, source/toolchain invalidation, caller isolation and fresh direct compiler probes. No production language/backend changes, commit, push, worktree, stash changes, persistent machine settings or migration of the old cache.
+- Evidence: `/tmp/pipelang-native-bundle`. Admission: `55e262e6`, five task-document changes from the preceding investigation; source/test harness clean.
+- Initial implementation: a shared typed oracle package, bounded bundles for v0.91 layouts, and sealed executable snapshots so a large bundle is verified once without repeated whole-binary hashing for each fresh child. All native execution remains inside canonical containment.
+
+
+## Shared native bundle final evidence
+
+This section records prototype completion before the full-suite promotion below.
+
+The bounded prototype passes the complete v0.91 layout family. It is opt-in and does not
+claim a 1000-fold reduction or a new whole-suite runtime. The original full executable cache
+remains available for comparison; no full-cache migration was performed.
+
+| Matched family measure | Original retained executables | Shared native bundles |
+| --- | ---: | ---: |
+| Referenced artifacts | 560 | 200 |
+| Retained bytes, including manifests | 3,001,822,088 | 1,302,465,584 before the controlled rebuild |
+| Median execution time, three runs | 39.671 s | 34.154 s |
+| Individual execution times | 48.262 / 39.671 / 35.259 s | 40.943 / 34.154 / 32.246 s |
+
+This is **56.6% less retained native storage and 13.9% less median execution time** for the
+same family. All three matched comparisons favor the bundle; the downward timing trend means
+these measurements are not a cold filesystem benchmark. Both lanes use two contained workers,
+four shapes per unit, normal compiler settings, the same inputs and explicit audit/profiling.
+Initial bundle population took 276.530 seconds with a pre-existing Go compiler cache; it is
+not a clean-from-scratch timing. The subsequent controlled cold-path check validates disposable
+compiler storage separately.
+
+Every compared run preserves 200 layouts, 3820 methods, 2,859,840 vectors and ordered traces,
+and 2064 fresh native processes. Generated-source digests, current-fixture digests, original
+native test names, every named parent/subtest outcome and all inventory totals match exactly.
+The common oracle only handles fixture loading and comparison. Actual results still come from
+native generated Go; expected results still come from the independent tree model.
+
+The implementation uses a shared typed oracle package and at most 32 packages per bundle,
+with the documented source/fixture thresholds. Each cached binary is checked against its
+manifest while copying into a bounded memory file. Verified kernel seals prohibit writes,
+resizing and seal changes. Children execute that immutable descriptor in fresh processes and
+fixture directories. The normal helper keeps its previous behavior outside the opted-in
+v0.91 family, including special-harness and explicit-Go-flag fallback.
+
+Compiler storage is accounted for explicitly. Initial population/validation grew the shared
+Go cache by 2,231,251,459 bytes. The provenance audit identified 5328 new files (2,178,853,392
+bytes) whose embedded source-directory identities belonged to the 200 prototype bundles,
+plus their new action records. After verifying hashes and absence from the pre-family inventory,
+those files were removed. Pre-existing compiler-cache entries were preserved; the remaining
+measured growth includes validation/root-harness compilation and is not counted as a native
+bundle saving.
+
+The runner now creates a fresh private build-cache directory beneath each run's output and
+removes it only after every contained unit has exited and its cgroup is gone. Bundle misses
+compile into this disposable cache; hits need no compiler intermediates. A controlled single
+miss rebuilt one artifact, produced 65,622,405 temporary build-cache bytes, passed all 200
+layouts, and removed that cache automatically. The subsequent warm run retained zero build-cache
+bytes and passed with zero misses. Its overall time was 32.670 seconds including rebuilding
+and listing the root test harness. The final explicitly audited run passed at 32.520 seconds
+overall / 31.565 seconds execution, also with zero misses and zero retained build-cache bytes.
+
+Validation:
+
+- All family population and repeated comparison units pass under unchanged 1 GiB hard,
+  zero-swap, 128-task and proactive-memory controls; native compilation remains serialized
+  per unit. The initial population maximum was 700.617 MiB.
+- Focused regressions cover current-fixture failure on a hit, source/shared-oracle invalidation,
+  process-state isolation, immutable snapshots, cache-path replacement and incorrect digests.
+  Original artifact corruption, build-key and special-harness regressions also pass.
+- Final concurrent race checks and PipeLang vet pass. Python planner and disposable-cache
+  lifecycle tests pass, including refusal to remove storage while a unit remains active or
+  removal is unproven. Formatting and `git diff --check` pass.
+- Final audit verifies original source/fixture/test identities and all outcomes after removing
+  the intermediates. Snapshot hashes match the final harness and runner. HEAD, protected stashes
+  and ignored inventory remain unchanged. No production Go files, language contract, generator,
+  dependency versions or package/engine boundaries changed.
+
+Evidence is under `/tmp/pipelang-native-bundle`: `family-evidence.json`,
+`terminal-evidence.json`, `intermediate-removal.json`, `audited-rerun/summary.json`, and the
+focused/race/vet receipts. Two diagnostic-only issues were repaired: the provenance scanner
+initially treated a Go cache directory as a file, and the first post-cleanup auditor expected
+flags set only in the outer shell to reach systemd workloads. The runner now explicitly forwards
+`--audit-generated`; the final recorded source/fixture comparison passes. These did not represent
+native test failures.
+
+Reproduce the final family lane with a fresh output directory. The command uses the main
+cache, where the prototype artifacts were subsequently consolidated:
+
+```sh
+python3 tests/containedexec/pipelang_suite.py \
+  --native-bundle --audit-generated \
+  --test-family TestV910NestedTerminalInitializersLayouts \
+  --go /home/jamie/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.25.13.linux-amd64/bin/go \
+  --output /tmp/pipelang-native-bundle/next-family-run \
+  --cache /tmp/pipelang-performance-proof/cache \
+  --compiled-cache /tmp/pipelang-execution-performance/complete-artifacts \
+  --shape-batch-size 25 --parallel-shapes
+```
+
+Changes remain uncommitted. This completes the authorized substantial-family prototype;
+expansion to other test families, full-cache migration and the 1/1000 target remain unproven.
+
+
+## Full-suite bundle promotion
+
+The user authorized implementation after the completed prototype. Promote the validated
+v0.91 bundle path as the Linux retained-run default, preserve the legacy comparison option,
+and run the complete current inventory. Reuse the verified prototype artifacts, then remove
+only obsolete entries from the task-owned executable cache after complete passing proof and
+manifest revalidation. Preserve every oracle, fresh process and resource probe. No production
+language changes, commit, push or persistent host settings. Evidence lives under
+`/tmp/pipelang-bundle-promotion`. Completion requires a full warm rerun after migration, exact
+inherited coverage and fixture parity, and measured whole-cache bytes and runtime.
+
+### Implementation and migration completed
+
+The retained-suite runner now selects the validated v0.91 bundle path by default on Linux.
+`--no-native-bundle` preserves the original comparison lane. The runner emits `artifacts.json`
+only for a complete, successful, source-unchanged retained run with verified unit cleanup.
+It records executed keys, manifest digests, native bytes, hits and misses. It does not prune
+retained caches automatically. Overall timing includes producing this receipt.
+
+| Whole-suite measure | Accepted previous implementation | Implemented bundles |
+| --- | ---: | ---: |
+| Required native entries | 3079 | 2719 |
+| Executables plus manifests | 14,391,156,329 bytes | 12,691,799,961 bytes |
+| Complete rerun, including root build/list | 326.532 s | 271.910 s before pruning; 272.063 s after pruning |
+| Discovered test functions | 632 | 634 |
+| Contained execution units | 101 | 101 |
+| Artifact misses | 0 | 0 in both runs |
+| Retained bundle compiler intermediates | not applicable | 0 bytes in both runs |
+
+The whole executable cache is **1,699,356,368 bytes (11.8 percent) smaller**. The affected
+family retains its approximately 56.6 percent saving; this does not make the entire cache
+56.6 percent smaller. The two new complete runs show no measured runtime regression. They
+are warm retained-artifact runs on this host, not cold-build results or a controlled claim
+that bundling alone explains the entire timing difference from the earlier baseline.
+
+Migration first verified all 3079 old and 200 replacement binary digests. It reused the
+replacements through hard links, without duplicating their physical contents. After the first
+complete passing run and independent coverage audit, the live-key set proved exactly 560
+old v0.91 entries obsolete; none were required by another family. The migration revalidated
+source snapshots, receipts, manifests and binary hashes, acquired the existing per-key locks,
+and removed only those entries. The prototype links were then consolidated into the main
+cache. All 2719 retained binaries were verified again. The final complete rerun used precisely
+that reduced set, with 3105 hits and zero misses. No deleted binary was moved to another cache.
+Zero-byte lock files remain to preserve lock inode identity.
+
+Both complete audits preserve all 632 inherited test functions and named outcomes, every
+method/vector inventory, all 2064 v0.91 generated-source/current-fixture/original-test-name
+records, 64 byte-identical compiler fixtures and 623 fresh compiler measurements. Audit mode
+additionally enables the existing small/large profiler cases that the old full run skipped;
+the auditor explicitly verifies both passes. The two added bundle regression functions pass.
+All 103 receipts per run (build, list and 101 execution units) preserve the 1 GiB hard limit,
+zero swap and 128-task limit, with no hard-memory/OOM events and verified cgroup removal.
+
+Three Python regressions pass: complete inventory grouping, disposable-cache cleanup guards,
+and executed-artifact inventory validation. All 185 Go files exactly match the already
+validated prototype, so its focused, concurrent race and vet proof applies unchanged.
+Formatting and `git diff --check` pass. HEAD, protected stashes and ignored inventory are
+unchanged. Only test harness, runner and task-documentation areas changed; production Go,
+language design and package/engine boundaries are preserved. Nothing was committed or pushed.
+
+Storage accounting remains explicit: the 12.692 GB figure is executable data plus manifests,
+with 12,710,539,264 allocated file bytes. The former family cache has zero file-content bytes
+after consolidation. The separate pre-existing general Go build cache remains at
+29,275,296,596 file bytes at completion and was not broadly pruned; no whole-workspace storage
+claim is made. Root test binaries, logs, fixtures and migration receipts remain as local proof
+under `/tmp/pipelang-bundle-promotion`. No generated artifact was added to tracked source.
+The whole-suite 30-second and 1/1000-storage targets remain unmet.
+
+Evidence: `full-before-prune-evidence.json`, `full-after-prune-evidence.json`, `migration.json`,
+`cache-prune.json`, `cache-before.json`, `cache-after.json`, `storage-final.json`,
+`go-proof-reuse.json`, and both full-run receipt directories beneath that evidence root.
+The one-task migration script is retained there for review. Diagnostic scripts encountered
+a Python-version helper mismatch and a receipt filename collision during staging; neither
+caused native test failure or unverified deletion. They were resolved and the final migration
+and coverage audits completed successfully.

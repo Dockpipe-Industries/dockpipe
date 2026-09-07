@@ -324,3 +324,60 @@ to one per unit, while retained executables and reference evaluations may run
 concurrently. Direct compiler resource matrices retain their sequential case
 execution and the existing two-unit worker limit. Race checks and identical
 named-case/vector inventories are required before accepting this mode.
+
+### Shared native bundles
+
+`pipelang_suite.py` uses shared typed oracle code and larger native bundles for the
+v0.91 finite-layout helper by default when `--compiled-cache` is supplied on Linux.
+`--no-native-bundle` selects the original path for comparisons; `--native-bundle`
+explicitly selects bundles. Bundles require empty `GOFLAGS` and Linux executable sealing. Other language
+families and direct compiler resource probes retain their existing paths.
+
+Each bundle contains at most 32 generated packages, with a 512 KiB source and
+32 MiB source/fixture queue threshold. A single item may cross a threshold before
+the queue flushes, as with the original four-package helper. Compilation remains
+serialized per unit. Generated source stays in separate packages; the common
+oracle package loads current fixtures and compares actual native results with
+the independent expected values and ordered traces. Its source participates in
+the artifact key. Each original package still runs in a fresh child process.
+
+The bundle is copied into a bounded memory file while checking the manifest's
+binary digest. Kernel write/grow/shrink/seal locks then make that exact snapshot
+immutable. Each child executes the inherited sealed descriptor, allowing reuse
+without hashing a larger disk executable for every child. Failure to create or
+verify the sealed snapshot fails the run; it does not weaken verification.
+Transient snapshots count against the same cgroup memory ceiling and disappear
+when their descriptors close. No additional persistent runtime cache is created.
+
+The runner creates a fresh private `native-build-cache` beneath the receipt output
+for bundle compiler intermediates. It removes that directory only after every unit
+has exited and its cgroup is gone, and records its byte count and removal status.
+Bundle misses use `PIPELANG_BUNDLE_BUILD_CACHE` for compilation; hits do not need
+that directory. Direct test-harness invocations must supply an absolute private
+disposable path themselves and clean it only after their units have exited.
+Existing Go compiler caches are not pruned by the runner.
+
+For a full suite with this family using shared native bundles:
+
+```sh
+python3 tests/containedexec/pipelang_suite.py \
+  --go /absolute/go --output /tmp/compiler-proof/bundle-rerun \
+  --cache /tmp/compiler-proof/cache --compiled-cache /tmp/compiler-proof/executables \
+  --shape-batch-size 25 --parallel-shapes
+```
+
+Use a separate executable cache for baseline/candidate storage comparisons. Include
+all referenced artifacts and manifests, and report compiler-cache growth separately.
+`--audit-generated` forwards `PIPELANG_BUNDLE_AUDIT=1` and profiling into each
+contained workload, logging generated-source and current-fixture digests plus the
+original test names for exact baseline/candidate coverage comparisons. A full successful retained run writes `artifacts.json`, containing only executed keys,
+manifest digests, bytes, hits and misses. Partial or failed runs do not produce a live-set
+receipt. The runner never prunes retained artifacts; migration must revalidate the receipt
+and current artifact bytes before removing obsolete entries. This does not establish a
+1000-fold reduction.
+
+To run only the complete 200-layout family, add
+`--test-family TestV910NestedTerminalInitializersLayouts` to the command above.
+The summary explicitly marks this as partial-suite proof and retains the full
+discovery count separately from the selected test count. A family-only result
+must not be reported as a new whole-suite runtime.

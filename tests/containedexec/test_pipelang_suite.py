@@ -1,11 +1,34 @@
 """Inventory coverage regression for the retained-executable suite planner."""
 import sys
+import json
 import unittest
+import tempfile
+from pathlib import Path
 sys.dont_write_bytecode = True
-from pipelang_suite import plan
+from pipelang_suite import plan, cleanup_native_build_cache, artifact_inventory
 
 
 class PlanTests(unittest.TestCase):
+    def test_artifact_inventory_includes_only_executed_keys(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            cache = Path(temporary)
+            key, unused = 'a' * 64, 'b' * 64
+            for name in [key, unused]:
+                entry = cache / name
+                entry.mkdir()
+                (entry / 'program.test').write_bytes(b'binary')
+                (entry / 'record.json').write_text(json.dumps(dict(Version='pipelang-native-validation-v2', Key=name, BinarySHA256='c' * 64)))
+            logs = f'generated_compiled_artifact packages=32 cache_hit=true key={key}\n' * 2
+            inventory = artifact_inventory(cache, logs)
+            self.assertEqual(set(inventory['entries']), {key})
+            self.assertEqual((inventory['hits'], inventory['misses']), (2, 0))
+            self.assertEqual(inventory['retained_bytes'], sum(p.stat().st_size for p in (cache / key).iterdir()))
+            with self.assertRaises(RuntimeError):
+                artifact_inventory(cache, '')
+            (cache / key / 'record.json').write_text('{}')
+            with self.assertRaises(RuntimeError):
+                artifact_inventory(cache, logs)
+
     def test_grouping_preserves_every_case_once(self):
         tests = ['TestFirst', 'TestShapes', 'TestCompilerMemoryLocalSequences', 'TestTailMemory', 'FuzzSeed', 'Example']
         split = {'TestShapes': 53}
@@ -20,6 +43,24 @@ class PlanTests(unittest.TestCase):
         shapes = [(names, pattern) for names, pattern in grouped if names[0].startswith('TestShapes/')]
         self.assertEqual([len(names) for names, _ in shapes], [25, 25, 3])
         self.assertEqual(shapes[-1][1], '^TestShapes$/^(50|51|52)$')
+
+    def test_disposable_cache_waits_for_unit_removal(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            cache = root / 'owned-cache'
+            cache.mkdir()
+            (cache / 'object').write_bytes(b'intermediate')
+            group = root / 'active-group'
+            group.mkdir()
+            rows = [{'report': {'tree_removed': True, 'cgroup': str(group)}}]
+            self.assertEqual(cleanup_native_build_cache(cache, rows), (12, False))
+            group.rmdir()
+            rows[0]['report']['tree_removed'] = False
+            self.assertEqual(cleanup_native_build_cache(cache, rows), (12, False))
+            self.assertEqual(cleanup_native_build_cache(cache, []), (12, False))
+            rows[0]['report']['tree_removed'] = True
+            self.assertEqual(cleanup_native_build_cache(cache, rows), (12, True))
+            self.assertFalse(cache.exists())
 
 
 if __name__ == '__main__':

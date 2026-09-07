@@ -1,0 +1,132 @@
+package pipelang
+
+import (
+	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
+	"fmt"
+	"io"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"runtime"
+	"strings"
+	"testing"
+
+	"dockpipe/tests/containedexec"
+)
+
+func TestGeneratedBundleSealedSnapshot(t *testing.T) {
+	if runtime.GOOS != "linux" {
+		t.Skip("Linux sealed bundle prototype")
+	}
+	path := filepath.Join(t.TempDir(), "original")
+	original := []byte("verified native bytes")
+	if err := os.WriteFile(path, original, 0500); err != nil {
+		t.Fatal(err)
+	}
+	hash := sha256.Sum256(original)
+	sealed, err := sealGeneratedExecutable(path, hex.EncodeToString(hash[:]))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer sealed.Close()
+	if _, err := sealed.WriteAt([]byte("modified"), 0); err == nil {
+		t.Fatal("sealed bytes were writable")
+	}
+	if err := sealed.Truncate(0); err == nil {
+		t.Fatal("sealed executable could shrink")
+	}
+	if err := sealed.Truncate(999); err == nil {
+		t.Fatal("sealed executable could grow")
+	}
+	if err := os.Remove(path); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, []byte("replacement"), 0500); err != nil {
+		t.Fatal(err)
+	}
+	got, err := io.ReadAll(sealed)
+	if err != nil || !bytes.Equal(got, original) {
+		t.Fatal("cache path replacement changed sealed snapshot")
+	}
+	if bad, err := sealGeneratedExecutable(path, hex.EncodeToString(hash[:])); err == nil {
+		bad.Close()
+		t.Fatal("wrong binary digest was accepted")
+	}
+}
+
+func TestGeneratedBundleCurrentOracles(t *testing.T) {
+	if runtime.GOOS != "linux" {
+		t.Skip("Linux sealed bundle prototype")
+	}
+	if mode := os.Getenv("PIPELANG_BUNDLE_PROBE"); mode != "" {
+		oracle := strings.Replace(finiteSharedOracle, "t.Helper()", `t.Helper(); invocations++; if invocations != 1 { t.Fatal("shared process state leaked") }`, 1) + "\nvar invocations int\n"
+		if mode == "support" {
+			oracle += "\n// changed shared checking code\n"
+		}
+		for i := 0; i < 16; i++ {
+			source := fmt.Sprintf("package generated; var calls int; func Value() string { calls++; if calls != 1 { panic(\"state leaked\") }; return %q }", fmt.Sprint(i))
+			if mode == "source" && i == 0 {
+				source += "; const changed = true"
+			}
+			checks := []byte("package generated; import (\"testing\";\"pipelang-generated-check/oracle\"); func TestCurrent(t *testing.T) { oracle.Values(t,\"oracle.json\",1,func(int)string{return Value()}) }")
+			value := fmt.Sprint(i)
+			if mode == "oracle" && i == 15 {
+				value = "wrong"
+			}
+			fixture := []byte(fmt.Sprintf("[{\"Value\":%q,\"Trace\":[]}]", value))
+			if !queueGeneratedBatchWithOracle(t, []byte(source), checks, map[string][]byte{"oracle.json": fixture}, []byte(oracle)) {
+				t.Fatal("bundle rejected")
+			}
+		}
+		return
+	}
+	root := t.TempDir()
+	if err := os.Chmod(root, 0700); err != nil {
+		t.Fatal(err)
+	}
+	buildCache := t.TempDir()
+	if err := os.Chmod(buildCache, 0700); err != nil {
+		t.Fatal(err)
+	}
+	prepare := exec.Command(filepath.Join(runtime.GOROOT(), "bin", "go"), "build", "-p=1", "testing", "encoding/json", "reflect", "strings")
+	prepare.Env = append(os.Environ(), "GOENV=off", "GOFLAGS=", "GOCACHE="+buildCache, "GOTOOLCHAIN=local", "GOPROXY=off", "GOSUMDB=off", "GOWORK=off")
+	if output, _, err := measureGeneratedBuild(prepare); err != nil {
+		t.Fatalf("prepare probe dependencies: %v\n%s", err, output)
+	}
+	executable, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		mode      string
+		hit, fail bool
+	}{{"initial", false, false}, {"repeat", true, false}, {"oracle", true, true}, {"source", false, false}, {"support", false, false}} {
+		cmd := exec.Command(executable, "-test.run", "^TestGeneratedBundleCurrentOracles$", "-test.count=1", "-test.v", "-test.timeout=25s")
+		cmd.Env = append(os.Environ(), "GOENV=off", "GOFLAGS=", "PIPELANG_GENERATED_BATCH=1", "PIPELANG_COMPILED_CACHE="+root, "PIPELANG_BUNDLE_PROBE="+tc.mode, "PIPELANG_BUNDLE_BUILD_CACHE="+buildCache)
+		output, _, err := containedexec.Measure(cmd)
+		if (err != nil) != tc.fail {
+			t.Fatalf("%s: %v\n%s", tc.mode, err, output)
+		}
+		if !strings.Contains(string(output), fmt.Sprintf("packages=16 cache_hit=%t", tc.hit)) {
+			t.Fatalf("%s did not use expected bundle:\n%s", tc.mode, output)
+		}
+		if tc.fail && !strings.Contains(string(output), "want \"wrong\"") {
+			t.Fatalf("unexpected oracle failure: %s", output)
+		}
+	}
+	entries, err := os.ReadDir(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	count := 0
+	for _, entry := range entries {
+		if !strings.HasPrefix(entry.Name(), ".") {
+			count++
+		}
+	}
+	if count != 3 {
+		t.Fatalf("got %d retained bundles; want three build identities", count)
+	}
+}

@@ -1,3 +1,30 @@
+## Implemented shared native bundles
+
+The validated v0.91 bundle path is now the Linux retained-suite default. Full verification
+and migration reduced the executable cache from 14.391 GB to 12.692 GB (11.8 percent).
+All 634 discovered tests pass across 101 contained units before and after pruning, at
+271.910 and 272.063 seconds overall, with zero artifact misses. All current oracles,
+fresh compiler probes and language semantics are preserved.
+[Implementation and migration evidence](conformance-execution-performance.md#full-suite-bundle-promotion)
+records exact bytes, coverage and remaining storage. Changes are uncommitted. The whole-suite
+30-second and 1/1000-size goals remain unmet; other families have not been widened into bundles.
+
+## Earlier shared native bundle prototype
+
+The complete v0.91 layout-family prototype retains 56.6% fewer native artifact bytes and uses
+13.9% less median execution time, preserving all 2,859,840 vectors and 2064 native processes.
+At prototype completion, compiler intermediates were disposable and the original full cache was retained.
+[Final prototype evidence](conformance-execution-performance.md#shared-native-bundle-final-evidence)
+records that family proof. Full-cache migration was subsequently completed as recorded above;
+the 1/1000 target remains unproven.
+
+## Cache compaction follow-up — strict target not achieved
+
+The user requested unchanged rerun performance at 1/1000 of the roughly 14.4 GB cache.
+[Compaction evidence](conformance-execution-performance.md#strict-target-and-measured-experiments)
+records the tested approaches and their failure to meet that requirement. No cache or harness
+change was accepted; the committed performance implementation below remains intact.
+
 ## Completed performance pass — 30-second target remains unmet
 
 The user requested a roughly 30-second target without compromising design. The saved checkout

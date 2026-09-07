@@ -11,6 +11,7 @@ import hashlib
 import json
 from pathlib import Path
 import re
+import shutil
 import subprocess
 import sys
 import time
@@ -54,6 +55,36 @@ def plan(tests, splits, shape_batch_size):
     return jobs
 
 
+def cleanup_native_build_cache(path, rows):
+    size = sum(p.stat().st_size for p in path.rglob('*') if p.is_file())
+    safe = bool(rows) and all(r['report'].get('tree_removed') and not Path(r['report']['cgroup']).exists() for r in rows)
+    if safe:
+        shutil.rmtree(path)
+    return size, safe
+
+
+def artifact_inventory(cache, logs):
+    """Record artifacts actually verified/executed; never infer liveness from age."""
+    hits = re.findall(r'generated_compiled_artifact packages=\d+ cache_hit=(true|false) key=([0-9a-f]{64})\b', logs)
+    if not hits:
+        raise RuntimeError('no executed artifact inventory')
+    entries = {}
+    for key in sorted({key for _, key in hits}):
+        directory = cache / key
+        record_path, binary = directory / 'record.json', directory / 'program.test'
+        if directory.is_symlink() or record_path.is_symlink() or binary.is_symlink():
+            raise RuntimeError('symlink in executed artifact inventory')
+        record = json.loads(record_path.read_text())
+        if (record.get('Version') != 'pipelang-native-validation-v2' or record.get('Key') != key
+                or not re.fullmatch('[0-9a-f]{64}', record.get('BinarySHA256', '')) or not binary.is_file()):
+            raise RuntimeError('invalid executed artifact record')
+        entries[key] = dict(binary_sha256=record['BinarySHA256'], binary_bytes=binary.stat().st_size,
+                            manifest_bytes=record_path.stat().st_size)
+    return dict(cache=str(cache), entries=entries, hits=sum(hit == 'true' for hit, _ in hits),
+                misses=sum(hit == 'false' for hit, _ in hits),
+                retained_bytes=sum(e['binary_bytes'] + e['manifest_bytes'] for e in entries.values()))
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--go', type=Path, required=True)
@@ -62,12 +93,20 @@ def main():
     parser.add_argument('--compiled-cache', type=Path, help='Private retained executable cache')
     parser.add_argument('--shape-batch-size', type=int, default=1)
     parser.add_argument('--parallel-shapes', action='store_true', help='Run up to four independent finite shapes within each unchanged contained unit')
+    parser.add_argument('--audit-generated', action='store_true', help='Log queued generated source/fixture identities and native timings')
+    parser.add_argument('--test-family', help='Run one discovered family and explicitly report partial-suite proof')
+    parser.add_argument('--native-bundle', action=argparse.BooleanOptionalAction, default=None,
+                        help='Shared v0.91 native bundles; default for retained-cache runs on Linux')
     parser.add_argument('--workers', type=int, choices=[1, 2], default=2)
     args = parser.parse_args()
+    if args.native_bundle is None:
+        args.native_bundle = args.compiled_cache is not None and sys.platform == 'linux'
     if not args.go.is_absolute() or args.shape_batch_size < 1 or args.shape_batch_size > 25:
         parser.error('absolute Go path and shape batch size 1..25 required')
     if args.shape_batch_size > 1 and args.compiled_cache is None:
         parser.error('larger shape batches require explicit compiled artifact reuse')
+    if args.native_bundle and args.compiled_cache is None:
+        parser.error('native bundles require explicit compiled artifact reuse')
     if args.parallel_shapes and (args.compiled_cache is None or args.shape_batch_size == 1):
         parser.error('parallel shapes require grouped retained-artifact execution')
     for name in ['output', 'cache', 'compiled_cache']:
@@ -116,13 +155,27 @@ def main():
     splits.update(TestV920NestedArrowMethodsTypes=4, TestV920NestedArrowMethodsCarriers=4, TestV920NestedArrowMethodsLayouts=4)
     if not set(splits) <= set(tests):
         raise RuntimeError('split inventory drift')
+    discovered_count = len(tests)
+    if args.test_family:
+        if args.test_family not in tests:
+            parser.error('test family was not discovered')
+        tests = [args.test_family]
+        splits = {name: count for name, count in splits.items() if name == args.test_family}
     jobs = plan(tests, splits, args.shape_batch_size)
     (output / 'inventory.json').write_text(json.dumps(dict(tests=tests, jobs=jobs), indent=2) + '\n')
+
+    native_build_cache = output / 'native-build-cache'
+    if args.native_bundle:
+        native_build_cache.mkdir(mode=0o700)
 
     def execute(job):
         index, (names, pattern) = job
         command = [str(binary), '-test.run', pattern, '-test.v', '-test.count=1', '-test.timeout=170s']
         environment = []
+        if args.audit_generated:
+            environment += ['PIPELANG_BUNDLE_AUDIT=1', 'PIPELANG_PERFORMANCE_PROFILE=1']
+        if args.native_bundle:
+            environment += ['PIPELANG_NATIVE_BUNDLE=1', 'PIPELANG_BUNDLE_BUILD_CACHE=' + str(native_build_cache)]
         if args.parallel_shapes:
             environment += ['PIPELANG_PARALLEL_SHAPES=1']
             command += ['-test.parallel=4']
@@ -147,13 +200,28 @@ def main():
                 print('FAILED', row['index'], row['tests'], flush=True)
             elif len(rows) % 20 == 0:
                 print('accepted', len(rows), 'of', len(jobs), flush=True)
-    summary = dict(discovered_tests=len(tests), units=len(rows), workers=args.workers, shape_batch_size=args.shape_batch_size, parallel_shapes=args.parallel_shapes,
+    native_build_bytes = None
+    native_build_removed = None
+    if args.native_bundle:
+        # This path was freshly created by this run, never supplied by a caller.
+        native_build_bytes, native_build_removed = cleanup_native_build_cache(native_build_cache, rows)
+    summary = dict(native_bundle=args.native_bundle, native_build_cache_bytes=native_build_bytes, native_build_cache_removed=native_build_removed, discovered_tests=discovered_count, selected_tests=len(tests), test_family=args.test_family, partial_suite=bool(args.test_family), units=len(rows), workers=args.workers, shape_batch_size=args.shape_batch_size, parallel_shapes=args.parallel_shapes,
                    failed=[r['index'] for r in rows if r['exit']], source_unchanged=snapshot() == source_before,
                    overall_elapsed_s=time.monotonic() - started, execution_elapsed_s=time.monotonic() - execution_started,
                    sum_unit_elapsed_s=sum(r['report'].get('elapsed_s', 0) for r in rows))
+    if (args.compiled_cache and not summary['partial_suite'] and not summary['failed']
+            and summary['source_unchanged'] and native_build_removed is not False
+            and all(r['report'].get('tree_removed') and not Path(r['report']['cgroup']).exists() for r in rows)):
+        # Only a complete successful run can describe the live retained set.
+        # Digests were verified by the executing harness; this receipt does not
+        # authorize deletion or replace revalidation before a cache migration.
+        logs = '\n'.join((output / (r['label'] + '.output')).read_text() for r in rows)
+        inventory = artifact_inventory(args.compiled_cache, logs)
+        (output / 'artifacts.json').write_text(json.dumps(inventory, indent=2) + '\n')
+    summary['overall_elapsed_s'] = time.monotonic() - started
     (output / 'summary.json').write_text(json.dumps(summary, indent=2) + '\n')
     print(json.dumps(summary), flush=True)
-    return int(bool(summary['failed']) or not summary['source_unchanged'])
+    return int(bool(summary['failed']) or not summary['source_unchanged'] or native_build_removed is False)
 
 
 if __name__ == '__main__':

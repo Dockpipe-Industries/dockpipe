@@ -71,6 +71,7 @@ func testFiniteConditionalLocalsLayouts(t *testing.T, contract LanguageContract,
 	if nestedInitializer {
 		extraBits += 2
 	}
+	bundle := contract == PipeLangLanguageContractV910 && os.Getenv("PIPELANG_NATIVE_BUNDLE") == "1" && os.Getenv("PIPELANG_GENERATED_BATCH") == "1" && os.Getenv("PIPELANG_COMPILED_CACHE") != "" && os.Getenv("GOFLAGS") == "" && os.Getenv("GOENV") == "off"
 	methodsTotal, outcomes := 0, 0
 	var totals sync.Mutex
 	parallel := len(trees) > 1 && parallelFiniteShapes()
@@ -243,10 +244,22 @@ func testFiniteConditionalLocalsLayouts(t *testing.T, contract LanguageContract,
 						t.Fatal(err)
 					}
 					fixtures[sample.name+".json"] = payload
-					fmt.Fprintf(&cases, "func Test%s(t *testing.T){wants:=loadFiniteOracle(t,%q,%d);for mask,want:=range wants{if got:=%s;got!=want.Value{t.Fatalf(\"mask %%d: %%q want %%q\",mask,got,want.Value)}}}\n", sample.name, sample.name+".json", len(oracle), call)
-					fmt.Fprintf(&orders, "func Test%s(t *testing.T){wants:=loadFiniteOracle(t,%q,%d);for mask,want:=range wants{v840Trace=nil;%s;if !reflect.DeepEqual(v840Trace,want.Trace){t.Fatalf(\"mask %%d: %%v want %%v\",mask,v840Trace,want.Trace)}}}\n", sample.name, sample.name+".json", len(oracle), call)
+					if bundle {
+						fmt.Fprintf(&cases, "func Test%s(t *testing.T){oracle.Values(t,%q,%d,func(mask int)string{return %s})}\n", sample.name, sample.name+".json", len(oracle), call)
+						fmt.Fprintf(&orders, "func Test%s(t *testing.T){oracle.Traces(t,%q,%d,func(mask int)[]string{v840Trace=nil;%s;return v840Trace})}\n", sample.name, sample.name+".json", len(oracle), call)
+					} else {
+						fmt.Fprintf(&cases, "func Test%s(t *testing.T){wants:=loadFiniteOracle(t,%q,%d);for mask,want:=range wants{if got:=%s;got!=want.Value{t.Fatalf(\"mask %%d: %%q want %%q\",mask,got,want.Value)}}}\n", sample.name, sample.name+".json", len(oracle), call)
+						fmt.Fprintf(&orders, "func Test%s(t *testing.T){wants:=loadFiniteOracle(t,%q,%d);for mask,want:=range wants{v840Trace=nil;%s;if !reflect.DeepEqual(v840Trace,want.Trace){t.Fatalf(\"mask %%d: %%v want %%v\",mask,v840Trace,want.Trace)}}}\n", sample.name, sample.name+".json", len(oracle), call)
+					}
 				}
-				compileAndRunGeneratedGoFilesWithFixtures(t, generated, []byte(fmt.Sprintf("package %s\nimport (\"testing\";\"encoding/json\";\"os\")\n%s\n%s", gobackend.PackageName, finiteConditionalOracleLoader, cases.String())), fixtures)
+				if bundle {
+					checks := []byte(fmt.Sprintf("package %s\nimport (\"testing\";\"pipelang-generated-check/oracle\")\n%s", gobackend.PackageName, cases.String()))
+					if !queueGeneratedBatchWithOracle(t, generated, checks, fixtures, []byte(finiteSharedOracle)) {
+						t.Fatal("finite bundle source unexpectedly ineligible")
+					}
+				} else {
+					compileAndRunGeneratedGoFilesWithFixtures(t, generated, []byte(fmt.Sprintf("package %s\nimport (\"testing\";\"encoding/json\";\"os\")\n%s\n%s", gobackend.PackageName, finiteConditionalOracleLoader, cases.String())), fixtures)
+				}
 				observed := string(generated)
 				for marker, probe := range map[string]string{
 					"func PipeLangEcho(p0 string) string {":         "v840Trace=append(v840Trace,\"E:\"+p0)",
@@ -257,7 +270,14 @@ func testFiniteConditionalLocalsLayouts(t *testing.T, contract LanguageContract,
 					}
 					observed = strings.Replace(observed, marker, marker+"\n"+probe, 1)
 				}
-				compileAndRunGeneratedGoFilesWithFixtures(t, []byte(observed), []byte(fmt.Sprintf("package %s\nimport (\"testing\";\"reflect\";\"encoding/json\";\"os\")\nvar v840Trace []string\n%s\n%s", gobackend.PackageName, finiteConditionalOracleLoader, orders.String())), fixtures)
+				if bundle {
+					checks := []byte(fmt.Sprintf("package %s\nimport (\"testing\";\"pipelang-generated-check/oracle\")\nvar v840Trace []string\n%s", gobackend.PackageName, orders.String()))
+					if !queueGeneratedBatchWithOracle(t, []byte(observed), checks, fixtures, []byte(finiteSharedOracle)) {
+						t.Fatal("finite trace bundle source unexpectedly ineligible")
+					}
+				} else {
+					compileAndRunGeneratedGoFilesWithFixtures(t, []byte(observed), []byte(fmt.Sprintf("package %s\nimport (\"testing\";\"reflect\";\"encoding/json\";\"os\")\nvar v840Trace []string\n%s\n%s", gobackend.PackageName, finiteConditionalOracleLoader, orders.String())), fixtures)
+				}
 				shapeMethods += len(samples)
 			}
 		})
