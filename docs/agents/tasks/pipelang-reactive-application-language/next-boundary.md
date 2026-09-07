@@ -1,3 +1,13 @@
+## Completed objective — further conformance performance
+
+The user authorized further optimization after the committed three-slice baseline `04c07808`.
+[conformance-performance.md](conformance-performance.md#follow-up-final-evidence) owns the completed
+proof. Runtime oracle fixtures and bounded four-method batches reduce full conformance wall time
+from 57.0 to 35.6 minutes (37.6%). Representative medians fall 62.0–74.7% with lower memory.
+All 733 units pass; inherited outcomes, 278 layout inventories and 64 compiler fixtures are preserved.
+Production source, language contracts and resource ceilings are unchanged. Changes remain uncommitted;
+no successor implementation is selected.
+
 ## Completed objective — conformance performance
 
 The user authorized profiling and reversible implementation in three slices.

@@ -116,7 +116,9 @@ func testFiniteConditionalLocalsLayouts(t *testing.T, contract LanguageContract,
 			}
 			batchSize := len(samples)
 			if nestedReturn || nestedInitializer {
-				batchSize = 1
+				// Runtime oracle fixtures keep compiler input small enough for
+				// bounded batches while preserving each named method and vector.
+				batchSize = 4
 			}
 			for start := 0; start < len(samples); start += batchSize {
 				end := start + batchSize
@@ -158,6 +160,7 @@ func testFiniteConditionalLocalsLayouts(t *testing.T, contract LanguageContract,
 					t.Fatal("nondeterministic Go")
 				}
 				var cases, orders strings.Builder
+				fixtures := make(map[string][]byte)
 				for _, sample := range samples {
 					function := coreFunctionNamed(t, program, sample.name)
 					expectedInitializers := len(sample.targets)
@@ -182,7 +185,7 @@ func testFiniteConditionalLocalsLayouts(t *testing.T, contract LanguageContract,
 					if err != nil {
 						t.Fatal(err)
 					}
-					var wantedValues, wantedTraces strings.Builder
+					oracle := make([]finiteConditionalOracleCase, 0, 1<<(len(sample.targets)+extraBits))
 					for mask := 0; mask < 1<<(len(sample.targets)+extraBits); mask++ {
 						want, trace := conditionalChoicesTreeExpected(tree, sample.targets, sample.unused, mask, returnChoice, independentReturn, nestedReturn, nestedInitializer)
 						args := []coreeval.Value{{Type: function.Parameters[0].Type, String: "value"}}
@@ -193,12 +196,7 @@ func testFiniteConditionalLocalsLayouts(t *testing.T, contract LanguageContract,
 						if err != nil || !got.OK || got.Value.String != want {
 							t.Fatalf("%s mask %d: %#v %v want %q", sample.name, mask, got, err, want)
 						}
-						fmt.Fprintf(&wantedValues, "%q,", want)
-						var quoted []string
-						for _, event := range trace {
-							quoted = append(quoted, fmt.Sprintf("%q", event))
-						}
-						fmt.Fprintf(&wantedTraces, "{%s},", strings.Join(quoted, ","))
+						oracle = append(oracle, finiteConditionalOracleCase{want, append([]string{}, trace...)})
 						outcomes++
 					}
 					call := fmt.Sprintf("PipeLang%s(\"value\"", sample.name)
@@ -206,10 +204,15 @@ func testFiniteConditionalLocalsLayouts(t *testing.T, contract LanguageContract,
 						call += fmt.Sprintf(",mask&%d!=0", 1<<bit)
 					}
 					call += ")"
-					fmt.Fprintf(&cases, "func Test%s(t *testing.T){wants:=[]string{%s};for mask,want:=range wants{if got:=%s;got!=want{t.Fatalf(\"mask %%d: %%q want %%q\",mask,got,want)}}}\n", sample.name, wantedValues.String(), call)
-					fmt.Fprintf(&orders, "func Test%s(t *testing.T){wants:=[][]string{%s};for mask,want:=range wants{v840Trace=nil;%s;if !reflect.DeepEqual(v840Trace,want){t.Fatalf(\"mask %%d: %%v want %%v\",mask,v840Trace,want)}}}\n", sample.name, wantedTraces.String(), call)
+					payload, err := json.Marshal(oracle)
+					if err != nil {
+						t.Fatal(err)
+					}
+					fixtures[sample.name+".json"] = payload
+					fmt.Fprintf(&cases, "func Test%s(t *testing.T){wants:=loadFiniteOracle(t,%q,%d);for mask,want:=range wants{if got:=%s;got!=want.Value{t.Fatalf(\"mask %%d: %%q want %%q\",mask,got,want.Value)}}}\n", sample.name, sample.name+".json", len(oracle), call)
+					fmt.Fprintf(&orders, "func Test%s(t *testing.T){wants:=loadFiniteOracle(t,%q,%d);for mask,want:=range wants{v840Trace=nil;%s;if !reflect.DeepEqual(v840Trace,want.Trace){t.Fatalf(\"mask %%d: %%v want %%v\",mask,v840Trace,want.Trace)}}}\n", sample.name, sample.name+".json", len(oracle), call)
 				}
-				compileAndRunGeneratedGoFiles(t, generated, []byte(fmt.Sprintf("package %s\nimport \"testing\"\n%s", gobackend.PackageName, cases.String())))
+				compileAndRunGeneratedGoFilesWithFixtures(t, generated, []byte(fmt.Sprintf("package %s\nimport (\"testing\";\"encoding/json\";\"os\")\n%s\n%s", gobackend.PackageName, finiteConditionalOracleLoader, cases.String())), fixtures)
 				observed := string(generated)
 				for marker, probe := range map[string]string{
 					"func PipeLangEcho(p0 string) string {":         "v840Trace=append(v840Trace,\"E:\"+p0)",
@@ -220,12 +223,57 @@ func testFiniteConditionalLocalsLayouts(t *testing.T, contract LanguageContract,
 					}
 					observed = strings.Replace(observed, marker, marker+"\n"+probe, 1)
 				}
-				compileAndRunGeneratedGoFiles(t, []byte(observed), []byte(fmt.Sprintf("package %s\nimport (\"testing\";\"reflect\")\nvar v840Trace []string\n%s", gobackend.PackageName, orders.String())))
+				compileAndRunGeneratedGoFilesWithFixtures(t, []byte(observed), []byte(fmt.Sprintf("package %s\nimport (\"testing\";\"reflect\";\"encoding/json\";\"os\")\nvar v840Trace []string\n%s\n%s", gobackend.PackageName, finiteConditionalOracleLoader, orders.String())), fixtures)
 				methodsTotal += len(samples)
 			}
 		})
 	}
 	t.Logf("%d shapes, %d methods, %d evaluator/pristine-Go cases and ordered traces", len(trees), methodsTotal, outcomes)
+}
+
+// Oracle data is produced by the independent tree model, then loaded by the
+// generated executable. Keeping it out of Go literals avoids compiling large
+// constant tables without removing any vector or ordered trace assertion.
+type finiteConditionalOracleCase struct {
+	Value string
+	Trace []string
+}
+
+const finiteConditionalOracleLoader = `
+type finiteOracleCase struct { Value string; Trace []string }
+func loadFiniteOracle(t *testing.T, name string, count int) []finiteOracleCase {
+ t.Helper()
+ data, err := os.ReadFile(name)
+ if err != nil { t.Fatal(err) }
+ var oracle []finiteOracleCase
+ if err := json.Unmarshal(data, &oracle); err != nil { t.Fatal(err) }
+ if len(oracle) != count { t.Fatalf("oracle %s: %d vectors want %d", name, len(oracle), count) }
+ return oracle
+}
+`
+
+func TestFiniteConditionalOracleTransport(t *testing.T) {
+	oracle := []finiteConditionalOracleCase{
+		{Value: "", Trace: []string{}},
+		{Value: "quote\" slash\\ newline\n tab\t nul\x00 λ", Trace: []string{"C:R", "E:first", "E:first", "E:last\nλ"}},
+	}
+	data, err := json.Marshal(oracle)
+	if err != nil {
+		t.Fatal(err)
+	}
+	testSource := `package ` + gobackend.PackageName + `
+import ("testing"; "encoding/json"; "os"; "reflect")
+` + finiteConditionalOracleLoader + `
+func TestOracle(t *testing.T) {
+ got := loadFiniteOracle(t, "oracle.json", 2)
+ want := []finiteOracleCase{
+  {Value: "", Trace: []string{}},
+  {Value: "quote\" slash\\ newline\n tab\t nul\x00 λ", Trace: []string{"C:R", "E:first", "E:first", "E:last\nλ"}},
+ }
+ if !reflect.DeepEqual(got, want) { t.Fatalf("oracle transport: %#v want %#v", got, want) }
+}
+`
+	compileAndRunGeneratedGoFilesWithFixtures(t, []byte("package "+gobackend.PackageName), []byte(testSource), map[string][]byte{"oracle.json": data})
 }
 
 func TestV840FiniteConditionalLocalsSourceRejection(t *testing.T) {

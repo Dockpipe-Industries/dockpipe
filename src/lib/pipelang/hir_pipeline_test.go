@@ -1379,6 +1379,11 @@ func TestGeneratedNumericConformance(t *testing.T) {
 
 func compileAndRunGeneratedGoFiles(t *testing.T, generated, generatedTest []byte) {
 	t.Helper()
+	compileAndRunGeneratedGoFilesWithFixtures(t, generated, generatedTest, nil)
+}
+
+func compileAndRunGeneratedGoFilesWithFixtures(t *testing.T, generated, generatedTest []byte, fixtures map[string][]byte) {
+	t.Helper()
 	dir, err := os.MkdirTemp("/tmp", "pipelang-generated-go-")
 	if err != nil {
 		t.Fatal(err)
@@ -1388,6 +1393,15 @@ func compileAndRunGeneratedGoFiles(t *testing.T, generated, generatedTest []byte
 		"go.mod":            []byte("module pipelang-generated-check\n\ngo 1.25\n"),
 		"generated.go":      generated,
 		"generated_test.go": generatedTest,
+	}
+	for name, payload := range fixtures {
+		if filepath.Base(name) != name || name == "." || name == ".." {
+			t.Fatalf("invalid generated fixture name %q", name)
+		}
+		if _, exists := files[name]; exists {
+			t.Fatalf("generated fixture overwrites %q", name)
+		}
+		files[name] = payload
 	}
 	for name, payload := range files {
 		if err := os.WriteFile(filepath.Join(dir, name), payload, 0o600); err != nil {
@@ -1400,7 +1414,11 @@ func compileAndRunGeneratedGoFiles(t *testing.T, generated, generatedTest []byte
 	command.Env = append(os.Environ(), "GOTOOLCHAIN=local", "GOPROXY=off", "GOSUMDB=off", "GOWORK=off")
 	output, measurement, err := containedexec.Measure(command)
 	if os.Getenv("PIPELANG_PERFORMANCE_PROFILE") == "1" {
-		t.Logf("generated_build_run source_bytes=%d test_bytes=%d elapsed_ns=%d waited_child_rss_kib=%d", len(generated), len(generatedTest), measurement.Elapsed.Nanoseconds(), measurement.MaxRSSKiB)
+		fixtureBytes := 0
+		for _, payload := range fixtures {
+			fixtureBytes += len(payload)
+		}
+		t.Logf("generated_build_run source_bytes=%d test_bytes=%d fixture_bytes=%d elapsed_ns=%d waited_child_rss_kib=%d", len(generated), len(generatedTest), fixtureBytes, measurement.Elapsed.Nanoseconds(), measurement.MaxRSSKiB)
 	}
 	if err != nil {
 		t.Fatalf("compile/run generated Go: %v\n%s", err, output)
