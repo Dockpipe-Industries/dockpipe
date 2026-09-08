@@ -122,7 +122,7 @@ func TestV850StraightLineConditionalLocalsMalformedCore(t *testing.T) {
 	}
 }
 func TestV850StraightLineConditionalLocalsVersionBoundary(t *testing.T) {
-	for _, contract := range []LanguageContract{PipeLangLanguageContractV380, PipeLangLanguageContractV400, PipeLangLanguageContractV830, PipeLangLanguageContractV840, "v0.100.0", "unknown"} {
+	for _, contract := range []LanguageContract{PipeLangLanguageContractV380, PipeLangLanguageContractV400, PipeLangLanguageContractV830, PipeLangLanguageContractV840, "v0.101.0", "unknown"} {
 		input := semanticTestModuleSet("compiler.selfhosting", []ModuleInput{testModule("compiler.selfhosting", "straight.pipe", straightLineConditionalLocalsSource)}, nil)
 		input.LanguageContract = contract
 		if AnalyzeSemanticModuleSet(input).Error() == nil {

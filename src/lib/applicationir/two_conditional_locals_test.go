@@ -87,6 +87,10 @@ func TestV990TerminalLeafBooleanSelectorsApplicationConsumer(t *testing.T) {
 	testConditionalLocalsApplicationConsumer(t, false, true, false, false, false, false, false, false, false, false, false, false, false, false, true, true)
 }
 
+func TestV1000ArrowBooleanSelectorsApplicationConsumer(t *testing.T) {
+	testConditionalLocalsApplicationConsumer(t, false, true, false, false, false, false, false, false, false, false, false, false, false, false, false, false, true)
+}
+
 func testConditionalLocalsApplicationConsumer(t *testing.T, finite bool, straightOption ...bool) {
 	straight := len(straightOption) > 0 && straightOption[0]
 	returnChoice := len(straightOption) > 1 && straightOption[1]
@@ -153,6 +157,10 @@ func testConditionalLocalsApplicationConsumer(t *testing.T, finite bool, straigh
 	leafBooleanSelector := len(straightOption) > 14 && straightOption[14]
 	if leafBooleanSelector {
 		contract, prior, boundary = pipelang.PipeLangLanguageContractV990, pipelang.PipeLangLanguageContractV980, "new argument/condition placements"
+	}
+	arrowBooleanSelector := len(straightOption) > 15 && straightOption[15]
+	if arrowBooleanSelector {
+		contract, prior, boundary = pipelang.PipeLangLanguageContractV1000, pipelang.PipeLangLanguageContractV990, "require a block-bodied method"
 	}
 	layouts := []bool{false, true}
 	if straight {
@@ -243,8 +251,11 @@ func testConditionalLocalsApplicationConsumer(t *testing.T, finite bool, straigh
 			if leafBooleanSelector {
 				helper = strings.Replace(helper, "return (clean ? suffix : enabled) ? normalized+\"!\" : normalized;", "if(clean){return (clean ? suffix : enabled) ? normalized+\"!\" : normalized;}else{return (clean ? suffix : enabled) ? normalized+\"!\" : normalized;}", 1)
 			}
+			if arrowBooleanSelector {
+				helper = `public string ChooseKey(string raw,bool clean,bool suffix,bool enabled)=>(clean ? suffix : enabled) ? raw+"!" : raw;`
+			}
 			closing := "}"
-			if arrow {
+			if arrow || arrowBooleanSelector {
 				closing = ""
 			}
 			helper += closing + `
@@ -309,6 +320,9 @@ func testConditionalLocalsApplicationConsumer(t *testing.T, finite bool, straigh
 				choicePresent = choose.Body.Conditional != nil && !choose.Body.Conditional.TerminalStatement && choose.Body.Conditional.WhenTrue.Conditional != nil && choose.Body.Conditional.WhenFalse.Conditional != nil
 			}
 
+			if arrowBooleanSelector {
+				choicePresent = choose.Body.Conditional != nil && !choose.Body.Conditional.TerminalStatement && choose.Body.Conditional.Condition.Conditional != nil
+			}
 			if depthThreeArrow && choicePresent {
 				choicePresent = choose.Body.Conditional.WhenTrue.Conditional.WhenTrue != nil && choose.Body.Conditional.WhenTrue.Conditional.WhenTrue.Conditional != nil
 			}
@@ -390,6 +404,16 @@ func testConditionalLocalsApplicationConsumer(t *testing.T, finite bool, straigh
 						}
 						if selected {
 							want += "!"
+						}
+					}
+					if arrowBooleanSelector {
+						picked := mask&4 != 0
+						if mask&1 != 0 {
+							picked = mask&2 != 0
+						}
+						want = raw
+						if picked {
+							want = raw + "!"
 						}
 					}
 					args := []coreeval.Value{{Type: choose.Parameters[0].Type, String: raw}}

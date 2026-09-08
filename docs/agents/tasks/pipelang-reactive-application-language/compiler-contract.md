@@ -1,3 +1,11 @@
+## Completed current objective — arrow-method boolean selectors
+
+Founder selected A and separately approved v0.100.0 implementation on 2026-09-08.
+[arrow-boolean-selectors.md](arrow-boolean-selectors.md) owns scope and verification.
+State: `completed`. Completed v0.99 is committed at `7f5eeb7b`; its historical
+uncommitted prose does not change this baseline. Commit, push, publication, cleanup,
+worktree and external operations remain outside scope. No successor is selected.
+
 ## Completed current objective — terminal-leaf boolean selectors
 
 Founder selected A and separately approved v0.99.0 implementation on 2026-09-08.

@@ -335,3 +335,9 @@ any subset of inherited terminal if/else leaves through statement depth three.
 Reached scoped locals remain eager and ordered; only selected branches and selector
 operands run. Initializers retain depth three. New arrow, initializer, statement
 condition and argument placements, further nesting and increased depths remain excluded.
+
+`v0.100.0` adds `pipe-arrow-boolean-selector` for `(a ? b : c) ? x : y`
+as a complete public pure arrow-method body. Operands retain inherited nonconditional
+forms; selector operands are bool and value-arm types exactly match. Selected
+operands execute lazily. New initializer/argument/statement-condition placements
+and further nesting remain excluded; all v0.99 forms are inherited.
