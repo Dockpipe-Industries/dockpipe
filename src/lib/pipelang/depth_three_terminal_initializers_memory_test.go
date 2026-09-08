@@ -168,7 +168,7 @@ func v970ScalePlacement(t *testing.T, source string, placement int) string {
 	start := strings.Index(source, "{") + 1
 	start += strings.Index(source[start:], "{") + 1
 	end := strings.LastIndex(source, "return ")
-	if start <= 0 || end <= start {
+	if start <= 0 || end < start {
 		t.Fatal("missing scale method")
 	}
 	locals := source[start:end]

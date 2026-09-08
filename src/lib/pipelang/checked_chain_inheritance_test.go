@@ -432,7 +432,7 @@ func TestCheckedChainInheritanceRejection(t *testing.T) {
 				}
 			})
 		}
-		for _, contract := range []LanguageContract{LanguageContract(fmt.Sprintf("v0.%d.0", chain.version()-1)), LanguageContract("v0.99.0")} {
+		for _, contract := range []LanguageContract{LanguageContract(fmt.Sprintf("v0.%d.0", chain.version()-1)), LanguageContract("v0.100.0")} {
 			input := semanticTestModuleSet("compiler.cursor", []ModuleInput{testModule("compiler.cursor", "invalid.pipe", source)}, nil)
 			input.LanguageContract = contract
 			if AnalyzeSemanticModuleSet(input).Error() == nil {

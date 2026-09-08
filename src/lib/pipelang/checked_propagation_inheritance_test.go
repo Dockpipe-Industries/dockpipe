@@ -248,7 +248,7 @@ func TestCheckedPropagationInheritanceRejection(t *testing.T) {
 			}
 		})
 	}
-	for _, version := range []LanguageContract{PipeLangLanguageContractV550, LanguageContract("v0.99.0")} {
+	for _, version := range []LanguageContract{PipeLangLanguageContractV550, LanguageContract("v0.100.0")} {
 		input := semanticTestModuleSet("compiler.cursor", []ModuleInput{testModule("compiler.cursor", "invalid.pipe", source)}, nil)
 		input.LanguageContract = version
 		if AnalyzeSemanticModuleSet(input).Error() == nil {

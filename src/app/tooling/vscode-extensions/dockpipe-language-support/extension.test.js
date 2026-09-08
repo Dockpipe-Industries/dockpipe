@@ -678,3 +678,10 @@ assert.strictEqual(booleanSelector.prefix, "pipe-boolean-selector");
 assert(booleanSelector.description.includes("v0.98.0"));
 assert(booleanSelector.body.join("\n").includes("return (a ? b : c) ? trim(raw) : raw;"));
 assert(pipeLangReadme.includes("`v0.98.0`"));
+
+const leafBooleanSelector = pipeLangSnippets["Terminal-leaf boolean selector"];
+assert.strictEqual(leafBooleanSelector.prefix, "pipe-leaf-boolean-selector");
+assert(leafBooleanSelector.description.includes("v0.99.0"));
+assert(leafBooleanSelector.body.join("\n").includes("if (route)"));
+assert(leafBooleanSelector.body.join("\n").includes("return (a ? b : c) ? trim(raw) : raw;"));
+assert(pipeLangReadme.includes("`v0.99.0`"));
