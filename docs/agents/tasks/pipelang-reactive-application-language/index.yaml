@@ -14,7 +14,7 @@ state:
   active_objective: TASK-021-conformance-shared-runtime-experiment
   objective_state: completed
   selected_option: null
-  selected_scope: Five measured iterations complete; inference scopes, ordinary batch sealing and exact-key formatting retained; no next language slice selected
+  selected_scope: Ordinary native execution is the default; reusable compressed artifact preparation and sealed replay remain explicitly opt-in; 637 discovered tests passed in fresh complete ordinary and packed runs, with matched coverage and inclusive storage proof
   implementation_approval: approved
   completed_repair_objective: TASK-021-PipeLang-v0.80-milestone-repairs
   repair_commit: acbd10f88207d0a226ec24a073948362691adb8c
@@ -28,12 +28,19 @@ state:
     The complete v0.91 family follows a small feasibility probe; reassess before expansion.
     Public web research is now explicitly authorized; native validation remains contained and offline.
     The latest user approval redirects this continuation to one bounded full-suite performance pass before further language slices.
+    The subsequent user request authorized broader search-algorithm research and the integrated exact-delta experiment, now completed and unpromoted.
+    Renewed user research authority covered complete-pipeline profiling, section and reference selection; this bounded round is also complete and unpromoted.
+    The latest user said "please go ahead" after the implementation recommendation and explicitly invoked dorkpipe-task-handoff.
+    This authorizes bounded implementation of two reconstructors, the existing reference shortlist and scaffold9/token12 patch compression; transport goes to exactly one same-checkout task.
+    The subsequent corrective approval replaced frozen corpus admission with ordinary cache integration and required fresh complete discovered-suite acceptance.
+    This corrective objective is complete; the language remains v0.96.0 and no successor is selected.
     No commit, push, worktree or stash mutation, broad cache cleanup or persistent machine changes.
 
 routes:
   conformance_performance:
     read:
       - conformance-execution-performance.md
+      - conformance-similarity-search-experiment.md
       - conformance-performance.md
       - compiler-contract.md
 

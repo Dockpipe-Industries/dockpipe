@@ -353,8 +353,8 @@ Transient snapshots count against the same cgroup memory ceiling and disappear
 when their descriptors close. No additional persistent runtime cache is created.
 
 The runner creates a fresh private `native-build-cache` beneath the receipt output
-for bundle compiler intermediates. It removes that directory only after every unit
-has exited and its cgroup is gone, and records its byte count and removal status.
+for bundle compiler intermediates. It records its byte count and retains the
+directory for accounting; this runner does not authorize cache cleanup.
 Bundle misses use `PIPELANG_BUNDLE_BUILD_CACHE` for compilation; hits do not need
 that directory. Direct test-harness invocations must supply an absolute private
 disposable path themselves and clean it only after their units have exited.
@@ -385,6 +385,124 @@ The summary explicitly marks this as partial-suite proof and retains the full
 discovery count separately from the selected test count. A family-only result
 must not be reported as a new whole-suite runtime.
 
+### Exact native artifact representations
+
+`pipelang_suite.py --compiled-cache ...` uses ordinary native execution by default.
+On Linux x86-64 with the installed Zstandard tool and selected library, add
+`--native-representation` to opt in to compressed preparation and replay.
+`--no-native-representation` explicitly selects the ordinary path. Supplying
+`--representation-cache` alone does not enable compression.
+`--representation-cache` chooses a private store; the default is a sibling of the
+compiled cache. No test-family manifest or export is needed. Builds and discovered
+tests run through `run.py` with 30-second units, 25-second children and the same
+memory/process limits. Use shape batches of one for cold workloads; bounded groups
+can reduce warm launch costs. Compiler memory families are partitioned by their
+existing independent choices without skipping counts or changing assertions.
+Cold preparation also partitions `TestV840FiniteConditionalLocalsAllShapes=25`,
+and `TestV810TerminalTreeAllShapesAndPaths=25` (whose subtest prefix is `shape`),
+matching their existing asserted shape inventories.
+
+`native_artifacts.py` snapshots current cache identities and sizes and derives up
+to 16 size-stratified references deterministically. Selection examines each input
+once plus sorting; it performs no codec search. The Go helper computes current
+source/toolchain/settings keys, then requests that key and its expected executable
+digest through a private local socket. Missing entries prepare on demand using
+scaffold9/token12. Newly generated keys absent from the initial snapshot prepare
+without a dictionary and can participate in the next run's plan. Existing recipes
+retain their immutable reference DAG, so adding a test does not invalidate every
+unrelated payload. Preparation publishes complete entries under per-key locks.
+
+Two service slots reconstruct at most two objects concurrently per contained unit.
+The normal Go helper checks the received descriptor's seals and final SHA256,
+then runs its current fixtures in fresh per-case processes. No expected value,
+trace, pass result or generated-source whitelist is stored by this layer.
+Unsupported ELF/DEFLATE forms retain the ordinary executable path. Corrupt payloads,
+changed records, bad seals or digest mismatches fail; they do not silently pass by
+falling back. Packed replay requires cache identity records and representation
+support but does not require original executable files or exports. Source, build
+settings and toolchain changes create new keys; reconstruction source/support
+changes create a new preparation namespace. Old data is retained and charged.
+
+`native-*.json` receipts distinguish preparation from reconstruction. Preparation
+adds codec work and storage; a warm run avoids this preparation. Include service
+startup, dictionary reconstruction, raw originals, support, cache growth, fixtures,
+receipts and coexisting representations when reporting costs. No storage is freed
+by this runner. `test_native_artifacts.py` covers new eligible keys, unsupported
+forms, packed-only replay, corruption and invalidation; Go transport checks cover
+unsealed and incorrect descriptors. All workload tests must run through `run.py`.
+
+### Exported transcript comparison tool
+
+`transcript_suite.py` also prepares and replays current exported bundles for
+component comparisons. It derives a bounded plan from those current inputs and
+reports partial-suite proof. `transcript_plan.json` is retained historical research
+data and is not an admission list or an input to either execution path. Regenerate
+exports with the current evaluator before an exported replay. The normal framework
+integration above directly runs the current test helpers and needs no export.
+
+The helper under `transcript/` preserves every ELF/DWARF byte. It replaces only
+the compressed `.debug_line`, `.debug_loclists`, and `.debug_rnglists` bodies
+with an exact DEFLATE symbol/extra-bit transcript, preserving Huffman headers,
+block boundaries, padding and checksums. The remaining scaffold uses Zstandard
+1.4.8 patch level 9; tokens use patch level 12, both single-threaded with a
+24-bit window. No codec installation or research-directory code is required.
+Python, the installed codec and an explicit offline Go toolchain are preparation
+inputs. The helper and decoder library are retained with the representation.
+
+For an existing fresh private export directory:
+
+```sh
+python3 -B tests/containedexec/transcript_suite.py prepare \
+  --go /absolute/go --directory /absolute/new-representation \
+  --exports /absolute/current-exports --output /absolute/new-preparation-receipts \
+  --cache /absolute/private-go-cache
+python3 -B tests/containedexec/transcript_suite.py run \
+  --directory /absolute/new-representation --exports /absolute/current-exports \
+  --output /absolute/new-replay-receipts --cache /absolute/private-go-cache
+```
+
+Both entry points dispatch exclusively through `run.py`: at most two units,
+30-second workloads, 700 MiB soft reclaim, 1 GiB hard memory, zero swap,
+128 tasks and proactive stop at 800 MiB. Every compiler/codec/native child has
+a 25-second deadline. Preparation builds the helper once, then encodes two
+objects per unit and verifies both component roundtrips. Per-object scratch
+files are temporary; retained native or compiler caches are never pruned.
+A failed unit stops new dispatch and retains its receipts.
+
+Replay uses two reconstructors, four native consumers and eight total queued or
+running objects per unit. Immutable dictionaries outlive every reader, including
+failure paths. The service uses nonblocking request/response pipes with an
+independent deadline. Scaffold, token and final executable digests are checked;
+only kernel-sealed final descriptors are executed. Each original case runs in a
+fresh process and fixture directory using current independent Value and ordered
+Trace expectations. Changes to source, toolchain, build settings or harness
+support invalidate reuse. Fixture changes reach the native oracle directly.
+
+`--raw` runs the matched uncompressed baseline with the same current-input
+validation and native case path; it requires the original executables.
+`prepare --scaffold-level 12` is the previous patch12 preparation control.
+Level 9 is the selected default. Timing receipts separate contained dispatch,
+component encoding, native execution and accounting. Dispatch excludes the
+parent pre-run cache inventory and closing report generation; measure the outer
+command separately for those costs. These are not whole-suite speedups. The normal bundle path remains available for unsupported
+inputs and comparisons.
+
+`storage.json` records all representation files, support, current exports,
+harness files, external toolchain/Python support, any retained original
+executables and cache records, compiler-cache before/after sizes, and closing
+receipt sizes. Categories are inventories: deduplicate overlapping physical
+paths when comparing complete retention. Preparation/control runs and old
+research roots remain separate retained costs. Original binaries are optional
+for packed replay; no command deletes them. Compiled-cache migration and any
+strict storage/time target require their own evidence.
+
+Run `test_transcript.py` through `run.py`. Set `PIPELANG_TRANSCRIPT_DIRECTORY`
+and `PIPELANG_TRANSCRIPT_EXPORTS` to include the prepared integration checks;
+without them only the plan/source/deadline tests run. Integration checks cover
+exact debug-bearing bytes, sealing, malformed spans and lengths, corrupt
+root/reference/leaf payloads, source/settings/support invalidation, two-reader
+lifetime and descriptor recovery, and independent current Value/Trace failures.
+
 ### Bounded shared-library experiment
 
 `--shared-export /absolute/fresh-private-directory` exports the complete v0.91
@@ -392,7 +510,7 @@ bundle family's current generated source, checks and fixtures while executing it
 normal retained baseline. It requires `--test-family
 TestV910NestedTerminalInitializersLayouts` and native bundles. The destination
 must already exist, be empty and have mode 0700. An existing export is never
-overwritten. The flag is an experimental evidence path, not a new default lane.
+overwritten. The flag supplies transcript preparation and experimental sharing probes; it does not change the normal suite lane.
 
 `shared_runtime_probe.py` compares those exact bundles against Go's
 `-linkshared` facilities in Linux GOPATH mode. Each original package still runs

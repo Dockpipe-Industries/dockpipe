@@ -92,7 +92,7 @@ tasks:
     active_objective: TASK-021-conformance-shared-runtime-experiment
     objective_state: completed
     selected_option: null
-    selected_scope: Five measured iterations complete; inference scopes, ordinary batch sealing and exact-key formatting retained; no next language slice selected
+    selected_scope: Ordinary native execution is the default; reusable compressed artifact preparation and sealed replay remain explicitly opt-in; 637 discovered tests passed in fresh complete ordinary and packed runs, with matched coverage and inclusive storage proof
     implementation_approval: approved
     completed_repair_objective: TASK-021-PipeLang-v0.80-milestone-repairs
     repair_commit: acbd10f88207d0a226ec24a073948362691adb8c
