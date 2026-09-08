@@ -75,6 +75,10 @@ func TestV960DepthThreeStraightLineInitializersApplicationConsumer(t *testing.T)
 	testConditionalLocalsApplicationConsumer(t, true, true, true, false, true, false, false, false, false, true, false, false, true)
 }
 
+func TestV970DepthThreeTerminalInitializersApplicationConsumer(t *testing.T) {
+	testConditionalLocalsApplicationConsumer(t, true, true, true, false, true, false, false, false, false, true, false, false, true, true)
+}
+
 func testConditionalLocalsApplicationConsumer(t *testing.T, finite bool, straightOption ...bool) {
 	straight := len(straightOption) > 0 && straightOption[0]
 	returnChoice := len(straightOption) > 1 && straightOption[1]
@@ -127,6 +131,11 @@ func testConditionalLocalsApplicationConsumer(t *testing.T, finite bool, straigh
 	depthThreeInitializers := len(straightOption) > 11 && straightOption[11]
 	if depthThreeInitializers {
 		contract, prior, boundary = pipelang.PipeLangLanguageContractV960, pipelang.PipeLangLanguageContractV950, "initializers retain depth two"
+	}
+
+	depthThreeTreeInitializers := len(straightOption) > 12 && straightOption[12]
+	if depthThreeTreeInitializers {
+		contract, prior, boundary = pipelang.PipeLangLanguageContractV970, pipelang.PipeLangLanguageContractV960, "nested ternaries"
 	}
 
 	layouts := []bool{false, true}
@@ -202,7 +211,7 @@ func testConditionalLocalsApplicationConsumer(t *testing.T, finite bool, straigh
 					t.Fatal("depth-three consumer replacement missed")
 				}
 			}
-			if depthThreeLeaves {
+			if depthThreeLeaves || depthThreeTreeInitializers {
 				open := strings.Index(helper, "{")
 				body := helper[open+1:]
 				helper = helper[:open+1] + "if(enabled){" + body + "}else{" + body + "}"
@@ -269,7 +278,7 @@ func testConditionalLocalsApplicationConsumer(t *testing.T, finite bool, straigh
 				}
 			}
 			choicePresent := choose.Body.ImmutableLocal != nil
-			if nestedTreeInitializers || depthThreeLeaves {
+			if nestedTreeInitializers || depthThreeLeaves || depthThreeTreeInitializers {
 				choicePresent = choose.Body.Conditional != nil && choose.Body.Conditional.TerminalStatement && choose.Body.Conditional.WhenTrue != nil && choose.Body.Conditional.WhenTrue.ImmutableLocal != nil && choose.Body.Conditional.WhenFalse != nil && choose.Body.Conditional.WhenFalse.ImmutableLocal != nil
 			}
 			if arrow {
@@ -291,7 +300,11 @@ func testConditionalLocalsApplicationConsumer(t *testing.T, finite bool, straigh
 				}
 			}
 			if depthThreeInitializers {
-				init := choose.Body.ImmutableLocal.Initializer
+				body := choose.Body
+				if depthThreeTreeInitializers {
+					body = *body.Conditional.WhenTrue
+				}
+				init := body.ImmutableLocal.Initializer
 				if init.Conditional == nil || init.Conditional.WhenTrue.Conditional == nil || init.Conditional.WhenTrue.Conditional.WhenTrue.Conditional == nil {
 					t.Fatal("depth-three initializer absent")
 				}

@@ -1,3 +1,12 @@
+## Completed current objective — depth-three terminal initializers
+
+Founder selected A and separately approved v0.97.0 implementation on 2026-09-08.
+[depth-three-terminal-initializers.md](depth-three-terminal-initializers.md) owns
+scope, exclusions and validation. State: `completed`. The v0.96 and shared-framework
+objectives are complete and committed; current baseline is `f4c00e56`.
+Historical snapshots below do not reopen performance work or change current authority.
+Commit, push, publication and successor selection remain separate.
+
 ## Implemented shared native bundles
 
 The validated v0.91 bundle path is now the Linux retained-suite default. Full verification

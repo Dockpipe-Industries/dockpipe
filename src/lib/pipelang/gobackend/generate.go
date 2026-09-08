@@ -219,7 +219,7 @@ func (g *generator) emitFunction(out *strings.Builder, name string, function cor
 	}
 	// Propagation owns early carrier returns above. Ordinary sequential locals
 	// use the same ordered block lowering at every language contract.
-	if hasLocalSequence(function.Body) {
+	if hasLocalSequence(function.Body) || hasDeepTerminalLocalSequence(function.Body) {
 		if err := g.emitTerminalLocalStatements(out, function.Body, function.Parameters, optionalTypeName); err != nil {
 			return backendError(function, "PLGO0001", err.Error())
 		}
@@ -241,6 +241,43 @@ func (g *generator) emitFunction(out *strings.Builder, name string, function cor
 func hasLocalSequence(expr coreir.Expr) bool {
 	return expr.Kind == coreir.ExprImmutableLocal && expr.ImmutableLocal != nil &&
 		expr.ImmutableLocal.Return != nil && expr.ImmutableLocal.Return.Kind == coreir.ExprImmutableLocal
+}
+
+// Deep initializer sequences inside terminal branches need statement lowering at
+// the function boundary too. Otherwise each enclosing branch wraps the entire
+// sequence in another closure, multiplying Go compiler capture/inlining work.
+// This structural Core check preserves the historical spelling of shallower
+// initializers and single locals; it does not depend on source versions.
+func hasDeepTerminalLocalSequence(expr coreir.Expr) bool {
+	count, deep := 0, false
+	for expr.Kind == coreir.ExprImmutableLocal {
+		local := expr.ImmutableLocal
+		if local == nil || local.Initializer == nil || local.Return == nil {
+			return false
+		}
+		count++
+		deep = deep || hasChoicePath(*local.Initializer, 3)
+		expr = *local.Return
+	}
+	if count > 1 && deep {
+		return true
+	}
+	if expr.Kind == coreir.ExprConditional && expr.Conditional != nil && expr.Conditional.TerminalStatement {
+		c := expr.Conditional
+		return c.WhenTrue != nil && c.WhenFalse != nil && (hasDeepTerminalLocalSequence(*c.WhenTrue) || hasDeepTerminalLocalSequence(*c.WhenFalse))
+	}
+	return false
+}
+
+func hasChoicePath(expr coreir.Expr, depth int) bool {
+	if depth == 0 {
+		return true
+	}
+	if expr.Kind != coreir.ExprConditional || expr.Conditional == nil || expr.Conditional.TerminalStatement {
+		return false
+	}
+	c := expr.Conditional
+	return c.WhenTrue != nil && c.WhenFalse != nil && (hasChoicePath(*c.WhenTrue, depth-1) || hasChoicePath(*c.WhenFalse, depth-1))
 }
 
 // emitTerminalLocalStatements preserves Core's ordered lexical locals and lazy

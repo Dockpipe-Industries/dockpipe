@@ -582,3 +582,24 @@ probes are not pooled across their lifetimes. Larger inline-check families can
 hit the source threshold before reaching 32 packages. These boundaries preserve
 existing behavior and compiler evidence; they do not remove any tests. All
 framework code lives in compiler-owned test helpers; engine behavior is unchanged.
+
+### v0.97 terminal initializer placement
+
+Split `TestV970DepthThreeTerminalInitializersLayouts=100` (four disjoint sample
+partitions per statement shape, preserving every case). All 25 statement shapes
+rotate all 25 depth-three initializer shapes across finite mixed/dependent locals.
+Every local-slot subset crosses used/unused final bindings; the final shape adds
+all root/intermediate/leaf scope subsets and two five-local mixed layouts. Exhaust
+128 initializer vectors and both return bits for one representative of each
+reachable statement path. The seven statement bits, seven shared initializer bits
+and return bit are independent; this is not every independent initializer shape
+and condition assignment at arbitrary sequence length. Current value/trace fixtures
+are regenerated from the independent tree model and run in pristine/instrumented Go.
+
+The new memory family has twelve `choices` partitions: four direct initializer
+shapes at root, intermediate and depth-three leaf placements, each crossing used/
+unused final locals and 1/8/16/24/32/64/128/256 locals (192 fixtures). Export
+`TestV970DepthThreeTerminalInitializersMemory` with `PIPELANG_MEMORY_FIXTURES`;
+run `matrix.py` for independent fresh compiler units. Retain normal inlining and
+128 MiB / 5 second warm compiler ceilings. Other statement branches return the
+original input; the scale count describes the one growing sequence.

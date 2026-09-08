@@ -235,7 +235,7 @@ or public semantic identities. The backend checks the complete emitted package n
 returning Go source.
 
 Core program admission accepts only `pipelang.compiler.v1` and the exact supported language
-identities `v0.1.0` through `v0.96.0`. `coreir.ValidateProgram` checks feature availability in
+identities `v0.1.0` through `v0.97.0`. `coreir.ValidateProgram` checks feature availability in
 signatures and nested expressions, together with the existing composition and topology contracts.
 `coreeval.EvaluateProgram` and the Go backend use that same admission before executing or emitting
 anything, including when a disallowed feature occurs in an uncalled function or unused parameter.
@@ -3297,3 +3297,43 @@ node shapes, evaluator and Go backend production code, public `pipelang.compiler
 Evaluation and Go generation consume validated target-neutral Core. Executable
 Application IR and frozen 45-source compatibility retain their contracts. No runtime
 or deployment behavior is introduced.
+
+
+### PipeLang v0.97.0: depth-three terminal initializers
+
+`v0.97.0` extends complete depth-three ternary initializers to finite explicitly
+typed immutable-local sequences before and inside terminal `if/else` trees through
+statement depth three. Any subset of locals may use such initializers at root,
+intermediate or leaf scopes. Either or both ternary arms may nest. Later locals,
+descendant conditions and inherited ordinary or depth-three returns may reuse
+previous bindings within lexical scope.
+
+```pipe
+public Class Choices {
+    public string Select(string raw, bool a, bool b, bool c) {
+        string root = a ? (b ? (c ? trim(raw) : raw) : "fallback") : raw;
+        if (a) {
+            string selected = b ? (c ? (a ? root + "!" : root) : root) : root;
+            return selected;
+        } else {
+            return root;
+        }
+    }
+}
+```
+
+Every condition is `bool`; all arms exactly match the declared local type.
+Bindings enter scope after their initializer. Self/forward references, duplicates,
+shadowing and escaping references remain invalid. Locals execute eagerly once in
+source order, including unused bindings, within reached statement branches. Only
+selected ternary conditions and arms execute. Complete supported primitive, record,
+list, Optional and Result values travel intact; failed Results do not implicitly
+propagate. Initializer, return and statement depths are independent limits.
+
+All v0.96 forms are inherited. Depth-four choices or statement trees, new ternaries
+in conditions/arguments, new matching/propagation placements, inference, mutation,
+loops, effects and backends remain excluded. Source and Core independently validate
+placement, depth, types, scope and hidden-local refusal. Generic internal Core local
+expressions keep their contract. Parser/typechecker, typed HIR, target-neutral Core,
+evaluator and Core-only Go retain the existing node shapes and public compiler,
+semantic and Application IR identities. No runtime or deployment behavior is added.

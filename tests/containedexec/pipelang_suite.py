@@ -51,9 +51,9 @@ def plan(tests, splits, shape_batch_size):
                 prefix = 'shape' if name == 'TestV810TerminalTreeAllShapesAndPaths' else ''
                 labels = [prefix + str(i) for i in indices]
                 jobs.append(([name + '/' + label for label in labels], '^' + name + '$/^(' + '|'.join(labels) + ')$'))
-        elif re.fullmatch(r'TestV9[2-6]0.*Memory', name):
+        elif re.fullmatch(r'TestV9[2-7]0.*Memory', name):
             flush()
-            for shape in range(4):
+            for shape in range(12 if name.startswith("TestV970") else 4):
                 label = name + '/choices' + str(shape)
                 jobs.append(([label], '^' + name + '$/./^choices' + str(shape) + '$'))
         elif name.endswith('Memory'):
@@ -230,6 +230,8 @@ def main():
             environment += ['PIPELANG_SHARED_EXPORT=' + str(args.shared_export)]
         if all(name.startswith('TestV960DepthThreeStraightLineInitializersMemory') for name in names):
             environment += ['PIPELANG_MEMORY_FIXTURES=' + str(output / 'fixtures')]
+        if all(name.startswith('TestV970DepthThreeTerminalInitializersMemory') for name in names):
+            environment += ['PIPELANG_MEMORY_FIXTURES=' + str(output / 'fixtures-v097')]
         if environment:
             command = ['env'] + environment + command
         if args.native_representation:

@@ -88,11 +88,11 @@ tasks:
       ownership: unclaimed
   - id: TASK-021
     topic: PipeLang deterministic self-hosting managed language foundation
-    completed_language_contract: v0.96.0
-    active_objective: TASK-021-shared-native-test-framework
+    completed_language_contract: v0.97.0
+    active_objective: TASK-021-depth-three-terminal-initializers
     objective_state: completed
-    selected_option: null
-    selected_scope: Shared native framework retained across compatible generated families; 638 tests and exact native coverage pass; 2719 to 2331 executable identities, 13.21 percent fewer selected bytes and a 2.80 percent faster matched warm pair; all caches preserved, no total retained-storage reduction claimed
+    selected_option: A
+    selected_scope: Depth-three complete ternary initializers throughout inherited depth-three terminal trees with finite typed immutable locals
     implementation_approval: approved
     completed_repair_objective: TASK-021-PipeLang-v0.80-milestone-repairs
     repair_commit: acbd10f88207d0a226ec24a073948362691adb8c

@@ -665,3 +665,10 @@ assert.strictEqual(depthThreeInitializer.prefix, "pipe-depth-three-initializer")
 assert(depthThreeInitializer.description.includes("v0.96.0"));
 assert(depthThreeInitializer.body.join("\n").includes('string selected = a ? (b ? (c ? trim(raw) : raw) : "fallback") : raw;'));
 assert(pipeLangReadme.includes("`v0.96.0`"));
+
+const terminalInitializer = pipeLangSnippets["Depth-three terminal initializer"];
+assert.strictEqual(terminalInitializer.prefix, "pipe-depth-three-terminal-initializer");
+assert(terminalInitializer.description.includes("v0.97.0"));
+assert(terminalInitializer.body.join("\n").includes("if (a) {"));
+assert(terminalInitializer.body.join("\n").includes('string selected = b ? (c ? (a ?'));
+assert(pipeLangReadme.includes("`v0.97.0`"));
