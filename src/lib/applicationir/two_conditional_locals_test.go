@@ -79,6 +79,10 @@ func TestV970DepthThreeTerminalInitializersApplicationConsumer(t *testing.T) {
 	testConditionalLocalsApplicationConsumer(t, true, true, true, false, true, false, false, false, false, true, false, false, true, true)
 }
 
+func TestV980ConditionalBooleanSelectorsApplicationConsumer(t *testing.T) {
+	testConditionalLocalsApplicationConsumer(t, false, true, false, false, false, false, false, false, false, false, false, false, false, false, true)
+}
+
 func testConditionalLocalsApplicationConsumer(t *testing.T, finite bool, straightOption ...bool) {
 	straight := len(straightOption) > 0 && straightOption[0]
 	returnChoice := len(straightOption) > 1 && straightOption[1]
@@ -138,6 +142,10 @@ func testConditionalLocalsApplicationConsumer(t *testing.T, finite bool, straigh
 		contract, prior, boundary = pipelang.PipeLangLanguageContractV970, pipelang.PipeLangLanguageContractV960, "nested ternaries"
 	}
 
+	booleanSelector := len(straightOption) > 13 && straightOption[13]
+	if booleanSelector {
+		contract, prior, boundary = pipelang.PipeLangLanguageContractV980, pipelang.PipeLangLanguageContractV970, "new condition/argument placements"
+	}
 	layouts := []bool{false, true}
 	if straight {
 		layouts = []bool{false}
@@ -218,6 +226,11 @@ func testConditionalLocalsApplicationConsumer(t *testing.T, finite bool, straigh
 			}
 			if depthThreeArrow {
 				helper = `public string ChooseKey(string raw,bool clean,bool suffix,bool enabled)=>enabled ? (clean ? (suffix ? trim(raw) : trim(raw)) : raw) : (suffix ? raw+"!" : raw);`
+			}
+			if booleanSelector {
+				helper = `public string ChooseKey(string raw,bool clean,bool suffix,bool enabled){
+ string normalized=clean ? (suffix ? (enabled ? trim(raw) : trim(raw)) : trim(raw)) : raw;
+ return (clean ? suffix : enabled) ? normalized+"!" : normalized;`
 			}
 			closing := "}"
 			if arrow {
@@ -356,6 +369,16 @@ func testConditionalLocalsApplicationConsumer(t *testing.T, finite bool, straigh
 							}
 						} else if mask&2 != 0 {
 							want = raw + "!"
+						}
+					}
+					if booleanSelector {
+						want = normalized
+						selected := mask&4 != 0
+						if mask&1 != 0 {
+							selected = mask&2 != 0
+						}
+						if selected {
+							want += "!"
 						}
 					}
 					args := []coreeval.Value{{Type: choose.Parameters[0].Type, String: raw}}

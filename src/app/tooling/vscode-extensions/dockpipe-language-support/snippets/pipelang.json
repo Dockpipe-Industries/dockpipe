@@ -1112,5 +1112,14 @@
       "}"
     ],
     "description": "Create a v0.97.0 pure method with depth-three ternary initializers before and inside a terminal if/else tree."
+  },
+  "Conditional boolean selector": {
+    "prefix": "pipe-boolean-selector",
+    "body": [
+      "public string ${1:Select}(string raw, bool a, bool b, bool c) {",
+      "    return (a ? b : c) ? trim(raw) : raw;",
+      "}"
+    ],
+    "description": "PipeLang v0.98.0: one flat boolean ternary selector in a straight-line block return"
   }
 }
