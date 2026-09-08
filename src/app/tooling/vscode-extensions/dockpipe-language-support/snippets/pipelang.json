@@ -1134,5 +1134,13 @@
       "}"
     ],
     "description": "PipeLang v0.99.0: a flat boolean ternary selector return in a terminal if/else leaf"
+  },
+  "PipeLang arrow boolean selector": {
+    "prefix": "pipe-arrow-boolean-selector",
+    "body": [
+      "public ${1:string} ${2:Select}(${1:string} raw, bool a, bool b, bool c) =>",
+      "    (a ? b : c) ? ${3:raw} : ${4:raw};"
+    ],
+    "description": "PipeLang v0.100.0: a flat boolean selector in a public pure arrow method"
   }
 }

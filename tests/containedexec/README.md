@@ -626,3 +626,12 @@ three groups but shared by statement depth and across local initializers.
 four initializer depths, used/unused tails and 0/1/8/16/32/64/128/256 actual locals
 (192 cases). Export `fixtures-v099`, then use `matrix.py` for fresh isolated compiler
 proof under unchanged normal-inlining 128 MiB / 5-second ceilings.
+
+The v0.100 arrow-selector memory family has four `choices` partitions. Each
+crosses used/unused final bindings and 0/1/8/16/32/64/128/256 actual caller locals
+(64 cases). The fixed arrow helper uses one flat boolean selector and inherited
+nonconditional value arms. Every case exercises all eight selector vectors;
+caller invocations share those input bits. Export `fixtures-v100`, then run
+`matrix.py` for fresh isolated compiler proof at the unchanged normal-inlining
+128 MiB / 5-second ceilings. The generic internal Core representation and already
+admitted v0.98/v0.99 block Core must remain valid when old source rejects arrow syntax.

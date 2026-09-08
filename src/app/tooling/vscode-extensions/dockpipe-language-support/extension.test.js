@@ -685,3 +685,10 @@ assert(leafBooleanSelector.description.includes("v0.99.0"));
 assert(leafBooleanSelector.body.join("\n").includes("if (route)"));
 assert(leafBooleanSelector.body.join("\n").includes("return (a ? b : c) ? trim(raw) : raw;"));
 assert(pipeLangReadme.includes("`v0.99.0`"));
+
+const arrowBooleanSelector = pipeLangSnippets["PipeLang arrow boolean selector"];
+assert.strictEqual(arrowBooleanSelector.prefix, "pipe-arrow-boolean-selector");
+assert(arrowBooleanSelector.body.join("\n").includes("=>"));
+assert(arrowBooleanSelector.body.join("\n").includes("(a ? b : c) ?"));
+assert(arrowBooleanSelector.description.includes("v0.100.0"));
+assert(pipeLangReadme.includes("`v0.100.0`"));

@@ -353,7 +353,7 @@ func TestV840FiniteConditionalLocalsDifferentTypes(t *testing.T) {
 }
 
 func TestV840FiniteConditionalLocalsVersionBoundary(t *testing.T) {
-	for _, contract := range []LanguageContract{PipeLangLanguageContractV810, PipeLangLanguageContractV820, PipeLangLanguageContractV830, "v0.100.0", "unknown"} {
+	for _, contract := range []LanguageContract{PipeLangLanguageContractV810, PipeLangLanguageContractV820, PipeLangLanguageContractV830, "v0.101.0", "unknown"} {
 		input := semanticTestModuleSet("compiler.selfhosting", []ModuleInput{testModule("compiler.selfhosting", "finite.pipe", finiteConditionalLocalsSource)}, nil)
 		input.LanguageContract = contract
 		if AnalyzeSemanticModuleSet(input).Error() == nil {

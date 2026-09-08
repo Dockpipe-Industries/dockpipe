@@ -3417,3 +3417,31 @@ placement, types, scope and hidden-local refusal. Core erases arrow/block spelli
 that source distinction remains parser-owned. Generic internal Core locals, existing
 AST/HIR/Core node shapes, public compiler/semantic/Application IR identities and
 engine/package boundaries are preserved. No runtime or deployment behavior is added.
+
+### PipeLang v0.100.0: arrow-method boolean selectors
+
+`v0.100.0` admits the flat boolean selector return in public pure arrow methods
+(including the inherited public default when visibility is omitted):
+
+```pipe
+public Class Choices {
+    public string Select(string raw, bool a, bool b, bool c) =>
+        (a ? b : c) ? trim(raw) : raw;
+}
+```
+
+All three selector operands are bool; value arms have exactly matching supported
+primitive, record, list, Optional or Result types. Each of the five operands uses
+inherited nonconditional expressions, including supported pure calls and boolean
+operations. Evaluate a once, then only selected b/c, then only selected x/y.
+Failed Results travel intact without implicit propagation. Inherited callers retain
+finite explicitly typed immutable locals with eager once-only source order, even
+for unused reached bindings. Lexical scope rules are unchanged.
+
+All v0.99 forms remain inherited. This adds no new initializer, statement-condition,
+argument, matching or propagation placement, further nesting, increased depth,
+inference, mutation, loops, effects or backend. Source and Core preserve placement,
+type, scope and hidden-local validation and generic internal Core locals. Core
+already represents the equivalent v0.98/v0.99 block return: the parser owns older
+arrow-spelling refusal. AST/HIR/Core node shapes, compiler/semantic/Application IR
+identities and engine/package boundaries are unchanged.
