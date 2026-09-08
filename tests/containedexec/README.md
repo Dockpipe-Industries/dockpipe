@@ -300,8 +300,8 @@ are never stored in the cache. Do not edit toolchain files during a run.
 Compile-only compatibility checks may also retain their compiled package; the
 driver still runs and changed invalid source must fail compilation.
 
-Eligible inert generated modules share one link in batches of at most four
-packages (also bounded by source/fixture size). Source and check bytes stay intact
+Eligible inert generated modules share one link in bounded batches (four packages
+in the comparison path, up to 32 with native bundles; also bounded by source/fixture size). Source and check bytes stay intact
 in separate packages; each original module's checks execute in a fresh native
 process with a fresh cwd and current original files. A registered test cleanup
 flushes queued checks before their owning test can pass. Initialization,
@@ -330,11 +330,12 @@ named-case/vector inventories are required before accepting this mode.
 
 ### Shared native bundles
 
-`pipelang_suite.py` uses shared typed oracle code and larger native bundles for the
-v0.91 finite-layout helper by default when `--compiled-cache` is supplied on Linux.
+`pipelang_suite.py` uses larger native bundles across compatible generated-test
+families by default when `--compiled-cache` is supplied on Linux. Finite-layout
+families also share typed oracle code (see the shared framework section below).
 `--no-native-bundle` selects the original path for comparisons; `--native-bundle`
-explicitly selects bundles. Bundles require empty `GOFLAGS` and Linux executable sealing. Other language
-families and direct compiler resource probes retain their existing paths.
+explicitly selects bundles. Bundles require empty `GOFLAGS` and Linux executable
+sealing. Direct compiler resource probes retain their existing paths.
 
 Each bundle contains at most 32 generated packages, with a 512 KiB source and
 32 MiB source/fixture queue threshold. A single item may cross a threshold before
@@ -355,12 +356,13 @@ when their descriptors close. No additional persistent runtime cache is created.
 The runner creates a fresh private `native-build-cache` beneath the receipt output
 for bundle compiler intermediates. It records its byte count and retains the
 directory for accounting; this runner does not authorize cache cleanup.
-Bundle misses use `PIPELANG_BUNDLE_BUILD_CACHE` for compilation; hits do not need
+Shared-oracle bundle misses use `PIPELANG_BUNDLE_BUILD_CACHE`; ordinary bundled
+checks retain the supplied Go cache. Hits do not need
 that directory. Direct test-harness invocations must supply an absolute private
 disposable path themselves and clean it only after their units have exited.
 Existing Go compiler caches are not pruned by the runner.
 
-For a full suite with this family using shared native bundles:
+For a full suite using shared native bundles:
 
 ```sh
 python3 tests/containedexec/pipelang_suite.py \
@@ -551,3 +553,32 @@ cannot replace the debug-bearing baseline binaries, which must remain retained
 and counted. Shared-library support and compact storage are experimental results,
 not whole-suite target claims. The TASK-021 performance
 record links the measured evidence and limitations.
+
+### Shared native test framework
+
+Retained-cache Linux runs use `--native-bundle` by default for every compatible
+`compileAndRunGeneratedGoFiles[WithFixtures]` family. The framework links up to
+32 inert generated packages into one executable and runs each original package
+in a fresh contained child with its own current fixture directory. It flushes at
+512 KiB accumulated source/check bytes or 32 MiB combined source/fixture bytes;
+a single large case retains its original checks. Queues stay within their owning
+Go test lifetime, so independent compiler-resource probes keep their boundaries.
+`--no-native-bundle` retains the four-package ordinary comparison path (8 MiB
+combined threshold). It does not disable retained executable reuse.
+
+Finite conditional-layout families v0.84, v0.85, v0.86, v0.87, v0.89 and v0.91
+also share the existing fixture loader and Value/Trace comparison package.
+Independent tree models still produce the expected data on every run. Other
+families retain their existing inline assertions. Neither path caches outcomes.
+Executable keys bind current generated source, checks, shared support, toolchain
+and settings; changed runtime fixtures run against cached binaries immediately.
+Debug information and per-case generated package namespaces are retained.
+
+Standalone exceptions remain intentional: explicit Go flags, custom init or
+TestMain, non-inert global initialization, compiler directives, examples/fuzzing,
+unsupported imports, extra Go fixtures, and checks that observe testing names or
+package identity. Tests with distinct owning subtests and compiler-resource
+probes are not pooled across their lifetimes. Larger inline-check families can
+hit the source threshold before reaching 32 packages. These boundaries preserve
+existing behavior and compiler evidence; they do not remove any tests. All
+framework code lives in compiler-owned test helpers; engine behavior is unchanged.

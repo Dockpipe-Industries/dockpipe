@@ -124,7 +124,7 @@ def main():
     parser.add_argument('--test-family', help='Run one discovered family and explicitly report partial-suite proof')
     parser.add_argument('--shared-export', type=Path, help='Fresh private v0.91 bundle exports for exact transcript replay or shared-runtime probes')
     parser.add_argument('--native-bundle', action=argparse.BooleanOptionalAction, default=None,
-                        help='Shared v0.91 native bundles; default for retained-cache runs on Linux')
+                        help='Bounded shared native test bundles across compatible generated families; default for retained-cache runs on Linux')
     parser.add_argument('--native-representation', action=argparse.BooleanOptionalAction, default=False,
                         help='Opt in to exact compressed native preparation/replay on Linux; ordinary execution is the default')
     parser.add_argument('--representation-cache', type=Path, help='Private representation store (default: sibling of compiled cache)')

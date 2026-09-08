@@ -11,10 +11,10 @@ dispatch:
 state:
   decision: accepted
   current_language_contract: v0.96.0
-  active_objective: TASK-021-conformance-shared-runtime-experiment
+  active_objective: TASK-021-shared-native-test-framework
   objective_state: completed
   selected_option: null
-  selected_scope: Ordinary native execution is the default; reusable compressed artifact preparation and sealed replay remain explicitly opt-in; 637 discovered tests passed in fresh complete ordinary and packed runs, with matched coverage and inclusive storage proof
+  selected_scope: Shared native framework retained across compatible generated families; 638 tests and exact native coverage pass; 2719 to 2331 executable identities, 13.21 percent fewer selected bytes and a 2.80 percent faster matched warm pair; all caches preserved, no total retained-storage reduction claimed
   implementation_approval: approved
   completed_repair_objective: TASK-021-PipeLang-v0.80-milestone-repairs
   repair_commit: acbd10f88207d0a226ec24a073948362691adb8c
@@ -23,18 +23,13 @@ state:
   next_repair_slice: null
   completed_through: v0.96.0 depth-three straight-line initializers plus v0.95.0 depth-three expression-bodied methods plus v0.94.0 depth-three terminal-leaf returns plus v0.93.0 depth-three straight-line returns plus v0.92.0 nested expression-bodied methods plus v0.91.0 nested initializers throughout terminal trees plus v0.90.0 nested straight-line initializers plus v0.89.0 nested terminal-leaf returns plus v0.88.0 nested straight-line returns plus v0.87.0 conditional returns in terminal-tree leaves plus v0.86.0 conditional return composition plus v0.85.0 straight-line conditional-local sequences plus v0.84.0 finite conditional-local sequences plus v0.83.0 two conditional locals in terminal trees plus v0.82.0 conditional local in terminal trees plus v0.81.0 terminal trees through depth three plus v0.80.0 two expanded terminal leaves plus v0.79.0 bounded depth-three terminal branching plus v0.78.0 rootless symmetric depth-two terminal branching plus v0.77.0 symmetric depth-two terminal branching with shared root immutable locals plus v0.76.0 shared root immutable-local sequences before the v0.75.0 bounded nested terminal topology, v0.75.0 inner terminal-leaf immutable-local sequences, v0.74.0 one-branch bounded nested terminal if/else, v0.73.0 direct terminal if/else without a top-level-local prerequisite, v0.72.0 general terminal-branch local sequences, v0.71.0 two-local terminal-branch sequences, v0.70.0 lexical terminal-branch locals, and v0.69.0 terminal statement-level if/else after ordered immutable locals, generalized one-stage and multi-stage shared-context Result propagation, generalized contextual bounded Result propagation, exact two-stage and one-stage contextual bounded propagation, contextual and generalized cross-payload chains, exact two-stage and one-stage cross-payload Result propagation, generalized checked-propagation chains, two-stage, multi-parameter direct, direct, and helper checked propagation, multi-parameter propagation, cumulative and immediate dependent chains, dependent and independent two-carrier forms, prior-local and later-local helper matching, checked arithmetic, pure calls, matching, propagation, ordered immutable locals, and dockpipe.application.v1 consumer proof
   authority: >-
-    The user explicitly approved the shared native runtime experiment and requested continuation in this saved checkout.
-    conformance-execution-performance.md owns the bounded experiment, preserved invariants and contained validation.
-    The complete v0.91 family follows a small feasibility probe; reassess before expansion.
-    Public web research is now explicitly authorized; native validation remains contained and offline.
-    The latest user approval redirects this continuation to one bounded full-suite performance pass before further language slices.
-    The subsequent user request authorized broader search-algorithm research and the integrated exact-delta experiment, now completed and unpromoted.
-    Renewed user research authority covered complete-pipeline profiling, section and reference selection; this bounded round is also complete and unpromoted.
-    The latest user said "please go ahead" after the implementation recommendation and explicitly invoked dorkpipe-task-handoff.
-    This authorizes bounded implementation of two reconstructors, the existing reference shortlist and scaffold9/token12 patch compression; transport goes to exactly one same-checkout task.
-    The subsequent corrective approval replaced frozen corpus admission with ordinary cache integration and required fresh complete discovered-suite acceptance.
-    This corrective objective is complete; the language remains v0.96.0 and no successor is selected.
-    No commit, push, worktree or stash mutation, broad cache cleanup or persistent machine changes.
+    The user explicitly authorized implementing and verifying the shared native test framework
+    and requested continuation in this saved checkout without a worktree.
+    The shared framework objective is complete with focused and matched full-suite proof;
+    further language or performance work is not selected by this completion.
+    Prior compression work is completed; ordinary execution remains default and compression opt-in.
+    No language semantics, production runtime changes, compression research, cache cleanup,
+    commit, push, installation, stash mutation or persistent external operations are authorized.
 
 routes:
   conformance_performance:
