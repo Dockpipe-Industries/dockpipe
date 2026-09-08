@@ -898,19 +898,19 @@ func validExpandedDepthThreeTerminalIf(expr Expr, expandedLeaves int) bool {
 }
 
 func validTerminalIfStatement(contract LanguageContract, expr Expr) bool {
-	if contract == PipeLangLanguageContractV970 && validDepthThreeTerminalInitializers(expr) {
+	if (contract == PipeLangLanguageContractV970 || contract == PipeLangLanguageContractV980) && validDepthThreeTerminalInitializers(expr) {
 		return true
 	}
-	if (contract == PipeLangLanguageContractV940 || (contract == PipeLangLanguageContractV950 || (contract == PipeLangLanguageContractV960 || contract == PipeLangLanguageContractV970))) && validDepthThreeTerminalLeafReturns(expr) {
+	if (contract == PipeLangLanguageContractV940 || (contract == PipeLangLanguageContractV950 || (contract == PipeLangLanguageContractV960 || (contract == PipeLangLanguageContractV970 || contract == PipeLangLanguageContractV980)))) && validDepthThreeTerminalLeafReturns(expr) {
 		return true
 	}
-	if (contract == PipeLangLanguageContractV910 || (contract == PipeLangLanguageContractV920 || (contract == PipeLangLanguageContractV930 || (contract == PipeLangLanguageContractV940 || (contract == PipeLangLanguageContractV950 || (contract == PipeLangLanguageContractV960 || contract == PipeLangLanguageContractV970)))))) && validNestedTerminalInitializers(expr) {
+	if (contract == PipeLangLanguageContractV910 || (contract == PipeLangLanguageContractV920 || (contract == PipeLangLanguageContractV930 || (contract == PipeLangLanguageContractV940 || (contract == PipeLangLanguageContractV950 || (contract == PipeLangLanguageContractV960 || (contract == PipeLangLanguageContractV970 || contract == PipeLangLanguageContractV980))))))) && validNestedTerminalInitializers(expr) {
 		return true
 	}
-	if (contract == PipeLangLanguageContractV890 || (contract == PipeLangLanguageContractV900 || (contract == PipeLangLanguageContractV910 || (contract == PipeLangLanguageContractV920 || (contract == PipeLangLanguageContractV930 || (contract == PipeLangLanguageContractV940 || (contract == PipeLangLanguageContractV950 || (contract == PipeLangLanguageContractV960 || contract == PipeLangLanguageContractV970)))))))) && validNestedTerminalLeafReturns(expr) {
+	if (contract == PipeLangLanguageContractV890 || (contract == PipeLangLanguageContractV900 || (contract == PipeLangLanguageContractV910 || (contract == PipeLangLanguageContractV920 || (contract == PipeLangLanguageContractV930 || (contract == PipeLangLanguageContractV940 || (contract == PipeLangLanguageContractV950 || (contract == PipeLangLanguageContractV960 || (contract == PipeLangLanguageContractV970 || contract == PipeLangLanguageContractV980))))))))) && validNestedTerminalLeafReturns(expr) {
 		return true
 	}
-	if ((contract == PipeLangLanguageContractV890 || (contract == PipeLangLanguageContractV900 || (contract == PipeLangLanguageContractV910 || (contract == PipeLangLanguageContractV920 || (contract == PipeLangLanguageContractV930 || (contract == PipeLangLanguageContractV940 || (contract == PipeLangLanguageContractV950 || (contract == PipeLangLanguageContractV960 || contract == PipeLangLanguageContractV970)))))))) || contract == PipeLangLanguageContractV880) || contract == PipeLangLanguageContractV870 {
+	if ((contract == PipeLangLanguageContractV890 || (contract == PipeLangLanguageContractV900 || (contract == PipeLangLanguageContractV910 || (contract == PipeLangLanguageContractV920 || (contract == PipeLangLanguageContractV930 || (contract == PipeLangLanguageContractV940 || (contract == PipeLangLanguageContractV950 || (contract == PipeLangLanguageContractV960 || (contract == PipeLangLanguageContractV970 || contract == PipeLangLanguageContractV980))))))))) || contract == PipeLangLanguageContractV880) || contract == PipeLangLanguageContractV870 {
 		return validTerminalLeafConditionalReturns(expr) || validTerminalIfStatement(PipeLangLanguageContractV860, expr)
 	}
 	if contract == PipeLangLanguageContractV860 || contract == PipeLangLanguageContractV850 || contract == PipeLangLanguageContractV840 {
@@ -1446,4 +1446,34 @@ func validDepthThreeStraightLineInitializers(expr Expr) bool {
 // Conditions and operands remain local-free; return and statement limits do not grow.
 func validDepthThreeTerminalInitializers(expr Expr) bool {
 	return validTerminalLeafReturnsDepth(expr, 3, 3)
+}
+
+// v0.98 admits one flat boolean selector only at the complete straight-line return.
+// Initializers keep the inherited depth-three limit; no hidden local operands enter.
+func validConditionalBooleanSelector(expr Expr) bool {
+	for {
+		local, ok := expr.(*ImmutableLocalExpr)
+		if !ok {
+			break
+		}
+		if local.Initializer == nil || local.Return == nil || countImmutableLocalExpressions(local.Initializer) != 0 ||
+			(!validConditionalOperand(local.Initializer) && !validDepthThreeStraightLineReturns(local.Initializer)) {
+			return false
+		}
+		expr = local.Return
+	}
+	outer, ok := expr.(*ConditionalExpr)
+	if !ok || outer == nil || outer.TerminalStatement || countImmutableLocalExpressions(expr) != 0 {
+		return false
+	}
+	selector, ok := outer.Condition.(*ConditionalExpr)
+	if !ok || selector == nil || selector.TerminalStatement {
+		return false
+	}
+	for _, operand := range []Expr{selector.Condition, selector.WhenTrue, selector.WhenFalse, outer.WhenTrue, outer.WhenFalse} {
+		if operand == nil || !validConditionalOperand(operand) {
+			return false
+		}
+	}
+	return true
 }

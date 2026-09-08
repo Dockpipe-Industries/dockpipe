@@ -603,3 +603,14 @@ unused final locals and 1/8/16/24/32/64/128/256 locals (192 fixtures). Export
 run `matrix.py` for independent fresh compiler units. Retain normal inlining and
 128 MiB / 5 second warm compiler ceilings. Other statement branches return the
 original input; the scale count describes the one growing sequence.
+
+The v0.98 conditional boolean selector suite verifies the eight independent selector
+vectors, mixed ordinary/depth-three preceding locals, used/unused bindings, computed
+conditions, types/carriers, malformed Core, source refusals and all earlier versions.
+Its memory test has four initializer families (ordinary and depth one/two/three),
+used/unused tails and 0/1/8/16/32/64/128/256 actual preceding locals. The return itself
+contains the new selector; no helper hides its placement. The normal suite partitions
+four `choices` subtests and exports 64 fixtures to `fixtures-v098`. Fresh `matrix.py`
+measurements retain normal inlining and 128 MiB / 5-second direct compiler ceilings.
+The bounded matrix uses three shared input bits; it does not claim all independent
+initializer assignments at arbitrary sequence lengths.

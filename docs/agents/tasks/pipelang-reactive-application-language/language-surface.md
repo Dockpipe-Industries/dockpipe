@@ -1,3 +1,11 @@
+## Completed current objective — conditional boolean selectors
+
+Founder selected A and separately approved v0.98.0 implementation on 2026-09-08.
+[conditional-boolean-selectors.md](conditional-boolean-selectors.md) owns the bounded
+scope and verification. State: `completed`. Completed v0.97.0 is committed at
+`0c8e3bd1`; historical status below does not alter that baseline or current authority.
+No successor, commit, push, cleanup, worktree or external operation is authorized.
+
 ## Completed current objective — depth-three terminal initializers
 
 Founder selected A and separately approved v0.97.0 implementation on 2026-09-08.

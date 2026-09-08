@@ -672,3 +672,9 @@ assert(terminalInitializer.description.includes("v0.97.0"));
 assert(terminalInitializer.body.join("\n").includes("if (a) {"));
 assert(terminalInitializer.body.join("\n").includes('string selected = b ? (c ? (a ?'));
 assert(pipeLangReadme.includes("`v0.97.0`"));
+
+const booleanSelector = pipeLangSnippets["Conditional boolean selector"];
+assert.strictEqual(booleanSelector.prefix, "pipe-boolean-selector");
+assert(booleanSelector.description.includes("v0.98.0"));
+assert(booleanSelector.body.join("\n").includes("return (a ? b : c) ? trim(raw) : raw;"));
+assert(pipeLangReadme.includes("`v0.98.0`"));

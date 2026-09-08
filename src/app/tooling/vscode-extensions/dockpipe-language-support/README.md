@@ -323,3 +323,9 @@ initializers through depth three before and inside inherited terminal if/else tr
 through statement depth three. Typed immutable locals retain lexical scope, eager
 once-only source order, and lazy selected branches/arms. See the
 [canonical contract](../../../../../docs/concepts/pipelang.md#pipelang-v0970-depth-three-terminal-initializers).
+
+`v0.98.0` adds `pipe-boolean-selector`: one flat boolean ternary as the entire
+selector of a straight-line block return, such as `return (a ? b : c) ? x : y;`.
+Inherited preceding locals remain available. All selector operands are bool; value
+arms match exactly. Only selected conditions and arms run. Arrow/terminal/initializer/
+argument placements and further nesting within this new form remain excluded.

@@ -235,7 +235,7 @@ or public semantic identities. The backend checks the complete emitted package n
 returning Go source.
 
 Core program admission accepts only `pipelang.compiler.v1` and the exact supported language
-identities `v0.1.0` through `v0.97.0`. `coreir.ValidateProgram` checks feature availability in
+identities `v0.1.0` through `v0.98.0`. `coreir.ValidateProgram` checks feature availability in
 signatures and nested expressions, together with the existing composition and topology contracts.
 `coreeval.EvaluateProgram` and the Go backend use that same admission before executing or emitting
 anything, including when a disallowed feature occurs in an uncalled function or unused parameter.
@@ -3337,3 +3337,42 @@ placement, depth, types, scope and hidden-local refusal. Generic internal Core l
 expressions keep their contract. Parser/typechecker, typed HIR, target-neutral Core,
 evaluator and Core-only Go retain the existing node shapes and public compiler,
 semantic and Application IR identities. No runtime or deployment behavior is added.
+
+### PipeLang v0.98.0: conditional boolean selectors
+
+`v0.98.0` permits one flat boolean ternary as the entire condition of a complete
+ternary return in a straight-line block method. Zero or more inherited explicitly
+typed immutable locals may precede the return, including depth-three initializers.
+
+```pipe
+public Class Choices {
+    public string Select(string raw, bool a, bool b, bool c) {
+        string normalized = a ? (b ? (c ? trim(raw) : raw) : raw) : raw;
+        return (a ? b : c) ? normalized : raw;
+    }
+}
+```
+
+In `return (a ? b : c) ? x : y;`, all three selector operands must be `bool`;
+`x` and `y` must have exactly matching supported types. Primitive, record, list,
+Optional and Result values remain intact. Failed Results do not implicitly propagate.
+The five operand positions accept inherited nonconditional expressions, including
+supported pure calls and boolean operations. No additional ternary can occur inside
+those operands. Parentheses group the selector; they do not introduce a new node.
+
+Evaluate `a` once, then only the selected `b` or `c`, then only the selected `x` or
+`y`. Earlier locals remain eager, once-only and source ordered, including unused
+bindings. Initializers can use only previously bound names; duplicate, shadowing,
+self/forward and escaping references remain invalid.
+
+All v0.97 forms remain inherited. This addition does not admit selector returns in
+arrow methods or terminal-tree leaves, selector expressions in local initializers,
+statement conditions or arguments, further nesting in the new form, or new matching/
+propagation placements. Existing expression and statement depth limits remain unchanged.
+Inference, mutation, loops, effects and new backends remain excluded.
+
+Source and Core independently validate placement, depth, types, scope and hidden-local
+refusal. Core erases block/arrow spelling, so the parser enforces that source boundary.
+Generic internal Core locals retain their contract. Existing AST/HIR/Core node shapes,
+compiler/semantic/Application IR public identities and engine/package boundaries remain
+unchanged. No runtime or deployment behavior is added.
