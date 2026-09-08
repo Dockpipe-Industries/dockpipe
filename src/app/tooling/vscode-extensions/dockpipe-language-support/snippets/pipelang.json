@@ -1097,5 +1097,20 @@
       "}"
     ],
     "description": "Create a v0.96.0 pure straight-line method with a complete ternary initializer through depth three."
+  },
+  "Depth-three terminal initializer": {
+    "prefix": "pipe-depth-three-terminal-initializer",
+    "body": [
+      "public ${1:string} ${2:Select}(string raw, bool a, bool b, bool c) {",
+      "    string root = a ? (b ? (c ? trim(raw) : raw) : \"fallback\") : raw;",
+      "    if (a) {",
+      "        string selected = b ? (c ? (a ? root + \"!\" : root) : root) : root;",
+      "        return selected;",
+      "    } else {",
+      "        return root;",
+      "    }",
+      "}"
+    ],
+    "description": "Create a v0.97.0 pure method with depth-three ternary initializers before and inside a terminal if/else tree."
   }
 }

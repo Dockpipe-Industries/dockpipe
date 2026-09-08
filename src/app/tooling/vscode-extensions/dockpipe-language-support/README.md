@@ -317,3 +317,9 @@ through depth three in straight-line typed-local sequences. Initializers before/
 statement trees retain depth two. Reached locals execute eagerly once in order, including
 unused locals; only selected arms execute. See the
 [canonical contract](../../../../../docs/concepts/pipelang.md#pipelang-v0960-depth-three-straight-line-initializers).
+
+PipeLang `v0.97.0` adds `pipe-depth-three-terminal-initializer` for complete ternary
+initializers through depth three before and inside inherited terminal if/else trees
+through statement depth three. Typed immutable locals retain lexical scope, eager
+once-only source order, and lazy selected branches/arms. See the
+[canonical contract](../../../../../docs/concepts/pipelang.md#pipelang-v0970-depth-three-terminal-initializers).
