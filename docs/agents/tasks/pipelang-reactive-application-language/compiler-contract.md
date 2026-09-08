@@ -1,3 +1,11 @@
+## Completed current objective — terminal-leaf boolean selectors
+
+Founder selected A and separately approved v0.99.0 implementation on 2026-09-08.
+[terminal-leaf-boolean-selectors.md](terminal-leaf-boolean-selectors.md) owns the
+bounded scope and verification. State: `completed`. Completed v0.98.0 is committed
+at `6ce476f6`; historical status below does not alter that baseline or current authority.
+Commit, push, cleanup, worktree and external operations remain outside scope.
+
 ## Completed current objective — conditional boolean selectors
 
 Founder selected A and separately approved v0.98.0 implementation on 2026-09-08.

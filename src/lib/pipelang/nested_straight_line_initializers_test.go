@@ -406,7 +406,7 @@ func TestV900NestedStraightLineInitializersVersionBoundary(t *testing.T) {
 		p.LanguageContract = string(contract)
 		assertAdmissionRejected(t, p, "")
 	}
-	for _, contract := range []string{"v0.99.0", "unknown"} {
+	for _, contract := range []string{"v0.100.0", "unknown"} {
 		_, p := conditionalLocalTreeProgramVersion(t, PipeLangLanguageContractV900, nestedStraightLineInitializersSource, []string{"Select"})
 		p.LanguageContract = contract
 		assertAdmissionRejected(t, p, "")

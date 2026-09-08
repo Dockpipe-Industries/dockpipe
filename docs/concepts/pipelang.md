@@ -3376,3 +3376,44 @@ refusal. Core erases block/arrow spelling, so the parser enforces that source bo
 Generic internal Core locals retain their contract. Existing AST/HIR/Core node shapes,
 compiler/semantic/Application IR public identities and engine/package boundaries remain
 unchanged. No runtime or deployment behavior is added.
+
+### PipeLang v0.99.0: terminal-leaf boolean selectors
+
+`v0.99.0` permits the v0.98 flat boolean selector return in any subset of leaves
+of inherited terminal `if/else` trees through statement depth three.
+
+```pipe
+public Class Choices {
+    public string Select(string raw, bool route, bool a, bool b, bool c) {
+        string normalized = a ? (b ? (c ? trim(raw) : raw) : raw) : raw;
+        if (route) {
+            string selected = normalized + "!";
+            return (a ? b : c) ? selected : raw;
+        } else {
+            return raw;
+        }
+    }
+}
+```
+
+Each new return has exactly the form `(a ? b : c) ? x : y`. All three selector
+operands must be bool, and both value arms must have exactly matching supported
+types. Each of the five operands uses inherited nonconditional expressions; no
+further ternary may occur inside it. Complete primitive, record, list, Optional
+and Result values travel intact; failed Results do not implicitly propagate.
+
+Root, intermediate and leaf scopes retain finite explicitly typed immutable-local
+sequences and inherited depth-three initializers. Earlier in-scope bindings may be
+reused. Reached locals execute eagerly once in source order, including unused
+bindings. Only selected statement branches execute; at a reached selector return,
+evaluate `a` once, then only selected `b`/`c`, then only selected `x`/`y`.
+Self/forward references, duplicates, shadowing and escaping references remain invalid.
+
+All v0.98 forms remain inherited. This does not add selector expressions to arrow
+methods, initializers, statement conditions or arguments. Further nesting, increased
+expression/statement depths, new matching/propagation placements, inference, mutation,
+loops, effects and backends remain excluded. Source and Core independently enforce
+placement, types, scope and hidden-local refusal. Core erases arrow/block spelling;
+that source distinction remains parser-owned. Generic internal Core locals, existing
+AST/HIR/Core node shapes, public compiler/semantic/Application IR identities and
+engine/package boundaries are preserved. No runtime or deployment behavior is added.

@@ -1121,5 +1121,18 @@
       "}"
     ],
     "description": "PipeLang v0.98.0: one flat boolean ternary selector in a straight-line block return"
+  },
+  "Terminal-leaf boolean selector": {
+    "prefix": "pipe-leaf-boolean-selector",
+    "body": [
+      "public string ${1:Select}(string raw, bool route, bool a, bool b, bool c) {",
+      "    if (route) {",
+      "        return (a ? b : c) ? trim(raw) : raw;",
+      "    } else {",
+      "        return raw;",
+      "    }",
+      "}"
+    ],
+    "description": "PipeLang v0.99.0: a flat boolean ternary selector return in a terminal if/else leaf"
   }
 }

@@ -83,6 +83,10 @@ func TestV980ConditionalBooleanSelectorsApplicationConsumer(t *testing.T) {
 	testConditionalLocalsApplicationConsumer(t, false, true, false, false, false, false, false, false, false, false, false, false, false, false, true)
 }
 
+func TestV990TerminalLeafBooleanSelectorsApplicationConsumer(t *testing.T) {
+	testConditionalLocalsApplicationConsumer(t, false, true, false, false, false, false, false, false, false, false, false, false, false, false, true, true)
+}
+
 func testConditionalLocalsApplicationConsumer(t *testing.T, finite bool, straightOption ...bool) {
 	straight := len(straightOption) > 0 && straightOption[0]
 	returnChoice := len(straightOption) > 1 && straightOption[1]
@@ -145,6 +149,10 @@ func testConditionalLocalsApplicationConsumer(t *testing.T, finite bool, straigh
 	booleanSelector := len(straightOption) > 13 && straightOption[13]
 	if booleanSelector {
 		contract, prior, boundary = pipelang.PipeLangLanguageContractV980, pipelang.PipeLangLanguageContractV970, "new condition/argument placements"
+	}
+	leafBooleanSelector := len(straightOption) > 14 && straightOption[14]
+	if leafBooleanSelector {
+		contract, prior, boundary = pipelang.PipeLangLanguageContractV990, pipelang.PipeLangLanguageContractV980, "new argument/condition placements"
 	}
 	layouts := []bool{false, true}
 	if straight {
@@ -231,6 +239,9 @@ func testConditionalLocalsApplicationConsumer(t *testing.T, finite bool, straigh
 				helper = `public string ChooseKey(string raw,bool clean,bool suffix,bool enabled){
  string normalized=clean ? (suffix ? (enabled ? trim(raw) : trim(raw)) : trim(raw)) : raw;
  return (clean ? suffix : enabled) ? normalized+"!" : normalized;`
+			}
+			if leafBooleanSelector {
+				helper = strings.Replace(helper, "return (clean ? suffix : enabled) ? normalized+\"!\" : normalized;", "if(clean){return (clean ? suffix : enabled) ? normalized+\"!\" : normalized;}else{return (clean ? suffix : enabled) ? normalized+\"!\" : normalized;}", 1)
 			}
 			closing := "}"
 			if arrow {

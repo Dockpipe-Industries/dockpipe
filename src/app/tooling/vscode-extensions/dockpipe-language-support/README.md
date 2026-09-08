@@ -329,3 +329,9 @@ selector of a straight-line block return, such as `return (a ? b : c) ? x : y;`.
 Inherited preceding locals remain available. All selector operands are bool; value
 arms match exactly. Only selected conditions and arms run. Arrow/terminal/initializer/
 argument placements and further nesting within this new form remain excluded.
+
+`v0.99.0` adds `pipe-leaf-boolean-selector`: a flat boolean selector return in
+any subset of inherited terminal if/else leaves through statement depth three.
+Reached scoped locals remain eager and ordered; only selected branches and selector
+operands run. Initializers retain depth three. New arrow, initializer, statement
+condition and argument placements, further nesting and increased depths remain excluded.

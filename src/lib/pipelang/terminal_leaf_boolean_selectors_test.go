@@ -8,24 +8,23 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
+	"regexp"
 	"strings"
 	"testing"
 )
 
-const conditionalBooleanSelectorsSource = `public Class Choices {public string Select(string raw,bool a,bool b,bool c){string local=a ? (b ? (c ? trim(raw) : raw) : raw) : raw;return (a ? b : c) ? local : raw;}}`
-
-func TestV980ConditionalBooleanSelectorsAdmission(t *testing.T) {
+func TestV990TerminalLeafBooleanSelectorsAdmission(t *testing.T) {
 	for _, source := range []string{conditionalBooleanSelectorsSource, `public Class Choices {public string Select(string raw,bool a,bool b,bool c){return (a ? b : c) ? trim(raw) : raw;}}`} {
-		_, p := conditionalLocalTreeProgramVersion(t, PipeLangLanguageContractV980, source, []string{"Select"})
+		_, p := conditionalLocalTreeProgramVersion(t, PipeLangLanguageContractV990, v990Wrap(t, source), []string{"Select"})
 		if err := coreir.ValidateProgram(p); err != nil {
 			t.Fatal(err)
 		}
 	}
 }
-func TestV980ConditionalBooleanSelectorsInheritance(t *testing.T) {
-	for _, source := range []string{v940WrapBody(t, depthThreeStraightLineInitializersSource, terminalTrees(3)[25], "a"), depthThreeStraightLineInitializersSource, depthThreeArrowMethodsSource, depthThreeTerminalLeafReturnsSource, depthThreeStraightLineReturnsSource, nestedArrowMethodsSource, nestedTerminalInitializersSource, nestedStraightLineInitializersSource, nestedTerminalLeafReturnsSource, nestedStraightLineReturnsSource, terminalLeafConditionalReturnsSource, conditionalReturnCompositionSource, straightLineConditionalLocalsSource, finiteConditionalLocalsSource, twoConditionalLocalsSource, `public Class Choices {public string Select(string raw,bool pick)=>pick ? raw : trim(raw);}`} {
+func TestV990TerminalLeafBooleanSelectorsInheritance(t *testing.T) {
+	for _, source := range []string{conditionalBooleanSelectorsSource, v940WrapBody(t, depthThreeStraightLineInitializersSource, terminalTrees(3)[25], "a"), depthThreeStraightLineInitializersSource, depthThreeArrowMethodsSource, depthThreeTerminalLeafReturnsSource, depthThreeStraightLineReturnsSource, nestedArrowMethodsSource, nestedTerminalInitializersSource, nestedStraightLineInitializersSource, nestedTerminalLeafReturnsSource, nestedStraightLineReturnsSource, terminalLeafConditionalReturnsSource, conditionalReturnCompositionSource, straightLineConditionalLocalsSource, finiteConditionalLocalsSource, twoConditionalLocalsSource, `public Class Choices {public string Select(string raw,bool pick)=>pick ? raw : trim(raw);}`} {
 		var baseline [][]byte
-		for _, contract := range []LanguageContract{PipeLangLanguageContractV970, PipeLangLanguageContractV980} {
+		for _, contract := range []LanguageContract{PipeLangLanguageContractV980, PipeLangLanguageContractV990} {
 			a, p := conditionalLocalTreeProgramVersion(t, contract, source, []string{"Select"})
 			h, err := LowerSemanticMethodToHIR(a, semanticMethodNamed(t, a, "Select").Identity)
 			if err != nil {
@@ -39,9 +38,9 @@ func TestV980ConditionalBooleanSelectorsInheritance(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			h.LanguageContract = coreir.LanguageContractV970
-			p.LanguageContract = coreir.LanguageContractV970
-			projection.LanguageContract = PipeLangLanguageContractV970
+			h.LanguageContract = coreir.LanguageContractV980
+			p.LanguageContract = coreir.LanguageContractV980
+			projection.LanguageContract = PipeLangLanguageContractV980
 			artifacts := [][]byte{g}
 			for _, v := range []any{h, p, projection} {
 				b, err := json.Marshal(v)
@@ -59,18 +58,18 @@ func TestV980ConditionalBooleanSelectorsInheritance(t *testing.T) {
 	}
 }
 
-func TestV980ConditionalBooleanSelectorsTypes(t *testing.T) {
+func TestV990TerminalLeafBooleanSelectorsTypes(t *testing.T) {
 	for _, zero := range []bool{false, true} {
-		t.Run(fmt.Sprint(zero), func(t *testing.T) { testConditionalLocalsTypeMatrix(t, PipeLangLanguageContractV980, zero) })
+		t.Run(fmt.Sprint(zero), func(t *testing.T) { testConditionalLocalsTypeMatrix(t, PipeLangLanguageContractV990, zero) })
 	}
 }
-func TestV980ConditionalBooleanSelectorsCarriers(t *testing.T) {
+func TestV990TerminalLeafBooleanSelectorsCarriers(t *testing.T) {
 	for _, zero := range []bool{false, true} {
-		t.Run(fmt.Sprint(zero), func(t *testing.T) { testConditionalLocalsCarrierAndHostValues(t, PipeLangLanguageContractV980, zero) })
+		t.Run(fmt.Sprint(zero), func(t *testing.T) { testConditionalLocalsCarrierAndHostValues(t, PipeLangLanguageContractV990, zero) })
 	}
 }
 
-func TestV980ConditionalBooleanSelectorsLayouts(t *testing.T) {
+func TestV990TerminalLeafBooleanSelectorsLayouts(t *testing.T) {
 	for _, count := range []int{0, 1, 4} {
 		for _, unused := range []bool{false, true} {
 			t.Run(fmt.Sprintf("%d/%t", count, unused), func(t *testing.T) {
@@ -87,8 +86,8 @@ func TestV980ConditionalBooleanSelectorsLayouts(t *testing.T) {
 					}
 				}
 				source += fmt.Sprintf(`return (Check("a",a) ? Check("b",b) : Check("c",c)) ? Echo(%s+"Y") : Echo(%s+"Z");}}`, previous, previous)
-				a, p := conditionalLocalTreeProgramVersion(t, PipeLangLanguageContractV980, source, []string{"Select"})
-				aa, pp := conditionalLocalTreeProgramVersion(t, PipeLangLanguageContractV980, source, []string{"Select"})
+				a, p := conditionalLocalTreeProgramVersion(t, PipeLangLanguageContractV990, v990Wrap(t, source), []string{"Select"})
+				aa, pp := conditionalLocalTreeProgramVersion(t, PipeLangLanguageContractV990, v990Wrap(t, source), []string{"Select"})
 				h, err := LowerSemanticMethodToHIR(a, semanticMethodNamed(t, a, "Select").Identity)
 				if err != nil {
 					t.Fatal(err)
@@ -118,7 +117,7 @@ func TestV980ConditionalBooleanSelectorsLayouts(t *testing.T) {
 				}
 				f := coreFunctionNamed(t, p, "Select")
 				prepared := prepareConformanceProgram(t, p)
-				body := f.Body
+				body := *v990FirstLeaf(&f.Body)
 				for body.Kind == coreir.ExprImmutableLocal {
 					body = *body.ImmutableLocal.Return
 				}
@@ -181,28 +180,28 @@ func TestV980ConditionalBooleanSelectorsLayouts(t *testing.T) {
 						t.Fatal(mask, got, err, value)
 					}
 					fmt.Fprintf(&checks, "if got:=%s;got!=%q{t.Fatal(got)}\n", call, value)
-					fmt.Fprintf(&orders, "v980Trace=nil;%s;if !reflect.DeepEqual(v980Trace,[]string{%s}){t.Fatal(v980Trace)}\n", call, quotedStrings(trace))
+					fmt.Fprintf(&orders, "v990Trace=nil;%s;if !reflect.DeepEqual(v990Trace,[]string{%s}){t.Fatal(v990Trace)}\n", call, quotedStrings(trace))
 				}
 				compileAndRunGeneratedGoFiles(t, generated, []byte(fmt.Sprintf("package %s\nimport \"testing\"\nfunc TestValues(t *testing.T){%s}", gobackend.PackageName, checks.String())))
 				observed := string(generated)
-				for marker, probe := range map[string]string{"func PipeLangEcho(p0 string) string {": `v980Trace=append(v980Trace,"E:"+p0)`, "func PipeLangCheck(p0 string, p1 bool) bool {": `v980Trace=append(v980Trace,"C:"+p0)`} {
+				for marker, probe := range map[string]string{"func PipeLangEcho(p0 string) string {": `v990Trace=append(v990Trace,"E:"+p0)`, "func PipeLangCheck(p0 string, p1 bool) bool {": `v990Trace=append(v990Trace,"C:"+p0)`} {
 					if strings.Count(observed, marker) != 1 {
 						t.Fatal("missing trace marker")
 					}
 					observed = strings.Replace(observed, marker, marker+"\n"+probe, 1)
 				}
-				compileAndRunGeneratedGoFiles(t, []byte(observed), []byte(fmt.Sprintf("package %s\nimport (\"testing\";\"reflect\")\nvar v980Trace []string\nfunc TestOrder(t *testing.T){%s}", gobackend.PackageName, orders.String())))
+				compileAndRunGeneratedGoFiles(t, []byte(observed), []byte(fmt.Sprintf("package %s\nimport (\"testing\";\"reflect\")\nvar v990Trace []string\nfunc TestOrder(t *testing.T){%s}", gobackend.PackageName, orders.String())))
 			})
 		}
 	}
 }
 
-func TestV980ConditionalBooleanSelectorsSourceRejection(t *testing.T) {
+func TestV990TerminalLeafBooleanSelectorsSourceRejection(t *testing.T) {
 	prefix := `public Class Choices {public string Select(string raw,bool a,bool b,bool c) `
 	for _, body := range []string{
 		`=> (a ? b : c) ? raw : "x";`,
 		`{string local=(a ? b : c) ? raw : "x";return local;}`,
-		`{if(a){return (a ? b : c) ? raw : "x";}else{return raw;}}`,
+		`{if(a){return (a ? b : c) ? (a ? raw : "x") : raw;}else{return raw;}}`,
 		`{if(a ? b : c){return raw;}else{return "x";}}`,
 		`{return trim((a ? b : c) ? raw : "x");}`,
 		`{return ((a ? b : c) ? b : c) ? raw : "x";}`,
@@ -225,7 +224,7 @@ func TestV980ConditionalBooleanSelectorsSourceRejection(t *testing.T) {
 		`{string local=a ? (b ? (c ? (a ? raw : "x") : raw) : raw) : raw;return (a ? b : c) ? local : raw;}`,
 	} {
 		input := semanticTestModuleSet("compiler.selfhosting", []ModuleInput{testModule("compiler.selfhosting", "selector.pipe", prefix+body+`}`)}, nil)
-		input.LanguageContract = PipeLangLanguageContractV980
+		input.LanguageContract = PipeLangLanguageContractV990
 		analysis := AnalyzeSemanticModuleSet(input)
 		if analysis.Error() == nil {
 			t.Fatal("admitted", body)
@@ -236,8 +235,8 @@ func TestV980ConditionalBooleanSelectorsSourceRejection(t *testing.T) {
 			}
 		}
 	}
-	for version := 1; version <= 97; version++ {
-		input := semanticTestModuleSet("compiler.selfhosting", []ModuleInput{testModule("compiler.selfhosting", "selector.pipe", prefix+`{return (a ? b : c) ? raw : "x";}}`)}, nil)
+	for version := 1; version <= 98; version++ {
+		input := semanticTestModuleSet("compiler.selfhosting", []ModuleInput{testModule("compiler.selfhosting", "selector.pipe", v990Wrap(t, prefix+`{return (a ? b : c) ? raw : "x";}}`))}, nil)
 		input.LanguageContract = LanguageContract(fmt.Sprintf("v0.%d.0", version))
 		if AnalyzeSemanticModuleSet(input).Error() == nil {
 			t.Fatal("older source admitted", version)
@@ -245,10 +244,10 @@ func TestV980ConditionalBooleanSelectorsSourceRejection(t *testing.T) {
 	}
 }
 
-func TestV980ConditionalBooleanSelectorsPriorCoreContracts(t *testing.T) {
+func TestV990TerminalLeafBooleanSelectorsPriorCoreContracts(t *testing.T) {
 	for _, source := range []string{conditionalBooleanSelectorsSource, `public Class Choices {public string Select(string raw,bool a,bool b,bool c){return (a ? b : c) ? raw : "x";}}`} {
-		_, p := conditionalLocalTreeProgramVersion(t, PipeLangLanguageContractV980, source, []string{"Select"})
-		for version := 1; version <= 97; version++ {
+		_, p := conditionalLocalTreeProgramVersion(t, PipeLangLanguageContractV990, v990Wrap(t, source), []string{"Select"})
+		for version := 1; version <= 98; version++ {
 			p.LanguageContract = fmt.Sprintf("v0.%d.0", version)
 			if coreir.ValidateProgram(p) == nil {
 				t.Fatal("older Core admitted", version)
@@ -263,7 +262,7 @@ func TestV980ConditionalBooleanSelectorsPriorCoreContracts(t *testing.T) {
 	}
 }
 
-func TestV980ConditionalBooleanSelectorsMalformedCore(t *testing.T) {
+func TestV990TerminalLeafBooleanSelectorsMalformedCore(t *testing.T) {
 	clone := func(e *coreir.Expr) *coreir.Expr {
 		b, _ := json.Marshal(e)
 		var out coreir.Expr
@@ -272,11 +271,12 @@ func TestV980ConditionalBooleanSelectorsMalformedCore(t *testing.T) {
 		}
 		return &out
 	}
-	for _, mutation := range []string{"outer", "selector", "a", "b", "c", "x", "y", "a type", "b type", "c type", "x type", "result type", "nested a", "nested b", "nested c", "nested x", "nested y", "argument", "initializer", "terminal outer", "terminal selector", "terminal leaf", "hidden a", "hidden x", "local", "init", "continuation", "position", "reference", "self", "identity", "version"} {
+	for _, mutation := range []string{"outer", "selector", "a", "b", "c", "x", "y", "a type", "b type", "c type", "x type", "result type", "nested a", "nested b", "nested c", "nested x", "nested y", "argument", "initializer", "terminal outer", "terminal selector", "hidden a", "hidden x", "local", "init", "continuation", "position", "reference", "self", "identity", "version", "statement condition", "statement depth"} {
 		t.Run(mutation, func(t *testing.T) {
-			_, p := conditionalLocalTreeProgramVersion(t, PipeLangLanguageContractV980, conditionalBooleanSelectorsSource, []string{"Select"})
+			_, p := conditionalLocalTreeProgramVersion(t, PipeLangLanguageContractV990, v990Wrap(t, conditionalBooleanSelectorsSource), []string{"Select"})
 			f := &p.Functions[len(p.Functions)-1]
-			local := f.Body.ImmutableLocal
+			body := v990FirstLeaf(&f.Body)
+			local := body.ImmutableLocal
 			returned := local.Return
 			outer := returned.Conditional
 			selector := outer.Condition.Conditional
@@ -324,17 +324,15 @@ func TestV980ConditionalBooleanSelectorsMalformedCore(t *testing.T) {
 				outer.TerminalStatement = true
 			case "terminal selector":
 				selector.TerminalStatement = true
-			case "terminal leaf":
-				local.Return = &coreir.Expr{Kind: coreir.ExprConditional, Type: returned.Type, Conditional: &coreir.Conditional{TerminalStatement: true, Condition: clone(selector.Condition), WhenTrue: clone(returned), WhenFalse: clone(outer.WhenFalse)}}
 			case "hidden a":
-				hidden := clone(&f.Body)
+				hidden := clone(body)
 				hidden.Type = selector.Condition.Type
 				hidden.ImmutableLocal.Return = clone(selector.Condition)
 				selector.Condition = hidden
 			case "hidden x":
-				outer.WhenTrue = clone(&f.Body)
+				outer.WhenTrue = clone(body)
 			case "local":
-				f.Body.ImmutableLocal = nil
+				body.ImmutableLocal = nil
 			case "init":
 				local.Initializer = nil
 			case "continuation":
@@ -346,6 +344,11 @@ func TestV980ConditionalBooleanSelectorsMalformedCore(t *testing.T) {
 				selector.Condition = &coreir.Expr{Kind: coreir.ExprReference, Type: selector.Condition.Type, Parameter: &ref}
 			case "self":
 				local.Initializer = clone(outer.WhenTrue)
+			case "statement condition":
+				f.Body.Conditional.Condition = clone(outer.Condition)
+			case "statement depth":
+				old := clone(&f.Body)
+				f.Body = coreir.Expr{Kind: coreir.ExprConditional, Type: old.Type, Conditional: &coreir.Conditional{TerminalStatement: true, Condition: clone(selector.Condition), WhenTrue: old, WhenFalse: clone(old)}}
 			case "identity":
 				p.CompilerContract = "unknown"
 			case "version":
@@ -364,9 +367,9 @@ func TestV980ConditionalBooleanSelectorsMalformedCore(t *testing.T) {
 	}
 }
 
-func TestV980ConditionalBooleanSelectorsComputedConditions(t *testing.T) {
+func TestV990TerminalLeafBooleanSelectorsComputedConditions(t *testing.T) {
 	source := `public Class Choices {public bool Check(bool value)=>value;public string Select(string raw,bool a,bool b,bool c){string first=a ? (b ? (c ? trim(raw) : raw) : raw) : raw;bool selected=first!="";return (Check(a && selected) ? Check(b || first=="") : Check(!c)) ? first+"Y" : raw+"Z";}}`
-	_, p := conditionalLocalTreeProgramVersion(t, PipeLangLanguageContractV980, source, []string{"Select"})
+	_, p := conditionalLocalTreeProgramVersion(t, PipeLangLanguageContractV990, v990Wrap(t, source), []string{"Select"})
 	f := coreFunctionNamed(t, p, "Select")
 	var checks strings.Builder
 	for _, raw := range []string{"", " ", " text "} {
@@ -402,7 +405,7 @@ func TestV980ConditionalBooleanSelectorsComputedConditions(t *testing.T) {
 	compileAndRunGeneratedGoFiles(t, generated, []byte(fmt.Sprintf("package %s\nimport \"testing\"\nfunc TestComputed(t *testing.T){%s}", gobackend.PackageName, checks.String())))
 }
 
-func TestV980ConditionalBooleanSelectorsComputedCarriers(t *testing.T) {
+func TestV990TerminalLeafBooleanSelectorsComputedCarriers(t *testing.T) {
 	for _, unused := range []bool{false, true} {
 		t.Run(fmt.Sprint(unused), func(t *testing.T) {
 			local := ""
@@ -410,7 +413,7 @@ func TestV980ConditionalBooleanSelectorsComputedCarriers(t *testing.T) {
 				local = `Result<int,ArithmeticError> unused=a ? (b ? (c ? Make(value) : Make(value)) : Make(value)) : Make(value);`
 			}
 			source := `public Class Choices {public Result<int,ArithmeticError> Make(int value)=>value+1;public Result<int,ArithmeticError> Select(int value,bool a,bool b,bool c){` + local + `return (a ? b : c) ? Make(value) : Make(0);}}`
-			_, p := conditionalLocalTreeProgramVersion(t, PipeLangLanguageContractV980, source, []string{"Select"})
+			_, p := conditionalLocalTreeProgramVersion(t, PipeLangLanguageContractV990, v990Wrap(t, source), []string{"Select"})
 			f := coreFunctionNamed(t, p, "Select")
 			var checks strings.Builder
 			for _, value := range []int64{-9223372036854775808, 0, 9223372036854775807} {
@@ -446,12 +449,13 @@ func TestV980ConditionalBooleanSelectorsComputedCarriers(t *testing.T) {
 	}
 }
 
-func TestV980ConditionalBooleanSelectorsInternalCoreBoundary(t *testing.T) {
+func TestV990TerminalLeafBooleanSelectorsInternalCoreBoundary(t *testing.T) {
 	for _, slot := range []string{"a", "b", "c", "x", "y"} {
 		t.Run(slot, func(t *testing.T) {
-			_, p := conditionalLocalTreeProgramVersion(t, PipeLangLanguageContractV980, conditionalBooleanSelectorsSource, []string{"Select"})
+			_, p := conditionalLocalTreeProgramVersion(t, PipeLangLanguageContractV990, v990Wrap(t, conditionalBooleanSelectorsSource), []string{"Select"})
 			f := &p.Functions[len(p.Functions)-1]
-			outer := f.Body.ImmutableLocal.Return.Conditional
+			body := v990FirstLeaf(&f.Body)
+			outer := body.ImmutableLocal.Return.Conditional
 			selector := outer.Condition.Conditional
 			target := &selector.Condition
 			switch slot {
@@ -465,12 +469,46 @@ func TestV980ConditionalBooleanSelectorsInternalCoreBoundary(t *testing.T) {
 				target = &outer.WhenFalse
 			}
 			value := *target
-			position := f.Body.ImmutableLocal.Position + 1
+			position := body.ImmutableLocal.Position + 1
 			*target = &coreir.Expr{Kind: coreir.ExprImmutableLocal, Type: value.Type, ImmutableLocal: &coreir.ImmutableLocal{Name: "hidden", Position: position, Type: value.Type, Initializer: value, Return: &coreir.Expr{Kind: coreir.ExprReference, Type: value.Type, Parameter: &position}}}
 			if err := coreir.ValidateFunction(*f); err != nil {
 				t.Fatalf("generic internal Core narrowed: %v", err)
 			}
 			assertAdmissionRejected(t, p, "")
 		})
+	}
+}
+
+func v990Wrap(t *testing.T, source string) string {
+	t.Helper()
+	signature := source[strings.Index(source, " Select("):]
+	condition := regexp.MustCompile(`bool ([a-zA-Z_][a-zA-Z0-9_]*)`).FindStringSubmatch(signature)[1]
+	return v940WrapBody(t, source, terminalTrees(3)[25], condition)
+}
+func v990FirstLeaf(body *coreir.Expr) *coreir.Expr {
+	for body.Kind == coreir.ExprConditional && body.Conditional.TerminalStatement {
+		body = body.Conditional.WhenTrue
+	}
+	return body
+}
+
+func TestV990TerminalLeafBooleanSelectorsLexicalRefusal(t *testing.T) {
+	for _, body := range []string{
+		`string root=raw;if(a){string root=raw;return (a ? b : c) ? root : raw;}else{return raw;}`,
+		`if(a){string branch=raw;return (a ? b : c) ? branch : raw;}else{return (a ? b : c) ? branch : raw;}`,
+		`if(a){string local=local;return (a ? b : c) ? local : raw;}else{return raw;}`,
+		`if(a){string local=later;string later=raw;return (a ? b : c) ? local : raw;}else{return raw;}`,
+		`if(a){string local=raw;string local=raw;return (a ? b : c) ? local : raw;}else{return raw;}`,
+		`if(a){string local=(a ? b : c) ? raw : "x";return local;}else{return raw;}`,
+		`if(a){if(a ? b : c){return raw;}else{return raw;}}else{return raw;}`,
+		`if(a){return trim((a ? b : c) ? raw : "x");}else{return raw;}`,
+		`if(a){if(b){if(c){if(a){return (a ? b : c) ? raw : "x";}else{return raw;}}else{return raw;}}else{return raw;}}else{return raw;}`,
+	} {
+		source := `public Class Choices {public string Select(string raw,bool a,bool b,bool c){` + body + `}}`
+		input := semanticTestModuleSet("compiler.selfhosting", []ModuleInput{testModule("compiler.selfhosting", "scope.pipe", source)}, nil)
+		input.LanguageContract = PipeLangLanguageContractV990
+		if AnalyzeSemanticModuleSet(input).Error() == nil {
+			t.Fatal("admitted", body)
+		}
 	}
 }

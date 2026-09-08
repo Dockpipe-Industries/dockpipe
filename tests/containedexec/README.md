@@ -614,3 +614,15 @@ four `choices` subtests and exports 64 fixtures to `fixtures-v098`. Fresh `matri
 measurements retain normal inlining and 128 MiB / 5-second direct compiler ceilings.
 The bounded matrix uses three shared input bits; it does not claim all independent
 initializer assignments at arbitrary sequence lengths.
+
+The v0.99 terminal-leaf boolean selector matrices enumerate all 25 statement shapes.
+Use `--split-test TestV990TerminalLeafBooleanSelectorsSubsets=100` and
+`--split-test TestV990TerminalLeafBooleanSelectorsScopeLayouts=25`. Subset shapes use four disjoint subset partitions each. Modules
+contain at most eight methods; every leaf subset exhausts 64 routing/selector vectors.
+Scope layouts cross one/three locals and used/unused final bindings at each scope,
+with 512 routing/selector/initializer vectors. Bits are independent between these
+three groups but shared by statement depth and across local initializers.
+`TestV990TerminalLeafBooleanSelectorsMemory` crosses root/intermediate/leaf placement,
+four initializer depths, used/unused tails and 0/1/8/16/32/64/128/256 actual locals
+(192 cases). Export `fixtures-v099`, then use `matrix.py` for fresh isolated compiler
+proof under unchanged normal-inlining 128 MiB / 5-second ceilings.

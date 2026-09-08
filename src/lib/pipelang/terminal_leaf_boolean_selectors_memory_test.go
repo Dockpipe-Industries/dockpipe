@@ -19,8 +19,8 @@ import (
 	"dockpipe/tests/containedexec"
 )
 
-// Scale actual depth-three local initializers; no helper call hides initializer closure growth.
-func TestV970DepthThreeTerminalInitializersMemory(t *testing.T) {
+// Scale actual preceding local sequences and a directly returned conditional selector.
+func TestV990TerminalLeafBooleanSelectorsMemory(t *testing.T) {
 	command := exec.Command(filepath.Join(runtime.GOROOT(), "bin", "go"), "list", "-export", "-f", "packagefile {{.ImportPath}}={{.Export}}", "unicode/utf8")
 	imports, err := containedexec.CombinedOutput(command)
 	if err != nil {
@@ -28,34 +28,32 @@ func TestV970DepthThreeTerminalInitializersMemory(t *testing.T) {
 	}
 	for shape := 0; shape < 12; shape++ {
 		for _, unused := range []bool{false, true} {
-			label := fmt.Sprintf("v0.97.0/choices%d/branchtrue/straightfalse/unused%t", shape, unused)
+			label := fmt.Sprintf("v0.99.0/choices%d/branchtrue/straightfalse/unused%t", shape, unused)
 			t.Run(label, func(t *testing.T) {
 				baselineDepth := -1
-				for _, count := range []int{1, 8, 16, 24, 32, 64, 128, 256} {
+				for _, count := range []int{0, 1, 8, 16, 32, 64, 128, 256} {
 					if !t.Run(fmt.Sprint(count), func(t *testing.T) {
-						left, right := `raw+"A"`, `raw+"C"`
-						if (shape%4)&1 != 0 {
-							left = `left ? raw+"A" : raw+"B"`
-						}
-						if (shape%4)&2 != 0 {
-							right = `right ? raw+"C" : raw+"D"`
-						}
 						var source strings.Builder
-						fmt.Fprintf(&source, `public Class Choices {public string Select(string raw,bool outer,bool left,bool right){`)
+						source.WriteString(`public Class Choices {public string Select(string raw,bool outer,bool left,bool right){`)
 						previous := "raw"
 						for i := 0; i < count; i++ {
-							name := fmt.Sprintf("q%d", i)
-							l := strings.ReplaceAll(left, "raw", previous)
-							r := strings.ReplaceAll(right, "raw", previous)
-							fmt.Fprintf(&source, "string %s=outer ? (left ? (%s) : (%s)) : (right ? (%s) : (%s));", name, l, l, r, r)
+							init := previous + `+"O"`
+							switch shape % 4 {
+							case 1:
+								init = fmt.Sprintf(`outer ? %s+"T" : %s+"F"`, previous, previous)
+							case 2:
+								init = fmt.Sprintf(`outer ? (left ? %s+"T" : %s+"N") : %s+"F"`, previous, previous, previous)
+							case 3:
+								init = fmt.Sprintf(`outer ? (left ? (right ? %s+"T" : %s+"M") : %s+"N") : %s+"F"`, previous, previous, previous, previous)
+							}
+							fmt.Fprintf(&source, "string q%d=%s;", i, init)
 							if !unused || i < count-1 {
-								previous = name
+								previous = fmt.Sprintf("q%d", i)
 							}
 						}
-						fmt.Fprintf(&source, "return %s;}}", previous)
-
+						fmt.Fprintf(&source, `return (outer ? left : right) ? %s+"Y" : %s+"Z";}}`, previous, previous)
 						placed := v970ScalePlacement(t, source.String(), shape/4)
-						_, program := conditionalLocalTreeProgramVersion(t, PipeLangLanguageContractV970, placed, []string{"Select"})
+						_, program := conditionalLocalTreeProgramVersion(t, PipeLangLanguageContractV990, placed, []string{"Select"})
 						f := coreFunctionNamed(t, program, "Select")
 						generated, err := gobackend.Generate(program)
 						if err != nil {
@@ -84,32 +82,45 @@ func TestV970DepthThreeTerminalInitializersMemory(t *testing.T) {
 							}
 							return true
 						})
+						// Three statement wrappers plus one local wrapper and up to three
+						// initializer choices are fixed topology, not sequence-length growth.
+						if maximum > 7 {
+							t.Fatalf("local-driven closure growth: %d", maximum)
+						}
 						if count == 1 {
 							baselineDepth = maximum
-						}
-						// Terminal placement adds zero, one or three fixed statement closures.
-						// Local count must never grow the one-local depth; compiler ceilings stay fixed.
-						placementCeiling := []int{4, 5, 7}[shape/4]
-						if maximum > placementCeiling || maximum > baselineDepth {
-							t.Fatalf("local-driven closure growth: %d", maximum)
+						} else if count > 1 && maximum > baselineDepth {
+							t.Fatalf("closure depth grew from %d to %d", baselineDepth, maximum)
 						}
 						var checks strings.Builder
 						for mask := 0; mask < 8; mask++ {
-							suffix := "C"
-							if mask&1 != 0 {
-								suffix = "A"
-								if (shape%4)&1 != 0 && mask&2 == 0 {
-									suffix = "B"
+							suffix := "O"
+							if shape%4 > 0 {
+								suffix = "F"
+								if mask&1 != 0 {
+									suffix = "T"
+									if shape%4 >= 2 && mask&2 == 0 {
+										suffix = "N"
+									}
+									if shape%4 == 3 && mask&2 != 0 && mask&4 == 0 {
+										suffix = "M"
+									}
 								}
-							} else if (shape%4)&2 != 0 && mask&4 == 0 {
-								suffix = "D"
 							}
 							selected := count
 							if unused && count > 0 {
 								selected--
 							}
-
 							want := "raw" + strings.Repeat(suffix, selected)
+							choose := mask&4 != 0
+							if mask&1 != 0 {
+								choose = mask&2 != 0
+							}
+							if choose {
+								want += "Y"
+							} else {
+								want += "Z"
+							}
 							if (shape/4 == 1 && mask&1 == 0) || (shape/4 == 2 && mask != 7) {
 								want = "raw"
 							}
@@ -144,7 +155,7 @@ func TestV970DepthThreeTerminalInitializersMemory(t *testing.T) {
 							if err := os.MkdirAll(fixture, 0700); err != nil {
 								t.Fatal(err)
 							}
-							metadata, _ := json.MarshalIndent(map[string]any{"version": "v0.97.0", "locals": count, "choices": shape, "branch": true, "straight": false, "unused": unused, "closure_depth": maximum, "compiler_rss_kib": measurement.MaxRSSKiB, "compiler_elapsed_s": measurement.Elapsed.Seconds()}, "", "  ")
+							metadata, _ := json.MarshalIndent(map[string]any{"version": "v0.99.0", "locals": count, "choices": shape, "branch": true, "straight": false, "unused": unused, "closure_depth": maximum, "compiler_rss_kib": measurement.MaxRSSKiB, "compiler_elapsed_s": measurement.Elapsed.Seconds()}, "", "  ")
 							for name, data := range map[string][]byte{"source.pipe": []byte(placed), "generated.go": generated, "generated_test.go": tests, "go.mod": []byte("module depth-three-scale\n\ngo 1.25\n"), "importcfg": imports, "measurement.json": metadata} {
 								if err := os.WriteFile(filepath.Join(fixture, name), data, 0600); err != nil {
 									t.Fatal(err)
@@ -158,30 +169,5 @@ func TestV970DepthThreeTerminalInitializersMemory(t *testing.T) {
 				}
 			})
 		}
-	}
-}
-
-// One growing sequence is placed before the tree, at an intermediate scope, or
-// at a depth-three leaf. Other branches stay distinct and return the original.
-func v970ScalePlacement(t *testing.T, source string, placement int) string {
-	t.Helper()
-	start := strings.Index(source, "{") + 1
-	start += strings.Index(source[start:], "{") + 1
-	end := strings.LastIndex(source, "return ")
-	if start <= 0 || end < start {
-		t.Fatal("missing scale method")
-	}
-	locals := source[start:end]
-	ret := source[end : len(source)-2]
-	switch placement {
-	case 0:
-		return source[:start] + locals + "if(outer){if(left){if(right){" + ret + "}else{" + ret + "}}else{" + ret + "}}else{" + ret + "}}}"
-	case 1:
-		return source[:start] + "if(outer){" + locals + "if(left){if(right){" + ret + "}else{" + ret + "}}else{" + ret + "}}else{return raw;}}}"
-	case 2:
-		return source[:start] + "if(outer){if(left){if(right){" + locals + ret + "}else{return raw;}}else{return raw;}}else{return raw;}}}"
-	default:
-		t.Fatal("unknown scale placement")
-		return ""
 	}
 }
