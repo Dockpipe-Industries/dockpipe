@@ -71,7 +71,7 @@ func testFiniteConditionalLocalsLayouts(t *testing.T, contract LanguageContract,
 	if nestedInitializer {
 		extraBits += 2
 	}
-	bundle := contract == PipeLangLanguageContractV910 && os.Getenv("PIPELANG_NATIVE_BUNDLE") == "1" && os.Getenv("PIPELANG_GENERATED_BATCH") == "1" && os.Getenv("PIPELANG_COMPILED_CACHE") != "" && os.Getenv("GOFLAGS") == "" && os.Getenv("GOENV") == "off"
+	bundle := os.Getenv("PIPELANG_NATIVE_BUNDLE") == "1" && os.Getenv("PIPELANG_GENERATED_BATCH") == "1" && os.Getenv("PIPELANG_COMPILED_CACHE") != "" && os.Getenv("GOFLAGS") == "" && os.Getenv("GOENV") == "off"
 	methodsTotal, outcomes := 0, 0
 	var totals sync.Mutex
 	parallel := len(trees) > 1 && parallelFiniteShapes()

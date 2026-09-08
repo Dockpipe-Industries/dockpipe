@@ -38,8 +38,19 @@ type generatedBatchCase struct {
 	sharedOracle   []byte
 }
 type generatedBatchQueue struct {
-	cases []generatedBatchCase
-	bytes int
+	cases       []generatedBatchCase
+	bytes       int
+	sourceBytes int
+}
+
+// Shared linking is a test-framework policy, independent of language version or
+// oracle format. Keep the small comparison path and the same source/fixture
+// bounds: large generated checks must not turn a bundle into an unbounded build.
+func generatedBatchLimits(sharedOracle bool) (packages, totalBytes int) {
+	if sharedOracle || os.Getenv("PIPELANG_NATIVE_BUNDLE") == "1" {
+		return 32, 32 << 20
+	}
+	return 4, 8 << 20
 }
 
 var generatedBatches = struct {
@@ -174,19 +185,14 @@ func queueGeneratedBatchWithOracle(t *testing.T, source, checks []byte, fixtures
 	}
 	queue.cases = append(queue.cases, item)
 	queue.bytes += size
-	sourceBytes := 0
-	for _, item := range queue.cases {
-		sourceBytes += len(item.source) + len(item.checks)
-	}
+	queue.sourceBytes += len(source) + len(checks)
 	var ready []generatedBatchCase
-	limit, fixtureLimit := 4, 8<<20
-	if len(sharedOracle) != 0 {
-		limit, fixtureLimit = 32, 32<<20
-	}
-	if len(queue.cases) >= limit || queue.bytes >= fixtureLimit || sourceBytes >= 512<<10 {
+	limit, fixtureLimit := generatedBatchLimits(len(sharedOracle) != 0)
+	if len(queue.cases) >= limit || queue.bytes >= fixtureLimit || queue.sourceBytes >= 512<<10 {
 		ready = queue.cases
 		queue.cases = nil
 		queue.bytes = 0
+		queue.sourceBytes = 0
 	}
 	generatedBatches.Unlock()
 	runGeneratedBatch(t, ready)

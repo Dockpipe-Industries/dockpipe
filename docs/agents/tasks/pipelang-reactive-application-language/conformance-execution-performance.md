@@ -1973,3 +1973,145 @@ suite planner/accounting tests, CLI help and `git diff --check`. The earlier fre
 637-test ordinary and packed acceptance runs remain evidence for their unchanged
 execution paths; no new whole-suite timing or compiler run is claimed. No further
 compression search, cache cleanup, commit, push or successor work was started.
+
+### Shared native test framework (2026-09-08)
+
+Objective `TASK-021-shared-native-test-framework` is executing under explicit
+implementation and verification authority, in the saved checkout. Checkpoints
+advance automatically; handoff is user-requested only. Completion requires reusable
+integration, compatible coverage and standalone exceptions, equivalent native
+results/current independent expectations, contained focused and complete proof,
+and matched storage/timing/aggregate-memory evidence. Source/toolchain invalidation,
+fresh processes and fixtures, compiler probes and debug information remain intact.
+No language/runtime changes, compression research, cache cleanup, commit or external
+operations are authorized. The earlier completed ordinary/packed proof is admitted;
+all combined source hashes and protected checkout anchors match at entry.
+
+First checkpoint: retained-cache profiling identifies v0.90 initializer layouts
+as the largest not-yet-shared conformance family (210 identities, 926,463,000
+approximate executable bytes, 850 generated audits). The larger compiler-memory
+family retains independent compiler probes. Extend bounded ordinary linking first,
+without changing generated checks or expectations; retain the four-package control.
+The existing 512 KiB source threshold and fresh per-case execution remain. Measure
+this family before extending shared-oracle admission or selecting another seam.
+Evidence root: `/tmp/pipelang-shared-framework/`.
+
+Checkpoint 1 passed (`checkpoint1.json`): v0.90 has 210 -> 50 identities and
+926,455,325 -> 243,150,956 executable bytes (73.76% smaller selected set). All 850
+ordered source/fixture/test-name audit records match. Matched five-shape warm
+execution was 8.642 -> 6.484 seconds; aggregate peaks 188,526,592 -> 29,515,776
+bytes. Cold population passed all 25 individually contained partitions in 33.386
+outer seconds. Originals coexist; no storage was deleted. This justifies retaining
+general bounded linking and proceeding to shared finite-oracle admission for all
+families already using that same helper, plus framework regressions and full proof.
+
+Framework integration/cold proof passed: `full-populate/` discovers 638 tests
+(the original 637 plus the ordinary-bundle regression), passes 1,385 one-shape
+contained units, and preserves all 7,743 ordered source/fixture/test-name audit
+records, 7,743 fresh native invocations, 22,694 generated test functions, and 623
+direct compiler probes. There are 2,331 selected artifacts totaling 11,014,199,270
+bytes, versus the admitted 2,719 totaling 12,691,261,599. Cold population made
+377 new links (some v0.90 links were already populated); the slowest link took
+5.728 seconds. Aggregate peak was 377,073,664 bytes with zero memory/swap event
+increases. The 838,985,441-byte private intermediate cache is retained and charged.
+Cold outer time was 958.288 seconds with one shape per unit; this is not a warm
+comparison. All cgroups were removed and source hashes stayed unchanged.
+
+Focused shared/ordinary regressions separately prove current-oracle rejection on
+hits, source/support invalidation, fixture rewrites, fresh process globals, sealing,
+corruption repair, build-setting invalidation, and special-harness rejection.
+Four Python planner/accounting tests passed. Remaining complete warm comparison
+uses the identical five-shape schedule and two workers on both sides. Its control
+rebuilds the three pre-change Go helper files from admitted HEAD through a temporary
+Go overlay, plus runs the additive ordinary-framework regression from the current
+binary on both sides. The checkout is never rolled back or moved. README wording
+was reconciled after the cold pass; no Go behavior changed between cold and warm.
+
+### Shared framework acceptance complete (2026-09-08)
+
+`TASK-021-shared-native-test-framework` is **completed** and the generalized path
+is retained. The existing framework now applies its 32-package policy to all
+eligible ordinary generated checks, not only shared-oracle cases. The six finite
+layout families using the common helper also share its existing Value/Trace oracle
+without a version-specific gate. Queue source accounting is incremental; source
+and fixture thresholds, compiler serialization, special-harness exclusions, cache
+keys, executable sealing, fresh processes, fixture ownership and debug information
+are preserved. No evaluator, backend, language contract, engine or package behavior
+changed. The four-package control remains available via `--no-native-bundle`.
+
+Fresh matched acceptance uses the same 813-unit, five-shape schedule and two workers
+on both sides. The control rebuilds original helpers through an exact temporary
+Go source overlay; the one additive regression runs from the current binary on
+both sides. Both pass all 638 discovered tests, 13,060 named invocations including
+multiplicity, all 7,743 identical ordered source/fixture/test-name audits, 7,743
+fresh native processes, 22,694 generated test functions, and 623 direct compiler
+resource probes. Both have zero conformance artifact misses; negative fixture,
+source/support/settings invalidation, corruption and sealing regressions still
+perform their intentional fresh checks. The complete candidate's source snapshot
+is unchanged. Go vet, four Python planner/accounting checks and diff/format checks
+also passed. Application IR/compatibility implementation was not modified or
+separately rebaselined; its prior proof remains admitted.
+
+| Matched warm measure | Original framework | Shared framework |
+| --- | ---: | ---: |
+| Execution phase | 388.011 s | 377.156 s |
+| Summed contained test-unit elapsed | 683.533 s | 662.034 s |
+| Selected executable identities | 2,719 | 2,331 |
+| Selected executable bytes | 12,691,261,599 | 11,014,199,270 |
+| Peak aggregate test-unit memory | 285,921,280 bytes | 286,257,152 bytes |
+
+The 2.80% warm improvement is a **single matched pair**, not a statistical or
+cross-machine speed guarantee. Retention is supported by the reduction in native
+link duplication and selected executable storage (388 fewer identities, 13.21%
+fewer bytes), the larger v0.90 checkpoint improvement, and unchanged coverage and
+resource behavior. No numerical reduction target or 1/1000 claim is made.
+
+Applicable families and remaining boundaries were assessed from executed artifacts:
+
+| Family | Original identities | Shared identities |
+| --- | ---: | ---: |
+| v0.90 initializer layouts | 210 | 50 |
+| v0.96 initializer layouts | 178 | 76 |
+| v0.89 terminal-leaf return layouts | 84 | 26 |
+| v0.93 depth-three return layouts | 75 | 50 |
+| v0.94 depth-three terminal-leaf layouts | 75 | 50 |
+| Existing v0.91 bundles | 200 | 200 |
+| Individual main compiler-resource cases | 574 | 574 |
+
+The remaining executable count is real. Source-heavy cases still flush at the
+source threshold; independent owning subtests and direct compiler probes retain
+their boundaries. Custom initialization/harnesses, identity-observing checks,
+explicit flags, unsupported imports and extra Go fixtures retain the original
+path. Some families already hit source/lifetime limits and gain little or no
+storage. No thresholds, test sizes or resource limits were weakened to improve
+these numbers. Further cross-lifetime pooling or assertion-format rewrites are
+optional future work, not an unfinished acceptance requirement.
+
+Storage limitations are explicit. **Zero bytes were freed**: original executables,
+old compiler entries and prior research coexist with the new artifacts. The cold
+run's private compiler intermediates occupy 838,985,441 bytes. The shared Go cache
+grew from 30,529,933,755 bytes before full population to 32,427,945,983 bytes; the
+new task's evidence, binaries, fixtures and intermediates occupy about 1.020 GB.
+`storage-final.json` charges every earlier non-overlapping research/control root,
+original/new executables, Go cache, current task, repository inputs and external
+runtime/toolchain support (about 87.37 GB). Thus reduced selected executable bytes
+do **not** establish a reduction in total retained framework storage here, even
+before considering the deliberately coexisting original set. No cleanup or cache
+migration is authorized or performed.
+
+All 3,063 contained reports passed and their cgroups are gone. Peak aggregate
+memory across all work was 722,968,576 bytes during a test-binary build; cold native
+suite units peaked at 377,073,664 bytes. There were zero increases in memory-high,
+hard-memory, OOM or swap events. Every workload used the offline cached Go 1.25.13
+runner, 30-second units, 25-second test children, 700 MiB high, 1 GiB hard, 800 MiB
+proactive stop, zero swap, 128 tasks and at most two concurrent units. All 3,121
+original/selected executable SHA256 digests and debug-info/line sections were
+verified. Branch `js/pipelang`, HEAD `a8c301fb17a5aab104b72602314e96e23259a956`,
+empty index, both protected stashes and the 108,166-entry ignored inventory are
+preserved. No worktree, commit, push, install, compression research, cache cleanup
+or persistent external operation occurred.
+
+Machine-readable closeout: `/tmp/pipelang-shared-framework/final-evidence.json`.
+Full source/coverage, per-family counts, timings, resource reports, storage and
+control-overlay evidence are alongside it. Implementation is limited to the
+compiler-owned test helpers, contained-suite help/docs and TASK-021 routing.

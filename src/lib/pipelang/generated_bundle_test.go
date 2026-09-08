@@ -57,10 +57,19 @@ func TestGeneratedBundleSealedSnapshot(t *testing.T) {
 }
 
 func TestGeneratedBundleCurrentOracles(t *testing.T) {
+	testGeneratedBundleCurrentOracles(t, false)
+}
+
+func TestGeneratedOrdinaryBundleCurrentOracles(t *testing.T) {
+	testGeneratedBundleCurrentOracles(t, true)
+}
+
+func testGeneratedBundleCurrentOracles(t *testing.T, ordinary bool) {
 	if runtime.GOOS != "linux" {
 		t.Skip("Linux sealed bundle prototype")
 	}
 	if mode := os.Getenv("PIPELANG_BUNDLE_PROBE"); mode != "" {
+		mode = strings.TrimPrefix(mode, "ordinary-")
 		oracle := strings.Replace(finiteSharedOracle, "t.Helper()", `t.Helper(); invocations++; if invocations != 1 { t.Fatal("shared process state leaked") }`, 1) + "\nvar invocations int\n"
 		if mode == "support" {
 			oracle += "\n// changed shared checking code\n"
@@ -76,7 +85,20 @@ func TestGeneratedBundleCurrentOracles(t *testing.T) {
 				value = "wrong"
 			}
 			fixture := []byte(fmt.Sprintf("[{\"Value\":%q,\"Trace\":[]}]", value))
-			if !queueGeneratedBatchWithOracle(t, []byte(source), checks, map[string][]byte{"oracle.json": fixture}, []byte(oracle)) {
+			var support = []byte(oracle)
+			if ordinary {
+				// The same regression covers ordinary packages: the assertion is
+				// local, while the fixture and process must still be fresh on hits.
+				checks = []byte(`package generated; import ("testing"; "os"; "encoding/json")
+func TestCurrent(t *testing.T) {
+ data,err:=os.ReadFile("oracle.json"); if err!=nil {t.Fatal(err)}
+ var wants []struct{Value string}; if err:=json.Unmarshal(data,&wants);err!=nil {t.Fatal(err)}
+ if len(wants)!=1 {t.Fatal("fixture count")}; if got:=Value();got!=wants[0].Value {t.Fatalf("got %q want %q",got,wants[0].Value)}
+ if err:=os.WriteFile("oracle.json",[]byte("changed by child"),0600);err!=nil {t.Fatal(err)}
+}`)
+				support = nil
+			}
+			if !queueGeneratedBatchWithOracle(t, []byte(source), checks, map[string][]byte{"oracle.json": fixture}, support) {
 				t.Fatal("bundle rejected")
 			}
 		}
@@ -102,9 +124,12 @@ func TestGeneratedBundleCurrentOracles(t *testing.T) {
 	for _, tc := range []struct {
 		mode      string
 		hit, fail bool
-	}{{"initial", false, false}, {"repeat", true, false}, {"oracle", true, true}, {"source", false, false}, {"support", false, false}} {
-		cmd := exec.Command(executable, "-test.run", "^TestGeneratedBundleCurrentOracles$", "-test.count=1", "-test.v", "-test.timeout=25s")
-		cmd.Env = append(os.Environ(), "GOENV=off", "GOFLAGS=", "PIPELANG_GENERATED_BATCH=1", "PIPELANG_COMPILED_CACHE="+root, "PIPELANG_BUNDLE_PROBE="+tc.mode, "PIPELANG_BUNDLE_BUILD_CACHE="+buildCache)
+	}{{"initial", false, false}, {"repeat", true, false}, {"oracle", true, true}, {"source", false, false}, {"support", false, false}, {"ordinary-initial", false, false}, {"ordinary-repeat", true, false}, {"ordinary-oracle", true, true}, {"ordinary-source", false, false}} {
+		if strings.HasPrefix(tc.mode, "ordinary-") != ordinary {
+			continue
+		}
+		cmd := exec.Command(executable, "-test.run", "^"+t.Name()+"$", "-test.count=1", "-test.v", "-test.timeout=25s")
+		cmd.Env = append(os.Environ(), "GOENV=off", "GOFLAGS=", "PIPELANG_NATIVE_BUNDLE=1", "PIPELANG_GENERATED_BATCH=1", "PIPELANG_COMPILED_CACHE="+root, "PIPELANG_BUNDLE_PROBE="+tc.mode, "PIPELANG_BUNDLE_BUILD_CACHE="+buildCache)
 		output, _, err := containedexec.Measure(cmd)
 		if (err != nil) != tc.fail {
 			t.Fatalf("%s: %v\n%s", tc.mode, err, output)
@@ -126,7 +151,11 @@ func TestGeneratedBundleCurrentOracles(t *testing.T) {
 			count++
 		}
 	}
-	if count != 3 {
-		t.Fatalf("got %d retained bundles; want three build identities", count)
+	want := 3
+	if ordinary {
+		want = 2
+	}
+	if count != want {
+		t.Fatalf("got %d retained bundles; want %d build identities", count, want)
 	}
 }
