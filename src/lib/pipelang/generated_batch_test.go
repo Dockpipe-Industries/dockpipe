@@ -274,6 +274,12 @@ func runGeneratedBatch(t *testing.T, cases []generatedBatchCase) {
 		t.Fatal(err)
 	}
 	var key string
+	var sealed *os.File
+	defer func() {
+		if sealed != nil {
+			sealed.Close()
+		}
+	}()
 	hit := false
 	if cacheRoot != "" {
 		key, err = generatedArtifactKey(dir)
@@ -285,7 +291,14 @@ func runGeneratedBatch(t *testing.T, cases []generatedBatchCase) {
 			t.Fatal(err)
 		}
 		defer unlock()
-		if cached, ok := readGeneratedArtifact(cacheRoot, key); ok {
+		sealed, err = acquireGeneratedRepresentation(cacheRoot, key)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if sealed != nil {
+			hit = true
+			binary = filepath.Join(cacheRoot, key, "program.test")
+		} else if cached, ok := readGeneratedArtifact(cacheRoot, key); ok {
 			binary = cached
 			hit = true
 		} else if err := quarantineGeneratedArtifact(cacheRoot, key); err != nil {
@@ -337,11 +350,16 @@ func runGeneratedBatch(t *testing.T, cases []generatedBatchCase) {
 	if root := os.Getenv("PIPELANG_SHARED_EXPORT"); root != "" && sharedOracle != nil {
 		exportGeneratedSharedExperiment(t, root, dir, binary, key)
 	}
-	var sealed *os.File
+	if sealed == nil {
+		sealed, err = acquireGeneratedRepresentation(cacheRoot, key)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
 	// Reuse one immutable snapshot across a retained batch's fresh children.
 	// This preserves exact executed bytes without rehashing the same binary for
 	// every case. Single-case and non-Linux batches retain path revalidation.
-	if sharedOracle != nil || (cacheRoot != "" && len(cases) > 1 && runtime.GOOS == "linux") {
+	if sealed == nil && (sharedOracle != nil || (cacheRoot != "" && len(cases) > 1 && runtime.GOOS == "linux")) {
 		var expected string
 		var err error
 		if cacheRoot != "" {
@@ -356,7 +374,6 @@ func runGeneratedBatch(t *testing.T, cases []generatedBatchCase) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		defer sealed.Close()
 	}
 	// Each original generated module still executes in a new contained child.
 	// Its fixture cwd and package globals are isolated; no test result is cached.

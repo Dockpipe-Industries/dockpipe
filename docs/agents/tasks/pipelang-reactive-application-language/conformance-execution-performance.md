@@ -1282,3 +1282,694 @@ protected stashes and ignored inventory, empty staging, valid task YAML and clea
 across all nonoverlapping retained roots, including 232,151,257 in the new proof root
 and unchanged native/cache/toolchain roots. Increase from the initial inventory is
 934,239,785 bytes. The snapshot excludes its own subsequently written receipt.
+
+### Reopened: resemblance search plus exact reconstruction
+
+The user explicitly requested research into other search algorithms and an integrated
+experiment. State: **executing**. The bounded outcome is a measured comparison of
+similarity-selected references, exact deltas and stronger compression on the existing
+200-bundle family, including reference-selection controls, exact reconstruction,
+native replay if feasible, memory and complete storage accounting. Evidence and
+primary-source research: `/tmp/pipelang-similarity-probe/research.md`. Preserve all
+existing invariants and prior full-suite proof; no production promotion, new language
+contract, commit, push, installation or cache cleanup is implied. The new clean HEAD
+is recorded in `admission.json`; accepted execution-source hashes still match.
+
+### Similarity-search experiment completed
+
+The integrated research and experiment are complete; see
+[the canonical similarity-search report](conformance-similarity-search-experiment.md).
+Four resemblance strategies, exhaustive sampled reference controls, compression
+levels 3/12/19, a resident codec and reference-local scheduling were investigated.
+The 200-bundle delta representation is 326,456,238 bytes including references, versus
+573,756,821 independently compressed at the same level. Complete dependency-inclusive
+candidate:471,867,963 bytes. Final mirrored replay is 14.072/13.216s versus
+13.416/12.915s raw controls: an observed 0.30–0.66s cost, not zero-cost reconstruction.
+All 14 replay inventories retain 2064 native cases/9704 named tests, exact original
+ELF/DWARF bytes, fresh current independent expected values/traces and process isolation.
+The 130 contained units, negative checks, all alternatives and complete storage are
+recorded. No production implementation changed or candidate was promoted. State:
+**completed research experiment**; no successor language contract selected.
+
+### Further reconstruction research authorized
+
+The user explicitly requested further research and boundary-pushing experiments.
+State: **executing**. Preserve the complete prior similarity experiment and native
+proof. Investigate structure-aware residuals, bounded reference hierarchies and
+decode directly into the verified executable buffer. Compare actual sizes, exact
+reconstruction, fresh native execution, wall/CPU time, memory and full support
+storage before judging candidates. Evidence: `/tmp/pipelang-reconstruction-frontier/`.
+No production promotion, new language contract, installation or cache cleanup.
+
+### Further reconstruction batch completed
+
+[The second research round](conformance-similarity-search-experiment.md) measured
+structure-aligned residuals, every root in a bounded two-level reference hierarchy,
+and direct decoding into verified/sealed executable storage. Structural residuals
+lost on all 12 samples and were not expanded. The hierarchy saves another 18,981,428
+encoded bytes: **307,474,810 bytes**, or **454,822,892** with complete support/manifests.
+Four raw/hierarchy runs each have nearly identical mean wall time (14.254/14.251s),
+but hierarchy uses about 1.6% more cgroup CPU. No zero-overhead or whole-suite
+speedup claim is supported. All 12 native replays retain 2064 cases/9704 named tests,
+exact ELF/DWARF bytes, fresh current oracles/processes and unchanged limits. The
+106 new units are removed; all prototype alternatives and storage are accounted.
+State: **completed research experiment, unpromoted**. Production source and the
+accepted whole-suite implementation are unchanged; no next language slice selected.
+
+### Further representation research admitted (2026-09-07)
+
+The user requests continued outside-the-box research. The existing TASK-021
+conformance shared-runtime experiment admits a bounded 12-object sample of
+DEFLATE decision transcripts, preserving original ELF bytes without repeating
+LZ match search. Research, implementation, exact roundtrips, matched component
+measurements, negative cases and inclusive retained storage close this round.
+The sample is not whole-family/native performance proof. Existing production,
+source invalidation, native oracle, containment and exclusion rules remain.
+Evidence root: `/tmp/pipelang-representation-lab/`.
+
+### Representation research closed (2026-09-07)
+
+The bounded decision-transcript round completed with exact reconstruction of 12
+fixed samples and all 16 references. Sample-plus-reference code falls from
+45,365,275 to 27,367,865 bytes; the conservatively charged sample representation
+is 179,374,596 bytes. Component reconstruction is faster than the old exact
+recompression path but remains slower than ordinary delta decoding. These are
+sample component results, not fresh native-family execution or full-corpus proof.
+See `conformance-similarity-search-experiment.md` for source citations, matched
+measurements, support/storage accounting, 42 contained units (one corrected and
+retained audit failure), unchanged-source/protected-state checks and remaining
+integration work. Evidence: `/tmp/pipelang-representation-lab/final-evidence.json`.
+No production changes or promotion; prior full-suite/native proof remains admitted.
+
+### Next reconstruction round approved for continuation (2026-09-07)
+
+The user accepted the proposed next round with “lessa go” and explicitly requested
+`dorkpipe-task-handoff`. Continue `TASK-021-conformance-shared-runtime-experiment`
+in the saved checkout; state: `ready_for_execution`. This is execution authority
+for the discussed bounded research round, separately from handoff transport.
+
+Authorized objective: profile decision-transcript reconstruction to distinguish
+symbol work, copying, I/O and startup; use the evidence to test resident decoding
+and bounded reference preparation, then measure the complete affected native
+workload with exact original bytes, CPU, aggregate memory and inclusive storage.
+Research relevant primary sources without assuming their gains transfer here.
+First checkpoint: reproducible contained profiling of the current sample and
+existing decoder, before choosing an optimization. Subsequent in-scope checkpoints
+are automatic; reassess before a materially different seam or broad suite.
+
+Done when the strongest justified candidate has matched affected-workload timing,
+CPU/memory, complete dependency/storage accounting and exactness/current native
+oracle proof, or measured rejection establishes why the candidate should not be
+expanded. Report negative evidence honestly; no improvement or zero-overhead
+claim is required for completion. Preserve all existing vectors, ordered traces,
+source/toolchain/settings invalidation, fresh per-case process/fixture isolation,
+DWARF and independent compiler resource probes. All prior containment, cleanup,
+Git, publication, language-contract and machine-state exclusions remain.
+
+The handoff transports exactly one task in this saved checkout, with no worktree.
+Live anchors and protected-state digest: `/tmp/pipelang-representation-lab/handoff-live.json`.
+The receiver invokes `dorkpipe-objective-execution`; the old task performs no new
+execution work after creation. Prior completed research and failed receipts remain
+admitted evidence, reopened only for drift, a new failure or an affected dependency.
+
+### Resident round profiling checkpoint (2026-09-07)
+
+State: `executing`, evidence `/tmp/pipelang-resident-transcript/`. Admission matches
+handoff HEAD, dirty hashes, stashes and ignored inventory. The fixed 12-object CPU
+profile includes 300 exact reconstructions and separate copy/hash controls; hashing
+and symbol/bit work dominate. No installed toolchain or production source changed.
+Resident pipes, pointer-receiver copying reduction and shared mappings preserve all
+ET01/ZT01 checks. Profiled mapped reconstruction remains materially slower than the
+mapped ordinary-delta control (0.895/0.199 seconds summed per-object medians).
+Root-plus-one-reference preparation is bounded to two dictionaries; grouping gives
+2.110/0.526 seconds median with all required preparation included. These are warm
+local reconstruction components, not native execution. The measured gap supports
+rejecting corpus expansion; pending terminal checkpoint is unprofiled confirmation,
+resident negative tests, exact reference proof and inclusive retained storage.
+
+### Resident reconstruction round completed with rejection (2026-09-07)
+
+State: **completed research experiment, unpromoted**. The strongest tested resident
+candidate decodes through shared mappings into sealed executable storage, with
+root-plus-one-reference preparation and all exactness checks preserved. Unprofiled
+confirmation is 0.924/0.203 seconds versus ordinary delta for summed warm medians;
+including grouped reference preparation gives 2.210/0.532 seconds wall and
+2.357/0.561 seconds cgroup CPU. This measured loss rejects full-corpus expansion.
+No fresh native execution or native-performance claim is made for this sample.
+
+All 28 original sample/reference ELFs reconstruct exactly; 42 synthetic roundtrips,
+20 rejection scenarios, 45 seal mutation attempts and all 49 contained units pass.
+The sample representation is 185,242,138 bytes with support; full retained storage
+is 57,292,836,767 logical bytes. All 200 production source hashes and protected
+checkout/cache state remain unchanged. Prior whole-suite/native proof is admitted;
+no production promotion or next language contract was selected. Details and limits:
+[resident reconstruction report](conformance-similarity-search-experiment.md).
+Evidence: `/tmp/pipelang-resident-transcript/final-evidence.json`.
+
+### Further reconstruction research reopened (2026-09-07)
+
+The user explicitly requested more research after the resident rejection. State:
+`executing`, same bounded research objective and inherited exclusions. Investigate
+whether repeated equivalent integrity checks can share computation without losing
+any rejection guarantee, and whether selective ELF-section transcripts retain most
+space savings with less expanded data, hashing and symbol work. Profile the fixed
+sample by section first, retain prior prototypes, and measure the justified candidate
+with CPU, memory, inclusive storage and exactness. Expand to fresh native proof only
+if component evidence supports it; measured rejection is a valid result. No production
+promotion or next language contract is implied. New evidence root:
+`/tmp/pipelang-selective-transcript/`.
+
+### Selective-splice sample checkpoint (2026-09-07)
+
+Section profiling selected `.debug_line`, `.debug_loclists` and `.debug_rnglists`:
+7.50 MB of the 9.82 MB section-delta savings, avoiding the expensive `.debug_info`
+replay. The new recipe reconstructs a scaffold with ordinary delta, fills only those
+bounded sections, verifies exact original ELF bytes and seals the completed output.
+Warm fixed-sample medians sum to 0.406/0.231 seconds versus ordinary delta; encoded
+sample plus all 16 references totals 31,004,014 bytes versus 45,365,275. This is a
+promising component tradeoff, not native proof. Automatic next checkpoint: complete
+200-object representation and fresh current v0.91 family export/native comparison,
+with all existing limits and no production promotion. Evidence remains in
+`/tmp/pipelang-selective-transcript/`; old transcript formats/proofs are preserved.
+
+### Selective transcript round completed with full native proof (2026-09-07)
+
+State: **completed research experiment, unpromoted**. Section-specific profiling
+selected three debug-section transcripts plus ordinary-delta ELF scaffolds. Bounded
+preparation overlaps verified reconstruction with four native workers for both paths.
+The 200-object representation falls from 307,474,810 to **191,507,484 encoded bytes**;
+complete support-inclusive storage is **364,910,236 bytes** versus 454,822,892.
+Four matched runs average **13.068/12.527 seconds** native wall and **63.780/57.941
+CPU seconds** versus ordinary delta: +4.32% wall and +10.08% CPU, not zero overhead.
+
+All 18 full native replays preserve 2064 cases/9704 names, exact original ELF/DWARF,
+current independent values/traces and fresh isolation. Fresh canonical family tests
+pass; the driver's separate cache-removal housekeeping return remains recorded under
+the no-cleanup scope. The round retains three pre-execution startup failures and 166
+successful contained units, all removed. Forty-two synthetic roundtrips and 24
+rejection checks pass. Source, protected checkout/cache state and v0.96.0 are unchanged.
+No production promotion or whole-suite speed claim. See
+[the selective-transcript report](conformance-similarity-search-experiment.md) and
+`/tmp/pipelang-selective-transcript/final-evidence.json` for accounting and limits.
+
+## Renewed adaptive-transcript research completed (2026-09-07)
+
+The user-authorized profiling, section-selection and reference-selection round is
+complete and unpromoted. The detailed acceptance is in
+[Adaptive section and reference research](conformance-similarity-search-experiment.md#adaptive-section-and-reference-research-2026-09-07);
+receipts are under `/tmp/pipelang-adaptive-transcript/`.
+
+Matched four-run native means: fixed three sections 13.124 s wall / 57.426 s CPU;
+reference shortlist 13.203 s / 58.490 s; five sections 14.742 s / 62.381 s. Encoded
+bytes are respectively 191,507,484, 186,439,519 and 159,572,585. After charging all
+new support, complete candidate sizes are 362,012,291 and 335,145,357 bytes versus
+the previously retained 364,910,236-byte representation. Reference selection is a
+modest improvement; five sections are a storage/CPU tradeoff, rejected as a universal
+default. Mixed per-binary treatment loses on the unchanged sample. Timing ranges
+overlap; no universal speed or statistical-equivalence claim is made.
+
+All 20 new full native replays preserved 200 exact binaries, 2,064 cases and 9,704
+ordered test names apiece; 48 candidate rejection checks, 42 synthetic roundtrips
+and 576 sample sealed decodes passed. All 354 contained units passed; one sandbox
+bus preflight failed before starting a workload and is retained. Peak aggregate
+memory was 689,770,496 bytes, with no high/hard/OOM/swap-event increases. The source,
+protected caches, stashes, ignored inventory and v0.96.0 remain unchanged. The
+prior fresh family/whole-suite/warm-compiler proofs remain admitted, including the
+previous canonical driver's qualified housekeeping exit. Complete retained storage
+is 64,616,693,550 logical bytes; no cleanup occurred. Further research is deferred;
+strict original size/time goals remain unmet.
+
+The user subsequently requested another bounded research round via task handoff,
+including binary-to-hex and related reversible representations. This renews
+research authority; prior completed proof remains admitted. The pending screen and
+unchanged boundaries are recorded in `conformance-similarity-search-experiment.md`
+under “Further representation research authorized”.
+
+### Hex and reversible-layout round complete (2026-09-07)
+
+The renewed bounded research round is complete and unpromoted. On the fixed
+28-object sample, ordinary hex increased compressed storage 19.15% for raw
+binaries and 31.82% for selective transcripts and increased preparation and
+decode/inverse time. Base64, separated hex digits and four-byte columns also
+increased total storage; no transformed component beat its control. The matched
+file-input screen reproduced the existing control hashes. All candidates were
+rejected, so no full-family runtime/source change or new native replay was needed.
+
+All 287 contained workload units passed, including 280 exact original sealed
+reconstructions and 140 rejection checks. One sandbox-bus startup failure and an
+initial mismatched stdin methodology are retained. Peak aggregate memory was
+734,756,864 bytes with 317 soft-high events and no hard/OOM/swap increases. The
+new root retained 10,339,330,050 logical bytes at the pre-final-receipt snapshot;
+all roots totalled 74,956,067,936 bytes. Final receipt-inclusive storage is in
+`/tmp/pipelang-hex-round/terminal-storage.json`. See the canonical similarity report
+under “Terminal representation assessment” for matched costs, inclusive support,
+resource qualifications and admitted prior proof. v0.96.0 and production remain
+unchanged; strict original size/time goals remain unmet.
+
+### Parallel reconstruction round complete (2026-09-07)
+
+The user-requested parallel reconstruction experiment is complete and unpromoted.
+Six balanced full-family orders compare 1/2/4 reconstructors with unchanged
+reference-shortlist bytes, four native consumers, eight total jobs and identical
+contained limits. Mean wall is **13.747/13.037/13.056 seconds**; CPU is
+59.834/59.545/60.861 seconds. Two workers are the preferred prototype: 5.17%
+mean wall reduction, with a 2.66% reduction in the last-four-round cache-warming
+sensitivity check. Ranges overlap; no whole-suite or universal speed claim.
+Four workers add no benefit and use more CPU.
+
+All 18 full native replays preserve 200 exact binaries, 2,064 cases and 9,704
+ordered names. Existing rejection/oracle checks, concurrent dictionary-lifetime
+and descriptor-recovery checks, and the independent 25-second service deadline
+passed. All 77 contained units passed; one sandbox-bus preflight is retained.
+Peak aggregate memory was 735,113,216 bytes, with 3,979 soft-high events and
+no hard/OOM/swap increases. Compressed content stays 186,439,519 bytes;
+new support and retained-root costs are in the new terminal storage receipt.
+See “Parallel reconstruction terminal assessment” in the similarity report and
+`/tmp/pipelang-parallel-reconstruction/final-evidence.json`. Production and
+v0.96.0 remain unchanged; further research is deferred.
+
+
+### Latest codec research round complete (2026-09-07)
+
+The latest-source research and contained prototypes are complete and unpromoted.
+Installed Zstandard 1.4.8 patch-12 is the preparation winner: full-family dispatch
+102.921 → 56.524 seconds (45.08% less), summed encoding 160.767 → 69.141 seconds,
+with payload 186,439,519 → 187,811,638 bytes (+0.736%). This gain requires no
+codec upgrade. New 1.5.7 patch-12 does not improve that tradeoff; new patch-19
+reduces payload 5.60% but preparation takes 299.494 seconds and added support
+erases the storage gain against the prior complete representation.
+
+Four balanced orders preserve 200 exact binaries, 2,064 cases and 9,704 ordered
+names across all 16 native replays. Installed dictionary/installed patch12/new
+patch12/new patch19 mean wall is 15.814/15.475/15.393/15.093 seconds, with
+overlapping ranges and slightly higher post-validation work for patch modes.
+No replay-speed gain is established. The separate version/context decoder
+screen is negative. OpenZL, DirectStorage, nvCOMP and tensor-program preprint
+results remain future seams, without importing their published speed claims.
+
+All 658 successful contained units and candidate rejection checks pass; two
+support archive timeouts are retained, followed by successful sequential archive
+verification. Peak per-unit aggregate memory is 734,998,528 bytes, 670 soft-high
+events, zero hard/OOM/swap increases. Protected sources and state are unchanged;
+prior whole-suite and independent compiler proofs are admitted, not rerun.
+The new support archive is 23,152,858 bytes; complete candidate costs include
+inherited overhead and every closing receipt, with retained alternatives counted
+separately. See “Current-codec terminal measurements” in the similarity report
+and `/tmp/pipelang-modern-codec-round/terminal-storage.json` for all tradeoffs,
+resource qualifications, accounting recovery and source links. Production and
+v0.96.0 remain unchanged; strict original goals remain unmet.
+
+
+### Two additional strategy iterations complete (2026-09-07)
+
+Two user-requested research iterations before implementation are complete and
+unpromoted. A fixed scaffold9/token12 patch rule improves on installed patch12:
+full-family mean preparation dispatch 56.765 → 47.937 seconds (15.55% less),
+encoding 74.081 → 59.240 seconds (20.03% less), and payload 187,811,638 →
+189,350,098 bytes (+0.819%). Both preparation orders improve, with substantial
+cache/load variation; the selection rule was frozen on 28 objects before the
+remaining 172 were validated. Single-root references cost 11.26% more sample
+bytes and more encoding time than the mixed shortlist and were rejected.
+
+All eight full native replays preserve 200 exact binaries, 2,064 current cases
+and 9,704 ordered names. Mean wall is 14.328 versus 13.304 seconds, with
+about 2.31% lower wall when excluding the first order as a cache-warming
+sensitivity check. Ranges overlap; preparation is the stronger measured gain.
+All 573 contained workload units and rejection checks pass; one sandbox-bus
+preflight is retained. Peak per-unit aggregate memory is 735,121,408 bytes,
+2,042 soft-high events in the baseline only, zero hard/OOM/swap increases.
+Protected source and state checks, Python AST, YAML and whitespace checks pass;
+prior whole-suite and independent compiler proof remain admitted, not rerun.
+
+The next implementation candidate is two reconstructors, existing reference
+shortlist and scaffold9/token12 patch compression. Only task-owned docs/indexes
+changed; temporary prototypes and complete accounting are under
+`/tmp/pipelang-next-two-rounds/`. See “Final two-iteration native and resource
+proof” in the similarity report for timing qualifications, inclusive storage and
+retained artifacts. Production, v0.96.0 and package/engine boundaries remain
+unchanged; no original strict target is claimed.
+
+
+### Implementation continuation authorized (2026-09-07)
+
+After the two final strategy iterations, the user said “please go ahead” and
+explicitly invoked `dorkpipe-task-handoff`. The selected implementation is two
+reconstruction workers, the existing reference shortlist and fixed scaffold9 /
+token12 patch compression. Continue the same objective in exactly one fresh task,
+directly in this saved checkout. State: ready_for_execution. The user go-ahead
+supplies implementation authority; handoff itself only transports it.
+
+Pending boundary: admit the completed experiment receipts, inspect the canonical
+conformance harness and integrate the selected representation/preparation/replay
+path into repository-owned source with no `/tmp` runtime dependencies. Preserve
+exact coverage, ELF/DWARF bytes, current Value/Trace oracle, invalidation, sealing,
+deadlines and resource limits. Finish focused correctness/rejection checks and
+matched preparation/replay measurements; revalidate broader compiler/native proof
+only when affected implementation or source drift makes it necessary. Update
+canonical task docs with the actual implementation and limitations. No new
+language/codec/research seam, commit, push, worktree, cleanup, installation,
+release/publication or persistent external change is authorized by this handoff.
+
+
+### Repository integration checkpoint (2026-09-08)
+
+State: executing under the implementation authority above. Integration is owned
+by `tests/containedexec`: the exact transcript helper, sealed decoder/service,
+bounded native pipeline, source-bound selected reference plan, and contained
+preparation/replay driver now have repository-owned paths. There are no embedded
+research paths. The canonical harness README describes the opt-in family lane
+and its unsupported-input behavior; v0.96.0 and generic engine source are unchanged.
+
+The first development preparation passed 102 contained units and reproduced all
+400 selected prototype payload hashes. Its nine focused tests passed, including
+independent Value/Trace rejection and dictionary/descriptor lifetime checks.
+Complete support/receipt accounting was then extended before the final matched
+acceptance. Development evidence remains under
+`/tmp/pipelang-transcript-integration/`; it is not the terminal performance claim.
+The existing whole-suite/compiler proofs remain admitted because their source is
+unchanged. Final matched preparation/native/resource acceptance is in progress.
+
+
+### Repository-owned transcript implementation accepted (2026-09-08)
+
+State: **completed** for `TASK-021-conformance-shared-runtime-experiment` under
+the explicit implementation go-ahead. The selected representation, preparation
+and replay path is now owned by `tests/containedexec/transcript_suite.py`,
+`transcript_runtime.py`, `transcript_replay.py`, `transcript_plan.json`, and the
+three Go helper files under `transcript/`. `test_transcript.py` owns rejection
+and lifetime checks. The canonical harness README documents invocation, costs,
+limits and unsupported inputs; `pipelang_suite.py` identifies transcript exports
+and includes nested helper sources in its drift snapshot. No generic engine,
+compiler/evaluator, authored language surface or v0.96.0 contract changed.
+
+The plan freezes the previously selected reference assignments for the exact
+200-bundle source corpus. It retains 16 references, one root and the existing
+four-shard schedule. It does not rerun the research search. Source changes fail
+closed and use the ordinary bundle harness until another plan is deliberately
+prepared; no automatic generalized reference selection is claimed. Preparation
+uses installed Zstandard 1.4.8 patch mode (scaffold 9 / tokens 12). Runtime code
+has no research-directory dependencies. The helper/library are retained with the
+representation; toolchain, Python and native support bytes are recorded and
+validated. Original binaries are optional for packed replay but required for
+preparation and raw comparisons. No cache migration or deletion occurred.
+
+All **559 contained units passed**, including **15 focused tests** and Go vet.
+Five complete preparations include the development pass and two balanced
+candidate/control orders; all 1,600 final comparison payload hashes match the
+selected prototype/control exactly. Helper self-tests cover 21 synthetic zlib
+roundtrips per build. Nine complete native replays (eight in four alternating
+raw/packed comparison pairs) each preserve **200 exact ELF/DWARF binaries,
+2,064 cases and 9,704 ordered names**. Rejection checks cover corrupt
+root/reference/leaf payloads, wrong dictionaries, malformed spans/lengths,
+source/settings/support changes, immutable sealing, two concurrent readers,
+error-path descriptor recovery, independent blocked read/write deadlines, and
+separate current Value and Trace failures.
+
+The current canonical family was regenerated before final native acceptance:
+all ten build/list/family units passed; all 12,368 current export input files
+match the admitted deterministic source/oracle output. Its outer driver exits 1
+solely because the validation adapter intentionally retains its empty private
+native-build cache. This is qualified family proof, not a clean driver exit or a
+new whole-suite pass. The prior 636-test whole-suite and independent warm
+128 MiB / 5-second compiler proofs remain admitted because those implementations
+are unchanged. Of 200 admission source hashes, 198 remain unchanged and exactly
+two authorized paths changed (harness README and suite driver). All 2,719 cache
+records/sizes and all 200 affected native hashes match; branch, HEAD, empty index,
+protected stashes and the 108,166-entry ignored inventory remain unchanged.
+
+| Matched measure | Control | Selected |
+| --- | ---: | ---: |
+| Mean preparation dispatch, two orders | 104.490 s | 98.409 s |
+| Summed component encoding, mean | 64.538 s | 50.962 s |
+| Compressed payload | 187,811,638 B | 189,350,098 B |
+| Mean native dispatch, four orders (raw / packed) | 11.886 s | 12.562 s |
+| Native dispatch range | 11.766–11.976 s | 12.430–12.632 s |
+| Peak native aggregate memory | 189,878,272 B | 216,256,512 B |
+
+The preparation control is patch12, while the native control is retained raw
+execution. Selected preparation dispatch improves **5.82%** and summed encoding
+**21.04%**, for 0.819% more payload; both preparation orders improve. Packed
+native dispatch costs **5.69%** more than raw. These measurements do not
+compound earlier research percentages. Dispatch excludes parent cache inventory
+and accounting; final outer native commands took about 29.3–30.7 seconds,
+including roughly 12 seconds of accounting and the pre-dispatch cache inventory.
+No whole-suite, CPU-time or universal speed claim is made.
+
+Peak per-unit aggregate memory across acceptance is **734,785,536 bytes**;
+there are 900 soft-high events and zero hard/OOM/swap increases.
+The same 1 GiB hard limit, zero swap, 128 tasks, 800 MiB proactive stop,
+700 MiB soft reclaim, 30-second unit / 25-second child deadlines, two contained
+units, two reconstructors, four native workers and eight total jobs remain.
+All cgroups were removed. The reconstructed dictionaries outlive every reader.
+
+The selected retained representation is 197,661,769 bytes, including payload,
+helper/library/encoder copies, plan, identities, recipes and manifest. This is
+not complete storage by itself: current exports, all Go/Python/native support,
+harness source, receipts, retained originals, compiler-cache growth and all
+coexisting controls/development artifacts are charged separately in each
+`storage.json` and the terminal receipt. Closing receipt sizes include themselves.
+See `/tmp/pipelang-transcript-integration/final-evidence.json`,
+`outer-replay-timings.json`, `retained-notes.json` and `terminal-storage.json`.
+Strict original size/time targets remain unmet. The opt-in bounded implementation
+is complete; broader language/codec/generalized-compression work remains deferred.
+
+
+### Corrective generalization authorized (2026-09-08)
+
+The user challenged whether the implementation benefits the framework rather
+than only hardcoded tests. Inspection confirmed that `transcript_suite.py`
+requires 200 artifacts, 16 fixed references and four groups of 50, with
+`transcript_plan.json` freezing their keys and source fingerprints. Its only
+connection to the normal suite is an export interface. The earlier completion
+therefore describes the bounded corpus implementation, **not completion of the
+intended reusable conformance-framework outcome**.
+
+After this was stated plainly, the user said: “Yeah we need to do the otherwise
+it’s a cheap hack please work on doing it properly” and invoked
+`dorkpipe-task-handoff`. This directly authorizes corrective implementation and
+one same-checkout continuation. It is not a new candidate-selection gate. The
+same objective is reopened as ready_for_execution; implementation is approved.
+
+Objective contract:
+
+- objective_id: `TASK-021-conformance-shared-runtime-experiment`
+- execution_skill: `dorkpipe-objective-execution`
+- authorized_objective: replace the corpus-bound wrapper with reusable native
+  artifact preparation/replay in the normal PipeLang conformance framework.
+- done_when: derive a deterministic bounded reference plan from current artifacts
+  instead of committed artifact ids, counts, reference ids or source whitelists;
+  support changed/new eligible tests through proper invalidation and preparation;
+  integrate ordinary retained-artifact execution so no hand-maintained family
+  manifest is required; preserve a valid ordinary path for unsupported forms;
+  retain independent current Value/Trace checks and exact debug-bearing bytes;
+  prove focused adversarial and lifecycle behavior plus a **fresh complete
+  discovered suite**, matched before/after execution/preparation and inclusive
+  storage; document actual framework benefit and limitations. Prior whole-suite
+  proof cannot substitute for this explicitly required fresh terminal proof.
+- inherited_invariants: exact ELF/DWARF; current independent oracle; source,
+  toolchain and settings invalidation; immutable final sealing; reader-owned
+  dictionary lifetime; unchanged compiler resource contracts; at most two
+  reconstructors, four native consumers and eight jobs per contained unit, and
+  at most two concurrent units; all compiler/native/codec work through `run.py`
+  with 30-second units, 25-second children, 700 MiB high, 1 GiB hard, zero swap,
+  128 tasks and proactive 800 MiB stop. Keep v0.96.0 unchanged.
+- ownership: conformance/artifact helpers and their actual source owners, not
+  generic DockPipe engine special cases. Apply focused core-review guidance if
+  integration touches compiler-owned test helpers under `src/lib/pipelang`.
+- checkpoints: automatic within this correction; user-requested handoff only.
+- exclusions: no new language/codec research seam, broad product redesign,
+  commit/push, stash/worktree mutation, installation, cache cleanup, publication,
+  deployment, credentials or persistent external changes. Reviewed bounded host
+  validation remains available when the sandbox cannot reach the systemd bus.
+- terminal_policy: complete only with reusable integration and the required fresh
+  acceptance; otherwise record the actual blocker or failed verification.
+
+Pending boundary: inspect the current native cache/bundle helper interfaces and
+normal suite lifecycle, map reusable representation/preparation ownership, then
+begin replacing the fixed plan/admission and connecting the normal execution
+path. Do not merely generate another static 200-case JSON, hide the same fixed
+corpus behind a flag, or mark an export-only wrapper as framework integration.
+Reuse the proven scaffold9/token12 mechanics and bounded reference approach;
+perform necessary engineering, not a replay of completed search experiments.
+
+Admitted evidence: `/tmp/pipelang-transcript-integration/final-evidence.json`
+and `terminal-storage.json`, with 559 passing units, 15 focused tests, Go vet,
+nine exact 200-bundle replays, independent oracle/rejection/sealing proof and
+qualified fresh family generation. These validate components and the old corpus
+only. Preparation averaged 104.490 -> 98.409 s versus patch12; packed native
+12.562 s versus raw 11.886 s. The 197,661,769-byte representation replaces
+1,302,426,120 raw bytes in principle; no originals were deleted, and the work
+retained roughly 2.44 GB more data. Toolchain/fixture/support/receipt costs are
+separate and counted. No whole-project speed or 85% total-framework storage claim.
+
+The source of truth for the receiving checkout is the fresh handoff receipt at
+`/tmp/pipelang-transcript-generalization-handoff/anchors.json`. All existing
+implementation and research documents are owned and must be preserved/adapted.
+No operation is in flight. Revalidate affected anchors and execute the pending
+boundary first, then converge on the authorized framework outcome.
+
+Corrective execution started: handoff anchors verified (14 owned paths, HEAD/index,
+protected stashes and component receipts). Native cache identity and batch sealing
+are the integration seam. Reference planning now derives from current artifact
+sizes and keys with bounded deterministic selection; no language changes.
+
+### Reusable cache integration checkpoint (2026-09-08)
+
+State: executing; fresh complete acceptance is in progress, not yet claimed.
+`native_artifacts.py` now owns normal cache-derived bounded planning, lazy
+scaffold9/token12 preparation and exact sealed descriptor delivery. The Go
+compiler-owned batch helper requests bytes using its independently computed
+current source/toolchain/settings key; current fixtures and per-case processes
+remain owned by that helper. There are no language-version or family-name
+branches in representation admission. Unsupported ELF/DEFLATE forms use the
+ordinary path. New keys prepare on demand. The export CLI now derives its plan
+from current exports; the old checked-in JSON is historical research data only.
+Two reconstruction slots run inside each test unit, with at most four existing
+native consumers. Reference ownership is synchronous and local to each slot.
+
+Affected-anchor admission passed. Initial focused Go artifact/bundle tests passed
+in 21.982 s; dynamic planner tests passed; five new lifecycle tests prove new
+eligible preparation, unsupported fallback, replay with no raw executables or
+exports, record/digest invalidation and corruption/cycle rejection. Go descriptor
+transport tests reject missing seals and wrong bytes. First ordinary v0.91 shape
+passed through three automatically prepared objects in 2.109 s, peak aggregate
+130,646,016 bytes. Evidence lives in `/tmp/pipelang-generalized/`.
+
+The required fresh suite at `full-packed/` discovers 637 tests, scheduled into
+768 units with shape batches of five and one ordinary top-level test per unit.
+All build/list/compiler/native/preparation workloads use 30-second units,
+25-second children, 700 MiB soft-high and the inherited hard limits. Disposable
+native build-cache contents are retained under the explicit no-cleanup scope;
+retention itself is no longer reported as a failed validation adapter. Matched
+raw execution and inclusive storage accounting remain pending.
+
+### Corrective framework acceptance complete (2026-09-08)
+
+The reopened objective is **completed**. Native representation ownership is now
+in the ordinary conformance cache path, not a fixed family/export wrapper.
+`native_artifacts.py` deterministically selects at most 16 references from current
+cache keys and sizes, prepares missing identities on demand, atomically publishes
+supported representations under locks, and serves verified sealed descriptors.
+The compiler-owned `generated_batch_test.go` uses its current source/toolchain/
+settings key to request the bytes and retains fresh per-case fixture directories,
+independent oracles and processes. `generated_transport_*_test.go` validates the
+received SHA256 and kernel seals. No version/family admission branch, expected
+Value/Trace cache, or committed source/key whitelist exists in that transport.
+Unsupported forms use the ordinary path. New keys absent from a run's initial
+reference snapshot prepare without a dictionary; existing immutable recipes keep
+their valid DAG. A later run can select those new artifacts as references.
+
+The export comparison driver also derives its plan dynamically. Its old
+`transcript_plan.json` is preserved historical research data, not execution
+admission. Reconstruction/encoding mechanics and v0.96.0 are unchanged. The
+changes under `src/lib/pipelang` are compiler-owned test helpers only; generic
+DockPipe engine/package boundaries are preserved.
+
+Fresh acceptance (all evidence under `/tmp/pipelang-generalized/`):
+
+- `full-raw/` and `full-accepted/` each passed **637 discovered tests in 812
+  contained units**, with zero failed units and source unchanged during each run.
+  Both runs independently built/listed the current suite and ran **623 direct
+  compiler resource probes**. Coverage is identical: **7,743 ordered generated
+  source/fixture/test-name audit vectors**, **13,059 named invocations** including
+  multiplicity, and **2,719 exact native artifacts**. Eight existing map-iterated
+  assertion tests list their subtests in different orders; each unit's subtest
+  multiset still matches. Ordered generated vectors and current trace bytes match.
+- The 30-second-unit cold exploration initially passed 758/768 units and exposed
+  ten preparation-time deadline overruns. The corrected scheduler partitions the
+  existing compiler-memory choice/branch groups, v0.92-v0.96 memory choices, and
+  the asserted v0.81/v0.84 shape inventories. No cases, sizes, limits or assertions
+  were removed. The failed receipts remain; they are not acceptance. The final
+  packed run completed the remaining **151** first-time preparations successfully.
+- New planner/lifecycle checks prove deterministic plans for varying inventories,
+  new eligible preparation, unsupported fallback, packed-only execution without
+  original executables/exports, changed records/digests, corrupt payloads, cycles,
+  immutable seals and descriptor recovery. Go transport checks reject unsealed
+  descriptors and wrong bytes. Four integrated normal-helper probes show initial
+  preparation, warm reuse, changed-current-oracle rejection on a hit, and changed
+  source producing a new key and preparation. Existing current Value/Trace and
+  codec component proof remains admitted; the new whole-suite proof runs current
+  independent fixtures through the normal helpers. Focused Go vet passed.
+- Final inventory reporting now supports packed-only retention as well as execution.
+  Its regression counts absent originals as zero retained bytes and rejects a
+  mismatched recipe. This post-run accounting change and its Python unit test are
+  the only two source-file differences between the ordinary and packed phases;
+  Go binaries, workload source/fixtures and the execution schedule are identical.
+  All four planner/accounting tests passed; Python syntax and `git diff --check`
+  passed.
+
+Measured costs, without extrapolated target claims:
+
+| Measure | Ordinary | Packed |
+| --- | ---: | ---: |
+| Complete outer run | 382.960 s | 625.632 s |
+| Complete execution phase | 381.431 s | 624.055 s |
+| Summed contained test-unit elapsed time | 670.733 s | 1,159.421 s |
+| Original executable bytes represented | 12,691,261,599 | 12,691,261,599 |
+| Selected retained representation, including local support/recipes/locks | — | 2,298,795,073 bytes |
+
+The complete packed execution phase is **63.61% slower** in this comparison and
+includes 151 new preparations; it is not a pure warm-replay or speedup claim.
+Across cold exploration and final acceptance, all **2,719** objects prepared,
+with **936.545 summed object-preparation seconds** (wall time summed across
+objects, not CPU time or outer dispatch). This preparation includes component
+roundtrip checks. The ordinary control adds no representation-encoding work.
+The logical representation is **81.89% smaller than this executable set**, but
+this is not whole-framework storage savings. Every original remains: **zero
+bytes freed**. The selected namespace has 10,881 retained files. The task also
+retains its exploratory namespace, receipt logs, test binaries, fixtures and
+focused-probe artifacts. Native compiler-intermediate directories were empty and
+retained, consistent with the no-cleanup instruction.
+
+`storage.json` counts current nonoverlapping research/control roots, compiler
+cache, original binaries and records, repository inputs, toolchain/Python/native
+support and this task's artifacts. Closing totals include the receipts themselves;
+logical file accounting does not infer shared physical blocks. The old family
+representation and earlier research controls continue to coexist and are charged.
+No claim is made that retaining both raw and packed data reduces actual disk use.
+Dictionary reuse, service-startup overhead and any later cache migration remain
+possible future work, not unapproved additions to this completed correction.
+The strict earlier time/storage targets are still unmet.
+
+Peak aggregate memory across the recorded work is **734,773,248 bytes**, with
+167 soft-high events and zero hard-memory/OOM/swap event increases. Every workload
+used the required contained runner, offline Go 1.25.13, 30-second unit and
+25-second child limits, 700 MiB soft-high, 1 GiB hard, zero swap, 128 tasks and
+800 MiB proactive stop. No more than two units, two reconstruction slots per unit,
+four native workers or eight jobs were admitted. All test cgroups were removed.
+
+Final protected-state readback preserves branch `js/pipelang`, HEAD
+`8c7c070c4eb2141c74335875017ef6ddce4f942f`, empty index and both stashes.
+All 2,719 current cache records/sizes equal the pre-handoff live-set receipt,
+and every original executable SHA256 was freshly checked. The 108,166-entry
+ignored inventory retains SHA256
+`ba9e796198c62a673750896380d10484150d1fad2e496d9ca08a82e496b3b690`.
+Earlier codec/replay bytes, static research plan and research narrative are
+preserved. No commit, push, worktree/stash mutation, cache cleanup, installation,
+publication, credentials or persistent external operation occurred. No successor
+task was created.
+
+Packed-only end-to-end closeout also passed: `packed-only.json` records a
+1.054-second contained invocation of the normal Go helper with both original
+paths detached in the task's private probe cache. The helper hit the prepared
+representation, executed the current oracle successfully, and final inventory
+reported zero original executable bytes. Both probe binaries were restored;
+the protected conformance cache was untouched. See `packed-only-inventory.json`.
+
+### Ordinary execution restored as default (2026-09-08)
+
+The user accepted prioritizing day-to-day test feedback and keeping compression
+as an explicit option. `pipelang_suite.py` now defaults `native_representation`
+to false and no longer enables it from codec availability or a retained cache.
+`--native-representation` enables the existing packed path;
+`--no-native-representation` selects ordinary execution explicitly. A
+`--representation-cache` path alone does not enable it. Existing shared native
+bundles keep their separate prior behavior. The implementation, codecs, cache
+contents, resource limits, test selection and v0.96.0 are unchanged.
+
+Validation for this default-selection-only change: four parser-selection checks
+(default, explicit opt-in, explicit opt-out and store-path-only), the four existing
+suite planner/accounting tests, CLI help and `git diff --check`. The earlier fresh
+637-test ordinary and packed acceptance runs remain evidence for their unchanged
+execution paths; no new whole-suite timing or compiler run is claimed. No further
+compression search, cache cleanup, commit, push or successor work was started.

@@ -29,6 +29,26 @@ class PlanTests(unittest.TestCase):
             with self.assertRaises(RuntimeError):
                 artifact_inventory(cache, logs)
 
+    def test_packed_only_inventory_counts_originals_as_zero(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            key = 'a' * 64
+            cache, representation = root / 'cache', root / 'packed'
+            (cache / key).mkdir(parents=True)
+            (representation / key).mkdir(parents=True)
+            record = cache / key / 'record.json'
+            record.write_text(json.dumps(dict(Version='pipelang-native-validation-v2', Key=key, BinarySHA256='b' * 64)))
+            recipe = representation / key / 'recipe.json'
+            recipe.write_text(json.dumps(dict(key=key, sha256='b' * 64, size=1234)))
+            logs = f'generated_compiled_artifact packages=4 cache_hit=true key={key}'
+            inventory = artifact_inventory(cache, logs, representation)
+            self.assertEqual(inventory['retained_bytes'], record.stat().st_size)
+            self.assertEqual(inventory['logical_binary_bytes'], 1234)
+            self.assertEqual(inventory['entries'][key]['original_bytes'], 0)
+            recipe.write_text(json.dumps(dict(key=key, sha256='c' * 64, size=1234)))
+            with self.assertRaises(RuntimeError):
+                artifact_inventory(cache, logs, representation)
+
     def test_grouping_preserves_every_case_once(self):
         tests = ['TestFirst', 'TestShapes', 'TestCompilerMemoryLocalSequences', 'TestTailMemory', 'FuzzSeed', 'Example']
         split = {'TestShapes': 53}
@@ -38,7 +58,7 @@ class PlanTests(unittest.TestCase):
         self.assertEqual(flatten(separate), flatten(grouped))
         self.assertEqual(len(set(flatten(grouped))), len(flatten(grouped)))
         resource = [names for names, _ in grouped if 'Memory' in names[0]]
-        self.assertEqual(len(resource), 16)
+        self.assertEqual(len(resource), 37)
         self.assertTrue(all(len(names) == 1 for names in resource))
         shapes = [(names, pattern) for names, pattern in grouped if names[0].startswith('TestShapes/')]
         self.assertEqual([len(names) for names, _ in shapes], [25, 25, 3])
