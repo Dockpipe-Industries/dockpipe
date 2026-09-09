@@ -727,3 +727,13 @@ The 36 scaling families cover three statement depths, four initializer-arm famil
 and three new test-arm families, each with used/unused tails and nine local counts.
 Export fresh isolated compiler fixtures to `fixtures-v107`. Preserve normal GC,
 inlining, all contained limits and the 128 MiB / 5-second compiler ceilings.
+
+The v0.108 terminal inner-selector arm matrix uses
+`TestV1080TerminalInnerSelectorArmsLayouts=600` disjoint partitions over all 25
+statement shapes and all 722 condition-position subsets for each of three arm
+families. Every layout exhausts 4,096 supplied vectors (nine independent boolean
+operands and three statement-depth flips); selector bits are shared across nodes,
+and local/return choices reuse bits. This is not all independent cross-node or
+local assignments. Inherited v0.107 outer-arm tests mix at unselected positions.
+The memory family retains 36 groups and 648 cases; export `fixtures-v108` for
+fresh isolated compiler measurement with unchanged 128 MiB / 5-second ceilings.

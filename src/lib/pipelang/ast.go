@@ -898,40 +898,43 @@ func validExpandedDepthThreeTerminalIf(expr Expr, expandedLeaves int) bool {
 }
 
 func validTerminalIfStatement(contract LanguageContract, expr Expr) bool {
-	if contract == PipeLangLanguageContractV1070 && validTerminalSelectorValueArms(expr) {
+	if contract == PipeLangLanguageContractV1080 && validTerminalInnerSelectorArms(expr) {
 		return true
 	}
-	if (contract == PipeLangLanguageContractV1060 || contract == PipeLangLanguageContractV1070) && validTerminalBooleanSelectorTests(expr) {
+	if (contract == PipeLangLanguageContractV1070 || contract == PipeLangLanguageContractV1080) && validTerminalSelectorValueArms(expr) {
 		return true
 	}
-	if (contract == PipeLangLanguageContractV1050 || (contract == PipeLangLanguageContractV1060 || contract == PipeLangLanguageContractV1070)) && validDepthThreeTerminalConditionalTests(expr) {
+	if (contract == PipeLangLanguageContractV1060 || (contract == PipeLangLanguageContractV1070 || contract == PipeLangLanguageContractV1080)) && validTerminalBooleanSelectorTests(expr) {
 		return true
 	}
-	if (contract == PipeLangLanguageContractV1040 || (contract == PipeLangLanguageContractV1050 || (contract == PipeLangLanguageContractV1060 || contract == PipeLangLanguageContractV1070))) && validNestedTerminalConditionalTests(expr) {
+	if (contract == PipeLangLanguageContractV1050 || (contract == PipeLangLanguageContractV1060 || (contract == PipeLangLanguageContractV1070 || contract == PipeLangLanguageContractV1080))) && validDepthThreeTerminalConditionalTests(expr) {
 		return true
 	}
-	if (contract == PipeLangLanguageContractV1030 || (contract == PipeLangLanguageContractV1040 || (contract == PipeLangLanguageContractV1050 || (contract == PipeLangLanguageContractV1060 || contract == PipeLangLanguageContractV1070)))) && validTerminalConditionalTests(expr) {
+	if (contract == PipeLangLanguageContractV1040 || (contract == PipeLangLanguageContractV1050 || (contract == PipeLangLanguageContractV1060 || (contract == PipeLangLanguageContractV1070 || contract == PipeLangLanguageContractV1080)))) && validNestedTerminalConditionalTests(expr) {
 		return true
 	}
-	if (contract == PipeLangLanguageContractV1020 || (contract == PipeLangLanguageContractV1030 || (contract == PipeLangLanguageContractV1040 || (contract == PipeLangLanguageContractV1050 || (contract == PipeLangLanguageContractV1060 || contract == PipeLangLanguageContractV1070))))) && validTerminalBooleanSelectorInitializers(expr) {
+	if (contract == PipeLangLanguageContractV1030 || (contract == PipeLangLanguageContractV1040 || (contract == PipeLangLanguageContractV1050 || (contract == PipeLangLanguageContractV1060 || (contract == PipeLangLanguageContractV1070 || contract == PipeLangLanguageContractV1080))))) && validTerminalConditionalTests(expr) {
 		return true
 	}
-	if (contract == PipeLangLanguageContractV990 || (contract == PipeLangLanguageContractV1000 || (contract == PipeLangLanguageContractV1010 || (contract == PipeLangLanguageContractV1020 || (contract == PipeLangLanguageContractV1030 || (contract == PipeLangLanguageContractV1040 || (contract == PipeLangLanguageContractV1050 || (contract == PipeLangLanguageContractV1060 || contract == PipeLangLanguageContractV1070)))))))) && validTerminalLeafBooleanSelectors(expr) {
+	if (contract == PipeLangLanguageContractV1020 || (contract == PipeLangLanguageContractV1030 || (contract == PipeLangLanguageContractV1040 || (contract == PipeLangLanguageContractV1050 || (contract == PipeLangLanguageContractV1060 || (contract == PipeLangLanguageContractV1070 || contract == PipeLangLanguageContractV1080)))))) && validTerminalBooleanSelectorInitializers(expr) {
 		return true
 	}
-	if (contract == PipeLangLanguageContractV970 || (contract == PipeLangLanguageContractV980 || (contract == PipeLangLanguageContractV990 || (contract == PipeLangLanguageContractV1000 || (contract == PipeLangLanguageContractV1010 || (contract == PipeLangLanguageContractV1020 || (contract == PipeLangLanguageContractV1030 || (contract == PipeLangLanguageContractV1040 || (contract == PipeLangLanguageContractV1050 || (contract == PipeLangLanguageContractV1060 || contract == PipeLangLanguageContractV1070)))))))))) && validDepthThreeTerminalInitializers(expr) {
+	if (contract == PipeLangLanguageContractV990 || (contract == PipeLangLanguageContractV1000 || (contract == PipeLangLanguageContractV1010 || (contract == PipeLangLanguageContractV1020 || (contract == PipeLangLanguageContractV1030 || (contract == PipeLangLanguageContractV1040 || (contract == PipeLangLanguageContractV1050 || (contract == PipeLangLanguageContractV1060 || (contract == PipeLangLanguageContractV1070 || contract == PipeLangLanguageContractV1080))))))))) && validTerminalLeafBooleanSelectors(expr) {
 		return true
 	}
-	if (contract == PipeLangLanguageContractV940 || (contract == PipeLangLanguageContractV950 || (contract == PipeLangLanguageContractV960 || (contract == PipeLangLanguageContractV970 || (contract == PipeLangLanguageContractV980 || (contract == PipeLangLanguageContractV990 || (contract == PipeLangLanguageContractV1000 || (contract == PipeLangLanguageContractV1010 || (contract == PipeLangLanguageContractV1020 || (contract == PipeLangLanguageContractV1030 || (contract == PipeLangLanguageContractV1040 || (contract == PipeLangLanguageContractV1050 || (contract == PipeLangLanguageContractV1060 || contract == PipeLangLanguageContractV1070))))))))))))) && validDepthThreeTerminalLeafReturns(expr) {
+	if (contract == PipeLangLanguageContractV970 || (contract == PipeLangLanguageContractV980 || (contract == PipeLangLanguageContractV990 || (contract == PipeLangLanguageContractV1000 || (contract == PipeLangLanguageContractV1010 || (contract == PipeLangLanguageContractV1020 || (contract == PipeLangLanguageContractV1030 || (contract == PipeLangLanguageContractV1040 || (contract == PipeLangLanguageContractV1050 || (contract == PipeLangLanguageContractV1060 || (contract == PipeLangLanguageContractV1070 || contract == PipeLangLanguageContractV1080))))))))))) && validDepthThreeTerminalInitializers(expr) {
 		return true
 	}
-	if (contract == PipeLangLanguageContractV910 || (contract == PipeLangLanguageContractV920 || (contract == PipeLangLanguageContractV930 || (contract == PipeLangLanguageContractV940 || (contract == PipeLangLanguageContractV950 || (contract == PipeLangLanguageContractV960 || (contract == PipeLangLanguageContractV970 || (contract == PipeLangLanguageContractV980 || (contract == PipeLangLanguageContractV990 || (contract == PipeLangLanguageContractV1000 || (contract == PipeLangLanguageContractV1010 || (contract == PipeLangLanguageContractV1020 || (contract == PipeLangLanguageContractV1030 || (contract == PipeLangLanguageContractV1040 || (contract == PipeLangLanguageContractV1050 || (contract == PipeLangLanguageContractV1060 || contract == PipeLangLanguageContractV1070)))))))))))))))) && validNestedTerminalInitializers(expr) {
+	if (contract == PipeLangLanguageContractV940 || (contract == PipeLangLanguageContractV950 || (contract == PipeLangLanguageContractV960 || (contract == PipeLangLanguageContractV970 || (contract == PipeLangLanguageContractV980 || (contract == PipeLangLanguageContractV990 || (contract == PipeLangLanguageContractV1000 || (contract == PipeLangLanguageContractV1010 || (contract == PipeLangLanguageContractV1020 || (contract == PipeLangLanguageContractV1030 || (contract == PipeLangLanguageContractV1040 || (contract == PipeLangLanguageContractV1050 || (contract == PipeLangLanguageContractV1060 || (contract == PipeLangLanguageContractV1070 || contract == PipeLangLanguageContractV1080)))))))))))))) && validDepthThreeTerminalLeafReturns(expr) {
 		return true
 	}
-	if (contract == PipeLangLanguageContractV890 || (contract == PipeLangLanguageContractV900 || (contract == PipeLangLanguageContractV910 || (contract == PipeLangLanguageContractV920 || (contract == PipeLangLanguageContractV930 || (contract == PipeLangLanguageContractV940 || (contract == PipeLangLanguageContractV950 || (contract == PipeLangLanguageContractV960 || (contract == PipeLangLanguageContractV970 || (contract == PipeLangLanguageContractV980 || (contract == PipeLangLanguageContractV990 || (contract == PipeLangLanguageContractV1000 || (contract == PipeLangLanguageContractV1010 || (contract == PipeLangLanguageContractV1020 || (contract == PipeLangLanguageContractV1030 || (contract == PipeLangLanguageContractV1040 || (contract == PipeLangLanguageContractV1050 || (contract == PipeLangLanguageContractV1060 || contract == PipeLangLanguageContractV1070)))))))))))))))))) && validNestedTerminalLeafReturns(expr) {
+	if (contract == PipeLangLanguageContractV910 || (contract == PipeLangLanguageContractV920 || (contract == PipeLangLanguageContractV930 || (contract == PipeLangLanguageContractV940 || (contract == PipeLangLanguageContractV950 || (contract == PipeLangLanguageContractV960 || (contract == PipeLangLanguageContractV970 || (contract == PipeLangLanguageContractV980 || (contract == PipeLangLanguageContractV990 || (contract == PipeLangLanguageContractV1000 || (contract == PipeLangLanguageContractV1010 || (contract == PipeLangLanguageContractV1020 || (contract == PipeLangLanguageContractV1030 || (contract == PipeLangLanguageContractV1040 || (contract == PipeLangLanguageContractV1050 || (contract == PipeLangLanguageContractV1060 || (contract == PipeLangLanguageContractV1070 || contract == PipeLangLanguageContractV1080))))))))))))))))) && validNestedTerminalInitializers(expr) {
 		return true
 	}
-	if ((contract == PipeLangLanguageContractV890 || (contract == PipeLangLanguageContractV900 || (contract == PipeLangLanguageContractV910 || (contract == PipeLangLanguageContractV920 || (contract == PipeLangLanguageContractV930 || (contract == PipeLangLanguageContractV940 || (contract == PipeLangLanguageContractV950 || (contract == PipeLangLanguageContractV960 || (contract == PipeLangLanguageContractV970 || (contract == PipeLangLanguageContractV980 || (contract == PipeLangLanguageContractV990 || (contract == PipeLangLanguageContractV1000 || (contract == PipeLangLanguageContractV1010 || (contract == PipeLangLanguageContractV1020 || (contract == PipeLangLanguageContractV1030 || (contract == PipeLangLanguageContractV1040 || (contract == PipeLangLanguageContractV1050 || (contract == PipeLangLanguageContractV1060 || contract == PipeLangLanguageContractV1070)))))))))))))))))) || contract == PipeLangLanguageContractV880) || contract == PipeLangLanguageContractV870 {
+	if (contract == PipeLangLanguageContractV890 || (contract == PipeLangLanguageContractV900 || (contract == PipeLangLanguageContractV910 || (contract == PipeLangLanguageContractV920 || (contract == PipeLangLanguageContractV930 || (contract == PipeLangLanguageContractV940 || (contract == PipeLangLanguageContractV950 || (contract == PipeLangLanguageContractV960 || (contract == PipeLangLanguageContractV970 || (contract == PipeLangLanguageContractV980 || (contract == PipeLangLanguageContractV990 || (contract == PipeLangLanguageContractV1000 || (contract == PipeLangLanguageContractV1010 || (contract == PipeLangLanguageContractV1020 || (contract == PipeLangLanguageContractV1030 || (contract == PipeLangLanguageContractV1040 || (contract == PipeLangLanguageContractV1050 || (contract == PipeLangLanguageContractV1060 || (contract == PipeLangLanguageContractV1070 || contract == PipeLangLanguageContractV1080))))))))))))))))))) && validNestedTerminalLeafReturns(expr) {
+		return true
+	}
+	if ((contract == PipeLangLanguageContractV890 || (contract == PipeLangLanguageContractV900 || (contract == PipeLangLanguageContractV910 || (contract == PipeLangLanguageContractV920 || (contract == PipeLangLanguageContractV930 || (contract == PipeLangLanguageContractV940 || (contract == PipeLangLanguageContractV950 || (contract == PipeLangLanguageContractV960 || (contract == PipeLangLanguageContractV970 || (contract == PipeLangLanguageContractV980 || (contract == PipeLangLanguageContractV990 || (contract == PipeLangLanguageContractV1000 || (contract == PipeLangLanguageContractV1010 || (contract == PipeLangLanguageContractV1020 || (contract == PipeLangLanguageContractV1030 || (contract == PipeLangLanguageContractV1040 || (contract == PipeLangLanguageContractV1050 || (contract == PipeLangLanguageContractV1060 || (contract == PipeLangLanguageContractV1070 || contract == PipeLangLanguageContractV1080))))))))))))))))))) || contract == PipeLangLanguageContractV880) || contract == PipeLangLanguageContractV870 {
 		return validTerminalLeafConditionalReturns(expr) || validTerminalIfStatement(PipeLangLanguageContractV860, expr)
 	}
 	if contract == PipeLangLanguageContractV860 || contract == PipeLangLanguageContractV850 || contract == PipeLangLanguageContractV840 {
@@ -1776,6 +1779,61 @@ func validSelectorValueArmTest(expr Expr) bool {
 	}
 	hasArm := false
 	for _, arm := range []Expr{outer.WhenTrue, outer.WhenFalse} {
+		if arm == nil {
+			return false
+		}
+		flat := validFlatConditionalTest(arm)
+		if !flat && !validConditionalOperand(arm) {
+			return false
+		}
+		hasArm = hasArm || flat
+	}
+	return hasArm
+}
+
+// v0.108 permits flat inner-selector arms only in terminal tests with nonconditional outer arms.
+func validTerminalInnerSelectorArms(expr Expr) bool {
+	hasConditionalTest := false
+	var validScope func(Expr, int) bool
+	validScope = func(expr Expr, depth int) bool {
+		for {
+			local, ok := expr.(*ImmutableLocalExpr)
+			if !ok {
+				break
+			}
+			if local == nil || local.Initializer == nil || local.Return == nil || countImmutableLocalExpressions(local.Initializer) != 0 {
+				return false
+			}
+			selector := validConditionalBooleanSelector(local.Initializer)
+			if !selector && !validConditionalOperand(local.Initializer) && !validDepthThreeStraightLineReturns(local.Initializer) {
+				return false
+			}
+			expr = local.Return
+		}
+		if branch, ok := expr.(*ConditionalExpr); ok && branch != nil && branch.TerminalStatement {
+			selector := validInnerSelectorArmTest(branch.Condition)
+			conditional := selector || validSelectorValueArmTest(branch.Condition) || validConditionalBooleanSelector(branch.Condition) || validDepthThreeConditionalTest(branch.Condition)
+			hasConditionalTest = hasConditionalTest || selector
+			return depth < 3 && branch.Condition != nil && countImmutableLocalExpressions(branch.Condition) == 0 && (validConditionalOperand(branch.Condition) || conditional) &&
+				validScope(branch.WhenTrue, depth+1) && validScope(branch.WhenFalse, depth+1)
+		}
+		return expr != nil && countImmutableLocalExpressions(expr) == 0 &&
+			(validConditionalOperand(expr) || validDepthThreeStraightLineReturns(expr) || validConditionalBooleanSelector(expr))
+	}
+	return validScope(expr, 0) && hasConditionalTest
+}
+
+func validInnerSelectorArmTest(expr Expr) bool {
+	outer, ok := expr.(*ConditionalExpr)
+	if !ok || outer == nil || outer.TerminalStatement || countImmutableLocalExpressions(expr) != 0 || !validConditionalOperand(outer.WhenTrue) || !validConditionalOperand(outer.WhenFalse) {
+		return false
+	}
+	selector, ok := outer.Condition.(*ConditionalExpr)
+	if !ok || selector == nil || selector.TerminalStatement || !validConditionalOperand(selector.Condition) {
+		return false
+	}
+	hasArm := false
+	for _, arm := range []Expr{selector.WhenTrue, selector.WhenFalse} {
 		if arm == nil {
 			return false
 		}

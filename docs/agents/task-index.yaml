@@ -88,11 +88,11 @@ tasks:
       ownership: unclaimed
   - id: TASK-021
     topic: PipeLang deterministic self-hosting managed language foundation
-    completed_language_contract: v0.107.0
-    active_objective: TASK-021-terminal-selector-value-arms
+    completed_language_contract: v0.108.0
+    active_objective: TASK-021-terminal-inner-selector-arms
     objective_state: completed
     selected_option: A
-    selected_scope: Conditional result arms in terminal selector tests through statement depth three
+    selected_scope: Inner-selector value arms in terminal tests through statement depth three
     implementation_approval: approved
     completed_repair_objective: TASK-021-PipeLang-v0.80-milestone-repairs
     repair_commit: acbd10f88207d0a226ec24a073948362691adb8c

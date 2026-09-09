@@ -391,3 +391,9 @@ for example `if ((a ? b : c) ? (d ? e : f) : (g ? h : i))`. All operands stay
 inherited nonconditional bool expressions; statement trees remain bounded at depth
 three. Further nesting and new placements remain excluded. See the
 [canonical language contract](../../../../../docs/concepts/pipelang.md#pipelang-v01070-conditional-result-arms-in-terminal-selector-tests).
+
+`v0.108.0` adds `pipe-terminal-inner-selector-arms`: either or both inner-selector
+result arms may contain a flat boolean ternary in terminal tests through statement
+depth three. The new form retains nonconditional outer result arms. Existing
+v0.107 tests may occur elsewhere in the same tree. Further nesting, deeper statements
+and new return/initializer/argument placements remain excluded.
