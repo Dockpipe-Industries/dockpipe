@@ -1,4 +1,14 @@
-## Current objective — terminal-tree boolean-selector initializers
+## Current objective — direct terminal conditional tests
+
+Founder selected A and separately said exact `approved` for v0.103.0.
+[terminal-conditional-tests.md](terminal-conditional-tests.md) owns the bounded
+contract and verification. Implementation and bounded verification are complete.
+All 726 discovered compiler tests and 216 isolated scaling cases pass.
+The canonical [language section](../../../concepts/pipelang.md#pipelang-v01030-direct-conditional-tests-in-terminal-trees)
+describes the new placement. No successor is selected. Commit, push, cleanup and
+live operations remain outside scope.
+
+## Completed objective — terminal-tree boolean-selector initializers
 
 Founder selected A and separately said exact `approved` for v0.102.0.
 [terminal-boolean-selector-initializers.md](terminal-boolean-selector-initializers.md)

@@ -663,3 +663,14 @@ are inherited controls; 192 cases contain actual new initializers. Routing and s
 bits are shared only in this bounded scaling matrix. Export `fixtures-v102`, then
 run `matrix.py` for independent fresh compiler measurements with normal inlining and
 unchanged 128 MiB / 5-second ceilings. Preserve all older receipts and caches.
+
+
+The v0.103 direct terminal conditional-test layout inventory is partitioned with
+`TestV1030TerminalConditionalTestsLayouts=200`. It covers all 25 statement shapes
+and every subset of their test positions, including zero-new-test inherited controls.
+Each layout supplies three independent selector triples (one per statement depth,
+shared between siblings) and a fourth triple shared by local and return expressions.
+It does not claim arbitrary independent values at every node. Scaling adds twelve
+families at three conditional-test depths through 256 eager preceding locals, with
+used/unused tails and four initializer-arm families. Every scaling case contains a
+new test, including zero-local controls. Limits and normal compiler flags are unchanged.
