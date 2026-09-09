@@ -1,3 +1,11 @@
+## Current objective — straight-line boolean-selector initializers
+
+Founder selected A and separately approved v0.101.0 implementation on 2026-09-08.
+[straight-line-boolean-selector-initializers.md](straight-line-boolean-selector-initializers.md)
+owns scope and verification. State: `completed`. The saved checkout baseline is
+`9af4a6de`; completed v0.100 evidence is retained. Commit, push, publication, cleanup,
+worktree creation and external operations remain outside scope. No successor is selected.
+
 ## Completed current objective — arrow-method boolean selectors
 
 Founder selected A and separately approved v0.100.0 implementation on 2026-09-08.

@@ -599,7 +599,7 @@ func testConditionalLocalsTypeMatrix(t *testing.T, contract LanguageContract, ze
 				source = v940WrapBody(t, source, terminalTrees(3)[25], v890TypeCondition(source))
 			}
 
-			if contract == PipeLangLanguageContractV980 || contract == PipeLangLanguageContractV990 || contract == PipeLangLanguageContractV1000 {
+			if contract == PipeLangLanguageContractV980 || contract == PipeLangLanguageContractV990 || contract == PipeLangLanguageContractV1000 || contract == PipeLangLanguageContractV1010 {
 				locals := fmt.Sprintf("%s shared=pick ? (inner ? (outer ? left : left) : left) : right;", typ)
 				returned := "(outer ? inner : true) ? shared : right"
 				if len(zeroOption) > 0 && zeroOption[0] {
@@ -613,6 +613,9 @@ func testConditionalLocalsTypeMatrix(t *testing.T, contract LanguageContract, ze
 			}
 			if contract == PipeLangLanguageContractV1000 {
 				source = v1000Arrow(t, source)
+			}
+			if contract == PipeLangLanguageContractV1010 {
+				source = v1010Initializer(t, source)
 			}
 			_, program := conditionalLocalTreeProgramVersion(t, contract, source, []string{"Select", "Echo"})
 			function := coreFunctionNamed(t, program, "Select")
@@ -683,7 +686,7 @@ func TestTypedChoice(t *testing.T){
 }
 
 func TestV830TwoConditionalLocalsVersionBoundary(t *testing.T) {
-	for _, contract := range []LanguageContract{PipeLangLanguageContractV810, PipeLangLanguageContractV820, "v0.101.0", "unknown"} {
+	for _, contract := range []LanguageContract{PipeLangLanguageContractV810, PipeLangLanguageContractV820, "v0.102.0", "unknown"} {
 		input := semanticTestModuleSet("compiler.selfhosting", []ModuleInput{testModule("compiler.selfhosting", "two.pipe", twoConditionalLocalsSource)}, nil)
 		input.LanguageContract = contract
 		if AnalyzeSemanticModuleSet(input).Error() == nil {
@@ -845,7 +848,7 @@ func testConditionalLocalsCarrierAndHostValues(t *testing.T, contract LanguageCo
 				source = v940WrapBody(t, source, terminalTrees(3)[25], v890TypeCondition(source))
 			}
 
-			if contract == PipeLangLanguageContractV980 || contract == PipeLangLanguageContractV990 || contract == PipeLangLanguageContractV1000 {
+			if contract == PipeLangLanguageContractV980 || contract == PipeLangLanguageContractV990 || contract == PipeLangLanguageContractV1000 || contract == PipeLangLanguageContractV1010 {
 				locals := fmt.Sprintf("%s a=first ? (second ? (enabled ? value : value) : value) : fallback;", typ)
 				returned := "(enabled ? second : true) ? a : fallback"
 				if len(zeroOption) > 0 && zeroOption[0] {
@@ -859,6 +862,9 @@ func testConditionalLocalsCarrierAndHostValues(t *testing.T, contract LanguageCo
 			}
 			if contract == PipeLangLanguageContractV1000 {
 				source = v1000Arrow(t, source)
+			}
+			if contract == PipeLangLanguageContractV1010 {
+				source = v1010Initializer(t, source)
 			}
 			_, program := conditionalLocalTreeProgramVersion(t, contract, source, []string{"Echo", "Select"})
 			function := coreFunctionNamed(t, program, "Select")

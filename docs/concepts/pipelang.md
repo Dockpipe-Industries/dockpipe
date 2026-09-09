@@ -3445,3 +3445,42 @@ type, scope and hidden-local validation and generic internal Core locals. Core
 already represents the equivalent v0.98/v0.99 block return: the parser owns older
 arrow-spelling refusal. AST/HIR/Core node shapes, compiler/semantic/Application IR
 identities and engine/package boundaries are unchanged.
+
+### PipeLang v0.101.0: straight-line boolean-selector initializers
+
+`v0.101.0` admits flat boolean selectors as complete initializers in any subset
+of finite explicitly typed immutable-local sequences in public pure straight-line
+block methods, including the inherited public default when visibility is omitted:
+
+```pipe
+public Class Choices {
+    public string Select(string raw, bool a, bool b, bool c) {
+        string normalized = (a ? b : c) ? trim(raw) : raw;
+        string selected = (b ? c : a) ? normalized + "!" : normalized;
+        return selected;
+    }
+}
+```
+
+All three selector operands are bool; both arms exactly match the declared local
+type. Each of the five operands uses inherited nonconditional expressions, including
+supported pure calls and earlier in-scope bindings. Complete supported primitive,
+record, list, Optional and Result values travel intact; failed Results do not
+implicitly propagate. Evaluate a once, selected b/c, then selected x/y. Locals remain
+eager, once-only and source ordered, including unused bindings. Each binding enters
+scope after initialization. Self/forward references, duplicates, shadowing and
+escaping references remain invalid.
+
+Inherited ordinary and depth-three initializers may appear alongside the new form.
+Later locals and inherited ordinary, depth-three or flat-selector returns may reuse
+bindings. All v0.100 forms remain inherited. The new initializer is excluded before
+or inside terminal statement trees and from private methods. This adds no new
+statement-condition, argument, matching or propagation placement, further nesting,
+increased depth, inference, mutation, loops, effects or backend.
+
+Source and Core independently validate placement, types, scope and hidden-local
+refusal. Generic internal Core locals retain their contract. Existing AST/HIR/Core
+node shapes and compiler/semantic/Application IR identities remain unchanged.
+Evaluation and Go generation consume validated target-neutral Core; executable
+Application IR, frozen 45-source compatibility and generic engine/package boundaries
+are preserved. No runtime or deployment behavior is introduced.

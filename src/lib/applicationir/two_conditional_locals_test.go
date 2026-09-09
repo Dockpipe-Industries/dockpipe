@@ -91,6 +91,10 @@ func TestV1000ArrowBooleanSelectorsApplicationConsumer(t *testing.T) {
 	testConditionalLocalsApplicationConsumer(t, false, true, false, false, false, false, false, false, false, false, false, false, false, false, false, false, true)
 }
 
+func TestV1010StraightLineBooleanSelectorInitializersApplicationConsumer(t *testing.T) {
+	testConditionalLocalsApplicationConsumer(t, false, true, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, true)
+}
+
 func testConditionalLocalsApplicationConsumer(t *testing.T, finite bool, straightOption ...bool) {
 	straight := len(straightOption) > 0 && straightOption[0]
 	returnChoice := len(straightOption) > 1 && straightOption[1]
@@ -161,6 +165,10 @@ func testConditionalLocalsApplicationConsumer(t *testing.T, finite bool, straigh
 	arrowBooleanSelector := len(straightOption) > 15 && straightOption[15]
 	if arrowBooleanSelector {
 		contract, prior, boundary = pipelang.PipeLangLanguageContractV1000, pipelang.PipeLangLanguageContractV990, "require a block-bodied method"
+	}
+	selectorInitializer := len(straightOption) > 16 && straightOption[16]
+	if selectorInitializer {
+		contract, prior, boundary = pipelang.PipeLangLanguageContractV1010, pipelang.PipeLangLanguageContractV1000, "new initializer"
 	}
 	layouts := []bool{false, true}
 	if straight {
@@ -254,6 +262,9 @@ func testConditionalLocalsApplicationConsumer(t *testing.T, finite bool, straigh
 			if arrowBooleanSelector {
 				helper = `public string ChooseKey(string raw,bool clean,bool suffix,bool enabled)=>(clean ? suffix : enabled) ? raw+"!" : raw;`
 			}
+			if selectorInitializer {
+				helper = `public string ChooseKey(string raw,bool clean,bool suffix,bool enabled){string selected=(clean ? suffix : enabled) ? raw+"!" : raw;return selected;`
+			}
 			closing := "}"
 			if arrow || arrowBooleanSelector {
 				closing = ""
@@ -322,6 +333,9 @@ func testConditionalLocalsApplicationConsumer(t *testing.T, finite bool, straigh
 
 			if arrowBooleanSelector {
 				choicePresent = choose.Body.Conditional != nil && !choose.Body.Conditional.TerminalStatement && choose.Body.Conditional.Condition.Conditional != nil
+			}
+			if selectorInitializer {
+				choicePresent = choose.Body.ImmutableLocal != nil && choose.Body.ImmutableLocal.Initializer != nil && choose.Body.ImmutableLocal.Initializer.Conditional != nil && choose.Body.ImmutableLocal.Initializer.Conditional.Condition.Conditional != nil
 			}
 			if depthThreeArrow && choicePresent {
 				choicePresent = choose.Body.Conditional.WhenTrue.Conditional.WhenTrue != nil && choose.Body.Conditional.WhenTrue.Conditional.WhenTrue.Conditional != nil
@@ -406,7 +420,7 @@ func testConditionalLocalsApplicationConsumer(t *testing.T, finite bool, straigh
 							want += "!"
 						}
 					}
-					if arrowBooleanSelector {
+					if arrowBooleanSelector || selectorInitializer {
 						picked := mask&4 != 0
 						if mask&1 != 0 {
 							picked = mask&2 != 0

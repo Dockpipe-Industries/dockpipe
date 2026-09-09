@@ -692,3 +692,10 @@ assert(arrowBooleanSelector.body.join("\n").includes("=>"));
 assert(arrowBooleanSelector.body.join("\n").includes("(a ? b : c) ?"));
 assert(arrowBooleanSelector.description.includes("v0.100.0"));
 assert(pipeLangReadme.includes("`v0.100.0`"));
+
+const selectorInitializer = pipeLangSnippets["PipeLang straight-line selector initializer"];
+assert.strictEqual(selectorInitializer.prefix, "pipe-selector-initializer");
+assert(selectorInitializer.body.join("\n").includes("string value = (a ? b : c) ? trim(raw) : raw;"));
+assert(selectorInitializer.body.join("\n").includes("return value;"));
+assert(selectorInitializer.description.includes("v0.101.0"));
+assert(pipeLangReadme.includes("`v0.101.0`"));

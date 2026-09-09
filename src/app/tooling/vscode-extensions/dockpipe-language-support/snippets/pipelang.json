@@ -1142,5 +1142,17 @@
       "    (a ? b : c) ? ${3:raw} : ${4:raw};"
     ],
     "description": "PipeLang v0.100.0: a flat boolean selector in a public pure arrow method"
+  },
+  "PipeLang straight-line selector initializer": {
+    "prefix": "pipe-selector-initializer",
+    "body": [
+      "public Class ${1:Choices} {",
+      "    public string ${2:Select}(string raw, bool a, bool b, bool c) {",
+      "        string value = (a ? b : c) ? trim(raw) : raw;",
+      "        return value;",
+      "    }",
+      "}"
+    ],
+    "description": "PipeLang v0.101.0 public pure straight-line boolean-selector initializer"
   }
 }
