@@ -735,3 +735,9 @@ assert.strictEqual(terminalSelectorTests.prefix, "pipe-terminal-selector-tests")
 assert.ok(terminalSelectorTests.body.join("\n").includes("if ((a ? b : c) ? d : e)"));
 assert.ok(terminalSelectorTests.description.includes("v0.106.0"));
 assert(pipeLangReadme.includes("`v0.106.0`"));
+
+const terminalSelectorValueArms = pipeLangSnippets["PipeLang terminal selector value arms"];
+assert.strictEqual(terminalSelectorValueArms.prefix, "pipe-terminal-selector-value-arms");
+assert(terminalSelectorValueArms.body.join("\n").includes("if ((a ? b : c) ? (d ? e : f) : (g ? h : i))"));
+assert(terminalSelectorValueArms.description.includes("v0.107.0"));
+assert(pipeLangReadme.includes("`v0.107.0`"));

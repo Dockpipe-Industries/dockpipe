@@ -1,4 +1,14 @@
-## Current objective — flat boolean selectors in terminal tests
+## Current objective — conditional result arms in terminal selector tests
+
+Founder selected A and separately said exact `approved` for v0.107.0.
+[terminal-selector-value-arms.md](terminal-selector-value-arms.md) owns the bounded
+contract and verification. Implementation and bounded verification are complete.
+All 781 discovered compiler tests and 648 isolated scaling cases pass.
+The [canonical language section](../../../concepts/pipelang.md#pipelang-v01070-conditional-result-arms-in-terminal-selector-tests)
+defines semantics and exclusions. Commit, push, cleanup and live operations remain outside scope.
+No successor is selected.
+
+## Completed objective — flat boolean selectors in terminal tests
 
 Founder selected A and separately said exact `approved` for v0.106.0.
 [terminal-boolean-selector-tests.md](terminal-boolean-selector-tests.md) owns the

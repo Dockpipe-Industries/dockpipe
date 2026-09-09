@@ -2,6 +2,8 @@
 // It contains no source-tree, parser, HIR, or target-language concepts.
 package coreir
 
+const LanguageContractV1070 = "v0.107.0"
+
 const LanguageContractV1060 = "v0.106.0"
 
 const LanguageContractV1050 = "v0.105.0"

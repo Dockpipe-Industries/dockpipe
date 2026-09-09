@@ -714,3 +714,16 @@ exhaust five independent booleans at all three statement depths. Twelve memory
 families cross three depths and four initializer operand families with used/unused
 locals and 0/1/8/16/24/32/64/128/256 preceding bindings, exporting 216 fixtures to
 `fixtures-v106`. Keep normal inlining and the 128 MiB / 5-second compiler ceilings.
+
+The v0.107 terminal selector value-arm matrix uses
+`TestV1070TerminalSelectorValueArmsLayouts=600` disjoint partitions over 25 statement
+shapes, 722 condition-position subsets and three arm families (true, false, both).
+Each layout exhausts 4,096 supplied vectors: nine selector/result-arm operands and
+three independent statement-depth flips. Local/return choices reuse some of those
+bits; selector bits are shared across statement nodes. This does not claim every
+independent assignment across nodes or locals. Separate computed/lexical checks
+exercise eager ordered locals and lazy pure calls.
+The 36 scaling families cover three statement depths, four initializer-arm families
+and three new test-arm families, each with used/unused tails and nine local counts.
+Export fresh isolated compiler fixtures to `fixtures-v107`. Preserve normal GC,
+inlining, all contained limits and the 128 MiB / 5-second compiler ceilings.
