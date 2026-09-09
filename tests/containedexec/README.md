@@ -703,3 +703,14 @@ The 36 memory families cross three nesting forms, three statement depths and fou
 initializer families with used/unused locals and 0/1/8/16/24/32/64/128/256 bindings.
 The suite exports `fixtures-v105` for fresh isolated `matrix.py` measurements.
 Existing normal inlining, execution GC, compiler ceilings and containment remain fixed.
+
+The v0.106 terminal boolean-selector placement matrix uses
+`TestV1060TerminalBooleanSelectorTestsLayouts=200` disjoint partitions over all 25
+statement shapes and 722 condition-position subsets. Each layout exhausts 2,048
+vectors for five selector operands, three statement-depth flips and three local/
+return operands. Operand bits are shared across statement nodes; this does not
+claim every independent assignment across nodes. Separate computed/lexical checks
+exhaust five independent booleans at all three statement depths. Twelve memory
+families cross three depths and four initializer operand families with used/unused
+locals and 0/1/8/16/24/32/64/128/256 preceding bindings, exporting 216 fixtures to
+`fixtures-v106`. Keep normal inlining and the 128 MiB / 5-second compiler ceilings.
