@@ -209,7 +209,7 @@ func TestV1020TerminalBooleanSelectorInitializersMalformedCore(t *testing.T) {
 			case "identity":
 				p.CompilerContract = "unknown"
 			case "version":
-				p.LanguageContract = "v0.103.0"
+				p.LanguageContract = "v0.999.0"
 			}
 			if coreir.ValidateProgram(p) == nil {
 				t.Fatal("malformed Core admitted")

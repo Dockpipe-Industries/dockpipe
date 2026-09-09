@@ -707,3 +707,11 @@ assert(terminalSelectorInitializers.body.join("\n").includes("string branch = (b
 assert(terminalSelectorInitializers.body.join("\n").includes("string leaf = (c ? a : b) ? branch + \"?\" : branch;"));
 assert(terminalSelectorInitializers.description.includes("v0.102.0"));
 assert(pipeLangReadme.includes("`v0.102.0`"));
+
+
+const terminalConditionalTests = pipeLangSnippets["PipeLang terminal conditional tests"];
+assert.strictEqual(terminalConditionalTests.prefix, "pipe-terminal-conditional-tests");
+assert(terminalConditionalTests.body.join("\n").includes("if (a ? b : c) {"));
+assert(terminalConditionalTests.body.join("\n").includes("if (present ? c : b) {"));
+assert(terminalConditionalTests.description.includes("v0.103.0"));
+assert(pipeLangReadme.includes("`v0.103.0`"));

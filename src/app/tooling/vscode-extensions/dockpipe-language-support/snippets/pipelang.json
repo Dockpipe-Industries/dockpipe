@@ -1176,5 +1176,26 @@
       "}"
     ],
     "description": "PipeLang v0.102.0 public pure boolean-selector initializers throughout terminal-tree scopes"
+  },
+  "PipeLang terminal conditional tests": {
+    "prefix": "pipe-terminal-conditional-tests",
+    "body": [
+      "public Class ${1:Choices} {",
+      "    public string ${2:Select}(string raw, bool a, bool b, bool c) {",
+      "        string normalized = trim(raw);",
+      "        if (a ? b : c) {",
+      "            bool present = normalized != \"\";",
+      "            if (present ? c : b) {",
+      "                return normalized;",
+      "            } else {",
+      "                return raw;",
+      "            }",
+      "        } else {",
+      "            return raw;",
+      "        }",
+      "    }",
+      "}"
+    ],
+    "description": "PipeLang v0.103.0 public pure flat conditional tests throughout terminal trees"
   }
 }

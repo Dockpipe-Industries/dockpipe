@@ -3536,3 +3536,50 @@ refusal. Generic internal Core locals, existing AST/HIR/Core nodes, compiler/sem
 Application IR identities and frozen 45-source compatibility are preserved. Evaluation
 and Go generation consume validated target-neutral Core; executable Application IR
 continues through the existing consumer. Generic engine/package boundaries are unchanged.
+
+### PipeLang v0.103.0: direct conditional tests in terminal trees
+
+`v0.103.0` admits a flat boolean ternary directly in any subset of the condition
+positions in existing public pure terminal `if/else` trees through statement depth
+three. Visibility may be omitted under the inherited public default:
+
+```pipe
+public Class Choices {
+    public string Select(string raw, bool a, bool b, bool c) {
+        string normalized = trim(raw);
+        if (a ? b : c) {
+            bool present = normalized != "";
+            if (present ? c : b) {
+                return normalized;
+            } else {
+                return raw;
+            }
+        } else {
+            return raw;
+        }
+    }
+}
+```
+
+In `if (a ? b : c)`, all three operands must be bool and use inherited
+nonconditional expressions, including supported pure calls and earlier in-scope
+parameters or immutable locals. Evaluate `a` once and only its selected `b` or `c`
+operand, then execute only the selected statement branch. Reached locals initialize
+eagerly once in source order, including unused bindings. Existing lexical rules
+continue to reject self/forward references, duplicates, shadowing, sibling references
+and escaping branch bindings.
+
+Ordinary statement conditions can mix with the new tests at every inherited tree
+position. All v0.102 local and return forms remain available: ordinary expressions,
+depth-three value ternaries and complete flat boolean selectors. Complete supported
+values, including Optional and Result carriers, retain inherited transport semantics.
+A failed Result does not implicitly propagate.
+
+This adds no nested ternary within a new test, hidden local declaration within a
+condition expression, deeper statement tree, new return/initializer/argument/matching/
+propagation placement, private method, inference, mutation, loop, effect or backend.
+Source and Core independently validate public placement, types and scope; generic
+internal Core locals remain valid. Existing AST/HIR/Core nodes, public compiler,
+semantic and Application IR identities and frozen 45-source compatibility are preserved.
+Evaluation, Core-only Go generation and the executable Application IR consumer keep
+using validated target-neutral Core. Existing compiler resource ceilings remain fixed.

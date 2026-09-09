@@ -216,7 +216,7 @@ func TestV910NestedTerminalInitializersVersionBoundary(t *testing.T) {
 		p.LanguageContract = string(contract)
 		assertAdmissionRejected(t, p, "")
 	}
-	for _, contract := range []string{"v0.103.0", "unknown"} {
+	for _, contract := range []string{"v0.999.0", "unknown"} {
 		_, p := conditionalLocalTreeProgramVersion(t, PipeLangLanguageContractV910, nestedTerminalInitializersSource, []string{"Select"})
 		p.LanguageContract = contract
 		assertAdmissionRejected(t, p, "")

@@ -357,3 +357,10 @@ Earlier bindings can feed later locals, descendant conditions and inherited retu
 All v0.101 forms remain inherited. Direct ternary statement conditions, further
 nesting, new argument/matching/propagation placements and private new forms remain
 excluded. Existing expression/statement depth limits are unchanged.
+
+
+`v0.103.0` adds `pipe-terminal-conditional-tests` for `if (a ? b : c)`
+at any existing terminal-tree condition through statement depth three. Operands are
+nonconditional bool expressions and may use earlier lexical locals. Selection is
+lazy; new nesting inside tests, deeper trees and new argument placements remain
+excluded. Existing local/return forms are inherited.
