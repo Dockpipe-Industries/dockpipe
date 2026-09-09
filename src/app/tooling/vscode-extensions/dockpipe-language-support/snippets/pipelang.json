@@ -1154,5 +1154,27 @@
       "}"
     ],
     "description": "PipeLang v0.101.0 public pure straight-line boolean-selector initializer"
+  },
+  "PipeLang terminal-tree selector initializers": {
+    "prefix": "pipe-terminal-selector-initializers",
+    "body": [
+      "public Class ${1:Choices} {",
+      "    public string ${2:Select}(string raw, bool a, bool b, bool c) {",
+      "        string root = (a ? b : c) ? trim(raw) : raw;",
+      "        if (a) {",
+      "            string branch = (b ? c : a) ? root + \"!\" : root;",
+      "            if (b) {",
+      "                string leaf = (c ? a : b) ? branch + \"?\" : branch;",
+      "                return leaf;",
+      "            } else {",
+      "                return branch;",
+      "            }",
+      "        } else {",
+      "            return root;",
+      "        }",
+      "    }",
+      "}"
+    ],
+    "description": "PipeLang v0.102.0 public pure boolean-selector initializers throughout terminal-tree scopes"
   }
 }

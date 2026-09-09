@@ -95,6 +95,10 @@ func TestV1010StraightLineBooleanSelectorInitializersApplicationConsumer(t *test
 	testConditionalLocalsApplicationConsumer(t, false, true, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, true)
 }
 
+func TestV1020TerminalBooleanSelectorInitializersApplicationConsumer(t *testing.T) {
+	testConditionalLocalsApplicationConsumer(t, false, true, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, true, true)
+}
+
 func testConditionalLocalsApplicationConsumer(t *testing.T, finite bool, straightOption ...bool) {
 	straight := len(straightOption) > 0 && straightOption[0]
 	returnChoice := len(straightOption) > 1 && straightOption[1]
@@ -169,6 +173,10 @@ func testConditionalLocalsApplicationConsumer(t *testing.T, finite bool, straigh
 	selectorInitializer := len(straightOption) > 16 && straightOption[16]
 	if selectorInitializer {
 		contract, prior, boundary = pipelang.PipeLangLanguageContractV1010, pipelang.PipeLangLanguageContractV1000, "new initializer"
+	}
+	terminalSelectorInitializer := len(straightOption) > 17 && straightOption[17]
+	if terminalSelectorInitializer {
+		contract, prior, boundary = pipelang.PipeLangLanguageContractV1020, pipelang.PipeLangLanguageContractV1010, "new argument/condition placements"
 	}
 	layouts := []bool{false, true}
 	if straight {
@@ -265,6 +273,13 @@ func testConditionalLocalsApplicationConsumer(t *testing.T, finite bool, straigh
 			if selectorInitializer {
 				helper = `public string ChooseKey(string raw,bool clean,bool suffix,bool enabled){string selected=(clean ? suffix : enabled) ? raw+"!" : raw;return selected;`
 			}
+			if terminalSelectorInitializer {
+				helper = `public string ChooseKey(string raw,bool clean,bool suffix,bool enabled){
+                 string root=(clean ? suffix : enabled) ? raw+"!" : raw;
+                 if(clean){string mid=(clean ? suffix : enabled) ? raw+"!" : raw;
+                  if(suffix){if(enabled){string leaf=(clean ? suffix : enabled) ? raw+"!" : raw;return leaf;}else{return mid;}}else{return root;}
+                 }else{string other=(clean ? suffix : enabled) ? raw+"!" : raw;return other;}`
+			}
 			closing := "}"
 			if arrow || arrowBooleanSelector {
 				closing = ""
@@ -336,6 +351,9 @@ func testConditionalLocalsApplicationConsumer(t *testing.T, finite bool, straigh
 			}
 			if selectorInitializer {
 				choicePresent = choose.Body.ImmutableLocal != nil && choose.Body.ImmutableLocal.Initializer != nil && choose.Body.ImmutableLocal.Initializer.Conditional != nil && choose.Body.ImmutableLocal.Initializer.Conditional.Condition.Conditional != nil
+			}
+			if terminalSelectorInitializer {
+				choicePresent = choicePresent && choose.Body.ImmutableLocal.Return != nil && choose.Body.ImmutableLocal.Return.Conditional != nil && choose.Body.ImmutableLocal.Return.Conditional.TerminalStatement && choose.Body.ImmutableLocal.Return.Conditional.WhenTrue.ImmutableLocal != nil
 			}
 			if depthThreeArrow && choicePresent {
 				choicePresent = choose.Body.Conditional.WhenTrue.Conditional.WhenTrue != nil && choose.Body.Conditional.WhenTrue.Conditional.WhenTrue.Conditional != nil

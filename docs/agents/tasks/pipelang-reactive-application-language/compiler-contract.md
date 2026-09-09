@@ -1,4 +1,12 @@
-## Current objective — straight-line boolean-selector initializers
+## Current objective — terminal-tree boolean-selector initializers
+
+Founder selected A and separately said exact `approved` for v0.102.0.
+[terminal-boolean-selector-initializers.md](terminal-boolean-selector-initializers.md)
+owns completed scope and verification. The fresh 714-test compiler suite, integration
+checks and all 216 isolated scaling cases pass. No successor is selected.
+Commit, push, publication and live operations remain outside scope.
+
+## Completed objective — straight-line boolean-selector initializers
 
 Founder selected A and separately approved v0.101.0 implementation on 2026-09-08.
 [straight-line-boolean-selector-initializers.md](straight-line-boolean-selector-initializers.md)

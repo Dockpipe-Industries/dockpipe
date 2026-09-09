@@ -643,3 +643,23 @@ and the return/depth-three triple, with all nonempty two-slot subsets, mixed fou
 sequences and used/unused tails. Scaling exports actual selector initializers to
 `fixtures-v101`; each family shares input bits across the scaled local sequence.
 Run `matrix.py` for fresh isolated compiler evidence at unchanged limits.
+
+### v0.102 selector initializers in terminal scopes
+
+Split `TestV1020TerminalBooleanSelectorInitializersLayouts=200`: eight disjoint
+layout partitions per each of the 25 terminal statement shapes. The bounded matrix
+crosses all three local-slot subsets with used/unused tails, rotates ordinary,
+depth-three and flat-selector returns, and adds scope-class subsets and five-local
+mixed sequences. Each supplied layout covers every reachable statement path,
+64 independently supplied two-initializer-triple vectors and eight return vectors.
+Selector triples alternate across locals and are shared between scopes. Mixed inherited
+depth-three initializers share this supplied input group; this is not arbitrary
+independent assignments at every initializer and tree node.
+
+`TestV1020TerminalBooleanSelectorInitializersMemory` has twelve `choices` partitions:
+four nonconditional arm families at root/intermediate/depth-three leaf placement,
+used/unused tails and 0/1/8/16/24/32/64/128/256 locals (216 fixtures). Zero-local cases
+are inherited controls; 192 cases contain actual new initializers. Routing and selector
+bits are shared only in this bounded scaling matrix. Export `fixtures-v102`, then
+run `matrix.py` for independent fresh compiler measurements with normal inlining and
+unchanged 128 MiB / 5-second ceilings. Preserve all older receipts and caches.

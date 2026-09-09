@@ -699,3 +699,11 @@ assert(selectorInitializer.body.join("\n").includes("string value = (a ? b : c) 
 assert(selectorInitializer.body.join("\n").includes("return value;"));
 assert(selectorInitializer.description.includes("v0.101.0"));
 assert(pipeLangReadme.includes("`v0.101.0`"));
+
+const terminalSelectorInitializers = pipeLangSnippets["PipeLang terminal-tree selector initializers"];
+assert.strictEqual(terminalSelectorInitializers.prefix, "pipe-terminal-selector-initializers");
+assert(terminalSelectorInitializers.body.join("\n").includes("string root = (a ? b : c) ? trim(raw) : raw;"));
+assert(terminalSelectorInitializers.body.join("\n").includes("string branch = (b ? c : a) ? root + \"!\" : root;"));
+assert(terminalSelectorInitializers.body.join("\n").includes("string leaf = (c ? a : b) ? branch + \"?\" : branch;"));
+assert(terminalSelectorInitializers.description.includes("v0.102.0"));
+assert(pipeLangReadme.includes("`v0.102.0`"));
