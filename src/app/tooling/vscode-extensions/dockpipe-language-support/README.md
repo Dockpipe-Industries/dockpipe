@@ -384,3 +384,10 @@ at any subset of existing terminal-tree condition positions through statement de
 three. All five operands remain nonconditional bool expressions. Reached selector
 operands and statement branches remain lazy; preceding locals stay eager and ordered.
 Further nesting within this new form and new placements remain excluded.
+
+`v0.107.0` adds `pipe-terminal-selector-value-arms`: either or both outer result
+arms of a complete terminal boolean-selector test may be flat boolean ternaries,
+for example `if ((a ? b : c) ? (d ? e : f) : (g ? h : i))`. All operands stay
+inherited nonconditional bool expressions; statement trees remain bounded at depth
+three. Further nesting and new placements remain excluded. See the
+[canonical language contract](../../../../../docs/concepts/pipelang.md#pipelang-v01070-conditional-result-arms-in-terminal-selector-tests).

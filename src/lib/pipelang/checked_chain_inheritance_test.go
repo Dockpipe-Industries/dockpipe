@@ -68,7 +68,7 @@ func TestCheckedChainInheritanceAdmission(t *testing.T) {
 	for _, chain := range inheritedChains() {
 		t.Run(chain.typ+chain.ops, func(t *testing.T) {
 			var baseline [][]byte
-			for version := chain.version(); version <= 106; version++ {
+			for version := chain.version(); version <= 107; version++ {
 				t.Run(fmt.Sprint(version), func(t *testing.T) {
 					contract := LanguageContract(fmt.Sprintf("v0.%d.0", version))
 					input := semanticTestModuleSet("compiler.cursor", []ModuleInput{testModule("compiler.cursor", "chain.pipe", chain.source())}, nil)
@@ -338,7 +338,7 @@ func TestCheckedChainInheritanceRejection(t *testing.T) {
 	for _, chain := range []inheritedChain{{"int", "+-"}, {"int", "+-*"}, {"float", "//"}, {"float", "///"}} {
 		source := chain.source()
 		last := len(chain.ops) - 1
-		for version := chain.version(); version <= 106; version++ {
+		for version := chain.version(); version <= 107; version++ {
 			t.Run(fmt.Sprintf("%s%s/%d", chain.typ, chain.ops, version), func(t *testing.T) {
 				contract := LanguageContract(fmt.Sprintf("v0.%d.0", version))
 				first := fmt.Sprintf("value0 %c operand0", chain.ops[0])
