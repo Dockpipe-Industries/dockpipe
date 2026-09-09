@@ -674,3 +674,17 @@ It does not claim arbitrary independent values at every node. Scaling adds twelv
 families at three conditional-test depths through 256 eager preceding locals, with
 used/unused tails and four initializer-arm families. Every scaling case contains a
 new test, including zero-local controls. Limits and normal compiler flags are unchanged.
+
+
+The v0.104 nested terminal test-arm matrix uses
+`TestV1040NestedTerminalConditionalTestsLayouts=200`. All 25 statement shapes and
+all 722 subsets of condition positions are supplied. True-only, false-only and
+both-arm nesting rotate by node and layout. Each layout crosses 128 shared operand
+vectors, eight independent statement-depth result flips, and eight independent
+local/return vectors (8192 supplied rows). Nodes share operand inputs; this is not
+all independent assignments at every node. Non-new positions mix ordinary and flat
+v0.103 tests. The independent model checks values and lazy ordered Go traces.
+Scaling has 36 choices partitions: three nesting forms, three test depths and four
+initializer families, with used/unused tails and 0/1/8/16/24/32/64/128/256 locals.
+Export `fixtures-v104`, then use `matrix.py` for fresh isolated compiler measurements
+with unchanged normal inlining, execution GC and 128 MiB / 5-second ceilings.

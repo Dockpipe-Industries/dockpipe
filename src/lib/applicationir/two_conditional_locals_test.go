@@ -103,6 +103,10 @@ func TestV1030TerminalConditionalTestsApplicationConsumer(t *testing.T) {
 	testConditionalLocalsApplicationConsumer(t, false, true, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, true, false, true)
 }
 
+func TestV1040NestedTerminalConditionalTestsApplicationConsumer(t *testing.T) {
+	testConditionalLocalsApplicationConsumer(t, false, true, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, true, false, true, true)
+}
+
 func testConditionalLocalsApplicationConsumer(t *testing.T, finite bool, straightOption ...bool) {
 	straight := len(straightOption) > 0 && straightOption[0]
 	returnChoice := len(straightOption) > 1 && straightOption[1]
@@ -185,6 +189,10 @@ func testConditionalLocalsApplicationConsumer(t *testing.T, finite bool, straigh
 	conditionalTests := len(straightOption) > 18 && straightOption[18]
 	if conditionalTests {
 		contract, prior, boundary = pipelang.PipeLangLanguageContractV1030, pipelang.PipeLangLanguageContractV1020, "new argument/condition placements"
+	}
+	nestedTests := len(straightOption) > 19 && straightOption[19]
+	if nestedTests {
+		contract, prior, boundary = pipelang.PipeLangLanguageContractV1040, pipelang.PipeLangLanguageContractV1030, "new argument/condition placements"
 	}
 	layouts := []bool{false, true}
 	if straight {
@@ -294,6 +302,11 @@ func testConditionalLocalsApplicationConsumer(t *testing.T, finite bool, straigh
  if(mid ? clean : enabled){if(enabled ? clean : suffix){return root+"!";}else{return root+"!";}}else{return root+"!";}
  }else{return root;}`
 			}
+			if nestedTests {
+				helper = strings.Replace(helper, "clean ? suffix : enabled", "clean ? (suffix ? true : false) : (enabled ? true : false)", 1)
+				helper = strings.Replace(helper, "mid ? clean : enabled", "mid ? (clean ? true : false) : enabled", 1)
+				helper = strings.Replace(helper, "enabled ? clean : suffix", "enabled ? clean : (suffix ? true : false)", 1)
+			}
 			closing := "}"
 			if arrow || arrowBooleanSelector {
 				closing = ""
@@ -371,6 +384,10 @@ func testConditionalLocalsApplicationConsumer(t *testing.T, finite bool, straigh
 			}
 			if conditionalTests {
 				choicePresent = choose.Body.ImmutableLocal != nil && choose.Body.ImmutableLocal.Return.Conditional != nil && choose.Body.ImmutableLocal.Return.Conditional.Condition.Conditional != nil
+			}
+			if nestedTests && choicePresent {
+				test := choose.Body.ImmutableLocal.Return.Conditional.Condition.Conditional
+				choicePresent = test.WhenTrue.Conditional != nil && test.WhenFalse.Conditional != nil
 			}
 			if depthThreeArrow && choicePresent {
 				choicePresent = choose.Body.Conditional.WhenTrue.Conditional.WhenTrue != nil && choose.Body.Conditional.WhenTrue.Conditional.WhenTrue.Conditional != nil

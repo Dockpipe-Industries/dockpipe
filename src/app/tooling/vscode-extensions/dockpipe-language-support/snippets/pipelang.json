@@ -1197,5 +1197,20 @@
       "}"
     ],
     "description": "PipeLang v0.103.0 public pure flat conditional tests throughout terminal trees"
+  },
+  "PipeLang nested terminal conditional tests": {
+    "prefix": "pipe-nested-terminal-tests",
+    "body": [
+      "public Class ${1:Choices} {",
+      "    public string ${2:Select}(string raw, bool a, bool b, bool c, bool d, bool e, bool f, bool g) {",
+      "        if (a ? (b ? c : d) : (e ? f : g)) {",
+      "            return trim(raw);",
+      "        } else {",
+      "            return raw;",
+      "        }",
+      "    }",
+      "}"
+    ],
+    "description": "PipeLang v0.104.0 public pure terminal tests with depth-two value arms"
   }
 }

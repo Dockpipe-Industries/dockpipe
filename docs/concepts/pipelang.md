@@ -3583,3 +3583,55 @@ internal Core locals remain valid. Existing AST/HIR/Core nodes, public compiler,
 semantic and Application IR identities and frozen 45-source compatibility are preserved.
 Evaluation, Core-only Go generation and the executable Application IR consumer keep
 using validated target-neutral Core. Existing compiler resource ceilings remain fixed.
+
+### PipeLang v0.104.0: nested value arms in terminal conditional tests
+
+`v0.104.0` permits a flat boolean ternary in either or both value arms of a
+terminal statement test, at any subset of condition positions in existing public
+pure terminal `if/else` trees through statement depth three. Omitted visibility
+retains the public default:
+
+```pipe
+public Class Choices {
+    public string Select(string raw, bool a, bool b, bool c, bool d,
+                         bool e, bool f, bool g) {
+        string normalized = trim(raw);
+        if (a ? (b ? c : d) : (e ? f : g)) {
+            bool present = normalized != "";
+            if (present ? (b ? c : d) : e) {
+                return normalized;
+            } else {
+                return raw;
+            }
+        } else {
+            if (b ? c : (e ? f : g)) {
+                return normalized;
+            } else {
+                return raw;
+            }
+        }
+    }
+}
+```
+
+The new test has expression depth at most two. Every ternary's condition and
+final value arms are inherited nonconditional bool expressions, including supported
+pure calls and earlier in-scope parameters or immutable locals. Evaluate each
+reached condition once, then only its selected value arm, followed by only the
+selected statement branch. Reached locals remain eager, once-only and source ordered,
+including unused bindings. Lexical admission still rejects self/forward references,
+duplicates, shadowing, sibling references and escaping branch bindings.
+
+All v0.103 forms are inherited. Ordinary and flat conditional statement tests may
+mix with the new tests. Local and return forms remain unchanged, including complete
+Optional and Result transport without implicit propagation. Selector nesting such
+as `if ((a ? b : c) ? d : e)`, expression depth three in a test, deeper statement
+trees, hidden locals in condition expressions, new argument/return/initializer/
+matching/propagation placements, private methods, inference, mutation, loops,
+effects and backends remain excluded.
+
+Source and Core independently validate public placement, types and scope. Generic
+internal Core locals, AST/HIR/Core nodes, public compiler/semantic/Application IR
+identities and frozen 45-source compatibility are preserved. Evaluation, Core-only
+Go generation and executable Application IR consume validated target-neutral Core.
+Compiler resource ceilings and engine/package boundaries are unchanged.

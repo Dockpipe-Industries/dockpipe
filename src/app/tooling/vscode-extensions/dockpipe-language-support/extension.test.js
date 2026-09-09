@@ -715,3 +715,10 @@ assert(terminalConditionalTests.body.join("\n").includes("if (a ? b : c) {"));
 assert(terminalConditionalTests.body.join("\n").includes("if (present ? c : b) {"));
 assert(terminalConditionalTests.description.includes("v0.103.0"));
 assert(pipeLangReadme.includes("`v0.103.0`"));
+
+
+const nestedTerminalTests = pipeLangSnippets["PipeLang nested terminal conditional tests"];
+assert.strictEqual(nestedTerminalTests.prefix, "pipe-nested-terminal-tests");
+assert(nestedTerminalTests.body.join("\n").includes("if (a ? (b ? c : d) : (e ? f : g)) {"));
+assert(nestedTerminalTests.description.includes("v0.104.0"));
+assert(pipeLangReadme.includes("`v0.104.0`"));
