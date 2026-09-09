@@ -274,7 +274,7 @@ func ValidateProgram(program Program) error {
 		return err
 	}
 	inheritedContract := program.LanguageContract
-	if ((((inheritedContract == LanguageContractV890 || (inheritedContract == LanguageContractV900 || (inheritedContract == LanguageContractV910 || (inheritedContract == LanguageContractV920 || (inheritedContract == LanguageContractV930 || (inheritedContract == LanguageContractV940 || (inheritedContract == LanguageContractV950 || (inheritedContract == LanguageContractV960 || (inheritedContract == LanguageContractV970 || (inheritedContract == LanguageContractV980 || (inheritedContract == LanguageContractV990 || (inheritedContract == LanguageContractV1000 || (inheritedContract == LanguageContractV1010 || (inheritedContract == LanguageContractV1020 || (inheritedContract == LanguageContractV1030 || (inheritedContract == LanguageContractV1040 || (inheritedContract == LanguageContractV1050 || (inheritedContract == LanguageContractV1060 || inheritedContract == LanguageContractV1070)))))))))))))))))) || inheritedContract == LanguageContractV880) || inheritedContract == LanguageContractV870) || inheritedContract == LanguageContractV860) || inheritedContract == LanguageContractV850 || inheritedContract == LanguageContractV840 || inheritedContract == LanguageContractV830 || inheritedContract == LanguageContractV820 || inheritedContract == LanguageContractV810 || inheritedContract == LanguageContractV800 || inheritedContract == LanguageContractV790 || inheritedContract == LanguageContractV780 || inheritedContract == LanguageContractV770 || inheritedContract == LanguageContractV760 || inheritedContract == LanguageContractV750 || inheritedContract == LanguageContractV740 {
+	if ((((inheritedContract == LanguageContractV890 || (inheritedContract == LanguageContractV900 || (inheritedContract == LanguageContractV910 || (inheritedContract == LanguageContractV920 || (inheritedContract == LanguageContractV930 || (inheritedContract == LanguageContractV940 || (inheritedContract == LanguageContractV950 || (inheritedContract == LanguageContractV960 || (inheritedContract == LanguageContractV970 || (inheritedContract == LanguageContractV980 || (inheritedContract == LanguageContractV990 || (inheritedContract == LanguageContractV1000 || (inheritedContract == LanguageContractV1010 || (inheritedContract == LanguageContractV1020 || (inheritedContract == LanguageContractV1030 || (inheritedContract == LanguageContractV1040 || (inheritedContract == LanguageContractV1050 || (inheritedContract == LanguageContractV1060 || (inheritedContract == LanguageContractV1070 || inheritedContract == LanguageContractV1080))))))))))))))))))) || inheritedContract == LanguageContractV880) || inheritedContract == LanguageContractV870) || inheritedContract == LanguageContractV860) || inheritedContract == LanguageContractV850 || inheritedContract == LanguageContractV840 || inheritedContract == LanguageContractV830 || inheritedContract == LanguageContractV820 || inheritedContract == LanguageContractV810 || inheritedContract == LanguageContractV800 || inheritedContract == LanguageContractV790 || inheritedContract == LanguageContractV780 || inheritedContract == LanguageContractV770 || inheritedContract == LanguageContractV760 || inheritedContract == LanguageContractV750 || inheritedContract == LanguageContractV740 {
 		inheritedContract = LanguageContractV730
 	}
 	functions := make(map[string]Function, len(program.Functions))
@@ -669,55 +669,58 @@ func validExpandedDepthThreeTerminalIf(expression Expr, expandedLeaves int) bool
 }
 
 func validateImmutableLocalContract(contract string, function Function) error {
-	if contract == LanguageContractV1070 && validTerminalSelectorValueArms(function.Body) {
+	if contract == LanguageContractV1080 && validTerminalInnerSelectorArms(function.Body) {
 		return nil
 	}
-	if (contract == LanguageContractV1060 || contract == LanguageContractV1070) && validTerminalBooleanSelectorTests(function.Body) {
+	if (contract == LanguageContractV1070 || contract == LanguageContractV1080) && validTerminalSelectorValueArms(function.Body) {
 		return nil
 	}
-	if (contract == LanguageContractV1050 || (contract == LanguageContractV1060 || contract == LanguageContractV1070)) && validDepthThreeTerminalConditionalTests(function.Body) {
+	if (contract == LanguageContractV1060 || (contract == LanguageContractV1070 || contract == LanguageContractV1080)) && validTerminalBooleanSelectorTests(function.Body) {
 		return nil
 	}
-	if (contract == LanguageContractV1040 || (contract == LanguageContractV1050 || (contract == LanguageContractV1060 || contract == LanguageContractV1070))) && validNestedTerminalConditionalTests(function.Body) {
+	if (contract == LanguageContractV1050 || (contract == LanguageContractV1060 || (contract == LanguageContractV1070 || contract == LanguageContractV1080))) && validDepthThreeTerminalConditionalTests(function.Body) {
 		return nil
 	}
-	if (contract == LanguageContractV1030 || (contract == LanguageContractV1040 || (contract == LanguageContractV1050 || (contract == LanguageContractV1060 || contract == LanguageContractV1070)))) && validTerminalConditionalTests(function.Body) {
+	if (contract == LanguageContractV1040 || (contract == LanguageContractV1050 || (contract == LanguageContractV1060 || (contract == LanguageContractV1070 || contract == LanguageContractV1080)))) && validNestedTerminalConditionalTests(function.Body) {
 		return nil
 	}
-	if (contract == LanguageContractV1020 || (contract == LanguageContractV1030 || (contract == LanguageContractV1040 || (contract == LanguageContractV1050 || (contract == LanguageContractV1060 || contract == LanguageContractV1070))))) && validTerminalBooleanSelectorInitializers(function.Body) {
+	if (contract == LanguageContractV1030 || (contract == LanguageContractV1040 || (contract == LanguageContractV1050 || (contract == LanguageContractV1060 || (contract == LanguageContractV1070 || contract == LanguageContractV1080))))) && validTerminalConditionalTests(function.Body) {
 		return nil
 	}
-	if (contract == LanguageContractV1010 || (contract == LanguageContractV1020 || (contract == LanguageContractV1030 || (contract == LanguageContractV1040 || (contract == LanguageContractV1050 || (contract == LanguageContractV1060 || contract == LanguageContractV1070)))))) && validStraightLineBooleanSelectorInitializers(function.Body) {
+	if (contract == LanguageContractV1020 || (contract == LanguageContractV1030 || (contract == LanguageContractV1040 || (contract == LanguageContractV1050 || (contract == LanguageContractV1060 || (contract == LanguageContractV1070 || contract == LanguageContractV1080)))))) && validTerminalBooleanSelectorInitializers(function.Body) {
 		return nil
 	}
-	if (contract == LanguageContractV980 || (contract == LanguageContractV990 || (contract == LanguageContractV1000 || (contract == LanguageContractV1010 || (contract == LanguageContractV1020 || (contract == LanguageContractV1030 || (contract == LanguageContractV1040 || (contract == LanguageContractV1050 || (contract == LanguageContractV1060 || contract == LanguageContractV1070))))))))) && validConditionalBooleanSelector(function.Body) || (contract == LanguageContractV990 || (contract == LanguageContractV1000 || (contract == LanguageContractV1010 || (contract == LanguageContractV1020 || (contract == LanguageContractV1030 || (contract == LanguageContractV1040 || (contract == LanguageContractV1050 || (contract == LanguageContractV1060 || contract == LanguageContractV1070)))))))) && validTerminalLeafBooleanSelectors(function.Body) {
+	if (contract == LanguageContractV1010 || (contract == LanguageContractV1020 || (contract == LanguageContractV1030 || (contract == LanguageContractV1040 || (contract == LanguageContractV1050 || (contract == LanguageContractV1060 || (contract == LanguageContractV1070 || contract == LanguageContractV1080))))))) && validStraightLineBooleanSelectorInitializers(function.Body) {
 		return nil
 	}
-	if (contract == LanguageContractV940 || (contract == LanguageContractV950 || (contract == LanguageContractV960 || (contract == LanguageContractV970 || (contract == LanguageContractV980 || (contract == LanguageContractV990 || (contract == LanguageContractV1000 || (contract == LanguageContractV1010 || (contract == LanguageContractV1020 || (contract == LanguageContractV1030 || (contract == LanguageContractV1040 || (contract == LanguageContractV1050 || (contract == LanguageContractV1060 || contract == LanguageContractV1070))))))))))))) && validDepthThreeTerminalLeafReturns(function.Body) {
+	if (contract == LanguageContractV980 || (contract == LanguageContractV990 || (contract == LanguageContractV1000 || (contract == LanguageContractV1010 || (contract == LanguageContractV1020 || (contract == LanguageContractV1030 || (contract == LanguageContractV1040 || (contract == LanguageContractV1050 || (contract == LanguageContractV1060 || (contract == LanguageContractV1070 || contract == LanguageContractV1080)))))))))) && validConditionalBooleanSelector(function.Body) || (contract == LanguageContractV990 || (contract == LanguageContractV1000 || (contract == LanguageContractV1010 || (contract == LanguageContractV1020 || (contract == LanguageContractV1030 || (contract == LanguageContractV1040 || (contract == LanguageContractV1050 || (contract == LanguageContractV1060 || (contract == LanguageContractV1070 || contract == LanguageContractV1080))))))))) && validTerminalLeafBooleanSelectors(function.Body) {
 		return nil
 	}
-	if (contract == LanguageContractV970 || (contract == LanguageContractV980 || (contract == LanguageContractV990 || (contract == LanguageContractV1000 || (contract == LanguageContractV1010 || (contract == LanguageContractV1020 || (contract == LanguageContractV1030 || (contract == LanguageContractV1040 || (contract == LanguageContractV1050 || (contract == LanguageContractV1060 || contract == LanguageContractV1070)))))))))) && validDepthThreeTerminalInitializers(function.Body) {
+	if (contract == LanguageContractV940 || (contract == LanguageContractV950 || (contract == LanguageContractV960 || (contract == LanguageContractV970 || (contract == LanguageContractV980 || (contract == LanguageContractV990 || (contract == LanguageContractV1000 || (contract == LanguageContractV1010 || (contract == LanguageContractV1020 || (contract == LanguageContractV1030 || (contract == LanguageContractV1040 || (contract == LanguageContractV1050 || (contract == LanguageContractV1060 || (contract == LanguageContractV1070 || contract == LanguageContractV1080)))))))))))))) && validDepthThreeTerminalLeafReturns(function.Body) {
 		return nil
 	}
-	if (contract == LanguageContractV960 || (contract == LanguageContractV970 || (contract == LanguageContractV980 || (contract == LanguageContractV990 || (contract == LanguageContractV1000 || (contract == LanguageContractV1010 || (contract == LanguageContractV1020 || (contract == LanguageContractV1030 || (contract == LanguageContractV1040 || (contract == LanguageContractV1050 || (contract == LanguageContractV1060 || contract == LanguageContractV1070))))))))))) && validDepthThreeStraightLineInitializers(function.Body) {
+	if (contract == LanguageContractV970 || (contract == LanguageContractV980 || (contract == LanguageContractV990 || (contract == LanguageContractV1000 || (contract == LanguageContractV1010 || (contract == LanguageContractV1020 || (contract == LanguageContractV1030 || (contract == LanguageContractV1040 || (contract == LanguageContractV1050 || (contract == LanguageContractV1060 || (contract == LanguageContractV1070 || contract == LanguageContractV1080))))))))))) && validDepthThreeTerminalInitializers(function.Body) {
 		return nil
 	}
-	if (contract == LanguageContractV930 || (contract == LanguageContractV940 || (contract == LanguageContractV950 || (contract == LanguageContractV960 || (contract == LanguageContractV970 || (contract == LanguageContractV980 || (contract == LanguageContractV990 || (contract == LanguageContractV1000 || (contract == LanguageContractV1010 || (contract == LanguageContractV1020 || (contract == LanguageContractV1030 || (contract == LanguageContractV1040 || (contract == LanguageContractV1050 || (contract == LanguageContractV1060 || contract == LanguageContractV1070)))))))))))))) && validDepthThreeStraightLineReturns(function.Body) {
+	if (contract == LanguageContractV960 || (contract == LanguageContractV970 || (contract == LanguageContractV980 || (contract == LanguageContractV990 || (contract == LanguageContractV1000 || (contract == LanguageContractV1010 || (contract == LanguageContractV1020 || (contract == LanguageContractV1030 || (contract == LanguageContractV1040 || (contract == LanguageContractV1050 || (contract == LanguageContractV1060 || (contract == LanguageContractV1070 || contract == LanguageContractV1080)))))))))))) && validDepthThreeStraightLineInitializers(function.Body) {
 		return nil
 	}
-	if (contract == LanguageContractV910 || (contract == LanguageContractV920 || (contract == LanguageContractV930 || (contract == LanguageContractV940 || (contract == LanguageContractV950 || (contract == LanguageContractV960 || (contract == LanguageContractV970 || (contract == LanguageContractV980 || (contract == LanguageContractV990 || (contract == LanguageContractV1000 || (contract == LanguageContractV1010 || (contract == LanguageContractV1020 || (contract == LanguageContractV1030 || (contract == LanguageContractV1040 || (contract == LanguageContractV1050 || (contract == LanguageContractV1060 || contract == LanguageContractV1070)))))))))))))))) && validNestedTerminalInitializers(function.Body) {
+	if (contract == LanguageContractV930 || (contract == LanguageContractV940 || (contract == LanguageContractV950 || (contract == LanguageContractV960 || (contract == LanguageContractV970 || (contract == LanguageContractV980 || (contract == LanguageContractV990 || (contract == LanguageContractV1000 || (contract == LanguageContractV1010 || (contract == LanguageContractV1020 || (contract == LanguageContractV1030 || (contract == LanguageContractV1040 || (contract == LanguageContractV1050 || (contract == LanguageContractV1060 || (contract == LanguageContractV1070 || contract == LanguageContractV1080))))))))))))))) && validDepthThreeStraightLineReturns(function.Body) {
 		return nil
 	}
-	if (contract == LanguageContractV900 || (contract == LanguageContractV910 || (contract == LanguageContractV920 || (contract == LanguageContractV930 || (contract == LanguageContractV940 || (contract == LanguageContractV950 || (contract == LanguageContractV960 || (contract == LanguageContractV970 || (contract == LanguageContractV980 || (contract == LanguageContractV990 || (contract == LanguageContractV1000 || (contract == LanguageContractV1010 || (contract == LanguageContractV1020 || (contract == LanguageContractV1030 || (contract == LanguageContractV1040 || (contract == LanguageContractV1050 || (contract == LanguageContractV1060 || contract == LanguageContractV1070))))))))))))))))) && validNestedStraightLineInitializers(function.Body) {
+	if (contract == LanguageContractV910 || (contract == LanguageContractV920 || (contract == LanguageContractV930 || (contract == LanguageContractV940 || (contract == LanguageContractV950 || (contract == LanguageContractV960 || (contract == LanguageContractV970 || (contract == LanguageContractV980 || (contract == LanguageContractV990 || (contract == LanguageContractV1000 || (contract == LanguageContractV1010 || (contract == LanguageContractV1020 || (contract == LanguageContractV1030 || (contract == LanguageContractV1040 || (contract == LanguageContractV1050 || (contract == LanguageContractV1060 || (contract == LanguageContractV1070 || contract == LanguageContractV1080))))))))))))))))) && validNestedTerminalInitializers(function.Body) {
 		return nil
 	}
-	if (contract == LanguageContractV890 || (contract == LanguageContractV900 || (contract == LanguageContractV910 || (contract == LanguageContractV920 || (contract == LanguageContractV930 || (contract == LanguageContractV940 || (contract == LanguageContractV950 || (contract == LanguageContractV960 || (contract == LanguageContractV970 || (contract == LanguageContractV980 || (contract == LanguageContractV990 || (contract == LanguageContractV1000 || (contract == LanguageContractV1010 || (contract == LanguageContractV1020 || (contract == LanguageContractV1030 || (contract == LanguageContractV1040 || (contract == LanguageContractV1050 || (contract == LanguageContractV1060 || contract == LanguageContractV1070)))))))))))))))))) && validNestedTerminalLeafReturns(function.Body) {
+	if (contract == LanguageContractV900 || (contract == LanguageContractV910 || (contract == LanguageContractV920 || (contract == LanguageContractV930 || (contract == LanguageContractV940 || (contract == LanguageContractV950 || (contract == LanguageContractV960 || (contract == LanguageContractV970 || (contract == LanguageContractV980 || (contract == LanguageContractV990 || (contract == LanguageContractV1000 || (contract == LanguageContractV1010 || (contract == LanguageContractV1020 || (contract == LanguageContractV1030 || (contract == LanguageContractV1040 || (contract == LanguageContractV1050 || (contract == LanguageContractV1060 || (contract == LanguageContractV1070 || contract == LanguageContractV1080)))))))))))))))))) && validNestedStraightLineInitializers(function.Body) {
 		return nil
 	}
-	if ((contract == LanguageContractV890 || (contract == LanguageContractV900 || (contract == LanguageContractV910 || (contract == LanguageContractV920 || (contract == LanguageContractV930 || (contract == LanguageContractV940 || (contract == LanguageContractV950 || (contract == LanguageContractV960 || (contract == LanguageContractV970 || (contract == LanguageContractV980 || (contract == LanguageContractV990 || (contract == LanguageContractV1000 || (contract == LanguageContractV1010 || (contract == LanguageContractV1020 || (contract == LanguageContractV1030 || (contract == LanguageContractV1040 || (contract == LanguageContractV1050 || (contract == LanguageContractV1060 || contract == LanguageContractV1070)))))))))))))))))) || contract == LanguageContractV880) && validNestedStraightLineReturns(function.Body) {
+	if (contract == LanguageContractV890 || (contract == LanguageContractV900 || (contract == LanguageContractV910 || (contract == LanguageContractV920 || (contract == LanguageContractV930 || (contract == LanguageContractV940 || (contract == LanguageContractV950 || (contract == LanguageContractV960 || (contract == LanguageContractV970 || (contract == LanguageContractV980 || (contract == LanguageContractV990 || (contract == LanguageContractV1000 || (contract == LanguageContractV1010 || (contract == LanguageContractV1020 || (contract == LanguageContractV1030 || (contract == LanguageContractV1040 || (contract == LanguageContractV1050 || (contract == LanguageContractV1060 || (contract == LanguageContractV1070 || contract == LanguageContractV1080))))))))))))))))))) && validNestedTerminalLeafReturns(function.Body) {
 		return nil
 	}
-	if ((contract == LanguageContractV890 || (contract == LanguageContractV900 || (contract == LanguageContractV910 || (contract == LanguageContractV920 || (contract == LanguageContractV930 || (contract == LanguageContractV940 || (contract == LanguageContractV950 || (contract == LanguageContractV960 || (contract == LanguageContractV970 || (contract == LanguageContractV980 || (contract == LanguageContractV990 || (contract == LanguageContractV1000 || (contract == LanguageContractV1010 || (contract == LanguageContractV1020 || (contract == LanguageContractV1030 || (contract == LanguageContractV1040 || (contract == LanguageContractV1050 || (contract == LanguageContractV1060 || contract == LanguageContractV1070)))))))))))))))))) || contract == LanguageContractV880) || contract == LanguageContractV870 {
+	if ((contract == LanguageContractV890 || (contract == LanguageContractV900 || (contract == LanguageContractV910 || (contract == LanguageContractV920 || (contract == LanguageContractV930 || (contract == LanguageContractV940 || (contract == LanguageContractV950 || (contract == LanguageContractV960 || (contract == LanguageContractV970 || (contract == LanguageContractV980 || (contract == LanguageContractV990 || (contract == LanguageContractV1000 || (contract == LanguageContractV1010 || (contract == LanguageContractV1020 || (contract == LanguageContractV1030 || (contract == LanguageContractV1040 || (contract == LanguageContractV1050 || (contract == LanguageContractV1060 || (contract == LanguageContractV1070 || contract == LanguageContractV1080))))))))))))))))))) || contract == LanguageContractV880) && validNestedStraightLineReturns(function.Body) {
+		return nil
+	}
+	if ((contract == LanguageContractV890 || (contract == LanguageContractV900 || (contract == LanguageContractV910 || (contract == LanguageContractV920 || (contract == LanguageContractV930 || (contract == LanguageContractV940 || (contract == LanguageContractV950 || (contract == LanguageContractV960 || (contract == LanguageContractV970 || (contract == LanguageContractV980 || (contract == LanguageContractV990 || (contract == LanguageContractV1000 || (contract == LanguageContractV1010 || (contract == LanguageContractV1020 || (contract == LanguageContractV1030 || (contract == LanguageContractV1040 || (contract == LanguageContractV1050 || (contract == LanguageContractV1060 || (contract == LanguageContractV1070 || contract == LanguageContractV1080))))))))))))))))))) || contract == LanguageContractV880) || contract == LanguageContractV870 {
 		if validTerminalLeafConditionalReturns(function.Body) {
 			return nil
 		}
@@ -1405,55 +1408,58 @@ func exprContainsPropagation(expression Expr) bool {
 }
 
 func validateConditionalContract(contract string, function Function) error {
-	if contract == LanguageContractV1070 && validTerminalSelectorValueArms(function.Body) {
+	if contract == LanguageContractV1080 && validTerminalInnerSelectorArms(function.Body) {
 		return nil
 	}
-	if (contract == LanguageContractV1060 || contract == LanguageContractV1070) && validTerminalBooleanSelectorTests(function.Body) {
+	if (contract == LanguageContractV1070 || contract == LanguageContractV1080) && validTerminalSelectorValueArms(function.Body) {
 		return nil
 	}
-	if (contract == LanguageContractV1050 || (contract == LanguageContractV1060 || contract == LanguageContractV1070)) && validDepthThreeTerminalConditionalTests(function.Body) {
+	if (contract == LanguageContractV1060 || (contract == LanguageContractV1070 || contract == LanguageContractV1080)) && validTerminalBooleanSelectorTests(function.Body) {
 		return nil
 	}
-	if (contract == LanguageContractV1040 || (contract == LanguageContractV1050 || (contract == LanguageContractV1060 || contract == LanguageContractV1070))) && validNestedTerminalConditionalTests(function.Body) {
+	if (contract == LanguageContractV1050 || (contract == LanguageContractV1060 || (contract == LanguageContractV1070 || contract == LanguageContractV1080))) && validDepthThreeTerminalConditionalTests(function.Body) {
 		return nil
 	}
-	if (contract == LanguageContractV1030 || (contract == LanguageContractV1040 || (contract == LanguageContractV1050 || (contract == LanguageContractV1060 || contract == LanguageContractV1070)))) && validTerminalConditionalTests(function.Body) {
+	if (contract == LanguageContractV1040 || (contract == LanguageContractV1050 || (contract == LanguageContractV1060 || (contract == LanguageContractV1070 || contract == LanguageContractV1080)))) && validNestedTerminalConditionalTests(function.Body) {
 		return nil
 	}
-	if (contract == LanguageContractV1020 || (contract == LanguageContractV1030 || (contract == LanguageContractV1040 || (contract == LanguageContractV1050 || (contract == LanguageContractV1060 || contract == LanguageContractV1070))))) && validTerminalBooleanSelectorInitializers(function.Body) {
+	if (contract == LanguageContractV1030 || (contract == LanguageContractV1040 || (contract == LanguageContractV1050 || (contract == LanguageContractV1060 || (contract == LanguageContractV1070 || contract == LanguageContractV1080))))) && validTerminalConditionalTests(function.Body) {
 		return nil
 	}
-	if (contract == LanguageContractV1010 || (contract == LanguageContractV1020 || (contract == LanguageContractV1030 || (contract == LanguageContractV1040 || (contract == LanguageContractV1050 || (contract == LanguageContractV1060 || contract == LanguageContractV1070)))))) && validStraightLineBooleanSelectorInitializers(function.Body) {
+	if (contract == LanguageContractV1020 || (contract == LanguageContractV1030 || (contract == LanguageContractV1040 || (contract == LanguageContractV1050 || (contract == LanguageContractV1060 || (contract == LanguageContractV1070 || contract == LanguageContractV1080)))))) && validTerminalBooleanSelectorInitializers(function.Body) {
 		return nil
 	}
-	if (contract == LanguageContractV980 || (contract == LanguageContractV990 || (contract == LanguageContractV1000 || (contract == LanguageContractV1010 || (contract == LanguageContractV1020 || (contract == LanguageContractV1030 || (contract == LanguageContractV1040 || (contract == LanguageContractV1050 || (contract == LanguageContractV1060 || contract == LanguageContractV1070))))))))) && validConditionalBooleanSelector(function.Body) || (contract == LanguageContractV990 || (contract == LanguageContractV1000 || (contract == LanguageContractV1010 || (contract == LanguageContractV1020 || (contract == LanguageContractV1030 || (contract == LanguageContractV1040 || (contract == LanguageContractV1050 || (contract == LanguageContractV1060 || contract == LanguageContractV1070)))))))) && validTerminalLeafBooleanSelectors(function.Body) {
+	if (contract == LanguageContractV1010 || (contract == LanguageContractV1020 || (contract == LanguageContractV1030 || (contract == LanguageContractV1040 || (contract == LanguageContractV1050 || (contract == LanguageContractV1060 || (contract == LanguageContractV1070 || contract == LanguageContractV1080))))))) && validStraightLineBooleanSelectorInitializers(function.Body) {
 		return nil
 	}
-	if (contract == LanguageContractV940 || (contract == LanguageContractV950 || (contract == LanguageContractV960 || (contract == LanguageContractV970 || (contract == LanguageContractV980 || (contract == LanguageContractV990 || (contract == LanguageContractV1000 || (contract == LanguageContractV1010 || (contract == LanguageContractV1020 || (contract == LanguageContractV1030 || (contract == LanguageContractV1040 || (contract == LanguageContractV1050 || (contract == LanguageContractV1060 || contract == LanguageContractV1070))))))))))))) && validDepthThreeTerminalLeafReturns(function.Body) {
+	if (contract == LanguageContractV980 || (contract == LanguageContractV990 || (contract == LanguageContractV1000 || (contract == LanguageContractV1010 || (contract == LanguageContractV1020 || (contract == LanguageContractV1030 || (contract == LanguageContractV1040 || (contract == LanguageContractV1050 || (contract == LanguageContractV1060 || (contract == LanguageContractV1070 || contract == LanguageContractV1080)))))))))) && validConditionalBooleanSelector(function.Body) || (contract == LanguageContractV990 || (contract == LanguageContractV1000 || (contract == LanguageContractV1010 || (contract == LanguageContractV1020 || (contract == LanguageContractV1030 || (contract == LanguageContractV1040 || (contract == LanguageContractV1050 || (contract == LanguageContractV1060 || (contract == LanguageContractV1070 || contract == LanguageContractV1080))))))))) && validTerminalLeafBooleanSelectors(function.Body) {
 		return nil
 	}
-	if (contract == LanguageContractV970 || (contract == LanguageContractV980 || (contract == LanguageContractV990 || (contract == LanguageContractV1000 || (contract == LanguageContractV1010 || (contract == LanguageContractV1020 || (contract == LanguageContractV1030 || (contract == LanguageContractV1040 || (contract == LanguageContractV1050 || (contract == LanguageContractV1060 || contract == LanguageContractV1070)))))))))) && validDepthThreeTerminalInitializers(function.Body) {
+	if (contract == LanguageContractV940 || (contract == LanguageContractV950 || (contract == LanguageContractV960 || (contract == LanguageContractV970 || (contract == LanguageContractV980 || (contract == LanguageContractV990 || (contract == LanguageContractV1000 || (contract == LanguageContractV1010 || (contract == LanguageContractV1020 || (contract == LanguageContractV1030 || (contract == LanguageContractV1040 || (contract == LanguageContractV1050 || (contract == LanguageContractV1060 || (contract == LanguageContractV1070 || contract == LanguageContractV1080)))))))))))))) && validDepthThreeTerminalLeafReturns(function.Body) {
 		return nil
 	}
-	if (contract == LanguageContractV960 || (contract == LanguageContractV970 || (contract == LanguageContractV980 || (contract == LanguageContractV990 || (contract == LanguageContractV1000 || (contract == LanguageContractV1010 || (contract == LanguageContractV1020 || (contract == LanguageContractV1030 || (contract == LanguageContractV1040 || (contract == LanguageContractV1050 || (contract == LanguageContractV1060 || contract == LanguageContractV1070))))))))))) && validDepthThreeStraightLineInitializers(function.Body) {
+	if (contract == LanguageContractV970 || (contract == LanguageContractV980 || (contract == LanguageContractV990 || (contract == LanguageContractV1000 || (contract == LanguageContractV1010 || (contract == LanguageContractV1020 || (contract == LanguageContractV1030 || (contract == LanguageContractV1040 || (contract == LanguageContractV1050 || (contract == LanguageContractV1060 || (contract == LanguageContractV1070 || contract == LanguageContractV1080))))))))))) && validDepthThreeTerminalInitializers(function.Body) {
 		return nil
 	}
-	if (contract == LanguageContractV930 || (contract == LanguageContractV940 || (contract == LanguageContractV950 || (contract == LanguageContractV960 || (contract == LanguageContractV970 || (contract == LanguageContractV980 || (contract == LanguageContractV990 || (contract == LanguageContractV1000 || (contract == LanguageContractV1010 || (contract == LanguageContractV1020 || (contract == LanguageContractV1030 || (contract == LanguageContractV1040 || (contract == LanguageContractV1050 || (contract == LanguageContractV1060 || contract == LanguageContractV1070)))))))))))))) && validDepthThreeStraightLineReturns(function.Body) {
+	if (contract == LanguageContractV960 || (contract == LanguageContractV970 || (contract == LanguageContractV980 || (contract == LanguageContractV990 || (contract == LanguageContractV1000 || (contract == LanguageContractV1010 || (contract == LanguageContractV1020 || (contract == LanguageContractV1030 || (contract == LanguageContractV1040 || (contract == LanguageContractV1050 || (contract == LanguageContractV1060 || (contract == LanguageContractV1070 || contract == LanguageContractV1080)))))))))))) && validDepthThreeStraightLineInitializers(function.Body) {
 		return nil
 	}
-	if (contract == LanguageContractV910 || (contract == LanguageContractV920 || (contract == LanguageContractV930 || (contract == LanguageContractV940 || (contract == LanguageContractV950 || (contract == LanguageContractV960 || (contract == LanguageContractV970 || (contract == LanguageContractV980 || (contract == LanguageContractV990 || (contract == LanguageContractV1000 || (contract == LanguageContractV1010 || (contract == LanguageContractV1020 || (contract == LanguageContractV1030 || (contract == LanguageContractV1040 || (contract == LanguageContractV1050 || (contract == LanguageContractV1060 || contract == LanguageContractV1070)))))))))))))))) && validNestedTerminalInitializers(function.Body) {
+	if (contract == LanguageContractV930 || (contract == LanguageContractV940 || (contract == LanguageContractV950 || (contract == LanguageContractV960 || (contract == LanguageContractV970 || (contract == LanguageContractV980 || (contract == LanguageContractV990 || (contract == LanguageContractV1000 || (contract == LanguageContractV1010 || (contract == LanguageContractV1020 || (contract == LanguageContractV1030 || (contract == LanguageContractV1040 || (contract == LanguageContractV1050 || (contract == LanguageContractV1060 || (contract == LanguageContractV1070 || contract == LanguageContractV1080))))))))))))))) && validDepthThreeStraightLineReturns(function.Body) {
 		return nil
 	}
-	if (contract == LanguageContractV900 || (contract == LanguageContractV910 || (contract == LanguageContractV920 || (contract == LanguageContractV930 || (contract == LanguageContractV940 || (contract == LanguageContractV950 || (contract == LanguageContractV960 || (contract == LanguageContractV970 || (contract == LanguageContractV980 || (contract == LanguageContractV990 || (contract == LanguageContractV1000 || (contract == LanguageContractV1010 || (contract == LanguageContractV1020 || (contract == LanguageContractV1030 || (contract == LanguageContractV1040 || (contract == LanguageContractV1050 || (contract == LanguageContractV1060 || contract == LanguageContractV1070))))))))))))))))) && validNestedStraightLineInitializers(function.Body) {
+	if (contract == LanguageContractV910 || (contract == LanguageContractV920 || (contract == LanguageContractV930 || (contract == LanguageContractV940 || (contract == LanguageContractV950 || (contract == LanguageContractV960 || (contract == LanguageContractV970 || (contract == LanguageContractV980 || (contract == LanguageContractV990 || (contract == LanguageContractV1000 || (contract == LanguageContractV1010 || (contract == LanguageContractV1020 || (contract == LanguageContractV1030 || (contract == LanguageContractV1040 || (contract == LanguageContractV1050 || (contract == LanguageContractV1060 || (contract == LanguageContractV1070 || contract == LanguageContractV1080))))))))))))))))) && validNestedTerminalInitializers(function.Body) {
 		return nil
 	}
-	if (contract == LanguageContractV890 || (contract == LanguageContractV900 || (contract == LanguageContractV910 || (contract == LanguageContractV920 || (contract == LanguageContractV930 || (contract == LanguageContractV940 || (contract == LanguageContractV950 || (contract == LanguageContractV960 || (contract == LanguageContractV970 || (contract == LanguageContractV980 || (contract == LanguageContractV990 || (contract == LanguageContractV1000 || (contract == LanguageContractV1010 || (contract == LanguageContractV1020 || (contract == LanguageContractV1030 || (contract == LanguageContractV1040 || (contract == LanguageContractV1050 || (contract == LanguageContractV1060 || contract == LanguageContractV1070)))))))))))))))))) && validNestedTerminalLeafReturns(function.Body) {
+	if (contract == LanguageContractV900 || (contract == LanguageContractV910 || (contract == LanguageContractV920 || (contract == LanguageContractV930 || (contract == LanguageContractV940 || (contract == LanguageContractV950 || (contract == LanguageContractV960 || (contract == LanguageContractV970 || (contract == LanguageContractV980 || (contract == LanguageContractV990 || (contract == LanguageContractV1000 || (contract == LanguageContractV1010 || (contract == LanguageContractV1020 || (contract == LanguageContractV1030 || (contract == LanguageContractV1040 || (contract == LanguageContractV1050 || (contract == LanguageContractV1060 || (contract == LanguageContractV1070 || contract == LanguageContractV1080)))))))))))))))))) && validNestedStraightLineInitializers(function.Body) {
 		return nil
 	}
-	if ((contract == LanguageContractV890 || (contract == LanguageContractV900 || (contract == LanguageContractV910 || (contract == LanguageContractV920 || (contract == LanguageContractV930 || (contract == LanguageContractV940 || (contract == LanguageContractV950 || (contract == LanguageContractV960 || (contract == LanguageContractV970 || (contract == LanguageContractV980 || (contract == LanguageContractV990 || (contract == LanguageContractV1000 || (contract == LanguageContractV1010 || (contract == LanguageContractV1020 || (contract == LanguageContractV1030 || (contract == LanguageContractV1040 || (contract == LanguageContractV1050 || (contract == LanguageContractV1060 || contract == LanguageContractV1070)))))))))))))))))) || contract == LanguageContractV880) && validNestedStraightLineReturns(function.Body) {
+	if (contract == LanguageContractV890 || (contract == LanguageContractV900 || (contract == LanguageContractV910 || (contract == LanguageContractV920 || (contract == LanguageContractV930 || (contract == LanguageContractV940 || (contract == LanguageContractV950 || (contract == LanguageContractV960 || (contract == LanguageContractV970 || (contract == LanguageContractV980 || (contract == LanguageContractV990 || (contract == LanguageContractV1000 || (contract == LanguageContractV1010 || (contract == LanguageContractV1020 || (contract == LanguageContractV1030 || (contract == LanguageContractV1040 || (contract == LanguageContractV1050 || (contract == LanguageContractV1060 || (contract == LanguageContractV1070 || contract == LanguageContractV1080))))))))))))))))))) && validNestedTerminalLeafReturns(function.Body) {
 		return nil
 	}
-	if ((contract == LanguageContractV890 || (contract == LanguageContractV900 || (contract == LanguageContractV910 || (contract == LanguageContractV920 || (contract == LanguageContractV930 || (contract == LanguageContractV940 || (contract == LanguageContractV950 || (contract == LanguageContractV960 || (contract == LanguageContractV970 || (contract == LanguageContractV980 || (contract == LanguageContractV990 || (contract == LanguageContractV1000 || (contract == LanguageContractV1010 || (contract == LanguageContractV1020 || (contract == LanguageContractV1030 || (contract == LanguageContractV1040 || (contract == LanguageContractV1050 || (contract == LanguageContractV1060 || contract == LanguageContractV1070)))))))))))))))))) || contract == LanguageContractV880) || contract == LanguageContractV870 {
+	if ((contract == LanguageContractV890 || (contract == LanguageContractV900 || (contract == LanguageContractV910 || (contract == LanguageContractV920 || (contract == LanguageContractV930 || (contract == LanguageContractV940 || (contract == LanguageContractV950 || (contract == LanguageContractV960 || (contract == LanguageContractV970 || (contract == LanguageContractV980 || (contract == LanguageContractV990 || (contract == LanguageContractV1000 || (contract == LanguageContractV1010 || (contract == LanguageContractV1020 || (contract == LanguageContractV1030 || (contract == LanguageContractV1040 || (contract == LanguageContractV1050 || (contract == LanguageContractV1060 || (contract == LanguageContractV1070 || contract == LanguageContractV1080))))))))))))))))))) || contract == LanguageContractV880) && validNestedStraightLineReturns(function.Body) {
+		return nil
+	}
+	if ((contract == LanguageContractV890 || (contract == LanguageContractV900 || (contract == LanguageContractV910 || (contract == LanguageContractV920 || (contract == LanguageContractV930 || (contract == LanguageContractV940 || (contract == LanguageContractV950 || (contract == LanguageContractV960 || (contract == LanguageContractV970 || (contract == LanguageContractV980 || (contract == LanguageContractV990 || (contract == LanguageContractV1000 || (contract == LanguageContractV1010 || (contract == LanguageContractV1020 || (contract == LanguageContractV1030 || (contract == LanguageContractV1040 || (contract == LanguageContractV1050 || (contract == LanguageContractV1060 || (contract == LanguageContractV1070 || contract == LanguageContractV1080))))))))))))))))))) || contract == LanguageContractV880) || contract == LanguageContractV870 {
 		if validTerminalLeafConditionalReturns(function.Body) {
 			return nil
 		}
@@ -5001,6 +5007,63 @@ func validSelectorValueArmTest(expr Expr) bool {
 	}
 	hasArm := false
 	for _, arm := range []*Expr{outer.WhenTrue, outer.WhenFalse} {
+		if arm == nil {
+			return false
+		}
+		flat := validFlatConditionalTest(*arm)
+		if !flat && !validConditionalOperand(*arm) {
+			return false
+		}
+		hasArm = hasArm || flat
+	}
+	return hasArm
+}
+
+// v0.108 permits flat inner-selector arms only in terminal tests with nonconditional outer arms.
+func validTerminalInnerSelectorArms(expr Expr) bool {
+	hasConditionalTest := false
+	var validScope func(Expr, int) bool
+	validScope = func(expr Expr, depth int) bool {
+		for expr.Kind == ExprImmutableLocal {
+			local := expr.ImmutableLocal
+			if local == nil || local.Initializer == nil || local.Return == nil || countImmutableLocalExpressions(*local.Initializer) != 0 {
+				return false
+			}
+			selector := validConditionalBooleanSelector(*local.Initializer)
+			if !selector && !validConditionalOperand(*local.Initializer) && !validDepthThreeStraightLineReturns(*local.Initializer) {
+				return false
+			}
+			expr = *local.Return
+		}
+		if expr.Kind == ExprConditional && expr.Conditional != nil && expr.Conditional.TerminalStatement {
+			branch := expr.Conditional
+			selector := branch.Condition != nil && validInnerSelectorArmTest(*branch.Condition)
+			conditional := branch.Condition != nil && (selector || validSelectorValueArmTest(*branch.Condition) || validConditionalBooleanSelector(*branch.Condition) || validDepthThreeConditionalTest(*branch.Condition))
+			hasConditionalTest = hasConditionalTest || selector
+			return depth < 3 && branch.Condition != nil && countImmutableLocalExpressions(*branch.Condition) == 0 && (validConditionalOperand(*branch.Condition) || conditional) &&
+				branch.WhenTrue != nil && branch.WhenFalse != nil &&
+				validScope(*branch.WhenTrue, depth+1) && validScope(*branch.WhenFalse, depth+1)
+		}
+		return countImmutableLocalExpressions(expr) == 0 &&
+			(validConditionalOperand(expr) || validDepthThreeStraightLineReturns(expr) || validConditionalBooleanSelector(expr))
+	}
+	return validScope(expr, 0) && hasConditionalTest
+}
+
+func validInnerSelectorArmTest(expr Expr) bool {
+	if expr.Kind != ExprConditional || expr.Conditional == nil || expr.Conditional.TerminalStatement || countImmutableLocalExpressions(expr) != 0 {
+		return false
+	}
+	outer := expr.Conditional
+	if outer.Condition == nil || outer.WhenTrue == nil || outer.WhenFalse == nil || !validConditionalOperand(*outer.WhenTrue) || !validConditionalOperand(*outer.WhenFalse) {
+		return false
+	}
+	selector := outer.Condition
+	if selector.Kind != ExprConditional || selector.Conditional == nil || selector.Conditional.TerminalStatement || selector.Conditional.Condition == nil || !validConditionalOperand(*selector.Conditional.Condition) {
+		return false
+	}
+	hasArm := false
+	for _, arm := range []*Expr{selector.Conditional.WhenTrue, selector.Conditional.WhenFalse} {
 		if arm == nil {
 			return false
 		}

@@ -1,4 +1,13 @@
-## Current objective — conditional result arms in terminal selector tests
+## Current objective — inner-selector value arms in terminal tests
+
+Founder selected A and separately said exact `approved` for v0.108.0.
+[terminal-inner-selector-arms.md](terminal-inner-selector-arms.md) owns the bounded
+contract and verification. Implementation and bounded verification are complete.
+All 795 discovered compiler tests and 648 isolated scaling cases pass.
+The [canonical language section](../../../concepts/pipelang.md#pipelang-v01080-inner-selector-value-arms-in-terminal-tests)
+defines semantics and exclusions. No successor or live operation is authorized.
+
+## Completed objective — conditional result arms in terminal selector tests
 
 Founder selected A and separately said exact `approved` for v0.107.0.
 [terminal-selector-value-arms.md](terminal-selector-value-arms.md) owns the bounded
