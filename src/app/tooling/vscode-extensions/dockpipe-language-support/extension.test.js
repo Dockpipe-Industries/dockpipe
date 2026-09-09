@@ -729,3 +729,9 @@ assert.strictEqual(depthThreeTerminalTests.prefix, "pipe-depth-three-terminal-te
 assert(depthThreeTerminalTests.body.join("\n").includes("if (a ? (b ? (c ? d : e) : f) : (e ? f : (g ? c : d))) {"));
 assert(depthThreeTerminalTests.description.includes("v0.105.0"));
 assert(pipeLangReadme.includes("`v0.105.0`"));
+
+const terminalSelectorTests = pipeLangSnippets["PipeLang terminal boolean-selector tests"];
+assert.strictEqual(terminalSelectorTests.prefix, "pipe-terminal-selector-tests");
+assert.ok(terminalSelectorTests.body.join("\n").includes("if ((a ? b : c) ? d : e)"));
+assert.ok(terminalSelectorTests.description.includes("v0.106.0"));
+assert(pipeLangReadme.includes("`v0.106.0`"));

@@ -378,3 +378,9 @@ through statement depth three. Selectors and final arms stay nonconditional bool
 expressions. Existing lexical bindings, supported pure calls, lazy tests/branches,
 and eager ordered locals remain available. Selector nesting, depth-four tests,
 deeper statements and new argument/return/initializer placements remain excluded.
+
+`v0.106.0` adds `pipe-terminal-selector-tests` for `if ((a ? b : c) ? d : e)`
+at any subset of existing terminal-tree condition positions through statement depth
+three. All five operands remain nonconditional bool expressions. Reached selector
+operands and statement branches remain lazy; preceding locals stay eager and ordered.
+Further nesting within this new form and new placements remain excluded.

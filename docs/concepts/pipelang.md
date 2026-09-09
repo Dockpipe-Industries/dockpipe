@@ -3682,3 +3682,48 @@ AST/HIR/Core nodes, generic internal Core locals, public compiler/semantic/Appli
 IR identities and frozen 45-source compatibility remain unchanged. Evaluation,
 Core-only Go and executable Application IR consume validated target-neutral Core.
 Compiler resource ceilings and engine/package boundaries remain fixed.
+
+
+### PipeLang v0.106.0: flat boolean selectors in terminal tests
+
+`v0.106.0` admits a complete flat boolean selector as a terminal statement test at
+any subset of condition positions in public pure `if/else` trees through statement
+depth three. Omitted visibility retains the public default:
+
+```pipe
+public Class Choices {
+    public string Select(string raw, bool a, bool b, bool c, bool d, bool e) {
+        string normalized = trim(raw);
+        if ((a ? b : c) ? d : e) {
+            bool present = normalized != "";
+            if ((present ? b : c) ? e : d) {
+                return normalized;
+            } else {
+                return raw;
+            }
+        } else {
+            return raw;
+        }
+    }
+}
+```
+
+All five operands of `(a ? b : c) ? d : e` are inherited nonconditional bool
+expressions, including supported pure calls and earlier lexical bindings. Evaluate
+a once, only selected b or c, then only selected d or e, followed by only the selected
+statement branch. Reached locals initialize eagerly once in source order, including
+unused bindings. Self/forward references, duplicate bindings, shadowing, sibling
+references and escaping branch bindings remain invalid.
+
+All v0.105 forms remain available. Ordinary, flat, depth-two and depth-three value-arm
+tests may mix with the new selector tests. Local and return forms remain unchanged,
+including complete Optional and Result transport without implicit propagation.
+Additional selector/value-arm nesting within this new form, deeper statement trees,
+hidden locals, new return/initializer/argument/matching/propagation placements,
+private methods, inference, mutation, loops, effects and new backends remain excluded.
+
+Source and Core independently validate placement, types, scope and hidden-local
+refusal. Generic internal Core locals, AST/HIR/Core nodes, public compiler/semantic/
+Application IR identities and frozen 45-source compatibility remain unchanged.
+Evaluation, Core-only Go and executable Application IR consume validated target-neutral
+Core. Compiler resource ceilings and engine/package boundaries remain fixed.

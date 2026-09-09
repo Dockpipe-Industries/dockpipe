@@ -110,6 +110,10 @@ func TestV1050DepthThreeTerminalConditionalTestsApplicationConsumer(t *testing.T
 	testConditionalLocalsApplicationConsumer(t, false, true, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, true, false, true, true, true)
 }
 
+func TestV1060TerminalBooleanSelectorTestsApplicationConsumer(t *testing.T) {
+	testConditionalLocalsApplicationConsumer(t, false, true, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, true, false, true, false, false, true)
+}
+
 func testConditionalLocalsApplicationConsumer(t *testing.T, finite bool, straightOption ...bool) {
 	straight := len(straightOption) > 0 && straightOption[0]
 	returnChoice := len(straightOption) > 1 && straightOption[1]
@@ -200,6 +204,10 @@ func testConditionalLocalsApplicationConsumer(t *testing.T, finite bool, straigh
 	depthThreeTests := len(straightOption) > 20 && straightOption[20]
 	if depthThreeTests {
 		contract, prior, boundary = pipelang.PipeLangLanguageContractV1050, pipelang.PipeLangLanguageContractV1040, "new argument/condition placements"
+	}
+	selectorTests := len(straightOption) > 21 && straightOption[21]
+	if selectorTests {
+		contract, prior, boundary = pipelang.PipeLangLanguageContractV1060, pipelang.PipeLangLanguageContractV1050, "new argument/condition placements"
 	}
 	layouts := []bool{false, true}
 	if straight {
@@ -319,6 +327,11 @@ func testConditionalLocalsApplicationConsumer(t *testing.T, finite bool, straigh
 				helper = strings.ReplaceAll(helper, "enabled ? true : false", "enabled ? (suffix ? true : true) : (clean ? false : false)")
 				helper = strings.ReplaceAll(helper, "clean ? true : false", "clean ? (enabled ? true : true) : (suffix ? false : false)")
 			}
+			if selectorTests {
+				helper = strings.Replace(helper, "clean ? suffix : enabled", "(clean ? suffix : enabled) ? true : false", 1)
+				helper = strings.Replace(helper, "mid ? clean : enabled", "(mid ? clean : enabled) ? true : false", 1)
+				helper = strings.Replace(helper, "enabled ? clean : suffix", "(enabled ? clean : suffix) ? true : false", 1)
+			}
 			closing := "}"
 			if arrow || arrowBooleanSelector {
 				closing = ""
@@ -405,6 +418,11 @@ func testConditionalLocalsApplicationConsumer(t *testing.T, finite bool, straigh
 				test := choose.Body.ImmutableLocal.Return.Conditional.Condition.Conditional
 				choicePresent = test.WhenTrue.Conditional.WhenTrue.Conditional != nil && test.WhenFalse.Conditional.WhenFalse.Conditional != nil
 			}
+			if selectorTests && choicePresent {
+				test := choose.Body.ImmutableLocal.Return.Conditional.Condition.Conditional
+				choicePresent = test.Condition.Conditional != nil && test.WhenTrue.Conditional == nil && test.WhenFalse.Conditional == nil
+			}
+
 			if depthThreeArrow && choicePresent {
 				choicePresent = choose.Body.Conditional.WhenTrue.Conditional.WhenTrue != nil && choose.Body.Conditional.WhenTrue.Conditional.WhenTrue.Conditional != nil
 			}

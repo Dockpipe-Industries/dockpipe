@@ -1,4 +1,14 @@
-## Current objective — depth-three terminal conditional tests
+## Current objective — flat boolean selectors in terminal tests
+
+Founder selected A and separately said exact `approved` for v0.106.0.
+[terminal-boolean-selector-tests.md](terminal-boolean-selector-tests.md) owns the
+bounded contract and verification. Implementation and bounded verification are complete.
+All 767 discovered compiler tests and 216 isolated scaling cases pass.
+The canonical [language section](../../../concepts/pipelang.md#pipelang-v01060-flat-boolean-selectors-in-terminal-tests)
+describes the placement. Commit, push, cleanup and live operations remain outside scope.
+No successor is selected.
+
+## Completed objective — depth-three terminal conditional tests
 
 Founder selected A and separately said exact `approved` for v0.105.0.
 [depth-three-terminal-conditional-tests.md](depth-three-terminal-conditional-tests.md)
