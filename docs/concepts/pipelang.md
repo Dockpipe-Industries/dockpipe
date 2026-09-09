@@ -3484,3 +3484,55 @@ node shapes and compiler/semantic/Application IR identities remain unchanged.
 Evaluation and Go generation consume validated target-neutral Core; executable
 Application IR, frozen 45-source compatibility and generic engine/package boundaries
 are preserved. No runtime or deployment behavior is introduced.
+
+
+### PipeLang v0.102.0: boolean-selector initializers throughout terminal trees
+
+`v0.102.0` admits complete flat boolean-selector initializers in any subset of
+finite explicitly typed immutable-local sequences at root, intermediate and leaf
+scopes of terminal `if/else` trees through the inherited statement depth three:
+
+```pipe
+public Class Choices {
+    public string Select(string raw, bool a, bool b, bool c) {
+        string root = (a ? b : c) ? trim(raw) : raw;
+        if (a) {
+            string branch = (b ? c : a) ? root + "!" : root;
+            if (b) {
+                string leaf = (c ? a : b) ? branch + "?" : branch;
+                return leaf;
+            } else {
+                return branch;
+            }
+        } else {
+            return root;
+        }
+    }
+}
+```
+
+Methods remain public and pure, including the inherited public default when
+visibility is omitted. All three selector operands are bool; both value arms exactly
+match the declared supported type. Each of the five operands uses inherited
+nonconditional expressions, including supported pure calls and earlier in-scope
+bindings. Complete primitive, record, list, Optional and Result values travel intact;
+a failed Result does not implicitly propagate.
+
+Each reached local initializes eagerly once in source order, including unused
+bindings. Its initializer evaluates `a`, only selected `b` or `c`, then only selected
+`x` or `y`. Unreached branches execute no locals. A binding enters scope only after
+its initializer; later locals, descendant statement conditions and inherited returns
+may reuse it. Self/forward references, duplicate declarations, shadowing and
+sibling/escaping references remain invalid.
+
+Inherited ordinary and depth-three initializers can mix with the new form. Return
+forms remain ordinary, depth-three ternary or flat boolean selector. This adds no
+ternaries directly in statement conditions, argument/matching/propagation placements,
+further expression nesting, increased depths, private-method admission, inference,
+mutation, loops, effects, runtime behavior or backend. All v0.101 forms are inherited.
+
+Source and Core independently validate placement, types, scope and hidden-local
+refusal. Generic internal Core locals, existing AST/HIR/Core nodes, compiler/semantic/
+Application IR identities and frozen 45-source compatibility are preserved. Evaluation
+and Go generation consume validated target-neutral Core; executable Application IR
+continues through the existing consumer. Generic engine/package boundaries are unchanged.

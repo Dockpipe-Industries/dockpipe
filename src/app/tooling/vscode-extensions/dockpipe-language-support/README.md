@@ -348,3 +348,12 @@ locals may mix these with inherited initializers and reuse earlier bindings. Loc
 remain eager and source ordered, while selector operands and value arms are lazy.
 Terminal-tree initializers, new statement conditions/arguments, private new forms
 and further nesting remain excluded; all v0.100 forms are inherited.
+
+`v0.102.0` adds `pipe-terminal-selector-initializers` for complete
+`(a ? b : c) ? x : y` initializers at root, intermediate and leaf scopes of public
+pure terminal trees through statement depth three. Reached locals remain eager and
+source ordered; selector operands, value arms and statement branches remain lazy.
+Earlier bindings can feed later locals, descendant conditions and inherited returns.
+All v0.101 forms remain inherited. Direct ternary statement conditions, further
+nesting, new argument/matching/propagation placements and private new forms remain
+excluded. Existing expression/statement depth limits are unchanged.
