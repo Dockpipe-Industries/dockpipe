@@ -341,3 +341,10 @@ as a complete public pure arrow-method body. Operands retain inherited noncondit
 forms; selector operands are bool and value-arm types exactly match. Selected
 operands execute lazily. New initializer/argument/statement-condition placements
 and further nesting remain excluded; all v0.99 forms are inherited.
+
+`v0.101.0` adds `pipe-selector-initializer` for complete `(a ? b : c) ? x : y`
+initializers in public pure straight-line block methods. Finite typed immutable
+locals may mix these with inherited initializers and reuse earlier bindings. Locals
+remain eager and source ordered, while selector operands and value arms are lazy.
+Terminal-tree initializers, new statement conditions/arguments, private new forms
+and further nesting remain excluded; all v0.100 forms are inherited.

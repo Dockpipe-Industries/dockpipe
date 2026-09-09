@@ -318,7 +318,7 @@ func TestV890NestedTerminalLeafReturnsVersionBoundary(t *testing.T) {
 		p.LanguageContract = string(contract)
 		assertAdmissionRejected(t, p, "")
 	}
-	for _, contract := range []string{"v0.101.0", "unknown"} {
+	for _, contract := range []string{"v0.102.0", "unknown"} {
 		_, p := conditionalLocalTreeProgramVersion(t, PipeLangLanguageContractV890, nestedTerminalLeafReturnsSource, []string{"Select"})
 		p.LanguageContract = contract
 		assertAdmissionRejected(t, p, "")

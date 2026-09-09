@@ -635,3 +635,11 @@ caller invocations share those input bits. Export `fixtures-v100`, then run
 `matrix.py` for fresh isolated compiler proof at the unchanged normal-inlining
 128 MiB / 5-second ceilings. The generic internal Core representation and already
 admitted v0.98/v0.99 block Core must remain valid when old source rejects arrow syntax.
+
+The v0.101 straight-line selector-initializer layouts use 24 asserted cases.
+Use `--split-test TestV1010StraightLineBooleanSelectorInitializersLayouts=24`.
+Each layout crosses 512 independent vectors for two initializer selector triples
+and the return/depth-three triple, with all nonempty two-slot subsets, mixed four-local
+sequences and used/unused tails. Scaling exports actual selector initializers to
+`fixtures-v101`; each family shares input bits across the scaled local sequence.
+Run `matrix.py` for fresh isolated compiler evidence at unchanged limits.
