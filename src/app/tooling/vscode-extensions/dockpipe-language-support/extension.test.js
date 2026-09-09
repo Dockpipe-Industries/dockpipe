@@ -722,3 +722,10 @@ assert.strictEqual(nestedTerminalTests.prefix, "pipe-nested-terminal-tests");
 assert(nestedTerminalTests.body.join("\n").includes("if (a ? (b ? c : d) : (e ? f : g)) {"));
 assert(nestedTerminalTests.description.includes("v0.104.0"));
 assert(pipeLangReadme.includes("`v0.104.0`"));
+
+
+const depthThreeTerminalTests = pipeLangSnippets["PipeLang depth-three terminal conditional tests"];
+assert.strictEqual(depthThreeTerminalTests.prefix, "pipe-depth-three-terminal-tests");
+assert(depthThreeTerminalTests.body.join("\n").includes("if (a ? (b ? (c ? d : e) : f) : (e ? f : (g ? c : d))) {"));
+assert(depthThreeTerminalTests.description.includes("v0.105.0"));
+assert(pipeLangReadme.includes("`v0.105.0`"));

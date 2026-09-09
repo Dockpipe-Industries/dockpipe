@@ -1212,5 +1212,20 @@
       "}"
     ],
     "description": "PipeLang v0.104.0 public pure terminal tests with depth-two value arms"
+  },
+  "PipeLang depth-three terminal conditional tests": {
+    "prefix": "pipe-depth-three-terminal-tests",
+    "body": [
+      "public Class ${1:Choices} {",
+      "    public string ${2:Select}(string raw, bool a, bool b, bool c, bool d, bool e, bool f, bool g) {",
+      "        if (a ? (b ? (c ? d : e) : f) : (e ? f : (g ? c : d))) {",
+      "            return trim(raw);",
+      "        } else {",
+      "            return raw;",
+      "        }",
+      "    }",
+      "}"
+    ],
+    "description": "PipeLang v0.105.0 public pure terminal tests with depth-three value arms"
   }
 }

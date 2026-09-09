@@ -3635,3 +3635,50 @@ internal Core locals, AST/HIR/Core nodes, public compiler/semantic/Application I
 identities and frozen 45-source compatibility are preserved. Evaluation, Core-only
 Go generation and executable Application IR consume validated target-neutral Core.
 Compiler resource ceilings and engine/package boundaries are unchanged.
+
+
+### PipeLang v0.105.0: depth-three value arms in terminal conditional tests
+
+`v0.105.0` admits ternary value-arm nesting through expression depth three in either
+or both arms of a terminal statement test, at any subset of condition positions in
+public pure terminal `if/else` trees through statement depth three. Omitted visibility
+retains the public default:
+
+```pipe
+public Class Choices {
+    public string Select(string raw, bool a, bool b, bool c, bool d,
+                         bool e, bool f, bool g) {
+        string normalized = trim(raw);
+        if (a ? (b ? (c ? d : e) : f) : (e ? f : (g ? c : d))) {
+            bool present = normalized != "";
+            if (present ? (b ? c : (d ? e : f)) : g) {
+                return normalized;
+            } else {
+                return raw;
+            }
+        } else {
+            return raw;
+        }
+    }
+}
+```
+
+Every ternary selector and final value arm remains an inherited nonconditional bool
+expression, including supported pure calls and earlier lexical bindings. Evaluate
+reached selectors once, only their selected value arms, then only the selected
+statement branch. Reached locals initialize eagerly once in source order, including
+unused bindings. Existing lexical rules reject self/forward references, duplicate
+bindings, shadowing, sibling references and escaping branch bindings.
+
+All v0.104 forms remain available, including ordinary, flat and depth-two tests,
+and unchanged return/initializer forms with complete Optional and Result transport
+without implicit propagation. Selector nesting, expression depth four in tests,
+deeper statement trees, hidden locals in tests, new argument/return/initializer/
+matching/propagation placements, private methods, inference, mutation, loops,
+effects and new backends remain excluded.
+
+Source and Core independently validate public placement, types and scope. Existing
+AST/HIR/Core nodes, generic internal Core locals, public compiler/semantic/Application
+IR identities and frozen 45-source compatibility remain unchanged. Evaluation,
+Core-only Go and executable Application IR consume validated target-neutral Core.
+Compiler resource ceilings and engine/package boundaries remain fixed.

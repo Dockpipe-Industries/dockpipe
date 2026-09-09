@@ -370,3 +370,11 @@ excluded. Existing local/return forms are inherited.
 both value arms of a terminal statement test, through expression depth two and
 statement depth three. Conditions and final arms stay nonconditional bool expressions.
 Selector nesting and new argument placements remain excluded; selection stays lazy.
+
+
+`v0.105.0` adds `pipe-depth-three-terminal-tests` for value-arm ternary nesting
+through expression depth three in any subset of terminal statement conditions
+through statement depth three. Selectors and final arms stay nonconditional bool
+expressions. Existing lexical bindings, supported pure calls, lazy tests/branches,
+and eager ordered locals remain available. Selector nesting, depth-four tests,
+deeper statements and new argument/return/initializer placements remain excluded.

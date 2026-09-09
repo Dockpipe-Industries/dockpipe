@@ -688,3 +688,18 @@ Scaling has 36 choices partitions: three nesting forms, three test depths and fo
 initializer families, with used/unused tails and 0/1/8/16/24/32/64/128/256 locals.
 Export `fixtures-v104`, then use `matrix.py` for fresh isolated compiler measurements
 with unchanged normal inlining, execution GC and 128 MiB / 5-second ceilings.
+
+
+The v0.105 depth-three terminal test matrix uses
+`--split-test TestV1050DepthThreeTerminalConditionalTestsLayouts=200` and
+`--split-test TestV1050DepthThreeTerminalConditionalTestsExpressionShapes=75`.
+The first covers all 25 statement shapes and all condition-position subsets with
+21 depth-three test shapes rotated across nodes and seven shared operand bits,
+three independent statement-depth flips and three local/return bits. The second
+crosses all 25 expression shapes through depth three with all three statement depths,
+using independent expression operand bits and separately checked lazy traces.
+These are bounded matrices, not all independent assignments across statement nodes.
+The 36 memory families cross three nesting forms, three statement depths and four
+initializer families with used/unused locals and 0/1/8/16/24/32/64/128/256 bindings.
+The suite exports `fixtures-v105` for fresh isolated `matrix.py` measurements.
+Existing normal inlining, execution GC, compiler ceilings and containment remain fixed.

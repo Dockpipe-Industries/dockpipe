@@ -51,9 +51,9 @@ def plan(tests, splits, shape_batch_size):
                 prefix = 'shape' if name == 'TestV810TerminalTreeAllShapesAndPaths' else ''
                 labels = [prefix + str(i) for i in indices]
                 jobs.append(([name + '/' + label for label in labels], '^' + name + '$/^(' + '|'.join(labels) + ')$'))
-        elif re.fullmatch(r'TestV(?:9[2-9]0|1000|1010|1020|1030|1040).*Memory', name):
+        elif re.fullmatch(r'TestV(?:9[2-9]0|1000|1010|1020|1030|1040|1050).*Memory', name):
             flush()
-            for shape in range(36 if name.startswith("TestV1040") else 12 if name.startswith(("TestV970", "TestV990", "TestV1020", "TestV1030")) else 4):
+            for shape in range(36 if name.startswith(("TestV1040", "TestV1050")) else 12 if name.startswith(("TestV970", "TestV990", "TestV1020", "TestV1030")) else 4):
                 label = name + '/choices' + str(shape)
                 jobs.append(([label], '^' + name + '$/./^choices' + str(shape) + '$'))
         elif name.endswith('Memory'):
@@ -232,6 +232,8 @@ def main():
             environment += ['PIPELANG_MEMORY_FIXTURES=' + str(output / 'fixtures')]
         if all(name.startswith('TestV970DepthThreeTerminalInitializersMemory') for name in names):
             environment += ['PIPELANG_MEMORY_FIXTURES=' + str(output / 'fixtures-v097')]
+        if all(name.startswith('TestV1050DepthThreeTerminalConditionalTestsMemory') for name in names):
+            environment += ['PIPELANG_MEMORY_FIXTURES=' + str(output / 'fixtures-v105')]
         if all(name.startswith('TestV1040NestedTerminalConditionalTestsMemory') for name in names):
             environment += ['PIPELANG_MEMORY_FIXTURES=' + str(output / 'fixtures-v104')]
         if all(name.startswith('TestV1030TerminalConditionalTestsMemory') for name in names):
