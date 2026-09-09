@@ -1,4 +1,14 @@
-## Current objective — direct terminal conditional tests
+## Current objective — nested terminal conditional tests
+
+Founder selected A and separately said exact `approved` for v0.104.0.
+[nested-terminal-conditional-tests.md](nested-terminal-conditional-tests.md) owns
+scope and proof. Implementation and bounded verification are complete.
+All 739 discovered compiler tests and 648 isolated scaling cases pass.
+The canonical [language section](../../../concepts/pipelang.md#pipelang-v01040-nested-value-arms-in-terminal-conditional-tests)
+describes the placement. No successor is selected; commit, push, cleanup and live
+operations remain outside scope.
+
+## Completed objective — direct terminal conditional tests
 
 Founder selected A and separately said exact `approved` for v0.103.0.
 [terminal-conditional-tests.md](terminal-conditional-tests.md) owns the bounded

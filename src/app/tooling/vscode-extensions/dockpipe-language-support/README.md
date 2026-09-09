@@ -364,3 +364,9 @@ at any existing terminal-tree condition through statement depth three. Operands 
 nonconditional bool expressions and may use earlier lexical locals. Selection is
 lazy; new nesting inside tests, deeper trees and new argument placements remain
 excluded. Existing local/return forms are inherited.
+
+
+`v0.104.0` adds `pipe-nested-terminal-tests`: flat boolean ternaries in either or
+both value arms of a terminal statement test, through expression depth two and
+statement depth three. Conditions and final arms stay nonconditional bool expressions.
+Selector nesting and new argument placements remain excluded; selection stays lazy.
