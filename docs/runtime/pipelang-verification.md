@@ -82,6 +82,58 @@ rejection and exact generated-source/fixture comparison. The original failed
 sample and integration-path probe remain retained. An actual machine reboot and
 non-Linux containment were not tested or claimed. No language successor is selected.
 
+## Measured schedule adoption — performance round two
+
+For a repeated complete warm campaign, pass the preceding accepted singleton
+suite's `schedule-profile.json` to `verification_campaign.py --schedule-profile`.
+The existing bounded pair scheduler is adopted as an explicit option for this
+workflow; singleton execution remains the default. No additional scheduler or
+compiler/helper source change was needed. The profile must match current
+source dependencies, host, workers and policy, and every referenced binary is
+rehashed. Source changes require fresh observations, never editing an old identity.
+
+The 2026-09-10 full comparison used the same source, host/policy and retained
+native cache as the accepted singleton control. It admitted 2297 pairs and
+1594 singletons: 3891 groups instead of 6188. Every logical case still ran fresh.
+
+| Cost, including preparation and verification | Singleton control | Measured pairs |
+| --- | ---: | ---: |
+| Complete suite, including profile admission/reconciliation | 4297.08 s | 3994.90 s |
+| All-stage job | 4729.18 s | 4439.42 s |
+| Independent acceptance | 172.33 s | 179.53 s, including exact ordered comparison |
+| Job plus independent acceptance | 4901.51 s | 4618.95 s |
+
+Suite time improved 7.03%; the complete workflow including independent acceptance
+improved 5.76% (282.56 s saved). Artifact identity/verification fell from
+2619.09 to 1673.35 summed seconds. Phase spans overlap and are not additive wall
+time. These sequential runs do not control background host load and establish
+no cold-cache benefit.
+
+Independent acceptance reconciled unchanged coverage: 811 functions / 6188 logical
+cases, 1944 fresh isolated compiles, nine integration checks and editor proof.
+All 43725 ordered source/fixture audits and 43725 fresh native children match the
+control exactly. Both runs had 13041 verified executable hits and zero misses.
+No group retry was required. Compiler maxima were 71.949 MiB / 0.666 s against
+unchanged 128 MiB / 5 s limits. Both job trees were removed with zero OOM or swap.
+
+Small workloads do not inherit this adoption. The predeclared 27-case sample
+preserved 274 ordered audits/children and 45 hits, but serial warm-build controls
+averaged 32.74 s and pairs 33.18 s (1.34% slower). Loading the complete profile for
+that sample took 171.10 s because it verified the full retained cache. Use the
+corresponding singleton sample's profile when measuring a selection, and include
+admission cost. Unknown/heavy cases, memory families and special harnesses remain
+singletons; failed groups retain evidence and retry as linked singleton attempts.
+
+An exploratory reusable hash-buffer probe reduced allocations from about 318 MB
+to 10 MB with identical digests, but only saved about 7% of hash time. No helper
+change was adopted from that isolated experiment. The six sample jobs cost
+337.97 s as one-time investigation; their results and the probe remain retained.
+
+The [round-two execution record](../agents/tasks/pipelang-reactive-application-language/conformance-verification-performance-round-2.md)
+links the durable evidence. `terminal-comparison.json` records independent ordered
+proof; `final-adoption.json` includes acceptance cost and the limited adoption.
+The original architecture objective remains complete and no successor is selected.
+
 ## Measured baseline and limitations
 
 Completed receipts: `/home/jamie/.cache/pipelang-v109-resume-20260909`.
