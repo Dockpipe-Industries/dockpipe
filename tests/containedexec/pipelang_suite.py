@@ -8,6 +8,7 @@ repeated toolchain verification costs without changing test selection or limits.
 import argparse
 import concurrent.futures
 import hashlib
+import io
 import json
 from pathlib import Path
 import re
@@ -15,6 +16,12 @@ import shutil
 import subprocess
 import sys
 import time
+from job import verify_job
+from budget import DiskBudget
+from reporting import summarize
+from scheduling import measured_plan, warm_profile, observed_profile
+from campaign import Campaign, BuildStore, InputGuard, atomic_json, digest, fingerprint, host_identity
+from verification import StageRunner, POLICY, source_paths, toolchain_identity, dependency_guard
 
 
 def plan(tests, splits, shape_batch_size):
@@ -51,9 +58,9 @@ def plan(tests, splits, shape_batch_size):
                 prefix = 'shape' if name == 'TestV810TerminalTreeAllShapesAndPaths' else ''
                 labels = [prefix + str(i) for i in indices]
                 jobs.append(([name + '/' + label for label in labels], '^' + name + '$/^(' + '|'.join(labels) + ')$'))
-        elif re.fullmatch(r'TestV(?:9[2-9]0|1000|1010|1020|1030|1040|1050|1060|1070|1080).*Memory', name):
+        elif re.fullmatch(r'TestV(?:9[2-9]0|1000|1010|1020|1030|1040|1050|1060|1070|1080|1090).*Memory', name):
             flush()
-            for shape in range(36 if name.startswith(("TestV1040", "TestV1050", "TestV1070", "TestV1080")) else 12 if name.startswith(("TestV970", "TestV990", "TestV1020", "TestV1030", "TestV1060")) else 4):
+            for shape in range(108 if name.startswith("TestV1090") else 36 if name.startswith(("TestV1040", "TestV1050", "TestV1070", "TestV1080")) else 12 if name.startswith(("TestV970", "TestV990", "TestV1020", "TestV1030", "TestV1060")) else 4):
                 label = name + '/choices' + str(shape)
                 jobs.append(([label], '^' + name + '$/./^choices' + str(shape) + '$'))
         elif name.endswith('Memory'):
@@ -77,11 +84,18 @@ def cleanup_native_build_cache(path, rows):
 
 def artifact_inventory(cache, logs, representation=None):
     """Record artifacts actually verified/executed; never infer liveness from age."""
-    hits = re.findall(r'generated_compiled_artifact packages=\d+ cache_hit=(true|false) key=([0-9a-f]{64})\b', logs)
-    if not hits:
+    # Consume output incrementally; retain only unique identities and counters.
+    lines = io.StringIO(logs) if isinstance(logs, str) else logs
+    keys, hits, misses = set(), 0, 0
+    for line in lines:
+        for hit, key in re.findall(r'generated_compiled_artifact packages=\d+ cache_hit=(true|false) key=([0-9a-f]{64})\b', line):
+            keys.add(key)
+            hits += hit == 'true'
+            misses += hit == 'false'
+    if not keys:
         raise RuntimeError('no executed artifact inventory')
     entries = {}
-    for key in sorted({key for _, key in hits}):
+    for key in sorted(keys):
         directory = cache / key
         record_path, binary = directory / 'record.json', directory / 'program.test'
         if directory.is_symlink() or record_path.is_symlink() or binary.is_symlink():
@@ -105,8 +119,7 @@ def artifact_inventory(cache, logs, representation=None):
             size, original_bytes = recipe['size'], 0
         entries[key] = dict(binary_sha256=record['BinarySHA256'], binary_bytes=size,
                             original_bytes=original_bytes, manifest_bytes=record_path.stat().st_size)
-    return dict(cache=str(cache), entries=entries, hits=sum(hit == 'true' for hit, _ in hits),
-                misses=sum(hit == 'false' for hit, _ in hits),
+    return dict(cache=str(cache), entries=entries, hits=hits, misses=misses,
                 retained_bytes=sum(e['original_bytes'] + e['manifest_bytes'] for e in entries.values()),
                 logical_binary_bytes=sum(e['binary_bytes'] for e in entries.values()),
                 representation=str(representation) if representation else None)
@@ -114,6 +127,12 @@ def artifact_inventory(cache, logs, representation=None):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--selection-file', type=Path, help='Explicit logical case sample; reports partial proof')
+    parser.add_argument('--schedule-profile', type=Path, help='Current-input warm singleton timings for conservative groups')
+    parser.add_argument('--disk-budget-gib', type=int, default=96)
+    parser.add_argument('--build-store', type=Path, help='Persistent verified test-binary store (default sibling builds)')
+    parser.add_argument('--native-build-cache', type=Path, help='Persistent native Go build cache (default per-output cache)')
+    parser.add_argument('--mode', choices=['fresh', 'resume'], default='fresh')
     parser.add_argument('--go', type=Path, required=True)
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--cache', type=Path, required=True, help='Private Go build cache')
@@ -130,6 +149,7 @@ def main():
     parser.add_argument('--representation-cache', type=Path, help='Private representation store (default: sibling of compiled cache)')
     parser.add_argument('--workers', type=int, choices=[1, 2], default=2)
     args = parser.parse_args()
+    verify_job()
     if args.native_representation and (args.compiled_cache is None or sys.platform != 'linux'):
         parser.error('native representations require a Linux compiled cache')
     if args.native_bundle is None:
@@ -153,40 +173,47 @@ def main():
             setattr(args, name, value.resolve())
     root = Path(__file__).resolve().parents[2]
     output = args.output
-    output.mkdir(parents=True, exist_ok=True)
-    # Refuse overwriting prior receipts; each timed run has an independent record.
-    if (output / 'inventory.json').exists() or (output / 'build.json').exists():
-        parser.error('use a fresh output directory')
+    output.mkdir(parents=True, exist_ok=True, mode=0o700)
+    campaign = Campaign(output / 'campaign', args.mode)
     started = time.monotonic()
     runner = Path(__file__).with_name('run.py').resolve()
     binary = output / 'pipelang.test'
 
-    def snapshot():
-        paths = sorted((root / 'src/lib/pipelang').rglob('*.go'))
-        paths += sorted(p for p in (root / 'tests/containedexec').rglob('*')
-                        if p.suffix in {'.py', '.go', '.json', '.md'} and '__pycache__' not in p.parts)
-        paths += [root / 'go.mod', root / 'go.sum']
-        return {str(p.relative_to(root)): hashlib.sha256(p.read_bytes()).hexdigest() for p in paths if p.is_file()}
-
+    paths = source_paths()
+    guard = dependency_guard(args.go, args.cache, output)
+    snapshot = guard.check
     source_before = snapshot()
-    (output / 'source-hashes.json').write_text(json.dumps(source_before, indent=2) + '\n')
-
-    def unit(label, command, cwd=root, build=False, grouped=False):
-        prefix = output / label
-        invocation = [sys.executable, str(runner), '--output', str(prefix), '--cache', str(args.cache), '--timeout', '30']
-        invocation += ['--memory-high-mib', '700']
-        with Path(str(prefix) + '.runner.log').open('w') as log:
-            rc = subprocess.run(invocation + ['--'] + command, cwd=cwd, stdout=log, stderr=subprocess.STDOUT).returncode
-        report = json.loads(Path(str(prefix) + '.json').read_text())
-        return dict(label=label, exit=rc, report=report)
-
-    build = unit('build', [str(args.go), 'test', '-p', '1', '-c', '-o', str(binary), './src/lib/pipelang'], build=True)
-    if build['exit']:
-        return build['exit']
-    listing = unit('list', [str(binary), '-test.list', '^(Test|Fuzz|Example)'])
+    toolchain = toolchain_identity(args.go)
+    identity = dict(source=source_before, toolchain=toolchain['digest'], policy=POLICY,
+                    host=host_identity(), high=700, native_bundle=args.native_bundle,
+                    representation=args.native_representation, parallel_shapes=args.parallel_shapes,
+                    audit=args.audit_generated, compiled_cache=str(args.compiled_cache))
+    atomic_json(output / 'source-hashes.json', fingerprint(paths))
+    bootstrap = StageRunner(campaign, 'bootstrap', identity, ['build'], args.cache, snapshot)
+    store = BuildStore(args.build_store or output.parent / 'builds')
+    # Execution-only Python/report edits do not require relinking the Go test binary.
+    build_files = {p: v for p, v in guard.identity['files'].items()
+                   if not p.startswith(str(runner.parent) + '/') or p.endswith('.go')}
+    build_key = digest(dict(files=build_files, settings=POLICY, target='./src/lib/pipelang'))
+    binary = store.get(build_key)
+    build_hit = binary is not None
+    build_reason = store.reason
+    if binary is None:
+        build = bootstrap.run(['build'], lambda d: ['env', 'GOENV=off', 'GOMEMLIMIT=600MiB', str(args.go), 'test', '-p', '1', '-c', '-o', str(d / 'pipelang.test'), './src/lib/pipelang'],
+                              artifacts=lambda d: [d / 'pipelang.test'])
+        if build['exit']:
+            return build['exit']
+        binary = store.publish(build_key, Path(build['directory']) / 'pipelang.test', build['receipt'])
+    else:
+        # A reused executable is an artifact, not a reused semantic test result.
+        build = bootstrap.run(['build'], ['/usr/bin/true'], artifacts=lambda d: [binary])
+        if build['exit']:
+            return build['exit']
+    listing_stage = StageRunner(campaign, 'discovery', dict(identity, binary=fingerprint([binary])['digest']), ['list'], args.cache, snapshot, parents=['bootstrap'])
+    listing = listing_stage.run(['list'], [str(binary), '-test.list', '^(Test|Fuzz|Example)'])
     if listing['exit']:
         return listing['exit']
-    tests = [s for s in (output / 'list.output').read_text().splitlines() if re.fullmatch(r'(?:Test|Fuzz|Example)\w*', s)]
+    tests = [s for s in (Path(listing['directory']) / 'unit.output').read_text().splitlines() if re.fullmatch(r'(?:Test|Fuzz|Example)\w*', s)]
     if not tests or len(tests) != len(set(tests)):
         raise RuntimeError('invalid discovered inventory')
     splits = {name: int(count) for name, count in re.findall(r'(Test\w+)=(\d+)', (runner.parent / 'README.md').read_text())}
@@ -200,23 +227,73 @@ def main():
         tests = [args.test_family]
         splits = {name: count for name, count in splits.items() if name == args.test_family}
     jobs = plan(tests, splits, args.shape_batch_size)
-    (output / 'inventory.json').write_text(json.dumps(dict(tests=tests, jobs=jobs), indent=2) + '\n')
+    if args.selection_file:
+        selected = json.loads(args.selection_file.read_text())
+        jobs = [(names, pattern) for names, pattern in plan(tests, splits, 1) if names[0] in selected]
+        if {n for names, _ in jobs for n in names} != set(selected):
+            raise RuntimeError('sample contains undiscovered logical cases')
+    scheduling_identity = dict(inputs=source_before, host=identity['host'], policy=POLICY,
+                               workers=args.workers, native_bundle=args.native_bundle,
+                               representation=args.native_representation)
+    if args.schedule_profile:
+        if args.compiled_cache is None:
+            parser.error('measured grouping requires retained executables')
+        profile = json.loads(args.schedule_profile.read_text())
+        admitted_profile = warm_profile(profile, scheduling_identity, args.compiled_cache)
+        if profile.get('identity') != scheduling_identity:
+            raise RuntimeError('schedule profile input/host/worker/policy drift')
+        jobs = measured_plan(jobs, admitted_profile)
+    atomic_json(output / 'inventory.json', dict(tests=tests, jobs=jobs))
+    cases = [case for names, _ in jobs for case in names]
+    stage = StageRunner(campaign, 'suite', identity, cases, args.cache, snapshot, parents=['discovery'])
 
     representation_config = output / 'representation-config.json'
     if args.native_representation:
         representation_cache = args.representation_cache or args.compiled_cache.with_name(args.compiled_cache.name + '-representations')
-        preparation = unit('representation-init', [sys.executable, '-B', str(runner.parent / 'native_artifacts.py'), '--cache', str(args.compiled_cache), '--config', str(representation_config), '--directory', str(representation_cache), '--go', str(args.go), 'init'])
+        representation_stage = StageRunner(campaign, 'representation', identity, ['representation-init'], args.cache, snapshot)
+        preparation = representation_stage.run(['representation-init'], [sys.executable, '-B', str(runner.parent / 'native_artifacts.py'), '--cache', str(args.compiled_cache), '--config', str(representation_config), '--directory', str(representation_cache), '--go', str(args.go), 'init'], artifacts=lambda d: [representation_config])
         if preparation['exit']:
             return preparation['exit']
 
-    native_build_cache = output / 'native-build-cache'
+    native_build_cache = args.native_build_cache or output / 'native-build-cache'
     if args.native_bundle:
-        native_build_cache.mkdir(mode=0o700)
+        native_build_cache.mkdir(mode=0o700, exist_ok=True)
+
+    budget = DiskBudget([args.cache, args.compiled_cache, native_build_cache, output] if args.native_bundle else [args.cache, args.compiled_cache, output], output, args.disk_budget_gib << 30)
+
+    def required_artifacts(directory):
+        paths = [p for p in (directory / 'fixtures').rglob('*') if p.is_file()]
+        if args.compiled_cache and (directory / 'unit.output').exists():
+            with (directory / 'unit.output').open() as log:
+                keys = {key for line in log for key in re.findall(r'generated_compiled_artifact .*key=([a-f0-9]{64})', line)}
+            for key in keys:
+                paths += [args.compiled_cache / key / 'record.json']
+                if not args.native_representation:
+                    paths += [args.compiled_cache / key / 'program.test']
+        return paths
 
     def execute(job):
+        budget.check()
         index, (names, pattern) = job
+        def command_for(directory):
+            return make_command(directory, names, pattern)
+        row = stage.run(names, command_for, cwd=root / 'src/lib/pipelang', go_cases=True,
+                        artifacts=required_artifacts)
+        row.update(index=index, tests=names)
+        if row['exit'] and len(names) > 1:
+            retries = []
+            for single, single_pattern in plan(tests, splits, 1):
+                if single[0] in names:
+                    retried = stage.run(single, lambda d, n=single, p=single_pattern: make_command(d, n, p),
+                                        cwd=root / 'src/lib/pipelang', go_cases=True, artifacts=required_artifacts, retry_of=row['receipt'])
+                    retried.update(index=index, tests=single, failed_group=row['receipt'])
+                    retries.append(retried)
+            return retries
+        return [row]
+
+    def make_command(directory, names, pattern):
         command = [str(binary), '-test.run', pattern, '-test.v', '-test.count=1', '-test.timeout=25s']
-        environment = []
+        environment = ['PIPELANG_CACHE_BUDGET_FILE=' + str(budget.record)]
         if args.audit_generated:
             environment += ['PIPELANG_BUNDLE_AUDIT=1', 'PIPELANG_PERFORMANCE_PROFILE=1']
         if args.native_bundle:
@@ -229,57 +306,77 @@ def main():
         if args.shared_export:
             environment += ['PIPELANG_SHARED_EXPORT=' + str(args.shared_export)]
         if all(name.startswith('TestV960DepthThreeStraightLineInitializersMemory') for name in names):
-            environment += ['PIPELANG_MEMORY_FIXTURES=' + str(output / 'fixtures')]
+            environment += ['PIPELANG_MEMORY_FIXTURES=' + str(directory / 'fixtures')]
         if all(name.startswith('TestV970DepthThreeTerminalInitializersMemory') for name in names):
-            environment += ['PIPELANG_MEMORY_FIXTURES=' + str(output / 'fixtures-v097')]
+            environment += ['PIPELANG_MEMORY_FIXTURES=' + str(directory / 'fixtures')]
+        if all(name.startswith('TestV1090TerminalCombinedSelectorArmsMemory') for name in names):
+            environment += ['PIPELANG_MEMORY_FIXTURES=' + str(directory / 'fixtures')]
         if all(name.startswith('TestV1080TerminalInnerSelectorArmsMemory') for name in names):
-            environment += ['PIPELANG_MEMORY_FIXTURES=' + str(output / 'fixtures-v108')]
+            environment += ['PIPELANG_MEMORY_FIXTURES=' + str(directory / 'fixtures')]
         if all(name.startswith('TestV1070TerminalSelectorValueArmsMemory') for name in names):
-            environment += ['PIPELANG_MEMORY_FIXTURES=' + str(output / 'fixtures-v107')]
+            environment += ['PIPELANG_MEMORY_FIXTURES=' + str(directory / 'fixtures')]
         if all(name.startswith('TestV1060TerminalBooleanSelectorTestsMemory') for name in names):
-            environment += ['PIPELANG_MEMORY_FIXTURES=' + str(output / 'fixtures-v106')]
+            environment += ['PIPELANG_MEMORY_FIXTURES=' + str(directory / 'fixtures')]
         if all(name.startswith('TestV1050DepthThreeTerminalConditionalTestsMemory') for name in names):
-            environment += ['PIPELANG_MEMORY_FIXTURES=' + str(output / 'fixtures-v105')]
+            environment += ['PIPELANG_MEMORY_FIXTURES=' + str(directory / 'fixtures')]
         if all(name.startswith('TestV1040NestedTerminalConditionalTestsMemory') for name in names):
-            environment += ['PIPELANG_MEMORY_FIXTURES=' + str(output / 'fixtures-v104')]
+            environment += ['PIPELANG_MEMORY_FIXTURES=' + str(directory / 'fixtures')]
         if all(name.startswith('TestV1030TerminalConditionalTestsMemory') for name in names):
-            environment += ['PIPELANG_MEMORY_FIXTURES=' + str(output / 'fixtures-v103')]
+            environment += ['PIPELANG_MEMORY_FIXTURES=' + str(directory / 'fixtures')]
         if all(name.startswith('TestV1020TerminalBooleanSelectorInitializersMemory') for name in names):
-            environment += ['PIPELANG_MEMORY_FIXTURES=' + str(output / 'fixtures-v102')]
+            environment += ['PIPELANG_MEMORY_FIXTURES=' + str(directory / 'fixtures')]
         if all(name.startswith('TestV1010StraightLineBooleanSelectorInitializersMemory') for name in names):
-            environment += ['PIPELANG_MEMORY_FIXTURES=' + str(output / 'fixtures-v101')]
+            environment += ['PIPELANG_MEMORY_FIXTURES=' + str(directory / 'fixtures')]
         if all(name.startswith('TestV1000ArrowBooleanSelectorsMemory') for name in names):
-            environment += ['PIPELANG_MEMORY_FIXTURES=' + str(output / 'fixtures-v100')]
+            environment += ['PIPELANG_MEMORY_FIXTURES=' + str(directory / 'fixtures')]
         if all(name.startswith('TestV990TerminalLeafBooleanSelectorsMemory') for name in names):
-            environment += ['PIPELANG_MEMORY_FIXTURES=' + str(output / 'fixtures-v099')]
+            environment += ['PIPELANG_MEMORY_FIXTURES=' + str(directory / 'fixtures')]
         if all(name.startswith('TestV980ConditionalBooleanSelectorsMemory') for name in names):
-            environment += ['PIPELANG_MEMORY_FIXTURES=' + str(output / 'fixtures-v098')]
+            environment += ['PIPELANG_MEMORY_FIXTURES=' + str(directory / 'fixtures')]
         if environment:
             command = ['env'] + environment + command
         if args.native_representation:
-            command = [sys.executable, '-B', str(runner.parent / 'native_artifacts.py'), '--cache', str(args.compiled_cache), '--config', str(representation_config), '--receipt', str(output / ('native-%03d.json' % index)), 'run', '--', *command]
-        grouped = args.shape_batch_size > 1 and len(names) > 1
-        row = unit('batch-%03d' % index, command, cwd=root / 'src/lib/pipelang', grouped=grouped)
-        row.update(index=index, tests=names)
-        return row
+            command = [sys.executable, '-B', str(runner.parent / 'native_artifacts.py'), '--cache', str(args.compiled_cache), '--config', str(representation_config), '--receipt', str(directory / 'native.json'), 'run', '--', *command]
+        return command
 
     execution_started = time.monotonic()
     rows = []
-    with concurrent.futures.ThreadPoolExecutor(max_workers=args.workers) as pool:
-        for row in pool.map(execute, enumerate(jobs)):
+    seen_receipts = set()
+    for case, receipt in stage.prior.items():
+        if receipt['id'] not in seen_receipts:
+            row = dict(receipt['result'], report=receipt['report'], resumed=True, receipt=receipt['id'])
+            row['index'] = next(i for i, (names, _) in enumerate(jobs) if case in names)
             rows.append(row)
-            (output / 'suite.json').write_text(json.dumps(rows, indent=2) + '\n')
+            seen_receipts.add(receipt['id'])
+    stage.reused = len(rows)
+    pending = []
+    for index, (names, pattern) in enumerate(jobs):
+        missing = [name for name in names if name not in stage.prior]
+        if missing == names:
+            pending.append((index, (names, pattern)))
+        elif missing:
+            for single, single_pattern in plan(tests, splits, 1):
+                if single[0] in missing:
+                    pending.append((index, (single, single_pattern)))
+    with concurrent.futures.ThreadPoolExecutor(max_workers=args.workers) as pool:
+        for future in concurrent.futures.as_completed([pool.submit(execute, job) for job in pending]):
+            finished = future.result()
+            rows.extend(finished)
+            row = next((r for r in finished if r['exit']), finished[-1])
             if row['exit']:
                 print('FAILED', row['index'], row['tests'], flush=True)
             elif len(rows) % 20 == 0:
                 print('accepted', len(rows), 'of', len(jobs), flush=True)
+    rows.sort(key=lambda r: r['index'])
+    campaign.serialized_bytes += atomic_json(output / 'suite.json', rows)
+    reconciliation = stage.finish()
     native_build_bytes = None
     native_build_removed = None
     if args.native_bundle:
         # This path was freshly created by this run, never supplied by a caller.
-        native_build_bytes = sum(p.stat().st_size for p in native_build_cache.rglob('*') if p.is_file())
+        native_build_bytes = budget.root_bytes(native_build_cache)
         native_build_removed = None
-    summary = dict(native_representation=args.native_representation, native_bundle=args.native_bundle, native_build_cache_bytes=native_build_bytes, native_build_cache_removed=native_build_removed, discovered_tests=discovered_count, selected_tests=len(tests), test_family=args.test_family, partial_suite=bool(args.test_family), units=len(rows), workers=args.workers, shape_batch_size=args.shape_batch_size, parallel_shapes=args.parallel_shapes,
+    summary = dict(reconciliation=reconciliation, build_cache_hit=build_hit, build_cache_reason=build_reason, build_key=build_key, native_representation=args.native_representation, native_bundle=args.native_bundle, native_build_cache_bytes=native_build_bytes, native_build_cache_removed=native_build_removed, discovered_tests=discovered_count, selected_tests=len(tests), test_family=args.test_family, partial_suite=bool(args.test_family or args.selection_file), units=len(rows), workers=args.workers, shape_batch_size=args.shape_batch_size, parallel_shapes=args.parallel_shapes,
                    failed=[r['index'] for r in rows if r['exit']], source_unchanged=snapshot() == source_before,
                    overall_elapsed_s=time.monotonic() - started, execution_elapsed_s=time.monotonic() - execution_started,
                    sum_unit_elapsed_s=sum(r['report'].get('elapsed_s', 0) for r in rows))
@@ -289,14 +386,25 @@ def main():
         # Only a complete successful run can describe the live retained set.
         # Digests were verified by the executing harness; this receipt does not
         # authorize deletion or replace revalidation before a cache migration.
-        logs = '\n'.join((output / (r['label'] + '.output')).read_text() for r in rows)
+        def log_lines():
+            for row in rows:
+                with (campaign.root / (row['label'] + '.output')).open() as log:
+                    yield from log
         representation = Path(json.loads(representation_config.read_text())['root']) if args.native_representation else None
-        inventory = artifact_inventory(args.compiled_cache, logs, representation)
+        inventory = artifact_inventory(args.compiled_cache, log_lines(), representation)
         (output / 'artifacts.json').write_text(json.dumps(inventory, indent=2) + '\n')
+    campaign.serialized_bytes += atomic_json(output / 'timing.json', summarize(rows, time.monotonic() - execution_started, args.workers, campaign.root))
+    if args.compiled_cache:
+        campaign.serialized_bytes += atomic_json(output / 'schedule-profile.json', observed_profile(rows, scheduling_identity, args.compiled_cache))
+    summary['disk_budget'] = budget.check(force=True)
+    budget.close()
+    summary['toolchain_unchanged'] = toolchain_identity(args.go) == toolchain
+    summary['serialized_bytes'] = campaign.serialized_bytes
     summary['overall_elapsed_s'] = time.monotonic() - started
+    campaign.close()
     (output / 'summary.json').write_text(json.dumps(summary, indent=2) + '\n')
     print(json.dumps(summary), flush=True)
-    return int(bool(summary['failed']) or not summary['source_unchanged'] or native_build_removed is False)
+    return int(bool(summary['failed']) or not summary['source_unchanged'] or native_build_removed is False or reconciliation['missing'] or not summary['toolchain_unchanged'])
 
 
 if __name__ == '__main__':

@@ -88,11 +88,12 @@ tasks:
       ownership: unclaimed
   - id: TASK-021
     topic: PipeLang deterministic self-hosting managed language foundation
-    completed_language_contract: v0.108.0
-    active_objective: TASK-021-terminal-inner-selector-arms
-    objective_state: completed
-    selected_option: A
-    selected_scope: Inner-selector value arms in terminal tests through statement depth three
+    completed_language_contract: v0.109.0
+    active_objective: null
+    completed_verification_objective: TASK-021-resumable-verification-optimization
+    objective_state: complete
+    selected_option: null
+    selected_scope: Durable resumable verification, safe cache reuse, bounded batching and measured end-to-end optimization
     implementation_approval: approved
     completed_repair_objective: TASK-021-PipeLang-v0.80-milestone-repairs
     repair_commit: acbd10f88207d0a226ec24a073948362691adb8c

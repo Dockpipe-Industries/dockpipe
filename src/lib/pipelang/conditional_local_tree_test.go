@@ -21,6 +21,7 @@ func conditionalLocalTreeProgram(t *testing.T, source string, methods []string) 
 
 func conditionalLocalTreeProgramVersion(t *testing.T, contract LanguageContract, source string, methods []string) (*Analysis, coreir.Program) {
 	t.Helper()
+	defer generatedPhase(t, "parser_typechecker_hir_core")()
 	input := semanticTestModuleSet("compiler.selfhosting", []ModuleInput{testModule("compiler.selfhosting", "conditional-local.pipe", source)}, nil)
 	input.LanguageContract = contract
 	analysis := AnalyzeSemanticModuleSet(input)

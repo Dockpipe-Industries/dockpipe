@@ -20,6 +20,7 @@ class PlanTests(unittest.TestCase):
                 (entry / 'record.json').write_text(json.dumps(dict(Version='pipelang-native-validation-v2', Key=name, BinarySHA256='c' * 64)))
             logs = f'generated_compiled_artifact packages=32 cache_hit=true key={key}\n' * 2
             inventory = artifact_inventory(cache, logs)
+            self.assertEqual(artifact_inventory(cache, iter(logs.splitlines())), inventory)
             self.assertEqual(set(inventory['entries']), {key})
             self.assertEqual((inventory['hits'], inventory['misses']), (2, 0))
             self.assertEqual(inventory['retained_bytes'], sum(p.stat().st_size for p in (cache / key).iterdir()))

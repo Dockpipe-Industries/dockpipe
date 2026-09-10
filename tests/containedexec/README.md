@@ -1,9 +1,108 @@
 # Contained generated-Go validation
 
+## Durable campaigns
+
+`verification_campaign.py` runs the complete compiler suite, the 1,944 v109
+isolated compiler fixtures, the nine integration checks and the editor tests in
+sequence under one `job.py` budget. Its default data root is
+`~/.cache/pipelang-verification`, separated into `campaigns/<name>`, `builds`,
+`executables` and toolchain-bound Go build caches. Supply an absolute cached
+Go 1.25.13 executable, the installed Node executable and the admitted baseline
+receipt directory explicitly. Integration fingerprints the selected Node bytes.
+
+```sh
+python3 -B tests/containedexec/job.py --output /absolute/proof/job --timeout 21600 -- \
+  python3 -B tests/containedexec/verification_campaign.py \
+  --root /absolute/private/proof --campaign terminal --go /absolute/go --node /absolute/node \
+  --baseline /absolute/private/accepted-baseline
+```
+
+Use a new job receipt path and `--mode resume` after interruption. Fresh mode
+requires a new campaign name and executes all semantic checks; persistent verified
+build objects may still be reused. Resumption validates every required retained
+artifact and current dependency before admitting a completed receipt. Old receipts
+without the versioned campaign schema remain baseline evidence only.
+
+After the stage job exits, run the same driver with `--accept-job /absolute/proof/job.json`
+inside a new small `job.py` invocation. This independently reconciles atomic receipts,
+baseline inventory, compiler ceilings, integration/editor checks and the completed
+aggregate job's cleanup. `accepted-verification.json` is published only then.
+
+Individual `pipelang_suite.py`, `matrix.py` and `integration.py` entry points also
+accept `--mode fresh|resume`. Matrix accepts either `--fixtures DIR` or
+`--fixture-manifest FILE` containing absolute measurement-file paths. The suite
+supports explicit `--selection-file` logical-case samples, always reported as
+partial proof, and `--build-store` / `--native-build-cache` persistent paths.
+
+Campaign schema `pipelang-campaign-v1` uses checksummed manifests and receipts,
+fsync/rename publication, immutable manifest revisions, exclusive kernel writer
+locks and linked attempts. A successful receipt requires complete case selection,
+zero exit, unchanged inputs, verified artifacts, unchanged resource limits and
+positive cleanup proof. Recovery retains incomplete and failed attempts; the
+append-only event log and compact indexes never authorize proof. There is no cache
+or proof deletion command. All referenced objects are pinned by preservation.
+
+Module discovery runs offline inside containment. Content fingerprints cover dirty
+and untracked local inputs, transitive module sources, embeds, toolchain bytes,
+settings and policy. Linux input watches reject writes, restored bytes, renames,
+new files and lost watches during execution; every new process hashes again.
+Boot ID is provenance only. Host/kernel and resource-policy identity remain relevant.
+
+Native executables retain current Value/Trace oracles and fresh children/fixtures.
+Main test binaries are verified before reuse. Standard-library preparation validates
+its cache-specific archive digests; missing or corrupt preparation is rebuilt under
+the existing deadline. Only build preparation uses `GOMEMLIMIT=600MiB`.
+
+`--disk-budget-gib` defaults to 96 GiB across selected caches and suite evidence.
+An initial inventory plus incremental kernel notifications protects disk headroom;
+new executable publication also reserves exact bytes across workers. Capacity
+exhaustion stops population and preserves evidence. Build-store objects have a
+separate 4 GiB budget. No garbage collection is authorized or performed by the
+campaign controller.
+
+Each suite writes a reusable `schedule-profile.json` from actual warm singleton
+observations. The default schedule keeps singleton units. `--schedule-profile` admits only
+current-input, host, worker and policy matched warm measurements with verified
+executable digests: compatible numeric shapes may pair when their
+predicted total is below 10 seconds with memory headroom. Unknown/heavy shapes,
+memory families and special harnesses stay separate. A failed group retries as
+linked singleton attempts under unchanged deadlines. Parallel shapes remain off.
+
+Detailed logs stay in attempt directories, capped at 64 MiB per unit. `suite.json`,
+`matrix.json`, `checks.json` and compact summaries remain available to legacy
+readers and are regenerated at stage end. `timing.json` reports family quantiles,
+workload occupancy, cache use, artifact audits and bounded phase timing. Process
+monotonic clocks have separate domains; missing timing is unknown and nested
+spans must not be added to workload time. See the
+[architecture](../../docs/runtime/pipelang-verification.md) for scope and adoption evidence.
+
 Generated PipeLang and Application IR tests require Linux cgroup v2 and a user
 systemd manager. There is no uncontained fallback. Other platforms currently
 refuse generated compilation; implementing and verifying an equivalent process-tree
 strategy is required before claiming resource proof there.
+
+Wrap suite and matrix coordinators with `job.py`. It creates a unique temporary
+slice shared by the coordinator and every `run.py` child: 2 GiB hard maximum,
+1536 MiB reclaim threshold, zero swap, 384 tasks and a proactive stop at 1800 MiB.
+The coordinator separately has 512 MiB and 64 tasks; child limits remain unchanged.
+Both coordinator and child verify their actual ancestor limits before starting work.
+Each child binds its lifetime to the coordinator. An independent coordinator service
+deadline and an outside supervisor stop the whole slice, including sibling units.
+The supervisor retains only counters; test log inventory is streamed. Suite/matrix
+entrypoints refuse execution outside this verified job. No persistent unit files or
+machine settings are changed. Use durable private output/cache paths when receipts
+must survive reboot; `/tmp` does not provide that guarantee.
+
+```sh
+python3 -B tests/containedexec/job.py --output /absolute/private/proof/job --timeout 21600 -- \
+  python3 -B tests/containedexec/pipelang_suite.py --go /absolute/go \
+  --output /absolute/private/proof/suite --cache /absolute/private/proof/cache --workers 1
+```
+
+Run `python3 -B tests/containedexec/test_job.py` with the user systemd manager before
+compiler work to verify nested containment, escaped-process cleanup, independent
+job deadline cancellation and refusal of an uncontained coordinator. These are
+small synthetic probes; `test_run.py` additionally exercises per-unit limits.
 
 Run from the repository root, using an absolute Go toolchain path and a private
 cache/output directory. The launcher verifies `memory.max=1073741824`,
@@ -54,7 +153,8 @@ python3 tests/containedexec/run.py \
   --output /tmp/compiler-proof/regression --cache /tmp/compiler-proof/cache --timeout 180 \
   -- env PIPELANG_MEMORY_FIXTURES=/tmp/compiler-proof/fixtures /absolute/go test \
   -p 1 ./src/lib/pipelang -run TestCompilerMemoryLocalSequences -count=1 -v
-python3 tests/containedexec/matrix.py \
+python3 -B tests/containedexec/job.py --output /tmp/compiler-proof/matrix-job -- \
+  python3 -B tests/containedexec/matrix.py \
   --fixtures /tmp/compiler-proof/fixtures --output /tmp/compiler-proof/isolated \
   --cache /tmp/compiler-proof/cache --compiler /absolute/goroot/pkg/tool/linux_amd64/compile
 ```
@@ -271,10 +371,12 @@ first pass populates a private executable cache; the second groups up to 25
 numbered shapes per unit to amortize process startup and toolchain verification:
 
 ```sh
-python3 tests/containedexec/pipelang_suite.py \
+python3 -B tests/containedexec/job.py --output /tmp/compiler-proof/populate-job -- \
+  python3 -B tests/containedexec/pipelang_suite.py \
   --go /absolute/go --output /tmp/compiler-proof/populate \
   --cache /tmp/compiler-proof/cache --compiled-cache /tmp/compiler-proof/executables
-python3 tests/containedexec/pipelang_suite.py \
+python3 -B tests/containedexec/job.py --output /tmp/compiler-proof/rerun-job -- \
+  python3 -B tests/containedexec/pipelang_suite.py \
   --go /absolute/go --output /tmp/compiler-proof/rerun \
   --cache /tmp/compiler-proof/cache --compiled-cache /tmp/compiler-proof/executables \
   --shape-batch-size 25 --parallel-shapes
@@ -365,7 +467,8 @@ Existing Go compiler caches are not pruned by the runner.
 For a full suite using shared native bundles:
 
 ```sh
-python3 tests/containedexec/pipelang_suite.py \
+python3 -B tests/containedexec/job.py --output /tmp/compiler-proof/bundle-rerun-job -- \
+  python3 -B tests/containedexec/pipelang_suite.py \
   --go /absolute/go --output /tmp/compiler-proof/bundle-rerun \
   --cache /tmp/compiler-proof/cache --compiled-cache /tmp/compiler-proof/executables \
   --shape-batch-size 25 --parallel-shapes
@@ -737,3 +840,11 @@ and local/return choices reuse bits. This is not all independent cross-node or
 local assignments. Inherited v0.107 outer-arm tests mix at unselected positions.
 The memory family retains 36 groups and 648 cases; export `fixtures-v108` for
 fresh isolated compiler measurement with unchanged 128 MiB / 5-second ceilings.
+
+The v0.109 combined selector-arm proof partitions all nine arm pairs and all
+statement shapes: `TestV1090TerminalCombinedSelectorArmsLayouts=1800`.
+Scaling spans 108 families (nine arm pairs, three depths, four initializer families).
+Layout vectors have nine independent boolean inputs and three independent depth
+flips; four of thirteen operand positions reuse inputs, as do locals and returns.
+A separate root-test matrix exhausts all thirteen operand inputs independently:
+`TestV1090TerminalCombinedSelectorArmsIndependentOperands=9`.

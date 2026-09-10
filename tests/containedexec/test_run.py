@@ -18,7 +18,7 @@ class ContainmentTests(unittest.TestCase):
         self.root = Path(self.temporary.name)
 
     def run_case(self, source, timeout=3):
-        result = subprocess.run([sys.executable, str(RUNNER), '--output', str(self.root/'case'),
+        result = subprocess.run([sys.executable, '-B', str(RUNNER), '--output', str(self.root/'case'),
                                  '--cache', str(self.root/'cache'), '--timeout', str(timeout),
                                  '--', sys.executable, '-c', source], capture_output=True, text=True, timeout=timeout+30)
         report = json.loads((self.root/'case.json').read_text())
@@ -46,7 +46,7 @@ class ContainmentTests(unittest.TestCase):
 
     def test_refuses_uncontained_child(self):
         marker = self.root/'must-not-exist'
-        result = subprocess.run([sys.executable, str(RUNNER), '--inside', '--output', str(self.root/'refused'),
+        result = subprocess.run([sys.executable, '-B', str(RUNNER), '--inside', '--output', str(self.root/'refused'),
                                  '--cache', str(self.root/'cache'), '--', sys.executable, '-c',
                                  'from pathlib import Path; Path('+repr(str(marker))+').touch()'], capture_output=True)
         self.assertNotEqual(result.returncode, 0)

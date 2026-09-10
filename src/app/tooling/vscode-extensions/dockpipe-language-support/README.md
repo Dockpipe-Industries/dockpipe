@@ -397,3 +397,9 @@ result arms may contain a flat boolean ternary in terminal tests through stateme
 depth three. The new form retains nonconditional outer result arms. Existing
 v0.107 tests may occur elsewhere in the same tree. Further nesting, deeper statements
 and new return/initializer/argument placements remain excluded.
+
+`v0.109.0` adds `pipe-terminal-combined-selector-arms`: flat ternaries in either/both
+inner-selector arms and either/both outer result arms of one terminal test, through
+statement depth three. Named operands stay nonconditional bool expressions. Reached
+operands/branches stay lazy and once-only; reached locals stay eager and ordered.
+Further nesting and new return/initializer/argument placements remain excluded.

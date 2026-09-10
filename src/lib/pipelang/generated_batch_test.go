@@ -204,6 +204,7 @@ func runGeneratedBatch(t *testing.T, cases []generatedBatchCase) {
 	if len(cases) == 0 {
 		return
 	}
+	materialized := generatedPhase(t, "source_fixture_materialization")
 	if os.Getenv("PIPELANG_BUNDLE_AUDIT") == "1" {
 		for _, item := range cases {
 			fixtureHash := sha256.New()
@@ -274,6 +275,7 @@ func runGeneratedBatch(t *testing.T, cases []generatedBatchCase) {
 	}
 	imports.WriteString(")\n")
 	write("linked_test.go", []byte(imports.String()+checks.String()))
+	materialized()
 	binary := filepath.Join(dir, "linked.test")
 	cacheRoot, err := generatedCacheRoot()
 	if err != nil {
@@ -287,7 +289,9 @@ func runGeneratedBatch(t *testing.T, cases []generatedBatchCase) {
 		}
 	}()
 	hit := false
+	missReason := "not_present_for_current_content_identity"
 	if cacheRoot != "" {
+		hashed := generatedPhase(t, "artifact_identity_and_verification")
 		key, err = generatedArtifactKey(dir)
 		if err != nil {
 			t.Fatal(err)
@@ -307,9 +311,15 @@ func runGeneratedBatch(t *testing.T, cases []generatedBatchCase) {
 		} else if cached, ok := readGeneratedArtifact(cacheRoot, key); ok {
 			binary = cached
 			hit = true
-		} else if err := quarantineGeneratedArtifact(cacheRoot, key); err != nil {
-			t.Fatal(err)
+		} else {
+			if _, err := os.Lstat(filepath.Join(cacheRoot, key)); !os.IsNotExist(err) {
+				missReason = "invalid_or_incomplete_cached_object"
+			}
+			if err := quarantineGeneratedArtifact(cacheRoot, key); err != nil {
+				t.Fatal(err)
+			}
 		}
+		hashed()
 	}
 	if !hit {
 		command := exec.Command(filepath.Join(runtime.GOROOT(), "bin", "go"), "test", "-c", "-p=1", "-o", binary, ".")
@@ -328,20 +338,18 @@ func runGeneratedBatch(t *testing.T, cases []generatedBatchCase) {
 				t.Fatal("bundle build cache must be a private directory")
 			}
 			command.Env = append(command.Env, "GOCACHE="+buildCache)
-			// Populate standard dependencies separately so each compiler command keeps
-			// the existing 30-second deadline even when this disposable cache is empty.
-			prepare := exec.Command(filepath.Join(runtime.GOROOT(), "bin", "go"), "build", "-p=1", "testing", "encoding/json", "reflect", "strings")
-			prepare.Dir, prepare.Env = command.Dir, command.Env
-			if output, _, err := measureGeneratedBuild(prepare); err != nil {
-				t.Fatalf("prepare disposable bundle build cache: %v\n%s", err, output)
-			}
+			prepareGeneratedCache(t, command, buildCache)
 		}
+		linked := generatedPhase(t, "compilation_and_linking")
 		output, measurement, err := measureGeneratedBuild(command)
+		linked()
 		if err != nil {
 			t.Fatalf("link %d generated packages: %v\n%s", len(cases), err, output)
 		}
 		if cacheRoot != "" {
+			published := generatedPhase(t, "artifact_publication")
 			binary, err = publishGeneratedArtifact(cacheRoot, key, binary)
+			published()
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -351,7 +359,11 @@ func runGeneratedBatch(t *testing.T, cases []generatedBatchCase) {
 		}
 	}
 	if cacheRoot != "" {
-		t.Logf("generated_compiled_artifact packages=%d cache_hit=%t key=%s", len(cases), hit, key)
+		reason := missReason
+		if hit {
+			reason = "verified_content"
+		}
+		t.Logf("generated_compiled_artifact packages=%d cache_hit=%t key=%s reason=%s", len(cases), hit, key, reason)
 	}
 	if root := os.Getenv("PIPELANG_SHARED_EXPORT"); root != "" && sharedOracle != nil {
 		exportGeneratedSharedExperiment(t, root, dir, binary, key)
@@ -416,7 +428,9 @@ func runGeneratedBatch(t *testing.T, cases []generatedBatchCase) {
 			command.ExtraFiles = []*os.File{sealed}
 		}
 		command.Dir = execution
+		executed := generatedPhase(t, "native_execution")
 		output, measurement, err := containedexec.Measure(command)
+		executed()
 		if err != nil {
 			t.Fatalf("generated package %s (%v): %v\n%s", name, item.tests, err, output)
 		}
