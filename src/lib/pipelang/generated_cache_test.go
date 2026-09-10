@@ -163,6 +163,13 @@ func readGeneratedArtifact(root, key string) (string, bool) {
 }
 
 func publishGeneratedArtifact(root, key, binary string) (string, error) {
+	info, err := os.Stat(binary)
+	if err != nil {
+		return "", err
+	}
+	if err := reserveGeneratedPopulation(root, info.Size()+4096); err != nil {
+		return "", err
+	}
 	stage, err := os.MkdirTemp(root, ".publish-")
 	if err != nil {
 		return "", err
@@ -178,6 +185,9 @@ func publishGeneratedArtifact(root, key, binary string) (string, error) {
 		return "", err
 	}
 	_, err = io.Copy(output, input)
+	if err == nil {
+		err = output.Sync()
+	}
 	closeErr := output.Close()
 	if err != nil {
 		return "", err
@@ -196,6 +206,25 @@ func publishGeneratedArtifact(root, key, binary string) (string, error) {
 	if err := os.WriteFile(filepath.Join(stage, "record.json"), data, 0600); err != nil {
 		return "", err
 	}
+	// Commit both object files and their directory before publishing the name.
+	recordFile, err := os.Open(filepath.Join(stage, "record.json"))
+	if err != nil {
+		return "", err
+	}
+	err = recordFile.Sync()
+	recordFile.Close()
+	if err != nil {
+		return "", err
+	}
+	stageDir, err := os.Open(stage)
+	if err != nil {
+		return "", err
+	}
+	err = stageDir.Sync()
+	stageDir.Close()
+	if err != nil {
+		return "", err
+	}
 	destination := filepath.Join(root, key)
 	if err := os.Rename(stage, destination); err != nil {
 		// A concurrent publisher may have completed the same immutable artifact.
@@ -203,6 +232,15 @@ func publishGeneratedArtifact(root, key, binary string) (string, error) {
 			return ready, nil
 		}
 		return "", fmt.Errorf("publish generated artifact: %w", err)
+	}
+	rootDir, err := os.Open(root)
+	if err != nil {
+		return "", err
+	}
+	err = rootDir.Sync()
+	rootDir.Close()
+	if err != nil {
+		return "", err
 	}
 	return filepath.Join(destination, "program.test"), nil
 }

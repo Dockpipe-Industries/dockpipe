@@ -1272,5 +1272,16 @@
       "}"
     ],
     "description": "PipeLang v0.108.0 public pure terminal tests with flat inner-selector value arms"
+  },
+  "PipeLang terminal combined-selector arms": {
+    "prefix": "pipe-terminal-combined-selector-arms",
+    "body": [
+      "if ((${1:a} ? (${2:b} ? ${3:c} : ${4:d}) : (${5:e} ? ${6:f} : ${7:g})) ? (${8:h} ? ${9:i} : ${10:j}) : (${11:k} ? ${12:l} : ${13:m})) {",
+      "\treturn ${14:value};",
+      "} else {",
+      "\treturn ${15:fallback};",
+      "}"
+    ],
+    "description": "PipeLang v0.109.0: combined flat inner-selector and outer result arms in terminal tests through statement depth three; further nesting and new placements remain excluded."
   }
 }

@@ -50,6 +50,7 @@ DockPipe itself, publishing packages, or debugging compiled/runtime behavior.
 | Codex workspace-sandbox session limits and host requests | [runtime/codex-sandbox-sessions.md](runtime/codex-sandbox-sessions.md) |
 | Agent routing and focused maintainer rules | [agents/index.yaml](agents/index.yaml), [agents/](agents/) |
 | Core-vs-packages audit | [packages/core-vs-packages-audit.md](packages/core-vs-packages-audit.md) |
+| PipeLang verification optimization plan | [runtime/pipelang-verification.md](runtime/pipelang-verification.md) |
 | Manual QA | [manual-qa.md](manual-qa.md) |
 | Messaging / about copy | [concepts/messaging.md](concepts/messaging.md) |
 

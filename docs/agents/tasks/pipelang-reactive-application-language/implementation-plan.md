@@ -1,4 +1,20 @@
-## Current objective — inner-selector value arms in terminal tests
+## Current objective — resumable verification optimization
+
+The user authorized the complete verification optimization architecture and a
+fresh execution task. Read [the objective](conformance-verification-optimization.md)
+and [canonical plan](../../../runtime/pipelang-verification.md). State:
+`ready_for_execution`; the first checkpoint is durable receipts and invalidation.
+The completed language contract remains v0.109.0; no language successor is selected.
+
+## Completed objective — combined selector arms in terminal tests
+
+Founder selected A and separately said exact `approved` for v0.109.0.
+[terminal-combined-selector-arms.md](terminal-combined-selector-arms.md) owns the
+bounded contract and verification. Implementation and bounded verification are complete in the saved checkout. The objective record distinguishes the full inventory, focused retries, isolated compiler proof and aggregate containment repair.
+The [canonical language section](../../../concepts/pipelang.md#pipelang-v01090-combined-selector-arms-in-terminal-tests)
+defines semantics and exclusions. The language slice is complete; the verification objective above owns current authority.
+
+## Completed objective — inner-selector value arms in terminal tests
 
 Founder selected A and separately said exact `approved` for v0.108.0.
 [terminal-inner-selector-arms.md](terminal-inner-selector-arms.md) owns the bounded

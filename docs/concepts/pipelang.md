@@ -3822,3 +3822,45 @@ refusal. Generic internal Core locals, AST/HIR/Core nodes, public compiler/seman
 Application IR identities and frozen 45-source compatibility remain unchanged.
 Evaluation, Core-only Go and executable Application IR consume validated target-neutral
 Core. Compiler resource ceilings and engine/package boundaries remain fixed.
+
+
+### PipeLang v0.109.0: combined selector arms in terminal tests
+
+`v0.109.0` combines v0.108 inner-selector value arms with v0.107 outer result arms
+in the same terminal test. Flat ternaries may occupy either/both inner-selector
+arms and either/both outer result arms: nine new combinations. These tests may
+appear at any subset of condition positions in public pure terminal `if/else` trees
+through statement depth three. Omitted visibility retains the public default:
+
+```pipe
+public Class Choices {
+    public string Select(string raw, bool a, bool b, bool c, bool d, bool e,
+                         bool f, bool g, bool h, bool i, bool j, bool k, bool l, bool m) {
+        string normalized = trim(raw);
+        if ((a ? (b ? c : d) : (e ? f : g)) ? (h ? i : j) : (k ? l : m)) {
+            return normalized;
+        } else {
+            return raw;
+        }
+    }
+}
+```
+
+All named operands are inherited nonconditional bool expressions, including supported
+pure calls and earlier lexical bindings. Evaluate a once, only the selected inner arm
+and its reached operands, then only the selected outer arm and its reached operands,
+then only the selected statement branch. Reached locals remain eager, once-only and
+source-ordered, including unused bindings. Self/forward references, duplicate bindings,
+shadowing, sibling references and escaping branch bindings remain invalid.
+
+All v0.108 forms remain available, including at other test positions in the same tree.
+Further nesting, deeper statements, hidden locals, private methods, new return/
+initializer/arrow/argument/matching/propagation placements, inference, mutation, loops,
+effects and new backends remain excluded. Existing return/initializer carrier transport
+retains its exact types and does not implicitly propagate.
+
+Source and Core independently enforce placement, types, scope and hidden-local refusal.
+Existing AST/HIR/Core nodes, generic internal Core locals, public compiler/semantic/
+Application IR identities and frozen 45-source compatibility remain unchanged.
+Evaluation, Core-only Go and executable Application IR consume validated target-neutral
+Core. Compiler resource ceilings and engine/package boundaries remain fixed.

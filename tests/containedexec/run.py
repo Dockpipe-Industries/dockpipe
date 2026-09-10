@@ -15,6 +15,8 @@ import subprocess
 import sys
 import time
 import uuid
+from job import verify_job
+from campaign import atomic_json, provenance
 
 
 def main():
@@ -31,16 +33,28 @@ def main():
         parser.error('memory-high-mib must be in (0,800)')
     if not command or not 0 < args.timeout <= 1800:
         parser.error('command and timeout in (0,1800] required')
+    invocation_started = time.monotonic_ns()
     output = Path(args.output).resolve()
     output.parent.mkdir(parents=True, exist_ok=True)
     if not args.inside:
+        if 'CONTAINED_JOB_SLICE' in os.environ:
+            verify_job()
         unit = 'contained-check-' + uuid.uuid4().hex
         invocation = ['systemd-run', '--user', '--wait', '--pipe', '--collect', '--unit='+unit,
                       '-p', 'MemoryMax=1G', '-p', 'MemorySwapMax=0', '-p', 'TasksMax=128',
                       '-p', 'RuntimeMaxSec='+str(args.timeout+10), '-p', 'KillMode=control-group',
                       '-p', 'TimeoutStopSec=2', '--working-directory='+os.getcwd(),
-                      sys.executable, str(Path(__file__).resolve()), '--inside', '--output', str(output),
+                      sys.executable, '-B', str(Path(__file__).resolve()), '--inside', '--output', str(output),
                       '--cache', str(Path(args.cache).resolve()), '--timeout', str(args.timeout), '--']+command
+        if 'CONTAINED_JOB_SLICE' in os.environ:
+            position = invocation.index('--working-directory='+os.getcwd())
+            invocation[position:position] = [
+                '--slice=' + os.environ['CONTAINED_JOB_SLICE'],
+                '-p', 'BindsTo=' + os.environ['CONTAINED_JOB_UNIT'],
+                '-p', 'After=' + os.environ['CONTAINED_JOB_UNIT'],
+                *['--setenv=' + name + '=' + os.environ[name] for name in
+                  ['CONTAINED_JOB_SLICE', 'CONTAINED_JOB_GROUP', 'CONTAINED_JOB_UNIT']],
+                '--setenv=PYTHONDONTWRITEBYTECODE=1']
         if args.memory_high_mib is not None:
             invocation[invocation.index('--working-directory='+os.getcwd()):invocation.index('--working-directory='+os.getcwd())] = ['-p', 'MemoryHigh='+str(args.memory_high_mib)+'M']
             separator = invocation.index('--', invocation.index('--inside'))
@@ -57,6 +71,7 @@ def main():
         except subprocess.TimeoutExpired:
             result = subprocess.CompletedProcess(invocation, 124)
         finally:
+            cleanup_started = time.monotonic_ns()
             # Narrow cleanup of this invocation's randomly named temporary unit.
             subprocess.run(['systemctl', '--user', 'stop', unit], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=5)
         report_path = Path(str(output)+'.json')
@@ -64,11 +79,16 @@ def main():
         group = report.get('cgroup')
         report['tree_removed'] = bool(group) and not Path(group).exists()
         report['unit_exit'] = result.returncode
-        report_path.write_text(json.dumps(report, indent=2)+'\n')
+        report['provenance'] = provenance()
+        report['spans'] = [dict(name='containment_and_workload', start_ns=invocation_started, end_ns=cleanup_started, parent=None),
+                           dict(name='cleanup', start_ns=cleanup_started, end_ns=time.monotonic_ns(), parent=None)]
+        atomic_json(report_path, report)
         print(json.dumps({key:report.get(key) for key in ['outcome','exit','elapsed_s','compiler_sampled_peak_rss_kib','child_maxrss_kib','aggregate_peak_bytes','swap_current','tree_removed','unit_exit']}), flush=True)
         return 0 if result.returncode == 0 and report['tree_removed'] and report.get('exit') == 0 else 1
 
     group = Path('/sys/fs/cgroup') / Path('/proc/self/cgroup').read_text().strip().split('::', 1)[1].lstrip('/')
+    if 'CONTAINED_JOB_SLICE' in os.environ:
+        verify_job()
     expected = {'memory.max': 1073741824, 'memory.swap.max': 0, 'pids.max': 128}
     if args.memory_high_mib is not None:
         expected['memory.high'] = args.memory_high_mib*1024*1024
@@ -83,10 +103,17 @@ def main():
     cache.mkdir(parents=True, exist_ok=True)
     temporary = output.parent / 'tmp'
     temporary.mkdir(exist_ok=True)
-    env = dict(os.environ, GOTOOLCHAIN='local', GOPROXY='off', GOSUMDB='off', GOWORK='off',
+    env = dict(os.environ, GOENV='off', GOTOOLCHAIN='local', GOPROXY='off', GOSUMDB='off', GOWORK='off',
                GOMAXPROCS='4', GOCACHE=str(cache), GOTMPDIR=str(temporary))
-    Path(str(output)+'.json').write_text(json.dumps(dict(command=command, cgroup=str(group), limits=actual,
-        unit_properties=properties, outcome='started; final accounting unavailable', exit=None))+'\n')
+    # Campaign drivers use normal build settings. Explicit env commands inside
+    # a test remain available for bounded adversarial probes.
+    unexpected = {name: os.environ[name] for name in ('GOFLAGS', 'GOEXPERIMENT', 'GOOS', 'GOARCH', 'GOAMD64', 'GO386', 'GOARM', 'GOARM64', 'CGO_ENABLED', 'CGO_CFLAGS', 'CGO_CPPFLAGS', 'CGO_CXXFLAGS', 'CGO_LDFLAGS', 'CC', 'CXX', 'GODEBUG') if os.environ.get(name)}
+    if unexpected:
+        raise RuntimeError('non-default inherited build settings refused: ' + ', '.join(sorted(unexpected)))
+    env.pop('GOGC', None)
+    env.pop('GOMEMLIMIT', None)
+    atomic_json(Path(str(output)+'.json'), dict(command=command, cgroup=str(group), limits=actual,
+        unit_properties=properties, outcome='started; final accounting unavailable', exit=None))
     before = (group/'memory.events').read_text()
     swap_before = (group/'memory.swap.events').read_text()
     start = time.monotonic()
@@ -113,6 +140,9 @@ def main():
                         compiler_rss = max(compiler_rss, rss)
                 except (OSError, StopIteration):
                     pass
+            if Path(str(output)+'.output').stat().st_size > 64 << 20:
+                outcome = 'log_budget_stop'
+                break
             if current >= 800*1024*1024:
                 outcome = 'proactive_memory_stop'
                 break
@@ -131,7 +161,8 @@ def main():
                       swap_events_before=swap_before, swap_events_after=(group/'memory.swap.events').read_text(),
                       observed_pids=sorted(observed), active_at_last_sample=active,
                       memory_stat=(group/'memory.stat').read_text())
-        Path(str(output)+'.json').write_text(json.dumps(report, indent=2)+'\n')
+        report['workload_span'] = dict(name='workload', start_ns=int(start * 1e9), end_ns=time.monotonic_ns(), parent='containment_and_workload')
+        atomic_json(Path(str(output)+'.json'), report)
         if outcome != 'completed':
             subprocess.run(['systemctl','--user','kill','--kill-who=all','--signal=KILL',unit], timeout=2)
             return 1

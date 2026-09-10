@@ -1,4 +1,12 @@
-## Current objective — inner-selector value arms in terminal tests
+## Current objective — combined selector arms in terminal tests
+
+Founder selected A and separately said exact `approved` for v0.109.0.
+[terminal-combined-selector-arms.md](terminal-combined-selector-arms.md) owns the
+bounded contract and verification. Implementation and bounded verification are complete in the saved checkout. The objective record distinguishes the full inventory, focused retries, isolated compiler proof and aggregate containment repair.
+The [canonical language section](../../../concepts/pipelang.md#pipelang-v01090-combined-selector-arms-in-terminal-tests)
+defines semantics and exclusions. No successor, commit, push, cleanup or live operation is authorized.
+
+## Completed objective — inner-selector value arms in terminal tests
 
 Founder selected A and separately said exact `approved` for v0.108.0.
 [terminal-inner-selector-arms.md](terminal-inner-selector-arms.md) owns the bounded

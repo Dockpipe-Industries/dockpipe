@@ -2,9 +2,12 @@ package pipelang
 
 import (
 	"fmt"
+	"os"
 	"reflect"
 	"sync"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	"dockpipe/src/lib/pipelang/coreeval"
 	"dockpipe/src/lib/pipelang/coreir"
@@ -154,11 +157,37 @@ func TestPreparedExactIdentityPair(t *testing.T) {
 // Positive vector matrices hold the Core program fixed while inputs vary.
 // Preparation still owns and validates the complete graph; each invocation
 // retains argument/carrier validation and its independent expected outcome.
-func prepareConformanceProgram(t *testing.T, program coreir.Program) *coreeval.PreparedProgram {
+type timedConformanceProgram struct {
+	program *coreeval.PreparedProgram
+	profile bool
+	elapsed atomic.Int64
+	calls   atomic.Int64
+}
+
+func (p *timedConformanceProgram) Evaluate(identity coreir.SemanticIdentity, arguments []coreeval.Value) (coreeval.Outcome, error) {
+	if !p.profile {
+		return p.program.Evaluate(identity, arguments)
+	}
+	start := time.Now()
+	outcome, err := p.program.Evaluate(identity, arguments)
+	p.elapsed.Add(time.Since(start).Nanoseconds())
+	p.calls.Add(1)
+	return outcome, err
+}
+
+func prepareConformanceProgram(t *testing.T, program coreir.Program) *timedConformanceProgram {
 	t.Helper()
+	end := generatedPhase(t, "evaluator_preparation")
 	prepared, err := coreeval.PrepareProgram(program)
+	end()
 	if err != nil {
 		t.Fatal(err)
 	}
-	return prepared
+	measured := &timedConformanceProgram{program: prepared, profile: os.Getenv("PIPELANG_PERFORMANCE_PROFILE") == "1"}
+	if measured.profile {
+		t.Cleanup(func() {
+			t.Logf("generated_evaluator calls=%d elapsed_ns=%d", measured.calls.Load(), measured.elapsed.Load())
+		})
+	}
+	return measured
 }
