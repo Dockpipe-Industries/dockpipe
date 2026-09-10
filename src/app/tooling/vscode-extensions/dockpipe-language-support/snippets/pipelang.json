@@ -1283,5 +1283,12 @@
       "}"
     ],
     "description": "PipeLang v0.109.0: combined flat inner-selector and outer result arms in terminal tests through statement depth three; further nesting and new placements remain excluded."
+  },
+  "PipeLang straight-line selector value arms": {
+    "prefix": "pipe-straight-selector-arms",
+    "body": [
+      "return (${1:a} ? ${2:b} : ${3:c}) ? (${4:d} ? ${5:x} : ${6:y}) : (${7:e} ? ${8:z} : ${9:w});"
+    ],
+    "description": "PipeLang v0.110.0: flat ternaries in either or both result arms of a complete straight-line selector return; no new arrow, leaf or initializer placements."
   }
 }

@@ -15,7 +15,9 @@ from verification import ROOT, dependency_guard
 from job import verify_job
 
 HERE = Path(__file__).resolve().parent
-MEMORY = 'TestV1090TerminalCombinedSelectorArmsMemory'
+MEMORY_FAMILIES = {'TestV1090TerminalCombinedSelectorArmsMemory': 1944,
+                   'TestV1100StraightLineSelectorValueArmsMemory': 192}
+MEMORY_COUNT = sum(MEMORY_FAMILIES.values())
 
 
 def validated_stage(output, stage, selected=None):
@@ -53,12 +55,12 @@ def reconcile(output, baseline, job_report):
     baseline_cases = {case for names, _ in prior['jobs'] for case in names}
     if not baseline_cases <= set(suite) or not set(prior['tests']) <= set(current['tests']):
         raise RuntimeError('baseline semantic inventory shrank')
-    if len(matrix) != 1944 or len(integration) != 9 or len(editor) != 1:
+    if len(matrix) != MEMORY_COUNT or len(integration) != 9 or len(editor) != 1:
         raise RuntimeError('required matrix/integration/editor inventory mismatch')
     measured = [r['report'] for r in matrix.values()]
     if any(r['child_maxrss_kib'] > 128 * 1024 or r['elapsed_s'] > 5 or 'memory.high' in r['limits'] for r in measured):
         raise RuntimeError('isolated compiler acceptance changed')
-    result = dict(status='accepted', language_contract='v0.109.0', functions=len(current['tests']),
+    result = dict(status='accepted', language_contract='v0.110.0', functions=len(current['tests']),
                   logical_cases=len(suite), baseline_functions=len(prior['tests']), baseline_logical_cases=len(baseline_cases),
                   isolated_cases=len(matrix), integration_checks=len(integration), editor_checks=len(editor),
                   isolated_max_rss_mib=max(r['child_maxrss_kib'] for r in measured) / 1024,
@@ -113,11 +115,16 @@ def main():
                     command += ['--schedule-profile', str(args.schedule_profile)]
             elif name == 'matrix':
                 inventory = json.loads((output / 'suite/inventory.json').read_text())
-                memory_cases = [case for names, _ in inventory['jobs'] for case in names if case.startswith(MEMORY + '/')]
-                receipts = validated_stage(output / 'suite', 'suite', memory_cases)
-                paths = sorted({p for r in receipts.values() for p in r['artifacts'] if p.endswith('/measurement.json')})
-                if len(paths) != 1944:
-                    raise RuntimeError('memory fixture inventory mismatch')
+                paths=[]
+                for family,expected in MEMORY_FAMILIES.items():
+                    memory_cases=[case for names,_ in inventory['jobs'] for case in names if case.startswith(family+'/')]
+                    receipts=validated_stage(output/'suite','suite',memory_cases)
+                    family_paths=sorted({p for r in receipts.values() for p in r['artifacts'] if p.endswith('/measurement.json')})
+                    if len(family_paths)!=expected:
+                        raise RuntimeError('memory fixture inventory mismatch: '+family)
+                    paths.extend(family_paths)
+                if len(set(paths))!=MEMORY_COUNT:
+                    raise RuntimeError('memory fixture identities overlap')
                 manifest = output / 'compiler-fixtures.json'
                 atomic_json(manifest, paths)
                 command += ['--fixture-manifest', str(manifest), '--compiler', str(args.go.parent.parent / 'pkg/tool/linux_amd64/compile')]

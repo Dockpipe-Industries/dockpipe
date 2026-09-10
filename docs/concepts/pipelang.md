@@ -3864,3 +3864,44 @@ Existing AST/HIR/Core nodes, generic internal Core locals, public compiler/seman
 Application IR identities and frozen 45-source compatibility remain unchanged.
 Evaluation, Core-only Go and executable Application IR consume validated target-neutral
 Core. Compiler resource ceilings and engine/package boundaries remain fixed.
+
+### PipeLang v0.110.0: conditional result arms in straight-line selector returns
+
+`v0.110.0` admits a flat ternary in either or both result arms of a complete
+boolean-selector return, only in public pure straight-line block methods. Zero
+or more finite inherited explicitly typed immutable locals may precede the return;
+omitted visibility remains public.
+
+```pipe
+public Class Choices {
+    public string Select(string raw, bool a, bool b, bool c, bool d, bool e) {
+        string normalized = trim(raw);
+        return (a ? b : c) ? (d ? normalized : raw) : (e ? "fallback" : raw);
+    }
+}
+```
+
+The three new forms expand the left arm, the right arm, or both. All selector
+operands must be bool and result leaves must have exactly matching supported types.
+Complete primitive, record, list, Optional and Result values travel intact, without
+implicit propagation. Named operands remain inherited nonconditional expressions,
+including supported pure calls and earlier lexical bindings. Preceding initializers
+retain their inherited ordinary, depth-three and flat boolean-selector forms.
+
+Evaluate the inner selector's condition once, then only its selected operand;
+evaluate only the selected outer arm, its condition and its selected leaf. Earlier
+locals execute eagerly once in source order, including unused locals. Bindings
+enter scope after initialization; self/forward references, duplicate names,
+shadowing and escaping bindings remain invalid.
+
+All v0.109 forms remain available. This extension adds no richer selector returns
+in terminal leaves or arrow methods, no new initializer/argument/matching/propagation
+placements, and no further nesting. Private methods, hidden locals, inference,
+mutation, loops, effects and new backends remain excluded.
+
+Source and Core independently enforce structural placement, types and scope.
+Core erases block/arrow spelling, so the parser alone enforces that source boundary.
+AST/HIR/Core shapes, generic internal Core locals, public compiler/semantic/Application
+IR identities, executable Application IR, frozen 45-source compatibility and
+engine/package boundaries remain unchanged. The evaluator and Core-only Go backend
+consume validated target-neutral Core under unchanged resource ceilings.

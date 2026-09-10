@@ -403,3 +403,8 @@ inner-selector arms and either/both outer result arms of one terminal test, thro
 statement depth three. Named operands stay nonconditional bool expressions. Reached
 operands/branches stay lazy and once-only; reached locals stay eager and ordered.
 Further nesting and new return/initializer/argument placements remain excluded.
+
+PipeLang `v0.110.0` adds `pipe-straight-selector-arms` for complete public pure
+straight-line selector returns with flat ternaries in either or both result arms.
+The selector operands are bool and result leaves have identical supported types;
+new arrow, terminal-leaf and initializer placements remain excluded.
