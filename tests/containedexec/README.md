@@ -2,7 +2,7 @@
 
 ## Durable campaigns
 
-`verification_campaign.py` runs the complete compiler suite, the 1,944 v109
+`verification_campaign.py` runs the complete compiler suite, the 1,944 v109 and 192 v110
 isolated compiler fixtures, the nine integration checks and the editor tests in
 sequence under one `job.py` budget. Its default data root is
 `~/.cache/pipelang-verification`, separated into `campaigns/<name>`, `builds`,
@@ -848,3 +848,16 @@ Layout vectors have nine independent boolean inputs and three independent depth
 flips; four of thirteen operand positions reuse inputs, as do locals and returns.
 A separate root-test matrix exhausts all thirteen operand inputs independently:
 `TestV1090TerminalCombinedSelectorArmsIndependentOperands=9`.
+
+The v0.110 straight-line selector result matrix uses
+`--split-test TestV1100StraightLineSelectorValueArmsLayouts=18`.
+Three arm forms cross 0/1/4 preceding locals and used/unused tails, exhausting five
+independent selector bits and three independent initializer bits (shared across locals).
+`TestV1100StraightLineSelectorValueArmsMemory` has twelve shape families: three arm
+forms times four initializer depths, each with used/unused tails and 0/1/8/16/32/64/128/256
+locals. Its 192 cases reuse three input bits and retain the 128 MiB / 5-second ceilings.
+
+The v0.110 typed and carrier matrices use
+`--split-test TestV1100StraightLineSelectorValueArmsTypes=6` and
+`--split-test TestV1100StraightLineSelectorValueArmsCarriers=6`.
+Each tests all three arm forms with and without preceding locals.

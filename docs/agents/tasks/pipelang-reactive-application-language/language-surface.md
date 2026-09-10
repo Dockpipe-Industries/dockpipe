@@ -1,3 +1,9 @@
+## Completed v0.110.0 extension
+
+[Canonical straight-line selector result arms](../../../concepts/pipelang.md#pipelang-v01100-conditional-result-arms-in-straight-line-selector-returns)
+defines the selected surface; [the objective](straight-line-selector-value-arms.md)
+owns completed implementation and proof. Earlier completed contracts remain inherited.
+
 ## Current objective — combined selector arms in terminal tests
 
 Founder selected A and separately said exact `approved` for v0.109.0.

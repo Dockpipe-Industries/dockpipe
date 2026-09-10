@@ -599,12 +599,25 @@ func testConditionalLocalsTypeMatrix(t *testing.T, contract LanguageContract, ze
 				source = v940WrapBody(t, source, terminalTrees(3)[25], v890TypeCondition(source))
 			}
 
-			if contract == PipeLangLanguageContractV980 || contract == PipeLangLanguageContractV990 || contract == PipeLangLanguageContractV1000 || contract == PipeLangLanguageContractV1010 || (contract == PipeLangLanguageContractV1020 || (contract == PipeLangLanguageContractV1030 || (contract == PipeLangLanguageContractV1040 || (contract == PipeLangLanguageContractV1050 || (contract == PipeLangLanguageContractV1060 || (contract == PipeLangLanguageContractV1070 || (contract == PipeLangLanguageContractV1080 || contract == PipeLangLanguageContractV1090))))))) {
+			if contract == PipeLangLanguageContractV1100 || contract == PipeLangLanguageContractV980 || contract == PipeLangLanguageContractV990 || contract == PipeLangLanguageContractV1000 || contract == PipeLangLanguageContractV1010 || (contract == PipeLangLanguageContractV1020 || (contract == PipeLangLanguageContractV1030 || (contract == PipeLangLanguageContractV1040 || (contract == PipeLangLanguageContractV1050 || (contract == PipeLangLanguageContractV1060 || (contract == PipeLangLanguageContractV1070 || (contract == PipeLangLanguageContractV1080 || contract == PipeLangLanguageContractV1090))))))) {
 				locals := fmt.Sprintf("%s shared=pick ? (inner ? (outer ? left : left) : left) : right;", typ)
 				returned := "(outer ? inner : true) ? shared : right"
 				if len(zeroOption) > 0 && zeroOption[0] {
 					locals = ""
 					returned = "(outer ? pick && inner : pick) ? left : right"
+				}
+				if contract == PipeLangLanguageContractV1100 {
+					returned = strings.Replace(returned, "? shared : right", "? (pick ? shared : shared) : (inner ? right : right)", 1)
+					returned = strings.Replace(returned, "? left : right", "? (pick ? left : left) : (inner ? right : right)", 1)
+				}
+				if contract == PipeLangLanguageContractV1100 && len(zeroOption) > 2 {
+					if !zeroOption[1] {
+						returned = strings.Replace(returned, "(pick ? shared : shared)", "shared", 1)
+						returned = strings.Replace(returned, "(pick ? left : left)", "left", 1)
+					}
+					if !zeroOption[2] {
+						returned = strings.Replace(returned, "(inner ? right : right)", "right", 1)
+					}
 				}
 				source = fmt.Sprintf(`public Record Row {public string Name;}public Class Typed {public %[1]s Echo(%[1]s value)=>value;public %[1]s Select(%[1]s left,%[1]s right,bool pick,bool outer,bool inner){%[2]s return %[3]s;}}`, typ, locals, returned)
 			}
@@ -874,12 +887,25 @@ func testConditionalLocalsCarrierAndHostValues(t *testing.T, contract LanguageCo
 				source = v940WrapBody(t, source, terminalTrees(3)[25], v890TypeCondition(source))
 			}
 
-			if contract == PipeLangLanguageContractV980 || contract == PipeLangLanguageContractV990 || contract == PipeLangLanguageContractV1000 || contract == PipeLangLanguageContractV1010 || (contract == PipeLangLanguageContractV1020 || (contract == PipeLangLanguageContractV1030 || (contract == PipeLangLanguageContractV1040 || (contract == PipeLangLanguageContractV1050 || (contract == PipeLangLanguageContractV1060 || (contract == PipeLangLanguageContractV1070 || (contract == PipeLangLanguageContractV1080 || contract == PipeLangLanguageContractV1090))))))) {
+			if contract == PipeLangLanguageContractV1100 || contract == PipeLangLanguageContractV980 || contract == PipeLangLanguageContractV990 || contract == PipeLangLanguageContractV1000 || contract == PipeLangLanguageContractV1010 || (contract == PipeLangLanguageContractV1020 || (contract == PipeLangLanguageContractV1030 || (contract == PipeLangLanguageContractV1040 || (contract == PipeLangLanguageContractV1050 || (contract == PipeLangLanguageContractV1060 || (contract == PipeLangLanguageContractV1070 || (contract == PipeLangLanguageContractV1080 || contract == PipeLangLanguageContractV1090))))))) {
 				locals := fmt.Sprintf("%s a=first ? (second ? (enabled ? value : value) : value) : fallback;", typ)
 				returned := "(enabled ? second : true) ? a : fallback"
 				if len(zeroOption) > 0 && zeroOption[0] {
 					locals = ""
 					returned = "(enabled ? first && second : first) ? value : fallback"
+				}
+				if contract == PipeLangLanguageContractV1100 {
+					returned = strings.Replace(returned, "? a : fallback", "? (first ? a : a) : (second ? fallback : fallback)", 1)
+					returned = strings.Replace(returned, "? value : fallback", "? (first ? value : value) : (second ? fallback : fallback)", 1)
+				}
+				if contract == PipeLangLanguageContractV1100 && len(zeroOption) > 2 {
+					if !zeroOption[1] {
+						returned = strings.Replace(returned, "(first ? a : a)", "a", 1)
+						returned = strings.Replace(returned, "(first ? value : value)", "value", 1)
+					}
+					if !zeroOption[2] {
+						returned = strings.Replace(returned, "(second ? fallback : fallback)", "fallback", 1)
+					}
 				}
 				source = fmt.Sprintf(`public Record Row {public string Name;}public Class Choices {public %[1]s Echo(%[1]s value)=>value;public %[1]s Select(%[1]s value,%[1]s fallback,bool first,bool second,bool enabled){%[2]s return %[3]s;}}`, typ, locals, returned)
 			}

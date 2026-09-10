@@ -753,3 +753,9 @@ assert.strictEqual(terminalCombinedSelectorArms.prefix, "pipe-terminal-combined-
 assert(terminalCombinedSelectorArms.body.join("\n").includes("${13:m}"));
 assert(terminalCombinedSelectorArms.description.includes("v0.109.0"));
 assert(pipeLangReadme.includes("`v0.109.0`"));
+
+const straightSelectorArms = pipeLangSnippets["PipeLang straight-line selector value arms"];
+assert.strictEqual(straightSelectorArms.prefix, "pipe-straight-selector-arms");
+assert(straightSelectorArms.body.join("\n").includes("${9:w}"));
+assert(straightSelectorArms.description.includes("v0.110.0"));
+assert(pipeLangReadme.includes("`v0.110.0`"));

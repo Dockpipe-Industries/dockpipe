@@ -1,3 +1,11 @@
+## Completed objective — straight-line selector result arms
+
+Founder selected A and separately said exact `approved` for v0.110.0.
+[straight-line-selector-value-arms.md](straight-line-selector-value-arms.md) owns
+scope and completed verification. No successor is selected. Both verification optimization objectives and
+v0.109.0 are complete. Historical opening status below does not reopen them.
+[Canonical language contract](../../../concepts/pipelang.md#pipelang-v01100-conditional-result-arms-in-straight-line-selector-returns).
+
 ## Current objective — resumable verification optimization
 
 The user authorized the complete verification optimization architecture and a
