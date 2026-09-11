@@ -16,18 +16,19 @@ from job import verify_job
 
 HERE = Path(__file__).resolve().parent
 MEMORY_FAMILIES = {'TestV1090TerminalCombinedSelectorArmsMemory': 1944,
-                   'TestV1100StraightLineSelectorValueArmsMemory': 192}
+                   'TestV1100StraightLineSelectorValueArmsMemory': 192,
+                   'TestV1110TerminalLeafSelectorValueArmsMemory': 576}
 MEMORY_COUNT = sum(MEMORY_FAMILIES.values())
 
 
-def validated_stage(output, stage, selected=None):
+def validated_stage(output, stage, selected=None, summary_only=False):
     dependencies = json.loads((output / 'dependency-inputs.json').read_text())
     current = fingerprint(dependencies['paths'])['digest']
     if current != dependencies['identity']['digest']:
         raise RuntimeError('changed stage dependencies: ' + stage)
     with Campaign(output / 'campaign', 'resume') as campaign:
         campaign.current = {name: value['key'] for name, value in campaign.manifest['stages'].items()}
-        accepted = campaign.accepted(stage, current, selected)
+        accepted = campaign.accepted(stage, current, selected, summary_only=summary_only)
         expected = selected if selected is not None else campaign.manifest['stages'][stage]['inventory']
         if set(accepted) != set(expected):
             raise RuntimeError('incomplete or invalid stage: ' + stage)
@@ -46,10 +47,10 @@ def reconcile(output, baseline, job_report):
         events = lambda text: dict(line.split() for line in text.splitlines())
         if events(job['memory_events_before'])[name] != events(job['memory_events_after'])[name]:
             raise RuntimeError('aggregate or descendant resource crossing: ' + name)
-    suite = validated_stage(output / 'suite', 'suite')
+    suite = validated_stage(output / 'suite', 'suite', summary_only=True)
     matrix = validated_stage(output / 'matrix', 'matrix')
-    integration = validated_stage(output / 'integration', 'integration')
-    editor = validated_stage(output / 'integration', 'editor')
+    integration = validated_stage(output / 'integration', 'integration', summary_only=True)
+    editor = validated_stage(output / 'integration', 'editor', summary_only=True)
     prior = json.loads((baseline / 'suite/inventory.json').read_text())
     current = json.loads((output / 'suite/inventory.json').read_text())
     baseline_cases = {case for names, _ in prior['jobs'] for case in names}
@@ -60,7 +61,7 @@ def reconcile(output, baseline, job_report):
     measured = [r['report'] for r in matrix.values()]
     if any(r['child_maxrss_kib'] > 128 * 1024 or r['elapsed_s'] > 5 or 'memory.high' in r['limits'] for r in measured):
         raise RuntimeError('isolated compiler acceptance changed')
-    result = dict(status='accepted', language_contract='v0.110.0', functions=len(current['tests']),
+    result = dict(status='accepted', language_contract='v0.111.0', functions=len(current['tests']),
                   logical_cases=len(suite), baseline_functions=len(prior['tests']), baseline_logical_cases=len(baseline_cases),
                   isolated_cases=len(matrix), integration_checks=len(integration), editor_checks=len(editor),
                   isolated_max_rss_mib=max(r['child_maxrss_kib'] for r in measured) / 1024,

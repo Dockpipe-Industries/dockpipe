@@ -405,3 +405,18 @@ No commit, push, publication, worktree, cache deletion, actual reboot, machine
 configuration change or external service mutation is authorized. Ordinary local
 implementation and bounded verification of this plan are authorized in the
 receiver; a handoff does not require another implementation approval.
+
+## Receipt reconciliation memory
+
+Suite and final acceptance reconciliation retain compact case identity and
+supersession metadata after validating each complete sealed receipt, input identity,
+resource/cleanup evidence and artifact digest. They do not retain another full
+receipt payload set beside the suite report. Execution/resumption and fixture
+discovery still request full receipts. This representation change preserves
+acceptance checks and the fixed 512 MiB coordinator cap.
+
+The v0.111 acceptance run exposed the old duplicate-payload memory failure after
+all semantic units had passed. The repair and same-cap historical-receipt stress
+proof are recorded in [the slice record](../agents/tasks/pipelang-reactive-application-language/terminal-leaf-selector-value-arms.md).
+The changed harness requires fresh fingerprinted terminal verification; retained
+receipts from the failed aggregate job do not by themselves establish completion.

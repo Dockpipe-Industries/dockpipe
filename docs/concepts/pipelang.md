@@ -3905,3 +3905,48 @@ AST/HIR/Core shapes, generic internal Core locals, public compiler/semantic/Appl
 IR identities, executable Application IR, frozen 45-source compatibility and
 engine/package boundaries remain unchanged. The evaluator and Core-only Go backend
 consume validated target-neutral Core under unchanged resource ceilings.
+
+### PipeLang v0.111.0: conditional result arms in terminal-leaf selector returns
+
+`v0.111.0` permits the three v0.110 selector result-arm forms in any subset of
+leaves of existing terminal `if/else` trees through statement depth three, only
+in public pure methods (including the inherited public default).
+
+```pipe
+public Class Choices {
+    public string Select(string raw, bool route, bool a, bool b, bool c, bool d, bool e) {
+        string normalized = trim(raw);
+        if (route) {
+            string local = normalized + "!";
+            return (a ? b : c) ? (d ? local : raw) : (e ? normalized : raw);
+        } else {
+            return raw;
+        }
+    }
+}
+```
+
+Either or both outer result arms may contain one flat ternary. All selector
+conditions are bool; result leaves have exactly matching supported primitive,
+record, list, Optional or Result types. Complete carriers travel intact without
+implicit propagation. Named operands remain inherited nonconditional expressions,
+including supported pure calls and earlier lexical bindings.
+
+Root, intermediate and leaf scopes retain zero or finite explicitly typed immutable
+locals and inherited ordinary, depth-three and flat boolean-selector initializers.
+Statement tests retain all v0.109 forms. Bindings enter scope after initialization;
+self/forward references, duplicates, shadowing, cross-branch and escaping bindings
+remain invalid. Reached locals run eagerly once in source order, including unused
+bindings. Only selected statement branches, selector operands and result leaves run,
+each once. Unselected branches do not initialize their locals.
+
+All v0.110 forms remain available. No new arrow, initializer, argument, matching or
+propagation placements are admitted. Further expression nesting, statement depth four,
+private methods, inference, mutation, loops, effects and new backends remain excluded.
+
+Source and Core independently enforce placement, types and lexical scope, including
+hidden-local refusal. The parser retains arrow/block spelling enforcement. Existing
+AST/HIR/Core shapes, generic internal Core locals, public compiler/semantic/Application
+IR identities, executable Application IR, frozen 45-source compatibility and generic
+engine/package boundaries are preserved. Evaluator and Core-only Go consume validated
+Core under unchanged resource ceilings. This adds no runtime or deployment behavior.

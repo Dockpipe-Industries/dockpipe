@@ -2,7 +2,7 @@
 
 ## Durable campaigns
 
-`verification_campaign.py` runs the complete compiler suite, the 1,944 v109 and 192 v110
+`verification_campaign.py` runs the complete compiler suite, the 1,944 v109, 192 v110 and 576 v111
 isolated compiler fixtures, the nine integration checks and the editor tests in
 sequence under one `job.py` budget. Its default data root is
 `~/.cache/pipelang-verification`, separated into `campaigns/<name>`, `builds`,
@@ -861,3 +861,26 @@ The v0.110 typed and carrier matrices use
 `--split-test TestV1100StraightLineSelectorValueArmsTypes=6` and
 `--split-test TestV1100StraightLineSelectorValueArmsCarriers=6`.
 Each tests all three arm forms with and without preceding locals.
+
+### v0.111 terminal-leaf selector result arms
+
+TestV1110TerminalLeafSelectorValueArmsTypes=6
+TestV1110TerminalLeafSelectorValueArmsCarriers=6
+TestV1110TerminalLeafSelectorValueArmsLayouts=18
+TestV1110TerminalLeafSelectorValueArmsSubsets=2400
+TestV1110TerminalLeafSelectorValueArmsScopeLayouts=75
+
+The subset matrix crosses all 25 terminal-tree shapes, every leaf subset, and
+three result-arm forms with independent routing and selector/result bits (256
+vectors per subset). Scope layouts use 1/3 locals and used/unused tails; initializer
+bits share routing bits there. The separate 18 leaf-local layouts exhaust eight
+independent selector/result/initializer bits. These are bounded matrices, not an
+arbitrary Cartesian operand claim. Thirty-six scaling families cross three local
+scope placements, three arm forms and four initializer depths, used/unused tails
+and 0/1/8/16/32/64/128/256 locals: 576 fresh isolated compiler fixtures.
+
+Full-suite reconciliation validates each complete sealed receipt and its artifacts
+before retaining only case identity and supersession metadata. This avoids holding
+a second full payload set beside the suite report under the unchanged coordinator
+cap. Execution/resumption and compiler-fixture discovery still obtain full receipts;
+compact results cannot substitute for those payloads.
