@@ -297,7 +297,7 @@ class Campaign:
             self.event('finished', id=state['id'], stage=state['stage'], state=state['state'])
             return state
 
-    def accepted(self, stage, inputs, selected=None):
+    def accepted(self, stage, inputs, selected=None, summary_only=False):
         accepted = {}
         for path in sorted((self.root / 'receipts').glob('*.json')):
             try:
@@ -314,21 +314,25 @@ class Campaign:
                     continue
                 if not set(receipt['cases']) <= set(self.manifest['stages'][stage]['inventory']):
                     continue
+                # Reconciliation needs identity/precedence only. Validate the complete
+                # receipt and every artifact above before dropping its large payload.
+                retained = ({'id': receipt['id'], 'supersedes': receipt.get('supersedes', [])}
+                            if summary_only else receipt)
                 for case in receipt['cases']:
                     if case in accepted:
                         old = accepted[case]
                         if old['id'] in receipt.get('supersedes', []):
-                            accepted[case] = receipt
+                            accepted[case] = retained
                         elif receipt['id'] not in old.get('supersedes', []):
                             raise RuntimeError('overlapping successful proofs: ' + case)
                     else:
-                        accepted[case] = receipt
+                        accepted[case] = retained
             except (OSError, ValueError, KeyError, TypeError) as error:
                 self.event('invalidated', path=str(path), reason=str(error))
         return accepted
 
     def reconcile(self, stage, inputs):
-        accepted = self.accepted(stage, inputs)
+        accepted = self.accepted(stage, inputs, summary_only=True)
         expected = self.manifest['stages'][stage]['inventory']
         result = dict(stage=stage, key=self.current[stage], expected=len(expected), accepted=len(accepted),
                       missing=[case for case in expected if case not in accepted], serialized_bytes=self.serialized_bytes)

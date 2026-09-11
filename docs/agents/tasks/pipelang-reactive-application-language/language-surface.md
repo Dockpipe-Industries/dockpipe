@@ -1,3 +1,11 @@
+## Completed objective — terminal-leaf selector result arms
+
+Founder selected A and separately said exact `approved` for v0.111.0.
+[terminal-leaf-selector-value-arms.md](terminal-leaf-selector-value-arms.md) owns the
+bounded scope and completed verification; state: `completed`. The [canonical language contract](../../../concepts/pipelang.md#pipelang-v01110-conditional-result-arms-in-terminal-leaf-selector-returns)
+defines semantics and exclusions. Completed v0.110 and both verification optimization
+objectives remain admitted baseline. No successor, commit, push or cleanup is authorized.
+
 ## Completed v0.110.0 extension
 
 [Canonical straight-line selector result arms](../../../concepts/pipelang.md#pipelang-v01100-conditional-result-arms-in-straight-line-selector-returns)

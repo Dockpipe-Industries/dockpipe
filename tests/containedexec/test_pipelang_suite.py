@@ -65,6 +65,16 @@ class PlanTests(unittest.TestCase):
         self.assertEqual([len(names) for names, _ in shapes], [25, 25, 3])
         self.assertEqual(shapes[-1][1], '^TestShapes$/^(50|51|52)$')
 
+    def test_v111_scaling_partitions_cover_each_family_once(self):
+        import re
+        name='TestV1110TerminalLeafSelectorValueArmsMemory'
+        jobs=plan([name], {}, 1)
+        self.assertEqual(len(jobs), 36)
+        for shape in range(36):
+            components=[name,'v0.111.0','choices'+str(shape),'branchtrue','straightfalse','unusedfalse','256']
+            matches=[names for names,pattern in jobs if all(re.search(p,c) for p,c in zip(pattern.split('/'),components))]
+            self.assertEqual(matches, [[name+'/choices'+str(shape)]])
+
     def test_v110_scaling_partitions_cover_each_family_once(self):
         import re
         name='TestV1100StraightLineSelectorValueArmsMemory'

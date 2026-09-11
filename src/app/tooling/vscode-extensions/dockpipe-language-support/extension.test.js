@@ -759,3 +759,10 @@ assert.strictEqual(straightSelectorArms.prefix, "pipe-straight-selector-arms");
 assert(straightSelectorArms.body.join("\n").includes("${9:w}"));
 assert(straightSelectorArms.description.includes("v0.110.0"));
 assert(pipeLangReadme.includes("`v0.110.0`"));
+
+const leafSelectorArms = pipeLangSnippets["PipeLang terminal-leaf selector value arms"];
+assert.strictEqual(leafSelectorArms.prefix, "pipe-leaf-selector-arms");
+assert(leafSelectorArms.body.join("\n").includes("${10:w}"));
+assert(leafSelectorArms.body.join("\n").includes("if (${1:route})"));
+assert(leafSelectorArms.description.includes("v0.111.0"));
+assert(pipeLangReadme.includes("`v0.111.0`"));

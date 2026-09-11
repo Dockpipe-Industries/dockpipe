@@ -408,3 +408,9 @@ PipeLang `v0.110.0` adds `pipe-straight-selector-arms` for complete public pure
 straight-line selector returns with flat ternaries in either or both result arms.
 The selector operands are bool and result leaves have identical supported types;
 new arrow, terminal-leaf and initializer placements remain excluded.
+
+PipeLang `v0.111.0` adds `pipe-leaf-selector-arms` for selector returns with a
+flat ternary in either/both result arms at existing terminal-tree leaves through
+statement depth three. Public pure methods retain finite typed locals, lazy
+selected operands and eager ordered reached locals. New arrow/initializer/argument
+placements and further nesting remain excluded.

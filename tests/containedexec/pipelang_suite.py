@@ -58,9 +58,9 @@ def plan(tests, splits, shape_batch_size):
                 prefix = 'shape' if name == 'TestV810TerminalTreeAllShapesAndPaths' else ''
                 labels = [prefix + str(i) for i in indices]
                 jobs.append(([name + '/' + label for label in labels], '^' + name + '$/^(' + '|'.join(labels) + ')$'))
-        elif re.fullmatch(r'TestV(?:9[2-9]0|1000|1010|1020|1030|1040|1050|1060|1070|1080|1090|1100).*Memory', name):
+        elif re.fullmatch(r'TestV(?:9[2-9]0|1000|1010|1020|1030|1040|1050|1060|1070|1080|1090|1100|1110).*Memory', name):
             flush()
-            for shape in range(108 if name.startswith("TestV1090") else 36 if name.startswith(("TestV1040", "TestV1050", "TestV1070", "TestV1080")) else 12 if name.startswith(("TestV970", "TestV990", "TestV1020", "TestV1030", "TestV1060", "TestV1100")) else 4):
+            for shape in range(108 if name.startswith("TestV1090") else 36 if name.startswith(("TestV1040", "TestV1050", "TestV1070", "TestV1080", "TestV1110")) else 12 if name.startswith(("TestV970", "TestV990", "TestV1020", "TestV1030", "TestV1060", "TestV1100")) else 4):
                 label = name + '/choices' + str(shape)
                 jobs.append(([label], '^' + name + '$/./^choices' + str(shape) + '$'))
         elif name.endswith('Memory'):
@@ -331,7 +331,7 @@ def main():
             environment += ['PIPELANG_MEMORY_FIXTURES=' + str(directory / 'fixtures')]
         if all(name.startswith('TestV990TerminalLeafBooleanSelectorsMemory') for name in names):
             environment += ['PIPELANG_MEMORY_FIXTURES=' + str(directory / 'fixtures')]
-        if all(name.startswith('TestV1100StraightLineSelectorValueArmsMemory') for name in names):
+        if all(name.startswith(('TestV1100StraightLineSelectorValueArmsMemory', 'TestV1110TerminalLeafSelectorValueArmsMemory')) for name in names):
             environment += ['PIPELANG_MEMORY_FIXTURES=' + str(directory / 'fixtures')]
         if all(name.startswith('TestV980ConditionalBooleanSelectorsMemory') for name in names):
             environment += ['PIPELANG_MEMORY_FIXTURES=' + str(directory / 'fixtures')]

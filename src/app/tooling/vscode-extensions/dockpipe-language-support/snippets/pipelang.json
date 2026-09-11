@@ -1290,5 +1290,16 @@
       "return (${1:a} ? ${2:b} : ${3:c}) ? (${4:d} ? ${5:x} : ${6:y}) : (${7:e} ? ${8:z} : ${9:w});"
     ],
     "description": "PipeLang v0.110.0: flat ternaries in either or both result arms of a complete straight-line selector return; no new arrow, leaf or initializer placements."
+  },
+  "PipeLang terminal-leaf selector value arms": {
+    "prefix": "pipe-leaf-selector-arms",
+    "body": [
+      "if (${1:route}) {",
+      "\treturn (${2:a} ? ${3:b} : ${4:c}) ? (${5:d} ? ${6:x} : ${7:y}) : (${8:e} ? ${9:z} : ${10:w});",
+      "} else {",
+      "\treturn ${11:fallback};",
+      "}"
+    ],
+    "description": "PipeLang v0.111.0: flat result arms in terminal-leaf selector returns through statement depth three; no new arrow, initializer or argument placements."
   }
 }

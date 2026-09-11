@@ -40,6 +40,36 @@ class CampaignTests(unittest.TestCase):
         args.update(overrides)
         return campaign.finish(attempt, **args)
 
+    def test_compact_reconciliation_preserves_admission_and_drops_payloads(self):
+        with Campaign(self.path) as c:
+            self.register(c)
+            self.pass_case(c, result={'exit': 0, 'large': 'x' * 100000})
+            self.pass_case(c, 'case/b')
+            full = c.accepted('suite', 'inputs-v1')
+            compact = c.accepted('suite', 'inputs-v1', summary_only=True)
+            self.assertEqual({k: v['id'] for k, v in full.items()},
+                             {k: v['id'] for k, v in compact.items()})
+            self.assertTrue(all(set(v) == {'id', 'supersedes'} for v in compact.values()))
+            self.assertEqual(set(c.accepted('suite', 'inputs-v1', ['case/b'], summary_only=True)), {'case/b'})
+            self.assertEqual(c.reconcile('suite', 'inputs-v1')['accepted'], 2)
+            self.artifact.write_bytes(b'corrupted')
+            self.assertFalse(c.accepted('suite', 'inputs-v1'))
+            self.assertFalse(c.accepted('suite', 'inputs-v1', summary_only=True))
+
+    def test_compact_reconciliation_rejects_ambiguous_success(self):
+        with Campaign(self.path) as c:
+            self.register(c)
+            first = self.pass_case(c)
+            duplicate = dict(first, id='independent-proof')
+            atomic_json(self.path / 'receipts/independent-proof.json', sealed(duplicate))
+            for compact in (False, True):
+                with self.assertRaisesRegex(RuntimeError, 'overlapping successful proofs'):
+                    c.accepted('suite', 'inputs-v1', summary_only=compact)
+            duplicate['supersedes'] = [first['id']]
+            atomic_json(self.path / 'receipts/independent-proof.json', sealed(duplicate))
+            for compact in (False, True):
+                self.assertEqual(c.accepted('suite', 'inputs-v1', summary_only=compact)['case/a']['id'], 'independent-proof')
+
     def test_crash_publication_windows(self):
         for phase in ('written', 'synced', 'renamed', 'committed'):
             with self.subTest(phase=phase):
