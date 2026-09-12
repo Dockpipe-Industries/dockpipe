@@ -87,15 +87,18 @@ tasks:
       readiness: unclassified
       ownership: unclaimed
   - id: TASK-021
+    foundation_direction: accepted_requirements_2026_09_11
+    foundation_plan: docs/concepts/pipelang-foundation.md
+    next_planning_recommendation: foundation_specification_and_dependency_plan
     topic: PipeLang deterministic self-hosting managed language foundation
-    completed_language_contract: v0.111.0
+    completed_language_contract: v0.112.0
     active_objective: null
-    completed_language_objective: TASK-021-terminal-leaf-selector-value-arms
+    completed_language_objective: TASK-021-arrow-selector-value-arms
     completed_verification_objective: TASK-021-resumable-verification-optimization
     completed_performance_objective: TASK-021-verification-performance-round-2
     objective_state: completed
     selected_option: null
-    selected_scope: v0.111.0 conditional result arms in terminal-leaf selector returns
+    selected_scope: v0.112.0 conditional result arms in arrow-method selectors
     implementation_approval: approved
     completed_repair_objective: TASK-021-PipeLang-v0.80-milestone-repairs
     repair_commit: acbd10f88207d0a226ec24a073948362691adb8c

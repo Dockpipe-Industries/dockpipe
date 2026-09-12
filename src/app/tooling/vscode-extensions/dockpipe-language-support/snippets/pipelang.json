@@ -1301,5 +1301,13 @@
       "}"
     ],
     "description": "PipeLang v0.111.0: flat result arms in terminal-leaf selector returns through statement depth three; no new arrow, initializer or argument placements."
+  },
+  "PipeLang arrow selector value arms": {
+    "prefix": "pipe-arrow-selector-arms",
+    "body": [
+      "public ${1:string} ${2:Select}(bool a, bool b, bool c, bool d, bool e, ${1:string} x, ${1:string} y, ${1:string} z, ${1:string} w) =>",
+      "\t(a ? b : c) ? (d ? x : y) : (e ? z : w);"
+    ],
+    "description": "PipeLang v0.112.0: flat ternaries in either or both result arms of a public pure arrow-method selector; exact types and lazy once-only evaluation."
   }
 }

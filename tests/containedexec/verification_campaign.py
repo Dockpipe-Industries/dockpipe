@@ -17,7 +17,8 @@ from job import verify_job
 HERE = Path(__file__).resolve().parent
 MEMORY_FAMILIES = {'TestV1090TerminalCombinedSelectorArmsMemory': 1944,
                    'TestV1100StraightLineSelectorValueArmsMemory': 192,
-                   'TestV1110TerminalLeafSelectorValueArmsMemory': 576}
+                   'TestV1110TerminalLeafSelectorValueArmsMemory': 576,
+                   'TestV1120ArrowSelectorValueArmsMemory': 192}
 MEMORY_COUNT = sum(MEMORY_FAMILIES.values())
 
 
@@ -61,7 +62,7 @@ def reconcile(output, baseline, job_report):
     measured = [r['report'] for r in matrix.values()]
     if any(r['child_maxrss_kib'] > 128 * 1024 or r['elapsed_s'] > 5 or 'memory.high' in r['limits'] for r in measured):
         raise RuntimeError('isolated compiler acceptance changed')
-    result = dict(status='accepted', language_contract='v0.111.0', functions=len(current['tests']),
+    result = dict(status='accepted', language_contract='v0.112.0', functions=len(current['tests']),
                   logical_cases=len(suite), baseline_functions=len(prior['tests']), baseline_logical_cases=len(baseline_cases),
                   isolated_cases=len(matrix), integration_checks=len(integration), editor_checks=len(editor),
                   isolated_max_rss_mib=max(r['child_maxrss_kib'] for r in measured) / 1024,

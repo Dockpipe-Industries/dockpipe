@@ -143,6 +143,14 @@ func TestV1110TerminalLeafSelectorValueArmsApplicationConsumer(t *testing.T) {
 	testConditionalLocalsApplicationConsumer(t, false, options...)
 }
 
+func TestV1120ArrowSelectorValueArmsApplicationConsumer(t *testing.T) {
+	options := make([]bool, 28)
+	options[0] = true
+	options[15] = true
+	options[27] = true
+	testConditionalLocalsApplicationConsumer(t, false, options...)
+}
+
 func testConditionalLocalsApplicationConsumer(t *testing.T, finite bool, straightOption ...bool) {
 	straight := len(straightOption) > 0 && straightOption[0]
 	returnChoice := len(straightOption) > 1 && straightOption[1]
@@ -258,6 +266,10 @@ func testConditionalLocalsApplicationConsumer(t *testing.T, finite bool, straigh
 	if leafSelectorArms {
 		contract, prior, boundary = pipelang.PipeLangLanguageContractV1110, pipelang.PipeLangLanguageContractV1100, "nested ternaries"
 	}
+	arrowSelectorArms := len(straightOption) > 27 && straightOption[27]
+	if arrowSelectorArms {
+		contract, prior, boundary = pipelang.PipeLangLanguageContractV1120, pipelang.PipeLangLanguageContractV1110, "require a straight-line block return"
+	}
 	layouts := []bool{false, true}
 	if straight {
 		layouts = []bool{false}
@@ -356,6 +368,9 @@ func testConditionalLocalsApplicationConsumer(t *testing.T, finite bool, straigh
 			}
 			if arrowBooleanSelector {
 				helper = `public string ChooseKey(string raw,bool clean,bool suffix,bool enabled)=>(clean ? suffix : enabled) ? raw+"!" : raw;`
+				if arrowSelectorArms {
+					helper = `public string ChooseKey(string raw,bool clean,bool suffix,bool enabled)=>(clean ? suffix : enabled) ? (suffix ? raw+"!" : raw+"!") : (enabled ? raw : raw);`
+				}
 			}
 			if selectorInitializer {
 				helper = `public string ChooseKey(string raw,bool clean,bool suffix,bool enabled){string selected=(clean ? suffix : enabled) ? raw+"!" : raw;return selected;`
@@ -471,6 +486,9 @@ func testConditionalLocalsApplicationConsumer(t *testing.T, finite bool, straigh
 
 			if arrowBooleanSelector {
 				choicePresent = choose.Body.Conditional != nil && !choose.Body.Conditional.TerminalStatement && choose.Body.Conditional.Condition.Conditional != nil
+			}
+			if arrowSelectorArms {
+				choicePresent = choicePresent && choose.Body.Conditional.WhenTrue.Conditional != nil && choose.Body.Conditional.WhenFalse.Conditional != nil
 			}
 			if straightSelectorArms {
 				tail := choose.Body.ImmutableLocal.Return

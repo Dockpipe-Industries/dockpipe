@@ -1,3 +1,23 @@
+## Foundation planning priority — 2026-09-11
+
+[Foundation alignment](foundation-alignment.md) and the
+[canonical capability inventory](../../../concepts/pipelang-foundation.md) own the revised next
+planning direction. Preserve the active objective and its exact approval; after its terminal
+boundary, recommend specification of the full type/control-flow/memory/task/synchronization model
+and a dependency-sized implementation plan. Enums, structs/classes, polymorphism, loops, atomics,
+locks and semaphores are explicit requirements. Do not automatically select another conditional
+placement or pivot to a production Qt/service adapter. No successor implementation is approved by
+this documentation. The v0.114 pivot and 50-80-slice estimate are withdrawn.
+
+## Completed objective — arrow-method selector result arms
+
+Founder selected A and separately said exact `approved` for v0.112.0.
+[arrow-selector-value-arms.md](arrow-selector-value-arms.md) owns the bounded
+completed objective and accepted verification. The [canonical language section](../../../concepts/pipelang.md#pipelang-v01120-conditional-result-arms-in-arrow-method-selectors)
+defines semantics and exclusions. v0.111.0 and both verification optimization
+objectives remain completed baseline. No successor is selected. Historical status
+below grants no new authority.
+
 ## Completed objective — terminal-leaf selector result arms
 
 Founder selected A and separately said exact `approved` for v0.111.0.

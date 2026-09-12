@@ -766,3 +766,9 @@ assert(leafSelectorArms.body.join("\n").includes("${10:w}"));
 assert(leafSelectorArms.body.join("\n").includes("if (${1:route})"));
 assert(leafSelectorArms.description.includes("v0.111.0"));
 assert(pipeLangReadme.includes("`v0.111.0`"));
+
+const arrowSelectorArms = pipeLangSnippets["PipeLang arrow selector value arms"];
+assert.strictEqual(arrowSelectorArms.prefix, "pipe-arrow-selector-arms");
+assert(arrowSelectorArms.body.join("\n").includes("(a ? b : c) ? (d ? x : y) : (e ? z : w)"));
+assert(arrowSelectorArms.description.includes("v0.112.0"));
+assert(pipeLangReadme.includes("`v0.112.0`"));

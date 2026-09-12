@@ -1,3 +1,12 @@
+## Completed objective — arrow-method selector result arms
+
+Founder selected A and separately said exact `approved` for v0.112.0.
+[arrow-selector-value-arms.md](arrow-selector-value-arms.md) owns the bounded
+completed objective and accepted verification. The [canonical language section](../../../concepts/pipelang.md#pipelang-v01120-conditional-result-arms-in-arrow-method-selectors)
+defines semantics and exclusions. v0.111.0 and both verification optimization
+objectives remain completed baseline. No successor is selected. Historical status
+below grants no new authority.
+
 ## Completed objective — terminal-leaf selector result arms
 
 Founder selected A and separately said exact `approved` for v0.111.0.
@@ -356,6 +365,12 @@ generated-artifact, or runtime changes beyond an explicitly granted implementati
 
 ## Priority And Dependency
 
+[Foundation alignment](foundation-alignment.md) records the 2026-09-11 founder direction and links
+the canonical capability inventory. After the currently approved objective terminates, recommend
+foundation specification/dependency planning before selecting more placement variants or production
+application/service generation. This updates roadmap priority, not the active implementation scope.
+
+
 This is the first implementation dependency for TASK-020. Define and prove the language semantics
 before implementing Qt/web application adapters or accepting a public application YAML shape.
 
@@ -448,10 +463,15 @@ execution engine and not an unsafe/manual-memory systems language.
 It must not expose unrestricted:
 
 - filesystem, network, process, shell, environment, or secret access;
-- pointers, manual allocation, unsafe memory, threads, locks, or target runtime handles;
+- pointers, manual allocation, unsafe memory, or raw target runtime/thread handles;
 - Qt, QML, browser DOM, JavaScript, C++, CMake, WebAssembly, or resolver-specific APIs;
 - hidden work during parsing, type-checking, compilation, catalog projection, or editor analysis; or
 - direct runtime/resolver execution that bypasses workflow/package and policy ownership.
+
+Managed tasks, shared-memory synchronization, atomics, locks and semaphores are required future
+foundation capabilities under the [revised plan](../../../concepts/pipelang-foundation.md). Their
+ownership, ordering, race-safety and replay contracts must be specified; the older blanket
+thread/lock exclusion is no longer the roadmap. Current versions gain no behavior from this change.
 
 Pure language evaluation is deterministic and offline. External work is represented by a typed
 effect declaration and remains governed by the existing DockPipe model:

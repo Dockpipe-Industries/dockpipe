@@ -16,6 +16,19 @@ skills:
     claude: ./src/bin/dockpipe --package dorkpipe --workflow skills.render -- --target claude --output <path>
 
 tasks:
+  pipelang_foundation_planning:
+    read:
+      - AGENTS.md
+      - docs/agents/tasks/pipelang-reactive-application-language/index.yaml
+      - docs/agents/tasks/pipelang-reactive-application-language/foundation-alignment.md
+      - docs/concepts/pipelang-foundation.md
+    optional:
+      - docs/agents/tasks/pipelang-reactive-application-language/compiler-contract.md
+      - docs/agents/tasks/pipelang-reactive-application-language/language-surface.md
+    skills:
+      - dorkpipe-objective-execution
+      - dorkpipe-token-optimization
+
   orientation:
     read:
       - AGENTS.md

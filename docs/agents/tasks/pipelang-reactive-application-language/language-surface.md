@@ -1,3 +1,12 @@
+## Completed objective — arrow-method selector result arms
+
+Founder selected A and separately said exact `approved` for v0.112.0.
+[arrow-selector-value-arms.md](arrow-selector-value-arms.md) owns the bounded
+completed objective and accepted verification. The [canonical language section](../../../concepts/pipelang.md#pipelang-v01120-conditional-result-arms-in-arrow-method-selectors)
+defines semantics and exclusions. v0.111.0 and both verification optimization
+objectives remain completed baseline. No successor is selected. Historical status
+below grants no new authority.
+
 ## Completed objective — terminal-leaf selector result arms
 
 Founder selected A and separately said exact `approved` for v0.111.0.
@@ -189,6 +198,12 @@ remain separate.
 
 ## Required Language Surface
 
+Read [foundation alignment](foundation-alignment.md) and its canonical F01-F34 inventory before
+selecting successor work. Enums, complete struct/class semantics, runtime polymorphism, generic
+composition, loops and managed concurrency/synchronization are required foundation work. Existing
+partial syntax or metadata must not be described as complete executable support.
+
+
 ### Stable semantic identities
 
 Founder review on 2026-08-16 superseded the earlier per-declaration `[Id(...)]` direction. Public
@@ -252,9 +267,12 @@ Define the minimum coherent additions needed by application state and bindings:
 - explicit serializable, persisted, session, and transient state classification; and
 - module/import and namespace rules that retain deterministic multi-file compilation.
 
-Do not add nominal or generic complexity without a fixture that requires it. Recursive types,
-variance, inheritance beyond the existing interface boundary, user-defined operators, and open
-dynamic values remain out of scope until separately justified.
+The broader type foundation requires explicit struct/value versus class/reference semantics,
+constructors, nested composition, executable interface polymorphism, abstract/virtual/override
+behavior and a reviewed inheritance model. Generic types/functions and constraints must compose
+with that model. The 2026-09-11 direction supersedes the former blanket deferral of inheritance
+beyond interfaces; it does not choose multiple inheritance, variance, recursive types, user-defined
+operators or open dynamic values. Resolve those choices through concrete acceptance fixtures.
 
 ### Pure expressions
 
@@ -271,6 +289,15 @@ Bindings and computed state need a safe expression language with:
 
 Expression evaluation has no clock, randomness, environment, locale-dependent behavior, I/O, or
 unbounded user recursion. Any future nondeterministic input is an explicit governed effect result.
+
+### General control flow and managed concurrency
+
+The [canonical foundation plan](../../../concepts/pipelang-foundation.md#design-decisions-required-before-implementation)
+requires mutable-local and loop semantics, managed task ownership, bounded parallelism, cancellation,
+deadlines, atomic variables, lock objects and semaphores. Define sharing and the memory model before
+synchronization primitives; define their failure/cleanup and replay behavior before targets consume
+them. A minimal action fixture not requiring loops is not a reason to omit loops or concurrency
+from foundation completion. No concrete syntax or executable feature is accepted by this paragraph.
 
 ### Reactive application state
 

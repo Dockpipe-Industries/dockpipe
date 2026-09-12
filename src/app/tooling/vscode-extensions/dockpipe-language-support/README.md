@@ -414,3 +414,8 @@ flat ternary in either/both result arms at existing terminal-tree leaves through
 statement depth three. Public pure methods retain finite typed locals, lazy
 selected operands and eager ordered reached locals. New arrow/initializer/argument
 placements and further nesting remain excluded.
+
+PipeLang `v0.112.0` adds flat ternaries in either or both result arms of public pure
+arrow-method boolean selectors. `pipe-arrow-selector-arms` inserts a complete method
+with exact result types and lazy once-only operand evaluation. Initializer, argument,
+matching and propagation placements retain their previous limits.
