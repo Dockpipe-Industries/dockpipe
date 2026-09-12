@@ -63,7 +63,13 @@ Parity proof must use deterministic adapter fixtures for complete, empty, partia
 detail, refresh-coalescing, selection-preservation, filtering, and state-action cases. A live Docker
 engine is useful integration evidence but cannot be the only acceptance oracle.
 
-The implementation order is vertical:
+The [2026-09-11 foundation alignment](../../../concepts/pipelang-foundation.md) places a reviewed
+language-foundation milestone before production launcher migration. A read-only screen requiring
+only a smaller subset does not remove enums, polymorphism, loops or managed synchronization from
+the language goal. Preserve this frozen parity baseline and existing executable fixtures while
+TASK-021 resolves the full foundation specification and dependency plan.
+
+The implementation order within the launcher migration is vertical:
 
 1. freeze an executable/read-only parity inventory for the current launcher;
 2. reproduce Docker snapshots, details, and logs through typed records, optionals, deterministic

@@ -1099,6 +1099,14 @@ Think of the layering as:
 
 ## Accepted future compiler boundary
 
+The [language foundation completion plan](pipelang-foundation.md) records the 2026-09-11
+founder direction, capability inventory and next planning checkpoint. Enums, structs/classes,
+polymorphism, loops, managed async/parallel execution, atomic variables, locks and semaphores
+are required foundation work. Earlier blanket concurrency exclusions are superseded as roadmap
+limits, not removed from existing version admission. The full memory/task/synchronization model
+must be specified before implementation; this direction adds no executable syntax or behavior.
+
+
 Future executable PipeLang uses one compiler contract:
 
 ```text
@@ -3950,3 +3958,40 @@ AST/HIR/Core shapes, generic internal Core locals, public compiler/semantic/Appl
 IR identities, executable Application IR, frozen 45-source compatibility and generic
 engine/package boundaries are preserved. Evaluator and Core-only Go consume validated
 Core under unchanged resource ceilings. This adds no runtime or deployment behavior.
+
+
+### PipeLang v0.112.0: conditional result arms in arrow-method selectors
+
+`v0.112.0` admits a flat ternary in either or both result arms of a complete
+boolean selector in a public pure arrow-method body. Omitted visibility retains
+the public default. The three forms expand the left arm, right arm, or both:
+
+```pipe
+public Class Choices {
+    public string Select(string raw, bool a, bool b, bool c, bool d, bool e) =>
+        (a ? b : c) ? (d ? trim(raw) : raw) : (e ? "fallback" : raw);
+}
+```
+
+All selector conditions are bool. Result leaves have exactly matching supported
+primitive, record, list, Optional or Result types; complete carriers travel intact
+without implicit propagation. Named operands remain inherited nonconditional
+expressions, including supported pure calls, parameters and boolean operations.
+Evaluate the inner selector condition once, then only its selected operand;
+evaluate only the selected outer arm, its condition and selected leaf, each once.
+Inherited callers retain finite explicitly typed immutable locals, evaluated eagerly
+once in source order, including unused reached locals. Lexical scope is unchanged.
+
+All v0.111 forms remain available. No new initializer, argument, matching or
+propagation placements, further nesting, deeper terminal trees, private methods,
+inference, mutation, loops, effects or new backends are admitted.
+
+Source and Core independently validate structural placement, exact types, scope and
+hidden-local refusal. Core erases arrow/block spelling: equivalent v0.110/v0.111
+block-return Core remains valid, while the parser rejects the new arrow spelling
+under those older versions. HIR/Core/semantic/Go equivalence excludes only source
+spans and source fingerprints. Existing AST/HIR/Core shapes, public compiler,
+semantic and Application IR identities, generic internal Core locals, executable
+Application IR, frozen 45-source compatibility and generic engine/package boundaries
+remain unchanged. Evaluator and Core-only Go consume validated target-neutral Core
+under the existing resource ceilings. No runtime or deployment behavior is introduced.

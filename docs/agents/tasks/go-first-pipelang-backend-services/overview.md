@@ -23,6 +23,15 @@ runtime, package, deployment, generated-state, or toolchain changes.
 
 ## Dependencies And Ownership
 
+The 2026-09-11 [PipeLang foundation plan](../../../concepts/pipelang-foundation.md) requires the
+reviewed language-foundation milestone before production application/service generation. It includes
+enums, structs/classes, polymorphism, loops, managed tasks, parallelism and synchronization. Existing
+fixtures remain evidence, not proof that the language is complete. TASK-021 owns the object/memory/
+task/atomic/lock/semaphore semantics; target adapters must consume them and cannot invent them.
+Complete foundation specification and dependency planning after the active language objective;
+this priority does not authorize a new language slice or target implementation.
+
+
 - [TASK-021](../pipelang-reactive-application-language/overview.md) is the language prerequisite. It owns stable
   semantic IDs, types, optionals/collections/unions, contracts, effects/authority, determinism,
   replay, semantic graphs, typed HIR/Core IR, executable entrypoints, target profiles, self-hosting,

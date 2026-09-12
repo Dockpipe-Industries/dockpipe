@@ -1,3 +1,12 @@
+## Completed objective — arrow-method selector result arms
+
+Founder selected A and separately said exact `approved` for v0.112.0.
+[arrow-selector-value-arms.md](arrow-selector-value-arms.md) owns the bounded
+completed objective and accepted verification. The [canonical language section](../../../concepts/pipelang.md#pipelang-v01120-conditional-result-arms-in-arrow-method-selectors)
+defines semantics and exclusions. v0.111.0 and both verification optimization
+objectives remain completed baseline. No successor is selected. Historical status
+below grants no new authority.
+
 ## Completed objective — terminal-leaf selector result arms
 
 Founder selected A and separately said exact `approved` for v0.111.0.
@@ -321,6 +330,12 @@ substitute, emulate with weaker guarantees, or drop a required feature.
 
 ## Accepted Core Semantic Decisions
 
+The 2026-09-11 [foundation alignment](foundation-alignment.md) supersedes earlier blanket
+concurrency exclusions and broader-polymorphism deferrals. The canonical
+[foundation plan](../../../concepts/pipelang-foundation.md) owns required additions and open
+semantics. These are future design requirements; historical source-version admission is unchanged.
+
+
 Surface spelling remains deliberately unaccepted, but the following semantics are fixed before
 grammar expansion.
 
@@ -347,8 +362,8 @@ grammar expansion.
 | Expected failure | Recoverable domain, validation, arithmetic, parsing, and effect outcomes use closed `Result<T,E>`-style values. Cancellation is a distinct declared outcome. Uncaught target exceptions/panics are infrastructure failures, never guessed into domain results. |
 | Mutation | Immutable values produce new values. Local mutable variables and compiler-owned mutable buffers are lexically scoped and cannot escape as shared aliases. State-owner actions commit one validated transition atomically; observers see the before or after state, never a partial update. |
 | Collections | `List<T>` is ordered; `Map<K,V>` and `Set<T>` have deterministic insertion iteration plus stable equality independent of target hash-table layout. Bounds are checked. Mutation uses scoped builders or explicit state updates; mutation during iteration is rejected. Canonical serialization orders map/set entries by the declared stable key order. |
-| Memory | Memory is automatic and managed. There are no raw pointers, address arithmetic, manual allocation/free, user-visible object addresses, finalizer semantics, unsafe casts, data races, threads, or locks. Resource lifetimes cross explicit effect/host interfaces and use deterministic close/use protocols. |
-| Concurrency | Pure computations are observationally deterministic. Structured tasks may be added only over typed effects with deterministic join/result ordering; backend scheduling is not observable. Shared-memory concurrency is outside the accepted foundation. |
+| Memory | Memory is automatic and managed; raw pointers, address arithmetic, manual allocation/free, user-visible object addresses, finalizer semantics and unsafe casts remain excluded. Required managed sharing, atomic variables, lock objects and semaphores need explicit ownership, visibility, ordering and race-safety rules. Resource lifetimes cross explicit effect/host interfaces and use deterministic close/use protocols. These additions are not implemented by this planning decision. |
+| Concurrency | Managed async tasks, structured parallelism and synchronization are required foundation work. Pure computations remain deterministic; typed effects preserve host authority. Define sharing, task lifetime, join/result ordering, cancellation, deadlines, atomic ordering, lock/semaphore behavior and replay before implementation. Synchronization can expose execution order; do not promise scheduling independence for shared mutable programs. Backend scheduling cannot silently define language semantics. |
 
 ### Modules, imports, distribution, and compatibility
 
@@ -398,9 +413,11 @@ The self-hosting subset includes only what the compiler demonstrably needs:
 - pure parser/binder/type/HIR/Core APIs plus host-supplied file/artifact interfaces; and
 - assertions, table tests, golden data, deterministic property seeds, and replay records.
 
-Reflection, dynamic types, runtime code generation, macros, regex, networking, shells, threads,
-locks, GUI APIs, HTTP, package download, and garbage-collector observability are not required for
-self-hosting. A managed allocator/collector is backend runtime machinery, not a user language API.
+Reflection, dynamic types, runtime code generation, macros, regex, networking, shells, GUI APIs,
+HTTP, package download and garbage-collector observability are not required for the minimum
+self-hosting subset. Managed concurrency and synchronization remain requirements of the broader
+foundation even if the compiler bootstrap itself does not need them. A managed allocator/collector
+is backend runtime machinery, not a user language API.
 
 ## First-Class Verification Contract
 

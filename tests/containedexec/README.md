@@ -2,7 +2,7 @@
 
 ## Durable campaigns
 
-`verification_campaign.py` runs the complete compiler suite, the 1,944 v109, 192 v110 and 576 v111
+`verification_campaign.py` runs the complete compiler suite, the 1,944 v109, 192 v110, 576 v111 and 192 v112
 isolated compiler fixtures, the nine integration checks and the editor tests in
 sequence under one `job.py` budget. Its default data root is
 `~/.cache/pipelang-verification`, separated into `campaigns/<name>`, `builds`,
@@ -884,3 +884,13 @@ before retaining only case identity and supersession metadata. This avoids holdi
 a second full payload set beside the suite report under the unchanged coordinator
 cap. Execution/resumption and compiler-fixture discovery still obtain full receipts;
 compact results cannot substitute for those payloads.
+
+
+v0.112 arrow selector result arms retain full inherited coverage and add independent
+value/order checks with `TestV1120ArrowSelectorValueArmsLayouts=18`,
+`TestV1120ArrowSelectorValueArmsTypes=3` and
+`TestV1120ArrowSelectorValueArmsCarriers=3`. The 12 scaling families cross three
+arm forms and four caller-initializer depths, used/unused tails and
+0/1/8/16/32/64/128/256 locals: 192 additional fresh isolated compiler fixtures.
+Arrow and equivalent block HIR/Core/semantic/Go are compared after removing only
+source spans/fingerprints; source spelling refusal stays exact through v0.111.0.
