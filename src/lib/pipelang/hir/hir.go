@@ -19,6 +19,7 @@ const (
 	TypeResult          TypeKind = "result"
 	TypeArithmeticError TypeKind = "arithmetic_error"
 	TypeRecord          TypeKind = "record"
+	TypeEnum            TypeKind = "enum"
 	TypeOptional        TypeKind = "optional"
 	TypeList            TypeKind = "list"
 	TypeNamed           TypeKind = "named"
@@ -61,6 +62,15 @@ type RecordField struct {
 	Type     Type             `json:"type"`
 }
 
+type EnumMember struct {
+	Name     string           `json:"name"`
+	Tag      string           `json:"tag"`
+	Identity SemanticIdentity `json:"identity"`
+}
+type EnumType struct {
+	Members []EnumMember `json:"members"`
+}
+
 type RecordType struct {
 	Fields []RecordField `json:"fields"`
 }
@@ -99,6 +109,7 @@ type Type struct {
 	Optional  *OptionalType     `json:"optional,omitempty"`
 	List      *ListType         `json:"list,omitempty"`
 	Record    *RecordType       `json:"record,omitempty"`
+	Enum      *EnumType         `json:"enum,omitempty"`
 	SymbolID  uint32            `json:"symbol_id,omitempty"`
 	Identity  *SemanticIdentity `json:"identity,omitempty"`
 	Name      string            `json:"name,omitempty"`

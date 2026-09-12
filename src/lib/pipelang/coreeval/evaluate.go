@@ -202,7 +202,7 @@ func evalExprWithProgram(expression coreir.Expr, arguments *argumentFrame, funct
 		if expression.Binary.Left.Type.Kind == coreir.TypePrimitive && expression.Binary.Left.Type.Primitive == coreir.PrimitiveString {
 			return evalTextBinary(expression, left.Value.String, right.Value.String)
 		}
-		if expression.Binary.Left.Type.Kind == coreir.TypeRecord {
+		if expression.Binary.Left.Type.Kind == coreir.TypeRecord || expression.Binary.Left.Type.Kind == coreir.TypeEnum {
 			equal, err := equalValues(left.Value, right.Value)
 			if err != nil {
 				return Outcome{}, err
@@ -805,7 +805,9 @@ func evalExprWithProgram(expression coreir.Expr, arguments *argumentFrame, funct
 		tag := ""
 		var payload *Value
 		var arithmeticFailure Value
-		if carrier.Value.Type.Kind == coreir.TypeOptional {
+		if carrier.Value.Type.Kind == coreir.TypeEnum {
+			tag = carrier.Value.String
+		} else if carrier.Value.Type.Kind == coreir.TypeOptional {
 			if carrier.Value.Optional == nil {
 				return Outcome{}, fmt.Errorf("match Optional has no canonical value")
 			}
@@ -835,7 +837,7 @@ func evalExprWithProgram(expression coreir.Expr, arguments *argumentFrame, funct
 			return Outcome{}, fmt.Errorf("match operand is not tagged")
 		}
 		for _, arm := range expression.Match.Arms {
-			if arm.Tag != tag && arm.Tag != "_" {
+			if arm.Tag != tag && (carrier.Value.Type.Kind == coreir.TypeEnum || arm.Tag != "_") {
 				continue
 			}
 			if arm.Body == nil {
@@ -983,6 +985,12 @@ func evalTextBinary(expression coreir.Expr, left, right string) (Outcome, error)
 }
 
 func validateValue(value Value) error {
+	if value.Type.Kind == coreir.TypeEnum {
+		if value.Int != 0 || value.Float != 0 || value.Bool || value.Result != nil || value.Optional != nil || value.List != nil || value.Record != nil {
+			return fmt.Errorf("enum value carries a non-enum payload")
+		}
+		return coreir.ValidateEnumTag(value.Type, value.String)
+	}
 	if value.Type.Kind == coreir.TypeList {
 		if value.Type.List == nil || value.List == nil || value.Result != nil || value.Optional != nil || len(value.Record) != 0 {
 			return fmt.Errorf("list value does not match its element schema")
@@ -1117,6 +1125,8 @@ func equalValues(left, right Value) (bool, error) {
 		return false, fmt.Errorf("right structural equality operand: %w", err)
 	}
 	switch left.Type.Kind {
+	case coreir.TypeEnum:
+		return left.String == right.String, nil
 	case coreir.TypeRecord:
 		for index := range left.Record {
 			equal, err := equalValues(left.Record[index], right.Record[index])

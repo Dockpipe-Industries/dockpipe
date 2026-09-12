@@ -1,13 +1,20 @@
-## Foundation planning priority — 2026-09-11
+## Completed objective — nominal enums
 
-[Foundation alignment](foundation-alignment.md) and the
-[canonical capability inventory](../../../concepts/pipelang-foundation.md) own the revised next
-planning direction. Preserve the active objective and its exact approval; after its terminal
-boundary, recommend specification of the full type/control-flow/memory/task/synchronization model
-and a dependency-sized implementation plan. Enums, structs/classes, polymorphism, loops, atomics,
-locks and semaphores are explicit requirements. Do not automatically select another conditional
-placement or pivot to a production Qt/service adapter. No successor implementation is approved by
-this documentation. The v0.114 pivot and 50-80-slice estimate are withdrawn.
+The founder selected option 1 and explicitly said `approved`; P01 is now complete.
+[nominal-enums.md](nominal-enums.md) owns accepted v0.113.0 verification, including the fresh
+complete suite, compiler matrix, integration/editor checks and independent inherited-proof comparison.
+The [language reference](../../../concepts/pipelang.md#pipelang-v01130-nominal-enums-and-exhaustive-matching)
+defines nominal tags, exact equality, exhaustive matching and bounded composition. Other foundation
+packages remain unselected. Historical entries below grant no new authority.
+
+## Current planning result — foundation specification and dependency plan
+
+The [planning objective](foundation-specification-plan.md) is complete. The
+[canonical delivery plan](../../../concepts/pipelang-foundation-delivery.md) owns F01–F34 dispositions,
+52–84 proposed foundation slices, the M-app gate, separate bootstrap work and verification cost.
+P01 nominal enums were subsequently selected and approved; see the current objective above.
+v0.113.0 is now accepted; the planning baseline below remains historical. Use the live index and this planning record for current status; the entries below are
+historical slice records and grant no present authority.
 
 ## Completed objective — arrow-method selector result arms
 

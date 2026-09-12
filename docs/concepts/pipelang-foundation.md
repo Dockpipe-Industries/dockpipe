@@ -16,10 +16,13 @@ compatibility or acceptance of every C# feature.
 
 This page is the canonical capability inventory and planning direction. The live
 [TASK-021 index](../agents/tasks/pipelang-reactive-application-language/index.yaml) owns current
-implementation status and approval. At inventory time, v0.111.0 was the completed baseline and
-v0.112.0 arrow-method selector result arms were executing. This documentation update does not
-interrupt, expand, or approve a successor to that active objective. Historical version-specific
-exclusions remain correct for those versions.
+status and approval. The accepted executable baseline is v0.113.0; P01 nominal enums are complete.
+The authorized foundation specification/dependency planning objective is now complete. Its
+[contract proposals](pipelang-foundation-contracts.md) and
+[delivery ledger, slices and verification economics](pipelang-foundation-delivery.md) are reviewable
+proposals, not accepted executable semantics. P01 nominal enums were subsequently selected and
+approved; the [completed objective](../agents/tasks/pipelang-reactive-application-language/nominal-enums.md)
+owns its concrete scope and accepted verification.
 
 The inventory is based on source, existing tests and contract inspection, not a new verification
 run. In-progress code, parser recognition, internal IR representation, design fixtures and working
@@ -37,7 +40,7 @@ implementation slices; completion and scope must be evidenced independently.
 | F01 | Compiler pipeline | Established for the accepted subset: source, typed HIR, target-neutral Core, evaluator and Core-only Go. Extend all layers for every new capability. |
 | F02 | Primitive and numeric values | Partial: bool/int/float/string and bounded checked arithmetic exist; numeric widths, signedness, explicit conversions, exact decimal and complete operations remain. |
 | F03 | Text and bytes | Partial: Unicode-aware text operations exist; complete byte/scalar/grapheme APIs, slicing, parsing and encoding library remain. |
-| F04 | Enums | Missing: user declarations, members, representation, exhaustive handling, equality and serialization. Built-in arithmetic errors are not general enums. |
+| F04 | Enums | Partial: v0.113.0 completes P01 public nominal declarations, stable tags, typed transport/equality and exhaustive matching. Serialization, payload unions and container/field integration remain later P09/P32/P03 work. |
 | F05 | Structs and records | Partial: Struct spelling shares class parsing; distinct immutable primitive-field Records have bounded value behavior. Define complete value/copy, nested-field, member, construction and equality semantics. |
 | F06 | Classes and objects | Partial: configuration declarations/defaults exist; general construction, reference identity, mutable fields, encapsulation and initialization remain. |
 | F07 | Interfaces and polymorphism | Partial: declaration/conformance checks exist; executable interface dispatch and substitutability remain. Broader abstract/virtual/override/inheritance support is required design work, superseding blanket deferral. |
@@ -75,68 +78,34 @@ Implementation evidence: [parser](../../src/lib/pipelang/parser.go),
 [Core operations](../../src/lib/pipelang/coreir/core.go), and the
 [versioned language reference](pipelang.md). The live objective owns newer completion evidence.
 
-## Design decisions required before implementation
+## Specification and dependency plan
 
-1. **Object/type model:** distinguish struct/record values from class references; define nesting,
-   initialization, equality/hash/order, interface dispatch and generics. Specify abstract classes,
-   virtual/override and inheritance rules, including whether multiple class inheritance is excluded.
-2. **Control flow:** define mutable local scope, assignment, general returns, loops, break/continue,
-   accumulation, recursion policy and resource enforcement. Bounded proof must not be confused with
-   a claim that only literal-size programs can run.
-3. **Memory and sharing:** define which values may cross task boundaries, copying versus sharing,
-   visibility/happens-before, race prevention or diagnostics, and backend obligations. Managed memory
-   does not by itself make concurrent access safe.
-4. **Task lifecycle:** define structured ownership, joins, failure/cancellation precedence, deadlines,
-   cleanup and limits. Separate pure parallel computation from effectful work without silently
-   granting external authority.
-5. **Synchronization:** specify atomic operations and ordering, lock ownership/reentrancy and
-   suspension rules, semaphore permits/fairness/cancellation, misuse diagnostics and cleanup.
-   Define whether waiting is blocking or suspending; target schedulers cannot invent semantics.
-6. **Determinism and replay:** pure code remains deterministic. Synchronization can make observable
-   results depend on execution order even without data races. Define the allowed boundary, trace
-   requirements and replay guarantees; do not retain an unconditional claim that scheduling is
-   unobservable, or promise deterministic shared-memory results without proof.
-7. **Profiles and verification:** define supported features and resource ceilings per profile,
-   cross-backend conformance, controlled schedule exploration and honest coverage limits. Missing
-   capabilities must fail explicitly; Go locks/tasks are implementation tools, not the specification.
+The [contract proposals](pipelang-foundation-contracts.md) specify object/type, value/reference,
+control-flow, memory/sharing, tasks, synchronization, reactive transitions, determinism/replay and
+profiles, with positive and rejection examples. All proposed source spelling is illustrative and
+unaccepted. D1–D6 identify the unresolved founder choices; existing accepted numeric/text/failure,
+compatibility and authority contracts are preserved.
 
-Raw pointers, manual free, unsafe casts, exposed OS thread handles and hidden host access remain
-outside this managed-language direction. Exact exception syntax, variance, operator overloading,
-reflection and other unrequested extensions are decisions to inventory, not implied promises.
+The [delivery plan](pipelang-foundation-delivery.md) maps every F01–F34 row to inspected evidence,
+remaining deliverables, prerequisites and proposed completion disposition. Its 33 dependency
+packages contain **52–84 proposed foundation slices**, including the minimum self-hosting library
+and an explicit M-app acceptance gate. This is a decomposition range with stated assumptions and
+split triggers, not a statistical forecast, date or final version. It replaces the unvalidated
+conversational 120–200 estimate; the earlier 50–80 estimate remains withdrawn.
 
-## Next decision and implementation order
+Recommend first app work after M-app, using the maintained Go seed. Compiler port/bootstrap remains
+required F33 work at a separate milestone estimated at **10–19 additional slices**, giving
+**62–103 foundation-plus-bootstrap slices**. Whether bootstrap must precede the first app is an
+explicit founder decision. Production Qt/launcher/service/deployment and physical target certification
+remain separate downstream work requiring their own estimates and approval. F33 is not declared fully
+complete at M-app. F26 queue scope and F34 profile/physical-target boundary also require ratification.
 
-After the active approved objective reaches its own terminal boundary, the next recommended
-checkpoint is a **foundation specification and dependency plan**, not another automatically chosen
-conditional-expression placement and not a production application adapter. The founder has approved
-recording this direction; the next bounded objective and its implementation still require their
-normal selection/approval. No v0.113/v0.114 feature or implementation batch is selected here.
-
-The design checkpoint should produce:
-
-- a reviewed disposition for F01-F34, including any explicit deferral and the definition of
-  foundation completion;
-- the object, memory, task and synchronization decisions above, with worked examples, expected
-  results and rejection cases (illustrative syntax must be marked unaccepted);
-- a dependency graph and bounded implementation slices, each with compiler-layer ownership,
-  acceptance proof and compatibility obligations; and
-- a recommendation-first choice of 2-3 next implementation slices grounded in that graph.
-
-Dependency direction: value/reference/type and module rules support general functions/control flow;
-those support libraries and managed state. The sharing model and typed effects constrain tasks;
-tasks plus sharing constrain atomics/locks/semaphores. Reactive actions, contracts, replay and
-concurrency verification must agree with those decisions before target adapters depend on them.
-This is not a requirement to implement each entire family before any useful cross-layer proof.
-
-Production launcher/application/service generation follows the reviewed language-foundation
-milestone. Existing read-only Application IR fixtures remain useful acceptance evidence and do not
-constitute that pivot. Qt generation, launcher parity, service generation and deployment are separate
-downstream work; the minimum self-hosting library is language work, while porting/bootstrap is its
-own milestone to place explicitly in the dependency plan.
-
-The earlier conversational v0.114 pivot and 50-80-slice estimate are withdrawn for this expanded
-scope. F01-F34 are not 34 slices. Publish a new count only after dependency sizing; no completion
-date or final language version is established by this inventory.
+The dependency plan offered three implementation choices: nominal enums, general blocks/mutable
+locals, or nested value semantics. The founder selected and approved P01 nominal enums. Foundation planning was
+authorized by the user's request to plan and start; it does not transfer the completed v0.112.0
+approval to new source changes. The [planning objective record](../agents/tasks/pipelang-reactive-application-language/foundation-specification-plan.md)
+owns completion and documentation validation. No broad compiler rerun was needed for this docs-only
+checkpoint; verification estimates use the existing accepted receipts.
 
 ## Completion evidence and maintenance
 

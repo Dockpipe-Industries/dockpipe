@@ -20,8 +20,11 @@ tasks:
     read:
       - AGENTS.md
       - docs/agents/tasks/pipelang-reactive-application-language/index.yaml
+      - docs/agents/tasks/pipelang-reactive-application-language/foundation-specification-plan.md
       - docs/agents/tasks/pipelang-reactive-application-language/foundation-alignment.md
       - docs/concepts/pipelang-foundation.md
+      - docs/concepts/pipelang-foundation-contracts.md
+      - docs/concepts/pipelang-foundation-delivery.md
     optional:
       - docs/agents/tasks/pipelang-reactive-application-language/compiler-contract.md
       - docs/agents/tasks/pipelang-reactive-application-language/language-surface.md

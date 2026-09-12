@@ -1,3 +1,21 @@
+## Completed objective — nominal enums
+
+The founder selected option 1 and explicitly said `approved`; P01 is now complete.
+[nominal-enums.md](nominal-enums.md) owns accepted v0.113.0 verification, including the fresh
+complete suite, compiler matrix, integration/editor checks and independent inherited-proof comparison.
+The [language reference](../../../concepts/pipelang.md#pipelang-v01130-nominal-enums-and-exhaustive-matching)
+defines nominal tags, exact equality, exhaustive matching and bounded composition. Other foundation
+packages remain unselected. Historical entries below grant no new authority.
+
+## Current planning result — foundation specification and dependency plan
+
+The [planning objective](foundation-specification-plan.md) is complete. The
+[canonical delivery plan](../../../concepts/pipelang-foundation-delivery.md) owns F01–F34 dispositions,
+52–84 proposed foundation slices, the M-app gate, separate bootstrap work and verification cost.
+P01 nominal enums were subsequently selected and approved; see the current objective above.
+v0.113.0 is now accepted; the planning baseline below remains historical. Use the live index and this planning record for current status; the entries below are
+historical slice records and grant no present authority.
+
 ## Completed objective — arrow-method selector result arms
 
 Founder selected A and separately said exact `approved` for v0.112.0.

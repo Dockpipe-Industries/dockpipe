@@ -419,3 +419,11 @@ PipeLang `v0.112.0` adds flat ternaries in either or both result arms of public 
 arrow-method boolean selectors. `pipe-arrow-selector-arms` inserts a complete method
 with exact result types and lazy once-only operand evaluation. Initializer, argument,
 matching and propagation placements retain their previous limits.
+
+
+PipeLang `v0.113.0` adds contextual `Enum` highlighting/completion, `pipe-enum` for
+public nominal declarations with explicit stable string tags, and `pipe-enum-match`
+for qualified exhaustive arms. Include exactly one arm per member; wildcard/payload
+patterns and implicit integer conversion are excluded. These snippets describe the
+approved implementation; terminal language acceptance is tracked by TASK-021's
+[nominal-enum objective](../../../../../docs/agents/tasks/pipelang-reactive-application-language/nominal-enums.md).

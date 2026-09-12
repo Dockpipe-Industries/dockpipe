@@ -25,7 +25,9 @@ maintainer docs below are reference material, not the shortest learning path.
 | Capability ids and resolver packages | [concepts/capabilities.md](concepts/capabilities.md) |
 | Governed AI/documentation workflows | [workflows/agentic-workflows.md](workflows/agentic-workflows.md) |
 | Optional typed authoring layer | [concepts/pipelang.md](concepts/pipelang.md) |
-| PipeLang foundation inventory and next planning checkpoint | [concepts/pipelang-foundation.md](concepts/pipelang-foundation.md) |
+| PipeLang foundation inventory | [concepts/pipelang-foundation.md](concepts/pipelang-foundation.md) |
+| PipeLang foundation contract proposals | [concepts/pipelang-foundation-contracts.md](concepts/pipelang-foundation-contracts.md) |
+| PipeLang foundation dependencies, milestones and verification cost | [concepts/pipelang-foundation-delivery.md](concepts/pipelang-foundation-delivery.md) |
 
 ## Packages, Security, And Images
 

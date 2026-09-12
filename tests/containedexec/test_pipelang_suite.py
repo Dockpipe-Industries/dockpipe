@@ -75,6 +75,16 @@ class PlanTests(unittest.TestCase):
             matches=[names for names,pattern in jobs if all(re.search(p,c) for p,c in zip(pattern.split('/'),components))]
             self.assertEqual(matches, [[name+'/choices'+str(shape)]])
 
+    def test_v113_scaling_partitions_cover_each_family_once(self):
+        import re
+        name='TestV1130EnumsMemory'
+        jobs=plan([name], {}, 1)
+        self.assertEqual(len(jobs), 3)
+        for shape in range(3):
+            components=[name,'v0.113.0','choices'+str(shape),'256']
+            matches=[names for names,pattern in jobs if all(re.search(p,c) for p,c in zip(pattern.split('/'),components))]
+            self.assertEqual(matches, [[name+'/choices'+str(shape)]])
+
     def test_v112_scaling_partitions_cover_each_family_once(self):
         import re
         name='TestV1120ArrowSelectorValueArmsMemory'

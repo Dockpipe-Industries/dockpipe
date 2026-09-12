@@ -110,6 +110,7 @@ assert.strictEqual(diagnostics[0].relatedInformation[0].location.uri.fsPath, "/t
 assert(helpers.PIPELANG_COMPLETION_KEYWORDS.includes("Result"));
 assert(helpers.PIPELANG_COMPLETION_KEYWORDS.includes("ArithmeticError"));
 assert(helpers.PIPELANG_COMPLETION_KEYWORDS.includes("Record"));
+assert(helpers.PIPELANG_COMPLETION_KEYWORDS.includes("Enum"));
 assert(helpers.PIPELANG_COMPLETION_KEYWORDS.includes("new"));
 assert(helpers.PIPELANG_COMPLETION_KEYWORDS.includes("return"));
 assert(helpers.PIPELANG_COMPLETION_KEYWORDS.includes("if"));
@@ -134,6 +135,7 @@ assert(helpers.PIPELANG_COMPLETION_KEYWORDS.includes("trim"));
 const grammar = JSON.parse(fs.readFileSync(path.join(__dirname, "syntaxes", "pipelang.tmLanguage.json"), "utf8"));
 const keywordPattern = grammar.repository.keywords.patterns[0].match;
 assert(keywordPattern.includes("Record"));
+assert(keywordPattern.includes("Enum"));
 assert(keywordPattern.includes("new"));
 assert(keywordPattern.includes("return"));
 assert(keywordPattern.includes("if"));
@@ -772,3 +774,8 @@ assert.strictEqual(arrowSelectorArms.prefix, "pipe-arrow-selector-arms");
 assert(arrowSelectorArms.body.join("\n").includes("(a ? b : c) ? (d ? x : y) : (e ? z : w)"));
 assert(arrowSelectorArms.description.includes("v0.112.0"));
 assert(pipeLangReadme.includes("`v0.112.0`"));
+
+assert.strictEqual(pipeLangSnippets["PipeLang Nominal Enum"].prefix, "pipe-enum");
+assert(pipeLangSnippets["PipeLang Nominal Enum"].description.includes("v0.113.0"));
+assert(pipeLangSnippets["PipeLang Nominal Enum"].body.join("\n").includes(' = "'));
+assert.strictEqual(pipeLangSnippets["PipeLang Enum Match"].prefix, "pipe-enum-match");

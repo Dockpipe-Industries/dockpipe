@@ -51,6 +51,11 @@ def plan(tests, splits, shape_batch_size):
                             jobs.append(([prefix + '/' + suffix], pattern + '/^' + suffix + '$'))
                 else:
                     jobs.append(([prefix], pattern))
+        elif name == 'TestV1130EnumsMemory':
+            flush()
+            for shape in range(3):
+                label = name + '/choices' + str(shape)
+                jobs.append(([label], '^' + name + '$/./^choices' + str(shape) + '$'))
         elif name in splits:
             flush()
             for start in range(0, splits[name], shape_batch_size):
@@ -331,7 +336,7 @@ def main():
             environment += ['PIPELANG_MEMORY_FIXTURES=' + str(directory / 'fixtures')]
         if all(name.startswith('TestV990TerminalLeafBooleanSelectorsMemory') for name in names):
             environment += ['PIPELANG_MEMORY_FIXTURES=' + str(directory / 'fixtures')]
-        if all(name.startswith(('TestV1100StraightLineSelectorValueArmsMemory', 'TestV1110TerminalLeafSelectorValueArmsMemory', 'TestV1120ArrowSelectorValueArmsMemory')) for name in names):
+        if all(name.startswith(('TestV1100StraightLineSelectorValueArmsMemory', 'TestV1110TerminalLeafSelectorValueArmsMemory', 'TestV1120ArrowSelectorValueArmsMemory', 'TestV1130EnumsMemory')) for name in names):
             environment += ['PIPELANG_MEMORY_FIXTURES=' + str(directory / 'fixtures')]
         if all(name.startswith('TestV980ConditionalBooleanSelectorsMemory') for name in names):
             environment += ['PIPELANG_MEMORY_FIXTURES=' + str(directory / 'fixtures')]
