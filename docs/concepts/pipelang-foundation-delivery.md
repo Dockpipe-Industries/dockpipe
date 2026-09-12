@@ -350,8 +350,20 @@ slice does not silently accept all proposals or waive the expanded F01–F34 req
 
 ## P01 delivery receipt
 
+Subsequent [performance and compression research](../research/pipelang-performance-compression.md#combined-roadmap-for-the-foundation-goals)
+connects the v0.113.0 verification receipts to an integrated performance roadmap:
+identity/scheduling, native consumption of encoded data, compact compiler structures,
+exact cold storage, and optional hybrid execution. Its measurements and hypotheses
+remain distinct; it does not revise the original slice estimates or select the next
+language capability. The earlier v0.112 economics above remain historical evidence.
+
 P01 was delivered as one coherent v0.113.0 capability with fresh complete verification. The
 [nominal-enum objective](../agents/tasks/pipelang-reactive-application-language/nominal-enums.md)
 records scope, failures repaired, final inventory, resource maxima and measured proof time.
 The planning totals above remain original estimates, not a revised remaining-work count. F04-wide
 serialization and later packages are still open; completion of P01 does not authorize another package.
+
+The approved [identity/fixture performance follow-up](../agents/tasks/pipelang-reactive-application-language/identity-fixture-performance.md)
+is complete: bounded toolchain-buffer reuse is retained, streaming fixtures were
+rejected, and a fresh full campaign plus independent acceptance preserves all
+v0.113.0 proof. It selects no additional foundation or language capability.

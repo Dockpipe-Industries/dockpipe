@@ -12,6 +12,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"time"
 )
 
 const generatedCacheVersion = "pipelang-native-validation-v2"
@@ -24,6 +25,21 @@ var generatedToolchain = struct {
 
 func generatedToolchainDigest() (string, error) {
 	generatedToolchain.Do(func() {
+		profiling := os.Getenv("PIPELANG_IDENTITY_PROFILE") == "1"
+		var buffer []byte
+		if os.Getenv("PIPELANG_TOOLCHAIN_READ_BUFFER") != "0" {
+			buffer = make([]byte, 32*1024)
+		}
+
+		started := time.Now()
+		var content time.Duration
+		var files, bytes int64
+		defer func() {
+			if profiling {
+				fmt.Printf("identity_cost phase=toolchain_enumeration_metadata elapsed_ns=%d files=%d bytes=%d\nidentity_cost phase=toolchain_content_read_hash elapsed_ns=%d\n", (time.Since(started) - content).Nanoseconds(), files, bytes, content.Nanoseconds())
+			}
+		}()
+
 		hash := sha256.New()
 		fmt.Fprintf(hash, "%s\x00%s\x00%s\x00%s\x00", runtime.GOROOT(), runtime.Version(), runtime.GOOS, runtime.GOARCH)
 		// Include tool binaries and library source, not just a version label. A
@@ -51,12 +67,27 @@ func generatedToolchainDigest() (string, error) {
 					return err
 				}
 				fmt.Fprintf(hash, "%d:%s:%d:%d\x00", len(relative), relative, info.Size(), info.Mode())
+				var readStart time.Time
+				if profiling {
+					readStart = time.Now()
+				}
 				file, err := os.Open(path)
 				if err != nil {
 					return err
 				}
-				_, err = io.Copy(hash, file)
+				if buffer == nil {
+					_, err = io.Copy(hash, file)
+				} else {
+					// Hide File.WriteTo: otherwise io.CopyBuffer bypasses the
+					// supplied buffer and allocates again for every input.
+					_, err = io.CopyBuffer(hash, struct{ io.Reader }{file}, buffer)
+				}
 				closeErr := file.Close()
+				if profiling {
+					content += time.Since(readStart)
+					files++
+					bytes += info.Size()
+				}
 				if err != nil {
 					return err
 				}
@@ -92,6 +123,8 @@ func generatedArtifactKey(dir string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	done := generatedIdentityPhase("source_key")
+	defer done()
 	h := sha256.New()
 	fmt.Fprintf(h, "%s\x00%s\x00go test -c -p=1\x00", generatedCacheVersion, toolchain)
 	// Only Go build inputs affect the executable. Oracle fixture bytes are never
@@ -144,6 +177,8 @@ func generatedArtifactExpectedDigest(root, key string) (string, error) {
 }
 
 func readGeneratedArtifact(root, key string) (string, bool) {
+	done := generatedIdentityPhase("cache_record_and_binary_check")
+	defer done()
 	dir := filepath.Join(root, key)
 	data, err := os.ReadFile(filepath.Join(dir, "record.json"))
 	if err != nil {

@@ -15,7 +15,7 @@ import subprocess
 import sys
 import time
 import uuid
-from job import verify_job
+from job import verify_job, performance_counters
 from campaign import atomic_json, provenance
 
 
@@ -114,6 +114,7 @@ def main():
     env.pop('GOMEMLIMIT', None)
     atomic_json(Path(str(output)+'.json'), dict(command=command, cgroup=str(group), limits=actual,
         unit_properties=properties, outcome='started; final accounting unavailable', exit=None))
+    performance_before = performance_counters(group)
     before = (group/'memory.events').read_text()
     swap_before = (group/'memory.swap.events').read_text()
     start = time.monotonic()
@@ -150,7 +151,8 @@ def main():
                 outcome = 'timeout'
                 break
             time.sleep(.005)
-        report = dict(command=command, cgroup=str(group), limits=actual, unit_properties=properties,
+        report = dict(performance_before=performance_before, performance_after=performance_counters(group),
+                      command=command, cgroup=str(group), limits=actual, unit_properties=properties,
                       cache=str(cache), flags={key:env[key] for key in ['GOTOOLCHAIN','GOPROXY','GOSUMDB','GOWORK','GOMAXPROCS']},
                       elapsed_s=time.monotonic()-start, outcome=outcome, exit=child.poll(),
                       compiler_sampled_peak_rss_kib=compiler_rss,

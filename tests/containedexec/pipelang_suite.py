@@ -132,6 +132,8 @@ def artifact_inventory(cache, logs, representation=None):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--toolchain-read-buffer', action=argparse.BooleanOptionalAction, default=True, help='Reuse one 32-KiB toolchain hash buffer; disable for matched controls')
+    parser.add_argument('--identity-profile', action='store_true', help='Opt-in exclusive identity attribution')
     parser.add_argument('--selection-file', type=Path, help='Explicit logical case sample; reports partial proof')
     parser.add_argument('--schedule-profile', type=Path, help='Current-input warm singleton timings for conservative groups')
     parser.add_argument('--disk-budget-gib', type=int, default=96)
@@ -192,7 +194,7 @@ def main():
     identity = dict(source=source_before, toolchain=toolchain['digest'], policy=POLICY,
                     host=host_identity(), high=700, native_bundle=args.native_bundle,
                     representation=args.native_representation, parallel_shapes=args.parallel_shapes,
-                    audit=args.audit_generated, compiled_cache=str(args.compiled_cache))
+                    audit=args.audit_generated, identity_profile=args.identity_profile, toolchain_read_buffer=args.toolchain_read_buffer, compiled_cache=str(args.compiled_cache))
     atomic_json(output / 'source-hashes.json', fingerprint(paths))
     bootstrap = StageRunner(campaign, 'bootstrap', identity, ['build'], args.cache, snapshot)
     store = BuildStore(args.build_store or output.parent / 'builds')
@@ -239,7 +241,7 @@ def main():
             raise RuntimeError('sample contains undiscovered logical cases')
     scheduling_identity = dict(inputs=source_before, host=identity['host'], policy=POLICY,
                                workers=args.workers, native_bundle=args.native_bundle,
-                               representation=args.native_representation)
+                               representation=args.native_representation, toolchain_read_buffer=args.toolchain_read_buffer, identity_profile=args.identity_profile)
     if args.schedule_profile:
         if args.compiled_cache is None:
             parser.error('measured grouping requires retained executables')
@@ -299,6 +301,9 @@ def main():
     def make_command(directory, names, pattern):
         command = [str(binary), '-test.run', pattern, '-test.v', '-test.count=1', '-test.timeout=25s']
         environment = ['PIPELANG_CACHE_BUDGET_FILE=' + str(budget.record)]
+        environment += ['PIPELANG_TOOLCHAIN_READ_BUFFER=' + ('1' if args.toolchain_read_buffer else '0')]
+        if args.identity_profile:
+            environment += ['PIPELANG_IDENTITY_PROFILE=1']
         if args.audit_generated:
             environment += ['PIPELANG_BUNDLE_AUDIT=1', 'PIPELANG_PERFORMANCE_PROFILE=1']
         if args.native_bundle:

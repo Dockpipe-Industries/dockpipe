@@ -20,6 +20,17 @@ LIMITS = {'memory.max': 2 << 30, 'memory.high': 1536 << 20,
           'memory.swap.max': 0, 'pids.max': 384}
 
 
+def performance_counters(group):
+    """Cumulative cgroup counters; null explicitly means unavailable."""
+    result = {}
+    for name in ('cpu.stat', 'io.stat', 'cpu.pressure', 'io.pressure', 'memory.pressure'):
+        try:
+            result[name] = (group / name).read_text()
+        except OSError:
+            result[name] = None
+    return result
+
+
 def current_group():
     return Path('/sys/fs/cgroup') / Path('/proc/self/cgroup').read_text().strip().split('::', 1)[1].lstrip('/')
 
@@ -92,6 +103,7 @@ def main():
         actual = {name: int((group / name).read_text()) for name in LIMITS}
         if actual != LIMITS:
             raise RuntimeError('aggregate limits unavailable: ' + repr(actual))
+        report['performance_before'] = performance_counters(group)
         report.update(cgroup=str(group), memory_events_before=(group / 'memory.events').read_text())
         invocation = ['systemd-run', '--user', '--wait', '--pipe', '--collect', '--unit=' + unit,
                       '--slice=' + slice_name, '-p', 'MemoryMax=512M', '-p', 'MemorySwapMax=0',
@@ -114,6 +126,7 @@ def main():
                               swap_current=int((group / 'memory.swap.current').read_text()),
                               memory_events_after=(group / 'memory.events').read_text())
                 if child.poll() is not None:
+                    report['performance_after'] = performance_counters(group)
                     report.update(exit=child.returncode, outcome='completed' if child.returncode == 0 else 'failed')
                     break
                 if report['memory_current'] >= 1800 << 20:
