@@ -1,5 +1,9 @@
 # PipeLang verification optimization architecture
 
+For the subsequent v0.113.0 cost breakdown, compression research, and prioritized
+experiments, see [performance and compression research](../research/pipelang-performance-compression.md).
+That research does not change the implemented acceptance contract below.
+
 Status: implemented and accepted, 2026-09-10; all five checkpoints complete.
 Objective: `TASK-021-resumable-verification-optimization`.
 The user requested full optimization of verification, an architectural plan, and
@@ -420,3 +424,27 @@ all semantic units had passed. The repair and same-cap historical-receipt stress
 proof are recorded in [the slice record](../agents/tasks/pipelang-reactive-application-language/terminal-leaf-selector-value-arms.md).
 The changed harness requires fresh fingerprinted terminal verification; retained
 receipts from the failed aggregate job do not by themselves establish completion.
+
+## Identity and fixture performance follow-up
+
+The generated-test toolchain digest now reuses one 32-KiB content buffer within
+each process while preserving the exact input walk, metadata, digest and native
+sealing. The suite's `--no-toolchain-read-buffer` keeps the old allocation control.
+`--identity-profile` reports separate wall costs; job/unit receipts capture
+boundary cgroup CPU and pressure counters with unavailable values explicitly null.
+Measured schedule profiles bind the buffer and profiling settings as well as
+current input/host/worker/policy identity. There is no persisted toolchain digest.
+
+Raw fixture loading remains unchanged. The sampled direct streaming consumer
+preserved all oracles but did not consistently improve complete-path cost and
+was rejected. Measurement receipts, limitations and terminal status are recorded
+in the [approved performance objective](../agents/tasks/pipelang-reactive-application-language/identity-fixture-performance.md)
+and [canonical performance report](../research/pipelang-performance-compression.md).
+
+The follow-up is accepted: final matched controls observed 3.66% less wall time;
+one complete fresh terminal plus independent acceptance took 112.87 minutes versus
+119.43 for the historical warm baseline. All 8,859 logical cases, 2,922 isolated
+compiler cases, nine integrations, editor proof and 49,526 ordered audits/native
+children are preserved. Historical whole-run timing is not a causal buffer-only
+estimate. See the linked report for CPU, pressure, preparation and retained-cost
+limits. No new pairing default or further implementation objective is selected.

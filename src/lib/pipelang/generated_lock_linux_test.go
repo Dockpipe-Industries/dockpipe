@@ -14,6 +14,8 @@ import (
 // stale miss must never quarantine an artifact another worker just published.
 // Kernel-owned locks are released if a contained worker exits or is stopped.
 func lockGeneratedArtifact(root, key string) (func(), error) {
+	done := generatedIdentityPhase("lock_acquisition")
+	defer done()
 	dir := filepath.Join(root, ".locks")
 	if err := os.MkdirAll(dir, 0700); err != nil {
 		return nil, err

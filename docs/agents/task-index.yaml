@@ -94,14 +94,17 @@ tasks:
     next_implementation_recommendation: null
     topic: PipeLang deterministic self-hosting managed language foundation
     completed_language_contract: v0.113.0
-    active_objective: TASK-021-nominal-enums
+    active_objective: pipelang-performance-identity-fixtures-20260912
     completed_language_objective: TASK-021-nominal-enums
     completed_planning_objective: TASK-021-foundation-specification-and-dependency-plan
     completed_verification_objective: TASK-021-resumable-verification-optimization
     completed_performance_objective: TASK-021-verification-performance-round-2
+    completed_research_objective: pipelang-performance-compression-research-20260912
+    completed_identity_fixture_objective: pipelang-performance-identity-fixtures-20260912
+    research_report: docs/research/pipelang-performance-compression.md
     objective_state: completed
-    selected_option: 1
-    selected_scope: P01 nominal enums and exhaustive matching
+    selected_option: null
+    selected_scope: Completed identity and fixture measurements; retain bounded toolchain buffer reuse; reject streaming fixtures
     implementation_approval: approved
     completed_language_implementation_approval: approved
     completed_repair_objective: TASK-021-PipeLang-v0.80-milestone-repairs

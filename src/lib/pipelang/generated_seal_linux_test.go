@@ -16,6 +16,8 @@ import (
 // each child. Hash the exact snapshot, then let the kernel prohibit all changes.
 // Execution uses the inherited sealed descriptor, never the mutable cache path.
 func sealGeneratedExecutable(path, expected string) (*os.File, error) {
+	done := generatedIdentityPhase("binary_copy_hash_seal")
+	defer done()
 	input, err := os.Open(path)
 	if err != nil {
 		return nil, err

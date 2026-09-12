@@ -324,6 +324,28 @@ Run `matrix.py` for fresh normal-inlining compiler measurements with the unchang
 128 MiB / 5 second warm ceilings. Keep this test in its own unit, separate from
 inherited memory and fixed-helper scale tests.
 
+## Identity measurement and read-buffer reuse
+
+Generated executable identity still hashes every current toolchain file and its
+metadata once per process. The default reuses one 32-KiB read buffer during that
+walk; it does not persist or skip any digest. `--no-toolchain-read-buffer` on
+`pipelang_suite.py` selects the allocation-per-file control. Direct test processes
+can select that control with `PIPELANG_TOOLCHAIN_READ_BUFFER=0`.
+
+`--identity-profile` adds exclusive wall measurements for toolchain enumeration/
+metadata and content reads/hashing, generated source keys, lock acquisition,
+cached-binary checks and sealed copying. These leaf measurements are separate
+from enclosing spans and must not be added to them. Profiling is opt-in; ordinary
+native/raw execution, current oracle bytes, invalidation and sealing are unchanged.
+
+`job.py` and `run.py` capture cumulative cgroup CPU, I/O and pressure counters at
+workload boundaries. Missing files are reported as null. Difference matching
+before/after counters within one cgroup; do not sum descendant counters into their
+parent. Cgroup CPU excludes the outside job supervisor, and these counters do not
+provide exclusive per-operation CPU attribution. Matched results and the rejected
+streaming fixture prototype are recorded in
+[the performance report](../../docs/research/pipelang-performance-compression.md).
+
 ## Opt-in conformance profiling
 
 `PIPELANG_PERFORMANCE_PROFILE=1` enables `TestConformancePerformanceProfile` and logs
