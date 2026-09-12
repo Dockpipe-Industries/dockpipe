@@ -12,6 +12,7 @@ const PIPELANG_COMPLETION_KEYWORDS = [
   "Class",
   "Struct",
   "Record",
+  "Enum",
   "List",
   "Result",
   "Optional",

@@ -894,3 +894,13 @@ arm forms and four caller-initializer depths, used/unused tails and
 0/1/8/16/32/64/128/256 locals: 192 additional fresh isolated compiler fixtures.
 Arrow and equivalent block HIR/Core/semantic/Go are compared after removing only
 source spans/fingerprints; source spelling refusal stays exact through v0.111.0.
+
+
+v0.113 nominal enums add source/HIR/Core/evaluator/native ownership, stable tags,
+exhaustive matching, lazy traces, invalid host/Core refusal and branch-local checks.
+`TestV1130EnumInheritedTypes=3` and `TestV1130EnumInheritedCarriers=3` retain inherited
+scalar/carrier forms under the new contract. `TestV1130EnumsMemory` partitions three
+member counts (2/8/32), each crossing 0/1/8/32/128/256 locals: 18 additional fresh
+isolated compiler fixtures, bringing the maintained terminal matrix to 2922.
+Every member and both local-selector outcomes have independent evaluator/native
+oracles. No direct compiler, process, GC, inlining or execution limit changes.

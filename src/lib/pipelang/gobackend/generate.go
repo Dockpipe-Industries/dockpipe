@@ -74,6 +74,9 @@ func (g *generator) generate(program coreir.Program) ([]byte, error) {
 	if programNeedsArithmeticResult(functions) {
 		emitArithmeticSupport(&out, programNeedsArithmeticValidation(functions))
 	}
+	if err := emitEnumTypes(&out, functions); err != nil {
+		return nil, &Error{Code: "PLGO0001", Message: err.Error()}
+	}
 	records, err := collectRecordTypes(functions)
 	if err != nil {
 		return nil, &Error{Code: "PLGO0001", Message: err.Error()}
@@ -174,6 +177,9 @@ func (g *generator) emitFunction(out *strings.Builder, name string, function cor
 	for index, parameter := range function.Parameters {
 		if isTextType(parameter.Type) {
 			fmt.Fprintf(out, "\tpipelangValidateText(p%d)\n", index)
+		}
+		if parameter.Type.Kind == coreir.TypeEnum {
+			fmt.Fprintf(out, "\t%s(p%d)\n", enumValidationName(parameter.Type), index)
 		}
 		if parameter.Type.Kind == coreir.TypeRecord {
 			fmt.Fprintf(out, "\t%s(p%d)\n", g.recordValidationName(parameter.Type), index)
@@ -1018,7 +1024,9 @@ func (g *generator) emitExpr(expr coreir.Expr, parameters []coreir.Parameter, op
 				return "", e
 			}
 			condition := "true"
-			if carrier.Kind == coreir.TypeResult {
+			if carrier.Kind == coreir.TypeEnum {
+				condition = "matched == " + enumGoName(carrier) + "(" + strconv.Quote(arm.Tag) + ")"
+			} else if carrier.Kind == coreir.TypeResult {
 				if arm.Tag == "ok" {
 					condition = "matched.OK"
 				} else if arm.Tag == "err" {
@@ -1045,6 +1053,9 @@ func (g *generator) emitExpr(expr coreir.Expr, parameters []coreir.Parameter, op
 }
 
 func emitLiteral(typ coreir.Type, literal coreir.Literal) (string, error) {
+	if typ.Kind == coreir.TypeEnum {
+		return enumGoName(typ) + "(" + strconv.Quote(literal.String) + ")", nil
+	}
 	if typ.Kind == coreir.TypeNumeric {
 		if typ.Numeric == nil {
 			return "", fmt.Errorf("numeric literal type has no representation")
@@ -1072,6 +1083,9 @@ func emitLiteral(typ coreir.Type, literal coreir.Literal) (string, error) {
 }
 
 func (g *generator) goType(typ coreir.Type, optionalTypeName string) (string, error) {
+	if typ.Kind == coreir.TypeEnum {
+		return enumGoName(typ), nil
+	}
 	if typ.Kind == coreir.TypeList {
 		if typ.List == nil || typ.List.Element.Kind != coreir.TypeRecord {
 			return "", fmt.Errorf("Go list backend requires one record element type")

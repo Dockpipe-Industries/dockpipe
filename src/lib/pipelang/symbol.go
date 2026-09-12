@@ -16,6 +16,7 @@ const (
 	SymbolInterface SymbolKind = "interface"
 	SymbolClass     SymbolKind = "class"
 	SymbolRecord    SymbolKind = "record"
+	SymbolEnum      SymbolKind = "enum"
 )
 
 type SymbolOwnerKind string
@@ -49,6 +50,7 @@ type symbolEntry struct {
 	interfaceDecl *InterfaceDecl
 	classDecl     *ClassDecl
 	recordDecl    *RecordDecl
+	enumDecl      *EnumDecl
 }
 
 // SymbolTable is the one declaration namespace for both the frozen legacy lane
@@ -186,6 +188,17 @@ func buildSymbolTableWithOwners(sources *SourceSet, program *Program, modules *M
 				}
 			}
 			entries = append(entries, symbolEntry{symbol: Symbol{Kind: SymbolRecord, Name: decl.Name, Owner: owner, Visibility: normalizeVisibility(decl.Visibility), DeclarationSpan: decl.Span}, recordDecl: decl})
+		}
+	}
+	for _, decl := range program.Enums {
+		if decl != nil {
+			owner := legacySourceSetOwner
+			if modules != nil {
+				if resolved, ok := modules.ownerForSpan(decl.Span); ok {
+					owner = resolved
+				}
+			}
+			entries = append(entries, symbolEntry{symbol: Symbol{Kind: SymbolEnum, Name: decl.Name, Owner: owner, Visibility: normalizeVisibility(decl.Visibility), DeclarationSpan: decl.Span}, enumDecl: decl})
 		}
 	}
 	sort.SliceStable(entries, func(i, j int) bool {

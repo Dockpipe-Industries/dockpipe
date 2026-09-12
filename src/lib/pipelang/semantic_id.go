@@ -155,12 +155,14 @@ type SemanticMigration struct {
 type SemanticKind string
 
 const (
-	SemanticModule    SemanticKind = "module"
-	SemanticInterface SemanticKind = "interface"
-	SemanticClass     SemanticKind = "class"
-	SemanticRecord    SemanticKind = "record"
-	SemanticField     SemanticKind = "field"
-	SemanticMethod    SemanticKind = "method"
+	SemanticModule     SemanticKind = "module"
+	SemanticInterface  SemanticKind = "interface"
+	SemanticClass      SemanticKind = "class"
+	SemanticRecord     SemanticKind = "record"
+	SemanticEnum       SemanticKind = "enum"
+	SemanticEnumMember SemanticKind = "enum_member"
+	SemanticField      SemanticKind = "field"
+	SemanticMethod     SemanticKind = "method"
 )
 
 type SemanticDeclaration struct {
@@ -296,6 +298,8 @@ func buildSemanticTable(sources *SourceSet, program *Program, graph *ModuleGraph
 			kind = SemanticInterface
 		} else if entry.symbol.Kind == SymbolRecord {
 			kind = SemanticRecord
+		} else if entry.symbol.Kind == SymbolEnum {
+			kind = SemanticEnum
 		}
 		declaration := SemanticDeclaration{Kind: kind, Name: entry.symbol.Name, Module: ModuleID(entry.symbol.Owner.ID), Visibility: entry.symbol.Visibility, DeclarationSpan: entry.symbol.DeclarationSpan, required: entry.symbol.Visibility == VisibilityPublic}
 		table.addTarget(declaration)
@@ -314,6 +318,11 @@ func buildSemanticTable(sources *SourceSet, program *Program, graph *ModuleGraph
 			}
 			for _, method := range entry.classDecl.Methods {
 				table.addTarget(SemanticDeclaration{Kind: SemanticMethod, Name: method.Name, Module: declaration.Module, Visibility: method.Visibility, DeclarationSpan: method.Span, required: declaration.required && method.Visibility == VisibilityPublic, parentTarget: parent, unresolvedType: method.ReturnType, params: append([]Param(nil), method.Params...)})
+			}
+		}
+		if entry.enumDecl != nil {
+			for _, member := range entry.enumDecl.Members {
+				table.addTarget(SemanticDeclaration{Kind: SemanticEnumMember, Name: member.Name, Module: declaration.Module, Visibility: VisibilityPublic, DeclarationSpan: member.Span, required: true, parentTarget: parent})
 			}
 		}
 		if entry.recordDecl != nil {
@@ -381,7 +390,7 @@ func buildSemanticTable(sources *SourceSet, program *Program, graph *ModuleGraph
 		}
 	}
 	for index := range table.ordered {
-		if table.ordered[index].Kind != SemanticClass && table.ordered[index].Kind != SemanticInterface && table.ordered[index].Kind != SemanticRecord {
+		if table.ordered[index].Kind != SemanticClass && table.ordered[index].Kind != SemanticInterface && table.ordered[index].Kind != SemanticRecord && table.ordered[index].Kind != SemanticEnum {
 			continue
 		}
 		declaration := &table.ordered[index]
@@ -416,7 +425,7 @@ func buildSemanticTable(sources *SourceSet, program *Program, graph *ModuleGraph
 
 	for index := range table.ordered {
 		declaration := &table.ordered[index]
-		if declaration.Kind != SemanticField && declaration.Kind != SemanticMethod {
+		if declaration.Kind != SemanticField && declaration.Kind != SemanticMethod && declaration.Kind != SemanticEnumMember {
 			continue
 		}
 		parentIndex, ok := table.byTarget[declaration.parentTarget]

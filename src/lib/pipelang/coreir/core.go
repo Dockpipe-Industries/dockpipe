@@ -2,6 +2,8 @@
 // It contains no source-tree, parser, HIR, or target-language concepts.
 package coreir
 
+const LanguageContractV1130 = "v0.113.0"
+
 const LanguageContractV1120 = "v0.112.0"
 
 const LanguageContractV1110 = "v0.111.0"
@@ -150,6 +152,7 @@ const (
 	TypeResult          TypeKind = "result"
 	TypeArithmeticError TypeKind = "arithmetic_error"
 	TypeRecord          TypeKind = "record"
+	TypeEnum            TypeKind = "enum"
 	TypeOptional        TypeKind = "optional"
 	TypeList            TypeKind = "list"
 	TypeNamed           TypeKind = "named"
@@ -192,6 +195,15 @@ type RecordField struct {
 	Type     Type             `json:"type"`
 }
 
+type EnumMember struct {
+	Name     string           `json:"name"`
+	Tag      string           `json:"tag"`
+	Identity SemanticIdentity `json:"identity"`
+}
+type EnumType struct {
+	Members []EnumMember `json:"members"`
+}
+
 type RecordType struct {
 	Fields []RecordField `json:"fields"`
 }
@@ -231,6 +243,7 @@ type Type struct {
 	Optional  *OptionalType     `json:"optional,omitempty"`
 	List      *ListType         `json:"list,omitempty"`
 	Record    *RecordType       `json:"record,omitempty"`
+	Enum      *EnumType         `json:"enum,omitempty"`
 	Identity  *SemanticIdentity `json:"identity,omitempty"`
 	Name      string            `json:"name,omitempty"`
 	Arguments []Type            `json:"arguments,omitempty"`

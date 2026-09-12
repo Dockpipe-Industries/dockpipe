@@ -3995,3 +3995,73 @@ semantic and Application IR identities, generic internal Core locals, executable
 Application IR, frozen 45-source compatibility and generic engine/package boundaries
 remain unchanged. Evaluator and Core-only Go consume validated target-neutral Core
 under the existing resource ceilings. No runtime or deployment behavior is introduced.
+
+### PipeLang v0.113.0: nominal enums and exhaustive matching
+
+`v0.113.0` is accepted under the completed
+[nominal-enum objective](../agents/tasks/pipelang-reactive-application-language/nominal-enums.md).
+Fresh source/HIR/Core/evaluator/native, compiler-matrix, integration/editor and independent inherited
+proof passed under unchanged resource ceilings.
+
+```pipe
+public Enum Mode {
+    Idle = "idle";
+    Busy = "busy";
+}
+public Class Choices {
+    public Mode Echo(Mode value) => value;
+    public string Select(Mode value, bool enabled) {
+        Mode chosen = enabled ? Echo(value) : Mode.Busy;
+        return match(chosen) { Mode.Idle => "ready", Mode.Busy => "working" };
+    }
+}
+```
+
+`Enum` is contextual declaration syntax in v0.113.0. A public enum declares one or more
+payload-free members, each with an explicit nonempty UTF-8 string tag. Names and tags must each
+be unique within the declaration. Member identity follows the owning module/type/member semantic
+identity; tags never depend on declaration order or a Go ordinal. A member name and its tag are
+separate compatibility surfaces. Explicit symbol imports retain the defining module's nominal
+identity. Older language contracts reject enum declarations.
+
+`Mode.Idle` has type `Mode`. Parameters, returns, explicitly typed immutable locals and same-class
+public pure calls carry that exact type. `==` and `!=` require identical nominal types, including
+their closed member schema; two different enum declarations do not compare or convert even when
+their tags coincide. No ordering, ordinal, integer/string conversion or flags operations are added.
+
+`match(value)` requires exactly one qualified arm for every member of the scrutinee's enum and
+exactly matching result types. Unknown, duplicate, missing or cross-enum arms, wildcard patterns and
+payload bindings are rejected. A tag literally equal to `"_"` remains an ordinary tag: its arm is
+spelled with the qualified member name. The scrutinee runs once; only the selected arm runs.
+
+Enum composition admits enum and primitive parameters/results, ordinary scalar operations,
+`trim`/`contains_casefolded`, pure calls, conditionals and enum matches. Conditional and match
+nesting are each bounded to depth three along an expression path. Existing method-level and
+terminal-branch immutable local sequences retain eager source order, lexical isolation and exact
+types; locals cannot be hidden inside a ternary operand, match arm or call argument. Existing
+block spelling restrictions remain: a zero-local single match uses an arrow body; this slice does
+not add general statement blocks. A ternary or terminal if/else may contain enum values, but this
+addition does not widen inherited non-enum control-flow contracts.
+
+HIR and Core carry `kind: enum`, the declaration identity and a closed member schema containing
+names, tags and member identities, canonicalized by tag. A qualified enum value lowers to a typed
+literal with its stable tag; match arms carry those tags. Source spans remain attached to HIR/Core
+expressions and public semantic declarations. `pipelang.semantic.v1` adds type kind `enum`, member
+kind `enum_member` and the additive member field `enum_tag`; existing identities and shapes are
+unchanged when no enum occurs. Core independently rejects malformed schemas, extra representations,
+unknown values, nominal mismatches, invalid arm sets and unsupported composition.
+
+The evaluator and prepared evaluator validate every enum argument, including unused arguments.
+Core-only Go emits distinct named string types, stable identity-derived names and closed argument
+validators; invalid externally supplied enum values panic at that boundary. Generated validators
+use a local fixed array and comparison loop so ordinary Go inlining does not multiply control-flow
+branches by both enum-member count and repeated local-call count. No mutable shared enum table,
+integer representation or backend-specific source syntax is introduced.
+
+The editor supplies Enum highlighting, completion and declaration/match snippets. The Application IR
+consumer uses enum choices inside executable pure helpers while preserving its existing canonical
+snapshot contract. This is language-consumer evidence, not enum serialization or application-adapter
+support. Enum fields in objects/records, carrier/container elements, payload unions, general blocks,
+mutation, methods inside enums and serialization remain later foundation packages. P09/P32 own wire
+integration; all frozen compatibility, compiler/semantic/Application IR version identities and
+128 MiB / 5-second direct compiler ceilings remain in force.
