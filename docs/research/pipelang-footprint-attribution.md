@@ -272,6 +272,15 @@ support remain unchanged. The first candidate attempt caught and corrected input
 ordering before native execution; fresh stores own the accepted comparison.
 This is bounded sample proof, with no full-family extrapolation or existing bytes freed.
 
+The subsequent [v0.97 terminal initializer layout experiment](pipelang-go-v097-layout-fixtures.md)
+converts eligible bundles to exact binary Value/Trace fixtures. Twelve of 100 owners
+preserve 66 layouts, 102,400 vectors and 132 fresh native executions per pass.
+Executable identities remain 12; executable bytes are 7.8519% lower and
+mean summed warm unit time is 9.3901% lower in this uncontrolled-host sample.
+All 120 contained units pass under unchanged limits. Approximately 359.7 MB
+of task artifacts remain; zero existing bytes were freed. This does not establish
+full-family/full-language gains or solve retention.
+
 The v0.113 profile contains 73,904,076,510 logical binary-reference bytes over
 70,973,989,613 distinct binary bytes: **1.0413 times** for one per-case reference pass.
 The recovery diagnostic's approximately 74.1 GB includes its own artifact scope;
