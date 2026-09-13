@@ -18,6 +18,7 @@ import sys
 import time
 from job import verify_job
 from budget import DiskBudget
+from estate import SharedBudget, storage_limit
 from reporting import summarize
 from scheduling import measured_plan, load_profile, observed_profile
 from campaign import Campaign, BuildStore, InputGuard, atomic_json, digest, fingerprint, host_identity
@@ -139,6 +140,7 @@ def main():
     scheduling.add_argument('--schedule-profile', type=Path, help='Required current-input warm singleton timings for conservative groups')
     scheduling.add_argument('--auto-schedule-profile', type=Path, help='Optional warm timings; missing or stale hints fall back to singletons')
     parser.add_argument('--disk-budget-gib', type=int, default=96)
+    parser.add_argument('--campaign-budget', type=Path, help=argparse.SUPPRESS)
     parser.add_argument('--build-store', type=Path, help='Persistent verified test-binary store (default sibling builds)')
     parser.add_argument('--native-build-cache', type=Path, help='Persistent native Go build cache (default per-output cache)')
     parser.add_argument('--mode', choices=['fresh', 'resume'], default='fresh')
@@ -158,6 +160,7 @@ def main():
     parser.add_argument('--representation-cache', type=Path, help='Private representation store (default: sibling of compiled cache)')
     parser.add_argument('--workers', type=int, choices=[1, 2], default=2)
     args = parser.parse_args()
+    storage_limit(args.disk_budget_gib)
     verify_job()
     if args.native_representation and (args.compiled_cache is None or sys.platform != 'linux'):
         parser.error('native representations require a Linux compiled cache')
@@ -183,6 +186,17 @@ def main():
     root = Path(__file__).resolve().parents[2]
     output = args.output
     output.mkdir(parents=True, exist_ok=True, mode=0o700)
+    native_build_cache = args.native_build_cache or output / 'native-build-cache'
+    build_store = args.build_store or output.parent / 'builds'
+    budget_roots = [args.cache, args.compiled_cache, build_store, output]
+    if args.native_bundle:
+        budget_roots.append(native_build_cache)
+    if args.native_representation:
+        budget_roots.append(args.representation_cache or args.compiled_cache.with_name(args.compiled_cache.name + '-representations'))
+    if args.shared_export:
+        budget_roots.append(args.shared_export)
+    budget = (SharedBudget(args.campaign_budget, budget_roots, args.disk_budget_gib << 30)
+              if args.campaign_budget else DiskBudget(budget_roots, output, args.disk_budget_gib << 30))
     campaign = Campaign(output / 'campaign', args.mode)
     started = time.monotonic()
     runner = Path(__file__).with_name('run.py').resolve()
@@ -199,7 +213,7 @@ def main():
                     audit=args.audit_generated, identity_profile=args.identity_profile, toolchain_read_buffer=args.toolchain_read_buffer, compiled_cache=str(args.compiled_cache))
     atomic_json(output / 'source-hashes.json', fingerprint(paths))
     bootstrap = StageRunner(campaign, 'bootstrap', identity, ['build'], args.cache, snapshot)
-    store = BuildStore(args.build_store or output.parent / 'builds')
+    store = BuildStore(build_store)
     # Execution-only Python/report edits do not require relinking the Go test binary.
     build_files = {p: v for p, v in guard.identity['files'].items()
                    if not p.startswith(str(runner.parent) + '/') or p.endswith('.go')}
@@ -274,7 +288,7 @@ def main():
     if args.native_bundle:
         native_build_cache.mkdir(mode=0o700, exist_ok=True)
 
-    budget = DiskBudget([args.cache, args.compiled_cache, native_build_cache, output] if args.native_bundle else [args.cache, args.compiled_cache, output], output, args.disk_budget_gib << 30)
+
 
     def required_artifacts(directory):
         paths = [p for p in (directory / 'fixtures').rglob('*') if p.is_file()]

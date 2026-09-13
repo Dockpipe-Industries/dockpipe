@@ -104,7 +104,8 @@ def main():
     temporary = output.parent / 'tmp'
     temporary.mkdir(exist_ok=True)
     env = dict(os.environ, GOENV='off', GOTOOLCHAIN='local', GOPROXY='off', GOSUMDB='off', GOWORK='off',
-               GOMAXPROCS='4', GOCACHE=str(cache), GOTMPDIR=str(temporary))
+               GOMAXPROCS='4', GOCACHE=str(cache), GOTMPDIR=str(temporary),
+               TMPDIR=str(temporary), TMP=str(temporary), TEMP=str(temporary))
     # Campaign drivers use normal build settings. Explicit env commands inside
     # a test remain available for bounded adversarial probes.
     unexpected = {name: os.environ[name] for name in ('GOFLAGS', 'GOEXPERIMENT', 'GOOS', 'GOARCH', 'GOAMD64', 'GO386', 'GOARM', 'GOARM64', 'CGO_ENABLED', 'CGO_CFLAGS', 'CGO_CPPFLAGS', 'CGO_CXXFLAGS', 'CGO_LDFLAGS', 'CC', 'CXX', 'GODEBUG') if os.environ.get(name)}
@@ -153,7 +154,7 @@ def main():
             time.sleep(.005)
         report = dict(performance_before=performance_before, performance_after=performance_counters(group),
                       command=command, cgroup=str(group), limits=actual, unit_properties=properties,
-                      cache=str(cache), flags={key:env[key] for key in ['GOTOOLCHAIN','GOPROXY','GOSUMDB','GOWORK','GOMAXPROCS']},
+                      cache=str(cache), flags={key:env[key] for key in ['GOTOOLCHAIN','GOPROXY','GOSUMDB','GOWORK','GOMAXPROCS','GOTMPDIR','TMPDIR','TMP','TEMP']},
                       elapsed_s=time.monotonic()-start, outcome=outcome, exit=child.poll(),
                       compiler_sampled_peak_rss_kib=compiler_rss,
                       child_maxrss_kib=resource.getrusage(resource.RUSAGE_CHILDREN).ru_maxrss,

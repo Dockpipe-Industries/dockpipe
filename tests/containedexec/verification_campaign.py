@@ -11,8 +11,9 @@ import subprocess
 import sys
 import time
 from campaign import Campaign, atomic_json, fingerprint, resource_accepted
-from verification import ROOT, dependency_guard
+from verification import ROOT, dependency_guard, source_paths, bundle_paths
 from job import verify_job
+from estate import CampaignBudget, campaign_scope, storage_limit, accepted_storage
 
 HERE = Path(__file__).resolve().parent
 MEMORY_FAMILIES = {'TestV1090TerminalCombinedSelectorArmsMemory': 1944,
@@ -25,6 +26,8 @@ MEMORY_COUNT = sum(MEMORY_FAMILIES.values())
 
 def validated_stage(output, stage, selected=None, summary_only=False):
     dependencies = json.loads((output / 'dependency-inputs.json').read_text())
+    if not set(bundle_paths()) <= set(map(Path, dependencies['paths'])):
+        raise RuntimeError('new root bundle declarations since stage admission')
     current = fingerprint(dependencies['paths'])['digest']
     if current != dependencies['identity']['digest']:
         raise RuntimeError('changed stage dependencies: ' + stage)
@@ -49,6 +52,7 @@ def reconcile(output, baseline, job_report):
         events = lambda text: dict(line.split() for line in text.splitlines())
         if events(job['memory_events_before'])[name] != events(job['memory_events_after'])[name]:
             raise RuntimeError('aggregate or descendant resource crossing: ' + name)
+    storage = accepted_storage(output)
     suite = validated_stage(output / 'suite', 'suite', summary_only=True)
     matrix = validated_stage(output / 'matrix', 'matrix')
     integration = validated_stage(output / 'integration', 'integration', summary_only=True)
@@ -63,7 +67,7 @@ def reconcile(output, baseline, job_report):
     measured = [r['report'] for r in matrix.values()]
     if any(r['child_maxrss_kib'] > 128 * 1024 or r['elapsed_s'] > 5 or 'memory.high' in r['limits'] for r in measured):
         raise RuntimeError('isolated compiler acceptance changed')
-    result = dict(status='accepted', language_contract='v0.113.0', functions=len(current['tests']),
+    result = dict(storage=storage, status='accepted', language_contract='v0.113.0', functions=len(current['tests']),
                   logical_cases=len(suite), baseline_functions=len(prior['tests']), baseline_logical_cases=len(baseline_cases),
                   isolated_cases=len(matrix), integration_checks=len(integration), editor_checks=len(editor),
                   isolated_max_rss_mib=max(r['child_maxrss_kib'] for r in measured) / 1024,
@@ -109,8 +113,11 @@ def main():
     scheduling.add_argument('--schedule-profile', type=Path, help='Require this matching profile instead of automatic hints')
     scheduling.add_argument('--no-pair-scheduling', action='store_true', help='Use singleton scheduling for controlled comparisons')
     parser.add_argument('--disk-budget-gib', type=int, default=96)
+    parser.add_argument('--support-root', type=Path, action='append', default=[], help='Additional installed dependency roots, including Go modules')
+    parser.add_argument('--preserved-root', type=Path, action='append', default=[], help='Retained historical/research roots outside the campaign root')
     parser.add_argument('--accept-job', type=Path, help='Reconcile completed job without executing stages')
     args = parser.parse_args()
+    limit = storage_limit(args.disk_budget_gib)
     verify_job()
     if not args.root.is_absolute() or args.root.is_relative_to('/tmp') or Path(args.campaign).name != args.campaign or args.campaign in ('.', '..'):
         parser.error('durable absolute root outside /tmp and a single campaign name required')
@@ -122,8 +129,16 @@ def main():
     cache = args.cache or args.root / 'go-build-cache'
     compiled = args.compiled_cache or args.root / 'executables'
     native = args.native_build_cache or args.root / 'native-build-cache'
-    with Campaign(output / 'controller', args.mode) as controller:
+    for path in (cache, compiled, native):
+        path.mkdir(parents=True, exist_ok=True, mode=0o700)
+    support = [*source_paths('integration'), args.go.resolve().parent.parent, args.node.resolve(), *args.support_root]
+    roots = campaign_scope(args.root, cache, compiled, native, args.baseline, support, args.preserved_root)
+    with CampaignBudget(roots, output, limit, population_roots=[args.root, cache, compiled, native]) as budget, Campaign(output / 'controller', args.mode) as controller:
         guard = dependency_guard(args.go, cache, output, 'integration', [args.node])
+        inputs = json.loads((output / 'dependency-inputs.json').read_text())['paths']
+        if any(not any(Path(p).resolve().is_relative_to(r) for r in roots) for p in inputs):
+            raise RuntimeError('dependency outside storage scope; declare its support root')
+        budget.check()
         controller.register('workflow', guard.check(), ['suite', 'matrix', 'integration'])
         for name in ('suite', 'matrix', 'integration'):
             guard.check()
@@ -134,7 +149,7 @@ def main():
             if name == 'suite':
                 command += ['--go', str(args.go), '--compiled-cache', str(compiled), '--native-build-cache', str(native),
                             '--build-store', str(args.root / 'builds'), '--workers', '2', '--audit-generated',
-                            '--disk-budget-gib', str(args.disk_budget_gib)]
+                            '--disk-budget-gib', str(args.disk_budget_gib), '--campaign-budget', str(budget.path)]
                 command += scheduling_arguments(args)
             elif name == 'matrix':
                 inventory = json.loads((output / 'suite/inventory.json').read_text())
@@ -155,6 +170,7 @@ def main():
                 command += ['--go', str(args.go), '--node', str(args.node)]
             with (output / (name + '-coordinator.log')).open('a') as log:
                 rc = subprocess.run(command, cwd=ROOT, stdout=log, stderr=subprocess.STDOUT).returncode
+            budget.check()
             controller.event('stage_exit', stage=name, exit=rc)
             if rc:
                 print(json.dumps(dict(stage=name, status='failed', log=str(output / (name + '-coordinator.log')))))
@@ -162,6 +178,7 @@ def main():
             if name == 'suite':
                 publish_profile(stage_output, args.root)
         guard.check()
+        budget.check()
         atomic_json(output / 'stages-complete.json', dict(status='stages_complete_pending_aggregate_cleanup', inputs=guard.check()))
         print(json.dumps(dict(status='stages_complete_pending_aggregate_cleanup', output=str(output))))
     return 0

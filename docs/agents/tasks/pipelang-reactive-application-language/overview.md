@@ -1,3 +1,21 @@
+## Completed objective — package inputs and inclusive storage
+
+The approved [packaging/storage repair](package-input-budget-repair.md) preserves
+533 authored assets and reduces the matched application test binary from 1.311 GB
+to 21.439 MB (98.36%). Complete-campaign storage now belongs to the controller,
+including standard test/compiler temporaries and independent final accounting.
+All proof and original files remain retained; zero bytes freed. Numerical 16/32-GiB
+targets and the native pilot remain separate, unadopted work.
+
+## Completed planning — footprint and native pilot
+
+[Footprint/native planning](footprint-native-pilot-plan.md) owns the completed
+2026-09-13 investigation. The canonical report recommends package-input and
+inclusive-budget repair first, followed by a bounded Go-frontend/C++-output pilot.
+The user subsequently approved the [package-input/storage repair](package-input-budget-repair.md).
+Cleanup, numerical-limit adoption and the native pilot remain unapproved. v0.113.0
+and the completed recovery proof remain accepted.
+
 ## Completed objective — nominal enums
 
 The founder selected option 1 and explicitly said `approved`; P01 is now complete.

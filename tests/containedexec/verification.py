@@ -3,6 +3,7 @@ import json
 import os
 from pathlib import Path
 import re
+import shlex
 import subprocess
 import sys
 import time
@@ -18,10 +19,27 @@ POLICY = dict(environment='offline-normal-build-settings-v1', unit_max=1 << 30, 
               goenv='off', toolchain='local', proxy='off', sumdb='off', work='off', gomaxprocs=4)
 
 
+def bundle_paths():
+    """Exact embedded content and root Go declarations, never recursive build output."""
+    declarations = sorted(ROOT.glob('*.go'))
+    paths = set(declarations)
+    for declaration in declarations:
+        for line in declaration.read_text().splitlines():
+            if line.startswith('//go:embed '):
+                for name in shlex.split(line.removeprefix('//go:embed ')):
+                    path = ROOT / name
+                    if (not path.is_file() or path.is_symlink() or any(c in name for c in '*?[')
+                            or not path.resolve().is_relative_to(ROOT)):
+                        raise RuntimeError('exact regular embedded input required: ' + name)
+                    paths.add(path)
+    return sorted(paths)
+
+
 def source_paths(stage='suite'):
     # All local Go packages/assets rather than only the compiler snapshot. Extra
     # invalidation is deliberate until narrower closure is independently proven.
     paths = [ROOT / p for p in ('src/lib', 'src/cmd', 'src/core', 'go.mod', 'go.sum', 'tests/pipelangcompat')]
+    paths += bundle_paths()
     paths.append(Path(sys.executable).resolve())
     paths.append(RUNNER.parent)  # runner, split discovery and nested transport helpers
     if stage == 'integration':
@@ -135,7 +153,9 @@ def dependency_guard(go, cache, output, stage='suite', extra=()):
     paths = source_paths(stage) + list(extra)
     goroot = Path(go).parent.parent
     paths += [goroot / p for p in ('bin', 'pkg/tool', 'src', 'lib', 'VERSION', 'go.env')]
-    pre = InputGuard(paths)
+    pre = InputGuard(paths, watch_directories=[ROOT])
+    if not set(bundle_paths()) <= set(paths):
+        raise RuntimeError("bundle declarations changed during admission")
     prefix = Path(output) / ('dependencies-' + uuid.uuid4().hex)
     command = [sys.executable, '-B', str(RUNNER), '--output', str(prefix), '--cache', str(cache),
                '--timeout', '30', '--memory-high-mib', '700', '--', 'env', 'GOENV=off', str(go),
@@ -150,7 +170,7 @@ def dependency_guard(go, cache, output, stage='suite', extra=()):
     if ROOT not in roots or any(not p.is_absolute() or not p.is_dir() for p in roots):
         raise RuntimeError('incomplete module dependency discovery')
     modules = [p for p in roots if p != ROOT]
-    guard = InputGuard(paths + modules)
+    guard = InputGuard(paths + modules, watch_directories=[ROOT])
     pre.check()
     pre.close()
     atomic_json(Path(output) / 'dependency-inputs.json', dict(paths=list(map(str, paths + modules)), identity=guard.identity))

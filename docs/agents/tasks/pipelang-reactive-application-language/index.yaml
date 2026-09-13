@@ -23,7 +23,7 @@ dispatch:
 state:
   decision: accepted
   current_language_contract: v0.113.0
-  active_objective: pipelang-performance-resume-memory-20260913
+  active_objective: pipelang-package-input-inclusive-budget-repair-20260913
   completed_language_objective: TASK-021-nominal-enums
   completed_planning_objective: TASK-021-foundation-specification-and-dependency-plan
   completed_verification_objective: TASK-021-resumable-verification-optimization
@@ -33,11 +33,17 @@ state:
   completed_pair_scheduling_objective: pipelang-performance-pair-scheduling-20260912
   completed_automatic_pair_scheduling_objective: pipelang-performance-default-pairing-20260912
   completed_resume_memory_objective: pipelang-performance-resume-memory-20260913
+  completed_footprint_planning_objective: pipelang-footprint-attribution-native-pilot-plan-20260913
+  footprint_plan: footprint-native-pilot-plan.md
+  completed_package_input_budget_objective: pipelang-package-input-inclusive-budget-repair-20260913
+  package_input_budget_repair: package-input-budget-repair.md
+  next_implementation_recommendation: null
   research_record: performance-compression-research.md
   objective_state: completed
-  selected_option: A
-  selected_scope: Bound large-campaign recovery memory while preserving receipt validation and ordered proof
+  selected_option: approved_recommended_repair
+  selected_scope: Package-input and inclusive-budget repair; numerical targets remain proposed
   implementation_approval: approved
+  planning_authority: explicit_user_request
   completed_language_implementation_approval: approved
   completed_repair_objective: TASK-021-PipeLang-v0.80-milestone-repairs
   repair_commit: acbd10f88207d0a226ec24a073948362691adb8c
@@ -53,10 +59,21 @@ state:
     That objective is completed. The user then requested automatic complete-campaign
     adoption; automatic-pair-scheduling.md owns the bounded implementation and proof.
     The user subsequently selected A, bounded large-campaign resume; bounded-resume-memory.md
-    owns the completed recovery repair and unchanged proof limits. No successor is selected.
+    owns the completed recovery repair and unchanged proof limits. The user then requested
+    footprint attribution and native pilot planning, completed in footprint-native-pilot-plan.md.
+    The user subsequently approved package-input and inclusive-budget repair; numerical targets remain proposed.
     No commit, push, publication, worktree, cleanup or external service mutation is authorized.
 
 routes:
+  package_input_budget_repair:
+    read:
+      - package-input-budget-repair.md
+      - ../../../runtime/pipelang-verification.md
+  footprint_native_planning:
+    read:
+      - footprint-native-pilot-plan.md
+      - ../../../research/pipelang-footprint-attribution.md
+      - ../../../concepts/pipelang-native-backends.md
   bounded_resume_memory:
     read:
       - bounded-resume-memory.md
