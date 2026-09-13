@@ -57,34 +57,81 @@ func TestGeneratedBundleSealedSnapshot(t *testing.T) {
 }
 
 func TestGeneratedBundleCurrentOracles(t *testing.T) {
-	testGeneratedBundleCurrentOracles(t, false)
+	testGeneratedBundleCurrentOracles(t, false, false)
 }
 
 func TestGeneratedOrdinaryBundleCurrentOracles(t *testing.T) {
-	testGeneratedBundleCurrentOracles(t, true)
+	testGeneratedBundleCurrentOracles(t, true, false)
 }
 
-func testGeneratedBundleCurrentOracles(t *testing.T, ordinary bool) {
+func TestGeneratedBinaryBundleCurrentOracles(t *testing.T) {
+	testGeneratedBundleCurrentOracles(t, false, true)
+}
+
+func testGeneratedBundleCurrentOracles(t *testing.T, ordinary, binaryFixture bool) {
 	if runtime.GOOS != "linux" {
 		t.Skip("Linux sealed bundle prototype")
 	}
 	if mode := os.Getenv("PIPELANG_BUNDLE_PROBE"); mode != "" {
 		mode = strings.TrimPrefix(mode, "ordinary-")
-		oracle := strings.Replace(finiteSharedOracle, "t.Helper()", `t.Helper(); invocations++; if invocations != 1 { t.Fatal("shared process state leaked") }`, 1) + "\nvar invocations int\n"
+		supportSource := finiteSharedOracle
+		if binaryFixture {
+			supportSource = finiteBinaryOracle
+		}
+		oracle := strings.Replace(supportSource, "t.Helper()", `t.Helper(); invocations++; if invocations > 2 { t.Fatal("shared process state leaked") }`, 1) + "\nvar invocations int\n"
 		if mode == "support" {
 			oracle += "\n// changed shared checking code\n"
 		}
 		for i := 0; i < 16; i++ {
-			source := fmt.Sprintf("package generated; var calls int; func Value() string { calls++; if calls != 1 { panic(\"state leaked\") }; return %q }", fmt.Sprint(i))
+			expectedValue := fmt.Sprint(i)
+			expectedTrace := []string{"trace" + fmt.Sprint(i)}
+			if binaryFixture {
+				expectedValue = "\x00☃\n" + expectedValue
+				switch i {
+				case 0:
+					expectedTrace = nil
+				case 1:
+					expectedTrace = []string{}
+				case 2:
+					expectedTrace = []string{"", "\x00☃\n", "last"}
+				}
+			}
+			traceSource := "[]string{" + quotedStrings(expectedTrace) + "}"
+			if expectedTrace == nil {
+				traceSource = "nil"
+			}
+			source := fmt.Sprintf("package generated; var calls, traceCalls int; func Value() string { calls++; if calls != 1 { panic(\"state leaked\") }; return %q }; func Trace() []string { traceCalls++; if traceCalls != 1 { panic(\"trace state leaked\") }; return %s }", expectedValue, traceSource)
 			if mode == "source" && i == 0 {
 				source += "; const changed = true"
 			}
-			checks := []byte("package generated; import (\"testing\";\"pipelang-generated-check/oracle\"); func TestCurrent(t *testing.T) { oracle.Values(t,\"oracle.json\",1,func(int)string{return Value()}) }")
-			value := fmt.Sprint(i)
+			checks := []byte("package generated; import (\"testing\";\"pipelang-generated-check/oracle\"); func TestCurrent(t *testing.T) { oracle.Values(t,\"oracle.json\",1,func(int)string{return Value()}); oracle.Traces(t,\"oracle.json\",1,func(int)[]string{return Trace()}) }")
+			value := expectedValue
 			if mode == "oracle" && i == 15 {
 				value = "wrong"
 			}
-			fixture := []byte(fmt.Sprintf("[{\"Value\":%q,\"Trace\":[]}]", value))
+			trace := "trace" + fmt.Sprint(i)
+			if mode == "trace" && i == 15 {
+				trace = "wrong-trace"
+			}
+			fixture := []byte(fmt.Sprintf("[{\"Value\":%q,\"Trace\":[%q]}]", value, trace))
+			if binaryFixture {
+				if mode == "trace" && i == 15 {
+					expectedTrace = []string{trace}
+				}
+				fixture = encodeFiniteBinaryOracle([]finiteConditionalOracleCase{{Value: value, Trace: expectedTrace}})
+				if i == 15 {
+					switch mode {
+					case "truncated":
+						fixture = fixture[:len(fixture)-1]
+					case "trailing":
+						fixture = append(fixture, 0)
+					case "count":
+						fixture[0] = 2
+					case "length":
+						fixture[4], fixture[5], fixture[6], fixture[7] = 255, 255, 255, 255
+					}
+				}
+			}
 			var support = []byte(oracle)
 			if ordinary {
 				// The same regression covers ordinary packages: the assertion is
@@ -121,10 +168,15 @@ func TestCurrent(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, tc := range []struct {
+	cases := []struct {
 		mode      string
 		hit, fail bool
-	}{{"initial", false, false}, {"repeat", true, false}, {"oracle", true, true}, {"source", false, false}, {"support", false, false}, {"ordinary-initial", false, false}, {"ordinary-repeat", true, false}, {"ordinary-oracle", true, true}, {"ordinary-source", false, false}} {
+	}{{"initial", false, false}, {"repeat", true, false}, {"oracle", true, true}, {"trace", true, true}, {"source", false, false}, {"support", false, false}, {"ordinary-initial", false, false}, {"ordinary-repeat", true, false}, {"ordinary-oracle", true, true}, {"ordinary-source", false, false}, {"truncated", true, true}, {"trailing", true, true}, {"count", true, true}, {"length", true, true}}
+	for _, tc := range cases {
+		malformed := tc.mode == "truncated" || tc.mode == "trailing" || tc.mode == "count" || tc.mode == "length"
+		if malformed && !binaryFixture {
+			continue
+		}
 		if strings.HasPrefix(tc.mode, "ordinary-") != ordinary {
 			continue
 		}
@@ -137,7 +189,14 @@ func TestCurrent(t *testing.T) {
 		if !strings.Contains(string(output), fmt.Sprintf("packages=16 cache_hit=%t", tc.hit)) {
 			t.Fatalf("%s did not use expected bundle:\n%s", tc.mode, output)
 		}
-		if tc.fail && !strings.Contains(string(output), "want \"wrong\"") {
+		failure := "want \"wrong\""
+		if tc.mode == "trace" {
+			failure = "want [wrong-trace]"
+		}
+		if malformed {
+			failure = "oracle "
+		}
+		if tc.fail && !strings.Contains(string(output), failure) {
 			t.Fatalf("unexpected oracle failure: %s", output)
 		}
 	}

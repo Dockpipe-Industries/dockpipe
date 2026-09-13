@@ -1365,7 +1365,7 @@ func compileAndRunGeneratedGoFilesWithFixtures(t *testing.T, generated, generate
 	if queueGeneratedBatch(t, generated, generatedTest, fixtures) {
 		return
 	}
-	dir, err := os.MkdirTemp("/tmp", "pipelang-generated-go-")
+	dir, err := os.MkdirTemp("", "pipelang-generated-go-")
 	if err != nil {
 		t.Fatal(err)
 	}

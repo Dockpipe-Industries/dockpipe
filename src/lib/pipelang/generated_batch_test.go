@@ -221,7 +221,7 @@ func runGeneratedBatch(t *testing.T, cases []generatedBatchCase) {
 			t.Logf("generated_case_audit source=%x fixtures=%x tests=%q", sha256.Sum256(item.source), fixtureHash.Sum(nil), item.tests)
 		}
 	}
-	dir, err := os.MkdirTemp("/tmp", "pipelang-linked-go-")
+	dir, err := os.MkdirTemp("", "pipelang-linked-go-")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -399,7 +399,7 @@ func runGeneratedBatch(t *testing.T, cases []generatedBatchCase) {
 		name := fmt.Sprintf("case%04d", i)
 		// Runtime contents match the original isolated module; only executable
 		// construction is shared. Always write the current fixture data.
-		execution, err := os.MkdirTemp("/tmp", "pipelang-generated-go-")
+		execution, err := os.MkdirTemp("", "pipelang-generated-go-")
 		if err != nil {
 			t.Fatal(err)
 		}
