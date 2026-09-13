@@ -93,7 +93,7 @@ tasks:
     foundation_planning_state: completed
     topic: PipeLang deterministic self-hosting managed language foundation
     completed_language_contract: v0.113.0
-    active_objective: pipelang-go-v091-layout-fixtures-20260913
+    active_objective: pipelang-go-v089-layout-fixtures-20260913
     completed_language_objective: TASK-021-nominal-enums
     completed_planning_objective: TASK-021-foundation-specification-and-dependency-plan
     completed_verification_objective: TASK-021-resumable-verification-optimization
@@ -128,14 +128,16 @@ tasks:
     completed_go_v102_layout_fixtures_objective: pipelang-go-v102-layout-fixtures-20260913
     completed_go_v097_layout_fixtures_objective: pipelang-go-v097-layout-fixtures-20260913
     completed_go_v091_layout_fixtures_objective: pipelang-go-v091-layout-fixtures-20260913
+    completed_go_v089_layout_fixtures_objective: pipelang-go-v089-layout-fixtures-20260913
     go_v091_layout_fixtures: docs/agents/tasks/pipelang-reactive-application-language/go-v091-layout-fixtures.md
+    go_v089_layout_fixtures: docs/agents/tasks/pipelang-reactive-application-language/go-v089-layout-fixtures.md
     go_v097_layout_fixtures: docs/agents/tasks/pipelang-reactive-application-language/go-v097-layout-fixtures.md
     go_v102_layout_fixtures: docs/agents/tasks/pipelang-reactive-application-language/go-v102-layout-fixtures.md
     next_implementation_recommendation: null
     research_report: docs/research/pipelang-performance-compression.md
     objective_state: completed
     selected_option: broader_go_fixture_construction
-    selected_scope: v0.91 layout fixtures within existing limits
+    selected_scope: v0.89 layout fixtures within existing limits
     implementation_approval: approved
     planning_authority: explicit_user_request
     completed_language_implementation_approval: approved

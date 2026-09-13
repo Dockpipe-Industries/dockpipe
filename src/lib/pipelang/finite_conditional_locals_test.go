@@ -74,7 +74,7 @@ func testFiniteConditionalLocalsLayouts(t *testing.T, contract LanguageContract,
 	}
 	bundle := os.Getenv("PIPELANG_NATIVE_BUNDLE") == "1" && os.Getenv("PIPELANG_GENERATED_BATCH") == "1" && os.Getenv("PIPELANG_COMPILED_CACHE") != "" && os.Getenv("GOFLAGS") == "" && os.Getenv("GOENV") == "off"
 	// Shared-export consumers retain their existing JSON fixture contract.
-	binaryFixtures := bundle && nestedInitializer && os.Getenv("PIPELANG_SHARED_EXPORT") == ""
+	binaryFixtures := bundle && (nestedInitializer || contract == PipeLangLanguageContractV890) && os.Getenv("PIPELANG_SHARED_EXPORT") == ""
 	sharedReader := finiteSharedOracle
 	if binaryFixtures {
 		sharedReader = finiteBinaryOracle
@@ -239,7 +239,7 @@ func testFiniteConditionalLocalsLayouts(t *testing.T, contract LanguageContract,
 						if err != nil || !got.OK || got.Value.String != want {
 							t.Fatalf("%s mask %d: %#v %v want %q", sample.name, mask, got, err, want)
 						}
-						if nestedInitializer && os.Getenv("PIPELANG_BUNDLE_AUDIT") == "1" {
+						if (nestedInitializer || contract == PipeLangLanguageContractV890) && os.Getenv("PIPELANG_BUNDLE_AUDIT") == "1" {
 							flags := make([]bool, len(args)-1)
 							for bit, arg := range args[1:] {
 								flags[bit] = arg.Bool
@@ -249,8 +249,12 @@ func testFiniteConditionalLocalsLayouts(t *testing.T, contract LanguageContract,
 						oracle = append(oracle, finiteConditionalOracleCase{want, append([]string{}, trace...)})
 						shapeOutcomes++
 					}
-					if nestedInitializer && os.Getenv("PIPELANG_BUNDLE_AUDIT") == "1" {
-						t.Logf("v091_layout_oracle method=%s targets=%v unused=%t bits=%d vectors=%d sha256=%x", sample.name, sample.targets, sample.unused, len(sample.targets)+extraBits, len(oracle), oracleDigest.Sum(nil))
+					if (nestedInitializer || contract == PipeLangLanguageContractV890) && os.Getenv("PIPELANG_BUNDLE_AUDIT") == "1" {
+						family := "v091"
+						if contract == PipeLangLanguageContractV890 {
+							family = "v089"
+						}
+						t.Logf("%s_layout_oracle method=%s targets=%v unused=%t bits=%d vectors=%d sha256=%x", family, sample.name, sample.targets, sample.unused, len(sample.targets)+extraBits, len(oracle), oracleDigest.Sum(nil))
 					}
 					call := fmt.Sprintf("PipeLang%s(\"value\"", sample.name)
 					for bit := 0; bit < len(sample.targets)+extraBits; bit++ {
