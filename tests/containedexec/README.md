@@ -902,6 +902,12 @@ local assignments. Inherited v0.107 outer-arm tests mix at unselected positions.
 The memory family retains 36 groups and 648 cases; export `fixtures-v108` for
 fresh isolated compiler measurement with unchanged 128 MiB / 5-second ceilings.
 
+Eligible v0.108 layout native bundles use exact binary Value/Trace fixtures;
+ordinary execution retains JSON fallback. All vectors, source generation, current
+independent oracles, fresh native value/trace checks and owner/source/fixture limits
+remain unchanged. The [bounded construction result](../../docs/research/pipelang-go-v108-layout-fixtures.md)
+measures twelve owners; it is not full-family or full-language acceptance.
+
 The v0.109 combined selector-arm proof partitions all nine arm pairs and all
 statement shapes: `TestV1090TerminalCombinedSelectorArmsLayouts=1800`.
 Scaling spans 108 families (nine arm pairs, three depths, four initializer families).

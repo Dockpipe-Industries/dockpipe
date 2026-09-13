@@ -213,6 +213,13 @@ Three warm comparisons improved, while cold unit sums regressed. This preserves
 all sampled vectors, debug support and fresh execution; it does not close the
 remaining identity-count, full-family or retention questions.
 
+The subsequent [v0.108 inner-selector layout experiment](pipelang-go-v108-layout-fixtures.md)
+reduced its twelve-owner sample from 15 executables / 87,074,736 bytes to 12 /
+67,569,638 bytes (22.4004% fewer bytes). All matched cold/warm passes preserve
+81 layouts, 331,776 vectors and 162 fresh native executions. Mean warm unit time
+fell 23.1581%; all limits and debug support remain unchanged. This remains bounded
+sample evidence, with no full-family extrapolation or existing storage freed.
+
 The v0.113 profile contains 73,904,076,510 logical binary-reference bytes over
 70,973,989,613 distinct binary bytes: **1.0413 times** for one per-case reference pass.
 The recovery diagnostic's approximately 74.1 GB includes its own artifact scope;
