@@ -244,6 +244,17 @@ Mean warm unit time fell 19.0561%; all limits and debug support remain unchanged
 This remains bounded sample evidence; no full-family extrapolation or existing
 storage freed is claimed.
 
+The subsequent [v0.104 nested conditional-test layout experiment](pipelang-go-v104-layout-fixtures.md)
+completed after an authorized exact storage-accounting memory repair. The fresh
+sample reduced executable bytes from 108,652,252 to 78,459,054
+(27.7888%) and identities from 20 to 15; mean summed warm unit time fell
+25.9890%. All eight passes preserve 81 layouts, 663,552 vectors and 162 fresh
+native executions per pass. An exact in-memory SQLite metadata index and scoped
+coordinator memory reclamation retain every file, watch and accounting check under
+unchanged limits. Failed initial resource evidence
+remains preserved; fresh resource acceptance passes. This is bounded sample proof,
+with no full-family extrapolation or existing bytes freed.
+
 The v0.113 profile contains 73,904,076,510 logical binary-reference bytes over
 70,973,989,613 distinct binary bytes: **1.0413 times** for one per-case reference pass.
 The recovery diagnostic's approximately 74.1 GB includes its own artifact scope;

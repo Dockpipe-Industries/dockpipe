@@ -1,4 +1,5 @@
 import json
+import errno
 import os
 from pathlib import Path
 import tempfile
@@ -6,11 +7,133 @@ import threading
 import time
 import unittest
 from unittest.mock import patch
-from budget import DiskBudget
-from estate import CampaignBudget, SharedBudget, accepted_storage, canonical_roots, campaign_scope, storage_limit
+from budget import DiskBudget, _DirectoryEntries
+from estate import CampaignBudget, SharedBudget, accepted_storage, canonical_roots, campaign_scope, storage_limit, _CoordinatorReclaim
 
 
 class EstateTests(unittest.TestCase):
+    def test_coordinator_reclaim_is_scoped_and_keeps_existing_limits(self):
+        with tempfile.TemporaryDirectory() as raw:
+            group = Path(raw) / 'coordinator.service'; group.mkdir()
+            limits = {'memory.max': 512 << 20, 'memory.swap.max': 0, 'pids.max': 64}
+            for name, value in limits.items(): (group / name).write_text(str(value))
+            (group / 'memory.current').write_text(str(450 << 20))
+            write = Path.write_text
+            def reclaim(path, value, *args, **kwargs):
+                self.assertEqual(path, group / 'memory.reclaim')
+                write(group / 'memory.current', str(250 << 20))
+                return write(path, value, *args, **kwargs)
+            with patch.dict(os.environ, {'CONTAINED_JOB_UNIT': group.name}), \
+                 patch('estate.current_group', return_value=group), patch('estate.verify_job'):
+                owner = _CoordinatorReclaim()
+                with patch.object(Path, 'write_text', reclaim): owner.check()
+                self.assertEqual(owner.requests, 1)
+                self.assertEqual(int((group / 'memory.reclaim').read_text()), 194 << 20)
+                owner.check()
+                self.assertEqual(owner.requests, 1)
+                self.assertEqual({k:int((group/k).read_text()) for k in limits}, limits)
+                (group / 'memory.max').write_text(str(1 << 30))
+                with self.assertRaisesRegex(RuntimeError, 'containment'): _CoordinatorReclaim()
+            with patch.dict(os.environ, {'CONTAINED_JOB_UNIT': 'different.service'}), \
+                 patch('estate.current_group', return_value=group), \
+                 patch('estate.verify_job', side_effect=AssertionError('wrong group')):
+                owner = _CoordinatorReclaim(); owner.check()
+                self.assertEqual(owner.requests, 0)
+
+    def test_partial_reclaim_requires_read_back_and_other_failures_propagate(self):
+        with tempfile.TemporaryDirectory() as raw:
+            group = Path(raw) / 'coordinator.service'; group.mkdir()
+            for name, value in {'memory.max':512<<20,'memory.swap.max':0,'pids.max':64}.items():
+                (group/name).write_text(str(value))
+            (group/'memory.current').write_text(str(450<<20))
+            with patch.dict(os.environ, {'CONTAINED_JOB_UNIT':group.name}), \
+                 patch('estate.current_group', return_value=group), patch('estate.verify_job'):
+                owner = _CoordinatorReclaim()
+            with patch.object(Path, 'write_text', side_effect=BlockingIOError(errno.EAGAIN, 'partial')):
+                with self.assertRaisesRegex(RuntimeError, 'headroom'): owner.check()
+            with patch.object(Path, 'write_text', side_effect=PermissionError(errno.EACCES, 'denied')):
+                with self.assertRaises(PermissionError): owner.check()
+            write = Path.write_text
+            def partial(path, value):
+                write(group/'memory.current', str(300<<20))
+                raise BlockingIOError(errno.EAGAIN, 'partial')
+            with patch.object(Path, 'write_text', partial): owner.check()
+            self.assertEqual(int((group/'memory.max').read_text()), 512<<20)
+
+    def test_inventory_metadata_has_no_integer_or_identity_range_loss(self):
+        entries = _DirectoryEntries()
+        expected = {
+            '/one/file': (0, 0, None),
+            '/two/file': ((1 << 64) - 1, (1 << 64) - 1, None),
+            '/three/file': (1 << 64, 1 << 65, None),
+            '/four/file': (-1, -2, None),
+            '/five/file': (123, 4096, (1 << 64, 1 << 65)),
+            '/root-file': (42, 4096, None),
+            '/odd/\udcff': (8, 4096, None),
+            '/odd/quote\'";select': (9, 4096, None),
+        }
+        entries.update(expected)
+        self.assertEqual(dict(entries.items()), expected)
+        self.assertEqual(len(entries), len(expected))
+        for root in ('/', '/one', '/one/file', '/on', '/missing'):
+            self.assertEqual(sorted(entries.paths_under(root)), sorted(
+                p for p in expected if p.startswith(root + '/')))
+            self.assertCountEqual(entries.values_under(root), [
+                value for p, value in expected.items() if p.startswith(root + '/') or p == root])
+        for path, value in expected.items():
+            self.assertEqual(entries.pop(path), value)
+        self.assertEqual(len(entries), 0)
+        self.assertEqual(list(entries), [])
+
+    def test_incremental_inventory_matches_independent_walk_after_mutations(self):
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            # Identical basenames in distinct directories must remain separate.
+            for directory in ('left', 'right', 'left/nested'):
+                parent = root / directory; parent.mkdir(parents=True, exist_ok=True)
+                for i in range(40):
+                    (parent / str(i)).write_bytes(bytes([i]) * (i + 1))
+            os.link(root / 'left/0', root / 'right/shared')
+            (root / 'right/link').symlink_to(root / 'left/1')
+            with (root / 'right/sparse').open('wb') as stream:
+                stream.truncate(2 << 20)
+            budget = DiskBudget([root], root, 16 << 20, 0, lock_roots=[],
+                                allow_internal_links=True, record_population=False)
+            def compare():
+                logical, allocated, inodes = 0, 0, set()
+                for directory, _, files in os.walk(root):
+                    for name in files:
+                        info = (Path(directory) / name).lstat()
+                        logical += info.st_size
+                        identity = (info.st_dev, info.st_ino)
+                        if identity not in inodes:
+                            allocated += info.st_blocks * 512
+                            inodes.add(identity)
+                state = budget.check()
+                self.assertEqual(state['retained_bytes'], logical)
+                self.assertEqual(state['allocated_file_bytes'], allocated)
+                self.assertEqual(budget.root_bytes(root), logical)
+                self.assertEqual(budget.root_bytes(root / 'left'), sum(
+                    p.lstat().st_size for p in (root / 'left').rglob('*') if p.is_file()))
+            try:
+                compare()
+                (root / 'right/shared').write_bytes(b'x' * 8193)
+                compare()  # Updating either hardlink updates both logical sizes.
+                (root / 'left/nested').rename(root / 'right/moved')
+                compare()
+                (root / 'left/0').unlink()
+                (root / 'left/0').write_bytes(b'replacement inode')
+                compare()
+                for p in (root / 'right/moved').iterdir(): p.unlink()
+                (root / 'right/moved').rmdir()
+                # Localized directory cleanup must not rebuild every unrelated path.
+                with patch.object(type(budget.sizes), '__iter__', side_effect=AssertionError('global path scan')):
+                    compare()
+                (root / 'left/1').write_bytes(b'changed linked target')
+                (root / 'right/shared').unlink()
+                compare()
+            finally: budget.close()
+
     def test_scope_covers_all_stages_builds_external_stores_support_and_history(self):
         with tempfile.TemporaryDirectory() as raw:
             root = Path(raw)

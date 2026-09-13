@@ -23,7 +23,7 @@ dispatch:
 state:
   decision: accepted
   current_language_contract: v0.113.0
-  active_objective: pipelang-go-v105-layout-fixtures-20260913
+  active_objective: pipelang-go-v104-layout-fixtures-20260913
   completed_language_objective: TASK-021-nominal-enums
   completed_planning_objective: TASK-021-foundation-specification-and-dependency-plan
   completed_verification_objective: TASK-021-resumable-verification-optimization
@@ -51,11 +51,13 @@ state:
   go_v106_layout_fixtures: go-v106-layout-fixtures.md
   completed_go_v105_layout_fixtures_objective: pipelang-go-v105-layout-fixtures-20260913
   go_v105_layout_fixtures: go-v105-layout-fixtures.md
+  completed_go_v104_layout_fixtures_objective: pipelang-go-v104-layout-fixtures-20260913
+  go_v104_layout_fixtures: go-v104-layout-fixtures.md
   next_implementation_recommendation: null
   research_record: performance-compression-research.md
   objective_state: completed
   selected_option: broader_go_fixture_construction
-  selected_scope: v0.105 layout binary fixtures within existing limits
+  selected_scope: v0.104 layout fixtures and bounded storage-accounting memory repair within existing limits
   implementation_approval: approved
   planning_authority: explicit_user_request
   completed_language_implementation_approval: approved
@@ -77,11 +79,17 @@ state:
     footprint attribution and native pilot planning, completed in footprint-native-pilot-plan.md.
     The user subsequently approved package-input and inclusive-budget repair; numerical targets remain proposed.
     The user selected another bounded Go construction experiment in this receiving task.
-    go-v105-layout-fixtures.md owns the current v0.105 layout binary-fixture scope;
-    completed v0.106 proof was admitted through its clean handoff and bound acceptance digest.
+    go-v104-layout-fixtures.md owns the current v0.104 layout binary-fixture scope;
+    completed v0.105 proof was admitted through its clean handoff and bound acceptance digest.
+    The user then selected bounded storage-accounting memory repair and fresh acceptance.
     No commit, push, publication, worktree, cleanup or external service mutation is authorized.
 
 routes:
+  go_v104_layout_fixtures:
+    read:
+      - go-v104-layout-fixtures.md
+      - ../../../research/pipelang-go-v104-layout-fixtures.md
+      - ../../../runtime/pipelang-verification.md
   go_v105_layout_fixtures:
     read:
       - go-v105-layout-fixtures.md

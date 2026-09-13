@@ -854,6 +854,17 @@ Export `fixtures-v104`, then use `matrix.py` for fresh isolated compiler measure
 with unchanged normal inlining, execution GC and 128 MiB / 5-second ceilings.
 
 
+Eligible v0.104 layout native bundles use exact binary Value/Trace fixtures;
+thirteen-bit vector inputs, both assertions and ordinary JSON fallback remain.
+The [bounded result and accounting repair](../../docs/research/pipelang-go-v104-layout-fixtures.md)
+report fresh proof after coordinator memory pressure in the initial attempt.
+The storage inventory uses an exact in-memory SQLite metadata index and directory-scoped
+lookups. A verified job coordinator requests scoped memory reclamation at 384 MiB
+and refuses insufficient headroom, preserving its 512-MiB hard limit. Every file,
+logical/allocated total, hardlink, watch and storage policy remains accounted for.
+This experiment declares and fingerprints the existing SQLite runtime; no database
+file is created.
+
 The v0.105 depth-three terminal test matrix uses
 `--split-test TestV1050DepthThreeTerminalConditionalTestsLayouts=200` and
 `--split-test TestV1050DepthThreeTerminalConditionalTestsExpressionShapes=75`.
