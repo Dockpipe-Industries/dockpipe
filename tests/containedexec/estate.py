@@ -1,5 +1,6 @@
 """One preservation-first storage owner for a complete verification campaign."""
 import json
+import errno
 import os
 from pathlib import Path
 import signal
@@ -7,8 +8,53 @@ import threading
 import time
 from budget import DiskBudget
 from campaign import atomic_json
+from job import current_group, verify_job
 
 DEFAULT_LIMIT = 96 << 30
+
+
+class _CoordinatorReclaim:
+    """Release reclaimable charges inside the verified coordinator, never files."""
+    trigger = 384 << 20
+    target = 256 << 20
+
+    def __init__(self):
+        self.group = None
+        self.requests = self.requested_bytes = self.peak_before = 0
+        if not os.environ.get('CONTAINED_JOB_UNIT'):
+            return
+        group = current_group()
+        if group.name != os.environ['CONTAINED_JOB_UNIT']:
+            return  # Child test units have their own existing resource policy.
+        verify_job()
+        expected = {'memory.max': 512 << 20, 'memory.swap.max': 0, 'pids.max': 64}
+        if {name: int((group / name).read_text()) for name in expected} != expected:
+            raise RuntimeError('coordinator containment unavailable for inventory')
+        self.group = group
+
+    def check(self):
+        if self.group is None:
+            return
+        before = int((self.group / 'memory.current').read_text())
+        if before < self.trigger:
+            return
+        self.requests += 1
+        requested = before - self.target
+        self.requested_bytes += requested
+        self.peak_before = max(self.peak_before, before)
+        try:
+            (self.group / 'memory.reclaim').write_text(str(requested))
+        except OSError as error:
+            if error.errno != errno.EAGAIN:
+                raise
+            # Partial reclaim is permitted only if read-back proves headroom.
+        if int((self.group / 'memory.current').read_text()) >= self.trigger:
+            raise RuntimeError('inventory coordinator memory headroom exhausted')
+
+    def record(self):
+        return dict(enabled=self.group is not None, scope='verified coordinator only', trigger_bytes=self.trigger,
+                    target_bytes=self.target, requests=self.requests,
+                    requested_bytes=self.requested_bytes, peak_before_bytes=self.peak_before)
 
 
 def storage_limit(gib):
@@ -46,6 +92,7 @@ class CampaignBudget:
         self.path = self.output / 'storage-budget.json'
         self.stop = threading.Event()
         self.error = None
+        self.memory = _CoordinatorReclaim()
         self.on_failure = on_failure or (lambda: os.kill(os.getpid(), signal.SIGUSR1))
         scope = dict(version=1, roots=list(map(str, self.roots)), limit_bytes=limit,
                      reserve_bytes=reserve, scope='declared complete campaign estate',
@@ -60,7 +107,8 @@ class CampaignBudget:
             raise ValueError('population root outside estate')
         try:
             self.budget = DiskBudget(self.roots, self.output, limit, reserve,
-                                     lock_roots=population_roots, create_roots=False, allow_internal_links=True)
+                                     lock_roots=population_roots, create_roots=False, allow_internal_links=True,
+                                     memory_guard=self.memory.check)
         except BaseException as error:
             atomic_json(self.path, dict(status='refused', error=str(error), roots=scope['roots']))
             raise
@@ -72,7 +120,8 @@ class CampaignBudget:
     def publish(self):
         state = self.budget.check()
         state.update(owner_pid=os.getpid(), heartbeat_ns=time.monotonic_ns(), status='watching',
-                     roots=list(map(str, self.roots)), population_record=str(self.record))
+                     roots=list(map(str, self.roots)), population_record=str(self.record),
+                     coordinator_reclaim=self.memory.record())
         atomic_json(self.path, state)
         return state
 
@@ -147,8 +196,10 @@ def accepted_storage(output):
             or scope['limit_bytes'] > DEFAULT_LIMIT
             or max(receipt['sampled_logical_peak_bytes'], receipt['sampled_allocated_peak_bytes']) > scope['limit_bytes']):
         raise RuntimeError('complete campaign storage proof unavailable')
+    memory = _CoordinatorReclaim()
     budget = DiskBudget(roots, output, scope['limit_bytes'], scope['reserve_bytes'],
-                        lock_roots=[], create_roots=False, allow_internal_links=True, record_population=False)
+                        lock_roots=[], create_roots=False, allow_internal_links=True, record_population=False,
+                        memory_guard=memory.check)
     try:
         return dict(budget.check(), roots=scope['roots'], status='accepted',
                     campaign_sampled_logical_peak_bytes=receipt['sampled_logical_peak_bytes'],

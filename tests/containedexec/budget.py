@@ -1,5 +1,8 @@
 """Preservation-first disk accounting with bounded incremental updates."""
 import ctypes
+import json
+import sqlite3
+from collections.abc import MutableMapping
 import fcntl
 import os
 from pathlib import Path
@@ -10,8 +13,97 @@ import threading
 from campaign import atomic_json
 
 
+class _DirectoryEntries(MutableMapping):
+    """Exact, directory-indexed metadata in compact in-memory database pages."""
+    counters = struct.Struct('=QQ')
+
+    def __init__(self):
+        self.directories = {}
+        self.next_directory = 0
+        # DiskBudget serializes access with its mutex after initialization.
+        # This database never creates a file or escapes the owner's lifetime.
+        self.database = sqlite3.connect(':memory:', isolation_level=None, check_same_thread=False)
+        self.database.execute('CREATE TABLE entries (directory INTEGER, name BLOB, value BLOB, '
+                              'PRIMARY KEY (directory, name)) WITHOUT ROWID')
+
+    @classmethod
+    def encode(cls, value):
+        size, blocks, key = value
+        if key is None and 0 <= size < 1 << 64 and 0 <= blocks < 1 << 64:
+            return b'\0' + cls.counters.pack(size, blocks)
+        return b'\1' + json.dumps(value, separators=(',', ':')).encode('ascii')
+
+    @classmethod
+    def decode(cls, value):
+        if value[0] == 0:
+            size, blocks = cls.counters.unpack(value[1:])
+            return size, blocks, None
+        size, blocks, key = json.loads(value[1:])
+        return size, blocks, None if key is None else tuple(key)
+
+    def __getitem__(self, path):
+        directory, name = os.path.split(path)
+        row = self.database.execute('SELECT value FROM entries WHERE directory=? AND name=?',
+                                    (self.directories[directory], os.fsencode(name))).fetchone()
+        if row is None:
+            raise KeyError(path)
+        return self.decode(row[0])
+
+    def __setitem__(self, path, value):
+        directory, name = os.path.split(path)
+        if directory not in self.directories:
+            self.directories[directory] = self.next_directory
+            self.next_directory += 1
+        self.database.execute('INSERT OR REPLACE INTO entries VALUES (?, ?, ?)',
+                              (self.directories[directory], os.fsencode(name), self.encode(value)))
+
+    def __delitem__(self, path):
+        directory, name = os.path.split(path)
+        identity = self.directories[directory]
+        changed = self.database.execute('DELETE FROM entries WHERE directory=? AND name=?',
+                                        (identity, os.fsencode(name))).rowcount
+        if not changed:
+            raise KeyError(path)
+        if self.database.execute('SELECT 1 FROM entries WHERE directory=? LIMIT 1', (identity,)).fetchone() is None:
+            del self.directories[directory]
+
+    def __iter__(self):
+        for directory, identity in self.directories.items():
+            for (name,) in self.database.execute('SELECT name FROM entries WHERE directory=?', (identity,)):
+                yield os.path.join(directory, os.fsdecode(name))
+
+    def __len__(self):
+        return self.database.execute('SELECT count(*) FROM entries').fetchone()[0]
+
+    def close(self):
+        self.database.close()
+
+    def items(self):
+        for directory, identity in self.directories.items():
+            for name, value in self.database.execute('SELECT name, value FROM entries WHERE directory=?', (identity,)):
+                yield os.path.join(directory, os.fsdecode(name)), self.decode(value)
+
+    def paths_under(self, root):
+        prefix = root + '/'
+        for directory, identity in self.directories.items():
+            if (directory == root and root != os.sep) or directory.startswith(prefix):
+                for (name,) in self.database.execute('SELECT name FROM entries WHERE directory=?', (identity,)):
+                    yield os.path.join(directory, os.fsdecode(name))
+
+    def values_under(self, root):
+        exact = self.get(root)
+        if exact is not None:
+            yield exact
+        prefix = root + '/'
+        for directory, identity in self.directories.items():
+            if (directory == root and root != os.sep) or directory.startswith(prefix):
+                for (value,) in self.database.execute('SELECT value FROM entries WHERE directory=?', (identity,)):
+                    yield self.decode(value)
+
+
 class DiskBudget:
-    def __init__(self, roots, output, limit_bytes, reserve_bytes=8 << 30, *, lock_roots=None, create_roots=True, allow_internal_links=False, record_population=True):
+    def __init__(self, roots, output, limit_bytes, reserve_bytes=8 << 30, *, lock_roots=None, create_roots=True, allow_internal_links=False, record_population=True, memory_guard=None):
+        self.memory_guard = memory_guard or (lambda: None)
         self.roots = []
         for raw in sorted({Path(p).absolute() for p in roots if p is not None}):
             if raw != raw.resolve():
@@ -26,7 +118,7 @@ class DiskBudget:
         self.peak = self.allocated_peak = 0
         self.limit, self.reserve = limit_bytes, reserve_bytes
         self.mutex, self.locks = threading.Lock(), []
-        self.sizes, self.watches, self.used = {}, {}, 0
+        self.sizes, self.watches, self.used = _DirectoryEntries(), {}, 0
         self.libc = ctypes.CDLL(None, use_errno=True)
         self.fd = self.libc.inotify_init1(os.O_NONBLOCK | os.O_CLOEXEC)
         if self.fd < 0:
@@ -115,6 +207,7 @@ class DiskBudget:
 
     def scan(self, root):
         # Iterative scandir avoids pathlib.rglob's retained full-tree path set.
+        self.memory_guard()
         if not os.path.isdir(root):
             self.size(root)
             directory = str(Path(root).parent)
@@ -133,7 +226,9 @@ class DiskBudget:
                 raise RuntimeError('disk accounting watch lost')
             self.watches[wd] = directory
             with os.scandir(directory) as entries:
-                for entry in entries:
+                for index, entry in enumerate(entries):
+                    if index % 256 == 0:
+                        self.memory_guard()
                     if entry.is_dir(follow_symlinks=False):
                         pending.append(entry.path)
                     else:
@@ -141,12 +236,17 @@ class DiskBudget:
 
     def drain(self):
         while True:
+            self.memory_guard()
             try:
                 data = os.read(self.fd, 1 << 20)
             except BlockingIOError:
                 return
             offset = 0
+            events = 0
             while offset < len(data):
+                if events % 256 == 0:
+                    self.memory_guard()
+                events += 1
                 wd, mask, cookie, length = struct.unpack_from('iIII', data, offset)
                 name = os.fsdecode(data[offset + 16:offset + 16 + length].split(b'\0')[0])
                 offset += 16 + length
@@ -168,7 +268,7 @@ class DiskBudget:
                     if mask & (0x100 | 0x80) and os.path.isdir(path):
                         self.scan(path)
                     if mask & (0x200 | 0x40):
-                        for prior in [p for p in self.sizes if p.startswith(path + '/')]:
+                        for prior in list(self.sizes.paths_under(path)):
                             self.forget(prior)
                 else:
                     self.size(path)
@@ -198,9 +298,8 @@ class DiskBudget:
                         policy='all objects and campaign references pinned; no deletion')
 
     def root_bytes(self, root):
-        prefix = str(root) + '/'
         with self.mutex:
-            return sum(entry[0] for path, entry in self.sizes.items() if path.startswith(prefix) or path == str(root))
+            return sum(entry[0] for entry in self.sizes.values_under(str(root)))
 
     def close(self):
         for lock in self.locks:
@@ -208,3 +307,4 @@ class DiskBudget:
         if self.fd >= 0:
             os.close(self.fd)
             self.fd = -1
+        self.sizes.close()
