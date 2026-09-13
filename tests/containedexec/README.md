@@ -879,6 +879,13 @@ families cross three depths and four initializer operand families with used/unus
 locals and 0/1/8/16/24/32/64/128/256 preceding bindings, exporting 216 fixtures to
 `fixtures-v106`. Keep normal inlining and the 128 MiB / 5-second compiler ceilings.
 
+Eligible v0.106 layout native bundles use exact binary Value/Trace fixtures with
+the shared reader; inputs are reconstructed from the same eleven-bit vector index.
+Ordinary execution retains JSON fixtures. Current expected values/traces, both
+native assertions and every source/evaluator check remain fresh. The
+[bounded construction result](../../docs/research/pipelang-go-v106-layout-fixtures.md)
+reports sample coverage, timing and retained storage separately.
+
 The v0.107 terminal selector value-arm matrix uses
 `TestV1070TerminalSelectorValueArmsLayouts=600` disjoint partitions over 25 statement
 shapes, 722 condition-position subsets and three arm families (true, false, both).

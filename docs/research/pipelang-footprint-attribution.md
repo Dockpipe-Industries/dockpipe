@@ -228,6 +228,14 @@ Mean warm unit time fell 18.7663%; all limits and debug support remain unchanged
 This is bounded sample evidence; no full-family extrapolation or existing storage
 freed is claimed.
 
+The subsequent [v0.106 Boolean-selector layout experiment](pipelang-go-v106-layout-fixtures.md)
+reduced its twelve-owner sample from 12 executables / 71,101,460 bytes to
+12 / 65,737,942 bytes (7.5435% fewer bytes). All eight matched passes
+preserve 81 layouts, 165,888 vectors and 162 fresh native executions per pass.
+Mean warm unit time fell 14.0429%; all limits and debug support remain unchanged.
+This remains bounded sample evidence; no full-family extrapolation or existing
+storage freed is claimed.
+
 The v0.113 profile contains 73,904,076,510 logical binary-reference bytes over
 70,973,989,613 distinct binary bytes: **1.0413 times** for one per-case reference pass.
 The recovery diagnostic's approximately 74.1 GB includes its own artifact scope;
