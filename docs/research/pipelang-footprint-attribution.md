@@ -207,6 +207,12 @@ reduced its twelve-owner sample from 18 binaries / 100,032,017 bytes to 12 /
 66,181,484 bytes under unchanged lifetime/source limits. This is bounded sample
 evidence; the remaining families and retention problem remain separate work.
 
+The later [v0.109 layout fixture experiment](pipelang-go-v109-layout-fixtures.md)
+reduced its twelve-owner executable sample by 8.3902%, keeping 13 identities.
+Three warm comparisons improved, while cold unit sums regressed. This preserves
+all sampled vectors, debug support and fresh execution; it does not close the
+remaining identity-count, full-family or retention questions.
+
 The v0.113 profile contains 73,904,076,510 logical binary-reference bytes over
 70,973,989,613 distinct binary bytes: **1.0413 times** for one per-case reference pass.
 The recovery diagnostic's approximately 74.1 GB includes its own artifact scope;

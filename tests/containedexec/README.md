@@ -725,8 +725,13 @@ Scope-layout audit mode also records ordered input/value/trace digests. The
 reduced twelve selected owners from 18 to 12 binaries under the unchanged
 512-KiB source threshold, preserving all generated package executions. It does
 not extrapolate full-family savings or change owning lifetimes.
-Independent tree models still produce the expected data on every run. Other
-families retain their existing inline assertions. Neither path caches outcomes.
+The v0.109 layout family also uses the same exact binary reader in eligible
+native bundles, preserving all 4,096 vectors and both value/trace assertions.
+Input flags are reconstructed in the original bit order; JSON remains the ordinary
+fallback and independent-operands format. Its [bounded comparison](../../docs/research/pipelang-go-v109-layout-fixtures.md)
+reduced sampled executable bytes by 8.3902% with unchanged identity count.
+Independent tree models still produce the expected data on every run. Remaining
+families keep their existing fixture or inline-assertion construction. Neither path caches outcomes.
 Executable keys bind current generated source, checks, shared support, toolchain
 and settings; changed runtime fixtures run against cached binaries immediately.
 Debug information and per-case generated package namespaces are retained.
