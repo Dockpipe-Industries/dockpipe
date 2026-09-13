@@ -24,6 +24,13 @@ proposals, not accepted executable semantics. P01 nominal enums were subsequentl
 approved; the [completed objective](../agents/tasks/pipelang-reactive-application-language/nominal-enums.md)
 owns its concrete scope and accepted verification.
 
+The user-requested [native backend and footprint strategy](pipelang-native-backends.md)
+proposes retaining the Go compiler while adding C++, C and assembly/native output
+through Core IR. It includes explicit speed/storage regression gates and an artifact
+lifecycle investigation. This is a separate planning proposal; it adds no implemented
+backend, changes no active objective, and does not include new backends in the existing
+foundation delivery estimate.
+
 The inventory is based on source, existing tests and contract inspection, not a new verification
 run. In-progress code, parser recognition, internal IR representation, design fixtures and working
 Go runtime mechanisms do not by themselves establish a completed executable language feature.
