@@ -263,6 +263,15 @@ Mean summed warm unit time fell 15.8191%; exact accounting, limits and debug
 support remain unchanged. This is bounded sample proof, with no full-family
 extrapolation or existing bytes freed.
 
+The subsequent [v0.102 terminal initializer layout experiment](pipelang-go-v102-layout-fixtures.md)
+reduced its seventeen-owner sample from 17 executables / 86,490,892 bytes to
+17 / 79,056,096 (8.5960% fewer bytes). All eight matched passes
+preserve 52 layouts, 185,344 vectors and 104 fresh native executions per pass.
+Mean summed warm unit time fell 15.3104%; exact accounting, limits and debug
+support remain unchanged. The first candidate attempt caught and corrected input
+ordering before native execution; fresh stores own the accepted comparison.
+This is bounded sample proof, with no full-family extrapolation or existing bytes freed.
+
 The v0.113 profile contains 73,904,076,510 logical binary-reference bytes over
 70,973,989,613 distinct binary bytes: **1.0413 times** for one per-case reference pass.
 The recovery diagnostic's approximately 74.1 GB includes its own artifact scope;
