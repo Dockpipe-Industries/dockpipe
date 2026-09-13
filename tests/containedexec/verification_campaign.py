@@ -75,6 +75,25 @@ def reconcile(output, baseline, job_report):
     return result
 
 
+def scheduling_arguments(args):
+    if args.no_pair_scheduling:
+        return []
+    if args.schedule_profile:
+        return ['--schedule-profile', str(args.schedule_profile)]
+    saved = args.root / 'schedule-profile.json'
+    hint = saved if saved.exists() else args.baseline / 'suite/schedule-profile.json'
+    return ['--auto-schedule-profile', str(hint)]
+
+
+def publish_profile(suite, root):
+    """Save predictions only from a complete successful suite, atomically."""
+    summary = json.loads((suite / 'summary.json').read_text())
+    if (summary['partial_suite'] or summary['failed'] or not summary['source_unchanged']
+            or not summary['toolchain_unchanged'] or summary['reconciliation']['missing']):
+        raise RuntimeError('cannot publish profile from incomplete or changed suite')
+    atomic_json(root / 'schedule-profile.json', json.loads((suite / 'schedule-profile.json').read_text()))
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--root', type=Path, default=Path.home() / '.cache/pipelang-verification')
@@ -86,7 +105,9 @@ def main():
     parser.add_argument('--native-build-cache', type=Path)
     parser.add_argument('--baseline', type=Path, required=True)
     parser.add_argument('--mode', choices=['fresh', 'resume'], default='fresh')
-    parser.add_argument('--schedule-profile', type=Path)
+    scheduling = parser.add_mutually_exclusive_group()
+    scheduling.add_argument('--schedule-profile', type=Path, help='Require this matching profile instead of automatic hints')
+    scheduling.add_argument('--no-pair-scheduling', action='store_true', help='Use singleton scheduling for controlled comparisons')
     parser.add_argument('--disk-budget-gib', type=int, default=96)
     parser.add_argument('--accept-job', type=Path, help='Reconcile completed job without executing stages')
     args = parser.parse_args()
@@ -114,8 +135,7 @@ def main():
                 command += ['--go', str(args.go), '--compiled-cache', str(compiled), '--native-build-cache', str(native),
                             '--build-store', str(args.root / 'builds'), '--workers', '2', '--audit-generated',
                             '--disk-budget-gib', str(args.disk_budget_gib)]
-                if args.schedule_profile:
-                    command += ['--schedule-profile', str(args.schedule_profile)]
+                command += scheduling_arguments(args)
             elif name == 'matrix':
                 inventory = json.loads((output / 'suite/inventory.json').read_text())
                 paths=[]
@@ -139,6 +159,8 @@ def main():
             if rc:
                 print(json.dumps(dict(stage=name, status='failed', log=str(output / (name + '-coordinator.log')))))
                 return rc
+            if name == 'suite':
+                publish_profile(stage_output, args.root)
         guard.check()
         atomic_json(output / 'stages-complete.json', dict(status='stages_complete_pending_aggregate_cleanup', inputs=guard.check()))
         print(json.dumps(dict(status='stages_complete_pending_aggregate_cleanup', output=str(output))))

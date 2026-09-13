@@ -61,9 +61,22 @@ separate 4 GiB budget. No garbage collection is authorized or performed by the
 campaign controller.
 
 Each suite writes a reusable `schedule-profile.json` from actual warm singleton
-observations. The default schedule keeps singleton units. `--schedule-profile` admits only
-current-input, host, worker and policy matched warm measurements with verified
-executable digests: compatible numeric shapes may pair when their
+observations. Complete `verification_campaign.py` runs automatically try
+`ROOT/schedule-profile.json`, falling back to the baseline suite's profile when
+no saved profile exists. After a complete successful suite, the controller atomically
+saves its profile under the root. Missing, malformed or stale automatic hints use
+singletons; changed or missing executable objects exclude their affected cases.
+The first run after input changes therefore learns new singleton measurements.
+Paired runs carry forward only admitted singleton observations for successful cases,
+so repeated pairing never invents per-case timings from a group.
+
+`--no-pair-scheduling` on the complete driver forces singletons for comparisons.
+Standalone `pipelang_suite.py` keeps its singleton default; its optional
+`--auto-schedule-profile PATH` uses the same fallback. Both drivers accept a strict
+`--schedule-profile PATH` override that fails for missing, malformed or stale profiles.
+The suite records admission and planned group counts in `scheduling.json` and its summary.
+Only current-input, host, worker and policy matched warm measurements with verified
+executable digests are admitted: compatible numeric shapes may pair when their
 predicted total is below 10 seconds with memory headroom. Unknown/heavy shapes,
 memory families and special harnesses stay separate. A failed group retries as
 linked singleton attempts under unchanged deadlines. Parallel shapes remain off.

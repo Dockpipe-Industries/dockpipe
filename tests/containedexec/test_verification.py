@@ -33,7 +33,7 @@ class VerificationTests(unittest.TestCase):
             binary = root / key / 'program.test'; binary.write_bytes(b'verified')
             value = file_identity(binary)['sha256']
             (root / key / 'record.json').write_text(json.dumps(dict(Version='pipelang-native-validation-v2', Key=key, BinarySHA256=value)))
-            profile = dict(identity={'host': 'current', 'workers': 2}, cases={'TestLayout/0': dict(warm=True, artifacts={key:value})})
+            profile = dict(identity={'host': 'current', 'workers': 2}, cases={'TestLayout/0': dict(warm=True, elapsed_s=.8, peak_bytes=80 << 20, artifacts={key:value})})
             self.assertTrue(warm_profile(profile, profile['identity'], root))
             self.assertFalse(warm_profile(profile, {'host':'changed', 'workers':2}, root))
             self.assertFalse(warm_profile(profile, {'host':'current', 'workers':1}, root))
