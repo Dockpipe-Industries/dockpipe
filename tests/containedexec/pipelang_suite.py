@@ -362,8 +362,9 @@ def main():
     execution_started = time.monotonic()
     rows = []
     seen_receipts = set()
-    for case, receipt in stage.prior.items():
-        if receipt['id'] not in seen_receipts:
+    for case, reference in stage.prior.items():
+        if reference['id'] not in seen_receipts:
+            receipt = stage.resume(case)
             row = dict(receipt['result'], report=receipt['report'], resumed=True, receipt=receipt['id'])
             row['index'] = next(i for i, (names, _) in enumerate(jobs) if case in names)
             rows.append(row)

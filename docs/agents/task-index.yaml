@@ -94,7 +94,7 @@ tasks:
     next_implementation_recommendation: null
     topic: PipeLang deterministic self-hosting managed language foundation
     completed_language_contract: v0.113.0
-    active_objective: pipelang-performance-default-pairing-20260912
+    active_objective: pipelang-performance-resume-memory-20260913
     completed_language_objective: TASK-021-nominal-enums
     completed_planning_objective: TASK-021-foundation-specification-and-dependency-plan
     completed_verification_objective: TASK-021-resumable-verification-optimization
@@ -103,10 +103,11 @@ tasks:
     completed_identity_fixture_objective: pipelang-performance-identity-fixtures-20260912
     completed_pair_scheduling_objective: pipelang-performance-pair-scheduling-20260912
     completed_automatic_pair_scheduling_objective: pipelang-performance-default-pairing-20260912
+    completed_resume_memory_objective: pipelang-performance-resume-memory-20260913
     research_report: docs/research/pipelang-performance-compression.md
     objective_state: completed
-    selected_option: automatic_default
-    selected_scope: Make verified pair scheduling automatic for complete campaigns with conservative singleton fallback
+    selected_option: A
+    selected_scope: Bound large-campaign recovery memory while preserving receipt validation and ordered proof
     implementation_approval: approved
     completed_language_implementation_approval: approved
     completed_repair_objective: TASK-021-PipeLang-v0.80-milestone-repairs

@@ -23,7 +23,7 @@ dispatch:
 state:
   decision: accepted
   current_language_contract: v0.113.0
-  active_objective: pipelang-performance-default-pairing-20260912
+  active_objective: pipelang-performance-resume-memory-20260913
   completed_language_objective: TASK-021-nominal-enums
   completed_planning_objective: TASK-021-foundation-specification-and-dependency-plan
   completed_verification_objective: TASK-021-resumable-verification-optimization
@@ -32,10 +32,11 @@ state:
   completed_identity_fixture_objective: pipelang-performance-identity-fixtures-20260912
   completed_pair_scheduling_objective: pipelang-performance-pair-scheduling-20260912
   completed_automatic_pair_scheduling_objective: pipelang-performance-default-pairing-20260912
+  completed_resume_memory_objective: pipelang-performance-resume-memory-20260913
   research_record: performance-compression-research.md
   objective_state: completed
-  selected_option: automatic_default
-  selected_scope: Make verified pair scheduling automatic for complete campaigns with conservative singleton fallback
+  selected_option: A
+  selected_scope: Bound large-campaign recovery memory while preserving receipt validation and ordered proof
   implementation_approval: approved
   completed_language_implementation_approval: approved
   completed_repair_objective: TASK-021-PipeLang-v0.80-milestone-repairs
@@ -51,9 +52,15 @@ state:
     Founder selected A and approved the bounded pair-scheduling performance objective.
     That objective is completed. The user then requested automatic complete-campaign
     adoption; automatic-pair-scheduling.md owns the bounded implementation and proof.
+    The user subsequently selected A, bounded large-campaign resume; bounded-resume-memory.md
+    owns the completed recovery repair and unchanged proof limits. No successor is selected.
     No commit, push, publication, worktree, cleanup or external service mutation is authorized.
 
 routes:
+  bounded_resume_memory:
+    read:
+      - bounded-resume-memory.md
+      - pair-scheduling-performance.md
   automatic_pair_scheduling:
     read:
       - automatic-pair-scheduling.md
@@ -78,6 +85,7 @@ routes:
 
   conformance_performance:
     read:
+      - bounded-resume-memory.md
       - automatic-pair-scheduling.md
       - pair-scheduling-performance.md
       - conformance-verification-performance-round-2.md
@@ -267,6 +275,8 @@ documents:
     purpose: Approved v0.111.0 terminal-leaf selector result-arm scope and verification
   - path: straight-line-selector-value-arms.md
     purpose: Approved v0.110.0 straight-line selector result-arm scope and verification
+  - path: bounded-resume-memory.md
+    purpose: Completed bounded recovery-memory repair, retained-corpus and fresh resume proof
   - path: automatic-pair-scheduling.md
     purpose: Automatic complete-campaign profile selection, carry-forward and focused validation.
   - path: pair-scheduling-performance.md

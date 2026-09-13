@@ -4,12 +4,40 @@ import tempfile
 import unittest
 from budget import DiskBudget
 from scheduling import measured_plan, warm_profile
-from verification import completed_go_cases
-from campaign import file_identity, atomic_json, sealed
+from verification import StageRunner, completed_go_cases
+from campaign import Campaign, file_identity, atomic_json, sealed
+from test_campaign import report
+from unittest.mock import patch
 from reporting import attempt_costs
 
 
 class VerificationTests(unittest.TestCase):
+    def test_resumed_runner_returns_exact_result_without_dispatch(self):
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            artifact = root / 'artifact'; artifact.write_text('proof')
+            inputs = ['fixed']
+            with Campaign(root / 'campaign') as campaign:
+                stage = StageRunner(campaign, 'suite', 'source', ['one', 'two'], root / 'cache', lambda: inputs[0])
+                attempt = campaign.begin('suite', ['one', 'two'], 'fixed')
+                saved = campaign.finish(attempt, report(root), [artifact], 'fixed', ['one', 'two'], {'exit': 0, 'tests': ['one', 'two'], 'marker': 'exact'})
+            with Campaign(root / 'campaign', 'resume') as campaign:
+                stage = StageRunner(campaign, 'suite', 'source', ['one', 'two'], root / 'cache', lambda: inputs[0])
+                with patch('verification.subprocess.run', side_effect=AssertionError('unexpected dispatch')):
+                    row = stage.run(['one', 'two'], ['never'])
+                self.assertEqual(row, dict(saved['result'], report=saved['report'], resumed=True, receipt=saved['id']))
+                self.assertEqual(stage.finish()['reused'], 1)
+                inputs[0] = 'drift'
+                with self.assertRaisesRegex(RuntimeError, 'changed before reuse'):
+                    stage.resume('one')
+                inputs[0] = 'fixed'
+                with patch('verification.host_identity', return_value={'changed': True}):
+                    with self.assertRaisesRegex(RuntimeError, 'changed before reuse'):
+                        stage.resume('one')
+                artifact.write_text('corrupt')
+                with self.assertRaises(RuntimeError):
+                    stage.run(['one', 'two'], ['never'])
+
     def test_nested_memory_selectors_and_empty_results(self):
         with tempfile.TemporaryDirectory() as root:
             path = Path(root) / 'log'

@@ -415,13 +415,26 @@ receiver; a handoff does not require another implementation approval.
 Suite and final acceptance reconciliation retain compact case identity and
 supersession metadata after validating each complete sealed receipt, input identity,
 resource/cleanup evidence and artifact digest. They do not retain another full
-receipt payload set beside the suite report. Execution/resumption and fixture
-discovery still request full receipts. Large-campaign resumption is not currently
-bounded at the coordinator cap: the 2026-09-12 interrupted 4,707-group campaign
-OOM-killed during resume receipt loading. Recovery also retains full attempt state;
-the exact allocation site remains unmeasured. Preserve failed attempts and do not
-raise limits or claim compact final reconciliation proves safe large resumption. This representation change preserves
-acceptance checks and the fixed 512 MiB coordinator cap.
+receipt payload set beside the suite report. Recovery now retains only attempt
+IDs, sequence numbers and supersession chains for retry linkage. Stage execution
+indexes accepted receipts by compact references bound to their complete payload
+digests. On reuse, it reloads one receipt and rechecks its envelope, payload binding,
+current stage/input identity, resources, cleanup and every artifact. Host and live
+input guards are also checked before reuse. Changed evidence fails closed.
+
+Full attempts and receipts remain on disk in the existing schema; suite result
+rows retain their complete reports. Explicit full-receipt consumers, including
+fixture discovery, remain supported. Memory still includes case/reference metadata,
+result rows, the current decoded receipt and serialization buffers; this is not an
+unlimited-size or constant-memory JSON reader. The fixed 512 MiB coordinator cap
+and all proof requirements remain unchanged.
+
+The 2026-09-12 interrupted 4,707-group campaign OOM-killed while loading resume
+receipts. Its exact allocation site was not sampled at the time. The bounded
+[recovery objective](../agents/tasks/pipelang-reactive-application-language/bounded-resume-memory.md)
+records new allocation attribution, retained-corpus stress and fresh recovery
+validation separately from that historical failure. Keep original failed evidence;
+historical loader fixtures never substitute for current fresh semantic proof.
 
 The v0.111 acceptance run exposed the old duplicate-payload memory failure after
 all semantic units had passed. The repair and same-cap historical-receipt stress
@@ -463,7 +476,7 @@ versus 112.870 minutes for the accepted singleton control (8.215 minutes / 7.28%
 less). All 8,859 cases, 49,526 ordered audits/fresh native children, 2,922 compiler
 probes and integration/editor checks are preserved, with zero OOM/swap in the
 accepted run. The research record separately charges the interrupted run and
-failed OOM resume; it documents the unresolved large-resumption limitation above.
+failed OOM resume; the later recovery repair is described above.
 Following the user-requested adoption, complete campaigns now automatically use
 matching warm profiles, with singleton fallback and `--no-pair-scheduling` for
 controls. The controller atomically saves successful complete-suite profiles;
@@ -472,4 +485,4 @@ Standalone suites remain singleton by default. Profile admission, two workers,
 fresh execution and all limits remain unchanged. See the
 [implementation record](../agents/tasks/pipelang-reactive-application-language/automatic-pair-scheduling.md)
 and [runner usage](../../tests/containedexec/README.md) for validation and switches.
-The large-resume memory defect remains unresolved.
+The subsequent bounded recovery repair has its own objective and proof above.

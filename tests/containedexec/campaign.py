@@ -145,6 +145,12 @@ def resource_accepted(report):
         return False
 
 
+def attempt_history(state):
+    # Retry linkage only. Reports, artifact inventories and results stay on disk.
+    return dict(id=state['id'], sequence=state.get('sequence', 0),
+                supersedes=list(state.get('supersedes', [])))
+
+
 class Campaign:
     def __init__(self, root, mode='fresh'):
         self.root = Path(root).absolute()
@@ -242,7 +248,7 @@ class Campaign:
             self.sequence = max(self.sequence, state.get('sequence', 0))
             history_key = (state['stage'], tuple(state['cases']))
             if self.history.get(history_key, {}).get('sequence', -1) < state.get('sequence', 0):
-                self.history[history_key] = state
+                self.history[history_key] = attempt_history(state)
             if state['state'] in ('planned', 'running'):
                 if state.get('job_group') and Path(state['job_group']).exists():
                     raise RuntimeError('previous campaign workload may still be live; wait for job cleanup')
@@ -274,7 +280,7 @@ class Campaign:
             self.write(directory / 'state.json', state)
             state['state'] = 'running'
             self.write(directory / 'state.json', state)
-            self.history[(stage, tuple(cases))] = state
+            self.history[(stage, tuple(cases))] = attempt_history(state)
             return state
 
     def finish(self, attempt, report, artifacts, inputs_after, complete_cases, result, accepted=True):
@@ -297,27 +303,45 @@ class Campaign:
             self.event('finished', id=state['id'], stage=state['stage'], state=state['state'])
             return state
 
-    def accepted(self, stage, inputs, selected=None, summary_only=False):
+    def _accepts(self, receipt, stage, inputs):
+        if (receipt['stage'] != stage or receipt['stage_key'] != self.current[stage]
+                or receipt['state'] != 'passed' or receipt['inputs'] != inputs
+                or receipt['inputs_after'] != inputs or receipt['complete_cases'] != receipt['cases']
+                or not resource_accepted(receipt['report']) or not receipt['artifacts']):
+            return False
+        if any(file_identity(p) != value for p, value in receipt['artifacts'].items()):
+            self.event('invalidated', id=receipt['id'], reason='artifact drift')
+            return False
+        return set(receipt['cases']) <= set(self.manifest['stages'][stage]['inventory'])
+
+    def read_accepted(self, reference, stage, inputs):
+        """Consume one admitted reference; changed evidence fails closed on reuse.
+
+        The reference is only an in-process index. Recheck its sealed payload,
+        admission conditions and every artifact before exposing the result.
+        """
+        receipt = read_sealed(reference['path'])
+        if digest(receipt) != reference['sha256'] or not self._accepts(receipt, stage, inputs):
+            raise RuntimeError('accepted receipt changed before reuse: ' + reference['id'])
+        return receipt
+
+    def accepted(self, stage, inputs, selected=None, summary_only=False, references_only=False):
+        if summary_only and references_only:
+            raise ValueError('choose summaries or receipt references')
         accepted = {}
         for path in sorted((self.root / 'receipts').glob('*.json')):
             try:
                 receipt = read_sealed(path)
                 if selected is not None and not set(receipt['cases']) & set(selected):
                     continue
-                if (receipt['stage'] != stage or receipt['stage_key'] != self.current[stage]
-                        or receipt['state'] != 'passed' or receipt['inputs'] != inputs
-                        or receipt['inputs_after'] != inputs or receipt['complete_cases'] != receipt['cases']
-                        or not resource_accepted(receipt['report']) or not receipt['artifacts']):
-                    continue
-                if any(file_identity(p) != value for p, value in receipt['artifacts'].items()):
-                    self.event('invalidated', id=receipt['id'], reason='artifact drift')
-                    continue
-                if not set(receipt['cases']) <= set(self.manifest['stages'][stage]['inventory']):
+                if not self._accepts(receipt, stage, inputs):
                     continue
                 # Reconciliation needs identity/precedence only. Validate the complete
                 # receipt and every artifact above before dropping its large payload.
                 retained = ({'id': receipt['id'], 'supersedes': receipt.get('supersedes', [])}
-                            if summary_only else receipt)
+                            if summary_only or references_only else receipt)
+                if references_only:
+                    retained.update(path=str(path), sha256=digest(receipt))
                 for case in receipt['cases']:
                     if case in accepted:
                         old = accepted[case]
