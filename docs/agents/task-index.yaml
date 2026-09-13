@@ -93,7 +93,8 @@ tasks:
     foundation_planning_state: completed
     topic: PipeLang deterministic self-hosting managed language foundation
     completed_language_contract: v0.113.0
-    active_objective: pipelang-toolchain-transcript-20260913
+    active_objective: null
+    completed_qt_boundary_foundation_objective: pipelang-qt-boundary-foundation-20260913
     completed_language_objective: TASK-021-nominal-enums
     completed_planning_objective: TASK-021-foundation-specification-and-dependency-plan
     completed_verification_objective: TASK-021-resumable-verification-optimization
@@ -140,9 +141,13 @@ tasks:
     toolchain_transcript: docs/agents/tasks/pipelang-reactive-application-language/toolchain-transcript.md
     completed_toolchain_transcript_objective: pipelang-toolchain-transcript-20260913
     toolchain_transcript_disposition: rejected_performance_consistency
+    qt_boundary_foundation: docs/agents/tasks/pipelang-reactive-application-language/qt-boundary-foundation.md
+    cpp_qt_pilot: docs/agents/tasks/pipelang-reactive-application-language/cpp-qt-pilot.md
+    completed_cpp_qt_pilot_objective: pipelang-cpp-qt-pilot-20260913
+    cpp_qt_pilot_disposition: retained_experimental_integration
     objective_state: completed
-    selected_option: sealed_toolchain_transcript
-    selected_scope: approved opt-in sealed transcript experiment
+    selected_option: qt_boundary_then_foundation
+    selected_scope: approved Qt boundary and bounded foundation continuation
     implementation_approval: approved
     planning_authority: explicit_user_request
     completed_language_implementation_approval: approved

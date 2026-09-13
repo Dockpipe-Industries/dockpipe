@@ -367,3 +367,12 @@ The approved [identity/fixture performance follow-up](../agents/tasks/pipelang-r
 is complete: bounded toolchain-buffer reuse is retained, streaming fixtures were
 rejected, and a fresh full campaign plus independent acceptance preserves all
 v0.113.0 proof. It selects no additional foundation or language capability.
+
+## Approved Qt boundary continuation
+
+The [Qt integration boundary](pipelang-qt-boundary.md) applies the completed pilot
+to owned conversion, typed outcome presentation and target-side lifetime/delivery.
+This is bounded adapter proof, not completion of P15/P16/P17/P20 or ratification of
+D1-D6. The approved continuation also repairs the recorded zero-argument record
+transport panic within existing contracts, advancing F01/F05/F14 correctness
+without selecting another P-number. Go v0.113.0 remains the accepted backend.

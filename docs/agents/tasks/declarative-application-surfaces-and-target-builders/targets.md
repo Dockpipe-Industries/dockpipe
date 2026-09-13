@@ -96,3 +96,10 @@ Do not settle command spelling here. `dockpipe compile` already means DockPipe p
   rendering or Site Compiler behavior.
 - `/home/jamie/source/dockpipe-cloud/docs/agents/tasks/unified-qt-surface.md` and its sibling proposal
   remain consumer evidence. They do not define main-repository contracts.
+
+### Bounded Qt integration foundation
+
+The [Qt boundary contract](../../../concepts/pipelang-qt-boundary.md) records the approved
+reference adapter for owned values, typed outcomes, QObject lifetime and queued delivery.
+It supplies downstream target obligations without implementing the Application IR
+generator, choosing Widgets versus Quick, or starting launcher migration.

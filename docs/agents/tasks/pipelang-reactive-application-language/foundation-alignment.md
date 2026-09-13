@@ -13,7 +13,14 @@ Read the [contract proposals](../../../concepts/pipelang-foundation-contracts.md
 and the [delivery plan](../../../concepts/pipelang-foundation-delivery.md) for the complete F01–F34
 ledger, dependency-sized slices, milestone choices and measured verification economics.
 
-## Dispatch boundary
+## Approved continuation (2026-09-13)
+
+[Qt boundary and foundation continuation](qt-boundary-foundation.md) owns the approved
+integration boundary followed by the recorded zero-argument frontend repair. This is
+existing-contract correctness work, not a new P-number selection or D1-D6 ratification.
+The continuation is completed; selecting a new capability remains a separate decision.
+
+## Historical dispatch boundary
 
 - Accepted executable baseline: v0.112.0; its proof remains complete and admitted.
 - Planning authority covered documentation and focused source/receipt inspection only.
