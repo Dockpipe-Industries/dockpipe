@@ -820,3 +820,65 @@ contained job took 192.349 seconds with no OOM/swap and complete cleanup. A prio
 external validator's overly strict constant-pair-count assertion cost 216.330
 seconds and is retained separately; the implementation did not change for that
 correction. No new full compiler campaign was claimed for the default wiring.
+
+## Bounded resume memory follow-up (2026-09-13)
+
+The user selected recovery-memory repair after automatic pairing completed. The
+[bounded objective](../agents/tasks/pipelang-reactive-application-language/bounded-resume-memory.md)
+owns the implementation and terminal proof. This targets the recorded large-resume
+OOM, without increasing resources or changing native execution.
+
+Recovery previously kept every decoded attempt, including artifact inventories
+and reports, then stage admission retained another full receipt set. It now keeps
+retry linkage and compact references bound to each admitted receipt's payload
+digest. Reuse reloads one receipt, revalidates its envelope and payload binding,
+checks current host/input identity, and verifies every artifact and resource/cleanup
+condition again. Full on-disk evidence and result-row formats are unchanged.
+
+A frozen 512-attempt sample from the interrupted campaign admitted the same 510
+suite groups / 795 logical cases with identical result rows in control and candidate.
+Sequential `tracemalloc` measurements show:
+
+| Diagnostic phase | Control retained heap | Candidate retained heap |
+| --- | ---: | ---: |
+| After attempt recovery | 14.30 MiB | 1.33 MiB |
+| After receipt admission | 28.17 MiB | 2.37 MiB |
+| After result-row assembly | 28.89 MiB | 10.17 MiB |
+
+At admission, the control's leading allocation site was the Python JSON decoder
+(27.3 MiB). This is new sampled allocation evidence, not a retrospective stack
+trace of the original OOM. Instrumentation affects memory/timing; these numbers
+are not a whole-campaign speedup. Cgroup memory also charges reclaimable file-cache
+pages while hashing artifacts, so its peak must not be equated with retained heap.
+The extra read and validation at consumption is a deliberate integrity cost.
+The instrumented sample took 62.273 seconds candidate versus 48.421 seconds
+control; this sequential diagnostic comparison is not a general timing estimate.
+Each admission of the full paired suite hashes approximately 74.1 GB of logical
+artifact bytes, including repeated references. No cross-receipt artifact-digest
+cache or immutable toolchain reuse was introduced to avoid that work.
+
+Evidence is retained under
+`/home/jamie/.codex/visualizations/2026/09/13/01a0988e-e86c-7e80-a485-9b336144d955/resume-memory`.
+`memory-comparison.json` owns the matched diagnostic sample. Historical receipt
+corpora are copied into private validation roots and their source identities are
+rechecked; their recorded inputs are loader fixtures, never current semantic proof.
+Original receipts, fixtures and caches remain protected; no bytes were freed.
+
+Terminal recovery proof passed. The complete paired corpus (5,687 groups / 8,859
+cases) completed loading, result serialization and reconciliation at **197.3 MiB
+process peak RSS**; the retained interrupted corpus (4,709 admitted groups / 7,276
+cases at this validation snapshot) peaked at **167.3 MiB**. Both ran
+under the unchanged 512 MiB coordinator cap, with no OOM/swap and complete tree
+removal. Their jobs took 692.242 and 574.628 seconds including copying and proof;
+these are loader checks, not fresh compiler campaigns. An independent comparison
+matches all full-corpus result rows after removing only resume markers and
+scheduling indexes. All original corpus identities remain unchanged.
+
+The 42 focused harness regressions and three live containment probes passed.
+A fresh 48-case control and a separate interrupted/resumed paired run match the
+exact 294 ordered audits/native children. The latter preserves 12 committed groups
+and executes the remaining 18 after coordinator recovery, with no missing cases
+or changed completed artifacts. The intentional exit-19 job is retained separately;
+all validation job trees are removed. `final-validation.json` and
+`validation-result.json` own terminal proof. No new full semantic/matrix/integration/
+editor campaign was run, and no uninterrupted campaign speedup is claimed.

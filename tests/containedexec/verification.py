@@ -72,14 +72,19 @@ class StageRunner:
         self.host = host_identity()
         self.before = inputs()
         self.key = campaign.register(stage, identity, cases, parents)
-        self.prior = campaign.accepted(stage, self.before)
+        self.prior = campaign.accepted(stage, self.before, references_only=True)
         self.reused = 0
         self.executed = 0
+
+    def resume(self, case):
+        if self.input_fn() != self.before or host_identity() != self.host:
+            raise RuntimeError('stage inputs or host policy changed before reuse')
+        return self.campaign.read_accepted(self.prior[case], self.stage, self.before)
 
     def run(self, cases, command, cwd=ROOT, high=700, go_cases=False, accept=lambda report: True,
             artifacts=lambda directory: [], retry_of=None):
         if all(case in self.prior for case in cases):
-            receipt = self.prior[cases[0]]
+            receipt = self.resume(cases[0])
             if receipt['cases'] == cases:
                 self.reused += 1
                 return dict(receipt['result'], report=receipt['report'], resumed=True, receipt=receipt['id'])

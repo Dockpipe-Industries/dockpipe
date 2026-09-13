@@ -78,3 +78,6 @@ created and retained. No commit, push, publication, cleanup, credentials, machin
 change, worktree, delegation or successor occurred. The subsequent user-requested adoption is tracked separately in
 [automatic pair scheduling](automatic-pair-scheduling.md).
 Streaming remains deferred/open for a materially different consumer mechanism.
+The later user-selected recovery repair is tracked separately in
+[bounded resume memory](bounded-resume-memory.md); it does not replace this
+objective's historical fresh scheduler proof or failed-attempt accounting.

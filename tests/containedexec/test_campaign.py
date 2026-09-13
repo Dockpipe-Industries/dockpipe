@@ -70,6 +70,79 @@ class CampaignTests(unittest.TestCase):
             for compact in (False, True):
                 self.assertEqual(c.accepted('suite', 'inputs-v1', summary_only=compact)['case/a']['id'], 'independent-proof')
 
+    def test_resume_references_preserve_precedence_and_revalidate_payloads(self):
+        with Campaign(self.path) as c:
+            self.register(c)
+            first = self.pass_case(c)
+            latest = self.pass_case(c, result={'exit': 0, 'large': 'x' * 100000})
+            refs = c.accepted('suite', 'inputs-v1', references_only=True)
+            self.assertEqual(refs['case/a']['id'], latest['id'])
+            self.assertEqual(c.read_accepted(refs['case/a'], 'suite', 'inputs-v1'), latest)
+            # Even a newly sealed, otherwise valid replacement cannot change an
+            # already admitted result. The in-process reference binds its payload.
+            path = self.path / 'receipts' / (latest['id'] + '.json')
+            c.write(path, dict(latest, result={'exit': 0, 'changed': True}))
+            with self.assertRaisesRegex(RuntimeError, 'changed before reuse'):
+                c.read_accepted(refs['case/a'], 'suite', 'inputs-v1')
+            c.write(path, latest)
+            self.artifact.write_bytes(b'changed')
+            with self.assertRaisesRegex(RuntimeError, 'changed before reuse'):
+                c.read_accepted(refs['case/a'], 'suite', 'inputs-v1')
+            self.assertFalse(c.accepted('suite', 'inputs-v1', references_only=True))
+            self.assertIn(first['id'], latest['supersedes'])
+
+    def test_reference_admission_rejects_overlap_corruption_and_invalidation(self):
+        with Campaign(self.path) as c:
+            self.register(c)
+            receipt = self.pass_case(c)
+            duplicate = dict(receipt, id='unrelated')
+            path = self.path / 'receipts/unrelated.json'
+            c.write(path, duplicate)
+            with self.assertRaisesRegex(RuntimeError, 'overlapping successful proofs'):
+                c.accepted('suite', 'inputs-v1', references_only=True)
+            path.write_text('{')
+            refs = c.accepted('suite', 'inputs-v1', references_only=True)
+            self.assertEqual(set(refs), {'case/a'})
+            c.register('suite', 'changed-source', ['case/a', 'case/b'])
+            self.assertFalse(c.accepted('suite', 'inputs-v1', references_only=True))
+            with self.assertRaises(RuntimeError):
+                c.read_accepted(refs['case/a'], 'suite', 'inputs-v1')
+
+    def test_recovery_retention_does_not_scale_with_receipt_payloads(self):
+        import tracemalloc
+        with Campaign(self.path) as c:
+            cases = ['case/' + str(n) for n in range(32)]
+            c.register('suite', 'source-v1', cases)
+            for case in cases:
+                self.pass_case(c, case, result={'exit': 0, 'opaque': 'x' * (256 << 10)})
+        tracemalloc.start()
+        try:
+            with Campaign(self.path, 'resume') as c:
+                c.register('suite', 'source-v1', cases)
+                refs = c.accepted('suite', 'inputs-v1', references_only=True)
+                retained, _ = tracemalloc.get_traced_memory()
+                # On-disk results alone total 8 MiB. This leaves ample allocator
+                # margin but rejects retaining either set of those payloads.
+                self.assertLess(retained, 2 << 20)
+                self.assertEqual(len(refs), 32)
+                for case in cases:
+                    self.assertEqual(len(c.read_accepted(refs[case], 'suite', 'inputs-v1')['result']['opaque']), 256 << 10)
+        finally:
+            tracemalloc.stop()
+
+    def test_recovered_history_keeps_latest_retry_chain_across_restarts(self):
+        with Campaign(self.path) as c:
+            self.register(c)
+            first = self.pass_case(c)
+            second = self.pass_case(c)
+        with Campaign(self.path, 'resume') as c:
+            self.register(c)
+            third = self.pass_case(c)
+            self.assertEqual(third['retry_of'], second['id'])
+            self.assertEqual(third['supersedes'], [first['id'], second['id']])
+            self.assertEqual(third['sequence'], second['sequence'] + 1)
+            self.assertEqual(c.accepted('suite', 'inputs-v1', references_only=True)['case/a']['id'], third['id'])
+
     def test_crash_publication_windows(self):
         for phase in ('written', 'synced', 'renamed', 'committed'):
             with self.subTest(phase=phase):

@@ -69,4 +69,5 @@ production engine or package behavior changed; generic boundaries are preserved.
 Generated reports, fixtures and retained build support stay in the external evidence
 and existing cache roots. Nothing was deleted. Work remains uncommitted on the saved
 checkout; no push, publication, worktree, delegation or further objective occurred.
-The large-resume memory defect remains unresolved.
+The large-resume memory defect was unresolved at this checkpoint. Its subsequent
+user-selected repair is tracked in [bounded resume memory](bounded-resume-memory.md).

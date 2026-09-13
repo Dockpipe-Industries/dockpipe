@@ -23,6 +23,14 @@ build objects may still be reused. Resumption validates every required retained
 artifact and current dependency before admitting a completed receipt. Old receipts
 without the versioned campaign schema remain baseline evidence only.
 
+Recovery keeps compact retry history and payload-bound receipt references in
+memory. Every receipt and artifact is validated during admission; each reused
+receipt is reloaded and validated again, with current input/host checks, before
+its result is returned. Full reports and artifact inventories stay on disk until
+needed. Existing result rows and on-disk schemas are unchanged. The coordinator
+still has a 512 MiB cap; result aggregation and a single decoded receipt must also
+fit. See [recovery memory and proof](../../docs/runtime/pipelang-verification.md#receipt-reconciliation-memory).
+
 After the stage job exits, run the same driver with `--accept-job /absolute/proof/job.json`
 inside a new small `job.py` invocation. This independently reconciles atomic receipts,
 baseline inventory, compiler ceilings, integration/editor checks and the completed
