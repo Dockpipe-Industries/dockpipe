@@ -19,7 +19,7 @@ import time
 from job import verify_job
 from budget import DiskBudget
 from reporting import summarize
-from scheduling import measured_plan, warm_profile, observed_profile
+from scheduling import measured_plan, load_profile, observed_profile
 from campaign import Campaign, BuildStore, InputGuard, atomic_json, digest, fingerprint, host_identity
 from verification import StageRunner, POLICY, source_paths, toolchain_identity, dependency_guard
 
@@ -135,7 +135,9 @@ def main():
     parser.add_argument('--toolchain-read-buffer', action=argparse.BooleanOptionalAction, default=True, help='Reuse one 32-KiB toolchain hash buffer; disable for matched controls')
     parser.add_argument('--identity-profile', action='store_true', help='Opt-in exclusive identity attribution')
     parser.add_argument('--selection-file', type=Path, help='Explicit logical case sample; reports partial proof')
-    parser.add_argument('--schedule-profile', type=Path, help='Current-input warm singleton timings for conservative groups')
+    scheduling = parser.add_mutually_exclusive_group()
+    scheduling.add_argument('--schedule-profile', type=Path, help='Required current-input warm singleton timings for conservative groups')
+    scheduling.add_argument('--auto-schedule-profile', type=Path, help='Optional warm timings; missing or stale hints fall back to singletons')
     parser.add_argument('--disk-budget-gib', type=int, default=96)
     parser.add_argument('--build-store', type=Path, help='Persistent verified test-binary store (default sibling builds)')
     parser.add_argument('--native-build-cache', type=Path, help='Persistent native Go build cache (default per-output cache)')
@@ -242,14 +244,20 @@ def main():
     scheduling_identity = dict(inputs=source_before, host=identity['host'], policy=POLICY,
                                workers=args.workers, native_bundle=args.native_bundle,
                                representation=args.native_representation, toolchain_read_buffer=args.toolchain_read_buffer, identity_profile=args.identity_profile)
-    if args.schedule_profile:
+    admitted_profile = {}
+    schedule = dict(mode='singleton', status='disabled', admitted_cases=0)
+    profile_path = args.schedule_profile or args.auto_schedule_profile
+    if profile_path:
         if args.compiled_cache is None:
             parser.error('measured grouping requires retained executables')
-        profile = json.loads(args.schedule_profile.read_text())
-        admitted_profile = warm_profile(profile, scheduling_identity, args.compiled_cache)
-        if profile.get('identity') != scheduling_identity:
-            raise RuntimeError('schedule profile input/host/worker/policy drift')
+        admitted_profile, admission = load_profile(profile_path, scheduling_identity, args.compiled_cache,
+                                                   automatic=args.auto_schedule_profile is not None)
+        schedule = dict(mode='automatic' if args.auto_schedule_profile else 'explicit',
+                        profile=str(profile_path), admitted_cases=len(admitted_profile), **admission)
         jobs = measured_plan(jobs, admitted_profile)
+    schedule.update(pairs=sum(len(names) == 2 for names, _ in jobs),
+                    singletons=sum(len(names) == 1 for names, _ in jobs))
+    atomic_json(output / 'scheduling.json', schedule)
     atomic_json(output / 'inventory.json', dict(tests=tests, jobs=jobs))
     cases = [case for names, _ in jobs for case in names]
     stage = StageRunner(campaign, 'suite', identity, cases, args.cache, snapshot, parents=['discovery'])
@@ -405,9 +413,10 @@ def main():
         representation = Path(json.loads(representation_config.read_text())['root']) if args.native_representation else None
         inventory = artifact_inventory(args.compiled_cache, log_lines(), representation)
         (output / 'artifacts.json').write_text(json.dumps(inventory, indent=2) + '\n')
+    summary['scheduling'] = schedule
     campaign.serialized_bytes += atomic_json(output / 'timing.json', summarize(rows, time.monotonic() - execution_started, args.workers, campaign.root))
     if args.compiled_cache:
-        campaign.serialized_bytes += atomic_json(output / 'schedule-profile.json', observed_profile(rows, scheduling_identity, args.compiled_cache))
+        campaign.serialized_bytes += atomic_json(output / 'schedule-profile.json', observed_profile(rows, scheduling_identity, args.compiled_cache, inherited=admitted_profile))
     summary['disk_budget'] = budget.check(force=True)
     budget.close()
     summary['toolchain_unchanged'] = toolchain_identity(args.go) == toolchain

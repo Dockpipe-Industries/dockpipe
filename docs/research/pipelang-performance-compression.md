@@ -1,8 +1,10 @@
 # PipeLang performance and compression
 
-Execution follow-up completed: bounded toolchain-buffer reuse is retained, streaming
-fixtures are rejected, and complete fresh verification plus independent acceptance
-passed in 112.87 minutes. The approved implementation results are recorded below.
+Execution follow-ups retained toolchain-buffer reuse and measured pairing. The
+accepted warm pair campaign plus independent acceptance took 104.65 minutes,
+7.28% below its singleton control. Complete campaigns now select verified profiles
+automatically with singleton fallback. Results and adoption validation are below;
+the sampled streaming-fixture consumer was rejected.
 
 ## Recommendation
 
@@ -12,7 +14,7 @@ Keep ordinary native execution as the default. Previous complete compressed exec
 
 For broader compression research, favor an adaptive system that combines exact deduplication, bounded reference deltas, and structure-aware coding, with an ordinary raw fallback. There is no lossless algorithm that makes every possible input smaller. There is substantial room to exploit recurring structure across real workloads, provided reference data, decoding work, memory, and random-access costs are counted. A new contained screen of 128 verification records supports this distinction: 16-record compressed blocks were 88.2% smaller including their index, but slower to read than the original records.[^2]
 
-The recommended next implementation target is **instrumented, safely amortized identity verification**, beginning with the existing measured-pair mechanism and finer phase attribution. Cross-process immutable identity reuse is a second, more demanding experiment. Compression should initially target inactive artifacts or immutable evidence archives; it should enter the execution path only after a matched end-to-end win.
+The original implementation priority was **instrumented, safely amortized identity verification**, including the existing measured-pair mechanism and finer phase attribution. The completed follow-ups below address buffer reuse and pairing. Cross-process immutable identity reuse remains an unselected, more demanding experiment. Compression should initially target inactive artifacts or immutable evidence archives; it should enter the execution path only after a matched end-to-end win.
 
 ## Current verification economics
 
@@ -712,3 +714,109 @@ potential pairs and 2,515 singletons under existing rules. This is eligibility,
 not a measured full paired speedup; a future invocation still verifies all profile
 and executable identities. The bounded objective is complete. No further roadmap
 work, automatic successor, commit, push or protected cleanup is selected.
+
+
+## Current-profile pair scheduling: accepted (2026-09-12)
+
+The [approved pair-scheduling round](../agents/tasks/pipelang-reactive-application-language/pair-scheduling-performance.md)
+validated the existing scheduler with retained toolchain read-buffer reuse. No
+scheduler, compiler or harness source changed during that comparison. Its initial
+disposition retained opt-in pairing for repeated complete warm campaigns with a
+verified singleton profile. The subsequent user-requested automatic adoption is
+recorded below; input, host, worker, policy and executable identities still gate pairing.
+Do not infer benefit for a changed-input first campaign or arbitrary small samples.
+
+Evidence root:
+`/home/jamie/.codex/visualizations/2026/09/12/01a09603-329e-74d1-a913-8619e5e68b64`.
+`frozen-design.json` and `selection.json` preserve the prior representative 48-case
+selection. Four balanced singleton/pair orders used a fresh sample-specific
+profile, including admission, preparation, execution and reconciliation costs.
+Warm means were **65.614 -> 60.350 seconds (8.02% lower wall)** and 8.89% lower
+cgroup CPU. Three contrasts improved (3.54%, 14.47%, 13.34%); one was effectively
+tied (-0.05%). All nine sample runs, including warm-up, preserved 294 exact ordered
+audits and fresh native children. Each paired sample used 18 pairs and 12 singletons.
+Thirteen existing harness/planner regressions passed.
+
+### Complete fresh result
+
+`verification-data/campaigns/terminal-fresh`, `terminal-fresh-job.json`,
+`terminal-accept-job.json` and `terminal-comparison.json` record the successful
+replacement fresh campaign and independent acceptance. The current full profile
+admitted **3,172 pairs and 2,515 singletons**, reducing 8,859 singleton groups to
+5,687 groups. All 8,859 logical cases executed fresh with zero reused groups.
+
+| Inclusive measured cost | Accepted singleton control | Fresh paired campaign |
+| --- | ---: | ---: |
+| Complete suite, including profile admission and reconciliation | 5,826.280 s | 5,321.131 s |
+| All-stage job | 6,543.042 s | 6,035.267 s |
+| Independent acceptance | 229.155 s | 244.030 s |
+| Job plus independent acceptance | **112.870 min** | **104.655 min** |
+| All-stage cgroup CPU, excluding outside supervisors | 12,598.712 s | 11,368.345 s |
+
+Observed complete savings were **8.215 minutes (7.28%)**; all-stage CPU was
+9.77% lower. Acceptance itself took 14.875 seconds longer and is included above.
+These are sequential warm runs with matching source/host/policy/cache identities,
+not randomized causal estimates or cold-cache evidence. The balanced sample is
+separate evidence; its percentages are not added to full-run savings.
+
+Independent acceptance preserved 871 functions, 8,859 logical cases, 2,922 fresh
+isolated compiler probes, nine integrations and the editor suite. All **49,526
+ordered source/fixture audits and fresh native children** match the singleton
+baseline exactly; all 39 frozen source postimages match. There were 16,375 verified
+native cache hits, zero misses, zero new native objects and exact equality of the
+retained native artifact inventory. The accepted job and independent acceptance
+removed their complete trees with zero OOM/swap. Shared peak was 1,538.137 MiB;
+compiler maxima were 88.887 MiB and 1.274 seconds, within unchanged limits. Reclaim
+and max events remain recorded. No resource cap, GC/inlining, toolchain, production
+language behavior or generic engine/package boundary changed.
+
+### Failed attempts, retained cost and recovery limitation
+
+The first terminal supervisor received SIGTERM/SIGINT after 4,426.897 seconds;
+available evidence does not identify the sender. It preserved 4,707 passing group
+receipts and removed the complete tree without OOM/swap. Resuming that campaign
+then OOM-killed the coordinator during receipt loading after 424.074 seconds
+(three recorded OOM kills); its tree was also removed. This is a real unresolved
+recovery defect. `Campaign.recover` retains full attempt state and `StageRunner`
+requests full accepted receipts; the exact allocation site was not sampled.
+Compact final reconciliation does not establish bounded large-campaign resumption.
+No memory increase or recovery redesign was performed. A replacement fresh campaign
+supplied the uninterrupted successful timing and proof above; failed receipts are
+retained and never counted as successful terminal proof.
+
+The focused aggregate job cost **9.545 minutes**, including a 67.856-second warm-up.
+Interrupted/failed jobs added **80.850 minutes** separately. Total contained job
+time for this round was **195.049 minutes**, including the successful proof;
+this excludes idle gaps, commentary and documentation work. A retained-support
+snapshot contains 163,725 task-root files, 2,921,673,264 logical bytes and
+3,402,457,088 uniquely allocated bytes (about 2.72/3.17 GiB), including experiment,
+failed-attempt and successful-campaign evidence, fixtures and build support.
+External unchanged caches and repository documentation are excluded from that
+snapshot. Original bytes freed remain **zero**; no cleanup is authorized.
+
+`final-performance-result.json` records the quantitative result and accounting.
+The bounded scheduling objective is complete. Large-resume memory repair remains
+a documented unselected follow-up. Streaming remains deferred/open for a materially
+different consumer mechanism; only the prior JSON prototype was rejected. No next
+performance/language objective, commit, push, publication or successor is selected.
+
+
+### Automatic complete-campaign adoption
+
+After the accepted comparison, the user requested outright implementation.
+Complete campaigns now select verified warm profiles automatically and learn
+fresh singleton timings when hints are absent or stale. Paired runs preserve
+admitted original singleton measurements for subsequent matching runs; every run
+revalidates inputs and executable digests. An explicit singleton override remains
+available. The [implementation record](../agents/tasks/pipelang-reactive-application-language/automatic-pair-scheduling.md)
+tracks focused validation of this orchestration change separately from the full
+comparison above. The measured 7.28% result applies to that historical warm
+comparison, not a new measurement of automatic startup or a cold first run.
+
+Adoption validation passed 22 regressions and three fresh 48-case executions
+(48 singletons; 18 pairs plus 12 singletons; 19 pairs plus 10 singletons). Each
+preserved the exact 294 ordered audits and fresh native children. The successful
+contained job took 192.349 seconds with no OOM/swap and complete cleanup. A prior
+external validator's overly strict constant-pair-count assertion cost 216.330
+seconds and is retained separately; the implementation did not change for that
+correction. No new full compiler campaign was claimed for the default wiring.

@@ -416,7 +416,11 @@ Suite and final acceptance reconciliation retain compact case identity and
 supersession metadata after validating each complete sealed receipt, input identity,
 resource/cleanup evidence and artifact digest. They do not retain another full
 receipt payload set beside the suite report. Execution/resumption and fixture
-discovery still request full receipts. This representation change preserves
+discovery still request full receipts. Large-campaign resumption is not currently
+bounded at the coordinator cap: the 2026-09-12 interrupted 4,707-group campaign
+OOM-killed during resume receipt loading. Recovery also retains full attempt state;
+the exact allocation site remains unmeasured. Preserve failed attempts and do not
+raise limits or claim compact final reconciliation proves safe large resumption. This representation change preserves
 acceptance checks and the fixed 512 MiB coordinator cap.
 
 The v0.111 acceptance run exposed the old duplicate-payload memory failure after
@@ -447,4 +451,25 @@ one complete fresh terminal plus independent acceptance took 112.87 minutes vers
 compiler cases, nine integrations, editor proof and 49,526 ordered audits/native
 children are preserved. Historical whole-run timing is not a causal buffer-only
 estimate. See the linked report for CPU, pressure, preparation and retained-cost
-limits. No new pairing default or further implementation objective is selected.
+limits. The subsequent pairing work is recorded below.
+
+
+## Current v0.113.0 pair comparison
+
+The [2026-09-12 measured round](../research/pipelang-performance-compression.md#current-profile-pair-scheduling-accepted-2026-09-12)
+validated the existing opt-in scheduler on the current full singleton profile.
+The fresh paired replacement plus independent acceptance took 104.655 minutes
+versus 112.870 minutes for the accepted singleton control (8.215 minutes / 7.28%
+less). All 8,859 cases, 49,526 ordered audits/fresh native children, 2,922 compiler
+probes and integration/editor checks are preserved, with zero OOM/swap in the
+accepted run. The research record separately charges the interrupted run and
+failed OOM resume; it documents the unresolved large-resumption limitation above.
+Following the user-requested adoption, complete campaigns now automatically use
+matching warm profiles, with singleton fallback and `--no-pair-scheduling` for
+controls. The controller atomically saves successful complete-suite profiles;
+paired runs retain verified original singleton observations for subsequent runs.
+Standalone suites remain singleton by default. Profile admission, two workers,
+fresh execution and all limits remain unchanged. See the
+[implementation record](../agents/tasks/pipelang-reactive-application-language/automatic-pair-scheduling.md)
+and [runner usage](../../tests/containedexec/README.md) for validation and switches.
+The large-resume memory defect remains unresolved.

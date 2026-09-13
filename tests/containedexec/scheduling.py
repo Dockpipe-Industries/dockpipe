@@ -1,5 +1,25 @@
 """Conservative measured grouping. Unknown, memory and special cases stay single."""
+import json
+import math
+from pathlib import Path
 import re
+
+
+def load_profile(path, identity, cache, *, automatic=False):
+    """Automatic hints may fall back; an explicit profile must match inputs."""
+    try:
+        profile = json.loads(Path(path).read_text())
+        if not isinstance(profile, dict) or not isinstance(profile.get('cases'), dict):
+            raise ValueError('invalid schedule profile')
+        if profile.get('identity') != identity:
+            raise ValueError('schedule profile input/host/worker/policy drift')
+    except (OSError, ValueError) as error:
+        if not automatic:
+            raise
+        return {}, dict(status='singleton_fallback', reason=str(error))
+    admitted = warm_profile(profile, identity, cache)
+    return admitted, dict(status='admitted' if admitted else 'singleton_fallback',
+                         reason='verified warm observations' if admitted else 'no verified warm observations')
 
 
 def measured_plan(jobs, profile, maximum=2):
@@ -32,38 +52,53 @@ def measured_plan(jobs, profile, maximum=2):
 
 def warm_profile(profile, identity, cache):
     """Admit measured predictions only with matching policy and verified objects."""
-    import json
-    from pathlib import Path
     from campaign import file_identity
     if profile.get('identity') != identity:
         return {}
     verified, result = {}, {}
     for case, measurement in profile.get('cases', {}).items():
+        if not isinstance(measurement, dict):
+            continue
+        if any(type(measurement.get(field)) not in (int, float)
+               or not math.isfinite(measurement[field]) or measurement[field] < 0
+               for field in ('elapsed_s', 'peak_bytes')):
+            continue
         keys = measurement.get('artifacts', {})
-        if not measurement.get('warm') or not keys:
+        if measurement.get('warm') is not True or not isinstance(keys, dict) or not keys:
             continue
         valid = True
         for key, expected in keys.items():
+            if not all(isinstance(value, str) and re.fullmatch('[a-f0-9]{64}', value)
+                       for value in (key, expected)):
+                valid = False
+                break
             if key not in verified:
                 try:
                     directory = Path(cache) / key
                     record = json.loads((directory / 'record.json').read_text())
-                    verified[key] = (record.get('Version') == 'pipelang-native-validation-v2' and record.get('Key') == key
-                                     and record.get('BinarySHA256') == expected
-                                     and file_identity(directory / 'program.test')['sha256'] == expected)
+                    actual = file_identity(directory / 'program.test')['sha256']
+                    verified[key] = actual if (isinstance(record, dict)
+                                              and record.get('Version') == 'pipelang-native-validation-v2'
+                                              and record.get('Key') == key
+                                              and record.get('BinarySHA256') == actual) else None
                 except (OSError, ValueError):
-                    verified[key] = False
-            valid = valid and verified[key]
+                    verified[key] = None
+            valid = valid and verified[key] == expected
         if valid:
             result[case] = measurement
     return result
 
 
-def observed_profile(rows, identity, cache):
+def observed_profile(rows, identity, cache, inherited=None):
     """Persist warm singleton observations; grouped/failed runs cannot invent them."""
     import json
     from pathlib import Path
-    cases = {}
+    successful = {case for row in rows if not row['exit'] for case in row['tests']}
+    failed = {case for row in rows if row['exit'] for case in row['tests']}
+    # These are already admitted singleton measurements, never timings inferred
+    # from a group or a resumed receipt. Retain only cases that succeeded here.
+    cases = {case: value for case, value in (inherited or {}).items()
+             if case in successful and case not in failed}
     for row in rows:
         if row['exit'] or len(row['tests']) != 1 or row.get('resumed'):
             continue
