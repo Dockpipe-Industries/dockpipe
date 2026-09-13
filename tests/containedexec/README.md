@@ -868,6 +868,13 @@ initializer families with used/unused locals and 0/1/8/16/24/32/64/128/256 bindi
 The suite exports `fixtures-v105` for fresh isolated `matrix.py` measurements.
 Existing normal inlining, execution GC, compiler ceilings and containment remain fixed.
 
+Eligible v0.105 layout native bundles use exact binary Value/Trace fixtures with
+the shared reader; inputs are reconstructed from the same thirteen-bit vector index.
+Ordinary execution retains JSON fixtures. Current expected values/traces, both
+native assertions and every source/evaluator check remain fresh. The
+[bounded construction result](../../docs/research/pipelang-go-v105-layout-fixtures.md)
+reports sample coverage, timing and retained storage separately.
+
 The v0.106 terminal boolean-selector placement matrix uses
 `TestV1060TerminalBooleanSelectorTestsLayouts=200` disjoint partitions over all 25
 statement shapes and 722 condition-position subsets. Each layout exhausts 2,048
