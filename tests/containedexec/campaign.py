@@ -372,7 +372,7 @@ class InputGuard:
     even if bytes were restored. A new process always rehashes all bytes. This is
     not a persistent stat/mtime digest cache. Linux is already required by run.py.
     """
-    def __init__(self, paths, settings=None):
+    def __init__(self, paths, settings=None, watch_directories=()):
         import ctypes
         self.paths = list(paths)
         self.mutex = threading.Lock()
@@ -382,7 +382,7 @@ class InputGuard:
         if self.fd < 0:
             raise OSError(ctypes.get_errno(), 'input watch unavailable')
         mask = 0x2 | 0x4 | 0x8 | 0x40 | 0x80 | 0x100 | 0x200 | 0x400 | 0x800
-        directories = set()
+        directories = set(map(Path, watch_directories))
         for raw in paths:
             path = Path(raw).absolute()
             if path.is_dir():

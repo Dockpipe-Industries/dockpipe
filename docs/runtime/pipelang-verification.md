@@ -4,6 +4,13 @@ For the subsequent v0.113.0 cost breakdown, compression research, and prioritize
 experiments, see [performance and compression research](../research/pipelang-performance-compression.md).
 That research does not change the implemented acceptance contract below.
 
+The [footprint attribution](../research/pipelang-footprint-attribution.md) identifies
+the former suite-only disk gaps. The approved [package-input/storage repair](../agents/tasks/pipelang-reactive-application-language/package-input-budget-repair.md)
+adds controller-owned inclusive accounting. The source default remains 96 GiB;
+historical 104/112-GiB invocation overrides are now refused. The proposed 16/32-GiB
+product budgets and feature-growth allocations remain unadopted. A passing capacity gate does not
+establish product-footprint acceptance or authority to increase a limit.
+
 Status: implemented and accepted, 2026-09-10; all five checkpoints complete.
 Objective: `TASK-021-resumable-verification-optimization`.
 The user requested full optimization of verification, an architectural plan, and
@@ -486,3 +493,57 @@ fresh execution and all limits remain unchanged. See the
 [implementation record](../agents/tasks/pipelang-reactive-application-language/automatic-pair-scheduling.md)
 and [runner usage](../../tests/containedexec/README.md) for validation and switches.
 The subsequent bounded recovery repair has its own objective and proof above.
+
+
+## Inclusive campaign storage admission
+
+`verification_campaign.py` owns one `CampaignBudget` before dependency discovery
+and until all stages and profile publication finish. The scope includes the whole
+selected durable root (all campaign generations, controller, suite, compiler
+matrix, integration/editor, test build store and scratch), external Go/executable/
+native caches, the prior baseline, exact source/embedded inputs, the pinned Go
+installation and Node/Python executables. Use repeated `--support-root` for installed
+module/dependency trees and `--preserved-root` for retained historical or research
+roots outside that union. Discovered dependencies outside the declared roots fail
+admission before stage execution. Unrelated machine storage is not an application
+input; never claim this named estate is a whole-machine census. Existing original
+package build output must be declared as preserved storage when attributing it.
+
+Roots must exist and be absolute and canonical. Parent/child roots collapse to a
+nonoverlapping union. Population roots remain exclusively locked across stages;
+source/support/preserved roots are read-only. A stored `storage-scope.json` binds
+the root set, cap and free-space reserve; changing these for an existing campaign
+is refused. `--disk-budget-gib` accepts only 1..96. A future increase requires a
+separate reviewed policy change, not an invocation override or free-space claim.
+The 16-GiB executable and 32-GiB active-estate product targets are still proposals.
+
+`run.py` places `GOTMPDIR`, `TMPDIR`, `TMP` and `TEMP` under the watched per-unit
+scratch directory, covering standard compiler and test temporary-file APIs.
+The controller monitors file metadata every 250 ms. It records logical bytes,
+inode-deduplicated allocated file bytes and sampled high-water values, charging
+both the existing estate and new outputs. Either byte total exceeding the cap,
+less than 8 GiB available, lost watches/overflow or disappearing declared roots
+stops the controller; aggregate containment then removes its processes. Files and
+failed receipts remain intact. Symlink entries are counted; an existing target
+must be inside the declared union. Dangling links have no target payload, but an
+external target appearing later is refused. Sockets/FIFOs are counted as metadata
+without reading them. Shared/reflink extents are not known unique physical usage.
+Directory metadata and filesystem overhead are not part of the file-byte metric.
+
+The suite uses only its live direct controller's storage record, with owner,
+heartbeat, root coverage and cap checks; it does not acquire competing cache locks
+or reset population reservations. Standalone suite runs retain a local gate, now
+installed before bootstrap and including test build, representation and export
+stores. A standalone suite result is not complete-campaign footprint acceptance.
+
+Independent acceptance requires a completed storage receipt matching the scope
+and re-inventories current metadata after aggregate cleanup without rewriting
+population credits. Root Go declarations and exact embedded file bytes are also
+part of semantic dependency identity; additions, edits or disappearance invalidate
+reuse. This does not rehash ignored compiler output as if it were authored source.
+
+The existing generated-executable population reservations remain conservative.
+They do not reserve every compiler/linker temporary allocation. Peaks are sampled,
+not a proof of exact simultaneous maximum: short-lived scratch and physical I/O
+remain explicit limits. Exact allocator-backed peak/growth reservations, absolute
+product budgets, historical retirement and native backend work are separate work.

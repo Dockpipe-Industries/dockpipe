@@ -81,17 +81,39 @@ class VerificationTests(unittest.TestCase):
             self.assertEqual(result['measured_workload_s'], {'failed':2.5})
             self.assertEqual(result['unknown_elapsed_attempts'], 1)
 
+    def test_exact_bundle_assets_and_new_root_declarations_invalidate_inputs(self):
+        from verification import bundle_paths
+        from campaign import InputGuard
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            asset = root / 'asset.txt'; asset.write_text('first')
+            declaration = root / 'embed.go'; declaration.write_text('//go:embed "asset.txt"\n')
+            with patch('verification.ROOT', root):
+                self.assertEqual(set(bundle_paths()), {asset, declaration})
+                guard = InputGuard(bundle_paths(), watch_directories=[root])
+                try:
+                    asset.write_text('other')
+                    with self.assertRaises(RuntimeError): guard.check()
+                finally: guard.close()
+                guard = InputGuard(bundle_paths(), watch_directories=[root])
+                try:
+                    (root / 'extra.go').write_text('package added')
+                    with self.assertRaises(RuntimeError): guard.check()
+                finally: guard.close()
+                declaration.write_text('//go:embed "*"\n')
+                with self.assertRaisesRegex(RuntimeError, 'exact regular'): bundle_paths()
+
     def test_incremental_disk_budget_counts_population_and_preserves_pins(self):
         with tempfile.TemporaryDirectory() as raw:
             root = Path(raw)
             cache = root / 'cache'; cache.mkdir()
             pinned = cache / 'pinned'; pinned.write_bytes(b'pinned')
-            budget = DiskBudget([cache], root, 100, 0)
+            budget = DiskBudget([cache], root, 64 << 10, 0)
             self.assertEqual(budget.check()['retained_bytes'], 6)
             (cache / 'new').mkdir()
             (cache / 'new/object').write_bytes(b'new object')
             self.assertEqual(budget.check()['retained_bytes'], 16)
-            (cache / 'new/object').write_bytes(b'X' * 101)
+            (cache / 'new/object').write_bytes(b'X' * (65 << 10))
             with self.assertRaisesRegex(RuntimeError, 'disk budget'):
                 budget.check()
             self.assertEqual(pinned.read_bytes(), b'pinned')

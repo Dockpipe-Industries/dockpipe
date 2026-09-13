@@ -1,5 +1,11 @@
 # PipeLang performance and compression
 
+The subsequent [footprint attribution and corrective plan](pipelang-footprint-attribution.md)
+reconciles storage scopes, traces 96/104/112-GiB budget settings, measures active
+artifact growth and identifies generated Tauri output embedded in integration
+binaries. Its budget and native-pilot proposals are planning only. The warm-run
+gains below do not establish low-footprint product acceptance.
+
 Execution follow-ups retained toolchain-buffer reuse and measured pairing. The
 accepted warm pair campaign plus independent acceptance took 104.65 minutes,
 7.28% below its singleton control. Complete campaigns now select verified profiles
