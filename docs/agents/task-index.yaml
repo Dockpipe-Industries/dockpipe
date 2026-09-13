@@ -93,7 +93,7 @@ tasks:
     foundation_planning_state: completed
     topic: PipeLang deterministic self-hosting managed language foundation
     completed_language_contract: v0.113.0
-    active_objective: pipelang-go-scope-fixtures-20260913
+    active_objective: pipelang-go-v109-layout-fixtures-20260913
     completed_language_objective: TASK-021-nominal-enums
     completed_planning_objective: TASK-021-foundation-specification-and-dependency-plan
     completed_verification_objective: TASK-021-resumable-verification-optimization
@@ -111,11 +111,13 @@ tasks:
     go_artifact_reduction: docs/agents/tasks/pipelang-reactive-application-language/go-artifact-reduction.md
     completed_go_scope_fixtures_objective: pipelang-go-scope-fixtures-20260913
     go_scope_fixtures: docs/agents/tasks/pipelang-reactive-application-language/go-scope-fixtures.md
+    completed_go_v109_layout_fixtures_objective: pipelang-go-v109-layout-fixtures-20260913
+    go_v109_layout_fixtures: docs/agents/tasks/pipelang-reactive-application-language/go-v109-layout-fixtures.md
     next_implementation_recommendation: null
     research_report: docs/research/pipelang-performance-compression.md
     objective_state: completed
     selected_option: broader_go_fixture_construction
-    selected_scope: v0.111 scope-layout compact fixtures within existing limits
+    selected_scope: v0.109 layout binary fixtures within existing limits
     implementation_approval: approved
     planning_authority: explicit_user_request
     completed_language_implementation_approval: approved

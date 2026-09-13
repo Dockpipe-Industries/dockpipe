@@ -23,7 +23,7 @@ dispatch:
 state:
   decision: accepted
   current_language_contract: v0.113.0
-  active_objective: pipelang-go-scope-fixtures-20260913
+  active_objective: pipelang-go-v109-layout-fixtures-20260913
   completed_language_objective: TASK-021-nominal-enums
   completed_planning_objective: TASK-021-foundation-specification-and-dependency-plan
   completed_verification_objective: TASK-021-resumable-verification-optimization
@@ -41,11 +41,13 @@ state:
   go_artifact_reduction: go-artifact-reduction.md
   completed_go_scope_fixtures_objective: pipelang-go-scope-fixtures-20260913
   go_scope_fixtures: go-scope-fixtures.md
+  completed_go_v109_layout_fixtures_objective: pipelang-go-v109-layout-fixtures-20260913
+  go_v109_layout_fixtures: go-v109-layout-fixtures.md
   next_implementation_recommendation: null
   research_record: performance-compression-research.md
   objective_state: completed
   selected_option: broader_go_fixture_construction
-  selected_scope: v0.111 scope-layout compact fixtures within existing limits
+  selected_scope: v0.109 layout binary fixtures within existing limits
   implementation_approval: approved
   planning_authority: explicit_user_request
   completed_language_implementation_approval: approved
@@ -69,6 +71,11 @@ state:
     No commit, push, publication, worktree, cleanup or external service mutation is authorized.
 
 routes:
+  go_v109_layout_fixtures:
+    read:
+      - go-v109-layout-fixtures.md
+      - ../../../research/pipelang-go-v109-layout-fixtures.md
+      - ../../../runtime/pipelang-verification.md
   go_scope_fixtures:
     read:
       - go-scope-fixtures.md
@@ -285,6 +292,8 @@ history_by_slice:
   steps_8a_to_8aw: completed-functions.md
 
 documents:
+  - path: go-v109-layout-fixtures.md
+    purpose: Completed v0.109 layout fixture construction and matched proof
   - path: go-scope-fixtures.md
     purpose: Completed v0.111 scope-layout fixture reduction and matched proof
   - path: nominal-enums.md
