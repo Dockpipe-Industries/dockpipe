@@ -2,6 +2,7 @@ package pipelang
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -72,6 +73,12 @@ func testFiniteConditionalLocalsLayouts(t *testing.T, contract LanguageContract,
 		extraBits += 2
 	}
 	bundle := os.Getenv("PIPELANG_NATIVE_BUNDLE") == "1" && os.Getenv("PIPELANG_GENERATED_BATCH") == "1" && os.Getenv("PIPELANG_COMPILED_CACHE") != "" && os.Getenv("GOFLAGS") == "" && os.Getenv("GOENV") == "off"
+	// Shared-export consumers retain their existing JSON fixture contract.
+	binaryFixtures := bundle && nestedInitializer && os.Getenv("PIPELANG_SHARED_EXPORT") == ""
+	sharedReader := finiteSharedOracle
+	if binaryFixtures {
+		sharedReader = finiteBinaryOracle
+	}
 	methodsTotal, outcomes := 0, 0
 	var totals sync.Mutex
 	parallel := len(trees) > 1 && parallelFiniteShapes()
@@ -221,6 +228,7 @@ func testFiniteConditionalLocalsLayouts(t *testing.T, contract LanguageContract,
 						t.Fatal(err)
 					}
 					oracle := make([]finiteConditionalOracleCase, 0, 1<<(len(sample.targets)+extraBits))
+					oracleDigest := sha256.New()
 					for mask := 0; mask < 1<<(len(sample.targets)+extraBits); mask++ {
 						want, trace := conditionalChoicesTreeExpected(tree, sample.targets, sample.unused, mask, returnChoice, independentReturn, nestedReturn, nestedInitializer)
 						args := []coreeval.Value{{Type: function.Parameters[0].Type, String: "value"}}
@@ -231,30 +239,46 @@ func testFiniteConditionalLocalsLayouts(t *testing.T, contract LanguageContract,
 						if err != nil || !got.OK || got.Value.String != want {
 							t.Fatalf("%s mask %d: %#v %v want %q", sample.name, mask, got, err, want)
 						}
+						if nestedInitializer && os.Getenv("PIPELANG_BUNDLE_AUDIT") == "1" {
+							flags := make([]bool, len(args)-1)
+							for bit, arg := range args[1:] {
+								flags[bit] = arg.Bool
+							}
+							fmt.Fprintf(oracleDigest, "%d %v %q %#v\n", mask, flags, want, trace)
+						}
 						oracle = append(oracle, finiteConditionalOracleCase{want, append([]string{}, trace...)})
 						shapeOutcomes++
+					}
+					if nestedInitializer && os.Getenv("PIPELANG_BUNDLE_AUDIT") == "1" {
+						t.Logf("v091_layout_oracle method=%s targets=%v unused=%t bits=%d vectors=%d sha256=%x", sample.name, sample.targets, sample.unused, len(sample.targets)+extraBits, len(oracle), oracleDigest.Sum(nil))
 					}
 					call := fmt.Sprintf("PipeLang%s(\"value\"", sample.name)
 					for bit := 0; bit < len(sample.targets)+extraBits; bit++ {
 						call += fmt.Sprintf(",mask&%d!=0", 1<<bit)
 					}
 					call += ")"
-					payload, err := json.Marshal(oracle)
-					if err != nil {
-						t.Fatal(err)
-					}
-					fixtures[sample.name+".json"] = payload
-					if bundle {
-						fmt.Fprintf(&cases, "func Test%s(t *testing.T){oracle.Values(t,%q,%d,func(mask int)string{return %s})}\n", sample.name, sample.name+".json", len(oracle), call)
-						fmt.Fprintf(&orders, "func Test%s(t *testing.T){oracle.Traces(t,%q,%d,func(mask int)[]string{v840Trace=nil;%s;return v840Trace})}\n", sample.name, sample.name+".json", len(oracle), call)
+					fixtureName := sample.name + ".json"
+					if binaryFixtures {
+						fixtureName = sample.name + ".oracle"
+						fixtures[fixtureName] = encodeFiniteBinaryOracle(oracle)
 					} else {
-						fmt.Fprintf(&cases, "func Test%s(t *testing.T){wants:=loadFiniteOracle(t,%q,%d);for mask,want:=range wants{if got:=%s;got!=want.Value{t.Fatalf(\"mask %%d: %%q want %%q\",mask,got,want.Value)}}}\n", sample.name, sample.name+".json", len(oracle), call)
-						fmt.Fprintf(&orders, "func Test%s(t *testing.T){wants:=loadFiniteOracle(t,%q,%d);for mask,want:=range wants{v840Trace=nil;%s;if !reflect.DeepEqual(v840Trace,want.Trace){t.Fatalf(\"mask %%d: %%v want %%v\",mask,v840Trace,want.Trace)}}}\n", sample.name, sample.name+".json", len(oracle), call)
+						payload, err := json.Marshal(oracle)
+						if err != nil {
+							t.Fatal(err)
+						}
+						fixtures[fixtureName] = payload
+					}
+					if bundle {
+						fmt.Fprintf(&cases, "func Test%s(t *testing.T){oracle.Values(t,%q,%d,func(mask int)string{return %s})}\n", sample.name, fixtureName, len(oracle), call)
+						fmt.Fprintf(&orders, "func Test%s(t *testing.T){oracle.Traces(t,%q,%d,func(mask int)[]string{v840Trace=nil;%s;return v840Trace})}\n", sample.name, fixtureName, len(oracle), call)
+					} else {
+						fmt.Fprintf(&cases, "func Test%s(t *testing.T){wants:=loadFiniteOracle(t,%q,%d);for mask,want:=range wants{if got:=%s;got!=want.Value{t.Fatalf(\"mask %%d: %%q want %%q\",mask,got,want.Value)}}}\n", sample.name, fixtureName, len(oracle), call)
+						fmt.Fprintf(&orders, "func Test%s(t *testing.T){wants:=loadFiniteOracle(t,%q,%d);for mask,want:=range wants{v840Trace=nil;%s;if !reflect.DeepEqual(v840Trace,want.Trace){t.Fatalf(\"mask %%d: %%v want %%v\",mask,v840Trace,want.Trace)}}}\n", sample.name, fixtureName, len(oracle), call)
 					}
 				}
 				if bundle {
 					checks := []byte(fmt.Sprintf("package %s\nimport (\"testing\";\"pipelang-generated-check/oracle\")\n%s", gobackend.PackageName, cases.String()))
-					if !queueGeneratedBatchWithOracle(t, generated, checks, fixtures, []byte(finiteSharedOracle)) {
+					if !queueGeneratedBatchWithOracle(t, generated, checks, fixtures, []byte(sharedReader)) {
 						t.Fatal("finite bundle source unexpectedly ineligible")
 					}
 				} else {
@@ -272,7 +296,7 @@ func testFiniteConditionalLocalsLayouts(t *testing.T, contract LanguageContract,
 				}
 				if bundle {
 					checks := []byte(fmt.Sprintf("package %s\nimport (\"testing\";\"pipelang-generated-check/oracle\")\nvar v840Trace []string\n%s", gobackend.PackageName, orders.String()))
-					if !queueGeneratedBatchWithOracle(t, []byte(observed), checks, fixtures, []byte(finiteSharedOracle)) {
+					if !queueGeneratedBatchWithOracle(t, []byte(observed), checks, fixtures, []byte(sharedReader)) {
 						t.Fatal("finite trace bundle source unexpectedly ineligible")
 					}
 				} else {

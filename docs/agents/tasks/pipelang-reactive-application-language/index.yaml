@@ -23,7 +23,7 @@ dispatch:
 state:
   decision: accepted
   current_language_contract: v0.113.0
-  active_objective: pipelang-go-v097-layout-fixtures-20260913
+  active_objective: pipelang-go-v091-layout-fixtures-20260913
   completed_language_objective: TASK-021-nominal-enums
   completed_planning_objective: TASK-021-foundation-specification-and-dependency-plan
   completed_verification_objective: TASK-021-resumable-verification-optimization
@@ -57,13 +57,15 @@ state:
   go_v103_layout_fixtures: go-v103-layout-fixtures.md
   completed_go_v102_layout_fixtures_objective: pipelang-go-v102-layout-fixtures-20260913
   completed_go_v097_layout_fixtures_objective: pipelang-go-v097-layout-fixtures-20260913
+  completed_go_v091_layout_fixtures_objective: pipelang-go-v091-layout-fixtures-20260913
+  go_v091_layout_fixtures: go-v091-layout-fixtures.md
   go_v097_layout_fixtures: go-v097-layout-fixtures.md
   go_v102_layout_fixtures: go-v102-layout-fixtures.md
   next_implementation_recommendation: null
   research_record: performance-compression-research.md
   objective_state: completed
   selected_option: broader_go_fixture_construction
-  selected_scope: v0.97 layout fixtures within existing limits
+  selected_scope: v0.91 layout fixtures within existing limits
   implementation_approval: approved
   planning_authority: explicit_user_request
   completed_language_implementation_approval: approved
@@ -92,9 +94,17 @@ state:
     The v0.102 objective is completed. The user selected another Go fixture experiment,
     reviewed the v0.97 scope and said "I approve". go-v097-layout-fixtures.md owns
     the completed implementation and bounded proof under unchanged limits.
-    No commit, push, publication, worktree, cleanup or external mutation is authorized.
+    The user selected another Go fixture experiment, reviewed the v0.91 scope and
+    said "I approve". go-v091-layout-fixtures.md owns the completed implementation
+    and bounded proof. No commit, push, publication, worktree, cleanup or external
+    mutation is authorized.
 
 routes:
+  go_v091_layout_fixtures:
+    read:
+      - go-v091-layout-fixtures.md
+      - ../../../research/pipelang-go-v091-layout-fixtures.md
+      - ../../../runtime/pipelang-verification.md
   go_v097_layout_fixtures:
     read:
       - go-v097-layout-fixtures.md

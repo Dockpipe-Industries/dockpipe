@@ -281,6 +281,16 @@ All 120 contained units pass under unchanged limits. Approximately 359.7 MB
 of task artifacts remain; zero existing bytes were freed. This does not establish
 full-family/full-language gains or solve retention.
 
+The subsequent [v0.91 nested initializer fixture experiment](pipelang-go-v091-layout-fixtures.md)
+converts eligible bundles to exact binary Value/Trace fixtures while preserving
+ordinary JSON, special shared-export bytes and other shared-harness families.
+Twelve of 200 owners preserve 258 methods, 166,528 vectors and 136 fresh native
+executions per pass. Identities remain 12; executable bytes are 5.4656% lower
+and mean warm unit time is 8.7339% lower in the uncontrolled-host sample.
+All 122 contained units pass under unchanged limits. Approximately 795.4 MB of
+task artifacts remain; zero existing bytes were freed. Full-family gains and
+retention remain separate questions.
+
 The v0.113 profile contains 73,904,076,510 logical binary-reference bytes over
 70,973,989,613 distinct binary bytes: **1.0413 times** for one per-case reference pass.
 The recovery diagnostic's approximately 74.1 GB includes its own artifact scope;
