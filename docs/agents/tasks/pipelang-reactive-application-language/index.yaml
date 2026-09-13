@@ -23,7 +23,7 @@ dispatch:
 state:
   decision: accepted
   current_language_contract: v0.113.0
-  active_objective: pipelang-go-v089-layout-fixtures-20260913
+  active_objective: pipelang-toolchain-transcript-20260913
   completed_language_objective: TASK-021-nominal-enums
   completed_planning_objective: TASK-021-foundation-specification-and-dependency-plan
   completed_verification_objective: TASK-021-resumable-verification-optimization
@@ -63,11 +63,16 @@ state:
   go_v089_layout_fixtures: go-v089-layout-fixtures.md
   go_v097_layout_fixtures: go-v097-layout-fixtures.md
   go_v102_layout_fixtures: go-v102-layout-fixtures.md
+  completed_verification_overhead_profile_objective: pipelang-verification-overhead-profile-20260913
+  verification_overhead_profile: verification-overhead-profile.md
+  toolchain_transcript: toolchain-transcript.md
+  completed_toolchain_transcript_objective: pipelang-toolchain-transcript-20260913
+  toolchain_transcript_disposition: rejected_performance_consistency
   next_implementation_recommendation: null
   research_record: performance-compression-research.md
   objective_state: completed
-  selected_option: broader_go_fixture_construction
-  selected_scope: v0.89 layout fixtures within existing limits
+  selected_option: sealed_toolchain_transcript
+  selected_scope: approved opt-in sealed transcript experiment
   implementation_approval: approved
   planning_authority: explicit_user_request
   completed_language_implementation_approval: approved
@@ -105,6 +110,16 @@ state:
     go-v089-layout-fixtures.md owns the completed proof; all existing ceilings remain.
 
 routes:
+  toolchain_transcript:
+    read:
+      - toolchain-transcript.md
+      - ../../../research/pipelang-toolchain-transcript.md
+
+  verification_overhead_profile:
+    read:
+      - verification-overhead-profile.md
+      - ../../../research/pipelang-verification-overhead-profile.md
+
   go_v089_layout_fixtures:
     read:
       - go-v089-layout-fixtures.md
