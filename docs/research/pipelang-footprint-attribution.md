@@ -220,6 +220,14 @@ reduced its twelve-owner sample from 15 executables / 87,074,736 bytes to 12 /
 fell 23.1581%; all limits and debug support remain unchanged. This remains bounded
 sample evidence, with no full-family extrapolation or existing storage freed.
 
+The subsequent [v0.107 selector value-arm experiment](pipelang-go-v107-layout-fixtures.md)
+reduced its twelve-owner sample from 15 executables / 86,531,176 bytes to
+12 / 67,017,270 bytes (22.5513% fewer bytes). All eight matched passes
+preserve 81 layouts, 331,776 vectors and 162 fresh native executions per pass.
+Mean warm unit time fell 18.7663%; all limits and debug support remain unchanged.
+This is bounded sample evidence; no full-family extrapolation or existing storage
+freed is claimed.
+
 The v0.113 profile contains 73,904,076,510 logical binary-reference bytes over
 70,973,989,613 distinct binary bytes: **1.0413 times** for one per-case reference pass.
 The recovery diagnostic's approximately 74.1 GB includes its own artifact scope;

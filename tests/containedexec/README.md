@@ -887,6 +887,12 @@ three independent statement-depth flips. Local/return choices reuse some of thos
 bits; selector bits are shared across statement nodes. This does not claim every
 independent assignment across nodes or locals. Separate computed/lexical checks
 exercise eager ordered locals and lazy pure calls.
+Eligible native bundles use exact binary Value/Trace fixtures with the shared reader;
+inputs are reconstructed from the same twelve-bit vector index. Ordinary execution
+retains JSON fixtures. Current expected values/traces, both native assertions and
+every source/evaluator check remain fresh. The
+[bounded construction result](../../docs/research/pipelang-go-v107-layout-fixtures.md)
+reports sample coverage, timing and retained storage separately.
 The 36 scaling families cover three statement depths, four initializer-arm families
 and three new test-arm families, each with used/unused tails and nine local counts.
 Export fresh isolated compiler fixtures to `fixtures-v107`. Preserve normal GC,
