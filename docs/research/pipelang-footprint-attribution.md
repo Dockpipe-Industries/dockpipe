@@ -255,6 +255,14 @@ unchanged limits. Failed initial resource evidence
 remains preserved; fresh resource acceptance passes. This is bounded sample proof,
 with no full-family extrapolation or existing bytes freed.
 
+The subsequent [v0.103 terminal conditional-test layout experiment](pipelang-go-v103-layout-fixtures.md)
+reduced its twelve-owner sample from 15 executables / 84,121,760 bytes to
+12 / 64,613,750 (23.1902% fewer bytes). All eight matched passes
+preserve 81 layouts, 331,776 vectors and 162 fresh native executions per pass.
+Mean summed warm unit time fell 15.8191%; exact accounting, limits and debug
+support remain unchanged. This is bounded sample proof, with no full-family
+extrapolation or existing bytes freed.
+
 The v0.113 profile contains 73,904,076,510 logical binary-reference bytes over
 70,973,989,613 distinct binary bytes: **1.0413 times** for one per-case reference pass.
 The recovery diagnostic's approximately 74.1 GB includes its own artifact scope;
