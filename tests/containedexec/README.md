@@ -714,6 +714,12 @@ combined threshold). It does not disable retained executable reuse.
 
 Finite conditional-layout families v0.84, v0.85, v0.86, v0.87, v0.89 and v0.91
 also share the existing fixture loader and Value/Trace comparison package.
+The v0.111 terminal-leaf subset matrix uses a compact shared fixture loader for
+native bundles: its 256-vector expectations are exact length-prefixed strings
+instead of expanded literal Go assertions. This avoids linking fixture-only JSON
+support. Nil and empty traces remain distinct; wrong counts, truncated integers,
+strings or traces, and trailing data fail before comparison. The ordinary
+comparison path retains the literal assertions.
 Independent tree models still produce the expected data on every run. Other
 families retain their existing inline assertions. Neither path caches outcomes.
 Executable keys bind current generated source, checks, shared support, toolchain
@@ -728,6 +734,8 @@ probes are not pooled across their lifetimes. Larger inline-check families can
 hit the source threshold before reaching 32 packages. These boundaries preserve
 existing behavior and compiler evidence; they do not remove any tests. All
 framework code lives in compiler-owned test helpers; engine behavior is unchanged.
+Generated linked-build, standalone-build and execution scratch directories honor
+`TMPDIR`, so contained runs keep them in the runner's watched per-unit scratch.
 
 ### v0.97 terminal initializer placement
 

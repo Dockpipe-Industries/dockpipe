@@ -2,6 +2,7 @@ package pipelang
 
 import (
 	"fmt"
+	"os"
 	"strings"
 	"testing"
 
@@ -14,6 +15,7 @@ import (
 // exhausts independent initializer inputs. This is not an arbitrary assignment
 // to every expression in an unbounded source program.
 func TestV1110TerminalLeafSelectorValueArmsSubsets(t *testing.T) {
+	bundle := os.Getenv("PIPELANG_NATIVE_BUNDLE") == "1" && os.Getenv("PIPELANG_GENERATED_BATCH") == "1" && os.Getenv("PIPELANG_COMPILED_CACHE") != "" && os.Getenv("GOFLAGS") == "" && os.Getenv("GOENV") == "off"
 	trees := terminalTrees(3)[1:]
 	if len(trees) != 25 {
 		t.Fatal("statement inventory drift")
@@ -43,9 +45,11 @@ func TestV1110TerminalLeafSelectorValueArmsSubsets(t *testing.T) {
 				}
 				prepared := prepareConformanceProgram(t, p)
 				var checks, orders strings.Builder
+				fixtures := map[string][]byte{}
 				for subset := start; subset < end; subset++ {
 					name := fmt.Sprintf("Select%d", subset)
 					f := coreFunctionNamed(t, p, name)
+					rows := []finiteConditionalOracleCase{}
 					// No locals: initializer bits are unused and fixed at false here.
 					for vector := 0; vector < 256; vector++ {
 						mask := (vector & 63) | ((vector >> 6) << 9)
@@ -65,11 +69,35 @@ func TestV1110TerminalLeafSelectorValueArmsSubsets(t *testing.T) {
 						if err != nil || !got.OK || got.Value.String != want {
 							t.Fatalf("subset %d mask %d: %v %v want %q", subset, mask, got, err, want)
 						}
-						fmt.Fprintf(&checks, "if got:=%s;got!=%q{t.Fatal(got)}\n", call, want)
-						fmt.Fprintf(&orders, "v1110MatrixTrace=nil;%s;if !reflect.DeepEqual(v1110MatrixTrace,[]string{%s}){t.Fatal(v1110MatrixTrace)}\n", call, quotedStrings(trace))
+						if bundle {
+							rows = append(rows, finiteConditionalOracleCase{Value: want, Trace: trace})
+						} else {
+							fmt.Fprintf(&checks, "if got:=%s;got!=%q{t.Fatal(got)}\n", call, want)
+							fmt.Fprintf(&orders, "v1110MatrixTrace=nil;%s;if !reflect.DeepEqual(v1110MatrixTrace,[]string{%s}){t.Fatal(v1110MatrixTrace)}\n", call, quotedStrings(trace))
+						}
+					}
+					if bundle {
+						fixtures[name+".oracle"] = encodeFiniteBinaryOracle(rows)
+						// Vector order and input mapping match the literal control above.
+						// Initializer bits 6..8 remain false; routing and selector bits
+						// are still independent. Only assertion representation changes.
+						call := "PipeLang" + name + "("
+						for bit := 0; bit < 11; bit++ {
+							if bit > 0 {
+								call += ","
+							}
+							call += fmt.Sprintf("mask&%d!=0", 1<<bit)
+						}
+						call += ")"
+						fmt.Fprintf(&checks, "oracle.Values(t,%q,256,func(vector int)string{mask:=(vector&63)|((vector>>6)<<9);return %s})\n", name+".oracle", call)
+						fmt.Fprintf(&orders, "oracle.Traces(t,%q,256,func(vector int)[]string{mask:=(vector&63)|((vector>>6)<<9);v1110MatrixTrace=nil;%s;return v1110MatrixTrace})\n", name+".oracle", call)
 					}
 				}
-				v1110RunMatrixGo(t, generated, checks.String(), orders.String())
+				if bundle {
+					v1110RunMatrixFixtureGo(t, generated, checks.String(), orders.String(), fixtures)
+				} else {
+					v1110RunMatrixGo(t, generated, checks.String(), orders.String())
+				}
 			}
 			t.Logf("%d leaves, %d subsets, %d independent routing/selector vectors per subset", len(leaves), upper-lower, 256)
 		})
@@ -248,6 +276,24 @@ func v1110MatrixOracle(tree *terminalTree, leaves []string, subset, count int, u
 func v1110RunMatrixGo(t *testing.T, generated []byte, checks, orders string) {
 	t.Helper()
 	compileAndRunGeneratedGoFiles(t, generated, []byte(fmt.Sprintf("package %s\nimport \"testing\"\nfunc TestValues(t *testing.T){%s}", gobackend.PackageName, checks)))
+	observed := v1110MatrixObserved(t, generated)
+	compileAndRunGeneratedGoFiles(t, observed, []byte(fmt.Sprintf("package %s\nimport (\"testing\";\"reflect\")\nvar v1110MatrixTrace []string\nfunc TestOrder(t *testing.T){%s}", gobackend.PackageName, orders)))
+}
+
+func v1110RunMatrixFixtureGo(t *testing.T, generated []byte, checks, orders string, fixtures map[string][]byte) {
+	t.Helper()
+	values := []byte(fmt.Sprintf("package %s\nimport (\"testing\";\"pipelang-generated-check/oracle\")\nfunc TestValues(t *testing.T){%s}", gobackend.PackageName, checks))
+	if !queueGeneratedBatchWithOracle(t, generated, values, fixtures, []byte(finiteBinaryOracle)) {
+		t.Fatal("subset value bundle unexpectedly ineligible")
+	}
+	traces := []byte(fmt.Sprintf("package %s\nimport (\"testing\";\"pipelang-generated-check/oracle\")\nvar v1110MatrixTrace []string\nfunc TestOrder(t *testing.T){%s}", gobackend.PackageName, orders))
+	if !queueGeneratedBatchWithOracle(t, v1110MatrixObserved(t, generated), traces, fixtures, []byte(finiteBinaryOracle)) {
+		t.Fatal("subset trace bundle unexpectedly ineligible")
+	}
+}
+
+func v1110MatrixObserved(t *testing.T, generated []byte) []byte {
+	t.Helper()
 	observed := string(generated)
 	for marker, probe := range map[string]string{"func PipeLangEcho(p0 string) string {": `v1110MatrixTrace=append(v1110MatrixTrace,"E:"+p0)`, "func PipeLangCheck(p0 string, p1 bool) bool {": `v1110MatrixTrace=append(v1110MatrixTrace,"C:"+p0)`} {
 		if strings.Count(observed, marker) != 1 {
@@ -255,5 +301,5 @@ func v1110RunMatrixGo(t *testing.T, generated []byte, checks, orders string) {
 		}
 		observed = strings.Replace(observed, marker, marker+"\n"+probe, 1)
 	}
-	compileAndRunGeneratedGoFiles(t, []byte(observed), []byte(fmt.Sprintf("package %s\nimport (\"testing\";\"reflect\")\nvar v1110MatrixTrace []string\nfunc TestOrder(t *testing.T){%s}", gobackend.PackageName, orders)))
+	return []byte(observed)
 }

@@ -196,6 +196,12 @@ Pinning all evidence preserves proof but has no bounded retention lifecycle.
 
 ## Verification reads and ranked actions
 
+Subsequent bounded work: [package-input repair](../agents/tasks/pipelang-reactive-application-language/package-input-budget-repair.md)
+completed, followed by a [v0.111 Go artifact construction experiment](pipelang-go-artifact-reduction.md).
+The latter reduced sampled executable bytes by 8.7373% with unchanged identities;
+it does not close the broader count/retention problem. The original ranking below
+remains the attribution roadmap, not fresh implementation authority.
+
 The v0.113 profile contains 73,904,076,510 logical binary-reference bytes over
 70,973,989,613 distinct binary bytes: **1.0413 times** for one per-case reference pass.
 The recovery diagnostic's approximately 74.1 GB includes its own artifact scope;

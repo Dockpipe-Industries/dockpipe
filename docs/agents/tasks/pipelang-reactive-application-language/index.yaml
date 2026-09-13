@@ -23,7 +23,7 @@ dispatch:
 state:
   decision: accepted
   current_language_contract: v0.113.0
-  active_objective: pipelang-package-input-inclusive-budget-repair-20260913
+  active_objective: pipelang-go-artifact-reduction-20260913
   completed_language_objective: TASK-021-nominal-enums
   completed_planning_objective: TASK-021-foundation-specification-and-dependency-plan
   completed_verification_objective: TASK-021-resumable-verification-optimization
@@ -37,11 +37,13 @@ state:
   footprint_plan: footprint-native-pilot-plan.md
   completed_package_input_budget_objective: pipelang-package-input-inclusive-budget-repair-20260913
   package_input_budget_repair: package-input-budget-repair.md
+  completed_go_artifact_reduction_objective: pipelang-go-artifact-reduction-20260913
+  go_artifact_reduction: go-artifact-reduction.md
   next_implementation_recommendation: null
   research_record: performance-compression-research.md
   objective_state: completed
-  selected_option: approved_recommended_repair
-  selected_scope: Package-input and inclusive-budget repair; numerical targets remain proposed
+  selected_option: approved_go_artifact_reduction
+  selected_scope: Go verification artifact reduction within existing limits
   implementation_approval: approved
   planning_authority: explicit_user_request
   completed_language_implementation_approval: approved
