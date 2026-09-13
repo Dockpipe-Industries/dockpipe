@@ -202,6 +202,11 @@ The latter reduced sampled executable bytes by 8.7373% with unchanged identities
 it does not close the broader count/retention problem. The original ranking below
 remains the attribution roadmap, not fresh implementation authority.
 
+The subsequent [v0.111 scope-layout fixture experiment](pipelang-go-scope-fixtures.md)
+reduced its twelve-owner sample from 18 binaries / 100,032,017 bytes to 12 /
+66,181,484 bytes under unchanged lifetime/source limits. This is bounded sample
+evidence; the remaining families and retention problem remain separate work.
+
 The v0.113 profile contains 73,904,076,510 logical binary-reference bytes over
 70,973,989,613 distinct binary bytes: **1.0413 times** for one per-case reference pass.
 The recovery diagnostic's approximately 74.1 GB includes its own artifact scope;
