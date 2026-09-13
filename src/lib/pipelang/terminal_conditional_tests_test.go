@@ -2,11 +2,13 @@ package pipelang
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"dockpipe/src/lib/pipelang/coreeval"
 	"dockpipe/src/lib/pipelang/coreir"
 	"dockpipe/src/lib/pipelang/gobackend"
 	"encoding/json"
 	"fmt"
+	"os"
 	"reflect"
 	"strings"
 	"testing"
@@ -70,6 +72,7 @@ func TestV1030TerminalConditionalTestsInheritance(t *testing.T) {
 // Three independent selector triples are shared only by nodes at the same depth;
 // a fourth independent triple supplies return choices. This is a bounded matrix.
 func TestV1030TerminalConditionalTestsLayouts(t *testing.T) {
+	bundle := os.Getenv("PIPELANG_NATIVE_BUNDLE") == "1" && os.Getenv("PIPELANG_GENERATED_BATCH") == "1" && os.Getenv("PIPELANG_COMPILED_CACHE") != "" && os.Getenv("GOFLAGS") == "" && os.Getenv("GOENV") == "off"
 	shapes := terminalTrees(3)[1:]
 	if len(shapes) != 25 {
 		t.Fatal("shape inventory drift")
@@ -182,6 +185,7 @@ func TestV1030TerminalConditionalTestsLayouts(t *testing.T) {
 					Trace []string
 				}
 				rows := []row{}
+				oracleDigest := sha256.New()
 				for bits := 0; bits < 4096; bits++ {
 					flags := make([]bool, 12)
 					for bit := range flags {
@@ -279,19 +283,56 @@ func TestV1030TerminalConditionalTestsLayouts(t *testing.T) {
 						t.Fatalf("shape=%d subset=%d bits=%d got=%#v err=%v want=%q", shape, subset, bits, got, err, want)
 					}
 					rows = append(rows, row{flags, want, trace})
+					if os.Getenv("PIPELANG_BUNDLE_AUDIT") == "1" {
+						fmt.Fprintf(oracleDigest, "%d %v %q %#v\n", bits, flags, want, trace)
+					}
 				}
-				fixture, err := json.Marshal(rows)
-				if err != nil {
-					t.Fatal(err)
+				if os.Getenv("PIPELANG_BUNDLE_AUDIT") == "1" {
+					t.Logf("v103_layout_oracle subset=%d vectors=%d sha256=%x", subset, len(rows), oracleDigest.Sum(nil))
 				}
+				serializedFixture := generatedPhase(t, "fixture_serialization")
+				fixtures := map[string][]byte{}
 				call := `PipeLangSelect("raw"`
+				loader := ""
+				imports := `"testing";"encoding/json";"os"`
+				loop := "for _,r:=range load(t)"
+				if bundle {
+					compact := make([]finiteConditionalOracleCase, len(rows))
+					for i, row := range rows {
+						compact[i] = finiteConditionalOracleCase{Value: row.Value, Trace: row.Trace}
+					}
+					fixtures["Select.oracle"] = encodeFiniteBinaryOracle(compact)
+					imports = `"testing";"pipelang-generated-check/oracle"`
+					loop = `for bits,r:=range oracle.Load(t,"Select.oracle",4096)`
+				} else {
+					fixture, err := json.Marshal(rows)
+					if err != nil {
+						t.Fatal(err)
+					}
+					fixtures["oracle.json"] = fixture
+					loader = `type row struct{Flags []bool;Value string;Trace []string};func load(t *testing.T)[]row{b,e:=os.ReadFile("oracle.json");if e!=nil{t.Fatal(e)};var rows []row;if e=json.Unmarshal(b,&rows);e!=nil{t.Fatal(e)};if len(rows)!=4096{t.Fatal("oracle inventory")};return rows}`
+				}
+				serializedFixture()
 				for bit := 0; bit < 12; bit++ {
-					call += fmt.Sprintf(",r.Flags[%d]", bit)
+					if bundle {
+						// Reproduce the independent oracle's input mapping in vector order.
+						call += fmt.Sprintf(",bits&%d!=0", 1<<bit)
+					} else {
+						call += fmt.Sprintf(",r.Flags[%d]", bit)
+					}
 				}
 				call += ")"
-				loader := `type row struct{Flags []bool;Value string;Trace []string};func load(t *testing.T)[]row{b,e:=os.ReadFile("oracle.json");if e!=nil{t.Fatal(e)};var rows []row;if e=json.Unmarshal(b,&rows);e!=nil{t.Fatal(e)};if len(rows)!=4096{t.Fatal("oracle inventory")};return rows}`
-				checks := fmt.Sprintf("package %s\nimport(\"testing\";\"encoding/json\";\"os\")\n%s\nfunc TestValues(t *testing.T){for _,r:=range load(t){if got:=%s;got!=r.Value{t.Fatal(got,r.Value)}}}", gobackend.PackageName, loader, call)
-				compileAndRunGeneratedGoFilesWithFixtures(t, generated, []byte(checks), map[string][]byte{"oracle.json": fixture})
+				checks := fmt.Sprintf("package %s\nimport(%s)\n%s\nfunc TestValues(t *testing.T){%s{if got:=%s;got!=r.Value{t.Fatal(got,r.Value)}}}", gobackend.PackageName, imports, loader, loop, call)
+				run := func(source []byte, checks string) {
+					if bundle {
+						if !queueGeneratedBatchWithOracle(t, source, []byte(checks), fixtures, []byte(finiteBinaryOracle)) {
+							t.Fatal("v103 layout bundle unexpectedly ineligible")
+						}
+					} else {
+						compileAndRunGeneratedGoFilesWithFixtures(t, source, []byte(checks), fixtures)
+					}
+				}
+				run(generated, checks)
 				observed := string(generated)
 				for marker, probe := range map[string]string{"func PipeLangEcho(p0 string) string {": `v1030Trace=append(v1030Trace,"E:"+p0)`, "func PipeLangCheck(p0 string, p1 bool) bool {": `v1030Trace=append(v1030Trace,"C:"+p0)`} {
 					if strings.Count(observed, marker) != 1 {
@@ -299,8 +340,8 @@ func TestV1030TerminalConditionalTestsLayouts(t *testing.T) {
 					}
 					observed = strings.Replace(observed, marker, marker+"\n"+probe, 1)
 				}
-				orders := fmt.Sprintf("package %s\nimport(\"testing\";\"encoding/json\";\"os\";\"reflect\")\nvar v1030Trace []string\n%s\nfunc TestOrder(t *testing.T){for _,r:=range load(t){v1030Trace=nil;got:=%s;if got!=r.Value||!reflect.DeepEqual(v1030Trace,r.Trace){t.Fatal(got,r.Value,v1030Trace,r.Trace)}}}", gobackend.PackageName, loader, call)
-				compileAndRunGeneratedGoFilesWithFixtures(t, []byte(observed), []byte(orders), map[string][]byte{"oracle.json": fixture})
+				orders := fmt.Sprintf("package %s\nimport(%s;\"reflect\")\nvar v1030Trace []string\n%s\nfunc TestOrder(t *testing.T){%s{v1030Trace=nil;got:=%s;if got!=r.Value||!reflect.DeepEqual(v1030Trace,r.Trace){t.Fatal(got,r.Value,v1030Trace,r.Trace)}}}", gobackend.PackageName, imports, loader, loop, call)
+				run([]byte(observed), orders)
 				t.Logf("v103-layout shape=%d subset=%d locals=%d vectors=%d", shape, subset, count, len(rows))
 			}
 		})
