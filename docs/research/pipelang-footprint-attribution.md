@@ -291,6 +291,16 @@ All 122 contained units pass under unchanged limits. Approximately 795.4 MB of
 task artifacts remain; zero existing bytes were freed. Full-family gains and
 retention remain separate questions.
 
+The subsequent [v0.89 nested terminal-leaf layout experiment](pipelang-go-v089-layout-fixtures.md)
+reduced its twelve-owner sample from 102,391,545 to 96,796,916 executable bytes
+(5.4640%), keeping 13 identities. All eight passes preserve 296 methods,
+188,416 vectors and 148 fresh native executions. Mean warm unit time is 3.3428%
+lower, but cold time is 41.7871% higher and the reversed-order warm pass regresses.
+All 122 units pass under unchanged limits; soft memory pressure during harness
+builds is recorded separately from zero hard-limit/OOM/swap events. This remains
+bounded footprint evidence with mixed timing, approximately 828.5 MB of retained
+task artifacts and zero existing bytes freed.
+
 The v0.113 profile contains 73,904,076,510 logical binary-reference bytes over
 70,973,989,613 distinct binary bytes: **1.0413 times** for one per-case reference pass.
 The recovery diagnostic's approximately 74.1 GB includes its own artifact scope;
