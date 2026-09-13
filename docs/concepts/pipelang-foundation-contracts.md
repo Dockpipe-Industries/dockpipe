@@ -368,3 +368,12 @@ implicit boxing/variance, detached tasks, unguarded sharing, relaxed atomics, ra
 general ownership/permit transfer and unbounded concurrent queues. Only raw unsafe memory/hidden
 authority exclusions are inherited hard limits; the other scope choices require founder ratification.
 No requirement may be declared complete solely because this proposal recommends a smaller surface.
+
+## Approved Qt boundary continuation
+
+The [Qt integration boundary](pipelang-qt-boundary.md) applies the completed pilot
+to owned conversion, typed outcome presentation and target-side lifetime/delivery.
+This is bounded adapter proof, not completion of P15/P16/P17/P20 or ratification of
+D1-D6. The approved continuation also repairs the recorded zero-argument record
+transport panic within existing contracts, advancing F01/F05/F14 correctness
+without selecting another P-number. Go v0.113.0 remains the accepted backend.

@@ -1837,7 +1837,7 @@ func (cp *checkedProgram) validateRecordTransportSignature(method MethodDecl, re
 	recordListFilterContainsCaseFolded := hasPrimitiveRecordListFilterContainsCaseFoldedSourceContract(contract) && isResolvedRecordList(result) && cp.isResolvedRecordType(result.Arguments[0]) && len(resolvedParameters) == 2 && resolvedParameters[0].Equal(result) && resolvedParameters[1].Equal(resolvedPrimitive(TypeString))
 	namedPredicate := false
 	recordListFilterPredicate := false
-	if hasNamedRecordPredicateSourceContract(contract) {
+	if hasNamedRecordPredicateSourceContract(contract) && len(resolvedParameters) >= 2 {
 		namedPredicate = result.Equal(resolvedPrimitive(TypeBool)) && len(resolvedParameters) >= 2 && cp.isResolvedRecordType(resolvedParameters[0])
 		recordListFilterPredicate = isResolvedRecordList(result) && cp.isResolvedRecordType(result.Arguments[0]) && len(resolvedParameters) >= 2 && resolvedParameters[0].Equal(result)
 		for _, parameter := range resolvedParameters[1:] {

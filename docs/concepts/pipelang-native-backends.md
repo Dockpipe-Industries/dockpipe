@@ -7,8 +7,12 @@ The user requested this write-up after identifying a conflict between PipeLang's
 direction is to keep the compiler implementation in Go while supporting C++, C and
 assembly/native output through the existing target-neutral Core IR boundary.
 
-This is a design and evaluation proposal, not an implemented backend or approval
-to port code, install toolchains, run campaigns, delete caches or raise limits.
+The design below began as a proposal. The user subsequently approved the bounded
+[C++ / assembly / Qt pilot](../research/pipelang-cpp-qt-pilot.md), now implemented
+and evaluated as an experimental integration path. Broader backend promotion,
+full-language porting, installation, cache deletion and limit changes remain
+outside that pilot. The original performance protocol below is retained as the
+bar for a later performance adoption claim; the pilot does not establish it.
 The accepted executable language remains v0.113.0 with the Go backend. The
 [TASK-021 index](../agents/tasks/pipelang-reactive-application-language/index.yaml)
 owns objective state. Recovery is completed; the subsequent
