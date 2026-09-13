@@ -714,12 +714,17 @@ combined threshold). It does not disable retained executable reuse.
 
 Finite conditional-layout families v0.84, v0.85, v0.86, v0.87, v0.89 and v0.91
 also share the existing fixture loader and Value/Trace comparison package.
-The v0.111 terminal-leaf subset matrix uses a compact shared fixture loader for
+The v0.111 terminal-leaf subset and scope-layout matrices use a compact shared fixture loader for
 native bundles: its 256-vector expectations are exact length-prefixed strings
 instead of expanded literal Go assertions. This avoids linking fixture-only JSON
 support. Nil and empty traces remain distinct; wrong counts, truncated integers,
 strings or traces, and trailing data fail before comparison. The ordinary
 comparison path retains the literal assertions.
+Scope-layout audit mode also records ordered input/value/trace digests. The
+[bounded scope-layout comparison](../../docs/research/pipelang-go-scope-fixtures.md)
+reduced twelve selected owners from 18 to 12 binaries under the unchanged
+512-KiB source threshold, preserving all generated package executions. It does
+not extrapolate full-family savings or change owning lifetimes.
 Independent tree models still produce the expected data on every run. Other
 families retain their existing inline assertions. Neither path caches outcomes.
 Executable keys bind current generated source, checks, shared support, toolchain

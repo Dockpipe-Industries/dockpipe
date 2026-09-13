@@ -1,6 +1,7 @@
 package pipelang
 
 import (
+	"crypto/sha256"
 	"fmt"
 	"os"
 	"strings"
@@ -105,6 +106,8 @@ func TestV1110TerminalLeafSelectorValueArmsSubsets(t *testing.T) {
 }
 
 func TestV1110TerminalLeafSelectorValueArmsScopeLayouts(t *testing.T) {
+	bundle := os.Getenv("PIPELANG_NATIVE_BUNDLE") == "1" && os.Getenv("PIPELANG_GENERATED_BATCH") == "1" && os.Getenv("PIPELANG_COMPILED_CACHE") != "" && os.Getenv("GOFLAGS") == "" && os.Getenv("GOENV") == "off"
+	audit := os.Getenv("PIPELANG_BUNDLE_AUDIT") == "1"
 	trees := terminalTrees(3)[1:]
 	if len(trees) != 25 {
 		t.Fatal("statement inventory drift")
@@ -125,10 +128,15 @@ func TestV1110TerminalLeafSelectorValueArmsScopeLayouts(t *testing.T) {
 					}
 					f := coreFunctionNamed(t, p, "Select")
 					prepared := prepareConformanceProgram(t, p)
+					oracleDigest := sha256.New()
 					var checks, orders strings.Builder
+					rows := []finiteConditionalOracleCase{}
 					for vector := 0; vector < 256; vector++ {
 						mask := (vector & 63) | ((vector & 7) << 6) | ((vector >> 6) << 9)
 						want, trace := v1110MatrixOracle(tree, leaves, (1<<len(leaves))-1, count, unused, mask, arms)
+						if audit {
+							fmt.Fprintf(oracleDigest, "%d %d %q %#v\n", vector, mask, want, trace)
+						}
 						args := []coreeval.Value{}
 						call := "PipeLangSelect("
 						for bit := 0; bit < 11; bit++ {
@@ -144,10 +152,33 @@ func TestV1110TerminalLeafSelectorValueArmsScopeLayouts(t *testing.T) {
 						if err != nil || !got.OK || got.Value.String != want {
 							t.Fatalf("mask %d: %v %v want %q", mask, got, err, want)
 						}
-						fmt.Fprintf(&checks, "if got:=%s;got!=%q{t.Fatal(got)}\n", call, want)
-						fmt.Fprintf(&orders, "v1110MatrixTrace=nil;%s;if !reflect.DeepEqual(v1110MatrixTrace,[]string{%s}){t.Fatal(v1110MatrixTrace)}\n", call, quotedStrings(trace))
+						if bundle {
+							rows = append(rows, finiteConditionalOracleCase{Value: want, Trace: trace})
+						} else {
+							fmt.Fprintf(&checks, "if got:=%s;got!=%q{t.Fatal(got)}\n", call, want)
+							fmt.Fprintf(&orders, "v1110MatrixTrace=nil;%s;if !reflect.DeepEqual(v1110MatrixTrace,[]string{%s}){t.Fatal(v1110MatrixTrace)}\n", call, quotedStrings(trace))
+						}
 					}
-					v1110RunMatrixGo(t, generated, checks.String(), orders.String())
+					if bundle {
+						// Keep the literal path's vector order and shared routing/initializer
+						// bits. Only expected-value and trace representation changes.
+						call := "PipeLangSelect("
+						for bit := 0; bit < 11; bit++ {
+							if bit > 0 {
+								call += ","
+							}
+							call += fmt.Sprintf("mask&%d!=0", 1<<bit)
+						}
+						call += ")"
+						fmt.Fprintf(&checks, "oracle.Values(t,\"Select.oracle\",256,func(vector int)string{mask:=(vector&63)|((vector&7)<<6)|((vector>>6)<<9);return %s})\n", call)
+						fmt.Fprintf(&orders, "oracle.Traces(t,\"Select.oracle\",256,func(vector int)[]string{mask:=(vector&63)|((vector&7)<<6)|((vector>>6)<<9);v1110MatrixTrace=nil;%s;return v1110MatrixTrace})\n", call)
+						v1110RunMatrixFixtureGo(t, generated, checks.String(), orders.String(), map[string][]byte{"Select.oracle": encodeFiniteBinaryOracle(rows)})
+					} else {
+						v1110RunMatrixGo(t, generated, checks.String(), orders.String())
+					}
+					if audit {
+						t.Logf("scope_layout_oracle count=%d unused=%t vectors=256 sha256=%x", count, unused, oracleDigest.Sum(nil))
+					}
 				}
 			}
 		})
