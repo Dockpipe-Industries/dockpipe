@@ -7,11 +7,35 @@ import threading
 import time
 import unittest
 from unittest.mock import patch
-from budget import DiskBudget, _DirectoryEntries
+from budget import DiskBudget, _DirectoryEntries, within_roots
 from estate import CampaignBudget, SharedBudget, accepted_storage, canonical_roots, campaign_scope, storage_limit, _CoordinatorReclaim
 
 
 class EstateTests(unittest.TestCase):
+    def test_many_exact_roots_match_independent_union_and_preserve_refusals(self):
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            parent = root / 'covered'; parent.mkdir()
+            child = parent / 'child'; child.write_bytes(b'covered')
+            siblings = []
+            for i in range(1000):
+                path = root / str(i); path.write_bytes(b'x'); siblings.append(path)
+            supplied = [child, *reversed(siblings), parent, child]
+            expected = sorted([parent, *siblings])
+            self.assertEqual(canonical_roots(supplied), expected)
+            budget = DiskBudget(supplied, root, 16 << 20, 0, lock_roots=[],
+                                create_roots=False, record_population=False)
+            try:
+                self.assertEqual(budget.roots, expected)
+                self.assertEqual(budget.used, len(siblings) + len(b'covered'))
+                for path in [child, parent, root, root / 'absent', *siblings[:4]]:
+                    self.assertEqual(within_roots(path, set(expected)),
+                                     any(path == p or p in path.parents for p in expected))
+            finally: budget.close()
+            link = parent / 'link'; link.symlink_to(child)
+            with self.assertRaises(ValueError): canonical_roots([parent, link])
+            with self.assertRaises(ValueError): canonical_roots([parent, parent / 'absent'])
+
     def test_coordinator_reclaim_is_scoped_and_keeps_existing_limits(self):
         with tempfile.TemporaryDirectory() as raw:
             group = Path(raw) / 'coordinator.service'; group.mkdir()
@@ -189,11 +213,14 @@ class EstateTests(unittest.TestCase):
             try:
                 state = budget.check()
                 self.assertEqual(state['retained_bytes'], 8192 + (cache / 'link').lstat().st_size)
-                self.assertEqual(state['allocated_file_bytes'], 4096)
+                # Long durable TMPDIR paths can make the symlink allocate a
+                # block rather than fitting in the inode. Charge it separately.
+                link_blocks = (cache / 'link').lstat().st_blocks * 512
+                self.assertEqual(state['allocated_file_bytes'], data.stat().st_blocks * 512 + link_blocks)
                 data.write_bytes(b'z' * 8193)
                 changed = budget.check()
                 self.assertEqual(changed['retained_bytes'], 2 * 8193 + (cache / 'link').lstat().st_size)
-                self.assertEqual(changed['allocated_file_bytes'], data.stat().st_blocks * 512)
+                self.assertEqual(changed['allocated_file_bytes'], data.stat().st_blocks * 512 + link_blocks)
                 temporary = root / 'scratch'; temporary.mkdir(); (temporary / 'unit').write_bytes(b'a' * 200)
                 budget.check()
                 (temporary / 'unit').unlink(); temporary.rmdir()

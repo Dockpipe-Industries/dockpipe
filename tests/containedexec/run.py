@@ -113,6 +113,11 @@ def main():
         raise RuntimeError('non-default inherited build settings refused: ' + ', '.join(sorted(unexpected)))
     env.pop('GOGC', None)
     env.pop('GOMEMLIMIT', None)
+    native_overrides = {name for name in ('CPATH', 'CPLUS_INCLUDE_PATH', 'C_INCLUDE_PATH',
+                        'GCC_EXEC_PREFIX', 'COMPILER_PATH', 'LIBRARY_PATH', 'LD_PRELOAD', 'LD_LIBRARY_PATH')
+                        if os.environ.get(name)}
+    if native_overrides and any(arg.startswith('PIPELANG_TEST_CXX=') for arg in command):
+        raise RuntimeError('undeclared native toolchain environment: ' + ', '.join(sorted(native_overrides)))
     atomic_json(Path(str(output)+'.json'), dict(command=command, cgroup=str(group), limits=actual,
         unit_properties=properties, outcome='started; final accounting unavailable', exit=None))
     performance_before = performance_counters(group)

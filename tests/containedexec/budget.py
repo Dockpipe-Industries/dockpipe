@@ -13,6 +13,17 @@ import threading
 from campaign import atomic_json
 
 
+def within_roots(path, roots):
+    """Test an exact path or ancestor in an already canonical root set."""
+    path = Path(path)
+    return path in roots or any(parent in roots for parent in path.parents)
+
+
+def nonoverlapping_roots(paths):
+    roots = set(paths)
+    return sorted(path for path in roots if not any(parent in roots for parent in path.parents))
+
+
 class _DirectoryEntries(MutableMapping):
     """Exact, directory-indexed metadata in compact in-memory database pages."""
     counters = struct.Struct('=QQ')
@@ -104,12 +115,12 @@ class _DirectoryEntries(MutableMapping):
 class DiskBudget:
     def __init__(self, roots, output, limit_bytes, reserve_bytes=8 << 30, *, lock_roots=None, create_roots=True, allow_internal_links=False, record_population=True, memory_guard=None):
         self.memory_guard = memory_guard or (lambda: None)
-        self.roots = []
-        for raw in sorted({Path(p).absolute() for p in roots if p is not None}):
+        candidates = {Path(p).absolute() for p in roots if p is not None}
+        for raw in candidates:
             if raw != raw.resolve():
                 raise RuntimeError('linked or noncanonical budget root refused')
-            if not any(raw.is_relative_to(prior) for prior in self.roots):
-                self.roots.append(raw)
+        self.roots = nonoverlapping_roots(candidates)
+        self.root_set = set(self.roots)
         self.allow_internal_links = allow_internal_links
         self.hardlinks = {}
         self.hardlink_paths = {}
@@ -157,7 +168,7 @@ class DiskBudget:
                     target = Path(path).resolve()
                 except (OSError, RuntimeError) as error:
                     raise RuntimeError('unresolved storage link refused') from error
-                if not self.allow_internal_links or (target.exists() and not any(target.is_relative_to(r) for r in self.roots)):
+                if not self.allow_internal_links or (target.exists() and not within_roots(target, self.root_set)):
                     raise RuntimeError('linked storage outside declared roots refused')
             elif not (stat.S_ISREG(info.st_mode) or stat.S_ISSOCK(info.st_mode) or stat.S_ISFIFO(info.st_mode)):
                 raise RuntimeError('non-regular storage entry refused')
@@ -262,7 +273,7 @@ class DiskBudget:
                         self.watches.pop(wd, None)
                     continue
                 path = os.path.join(directory, name)
-                if not any(Path(path).is_relative_to(root) for root in self.roots):
+                if not within_roots(path, self.root_set):
                     continue
                 if mask & 0x40000000:
                     if mask & (0x100 | 0x80) and os.path.isdir(path):
@@ -281,7 +292,7 @@ class DiskBudget:
             # An external target may appear without changing the link itself.
             for link in self.links:
                 target = Path(link).resolve()
-                if target.exists() and not any(target.is_relative_to(r) for r in self.roots):
+                if target.exists() and not within_roots(target, self.root_set):
                     raise RuntimeError('linked storage outside declared roots refused')
             allocated = self.allocated_used
             self.peak = max(self.peak, self.used)

@@ -19,6 +19,7 @@ import time
 from job import verify_job
 from budget import DiskBudget
 from estate import SharedBudget, storage_limit
+from support_inputs import SupportInputs
 from reporting import summarize
 from scheduling import measured_plan, load_profile, observed_profile
 from campaign import Campaign, BuildStore, InputGuard, atomic_json, digest, fingerprint, host_identity
@@ -150,6 +151,7 @@ def main():
     parser.add_argument('--native-build-cache', type=Path, help='Persistent native Go build cache (default per-output cache)')
     parser.add_argument('--mode', choices=['fresh', 'resume'], default='fresh')
     parser.add_argument('--go', type=Path, required=True)
+    parser.add_argument('--support-inputs', type=Path, help='Installed external tool/header/library input manifest')
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--cache', type=Path, required=True, help='Private Go build cache')
     parser.add_argument('--compiled-cache', type=Path, help='Private retained executable cache')
@@ -168,6 +170,7 @@ def main():
     parser.add_argument('--nucleon-sdk', type=Path, help='Absolute path to the local libnucleon shared library')
     parser.add_argument('--workers', type=int, choices=[1, 2], default=2)
     args = parser.parse_args()
+    support = SupportInputs(args.support_inputs)
     storage_limit(args.disk_budget_gib)
     verify_job()
     if args.native_representation and (args.compiled_cache is None or sys.platform != 'linux'):
@@ -208,15 +211,19 @@ def main():
         budget_roots.append(args.representation_cache or args.compiled_cache.with_name(args.compiled_cache.name + '-representations'))
     if args.shared_export:
         budget_roots.append(args.shared_export)
-    budget = (SharedBudget(args.campaign_budget, budget_roots, args.disk_budget_gib << 30)
-              if args.campaign_budget else DiskBudget(budget_roots, output, args.disk_budget_gib << 30))
+    budget_roots = [p for p in budget_roots if p is not None]
+    for path in budget_roots:
+        path.mkdir(parents=True, exist_ok=True, mode=0o700)
+    budget = (SharedBudget(args.campaign_budget, budget_roots + support.paths, args.disk_budget_gib << 30)
+              if args.campaign_budget else DiskBudget(budget_roots + support.paths, output, args.disk_budget_gib << 30,
+                  lock_roots=budget_roots, create_roots=False))
     campaign = Campaign(output / 'campaign', args.mode)
     started = time.monotonic()
     runner = Path(__file__).with_name('run.py').resolve()
     binary = output / 'pipelang.test'
 
-    paths = source_paths()
-    guard = dependency_guard(args.go, args.cache, output)
+    paths = source_paths() + support.paths
+    guard = dependency_guard(args.go, args.cache, output, support_manifest=args.support_inputs)
     sdk_expected = hashlib.sha256(args.nucleon_sdk.read_bytes()).hexdigest() if args.nucleon_sdk else None
     def snapshot():
         value = guard.check()
@@ -362,6 +369,7 @@ def main():
     def make_command(directory, names, pattern):
         command = [str(binary), '-test.run', pattern, '-test.v', '-test.count=1', '-test.timeout=25s']
         environment = ['PIPELANG_CACHE_BUDGET_FILE=' + str(budget.record)]
+        environment += support.native_environment(names)
         environment += ['PIPELANG_TOOLCHAIN_READ_BUFFER=' + ('1' if args.toolchain_read_buffer else '0')]
         if args.identity_profile:
             environment += ['PIPELANG_IDENTITY_PROFILE=1']

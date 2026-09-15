@@ -14,6 +14,7 @@ receipt directory explicitly. Integration fingerprints the selected Node bytes.
 python3 -B tests/containedexec/job.py --output /absolute/proof/job --timeout 21600 -- \
   python3 -B tests/containedexec/verification_campaign.py \
   --root /absolute/private/proof --campaign terminal --go /absolute/go --node /absolute/node \
+  --support-inputs /absolute/private/cpp-support-inputs.json \
   --baseline /absolute/private/accepted-baseline
 ```
 
@@ -22,6 +23,20 @@ requires a new campaign name and executes all semantic checks; persistent verifi
 build objects may still be reused. Resumption validates every required retained
 artifact and current dependency before admitting a completed receipt. Old receipts
 without the versioned campaign schema remain baseline evidence only.
+
+The complete suite now also discovers two native-stream C++ execution checks.
+Declare their installed compiler, assembler/linker, headers, startup objects and
+libraries with `--support-inputs`. The version-1 JSON manifest contains `files`
+(absolute canonical regular inputs), `native_cxx` (a declared executable), `links`
+(absolute installed aliases mapped to their literal link targets), and optional
+`watch_directories` (canonical installed search directories). The manifest and
+file bytes participate in dependency identity and the complete storage estate;
+alias changes and directory changes invalidate an active run. The suite invokes
+the pinned compiler with system tool search paths, preserving the same C++ flags
+and independent Value/Trace assertions. Native cases refuse an absent compiler
+declaration. Ordinary Go-only selections do not require this manifest. Final
+acceptance revalidates the manifest, declared closure and aliases. Creating a
+manifest does not install or modify a toolchain.
 
 Recovery keeps compact retry history and payload-bound receipt references in
 memory. Every receipt and artifact is validated during admission; each reused

@@ -257,7 +257,7 @@ int main(){int a=1,b=2,c=3,d=4;ReadStream input{read_cb,&a},stored{read_cb,&c};W
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
 	binary := filepath.Join(dir, "native")
-	if out, err := exec.CommandContext(ctx, "c++", "-std=c++17", "-O2", path, "-o", binary).CombinedOutput(); err != nil {
+	if out, err := exec.CommandContext(ctx, nativeStreamCompiler(t), "-std=c++17", "-O2", path, "-o", binary).CombinedOutput(); err != nil {
 		t.Fatalf("compile: %v\n%s", err, out)
 	}
 	out, err := exec.CommandContext(ctx, binary).CombinedOutput()

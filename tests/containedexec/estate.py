@@ -6,7 +6,7 @@ from pathlib import Path
 import signal
 import threading
 import time
-from budget import DiskBudget
+from budget import DiskBudget, nonoverlapping_roots, within_roots
 from campaign import atomic_json
 from job import current_group, verify_job
 
@@ -64,17 +64,15 @@ def storage_limit(gib):
 
 
 def canonical_roots(paths):
-    roots = []
+    roots = set()
     for raw in paths:
         path = Path(raw)
         if not path.is_absolute() or path != path.resolve():
             raise ValueError('absolute canonical storage root required: ' + str(path))
         if not (path.is_dir() or path.is_file()):
             raise ValueError('missing storage root: ' + str(path))
-        if not any(path == r or r in path.parents for r in roots):
-            roots = [r for r in roots if path not in r.parents]
-            roots.append(path)
-    return sorted(roots)
+        roots.add(path)
+    return nonoverlapping_roots(roots)
 
 
 def campaign_scope(root, cache, compiled, native, baseline, support, preserved):
@@ -103,7 +101,8 @@ class CampaignBudget:
         atomic_json(scope_path, scope)
         # Lock population roots only; source, tools and preserved roots are read-only.
         population_roots = canonical_roots(population_roots or [self.output])
-        if any(not any(p.is_relative_to(r) for r in self.roots) for p in population_roots):
+        root_set = set(self.roots)
+        if any(not within_roots(p, root_set) for p in population_roots):
             raise ValueError('population root outside estate')
         try:
             self.budget = DiskBudget(self.roots, self.output, limit, reserve,
@@ -171,8 +170,8 @@ class SharedBudget:
                 or not 0 <= time.monotonic_ns() - state.get('heartbeat_ns', 0) <= 5_000_000_000
                 or state.get('limit_bytes') != self.limit):
             raise RuntimeError('live campaign storage owner unavailable')
-        owners = [Path(p) for p in state['roots']]
-        if any(not any(Path(p).resolve().is_relative_to(r) for r in owners) for p in self.roots if p):
+        owners = {Path(p) for p in state['roots']}
+        if any(not within_roots(Path(p).resolve(), owners) for p in self.roots if p):
             raise RuntimeError('suite storage outside complete campaign scope')
         return state
 

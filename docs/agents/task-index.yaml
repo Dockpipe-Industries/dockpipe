@@ -95,6 +95,8 @@ tasks:
     completed_language_contract: v0.113.0
     active_objective: TASK-021-general-blocks
     general_blocks: docs/agents/tasks/pipelang-reactive-application-language/general-blocks.md
+    general_blocks_verification: fresh_required_after_dependency_drift
+    general_blocks_recovery: all_verification_caches_reset_fresh_proof_pending
     nucleon_sdk_pilot: docs/research/pipelang-nucleon-pilot.md
     native_streaming_sdk: docs/agents/tasks/pipelang-reactive-application-language/native-streaming-sdk.md
     native_stream_composition: docs/agents/tasks/pipelang-reactive-application-language/native-stream-composition.md
@@ -149,7 +151,7 @@ tasks:
     cpp_qt_pilot: docs/agents/tasks/pipelang-reactive-application-language/cpp-qt-pilot.md
     completed_cpp_qt_pilot_objective: pipelang-cpp-qt-pilot-20260913
     cpp_qt_pilot_disposition: retained_experimental_integration
-    objective_state: blocked
+    objective_state: executing
     selected_option: P04.a
     selected_scope: approved general lexical blocks joins and early returns
     implementation_approval: approved
