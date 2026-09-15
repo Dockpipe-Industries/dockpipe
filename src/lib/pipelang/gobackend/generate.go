@@ -198,6 +198,13 @@ func (g *generator) emitFunction(out *strings.Builder, name string, function cor
 		}
 	}
 
+	if function.Body.Kind == coreir.ExprBlock {
+		if err := g.emitGeneralBlock(out, function.Body.Block, function.Parameters, optionalTypeName); err != nil {
+			return err
+		}
+		out.WriteString("}\n\n")
+		return nil
+	}
 	if function.Body.Kind == coreir.ExprOptionalSome && function.Body.Some != nil && function.Body.Some.Value != nil && function.Body.Some.Value.Kind == coreir.ExprPropagate {
 		propagation := function.Body.Some.Value.Propagate
 		if propagation == nil || propagation.Value == nil || propagation.Value.Parameter == nil {

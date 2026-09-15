@@ -1,3 +1,9 @@
+## Active objective — P04.a general blocks
+
+Founder selected P04.a and separately said `approved` for its concrete scope.
+[general-blocks.md](general-blocks.md) owns implementation and pending verification.
+The completed objectives and historical boundaries below grant no additional scope.
+
 ## Completed objective — nominal enums
 
 The founder selected option 1 and explicitly said `approved`; P01 is now complete.

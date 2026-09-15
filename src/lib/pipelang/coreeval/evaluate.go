@@ -254,6 +254,12 @@ func evalExprWithProgram(expression coreir.Expr, arguments *argumentFrame, funct
 			}
 		}
 		return cloneOutcome(outcome), nil
+	case coreir.ExprBlock:
+		outcome, returned, err := evalBlock(expression.Block, arguments, functions)
+		if err == nil && !returned {
+			return Outcome{}, fmt.Errorf("block fell through without returning")
+		}
+		return outcome, err
 	case coreir.ExprImmutableLocal:
 		local := expression.ImmutableLocal
 		if local == nil || local.Initializer == nil || local.Return == nil || local.Position != len(arguments.values) {

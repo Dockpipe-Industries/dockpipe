@@ -1,3 +1,9 @@
+## Active implementation selection
+
+P04.a general lexical blocks, joins and early returns were selected and explicitly
+approved. [general-blocks.md](general-blocks.md) owns execution and pending proof.
+P01 and both Qt objectives remain completed. P04.b/P05 and unrelated decisions remain pending.
+
 ## Current implementation selection
 
 P01 nominal enums were selected as option 1 and explicitly approved.

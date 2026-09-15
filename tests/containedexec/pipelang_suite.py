@@ -52,6 +52,11 @@ def plan(tests, splits, shape_batch_size):
                             jobs.append(([prefix + '/' + suffix], pattern + '/^' + suffix + '$'))
                 else:
                     jobs.append(([prefix], pattern))
+        elif name == 'TestV1140BlocksMemory':
+            flush()
+            for shape in range(3):
+                label = name + '/shape' + str(shape)
+                jobs.append(([label], '^' + name + '$/^shape' + str(shape) + '$'))
         elif name == 'TestV1130EnumsMemory':
             flush()
             for shape in range(3):
@@ -158,12 +163,20 @@ def main():
     parser.add_argument('--native-representation', action=argparse.BooleanOptionalAction, default=False,
                         help='Opt in to exact compressed native preparation/replay on Linux; ordinary execution is the default')
     parser.add_argument('--representation-cache', type=Path, help='Private representation store (default: sibling of compiled cache)')
+    parser.add_argument('--native-codec', choices=['transcript', 'nucleon'], default='transcript',
+                        help='Optional representation backend; Nucleon requires a separately built private SDK')
+    parser.add_argument('--nucleon-sdk', type=Path, help='Absolute path to the local libnucleon shared library')
     parser.add_argument('--workers', type=int, choices=[1, 2], default=2)
     args = parser.parse_args()
     storage_limit(args.disk_budget_gib)
     verify_job()
     if args.native_representation and (args.compiled_cache is None or sys.platform != 'linux'):
         parser.error('native representations require a Linux compiled cache')
+    if args.native_codec == 'nucleon' and (not args.native_representation or args.nucleon_sdk is None
+                                         or not args.nucleon_sdk.is_absolute() or not args.nucleon_sdk.is_file()):
+        parser.error('Nucleon requires --native-representation and an absolute --nucleon-sdk library')
+    if args.nucleon_sdk is not None and args.native_codec != 'nucleon':
+        parser.error('--nucleon-sdk requires --native-codec nucleon')
     if args.native_bundle is None:
         args.native_bundle = args.compiled_cache is not None and sys.platform == 'linux'
     if not args.go.is_absolute() or args.shape_batch_size < 1 or args.shape_batch_size > 25:
@@ -204,12 +217,19 @@ def main():
 
     paths = source_paths()
     guard = dependency_guard(args.go, args.cache, output)
-    snapshot = guard.check
+    sdk_expected = hashlib.sha256(args.nucleon_sdk.read_bytes()).hexdigest() if args.nucleon_sdk else None
+    def snapshot():
+        value = guard.check()
+        if args.nucleon_sdk and hashlib.sha256(args.nucleon_sdk.read_bytes()).hexdigest() != sdk_expected:
+            raise RuntimeError('Nucleon SDK changed during suite')
+        return value
     source_before = snapshot()
     toolchain = toolchain_identity(args.go)
     identity = dict(source=source_before, toolchain=toolchain['digest'], policy=POLICY,
                     host=host_identity(), high=700, native_bundle=args.native_bundle,
-                    representation=args.native_representation, parallel_shapes=args.parallel_shapes,
+                    representation=args.native_representation, native_codec=args.native_codec,
+                    nucleon_sdk_sha256=sdk_expected,
+                    parallel_shapes=args.parallel_shapes,
                     audit=args.audit_generated, identity_profile=args.identity_profile, toolchain_read_buffer=args.toolchain_read_buffer, compiled_cache=str(args.compiled_cache))
     atomic_json(output / 'source-hashes.json', fingerprint(paths))
     bootstrap = StageRunner(campaign, 'bootstrap', identity, ['build'], args.cache, snapshot)
@@ -257,6 +277,7 @@ def main():
             raise RuntimeError('sample contains undiscovered logical cases')
     scheduling_identity = dict(inputs=source_before, host=identity['host'], policy=POLICY,
                                workers=args.workers, native_bundle=args.native_bundle,
+                               native_codec=args.native_codec, nucleon_sdk_sha256=sdk_expected,
                                representation=args.native_representation, toolchain_read_buffer=args.toolchain_read_buffer, identity_profile=args.identity_profile)
     admitted_profile = {}
     schedule = dict(mode='singleton', status='disabled', admitted_cases=0)
@@ -280,7 +301,10 @@ def main():
     if args.native_representation:
         representation_cache = args.representation_cache or args.compiled_cache.with_name(args.compiled_cache.name + '-representations')
         representation_stage = StageRunner(campaign, 'representation', identity, ['representation-init'], args.cache, snapshot)
-        preparation = representation_stage.run(['representation-init'], [sys.executable, '-B', str(runner.parent / 'native_artifacts.py'), '--cache', str(args.compiled_cache), '--config', str(representation_config), '--directory', str(representation_cache), '--go', str(args.go), 'init'], artifacts=lambda d: [representation_config])
+        codec_options = ['--codec', args.native_codec]
+        if args.nucleon_sdk:
+            codec_options += ['--nucleon-sdk', str(args.nucleon_sdk)]
+        preparation = representation_stage.run(['representation-init'], [sys.executable, '-B', str(runner.parent / 'native_artifacts.py'), '--cache', str(args.compiled_cache), '--config', str(representation_config), '--directory', str(representation_cache), '--go', str(args.go), *codec_options, 'init'], artifacts=lambda d: [representation_config])
         if preparation['exit']:
             return preparation['exit']
 
@@ -292,6 +316,7 @@ def main():
 
     def required_artifacts(directory):
         paths = [p for p in (directory / 'fixtures').rglob('*') if p.is_file()]
+        paths += [p for p in (directory / 'cpp-pilot').rglob('*') if p.is_file()]
         if args.compiled_cache and (directory / 'unit.output').exists():
             with (directory / 'unit.output').open() as log:
                 keys = {key for line in log for key in re.findall(r'generated_compiled_artifact .*key=([a-f0-9]{64})', line)}
@@ -299,6 +324,20 @@ def main():
                 paths += [args.compiled_cache / key / 'record.json']
                 if not args.native_representation:
                     paths += [args.compiled_cache / key / 'program.test']
+                elif args.native_codec == 'nucleon':
+                    config = json.loads(representation_config.read_text())
+                    store = Path(config['root'])
+                    recipe_path = store / key / 'recipe.json'
+                    paths += [representation_config, Path(config['sdk_source']), store / 'libnucleon.so']
+                    if recipe_path.is_file():
+                        paths.append(recipe_path)
+                        recipe = json.loads(recipe_path.read_text())
+                        paths.append(args.compiled_cache / key / 'program.test' if recipe.get('unsupported')
+                                     else store / key / 'program.nuc')
+                    else:
+                        paths.append(args.compiled_cache / key / 'program.test')
+        if args.native_codec == 'nucleon' and (directory / 'native.json').exists():
+            paths.append(directory / 'native.json')
         return paths
 
     def execute(job):
@@ -337,6 +376,8 @@ def main():
             environment += ['GOENV=off', 'PIPELANG_GENERATED_BATCH=1', 'PIPELANG_COMPILED_CACHE=' + str(args.compiled_cache)]
         if args.shared_export:
             environment += ['PIPELANG_SHARED_EXPORT=' + str(args.shared_export)]
+        if all(name == 'TestCPPPilotExport' for name in names):
+            environment += ['PIPELANG_CPP_PILOT_OUTPUT=' + str(directory / 'cpp-pilot')]
         if all(name.startswith('TestV960DepthThreeStraightLineInitializersMemory') for name in names):
             environment += ['PIPELANG_MEMORY_FIXTURES=' + str(directory / 'fixtures')]
         if all(name.startswith('TestV970DepthThreeTerminalInitializersMemory') for name in names):
@@ -363,7 +404,7 @@ def main():
             environment += ['PIPELANG_MEMORY_FIXTURES=' + str(directory / 'fixtures')]
         if all(name.startswith('TestV990TerminalLeafBooleanSelectorsMemory') for name in names):
             environment += ['PIPELANG_MEMORY_FIXTURES=' + str(directory / 'fixtures')]
-        if all(name.startswith(('TestV1100StraightLineSelectorValueArmsMemory', 'TestV1110TerminalLeafSelectorValueArmsMemory', 'TestV1120ArrowSelectorValueArmsMemory', 'TestV1130EnumsMemory')) for name in names):
+        if all(name.startswith(('TestV1100StraightLineSelectorValueArmsMemory', 'TestV1110TerminalLeafSelectorValueArmsMemory', 'TestV1120ArrowSelectorValueArmsMemory', 'TestV1130EnumsMemory', 'TestV1140BlocksMemory')) for name in names):
             environment += ['PIPELANG_MEMORY_FIXTURES=' + str(directory / 'fixtures')]
         if all(name.startswith('TestV980ConditionalBooleanSelectorsMemory') for name in names):
             environment += ['PIPELANG_MEMORY_FIXTURES=' + str(directory / 'fixtures')]
@@ -429,6 +470,8 @@ def main():
         inventory = artifact_inventory(args.compiled_cache, log_lines(), representation)
         (output / 'artifacts.json').write_text(json.dumps(inventory, indent=2) + '\n')
     summary['scheduling'] = schedule
+    summary['native_codec'] = args.native_codec if args.native_representation else None
+    summary['nucleon_sdk_sha256'] = sdk_expected
     campaign.serialized_bytes += atomic_json(output / 'timing.json', summarize(rows, time.monotonic() - execution_started, args.workers, campaign.root))
     if args.compiled_cache:
         campaign.serialized_bytes += atomic_json(output / 'schedule-profile.json', observed_profile(rows, scheduling_identity, args.compiled_cache, inherited=admitted_profile))

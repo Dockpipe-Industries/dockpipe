@@ -779,3 +779,6 @@ assert.strictEqual(pipeLangSnippets["PipeLang Nominal Enum"].prefix, "pipe-enum"
 assert(pipeLangSnippets["PipeLang Nominal Enum"].description.includes("v0.113.0"));
 assert(pipeLangSnippets["PipeLang Nominal Enum"].body.join("\n").includes(' = "'));
 assert.strictEqual(pipeLangSnippets["PipeLang Enum Match"].prefix, "pipe-enum-match");
+
+assert(pipeLangSnippets["PipeLang General Block"].description.includes("v0.114.0"));
+assert(pipeLangSnippets["PipeLang General Block"].body.join("\n").includes("return ${6:"));

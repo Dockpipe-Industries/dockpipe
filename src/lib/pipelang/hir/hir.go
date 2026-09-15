@@ -148,6 +148,7 @@ type Parameter struct {
 type ExprKind string
 
 const (
+	ExprBlock                              ExprKind = "block"
 	ExprLiteral                            ExprKind = "literal"
 	ExprReference                          ExprKind = "reference"
 	ExprUnary                              ExprKind = "unary"
@@ -407,6 +408,7 @@ type ResultFailureOr struct {
 }
 
 type Expr struct {
+	Block                              *Block                              `json:"block,omitempty"`
 	Kind                               ExprKind                            `json:"kind"`
 	Type                               Type                                `json:"type"`
 	Span                               SourceSpan                          `json:"span"`

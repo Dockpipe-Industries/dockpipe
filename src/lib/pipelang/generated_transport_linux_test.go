@@ -126,7 +126,14 @@ func TestGeneratedRepresentationRejectsUnsealedAndWrongBytes(t *testing.T) {
 			if err := os.WriteFile(filepath.Join(root, key, "record.json"), record, 0600); err != nil {
 				t.Fatal(err)
 			}
-			address := filepath.Join(root, "socket")
+			// Durable campaign paths can exceed sockaddr_un's pathname limit.
+			// Address the same private directory through its open descriptor.
+			rootDirectory, err := os.Open(root)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer rootDirectory.Close()
+			address := fmt.Sprintf("/proc/self/fd/%d/socket", rootDirectory.Fd())
 			listener, err := net.ListenUnix("unixpacket", &net.UnixAddr{Name: address, Net: "unixpacket"})
 			if err != nil {
 				t.Fatal(err)

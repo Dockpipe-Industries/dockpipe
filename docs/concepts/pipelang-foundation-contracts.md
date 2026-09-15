@@ -377,3 +377,11 @@ This is bounded adapter proof, not completion of P15/P16/P17/P20 or ratification
 D1-D6. The approved continuation also repairs the recorded zero-argument record
 transport panic within existing contracts, advancing F01/F05/F14 correctness
 without selecting another P-number. Go v0.113.0 remains the accepted backend.
+
+
+## Approved P04.a control-flow contract
+
+The founder selected and explicitly approved lexical blocks, branch joins and early
+returns. [The concrete v0.114.0 contract](pipelang.md#pipelang-v01140-general-lexical-blocks)
+owns the bounded C2 rules and pending acceptance. Mutable slots and logical fuel/depth
+remain later decisions; this approval does not ratify D1–D6 wholesale.

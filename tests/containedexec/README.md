@@ -3,7 +3,7 @@
 ## Durable campaigns
 
 `verification_campaign.py` runs the complete compiler suite, the 1,944 v109, 192 v110, 576 v111 and 192 v112
-isolated compiler fixtures, the nine integration checks and the editor tests in
+isolated compiler fixtures, 18 v113 enum fixtures and 12 v114 block fixtures, the nine integration checks and the editor tests in
 sequence under one `job.py` budget. Its default data root is
 `~/.cache/pipelang-verification`, separated into `campaigns/<name>`, `builds`,
 `executables` and toolchain-bound Go build caches. Supply an absolute cached
@@ -1002,3 +1002,38 @@ member counts (2/8/32), each crossing 0/1/8/32/128/256 locals: 18 additional fre
 isolated compiler fixtures, bringing the maintained terminal matrix to 2922.
 Every member and both local-selector outcomes have independent evaluator/native
 oracles. No direct compiler, process, GC, inlining or execution limit changes.
+
+
+### Local Nucleon SDK pilot
+
+The optional Nucleon backend consumes a separately built proprietary shared library.
+No codec implementation, model data or SDK binary is stored in this repository.
+Build/install the SDK in its private repository and pass an absolute library path:
+
+```sh
+python3 -B tests/containedexec/job.py --output /absolute/proof/nucleon-job -- \
+  python3 -B tests/containedexec/pipelang_suite.py \
+  --go /absolute/go --output /absolute/proof/nucleon \
+  --cache /absolute/proof/go-cache --compiled-cache /absolute/proof/executables \
+  --native-representation --native-codec nucleon \
+  --nucleon-sdk /absolute/private-sdk/lib/libnucleon.so \
+  --representation-cache /absolute/proof/nucleon-store
+```
+
+`--native-codec transcript` retains the existing structural/Zstd path. Ordinary
+execution remains the default. Nucleon stores the complete native executable as a
+framed stream, with no cross-artifact dictionary. The SDK binary embeds its frozen
+models. Exact binary hashes and adapter source hashes identify representation
+namespaces; changing the SDK during a suite fails. Resume receipts bind the SDK,
+recipe and stored payload. Decoder buffers are sealed before descriptor delivery;
+the Go caller still independently checks the original digest and runs current
+fixtures in fresh processes. Packed replay needs the identity record, not original
+executable bytes. Oversized artifacts retain the ordinary path; corruption fails.
+
+The prototype SDK performs allocation, wire parsing, CRC and output copying in
+addition to decode. Charge these costs, Python adapter overhead, SHA verification,
+SDK/support bytes, recipe metadata and cold preparation in end-to-end comparisons.
+Keep originals during the pilot and report actual freed bytes as zero. A complete
+family is a real-workload sample, not a fresh whole-suite language acceptance.
+`test_native_nucleon.py` exercises the real SDK when `NUCLEON_TEST_SDK` is supplied
+inside `run.py`; without the external SDK those tests explicitly skip.

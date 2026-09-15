@@ -62,6 +62,13 @@ Typical non-responsibilities:
 
 Those presentation concerns live in workflow YAML `view:` metadata, not in the PipeLang type system.
 
+## Experimental native streaming SDK profile
+
+The separately selected [native streaming profile](pipelang-native-streams.md)
+supports direct, typed SDK calls from `.pipe` methods to a native C++ host adapter.
+It has an explicit compiler entrypoint and borrowed stream capabilities; it does
+not silently add host effects to the ordinary pure language contracts.
+
 ## Workflow binding
 
 Workflow YAML binds to PipeLang through top-level `types:`.
@@ -4065,3 +4072,51 @@ support. Enum fields in objects/records, carrier/container elements, payload uni
 mutation, methods inside enums and serialization remain later foundation packages. P09/P32 own wire
 integration; all frozen compatibility, compiler/semantic/Application IR version identities and
 128 MiB / 5-second direct compiler ceilings remain in force.
+
+
+## PipeLang v0.114.0 general lexical blocks
+
+Implementation in progress; acceptance is owned by
+[the P04.a objective](../agents/tasks/pipelang-reactive-application-language/general-blocks.md).
+The explicit successor contract admits nested lexical blocks, initialized immutable
+locals, sequential `if`/`else` branches and early returns in public pure method bodies.
+A branch without an `else` may continue through its false path. A branch whose arms
+both return has no continuation. Return in any nested block exits the whole method.
+
+```text
+public string Select(bool ready, string value) {
+    if (ready) { return value; }
+    { string temporary = value; }
+    return "waiting";
+}
+```
+
+Locals require an explicit existing type and initializer. They are visible only after
+initialization and inside their lexical block, cannot shadow an existing binding,
+and cannot escape into sibling or enclosing blocks. Reusing a name after its inner
+scope ends is valid. All paths reaching the end of a value-returning method must
+return. Statements after a structurally unconditional return are rejected, including
+a nested block or an if/else whose arms both return. Conditions must be Bool;
+constant folding does not hide type errors in unselected branches.
+
+Evaluation remains eager once and left-to-right within expressions, lazy for branch
+selection and short circuit. Unused initialized locals still evaluate their
+initializers. Only paths that continue execute following statements. No mutation,
+delayed initialization, loops, recursion, effects or new type families are added.
+Existing propagation blocks retain their prior shape admission and carrier-return
+semantics; propagation is not generalized into the new statement model.
+
+HIR/Core represent a callable block as `block`, containing ordered `local`, `if`,
+`block` and `return` statements. A local carries a typed canonical binding; a value
+is an existing expression. Nested statement blocks share the callable return target.
+Core validates lexical positions, types, Boolean conditions, all-return paths,
+unreachable statements and complete call dependencies independently of source
+lowering. Blocks cannot be embedded in value expressions. Go emits structured
+statements directly; the join continuation is represented once. The evaluator owns
+an invocation-local binding stack and unwinds each block's bindings on every exit.
+HIR retains statement, local name/type and expression source spans; public semantic
+identities and Application IR contracts retain their existing schemas.
+
+Historical language contracts keep their existing acceptance/refusal behavior.
+Verification retains independent value/order/refusal oracles, fresh native execution,
+all inherited compatibility, and direct compiler ceilings of 128 MiB/5 seconds.
