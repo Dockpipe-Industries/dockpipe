@@ -26,6 +26,8 @@ state:
   current_language_contract: v0.113.0
   active_objective: TASK-021-general-blocks
   general_blocks: general-blocks.md
+  general_blocks_verification: fresh_required_after_dependency_drift
+  general_blocks_recovery: all_verification_caches_reset_fresh_proof_pending
   native_streaming_sdk: native-streaming-sdk.md
   completed_qt_boundary_foundation_objective: pipelang-qt-boundary-foundation-20260913
   completed_language_objective: TASK-021-nominal-enums
@@ -77,7 +79,7 @@ state:
   cpp_qt_pilot_disposition: retained_experimental_integration
   next_implementation_recommendation: null
   research_record: performance-compression-research.md
-  objective_state: blocked
+  objective_state: executing
   selected_option: P04.a
   selected_scope: approved general lexical blocks joins and early returns
   implementation_approval: approved

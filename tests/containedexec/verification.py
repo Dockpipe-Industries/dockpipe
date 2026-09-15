@@ -9,6 +9,7 @@ import sys
 import time
 from campaign import Campaign, atomic_json, digest, file_identity, fingerprint, host_identity, provenance
 from job import verify_job
+from support_inputs import SupportInputs
 
 ROOT = Path(__file__).resolve().parents[2]
 RUNNER = Path(__file__).with_name('run.py')
@@ -142,7 +143,7 @@ class StageRunner:
         return dict(self.campaign.reconcile(self.stage, self.before), executed=self.executed, reused=self.reused)
 
 
-def dependency_guard(go, cache, output, stage='suite', extra=()):
+def dependency_guard(go, cache, output, stage='suite', extra=(), support_manifest=None):
     """Resolve modules offline in a contained unit, then guard their full sources.
 
     Discovery runs on every process admission; no stale go-list graph is trusted.
@@ -150,10 +151,12 @@ def dependency_guard(go, cache, output, stage='suite', extra=()):
     """
     import uuid
     from campaign import InputGuard, resource_accepted
-    paths = source_paths(stage) + list(extra)
+    support = SupportInputs(support_manifest)
+    paths = source_paths(stage) + list(extra) + support.paths
     goroot = Path(go).parent.parent
     paths += [goroot / p for p in ('bin', 'pkg/tool', 'src', 'lib', 'VERSION', 'go.env')]
-    pre = InputGuard(paths, watch_directories=[ROOT])
+    pre = InputGuard(paths, watch_directories=[ROOT, *support.watch_directories])
+    support.check()
     if not set(bundle_paths()) <= set(paths):
         raise RuntimeError("bundle declarations changed during admission")
     prefix = Path(output) / ('dependencies-' + uuid.uuid4().hex)
@@ -170,8 +173,10 @@ def dependency_guard(go, cache, output, stage='suite', extra=()):
     if ROOT not in roots or any(not p.is_absolute() or not p.is_dir() for p in roots):
         raise RuntimeError('incomplete module dependency discovery')
     modules = [p for p in roots if p != ROOT]
-    guard = InputGuard(paths + modules, watch_directories=[ROOT])
+    guard = InputGuard(paths + modules, watch_directories=[ROOT, *support.watch_directories])
+    support.check()
     pre.check()
     pre.close()
-    atomic_json(Path(output) / 'dependency-inputs.json', dict(paths=list(map(str, paths + modules)), identity=guard.identity))
+    atomic_json(Path(output) / 'dependency-inputs.json', dict(paths=list(map(str, paths + modules)), identity=guard.identity,
+                support_manifest=str(support.manifest) if support.manifest else None))
     return guard

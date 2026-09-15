@@ -14,6 +14,8 @@ from campaign import Campaign, atomic_json, fingerprint, resource_accepted
 from verification import ROOT, dependency_guard, source_paths, bundle_paths
 from job import verify_job
 from estate import CampaignBudget, campaign_scope, storage_limit, accepted_storage
+from support_inputs import SupportInputs
+from budget import within_roots
 
 HERE = Path(__file__).resolve().parent
 MEMORY_FAMILIES = {'TestV1090TerminalCombinedSelectorArmsMemory': 1944,
@@ -26,6 +28,9 @@ MEMORY_COUNT = sum(MEMORY_FAMILIES.values())
 
 def validated_stage(output, stage, selected=None, summary_only=False):
     dependencies = json.loads((output / 'dependency-inputs.json').read_text())
+    support = SupportInputs(dependencies.get('support_manifest'))
+    if not set(support.paths) <= set(map(Path, dependencies['paths'])):
+        raise RuntimeError('support closure changed since stage admission')
     if not set(bundle_paths()) <= set(map(Path, dependencies['paths'])):
         raise RuntimeError('new root bundle declarations since stage admission')
     current = fingerprint(dependencies['paths'])['digest']
@@ -103,6 +108,7 @@ def main():
     parser.add_argument('--root', type=Path, default=Path.home() / '.cache/pipelang-verification')
     parser.add_argument('--campaign', required=True, help='Private campaign directory name')
     parser.add_argument('--node', type=Path, required=True)
+    parser.add_argument('--support-inputs', type=Path, help='Installed external tool/header/library input manifest')
     parser.add_argument('--go', type=Path, required=True)
     parser.add_argument('--cache', type=Path)
     parser.add_argument('--compiled-cache', type=Path)
@@ -131,12 +137,14 @@ def main():
     native = args.native_build_cache or args.root / 'native-build-cache'
     for path in (cache, compiled, native):
         path.mkdir(parents=True, exist_ok=True, mode=0o700)
-    support = [*source_paths('integration'), args.go.resolve().parent.parent, args.node.resolve(), *args.support_root]
+    external = SupportInputs(args.support_inputs)
+    support = [*source_paths('integration'), args.go.resolve().parent.parent, args.node.resolve(), *args.support_root, *external.paths]
     roots = campaign_scope(args.root, cache, compiled, native, args.baseline, support, args.preserved_root)
     with CampaignBudget(roots, output, limit, population_roots=[args.root, cache, compiled, native]) as budget, Campaign(output / 'controller', args.mode) as controller:
-        guard = dependency_guard(args.go, cache, output, 'integration', [args.node])
+        guard = dependency_guard(args.go, cache, output, 'integration', [args.node], args.support_inputs)
         inputs = json.loads((output / 'dependency-inputs.json').read_text())['paths']
-        if any(not any(Path(p).resolve().is_relative_to(r) for r in roots) for p in inputs):
+        root_set = set(roots)
+        if any(not within_roots(Path(p).resolve(), root_set) for p in inputs):
             raise RuntimeError('dependency outside storage scope; declare its support root')
         budget.check()
         controller.register('workflow', guard.check(), ['suite', 'matrix', 'integration'])
@@ -146,6 +154,8 @@ def main():
             mode = 'resume' if args.mode == 'resume' and (stage_output / 'campaign/manifest.json').exists() else 'fresh'
             driver = 'pipelang_suite.py' if name == 'suite' else name + '.py'
             command = [sys.executable, '-B', str(HERE / driver), '--output', str(stage_output), '--cache', str(cache), '--mode', mode]
+            if args.support_inputs and name != 'matrix':
+                command += ['--support-inputs', str(args.support_inputs)]
             if name == 'suite':
                 command += ['--go', str(args.go), '--compiled-cache', str(compiled), '--native-build-cache', str(native),
                             '--build-store', str(args.root / 'builds'), '--workers', '2', '--audit-generated',

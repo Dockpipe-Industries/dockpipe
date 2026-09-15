@@ -21,12 +21,13 @@ def main():
     parser.add_argument('--cache', type=Path, required=True)
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--mode', choices=['fresh', 'resume'], default='fresh')
+    parser.add_argument('--support-inputs', type=Path, help='Installed external tool/header/library input manifest')
     args = parser.parse_args()
     verify_job()
     if not args.node.is_absolute() or not args.node.is_file():
         parser.error('absolute installed Node executable required')
     args.output.mkdir(parents=True, exist_ok=True, mode=0o700)
-    guard = dependency_guard(args.go, args.cache, args.output, 'integration', [args.node])
+    guard = dependency_guard(args.go, args.cache, args.output, 'integration', [args.node], args.support_inputs)
     inputs = guard.check
     toolchain = toolchain_identity(args.go)
     identity = dict(source=inputs(), toolchain=toolchain['digest'], policy=POLICY, host=host_identity())

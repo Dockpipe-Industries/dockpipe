@@ -1,8 +1,9 @@
 # General lexical blocks — P04.a
 
-Objective: `TASK-021-general-blocks`. State: blocked.
-Cache maintenance approved by the user: “I approve that pruning plan”.
-Blocker: retained-proof memory/storage headroom under the unchanged limits; the approved cache-only recovery has been carried out.
+Objective: `TASK-021-general-blocks`. State: executing.
+Cache reset approved by the user on 2026-09-15: all PipeLang verification caches,
+retaining source, installed toolchains/SDKs, fixtures, receipts and failed-run logs.
+Current boundary: regenerate caches and complete fresh verification after dependency drift.
 Execution skill: `dorkpipe-objective-execution`.
 Authority: founder selected P04.a, reviewed the concrete scope, then said `approved`.
 Checkpoint policy: automatic within objective. Handoff: user requested only.
@@ -25,7 +26,7 @@ logical fuel. Unrelated D1–D6 proposals remain pending. No new native backend,
 work, profiling, delegation, worktree, install, commit, push, publication or
 external resource mutation. Cleanup is limited to the separately approved cache plan. Preserve package/engine boundaries and inert analysis.
 
-Admission: saved checkout `/home/jamie/source/dockpipe`, branch `js/pipelang`, HEAD
+Original admission: saved checkout `/home/jamie/source/dockpipe`, branch `js/pipelang`, HEAD
 `1c839e3ce92591c845fc647970d453bcad6dffea`; staging/tracked/untracked inventories empty.
 Both protected stashes and all 28 prior authored postimages matched the clean-handoff
 receipt. Completed P01 and Qt objectives remain admitted evidence, not active work.
@@ -37,8 +38,8 @@ Verification retains offline Go 1.25.13, 128 MiB/5-second direct source probes,
 96 GiB inclusive estate and 8 GiB reserve. Preparation-only GOMEMLIMIT remains 600 MiB.
 Evidence root: `/home/jamie/.codex/visualizations/2026/09/13/01a09d03-2870-7022-be17-0e22f9f2291b/general-blocks`.
 
-Current checkpoint: introduce explicit structured blocks across compiler layers and
-prove lexical scope, continuation and return semantics before terminal verification.
+Current checkpoint: focused regeneration passed; run fresh complete verification
+from regenerated caches, then independent acceptance. See the cache reset below.
 
 Focused checkpoint: `focused-2-job.json` passed block values/native execution,
 lexical/refusal and forged-Core cases, call-order instrumentation, inherited scalar/
@@ -167,3 +168,80 @@ recovery from those small directories, and none was performed. Completion needs
 a revised verification retention/resource plan; the fixed caps and protected
 proof cannot be silently changed. The objective is blocked and v0.114.0 remains
 unaccepted, with v0.113.0 still the accepted baseline. No commit or push occurred.
+
+### 2026-09-15 verification recovery
+
+Live admission was clean on `js/pipelang` at
+`177f7e6d8e47700cc75e2165c51c5798364ddd27`, equal to the local upstream ref.
+Both protected stashes and all six handoff routing hashes matched. This commit
+contains the implemented compiler and subsequent artifact/native-stream work;
+its title does not establish terminal acceptance.
+
+Canonical controller and suite fingerprint comparisons each found four changed
+files and sixteen additions against terminal-5, including the parser and suite
+harness. A fresh campaign is required; the historical 6,129 passing cases remain
+retained evidence, not current acceptance. Completed P01, Qt and SDK/composition
+proof remains admitted supporting work.
+
+A bounded read-only inventory measured 102,628,446,208 allocated file bytes in the
+declared estate plus new task evidence, leaving 450,768,896 bytes beneath 96 GiB.
+The audit completed with zero OOM/swap and verified tree removal. This sampled
+inventory is not a live campaign capacity gate. Optional artifact packing keeps
+raw executables and releases no space by itself.
+
+The recovery report proposes a one-time, reference-checked pruning of data in the
+separate shared Go cache. Its exact candidate/protection manifests require new
+cleanup approval; the previous native-build-cache approval does not cover this
+root. The read-only audit scanned 905,065 proof files, protected 250 present cache
+references and identified 125,099 eligible files totaling 39,822,053,376 allocated
+bytes (37.09 GiB). Its digest-bound manifest and full limitations are in the report.
+The bounded audit completed without OOM/swap and removed its tree; coordinator
+hard-cap reclaim events mean future reconciliation headroom is still unproven.
+No cache data was removed. Before a fresh full run, also account for the
+compiler/header/library inputs used by the newly discovered native-stream C++
+tests; the old Go-only discovery does not bind that closure. Keep all existing
+proof requirements and limits. P04.a remains blocked and v0.114.0 unaccepted.
+
+Evidence and reviewable recovery plan:
+`/home/jamie/.codex/visualizations/2026/09/15/01a0a70d-2a69-7bf1-a168-538d71be58b9/p04a-recovery/README.md`.
+This continuation changes only task documentation and audit evidence; it performs
+no commit, push, worktree, delegation or native-backend promotion.
+
+### Approved complete cache reset
+
+The user superseded the narrow proposal with “wipe all of our caches” and confirmed
+all PipeLang verification Go/build/executable/packed-artifact caches while retaining
+source, installed toolchains/SDKs, fixtures, receipts and failed-run logs.
+`cache-reset-result.json` records removal of 911,714 files across 96 identified
+cache roots: 177,219,245,753 logical bytes and 180,409,221,120 allocated file bytes
+(no hardlinked cache inodes). Filesystem available space increased by
+180,404,092,928 bytes, an observed delta that can include concurrent activity.
+The source/toolchain/SDK fingerprint and Git/stash state matched afterward; no
+eligible cache payload remained. Empty cache directories and lock files remain.
+The contained reset job completed with zero OOM/swap and verified tree removal.
+
+Receipts remain historical records; deleted cache artifacts must regenerate before
+reuse. No old passing receipt is promoted into fresh proof. A necessary verification
+repair now supplies explicit installed C++ support inputs and a pinned compiler to
+the two newly discovered native-stream execution tests. Their flags and independent
+oracles are unchanged. Focused verification and the new complete campaign are next;
+v0.114.0 remains unaccepted and v0.113.0 remains the accepted language baseline.
+
+### Fresh focused regeneration
+
+`rebuild-focused-3-job.json` passed in 87.23 seconds: 31 harness tests, installed
+C++ header closure, compiler rebuild, v0.114 block checks, both native-stream
+execution checks, Application IR and editor. Aggregate peak was 1,159,667,712
+bytes, with zero OOM/swap and verified tree removal. The final sampled estate was
+7,044,517,888 allocated bytes. No resource limit or semantic oracle changed.
+
+The installed input closure exposed quadratic root normalization; canonical roots
+and coverage now use ancestor-set membership while preserving validation and
+accounting. A focused independent root-union/refusal test passed. An inherited
+symlink allocation assertion now uses actual filesystem blocks for long durable
+temporary paths. The interrupted preflight and failed assertion attempts remain
+recorded. Fresh terminal proof is running at the recovery evidence root under
+`verification-data/campaigns/terminal`; `terminal-job.json` records live state.
+Discovery includes 892 functions / 8,882 logical cases, with no inherited removal.
+Independent acceptance is prepared in `accept.py` and must run only after the
+complete stages and aggregate cleanup succeed. v0.114.0 remains unaccepted.

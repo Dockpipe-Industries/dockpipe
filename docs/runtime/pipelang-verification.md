@@ -497,6 +497,13 @@ The subsequent bounded recovery repair has its own objective and proof above.
 
 ## Inclusive campaign storage admission
 
+Native-stream execution tests in the compiler suite consume C++ tools and support
+beyond the Go module graph. `--support-inputs` supplies their explicit installed
+input manifest; the complete driver charges those files before stage execution,
+and controller/suite/integration identities bind the manifest and current bytes.
+The compiler is pinned for native cases; alias/search-directory changes invalidate
+the run. See the [manifest contract](../../tests/containedexec/README.md#durable-campaigns).
+
 `verification_campaign.py` owns one `CampaignBudget` before dependency discovery
 and until all stages and profile publication finish. The scope includes the whole
 selected durable root (all campaign generations, controller, suite, compiler

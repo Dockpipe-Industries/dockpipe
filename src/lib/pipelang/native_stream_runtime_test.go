@@ -12,6 +12,17 @@ import (
 	"dockpipe/src/lib/pipelang/streamcpp"
 )
 
+func nativeStreamCompiler(t *testing.T) string {
+	t.Helper()
+	if compiler := os.Getenv("PIPELANG_TEST_CXX"); compiler != "" {
+		if !filepath.IsAbs(compiler) {
+			t.Fatal("PIPELANG_TEST_CXX must name the declared absolute compiler")
+		}
+		return compiler
+	}
+	return "c++"
+}
+
 func TestNativeStreamsGeneratedRuntime(t *testing.T) {
 	dep := streamDependency(t)
 	program, err := CompileNativeStreams(SourceInput{Path: "transfer.pipe", Data: []byte(nativeStreamSource)}, []NativeStreamDependency{dep})
@@ -58,7 +69,7 @@ int main() {
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
 	binary := filepath.Join(dir, "native")
-	if out, err := exec.CommandContext(ctx, "c++", "-std=c++17", "-O2", path, "-o", binary).CombinedOutput(); err != nil {
+	if out, err := exec.CommandContext(ctx, nativeStreamCompiler(t), "-std=c++17", "-O2", path, "-o", binary).CombinedOutput(); err != nil {
 		t.Fatalf("native stream compile: %v\n%s", err, out)
 	}
 	if out, err := exec.CommandContext(ctx, binary).CombinedOutput(); err != nil {
