@@ -2,6 +2,8 @@
 // It contains no source-tree, parser, HIR, or target-language concepts.
 package coreir
 
+const LanguageContractV1140 = "v0.114.0"
+
 const LanguageContractV1130 = "v0.113.0"
 
 const LanguageContractV1120 = "v0.112.0"
@@ -258,6 +260,7 @@ type Parameter struct {
 type ExprKind string
 
 const (
+	ExprBlock                              ExprKind = "block"
 	ExprLiteral                            ExprKind = "literal"
 	ExprReference                          ExprKind = "reference"
 	ExprUnary                              ExprKind = "unary"
@@ -516,6 +519,7 @@ type ResultFailureOr struct {
 }
 
 type Expr struct {
+	Block                              *Block                              `json:"block,omitempty"`
 	Kind                               ExprKind                            `json:"kind"`
 	Type                               Type                                `json:"type"`
 	Literal                            *Literal                            `json:"literal,omitempty"`

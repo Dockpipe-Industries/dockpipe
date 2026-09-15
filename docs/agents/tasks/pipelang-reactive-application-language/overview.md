@@ -1,3 +1,9 @@
+## Active objective — P04.a general blocks
+
+[general-blocks.md](general-blocks.md) owns the selected and explicitly approved
+lexical blocks/joins/early-return implementation. Focused cross-layer checks pass;
+complete terminal acceptance is pending. The accepted baseline remains v0.113.0.
+
 ## Completed objective — package inputs and inclusive storage
 
 The approved [packaging/storage repair](package-input-budget-repair.md) preserves

@@ -7,6 +7,7 @@ layer owns only exact byte representation. Every workload runs inside run.py.
 import argparse
 import array
 import concurrent.futures
+from contextlib import contextmanager
 import fcntl
 import hashlib
 import json
@@ -43,7 +44,11 @@ def snapshot(cache):
     return derive_plan(records) if records else None
 
 
-def initialize(directory, go, cache):
+def initialize(directory, go, cache, codec='transcript', sdk=None):
+    if codec == 'nucleon':
+        from native_nucleon import initialize as initialize_nucleon
+        return initialize_nucleon(directory, sdk)
+    check(codec == 'transcript', 'unknown native codec')
     containment()
     directory.mkdir(mode=0o700, parents=True, exist_ok=True)
     check(not directory.is_symlink() and directory.stat().st_mode & 0o777 == 0o700, 'private native store required')
@@ -188,6 +193,18 @@ class Store:
         self.decoder.close()
 
 
+@contextmanager
+def socket_path():
+    # sun_path is limited even when the containing directory is valid. Keep the
+    # socket in the contained private TMPDIR, addressed through a short fd alias.
+    with tempfile.TemporaryDirectory(prefix='pipelang-native-') as directory:
+        fd = os.open(directory, os.O_RDONLY | os.O_DIRECTORY | os.O_CLOEXEC)
+        try:
+            yield f'/proc/{os.getpid()}/fd/{fd}/socket'
+        finally:
+            os.close(fd)
+
+
 def run(cache, config, receipt, argv):
     containment()
     for name, expected in config['sources'].items():
@@ -196,8 +213,7 @@ def run(cache, config, receipt, argv):
     stores = []
     import queue
     available = queue.Queue()
-    with tempfile.TemporaryDirectory(prefix='pipelang-native-') as temporary:
-        path = str(Path(temporary) / 'socket')
+    with socket_path() as path:
         listener = socket.socket(socket.AF_UNIX, socket.SOCK_SEQPACKET)
         listener.bind(path)
         listener.listen(8)
@@ -205,7 +221,11 @@ def run(cache, config, receipt, argv):
         stopped = threading.Event()
         try:
             for _ in range(2):
-                store = Store(cache, config)
+                if config.get('codec') == 'nucleon':
+                    from native_nucleon import Store as NucleonStore
+                    store = NucleonStore(cache, config)
+                else:
+                    store = Store(cache, config)
                 stores.append(store)
                 available.put(store)
             def handle(connection):
@@ -265,10 +285,12 @@ def main():
     parser.add_argument('--directory', type=Path)
     parser.add_argument('--go', type=Path)
     parser.add_argument('--receipt', type=Path)
+    parser.add_argument('--codec', choices=['transcript', 'nucleon'], default='transcript')
+    parser.add_argument('--nucleon-sdk', type=Path)
     parser.add_argument('command', nargs=argparse.REMAINDER)
     args = parser.parse_args()
     if args.mode == 'init':
-        dump(args.config, initialize(args.directory, args.go, args.cache))
+        dump(args.config, initialize(args.directory, args.go, args.cache, args.codec, args.nucleon_sdk))
         return 0
     return run(args.cache, json.loads(args.config.read_text()), args.receipt, args.command[1:] if args.command[:1] == ['--'] else args.command)
 

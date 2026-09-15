@@ -93,7 +93,11 @@ tasks:
     foundation_planning_state: completed
     topic: PipeLang deterministic self-hosting managed language foundation
     completed_language_contract: v0.113.0
-    active_objective: null
+    active_objective: TASK-021-general-blocks
+    general_blocks: docs/agents/tasks/pipelang-reactive-application-language/general-blocks.md
+    nucleon_sdk_pilot: docs/research/pipelang-nucleon-pilot.md
+    native_streaming_sdk: docs/agents/tasks/pipelang-reactive-application-language/native-streaming-sdk.md
+    native_stream_composition: docs/agents/tasks/pipelang-reactive-application-language/native-stream-composition.md
     completed_qt_boundary_foundation_objective: pipelang-qt-boundary-foundation-20260913
     completed_language_objective: TASK-021-nominal-enums
     completed_planning_objective: TASK-021-foundation-specification-and-dependency-plan
@@ -145,9 +149,9 @@ tasks:
     cpp_qt_pilot: docs/agents/tasks/pipelang-reactive-application-language/cpp-qt-pilot.md
     completed_cpp_qt_pilot_objective: pipelang-cpp-qt-pilot-20260913
     cpp_qt_pilot_disposition: retained_experimental_integration
-    objective_state: completed
-    selected_option: qt_boundary_then_foundation
-    selected_scope: approved Qt boundary and bounded foundation continuation
+    objective_state: blocked
+    selected_option: P04.a
+    selected_scope: approved general lexical blocks joins and early returns
     implementation_approval: approved
     planning_authority: explicit_user_request
     completed_language_implementation_approval: approved
@@ -158,7 +162,7 @@ tasks:
     path: docs/agents/tasks/pipelang-reactive-application-language/index.yaml
     dispatch:
       readiness: decision_ready
-      ownership: unclaimed
+      ownership: TASK-021-general-blocks
   - id: TASK-022
     topic: Go-first PipeLang backend services and typed clients
     path: docs/agents/tasks/go-first-pipelang-backend-services/index.yaml

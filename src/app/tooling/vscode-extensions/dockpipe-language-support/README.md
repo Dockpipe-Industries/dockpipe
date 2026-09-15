@@ -427,3 +427,6 @@ for qualified exhaustive arms. Include exactly one arm per member; wildcard/payl
 patterns and implicit integer conversion are excluded. These snippets describe the
 approved implementation; terminal language acceptance is tracked by TASK-021's
 [nominal-enum objective](../../../../../docs/agents/tasks/pipelang-reactive-application-language/nominal-enums.md).
+
+PipeLang v0.114.0 adds `pipe-block`: nested lexical blocks, joining `if`/`else` branches,
+initialized immutable locals and early callable returns. Mutation and loops are separate capabilities.

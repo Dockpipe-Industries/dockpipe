@@ -1327,5 +1327,19 @@
       "match(${1:value}) { ${2:Mode}.${3:Idle} => ${4:\"idle\"}, ${2:Mode}.${5:Busy} => ${6:\"busy\"} }"
     ],
     "description": "v0.113.0 exhaustive enum match; include exactly one arm for every declared member."
+  },
+  "PipeLang General Block": {
+    "prefix": "pipe-block",
+    "body": [
+      "public ${1:string} ${2:Select}(bool ${3:flag}, ${1:string} ${4:value})",
+      "{",
+      "    if (${3:flag}) {",
+      "        return ${4:value};",
+      "    }",
+      "    { ${1:string} ${5:local} = ${4:value}; }",
+      "    return ${6:\"fallback\"};",
+      "}"
+    ],
+    "description": "PipeLang v0.114.0 general lexical blocks, joining branches and early returns; initialized immutable locals."
   }
 }

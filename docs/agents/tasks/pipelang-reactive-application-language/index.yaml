@@ -18,13 +18,15 @@ foundation_planning:
 
 dispatch:
   readiness: decision_ready
-  ownership: unclaimed
+  ownership: TASK-021-general-blocks
 
 state:
   qt_boundary_foundation: qt-boundary-foundation.md
   decision: accepted
   current_language_contract: v0.113.0
-  active_objective: null
+  active_objective: TASK-021-general-blocks
+  general_blocks: general-blocks.md
+  native_streaming_sdk: native-streaming-sdk.md
   completed_qt_boundary_foundation_objective: pipelang-qt-boundary-foundation-20260913
   completed_language_objective: TASK-021-nominal-enums
   completed_planning_objective: TASK-021-foundation-specification-and-dependency-plan
@@ -75,9 +77,9 @@ state:
   cpp_qt_pilot_disposition: retained_experimental_integration
   next_implementation_recommendation: null
   research_record: performance-compression-research.md
-  objective_state: completed
-  selected_option: qt_boundary_then_foundation
-  selected_scope: approved Qt boundary and bounded foundation continuation
+  objective_state: blocked
+  selected_option: P04.a
+  selected_scope: approved general lexical blocks joins and early returns
   implementation_approval: approved
   planning_authority: explicit_user_request
   completed_language_implementation_approval: approved
@@ -118,6 +120,11 @@ state:
     No full backend, default selection or next implementation is selected.
 
 routes:
+  general_blocks:
+    read:
+      - general-blocks.md
+      - ../../../concepts/pipelang-foundation-delivery.md
+
   qt_boundary_foundation:
     read:
       - qt-boundary-foundation.md

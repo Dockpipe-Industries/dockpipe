@@ -2,7 +2,8 @@
 
 Status: proposed delivery plan; planning objective completed. P01 nominal enums subsequently selected
 and approved; [the implementation objective](../agents/tasks/pipelang-reactive-application-language/nominal-enums.md)
-records completed, accepted v0.113.0. Other package proposals remain pending.
+records completed, accepted v0.113.0. P04.a general blocks are now selected and approved,
+with implementation verification in progress. Remaining package proposals stay pending.
 Baseline: accepted v0.112.0 at `9f5abd00fbc21ae2ab23178cc4fbe761903e5167`.
 Read the [inventory](pipelang-foundation.md) for required scope and the
 [contract proposals](pipelang-foundation-contracts.md) for C1–C8 and decisions D1–D6.
@@ -376,3 +377,12 @@ This is bounded adapter proof, not completion of P15/P16/P17/P20 or ratification
 D1-D6. The approved continuation also repairs the recorded zero-argument record
 transport panic within existing contracts, advancing F01/F05/F14 correctness
 without selecting another P-number. Go v0.113.0 remains the accepted backend.
+
+
+## Approved P04.a general blocks
+
+The founder selected P04.a and explicitly approved general lexical blocks, joins and
+returns. [The objective](../agents/tasks/pipelang-reactive-application-language/general-blocks.md)
+owns implementation and pending verification at v0.114.0. Approval settles only this
+bounded C2 control-flow contract; P04.b mutation and P05 loops/fuel remain open.
+Other package proposals and unrelated D1–D6 decisions remain pending.
