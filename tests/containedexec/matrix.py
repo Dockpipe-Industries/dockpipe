@@ -7,6 +7,7 @@ import sys
 from campaign import Campaign, InputGuard, atomic_json, fingerprint, host_identity, file_identity
 from verification import StageRunner, POLICY, source_paths
 from job import verify_job
+from reporting import CompactRows
 
 
 def fixture_inputs(fixtures, compiler):
@@ -53,7 +54,7 @@ def main():
     atomic_json(args.output / 'dependency-inputs.json', dict(paths=list(map(str, paths)), identity=guard.identity))
     identity = dict(inputs=inputs(), host=host_identity(), policy=POLICY, high=None)
     cases = [directory.name for _, _, directory, _ in fixtures]
-    failed, rows = set(), []
+    failed, rows = set(), CompactRows()
     with Campaign(args.output / 'campaign', args.mode) as campaign:
         stage = StageRunner(campaign, 'matrix', identity, cases, args.cache, inputs)
         for family, count, directory, meta in fixtures:
@@ -69,8 +70,8 @@ def main():
                        compiler_flags=['-c=4', 'normal inlining'])
             if not row['accepted']:
                 failed.add(family)
-            rows.append(row)
-        atomic_json(args.output / 'matrix.json', rows)
+            rows.append(row, index=len(rows))
+        rows.write(args.output / 'matrix.json')
         reconciliation = stage.finish()
         summary = dict(fixtures=len(rows), failed_families=[list(f) for f in sorted(failed)],
                        max_rss_mib=max(r['isolated'].get('child_maxrss_kib', 0) for r in rows) / 1024,

@@ -1,8 +1,10 @@
-## Active objective — P04.a general blocks
+## Completed objective — P04.a general blocks
 
 [general-blocks.md](general-blocks.md) owns the selected and explicitly approved
-lexical blocks/joins/early-return implementation. Focused cross-layer checks pass;
-complete terminal acceptance is pending. The accepted baseline remains v0.113.0.
+lexical blocks/joins/early-return implementation. Fresh complete verification and
+independent ordered acceptance passed: 8,882 suite cases / 892 functions, 2,934
+isolated compiler cases, nine integrations and one editor check. The accepted
+baseline is v0.114.0. No successor capability is selected or approved.
 
 ## Completed objective — package inputs and inclusive storage
 
@@ -37,7 +39,7 @@ The [planning objective](foundation-specification-plan.md) is complete. The
 [canonical delivery plan](../../../concepts/pipelang-foundation-delivery.md) owns F01–F34 dispositions,
 52–84 proposed foundation slices, the M-app gate, separate bootstrap work and verification cost.
 P01 nominal enums were subsequently selected and approved; see the current objective above.
-v0.113.0 is now accepted; the planning baseline below remains historical. Use the live index and this planning record for current status; the entries below are
+v0.114.0 is now accepted; the planning baseline below remains historical. Use the live index and this planning record for current status; the entries below are
 historical slice records and grant no present authority.
 
 ## Completed objective — arrow-method selector result arms

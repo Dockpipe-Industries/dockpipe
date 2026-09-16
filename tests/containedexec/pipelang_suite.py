@@ -20,9 +20,9 @@ from job import verify_job
 from budget import DiskBudget
 from estate import SharedBudget, storage_limit
 from support_inputs import SupportInputs
-from reporting import summarize
+from reporting import CompactRows, summarize
 from scheduling import measured_plan, load_profile, observed_profile
-from campaign import Campaign, BuildStore, InputGuard, atomic_json, digest, fingerprint, host_identity
+from campaign import Campaign, BuildStore, InputGuard, atomic_json, atomic_json_stream, digest, fingerprint, host_identity
 from verification import StageRunner, POLICY, source_paths, toolchain_identity, dependency_guard
 
 
@@ -423,7 +423,7 @@ def main():
         return command
 
     execution_started = time.monotonic()
-    rows = []
+    rows = CompactRows()
     seen_receipts = set()
     for case, reference in stage.prior.items():
         if reference['id'] not in seen_receipts:
@@ -451,8 +451,8 @@ def main():
                 print('FAILED', row['index'], row['tests'], flush=True)
             elif len(rows) % 20 == 0:
                 print('accepted', len(rows), 'of', len(jobs), flush=True)
-    rows.sort(key=lambda r: r['index'])
-    campaign.serialized_bytes += atomic_json(output / 'suite.json', rows)
+    rows.sort()
+    campaign.serialized_bytes += rows.write(output / 'suite.json')
     reconciliation = stage.finish()
     native_build_bytes = None
     native_build_removed = None
@@ -477,12 +477,13 @@ def main():
         representation = Path(json.loads(representation_config.read_text())['root']) if args.native_representation else None
         inventory = artifact_inventory(args.compiled_cache, log_lines(), representation)
         (output / 'artifacts.json').write_text(json.dumps(inventory, indent=2) + '\n')
+        del inventory
     summary['scheduling'] = schedule
     summary['native_codec'] = args.native_codec if args.native_representation else None
     summary['nucleon_sdk_sha256'] = sdk_expected
-    campaign.serialized_bytes += atomic_json(output / 'timing.json', summarize(rows, time.monotonic() - execution_started, args.workers, campaign.root))
+    campaign.serialized_bytes += atomic_json_stream(output / 'timing.json', summarize(rows, time.monotonic() - execution_started, args.workers, campaign.root))
     if args.compiled_cache:
-        campaign.serialized_bytes += atomic_json(output / 'schedule-profile.json', observed_profile(rows, scheduling_identity, args.compiled_cache, inherited=admitted_profile))
+        campaign.serialized_bytes += atomic_json_stream(output / 'schedule-profile.json', observed_profile(rows, scheduling_identity, args.compiled_cache, inherited=admitted_profile))
     summary['disk_budget'] = budget.check(force=True)
     budget.close()
     summary['toolchain_unchanged'] = toolchain_identity(args.go) == toolchain

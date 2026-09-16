@@ -537,6 +537,30 @@ external target appearing later is refused. Sockets/FIFOs are counted as metadat
 without reading them. Shared/reflink extents are not known unique physical usage.
 Directory metadata and filesystem overhead are not part of the file-byte metric.
 
+Each metadata check samples free space once per distinct directory path, including
+the parent of exact-file roots. It still validates every declared root and samples
+again on the next check. Different paths are not merged by filesystem device id.
+Canonical root ancestry is sampled once per distinct component in each check;
+every component gets a fresh `lstat`, and missing paths or symlink substitutions
+are refused. Only path topology is retained between checks, never stat results.
+The watch map and metadata index share immutable directory names; no filesystem
+observations or admission results are cached by that sharing. The in-memory
+metadata database indexes directory byte paths for subtree lookup.
+Temporary-directory removal visits its indexed descendants instead of scanning
+all recorded directories; empty directory entries leave the index on deletion.
+A non-root temporary directory may vanish between installing its watch and opening
+its scan. That specific missing-directory race leaves deletion reconciliation to
+the queued events; declared-root loss, substitution and other scan errors still fail.
+Likewise, a queued create event may outlive both its entry and parent. A watch
+failure is ignored only for `ENOENT` on an already absent, non-root entry;
+other watch failures report the directory and operating-system error.
+
+Suite and matrix reporting retain zlib-compressed canonical JSON snapshots of completed rows instead of
+every nested Python report object. Reporting passes materialize one row at a
+time, and final array publication streams the same canonical bytes through the
+existing flush/fsync/rename/directory-sync boundary. Receipts still establish
+admission and are revalidated independently; compact rows grant no reuse authority.
+
 The suite uses only its live direct controller's storage record, with owner,
 heartbeat, root coverage and cap checks; it does not acquire competing cache locks
 or reset population reservations. Standalone suite runs retain a local gate, now
@@ -554,3 +578,10 @@ They do not reserve every compiler/linker temporary allocation. Peaks are sample
 not a proof of exact simultaneous maximum: short-lived scratch and physical I/O
 remain explicit limits. Exact allocator-backed peak/growth reservations, absolute
 product budgets, historical retirement and native backend work are separate work.
+
+The inventory's internal counter and hexadecimal-filename encodings are lossless;
+raw byte names and hardlink identities remain exact. Large timing/profile reports
+stream the same canonical JSON bytes through fsync/rename publication, and the
+completed artifact inventory is released before building later reports. These
+reduce retained bookkeeping memory; they do not relax the coordinator reclaim
+guard, resource ceilings, full inventory, or fresh acceptance requirements.

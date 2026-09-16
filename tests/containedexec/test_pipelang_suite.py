@@ -6,9 +6,83 @@ import tempfile
 from pathlib import Path
 sys.dont_write_bytecode = True
 from pipelang_suite import plan, cleanup_native_build_cache, artifact_inventory
+from reporting import CompactRows
+from campaign import atomic_json, atomic_json_array, atomic_json_stream, canonical
 
 
 class PlanTests(unittest.TestCase):
+    def test_streamed_report_matches_canonical_json_and_rejects_nonfinite_values(self):
+        value = {'z': [None, True, False, -0.0, 5e-324, 1.7976931348623157e308],
+                 'a': [{'text': 'nul\0 \u00ff \ud800', 'integer': 1 << 130}] * 5000}
+        with tempfile.TemporaryDirectory() as raw:
+            target = Path(raw) / 'report.json'
+            expected = canonical(value) + b'\n'
+            self.assertEqual(atomic_json_stream(target, value), len(expected))
+            self.assertEqual(target.read_bytes(), expected)
+            for invalid in (float('nan'), float('inf'), -float('inf')):
+                with self.assertRaises(ValueError):
+                    atomic_json_stream(target, {'a': value, 'z': invalid})
+                self.assertEqual(target.read_bytes(), expected)
+
+    def test_streamed_report_preserves_publication_boundaries(self):
+        for phase in ('written', 'synced', 'renamed', 'committed'):
+            with self.subTest(phase=phase), tempfile.TemporaryDirectory() as raw:
+                target = Path(raw) / 'report.json'
+                atomic_json(target, {'old': True})
+                def interrupt(current):
+                    if current == phase:
+                        raise RuntimeError('interrupted')
+                with self.assertRaisesRegex(RuntimeError, 'interrupted'):
+                    atomic_json_stream(target, {'new': True}, interrupt)
+                expected = {'new': True} if phase in ('renamed', 'committed') else {'old': True}
+                self.assertEqual(json.loads(target.read_bytes()), expected)
+
+    def test_compact_rows_preserve_canonical_bytes_and_stable_order(self):
+        original = [dict(index=2, tests=['late'], report={'elapsed_s': .25}),
+                    dict(index=1, tests=['first'], report={'text': 'nul\0 and \u00ff'}, resumed=True),
+                    dict(index=1, tests=['second'], report={'tree_removed': False}, exit=1)]
+        rows = CompactRows(); rows.extend(original); rows.sort()
+        expected = sorted(original, key=lambda row: row['index'])
+        self.assertEqual(len(rows), len(expected))
+        self.assertEqual(list(rows), expected)
+        # Consumers cannot mutate the retained snapshot between reporting passes.
+        next(iter(rows))['report'].clear()
+        self.assertEqual(list(rows), expected)
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            old_size = atomic_json(root / 'old.json', expected)
+            self.assertEqual(rows.write(root / 'new.json'), old_size)
+            self.assertEqual((root / 'new.json').read_bytes(), (root / 'old.json').read_bytes())
+            self.assertEqual(CompactRows().write(root / 'empty.json'), 3)
+            self.assertEqual((root / 'empty.json').read_bytes(), b'[]\n')
+
+    def test_streamed_array_retains_atomic_publication_boundaries(self):
+        for phase in ('written', 'synced', 'renamed', 'committed'):
+            with self.subTest(phase=phase), tempfile.TemporaryDirectory() as raw:
+                target = Path(raw) / 'rows.json'
+                atomic_json(target, [{'old': True}])
+                def interrupt(current):
+                    if current == phase:
+                        raise RuntimeError('interrupted')
+                with self.assertRaisesRegex(RuntimeError, 'interrupted'):
+                    atomic_json_array(target, iter([{'new': True}]), interrupt)
+                expected = [{'new': True}] if phase in ('renamed', 'committed') else [{'old': True}]
+                self.assertEqual(json.loads(target.read_bytes()), expected)
+
+    def test_compact_matrix_rows_keep_schema_order_and_summary(self):
+        original = [dict(accepted=True, isolated={'child_maxrss_kib': 1024, 'elapsed_s': .5}),
+                    dict(accepted=False, isolated={'child_maxrss_kib': 2048, 'elapsed_s': 1.25})]
+        rows = CompactRows()
+        for index, row in enumerate(original):
+            rows.append(row, index=index)
+        self.assertEqual(list(rows), original)
+        self.assertEqual(max(r['isolated']['child_maxrss_kib'] for r in rows), 2048)
+        self.assertEqual(max(r['isolated']['elapsed_s'] for r in rows), 1.25)
+        with tempfile.TemporaryDirectory() as raw:
+            target = Path(raw) / 'matrix.json'
+            rows.write(target)
+            self.assertEqual(target.read_bytes(), canonical(original) + b'\n')
+
     def test_artifact_inventory_includes_only_executed_keys(self):
         with tempfile.TemporaryDirectory() as temporary:
             cache = Path(temporary)

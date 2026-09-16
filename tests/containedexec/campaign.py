@@ -99,11 +99,43 @@ def sync_directory(path):
 
 
 def atomic_json(path, value, hook=lambda phase: None):
+    return _atomic_chunks(path, [canonical(value) + b'\n'], hook)
+
+
+def atomic_json_stream(path, value, hook=lambda phase: None):
+    """Publish large reports with canonical bytes and bounded encoding buffers."""
+    def chunks():
+        encoder = json.JSONEncoder(sort_keys=True, separators=(',', ':'), allow_nan=False)
+        pending, size = [], 0
+        for token in encoder.iterencode(value):
+            pending.append(token)
+            size += len(token)
+            if size >= 65536:
+                yield ''.join(pending).encode()
+                pending, size = [], 0
+        yield (''.join(pending) + '\n').encode()
+    return _atomic_chunks(path, chunks(), hook)
+
+
+def atomic_json_array(path, values, hook=lambda phase: None):
+    """Publish the same canonical JSON array without retaining its full encoding."""
+    def chunks():
+        yield b'['
+        for index, value in enumerate(values):
+            if index:
+                yield b','
+            yield canonical(value)
+        yield b']\n'
+    return _atomic_chunks(path, chunks(), hook)
+
+
+def _atomic_chunks(path, chunks, hook):
     path = Path(path)
-    data = canonical(value) + b'\n'
     temporary = path.with_name('.' + path.name + '.' + uuid.uuid4().hex + '.pending')
+    written = 0
     with temporary.open('xb') as stream:
-        stream.write(data)
+        for chunk in chunks:
+            written += stream.write(chunk)
         stream.flush()
         hook('written')
         os.fsync(stream.fileno())
@@ -112,7 +144,7 @@ def atomic_json(path, value, hook=lambda phase: None):
     hook('renamed')
     sync_directory(path.parent)
     hook('committed')
-    return len(data)
+    return written
 
 
 def sealed(value):
