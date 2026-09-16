@@ -878,7 +878,19 @@ lookups. A verified job coordinator requests scoped memory reclamation at 384 Mi
 and refuses insufficient headroom, preserving its 512-MiB hard limit. Every file,
 logical/allocated total, hardlink, watch and storage policy remains accounted for.
 This experiment declares and fingerprints the existing SQLite runtime; no database
-file is created.
+file is created. Directory names share immutable string storage between the watch
+map and metadata index. Completed suite and matrix rows retain compressed canonical JSON
+snapshots in memory and publish the same ordinary JSON bytes; receipts and fresh
+filesystem observations remain the only admission/accounting authority. Matrix
+rows keep their existing schema and fixture order; their in-memory ordering key
+is separate from the serialized report.
+The private in-memory records use lossless variable-width counters and tagged
+binary storage for full lowercase hexadecimal filenames, with an exact raw-byte
+fallback for every other name. Hardlink identities and large/signed values retain
+their original representation. Final timing/profile JSON streams canonical bytes
+through the same atomic publication protocol; the completed artifact inventory
+is released before those reports are built. These reduce bookkeeping retention,
+without changing filesystem observations, proof reuse, deadlines or ceilings.
 
 The v0.105 depth-three terminal test matrix uses
 `--split-test TestV1050DepthThreeTerminalConditionalTestsLayouts=200` and
@@ -1048,6 +1060,8 @@ executable bytes. Oversized artifacts retain the ordinary path; corruption fails
 The prototype SDK performs allocation, wire parsing, CRC and output copying in
 addition to decode. Charge these costs, Python adapter overhead, SHA verification,
 SDK/support bytes, recipe metadata and cold preparation in end-to-end comparisons.
+The Python ABI adapter copies only the returned compressed extent into its result;
+it does not first copy the unused capacity of the compression-bound buffer.
 Keep originals during the pilot and report actual freed bytes as zero. A complete
 family is a real-workload sample, not a fresh whole-suite language acceptance.
 `test_native_nucleon.py` exercises the real SDK when `NUCLEON_TEST_SDK` is supplied

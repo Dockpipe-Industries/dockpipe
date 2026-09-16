@@ -5,6 +5,7 @@ from pathlib import Path
 import tempfile
 import threading
 import time
+from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
 from budget import DiskBudget, _DirectoryEntries, within_roots
@@ -12,6 +13,159 @@ from estate import CampaignBudget, SharedBudget, accepted_storage, canonical_roo
 
 
 class EstateTests(unittest.TestCase):
+    def test_compact_metadata_preserves_counter_boundaries_and_hardlinks(self):
+        values = {0, 1, (1 << 64) - 1, 1 << 64, -1}
+        for width in range(1, 9):
+            values.update({(1 << (width * 8)) - 1, 1 << (width * 8)})
+        entries = _DirectoryEntries()
+        try:
+            expected = {}
+            for size in values:
+                for blocks in values:
+                    for key in (None, (7, 19)):
+                        path = '/counters/' + str(len(expected))
+                        expected[path] = (size, blocks, key)
+                        entries[path] = expected[path]
+            self.assertEqual(dict(entries.items()), expected)
+            for path, value in expected.items():
+                self.assertEqual(entries.pop(path), value)
+            self.assertEqual(len(entries), 0)
+        finally: entries.close()
+
+    def test_packed_and_raw_filename_bytes_never_alias(self):
+        names = [b'a' * 64, b'a' * 64 + b'-a', b'a' * 64 + b'-d',
+                 b'A' * 64, b'a' * 63, b'a' * 65, b'a' * 64 + b'-x',
+                 b'\x01' + b'\xaa' * 32, b'raw-\xff', 'caf\u00e9'.encode()]
+        expected = {'/files/' + os.fsdecode(name): (i, i * 512, None)
+                    for i, name in enumerate(names)}
+        entries = _DirectoryEntries()
+        try:
+            for path, value in expected.items(): entries[path] = value
+            self.assertEqual(dict(entries.items()), expected)
+            self.assertEqual(set(entries), set(expected))
+            self.assertEqual(set(entries.paths_under('/files')), set(expected))
+            for path, value in expected.items(): self.assertEqual(entries[path], value)
+            for path in expected: del entries[path]
+            self.assertEqual(len(entries), 0)
+        finally: entries.close()
+
+    def test_queued_temporary_entry_after_parent_removal(self):
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            budget = DiskBudget([root], root, 16 << 20, 0, lock_roots=[], record_population=False)
+            try:
+                parent = root / 'temporary'; parent.mkdir()
+                child = parent / 'child'; child.mkdir()
+                child.rmdir(); parent.rmdir()
+                budget.scan(str(child))
+                self.assertEqual(budget.check()['retained_bytes'], 0)
+                parent.mkdir(); child.mkdir(); (child / 'live').write_bytes(b'fresh')
+                self.assertEqual(budget.check()['retained_bytes'], len(b'fresh'))
+                # Do not hide resource exhaustion, even for an absent entry.
+                with patch.object(budget.libc, 'inotify_add_watch', return_value=-1), \
+                     patch('budget.ctypes.get_errno', return_value=errno.ENOSPC):
+                    with self.assertRaisesRegex(RuntimeError, 'watch unavailable'):
+                        budget.scan(str(root / 'missing'))
+            finally: budget.close()
+
+    def test_removed_temporary_directory_during_scan_keeps_exact_accounting(self):
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            budget = DiskBudget([root], root, 16 << 20, 0, lock_roots=[], record_population=False)
+            try:
+                temporary = root / 'compiler-temporary'; temporary.mkdir()
+                real_scandir = os.scandir
+                def vanish(path):
+                    if path == str(temporary): temporary.rmdir()
+                    return real_scandir(path)
+                with patch('budget.os.scandir', side_effect=vanish): budget.scan(str(temporary))
+                self.assertEqual(budget.check()['retained_bytes'], 0)
+                temporary.mkdir(); (temporary / 'live').write_bytes(b'recreated')
+                self.assertEqual(budget.check()['retained_bytes'], len(b'recreated'))
+                with patch('budget.os.scandir', side_effect=PermissionError('unreadable')):
+                    with self.assertRaises(PermissionError): budget.scan(str(temporary))
+                with patch('budget.os.scandir', side_effect=FileNotFoundError('declared root')):
+                    with self.assertRaises(FileNotFoundError): budget.scan(str(root))
+            finally: budget.close()
+
+    def test_subtree_index_matches_independent_paths_through_directory_reuse(self):
+        entries = _DirectoryEntries()
+        paths = ['/a/file', '/a/nested/file', '/ab/file', '/a0/file',
+                 '/root-file', '/a/' + os.fsdecode(b'raw-\xff') + '/file']
+        expected = {path: (i + 1, (i + 1) * 512, None) for i, path in enumerate(paths)}
+        def compare():
+            for root in ['/a', '/ab', '/a/nested', '/missing', '/root-file']:
+                wanted = {p:v for p,v in expected.items()
+                          if p == root or Path(root) in Path(p).parents}
+                descendants = {p for p in wanted if p != root}
+                self.assertEqual(set(entries.paths_under(root)), descendants)
+                self.assertCountEqual(entries.values_under(root), wanted.values())
+            # Retain the existing helper's root-separator boundary behavior.
+            self.assertEqual(list(entries.paths_under('/')), [])
+            self.assertEqual(list(entries.values_under('/')), [])
+        try:
+            for path, value in expected.items(): entries[path] = value
+            compare()
+            for path in list(expected):
+                if Path('/a') in Path(path).parents:
+                    del entries[path]; del expected[path]
+            compare()
+            self.assertEqual(list(entries.directories_under('/a')), [])
+            expected['/a/new/file'] = (19, 1024, None)
+            entries['/a/new/file'] = expected['/a/new/file']
+            compare()
+        finally: entries.close()
+
+    def test_shared_ancestry_is_fresh_and_rejects_root_or_parent_substitution(self):
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            parent = root / 'parent'; parent.mkdir()
+            files = [parent / str(i) for i in range(20)]
+            for path in files: path.write_bytes(b'x')
+            budget = DiskBudget(files, root, 16 << 20, 0, lock_roots=[],
+                                create_roots=False, record_population=False)
+            try:
+                real_lstat = os.lstat
+                with patch('budget.os.lstat', wraps=real_lstat) as observed:
+                    modes = budget.check_roots()
+                    self.assertEqual(set(modes), set(files))
+                    self.assertEqual(observed.call_count, len(budget.root_ancestry))
+                    self.assertEqual(sum(call.args[0] == str(parent) for call in observed.call_args_list), 1)
+                saved = root / 'saved'
+                parent.rename(saved); parent.symlink_to(saved, target_is_directory=True)
+                with self.assertRaisesRegex(RuntimeError, 'root changed'): budget.check_roots()
+                parent.unlink(); saved.rename(parent)
+                budget.check_roots()
+                files[0].unlink(); files[0].symlink_to(files[1])
+                with self.assertRaisesRegex(RuntimeError, 'root changed'): budget.check_roots()
+                files[0].unlink()
+                with self.assertRaisesRegex(RuntimeError, 'disappeared'): budget.check_roots()
+            finally: budget.close()
+
+    def test_free_space_samples_distinct_paths_and_refreshes_every_check(self):
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            left, right = root / 'left', root / 'right'
+            left.mkdir(); right.mkdir()
+            files = [left / 'a', left / 'b', right / 'c']
+            for path in files: path.write_bytes(b'x')
+            budget = DiskBudget(files, root, 16 << 20, 0, lock_roots=[],
+                                create_roots=False, record_population=False)
+            try:
+                free = {left: 100, right: 80}
+                with patch('budget.shutil.disk_usage', side_effect=lambda p: SimpleNamespace(free=free[p])) as usage:
+                    self.assertEqual(budget.check()['available_bytes'], 80)
+                    self.assertCountEqual([call.args[0] for call in usage.call_args_list], [left, right])
+                    usage.reset_mock()
+                    free[left] = 60
+                    self.assertEqual(budget.check()['available_bytes'], 60)
+                    self.assertEqual(usage.call_count, 2)
+                    budget.reserve = 70
+                    with self.assertRaisesRegex(RuntimeError, 'headroom'): budget.check()
+                files[0].unlink()
+                with self.assertRaisesRegex(RuntimeError, 'root.*(changed|removed)'): budget.check()
+            finally: budget.close()
+
     def test_many_exact_roots_match_independent_union_and_preserve_refusals(self):
         with tempfile.TemporaryDirectory() as raw:
             root = Path(raw)

@@ -48,7 +48,7 @@ class SDK:
         written = ctypes.c_size_t()
         self.check(self.lib.nucleon_encode(source, len(source), output, bound, ctypes.byref(written)))
         check(written.value <= bound, 'Nucleon output extent')
-        return output.raw[:written.value]
+        return ctypes.string_at(output, written.value)
 
     def decode_into(self, packed, output, expected_size):
         check(0 < expected_size <= self.LIMIT and 24 <= len(packed) <= self.LIMIT + 16408, 'Nucleon decode bounds')

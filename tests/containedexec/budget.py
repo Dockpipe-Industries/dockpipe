@@ -1,5 +1,6 @@
 """Preservation-first disk accounting with bounded incremental updates."""
 import ctypes
+import errno
 import json
 import sqlite3
 from collections.abc import MutableMapping
@@ -9,6 +10,7 @@ from pathlib import Path
 import shutil
 import struct
 import stat
+import sys
 import threading
 from campaign import atomic_json
 
@@ -26,7 +28,6 @@ def nonoverlapping_roots(paths):
 
 class _DirectoryEntries(MutableMapping):
     """Exact, directory-indexed metadata in compact in-memory database pages."""
-    counters = struct.Struct('=QQ')
 
     def __init__(self):
         self.directories = {}
@@ -36,26 +37,55 @@ class _DirectoryEntries(MutableMapping):
         self.database = sqlite3.connect(':memory:', isolation_level=None, check_same_thread=False)
         self.database.execute('CREATE TABLE entries (directory INTEGER, name BLOB, value BLOB, '
                               'PRIMARY KEY (directory, name)) WITHOUT ROWID')
+        self.database.execute('CREATE TABLE directories (path BLOB PRIMARY KEY, identity INTEGER) WITHOUT ROWID')
 
     @classmethod
     def encode(cls, value):
         size, blocks, key = value
         if key is None and 0 <= size < 1 << 64 and 0 <= blocks < 1 << 64:
-            return b'\0' + cls.counters.pack(size, blocks)
-        return b'\1' + json.dumps(value, separators=(',', ':')).encode('ascii')
+            # Both counters keep their complete unsigned value in 1..8 bytes.
+            a = max(1, (size.bit_length() + 7) // 8)
+            b = max(1, (blocks.bit_length() + 7) // 8)
+            return (bytes([(a - 1) | ((b - 1) << 3)])
+                    + size.to_bytes(a, 'little') + blocks.to_bytes(b, 'little'))
+        return b'\xff' + json.dumps(value, separators=(',', ':')).encode('ascii')
 
     @classmethod
     def decode(cls, value):
-        if value[0] == 0:
-            size, blocks = cls.counters.unpack(value[1:])
-            return size, blocks, None
+        tag = value[0]
+        if tag != 255:
+            a, b = (tag & 7) + 1, (tag >> 3) + 1
+            if tag > 63 or len(value) != 1 + a + b:
+                raise ValueError('invalid metadata encoding')
+            return (int.from_bytes(value[1:1 + a], 'little'),
+                    int.from_bytes(value[1 + a:], 'little'), None)
         size, blocks, key = json.loads(value[1:])
         return size, blocks, None if key is None else tuple(key)
+
+    @staticmethod
+    def encode_name(name):
+        raw = os.fsencode(name)
+        # A tag keeps arbitrary raw byte names distinct from packed hex names.
+        if (len(raw) in (64, 66) and (len(raw) == 64 or raw[64:] in (b'-a', b'-d'))
+                and all(c in b'0123456789abcdef' for c in raw[:64])):
+            return b'\1' + bytes.fromhex(raw[:64].decode('ascii')) + raw[64:]
+        return b'\0' + raw
+
+    @staticmethod
+    def decode_name(encoded):
+        if encoded[0] == 1:
+            if (len(encoded) not in (33, 35)
+                    or (len(encoded) == 35 and encoded[33:] not in (b'-a', b'-d'))):
+                raise ValueError('invalid filename encoding')
+            return encoded[1:33].hex() + os.fsdecode(encoded[33:])
+        if encoded[0] != 0:
+            raise ValueError('invalid filename encoding')
+        return os.fsdecode(encoded[1:])
 
     def __getitem__(self, path):
         directory, name = os.path.split(path)
         row = self.database.execute('SELECT value FROM entries WHERE directory=? AND name=?',
-                                    (self.directories[directory], os.fsencode(name))).fetchone()
+                                    (self.directories[directory], self.encode_name(name))).fetchone()
         if row is None:
             raise KeyError(path)
         return self.decode(row[0])
@@ -63,25 +93,30 @@ class _DirectoryEntries(MutableMapping):
     def __setitem__(self, path, value):
         directory, name = os.path.split(path)
         if directory not in self.directories:
+            # Share immutable labels with the watch table, not filesystem state.
+            directory = sys.intern(directory)
             self.directories[directory] = self.next_directory
             self.next_directory += 1
+            self.database.execute('INSERT INTO directories VALUES (?, ?)',
+                                  (os.fsencode(directory), self.directories[directory]))
         self.database.execute('INSERT OR REPLACE INTO entries VALUES (?, ?, ?)',
-                              (self.directories[directory], os.fsencode(name), self.encode(value)))
+                              (self.directories[directory], self.encode_name(name), self.encode(value)))
 
     def __delitem__(self, path):
         directory, name = os.path.split(path)
         identity = self.directories[directory]
         changed = self.database.execute('DELETE FROM entries WHERE directory=? AND name=?',
-                                        (identity, os.fsencode(name))).rowcount
+                                        (identity, self.encode_name(name))).rowcount
         if not changed:
             raise KeyError(path)
         if self.database.execute('SELECT 1 FROM entries WHERE directory=? LIMIT 1', (identity,)).fetchone() is None:
             del self.directories[directory]
+            self.database.execute('DELETE FROM directories WHERE path=?', (os.fsencode(directory),))
 
     def __iter__(self):
         for directory, identity in self.directories.items():
             for (name,) in self.database.execute('SELECT name FROM entries WHERE directory=?', (identity,)):
-                yield os.path.join(directory, os.fsdecode(name))
+                yield os.path.join(directory, self.decode_name(name))
 
     def __len__(self):
         return self.database.execute('SELECT count(*) FROM entries').fetchone()[0]
@@ -92,24 +127,31 @@ class _DirectoryEntries(MutableMapping):
     def items(self):
         for directory, identity in self.directories.items():
             for name, value in self.database.execute('SELECT name, value FROM entries WHERE directory=?', (identity,)):
-                yield os.path.join(directory, os.fsdecode(name)), self.decode(value)
+                yield os.path.join(directory, self.decode_name(name)), self.decode(value)
+
+    def directories_under(self, root):
+        raw = os.fsencode(root)
+        prefix = raw + b'/'
+        # Binary prefix range: '/' is immediately below '0'. This admits every
+        # descendant byte name, including undecodable filenames, but no sibling.
+        upper = prefix[:-1] + b'0'
+        yield from self.database.execute(
+            'SELECT path, identity FROM directories WHERE path=? AND ? '
+            'UNION ALL SELECT path, identity FROM directories WHERE path>=? AND path<?',
+            (raw, root != os.sep, prefix, upper))
 
     def paths_under(self, root):
-        prefix = root + '/'
-        for directory, identity in self.directories.items():
-            if (directory == root and root != os.sep) or directory.startswith(prefix):
-                for (name,) in self.database.execute('SELECT name FROM entries WHERE directory=?', (identity,)):
-                    yield os.path.join(directory, os.fsdecode(name))
+        for directory, identity in self.directories_under(root):
+            for (name,) in self.database.execute('SELECT name FROM entries WHERE directory=?', (identity,)):
+                yield os.path.join(os.fsdecode(directory), self.decode_name(name))
 
     def values_under(self, root):
         exact = self.get(root)
         if exact is not None:
             yield exact
-        prefix = root + '/'
-        for directory, identity in self.directories.items():
-            if (directory == root and root != os.sep) or directory.startswith(prefix):
-                for (value,) in self.database.execute('SELECT value FROM entries WHERE directory=?', (identity,)):
-                    yield self.decode(value)
+        for directory, identity in self.directories_under(root):
+            for (value,) in self.database.execute('SELECT value FROM entries WHERE directory=?', (identity,)):
+                yield self.decode(value)
 
 
 class DiskBudget:
@@ -121,6 +163,10 @@ class DiskBudget:
                 raise RuntimeError('linked or noncanonical budget root refused')
         self.roots = nonoverlapping_roots(candidates)
         self.root_set = set(self.roots)
+        self.root_paths = {str(root): root for root in self.roots}
+        # Cache only immutable path topology, never filesystem observations.
+        # Canonical roots cannot contain a symlink in any component.
+        self.root_ancestry = sorted({str(path) for root in self.roots for path in (root, *root.parents)})
         self.allow_internal_links = allow_internal_links
         self.hardlinks = {}
         self.hardlink_paths = {}
@@ -224,8 +270,13 @@ class DiskBudget:
             directory = str(Path(root).parent)
             wd = self.libc.inotify_add_watch(self.fd, os.fsencode(directory), 0x2 | 0x4 | 0x8 | 0x40 | 0x80 | 0x100 | 0x200 | 0x400 | 0x800)
             if wd < 0:
-                raise RuntimeError('disk accounting watch unavailable')
-            self.watches[wd] = directory
+                error = ctypes.get_errno()
+                # A queued create event can outlive both a temporary entry and
+                # its parent. Root loss and all other watch failures still fail.
+                if error == errno.ENOENT and root not in self.root_paths and not os.path.lexists(root):
+                    return
+                raise RuntimeError(f'disk accounting watch unavailable: {directory}: {os.strerror(error)}')
+            self.watches[wd] = sys.intern(directory)
             return
         pending = [root]
         while pending:
@@ -235,8 +286,17 @@ class DiskBudget:
                 if not os.path.exists(directory):
                     continue
                 raise RuntimeError('disk accounting watch lost')
-            self.watches[wd] = directory
-            with os.scandir(directory) as entries:
+            self.watches[wd] = sys.intern(directory)
+            try:
+                entries = os.scandir(directory)
+            except FileNotFoundError:
+                # A compiler can remove a newly watched temporary directory
+                # before scandir opens it. Its parent deletion event remains
+                # queued; never forgive loss of a declared root or substitution.
+                if directory in self.root_paths or os.path.lexists(directory):
+                    raise
+                continue
+            with entries:
                 for index, entry in enumerate(entries):
                     if index % 256 == 0:
                         self.memory_guard()
@@ -267,7 +327,7 @@ class DiskBudget:
                 if directory is None:
                     continue
                 if not name:
-                    if mask & (0x400 | 0x800 | 0x8000) and Path(directory) in self.roots:
+                    if mask & (0x400 | 0x800 | 0x8000) and Path(directory) in self.root_set:
                         raise RuntimeError('watched storage root removed or moved')
                     if mask & 0x8000:
                         self.watches.pop(wd, None)
@@ -284,11 +344,23 @@ class DiskBudget:
                 else:
                     self.size(path)
 
+    def check_roots(self):
+        modes = {}
+        try:
+            for path in self.root_ancestry:
+                mode = os.lstat(path).st_mode
+                if stat.S_ISLNK(mode):
+                    raise RuntimeError('declared storage root changed or disappeared')
+                if path in self.root_paths:
+                    modes[self.root_paths[path]] = mode
+        except OSError as error:
+            raise RuntimeError('declared storage root changed or disappeared') from error
+        return modes
+
     def check(self, force=False):
         with self.mutex:
             self.drain()
-            if any(not root.exists() or root != root.resolve() for root in self.roots):
-                raise RuntimeError('declared storage root changed or disappeared')
+            root_modes = self.check_roots()
             # An external target may appear without changing the link itself.
             for link in self.links:
                 target = Path(link).resolve()
@@ -297,7 +369,11 @@ class DiskBudget:
             allocated = self.allocated_used
             self.peak = max(self.peak, self.used)
             self.allocated_peak = max(self.allocated_peak, allocated)
-            free = min(shutil.disk_usage(root if root.is_dir() else root.parent).free for root in self.roots)
+            # Exact-file support inputs often share a directory. Sample each
+            # distinct path once per check; never cache free space across checks
+            # or combine different paths merely because they share a device.
+            free_paths = {root if stat.S_ISDIR(root_modes[root]) else root.parent for root in self.roots}
+            free = min(shutil.disk_usage(path).free for path in free_paths)
             if max(self.used, allocated) > self.limit or free < self.reserve:
                 raise RuntimeError('disk budget/headroom exhausted; stop population and preserve all evidence')
             return dict(retained_bytes=self.used, initial_bytes=self.started, limit_bytes=self.limit,

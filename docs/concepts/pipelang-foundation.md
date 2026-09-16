@@ -16,7 +16,9 @@ compatibility or acceptance of every C# feature.
 
 This page is the canonical capability inventory and planning direction. The live
 [TASK-021 index](../agents/tasks/pipelang-reactive-application-language/index.yaml) owns current
-status and approval. The accepted executable baseline is v0.113.0; P01 nominal enums are complete.
+status and approval. The accepted executable baseline is v0.114.0; P01 nominal enums and
+[P04.a lexical blocks, joins and early returns](../agents/tasks/pipelang-reactive-application-language/general-blocks.md)
+are complete. No successor capability is selected.
 The authorized foundation specification/dependency planning objective is now complete. Its
 [contract proposals](pipelang-foundation-contracts.md) and
 [delivery ledger, slices and verification economics](pipelang-foundation-delivery.md) are reviewable
@@ -55,7 +57,7 @@ implementation slices; completion and scope must be evidenced independently.
 | F09 | Tagged unions and failure values | Partial: bounded Optional/Result construction, matching and propagation exist; user unions, general composition and exhaustive matching remain. |
 | F10 | Functions | Partial: public same-class pure calls exist; cross-class/module calls, access rules, overload resolution and callable composition remain. |
 | F11 | Callable values | Missing: lambdas, delegates/function values, captures, lifetime rules and interactions with tasks. |
-| F12 | Local variables and control flow | Partial: typed immutable locals and bounded terminal branches exist; mutable locals, reassignment, definite assignment, general statement sequences and early returns remain. |
+| F12 | Local variables and control flow | Partial: v0.114.0 completes P04.a nested lexical blocks, initialized immutable locals, sequential branches/joins and early returns with independent Core validation. Mutable slots, reassignment and delayed-initialization definite assignment remain P04.b work. |
 | F13 | Loops and recursion | Missing: iteration, accumulation, break/continue, nested control flow, recursive-call policy and enforceable resource/termination rules. |
 | F14 | Lists | Partial: bounded construction, append, count, indexing, selection, filtering and sorting exist; general element types and composition remain. |
 | F15 | Maps, sets and builders | Missing: deterministic collections, stable hashing, equality/order capabilities, scoped builders and mutation-during-iteration rules. |

@@ -5,7 +5,36 @@ from pathlib import Path
 import re
 import statistics
 import time
-from campaign import atomic_json, digest, read_sealed
+import zlib
+from campaign import atomic_json, atomic_json_array, canonical, digest, read_sealed
+
+
+class CompactRows:
+    """Retain compressed exact snapshots; materialize one row per iteration."""
+    def __init__(self):
+        self.entries = []
+
+    def append(self, row, *, index=None):
+        # An external index preserves report schemas that have no index field.
+        order = row['index'] if index is None else index
+        self.entries.append((order, zlib.compress(canonical(row), level=1)))
+
+    def extend(self, rows):
+        for row in rows:
+            self.append(row)
+
+    def __len__(self):
+        return len(self.entries)
+
+    def __iter__(self):
+        for _, encoded in self.entries:
+            yield json.loads(zlib.decompress(encoded))
+
+    def sort(self):
+        self.entries.sort(key=lambda entry: entry[0])
+
+    def write(self, path):
+        return atomic_json_array(path, self)
 
 
 def distribution(values):

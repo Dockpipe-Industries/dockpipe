@@ -379,9 +379,10 @@ transport panic within existing contracts, advancing F01/F05/F14 correctness
 without selecting another P-number. Go v0.113.0 remains the accepted backend.
 
 
-## Approved P04.a control-flow contract
+## Accepted P04.a control-flow contract
 
 The founder selected and explicitly approved lexical blocks, branch joins and early
 returns. [The concrete v0.114.0 contract](pipelang.md#pipelang-v01140-general-lexical-blocks)
-owns the bounded C2 rules and pending acceptance. Mutable slots and logical fuel/depth
+owns the accepted bounded C2 rules, backed by fresh complete verification and an
+independent inherited-proof audit. Mutable slots and logical fuel/depth
 remain later decisions; this approval does not ratify D1–D6 wholesale.

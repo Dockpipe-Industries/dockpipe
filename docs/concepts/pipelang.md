@@ -4076,7 +4076,7 @@ integration; all frozen compatibility, compiler/semantic/Application IR version 
 
 ## PipeLang v0.114.0 general lexical blocks
 
-Implementation in progress; acceptance is owned by
+Accepted with fresh complete verification and independent inherited-proof audit in
 [the P04.a objective](../agents/tasks/pipelang-reactive-application-language/general-blocks.md).
 The explicit successor contract admits nested lexical blocks, initialized immutable
 locals, sequential `if`/`else` branches and early returns in public pure method bodies.
