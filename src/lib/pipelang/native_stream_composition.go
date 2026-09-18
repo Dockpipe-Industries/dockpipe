@@ -37,7 +37,11 @@ func (l *streamCompositionLowerer) fail(span Span, message string) error {
 }
 func lowerNativeComposition(source *Program, base streamir.Program, reserved map[string]bool) (streamir.Program, error) {
 	l := streamCompositionLowerer{source: source, program: base, methods: map[string]int{}, native: map[string]int{}, reserved: reserved}
-	for _, name := range []string{"StreamStatus", "StreamResult", "ReadStream", "WriteStream"} {
+	names := []string{"StreamStatus", "StreamResult", "ReadStream", "WriteStream"}
+	if base.Profile == streamir.IncrementalProfile {
+		names = append(names, "StreamSession", "InputBuffer", "OutputBuffer", "StreamStep")
+	}
+	for _, name := range names {
 		l.reserved[name] = true
 	}
 	for i, b := range base.Bindings {
@@ -52,7 +56,7 @@ func lowerNativeComposition(source *Program, base streamir.Program, reserved map
 		classes[class.Name] = true
 		for _, method := range class.Methods {
 			ret := streamCompositionType(method.ReturnType)
-			if !streamir.ValueType(ret) || len(method.Annotations) != 0 || len(method.Params) > 16 {
+			if !streamir.ValueTypeFor(base.Profile, ret) || len(method.Annotations) != 0 || len(method.Params) > 16 {
 				return streamir.Program{}, l.fail(method.Span, "invalid composition method signature")
 			}
 			key := class.Name + "." + method.Name
@@ -62,7 +66,7 @@ func lowerNativeComposition(source *Program, base streamir.Program, reserved map
 			f := streamir.Function{Class: class.Name, Name: method.Name, Public: method.Visibility == VisibilityPublic, ReturnType: ret}
 			for _, param := range method.Params {
 				typ := streamCompositionType(param.Type)
-				if typ == "" {
+				if typ == "" || !streamir.ParameterTypeFor(base.Profile, typ) {
 					return streamir.Program{}, l.fail(param.Span, "unsupported composition parameter type")
 				}
 				f.Parameters = append(f.Parameters, typ)
@@ -120,7 +124,7 @@ func (l *streamCompositionLowerer) block(block *BlockExpr, outer map[string]stre
 		case "local":
 			s.Type = streamCompositionType(source.Type)
 			_, exists := env[source.Name]
-			if exists || l.reserved[source.Name] || !streamir.ValueType(s.Type) || l.nextSlot >= 256 {
+			if exists || l.reserved[source.Name] || !streamir.ValueTypeFor(l.program.Profile, s.Type) || l.nextSlot >= 256 {
 				return nil, l.fail(source.Span, "invalid local type, shadowing or local extent")
 			}
 			s.Value, err = l.expression(source.Value, env, s.Type)
@@ -193,10 +197,13 @@ func (l *streamCompositionLowerer) expression(source Expr, env map[string]stream
 			x.Type = streamir.StatusType
 			x.Status = status
 		} else {
-			value, e2 := l.expression(e.Receiver, env, streamir.Result)
+			value, e2 := l.expression(e.Receiver, env, "")
 			err = e2
 			x.Kind = "field"
-			x.Type = streamir.MemberType(e.Name)
+			if e2 != nil {
+				return nil, e2
+			}
+			x.Type = streamir.ResultMemberType(value.Type, e.Name)
 			x.Member = e.Name
 			x.Arguments = []*streamir.Expression{value}
 			if x.Type == "" {
@@ -208,8 +215,7 @@ func (l *streamCompositionLowerer) expression(source Expr, env map[string]stream
 		if target, ok := l.native[e.Name]; ok {
 			x.Kind = "native"
 			x.Target = target
-			x.Type = streamir.Result
-			params = []streamir.Type{streamir.ReadStream, streamir.WriteStream, streamir.Int}
+			params, x.Type = streamir.NativeSignature(l.program.Profile)
 		} else {
 			key := e.Name
 			if !strings.Contains(key, ".") {

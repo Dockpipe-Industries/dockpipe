@@ -12,6 +12,11 @@ type Outcome struct {
 	Status                          streamir.Status
 	InputBytes, OutputBytes, Chunks uint64
 }
+type StepOutcome struct {
+	Outcome
+	Progress                     streamir.Progress
+	InputConsumed, OutputWritten uint64
+}
 type Value struct {
 	Type       streamir.Type
 	Int        int64
@@ -19,11 +24,16 @@ type Value struct {
 	Bool       bool
 	Status     streamir.Status
 	Result     Outcome
+	Step       StepOutcome
+	Extent     uint64 // Host-supplied span length, never a source-created pointer.
 	Capability any
 	Available  bool
 }
 type Host interface {
 	Invoke(streamir.Binding, any, any, uint64) Outcome
+}
+type IncrementalHost interface {
+	InvokeStep(streamir.Binding, any, any, any, bool) StepOutcome
 }
 type Execution struct {
 	Value Value
@@ -39,8 +49,8 @@ func Evaluate(p streamir.Program, class, method string, args []Value, host Host)
 	if err := streamir.Validate(p); err != nil {
 		return Execution{}, err
 	}
-	if p.Profile != streamir.CompositionProfile {
-		return Execution{}, fmt.Errorf("reference evaluator requires stream v2")
+	if p.Profile != streamir.CompositionProfile && p.Profile != streamir.IncrementalProfile {
+		return Execution{}, fmt.Errorf("reference evaluator requires stream v2 or v3")
 	}
 	for i, f := range p.Functions {
 		if f.Class == class && f.Name == method && f.Public {
@@ -60,6 +70,14 @@ func Evaluate(p streamir.Program, class, method string, args []Value, host Host)
 	return Execution{}, fmt.Errorf("unknown public stream entry")
 }
 func normalize(v Value) Value {
+	if v.Type == streamir.Step {
+		if v.Step.Status > streamir.Denied || (v.Step.Status == streamir.OK && (v.Step.Progress < streamir.NeedInput || v.Step.Progress > streamir.Done)) {
+			v.Step = StepOutcome{Outcome: Outcome{Status: streamir.HostFailure}}
+		}
+		if v.Step.Status != streamir.OK {
+			v.Step.Progress = streamir.NoProgress
+		}
+	}
 	if v.Type == streamir.Result && v.Result.Status > streamir.Denied {
 		v.Result = Outcome{Status: streamir.HostFailure}
 	}
@@ -144,8 +162,22 @@ func (e *evaluator) expression(x *streamir.Expression, env map[int]Value) Value 
 		}
 		return arg(2)
 	case "field":
-		r := arg(0).Result
+		base := arg(0)
+		r := base.Result
+		if base.Type == streamir.Step {
+			r = base.Step.Outcome
+		}
 		switch x.Member {
+		case "needInput":
+			v.Bool = r.Status == streamir.OK && base.Step.Progress == streamir.NeedInput
+		case "needOutput":
+			v.Bool = r.Status == streamir.OK && base.Step.Progress == streamir.NeedOutput
+		case "done":
+			v.Bool = r.Status == streamir.OK && base.Step.Progress == streamir.Done
+		case "inputConsumed":
+			v.Uint = base.Step.InputConsumed
+		case "outputWritten":
+			v.Uint = base.Step.OutputWritten
 		case "ok":
 			v.Bool = r.Status == streamir.OK
 		case "status":
@@ -165,7 +197,11 @@ func (e *evaluator) expression(x *streamir.Expression, env map[int]Value) Value 
 		if x.Kind == "helper" {
 			return e.function(x.Target, args)
 		}
-		v.Result = e.invoke(e.program.Bindings[x.Target], args[0], args[1], args[2].Int)
+		if x.Type == streamir.Step {
+			v.Step = e.invokeStep(e.program.Bindings[x.Target], args)
+		} else {
+			v.Result = e.invoke(e.program.Bindings[x.Target], args[0], args[1], args[2].Int)
+		}
 	case "binary":
 		a := arg(0)
 		if x.Member == "&&" && !a.Bool {

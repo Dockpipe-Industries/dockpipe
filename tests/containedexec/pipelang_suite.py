@@ -53,7 +53,7 @@ def plan(tests, splits, shape_batch_size):
                             jobs.append(([prefix + '/' + suffix], pattern + '/^' + suffix + '$'))
                 else:
                     jobs.append(([prefix], pattern))
-        elif name == 'TestV1140BlocksMemory':
+        elif name in ('TestV1140BlocksMemory', 'TestV1150AssignmentsMemory'):
             flush()
             for shape in range(3):
                 label = name + '/shape' + str(shape)
@@ -259,6 +259,10 @@ def main():
         build = bootstrap.run(['build'], ['/usr/bin/true'], artifacts=lambda d: [binary])
         if build['exit']:
             return build['exit']
+    # The persisted dependency manifest owns the full hash rows. Execution and
+    # receipt admission need only the digest and continuous drift watches.
+    del build_files
+    guard.release_file_inventory()
     listing_stage = StageRunner(campaign, 'discovery', dict(identity, binary=fingerprint([binary])['digest']), ['list'], args.cache, snapshot, parents=['bootstrap'])
     listing = listing_stage.run(['list'], [str(binary), '-test.list', '^(Test|Fuzz|Example)'])
     if listing['exit']:
@@ -412,7 +416,7 @@ def main():
             environment += ['PIPELANG_MEMORY_FIXTURES=' + str(directory / 'fixtures')]
         if all(name.startswith('TestV990TerminalLeafBooleanSelectorsMemory') for name in names):
             environment += ['PIPELANG_MEMORY_FIXTURES=' + str(directory / 'fixtures')]
-        if all(name.startswith(('TestV1100StraightLineSelectorValueArmsMemory', 'TestV1110TerminalLeafSelectorValueArmsMemory', 'TestV1120ArrowSelectorValueArmsMemory', 'TestV1130EnumsMemory', 'TestV1140BlocksMemory')) for name in names):
+        if all(name.startswith(('TestV1100StraightLineSelectorValueArmsMemory', 'TestV1110TerminalLeafSelectorValueArmsMemory', 'TestV1120ArrowSelectorValueArmsMemory', 'TestV1130EnumsMemory', 'TestV1140BlocksMemory', 'TestV1150AssignmentsMemory')) for name in names):
             environment += ['PIPELANG_MEMORY_FIXTURES=' + str(directory / 'fixtures')]
         if all(name.startswith('TestV980ConditionalBooleanSelectorsMemory') for name in names):
             environment += ['PIPELANG_MEMORY_FIXTURES=' + str(directory / 'fixtures')]

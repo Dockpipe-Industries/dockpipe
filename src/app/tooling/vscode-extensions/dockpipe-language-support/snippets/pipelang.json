@@ -1341,5 +1341,22 @@
       "}"
     ],
     "description": "PipeLang v0.114.0 general lexical blocks, joining branches and early returns; initialized immutable locals."
+  },
+  "PipeLang Mutable Local": {
+    "prefix": "pipe-mutable-local",
+    "body": [
+      "mutable ${1:int} ${2:value} = ${3:0};",
+      "${2:value} = ${4:1};"
+    ],
+    "description": "Create a v0.115.0 mutable local and a simple assignment."
+  },
+  "PipeLang Delayed Local": {
+    "prefix": "pipe-delayed-local",
+    "body": [
+      "${1:int} ${2:value};",
+      "if (${3:condition}) { ${2:value} = ${4:1}; }",
+      "else { ${2:value} = ${5:2}; }"
+    ],
+    "description": "Create a v0.115.0 immutable local initialized on both continuing branches."
   }
 }

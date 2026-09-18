@@ -4120,3 +4120,43 @@ identities and Application IR contracts retain their existing schemas.
 Historical language contracts keep their existing acceptance/refusal behavior.
 Verification retains independent value/order/refusal oracles, fresh native execution,
 all inherited compatibility, and direct compiler ceilings of 128 MiB/5 seconds.
+
+
+## PipeLang v0.115.0 mutable locals and definite assignment
+
+Implemented under [P04.b](../agents/tasks/pipelang-reactive-application-language/mutable-locals.md),
+but terminal verification is blocked by coordinator memory headroom. v0.114.0 remains
+the accepted baseline; this v0.115.0 contract is not yet accepted.
+
+In supported public pure method blocks, `mutable T name = value;` declares a local
+that can be reassigned by `name = expression;`. Assignment is a statement, not a
+value expression. Its right-hand side must have the exact declared type and is
+evaluated once before the binding changes. Parameters remain immutable; assigning
+a local value does not mutate caller arguments or previously copied bindings.
+
+Both `mutable T name;` and immutable `T name;` permit delayed initialization.
+There is no observable default value: reads require initialization along every
+continuing path. An immutable local permits its first assignment only when it has
+not been initialized along any reaching path. Separate branch assignments are valid:
+
+```text
+int result;
+if (flag) { result = 10; } else { result = 20; }
+mutable int current = result;
+current = 30;
+return result;
+```
+
+The example returns 10 or 20; changing `current` leaves `result` unchanged. Removing
+the `else` rejects the subsequent read. An assignment after a one-arm initialization
+also rejects for an immutable local because that local may already be initialized.
+Branches that return do not participate in a continuation's initialization join.
+Analysis is structural and does not infer correlations between repeated conditions.
+Unused uninitialized locals are permitted. Nested blocks can assign enclosing locals;
+their declarations do not escape and cannot shadow existing bindings. Unreachable
+statements and methods that can fall through still reject.
+
+Existing expression admission, exact types, lazy branches and left-to-right eager
+argument evaluation remain unchanged. Field/index mutation, assignment expressions,
+compound assignment, increment/decrement, loops, recursion, closures and new value
+layouts are excluded. Earlier explicit language contracts retain their admission rules.

@@ -3,6 +3,7 @@ package pipelang
 import (
 	"dockpipe/src/lib/pipelang/coreir"
 	"dockpipe/src/lib/pipelang/hir"
+	"reflect"
 )
 
 func lowerGeneralBlockToHIR(a *Analysis, f SemanticIdentity, b *BlockExpr, bindings map[string]hir.Binding, types map[string]ResolvedTypeRef, result ResolvedTypeRef) (hir.Expr, error) {
@@ -20,13 +21,20 @@ func lowerBlockStatementsToHIR(a *Analysis, f SemanticIdentity, b *BlockExpr, ou
 	}
 	body := &hir.Block{Statements: make([]hir.Statement, 0, len(b.Statements))}
 	for _, s := range b.Statements {
-		t := hir.Statement{Kind: s.Kind, Span: toHIRSpan(s.Span)}
+		t := hir.Statement{Kind: s.Kind, Mutable: s.Mutable, Span: toHIRSpan(s.Span)}
 		if s.Value != nil {
 			v, err := lowerExprToHIR(a, f, s.Value, bindings, types)
 			if err != nil {
 				return nil, err
 			}
 			t.Value = &v
+		}
+		if s.Kind == "assign" {
+			binding, ok := bindings[s.Name]
+			if !ok {
+				return nil, coreLoweringError(t.Span, "assignment target is missing")
+			}
+			t.Target = &binding
 		}
 		if s.Kind == "local" {
 			v, err := a.checked.resolveType(s.Type)
@@ -67,13 +75,20 @@ func hirBlockStatementsToCore(b *hir.Block, parameters []hir.Parameter) (*coreir
 	scope := append([]hir.Parameter{}, parameters...)
 	result := &coreir.Block{Statements: make([]coreir.Statement, 0, len(b.Statements))}
 	for _, s := range b.Statements {
-		t := coreir.Statement{Kind: s.Kind}
+		t := coreir.Statement{Kind: s.Kind, Mutable: s.Mutable}
 		if s.Value != nil {
 			v, err := hirExprToCore(*s.Value, scope)
 			if err != nil {
 				return nil, err
 			}
 			t.Value = &v
+		}
+		if s.Target != nil {
+			p := s.Target.Position
+			if p < 0 || p >= len(scope) || !reflect.DeepEqual(*s.Target, scope[p].Binding) || s.Target.Kind != hir.BindingLocal {
+				return nil, coreLoweringError(s.Span, "typed HIR assignment target is not canonically bound")
+			}
+			t.Target = &p
 		}
 		if s.Local != nil {
 			l := s.Local

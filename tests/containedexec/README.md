@@ -3,7 +3,7 @@
 ## Durable campaigns
 
 `verification_campaign.py` runs the complete compiler suite, the 1,944 v109, 192 v110, 576 v111 and 192 v112
-isolated compiler fixtures, 18 v113 enum fixtures and 12 v114 block fixtures, the nine integration checks and the editor tests in
+isolated compiler fixtures, 18 v113 enum fixtures 12 v114 block fixtures and 12 v115 assignment fixtures, the nine integration checks and the editor tests in
 sequence under one `job.py` budget. Its default data root is
 `~/.cache/pipelang-verification`, separated into `campaigns/<name>`, `builds`,
 `executables` and toolchain-bound Go build caches. Supply an absolute cached

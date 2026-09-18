@@ -1,10 +1,18 @@
+## Verification blocked — P04.b mutable locals
+
+The founder selected P04.b and approved its concrete implementation and verification scope.
+[mutable-locals.md](mutable-locals.md) owns proposed v0.115.0. P04.a / v0.114.0 remains
+the accepted baseline. Implementation and focused checks pass, but repeated coordinator
+headroom stops prevent fresh complete and independent acceptance. The objective records
+the failed attempts, fixed limits and outstanding proof.
+
 ## Completed objective — P04.a general blocks
 
 [general-blocks.md](general-blocks.md) owns the selected and explicitly approved
 lexical blocks/joins/early-return implementation. Fresh complete verification and
 independent ordered acceptance passed: 8,882 suite cases / 892 functions, 2,934
 isolated compiler cases, nine integrations and one editor check. The accepted
-baseline is v0.114.0. No successor capability is selected or approved.
+baseline is v0.114.0. P04.b is the separately selected and approved continuation above.
 
 ## Completed objective — package inputs and inclusive storage
 

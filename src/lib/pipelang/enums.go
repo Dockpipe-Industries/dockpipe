@@ -65,7 +65,7 @@ func (cp *checkedProgram) validateEnum(d *EnumDecl) error {
 	if d == nil {
 		return cp.enumError(Span{}, "enum declaration is nil")
 	}
-	if cp.modules == nil || (cp.modules.LanguageContract() != PipeLangLanguageContractV1130 && cp.modules.LanguageContract() != PipeLangLanguageContractV1140) {
+	if cp.modules == nil || (cp.modules.LanguageContract() != PipeLangLanguageContractV1130 && (cp.modules.LanguageContract() != PipeLangLanguageContractV1140 && cp.modules.LanguageContract() != PipeLangLanguageContractV1150)) {
 		return cp.enumError(d.Span, "nominal enums require v0.113.0")
 	}
 	if d.Visibility != VisibilityPublic || len(d.Annotations) != 0 || len(d.Members) == 0 {
@@ -115,7 +115,7 @@ func (cp *checkedProgram) isEnumCompositionValue(t ResolvedTypeRef) bool {
 
 func (cp *checkedProgram) enumMemberValue(e *FieldExpr, env map[string]ResolvedTypeRef) (ResolvedTypeRef, string, bool, error) {
 	id, ok := e.Receiver.(*IdentExpr)
-	if !ok || cp == nil || cp.modules == nil || (cp.modules.LanguageContract() != PipeLangLanguageContractV1130 && cp.modules.LanguageContract() != PipeLangLanguageContractV1140) {
+	if !ok || cp == nil || cp.modules == nil || (cp.modules.LanguageContract() != PipeLangLanguageContractV1130 && (cp.modules.LanguageContract() != PipeLangLanguageContractV1140 && cp.modules.LanguageContract() != PipeLangLanguageContractV1150)) {
 		return ResolvedTypeRef{}, "", false, nil
 	}
 	if _, shadowed := env[id.Name]; shadowed {
@@ -152,7 +152,7 @@ func (cp *checkedProgram) enumPatternTag(t ResolvedTypeRef, arm MatchArm) (strin
 	return "", cp.enumError(arm.PatternSpan, "unknown enum pattern "+arm.Tag)
 }
 func (cp *checkedProgram) inferEnumExpr(expr Expr, env map[string]ResolvedTypeRef) (ResolvedTypeRef, bool, error) {
-	if cp == nil || cp.modules == nil || (cp.modules.LanguageContract() != PipeLangLanguageContractV1130 && cp.modules.LanguageContract() != PipeLangLanguageContractV1140) {
+	if cp == nil || cp.modules == nil || (cp.modules.LanguageContract() != PipeLangLanguageContractV1130 && (cp.modules.LanguageContract() != PipeLangLanguageContractV1140 && cp.modules.LanguageContract() != PipeLangLanguageContractV1150)) {
 		return ResolvedTypeRef{}, false, nil
 	}
 	switch e := expr.(type) {
@@ -216,7 +216,7 @@ func (cp *checkedProgram) inferEnumExpr(expr Expr, env map[string]ResolvedTypeRe
 	return ResolvedTypeRef{}, false, nil
 }
 func (cp *checkedProgram) isEnumMethod(m MethodDecl) bool {
-	if cp.modules == nil || (cp.modules.LanguageContract() != PipeLangLanguageContractV1130 && cp.modules.LanguageContract() != PipeLangLanguageContractV1140) {
+	if cp.modules == nil || (cp.modules.LanguageContract() != PipeLangLanguageContractV1130 && (cp.modules.LanguageContract() != PipeLangLanguageContractV1140 && cp.modules.LanguageContract() != PipeLangLanguageContractV1150)) {
 		return false
 	}
 	if t, err := cp.resolveType(m.ReturnType); err == nil && cp.isResolvedEnumType(t) {

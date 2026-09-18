@@ -19,8 +19,18 @@ func (g *generator) emitGeneralBlock(out *strings.Builder, b *coreir.Block, para
 		}
 		switch s.Kind {
 		case "local":
-			fmt.Fprintf(out, "p%d := %s; _ = p%d\n", s.Local.Position, value, s.Local.Position)
+			if s.Value == nil {
+				typ, err := g.goType(s.Local.Type, optional)
+				if err != nil {
+					return err
+				}
+				fmt.Fprintf(out, "var p%d %s; _ = p%d\n", s.Local.Position, typ, s.Local.Position)
+			} else {
+				fmt.Fprintf(out, "p%d := %s; _ = p%d\n", s.Local.Position, value, s.Local.Position)
+			}
 			scope = append(scope, *s.Local)
+		case "assign":
+			fmt.Fprintf(out, "p%d = %s\n", *s.Target, value)
 		case "return":
 			fmt.Fprintf(out, "return %s\n", value)
 		case "if":

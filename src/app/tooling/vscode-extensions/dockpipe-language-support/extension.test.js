@@ -782,3 +782,8 @@ assert.strictEqual(pipeLangSnippets["PipeLang Enum Match"].prefix, "pipe-enum-ma
 
 assert(pipeLangSnippets["PipeLang General Block"].description.includes("v0.114.0"));
 assert(pipeLangSnippets["PipeLang General Block"].body.join("\n").includes("return ${6:"));
+
+assert(pipeLangSnippets["PipeLang Mutable Local"].description.includes("v0.115.0"));
+assert(pipeLangSnippets["PipeLang Mutable Local"].body.join("\n").includes("mutable"));
+assert(pipeLangSnippets["PipeLang Delayed Local"].body.join("\n").includes("else"));
+assert(pipeLangReadme.includes("`v0.115.0`"));

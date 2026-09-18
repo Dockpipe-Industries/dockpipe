@@ -173,10 +173,10 @@ def dependency_guard(go, cache, output, stage='suite', extra=(), support_manifes
     if ROOT not in roots or any(not p.is_absolute() or not p.is_dir() for p in roots):
         raise RuntimeError('incomplete module dependency discovery')
     modules = [p for p in roots if p != ROOT]
-    guard = InputGuard(paths + modules, watch_directories=[ROOT, *support.watch_directories])
+    guard = pre
+    guard.extend(modules)
     support.check()
-    pre.check()
-    pre.close()
+    guard.check()
     atomic_json(Path(output) / 'dependency-inputs.json', dict(paths=list(map(str, paths + modules)), identity=guard.identity,
                 support_manifest=str(support.manifest) if support.manifest else None))
     return guard

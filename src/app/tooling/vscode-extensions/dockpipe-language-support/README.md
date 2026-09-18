@@ -430,3 +430,7 @@ approved implementation; terminal language acceptance is tracked by TASK-021's
 
 PipeLang v0.114.0 adds `pipe-block`: nested lexical blocks, joining `if`/`else` branches,
 initialized immutable locals and early callable returns. Mutation and loops are separate capabilities.
+
+`v0.115.0` adds explicit `mutable` locals, simple reassignment and delayed initialization
+with definite-assignment joins. Snippets: `pipe-mutable-local`, `pipe-delayed-local`.
+Compiler acceptance remains pending; highlighting does not grant version admission.
