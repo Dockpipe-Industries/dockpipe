@@ -12,18 +12,23 @@ import (
 
 const Profile = "pipelang.native-stream.v1"
 const CompositionProfile = "pipelang.native-stream.v2"
+const IncrementalProfile = "pipelang.native-stream.v3"
 const ABI = 1
 
 type Type string
 
 const (
-	ReadStream  Type = "ReadStream"
-	WriteStream Type = "WriteStream"
-	Int         Type = "int"
-	Bool        Type = "bool"
-	Uint64      Type = "uint64"
-	Result      Type = "StreamResult"
-	StatusType  Type = "StreamStatus"
+	ReadStream   Type = "ReadStream"
+	WriteStream  Type = "WriteStream"
+	Int          Type = "int"
+	Bool         Type = "bool"
+	Uint64       Type = "uint64"
+	Result       Type = "StreamResult"
+	StatusType   Type = "StreamStatus"
+	Session      Type = "StreamSession"
+	InputBuffer  Type = "InputBuffer"
+	OutputBuffer Type = "OutputBuffer"
+	Step         Type = "StreamStep"
 )
 
 type Operation struct {
@@ -68,7 +73,7 @@ func ValidDigest(s string) bool {
 	return err == nil && len(b) == 32 && hex.EncodeToString(b) == s
 }
 func ValidateManifest(m Manifest) error {
-	if m.Profile != Profile || m.ABI != ABI || !semantic.MatchString(m.Package) || len(m.Operations) == 0 || len(m.Operations) > 64 {
+	if (m.Profile != Profile && m.Profile != IncrementalProfile) || m.ABI != ABI || !semantic.MatchString(m.Package) || len(m.Operations) == 0 || len(m.Operations) > 64 {
 		return fmt.Errorf("invalid native-stream profile, package, ABI or operation count")
 	}
 	names, ids := map[string]bool{}, map[string]bool{}
@@ -85,7 +90,7 @@ func ValidateManifest(m Manifest) error {
 // Validate is independent of the source checker; backends must call it even for
 // caller-constructed IR. Native symbols or paths never come from source text.
 func Validate(p Program) error {
-	if (p.Profile != Profile && p.Profile != CompositionProfile) || !ValidDigest(p.SourceSHA256) || len(p.Bindings) == 0 || len(p.Bindings) > 64 || len(p.Functions) == 0 || len(p.Functions) > 64 {
+	if (p.Profile != Profile && p.Profile != CompositionProfile && p.Profile != IncrementalProfile) || !ValidDigest(p.SourceSHA256) || len(p.Bindings) == 0 || len(p.Bindings) > 64 || len(p.Functions) == 0 || len(p.Functions) > 64 {
 		return fmt.Errorf("invalid native-stream program header or extent")
 	}
 	aliases, ids := map[string]bool{}, map[string]bool{}
@@ -93,7 +98,7 @@ func Validate(p Program) error {
 		if !ValidDigest(b.ManifestSHA256) {
 			return fmt.Errorf("invalid manifest digest")
 		}
-		if err := ValidateManifest(Manifest{Profile: Profile, Package: b.Package, ABI: ABI, Operations: []Operation{b.Operation}}); err != nil {
+		if err := ValidateManifest(Manifest{Profile: ManifestProfile(p.Profile), Package: b.Package, ABI: ABI, Operations: []Operation{b.Operation}}); err != nil {
 			return err
 		}
 		key := b.Package + "/" + b.Operation.ID
@@ -103,7 +108,7 @@ func Validate(p Program) error {
 		aliases[b.Operation.Name] = true
 		ids[key] = true
 	}
-	if p.Profile == CompositionProfile {
+	if p.Profile != Profile {
 		return validateComposition(p)
 	}
 	methods := map[string]bool{}

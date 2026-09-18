@@ -10,6 +10,7 @@ type BlockExpr struct {
 }
 type BlockStatement struct {
 	Kind       string
+	Mutable    bool
 	Type       UnresolvedTypeRef
 	Name       string
 	NameSpan   Span
@@ -80,8 +81,22 @@ func (p *parser) parseGeneralBlock() (*BlockExpr, error) {
 				end, err = p.expect(tokSemi)
 				s.Span = mergeSpans(first.span, end.span)
 			}
+		case p.languageContract == PipeLangLanguageContractV1150 && first.kind == tokIdent && p.peekAt(1).kind == tokAssign:
+			p.next()
+			p.next()
+			s.Kind, s.Name, s.NameSpan = "assign", first.lit, first.span
+			s.Value, err = p.parseExpr(1)
+			if err == nil {
+				var end token
+				end, err = p.expect(tokSemi)
+				s.Span = mergeSpans(first.span, end.span)
+			}
 		default:
 			s.Kind = "local"
+			if p.languageContract == PipeLangLanguageContractV1150 && first.kind == tokIdent && first.lit == "mutable" {
+				p.next()
+				s.Mutable = true
+			}
 			s.Type, err = p.parseTypeRef()
 			if err != nil {
 				return nil, err
@@ -92,6 +107,11 @@ func (p *parser) parseGeneralBlock() (*BlockExpr, error) {
 				return nil, err
 			}
 			s.Name, s.NameSpan = name.lit, name.span
+			if p.languageContract == PipeLangLanguageContractV1150 && p.peek().kind == tokSemi {
+				s.Span = mergeSpans(first.span, p.next().span)
+				b.Statements = append(b.Statements, s)
+				continue
+			}
 			if _, err = p.expect(tokAssign); err != nil {
 				return nil, err
 			}
@@ -125,7 +145,7 @@ func (cp *checkedProgram) blockError(span Span, message string) error {
 	return oneDiagnostic(cp.sources, CodeExpressionType, CategorySemantic, span, message)
 }
 func (cp *checkedProgram) validateGeneralBlockMethod(m MethodDecl, b *BlockExpr) error {
-	if cp.modules.LanguageContract() != PipeLangLanguageContractV1140 {
+	if cp.modules.LanguageContract() != PipeLangLanguageContractV1140 && cp.modules.LanguageContract() != PipeLangLanguageContractV1150 {
 		return cp.blockError(b.Span, "general blocks require v0.114.0")
 	}
 	if normalizeVisibility(m.Visibility) != VisibilityPublic {
@@ -143,7 +163,16 @@ func (cp *checkedProgram) validateGeneralBlockMethod(m MethodDecl, b *BlockExpr)
 		}
 		env[p.Name] = t
 	}
-	returned, err := cp.checkGeneralBlock(b, env, declared)
+	var returned bool
+	if cp.modules.LanguageContract() == PipeLangLanguageContractV1150 {
+		state := make(map[string]localAssignmentState, len(env))
+		for name, typ := range env {
+			state[name] = localAssignmentState{typ: typ, definite: true, possible: true}
+		}
+		returned, err = cp.checkAssignmentBlock(b, state, declared)
+	} else {
+		returned, err = cp.checkGeneralBlock(b, env, declared)
+	}
 	if err != nil {
 		return err
 	}

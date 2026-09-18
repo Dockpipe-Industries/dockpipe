@@ -29,7 +29,7 @@ func CompileNativeStreams(source SourceInput, dependencies []NativeStreamDepende
 // composition. SDK operation manifests retain their ABI-1 contract in both.
 func CompileNativeStreamsWithProfile(source SourceInput, dependencies []NativeStreamDependency, profile string) (streamir.Program, error) {
 	var result streamir.Program
-	if profile != streamir.Profile && profile != streamir.CompositionProfile {
+	if profile != streamir.Profile && profile != streamir.CompositionProfile && profile != streamir.IncrementalProfile {
 		return result, fmt.Errorf("unsupported native-stream profile")
 	}
 	if len(source.Data) == 0 || len(source.Data) > 65536 || len(dependencies) == 0 || len(dependencies) > 16 {
@@ -56,6 +56,9 @@ func CompileNativeStreamsWithProfile(source SourceInput, dependencies []NativeSt
 		}
 		if err := streamir.ValidateManifest(manifest); err != nil {
 			return streamir.Program{}, err
+		}
+		if manifest.Profile != streamir.ManifestProfile(profile) {
+			return streamir.Program{}, fmt.Errorf("manifest profile does not match selected language profile")
 		}
 		if packages[manifest.Package] {
 			return streamir.Program{}, fmt.Errorf("duplicate native-stream package")
@@ -95,7 +98,7 @@ func CompileNativeStreamsWithProfile(source SourceInput, dependencies []NativeSt
 		}
 	}
 	parser := &parser{sources: set, file: file, languageContract: PipeLangLanguageContractV1130, nativeStreams: true, toks: tokens}
-	if profile == streamir.CompositionProfile {
+	if profile != streamir.Profile {
 		parser.languageContract = PipeLangLanguageContractV1140
 	}
 	program, err := parser.parseProgram()
@@ -108,7 +111,7 @@ func CompileNativeStreamsWithProfile(source SourceInput, dependencies []NativeSt
 	if len(program.Interfaces) != 0 || len(program.Records) != 0 || len(program.Enums) != 0 || len(program.Classes) == 0 {
 		return refuse(program.Span, "native-stream profile requires public callable classes only")
 	}
-	if profile == streamir.CompositionProfile {
+	if profile != streamir.Profile {
 		return lowerNativeComposition(program, result, namespaces)
 	}
 	classes := map[string]bool{}

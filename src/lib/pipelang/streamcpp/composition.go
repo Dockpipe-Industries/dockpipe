@@ -8,12 +8,15 @@ import (
 )
 
 func cppType(t streamir.Type) string {
-	return map[streamir.Type]string{streamir.Int: "std::int64_t", streamir.Uint64: "std::uint64_t", streamir.Bool: "bool", streamir.ReadStream: "pl_stream_v1::ReadStream&", streamir.WriteStream: "pl_stream_v1::WriteStream&", streamir.Result: "pl_stream_v1::Result", streamir.StatusType: "pl_stream_v1::Status"}[t]
+	return map[streamir.Type]string{streamir.Int: "std::int64_t", streamir.Uint64: "std::uint64_t", streamir.Bool: "bool", streamir.ReadStream: "pl_stream_v1::ReadStream&", streamir.WriteStream: "pl_stream_v1::WriteStream&", streamir.Result: "pl_stream_v1::Result", streamir.StatusType: "pl_stream_v1::Status", streamir.Session: "pl_stream_v1::StreamSession&", streamir.InputBuffer: "pl_stream_v1::InputBuffer", streamir.OutputBuffer: "pl_stream_v1::OutputBuffer", streamir.Step: "pl_stream_v1::Step"}[t]
 }
 func compositionSymbol(p streamir.Program, f streamir.Function) string {
 	// Distinct application sources and SDK pins must not share inline symbols
 	// when consumers link several generated targets into the same application.
 	identity := p.SourceSHA256
+	if p.Profile == streamir.IncrementalProfile {
+		identity += "/" + p.Profile
+	}
 	for _, binding := range p.Bindings {
 		identity += "/" + binding.ManifestSHA256
 	}
@@ -32,7 +35,8 @@ func generateComposition(p streamir.Program) Generated {
 	var b strings.Builder
 	fmt.Fprintf(&b, "// %s; source SHA256 %s\n", p.Profile, p.SourceSHA256)
 	b.WriteString(runtimeHeader)
-	b.WriteString("\nnamespace pl_native_stream {\n")
+	guard := "PIPELANG_STREAM_PROGRAM_" + strings.ToUpper(compositionSymbol(p, streamir.Function{Class: "Program", Name: "Header"}))
+	fmt.Fprintf(&b, "\n#ifndef %s\n#define %s\nnamespace pl_native_stream {\n", guard, guard)
 	for _, f := range p.Functions {
 		b.WriteString(signature(p, f) + ";\n")
 	}
@@ -43,14 +47,14 @@ func generateComposition(p streamir.Program) Generated {
 		}
 		b.WriteString(signature(p, f) + " {\n")
 		for i, t := range f.Parameters {
-			if t == streamir.Result || t == streamir.StatusType {
+			if t == streamir.Result || t == streamir.StatusType || t == streamir.Step {
 				fmt.Fprintf(&b, "  v%d = pl_stream_v1::normalized(v%d);\n", i, i)
 			}
 		}
 		writeCompositionBlock(&b, p, f.Body, "  ")
 		b.WriteString("}\n")
 	}
-	b.WriteString("}\n")
+	b.WriteString("}\n#endif\n")
 	result.Source = []byte(b.String())
 	return result
 }
@@ -98,10 +102,14 @@ func compositionExpression(p streamir.Program, x *streamir.Expression) string {
 	case "status":
 		return "pl_stream_v1::Status::" + []string{"ok", "invalid_argument", "invalid_stream", "unsupported", "limit_exceeded", "io_error", "host_failure", "denied"}[x.Status]
 	case "field":
+		if x.Member == "needInput" || x.Member == "needOutput" || x.Member == "done" {
+			tag := map[string]string{"needInput": "need_input", "needOutput": "need_output", "done": "done"}[x.Member]
+			return "([&]() { auto r = " + arg(0) + "; return r.status == pl_stream_v1::Status::ok && r.progress == pl_stream_v1::Progress::" + tag + "; }())"
+		}
 		if x.Member == "ok" {
 			return "((" + arg(0) + ").status == pl_stream_v1::Status::ok)"
 		}
-		return "(" + arg(0) + ")." + map[string]string{"status": "status", "inputBytes": "input_bytes", "outputBytes": "output_bytes", "chunks": "chunks"}[x.Member]
+		return "(" + arg(0) + ")." + map[string]string{"status": "status", "inputBytes": "input_bytes", "outputBytes": "output_bytes", "chunks": "chunks", "inputConsumed": "input_consumed", "outputWritten": "output_written"}[x.Member]
 	case "not":
 		return "(!(" + arg(0) + "))"
 	case "conditional":
@@ -116,14 +124,18 @@ func compositionExpression(p streamir.Program, x *streamir.Expression) string {
 		fmt.Fprintf(&b, "([&]() -> %s { ", cppType(x.Type))
 		for i, a := range x.Arguments {
 			ref := ""
-			if a.Type == streamir.ReadStream || a.Type == streamir.WriteStream {
+			if a.Type == streamir.ReadStream || a.Type == streamir.WriteStream || a.Type == streamir.Session {
 				ref = "&"
 			}
 			fmt.Fprintf(&b, "auto%s a%d = %s; ", ref, i, arg(i))
 		}
 		if x.Kind == "native" {
 			binding := p.Bindings[x.Target]
-			fmt.Fprintf(&b, "return pl_stream_v1::call(host, {%q, %q, %q}", binding.Package, binding.Operation.ID, binding.ManifestSHA256)
+			call := "call"
+			if p.Profile == streamir.IncrementalProfile {
+				call = "call_step"
+			}
+			fmt.Fprintf(&b, "return pl_stream_v1::%s(host, {%q, %q, %q}", call, binding.Package, binding.Operation.ID, binding.ManifestSHA256)
 		} else {
 			fmt.Fprintf(&b, "return %s(host", compositionSymbol(p, p.Functions[x.Target]))
 		}

@@ -406,13 +406,26 @@ class InputGuard:
     """
     def __init__(self, paths, settings=None, watch_directories=()):
         import ctypes
+        from copy import deepcopy
         self.paths = list(paths)
+        self.settings = deepcopy(settings)
         self.mutex = threading.Lock()
         self.drift = False
         libc = ctypes.CDLL(None, use_errno=True)
         self.fd = libc.inotify_init1(os.O_NONBLOCK | os.O_CLOEXEC)
         if self.fd < 0:
             raise OSError(ctypes.get_errno(), 'input watch unavailable')
+        try:
+            self._watch(self.paths, watch_directories)
+            self.identity = fingerprint(self.paths, self.settings)
+            self.check()
+        except BaseException:
+            self.close()
+            raise
+
+    def _watch(self, paths, watch_directories=()):
+        import ctypes
+        libc = ctypes.CDLL(None, use_errno=True)
         mask = 0x2 | 0x4 | 0x8 | 0x40 | 0x80 | 0x100 | 0x200 | 0x400 | 0x800
         directories = set(map(Path, watch_directories))
         for raw in paths:
@@ -426,15 +439,30 @@ class InputGuard:
                 # Watch exact existing files to avoid unrelated writes in a
                 # shared build-cache directory. Missing inputs watch the parent.
                 directories.add(path if path.exists() else path.parent)
+        for path in directories:
+            if libc.inotify_add_watch(self.fd, os.fsencode(path), mask) < 0:
+                raise OSError(ctypes.get_errno(), 'cannot watch ' + str(path))
+
+    def extend(self, paths):
+        """Admit more inputs without a second overlapping guard or watch gap."""
+        self.check()
+        paths = list(paths)
         try:
-            for path in directories:
-                if libc.inotify_add_watch(self.fd, os.fsencode(path), mask) < 0:
-                    raise OSError(ctypes.get_errno(), 'cannot watch ' + str(path))
-            self.identity = fingerprint(paths, settings)
+            self._watch(paths)
+            # Existing watches remain active during installation and hashing.
+            # Rehash the complete closure; this is not a digest cache merge.
+            self.release_file_inventory()
+            self.paths.extend(paths)
+            self.identity = fingerprint(self.paths, self.settings)
             self.check()
         except BaseException:
-            self.close()
+            self.drift = True
             raise
+
+    def release_file_inventory(self):
+        """Release unused file rows without releasing the digest or live watches."""
+        self.check()
+        self.identity.pop('files', None)
 
     def check(self):
         with self.mutex:

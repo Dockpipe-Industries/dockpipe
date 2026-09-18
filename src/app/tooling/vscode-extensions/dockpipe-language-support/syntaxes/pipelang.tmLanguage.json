@@ -22,7 +22,7 @@
       "patterns": [
         {
           "name": "keyword.control.pipelang",
-          "match": "\\b(public|private|Interface|Class|Struct|Record|Enum|new|return|if|else)\\b"
+          "match": "\\b(public|private|Interface|Class|Struct|Record|Enum|new|return|if|else|mutable)\\b"
         },
         {
           "name": "storage.modifier.interface.pipelang",

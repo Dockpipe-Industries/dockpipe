@@ -386,3 +386,15 @@ returns. [The concrete v0.114.0 contract](pipelang.md#pipelang-v01140-general-le
 owns the accepted bounded C2 rules, backed by fresh complete verification and an
 independent inherited-proof audit. Mutable slots and logical fuel/depth
 remain later decisions; this approval does not ratify D1–D6 wholesale.
+
+
+## Approved P04.b scope
+
+The founder selected mutable locals and separately approved the concrete v0.115.0
+scope in [mutable-locals.md](../agents/tasks/pipelang-reactive-application-language/mutable-locals.md).
+This settles `mutable T name` spelling, simple local assignment and delayed
+initialization of mutable and single-assignment immutable locals. Definite facts
+intersect and possible initialization facts union across continuing branches.
+Implementation and focused checks are complete; terminal proof is blocked by coordinator
+memory headroom. The v0.115.0 contract remains unaccepted. Fuel/depth, closures, field mutation
+and unrelated D1–D6 proposals remain outside this approval.

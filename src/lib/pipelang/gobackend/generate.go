@@ -1268,7 +1268,7 @@ func typeNeedsTextSupport(value coreir.Type) bool {
 
 func programNeedsOptionalSupport(functions []coreir.Function) bool {
 	for _, function := range functions {
-		if function.ReturnType.Kind == coreir.TypeOptional || expressionNeedsOptionalSupport(function.Body) {
+		if function.ReturnType.Kind == coreir.TypeOptional || expressionContainsType(function.Body, func(t coreir.Type) bool { return t.Kind == coreir.TypeOptional }) || expressionNeedsOptionalSupport(function.Body) {
 			return true
 		}
 		for _, parameter := range function.Parameters {
@@ -1422,6 +1422,11 @@ func expressionContainsKind(expression coreir.Expr, kind coreir.ExprKind) bool {
 }
 
 func expressionContainsType(expression coreir.Expr, predicate func(coreir.Type) bool) bool {
+	for _, typ := range coreir.BlockLocalTypes(expression.Block) {
+		if predicate(typ) {
+			return true
+		}
+	}
 	found := false
 	coreir.WalkExpression(expression, func(current coreir.Expr) bool {
 		if predicate(current.Type) {
@@ -1614,6 +1619,11 @@ func collectRecordTypes(functions []coreir.Function) ([]coreir.Type, error) {
 		return nil
 	}
 	for _, function := range functions {
+		for _, typ := range coreir.BlockLocalTypes(function.Body.Block) {
+			if err := collect(typ); err != nil {
+				return nil, err
+			}
+		}
 		if err := collect(function.ReturnType); err != nil {
 			return nil, err
 		}
@@ -1669,6 +1679,11 @@ func collectListTypes(functions []coreir.Function) ([]coreir.Type, error) {
 		return nil
 	}
 	for _, function := range functions {
+		for _, typ := range coreir.BlockLocalTypes(function.Body.Block) {
+			if err := collect(typ); err != nil {
+				return nil, err
+			}
+		}
 		if err := collect(function.ReturnType); err != nil {
 			return nil, err
 		}
@@ -2039,6 +2054,11 @@ func collectSnapshotResultTypes(functions []coreir.Function) ([]coreir.Type, err
 		return nil
 	}
 	for _, function := range functions {
+		for _, typ := range coreir.BlockLocalTypes(function.Body.Block) {
+			if err := collect(typ); err != nil {
+				return nil, err
+			}
+		}
 		if err := collect(function.ReturnType); err != nil {
 			return nil, err
 		}

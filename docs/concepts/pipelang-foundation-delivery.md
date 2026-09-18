@@ -392,3 +392,12 @@ storage accounting and the admitted historical fixture-encoding differences.
 Acceptance settles only this bounded C2 control-flow contract; P04.b mutation and
 P05 loops/fuel remain open.
 Other package proposals and unrelated D1–D6 decisions remain pending.
+
+
+## P04.b approved implementation
+
+[Mutable locals](../agents/tasks/pipelang-reactive-application-language/mutable-locals.md)
+are selected and implementation is approved: explicit mutation, delayed initialization,
+simple reassignment and definite-assignment joins through the existing Go seed pipeline.
+Implementation and focused checks pass. Repeated coordinator headroom stops block
+fresh terminal acceptance; v0.115.0 remains unaccepted. P03 and P05 remain pending.

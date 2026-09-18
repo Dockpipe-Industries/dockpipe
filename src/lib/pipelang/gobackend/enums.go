@@ -24,6 +24,9 @@ func emitEnumTypes(out *strings.Builder, fs []coreir.Function) error {
 	}
 	walk := func(e coreir.Expr) { coreir.WalkExpression(e, func(c coreir.Expr) bool { add(c.Type); return true }) }
 	for _, f := range fs {
+		for _, typ := range coreir.BlockLocalTypes(f.Body.Block) {
+			add(typ)
+		}
 		add(f.ReturnType)
 		for _, p := range f.Parameters {
 			add(p.Type)

@@ -17,15 +17,20 @@ func evalBlock(b *coreir.Block, args *argumentFrame, functions map[string]coreir
 	}()
 	for _, s := range b.Statements {
 		switch s.Kind {
-		case "local":
+		case "local", "assign":
+			if s.Kind == "local" && s.Value == nil {
+				args.push(Value{}) // Unreadable placeholder; Core proves initialization before reads.
+				continue
+			}
+			typ := s.Value.Type
 			o, err := evalExprWithProgram(*s.Value, args, functions)
 			if err != nil {
 				return Outcome{}, false, err
 			}
 			var v Value
-			if s.Local.Type.Kind == coreir.TypeResult {
+			if typ.Kind == coreir.TypeResult {
 				c := cloneOutcome(o)
-				v = Value{Type: s.Local.Type, Result: &c}
+				v = Value{Type: typ, Result: &c}
 			} else {
 				if !o.OK {
 					return o, true, nil
@@ -35,7 +40,11 @@ func evalBlock(b *coreir.Block, args *argumentFrame, functions map[string]coreir
 			if err := validateValue(v); err != nil {
 				return Outcome{}, false, err
 			}
-			args.push(v)
+			if s.Kind == "assign" {
+				args.values[*s.Target] = v
+			} else {
+				args.push(v)
+			}
 		case "return":
 			o, err := evalExprWithProgram(*s.Value, args, functions)
 			return cloneOutcome(o), true, err

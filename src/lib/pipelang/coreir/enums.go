@@ -113,6 +113,11 @@ func validateEnumDeclarations(p Program) error {
 		return nil
 	}
 	for _, f := range p.Functions {
+		for _, local := range BlockLocalTypes(f.Body.Block) {
+			if err := typ(local); err != nil {
+				return err
+			}
+		}
 		if err := typ(f.ReturnType); err != nil {
 			return err
 		}

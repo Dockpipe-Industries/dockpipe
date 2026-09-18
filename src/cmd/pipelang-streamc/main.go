@@ -39,7 +39,7 @@ func run() error {
 	output := flag.String("out", "", "generated C++ header")
 	bindings := flag.String("bindings-out", "", "generated function binding JSON")
 	runtime := flag.String("runtime-out", "", "export generic native-stream C++ runtime header")
-	profile := flag.String("profile", streamir.Profile, "explicit native-stream language profile (v1 or v2)")
+	profile := flag.String("profile", streamir.Profile, "explicit native-stream language profile (v1, v2 or incremental v3)")
 	entry := flag.String("entry", "", "public Class.Method for a typed native entry header")
 	entryHeader := flag.String("entry-header", "", "optional generated native entry header")
 	entryNamespace := flag.String("entry-namespace", "pipelang_entry_Default", "namespace for the native entry header")

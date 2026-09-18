@@ -29,7 +29,7 @@ func Generate(program streamir.Program) (Generated, error) {
 	if err := streamir.Validate(program); err != nil {
 		return Generated{}, err
 	}
-	if program.Profile == streamir.CompositionProfile {
+	if program.Profile != streamir.Profile {
 		return generateComposition(program), nil
 	}
 	var text strings.Builder

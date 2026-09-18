@@ -47,9 +47,11 @@ type Statement struct {
 }
 
 func ValueType(t Type) bool {
-	return t == Int || t == Bool || t == Uint64 || t == Result || t == StatusType
+	return t == Int || t == Bool || t == Uint64 || t == Result || t == StatusType || t == Step
 }
-func ParameterType(t Type) bool { return ValueType(t) || t == ReadStream || t == WriteStream }
+func ParameterType(t Type) bool {
+	return ValueType(t) || t == ReadStream || t == WriteStream || t == Session || t == InputBuffer || t == OutputBuffer
+}
 func MemberType(name string) Type {
 	switch name {
 	case "ok":
@@ -82,11 +84,11 @@ func validateComposition(p Program) error {
 	public := false
 	for _, f := range p.Functions {
 		key := f.Class + "." + f.Name
-		if !identifier.MatchString(f.Class) || !identifier.MatchString(f.Name) || methods[key] || len(f.Parameters) > 16 || !ValueType(f.ReturnType) || len(f.Body) == 0 || f.Binding != 0 || f.Arguments != [3]int{} {
+		if !identifier.MatchString(f.Class) || !identifier.MatchString(f.Name) || methods[key] || len(f.Parameters) > 16 || !ValueTypeFor(p.Profile, f.ReturnType) || len(f.Body) == 0 || f.Binding != 0 || f.Arguments != [3]int{} {
 			return fmt.Errorf("invalid composition function")
 		}
 		for _, t := range f.Parameters {
-			if !ParameterType(t) {
+			if !ParameterTypeFor(p.Profile, t) {
 				return fmt.Errorf("invalid composition parameter")
 			}
 		}
@@ -167,7 +169,7 @@ func (v *compositionValidator) block(statements []Statement, outer map[int]Type,
 		}
 		switch s.Kind {
 		case "local":
-			if !ValueType(s.Type) || s.Slot < 0 || s.Slot >= 256 || v.slots[s.Slot] || len(s.Then) != 0 || len(s.Else) != 0 {
+			if !ValueTypeFor(v.p.Profile, s.Type) || s.Slot < 0 || s.Slot >= 256 || v.slots[s.Slot] || len(s.Then) != 0 || len(s.Else) != 0 {
 				return false, fmt.Errorf("invalid composition local")
 			}
 			t, e := v.expression(s.Value, env, depth+1)
@@ -267,8 +269,7 @@ func (v *compositionValidator) expression(x *Expression, env map[int]Type, depth
 			if x.Target < 0 || x.Target >= len(v.p.Bindings) {
 				return fail()
 			}
-			params = []Type{ReadStream, WriteStream, Int}
-			inferred = Result
+			params, inferred = NativeSignature(v.p.Profile)
 		} else {
 			if x.Target < 0 || x.Target >= len(v.p.Functions) {
 				return fail()
@@ -301,10 +302,10 @@ func (v *compositionValidator) expression(x *Expression, env map[int]Type, depth
 		if e != nil {
 			return "", e
 		}
-		if t != Result {
+		if t != Result && t != Step {
 			return fail()
 		}
-		inferred = MemberType(x.Member)
+		inferred = ResultMemberType(t, x.Member)
 	case "not":
 		if len(x.Arguments) != 1 {
 			return fail()

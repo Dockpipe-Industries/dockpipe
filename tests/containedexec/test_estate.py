@@ -401,7 +401,8 @@ class EstateTests(unittest.TestCase):
             def guard(*args):
                 self.assertTrue((output / 'storage-budget.json').exists())
                 (output / 'dependency-inputs.json').write_text(json.dumps({'paths': [str(node)]}))
-                return SimpleNamespace(check=lambda: 'fixed')
+                return SimpleNamespace(check=lambda: 'fixed', paths=[node],
+                                       release_file_inventory=lambda: None)
             def stage(command, **kwargs):
                 name = Path(command[2]).stem
                 seen.append(name)

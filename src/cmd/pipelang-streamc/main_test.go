@@ -20,6 +20,7 @@ func TestEntryFacade(t *testing.T) {
 		want                            string
 	}{
 		{"public", "Flow.Run", "pipelang_entry_Flow", streamir.CompositionProfile, true, ""},
+		{"incremental", "Flow.Run", "pipelang_entry_Flow", streamir.IncrementalProfile, true, ""},
 		{"private", "Flow.Good", "pipelang_entry_Flow", streamir.CompositionProfile, true, "unknown public entry"},
 		{"unknown", "Flow.Missing", "pipelang_entry_Flow", streamir.CompositionProfile, true, "unknown public entry"},
 		{"namespace", "Flow.Run", "injected;", streamir.CompositionProfile, true, "invalid entry namespace"},
@@ -30,7 +31,7 @@ func TestEntryFacade(t *testing.T) {
 			dir := t.TempDir()
 			source := filepath.Join(dir, "Flow.pipe")
 			manifest := filepath.Join(dir, "manifest.json")
-			data, _ := json.Marshal(streamir.Manifest{Profile: streamir.Profile, Package: "example.codec", ABI: 1, Operations: []streamir.Operation{{Name: "Codec.transfer", ID: "transfer.v1"}}})
+			data, _ := json.Marshal(streamir.Manifest{Profile: streamir.ManifestProfile(test.profile), Package: "example.codec", ABI: 1, Operations: []streamir.Operation{{Name: "Codec.transfer", ID: "transfer.v1"}}})
 			if err := os.WriteFile(manifest, data, 0600); err != nil {
 				t.Fatal(err)
 			}
@@ -43,6 +44,14 @@ func TestEntryFacade(t *testing.T) {
     }
    }`), 0600); err != nil {
 				t.Fatal(err)
+			}
+			if test.profile == streamir.IncrementalProfile {
+				if err := os.WriteFile(source, []byte(`public Class Flow {
+                    public StreamStep Run(StreamSession session, InputBuffer input, OutputBuffer output, bool final)
+                        => Codec.transfer(session, input, output, final);
+                }`), 0600); err != nil {
+					t.Fatal(err)
+				}
 			}
 			out := filepath.Join(dir, "program.hpp")
 			binding := filepath.Join(dir, "bindings.json")

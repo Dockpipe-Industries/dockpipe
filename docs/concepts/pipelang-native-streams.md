@@ -3,7 +3,9 @@
 Status: explicitly requested native-stream integration, separate from the accepted
 pure language contract and the ongoing general-block work. Profiles are
 `pipelang.native-stream.v1` (direct calls) and explicitly selected
-`pipelang.native-stream.v2` (result composition). Neither promotes the complete C++ backend.
+`pipelang.native-stream.v2` (result composition), plus explicitly selected
+`pipelang.native-stream.v3` (incremental sessions and buffers). These do not promote
+the complete C++ backend.
 
 ## Source API
 
@@ -159,6 +161,77 @@ both the reference evaluator and compiled native execution, source and forged-IR
 refusals, v1 compatibility, and a real installed-SDK application that compresses,
 branches and decompresses entirely through its `.pipe` method. This is synchronous
 native effect composition, not full language/backend or asynchronous acceptance.
+
+## Version 3: application-controlled incremental buffers
+
+Select `--profile pipelang.native-stream.v3` with a separately pinned v3 SDK
+manifest. The default remains v1. V3 retains v2's bounded result composition and
+adds borrowed `StreamSession`, `InputBuffer`, and `OutputBuffer` parameters and
+an immutable `StreamStep` value. Each declared native operation has the signature
+`(StreamSession, InputBuffer, OutputBuffer, bool) -> StreamStep`; the Boolean marks
+the final input span. Manifest/profile mismatches are rejected before generation.
+
+```text
+public Class Transfer {
+    public StreamStep Decode(StreamSession session, InputBuffer input,
+                             OutputBuffer output, bool endOfInput) {
+        StreamStep step = Codec.decodeStep(session, input, output, endOfInput);
+        if (!step.ok) { return step; }
+        return step;
+    }
+    public bool Complete(StreamStep step) => step.ok && step.done;
+}
+```
+
+`Codec.decodeStep` is package metadata, not a builtin. Nucleon's private SDK declares
+`Nucleon.compressStep` and `Nucleon.decompressStep` in its incremental manifest.
+The generic compiler/runtime/evaluator contain no compression implementation.
+
+`StreamStep` exposes:
+
+| Member | Meaning |
+| --- | --- |
+| `.ok`, `.status` | Successful processing versus a typed error; needing buffers is success. |
+| `.needInput`, `.needOutput`, `.done` | Success-only progress predicates; all false on error. |
+| `.inputConsumed`, `.outputWritten` | Unsigned 64-bit byte counts for this call. |
+| `.inputBytes`, `.outputBytes`, `.chunks` | Unsigned 64-bit cumulative session counters. |
+
+The application creates a session through its SDK adapter, supplies fresh spans,
+advances by the returned counts and invokes the generated entry again when input
+or output space is available. Zero-length input without final input is temporary
+starvation; zero output capacity is backpressure. For Nucleon, repeat the final
+flag with the unconsumed suffix of a final span; once consumed, provide empty input
+while draining output. Explicit final input, not a socket close, establishes the
+message boundary. A completed result is required before accepting an entire stream.
+
+Sessions persist in the embedding host between calls; source only borrows them.
+Source cannot construct, copy into locals, return, store or close sessions/buffers,
+nor access raw pointers. The host owns chunk/aggregate limits, cancellation,
+transport framing, readiness scheduling and single-session serialization. Independent
+sessions can run concurrently. Reusing a session with a different operation is an
+adapter error; Nucleon denies mode, package, manifest and foreign-session mismatches.
+Its RAII session releases the codec state on destruction and exposes explicit cancel.
+
+The C++ boundary rejects null nonempty spans, overlapping spans and overflowing
+address extents before invoking a host. Unknown statuses/progress tags, overreported
+counts or counts exceeding cumulative totals become host failure. Exceptions become
+host failure with unknown external effects; successful counts and typed codec errors
+remain observable. The reference evaluator models borrowed capability identities and
+span lengths; physical address overlap is checked at the native boundary.
+
+CPU work within a step is synchronous. This is resumable buffer processing, not a
+language event loop, general async support, zero-copy promise or performance claim.
+A large offered span can cause multiple chunks to be processed before returning.
+The application must yield on readiness instead of busy-looping on an unavailable
+buffer. Nucleon validates each complete decoded chunk before releasing it; a later
+error can leave an already-emitted valid prefix.
+
+The installed Nucleon CMake helper selects its incremental manifest for
+`PROFILE pipelang.native-stream.v3`, emits typed entry headers, and links its adapter.
+Generated composition headers include a source/profile/SDK-specific guard so several
+entries from the same application can coexist in one translation unit. V1/v2 callback
+bindings retain their contracts. Internal artifact-store format/default adoption is
+separate from these explicit application APIs.
 
 ## Internal ecosystem use and application use
 

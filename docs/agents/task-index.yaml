@@ -93,13 +93,16 @@ tasks:
     foundation_planning_state: completed
     topic: PipeLang deterministic self-hosting managed language foundation
     completed_language_contract: v0.114.0
-    active_objective: null
+    active_objective: TASK-021-mutable-locals
+    mutable_locals_verification: failed_coordinator_headroom
+    mutable_locals: docs/agents/tasks/pipelang-reactive-application-language/mutable-locals.md
     general_blocks: docs/agents/tasks/pipelang-reactive-application-language/general-blocks.md
     general_blocks_verification: accepted_terminal_efficiency_9_independent_ordered_audit
     general_blocks_recovery: compact_matrix_reporting_78_focused_passed
     nucleon_sdk_pilot: docs/research/pipelang-nucleon-pilot.md
     native_streaming_sdk: docs/agents/tasks/pipelang-reactive-application-language/native-streaming-sdk.md
     native_stream_composition: docs/agents/tasks/pipelang-reactive-application-language/native-stream-composition.md
+    native_stream_incremental: docs/agents/tasks/pipelang-reactive-application-language/native-stream-incremental.md
     completed_qt_boundary_foundation_objective: pipelang-qt-boundary-foundation-20260913
     completed_language_objective: TASK-021-general-blocks
     completed_planning_objective: TASK-021-foundation-specification-and-dependency-plan
@@ -151,10 +154,10 @@ tasks:
     cpp_qt_pilot: docs/agents/tasks/pipelang-reactive-application-language/cpp-qt-pilot.md
     completed_cpp_qt_pilot_objective: pipelang-cpp-qt-pilot-20260913
     cpp_qt_pilot_disposition: retained_experimental_integration
-    objective_state: completed
-    selected_option: null
-    selected_scope: null
-    implementation_approval: pending_selection_and_approval
+    objective_state: failed_verification
+    selected_option: P04.b
+    selected_scope: mutable_locals_and_definite_assignment
+    implementation_approval: approved
     planning_authority: explicit_user_request
     completed_language_implementation_approval: approved
     completed_repair_objective: TASK-021-PipeLang-v0.80-milestone-repairs
@@ -163,8 +166,8 @@ tasks:
     next_repair_slice: null
     path: docs/agents/tasks/pipelang-reactive-application-language/index.yaml
     dispatch:
-      readiness: decision_ready
-      ownership: unclaimed
+      readiness: blocked
+      ownership: claimed
   - id: TASK-022
     topic: Go-first PipeLang backend services and typed clients
     path: docs/agents/tasks/go-first-pipelang-backend-services/index.yaml
