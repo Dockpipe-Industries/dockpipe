@@ -94,8 +94,9 @@ checkpoint justifies reopening it.
 
 - When the user explicitly requests handoff or continuation, create one fresh task without a second confirmation.
 - Use the host-native task capability, the same project and saved checkout, and no worktree unless requested.
+- Before concluding no task capability exists, check the current tool list for a host-native session/task-spawn tool (for example, in Claude Code: `spawn_task`). That is the host-native task capability this skill means, not a separate external API.
 - After successful creation, report the new task and stop the old task.
-- If task creation is unavailable, return the exact paste-ready prompt and state that it was not created.
+- Only if no such tool is present after checking, return the exact paste-ready prompt and state that it was not created.
 
 Never invoke the fresh task's execution skill in the old task. Never create more than one task from
 one user request. Never claim that ephemeral browser or agent-local state will survive task
