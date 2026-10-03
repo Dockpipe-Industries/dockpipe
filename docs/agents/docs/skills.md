@@ -19,6 +19,10 @@ skills:
 Do not use target-specific skill routing keys. Keep routing neutral and let the renderer adapt the
 skill for Codex, Claude, or another target.
 
+For provider-specific behavior, use the renderer's section overrides described in
+[DorkPipe Skills Renderer](../../../packages/dorkpipe/README.md#skills-renderer).
+Keep shared instructions in one source; replace only the sections that differ for a target.
+
 ## Installed Codex Skills
 
 - `dorkpipe-agentic-yaml`

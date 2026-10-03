@@ -45,8 +45,9 @@ mode: `continue_objective`.
 
 The handoff transports the same objective id, authority, `done_when`, invariants, exclusions,
 dirty-tree ownership, completed proof, effect and retry evidence, and next checkpoint. It grants no
-new execution scope. Create exactly one fresh task for that user request, use the same saved checkout
-without a worktree unless requested, then stop the old task.
+new execution scope. Follow the rendered skill's delivery instructions: create exactly one fresh
+task when supported, or return one paste-ready prompt for the user to open a fresh chat. Preserve
+the same saved checkout without a worktree unless requested, then stop the old task.
 
 A continuation receiver admits durable completed proof, revalidates only affected live anchors, and
 executes the single pending boundary first. It does not replay chronology or rerun passed proof
