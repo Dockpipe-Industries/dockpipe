@@ -31,6 +31,7 @@ type skill struct {
 	Description      string
 	ShortDescription string
 	Instructions     string
+	SourceDir        string
 }
 
 type config struct {
@@ -187,6 +188,7 @@ func readSkill(skillDir string) (skill, error) {
 		Description:      strings.TrimSpace(meta.Description),
 		ShortDescription: strings.TrimSpace(meta.ShortDescription),
 		Instructions:     strings.TrimSpace(string(instructionsBytes)),
+		SourceDir:        skillDir,
 	}
 	if !nameRE.MatchString(item.Name) {
 		return skill{}, fmt.Errorf("%s: invalid name %q", dirName, item.Name)
@@ -348,6 +350,12 @@ func renderSkill(item skill, base string, cfg config, report *[]reportEntry) err
 }
 
 func renderFiles(item skill, target string) (map[string]string, error) {
+	instructions, err := targetInstructions(item, target)
+	if err != nil {
+		return nil, err
+	}
+	item.Instructions = instructions
+
 	switch target {
 	case "codex":
 		short := item.ShortDescription
