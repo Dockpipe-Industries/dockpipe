@@ -3,10 +3,11 @@
 ## Objective and authority
 
 - Objective: `dockpipe-0.6-release-qualification`.
-- State: the approved fifth repair is committed and pushed as `16b10cf5`.
-  All four Unix jobs passed in the sixth run. Windows built and installed the
-  MSI, then hit a false-positive snapshot assertion after uninstall. The local
-  assertion repair is verified and awaits commit/push approval.
+- State: checkpoint `863ba38b` is committed and pushed. All five native platform
+  jobs, including Windows MSI build/install/uninstall, passed in the seventh run.
+  The erroneous dry-run deployment gate is repaired locally. Cancellation of the
+  obsolete seventh run is confirmed; final hosted combined-artifact acceptance
+  requires a fresh dry run after the repair is committed and pushed.
 - Execution skill: `dorkpipe-objective-execution`.
 - Authority: on 2026-10-04 the user requested fixing the failing tests because
   "we need everything green", and explicitly invoked `dorkpipe-task-handoff`.
@@ -19,6 +20,13 @@
   not completion of this renewed objective.
 - Scope: dry-run dispatch, retrieval, diagnosis, and directly related reversible
   readiness/implementation repairs. New commits/pushes require user authorization.
+- Required promotion path, confirmed by the user: `js/pipelang → js/dev → dev →
+  staging → master`. Production release publication must originate from `master`.
+  The current `js/pipelang` run is qualification only; its `publish` job assembles
+  dry-run artifacts with production publication disabled. This clarification does
+  not authorize branch merges or a production dispatch. Automatic release runs
+  already trigger on pushes to `master`; the local repair now also rejects
+  manual non-dry-run dispatch on every other ref.
 - Exclusions: production release/tag, R2/APT publication, dev.to, merge, billing,
   protection rules, credential changes, infrastructure mutation, or automatic handoff.
 
@@ -448,17 +456,79 @@ whitespace checks pass. No engine/package boundary or public contract changes, n
 tracked generated files, and no installed-file deletion were introduced. Native MSI
 smoke acceptance and combined release output remain pending.
 
+## Approved sixth checkpoint and seventh run
+
+The user approved the four-file follow-up, push, and seventh dry run. Runtime
+checkpoint `cp-20261004-213548` created `863ba38bfa2d2735e133cc6392e658c4aa915065`,
+with parent `16b10cf5` and all four approved postimages verified. The runtime push
+and remote read-back confirm `origin/js/pipelang` at that SHA. The index is empty;
+protected editor settings and both stashes are preserved.
+
+[Release run 37236771195](https://github.com/Dockpipe-Industries/dockpipe/actions/runs/37236771195)
+was dispatched at `2026-10-04T21:36:22Z` with `version=0.6.0`, `dry_run=true`, and
+`build_msi=true`. The API confirms the intended SHA. Metadata job `111537335238`
+passed and confirms all three inputs. Evidence uses `/tmp/dockpipe-0.6-run-37236771195`.
+
+| Target | Seventh-run result |
+| --- | --- |
+| Linux amd64 | Job `111537358681` passed store/native smoke, full runtime and eight-package tests, Docker/DEB smoke, and all nine release-tooling tests including signed APT. Artifact `11315717577`. |
+| Linux arm64 | Job `111537358722` passed store build and native smoke. Artifact `11316106428`. |
+| macOS Intel | Job `111537358724` passed store build and native smoke. Artifact `11315812354`. |
+| macOS Apple Silicon | Job `111537358768` passed store build and native smoke. Artifact `11315961672`. |
+| Windows amd64 / MSI | Job `111537358719` passed store/native smoke, runtime tests, installer failure recovery, snapshot/binding regressions, WiX MSI build, actual install, installed CLI execution, uninstall, all post-uninstall cleanup/PATH checks, and upload. Artifact `11316396260`. |
+| Combined release artifact | Job `111538919622` is waiting on the protected `release` environment before catalog/checksum and dry-run signed-APT assembly. |
+
+The environment API reports required reviewer `jamie-steele`, `prevent_self_review:
+true`, and `current_user_can_approve: false`. Administrator bypass is enabled in the
+existing environment configuration. The user was asked to clear the gate in GitHub;
+no protection rule was changed and no approval/bypass was attempted by the agent.
+All five native platform artifacts were downloaded and independently verified:
+58 package entries per platform (290 total), including each bundled store archive's
+manifest and payload hashes. The MSI payload is present with SHA256
+`e1b9b0ed2fa98c57dc42e94dd9b4a795d2cda7aa503135bd9c5e2151a27041d7`.
+Evidence is recorded in `/tmp/dockpipe-0.6-run-37236771195-store-verification.log`.
+The combined artifact was not produced. The user rejected deployment approval
+for dry-run verification and requested a pipeline repair; do not bypass this gate.
+
+## Dry-run deployment isolation repair
+
+The user explicitly requested fixing the pipeline after the dry run incorrectly
+requested a deployment approval. The working-tree repair:
+
+- Moves shared catalog/checksum assembly into an unprotected, read-only `assemble`
+  job with no production secret references. Dry-run APT uses only a temporary key.
+- Keeps production signing and GitHub/R2 publication in the protected `publish`
+  job, admitted only for `refs/heads/master` and explicit `dry_run=false`.
+  The same admission condition protects dev.to.
+- Rejects non-master production dispatch in metadata before platform builds,
+  defaults manual dispatch to dry-run, and separates dry-run/production concurrency.
+- Transfers prepared production artifacts by a specific artifact name; dry-run
+  bundles preserve the existing artifact/catalog/APT layout.
+- Documents the required promotion path and adds workflow regression coverage.
+
+All 13 release-tooling tests passed, including real test-key APT signing. The
+initial sandbox run could not start the GPG agent; the reviewed host execution
+passed with temporary keys and no production credentials/publication. All four new
+workflow regression tests reject the original workflow. The metadata tests execute
+the actual authored Bash across six refs and four input/event combinations; job
+conditions reject dry runs, non-master refs, and missing production-mode outputs.
+YAML parsing, 15 Bash step syntax checks, and `git diff --check` passed. Evidence:
+`/tmp/dockpipe-release-pipeline-fix-tests-host.log`.
+
+Obsolete run `37236771195` is confirmed `completed/cancelled`. Normal cancellation
+left its always-conditioned job waiting, so force cancellation completed the stop.
+No environment approval/bypass or protection-rule change was performed.
+
 ## Remaining release gates
 
-Current committed/pushed HEAD remains `16b10cf5574d77951909b24b06103c0a424e36f1`.
-The four-file follow-up (MSI smoke predicate, PowerShell regression, and two evidence
-documents) is local and needs new commit/push approval before a seventh dry run.
-The index is empty; protected editor settings and both stashes are preserved.
+The current pushed SHA remains `863ba38bfa2d2735e133cc6392e658c4aa915065`.
+The pipeline repair and documentation are local and require separate commit/push
+approval. A fresh dry run must prove that unprotected assembly completes and the
+production jobs are skipped; the old run cannot pick up local workflow changes.
+Download and independently verify the new combined artifact before claiming full
+hosted completion. No production dispatch or branch promotion is authorized.
 
-The next exact SHA still needs the corrected Windows uninstall assertion and
-remaining cleanup checks to pass, followed by the complete five-platform catalog,
-checksums, and dry-run signed APT artifact. Native hosted success does not establish
-M6 Mac onboarding, launchd, sleep/wake, or Nucleon remote execution.
-Publication-recovery rehearsal and production configuration/public-origin verification
-remain separate gates. PipeLang public rollout and compiler qualification remain
-deferred to 0.7.
+Native hosted success does not establish M6 Mac onboarding, launchd, sleep/wake,
+or Nucleon remote execution. Publication-recovery rehearsal and production
+configuration/public-origin verification remain separate gates. PipeLang public
+rollout and compiler qualification remain deferred to 0.7.

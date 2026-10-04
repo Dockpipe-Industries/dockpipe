@@ -1,7 +1,7 @@
 name: Release
 
 # Merging to master ships a release: version comes from repo-root VERSION + release/releasenotes/X.Y.Z.md.
-# workflow_dispatch is for dry-runs or manual runs (optional version override).
+# Manual runs default to dry-run verification; production runs require master.
 on:
   push:
     branches: [master]
@@ -12,9 +12,9 @@ on:
         required: false
         type: string
       dry_run:
-        description: "Build artifacts and checksums without creating GitHub release"
+        description: "Verify artifacts without deployment approval or publication (false requires master)"
         required: false
-        default: false
+        default: true
         type: boolean
       build_msi:
         description: "Build Windows MSI (WiX). On push to master, use committed file release/packaging/msi/SHIP_MSI instead."
@@ -23,7 +23,7 @@ on:
         type: boolean
 
 concurrency:
-  group: dockpipe-release
+  group: dockpipe-release-${{ github.event_name == 'workflow_dispatch' && inputs.dry_run && 'dry-run' || 'publish' }}-${{ github.ref }}
   cancel-in-progress: false
 
 permissions:
@@ -55,7 +55,7 @@ jobs:
             if [[ -z "${raw}" ]]; then
               raw="$(tr -d ' \n\r' < VERSION)"
             fi
-            if [[ "${INPUT_DRY_RUN:-false}" == "true" ]]; then
+            if [[ "${INPUT_DRY_RUN:-true}" == "true" ]]; then
               dry_run="true"
             fi
             case "${INPUT_BUILD_MSI:-true}" in
@@ -69,6 +69,10 @@ jobs:
             fi
           else
             echo "Unsupported event: ${GITHUB_EVENT_NAME}" >&2
+            exit 1
+          fi
+          if [[ "$dry_run" != "true" && "${GITHUB_REF}" != "refs/heads/master" ]]; then
+            echo "::error::Production releases require master. Use dry_run=true for branch verification."
             exit 1
           fi
           raw="${raw#v}"
@@ -147,8 +151,8 @@ jobs:
         if: matrix.platform == 'linux-amd64'
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends apt-utils gnupg
-          python3 -m unittest discover -s release/packaging/tests -v
+          sudo apt-get install -y --no-install-recommends apt-utils gnupg python3-yaml
+          /usr/bin/python3 -m unittest discover -s release/packaging/tests -v
       - uses: actions/upload-artifact@v7
         with:
           name: release-${{ matrix.platform }}
@@ -263,13 +267,13 @@ jobs:
           path: release/artifacts/
           if-no-files-found: error
 
-  publish:
+  assemble:
+    name: Assemble and verify artifacts
     needs: [meta, build-unix, build-msi]
-    if: always() && needs.meta.result == 'success' && needs.build-unix.result == 'success' && (needs.build-msi.result == 'success' || needs.build-msi.result == 'skipped')
+    if: ${{ !cancelled() && needs.meta.result == 'success' && needs.build-unix.result == 'success' && (needs.build-msi.result == 'success' || needs.build-msi.result == 'skipped') }}
     runs-on: ubuntu-latest
-    environment: release
     permissions:
-      contents: write
+      contents: read
     steps:
       - uses: actions/checkout@v6
 
@@ -278,27 +282,6 @@ jobs:
           pattern: release-*
           merge-multiple: true
           path: release/artifacts
-
-      - name: Install repository tools
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends apt-utils gnupg
-
-      - name: Verify publication configuration
-        if: needs.meta.outputs.dry_run != 'true'
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          APT_SIGNING_KEY: ${{ secrets.APT_SIGNING_KEY }}
-          APT_SIGNING_FINGERPRINT: ${{ vars.APT_SIGNING_FINGERPRINT }}
-          R2_ENDPOINT_URL: ${{ vars.R2_ENDPOINT_URL }}
-          DOCKPIPE_RELEASE_BUCKET: ${{ vars.DOCKPIPE_RELEASE_BUCKET }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          for name in AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY APT_SIGNING_KEY APT_SIGNING_FINGERPRINT R2_ENDPOINT_URL DOCKPIPE_RELEASE_BUCKET; do
-            [[ -n "${!name}" ]] || { echo "::error::Missing release setting: $name"; exit 1; }
-          done
 
       - name: Prepare release notes body
         shell: bash
@@ -319,23 +302,22 @@ jobs:
           cp release/packaging/windows/install.ps1 release/artifacts/install.ps1
           python3 release/packaging/release-artifacts.py prepare release/artifacts --version "${{ needs.meta.outputs.version }}"
 
-      - name: Build signed APT repository
-        env:
-          APT_SIGNING_KEY: ${{ secrets.APT_SIGNING_KEY }}
-          APT_SIGNING_FINGERPRINT: ${{ vars.APT_SIGNING_FINGERPRINT }}
-          DRY_RUN: ${{ needs.meta.outputs.dry_run }}
+      - name: Install dry-run repository tools
+        if: needs.meta.outputs.dry_run == 'true'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends apt-utils gnupg
+
+      - name: Build APT repository with a temporary test key
+        if: needs.meta.outputs.dry_run == 'true'
         shell: bash
         run: |
           set -euo pipefail
           export GNUPGHOME="$(mktemp -d)"
           trap 'rm -rf "$GNUPGHOME"' EXIT
           chmod 700 "$GNUPGHOME"
-          if [[ "$DRY_RUN" == true ]]; then
-            gpg --batch --passphrase '' --quick-generate-key 'DockPipe dry-run (not for publication)' rsa3072 sign 1d
-            export APT_SIGNING_FINGERPRINT="$(gpg --with-colons --list-secret-keys | awk -F: '$1 == "fpr" {print $10; exit}')"
-          else
-            printf '%s' "$APT_SIGNING_KEY" | gpg --batch --import
-          fi
+          gpg --batch --passphrase '' --quick-generate-key 'DockPipe dry-run (not for publication)' rsa3072 sign 1d
+          export APT_SIGNING_FINGERPRINT="$(gpg --with-colons --list-secret-keys | awk -F: '$1 == "fpr" {print $10; exit}')"
           bash release/packaging/build-apt.sh release/artifacts release/apt
 
       - name: Upload dry-run artifacts
@@ -346,9 +328,66 @@ jobs:
           path: |
             release/artifacts/
             release/apt/
+          if-no-files-found: error
+
+      - name: Upload prepared production artifacts
+        if: needs.meta.outputs.dry_run == 'false'
+        uses: actions/upload-artifact@v7
+        with:
+          name: dockpipe-release-prepared-${{ needs.meta.outputs.version }}
+          path: release/artifacts/
+          if-no-files-found: error
+
+  publish:
+    name: Publish production release
+    needs: [meta, assemble]
+    if: ${{ github.ref == 'refs/heads/master' && needs.meta.outputs.dry_run == 'false' }}
+    runs-on: ubuntu-latest
+    environment: release
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: dockpipe-release-prepared-${{ needs.meta.outputs.version }}
+          path: release/artifacts
+
+      - name: Install repository tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends apt-utils gnupg
+
+      - name: Verify publication configuration
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          APT_SIGNING_KEY: ${{ secrets.APT_SIGNING_KEY }}
+          APT_SIGNING_FINGERPRINT: ${{ vars.APT_SIGNING_FINGERPRINT }}
+          R2_ENDPOINT_URL: ${{ vars.R2_ENDPOINT_URL }}
+          DOCKPIPE_RELEASE_BUCKET: ${{ vars.DOCKPIPE_RELEASE_BUCKET }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          for name in AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY APT_SIGNING_KEY APT_SIGNING_FINGERPRINT R2_ENDPOINT_URL DOCKPIPE_RELEASE_BUCKET; do
+            [[ -n "${!name}" ]] || { echo "::error::Missing release setting: $name"; exit 1; }
+          done
+
+      - name: Build signed APT repository
+        env:
+          APT_SIGNING_KEY: ${{ secrets.APT_SIGNING_KEY }}
+          APT_SIGNING_FINGERPRINT: ${{ vars.APT_SIGNING_FINGERPRINT }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          export GNUPGHOME="$(mktemp -d)"
+          trap 'rm -rf "$GNUPGHOME"' EXIT
+          chmod 700 "$GNUPGHOME"
+          printf '%s' "$APT_SIGNING_KEY" | gpg --batch --import
+          bash release/packaging/build-apt.sh release/artifacts release/apt
 
       - name: Create GitHub release
-        if: needs.meta.outputs.dry_run != 'true'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ needs.meta.outputs.tag }}
@@ -373,7 +412,6 @@ jobs:
             release/artifacts/SHA256SUMS.txt
 
       - name: Publish all packages and signed APT repository to R2
-        if: needs.meta.outputs.dry_run != 'true'
         env:
           DOCKPIPE_RELEASE_BUCKET: ${{ vars.DOCKPIPE_RELEASE_BUCKET }}
           R2_ENDPOINT_URL: ${{ vars.R2_ENDPOINT_URL }}
@@ -389,7 +427,7 @@ jobs:
     needs: [meta, publish]
     runs-on: ubuntu-latest
     environment: release
-    if: ${{ needs.meta.outputs.dry_run != 'true' && vars.DEVTO_PUBLISH == 'true' && (vars.DEVTO_ARTICLE_ID != '' || vars.DEVTO_ONE_TIME_POST == 'true') }}
+    if: ${{ github.ref == 'refs/heads/master' && needs.meta.outputs.dry_run == 'false' && vars.DEVTO_PUBLISH == 'true' && (vars.DEVTO_ARTICLE_ID != '' || vars.DEVTO_ONE_TIME_POST == 'true') }}
     permissions:
       contents: read
     steps:
