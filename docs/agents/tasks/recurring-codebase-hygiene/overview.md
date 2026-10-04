@@ -2,13 +2,14 @@
 
 ## Current audit and cleanup — 2026-10-04
 
-[Hosted 0.6 qualification](release-0.6-hosted.md) records five approved dry runs.
-Checkpoint `27224d00` is pushed. Fifth run `37234061091` cleared Windows runtime
-and installer-recovery checks plus Pipeon, then failed on MSI PowerShell argument
-binding and a checkout-local override in the VM shell fixture. A five-file follow-up
-fixes both without changing engine/public state contracts. Focused local checks
-pass, including all eight package hooks. MSI and complete catalog acceptance
-remain pending, with new commit/push approval required for the next hosted run.
+[Hosted 0.6 qualification](release-0.6-hosted.md) records six approved dry runs.
+Checkpoint `16b10cf5` is pushed. All four Unix jobs passed in run `37235364232`,
+including the full Linux package and signed-APT test suites. Windows passed runtime,
+installer-recovery, MSI binding/build/install, and installed-CLI execution, then a
+smoke-test snapshot expression falsely rejected equal snapshots after uninstall.
+The four-file follow-up repairs that predicate and verifies acceptance/rejection
+cases. Native MSI completion and combined catalog acceptance still need a new run;
+the local repair awaits commit/push approval.
 
 [0.6 error handling and architecture audit](release-0.6-audit.md) records six
 primary findings and their focused working-tree fixes: strict budget reads,

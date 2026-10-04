@@ -3,10 +3,10 @@
 ## Objective and authority
 
 - Objective: `dockpipe-0.6-release-qualification`.
-- State: the approved fourth repair is committed and pushed as `27224d00`.
-  The fifth hosted run cleared Windows runtime/installer-recovery and Pipeon,
-  then failed in MSI invocation and the VM fixture. A fifth local repair is
-  verified and awaits commit/push approval; all five hosted failures remain evidence.
+- State: the approved fifth repair is committed and pushed as `16b10cf5`.
+  All four Unix jobs passed in the sixth run. Windows built and installed the
+  MSI, then hit a false-positive snapshot assertion after uninstall. The local
+  assertion repair is verified and awaits commit/push approval.
 - Execution skill: `dorkpipe-objective-execution`.
 - Authority: on 2026-10-04 the user requested fixing the failing tests because
   "we need everything green", and explicitly invoked `dorkpipe-task-handoff`.
@@ -400,17 +400,65 @@ CLI build, shell syntax, authored embed-manifest check, and whitespace checks pa
 No generated tracked change is needed; validation produces `/tmp` evidence and
 ordinary ignored package-test scratch under `bin/.dockpipe/tmp/package-tests`.
 
+## Approved fifth checkpoint and sixth run
+
+The user approved the five-file follow-up, push, and sixth dry run. Runtime checkpoint
+`cp-20261004-211507` created `16b10cf5574d77951909b24b06103c0a424e36f1`, with parent
+`27224d00` and all five approved postimages verified. Runtime publication and remote
+read-back confirm `origin/js/pipelang` at that SHA. Editor settings and both protected
+stashes are unchanged; the index is empty. Engine/package boundaries and public state
+safety contracts remain unchanged.
+
+[Release run 37235364232](https://github.com/Dockpipe-Industries/dockpipe/actions/runs/37235364232)
+was dispatched at `2026-10-04T21:15:34Z` with `version=0.6.0`, `dry_run=true`, and
+`build_msi=true`. The API confirms the intended SHA and metadata job `111533269221`
+confirms all inputs. The run concluded **failure** at `2026-10-04T21:23:28Z`.
+Evidence uses the `/tmp/dockpipe-0.6-run-37235364232` prefix.
+
+| Target | Sixth-run result |
+| --- | --- |
+| Linux amd64 | Job `111533409838` passed store/native smoke, the complete runtime and eight-package sequence, Docker/DEB smoke, and all nine release-tooling tests including signed APT. Artifact `11315327216`. |
+| Linux arm64 | Job `111533409897` passed store build and native smoke. Artifact `11314758983`. |
+| macOS Intel | Job `111533409829` passed store build and native smoke. Artifact `11314859674`. |
+| macOS Apple Silicon | Job `111533409864` passed store build and native smoke. Artifact `11315283235`. |
+| Windows amd64 / MSI | Job `111533409854` passed store/native smoke, runtime tests, installer failure recovery, MSI argument binding, and actual WiX MSI build. The smoke installed the MSI, ran the installed CLI, and uninstalled it; its snapshot comparison then falsely rejected the baseline. MSI smoke completion and upload remain pending. |
+
+The Windows failure does not demonstrate leftover files: the same unparenthesized
+PowerShell expression rejects two empty snapshots and identical nonempty snapshots.
+Checks after that assertion, including the core directory/PATH checks, still require
+native execution. Publication and dev.to were skipped, so no combined catalog or
+signed-APT release artifact was produced. All four uploaded stores and their bundled
+archives were independently verified: 232 packages total, 58 per platform (one core,
+42 workflows, 15 resolvers). Downloads are under
+`/tmp/dockpipe-0.6-run-37235364232-artifacts`.
+
+### Sixth local repair
+
+- Parenthesize each joined snapshot before comparing them in the MSI smoke test.
+  The old expression's operator grouping produced a truthy value for equal snapshots.
+  Installer behavior, file removal, and directory/PATH checks are unchanged.
+- Extend the existing PowerShell regression to execute the actual smoke predicate
+  extracted from its syntax tree. Empty, identical, and identical multi-path snapshots
+  must pass; added, removed, and replaced paths must reject. The permanent test failed
+  against the original expression and passes with the fix. Workflow argument tests
+  still pass with both launcher settings and paths containing spaces.
+
+Local PowerShell 7.6.6 validation, shell-independent embed-manifest verification, and
+whitespace checks pass. No engine/package boundary or public contract changes, no
+tracked generated files, and no installed-file deletion were introduced. Native MSI
+smoke acceptance and combined release output remain pending.
+
 ## Remaining release gates
 
-Current committed/pushed HEAD remains `27224d00bc4d8f5c85ef384aaf46aec2d5c8c6ba`.
-The five-file follow-up (workflow, PowerShell regression, VM fixture, and two evidence
-documents) remains local pending new commit/push approval. Editor settings and both
-protected stashes are unchanged; the index is empty. The engine/package boundaries
-and public state safety contracts are unchanged.
+Current committed/pushed HEAD remains `16b10cf5574d77951909b24b06103c0a424e36f1`.
+The four-file follow-up (MSI smoke predicate, PowerShell regression, and two evidence
+documents) is local and needs new commit/push approval before a seventh dry run.
+The index is empty; protected editor settings and both stashes are preserved.
 
-The next exact SHA still needs Linux package/release-tooling success, Windows MSI
-build/install/uninstall, and the complete five-platform catalog/checksum gate.
-Native hosted success does not establish M6 Mac onboarding, launchd, sleep/wake,
-or Nucleon remote execution. Publication-recovery rehearsal and production
-configuration/public-origin verification remain separate gates. PipeLang public
-rollout and compiler qualification remain deferred to 0.7.
+The next exact SHA still needs the corrected Windows uninstall assertion and
+remaining cleanup checks to pass, followed by the complete five-platform catalog,
+checksums, and dry-run signed APT artifact. Native hosted success does not establish
+M6 Mac onboarding, launchd, sleep/wake, or Nucleon remote execution.
+Publication-recovery rehearsal and production configuration/public-origin verification
+remain separate gates. PipeLang public rollout and compiler qualification remain
+deferred to 0.7.
