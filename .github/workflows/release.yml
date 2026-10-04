@@ -139,6 +139,8 @@ jobs:
       - name: Runtime and package regression tests
         if: matrix.platform == 'linux-amd64'
         run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends ripgrep
           bash release/packaging/test-runtime.sh
           bash tests/run_tests.sh
       - name: Release tooling tests

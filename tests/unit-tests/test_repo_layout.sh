@@ -11,6 +11,8 @@ fail() {
 	exit 1
 }
 
+command -v rg >/dev/null 2>&1 || fail "ripgrep (rg) is required"
+
 test -d "$ROOT/src/core/runtimes" || fail "missing src/core/runtimes"
 test -f "$ROOT/src/core/workflows/run/config.yml" || fail "missing bundled workflow src/core/workflows/run/config.yml"
 test -d "$ROOT/workflows" || fail "missing workflows/"

@@ -12,8 +12,7 @@ dockpipe_source_build_tool "cloudflare-edge" "$repo_root" "$DOCKPIPE_SOURCE_BUIL
 # Materialize a self-contained resolver through the existing package compiler.
 # The authored resolver remains source-only; binaries stay in disposable state.
 dockpipe_cmd="${DOCKPIPE_BIN:-$repo_root/src/bin/dockpipe}"
-eval "$("$dockpipe_cmd" sdk)"
-staging_root="$(dockpipe_sdk path package-runtime remote resolver-build)"
+staging_root="$("$dockpipe_cmd" __state package-runtime --workdir "$repo_root" --owner remote --path resolver-build)"
 mkdir -p "$staging_root"
 staging_dir="$(mktemp -d "$staging_root/cloudflare.XXXXXX")"
 mkdir -p "$staging_dir/resolvers"
