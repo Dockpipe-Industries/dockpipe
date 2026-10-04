@@ -24,6 +24,14 @@ support retained only if explicitly selected and proven.
 
 ## First Bounded Slice
 
+TASK-036 adds Darwin-compilable remote-node code and launchd user-service manifests. Linux loopback
+proof and cross-builds do not qualify Mac execution; native launchd, sleep/wake, and teardown evidence
+remain required. See [remote onboarding](../remote-node-onboarding/overview.md).
+
 Inventory current Darwin builds, installation paths, Apple Silicon/Intel assumptions, APFS and
 process gaps, available CI/native hardware, and TASK-013 evidence. Do not run paid macOS CI or VMs,
 install software, modify source, publish/notarize artifacts, or claim support.
+
+## Release implementation progress
+
+The user subsequently authorized the 0.6 cross-platform release implementation. The release workflow now has native macOS Intel and Apple Silicon jobs, native helper stores, and a host-workflow smoke check. The direct installer uses the macOS data directory. These changes are local and do not yet constitute native CI or M6 hardware qualification. Launchd, sleep/wake, notarization/quarantine, and full application/runtime acceptance remain open.

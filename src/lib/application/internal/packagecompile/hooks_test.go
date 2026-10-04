@@ -3,6 +3,7 @@ package packagecompile
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"dockpipe/src/lib/infrastructure/packagebuild"
@@ -30,6 +31,7 @@ steps: []
 	}
 
 	tarPath := filepath.Join(workdir, "bin", ".dockpipe", "internal", "packages", "workflows", "dockpipe-workflow-staged-workflow-0.0.0.tar.gz")
+	assertManifestOmitsBuildPaths(t, tarPath, "workflows/staged-workflow/package.yml", src, workdir)
 	got, err := packagebuild.ReadFileFromTarGz(tarPath, "workflows/staged-workflow/built.txt")
 	if err != nil {
 		t.Fatal(err)
@@ -68,11 +70,25 @@ steps: []
 	}
 
 	tarPath := filepath.Join(destRoot, "dockpipe-resolver-staged-resolver-0.0.0.tar.gz")
+	assertManifestOmitsBuildPaths(t, tarPath, "resolvers/staged-resolver/package.yml", src, workdir)
 	got, err := packagebuild.ReadFileFromTarGz(tarPath, "resolvers/staged-resolver/built.txt")
 	if err != nil {
 		t.Fatal(err)
 	}
 	if string(got) != "staged-resolver" {
 		t.Fatalf("built.txt = %q", string(got))
+	}
+}
+
+func assertManifestOmitsBuildPaths(t *testing.T, archive, member string, paths ...string) {
+	t.Helper()
+	manifest, err := packagebuild.ReadFileFromTarGz(archive, member)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, path := range paths {
+		if strings.Contains(string(manifest), path) || strings.Contains(string(manifest), filepath.ToSlash(path)) {
+			t.Fatalf("compiled manifest exposes build path %q", path)
+		}
 	}
 }

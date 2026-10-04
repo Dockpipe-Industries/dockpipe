@@ -5,7 +5,7 @@
 
 .DESCRIPTION
   - Fetches the latest GitHub release (or a specific -Version).
-  - Verifies SHA256 using SHA256SUMS.txt from the same release when available.
+  - Requires and verifies SHA256 using SHA256SUMS.txt from the same release.
   - Installs dockpipe.exe and, when the MSI includes it for that release, dockpipe-launcher.exe.
   - MSI: per-user WiX install to %LOCALAPPDATA%\dockpipe, PATH updated. Zip fallback: %LOCALAPPDATA%\Programs\dockpipe.
 
@@ -42,6 +42,38 @@ function Invoke-DockpipeWslSetup {
     }
 }
 
+function Install-VerifiedReleaseAsset {
+    param(
+        [Parameter(Mandatory = $true)]$Asset,
+        [Parameter(Mandatory = $true)][string]$ExpectedHash,
+        [Parameter(Mandatory = $true)][string]$Destination
+    )
+    if ($ExpectedHash -notmatch '^[a-fA-F0-9]{64}$') {
+        throw "Missing or invalid release checksum for $($Asset.name)"
+    }
+    $directory = Split-Path -Parent $Destination
+    New-Item -ItemType Directory -Force -Path $directory | Out-Null
+    # Stage on the destination volume so publishing is a rename, never a copy
+    # over a live package. Only this invocation's temporary file is removed.
+    $temporary = Join-Path $directory (".dockpipe-download-" + [Guid]::NewGuid().ToString("N"))
+    try {
+        Invoke-WebRequest -Uri $Asset.browser_download_url -OutFile $temporary -UseBasicParsing
+        $actualHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $temporary).Hash
+        if ($actualHash -ne $ExpectedHash) {
+            throw "SHA256 mismatch for $($Asset.name)."
+        }
+        if (Test-Path -LiteralPath $Destination) {
+            [System.IO.File]::Replace($temporary, $Destination, [NullString]::Value)
+        } else {
+            [System.IO.File]::Move($temporary, $Destination)
+        }
+    } finally {
+        if (Test-Path -LiteralPath $temporary) {
+            Remove-Item -LiteralPath $temporary -Force
+        }
+    }
+}
+
 function Get-Release {
     param([string]$Ver)
     $base = "https://api.github.com/repos/$Repo/releases"
@@ -55,8 +87,8 @@ function Get-Release {
 function Get-Sha256Map {
     param($Release)
     $sumAsset = $Release.assets | Where-Object { $_.name -eq "SHA256SUMS.txt" } | Select-Object -First 1
-    if (-not $sumAsset) { return @{} }
-    $tmp = Join-Path ([System.IO.Path]::GetTempPath()) "dockpipe-sha256sums.txt"
+    if (-not $sumAsset) { throw "Release has no SHA256SUMS.txt" }
+    $tmp = [System.IO.Path]::GetTempFileName()
     Invoke-WebRequest -Uri $sumAsset.browser_download_url -OutFile $tmp -UseBasicParsing
     $map = @{}
     Get-Content $tmp | ForEach-Object {
@@ -77,6 +109,12 @@ $sums = Get-Sha256Map -Release $rel
 $msi = $rel.assets | Where-Object { $_.name -match "dockpipe_.*_windows_amd64\.msi$" } | Select-Object -First 1
 $zip = $rel.assets | Where-Object { $_.name -match "dockpipe_.*_windows_amd64\.zip$" } | Select-Object -First 1
 $core = $rel.assets | Where-Object { $_.name -match "^dockpipe-core-.*\.tar\.gz$" } | Select-Object -First 1
+
+foreach ($asset in @($msi, $zip, $core)) {
+    if ($asset -and -not $sums.ContainsKey($asset.name)) {
+        throw "Missing release checksum for $($asset.name)"
+    }
+}
 
 if ($msi) {
     $dl = Join-Path $env:TEMP $msi.name
@@ -131,13 +169,7 @@ if ($core) {
     New-Item -ItemType Directory -Force -Path $coreDir | Out-Null
     $corePath = Join-Path $coreDir $core.name
     Write-Host "Downloading $($core.name) ..."
-    Invoke-WebRequest -Uri $core.browser_download_url -OutFile $corePath -UseBasicParsing
-    if ($sums.ContainsKey($core.name)) {
-        $h = (Get-FileHash -Algorithm SHA256 -LiteralPath $corePath).Hash.ToLowerInvariant()
-        if ($h -ne $sums[$core.name]) {
-            throw "SHA256 mismatch for $($core.name)."
-        }
-    }
+    Install-VerifiedReleaseAsset -Asset $core -ExpectedHash $sums[$core.name] -Destination $corePath
 }
 Invoke-DockpipeWslSetup -DockpipeExe $exe
 Write-Host "Installed dockpipe $verTag to $dest (user PATH updated). Open a new terminal, then: dockpipe --help"

@@ -1,5 +1,9 @@
 # CLI reference
 
+`dockpipe remote` provides provider-neutral setup, pairing, outbound workers, explicit workflow
+submission, cancellation, and result download. See [Remote nodes](runtime/remote-nodes.md) for the
+Cloudflare resolver, local profiles, credentials, recovery, and current qualification limits.
+
 **Run → isolate → act.** Overrides use the same names as workflow YAML. Precedence: **CLI** > config > environment.
 
 For most users, the main knobs are:
@@ -248,3 +252,7 @@ dockpipe --workflow my-ai --resolver claude --repo https://github.com/you/repo.g
 dockpipe --resolver claude --repo https://github.com/you/repo.git \
   --run ./my-run.sh --act ./my-act.sh -- claude -p "Task"
 ```
+
+## Secret environments
+
+Use `--secret-environment NAME` with a named entry in `dockpipe.config.json` → `secrets.environments`. `vault: environment` requires the selected/default environment; a missing selection or failed load stops execution. `--no-vault` disables both environment resolution and legacy template injection. See [Secret environments](runtime/vault.md) for 1Password, AWS Secrets Manager, Azure Key Vault, and Infisical configuration.

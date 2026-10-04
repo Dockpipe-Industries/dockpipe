@@ -78,6 +78,7 @@ Materialize a **project-local** store under **`bin/.dockpipe/internal/packages/`
 - **`core_from`** — optional path override for **`compile core`** (same as **`--from`**).
 - **`secrets`** (optional) — not secrets themselves; pointers for humans and tooling:
   - **`op_inject_template`** — repo-relative or absolute path to a **mapping file** for **`op inject`** (e.g. **`.env.op.template`** with **`op://`** lines). **`dockpipe doctor`** reports whether that file exists when **`dockpipe.config.json`** is present in the current directory.
+  - **`environment`**, **`environments`** — default selection and named resolver-backed environments, with explicit variable bindings. See [Secret environments](../runtime/vault.md).
   - **`notes`** — free-text reminder (e.g. vault naming, policy).
 - **`packages.sources`** (optional) — explicit local package sources used for resolution without publishing first:
   - **`{ "kind": "store", "path": "C:\\Source\\dockpipe\\bin\\.dockpipe\\internal\\packages" }`** for a compiled package store root

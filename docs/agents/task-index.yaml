@@ -253,6 +253,13 @@ tasks:
       readiness: unclassified
       ownership: unclaimed
 
+  - id: TASK-036
+    topic: Provider-neutral remote nodes and browser-authorized edge setup
+    path: docs/agents/tasks/remote-node-onboarding/index.yaml
+    dispatch:
+      readiness: unclassified
+      ownership: unclaimed
+
 maintenance:
   - Treat this YAML file as the AI/backlog entrypoint.
   - Keep this index open-only; do not list closed items here.

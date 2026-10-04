@@ -41,11 +41,15 @@ func TestBundledAuthoredCompatibility(t *testing.T) {
 		if nested {
 			continue
 		}
-		expected[name] = true
 		want, err := os.ReadFile(name)
+		if os.IsNotExist(err) {
+			// The working tree may have removed or moved a tracked asset before staging.
+			continue
+		}
 		if err != nil {
 			t.Fatal(err)
 		}
+		expected[name] = true
 		got, err := BundledFS.ReadFile(name)
 		if err != nil || !bytes.Equal(want, got) {
 			t.Fatalf("authored asset changed or missing: %s: %v", name, err)

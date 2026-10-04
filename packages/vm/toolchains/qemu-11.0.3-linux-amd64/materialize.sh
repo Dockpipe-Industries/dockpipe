@@ -1,27 +1,46 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-if (($# != 0)); then
-  echo "this purpose-specific materializer accepts no arguments" >&2
+if (($# > 1)) || [[ $# == 1 && "$1" != --check-config ]]; then
+  echo "usage: materialize.sh [--check-config] (set DOCKPIPE_QEMU_SOURCE_DIR, DOCKPIPE_QEMU_BUILD_ROOT, and DOCKPIPE_QEMU_FINAL_ROOT)" >&2
   exit 2
 fi
 
 RECIPE_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly RECIPE_ROOT
+# shellcheck source=build-paths.sh
+source "$RECIPE_ROOT/build-paths.sh"
+for name in DOCKPIPE_QEMU_SOURCE_DIR DOCKPIPE_QEMU_BUILD_ROOT DOCKPIPE_QEMU_FINAL_ROOT; do
+  qemu_require_build_path "$name"
+  if [[ "$(realpath -m -- "${!name}")" != "${!name}" ]]; then
+    echo "$name must not traverse a symlink" >&2
+    exit 2
+  fi
+done
+readonly BUILD_ROOT="$DOCKPIPE_QEMU_BUILD_ROOT"
+readonly FINAL_ROOT="$DOCKPIPE_QEMU_FINAL_ROOT"
+readonly PUBLISH_ROOT="${FINAL_ROOT}.partial"
+roots=("$DOCKPIPE_QEMU_SOURCE_DIR" "$BUILD_ROOT" "$FINAL_ROOT" "$PUBLISH_ROOT" "$RECIPE_ROOT")
+for ((i=0; i<${#roots[@]}; i++)); do
+  for ((j=i+1; j<${#roots[@]}; j++)); do
+    qemu_require_separate_paths "${roots[i]}" "${roots[j]}"
+  done
+done
+if [[ "${1:-}" == --check-config ]]; then
+  printf 'source_dir=%s\nbuild_root=%s\nfinal_root=%s\npublish_root=%s\n' "$DOCKPIPE_QEMU_SOURCE_DIR" "$BUILD_ROOT" "$FINAL_ROOT" "$PUBLISH_ROOT"
+  exit 0
+fi
 readonly BUILDER='registry.gitlab.com/qemu-project/qemu/qemu/alpine@sha256:9108d3cbdacbaf442f8b8938a2e94a7cdf04c0b093953866726c5734cb478f2e'
 readonly BUILDER_DIGEST='sha256:9108d3cbdacbaf442f8b8938a2e94a7cdf04c0b093953866726c5734cb478f2e'
-readonly SOURCE_ARCHIVE=/tmp/qemu-11.0.3.tar.xz
-readonly SOURCE_SIGNATURE=/tmp/qemu-11.0.3.tar.xz.sig
-readonly SOURCE_KEY=/tmp/qemu-release-key-ubuntu.asc
-readonly OFFICIAL_SOURCE_KEY=/tmp/qemu-release-key.asc
+readonly SOURCE_ARCHIVE="$DOCKPIPE_QEMU_SOURCE_DIR/qemu-11.0.3.tar.xz"
+readonly SOURCE_SIGNATURE="$DOCKPIPE_QEMU_SOURCE_DIR/qemu-11.0.3.tar.xz.sig"
+readonly SOURCE_KEY="$DOCKPIPE_QEMU_SOURCE_DIR/qemu-release-key-ubuntu.asc"
+readonly OFFICIAL_SOURCE_KEY="$DOCKPIPE_QEMU_SOURCE_DIR/qemu-release-key.asc"
 readonly SOURCE_SHA256=da5fcffc32762820568b828ed430a728864d34d50b6d2f30358597760cbb0523
 readonly SIGNATURE_SHA256=719f32c491ee724629f7d5918a6ff04ddc115d92a597b504cc4f12191e4a5e77
 readonly SOURCE_KEY_SHA256=e2673aabb4b1880be19325bf2b763705191c01a5c5e580a7532c3ad8b3582a6c
 readonly OFFICIAL_SOURCE_KEY_SHA256=0ce28d0b02f2e36286be047e1c76558421c8b6324f729462a753cf6cb20fe368
 readonly SIGNER=CEACC9E15534EBABB82D3FA03353C9CEF108B584
-readonly BUILD_ROOT=/home/jamie/.cache/dockpipe/vm/toolchain-builds/qemu-11.0.3-linux-amd64.1-attempt-10
-readonly FINAL_ROOT=/home/jamie/.cache/dockpipe/vm/toolchains/qemu-11.0.3-linux-amd64.1
-readonly PUBLISH_ROOT=/home/jamie/.cache/dockpipe/vm/toolchains/.qemu-11.0.3-linux-amd64.1-attempt-10.partial
 readonly BUILD_TIMEOUT_SECONDS=7200
 
 for required in "$SOURCE_ARCHIVE" "$SOURCE_SIGNATURE" "$SOURCE_KEY" "$OFFICIAL_SOURCE_KEY"; do
@@ -60,7 +79,7 @@ fi
 
 (
   cd "$RECIPE_ROOT"
-  for recipe in build-spec.json build-in-container.sh generate-manifest.py materialize.sh; do
+  for recipe in build-spec.json build-paths.sh build-in-container.sh generate-manifest.py materialize.sh; do
     printf '%s\t%s\n' "$(sha256sum "$recipe" | cut -d' ' -f1)" "$recipe"
   done
 ) > "$BUILD_ROOT/build-recipe-files.tsv"
@@ -95,7 +114,9 @@ run_build() {
       --mount "type=bind,src=$work,dst=/build" \
       --mount "type=bind,src=$record,dst=/record" \
       --mount "type=bind,src=$RECIPE_ROOT/build-in-container.sh,dst=/recipe/build-in-container.sh,readonly" \
+      --mount "type=bind,src=$RECIPE_ROOT/build-paths.sh,dst=/recipe/build-paths.sh,readonly" \
       --entrypoint /usr/bin/env "$BUILDER" -i \
+        DOCKPIPE_QEMU_FINAL_ROOT="$FINAL_ROOT" \
         AR=/usr/bin/ar AS=/usr/bin/as CC=/usr/bin/gcc CCACHE_DISABLE=1 HOME=/build/home HOST_CC=/usr/bin/gcc \
         LANG=C LC_ALL=C LD=/usr/bin/ld LOGNAME=builder MAKE=/usr/bin/make MAKEFLAGS=-j1 NINJA=/usr/bin/ninja \
         NM=/usr/bin/nm OBJCOPY=/usr/bin/objcopy OBJDUMP=/usr/bin/objdump PATH=/usr/bin:/bin PKG_CONFIG=/usr/bin/pkgconf \
