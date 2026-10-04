@@ -49,7 +49,7 @@ while IFS= read -r validation_input; do
   validation_input_file_count=$((validation_input_file_count + 1))
   validation_source="$REPO_ROOT/$validation_input"
   if [[ "$validation_input" == "embed_assets.go" ]]; then
-    validation_source="$fixture_root/consumer/embed_assets.go"
+    validation_source="$fixture_root/consumer/embed_assets.go.txt"
   fi
   mkdir -p "$consumer/$(dirname "$validation_input")"
   cp "$validation_source" "$consumer/$validation_input"

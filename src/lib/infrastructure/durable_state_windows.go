@@ -13,6 +13,10 @@ import (
 	"golang.org/x/sys/windows"
 )
 
+// FILE_ALL_ACCESS from the Windows SDK: standard rights, synchronization, and
+// all nine file-specific access rights. x/sys/windows does not expose this mask.
+const windowsFileAllAccess = windows.STANDARD_RIGHTS_REQUIRED | windows.SYNCHRONIZE | 0x01ff
+
 func durableFileIdentity(path string) (string, error) {
 	info, err := durableWindowsFileInformation(path)
 	if err != nil {
@@ -102,7 +106,7 @@ func makePrivatePath(path string, directory bool) error {
 	}
 	entries := []windows.EXPLICIT_ACCESS{
 		{
-			AccessPermissions: windows.GENERIC_ALL,
+			AccessPermissions: windowsFileAllAccess,
 			AccessMode:        windows.SET_ACCESS,
 			Inheritance:       inheritance,
 			Trustee: windows.TRUSTEE{
@@ -112,7 +116,7 @@ func makePrivatePath(path string, directory bool) error {
 			},
 		},
 		{
-			AccessPermissions: windows.GENERIC_ALL,
+			AccessPermissions: windowsFileAllAccess,
 			AccessMode:        windows.SET_ACCESS,
 			Inheritance:       inheritance,
 			Trustee: windows.TRUSTEE{
@@ -181,7 +185,9 @@ func validatePrivatePath(path string, directory bool) error {
 		if err := windows.GetAce(dacl, index, &ace); err != nil {
 			return err
 		}
-		if ace.Header.AceType != windows.ACCESS_ALLOWED_ACE_TYPE || ace.Mask != windows.GENERIC_ALL {
+		// Windows can map a generic grant to the equivalent file-specific rights.
+		fullControl := ace.Mask == windows.GENERIC_ALL || ace.Mask == windowsFileAllAccess
+		if ace.Header.AceType != windows.ACCESS_ALLOWED_ACE_TYPE || !fullControl {
 			return errors.New("private state DACL contains a non-full-control grant")
 		}
 		sid := (*windows.SID)(unsafe.Pointer(&ace.SidStart))
