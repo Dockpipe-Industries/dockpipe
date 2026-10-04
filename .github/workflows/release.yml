@@ -186,6 +186,10 @@ jobs:
         shell: powershell
         run: ./release/packaging/tests/windows-install.Tests.ps1
 
+      - name: Verify MSI workflow parameter binding
+        shell: pwsh
+        run: ./release/packaging/tests/msi-workflow.Tests.ps1
+
       # One pwsh step: GITHUB_ENV mangles/truncates Windows paths for WIX — pass -WixRoot into build.ps1 instead.
       - name: Install WiX and build MSI
         if: needs.meta.outputs.build_msi == 'true'
@@ -216,16 +220,16 @@ jobs:
           )
           $launcherExe = $launcherCandidates | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
           New-Item -ItemType Directory -Force -Path bin\msi-dist | Out-Null
-          $buildArgs = @(
-            "-Version", $v,
-            "-SourceExe", (Join-Path $PWD "src\bin\dockpipe.exe"),
-            "-CoreStageDir", $coreStageDir,
-            "-OutDir", (Join-Path $PWD "bin\msi-dist"),
-            "-WixRoot", $wixRoot
-          )
+          $buildArgs = @{
+            Version = $v
+            SourceExe = Join-Path $PWD "src\bin\dockpipe.exe"
+            CoreStageDir = $coreStageDir
+            OutDir = Join-Path $PWD "bin\msi-dist"
+            WixRoot = $wixRoot
+          }
           if ($launcherExe) {
             Write-Host "Including DockPipe Launcher in MSI: $launcherExe"
-            $buildArgs += @("-LauncherExe", $launcherExe)
+            $buildArgs.LauncherExe = $launcherExe
           } else {
             Write-Host "DockPipe Launcher build not found; packaging CLI-only MSI."
           }
@@ -243,9 +247,9 @@ jobs:
           if (-not $launcherPresent) {
             $launcherPresent = Test-Path -LiteralPath (Join-Path $PWD "src\app\tooling\dockpipe-launcher\build\dockpipe-launcher.exe")
           }
-          $smokeArgs = @("-MsiPath", $msi.FullName)
+          $smokeArgs = @{ MsiPath = $msi.FullName }
           if ($launcherPresent) {
-            $smokeArgs += "-ExpectLauncher"
+            $smokeArgs.ExpectLauncher = $true
           }
           & (Join-Path $PWD "release\packaging\msi\smoke-test.ps1") @smokeArgs
 
