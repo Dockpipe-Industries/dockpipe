@@ -319,7 +319,10 @@ func publishWholePublicPackageState(workdir string, location durablePackageLocat
 		return errors.New("legacy package-state source changed during migration")
 	}
 	observed, err := collectWholePublicPackagePublished(temporary)
-	if err != nil || !sameDurableImportInventory(durableImportDestinationInventory(manifest.Inventory), observed) {
+	if err != nil {
+		return fmt.Errorf("inspect migrated durable package state: %w", err)
+	}
+	if !sameDurableImportInventory(durableImportDestinationInventory(manifest.Inventory), observed) {
 		return errors.New("durable package-state inventory does not match its legacy source")
 	}
 	if err := writeDurableImportManifest(location.stateRoot, filepath.Join(temporary, durableImportManifestName), manifest); err != nil {

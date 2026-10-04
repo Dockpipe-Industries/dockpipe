@@ -3,9 +3,10 @@
 ## Objective and authority
 
 - Objective: `dockpipe-0.6-release-qualification`.
-- State: failed_verification; hosted run is terminal, local repairs passed focused
-  checks. The user approved committing/pushing the 13 repair/evidence files and
-  another dry run; that checkpoint is now being executed.
+- State: failed_verification; the approved repair checkpoint is committed and
+  pushed. The second run is terminal with three successful native platforms and
+  two remaining failures. The user approved the eight-path follow-up repair
+  checkpoint and another dry run on 2026-10-04.
 - Execution skill: `dorkpipe-objective-execution`.
 - Authority: user-requested continuation of the approved hosted dry run.
 - Done when: the intended SHA and dry-run inputs are verified, the run is terminal,
@@ -92,6 +93,62 @@ same focused test then passed under reviewed host execution with `GOPROXY=off`.
 The missing-ripgrep negative check also passed: the guard fails explicitly when
 `rg` is absent. Native Mac/Windows repair acceptance remains pending a new run.
 
+## Approved repair checkpoint and second run
+
+The user approved committing/pushing the 13 reviewed files and rerunning hosted
+qualification. Runtime checkpoint `cp-20261004-175629` created
+`5491c3f3bb9c411160149b8a9ea04c7d6eb5dd25`; the exact 13 paths, parent, and live
+`origin/js/pipelang` tip were verified. The new untracked `.vscode/settings.json`
+was excluded and preserved byte-for-byte, as were both protected stashes.
+
+[Release run 37222448250](https://github.com/Dockpipe-Industries/dockpipe/actions/runs/37222448250)
+was dispatched at `2026-10-04T17:56:49Z`. The API confirms the repaired SHA, and
+metadata job `111495368549` confirms `version=0.6.0`, `dry_run=true`, and
+`build_msi=true`. The run concluded **failure** at `2026-10-04T18:01:33Z`.
+
+| Target | Second-run result |
+| --- | --- |
+| Linux arm64 | Job `111495394952` passed, including native CLI/workflow and secrets smoke. Artifact `11311325087`. |
+| macOS Intel | Job `111495394922` passed, including native CLI/workflow and secrets smoke. Artifact `11310891176`. The original Bash source-hook failure is resolved on this runner. |
+| macOS Apple Silicon | Job `111495394999` passed, including native CLI/workflow and secrets smoke. Artifact `11311076269`. The original Bash source-hook failure is resolved on this runner. |
+| Linux amd64 | Job `111495394973` built its store and passed native smoke, then `go list ./...` discovered the new fixture's `embed_assets.go` as a package and failed because its relative `VERSION` input was absent. This was introduced by the first repair. |
+| Windows amd64 | Job `111495395032` passed the previous Unicode startup failure, then failed while preparing `dorkpipe.mcp` state: `durable package-state inventory does not match its legacy source`. No native smoke, runtime suite, installer recovery, or MSI steps ran. |
+
+Publication and dev.to were skipped again. Signed APT tests, combined manifest,
+top-level checksums, and MSI acceptance remain pending.
+
+All three uploaded stores were downloaded and independently rehashed: 58 packages
+per platform (one core, 42 workflows, 15 resolvers), 174 total. Their bundled store
+tarballs also contain identical manifests and matching package payload checksums.
+The downloaded evidence is under `/tmp/dockpipe-0.6-run-37222448250-artifacts`;
+run metadata and job logs use the `/tmp/dockpipe-0.6-run-37222448250` prefix.
+
+### Second local repair
+
+- Rename the fixture embed declaration to `embed_assets.go.txt`, copy it to the
+  expected Go filename only inside the temporary consumer, and regenerate the
+  authored embed manifest. Root `go list ./...` and the full focused backlog
+  shell regression now pass, including rejection and tamper cases.
+- Preserve the underlying error when migrated-state inventory inspection fails;
+  previously every inspection error was reported as an inventory mismatch.
+- Windows DACL validation now accepts generic full control and its equivalent
+  file-specific mask; new grants use the file-specific mask. Current-user/System
+  trustees, protected DACL, exactly two allow entries, and full-control requirements
+  remain unchanged. Existing native creation tests now validate the resulting
+  ACL, and a new native test rejects a partial-control grant.
+
+The Windows change is a source-supported repair hypothesis, **not a confirmed
+native fix**: the existing validator compared only the literal `GENERIC_ALL` mask,
+whereas [Windows maps generic file rights](https://learn.microsoft.com/en-us/windows/win32/fileio/file-security-and-access-rights)
+to file-specific rights. The original log suppressed the underlying inspection
+error. Native validation or the improved diagnostic is still required.
+
+Focused Linux durable/package-state tests passed. The Windows infrastructure test
+binary cross-compiled with the added ACL regressions; it has not run on Windows.
+The first cross-compile caught an unavailable x/sys constant; the final build uses
+the Windows SDK's documented mask composition. No permissions on user state were
+changed by these tests. The user has approved committing and pushing this second repair.
+
 ## Remaining release gates
 
 Native hosted success does not establish M6 Mac onboarding, launchd, sleep/wake,
@@ -106,5 +163,8 @@ are under `/tmp/dockpipe-0.6-run-37220714083` (job logs also use that prefix).
 The authored `embed_assets.go` manifest was regenerated with
 `release/packaging/embedded-inputs.py` for the two added fixture files. No package
 store or ignored runtime output was refreshed. Package behavior remains in package
-hooks/tests; no engine code or public schema changed. Both protected stashes and
-the original branch/HEAD remain intact.
+hooks/tests in the first repair; the second repair changes only generic Windows
+private-state validation and inventory error propagation in the engine. No public
+schema changed. Both protected stashes, unrelated editor settings, and the current
+`js/pipelang` checkpoint remain intact. At preparation of the approved second repair checkpoint, HEAD remained
+`5491c3f3`; its commit/push and third dry run were pending.
