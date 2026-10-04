@@ -77,6 +77,8 @@ mkdir -p "$tmp/bin/.dockpipe"
 export DOCKPIPE_WORKDIR="$tmp"
 export HOME="$tmp/fabricated-home"
 export XDG_STATE_HOME="$tmp/fabricated-durable"
+export DOCKPIPE_PACKAGE_ROOT="$ROOT/packages/pipeon"
+export DOCKPIPE_PACKAGE_MANIFEST="$DOCKPIPE_PACKAGE_ROOT/package.yml"
 mkdir -p "$HOME"
 dockpipe() {
   "$DOCKPIPE_TEST_BIN" "$@"
@@ -84,7 +86,9 @@ dockpipe() {
 # shellcheck source=/dev/null
 source "$common"
 
-legacy_root="$(dockpipe scope --package pipeon-dev-stack . --workdir "$tmp")"
+# Seed the pre-durable layout. Public scope now returns a durable token that
+# the cohort importer resolves back to this legacy source.
+legacy_root="$tmp/bin/.dockpipe/packages/pipeon-dev-stack"
 mkdir -p "$legacy_root/code-server-home/.cache" \
   "$legacy_root/code-server-home/.local/share/code-server/User" \
   "$legacy_root/code-server-home/.local/share/code-server/Machine" \
