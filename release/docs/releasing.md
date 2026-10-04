@@ -19,7 +19,7 @@ Trigger options:
 1. **Merge (push) to `master`** — ships **`v$(cat VERSION)`** if **`release/releasenotes/${VERSION}.md`** exists on that commit.
 2. **Manual dispatch** (Actions UI):
    - `version`: optional — defaults to **`VERSION`** on the checked-out branch
-   - `dry_run`: `true` → build + artifact upload only, **no** GitHub Release
+   - `dry_run`: defaults to `true` → build, verify, and upload workflow artifacts without requesting deployment approval. `false` is accepted only on `master`; other refs fail before platform builds.
    - `build_msi`: optional — defaults to **`true`**. On **push** to `master`, MSI is built when the committed marker file **`release/packaging/msi/SHIP_MSI`** is present. This repo currently keeps that marker checked in, so normal releases include WiX/MSI unless you intentionally remove it.
 
 ---
@@ -29,8 +29,10 @@ Trigger options:
 1. Builds on native Linux amd64/arm64, macOS Intel/Apple Silicon, and Windows amd64 runners. Each runner builds the CLI and every package's source hook, verifies its complete store manifest, and runs a host workflow smoke test outside the checkout.
 2. Creates Linux DEB, RPM, Alpine APK, Arch packages, Linux/macOS tarballs, Windows ZIP, and optional MSI. It also creates `dockpipe-packages_VERSION_OS-ARCH.tar.gz` for each target. These stores include native resolver helpers and must not be interchanged across platforms. Pipeon's optional desktop application has its own distribution lane.
 3. Requires all five platform stores and verifies every package checksum before producing `release-manifest.json` and `SHA256SUMS.txt`. Linux runs runtime/package/shell regressions and real signed-APT tests; Windows runs runtime/package regressions and MSI installation/removal when enabled.
-4. Builds a signed APT repository for amd64 and arm64 with immutable by-hash indexes. A dry run uses a throwaway key and uploads workflow artifacts only. It does not publish to GitHub Releases, R2, or dev.to.
-5. Publishes the release assets to GitHub and every individual package/store manifest to R2 at `packages/releases/VERSION/`. APT lives at `apt/`. Upload order is package payloads, APT pool/index files, signed metadata, then the version catalog and `packages/latest.json`. Old versions and old by-hash files are retained.
+4. The unprotected `assemble` job prepares the catalog and checksums. For dry runs it also builds a signed APT repository for amd64 and arm64 with immutable by-hash indexes, using a throwaway key, and uploads workflow artifacts. It has read-only repository permissions, no production secret references, and no deployment environment.
+5. Only a non-dry-run on `master` enters `publish`, which requires the protected `release` environment. It downloads the prepared artifacts, signs APT with the production key, and publishes release assets to GitHub and every individual package/store manifest to R2 at `packages/releases/VERSION/`. APT lives at `apt/`. Upload order is package payloads, APT pool/index files, signed metadata, then the version catalog and `packages/latest.json`. Old versions and old by-hash files are retained. The optional dev.to job uses the same master-only production condition.
+
+Dry runs and production runs use separate concurrency groups. Dry-run verification must not require a release-environment approval or administrator bypass. Production environment protections remain in place.
 
 Package generation does not prove installation on every downstream distro/version. The hosted matrix covers the selected native runners; the M6 Mac's launchd, sleep/wake, Docker, and remote-worker acceptance still need hardware testing. macOS notarization, Windows Authenticode, public Homebrew taps, and winget submission are separate follow-ups. No Flatpak is produced for this host CLI.
 

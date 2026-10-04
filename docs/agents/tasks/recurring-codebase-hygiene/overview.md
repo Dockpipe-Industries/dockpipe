@@ -2,14 +2,17 @@
 
 ## Current audit and cleanup — 2026-10-04
 
-[Hosted 0.6 qualification](release-0.6-hosted.md) records six approved dry runs.
-Checkpoint `16b10cf5` is pushed. All four Unix jobs passed in run `37235364232`,
-including the full Linux package and signed-APT test suites. Windows passed runtime,
-installer-recovery, MSI binding/build/install, and installed-CLI execution, then a
-smoke-test snapshot expression falsely rejected equal snapshots after uninstall.
-The four-file follow-up repairs that predicate and verifies acceptance/rejection
-cases. Native MSI completion and combined catalog acceptance still need a new run;
-the local repair awaits commit/push approval.
+[Hosted 0.6 qualification](release-0.6-hosted.md) records seven approved dry runs.
+Checkpoint `863ba38b` is pushed. All five platform jobs passed in run `37236771195`,
+including Linux runtime/package/signed-APT tests and actual Windows MSI build,
+install, installed CLI execution, uninstall, and cleanup/PATH checks. Independent
+verification passed for all 290 platform package entries and bundled archives.
+The user identified the dry-run deployment prompt as a pipeline defect. The local
+repair separates unprotected artifact assembly from master-only production
+publication and defaults manual runs to dry-run. All 13 release-tooling tests pass;
+the new regressions reject the original workflow. The obsolete waiting
+run is confirmed cancelled. Commit/push and a fresh hosted dry run remain pending;
+no deployment approval or protection bypass is needed for the corrected dry run.
 
 [0.6 error handling and architecture audit](release-0.6-audit.md) records six
 primary findings and their focused working-tree fixes: strict budget reads,
