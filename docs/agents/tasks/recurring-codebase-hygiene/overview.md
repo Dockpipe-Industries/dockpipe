@@ -2,14 +2,13 @@
 
 ## Current audit and cleanup — 2026-10-04
 
-[Hosted 0.6 qualification](release-0.6-hosted.md) records four approved dry runs.
-The third repair is committed/pushed as `b6da48c8`; fourth run `37228956974` cleared
-the Linux fixture race and earlier Windows portability failures. It failed on a
-stale Pipeon migration fixture and remote tests that expected Windows worker support
-outside TASK-036's scope. The 13-path follow-up repairs the fixture and tests the
-existing platform rejection. Local package/race/release-tooling checks pass; native
-Windows execution, MSI, and combined catalog acceptance remain pending. Commit/push
-approval is required for the next hosted run.
+[Hosted 0.6 qualification](release-0.6-hosted.md) records five approved dry runs.
+Checkpoint `27224d00` is pushed. Fifth run `37234061091` cleared Windows runtime
+and installer-recovery checks plus Pipeon, then failed on MSI PowerShell argument
+binding and a checkout-local override in the VM shell fixture. A five-file follow-up
+fixes both without changing engine/public state contracts. Focused local checks
+pass, including all eight package hooks. MSI and complete catalog acceptance
+remain pending, with new commit/push approval required for the next hosted run.
 
 [0.6 error handling and architecture audit](release-0.6-audit.md) records six
 primary findings and their focused working-tree fixes: strict budget reads,

@@ -3,10 +3,10 @@
 ## Objective and authority
 
 - Objective: `dockpipe-0.6-release-qualification`.
-- State: the approved third repair is committed and pushed; the fourth hosted
-  dry run failed after clearing the earlier Linux race and Windows portability
-  failures. The fourth local repair is verified and awaits commit/push approval.
-  All four failed hosted runs remain evidence; hosted success is still required.
+- State: the approved fourth repair is committed and pushed as `27224d00`.
+  The fifth hosted run cleared Windows runtime/installer-recovery and Pipeon,
+  then failed in MSI invocation and the VM fixture. A fifth local repair is
+  verified and awaits commit/push approval; all five hosted failures remain evidence.
 - Execution skill: `dorkpipe-objective-execution`.
 - Authority: on 2026-10-04 the user requested fixing the failing tests because
   "we need everything green", and explicitly invoked `dorkpipe-task-handoff`.
@@ -339,17 +339,78 @@ production-code changes. Package/engine boundaries and public schemas remain int
 The generated embed manifest is the only generated tracked change. New validation
 logs, isolated state, downloaded evidence, and cross-builds are under `/tmp`.
 
+## Approved fourth checkpoint and fifth run
+
+The user approved the reviewed 13-path follow-up, push, and fifth dry run.
+Runtime checkpoint `cp-20261004-205622` created
+`27224d00bc4d8f5c85ef384aaf46aec2d5c8c6ba`, with parent `b6da48c8` and all exact
+approved postimages verified. The runtime pushed `origin/js/pipelang`; remote
+read-back matched. The index is empty. Unrelated editor settings retain their
+original digest and both protected stashes are preserved.
+
+[Release run 37234061091](https://github.com/Dockpipe-Industries/dockpipe/actions/runs/37234061091)
+was dispatched at `2026-10-04T20:56:51Z` with `version=0.6.0`, `dry_run=true`, and
+`build_msi=true`. The API confirms that exact SHA; metadata job `111529567982`
+passed and its log confirms all three inputs. The run concluded **failure** at
+`2026-10-04T21:04:28Z`. Run metadata and logs use `/tmp/dockpipe-0.6-run-37234061091`.
+
+| Target | Fifth-run result |
+| --- | --- |
+| Linux arm64 | Job `111529600486` passed store build and native smoke. Artifact `11314812650`. |
+| macOS Intel | Job `111529600460` passed store build and native smoke. Artifact `11315216700`. |
+| macOS Apple Silicon | Job `111529600468` passed store build and native smoke. Artifact `11314418987`. |
+| Linux amd64 | Job `111529600437` passed store/native smoke, runtime Go tests, DorkPipe/backlog, Pipeon, remote, and secrets package tests. The VM Go tests passed; its shell fixture failed because it supplied a checkout-local `DOCKPIPE_PACKAGE_STATE_DIR`, correctly rejected by the injected current CLI. Docker and DEB smoke passed. Release tooling and upload were not reached. |
+| Windows amd64 / MSI | Job `111529600399` passed store/native smoke, the entire runtime test selector including the new platform-rejection tests, and Windows installer failure recovery. It then failed binding the MSI build script's PowerShell parameters. MSI build/install/uninstall and upload remain unqualified. |
+
+Publication and dev.to were skipped. No combined catalog/checksum or signed APT
+artifact was produced. The three successful platform artifacts were downloaded to
+`/tmp/dockpipe-0.6-run-37234061091-artifacts`. All 174 packages were independently
+rehashed (58 per platform: one core, 42 workflows, 15 resolvers); bundled store
+archive manifests and package hashes also match.
+
+### Fifth local repair
+
+- MSI build and smoke calls now use named hashtable splatting. The former string
+  arrays supplied parameter names as positional values. A native PowerShell
+  regression executes the actual workflow call bodies against the real scripts'
+  parameter declarations in isolated temporary checkouts. It checks exact values,
+  paths containing spaces, CLI-only builds, and launcher-enabled builds. Separate
+  negative controls reproduce both original binding failures. The Windows job runs
+  this check before attempting MSI packaging. No WiX download or installer is
+  executed by this regression.
+- The VM shell fixture no longer sends its synthetic legacy checkout path through
+  the public package-state override. It controls legacy discovery directly alongside
+  its existing fake state helper, uses isolated user state, and selects the injected
+  current CLI. SDK/public path validation stays active and unchanged. Identity,
+  credential, TPM ambiguity, helper-output, restart, collision, and permission
+  assertions are unchanged. This remains a unit fixture, not live VM startup or
+  real VM migration acceptance.
+
+Local verification: the original VM failure reproduces through `dockpipe package
+test --only vm`, and the repaired package command passes. MSI binding passes with
+PowerShell 7.6.6 on Linux; actual Windows MSI execution still requires hosting.
+All eight package hooks passed with isolated state and the offline Go cache. The
+full sequence passed agent, DorkPipe/backlog, MCP, and IDE, then hit a local Pipeon
+PATH mismatch: the temporary executable was not named `dockpipe`, while Pipeon
+invokes that basename. The same binary copied under its canonical name passed
+Pipeon, remote, secrets, and VM through their package commands; the earlier prefix
+was not rerun. The initial local failure is retained in the full-sequence log.
+YAML parsing, unchanged MSI/publication conditions,
+CLI build, shell syntax, authored embed-manifest check, and whitespace checks pass.
+No generated tracked change is needed; validation produces `/tmp` evidence and
+ordinary ignored package-test scratch under `bin/.dockpipe/tmp/package-tests`.
+
 ## Remaining release gates
 
-The current committed/pushed checkpoint is
-`b6da48c8dd27e565a45d85a339ed325d206fab50`. The 13-path follow-up is local and awaits
-new commit/push approval before a fifth hosted dry run with `version=0.6.0`,
-`dry_run=true`, and `build_msi=true`. The index is empty. Unrelated editor settings
-retain their original digest and both protected stashes are preserved.
+Current committed/pushed HEAD remains `27224d00bc4d8f5c85ef384aaf46aec2d5c8c6ba`.
+The five-file follow-up (workflow, PowerShell regression, VM fixture, and two evidence
+documents) remains local pending new commit/push approval. Editor settings and both
+protected stashes are unchanged; the index is empty. The engine/package boundaries
+and public state safety contracts are unchanged.
 
-Hosted Windows runtime/installer/MSI checks, Linux package/release-tooling checks,
-and the combined five-platform catalog/checksum gate still require success at the
-next exact SHA. Native hosted success does not establish M6 Mac onboarding, launchd,
-sleep/wake, or Nucleon remote execution. Publication-recovery rehearsal and production
+The next exact SHA still needs Linux package/release-tooling success, Windows MSI
+build/install/uninstall, and the complete five-platform catalog/checksum gate.
+Native hosted success does not establish M6 Mac onboarding, launchd, sleep/wake,
+or Nucleon remote execution. Publication-recovery rehearsal and production
 configuration/public-origin verification remain separate gates. PipeLang public
 rollout and compiler qualification remain deferred to 0.7.
