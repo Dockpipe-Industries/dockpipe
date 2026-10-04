@@ -2,12 +2,14 @@
 
 ## Current audit and cleanup — 2026-10-04
 
-[Hosted 0.6 qualification](release-0.6-hosted.md) records three approved release
-dry runs through checkpoint `a717168f`. All five platforms passed native smoke in
-the third run. The Linux fixture race is reproduced and repaired; the complete
-Linux runtime/backlog checks pass, and Windows portability/safety repairs
-cross-compile. The 24-path third repair awaits commit/push approval and native
-hosted qualification; no fourth run has been dispatched.
+[Hosted 0.6 qualification](release-0.6-hosted.md) records four approved dry runs.
+The third repair is committed/pushed as `b6da48c8`; fourth run `37228956974` cleared
+the Linux fixture race and earlier Windows portability failures. It failed on a
+stale Pipeon migration fixture and remote tests that expected Windows worker support
+outside TASK-036's scope. The 13-path follow-up repairs the fixture and tests the
+existing platform rejection. Local package/race/release-tooling checks pass; native
+Windows execution, MSI, and combined catalog acceptance remain pending. Commit/push
+approval is required for the next hosted run.
 
 [0.6 error handling and architecture audit](release-0.6-audit.md) records six
 primary findings and their focused working-tree fixes: strict budget reads,

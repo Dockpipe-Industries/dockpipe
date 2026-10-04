@@ -6,6 +6,9 @@ remote shell, source synchronization, or automatic Git operation is involved.
 
 This initial single-operator CLI has Linux loopback proof. Darwin builds and launchd manifests
 do not establish native Mac, sleep/wake, or live Cloudflare readiness. There is no remote GUI yet.
+Remote broker initialization, workers, and provider setup currently require Linux or macOS;
+Windows remote workers remain a follow-up. Cross-platform protocol, storage, and process tests
+do not establish Windows remote-node support.
 
 ## Ownership
 

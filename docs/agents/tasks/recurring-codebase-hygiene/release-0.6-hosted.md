@@ -3,10 +3,10 @@
 ## Objective and authority
 
 - Objective: `dockpipe-0.6-release-qualification`.
-- State: third repair implemented and locally validated; waiting for authorization
-  to checkpoint/push the reviewed changes and dispatch the next hosted dry run.
-  Both prior approved repair checkpoints are committed and pushed. All three
-  failed hosted runs remain evidence; hosted success is still required.
+- State: the approved third repair is committed and pushed; the fourth hosted
+  dry run failed after clearing the earlier Linux race and Windows portability
+  failures. The fourth local repair is verified and awaits commit/push approval.
+  All four failed hosted runs remain evidence; hosted success is still required.
 - Execution skill: `dorkpipe-objective-execution`.
 - Authority: on 2026-10-04 the user requested fixing the failing tests because
   "we need everything green", and explicitly invoked `dorkpipe-task-handoff`.
@@ -272,23 +272,84 @@ Only temporary test state, logs, and build outputs under `/tmp` were intentional
 created. No authored embed manifest needed regeneration. Shared engine changes are
 generic filesystem/process boundaries; Cloudflare behavior stays package-owned.
 
+## Approved third checkpoint and fourth run
+
+The user approved the 24 reviewed repair/evidence paths, push, and dry-run dispatch.
+Runtime checkpoint `cp-20261004-193629` created
+`b6da48c8dd27e565a45d85a339ed325d206fab50`, with parent `a717168f` and all 24 exact
+postimages verified. The runtime pushed `origin/js/pipelang`; remote read-back
+matched the new SHA. The index is empty, editor settings retain their original
+digest, and both protected stashes remain unchanged.
+
+[Release run 37228956974](https://github.com/Dockpipe-Industries/dockpipe/actions/runs/37228956974)
+was dispatched at `2026-10-04T19:37:01Z`. The run API confirms that exact SHA.
+Metadata job `111514370724` succeeded and its log confirms `version=0.6.0`,
+`dry_run=true`, and `build_msi=true`. The run concluded **failure** at
+`2026-10-04T19:43:14Z`. Run metadata and logs use
+`/tmp/dockpipe-0.6-run-37228956974`.
+
+| Target | Fourth-run result |
+| --- | --- |
+| Linux arm64 | Job `111514398814` passed store build, native CLI/workflow and secrets smoke. Artifact `11312503025`. |
+| macOS Intel | Job `111514398820` passed store build and native smoke. Artifact `11313232837`. |
+| macOS Apple Silicon | Job `111514398809` passed store build and native smoke. Artifact `11312757523`. |
+| Linux amd64 | Job `111514398848` passed store/native smoke, the full runtime Go suite, and DorkPipe's backlog regression. The package suite advanced to Pipeon, where its stale durable-import fixture failed. Docker and DEB smoke passed. Release-tooling/signed-APT steps and upload were not reached. |
+| Windows amd64 / MSI | Job `111514398757` passed store build and native smoke. Earlier filesystem, ACL, path, and process failures cleared. Remaining failures are six Linux/macOS remote setup/initialization/worker tests incorrectly expecting success on Windows, where the existing lock rejects remote-node operation. Installer recovery/MSI steps and upload were not reached. |
+
+All three uploaded stores were independently rehashed: 58 packages each (one core,
+42 workflows, 15 resolvers), 174 total. Their bundled store archives also match the
+manifests and payload hashes. Downloaded evidence is under
+`/tmp/dockpipe-0.6-run-37228956974-artifacts`. Publication and dev.to were skipped;
+no combined catalog, top-level checksums, or signed APT output was produced by this run.
+
+### Fourth local repair
+
+- Pipeon's migration regression now seeds the actual pre-durable layout and binds
+  Pipeon's package-owned migration manifest, as the existing IDE regression does.
+  The old fixture seeded a new durable public scope, which the importer correctly
+  did not treat as the legacy source. A control run confirmed the existing workdir
+  environment is honored; the initially suspected production lookup change was
+  unnecessary and removed. All original import, cache-exclusion, source-integrity,
+  private-key, and linked-key rejection assertions remain.
+- TASK-036 explicitly leaves Windows workers for follow-up. Its existing remote
+  lock permits Linux/macOS only. Six success-path tests now have those same build
+  constraints: three worker tests, broker initialization, and two provider-setup
+  tests. Their bodies are unchanged. Windows instead compiles three negative
+  regressions proving platform rejection before polling/execution, credential
+  publication, or provider commands/recovery publication. Portable protocol,
+  persistence, ACL, artifact, cancellation, and process tests remain enabled.
+  No runtime OS guard was removed and no Windows worker implementation was added.
+- Canonical remote documentation now states the existing platform boundary.
+  The owning generator refreshed `embed_assets.go` for the added package test.
+
+Local proof: full Pipeon, secrets, and VM package suites passed; these cover the
+package hooks blocked by Pipeon in the hosted run (remote provider tests also
+passed). The affected remote/application/provider Go suites passed with `-race`.
+All three affected Windows test packages cross-compiled, including the negative
+platform tests; native execution remains pending. All nine release-tooling tests
+passed, including real APT signature/index validation with a temporary test-only
+key. Root embed tests, generator check, shell syntax, preserved test-body comparison,
+and whitespace checks passed. Initial sandbox attempts stopped on loopback/GPG
+agent restrictions; narrow reviewed host runs passed. An initial package invocation
+also hit read-only user state; rerunning with isolated state passed. Local Go is
+1.26.7; hosted Go remains 1.25.11.
+
+This follow-up owns 13 paths including the two evidence documents, with no runtime
+production-code changes. Package/engine boundaries and public schemas remain intact.
+The generated embed manifest is the only generated tracked change. New validation
+logs, isolated state, downloaded evidence, and cross-builds are under `/tmp`.
+
 ## Remaining release gates
 
-Native hosted success does not establish M6 Mac onboarding, launchd, sleep/wake,
-Docker, or Nucleon remote execution. Publication-recovery rehearsal and production
+The current committed/pushed checkpoint is
+`b6da48c8dd27e565a45d85a339ed325d206fab50`. The 13-path follow-up is local and awaits
+new commit/push approval before a fifth hosted dry run with `version=0.6.0`,
+`dry_run=true`, and `build_msi=true`. The index is empty. Unrelated editor settings
+retain their original digest and both protected stashes are preserved.
+
+Hosted Windows runtime/installer/MSI checks, Linux package/release-tooling checks,
+and the combined five-platform catalog/checksum gate still require success at the
+next exact SHA. Native hosted success does not establish M6 Mac onboarding, launchd,
+sleep/wake, or Nucleon remote execution. Publication-recovery rehearsal and production
 configuration/public-origin verification remain separate gates. PipeLang public
 rollout and compiler qualification remain deferred to 0.7.
-
-Both approved repair checkpoints have been committed and pushed; the current
-checkpoint is `a717168f657f299895f941bd9d7ebaa414843151`. An unrelated untracked
-`.vscode/settings.json` is excluded and preserved. Raw logs, run JSON, downloaded
-artifacts, and local validation output for the first run are under
-`/tmp/dockpipe-0.6-run-37220714083` (job logs also use that prefix).
-The authored `embed_assets.go` manifest was regenerated with
-`release/packaging/embedded-inputs.py` for the two added fixture files. No package
-store or ignored runtime output was refreshed. Package behavior remains in package
-hooks/tests in the first repair; the second repair changes only generic Windows
-private-state validation and inventory error propagation in the engine. No public
-schema changed. Both protected stashes, unrelated editor settings, and the current
-`js/pipelang` checkpoint remain intact. The terminal third-run evidence updates
-are local documentation changes and have not been committed or pushed.
