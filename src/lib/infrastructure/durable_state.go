@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path"
 	"path/filepath"
 	"runtime"
 	"sort"
@@ -89,19 +90,19 @@ func durableStateRootFor(goos string, env map[string]string) (string, error) {
 		if !durablePathIsAbsoluteForOS(goos, home) {
 			return "", errors.New("durable DockPipe state root: user home must be absolute")
 		}
-		return filepath.Join(home, "Library", "Application Support", "dockpipe", "state"), nil
+		return path.Join(home, "Library", "Application Support", "dockpipe", "state"), nil
 	default:
 		base := strings.TrimSpace(env["XDG_STATE_HOME"])
 		if base == "" {
 			if home == "" {
 				return "", errors.New("durable DockPipe state root: user home is unavailable")
 			}
-			base = filepath.Join(home, ".local", "state")
+			base = path.Join(home, ".local", "state")
 		}
 		if !durablePathIsAbsoluteForOS(goos, base) {
 			return "", errors.New("durable DockPipe state root: XDG_STATE_HOME or user home must be absolute")
 		}
-		return filepath.Join(filepath.Clean(base), "dockpipe"), nil
+		return path.Join(base, "dockpipe"), nil
 	}
 }
 
@@ -479,13 +480,19 @@ func ValidatePackageStateOverride(workdir, candidate, resolved string) (string, 
 	if sameOrWithinDurablePath(workdir, candidate) || sameOrWithinDurablePath(stateRoot, candidate) {
 		return "", errors.New("package-state override must be outside the checkout and disposable state")
 	}
-	canonical, err := filepath.EvalSymlinks(candidate)
+	if err := ValidateUnlinkedPath(candidate); err != nil {
+		return "", fmt.Errorf("package-state override has an unsafe boundary: %w", err)
+	}
+	canonicalCandidate, err := filepath.EvalSymlinks(candidate)
 	if err != nil {
 		return "", err
 	}
-	canonical, err = filepath.Abs(filepath.Clean(canonical))
-	if err != nil || !sameDurablePath(candidate, canonical) {
-		return "", errors.New("package-state override contains a filesystem link or reparse point")
+	canonicalWorkdir, err := filepath.EvalSymlinks(workdir)
+	if err != nil {
+		return "", err
+	}
+	if sameOrWithinDurablePath(canonicalWorkdir, canonicalCandidate) {
+		return "", errors.New("package-state override must be outside the checkout and disposable state")
 	}
 	if err := validatePrivatePath(candidate, true); err != nil {
 		return "", fmt.Errorf("package-state override is not owner-controlled: %w", err)

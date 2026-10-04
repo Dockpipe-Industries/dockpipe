@@ -241,7 +241,7 @@ func resolveCheckoutCleanTarget(workdir string) (string, error) {
 }
 
 func validateCleanStateRelativePath(stateRel string) error {
-	if filepath.IsAbs(stateRel) || filepath.VolumeName(stateRel) != "" || cleanPathHasTraversal(stateRel) {
+	if !filepath.IsLocal(stateRel) || filepath.VolumeName(stateRel) != "" || cleanPathHasTraversal(stateRel) {
 		return fmt.Errorf("refusing non-project state path %q", stateRel)
 	}
 	stateRel = filepath.Clean(stateRel)

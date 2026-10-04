@@ -2,8 +2,12 @@
 
 ## Current audit and cleanup — 2026-10-04
 
-[Hosted 0.6 qualification](release-0.6-hosted.md) tracks the approved release
-dry run at the committed `afc0a2cf` checkpoint and its remaining release gates.
+[Hosted 0.6 qualification](release-0.6-hosted.md) records three approved release
+dry runs through checkpoint `a717168f`. All five platforms passed native smoke in
+the third run. The Linux fixture race is reproduced and repaired; the complete
+Linux runtime/backlog checks pass, and Windows portability/safety repairs
+cross-compile. The 24-path third repair awaits commit/push approval and native
+hosted qualification; no fourth run has been dispatched.
 
 [0.6 error handling and architecture audit](release-0.6-audit.md) records six
 primary findings and their focused working-tree fixes: strict budget reads,

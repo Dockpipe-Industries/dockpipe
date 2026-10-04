@@ -5,8 +5,11 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
+
+	"dockpipe/src/lib/infrastructure"
 )
 
 func TestInternalStatePrepareDurableCohort(t *testing.T) {
@@ -138,21 +141,24 @@ func TestInternalStatePackageRuntimeCanPreparePrivateRoot(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if info.Mode().Perm() != 0o700 {
+	if err := infrastructure.ValidatePrivatePath(runtimeRoot, true); err != nil {
+		t.Fatal(err)
+	}
+	if runtime.GOOS != "windows" && info.Mode().Perm() != 0o700 {
 		t.Fatalf("private runtime mode = %04o, want 0700", info.Mode().Perm())
 	}
 	stateInfo, err := os.Stat(stateRoot)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if stateInfo.Mode().Perm() != 0o755 {
+	if runtime.GOOS != "windows" && stateInfo.Mode().Perm() != 0o755 {
 		t.Fatalf("state root mode changed to %04o", stateInfo.Mode().Perm())
 	}
 }
 
 func TestInternalStatePrivateDirectoryRejectsLinksAndTraversal(t *testing.T) {
 	root := filepath.Join(t.TempDir(), "private")
-	if err := os.Mkdir(root, 0o700); err != nil {
+	if err := infrastructure.PreparePrivateDirectory(root); err != nil {
 		t.Fatal(err)
 	}
 	out, err := captureStdout(t, func() error {
@@ -165,8 +171,8 @@ func TestInternalStatePrivateDirectoryRejectsLinksAndTraversal(t *testing.T) {
 	if strings.TrimSpace(out) != want {
 		t.Fatalf("private directory = %q, want %q", out, want)
 	}
-	if info, err := os.Stat(want); err != nil || info.Mode().Perm() != 0o700 {
-		t.Fatalf("private directory mode = %v, %v", info, err)
+	if err := infrastructure.ValidatePrivatePath(want, true); err != nil {
+		t.Fatal(err)
 	}
 	if err := Run([]string{"private-directory", "--root", root, "--path", "../escape"}); err == nil {
 		t.Fatal("private directory accepted traversal")

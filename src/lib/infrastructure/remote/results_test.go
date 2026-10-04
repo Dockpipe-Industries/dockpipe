@@ -12,7 +12,7 @@ import (
 )
 
 func TestMaximumResultsDoNotExhaustBrokerMetadata(t *testing.T) {
-	root := t.TempDir()
+	root := privateTestDirectory(t)
 	if err := os.Chmod(root, 0700); err != nil {
 		t.Fatal(err)
 	}
@@ -80,7 +80,7 @@ func TestMaximumResultsDoNotExhaustBrokerMetadata(t *testing.T) {
 }
 
 func TestBrokerMigratesInlineResultsAndChecksStoredDigest(t *testing.T) {
-	root := t.TempDir()
+	root := privateTestDirectory(t)
 	if err := os.Chmod(root, 0700); err != nil {
 		t.Fatal(err)
 	}
@@ -110,7 +110,7 @@ func TestBrokerMigratesInlineResultsAndChecksStoredDigest(t *testing.T) {
 }
 
 func TestJobCapacityRejectsBeforeAssignmentWithoutPoisoning(t *testing.T) {
-	root := t.TempDir()
+	root := privateTestDirectory(t)
 	if err := os.Chmod(root, 0700); err != nil {
 		t.Fatal(err)
 	}
