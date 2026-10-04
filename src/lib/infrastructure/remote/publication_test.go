@@ -12,7 +12,7 @@ import (
 )
 
 func TestResultMetadataFailurePoisonsBrokerAndRetainsRecoveryPayload(t *testing.T) {
-	root := t.TempDir()
+	root := privateTestDirectory(t)
 	if err := os.Chmod(root, 0o700); err != nil {
 		t.Fatal(err)
 	}
@@ -54,7 +54,7 @@ func TestResultMetadataFailurePoisonsBrokerAndRetainsRecoveryPayload(t *testing.
 }
 
 func TestRejectedResultDoesNotPublishOrPoison(t *testing.T) {
-	root := t.TempDir()
+	root := privateTestDirectory(t)
 	job := contract.Job{
 		Submission: contract.Submission{ID: "job", Node: "mini", Profile: "bench"},
 		Status:     "running", Session: strings.Repeat("b", 64),
@@ -77,7 +77,7 @@ func TestRejectedResultDoesNotPublishOrPoison(t *testing.T) {
 }
 
 func TestWritePrivatePreservesOriginalOnSerializationOrTargetFailure(t *testing.T) {
-	root := t.TempDir()
+	root := privateTestDirectory(t)
 	if err := os.Chmod(root, 0o700); err != nil {
 		t.Fatal(err)
 	}

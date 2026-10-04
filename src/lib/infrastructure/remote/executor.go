@@ -13,6 +13,8 @@ import (
 	"time"
 
 	contract "dockpipe/src/lib/domain/remote"
+	"dockpipe/src/lib/infrastructure"
+	"dockpipe/src/lib/infrastructure/process"
 )
 
 type boundedLog struct {
@@ -64,11 +66,10 @@ func ValidateProfiles(profiles map[string]contract.Profile) error {
 		if profile.WorkflowFile != "" && !filepath.IsAbs(profile.WorkflowFile) {
 			return errors.New("workflow_file must be an absolute local path")
 		}
-		resolved, err := filepath.EvalSymlinks(profile.Workdir)
-		if err != nil || resolved != filepath.Clean(profile.Workdir) {
+		if err := infrastructure.ValidateUnlinkedPath(profile.Workdir); err != nil {
 			return errors.New("profile checkout must exist without symlinks")
 		}
-		info, err := os.Stat(resolved)
+		info, err := os.Stat(profile.Workdir)
 		if err != nil || !info.IsDir() {
 			return errors.New("profile checkout must be a directory")
 		}
@@ -107,9 +108,7 @@ func Execute(ctx context.Context, executable string, profile contract.Profile) c
 	}
 	command.Env = append(command.Env, "DOCKPIPE_REMOTE_WORKER=1")
 	command.WaitDelay = 2 * time.Second
-	ContainProcess(command)
-	err := command.Run()
-	CleanupProcess(command)
+	err := process.Run(command)
 	if command.ProcessState != nil {
 		result.ExitCode = command.ProcessState.ExitCode()
 	}
@@ -150,8 +149,7 @@ func collectArtifacts(profile contract.Profile) (map[string][]byte, error) {
 		if !SafeRelative(name) {
 			return nil, errors.New("invalid artifact path")
 		}
-		resolved, err := filepath.EvalSymlinks(filepath.Join(profile.Workdir, name))
-		if err != nil || resolved != filepath.Join(profile.Workdir, name) {
+		if err := infrastructure.ValidateUnlinkedPath(filepath.Join(profile.Workdir, name)); err != nil {
 			return nil, errors.New("artifact is missing or linked")
 		}
 		file, err := root.Open(name)

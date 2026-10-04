@@ -18,7 +18,9 @@ func TestCmdCleanDryRunAndRemovalCoverWholeDisposableTreeOnly(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Setenv("HOME", filepath.Join(base, "home"))
+	t.Setenv("USERPROFILE", filepath.Join(base, "home"))
 	t.Setenv("XDG_STATE_HOME", filepath.Join(base, "durable"))
+	t.Setenv("LOCALAPPDATA", filepath.Join(base, "durable"))
 	t.Setenv("DOCKPIPE_PACKAGE_STATE_DIR", "")
 	durable, err := infrastructure.PackageStateDir(workdir, "clean-survival")
 	if err != nil {
@@ -137,7 +139,9 @@ func TestCleanAndRebuildCompiledStoreResetKeepSeparateAuthority(t *testing.T) {
 		}
 	}
 	t.Setenv("HOME", filepath.Join(base, "home"))
+	t.Setenv("USERPROFILE", filepath.Join(base, "home"))
 	t.Setenv("XDG_STATE_HOME", filepath.Join(base, "durable"))
+	t.Setenv("LOCALAPPDATA", filepath.Join(base, "durable"))
 	t.Setenv("DOCKPIPE_PACKAGES_ROOT", overrideRoot)
 	if err := cmdClean([]string{"--workdir", workdir}); err != nil {
 		t.Fatal(err)
@@ -163,8 +167,10 @@ func TestCleanTargetRejectsTraversalRootsAncestorsAndDurableState(t *testing.T) 
 		t.Fatal(err)
 	}
 	t.Setenv("HOME", filepath.Join(base, "home"))
+	t.Setenv("USERPROFILE", filepath.Join(base, "home"))
 	xdg := filepath.Join(base, "xdg")
 	t.Setenv("XDG_STATE_HOME", xdg)
+	t.Setenv("LOCALAPPDATA", xdg)
 	for name, stateRel := range map[string]string{
 		"absolute":  string(filepath.Separator),
 		"traversal": filepath.Join("..", "escape"),
@@ -190,7 +196,11 @@ func TestCleanTargetRejectsTraversalRootsAncestorsAndDurableState(t *testing.T) 
 			}
 		})
 	}
-	durableWorkdir := filepath.Join(xdg, "dockpipe", "projects", "checkout")
+	durableRoot, err := infrastructure.DurableStateRoot()
+	if err != nil {
+		t.Fatal(err)
+	}
+	durableWorkdir := filepath.Join(durableRoot, "projects", "checkout")
 	if err := os.MkdirAll(durableWorkdir, 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -225,7 +235,9 @@ func TestCmdCleanRejectsLinkedTreeWithoutMutation(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Setenv("HOME", filepath.Join(base, "home"))
+	t.Setenv("USERPROFILE", filepath.Join(base, "home"))
 	t.Setenv("XDG_STATE_HOME", filepath.Join(base, "durable"))
+	t.Setenv("LOCALAPPDATA", filepath.Join(base, "durable"))
 	if err := cmdClean([]string{"--workdir", workdir, "--dry-run"}); err == nil || !strings.Contains(err.Error(), "linked") {
 		t.Fatalf("linked clean tree was accepted: %v", err)
 	}
@@ -243,14 +255,20 @@ func TestRebuildCompiledStoreResetRejectsDangerousTargets(t *testing.T) {
 	home := filepath.Join(base, "home")
 	durable := filepath.Join(base, "durable")
 	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
 	t.Setenv("XDG_STATE_HOME", durable)
+	t.Setenv("LOCALAPPDATA", durable)
+	durableRoot, err := infrastructure.DurableStateRoot()
+	if err != nil {
+		t.Fatal(err)
+	}
 	for name, target := range map[string]string{
 		"filesystem-root":  string(filepath.Separator),
 		"home":             home,
 		"workdir":          workdir,
 		"workdir-ancestor": filepath.Dir(workdir),
-		"durable-root":     filepath.Join(durable, "dockpipe"),
-		"inside-durable":   filepath.Join(durable, "dockpipe", "compiled"),
+		"durable-root":     durableRoot,
+		"inside-durable":   filepath.Join(durableRoot, "compiled"),
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Setenv("DOCKPIPE_PACKAGES_ROOT", target)
@@ -279,7 +297,9 @@ func TestRebuildCompiledStoreResetRejectsLinkedTarget(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Setenv("HOME", filepath.Join(base, "home"))
+	t.Setenv("USERPROFILE", filepath.Join(base, "home"))
 	t.Setenv("XDG_STATE_HOME", filepath.Join(base, "durable"))
+	t.Setenv("LOCALAPPDATA", filepath.Join(base, "durable"))
 	t.Setenv("DOCKPIPE_PACKAGES_ROOT", linkedRoot)
 	if err := resetCompiledPackagesRoot(workdir); err == nil || !strings.Contains(err.Error(), "link") {
 		t.Fatalf("linked reset target was accepted: %v", err)

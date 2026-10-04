@@ -8,7 +8,7 @@ package_list="$(go list ./...)"
 packages=()
 while IFS= read -r package; do
   case "$package" in
-    dockpipe/src/lib/pipelang|dockpipe/src/lib/pipelang/*|dockpipe/src/lib/applicationir|dockpipe/tests/pipelangcompat)
+    dockpipe/src/lib/pipelang|dockpipe/src/lib/pipelang/*|dockpipe/src/lib/applicationir|dockpipe/tests/pipelangcompat|dockpipe/tests/containedexec|dockpipe/tests/containedexec/*)
       printf 'Separate PipeLang containment qualification: %s\n' "$package"
       ;;
     "") ;;

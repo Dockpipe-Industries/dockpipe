@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -17,7 +18,7 @@ import (
 
 func testBroker(t *testing.T) (string, *Broker, *Client, *httptest.Server) {
 	t.Helper()
-	root := t.TempDir()
+	root := privateTestDirectory(t)
 	if err := os.Chmod(root, 0o700); err != nil {
 		t.Fatal(err)
 	}
@@ -137,13 +138,7 @@ func TestWorkerRunsOnceAndReturnsArtifacts(t *testing.T) {
 	_, _, admin, server := testBroker(t)
 	token, _ := enroll(t, admin, "mac")
 	checkout := t.TempDir()
-	executable := filepath.Join(t.TempDir(), "dockpipe")
-	// A real child process exercises argv, cwd, output capture, artifact collection,
-	// and the network broker. The separate CLI smoke runs the actual DockPipe CLI.
-	script := "#!/bin/sh\n[ \"$1\" = --workdir ] || exit 20\n[ \"$3\" = --workflow ] || exit 21\nprintf x >> count\nmkdir -p results\nprintf '{\"score\":42}' > results/result.json\nprintf benchmark-complete\n"
-	if err := os.WriteFile(executable, []byte(script), 0o700); err != nil {
-		t.Fatal(err)
-	}
+	executable := remoteTestExecutable(t, checkout, "success")
 	config := contract.WorkerConfig{Schema: contract.Version, Endpoint: server.URL, Node: "mac", Token: token, Profiles: map[string]contract.Profile{"bench": {Workdir: checkout, Workflow: "bench", TimeoutSeconds: 30, Artifacts: []string{"results/result.json"}}}}
 	request := contract.Submission{ID: "benchmark-2", Node: "mac", Profile: "bench"}
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -203,10 +198,7 @@ func TestBrokerRejectsRevocationExpiredPairingAndUnsafeArtifacts(t *testing.T) {
 
 func TestExecutorCancellationAndArtifactLinks(t *testing.T) {
 	checkout := t.TempDir()
-	executable := filepath.Join(t.TempDir(), "dockpipe")
-	if err := os.WriteFile(executable, []byte("#!/bin/sh\nsleep 30 &\nwait\n"), 0o700); err != nil {
-		t.Fatal(err)
-	}
+	executable := remoteTestExecutable(t, checkout, "sleep")
 	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 	defer cancel()
 	started := time.Now()
@@ -315,10 +307,6 @@ func TestWorkerReturnsRevokedIdentityInsteadOfPollingForever(t *testing.T) {
 }
 
 func TestHeartbeatFailureDiffersFromOperatorCancellation(t *testing.T) {
-	executable := filepath.Join(t.TempDir(), "dockpipe")
-	if err := os.WriteFile(executable, []byte("#!/bin/sh\nsleep 30 &\nwait\n"), 0700); err != nil {
-		t.Fatal(err)
-	}
 	for _, lost := range []bool{false, true} {
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if lost {
@@ -333,7 +321,9 @@ func TestHeartbeatFailureDiffersFromOperatorCancellation(t *testing.T) {
 			t.Fatal(err)
 		}
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		result := executeWithHeartbeat(ctx, client, executable, contract.Profile{Workdir: t.TempDir(), Workflow: "bench", TimeoutSeconds: 30}, "job", strings.Repeat("b", 64))
+		checkout := t.TempDir()
+		executable := remoteTestExecutable(t, checkout, "sleep")
+		result := executeWithHeartbeat(ctx, client, executable, contract.Profile{Workdir: checkout, Workflow: "bench", TimeoutSeconds: 30}, "job", strings.Repeat("b", 64))
 		cancel()
 		client.HTTP.CloseIdleConnections()
 		server.Close()
@@ -348,4 +338,71 @@ func TestHeartbeatFailureDiffersFromOperatorCancellation(t *testing.T) {
 			t.Fatalf("lost heartbeat cause absent: %s", result.Log)
 		}
 	}
+}
+
+func privateTestDirectory(t *testing.T) string {
+	t.Helper()
+	root := filepath.Join(t.TempDir(), "private")
+	if err := PrivateDirectory(root); err != nil {
+		t.Fatal(err)
+	}
+	return root
+}
+
+func remoteTestExecutable(t *testing.T, checkout, mode string) string {
+	t.Helper()
+	if err := os.WriteFile(filepath.Join(checkout, "helper-mode"), []byte(mode), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	executable, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
+	}
+	return executable
+}
+
+// Reuse the native test executable so process, argv, cancellation, and artifact
+// assertions run on Windows as well as Unix without depending on a shell.
+func TestMain(m *testing.M) {
+	if os.Getenv("DOCKPIPE_REMOTE_TEST_CHILD") == "1" {
+		time.Sleep(30 * time.Second)
+		os.Exit(0)
+	}
+	if os.Getenv("DOCKPIPE_REMOTE_WORKER") != "1" {
+		os.Exit(m.Run())
+	}
+	if len(os.Args) != 5 || os.Args[1] != "--workdir" || os.Args[3] != "--workflow" || os.Args[4] != "bench" {
+		os.Exit(20)
+	}
+	mode, err := os.ReadFile("helper-mode")
+	if err != nil {
+		os.Exit(21)
+	}
+	if string(mode) == "sleep" {
+		child := exec.Command(os.Args[0])
+		child.Env = append(os.Environ(), "DOCKPIPE_REMOTE_TEST_CHILD=1")
+		child.Stdout, child.Stderr = os.Stdout, os.Stderr
+		if err := child.Start(); err != nil {
+			os.Exit(22)
+		}
+		_ = child.Wait()
+		os.Exit(0)
+	}
+	count, err := os.OpenFile("count", os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o600)
+	if err != nil {
+		os.Exit(23)
+	}
+	_, writeErr := count.WriteString("x")
+	closeErr := count.Close()
+	if writeErr != nil || closeErr != nil {
+		os.Exit(24)
+	}
+	if err := os.MkdirAll("results", 0o700); err != nil {
+		os.Exit(25)
+	}
+	if err := os.WriteFile(filepath.Join("results", "result.json"), []byte(`{"score":42}`), 0o600); err != nil {
+		os.Exit(26)
+	}
+	_, _ = os.Stdout.WriteString("benchmark-complete")
+	os.Exit(0)
 }

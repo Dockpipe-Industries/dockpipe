@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"unsafe"
 
 	"golang.org/x/sys/windows"
@@ -66,7 +67,7 @@ func durableFileInfoIsLinkOrReparse(info os.FileInfo) bool {
 	if info == nil || info.Mode()&os.ModeSymlink != 0 {
 		return true
 	}
-	data, ok := info.Sys().(*windows.Win32FileAttributeData)
+	data, ok := info.Sys().(*syscall.Win32FileAttributeData)
 	return ok && data.FileAttributes&windows.FILE_ATTRIBUTE_REPARSE_POINT != 0
 }
 

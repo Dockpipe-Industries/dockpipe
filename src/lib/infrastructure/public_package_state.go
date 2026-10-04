@@ -103,9 +103,8 @@ func packageOwnsCompatibilityImport(workdir, ownerID string, explicitManifests .
 		if info.Mode()&os.ModeSymlink != 0 || !info.Mode().IsRegular() {
 			return fmt.Errorf("package-state policy manifest %q is linked or not a regular file", path)
 		}
-		canonical, err := filepath.EvalSymlinks(path)
-		if err != nil || !sameDurablePath(path, canonical) {
-			return fmt.Errorf("package-state policy manifest %q has a linked or reparsed boundary", path)
+		if err := ValidateUnlinkedPath(path); err != nil {
+			return fmt.Errorf("package-state policy manifest %q has an unsafe boundary: %w", path, err)
 		}
 		manifest, err := domain.ParsePackageManifest(path)
 		if err != nil {

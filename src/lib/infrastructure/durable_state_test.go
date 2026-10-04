@@ -115,7 +115,11 @@ func TestProjectStateRootStableAcrossAliasAndRenameButNotCopy(t *testing.T) {
 	foundRenamed := false
 	for _, record := range index.Projects {
 		if record.ProjectID == filepath.Base(first) {
-			foundRenamed = sameDurablePath(record.CanonicalPath, renamed)
+			canonicalRenamed, err := filepath.EvalSymlinks(renamed)
+			if err != nil {
+				t.Fatal(err)
+			}
+			foundRenamed = sameDurablePath(record.CanonicalPath, canonicalRenamed)
 		}
 	}
 	if !foundRenamed {
@@ -238,7 +242,7 @@ func TestPackageRuntimeDirIsDisposableAndSeparate(t *testing.T) {
 
 func TestPreparePrivateStateSubdirectoryIsBoundedAndOwnerOnly(t *testing.T) {
 	root := filepath.Join(t.TempDir(), "private")
-	if err := os.Mkdir(root, 0o700); err != nil {
+	if err := PreparePrivateDirectory(root); err != nil {
 		t.Fatal(err)
 	}
 	destination, err := PreparePrivateStateSubdirectory(root, "one/two")
@@ -248,8 +252,8 @@ func TestPreparePrivateStateSubdirectoryIsBoundedAndOwnerOnly(t *testing.T) {
 	if destination != filepath.Join(root, "one", "two") {
 		t.Fatalf("private subdirectory = %q", destination)
 	}
-	if info, err := os.Stat(destination); err != nil || info.Mode().Perm() != 0o700 {
-		t.Fatalf("private subdirectory mode = %v, %v", info, err)
+	if err := ValidatePrivatePath(destination, true); err != nil {
+		t.Fatal(err)
 	}
 	if _, err := PreparePrivateStateSubdirectory(root, "../escape"); err == nil {
 		t.Fatal("private subdirectory accepted traversal")
@@ -293,10 +297,18 @@ func TestDiscoverLegacyPackageStateIsReadOnly(t *testing.T) {
 
 func TestJoinStatePathRejectsTraversalAbsoluteAndReservedNames(t *testing.T) {
 	root := t.TempDir()
-	for _, suffix := range []string{"../escape", "a/../../escape", "/absolute", `C:\absolute`, "a//b", "a/./b", "a/../b", "a:stream", "CON", "aux.txt", "name.", "name ", "a\\b"} {
+	for _, suffix := range []string{"../escape", "a/../../escape", "/absolute", `C:\absolute`, "a//b", "a/./b", "a/../b", "a:stream", "CON", "aux.txt", "name.", "name "} {
 		if _, err := JoinStatePath(root, suffix); err == nil {
 			t.Fatalf("suffix %q unexpectedly passed validation", suffix)
 		}
+	}
+	backslash, err := JoinStatePath(root, `a\b`)
+	if runtime.GOOS == "windows" {
+		if err != nil || backslash != filepath.Join(root, "a", "b") {
+			t.Fatalf("native suffix: %q, %v", backslash, err)
+		}
+	} else if err == nil {
+		t.Fatal("foreign separator accepted")
 	}
 	got, err := JoinStatePath(root, "sessions/one.json")
 	if err != nil {

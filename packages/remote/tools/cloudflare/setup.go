@@ -15,6 +15,8 @@ import (
 	"time"
 
 	contract "dockpipe/src/lib/domain/remote"
+	"dockpipe/src/lib/infrastructure"
+	"dockpipe/src/lib/infrastructure/process"
 	remoteio "dockpipe/src/lib/infrastructure/remote"
 )
 
@@ -156,10 +158,10 @@ func (setup Setup) Execute(ctx context.Context) error {
 
 func privateCredential(path string) error {
 	info, err := os.Lstat(path)
-	if err != nil || !info.Mode().IsRegular() || info.Mode().Perm()&0o077 != 0 || info.Size() < 1 || info.Size() > 64<<10 {
-		return errors.New("Cloudflare credential must be a private regular file (0600)")
+	if err != nil || !info.Mode().IsRegular() || info.Size() < 1 || info.Size() > 64<<10 {
+		return errors.New("Cloudflare credential must be a private regular file")
 	}
-	return nil
+	return infrastructure.ValidatePrivatePath(path, false)
 }
 
 func runCloudflared(ctx context.Context, executable string, arguments []string, interactive bool) error {
@@ -175,9 +177,7 @@ func runCloudflared(ctx context.Context, executable string, arguments []string, 
 		command.Stdin, command.Stdout, command.Stderr = os.Stdin, os.Stderr, os.Stderr
 	}
 	command.WaitDelay = 2 * time.Second
-	remoteio.ContainProcess(command)
-	defer remoteio.CleanupProcess(command)
-	if err := command.Run(); err != nil {
+	if err := process.Run(command); err != nil {
 		return fmt.Errorf("cloudflared operation failed")
 	}
 	return nil

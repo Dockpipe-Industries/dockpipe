@@ -3,10 +3,11 @@ package remotecmd
 import (
 	"encoding/xml"
 	"io"
-	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"dockpipe/src/lib/infrastructure"
 )
 
 func TestInitializationDoesNotReplaceCredentials(t *testing.T) {
@@ -22,8 +23,7 @@ func TestInitializationDoesNotReplaceCredentials(t *testing.T) {
 	if _, err := initialize(root, "0.0.0.0:47831"); err == nil {
 		t.Fatal("accepted public plain HTTP listener")
 	}
-	info, err := os.Stat(filepath.Join(root, "operator.json"))
-	if err != nil || info.Mode().Perm() != 0o600 {
+	if err := infrastructure.ValidatePrivatePath(filepath.Join(root, "operator.json"), false); err != nil {
 		t.Fatal("operator file is not private")
 	}
 }
