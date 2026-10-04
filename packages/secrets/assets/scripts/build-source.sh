@@ -9,8 +9,7 @@ dockpipe_source_build_init "$repo_root"
 tool="secret-environment$(go env GOEXE)"
 dockpipe_source_build_tool "$tool" "$repo_root" "$DOCKPIPE_SOURCE_BUILD_OUT_DIR/$tool" secrets ./packages/secrets/tools/cmd/secret-environment
 dockpipe_cmd="${DOCKPIPE_BIN:-$repo_root/src/bin/dockpipe}"
-eval "$("$dockpipe_cmd" sdk)"
-staging_root="$(dockpipe_sdk path package-runtime secrets resolver-build)"
+staging_root="$("$dockpipe_cmd" __state package-runtime --workdir "$repo_root" --owner secrets --path resolver-build)"
 mkdir -p "$staging_root"
 staging_dir="$(mktemp -d "$staging_root/environments.XXXXXX")"
 trap 'rm -rf "$staging_dir"' EXIT

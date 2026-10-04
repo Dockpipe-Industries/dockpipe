@@ -2,6 +2,9 @@
 
 ## Current audit and cleanup — 2026-10-04
 
+[Hosted 0.6 qualification](release-0.6-hosted.md) tracks the approved release
+dry run at the committed `afc0a2cf` checkpoint and its remaining release gates.
+
 [0.6 error handling and architecture audit](release-0.6-audit.md) records six
 primary findings and their focused working-tree fixes: strict budget reads,
 checked artifact writes, resolver process-tree cancellation, bounded remote
