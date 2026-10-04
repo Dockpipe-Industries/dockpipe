@@ -52,6 +52,78 @@ function Assert-Equal {
     if ($Actual -cne $Expected) { throw "${Label}: expected '$Expected', got '$Actual'" }
 }
 
+function Test-CoreSnapshotComparison {
+    $tokens = $null
+    $parseErrors = $null
+    $source = Join-Path $repoRoot "release/packaging/msi/smoke-test.ps1"
+    $ast = [System.Management.Automation.Language.Parser]::ParseFile($source, [ref]$tokens, [ref]$parseErrors)
+    if ($parseErrors.Count -ne 0) { throw "Cannot parse MSI smoke test" }
+    $comparisons = @($ast.FindAll({
+        param($node)
+        if ($node -isnot [System.Management.Automation.Language.IfStatementAst]) { return $false }
+        $condition = $node.Clauses[0].Item1.Extent.Text
+        return $condition.Contains('$currentCoreSnapshot') -and $condition.Contains('$baselineCoreSnapshot')
+    }, $true))
+    if ($comparisons.Count -ne 1) { throw "Expected one core snapshot comparison" }
+    $comparison = [scriptblock]::Create($comparisons[0].Extent.Text)
+    $cases = @(
+        @{
+            Name = "empty"
+            Baseline = @()
+            Current = @()
+            Reject = $false
+        },
+        @{
+            Name = "unchanged"
+            Baseline = @("existing")
+            Current = @("existing")
+            Reject = $false
+        },
+        @{
+            Name = "unchanged tree"
+            Baseline = @("dir", "dir/file")
+            Current = @("dir", "dir/file")
+            Reject = $false
+        },
+        @{
+            Name = "added"
+            Baseline = @()
+            Current = @("leftover")
+            Reject = $true
+        },
+        @{
+            Name = "removed"
+            Baseline = @("existing")
+            Current = @()
+            Reject = $true
+        },
+        @{
+            Name = "replaced"
+            Baseline = @("existing")
+            Current = @("different")
+            Reject = $true
+        }
+    )
+
+    foreach ($case in $cases) {
+        $baselineCoreSnapshot = $case.Baseline
+        $currentCoreSnapshot = $case.Current
+        $corePackageDir = "fixture core directory"
+        $rejected = $false
+        try {
+            & $comparison
+        } catch {
+            if (-not $_.Exception.Message.StartsWith("Installed dockpipe core package contents did not return to baseline")) {
+                throw
+            }
+            $rejected = $true
+        }
+        Assert-Equal $rejected $case.Reject ("Core snapshot " + $case.Name)
+    }
+}
+
+Test-CoreSnapshotComparison
+
 $buildScript = Get-WorkflowScript "Install WiX and build MSI"
 $argumentStart = $buildScript.IndexOf('$v = ')
 if ($argumentStart -lt 0) { throw "MSI build invocation not found" }
@@ -110,4 +182,4 @@ try {
 } finally {
     Remove-Item -LiteralPath $testRoot -Recurse -Force
 }
-Write-Host "MSI workflow parameter binding passed with and without the launcher"
+Write-Host "MSI snapshot comparison and workflow parameter binding passed"

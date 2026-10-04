@@ -129,7 +129,7 @@ if (Test-Path -LiteralPath $exePath) {
     throw "Installed dockpipe.exe still exists after uninstall: $exePath"
 }
 $currentCoreSnapshot = Get-DirectorySnapshot -PathValue $corePackageDir
-if (@($currentCoreSnapshot) -join "`n" -ne @($baselineCoreSnapshot) -join "`n") {
+if ((@($currentCoreSnapshot) -join "`n") -ne (@($baselineCoreSnapshot) -join "`n")) {
     throw "Installed dockpipe core package contents did not return to baseline after uninstall: $corePackageDir"
 }
 if ($baselineCoreSnapshot.Count -eq 0 -and (Test-Path -LiteralPath $corePackageDir)) {
