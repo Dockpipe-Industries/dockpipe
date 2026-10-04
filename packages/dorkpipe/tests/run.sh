@@ -22,7 +22,7 @@ export USERPROFILE="$TEST_HOME"
 export XDG_CONFIG_HOME="$TEST_HOME/.config"
 export DORKPIPE_ORCH_AUTH_LOGIN_ON_MISSING="${DORKPIPE_ORCH_AUTH_LOGIN_ON_MISSING:-never}"
 failed=0
-for f in test_normalize_ci_scans.sh test_user_insight_queue.sh test_durable_training_metrics.sh test_self_analysis_durable_metrics.sh test_repo_tools.sh test_disposable_package_runtime.sh test_build_source_operation_results.sh test_orchestration_approval_operation_results.sh test_orchestration_verify_status.sh test_orchestration_lanes.sh test_software_dev_workflow.sh test_backlog_remote_workflow.sh test_example_brain_contract.sh test_orchestration_optimize.sh test_orchestration_container_auth.sh test_dev_stack_gpu_policy.sh test_cas01_app_server.sh test_codex_cli_update.sh test_task_skill_lifecycle.sh; do
+for f in test_cloud_usage_failure.sh test_normalize_ci_scans.sh test_user_insight_queue.sh test_durable_training_metrics.sh test_self_analysis_durable_metrics.sh test_repo_tools.sh test_disposable_package_runtime.sh test_build_source_operation_results.sh test_orchestration_approval_operation_results.sh test_orchestration_verify_status.sh test_orchestration_lanes.sh test_software_dev_workflow.sh test_backlog_remote_workflow.sh test_example_brain_contract.sh test_orchestration_optimize.sh test_orchestration_container_auth.sh test_dev_stack_gpu_policy.sh test_cas01_app_server.sh test_codex_cli_update.sh test_task_skill_lifecycle.sh; do
 	echo "--- dorkpipe/tests/$f ---"
 	if ! bash "$DIR/$f"; then
 		echo "dorkpipe/tests/$f FAILED" >&2

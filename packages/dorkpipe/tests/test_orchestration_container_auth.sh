@@ -265,8 +265,8 @@ saved_msystem="${MSYSTEM:-}"
 OS=Windows_NT
 OSTYPE=msys
 MSYSTEM=MINGW64
-converted="$(dorkpipe_orchestrate_cli_mount_host_path 'C:\Users\Jamie\.codex')"
-if [[ "${converted}" != 'C:\Users\Jamie\.codex' ]]; then
+converted="$(dorkpipe_orchestrate_cli_mount_host_path 'C:\Users\TestUser\.codex')"
+if [[ "${converted}" != 'C:\Users\TestUser\.codex' ]]; then
   echo "expected Windows auth mount host path to stay native when MSYS conversion is disabled, got: ${converted}" >&2
   exit 1
 fi

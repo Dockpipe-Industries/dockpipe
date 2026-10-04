@@ -53,7 +53,8 @@ func BuildCompiledStore(packagesRoot, outDir, fallbackVersion, only string) (*St
 		return nil, err
 	}
 	m := &StoreBuildManifest{Schema: 1}
-	m.StoreRoot = packagesRoot
+	// Exported stores resolve tarballs beside the manifest, not in the builder's
+	// private source directory. Retain StoreRoot only for reading legacy metadata.
 
 	if only == "all" || only == "core" {
 		coreDir := filepath.Join(packagesRoot, "core")

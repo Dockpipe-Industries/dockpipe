@@ -27,7 +27,7 @@ concurrency:
   cancel-in-progress: false
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   meta:
@@ -86,73 +86,75 @@ jobs:
           echo "dry_run=${dry_run}" >> "$GITHUB_OUTPUT"
           echo "build_msi=${build_msi}" >> "$GITHUB_OUTPUT"
 
-  build-ubuntu:
-    needs: [meta]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-
-      - uses: actions/setup-go@v6
-        with:
-          go-version: "1.25.11"
-
-      - name: Run tests
-        run: |
-          go test ./...
-          bash tests/run_tests.sh
-
-      - name: Build release artifacts (Linux, macOS, zip, debs)
+      - name: Require an unpublished version
+        if: steps.m.outputs.dry_run != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.m.outputs.tag }}
         shell: bash
         run: |
           set -euo pipefail
-          VERSION="${{ needs.meta.outputs.version }}"
-          mkdir -p release/artifacts
-          LDFLAGS="-s -w -X main.Version=${VERSION}"
-          bash ./release/packaging/prepare-embedded-dorkpipe-assets.sh prepare
-          trap 'bash ./release/packaging/prepare-embedded-dorkpipe-assets.sh clean' EXIT
+          error_file="$RUNNER_TEMP/dockpipe-tag-check.err"
+          if gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$RELEASE_TAG" >/dev/null 2>"$error_file"; then
+            echo "::error::This release tag already exists. Advance VERSION before publishing."
+            exit 1
+          elif ! grep -q 'HTTP 404' "$error_file"; then
+            echo "::error::Could not verify whether the release tag exists."
+            exit 1
+          fi
 
-          GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -ldflags "${LDFLAGS}" -o "release/artifacts/dockpipe" ./src/cmd
-          tar -C release/artifacts -czf "release/artifacts/dockpipe_${VERSION}_linux_amd64.tar.gz" dockpipe
-          rm -f release/artifacts/dockpipe
-
-          GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build -trimpath -ldflags "${LDFLAGS}" -o "release/artifacts/dockpipe" ./src/cmd
-          tar -C release/artifacts -czf "release/artifacts/dockpipe_${VERSION}_linux_arm64.tar.gz" dockpipe
-          rm -f release/artifacts/dockpipe
-
-          GOOS=darwin GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -ldflags "${LDFLAGS}" -o "release/artifacts/dockpipe" ./src/cmd
-          tar -C release/artifacts -czf "release/artifacts/dockpipe_${VERSION}_darwin_amd64.tar.gz" dockpipe
-          rm -f release/artifacts/dockpipe
-
-          GOOS=darwin GOARCH=arm64 CGO_ENABLED=0 go build -trimpath -ldflags "${LDFLAGS}" -o "release/artifacts/dockpipe" ./src/cmd
-          tar -C release/artifacts -czf "release/artifacts/dockpipe_${VERSION}_darwin_arm64.tar.gz" dockpipe
-          rm -f release/artifacts/dockpipe
-
-          GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -ldflags "${LDFLAGS}" -o "release/artifacts/dockpipe.exe" ./src/cmd
-          (cd release/artifacts && zip -q "dockpipe_${VERSION}_windows_amd64.zip" dockpipe.exe)
-          rm -f release/artifacts/dockpipe.exe
-
-          bash ./release/packaging/build-core-package.sh "${VERSION}" release/artifacts
-
-          mkdir -p src/bin
-          GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -ldflags "${LDFLAGS}" -o "src/bin/dockpipe" ./src/cmd
-          ./src/bin/dockpipe build --workdir "${{ github.workspace }}" --no-images
-          ./src/bin/dockpipe package build store --workdir "${{ github.workspace }}" --out release/artifacts --version "${VERSION}"
-
-          ./release/packaging/build-deb.sh "${VERSION}" amd64
-          ./release/packaging/build-deb.sh "${VERSION}" arm64
-          cp "release/packaging/build/dockpipe_${VERSION}_amd64.deb" release/artifacts/
-          cp "release/packaging/build/dockpipe_${VERSION}_arm64.deb" release/artifacts/
-
-          ./release/packaging/build-nfpm.sh "${VERSION}" release/artifacts
-
+  build-unix:
+    needs: [meta]
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            platform: linux-amd64
+          - runner: ubuntu-24.04-arm
+            platform: linux-arm64
+          - runner: macos-15-intel
+            platform: darwin-amd64
+          - runner: macos-15
+            platform: darwin-arm64
+    runs-on: ${{ matrix.runner }}
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v6
+        with:
+          go-version: "1.25.11"
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+      - name: Build native CLI, all package stores, and installers
+        shell: bash
+        run: bash release/packaging/build-platform.sh "${{ needs.meta.outputs.version }}"
+      - name: Native CLI and workflow smoke test
+        shell: bash
+        run: |
+          python3 release/packaging/tests/native-smoke.py src/bin/dockpipe
+          python3 packages/secrets/tests/environment-smoke.py src/bin/dockpipe "release/artifacts/stores/${{ matrix.platform }}"
+      - name: Runtime and package regression tests
+        if: matrix.platform == 'linux-amd64'
+        run: |
+          bash release/packaging/test-runtime.sh
+          bash tests/run_tests.sh
+      - name: Release tooling tests
+        if: matrix.platform == 'linux-amd64'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends apt-utils gnupg
+          python3 -m unittest discover -s release/packaging/tests -v
       - uses: actions/upload-artifact@v7
         with:
-          name: release-dist-linux
-          path: release/artifacts/*
+          name: release-${{ matrix.platform }}
+          path: release/artifacts/
+          if-no-files-found: error
 
   build-msi:
     needs: [meta]
-    if: needs.meta.outputs.build_msi == 'true'
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v6
@@ -161,13 +163,30 @@ jobs:
         with:
           go-version: "1.25.11"
 
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+
+      - name: Build Windows CLI and all package stores
+        shell: bash
+        run: bash release/packaging/build-platform.sh "${{ needs.meta.outputs.version }}"
+
+      - name: Native CLI and workflow smoke test
+        shell: bash
+        run: python3 release/packaging/tests/native-smoke.py src/bin/dockpipe.exe
+
       - name: Run tests
         shell: bash
         run: |
-          go test ./...
+          bash release/packaging/test-runtime.sh
+
+      - name: Verify Windows installer failure recovery
+        shell: powershell
+        run: ./release/packaging/tests/windows-install.Tests.ps1
 
       # One pwsh step: GITHUB_ENV mangles/truncates Windows paths for WIX — pass -WixRoot into build.ps1 instead.
       - name: Install WiX and build MSI
+        if: needs.meta.outputs.build_msi == 'true'
         shell: pwsh
         run: |
           $ProgressPreference = 'SilentlyContinue'
@@ -186,34 +205,9 @@ jobs:
           }
           $wixRoot = $destFull
           $v = "${{ needs.meta.outputs.version }}"
-          $dockpipeSyso = Join-Path $PWD "src\cmd\dockpipe_windows_amd64.syso"
-          $coreBuildDir = Join-Path $PWD "bin\msi-core-build"
           $coreStageDir = Join-Path $PWD "bin\msi-core"
-          try {
-            & (Join-Path $PWD "release\packaging\windows\new-go-icon-resource.ps1") `
-              -IconPath (Join-Path $PWD "src\app\tooling\dockpipe-launcher\resources\images\dockpipe-launcher.ico") `
-              -OutFile $dockpipeSyso
-            bash ./release/packaging/prepare-embedded-dorkpipe-assets.sh prepare
-            go build -trimpath -ldflags "-s -w -X main.Version=$v" -o dockpipe.exe ./src/cmd
-            if (Test-Path -LiteralPath $coreBuildDir) {
-              Remove-Item -LiteralPath $coreBuildDir -Recurse -Force
-            }
-            if (Test-Path -LiteralPath $coreStageDir) {
-              Remove-Item -LiteralPath $coreStageDir -Recurse -Force
-            }
-            New-Item -ItemType Directory -Force -Path $coreBuildDir | Out-Null
-            New-Item -ItemType Directory -Force -Path $coreStageDir | Out-Null
-            & (Join-Path $PWD "dockpipe.exe") package compile core --workdir $coreBuildDir --from (Join-Path $PWD "src\core") --force
-            & (Join-Path $PWD "dockpipe.exe") package build store --workdir $coreBuildDir --out $coreBuildDir --only core --version $v
-            $coreTarball = Get-ChildItem -LiteralPath $coreBuildDir -Filter "dockpipe-core-*.tar.gz" -File | Select-Object -First 1
-            if (-not $coreTarball) { throw "dockpipe core tarball was not produced under $coreBuildDir" }
-            Copy-Item -LiteralPath $coreTarball.FullName -Destination (Join-Path $coreStageDir $coreTarball.Name) -Force
-          } finally {
-            bash ./release/packaging/prepare-embedded-dorkpipe-assets.sh clean
-            if (Test-Path -LiteralPath $dockpipeSyso) {
-              Remove-Item -LiteralPath $dockpipeSyso -Force
-            }
-          }
+          New-Item -ItemType Directory -Force -Path $coreStageDir | Out-Null
+          Copy-Item "release\artifacts\stores\windows-amd64\dockpipe-core-*.tar.gz" $coreStageDir
           $launcherCandidates = @(
             (Join-Path $PWD "src\app\tooling\dockpipe-launcher\build\Release\dockpipe-launcher.exe"),
             (Join-Path $PWD "src\app\tooling\dockpipe-launcher\build\dockpipe-launcher.exe")
@@ -222,7 +216,7 @@ jobs:
           New-Item -ItemType Directory -Force -Path bin\msi-dist | Out-Null
           $buildArgs = @(
             "-Version", $v,
-            "-SourceExe", (Join-Path $PWD "dockpipe.exe"),
+            "-SourceExe", (Join-Path $PWD "src\bin\dockpipe.exe"),
             "-CoreStageDir", $coreStageDir,
             "-OutDir", (Join-Path $PWD "bin\msi-dist"),
             "-WixRoot", $wixRoot
@@ -236,6 +230,7 @@ jobs:
           & (Join-Path $PWD "release\packaging\msi\build.ps1") @buildArgs
 
       - name: Smoke test MSI install/uninstall
+        if: needs.meta.outputs.build_msi == 'true'
         shell: pwsh
         run: |
           $msi = Get-ChildItem -LiteralPath (Join-Path $PWD "bin\msi-dist") -Filter "*.msi" | Select-Object -First 1
@@ -252,29 +247,52 @@ jobs:
           }
           & (Join-Path $PWD "release\packaging\msi\smoke-test.ps1") @smokeArgs
 
+      - name: Collect MSI
+        if: needs.meta.outputs.build_msi == 'true'
+        shell: pwsh
+        run: Copy-Item bin/msi-dist/*.msi release/artifacts/
       - uses: actions/upload-artifact@v7
         with:
-          name: release-msi
-          path: bin/msi-dist/*.msi
+          name: release-windows-amd64
+          path: release/artifacts/
+          if-no-files-found: error
 
   publish:
-    needs: [meta, build-ubuntu, build-msi]
-    if: always() && needs.meta.result == 'success' && needs.build-ubuntu.result == 'success' && (needs.build-msi.result == 'success' || needs.build-msi.result == 'skipped')
+    needs: [meta, build-unix, build-msi]
+    if: always() && needs.meta.result == 'success' && needs.build-unix.result == 'success' && (needs.build-msi.result == 'success' || needs.build-msi.result == 'skipped')
     runs-on: ubuntu-latest
     environment: release
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v6
 
       - uses: actions/download-artifact@v8
         with:
-          name: release-dist-linux
+          pattern: release-*
+          merge-multiple: true
           path: release/artifacts
 
-      - uses: actions/download-artifact@v8
-        if: needs.meta.outputs.build_msi == 'true'
-        with:
-          name: release-msi
-          path: release/artifacts
+      - name: Install repository tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends apt-utils gnupg
+
+      - name: Verify publication configuration
+        if: needs.meta.outputs.dry_run != 'true'
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          APT_SIGNING_KEY: ${{ secrets.APT_SIGNING_KEY }}
+          APT_SIGNING_FINGERPRINT: ${{ vars.APT_SIGNING_FINGERPRINT }}
+          R2_ENDPOINT_URL: ${{ vars.R2_ENDPOINT_URL }}
+          DOCKPIPE_RELEASE_BUCKET: ${{ vars.DOCKPIPE_RELEASE_BUCKET }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          for name in AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY APT_SIGNING_KEY APT_SIGNING_FINGERPRINT R2_ENDPOINT_URL DOCKPIPE_RELEASE_BUCKET; do
+            [[ -n "${!name}" ]] || { echo "::error::Missing release setting: $name"; exit 1; }
+          done
 
       - name: Prepare release notes body
         shell: bash
@@ -288,31 +306,47 @@ jobs:
           fi
           cp "${NOTES_FILE}" release/artifacts/RELEASE_NOTES.md
 
-      - name: Build checksums
+      - name: Prepare installers and complete release catalog
+        shell: bash
+        run: |
+          cp release/packaging/linux/install.sh release/artifacts/install.sh
+          cp release/packaging/windows/install.ps1 release/artifacts/install.ps1
+          python3 release/packaging/release-artifacts.py prepare release/artifacts --version "${{ needs.meta.outputs.version }}"
+
+      - name: Build signed APT repository
+        env:
+          APT_SIGNING_KEY: ${{ secrets.APT_SIGNING_KEY }}
+          APT_SIGNING_FINGERPRINT: ${{ vars.APT_SIGNING_FINGERPRINT }}
+          DRY_RUN: ${{ needs.meta.outputs.dry_run }}
         shell: bash
         run: |
           set -euo pipefail
-          cd release/artifacts
-          shopt -s nullglob
-          files=( *.tar.gz *.zip *.deb *.msi *.apk *.rpm *.pkg.tar.zst )
-          if [[ ${#files[@]} -eq 0 ]]; then
-            echo "No release files in release/artifacts/" >&2
-            exit 1
+          export GNUPGHOME="$(mktemp -d)"
+          trap 'rm -rf "$GNUPGHOME"' EXIT
+          chmod 700 "$GNUPGHOME"
+          if [[ "$DRY_RUN" == true ]]; then
+            gpg --batch --passphrase '' --quick-generate-key 'DockPipe dry-run (not for publication)' rsa3072 sign 1d
+            export APT_SIGNING_FINGERPRINT="$(gpg --with-colons --list-secret-keys | awk -F: '$1 == "fpr" {print $10; exit}')"
+          else
+            printf '%s' "$APT_SIGNING_KEY" | gpg --batch --import
           fi
-          sha256sum "${files[@]}" > SHA256SUMS.txt
+          bash release/packaging/build-apt.sh release/artifacts release/apt
 
       - name: Upload dry-run artifacts
         if: needs.meta.outputs.dry_run == 'true'
         uses: actions/upload-artifact@v7
         with:
           name: dockpipe-release-dry-run-${{ needs.meta.outputs.version }}
-          path: release/artifacts/*
+          path: |
+            release/artifacts/
+            release/apt/
 
       - name: Create GitHub release
         if: needs.meta.outputs.dry_run != 'true'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ needs.meta.outputs.tag }}
+          target_commitish: ${{ github.sha }}
           name: ${{ needs.meta.outputs.tag }}
           body_path: release/artifacts/RELEASE_NOTES.md
           # MSI is optional (build-msi may be skipped); do not fail when artifacts dir has no .msi
@@ -326,94 +360,22 @@ jobs:
             release/artifacts/*.rpm
             release/artifacts/*.pkg.tar.zst
             release/artifacts/*.sha256
+            release/artifacts/release-manifest.json
             release/artifacts/install-manifest.json
-            release/artifacts/packages-store-manifest.json
+            release/artifacts/install.sh
+            release/artifacts/install.ps1
             release/artifacts/SHA256SUMS.txt
 
-      - uses: actions/setup-go@v6
-        if: needs.meta.outputs.dry_run != 'true' && vars.R2_PUBLISH == 'true'
-        with:
-          go-version: "1.25.11"
-
-      - name: Build DockPipe CLI for mirror publish
-        if: needs.meta.outputs.dry_run != 'true' && vars.R2_PUBLISH == 'true'
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p bin/release-tools
-          bash ./release/packaging/prepare-embedded-dorkpipe-assets.sh prepare
-          trap 'bash ./release/packaging/prepare-embedded-dorkpipe-assets.sh clean' EXIT
-          go build -trimpath -ldflags "-s -w -X main.Version=${{ needs.meta.outputs.version }}" -o "bin/release-tools/dockpipe" ./src/cmd
-
-      - name: Publish self-hosted mirror to R2
-        if: needs.meta.outputs.dry_run != 'true' && vars.R2_PUBLISH == 'true'
-        shell: bash
+      - name: Publish all packages and signed APT repository to R2
+        if: needs.meta.outputs.dry_run != 'true'
         env:
           DOCKPIPE_RELEASE_BUCKET: ${{ vars.DOCKPIPE_RELEASE_BUCKET }}
-          R2_BUCKET: ${{ vars.R2_BUCKET }}
           R2_ENDPOINT_URL: ${{ vars.R2_ENDPOINT_URL }}
-          AWS_ENDPOINT_URL_S3: ${{ vars.AWS_ENDPOINT_URL_S3 }}
-          AWS_REGION: ${{ vars.AWS_REGION }}
-          R2_ACCOUNT_ID: ${{ vars.R2_ACCOUNT_ID }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
           R2_PREFIX: ${{ vars.R2_PREFIX }}
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        run: |
-          set -euo pipefail
-          bucket="${DOCKPIPE_RELEASE_BUCKET:-${R2_BUCKET:-}}"
-          if [[ -z "${bucket}" ]]; then
-            echo "::error::Set repository variable DOCKPIPE_RELEASE_BUCKET or R2_BUCKET when R2_PUBLISH=true."
-            exit 1
-          fi
-          if [[ -z "${AWS_ACCESS_KEY_ID:-}" || -z "${AWS_SECRET_ACCESS_KEY:-}" ]]; then
-            echo "::error::Set repository secrets AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY when R2_PUBLISH=true."
-            exit 1
-          fi
-          prefix="${R2_PREFIX:-}"
-          prefix="${prefix#/}"
-          if [[ -n "${prefix}" && "${prefix}" != */ ]]; then
-            prefix="${prefix}/"
-          fi
-          content_type() {
-            case "$1" in
-              *.json) echo "application/json" ;;
-              *.sha256|*.txt|*.md) echo "text/plain; charset=utf-8" ;;
-              *.zip) echo "application/zip" ;;
-              *.deb) echo "application/vnd.debian.binary-package" ;;
-              *.msi) echo "application/x-msi" ;;
-              *.rpm) echo "application/x-rpm" ;;
-              *.apk) echo "application/vnd.android.package-archive" ;;
-              *.pkg.tar.zst) echo "application/zstd" ;;
-              *.tar.gz) echo "application/gzip" ;;
-              *) echo "application/octet-stream" ;;
-            esac
-          }
-          cd release/artifacts
-          shopt -s nullglob
-          files=(
-            *.tar.gz
-            *.zip
-            *.deb
-            *.msi
-            *.apk
-            *.rpm
-            *.pkg.tar.zst
-            *.sha256
-            install-manifest.json
-            packages-store-manifest.json
-            SHA256SUMS.txt
-          )
-          if [[ ${#files[@]} -eq 0 ]]; then
-            echo "::error::No release artifacts found to publish."
-            exit 1
-          fi
-          for file in "${files[@]}"; do
-            [[ -f "${file}" ]] || continue
-            "../../bin/release-tools/dockpipe" release upload "${file}" \
-              --key "${prefix}${file}" \
-              --content-type "$(content_type "${file}")"
-          done
+          AWS_DEFAULT_REGION: auto
+        run: python3 release/packaging/publish-r2.py --artifacts release/artifacts --apt release/apt --version "${{ needs.meta.outputs.version }}"
 
   # Optional: dev.to — PUT main article (DEVTO_ARTICLE_ID) + optional one-time POST per release (DEVTO_ONE_TIME_POST).
   # See release/docs/devto.md

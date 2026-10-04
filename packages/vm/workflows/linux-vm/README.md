@@ -186,11 +186,11 @@ Any failure stops once, preserves all four instance roots, and never retries or
 cleans. Cleanup requires a separate fresh authorization bound to the exact
 contract, plan, executor digest, and ordered resource list.
 
-Gate 1 materialized this bundle at
-`/home/jamie/.cache/dockpipe/vm/toolchains/qemu-11.0.3-linux-amd64.1`, with
-manifest SHA-256
-`11a27f32eb93e62aba8ebc500dfd877339a71821793cbf30845b53964c22320c`.
-Two independent builds matched the same complete output inventory. The
+Historical Gate 1 evidence is preserved in the source repository under
+`docs/research/vm-toolchain-2026-08-07/`. Those two builds matched the same
+complete output inventory. Fresh toolchains use the parameterized
+`toolchains/qemu-11.0.3-linux-amd64/` recipe with explicitly selected paths and
+new manifest and binary hashes; the historical hashes are not fresh-build defaults. The
 production Linux runner now implements the exact typed operations with no shell,
 environment passthrough, fallback tool, retry, or automatic cleanup. Offline
 tests use inert subprocess fixtures and in-memory connections. The first Gate 2
@@ -263,15 +263,17 @@ or preserved root.
 
 The reviewed deterministic builds are not yet Gate 2 inputs. A distinct
 offline promotion must first publish only the Linux/amd64 controller and guest
-agent into `/home/jamie/.local/share/dockpipe-vm-gates`, a fixed non-live
+agent into `<authorized-promotion-root>`, a fixed non-live
 task-owned namespace separate from the checkout, package/install and generated
 stores, caches, live XDG roots, and preserved Gate 2 roots. Promotion IDs match
-`vmp-[0-9a-f]{16}`. The first completed ID is `vmp-2026080815f0ea3f`:
+`vmp-[0-9a-f]{16}`. The first completed ID was `vmp-2026080815f0ea3f`; historical absolute paths
+are retained in `docs/research/vm-toolchain-2026-08-07/promotion-paths.md` in the
+source repository. The layout is:
 
 - root:
-  `/home/jamie/.local/share/dockpipe-vm-gates/promotions/vmp-2026080815f0ea3f`
+  `<authorized-promotion-root>/promotions/vmp-2026080815f0ea3f`
 - evidence:
-  `/home/jamie/.local/share/dockpipe-vm-gates/evidence/vmp-2026080815f0ea3f/promotion.evidence.json`
+  `<authorized-promotion-root>/evidence/vmp-2026080815f0ea3f/promotion.evidence.json`
 
 The root is exclusively created mode `0700`. Its immutable closed inventory is
 exactly `dockpipe-qemu-controller` (`5447054` bytes,

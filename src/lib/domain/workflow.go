@@ -69,7 +69,8 @@ type Workflow struct {
 	// Strategies: optional allowlist of strategy names; if non-empty, --strategy / workflow.strategy must be listed.
 	Strategies []string `yaml:"strategies,omitempty"`
 	// Vault names which backend runs secret→env injection for this workflow (see docs/runtime/vault.md).
-	// "op" = 1Password CLI (op inject). "none" / "off" = skip op inject for this workflow.
+	// "op" = legacy template injection; "environment" = a named resolver-backed environment.
+	// "none" / "off" = skip secret injection for this workflow.
 	// Omit to use dockpipe.config.json secrets.vault when set, else best-effort inject when the template exists.
 	Vault string `yaml:"vault,omitempty"`
 	// DockerPreflight: when false, skip EnsureDockerReachable before steps when no step uses the container runner.

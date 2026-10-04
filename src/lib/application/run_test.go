@@ -620,7 +620,7 @@ func TestRunWorkflowStepsModeCliWorkdirOverridesInheritedEnvMap(t *testing.T) {
 	loadResolverFileAppFn = func(path string) (map[string]string, error) {
 		return map[string]string{"DOCKPIPE_RESOLVER_TEMPLATE": "codex"}, nil
 	}
-	wantWd := "/path/to/your/project"
+	wantWd := t.TempDir()
 	runStepsAppFn = func(o runStepsOpts) error {
 		if o.envMap["DOCKPIPE_WORKDIR"] != wantWd {
 			t.Fatalf("envMap DOCKPIPE_WORKDIR=%q want %q", o.envMap["DOCKPIPE_WORKDIR"], wantWd)

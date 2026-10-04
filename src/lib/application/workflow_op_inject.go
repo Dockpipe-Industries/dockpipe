@@ -40,7 +40,11 @@ func opInjectWanted(opts *CliOpts) bool {
 	if opts != nil && opts.NoOpInject {
 		return false
 	}
-	v := strings.TrimSpace(strings.ToLower(os.Getenv("DOCKPIPE_OP_INJECT")))
+	value, configured := os.LookupEnv("DOCKPIPE_VAULT_INJECT")
+	if !configured {
+		value = os.Getenv("DOCKPIPE_OP_INJECT")
+	}
+	v := strings.TrimSpace(strings.ToLower(value))
 	switch v {
 	case "0", "false", "no", "off":
 		return false
@@ -105,6 +109,9 @@ func mergeOpInjectFromProjectIfEnabled(env map[string]string, opts *CliOpts, wfC
 	if vaultModeSkipInject(mode) {
 		return nil
 	}
+	if handled, err := mergeSecretEnvironment(env, opts, cfg, projectRoot, wfConfig, wf); handled {
+		return err
+	}
 	if cfg == nil {
 		if strictOp {
 			return fmt.Errorf("workflow vault: op requires %s with secrets.vault_template or secrets.op_inject_template", domain.DockpipeProjectConfigFileName)
@@ -150,6 +157,10 @@ func workflowReferencesVaultTemplateKey(wfConfig string, wf *domain.Workflow, tm
 	if err != nil || len(keys) == 0 {
 		return false
 	}
+	return workflowReferencesVaultKeys(wfConfig, wf, keys)
+}
+
+func workflowReferencesVaultKeys(wfConfig string, wf *domain.Workflow, keys map[string]struct{}) bool {
 	haystack := strings.Builder{}
 	if strings.TrimSpace(wfConfig) != "" {
 		if b, err := os.ReadFile(wfConfig); err == nil {

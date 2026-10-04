@@ -36,14 +36,32 @@ CORE_TARBALL_BASENAME="$(basename "${CORE_TARBALL}")"
 # Pin nfpm for reproducible CI (bump when upgrading).
 NFPM_VER="${NFPM_VERSION:-v2.41.0}"
 NFPM=(go run "github.com/goreleaser/nfpm/v2/cmd/nfpm@${NFPM_VER}")
+if [[ -n "${NFPM_BIN:-}" ]]; then
+  NFPM=("$NFPM_BIN")
+fi
 LDFLAGS="-s -w -X main.Version=${VERSION}"
 
-bash "${REPO_ROOT}/release/packaging/prepare-embedded-dorkpipe-assets.sh" prepare
-trap 'bash "${REPO_ROOT}/release/packaging/prepare-embedded-dorkpipe-assets.sh" clean' EXIT
+if [[ -z "${DOCKPIPE_RELEASE_BINARY:-}" ]]; then
+  bash "${REPO_ROOT}/release/packaging/prepare-embedded-dorkpipe-assets.sh" prepare
+  trap 'bash "${REPO_ROOT}/release/packaging/prepare-embedded-dorkpipe-assets.sh" clean' EXIT
+fi
 
-for goarch in amd64 arm64; do
+architectures=(amd64 arm64)
+if [[ -n "${3:-}" ]]; then
+  [[ "$3" == amd64 || "$3" == arm64 ]] || exit 1
+  architectures=("$3")
+fi
+if [[ -n "${DOCKPIPE_RELEASE_BINARY:-}" && ${#architectures[@]} -ne 1 ]]; then
+  echo 'A prebuilt binary requires one explicit architecture' >&2
+  exit 1
+fi
+for goarch in "${architectures[@]}"; do
   BIN="${STAGE}/dockpipe-linux-${goarch}"
-  GOOS=linux GOARCH="${goarch}" CGO_ENABLED=0 go build -trimpath -ldflags "${LDFLAGS}" -o "${BIN}" ./src/cmd
+  if [[ -n "${DOCKPIPE_RELEASE_BINARY:-}" ]]; then
+    cp "$DOCKPIPE_RELEASE_BINARY" "$BIN"
+  else
+    GOOS=linux GOARCH="${goarch}" CGO_ENABLED=0 go build -trimpath -ldflags "${LDFLAGS}" -o "${BIN}" ./src/cmd
+  fi
 
   sed -e "s|__VERSION__|${VERSION}|g" -e "s|__GOARCH__|${goarch}|g" -e "s|__BINARY__|${BIN}|g" \
     -e "s|__CORE_TARBALL__|${CORE_TARBALL}|g" \

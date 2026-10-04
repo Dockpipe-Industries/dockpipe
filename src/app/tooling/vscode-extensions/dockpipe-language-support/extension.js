@@ -142,7 +142,7 @@ const TOP_LEVEL_KEY_DETAILS = {
   action: "Alias for act.",
   strategy: "Lifecycle wrapper that runs around the workflow.",
   strategies: "Available strategies for selection or validation.",
-  vault: "Vault provider used for secret injection.",
+  vault: "Secret injection mode: environment (named resolver), op (template), or none/off.",
   compile_hooks: "Shell hooks run during package compile against the staged copy before the tarball is written. Use DOCKPIPE_COMPILE_* env vars when the hook needs source or staging paths.",
   imports: "Additional workflow YAML merged into this workflow during authoring.",
   inject: "Compile-closure dependencies that should be included without merging their YAML into this workflow."
@@ -335,6 +335,8 @@ const DOCKPIPE_PROJECT_SECTION_KEY_DETAILS = {
   secrets: {
     vault_template: "Preferred env template file containing secret references such as op:// entries.",
     op_inject_template: "Legacy alias for vault_template.",
+    environment: "Default named secret environment; --secret-environment overrides it explicitly.",
+    environments: "Named resolver configurations with non-secret parameters and explicit variable bindings.",
     vault: "Default vault mode used when workflow YAML omits vault.",
     notes: "Optional maintainer-facing notes shown by tooling such as dockpipe doctor."
   },

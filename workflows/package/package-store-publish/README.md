@@ -14,31 +14,18 @@ This is the correct mirror shape for `dockpipe install core` and store-backed wo
 
 ## Secrets
 
-The workflow sets `vault: op`, so DockPipe runs `op inject` before the host steps.
+The workflow uses `vault: environment`. Select `packages-production`, configured in the repo's `dockpipe.config.json`, to read only `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` from **Dockpipe Packages - Production** (`rimccmsvbaehthwukfmrmskh6m`). The credential must have Object Read & Write access to the **dockpipe** package bucket only. Existing Cloudflare management and Terraform-state credentials stay in the original vault item.
 
-Typical `.env.vault.template` entries:
+The endpoint and bucket are non-secret workflow variables. No `op://` template or broad Cloudflare token is loaded. Install a 1Password CLI version supporting `op run --environment` and authenticate it first. Build the secrets resolver with `dockpipe build --no-images` after updating this checkout.
 
-```dotenv
-R2_BUCKET=dockpipe
-CLOUDFLARE_ACCOUNT_ID=op://DockPipe/CLOUDFLARE/url
-AWS_ACCESS_KEY_ID=op://DockPipe/CLOUDFLARE/accesskeyid
-AWS_SECRET_ACCESS_KEY=op://DockPipe/CLOUDFLARE/secretaccesskey
-```
-
-Optional:
-
-```dotenv
-R2_PREFIX=packages/
-R2_ENDPOINT_URL=op://DockPipe/CLOUDFLARE/r2endpoint
-AWS_REGION=auto
-```
+This local workflow builds a **single host's** store. The release pipeline builds separate stores for each OS/CPU pair because resolvers contain native helpers. Use the release pipeline for the public cross-platform catalog; do not replace it with a store from a different host.
 
 ## Run
 
 Dry-run is the default:
 
 ```bash
-./src/bin/dockpipe --workflow package-store-publish --workdir . --
+./src/bin/dockpipe --workflow package-store-publish --secret-environment packages-production --
 ```
 
 On a machine without the AWS CLI, DockPipe will prompt to install it from the workflow dependency definition before continuing.
@@ -46,13 +33,13 @@ On a machine without the AWS CLI, DockPipe will prompt to install it from the wo
 Real upload:
 
 ```bash
-./src/bin/dockpipe --workflow package-store-publish --workdir . --var R2_PUBLISH_DRY_RUN=0 --
+./src/bin/dockpipe --workflow package-store-publish --secret-environment packages-production --var R2_PUBLISH_DRY_RUN=0 --
 ```
 
 Build only:
 
 ```bash
-./src/bin/dockpipe --workflow package-store-publish --workdir . --var PACKAGE_RELEASE_SKIP_UPLOAD=1 --
+./src/bin/dockpipe --workflow package-store-publish --secret-environment packages-production --var PACKAGE_RELEASE_SKIP_UPLOAD=1 --
 ```
 
 If you still need bucket/domain provisioning, run `package-store-infra` separately first.

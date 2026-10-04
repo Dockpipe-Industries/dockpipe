@@ -356,7 +356,7 @@ func compileSingleResolverDir(workdir, destRoot, from, name string, defaultNames
 				"name":         name,
 				"version":      defaultVersion,
 				"title":        name,
-				"description":  "Compiled from " + from,
+				"description":  "Compiled " + kind + " package " + name,
 				"kind":         kind,
 				"allow_clone":  true,
 				"distribution": "source",
