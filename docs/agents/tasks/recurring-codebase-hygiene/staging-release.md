@@ -8,7 +8,7 @@ Objective contract:
 - authorized_objective: independently version package output; automatically build and publish an installable staging candidate after successful staging CI; prepare isolated Terraform infrastructure through the existing package.
 - done_when: focused version/cache, release admission/publication and infrastructure isolation checks pass; staging infrastructure and publication credentials are ready; the full release path is prepared for activation and end-to-end qualification after the required Git checkpoint/promotion approval.
 - inherited_invariants: production remains master-only; package/engine boundaries and unrelated checkout state are preserved.
-- explicit_exclusions: production release and branch promotion remain excluded. The user approved staging infrastructure apply, full staging preparation, the completed GitHub credential setup, and commit/push of these prepared changes on js/pipelang. The user will handle MRs. Production credential changes and unrelated editor files remain excluded.
+- explicit_exclusions: production release and promotion to master remain excluded. The user approved staging infrastructure, GitHub staging setup, and source commit/push. For the VM harness repair, the user additionally authorized MRs and merges through js/pipelang -> js/dev -> dev -> staging. Production credential changes and unrelated editor files remain excluded.
 - checkpoint_policy: automatic_within_objective
 - verification_policy: focused executable tests, workflow validation, then affected regression suites and a Terraform plan when credentials permit.
 - handoff_policy: user_requested_only
@@ -263,3 +263,44 @@ with MR promotion still owned by the user. It changes
 only workflow shell logic, its focused tests and task evidence; no engine behavior
 or release admission policy changed. Logs are in
 `/tmp/dockpipe-staging-{pr-failure-37375911684,publish-failure-37375091956,release-gate-tests}.log`.
+
+## VM harness race in hosted staging regression tests
+
+The approved release-notes fix was committed and pushed as
+`15e09e093602fa7e632dd3c4a1b593f691b73bfa`; its remote tip was verified and the user
+handled subsequent MRs. The next failing staging push run is `37379712446`, at
+`0556843a56cdd745ba0f65c26d88fa46e3c883fd`.
+
+Both CI test jobs and all five native builds passed, including Windows MSI. Linux
+amd64 failed afterward in `Runtime and package regression tests`, specifically
+`TestRunHarnessProvidesOnlyReviewedRoleAndLookupPath` in the VM guest package:
+`decode pinned harness evidence: read |0: file already closed`. Assembly and both
+publication jobs were skipped. This is separate from the prior release-notes gate.
+
+`runHarness` started `process.Wait()` concurrently with JSON decoding from
+`StdoutPipe`. Go's subprocess contract closes that pipe during Wait, so a fast
+child exit could interrupt the read. The VM-owned fix starts Wait only after
+evidence decoding/validation finishes. Failure paths still kill and reap the child
+before returning; successful holding checkpoints still receive the wait channel.
+No engine, workflow admission, version, or package isolation policy changed.
+
+Verification:
+- The ordinary existing harness test passed 1,000 times, confirming the failure is
+  timing-sensitive rather than reliably reproducible without stress.
+- Before the fix, the same existing test with `-race -count=1000 -cpu=1,2,4`
+  reproduced the hosted error 19 times across 3,000 invocations.
+- After the fix, all 3,000 race-enabled invocations pass.
+- `dockpipe package test --only vm` passes the complete offline VM package suite,
+  including all Go packages, state-split checks, four Python checks and package
+  architecture guards. No live VM or provider operation was started.
+- `git diff --check` passes. The first direct Go test command lacked `GOWORK=off`
+  and stopped at module selection; subsequent commands correctly isolate the VM
+  module and use cached Go 1.25.13 with network module downloads disabled.
+
+Logs: `/tmp/dockpipe-staging-failure-37379712446.log`,
+`/tmp/dockpipe-harness-{before,race-before,race-after}.log`, and
+`/tmp/dockpipe-vm-harness-package-tests.log`. The repair is local on `js/pipelang`
+and has user approval for checkpoint/push plus MR promotion through `js/dev` and
+`dev` to `staging`. Reuse matching open MRs, verify their diff/checks before merging,
+and stop before master. No Action retry was dispatched; the staging merge will
+start the normal CI and candidate publication path.
