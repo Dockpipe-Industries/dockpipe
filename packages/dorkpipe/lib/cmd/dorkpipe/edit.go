@@ -15,6 +15,7 @@ import (
 	"strings"
 	"time"
 
+	"dockpipe/src/lib/infrastructure"
 	"dorkpipe.orchestrator/modelclient"
 	"dorkpipe.orchestrator/reasoning"
 	"dorkpipe.orchestrator/statepaths"
@@ -361,8 +362,12 @@ func prepareEditArtifact(ctx context.Context, reqID, root, message, activeFile s
 		ContextPath:     contextPath,
 		MCPSummary:      mcpText,
 	}
-	writeJSON(filepath.Join(artifactsDir, "request.json"), requestRecord)
-	writeJSON(filepath.Join(artifactsDir, "plan.json"), plan)
+	if err := writeJSON(filepath.Join(artifactsDir, "request.json"), requestRecord); err != nil {
+		return nil, "", "", err
+	}
+	if err := writeJSON(filepath.Join(artifactsDir, "plan.json"), plan); err != nil {
+		return nil, "", "", err
+	}
 
 	if shouldTryHelperSidecar(reqID, baseRequest, plan) {
 		emitEditEvent(reqID, "scripting", "Generating bounded helper script", 0.44, map[string]any{
@@ -453,7 +458,7 @@ func prepareEditArtifact(ctx context.Context, reqID, root, message, activeFile s
 	}
 	artifact = preparedArtifact
 	if parseDiag != nil {
-		writeJSON(filepath.Join(artifactsDir, "artifact-parse.json"), parseDiag)
+		writeDiagnosticJSON(filepath.Join(artifactsDir, "artifact-parse.json"), parseDiag)
 	}
 
 	emitEditEvent(reqID, "validating", "Checking patch applicability", 0.62, nil)
@@ -758,9 +763,15 @@ func collectEditCandidates(ctx context.Context, root, activeFile, message, artif
 }
 
 func readEditContextBundle(root string) (string, string) {
-	candidates := []string{
-		filepath.Join(root, "bin", ".dockpipe", "packages", "pipeon", "pipeon-context.md"),
+	runtimeRoot, err := infrastructure.PackageRuntimeDir(root, "pipeon")
+	if err != nil {
+		return "", ""
 	}
+	contextPath, err := infrastructure.JoinStatePath(runtimeRoot, "pipeon-context.md")
+	if err != nil {
+		return "", ""
+	}
+	candidates := []string{contextPath}
 	for _, p := range candidates {
 		b, err := os.ReadFile(p)
 		if err == nil {
@@ -1628,7 +1639,9 @@ func tryHelperSidecarPatch(ctx context.Context, reqID, root, provider, host, mod
 	if err := validateEditArtifact(artifact); err != nil {
 		return nil, "", true, call, err
 	}
-	writeJSON(filepath.Join(artifactsDir, "artifact.json"), artifact)
+	if err := writeJSON(filepath.Join(artifactsDir, "artifact.json"), artifact); err != nil {
+		return nil, "", true, call, err
+	}
 	patchPath := filepath.Join(artifactsDir, "patch.diff")
 	if err := os.WriteFile(patchPath, []byte(artifact.Patch), 0o644); err != nil {
 		return nil, "", true, call, err
@@ -2173,7 +2186,7 @@ func retryInvalidEditArtifact(ctx context.Context, reqID, provider, host, model 
 		return nil, modelText, call, err
 	}
 	if parseDiag != nil {
-		writeJSON(filepath.Join(artifactsDir, "artifact-parse-repair"+suffix+".json"), parseDiag)
+		writeDiagnosticJSON(filepath.Join(artifactsDir, "artifact-parse-repair"+suffix+".json"), parseDiag)
 	}
 	if err := validateEditArtifact(artifact); err != nil {
 		return nil, modelText, call, err
@@ -2308,12 +2321,22 @@ func buildAppliedSummary(artifact *editModelArtifact, root, artifactsDir, valida
 	return fmt.Sprintf("%s\n\nFiles: `%s`\nValidation: `%s`\nArtifacts: `%s`", base, files, validationStatus, relativeTo(root, artifactsDir))
 }
 
-func writeJSON(path string, value any) {
+func writeJSON(path string, value any) error {
 	b, err := json.MarshalIndent(value, "", "  ")
 	if err != nil {
-		return
+		return fmt.Errorf("encode artifact %s: %w", filepath.Base(path), err)
 	}
-	_ = os.WriteFile(path, b, 0o644)
+	if err := os.WriteFile(path, b, 0o644); err != nil {
+		return fmt.Errorf("persist artifact %s: %w", filepath.Base(path), err)
+	}
+	return nil
+}
+
+// Optional diagnostics must not hide failures or invalidate an otherwise usable edit.
+func writeDiagnosticJSON(path string, value any) {
+	if err := writeJSON(path, value); err != nil {
+		fmt.Fprintf(os.Stderr, "Could not write diagnostic: %v\n", err)
+	}
 }
 
 func clampString(s string, limit int) string {
@@ -2417,7 +2440,9 @@ func tryDeterministicEditPrimitive(reqID, root, message, activeFile, artifactsDi
 		emitEditError(reqID, "MODEL_OUTPUT_INVALID", fmt.Sprintf("Deterministic edit artifact validation failed: %v", err), false)
 		return nil, "", true, err
 	}
-	writeJSON(filepath.Join(artifactsDir, "artifact.json"), artifact)
+	if err := writeJSON(filepath.Join(artifactsDir, "artifact.json"), artifact); err != nil {
+		return nil, "", true, err
+	}
 	patchPath := filepath.Join(artifactsDir, "patch.diff")
 	if err := os.WriteFile(patchPath, []byte(artifact.Patch), 0o644); err != nil {
 		return nil, "", true, err
@@ -2745,7 +2770,9 @@ func tryDeterministicCollectionScaffoldPrimitive(reqID, root, message, artifacts
 		emitEditError(reqID, "MODEL_OUTPUT_INVALID", fmt.Sprintf("Deterministic scaffold validation failed: %v", err), false)
 		return nil, "", true, err
 	}
-	writeJSON(filepath.Join(artifactsDir, "artifact.json"), artifact)
+	if err := writeJSON(filepath.Join(artifactsDir, "artifact.json"), artifact); err != nil {
+		return nil, "", true, err
+	}
 	patchPath := filepath.Join(artifactsDir, "patch.diff")
 	if err := os.WriteFile(patchPath, []byte(artifact.Patch), 0o644); err != nil {
 		return nil, "", true, err
@@ -2825,7 +2852,7 @@ description: |
   workflows, resolvers, or assets.
 author: Generated
 license: Apache-2.0
-repository: https://github.com/dockpipe/dockpipe
+repository: https://github.com/Dockpipe-Industries/dockpipe
 tags: [experimental, authoring, generated]
 `, packageName, version, titleName, description)) + "\n"
 	readmeBody := strings.TrimSpace(fmt.Sprintf(`# %s

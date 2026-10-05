@@ -1,6 +1,7 @@
 package application
 
 import (
+	"fmt"
 	"path/filepath"
 	"strings"
 
@@ -45,22 +46,39 @@ func applyDockpipeStateEnv(envMap map[string]string, workdir, scope string) erro
 	if err != nil {
 		return err
 	}
-	scope = infrastructure.SanitizePackageStateScope(scope)
-	packageStateDir, err := infrastructure.PackageStateDir(workdir, scope)
+	scope = strings.TrimSpace(scope)
+	packageState, err := infrastructure.PreparePackageStateDirWithManifests(workdir, scope, envMap["DOCKPIPE_PACKAGE_MANIFEST"])
 	if err != nil {
 		return err
 	}
 	envMap[infrastructure.EnvStateDir] = stateDir
 	envMap[infrastructure.EnvPackageID] = scope
-	envMap[infrastructure.EnvPackageStateDir] = packageStateDir
+	envMap[infrastructure.EnvPackageStateDir] = packageState.Dir
 	return nil
+}
+
+func applyPackageManifestContext(envMap map[string]string, sourceRoot string) {
+	delete(envMap, "DOCKPIPE_PACKAGE_MANIFEST")
+	if packageRoot := nearestPackageRoot(sourceRoot); packageRoot != "" {
+		envMap["DOCKPIPE_PACKAGE_ROOT"] = packageRoot
+		envMap["DOCKPIPE_PACKAGE_MANIFEST"] = filepath.Join(packageRoot, infrastructure.PackageManifestFilename)
+	}
 }
 
 func applyCIArtifactEnv(envMap map[string]string, workdir string) error {
 	if strings.TrimSpace(envMap["DOCKPIPE_CI_RAW_DIR"]) != "" && strings.TrimSpace(envMap["DOCKPIPE_CI_ANALYSIS_DIR"]) != "" {
 		return nil
 	}
-	rawDir, analysisDir, err := ciArtifactDirs(workdir, strings.TrimSpace(envMap["DOCKPIPE_WORKFLOW_NAME"]))
+	binding := strings.TrimSpace(envMap["DOCKPIPE_CI_ARTIFACT_SCOPE"])
+	workflowName := strings.TrimSpace(envMap["DOCKPIPE_WORKFLOW_NAME"])
+	binding, err := resolveCIArtifactBinding(binding, workflowName, strings.TrimSpace(envMap[infrastructure.EnvPackageID]))
+	if err != nil {
+		return err
+	}
+	if binding == "" {
+		return nil
+	}
+	rawDir, analysisDir, err := ciArtifactDirs(workdir, binding)
 	if err != nil {
 		return err
 	}
@@ -71,6 +89,31 @@ func applyCIArtifactEnv(envMap map[string]string, workdir string) error {
 		envMap["DOCKPIPE_CI_ANALYSIS_DIR"] = analysisDir
 	}
 	return nil
+}
+
+func resolveCIArtifactBinding(binding, workflowName, packageID string) (string, error) {
+	binding = strings.TrimSpace(binding)
+	workflowName = strings.TrimSpace(workflowName)
+	packageID = strings.TrimSpace(packageID)
+	if binding == "" && workflowName != "" {
+		return "workflow:" + workflowName, nil
+	}
+	switch binding {
+	case "":
+		return "", nil
+	case "workflow":
+		if workflowName == "" {
+			return "", fmt.Errorf("DOCKPIPE_CI_ARTIFACT_SCOPE=workflow requires DOCKPIPE_WORKFLOW_NAME")
+		}
+		return "workflow:" + workflowName, nil
+	case "package":
+		if packageID == "" {
+			return "", fmt.Errorf("DOCKPIPE_CI_ARTIFACT_SCOPE=package requires %s", infrastructure.EnvPackageID)
+		}
+		return "package:" + packageID, nil
+	default:
+		return binding, nil
+	}
 }
 
 func applyWorkflowArtifactEnv(envMap map[string]string, workdir, workflowName string) error {
@@ -111,21 +154,31 @@ func workflowArtifactRoot(workdir, workflowName string) (string, error) {
 	return filepath.Join(stateDir, "workflows", scope, "artifacts"), nil
 }
 
-func ciArtifactDirs(workdir, workflowName string) (string, string, error) {
-	stateDir, err := infrastructure.StateRoot(workdir)
+func ciArtifactDirs(workdir, binding string) (string, string, error) {
+	binding = strings.TrimSpace(binding)
+	if strings.HasPrefix(binding, "package:") {
+		scope := strings.TrimSpace(strings.TrimPrefix(binding, "package:"))
+		if scope == "" {
+			return "", "", fmt.Errorf("CI artifact package binding requires a package name")
+		}
+		root, err := infrastructure.PackageRuntimeDir(workdir, scope)
+		if err != nil {
+			return "", "", err
+		}
+		return filepath.Join(root, "ci", "raw"), filepath.Join(root, "ci", "analysis"), nil
+	}
+	workflowName := binding
+	if strings.HasPrefix(binding, "workflow:") {
+		workflowName = strings.TrimSpace(strings.TrimPrefix(binding, "workflow:"))
+	}
+	if workflowName == "" {
+		return "", "", fmt.Errorf("CI artifact workflow binding requires a workflow name")
+	}
+	root, err := workflowArtifactRoot(workdir, workflowName)
 	if err != nil {
 		return "", "", err
 	}
-	if strings.TrimSpace(workflowName) != "" {
-		scope := sanitizeWorkflowStateScope(workflowName)
-		root := filepath.Join(stateDir, "workflows", scope, "artifacts")
-		return filepath.Join(root, "ci-raw"), filepath.Join(root, "ci-analysis"), nil
-	}
-	root, err := infrastructure.PackageStateDir(workdir, "dorkpipe")
-	if err != nil {
-		return "", "", err
-	}
-	return filepath.Join(root, "ci", "raw"), filepath.Join(root, "ci", "analysis"), nil
+	return filepath.Join(root, "ci-raw"), filepath.Join(root, "ci-analysis"), nil
 }
 
 func sanitizeWorkflowStateScope(scope string) string {

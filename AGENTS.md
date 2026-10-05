@@ -9,6 +9,11 @@ Machine-readable routing: `docs/agents/index.yaml`.
 
 ## Global Hard Rules
 
+When user input is genuinely required and the host supports structured prompts, use Yes/No for
+binary decisions or 2-3 mutually exclusive choices with the recommended option first. Use prose
+when the decision needs more than three meaningful choices, structured choices would misrepresent
+it, or the host lacks that UI.
+
 | Rule | Where to read |
 | --- | --- |
 | Keep `src/lib/` and `src/cmd/` generic. No repo-specific package/workflow/staging knowledge in engine code. | `docs/agents/core/engine-boundary.md` |
@@ -38,7 +43,7 @@ Machine-readable routing: `docs/agents/index.yaml`.
 | Package authoring | `docs/agents/packages/package-authoring.md`, `docs/agents/core/core-package-model.md` | `dorkpipe-package-authoring` |
 | Package promotion | `docs/agents/packages/package-promotion.md`, `docs/agents/core/validation-commands.md` | `dorkpipe-package-authoring`, `dorkpipe-core-review` |
 | Agentic/DorkPipe workflows | `docs/agents/workflows/ai-workflow-value-bar.md`, `docs/agents/workflows/model-escalation.md`, `docs/agents/workflows/docs-generation.md`, `docs/agents/workflows/planner-promotion-model.md`, `docs/agents/workflows/yaml-workflows.md` | `dorkpipe-agentic-yaml`, `dorkpipe-yaml-workflows` |
-| Tooling app or UI surface | `docs/agents/workflows/tooling-surfaces.md`, `docs/agents/workflows/planner-promotion-model.md`, `docs/agents/tasks/agentic-app-ui.md` | `dorkpipe-agentic-yaml`, `dorkpipe-yaml-workflows` |
+| Tooling app or UI surface | `docs/agents/workflows/tooling-surfaces.md`, `docs/agents/workflows/planner-promotion-model.md`, `docs/agents/tasks/agentic-app-ui/index.yaml` | `dorkpipe-agentic-yaml`, `dorkpipe-yaml-workflows` |
 | Docs or agent guidance | `docs/agents/docs/token-optimization.md`, `docs/agents/docs/skills.md` | `dorkpipe-token-optimization` |
 | Docs system or sync rules | `docs/agents/docs/docs-system.md`, `docs/agents/docs/token-optimization.md` | `dorkpipe-token-optimization`, `dorkpipe-core-review` |
 | Artifacts or MCP | `docs/agents/runtime/artifacts-and-mcp.md`, `docs/agents/runtime/safety-guardrails.md` | `dorkpipe-core-review` |
@@ -57,7 +62,9 @@ Installed Codex skills expected here:
 
 - `dorkpipe-agentic-yaml`
 - `dorkpipe-core-review`
+- `dorkpipe-objective-execution`
 - `dorkpipe-package-authoring`
+- `dorkpipe-task-handoff`
 - `dorkpipe-token-optimization`
 - `dorkpipe-yaml-workflows`
 

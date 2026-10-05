@@ -1,0 +1,19 @@
+public Record ContainerRow {
+    public string Id;
+    public string Name;
+    public bool Running;
+}
+
+public Class Root {
+    public ContainerRow MakeRow(string id, string name, bool running) =>
+        new ContainerRow { Id = id, Name = name, Running = running };
+
+    public List<ContainerRow> EmptyRows() =>
+        empty_list<ContainerRow>();
+
+    public List<ContainerRow> OneRow(ContainerRow value) =>
+        list(value);
+
+    public List<ContainerRow> ForwardRows(List<ContainerRow> values) =>
+        values;
+}

@@ -177,6 +177,82 @@ func TestRecoveryReconcilesOnlyPersistedIdleSessionOnFreshChild(t *testing.T) {
 	}
 }
 
+func TestCAS14BaselineRecoveryReselectsPolicyBeforeSecondTurn(t *testing.T) {
+	policy := recoveryPolicy(t)
+	session := providersession.SessionRef{Provider: "codex", SessionID: "thread-1"}
+	evidence := "pipeon-durable-fixture"
+	snapshotStore := &memorySnapshotStore{}
+	saveRecoverySnapshot(t, snapshotStore, validRecoverySnapshot(policy, session, evidence))
+	auditStore := &memoryAuditStore{}
+	records := make([]AuditRecord, 0, 8)
+	for sequence := uint64(1); sequence <= 7; sequence++ {
+		records = append(records, AuditRecord{Version: auditSchemaVersion, Sequence: sequence, EventSequence: sequence, Operation: "event", Outcome: "completed", Lifecycle: "idle", Summary: "thread_idle", Session: session, Progress: "low", Latency: "none"})
+	}
+	records = append(records, AuditRecord{Version: auditSchemaVersion, Sequence: 8, EventSequence: 8, Operation: "disconnect", Outcome: "failed", Lifecycle: "disconnected", Summary: string(DisconnectShutdown), Session: session, Progress: "low", Latency: "none"})
+	document, err := json.Marshal(auditDocument{Version: auditSchemaVersion, Evidence: evidence, Session: session, LastEvent: 8, Segments: []auditSegment{{FirstSequence: 1, LastSequence: 8, Records: records}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := auditStore.Save(context.Background(), evidence, document); err != nil {
+		t.Fatal(err)
+	}
+	child := newFakeChild()
+	s, err := NewWithStoresAndIdentity(session, fakeLauncher{start: func(context.Context) (Child, error) { return child, nil }}, testDeadlines(), testInitialization(), snapshotStore, auditStore, DurableIdentity{RecoveryEvidence: evidence, ProcessIncarnationID: "process-new", ConnectionID: "connection-new"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	done := make(chan struct {
+		ref       LifecycleReference
+		effective providersession.EffectivePolicySnapshot
+		err       error
+	}, 1)
+	go func() {
+		ref, effective, err := s.RecoverBaseline(context.Background(), providersession.RecoveryRequest{Session: session, RecoveryEvidence: evidence}, policy)
+		done <- struct {
+			ref       LifecycleReference
+			effective providersession.EffectivePolicySnapshot
+			err       error
+		}{ref: ref, effective: effective, err: err}
+	}()
+	scanner := bufio.NewScanner(child.stdinR)
+	initialize := lifecycleRequest(t, scanner, "initialize", 1)
+	_ = initialize
+	_, _ = child.stdoutW.Write([]byte(response(1, `{"userAgent":"codex/0.144.1","codexHome":"C:/codex","platformFamily":"windows","platformOs":"windows"}`)))
+	if !scanner.Scan() || !strings.Contains(scanner.Text(), `"initialized"`) {
+		t.Fatal("missing initialized notification")
+	}
+	_ = lifecycleRequest(t, scanner, "model/list", 2)
+	_, _ = child.stdoutW.Write([]byte(response(2, modelCatalogFixture)))
+	read := lifecycleRequest(t, scanner, "thread/read", 3)
+	assertSelectedPolicy(t, read, policy)
+	params := requestParams(t, read)
+	if params["threadId"] != session.SessionID || params["includeTurns"] != false {
+		t.Fatalf("recovery read params = %#v", params)
+	}
+	_, _ = child.stdoutW.Write([]byte(response(3, `{"thread":{"id":"thread-1","status":"idle"}}`)))
+	recovered := <-done
+	if recovered.err != nil {
+		t.Fatal(recovered.err)
+	}
+	if recovered.effective.EffectiveModelRef != policy.Model || recovered.effective.EffectiveReasoningRef != policy.ReasoningEffort || recovered.effective.Approval.EffectiveRef != humanReviewPolicyRef || recovered.effective.Sandbox.EffectiveRef != workspaceWritePolicyRef {
+		t.Fatalf("recovered effective policy = %+v", recovered.effective)
+	}
+	if event := nextEvent(t, s); event.Summary != "recovered_idle" || event.Sequence != 9 {
+		t.Fatalf("recovered event = %+v", event)
+	}
+	turnDone := make(chan error, 1)
+	go func() {
+		_, err := s.StartPromptTurn(context.Background(), recovered.ref, policy, "second fixture turn")
+		turnDone <- err
+	}()
+	turn := lifecycleRequest(t, scanner, "turn/start", 4)
+	assertSelectedPolicy(t, turn, policy)
+	_, _ = child.stdoutW.Write([]byte(response(4, `{"thread":{"id":"thread-1"},"turn":{"id":"turn-2","status":"inProgress"}}`)))
+	if err := <-turnDone; err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestRecoveryRejectsUnsafeSnapshotsAndEvidenceWithoutLaunching(t *testing.T) {
 	policy, session, evidence := recoveryPolicy(t), providersession.SessionRef{Provider: "test", SessionID: "thread-1"}, "recovery-safe"
 	for name, mutate := range map[string]func(*recoverySnapshot){

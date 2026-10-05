@@ -1,0 +1,11 @@
+public Record ContainerRow
+{
+    public string Id;
+    public string Name;
+    public bool Running;
+}
+
+public Class Root
+{
+    public List<ContainerRow> FilterRows(List<ContainerRow> values, string key) => filter_by(values, ContainerRow.Name, key);
+}

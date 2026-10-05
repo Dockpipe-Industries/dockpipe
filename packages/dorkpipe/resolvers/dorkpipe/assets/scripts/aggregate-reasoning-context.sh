@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Merge package-scoped node outputs into a single context block for downstream prompts.
 set -euo pipefail
-DORKPIPE_NODES_DIR="$(dockpipe scope --package dorkpipe nodes)"
+DORKPIPE_NODES_DIR="$(dockpipe __state package-runtime --owner dorkpipe --path nodes)"
 out="${1:-/dev/stdout}"
 {
   echo "# DorkPipe aggregated context"

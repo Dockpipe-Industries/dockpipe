@@ -1,0 +1,23 @@
+/// <summary>
+/// Linux QEMU development settings and a fail-closed offline qualification contract.
+/// </summary>
+public Class LinuxQemuVmResolverConfig
+{
+    [DisplayName = "General"]
+    public LinuxVmGeneral General;
+
+    [DisplayName = "Image"]
+    public LinuxVmImage Image;
+
+    [DisplayName = "Storage"]
+    public LinuxVmStorage Storage;
+
+    [DisplayName = "Qualification"]
+    public LinuxVmQualification Qualification;
+
+    [DisplayName = "Protocol"]
+    public LinuxVmProtocol Protocol;
+
+    [DisplayName = "Advanced"]
+    public LinuxVmAdvanced Advanced;
+}

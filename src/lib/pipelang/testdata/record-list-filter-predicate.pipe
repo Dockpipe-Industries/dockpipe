@@ -1,0 +1,14 @@
+public Record ContainerRow {
+    public string Id;
+    public string Name;
+    public string State;
+}
+
+public Class Root {
+    public bool Matches(ContainerRow row, string query)
+        => contains_casefolded(row.Name, trim(query))
+           || contains_casefolded(row.State, trim(query));
+
+    public List<ContainerRow> Search(List<ContainerRow> values, string query)
+        => filter(values, Matches, query);
+}

@@ -7,7 +7,7 @@ Generated files used as **context** for humans and AI — not a second orchestra
 When asked *“compliance issues?”* or *“security posture?”*:
 
 1. Read **`AGENTS.md`**.
-2. If present, load CI findings from `dockpipe scope workflow ci ci-analysis/findings.json` and DorkPipe run metadata from `dockpipe scope --package dorkpipe run.json`. Do **not** invent scan output.
+2. If present, load CI findings from `dockpipe scope workflow ci ci-analysis/findings.json`. Treat DorkPipe run metadata as disposable package-runtime evidence exposed by the DorkPipe package, not as a durable public package-scope file. Do **not** invent scan output.
 3. If artifacts are missing or stale vs `HEAD`, say so — do **not** claim “clean” without evidence.
 4. This is **not** a certified compliance verdict (SOC2, ISO, etc.).
 
@@ -25,6 +25,6 @@ When asked *“compliance issues?”* or *“security posture?”*:
 
 ## User insight queue
 
-Structured human guidance → **`dockpipe scope --package dorkpipe analysis`** (`queue.json`, `insights.json`, …). Schemas under **`src/schemas/dockpipe-user-insight-*.schema.json`**.
+Structured human guidance is owned by the DorkPipe insight CLI and its durable learning-authority helper; do not reconstruct its path with a generic public package-scope suffix. Schemas live under **`src/schemas/dockpipe-user-insight-*.schema.json`**.
 
 **Canonical implementation:** **`dorkpipe insight ...`** in the maintainer **`dorkpipe`** package; the workflow **`user-insight-process`** is a host-side entrypoint that uses the same CLI surface. See **`resolvers/user-insight-process/README.md`** there.

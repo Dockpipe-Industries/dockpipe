@@ -10,7 +10,7 @@ description: |
   backends for concrete registries and may host one or more workflows.
 author: DockPipe
 license: Apache-2.0
-repository: https://github.com/dockpipe/dockpipe
+repository: https://github.com/Dockpipe-Industries/dockpipe
 tags: [workflow, registry, container, oci, ghcr, github]
 includes_resolvers:
   - ghcr

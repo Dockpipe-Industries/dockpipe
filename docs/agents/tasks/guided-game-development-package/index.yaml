@@ -1,0 +1,25 @@
+# TASK-016 Guided game-development package and Unreal integration
+schema: 1
+id: TASK-016
+topic: "Guided game-development package and Unreal integration"
+entrypoint: overview.md
+
+dispatch:
+  readiness: unclassified
+  ownership: unclaimed
+
+routes:
+  orientation:
+    read:
+      - overview.md
+  implementation:
+    read:
+      - overview.md
+
+documents:
+  - path: overview.md
+    role: complete active task record
+
+maintenance:
+  - Resolve document paths relative to this index.
+  - Keep task narrative in overview.md and dispatch metadata synchronized with docs/agents/task-index.yaml.

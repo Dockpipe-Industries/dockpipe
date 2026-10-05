@@ -1,0 +1,156 @@
+name: backlog.remote
+namespace: dockpipeproject
+description: >-
+  Inspect one explicit open backlog task, compile one bounded remote request, and record
+  fixture-backed dispatch, completion-candidate identity, and untrusted status, diff, result, and
+  validation-receipt evidence, then mechanically verify accepted patch structure and lexical
+  allowed-path containment, apply it only to an isolated temporary copy, and execute the immutable
+  required validation in an exact-input temporary workspace, then record one explicit local
+  semantic-review decision and emit readiness only for an approved, passed candidate, then require
+  a separate explicit local decision before rollback-safe application of the exact accepted patch
+  to the consumer checkout, then require one separately approved exact-path request before the
+  DockPipe runtime creates a checkpoint, then require one distinct approved request before the
+  runtime publishes that exact commit to one reviewed remote branch ref, without invoking a live
+  provider, syncing, merging, or selecting another task.
+
+docker_preflight: false
+platforms: [windows, deb]
+dependencies:
+  host:
+    - id: bash
+      command: bash
+      description: Runs the package-owned offline backlog adapter.
+      install:
+        windows: winget install Git.Git
+        deb: sudo apt-get update && sudo apt-get install -y bash
+
+workspace:
+  repo: .
+  mode: managed
+  storage: worktree
+  lifecycle:
+    branch_prefix: dorkpipe
+    checkpoint: manual
+    publish: none
+
+vars:
+  DORKPIPE_BACKLOG_TASK_INDEX: docs/agents/task-index.yaml
+  DORKPIPE_BACKLOG_TASK_ID: ""
+  DORKPIPE_BACKLOG_SLICE: ""
+  DORKPIPE_BACKLOG_BASELINE: ""
+  DORKPIPE_BACKLOG_ENVIRONMENT_REF: ""
+  DORKPIPE_BACKLOG_BRANCH_REF: ""
+  DORKPIPE_BACKLOG_ALLOWED_PATHS_JSON: "[]"
+  DORKPIPE_BACKLOG_HARD_BOUNDARIES_JSON: "[]"
+  DORKPIPE_BACKLOG_REQUIRED_VALIDATION_JSON: "[]"
+  DORKPIPE_BACKLOG_VALIDATION_INPUTS_JSON: "[]"
+  DORKPIPE_BACKLOG_ROUTED_SOURCES_JSON: "[]"
+  DORKPIPE_BACKLOG_COMPATIBILITY_FIXTURE: ""
+  DORKPIPE_BACKLOG_DISPATCH_FIXTURE: ""
+  DORKPIPE_BACKLOG_COMPLETION_FIXTURE: ""
+  DORKPIPE_BACKLOG_STATUS_FIXTURE: ""
+  DORKPIPE_BACKLOG_DIFF_FIXTURE: ""
+  DORKPIPE_BACKLOG_RESULT_FIXTURE: ""
+  DORKPIPE_BACKLOG_VALIDATION_RECEIPT_FIXTURE: ""
+  DORKPIPE_BACKLOG_SEMANTIC_REVIEW_FIXTURE: ""
+  DORKPIPE_BACKLOG_CHECKOUT_APPLICATION_FIXTURE: ""
+  DORKPIPE_BACKLOG_CHECKPOINT_FIXTURE: ""
+  DORKPIPE_BACKLOG_PUBLICATION_FIXTURE: ""
+  DORKPIPE_BACKLOG_CONSUMER_ROOT: ""
+
+steps:
+  - id: inspect
+    kind: host
+    cwd: repo
+    scopes: { source: repo, artifacts: artifacts }
+    run: scripts/dorkpipe/backlog-remote.sh
+
+  - id: compile
+    kind: host
+    cwd: repo
+    scopes: { source: repo, artifacts: artifacts }
+    run: scripts/dorkpipe/backlog-remote.sh
+
+  - id: compatibility
+    kind: host
+    cwd: repo
+    scopes: { source: repo, artifacts: artifacts }
+    run: scripts/dorkpipe/backlog-remote.sh
+
+  - id: dispatch
+    kind: host
+    cwd: repo
+    scopes: { source: repo, artifacts: artifacts }
+    run: scripts/dorkpipe/backlog-remote.sh
+
+  - id: completion_candidate
+    kind: host
+    cwd: repo
+    scopes: { source: repo, artifacts: artifacts }
+    run: scripts/dorkpipe/backlog-remote.sh
+
+  - id: status
+    kind: host
+    cwd: repo
+    scopes: { source: repo, artifacts: artifacts }
+    run: scripts/dorkpipe/backlog-remote.sh
+
+  - id: diff
+    kind: host
+    cwd: repo
+    scopes: { source: repo, artifacts: artifacts }
+    run: scripts/dorkpipe/backlog-remote.sh
+
+  - id: result
+    kind: host
+    cwd: repo
+    scopes: { source: repo, artifacts: artifacts }
+    run: scripts/dorkpipe/backlog-remote.sh
+
+  - id: validation_receipt
+    kind: host
+    cwd: repo
+    scopes: { source: repo, artifacts: artifacts }
+    run: scripts/dorkpipe/backlog-remote.sh
+
+  - id: patch_boundary
+    kind: host
+    cwd: repo
+    scopes: { source: repo, artifacts: artifacts }
+    run: scripts/dorkpipe/backlog-remote.sh
+
+  - id: patch_application
+    kind: host
+    cwd: repo
+    scopes: { source: repo, artifacts: artifacts }
+    run: scripts/dorkpipe/backlog-remote.sh
+
+  - id: validation_execution
+    kind: host
+    cwd: repo
+    scopes: { source: repo, artifacts: artifacts }
+    run: scripts/dorkpipe/backlog-remote.sh
+
+  - id: semantic_review
+    kind: host
+    cwd: repo
+    scopes: { source: repo, artifacts: artifacts }
+    run: scripts/dorkpipe/backlog-remote.sh
+
+  - id: checkout_application
+    kind: host
+    cwd: repo
+    scopes: { source: repo, artifacts: artifacts }
+    run: scripts/dorkpipe/backlog-remote.sh
+
+  - id: checkout_checkpoint
+    kind: host
+    cwd: repo
+    scopes: { source: repo, artifacts: artifacts }
+    run: scripts/dorkpipe/backlog-remote.sh
+
+  - id: checkout_publication
+    kind: host
+    cwd: repo
+    scopes: { source: repo, artifacts: artifacts }
+    run: scripts/dorkpipe/backlog-remote.sh

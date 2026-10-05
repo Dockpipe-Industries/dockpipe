@@ -12,6 +12,7 @@ if [[ -f "${SCRIPT_DIR}/cursor-prep.sh" ]]; then
 fi
 
 cursor_dev_set_workdir
+cursor_dev_prepare_state
 STATE_ROOT="$(cursor_dev_state_root)"
 GLOBAL_STATE_ROOT="$(cursor_dev_global_state_root)"
 if [[ "${DOCKPIPE_LAUNCH_MODE:-}" == "gui" ]] || [[ "${DOCKPIPE_LAUNCH_MODE:-}" == "GUI" ]]; then
@@ -61,6 +62,7 @@ ACTIVE_SESSION_FILE="${STATE_ROOT}/active-session.env"
 CONTAINER_GLOBAL_STATE_ROOT="$(cursor_dev_container_global_state_root)"
 CONTAINER_STATE_ROOT="$(cursor_dev_container_state_root)"
 CONTAINER_HOME="${CONTAINER_STATE_ROOT}/home"
+CONTAINER_SERVER="${CONTAINER_HOME}/.cursor-server"
 
 cursor_dev_is_running_container() {
   local name="${1:-}"
@@ -100,6 +102,13 @@ run_args=(
   -w /work
   -v "${SESSION_IDLE}:/dockpipe-session-idle.sh:ro"
   -v "${COMMON_SH}:/dockpipe-cursor-dev-common.sh:ro"
+  -v "${CURSOR_DEV_DURABLE_HOME}:${CONTAINER_HOME}"
+  -v "${CURSOR_DEV_RUNTIME_SERVER}:${CONTAINER_SERVER}"
+  -v "${CURSOR_DEV_DURABLE_EXTENSIONS}:${CONTAINER_SERVER}/extensions"
+  -v "${CURSOR_DEV_DURABLE_USER}:${CONTAINER_SERVER}/data/User"
+  -v "${CURSOR_DEV_DURABLE_MACHINE}:${CONTAINER_SERVER}/data/Machine"
+  -v "${CURSOR_DEV_DURABLE_CONFIG}:${CONTAINER_STATE_ROOT}/xdg-config"
+  -v "${CURSOR_DEV_DURABLE_DATA}:${CONTAINER_STATE_ROOT}/xdg-data"
   -e "HOME=${CONTAINER_HOME}"
   -e "DOCKPIPE_STATE_DIR=${CONTAINER_GLOBAL_STATE_ROOT}"
   -e "DOCKPIPE_PACKAGE_STATE_DIR=${CONTAINER_STATE_ROOT}"
@@ -109,7 +118,12 @@ run_args=(
   -e "XDG_CACHE_HOME=${CONTAINER_STATE_ROOT}/xdg-cache"
   -e "XDG_CONFIG_HOME=${CONTAINER_STATE_ROOT}/xdg-config"
   -e "XDG_DATA_HOME=${CONTAINER_STATE_ROOT}/xdg-data"
+  -e "DOTNET_CLI_HOME=${CONTAINER_STATE_ROOT}/dotnet"
+  -e "NUGET_PACKAGES=${CONTAINER_STATE_ROOT}/nuget-packages"
   -e "GOCACHE=${CONTAINER_STATE_ROOT}/gocache"
+  -e "GOMODCACHE=${CONTAINER_STATE_ROOT}/gomodcache"
+  -e "GOPATH=${CONTAINER_STATE_ROOT}/gopath"
+  -e "NPM_CONFIG_CACHE=${CONTAINER_STATE_ROOT}/xdg-cache/npm"
   -e "CURSOR_DEV_SESSION_POLL_SEC=${CURSOR_DEV_SESSION_POLL_SEC:-2}"
   -e "CURSOR_DEV_CONTAINER_MONITOR=${CURSOR_DEV_CONTAINER_MONITOR:-1}"
   -e "CURSOR_DEV_REMOTE_FS_SIGNAL=${CURSOR_DEV_REMOTE_FS_SIGNAL:-1}"

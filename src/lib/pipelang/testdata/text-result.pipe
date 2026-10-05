@@ -1,0 +1,17 @@
+public Class Root {
+    public Result<string, string> TextOk(string value) =>
+        ok<string, string>(value);
+
+    public Result<string, string> TextFailed(string error) =>
+        err<string, string>(error);
+
+    public Result<string, string> ForwardText(Result<string, string> value) => value;
+
+    public bool TextSucceeded(Result<string, string> value) => is_ok(value);
+
+    public string TextOr(Result<string, string> value, string fallback) =>
+        success_or(value, fallback);
+
+    public string ErrorOr(Result<string, string> value, string fallback) =>
+        failure_or(value, fallback);
+}

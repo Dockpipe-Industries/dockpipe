@@ -9,7 +9,7 @@ description: |
   the shared r2 publish script contract.
 author: DockPipe
 license: Apache-2.0
-repository: https://github.com/dockpipe/dockpipe
+repository: https://github.com/Dockpipe-Industries/dockpipe
 tags: [workflow, secrets, onepassword, r2, cloudflare, storage]
 depends: [cloud.storage, secrets]
 requires_resolvers: [onepassword, r2]

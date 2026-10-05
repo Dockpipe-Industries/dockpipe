@@ -202,7 +202,7 @@ Rules:
 - JSON projection files are rebuildable indexes over JSONL, useful for fast summaries and UI
   bootstrap, but not authoritative.
 - YAML files are canonical for desired state and configuration.
-- Postgres indexes JSONL/YAML as a rebuildable projection for PipeDeck, dashboards, search, and
+- Postgres indexes JSONL/YAML as a rebuildable projection for ForgePipe, dashboards, search, and
   cross-run queries.
 - Event writers should append; they should not rewrite earlier observed facts.
 - Structured events must derive from the Go result contract instead of being hand-authored in

@@ -28,7 +28,7 @@ That’s a real multi-step workflow—alpine containers, outputs handed to the n
 
 ## Try it
 
-1. Grab a **release binary** (or `make dev-install` from a clone): [github.com/jamie-steele/dockpipe/releases](https://github.com/jamie-steele/dockpipe/releases)
+1. Grab a **release binary** (or `make dev-install` from a clone): [github.com/Dockpipe-Industries/dockpipe/releases](https://github.com/Dockpipe-Industries/dockpipe/releases)
 2. You need **Docker** and **bash** on the host.
 3. Run:
 

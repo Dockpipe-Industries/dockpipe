@@ -1,0 +1,10 @@
+workflow: linux-vm
+resolver: qemu
+purpose: development
+inputs:
+  General.Purpose: development
+  Image.Url: https://cloud-images.ubuntu.com/releases/noble/release-20260801/ubuntu-24.04-server-cloudimg-amd64.img
+  Image.Sha256: 0533b0655c32e68b31d792ecd6ccfca95abdbc536c4446874fe0513bd4140ffe
+  Storage.Disk: /absolute/path/to/user-owned-development-disk.qcow2
+  Advanced.SshUser: ubuntu
+  Advanced.GuestCommand: uname -a

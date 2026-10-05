@@ -8,7 +8,7 @@ This doc is **only** for a **niche** flow: moving refs between a **WSL** clone a
 
 Get branches from a repo in WSL into your Windows clone **without pushing to a remote**. Dockpipe can write a git bundle when it commits on the host; you then fetch that bundle from PowerShell.
 
-**Install `dockpipe.exe` first** (MSI, script, or zip) — see **[../install.md](../install.md)** (Windows section). Quick option: `irm https://raw.githubusercontent.com/jamie-steele/dockpipe/master/release/packaging/windows/install.ps1 | iex`
+**Install `dockpipe.exe` first** (MSI, script, or zip) — see **[../install.md](../install.md)** (Windows section). Quick option: `irm https://raw.githubusercontent.com/Dockpipe-Industries/dockpipe/master/release/packaging/windows/install.ps1 | iex`
 
 **WSL bridge users** may also read the sections below; the **default** Windows story remains **native `dockpipe.exe`**, not bundle fetch.
 

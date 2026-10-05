@@ -4,12 +4,14 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"dorkpipe.orchestrator/statepaths"
 )
 
 func TestEnqueueProcessExportFlow(t *testing.T) {
+	isolateLearningState(t)
 	workdir := t.TempDir()
 
 	id1, err := Enqueue(workdir, "convention: use gofmt for Go.", "unknown", "", "", "")
@@ -24,7 +26,10 @@ func TestEnqueueProcessExportFlow(t *testing.T) {
 		t.Fatalf("enqueue 2: %v", err)
 	}
 
-	insightsPath := statepaths.InsightsPath(workdir)
+	insightsPath, err := statepaths.InsightsPath(workdir)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if err := os.MkdirAll(filepath.Dir(insightsPath), 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -82,6 +87,7 @@ func TestEnqueueProcessExportFlow(t *testing.T) {
 }
 
 func TestInsightLifecycleMutations(t *testing.T) {
+	isolateLearningState(t)
 	workdir := t.TempDir()
 	if _, err := Enqueue(workdir, "architecture: keep packages isolated.", "unknown", "", "", ""); err != nil {
 		t.Fatal(err)
@@ -93,7 +99,10 @@ func TestInsightLifecycleMutations(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	insightsPath := statepaths.InsightsPath(workdir)
+	insightsPath, err := statepaths.InsightsPath(workdir)
+	if err != nil {
+		t.Fatal(err)
+	}
 	var doc InsightsDoc
 	body, err := os.ReadFile(insightsPath)
 	if err != nil {
@@ -150,4 +159,50 @@ func TestInsightLifecycleMutations(t *testing.T) {
 	if gotOld.Status != "superseded" || !gotOld.Stale {
 		t.Fatalf("unexpected old insight state: %+v", *gotOld)
 	}
+}
+
+func TestInsightHistorySurvivesRestartWithoutReprocessing(t *testing.T) {
+	isolateLearningState(t)
+	workdir := t.TempDir()
+	if _, err := Enqueue(workdir, "convention: retain durable history.", "unknown", "", "", ""); err != nil {
+		t.Fatal(err)
+	}
+	first, err := Process(workdir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if first.NewCount != 1 {
+		t.Fatalf("first process count = %d, want 1", first.NewCount)
+	}
+	restarted, err := Process(workdir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if restarted.NewCount != 0 || restarted.InsightsPath != first.InsightsPath {
+		t.Fatalf("restart replayed insight processing: %+v then %+v", first, restarted)
+	}
+	raw, err := os.ReadFile(first.InsightsPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var doc InsightsDoc
+	if err := json.Unmarshal(raw, &doc); err != nil {
+		t.Fatal(err)
+	}
+	if len(doc.Insights) != 1 {
+		t.Fatalf("restart duplicated insights: %+v", doc.Insights)
+	}
+	if runtime.GOOS != "windows" {
+		if info, err := os.Stat(first.InsightsPath); err != nil || info.Mode().Perm() != 0o600 {
+			t.Fatalf("durable insights mode = %v, %v", info, err)
+		}
+	}
+}
+
+func isolateLearningState(t *testing.T) {
+	t.Helper()
+	root := t.TempDir()
+	t.Setenv("XDG_STATE_HOME", filepath.Join(root, "state"))
+	t.Setenv("LOCALAPPDATA", filepath.Join(root, "local-app-data"))
+	t.Setenv("HOME", filepath.Join(root, "home"))
 }

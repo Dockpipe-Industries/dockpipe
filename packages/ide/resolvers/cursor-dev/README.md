@@ -112,7 +112,7 @@ Use **`--workdir`** if you are not already in the project root.
 |------|---------|
 | **`README.txt`** | Short pointer to the folder and **AGENT-MCP.md**. |
 | **`AGENT-MCP.md`** | Project root, **`DOCKPIPE_WORKDIR`**, how **MCP / `mcpd`** connect to Cursor, links to **`docs/mcp-agent-trust.md`**, **`docs/mcp-host-hardening.md`**, **`AGENTS.md`**. |
-| **`mcp.json.example`** | Drop-in MCP server block with **absolute** paths to **`src/bin/mcpd`**, **`dockpipe`**, **`dorkpipe`** when this tree is the **dockpipe** checkout (or a generic template otherwise). |
+| **`mcp.json.example`** | Drop-in MCP server block with **absolute** paths to package-owned **`mcpd`**, **`dockpipe`**, and **`dorkpipe`** when this tree is the **dockpipe** checkout (or a generic template otherwise). |
 
 After prep, the session prints the path to **`AGENT-MCP.md`** — open it in Cursor (or `@` it) so the agent knows repo layout and MCP setup for demos.
 

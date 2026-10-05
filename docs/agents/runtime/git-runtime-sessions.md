@@ -49,9 +49,19 @@ session work should follow.
   `workspace.storage: worktree` for local debugging and inspection when needed.
 - Start with serialized write leases before introducing worker branches or parallel worktrees.
 - Current lifecycle primitives are `CreateSessionBranch`, `CheckpointSession`, `SyncSession`,
-  `PublishSession`, `ArchiveSession`, `CreateWorkerLease`, and `ReleaseWorkerLease`.
+  `CheckpointSessionFromRequest`, `PublishSession`, `ArchiveSession`, `CreateWorkerLease`, and
+  `ReleaseWorkerLease`. The request-driven checkpoint operation is the strict exact-path boundary;
+  the older `CheckpointSession` remains the broad policy-driven finalizer used by existing flows.
 - Public local CLI commands are `dockpipe session list`, `dockpipe session inspect <id>`,
-  `dockpipe session switch <id>`, and `dockpipe session publish <id>`.
+  `dockpipe session switch <id>`, `dockpipe session checkpoint <id> --request <path> --receipt
+  <path>`, and `dockpipe session publish <id>`.
+- A controlled checkpoint request binds the runtime session/workspace, exact branch and parent,
+  canonical request and authorization fingerprints, sorted paths, exact postimages, and one bounded
+  message. The runtime rejects pre-existing staged state, any extra or unsupported worktree change,
+  stale/linked/non-regular postimages, and ambiguous recovery before it commits exactly those paths.
+- The controlled receipt binds the resulting commit and parent back to the request and session and
+  records push, publication, sync, and merge as false. Existing receipts and exact-commit recovery
+  are revalidated instead of creating a second commit.
 - `dockpipe session switch` should hand the human to the managed worktree; it cannot mutate the
   parent shell's current directory.
 - `dockpipe session publish` should checkpoint first, then push the session branch. It must not

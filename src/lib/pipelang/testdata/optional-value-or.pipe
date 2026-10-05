@@ -1,0 +1,3 @@
+public Class Root {
+    public string ValueOr(Optional<string> value, string fallback) => value_or(value, fallback);
+}

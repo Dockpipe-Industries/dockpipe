@@ -1,0 +1,6 @@
+public Class Root {
+    public Optional<string> Present(string value) => some(value);
+    public Optional<string> Absent() => none<string>();
+    public Optional<string> Forward(Optional<string> value) => value;
+    public bool HasValue(Optional<string> value) => has_value(value);
+}

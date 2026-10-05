@@ -10,6 +10,7 @@ import (
 	"math"
 	"os"
 	"os/exec"
+
 	"path/filepath"
 	"regexp"
 	"runtime"
@@ -18,6 +19,8 @@ import (
 	"strings"
 	"time"
 
+	"dockpipe/src/lib/infrastructure"
+	"dorkpipe.orchestrator/statepaths"
 	"gopkg.in/yaml.v3"
 )
 
@@ -44,9 +47,24 @@ var (
 	reBulletMarker      = regexp.MustCompile(`^\s*(?:[-*+]\s+|•\s*)`)
 	reSafeCompareSuffix = regexp.MustCompile(`[^A-Za-z0-9_]+`)
 	reGuestDocPath      = regexp.MustCompile(`/(?:work|DesignNotes)/[A-Za-z0-9._/\-]+\.(?:md|ya?ml)`)
+	reDurableHostPath   = regexp.MustCompile("(?i)(?:[A-Z]:[\\\\/]|\\\\\\\\|/(?:home|Users|tmp|var|mnt|opt)/)[^`<>\\r\\n]*?\\.(?:md|ya?ml|txt|json|go|js|jsx|ts|tsx|xml|toml|ini|cs|java|py|rb|rs|sh|ps1|sql)")
+	reDurableHostToken  = regexp.MustCompile(`(?i)(?:[A-Z]:[\\/]|\\\\|/(?:home|Users|tmp|var|mnt|opt)/)[A-Za-z0-9._~@%+,\-\\/]+`)
 	reMarkdownLink      = regexp.MustCompile(`\[[^\]]*\]\(([^)#]+)(?:#[^)]+)?\)`)
 	reValidationRemoved = regexp.MustCompile("(?im)^- \\*\\*Removed `([^`]+)`")
 )
+
+var durableOutputForbiddenTerms = []struct {
+	label   string
+	pattern *regexp.Regexp
+}{
+	{label: "DockPipe or DorkPipe", pattern: regexp.MustCompile(`(?i)\b(?:dockpipe|dorkpipe)\b`)},
+	{label: "orchestration", pattern: regexp.MustCompile(`(?i)\borchestrat(?:ion|or|ed|ing)\b`)},
+	{label: "runtime mount terminology", pattern: regexp.MustCompile(`(?i)\b(?:runtime mounts?|mount labels?|mounted source(?: roots?)?)\b`)},
+	{label: "artifact root terminology", pattern: regexp.MustCompile(`(?i)\b(?:artifact|workflow) roots?\b`)},
+	{label: "lane terminology", pattern: regexp.MustCompile(`(?i)\b(?:worker|model|provider) lanes?\b|\blane selection\b`)},
+	{label: "provider metadata", pattern: regexp.MustCompile(`(?i)\bproviders?_(?:actual|requested)\b|\bresolver hints?\b`)},
+	{label: "run artifact terminology", pattern: regexp.MustCompile(`(?i)\b(?:source packets?|task graphs?|worker results?|merge results?|materialized outputs?|artifact handoffs?|worker artifacts?)\b`)},
+}
 
 type trainingEntry struct {
 	Samples         int     `json:"samples"`
@@ -116,22 +134,28 @@ func Run(args []string, env map[string]string, stdout, stderr io.Writer) error {
 		return errors.New("usage: orchestrate-helper <subcommand> [args]")
 	}
 	switch args[0] {
-	case "usage-number":
-		if len(args) != 3 {
-			return errors.New("usage: orchestrate-helper usage-number <cloud-usage.json> <key>")
+	case "durable-metrics-path":
+		if len(args) != 2 {
+			return errors.New("usage: orchestrate-helper durable-metrics-path <workdir>")
 		}
-		payload := readJSONMap(args[1])
-		fmt.Fprintln(stdout, intFromAny(payload[args[2]]))
-		return nil
-	case "provider-usage-number":
-		if len(args) != 4 {
-			return errors.New("usage: orchestrate-helper provider-usage-number <cloud-usage.json> <provider> <field>")
+		path, err := statepaths.MetricsPath(args[1])
+		if err != nil {
+			return err
 		}
-		payload := readJSONMap(args[1])
-		providers := mapValue(payload["providers"])
-		provider := mapValue(providers[args[2]])
-		fmt.Fprintln(stdout, intFromAny(provider[args[3]]))
+		fmt.Fprintln(stdout, path)
 		return nil
+	case "durable-training-metrics-path":
+		if len(args) != 2 {
+			return errors.New("usage: orchestrate-helper durable-training-metrics-path <workdir>")
+		}
+		path, err := statepaths.TrainingMetricsPath(args[1])
+		if err != nil {
+			return err
+		}
+		fmt.Fprintln(stdout, path)
+		return nil
+	case "usage-number", "provider-usage-number":
+		return runUsageCommand(args, stdout)
 	case "task-id-from-workflow":
 		if len(args) != 3 {
 			return errors.New("usage: orchestrate-helper task-id-from-workflow <workflow.yml> <step-id>")
@@ -203,10 +227,10 @@ func Run(args []string, env map[string]string, stdout, stderr io.Writer) error {
 		}
 		return nil
 	case "materialize-task-outputs":
-		if len(args) != 5 {
-			return errors.New("usage: orchestrate-helper materialize-task-outputs <response.md> <task-dir> <outputs.json> <result.json>")
+		if len(args) != 6 {
+			return errors.New("usage: orchestrate-helper materialize-task-outputs <response.md> <task-dir> <outputs.json> <result.json> <repo-root>")
 		}
-		return materializeTaskOutputs(args[1], args[2], args[3], args[4])
+		return materializeTaskOutputs(args[1], args[2], args[3], args[4], args[5], env["DOCKPIPE_CONTAINER_MOUNTS"])
 	case "write-task-result":
 		if len(args) != 2 {
 			return errors.New("usage: orchestrate-helper write-task-result <result.json>")
@@ -278,6 +302,130 @@ func Run(args []string, env map[string]string, stdout, stderr io.Writer) error {
 			return errors.New("usage: orchestrate-helper plan <workflow.yml> <step-id>")
 		}
 		return planOrchestration(args[1], args[2], env)
+	case "software-dev-compile":
+		if len(args) != 7 && len(args) != 8 {
+			return errors.New("usage: orchestrate-helper software-dev-compile <package-workflow.yml> <package-step-id> <repo-root> <task-pack.yml> <task-pack-step-id> <artifact-root> [planner-proposal]")
+		}
+		proposalPath := ""
+		if len(args) == 8 {
+			proposalPath = args[7]
+		}
+		return compileSoftwareDevArtifacts(args[1], args[2], args[3], args[4], args[5], args[6], proposalPath)
+	case "software-dev-stage-proposal":
+		if len(args) != 4 {
+			return errors.New("usage: orchestrate-helper software-dev-stage-proposal <repo-root> <repo-relative-proposal> <target>")
+		}
+		return stageSoftwareDevProposal(args[1], args[2], args[3], env["DORKPIPE_ORCH_ROOT"])
+	case "software-dev-evaluate-promotion":
+		if len(args) != 5 {
+			return errors.New("usage: orchestrate-helper software-dev-evaluate-promotion <repo-root> <task-pack.yml> <task-pack-step-id> <artifact-root>")
+		}
+		return evaluateSoftwareDevPromotionArtifacts(args[1], args[2], args[3], args[4])
+	case "software-dev-build-promotion-patch":
+		if len(args) != 3 {
+			return errors.New("usage: orchestrate-helper software-dev-build-promotion-patch <repo-root> <artifact-root>")
+		}
+		return buildSoftwareDevPromotionPatchArtifacts(args[1], args[2])
+	case "software-dev-apply-promotion":
+		if len(args) != 4 {
+			return errors.New("usage: orchestrate-helper software-dev-apply-promotion <repo-root> <artifact-root> <approval.json>")
+		}
+		return applySoftwareDevPromotionPatch(args[1], args[2], args[3])
+	case "backlog-inspect":
+		if len(args) != 7 {
+			return errors.New("usage: orchestrate-helper backlog-inspect <repo-root> <task-index.yml> <TASK-NNN|--next> <bounded-slice> <baseline-commit> <artifact-root>")
+		}
+		return inspectBacklogSelection(args[1], args[2], args[3], args[4], args[5], args[6])
+	case "backlog-compile":
+		if len(args) != 10 {
+			return errors.New("usage: orchestrate-helper backlog-compile <repo-root> <artifact-root> <environment-ref> <branch-ref> <allowed-paths-json> <hard-boundaries-json> <required-validation-json> <validation-input-files-json> <routed-sources-json>")
+		}
+		return compileBacklogRemoteRequest(args[1], args[2], args[3], args[4], args[5], args[6], args[7], args[8], args[9])
+	case "backlog-compatibility-preflight":
+		if len(args) != 3 {
+			return errors.New("usage: orchestrate-helper backlog-compatibility-preflight <artifact-root> <fixture-root>")
+		}
+		return preflightBacklogRemoteCompatibility(args[1], args[2])
+	case "backlog-dispatch-fixture":
+		if len(args) != 3 {
+			return errors.New("usage: orchestrate-helper backlog-dispatch-fixture <artifact-root> <fixture.json>")
+		}
+		return dispatchBacklogFixture(args[1], args[2])
+	case "backlog-ingest-completion-candidate":
+		if len(args) != 3 {
+			return errors.New("usage: orchestrate-helper backlog-ingest-completion-candidate <artifact-root> <fixture.json>")
+		}
+		return ingestBacklogCompletionCandidate(args[1], args[2])
+	case "backlog-retrieve-status-fixture":
+		if len(args) != 3 {
+			return errors.New("usage: orchestrate-helper backlog-retrieve-status-fixture <artifact-root> <fixture.json>")
+		}
+		return retrieveBacklogRemoteStatusFixture(args[1], args[2])
+	case "backlog-retrieve-diff-fixture":
+		if len(args) != 3 {
+			return errors.New("usage: orchestrate-helper backlog-retrieve-diff-fixture <artifact-root> <fixture.json>")
+		}
+		return retrieveBacklogRemoteDiffFixture(args[1], args[2])
+	case "backlog-retrieve-result-fixture":
+		if len(args) != 3 {
+			return errors.New("usage: orchestrate-helper backlog-retrieve-result-fixture <artifact-root> <fixture.json>")
+		}
+		return retrieveBacklogRemoteResultFixture(args[1], args[2])
+	case "backlog-retrieve-validation-receipt-fixture":
+		if len(args) != 3 {
+			return errors.New("usage: orchestrate-helper backlog-retrieve-validation-receipt-fixture <artifact-root> <fixture.json>")
+		}
+		return retrieveBacklogValidationReceiptFixture(args[1], args[2])
+	case "backlog-verify-patch-boundary":
+		if len(args) != 2 {
+			return errors.New("usage: orchestrate-helper backlog-verify-patch-boundary <artifact-root>")
+		}
+		return verifyBacklogPatchBoundary(args[1])
+	case "backlog-apply-patch-temporary":
+		if len(args) != 3 {
+			return errors.New("usage: orchestrate-helper backlog-apply-patch-temporary <consumer-root> <artifact-root>")
+		}
+		return applyBacklogPatchTemporaryCopy(args[1], args[2])
+	case "backlog-execute-validation":
+		if len(args) != 3 {
+			return errors.New("usage: orchestrate-helper backlog-execute-validation <consumer-root> <artifact-root>")
+		}
+		return executeBacklogValidation(args[1], args[2])
+	case "backlog-record-semantic-review-decision":
+		if len(args) != 3 {
+			return errors.New("usage: orchestrate-helper backlog-record-semantic-review-decision <artifact-root> <fixture.json>")
+		}
+		return recordBacklogSemanticReviewDecision(args[1], args[2])
+	case "backlog-apply-reviewed-patch":
+		if len(args) != 4 {
+			return errors.New("usage: orchestrate-helper backlog-apply-reviewed-patch <consumer-root> <artifact-root> <approval-fixture.json>")
+		}
+		return applyBacklogPatchToCheckout(args[1], args[2], args[3])
+	case "backlog-request-checkpoint":
+		if len(args) != 8 {
+			return errors.New("usage: orchestrate-helper backlog-request-checkpoint <consumer-root> <artifact-root> <approval-fixture.json> <session-id> <workspace-id> <session-branch> <session-workspace>")
+		}
+		return requestBacklogCheckoutCheckpoint(args[1], args[2], args[3], backlogRuntimeCheckpointBinding{
+			SessionID: args[4], WorkspaceID: args[5], Branch: args[6], Workspace: args[7],
+		})
+	case "backlog-request-publication":
+		if len(args) != 8 {
+			return errors.New("usage: orchestrate-helper backlog-request-publication <consumer-root> <artifact-root> <approval-fixture.json> <session-id> <workspace-id> <session-branch> <session-workspace>")
+		}
+		return requestBacklogCheckoutPublication(args[1], args[2], args[3], backlogRuntimeCheckpointBinding{
+			SessionID: args[4], WorkspaceID: args[5], Branch: args[6], Workspace: args[7],
+		})
+	case "backlog-followup":
+		if len(args) != 2 {
+			return errors.New("usage: orchestrate-helper backlog-followup <artifact-root>")
+		}
+		followup, err := loadBacklogFollowup(args[1])
+		if err != nil {
+			return err
+		}
+		encoder := json.NewEncoder(stdout)
+		encoder.SetIndent("", "  ")
+		return encoder.Encode(followup)
 	case "run-tasks":
 		if len(args) != 3 {
 			return errors.New("usage: orchestrate-helper run-tasks <graph.json> <runner.sh>")
@@ -323,6 +471,98 @@ func taskIDFromWorkflow(path, stepID string) (string, error) {
 		return stringValue(mapValue(step["agent"])["task_id"]), nil
 	}
 	return "", nil
+}
+
+func loadTaskPack(repoRoot, taskPackPath, stepID string) (map[string]any, error) {
+	displayPath := strings.TrimSpace(taskPackPath)
+	if displayPath == "" {
+		return nil, errors.New("task pack path is required")
+	}
+	if strings.TrimSpace(repoRoot) == "" {
+		return nil, fmt.Errorf("task pack path %q cannot be loaded without a consumer repo root", displayPath)
+	}
+	if filepath.IsAbs(displayPath) || filepath.VolumeName(displayPath) != "" {
+		return nil, fmt.Errorf("task pack path %q must be relative to the consumer repo", displayPath)
+	}
+
+	rootPath, err := filepath.Abs(repoRoot)
+	if err != nil {
+		return nil, fmt.Errorf("task pack path %q has an invalid consumer repo root: %w", displayPath, err)
+	}
+	candidatePath, err := filepath.Abs(filepath.Join(rootPath, filepath.Clean(filepath.FromSlash(displayPath))))
+	if err != nil || !withinRoot(rootPath, candidatePath) {
+		return nil, fmt.Errorf("task pack path %q escapes the consumer repo", displayPath)
+	}
+	info, err := os.Stat(candidatePath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, fmt.Errorf("task pack path %q does not exist", displayPath)
+		}
+		return nil, fmt.Errorf("task pack path %q cannot be read: %w", displayPath, err)
+	}
+	if info.IsDir() {
+		return nil, fmt.Errorf("task pack path %q is not a workflow file", displayPath)
+	}
+
+	resolvedRoot, err := filepath.EvalSymlinks(rootPath)
+	if err != nil {
+		return nil, fmt.Errorf("task pack path %q has an invalid consumer repo root: %w", displayPath, err)
+	}
+	resolvedCandidate, err := filepath.EvalSymlinks(candidatePath)
+	if err != nil {
+		return nil, fmt.Errorf("task pack path %q cannot be resolved: %w", displayPath, err)
+	}
+	if !withinRoot(resolvedRoot, resolvedCandidate) {
+		return nil, fmt.Errorf("task pack path %q escapes the consumer repo", displayPath)
+	}
+
+	selectedStepID := strings.TrimSpace(stepID)
+	if selectedStepID == "" {
+		return nil, fmt.Errorf("task pack step id is required for %q", displayPath)
+	}
+	raw, err := os.ReadFile(resolvedCandidate)
+	if err != nil {
+		return nil, fmt.Errorf("task pack path %q cannot be read: %w", displayPath, err)
+	}
+	workflow := map[string]any{}
+	if err := yaml.Unmarshal(raw, &workflow); err != nil {
+		return nil, fmt.Errorf("task pack path %q is not valid workflow YAML: %w", displayPath, err)
+	}
+
+	matches := []map[string]any{}
+	for _, rawStep := range listValue(workflow["steps"]) {
+		step := mapValue(rawStep)
+		if stringValue(step["id"]) == selectedStepID {
+			matches = append(matches, step)
+		}
+	}
+	if len(matches) == 0 {
+		return nil, fmt.Errorf("%s: task pack step id %q was not found", displayPath, selectedStepID)
+	}
+	if len(matches) > 1 {
+		return nil, fmt.Errorf("%s: task pack step id %q is ambiguous (%d matches)", displayPath, selectedStepID, len(matches))
+	}
+
+	agent, ok := mapDeclaration(matches[0]["agent"])
+	if !ok {
+		return nil, fmt.Errorf("%s: task pack step id %q has no agent.orchestration declaration", displayPath, selectedStepID)
+	}
+	if _, ok := mapDeclaration(agent["orchestration"]); !ok {
+		return nil, fmt.Errorf("%s: task pack step id %q has no agent.orchestration declaration", displayPath, selectedStepID)
+	}
+	if err := infrastructure.ValidateResolvedWorkflowYAML(resolvedCandidate); err != nil {
+		return nil, fmt.Errorf("task pack path %q is not a valid workflow: %w", displayPath, err)
+	}
+	return copyMap(agent), nil
+}
+
+func mapDeclaration(value any) (map[string]any, bool) {
+	switch value.(type) {
+	case map[string]any, map[any]any:
+		return mapValue(value), true
+	default:
+		return nil, false
+	}
 }
 
 func emitTaskEnv(path string, stdout io.Writer) error {
@@ -581,7 +821,7 @@ func writeTaskResult(path string, env map[string]string) error {
 	return writeJSONFile(path, payload)
 }
 
-func materializeTaskOutputs(responsePath, taskDir, outputsJSON, resultPath string) error {
+func materializeTaskOutputs(responsePath, taskDir, outputsJSON, resultPath, repoRoot, mountEnv string) error {
 	outputs := listValue(decodeJSONAny(outputsJSON, []any{}))
 	if len(outputs) == 0 {
 		return writeJSONFile(resultPath, map[string]any{
@@ -595,7 +835,11 @@ func materializeTaskOutputs(responsePath, taskDir, outputsJSON, resultPath strin
 	}
 	blocks := parseMaterializedBlocks(string(raw))
 	materializedRoot := filepath.Join(taskDir, "materialized")
-	files := []map[string]any{}
+	type pendingMaterializedOutput struct {
+		clean   string
+		content string
+	}
+	pending := []pendingMaterializedOutput{}
 	for _, rawOutput := range outputs {
 		output := mapValue(rawOutput)
 		rel := strings.TrimSpace(stringValue(output["path"]))
@@ -616,22 +860,221 @@ func materializeTaskOutputs(responsePath, taskDir, outputsJSON, resultPath strin
 		if !ok {
 			return fmt.Errorf("missing materialized output block for %s", rel)
 		}
-		target := filepath.Join(materializedRoot, filepath.FromSlash(clean))
+		if durableOutputNeedsPolicy(clean) {
+			content, err = normalizeDurableOutput(content, repoRoot, mountEnv)
+			if err != nil {
+				return fmt.Errorf("%s: %w", filepath.ToSlash(clean), err)
+			}
+		}
+		pending = append(pending, pendingMaterializedOutput{clean: clean, content: content})
+	}
+	files := []map[string]any{}
+	for _, output := range pending {
+		target := filepath.Join(materializedRoot, filepath.FromSlash(output.clean))
 		if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
 			return err
 		}
-		if err := os.WriteFile(target, []byte(strings.TrimRight(content, "\r\n")+"\n"), 0o644); err != nil {
+		if err := os.WriteFile(target, []byte(strings.TrimRight(output.content, "\r\n")+"\n"), 0o644); err != nil {
 			return err
 		}
 		files = append(files, map[string]any{
-			"path":     filepath.ToSlash(clean),
-			"artifact": filepath.ToSlash(filepath.Join("materialized", filepath.FromSlash(clean))),
+			"path":     filepath.ToSlash(output.clean),
+			"artifact": filepath.ToSlash(filepath.Join("materialized", filepath.FromSlash(output.clean))),
 		})
 	}
 	return writeJSONFile(resultPath, map[string]any{
 		"status": "materialized",
 		"files":  files,
 	})
+}
+
+func durableOutputNeedsPolicy(path string) bool {
+	switch strings.ToLower(filepath.Ext(path)) {
+	case ".md", ".markdown", ".yml", ".yaml":
+		return true
+	default:
+		return false
+	}
+}
+
+func normalizeDurableOutput(content, repoRoot, mountEnv string) (string, error) {
+	root, err := filepath.Abs(strings.TrimSpace(repoRoot))
+	if err != nil || strings.TrimSpace(repoRoot) == "" {
+		return "", errors.New("durable output policy requires an explicit consumer repository root")
+	}
+	guestRoots := []string{"/work", "/DesignNotes"}
+	seenRoots := map[string]bool{"/work": true, "/DesignNotes": true}
+	for _, line := range strings.Split(mountEnv, "\n") {
+		_, guest, ok := parseContainerMountSpec(line)
+		if !ok {
+			continue
+		}
+		guest = cleanGuestPath(guest)
+		if guest != "" && !seenRoots[guest] {
+			seenRoots[guest] = true
+			guestRoots = append(guestRoots, guest)
+		}
+	}
+	sort.Slice(guestRoots, func(i, j int) bool {
+		if len(guestRoots[i]) != len(guestRoots[j]) {
+			return len(guestRoots[i]) > len(guestRoots[j])
+		}
+		return guestRoots[i] < guestRoots[j]
+	})
+	parts := make([]string, 0, len(guestRoots))
+	for _, guest := range guestRoots {
+		parts = append(parts, regexp.QuoteMeta(guest))
+	}
+	guestPattern := regexp.MustCompile(`(?:` + strings.Join(parts, "|") + `)(?:/[A-Za-z0-9._~@%+,\-]+)*`)
+	normalized, err := rewriteDurableGuestReferences(content, guestPattern, func(reference string) (string, error) {
+		return repoNativeGuestReference(root, reference, mountEnv)
+	})
+	if err != nil {
+		return "", err
+	}
+	normalized, err = rewriteDurableHostReferences(normalized, reDurableHostPath, func(reference string) (string, error) {
+		return repoNativeHostReference(root, reference)
+	})
+	if err != nil {
+		return "", err
+	}
+	normalized, err = rewriteDurableHostReferences(normalized, reDurableHostToken, func(reference string) (string, error) {
+		return repoNativeHostReference(root, reference)
+	})
+	if err != nil {
+		return "", err
+	}
+	for _, forbidden := range durableOutputForbiddenTerms {
+		if match := forbidden.pattern.FindString(normalized); match != "" {
+			return "", fmt.Errorf("durable output contains orchestration-only terminology %q (%s)", match, forbidden.label)
+		}
+	}
+	return normalized, nil
+}
+
+func rewriteDurableGuestReferences(content string, pattern *regexp.Regexp, rewrite func(string) (string, error)) (string, error) {
+	return rewriteDurableReferencesWhere(content, pattern, func(text string, start, end int) bool {
+		if start > 0 && isDurablePathCharacter(text[start-1]) {
+			return false
+		}
+		return end >= len(text) || !isDurablePathCharacter(text[end])
+	}, rewrite)
+}
+
+func rewriteDurableHostReferences(content string, pattern *regexp.Regexp, rewrite func(string) (string, error)) (string, error) {
+	return rewriteDurableReferencesWhere(content, pattern, func(text string, start, end int) bool {
+		if strings.Contains(text[start:end], "://") {
+			return false
+		}
+		tokenStart := strings.LastIndexAny(text[:start], " \t\r\n`(<[\"'")
+		return !strings.Contains(text[tokenStart+1:start], "://")
+	}, rewrite)
+}
+
+func rewriteDurableReferencesWhere(content string, pattern *regexp.Regexp, include func(string, int, int) bool, rewrite func(string) (string, error)) (string, error) {
+	allMatches := pattern.FindAllStringIndex(content, -1)
+	matches := make([][]int, 0, len(allMatches))
+	for _, match := range allMatches {
+		if include(content, match[0], match[1]) {
+			matches = append(matches, match)
+		}
+	}
+	if len(matches) == 0 {
+		return content, nil
+	}
+	var out strings.Builder
+	start := 0
+	for _, match := range matches {
+		reference := content[match[0]:match[1]]
+		replacement, err := rewrite(reference)
+		if err != nil {
+			return "", err
+		}
+		out.WriteString(content[start:match[0]])
+		out.WriteString(replacement)
+		start = match[1]
+	}
+	out.WriteString(content[start:])
+	return out.String(), nil
+}
+
+func isDurablePathCharacter(value byte) bool {
+	return value == '/' || value == '\\' || value == '-' || value == '_' || value == '.' || value == '~' || value == '@' || value == '%' || value == '+' || value == ',' ||
+		(value >= '0' && value <= '9') || (value >= 'A' && value <= 'Z') || (value >= 'a' && value <= 'z')
+}
+
+func repoNativeGuestReference(repoRoot, reference, mountEnv string) (string, error) {
+	type candidate struct {
+		guestRoot string
+		hostRoot  string
+	}
+	candidates := []candidate{{guestRoot: "/work", hostRoot: repoRoot}}
+	for _, line := range strings.Split(mountEnv, "\n") {
+		host, guest, ok := parseContainerMountSpec(line)
+		if !ok {
+			continue
+		}
+		guest = cleanGuestPath(guest)
+		if guest != "" {
+			candidates = append(candidates, candidate{guestRoot: guest, hostRoot: host})
+		}
+	}
+	cleanReference := cleanGuestPath(reference)
+	bestLength := -1
+	resolved := map[string]bool{}
+	for _, item := range candidates {
+		if !guestPathContains(item.guestRoot, cleanReference) {
+			continue
+		}
+		if len(item.guestRoot) < bestLength {
+			continue
+		}
+		if len(item.guestRoot) > bestLength {
+			bestLength = len(item.guestRoot)
+			resolved = map[string]bool{}
+		}
+		hostRoot, err := filepath.Abs(item.hostRoot)
+		if err != nil {
+			return "", fmt.Errorf("runtime path reference %q has an invalid source mapping", reference)
+		}
+		rel := strings.TrimPrefix(cleanReference, item.guestRoot)
+		rel = strings.TrimPrefix(rel, "/")
+		hostTarget, err := filepath.Abs(filepath.Join(hostRoot, filepath.FromSlash(rel)))
+		if err != nil || !withinRoot(hostRoot, hostTarget) {
+			return "", fmt.Errorf("runtime path reference %q escapes its explicit source mapping", reference)
+		}
+		resolved[filepath.Clean(hostTarget)] = true
+	}
+	if len(resolved) != 1 {
+		return "", fmt.Errorf("runtime path reference %q is ambiguous; no unique repo-native source mapping exists", reference)
+	}
+	var hostTarget string
+	for value := range resolved {
+		hostTarget = value
+	}
+	if !withinRoot(repoRoot, hostTarget) {
+		return "", fmt.Errorf("runtime path reference %q maps outside the consumer repository", reference)
+	}
+	rel, err := filepath.Rel(repoRoot, hostTarget)
+	if err != nil || rel == "." || strings.HasPrefix(rel, "..") || filepath.IsAbs(rel) {
+		return "", fmt.Errorf("runtime path reference %q does not prove a specific repo-native reference", reference)
+	}
+	return filepath.ToSlash(rel), nil
+}
+
+func repoNativeHostReference(repoRoot, reference string) (string, error) {
+	if runtime.GOOS != "windows" && regexp.MustCompile(`^[A-Za-z]:[\\/]`).MatchString(reference) {
+		return "", fmt.Errorf("machine host path %q cannot be mapped on this host", reference)
+	}
+	hostPath, err := filepath.Abs(reference)
+	if err != nil || !withinRoot(repoRoot, hostPath) {
+		return "", fmt.Errorf("machine host path %q is not a repo-native reference", reference)
+	}
+	rel, err := filepath.Rel(repoRoot, hostPath)
+	if err != nil || rel == "." || strings.HasPrefix(rel, "..") || filepath.IsAbs(rel) {
+		return "", fmt.Errorf("machine host path %q does not prove a specific repo-native reference", reference)
+	}
+	return filepath.ToSlash(rel), nil
 }
 
 func renderMaterializeOutputContract(outputs []any) string {
@@ -2144,7 +2587,7 @@ func mountedGuestRootNotes(mountEnv string) []string {
 	notes := []string{}
 	seen := map[string]bool{}
 	for _, line := range strings.Split(mountEnv, "\n") {
-		host, guest, ok := parseContainerMountSpec(line)
+		_, guest, ok := parseContainerMountSpec(line)
 		if !ok {
 			continue
 		}
@@ -2158,15 +2601,13 @@ func mountedGuestRootNotes(mountEnv string) []string {
 			continue
 		case "/DesignNotes":
 			notes = append(notes,
-				fmt.Sprintf("- `%s` is an external mounted design corpus, not part of the repo checkout under `/work`.", guest),
-				fmt.Sprintf("- Host path for this run: `%s`.", filepath.Clean(host)),
-				"- If durable docs need to mention it, describe it as a SharePoint-backed or Windows-local design-notes mirror at that host path; do not imply it lives inside the repo.",
+				fmt.Sprintf("- `%s` is a stable source-packet label for an external design corpus, not a repo-native path.", guest),
+				"- Use it only while gathering evidence. Durable docs must cite a repo-native reference proven by an explicit source mapping or omit the path.",
 			)
 		default:
 			notes = append(notes,
-				fmt.Sprintf("- `%s` is an external mounted source root for this run.", guest),
-				fmt.Sprintf("- Host path for this run: `%s`.", filepath.Clean(host)),
-				"- Do not describe this mount as a repo-owned directory unless the task has explicit source authority for that claim.",
+				fmt.Sprintf("- `%s` is a stable source-packet label, not a repo-native path.", guest),
+				"- Use it only while gathering evidence. Durable docs must cite a repo-native reference proven by an explicit source mapping or omit the path.",
 			)
 		}
 	}
@@ -2437,6 +2878,8 @@ func planOrchestration(workflowPath, stepID string, env map[string]string) error
 	trainingPolicy := mapValue(baselinePolicy["training"])
 	trainingStats := loadTrainingStats(globalTrainingMetricsPath, trainingPolicy)
 
+	shared = orderedNativeGuidanceShared(shared)
+	baselineContextPath := nativeGuidanceBaselineContextPath(shared)
 	for _, raw := range shared {
 		entry := mapValue(raw)
 		rel := stringValue(entry["path"])
@@ -2514,8 +2957,10 @@ func planOrchestration(workflowPath, stepID string, env map[string]string) error
 			"next_action_default": fallbackString(stringValue(verify["next_action_default"]), "human approval before treating orchestration output as final"),
 		},
 		"apply": map[string]any{
-			"require_approval": boolDefault(apply["require_approval"], true),
-			"outputs":          listValue(apply["outputs"]),
+			"require_approval":   boolDefault(apply["require_approval"], true),
+			"outputs":            listValue(apply["outputs"]),
+			"target_root":        stringValue(apply["target_root"]),
+			"required_artifacts": listValue(apply["required_artifacts"]),
 		},
 	}
 	if followUpMode {
@@ -2682,7 +3127,7 @@ func planOrchestration(workflowPath, stepID string, env map[string]string) error
 					}
 				}
 			}
-			contextPaths := taskContextPaths(task)
+			contextPaths := orderNativeGuidanceTaskContext(taskContextPaths(task), baselineContextPath)
 			resolvedContextPaths, err := resolveScopeList(anySlice(contextPaths))
 			if err != nil {
 				return err
@@ -4842,6 +5287,16 @@ func renderShared(entry map[string]any, root string, env map[string]string) (str
 	switch collector {
 	case "literal":
 		return stringValue(entry["text"]), nil
+	case "example_brain_baseline":
+		path := strings.TrimSpace(env["DORKPIPE_ORCH_EXAMPLE_BRAIN_BASELINE"])
+		if path == "" {
+			return "", errors.New("example_brain_baseline collector requires DORKPIPE_ORCH_EXAMPLE_BRAIN_BASELINE")
+		}
+		raw, err := os.ReadFile(path)
+		if err != nil {
+			return "", fmt.Errorf("read example brain baseline: %w", err)
+		}
+		return string(raw), nil
 	case "repo_map":
 		tracked, _ := runCommandString(root, env, "git", "-C", root, "ls-files")
 		trackedCount := 0
@@ -4887,11 +5342,66 @@ func renderShared(entry map[string]any, root string, env map[string]string) (str
 	}
 }
 
+func orderedNativeGuidanceShared(shared []any) []any {
+	ordered := make([]any, 0, len(shared))
+	for _, raw := range shared {
+		if stringValue(mapValue(raw)["collector"]) == "example_brain_baseline" {
+			ordered = append(ordered, raw)
+		}
+	}
+	for _, raw := range shared {
+		if stringValue(mapValue(raw)["collector"]) != "example_brain_baseline" {
+			ordered = append(ordered, raw)
+		}
+	}
+	return ordered
+}
+
+func nativeGuidanceBaselineContextPath(shared []any) string {
+	for _, raw := range shared {
+		entry := mapValue(raw)
+		if stringValue(entry["collector"]) != "example_brain_baseline" {
+			continue
+		}
+		if rel := strings.TrimSpace(stringValue(entry["path"])); rel != "" {
+			return filepath.ToSlash(filepath.Join("shared", rel))
+		}
+	}
+	return ""
+}
+
+func orderNativeGuidanceTaskContext(values []string, baseline string) []string {
+	if baseline == "" || !containsString(values, baseline) {
+		return append([]string{}, values...)
+	}
+	return prependUniqueString(values, baseline)
+}
+
+func prependUniqueString(values []string, first string) []string {
+	out := []string{first}
+	for _, value := range values {
+		if value != first {
+			out = append(out, value)
+		}
+	}
+	return out
+}
+
 const (
 	sourcePacketMaxFiles     = 32
 	sourcePacketMaxFileBytes = 1200
 	sourcePacketMaxBytes     = 6000
 )
+
+type sourcePacketRoot struct {
+	hostPath    string
+	displayPath string
+}
+
+type sourcePacketFile struct {
+	hostPath    string
+	displayPath string
+}
 
 var sourcePacketExtensions = map[string]bool{
 	".bash": true, ".c": true, ".cfg": true, ".conf": true, ".cpp": true, ".cs": true,
@@ -4923,23 +5433,23 @@ func renderSourcePacket(root string, sourceRoots, readRoots, denyRoots []string,
 	if err != nil {
 		return "", fmt.Errorf("resolve access.deny: %w", err)
 	}
-	resolvedSources, err := resolveSourcePacketPaths(root, sourceRoots, mountEnv)
+	resolvedSources, err := resolveSourcePacketRoots(root, sourceRoots, mountEnv)
 	if err != nil {
 		return "", fmt.Errorf("resolve context.source_roots: %w", err)
 	}
 	for _, source := range resolvedSources {
-		if !pathWithinAny(source, resolvedReads) {
-			return "", fmt.Errorf("source root is outside access.read: %s", source)
+		if !pathWithinAny(source.hostPath, resolvedReads) {
+			return "", fmt.Errorf("source root is outside access.read: %s", source.displayPath)
 		}
 	}
 
-	files := []string{}
+	files := []sourcePacketFile{}
 	seen := map[string]bool{}
 	for _, source := range resolvedSources {
 		if len(files) >= sourcePacketMaxFiles {
 			break
 		}
-		walkErr := filepath.WalkDir(source, func(path string, entry fs.DirEntry, walkErr error) error {
+		walkErr := filepath.WalkDir(source.hostPath, func(path string, entry fs.DirEntry, walkErr error) error {
 			if walkErr != nil {
 				return walkErr
 			}
@@ -4960,7 +5470,10 @@ func renderSourcePacket(root string, sourceRoots, readRoots, denyRoots []string,
 			}
 			if !seen[path] {
 				seen[path] = true
-				files = append(files, path)
+				files = append(files, sourcePacketFile{
+					hostPath:    path,
+					displayPath: sourcePacketChildDisplayPath(source, path),
+				})
 			}
 			if len(files) >= sourcePacketMaxFiles {
 				return filepath.SkipDir
@@ -4972,10 +5485,6 @@ func renderSourcePacket(root string, sourceRoots, readRoots, denyRoots []string,
 		}
 	}
 
-	rootAbs, err := filepath.Abs(root)
-	if err != nil {
-		return "", err
-	}
 	lines := []string{
 		"# Deterministic Source Packet",
 		"",
@@ -4988,15 +5497,15 @@ func renderSourcePacket(root string, sourceRoots, readRoots, denyRoots []string,
 		"",
 	}
 	for _, source := range resolvedSources {
-		lines = append(lines, "- `"+sourcePacketDisplayPath(rootAbs, source)+"` (allowed by `access.read`)")
+		lines = append(lines, "- `"+source.displayPath+"` (allowed by `access.read`)")
 	}
 	remaining := sourcePacketMaxBytes
 	included := 0
-	for _, path := range files {
+	for _, file := range files {
 		if remaining <= 0 {
 			break
 		}
-		content, err := readSourcePacketFile(path, minInt(sourcePacketMaxFileBytes, remaining))
+		content, err := readSourcePacketFile(file.hostPath, minInt(sourcePacketMaxFileBytes, remaining))
 		if err != nil {
 			return "", err
 		}
@@ -5007,7 +5516,7 @@ func renderSourcePacket(root string, sourceRoots, readRoots, denyRoots []string,
 		remaining -= len(content)
 		included++
 		text := strings.ReplaceAll(strings.TrimRight(string(content), "\n"), "```", "``\\`")
-		lines = append(lines, "", "## "+sourcePacketDisplayPath(rootAbs, path), "", "```text", text, "```")
+		lines = append(lines, "", "## "+file.displayPath, "", "```text", text, "```")
 	}
 	if included == 0 {
 		lines = append(lines, "", "No readable text files matched the declared roots and packet policy.")
@@ -5015,6 +5524,31 @@ func renderSourcePacket(root string, sourceRoots, readRoots, denyRoots []string,
 		lines = append(lines, "", "Packet bounds reached; additional allowed files were not included.")
 	}
 	return strings.Join(lines, "\n") + "\n", nil
+}
+
+func resolveSourcePacketRoots(root string, paths []string, mountEnv string) ([]sourcePacketRoot, error) {
+	resolved := []sourcePacketRoot{}
+	seen := map[string]bool{}
+	for _, raw := range paths {
+		value := strings.TrimSpace(raw)
+		if value == "" {
+			continue
+		}
+		hostPath, err := resolveSourcePacketPath(root, value, mountEnv)
+		if err != nil {
+			return nil, err
+		}
+		if seen[hostPath] {
+			continue
+		}
+		displayPath, err := sourcePacketRootDisplayPath(root, value, hostPath, mountEnv)
+		if err != nil {
+			return nil, err
+		}
+		seen[hostPath] = true
+		resolved = append(resolved, sourcePacketRoot{hostPath: hostPath, displayPath: displayPath})
+	}
+	return resolved, nil
 }
 
 func resolveSourcePacketPaths(root string, paths []string, mountEnv string) ([]string, error) {
@@ -5069,12 +5603,71 @@ func pathWithinAny(path string, roots []string) bool {
 	return false
 }
 
-func sourcePacketDisplayPath(root, path string) string {
-	rel, err := filepath.Rel(root, path)
-	if err == nil && !strings.HasPrefix(rel, "..") && !filepath.IsAbs(rel) {
-		return filepath.ToSlash(rel)
+func sourcePacketRootDisplayPath(root, declared, hostPath, mountEnv string) (string, error) {
+	declaredSlash := filepath.ToSlash(declared)
+	if strings.HasPrefix(declaredSlash, "/") {
+		if _, _, ok := resolveGuestMountTarget(declared, mountEnv); ok {
+			return cleanGuestPath(declared), nil
+		}
+		if _, _, ok := resolvePrimaryWorkTarget(root, declared); ok {
+			return cleanGuestPath(declared), nil
+		}
 	}
-	return filepath.ToSlash(path)
+	if !filepath.IsAbs(declared) {
+		return filepath.ToSlash(filepath.Clean(declared)), nil
+	}
+	if guestPath, ok := sourcePacketGuestPathForHost(hostPath, mountEnv); ok {
+		return guestPath, nil
+	}
+	rootAbs, err := filepath.Abs(root)
+	if err != nil {
+		return "", err
+	}
+	rel, err := filepath.Rel(rootAbs, hostPath)
+	if err == nil && !strings.HasPrefix(rel, "..") && !filepath.IsAbs(rel) {
+		return filepath.ToSlash(rel), nil
+	}
+	return "", fmt.Errorf("external source root must use a declared guest mount")
+}
+
+func sourcePacketGuestPathForHost(hostPath, mountEnv string) (string, bool) {
+	bestHostRoot := ""
+	bestGuestRoot := ""
+	for _, line := range strings.Split(mountEnv, "\n") {
+		host, guest, ok := parseContainerMountSpec(line)
+		if !ok {
+			continue
+		}
+		hostRoot, err := filepath.Abs(host)
+		if err != nil || !withinRoot(hostRoot, hostPath) || len(hostRoot) <= len(bestHostRoot) {
+			continue
+		}
+		bestHostRoot = hostRoot
+		bestGuestRoot = cleanGuestPath(guest)
+	}
+	if bestHostRoot == "" || bestGuestRoot == "" {
+		return "", false
+	}
+	rel, err := filepath.Rel(bestHostRoot, hostPath)
+	if err != nil {
+		return "", false
+	}
+	if rel == "." {
+		return bestGuestRoot, true
+	}
+	return strings.TrimRight(bestGuestRoot, "/") + "/" + filepath.ToSlash(rel), true
+}
+
+func sourcePacketChildDisplayPath(root sourcePacketRoot, hostPath string) string {
+	rel, err := filepath.Rel(root.hostPath, hostPath)
+	if err != nil || rel == "." {
+		return root.displayPath
+	}
+	rel = filepath.ToSlash(rel)
+	if root.displayPath == "." {
+		return rel
+	}
+	return strings.TrimRight(root.displayPath, "/") + "/" + rel
 }
 
 func readSourcePacketFile(path string, limit int) ([]byte, error) {

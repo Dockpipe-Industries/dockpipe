@@ -9,13 +9,17 @@ import (
 	"regexp"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"dorkpipe.orchestrator/providersession"
 )
 
-// LifecyclePolicy is the closed native-turn policy used for every CAS-05
-// lifecycle operation. It deliberately has no full-access, shell, automatic
-// review, fallback, or network-enabled mode.
+// LifecyclePolicy is the caller's exact native-turn policy for every lifecycle
+// operation. Model and reasoning must match the already selected effective
+// policy; the remaining provider-private values must match a retained mapping.
+// It deliberately has no full-access, shell, fallback, or network-enabled
+// mode. AutoReview is an explicit caller assertion that must match the one
+// retained native automatic-review mapping; it never changes sandbox policy.
 type LifecyclePolicy struct {
 	Workspace        string
 	WritableRoots    []string
@@ -45,6 +49,8 @@ type LifecycleReference struct {
 // retains prompt text; a later adapter is responsible for resolving a ref.
 type InputReference string
 
+const maxTransientPromptBytes = 256 * 1024
+
 var (
 	ErrLifecycleUnavailable = errors.New("app server lifecycle is unavailable")
 	ErrLifecycleRejected    = errors.New("app server lifecycle request was rejected")
@@ -52,29 +58,32 @@ var (
 )
 
 type lifecycleState struct {
-	threadID        string
-	turnID          string
-	itemID          string
-	active          bool
-	steerable       bool
-	threadNotified  bool
-	turnNotified    bool
-	threadStatus    string
-	warningNotified bool
-	errorCount      uint8
-	tokenTotal      uint64
-	policyKey       [sha256.Size]byte
-	declaredRoots   map[string]bool
-	pending         *pendingRequest
-	cancellation    *pendingCancellation
-	requestCounter  uint64
-	startPending    bool
+	threadID          string
+	turnID            string
+	itemID            string
+	active            bool
+	steerable         bool
+	threadNotified    bool
+	turnNotified      bool
+	threadStatus      string
+	warningNotified   bool
+	errorCount        uint8
+	tokenTotal        uint64
+	policyKey         [sha256.Size]byte
+	selectedPolicyKey [sha256.Size]byte
+	declaredRoots     map[string]bool
+	pending           *pendingRequest
+	cancellation      *pendingCancellation
+	requestCounter    uint64
+	startPending      bool
 }
 
 func (p LifecyclePolicy) validate() error {
 	workspace, workspaceOK := boundedLocalPath(p.Workspace)
-	if !workspaceOK || p.Sandbox != "workspace-write" || p.NetworkEnabled || p.ApprovalPolicy != "untrusted" || p.Reviewer != "user" || p.Model != PinnedModel || p.ReasoningEffort != PinnedReasoningEffort || p.ModelProvider != "openai" || p.FullAccess || p.AllowShell || p.AutoReview || strings.TrimSpace(p.FallbackModel) != "" || strings.TrimSpace(p.FallbackProvider) != "" || len(p.WritableRoots) == 0 || len(p.WritableRoots) > maxLifecycleRoots {
-		return errors.New("CAS-05 native-turn policy is not permitted")
+	baselineReview := p.ApprovalPolicy == providerApprovalPolicyUntrusted && p.Reviewer == providerApprovalsReviewerUser && !p.AutoReview
+	nativeAutoReview := p.ApprovalPolicy == providerApprovalPolicyUntrusted && p.Reviewer == providerApprovalsReviewerAuto && p.AutoReview
+	if !workspaceOK || p.Sandbox != providerSandboxWorkspaceWrite || p.NetworkEnabled || (!baselineReview && !nativeAutoReview) || !validID(p.Model) || !validID(p.ReasoningEffort) || p.ModelProvider != "openai" || p.FullAccess || p.AllowShell || strings.TrimSpace(p.FallbackModel) != "" || strings.TrimSpace(p.FallbackProvider) != "" || len(p.WritableRoots) == 0 || len(p.WritableRoots) > maxLifecycleRoots {
+		return errors.New("native-turn policy is not permitted")
 	}
 	seen, containsWorkspace := map[string]bool{}, false
 	for _, root := range p.WritableRoots {
@@ -107,6 +116,116 @@ func (p LifecyclePolicy) params() map[string]any {
 func (p LifecyclePolicy) key() [sha256.Size]byte {
 	values := append([]string{p.Workspace, p.Sandbox, p.ApprovalPolicy, p.Reviewer, p.Model, p.ReasoningEffort, p.ModelProvider}, p.WritableRoots...)
 	return sha256.Sum256([]byte(strings.Join(values, "\x00")))
+}
+
+type resolvedLifecyclePolicy struct {
+	policy LifecyclePolicy
+	key    [sha256.Size]byte
+}
+
+// resolveLifecyclePolicy revalidates every pinned CAS-14 catalog and the exact
+// effective snapshot immediately before lifecycle use. The model/list values
+// are already provider-private wire values. Native policy values are usable
+// only when their validated advertisement retained the exact known mapping.
+// Capability enablement remains blocked until an exact package-owned provider
+// mapping exists; the zero-enabled baseline adds no provider authority.
+func (s *Supervisor) resolveLifecyclePolicy(caller LifecyclePolicy) (resolvedLifecyclePolicy, DisconnectReason) {
+	if err := caller.validate(); err != nil {
+		return resolvedLifecyclePolicy{}, DisconnectPolicyMismatch
+	}
+
+	s.mu.RLock()
+	complete := s.started && s.initialized && s.state != providersession.StateDisconnected && s.client != nil && s.modelCatalog != nil && s.nativePolicyCatalog != nil && s.capabilityCatalog != nil && s.effectivePolicy != nil && s.nativePoliciesSelected && s.capabilitiesSelected
+	if !complete {
+		s.mu.RUnlock()
+		return resolvedLifecyclePolicy{}, DisconnectLifecycleRejected
+	}
+	modelCatalog := cloneModelReasoningCatalog(*s.modelCatalog)
+	nativeCatalog := cloneNativePolicyCatalog(*s.nativePolicyCatalog)
+	capabilityCatalog := cloneCapabilityCatalog(*s.capabilityCatalog)
+	effective := cloneEffectivePolicy(*s.effectivePolicy)
+	s.mu.RUnlock()
+
+	if err := modelCatalog.Validate(); err != nil || modelCatalogReference(modelCatalog.Options) != modelCatalog.CatalogRef {
+		return resolvedLifecyclePolicy{}, DisconnectPolicyMismatch
+	}
+	projectedNative, reason := projectNativePolicyCatalog(NativePolicyAdvertisement{Approval: nativeCatalog.Approval, Sandbox: nativeCatalog.Sandbox})
+	if reason != "" {
+		return resolvedLifecyclePolicy{}, reason
+	}
+	if !sameNativePolicyCatalog(projectedNative, nativeCatalog) {
+		return resolvedLifecyclePolicy{}, DisconnectPolicyMismatch
+	}
+	projectedCapabilities, reason := projectCapabilityCatalog(CapabilityAdvertisement{Capabilities: capabilityCatalog.Capabilities})
+	if reason != "" {
+		return resolvedLifecyclePolicy{}, reason
+	}
+	if !sameCapabilityCatalog(projectedCapabilities, capabilityCatalog) || effective.Validate(modelCatalog) != nil {
+		return resolvedLifecyclePolicy{}, DisconnectPolicyMismatch
+	}
+
+	approval, approvalOK := advertisedApprovalPolicy(nativeCatalog, effective.Approval.SelectedRef)
+	sandbox, sandboxOK := advertisedSandboxPolicy(nativeCatalog, effective.Sandbox.SelectedRef)
+	if !approvalOK || !sandboxOK || effective.Approval.EffectiveRef != approval.PolicyRef || effective.Approval.AuthorityExpanding != approval.AuthorityExpanding || effective.Approval.SessionConfirmed != approval.AuthorityExpanding || effective.Sandbox.EffectiveRef != sandbox.PolicyRef || effective.Sandbox.AuthorityExpanding != sandbox.AuthorityExpanding || effective.Sandbox.SessionConfirmed != sandbox.AuthorityExpanding {
+		return resolvedLifecyclePolicy{}, DisconnectPolicyMismatch
+	}
+	baselineApproval := approval.PolicyRef == humanReviewPolicyRef && approval.providerPolicy == providerApprovalPolicyUntrusted && approval.providerReviewer == providerApprovalsReviewerUser && !approval.AuthorityExpanding
+	nativeAutoApproval := approval.PolicyRef == nativeAutoReviewPolicyRef && approval.providerPolicy == providerApprovalPolicyUntrusted && approval.providerReviewer == providerApprovalsReviewerAuto && approval.AuthorityExpanding
+	if (!baselineApproval && !nativeAutoApproval) || sandbox.providerSandbox != providerSandboxWorkspaceWrite || sandbox.providerSandboxType != providerSandboxTypeWorkspaceWrite {
+		return resolvedLifecyclePolicy{}, DisconnectUnsupportedCapability
+	}
+
+	if len(effective.Capabilities) != len(capabilityCatalog.Capabilities) {
+		return resolvedLifecyclePolicy{}, DisconnectPolicyMismatch
+	}
+	for _, option := range capabilityCatalog.Capabilities {
+		record, found := effectiveCapability(effective, option.CapabilityRef)
+		if !found || record.Supported != option.Supported || record.AuthorityExpanding != option.AuthorityExpanding || record.Experimental != option.Experimental {
+			return resolvedLifecyclePolicy{}, DisconnectPolicyMismatch
+		}
+		if record.UserEnabled {
+			return resolvedLifecyclePolicy{}, DisconnectUnsupportedCapability
+		}
+	}
+
+	if caller.Model != effective.EffectiveModelRef || caller.ReasoningEffort != effective.EffectiveReasoningRef || caller.ApprovalPolicy != approval.providerPolicy || caller.Reviewer != approval.providerReviewer || caller.AutoReview != nativeAutoApproval || caller.Sandbox != sandbox.providerSandbox {
+		return resolvedLifecyclePolicy{}, DisconnectPolicyMismatch
+	}
+	return resolvedLifecyclePolicy{policy: caller, key: selectedLifecyclePolicyKey(caller, modelCatalog.CatalogRef, nativeCatalog.CatalogRef, capabilityCatalog.CatalogRef, effective)}, ""
+}
+
+func effectiveCapability(policy providersession.EffectivePolicySnapshot, ref string) (providersession.CapabilityRecord, bool) {
+	for _, record := range policy.Capabilities {
+		if record.CapabilityRef == ref {
+			return record, true
+		}
+	}
+	return providersession.CapabilityRecord{}, false
+}
+
+func selectedLifecyclePolicyKey(policy LifecyclePolicy, modelCatalogRef, nativeCatalogRef, capabilityCatalogRef string, effective providersession.EffectivePolicySnapshot) [sha256.Size]byte {
+	hash := sha256.New()
+	base := policy.key()
+	_, _ = hash.Write(base[:])
+	for _, value := range []string{modelCatalogRef, nativeCatalogRef, capabilityCatalogRef, effective.Selection.CatalogRef, effective.Selection.ModelRef, effective.Selection.ReasoningRef, effective.EffectiveModelRef, effective.EffectiveReasoningRef, effective.Approval.SelectedRef, effective.Approval.EffectiveRef, effective.Sandbox.SelectedRef, effective.Sandbox.EffectiveRef} {
+		_, _ = hash.Write([]byte(value))
+		_, _ = hash.Write([]byte{0})
+	}
+	_, _ = hash.Write([]byte{boolByte(effective.Approval.AuthorityExpanding), boolByte(effective.Approval.SessionConfirmed), boolByte(effective.Sandbox.AuthorityExpanding), boolByte(effective.Sandbox.SessionConfirmed)})
+	for _, capability := range effective.Capabilities {
+		_, _ = hash.Write([]byte(capability.CapabilityRef))
+		_, _ = hash.Write([]byte{0, boolByte(capability.Supported), boolByte(capability.UserEnabled), boolByte(capability.AuthorityExpanding), boolByte(capability.Experimental), boolByte(capability.SessionConfirmed)})
+	}
+	var result [sha256.Size]byte
+	copy(result[:], hash.Sum(nil))
+	return result
+}
+
+func boolByte(value bool) byte {
+	if value {
+		return 1
+	}
+	return 0
 }
 
 func (r LifecycleReference) Validate() error {
@@ -163,9 +282,11 @@ func (s *Supervisor) StartThread(ctx context.Context, policy LifecyclePolicy) (L
 	started := time.Now()
 	s.lifecycleMu.Lock()
 	defer s.lifecycleMu.Unlock()
-	if err := policy.validate(); err != nil {
-		return LifecycleReference{}, s.rejectLifecycle(DisconnectPolicyMismatch)
+	resolved, reason := s.resolveLifecyclePolicy(policy)
+	if reason != "" {
+		return LifecycleReference{}, s.rejectLifecycle(reason)
 	}
+	policy = resolved.policy
 	client, ready := s.lifecycleReady()
 	if !ready || s.lifecycle.threadID != "" {
 		return LifecycleReference{}, s.rejectLifecycle(DisconnectLifecycleRejected)
@@ -186,6 +307,7 @@ func (s *Supervisor) StartThread(ctx context.Context, policy LifecyclePolicy) (L
 	}
 	s.lifecycle.threadID = threadID
 	s.lifecycle.policyKey = policy.key()
+	s.lifecycle.selectedPolicyKey = resolved.key
 	s.lifecycle.declaredRoots = map[string]bool{}
 	for _, root := range policy.WritableRoots {
 		s.lifecycle.declaredRoots[filepath.Clean(root)] = true
@@ -214,9 +336,11 @@ func (s *Supervisor) threadOperation(ctx context.Context, method string, referen
 	started := time.Now()
 	s.lifecycleMu.Lock()
 	defer s.lifecycleMu.Unlock()
-	if err := policy.validate(); err != nil {
-		return LifecycleReference{}, s.rejectLifecycle(DisconnectPolicyMismatch)
+	resolved, reason := s.resolveLifecyclePolicy(policy)
+	if reason != "" {
+		return LifecycleReference{}, s.rejectLifecycle(reason)
 	}
+	policy = resolved.policy
 	client, ready := s.lifecycleReady()
 	s.mu.RLock()
 	current := s.session
@@ -225,7 +349,7 @@ func (s *Supervisor) threadOperation(ctx context.Context, method string, referen
 	if !ready || threadID == "" || !reference.validThread(current, s.processRef, s.connectionRef) {
 		return LifecycleReference{}, s.rejectLifecycle(DisconnectLifecycleRejected)
 	}
-	if s.lifecycle.policyKey != policy.key() {
+	if s.lifecycle.selectedPolicyKey != resolved.key {
 		return LifecycleReference{}, s.rejectLifecycle(DisconnectPolicyMismatch)
 	}
 	params := policy.params()
@@ -259,15 +383,27 @@ func (s *Supervisor) StartTurn(ctx context.Context, reference LifecycleReference
 	return s.startTurn(ctx, reference, policy, inputParam(input))
 }
 
+// StartPromptTurn is the first-consumer input seam. It transmits one bounded
+// prompt directly to the private App Server transport and never retains it in
+// supervisor state, provider-neutral events, audit, or recovery records.
+func (s *Supervisor) StartPromptTurn(ctx context.Context, reference LifecycleReference, policy LifecyclePolicy, prompt string) (LifecycleReference, error) {
+	if strings.TrimSpace(prompt) == "" || len(prompt) > maxTransientPromptBytes || !utf8.ValidString(prompt) || strings.ContainsRune(prompt, '\x00') {
+		return LifecycleReference{}, s.rejectLifecycle(DisconnectLifecycleRejected)
+	}
+	return s.startTurn(ctx, reference, policy, []any{map[string]any{"type": "text", "text": prompt}})
+}
+
 // startTurn keeps the private provider input inside the supervisor package.
 // The public lifecycle surface remains limited to opaque InputReference values.
 func (s *Supervisor) startTurn(ctx context.Context, reference LifecycleReference, policy LifecyclePolicy, input []any) (LifecycleReference, error) {
 	started := time.Now()
 	s.lifecycleMu.Lock()
 	defer s.lifecycleMu.Unlock()
-	if err := policy.validate(); err != nil {
-		return LifecycleReference{}, s.rejectLifecycle(DisconnectPolicyMismatch)
+	resolved, reason := s.resolveLifecyclePolicy(policy)
+	if reason != "" {
+		return LifecycleReference{}, s.rejectLifecycle(reason)
 	}
+	policy = resolved.policy
 	if len(input) == 0 {
 		return LifecycleReference{}, s.rejectLifecycle(DisconnectLifecycleRejected)
 	}
@@ -278,11 +414,13 @@ func (s *Supervisor) startTurn(ctx context.Context, reference LifecycleReference
 	if !ready || threadID == "" || active || !reference.validThread(current, s.processRef, s.connectionRef) {
 		return LifecycleReference{}, s.rejectLifecycle(DisconnectLifecycleRejected)
 	}
-	if s.lifecycle.policyKey != policy.key() {
+	if s.lifecycle.selectedPolicyKey != resolved.key {
 		return LifecycleReference{}, s.rejectLifecycle(DisconnectPolicyMismatch)
 	}
 	s.mu.Lock()
 	s.lifecycle.startPending = true
+	s.completedTurnText = ""
+	s.completedTurnTextReady = false
 	s.mu.Unlock()
 	params := policy.params()
 	params["threadId"] = threadID
@@ -322,9 +460,11 @@ func (s *Supervisor) SteerTurn(ctx context.Context, reference LifecycleReference
 	started := time.Now()
 	s.lifecycleMu.Lock()
 	defer s.lifecycleMu.Unlock()
-	if err := policy.validate(); err != nil {
-		return s.rejectLifecycle(DisconnectPolicyMismatch)
+	resolved, reason := s.resolveLifecyclePolicy(policy)
+	if reason != "" {
+		return s.rejectLifecycle(reason)
 	}
+	policy = resolved.policy
 	if err := validateInputReference(input); err != nil {
 		return s.rejectLifecycle(DisconnectLifecycleRejected)
 	}
@@ -335,7 +475,7 @@ func (s *Supervisor) SteerTurn(ctx context.Context, reference LifecycleReference
 	if !ready || !active || !steerable || !reference.validTurn(current, s.processRef, s.connectionRef, turnID) {
 		return s.rejectLifecycle(DisconnectLifecycleRejected)
 	}
-	if s.lifecycle.policyKey != policy.key() {
+	if s.lifecycle.selectedPolicyKey != resolved.key {
 		return s.rejectLifecycle(DisconnectPolicyMismatch)
 	}
 	params := policy.params()

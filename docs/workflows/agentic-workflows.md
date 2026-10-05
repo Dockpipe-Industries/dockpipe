@@ -107,7 +107,7 @@ have a trusted host sandbox and escalation path; safe host actions may run direc
 sandbox, while privileged actions still require escalation. Both modes must produce the same event
 stream so CLI, UI, logs, and artifacts stay consistent.
 
-PipeDeck should sit on top of that same stream. It is launched through DockPipe, inherits
+ForgePipe should sit on top of that same stream. It is launched through DockPipe, inherits
 Pipeon-style launcher context, and surfaces workflow/agent/MCP/model-lane YAML through a modern UI.
 It can run workflows, inspect artifacts/logs, show approvals, preview diffs and conflicts, and map
 agents to markdown guidance without becoming a full IDE.
@@ -134,7 +134,7 @@ planes.
 - The DorkPipe/Pipeon VS Code extension may provide richer chat, model browser, template designer,
   and run inspector surfaces, but those surfaces should read/write or import/export workflow YAML
   and package-owned catalogs.
-- PipeDeck may provide the primary workflow control surface, but it should still
+- ForgePipe may provide the primary workflow control surface, but it should still
   read/write YAML-backed contracts and subscribe to the same operation-result/event stream as CLI
   runs.
 - The template designer should be a visual editor for `model_policy`, `steps[].agent`,

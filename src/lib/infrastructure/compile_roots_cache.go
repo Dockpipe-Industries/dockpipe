@@ -10,7 +10,6 @@ import (
 var (
 	wfRootsCache  sync.Map // string (abs repo root) -> []string
 	resRootsCache sync.Map
-	bunRootsCache sync.Map
 )
 
 func absRepoKey(repoRoot string) string {
@@ -43,18 +42,5 @@ func ResolverCompileRootsCached(repoRoot string) []string {
 	cfg, _ := domain.LoadDockpipeProjectConfig(repoRoot)
 	out := domain.EffectiveResolverCompileRoots(cfg, repoRoot)
 	resRootsCache.Store(k, out)
-	return out
-}
-
-// BundleCompileRootsCached returns compile.bundles paths for DockerfileDir and source script resolution.
-// There is no implicit default: list bundle roots in dockpipe.config.json when you need them.
-func BundleCompileRootsCached(repoRoot string) []string {
-	k := absRepoKey(repoRoot)
-	if v, ok := bunRootsCache.Load(k); ok {
-		return v.([]string)
-	}
-	cfg, _ := domain.LoadDockpipeProjectConfig(repoRoot)
-	out := domain.EffectiveBundleCompileRoots(cfg, repoRoot)
-	bunRootsCache.Store(k, out)
 	return out
 }

@@ -65,7 +65,7 @@ You stay in control: you pick the image (or resolver), the command, and the acti
 
 ## Try it (15 seconds)
 
-**Install:** pick your platform from **[GitHub Releases](https://github.com/jamie-steele/dockpipe/releases)** and follow **[install.md](../../docs/install.md)** (Linux `.deb`, tarballs, macOS, **Windows** `dockpipe.exe` + Docker Desktop + **Git for Windows** for bash/git on PATH, etc.).
+**Install:** pick your platform from **[GitHub Releases](https://github.com/Dockpipe-Industries/dockpipe/releases)** and follow **[install.md](../../docs/install.md)** (Linux `.deb`, tarballs, macOS, **Windows** `dockpipe.exe` + Docker Desktop + **Git for Windows** for bash/git on PATH, etc.).
 
 **First run:**
 
@@ -155,4 +155,4 @@ dockpipe --isolate my-dev --workdir /path/to/repo -- bash -c "npm ci && npm test
 
 dockpipe gives you one primitive: **run → isolate → act** (host prep, container, host follow-up). Use it for isolated runs, automation, chained steps, or AI workflows. **0.6** ships the **Go CLI**, **resolvers** (agnostic AI), **worktree and commit on host**, **template init**, **native Windows** (`dockpipe.exe` + Docker Desktop), optional **multi-step `config.yml`**, and the same isolation story as `docker run` with less boilerplate: consistent workdir, optional user mapping on Unix, optional action phase, templates, resolvers, and a pipe-friendly CLI. It stays minimal and composable so you can plug it into your own scripts and tooling without adopting a framework.
 
-If you try it and have ideas or feedback, the repo is [github.com/jamie-steele/dockpipe](https://github.com/jamie-steele/dockpipe). See [CONTRIBUTING.md](https://github.com/jamie-steele/dockpipe/blob/master/CONTRIBUTING.md) to add a resolver or template.
+If you try it and have ideas or feedback, the repo is [github.com/Dockpipe-Industries/dockpipe](https://github.com/Dockpipe-Industries/dockpipe). See [CONTRIBUTING.md](https://github.com/Dockpipe-Industries/dockpipe/blob/master/CONTRIBUTING.md) to add a resolver or template.

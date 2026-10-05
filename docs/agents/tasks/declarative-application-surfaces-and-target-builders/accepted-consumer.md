@@ -1,0 +1,181 @@
+## Accepted First Application Consumer (2026-08-18)
+
+The existing DockPipe Launcher is the first full application target for PipeLang, Application IR,
+and the standard Qt resolver. Its checked-in Qt/C++ implementation is the behavioral and
+presentation oracle. The end state is a PipeLang-authored native Qt launcher with one-to-one
+observable parity; this direction does not authorize a redesign, feature removal, or production
+language batch.
+
+Parity includes:
+
+| Surface | Required retained behavior |
+| --- | --- |
+| Native shell | Desktop-native startup, single-instance behavior, tray integration, show/hide, theme handling, and local/offline operation. |
+| Basic mode | Project selection, recent projects, app-workflow catalog, icon/list presentation, refresh, configure, and launch state. |
+| Advanced mode | Saved contexts, workflow/resolver/runtime/strategy settings, search, worktree discovery, launch/relaunch/stop, stop-all-for-repo, logs, and folder access. |
+| Docker observability | Existing container, network, volume, detail, status, log, automatic/manual refresh, inspect, start, and stop behavior. |
+| Workflow interaction | Catalog-derived typed inputs and views, prompt/file-picker bridge, subprocess status/output, and current failure reporting. |
+| Supporting dialogs | Launcher settings, package management, workflow launch/configuration, context editing, log viewing, and current disclaimers/about behavior. |
+
+### Frozen Docker-observability parity baseline
+
+The checked-in `DockerObservabilityWidget` is the exact oracle for the first launcher slice. This
+inventory freezes observable behavior; it does not require generated UI code to retain the current
+Qt Widgets structure or invoke Docker directly.
+
+The read-only snapshot has three independently successful or failed sections:
+
+| Section | Stable key and projected fields | Current discovery operation |
+| --- | --- | --- |
+| Containers | Container ID; name, normalized state, status text, image, ports, and relative creation text | `docker container ls --all --format {{json .}}` |
+| Networks | Network ID; name, driver, and scope | `docker network ls --format {{json .}}` |
+| Volumes | Volume name; driver and mountpoint | `docker volume ls --format {{json .}}`, followed by `docker volume inspect <name>` for the mountpoint |
+
+Container selection loads pretty-printed `docker inspect <id>` output and the last 200 lines from
+`docker logs --tail 200 <id>`. Network and volume selections load pretty-printed
+`docker network inspect <id>` and `docker volume inspect <name>` output. Detail requests are
+asynchronous and a late response for a formerly selected object must not replace the current
+selection. Invalid or non-object discovery lines are ignored, while command failures remain visible
+for their own section instead of discarding successful sections.
+
+The containers table retains Name, State, Image, Ports, and Created columns, single-row selection,
+status text/tooltips, and the existing state badge categories: `healthy`, `running`, `paused`,
+`restarting`, `exited`, `created`, and `other`. Search trims and Unicode-case-folds its input and
+matches the joined visible container columns. Networks retain Name, Driver, and Scope; volumes
+retain Name, Driver, and Mountpoint. All three retain count summaries, loading, empty, partial-error,
+and successful-refresh states.
+
+The view opens cold. Activation triggers the first refresh; while active and visible it performs a
+quiet refresh every four seconds, and manual refresh remains available. Only one snapshot refresh
+runs at a time; a requested refresh while one is running is coalesced, with an explicit request
+taking precedence over a quiet one. Applying a successful section updates rows by stable key,
+removes absent rows, preserves the selected object and scroll position when possible, reapplies the
+container filter, and refreshes details for a preserved selection.
+
+The current context menu exposes Inspect, Start, Stop, and Refresh. Start is unavailable for
+`healthy` or `running`; Stop is available for `healthy`, `running`, `paused`, or `restarting`.
+Current mutation parity is `docker start <id>` and `docker stop <id>` followed by refresh and detail
+reload, with command failures shown in status/log output. These operations are frozen as later
+observable parity only: the first replacement slice is read-only, and subsequent generated UI must
+request them through a DockPipe-owned capability adapter rather than embedding process authority.
+
+Parity proof must use deterministic adapter fixtures for complete, empty, partial-failure, stale
+detail, refresh-coalescing, selection-preservation, filtering, and state-action cases. A live Docker
+engine is useful integration evidence but cannot be the only acceptance oracle.
+
+The [2026-09-11 foundation alignment](../../../concepts/pipelang-foundation.md) places a reviewed
+language-foundation milestone before production launcher migration. A read-only screen requiring
+only a smaller subset does not remove enums, polymorphism, loops or managed synchronization from
+the language goal. Preserve this frozen parity baseline and existing executable fixtures while
+TASK-021 resolves the full foundation specification and dependency plan.
+
+The implementation order within the launcher migration is vertical:
+
+1. freeze an executable/read-only parity inventory for the current launcher;
+2. reproduce Docker snapshots, details, and logs through typed records, optionals, deterministic
+   collections, and failures, without adding mutations;
+3. add refresh/start/stop through an explicit DockPipe capability adapter and operation-result
+   events rather than backend commands embedded in generated UI code;
+4. reproduce Pipeon discovery, configuration, launch, prompt, output, and stop behavior;
+5. reproduce VM workflows, settings, contexts, packages, and the remaining Basic/Advanced surfaces;
+6. qualify native desktop parity before making the generated launcher the default; and
+7. retain the current implementation as the fallback until the accepted parity matrix passes.
+
+The first milestone is native desktop Qt. A browser, PWA, remote service, account, or network
+connection must not be required to inspect or control the local Docker engine. After native parity,
+the same generic Application IR and resolver contracts may prove Qt WebAssembly and semantic-web
+outputs without making either output the local launcher runtime.
+
+Authored DockPipe YAML remains the durable workflow contract and read-only input to the initial
+replacement. The launcher consumes the normalized catalog/projection and stores only the same
+launcher/session preferences, drafts, and selections it owns today. It does not rewrite authored
+YAML, scan package trees, or duplicate workflow execution semantics.
+
+This accepted consumer is dependency evidence for TASK-021 and this task, not permission to batch
+records, optionals, collections, actions, effects, Application IR, Qt generation, and launcher
+migration into one change. Each prerequisite remains an explicit versioned vertical slice.
+
+
+### PipeLang v0.32.0 directional-ordering value
+
+The accepted language foundation now provides explicit ascending, descending, and mixed per-key
+ordinal row ordering through the target-neutral `list_sort_by_ordinal_directions` Core node. This is
+sufficient for deterministic read-only Docker-observability row projections that require reverse or
+mixed ordering. It does not itself change the frozen launcher oracle, select a UI ordering policy,
+produce Application IR, or authorize runtime/target behavior.
+
+
+PipeLang v0.33.0 additionally provides bounded postfix `rows[index] -> Optional<R>` selection for the read-only snapshot model. It reuses canonical `list_at` semantics and adds no adapter, runtime, refresh, action, or UI behavior.
+
+
+### PipeLang v0.34.0 bounded-propagation value
+
+The accepted language foundation can now forward optional selection/details absence and the exact read-only section snapshot/text Result failures without inventing defaults or target-owned error behavior. The consumer still requires a separately versioned Application IR projection and gains no runtime, refresh, action, or UI behavior from this language slice.
+
+
+PipeLang v0.35.0 exhaustive bounded matching supplies target-neutral consumption of Optional selection/details and Result section success/failure. TASK-020 adapters must consume the semantic/Core projection and must not infer tag, default, or error behavior.
+
+### PipeLang v0.36.0 same-class pure-call value
+
+The accepted language foundation can now compose the existing Docker row filter and ordinal order
+methods as `OrderContainers(FilterContainers(rows, query))`. The consumer fixture proves the
+resolved typed HIR/Core call graph, evaluator result, and Core-only Go generation. Application IR
+continues to bind filter and order identities explicitly and does not gain a new schema field,
+inference rule, runtime action, Docker behavior, UI policy, or target behavior from this slice.
+
+### PipeLang v0.37.0 general pure-call composition value
+
+The Docker observability fixture now proves Optional record selection consumption as
+`match(value){ some(row) => NormalizeName(row.Name), none => "" }`. The resolved helper call stays
+inside PipeLang HIR/Core and is evaluated or generated without Application IR inference. The
+`dockpipe.application.v1` schema and its existing role bindings remain unchanged; only recorded
+language-contract metadata advances. This adds no adapter policy, runtime action, Docker behavior,
+UI behavior, or target semantics.
+
+### PipeLang v0.38.0 bounded conditional value
+
+The Docker observability fixture now proves the exactly typed lazy expression
+`name == "" ? fallback : NormalizeName(name)`. Empty names select the fallback; non-empty names
+select the existing resolved normalization call. The conditional remains wholly in PipeLang
+HIR/Core and adds no Application IR field, inference rule, adapter policy, runtime action, Docker
+behavior, UI behavior, or target semantics. The `dockpipe.application.v1` schema is unchanged; only
+its recorded language-contract metadata advances.
+
+### PipeLang v0.39.0 immutable-local value
+
+The same read-only Docker observability fixture now proves
+`{ string normalized = NormalizeName(name); return normalized == "" ? fallback : normalized; }`.
+The normalization call evaluates once before the local enters scope, and the existing v0.38.0
+conditional consumes that analysis-local value. This adds no Application IR field, state, action,
+adapter inference, runtime policy, Docker behavior, UI behavior, or target semantics. The
+`dockpipe.application.v1` schema remains unchanged; only recorded language-contract metadata
+advances.
+
+### PipeLang v0.40.0 ordered-immutable-local value
+
+The same read-only Docker observability fixture now proves
+`{ string normalized = NormalizeName(name); string selected = normalized == "" ? fallback : normalized; return selected; }`.
+The normalization and selection initializers each evaluate once in source order; `selected` can
+see `normalized`, and the terminal return sees both lexical bindings. This adds no Application IR
+field, state, action, adapter inference, runtime policy, Docker behavior, UI behavior, or target
+semantics. The `dockpipe.application.v1` schema remains unchanged; only recorded
+language-contract metadata advances.
+
+### Accepted `dockpipe.application.v1` read-only projection
+
+The first Application IR boundary is an explicit, separately versioned projection of a public
+`pipelang.semantic.v1` projection and its matching target-neutral Core program. An authored spec
+names the application function, snapshot record, section `Result<List<Row>, string>` and row
+records, stable string row key, visible columns, string filter/order fields, optional selection,
+and `Result<string, string>` details/log identities. Filtering and ordering name explicit
+Core-backed callables with `(List<Row>, string) -> List<Row>` and `(List<Row>) -> List<Row>`
+signatures; the Application adapter never reconstructs either operation from field metadata.
+Every identity must exist in the semantic projection; the application function must also exist in
+Core. Rejections retain the spec source range. Sections are canonicalized by stable identity and
+JSON uses deterministic field and slice order.
+
+The projection contains typed metadata and references only. It does not reparse or evaluate
+PipeLang, infer fields or error semantics, invoke Docker, refresh, perform actions, generate target
+code, migrate the launcher, or grant runtime authority. This is one independently reviewable slice
+because its schema, explicit input contract, validation, canonicalization, and frozen consumer
+shape can be reviewed without a runtime or UI.

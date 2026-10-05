@@ -9,7 +9,7 @@ Completed: 2026-07-11
 
 ## Rehomed follow-up
 
-- PipeDeck/Postgres projection remains with the PipeDeck/query backlog (TASK-008).
+- ForgePipe/Postgres projection remains with the ForgePipe/query backlog (TASK-008).
 - Provider/session/approval events remain with TASK-013, TASK-007, and host-sandbox work.
 - New package scripts that perform meaningful work must use `dockpipe result` or a shared package wrapper.
 

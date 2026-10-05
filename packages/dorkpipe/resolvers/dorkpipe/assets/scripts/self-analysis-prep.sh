@@ -2,7 +2,7 @@
 # Deterministic repo facts for DorkPipe self-analysis (no LLM).
 set -euo pipefail
 ROOT="$(pwd)"
-OUT="$(dockpipe scope --package dorkpipe self-analysis)"
+OUT="$(dockpipe __state package-runtime --owner dorkpipe --path self-analysis)"
 mkdir -p "$OUT"
 
 {

@@ -3,15 +3,21 @@ package appserversupervisor
 import (
 	"encoding/json"
 	"strconv"
+	"strings"
 	"time"
+	"unicode/utf8"
 
 	"dorkpipe.orchestrator/providersession"
 )
 
 // CAS-06 accepts only the notification subset below. Provider frames remain
-// transient: this parser extracts opaque identifiers and allow-listed status
-// classes, never text, messages, command data, file data, or error bodies.
-const maxSafeEventCounter uint64 = 100_000_000
+// transient. Normalized events extract only opaque identifiers and allow-listed
+// status classes. The first-consumer seam may retain one bounded completed
+// agent message in memory; it never enters events, audit, or recovery state.
+const (
+	maxSafeEventCounter       uint64 = 100_000_000
+	maxCompletedTurnTextBytes        = 256 * 1024
+)
 
 type eventParams struct {
 	ThreadID  string          `json:"threadId"`
@@ -31,6 +37,7 @@ type eventParams struct {
 		ID     string `json:"id"`
 		Type   string `json:"type"`
 		Status string `json:"status"`
+		Text   string `json:"text"`
 	} `json:"item"`
 	Warning    json.RawMessage `json:"warning"`
 	Error      json.RawMessage `json:"error"`
@@ -213,6 +220,12 @@ func (s *Supervisor) handleNotification(method string, raw json.RawMessage) Disc
 		}
 		if !validItemCompleted(params.Item.Type, params.Item.Status) {
 			return DisconnectUnsupportedLifecycle
+		}
+		if params.Item.Type == "agentMessage" {
+			if len(params.Item.Text) > maxCompletedTurnTextBytes || !utf8.ValidString(params.Item.Text) || strings.ContainsRune(params.Item.Text, '\x00') {
+				return DisconnectUnsupportedEvent
+			}
+			s.completedTurnText = params.Item.Text
 		}
 		itemID := s.lifecycle.itemID
 		s.lifecycle.itemID = ""

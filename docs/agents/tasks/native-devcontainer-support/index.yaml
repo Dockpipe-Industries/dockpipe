@@ -1,0 +1,26 @@
+# TASK-014 Native Dev Container discovery and lifecycle for Pipeon and CLI
+schema: 1
+id: TASK-014
+topic: Native Dev Container discovery and lifecycle for Pipeon and CLI
+entrypoint: overview.md
+
+dispatch:
+  readiness: unclassified
+  ownership: unclaimed
+
+routes:
+  orientation:
+    read: [overview.md]
+  research_and_decisions:
+    read: [overview.md, research.md]
+  implementation_history:
+    read: [overview.md, implementation-history.md]
+
+documents:
+  - {path: overview.md, role: goal, context, boundaries, questions, and first deliverables}
+  - {path: research.md, role: local and upstream evidence, lifecycle decisions, and first slice}
+  - {path: implementation-history.md, role: completed discovery, managed-up, and live verification slices}
+
+maintenance:
+  - Resolve document paths relative to this index and load only the route needed.
+  - Keep dispatch metadata synchronized with docs/agents/task-index.yaml.

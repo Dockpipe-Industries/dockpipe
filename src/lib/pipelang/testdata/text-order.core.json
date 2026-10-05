@@ -1,0 +1,77 @@
+{
+  "language_contract": "v0.8.0",
+  "compiler_contract": "pipelang.compiler.v1",
+  "functions": [
+    {
+      "identity": {
+        "package_id": "test.package",
+        "path": "app.root.root.before",
+        "callable": {
+          "parameters": [
+            {
+              "kind": "primitive",
+              "primitive": "string"
+            },
+            {
+              "kind": "primitive",
+              "primitive": "string"
+            }
+          ],
+          "returns": {
+            "kind": "primitive",
+            "primitive": "bool"
+          }
+        }
+      },
+      "name": "Before",
+      "parameters": [
+        {
+          "position": 0,
+          "name": "left",
+          "type": {
+            "kind": "primitive",
+            "primitive": "string"
+          }
+        },
+        {
+          "position": 1,
+          "name": "right",
+          "type": {
+            "kind": "primitive",
+            "primitive": "string"
+          }
+        }
+      ],
+      "return_type": {
+        "kind": "primitive",
+        "primitive": "bool"
+      },
+      "body": {
+        "kind": "binary",
+        "type": {
+          "kind": "primitive",
+          "primitive": "bool"
+        },
+        "binary": {
+          "operator": "less_than",
+          "left": {
+            "kind": "reference",
+            "type": {
+              "kind": "primitive",
+              "primitive": "string"
+            },
+            "parameter": 0
+          },
+          "right": {
+            "kind": "reference",
+            "type": {
+              "kind": "primitive",
+              "primitive": "string"
+            },
+            "parameter": 1
+          }
+        }
+      }
+    }
+  ]
+}

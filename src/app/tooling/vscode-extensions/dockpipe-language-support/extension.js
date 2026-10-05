@@ -1,8 +1,57 @@
 // @ts-check
 const vscode = require("vscode");
+const childProcess = require("child_process");
 const fs = require("fs/promises");
 const path = require("path");
 const zlib = require("zlib");
+
+const PIPELANG_COMPLETION_KEYWORDS = [
+  "public",
+  "private",
+  "Interface",
+  "Class",
+  "Struct",
+  "Record",
+  "Enum",
+  "List",
+  "Result",
+  "Optional",
+  "ArithmeticError",
+  "IComparable",
+  "string",
+  "int",
+  "bool",
+  "float",
+  "new",
+  "return",
+  "if",
+  "else",
+  "some",
+  "none",
+  "has_value",
+  "value_or",
+  "empty_list",
+  "list",
+  "count",
+  "append",
+  "find_by",
+  "filter_by",
+  "filter",
+  "contains_casefolded",
+  "filter_contains_casefolded",
+  "filter_joined_contains_casefolded",
+  "sort_by_ordinal",
+  "ascending",
+  "descending",
+  "propagate",
+  "match",
+  "ok",
+  "err",
+  "_",
+  "trim",
+  "true",
+  "false"
+];
 
 const DOCKPIPE_TOP_LEVEL_KEYS = [
   "name",
@@ -93,7 +142,7 @@ const TOP_LEVEL_KEY_DETAILS = {
   action: "Alias for act.",
   strategy: "Lifecycle wrapper that runs around the workflow.",
   strategies: "Available strategies for selection or validation.",
-  vault: "Vault provider used for secret injection.",
+  vault: "Secret injection mode: environment (named resolver), op (template), or none/off.",
   compile_hooks: "Shell hooks run during package compile against the staged copy before the tarball is written. Use DOCKPIPE_COMPILE_* env vars when the hook needs source or staging paths.",
   imports: "Additional workflow YAML merged into this workflow during authoring.",
   inject: "Compile-closure dependencies that should be included without merging their YAML into this workflow."
@@ -281,13 +330,13 @@ const DOCKPIPE_PROJECT_TOP_LEVEL_KEY_DETAILS = {
 const DOCKPIPE_PROJECT_SECTION_KEY_DETAILS = {
   compile: {
     core_from: "Optional override for the core slice source passed to compile core.",
-    workflows: "Repo-relative or absolute roots scanned for workflows and resolver trees.",
-    resolvers: "Deprecated extra resolver roots; merged into effective workflow roots when present.",
-    bundles: "Deprecated extra bundle roots; merged into compile.workflows."
+    workflows: "Repo-relative or absolute roots scanned for workflows and resolver trees."
   },
   secrets: {
     vault_template: "Preferred env template file containing secret references such as op:// entries.",
     op_inject_template: "Legacy alias for vault_template.",
+    environment: "Default named secret environment; --secret-environment overrides it explicitly.",
+    environments: "Named resolver configurations with non-secret parameters and explicit variable bindings.",
     vault: "Default vault mode used when workflow YAML omits vault.",
     notes: "Optional maintainer-facing notes shown by tooling such as dockpipe doctor."
   },
@@ -469,10 +518,17 @@ const CORE_HELPER_PROFILES = {
       },
       {
         name: "dockpipe scope --package",
-        detail: "Print a package scope object.",
+        detail: "Print a durable package scope object.",
         insertText: 'dockpipe scope --package "$1"',
         filterText: "dockpipe scope package json package state",
-        documentation: "First-hand CLI command that prints a package scope object as JSON, or resolves a package path when suffix segments are provided."
+        documentation: "First-hand CLI command that prints owner-only durable project/package state as JSON, or resolves a validated path beneath it. Use package runtime for caches, build output, scratch, and run evidence."
+      },
+      {
+        name: "dockpipe_sdk path package-runtime",
+        detail: "Resolve disposable package runtime state.",
+        insertText: 'dockpipe_sdk path package-runtime "$1"',
+        filterText: "dockpipe sdk path package runtime cache build scratch disposable",
+        documentation: "Shell SDK path for collision-safe disposable package caches, build output, scratch, and run evidence under `bin/.dockpipe/`."
       },
       {
         name: "dockpipe scope artifacts",
@@ -690,9 +746,9 @@ const CORE_HELPER_PROFILES = {
       },
       {
         name: "dockpipe.PackageScope",
-        detail: "Load package scope object.",
+        detail: "Load durable package scope object.",
         insertText: 'dockpipe.PackageScope("$1")',
-        documentation: "Go SDK method for `dockpipe scope --package <name>`."
+        documentation: "Go SDK pass-through for owner-only durable `dockpipe scope --package <name>` state. Disposable package products use package runtime."
       }
     ]
   }
@@ -1112,6 +1168,86 @@ async function readIfExists(filePath) {
   } catch {
     return "";
   }
+}
+
+async function resolveDockpipeBinary(document) {
+  if (process.env.DOCKPIPE_BIN) {
+    return process.env.DOCKPIPE_BIN;
+  }
+  const folder = vscode.workspace.getWorkspaceFolder(document.uri);
+  if (folder) {
+    const name = process.platform === "win32" ? "dockpipe.exe" : "dockpipe";
+    const candidate = path.join(folder.uri.fsPath, "src", "bin", name);
+    try {
+      await fs.access(candidate);
+      return candidate;
+    } catch {
+      // Installed extensions fall back to the user's PATH.
+    }
+  }
+  return process.platform === "win32" ? "dockpipe.exe" : "dockpipe";
+}
+
+function runPipeLangCheck(document, binary) {
+  return new Promise((resolve) => {
+    const child = childProcess.spawn(
+      binary,
+      ["pipelang", "check", "--in", document.fileName, "--format", "json", "--stdin"],
+      { cwd: path.dirname(document.fileName), windowsHide: true, shell: false }
+    );
+    let stdout = "";
+    child.stdout.setEncoding("utf8");
+    child.stdout.on("data", (chunk) => { stdout += chunk; });
+    child.stdin.on("error", () => {});
+    child.on("error", () => resolve(null));
+    child.on("close", () => {
+      try {
+        const payload = JSON.parse(stdout);
+        resolve(payload && payload.schema === 1 && Array.isArray(payload.diagnostics) ? payload.diagnostics : null);
+      } catch {
+        resolve(null);
+      }
+    });
+    child.stdin.end(document.getText(), "utf8");
+  });
+}
+
+function pipeLangDiagnosticSeverity(severity) {
+  switch (severity) {
+    case "warning": return vscode.DiagnosticSeverity.Warning;
+    case "error":
+    default: return vscode.DiagnosticSeverity.Error;
+  }
+}
+
+function pipeLangPosition(position) {
+  const line = Math.max(0, Number(position?.line || 1) - 1);
+  const column = Math.max(0, Number(position?.utf16_column || position?.column || 1) - 1);
+  return new vscode.Position(line, column);
+}
+
+function pipeLangRange(range) {
+  return new vscode.Range(pipeLangPosition(range?.start), pipeLangPosition(range?.end));
+}
+
+function pipeLangEditorDiagnostics(document, diagnostics) {
+  const documentPath = path.normalize(document.fileName);
+  return diagnostics
+    .filter((item) => path.normalize(String(item?.primary?.file || "")) === documentPath)
+    .map((item) => {
+      const diagnostic = new vscode.Diagnostic(
+        pipeLangRange(item.primary),
+        String(item.message || "PipeLang diagnostic"),
+        pipeLangDiagnosticSeverity(item.severity)
+      );
+      diagnostic.code = String(item.code || "");
+      diagnostic.source = "PipeLang";
+      diagnostic.relatedInformation = (item.related || []).map((related) => new vscode.DiagnosticRelatedInformation(
+        new vscode.Location(vscode.Uri.file(String(related.range.file)), pipeLangRange(related.range)),
+        String(related.message || "related location")
+      ));
+      return diagnostic;
+    });
 }
 
 /**
@@ -1991,7 +2127,40 @@ function findTypeEntryModel(modelCtx, entry) {
 /** @param {vscode.ExtensionContext} context */
 function activate(context) {
   const yamlDiagnostics = vscode.languages.createDiagnosticCollection("dockpipe-yaml");
+  const pipeLangDiagnostics = vscode.languages.createDiagnosticCollection("pipelang");
+  const pipeLangRefreshTimers = new Map();
   context.subscriptions.push(yamlDiagnostics);
+  context.subscriptions.push(pipeLangDiagnostics);
+
+  const refreshPipeLangDiagnostics = async (doc) => {
+    if (!doc || doc.languageId !== "pipelang" || doc.uri.scheme !== "file") {
+      return;
+    }
+    const documentVersion = doc.version;
+    const binary = await resolveDockpipeBinary(doc);
+    const diagnostics = await runPipeLangCheck(doc, binary);
+    if (doc.version !== documentVersion) {
+      return;
+    }
+    if (diagnostics) {
+      pipeLangDiagnostics.set(doc.uri, pipeLangEditorDiagnostics(doc, diagnostics));
+    } else {
+      pipeLangDiagnostics.delete(doc.uri);
+    }
+  };
+
+  const schedulePipeLangDiagnostics = (doc) => {
+    if (!doc || doc.languageId !== "pipelang" || doc.uri.scheme !== "file") {
+      return;
+    }
+    const key = doc.uri.toString();
+    const existing = pipeLangRefreshTimers.get(key);
+    if (existing) clearTimeout(existing);
+    pipeLangRefreshTimers.set(key, setTimeout(() => {
+      pipeLangRefreshTimers.delete(key);
+      void refreshPipeLangDiagnostics(doc);
+    }, 150));
+  };
 
   const refreshYamlDiagnostics = (doc) => {
     if (!doc || doc.languageId !== "yaml" || !isDockpipeWorkflowFile(doc)) {
@@ -2002,12 +2171,23 @@ function activate(context) {
 
   for (const doc of vscode.workspace.textDocuments) {
     refreshYamlDiagnostics(doc);
+    schedulePipeLangDiagnostics(doc);
   }
 
   context.subscriptions.push(
     vscode.workspace.onDidOpenTextDocument(refreshYamlDiagnostics),
     vscode.workspace.onDidChangeTextDocument((e) => refreshYamlDiagnostics(e.document)),
-    vscode.workspace.onDidCloseTextDocument((doc) => yamlDiagnostics.delete(doc.uri))
+    vscode.workspace.onDidCloseTextDocument((doc) => yamlDiagnostics.delete(doc.uri)),
+    vscode.workspace.onDidOpenTextDocument(schedulePipeLangDiagnostics),
+    vscode.workspace.onDidChangeTextDocument((e) => schedulePipeLangDiagnostics(e.document)),
+    vscode.workspace.onDidSaveTextDocument(schedulePipeLangDiagnostics),
+    vscode.workspace.onDidCloseTextDocument((doc) => {
+      const key = doc.uri.toString();
+      const timer = pipeLangRefreshTimers.get(key);
+      if (timer) clearTimeout(timer);
+      pipeLangRefreshTimers.delete(key);
+      pipeLangDiagnostics.delete(doc.uri);
+    })
   );
 
   context.subscriptions.push(
@@ -2616,22 +2796,7 @@ function activate(context) {
       { language: "pipelang", scheme: "file" },
       {
         provideCompletionItems() {
-          const kws = [
-            "public",
-            "private",
-            "Interface",
-            "Class",
-            "Struct",
-            "List",
-            "IComparable",
-            "string",
-            "int",
-            "bool",
-            "float",
-            "true",
-            "false"
-          ];
-          return kws.map((k) => new vscode.CompletionItem(k, vscode.CompletionItemKind.Keyword));
+          return PIPELANG_COMPLETION_KEYWORDS.map((keyword) => new vscode.CompletionItem(keyword, vscode.CompletionItemKind.Keyword));
         }
       }
     )
@@ -2722,4 +2887,8 @@ function activate(context) {
 
 function deactivate() {}
 
-module.exports = { activate, deactivate };
+module.exports = {
+  activate,
+  deactivate,
+  __test: { PIPELANG_COMPLETION_KEYWORDS, pipeLangPosition, pipeLangRange, pipeLangEditorDiagnostics }
+};

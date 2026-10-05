@@ -21,7 +21,7 @@ type CompileOutput struct {
 type InvokeOutput struct {
 	ClassName  string
 	MethodName string
-	Type       TypeName
+	Type       ResolvedTypeRef
 	Value      Value
 }
 
@@ -33,19 +33,15 @@ func Compile(src []byte, entryClass string) (*CompileOutput, error) {
 // CompileFiles parses and compiles a PipeLang program composed of multiple files.
 // The merged declarations share one symbol space; class/interface references may cross file boundaries.
 func CompileFiles(files map[string][]byte, entryClass string) (*CompileOutput, error) {
-	prog, err := parseMergedProgram(files)
+	analysis := AnalyzeFiles(files)
+	if err := analysis.Error(); err != nil {
+		return nil, err
+	}
+	entry, err := pickEntryClass(analysis.checked, entryClass)
 	if err != nil {
 		return nil, err
 	}
-	cp, err := Check(prog)
-	if err != nil {
-		return nil, err
-	}
-	entry, err := pickEntryClass(cp, entryClass)
-	if err != nil {
-		return nil, err
-	}
-	vals, err := classDefaults(entry)
+	vals, err := classDefaults(analysis.checked, entry)
 	if err != nil {
 		return nil, err
 	}
@@ -75,20 +71,16 @@ func Invoke(src []byte, className, methodName string, args []string) (*InvokeOut
 
 // InvokeFiles resolves and executes a method from a merged multi-file PipeLang program.
 func InvokeFiles(files map[string][]byte, className, methodName string, args []string) (*InvokeOutput, error) {
-	prog, err := parseMergedProgram(files)
-	if err != nil {
+	analysis := AnalyzeFiles(files)
+	if err := analysis.Error(); err != nil {
 		return nil, err
 	}
-	cp, err := Check(prog)
-	if err != nil {
-		return nil, err
-	}
-	class, err := pickEntryClass(cp, className)
+	class, err := pickEntryClass(analysis.checked, className)
 	if err != nil {
 		return nil, err
 	}
 	if strings.TrimSpace(methodName) == "" {
-		return nil, fmt.Errorf("method name is required")
+		return nil, oneDiagnostic(analysis.Sources, CodeInvocation, CategoryEvaluation, class.Span, "method name is required")
 	}
 	var method *MethodDecl
 	for i := range class.Methods {
@@ -98,56 +90,53 @@ func InvokeFiles(files map[string][]byte, className, methodName string, args []s
 		}
 	}
 	if method == nil {
-		return nil, fmt.Errorf("method %q not found on class %q", methodName, class.Name)
+		return nil, oneDiagnostic(analysis.Sources, CodeInvocation, CategoryEvaluation, class.Span, fmt.Sprintf("method %q not found on class %q", methodName, class.Name))
 	}
 	if normalizeVisibility(method.Visibility) != VisibilityPublic {
-		return nil, fmt.Errorf("method %q on class %q is private and cannot be invoked from CLI", methodName, class.Name)
+		return nil, oneDiagnostic(analysis.Sources, CodeInvocation, CategoryEvaluation, method.Span, fmt.Sprintf("method %q on class %q is private and cannot be invoked from CLI", methodName, class.Name))
 	}
 	if len(args) != len(method.Params) {
-		return nil, fmt.Errorf("method %s expects %d args, got %d", method.Name, len(method.Params), len(args))
+		return nil, oneDiagnostic(analysis.Sources, CodeInvocation, CategoryEvaluation, method.Span, fmt.Sprintf("method %s expects %d args, got %d", method.Name, len(method.Params), len(args)))
 	}
-	ctx, err := classDefaults(class)
+	ctx, err := classDefaults(analysis.checked, class)
 	if err != nil {
 		return nil, err
 	}
 	for i, p := range method.Params {
-		v, err := parseArgValue(p.Type, args[i])
+		paramType, err := analysis.checked.resolveType(p.Type)
 		if err != nil {
-			return nil, fmt.Errorf("arg %d (%s): %w", i+1, p.Name, err)
+			return nil, err
+		}
+		v, err := parseArgValue(paramType, args[i])
+		if err != nil {
+			return nil, oneDiagnostic(analysis.Sources, CodeInvocation, CategoryEvaluation, p.Span, fmt.Sprintf("arg %d (%s): %s", i+1, p.Name, err))
 		}
 		ctx[p.Name] = v
 	}
-	val, err := evalExpr(method.Body, ctx)
+	val, err := evalExpr(analysis.Sources, method.Body, ctx)
 	if err != nil {
 		return nil, err
 	}
-	return &InvokeOutput{ClassName: class.Name, MethodName: method.Name, Type: method.ReturnType, Value: val}, nil
+	returnType, err := analysis.checked.resolveType(method.ReturnType)
+	if err != nil {
+		return nil, err
+	}
+	return &InvokeOutput{ClassName: class.Name, MethodName: method.Name, Type: returnType, Value: val}, nil
 }
 
 func parseMergedProgram(files map[string][]byte) (*Program, error) {
-	if len(files) == 0 {
-		return nil, fmt.Errorf("no input files")
+	analysis := AnalyzeFiles(files)
+	if err := analysis.Error(); err != nil {
+		return nil, err
 	}
-	names := make([]string, 0, len(files))
-	for name := range files {
-		names = append(names, name)
-	}
-	sort.Strings(names)
-	merged := &Program{}
-	for _, name := range names {
-		b := files[name]
-		p, err := Parse(b)
-		if err != nil {
-			return nil, fmt.Errorf("%s: %w", name, err)
-		}
-		merged.Interfaces = append(merged.Interfaces, p.Interfaces...)
-		merged.Classes = append(merged.Classes, p.Classes...)
-	}
-	return merged, nil
+	return analysis.Program, nil
 }
 
-func parseArgValue(t TypeName, raw string) (Value, error) {
-	switch t {
+func parseArgValue(t ResolvedTypeRef, raw string) (Value, error) {
+	if t.Kind != TypeRefPrimitive {
+		return Value{}, fmt.Errorf("unsupported type %s", t)
+	}
+	switch t.Primitive {
 	case TypeString:
 		return Value{Type: TypeString, String: raw}, nil
 	case TypeInt:
@@ -173,16 +162,24 @@ func parseArgValue(t TypeName, raw string) (Value, error) {
 	}
 }
 
-func classDefaults(c *ClassDecl) (map[string]Value, error) {
+func classDefaults(checked *checkedProgram, c *ClassDecl) (map[string]Value, error) {
 	ctx := map[string]Value{}
 	for _, f := range c.Fields {
 		if f.Default == nil {
-			ctx[f.Name] = ZeroValue(f.Type)
+			resolved, err := checked.resolveType(f.Type)
+			if err != nil {
+				return nil, err
+			}
+			if resolved.Kind == TypeRefPrimitive {
+				ctx[f.Name] = ZeroValue(resolved.Primitive)
+			} else {
+				ctx[f.Name] = Value{}
+			}
 			continue
 		}
-		v, err := evalExpr(f.Default, map[string]Value{})
+		v, err := evalExpr(checked.sources, f.Default, map[string]Value{})
 		if err != nil {
-			return nil, fmt.Errorf("field %s default: %w", f.Name, err)
+			return nil, prefixDiagnostic(err, fmt.Sprintf("field %s default: ", f.Name))
 		}
 		ctx[f.Name] = v
 	}
@@ -244,7 +241,7 @@ func emitBindingsJSON(entry *ClassDecl, vals map[string]Value) ([]byte, error) {
 			continue
 		}
 		v := vals[f.Name]
-		fields = append(fields, fieldBinding{Name: f.Name, Type: string(f.Type), Value: jsonValue(v)})
+		fields = append(fields, fieldBinding{Name: f.Name, Type: f.Type.String(), Value: jsonValue(v)})
 	}
 	sort.Slice(fields, func(i, j int) bool { return fields[i].Name < fields[j].Name })
 
@@ -253,7 +250,7 @@ func emitBindingsJSON(entry *ClassDecl, vals map[string]Value) ([]byte, error) {
 		if normalizeVisibility(m.Visibility) != VisibilityPublic {
 			continue
 		}
-		methods = append(methods, methodBinding{Name: m.Name, ReturnType: string(m.ReturnType), Expr: ExprString(m.Body)})
+		methods = append(methods, methodBinding{Name: m.Name, ReturnType: m.ReturnType.String(), Expr: ExprString(m.Body)})
 	}
 	sort.Slice(methods, func(i, j int) bool { return methods[i].Name < methods[j].Name })
 
