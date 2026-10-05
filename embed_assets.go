@@ -578,4 +578,7 @@ import "embed"
 //go:embed "workflows/package/package-store-publish/assets/scripts/build-release-artifacts.sh"
 //go:embed "workflows/package/package-store-publish/assets/scripts/upload-release-artifacts.sh"
 //go:embed "workflows/package/package-store-publish/config.yml"
+//go:embed "workflows/package/package-store-staging-infra/README.md"
+//go:embed "workflows/package/package-store-staging-infra/assets/scripts/plan-staging.sh"
+//go:embed "workflows/package/package-store-staging-infra/config.yml"
 var authoredFS embed.FS

@@ -76,7 +76,7 @@ class ReleaseWorkflowTests(unittest.TestCase):
 
     def test_artifact_verification_has_no_deployment_or_production_credentials(self):
         for name, job in self.jobs.items():
-            if name in ("publish", "devto"):
+            if name in ("publish", "publish-staging", "devto"):
                 continue
             self.assertNotIn("environment", job, name)
             self.assertNotIn("secrets.", yaml.dump(job), name)
@@ -101,6 +101,47 @@ class ReleaseWorkflowTests(unittest.TestCase):
                         if step.get("uses", "").startswith("actions/download-artifact@"))
         self.assertEqual(prepared["with"]["name"], download["with"]["name"])
         self.assertEqual(prepared["with"]["path"].rstrip("/"), download["with"]["path"])
+
+    def test_staging_admission_requires_own_staging_push(self):
+        metadata = next(step for step in self.jobs["meta"]["steps"] if step.get("id") == "m")
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary) / "outputs"
+            for event in ("push", "pull_request", "workflow_dispatch"):
+                for ref in ("refs/heads/staging", "refs/heads/master", "refs/heads/dev"):
+                    for repository in ("Dockpipe-Industries/dockpipe", "fork/dockpipe"):
+                        output.write_text("")
+                        environment = dict(os.environ, GITHUB_REF=ref, GITHUB_EVENT_NAME=event,
+                                           GITHUB_REPOSITORY=repository, GITHUB_SHA="a" * 40,
+                                           GITHUB_RUN_ID="1234", GITHUB_RUN_ATTEMPT="2",
+                                           GITHUB_OUTPUT=str(output), INPUT_STAGING="true")
+                        result = subprocess.run(["bash", "-c", metadata["run"]], cwd=REPOSITORY,
+                                                env=environment, text=True, capture_output=True)
+                        allowed = event == "push" and ref == "refs/heads/staging" and repository == "Dockpipe-Industries/dockpipe"
+                        self.assertEqual(result.returncode == 0, allowed, result.stdout + result.stderr)
+                        if allowed:
+                            self.assertIn("-staging.1234.2.aaaaaaaaaaaa", output.read_text())
+                            self.assertIn("dry_run=false", output.read_text())
+                        else:
+                            self.assertEqual(output.read_text(), "")
+
+    def test_staging_call_waits_for_tests_and_publishes_only_prereleases(self):
+        ci = yaml.load((REPOSITORY / ".github/workflows/ci.yml").read_text(), Loader=yaml.BaseLoader)
+        call = ci["jobs"]["staging-release"]
+        self.assertEqual(call["needs"], ["test", "test-windows"])
+        self.assertEqual(call["uses"], "./.github/workflows/release.yml")
+        self.assertEqual(call["with"], {"staging": "true"})
+        self.assertIn("github.event_name == 'push'", call["if"])
+        self.assertIn("github.ref == 'refs/heads/staging'", call["if"])
+        self.assertNotIn("secrets", call)
+        job = self.jobs["publish-staging"]
+        self.assertEqual(job["needs"], ["meta", "assemble"])
+        self.assertEqual(job["environment"], "release-staging")
+        self.assertIn("needs.meta.outputs.candidate != ''", job["if"])
+        release = next(step for step in job["steps"] if step.get("uses", "").startswith("softprops/"))
+        self.assertEqual(release["with"]["prerelease"], "true")
+        self.assertEqual(release["with"]["make_latest"], "false")
+        self.assertEqual(release["with"]["target_commitish"], "${{ github.sha }}")
+        self.assertIn("Require the current staging head", [step.get("name") for step in job["steps"]])
 
     def test_manual_runs_default_to_dry_run_and_only_master_pushes_trigger(self):
         triggers = self.workflow["on"]

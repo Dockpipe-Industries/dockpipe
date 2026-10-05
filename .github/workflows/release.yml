@@ -3,6 +3,12 @@ name: Release
 # Merging to master ships a release: version comes from repo-root VERSION + release/releasenotes/X.Y.Z.md.
 # Manual runs default to dry-run verification; production runs require master.
 on:
+  workflow_call:
+    inputs:
+      staging:
+        description: Build a staging candidate after the caller's CI gates.
+        required: true
+        type: boolean
   push:
     branches: [master]
   workflow_dispatch:
@@ -37,12 +43,14 @@ jobs:
       tag: ${{ steps.m.outputs.tag }}
       dry_run: ${{ steps.m.outputs.dry_run }}
       build_msi: ${{ steps.m.outputs.build_msi }}
+      candidate: ${{ steps.m.outputs.candidate }}
     steps:
       - uses: actions/checkout@v6
 
       - id: m
         shell: bash
         env:
+          INPUT_STAGING: ${{ inputs.staging }}
           INPUT_VERSION: ${{ inputs.version }}
           INPUT_DRY_RUN: ${{ inputs.dry_run }}
           INPUT_BUILD_MSI: ${{ inputs.build_msi }}
@@ -50,7 +58,17 @@ jobs:
           set -euo pipefail
           dry_run="false"
           build_msi="false"
-          if [[ "${GITHUB_EVENT_NAME}" == "workflow_dispatch" ]]; then
+          candidate=""
+          if [[ "${INPUT_STAGING:-false}" == "true" ]]; then
+            if [[ "$GITHUB_EVENT_NAME" != push || "$GITHUB_REF" != refs/heads/staging || "$GITHUB_REPOSITORY" != Dockpipe-Industries/dockpipe ]]; then
+              echo "::error::Staging publication requires this repository's staging push."
+              exit 1
+            fi
+            [[ "$GITHUB_RUN_ID" =~ ^[0-9]+$ && "$GITHUB_RUN_ATTEMPT" =~ ^[0-9]+$ && "$GITHUB_SHA" =~ ^[0-9a-f]{40}$ ]]
+            raw="$(tr -d ' \n\r' < VERSION)"
+            candidate="staging.${GITHUB_RUN_ID}.${GITHUB_RUN_ATTEMPT}.${GITHUB_SHA:0:12}"
+            build_msi="true"
+          elif [[ "${GITHUB_EVENT_NAME}" == "workflow_dispatch" ]]; then
             raw="${INPUT_VERSION:-}"
             if [[ -z "${raw}" ]]; then
               raw="$(tr -d ' \n\r' < VERSION)"
@@ -71,7 +89,7 @@ jobs:
             echo "Unsupported event: ${GITHUB_EVENT_NAME}" >&2
             exit 1
           fi
-          if [[ "$dry_run" != "true" && "${GITHUB_REF}" != "refs/heads/master" ]]; then
+          if [[ -z "$candidate" && "$dry_run" != "true" && "${GITHUB_REF}" != "refs/heads/master" ]]; then
             echo "::error::Production releases require master. Use dry_run=true for branch verification."
             exit 1
           fi
@@ -85,6 +103,11 @@ jobs:
             exit 1
           fi
           tag="v${raw}"
+          if [[ -n "$candidate" ]]; then
+            candidate="${raw}-${candidate}"
+            tag="v${candidate}"
+          fi
+          echo "candidate=${candidate}" >> "$GITHUB_OUTPUT"
           echo "version=${raw}" >> "$GITHUB_OUTPUT"
           echo "tag=${tag}" >> "$GITHUB_OUTPUT"
           echo "dry_run=${dry_run}" >> "$GITHUB_OUTPUT"
@@ -300,7 +323,7 @@ jobs:
         run: |
           cp release/packaging/linux/install.sh release/artifacts/install.sh
           cp release/packaging/windows/install.ps1 release/artifacts/install.ps1
-          python3 release/packaging/release-artifacts.py prepare release/artifacts --version "${{ needs.meta.outputs.version }}"
+          python3 release/packaging/release-artifacts.py prepare release/artifacts --version "${{ needs.meta.outputs.version }}" --candidate "${{ needs.meta.outputs.candidate }}" --source-sha "${{ github.sha }}"
 
       - name: Install dry-run repository tools
         if: needs.meta.outputs.dry_run == 'true'
@@ -420,6 +443,103 @@ jobs:
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_DEFAULT_REGION: auto
         run: python3 release/packaging/publish-r2.py --artifacts release/artifacts --apt release/apt --version "${{ needs.meta.outputs.version }}"
+
+  publish-staging:
+    name: Publish staging candidate
+    needs: [meta, assemble]
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/staging' && needs.meta.outputs.candidate != '' && needs.meta.outputs.dry_run == 'false' }}
+    runs-on: ubuntu-latest
+    environment: release-staging
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: dockpipe-release-prepared-${{ needs.meta.outputs.version }}
+          path: release/artifacts
+
+      - name: Require the current staging head
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          current="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/staging" --jq .object.sha)"
+          [[ "$current" == "$GITHUB_SHA" ]] || { echo "::error::A newer staging commit exists; refusing stale publication."; exit 1; }
+
+      - name: Install repository tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends apt-utils gnupg
+
+      - name: Verify publication configuration
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          APT_SUITE: staging
+          APT_SIGNING_KEY: ${{ secrets.APT_SIGNING_KEY }}
+          APT_SIGNING_FINGERPRINT: ${{ vars.APT_SIGNING_FINGERPRINT }}
+          R2_ENDPOINT_URL: ${{ vars.R2_ENDPOINT_URL }}
+          DOCKPIPE_RELEASE_BUCKET: ${{ vars.DOCKPIPE_RELEASE_BUCKET }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$DOCKPIPE_RELEASE_BUCKET" == dockpipe-staging ]] || { echo "::error::Staging requires dockpipe-staging."; exit 1; }
+          for name in AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY APT_SIGNING_KEY APT_SIGNING_FINGERPRINT R2_ENDPOINT_URL DOCKPIPE_RELEASE_BUCKET; do
+            [[ -n "${!name}" ]] || { echo "::error::Missing release setting: $name"; exit 1; }
+          done
+
+      - name: Build signed APT repository
+        env:
+          APT_SUITE: staging
+          APT_SIGNING_KEY: ${{ secrets.APT_SIGNING_KEY }}
+          APT_SIGNING_FINGERPRINT: ${{ vars.APT_SIGNING_FINGERPRINT }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          export GNUPGHOME="$(mktemp -d)"
+          trap 'rm -rf "$GNUPGHOME"' EXIT
+          chmod 700 "$GNUPGHOME"
+          printf '%s' "$APT_SIGNING_KEY" | gpg --batch --import
+          bash release/packaging/build-apt.sh release/artifacts release/apt
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          prerelease: true
+          make_latest: false
+          tag_name: ${{ needs.meta.outputs.tag }}
+          target_commitish: ${{ github.sha }}
+          name: ${{ needs.meta.outputs.tag }}
+          body_path: release/artifacts/RELEASE_NOTES.md
+          # MSI is optional (build-msi may be skipped); do not fail when artifacts dir has no .msi
+          fail_on_unmatched_files: false
+          files: |
+            release/artifacts/*.tar.gz
+            release/artifacts/*.zip
+            release/artifacts/*.deb
+            release/artifacts/*.msi
+            release/artifacts/*.apk
+            release/artifacts/*.rpm
+            release/artifacts/*.pkg.tar.zst
+            release/artifacts/*.sha256
+            release/artifacts/release-manifest.json
+            release/artifacts/install-manifest.json
+            release/artifacts/install.sh
+            release/artifacts/install.ps1
+            release/artifacts/SHA256SUMS.txt
+
+      - name: Publish all packages and signed APT repository to R2
+        env:
+          DOCKPIPE_RELEASE_BUCKET: ${{ vars.DOCKPIPE_RELEASE_BUCKET }}
+          R2_ENDPOINT_URL: ${{ vars.R2_ENDPOINT_URL }}
+          R2_PREFIX: ${{ vars.R2_PREFIX }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+        run: python3 release/packaging/publish-r2.py --artifacts release/artifacts --apt release/apt --version "${{ needs.meta.outputs.version }}" --candidate "${{ needs.meta.outputs.candidate }}"
 
   # Optional: dev.to — PUT main article (DEVTO_ARTICLE_ID) + optional one-time POST per release (DEVTO_ONE_TIME_POST).
   # See release/docs/devto.md
