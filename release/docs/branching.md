@@ -3,7 +3,7 @@
 ## Model: **`staging` → `master` = ship**
 
 1. **Contributors** (or you) work on **feature branches** or **forks** → open **PR → `staging`**.
-2. **Merge to `staging`** when the change is accepted. **No release** yet — you can push follow-ups, edit **`release/releasenotes/`**, bump **`VERSION`**, or tweak the contributor’s work on **`staging`** (via PR or maintainer commits, per your rules).
+2. **Merge to `staging`** when the change is accepted. After green CI, an installable [staging candidate](staging.md) publishes automatically. You can continue testing before production — you can push follow-ups, edit **`release/releasenotes/`**, bump **`VERSION`**, or tweak the contributor’s work on **`staging`** (via PR or maintainer commits, per your rules).
 3. When you’re ready to **cut a release**, open **PR `staging` → `master`** (or merge with the same protections). That PR must **bump `VERSION`** and **update `release/releasenotes/X.Y.Z.md`** (CI enforces this only for PRs **targeting `master`**).
 4. **Merge to `master`** → **Release** workflow runs: artifacts + **GitHub Release** **`vX.Y.Z`**.
 
@@ -27,7 +27,7 @@ Turn off **“allow administrators to bypass”** if you want **your own** chang
 
 **`master`** should match **what you last shipped** (and **`v$(cat VERSION)`** on that branch). **`staging`** may be **ahead** until the next ship PR.
 
-**First-time GitHub Actions:** Workflows must exist on **`master`** once. Prefer shipping them with a normal **`staging` → `master`** release PR (or a small patch release).
+**First-time GitHub Actions:** Manual dispatch requires the workflow on the default branch. The staging push path calls the reusable release workflow from the same commit and can qualify candidates before a production merge.
 
 ### Recommended flow
 
@@ -77,7 +77,7 @@ On the **weekly schedule**, only **`codeql`** runs (**`test`** and **`test-windo
 |--------|-----------|----------------|
 | **PR** → **`staging`** | **`ci.yml`** | Jobs **`test`** + **`test-windows`** + **`codeql`** — **no** VERSION / release-notes gate on **`test`** |
 | **PR** → **`master`** | **`ci.yml`** | Same + **release notes + VERSION bump** on **`test`** |
-| **Push** **`staging`** / **`master`** | **`ci.yml`** | **`test`** + **`test-windows`** + **`codeql`** (no VERSION gate on push) |
+| **Push** **`staging`** / **`master`** | **`ci.yml`** | **`test`** + **`test-windows`** (no VERSION gate on push); staging then builds and publishes a candidate. CodeQL runs separately. |
 | **workflow_dispatch** | **`ci.yml`** | **`test`** + **`test-windows`** + **`codeql`** (no VERSION gate) |
 | **Schedule** (weekly) | **`ci.yml`** | **`codeql`** only |
 | **Push** **`master`** (merge) | **`release.yml`** | Full build + **GitHub Release** `v$(cat VERSION)`; optional **dev.to** ([devto.md](devto.md)) |
