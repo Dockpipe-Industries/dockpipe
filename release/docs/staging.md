@@ -12,6 +12,13 @@ environment to allow only the staging branch, without a manual reviewer if
 publication should be automatic. Its credentials must be restricted to the staging
 bucket. Production still requires master and environment `release`.
 
+The CI call uses `secrets: inherit` to work around GitHub's environment-secret
+resolution issue in reusable workflows
+([actions/runner#4453](https://github.com/actions/runner/issues/4453)). This also
+makes caller repository and organization secrets available to the called workflow.
+Keep publication credentials in their respective GitHub environments: the staging
+publisher binds `release-staging`, whose values take precedence for that job.
+
 Staging uses the same native build and artifact assembly jobs as production:
 
 | Output | Platforms |
