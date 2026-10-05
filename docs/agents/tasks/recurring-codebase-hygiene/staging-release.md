@@ -304,3 +304,27 @@ and has user approval for checkpoint/push plus MR promotion through `js/dev` and
 `dev` to `staging`. Reuse matching open MRs, verify their diff/checks before merging,
 and stop before master. No Action retry was dispatched; the staging merge will
 start the normal CI and candidate publication path.
+
+
+## Reusable release environment secrets — 2026-10-05
+
+The VM repair `d6293516` reached staging through merged MRs #35, #36 and #37;
+staging head was `eccec1db1d11fb157f362afa7fe6fe85a462e86d`. Run `37384217934`
+passed CI, native builds, MSI and assembly. The publisher stopped at configuration
+validation: all three secret expressions were empty, while staging environment
+variables resolved correctly. Read-only GitHub metadata confirmed the three secret
+names still existed with their original setup timestamps. No publication ran.
+
+The behavior matches https://github.com/actions/runner/issues/4453. The user
+approved fixing it after diagnosis. The caller now uses `secrets: inherit`, the
+reported workaround; the existing workflow contract test requires this setting.
+The release guide documents the additional repository/organization secret
+visibility. Publication remains in `release-staging`, with its staging-only branch
+rule and bucket check. No secret values, credentials or production gates changed.
+Continue the approved checkpoint/push and MR route through `js/dev`, `dev` and
+`staging`; stop before master. Local checks and hosted confirmation follow.
+
+Local validation passed: all eight release-workflow tests and `git diff --check`.
+Actionlint 1.7.7 passed with only its outdated `macos-15-intel` runner-label check
+excluded; the preceding hosted native build already passed on that runner.
+These checks validate workflow structure and guards, not hosted secret delivery.

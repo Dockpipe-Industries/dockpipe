@@ -132,7 +132,7 @@ class ReleaseWorkflowTests(unittest.TestCase):
         self.assertEqual(call["with"], {"staging": "true"})
         self.assertIn("github.event_name == 'push'", call["if"])
         self.assertIn("github.ref == 'refs/heads/staging'", call["if"])
-        self.assertNotIn("secrets", call)
+        self.assertEqual(call["secrets"], "inherit")
         job = self.jobs["publish-staging"]
         self.assertEqual(job["needs"], ["meta", "assemble"])
         self.assertEqual(job["environment"], "release-staging")
