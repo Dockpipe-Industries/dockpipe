@@ -10,6 +10,9 @@ This repo now supports an automated GitHub Actions release pipeline.
 
 ---
 
+After a green staging push, [the staging channel](staging.md) publishes a separate
+installable candidate. Package versions are independent of the CLI release version.
+
 ## Release workflow
 
 Pipeline file: `.github/workflows/release.yml`

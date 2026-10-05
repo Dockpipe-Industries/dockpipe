@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"dockpipe/src/lib/application/internal/compileconfig"
+	"dockpipe/src/lib/application/internal/packageversion"
 	"dockpipe/src/lib/application/internal/pipelangmaterialize"
 	"dockpipe/src/lib/application/internal/treecopy"
 	"dockpipe/src/lib/domain"
@@ -98,6 +99,10 @@ func compileWorkflowOne(workdir, srcAbs, name string, force bool) error {
 	if pkgName == "" {
 		pkgName = filepath.Base(srcAbs)
 	}
+	resolvedVersion, err := packageversion.ForSource(workdir, srcAbs, authoredPackageVersion(workdir))
+	if err != nil {
+		return err
+	}
 	opIDs := packageCompileIDs(workdir, map[string]string{
 		"package": pkgName,
 		"source":  filepath.ToSlash(srcAbs),
@@ -120,6 +125,11 @@ func compileWorkflowOne(workdir, srcAbs, name string, force bool) error {
 				if latestTar == "" {
 					rebuild = true
 				} else {
+					expectedName := fmt.Sprintf("dockpipe-workflow-%s-%s.tar.gz", packagebuild.SafeTarballToken(pkgName), packagebuild.SafeTarballToken(resolvedVersion))
+					if filepath.Base(latestTar) != expectedName {
+						opIDs["rebuild_reason"] = "package_version_changed"
+						rebuild = true
+					}
 					if ok, reason := compiledPackageWorkflowConfigsValid(latestTar); !ok {
 						opIDs["rebuild_reason"] = "invalid_store_tarball"
 						opIDs["validation_error"] = reason
@@ -141,30 +151,8 @@ func compileWorkflowOne(workdir, srcAbs, name string, force bool) error {
 					}
 				}
 			} else if _, err := os.Stat(legacyDir); err == nil {
-				refMax, err := infrastructure.MaxModTimeFilesUnder(legacyDir)
-				if err != nil {
-					return err
-				}
-				srcMax, err := infrastructure.MaxModTimeFilesUnder(srcAbs)
-				if err != nil {
-					return err
-				}
-				switch {
-				case srcMax.IsZero():
-					opIDs["rebuild_reason"] = "untimed_sources"
-					rebuild = true
-				case refMax.IsZero():
-					opIDs["rebuild_reason"] = "empty_legacy_store"
-					rebuild = true
-				case !srcMax.After(refMax):
-					opIDs["result"] = "skip"
-					opIDs["skip_reason"] = "up_to_date_legacy_store"
-					opIDs["output"] = filepath.ToSlash(legacyDir)
-					return nil
-				default:
-					opIDs["rebuild_reason"] = "source_newer_than_legacy_store"
-					rebuild = true
-				}
+				opIDs["rebuild_reason"] = "legacy_store_migration"
+				rebuild = true
 			}
 		}
 		if rebuild {
@@ -204,14 +192,7 @@ func compileWorkflowOne(workdir, srcAbs, name string, force bool) error {
 		if _, err := pipelangmaterialize.MaterializeRoots([]string{staging}, true, ""); err != nil {
 			return fmt.Errorf("compile pipelang artifacts: %w", err)
 		}
-		authoredManifest, err := readAuthoredPackageManifest(srcAbs)
-		if err != nil {
-			return fmt.Errorf("package manifest: %w", err)
-		}
-		if err := writeCompiledWorkflowRuntimeArtifacts(workdir, staging, pkgName, wf, authoredManifest); err != nil {
-			return fmt.Errorf("write runtime artifacts: %w", err)
-		}
-		defaultVersion := authoredPackageVersion(workdir)
+		defaultVersion := resolvedVersion
 		manifestPath := filepath.Join(staging, infrastructure.PackageManifestFilename)
 		if _, err := os.Stat(manifestPath); os.IsNotExist(err) {
 			pm := map[string]any{
@@ -243,9 +224,12 @@ func compileWorkflowOne(workdir, srcAbs, name string, force bool) error {
 				return err
 			}
 		}
-		pmParsed, err := domain.ParsePackageManifest(manifestPath)
+		pmParsed, err := readVersionedCompiledManifest(manifestPath, defaultVersion)
 		if err != nil {
 			return fmt.Errorf("package manifest: %w", err)
+		}
+		if err := writeCompiledWorkflowRuntimeArtifacts(workdir, staging, pkgName, wf, pmParsed); err != nil {
+			return fmt.Errorf("write runtime artifacts: %w", err)
 		}
 		ver := strings.TrimSpace(pmParsed.Version)
 		if ver == "" {

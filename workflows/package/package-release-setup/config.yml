@@ -4,6 +4,7 @@ platforms: [deb, macos, windows]
 vault: environment
 docker_preflight: false
 vars:
+  RELEASE_SETUP_ENVIRONMENT: "release"
   RELEASE_SETUP_APPLY: "0"
   R2_ENDPOINT_URL: "https://a378c4328a20d669179d7b4adcfc5914.r2.cloudflarestorage.com"
   DOCKPIPE_RELEASE_BUCKET: "dockpipe"
