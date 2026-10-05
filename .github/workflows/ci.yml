@@ -235,5 +235,8 @@ jobs:
     permissions:
       contents: write
     uses: ./.github/workflows/release.yml
+    # GitHub requires inheritance to resolve the called job's environment secrets.
+    # https://github.com/actions/runner/issues/4453
+    secrets: inherit
     with:
       staging: true
