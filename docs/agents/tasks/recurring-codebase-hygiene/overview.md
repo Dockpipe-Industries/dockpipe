@@ -15,16 +15,17 @@ publication requires master and separate authorization. Final evidence updates
 remain local; no engine behavior changed in the last test-only repair.
 
 The authorized [staging CI repair](release-0.6-hosted.md#staging-cisecurity-repair--2026-10-05)
-was committed and pushed as `3195439`. Subsequent staging run `37263035986` at
-`364b3a4` has an identical source tree and passes security scans, runtime suites,
-staticcheck, ShellCheck, the Docker test workflow, DEB build, and Windows CI.
-CodeQL run `37263035945` also passes. Shell unit tests fail because the Linux CI
-setup omits ripgrep, required by repository-layout, IDE, and backlog checks.
-The local follow-up explicitly installs ripgrep, matching release setup; no test
-or gate is skipped. Docker integration did not run after the failed shell step.
-Full compiler and fresh release qualification remain separate proof boundaries.
-The user approved checkpoint/push of the dependency follow-up to `js/pipelang`;
-promotion and hosted revalidation remain pending.
+was pushed as `3195439`; the missing-ripgrep follow-up was pushed as `3e21f91`.
+Staging run `37264618895` at `95415dc` has an identical source tree to `3e21f91`.
+All shell tests, security/static scans, runtime tests, the Docker test workflow,
+DEB build, and Windows CI pass; CodeQL run `37264618880` also passes. The only
+failed integration fixture is `test_cursor_dev_session_guard.sh`, which resolves
+an uncreated workspace and uses the old session-marker location. The local
+fixture repair creates its workspace, uses current runtime helpers, runs from
+the correct directory, and isolates/cleans temporary state. Its guard assertions
+pass locally; all other integration tests passed in the hosted run. The fixture
+follow-up is approved for checkpoint/push to `js/pipelang`; hosted revalidation
+and fresh release qualification remain pending.
 
 [0.6 error handling and architecture audit](release-0.6-audit.md) records six
 primary findings and their focused working-tree fixes: strict budget reads,
