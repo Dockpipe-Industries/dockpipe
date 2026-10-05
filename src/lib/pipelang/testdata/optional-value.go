@@ -96,5 +96,6 @@ func PipeLangHasValue(p0 PipeLangOptional[string]) bool {
 }
 
 func PipeLangPresent(p0 string) PipeLangOptional[string] {
+	pipelangValidateText(p0)
 	return pipelangSomeValue(p0)
 }

@@ -219,7 +219,7 @@ func compileWorkflowOne(workdir, srcAbs, name string, force bool) error {
 				"name":         pkgName,
 				"version":      defaultVersion,
 				"title":        pkgName,
-				"description":  "Compiled from " + srcAbs,
+				"description":  "Compiled workflow package " + pkgName,
 				"kind":         "workflow",
 				"allow_clone":  true,
 				"distribution": "source",

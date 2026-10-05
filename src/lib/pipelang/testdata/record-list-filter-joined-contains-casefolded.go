@@ -1755,5 +1755,6 @@ func pipelangFilterJoinedContainsCaseFoldedListTestPackageAppRootContainerrowFie
 
 func PipeLangSearchRows(p0 []PipeLangRecordTestPackageAppRootContainerrow, p1 string) []PipeLangRecordTestPackageAppRootContainerrow {
 	pipelangValidateListTestPackageAppRootContainerrow(p0)
+	pipelangValidateText(p1)
 	return pipelangFilterJoinedContainsCaseFoldedListTestPackageAppRootContainerrowFields1_2_3_4_5(p0, p1)
 }

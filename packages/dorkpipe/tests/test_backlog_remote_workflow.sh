@@ -16,7 +16,9 @@ application_pristine="$tmp/application-pristine"
 application_expected="$tmp/application-expected"
 artifact_root="$tmp/artifacts"
 second_root="$tmp/artifacts-second"
-fixture_root="$REPO_ROOT/packages/dorkpipe/tests/fixtures/backlog.remote"
+# Bind only temporary fixture copies; authored snapshots and rejection cases stay intact.
+fixture_root="$tmp/fixtures"
+cp -R "$REPO_ROOT/packages/dorkpipe/tests/fixtures/backlog.remote" "$fixture_root"
 compatibility_fixture="$REPO_ROOT/packages/dorkpipe/resolvers/dorkpipe/assets/fixtures/backlog-remote-codex-cli"
 helper_bin="$tmp/orchestrate-helper"
 invocation_log="$tmp/forbidden-invocations.log"
@@ -45,15 +47,19 @@ while IFS= read -r validation_input; do
     continue
   fi
   validation_input_file_count=$((validation_input_file_count + 1))
+  validation_source="$REPO_ROOT/$validation_input"
+  if [[ "$validation_input" == "embed_assets.go" ]]; then
+    validation_source="$fixture_root/consumer/embed_assets.go.txt"
+  fi
   mkdir -p "$consumer/$(dirname "$validation_input")"
-  cp "$REPO_ROOT/$validation_input" "$consumer/$validation_input"
+  cp "$validation_source" "$consumer/$validation_input"
   if [[ "$validation_input" == "packages/dorkpipe/README.md" ]]; then
     continue
   fi
   mkdir -p "$application_consumer/$(dirname "$validation_input")"
-  cp "$REPO_ROOT/$validation_input" "$application_consumer/$validation_input"
+  cp "$validation_source" "$application_consumer/$validation_input"
 done <"$fixture_root/validation-input-files.json"
-test "$validation_input_file_count" -eq 186
+test "$validation_input_file_count" -eq 229
 cp -R "$application_consumer" "$application_pristine"
 cp -R "$application_consumer" "$application_expected"
 printf '%s\n' '# Fixture package' 'Untrusted remote fixture change.' >"$application_expected/packages/dorkpipe/README.md"
@@ -63,21 +69,40 @@ printf '%s\n' '# Fixture package' 'Untrusted remote fixture change.' >"$applicat
   go build -o "$helper_bin" ./cmd/orchestrate-helper
 )
 
-canonical_next_root="$tmp/canonical-next-rejection"
-cp "$REPO_ROOT/docs/agents/task-index.yaml" "$tmp/canonical-index-before.yaml"
+ambiguous_consumer="$tmp/ambiguous-consumer"
+mkdir -p "$ambiguous_consumer/docs/agents"
+cat >"$ambiguous_consumer/docs/agents/task-index.yaml" <<'YAML'
+schema: 2
+description: Two eligible tasks must never be selected automatically.
+tasks:
+  - id: TASK-014
+    topic: First ready task
+    path: docs/agents/tasks/first.md
+    dispatch:
+      readiness: decision_ready
+      ownership: unclaimed
+  - id: TASK-015
+    topic: Second ready task
+    path: docs/agents/tasks/second.md
+    dispatch:
+      readiness: decision_ready
+      ownership: unclaimed
+YAML
+ambiguous_next_root="$tmp/ambiguous-next-rejection"
+cp "$ambiguous_consumer/docs/agents/task-index.yaml" "$tmp/ambiguous-index-before.yaml"
 if MSYS2_ARG_CONV_EXCL='*' "$helper_bin" backlog-inspect \
-  "$REPO_ROOT" docs/agents/task-index.yaml --next \
+  "$ambiguous_consumer" docs/agents/task-index.yaml --next \
   "Inspect only the unique decision-ready backlog entry." \
-  0123456789abcdef0123456789abcdef01234567 "$canonical_next_root" \
-  2>"$tmp/canonical-next.err"; then
-  echo "canonical --next inspection unexpectedly selected a task" >&2
+  0123456789abcdef0123456789abcdef01234567 "$ambiguous_next_root" \
+  2>"$tmp/ambiguous-next.err"; then
+  echo "ambiguous --next inspection unexpectedly selected a task" >&2
   exit 1
 fi
-grep -Fq 'no_decision_ready_task:' "$tmp/canonical-next.err"
-grep -Fq '"code": "no_decision_ready_task"' "$canonical_next_root/backlog-selection.json"
-cmp "$tmp/canonical-index-before.yaml" "$REPO_ROOT/docs/agents/task-index.yaml"
+grep -Fq 'ambiguous_decision_ready_tasks:' "$tmp/ambiguous-next.err"
+grep -Fq '"code": "ambiguous_decision_ready_tasks"' "$ambiguous_next_root/backlog-selection.json"
+cmp "$tmp/ambiguous-index-before.yaml" "$ambiguous_consumer/docs/agents/task-index.yaml"
 for name in remote-request.md remote-request.json remote-adapter-compatibility.json remote-task.json completion-candidate.json remote-status.json remote-diff.json remote-diff.patch remote-result.json validation-receipt.json patch-boundary.json patch-application.json validation-execution.json semantic-review-decision.json ready-for-review.json checkout-application-approval.json checkout-application.json; do
-  test ! -e "$canonical_next_root/$name"
+  test ! -e "$ambiguous_next_root/$name"
 done
 
 cat >"$tmp/fake-bin/forbidden-tool" <<'TOOL'
@@ -90,7 +115,8 @@ for tool in codex curl docker git ssh; do
   cp "$tmp/fake-bin/forbidden-tool" "$tmp/fake-bin/$tool"
 done
 
-export PATH="$tmp/fake-bin:$REPO_ROOT/src/bin:$PATH"
+validation_path="$REPO_ROOT/src/bin:$PATH"
+export PATH="$tmp/fake-bin:$validation_path"
 export DORKPIPE_BACKLOG_FORBIDDEN_LOG="$invocation_log"
 export DOCKPIPE_SCRIPT_DIR="$REPO_ROOT/packages/dorkpipe/resolvers/dorkpipe/assets/scripts"
 export DOCKPIPE_ASSETS_DIR="$REPO_ROOT/packages/dorkpipe/resolvers/dorkpipe/assets"
@@ -133,6 +159,11 @@ while IFS= read -r required_input; do
 done < <(
   cd "$REPO_ROOT"
   find packages/dorkpipe/lib/orchestrationhelper -maxdepth 1 -type f -name '*.go' -print
+  find packages/dorkpipe/lib/statepaths src/lib/model src/lib/infrastructure/operationrecord \
+    src/lib/infrastructure/sourcemtime src/lib/domain/secretenv \
+    src/lib/infrastructure/envfile src/lib/infrastructure/filepublication \
+    packages/dorkpipe/lib/orchestrationhelper/internal/cloudusage \
+    -type f -name '*.go' ! -name '*_test.go' -print
   find src/lib/domain src/lib/infrastructure/packagebuild -maxdepth 1 -type f -name '*.go' ! -name '*_test.go' -print
   find src/lib/infrastructure -maxdepth 1 -type f -name '*.go' ! -name '*_test.go' -print
 )
@@ -140,7 +171,25 @@ done < <(
 log="$tmp/workflow.err"
 for step in inspect compile compatibility dispatch completion_candidate status diff result validation_receipt patch_boundary patch_application validation_execution semantic_review checkout_application; do
   export DOCKPIPE_STEP_ID="$step"
-  if ! bash "$DOCKPIPE_SCRIPT_DIR/backlog-remote.sh" 2>>"$log"; then
+  fixture_name=""
+  case "$step" in
+    completion_candidate) fixture_name="completion-candidate.json" ;;
+    status) fixture_name="remote-status.json" ;;
+    diff) fixture_name="remote-diff.json" ;;
+    result) fixture_name="remote-result.json" ;;
+    validation_receipt) fixture_name="validation-receipt.json" ;;
+    semantic_review) fixture_name="semantic-review-decision.json" ;;
+    checkout_application) fixture_name="checkout-application-approval.json" ;;
+  esac
+  if [[ -n "$fixture_name" ]]; then
+    python3 "$REPO_ROOT/packages/dorkpipe/tests/lib/bind-backlog-fixture.py" \
+      "$artifact_root" "$fixture_root/$fixture_name"
+  fi
+  step_path="$PATH"
+  if [[ "$step" == "validation_execution" ]]; then
+    step_path="$validation_path"
+  fi
+  if ! PATH="$step_path" bash "$DOCKPIPE_SCRIPT_DIR/backlog-remote.sh" 2>>"$log"; then
     cat "$log" >&2
     exit 1
   fi
@@ -821,12 +870,12 @@ cmp "$artifact_root/patch-application.json" "$second_boundary_root/patch-applica
 cp "$second_boundary_root/patch-application.json" "$tmp/accepted-patch-application.json"
 MSYS2_ARG_CONV_EXCL='*' "$helper_bin" backlog-apply-patch-temporary "$application_consumer" "$second_boundary_root"
 cmp "$tmp/accepted-patch-application.json" "$second_boundary_root/patch-application.json"
-MSYS2_ARG_CONV_EXCL='*' "$helper_bin" backlog-execute-validation "$application_consumer" "$second_boundary_root"
+PATH="$validation_path" MSYS2_ARG_CONV_EXCL='*' "$helper_bin" backlog-execute-validation "$application_consumer" "$second_boundary_root"
 cmp "$artifact_root/validation-execution.json" "$second_boundary_root/validation-execution.json"
 cp "$second_boundary_root/validation-execution.json" "$tmp/accepted-validation-execution.json"
 artifact_restart_root="$tmp/artifact-restart"
 cp -R "$second_boundary_root" "$artifact_restart_root"
-MSYS2_ARG_CONV_EXCL='*' "$helper_bin" backlog-execute-validation "$tmp/missing-consumer" "$artifact_restart_root"
+PATH="$validation_path" MSYS2_ARG_CONV_EXCL='*' "$helper_bin" backlog-execute-validation "$tmp/missing-consumer" "$artifact_restart_root"
 cmp "$tmp/accepted-validation-execution.json" "$artifact_restart_root/validation-execution.json"
 diff -r "$application_pristine" "$application_consumer"
 cp "$artifact_root/validation-receipt.json" "$tmp/accepted-validation-receipt.json"

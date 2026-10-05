@@ -43,7 +43,9 @@ EOF
 chmod 700 "$STATE_HELPER"
 
 export DOCKPIPE_WORKDIR="$WORKDIR"
-export DOCKPIPE_PACKAGE_STATE_DIR="$LEGACY_PACKAGE_ROOT"
+export XDG_STATE_HOME="${TEST_ROOT}/user-state"
+export DOCKPIPE_BIN="${DOCKPIPE_TEST_DOCKPIPE_BIN:-${DOCKPIPE_BIN:-$REPO_ROOT/src/bin/dockpipe}}"
+unset DOCKPIPE_PACKAGE_STATE_DIR
 export DOCKPIPE_VM_DISK="${WORKDIR}/images/windows.qcow2"
 export DOCKPIPE_RUN_ID="run-one"
 export DOCKPIPE_VM_BACKEND=qemu-kvm
@@ -55,6 +57,12 @@ export DOCKPIPE_VM_TEST_RUNTIME_ROOT="${TEST_ROOT}/runtime"
 
 # shellcheck source=/dev/null
 source "${REPO_ROOT}/src/core/assets/scripts/vmimage-run.sh"
+
+# This fixture owns legacy discovery and helper I/O. Do not use the public
+# package-state override to inject a disposable checkout path into the SDK.
+vmimage_legacy_state_dir() {
+  printf '%s\n' "$LEGACY_VM_ROOT"
+}
 
 GENERATION_COUNT="${TEST_ROOT}/generation-count"
 printf '0\n' > "$GENERATION_COUNT"

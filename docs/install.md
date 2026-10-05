@@ -2,7 +2,7 @@
 
 **New to dockpipe?** Run **`dockpipe -- pwd`** after install, then read **[onboarding.md](onboarding.md)**. If something fails, **`dockpipe doctor`** checks **bash**, **Docker**, and bundled assets.
 
-**Platforms:** **Docker** and **bash** on the host are required everywhere. Linux: **`.deb`**, **`.apk`**, **`.rpm`**, **Arch `.pkg.tar.zst`**, portable **`.tar.gz`**, or **[`linux/install.sh`](https://github.com/Dockpipe-Industries/dockpipe/blob/master/release/packaging/linux/install.sh)** — see sections below. macOS: Docker Desktop + bash (system `/bin/bash` is fine). Windows: **`dockpipe.exe`** + Docker Desktop + **Git for Windows** (bash + git). **`DOCKPIPE_USE_WSL_BRIDGE=1`** and **`dockpipe windows …`** are **optional** — only if you want the Linux `dockpipe` binary inside a WSL distro.
+**Platforms:** **Docker** and **bash** on the host are required everywhere. Linux: **`.deb`**, **`.apk`**, **`.rpm`**, **Arch `.pkg.tar.zst`**, portable **`.tar.gz`**, or **[`linux/install.sh`](https://github.com/Dockpipe-Industries/dockpipe/blob/master/release/packaging/linux/install.sh)** — see sections below. macOS: native Intel/Apple Silicon tarballs + bash; Docker Desktop is needed for container workflows. Windows: **`dockpipe.exe`** + Docker Desktop + **Git for Windows** (bash + git). **`DOCKPIPE_USE_WSL_BRIDGE=1`** and **`dockpipe windows …`** are **optional** — only if you want the Linux `dockpipe` binary inside a WSL distro.
 
 ### Bundled templates (no extra install tree)
 
@@ -20,6 +20,39 @@ dockpipe/
 - **`DOCKPIPE_BUNDLED_CACHE`** — optional parent directory for the `dockpipe/bundled-*` folder (tests, custom cache location).
 
 User-created workflow files from **`dockpipe init`** live in your project, typically under **`workflows/`**. Legacy template-oriented paths still exist in some maintainer and compatibility flows, but they are not the normal starting point for new projects.
+
+---
+
+## Signed APT repository
+
+Once the 0.6 release and public hostname are live, Debian/Ubuntu users can install and receive updates from the signed repository:
+
+```bash
+curl -fsSL https://packages.dockpipe.com/apt/dockpipe-archive-keyring.gpg -o /tmp/dockpipe-archive-keyring.gpg
+sudo install -m 0644 /tmp/dockpipe-archive-keyring.gpg /usr/share/keyrings/dockpipe-archive-keyring.gpg
+printf '%s\n' 'deb [arch=amd64,arm64 signed-by=/usr/share/keyrings/dockpipe-archive-keyring.gpg] https://packages.dockpipe.com/apt stable main' | sudo tee /etc/apt/sources.list.d/dockpipe.list
+sudo apt-get update
+sudo apt-get install dockpipe
+```
+
+The repository public key is restricted to this source by `signed-by`. APT validates the signed indexes and package hashes. The service must be provisioned and the first signed release published before these commands work.
+
+## Direct downloads and complete package stores
+
+GitHub release assets are also mirrored at `https://packages.dockpipe.com/packages/releases/VERSION/`. Linux and macOS can use the checksum-verifying installer against that origin:
+
+```bash
+curl -fsSL https://packages.dockpipe.com/packages/releases/0.6.0/install.sh -o /tmp/dockpipe-install.sh
+DOCKPIPE_VERSION=0.6.0 DOCKPIPE_DOWNLOAD_BASE=https://packages.dockpipe.com/packages/releases/0.6.0 sh /tmp/dockpipe-install.sh
+```
+
+The CLI installer installs the CLI and core. Additional workflows and resolvers are in the complete native package-store bundle `dockpipe-packages_VERSION_OS-ARCH.tar.gz` (`linux-amd64`, `linux-arm64`, `darwin-amd64`, `darwin-arm64`, or `windows-amd64`). Verify the bundle against `SHA256SUMS.txt`, extract it to a local directory, and reference that directory through `packages.sources` in your project's `dockpipe.config.json`:
+
+```json
+{"schema":1,"packages":{"sources":[{"kind":"tarball_dir","path":"/absolute/path/to/extracted-store"}]}}
+```
+
+An Apple Silicon Mac uses `darwin-arm64`; it does not need to clone DockPipe or install Go to use the compiled CLI and store. Provider CLIs such as `cloudflared` or `op` are still required by their resolvers. On Windows use an absolute Windows path in the JSON. Each platform's individual tarballs and `packages-store-manifest.json` are also served under `stores/OS-ARCH/` in that version directory. Do not mix native helpers from different platforms.
 
 ---
 
@@ -71,7 +104,7 @@ Packages declare **`bash`** and **`git`** as dependencies; **Docker** is still s
 
 ---
 
-## One-liner Linux install (try this first)
+## One-liner Linux and macOS install
 
 From a network-connected shell (uses [GitHub Releases](https://github.com/Dockpipe-Industries/dockpipe/releases); detects distro from `/etc/os-release`, otherwise drops the **portable `.tar.gz`** into **`~/.local/bin`**):
 

@@ -103,9 +103,8 @@ func packageOwnsCompatibilityImport(workdir, ownerID string, explicitManifests .
 		if info.Mode()&os.ModeSymlink != 0 || !info.Mode().IsRegular() {
 			return fmt.Errorf("package-state policy manifest %q is linked or not a regular file", path)
 		}
-		canonical, err := filepath.EvalSymlinks(path)
-		if err != nil || !sameDurablePath(path, canonical) {
-			return fmt.Errorf("package-state policy manifest %q has a linked or reparsed boundary", path)
+		if err := ValidateUnlinkedPath(path); err != nil {
+			return fmt.Errorf("package-state policy manifest %q has an unsafe boundary: %w", path, err)
 		}
 		manifest, err := domain.ParsePackageManifest(path)
 		if err != nil {
@@ -319,7 +318,10 @@ func publishWholePublicPackageState(workdir string, location durablePackageLocat
 		return errors.New("legacy package-state source changed during migration")
 	}
 	observed, err := collectWholePublicPackagePublished(temporary)
-	if err != nil || !sameDurableImportInventory(durableImportDestinationInventory(manifest.Inventory), observed) {
+	if err != nil {
+		return fmt.Errorf("inspect migrated durable package state: %w", err)
+	}
+	if !sameDurableImportInventory(durableImportDestinationInventory(manifest.Inventory), observed) {
 		return errors.New("durable package-state inventory does not match its legacy source")
 	}
 	if err := writeDurableImportManifest(location.stateRoot, filepath.Join(temporary, durableImportManifestName), manifest); err != nil {

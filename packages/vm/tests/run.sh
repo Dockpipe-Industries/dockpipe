@@ -11,6 +11,7 @@ GOWORK=off GOCACHE="$VM_TEST_TMP/cache" GOTMPDIR="$VM_TEST_TMP/tmp" CGO_ENABLED=
 
 cd "$PACKAGE_ROOT"
 bash tests/test_vmimage_state_split.sh
+python3 tests/test_toolchain_paths.py
 grep -Fq 'version: 1.3.4' package.yml
 grep -Fq 'const version = "1.3.4"' tools/cmd/dockpipe-qemu-controller/main.go
 grep -Fq 'models/QemuVmResolverConfig' resolvers/qemu/types.yml
@@ -57,11 +58,7 @@ grep -Fq 'dockpipe.vm.gate3-authorization.v1' manifests/linux-gate3-authorizatio
 grep -Fq '"approved": false' manifests/linux-gate3-authorization.template.json
 grep -Fq 'after-validation-before-ack' tools/internal/executor/gate3.go
 grep -Fq 'PidfdSendSignal' tools/internal/executor/gate3_runner_linux.go
-grep -Fq 'dockpipe.vm.toolchain.v1' toolchains/qemu-11.0.3-linux-amd64/toolchain.evidence.json
-grep -Fq 'dockpipe.vm.toolchain-build-evidence.v1' toolchains/qemu-11.0.3-linux-amd64/build-contract.evidence.json
-grep -Fq '"execute": false' toolchains/qemu-11.0.3-linux-amd64/build-contract.evidence.json
-grep -Fq '11a27f32eb93e62aba8ebc500dfd877339a71821793cbf30845b53964c22320c' manifests/linux-provisioning.template.json
-grep -Fq '3544680aaeaf8087bbf3ef693ff185c2691831560c767672defccd784ec37140' manifests/linux-qualification.json
+grep -Fq '"manifest_sha256": "REPLACE_WITH_64_LOWERCASE_HEX_CHARACTERS"' manifests/linux-provisioning.template.json
 grep -Fq '"approved": false' manifests/linux-live-authorization.template.json
 grep -Fq -- '--serve-virtio-serial=' workflows/linux-vm/assets/systemd/dockpipe-agent.service
 grep -Fq 'ATTR{name}=="org.dockpipe.agent.1", GROUP="dockpipe-agent", MODE="0660"' workflows/linux-vm/assets/udev/99-dockpipe-agent.rules
@@ -79,11 +76,6 @@ grep -Fq 'dockpipe-data-000001' manifests/linux-qualification.json
 
 if grep -Fq '"boot_id":' manifests/linux-qualification.json; then
   echo 'qualification manifest must learn boot ID from the signed guest bootstrap' >&2
-  exit 1
-fi
-
-if grep -R -Eq 'REPLACE_(WITH|BUILD)' toolchains/qemu-11.0.3-linux-amd64/*.evidence.json; then
-  echo 'finalized QEMU evidence must not contain unresolved placeholders' >&2
   exit 1
 fi
 

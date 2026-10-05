@@ -1,0 +1,15 @@
+name: package-release-setup
+description: Configure the GitHub release environment using only scoped package credentials. Checks only unless RELEASE_SETUP_APPLY=1.
+platforms: [deb, macos, windows]
+vault: environment
+docker_preflight: false
+vars:
+  RELEASE_SETUP_APPLY: "0"
+  R2_ENDPOINT_URL: "https://a378c4328a20d669179d7b4adcfc5914.r2.cloudflarestorage.com"
+  DOCKPIPE_RELEASE_BUCKET: "dockpipe"
+  R2_PREFIX: "packages"
+steps:
+  - id: configure-release
+    kind: host
+    cwd: repo
+    run: assets/scripts/configure-release.sh

@@ -14,26 +14,27 @@ Require or establish this contract before mutation:
 ```text
 Objective contract:
 objective_id: <stable id>
-state: ready_for_execution | executing | waiting_for_gate | completed | blocked | failed_verification | cancelled
+state: ready_for_execution | executing | waiting_for_user | completed | blocked | failed_verification | cancelled
 execution_skill: dorkpipe-objective-execution
 execution_authority: approved_objective_creation
 authorized_objective: <bounded outcome, larger than one mechanical edit>
 done_when: <observable completion proof>
 inherited_invariants: <facts that must remain true>
-explicit_exclusions: <forbidden or independently gated work>
+explicit_exclusions: <forbidden or separately authorized work>
 checkpoint_policy: automatic_within_objective
 verification_policy: <focused checks plus terminal proof>
-handoff_policy: transport_only
-context_handoff_policy: automatic_at_safe_boundary | ask_before_transport
-context_handoff_limit_per_task: 1
+handoff_policy: user_requested_only
+context_pressure_policy: warn_and_continue
 checkpoint_output_policy: quiet_success_bounded_failure
 terminal_conditions: completed | blocked | failed_verification | cancelled
 ```
 
 Objective creation or an explicit user request to begin the named objective authorizes ordinary,
-reversible implementation and validation needed to reach `done_when`. It does not authorize a
-one-shot gate, destructive cleanup, commit, push, publication, cost, credential use, or external
-resource mutation unless that authority is separately explicit.
+reversible implementation and validation needed to reach `done_when`. Destructive cleanup, commit,
+push, publication, cost, credential refresh or profile mutation, and external resource mutation
+remain outside scope unless the user or repository contract explicitly authorizes them. Once an
+operation is explicitly authorized, execute and recover it inside this objective instead of moving
+it to a gate task or manufacturing a single-use authority contract.
 
 Inventory branch, HEAD, staged, unstaged, and untracked state. Identify user-owned changes and the
 paths the objective owns. Preserve unrelated bytes. Stop `blocked` when ownership overlaps cannot
@@ -41,7 +42,7 @@ be resolved safely.
 
 ## Receive a continuation
 
-For `continue_objective` or `resume_objective`, treat the handoff's durable completed proof as the
+For `continue_objective`, treat the handoff's durable completed proof as the
 admitted baseline. Revalidate affected live anchors, but do not reconstruct completed chronology,
 rerun passed proof, or reopen completed implementation unless drift, a new failure, or the pending
 checkpoint directly requires it.
@@ -50,37 +51,25 @@ The fresh task starts with this receiver budget:
 
 - own the single `Pending boundary` as the first checkpoint;
 - admit supporting work only when it is strictly required to complete that checkpoint;
-- after that checkpoint, update durable state and reassess context pressure before selecting another
-  seam, loading materially different guidance, or starting broad terminal verification;
-- treat the source task's transport as consumed there, not as the receiver's transport. Unless an
-  explicit objective-wide chain limit says otherwise, `context_handoff_limit_per_task: 1` gives
-  each fresh task one outgoing context-saving handoff of its own.
+- after that checkpoint, update durable state before selecting another materially different seam;
+- continue in the receiving task until completion or until the user requests another handoff.
 
-Never turn `transport_limit: 1`, `source_transport_consumed: true`, or prose such as "second
-handoff" into an objective-wide ban. If the handoff packet is ambiguous, preserve the per-task
-meaning and do not manufacture a chain limit.
+## Respect boundaries without fragmenting execution
 
-## Classify each action
+Before mutation, confirm that the next action is inside `authorized_objective` and outside
+`explicit_exclusions`. Read-only diagnostics, source edits, preflight checks, credential-backed
+readiness, and evidence collection stay in this objective.
 
-Before mutation, classify the next action as an objective checkpoint or a one-shot gate.
+For an external, destructive, costly, credential-refreshing, publishing, or otherwise consequential
+action, require explicit authority from the user or repository contract. Do not infer that authority
+from source-edit, review, or diagnostic scope. Once the exact action is authorized, keep its
+preparation, invocation, read-back, repair, and evidence-supported retry in this same task and
+objective. Do not create a fresh task merely because the action uses credentials or mutates an
+external system.
 
-An **objective checkpoint** is all of the following:
-
-- inside `authorized_objective` and outside `explicit_exclusions`;
-- ordinary offline or read-only work, or a reversible local mutation;
-- does not consume a separate approval, nonce, capability, promotion, or attempt;
-- can be retried safely under the objective authority.
-
-A **one-shot gate** is any action that meets one or more of these conditions:
-
-- explicitly single-use, no-retry, or attempt-limited;
-- consumes a separate approval, nonce, capability, promotion, or publication authority;
-- mutates external state with material cost, destructive effect, difficult rollback, or credential-bearing authority;
-- the governing contract says invocation consumes authority regardless of result.
-
-Read-only diagnostics and ordinary source edits do not become gates merely because credentials or
-sensitive code exist nearby. If retry safety or authority consumption is genuinely uncertain,
-classify the action as a gate and stop before invoking it.
+Do not invent approval seals, reuse policies, attempt budgets, or no-retry rules. If a repository or
+external system provides a real nonce, concurrency token, idempotency key, or attempt limit, respect
+that actual mechanism and record only the evidence needed to use it safely.
 
 ## Advance checkpoints
 
@@ -133,59 +122,39 @@ boundaries from observable signals.
 - a recent omission or correction indicates that a still-applicable constraint was buried;
 - the durable objective state can now be represented more clearly in a compact continuation packet.
 
-At a safe boundary, use `dorkpipe-task-handoff` with mode `continue_objective` when any hard signal
-or at least two soft signals are present, the continuation packet can preserve all authority and
-protected state, and meaningful work remains. Do not hand off during a mutation, running command,
-or incomplete read-back. Do not hand off when the objective is close enough to finish safely in the
-current task: "close enough" means only bounded terminal proof remains. Open-ended seam discovery,
-another broad audit, or a materially different implementation checkpoint is not close enough. Do
-not hand off when the user prohibited task creation or merely because the conversation feels long.
+When a hard signal or at least two soft signals are present, tell the user briefly that the current
+conversation is wasting context and that a handoff would make continuation cleaner. Keep working in
+the current task unless the user asks for the handoff. Never create a task automatically because the
+conversation is long, a checkpoint completed, credentials are involved, or an operation failed.
 
-In a receiving task, reassess these signals immediately after the carried first checkpoint and
-before broad terminal verification. When the threshold is met, handoff takes priority over selecting
-another seam or running a broad suite.
+If the user requests handoff, finish the current atomic mutation or read-back, update durable state,
+then invoke `dorkpipe-task-handoff`. Do not abandon an in-flight action or claim that task-local
+state will survive transport.
 
-For a user-approved objective, default `context_handoff_policy` to
-`automatic_at_safe_boundary` unless the user requires confirmation. This policy authorizes one
-transport-only context handoff per task; it grants no new execution scope. Record the triggering
-signals in the handoff and stop the old task immediately after successful creation.
+## Recover and retry from evidence
 
-If safe continuation requires handoff but an explicit objective-wide chain limit is exhausted,
-checkpoint durable state and stop `blocked` on missing transport authority. Do not force the entire
-remaining objective through an overloaded task.
+Failure is not an automatic loss of authority and does not justify a new task. Classify the observed
+effect before retrying:
 
-## Enter a one-shot gate
+- **No external effect:** repair readiness and retry in this task while the action remains in scope.
+- **Idempotent or reconcilable effect:** use the documented idempotency or reconciliation path, then
+  retry or continue from verified state.
+- **Partial or unknown effect:** perform bounded read-back first. Retry only when evidence establishes
+  that doing so is safe; otherwise stop and ask for the missing decision or authority.
+- **Actual external attempt limit or consumed capability:** respect the system-provided limit and
+  report it. Do not generalize it into a DorkPipe-wide no-retry policy.
 
-The objective controller never invokes a gate. When the next necessary action is a gate:
-
-1. Complete all safe prerequisite checkpoints that remain inside the objective.
-2. Seal the exact gate artifact and current anchors.
-3. Run only authorized non-consuming readiness checks.
-4. Record `state: waiting_for_gate` and a gate packet for `dorkpipe-one-shot-gate`.
-5. Request the exact missing gate approval if it has not already been granted.
-6. Use `dorkpipe-task-handoff` with mode `enter_one_shot_gate` after approval, then stop this task.
-
-The gate packet must preserve the active `objective_id`, objective authority, resume state, exact
-action, artifact hashes, preflight coverage, attempt count, and return contract. Gate creation
-preauthorizes exactly one transport-only return handoff to the same active objective; it does not
-authorize another gate.
-
-## Resume after a gate
-
-For handoff mode `resume_objective`, verify the gate receipt, read-back, terminal classification,
-and that its authority is spent or explicitly unconsumed. Restore the same objective contract and
-continue from its recorded resume state. The return is not a new objective or a request to choose a
-successor slice.
-
-If the gate failed after consumption, decide from the existing objective contract whether remaining
-local diagnosis is authorized. Never retry the gate, invent fallback authority, or perform cleanup
-under objective authority.
+A failed preflight that produced no external effect may be fixed and rerun. Credential expiry,
+missing expiration metadata, transient transport failure, and stale local readiness are ordinary
+recoverable conditions unless the user or the actual external system says otherwise. Credential
+refresh still requires explicit authority when it changes a profile, but it does not require a new
+task.
 
 ## Hand off without fragmenting work
 
-Use `dorkpipe-task-handoff` only when the user requests a fresh task, context pressure makes a safe
-continuation materially clearer, a one-shot gate must run separately, or a genuine blocker requires
-another owner. Ordinary checkpoint completion is never a handoff trigger.
+Use `dorkpipe-task-handoff` only when the user requests a fresh task. Context pressure is a reason to
+warn and offer the option, not authority to create a task. Ordinary checkpoint completion, external
+mutation, deployment, credential work, preflight failure, and retry are never handoff triggers.
 
 For `continue_objective`, carry the same objective id, authority, remaining `done_when`, exclusions,
 dirty-tree ownership, completed proof, and next checkpoint. Task creation continues the objective;
@@ -202,5 +171,5 @@ it does not approve a newly invented scope.
 | Only optional improvements remain | `completed` when `done_when` passes | Defer them; do not create micro-slices. |
 
 Finish with owned files, validations, generated artifacts, deferred findings, terminal state, and
-whether transport or gate authority was used. Follow repository Git policy; never infer commit or
+whether user-requested transport was used. Follow repository Git policy; never infer commit or
 synchronization approval.

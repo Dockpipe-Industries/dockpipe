@@ -3,9 +3,11 @@ package domain
 import (
 	"fmt"
 	"strings"
+
+	"dockpipe/src/lib/domain/secretenv"
 )
 
-// EffectiveVaultString returns the vault mode for op inject. Workflow YAML wins when `vault:` is set;
+// EffectiveVaultString returns the secret injection mode. Workflow YAML wins when `vault:` is set;
 // otherwise secrets.vault from dockpipe.config.json applies when present.
 func EffectiveVaultString(wf *Workflow, cfg *DockpipeProjectConfig) string {
 	if wf != nil {
@@ -26,7 +28,7 @@ func ValidateVaultModeString(v string) error {
 		return nil
 	}
 	switch strings.ToLower(strings.TrimSpace(v)) {
-	case "op", "1password", "none", "off", "false", "no", "0":
+	case "op", "1password", "environment", "none", "off", "false", "no", "0":
 		return nil
 	default:
 		return fmt.Errorf("vault %q is not supported (see docs/runtime/vault.md)", v)
@@ -41,6 +43,19 @@ func ValidateDockpipeProjectConfig(c *DockpipeProjectConfig) error {
 	if c.Secrets.Vault != nil {
 		if err := ValidateVaultModeString(*c.Secrets.Vault); err != nil {
 			return fmt.Errorf("secrets.vault: %w", err)
+		}
+	}
+	for name, environment := range c.Secrets.Environments {
+		if strings.TrimSpace(name) == "" || strings.TrimSpace(environment.Resolver) == "" {
+			return fmt.Errorf("secrets.environments requires nonempty names and resolvers")
+		}
+		if err := secretenv.ValidateBindings(environment.Bindings); err != nil {
+			return fmt.Errorf("secrets.environments[%s]: %w", name, err)
+		}
+	}
+	if c.Secrets.Environment != "" {
+		if _, exists := c.Secrets.Environments[c.Secrets.Environment]; !exists {
+			return fmt.Errorf("secrets.environment must name a configured environment")
 		}
 	}
 	if c.Packages.Sources != nil {

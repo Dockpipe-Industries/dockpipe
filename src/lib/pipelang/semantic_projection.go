@@ -64,6 +64,7 @@ type SemanticTypeProjection struct {
 type SemanticMemberProjection struct {
 	Identity    *SemanticIdentity             `json:"identity,omitempty"`
 	Kind        SemanticKind                  `json:"kind"`
+	EnumTag     string                        `json:"enum_tag,omitempty"`
 	Name        string                        `json:"name"`
 	FormerNames []string                      `json:"former_names,omitempty"`
 	Visibility  Visibility                    `json:"visibility"`
@@ -103,7 +104,7 @@ func buildSemanticProjection(analysis *Analysis, view SemanticProjectionView) (*
 		return nil, err
 	}
 	if !isPipeLangSemanticContract(analysis.Modules.languageContract) {
-		return nil, projectionError(analysis, fmt.Sprintf("semantic projection requires a supported post-legacy language contract through %q", PipeLangLanguageContractV310))
+		return nil, projectionError(analysis, fmt.Sprintf("semantic projection requires a supported post-legacy language contract through %q", PipeLangLanguageContractV980))
 	}
 	if view != SemanticProjectionPublic && view != SemanticProjectionWorkspace {
 		return nil, projectionError(analysis, fmt.Sprintf("invalid semantic projection view %q", view))
@@ -205,6 +206,21 @@ func projectSymbol(analysis *Analysis, entry symbolEntry, view SemanticProjectio
 			if err != nil {
 				return SemanticTypeProjection{}, err
 			}
+			projection.Members = append(projection.Members, member)
+		}
+		sort.SliceStable(projection.Members, func(i, j int) bool {
+			return projectedMemberKey(projection.Members[i]) < projectedMemberKey(projection.Members[j])
+		})
+		return projection, nil
+	}
+	if entry.symbol.Kind == SymbolEnum {
+		projection.Kind = SemanticEnum
+		for _, m := range entry.enumDecl.Members {
+			member, err := projectMember(analysis, SemanticEnumMember, m.Name, VisibilityPublic, UnresolvedTypeRef{Kind: TypeRefNamed, Name: entry.enumDecl.Name, Span: m.Span}, nil, m.Span)
+			if err != nil {
+				return SemanticTypeProjection{}, err
+			}
+			member.EnumTag = m.Tag
 			projection.Members = append(projection.Members, member)
 		}
 		sort.SliceStable(projection.Members, func(i, j int) bool {

@@ -65,6 +65,13 @@ requires_capabilities: [cli.codex]
 	if err := json.Unmarshal(b, &dec); err != nil {
 		t.Fatal(err)
 	}
+	var fields map[string]json.RawMessage
+	if err := json.Unmarshal(b, &fields); err != nil {
+		t.Fatal(err)
+	}
+	if _, present := fields["store_root"]; present {
+		t.Fatal("exported manifest contains the builder's private store path")
+	}
 	if dec.Packages.Core.Tarball == "" {
 		t.Fatal("empty core tarball in manifest")
 	}

@@ -20,24 +20,95 @@ func LowerSemanticMethodToHIR(analysis *Analysis, identity SemanticIdentity) (hi
 		return hir.Program{}, hirLoweringError(analysis, Span{}, identity, "typed HIR lowering requires a successful semantic module analysis")
 	}
 	if !isPipeLangSemanticContract(analysis.Modules.LanguageContract()) {
-		return hir.Program{}, hirLoweringError(analysis, analysis.Program.Span, identity, fmt.Sprintf("typed HIR lowering requires a supported post-legacy language contract through %q", PipeLangLanguageContractV310))
+		return hir.Program{}, hirLoweringError(analysis, analysis.Program.Span, identity, fmt.Sprintf("typed HIR lowering requires a supported post-legacy language contract through %q", PipeLangLanguageContractV980))
 	}
+	return lowerSemanticMethodGraphToHIR(analysis, identity, lowerSemanticFunctionToHIR)
+}
+
+// lowerSemanticMethodGraphToHIR owns one dependency traversal. The function
+// lowerer handles only a method's body; shared callees and named predicates are
+// visited once, then emitted in the existing dependency-first discovery order.
+func lowerSemanticMethodGraphToHIR(analysis *Analysis, identity SemanticIdentity, lowerFunction func(*Analysis, SemanticIdentity) (hir.Function, error)) (hir.Program, error) {
+	program := hir.Program{LanguageContract: string(analysis.Modules.LanguageContract()), CompilerContract: coreir.CompilerContractV1}
+	active := make(map[string]bool)
+	complete := make(map[string]bool)
+	var visit func(SemanticIdentity) error
+	visit = func(identity SemanticIdentity) error {
+		key := semanticIdentityKey(identity)
+		if complete[key] {
+			return nil
+		}
+		if active[key] {
+			return hirLoweringError(analysis, analysis.Program.Span, identity, "typed HIR dependency graph contains a cycle")
+		}
+		active[key] = true
+		function, err := lowerFunction(analysis, identity)
+		if err != nil {
+			return err
+		}
+		method := methodByIdentity(analysis, identity)
+		var visitCalls func(Expr) error
+		visitCalls = func(expression Expr) error {
+			if call, ok := expression.(*CallExpr); ok {
+				targetIdentity, found := analysis.SemanticIDs.IdentityForSpan(call.TargetSpan)
+				if !found {
+					return hirLoweringError(analysis, call.NameSpan, identity, fmt.Sprintf("call target %q has no semantic identity", call.Name))
+				}
+				if err := visit(targetIdentity); err != nil {
+					return err
+				}
+			}
+			for _, child := range expressionChildren(expression) {
+				if err := visitCalls(child); err != nil {
+					return err
+				}
+			}
+			return nil
+		}
+		if err := visitCalls(method.Body); err != nil {
+			return err
+		}
+		if filter, ok := method.Body.(*ListFilterPredicateExpr); ok {
+			predicate, err := analysis.checked.resolveNamedRecordPredicate(*method, filter.Predicate, filter.PredicateSpan)
+			if err != nil {
+				return err
+			}
+			predicateIdentity, ok := analysis.SemanticIDs.IdentityForSpan(predicate.Span)
+			if !ok {
+				return hirLoweringError(analysis, filter.PredicateSpan, identity, fmt.Sprintf("predicate method %q has no semantic identity", filter.Predicate))
+			}
+			if err := visit(predicateIdentity); err != nil {
+				return err
+			}
+		}
+		delete(active, key)
+		complete[key] = true
+		program.Functions = append(program.Functions, function)
+		return nil
+	}
+	if err := visit(identity); err != nil {
+		return hir.Program{}, err
+	}
+	return program, nil
+}
+
+func lowerSemanticFunctionToHIR(analysis *Analysis, identity SemanticIdentity) (hir.Function, error) {
 	semantic, ok := analysis.SemanticIDs.LookupIdentity(identity)
 	if !ok || semantic.Kind != SemanticMethod {
-		return hir.Program{}, hirLoweringError(analysis, analysis.Program.Span, identity, fmt.Sprintf("semantic method %q was not found", identity.String()))
+		return hir.Function{}, hirLoweringError(analysis, analysis.Program.Span, identity, fmt.Sprintf("semantic method %q was not found", identity.String()))
 	}
 
 	class, method := methodBySpan(analysis.Program, semantic.DeclarationSpan)
 	if class == nil || method == nil {
-		return hir.Program{}, hirLoweringError(analysis, semantic.DeclarationSpan, identity, "semantic method has no checked syntax declaration")
+		return hir.Function{}, hirLoweringError(analysis, semantic.DeclarationSpan, identity, "semantic method has no checked syntax declaration")
 	}
 	ownerSymbol, ok := symbolBySpan(analysis.Symbols, class.Span)
 	if !ok || ownerSymbol.Owner.Kind != SymbolOwnerModule {
-		return hir.Program{}, hirLoweringError(analysis, class.Span, identity, "semantic method owner has no bound module symbol")
+		return hir.Function{}, hirLoweringError(analysis, class.Span, identity, "semantic method owner has no bound module symbol")
 	}
 	ownerIdentity, ok := analysis.SemanticIDs.IdentityForSpan(class.Span)
 	if !ok || semanticIdentityKey(ownerIdentity) != semanticIdentityKey(semantic.Parent) {
-		return hir.Program{}, hirLoweringError(analysis, class.Span, identity, "semantic method owner identity is inconsistent")
+		return hir.Function{}, hirLoweringError(analysis, class.Span, identity, "semantic method owner identity is inconsistent")
 	}
 
 	functionIdentity := toHIRSemanticIdentity(identity)
@@ -47,14 +118,14 @@ func LowerSemanticMethodToHIR(analysis *Analysis, identity SemanticIdentity) (hi
 	for _, field := range class.Fields {
 		resolved, err := analysis.checked.resolveType(field.Type)
 		if err != nil {
-			return hir.Program{}, err
+			return hir.Function{}, err
 		}
 		typeEnvironment[field.Name] = resolved
 	}
 	for position, parameter := range method.Params {
 		resolved, err := analysis.checked.resolveType(parameter.Type)
 		if err != nil {
-			return hir.Program{}, err
+			return hir.Function{}, err
 		}
 		binding := hir.Binding{Kind: hir.BindingParameter, Function: functionIdentity, Position: position, Name: parameter.Name}
 		bindings[parameter.Name] = binding
@@ -65,11 +136,11 @@ func LowerSemanticMethodToHIR(analysis *Analysis, identity SemanticIdentity) (hi
 	}
 	returnType, err := analysis.checked.resolveType(method.ReturnType)
 	if err != nil {
-		return hir.Program{}, err
+		return hir.Function{}, err
 	}
 	body, err := lowerMethodBodyToHIR(analysis, identity, method.Body, bindings, typeEnvironment, returnType)
 	if err != nil {
-		return hir.Program{}, err
+		return hir.Function{}, err
 	}
 	function := hir.Function{
 		Identity: functionIdentity,
@@ -78,23 +149,7 @@ func LowerSemanticMethodToHIR(analysis *Analysis, identity SemanticIdentity) (hi
 		},
 		Name: method.Name, Parameters: parameters, ReturnType: toHIRType(analysis, returnType), ReturnTypeSpan: toHIRSpan(method.ReturnType.Span), Body: body, Span: toHIRSpan(method.Span),
 	}
-	program := hir.Program{LanguageContract: string(analysis.Modules.LanguageContract()), CompilerContract: coreir.CompilerContractV1, Functions: []hir.Function{function}}
-	if filter, ok := method.Body.(*ListFilterPredicateExpr); ok {
-		predicate, err := analysis.checked.resolveNamedRecordPredicate(*method, filter.Predicate, filter.PredicateSpan)
-		if err != nil {
-			return hir.Program{}, err
-		}
-		predicateIdentity, ok := analysis.SemanticIDs.IdentityForSpan(predicate.Span)
-		if !ok {
-			return hir.Program{}, hirLoweringError(analysis, filter.PredicateSpan, identity, fmt.Sprintf("predicate method %q has no semantic identity", filter.Predicate))
-		}
-		predicateProgram, err := LowerSemanticMethodToHIR(analysis, predicateIdentity)
-		if err != nil {
-			return hir.Program{}, err
-		}
-		program.Functions = append(predicateProgram.Functions, program.Functions...)
-	}
-	return program, nil
+	return function, nil
 }
 
 func methodByIdentity(analysis *Analysis, identity SemanticIdentity) *MethodDecl {
@@ -110,7 +165,70 @@ func methodByIdentity(analysis *Analysis, identity SemanticIdentity) *MethodDecl
 }
 
 func lowerMethodBodyToHIR(analysis *Analysis, function SemanticIdentity, expression Expr, bindings map[string]hir.Binding, typeEnvironment map[string]ResolvedTypeRef, returnType ResolvedTypeRef) (hir.Expr, error) {
+	if block, ok := expression.(*BlockExpr); ok {
+		return lowerGeneralBlockToHIR(analysis, function, block, bindings, typeEnvironment, returnType)
+	}
 	contract := analysis.Modules.LanguageContract()
+	if (contract == PipeLangLanguageContractV1110 || (contract == PipeLangLanguageContractV1120 || (contract == PipeLangLanguageContractV1130 || (contract == PipeLangLanguageContractV1140 || contract == PipeLangLanguageContractV1150)))) && validTerminalLeafSelectorValueArms(expression) {
+		return lowerExprToHIR(analysis, function, expression, bindings, typeEnvironment)
+	}
+	if (contract == PipeLangLanguageContractV1100 || (contract == PipeLangLanguageContractV1110 || (contract == PipeLangLanguageContractV1120 || (contract == PipeLangLanguageContractV1130 || (contract == PipeLangLanguageContractV1140 || contract == PipeLangLanguageContractV1150))))) && validStraightLineSelectorValueArms(expression) {
+		return lowerExprToHIR(analysis, function, expression, bindings, typeEnvironment)
+	}
+	if (contract == PipeLangLanguageContractV1090 || (contract == PipeLangLanguageContractV1100 || (contract == PipeLangLanguageContractV1110 || (contract == PipeLangLanguageContractV1120 || (contract == PipeLangLanguageContractV1130 || (contract == PipeLangLanguageContractV1140 || contract == PipeLangLanguageContractV1150)))))) && validTerminalCombinedSelectorArms(expression) {
+		return lowerExprToHIR(analysis, function, expression, bindings, typeEnvironment)
+	}
+	if (contract == PipeLangLanguageContractV1080 || (contract == PipeLangLanguageContractV1090 || (contract == PipeLangLanguageContractV1100 || (contract == PipeLangLanguageContractV1110 || (contract == PipeLangLanguageContractV1120 || (contract == PipeLangLanguageContractV1130 || (contract == PipeLangLanguageContractV1140 || contract == PipeLangLanguageContractV1150))))))) && validTerminalInnerSelectorArms(expression) {
+		return lowerExprToHIR(analysis, function, expression, bindings, typeEnvironment)
+	}
+	if (contract == PipeLangLanguageContractV1070 || (contract == PipeLangLanguageContractV1080 || (contract == PipeLangLanguageContractV1090 || (contract == PipeLangLanguageContractV1100 || (contract == PipeLangLanguageContractV1110 || (contract == PipeLangLanguageContractV1120 || (contract == PipeLangLanguageContractV1130 || (contract == PipeLangLanguageContractV1140 || contract == PipeLangLanguageContractV1150)))))))) && validTerminalSelectorValueArms(expression) {
+		return lowerExprToHIR(analysis, function, expression, bindings, typeEnvironment)
+	}
+	if (contract == PipeLangLanguageContractV1060 || (contract == PipeLangLanguageContractV1070 || (contract == PipeLangLanguageContractV1080 || (contract == PipeLangLanguageContractV1090 || (contract == PipeLangLanguageContractV1100 || (contract == PipeLangLanguageContractV1110 || (contract == PipeLangLanguageContractV1120 || (contract == PipeLangLanguageContractV1130 || (contract == PipeLangLanguageContractV1140 || contract == PipeLangLanguageContractV1150))))))))) && validTerminalBooleanSelectorTests(expression) {
+		return lowerExprToHIR(analysis, function, expression, bindings, typeEnvironment)
+	}
+	if (contract == PipeLangLanguageContractV1050 || (contract == PipeLangLanguageContractV1060 || (contract == PipeLangLanguageContractV1070 || (contract == PipeLangLanguageContractV1080 || (contract == PipeLangLanguageContractV1090 || (contract == PipeLangLanguageContractV1100 || (contract == PipeLangLanguageContractV1110 || (contract == PipeLangLanguageContractV1120 || (contract == PipeLangLanguageContractV1130 || (contract == PipeLangLanguageContractV1140 || contract == PipeLangLanguageContractV1150)))))))))) && validDepthThreeTerminalConditionalTests(expression) {
+		return lowerExprToHIR(analysis, function, expression, bindings, typeEnvironment)
+	}
+	if (contract == PipeLangLanguageContractV1040 || (contract == PipeLangLanguageContractV1050 || (contract == PipeLangLanguageContractV1060 || (contract == PipeLangLanguageContractV1070 || (contract == PipeLangLanguageContractV1080 || (contract == PipeLangLanguageContractV1090 || (contract == PipeLangLanguageContractV1100 || (contract == PipeLangLanguageContractV1110 || (contract == PipeLangLanguageContractV1120 || (contract == PipeLangLanguageContractV1130 || (contract == PipeLangLanguageContractV1140 || contract == PipeLangLanguageContractV1150))))))))))) && validNestedTerminalConditionalTests(expression) {
+		return lowerExprToHIR(analysis, function, expression, bindings, typeEnvironment)
+	}
+	if (contract == PipeLangLanguageContractV1030 || (contract == PipeLangLanguageContractV1040 || (contract == PipeLangLanguageContractV1050 || (contract == PipeLangLanguageContractV1060 || (contract == PipeLangLanguageContractV1070 || (contract == PipeLangLanguageContractV1080 || (contract == PipeLangLanguageContractV1090 || (contract == PipeLangLanguageContractV1100 || (contract == PipeLangLanguageContractV1110 || (contract == PipeLangLanguageContractV1120 || (contract == PipeLangLanguageContractV1130 || (contract == PipeLangLanguageContractV1140 || contract == PipeLangLanguageContractV1150)))))))))))) && validTerminalConditionalTests(expression) {
+		return lowerExprToHIR(analysis, function, expression, bindings, typeEnvironment)
+	}
+	if (contract == PipeLangLanguageContractV1020 || (contract == PipeLangLanguageContractV1030 || (contract == PipeLangLanguageContractV1040 || (contract == PipeLangLanguageContractV1050 || (contract == PipeLangLanguageContractV1060 || (contract == PipeLangLanguageContractV1070 || (contract == PipeLangLanguageContractV1080 || (contract == PipeLangLanguageContractV1090 || (contract == PipeLangLanguageContractV1100 || (contract == PipeLangLanguageContractV1110 || (contract == PipeLangLanguageContractV1120 || (contract == PipeLangLanguageContractV1130 || (contract == PipeLangLanguageContractV1140 || contract == PipeLangLanguageContractV1150))))))))))))) && validTerminalBooleanSelectorInitializers(expression) {
+		return lowerExprToHIR(analysis, function, expression, bindings, typeEnvironment)
+	}
+	if (contract == PipeLangLanguageContractV1010 || (contract == PipeLangLanguageContractV1020 || (contract == PipeLangLanguageContractV1030 || (contract == PipeLangLanguageContractV1040 || (contract == PipeLangLanguageContractV1050 || (contract == PipeLangLanguageContractV1060 || (contract == PipeLangLanguageContractV1070 || (contract == PipeLangLanguageContractV1080 || (contract == PipeLangLanguageContractV1090 || (contract == PipeLangLanguageContractV1100 || (contract == PipeLangLanguageContractV1110 || (contract == PipeLangLanguageContractV1120 || (contract == PipeLangLanguageContractV1130 || (contract == PipeLangLanguageContractV1140 || contract == PipeLangLanguageContractV1150)))))))))))))) && validStraightLineBooleanSelectorInitializers(expression) {
+		return lowerExprToHIR(analysis, function, expression, bindings, typeEnvironment)
+	}
+	if (contract == PipeLangLanguageContractV980 || (contract == PipeLangLanguageContractV990 || (contract == PipeLangLanguageContractV1000 || (contract == PipeLangLanguageContractV1010 || (contract == PipeLangLanguageContractV1020 || (contract == PipeLangLanguageContractV1030 || (contract == PipeLangLanguageContractV1040 || (contract == PipeLangLanguageContractV1050 || (contract == PipeLangLanguageContractV1060 || (contract == PipeLangLanguageContractV1070 || (contract == PipeLangLanguageContractV1080 || (contract == PipeLangLanguageContractV1090 || (contract == PipeLangLanguageContractV1100 || (contract == PipeLangLanguageContractV1110 || (contract == PipeLangLanguageContractV1120 || (contract == PipeLangLanguageContractV1130 || (contract == PipeLangLanguageContractV1140 || contract == PipeLangLanguageContractV1150))))))))))))))))) && validConditionalBooleanSelector(expression) || (contract == PipeLangLanguageContractV990 || (contract == PipeLangLanguageContractV1000 || (contract == PipeLangLanguageContractV1010 || (contract == PipeLangLanguageContractV1020 || (contract == PipeLangLanguageContractV1030 || (contract == PipeLangLanguageContractV1040 || (contract == PipeLangLanguageContractV1050 || (contract == PipeLangLanguageContractV1060 || (contract == PipeLangLanguageContractV1070 || (contract == PipeLangLanguageContractV1080 || (contract == PipeLangLanguageContractV1090 || (contract == PipeLangLanguageContractV1100 || (contract == PipeLangLanguageContractV1110 || (contract == PipeLangLanguageContractV1120 || (contract == PipeLangLanguageContractV1130 || (contract == PipeLangLanguageContractV1140 || contract == PipeLangLanguageContractV1150)))))))))))))))) && validTerminalLeafBooleanSelectors(expression) {
+		return lowerExprToHIR(analysis, function, expression, bindings, typeEnvironment)
+	}
+	if (contract == PipeLangLanguageContractV970 || (contract == PipeLangLanguageContractV980 || (contract == PipeLangLanguageContractV990 || (contract == PipeLangLanguageContractV1000 || (contract == PipeLangLanguageContractV1010 || (contract == PipeLangLanguageContractV1020 || (contract == PipeLangLanguageContractV1030 || (contract == PipeLangLanguageContractV1040 || (contract == PipeLangLanguageContractV1050 || (contract == PipeLangLanguageContractV1060 || (contract == PipeLangLanguageContractV1070 || (contract == PipeLangLanguageContractV1080 || (contract == PipeLangLanguageContractV1090 || (contract == PipeLangLanguageContractV1100 || (contract == PipeLangLanguageContractV1110 || (contract == PipeLangLanguageContractV1120 || (contract == PipeLangLanguageContractV1130 || (contract == PipeLangLanguageContractV1140 || contract == PipeLangLanguageContractV1150)))))))))))))))))) && validDepthThreeTerminalInitializers(expression) {
+		return lowerExprToHIR(analysis, function, expression, bindings, typeEnvironment)
+	}
+	if (contract == PipeLangLanguageContractV960 || (contract == PipeLangLanguageContractV970 || (contract == PipeLangLanguageContractV980 || (contract == PipeLangLanguageContractV990 || (contract == PipeLangLanguageContractV1000 || (contract == PipeLangLanguageContractV1010 || (contract == PipeLangLanguageContractV1020 || (contract == PipeLangLanguageContractV1030 || (contract == PipeLangLanguageContractV1040 || (contract == PipeLangLanguageContractV1050 || (contract == PipeLangLanguageContractV1060 || (contract == PipeLangLanguageContractV1070 || (contract == PipeLangLanguageContractV1080 || (contract == PipeLangLanguageContractV1090 || (contract == PipeLangLanguageContractV1100 || (contract == PipeLangLanguageContractV1110 || (contract == PipeLangLanguageContractV1120 || (contract == PipeLangLanguageContractV1130 || (contract == PipeLangLanguageContractV1140 || contract == PipeLangLanguageContractV1150))))))))))))))))))) && validDepthThreeStraightLineInitializers(expression) {
+		return lowerExprToHIR(analysis, function, expression, bindings, typeEnvironment)
+	}
+	if (contract == PipeLangLanguageContractV940 || (contract == PipeLangLanguageContractV950 || (contract == PipeLangLanguageContractV960 || (contract == PipeLangLanguageContractV970 || (contract == PipeLangLanguageContractV980 || (contract == PipeLangLanguageContractV990 || (contract == PipeLangLanguageContractV1000 || (contract == PipeLangLanguageContractV1010 || (contract == PipeLangLanguageContractV1020 || (contract == PipeLangLanguageContractV1030 || (contract == PipeLangLanguageContractV1040 || (contract == PipeLangLanguageContractV1050 || (contract == PipeLangLanguageContractV1060 || (contract == PipeLangLanguageContractV1070 || (contract == PipeLangLanguageContractV1080 || (contract == PipeLangLanguageContractV1090 || (contract == PipeLangLanguageContractV1100 || (contract == PipeLangLanguageContractV1110 || (contract == PipeLangLanguageContractV1120 || (contract == PipeLangLanguageContractV1130 || (contract == PipeLangLanguageContractV1140 || contract == PipeLangLanguageContractV1150))))))))))))))))))))) && validDepthThreeTerminalLeafReturns(expression) {
+		return lowerExprToHIR(analysis, function, expression, bindings, typeEnvironment)
+	}
+	if (contract == PipeLangLanguageContractV930 || (contract == PipeLangLanguageContractV940 || (contract == PipeLangLanguageContractV950 || (contract == PipeLangLanguageContractV960 || (contract == PipeLangLanguageContractV970 || (contract == PipeLangLanguageContractV980 || (contract == PipeLangLanguageContractV990 || (contract == PipeLangLanguageContractV1000 || (contract == PipeLangLanguageContractV1010 || (contract == PipeLangLanguageContractV1020 || (contract == PipeLangLanguageContractV1030 || (contract == PipeLangLanguageContractV1040 || (contract == PipeLangLanguageContractV1050 || (contract == PipeLangLanguageContractV1060 || (contract == PipeLangLanguageContractV1070 || (contract == PipeLangLanguageContractV1080 || (contract == PipeLangLanguageContractV1090 || (contract == PipeLangLanguageContractV1100 || (contract == PipeLangLanguageContractV1110 || (contract == PipeLangLanguageContractV1120 || (contract == PipeLangLanguageContractV1130 || (contract == PipeLangLanguageContractV1140 || contract == PipeLangLanguageContractV1150)))))))))))))))))))))) && validDepthThreeStraightLineReturns(expression) {
+		return lowerExprToHIR(analysis, function, expression, bindings, typeEnvironment)
+	}
+	if ((contract == PipeLangLanguageContractV890 || (contract == PipeLangLanguageContractV900 || (contract == PipeLangLanguageContractV910 || (contract == PipeLangLanguageContractV920 || (contract == PipeLangLanguageContractV930 || (contract == PipeLangLanguageContractV940 || (contract == PipeLangLanguageContractV950 || (contract == PipeLangLanguageContractV960 || (contract == PipeLangLanguageContractV970 || (contract == PipeLangLanguageContractV980 || (contract == PipeLangLanguageContractV990 || (contract == PipeLangLanguageContractV1000 || (contract == PipeLangLanguageContractV1010 || (contract == PipeLangLanguageContractV1020 || (contract == PipeLangLanguageContractV1030 || (contract == PipeLangLanguageContractV1040 || (contract == PipeLangLanguageContractV1050 || (contract == PipeLangLanguageContractV1060 || (contract == PipeLangLanguageContractV1070 || (contract == PipeLangLanguageContractV1080 || (contract == PipeLangLanguageContractV1090 || (contract == PipeLangLanguageContractV1100 || (contract == PipeLangLanguageContractV1110 || (contract == PipeLangLanguageContractV1120 || (contract == PipeLangLanguageContractV1130 || (contract == PipeLangLanguageContractV1140 || contract == PipeLangLanguageContractV1150)))))))))))))))))))))))))) || contract == PipeLangLanguageContractV880) && (((validNestedStraightLineReturns(expression) || ((contract == PipeLangLanguageContractV910 || (contract == PipeLangLanguageContractV920 || (contract == PipeLangLanguageContractV930 || (contract == PipeLangLanguageContractV940 || (contract == PipeLangLanguageContractV950 || (contract == PipeLangLanguageContractV960 || (contract == PipeLangLanguageContractV970 || (contract == PipeLangLanguageContractV980 || (contract == PipeLangLanguageContractV990 || (contract == PipeLangLanguageContractV1000 || (contract == PipeLangLanguageContractV1010 || (contract == PipeLangLanguageContractV1020 || (contract == PipeLangLanguageContractV1030 || (contract == PipeLangLanguageContractV1040 || (contract == PipeLangLanguageContractV1050 || (contract == PipeLangLanguageContractV1060 || (contract == PipeLangLanguageContractV1070 || (contract == PipeLangLanguageContractV1080 || (contract == PipeLangLanguageContractV1090 || (contract == PipeLangLanguageContractV1100 || (contract == PipeLangLanguageContractV1110 || (contract == PipeLangLanguageContractV1120 || (contract == PipeLangLanguageContractV1130 || (contract == PipeLangLanguageContractV1140 || contract == PipeLangLanguageContractV1150)))))))))))))))))))))))) && validNestedTerminalInitializers(expression))) || ((contract == PipeLangLanguageContractV900 || (contract == PipeLangLanguageContractV910 || (contract == PipeLangLanguageContractV920 || (contract == PipeLangLanguageContractV930 || (contract == PipeLangLanguageContractV940 || (contract == PipeLangLanguageContractV950 || (contract == PipeLangLanguageContractV960 || (contract == PipeLangLanguageContractV970 || (contract == PipeLangLanguageContractV980 || (contract == PipeLangLanguageContractV990 || (contract == PipeLangLanguageContractV1000 || (contract == PipeLangLanguageContractV1010 || (contract == PipeLangLanguageContractV1020 || (contract == PipeLangLanguageContractV1030 || (contract == PipeLangLanguageContractV1040 || (contract == PipeLangLanguageContractV1050 || (contract == PipeLangLanguageContractV1060 || (contract == PipeLangLanguageContractV1070 || (contract == PipeLangLanguageContractV1080 || (contract == PipeLangLanguageContractV1090 || (contract == PipeLangLanguageContractV1100 || (contract == PipeLangLanguageContractV1110 || (contract == PipeLangLanguageContractV1120 || (contract == PipeLangLanguageContractV1130 || (contract == PipeLangLanguageContractV1140 || contract == PipeLangLanguageContractV1150))))))))))))))))))))))))) && validNestedStraightLineInitializers(expression))) || ((contract == PipeLangLanguageContractV890 || (contract == PipeLangLanguageContractV900 || (contract == PipeLangLanguageContractV910 || (contract == PipeLangLanguageContractV920 || (contract == PipeLangLanguageContractV930 || (contract == PipeLangLanguageContractV940 || (contract == PipeLangLanguageContractV950 || (contract == PipeLangLanguageContractV960 || (contract == PipeLangLanguageContractV970 || (contract == PipeLangLanguageContractV980 || (contract == PipeLangLanguageContractV990 || (contract == PipeLangLanguageContractV1000 || (contract == PipeLangLanguageContractV1010 || (contract == PipeLangLanguageContractV1020 || (contract == PipeLangLanguageContractV1030 || (contract == PipeLangLanguageContractV1040 || (contract == PipeLangLanguageContractV1050 || (contract == PipeLangLanguageContractV1060 || (contract == PipeLangLanguageContractV1070 || (contract == PipeLangLanguageContractV1080 || (contract == PipeLangLanguageContractV1090 || (contract == PipeLangLanguageContractV1100 || (contract == PipeLangLanguageContractV1110 || (contract == PipeLangLanguageContractV1120 || (contract == PipeLangLanguageContractV1130 || (contract == PipeLangLanguageContractV1140 || contract == PipeLangLanguageContractV1150)))))))))))))))))))))))))) && validNestedTerminalLeafReturns(expression))) {
+		return lowerExprToHIR(analysis, function, expression, bindings, typeEnvironment)
+	}
+	if _, ok := expression.(*ImmutableLocalExpr); ok && ((((((contract == PipeLangLanguageContractV890 || (contract == PipeLangLanguageContractV900 || (contract == PipeLangLanguageContractV910 || (contract == PipeLangLanguageContractV920 || (contract == PipeLangLanguageContractV930 || (contract == PipeLangLanguageContractV940 || (contract == PipeLangLanguageContractV950 || (contract == PipeLangLanguageContractV960 || (contract == PipeLangLanguageContractV970 || (contract == PipeLangLanguageContractV980 || (contract == PipeLangLanguageContractV990 || (contract == PipeLangLanguageContractV1000 || (contract == PipeLangLanguageContractV1010 || (contract == PipeLangLanguageContractV1020 || (contract == PipeLangLanguageContractV1030 || (contract == PipeLangLanguageContractV1040 || (contract == PipeLangLanguageContractV1050 || (contract == PipeLangLanguageContractV1060 || (contract == PipeLangLanguageContractV1070 || (contract == PipeLangLanguageContractV1080 || (contract == PipeLangLanguageContractV1090 || (contract == PipeLangLanguageContractV1100 || (contract == PipeLangLanguageContractV1110 || (contract == PipeLangLanguageContractV1120 || (contract == PipeLangLanguageContractV1130 || (contract == PipeLangLanguageContractV1140 || contract == PipeLangLanguageContractV1150)))))))))))))))))))))))))) || contract == PipeLangLanguageContractV880) || contract == PipeLangLanguageContractV870) || contract == PipeLangLanguageContractV860) || contract == PipeLangLanguageContractV850 || contract == PipeLangLanguageContractV840 || contract == PipeLangLanguageContractV830 || contract == PipeLangLanguageContractV820 || contract == PipeLangLanguageContractV810 || contract == PipeLangLanguageContractV800 || contract == PipeLangLanguageContractV790 || contract == PipeLangLanguageContractV780 || contract == PipeLangLanguageContractV770 || contract == PipeLangLanguageContractV760 || contract == PipeLangLanguageContractV750 || contract == PipeLangLanguageContractV740 || contract == PipeLangLanguageContractV730 || contract == PipeLangLanguageContractV720 || contract == PipeLangLanguageContractV710 || contract == PipeLangLanguageContractV700 || contract == PipeLangLanguageContractV690 || contract == PipeLangLanguageContractV680 || contract == PipeLangLanguageContractV670 || contract == PipeLangLanguageContractV660 || contract == PipeLangLanguageContractV650 || contract == PipeLangLanguageContractV640 || contract == PipeLangLanguageContractV630 || contract == PipeLangLanguageContractV620 || contract == PipeLangLanguageContractV610 || contract == PipeLangLanguageContractV600 || contract == PipeLangLanguageContractV590 || contract == PipeLangLanguageContractV580) || contract == PipeLangLanguageContractV570 || contract == PipeLangLanguageContractV560 || contract == PipeLangLanguageContractV550 || contract == PipeLangLanguageContractV540) && isResolvedSourceArithmeticResult(contract, returnType) && containsPropagationExpression(expression) {
+		return lowerCheckedArithmeticPropagationBlockToHIR(analysis, function, expression, bindings, typeEnvironment, returnType)
+	}
+	if _, ok := expression.(*ImmutableLocalExpr); ok && hasImmutableLocalSourceContract(contract) {
+		return lowerExprToHIR(analysis, function, expression, bindings, typeEnvironment)
+	}
+	if hasPureCallSourceContract(contract) && containsCallExpression(expression) {
+		return lowerExprToHIR(analysis, function, expression, bindings, typeEnvironment)
+	}
 	if hasSnapshotResultSourceContract(contract) && (isResolvedBoundedValueResult(contract, returnType) || containsResultExpression(expression)) {
 		return lowerExprToHIR(analysis, function, expression, bindings, typeEnvironment)
 	}
@@ -176,7 +294,7 @@ func lowerMethodBodyToHIR(analysis *Analysis, function SemanticIdentity, express
 			Binary: &hir.Binary{Operator: hir.OperatorDivide, Left: &left, Right: &right},
 		}, nil
 	}
-	if unary, ok := expression.(*UnaryExpr); ok && contract == PipeLangLanguageContractV310 && unary.Op == "-" {
+	if unary, ok := expression.(*UnaryExpr); ok && isV310OrEarlierCapability(contract) && unary.Op == "-" {
 		operand, err := lowerExprToHIR(analysis, function, unary.Expr, bindings, typeEnvironment)
 		if err != nil {
 			return hir.Expr{}, err
@@ -212,11 +330,50 @@ func lowerMethodBodyToHIR(analysis *Analysis, function SemanticIdentity, express
 	}, nil
 }
 
+func lowerCheckedArithmeticPropagationBlockToHIR(analysis *Analysis, function SemanticIdentity, expression Expr, bindings map[string]hir.Binding, typeEnvironment map[string]ResolvedTypeRef, returnType ResolvedTypeRef) (hir.Expr, error) {
+	local, ok := expression.(*ImmutableLocalExpr)
+	if !ok {
+		return lowerMethodBodyToHIR(analysis, function, expression, bindings, typeEnvironment, returnType)
+	}
+	localType, err := analysis.checked.resolveType(local.Type, RelatedSpan{Span: local.Span, Message: "immutable local declaration"})
+	if err != nil {
+		return hir.Expr{}, err
+	}
+	var initializer hir.Expr
+	if isResolvedSourceArithmeticResult(analysis.Modules.LanguageContract(), localType) {
+		initializer, err = lowerMethodBodyToHIR(analysis, function, local.Initializer, bindings, typeEnvironment, localType)
+	} else {
+		initializer, err = lowerExprToHIR(analysis, function, local.Initializer, bindings, typeEnvironment)
+	}
+	if err != nil {
+		return hir.Expr{}, err
+	}
+	scopedBindings := make(map[string]hir.Binding, len(bindings)+1)
+	for name, binding := range bindings {
+		scopedBindings[name] = binding
+	}
+	scopedTypes := make(map[string]ResolvedTypeRef, len(typeEnvironment)+1)
+	for name, resolved := range typeEnvironment {
+		scopedTypes[name] = resolved
+	}
+	binding := hir.Binding{Kind: hir.BindingLocal, Function: toHIRSemanticIdentity(function), Position: len(bindings), Name: local.Name}
+	scopedBindings[local.Name] = binding
+	scopedTypes[local.Name] = localType
+	returned, err := lowerCheckedArithmeticPropagationBlockToHIR(analysis, function, local.Return, scopedBindings, scopedTypes, returnType)
+	if err != nil {
+		return hir.Expr{}, err
+	}
+	return hir.Expr{
+		Kind: hir.ExprImmutableLocal, Type: toHIRType(analysis, returnType), Span: toHIRSpan(local.Span),
+		ImmutableLocal: &hir.ImmutableLocal{Binding: binding, Type: toHIRType(analysis, localType), TypeSpan: toHIRSpan(local.Type.Span), NameSpan: toHIRSpan(local.NameSpan), Initializer: &initializer, Return: &returned},
+	}, nil
+}
+
 func checkedArithmeticHIROperator(contract LanguageContract, binary *BinaryExpr) (hir.Operator, bool) {
 	if binary == nil {
 		return "", false
 	}
-	if contract == PipeLangLanguageContractV310 {
+	if isV310OrEarlierCapability(contract) {
 		switch binary.Op {
 		case "+":
 			return hir.OperatorAdd, true
@@ -312,6 +469,72 @@ func lowerExprToHIR(analysis *Analysis, function SemanticIdentity, expression Ex
 		}
 		result.Kind = hir.ExprBinary
 		result.Binary = &hir.Binary{Operator: operator, Left: &left, Right: &right}
+	case *ConditionalExpr:
+		condition, err := lowerExprToHIR(analysis, function, node.Condition, bindings, typeEnvironment)
+		if err != nil {
+			return hir.Expr{}, err
+		}
+		whenTrue, err := lowerExprToHIR(analysis, function, node.WhenTrue, bindings, typeEnvironment)
+		if err != nil {
+			return hir.Expr{}, err
+		}
+		whenFalse, err := lowerExprToHIR(analysis, function, node.WhenFalse, bindings, typeEnvironment)
+		if err != nil {
+			return hir.Expr{}, err
+		}
+		result.Kind = hir.ExprConditional
+		result.Conditional = &hir.Conditional{Condition: &condition, WhenTrue: &whenTrue, WhenFalse: &whenFalse, TerminalStatement: node.TerminalStatement}
+	case *ImmutableLocalExpr:
+		localType, err := analysis.checked.resolveType(node.Type, RelatedSpan{Span: node.Span, Message: "immutable local declaration"})
+		if err != nil {
+			return hir.Expr{}, err
+		}
+		var initializer hir.Expr
+		// v0.83's typed local choices transport complete carriers through the
+		// ordinary conditional node, including arms that are direct references.
+		// The legacy arithmetic-body recognizer expects an arithmetic operation.
+		choice, conditional := node.Initializer.(*ConditionalExpr)
+		conditionalLocal := (((((analysis.Modules.LanguageContract() == PipeLangLanguageContractV890 || (analysis.Modules.LanguageContract() == PipeLangLanguageContractV900 || (analysis.Modules.LanguageContract() == PipeLangLanguageContractV910 || (analysis.Modules.LanguageContract() == PipeLangLanguageContractV920 || (analysis.Modules.LanguageContract() == PipeLangLanguageContractV930 || (analysis.Modules.LanguageContract() == PipeLangLanguageContractV940 || (analysis.Modules.LanguageContract() == PipeLangLanguageContractV950 || (analysis.Modules.LanguageContract() == PipeLangLanguageContractV960 || (analysis.Modules.LanguageContract() == PipeLangLanguageContractV970 || (analysis.Modules.LanguageContract() == PipeLangLanguageContractV980 || (analysis.Modules.LanguageContract() == PipeLangLanguageContractV990 || (analysis.Modules.LanguageContract() == PipeLangLanguageContractV1000 || (analysis.Modules.LanguageContract() == PipeLangLanguageContractV1010 || (analysis.Modules.LanguageContract() == PipeLangLanguageContractV1020 || (analysis.Modules.LanguageContract() == PipeLangLanguageContractV1030 || (analysis.Modules.LanguageContract() == PipeLangLanguageContractV1040 || (analysis.Modules.LanguageContract() == PipeLangLanguageContractV1050 || (analysis.Modules.LanguageContract() == PipeLangLanguageContractV1060 || (analysis.Modules.LanguageContract() == PipeLangLanguageContractV1070 || (analysis.Modules.LanguageContract() == PipeLangLanguageContractV1080 || (analysis.Modules.LanguageContract() == PipeLangLanguageContractV1090 || (analysis.Modules.LanguageContract() == PipeLangLanguageContractV1100 || (analysis.Modules.LanguageContract() == PipeLangLanguageContractV1110 || (analysis.Modules.LanguageContract() == PipeLangLanguageContractV1120 || (analysis.Modules.LanguageContract() == PipeLangLanguageContractV1130 || (analysis.Modules.LanguageContract() == PipeLangLanguageContractV1140 || analysis.Modules.LanguageContract() == PipeLangLanguageContractV1150)))))))))))))))))))))))))) || analysis.Modules.LanguageContract() == PipeLangLanguageContractV880) || analysis.Modules.LanguageContract() == PipeLangLanguageContractV870) || analysis.Modules.LanguageContract() == PipeLangLanguageContractV860) || analysis.Modules.LanguageContract() == PipeLangLanguageContractV850 || analysis.Modules.LanguageContract() == PipeLangLanguageContractV840 || analysis.Modules.LanguageContract() == PipeLangLanguageContractV830) && conditional && !choice.TerminalStatement
+		if isResolvedSourceArithmeticResult(analysis.Modules.LanguageContract(), localType) && !conditionalLocal {
+			initializer, err = lowerMethodBodyToHIR(analysis, function, node.Initializer, bindings, typeEnvironment, localType)
+		} else {
+			initializer, err = lowerExprToHIR(analysis, function, node.Initializer, bindings, typeEnvironment)
+		}
+		if err != nil {
+			return hir.Expr{}, err
+		}
+		scopedBindings := make(map[string]hir.Binding, len(bindings)+1)
+		for name, binding := range bindings {
+			scopedBindings[name] = binding
+		}
+		scopedTypes := make(map[string]ResolvedTypeRef, len(typeEnvironment)+1)
+		for name, resolved := range typeEnvironment {
+			scopedTypes[name] = resolved
+		}
+		binding := hir.Binding{Kind: hir.BindingLocal, Function: toHIRSemanticIdentity(function), Position: len(bindings), Name: node.Name}
+		scopedBindings[node.Name] = binding
+		scopedTypes[node.Name] = localType
+		returned, err := lowerExprToHIR(analysis, function, node.Return, scopedBindings, scopedTypes)
+		if err != nil {
+			return hir.Expr{}, err
+		}
+		result.Kind = hir.ExprImmutableLocal
+		result.ImmutableLocal = &hir.ImmutableLocal{Binding: binding, Type: toHIRType(analysis, localType), TypeSpan: toHIRSpan(node.Type.Span), NameSpan: toHIRSpan(node.NameSpan), Initializer: &initializer, Return: &returned}
+	case *CallExpr:
+		targetIdentity, ok := analysis.SemanticIDs.IdentityForSpan(node.TargetSpan)
+		if !ok {
+			return hir.Expr{}, hirLoweringError(analysis, node.NameSpan, function, fmt.Sprintf("call target %q has no semantic identity", node.Name))
+		}
+		arguments := make([]*hir.Expr, 0, len(node.Arguments))
+		for _, argument := range node.Arguments {
+			lowered, err := lowerExprToHIR(analysis, function, argument, bindings, typeEnvironment)
+			if err != nil {
+				return hir.Expr{}, err
+			}
+			arguments = append(arguments, &lowered)
+		}
+		result.Kind = hir.ExprCall
+		result.Call = &hir.Call{Target: toHIRSemanticIdentity(targetIdentity), TargetName: node.Name, Arguments: arguments}
 	case *TextContainsCaseFoldedExpr:
 		value, err := lowerExprToHIR(analysis, function, node.Value, bindings, typeEnvironment)
 		if err != nil {
@@ -331,6 +554,15 @@ func lowerExprToHIR(analysis *Analysis, function SemanticIdentity, expression Ex
 		result.Kind = hir.ExprTextTrim
 		result.TextTrim = &hir.TextTrim{Value: &value}
 	case *FieldExpr:
+		if resolved, tag, ok, err := analysis.checked.enumMemberValue(node, typeEnvironment); ok {
+			if err != nil {
+				return hir.Expr{}, err
+			}
+			result.Kind = hir.ExprLiteral
+			result.Type = toHIRType(analysis, resolved)
+			result.Literal = &hir.Literal{String: tag}
+			return result, nil
+		}
 		receiverType, err := analysis.checked.inferExprType(node.Receiver, typeEnvironment)
 		if err != nil {
 			return hir.Expr{}, err
@@ -408,6 +640,56 @@ func lowerExprToHIR(analysis *Analysis, function SemanticIdentity, expression Ex
 		}
 		result.Kind = hir.ExprOptionalValueOr
 		result.ValueOr = &hir.OptionalValueOr{Value: &value, Fallback: &fallback}
+	case *PropagateExpr:
+		value, err := lowerExprToHIR(analysis, function, node.Value, bindings, typeEnvironment)
+		if err != nil {
+			return hir.Expr{}, err
+		}
+		result.Kind = hir.ExprPropagate
+		result.Propagate = &hir.Propagate{Value: &value, Carrier: value.Type}
+	case *MatchExpr:
+		value, err := lowerExprToHIR(analysis, function, node.Value, bindings, typeEnvironment)
+		if err != nil {
+			return hir.Expr{}, err
+		}
+		matched := &hir.Match{Value: &value, Arms: make([]hir.MatchArm, 0, len(node.Arms))}
+		carrier, _ := analysis.checked.inferExprType(node.Value, typeEnvironment)
+		for _, arm := range node.Arms {
+			armBindings := make(map[string]hir.Binding, len(bindings)+1)
+			for k, v := range bindings {
+				armBindings[k] = v
+			}
+			armEnv := make(map[string]ResolvedTypeRef, len(typeEnvironment)+1)
+			for k, v := range typeEnvironment {
+				armEnv[k] = v
+			}
+			var binding *hir.Binding
+			if arm.Binding != "" {
+				payload := carrier.Arguments[0]
+				if arm.Tag == "err" {
+					payload = carrier.Arguments[1]
+				}
+				b := hir.Binding{Kind: hir.BindingMatchArm, Function: toHIRSemanticIdentity(function), Position: len(bindings), Name: arm.Binding}
+				binding = &b
+				armBindings[arm.Binding] = b
+				armEnv[arm.Binding] = payload
+			}
+			body, e := lowerExprToHIR(analysis, function, arm.Body, armBindings, armEnv)
+			if e != nil {
+				return hir.Expr{}, e
+			}
+			tag := arm.Tag
+			if analysis.checked.isResolvedEnumType(carrier) {
+				var err error
+				tag, err = analysis.checked.enumPatternTag(carrier, arm)
+				if err != nil {
+					return hir.Expr{}, err
+				}
+			}
+			matched.Arms = append(matched.Arms, hir.MatchArm{Tag: tag, Binding: binding, Body: &body})
+		}
+		result.Kind = hir.ExprMatch
+		result.Match = matched
 	case *ListEmptyExpr:
 		result.Kind = hir.ExprListEmpty
 		result.ListEmpty = &hir.ListEmpty{}
@@ -589,6 +871,45 @@ func lowerExprToHIR(analysis *Analysis, function SemanticIdentity, expression Ex
 		}
 		result.Kind = hir.ExprListSortByOrdinalText
 		result.ListSortByOrdinalText = &hir.ListSortByOrdinalText{Values: &values, Field: toHIRSemanticIdentity(fieldIdentity), Name: node.Field, Position: position}
+	case *ListSortByOrdinalDirectionsExpr:
+		valuesType, err := analysis.checked.inferExprType(node.Values, typeEnvironment)
+		if err != nil {
+			return hir.Expr{}, err
+		}
+		plain := &ListSortByOrdinalsExpr{Values: node.Values, Span: node.Span}
+		for _, s := range node.Selectors {
+			plain.Selectors = append(plain.Selectors, s.ListTextFieldSelector)
+		}
+		var fields []FieldDecl
+		var positions []int
+		if len(plain.Selectors) == 1 {
+			single := &ListSortByOrdinalExpr{Values: node.Values, RecordType: plain.Selectors[0].RecordType, Field: plain.Selectors[0].Field, FieldSpan: plain.Selectors[0].FieldSpan, Span: node.Span}
+			f, p, e := analysis.checked.resolveListSortByOrdinalSelector(single, valuesType)
+			if e != nil {
+				return hir.Expr{}, e
+			}
+			fields = []FieldDecl{f}
+			positions = []int{p}
+		} else {
+			fields, positions, err = analysis.checked.resolveListSortByOrdinalsSelectors(plain, valuesType)
+			if err != nil {
+				return hir.Expr{}, err
+			}
+		}
+		selectors := make([]hir.ListDirectionalTextFieldSelector, 0, len(fields))
+		for i, field := range fields {
+			id, ok := analysis.SemanticIDs.IdentityForSpan(field.Span)
+			if !ok {
+				return hir.Expr{}, hirLoweringError(analysis, node.Selectors[i].FieldSpan, function, "record field has no semantic identity")
+			}
+			selectors = append(selectors, hir.ListDirectionalTextFieldSelector{ListTextFieldSelector: hir.ListTextFieldSelector{Field: toHIRSemanticIdentity(id), Name: node.Selectors[i].Field, Position: positions[i]}, Direction: node.Selectors[i].Direction})
+		}
+		values, err := lowerExprToHIR(analysis, function, node.Values, bindings, typeEnvironment)
+		if err != nil {
+			return hir.Expr{}, err
+		}
+		result.Kind = hir.ExprListSortByOrdinalDirections
+		result.ListSortByOrdinalDirections = &hir.ListSortByOrdinalDirections{Values: &values, Selectors: selectors}
 	case *ListSortByOrdinalsExpr:
 		valuesType, err := analysis.checked.inferExprType(node.Values, typeEnvironment)
 		if err != nil {
@@ -667,64 +988,66 @@ func lowerExprToHIR(analysis *Analysis, function SemanticIdentity, expression Ex
 func LowerHIRToCore(program hir.Program) (coreir.Program, error) {
 	core := coreir.Program{LanguageContract: program.LanguageContract, CompilerContract: program.CompilerContract, Functions: make([]coreir.Function, 0, len(program.Functions))}
 	for _, function := range program.Functions {
-		if program.LanguageContract != coreir.LanguageContractV270 && program.LanguageContract != coreir.LanguageContractV280 && program.LanguageContract != coreir.LanguageContractV290 && program.LanguageContract != coreir.LanguageContractV300 && program.LanguageContract != coreir.LanguageContractV310 {
-			if program.LanguageContract != coreir.LanguageContractV130 && program.LanguageContract != coreir.LanguageContractV140 && program.LanguageContract != coreir.LanguageContractV150 && program.LanguageContract != coreir.LanguageContractV160 && program.LanguageContract != coreir.LanguageContractV170 && program.LanguageContract != coreir.LanguageContractV180 && program.LanguageContract != coreir.LanguageContractV190 && program.LanguageContract != coreir.LanguageContractV200 && program.LanguageContract != coreir.LanguageContractV210 && program.LanguageContract != coreir.LanguageContractV220 && program.LanguageContract != coreir.LanguageContractV230 && program.LanguageContract != coreir.LanguageContractV240 && program.LanguageContract != coreir.LanguageContractV250 && program.LanguageContract != coreir.LanguageContractV260 && hirFunctionContainsOptional(function) {
-				return coreir.Program{}, coreLoweringError(function.Span, fmt.Sprintf("primitive Optional HIR requires language contract %q", coreir.LanguageContractV130))
+		if (((((program.LanguageContract != coreir.LanguageContractV890 && (program.LanguageContract != coreir.LanguageContractV900 && (program.LanguageContract != coreir.LanguageContractV910 && (program.LanguageContract != coreir.LanguageContractV920 && (program.LanguageContract != coreir.LanguageContractV930 && (program.LanguageContract != coreir.LanguageContractV940 && (program.LanguageContract != coreir.LanguageContractV950 && (program.LanguageContract != coreir.LanguageContractV960 && (program.LanguageContract != coreir.LanguageContractV970 && (program.LanguageContract != coreir.LanguageContractV980 && (program.LanguageContract != coreir.LanguageContractV990 && (program.LanguageContract != coreir.LanguageContractV1000 && (program.LanguageContract != coreir.LanguageContractV1010 && (program.LanguageContract != coreir.LanguageContractV1020 && (program.LanguageContract != coreir.LanguageContractV1030 && (program.LanguageContract != coreir.LanguageContractV1040 && (program.LanguageContract != coreir.LanguageContractV1050 && (program.LanguageContract != coreir.LanguageContractV1060 && (program.LanguageContract != coreir.LanguageContractV1070 && (program.LanguageContract != coreir.LanguageContractV1080 && (program.LanguageContract != coreir.LanguageContractV1090 && (program.LanguageContract != coreir.LanguageContractV1100 && (program.LanguageContract != coreir.LanguageContractV1110 && (program.LanguageContract != coreir.LanguageContractV1120 && (program.LanguageContract != coreir.LanguageContractV1130 && (program.LanguageContract != coreir.LanguageContractV1140 && program.LanguageContract != coreir.LanguageContractV1150)))))))))))))))))))))))))) && program.LanguageContract != coreir.LanguageContractV880) && program.LanguageContract != coreir.LanguageContractV870) && program.LanguageContract != coreir.LanguageContractV860) && program.LanguageContract != coreir.LanguageContractV850 && program.LanguageContract != coreir.LanguageContractV840 && program.LanguageContract != coreir.LanguageContractV830 && program.LanguageContract != coreir.LanguageContractV820 && program.LanguageContract != coreir.LanguageContractV810 && program.LanguageContract != coreir.LanguageContractV800 && program.LanguageContract != coreir.LanguageContractV790 && program.LanguageContract != coreir.LanguageContractV780 && program.LanguageContract != coreir.LanguageContractV770 && program.LanguageContract != coreir.LanguageContractV760 && program.LanguageContract != coreir.LanguageContractV750 && program.LanguageContract != coreir.LanguageContractV740 && program.LanguageContract != coreir.LanguageContractV730 && program.LanguageContract != coreir.LanguageContractV720 && program.LanguageContract != coreir.LanguageContractV710 && program.LanguageContract != coreir.LanguageContractV700 && program.LanguageContract != coreir.LanguageContractV690 && program.LanguageContract != coreir.LanguageContractV680 && program.LanguageContract != coreir.LanguageContractV670 && program.LanguageContract != coreir.LanguageContractV660 && program.LanguageContract != coreir.LanguageContractV650 && program.LanguageContract != coreir.LanguageContractV640 && program.LanguageContract != coreir.LanguageContractV630 && program.LanguageContract != coreir.LanguageContractV620 && program.LanguageContract != coreir.LanguageContractV610 && program.LanguageContract != coreir.LanguageContractV600 && program.LanguageContract != coreir.LanguageContractV590 && program.LanguageContract != coreir.LanguageContractV580) && program.LanguageContract != coreir.LanguageContractV570 && program.LanguageContract != coreir.LanguageContractV560 && program.LanguageContract != coreir.LanguageContractV550 && program.LanguageContract != coreir.LanguageContractV540 && program.LanguageContract != coreir.LanguageContractV530 && program.LanguageContract != coreir.LanguageContractV520 && program.LanguageContract != coreir.LanguageContractV510 && program.LanguageContract != coreir.LanguageContractV500 && program.LanguageContract != coreir.LanguageContractV490 {
+			if program.LanguageContract != coreir.LanguageContractV270 && program.LanguageContract != coreir.LanguageContractV280 && program.LanguageContract != coreir.LanguageContractV290 && program.LanguageContract != coreir.LanguageContractV300 && program.LanguageContract != coreir.LanguageContractV310 && program.LanguageContract != coreir.LanguageContractV320 && program.LanguageContract != coreir.LanguageContractV330 && program.LanguageContract != coreir.LanguageContractV340 && program.LanguageContract != coreir.LanguageContractV350 && program.LanguageContract != coreir.LanguageContractV360 && program.LanguageContract != coreir.LanguageContractV370 && program.LanguageContract != coreir.LanguageContractV380 && program.LanguageContract != coreir.LanguageContractV390 && program.LanguageContract != coreir.LanguageContractV400 && program.LanguageContract != coreir.LanguageContractV410 && program.LanguageContract != coreir.LanguageContractV420 && program.LanguageContract != coreir.LanguageContractV430 && program.LanguageContract != coreir.LanguageContractV440 && program.LanguageContract != coreir.LanguageContractV450 && program.LanguageContract != coreir.LanguageContractV460 && program.LanguageContract != coreir.LanguageContractV470 && program.LanguageContract != coreir.LanguageContractV480 {
+				if program.LanguageContract != coreir.LanguageContractV130 && program.LanguageContract != coreir.LanguageContractV140 && program.LanguageContract != coreir.LanguageContractV150 && program.LanguageContract != coreir.LanguageContractV160 && program.LanguageContract != coreir.LanguageContractV170 && program.LanguageContract != coreir.LanguageContractV180 && program.LanguageContract != coreir.LanguageContractV190 && program.LanguageContract != coreir.LanguageContractV200 && program.LanguageContract != coreir.LanguageContractV210 && program.LanguageContract != coreir.LanguageContractV220 && program.LanguageContract != coreir.LanguageContractV230 && program.LanguageContract != coreir.LanguageContractV240 && program.LanguageContract != coreir.LanguageContractV250 && program.LanguageContract != coreir.LanguageContractV260 && hirFunctionContainsOptional(function) {
+					return coreir.Program{}, coreLoweringError(function.Span, fmt.Sprintf("primitive Optional HIR requires language contract %q", coreir.LanguageContractV130))
+				}
+				if program.LanguageContract != coreir.LanguageContractV140 && program.LanguageContract != coreir.LanguageContractV150 && program.LanguageContract != coreir.LanguageContractV160 && program.LanguageContract != coreir.LanguageContractV170 && program.LanguageContract != coreir.LanguageContractV180 && program.LanguageContract != coreir.LanguageContractV190 && program.LanguageContract != coreir.LanguageContractV200 && program.LanguageContract != coreir.LanguageContractV210 && program.LanguageContract != coreir.LanguageContractV220 && program.LanguageContract != coreir.LanguageContractV230 && program.LanguageContract != coreir.LanguageContractV240 && program.LanguageContract != coreir.LanguageContractV250 && program.LanguageContract != coreir.LanguageContractV260 && hirExprContainsOptionalDefault(function.Body) {
+					return coreir.Program{}, coreLoweringError(function.Span, fmt.Sprintf("primitive Optional defaulting HIR requires language contract %q", coreir.LanguageContractV140))
+				}
+				if program.LanguageContract != coreir.LanguageContractV150 && program.LanguageContract != coreir.LanguageContractV160 && program.LanguageContract != coreir.LanguageContractV170 && program.LanguageContract != coreir.LanguageContractV180 && program.LanguageContract != coreir.LanguageContractV190 && program.LanguageContract != coreir.LanguageContractV200 && program.LanguageContract != coreir.LanguageContractV210 && program.LanguageContract != coreir.LanguageContractV220 && program.LanguageContract != coreir.LanguageContractV230 && program.LanguageContract != coreir.LanguageContractV240 && program.LanguageContract != coreir.LanguageContractV250 && program.LanguageContract != coreir.LanguageContractV260 && hirFunctionContainsList(function) {
+					return coreir.Program{}, coreLoweringError(function.Span, fmt.Sprintf("record-list HIR requires language contract %q", coreir.LanguageContractV150))
+				}
+				if program.LanguageContract != coreir.LanguageContractV160 && program.LanguageContract != coreir.LanguageContractV170 && program.LanguageContract != coreir.LanguageContractV180 && program.LanguageContract != coreir.LanguageContractV190 && program.LanguageContract != coreir.LanguageContractV200 && program.LanguageContract != coreir.LanguageContractV210 && program.LanguageContract != coreir.LanguageContractV220 && program.LanguageContract != coreir.LanguageContractV230 && program.LanguageContract != coreir.LanguageContractV240 && program.LanguageContract != coreir.LanguageContractV250 && program.LanguageContract != coreir.LanguageContractV260 && hirExprContainsListCount(function.Body) {
+					return coreir.Program{}, coreLoweringError(function.Span, fmt.Sprintf("record-list count HIR requires language contract %q", coreir.LanguageContractV160))
+				}
+				if program.LanguageContract != coreir.LanguageContractV170 && program.LanguageContract != coreir.LanguageContractV180 && program.LanguageContract != coreir.LanguageContractV190 && program.LanguageContract != coreir.LanguageContractV200 && program.LanguageContract != coreir.LanguageContractV210 && program.LanguageContract != coreir.LanguageContractV220 && program.LanguageContract != coreir.LanguageContractV230 && program.LanguageContract != coreir.LanguageContractV240 && program.LanguageContract != coreir.LanguageContractV250 && program.LanguageContract != coreir.LanguageContractV260 && hirExprContainsListAppend(function.Body) {
+					return coreir.Program{}, coreLoweringError(function.Span, fmt.Sprintf("record-list append HIR requires language contract %q", coreir.LanguageContractV170))
+				}
+				if program.LanguageContract != coreir.LanguageContractV180 && program.LanguageContract != coreir.LanguageContractV190 && program.LanguageContract != coreir.LanguageContractV200 && program.LanguageContract != coreir.LanguageContractV210 && program.LanguageContract != coreir.LanguageContractV220 && program.LanguageContract != coreir.LanguageContractV230 && program.LanguageContract != coreir.LanguageContractV240 && program.LanguageContract != coreir.LanguageContractV250 && program.LanguageContract != coreir.LanguageContractV260 && hirFunctionContainsRecordOptional(function) {
+					return coreir.Program{}, coreLoweringError(function.Span, fmt.Sprintf("primitive-record Optional HIR requires language contract %q", coreir.LanguageContractV180))
+				}
+				if program.LanguageContract != coreir.LanguageContractV190 && program.LanguageContract != coreir.LanguageContractV200 && program.LanguageContract != coreir.LanguageContractV210 && program.LanguageContract != coreir.LanguageContractV220 && program.LanguageContract != coreir.LanguageContractV230 && program.LanguageContract != coreir.LanguageContractV240 && program.LanguageContract != coreir.LanguageContractV250 && program.LanguageContract != coreir.LanguageContractV260 && hirFunctionContainsBoundedValueResult(function) {
+					return coreir.Program{}, coreLoweringError(function.Span, fmt.Sprintf("bounded Result HIR requires language contract %q", coreir.LanguageContractV190))
+				}
+				if program.LanguageContract != coreir.LanguageContractV250 && program.LanguageContract != coreir.LanguageContractV260 && hirFunctionContainsTextResult(function) {
+					return coreir.Program{}, coreLoweringError(function.Span, fmt.Sprintf("text Result HIR requires language contract %q", coreir.LanguageContractV250))
+				}
+				if program.LanguageContract != coreir.LanguageContractV260 && hirExprContainsTextTrim(function.Body) {
+					return coreir.Program{}, coreLoweringError(function.Span, fmt.Sprintf("trim HIR requires language contract %q", coreir.LanguageContractV260))
+				}
+				if program.LanguageContract != coreir.LanguageContractV200 && program.LanguageContract != coreir.LanguageContractV210 && program.LanguageContract != coreir.LanguageContractV220 && program.LanguageContract != coreir.LanguageContractV230 && program.LanguageContract != coreir.LanguageContractV240 && program.LanguageContract != coreir.LanguageContractV250 && program.LanguageContract != coreir.LanguageContractV260 && hirExprContainsListAt(function.Body) {
+					return coreir.Program{}, coreLoweringError(function.Span, fmt.Sprintf("record-list at HIR requires language contract %q", coreir.LanguageContractV200))
+				}
+				if program.LanguageContract != coreir.LanguageContractV210 && program.LanguageContract != coreir.LanguageContractV220 && program.LanguageContract != coreir.LanguageContractV230 && program.LanguageContract != coreir.LanguageContractV240 && program.LanguageContract != coreir.LanguageContractV250 && program.LanguageContract != coreir.LanguageContractV260 && hirExprContainsListFindByText(function.Body) {
+					return coreir.Program{}, coreLoweringError(function.Span, fmt.Sprintf("record-list find_by HIR requires language contract %q", coreir.LanguageContractV210))
+				}
+				if program.LanguageContract != coreir.LanguageContractV220 && program.LanguageContract != coreir.LanguageContractV230 && program.LanguageContract != coreir.LanguageContractV240 && program.LanguageContract != coreir.LanguageContractV250 && program.LanguageContract != coreir.LanguageContractV260 && hirExprContainsListFilterByText(function.Body) {
+					return coreir.Program{}, coreLoweringError(function.Span, fmt.Sprintf("record-list filter_by HIR requires language contract %q", coreir.LanguageContractV220))
+				}
+				if program.LanguageContract != coreir.LanguageContractV230 && program.LanguageContract != coreir.LanguageContractV240 && program.LanguageContract != coreir.LanguageContractV250 && program.LanguageContract != coreir.LanguageContractV260 && hirExprContainsTextCaseFold(function.Body) {
+					return coreir.Program{}, coreLoweringError(function.Span, fmt.Sprintf("contains_casefolded HIR requires language contract %q", coreir.LanguageContractV230))
+				}
+				if program.LanguageContract != coreir.LanguageContractV240 && program.LanguageContract != coreir.LanguageContractV250 && program.LanguageContract != coreir.LanguageContractV260 && hirExprContainsListFilterContainsCaseFolded(function.Body) {
+					return coreir.Program{}, coreLoweringError(function.Span, fmt.Sprintf("record-list filter_contains_casefolded HIR requires language contract %q", coreir.LanguageContractV240))
+				}
 			}
-			if program.LanguageContract != coreir.LanguageContractV140 && program.LanguageContract != coreir.LanguageContractV150 && program.LanguageContract != coreir.LanguageContractV160 && program.LanguageContract != coreir.LanguageContractV170 && program.LanguageContract != coreir.LanguageContractV180 && program.LanguageContract != coreir.LanguageContractV190 && program.LanguageContract != coreir.LanguageContractV200 && program.LanguageContract != coreir.LanguageContractV210 && program.LanguageContract != coreir.LanguageContractV220 && program.LanguageContract != coreir.LanguageContractV230 && program.LanguageContract != coreir.LanguageContractV240 && program.LanguageContract != coreir.LanguageContractV250 && program.LanguageContract != coreir.LanguageContractV260 && hirExprContainsOptionalDefault(function.Body) {
-				return coreir.Program{}, coreLoweringError(function.Span, fmt.Sprintf("primitive Optional defaulting HIR requires language contract %q", coreir.LanguageContractV140))
+			if program.LanguageContract != coreir.LanguageContractV270 && program.LanguageContract != coreir.LanguageContractV280 && program.LanguageContract != coreir.LanguageContractV290 && program.LanguageContract != coreir.LanguageContractV300 && program.LanguageContract != coreir.LanguageContractV310 && program.LanguageContract != coreir.LanguageContractV320 && program.LanguageContract != coreir.LanguageContractV330 && program.LanguageContract != coreir.LanguageContractV340 && program.LanguageContract != coreir.LanguageContractV350 && program.LanguageContract != coreir.LanguageContractV360 && program.LanguageContract != coreir.LanguageContractV370 && program.LanguageContract != coreir.LanguageContractV380 && program.LanguageContract != coreir.LanguageContractV390 && program.LanguageContract != coreir.LanguageContractV400 && program.LanguageContract != coreir.LanguageContractV410 && program.LanguageContract != coreir.LanguageContractV420 && program.LanguageContract != coreir.LanguageContractV430 && program.LanguageContract != coreir.LanguageContractV440 && program.LanguageContract != coreir.LanguageContractV450 && program.LanguageContract != coreir.LanguageContractV460 && program.LanguageContract != coreir.LanguageContractV470 && program.LanguageContract != coreir.LanguageContractV480 && hirExprContainsListFilterJoinedContainsCaseFolded(function.Body) {
+				return coreir.Program{}, coreLoweringError(function.Span, fmt.Sprintf("record-list filter_joined_contains_casefolded HIR requires language contract %q", coreir.LanguageContractV270))
 			}
-			if program.LanguageContract != coreir.LanguageContractV150 && program.LanguageContract != coreir.LanguageContractV160 && program.LanguageContract != coreir.LanguageContractV170 && program.LanguageContract != coreir.LanguageContractV180 && program.LanguageContract != coreir.LanguageContractV190 && program.LanguageContract != coreir.LanguageContractV200 && program.LanguageContract != coreir.LanguageContractV210 && program.LanguageContract != coreir.LanguageContractV220 && program.LanguageContract != coreir.LanguageContractV230 && program.LanguageContract != coreir.LanguageContractV240 && program.LanguageContract != coreir.LanguageContractV250 && program.LanguageContract != coreir.LanguageContractV260 && hirFunctionContainsList(function) {
-				return coreir.Program{}, coreLoweringError(function.Span, fmt.Sprintf("record-list HIR requires language contract %q", coreir.LanguageContractV150))
+			if program.LanguageContract != coreir.LanguageContractV290 && program.LanguageContract != coreir.LanguageContractV300 && program.LanguageContract != coreir.LanguageContractV310 && program.LanguageContract != coreir.LanguageContractV320 && program.LanguageContract != coreir.LanguageContractV330 && program.LanguageContract != coreir.LanguageContractV340 && program.LanguageContract != coreir.LanguageContractV350 && program.LanguageContract != coreir.LanguageContractV360 && program.LanguageContract != coreir.LanguageContractV370 && program.LanguageContract != coreir.LanguageContractV380 && program.LanguageContract != coreir.LanguageContractV390 && program.LanguageContract != coreir.LanguageContractV400 && program.LanguageContract != coreir.LanguageContractV410 && program.LanguageContract != coreir.LanguageContractV420 && program.LanguageContract != coreir.LanguageContractV430 && program.LanguageContract != coreir.LanguageContractV440 && program.LanguageContract != coreir.LanguageContractV450 && program.LanguageContract != coreir.LanguageContractV460 && program.LanguageContract != coreir.LanguageContractV470 && program.LanguageContract != coreir.LanguageContractV480 && function.Body.Kind == hir.ExprListFilterJoinedContainsCaseFolded && (function.Body.ListFilterJoinedContainsCaseFolded == nil || len(function.Body.ListFilterJoinedContainsCaseFolded.Selectors) != 5) {
+				return coreir.Program{}, coreLoweringError(function.Span, "record-list filter_joined_contains_casefolded HIR requires exactly five selectors before language contract v0.29.0")
 			}
-			if program.LanguageContract != coreir.LanguageContractV160 && program.LanguageContract != coreir.LanguageContractV170 && program.LanguageContract != coreir.LanguageContractV180 && program.LanguageContract != coreir.LanguageContractV190 && program.LanguageContract != coreir.LanguageContractV200 && program.LanguageContract != coreir.LanguageContractV210 && program.LanguageContract != coreir.LanguageContractV220 && program.LanguageContract != coreir.LanguageContractV230 && program.LanguageContract != coreir.LanguageContractV240 && program.LanguageContract != coreir.LanguageContractV250 && program.LanguageContract != coreir.LanguageContractV260 && hirExprContainsListCount(function.Body) {
-				return coreir.Program{}, coreLoweringError(function.Span, fmt.Sprintf("record-list count HIR requires language contract %q", coreir.LanguageContractV160))
+			if program.LanguageContract != coreir.LanguageContractV280 && program.LanguageContract != coreir.LanguageContractV290 && program.LanguageContract != coreir.LanguageContractV300 && program.LanguageContract != coreir.LanguageContractV310 && program.LanguageContract != coreir.LanguageContractV320 && program.LanguageContract != coreir.LanguageContractV330 && program.LanguageContract != coreir.LanguageContractV340 && program.LanguageContract != coreir.LanguageContractV350 && program.LanguageContract != coreir.LanguageContractV360 && program.LanguageContract != coreir.LanguageContractV370 && program.LanguageContract != coreir.LanguageContractV380 && program.LanguageContract != coreir.LanguageContractV390 && program.LanguageContract != coreir.LanguageContractV400 && program.LanguageContract != coreir.LanguageContractV410 && program.LanguageContract != coreir.LanguageContractV420 && program.LanguageContract != coreir.LanguageContractV430 && program.LanguageContract != coreir.LanguageContractV440 && program.LanguageContract != coreir.LanguageContractV450 && program.LanguageContract != coreir.LanguageContractV460 && program.LanguageContract != coreir.LanguageContractV470 && program.LanguageContract != coreir.LanguageContractV480 && hirExprContainsListSortByOrdinalText(function.Body) {
+				return coreir.Program{}, coreLoweringError(function.Span, fmt.Sprintf("record-list sort_by_ordinal HIR requires language contract %q", coreir.LanguageContractV280))
 			}
-			if program.LanguageContract != coreir.LanguageContractV170 && program.LanguageContract != coreir.LanguageContractV180 && program.LanguageContract != coreir.LanguageContractV190 && program.LanguageContract != coreir.LanguageContractV200 && program.LanguageContract != coreir.LanguageContractV210 && program.LanguageContract != coreir.LanguageContractV220 && program.LanguageContract != coreir.LanguageContractV230 && program.LanguageContract != coreir.LanguageContractV240 && program.LanguageContract != coreir.LanguageContractV250 && program.LanguageContract != coreir.LanguageContractV260 && hirExprContainsListAppend(function.Body) {
-				return coreir.Program{}, coreLoweringError(function.Span, fmt.Sprintf("record-list append HIR requires language contract %q", coreir.LanguageContractV170))
+			if program.LanguageContract != coreir.LanguageContractV300 && program.LanguageContract != coreir.LanguageContractV310 && program.LanguageContract != coreir.LanguageContractV320 && program.LanguageContract != coreir.LanguageContractV330 && program.LanguageContract != coreir.LanguageContractV340 && program.LanguageContract != coreir.LanguageContractV350 && program.LanguageContract != coreir.LanguageContractV360 && program.LanguageContract != coreir.LanguageContractV370 && program.LanguageContract != coreir.LanguageContractV380 && program.LanguageContract != coreir.LanguageContractV390 && program.LanguageContract != coreir.LanguageContractV400 && program.LanguageContract != coreir.LanguageContractV410 && program.LanguageContract != coreir.LanguageContractV420 && program.LanguageContract != coreir.LanguageContractV430 && program.LanguageContract != coreir.LanguageContractV440 && program.LanguageContract != coreir.LanguageContractV450 && program.LanguageContract != coreir.LanguageContractV460 && program.LanguageContract != coreir.LanguageContractV470 && program.LanguageContract != coreir.LanguageContractV480 && hirExprContainsListSortByOrdinalTexts(function.Body) {
+				return coreir.Program{}, coreLoweringError(function.Span, fmt.Sprintf("multi-key record-list sort_by_ordinal HIR requires language contract %q", coreir.LanguageContractV300))
 			}
-			if program.LanguageContract != coreir.LanguageContractV180 && program.LanguageContract != coreir.LanguageContractV190 && program.LanguageContract != coreir.LanguageContractV200 && program.LanguageContract != coreir.LanguageContractV210 && program.LanguageContract != coreir.LanguageContractV220 && program.LanguageContract != coreir.LanguageContractV230 && program.LanguageContract != coreir.LanguageContractV240 && program.LanguageContract != coreir.LanguageContractV250 && program.LanguageContract != coreir.LanguageContractV260 && hirFunctionContainsRecordOptional(function) {
-				return coreir.Program{}, coreLoweringError(function.Span, fmt.Sprintf("primitive-record Optional HIR requires language contract %q", coreir.LanguageContractV180))
+			if program.LanguageContract != coreir.LanguageContractV310 && program.LanguageContract != coreir.LanguageContractV320 && program.LanguageContract != coreir.LanguageContractV330 && program.LanguageContract != coreir.LanguageContractV340 && program.LanguageContract != coreir.LanguageContractV350 && program.LanguageContract != coreir.LanguageContractV360 && program.LanguageContract != coreir.LanguageContractV370 && program.LanguageContract != coreir.LanguageContractV380 && program.LanguageContract != coreir.LanguageContractV390 && program.LanguageContract != coreir.LanguageContractV400 && program.LanguageContract != coreir.LanguageContractV410 && program.LanguageContract != coreir.LanguageContractV420 && program.LanguageContract != coreir.LanguageContractV430 && program.LanguageContract != coreir.LanguageContractV440 && program.LanguageContract != coreir.LanguageContractV450 && program.LanguageContract != coreir.LanguageContractV460 && program.LanguageContract != coreir.LanguageContractV470 && program.LanguageContract != coreir.LanguageContractV480 && function.Body.Kind == hir.ExprListFilterPredicate {
+				return coreir.Program{}, coreLoweringError(function.Span, fmt.Sprintf("named record predicate filter HIR requires language contract %q", coreir.LanguageContractV310))
 			}
-			if program.LanguageContract != coreir.LanguageContractV190 && program.LanguageContract != coreir.LanguageContractV200 && program.LanguageContract != coreir.LanguageContractV210 && program.LanguageContract != coreir.LanguageContractV220 && program.LanguageContract != coreir.LanguageContractV230 && program.LanguageContract != coreir.LanguageContractV240 && program.LanguageContract != coreir.LanguageContractV250 && program.LanguageContract != coreir.LanguageContractV260 && hirFunctionContainsBoundedValueResult(function) {
-				return coreir.Program{}, coreLoweringError(function.Span, fmt.Sprintf("bounded Result HIR requires language contract %q", coreir.LanguageContractV190))
-			}
-			if program.LanguageContract != coreir.LanguageContractV250 && program.LanguageContract != coreir.LanguageContractV260 && hirFunctionContainsTextResult(function) {
-				return coreir.Program{}, coreLoweringError(function.Span, fmt.Sprintf("text Result HIR requires language contract %q", coreir.LanguageContractV250))
-			}
-			if program.LanguageContract != coreir.LanguageContractV260 && hirExprContainsTextTrim(function.Body) {
-				return coreir.Program{}, coreLoweringError(function.Span, fmt.Sprintf("trim HIR requires language contract %q", coreir.LanguageContractV260))
-			}
-			if program.LanguageContract != coreir.LanguageContractV200 && program.LanguageContract != coreir.LanguageContractV210 && program.LanguageContract != coreir.LanguageContractV220 && program.LanguageContract != coreir.LanguageContractV230 && program.LanguageContract != coreir.LanguageContractV240 && program.LanguageContract != coreir.LanguageContractV250 && program.LanguageContract != coreir.LanguageContractV260 && hirExprContainsListAt(function.Body) {
-				return coreir.Program{}, coreLoweringError(function.Span, fmt.Sprintf("record-list at HIR requires language contract %q", coreir.LanguageContractV200))
-			}
-			if program.LanguageContract != coreir.LanguageContractV210 && program.LanguageContract != coreir.LanguageContractV220 && program.LanguageContract != coreir.LanguageContractV230 && program.LanguageContract != coreir.LanguageContractV240 && program.LanguageContract != coreir.LanguageContractV250 && program.LanguageContract != coreir.LanguageContractV260 && hirExprContainsListFindByText(function.Body) {
-				return coreir.Program{}, coreLoweringError(function.Span, fmt.Sprintf("record-list find_by HIR requires language contract %q", coreir.LanguageContractV210))
-			}
-			if program.LanguageContract != coreir.LanguageContractV220 && program.LanguageContract != coreir.LanguageContractV230 && program.LanguageContract != coreir.LanguageContractV240 && program.LanguageContract != coreir.LanguageContractV250 && program.LanguageContract != coreir.LanguageContractV260 && hirExprContainsListFilterByText(function.Body) {
-				return coreir.Program{}, coreLoweringError(function.Span, fmt.Sprintf("record-list filter_by HIR requires language contract %q", coreir.LanguageContractV220))
-			}
-			if program.LanguageContract != coreir.LanguageContractV230 && program.LanguageContract != coreir.LanguageContractV240 && program.LanguageContract != coreir.LanguageContractV250 && program.LanguageContract != coreir.LanguageContractV260 && hirExprContainsTextCaseFold(function.Body) {
-				return coreir.Program{}, coreLoweringError(function.Span, fmt.Sprintf("contains_casefolded HIR requires language contract %q", coreir.LanguageContractV230))
-			}
-			if program.LanguageContract != coreir.LanguageContractV240 && program.LanguageContract != coreir.LanguageContractV250 && program.LanguageContract != coreir.LanguageContractV260 && hirExprContainsListFilterContainsCaseFolded(function.Body) {
-				return coreir.Program{}, coreLoweringError(function.Span, fmt.Sprintf("record-list filter_contains_casefolded HIR requires language contract %q", coreir.LanguageContractV240))
-			}
-		}
-		if program.LanguageContract != coreir.LanguageContractV270 && program.LanguageContract != coreir.LanguageContractV280 && program.LanguageContract != coreir.LanguageContractV290 && program.LanguageContract != coreir.LanguageContractV300 && program.LanguageContract != coreir.LanguageContractV310 && hirExprContainsListFilterJoinedContainsCaseFolded(function.Body) {
-			return coreir.Program{}, coreLoweringError(function.Span, fmt.Sprintf("record-list filter_joined_contains_casefolded HIR requires language contract %q", coreir.LanguageContractV270))
-		}
-		if program.LanguageContract != coreir.LanguageContractV290 && program.LanguageContract != coreir.LanguageContractV300 && program.LanguageContract != coreir.LanguageContractV310 && function.Body.Kind == hir.ExprListFilterJoinedContainsCaseFolded && (function.Body.ListFilterJoinedContainsCaseFolded == nil || len(function.Body.ListFilterJoinedContainsCaseFolded.Selectors) != 5) {
-			return coreir.Program{}, coreLoweringError(function.Span, "record-list filter_joined_contains_casefolded HIR requires exactly five selectors before language contract v0.29.0")
-		}
-		if program.LanguageContract != coreir.LanguageContractV280 && program.LanguageContract != coreir.LanguageContractV290 && program.LanguageContract != coreir.LanguageContractV300 && program.LanguageContract != coreir.LanguageContractV310 && hirExprContainsListSortByOrdinalText(function.Body) {
-			return coreir.Program{}, coreLoweringError(function.Span, fmt.Sprintf("record-list sort_by_ordinal HIR requires language contract %q", coreir.LanguageContractV280))
-		}
-		if program.LanguageContract != coreir.LanguageContractV300 && program.LanguageContract != coreir.LanguageContractV310 && hirExprContainsListSortByOrdinalTexts(function.Body) {
-			return coreir.Program{}, coreLoweringError(function.Span, fmt.Sprintf("multi-key record-list sort_by_ordinal HIR requires language contract %q", coreir.LanguageContractV300))
-		}
-		if program.LanguageContract != coreir.LanguageContractV310 && function.Body.Kind == hir.ExprListFilterPredicate {
-			return coreir.Program{}, coreLoweringError(function.Span, fmt.Sprintf("named record predicate filter HIR requires language contract %q", coreir.LanguageContractV310))
 		}
 		if function.Identity.PackageID == "" || function.Identity.Path == "" || function.Owner.SymbolID == 0 || function.Owner.Module == "" {
 			return coreir.Program{}, coreLoweringError(function.Span, "typed HIR function is missing bound semantic ownership")
@@ -965,7 +1288,7 @@ func hirExprContainsBoundedValueResult(expression hir.Expr) bool {
 
 func hirExprContainsList(expression hir.Expr) bool {
 	switch expression.Kind {
-	case hir.ExprListEmpty, hir.ExprListSingleton, hir.ExprListCount, hir.ExprListAppend, hir.ExprListAt, hir.ExprListFindByText, hir.ExprListFilterByText, hir.ExprListFilterPredicate, hir.ExprListFilterContainsCaseFolded, hir.ExprListFilterJoinedContainsCaseFolded, hir.ExprListSortByOrdinalText, hir.ExprListSortByOrdinalTexts:
+	case hir.ExprListEmpty, hir.ExprListSingleton, hir.ExprListCount, hir.ExprListAppend, hir.ExprListAt, hir.ExprListFindByText, hir.ExprListFilterByText, hir.ExprListFilterPredicate, hir.ExprListFilterContainsCaseFolded, hir.ExprListFilterJoinedContainsCaseFolded, hir.ExprListSortByOrdinalText, hir.ExprListSortByOrdinalTexts, hir.ExprListSortByOrdinalDirections:
 		return true
 	case hir.ExprUnary:
 		return expression.Unary != nil && expression.Unary.Operand != nil && hirExprContainsList(*expression.Unary.Operand)
@@ -1325,8 +1648,13 @@ func hirExprContainsOptionalDefault(expression hir.Expr) bool {
 }
 
 func hirExprToCore(expression hir.Expr, parameters []hir.Parameter) (coreir.Expr, error) {
+	if expression.Kind != hir.ExprBlock && expression.Block != nil {
+		return coreir.Expr{}, coreLoweringError(expression.Span, "block cannot appear in a value expression")
+	}
 	result := coreir.Expr{Type: hirTypeToCore(expression.Type)}
 	switch expression.Kind {
+	case hir.ExprBlock:
+		return generalHIRBlockToCore(expression, parameters)
 	case hir.ExprLiteral:
 		if expression.Literal == nil {
 			return coreir.Expr{}, coreLoweringError(expression.Span, "typed HIR literal has no value")
@@ -1334,12 +1662,49 @@ func hirExprToCore(expression hir.Expr, parameters []hir.Parameter) (coreir.Expr
 		result.Kind = coreir.ExprLiteral
 		result.Literal = &coreir.Literal{String: expression.Literal.String, Int: expression.Literal.Int, Float: expression.Literal.Float, Bool: expression.Literal.Bool}
 	case hir.ExprReference:
-		if expression.Reference == nil || expression.Reference.Kind != hir.BindingParameter || expression.Reference.Position < 0 || expression.Reference.Position >= len(parameters) {
+		validReference := expression.Reference != nil && expression.Reference.Position >= 0
+		if validReference {
+			switch expression.Reference.Kind {
+			case hir.BindingParameter, hir.BindingLocal:
+				validReference = expression.Reference.Position < len(parameters)
+			case hir.BindingMatchArm:
+				validReference = expression.Reference.Position <= len(parameters)
+			default:
+				validReference = false
+			}
+		}
+		if !validReference {
 			return coreir.Expr{}, coreLoweringError(expression.Span, "typed HIR reference has no bound parameter")
 		}
 		position := expression.Reference.Position
 		result.Kind = coreir.ExprReference
 		result.Parameter = &position
+	case hir.ExprMatch:
+		if expression.Match == nil || expression.Match.Value == nil {
+			return coreir.Expr{}, coreLoweringError(expression.Span, "typed HIR match is incomplete")
+		}
+		value, err := hirExprToCore(*expression.Match.Value, parameters)
+		if err != nil {
+			return coreir.Expr{}, err
+		}
+		matched := &coreir.Match{Value: &value, Arms: make([]coreir.MatchArm, 0, len(expression.Match.Arms))}
+		for _, arm := range expression.Match.Arms {
+			if arm.Body == nil {
+				return coreir.Expr{}, coreLoweringError(expression.Span, "typed HIR match arm has no body")
+			}
+			body, e := hirExprToCore(*arm.Body, parameters)
+			if e != nil {
+				return coreir.Expr{}, e
+			}
+			var binding *int
+			if arm.Binding != nil {
+				pos := arm.Binding.Position
+				binding = &pos
+			}
+			matched.Arms = append(matched.Arms, coreir.MatchArm{Tag: arm.Tag, Binding: binding, Body: &body})
+		}
+		result.Kind = coreir.ExprMatch
+		result.Match = matched
 	case hir.ExprUnary:
 		if expression.Unary == nil || expression.Unary.Operand == nil {
 			return coreir.Expr{}, coreLoweringError(expression.Span, "typed HIR unary expression is incomplete")
@@ -1364,6 +1729,57 @@ func hirExprToCore(expression hir.Expr, parameters []hir.Parameter) (coreir.Expr
 		}
 		result.Kind = coreir.ExprBinary
 		result.Binary = &coreir.Binary{Operator: coreir.Operator(expression.Binary.Operator), Left: &left, Right: &right}
+	case hir.ExprConditional:
+		if expression.Conditional == nil || expression.Conditional.Condition == nil || expression.Conditional.WhenTrue == nil || expression.Conditional.WhenFalse == nil {
+			return coreir.Expr{}, coreLoweringError(expression.Span, "typed HIR conditional expression is incomplete")
+		}
+		condition, err := hirExprToCore(*expression.Conditional.Condition, parameters)
+		if err != nil {
+			return coreir.Expr{}, err
+		}
+		whenTrue, err := hirExprToCore(*expression.Conditional.WhenTrue, parameters)
+		if err != nil {
+			return coreir.Expr{}, err
+		}
+		whenFalse, err := hirExprToCore(*expression.Conditional.WhenFalse, parameters)
+		if err != nil {
+			return coreir.Expr{}, err
+		}
+		result.Kind = coreir.ExprConditional
+		result.Conditional = &coreir.Conditional{Condition: &condition, WhenTrue: &whenTrue, WhenFalse: &whenFalse, TerminalStatement: expression.Conditional.TerminalStatement}
+	case hir.ExprImmutableLocal:
+		local := expression.ImmutableLocal
+		if local == nil || local.Initializer == nil || local.Return == nil || local.Binding.Kind != hir.BindingLocal || local.Binding.Name == "" || local.Binding.Position != len(parameters) {
+			return coreir.Expr{}, coreLoweringError(expression.Span, "typed HIR immutable local is incomplete or not canonically bound")
+		}
+		initializer, err := hirExprToCore(*local.Initializer, parameters)
+		if err != nil {
+			return coreir.Expr{}, err
+		}
+		scoped := append(append([]hir.Parameter{}, parameters...), hir.Parameter{Binding: local.Binding, Type: local.Type, TypeSpan: local.TypeSpan, Span: local.NameSpan})
+		returned, err := hirExprToCore(*local.Return, scoped)
+		if err != nil {
+			return coreir.Expr{}, err
+		}
+		result.Kind = coreir.ExprImmutableLocal
+		result.ImmutableLocal = &coreir.ImmutableLocal{Position: local.Binding.Position, Name: local.Binding.Name, Type: hirTypeToCore(local.Type), Initializer: &initializer, Return: &returned}
+	case hir.ExprCall:
+		if expression.Call == nil {
+			return coreir.Expr{}, coreLoweringError(expression.Span, "typed HIR call is incomplete")
+		}
+		arguments := make([]*coreir.Expr, 0, len(expression.Call.Arguments))
+		for _, argument := range expression.Call.Arguments {
+			if argument == nil {
+				return coreir.Expr{}, coreLoweringError(expression.Span, "typed HIR call has a missing argument")
+			}
+			lowered, err := hirExprToCore(*argument, parameters)
+			if err != nil {
+				return coreir.Expr{}, err
+			}
+			arguments = append(arguments, &lowered)
+		}
+		result.Kind = coreir.ExprCall
+		result.Call = &coreir.Call{Target: hirIdentityToCore(expression.Call.Target), TargetName: expression.Call.TargetName, Arguments: arguments}
 	case hir.ExprTextContainsCaseFolded:
 		if expression.TextContains == nil || expression.TextContains.Value == nil || expression.TextContains.Query == nil {
 			return coreir.Expr{}, coreLoweringError(expression.Span, "typed HIR contains_casefolded expression is incomplete")
@@ -1455,6 +1871,16 @@ func hirExprToCore(expression hir.Expr, parameters []hir.Parameter) (coreir.Expr
 		}
 		result.Kind = coreir.ExprOptionalValueOr
 		result.ValueOr = &coreir.OptionalValueOr{Value: &value, Fallback: &fallback}
+	case hir.ExprPropagate:
+		if expression.Propagate == nil || expression.Propagate.Value == nil {
+			return coreir.Expr{}, coreLoweringError(expression.Span, "propagate expression is incomplete")
+		}
+		value, err := hirExprToCore(*expression.Propagate.Value, parameters)
+		if err != nil {
+			return coreir.Expr{}, err
+		}
+		result.Kind = coreir.ExprPropagate
+		result.Propagate = &coreir.Propagate{Value: &value, Carrier: hirTypeToCore(expression.Propagate.Carrier)}
 	case hir.ExprListEmpty:
 		if expression.ListEmpty == nil {
 			return coreir.Expr{}, coreLoweringError(expression.Span, "typed HIR list empty expression is incomplete")
@@ -1618,6 +2044,21 @@ func hirExprToCore(expression hir.Expr, parameters []hir.Parameter) (coreir.Expr
 		}
 		result.Kind = coreir.ExprListSortByOrdinalTexts
 		result.ListSortByOrdinalTexts = &coreir.ListSortByOrdinalTexts{Values: &values, Selectors: selectors}
+	case hir.ExprListSortByOrdinalDirections:
+		sorted := expression.ListSortByOrdinalDirections
+		if sorted == nil || sorted.Values == nil {
+			return coreir.Expr{}, coreLoweringError(expression.Span, "typed HIR directional sort expression is incomplete")
+		}
+		values, err := hirExprToCore(*sorted.Values, parameters)
+		if err != nil {
+			return coreir.Expr{}, err
+		}
+		selectors := make([]coreir.ListDirectionalTextFieldSelector, 0, len(sorted.Selectors))
+		for _, s := range sorted.Selectors {
+			selectors = append(selectors, coreir.ListDirectionalTextFieldSelector{ListTextFieldSelector: coreir.ListTextFieldSelector{Field: hirIdentityToCore(s.Field), Name: s.Name, Position: s.Position}, Direction: s.Direction})
+		}
+		result.Kind = coreir.ExprListSortByOrdinalDirections
+		result.ListSortByOrdinalDirections = &coreir.ListSortByOrdinalDirections{Values: &values, Selectors: selectors}
 	case hir.ExprResultOK:
 		if expression.ResultOK == nil || expression.ResultOK.Value == nil {
 			return coreir.Expr{}, coreLoweringError(expression.Span, "typed HIR result ok expression is incomplete")
@@ -1709,6 +2150,9 @@ func symbolBySpan(table *SymbolTable, span Span) (Symbol, bool) {
 }
 
 func toHIRType(analysis *Analysis, resolved ResolvedTypeRef) hir.Type {
+	if analysis != nil && analysis.checked != nil && analysis.checked.isResolvedEnumType(resolved) {
+		return enumTypeToHIR(analysis, resolved)
+	}
 	if isResolvedRecordList(resolved) {
 		identity := hir.SemanticIdentity{PackageID: string(PipeLangBuiltinPackageID), Path: string(PipeLangListSemanticPath)}
 		return hir.Type{Kind: hir.TypeList, List: &hir.ListType{Element: toHIRType(analysis, resolved.Arguments[0])}, Identity: &identity, Name: "List"}
@@ -1794,6 +2238,12 @@ func toHIRSemanticType(identity SemanticTypeIdentity) hir.SemanticType {
 
 func hirTypeToCore(value hir.Type) coreir.Type {
 	result := coreir.Type{Kind: coreir.TypeKind(value.Kind), Primitive: coreir.PrimitiveType(value.Primitive), Name: value.Name}
+	if value.Enum != nil {
+		result.Enum = &coreir.EnumType{}
+		for _, m := range value.Enum.Members {
+			result.Enum.Members = append(result.Enum.Members, coreir.EnumMember{Name: m.Name, Tag: m.Tag, Identity: hirIdentityToCore(m.Identity)})
+		}
+	}
 	if value.Numeric != nil {
 		result.Numeric = &coreir.NumericType{Representation: coreir.NumericRepresentation(value.Numeric.Representation), Bits: value.Numeric.Bits, Signed: value.Numeric.Signed}
 	}

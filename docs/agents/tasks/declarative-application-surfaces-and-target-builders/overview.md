@@ -51,6 +51,18 @@ implementations.
 
 ## Existing Ownership Boundary
 
+The 2026-09-11 [PipeLang foundation plan](../../../concepts/pipelang-foundation.md) requires the
+reviewed language-foundation milestone before production application/service generation. It includes
+enums, structs/classes, polymorphism, loops, managed tasks, parallelism and synchronization. Existing
+fixtures remain evidence, not proof that the language is complete. TASK-021 owns the object/memory/
+task/atomic/lock/semaphore semantics; target adapters must consume them and cannot invent them.
+The completed [foundation dependency plan](../../../concepts/pipelang-foundation-delivery.md)
+proposes M-app after the full managed foundation and minimum compiler library, with compiler
+port/bootstrap separately scheduled. Founder ratification remains pending; no app/service
+implementation is authorized. Physical target certification and target delivery estimates remain
+separate work, and adapters cannot weaken the selected profile or invent missing semantics.
+
+
 DockPipe already owns the normalized launcher/tooling contract:
 
 - `src/lib/application/catalog_cmd.go` exposes `dockpipe catalog list --format json` and explicitly

@@ -67,13 +67,8 @@ func validateDisposableRemovalPath(boundary, target string, deviceIdentity func(
 }
 
 func validateDisposableRemovalDirectory(path string) (os.FileInfo, error) {
-	canonical, err := filepath.EvalSymlinks(path)
-	if err != nil {
+	if err := ValidateUnlinkedPath(path); err != nil {
 		return nil, err
-	}
-	canonical, err = filepath.Abs(filepath.Clean(canonical))
-	if err != nil || !sameDurablePath(path, canonical) {
-		return nil, errors.New("path contains a filesystem link or reparse point")
 	}
 	info, err := os.Lstat(path)
 	if err != nil {

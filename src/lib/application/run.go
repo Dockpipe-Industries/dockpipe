@@ -125,6 +125,9 @@ func Run(argv []string, baseEnviron []string) error {
 	if argv[0] == "session" {
 		return cmdSession(argv[1:])
 	}
+	if argv[0] == "remote" {
+		return cmdRemote(argv[1:])
+	}
 	if argv[0] == "install" {
 		return cmdInstall(argv[1:])
 	}
