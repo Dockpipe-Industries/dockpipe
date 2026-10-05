@@ -258,13 +258,13 @@ If you want to avoid prompts entirely, set the fields you already know in YAML. 
 ```yaml
 inputs:
   General.BootSource: installer-iso
-  Storage.Cdrom: /home/jamie/Downloads/windows.iso
-  Storage.Disk: /home/jamie/VMs/windows11.qcow2
+  Storage.Cdrom: /home/you/Downloads/windows.iso
+  Storage.Disk: /home/you/VMs/windows11.qcow2
   Storage.DiskSize: 96G
   Security.Tpm: required
   Security.SecureBoot: required
   Firmware.FirmwareCode: /usr/share/OVMF/OVMF_CODE_4M.fd
-  Firmware.FirmwareVars: /home/jamie/VMs/OVMF_VARS_windows.fd
+  Firmware.FirmwareVars: /home/you/VMs/OVMF_VARS_windows.fd
 ```
 
 If you want to keep your own global or vault-fed names and map them cleanly into the package contract:
@@ -272,7 +272,7 @@ If you want to keep your own global or vault-fed names and map them cleanly into
 ```yaml
 vars:
   UH_VM_KEEPALIVE: op://uh/windows-vm/keepalive
-  UH_VM_SYNC_ROOT: /home/jamie/src/app
+  UH_VM_SYNC_ROOT: /home/you/src/app
 
 inputs:
   Advanced.KeepAlive:
@@ -292,8 +292,8 @@ dockpipe --workflow windows-vm --
 ```bash
 dockpipe --workflow windows-vm \
   --var DOCKPIPE_VM_BOOT_SOURCE=installer-iso \
-  --var DOCKPIPE_VM_CDROM=/home/jamie/Downloads/windows.iso \
-  --var DOCKPIPE_VM_DISK=/home/jamie/VMs/windows11.qcow2 --
+  --var DOCKPIPE_VM_CDROM="$HOME/Downloads/windows.iso" \
+  --var DOCKPIPE_VM_DISK="$HOME/VMs/windows11.qcow2" --
 ```
 
 ```bash
@@ -302,7 +302,7 @@ dockpipe --workflow windows-vm --var DOCKPIPE_VM_GUEST_COMMAND='Get-ComputerInfo
 
 ```bash
 dockpipe --workflow windows-vm \
-  --var DOCKPIPE_VM_SYNC_HOST_PATH=/home/jamie/src/app \
+  --var DOCKPIPE_VM_SYNC_HOST_PATH="$HOME/src/app" \
   --var DOCKPIPE_VM_SYNC_GUEST_PATH='C:\app' \
   --var DOCKPIPE_VM_GUEST_COMMAND='Get-ChildItem C:\app' --
 ```

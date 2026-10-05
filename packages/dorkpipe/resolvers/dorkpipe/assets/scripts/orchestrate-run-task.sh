@@ -158,6 +158,7 @@ if [[ "$(dorkpipe_orchestrate_bool "${TASK_LANE_AVAILABLE:-true}")" != "true" ]]
 fi
 
 if dorkpipe_orchestrate_is_cloud_provider "${provider}"; then
+  total_cloud_tokens="$(dorkpipe_orchestrate_read_usage_number "total_estimated_tokens")" || exit $?
   if [[ -f "${DORKPIPE_ORCH_HALT_JSON}" ]]; then
     budget_halt="true"
     status="skipped"
@@ -173,7 +174,7 @@ if dorkpipe_orchestrate_is_cloud_provider "${provider}"; then
     issues_json='["estimated prompt tokens exceeded the per-task cloud token budget"]'
     next_actions_json='["shrink the task scope or raise DORKPIPE_ORCH_MAX_TASK_CLOUD_TOKENS intentionally"]'
     dorkpipe_orchestrate_halt_run "${provider}" "Prompt estimate for ${task_id} exceeded the per-task cloud token budget (${estimated_input_tokens}/${TASK_MAX_CLOUD_TOKENS:-$DORKPIPE_ORCH_MAX_TASK_CLOUD_TOKENS})."
-  elif (( $(dorkpipe_orchestrate_read_usage_number "total_estimated_tokens") + estimated_input_tokens > DORKPIPE_ORCH_MAX_TOTAL_CLOUD_TOKENS )) && [[ "$(dorkpipe_orchestrate_bool "${DORKPIPE_ORCH_STOP_ON_BUDGET_EXCEEDED}")" == "true" ]]; then
+  elif (( total_cloud_tokens + estimated_input_tokens > DORKPIPE_ORCH_MAX_TOTAL_CLOUD_TOKENS )) && [[ "$(dorkpipe_orchestrate_bool "${DORKPIPE_ORCH_STOP_ON_BUDGET_EXCEEDED}")" == "true" ]]; then
     budget_halt="true"
     status="skipped"
     summary="Skipped live ${provider} worker because starting it would exceed the orchestration cloud token budget."

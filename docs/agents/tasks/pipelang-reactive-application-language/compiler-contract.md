@@ -1,3 +1,248 @@
+## Completed objective — nominal enums
+
+The founder selected option 1 and explicitly said `approved`; P01 is now complete.
+[nominal-enums.md](nominal-enums.md) owns accepted v0.113.0 verification, including the fresh
+complete suite, compiler matrix, integration/editor checks and independent inherited-proof comparison.
+The [language reference](../../../concepts/pipelang.md#pipelang-v01130-nominal-enums-and-exhaustive-matching)
+defines nominal tags, exact equality, exhaustive matching and bounded composition. Other foundation
+packages remain unselected. Historical entries below grant no new authority.
+
+## Completed objective — arrow-method selector result arms
+
+Founder selected A and separately said exact `approved` for v0.112.0.
+[arrow-selector-value-arms.md](arrow-selector-value-arms.md) owns the bounded
+completed objective and accepted verification. The [canonical language section](../../../concepts/pipelang.md#pipelang-v01120-conditional-result-arms-in-arrow-method-selectors)
+defines semantics and exclusions. v0.111.0 and both verification optimization
+objectives remain completed baseline. No successor is selected. Historical status
+below grants no new authority.
+
+## Completed objective — terminal-leaf selector result arms
+
+Founder selected A and separately said exact `approved` for v0.111.0.
+[terminal-leaf-selector-value-arms.md](terminal-leaf-selector-value-arms.md) owns the
+bounded scope and completed verification; state: `completed`. The [canonical language contract](../../../concepts/pipelang.md#pipelang-v01110-conditional-result-arms-in-terminal-leaf-selector-returns)
+defines semantics and exclusions. Completed v0.110 and both verification optimization
+objectives remain admitted baseline. No successor, commit, push or cleanup is authorized.
+
+## Completed objective — straight-line selector result arms
+
+Founder selected A and separately said exact `approved` for v0.110.0.
+[straight-line-selector-value-arms.md](straight-line-selector-value-arms.md) owns
+scope and completed verification. No successor is selected. Both verification optimization objectives and
+v0.109.0 are complete. Historical opening status below does not reopen them.
+[Canonical language contract](../../../concepts/pipelang.md#pipelang-v01100-conditional-result-arms-in-straight-line-selector-returns).
+
+## Current objective — combined selector arms in terminal tests
+
+Founder selected A and separately said exact `approved` for v0.109.0.
+[terminal-combined-selector-arms.md](terminal-combined-selector-arms.md) owns the
+bounded contract and verification. Implementation and bounded verification are complete in the saved checkout. The objective record distinguishes the full inventory, focused retries, isolated compiler proof and aggregate containment repair.
+The [canonical language section](../../../concepts/pipelang.md#pipelang-v01090-combined-selector-arms-in-terminal-tests)
+defines semantics and exclusions. No successor, commit, push, cleanup or live operation is authorized.
+
+## Completed objective — inner-selector value arms in terminal tests
+
+Founder selected A and separately said exact `approved` for v0.108.0.
+[terminal-inner-selector-arms.md](terminal-inner-selector-arms.md) owns the bounded
+contract and verification. Implementation and bounded verification are complete.
+All 795 discovered compiler tests and 648 isolated scaling cases pass.
+The [canonical language section](../../../concepts/pipelang.md#pipelang-v01080-inner-selector-value-arms-in-terminal-tests)
+defines semantics and exclusions. No successor or live operation is authorized.
+
+## Completed objective — conditional result arms in terminal selector tests
+
+Founder selected A and separately said exact `approved` for v0.107.0.
+[terminal-selector-value-arms.md](terminal-selector-value-arms.md) owns the bounded
+contract and verification. Implementation and bounded verification are complete.
+All 781 discovered compiler tests and 648 isolated scaling cases pass.
+The [canonical language section](../../../concepts/pipelang.md#pipelang-v01070-conditional-result-arms-in-terminal-selector-tests)
+defines semantics and exclusions. Commit, push, cleanup and live operations remain outside scope.
+No successor is selected.
+
+## Completed objective — flat boolean selectors in terminal tests
+
+Founder selected A and separately said exact `approved` for v0.106.0.
+[terminal-boolean-selector-tests.md](terminal-boolean-selector-tests.md) owns the
+bounded contract and verification. Implementation and bounded verification are complete.
+All 767 discovered compiler tests and 216 isolated scaling cases pass.
+The canonical [language section](../../../concepts/pipelang.md#pipelang-v01060-flat-boolean-selectors-in-terminal-tests)
+describes the placement. Commit, push, cleanup and live operations remain outside scope.
+No successor is selected.
+
+## Completed objective — depth-three terminal conditional tests
+
+Founder selected A and separately said exact `approved` for v0.105.0.
+[depth-three-terminal-conditional-tests.md](depth-three-terminal-conditional-tests.md)
+owns scope and proof. Implementation and bounded verification are complete.
+All 753 discovered compiler tests and 648 isolated scaling cases pass.
+The canonical [language section](../../../concepts/pipelang.md#pipelang-v01050-depth-three-value-arms-in-terminal-conditional-tests)
+describes the placement. No successor, commit, push, cleanup or live operation is authorized.
+
+## Completed objective — nested terminal conditional tests
+
+Founder selected A and separately said exact `approved` for v0.104.0.
+[nested-terminal-conditional-tests.md](nested-terminal-conditional-tests.md) owns
+scope and proof. Implementation and bounded verification are complete.
+All 739 discovered compiler tests and 648 isolated scaling cases pass.
+The canonical [language section](../../../concepts/pipelang.md#pipelang-v01040-nested-value-arms-in-terminal-conditional-tests)
+describes the placement. No successor is selected; commit, push, cleanup and live
+operations remain outside scope.
+
+## Completed objective — direct terminal conditional tests
+
+Founder selected A and separately said exact `approved` for v0.103.0.
+[terminal-conditional-tests.md](terminal-conditional-tests.md) owns the bounded
+contract and verification. Implementation and bounded verification are complete.
+All 726 discovered compiler tests and 216 isolated scaling cases pass.
+The canonical [language section](../../../concepts/pipelang.md#pipelang-v01030-direct-conditional-tests-in-terminal-trees)
+describes the new placement. No successor is selected. Commit, push, cleanup and
+live operations remain outside scope.
+
+## Completed objective — terminal-tree boolean-selector initializers
+
+Founder selected A and separately said exact `approved` for v0.102.0.
+[terminal-boolean-selector-initializers.md](terminal-boolean-selector-initializers.md)
+owns completed scope and verification. The fresh 714-test compiler suite, integration
+checks and all 216 isolated scaling cases pass. No successor is selected.
+Commit, push, publication and live operations remain outside scope.
+
+## Completed objective — straight-line boolean-selector initializers
+
+Founder selected A and separately approved v0.101.0 implementation on 2026-09-08.
+[straight-line-boolean-selector-initializers.md](straight-line-boolean-selector-initializers.md)
+owns scope and verification. State: `completed`. The saved checkout baseline is
+`9af4a6de`; completed v0.100 evidence is retained. Commit, push, publication, cleanup,
+worktree creation and external operations remain outside scope. No successor is selected.
+
+## Completed current objective — arrow-method boolean selectors
+
+Founder selected A and separately approved v0.100.0 implementation on 2026-09-08.
+[arrow-boolean-selectors.md](arrow-boolean-selectors.md) owns scope and verification.
+State: `completed`. Completed v0.99 is committed at `7f5eeb7b`; its historical
+uncommitted prose does not change this baseline. Commit, push, publication, cleanup,
+worktree and external operations remain outside scope. No successor is selected.
+
+## Completed current objective — terminal-leaf boolean selectors
+
+Founder selected A and separately approved v0.99.0 implementation on 2026-09-08.
+[terminal-leaf-boolean-selectors.md](terminal-leaf-boolean-selectors.md) owns the
+bounded scope and verification. State: `completed`. Completed v0.98.0 is committed
+at `6ce476f6`; historical status below does not alter that baseline or current authority.
+Commit, push, cleanup, worktree and external operations remain outside scope.
+
+## Completed current objective — conditional boolean selectors
+
+Founder selected A and separately approved v0.98.0 implementation on 2026-09-08.
+[conditional-boolean-selectors.md](conditional-boolean-selectors.md) owns the bounded
+scope and verification. State: `completed`. Completed v0.97.0 is committed at
+`0c8e3bd1`; historical status below does not alter that baseline or current authority.
+No successor, commit, push, cleanup, worktree or external operation is authorized.
+
+## Completed current objective — depth-three terminal initializers
+
+Founder selected A and separately approved v0.97.0 implementation on 2026-09-08.
+[depth-three-terminal-initializers.md](depth-three-terminal-initializers.md) owns
+scope, exclusions and validation. State: `completed`. The v0.96 and shared-framework
+objectives are complete and committed; current baseline is `f4c00e56`.
+Historical snapshots below do not reopen performance work or change current authority.
+Commit, push, publication and successor selection remain separate.
+
+## v0.96.0 completed boundary
+
+[Depth-three straight-line initializers](depth-three-straight-line-initializers.md) owns
+scope and validation. The [canonical contract](../../../concepts/pipelang.md#pipelang-v0960-depth-three-straight-line-initializers)
+owns semantics. Implementation and verification pass; the completion record owns evidence and limits.
+No successor is authorized.
+
+## v0.95.0 completed boundary
+
+[Depth-three expression-bodied methods](depth-three-arrow-methods.md) owns the approved
+scope and validation. The [canonical contract](../../../concepts/pipelang.md#pipelang-v0950-depth-three-expression-bodied-methods)
+owns semantics. Implementation and verification pass; the completion record owns evidence and limits.
+No successor is authorized.
+
+## Completed current objective — depth-three terminal-leaf returns
+
+The [v0.94 scope](depth-three-terminal-leaf-returns.md) is complete.
+The [canonical contract](../../../concepts/pipelang.md#pipelang-v0940-depth-three-terminal-leaf-returns)
+owns semantics; the completion record owns independent source/Core, executable consumer and contained proof.
+
+## Completed current objective — depth-three straight-line returns
+
+Founder selected A and separately approved v0.93.0 implementation on 2026-09-06.
+[depth-three-straight-line-returns.md](depth-three-straight-line-returns.md) owns scope,
+exclusions and validation. State: `completed`. Completed v0.92 is committed at
+`ab59a59e`; its historical uncommitted wording is superseded. Commit, push,
+publication and successor selection remain separate.
+
+## Completed current objective — nested expression-bodied methods
+
+Founder selected A and separately approved v0.92.0 implementation on 2026-09-06.
+[nested-arrow-methods.md](nested-arrow-methods.md) owns scope, exclusions and verification.
+State: `completed`. Completed v0.91.0 is committed at `b1fbc31b`; its historical
+uncommitted wording is superseded. Commit, push, publication and successor selection
+remain separate.
+
+## Completed current objective — nested initializers throughout terminal trees
+
+Founder selected A and separately approved v0.91.0 implementation on 2026-09-06.
+[nested-terminal-initializers.md](nested-terminal-initializers.md) owns scope, exclusions,
+containment and verification. State: `completed`. v0.90.0 is committed at `83cd8adc`;
+historical uncommitted wording below is superseded. Commit, push, publication and successor
+selection remain separate.
+
+## Completed current objective — nested straight-line initializers
+
+Founder selected A and separately approved v0.90.0 implementation on 2026-09-06.
+[nested-straight-line-initializers.md](nested-straight-line-initializers.md) owns scope,
+exclusions, containment and evidence. State: `completed`.
+The completed v0.89.0 slice is committed at `2560ee1b`; historical uncommitted wording
+below is superseded. Commit, push, publication and successor selection remain separate.
+
+## Completed current objective — nested terminal-leaf returns
+
+Founder selected A and separately approved v0.89.0 implementation in this task.
+[nested-terminal-leaf-returns.md](nested-terminal-leaf-returns.md) owns scope, exclusions,
+contained validation and evidence. State: `completed`.
+The completed v0.88.0 slice is committed at `a8df6cc5`; earlier uncommitted wording and
+baseline references below are historical. Commit, push, publication and successor selection
+remain separate.
+
+## Completed current objective — nested straight-line returns
+
+Founder selected A and separately approved v0.88.0 implementation in this task.
+[nested-straight-line-returns.md](nested-straight-line-returns.md) owns scope, exclusions,
+contained validation and current evidence. State: `completed`.
+The completed v0.87.0 slice is committed at `ff9fa296`; earlier uncommitted wording and
+baseline references below are historical. Commit, push, publication and successor selection
+remain separate.
+
+## Completed current objective — conditional returns in terminal-tree leaves
+
+Founder selected A and separately approved v0.87.0 implementation in this task.
+[terminal-leaf-conditional-returns.md](terminal-leaf-conditional-returns.md) owns the exact
+scope, exclusions, containment and verification. State: `completed`.
+The completed v0.86.0 slice is committed at `9db7ed28`; earlier uncommitted wording
+and baseline references below are historical. Commit, push, publication and successor
+selection remain separate.
+
+## Completed current objective — conditional return composition
+
+Founder selected A and separately approved implementation of v0.86.0 in this task.
+[conditional-return-composition.md](conditional-return-composition.md) owns the exact scope,
+exclusions, containment requirements and verification status. State: `completed`.
+The completed v0.85.0 slice is committed at `f94fdafa`; earlier uncommitted/baseline wording
+below is historical. Commit, push, publication and successor selection remain separate.
+
+## Completed current objective — straight-line conditional locals
+
+The founder selected A and separately approved implementation of v0.85.0 in this task.
+[straight-line-conditional-locals.md](straight-line-conditional-locals.md) owns the exact scope,
+exclusions, containment requirements and verification status. State: `completed`.
+Baseline is clean `js/pipelang` at `a69a288b`, containing the completed compiler memory repair;
+earlier uncommitted/baseline wording below is historical. No successor, commit, push or
+publication is authorized by this approval.
+
 ## Accepted Generic Compiler Contract
 
 There is one compiler contract and one parser/binder implementation. CLI commands, editors,
@@ -94,6 +339,12 @@ substitute, emulate with weaker guarantees, or drop a required feature.
 
 ## Accepted Core Semantic Decisions
 
+The 2026-09-11 [foundation alignment](foundation-alignment.md) supersedes earlier blanket
+concurrency exclusions and broader-polymorphism deferrals. The canonical
+[foundation plan](../../../concepts/pipelang-foundation.md) owns required additions and open
+semantics. These are future design requirements; historical source-version admission is unchanged.
+
+
 Surface spelling remains deliberately unaccepted, but the following semantics are fixed before
 grammar expansion.
 
@@ -120,8 +371,8 @@ grammar expansion.
 | Expected failure | Recoverable domain, validation, arithmetic, parsing, and effect outcomes use closed `Result<T,E>`-style values. Cancellation is a distinct declared outcome. Uncaught target exceptions/panics are infrastructure failures, never guessed into domain results. |
 | Mutation | Immutable values produce new values. Local mutable variables and compiler-owned mutable buffers are lexically scoped and cannot escape as shared aliases. State-owner actions commit one validated transition atomically; observers see the before or after state, never a partial update. |
 | Collections | `List<T>` is ordered; `Map<K,V>` and `Set<T>` have deterministic insertion iteration plus stable equality independent of target hash-table layout. Bounds are checked. Mutation uses scoped builders or explicit state updates; mutation during iteration is rejected. Canonical serialization orders map/set entries by the declared stable key order. |
-| Memory | Memory is automatic and managed. There are no raw pointers, address arithmetic, manual allocation/free, user-visible object addresses, finalizer semantics, unsafe casts, data races, threads, or locks. Resource lifetimes cross explicit effect/host interfaces and use deterministic close/use protocols. |
-| Concurrency | Pure computations are observationally deterministic. Structured tasks may be added only over typed effects with deterministic join/result ordering; backend scheduling is not observable. Shared-memory concurrency is outside the accepted foundation. |
+| Memory | Memory is automatic and managed; raw pointers, address arithmetic, manual allocation/free, user-visible object addresses, finalizer semantics and unsafe casts remain excluded. Required managed sharing, atomic variables, lock objects and semaphores need explicit ownership, visibility, ordering and race-safety rules. Resource lifetimes cross explicit effect/host interfaces and use deterministic close/use protocols. These additions are not implemented by this planning decision. |
+| Concurrency | Managed async tasks, structured parallelism and synchronization are required foundation work. Pure computations remain deterministic; typed effects preserve host authority. Define sharing, task lifetime, join/result ordering, cancellation, deadlines, atomic ordering, lock/semaphore behavior and replay before implementation. Synchronization can expose execution order; do not promise scheduling independence for shared mutable programs. Backend scheduling cannot silently define language semantics. |
 
 ### Modules, imports, distribution, and compatibility
 
@@ -171,9 +422,11 @@ The self-hosting subset includes only what the compiler demonstrably needs:
 - pure parser/binder/type/HIR/Core APIs plus host-supplied file/artifact interfaces; and
 - assertions, table tests, golden data, deterministic property seeds, and replay records.
 
-Reflection, dynamic types, runtime code generation, macros, regex, networking, shells, threads,
-locks, GUI APIs, HTTP, package download, and garbage-collector observability are not required for
-self-hosting. A managed allocator/collector is backend runtime machinery, not a user language API.
+Reflection, dynamic types, runtime code generation, macros, regex, networking, shells, GUI APIs,
+HTTP, package download and garbage-collector observability are not required for the minimum
+self-hosting subset. Managed concurrency and synchronization remain requirements of the broader
+foundation even if the compiler bootstrap itself does not need them. A managed allocator/collector
+is backend runtime machinery, not a user language API.
 
 ## First-Class Verification Contract
 
@@ -197,3 +450,69 @@ The non-production fixtures
 [`bootstrap-reproducibility.v1.json`](../fixtures/pipelang-vnext/bootstrap-reproducibility.v1.json), and
 [`semantic-verification.v1.json`](../fixtures/pipelang-vnext/semantic-verification.v1.json) make these
 boundaries executable as future fixture assertions without accepting syntax or schemas.
+
+## Accepted v0.82.0 composition boundary
+
+The separately approved [multi-stage checked-chain inheritance repair](checked-chain-inheritance-repair.md)
+restores the accepted v0.57/v0.58 forms through v0.82. It preserves exact source/Core boundaries,
+internal Core capabilities, version metadata, and public identities.
+
+The separately approved [numeric-comparison evaluator repair](numeric-comparison-repair.md)
+restores conformance to existing normalized numeric semantics without advancing this version.
+
+The separately approved [checked-propagation inheritance repair](checked-propagation-inheritance-repair.md)
+restores the accepted v0.56 two-parameter checked form through v0.82. It preserves the version,
+source/Core boundaries, and public identities.
+
+The founder selected and separately approved one conditional local in terminal trees.
+The [canonical language contract](../../../concepts/pipelang.md#pipelang-v0820-conditional-local-in-terminal-trees)
+owns source semantics and exclusions. Existing HIR/Core nodes and public identities remain
+stable; Core independently enforces the placement/count/depth constraints. The approved
+objective and verification boundary are in [next-boundary.md](next-boundary.md).
+
+
+## Accepted v0.83.0 composition boundary
+
+The founder selected and separately approved two conditional locals in terminal trees.
+The [canonical language contract](../../../concepts/pipelang.md#pipelang-v0830-two-conditional-locals-in-terminal-trees)
+owns exact semantics and exclusions. Existing typed HIR/Core nodes and public identities remain
+stable; source and Core independently enforce the method-wide occurrence bound and existing
+placement/depth/type/scope rules. [The objective record](two-conditional-locals.md) owns proof.
+
+
+## Accepted v0.84.0 composition boundary
+
+The founder selected and separately approved finite conditional-local sequences.
+The [canonical contract](../../../concepts/pipelang.md#pipelang-v0840-finite-conditional-local-sequences)
+owns source/Core semantics and exclusions. Existing HIR/Core nodes and public identities remain
+stable. Source and Core independently preserve placement/depth constraints while earlier versions
+retain their occurrence limits. [The objective record](finite-conditional-locals.md) owns proof.
+
+
+## Accepted v0.86.0 composition boundary
+
+The [canonical conditional-return contract](../../../concepts/pipelang.md#pipelang-v0860-conditional-return-composition)
+adds only complete ternary returns after straight-line typed locals. Independent source/Core
+placement checks reuse existing typed HIR/Core nodes; evaluator and Core-only Go retain their
+semantics. [The completion record](conditional-return-composition.md) owns contained proof.
+Public identities, all inherited forms and the frozen 45-source lane remain unchanged.
+
+
+## Accepted v0.87.0 leaf-return boundary
+
+[The canonical language contract](../../../concepts/pipelang.md#pipelang-v0870-conditional-returns-in-terminal-tree-leaves)
+admits complete nonnested ternary returns in leaves of terminal trees through statement depth
+three. Source and Core validate this placement independently and retain exact inherited contracts.
+The existing terminal-statement marker distinguishes statement depth from leaf value selection;
+HIR/Core nodes, evaluator and Go backend production code remain unchanged. Public identities
+and frozen compatibility are preserved. The [objective record](terminal-leaf-conditional-returns.md)
+owns completed source, consumer, adversarial and contained resource proof.
+
+## Accepted v0.88.0 nested-return boundary
+
+The [canonical language contract](../../../concepts/pipelang.md#pipelang-v0880-nested-straight-line-returns)
+owns block-bodied straight-line returns through two ternary levels, zero-or-more local scopes,
+exact types, complete carrier transport, eager initializers and lazy selected conditions/arms.
+Source and Core independently enforce semantic placement; the parser enforces source spelling.
+HIR/Core node shapes and public compiler/semantic/Application IR identities stay unchanged.
+[nested-straight-line-returns.md](nested-straight-line-returns.md) owns contained proof.

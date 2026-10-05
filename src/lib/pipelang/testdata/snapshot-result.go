@@ -137,6 +137,7 @@ func pipelangSnapshotResultFailureOrTestPackageAppRootContainerrow(value PipeLan
 
 func PipeLangErrorOr(p0 PipeLangResult[[]PipeLangRecordTestPackageAppRootContainerrow, string], p1 string) string {
 	pipelangValidateSnapshotResultTestPackageAppRootContainerrow(p0)
+	pipelangValidateText(p1)
 	return pipelangSnapshotResultFailureOrTestPackageAppRootContainerrow(pipelangCloneSnapshotResultTestPackageAppRootContainerrow(p0), p1)
 }
 
@@ -146,6 +147,7 @@ func PipeLangForwardRows(p0 PipeLangResult[[]PipeLangRecordTestPackageAppRootCon
 }
 
 func PipeLangRowsFailed(p0 string) PipeLangResult[[]PipeLangRecordTestPackageAppRootContainerrow, string] {
+	pipelangValidateText(p0)
 	return pipelangSnapshotResultErrTestPackageAppRootContainerrow(p0)
 }
 

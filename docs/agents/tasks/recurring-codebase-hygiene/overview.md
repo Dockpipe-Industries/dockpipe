@@ -1,5 +1,37 @@
 # TASK-035 Recurring Codebase Hygiene
 
+## Current audit and cleanup — 2026-10-04
+
+[Hosted 0.6 qualification](release-0.6-hosted.md) records eight approved dry runs.
+Checkpoint `863ba38b` is pushed. All five platform jobs passed in run `37236771195`,
+including Linux runtime/package/signed-APT tests and actual Windows MSI build,
+install, installed CLI execution, uninstall, and cleanup/PATH checks. Independent
+verification passed for all 290 platform package entries and bundled archives.
+The user identified the dry-run deployment prompt as a pipeline defect. The local
+repair separates unprotected artifact assembly from master-only production
+publication and defaults manual runs to dry-run. All 13 release-tooling tests pass;
+the new regressions reject the original workflow. The obsolete waiting
+run is confirmed cancelled. The repair is now pushed as `66d970e`; eighth dry run
+`37245474387` passed all four Unix jobs but failed a Windows test's hardcoded
+zero-millisecond expectation. Its test-only fix preserves success/argument/log
+checks and passes 20 repetitions locally after reproducing the old failure with
+a 5 ms delay. Assembly and production jobs were skipped with no pending deployment.
+The follow-up commit/push and fresh dry run require approval; unprotected hosted
+assembly remains unverified.
+
+[0.6 error handling and architecture audit](release-0.6-audit.md) records six
+primary findings and their focused working-tree fixes: strict budget reads,
+checked artifact writes, resolver process-tree cancellation, bounded remote
+persistence/retry behavior, and verified Windows installer staging. Permanent
+regressions and the affected Go suites pass on Linux; native Windows/macOS
+execution and release recovery rehearsal remain outstanding. A Windows-path
+candidate regression found by the broader suite was also corrected. The
+[DDD/DRY cleanup checkpoint](release-0.6-cleanup.md) records the remote domain
+policy extraction, package-owned ledger and orchestration responsibility split,
+and shared file staging with caller-specific durability preserved. Affected Go,
+race, shell, and cross-build checks pass. See the checkpoints for proof and limits;
+prior historical rankings are not evidence that the whole repository is clean.
+
 ## Practice, Trigger, and Cadence
 
 This is a recurring feature-cycle practice, not a one-time refactor. Revisit this task after each

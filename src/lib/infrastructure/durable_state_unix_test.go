@@ -9,6 +9,23 @@ import (
 	"testing"
 )
 
+func TestPreparePrivateDirectoryRefusesExistingSharedDirectory(t *testing.T) {
+	root := filepath.Join(t.TempDir(), "shared")
+	if err := os.Mkdir(root, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(root, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := PreparePrivateDirectory(root); err == nil {
+		t.Fatal("shared directory was accepted or silently repaired")
+	}
+	info, err := os.Stat(root)
+	if err != nil || info.Mode().Perm() != 0o755 {
+		t.Fatalf("existing directory permissions changed: %v, %v", info, err)
+	}
+}
+
 func TestDurableStateCreationForcesOwnerOnlyModes(t *testing.T) {
 	oldMask := syscall.Umask(0)
 	defer syscall.Umask(oldMask)

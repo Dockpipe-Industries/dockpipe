@@ -1,0 +1,89 @@
+public Record ContainerRow {
+    public string Id; public string Name; public string State; public string Status;
+    public string Image; public string Ports; public string Created;
+}
+public Record NetworkRow { public string Id; public string Name; public string Driver; public string Scope; }
+public Record VolumeRow { public string Name; public string Driver; public string Mountpoint; }
+public Record DockerSnapshot {
+	public string Identity;
+}
+public Class DockerApplication {
+    public DockerSnapshot Project(DockerSnapshot snapshot) => snapshot;
+	public Result<List<ContainerRow>, string> Containers(Result<List<ContainerRow>, string> value) => value;
+	public Result<List<NetworkRow>, string> Networks(Result<List<NetworkRow>, string> value) => value;
+	public Result<List<VolumeRow>, string> Volumes(Result<List<VolumeRow>, string> value) => value;
+	public Optional<ContainerRow> Selection(Optional<ContainerRow> value) => value;
+	public Result<string, string> ValidateDetails(string raw) => raw == "" ? err<string, string>("details unavailable") : ok<string, string>(raw);
+	public Result<string, string> Details(string raw) {
+		Result<string, string> carrier = ValidateDetails(raw);
+		string details = propagate(carrier);
+		string cleaned = trim(details);
+		return ok<string, string>(cleaned);
+	}
+	public string DetailsMessage(string raw) => match(ValidateDetails(raw)){ ok(details) => trim(details), err(problem) => problem };
+	public Result<string, string> Logs(Result<string, string> value) => value;
+	public List<ContainerRow> FilterContainers(List<ContainerRow> rows, string query) => filter_joined_contains_casefolded(rows, ContainerRow.Name, ContainerRow.State, ContainerRow.Image, ContainerRow.Ports, ContainerRow.Created, query);
+	public List<ContainerRow> OrderContainers(List<ContainerRow> rows) => sort_by_ordinal(rows, ContainerRow.Name);
+	public List<ContainerRow> VisibleContainers(List<ContainerRow> rows, string query) => OrderContainers(FilterContainers(rows, query));
+	public List<NetworkRow> OrderNetworks(List<NetworkRow> rows) => sort_by_ordinal(rows, NetworkRow.Name);
+	public List<VolumeRow> OrderVolumes(List<VolumeRow> rows) => sort_by_ordinal(rows, VolumeRow.Name);
+	public string NormalizeName(string value) => trim(value);
+	public string DisplayName(string name, string fallback) {
+		string normalized = NormalizeName(name);
+		string selected = normalized == "" ? fallback : normalized;
+		return selected;
+	}
+	public string DisplayMode(string raw, bool enabled, bool normalize, bool detailed) {
+		if (enabled) {
+			string cleaned = trim(raw);
+			if (normalize) {
+				string normalized = NormalizeName(cleaned);
+				if (detailed) {
+					string selected = normalized;
+					return selected;
+				} else {
+					string selected = cleaned;
+					return selected;
+				}
+			} else {
+				string selected = raw;
+				return selected;
+			}
+		} else {
+			string disabled = "";
+			if (normalize) {
+				string context = disabled;
+				if (detailed) {
+					string selected = raw;
+					return selected;
+				} else {
+					string selected = context;
+					return selected;
+				}
+			} else {
+				string selected = raw;
+				return selected;
+			}
+		}
+	}
+	public string SelectedName(Optional<ContainerRow> value) => match(value){ some(row) => NormalizeName(row.Name), none => "" };
+	public Optional<ContainerRow> FindSelection(List<ContainerRow> rows, string id) => find_by(rows, ContainerRow.Id, id);
+	public Optional<ContainerRow> ResolveSelection(List<ContainerRow> rows, string id) {
+		Optional<ContainerRow> carrier = FindSelection(rows, id);
+		ContainerRow selected = propagate(carrier);
+		return some(selected);
+	}
+	public Optional<ContainerRow> ConfirmSelection(string selected, List<ContainerRow> rows, string id) => selected == "" ? none<ContainerRow>() : find_by(rows, ContainerRow.Id, id);
+	public Optional<ContainerRow> FinalizeSelection(string confirmed, List<ContainerRow> rows, string id) => confirmed == "" ? none<ContainerRow>() : find_by(rows, ContainerRow.Id, id);
+	public Optional<ContainerRow> FinalizeSelectionHistory(string selected, string confirmed, List<ContainerRow> rows, string id) => selected == "" || confirmed == "" ? none<ContainerRow>() : find_by(rows, ContainerRow.Id, id);
+	public string SelectedNameById(List<ContainerRow> rows, string id) {
+		string fallback = "";
+		Optional<ContainerRow> selection = FindSelection(rows, id);
+		string selected = match(selection){ some(row) => row.Name, none => fallback };
+		Optional<ContainerRow> confirmation = ConfirmSelection(selected, rows, id);
+		string confirmed = match(confirmation){ some(row) => row.Name, none => selected };
+		Optional<ContainerRow> finalization = FinalizeSelectionHistory(selected, confirmed, rows, id);
+		string finalized = match(finalization){ some(row) => row.Name, none => confirmed };
+		return NormalizeName(finalized);
+	}
+}

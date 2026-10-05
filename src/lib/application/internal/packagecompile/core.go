@@ -146,7 +146,7 @@ func cmdPackageCompileCore(args []string, sourceBuild CoreSourceBuild) error {
 				"name":         "dockpipe.core",
 				"version":      defaultVersion,
 				"title":        "Compiled core slice",
-				"description":  "Compiled from " + srcAbs,
+				"description":  "Compiled core package",
 				"kind":         "core",
 				"allow_clone":  true,
 				"distribution": "source",

@@ -62,6 +62,13 @@ Typical non-responsibilities:
 
 Those presentation concerns live in workflow YAML `view:` metadata, not in the PipeLang type system.
 
+## Experimental native streaming SDK profile
+
+The separately selected [native streaming profile](pipelang-native-streams.md)
+supports direct, typed SDK calls from `.pipe` methods to a native C++ host adapter.
+It has an explicit compiler entrypoint and borrowed stream capabilities; it does
+not silently add host effects to the ordinary pure language contracts.
+
 ## Workflow binding
 
 Workflow YAML binds to PipeLang through top-level `types:`.
@@ -222,6 +229,60 @@ concepts while preserving the typed function signature and normalized literal, p
 and operator nodes. The Go backend's only PipeLang dependency is Core IR; an architecture test
 rejects parser, AST/compiler-root, or HIR imports in that backend.
 
+Generated Go names belong to one package namespace, including runtime types, constants,
+variables, helpers, imports, record declarations, and source functions. The backend allocates
+colliding function and record names deterministically by semantic identity, retaining existing
+noncolliding names and the existing Optional runtime-name fallback. Calls and named predicates
+use the same identity-to-name bindings as declarations; record helpers and nested carrier types
+use the allocated record names. Legal source names such as `ArithmeticResult` remain legal.
+`gobackend.GenerateWithNames` returns generated source plus function identity/name bindings for
+host entrypoints. The context-free `FunctionName` helper returns only a preferred name; consumers
+that may encounter collisions must use the returned bindings. Allocation does not rewrite Core
+or public semantic identities. The backend checks the complete emitted package namespace before
+returning Go source.
+
+Core program admission accepts only `pipelang.compiler.v1` and the exact supported language
+identities `v0.1.0` through `v0.98.0`. `coreir.ValidateProgram` checks feature availability in
+signatures and nested expressions, together with the existing composition and topology contracts.
+`coreeval.EvaluateProgram` and the Go backend use that same admission before executing or emitting
+anything, including when a disallowed feature occurs in an uncalled function or unused parameter.
+Unknown or missing identities and unsupported feature/version combinations fail explicitly. The
+backend does not rewrite language metadata or maintain a separate language-admission policy.
+Function-only validation/evaluation has no program metadata; use the program APIs for versioned
+artifact admission. Source-syntax gates remain distinct: checked arithmetic and arithmetic Result
+representation already belong to internal v0.1.0 Core, and v0.33.0 postfix indexing reuses the
+v0.20.0 `list_at` operation.
+
+For repeated offline conformance calls, `coreeval.PrepareProgram` owns a deep copy of the
+Core graph, validates that snapshot once, and builds private function lookups.
+`PreparedProgram.Evaluate` uses the same evaluator and checks argument types and complete
+carrier values on every invocation. Input mutation after preparation and mutation of returned
+values (including type metadata) cannot change the snapshot. Preparation must not race with
+input mutation; completed preparations may be shared by concurrent callers. There is no global
+cache or skip-validation switch. Existing `EvaluateProgram` still validates each supplied
+program on every call. Preparation costs an additional owned graph and pays off only across
+repeated calls; it changes no language or serialized compiler/semantic/Application IR contract.
+
+
+Executable Core type validation is exhaustive: primitives are `string`/`bool`; numerics are
+signed 64-bit integers or IEEE-754 binary64 (`signed: false`);
+`ArithmeticError` remains an internal type; records, Optional, record lists, and Results retain
+their existing bounded shapes. Every type carries only its kind's representation. Validation
+checks nested payloads and record fields, all parameter and return types, every expression type,
+local declarations, and propagation carriers, including unused or unselected code. Unknown kinds,
+source-only primitive `int`/`float` or named/applied executable types, unsupported numeric widths,
+and contradictory representations fail before evaluation or Go generation. Semantic callable
+identities continue to use source-level names independently of executable type normalization.
+
+Host argument validation follows declared parameter types before the function body executes.
+The evaluator and generated Go reject invalid UTF-8 and malformed Result carriers even in
+identity functions, unused parameters, and unselected terminal branches. Existing validators
+also check text inside supported records, primitive/record Optionals, record lists, and
+text/snapshot Results. Arithmetic Results require an empty error on success, or a supported
+error tag and zero numeric payload on failure; either sign of floating-point zero is canonical.
+Successful binary64 payloads retain NaN and infinity. Generated validation helpers are discovered
+from parameter types as well as operations, without a match or propagation prerequisite.
+
 The proven fixture is the existing-syntax pure function `Ready(int count) => count > 0`. Its HIR,
 Core, and generated-Go bytes are golden-tested; generated Go is compiled and executed under a
 temporary offline module, and its result matches the existing pure evaluator. The first backend
@@ -239,6 +300,12 @@ negation remain rejected by both semantic analysis and the backend until checked
 recoverable arithmetic failures can be represented as typed `Result` values. The frozen
 `v0.0.0.1` compile/invoke behavior and artifacts remain unchanged, and executable Go is not a
 workflow/runtime backend.
+
+Numeric comparison evaluation dispatches on normalized signed-int64 and binary64 Core types,
+while public semantic identities retain source-level `int` and `float` names. The evaluator and
+Core-only Go preserve integer ordering without float conversion and IEEE comparison behavior for
+NaN, infinities, subnormals, and signed zero. The evaluator conformance repair after v0.82 changes
+no syntax, admitted types, language versions, or public schema identities.
 
 The next compiler-internal slice establishes that missing representation without selecting public
 syntax. HIR and Core can carry `Result<Success, ArithmeticError>` structurally; Core owns the single
@@ -1039,6 +1106,14 @@ Think of the layering as:
 
 ## Accepted future compiler boundary
 
+The [language foundation completion plan](pipelang-foundation.md) records the 2026-09-11
+founder direction, capability inventory and next planning checkpoint. Enums, structs/classes,
+polymorphism, loops, managed async/parallel execution, atomic variables, locks and semaphores
+are required foundation work. Earlier blanket concurrency exclusions are superseded as roadmap
+limits, not removed from existing version admission. The full memory/task/synchronization model
+must be specified before implementation; this direction adds no executable syntax or behavior.
+
+
 Future executable PipeLang uses one compiler contract:
 
 ```text
@@ -1066,3 +1141,3022 @@ and MCU target profiles select validated backend capabilities without changing s
 
 The complete accepted decisions, compatibility inventory, and bounded implementation order live in
 [TASK-021](../agents/tasks/pipelang-reactive-application-language/overview.md).
+
+### PipeLang v0.32.0: explicit per-key ordinal direction
+
+The `v0.32.0` directional form pairs each selected public string field with a contextual direction:
+
+```pipelang
+public List<ContainerRow> SortRows(List<ContainerRow> values) =>
+    sort_by_ordinal(values, ContainerRow.State, descending, ContainerRow.Name, ascending);
+```
+
+There must be one or more distinct selector/direction pairs. Sorting validates the complete value,
+uses stable ordinal Unicode scalar-sequence comparison in pair order, returns copied storage and a
+canonical non-nil empty list, and preserves input order when all keys compare equal. Typed HIR and
+Core expose `list_sort_by_ordinal_directions`; earlier ascending spellings and nodes remain versioned
+compatibility contracts.
+
+
+### PipeLang v0.33.0: safe general indexing
+
+The bounded postfix form `values[index]` is available only in an exact two-parameter method
+`Optional<R> M(List<R> values, int index)`, where `R` is an existing public primitive record. It returns
+`none` for negative or out-of-bounds indices and a copied `some` record otherwise, after complete input
+validation. It lowers to the existing target-neutral `list_at` HIR/Core operation; `at(values, index)`
+remains compatible. Other receiver or index types, chaining, slicing, defaults, exceptions, and unchecked
+access are excluded.
+
+### PipeLang v0.34.0: bounded propagation
+
+The contextual `propagate(carrier)` expression is accepted only as the direct payload of a complete
+`some(...)` or bounded `ok<T, E>(...)` method body whose return type exactly equals the direct
+parameter carrier. It extracts presence/success and returns absence/failure through explicit
+source-located HIR/Core propagation control flow. Optional primitives and primitive records plus the
+existing snapshot/text Result forms are the complete matrix. `PL3032` diagnoses misuse. There are no
+exceptions, implicit conversions, arbitrary Results, effects, blocks, or target-specific errors.
+
+
+PipeLang v0.35.0 adds exhaustive bounded matching over existing Optional and Result values with explicit `some`/`none` or `ok`/`err` arms and a bounded final `_` wildcard. Matching is pure, source-located, target-neutral Core control flow.
+
+### PipeLang v0.36.0: same-class pure calls
+
+Public expression-bodied methods may call one uniquely named public method on the same class using
+`Method(expression, ...)`. Ordered argument types and the return type must match the resolved target
+exactly. Call participants are closed over parameters and match-arm bindings rather than class-owned
+state. Calls may nest and their arguments may use already admitted expressions. Private callers or
+targets, missing or ambiguous targets, overloads, cross-class/module calls, and every direct or
+indirect recursive cycle are rejected; `PL3033` reports cycles.
+
+Result-valued arguments carry the complete success/failure value into the callee, whether they
+come from a reference or a computed expression such as a nested call. An expected Result failure
+does not implicitly propagate or skip later argument evaluation. Arguments enter isolated copied
+call frames; only explicitly authored propagation can short-circuit that continuation.
+
+Typed HIR and target-neutral Core carry the resolved callable semantic identity, target name, and
+ordered typed operands. Each semantic-to-HIR lowering request visits every reachable method once,
+including shared callees and named predicates, and emits the closed graph in deterministic
+dependency-first discovery order. Core proves same-owner identity, signature equality, target
+presence, and acyclicity, the evaluator uses
+isolated copied call frames, and the Go backend emits only Core-validated calls. The compiler,
+semantic projection, and Application IR schema versions remain `pipelang.compiler.v1`,
+`pipelang.semantic.v1`, and `dockpipe.application.v1`; their language-contract metadata advances to
+`v0.36.0`. Blocks, locals, branches, lambdas, function values, generics, effects, entrypoints, and
+target-specific semantics remain outside this contract.
+
+### PipeLang v0.37.0: general pure-call composition
+
+The same resolved calls may appear throughout expressions already admitted as eager and pure,
+including match-arm bodies, record construction, Optional construction, text operations, and
+arithmetic or comparison operands. Match carriers and propagation operands remain direct
+references, so composition does not add hidden control flow or change their established ownership
+rules. The uniquely named public same-class target, exact ordered signature, parameter/arm-local
+closure, and acyclic call graph rules from `v0.36.0` remain unchanged.
+
+Typed HIR and target-neutral Core reuse the resolved `call` node and recursively validate every
+nested expression. The evaluator retains isolated copied call frames, and the Go backend continues
+to emit only validated Core. The Docker observability consumer proves an Optional record match arm
+calling a text-normalization helper. Compiler, semantic projection, and Application IR schema
+shapes remain unchanged; only their language-contract metadata advances to `v0.37.0`. Cross-class
+or cross-module calls, private targets, overloads, recursion, blocks, locals, branches, loops,
+effects, entrypoints, and target-specific semantics remain excluded.
+
+### PipeLang v0.38.0: bounded conditional expression
+
+One `condition ? whenTrue : whenFalse` expression is admitted per method. The condition must be
+`bool`; both branches are statically checked and have exactly the same admitted type; evaluation
+executes only the selected branch. Operands may use existing eager pure expressions, including
+resolved v0.37.0 same-class calls, but may not contain nested conditionals, match, or propagation.
+
+Typed HIR and target-neutral Core carry the condition and both branches explicitly. Core validates
+the bound, placement, operand exclusions, and exact types; the evaluator selects one branch; the
+Core-only Go backend emits the same lazy choice without inference. Compiler, semantic projection,
+and Application IR schema shapes remain unchanged; only their language-contract metadata advances
+to `v0.38.0`. `if` statements, blocks, locals, mutation, conversions, pattern guards, effects,
+actions, runtime behavior, and target-specific semantics remain excluded.
+
+### PipeLang v0.39.0: immutable local plus terminal return
+
+One public pure method may replace its expression body with exactly
+`{ T name = initializer; return expression; }`. The local type is explicit and must exactly match
+the initializer. Initialization is eager and occurs once before the local enters scope. The local
+is immutable, cannot shadow a field or parameter, and has no public semantic identity. The return
+expression may use the local, parameters, and existing admitted eager pure expressions, including
+checked arithmetic whose explicit `Result` type is carried by the local declaration. Contextual
+propagation remains confined to its established complete-method carrier shape and is not admitted
+inside the local initializer or return.
+
+Typed HIR and target-neutral Core represent the binding, initializer, and return with an explicit
+`immutable_local` node. Core validates the one-node top-level shape, lexical scope, and exact types;
+the evaluator and Core-only Go backend preserve the same single-evaluation behavior. Compiler,
+semantic projection, and Application IR schema shapes remain unchanged; only their
+language-contract metadata advances to `v0.39.0`. Type inference, multiple locals, reassignment,
+shadowing, propagation, early return, statement branches, nested blocks, loops, effects, actions, runtime
+behavior, and target-specific semantics remain excluded.
+
+### PipeLang v0.40.0: ordered immutable locals
+
+One public pure method block may contain one or more source-ordered explicitly typed immutable
+locals followed by one terminal return:
+`{ T1 first = expression1; T2 second = expression2; ... return expression; }`. Each initializer
+must exactly match its declared type and evaluates eagerly exactly once. A binding enters scope
+only after its initializer, so later initializers may use earlier locals while self-reference,
+forward reference, duplicate names, and field/parameter shadowing fail. The terminal expression
+must exactly match the method return type. Contextual propagation remains excluded throughout the
+block.
+
+Typed HIR and target-neutral Core encode the source sequence as right-nested `immutable_local`
+nodes with contiguous positions. Core independently rejects locals outside the one top-level
+sequence, validates exact types and parameter/prior-local shadowing, and preserves v0.39.0's single-local form.
+The evaluator and Core-only Go backend evaluate and copy locals once in source order. Compiler,
+semantic projection, and Application IR schema identities and shapes remain unchanged; only their
+language-contract metadata advances to `v0.40.0`. Inference, reassignment, propagation, early
+returns, statement branches, nested blocks, loops, effects, actions, runtime behavior, and
+target-specific semantics remain excluded.
+
+### PipeLang v0.41.0: block-scoped bounded propagation
+
+One public pure method block may use exactly one declaration of the form
+`T name = propagate(carrier);` as its first immutable local. `carrier` must be the method's sole
+direct parameter, and its carrier type must exactly equal the method return type. The declaration
+type `T` must exactly equal the carried payload type. Presence or success copies the validated
+payload into the local and continues through the remaining ordered locals and terminal return;
+absence or failure immediately returns the identical canonical carrier.
+
+The admitted carriers are the existing bounded propagation matrix only: `Optional<T>` for an
+already admitted primitive or record `T`, `Result<List<R>, string>`, and
+`Result<string, string>`. Typed HIR and target-neutral Core reuse the existing `propagate` and
+right-nested `immutable_local` nodes; Core independently validates the first-local placement,
+single occurrence, direct-parameter identity, exact carrier and payload types, and bounded carrier
+shape. The evaluator and Core-only Go backend preserve the same short-circuit and copied-value
+semantics. Compiler, semantic projection, and Application IR schema identities and shapes remain
+unchanged; only their language-contract metadata advances to `v0.41.0`.
+
+No second or nested propagation, computed operand, propagation from a prior local, arbitrary
+`Result` (including checked-arithmetic results), inference, reassignment, early return, statement
+branch, nested block, loop, effect, action, runtime behavior, target behavior, adapter, UI, or
+deployment behavior enters by implication.
+
+### PipeLang v0.42.0: prior-local helper propagation
+
+One public pure method block may use exactly
+`C carrier = Helper(input); T value = propagate(carrier);` as its first two immutable locals. The
+method has one direct parameter `input`; `Helper` resolves to one uniquely named public pure method
+on the same class, takes exactly the input type, and returns bounded carrier `C`. The call argument
+is the direct parameter, `C` exactly equals the enclosing method return type, and `T` exactly
+equals the carrier payload. The helper evaluates once. Presence or success copies the validated
+payload into `value` and continues through later ordered locals and the terminal return; absence or
+failure returns the identical canonical helper carrier immediately.
+
+The carrier matrix remains the v0.41.0 Optional primitive/record,
+`Result<List<R>, string>`, and `Result<string, string>` matrix. Typed HIR and target-neutral Core
+reuse `call`, right-nested `immutable_local`, and `propagate`. Core independently validates exact
+positions, the sole direct helper argument, resolved same-class callable signature and acyclic call
+graph, the direct immediately preceding carrier-local operand, the single propagation occurrence,
+and exact carrier/payload types. The evaluator and Core-only Go backend preserve once-only helper
+evaluation, short-circuit, canonical carrier return, and copied values. Compiler, semantic
+projection, and Application IR schema identities and shapes remain unchanged; only their
+language-contract metadata advances to `v0.42.0`. The exact 45-source legacy lane remains frozen.
+
+Direct `propagate(Helper(...))`, multiple/nested propagation, extra or computed helper arguments,
+propagation from another local, arbitrary Results including checked arithmetic, inference,
+reassignment, early returns, statement branches, nested blocks, loops, effects, actions, runtime,
+target, adapter, UI, and deployment behavior remain excluded.
+
+### PipeLang v0.43.0: helper-result matching composition
+
+One public pure method may return the result of exactly one top-level
+`match(Helper(input)) { ok(value) => whenOk, err(error) => whenErr }` expression. The method has
+one direct `string` parameter and returns `string`. `Helper` resolves to one uniquely named public
+pure method on the same class, takes that direct parameter as its sole argument, and returns
+`Result<string, string>`. The helper evaluates once; the complete carrier is validated before its
+tag is selected, the selected payload is copied into its arm binding, and only the selected arm
+evaluates. Arms must appear exactly as source-ordered `ok(binding)` then `err(binding)` with no
+wildcard.
+
+Typed HIR and target-neutral Core reuse the existing `call` and `match` nodes. Core independently
+validates the top-level placement, sole direct helper argument, exact same-owner callable
+signature, text Result carrier, complete ordered arms, unique bindings, and closed acyclic call
+graph. The evaluator and deterministic Core-only Go backend preserve once-only helper evaluation,
+complete-carrier validation, copied payloads, and lazy arm selection. The Docker observability
+consumer proves `DetailsMessage(string)` composing `ValidateDetails(string)` through the unchanged
+`dockpipe.application.v1` schema. Compiler, semantic projection, and Application IR schema
+identities and shapes remain unchanged; only language-contract metadata advances to `v0.43.0`.
+The exact 45-source legacy lane remains frozen.
+
+Optional, list, or arithmetic Result helper carriers; additional or computed helper arguments;
+additional caller parameters; cross-class/module calls; nested matches; reversed arms; wildcard
+arms; guards; blocks or locals added by this slice; propagation changes; inference; reassignment;
+statement branches; loops; effects; actions; runtime; target; adapter; UI; and deployment behavior
+remain excluded.
+
+### PipeLang v0.44.0: general bounded helper-carrier matching
+
+One public pure caller with one or more parameters may return exactly one top-level
+`match(Helper(...))`. Every caller parameter is passed directly once in declaration order to one
+uniquely resolved public pure same-class helper with the exact parameter signature. The helper
+returns admitted `Optional<T>`, `Result<List<R>, string>`, or `Result<string, string>`. Optional
+arms are exact source-ordered `some(binding)` then binding-free `none`; Result arms are exact
+source-ordered `ok(binding)` then `err(binding)`. Both arm expressions exactly match the declared
+caller return type.
+
+The helper evaluates once. The complete carrier is validated, the selected payload is copied into
+its arm binding, and only the selected arm evaluates. Typed HIR and target-neutral Core reuse the
+existing `call` and `match` nodes; Core independently validates the complete contract. The Docker
+observability consumer proves `SelectedNameById(List<ContainerRow>, string)` composing
+`FindSelection(List<ContainerRow>, string)` through unchanged `dockpipe.application.v1` identity
+and shape. `pipelang.compiler.v1` and `pipelang.semantic.v1` also remain unchanged; only
+language-contract metadata advances to `v0.44.0`, and the exact 45-source lane stays frozen.
+
+Arithmetic Results, computed/reordered/omitted/extra arguments, cross-owner calls, overloads,
+generics, nested or multiple matches, wildcard or reversed arms, guards, propagation changes, new
+blocks, locals or statements, effects, actions, runtimes, targets, adapters, UI, and deployment
+behavior remain excluded.
+
+### PipeLang v0.45.0: first-local helper-carrier matching
+
+One public pure method with one or more parameters may use exactly one v0.44-compatible
+`match(Helper(...))` as the initializer of its first explicitly typed immutable local. Every caller
+parameter is still passed directly once in declaration order to one uniquely resolved public pure
+same-class helper with the exact parameter signature. The helper carrier remains closed to admitted
+`Optional<T>`, `Result<List<R>, string>`, or `Result<string, string>`, with the exact v0.44 arm
+ordering and bindings. Both arm expressions have the exact declared local type.
+
+The helper evaluates once, the complete carrier is validated, only the selected arm evaluates, and
+its copied result initializes the first local once. Existing v0.40 ordered immutable locals and the
+terminal return may then consume that local. Typed HIR and target-neutral Core reuse the existing
+`immutable_local`, `call`, and `match` nodes; Core independently validates the first-local placement,
+single match, direct argument positions and types, exact same-owner signature, closed carrier
+matrix, canonical arms and bindings, local type, and continuation scope. The evaluator and
+deterministic Core-only Go backend preserve the same evaluation order and copied-value semantics.
+
+The Docker observability consumer proves `SelectedNameById(List<ContainerRow>, string)` by matching
+`FindSelection(List<ContainerRow>, string)` into a first `string selected` local and then calling
+`NormalizeName(selected)`. `pipelang.compiler.v1`, `pipelang.semantic.v1`, and
+`dockpipe.application.v1` identities and shapes remain unchanged; only language-contract metadata
+advances to `v0.45.0`, and the exact 45-source lane remains frozen.
+
+Match in later locals, the terminal return, arguments, or nested positions; multiple matches;
+computed/reordered/omitted/extra helper arguments; arithmetic Results; cross-owner calls;
+overloads; generics; wildcard or reversed arms; guards; propagation changes; inference;
+reassignment; early returns; statement branches; loops; effects; actions; runtimes; targets;
+adapters; UI; and deployment behavior remain excluded.
+
+### PipeLang v0.46.0: checked-arithmetic helper matching in the first local
+
+One public pure method with one or more parameters may use exactly one v0.45-compatible first-local
+`match(Helper(...))` where the helper returns an already admitted
+`Result<int, ArithmeticError>` or `Result<float, ArithmeticError>`. Every caller parameter remains
+the corresponding direct helper argument exactly once in declaration order. The helper is one
+uniquely resolved public pure same-class method with the exact caller signature. Arms remain exact
+source-ordered `ok(binding)` then `err(binding)`, and both expressions exactly match the declared
+local type.
+
+The complete checked-arithmetic Result is validated before selection. The helper evaluates once,
+only the selected arm evaluates, and its copied result initializes the first local once. Existing
+ordered locals and the terminal return may consume that value. Typed HIR and target-neutral Core
+reuse `immutable_local`, `call`, and `match`; Core independently validates placement, occurrence,
+direct argument positions/types, exact same-owner signature, the int-or-binary64 arithmetic Result
+shape, canonical arms/bindings, local typing, and continuation scope. The evaluator and
+deterministic Core-only Go backend preserve the same semantics, including deterministic error-arm
+selection for integer overflow and binary64 division by zero.
+
+`pipelang.compiler.v1`, `pipelang.semantic.v1`, and `dockpipe.application.v1` identities and shapes
+remain unchanged; only language-contract metadata advances to `v0.46.0`, and the exact 45-source
+lane remains frozen. The checked-arithmetic form supplies a compiler-shaped pure consumer while the
+existing read-only Application IR fixture proves unchanged projection compatibility.
+
+Checked-arithmetic helper matching as a complete method body, later local, terminal return,
+argument, or nested expression; multiple matches; computed/reordered/omitted/extra helper
+arguments; arithmetic Result propagation, construction, defaulting, or arbitrary Result widening;
+cross-owner calls; overloads; generics; wildcards or reversed arms; guards; inference;
+reassignment; early returns; statements; loops; effects; actions; runtimes; targets; adapters; UI;
+and deployment behavior remain excluded.
+
+### PipeLang v0.47.0: later-local helper-carrier matching
+
+One public pure method with one or more parameters may use exactly one v0.46-compatible
+`match(Helper(...))` as any explicitly typed immutable-local initializer after zero or more ordinary
+locals. Every caller parameter remains the corresponding direct helper argument exactly once in
+declaration order to one uniquely resolved public pure same-class exact-signature helper. The
+closed carrier matrix remains admitted Optional primitive/record, `Result<List<R>, string>`,
+`Result<string, string>`, and checked-arithmetic `Result<int, ArithmeticError>` or
+`Result<float, ArithmeticError>`, with exact canonical arm order, bindings, and local result type.
+
+Earlier ordinary locals evaluate eagerly once in source order. The helper evaluates once, the full
+carrier is validated, only the selected arm evaluates, and its copied result initializes the match
+local once. Existing later locals and the terminal return then continue. Typed HIR and
+target-neutral Core reuse `immutable_local`, `call`, and `match`; Core independently validates the
+placement, single occurrence, direct argument positions/types, exact same-owner signature, closed
+carrier matrix, canonical arms/bindings, local typing, and continuation scope. The evaluator and
+deterministic Core-only Go backend preserve the same semantics.
+
+The Docker observability consumer proves this placement through `SelectedNameById`: an ordinary
+`string fallback` local precedes the Optional helper match, and the selected local can consume it.
+`pipelang.compiler.v1`, `pipelang.semantic.v1`, and `dockpipe.application.v1` identities and shapes
+remain unchanged; only language-contract metadata advances to `v0.47.0`, and the exact 45-source
+lane remains frozen.
+
+Terminal-return, argument, nested, or multiple matches; top-level checked-arithmetic matching;
+computed/reordered/omitted/extra helper arguments; propagation changes; Result construction,
+defaulting, or arbitrary widening; cross-owner/private/overloaded/generic helpers; wildcard or
+reversed arms; guards; inference; reassignment; statements; effects; actions; runtimes; targets;
+adapters; UI; and deployment behavior remain excluded.
+
+### PipeLang v0.48.0: prior-local carrier matching
+
+After zero or more ordinary locals, one public pure method with one or more parameters may declare
+an explicitly typed carrier local initialized by `Helper(p1, ..., pn)` and then an immediately
+adjacent explicitly typed local initialized by exactly one `match(carrier)`. Every caller parameter
+is passed directly once in declaration order to one uniquely resolved public pure same-class helper
+with the exact caller signature. The closed carrier matrix remains admitted Optional
+primitive/record, `Result<List<R>, string>`, `Result<string, string>`, and checked-arithmetic
+`Result<int, ArithmeticError>` or `Result<float, ArithmeticError>`, with exact canonical arm order,
+bindings, and matched-local result type.
+
+Earlier ordinary locals evaluate eagerly once in source order. The helper initializes the carrier
+local once, the full carrier is validated, only the selected arm evaluates, and its copied result
+initializes the adjacent matched local once. Existing later locals and the terminal return then
+continue. Typed HIR and target-neutral Core reuse `immutable_local`, `call`, `reference`, and
+`match`; Core independently validates adjacency, one match, the exact carrier reference, direct
+argument positions/types, exact same-owner signature, the closed carrier matrix, canonical
+arms/bindings, local typing, and continuation scope. The evaluator and deterministic Core-only Go
+backend preserve the same semantics.
+
+The Docker observability consumer proves the exact source shape through `SelectedNameById`: a
+fallback local is followed by `Optional<ContainerRow> selection = FindSelection(rows, id);` and
+`string selected = match(selection) { ... };`. `pipelang.compiler.v1`,
+`pipelang.semantic.v1`, and `dockpipe.application.v1` identities and shapes remain unchanged; only
+language-contract metadata advances to `v0.48.0`, and the exact 45-source lane remains frozen.
+
+Non-adjacent, terminal-return, argument, nested, or multiple matches; top-level checked-arithmetic
+matching; computed/reordered/omitted/extra helper arguments; propagation changes; Result
+construction, defaulting, or arbitrary widening; cross-owner/private/overloaded/generic helpers;
+wildcard or reversed arms; guards; inference; reassignment; statements; effects; actions; runtimes;
+targets; adapters; UI; and deployment behavior remain excluded. No behavior enters by implication.
+
+### PipeLang v0.49.0: bounded two-carrier matching
+
+One public pure method with one or more parameters may contain exactly two non-overlapping
+v0.48-compatible adjacent helper-carrier pairs:
+
+```text
+C1 firstCarrier = Helper1(p1, ..., pn);
+T1 first = match(firstCarrier) { canonicalArms };
+
+C2 secondCarrier = Helper2(p1, ..., pn);
+T2 second = match(secondCarrier) { canonicalArms };
+
+return admittedExpression;
+```
+
+Zero or more ordinary explicitly typed immutable locals may appear before, between, or after the
+pairs, but no local may split a helper-call carrier local from its immediately adjacent matching
+local. Each helper independently receives every caller parameter directly once in declaration
+order and resolves uniquely to a public pure same-class method with the exact caller signature.
+Each pair independently uses the unchanged v0.48 Optional primitive/record,
+`Result<List<R>, string>`, `Result<string, string>`, or checked-arithmetic Result carrier matrix and
+its exact canonical source-ordered arms.
+
+All locals, helpers, carriers, and selected locals evaluate eagerly exactly once in source order.
+Each complete carrier is validated and only its selected arm evaluates. The second pair and its
+arms may reference prior locals, including the first selected local, under existing immutable scope
+rules. Matching does not propagate or skip the second pair. Typed HIR and target-neutral Core reuse
+`immutable_local`, `call`, `reference`, and `match`; Core independently validates exactly two
+matches, both non-overlapping adjacent pairs, carrier references, helper identities/signatures,
+direct arguments, carrier types, arm order/bindings, local types, and continuation scope. The
+evaluator and deterministic Core-only Go backend preserve the same behavior.
+
+The Docker observability consumer proves `FindSelection(rows, id)` and
+`ConfirmSelection(rows, id)` through two adjacent carrier/match pairs before normalization.
+`pipelang.compiler.v1`, `pipelang.semantic.v1`, and `dockpipe.application.v1` identities and shapes
+remain unchanged; only language-contract metadata advances to `v0.49.0`, and the exact 45-source
+lane remains frozen.
+
+Existing zero-match and one-match methods remain exact. A third match, non-adjacent or overlapping
+pairs, terminal-return/argument/nested matching, non-helper or computed carriers, computed/
+reordered/omitted/extra helper arguments, propagation changes, Result construction/defaulting or
+arbitrary widening, cross-owner/private/overloaded/generic helpers, wildcard or reversed arms,
+guards, inference, reassignment, statements, effects, actions, runtimes, targets, adapters, UI, and
+deployment behavior remain excluded. No behavior enters by implication.
+
+### PipeLang v0.50.0: dependent second-carrier matching
+
+One new two-match form requires exactly four contiguous explicitly typed locals:
+
+```text
+C1 firstCarrier = Helper1(p1, ..., pn);
+T1 first = match(firstCarrier) { canonicalArms };
+C2 secondCarrier = Helper2(first, p1, ..., pn);
+T2 second = match(secondCarrier) { canonicalArms };
+return admittedExpression;
+```
+
+`Helper1` retains the v0.49 exact caller signature. `Helper2` resolves uniquely to a public pure
+same-class method whose first parameter exactly matches `T1`, followed by every caller parameter
+directly once in declaration order. Ordinary locals may appear only before or after this four-local
+stage. Both pairs retain the closed v0.48 carrier matrix and canonical source-ordered arms. All
+locals and helpers evaluate eagerly once in source order, every complete carrier is validated, and
+only selected arms evaluate.
+
+Typed HIR and target-neutral Core reuse `immutable_local`, `call`, `reference`, and `match`; Core
+independently validates the four-local stage, local and parameter binding positions, exact helper
+ownership/signatures, carrier types, arms, local types, and continuation. The evaluator and
+deterministic Core-only Go backend preserve those semantics. Docker observability proves
+`ConfirmSelection(selected, rows, id)` after the first selection match. `pipelang.compiler.v1`,
+`pipelang.semantic.v1`, and `dockpipe.application.v1` identities and shapes remain unchanged; only
+language-contract metadata advances to `v0.50.0`, and the exact 45-source lane remains frozen.
+
+Existing zero-match, one-match, and v0.49 independent two-pair forms remain exact. Other local
+argument arrangements, computed/reordered/repeated arguments, gaps inside the four-local stage,
+third/nested/terminal/argument matches, propagation changes, Result construction/defaulting or
+arbitrary widening, cross-owner/private/overloaded/generic helpers, wildcards, reversed arms,
+guards, inference, reassignment, statements, effects, actions, runtimes, targets, adapters, UI, and
+deployment remain excluded. No behavior enters by implication.
+
+### PipeLang v0.51.0: general dependent carrier chains
+
+The v0.50 dependency rule extends to one contiguous chain of two or more carrier/match pairs:
+
+```text
+C1 carrier1 = Helper1(p1, ..., pn);
+T1 value1 = match(carrier1) { canonicalArms };
+C2 carrier2 = Helper2(value1, p1, ..., pn);
+T2 value2 = match(carrier2) { canonicalArms };
+...
+Ck carrierK = HelperK(valueK-1, p1, ..., pn);
+Tk valueK = match(carrierK) { canonicalArms };
+return admittedExpression;
+```
+
+All `2k` locals are explicitly typed and contiguous; ordinary locals may appear only before or
+after. `Helper1` retains the exact caller signature. Each later helper resolves uniquely to a
+public pure same-class method receiving the immediately preceding selected local followed by every
+caller parameter directly once in declaration order. The closed Optional, bounded Result, and
+checked-arithmetic carrier matrix and canonical arm spellings remain unchanged. Every local and
+helper evaluates once in source order, every complete carrier is validated, and only each selected
+arm evaluates.
+
+Typed HIR and target-neutral Core reuse `immutable_local`, `call`, `reference`, and `match`; Core
+independently validates the complete chain and immediate-predecessor dependency. The evaluator and
+deterministic Core-only Go backend preserve the same semantics. Docker observability proves
+`FinalizeSelection(confirmed, rows, id)` as a third stage. `pipelang.compiler.v1`,
+`pipelang.semantic.v1`, and `dockpipe.application.v1` identities and shapes remain unchanged;
+only language-contract metadata advances to `v0.51.0`, and the exact 45-source lane remains frozen.
+
+Existing zero-match, one-match, v0.49 independent two-pair, and v0.50 dependent two-stage forms
+remain exact. Gaps, mixed independent/dependent chains, non-immediate dependencies, fan-in,
+computed/reordered/repeated/omitted/extra arguments, third matches outside this chain,
+nested/terminal/argument matches, propagation changes, arbitrary Result widening, statements,
+effects, actions, runtimes, targets, adapters, UI, and deployment remain excluded. No behavior
+enters by implication.
+
+### PipeLang v0.52.0: cumulative fan-in carrier chains
+
+A method may additionally choose one cumulative chain of at least three contiguous carrier/match
+pairs:
+
+```text
+C1 carrier1 = Helper1(p1, ..., pn);
+T1 value1 = match(carrier1) { canonicalArms };
+C2 carrier2 = Helper2(value1, p1, ..., pn);
+T2 value2 = match(carrier2) { canonicalArms };
+...
+Ck carrierK = HelperK(value1, ..., valueK-1, p1, ..., pn);
+Tk valueK = match(carrierK) { canonicalArms };
+return admittedExpression;
+```
+
+Every later helper receives every prior selected local directly once in chain order, followed by
+every caller parameter directly once in declaration order. The whole method uses either cumulative
+fan-in or the inherited v0.51 immediate-only dependency; stages cannot mix. All `2k` locals remain
+explicitly typed and contiguous, and the existing closed carrier matrix and canonical arms remain
+unchanged. Every local and helper evaluates once in source order, every complete carrier is
+validated, and only each selected arm evaluates.
+
+Typed HIR and target-neutral Core reuse `immutable_local`, `call`, `reference`, and `match`; Core
+independently validates cumulative argument identities and positions. The evaluator and
+deterministic Core-only Go backend preserve the same semantics. Docker observability proves
+`FinalizeSelectionHistory(selected, confirmed, rows, id)` as a cumulative third stage.
+`pipelang.compiler.v1`, `pipelang.semantic.v1`, and `dockpipe.application.v1` identities and shapes
+remain unchanged; only language-contract metadata advances to `v0.52.0`, and the exact 45-source
+lane remains frozen.
+
+All inherited forms remain exact. Fewer than three cumulative pairs, partial/reordered/repeated/
+omitted/extra prior selections, mixed modes, gaps, non-chain dependencies, computed arguments,
+matches outside the chain, nested/terminal/argument matches, propagation changes, arbitrary Result
+widening, statements, effects, actions, runtimes, targets, adapters, UI, and deployment remain
+excluded. No behavior enters by implication.
+
+### PipeLang v0.53.0: multi-parameter helper propagation
+
+A public pure method with at least two parameters may use this exact source form:
+
+```text
+C carrier = Helper(p1, ..., pn);
+T value = propagate(carrier);
+return admittedExpression;
+```
+
+The carrier call is the first immutable-local initializer, the propagation local is immediately
+adjacent, and the public pure same-class helper receives every caller parameter directly once in
+declaration order. `C` is identical to the method return carrier and `T` is its success payload.
+The carrier remains limited to Optional primitive/record, `Result<List<R>, string>`, or
+`Result<string, string>`. The inherited one-parameter v0.42 form remains exact.
+
+Typed HIR and target-neutral Core reuse `immutable_local`, `call`, `reference`, and `propagate`;
+Core independently verifies parameter positions, helper identity/signature, adjacency, carrier,
+payload, and once-only propagation. The evaluator and deterministic Core-only Go backend call the
+helper once, validate the complete carrier, copy its payload on success, and return the canonical
+absent or failure carrier otherwise. Docker observability proves
+`ResolveSelection(List<ContainerRow>, string)` calling `FindSelection(rows, id)` without an
+Application IR schema change. `pipelang.compiler.v1`, `pipelang.semantic.v1`, and
+`dockpipe.application.v1` identities and shapes remain unchanged; only language-contract metadata
+advances to `v0.53.0`, and the exact 45-source legacy lane remains frozen.
+
+Computed, reordered, repeated, omitted, or extra helper arguments remain rejected, as do a
+non-first carrier local, an intervening local, a non-adjacent or additional propagation, mismatched
+carrier or payload types, cross-owner/private/overloaded/generic helpers, arbitrary Result widening,
+inference, reassignment, statements, effects, actions, runtimes, targets, adapters, UI, and
+deployment. No behavior enters by implication.
+
+### PipeLang v0.54.0: checked-arithmetic helper propagation
+
+`v0.54.0` adds exactly the existing checked-arithmetic carriers to the v0.53 prior-local helper
+propagation form:
+
+```pipe
+public Result<int, ArithmeticError> Add(int left, int right) => left + right;
+
+public Result<int, ArithmeticError> Resolve(int left, int right) {
+    Result<int, ArithmeticError> carrier = Add(left, right);
+    int value = propagate(carrier);
+    return value + 0;
+}
+```
+
+The identical form is admitted for `Result<float, ArithmeticError>` with a `float` payload and an
+already admitted checked binary64 division expression as the terminal return. The helper call is
+the first typed local, propagation is the immediately adjacent second local, and every caller
+parameter is passed directly once in declaration order to one uniquely resolved public pure
+same-class helper. The helper carrier exactly equals the caller return type and the propagated local
+exactly equals its success payload.
+
+The helper evaluates once and the complete arithmetic Result is validated. Canonical success is
+copied into the payload local; canonical `overflow` or `division_by_zero` returns immediately and
+the continuation is not evaluated. `pipelang.compiler.v1`, `pipelang.semantic.v1`, and
+`dockpipe.application.v1` identities and shapes remain unchanged; only language-contract metadata
+advances to `v0.54.0`. A compiler-cursor fixture proves `Advance(cursor, width)` can call
+`AddOffset(cursor, width)` and propagate overflow unchanged, providing a concrete self-hosting
+consumer. The exact 45-source legacy lane remains frozen.
+
+Direct-parameter arithmetic propagation, `propagate(Helper(...))`, later or split pairs, computed,
+reordered, repeated, omitted, or extra helper arguments, additional propagation, arbitrary Result
+widening, inference, reassignment, statements, effects, actions, runtimes, targets, adapters, UI,
+and deployment remain excluded. No behavior enters by implication.
+
+### PipeLang v0.55.0: direct-parameter checked propagation
+
+`v0.55.0` adds the existing checked-arithmetic Results to the inherited first-local direct-carrier
+propagation form:
+
+```pipe
+public Result<int, ArithmeticError> Continue(Result<int, ArithmeticError> carrier) {
+    int value = propagate(carrier);
+    return value + 0;
+}
+```
+
+The identical form is admitted for `Result<float, ArithmeticError>` with a `float` payload and an
+already admitted checked binary64 division continuation. The carrier is the method's sole direct
+parameter and exactly equals its return type. Propagation is the first typed local, whose type
+exactly equals the success payload. The complete carrier is validated before branching; canonical
+success is copied, while canonical `overflow` or `division_by_zero` returns immediately without
+evaluating the continuation.
+
+Typed HIR and target-neutral Core reuse `immutable_local`, `reference`, `propagate`, and checked
+arithmetic nodes. The evaluator and deterministic Core-only Go preserve the same validation,
+copying, and short-circuit semantics. `pipelang.compiler.v1`, `pipelang.semantic.v1`, and
+`dockpipe.application.v1` identities and shapes remain unchanged; only language-contract metadata
+advances to `v0.55.0`. A compiler-cursor fixture proves a checked cursor Result supplied by a
+caller can be consumed without losing overflow. The exact 45-source legacy lane remains frozen.
+
+Additional parameters, helper or computed propagation operands, later or split placement,
+additional propagation, mismatched carrier/payload types, arbitrary Result widening, inference,
+reassignment, statements, effects, actions, runtimes, targets, adapters, UI, and deployment remain
+excluded. The v0.54 helper form and every earlier source contract remain exact. No behavior enters
+by implication.
+
+### PipeLang v0.56.0: multi-parameter direct checked propagation
+
+`v0.56.0` adds one exact two-parameter form to direct checked propagation:
+
+```pipe
+public Result<int, ArithmeticError> Advance(
+    Result<int, ArithmeticError> carrier,
+    int operand
+) {
+    int value = propagate(carrier);
+    return value + operand;
+}
+```
+
+The integer operator may be `+`, `-`, or `*`. The identical `float` form admits only `/`. The
+arithmetic Result is the first parameter and exactly equals the method return type; the second and
+only other parameter exactly equals its success payload. Propagation remains the first typed local.
+The continuation uses that local as its left operand and the second direct parameter as its right
+operand. The complete carrier is validated before branching; canonical incoming failure returns
+without evaluating the continuation, while the continuation retains checked overflow or
+division-by-zero behavior.
+
+Typed HIR and target-neutral Core reuse `immutable_local`, `reference`, `propagate`, and checked
+arithmetic nodes. The evaluator and deterministic Core-only Go preserve the same validation,
+copying, operand order, and short-circuit semantics. `pipelang.compiler.v1`,
+`pipelang.semantic.v1`, and `dockpipe.application.v1` identities and shapes remain unchanged; only
+language-contract metadata advances to `v0.56.0`. A compiler-cursor fixture proves checked cursor
+plus width advancement. The exact 45-source legacy lane remains frozen.
+
+The exact two-parameter form is inherited through `v0.82.0`, including integer `+`, `-`, `*`
+and float `/`. Body and continuation inference use the inherited language contract, so advancing
+metadata does not lose the declared checked Result context. This conformance repair adds no
+language version, signature, placement, or operation.
+
+The inherited v0.55 sole-carrier and v0.54 helper forms remain exact. A third parameter, reordered
+carrier/operand, mismatched operand type, reversed/repeated/literal/computed operands, unary
+negation as the new two-parameter form, helper or computed propagation operands, later/split or
+additional propagation, arbitrary Result widening, inference, reassignment, statements, effects,
+actions, runtimes, targets, adapters, UI, and deployment remain excluded. No behavior enters by
+implication.
+
+### PipeLang v0.57.0: two-stage checked propagation
+
+`v0.57.0` adds one exact two-stage form:
+
+```pipe
+public Result<int, ArithmeticError> AdvanceTwice(
+    Result<int, ArithmeticError> carrier,
+    int first,
+    int second
+) {
+    int value = propagate(carrier);
+    Result<int, ArithmeticError> nextCarrier = value + first;
+    int next = propagate(nextCarrier);
+    return next + second;
+}
+```
+
+Each integer checked stage independently admits `+`, `-`, or `*`; the identical `float` form uses
+`/` at both stages. The incoming Result is the first parameter and method return, and the second and
+third parameters exactly equal its payload. The complete incoming carrier is validated and
+propagated, the first checked operation initializes one explicit Result local, that complete carrier
+is validated and propagated, and only then does the terminal checked operation evaluate. Incoming,
+intermediate, and terminal failures retain canonical `overflow` or `division_by_zero` behavior.
+
+Typed HIR and target-neutral Core reuse existing immutable-local, reference, propagation, and
+checked-arithmetic nodes. The evaluator and deterministic Core-only Go preserve exact evaluation
+order, copied success values, validation, and short-circuiting. `pipelang.compiler.v1`,
+`pipelang.semantic.v1`, and `dockpipe.application.v1` identities and shapes remain unchanged; only
+language-contract metadata advances to `v0.57.0`. A compiler-cursor fixture proves two checked
+width advances. The exact 45-source legacy lane remains frozen.
+
+The inherited v0.54-v0.56 forms remain exact. A fourth parameter, reordered/mismatched parameters,
+reversed/repeated/literal/computed operands, missing/additional stages, direct propagation of a
+computed expression, helper propagation, arbitrary Results, inference, reassignment, statements,
+effects, actions, runtimes, targets, adapters, UI, and deployment remain excluded. No behavior
+enters by implication.
+
+### PipeLang v0.58.0: generalized checked-propagation chains
+
+The inherited v0.57 two-stage form and v0.58 generalized chains remain admitted through v0.82.
+The multi-stage inheritance repair aligns intermediate arithmetic-local inference with the existing
+inherited contract, preserving exact stage order and canonical failure behavior.
+
+`v0.58.0` generalizes the v0.57 shape to a contiguous chain of two or more checked stages:
+
+```pipe
+public Result<int, ArithmeticError> AdvanceThree(
+    Result<int, ArithmeticError> carrier,
+    int first,
+    int second,
+    int third
+) {
+    int value = propagate(carrier);
+    Result<int, ArithmeticError> secondCarrier = value + first;
+    int secondValue = propagate(secondCarrier);
+    Result<int, ArithmeticError> thirdCarrier = secondValue - second;
+    int thirdValue = propagate(thirdCarrier);
+    return thirdValue * third;
+}
+```
+
+For `K >= 2` stages, the method takes the arithmetic Result first and exactly `K` matching payload
+parameters. Every non-terminal checked operation must initialize an explicit Result local and the
+immediately following local must propagate that carrier; the terminal checked operation uses the
+last propagated payload and final parameter. Integer stages independently admit `+`, `-`, or `*`;
+the identical `float` form uses `/` at every stage. Each complete carrier is validated once,
+success is copied, and incoming or intermediate failure returns before any later operation.
+
+Typed HIR and target-neutral Core reuse existing nodes and validate the full parameter/local chain
+independently. The evaluator and deterministic Core-only Go preserve exact source order and
+canonical overflow or division-by-zero. `pipelang.compiler.v1`, `pipelang.semantic.v1`, and
+`dockpipe.application.v1` identities and shapes remain unchanged; only language-contract metadata
+advances to `v0.58.0`. A three-stage compiler-cursor fixture and metadata-only Application IR
+consumer prove the boundary. The exact 45-source legacy lane remains frozen.
+
+The inherited v0.54-v0.57 forms remain exact. Fewer than two stages, missing/additional chain
+locals, ordinary-local gaps, reordered/mismatched parameters, reversed/repeated/literal/computed
+operands, direct computed propagation, helper propagation, arbitrary Results, inference,
+reassignment, statements, effects, actions, runtimes, targets, adapters, UI, and deployment remain
+excluded. No behavior enters by implication.
+
+### PipeLang v0.59.0: bounded cross-payload Result propagation
+
+`v0.59.0` adds one exact target-shaping propagation form:
+
+```pipe
+public Result<List<Token>, string> Parse(Result<string, string> scanned) {
+    string source = propagate(scanned);
+    return ParseTokens(source);
+}
+```
+
+The public pure method has exactly one direct `Result<T, string>` parameter and returns
+`Result<U, string>`, where `T` and `U` are distinct and each is either `string` or `List<R>` for
+an existing public primitive-field record `R`. Its first and only local propagates the direct
+parameter into an explicitly typed `T` value. Its terminal expression calls one resolved public
+pure same-class helper exactly once with that direct local; the helper signature is exactly
+`T -> Result<U, string>`.
+
+The complete incoming carrier is validated once. Success copies `T` and invokes the helper once;
+the helper's complete target carrier is then validated and copied normally. Failure skips the
+helper and constructs the canonical target-shaped `Result<U, string>` failure, preserving the
+validated copied error text while using the canonical zero `U` payload (empty text or a nil list).
+Typed HIR and target-neutral Core reuse existing immutable-local, propagation, reference, and call
+nodes. `pipelang.compiler.v1`, `pipelang.semantic.v1`, and `dockpipe.application.v1` identities and
+shapes remain unchanged; only language metadata advances to `v0.59.0`. The exact 45-source legacy
+lane remains frozen.
+
+The inherited v0.54-v0.58 forms remain exact. Same-payload propagation gains no new spelling.
+Arbitrary failure types, Optional or arithmetic carriers, extra parameters or locals, additional
+propagation, computed carriers, `propagate(Helper(...))`, helper propagation, helper arguments other
+than the direct propagated local, private/cross-class/mismatched/overloaded/generic helpers,
+inference, reassignment, statements, effects, actions, runtimes, targets, adapters, UI, and
+deployment remain excluded. No behavior enters by implication.
+
+### PipeLang v0.60.0: two-stage bounded cross-payload Result propagation
+
+`v0.60.0` adds one exact two-stage target-shaping propagation form:
+
+```pipe
+public Result<List<SyntaxNode>, string> Compile(Result<string, string> scanned) {
+    string source = propagate(scanned);
+    Result<List<Token>, string> tokenized = BuildTokens(source);
+    List<Token> tokens = propagate(tokenized);
+    return BuildSyntax(tokens);
+}
+```
+
+The public pure method has exactly one direct `Result<T, string>` parameter and returns
+`Result<V, string>`. Its first local propagates that carrier to `T`; its second local stores one
+exact public pure same-class `T -> Result<U, string>` helper call; its third local directly
+propagates that explicit carrier to `U`; and its terminal expression calls one exact public pure
+same-class `U -> Result<V, string>` helper. `T`, `U`, and `V` are each `string` or `List<R>` for an
+existing public primitive-field record. Adjacent payloads must differ; the source and target may be
+equal.
+
+Every complete carrier is validated once. Each successful text or list payload is copied before
+the next helper receives it. Incoming failure skips both helpers; intermediate failure skips the
+terminal helper. Either failure is reshaped to the canonical target `Result<V, string>`, preserving
+copied validated error text and the target payload's canonical zero. Typed HIR and target-neutral
+Core reuse existing immutable-local, propagation, reference, and call nodes.
+`pipelang.compiler.v1`, `pipelang.semantic.v1`, and `dockpipe.application.v1` identities and shapes
+remain unchanged; only language metadata advances to `v0.60.0`. The exact 45-source legacy lane
+remains frozen.
+
+The inherited v0.54-v0.59 forms remain exact. General `K`-stage Result chains, same-payload adjacent
+stages, extra parameters or locals, arbitrary failure types, computed carriers,
+`propagate(Helper(...))`, helper propagation, helper arguments other than the direct preceding
+payload local, private/cross-class/mismatched/overloaded/generic helpers, inference, reassignment,
+statements, branches, loops, effects, actions, runtimes, targets, adapters, UI, and deployment
+remain excluded. No behavior enters by implication.
+
+### PipeLang v0.61.0: generalized bounded cross-payload Result propagation chains
+
+`v0.61.0` generalizes the v0.60 form to `K >= 2` adjacent target-shaping stages:
+
+```pipe
+public Result<string, string> Compile(Result<string, string> scanned) {
+    string source = propagate(scanned);
+    Result<List<Token>, string> tokenized = BuildTokens(source);
+    List<Token> tokens = propagate(tokenized);
+    Result<List<SyntaxNode>, string> parsed = BuildSyntax(tokens);
+    List<SyntaxNode> syntax = propagate(parsed);
+    return EmitSource(syntax);
+}
+```
+
+The public pure method has exactly one direct `Result<T0, string>` parameter and returns
+`Result<TK, string>`. Its first local directly propagates the parameter. Every non-terminal helper
+stage is an adjacent pair containing an explicit `Result<Ti, string>` helper-call local followed
+immediately by a direct propagation local of type `Ti`; the terminal expression calls the final
+helper with the immediately preceding payload local. Every helper is public, pure, same-class, and
+has the exact adjacent `Ti-1 -> Result<Ti, string>` signature. Every payload is `string` or
+`List<R>` for an existing public primitive-field record, and adjacent payloads differ. Non-adjacent
+payloads may match.
+
+Every complete carrier is validated and copied once. Incoming or intermediate failure skips every
+later helper and is reshaped to the canonical final `Result<TK, string>` failure, preserving copied
+validated error text and the final payload's canonical zero. Typed HIR and target-neutral Core
+reuse existing immutable-local, propagation, reference, and call nodes. `pipelang.compiler.v1`,
+`pipelang.semantic.v1`, and `dockpipe.application.v1` identities and shapes remain unchanged; only
+language metadata advances to `v0.61.0`. The exact 45-source legacy lane remains frozen.
+
+The inherited v0.54-v0.60 forms remain exact. Fewer than two stages in the generalized form,
+same-payload adjacent stages, missing/additional/gapped locals, extra parameters, arbitrary failure
+types, computed carriers, `propagate(Helper(...))`, helper propagation, helper arguments other than
+the direct preceding payload local, private/cross-class/mismatched/overloaded/generic helpers,
+inference, reassignment, statements, branches, loops, effects, actions, runtimes, targets, adapters,
+UI, and deployment remain excluded. No behavior enters by implication.
+
+### PipeLang v0.62.0: contextual bounded cross-payload Result propagation chains
+
+`v0.62.0` adds exactly one direct `string` context parameter to the v0.61 generalized chain:
+
+```pipe
+public Result<string, string> Compile(Result<string, string> scanned, string context) {
+    string source = propagate(scanned);
+    Result<List<Token>, string> tokenized = BuildTokens(source, context);
+    List<Token> tokens = propagate(tokenized);
+    Result<List<SyntaxNode>, string> parsed = BuildSyntax(tokens, context);
+    List<SyntaxNode> syntax = propagate(parsed);
+    return EmitSource(syntax, context);
+}
+```
+
+Every helper receives the immediately preceding payload local first and the same direct `context`
+parameter second. Its exact signature is `(Ti-1, string) -> Result<Ti, string>`. The chain remains
+public, pure, same-class, contiguous, and at least two stages long. Every non-terminal Result is an
+explicit local immediately followed by its direct propagation local; payloads remain `string` or
+`List<R>` for an existing public primitive-field record; adjacent payloads differ; and the shared
+failure type remains `string`.
+
+Every invoked helper receives the validated context exactly once. Every complete carrier is
+validated and copied once, and incoming or intermediate failure skips every later helper while
+producing the canonical final-target-shaped failure. Typed HIR and target-neutral Core reuse the
+existing immutable-local, reference, propagation, and call nodes. `pipelang.compiler.v1`,
+`pipelang.semantic.v1`, and `dockpipe.application.v1` identities and shapes remain unchanged; only
+language metadata advances to `v0.62.0`. The exact 45-source legacy lane remains frozen.
+
+The inherited v0.54-v0.61 forms remain exact. Missing, reordered, repeated, computed, non-string,
+stage-specific, or additional context arguments; a third caller parameter; same-payload adjacent
+stages; gapped or additional locals; computed carriers; `propagate(Helper(...))`; helper
+propagation; arbitrary error types; Optional/arithmetic carriers; private/cross-class/mismatched/
+overloaded/generic helpers; inference; reassignment; statements; branches; loops; effects; actions;
+runtimes; targets; adapters; UI; and deployment remain excluded. No behavior enters by implication.
+
+### PipeLang v0.63.0: one-stage contextual bounded cross-payload Result propagation
+
+`v0.63.0` closes the one-stage contextual boundary while retaining every v0.62 chain rule:
+
+```pipe
+public Result<List<Token>, string> Compile(Result<string, string> scanned, string context) {
+    string source = propagate(scanned);
+    return BuildTokens(source, context);
+}
+```
+
+The caller has exactly one direct bounded Result carrier followed by one direct `string` context.
+The carrier is propagated into the first and only typed local. One resolved public pure same-class
+helper receives that direct local followed by the unchanged context and has exact signature
+`(T, string) -> Result<U, string>`. `T` and `U` are distinct and remain text or lists of existing
+public primitive-field records; the shared failure type remains `string`.
+
+The incoming carrier is validated and copied once. Failure skips the helper and becomes the
+canonical target-shaped Result with copied validated error text. Success passes validated context
+once and validates the helper Result once. Typed HIR and target-neutral Core reuse existing nodes;
+Core independently verifies the complete shape. `pipelang.compiler.v1`, `pipelang.semantic.v1`,
+and `dockpipe.application.v1` identities and shapes remain unchanged; only language metadata
+advances to `v0.63.0`. The exact 45-source legacy lane remains frozen.
+
+The inherited v0.54-v0.62 forms remain exact. Same-payload flow; a missing, reordered, repeated,
+computed, non-string, or additional context; a third caller parameter; extra locals or propagation;
+computed carriers; `propagate(Helper(...))`; helper propagation; arbitrary error types;
+Optional/arithmetic carriers; private/cross-class/mismatched/overloaded/generic helpers; inference;
+reassignment; statements; branches; loops; effects; actions; runtimes; targets; adapters; UI; and
+deployment remain excluded. No behavior enters by implication.
+
+### PipeLang v0.64.0: one-stage contextual same-payload Result propagation
+
+`v0.64.0` adds the payload-preserving counterpart to the exact v0.63 one-stage contextual form:
+
+```pipe
+public Result<string, string> Normalize(Result<string, string> input, string context) {
+    string value = propagate(input);
+    return NormalizeValue(value, context);
+}
+```
+
+The caller still has exactly one direct bounded Result carrier followed by one direct `string`
+context. The carrier is propagated into the first and only typed local. One resolved public pure
+same-class helper receives that direct local followed by the unchanged context and has exact
+signature `(T, string) -> Result<T, string>`. `T` is exactly `string` or `List<R>` for an existing
+public primitive-field record, and the shared failure type remains `string`.
+
+The incoming carrier is validated and copied once. Failure skips the helper and returns the
+canonical same-shaped Result with copied validated error text. Success passes validated context
+once and validates the helper Result once. Typed HIR and target-neutral Core reuse existing nodes;
+Core independently verifies the complete shape. `pipelang.compiler.v1`, `pipelang.semantic.v1`,
+and `dockpipe.application.v1` identities and shapes remain unchanged; only language metadata
+advances to `v0.64.0`. The exact 45-source legacy lane remains frozen.
+
+The inherited v0.54-v0.63 forms remain exact. Same-payload contextual chains with two or more
+stages; a missing, reordered, repeated, computed, non-string, or additional context; a third caller
+parameter; extra locals or propagation; computed carriers; `propagate(Helper(...))`; helper
+propagation; arbitrary error types; Optional/arithmetic carriers; private/cross-class/mismatched/
+overloaded/generic helpers; inference; reassignment; statements; branches; loops; effects; actions;
+runtimes; targets; adapters; UI; and deployment remain excluded. No behavior enters by implication.
+
+### PipeLang v0.65.0: exact two-stage contextual bounded Result propagation
+
+`v0.65.0` extends the exact v0.62 two-stage contextual form so either or both adjacent payload
+transitions may preserve their payload type:
+
+```pipe
+public Result<string, string> Normalize(Result<string, string> input, string context) {
+    string first = propagate(input);
+    Result<string, string> checked = Check(first, context);
+    string second = propagate(checked);
+    return Finish(second, context);
+}
+```
+
+The caller still has exactly one direct bounded Result carrier followed by one direct `string`
+context. It has exactly two helper stages: the direct carrier propagation, an immediately following
+helper-Result local, its immediately following propagation local, and a terminal helper call.
+`T0`, `T1`, and `T2` are each exactly `string` or `List<R>` for an existing public primitive-field
+record. Both resolved helpers are public, pure, same-class, and exact
+`(Ti, string) -> Result<Ti+1, string>` methods. Every reached helper receives the unchanged direct
+context once.
+
+Each carrier is validated and copied once. Incoming or first-helper failure skips all later helpers
+and returns a canonical final-shaped Result with copied validated error text. Typed HIR and
+target-neutral Core reuse existing nodes; Core independently verifies the complete shape.
+`pipelang.compiler.v1`, `pipelang.semantic.v1`, and `dockpipe.application.v1` identities and shapes
+remain unchanged; only language metadata advances to `v0.65.0`. The exact 45-source legacy lane
+remains frozen.
+
+The inherited v0.54-v0.64 forms remain exact. Same-payload transitions in contextual chains with
+three or more stages; a missing, reordered, repeated, computed, non-string, or additional context;
+a third caller parameter; extra or gapped locals; additional propagation; computed carriers;
+`propagate(Helper(...))`; arbitrary error types; Optional/arithmetic carriers; private,
+cross-class, mismatched, overloaded, or generic helpers; inference; reassignment; statements;
+branches; loops; effects; actions; runtimes; targets; adapters; UI; and deployment remain excluded.
+No behavior enters by implication.
+
+### PipeLang v0.66.0: generalized contextual bounded Result propagation
+
+`v0.66.0` generalizes the contextual `K >= 2` chain so any adjacent payload transition may preserve
+or change its payload type:
+
+```pipe
+public Result<List<SyntaxNode>, string> Compile(Result<string, string> input, string context) {
+    string source = propagate(input);
+    Result<string, string> normalizedCarrier = Normalize(source, context);
+    string normalized = propagate(normalizedCarrier);
+    Result<List<Token>, string> tokenCarrier = Tokenize(normalized, context);
+    List<Token> tokens = propagate(tokenCarrier);
+    Result<List<Token>, string> preservedCarrier = PreserveTokens(tokens, context);
+    List<Token> preserved = propagate(preservedCarrier);
+    return Parse(preserved, context);
+}
+```
+
+The caller still has exactly one direct bounded Result carrier followed by one direct `string`
+context. The chain has at least two helper stages. Every non-terminal helper Result is stored in an
+explicit local immediately followed by its direct propagation local, and the final stage is one
+terminal helper call. Every payload is exactly `string` or `List<R>` for an existing public
+primitive-field record. Every resolved helper is public, pure, same-class, and exact
+`(Ti, string) -> Result<Ti+1, string>`. Every reached helper receives the immediately preceding
+payload and unchanged direct context once.
+
+Every carrier is validated and copied once. Incoming or intermediate failure skips all later
+helpers and returns a canonical final-shaped Result with copied validated error text. Typed HIR and
+target-neutral Core reuse existing nodes; Core independently verifies arbitrary admitted chain
+length and the complete local, type, identity, and helper shape. `pipelang.compiler.v1`,
+`pipelang.semantic.v1`, and `dockpipe.application.v1` identities and shapes remain unchanged; only
+language metadata advances to `v0.66.0`. The exact 45-source legacy lane remains frozen.
+
+The inherited v0.54-v0.65 forms remain exact. Fewer than two contextual helper stages; a missing,
+reordered, repeated, computed, non-string, stage-specific, or additional context; a third caller
+parameter; missing, additional, or gapped locals; computed carriers; `propagate(Helper(...))`;
+arbitrary error types; Optional/arithmetic carriers; private, cross-class, mismatched, overloaded,
+or generic helpers; inference; reassignment; statements; branches; loops; effects; actions;
+runtimes; targets; adapters; UI; and deployment remain excluded. No behavior enters by implication.
+
+### PipeLang v0.67.0: generalized shared-context Result propagation
+
+`v0.67.0` generalizes the v0.66 contextual `K >= 2` chain to one or more direct `string` context
+parameters:
+
+```pipe
+public Result<List<SyntaxNode>, string> Compile(
+    Result<string, string> input,
+    string phase,
+    string scope) {
+    string source = propagate(input);
+    Result<string, string> normalizedCarrier = Normalize(source, phase, scope);
+    string normalized = propagate(normalizedCarrier);
+    Result<List<Token>, string> tokenCarrier = Tokenize(normalized, phase, scope);
+    List<Token> tokens = propagate(tokenCarrier);
+    return Parse(tokens, phase, scope);
+}
+```
+
+The caller has one direct bounded Result carrier followed by `N >= 1` direct `string` contexts. The
+chain still has `K >= 2` helper stages. Every helper receives the immediately preceding payload
+first, then every unchanged context exactly once in caller declaration order, and has the exact
+`(Ti, string...) -> Result<Ti+1, string>` signature. Every payload remains `string` or `List<R>` for
+an existing public primitive-field record. Every non-terminal helper Result remains an explicit
+local immediately followed by direct propagation, and the final stage remains a terminal helper
+call.
+
+Typed HIR and target-neutral Core reuse existing nodes and preserve parameter positions. Core
+independently validates the complete ordered context vector on every stage. Evaluation and
+deterministic Core-only Go validate and copy every reached carrier once, pass every validated
+context unchanged to each reached helper, and reshape failures into the canonical final Result
+before later helpers can run. `pipelang.compiler.v1`, `pipelang.semantic.v1`, and
+`dockpipe.application.v1` identities and shapes remain unchanged; only language metadata advances
+to `v0.67.0`. The exact 45-source legacy lane remains frozen.
+
+The inherited v0.54-v0.66 forms remain exact. A contextual chain with no context; a one-stage chain
+with multiple contexts; missing, reordered, repeated, computed, non-string, or stage-specific
+contexts; missing, additional, or gapped locals; computed carriers; `propagate(Helper(...))`;
+arbitrary failure types; Optional/arithmetic carriers; private, cross-class, mismatched, overloaded,
+or generic helpers; inference; reassignment; statements; branches; loops; effects; actions;
+runtimes; targets; adapters; UI; and deployment remain excluded. No behavior enters by implication.
+
+### PipeLang v0.68.0: generalized one-stage shared-context Result propagation
+
+`v0.68.0` generalizes the v0.64 one-stage contextual form to one or more direct `string` context
+parameters:
+
+```pipe
+public Result<List<Token>, string> Tokenize(
+    Result<string, string> input,
+    string phase,
+    string scope) {
+    string source = propagate(input);
+    return ScanTokens(source, phase, scope);
+}
+```
+
+The caller has one direct bounded Result carrier followed by `N >= 1` direct string contexts. Its
+first and only typed local directly propagates the carrier, and its terminal helper receives that
+payload followed by every unchanged context exactly once in caller declaration order. Source and
+target payloads may match or differ and remain `string` or `List<R>` for an existing public
+primitive-field record. The helper remains resolved, public, pure, same-class, and exact
+`(T0, string...) -> Result<T1, string>`.
+
+Typed HIR and target-neutral Core reuse existing nodes and preserve parameter positions. Core
+independently validates the complete ordered context vector, single propagation, exact helper
+signature, and bounded Result shape. Evaluation and deterministic Core-only Go validate direct
+inputs, copy the reached carrier once, pass every context unchanged, and return canonical
+target-shaped failure without invoking the helper when the incoming carrier fails.
+`pipelang.compiler.v1`, `pipelang.semantic.v1`, and `dockpipe.application.v1` identities and shapes
+remain unchanged; only language metadata advances to `v0.68.0`. The exact 45-source legacy lane
+remains frozen.
+
+The inherited v0.54-v0.67 forms remain exact. A contextual form with no context; missing,
+reordered, repeated, computed, non-string, or stage-specific contexts; additional or gapped locals;
+computed carriers; `propagate(Helper(...))`; arbitrary failure types; Optional/arithmetic carriers;
+private, cross-class, mismatched, overloaded, or generic helpers; inference; reassignment;
+statements; branches; loops; effects; actions; runtimes; targets; adapters; UI; and deployment remain
+excluded. No behavior enters by implication.
+
+### PipeLang v0.69.0: terminal statement-level `if/else`
+
+`v0.69.0` admits one terminal conditional after one or more ordered immutable locals:
+
+```pipe
+public string Select(string raw, bool normalize) {
+    string cleaned = trim(raw);
+    if (normalize) { return cleaned; }
+    else { return raw; }
+}
+```
+
+The condition is `bool`, both branches have the declared method return type, and all locals,
+condition values, and branch values remain already-admitted eager pure expressions or calls. At
+most one preceding local initializer may use the inherited bounded conditional expression. Typed
+HIR and target-neutral Core reuse the existing conditional representation with an explicit
+terminal-statement marker. Core independently validates the required preceding local, unique
+terminal placement, boolean condition, branch types, and absence of propagation or matching in the
+method. Evaluation and deterministic Core-only Go evaluate only the selected branch.
+`pipelang.compiler.v1`, `pipelang.semantic.v1`, and `dockpipe.application.v1` remain unchanged; only
+language metadata advances to `v0.69.0`. The exact 45-source legacy lane remains frozen.
+
+The inherited v0.54-v0.68 forms remain exact. Zero-local terminal conditionals, branch locals,
+nested branches, missing `else`, fallthrough or returns elsewhere, propagation or matching in the
+method, assignment, reassignment, shadowing, inference, loops, effects, actions, runtimes, targets,
+adapters, UI, and deployment remain excluded. No behavior enters by implication.
+
+### PipeLang v0.70.0: lexical terminal-branch locals
+
+`v0.70.0` preserves the v0.69 terminal `if/else` shape and permits either branch to declare at most
+one explicitly typed immutable local immediately before its return:
+
+```pipe
+public string Select(string raw, bool normalize) {
+    string cleaned = raw;
+    if (normalize) {
+        string selected = trim(cleaned);
+        return selected;
+    } else {
+        return raw;
+    }
+}
+```
+
+At least one top-level ordered immutable local still precedes the terminal branch. A branch may
+retain the direct-return form or use exactly one local; both branches may use locals, and equal
+names in opposing branches denote independent lexical bindings. A branch local is initialized only
+when its branch is selected and cannot be referenced by the condition, the opposing branch, or
+outside the terminal conditional. The condition remains `bool`, all explicit local and method
+types must match their values, and existing eager pure expressions and calls remain the only
+admitted computations. HIR and Core reuse `immutable_local` inside the existing terminal
+`conditional`; the evaluator and deterministic Core-only Go preserve selected-branch evaluation.
+
+Nested branches, multiple locals in one branch, escaping bindings, propagation, matching,
+assignment, fallthrough, other early returns, loops, effects, inference, actions, runtimes,
+targets, adapters, UI, and deployment remain excluded. `pipelang.compiler.v1`,
+`pipelang.semantic.v1`, and `dockpipe.application.v1` remain unchanged; only language metadata
+advances to `v0.70.0`. The exact 45-source legacy lane remains frozen.
+
+### PipeLang v0.71.0: two-local terminal-branch sequences
+
+`v0.71.0` widens only the v0.70 per-branch local cap from one to two:
+
+```pipe
+public string Select(string raw, bool normalize) {
+    string cleaned = raw;
+    if (normalize) {
+        string prepared = trim(cleaned);
+        string selected = Normalize(prepared);
+        return selected;
+    } else {
+        return raw;
+    }
+}
+```
+
+Either branch may contain zero, one, or two explicitly typed ordered immutable locals immediately
+before its return. A second local may reference the first local in that branch. Opposing branches
+remain independent lexical scopes and may reuse names and binding positions. Branch initializers
+run in source order only when their branch is selected, and bindings cannot escape. One or more
+top-level ordered immutable locals remain required.
+
+A third branch local, nested branches, zero top-level locals, propagation, matching, assignment,
+fallthrough, other early returns, loops, effects, inference, actions, runtimes, targets, adapters,
+UI, and deployment remain excluded. `pipelang.compiler.v1`, `pipelang.semantic.v1`, and
+`dockpipe.application.v1` remain unchanged; only language metadata advances to `v0.71.0`. The
+exact 45-source legacy lane remains frozen.
+
+### PipeLang v0.72.0: general terminal-branch local sequences
+
+`v0.72.0` removes only the v0.71 per-branch local count ceiling:
+
+```pipe
+public string Select(string raw, bool normalize) {
+    string cleaned = raw;
+    if (normalize) {
+        string first = trim(cleaned);
+        string second = Normalize(first);
+        string third = second;
+        return third;
+    } else {
+        return raw;
+    }
+}
+```
+
+Either branch may contain any finite source-ordered sequence of explicitly typed immutable locals
+immediately before its return. Each local enters scope only after its initializer, so later locals
+may reference earlier locals in the same branch. Opposing branches remain independent lexical
+scopes and may reuse names and canonical binding positions. Branch initializers run in source order
+only when their branch is selected, and bindings cannot escape. One or more top-level ordered
+immutable locals remain required.
+
+Nested branches, zero top-level locals, propagation, matching, assignment, fallthrough, other early
+returns, loops, effects, inference, actions, runtimes, targets, adapters, UI, and deployment remain
+excluded. `pipelang.compiler.v1`, `pipelang.semantic.v1`, and `dockpipe.application.v1` remain
+unchanged; only language metadata advances to `v0.72.0`. The exact 45-source legacy lane remains
+frozen.
+
+### PipeLang v0.73.0: direct terminal `if/else`
+
+`v0.73.0` removes only the v0.72 top-level-local prerequisite. The existing terminal conditional
+may be the complete public pure method body:
+
+```pipe
+public string Select(string raw, bool normalize) {
+    if (normalize) {
+        string cleaned = trim(raw);
+        string selected = cleaned;
+        return selected;
+    } else {
+        return raw;
+    }
+}
+```
+
+Either branch may return directly or retain any finite source-ordered sequence of explicitly typed
+immutable locals followed by its return. Each local enters scope only after its initializer; later
+locals may reference earlier locals in the same branch. Opposing branches remain independent
+lexical scopes, may reuse names and canonical binding positions, execute only when selected, and
+cannot leak bindings.
+
+Typed HIR and target-neutral Core reuse the existing root `conditional` and nested
+`immutable_local` nodes. Nested branches, propagation, matching, assignment, fallthrough, other
+early returns, ordinary zero-local blocks, loops, effects, inference, actions, runtimes, targets,
+adapters, UI, and deployment remain excluded. `pipelang.compiler.v1`, `pipelang.semantic.v1`, and
+`dockpipe.application.v1` remain unchanged; only language metadata advances to `v0.73.0`. The exact
+45-source legacy lane remains frozen.
+
+### PipeLang v0.74.0: bounded nested terminal `if/else`
+
+`v0.74.0` adds one bounded nested decision to the direct v0.73 terminal form. The complete method
+body has no top-level immutable locals. Exactly one outer branch may end in exactly one inner
+terminal `if/else` after zero or more source-ordered, explicitly typed immutable locals; the sibling
+outer branch retains the v0.73 branch form, and both inner leaves return directly:
+
+```pipe
+public string Select(string raw, bool enabled, bool normalize) {
+    if (enabled) {
+        string cleaned = trim(raw);
+        if (normalize) {
+            return cleaned;
+        } else {
+            return raw;
+        }
+    } else {
+        return "disabled";
+    }
+}
+```
+
+Both conditions must be `bool`, and every leaf must have the exact declared return type. Outer-
+branch locals enter scope after their initializer and remain visible to the inner condition and
+both inner leaves. Evaluation remains source ordered and selected-branch-only at both levels.
+
+Typed HIR and target-neutral Core reuse the existing terminal `conditional` and `immutable_local`
+nodes; no node or schema identity changes. Inner locals, nesting in both outer branches, a second
+nested decision, third-level nesting, top-level locals for the new topology, propagation, matching,
+conditional expressions within the topology, assignment, fallthrough, other early returns, loops,
+effects, inference, actions, runtimes, targets, adapters, UI, and deployment remain excluded.
+`pipelang.compiler.v1`, `pipelang.semantic.v1`, and `dockpipe.application.v1` remain unchanged; only
+language metadata advances to `v0.74.0`. The inherited v0.69-v0.73 forms remain exact, and the
+45-source legacy lane remains frozen.
+
+### PipeLang v0.75.0: inner terminal-leaf immutable-local sequences
+
+`v0.75.0` widens only the inner leaves of the exact v0.74 nested terminal topology. Either inner
+leaf may contain any finite source-ordered sequence of explicitly typed immutable locals before its
+return:
+
+```pipe
+public string Select(string raw, bool enabled, bool normalize) {
+    if (enabled) {
+        string cleaned = trim(raw);
+        if (normalize) {
+            string normalized = trim(cleaned);
+            string selected = normalized;
+            return selected;
+        } else {
+            string selected = raw;
+            return selected;
+        }
+    } else {
+        return "disabled";
+    }
+}
+```
+
+Each inner-leaf local enters scope only after its initializer. Later locals may reference earlier
+locals in the same leaf; self-reference, forward reference, duplicate names, shadowing,
+cross-leaf references, and escaping bindings remain invalid. Outer-branch locals remain visible to
+the inner condition and both leaves. Both conditions remain `bool`, every return retains the exact
+declared method type, and evaluation remains source ordered and selected-branch-only.
+
+Typed HIR and target-neutral Core reuse the existing terminal `conditional` and `immutable_local`
+nodes; no node or schema identity changes. Top-level locals for the nested topology, nesting in both
+outer branches, another nested decision, third-level nesting, conditional expressions within the
+topology, propagation, matching, assignment, fallthrough, other early returns, loops, effects,
+inference, actions, runtimes, targets, adapters, UI, and deployment remain excluded.
+`pipelang.compiler.v1`, `pipelang.semantic.v1`, and `dockpipe.application.v1` remain unchanged; only
+language metadata advances to `v0.75.0`. The inherited v0.69-v0.74 forms remain exact, and the
+45-source legacy lane remains frozen.
+
+### PipeLang v0.76.0: root locals before bounded nested terminal `if/else`
+
+`v0.76.0` permits one or more source-ordered explicitly typed immutable locals before the exact
+v0.75 one-branch bounded nested terminal topology:
+
+```pipe
+public string Select(string raw, bool enabled, bool normalize) {
+    string shared = trim(raw);
+    string selectedInput = shared;
+    if (enabled) {
+        string cleaned = selectedInput;
+        if (normalize) {
+            string normalized = trim(cleaned);
+            return normalized;
+        } else {
+            return selectedInput;
+        }
+    } else {
+        return "disabled";
+    }
+}
+```
+
+Root locals evaluate eagerly once in source order before the outer condition. Each enters scope
+only after its initializer and remains visible to the outer condition, both outer branches, and
+all descendant branches. Self-reference, forward reference, duplicate names, shadowing, and
+escaping bindings remain invalid. Both conditions remain `bool`, every return retains the exact
+declared method type, and branch evaluation remains selected-branch-only after the eager root
+sequence.
+
+Typed HIR and target-neutral Core reuse the existing terminal `conditional` and `immutable_local`
+nodes; no node or schema identity changes. The inherited rootless v0.75 form remains exact.
+Nesting in both outer branches, another nested decision, third-level nesting, conditional
+expressions within the topology or root-local nested form, propagation, matching, assignment,
+fallthrough, other early returns, loops, effects, inference, actions, runtimes, targets, adapters,
+UI, and deployment remain excluded. `pipelang.compiler.v1`, `pipelang.semantic.v1`, and
+`dockpipe.application.v1` remain unchanged; only language metadata advances to `v0.76.0`. The
+45-source legacy lane remains frozen.
+
+### PipeLang v0.77.0: symmetric depth-two terminal `if/else`
+
+`v0.77.0` permits one or more explicitly typed immutable root locals before an outer terminal
+`if/else` whose two branches each end in exactly one inner terminal `if/else`:
+
+```pipe
+public string Select(string raw, bool outer, bool left, bool right) {
+    string shared = trim(raw);
+    if (outer) {
+        string trueValue = shared;
+        if (left) { return trueValue; }
+        else { return "outer-true"; }
+    } else {
+        string falseValue = shared;
+        if (right) { return falseValue; }
+        else { return "outer-false"; }
+    }
+}
+```
+
+Root locals evaluate eagerly once before the outer condition. Only the selected outer branch, its
+locals, its inner condition, and its selected leaf evaluate. Root bindings are visible throughout;
+outer-branch bindings remain within that branch and its inner leaves; inner-leaf bindings remain
+within the selected leaf. All three conditions are `bool`, and every return has the exact declared
+method type.
+
+Typed HIR and target-neutral Core reuse the existing terminal `conditional` and `immutable_local`
+nodes; no node or schema identity changes. All v0.69-v0.76 forms remain exact. The symmetric
+topology without a root local, third-level or additional nesting, conditional expressions within
+the topology, propagation, matching, assignment, fallthrough, other early returns, loops, effects,
+inference, actions, runtimes, targets, adapters, UI, and deployment remain excluded.
+`pipelang.compiler.v1`, `pipelang.semantic.v1`, and `dockpipe.application.v1` remain unchanged; only
+language metadata advances to `v0.77.0`. The 45-source legacy lane remains frozen.
+
+### PipeLang v0.78.0: rootless symmetric depth-two terminal `if/else`
+
+`v0.78.0` additionally permits the exact symmetric depth-two terminal `if/else` topology
+without a preceding root immutable local. Both outer branches end in exactly one inner terminal
+`if/else`. Each outer branch and each inner leaf admits zero or more source-ordered, explicitly
+typed immutable locals. All three conditions are `bool`; every leaf returns exactly the declared
+method type. Bindings enter scope after their initializer. Self/forward references, duplicates,
+shadowing, cross-branch references, and escaping bindings remain invalid. Only the selected outer
+branch, its inner condition, and its selected leaf execute.
+
+The compiler reuses terminal `conditional` and `immutable_local` HIR/Core representations. Core
+independently checks exact topology, types, lexical bindings, and canonical positions; the Go
+backend refuses malformed Core. Existing rootful v0.77 and earlier accepted forms retain their
+behavior. `pipelang.compiler.v1`, `pipelang.semantic.v1`, and `dockpipe.application.v1` identities
+and shapes remain stable; only language metadata advances. The exact 45-source compatibility
+lane remains frozen.
+
+Third-level/additional nesting, conditional expressions within this topology, propagation,
+matching, assignment, fallthrough, other early returns, loops, effects, and inference remain
+excluded. This slice adds no workflow, runtime, action, target, adapter, UI, or deployment behavior.
+
+```pipe
+public string Select(string raw, bool outer, bool left, bool right) {
+    if (outer) {
+        string value = raw;
+        if (left) { return value; }
+        else { return "outer-true"; }
+    } else {
+        string value = trim(raw);
+        if (right) { return value; }
+        else { return "outer-false"; }
+    }
+}
+```
+
+### PipeLang v0.79.0: bounded depth-three terminal `if/else`
+
+`v0.79.0` additionally permits an inherited rootful v0.77 or rootless v0.78 symmetric depth-two
+terminal topology to replace exactly one of its four terminal leaves with one additional terminal
+`if/else`. The result has exactly four terminal conditionals and five terminal return paths. The
+expanded path may contain any finite source-ordered sequence of explicitly typed immutable locals
+before the third-level decision, and both new leaves may contain the same kind of local sequence.
+All conditions are `bool`; every leaf returns exactly the declared method type. Root, outer-branch,
+expanded-path, and leaf bindings retain their lexical descendant scopes and enter scope only after
+their initializer. Only the selected path executes.
+
+Typed HIR and target-neutral Core reuse the existing terminal `conditional` and `immutable_local`
+representations. Core independently validates the exact four-conditional topology, the single
+expanded leaf, all types, binding positions, lexical references, and terminal placement; the Go
+backend refuses malformed Core. Existing v0.78 and earlier forms remain exact.
+`pipelang.compiler.v1`, `pipelang.semantic.v1`, and `dockpipe.application.v1` remain unchanged; only
+language metadata advances to `v0.79.0`. The exact 45-source compatibility lane remains frozen.
+
+A second expanded depth-two leaf, depth four or additional nesting, a non-symmetric depth-two base,
+conditional expressions within the topology, propagation, matching, assignment, fallthrough,
+other early returns, loops, effects, inference, actions, runtimes, targets, adapters, UI, and
+deployment remain excluded.
+
+```pipe
+public string Select(string raw, bool outer, bool left, bool deep, bool right) {
+    if (outer) {
+        string value = raw;
+        if (left) {
+            string candidate = value;
+            if (deep) { return trim(candidate); }
+            else { return "deep-false"; }
+        } else { return "outer-true"; }
+    } else {
+        string value = trim(raw);
+        if (right) { return value; }
+        else { return "outer-false"; }
+    }
+}
+```
+
+
+### PipeLang v0.80.0: two expanded terminal leaves
+
+`v0.80.0` additionally permits exactly two of the four leaves of the inherited symmetric
+depth-two terminal topology to expand into third-level terminal `if/else` decisions. All six
+pairs of leaf positions are supported. The new form has five conditionals and six return paths;
+maximum depth remains three. Root locals are optional. Every scope may contain finite ordered,
+explicitly typed immutable locals, including unused locals whose initializers still execute.
+Bindings enter scope after initialization and remain visible only to lexical descendants.
+Conditions are `bool`, returns exactly match the declared method type, and only the selected
+branch executes.
+
+Existing HIR/Core `conditional` and `immutable_local` nodes are reused. Core independently
+checks the exact topology, types, local positions, scope, and terminal placement; the Go backend
+refuses malformed Core. Generated Go preserves initializer execution for unused locals.
+All earlier versioned source forms remain unchanged. `pipelang.compiler.v1`,
+`pipelang.semantic.v1`, and `dockpipe.application.v1` identities and shapes stay stable;
+only language metadata advances. The frozen compatibility lane remains exactly 45 sources.
+
+A third or fourth expanded leaf, depth four, asymmetric depth-three bases, conditional expressions
+within this topology, propagation, matching, assignment, fallthrough, other early returns, loops,
+effects, and inference remain excluded. No workflow, runtime, action, target, adapter, UI, or
+deployment behavior is added. A successor requires a fresh founder decision and separate
+implementation approval.
+
+### PipeLang v0.81.0: terminal trees through depth three
+
+`v0.81.0` admits any binary terminal `if/else` tree with at most three decisions along
+one root-to-return path. Both symmetric and asymmetric trees are supported, including three
+or four expanded leaves on the symmetric depth-two base. The bound permits at most seven
+conditionals and eight return paths. Each lexical scope admits zero or more finite,
+source-ordered, explicitly typed immutable locals followed by a terminal decision or return.
+There is no new limit on the number of local declarations.
+
+Every condition is `bool`, and every leaf returns exactly the declared method type. Bindings
+enter scope after initialization and remain visible only to lexical descendants. Self/forward
+references, duplicate names, shadowing, sibling references, and escaping bindings are invalid.
+Root initializers run eagerly once before the root condition; selected-path initializers and
+conditions run once in source order. Unselected branches do not execute, and unused locals
+still evaluate their initializers.
+
+```pipe
+public Class Classifier {
+    public string Select(string raw, bool enabled, bool normalize, bool detailed) {
+        string shared = trim(raw);
+        if (enabled) {
+            if (normalize) {
+                string selected = shared;
+                if (detailed) { return selected + "!"; } else { return selected; }
+            } else { return raw; }
+        } else { return "disabled"; }
+    }
+}
+```
+
+Source analysis produces typed HIR and target-neutral Core using the existing terminal
+`conditional` and `immutable_local` nodes. Core independently validates depth, complete branches,
+terminal placement, exact types, binding positions, and lexical scope. Evaluation and Core-only
+Go generation preserve the same behavior; the backend refuses malformed Core. Public
+`pipelang.compiler.v1`, `pipelang.semantic.v1`, and `dockpipe.application.v1` identities and
+shapes remain unchanged. Application IR consumes matching semantic/Core identities without
+reparsing source. Earlier versioned forms, internal Core capabilities, and the exact frozen
+45-source compatibility lane remain unchanged.
+
+Depth four, fallthrough, nonterminal/early returns, assignment, loops, effects, inference, and
+new combinations with conditional expressions, matching, or propagation remain excluded.
+Previously accepted expression/statement combinations remain available under their inherited
+rules. This slice adds no runtime, action, target, adapter, UI, deployment, or self-hosted compiler
+implementation. Numeric-comparison evaluator parity was subsequently repaired under the existing
+contracts; it adds no language surface.
+
+### Target-neutral Application IR
+
+`dockpipe.application.v1` is not a language feature or target generator. It consumes the public
+`pipelang.semantic.v1` projection, its matching Core program, and explicit stable-identity choices
+for read-only snapshot sections, rows, keys, columns, filtering, ordering, selection, details, and logs.
+Consumers therefore cannot reparse source or infer language semantics in an adapter.
+Filter, order, section Result, selection, details, and logs roles are explicit semantic identities
+that must also resolve to contract-matching Core functions.
+
+### PipeLang v0.82.0: conditional local in terminal trees
+
+`v0.82.0` adds at most one `condition ? whenTrue : whenFalse` expression per method,
+only as the complete initializer of one explicitly typed immutable local anywhere in a
+terminal `if/else` tree through depth three. The condition is `bool`; both arms have exactly
+the declared local type. Each arm uses existing eager pure operand forms, including same-class
+pure calls. Both arms are statically checked; only the selected arm executes.
+
+The value conditional does not consume terminal-tree depth. The one-occurrence bound is
+method-wide, including mutually exclusive branches. The binding enters scope after its
+initializer and is visible only in lexical descendants; self/forward references, duplicate or
+shadowed names, sibling references, and escaping bindings remain invalid. Root and selected-path
+locals run once in source order, including unused locals. An unselected terminal branch does
+not evaluate its local's ternary condition or either arm.
+
+```pipe
+public Class Classifier {
+    public string Select(string raw, bool enabled, bool detailed, bool normalize) {
+        if (enabled) {
+            string selected = normalize ? trim(raw) : raw;
+            if (detailed) { return selected + "!"; } else { return selected; }
+        } else { return "disabled"; }
+    }
+}
+```
+
+Typed HIR and target-neutral Core reuse `immutable_local` and `conditional`; the value choice
+has `terminal_statement: false`. Core independently validates initializer placement, occurrence
+count, terminal depth, complete branches, exact types, canonical binding positions, and lexical
+references. Core evaluation and deterministic Core-only Go generation preserve selected-arm
+execution. Backends and semantic/Application IR consumers do not reparse or infer source behavior.
+The public `pipelang.compiler.v1`, `pipelang.semantic.v1`, and `dockpipe.application.v1` identities
+and shapes remain stable; language metadata advances. Earlier exact versioned forms and accepted
+combinations, internal Core capabilities, and the frozen 45-source lane remain unchanged.
+
+New ternaries in return, terminal-condition, or nested argument positions, nested/multiple
+ternaries, new matching/propagation combinations, depth four, fallthrough, early returns,
+assignment, loops, effects, and inference remain excluded. Prior accepted combinations retain
+their own rules. No runtime, action, target, adapter, UI, deployment, or self-hosted compiler
+implementation enters this slice. Numeric-comparison evaluator parity was subsequently repaired
+under the existing contracts. The v0.56 two-parameter checked-propagation inheritance gap was subsequently repaired;
+the subsequent multi-stage checked-chain inheritance repair restores the existing v0.57/v0.58
+forms through v0.82 without changing syntax, Core rules, or language metadata.
+
+
+### PipeLang v0.83.0: two conditional locals in terminal trees
+
+`v0.83.0` admits at most two ternaries per method, each the complete initializer of an
+explicitly typed immutable local inside an existing terminal `if/else` tree through depth
+three. The occurrence count covers the entire method, including mutually exclusive branches.
+Zero and one conditional local retain their accepted forms. A method with two conditional
+locals still requires a terminal tree; this does not add a new straight-line two-choice form.
+
+The locals may be in the same scope, ancestor/descendant scopes, or separate branches. A later
+choice's condition and arms may use an earlier binding only where ordinary lexical scope
+allows it. Each condition is `bool`; each arm has exactly its own declared local type. Different
+locals may have different supported types. Both arms are checked statically, but only the
+selected arm executes. Complete Optional and Result carriers are transported without implicit
+unwrapping or propagation, including arithmetic Results selected from direct references.
+
+```pipe
+public Class Classifier {
+    public string Select(string raw, bool clean, bool suffix, bool enabled) {
+        string normalized = clean ? trim(raw) : raw;
+        if (enabled) {
+            string selected = suffix && normalized != "" ? normalized + "!" : normalized;
+            return selected;
+        } else { return normalized; }
+    }
+}
+```
+
+Initializers run once in source order, including unused locals. The binding is introduced after
+its initializer. Unselected terminal branches evaluate neither their local conditions nor their
+arms. Self/forward references, duplicates, shadowing, sibling references, and escaping bindings
+remain invalid. Value conditionals do not consume terminal-tree depth.
+
+Typed HIR and target-neutral Core retain `immutable_local` and `conditional` nodes; value choices
+have `terminal_statement: false`. Core program admission independently enforces count, placement,
+depth, types, and lexical bindings. The evaluator and deterministic Core-only Go backend consume
+that checked Core. Semantic and Application IR consumers do not parse source or infer semantics.
+The `pipelang.compiler.v1`, `pipelang.semantic.v1`, and `dockpipe.application.v1` identities and
+shapes remain unchanged; only language metadata advances. Earlier versioned forms and accepted
+combinations, internal Core capabilities, and the exact frozen 45-source lane are preserved.
+
+A third or nested ternary, new ternaries in return/terminal-condition/argument positions, depth
+four, new matching/propagation combinations, fallthrough, early return, assignment, loops,
+effects, and inferred locals remain excluded. No runtime, target, UI, deployment, or self-hosted
+compiler implementation enters this slice.
+
+
+### PipeLang v0.84.0: finite conditional-local sequences
+
+`v0.84.0` removes the method-wide two-choice limit within terminal `if/else` trees through
+depth three. Any finite number of ternaries may initialize explicitly typed immutable locals,
+each as its complete initializer. Zero, one and two choices retain their accepted forms.
+A method with multiple choices still requires a terminal tree; straight-line multiple-choice
+bodies are not newly admitted. This is a source-language count generalization, not a promise
+of unlimited host resources or a change to target profiles.
+
+Choices may occur in the same scope, ancestor/descendant scopes, or separate branches.
+Their conditions and arms may depend on earlier bindings only where lexical scope permits.
+Every condition is `bool`, and both arms exactly match that local's declared supported type;
+different locals may have different types. Both arms are checked, but only the selected arm
+executes. Complete Optional and Result carriers, including absent and failed values and
+arithmetic Results selected from direct references, retain their representation without
+implicit unwrapping or propagation.
+
+```pipe
+public Class Classifier {
+    public string Select(string raw, bool clean, bool suffix, bool enabled) {
+        string normalized = clean ? trim(raw) : raw;
+        string selected = suffix && normalized != "" ? normalized + "!" : normalized;
+        string final = enabled && selected != "" ? selected + "?" : selected;
+        if (enabled) { return final; } else { return normalized; }
+    }
+}
+```
+
+Initializers execute once in source order, including unused locals. Unselected terminal
+branches execute neither their conditions nor their local initializers. A local enters scope
+after its initializer; self/forward references, duplicate names, shadowing, sibling references,
+and escaping bindings remain invalid. Value choices do not consume terminal-tree depth.
+
+Typed HIR and target-neutral Core retain `immutable_local` and `conditional` nodes, with
+`terminal_statement: false` for value choices. Source and Core independently validate placement
+and depth; typed lowering and Core structural admission enforce types and lexical bindings.
+The Core-only Go backend emits sequential locals as ordered declarations within a lexical
+block, including inherited zero/one/two-choice forms. Function bodies use statements; expression
+scopes such as branches and match arms use one block closure per scope. Local count no longer
+adds enclosing closures. Specialized propagation still owns early carrier returns. This resource
+correction intentionally changes generated Go for affected sequences; source admission, typed
+HIR, Core, semantic identities and evaluation behavior are unchanged. Single-local and
+unaffected golden outputs retain their existing spelling. The evaluator and Go backend consume
+checked Core. See [contained compiler validation](../../tests/containedexec/README.md) for
+resource ceilings, regression coverage and the required Linux process-tree containment.
+Semantic and
+Application IR consumers do not parse source or infer semantics. The public
+`pipelang.compiler.v1`, `pipelang.semantic.v1`, and `dockpipe.application.v1` identities and
+shapes remain unchanged. Earlier version limits and combinations, internal Core capabilities,
+and the exact frozen 45-source compatibility lane are preserved.
+
+Nested ternaries, new return/terminal-condition/argument placements, depth four, new
+matching/propagation combinations, fallthrough, early returns, assignment, loops, effects,
+and inferred locals remain excluded. No runtime, target, UI, deployment, or self-hosted
+compiler implementation enters this slice.
+
+### PipeLang v0.85.0: straight-line conditional-local sequences
+
+`v0.85.0` additionally permits any finite sequence of explicitly typed immutable locals,
+including multiple complete ternary initializers, followed by an ordinary terminal return.
+No terminal `if/else` is required. Existing single-choice expression placements and all
+previously admitted terminal trees retain their exact contracts.
+
+```pipe
+public Class Classifier {
+    public string Select(string raw, bool clean, bool suffix, bool enabled) {
+        string normalized = clean ? trim(raw) : raw;
+        string selected = suffix && normalized != "" ? normalized + "!" : normalized;
+        string final = enabled && selected != "" ? selected + "?" : selected;
+        return final;
+    }
+}
+```
+
+Each condition is `bool`; both arms exactly match the local's declared supported type.
+Ordinary locals may precede, separate, and follow the choices. Later conditions and arms may
+use earlier locals, whose scope begins after initialization. Self/forward references,
+duplicates, and parameter shadowing remain invalid. All initializers execute eagerly once
+in source order, including unused bindings; only the selected ternary arm executes.
+Existing primitive, primitive-record/list, Optional, and Result values retain complete
+carrier transport, including absence and failure, without implicit unwrapping or propagation.
+
+Typed HIR and target-neutral Core reuse `immutable_local` and `conditional`; Core independently
+validates placement, types, canonical binding positions and scope. The evaluator and Core-only
+Go backend retain their existing behavior, including flat sequential-local emission. Compiler,
+semantic and Application IR schema identities remain unchanged; language metadata is `v0.85.0`.
+Earlier versions retain their placement/count limits and the frozen 45-source lane is unchanged.
+
+Nested ternaries, new return/condition/argument placements, matching or propagation combinations,
+fallthrough, early returns, mutation, loops, effects, inference, deeper terminal trees and new
+backends remain excluded. This admits finite source sequences, not unlimited host resources.
+
+
+### PipeLang v0.86.0: conditional return composition
+
+`v0.86.0` additionally permits a complete ternary return after a nonempty finite sequence
+of explicitly typed immutable locals in a straight-line method. Initializers may be ordinary
+supported pure expressions or complete ternaries. This composes v0.85 conditional locals
+with a final selection without requiring an extra binding or terminal statement-level branch.
+
+```pipe
+public Class Classifier {
+    public string Select(string raw, bool clean, bool suffix, bool enabled) {
+        string normalized = clean ? trim(raw) : raw;
+        string selected = suffix && normalized != "" ? normalized + "!" : normalized;
+        return enabled && selected != "" ? selected : normalized;
+    }
+}
+```
+
+Every ternary condition is `bool`. Initializer arms exactly match the declared local type;
+return arms exactly match the declared method return type. Both arms are statically checked,
+and only the selected arm executes. All local initializers run eagerly once in source order,
+including unused locals, before the return condition. Bindings enter scope only after their
+initializer; later locals and the return may use earlier bindings. Self/forward references,
+duplicates, shadowing and escaping bindings remain invalid. Complete primitive, primitive-record,
+record-list, Optional and supported Result values retain absence/failure and exact carrier
+transport without implicit unwrapping, widening or propagation.
+
+Typed HIR and target-neutral Core reuse `immutable_local` and `conditional`. Source and Core
+independently validate the new straight-line placement; structural Core validation checks exact
+types, lexical references and canonical binding positions. Evaluation and deterministic Core-only
+Go retain eager local order and lazy return selection. Public `pipelang.compiler.v1`,
+`pipelang.semantic.v1` and `dockpipe.application.v1` identities and shapes remain unchanged.
+
+Earlier source versions retain their exact limits, including inherited single-choice expression
+placements and terminal trees through depth three. New ternary returns within those trees,
+nested ternaries, new argument/condition placements, new matching/propagation combinations,
+fallthrough, early returns, loops, mutation, effects, inference and new backends remain excluded.
+The frozen 45-source lane remains unchanged. Finite source sequences remain subject to host
+resource limits; contained regression proof measures through 256 locals.
+
+
+### PipeLang v0.87.0: conditional returns in terminal-tree leaves
+
+`v0.87.0` additionally permits a complete nonnested ternary return in any subset of
+leaves of the existing terminal `if/else` trees through statement depth three. Every
+scope retains zero or more explicitly typed immutable locals, including complete
+conditional initializers. Neither a root local nor a conditional initializer is required.
+
+```pipe
+public Class Classifier {
+    public string Select(string raw, bool clean, bool enabled, bool finish) {
+        string normalized = clean ? trim(raw) : raw;
+        if (enabled) {
+            string selected = finish ? normalized + "!" : normalized;
+            return clean ? selected : raw;
+        } else {
+            return finish ? normalized : raw;
+        }
+    }
+}
+```
+
+Statement depth counts only terminal `if/else` decisions: at most three per path,
+seven per tree and eight return leaves. A leaf ternary adds one value selection,
+not another statement level. Ordinary and conditional returns can coexist across
+leaves. A leaf return can reference parameters and completed local bindings in its
+lexical ancestry. Self/forward references, duplicates, shadowing, sibling references
+and escaping bindings remain invalid.
+
+Every condition is `bool`; both return arms exactly match the declared method type.
+Both arms are checked statically. Root initializers execute eagerly once in source order;
+reached branch initializers, including unused bindings, execute once in order. Only
+selected statement branches, reached conditions and selected ternary arms execute.
+All supported primitives, primitive records, record lists, Optionals and Results retain
+complete-value transport without implicit unwrapping or propagation.
+
+Source and Core independently validate placement and statement depth. Structural Core
+validation retains exact types, lexical references and binding positions. Typed HIR and
+Core reuse `immutable_local` and `conditional` nodes and the existing terminal-statement
+marker; evaluation and deterministic Core-only Go consume validated Core. Public
+`pipelang.compiler.v1`, `pipelang.semantic.v1` and `dockpipe.application.v1` identities
+and shapes and the frozen 45-source lane remain unchanged.
+
+Earlier language versions retain their exact boundaries. This slice adds no nested
+ternaries, new argument/condition placements, deeper statement trees, new combinations
+with matching/propagation, fallthrough, early returns, loops, mutation, effects, inference
+or backends. Finite local sequences remain subject to host resource limits; regression
+proof measures through 256 locals rather than claiming exhaustive length coverage.
+
+### PipeLang v0.88.0: nested straight-line returns
+
+`v0.88.0` additionally admits a complete ternary return in a straight-line block-bodied
+method with zero or more explicitly typed immutable locals. Either or both result arms may
+contain one further complete ternary, with at most two ternary decisions along any return
+path. This covers a nonnested root choice, nesting in the true arm, nesting in the false arm,
+and nesting in both arms. Parentheses can make nested arms explicit:
+
+```pipe
+public Class Choice {
+  public string Select(string raw, bool clean, bool enabled, bool fallback) {
+    string normalized = clean ? trim(raw) : raw;
+    return enabled ? (clean ? normalized : raw) : (fallback ? "fallback" : "");
+  }
+  public string Label(bool enabled, bool detailed) {
+    return enabled ? (detailed ? "enabled in detail" : "enabled") : "disabled";
+  }
+}
+```
+
+Each condition has type `bool`; every final arm exactly matches the declared method return
+type. All existing supported values and carriers travel intact. Locals retain the inherited
+nonnested initializer forms, lexical scope and exact types. Every local initializer executes
+eagerly once in source order, including unused locals. The return evaluates the outer condition
+once, then only the selected arm and any condition within that arm. Unselected nested conditions
+and result arms never execute. No binding escapes its lexical scope.
+
+Source analysis produces typed HIR and target-neutral Core using existing `immutable_local`
+and value `conditional` nodes. Source and Core independently validate placement and the depth-two
+bound; structural validation checks types, bindings and canonical positions. The parser enforces
+block spelling for newly admitted nested returns. Core normalizes block/arrow spelling and carries
+no source-spelling marker. The evaluator and Core-only Go backend consume validated Core.
+`pipelang.compiler.v1`, `pipelang.semantic.v1`, and `dockpipe.application.v1` identities and shapes
+remain stable; language metadata advances and the exact frozen 45-source lane stays unchanged.
+
+Depth-three return choices, nested initializers, nested choices within statement `if/else` trees,
+nested expression-bodied methods, new condition/argument placements, new matching/propagation
+combinations, ordinary zero-local block returns, fallthrough, mutation, inference, loops and effects
+remain excluded. Inherited accepted forms remain exact, including nonnested leaf returns in
+statement trees through depth three. This slice adds no backend, runtime, action, UI or deployment
+behavior.
+
+### PipeLang v0.89.0: nested terminal-leaf returns
+
+`v0.89.0` additionally admits complete ternary returns through depth two in any subset
+of leaves of existing terminal `if/else` trees through statement depth three. Statement
+and value-choice depth are counted independently: a selected path may traverse three
+statement decisions followed by at most two return-choice decisions. Either or both arms
+of a return choice may contain one further complete ternary. Ordinary and nonnested
+returns may coexist with the new nested returns in the same tree.
+
+```pipe
+public Class Choice {
+  public string Select(string raw, bool clean, bool enabled, bool fallback) {
+    string normalized = clean ? trim(raw) : raw;
+    if (enabled) {
+      string selected = clean ? normalized : raw;
+      return clean ? (fallback ? selected : normalized) : (fallback ? raw : "");
+    } else {
+      return fallback ? normalized : "";
+    }
+  }
+}
+```
+
+Each lexical scope retains zero or more explicitly typed immutable locals, including
+complete nonnested ternary initializers. A local enters scope after its initializer;
+self/forward references, duplicate names, shadowing and escaping or sibling references
+remain invalid. Reached initializers execute eagerly once in source order, including
+unused bindings. Each reached condition executes once; only its selected branch or arm
+executes. Conditions are bool and every return arm has exactly the declared method type.
+All supported values and complete Optional/Result carriers retain their validation and
+transport; an unused failed Result does not become implicit propagation.
+
+Source analysis and Core independently check placement, both depth limits and the absence
+of local expressions hidden in newly admitted return arms, conditions or initializers.
+Structural validation checks exact types, bindings and canonical positions. Existing typed
+HIR/Core `immutable_local` and `conditional` nodes retain their shapes and statement/value
+markers; evaluation and deterministic Go generation consume validated target-neutral Core.
+Internal Core local expressions remain valid. `pipelang.compiler.v1`, `pipelang.semantic.v1`
+and `dockpipe.application.v1` identities and shapes remain stable; only language metadata
+advances. Every inherited accepted form and the exact frozen 45-source lane remain unchanged.
+
+Depth-four statement trees, depth-three ternaries, nested initializers, nested arrow-bodied
+methods, ordinary zero-local block returns, new condition/argument placements, new matching/
+propagation combinations, fallthrough, mutation, inference, loops and effects remain excluded.
+This adds no backend, runtime, action, UI or deployment behavior.
+
+### PipeLang v0.90.0: nested straight-line initializers
+
+`v0.90.0` additionally permits any subset of a finite sequence of explicitly typed
+immutable locals in a straight-line block method to use complete ternary initializers
+through depth two. Either or both arms may contain one further ternary; the bound is
+per initializer path. Ordinary and nonnested initializers may surround these choices.
+The final return may be an inherited ordinary expression or complete ternary through
+depth two. Later initializers and the return may use prior selected values.
+
+```pipe
+public Class Choice {
+  public string Select(string raw, bool clean, bool enabled, bool fallback) {
+    string selected = enabled ? (clean ? trim(raw) : raw) : (fallback ? "fallback" : "");
+    string label = selected + "!";
+    return clean ? (fallback ? label : selected) : raw;
+  }
+}
+```
+
+Conditions are bool and every initializer arm exactly matches the declared local type.
+Bindings enter scope only after their initializer; self/forward references, duplicates,
+shadowing and escaping references remain invalid. Every local initializer executes eagerly
+once in source order, including unused locals. Within each initializer, only the selected
+conditions and arms execute. Supported values and Optional/Result carriers travel intact;
+an unused failed Result is not implicit propagation. Return selection retains its own
+independent depth-two limit and lazy semantics.
+
+Source and Core independently validate placement, depth and absence of hidden local
+expressions inside initializers, conditions, return arms or ordinary sibling operands.
+Typed HIR and Core reuse existing immutable-local and value-conditional representations;
+Core structural checks own exact types, bindings and positions. The evaluator and Core-only
+Go backend consume validated Core. Generic internal Core local expressions remain valid.
+Public `pipelang.compiler.v1`, `pipelang.semantic.v1` and `dockpipe.application.v1` identities
+and shapes, all inherited contracts and the frozen 45-source lane remain unchanged.
+
+Nested initializers before or within statement trees, nested arrow-bodied methods,
+depth-three ternaries, new condition/argument or matching/propagation placements,
+ordinary zero-local block returns, mutation, inference, fallthrough, loops and effects
+remain excluded. No backend, runtime, action, UI or deployment behavior is added.
+
+### PipeLang v0.91.0: nested initializers throughout terminal trees
+
+`v0.91.0` additionally permits any subset of a finite sequence of explicitly typed
+immutable locals at root, intermediate or leaf scopes of a terminal `if/else` tree
+through statement depth three to use complete depth-two ternary initializers. Either
+or both arms may contain one further ternary: at most two value decisions on a path,
+counted separately from the statement-tree depth. Ordinary, nonnested and depth-two
+initializers may mix freely in those sequences. Ordinary or existing depth-two leaf
+returns remain supported; neither a root local nor a conditional return is required.
+
+```pipe
+public Class Choices {
+    public string Select(string raw, bool enabled, bool clean, bool fallback) {
+        string normalized = clean ? (fallback ? trim(raw) : raw) : raw;
+        if (enabled) {
+            string selected = clean ? (fallback ? normalized : raw) : (fallback ? raw : "");
+            return selected;
+        } else {
+            string selected = fallback ? (clean ? normalized : raw) : raw;
+            return selected;
+        }
+    }
+}
+```
+
+Every condition is `bool`; initializer arms exactly match the declared local type,
+and return arms exactly match the method type. Bindings enter scope after their
+initializer, remain visible to later locals and lexical descendants (including
+statement conditions), and cannot escape or cross sibling scopes. Self/forward
+references, duplicates and shadowing remain invalid; sibling scopes may reuse names.
+Reached initializers execute eagerly once in source order, including unused locals.
+Unselected statement branches, inner conditions and value arms do not execute.
+Existing primitive, record, list, Optional and Result values retain complete-value
+transport, including computed checked Results without implicit propagation.
+
+Typed HIR and target-neutral Core reuse `immutable_local` and `conditional` nodes.
+Source and Core independently enforce placement, depths, exact types and lexical
+bindings; malformed public Core is refused by evaluation and Go generation. Generic
+internal Core local expressions remain supported. Compiler, semantic and Application
+IR identities stay `pipelang.compiler.v1`, `pipelang.semantic.v1` and
+`dockpipe.application.v1`; the exact 45-source compatibility lane remains frozen.
+
+Nested expression-bodied methods, depth-three value choices, depth-four statements,
+ternaries newly embedded in conditions/arguments, new match/propagate combinations,
+inference, mutation, fallthrough, loops, effects, targets and new backends remain
+excluded. Earlier language versions retain their exact admission and behavior.
+
+### PipeLang v0.92.0: nested expression-bodied methods
+
+`v0.92.0` additionally admits complete depth-two ternary bodies in public pure
+expression-bodied methods. Either or both arms may contain one further ternary;
+every path contains at most two decisions. The four shapes are a single choice,
+nesting in its true arm, nesting in its false arm, and nesting in both arms.
+
+```pipe
+public Class Choices {
+    public string Select(string raw, bool outer, bool left, bool right) =>
+        outer ? (left ? trim(raw) : raw) : (right ? "fallback" : raw);
+}
+```
+
+All conditions are `bool` and all result arms exactly match the declared method type.
+Conditions and operands retain the existing pure expression restrictions. Only reached
+conditions and selected arms execute. Supported primitives, records, lists, Optional
+and Result values retain complete-value transport, including computed checked Results
+without implicit propagation. Equivalent arrow and block returns lower to the same
+typed HIR (apart from source spans), target-neutral Core and deterministic Go.
+
+This is a source-spelling extension. Core has no arrow/block marker and already admits
+the equivalent depth-two block expression from v0.88. Earlier source versions continue
+to reject nested arrow bodies; their valid Core artifacts remain valid. Source and Core
+independently enforce the depth/placement/type boundary they represent. Public
+`pipelang.compiler.v1`, `pipelang.semantic.v1` and `dockpipe.application.v1` identities
+and HIR/Core shapes remain unchanged. The frozen 45-source compatibility lane remains exact.
+
+All v0.91 blocks and earlier forms are inherited. Depth-three choices, deeper statement
+trees, ternaries inside conditions or call arguments, new matching/propagation placements,
+inference, mutation, loops, effects and backends are excluded. No runtime, action, target,
+adapter, UI or deployment behavior is introduced.
+
+
+### PipeLang v0.93.0: depth-three straight-line returns
+
+`v0.93.0` adds complete ternary returns through depth three in public pure block
+methods, after zero or more existing explicitly typed immutable locals. Either or
+both arms may nest, with at most three decisions on any path. All 25 nonempty binary
+choice shapes through this depth are admitted.
+
+```pipe
+public Class Choices {
+    public string Select(string raw, bool a, bool b, bool c) {
+        string normalized = a ? (b ? trim(raw) : raw) : raw;
+        return a ? (b ? (c ? normalized : raw) : "fallback") : raw;
+    }
+}
+```
+
+Conditions remain `bool`; every result arm exactly matches the declared return type.
+Reached locals execute once, eagerly in source order, including unused bindings.
+Each binding enters lexical scope after its initializer. Only reached conditions and
+selected arms execute. Supported primitive, record, list, Optional and Result values
+retain complete transport, including computed checked Results without implicit propagation.
+
+The additional depth applies only to the complete straight-line return. Initializers,
+expression-bodied methods and terminal-tree leaf returns retain their depth-two bounds.
+Statement trees retain their depth-three bound. Conditional expressions inside conditions
+or call arguments, hidden local expressions, new matching/propagation combinations,
+inference, mutation, loops, effects and new backends remain excluded.
+
+The parser enforces the block-only source spelling. Source and Core independently
+validate their depth and placement contracts; Core erases arrow/block spelling and
+continues to admit equivalent older block artifacts at their original versions.
+Existing HIR/Core nodes, `pipelang.compiler.v1`, `pipelang.semantic.v1`,
+`dockpipe.application.v1` and the frozen 45-source lane remain unchanged. All v0.92
+forms are inherited. No runtime, action, target, adapter, UI or deployment behavior is added.
+
+
+### PipeLang v0.94.0: depth-three terminal-leaf returns
+
+`v0.94.0` permits complete ternary returns through depth three in any subset of
+leaves of existing terminal `if/else` trees through statement depth three. Either
+or both return arms may nest. Statement and return depths are counted separately:
+at most three statement decisions followed by at most three return decisions per path.
+
+```pipe
+public Class Choices {
+    public string Select(string raw, bool enabled, bool a, bool b, bool c) {
+        string normalized = a ? (b ? trim(raw) : raw) : raw;
+        if (enabled) {
+            return a ? (b ? (c ? normalized : raw) : "fallback") : raw;
+        } else {
+            return a ? raw : (b ? normalized : (c ? "fallback" : raw));
+        }
+    }
+}
+```
+
+Every lexical scope retains finite explicitly typed immutable locals, including complete
+depth-two ternary initializers. Reached locals execute once, eagerly in source order,
+including unused bindings. Bindings enter scope after initialization and remain visible
+only to lexical descendants. Conditions are `bool`; return arms exactly match the method
+return type. Only reached conditions and selected arms execute. Complete supported primitive,
+record, list, Optional and Result values are transported without implicit propagation.
+
+Source and target-neutral Core independently enforce placement, depth, hidden-local refusal,
+types and lexical references. Typed HIR/Core node shapes and public `pipelang.compiler.v1`,
+`pipelang.semantic.v1` and `dockpipe.application.v1` identities remain unchanged. Evaluation
+and Go generation consume validated Core. Executable Application IR consumption and the frozen
+45-source compatibility lane retain their contracts.
+
+All v0.93 and earlier forms are inherited. Straight-line returns retain depth three;
+initializers and expression-bodied methods retain depth two. Depth-four choices or statement
+trees, new ternaries in conditions/arguments, new matching/propagation combinations, inference,
+mutation, loops, effects and backends are excluded. No runtime or deployment behavior is added.
+
+### PipeLang v0.95.0: depth-three expression-bodied methods
+
+`v0.95.0` additionally admits complete ternary bodies through depth three in public
+pure expression-bodied methods. Either or both arms may nest, with at most three
+decisions on each selected path. The equivalent block return has the same behavior.
+
+```pipe
+public Class Choices {
+    public string Select(string raw, bool a, bool b, bool c) =>
+        a ? (b ? (c ? trim(raw) : raw) : "fallback") : raw;
+}
+```
+
+Conditions remain `bool`; every arm exactly matches the declared return type.
+Only reached conditions and selected arms execute. Complete supported primitive,
+record, list, Optional and Result values are transported without implicit propagation.
+The source parser retains older versions' arrow restrictions. Core erases arrow/block
+spelling, so the existing v0.93/v0.94 depth-three block Core remains valid.
+
+All v0.94 and earlier forms are inherited. Initializers retain depth two; statement
+trees and straight-line/terminal-leaf returns retain depth three. Statement and return
+depths remain independent. Lexical scope, eager once-only source order of reached
+locals (including unused bindings), and lazy selected execution retain their contracts.
+Depth-four choices or statement trees, new ternaries in conditions/arguments, new
+matching/propagation placements, inference, mutation, loops, effects and backends
+remain excluded.
+
+Source and Core independently enforce depth, placement, exact types, scope and
+hidden-local refusal. Typed HIR/Core node shapes, evaluator and Go backend production
+code, and public `pipelang.compiler.v1`, `pipelang.semantic.v1` and
+`dockpipe.application.v1` identities remain unchanged. Evaluation and Go generation
+consume validated target-neutral Core. Executable Application IR and the frozen
+45-source compatibility lane retain their contracts. No runtime/deployment behavior
+is introduced.
+
+### PipeLang v0.96.0: depth-three straight-line initializers
+
+`v0.96.0` additionally permits any subset of a finite sequence of explicitly typed
+immutable locals in a straight-line public pure block method to use complete ternary
+initializers through depth three. Either or both arms may nest, with at most three
+choices per initializer path. Ordinary and shallower initializers may surround them.
+Later locals and inherited ordinary or depth-three returns may reuse selected values.
+
+```pipe
+public Class Choices {
+    public string Select(string raw, bool a, bool b, bool c) {
+        string selected = a ? (b ? (c ? trim(raw) : raw) : "fallback") : raw;
+        string label = selected + "!";
+        return label;
+    }
+}
+```
+
+Conditions are `bool`; every arm exactly matches the declared local type. Bindings
+enter scope only after their initializer. Self/forward references, duplicates, shadowing
+and escaping references remain invalid. Every local executes eagerly once in source
+order, including unused bindings. Only reached conditions and selected arms execute
+inside a choice. Complete supported primitive, record, list, Optional and Result values
+travel intact; a failed Result is not implicit propagation.
+
+All v0.95 and earlier forms are inherited. Initializers before or inside terminal
+statement trees retain depth two. Statement trees, arrow bodies and straight-line or
+terminal-leaf returns retain depth three. Initializer and return bounds are independent.
+Depth-four choices/statements, new ternaries in conditions or arguments, new matching
+or propagation placements, inference, mutation, loops, effects and backends remain excluded.
+
+Source and Core independently validate depth, placement, types, scope and hidden-local
+refusal. Generic internal Core local expressions retain their contract. Typed HIR/Core
+node shapes, evaluator and Go backend production code, public `pipelang.compiler.v1`,
+`pipelang.semantic.v1` and `dockpipe.application.v1` identities remain unchanged.
+Evaluation and Go generation consume validated target-neutral Core. Executable
+Application IR and frozen 45-source compatibility retain their contracts. No runtime
+or deployment behavior is introduced.
+
+
+### PipeLang v0.97.0: depth-three terminal initializers
+
+`v0.97.0` extends complete depth-three ternary initializers to finite explicitly
+typed immutable-local sequences before and inside terminal `if/else` trees through
+statement depth three. Any subset of locals may use such initializers at root,
+intermediate or leaf scopes. Either or both ternary arms may nest. Later locals,
+descendant conditions and inherited ordinary or depth-three returns may reuse
+previous bindings within lexical scope.
+
+```pipe
+public Class Choices {
+    public string Select(string raw, bool a, bool b, bool c) {
+        string root = a ? (b ? (c ? trim(raw) : raw) : "fallback") : raw;
+        if (a) {
+            string selected = b ? (c ? (a ? root + "!" : root) : root) : root;
+            return selected;
+        } else {
+            return root;
+        }
+    }
+}
+```
+
+Every condition is `bool`; all arms exactly match the declared local type.
+Bindings enter scope after their initializer. Self/forward references, duplicates,
+shadowing and escaping references remain invalid. Locals execute eagerly once in
+source order, including unused bindings, within reached statement branches. Only
+selected ternary conditions and arms execute. Complete supported primitive, record,
+list, Optional and Result values travel intact; failed Results do not implicitly
+propagate. Initializer, return and statement depths are independent limits.
+
+All v0.96 forms are inherited. Depth-four choices or statement trees, new ternaries
+in conditions/arguments, new matching/propagation placements, inference, mutation,
+loops, effects and backends remain excluded. Source and Core independently validate
+placement, depth, types, scope and hidden-local refusal. Generic internal Core local
+expressions keep their contract. Parser/typechecker, typed HIR, target-neutral Core,
+evaluator and Core-only Go retain the existing node shapes and public compiler,
+semantic and Application IR identities. No runtime or deployment behavior is added.
+
+### PipeLang v0.98.0: conditional boolean selectors
+
+`v0.98.0` permits one flat boolean ternary as the entire condition of a complete
+ternary return in a straight-line block method. Zero or more inherited explicitly
+typed immutable locals may precede the return, including depth-three initializers.
+
+```pipe
+public Class Choices {
+    public string Select(string raw, bool a, bool b, bool c) {
+        string normalized = a ? (b ? (c ? trim(raw) : raw) : raw) : raw;
+        return (a ? b : c) ? normalized : raw;
+    }
+}
+```
+
+In `return (a ? b : c) ? x : y;`, all three selector operands must be `bool`;
+`x` and `y` must have exactly matching supported types. Primitive, record, list,
+Optional and Result values remain intact. Failed Results do not implicitly propagate.
+The five operand positions accept inherited nonconditional expressions, including
+supported pure calls and boolean operations. No additional ternary can occur inside
+those operands. Parentheses group the selector; they do not introduce a new node.
+
+Evaluate `a` once, then only the selected `b` or `c`, then only the selected `x` or
+`y`. Earlier locals remain eager, once-only and source ordered, including unused
+bindings. Initializers can use only previously bound names; duplicate, shadowing,
+self/forward and escaping references remain invalid.
+
+All v0.97 forms remain inherited. This addition does not admit selector returns in
+arrow methods or terminal-tree leaves, selector expressions in local initializers,
+statement conditions or arguments, further nesting in the new form, or new matching/
+propagation placements. Existing expression and statement depth limits remain unchanged.
+Inference, mutation, loops, effects and new backends remain excluded.
+
+Source and Core independently validate placement, depth, types, scope and hidden-local
+refusal. Core erases block/arrow spelling, so the parser enforces that source boundary.
+Generic internal Core locals retain their contract. Existing AST/HIR/Core node shapes,
+compiler/semantic/Application IR public identities and engine/package boundaries remain
+unchanged. No runtime or deployment behavior is added.
+
+### PipeLang v0.99.0: terminal-leaf boolean selectors
+
+`v0.99.0` permits the v0.98 flat boolean selector return in any subset of leaves
+of inherited terminal `if/else` trees through statement depth three.
+
+```pipe
+public Class Choices {
+    public string Select(string raw, bool route, bool a, bool b, bool c) {
+        string normalized = a ? (b ? (c ? trim(raw) : raw) : raw) : raw;
+        if (route) {
+            string selected = normalized + "!";
+            return (a ? b : c) ? selected : raw;
+        } else {
+            return raw;
+        }
+    }
+}
+```
+
+Each new return has exactly the form `(a ? b : c) ? x : y`. All three selector
+operands must be bool, and both value arms must have exactly matching supported
+types. Each of the five operands uses inherited nonconditional expressions; no
+further ternary may occur inside it. Complete primitive, record, list, Optional
+and Result values travel intact; failed Results do not implicitly propagate.
+
+Root, intermediate and leaf scopes retain finite explicitly typed immutable-local
+sequences and inherited depth-three initializers. Earlier in-scope bindings may be
+reused. Reached locals execute eagerly once in source order, including unused
+bindings. Only selected statement branches execute; at a reached selector return,
+evaluate `a` once, then only selected `b`/`c`, then only selected `x`/`y`.
+Self/forward references, duplicates, shadowing and escaping references remain invalid.
+
+All v0.98 forms remain inherited. This does not add selector expressions to arrow
+methods, initializers, statement conditions or arguments. Further nesting, increased
+expression/statement depths, new matching/propagation placements, inference, mutation,
+loops, effects and backends remain excluded. Source and Core independently enforce
+placement, types, scope and hidden-local refusal. Core erases arrow/block spelling;
+that source distinction remains parser-owned. Generic internal Core locals, existing
+AST/HIR/Core node shapes, public compiler/semantic/Application IR identities and
+engine/package boundaries are preserved. No runtime or deployment behavior is added.
+
+### PipeLang v0.100.0: arrow-method boolean selectors
+
+`v0.100.0` admits the flat boolean selector return in public pure arrow methods
+(including the inherited public default when visibility is omitted):
+
+```pipe
+public Class Choices {
+    public string Select(string raw, bool a, bool b, bool c) =>
+        (a ? b : c) ? trim(raw) : raw;
+}
+```
+
+All three selector operands are bool; value arms have exactly matching supported
+primitive, record, list, Optional or Result types. Each of the five operands uses
+inherited nonconditional expressions, including supported pure calls and boolean
+operations. Evaluate a once, then only selected b/c, then only selected x/y.
+Failed Results travel intact without implicit propagation. Inherited callers retain
+finite explicitly typed immutable locals with eager once-only source order, even
+for unused reached bindings. Lexical scope rules are unchanged.
+
+All v0.99 forms remain inherited. This adds no new initializer, statement-condition,
+argument, matching or propagation placement, further nesting, increased depth,
+inference, mutation, loops, effects or backend. Source and Core preserve placement,
+type, scope and hidden-local validation and generic internal Core locals. Core
+already represents the equivalent v0.98/v0.99 block return: the parser owns older
+arrow-spelling refusal. AST/HIR/Core node shapes, compiler/semantic/Application IR
+identities and engine/package boundaries are unchanged.
+
+### PipeLang v0.101.0: straight-line boolean-selector initializers
+
+`v0.101.0` admits flat boolean selectors as complete initializers in any subset
+of finite explicitly typed immutable-local sequences in public pure straight-line
+block methods, including the inherited public default when visibility is omitted:
+
+```pipe
+public Class Choices {
+    public string Select(string raw, bool a, bool b, bool c) {
+        string normalized = (a ? b : c) ? trim(raw) : raw;
+        string selected = (b ? c : a) ? normalized + "!" : normalized;
+        return selected;
+    }
+}
+```
+
+All three selector operands are bool; both arms exactly match the declared local
+type. Each of the five operands uses inherited nonconditional expressions, including
+supported pure calls and earlier in-scope bindings. Complete supported primitive,
+record, list, Optional and Result values travel intact; failed Results do not
+implicitly propagate. Evaluate a once, selected b/c, then selected x/y. Locals remain
+eager, once-only and source ordered, including unused bindings. Each binding enters
+scope after initialization. Self/forward references, duplicates, shadowing and
+escaping references remain invalid.
+
+Inherited ordinary and depth-three initializers may appear alongside the new form.
+Later locals and inherited ordinary, depth-three or flat-selector returns may reuse
+bindings. All v0.100 forms remain inherited. The new initializer is excluded before
+or inside terminal statement trees and from private methods. This adds no new
+statement-condition, argument, matching or propagation placement, further nesting,
+increased depth, inference, mutation, loops, effects or backend.
+
+Source and Core independently validate placement, types, scope and hidden-local
+refusal. Generic internal Core locals retain their contract. Existing AST/HIR/Core
+node shapes and compiler/semantic/Application IR identities remain unchanged.
+Evaluation and Go generation consume validated target-neutral Core; executable
+Application IR, frozen 45-source compatibility and generic engine/package boundaries
+are preserved. No runtime or deployment behavior is introduced.
+
+
+### PipeLang v0.102.0: boolean-selector initializers throughout terminal trees
+
+`v0.102.0` admits complete flat boolean-selector initializers in any subset of
+finite explicitly typed immutable-local sequences at root, intermediate and leaf
+scopes of terminal `if/else` trees through the inherited statement depth three:
+
+```pipe
+public Class Choices {
+    public string Select(string raw, bool a, bool b, bool c) {
+        string root = (a ? b : c) ? trim(raw) : raw;
+        if (a) {
+            string branch = (b ? c : a) ? root + "!" : root;
+            if (b) {
+                string leaf = (c ? a : b) ? branch + "?" : branch;
+                return leaf;
+            } else {
+                return branch;
+            }
+        } else {
+            return root;
+        }
+    }
+}
+```
+
+Methods remain public and pure, including the inherited public default when
+visibility is omitted. All three selector operands are bool; both value arms exactly
+match the declared supported type. Each of the five operands uses inherited
+nonconditional expressions, including supported pure calls and earlier in-scope
+bindings. Complete primitive, record, list, Optional and Result values travel intact;
+a failed Result does not implicitly propagate.
+
+Each reached local initializes eagerly once in source order, including unused
+bindings. Its initializer evaluates `a`, only selected `b` or `c`, then only selected
+`x` or `y`. Unreached branches execute no locals. A binding enters scope only after
+its initializer; later locals, descendant statement conditions and inherited returns
+may reuse it. Self/forward references, duplicate declarations, shadowing and
+sibling/escaping references remain invalid.
+
+Inherited ordinary and depth-three initializers can mix with the new form. Return
+forms remain ordinary, depth-three ternary or flat boolean selector. This adds no
+ternaries directly in statement conditions, argument/matching/propagation placements,
+further expression nesting, increased depths, private-method admission, inference,
+mutation, loops, effects, runtime behavior or backend. All v0.101 forms are inherited.
+
+Source and Core independently validate placement, types, scope and hidden-local
+refusal. Generic internal Core locals, existing AST/HIR/Core nodes, compiler/semantic/
+Application IR identities and frozen 45-source compatibility are preserved. Evaluation
+and Go generation consume validated target-neutral Core; executable Application IR
+continues through the existing consumer. Generic engine/package boundaries are unchanged.
+
+### PipeLang v0.103.0: direct conditional tests in terminal trees
+
+`v0.103.0` admits a flat boolean ternary directly in any subset of the condition
+positions in existing public pure terminal `if/else` trees through statement depth
+three. Visibility may be omitted under the inherited public default:
+
+```pipe
+public Class Choices {
+    public string Select(string raw, bool a, bool b, bool c) {
+        string normalized = trim(raw);
+        if (a ? b : c) {
+            bool present = normalized != "";
+            if (present ? c : b) {
+                return normalized;
+            } else {
+                return raw;
+            }
+        } else {
+            return raw;
+        }
+    }
+}
+```
+
+In `if (a ? b : c)`, all three operands must be bool and use inherited
+nonconditional expressions, including supported pure calls and earlier in-scope
+parameters or immutable locals. Evaluate `a` once and only its selected `b` or `c`
+operand, then execute only the selected statement branch. Reached locals initialize
+eagerly once in source order, including unused bindings. Existing lexical rules
+continue to reject self/forward references, duplicates, shadowing, sibling references
+and escaping branch bindings.
+
+Ordinary statement conditions can mix with the new tests at every inherited tree
+position. All v0.102 local and return forms remain available: ordinary expressions,
+depth-three value ternaries and complete flat boolean selectors. Complete supported
+values, including Optional and Result carriers, retain inherited transport semantics.
+A failed Result does not implicitly propagate.
+
+This adds no nested ternary within a new test, hidden local declaration within a
+condition expression, deeper statement tree, new return/initializer/argument/matching/
+propagation placement, private method, inference, mutation, loop, effect or backend.
+Source and Core independently validate public placement, types and scope; generic
+internal Core locals remain valid. Existing AST/HIR/Core nodes, public compiler,
+semantic and Application IR identities and frozen 45-source compatibility are preserved.
+Evaluation, Core-only Go generation and the executable Application IR consumer keep
+using validated target-neutral Core. Existing compiler resource ceilings remain fixed.
+
+### PipeLang v0.104.0: nested value arms in terminal conditional tests
+
+`v0.104.0` permits a flat boolean ternary in either or both value arms of a
+terminal statement test, at any subset of condition positions in existing public
+pure terminal `if/else` trees through statement depth three. Omitted visibility
+retains the public default:
+
+```pipe
+public Class Choices {
+    public string Select(string raw, bool a, bool b, bool c, bool d,
+                         bool e, bool f, bool g) {
+        string normalized = trim(raw);
+        if (a ? (b ? c : d) : (e ? f : g)) {
+            bool present = normalized != "";
+            if (present ? (b ? c : d) : e) {
+                return normalized;
+            } else {
+                return raw;
+            }
+        } else {
+            if (b ? c : (e ? f : g)) {
+                return normalized;
+            } else {
+                return raw;
+            }
+        }
+    }
+}
+```
+
+The new test has expression depth at most two. Every ternary's condition and
+final value arms are inherited nonconditional bool expressions, including supported
+pure calls and earlier in-scope parameters or immutable locals. Evaluate each
+reached condition once, then only its selected value arm, followed by only the
+selected statement branch. Reached locals remain eager, once-only and source ordered,
+including unused bindings. Lexical admission still rejects self/forward references,
+duplicates, shadowing, sibling references and escaping branch bindings.
+
+All v0.103 forms are inherited. Ordinary and flat conditional statement tests may
+mix with the new tests. Local and return forms remain unchanged, including complete
+Optional and Result transport without implicit propagation. Selector nesting such
+as `if ((a ? b : c) ? d : e)`, expression depth three in a test, deeper statement
+trees, hidden locals in condition expressions, new argument/return/initializer/
+matching/propagation placements, private methods, inference, mutation, loops,
+effects and backends remain excluded.
+
+Source and Core independently validate public placement, types and scope. Generic
+internal Core locals, AST/HIR/Core nodes, public compiler/semantic/Application IR
+identities and frozen 45-source compatibility are preserved. Evaluation, Core-only
+Go generation and executable Application IR consume validated target-neutral Core.
+Compiler resource ceilings and engine/package boundaries are unchanged.
+
+
+### PipeLang v0.105.0: depth-three value arms in terminal conditional tests
+
+`v0.105.0` admits ternary value-arm nesting through expression depth three in either
+or both arms of a terminal statement test, at any subset of condition positions in
+public pure terminal `if/else` trees through statement depth three. Omitted visibility
+retains the public default:
+
+```pipe
+public Class Choices {
+    public string Select(string raw, bool a, bool b, bool c, bool d,
+                         bool e, bool f, bool g) {
+        string normalized = trim(raw);
+        if (a ? (b ? (c ? d : e) : f) : (e ? f : (g ? c : d))) {
+            bool present = normalized != "";
+            if (present ? (b ? c : (d ? e : f)) : g) {
+                return normalized;
+            } else {
+                return raw;
+            }
+        } else {
+            return raw;
+        }
+    }
+}
+```
+
+Every ternary selector and final value arm remains an inherited nonconditional bool
+expression, including supported pure calls and earlier lexical bindings. Evaluate
+reached selectors once, only their selected value arms, then only the selected
+statement branch. Reached locals initialize eagerly once in source order, including
+unused bindings. Existing lexical rules reject self/forward references, duplicate
+bindings, shadowing, sibling references and escaping branch bindings.
+
+All v0.104 forms remain available, including ordinary, flat and depth-two tests,
+and unchanged return/initializer forms with complete Optional and Result transport
+without implicit propagation. Selector nesting, expression depth four in tests,
+deeper statement trees, hidden locals in tests, new argument/return/initializer/
+matching/propagation placements, private methods, inference, mutation, loops,
+effects and new backends remain excluded.
+
+Source and Core independently validate public placement, types and scope. Existing
+AST/HIR/Core nodes, generic internal Core locals, public compiler/semantic/Application
+IR identities and frozen 45-source compatibility remain unchanged. Evaluation,
+Core-only Go and executable Application IR consume validated target-neutral Core.
+Compiler resource ceilings and engine/package boundaries remain fixed.
+
+
+### PipeLang v0.106.0: flat boolean selectors in terminal tests
+
+`v0.106.0` admits a complete flat boolean selector as a terminal statement test at
+any subset of condition positions in public pure `if/else` trees through statement
+depth three. Omitted visibility retains the public default:
+
+```pipe
+public Class Choices {
+    public string Select(string raw, bool a, bool b, bool c, bool d, bool e) {
+        string normalized = trim(raw);
+        if ((a ? b : c) ? d : e) {
+            bool present = normalized != "";
+            if ((present ? b : c) ? e : d) {
+                return normalized;
+            } else {
+                return raw;
+            }
+        } else {
+            return raw;
+        }
+    }
+}
+```
+
+All five operands of `(a ? b : c) ? d : e` are inherited nonconditional bool
+expressions, including supported pure calls and earlier lexical bindings. Evaluate
+a once, only selected b or c, then only selected d or e, followed by only the selected
+statement branch. Reached locals initialize eagerly once in source order, including
+unused bindings. Self/forward references, duplicate bindings, shadowing, sibling
+references and escaping branch bindings remain invalid.
+
+All v0.105 forms remain available. Ordinary, flat, depth-two and depth-three value-arm
+tests may mix with the new selector tests. Local and return forms remain unchanged,
+including complete Optional and Result transport without implicit propagation.
+Additional selector/value-arm nesting within this new form, deeper statement trees,
+hidden locals, new return/initializer/argument/matching/propagation placements,
+private methods, inference, mutation, loops, effects and new backends remain excluded.
+
+Source and Core independently validate placement, types, scope and hidden-local
+refusal. Generic internal Core locals, AST/HIR/Core nodes, public compiler/semantic/
+Application IR identities and frozen 45-source compatibility remain unchanged.
+Evaluation, Core-only Go and executable Application IR consume validated target-neutral
+Core. Compiler resource ceilings and engine/package boundaries remain fixed.
+
+
+### PipeLang v0.107.0: conditional result arms in terminal selector tests
+
+`v0.107.0` permits a flat boolean ternary in either or both outer result arms of
+a complete terminal boolean-selector test, at any subset of condition positions
+in public pure terminal `if/else` trees through statement depth three. Omitted
+visibility retains the public default:
+
+```pipe
+public Class Choices {
+    public string Select(string raw, bool a, bool b, bool c, bool d,
+                         bool e, bool f, bool g, bool h, bool i) {
+        string normalized = trim(raw);
+        if ((a ? b : c) ? (d ? e : f) : (g ? h : i)) {
+            if ((a ? b : c) ? (d ? e : f) : i) {
+                return normalized;
+            } else {
+                return raw;
+            }
+        } else {
+            return raw;
+        }
+    }
+}
+```
+
+Every named operand remains an inherited nonconditional bool expression, including
+supported pure calls and earlier lexical bindings. Evaluate a once and only b or c;
+then evaluate only the selected outer result arm, its reached selector and selected
+leaf, followed by only the selected statement branch. Reached locals remain eager,
+once-only and source-ordered, including unused bindings. Existing lexical rules
+reject self/forward references, duplicate bindings, shadowing, sibling references
+and escaping branch bindings.
+
+All v0.106 forms remain available, including flat selector tests and ordinary,
+flat, depth-two and depth-three value-arm tests. Return and initializer forms stay
+unchanged, including complete Optional and Result transport without implicit
+propagation. Conditional arms inside the inner selector, additional nesting within
+the new result arms, deeper statement trees, hidden locals, new return/initializer/
+argument/matching/propagation placements, private methods, inference, mutation,
+loops, effects and new backends remain excluded.
+
+Source and Core independently validate placement, types, scope and hidden-local
+refusal. Generic internal Core locals, AST/HIR/Core nodes, public compiler/semantic/
+Application IR identities and frozen 45-source compatibility remain unchanged.
+Evaluation, Core-only Go and executable Application IR consume validated target-neutral
+Core. Compiler resource ceilings and engine/package boundaries remain fixed.
+
+### PipeLang v0.108.0: inner-selector value arms in terminal tests
+
+`v0.108.0` permits a flat boolean ternary in either or both result arms of the
+inner selector of a terminal test. The new form's outer result arms remain
+nonconditional bool expressions. It is available at any subset of test positions
+in public pure terminal `if/else` trees through statement depth three; omitted
+visibility retains the public default:
+
+```pipe
+public Class Choices {
+    public string Select(string raw, bool a, bool b, bool c, bool d,
+                         bool e, bool f, bool g, bool h, bool i) {
+        string normalized = trim(raw);
+        if ((a ? (b ? c : d) : (e ? f : g)) ? h : i) {
+            if ((a ? (b ? c : d) : g) ? h : i) {
+                return normalized;
+            } else {
+                return raw;
+            }
+        } else {
+            return raw;
+        }
+    }
+}
+```
+
+Every named operand remains an inherited nonconditional bool expression, including
+supported pure calls and earlier lexical bindings. Evaluate a once, then only the
+selected inner arm's selector and leaf, then h or i according to that boolean
+result, followed by only the selected statement branch. Reached locals remain
+eager, once-only and source-ordered, including unused bindings. Existing lexical
+rules reject self/forward references, duplicate bindings, shadowing, sibling
+references and escaping branch bindings.
+
+Every v0.107 form remains available, including conditional outer result arms with
+a flat inner selector at other test positions in the same tree. Combining those
+conditional outer arms with the new nested selector in the same expression remains
+excluded. Further nesting, deeper statement trees, hidden locals, new return/
+initializer/argument/matching/propagation placements, private methods, inference,
+mutation, loops, effects and new backends remain excluded.
+
+Source and Core independently validate placement, types, scope and hidden-local
+refusal. Generic internal Core locals, AST/HIR/Core nodes, public compiler/semantic/
+Application IR identities and frozen 45-source compatibility remain unchanged.
+Evaluation, Core-only Go and executable Application IR consume validated target-neutral
+Core. Compiler resource ceilings and engine/package boundaries remain fixed.
+
+
+### PipeLang v0.109.0: combined selector arms in terminal tests
+
+`v0.109.0` combines v0.108 inner-selector value arms with v0.107 outer result arms
+in the same terminal test. Flat ternaries may occupy either/both inner-selector
+arms and either/both outer result arms: nine new combinations. These tests may
+appear at any subset of condition positions in public pure terminal `if/else` trees
+through statement depth three. Omitted visibility retains the public default:
+
+```pipe
+public Class Choices {
+    public string Select(string raw, bool a, bool b, bool c, bool d, bool e,
+                         bool f, bool g, bool h, bool i, bool j, bool k, bool l, bool m) {
+        string normalized = trim(raw);
+        if ((a ? (b ? c : d) : (e ? f : g)) ? (h ? i : j) : (k ? l : m)) {
+            return normalized;
+        } else {
+            return raw;
+        }
+    }
+}
+```
+
+All named operands are inherited nonconditional bool expressions, including supported
+pure calls and earlier lexical bindings. Evaluate a once, only the selected inner arm
+and its reached operands, then only the selected outer arm and its reached operands,
+then only the selected statement branch. Reached locals remain eager, once-only and
+source-ordered, including unused bindings. Self/forward references, duplicate bindings,
+shadowing, sibling references and escaping branch bindings remain invalid.
+
+All v0.108 forms remain available, including at other test positions in the same tree.
+Further nesting, deeper statements, hidden locals, private methods, new return/
+initializer/arrow/argument/matching/propagation placements, inference, mutation, loops,
+effects and new backends remain excluded. Existing return/initializer carrier transport
+retains its exact types and does not implicitly propagate.
+
+Source and Core independently enforce placement, types, scope and hidden-local refusal.
+Existing AST/HIR/Core nodes, generic internal Core locals, public compiler/semantic/
+Application IR identities and frozen 45-source compatibility remain unchanged.
+Evaluation, Core-only Go and executable Application IR consume validated target-neutral
+Core. Compiler resource ceilings and engine/package boundaries remain fixed.
+
+### PipeLang v0.110.0: conditional result arms in straight-line selector returns
+
+`v0.110.0` admits a flat ternary in either or both result arms of a complete
+boolean-selector return, only in public pure straight-line block methods. Zero
+or more finite inherited explicitly typed immutable locals may precede the return;
+omitted visibility remains public.
+
+```pipe
+public Class Choices {
+    public string Select(string raw, bool a, bool b, bool c, bool d, bool e) {
+        string normalized = trim(raw);
+        return (a ? b : c) ? (d ? normalized : raw) : (e ? "fallback" : raw);
+    }
+}
+```
+
+The three new forms expand the left arm, the right arm, or both. All selector
+operands must be bool and result leaves must have exactly matching supported types.
+Complete primitive, record, list, Optional and Result values travel intact, without
+implicit propagation. Named operands remain inherited nonconditional expressions,
+including supported pure calls and earlier lexical bindings. Preceding initializers
+retain their inherited ordinary, depth-three and flat boolean-selector forms.
+
+Evaluate the inner selector's condition once, then only its selected operand;
+evaluate only the selected outer arm, its condition and its selected leaf. Earlier
+locals execute eagerly once in source order, including unused locals. Bindings
+enter scope after initialization; self/forward references, duplicate names,
+shadowing and escaping bindings remain invalid.
+
+All v0.109 forms remain available. This extension adds no richer selector returns
+in terminal leaves or arrow methods, no new initializer/argument/matching/propagation
+placements, and no further nesting. Private methods, hidden locals, inference,
+mutation, loops, effects and new backends remain excluded.
+
+Source and Core independently enforce structural placement, types and scope.
+Core erases block/arrow spelling, so the parser alone enforces that source boundary.
+AST/HIR/Core shapes, generic internal Core locals, public compiler/semantic/Application
+IR identities, executable Application IR, frozen 45-source compatibility and
+engine/package boundaries remain unchanged. The evaluator and Core-only Go backend
+consume validated target-neutral Core under unchanged resource ceilings.
+
+### PipeLang v0.111.0: conditional result arms in terminal-leaf selector returns
+
+`v0.111.0` permits the three v0.110 selector result-arm forms in any subset of
+leaves of existing terminal `if/else` trees through statement depth three, only
+in public pure methods (including the inherited public default).
+
+```pipe
+public Class Choices {
+    public string Select(string raw, bool route, bool a, bool b, bool c, bool d, bool e) {
+        string normalized = trim(raw);
+        if (route) {
+            string local = normalized + "!";
+            return (a ? b : c) ? (d ? local : raw) : (e ? normalized : raw);
+        } else {
+            return raw;
+        }
+    }
+}
+```
+
+Either or both outer result arms may contain one flat ternary. All selector
+conditions are bool; result leaves have exactly matching supported primitive,
+record, list, Optional or Result types. Complete carriers travel intact without
+implicit propagation. Named operands remain inherited nonconditional expressions,
+including supported pure calls and earlier lexical bindings.
+
+Root, intermediate and leaf scopes retain zero or finite explicitly typed immutable
+locals and inherited ordinary, depth-three and flat boolean-selector initializers.
+Statement tests retain all v0.109 forms. Bindings enter scope after initialization;
+self/forward references, duplicates, shadowing, cross-branch and escaping bindings
+remain invalid. Reached locals run eagerly once in source order, including unused
+bindings. Only selected statement branches, selector operands and result leaves run,
+each once. Unselected branches do not initialize their locals.
+
+All v0.110 forms remain available. No new arrow, initializer, argument, matching or
+propagation placements are admitted. Further expression nesting, statement depth four,
+private methods, inference, mutation, loops, effects and new backends remain excluded.
+
+Source and Core independently enforce placement, types and lexical scope, including
+hidden-local refusal. The parser retains arrow/block spelling enforcement. Existing
+AST/HIR/Core shapes, generic internal Core locals, public compiler/semantic/Application
+IR identities, executable Application IR, frozen 45-source compatibility and generic
+engine/package boundaries are preserved. Evaluator and Core-only Go consume validated
+Core under unchanged resource ceilings. This adds no runtime or deployment behavior.
+
+
+### PipeLang v0.112.0: conditional result arms in arrow-method selectors
+
+`v0.112.0` admits a flat ternary in either or both result arms of a complete
+boolean selector in a public pure arrow-method body. Omitted visibility retains
+the public default. The three forms expand the left arm, right arm, or both:
+
+```pipe
+public Class Choices {
+    public string Select(string raw, bool a, bool b, bool c, bool d, bool e) =>
+        (a ? b : c) ? (d ? trim(raw) : raw) : (e ? "fallback" : raw);
+}
+```
+
+All selector conditions are bool. Result leaves have exactly matching supported
+primitive, record, list, Optional or Result types; complete carriers travel intact
+without implicit propagation. Named operands remain inherited nonconditional
+expressions, including supported pure calls, parameters and boolean operations.
+Evaluate the inner selector condition once, then only its selected operand;
+evaluate only the selected outer arm, its condition and selected leaf, each once.
+Inherited callers retain finite explicitly typed immutable locals, evaluated eagerly
+once in source order, including unused reached locals. Lexical scope is unchanged.
+
+All v0.111 forms remain available. No new initializer, argument, matching or
+propagation placements, further nesting, deeper terminal trees, private methods,
+inference, mutation, loops, effects or new backends are admitted.
+
+Source and Core independently validate structural placement, exact types, scope and
+hidden-local refusal. Core erases arrow/block spelling: equivalent v0.110/v0.111
+block-return Core remains valid, while the parser rejects the new arrow spelling
+under those older versions. HIR/Core/semantic/Go equivalence excludes only source
+spans and source fingerprints. Existing AST/HIR/Core shapes, public compiler,
+semantic and Application IR identities, generic internal Core locals, executable
+Application IR, frozen 45-source compatibility and generic engine/package boundaries
+remain unchanged. Evaluator and Core-only Go consume validated target-neutral Core
+under the existing resource ceilings. No runtime or deployment behavior is introduced.
+
+### PipeLang v0.113.0: nominal enums and exhaustive matching
+
+`v0.113.0` is accepted under the completed
+[nominal-enum objective](../agents/tasks/pipelang-reactive-application-language/nominal-enums.md).
+Fresh source/HIR/Core/evaluator/native, compiler-matrix, integration/editor and independent inherited
+proof passed under unchanged resource ceilings.
+
+```pipe
+public Enum Mode {
+    Idle = "idle";
+    Busy = "busy";
+}
+public Class Choices {
+    public Mode Echo(Mode value) => value;
+    public string Select(Mode value, bool enabled) {
+        Mode chosen = enabled ? Echo(value) : Mode.Busy;
+        return match(chosen) { Mode.Idle => "ready", Mode.Busy => "working" };
+    }
+}
+```
+
+`Enum` is contextual declaration syntax in v0.113.0. A public enum declares one or more
+payload-free members, each with an explicit nonempty UTF-8 string tag. Names and tags must each
+be unique within the declaration. Member identity follows the owning module/type/member semantic
+identity; tags never depend on declaration order or a Go ordinal. A member name and its tag are
+separate compatibility surfaces. Explicit symbol imports retain the defining module's nominal
+identity. Older language contracts reject enum declarations.
+
+`Mode.Idle` has type `Mode`. Parameters, returns, explicitly typed immutable locals and same-class
+public pure calls carry that exact type. `==` and `!=` require identical nominal types, including
+their closed member schema; two different enum declarations do not compare or convert even when
+their tags coincide. No ordering, ordinal, integer/string conversion or flags operations are added.
+
+`match(value)` requires exactly one qualified arm for every member of the scrutinee's enum and
+exactly matching result types. Unknown, duplicate, missing or cross-enum arms, wildcard patterns and
+payload bindings are rejected. A tag literally equal to `"_"` remains an ordinary tag: its arm is
+spelled with the qualified member name. The scrutinee runs once; only the selected arm runs.
+
+Enum composition admits enum and primitive parameters/results, ordinary scalar operations,
+`trim`/`contains_casefolded`, pure calls, conditionals and enum matches. Conditional and match
+nesting are each bounded to depth three along an expression path. Existing method-level and
+terminal-branch immutable local sequences retain eager source order, lexical isolation and exact
+types; locals cannot be hidden inside a ternary operand, match arm or call argument. Existing
+block spelling restrictions remain: a zero-local single match uses an arrow body; this slice does
+not add general statement blocks. A ternary or terminal if/else may contain enum values, but this
+addition does not widen inherited non-enum control-flow contracts.
+
+HIR and Core carry `kind: enum`, the declaration identity and a closed member schema containing
+names, tags and member identities, canonicalized by tag. A qualified enum value lowers to a typed
+literal with its stable tag; match arms carry those tags. Source spans remain attached to HIR/Core
+expressions and public semantic declarations. `pipelang.semantic.v1` adds type kind `enum`, member
+kind `enum_member` and the additive member field `enum_tag`; existing identities and shapes are
+unchanged when no enum occurs. Core independently rejects malformed schemas, extra representations,
+unknown values, nominal mismatches, invalid arm sets and unsupported composition.
+
+The evaluator and prepared evaluator validate every enum argument, including unused arguments.
+Core-only Go emits distinct named string types, stable identity-derived names and closed argument
+validators; invalid externally supplied enum values panic at that boundary. Generated validators
+use a local fixed array and comparison loop so ordinary Go inlining does not multiply control-flow
+branches by both enum-member count and repeated local-call count. No mutable shared enum table,
+integer representation or backend-specific source syntax is introduced.
+
+The editor supplies Enum highlighting, completion and declaration/match snippets. The Application IR
+consumer uses enum choices inside executable pure helpers while preserving its existing canonical
+snapshot contract. This is language-consumer evidence, not enum serialization or application-adapter
+support. Enum fields in objects/records, carrier/container elements, payload unions, general blocks,
+mutation, methods inside enums and serialization remain later foundation packages. P09/P32 own wire
+integration; all frozen compatibility, compiler/semantic/Application IR version identities and
+128 MiB / 5-second direct compiler ceilings remain in force.
+
+
+## PipeLang v0.114.0 general lexical blocks
+
+Accepted with fresh complete verification and independent inherited-proof audit in
+[the P04.a objective](../agents/tasks/pipelang-reactive-application-language/general-blocks.md).
+The explicit successor contract admits nested lexical blocks, initialized immutable
+locals, sequential `if`/`else` branches and early returns in public pure method bodies.
+A branch without an `else` may continue through its false path. A branch whose arms
+both return has no continuation. Return in any nested block exits the whole method.
+
+```text
+public string Select(bool ready, string value) {
+    if (ready) { return value; }
+    { string temporary = value; }
+    return "waiting";
+}
+```
+
+Locals require an explicit existing type and initializer. They are visible only after
+initialization and inside their lexical block, cannot shadow an existing binding,
+and cannot escape into sibling or enclosing blocks. Reusing a name after its inner
+scope ends is valid. All paths reaching the end of a value-returning method must
+return. Statements after a structurally unconditional return are rejected, including
+a nested block or an if/else whose arms both return. Conditions must be Bool;
+constant folding does not hide type errors in unselected branches.
+
+Evaluation remains eager once and left-to-right within expressions, lazy for branch
+selection and short circuit. Unused initialized locals still evaluate their
+initializers. Only paths that continue execute following statements. No mutation,
+delayed initialization, loops, recursion, effects or new type families are added.
+Existing propagation blocks retain their prior shape admission and carrier-return
+semantics; propagation is not generalized into the new statement model.
+
+HIR/Core represent a callable block as `block`, containing ordered `local`, `if`,
+`block` and `return` statements. A local carries a typed canonical binding; a value
+is an existing expression. Nested statement blocks share the callable return target.
+Core validates lexical positions, types, Boolean conditions, all-return paths,
+unreachable statements and complete call dependencies independently of source
+lowering. Blocks cannot be embedded in value expressions. Go emits structured
+statements directly; the join continuation is represented once. The evaluator owns
+an invocation-local binding stack and unwinds each block's bindings on every exit.
+HIR retains statement, local name/type and expression source spans; public semantic
+identities and Application IR contracts retain their existing schemas.
+
+Historical language contracts keep their existing acceptance/refusal behavior.
+Verification retains independent value/order/refusal oracles, fresh native execution,
+all inherited compatibility, and direct compiler ceilings of 128 MiB/5 seconds.
+
+
+## PipeLang v0.115.0 mutable locals and definite assignment
+
+Implemented under [P04.b](../agents/tasks/pipelang-reactive-application-language/mutable-locals.md),
+but terminal verification is blocked by coordinator memory headroom. v0.114.0 remains
+the accepted baseline; this v0.115.0 contract is not yet accepted.
+
+In supported public pure method blocks, `mutable T name = value;` declares a local
+that can be reassigned by `name = expression;`. Assignment is a statement, not a
+value expression. Its right-hand side must have the exact declared type and is
+evaluated once before the binding changes. Parameters remain immutable; assigning
+a local value does not mutate caller arguments or previously copied bindings.
+
+Both `mutable T name;` and immutable `T name;` permit delayed initialization.
+There is no observable default value: reads require initialization along every
+continuing path. An immutable local permits its first assignment only when it has
+not been initialized along any reaching path. Separate branch assignments are valid:
+
+```text
+int result;
+if (flag) { result = 10; } else { result = 20; }
+mutable int current = result;
+current = 30;
+return result;
+```
+
+The example returns 10 or 20; changing `current` leaves `result` unchanged. Removing
+the `else` rejects the subsequent read. An assignment after a one-arm initialization
+also rejects for an immutable local because that local may already be initialized.
+Branches that return do not participate in a continuation's initialization join.
+Analysis is structural and does not infer correlations between repeated conditions.
+Unused uninitialized locals are permitted. Nested blocks can assign enclosing locals;
+their declarations do not escape and cannot shadow existing bindings. Unreachable
+statements and methods that can fall through still reject.
+
+Existing expression admission, exact types, lazy branches and left-to-right eager
+argument evaluation remain unchanged. Field/index mutation, assignment expressions,
+compound assignment, increment/decrement, loops, recursion, closures and new value
+layouts are excluded. Earlier explicit language contracts retain their admission rules.

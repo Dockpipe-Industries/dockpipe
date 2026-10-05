@@ -22,7 +22,12 @@ dockpipe_source_build_init() {
 }
 
 dockpipe_source_build_now_ms() {
-  date +%s%3N
+  local timestamp
+  timestamp="$(date +%s%3N)"
+  case "$timestamp" in
+    *[!0-9]*) printf '%s000\n' "$(date +%s)" ;;
+    *) printf '%s\n' "$timestamp" ;;
+  esac
 }
 
 dockpipe_source_build_emit_result() {

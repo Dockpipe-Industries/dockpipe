@@ -3632,10 +3632,17 @@ func providerPoolWorkdirCanonicalCandidates(workdir string) []string {
 		candidates = append(candidates, abs)
 	}
 	for _, value := range append([]string{}, candidates...) {
-		candidates = append(candidates, filepath.ToSlash(value))
-		if runtime.GOOS == "windows" || providerPoolLooksWindowsPath(value) {
+		slashed := filepath.ToSlash(value)
+		windowsPath := providerPoolLooksWindowsPath(value)
+		if windowsPath {
+			// ToSlash only recognizes the host separator; persisted Windows
+			// identities also need normalization when read on Unix.
+			slashed = strings.ReplaceAll(value, `\`, "/")
+		}
+		candidates = append(candidates, slashed)
+		if runtime.GOOS == "windows" || windowsPath {
 			candidates = append(candidates, strings.ToLower(filepath.Clean(value)))
-			candidates = append(candidates, strings.ToLower(filepath.ToSlash(value)))
+			candidates = append(candidates, strings.ToLower(slashed))
 		}
 	}
 	return uniqueNonEmpty(candidates)

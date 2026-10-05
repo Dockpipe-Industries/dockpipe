@@ -8,7 +8,10 @@ fi
 
 readonly SOURCE_ARCHIVE=/input/qemu-11.0.3.tar.xz
 readonly SOURCE_SHA256=da5fcffc32762820568b828ed430a728864d34d50b6d2f30358597760cbb0523
-readonly FINAL_ROOT=/home/jamie/.cache/dockpipe/vm/toolchains/qemu-11.0.3-linux-amd64.1
+# shellcheck source=build-paths.sh
+source "$(dirname "${BASH_SOURCE[0]}")/build-paths.sh"
+qemu_require_build_path DOCKPIPE_QEMU_FINAL_ROOT
+readonly FINAL_ROOT="$DOCKPIPE_QEMU_FINAL_ROOT"
 readonly SOURCE_DATE_EPOCH=1784926308
 
 test "$(/usr/bin/sha256sum "$SOURCE_ARCHIVE" | /usr/bin/cut -d' ' -f1)" = "$SOURCE_SHA256"
@@ -56,7 +59,7 @@ configure_arguments=(
   "--disable-strip"
   "--disable-werror"
   "--extra-cflags=-O2 -g0 -fdebug-prefix-map=/build=/usr/src/qemu -ffile-prefix-map=/build=/usr/src/qemu -fmacro-prefix-map=/build=/usr/src/qemu"
-  '--extra-ldflags=-Wl,--build-id=none -Wl,--disable-new-dtags -Wl,-rpath,$ORIGIN/../lib -Wl,-z,nodefaultlib -Wl,--dynamic-linker=/home/jamie/.cache/dockpipe/vm/toolchains/qemu-11.0.3-linux-amd64.1/lib/ld-musl-x86_64.so.1'
+  "--extra-ldflags=-Wl,--build-id=none -Wl,--disable-new-dtags -Wl,-rpath,\$ORIGIN/../lib -Wl,-z,nodefaultlib -Wl,--dynamic-linker=$FINAL_ROOT/lib/ld-musl-x86_64.so.1"
 )
 
 cd /build/build

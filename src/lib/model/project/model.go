@@ -16,6 +16,8 @@ type DockpipeProjectConfig struct {
 
 // DockpipeSecretsConfig points at host-side vault mapping (secret references → env), not plaintext secrets.
 type DockpipeSecretsConfig struct {
+	Environment  string                       `json:"environment,omitempty"`
+	Environments map[string]SecretEnvironment `json:"environments,omitempty"`
 	// VaultTemplate is the preferred repo-relative or absolute path to the vault env template (e.g. .env.vault.template).
 	// Same role as op_inject_template; takes precedence when both are set.
 	VaultTemplate *string `json:"vault_template,omitempty"`

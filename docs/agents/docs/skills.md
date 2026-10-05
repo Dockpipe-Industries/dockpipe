@@ -12,7 +12,6 @@ Use:
 skills:
   - dorkpipe-core-review
   - dorkpipe-objective-execution
-  - dorkpipe-one-shot-gate
   - dorkpipe-task-handoff
   - dorkpipe-token-optimization
 ```
@@ -20,14 +19,16 @@ skills:
 Do not use target-specific skill routing keys. Keep routing neutral and let the renderer adapt the
 skill for Codex, Claude, or another target.
 
+For provider-specific behavior, use the renderer's section overrides described in
+[DorkPipe Skills Renderer](../../../packages/dorkpipe/README.md#skills-renderer).
+Keep shared instructions in one source; replace only the sections that differ for a target.
+
 ## Installed Codex Skills
 
 - `dorkpipe-agentic-yaml`
 - `dorkpipe-core-review`
 - `dorkpipe-objective-execution`
-- `dorkpipe-one-shot-gate`
 - `dorkpipe-package-authoring`
-- `dorkpipe-task-execution`
 - `dorkpipe-task-handoff`
 - `dorkpipe-token-optimization`
 - `dorkpipe-yaml-workflows`
@@ -56,13 +57,13 @@ Curated DorkPipe skill sources live in:
 packages/dorkpipe/resolvers/dorkpipe/assets/skills/
 ```
 
-New governed work uses three lifecycle roles:
+New governed work uses two lifecycle roles:
 
-- `dorkpipe-objective-execution` owns the bounded outcome across ordinary checkpoints and enforces
-  the receiving task's first-checkpoint and output budget.
-- `dorkpipe-one-shot-gate` consumes one separately approved gate and returns to the objective.
-- `dorkpipe-task-handoff` transports unchanged lifecycle state between tasks while keeping source
-  and receiver transport allowances distinct.
+- `dorkpipe-objective-execution` owns the bounded outcome across implementation, explicitly
+  authorized operations, evidence-based recovery, and verification. It respects repository and user
+  boundaries without manufacturing single-use authority or blanket no-retry policy.
+- `dorkpipe-task-handoff` transports unchanged lifecycle state only when the user requests a fresh
+  task. Context pressure is reported to the user; it never triggers automatic task creation.
 
-`dorkpipe-task-execution` remains a compatibility router for existing task records. Do not use it
-as the controller for new objectives.
+Legacy gate records are admitted as evidence inside the active objective. Do not install or invoke
+a second execution controller.

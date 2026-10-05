@@ -40,5 +40,7 @@ func pipelangCompareOrdinalText(left, right string) int {
 }
 
 func PipeLangBefore(p0 string, p1 string) bool {
+	pipelangValidateText(p0)
+	pipelangValidateText(p1)
 	return (pipelangCompareOrdinalText(p0, p1) < 0)
 }

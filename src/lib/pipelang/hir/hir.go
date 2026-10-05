@@ -19,6 +19,7 @@ const (
 	TypeResult          TypeKind = "result"
 	TypeArithmeticError TypeKind = "arithmetic_error"
 	TypeRecord          TypeKind = "record"
+	TypeEnum            TypeKind = "enum"
 	TypeOptional        TypeKind = "optional"
 	TypeList            TypeKind = "list"
 	TypeNamed           TypeKind = "named"
@@ -61,6 +62,15 @@ type RecordField struct {
 	Type     Type             `json:"type"`
 }
 
+type EnumMember struct {
+	Name     string           `json:"name"`
+	Tag      string           `json:"tag"`
+	Identity SemanticIdentity `json:"identity"`
+}
+type EnumType struct {
+	Members []EnumMember `json:"members"`
+}
+
 type RecordType struct {
 	Fields []RecordField `json:"fields"`
 }
@@ -99,6 +109,7 @@ type Type struct {
 	Optional  *OptionalType     `json:"optional,omitempty"`
 	List      *ListType         `json:"list,omitempty"`
 	Record    *RecordType       `json:"record,omitempty"`
+	Enum      *EnumType         `json:"enum,omitempty"`
 	SymbolID  uint32            `json:"symbol_id,omitempty"`
 	Identity  *SemanticIdentity `json:"identity,omitempty"`
 	Name      string            `json:"name,omitempty"`
@@ -114,7 +125,11 @@ type Owner struct {
 
 type BindingKind string
 
-const BindingParameter BindingKind = "parameter"
+const (
+	BindingParameter BindingKind = "parameter"
+	BindingMatchArm  BindingKind = "match_arm"
+	BindingLocal     BindingKind = "local"
+)
 
 type Binding struct {
 	Kind     BindingKind      `json:"kind"`
@@ -133,10 +148,14 @@ type Parameter struct {
 type ExprKind string
 
 const (
+	ExprBlock                              ExprKind = "block"
 	ExprLiteral                            ExprKind = "literal"
 	ExprReference                          ExprKind = "reference"
 	ExprUnary                              ExprKind = "unary"
 	ExprBinary                             ExprKind = "binary"
+	ExprConditional                        ExprKind = "conditional"
+	ExprImmutableLocal                     ExprKind = "immutable_local"
+	ExprCall                               ExprKind = "call"
 	ExprTextContainsCaseFolded             ExprKind = "text_contains_case_folded"
 	ExprTextTrim                           ExprKind = "text_trim"
 	ExprFieldProjection                    ExprKind = "field_projection"
@@ -145,6 +164,8 @@ const (
 	ExprOptionalNone                       ExprKind = "optional_none"
 	ExprOptionalHasValue                   ExprKind = "optional_has_value"
 	ExprOptionalValueOr                    ExprKind = "optional_value_or"
+	ExprPropagate                          ExprKind = "propagate"
+	ExprMatch                              ExprKind = "match"
 	ExprListEmpty                          ExprKind = "list_empty"
 	ExprListSingleton                      ExprKind = "list_singleton"
 	ExprListCount                          ExprKind = "list_count"
@@ -157,6 +178,7 @@ const (
 	ExprListFilterJoinedContainsCaseFolded ExprKind = "list_filter_joined_contains_case_folded_text"
 	ExprListSortByOrdinalText              ExprKind = "list_sort_by_ordinal_text"
 	ExprListSortByOrdinalTexts             ExprKind = "list_sort_by_ordinal_texts"
+	ExprListSortByOrdinalDirections        ExprKind = "list_sort_by_ordinal_directions"
 	ExprResultOK                           ExprKind = "result_ok"
 	ExprResultErr                          ExprKind = "result_err"
 	ExprResultIsOK                         ExprKind = "result_is_ok"
@@ -201,6 +223,28 @@ type Binary struct {
 	Right    *Expr    `json:"right"`
 }
 
+type Conditional struct {
+	Condition         *Expr `json:"condition"`
+	WhenTrue          *Expr `json:"when_true"`
+	WhenFalse         *Expr `json:"when_false"`
+	TerminalStatement bool  `json:"terminal_statement,omitempty"`
+}
+
+type ImmutableLocal struct {
+	Binding     Binding    `json:"binding"`
+	Type        Type       `json:"type"`
+	TypeSpan    SourceSpan `json:"type_span"`
+	NameSpan    SourceSpan `json:"name_span"`
+	Initializer *Expr      `json:"initializer"`
+	Return      *Expr      `json:"return"`
+}
+
+type Call struct {
+	Target     SemanticIdentity `json:"target"`
+	TargetName string           `json:"target_name"`
+	Arguments  []*Expr          `json:"arguments"`
+}
+
 type TextContainsCaseFolded struct {
 	Value *Expr `json:"value"`
 	Query *Expr `json:"query"`
@@ -242,6 +286,10 @@ type OptionalHasValue struct {
 type OptionalValueOr struct {
 	Value    *Expr `json:"value"`
 	Fallback *Expr `json:"fallback"`
+}
+type Propagate struct {
+	Value   *Expr `json:"value"`
+	Carrier Type  `json:"carrier"`
 }
 
 type ListEmpty struct{}
@@ -318,6 +366,24 @@ type ListSortByOrdinalTexts struct {
 	Values    *Expr                   `json:"values"`
 	Selectors []ListTextFieldSelector `json:"selectors"`
 }
+type ListDirectionalTextFieldSelector struct {
+	ListTextFieldSelector
+	Direction string `json:"direction"`
+}
+type ListSortByOrdinalDirections struct {
+	Values    *Expr                              `json:"values"`
+	Selectors []ListDirectionalTextFieldSelector `json:"selectors"`
+}
+
+type MatchArm struct {
+	Tag     string   `json:"tag"`
+	Binding *Binding `json:"binding,omitempty"`
+	Body    *Expr    `json:"body"`
+}
+type Match struct {
+	Value *Expr      `json:"value"`
+	Arms  []MatchArm `json:"arms"`
+}
 
 type ResultOK struct {
 	Value *Expr `json:"value"`
@@ -342,6 +408,7 @@ type ResultFailureOr struct {
 }
 
 type Expr struct {
+	Block                              *Block                              `json:"block,omitempty"`
 	Kind                               ExprKind                            `json:"kind"`
 	Type                               Type                                `json:"type"`
 	Span                               SourceSpan                          `json:"span"`
@@ -349,6 +416,9 @@ type Expr struct {
 	Reference                          *Binding                            `json:"reference,omitempty"`
 	Unary                              *Unary                              `json:"unary,omitempty"`
 	Binary                             *Binary                             `json:"binary,omitempty"`
+	Conditional                        *Conditional                        `json:"conditional,omitempty"`
+	ImmutableLocal                     *ImmutableLocal                     `json:"immutable_local,omitempty"`
+	Call                               *Call                               `json:"call,omitempty"`
 	TextContains                       *TextContainsCaseFolded             `json:"text_contains_case_folded,omitempty"`
 	TextTrim                           *TextTrim                           `json:"text_trim,omitempty"`
 	Field                              *FieldProjection                    `json:"field,omitempty"`
@@ -357,6 +427,8 @@ type Expr struct {
 	None                               *OptionalNone                       `json:"none,omitempty"`
 	HasValue                           *OptionalHasValue                   `json:"has_value,omitempty"`
 	ValueOr                            *OptionalValueOr                    `json:"value_or,omitempty"`
+	Propagate                          *Propagate                          `json:"propagate,omitempty"`
+	Match                              *Match                              `json:"match,omitempty"`
 	ListEmpty                          *ListEmpty                          `json:"list_empty,omitempty"`
 	ListOne                            *ListSingleton                      `json:"list_singleton,omitempty"`
 	ListCount                          *ListCount                          `json:"list_count,omitempty"`
@@ -369,6 +441,7 @@ type Expr struct {
 	ListFilterJoinedContainsCaseFolded *ListFilterJoinedContainsCaseFolded `json:"list_filter_joined_contains_case_folded_text,omitempty"`
 	ListSortByOrdinalText              *ListSortByOrdinalText              `json:"list_sort_by_ordinal_text,omitempty"`
 	ListSortByOrdinalTexts             *ListSortByOrdinalTexts             `json:"list_sort_by_ordinal_texts,omitempty"`
+	ListSortByOrdinalDirections        *ListSortByOrdinalDirections        `json:"list_sort_by_ordinal_directions,omitempty"`
 	ResultOK                           *ResultOK                           `json:"result_ok,omitempty"`
 	ResultErr                          *ResultErr                          `json:"result_err,omitempty"`
 	ResultIsOK                         *ResultIsOK                         `json:"result_is_ok,omitempty"`

@@ -260,6 +260,59 @@ func openPrivateLockFile(root, path string) (*os.File, error) {
 }
 
 func ensurePrivateRoot(path string) error {
+	return ensurePrivateRootWithPolicy(path, true)
+}
+
+// PreparePrivateDirectory creates owner-only directories and validates existing
+// ones without changing their permissions. Existing ancestors may be shared,
+// but no component may be a link or reparse point.
+func PreparePrivateDirectory(path string) error {
+	return ensurePrivateRootWithPolicy(path, false)
+}
+
+// ValidatePrivatePath checks owner-only permissions using the host's mode or ACL
+// contract, without repairing an existing file or directory.
+func ValidatePrivatePath(path string, directory bool) error {
+	if err := ValidateUnlinkedPath(path); err != nil {
+		return err
+	}
+	return validatePrivatePath(path, directory)
+}
+
+// WritePrivateJSON publishes JSON with owner-only permissions established before
+// writing content, using the host's atomic replacement and durability operations.
+func WritePrivateJSON(path string, value any) error {
+	root := filepath.Dir(path)
+	if err := PreparePrivateDirectory(root); err != nil {
+		return err
+	}
+	return writePrivateJSONAtomic(root, path, value)
+}
+
+// ValidateUnlinkedPath inspects each existing component rather than comparing
+// spellings after EvalSymlinks, which also expands ordinary Windows short names.
+func ValidateUnlinkedPath(path string) error {
+	current, err := filepath.Abs(filepath.Clean(path))
+	if err != nil {
+		return err
+	}
+	for {
+		info, err := os.Lstat(current)
+		if err != nil {
+			return err
+		}
+		if durableFileInfoIsLinkOrReparse(info) {
+			return fmt.Errorf("path component %q is linked or reparsed", current)
+		}
+		parent := filepath.Dir(current)
+		if parent == current {
+			return nil
+		}
+		current = parent
+	}
+}
+
+func ensurePrivateRootWithPolicy(path string, repairExisting bool) error {
 	abs, err := filepath.Abs(filepath.Clean(path))
 	if err != nil {
 		return err
@@ -277,11 +330,12 @@ func ensurePrivateRoot(path string) error {
 		info, statErr := os.Lstat(current)
 		created := false
 		if os.IsNotExist(statErr) {
-			if mkdirErr := os.Mkdir(current, 0o700); mkdirErr != nil && !os.IsExist(mkdirErr) {
+			mkdirErr := os.Mkdir(current, 0o700)
+			if mkdirErr != nil && !os.IsExist(mkdirErr) {
 				return mkdirErr
 			}
 			info, statErr = os.Lstat(current)
-			created = statErr == nil
+			created = mkdirErr == nil
 		}
 		if statErr != nil {
 			return statErr
@@ -289,13 +343,13 @@ func ensurePrivateRoot(path string) error {
 		if durableFileInfoIsLinkOrReparse(info) || !info.IsDir() {
 			return fmt.Errorf("path component %q is linked, reparsed, or not a directory", current)
 		}
-		if created || i == len(parts)-1 {
+		if created || repairExisting && i == len(parts)-1 {
 			if err := makePrivatePath(current, true); err != nil {
 				return err
 			}
 		}
 	}
-	return nil
+	return validatePrivatePath(abs, true)
 }
 
 func ensurePrivateSubdirectory(root, path string) error {

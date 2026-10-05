@@ -130,3 +130,6 @@ tmp/
 # END dockpipe-gitignore
 
 .local-go-cache/*
+
+# Exact optional release embedding declaration; owned by release preparation.
+/embed_release_generated.go

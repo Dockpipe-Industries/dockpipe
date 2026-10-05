@@ -1650,5 +1650,7 @@ func pipelangContainsCaseFoldedText(value, query string) bool {
 }
 
 func PipeLangContainsCaseFolded(p0 string, p1 string) bool {
+	pipelangValidateText(p0)
+	pipelangValidateText(p1)
 	return pipelangContainsCaseFoldedText(p0, p1)
 }

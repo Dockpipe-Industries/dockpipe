@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	"dockpipe/src/lib/infrastructure"
+	"dockpipe/src/lib/infrastructure/filepublication"
 	"gopkg.in/yaml.v3"
 )
 
@@ -1140,21 +1141,11 @@ func writePromotionArtifactSetAtomic(directory string, files map[string][]byte) 
 }
 
 func writePromotionBytesAtomic(path string, content []byte) error {
-	temporary, err := os.CreateTemp(filepath.Dir(path), ".promotion-write-*")
+	temporaryPath, err := filepublication.Stage(filepath.Dir(path), ".promotion-write-*", content)
 	if err != nil {
 		return err
 	}
-	temporaryPath := temporary.Name()
 	defer os.Remove(temporaryPath)
-	if _, err = temporary.Write(content); err == nil {
-		err = temporary.Sync()
-	}
-	if closeErr := temporary.Close(); err == nil {
-		err = closeErr
-	}
-	if err != nil {
-		return err
-	}
 	return os.Rename(temporaryPath, path)
 }
 

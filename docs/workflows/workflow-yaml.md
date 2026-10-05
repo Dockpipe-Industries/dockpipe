@@ -844,3 +844,7 @@ That is the explicit nesting form. Do not write `runtime: package`.
 
 When the child workflow publishes `types:`, `inputs:` on the parent step uses the child model. This lets a
 package expose stable field paths and editor help while still exporting the env names its scripts consume.
+
+### Secret environment selection
+
+Top-level `vault: environment` loads the named resolver-backed environment selected by `--secret-environment NAME` or `secrets.environment` in project configuration. `vault: op` retains template injection; `vault: none` disables both. Bindings explicitly select which variables enter the workflow. Configuration and provider examples are in [Secret environments](../runtime/vault.md).

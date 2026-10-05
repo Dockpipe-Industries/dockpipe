@@ -63,7 +63,13 @@ Parity proof must use deterministic adapter fixtures for complete, empty, partia
 detail, refresh-coalescing, selection-preservation, filtering, and state-action cases. A live Docker
 engine is useful integration evidence but cannot be the only acceptance oracle.
 
-The implementation order is vertical:
+The [2026-09-11 foundation alignment](../../../concepts/pipelang-foundation.md) places a reviewed
+language-foundation milestone before production launcher migration. A read-only screen requiring
+only a smaller subset does not remove enums, polymorphism, loops or managed synchronization from
+the language goal. Preserve this frozen parity baseline and existing executable fixtures while
+TASK-021 resolves the full foundation specification and dependency plan.
+
+The implementation order within the launcher migration is vertical:
 
 1. freeze an executable/read-only parity inventory for the current launcher;
 2. reproduce Docker snapshots, details, and logs through typed records, optionals, deterministic
@@ -89,3 +95,87 @@ This accepted consumer is dependency evidence for TASK-021 and this task, not pe
 records, optionals, collections, actions, effects, Application IR, Qt generation, and launcher
 migration into one change. Each prerequisite remains an explicit versioned vertical slice.
 
+
+### PipeLang v0.32.0 directional-ordering value
+
+The accepted language foundation now provides explicit ascending, descending, and mixed per-key
+ordinal row ordering through the target-neutral `list_sort_by_ordinal_directions` Core node. This is
+sufficient for deterministic read-only Docker-observability row projections that require reverse or
+mixed ordering. It does not itself change the frozen launcher oracle, select a UI ordering policy,
+produce Application IR, or authorize runtime/target behavior.
+
+
+PipeLang v0.33.0 additionally provides bounded postfix `rows[index] -> Optional<R>` selection for the read-only snapshot model. It reuses canonical `list_at` semantics and adds no adapter, runtime, refresh, action, or UI behavior.
+
+
+### PipeLang v0.34.0 bounded-propagation value
+
+The accepted language foundation can now forward optional selection/details absence and the exact read-only section snapshot/text Result failures without inventing defaults or target-owned error behavior. The consumer still requires a separately versioned Application IR projection and gains no runtime, refresh, action, or UI behavior from this language slice.
+
+
+PipeLang v0.35.0 exhaustive bounded matching supplies target-neutral consumption of Optional selection/details and Result section success/failure. TASK-020 adapters must consume the semantic/Core projection and must not infer tag, default, or error behavior.
+
+### PipeLang v0.36.0 same-class pure-call value
+
+The accepted language foundation can now compose the existing Docker row filter and ordinal order
+methods as `OrderContainers(FilterContainers(rows, query))`. The consumer fixture proves the
+resolved typed HIR/Core call graph, evaluator result, and Core-only Go generation. Application IR
+continues to bind filter and order identities explicitly and does not gain a new schema field,
+inference rule, runtime action, Docker behavior, UI policy, or target behavior from this slice.
+
+### PipeLang v0.37.0 general pure-call composition value
+
+The Docker observability fixture now proves Optional record selection consumption as
+`match(value){ some(row) => NormalizeName(row.Name), none => "" }`. The resolved helper call stays
+inside PipeLang HIR/Core and is evaluated or generated without Application IR inference. The
+`dockpipe.application.v1` schema and its existing role bindings remain unchanged; only recorded
+language-contract metadata advances. This adds no adapter policy, runtime action, Docker behavior,
+UI behavior, or target semantics.
+
+### PipeLang v0.38.0 bounded conditional value
+
+The Docker observability fixture now proves the exactly typed lazy expression
+`name == "" ? fallback : NormalizeName(name)`. Empty names select the fallback; non-empty names
+select the existing resolved normalization call. The conditional remains wholly in PipeLang
+HIR/Core and adds no Application IR field, inference rule, adapter policy, runtime action, Docker
+behavior, UI behavior, or target semantics. The `dockpipe.application.v1` schema is unchanged; only
+its recorded language-contract metadata advances.
+
+### PipeLang v0.39.0 immutable-local value
+
+The same read-only Docker observability fixture now proves
+`{ string normalized = NormalizeName(name); return normalized == "" ? fallback : normalized; }`.
+The normalization call evaluates once before the local enters scope, and the existing v0.38.0
+conditional consumes that analysis-local value. This adds no Application IR field, state, action,
+adapter inference, runtime policy, Docker behavior, UI behavior, or target semantics. The
+`dockpipe.application.v1` schema remains unchanged; only recorded language-contract metadata
+advances.
+
+### PipeLang v0.40.0 ordered-immutable-local value
+
+The same read-only Docker observability fixture now proves
+`{ string normalized = NormalizeName(name); string selected = normalized == "" ? fallback : normalized; return selected; }`.
+The normalization and selection initializers each evaluate once in source order; `selected` can
+see `normalized`, and the terminal return sees both lexical bindings. This adds no Application IR
+field, state, action, adapter inference, runtime policy, Docker behavior, UI behavior, or target
+semantics. The `dockpipe.application.v1` schema remains unchanged; only recorded
+language-contract metadata advances.
+
+### Accepted `dockpipe.application.v1` read-only projection
+
+The first Application IR boundary is an explicit, separately versioned projection of a public
+`pipelang.semantic.v1` projection and its matching target-neutral Core program. An authored spec
+names the application function, snapshot record, section `Result<List<Row>, string>` and row
+records, stable string row key, visible columns, string filter/order fields, optional selection,
+and `Result<string, string>` details/log identities. Filtering and ordering name explicit
+Core-backed callables with `(List<Row>, string) -> List<Row>` and `(List<Row>) -> List<Row>`
+signatures; the Application adapter never reconstructs either operation from field metadata.
+Every identity must exist in the semantic projection; the application function must also exist in
+Core. Rejections retain the spec source range. Sections are canonicalized by stable identity and
+JSON uses deterministic field and slice order.
+
+The projection contains typed metadata and references only. It does not reparse or evaluate
+PipeLang, infer fields or error semantics, invoke Docker, refresh, perform actions, generate target
+code, migrate the launcher, or grant runtime authority. This is one independently reviewable slice
+because its schema, explicit input contract, validation, canonicalization, and frozen consumer
+shape can be reviewed without a runtime or UI.

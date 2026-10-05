@@ -1,3 +1,63 @@
+## v0.96.0 completed boundary
+
+[Depth-three straight-line initializers](depth-three-straight-line-initializers.md) owns
+scope and validation. The [canonical contract](../../../concepts/pipelang.md#pipelang-v0960-depth-three-straight-line-initializers)
+owns semantics. Implementation and verification pass; the completion record owns evidence and limits.
+No successor is authorized.
+
+## v0.95.0 completed boundary
+
+[Depth-three expression-bodied methods](depth-three-arrow-methods.md) owns the approved
+scope and validation. The [canonical contract](../../../concepts/pipelang.md#pipelang-v0950-depth-three-expression-bodied-methods)
+owns semantics. Implementation and verification pass; the completion record owns evidence and limits.
+No successor is authorized.
+
+## Completed current objective — depth-three terminal-leaf returns
+
+The [v0.94 scope](depth-three-terminal-leaf-returns.md) is complete.
+The [canonical contract](../../../concepts/pipelang.md#pipelang-v0940-depth-three-terminal-leaf-returns)
+owns semantics; the completion record owns independent source/Core, executable consumer and contained proof.
+
+## v0.93.0 approved boundary
+
+Depth-three straight-line returns are complete.
+[The canonical contract](../../../concepts/pipelang.md#pipelang-v0930-depth-three-straight-line-returns)
+owns semantics; [the objective](depth-three-straight-line-returns.md) owns proof.
+Initializers, arrow bodies and terminal-tree leaf returns retain depth two.
+
+## Completed current objective — nested expression-bodied methods
+
+Founder selected A and separately approved v0.92.0 implementation on 2026-09-06.
+[nested-arrow-methods.md](nested-arrow-methods.md) owns scope, exclusions and verification.
+State: `completed`. Completed v0.91.0 is committed at `b1fbc31b`; its historical
+uncommitted wording is superseded. Commit, push, publication and successor selection
+remain separate.
+
+## Completed current objective — nested initializers throughout terminal trees
+
+Founder selected A and separately approved v0.91.0 implementation on 2026-09-06.
+[nested-terminal-initializers.md](nested-terminal-initializers.md) owns scope, exclusions,
+containment and verification. State: `completed`. v0.90.0 is committed at `83cd8adc`;
+historical uncommitted wording below is superseded. Commit, push, publication and successor
+selection remain separate.
+
+## Completed current objective — nested straight-line initializers
+
+Founder selected A and separately approved v0.90.0 implementation on 2026-09-06.
+[nested-straight-line-initializers.md](nested-straight-line-initializers.md) owns scope,
+exclusions, containment and evidence. State: `completed`.
+The completed v0.89.0 slice is committed at `2560ee1b`; historical uncommitted wording
+below is superseded. Commit, push, publication and successor selection remain separate.
+
+## Completed current objective — nested terminal-leaf returns
+
+Founder selected A and separately approved v0.89.0 implementation in this task.
+[nested-terminal-leaf-returns.md](nested-terminal-leaf-returns.md) owns scope, exclusions,
+contained validation and evidence. State: `completed`.
+The completed v0.88.0 slice is committed at `a8df6cc5`; earlier uncommitted wording and
+baseline references below are historical. Commit, push, publication and successor selection
+remain separate.
+
 ## Non-Normative Fixture
 
 The following illustrates required semantics only. It does not accept spelling, casing, keywords,
@@ -98,7 +158,7 @@ The table is an implementation inventory, not a syntax proposal.
 | Symbols/modules | One deterministic frozen-legacy sibling-source-set symbol table with one owner and declaration span per interface/class | Explicit module/import graph, module-aware ownership/visibility, ambiguity diagnostics, and dependency lock |
 | Spans on AST | No AST node stores a source span | Spans on declarations, names, types, members, expressions, statements, contracts, effects, and lowered source maps |
 | Expressions | Literal, identifier, unary, binary, parentheses | Member/call/index/conditional/interpolation, typed match, bounded closures, collection construction/operations, conversions, and optional handling |
-| Statements/control flow | Expression-bodied methods only | Blocks, locals, assignment, branches, loops needed for self-hosting, return/match, and explicit action transition boundaries |
+| Statements/control flow | Expression-bodied methods plus the v0.42.0 source-ordered explicitly typed immutable-local sequence, inherited first-local propagation, one bounded helper-call carrier followed by immediate prior-local propagation, and terminal return | Inference, assignment, branches, loops, general returns, and explicit action transition boundaries needed for self-hosting |
 | Runtime values | `Value` stores only string/int64/float64/bool | Full target-independent value model, fixed numeric families, bytes/scalars, records/unions/options/results, collections, and managed identities |
 | Type checking | One symbol table and resolved type graph drive legacy conformance plus primitive expression inference | Module-aware bound-symbol checking, ownership/flow/nullability, generic constraints, effects/contracts, exhaustiveness, and backend/profile capability checks |
 | Evaluation | Primitive expression evaluator | Pure reference semantics for constant folding/tests only; executable lowering goes through typed HIR/Core IR rather than a competing evaluator language |

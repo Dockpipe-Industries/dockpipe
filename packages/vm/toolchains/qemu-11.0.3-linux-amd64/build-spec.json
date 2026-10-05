@@ -27,39 +27,90 @@
     "linker_version": "GNU ld (GNU Binutils) 2.45.1",
     "musl_version": "1.2.5",
     "tools": [
-      {"path": "/usr/bin/ar", "sha256": "400670830779d8a3844fec78044d60c8fa2dedeab7771618a009f2816637651e"},
-      {"path": "/usr/bin/as", "sha256": "265580ed4764cf70606030d6e0df74f029e3184b7261fe5a21007f5a93f791ab"},
-      {"path": "/usr/bin/gcc", "sha256": "03af218a89238ff80e0c463775c9d5f9d4dd686a7d8e7df56d2ef4128a51e1d5"},
-      {"path": "/usr/bin/ld", "sha256": "01523bdc496cafab2f4103d7f0b8adfafb6fb3f808f749d20a041b54029c3313"},
-      {"path": "/usr/bin/make", "sha256": "26b9ca76e913ae0358bdb801d292ef8a04ed34e70138d49e82f3b8ececffc66c"},
-      {"path": "/usr/bin/meson", "sha256": "4e069a6aaec5553c3f36291ccfacfa0dc287c9d953fc91399023eeee39aafecb"},
-      {"path": "/usr/bin/ninja", "sha256": "b0c98f034ddb32560186196ec774941f663465e04687104a9691ac4aef3779f5"},
-      {"path": "/usr/bin/nm", "sha256": "1254b8eb47d8449b76e52fb3f66463164781018024cd86062c98fd258561b863"},
-      {"path": "/usr/bin/objcopy", "sha256": "05dd6ca4aa9271ca69360dd7ede884388f6c34a6699b06941fa60d51c0b026db"},
-      {"path": "/usr/bin/objdump", "sha256": "feca1692b4f57782dce7dd32187f7b001adbdf84db8503c1df511ed01c5151fc"},
-      {"path": "/usr/bin/pkgconf", "sha256": "97d9a3c55a89367b488db67e6e131ae9b418d6987b0403fb0aed3f73367cf6be"},
-      {"path": "/usr/bin/python3", "sha256": "d5d3f2cdba7b845fd91914791606aaa2040a8ddf2c48dab4402fa2be7c9cdc61"},
-      {"path": "/usr/bin/ranlib", "sha256": "fecf4115db0aaa7c4b3067a7a93a1e0dc4862a0396d2ee2fd49d6092cbfc9ab1"},
-      {"path": "/usr/bin/readelf", "sha256": "e44a9816df458cbc8681d67a447bc5842f45ba8989a54e89f111f719becb8da0"},
-      {"path": "/usr/bin/scanelf", "sha256": "6ba74b8b3749e9260d0912b014abb8dc464c4f5c9414e8eb26bc1b75b6afc286"},
-      {"path": "/usr/bin/strip", "sha256": "f3e09f1627c97d9c6a778336eca1397fe84ba2b8f073327187ad78fc44d6b437"}
+      {
+        "path": "/usr/bin/ar",
+        "sha256": "400670830779d8a3844fec78044d60c8fa2dedeab7771618a009f2816637651e"
+      },
+      {
+        "path": "/usr/bin/as",
+        "sha256": "265580ed4764cf70606030d6e0df74f029e3184b7261fe5a21007f5a93f791ab"
+      },
+      {
+        "path": "/usr/bin/gcc",
+        "sha256": "03af218a89238ff80e0c463775c9d5f9d4dd686a7d8e7df56d2ef4128a51e1d5"
+      },
+      {
+        "path": "/usr/bin/ld",
+        "sha256": "01523bdc496cafab2f4103d7f0b8adfafb6fb3f808f749d20a041b54029c3313"
+      },
+      {
+        "path": "/usr/bin/make",
+        "sha256": "26b9ca76e913ae0358bdb801d292ef8a04ed34e70138d49e82f3b8ececffc66c"
+      },
+      {
+        "path": "/usr/bin/meson",
+        "sha256": "4e069a6aaec5553c3f36291ccfacfa0dc287c9d953fc91399023eeee39aafecb"
+      },
+      {
+        "path": "/usr/bin/ninja",
+        "sha256": "b0c98f034ddb32560186196ec774941f663465e04687104a9691ac4aef3779f5"
+      },
+      {
+        "path": "/usr/bin/nm",
+        "sha256": "1254b8eb47d8449b76e52fb3f66463164781018024cd86062c98fd258561b863"
+      },
+      {
+        "path": "/usr/bin/objcopy",
+        "sha256": "05dd6ca4aa9271ca69360dd7ede884388f6c34a6699b06941fa60d51c0b026db"
+      },
+      {
+        "path": "/usr/bin/objdump",
+        "sha256": "feca1692b4f57782dce7dd32187f7b001adbdf84db8503c1df511ed01c5151fc"
+      },
+      {
+        "path": "/usr/bin/pkgconf",
+        "sha256": "97d9a3c55a89367b488db67e6e131ae9b418d6987b0403fb0aed3f73367cf6be"
+      },
+      {
+        "path": "/usr/bin/python3",
+        "sha256": "d5d3f2cdba7b845fd91914791606aaa2040a8ddf2c48dab4402fa2be7c9cdc61"
+      },
+      {
+        "path": "/usr/bin/ranlib",
+        "sha256": "fecf4115db0aaa7c4b3067a7a93a1e0dc4862a0396d2ee2fd49d6092cbfc9ab1"
+      },
+      {
+        "path": "/usr/bin/readelf",
+        "sha256": "e44a9816df458cbc8681d67a447bc5842f45ba8989a54e89f111f719becb8da0"
+      },
+      {
+        "path": "/usr/bin/scanelf",
+        "sha256": "6ba74b8b3749e9260d0912b014abb8dc464c4f5c9414e8eb26bc1b75b6afc286"
+      },
+      {
+        "path": "/usr/bin/strip",
+        "sha256": "f3e09f1627c97d9c6a778336eca1397fe84ba2b8f073327187ad78fc44d6b437"
+      }
     ]
   },
   "source_date_epoch": 1784926308,
-  "final_root": "/home/jamie/.cache/dockpipe/vm/toolchains/qemu-11.0.3-linux-amd64.1",
-  "build_records_root": "/home/jamie/.cache/dockpipe/vm/toolchain-builds/qemu-11.0.3-linux-amd64.1-attempt-10",
+  "final_root": "${DOCKPIPE_QEMU_FINAL_ROOT}",
+  "build_records_root": "${DOCKPIPE_QEMU_BUILD_ROOT}",
   "build_timeout_seconds": 7200,
   "build_time_interpreter_bootstrap": {
     "scope": "container-tmpfs-only",
-    "mount": "/home/jamie/.cache/dockpipe/vm/toolchains/qemu-11.0.3-linux-amd64.1/lib",
+    "mount": "${DOCKPIPE_QEMU_FINAL_ROOT}/lib",
     "source": "/lib/ld-musl-x86_64.so.1",
-    "files": ["ld-musl-x86_64.so.1", "libc.musl-x86_64.so.1"]
+    "files": [
+      "ld-musl-x86_64.so.1",
+      "libc.musl-x86_64.so.1"
+    ]
   },
   "configure_arguments": [
-    "--prefix=/home/jamie/.cache/dockpipe/vm/toolchains/qemu-11.0.3-linux-amd64.1",
-    "--bindir=/home/jamie/.cache/dockpipe/vm/toolchains/qemu-11.0.3-linux-amd64.1/bin",
-    "--datadir=/home/jamie/.cache/dockpipe/vm/toolchains/qemu-11.0.3-linux-amd64.1/share",
-    "--libdir=/home/jamie/.cache/dockpipe/vm/toolchains/qemu-11.0.3-linux-amd64.1/lib",
+    "--prefix=${DOCKPIPE_QEMU_FINAL_ROOT}",
+    "--bindir=${DOCKPIPE_QEMU_FINAL_ROOT}/bin",
+    "--datadir=${DOCKPIPE_QEMU_FINAL_ROOT}/share",
+    "--libdir=${DOCKPIPE_QEMU_FINAL_ROOT}/lib",
     "--target-list=x86_64-softmmu",
     "--cc=/usr/bin/gcc",
     "--host-cc=/usr/bin/gcc",
@@ -80,9 +131,10 @@
     "--disable-strip",
     "--disable-werror",
     "--extra-cflags=-O2 -g0 -fdebug-prefix-map=/build=/usr/src/qemu -ffile-prefix-map=/build=/usr/src/qemu -fmacro-prefix-map=/build=/usr/src/qemu",
-    "--extra-ldflags=-Wl,--build-id=none -Wl,--disable-new-dtags -Wl,-rpath,$ORIGIN/../lib -Wl,-z,nodefaultlib -Wl,--dynamic-linker=/home/jamie/.cache/dockpipe/vm/toolchains/qemu-11.0.3-linux-amd64.1/lib/ld-musl-x86_64.so.1"
+    "--extra-ldflags=-Wl,--build-id=none -Wl,--disable-new-dtags -Wl,-rpath,$ORIGIN/../lib -Wl,-z,nodefaultlib -Wl,--dynamic-linker=${DOCKPIPE_QEMU_FINAL_ROOT}/lib/ld-musl-x86_64.so.1"
   ],
   "environment": [
+    "DOCKPIPE_QEMU_FINAL_ROOT=${DOCKPIPE_QEMU_FINAL_ROOT}",
     "AR=/usr/bin/ar",
     "AS=/usr/bin/as",
     "CC=/usr/bin/gcc",
@@ -110,5 +162,10 @@
     "TZ=UTC",
     "USER=builder",
     "ZERO_AR_DATE=1"
-  ]
+  ],
+  "parameters": {
+    "DOCKPIPE_QEMU_SOURCE_DIR": "Absolute directory containing the four preverified source and key files.",
+    "DOCKPIPE_QEMU_BUILD_ROOT": "New absolute directory for build records, separate from source, recipe, and final root.",
+    "DOCKPIPE_QEMU_FINAL_ROOT": "New absolute immutable toolchain directory; embedded in the ELF loader path. Rebuilding is required to change it."
+  }
 }
