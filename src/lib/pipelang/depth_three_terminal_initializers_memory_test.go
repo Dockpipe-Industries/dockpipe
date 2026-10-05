@@ -21,7 +21,7 @@ import (
 
 // Scale actual depth-three local initializers; no helper call hides initializer closure growth.
 func TestV970DepthThreeTerminalInitializersMemory(t *testing.T) {
-	command := exec.Command(filepath.Join(runtime.GOROOT(), "bin", "go"), "list", "-export", "-f", "packagefile {{.ImportPath}}={{.Export}}", "unicode/utf8")
+	command := exec.Command(filepath.Join(containedexec.GoRoot(t), "bin", "go"), "list", "-export", "-f", "packagefile {{.ImportPath}}={{.Export}}", "unicode/utf8")
 	imports, err := containedexec.CombinedOutput(command)
 	if err != nil {
 		t.Fatalf("exports: %v %s", err, imports)
@@ -130,7 +130,7 @@ func TestV970DepthThreeTerminalInitializersMemory(t *testing.T) {
 								t.Fatal(err)
 							}
 						}
-						compiler := filepath.Join(runtime.GOROOT(), "pkg", "tool", runtime.GOOS+"_"+runtime.GOARCH, "compile")
+						compiler := filepath.Join(containedexec.GoRoot(t), "pkg", "tool", runtime.GOOS+"_"+runtime.GOARCH, "compile")
 						command := exec.Command(compiler, "-c=4", "-p", "pipelanggenerated", "-importcfg", filepath.Join(dir, "importcfg"), "-o", filepath.Join(dir, "generated.a"), filepath.Join(dir, "generated.go"))
 						output, measurement, err := containedexec.Measure(command)
 						if err != nil {

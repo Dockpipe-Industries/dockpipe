@@ -34,7 +34,7 @@ func azure(ctx context.Context, request contract.Request, run Runner) (map[strin
 		err = json.Unmarshal(output, &secret)
 		clear(output)
 		if err != nil || secret.Value == nil {
-			return nil, errors.New("Azure Key Vault returned no string secret (output withheld)")
+			return nil, errors.New("no string secret returned by Azure Key Vault (output withheld)")
 		}
 		values[name] = *secret.Value
 	}

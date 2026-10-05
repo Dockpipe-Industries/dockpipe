@@ -372,7 +372,8 @@ def main():
 
     def make_command(directory, names, pattern):
         command = [str(binary), '-test.run', pattern, '-test.v', '-test.count=1', '-test.timeout=25s']
-        environment = ['PIPELANG_CACHE_BUDGET_FILE=' + str(budget.record)]
+        environment = ['PIPELANG_CACHE_BUDGET_FILE=' + str(budget.record),
+                       'PIPELANG_TEST_GO=' + str(args.go)]
         environment += support.native_environment(names)
         environment += ['PIPELANG_TOOLCHAIN_READ_BUFFER=' + ('1' if args.toolchain_read_buffer else '0')]
         if args.identity_profile:

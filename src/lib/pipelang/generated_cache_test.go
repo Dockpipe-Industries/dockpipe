@@ -13,6 +13,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"dockpipe/tests/containedexec"
 )
 
 const generatedCacheVersion = "pipelang-native-validation-v2"
@@ -25,6 +27,11 @@ var generatedToolchain = struct {
 
 func generatedToolchainDigest() (string, error) {
 	generatedToolchain.Do(func() {
+		root, err := containedexec.ToolchainRoot()
+		if err != nil {
+			generatedToolchain.err = err
+			return
+		}
 		profiling := os.Getenv("PIPELANG_IDENTITY_PROFILE") == "1"
 		var buffer []byte
 		if os.Getenv("PIPELANG_TOOLCHAIN_READ_BUFFER") != "0" {
@@ -41,11 +48,11 @@ func generatedToolchainDigest() (string, error) {
 		}()
 
 		hash := sha256.New()
-		fmt.Fprintf(hash, "%s\x00%s\x00%s\x00%s\x00", runtime.GOROOT(), runtime.Version(), runtime.GOOS, runtime.GOARCH)
+		fmt.Fprintf(hash, "%s\x00%s\x00%s\x00%s\x00", root, runtime.Version(), runtime.GOOS, runtime.GOARCH)
 		// Include tool binaries and library source, not just a version label. A
 		// toolchain repair at the same path must invalidate executable reuse.
 		for _, part := range []string{"bin", "pkg/tool", "src", "go.env", "VERSION"} {
-			err := filepath.WalkDir(filepath.Join(runtime.GOROOT(), part), func(path string, entry os.DirEntry, err error) error {
+			err := filepath.WalkDir(filepath.Join(root, part), func(path string, entry os.DirEntry, err error) error {
 				if err != nil {
 					return err
 				}
@@ -58,7 +65,7 @@ func generatedToolchainDigest() (string, error) {
 				if !entry.Type().IsRegular() {
 					return fmt.Errorf("nonregular toolchain input %s", path)
 				}
-				relative, err := filepath.Rel(runtime.GOROOT(), path)
+				relative, err := filepath.Rel(root, path)
 				if err != nil {
 					return err
 				}

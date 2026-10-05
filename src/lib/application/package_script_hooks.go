@@ -159,7 +159,3 @@ func dockpipeScriptCommand(scriptAbs string) (*exec.Cmd, string, error) {
 func dockpipeBashShellCommand(command string) (*exec.Cmd, string, error) {
 	return packagescript.BashShellCommand(command)
 }
-
-func dockpipePathForBashEnv(bashExe, p string) string {
-	return packagescript.PathForBashEnv(bashExe, p)
-}

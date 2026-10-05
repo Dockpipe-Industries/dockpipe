@@ -84,8 +84,7 @@ func FunctionHasEnum(f Function) bool {
 }
 func validateEnumDeclarations(p Program) error {
 	seen := map[string]Type{}
-	var typ func(Type) error
-	typ = func(t Type) error {
+	typ := func(t Type) error {
 		if t.Kind == TypeEnum {
 			if err := validateEnumType(t); err != nil {
 				return err
