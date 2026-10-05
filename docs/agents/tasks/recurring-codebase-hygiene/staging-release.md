@@ -228,3 +228,38 @@ for prior checkpoints in this session. Verify the resulting commit and remote SH
 at `origin/refs/heads/js/pipelang`.
 Do not merge or advance staging/master. Hosted staging publication awaits the
 user's normal MR promotion, and public HTTPS readiness remains unresolved.
+
+## Hosted staging failure inspection — 2026-10-05
+
+Checkpoint `62dda3a898a6a3c21a4ecab0d28810dc35552573` was pushed to
+`origin/js/pipelang` and the remote tip verified. The user handled MR promotion.
+Inspected actual failed steps and logs before changing source:
+
+- Push run `37375091956` at `de9a23a9076c20156fcc6ef2d326159d62e726c6`
+  passed Linux/Windows CI, native release builds and assembly. Publication failed
+  at `Require the current staging head`: staging had advanced to
+  `c99474992c97f9391aca34f68b2a726b0f527014`. This is the intended stale-candidate
+  guard; GitHub release creation and R2 publication were skipped. Do not rerun
+  that stale candidate or weaken the guard.
+- PR run `37375911684` at the newer SHA failed the master-only release-notes gate.
+  Its log reports `echo: write error: Broken pipe`, then incorrectly claims that
+  `release/releasenotes/0.6.0.md` is absent, although the printed 2,268-path diff
+  contains it. Under `pipefail`, the early-exiting `grep -q` can make the producer
+  fail and invert the successful match.
+- The newer staging push `37375906954` is still in progress with no failed jobs
+  at the last read-back. Windows tests and CodeQL passed. No rerun was dispatched.
+
+Replaced the `echo | grep` condition with fixed-string exact matching over a Bash
+here-string, preserving both the version and changed-notes requirements. Added
+executable regression cases against the authored gate for a 10,001-path diff and
+absent/lookalike note paths. The original condition fails the large fixture while
+the repaired condition passes. All eight release-workflow tests, Actionlint for
+`ci.yml`, and whitespace checks pass. The failure is timing-sensitive with the
+exact hosted path list; that smaller local replay happened to pass, so it is not
+claimed as a deterministic reproduction.
+
+The user approved committing and pushing this follow-up repair on `js/pipelang`,
+with MR promotion still owned by the user. It changes
+only workflow shell logic, its focused tests and task evidence; no engine behavior
+or release admission policy changed. Logs are in
+`/tmp/dockpipe-staging-{pr-failure-37375911684,publish-failure-37375091956,release-gate-tests}.log`.

@@ -173,7 +173,7 @@ jobs:
             exit 1
           fi
           changed=$(git diff --name-only "$base" "$head")
-          if ! echo "$changed" | grep -qx "$notes"; then
+          if ! grep -Fxq -- "$notes" <<< "$changed"; then
             echo "::error::This PR must modify $notes (current VERSION is $V)."
             echo "Changed paths:"
             echo "$changed"
