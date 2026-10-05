@@ -136,17 +136,6 @@ func runCompileHooksForStaging(workdir, srcAbs, staging, kind string, hooks []st
 	return nil
 }
 
-func readAuthoredPackageManifest(root string) (*domain.PackageManifest, error) {
-	manifestPath := filepath.Join(root, infrastructure.PackageManifestFilename)
-	if _, err := os.Stat(manifestPath); err != nil {
-		if os.IsNotExist(err) {
-			return nil, nil
-		}
-		return nil, err
-	}
-	return domain.ParsePackageManifest(manifestPath)
-}
-
 func validateWorkflowConfigsUnderDir(root string) error {
 	return filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {

@@ -68,32 +68,38 @@ def normalize_signing_key(value):
     return "\n".join(lines) + "\n"
 
 
-def configure(apply):
+def configure(apply, environment="release"):
+    if environment not in ("release", "release-staging"):
+        raise ValueError("Expected release or release-staging environment")
     values = {name: os.environ.get(name, "") for name in (*SECRETS, *VARIABLES)}
     missing = [name for name, value in values.items() if not value]
     if missing:
         raise ValueError("Missing release settings: " + ", ".join(missing))
     if not values["R2_ENDPOINT_URL"].startswith("https://"):
         raise ValueError("R2_ENDPOINT_URL must use HTTPS")
+    if environment == "release-staging" and (values["DOCKPIPE_RELEASE_BUCKET"] != "dockpipe-staging"
+                                              or values["R2_PREFIX"].strip("/") != "packages"):
+        raise ValueError("Staging setup requires dockpipe-staging and the packages prefix")
     values["APT_SIGNING_KEY"] = normalize_signing_key(values["APT_SIGNING_KEY"])
     fingerprint = signing_fingerprint(values["APT_SIGNING_KEY"])
     print(f"Validated APT signing fingerprint: {fingerprint}")
-    print(f"Target: {REPOSITORY}, GitHub environment: release")
+    print(f"Target: {REPOSITORY}, GitHub environment: {environment}")
     if not apply:
         print("Checks passed. Set RELEASE_SETUP_APPLY=1 to copy the three scoped secrets and public settings.")
         return
     for name in SECRETS:
-        run(["gh", "secret", "set", name, "--repo", REPOSITORY, "--env", "release"], value=values[name])
+        run(["gh", "secret", "set", name, "--repo", REPOSITORY, "--env", environment], value=values[name])
     for name, value in {**{name: values[name] for name in VARIABLES}, "APT_SIGNING_FINGERPRINT": fingerprint}.items():
-        run(["gh", "variable", "set", name, "--repo", REPOSITORY, "--env", "release", "--body", value])
+        run(["gh", "variable", "set", name, "--repo", REPOSITORY, "--env", environment, "--body", value])
     print("Configured the GitHub release environment. No release was started.")
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--apply", action="store_true")
+    parser.add_argument("--environment", choices=("release", "release-staging"), default="release")
     arguments = parser.parse_args()
     try:
-        configure(arguments.apply)
+        configure(arguments.apply, arguments.environment)
     except (ValueError, RuntimeError, OSError) as error:
         parser.exit(1, f"{error}\n")

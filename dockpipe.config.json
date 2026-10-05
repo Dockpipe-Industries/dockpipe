@@ -24,6 +24,27 @@
           "AWS_SECRET_ACCESS_KEY": "AWS_SECRET_ACCESS_KEY"
         }
       },
+      "packages-staging": {
+        "resolver": "onepassword",
+        "parameters": {
+          "environment_id": "kuuppko2xxsb2wcr7am46bs6xa"
+        },
+        "bindings": {
+          "AWS_ACCESS_KEY_ID": "AWS_ACCESS_KEY_ID",
+          "AWS_SECRET_ACCESS_KEY": "AWS_SECRET_ACCESS_KEY"
+        }
+      },
+      "packages-staging-release-setup": {
+        "resolver": "onepassword",
+        "parameters": {
+          "environment_id": "kuuppko2xxsb2wcr7am46bs6xa"
+        },
+        "bindings": {
+          "AWS_ACCESS_KEY_ID": "AWS_ACCESS_KEY_ID",
+          "AWS_SECRET_ACCESS_KEY": "AWS_SECRET_ACCESS_KEY",
+          "APT_SIGNING_KEY": "APT_SIGNING_KEY"
+        }
+      },
       "packages-release-setup": {
         "resolver": "onepassword",
         "parameters": {
