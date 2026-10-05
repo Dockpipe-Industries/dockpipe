@@ -10,8 +10,8 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
+	"math"
 	"math/bits"
-	"math/rand"
 )
 
 func ck(ok bool) {
@@ -55,7 +55,7 @@ func (w *bw) put(v uint32, n int) {
 	w.n += uint(n)
 	w.p += n
 	if w.n >= 32 {
-		binary.LittleEndian.PutUint32(w.b[w.off:], uint32(w.acc))
+		binary.LittleEndian.PutUint32(w.b[w.off:], uint32(w.acc&math.MaxUint32))
 		w.off += 4
 		w.acc >>= 32
 		w.n -= 32
@@ -63,7 +63,7 @@ func (w *bw) put(v uint32, n int) {
 }
 func (w *bw) finish() {
 	for w.n > 0 {
-		w.b[w.off] = byte(w.acc)
+		w.b[w.off] = byte(w.acc & math.MaxUint8)
 		w.off++
 		w.acc >>= 8
 		if w.n <= 8 {
@@ -117,12 +117,12 @@ func makeTree(l []int, decode bool) tree {
 		if n == 0 {
 			continue
 		}
-		c := bits.Reverse32(uint32(next[n])) >> uint(32-n)
+		c := bits.Reverse32(transcriptUint32(next[n])) >> uint(32-n)
 		next[n]++
 		t.codes[s] = c
 		if decode {
 			for i := int(c); i < len(t.table); i += 1 << uint(n) {
-				t.table[i] = uint32(n<<16 | s)
+				t.table[i] = transcriptUint32(n<<16 | s)
 			}
 		}
 	}
@@ -170,8 +170,11 @@ func trees(r *br, typ uint32, decode bool) (tree, tree) {
 		ck(nl <= 286)
 		order := []int{16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15}
 		cl := make([]int, 19)
-		for i := 0; i < nc; i++ {
-			cl[order[i]] = int(r.get(3))
+		if nc < 0 || nc > len(order) {
+			panic("invalid code-length alphabet")
+		}
+		for _, index := range order[:nc] {
+			cl[index] = int(r.get(3))
 		}
 		ct := makeTree(cl, true)
 		all := make([]int, 0, nl+nd)
@@ -202,12 +205,14 @@ func trees(r *br, typ uint32, decode bool) (tree, tree) {
 		ll = all[:nl]
 		dd = all[nl:]
 	}
-	ck(ll[256] > 0)
+	if len(ll) <= 256 || ll[256] == 0 {
+		panic("missing end-of-block code")
+	}
 	return makeTree(ll, decode), makeTree(dd, decode)
 }
 func u32(w *bytes.Buffer, n int) {
 	ck(n >= 0 && n <= 64<<20)
-	must(binary.Write(w, binary.LittleEndian, uint32(n)))
+	must(binary.Write(w, binary.LittleEndian, transcriptUint32(n)))
 }
 func blob(w *bytes.Buffer, b []byte) { u32(w, len(b)); w.Write(b) }
 
@@ -248,7 +253,7 @@ func packZ(b []byte) []byte {
 			r.get((8 - r.p%8) % 8)
 			n := int(r.get(16))
 			nn := r.get(16)
-			ck(uint32(n)^nn == 65535)
+			ck(transcriptUint32(n)^nn == 65535)
 			r.p += n * 8
 			ck(r.p <= len(b)*8)
 			out.WriteByte(0)
@@ -262,7 +267,7 @@ func packZ(b []byte) []byte {
 			extra := make([]uint16, 0, 32768)
 			for {
 				s := ll.read(&r)
-				syms = append(syms, uint16(s))
+				syms = append(syms, transcriptUint16(transcriptUint32(s)))
 				ck(len(syms) <= 16<<20)
 				if s == 256 {
 					break
@@ -273,7 +278,7 @@ func packZ(b []byte) []byte {
 					d := dd.read(&r)
 					ck(d < 30)
 					y := r.get(de[d])
-					extra = append(extra, uint16(x), uint16(d), uint16(y))
+					extra = append(extra, transcriptUint16(x), transcriptUint16(transcriptUint32(d)), transcriptUint16(y))
 				}
 			}
 			out.WriteByte(1)
@@ -294,9 +299,13 @@ func packZ(b []byte) []byte {
 	return out.Bytes()
 }
 func selftest() {
-	rng := rand.New(rand.NewSource(723))
+	// Deterministic synthetic noise exercises incompressible streams. It is not
+	// a source of secrets or runtime entropy.
 	noise := make([]byte, 90000)
-	rng.Read(noise)
+	for offset := 0; offset < len(noise); {
+		block := sha256.Sum256([]byte(fmt.Sprintf("transcript-selftest-723:%d", offset)))
+		offset += copy(noise[offset:], block[:])
+	}
 	cases := [][]byte{{}, []byte("a"), bytes.Repeat([]byte("abcdeabcde--delta--"), 9000), noise}
 	count := 0
 	for _, level := range []int{flate.NoCompression, flate.BestSpeed, flate.DefaultCompression, flate.BestCompression, flate.HuffmanOnly} {
@@ -403,4 +412,18 @@ func unpackZ(b []byte) []byte {
 	n := r.num()
 	ck(n >= 6 && n <= 16<<20)
 	return unpackZInto(b, make([]byte, n))
+}
+
+func transcriptUint32(value int) uint32 {
+	if value < 0 || uint64(value) > math.MaxUint32 {
+		panic("transcript integer exceeds uint32")
+	}
+	return uint32(value)
+}
+
+func transcriptUint16(value uint32) uint16 {
+	if value > math.MaxUint16 {
+		panic("transcript integer exceeds uint16")
+	}
+	return uint16(value)
 }

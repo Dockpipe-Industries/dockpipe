@@ -115,10 +115,25 @@ func TestV610GeneralizedCrossPayloadResultPropagationPipeline(t *testing.T) {
 		t.Fatalf("first generalized HIR local = %#v", function.Body)
 	}
 	firstCarrier := first.Return.ImmutableLocal
+	if firstCarrier == nil || firstCarrier.Return == nil {
+		t.Fatalf("missing local chain link: firstCarrier = %#v", firstCarrier)
+	}
 	secondPayload := firstCarrier.Return.ImmutableLocal
+	if secondPayload == nil || secondPayload.Return == nil {
+		t.Fatalf("missing local chain link: secondPayload = %#v", secondPayload)
+	}
 	secondCarrier := secondPayload.Return.ImmutableLocal
+	if secondCarrier == nil || secondCarrier.Return == nil {
+		t.Fatalf("missing local chain link: secondCarrier = %#v", secondCarrier)
+	}
 	thirdPayload := secondCarrier.Return.ImmutableLocal
+	if thirdPayload == nil || thirdPayload.Return == nil {
+		t.Fatalf("missing local chain link: thirdPayload = %#v", thirdPayload)
+	}
 	thirdCarrier := thirdPayload.Return.ImmutableLocal
+	if thirdCarrier == nil || thirdCarrier.Return == nil {
+		t.Fatalf("missing local chain link: thirdCarrier = %#v", thirdCarrier)
+	}
 	fourthPayload := thirdCarrier.Return.ImmutableLocal
 	if firstCarrier == nil || firstCarrier.Binding.Position != 2 || firstCarrier.Initializer.Kind != hir.ExprCall || secondPayload == nil || secondPayload.Binding.Position != 3 || secondPayload.Initializer.Kind != hir.ExprPropagate || secondCarrier == nil || secondCarrier.Binding.Position != 4 || secondCarrier.Initializer.Kind != hir.ExprCall || thirdPayload == nil || thirdPayload.Binding.Position != 5 || thirdPayload.Initializer.Kind != hir.ExprPropagate || thirdCarrier == nil || thirdCarrier.Binding.Position != 6 || thirdCarrier.Initializer.Kind != hir.ExprCall || fourthPayload == nil || fourthPayload.Binding.Position != 7 || fourthPayload.Initializer.Kind != hir.ExprPropagate || fourthPayload.Return.Kind != hir.ExprCall {
 		t.Fatalf("generalized HIR chain = %#v", function.Body)

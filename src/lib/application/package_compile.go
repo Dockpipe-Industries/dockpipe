@@ -36,10 +36,6 @@ func compileClosureForWorkflow(projectRoot, workflowName string, force bool) err
 	return packagecompile.CompileClosureForWorkflow(projectRoot, workflowName, force, runCoreSourceBuildTarget)
 }
 
-func compileWorkflowOne(workdir, source, name string, force bool) error {
-	return packagecompile.CompileWorkflow(workdir, source, name, force)
-}
-
 func validateCompileOutputsForMode(workdir string, requireWorkflowNamespace bool) error {
 	return packagecompile.ValidateOutputsForMode(workdir, requireWorkflowNamespace)
 }

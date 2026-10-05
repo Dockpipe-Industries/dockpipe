@@ -12,7 +12,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"reflect"
-	"runtime"
 	"sort"
 	"strconv"
 	"strings"
@@ -22,6 +21,7 @@ import (
 	"dockpipe/src/lib/pipelang/coreir"
 	"dockpipe/src/lib/pipelang/gobackend"
 	"dockpipe/src/lib/pipelang/hir"
+	"dockpipe/tests/containedexec"
 )
 
 var _ func(coreir.Program) ([]byte, error) = gobackend.Generate
@@ -1324,6 +1324,7 @@ func compileAndRunNumericConformanceGo(t *testing.T, generated []byte, names map
 	testSource := fmt.Sprintf(`package %s
 
 import (
+ "dockpipe/tests/containedexec"
 	"math"
 	"testing"
 )
@@ -1389,7 +1390,7 @@ func compileAndRunGeneratedGoFilesWithFixtures(t *testing.T, generated, generate
 			t.Fatal(err)
 		}
 	}
-	goBinary := filepath.Join(runtime.GOROOT(), "bin", "go")
+	goBinary := filepath.Join(containedexec.GoRoot(t), "bin", "go")
 	command := exec.Command(goBinary, "test", "-count=1", "-p=1", "-timeout=25s", ".")
 	command.Dir = dir
 	command.Env = append(os.Environ(), "GOTOOLCHAIN=local", "GOPROXY=off", "GOSUMDB=off", "GOWORK=off")
@@ -1419,6 +1420,7 @@ func compileAndRunResultTransportGo(t *testing.T, generated []byte, functionName
 	testSource := fmt.Sprintf(`package %s
 
 import (
+ "dockpipe/tests/containedexec"
 	"math"
 	"testing"
 )
@@ -1524,6 +1526,7 @@ func compileAndRunCheckedArithmeticGo(t *testing.T, generated []byte, names map[
 	testSource := fmt.Sprintf(`package %s
 
 import (
+ "dockpipe/tests/containedexec"
 	"math"
 	"testing"
 )
@@ -1566,6 +1569,7 @@ func compileAndRunCheckedAddGo(t *testing.T, generated []byte, name string) {
 	testSource := fmt.Sprintf(`package %s
 
 import (
+ "dockpipe/tests/containedexec"
 	"math"
 	"testing"
 )
@@ -1587,6 +1591,7 @@ func compileAndRunCheckedSubtractGo(t *testing.T, generated []byte, name string)
 	testSource := fmt.Sprintf(`package %s
 
 import (
+ "dockpipe/tests/containedexec"
 	"math"
 	"testing"
 )
@@ -1611,6 +1616,7 @@ func compileAndRunCheckedMultiplyGo(t *testing.T, generated []byte, name string)
 	testSource := fmt.Sprintf(`package %s
 
 import (
+ "dockpipe/tests/containedexec"
 	"math"
 	"testing"
 )
@@ -1641,6 +1647,7 @@ func compileAndRunCheckedNegateGo(t *testing.T, generated []byte, name string) {
 	testSource := fmt.Sprintf(`package %s
 
 import (
+ "dockpipe/tests/containedexec"
 	"math"
 	"testing"
 )
@@ -1668,6 +1675,7 @@ func compileAndRunCheckedDivideGo(t *testing.T, generated []byte, name string) {
 	testSource := fmt.Sprintf(`package %s
 
 import (
+ "dockpipe/tests/containedexec"
 	"math"
 	"testing"
 )

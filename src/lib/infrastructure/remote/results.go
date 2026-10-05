@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 
 	contract "dockpipe/src/lib/domain/remote"
 )
@@ -27,7 +28,10 @@ func (b *Broker) storeResult(job *contract.Job, result *contract.Result) error {
 	if err := result.Validate(); err != nil {
 		return err
 	}
-	path := filepath.Join(filepath.Dir(b.path), "results", job.ID+".json")
+	path, err := b.resultPath(job.ID)
+	if err != nil {
+		return err
+	}
 	digest, err := resultHash(result)
 	if err != nil {
 		return err
@@ -59,7 +63,10 @@ func (b *Broker) withResult(job contract.Job) (contract.Job, error) {
 		return contract.Job{}, err
 	}
 	var result contract.Result
-	path := filepath.Join(filepath.Dir(b.path), "results", job.ID+".json")
+	path, err := b.resultPath(job.ID)
+	if err != nil {
+		return contract.Job{}, err
+	}
 	if err := ReadPrivate(path, &result); err != nil {
 		return contract.Job{}, err
 	}
@@ -72,4 +79,13 @@ func (b *Broker) withResult(job contract.Job) (contract.Job, error) {
 	}
 	job.Result = &result
 	return job, nil
+}
+
+// resultPath enforces the filesystem contract at the storage boundary as well as
+// the domain ID validation: a job ID must be exactly one local path component.
+func (b *Broker) resultPath(id string) (string, error) {
+	if !filepath.IsLocal(id) || strings.ContainsAny(id, `/\`) || !contract.ValidID(id) {
+		return "", errors.New("result job ID must be a single local path component")
+	}
+	return filepath.Join(filepath.Dir(b.path), "results", id+".json"), nil
 }
