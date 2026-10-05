@@ -390,14 +390,14 @@ func TestResolveDependencyCommandPathFallsBackToPowerShellOnWindows(t *testing.T
 		if command != "act" {
 			t.Fatalf("unexpected command %q", command)
 		}
-		return `C:\Users\Jamie\AppData\Local\Microsoft\WinGet\Links\act.exe`, nil
+		return `C:\Users\TestUser\AppData\Local\Microsoft\WinGet\Links\act.exe`, nil
 	}
 
 	got, err := resolveDependencyCommandPath("act")
 	if err != nil {
 		t.Fatalf("expected PowerShell fallback to resolve command: %v", err)
 	}
-	if !strings.EqualFold(got, `C:\Users\Jamie\AppData\Local\Microsoft\WinGet\Links\act.exe`) {
+	if !strings.EqualFold(got, `C:\Users\TestUser\AppData\Local\Microsoft\WinGet\Links\act.exe`) {
 		t.Fatalf("unexpected resolved path %q", got)
 	}
 }

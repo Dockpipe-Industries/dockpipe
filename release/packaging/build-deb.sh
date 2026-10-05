@@ -30,12 +30,16 @@ CORE_STAGE="${PKG_ROOT}/build/core-stage-${VERSION}-${DEB_ARCH}"
 
 # Single binary in /usr/bin — templates/scripts/images are embedded (see embed.go).
 mkdir -p "${BUILD_DIR}/usr/bin"
+if [[ -n "${DOCKPIPE_RELEASE_BINARY:-}" ]]; then
+  cp "$DOCKPIPE_RELEASE_BINARY" "${BUILD_DIR}/usr/bin/dockpipe"
+else
 (
   cd "${REPO_ROOT}"
   bash ./release/packaging/prepare-embedded-dorkpipe-assets.sh prepare
   trap 'bash ./release/packaging/prepare-embedded-dorkpipe-assets.sh clean' EXIT
   GOOS=linux GOARCH="${GOARCH}" CGO_ENABLED=0 go build -trimpath -ldflags "-s -w -X main.Version=${VERSION}" -o "${BUILD_DIR}/usr/bin/dockpipe" ./src/cmd
 )
+fi
 chmod 755 "${BUILD_DIR}/usr/bin/dockpipe"
 
 rm -rf "${CORE_STAGE}"

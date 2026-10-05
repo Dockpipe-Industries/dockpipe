@@ -36,17 +36,16 @@ fi
 echo ""
 DOCKPIPE_CLI="${DOCKPIPE_BIN:-${ROOT}/src/bin/dockpipe}"
 if [[ -x "$DOCKPIPE_CLI" ]]; then
-	HANDOFF_PATH="$("$DOCKPIPE_CLI" scope --package dorkpipe handoff/orchestrator-cursor-prompt.md --workdir "$ROOT")"
-	REFINED_PATH="$("$DOCKPIPE_CLI" scope --package dorkpipe handoff/orchestrator-cursor-prompt.refined.md --workdir "$ROOT")"
-	PASTE="$("$DOCKPIPE_CLI" scope --package dorkpipe handoff/paste-this-prompt.txt --workdir "$ROOT")"
+	HANDOFF_PATH="$("$DOCKPIPE_CLI" __state package-runtime --workdir "$ROOT" --owner dorkpipe --path handoff/orchestrator-cursor-prompt.md)"
+	REFINED_PATH="$("$DOCKPIPE_CLI" __state package-runtime --workdir "$ROOT" --owner dorkpipe --path handoff/orchestrator-cursor-prompt.refined.md)"
+	PASTE="$("$DOCKPIPE_CLI" __state package-runtime --workdir "$ROOT" --owner dorkpipe --path handoff/paste-this-prompt.txt)"
 	echo "dorkpipe-self-analysis: full handoff → ${HANDOFF_PATH}"
-	echo "dorkpipe-self-analysis: raw facts → $("$DOCKPIPE_CLI" scope --package dorkpipe self-analysis --workdir "$ROOT")"
+	echo "dorkpipe-self-analysis: raw facts → $("$DOCKPIPE_CLI" __state package-runtime --workdir "$ROOT" --owner dorkpipe --path self-analysis)"
 else
 	HANDOFF_PATH=""
 	REFINED_PATH=""
 	PASTE=""
-	echo "dorkpipe-self-analysis: full handoff → run 'dockpipe scope --package dorkpipe handoff/orchestrator-cursor-prompt.md --workdir \"$ROOT\"'"
-	echo "dorkpipe-self-analysis: raw facts → run 'dockpipe scope --package dorkpipe self-analysis --workdir \"$ROOT\"'"
+	echo "dorkpipe-self-analysis: DockPipe CLI unavailable; runtime artifact paths cannot be resolved"
 fi
 if [[ -n "$REFINED_PATH" && -f "$REFINED_PATH" ]]; then
 	echo "dorkpipe-self-analysis: Ollama refine → ${REFINED_PATH}"

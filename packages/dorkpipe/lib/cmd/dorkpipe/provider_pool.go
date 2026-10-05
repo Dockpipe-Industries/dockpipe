@@ -2151,7 +2151,11 @@ func runProviderPoolCodexExecPrompt(ctx context.Context, opts providerPoolPrompt
 	}
 	codexSession := strings.TrimSpace(opts.SessionID)
 	if codexSession != "" {
-		if binding := loadProviderPoolCodexBindings(opts.Workdir); binding[codexSession] != "" {
+		binding, err := loadProviderPoolCodexBindings(opts.Workdir)
+		if err != nil {
+			return nil, fmt.Errorf("provider-pool Codex resume bindings: %w", err)
+		}
+		if binding[codexSession] != "" {
 			args = []string{"exec", "resume", binding[codexSession]}
 			if modelArg != "" && !strings.EqualFold(modelArg, "config") {
 				args = append(args, "--model", modelArg)
@@ -2190,9 +2194,14 @@ func runProviderPoolCodexExecPrompt(ctx context.Context, opts providerPoolPrompt
 	}
 	if codexSession != "" {
 		if discovered := latestCodexSessionID(opts.Workdir, startedAt.Add(-2*time.Second)); discovered != "" {
-			binding := loadProviderPoolCodexBindings(opts.Workdir)
+			binding, err := loadProviderPoolCodexBindings(opts.Workdir)
+			if err != nil {
+				return nil, fmt.Errorf("provider-pool Codex resume bindings: %w", err)
+			}
 			binding[codexSession] = discovered
-			_ = saveProviderPoolCodexBindings(opts.Workdir, binding)
+			if err := saveProviderPoolCodexBindings(opts.Workdir, binding); err != nil {
+				return nil, fmt.Errorf("provider-pool Codex resume bindings: %w", err)
+			}
 		}
 	}
 	state := "ready"
@@ -3623,10 +3632,17 @@ func providerPoolWorkdirCanonicalCandidates(workdir string) []string {
 		candidates = append(candidates, abs)
 	}
 	for _, value := range append([]string{}, candidates...) {
-		candidates = append(candidates, filepath.ToSlash(value))
-		if runtime.GOOS == "windows" || providerPoolLooksWindowsPath(value) {
+		slashed := filepath.ToSlash(value)
+		windowsPath := providerPoolLooksWindowsPath(value)
+		if windowsPath {
+			// ToSlash only recognizes the host separator; persisted Windows
+			// identities also need normalization when read on Unix.
+			slashed = strings.ReplaceAll(value, `\`, "/")
+		}
+		candidates = append(candidates, slashed)
+		if runtime.GOOS == "windows" || windowsPath {
 			candidates = append(candidates, strings.ToLower(filepath.Clean(value)))
-			candidates = append(candidates, strings.ToLower(filepath.ToSlash(value)))
+			candidates = append(candidates, strings.ToLower(slashed))
 		}
 	}
 	return uniqueNonEmpty(candidates)
@@ -3938,20 +3954,28 @@ func removeProviderPoolLease(workdir, providerID string) error {
 	return nil
 }
 
-func loadProviderPoolCodexBindings(workdir string) map[string]string {
+func loadProviderPoolCodexBindings(workdir string) (map[string]string, error) {
 	path, err := statepaths.ProviderPoolSessionsPath(workdir)
 	if err != nil {
-		return map[string]string{}
+		return nil, err
 	}
 	raw, err := os.ReadFile(path)
+	if errors.Is(err, os.ErrNotExist) {
+		return map[string]string{}, nil
+	}
 	if err != nil {
-		return map[string]string{}
+		return nil, err
 	}
 	var payload map[string]string
-	if json.Unmarshal(raw, &payload) != nil {
-		return map[string]string{}
+	if json.Unmarshal(raw, &payload) != nil || payload == nil {
+		return nil, fmt.Errorf("provider-pool Codex resume bindings are malformed")
 	}
-	return payload
+	for sessionID, providerSessionID := range payload {
+		if strings.TrimSpace(sessionID) == "" || sessionID != strings.TrimSpace(sessionID) || strings.TrimSpace(providerSessionID) == "" || providerSessionID != strings.TrimSpace(providerSessionID) {
+			return nil, fmt.Errorf("provider-pool Codex resume bindings are malformed")
+		}
+	}
+	return payload, nil
 }
 
 func saveProviderPoolCodexBindings(workdir string, payload map[string]string) error {
@@ -3959,14 +3983,14 @@ func saveProviderPoolCodexBindings(workdir string, payload map[string]string) er
 	if err != nil {
 		return err
 	}
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
 		return err
 	}
 	data, err := json.MarshalIndent(payload, "", "  ")
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(path, data, 0o644)
+	return os.WriteFile(path, data, 0o600)
 }
 
 func latestCodexSessionID(workdir string, since time.Time) string {

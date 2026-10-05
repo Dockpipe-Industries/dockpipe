@@ -2,4 +2,5 @@
 set -euo pipefail
 
 ROOT="$(git rev-parse --show-toplevel)"
-exec node "$ROOT/packages/ide/tests/devcontainer-lifecycle.test.js"
+node "$ROOT/packages/ide/tests/devcontainer-lifecycle.test.js"
+bash "$ROOT/packages/ide/tests/test_ide_state_ownership.sh"

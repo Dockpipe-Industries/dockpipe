@@ -26,25 +26,32 @@ func localModuleRoot(t *testing.T) string {
 	}
 }
 
-// TestBundledTemplatesCoreLayoutEnforcesCategoryDirs fails if src/core top-level dirs drift
-// (assets, resolvers, runtimes, strategies, workflows).
-func TestBundledTemplatesCoreLayoutEnforcesCategoryDirs(t *testing.T) {
+// TestBundledTemplatesCoreLayoutEnforcesRootEntries fails if the five category directories or the
+// intentional package manifest/Python package marker at the src/core root drift.
+func TestBundledTemplatesCoreLayoutEnforcesRootEntries(t *testing.T) {
 	root := localModuleRoot(t)
 	core := filepath.Join(root, "src", "core")
 	ents, err := os.ReadDir(core)
 	if err != nil {
 		t.Fatal(err)
 	}
-	allowed := []string{"assets", "resolvers", "runtimes", "strategies", "workflows"}
-	var names []string
+	wantDirs := []string{"assets", "resolvers", "runtimes", "strategies", "workflows"}
+	wantFiles := []string{"__init__.py", "package.yml"}
+	var dirs, files []string
 	for _, e := range ents {
-		if e.IsDir() && e.Name()[0] != '.' {
-			names = append(names, e.Name())
+		switch {
+		case e.IsDir():
+			dirs = append(dirs, e.Name())
+		case e.Type().IsRegular():
+			files = append(files, e.Name())
+		default:
+			t.Fatalf("src/core root entry %q must be a regular file or directory", e.Name())
 		}
 	}
-	slices.Sort(names)
-	if !slices.Equal(names, allowed) {
-		t.Fatalf("src/core must contain exactly %v (got %v)", allowed, names)
+	slices.Sort(dirs)
+	slices.Sort(files)
+	if !slices.Equal(dirs, wantDirs) || !slices.Equal(files, wantFiles) {
+		t.Fatalf("src/core must contain exactly directories %v and files %v (got directories %v and files %v)", wantDirs, wantFiles, dirs, files)
 	}
 }
 

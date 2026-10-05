@@ -33,6 +33,46 @@ includes_resolvers: [codex, claude]
 	}
 }
 
+func TestParsePackageManifestPackageOwnedState(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	path := filepath.Join(dir, "package.yml")
+	body := `schema: 1
+name: ide
+version: 1.0.0
+package_state:
+  compatibility_import: package-owned
+  owner_ids: [cursor-dev, vscode]
+`
+	if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	manifest, err := ParsePackageManifest(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if manifest.PackageState.CompatibilityImport != "package-owned" || len(manifest.PackageState.OwnerIDs) != 2 {
+		t.Fatalf("package state = %+v", manifest.PackageState)
+	}
+}
+
+func TestParsePackageManifestRejectsInvalidPackageState(t *testing.T) {
+	t.Parallel()
+	for _, body := range []string{
+		"schema: 1\nname: bad\npackage_state:\n  compatibility_import: whole\n  owner_ids: [bad]\n",
+		"schema: 1\nname: bad\npackage_state:\n  compatibility_import: package-owned\n",
+		"schema: 1\nname: bad\npackage_state:\n  compatibility_import: package-owned\n  owner_ids: [duplicate, duplicate]\n",
+	} {
+		path := filepath.Join(t.TempDir(), "package.yml")
+		if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := ParsePackageManifest(path); err == nil {
+			t.Fatalf("invalid package state was accepted: %s", body)
+		}
+	}
+}
+
 func TestParsePackageManifest(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()

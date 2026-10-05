@@ -1,0 +1,14 @@
+public Record ContainerRow {
+    public string Id;
+    public string Name;
+    public bool Running;
+}
+
+public Class Root {
+    public Optional<ContainerRow> PresentRow(ContainerRow value) => some(value);
+    public Optional<ContainerRow> AbsentRow() => none<ContainerRow>();
+    public Optional<ContainerRow> ForwardRow(Optional<ContainerRow> value) => value;
+    public bool HasRow(Optional<ContainerRow> value) => has_value(value);
+    public ContainerRow RowOr(Optional<ContainerRow> value, ContainerRow fallback) =>
+        value_or(value, fallback);
+}

@@ -1,0 +1,39 @@
+# TASK-012 Pipeon startup, provisioning, and DorkPipe provider pools
+schema: 1
+id: TASK-012
+topic: Pipeon startup, provisioning, and DorkPipe provider pools
+entrypoint: overview.md
+
+dispatch:
+  readiness: unclassified
+  ownership: unclaimed
+
+routes:
+  orientation:
+    read: [overview.md]
+  current_status:
+    read: [overview.md, status-history.md]
+  startup_and_cli:
+    read: [overview.md, cli-images-measurement.md]
+  provider_pool_contract:
+    read: [overview.md, provider-pool-contract.md]
+    optional: [provider-pool-leasing.md, status-history.md]
+  provider_pool_leasing:
+    read: [overview.md, provider-pool-leasing.md]
+    optional: [provider-pool-contract.md, status-history.md]
+
+documents:
+  - path: overview.md
+    role: goal, current state, adapter refresh, costs, and immediate optimizations
+  - path: provider-pool-contract.md
+    role: warm lanes, pool contract, and provider stream worker contract
+  - path: provider-pool-leasing.md
+    role: workflow provider-pool leasing follow-up
+  - path: cli-images-measurement.md
+    role: CLI orchestration, prebuilt images, measurement, and remaining decisions
+  - path: status-history.md
+    role: current status and lifecycle-hardening history
+
+maintenance:
+  - Resolve document paths relative to this index and load only the route needed.
+  - Keep dispatch metadata synchronized with docs/agents/task-index.yaml.

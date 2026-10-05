@@ -124,13 +124,14 @@ func SanitizePackageStateScope(scope string) string {
 	return out
 }
 
-// PackageStateDir returns the absolute package-scoped state root under bin/.dockpipe/packages/<scope>.
+// PackageStateDir returns collision-safe durable project/package state and performs conservative
+// compatibility import for undeclared third-party legacy scopes.
 func PackageStateDir(workdir, scope string) (string, error) {
-	root, err := StateRoot(workdir)
+	status, err := PreparePackageStateDir(workdir, scope)
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(root, "packages", SanitizePackageStateScope(scope)), nil
+	return status.Dir, nil
 }
 
 // PackagesRoot returns the absolute directory for installed packages (default: workdir/bin/.dockpipe/internal/packages).

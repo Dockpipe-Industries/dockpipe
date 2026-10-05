@@ -13,76 +13,80 @@ import (
 
 const dorkpipeScope = "dorkpipe"
 
-func PackageStateDir(workdir string) (string, error) {
-	return infrastructure.PackageStateDir(workdir, dorkpipeScope)
+func PackageRuntimeDir(workdir string) (string, error) {
+	return infrastructure.PackageRuntimeDir(workdir, dorkpipeScope)
 }
 
 func EditArtifactsDir(workdir, requestID string) (string, error) {
-	root, err := PackageStateDir(workdir)
-	if err != nil {
-		return "", err
-	}
-	return filepath.Join(root, "edit", requestID), nil
+	return packageRuntimePath(workdir, "edit", requestID)
 }
 
 func ReasoningArtifactsDir(workdir, requestID string) (string, error) {
-	root, err := PackageStateDir(workdir)
-	if err != nil {
-		return "", err
-	}
-	return filepath.Join(root, "reasoning", requestID), nil
+	return packageRuntimePath(workdir, "reasoning", requestID)
 }
 
 func MetricsPath(workdir string) (string, error) {
-	root, err := PackageStateDir(workdir)
+	root, _, err := PrepareLearningAuthority(workdir)
 	if err != nil {
 		return "", err
 	}
 	return filepath.Join(root, "metrics.jsonl"), nil
 }
 
-func RunPath(workdir string) (string, error) {
-	root, err := PackageStateDir(workdir)
+func TrainingMetricsPath(workdir string) (string, error) {
+	root, _, err := PrepareLearningAuthority(workdir)
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(root, "run.json"), nil
+	return filepath.Join(root, "training", "metrics.jsonl"), nil
+}
+
+func RunPath(workdir string) (string, error) {
+	return packageRuntimePath(workdir, "run.json")
 }
 
 func NodesDir(workdir string) (string, error) {
-	root, err := PackageStateDir(workdir)
+	return packageRuntimePath(workdir, "nodes")
+}
+
+func AnalysisDir(workdir string) (string, error) {
+	root, _, err := PrepareLearningAuthority(workdir)
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(root, "nodes"), nil
+	return filepath.Join(root, "analysis"), nil
 }
 
-func AnalysisDir(workdir string) string {
-	return packageStatePath(workdir, "analysis")
+func QueuePath(workdir string) (string, error) {
+	root, err := AnalysisDir(workdir)
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(root, "queue.json"), nil
 }
 
-func QueuePath(workdir string) string {
-	return filepath.Join(AnalysisDir(workdir), "queue.json")
+func InsightsPath(workdir string) (string, error) {
+	root, err := AnalysisDir(workdir)
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(root, "insights.json"), nil
 }
 
-func InsightsPath(workdir string) string {
-	return filepath.Join(AnalysisDir(workdir), "insights.json")
+func AnalysisHistoryPath(workdir string) (string, error) {
+	root, err := AnalysisDir(workdir)
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(root, "history.jsonl"), nil
 }
 
-func AnalysisHistoryPath(workdir string) string {
-	return filepath.Join(AnalysisDir(workdir), "history.jsonl")
-}
-
-func InsightsByCategoryDir(workdir string) string {
-	return filepath.Join(AnalysisDir(workdir), "by-category")
+func InsightsByCategoryDir(workdir string) (string, error) {
+	return packageRuntimePath(workdir, "analysis", "by-category")
 }
 
 func PackageCIDir(workdir string) (string, error) {
-	root, err := PackageStateDir(workdir)
-	if err != nil {
-		return "", err
-	}
-	return filepath.Join(root, "ci"), nil
+	return packageRuntimePath(workdir, "ci")
 }
 
 func PackageCIRawDir(workdir string) (string, error) {
@@ -118,19 +122,11 @@ func PackageCISummaryPath(workdir string) (string, error) {
 }
 
 func SelfAnalysisDir(workdir string) (string, error) {
-	root, err := PackageStateDir(workdir)
-	if err != nil {
-		return "", err
-	}
-	return filepath.Join(root, "self-analysis"), nil
+	return packageRuntimePath(workdir, "self-analysis")
 }
 
 func ProviderPoolsDir(workdir string) (string, error) {
-	root, err := PackageStateDir(workdir)
-	if err != nil {
-		return "", err
-	}
-	return filepath.Join(root, "provider-pools"), nil
+	return packageRuntimePath(workdir, "provider-pools")
 }
 
 func ProviderPoolLeasesDir(workdir string) (string, error) {
@@ -142,7 +138,7 @@ func ProviderPoolLeasesDir(workdir string) (string, error) {
 }
 
 func ProviderPoolSessionsPath(workdir string) (string, error) {
-	root, err := ProviderPoolsDir(workdir)
+	root, _, err := PrepareProviderRecoveryAuthority(workdir)
 	if err != nil {
 		return "", err
 	}
@@ -150,7 +146,7 @@ func ProviderPoolSessionsPath(workdir string) (string, error) {
 }
 
 func ProviderPoolSessionAdaptersDir(workdir string) (string, error) {
-	root, err := ProviderPoolsDir(workdir)
+	root, _, err := PrepareProviderRecoveryAuthority(workdir)
 	if err != nil {
 		return "", err
 	}
@@ -158,7 +154,7 @@ func ProviderPoolSessionAdaptersDir(workdir string) (string, error) {
 }
 
 func ProviderPoolAppServerDir(workdir string) (string, error) {
-	root, err := ProviderPoolsDir(workdir)
+	root, _, err := PrepareProviderRecoveryAuthority(workdir)
 	if err != nil {
 		return "", err
 	}
@@ -197,23 +193,22 @@ func ProviderPoolScratchDir(workdir string) (string, error) {
 	return filepath.Join(root, "scratch"), nil
 }
 
-func packageStatePath(workdir string, parts ...string) string {
-	root, err := PackageStateDir(workdir)
+func packageRuntimePath(workdir string, parts ...string) (string, error) {
+	root, err := PackageRuntimeDir(workdir)
 	if err != nil {
-		root = filepath.Join(workdir, infrastructure.DockpipeDirRel, "packages", dorkpipeScope)
+		return "", err
 	}
-	all := append([]string{root}, parts...)
-	return filepath.Join(all...)
+	return infrastructure.JoinStatePath(root, filepath.ToSlash(filepath.Join(parts...)))
 }
 
-func CursorPromptPath(workdir string) string {
-	return packageStatePath(workdir, "handoff", "orchestrator-cursor-prompt.md")
+func CursorPromptPath(workdir string) (string, error) {
+	return packageRuntimePath(workdir, "handoff", "orchestrator-cursor-prompt.md")
 }
 
-func CursorRefinedPromptPath(workdir string) string {
-	return packageStatePath(workdir, "handoff", "orchestrator-cursor-prompt.refined.md")
+func CursorRefinedPromptPath(workdir string) (string, error) {
+	return packageRuntimePath(workdir, "handoff", "orchestrator-cursor-prompt.refined.md")
 }
 
-func PastePromptPath(workdir string) string {
-	return packageStatePath(workdir, "handoff", "paste-this-prompt.txt")
+func PastePromptPath(workdir string) (string, error) {
+	return packageRuntimePath(workdir, "handoff", "paste-this-prompt.txt")
 }

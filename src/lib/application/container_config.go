@@ -51,8 +51,8 @@ func workflowContainerMountSpecs(mounts []domain.WorkflowContainerMount, hostBas
 			return nil, fmt.Errorf("container mounts require both host and guest")
 		}
 		spec := host + ":" + guest
-		if mode := strings.TrimSpace(mount.Mode); mode != "" {
-			spec += ":" + mode
+		if mode := domain.ContainerMountMode(strings.TrimSpace(mount.Mode)); mode != domain.ContainerMountMode("") {
+			spec += ":" + string(mode)
 		}
 		out = append(out, spec)
 	}

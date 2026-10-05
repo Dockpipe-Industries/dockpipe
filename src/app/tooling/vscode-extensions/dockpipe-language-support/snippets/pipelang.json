@@ -28,5 +28,1335 @@
       "}"
     ],
     "description": "Create a PipeLang struct."
+  },
+  "PipeLang Record": {
+    "prefix": "pipe-record",
+    "body": [
+      "public Record ${1:Row}",
+      "{",
+      "    public string ${2:Id};",
+      "    public int ${3:Count};",
+      "}"
+    ],
+    "description": "Create a v0.9.0 PipeLang primitive immutable record."
+  },
+  "PipeLang Record Field Projection": {
+    "prefix": "pipe-record-field",
+    "body": [
+      "public ${1:string} ${2:IdOf}(${3:Row} ${4:value}) => ${4:value}.${5:Id};"
+    ],
+    "description": "Create a v0.10.0 one-hop read-only primitive-record field projection."
+  },
+  "PipeLang Record Construction": {
+    "prefix": "pipe-record-new",
+    "body": [
+      "public ${1:Row} ${2:Create}(${3:string} ${4:id}) =>",
+      "    new ${1:Row} { ${5:Id} = ${4:id} };"
+    ],
+    "description": "Create an exact v0.11.0 declaration-ordered primitive-record construction."
+  },
+  "PipeLang Record Equality": {
+    "prefix": "pipe-record-equality",
+    "body": [
+      "public bool ${1:Same}(${2:Row} ${3:left}, ${2:Row} ${4:right}) => ${3:left} ${5|==,!=|} ${4:right};"
+    ],
+    "description": "Create an exact v0.12.0 direct structural primitive-record equality method."
+  },
+  "PipeLang Primitive Optional": {
+    "prefix": "pipe-optional",
+    "body": [
+      "public Optional<${1:string}> ${2:Present}(${1:string} ${3:value}) => some(${3:value});",
+      "public Optional<${1:string}> ${4:Absent}() => none<${1:string}>();",
+      "public Optional<${1:string}> ${5:Forward}(Optional<${1:string}> ${3:value}) => ${3:value};",
+      "public bool ${6:HasValue}(Optional<${1:string}> ${3:value}) => has_value(${3:value});"
+    ],
+    "description": "Create the exact v0.13.0 primitive Optional construction, identity transport, and presence-inspection methods."
+  },
+  "PipeLang Optional Defaulting": {
+    "prefix": "pipe-optional-value-or",
+    "body": [
+      "public ${1:string} ${2:ValueOr}(Optional<${1:string}> ${3:value}, ${1:string} ${4:fallback}) => value_or(${3:value}, ${4:fallback});"
+    ],
+    "description": "Create the exact v0.14.0 two-parameter primitive Optional value_or defaulting method."
+  },
+  "PipeLang Primitive Record Optional": {
+    "prefix": "pipe-record-optional",
+    "body": [
+      "public Optional<${1:Row}> ${2:Present}(${1:Row} ${3:value}) => some(${3:value});",
+      "public Optional<${1:Row}> ${4:Absent}() => none<${1:Row}>();",
+      "public Optional<${1:Row}> ${5:Forward}(Optional<${1:Row}> ${3:value}) => ${3:value};",
+      "public bool ${6:HasValue}(Optional<${1:Row}> ${3:value}) => has_value(${3:value});",
+      "public ${1:Row} ${7:ValueOr}(Optional<${1:Row}> ${3:value}, ${1:Row} ${8:fallback}) => value_or(${3:value}, ${8:fallback});"
+    ],
+    "description": "Create the exact v0.18.0 primitive-record Optional construction, identity, inspection, and defaulting methods."
+  },
+  "PipeLang Record List": {
+    "prefix": "pipe-record-list",
+    "body": [
+      "public List<${1:Row}> ${2:EmptyRows}() => empty_list<${1:Row}>();",
+      "public List<${1:Row}> ${3:OneRow}(${1:Row} ${4:value}) => list(${4:value});",
+      "public List<${1:Row}> ${5:ForwardRows}(List<${1:Row}> ${6:values}) => ${6:values};"
+    ],
+    "description": "Create the exact v0.15.0 immutable record-list empty, singleton, and identity-transport methods."
+  },
+  "PipeLang Record List Count": {
+    "prefix": "pipe-record-list-count",
+    "body": [
+      "public int ${1:CountRows}(List<${2:Row}> ${3:values}) => count(${3:values});"
+    ],
+    "description": "Create the exact v0.16.0 direct primitive-record List cardinality method."
+  },
+  "PipeLang Record List Append": {
+    "prefix": "pipe-record-list-append",
+    "body": [
+      "public List<${1:Row}> ${2:AppendRow}(List<${1:Row}> ${3:values}, ${1:Row} ${4:value}) => append(${3:values}, ${4:value});"
+    ],
+    "description": "Create the exact v0.17.0 immutable primitive-record List append method."
+  },
+  "PipeLang Record List At": {
+    "prefix": "pipe-record-list-at",
+    "body": [
+      "public Optional<${1:Row}> ${2:RowAt}(List<${1:Row}> ${3:values}, int ${4:index}) => at(${3:values}, ${4:index});"
+    ],
+    "description": "Create the exact v0.20.0 total primitive-record List indexing method returning Optional<R>."
+  },
+  "PipeLang Record List Find By Text": {
+    "prefix": "pipe-record-list-find-by-text",
+    "body": [
+      "public Optional<${1:Row}> ${2:FindRow}(List<${1:Row}> ${3:values}, string ${4:key}) => find_by(${3:values}, ${1:Row}.${5:Id}, ${4:key});"
+    ],
+    "description": "Create the exact v0.21.0 stable-key primitive-record List lookup by one public string field."
+  },
+  "PipeLang Record List Filter By Text": {
+    "prefix": "pipe-record-list-filter-by-text",
+    "body": [
+      "public List<${1:Row}> ${2:FilterRows}(List<${1:Row}> ${3:values}, string ${4:key}) => filter_by(${3:values}, ${1:Row}.${5:State}, ${4:key});"
+    ],
+    "description": "Create the exact v0.22.0 stable-order primitive-record List filter by one public string field."
+  },
+  "PipeLang Case-Folded Text Contains": {
+    "prefix": "pipe-text-contains-casefolded",
+    "body": [
+      "public bool ${1:ContainsCaseFolded}(string ${2:value}, string ${3:query}) => contains_casefolded(${2:value}, ${3:query});"
+    ],
+    "description": "Create the exact v0.23.0 Unicode 17.0.0 full-default case-folded text containment method."
+  },
+  "PipeLang Record List Case-Folded Filter": {
+    "prefix": "pipe-record-list-filter-contains-casefolded",
+    "body": [
+      "public List<${1:Row}> ${2:SearchRows}(List<${1:Row}> ${3:values}, string ${4:query}) => filter_contains_casefolded(${3:values}, ${1:Row}.${5:Name}, ${4:query});"
+    ],
+    "description": "Create the exact v0.24.0 stable-order primitive-record List filter using Unicode 17.0.0 full-default case-folded containment on one public string field."
+  },
+  "PipeLang Snapshot Result": {
+    "prefix": "pipe-snapshot-result",
+    "body": [
+      "public Result<List<${1:Row}>, string> ${2:RowsOk}(List<${1:Row}> ${3:value}) => ok<List<${1:Row}>, string>(${3:value});",
+      "public Result<List<${1:Row}>, string> ${4:RowsFailed}(string ${5:error}) => err<List<${1:Row}>, string>(${5:error});",
+      "public Result<List<${1:Row}>, string> ${6:ForwardRows}(Result<List<${1:Row}>, string> ${7:result}) => ${7:result};",
+      "public bool ${8:RowsSucceeded}(Result<List<${1:Row}>, string> ${7:result}) => is_ok(${7:result});",
+      "public List<${1:Row}> ${9:RowsOr}(Result<List<${1:Row}>, string> ${7:result}, List<${1:Row}> ${10:fallback}) => success_or(${7:result}, ${10:fallback});",
+      "public string ${11:ErrorOr}(Result<List<${1:Row}>, string> ${7:result}, string ${12:fallbackError}) => failure_or(${7:result}, ${12:fallbackError});"
+    ],
+    "description": "Create the exact v0.19.0 read-only snapshot Result construction, identity, inspection, and bounded defaulting methods."
+  },
+  "PipeLang Text Result": {
+    "prefix": "pipe-text-result",
+    "body": [
+      "public Result<string, string> ${1:TextOk}(string ${2:value}) => ok<string, string>(${2:value});",
+      "public Result<string, string> ${3:TextFailed}(string ${4:error}) => err<string, string>(${4:error});",
+      "public Result<string, string> ${5:ForwardText}(Result<string, string> ${6:result}) => ${6:result};",
+      "public bool ${7:TextSucceeded}(Result<string, string> ${6:result}) => is_ok(${6:result});",
+      "public string ${8:TextOr}(Result<string, string> ${6:result}, string ${9:fallback}) => success_or(${6:result}, ${9:fallback});",
+      "public string ${10:ErrorOr}(Result<string, string> ${6:result}, string ${11:fallbackError}) => failure_or(${6:result}, ${11:fallbackError});"
+    ],
+    "description": "Create the exact v0.25.0 fallible text Result construction, identity, inspection, and bounded defaulting methods."
+  },
+  "PipeLang Text Trim": {
+    "prefix": "pipe-text-trim",
+    "body": [
+      "public string ${1:Trim}(string ${2:value}) => trim(${2:value});"
+    ],
+    "description": "Create the exact v0.26.0 deterministic Unicode 17.0.0 White_Space text-trimming method."
+  },
+  "PipeLang Record List Joined Case-Folded Filter": {
+    "prefix": "pipe-record-list-filter-joined-contains-casefolded",
+    "body": [
+      "public List<${1:Row}> ${2:SearchRows}(List<${1:Row}> ${3:values}, string ${4:query}) => filter_joined_contains_casefolded(${3:values}, ${1:Row}.${5:Name}, ${1:Row}.${6:State}, ${1:Row}.${7:Detail}, ${4:query});"
+    ],
+    "description": "Create the exact v0.29.0 stable-order record-bounded variable-field joined Unicode case-folded record-list filter."
+  },
+  "PipeLang Record List Ordinal Sort": {
+    "prefix": "pipe-record-list-sort-by-ordinal",
+    "body": [
+      "public List<${1:Row}> ${2:SortRows}(List<${1:Row}> ${3:values}) => sort_by_ordinal(${3:values}, ${1:Row}.${4:Name});"
+    ],
+    "description": "Create the exact v0.28.0 stable ascending ordinal string-field record-list sort."
+  },
+  "PipeLang Record List Multi-Key Ordinal Sort": {
+    "prefix": "pipe-record-list-sort-by-ordinals",
+    "body": [
+      "public List<${1:Row}> ${2:SortRows}(List<${1:Row}> ${3:values}) => sort_by_ordinal(${3:values}, ${1:Row}.${4:State}, ${1:Row}.${5:Name});"
+    ],
+    "description": "Create the exact v0.30.0 stable ascending lexicographic ordinal string-field record-list sort."
+  },
+  "PipeLang Named Record Predicate Filter": {
+    "prefix": "pipe-record-list-filter-predicate",
+    "body": [
+      "public bool ${1:Matches}(${2:Row} ${3:row}, string ${4:query}) => contains_casefolded(${3:row}.${5:Name}, trim(${4:query}));",
+      "public List<${2:Row}> ${6:SearchRows}(List<${2:Row}> ${7:values}, string ${4:query}) => filter(${7:values}, ${1:Matches}, ${4:query});"
+    ],
+    "description": "Create the exact v0.31.0 same-class named pure record predicate and stable copied record-list filter."
+  },
+  "PipeLang Directional Record List Ordinal Sort": {
+    "prefix": "pipe-record-list-sort-by-directions",
+    "body": [
+      "public List<${1:Row}> ${2:SortRows}(List<${1:Row}> ${3:values}) => sort_by_ordinal(${3:values}, ${1:Row}.${4:State}, ${5:descending}, ${1:Row}.${6:Name}, ${7:ascending});"
+    ],
+    "description": "Create the exact v0.32.0 stable per-key directional ordinal record-list sort."
+  },
+  "PipeLang Safe Record List Index": {
+    "prefix": "pipe-record-list-index",
+    "body": [
+      "public Optional<${1:Row}> ${2:RowAt}(List<${1:Row}> ${3:values}, int ${4:index}) => ${3:values}[${4:index}];"
+    ],
+    "description": "Create the exact v0.33.0 safe postfix record-list indexing method."
+  },
+  "PipeLang bounded propagation": {
+    "prefix": "pipe-propagate",
+    "body": [
+      "public Optional<${1:string}> ${2:Forward}(Optional<${1:string}> value) {",
+      "  return some(propagate(value));",
+      "}"
+    ],
+    "description": "Create the exact v0.34.0 bounded Optional propagation method."
+  },
+  "PipeLang exhaustive Optional match": {
+    "prefix": "pipe-match-optional",
+    "body": [
+      "public ${1:string} ${2:Read}(Optional<${1:string}> ${3:value}) => match(${3:value}){ some(${4:item}) => ${4:item}, none => ${5:\"missing\"} };"
+    ],
+    "description": "Create the exact v0.35.0 exhaustive bounded Optional match."
+  },
+  "PipeLang same-class pure call": {
+    "prefix": "pipe-pure-call",
+    "body": [
+      "public ${1:List<Row>} ${2:Compose}(${1:List<Row>} ${3:values}, string ${4:query}) => ${5:Order}(${6:Filter}(${3:values}, ${4:query}));"
+    ],
+    "description": "Create a v0.36.0 public same-class pure method composition with exact ordered types."
+  },
+  "PipeLang general pure-call composition": {
+    "prefix": "pipe-pure-call-compose",
+    "body": [
+      "public string ${1:SelectedName}(Optional<${2:Row}> ${3:value}) => match(${3:value}){ some(${4:row}) => ${5:Normalize}(${4:row}.${6:Name}), none => \"\" };"
+    ],
+    "description": "Create a v0.37.0 same-class pure call inside an already admitted match-arm expression."
+  },
+  "PipeLang bounded conditional expression": {
+    "prefix": "pipe-conditional",
+    "body": [
+      "${1:condition} ? ${2:whenTrue} : ${3:whenFalse}"
+    ],
+    "description": "Create one v0.38.0 exactly typed lazy conditional expression."
+  },
+  "PipeLang immutable local method": {
+    "prefix": "pipe-immutable-local",
+    "body": [
+      "public ${1:string} ${2:Method}(${1:string} ${3:value}) {",
+      "\t${1:string} ${4:local} = ${5:expression};",
+      "\treturn ${6:${4:local}};",
+      "}"
+    ],
+    "description": "Create one v0.39.0 explicitly typed immutable local followed by a terminal return."
+  },
+  "PipeLang ordered immutable locals method": {
+    "prefix": "pipe-immutable-locals",
+    "body": [
+      "public ${1:string} ${2:Method}(${1:string} ${3:value}) {",
+      "\t${1:string} ${4:first} = ${5:expression};",
+      "\t${1:string} ${6:second} = ${7:${4:first}};",
+      "\treturn ${8:${6:second}};",
+      "}"
+    ],
+    "description": "Create a v0.40.0 source-ordered sequence of explicitly typed immutable locals followed by a terminal return."
+  },
+  "PipeLang block-scoped propagation method": {
+    "prefix": "pipe-block-propagate",
+    "body": [
+      "public Optional<${1:string}> ${2:Method}(Optional<${1:string}> ${3:carrier}) {",
+      "\t${1:string} ${4:value} = propagate(${3:carrier});",
+      "\t${1:string} ${5:result} = ${6:${4:value}};",
+      "\treturn some(${5:result});",
+      "}"
+    ],
+    "description": "Create one v0.41.0 first-local bounded propagation followed by ordered immutable locals and a terminal carrier return."
+  },
+  "PipeLang prior-local helper propagation method": {
+    "prefix": "pipe-prior-local-propagate",
+    "body": [
+      "public Result<string, string> ${1:Method}(string ${2:input}) {",
+      "\tResult<string, string> ${3:carrier} = ${4:Helper}(${2:input});",
+      "\tstring ${5:value} = propagate(${3:carrier});",
+      "\tstring ${6:result} = ${7:${5:value}};",
+      "\treturn ok<string, string>(${6:result});",
+      "}"
+    ],
+    "description": "Create one v0.42.0 same-class helper call followed immediately by bounded prior-local propagation and a terminal carrier return."
+  },
+  "PipeLang helper-result match method": {
+    "prefix": "pipe-helper-result-match",
+    "body": [
+      "public Result<string, string> ${1:Validate}(string ${2:input}) => ${3:validation};",
+      "",
+      "public string ${4:Resolve}(string ${2:input}) =>",
+      "\tmatch(${1:Validate}(${2:input})) {",
+      "\t\tok(${5:value}) => ${5:value},",
+      "\t\terr(${6:error}) => ${6:error}",
+      "\t};"
+    ],
+    "description": "Create one v0.43.0 same-class Result<string, string> helper call matched by exact ordered ok and err binding arms."
+  },
+  "PipeLang general helper-carrier match method": {
+    "prefix": "pipe-helper-carrier-match",
+    "body": [
+      "public Optional<${1:Row}> ${2:FindSelection}(List<${1:Row}> ${3:rows}, string ${4:id}) => find_by(${3:rows}, ${1:Row}.${5:Id}, ${4:id});",
+      "",
+      "public string ${6:SelectedName}(List<${1:Row}> ${3:rows}, string ${4:id}) =>",
+      "\tmatch(${2:FindSelection}(${3:rows}, ${4:id})) {",
+      "\t\tsome(${7:row}) => ${8:NormalizeName}(${7:row}.${9:Name}),",
+      "\t\tnone => \"\"",
+      "\t};"
+    ],
+    "description": "Create one v0.44.0 exact-parameter same-class Optional helper call matched by ordered some(binding) and binding-free none arms."
+  },
+  "PipeLang helper-carrier match local method": {
+    "prefix": "pipe-helper-carrier-match-local",
+    "body": [
+      "public Optional<${1:Row}> ${2:FindSelection}(List<${1:Row}> ${3:rows}, string ${4:id}) => find_by(${3:rows}, ${1:Row}.${5:Id}, ${4:id});",
+      "",
+      "public string ${6:SelectedName}(List<${1:Row}> ${3:rows}, string ${4:id}) {",
+      "\tstring ${7:selected} = match(${2:FindSelection}(${3:rows}, ${4:id})) {",
+      "\t\tsome(${8:row}) => ${8:row}.${9:Name},",
+      "\t\tnone => \"\"",
+      "\t};",
+      "\treturn ${10:NormalizeName}(${7:selected});",
+      "}"
+    ],
+    "description": "Create one v0.45.0 v0.44-compatible helper-carrier match as the first immutable-local initializer, followed by a terminal continuation."
+  },
+  "PipeLang checked-arithmetic helper match local method": {
+    "prefix": "pipe-checked-arithmetic-helper-match-local",
+    "body": [
+      "public Result<int, ArithmeticError> ${1:Add}(int ${2:left}, int ${3:right}) => ${2:left} + ${3:right};",
+      "",
+      "public int ${4:AddOrZero}(int ${2:left}, int ${3:right}) {",
+      "\tint ${5:selected} = match(${1:Add}(${2:left}, ${3:right})) {",
+      "\t\tok(${6:value}) => ${6:value},",
+      "\t\terr(${7:problem}) => 0",
+      "\t};",
+      "\treturn ${5:selected};",
+      "}"
+    ],
+    "description": "Create one v0.46.0 checked-arithmetic Result helper match as the first immutable-local initializer with exact ordered ok and err arms."
+  },
+  "PipeLang later-local helper match method": {
+    "prefix": "pipe-later-local-helper-match",
+    "body": [
+      "public Optional<${1:Row}> ${2:FindSelection}(List<${1:Row}> ${3:rows}, string ${4:id}) => find_by(${3:rows}, ${1:Row}.${5:Id}, ${4:id});",
+      "",
+      "public string ${6:SelectedName}(List<${1:Row}> ${3:rows}, string ${4:id}) {",
+      "\tstring ${7:fallback} = \"\";",
+      "\tstring ${8:selected} = match(${2:FindSelection}(${3:rows}, ${4:id})) {",
+      "\t\tsome(${9:row}) => ${9:row}.${10:Name},",
+      "\t\tnone => ${7:fallback}",
+      "\t};",
+      "\treturn ${11:NormalizeName}(${8:selected});",
+      "}"
+    ],
+    "description": "Create one v0.47.0 bounded helper-carrier match after an ordinary immutable local, followed by a terminal continuation."
+  },
+  "PipeLang prior-local carrier match method": {
+    "prefix": "pipe-prior-local-carrier-match",
+    "body": [
+      "public Optional<${1:Row}> ${2:FindSelection}(List<${1:Row}> ${3:rows}, string ${4:id}) => find_by(${3:rows}, ${1:Row}.${5:Id}, ${4:id});",
+      "",
+      "public string ${6:SelectedName}(List<${1:Row}> ${3:rows}, string ${4:id}) {",
+      "\tstring ${7:fallback} = \"\";",
+      "\tOptional<${1:Row}> ${8:selection} = ${2:FindSelection}(${3:rows}, ${4:id});",
+      "\tstring ${9:selected} = match(${8:selection}) {",
+      "\t\tsome(${10:row}) => ${10:row}.${11:Name},",
+      "\t\tnone => ${7:fallback}",
+      "\t};",
+      "\treturn ${12:NormalizeName}(${9:selected});",
+      "}"
+    ],
+    "description": "Create one v0.48.0 adjacent helper-call carrier local and canonical match local, followed by a terminal continuation."
+  },
+  "PipeLang bounded two-carrier match method": {
+    "prefix": "pipe-two-carrier-matches",
+    "body": [
+      "public Optional<${1:Row}> ${2:FindPrimary}(List<${1:Row}> ${3:rows}, string ${4:id}) => find_by(${3:rows}, ${1:Row}.${5:Id}, ${4:id});",
+      "public Optional<${1:Row}> ${6:FindSecondary}(List<${1:Row}> ${3:rows}, string ${4:id}) => find_by(${3:rows}, ${1:Row}.${5:Id}, ${4:id});",
+      "",
+      "public string ${7:SelectedName}(List<${1:Row}> ${3:rows}, string ${4:id}) {",
+      "\tOptional<${1:Row}> ${8:firstCarrier} = ${2:FindPrimary}(${3:rows}, ${4:id});",
+      "\tstring ${9:first} = match(${8:firstCarrier}) {",
+      "\t\tsome(${10:firstRow}) => ${10:firstRow}.${11:Name},",
+      "\t\tnone => \"\"",
+      "\t};",
+      "\tOptional<${1:Row}> ${12:secondCarrier} = ${6:FindSecondary}(${3:rows}, ${4:id});",
+      "\tstring ${13:selected} = match(${12:secondCarrier}) {",
+      "\t\tsome(${14:secondRow}) => ${14:secondRow}.${11:Name},",
+      "\t\tnone => ${9:first}",
+      "\t};",
+      "\treturn ${15:NormalizeName}(${13:selected});",
+      "}"
+    ],
+    "description": "Create exactly two v0.49.0 non-overlapping adjacent helper-call carrier and canonical match-local pairs."
+  },
+  "PipeLang dependent second-carrier match method": {
+    "prefix": "pipe-dependent-second-carrier-match",
+    "body": [
+      "public Optional<${1:Row}> ${2:FindPrimary}(List<${1:Row}> ${3:rows}, string ${4:id}) => find_by(${3:rows}, ${1:Row}.${5:Id}, ${4:id});",
+      "public Optional<${1:Row}> ${6:ConfirmSecondary}(string ${7:first}, List<${1:Row}> ${3:rows}, string ${4:id}) => ${7:first} == \"\" ? none<${1:Row}>() : find_by(${3:rows}, ${1:Row}.${5:Id}, ${4:id});",
+      "",
+      "public string ${8:SelectedName}(List<${1:Row}> ${3:rows}, string ${4:id}) {",
+      "\tOptional<${1:Row}> ${9:firstCarrier} = ${2:FindPrimary}(${3:rows}, ${4:id});",
+      "\tstring ${7:first} = match(${9:firstCarrier}) {",
+      "\t\tsome(${10:firstRow}) => ${10:firstRow}.${11:Name},",
+      "\t\tnone => \"\"",
+      "\t};",
+      "\tOptional<${1:Row}> ${12:secondCarrier} = ${6:ConfirmSecondary}(${7:first}, ${3:rows}, ${4:id});",
+      "\tstring ${13:selected} = match(${12:secondCarrier}) {",
+      "\t\tsome(${14:secondRow}) => ${14:secondRow}.${11:Name},",
+      "\t\tnone => ${7:first}",
+      "\t};",
+      "\treturn ${15:NormalizeName}(${13:selected});",
+      "}"
+    ],
+    "description": "Create the exact v0.50.0 four-local dependent second-carrier match form."
+  },
+  "PipeLang dependent carrier chain method": {
+    "prefix": "pipe-dependent-carrier-chain",
+    "body": [
+      "public Optional<${1:Row}> ${2:FindPrimary}(List<${1:Row}> ${3:rows}, string ${4:id}) => find_by(${3:rows}, ${1:Row}.${5:Id}, ${4:id});",
+      "public Optional<${1:Row}> ${6:ConfirmSecondary}(string ${7:first}, List<${1:Row}> ${3:rows}, string ${4:id}) => ${7:first} == \"\" ? none<${1:Row}>() : find_by(${3:rows}, ${1:Row}.${5:Id}, ${4:id});",
+      "public Optional<${1:Row}> ${8:FinalizeTertiary}(string ${9:second}, List<${1:Row}> ${3:rows}, string ${4:id}) => ${9:second} == \"\" ? none<${1:Row}>() : find_by(${3:rows}, ${1:Row}.${5:Id}, ${4:id});",
+      "",
+      "public string ${10:SelectedName}(List<${1:Row}> ${3:rows}, string ${4:id}) {",
+      "\tOptional<${1:Row}> ${11:firstCarrier} = ${2:FindPrimary}(${3:rows}, ${4:id});",
+      "\tstring ${7:first} = match(${11:firstCarrier}) {",
+      "\t\tsome(${12:firstRow}) => ${12:firstRow}.${13:Name},",
+      "\t\tnone => \"\"",
+      "\t};",
+      "\tOptional<${1:Row}> ${14:secondCarrier} = ${6:ConfirmSecondary}(${7:first}, ${3:rows}, ${4:id});",
+      "\tstring ${9:second} = match(${14:secondCarrier}) {",
+      "\t\tsome(${15:secondRow}) => ${15:secondRow}.${13:Name},",
+      "\t\tnone => ${7:first}",
+      "\t};",
+      "\tOptional<${1:Row}> ${16:thirdCarrier} = ${8:FinalizeTertiary}(${9:second}, ${3:rows}, ${4:id});",
+      "\tstring ${17:selected} = match(${16:thirdCarrier}) {",
+      "\t\tsome(${18:thirdRow}) => ${18:thirdRow}.${13:Name},",
+      "\t\tnone => ${9:second}",
+      "\t};",
+      "\treturn ${19:NormalizeName}(${17:selected});",
+      "}"
+    ],
+    "description": "Create an exact v0.51.0 contiguous dependent carrier chain with three stages."
+  },
+  "PipeLang cumulative fan-in carrier chain method": {
+    "prefix": "pipe-cumulative-fan-in-chain",
+    "body": [
+      "public Optional<${1:Row}> ${2:FindPrimary}(List<${1:Row}> ${3:rows}, string ${4:id}) => find_by(${3:rows}, ${1:Row}.${5:Id}, ${4:id});",
+      "public Optional<${1:Row}> ${6:ConfirmSecondary}(string ${7:first}, List<${1:Row}> ${3:rows}, string ${4:id}) => ${7:first} == \"\" ? none<${1:Row}>() : find_by(${3:rows}, ${1:Row}.${5:Id}, ${4:id});",
+      "public Optional<${1:Row}> ${8:FinalizeHistory}(string ${7:first}, string ${9:second}, List<${1:Row}> ${3:rows}, string ${4:id}) => ${7:first} == \"\" || ${9:second} == \"\" ? none<${1:Row}>() : find_by(${3:rows}, ${1:Row}.${5:Id}, ${4:id});",
+      "",
+      "public string ${10:SelectedName}(List<${1:Row}> ${3:rows}, string ${4:id}) {",
+      "\tOptional<${1:Row}> ${11:firstCarrier} = ${2:FindPrimary}(${3:rows}, ${4:id});",
+      "\tstring ${7:first} = match(${11:firstCarrier}) {",
+      "\t\tsome(${12:firstRow}) => ${12:firstRow}.${13:Name},",
+      "\t\tnone => \"\"",
+      "\t};",
+      "\tOptional<${1:Row}> ${14:secondCarrier} = ${6:ConfirmSecondary}(${7:first}, ${3:rows}, ${4:id});",
+      "\tstring ${9:second} = match(${14:secondCarrier}) {",
+      "\t\tsome(${15:secondRow}) => ${15:secondRow}.${13:Name},",
+      "\t\tnone => ${7:first}",
+      "\t};",
+      "\tOptional<${1:Row}> ${16:thirdCarrier} = ${8:FinalizeHistory}(${7:first}, ${9:second}, ${3:rows}, ${4:id});",
+      "\tstring ${17:selected} = match(${16:thirdCarrier}) {",
+      "\t\tsome(${18:thirdRow}) => ${18:thirdRow}.${13:Name},",
+      "\t\tnone => ${9:second}",
+      "\t};",
+      "\treturn ${19:NormalizeName}(${17:selected});",
+      "}"
+    ],
+    "description": "Create an exact v0.52.0 cumulative fan-in carrier chain with three stages."
+  },
+  "PipeLang multi-parameter helper propagation method": {
+    "prefix": "pipe-multi-parameter-helper-propagation",
+    "body": [
+      "public Optional<${1:Row}> ${2:Find}(List<${1:Row}> ${3:rows}, string ${4:id}) => find_by(${3:rows}, ${1:Row}.${5:Id}, ${4:id});",
+      "",
+      "public Optional<${1:Row}> ${6:Resolve}(List<${1:Row}> ${3:rows}, string ${4:id}) {",
+      "\tOptional<${1:Row}> ${7:carrier} = ${2:Find}(${3:rows}, ${4:id});",
+      "\t${1:Row} ${8:selected} = propagate(${7:carrier});",
+      "\treturn some(${8:selected});",
+      "}"
+    ],
+    "description": "Create one exact v0.53.0 multi-parameter helper propagation form over the closed Optional carrier matrix."
+  },
+  "PipeLang checked-arithmetic helper propagation method": {
+    "prefix": "pipe-checked-arithmetic-helper-propagation",
+    "body": [
+      "public Result<int, ArithmeticError> ${1:Add}(int ${2:left}, int ${3:right}) => ${2:left} + ${3:right};",
+      "",
+      "public Result<int, ArithmeticError> ${4:Resolve}(int ${2:left}, int ${3:right}) {",
+      "\tResult<int, ArithmeticError> ${5:carrier} = ${1:Add}(${2:left}, ${3:right});",
+      "\tint ${6:value} = propagate(${5:carrier});",
+      "\treturn ${6:value} + 0;",
+      "}"
+    ],
+    "description": "Create one exact v0.54.0 checked-arithmetic helper propagation form with immediate canonical failure return."
+  },
+  "PipeLang direct checked-arithmetic propagation method": {
+    "prefix": "pipe-direct-checked-arithmetic-propagation",
+    "body": [
+      "public Result<int, ArithmeticError> ${1:Continue}(Result<int, ArithmeticError> ${2:carrier}) {",
+      "\tint ${3:value} = propagate(${2:carrier});",
+      "\treturn ${3:value} + 0;",
+      "}"
+    ],
+    "description": "Create one exact v0.55.0 sole-direct-parameter checked-arithmetic propagation form with immediate canonical failure return."
+  },
+  "PipeLang multi-parameter direct checked-arithmetic propagation method": {
+    "prefix": "pipe-multi-parameter-direct-checked-propagation",
+    "body": [
+      "public Result<int, ArithmeticError> ${1:Advance}(Result<int, ArithmeticError> ${2:carrier}, int ${3:operand}) {",
+      "\tint ${4:value} = propagate(${2:carrier});",
+      "\treturn ${4:value} + ${3:operand};",
+      "}"
+    ],
+    "description": "Create one exact v0.56.0 carrier-plus-payload direct checked-arithmetic propagation form with immediate canonical failure return."
+  },
+  "PipeLang two-stage checked-arithmetic propagation method": {
+    "prefix": "pipe-two-stage-checked-propagation",
+    "body": [
+      "public Result<int, ArithmeticError> ${1:AdvanceTwice}(Result<int, ArithmeticError> ${2:carrier}, int ${3:first}, int ${4:second}) {",
+      "\tint ${5:value} = propagate(${2:carrier});",
+      "\tResult<int, ArithmeticError> ${6:nextCarrier} = ${5:value} + ${3:first};",
+      "\tint ${7:next} = propagate(${6:nextCarrier});",
+      "\treturn ${7:next} + ${4:second};",
+      "}"
+    ],
+    "description": "Create the exact v0.57.0 two-stage checked propagation form with an explicit intermediate carrier and canonical failure at either stage."
+  },
+  "PipeLang generalized checked-arithmetic propagation chain": {
+    "prefix": "pipe-checked-propagation-chain",
+    "body": [
+      "public Result<int, ArithmeticError> ${1:AdvanceThree}(Result<int, ArithmeticError> ${2:carrier}, int ${3:first}, int ${4:second}, int ${5:third}) {",
+      "\tint ${6:value} = propagate(${2:carrier});",
+      "\tResult<int, ArithmeticError> ${7:secondCarrier} = ${6:value} + ${3:first};",
+      "\tint ${8:secondValue} = propagate(${7:secondCarrier});",
+      "\tResult<int, ArithmeticError> ${9:thirdCarrier} = ${8:secondValue} - ${4:second};",
+      "\tint ${10:thirdValue} = propagate(${9:thirdCarrier});",
+      "\treturn ${10:thirdValue} * ${5:third};",
+      "}"
+    ],
+    "description": "Create a v0.58.0 contiguous checked-propagation chain with three stages and canonical failure at every carrier."
+  },
+  "PipeLang bounded cross-payload Result propagation method": {
+    "prefix": "pipe-cross-payload-result",
+    "body": [
+      "public Result<List<${1:Token}>, string> ${2:Parse}(Result<string, string> ${3:scanned}) {",
+      "\tstring ${4:source} = propagate(${3:scanned});",
+      "\treturn ${5:ParseTokens}(${4:source});",
+      "}"
+    ],
+    "description": "Create the exact v0.59.0 bounded cross-payload Result propagation form with canonical target-shaped failure."
+  },
+  "PipeLang two-stage cross-payload Result propagation method": {
+    "prefix": "pipe-two-stage-cross-payload-result",
+    "body": [
+      "public Result<List<${1:SyntaxNode}>, string> ${2:Compile}(Result<string, string> ${3:scanned}) {",
+      "\tstring ${4:source} = propagate(${3:scanned});",
+      "\tResult<List<${5:Token}>, string> ${6:tokenized} = ${7:BuildTokens}(${4:source});",
+      "\tList<${5:Token}> ${8:tokens} = propagate(${6:tokenized});",
+      "\treturn ${9:BuildSyntax}(${8:tokens});",
+      "}"
+    ],
+    "description": "Create the exact v0.60.0 two-stage bounded cross-payload Result propagation form with canonical target-shaped failure at either carrier."
+  },
+  "PipeLang generalized cross-payload Result propagation chain": {
+    "prefix": "pipe-cross-payload-result-chain",
+    "body": [
+      "public Result<string, string> ${1:Compile}(Result<string, string> ${2:scanned}) {",
+      "\tstring ${3:source} = propagate(${2:scanned});",
+      "\tResult<List<${4:Token}>, string> ${5:tokenized} = ${6:BuildTokens}(${3:source});",
+      "\tList<${4:Token}> ${7:tokens} = propagate(${5:tokenized});",
+      "\tResult<List<${8:SyntaxNode}>, string> ${9:parsed} = ${10:BuildSyntax}(${7:tokens});",
+      "\tList<${8:SyntaxNode}> ${11:syntax} = propagate(${9:parsed});",
+      "\treturn ${12:EmitSource}(${11:syntax});",
+      "}"
+    ],
+    "description": "Create a v0.61.0 generalized bounded cross-payload Result propagation chain with explicit carriers and canonical target-shaped failure at every stage."
+  },
+  "PipeLang contextual cross-payload Result propagation chain": {
+    "prefix": "pipe-contextual-cross-payload-result-chain",
+    "body": [
+      "public Result<string, string> ${1:Compile}(Result<string, string> ${2:scanned}, string ${3:context}) {",
+      "\tstring ${4:source} = propagate(${2:scanned});",
+      "\tResult<List<${5:Token}>, string> ${6:tokenized} = ${7:BuildTokens}(${4:source}, ${3:context});",
+      "\tList<${5:Token}> ${8:tokens} = propagate(${6:tokenized});",
+      "\tResult<List<${9:SyntaxNode}>, string> ${10:parsed} = ${11:BuildSyntax}(${8:tokens}, ${3:context});",
+      "\tList<${9:SyntaxNode}> ${12:syntax} = propagate(${10:parsed});",
+      "\treturn ${13:EmitSource}(${12:syntax}, ${3:context});",
+      "}"
+    ],
+    "description": "Create the exact v0.62.0 contextual bounded cross-payload Result propagation chain with one direct string context argument at every stage."
+  },
+  "PipeLang one-stage contextual cross-payload Result propagation": {
+    "prefix": "pipe-contextual-cross-payload-result",
+    "body": [
+      "public Result<List<${1:Token}>, string> ${2:Compile}(Result<string, string> ${3:scanned}, string ${4:context}) {",
+      "\tstring ${5:source} = propagate(${3:scanned});",
+      "\treturn ${6:BuildTokens}(${5:source}, ${4:context});",
+      "}"
+    ],
+    "description": "Create the exact v0.63.0 one-stage contextual bounded cross-payload Result propagation form with one direct unchanged string context argument."
+  },
+  "PipeLang one-stage contextual same-payload Result propagation": {
+    "prefix": "pipe-contextual-same-payload-result",
+    "body": [
+      "public Result<string, string> ${1:Normalize}(Result<string, string> ${2:input}, string ${3:context}) {",
+      "\tstring ${4:value} = propagate(${2:input});",
+      "\treturn ${5:NormalizeValue}(${4:value}, ${3:context});",
+      "}"
+    ],
+    "description": "Create the exact v0.64.0 one-stage contextual bounded same-payload Result propagation form with one direct unchanged string context argument."
+  },
+  "PipeLang exact two-stage contextual bounded Result propagation": {
+    "prefix": "pipe-two-stage-contextual-bounded-result",
+    "body": [
+      "public Result<${1:string}, string> ${2:Normalize}(Result<${3:string}, string> ${4:input}, string ${5:context}) {",
+      "\t${3:string} ${6:first} = propagate(${4:input});",
+      "\tResult<${7:string}, string> ${8:nextCarrier} = ${9:First}(${6:first}, ${5:context});",
+      "\t${7:string} ${10:second} = propagate(${8:nextCarrier});",
+      "\treturn ${11:Second}(${10:second}, ${5:context});",
+      "}"
+    ],
+    "description": "Create the exact v0.65.0 two-stage contextual bounded Result propagation form where either or both adjacent payload types may be equal."
+  },
+  "PipeLang generalized contextual bounded Result propagation": {
+    "prefix": "pipe-generalized-contextual-bounded-result",
+    "body": [
+      "public Result<${1:string}, string> ${2:Compile}(Result<${3:string}, string> ${4:input}, string ${5:context}) {",
+      "\t${3:string} ${6:first} = propagate(${4:input});",
+      "\tResult<${7:string}, string> ${8:secondCarrier} = ${9:First}(${6:first}, ${5:context});",
+      "\t${7:string} ${10:second} = propagate(${8:secondCarrier});",
+      "\tResult<${11:string}, string> ${12:thirdCarrier} = ${13:Second}(${10:second}, ${5:context});",
+      "\t${11:string} ${14:third} = propagate(${12:thirdCarrier});",
+      "\treturn ${15:Third}(${14:third}, ${5:context});",
+      "}"
+    ],
+    "description": "Create a v0.66.0 generalized contextual bounded Result propagation chain with K >= 2 stages and equal or different adjacent payload types."
+  },
+  "PipeLang generalized shared-context Result propagation": {
+    "prefix": "pipe-generalized-shared-context-result",
+    "body": [
+      "public Result<${1:string}, string> ${2:Compile}(Result<${3:string}, string> ${4:input}, string ${5:phase}, string ${6:scope}) {",
+      "\t${3:string} ${7:first} = propagate(${4:input});",
+      "\tResult<${8:string}, string> ${9:secondCarrier} = ${10:First}(${7:first}, ${5:phase}, ${6:scope});",
+      "\t${8:string} ${11:second} = propagate(${9:secondCarrier});",
+      "\treturn ${12:Second}(${11:second}, ${5:phase}, ${6:scope});",
+      "}"
+    ],
+    "description": "Create a v0.67.0 generalized shared-context Result propagation chain with K >= 2 stages and N >= 1 ordered direct string contexts."
+  },
+  "PipeLang generalized one-stage shared-context Result propagation": {
+    "prefix": "pipe-generalized-one-stage-shared-context-result",
+    "body": [
+      "public Result<${1:string}, string> ${2:Compile}(Result<${3:string}, string> ${4:input}, string ${5:phase}, string ${6:scope}) {",
+      "\t${3:string} ${7:value} = propagate(${4:input});",
+      "\treturn ${8:Next}(${7:value}, ${5:phase}, ${6:scope});",
+      "}"
+    ],
+    "description": "Create a v0.68.0 generalized one-stage shared-context Result propagation form with N >= 1 ordered direct string contexts."
+  },
+  "PipeLang terminal if/else": {
+    "prefix": "pipe-terminal-if",
+    "body": [
+      "public ${1:string} ${2:Select}(${1:string} ${3:raw}, bool ${4:normalize}) {",
+      "\t${1:string} ${5:cleaned} = trim(${3:raw});",
+      "\tif (${4:normalize}) { return ${5:cleaned}; }",
+      "\telse { return ${3:raw}; }",
+      "}"
+    ],
+    "description": "Create the exact v0.69.0 terminal if/else form after one or more ordered immutable locals."
+  },
+  "PipeLang terminal if/else with branch local": {
+    "prefix": "pipe-terminal-if-branch-local",
+    "body": [
+      "public ${1:string} ${2:Select}(${1:string} ${3:raw}, bool ${4:normalize}) {",
+      "\t${1:string} ${5:cleaned} = ${3:raw};",
+      "\tif (${4:normalize}) {",
+      "\t\t${1:string} ${6:selected} = trim(${5:cleaned});",
+      "\t\treturn ${6:selected};",
+      "\t}",
+      "\telse { return ${3:raw}; }",
+      "}"
+    ],
+    "description": "Create the exact v0.70.0 terminal if/else form with one lexical immutable local in a selected branch."
+  },
+  "PipeLang terminal if/else with two branch locals": {
+    "prefix": "pipe-terminal-if-branch-locals",
+    "body": [
+      "public ${1:string} ${2:Select}(${1:string} ${3:raw}, bool ${4:normalize}) {",
+      "\t${1:string} ${5:cleaned} = ${3:raw};",
+      "\tif (${4:normalize}) {",
+      "\t\t${1:string} ${6:prepared} = trim(${5:cleaned});",
+      "\t\t${1:string} ${7:selected} = ${6:prepared};",
+      "\t\treturn ${7:selected};",
+      "\t}",
+      "\telse { return ${3:raw}; }",
+      "}"
+    ],
+    "description": "Create the exact v0.71.0 terminal if/else form with two ordered lexical immutable locals in a selected branch."
+  },
+  "PipeLang terminal if/else with a general branch-local sequence": {
+    "prefix": "pipe-terminal-if-branch-local-sequence",
+    "body": [
+      "public ${1:string} ${2:Select}(${1:string} ${3:raw}, bool ${4:normalize}) {",
+      "\t${1:string} ${5:cleaned} = ${3:raw};",
+      "\tif (${4:normalize}) {",
+      "\t\t${1:string} ${6:first} = trim(${5:cleaned});",
+      "\t\t${1:string} ${7:second} = ${6:first};",
+      "\t\t${1:string} ${8:selected} = ${7:second};",
+      "\t\treturn ${8:selected};",
+      "\t}",
+      "\telse { return ${3:raw}; }",
+      "}"
+    ],
+    "description": "Create the v0.72.0 terminal if/else form with a general ordered lexical immutable-local sequence in a selected branch."
+  },
+  "PipeLang direct terminal if/else": {
+    "prefix": "pipe-direct-terminal-if",
+    "body": [
+      "public ${1:string} ${2:Select}(${1:string} ${3:raw}, bool ${4:normalize}) {",
+      "\tif (${4:normalize}) {",
+      "\t\t${1:string} ${5:selected} = trim(${3:raw});",
+      "\t\treturn ${5:selected};",
+      "\t}",
+      "\telse { return ${3:raw}; }",
+      "}"
+    ],
+    "description": "Create the v0.73.0 terminal if/else form as the complete method body without a preceding top-level local."
+  },
+  "PipeLang nested terminal if/else": {
+    "prefix": "pipe-nested-terminal-if",
+    "body": [
+      "public ${1:string} ${2:Select}(${1:string} ${3:raw}, bool ${4:enabled}, bool ${5:normalize}) {",
+      "\tif (${4:enabled}) {",
+      "\t\t${1:string} ${6:cleaned} = trim(${3:raw});",
+      "\t\tif (${5:normalize}) {",
+      "\t\t\treturn ${6:cleaned};",
+      "\t\t}",
+      "\t\telse { return ${3:raw}; }",
+      "\t}",
+      "\telse { return ${7:\"disabled\"}; }",
+      "}"
+    ],
+    "description": "Create the v0.74.0 bounded terminal if/else with exactly one nested terminal decision and direct inner returns."
+  },
+  "PipeLang nested terminal if/else with inner locals": {
+    "prefix": "pipe-nested-terminal-if-inner-locals",
+    "body": [
+      "public ${1:string} ${2:Select}(${1:string} ${3:raw}, bool ${4:enabled}, bool ${5:normalize}) {",
+      "\tif (${4:enabled}) {",
+      "\t\t${1:string} ${6:cleaned} = trim(${3:raw});",
+      "\t\tif (${5:normalize}) {",
+      "\t\t\t${1:string} ${7:normalized} = ${6:cleaned};",
+      "\t\t\t${1:string} ${8:selected} = ${7:normalized};",
+      "\t\t\treturn ${8:selected};",
+      "\t\t}",
+      "\t\telse {",
+      "\t\t\t${1:string} ${9:selectedFallback} = ${3:raw};",
+      "\t\t\treturn ${9:selectedFallback};",
+      "\t\t}",
+      "\t}",
+      "\telse { return ${10:\"disabled\"}; }",
+      "}"
+    ],
+    "description": "Create the v0.75.0 bounded nested terminal if/else with finite typed immutable-local sequences in either inner leaf."
+  },
+  "PipeLang root locals before nested terminal if/else": {
+    "prefix": "pipe-root-local-nested-terminal-if",
+    "body": [
+      "public ${1:string} ${2:Select}(${1:string} ${3:raw}, bool ${4:enabled}, bool ${5:normalize}) {",
+      "\t${1:string} ${6:shared} = trim(${3:raw});",
+      "\t${1:string} ${7:selectedInput} = ${6:shared};",
+      "\tif (${4:enabled}) {",
+      "\t\t${1:string} ${8:cleaned} = ${7:selectedInput};",
+      "\t\tif (${5:normalize}) {",
+      "\t\t\t${1:string} ${9:normalized} = trim(${8:cleaned});",
+      "\t\t\treturn ${9:normalized};",
+      "\t\t}",
+      "\t\telse { return ${7:selectedInput}; }",
+      "\t}",
+      "\telse { return ${10:\"disabled\"}; }",
+      "}"
+    ],
+    "description": "Create the v0.76.0 bounded nested terminal if/else with source-ordered typed immutable locals before the outer condition."
+  },
+  "PipeLang symmetric nested terminal if/else": {
+    "prefix": "pipe-symmetric-nested-terminal-if",
+    "body": [
+      "public ${1:string} ${2:Select}(${1:string} ${3:raw}, bool ${4:outer}, bool ${5:left}, bool ${6:right}) {",
+      "\t${1:string} ${7:shared} = trim(${3:raw});",
+      "\tif (${4:outer}) {",
+      "\t\t${1:string} ${8:trueValue} = ${7:shared};",
+      "\t\tif (${5:left}) { ${1:string} ${9:selectedTrue} = ${8:trueValue}; return ${9:selectedTrue}; }",
+      "\t\telse { return ${10:\"outer-true\"}; }",
+      "\t}",
+      "\telse {",
+      "\t\t${1:string} ${11:falseValue} = ${7:shared};",
+      "\t\tif (${6:right}) { ${1:string} ${12:selectedFalse} = ${11:falseValue}; return ${12:selectedFalse}; }",
+      "\t\telse { return ${13:\"outer-false\"}; }",
+      "\t}",
+      "}"
+    ],
+    "description": "Create the v0.77.0 symmetric depth-two terminal if/else with a shared typed immutable root local."
+  },
+  "PipeLang rootless symmetric nested terminal if/else": {
+    "prefix": "pipe-rootless-symmetric-nested-terminal-if",
+    "body": [
+      "public ${1:string} ${2:Select}(${1:string} ${3:raw}, bool ${4:outer}, bool ${5:left}, bool ${6:right}) {",
+      "\tif (${4:outer}) {",
+      "\t\t${1:string} ${8:trueValue} = ${3:raw};",
+      "\t\tif (${5:left}) { ${1:string} ${9:selectedTrue} = ${8:trueValue}; return ${9:selectedTrue}; }",
+      "\t\telse { return ${10:\"outer-true\"}; }",
+      "\t}",
+      "\telse {",
+      "\t\t${1:string} ${11:falseValue} = ${3:raw};",
+      "\t\tif (${6:right}) { ${1:string} ${12:selectedFalse} = ${11:falseValue}; return ${12:selectedFalse}; }",
+      "\t\telse { return ${13:\"outer-false\"}; }",
+      "\t}",
+      "}"
+    ],
+    "description": "Create the v0.78.0 rootless symmetric depth-two terminal if/else with typed lexical branch and leaf locals."
+  },
+  "PipeLang bounded depth-three terminal if/else": {
+    "prefix": "pipe-bounded-depth-three-terminal-if",
+    "body": [
+      "public ${1:string} ${2:Select}(${1:string} ${3:raw}, bool ${4:outer}, bool ${5:left}, bool ${6:deep}, bool ${7:right}) {",
+      "\tif (${4:outer}) {",
+      "\t\t${1:string} ${8:trueValue} = ${3:raw};",
+      "\t\tif (${5:left}) {",
+      "\t\t\t${1:string} ${9:deepValue} = ${8:trueValue};",
+      "\t\t\tif (${6:deep}) { ${1:string} ${10:selectedDeep} = ${9:deepValue}; return ${10:selectedDeep}; }",
+      "\t\t\telse { return ${11:\"deep-false\"}; }",
+      "\t\t}",
+      "\t\telse { return ${12:\"outer-true\"}; }",
+      "\t}",
+      "\telse {",
+      "\t\t${1:string} ${13:falseValue} = ${3:raw};",
+      "\t\tif (${7:right}) { return ${13:falseValue}; }",
+      "\t\telse { return ${14:\"outer-false\"}; }",
+      "\t}",
+      "}"
+    ],
+    "description": "Create the v0.79.0 bounded depth-three terminal if/else by expanding exactly one leaf of a symmetric depth-two topology."
+  },
+  "PipeLang two-expanded terminal if/else": {
+    "prefix": "pipe-two-expanded-terminal-if",
+    "body": [
+      "public ${1:string} ${2:Select}(${1:string} ${3:raw}, bool ${4:outer}, bool ${5:left}, bool ${6:deep}, bool ${7:right}) {",
+      "\tif (${4:outer}) {",
+      "\t\t${1:string} ${8:trueValue} = ${3:raw};",
+      "\t\tif (${5:left}) {",
+      "\t\t\t${1:string} ${9:deepValue} = ${8:trueValue};",
+      "\t\t\tif (${6:deep}) { ${1:string} ${10:selectedDeep} = ${9:deepValue}; return ${10:selectedDeep}; }",
+      "\t\t\telse { return ${11:\"deep-false\"}; }",
+      "\t\t}",
+      "\t\telse { return ${12:\"outer-true\"}; }",
+      "\t}",
+      "\telse {",
+      "\t\t${1:string} ${13:falseValue} = ${3:raw};",
+      "\t\tif (${7:right}) {",
+      "\t\t\tif (${6:deep}) { return ${13:falseValue}; }",
+      "\t\t\telse { return ${3:raw}; }",
+      "\t\t}",
+      "\t\telse { return ${14:\"outer-false\"}; }",
+      "\t}",
+      "}"
+    ],
+    "description": "Create the v0.80.0 symmetric depth-two terminal topology with exactly two expanded leaves and six return paths."
+  },
+  "PipeLang terminal tree through depth three": {
+    "prefix": "pipe-terminal-tree",
+    "body": [
+      "public string ${1:Select}(string raw, bool enabled, bool normalize, bool detailed) {",
+      "\tstring shared = trim(raw);",
+      "\tif (enabled) {",
+      "\t\tif (normalize) {",
+      "\t\t\tstring selected = shared;",
+      "\t\t\tif (detailed) {",
+      "\t\t\t\treturn selected + \"!\";",
+      "\t\t\t} else {",
+      "\t\t\t\treturn selected;",
+      "\t\t\t}",
+      "\t\t} else {",
+      "\t\t\treturn raw;",
+      "\t\t}",
+      "\t} else {",
+      "\t\treturn \"disabled\";",
+      "\t}",
+      "}"
+    ],
+    "description": "Create a v0.81.0 asymmetric terminal tree through depth three with typed immutable locals and four return paths."
+  },
+  "PipeLang conditional local in terminal tree": {
+    "prefix": "pipe-conditional-local-tree",
+    "body": [
+      "public string ${1:Select}(string raw, bool enabled, bool detailed, bool normalize) {",
+      "\tif (enabled) {",
+      "\t\tstring selected = normalize ? trim(raw) : raw;",
+      "\t\tif (detailed) { return selected + \"!\"; } else { return selected; }",
+      "\t} else { return \"disabled\"; }",
+      "}"
+    ],
+    "description": "Create a v0.82.0 terminal tree with one lazy conditional as a complete typed immutable-local initializer."
+  },
+  "PipeLang two conditional locals in terminal tree": {
+    "prefix": "pipe-two-conditional-locals",
+    "body": [
+      "public string ${1:Select}(string raw, bool clean, bool suffix, bool enabled) {",
+      "\tstring normalized = clean ? trim(raw) : raw;",
+      "\tif (enabled) {",
+      "\t\tstring selected = suffix && normalized != \"\" ? normalized + \"!\" : normalized;",
+      "\t\treturn selected;",
+      "\t} else { return normalized; }",
+      "}"
+    ],
+    "description": "Create a v0.83.0 terminal tree with two typed conditional locals and a dependent second choice."
+  },
+  "PipeLang finite conditional locals in terminal tree": {
+    "prefix": "pipe-finite-conditional-locals",
+    "body": [
+      "public string ${1:Select}(string raw, bool clean, bool suffix, bool enabled) {",
+      "\tstring normalized = clean ? trim(raw) : raw;",
+      "\tstring selected = suffix && normalized != \"\" ? normalized + \"!\" : normalized;",
+      "\tstring final = enabled && selected != \"\" ? selected + \"?\" : selected;",
+      "\tif (enabled) { return final; } else { return normalized; }",
+      "}"
+    ],
+    "description": "Create a v0.84.0 terminal tree with a finite sequence of typed conditional locals and dependent choices."
+  },
+  "PipeLang straight-line conditional locals": {
+    "prefix": "pipe-straight-conditional-locals",
+    "body": [
+      "public string ${1:Select}(string raw, bool clean, bool suffix, bool enabled) {",
+      "\tstring normalized = clean ? trim(raw) : raw;",
+      "\tstring selected = suffix && normalized != \"\" ? normalized + \"!\" : normalized;",
+      "\tstring final = enabled && selected != \"\" ? selected + \"?\" : selected;",
+      "\treturn final;",
+      "}"
+    ],
+    "description": "Create a v0.85.0 straight-line method with finite typed conditional locals and an ordinary return."
+  },
+  "PipeLang conditional return composition": {
+    "prefix": "pipe-conditional-return",
+    "body": [
+      "public Class ${1:Classifier} {",
+      "    public string ${2:Select}(string raw, bool clean, bool suffix, bool enabled) {",
+      "        string normalized = clean ? trim(raw) : raw;",
+      "        string selected = suffix && normalized != \"\" ? normalized + \"!\" : normalized;",
+      "        return enabled && selected != \"\" ? selected : normalized;",
+      "    }",
+      "}"
+    ],
+    "description": "Create a v0.86.0 straight-line method with typed conditional locals and a lazy complete ternary return."
+  },
+  "PipeLang terminal-leaf conditional returns": {
+    "prefix": "pipe-terminal-leaf-return",
+    "body": [
+      "public Class ${1:Classifier} {",
+      "    public string ${2:Select}(string raw, bool clean, bool enabled, bool finish) {",
+      "        string normalized = clean ? trim(raw) : raw;",
+      "        if (enabled) {",
+      "            string selected = finish ? normalized + \"!\" : normalized;",
+      "            return clean ? selected : raw;",
+      "        } else {",
+      "            return finish ? normalized : raw;",
+      "        }",
+      "    }",
+      "}"
+    ],
+    "description": "Create a v0.87.0 terminal if/else tree with typed conditional locals and lazy complete ternary returns in its leaves."
+  },
+  "PipeLang nested straight-line returns": {
+    "prefix": "pipe-nested-return",
+    "body": [
+      "public Class ${1:Classifier} {",
+      "    public string ${2:Select}(string raw, bool clean, bool enabled, bool fallback) {",
+      "        string normalized = clean ? trim(raw) : raw;",
+      "        return enabled ? (clean ? normalized : raw) : (fallback ? \"fallback\" : \"\");",
+      "    }",
+      "}"
+    ],
+    "description": "Create a v0.88.0 block-bodied method with lazy nested ternary returns through depth two and nonnested typed local initializers."
+  },
+  "PipeLang nested terminal-leaf returns": {
+    "prefix": "pipe-nested-leaf-return",
+    "body": [
+      "public Class ${1:Classifier} {",
+      "    public string ${2:Select}(string raw, bool clean, bool enabled, bool fallback) {",
+      "        string normalized = clean ? trim(raw) : raw;",
+      "        if (enabled) {",
+      "            return clean ? (fallback ? normalized : raw) : (fallback ? raw : \"\");",
+      "        } else {",
+      "            return fallback ? normalized : \"\";",
+      "        }",
+      "    }",
+      "}"
+    ],
+    "description": "Create a v0.89.0 terminal if/else tree with depth-two lazy ternary returns and nonnested typed local initializers."
+  },
+  "Nested straight-line initializers": {
+    "prefix": "pipe-nested-initializers",
+    "body": [
+      "public ${1:string} ${2:Select}(string raw, bool enabled, bool clean, bool fallback) {",
+      "  string selected = enabled ? (clean ? trim(raw) : raw) : (fallback ? \"fallback\" : \"\");",
+      "  string label = selected + \"!\";",
+      "  return clean ? (fallback ? label : selected) : raw;",
+      "}"
+    ],
+    "description": "Create a v0.90.0 straight-line block with complete depth-two ternary initializers and lazy selected arms."
+  },
+  "Nested terminal initializers": {
+    "prefix": "pipe-nested-tree-initializers",
+    "body": [
+      "public ${1:string} ${2:Select}(string raw, bool enabled, bool clean, bool fallback) {",
+      "  string normalized = clean ? (fallback ? trim(raw) : raw) : raw;",
+      "  if (enabled) {",
+      "    string selected = clean ? (fallback ? normalized : raw) : (fallback ? raw : \"\");",
+      "    return selected;",
+      "  } else {",
+      "    string selected = fallback ? (clean ? normalized : raw) : raw;",
+      "    return selected;",
+      "  }",
+      "}"
+    ],
+    "description": "Create a v0.91.0 terminal tree with complete depth-two typed immutable-local initializers in root and branch scopes."
+  },
+  "Nested expression-bodied method": {
+    "prefix": "pipe-nested-arrow",
+    "body": [
+      "public string ${1:Select}(string raw, bool outer, bool left, bool right) =>",
+      "    outer ? (left ? trim(raw) : raw) : (right ? \"fallback\" : raw);"
+    ],
+    "description": "Create a v0.92.0 expression-bodied method with complete depth-two ternary choices."
+  },
+  "Depth-three straight-line return": {
+    "prefix": "pipe-depth-three-return",
+    "body": [
+      "public string ${1:Select}(string raw, bool a, bool b, bool c) {",
+      "    string normalized = a ? (b ? trim(raw) : raw) : raw;",
+      "    return a ? (b ? (c ? normalized : raw) : \"fallback\") : raw;",
+      "}"
+    ],
+    "description": "Create a v0.93.0 block method with a complete ternary return through depth three."
+  },
+  "Depth-three terminal-leaf return": {
+    "prefix": "pipe-depth-three-leaf-return",
+    "body": [
+      "public string ${1:Select}(string raw, bool enabled, bool a, bool b, bool c) {",
+      "    string normalized = a ? (b ? trim(raw) : raw) : raw;",
+      "    if (enabled) {",
+      "        return a ? (b ? (c ? normalized : raw) : \"fallback\") : raw;",
+      "    } else {",
+      "        return raw;",
+      "    }",
+      "}"
+    ],
+    "description": "Create a v0.94.0 terminal branch with a complete ternary return through depth three."
+  },
+  "Depth-three expression-bodied method": {
+    "prefix": "pipe-depth-three-arrow",
+    "body": [
+      "public string ${1:Select}(string raw, bool a, bool b, bool c) =>",
+      "    a ? (b ? (c ? trim(raw) : raw) : \"fallback\") : raw;"
+    ],
+    "description": "Create a v0.95.0 pure arrow method with a complete ternary body through depth three."
+  },
+  "Depth-three straight-line initializer": {
+    "prefix": "pipe-depth-three-initializer",
+    "body": [
+      "public string ${1:Select}(string raw, bool a, bool b, bool c) {",
+      "    string selected = a ? (b ? (c ? trim(raw) : raw) : \"fallback\") : raw;",
+      "    return selected;",
+      "}"
+    ],
+    "description": "Create a v0.96.0 pure straight-line method with a complete ternary initializer through depth three."
+  },
+  "Depth-three terminal initializer": {
+    "prefix": "pipe-depth-three-terminal-initializer",
+    "body": [
+      "public ${1:string} ${2:Select}(string raw, bool a, bool b, bool c) {",
+      "    string root = a ? (b ? (c ? trim(raw) : raw) : \"fallback\") : raw;",
+      "    if (a) {",
+      "        string selected = b ? (c ? (a ? root + \"!\" : root) : root) : root;",
+      "        return selected;",
+      "    } else {",
+      "        return root;",
+      "    }",
+      "}"
+    ],
+    "description": "Create a v0.97.0 pure method with depth-three ternary initializers before and inside a terminal if/else tree."
+  },
+  "Conditional boolean selector": {
+    "prefix": "pipe-boolean-selector",
+    "body": [
+      "public string ${1:Select}(string raw, bool a, bool b, bool c) {",
+      "    return (a ? b : c) ? trim(raw) : raw;",
+      "}"
+    ],
+    "description": "PipeLang v0.98.0: one flat boolean ternary selector in a straight-line block return"
+  },
+  "Terminal-leaf boolean selector": {
+    "prefix": "pipe-leaf-boolean-selector",
+    "body": [
+      "public string ${1:Select}(string raw, bool route, bool a, bool b, bool c) {",
+      "    if (route) {",
+      "        return (a ? b : c) ? trim(raw) : raw;",
+      "    } else {",
+      "        return raw;",
+      "    }",
+      "}"
+    ],
+    "description": "PipeLang v0.99.0: a flat boolean ternary selector return in a terminal if/else leaf"
+  },
+  "PipeLang arrow boolean selector": {
+    "prefix": "pipe-arrow-boolean-selector",
+    "body": [
+      "public ${1:string} ${2:Select}(${1:string} raw, bool a, bool b, bool c) =>",
+      "    (a ? b : c) ? ${3:raw} : ${4:raw};"
+    ],
+    "description": "PipeLang v0.100.0: a flat boolean selector in a public pure arrow method"
+  },
+  "PipeLang straight-line selector initializer": {
+    "prefix": "pipe-selector-initializer",
+    "body": [
+      "public Class ${1:Choices} {",
+      "    public string ${2:Select}(string raw, bool a, bool b, bool c) {",
+      "        string value = (a ? b : c) ? trim(raw) : raw;",
+      "        return value;",
+      "    }",
+      "}"
+    ],
+    "description": "PipeLang v0.101.0 public pure straight-line boolean-selector initializer"
+  },
+  "PipeLang terminal-tree selector initializers": {
+    "prefix": "pipe-terminal-selector-initializers",
+    "body": [
+      "public Class ${1:Choices} {",
+      "    public string ${2:Select}(string raw, bool a, bool b, bool c) {",
+      "        string root = (a ? b : c) ? trim(raw) : raw;",
+      "        if (a) {",
+      "            string branch = (b ? c : a) ? root + \"!\" : root;",
+      "            if (b) {",
+      "                string leaf = (c ? a : b) ? branch + \"?\" : branch;",
+      "                return leaf;",
+      "            } else {",
+      "                return branch;",
+      "            }",
+      "        } else {",
+      "            return root;",
+      "        }",
+      "    }",
+      "}"
+    ],
+    "description": "PipeLang v0.102.0 public pure boolean-selector initializers throughout terminal-tree scopes"
+  },
+  "PipeLang terminal conditional tests": {
+    "prefix": "pipe-terminal-conditional-tests",
+    "body": [
+      "public Class ${1:Choices} {",
+      "    public string ${2:Select}(string raw, bool a, bool b, bool c) {",
+      "        string normalized = trim(raw);",
+      "        if (a ? b : c) {",
+      "            bool present = normalized != \"\";",
+      "            if (present ? c : b) {",
+      "                return normalized;",
+      "            } else {",
+      "                return raw;",
+      "            }",
+      "        } else {",
+      "            return raw;",
+      "        }",
+      "    }",
+      "}"
+    ],
+    "description": "PipeLang v0.103.0 public pure flat conditional tests throughout terminal trees"
+  },
+  "PipeLang nested terminal conditional tests": {
+    "prefix": "pipe-nested-terminal-tests",
+    "body": [
+      "public Class ${1:Choices} {",
+      "    public string ${2:Select}(string raw, bool a, bool b, bool c, bool d, bool e, bool f, bool g) {",
+      "        if (a ? (b ? c : d) : (e ? f : g)) {",
+      "            return trim(raw);",
+      "        } else {",
+      "            return raw;",
+      "        }",
+      "    }",
+      "}"
+    ],
+    "description": "PipeLang v0.104.0 public pure terminal tests with depth-two value arms"
+  },
+  "PipeLang depth-three terminal conditional tests": {
+    "prefix": "pipe-depth-three-terminal-tests",
+    "body": [
+      "public Class ${1:Choices} {",
+      "    public string ${2:Select}(string raw, bool a, bool b, bool c, bool d, bool e, bool f, bool g) {",
+      "        if (a ? (b ? (c ? d : e) : f) : (e ? f : (g ? c : d))) {",
+      "            return trim(raw);",
+      "        } else {",
+      "            return raw;",
+      "        }",
+      "    }",
+      "}"
+    ],
+    "description": "PipeLang v0.105.0 public pure terminal tests with depth-three value arms"
+  },
+  "PipeLang terminal boolean-selector tests": {
+    "prefix": "pipe-terminal-selector-tests",
+    "body": [
+      "public Class ${1:Choices} {",
+      "    public string ${2:Select}(string raw, bool a, bool b, bool c, bool d, bool e) {",
+      "        if ((a ? b : c) ? d : e) {",
+      "            return trim(raw);",
+      "        } else {",
+      "            return raw;",
+      "        }",
+      "    }",
+      "}"
+    ],
+    "description": "PipeLang v0.106.0 public pure terminal tests with flat boolean selectors"
+  },
+  "PipeLang terminal selector value arms": {
+    "prefix": "pipe-terminal-selector-value-arms",
+    "body": [
+      "public Class ${1:Choices} {",
+      "    public string ${2:Select}(string raw, bool a, bool b, bool c, bool d, bool e, bool f, bool g, bool h, bool i) {",
+      "        if ((a ? b : c) ? (d ? e : f) : (g ? h : i)) {",
+      "            return trim(raw);",
+      "        } else {",
+      "            return raw;",
+      "        }",
+      "    }",
+      "}"
+    ],
+    "description": "PipeLang v0.107.0 public pure terminal selector tests with flat conditional result arms"
+  },
+  "PipeLang terminal inner-selector arms": {
+    "prefix": "pipe-terminal-inner-selector-arms",
+    "body": [
+      "public Class ${1:Choices} {",
+      "    public string ${2:Select}(string raw, bool a, bool b, bool c, bool d, bool e, bool f, bool g, bool h, bool i) {",
+      "        if ((a ? (b ? c : d) : (e ? f : g)) ? h : i) {",
+      "            return trim(raw);",
+      "        } else {",
+      "            return raw;",
+      "        }",
+      "    }",
+      "}"
+    ],
+    "description": "PipeLang v0.108.0 public pure terminal tests with flat inner-selector value arms"
+  },
+  "PipeLang terminal combined-selector arms": {
+    "prefix": "pipe-terminal-combined-selector-arms",
+    "body": [
+      "if ((${1:a} ? (${2:b} ? ${3:c} : ${4:d}) : (${5:e} ? ${6:f} : ${7:g})) ? (${8:h} ? ${9:i} : ${10:j}) : (${11:k} ? ${12:l} : ${13:m})) {",
+      "\treturn ${14:value};",
+      "} else {",
+      "\treturn ${15:fallback};",
+      "}"
+    ],
+    "description": "PipeLang v0.109.0: combined flat inner-selector and outer result arms in terminal tests through statement depth three; further nesting and new placements remain excluded."
+  },
+  "PipeLang straight-line selector value arms": {
+    "prefix": "pipe-straight-selector-arms",
+    "body": [
+      "return (${1:a} ? ${2:b} : ${3:c}) ? (${4:d} ? ${5:x} : ${6:y}) : (${7:e} ? ${8:z} : ${9:w});"
+    ],
+    "description": "PipeLang v0.110.0: flat ternaries in either or both result arms of a complete straight-line selector return; no new arrow, leaf or initializer placements."
+  },
+  "PipeLang terminal-leaf selector value arms": {
+    "prefix": "pipe-leaf-selector-arms",
+    "body": [
+      "if (${1:route}) {",
+      "\treturn (${2:a} ? ${3:b} : ${4:c}) ? (${5:d} ? ${6:x} : ${7:y}) : (${8:e} ? ${9:z} : ${10:w});",
+      "} else {",
+      "\treturn ${11:fallback};",
+      "}"
+    ],
+    "description": "PipeLang v0.111.0: flat result arms in terminal-leaf selector returns through statement depth three; no new arrow, initializer or argument placements."
+  },
+  "PipeLang arrow selector value arms": {
+    "prefix": "pipe-arrow-selector-arms",
+    "body": [
+      "public ${1:string} ${2:Select}(bool a, bool b, bool c, bool d, bool e, ${1:string} x, ${1:string} y, ${1:string} z, ${1:string} w) =>",
+      "\t(a ? b : c) ? (d ? x : y) : (e ? z : w);"
+    ],
+    "description": "PipeLang v0.112.0: flat ternaries in either or both result arms of a public pure arrow-method selector; exact types and lazy once-only evaluation."
+  },
+  "PipeLang Nominal Enum": {
+    "prefix": "pipe-enum",
+    "body": [
+      "public Enum ${1:Mode}",
+      "{",
+      "    ${2:Idle} = \"${3:idle}\";",
+      "    ${4:Busy} = \"${5:busy}\";",
+      "}"
+    ],
+    "description": "v0.113.0 payload-free nominal enum with explicit stable string tags."
+  },
+  "PipeLang Enum Match": {
+    "prefix": "pipe-enum-match",
+    "body": [
+      "match(${1:value}) { ${2:Mode}.${3:Idle} => ${4:\"idle\"}, ${2:Mode}.${5:Busy} => ${6:\"busy\"} }"
+    ],
+    "description": "v0.113.0 exhaustive enum match; include exactly one arm for every declared member."
+  },
+  "PipeLang General Block": {
+    "prefix": "pipe-block",
+    "body": [
+      "public ${1:string} ${2:Select}(bool ${3:flag}, ${1:string} ${4:value})",
+      "{",
+      "    if (${3:flag}) {",
+      "        return ${4:value};",
+      "    }",
+      "    { ${1:string} ${5:local} = ${4:value}; }",
+      "    return ${6:\"fallback\"};",
+      "}"
+    ],
+    "description": "PipeLang v0.114.0 general lexical blocks, joining branches and early returns; initialized immutable locals."
+  },
+  "PipeLang Mutable Local": {
+    "prefix": "pipe-mutable-local",
+    "body": [
+      "mutable ${1:int} ${2:value} = ${3:0};",
+      "${2:value} = ${4:1};"
+    ],
+    "description": "Create a v0.115.0 mutable local and a simple assignment."
+  },
+  "PipeLang Delayed Local": {
+    "prefix": "pipe-delayed-local",
+    "body": [
+      "${1:int} ${2:value};",
+      "if (${3:condition}) { ${2:value} = ${4:1}; }",
+      "else { ${2:value} = ${5:2}; }"
+    ],
+    "description": "Create a v0.115.0 immutable local initialized on both continuing branches."
   }
 }

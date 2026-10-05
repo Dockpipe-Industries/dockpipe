@@ -1122,11 +1122,7 @@ EOF
 }
 
 vmimage_secure_boot_vars_copy_path() {
-  local state_dir disk_name
-  state_dir="$(vmimage_state_dir)"
-  disk_name="$(basename "${DOCKPIPE_VM_DISK:-windows-vm}")"
-  disk_name="${disk_name//[^A-Za-z0-9._-]/_}"
-  printf '%s\n' "${state_dir}/ovmf-vars-${disk_name}.fd"
+  printf '%s\n' "$(vmimage_durable_state_dir)/firmware/vars.fd"
 }
 
 vmimage_prompt_reset_secure_boot_vars() {
@@ -1219,13 +1215,15 @@ vmimage_start_swtpm() {
   if vmimage_is_windows_host; then
     vmimage_die "qemu-windows backend does not yet support TPM emulation; set DOCKPIPE_VM_TPM=off or run windows-vm from a Linux host"
   fi
-  local state_dir tpm_dir sock pid
+  local state_dir tpm_dir sock log_path pid
   state_dir="$(vmimage_state_dir)"
-  tpm_dir="${state_dir}/tpm-${DOCKPIPE_RUN_ID:-vm}"
-  sock="${tpm_dir}/swtpm.sock"
-  mkdir -p "$tpm_dir"
+  tpm_dir="$(vmimage_durable_state_dir)/tpm"
+  sock="${state_dir}/swtpm.sock"
+  log_path="${state_dir}/swtpm.log"
+  mkdir -p "$tpm_dir" "$state_dir"
+  chmod 700 "$tpm_dir" "$state_dir"
   rm -f "$sock"
-  swtpm socket --tpm2 --tpmstate "dir=${tpm_dir}" --ctrl "type=unixio,path=${sock}" --terminate --log "file=${tpm_dir}/swtpm.log" &
+  swtpm socket --tpm2 --tpmstate "dir=${tpm_dir}" --ctrl "type=unixio,path=${sock}" --terminate --log "file=${log_path}" &
   pid="$!"
   export DOCKPIPE_VM_SWTPM_PID="$pid"
   export DOCKPIPE_VM_SWTPM_SOCK="$sock"
@@ -1423,18 +1421,103 @@ vmimage_resolve_path() {
   printf '%s\n' "${DOCKPIPE_WORKDIR%/}/$p"
 }
 
-vmimage_state_dir() {
+vmimage_legacy_state_dir() {
   local base="${DOCKPIPE_PACKAGE_STATE_DIR:-${DOCKPIPE_STATE_DIR:-${DOCKPIPE_WORKDIR%/}/bin/.dockpipe/state}}"
-  mkdir -p "${base}/vmimage"
   printf '%s\n' "${base}/vmimage"
 }
 
-vmimage_identity_dir() {
-  local state_dir disk_name
-  state_dir="$(vmimage_state_dir)"
+vmimage_prepare_state_split() {
+  local disk disk_name legacy helper result durable_dir runtime_dir imported diverged extra candidate
+  local -a args tpm_candidates
+  disk="$(vmimage_resolve_path "${DOCKPIPE_VM_DISK:-windows-vm}")"
   disk_name="$(vmimage_windows_disk_name)"
-  mkdir -p "${state_dir}/identity"
-  printf '%s\n' "${state_dir}/identity/${disk_name}"
+  legacy="$(vmimage_legacy_state_dir)"
+  args=(
+    prepare-durable-cohort
+    --workdir "${DOCKPIPE_WORKDIR}"
+    --owner vm/runtime/vmimage
+    --cohort vm-durable-guest-identity-v1
+    --instance "$disk"
+    --run "${DOCKPIPE_RUN_ID:-vm}"
+    --legacy-root "$legacy"
+    --file "identity/${disk_name}.uuid=identity/guest.uuid"
+    --file "identity/${disk_name}.mac=identity/guest.mac"
+    --file "identity/${disk_name}.serial=identity/guest.serial"
+    --file "ovmf-vars-${disk_name}.fd=firmware/vars.fd"
+    --file "windows-admin-password-${disk_name}.txt=credentials/windows-admin-password.txt"
+    --file "windows-ssh-${disk_name}=credentials/windows-ssh"
+    --file "windows-ssh-${disk_name}.pub=credentials/windows-ssh.pub"
+  )
+
+  tpm_candidates=()
+  if [[ -d "$legacy" && ! -L "$legacy" ]]; then
+    shopt -s nullglob
+    for candidate in "${legacy}"/tpm-*; do
+      if [[ -L "$candidate" || ! -d "$candidate" ]]; then
+        shopt -u nullglob
+        vmimage_die "legacy TPM state candidate is linked or not a directory: ${candidate}"
+      fi
+      tpm_candidates+=("$candidate")
+    done
+    shopt -u nullglob
+  elif [[ -e "$legacy" || -L "$legacy" ]]; then
+    vmimage_die "legacy VM state root is linked or not a directory: ${legacy}"
+  fi
+  if (( ${#tpm_candidates[@]} > 1 )); then
+    vmimage_die "multiple legacy TPM state directories are ambiguous; durable import requires one proven guest TPM authority"
+  fi
+  if (( ${#tpm_candidates[@]} == 1 )); then
+    candidate="$(basename "${tpm_candidates[0]}")"
+    args+=(
+      --tree "${candidate}=tpm"
+      --ignore "${candidate}/swtpm.sock"
+      --ignore "${candidate}/swtpm.log"
+    )
+  fi
+
+  helper="${DOCKPIPE_VM_STATE_HELPER:-$(dockpipe_sdk get dockpipe_bin)}"
+  [[ -n "$helper" ]] || vmimage_die "DockPipe state helper is unavailable"
+  if [[ -n "${DOCKPIPE_VM_STATE_HELPER:-}" ]]; then
+    result="$("$helper" "${args[@]}")" || vmimage_die "failed to prepare durable VM guest identity state"
+  else
+    result="$("$helper" __state "${args[@]}")" || vmimage_die "failed to prepare durable VM guest identity state"
+  fi
+  [[ "$result" != *$'\n'* ]] || vmimage_die "DockPipe state helper returned multiple result lines"
+  IFS=$'\t' read -r durable_dir runtime_dir imported diverged extra <<< "$result"
+  [[ -n "$durable_dir" && -n "$runtime_dir" && -z "$extra" ]] || vmimage_die "DockPipe state helper returned an incomplete state split"
+  [[ "$imported" == "true" || "$imported" == "false" ]] || vmimage_die "DockPipe state helper returned an invalid import status"
+  [[ "$diverged" == "true" || "$diverged" == "false" ]] || vmimage_die "DockPipe state helper returned an invalid divergence status"
+  durable_dir="$(vmimage_shell_path "$durable_dir")"
+  runtime_dir="$(vmimage_shell_path "$runtime_dir")"
+  export DOCKPIPE_VM_DURABLE_STATE_DIR="$durable_dir"
+  export DOCKPIPE_VM_RUNTIME_STATE_DIR="$runtime_dir"
+  umask 077
+  mkdir -p "$durable_dir" "$runtime_dir"
+  chmod 700 "$durable_dir" "$runtime_dir"
+  if [[ "$imported" == "true" ]]; then
+    vmimage_log "imported validated legacy guest identity into durable VM state"
+  fi
+  if [[ "$diverged" == "true" ]]; then
+    vmimage_log "legacy guest identity diverged after durable publication; durable state remains authoritative"
+  fi
+}
+
+vmimage_state_dir() {
+  [[ -n "${DOCKPIPE_VM_RUNTIME_STATE_DIR:-}" ]] || vmimage_die "VM state split was not prepared"
+  printf '%s\n' "$DOCKPIPE_VM_RUNTIME_STATE_DIR"
+}
+
+vmimage_durable_state_dir() {
+  [[ -n "${DOCKPIPE_VM_DURABLE_STATE_DIR:-}" ]] || vmimage_die "VM durable state was not prepared"
+  printf '%s\n' "$DOCKPIPE_VM_DURABLE_STATE_DIR"
+}
+
+vmimage_identity_dir() {
+  local durable_dir
+  durable_dir="$(vmimage_durable_state_dir)"
+  mkdir -p "${durable_dir}/identity"
+  chmod 700 "${durable_dir}/identity"
+  printf '%s\n' "${durable_dir}/identity/guest"
 }
 
 vmimage_uuid_generate() {
@@ -1463,6 +1546,14 @@ vmimage_serial_generate() {
   printf 'dockpipe%s\n' "$hex"
 }
 
+vmimage_read_durable_value() {
+  local path="$1" label="$2" value
+  [[ -f "$path" && ! -L "$path" && -s "$path" ]] || vmimage_die "durable ${label} is missing, empty, or substituted"
+  value="$(cat "$path")"
+  [[ -n "$value" && "$value" != *$'\n'* && "$value" != *$'\r'* ]] || vmimage_die "durable ${label} is malformed"
+  printf '%s\n' "$value"
+}
+
 vmimage_identity_value() {
   local explicit_var="$1" resolver_var="$2" file_suffix="$3" generator="$4"
   local explicit
@@ -1474,13 +1565,17 @@ vmimage_identity_value() {
   local base path
   base="$(vmimage_identity_dir)"
   path="${base}.${file_suffix}"
-  if [[ -f "$path" ]]; then
-    cat "$path"
+  if [[ -e "$path" || -L "$path" ]]; then
+    vmimage_read_durable_value "$path" "VM ${file_suffix} identity"
     return 0
   fi
   mkdir -p "$(dirname "$path")"
-  "$generator" > "$path"
-  cat "$path"
+  umask 077
+  if ! (set -o noclobber; "$generator" > "$path") 2>/dev/null; then
+    [[ -f "$path" && ! -L "$path" ]] || vmimage_die "durable VM identity path was substituted: ${path}"
+  fi
+  chmod 600 "$path"
+  vmimage_read_durable_value "$path" "VM ${file_suffix} identity"
 }
 
 vmimage_machine_uuid() {
@@ -1613,17 +1708,11 @@ vmimage_windows_random_password() {
 }
 
 vmimage_windows_admin_password_path() {
-  local state_dir disk_name
-  state_dir="$(vmimage_state_dir)"
-  disk_name="$(vmimage_windows_disk_name)"
-  printf '%s\n' "${state_dir}/windows-admin-password-${disk_name}.txt"
+  printf '%s\n' "$(vmimage_durable_state_dir)/credentials/windows-admin-password.txt"
 }
 
 vmimage_windows_ssh_key_base() {
-  local state_dir disk_name
-  state_dir="$(vmimage_state_dir)"
-  disk_name="$(vmimage_windows_disk_name)"
-  printf '%s\n' "${state_dir}/windows-ssh-${disk_name}"
+  printf '%s\n' "$(vmimage_durable_state_dir)/credentials/windows-ssh"
 }
 
 vmimage_windows_unattend_dir() {
@@ -1826,27 +1915,50 @@ vmimage_windows_ensure_admin_password() {
   [[ -n "${DOCKPIPE_VM_WINDOWS_ADMIN_PASSWORD:-}" ]] && return 0
   local pass_path
   pass_path="$(vmimage_windows_admin_password_path)"
-  if [[ -f "$pass_path" ]]; then
-    export DOCKPIPE_VM_WINDOWS_ADMIN_PASSWORD="$(cat "$pass_path")"
+  if [[ -e "$pass_path" || -L "$pass_path" ]]; then
+    DOCKPIPE_VM_WINDOWS_ADMIN_PASSWORD="$(vmimage_read_durable_value "$pass_path" "Windows administrator password")"
+    export DOCKPIPE_VM_WINDOWS_ADMIN_PASSWORD
     return 0
   fi
-  export DOCKPIPE_VM_WINDOWS_ADMIN_PASSWORD="$(vmimage_windows_random_password)"
+  local generated
+  generated="$(vmimage_windows_random_password)"
   mkdir -p "$(dirname "$pass_path")"
   umask 077
-  printf '%s\n' "${DOCKPIPE_VM_WINDOWS_ADMIN_PASSWORD}" > "$pass_path"
-  vmimage_log "generated Windows admin password stored at ${pass_path}"
+  if (set -o noclobber; printf '%s\n' "$generated" > "$pass_path") 2>/dev/null; then
+    chmod 600 "$pass_path"
+    vmimage_log "generated Windows admin password stored in durable VM credentials"
+  fi
+  DOCKPIPE_VM_WINDOWS_ADMIN_PASSWORD="$(vmimage_read_durable_value "$pass_path" "Windows administrator password")"
+  export DOCKPIPE_VM_WINDOWS_ADMIN_PASSWORD
 }
 
 vmimage_windows_ensure_ssh_key() {
   command -v ssh-keygen >/dev/null 2>&1 || vmimage_die "ssh-keygen is required for unattended windows installs"
   local key_base
   key_base="$(vmimage_windows_ssh_key_base)"
-  if [[ ! -f "$key_base" ]]; then
+  if [[ ! -e "$key_base" && ! -L "$key_base" ]]; then
     mkdir -p "$(dirname "$key_base")"
+    umask 077
     ssh-keygen -q -t ed25519 -N "" -f "$key_base" >/dev/null
   fi
+  [[ -f "$key_base" && ! -L "$key_base" && -s "$key_base" ]] || vmimage_die "durable Windows SSH private identity is missing, empty, or substituted"
+  local expected_pub expected_type expected_body actual_pub actual_type actual_body
+  expected_pub="$(ssh-keygen -y -f "$key_base")" || vmimage_die "durable Windows SSH private identity is malformed"
+  read -r expected_type expected_body _ <<< "$expected_pub"
+  [[ -n "$expected_type" && -n "$expected_body" ]] || vmimage_die "durable Windows SSH private identity produced an invalid public identity"
+  if [[ ! -e "${key_base}.pub" && ! -L "${key_base}.pub" ]]; then
+    umask 077
+    if ! (set -o noclobber; printf '%s %s\n' "$expected_type" "$expected_body" > "${key_base}.pub") 2>/dev/null; then
+      [[ -f "${key_base}.pub" && ! -L "${key_base}.pub" ]] || vmimage_die "durable Windows SSH public identity path was substituted"
+    fi
+  fi
+  actual_pub="$(vmimage_read_durable_value "${key_base}.pub" "Windows SSH public identity")"
+  read -r actual_type actual_body _ <<< "$actual_pub"
+  [[ "$actual_type" == "$expected_type" && "$actual_body" == "$expected_body" ]] || vmimage_die "durable Windows SSH public identity does not match its private identity"
+  chmod 600 "$key_base" "${key_base}.pub"
   export DOCKPIPE_VM_WINDOWS_SSH_KEY="$key_base"
-  export DOCKPIPE_VM_WINDOWS_SSH_PUBKEY="$(cat "${key_base}.pub")"
+  DOCKPIPE_VM_WINDOWS_SSH_PUBKEY="$(cat "${key_base}.pub")"
+  export DOCKPIPE_VM_WINDOWS_SSH_PUBKEY
 }
 
 vmimage_windows_bootstrap_encoded() {
@@ -2463,7 +2575,7 @@ Remove-Item -LiteralPath '$archive_remote_escaped' -Force
 }
 
 vmimage_sync_host_to_guest() {
-  local line host_path guest_path
+  local host_path guest_path
   while IFS=$'\t' read -r host_path guest_path; do
     [[ -n "${host_path:-}" && -n "${guest_path:-}" ]] || continue
     vmimage_sync_one_host_path_to_guest "$host_path" "$guest_path"
@@ -2967,6 +3079,7 @@ vmimage_run_qemu_common() {
   local backend="$1"
   vmimage_require_host_dependencies
   vmimage_ensure_prompted_inputs
+  vmimage_prepare_state_split
   local boot_source
   boot_source="$(vmimage_boot_source)"
   vmimage_apply_windows_installer_compat_defaults "$backend" "$boot_source"
@@ -3360,6 +3473,9 @@ vmimage_run_qemu_windows() {
   vmimage_run_qemu_common qemu-windows
 }
 
+if [[ "${DOCKPIPE_VMIMAGE_SOURCE_ONLY:-}" == "1" ]]; then
+  return 0 2>/dev/null || exit 0
+fi
 backend="$(vmimage_backend)"
 case "$backend" in
   qemu-kvm) vmimage_run_qemu_kvm ;;

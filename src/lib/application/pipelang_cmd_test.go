@@ -1,6 +1,7 @@
 package application
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -52,6 +53,91 @@ func TestCmdPipeLangCompileAndInvoke(t *testing.T) {
 
 	if err := cmdPipeLang([]string{"invoke", "--in", in, "--class", "DefaultDeployConfig", "--method", "IsScaled", "--arg", "0"}); err != nil {
 		t.Fatalf("invoke: %v", err)
+	}
+}
+
+func TestCmdPipeLangCheckJSONUsesStructuredCompilerDiagnostics(t *testing.T) {
+	wd := t.TempDir()
+	in := filepath.Join(wd, "broken.pipe")
+	if err := os.WriteFile(in, []byte("Class Broken { int Value = ; }"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	out, err := captureStdout(t, func() error {
+		return cmdPipeLang([]string{"check", "--in", in, "--format", "json"})
+	})
+	if err == nil {
+		t.Fatal("expected check failure")
+	}
+	var payload struct {
+		Schema      int `json:"schema"`
+		Diagnostics []struct {
+			Code     string `json:"code"`
+			Category string `json:"category"`
+			Severity string `json:"severity"`
+			Primary  struct {
+				File string `json:"file"`
+			} `json:"primary"`
+		} `json:"diagnostics"`
+	}
+	if decodeErr := json.Unmarshal([]byte(out), &payload); decodeErr != nil {
+		t.Fatalf("decode diagnostics: %v\n%s", decodeErr, out)
+	}
+	if payload.Schema != 1 || len(payload.Diagnostics) != 1 {
+		t.Fatalf("payload=%#v", payload)
+	}
+	diagnostic := payload.Diagnostics[0]
+	if diagnostic.Code != "PL2001" || diagnostic.Category != "syntax" || diagnostic.Severity != "error" || filepath.Clean(diagnostic.Primary.File) != filepath.Clean(in) {
+		t.Fatalf("diagnostic=%#v", diagnostic)
+	}
+}
+
+func TestCmdPipeLangCheckValidSourceIsInert(t *testing.T) {
+	wd := t.TempDir()
+	in := filepath.Join(wd, "valid.pipe")
+	if err := os.WriteFile(in, []byte(samplePipeLang), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	out, err := captureStdout(t, func() error {
+		return cmdPipeLang([]string{"check", "--in", in, "--format", "json"})
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out, `"schema": 1`) || !strings.Contains(out, `"diagnostics": []`) {
+		t.Fatalf("unexpected output: %s", out)
+	}
+	if matches, globErr := filepath.Glob(filepath.Join(wd, "*.workflow.yml")); globErr != nil || len(matches) != 0 {
+		t.Fatalf("check emitted artifacts: matches=%v err=%v", matches, globErr)
+	}
+}
+
+func TestCmdPipeLangCheckStdinUsesUnsavedBuffer(t *testing.T) {
+	wd := t.TempDir()
+	in := filepath.Join(wd, "buffer.pipe")
+	if err := os.WriteFile(in, []byte("Class Buffer { int Value = 1; }"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	reader, writer, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := writer.Write([]byte("Class Buffer { int Value = ; }")); err != nil {
+		t.Fatal(err)
+	}
+	if err := writer.Close(); err != nil {
+		t.Fatal(err)
+	}
+	oldStdin := os.Stdin
+	os.Stdin = reader
+	t.Cleanup(func() {
+		os.Stdin = oldStdin
+		_ = reader.Close()
+	})
+	out, checkErr := captureStdout(t, func() error {
+		return cmdPipeLang([]string{"check", "--in", in, "--format", "json", "--stdin"})
+	})
+	if checkErr == nil || !strings.Contains(out, `"code": "PL2001"`) {
+		t.Fatalf("expected unsaved-buffer diagnostic, err=%v output=%s", checkErr, out)
 	}
 }
 

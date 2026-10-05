@@ -115,14 +115,19 @@ func TestInternalArtifactDirsUseDockpipeDirRel(t *testing.T) {
 }
 
 func TestPackageStateDirDefault(t *testing.T) {
-	dir := t.TempDir()
+	base := t.TempDir()
+	dir := filepath.Join(base, "checkout")
+	if err := os.Mkdir(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("XDG_STATE_HOME", filepath.Join(base, "durable"))
+	t.Setenv("HOME", filepath.Join(base, "home"))
 	got, err := PackageStateDir(dir, "pipeon-dev-stack")
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := filepath.Join(dir, DockpipeDirRel, "packages", "pipeon-dev-stack")
-	if got != want {
-		t.Fatalf("got %q want %q", got, want)
+	if strings.HasPrefix(got, filepath.Join(dir, DockpipeDirRel)) || !strings.Contains(filepath.Base(got), "pipeon-dev-stack-") {
+		t.Fatalf("package state was not collision-safe durable state: %q", got)
 	}
 }
 

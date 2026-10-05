@@ -3,90 +3,51 @@ package application
 import (
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	"dockpipe/src/lib/domain"
 )
 
-func TestEffectiveWorkflowCompileRootsUsesConfigOnly(t *testing.T) {
-	t.Parallel()
+func TestCmdPackageCompileAllUsesCanonicalWorkflowRoots(t *testing.T) {
 	repo := t.TempDir()
-	wf := filepath.Join(repo, "workflows")
-	if err := os.MkdirAll(wf, 0o755); err != nil {
-		t.Fatal(err)
-	}
-	cfg := &domain.DockpipeProjectConfig{
-		Compile: domain.DockpipeCompileConfig{
-			Workflows: &[]string{"workflows"},
-		},
-	}
-	out := effectiveWorkflowCompileRoots(cfg, repo)
-	if len(out) != 1 {
-		t.Fatalf("want 1 root (explicit workflows only), got %d: %v", len(out), out)
-	}
-	if filepath.Clean(out[0]) != filepath.Clean(wf) {
-		t.Fatalf("got %v want %s", out, wf)
-	}
-}
-
-func TestEffectiveWorkflowCompileRootsNoDuplicateWhenListedTwice(t *testing.T) {
-	t.Parallel()
-	repo := t.TempDir()
-	extra := filepath.Join(repo, "vendor", "extra-wf")
-	if err := os.MkdirAll(extra, 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.MkdirAll(filepath.Join(repo, "workflows"), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	cfg := &domain.DockpipeProjectConfig{
-		Compile: domain.DockpipeCompileConfig{
-			Workflows: &[]string{"workflows", "vendor/extra-wf"},
-		},
-	}
-	out := effectiveWorkflowCompileRoots(cfg, repo)
-	seen := map[string]int{}
-	for _, p := range out {
-		seen[filepath.Clean(p)]++
-	}
-	for p, n := range seen {
-		if n > 1 {
-			t.Fatalf("duplicate root %q (count %d): %v", p, n, out)
-		}
-	}
-}
-
-func TestEffectiveWorkflowCompileRootsLogsMissingConfiguredPaths(t *testing.T) {
-	repo := t.TempDir()
-	if err := os.MkdirAll(filepath.Join(repo, "workflows"), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	cfg := &domain.DockpipeProjectConfig{
-		Compile: domain.DockpipeCompileConfig{
-			Workflows: &[]string{"workflows", "missing-workflows"},
-		},
-	}
-	stderr, err := captureResultStderr(t, func() error {
-		out := effectiveWorkflowCompileRoots(cfg, repo)
-		if len(out) != 1 {
-			t.Fatalf("want 1 existing root, got %d: %v", len(out), out)
-		}
-		return nil
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, want := range []string{
-		"unit=config.compile_path",
-		"status=done",
-		"path=" + filepath.Join(repo, "missing-workflows"),
-		"result=skip",
-		"root_kind=workflows",
-		"skip_reason=missing_path",
+	t.Setenv("DOCKPIPE_PACKAGES_ROOT", "")
+	for _, dir := range []string{
+		filepath.Join(repo, "src", "core", "runtimes"),
+		filepath.Join(repo, "vendor", "packages", "resolvers", "fixture", "profile"),
+		filepath.Join(repo, "vendor", "packages", "fixture-workflow"),
 	} {
-		if !strings.Contains(stderr, want) {
-			t.Fatalf("expected stderr to contain %q, got:\n%s", want, stderr)
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := os.WriteFile(filepath.Join(repo, "VERSION"), []byte("0.6.0\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	projectConfig := `{"schema":1,"compile":{"workflows":["vendor/packages"]},"packages":{"namespace":"fixture"}}`
+	if err := os.WriteFile(filepath.Join(repo, domain.DockpipeProjectConfigFileName), []byte(projectConfig), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(repo, "vendor", "packages", "resolvers", "fixture", "profile", "env"), []byte("FIXTURE=1\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(repo, "vendor", "packages", "fixture-workflow", "config.yml"), []byte("name: fixture-workflow\nsteps: []\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := cmdPackageCompileAll([]string{"--workdir", repo, "--force"}); err != nil {
+		t.Fatalf("compile all: %v", err)
+	}
+	for label, pattern := range map[string]string{
+		"core":     filepath.Join(repo, "bin", ".dockpipe", "internal", "packages", "core", "dockpipe-core-*.tar.gz"),
+		"resolver": filepath.Join(repo, "bin", ".dockpipe", "internal", "packages", "resolvers", "dockpipe-resolver-fixture-*.tar.gz"),
+		"workflow": filepath.Join(repo, "bin", ".dockpipe", "internal", "packages", "workflows", "dockpipe-workflow-fixture-workflow-*.tar.gz"),
+	} {
+		matches, err := filepath.Glob(pattern)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(matches) != 1 {
+			t.Fatalf("%s outputs = %v for %s", label, matches, pattern)
 		}
 	}
 }

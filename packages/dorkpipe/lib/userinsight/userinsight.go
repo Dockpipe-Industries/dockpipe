@@ -150,8 +150,10 @@ func Enqueue(workdir, raw, categoryHint, repoPath, component, workflow string) (
 	ts := now.Format(timeLayoutUTC)
 	id := "ui-" + now.Format(compactTimeUTC) + "-" + shortHash(raw, ts, randomHex(4))
 
-	queuePath := statepaths.QueuePath(root)
-	historyPath := statepaths.AnalysisHistoryPath(root)
+	queuePath, _, historyPath, err := insightAuthorityPaths(root)
+	if err != nil {
+		return "", err
+	}
 
 	doc, err := loadOrCreateQueue(queuePath)
 	if err != nil {
@@ -189,9 +191,10 @@ func Process(workdir string) (ProcessResult, error) {
 	if err != nil {
 		return ProcessResult{}, err
 	}
-	queuePath := statepaths.QueuePath(root)
-	insightsPath := statepaths.InsightsPath(root)
-	historyPath := statepaths.AnalysisHistoryPath(root)
+	queuePath, insightsPath, historyPath, err := insightAuthorityPaths(root)
+	if err != nil {
+		return ProcessResult{}, err
+	}
 
 	queueDoc, err := loadQueue(queuePath)
 	if err != nil {
@@ -249,7 +252,10 @@ func ExportByCategory(workdir string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	insightsPath := statepaths.InsightsPath(root)
+	_, insightsPath, _, err := insightAuthorityPaths(root)
+	if err != nil {
+		return "", err
+	}
 	doc, err := loadInsights(insightsPath, false)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -257,8 +263,11 @@ func ExportByCategory(workdir string) (string, error) {
 		}
 		return "", err
 	}
-	outDir := statepaths.InsightsByCategoryDir(root)
-	if err := os.MkdirAll(outDir, 0o755); err != nil {
+	outDir, err := statepaths.InsightsByCategoryDir(root)
+	if err != nil {
+		return "", err
+	}
+	if err := os.MkdirAll(outDir, 0o700); err != nil {
 		return "", err
 	}
 	for _, category := range exportCategories {
@@ -283,8 +292,10 @@ func MarkStale(workdir, id string) error {
 	if err != nil {
 		return err
 	}
-	insightsPath := statepaths.InsightsPath(root)
-	historyPath := statepaths.AnalysisHistoryPath(root)
+	_, insightsPath, historyPath, err := insightAuthorityPaths(root)
+	if err != nil {
+		return err
+	}
 	doc, err := loadInsights(insightsPath, false)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -325,8 +336,10 @@ func Review(workdir, action, id, reason string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	insightsPath := statepaths.InsightsPath(root)
-	historyPath := statepaths.AnalysisHistoryPath(root)
+	_, insightsPath, historyPath, err := insightAuthorityPaths(root)
+	if err != nil {
+		return "", err
+	}
 	doc, err := loadInsights(insightsPath, false)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -378,8 +391,10 @@ func Supersede(workdir, newID, oldID string) error {
 	if err != nil {
 		return err
 	}
-	insightsPath := statepaths.InsightsPath(root)
-	historyPath := statepaths.AnalysisHistoryPath(root)
+	_, insightsPath, historyPath, err := insightAuthorityPaths(root)
+	if err != nil {
+		return err
+	}
 	doc, err := loadInsights(insightsPath, false)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -432,6 +447,14 @@ func loadOrCreateQueue(path string) (QueueDoc, error) {
 		Kind:          "dockpipe_user_insight_queue",
 		Items:         []QueueItem{},
 	}, nil
+}
+
+func insightAuthorityPaths(root string) (queuePath, insightsPath, historyPath string, err error) {
+	analysisDir, err := statepaths.AnalysisDir(root)
+	if err != nil {
+		return "", "", "", err
+	}
+	return filepath.Join(analysisDir, "queue.json"), filepath.Join(analysisDir, "insights.json"), filepath.Join(analysisDir, "history.jsonl"), nil
 }
 
 func loadQueue(path string) (QueueDoc, error) {
@@ -635,7 +658,7 @@ func matchesInsightID(insight Insight, id string) bool {
 }
 
 func writeJSON(path string, v any) error {
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
 		return err
 	}
 	body, err := json.MarshalIndent(v, "", "  ")
@@ -643,11 +666,11 @@ func writeJSON(path string, v any) error {
 		return err
 	}
 	body = append(body, '\n')
-	return os.WriteFile(path, body, 0o644)
+	return os.WriteFile(path, body, 0o600)
 }
 
 func appendJSONLine(path string, v any) error {
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
 		return err
 	}
 	body, err := json.Marshal(v)
@@ -655,7 +678,7 @@ func appendJSONLine(path string, v any) error {
 		return err
 	}
 	body = append(body, '\n')
-	f, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o644)
+	f, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o600)
 	if err != nil {
 		return err
 	}

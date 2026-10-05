@@ -173,10 +173,12 @@ func TestNodeConnectorPlacementExecutionGraphNextTaskSchedulingExecutorRevalidat
 		}},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			caseValue := *value
-			if err := json.Unmarshal(expectedRaw, &caseValue.expected); err != nil {
+			var expected NodeConnectorPlacementExecutionGraphNextTaskSchedulingExecutorExpected
+			if err := json.Unmarshal(expectedRaw, &expected); err != nil {
 				t.Fatal(err)
 			}
+			caseValue := *value
+			caseValue.expected = expected
 			test.mutate(&caseValue)
 			assertNodeConnectorPlacementExecutionGraphNextTaskSchedulingExecutorOpenFailsWithoutTransition(t, &caseValue)
 		})

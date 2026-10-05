@@ -18,7 +18,7 @@ func packageSourcesConfigRoot(repoRoot, workdir string) string {
 }
 
 type configuredPackageSource struct {
-	kind string
+	kind domain.PackageSourceKind
 	path string
 }
 
@@ -38,12 +38,9 @@ func configuredPackageSources(projectRoot string) []configuredPackageSource {
 		if path == "" {
 			continue
 		}
-		kind := strings.ToLower(strings.TrimSpace(src.Kind))
-		if kind == "" {
-			kind = domain.PackageSourceKindStore
-		}
+		kind := domain.NormalizePackageSourceKind(src.Kind)
 		resolved := resolveProjectConfigPath(projectRoot, path)
-		key := kind + "\x00" + resolved
+		key := string(kind) + "\x00" + resolved
 		if _, ok := seen[key]; ok {
 			continue
 		}

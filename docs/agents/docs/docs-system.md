@@ -51,6 +51,11 @@ Preferred pattern:
 - `docs/agents/<topic>.md` gives the minimal routing/safety layer for agents
 - `docs/agents/index.yaml` points to the right file set for the task
 
+Each active indexed backlog task uses `docs/agents/tasks/<task>/index.yaml`. The global task index
+points to that local index, which names the smallest read set for orientation, decisions,
+implementation, or history. Keep ordinary tasks to one `overview.md`; split only independently
+useful branches.
+
 ## Token Optimization
 
 Token optimization should usually improve the main docs, not create a second normalized corpus.

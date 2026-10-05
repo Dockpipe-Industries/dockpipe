@@ -25,6 +25,9 @@ maintainer docs below are reference material, not the shortest learning path.
 | Capability ids and resolver packages | [concepts/capabilities.md](concepts/capabilities.md) |
 | Governed AI/documentation workflows | [workflows/agentic-workflows.md](workflows/agentic-workflows.md) |
 | Optional typed authoring layer | [concepts/pipelang.md](concepts/pipelang.md) |
+| PipeLang foundation inventory | [concepts/pipelang-foundation.md](concepts/pipelang-foundation.md) |
+| PipeLang foundation contract proposals | [concepts/pipelang-foundation-contracts.md](concepts/pipelang-foundation-contracts.md) |
+| PipeLang foundation dependencies, milestones and verification cost | [concepts/pipelang-foundation-delivery.md](concepts/pipelang-foundation-delivery.md) |
 
 ## Packages, Security, And Images
 
@@ -46,9 +49,11 @@ DockPipe itself, publishing packages, or debugging compiled/runtime behavior.
 | Engine data flow | [concepts/architecture.md](concepts/architecture.md) |
 | DockPipe vs first-party maintainer packages | [packages/core-tools.md](packages/core-tools.md) |
 | Generated maintainer artifacts | [runtime/artifacts.md](runtime/artifacts.md) |
+| Compatibility retirement ledger | [compatibility-retirement.md](compatibility-retirement.md) |
 | Codex workspace-sandbox session limits and host requests | [runtime/codex-sandbox-sessions.md](runtime/codex-sandbox-sessions.md) |
 | Agent routing and focused maintainer rules | [agents/index.yaml](agents/index.yaml), [agents/](agents/) |
 | Core-vs-packages audit | [packages/core-vs-packages-audit.md](packages/core-vs-packages-audit.md) |
+| PipeLang verification optimization plan | [runtime/pipelang-verification.md](runtime/pipelang-verification.md) |
 | Manual QA | [manual-qa.md](manual-qa.md) |
 | Messaging / about copy | [concepts/messaging.md](concepts/messaging.md) |
 

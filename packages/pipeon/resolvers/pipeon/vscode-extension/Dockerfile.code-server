@@ -45,4 +45,12 @@ RUN code-server --extensions-dir /opt/pipeon/extensions --install-extension /tmp
   && code-server --extensions-dir /opt/pipeon/extensions --install-extension /tmp/dockpipe-language-support.vsix \
   && rm -f /tmp/pipeon.vsix /tmp/dockpipe-language-support.vsix
 
+# These two package-owned extensions are rehydratable image products, not user state. Install them
+# into VS Code's image-owned built-in tree so --extensions-dir can remain a separate durable user
+# extension directory at runtime.
+USER root
+RUN cp -a /opt/pipeon/extensions/. /usr/lib/code-server/lib/vscode/extensions/ \
+  && rm -rf /opt/pipeon/extensions
+
+USER coder
 WORKDIR /work

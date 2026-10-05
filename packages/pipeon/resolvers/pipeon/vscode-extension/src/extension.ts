@@ -2824,9 +2824,30 @@ function compactUserStudioStateForPersistence(chatStore) {
 }
 
 async function resolveContextBundlePath(root) {
-  const candidates = [
-    path.join(root, "bin", ".dockpipe", "packages", "pipeon", "pipeon-context.md"),
-  ];
+  const candidates = [];
+  const dockpipeCandidates = [
+    process.env.DOCKPIPE_BIN,
+    path.join(root, "src", "bin", process.platform === "win32" ? "dockpipe.exe" : "dockpipe"),
+    "dockpipe",
+  ].filter(Boolean);
+  for (const dockpipeBin of dockpipeCandidates) {
+    try {
+      const runtimePath = await new Promise((resolve, reject) => {
+        cp.execFile(
+          dockpipeBin,
+          ["__state", "package-runtime", "--workdir", root, "--owner", "pipeon", "--path", "pipeon-context.md"],
+          { cwd: root, env: process.env, maxBuffer: 64 * 1024 },
+          (error, stdout) => error ? reject(error) : resolve(String(stdout || "").trim()),
+        );
+      });
+      if (runtimePath) {
+        candidates.push(runtimePath);
+        break;
+      }
+    } catch {
+      // Try the next package-runtime bridge candidate.
+    }
+  }
   for (const p of candidates) {
     try {
       await fs.stat(p);
