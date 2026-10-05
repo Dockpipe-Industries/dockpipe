@@ -802,3 +802,43 @@ pending the follow-up checkpoint/push and promotion. The user approved committin
 and pushing the three-file dependency fix and evidence update to `js/pipelang`.
 The runtime checkpoint is being prepared against `3195439`; promotion and hosted
 dispatch remain separate gates.
+
+
+## Hosted Cursor session fixture follow-up — 2026-10-05
+
+The ripgrep repair was committed through runtime checkpoint `cp-20261005-043746`
+and pushed to `origin/js/pipelang` as `3e21f91593443cb2ace3a05ea95c833ff0af651e`.
+Receipt: `/tmp/dockpipe-0.6-ci-ripgrep-checkpoint/receipt.json`; remote and protected
+state were verified. Staging `95415dc8ea655295307d754df8f3b2698e1313b1` has an
+identical source tree. CI run `37264618895` now passes the complete shell suite,
+Linux scans/runtime checks, Docker test workflow, DEB build/smoke, and Windows.
+CodeQL run `37264618880` passes. Individual CodeQL alert closure is not inferred
+from successful analysis alone.
+
+Only `test_cursor_dev_session_guard.sh` fails in the Docker integration step:
+`resolve project checkout: lstat /tmp/.../work: no such file or directory`.
+All other integration scripts pass. Full downloaded evidence is retained in
+`/tmp/dockpipe-ci-37264618895-failed.log`.
+
+The fixture was stale against the current runtime state contract. The repair:
+
+- Creates the temporary work directory before resolving paths and obtains its
+  state root through `dockpipe get state_dir`.
+- Places `active-session.env` in the current `__state package-runtime` directory
+  for `ide/resolver/cursor-dev`, rather than the old durable package scope.
+- Runs the real session script from the fixture work directory and supplies the
+  IDE package context, matching resolver execution.
+- Uses private temporary XDG state and an owner-only umask; a subshell and EXIT
+  cleanup preserve caller environment and remove the fixture/process on failure.
+
+No production session guard or engine/package behavior changed. The repaired
+fixture passes with its fake Docker client, requiring the active-session warning,
+zero exit, and no `docker run`. Evidence:
+`/tmp/dockpipe-ci-cursor-guard-final.log`. Bash syntax, ShellCheck's error gate,
+and `git diff --check` pass. The earlier local attempt is preserved in
+`/tmp/dockpipe-ci-cursor-guard.log`; it revealed stale fixture state permissions
+and working-directory setup after the missing-directory failure was corrected.
+Generated test scratch state remains untracked/ignored; no generated source or
+binary is part of this follow-up. The user approved committing and pushing this
+three-file fixture/evidence change to `js/pipelang`. The runtime checkpoint is
+being prepared against `3e21f91`; promotion and hosted revalidation remain pending.

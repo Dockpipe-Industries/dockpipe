@@ -6,13 +6,28 @@ source "$(dirname "${BASH_SOURCE[0]}")/helpers.sh"
 require_cursor_dev_script "$REPO_ROOT"
 SCRIPT="$REPLY"
 
-test_existing_session_guard() {
-  local tmp fakebin workdir docker_log pid out rc script_dir cursor_state
+test_existing_session_guard() (
+  local tmp fakebin workdir docker_log pid out rc script_dir state_root cursor_state
+  umask 077
   tmp="$(mktemp -d)"
+  pid=""
+  trap '
+    if [[ -n "$pid" ]]; then
+      kill "$pid" 2>/dev/null || true
+      wait "$pid" 2>/dev/null || true
+    fi
+    rm -rf "$tmp"
+  ' EXIT
+  export XDG_STATE_HOME="${tmp}/state"
+  export DOCKPIPE_PACKAGE_ROOT="${REPO_ROOT}/packages/ide"
+  export DOCKPIPE_PACKAGE_MANIFEST="${DOCKPIPE_PACKAGE_ROOT}/package.yml"
   fakebin="${tmp}/bin"
   workdir="${tmp}/work"
   docker_log="${tmp}/docker.log"
-  cursor_state="$("${REPO_ROOT}/src/bin/dockpipe" scope --package cursor-dev . --workdir "$workdir")"
+  mkdir -p "${workdir}"
+  state_root="$("${REPO_ROOT}/src/bin/dockpipe" get state_dir --workdir "$workdir")"
+  mkdir -p "$state_root"
+  cursor_state="$("${REPO_ROOT}/src/bin/dockpipe" __state package-runtime --workdir "$workdir" --owner ide/resolver/cursor-dev --ensure-private)"
   mkdir -p "${fakebin}" "${cursor_state}"
   script_dir="$(dirname "${SCRIPT}")"
 
@@ -55,6 +70,7 @@ CURSOR_DEV_ACTIVE_WORKDIR=${workdir}
 EOF
 
   out="${tmp}/out.log"
+  cd "$workdir"
   set +e
   FAKE_DOCKER_LOG="${docker_log}" \
     DOCKPIPE_SCRIPT_DIR="${script_dir}" \
@@ -66,6 +82,7 @@ EOF
 
   kill "${pid}" 2>/dev/null || true
   wait "${pid}" 2>/dev/null || true
+  pid=""
 
   if [[ ${rc} -ne 0 ]]; then
     echo "test_existing_session_guard FAIL: expected zero exit, got ${rc}"
@@ -84,9 +101,8 @@ EOF
     return 1
   fi
 
-  rm -rf "${tmp}"
   echo "test_existing_session_guard OK"
-}
+)
 
 run_tests() {
   test_existing_session_guard
