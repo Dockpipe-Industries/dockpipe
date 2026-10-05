@@ -761,3 +761,44 @@ The user subsequently approved committing and pushing this reviewed repair to
 `js/pipelang`. The checkpoint/push is being prepared against parent `d6207ae`;
 promotion, hosted dispatch, merge, and release publication remain separate gates. Protected editor settings,
 both stashes, and the empty index retain their admitted state.
+
+
+## Hosted shell dependency follow-up — 2026-10-05
+
+The approved repair was committed through runtime checkpoint `cp-20261005-040503`
+and pushed to `origin/js/pipelang` as `319543968dc43b481dee4c1677d1ca719655ee7c`.
+Exact 92-path postimages, remote tip, protected settings, and both stashes were
+verified. Receipt: `/tmp/dockpipe-0.6-ci-security-checkpoint/receipt.json`.
+
+The user reported shell-test failure after subsequent promotion. Read-only
+comparison confirms staging `364b3a498ba842a844e99d7f4613a30037055181` has no source
+differences from that repair. CI run `37263035986` passes Linux security scans,
+runtime tests, staticcheck, ShellCheck, templates/core guard, the Docker test
+workflow, and DEB build; Windows passes. CodeQL run `37263035945` passes as well;
+individual alert closure has not been independently read back.
+
+The Linux **Shell unit tests** step fails because `rg` is absent:
+
+- `test_repo_layout.sh` explicitly rejects missing ripgrep.
+- `test_backlog_remote_workflow.sh:206,211` cannot run its source guards.
+- `test_ide_state_ownership.sh:133,139` cannot run its source guards and fails.
+
+Log: `/tmp/dockpipe-ci-37263035986-failed.log`. Docker smoke and DEB installation
+within the shell step pass; the later Docker integration step is skipped after
+the shell failure. The release workflow already explicitly installs ripgrep;
+the ordinary CI workflow omitted it. The local fix adds `ripgrep` to the existing
+Linux dependency installation and names that step for build and shell-test
+requirements. No runtime, package code, test selection, or failure gate changes.
+
+Local repository-layout and IDE state-ownership checks pass with installed
+ripgrep. All five CI contract tests and YAML parsing pass. The standalone backlog
+fixture initially encountered the sandbox's read-only user-state directory;
+that failure is preserved in `/tmp/dockpipe-ci-ripgrep-backlog.log`. An isolated
+sandbox retry also hit denied loopback sockets (`backlog-isolated.log` under the
+same prefix). The host retry with temporary XDG state/cache paths passed the
+complete fixture (`/tmp/dockpipe-ci-ripgrep-backlog-host.log`). Dependency-step
+Bash syntax and `git diff --check` also pass. Hosted revalidation remains
+pending the follow-up checkpoint/push and promotion. The user approved committing
+and pushing the three-file dependency fix and evidence update to `js/pipelang`.
+The runtime checkpoint is being prepared against `3195439`; promotion and hosted
+dispatch remain separate gates.
