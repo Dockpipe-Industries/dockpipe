@@ -1,0 +1,10 @@
+name: package-store-staging-infra
+description: Plan the staging bucket and custom domain through the Cloudflare R2 package, with isolated remote state.
+platforms: [deb]
+vault: op
+docker_preflight: false
+steps:
+  - id: staging-infrastructure
+    kind: host
+    cwd: repo
+    run: assets/scripts/plan-staging.sh
