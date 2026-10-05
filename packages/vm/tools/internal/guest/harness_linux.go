@@ -206,32 +206,33 @@ func (a *linuxHarnessAdapter) runHarness(command harnessCommand, role string, ho
 	if err := process.Start(); err != nil {
 		return nil, nil, nil, err
 	}
-	wait := make(chan error, 1)
-	go func() { wait <- process.Wait() }()
+	// Wait closes StdoutPipe, so finish reading evidence before reaping the child.
 	decoder := json.NewDecoder(io.LimitReader(stdout, harnessOutputLimit+1))
 	decoder.DisallowUnknownFields()
 	var raw json.RawMessage
 	if err := decoder.Decode(&raw); err != nil {
 		_ = process.Process.Kill()
-		<-wait
+		_ = process.Wait()
 		return nil, nil, nil, fmt.Errorf("decode pinned harness evidence: %w; stderr=%s", err, boundedHarnessText(stderr.String()))
 	}
 	if len(raw) == 0 || len(raw) > harnessOutputLimit {
 		_ = process.Process.Kill()
-		<-wait
+		_ = process.Wait()
 		return nil, nil, nil, fmt.Errorf("pinned harness evidence exceeds bounds")
 	}
 	canonical, err := protocol.Canonicalize(raw)
 	if err != nil {
 		_ = process.Process.Kill()
-		<-wait
+		_ = process.Wait()
 		return nil, nil, nil, fmt.Errorf("pinned harness evidence is not strict canonical JSON: %w", err)
 	}
 	if err := validateHarnessEvidence(canonical, command, role); err != nil {
 		_ = process.Process.Kill()
-		<-wait
+		_ = process.Wait()
 		return nil, nil, nil, err
 	}
+	wait := make(chan error, 1)
+	go func() { wait <- process.Wait() }()
 	if !hold {
 		if err := <-wait; err != nil {
 			return nil, nil, nil, fmt.Errorf("recovery harness failed: %w; stderr=%s", err, boundedHarnessText(stderr.String()))
