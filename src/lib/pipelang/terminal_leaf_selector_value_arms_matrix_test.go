@@ -1,0 +1,336 @@
+package pipelang
+
+import (
+	"crypto/sha256"
+	"fmt"
+	"os"
+	"strings"
+	"testing"
+
+	"dockpipe/src/lib/pipelang/coreeval"
+	"dockpipe/src/lib/pipelang/gobackend"
+)
+
+// The three routing bits are independent of the selector and initializer bits.
+// Scope-layout initializer bits share routing bits; the separate leaf-local suite
+// exhausts independent initializer inputs. This is not an arbitrary assignment
+// to every expression in an unbounded source program.
+func TestV1110TerminalLeafSelectorValueArmsSubsets(t *testing.T) {
+	bundle := os.Getenv("PIPELANG_NATIVE_BUNDLE") == "1" && os.Getenv("PIPELANG_GENERATED_BATCH") == "1" && os.Getenv("PIPELANG_COMPILED_CACHE") != "" && os.Getenv("GOFLAGS") == "" && os.Getenv("GOENV") == "off"
+	trees := terminalTrees(3)[1:]
+	if len(trees) != 25 {
+		t.Fatal("statement inventory drift")
+	}
+	for shape := 0; shape < 2400; shape++ {
+		tree := trees[(shape%800)/32]
+		partition := shape % 32
+		arms := shape/800 + 1
+		t.Run(fmt.Sprint(shape), func(t *testing.T) {
+			enterFiniteShape(t)
+			leaves := v990Leaves(tree, "R")
+			lower, upper := (1<<len(leaves))*partition/32, (1<<len(leaves))*(partition+1)/32
+			for start := lower; start < upper; start += 8 {
+				end := min(start+8, upper)
+				source := `public Class Choices {public string Echo(string value)=>value;public bool Check(string name,bool value)=>value;`
+				names := []string{}
+				for subset := start; subset < end; subset++ {
+					name := fmt.Sprintf("Select%d", subset)
+					names = append(names, name)
+					source += v1110MatrixMethod(name, tree, leaves, subset, 0, false, arms)
+				}
+				source += "}"
+				_, p := conditionalLocalTreeProgramVersion(t, PipeLangLanguageContractV1110, source, names)
+				generated, err := gobackend.Generate(p)
+				if err != nil {
+					t.Fatal(err)
+				}
+				prepared := prepareConformanceProgram(t, p)
+				var checks, orders strings.Builder
+				fixtures := map[string][]byte{}
+				for subset := start; subset < end; subset++ {
+					name := fmt.Sprintf("Select%d", subset)
+					f := coreFunctionNamed(t, p, name)
+					rows := []finiteConditionalOracleCase{}
+					// No locals: initializer bits are unused and fixed at false here.
+					for vector := 0; vector < 256; vector++ {
+						mask := (vector & 63) | ((vector >> 6) << 9)
+						want, trace := v1110MatrixOracle(tree, leaves, subset, 0, false, mask, arms)
+						args := []coreeval.Value{}
+						call := "PipeLang" + name + "("
+						for bit := 0; bit < 11; bit++ {
+							flag := mask&(1<<bit) != 0
+							args = append(args, coreeval.Value{Type: f.Parameters[bit].Type, Bool: flag})
+							if bit > 0 {
+								call += ","
+							}
+							call += fmt.Sprint(flag)
+						}
+						call += ")"
+						got, err := prepared.Evaluate(f.Identity, args)
+						if err != nil || !got.OK || got.Value.String != want {
+							t.Fatalf("subset %d mask %d: %v %v want %q", subset, mask, got, err, want)
+						}
+						if bundle {
+							rows = append(rows, finiteConditionalOracleCase{Value: want, Trace: trace})
+						} else {
+							fmt.Fprintf(&checks, "if got:=%s;got!=%q{t.Fatal(got)}\n", call, want)
+							fmt.Fprintf(&orders, "v1110MatrixTrace=nil;%s;if !reflect.DeepEqual(v1110MatrixTrace,[]string{%s}){t.Fatal(v1110MatrixTrace)}\n", call, quotedStrings(trace))
+						}
+					}
+					if bundle {
+						fixtures[name+".oracle"] = encodeFiniteBinaryOracle(rows)
+						// Vector order and input mapping match the literal control above.
+						// Initializer bits 6..8 remain false; routing and selector bits
+						// are still independent. Only assertion representation changes.
+						call := "PipeLang" + name + "("
+						for bit := 0; bit < 11; bit++ {
+							if bit > 0 {
+								call += ","
+							}
+							call += fmt.Sprintf("mask&%d!=0", 1<<bit)
+						}
+						call += ")"
+						fmt.Fprintf(&checks, "oracle.Values(t,%q,256,func(vector int)string{mask:=(vector&63)|((vector>>6)<<9);return %s})\n", name+".oracle", call)
+						fmt.Fprintf(&orders, "oracle.Traces(t,%q,256,func(vector int)[]string{mask:=(vector&63)|((vector>>6)<<9);v1110MatrixTrace=nil;%s;return v1110MatrixTrace})\n", name+".oracle", call)
+					}
+				}
+				if bundle {
+					v1110RunMatrixFixtureGo(t, generated, checks.String(), orders.String(), fixtures)
+				} else {
+					v1110RunMatrixGo(t, generated, checks.String(), orders.String())
+				}
+			}
+			t.Logf("%d leaves, %d subsets, %d independent routing/selector vectors per subset", len(leaves), upper-lower, 256)
+		})
+	}
+}
+
+func TestV1110TerminalLeafSelectorValueArmsScopeLayouts(t *testing.T) {
+	bundle := os.Getenv("PIPELANG_NATIVE_BUNDLE") == "1" && os.Getenv("PIPELANG_GENERATED_BATCH") == "1" && os.Getenv("PIPELANG_COMPILED_CACHE") != "" && os.Getenv("GOFLAGS") == "" && os.Getenv("GOENV") == "off"
+	audit := os.Getenv("PIPELANG_BUNDLE_AUDIT") == "1"
+	trees := terminalTrees(3)[1:]
+	if len(trees) != 25 {
+		t.Fatal("statement inventory drift")
+	}
+	for shape := 0; shape < 75; shape++ {
+		tree := trees[shape%25]
+		arms := shape/25 + 1
+		t.Run(fmt.Sprint(shape), func(t *testing.T) {
+			enterFiniteShape(t)
+			leaves := v990Leaves(tree, "R")
+			for _, count := range []int{1, 3} {
+				for _, unused := range []bool{false, true} {
+					source := `public Class Choices {public string Echo(string value)=>value;public bool Check(string name,bool value)=>value;` + v1110MatrixMethod("Select", tree, leaves, (1<<len(leaves))-1, count, unused, arms) + "}"
+					_, p := conditionalLocalTreeProgramVersion(t, PipeLangLanguageContractV1110, source, []string{"Select"})
+					generated, err := gobackend.Generate(p)
+					if err != nil {
+						t.Fatal(err)
+					}
+					f := coreFunctionNamed(t, p, "Select")
+					prepared := prepareConformanceProgram(t, p)
+					oracleDigest := sha256.New()
+					var checks, orders strings.Builder
+					rows := []finiteConditionalOracleCase{}
+					for vector := 0; vector < 256; vector++ {
+						mask := (vector & 63) | ((vector & 7) << 6) | ((vector >> 6) << 9)
+						want, trace := v1110MatrixOracle(tree, leaves, (1<<len(leaves))-1, count, unused, mask, arms)
+						if audit {
+							fmt.Fprintf(oracleDigest, "%d %d %q %#v\n", vector, mask, want, trace)
+						}
+						args := []coreeval.Value{}
+						call := "PipeLangSelect("
+						for bit := 0; bit < 11; bit++ {
+							flag := mask&(1<<bit) != 0
+							args = append(args, coreeval.Value{Type: f.Parameters[bit].Type, Bool: flag})
+							if bit > 0 {
+								call += ","
+							}
+							call += fmt.Sprint(flag)
+						}
+						call += ")"
+						got, err := prepared.Evaluate(f.Identity, args)
+						if err != nil || !got.OK || got.Value.String != want {
+							t.Fatalf("mask %d: %v %v want %q", mask, got, err, want)
+						}
+						if bundle {
+							rows = append(rows, finiteConditionalOracleCase{Value: want, Trace: trace})
+						} else {
+							fmt.Fprintf(&checks, "if got:=%s;got!=%q{t.Fatal(got)}\n", call, want)
+							fmt.Fprintf(&orders, "v1110MatrixTrace=nil;%s;if !reflect.DeepEqual(v1110MatrixTrace,[]string{%s}){t.Fatal(v1110MatrixTrace)}\n", call, quotedStrings(trace))
+						}
+					}
+					if bundle {
+						// Keep the literal path's vector order and shared routing/initializer
+						// bits. Only expected-value and trace representation changes.
+						call := "PipeLangSelect("
+						for bit := 0; bit < 11; bit++ {
+							if bit > 0 {
+								call += ","
+							}
+							call += fmt.Sprintf("mask&%d!=0", 1<<bit)
+						}
+						call += ")"
+						fmt.Fprintf(&checks, "oracle.Values(t,\"Select.oracle\",256,func(vector int)string{mask:=(vector&63)|((vector&7)<<6)|((vector>>6)<<9);return %s})\n", call)
+						fmt.Fprintf(&orders, "oracle.Traces(t,\"Select.oracle\",256,func(vector int)[]string{mask:=(vector&63)|((vector&7)<<6)|((vector>>6)<<9);v1110MatrixTrace=nil;%s;return v1110MatrixTrace})\n", call)
+						v1110RunMatrixFixtureGo(t, generated, checks.String(), orders.String(), map[string][]byte{"Select.oracle": encodeFiniteBinaryOracle(rows)})
+					} else {
+						v1110RunMatrixGo(t, generated, checks.String(), orders.String())
+					}
+					if audit {
+						t.Logf("scope_layout_oracle count=%d unused=%t vectors=256 sha256=%x", count, unused, oracleDigest.Sum(nil))
+					}
+				}
+			}
+		})
+	}
+}
+
+func v1110MatrixMethod(name string, tree *terminalTree, leaves []string, subset, count int, unused bool, arms int) string {
+	var emit func(*terminalTree, string, string) string
+	emit = func(n *terminalTree, path, previous string) string {
+		body := ""
+		for i := 0; i < count; i++ {
+			local := fmt.Sprintf("l%s%d", path, i)
+			tag := fmt.Sprintf("%s%d", path, i)
+			init := fmt.Sprintf("Echo(%s+%q)", previous, tag+"O")
+			if i%2 == 0 {
+				init = fmt.Sprintf(`Check(%q,q) ? (Check(%q,r) ? (Check(%q,s) ? Echo(%s+%q) : Echo(%s+%q)) : Echo(%s+%q)) : Echo(%s+%q)`, tag+"q", tag+"r", tag+"s", previous, tag+"T", previous, tag+"M", previous, tag+"N", previous, tag+"F")
+			}
+			body += "string " + local + "=" + init + ";"
+			if !unused || i < count-1 {
+				previous = local
+			}
+		}
+		if n != nil {
+			return body + fmt.Sprintf(`if(Check(%q,d%d)){%s}else{%s}`, path, len(path)-1, emit(n.yes, path+"T", previous), emit(n.no, path+"F", previous))
+		}
+		selected := false
+		for i, p := range leaves {
+			if p == path {
+				selected = subset&(1<<i) != 0
+			}
+		}
+		if selected {
+			left, right := fmt.Sprintf(`Echo(%s+%q)`, previous, path+"Y"), fmt.Sprintf(`Echo(%s+%q)`, previous, path+"Z")
+			if arms&1 != 0 {
+				left = fmt.Sprintf(`(Check(%q,d) ? Echo(%s+%q) : Echo(%s+%q))`, path+"d", previous, path+"X", previous, path+"Y")
+			}
+			if arms&2 != 0 {
+				right = fmt.Sprintf(`(Check(%q,e) ? Echo(%s+%q) : Echo(%s+%q))`, path+"e", previous, path+"Z", previous, path+"W")
+			}
+			return body + fmt.Sprintf(`return (Check(%q,a) ? Check(%q,b) : Check(%q,c)) ? %s : %s;`, path+"a", path+"b", path+"c", left, right)
+		}
+		// Alternate ordinary and inherited depth-three returns outside the new subset.
+		if len(path)%2 == 0 {
+			return body + fmt.Sprintf(`return a ? (b ? (c ? Echo(%s+%q) : Echo(%s+%q)) : Echo(%s+%q)) : Echo(%s+%q);`, previous, path+"I", previous, path+"I", previous, path+"I", previous, path+"I")
+		}
+		return body + fmt.Sprintf(`return Echo(%s+%q);`, previous, path+"I")
+	}
+	return fmt.Sprintf("public string %s(bool d0,bool d1,bool d2,bool a,bool b,bool c,bool q,bool r,bool s,bool d,bool e){%s}", name, emit(tree, "R", `""`))
+}
+func v1110MatrixOracle(tree *terminalTree, leaves []string, subset, count int, unused bool, mask, arms int) (string, []string) {
+	path, value := "R", ""
+	trace := []string{}
+	for depth := 0; ; depth++ {
+		for i := 0; i < count; i++ {
+			tag := fmt.Sprintf("%s%d", path, i)
+			suffix := "O"
+			if i%2 == 0 {
+				trace = append(trace, "C:"+tag+"q")
+				suffix = "F"
+				if mask&64 != 0 {
+					trace = append(trace, "C:"+tag+"r")
+					suffix = "N"
+					if mask&128 != 0 {
+						trace = append(trace, "C:"+tag+"s")
+						suffix = "M"
+						if mask&256 != 0 {
+							suffix = "T"
+						}
+					}
+				}
+			}
+			next := value + tag + suffix
+			trace = append(trace, "E:"+next)
+			if !unused || i < count-1 {
+				value = next
+			}
+		}
+		if tree == nil {
+			break
+		}
+		trace = append(trace, "C:"+path)
+		if mask&(1<<depth) != 0 {
+			tree = tree.yes
+			path += "T"
+		} else {
+			tree = tree.no
+			path += "F"
+		}
+	}
+	selected := false
+	for i, p := range leaves {
+		if p == path {
+			selected = subset&(1<<i) != 0
+		}
+	}
+	suffix := "I"
+	if selected {
+		trace = append(trace, "C:"+path+"a")
+		choose := mask&32 != 0
+		if mask&8 != 0 {
+			trace = append(trace, "C:"+path+"b")
+			choose = mask&16 != 0
+		} else {
+			trace = append(trace, "C:"+path+"c")
+		}
+		suffix = "Z"
+		if choose {
+			suffix = "Y"
+			if arms&1 != 0 {
+				trace = append(trace, "C:"+path+"d")
+				if mask&512 != 0 {
+					suffix = "X"
+				}
+			}
+		} else if arms&2 != 0 {
+			trace = append(trace, "C:"+path+"e")
+			if mask&1024 == 0 {
+				suffix = "W"
+			}
+		}
+	}
+	value += path + suffix
+	trace = append(trace, "E:"+value)
+	return value, trace
+}
+func v1110RunMatrixGo(t *testing.T, generated []byte, checks, orders string) {
+	t.Helper()
+	compileAndRunGeneratedGoFiles(t, generated, []byte(fmt.Sprintf("package %s\nimport \"testing\"\nfunc TestValues(t *testing.T){%s}", gobackend.PackageName, checks)))
+	observed := v1110MatrixObserved(t, generated)
+	compileAndRunGeneratedGoFiles(t, observed, []byte(fmt.Sprintf("package %s\nimport (\"testing\";\"reflect\")\nvar v1110MatrixTrace []string\nfunc TestOrder(t *testing.T){%s}", gobackend.PackageName, orders)))
+}
+
+func v1110RunMatrixFixtureGo(t *testing.T, generated []byte, checks, orders string, fixtures map[string][]byte) {
+	t.Helper()
+	values := []byte(fmt.Sprintf("package %s\nimport (\"testing\";\"pipelang-generated-check/oracle\")\nfunc TestValues(t *testing.T){%s}", gobackend.PackageName, checks))
+	if !queueGeneratedBatchWithOracle(t, generated, values, fixtures, []byte(finiteBinaryOracle)) {
+		t.Fatal("subset value bundle unexpectedly ineligible")
+	}
+	traces := []byte(fmt.Sprintf("package %s\nimport (\"testing\";\"pipelang-generated-check/oracle\")\nvar v1110MatrixTrace []string\nfunc TestOrder(t *testing.T){%s}", gobackend.PackageName, orders))
+	if !queueGeneratedBatchWithOracle(t, v1110MatrixObserved(t, generated), traces, fixtures, []byte(finiteBinaryOracle)) {
+		t.Fatal("subset trace bundle unexpectedly ineligible")
+	}
+}
+
+func v1110MatrixObserved(t *testing.T, generated []byte) []byte {
+	t.Helper()
+	observed := string(generated)
+	for marker, probe := range map[string]string{"func PipeLangEcho(p0 string) string {": `v1110MatrixTrace=append(v1110MatrixTrace,"E:"+p0)`, "func PipeLangCheck(p0 string, p1 bool) bool {": `v1110MatrixTrace=append(v1110MatrixTrace,"C:"+p0)`} {
+		if strings.Count(observed, marker) != 1 {
+			t.Fatal("missing trace marker")
+		}
+		observed = strings.Replace(observed, marker, marker+"\n"+probe, 1)
+	}
+	return []byte(observed)
+}

@@ -25,8 +25,72 @@ cursor_dev_global_state_root() {
   dockpipe get state_dir
 }
 
-cursor_dev_state_root() {
+cursor_dev_legacy_state_root() {
   dockpipe scope --package cursor-dev .
+}
+
+cursor_dev_state_root() {
+  dockpipe __state package-runtime --workdir "${W:-$(pwd)}" --owner ide/resolver/cursor-dev --ensure-private
+}
+
+cursor_dev_prepare_state() {
+  local legacy_root home_status user_status
+  legacy_root="$(cursor_dev_legacy_state_root)" || return
+  CURSOR_DEV_RUNTIME_ROOT="$(cursor_dev_state_root)" || return
+  home_status="$(dockpipe __state prepare-durable-cohort \
+    --workdir "$W" \
+    --owner ide/resolver/cursor-dev \
+    --cohort ide-user-home-v1 \
+    --instance workspace \
+    --run maintained-session \
+    --legacy-root "$legacy_root" \
+    --tree home=home \
+    --ignore home/.cursor-server \
+    --ignore home/.cache \
+    --ignore home/.dotnet \
+    --ignore home/.gocache \
+    --ignore home/.npm \
+    --ignore home/.nuget/packages \
+    --ignore home/go)" || return
+  IFS=$'\t' read -r CURSOR_DEV_DURABLE_HOME_ROOT _ <<<"$home_status"
+  user_status="$(dockpipe __state prepare-durable-cohort \
+    --workdir "$W" \
+    --owner ide/resolver/cursor-dev \
+    --cohort ide-user-data-v1 \
+    --instance workspace \
+    --run maintained-session \
+    --legacy-root "$legacy_root" \
+    --tree home/.cursor-server/extensions=extensions \
+    --tree home/.cursor-server/data/User=user-data/User \
+    --tree home/.cursor-server/data/Machine=user-data/Machine \
+    --tree xdg-config=config \
+    --tree xdg-data=data)" || return
+  IFS=$'\t' read -r CURSOR_DEV_DURABLE_USER_ROOT _ <<<"$user_status"
+
+  CURSOR_DEV_DURABLE_HOME="$(dockpipe __state private-directory --root "$CURSOR_DEV_DURABLE_HOME_ROOT" --path home)" || return
+  CURSOR_DEV_DURABLE_EXTENSIONS="$(dockpipe __state private-directory --root "$CURSOR_DEV_DURABLE_USER_ROOT" --path extensions)" || return
+  CURSOR_DEV_DURABLE_USER_DATA="$(dockpipe __state private-directory --root "$CURSOR_DEV_DURABLE_USER_ROOT" --path user-data)" || return
+  CURSOR_DEV_DURABLE_USER="$(dockpipe __state private-directory --root "$CURSOR_DEV_DURABLE_USER_ROOT" --path user-data/User)" || return
+  CURSOR_DEV_DURABLE_MACHINE="$(dockpipe __state private-directory --root "$CURSOR_DEV_DURABLE_USER_ROOT" --path user-data/Machine)" || return
+  CURSOR_DEV_DURABLE_CONFIG="$(dockpipe __state private-directory --root "$CURSOR_DEV_DURABLE_USER_ROOT" --path config)" || return
+  CURSOR_DEV_DURABLE_DATA="$(dockpipe __state private-directory --root "$CURSOR_DEV_DURABLE_USER_ROOT" --path data)" || return
+  CURSOR_DEV_RUNTIME_HOME="$(dockpipe __state private-directory --root "$CURSOR_DEV_RUNTIME_ROOT" --path home)" || return
+  CURSOR_DEV_RUNTIME_SERVER="$(dockpipe __state private-directory --root "$CURSOR_DEV_RUNTIME_ROOT" --path home/.cursor-server)" || return
+  dockpipe __state private-directory --root "$CURSOR_DEV_RUNTIME_ROOT" --path home/.cursor-server/extensions >/dev/null || return
+  dockpipe __state private-directory --root "$CURSOR_DEV_RUNTIME_ROOT" --path home/.cursor-server/data/User >/dev/null || return
+  dockpipe __state private-directory --root "$CURSOR_DEV_RUNTIME_ROOT" --path home/.cursor-server/data/Machine >/dev/null || return
+  CURSOR_DEV_RUNTIME_CACHE="$(dockpipe __state private-directory --root "$CURSOR_DEV_RUNTIME_ROOT" --path xdg-cache)" || return
+  dockpipe __state private-directory --root "$CURSOR_DEV_RUNTIME_ROOT" --path xdg-config >/dev/null || return
+  dockpipe __state private-directory --root "$CURSOR_DEV_RUNTIME_ROOT" --path xdg-data >/dev/null || return
+  CURSOR_DEV_RUNTIME_DOTNET="$(dockpipe __state private-directory --root "$CURSOR_DEV_RUNTIME_ROOT" --path dotnet)" || return
+  CURSOR_DEV_RUNTIME_GOCACHE="$(dockpipe __state private-directory --root "$CURSOR_DEV_RUNTIME_ROOT" --path gocache)" || return
+  dockpipe __state private-directory --root "$CURSOR_DEV_RUNTIME_ROOT" --path gopath >/dev/null || return
+  dockpipe __state private-directory --root "$CURSOR_DEV_RUNTIME_ROOT" --path gomodcache >/dev/null || return
+  dockpipe __state private-directory --root "$CURSOR_DEV_RUNTIME_ROOT" --path nuget-packages >/dev/null || return
+  export CURSOR_DEV_RUNTIME_ROOT CURSOR_DEV_DURABLE_HOME_ROOT CURSOR_DEV_DURABLE_USER_ROOT
+  export CURSOR_DEV_DURABLE_HOME CURSOR_DEV_DURABLE_EXTENSIONS CURSOR_DEV_DURABLE_USER_DATA
+  export CURSOR_DEV_DURABLE_USER CURSOR_DEV_DURABLE_MACHINE CURSOR_DEV_DURABLE_CONFIG CURSOR_DEV_DURABLE_DATA
+  export CURSOR_DEV_RUNTIME_HOME CURSOR_DEV_RUNTIME_SERVER CURSOR_DEV_RUNTIME_CACHE CURSOR_DEV_RUNTIME_DOTNET CURSOR_DEV_RUNTIME_GOCACHE
 }
 
 cursor_dev_container_state_root() {

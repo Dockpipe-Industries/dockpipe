@@ -11,8 +11,7 @@ type CompilePathResolution struct {
 	MissingPaths []string
 }
 
-// EffectiveWorkflowCompileRoots merges dockpipe.config.json compile.workflows with CLI defaults.
-// compile.bundles (deprecated) entries are appended and deduplicated — same recursive config.yml walk as workflows.
+// EffectiveWorkflowCompileRoots resolves dockpipe.config.json compile.workflows or CLI defaults.
 func EffectiveWorkflowCompileRoots(cfg *DockpipeProjectConfig, repoRoot string) []string {
 	return EffectiveWorkflowCompileRootsDetailed(cfg, repoRoot).Paths
 }
@@ -25,11 +24,6 @@ func EffectiveWorkflowCompileRootsDetailed(cfg *DockpipeProjectConfig, repoRoot 
 		result = ResolveCompilePathList(repoRoot, *cfg.Compile.Workflows)
 	} else {
 		result.Paths = defaultWorkflowRoots(repoRoot)
-	}
-	if cfg != nil && cfg.Compile.Bundles != nil {
-		bundles := ResolveCompilePathList(repoRoot, *cfg.Compile.Bundles)
-		result.Paths = mergeUniqueAbsPaths(result.Paths, bundles.Paths)
-		result.MissingPaths = append(result.MissingPaths, bundles.MissingPaths...)
 	}
 	return result
 }
@@ -53,9 +47,8 @@ func mergeUniqueAbsPaths(a, b []string) []string {
 
 // EffectiveResolverCompileRoots merges workflow compile roots with flat core resolver dirs.
 // Resolver packs under packages/ and other compile roots are discovered from the same roots as
-// compile.workflows (plus legacy compile.bundles merged into workflows). Flat vendor trees
+// compile.workflows. Flat vendor trees
 // src/core/resolvers and templates/core/resolvers are always appended when present.
-// Deprecated: compile.resolvers in JSON is still merged when set (for old configs).
 func EffectiveResolverCompileRoots(cfg *DockpipeProjectConfig, repoRoot string) []string {
 	return EffectiveResolverCompileRootsDetailed(cfg, repoRoot).Paths
 }
@@ -78,28 +71,7 @@ func EffectiveResolverCompileRootsDetailed(cfg *DockpipeProjectConfig, repoRoot 
 		Paths:        mergeUniqueAbsPaths(wf.Paths, core),
 		MissingPaths: append([]string(nil), wf.MissingPaths...),
 	}
-	if cfg != nil && cfg.Compile.Resolvers != nil {
-		legacy := ResolveCompilePathList(repoRoot, *cfg.Compile.Resolvers)
-		result.Paths = mergeUniqueAbsPaths(result.Paths, legacy.Paths)
-		result.MissingPaths = append(result.MissingPaths, legacy.MissingPaths...)
-	}
 	return result
-}
-
-// EffectiveBundleCompileRoots returns paths from compile.bundles only (for DockerfileDir and other
-// lookups that need the bundle compile root without walking the whole workflows list). Compile itself
-// merges these into EffectiveWorkflowCompileRoots — there is no separate bundle compile step.
-func EffectiveBundleCompileRoots(cfg *DockpipeProjectConfig, repoRoot string) []string {
-	return EffectiveBundleCompileRootsDetailed(cfg, repoRoot).Paths
-}
-
-// EffectiveBundleCompileRootsDetailed returns bundle compile roots plus any configured paths that
-// were skipped because they do not currently exist on disk.
-func EffectiveBundleCompileRootsDetailed(cfg *DockpipeProjectConfig, repoRoot string) CompilePathResolution {
-	if cfg != nil && cfg.Compile.Bundles != nil {
-		return ResolveCompilePathList(repoRoot, *cfg.Compile.Bundles)
-	}
-	return CompilePathResolution{}
 }
 
 func ResolveCompilePathList(repoRoot string, rels []string) CompilePathResolution {

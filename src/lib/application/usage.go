@@ -58,7 +58,9 @@ var mainUsageSections = []usageSection{
 			{"--workflow-file, --run, --act, --strategy, --repo, --branch, --mount", ""},
 			{"--package <name>", "With --workflow, select a workflow from the package whose nearest package.yml name matches this value"},
 			{"--workflows-dir <path>", "Repo-relative or absolute root for named workflows (default: workflows/; env: DOCKPIPE_WORKFLOWS_DIR)"},
-			{"--env, --env-file, --var, --no-op-inject", "Skip vault op inject; env: DOCKPIPE_OP_INJECT=0"},
+			{"--env, --env-file, --var", "Workflow environment values"},
+			{"--secret-environment <name>", "Load only the bindings of a configured secret environment"},
+			{"--no-vault, --no-op-inject", "Skip secret injection; env: DOCKPIPE_VAULT_INJECT=0"},
 			{"--tf <cmds>", "Terraform pipeline: set DOCKPIPE_TF_COMMANDS (e.g. plan, apply). Workflows that run terraform-pipeline.sh use it. Also: --tf-dry-run, --tf-no-auto-approve"},
 			{"--data-dir, --data-vol, --no-data, --reinit, -f, -d/--detach", ""},
 		},
@@ -70,16 +72,17 @@ var mainUsageSections = []usageSection{
 			{"install", "Fetch templates/core from HTTPS (e.g. Cloudflare R2); see install core --help"},
 			{"clone <name>", "Copy a compiled workflow package to workflows/ when allow_clone is true (see package manifest)"},
 			{"build", "Compile packages into bin/.dockpipe/internal and prebuild Dockerfile image artifacts"},
-			{"clean", "Remove compiled package store (bin/.dockpipe/internal/packages)"},
-			{"rebuild", "clean then build"},
+			{"clean [--dry-run]", "Preview or remove the complete checkout bin/.dockpipe disposable tree"},
+			{"rebuild", "Reset the resolved compiled store, then build"},
 			{"package list|images|manifest|build|test|compile", "Packages: list metadata, inspect image artifacts, run package tests, author tarballs, or compile into bin/.dockpipe/internal"},
 			{"test [package|workflow]", "Run package-owned tests and workflow-local tests for the current project/workdir"},
 			{"compile", "Same as dockpipe package compile (core, resolvers, workflows)"},
 			{"release upload", "Upload a file to S3-compatible storage (self-hosted; uses aws CLI)"},
 			{"workflow validate|list", "Validate YAML or print the DockPipe-resolved workflow catalog"},
 			{"session list|inspect|switch|publish", "Inspect and publish runtime-owned Git session workspaces"},
+			{"remote setup|serve|pair|worker|submit", "Pair outbound nodes and execute approved local workflows"},
 			{"catalog list", "Print the DockPipe-owned launcher/tooling catalog (workflows, resolvers, strategies, runtimes)"},
-			{"pipelang compile|invoke|materialize", "PipeLang typed authoring helpers"},
+			{"pipelang check|compile|invoke|materialize", "PipeLang typed authoring helpers"},
 			{"doctor", "Check docker, bash, and bundled assets"},
 			{"core script-path <dots>", "Print absolute path to a core asset (same as scripts/core.<dots> in YAML)"},
 			{"get <field> [--workdir]", "Print generic DockPipe context like workdir or dockpipe_bin"},
@@ -155,28 +158,6 @@ func printUsage() {
 func printInitUsage() {
 	fmt.Print(renderUsageSections(initUsageSections, usageWidth()))
 }
-
-const runsUsageText = `dockpipe runs — inspect host-run and policy records
-
-While a kind: host workflow step runs a host script, dockpipe may write
-workdir/bin/.dockpipe/runs/<id>.json (and optional sidecars). Containerized runs
-may also write structured policy records under
-workdir/bin/.dockpipe/runs/policy/.
-
-Usage:
-  dockpipe runs list [--workdir <path>]
-  dockpipe runs events --event-log <path> [--json]
-  dockpipe runs events --event-log <path> --index [<path>] [--json]
-  dockpipe runs policy [--workdir <path>] [--workflow <name>] [--step <id>] [--json]
-
-  --workdir   Project directory (default: DOCKPIPE_WORKDIR or current directory)
-  --event-log Operation event JSONL path (events only; default: DOCKPIPE_EVENT_LOG)
-  --index     Rebuild JSON index from the JSONL ledger (events only; default: DOCKPIPE_EVENT_INDEX)
-  --workflow  Filter policy records by workflow name (policy only)
-  --step      Filter policy records by step id (policy only)
-  --json      Emit policy/index/events as JSON where supported
-
-`
 
 func usageWidth() int {
 	for _, f := range []*os.File{os.Stdout, os.Stderr} {

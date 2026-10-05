@@ -46,7 +46,8 @@ type CliOpts struct {
 	ExtraEnvLines        []string
 	EnvFiles             []string
 	VarOverrides         []string
-	NoOpInject           bool // skip vault env resolution via op inject (when dockpipe.config.json sets op_inject_template)
+	NoOpInject           bool   // skip both named secret environments and legacy vault templates
+	SecretEnvironment    string // explicit named secret environment; never falls back to another environment
 	BuildPath            string
 	// CompileDeps is legacy: transitive compile for --workflow is on by default when env is unset.
 	CompileDeps bool
@@ -214,7 +215,13 @@ func ParseFlags(repoRoot string, argv []string) ([]string, *CliOpts, error) {
 			}
 			o.EnvFiles = append(o.EnvFiles, argv[i+1])
 			i += 2
-		case "--no-op-inject":
+		case "--secret-environment":
+			if i+1 >= len(argv) || strings.TrimSpace(argv[i+1]) == "" {
+				return nil, nil, fmt.Errorf("--secret-environment requires a name")
+			}
+			o.SecretEnvironment = argv[i+1]
+			i += 2
+		case "--no-op-inject", "--no-vault":
 			o.NoOpInject = true
 			i++
 		case "--var":

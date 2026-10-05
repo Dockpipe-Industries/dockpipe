@@ -9,7 +9,7 @@ dockpipe is **not** in the default `winget` source until a manifest is **accepte
 From an **elevated or normal** PowerShell (MSI is per-user; no admin required):
 
 ```powershell
-irm https://raw.githubusercontent.com/jamie-steele/dockpipe/master/release/packaging/windows/install.ps1 | iex
+irm https://raw.githubusercontent.com/Dockpipe-Industries/dockpipe/master/release/packaging/windows/install.ps1 | iex
 ```
 
 Pinned version: download [install.ps1](../windows/install.ps1) and run:
@@ -22,7 +22,7 @@ The script prefers **`dockpipe_*_windows_amd64.msi`** from the GitHub release an
 
 ### Option B — MSI / zip from Releases
 
-Download **`dockpipe_<version>_windows_amd64.msi`** from [Releases](https://github.com/jamie-steele/dockpipe/releases) and double-click, or:
+Download **`dockpipe_<version>_windows_amd64.msi`** from [Releases](https://github.com/Dockpipe-Industries/dockpipe/releases) and double-click, or:
 
 ```powershell
 msiexec /i .\dockpipe_0.6.0_windows_amd64.msi /qn

@@ -33,6 +33,19 @@ Codex defaults to **`~/.codex/skills/<skill-name>/SKILL.md`**. Claude defaults t
 **`~/.claude/skills/<skill-name>/SKILL.md`**. Target names are adapters; skill ids in
 **`AGENTS.md`** and **`docs/agents/index.yaml`** stay target-independent.
 
+Skills share `skill.yml` metadata and `instructions.md`. An optional
+`instructions.<target>.md` file (`claude`, `codex`, or `generic`) replaces selected shared
+sections for that render target. Start the override with a `##` heading matching a shared
+section, then provide its complete replacement; repeat for other sections as needed.
+Unmentioned sections remain shared, in their original order. Headings inside fenced code
+blocks are not section boundaries. Unknown or duplicate override headings fail rendering.
+Metadata stays shared, and render markers hash the final target-specific output.
+
+For example, `dorkpipe-task-handoff/instructions.claude.md` replaces the receiver and delivery
+sections so Claude returns a prompt for the user to paste into a fresh chat in the saved
+checkout. Codex retains native task creation. Use section replacements instead of appending
+contradictory provider instructions or duplicating the full skill.
+
 ## Agentic Orchestration Lanes
 
 DorkPipe owns the agentic model-lane catalog under

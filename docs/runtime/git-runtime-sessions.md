@@ -60,13 +60,36 @@ loop:
 dockpipe session list
 dockpipe session inspect <id|latest>
 dockpipe session switch <id|latest>
+dockpipe session checkpoint <id|latest> --request <checkpoint-request.json> --receipt <checkpoint-receipt.json>
 dockpipe session publish <id|latest>
+dockpipe session publish <id|latest> --checkpoint-request <checkpoint-request.json> --checkpoint-receipt <checkpoint-receipt.json> --request <publication-request.json> --receipt <publication-receipt.json>
 ```
 
 `switch` prints the managed worktree path and a shell `cd` command because a child process cannot
 change the caller's current directory. `publish` creates a pre-publish checkpoint commit when the
 session worktree is dirty, then pushes the session branch to the selected remote. It does not merge
 or rewrite the user's current branch.
+
+`checkpoint` is the separately authorized machine-facing boundary for one exact reviewed change
+set. It accepts `dockpipe.session-checkpoint-request/v1`, verifies its canonical fingerprint,
+runtime session/workspace identity, exact branch and parent, empty index, complete Git change set,
+contained regular non-link postimages, and sorted exact paths before staging or committing. It
+stages only those paths and writes `dockpipe.session-checkpoint-receipt/v1` plus runtime checkpoint
+metadata. The request grants no push, publication, sync, merge, or branch-switch authority.
+
+The strict `publish` request mode is a separate machine-facing boundary for one already-created
+checkpoint. It accepts `dockpipe.session-publication-request/v1`, revalidates the exact checkpoint
+request/receipt and runtime metadata, requires the approved attached session branch at the exact
+clean checkpoint commit, hashes and compares the effective configured push destination without
+persisting its URL, and accepts only one fully qualified `refs/heads/...` destination. The runtime
+pushes the immutable commit object with one non-force `<commit>:<ref>` refspec and does not create a
+checkpoint, set upstream configuration, fetch, sync, merge, force, delete, or publish tags.
+
+`dockpipe.session-publication-receipt/v1` records only sanitized request/checkpoint/session/commit/
+remote-identity/ref bindings. A valid receipt is idempotent. If a successful push is followed by a
+metadata or receipt failure, recovery may observe only the exact approved remote/ref and succeeds
+only when it equals the approved commit; this is bounded recovery, not a claim of exactly-once
+network delivery.
 
 Names below are conceptual Go/service operations behind that shape.
 
@@ -83,6 +106,15 @@ type GitRuntime interface {
     InspectSession(ctx context.Context, req InspectSessionRequest) (SessionStatus, error)
 }
 ```
+
+The local implementation exposes this strict request-file adapter beside the policy-driven
+`CheckpointSession` operation so a package or resolver can request one checkpoint without receiving
+raw Git authority. The request is provider-neutral and contains no package, workflow, provider, or
+backlog fields.
+
+The publication request-file adapter likewise sits beside the older policy-driven `PublishSession`.
+It is provider-neutral and contains no package, workflow, backlog, provider, credential-bearing URL,
+or resolved-authentication field.
 
 Required properties:
 
@@ -124,6 +156,14 @@ type RuntimeWorkResult struct {
     Details    map[string]any
 }
 ```
+
+Request-driven checkpoint metadata additionally records `workspace_id`, `branch`, `parent`, exact
+`paths`, and `request_fingerprint`. Its external receipt records the same bindings, the exact
+postimage manifest, runtime ownership, and false push/publication/sync/merge actions. A valid
+existing receipt is accepted only after the runtime revalidates the current commit, parent, commit
+path set, postimage blobs, trailers, branch, session identity, and clean workspace. If the commit
+was created but receipt or metadata writing failed, the runtime can recover only that exact commit;
+any other advanced HEAD is ambiguous and rejected.
 
 Status values should stay small and stable:
 
@@ -426,6 +466,14 @@ Bind implementation:
 ## Checkpoint Strategy
 
 Checkpoint commits are runtime-owned recovery artifacts.
+
+Two checkpoint paths coexist:
+
+- policy-driven `auto`/`step` finalization retains the existing broad session behavior;
+- an explicit controlled request uses the separate exact-path approval boundary described above.
+
+Approval-sensitive package flows must use the controlled request path rather than treating
+`workspace.lifecycle.checkpoint: auto` or `step` as human authorization.
 
 Recommended defaults:
 

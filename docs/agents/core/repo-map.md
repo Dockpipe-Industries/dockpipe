@@ -12,7 +12,7 @@ Read when orienting in the DockPipe checkout.
 | `workflows/` | This repo's lean CI/dogfood workflows. Not an engine contract. |
 | `packages/` | First-party package authoring trees. Treat each like a separate product repo. |
 | `.staging/` | Maintainer packaging and experiments. Not an engine contract. |
-| `bin/.dockpipe/` | Generated project-local state, compiled packages, handoffs, metrics. |
+| `bin/.dockpipe/` | Disposable generated project-local runtime, compiled packages, caches, and artifacts. |
 | `.dorkpipe/` | Generated DorkPipe handoffs/analysis where present. |
 | `docs/` | Human docs and agent routing. |
 | `docs/agents/task-index.yaml` | AI entrypoint for the indexed cross-cutting backlog; update it and the linked task files when work materially completes or advances one of its items. |
@@ -24,7 +24,8 @@ Use generated artifacts as read-only grounding unless the user asks to refresh t
 | Generated path | Notes |
 | --- | --- |
 | `bin/.dockpipe/internal/packages/` | Project-local compiled package store. |
-| package scope (`dockpipe scope --package <name> ...`) | Package runtime state/artifacts. |
+| package scope (`dockpipe scope --package <owner-id> ...`) | Durable owner-only project/package state outside the checkout. |
+| `bin/.dockpipe/packages-runtime/` | Collision-safe disposable package runtime state. |
 | `bin/.dockpipe/runs/` | Host step run records. |
 | `.dorkpipe/` | Optional DorkPipe analysis/handoff state. |
 

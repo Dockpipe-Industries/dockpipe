@@ -33,7 +33,7 @@ func TestInvokeMethod(t *testing.T) {
 	if err != nil {
 		t.Fatalf("invoke: %v", err)
 	}
-	if out.Type != TypeString || out.Value.String != "nginx:latest" {
+	if out.Type.String() != string(TypeString) || out.Value.String != "nginx:latest" {
 		t.Fatalf("unexpected invoke result: %#v", out)
 	}
 }

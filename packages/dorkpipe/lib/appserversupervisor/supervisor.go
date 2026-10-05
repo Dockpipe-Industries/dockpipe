@@ -56,6 +56,7 @@ const (
 	DisconnectUnsupportedEvent       DisconnectReason = "unsupported_event"
 	DisconnectEventOrdering          DisconnectReason = "event_ordering"
 	DisconnectDecisionRejected       DisconnectReason = "decision_rejected"
+	DisconnectApprovalDenied         DisconnectReason = "approval_denied"
 	DisconnectCancellationRejected   DisconnectReason = "cancellation_rejected"
 	DisconnectPersistenceFailure     DisconnectReason = "persistence_failure"
 	DisconnectAuditFailure           DisconnectReason = "audit_failure"
@@ -198,29 +199,46 @@ type Supervisor struct {
 	store          SnapshotStore
 	audit          *auditJournal
 
-	mu                 sync.RWMutex
-	lifecycleMu        sync.Mutex
-	started            bool
-	initialized        bool
-	state              providersession.State
-	sequence           uint64
-	child              Child
-	stdin              io.WriteCloser
-	stdout             io.ReadCloser
-	client             *protocolClient
-	initializationInfo InitializationInfo
-	processRef         string
-	connectionRef      string
-	recoveryEvidence   string
-	lifecycle          lifecycleState
-	lastNotification   string
-	waitDone           chan struct{}
-	record             ShutdownRecord
+	mu                     sync.RWMutex
+	lifecycleMu            sync.Mutex
+	started                bool
+	initialized            bool
+	state                  providersession.State
+	sequence               uint64
+	child                  Child
+	stdin                  io.WriteCloser
+	stdout                 io.ReadCloser
+	client                 *protocolClient
+	initializationInfo     InitializationInfo
+	modelCatalog           *providersession.ModelReasoningCatalog
+	nativePolicyCatalog    *NativePolicyCatalog
+	capabilityCatalog      *CapabilityCatalog
+	effectivePolicy        *providersession.EffectivePolicySnapshot
+	nativePoliciesSelected bool
+	capabilitiesSelected   bool
+	processRef             string
+	connectionRef          string
+	recoveryEvidence       string
+	lifecycle              lifecycleState
+	lastNotification       string
+	completedTurnText      string
+	completedTurnTextReady bool
+	waitDone               chan struct{}
+	record                 ShutdownRecord
 
 	disconnectOnce sync.Once
 	shutdownOnce   sync.Once
 	shutdownDone   chan struct{}
 	shutdownErr    error
+}
+
+// DurableIdentity supplies package-owned opaque references that remain unique
+// across short-lived consumer processes. It carries no provider or prompt
+// data; recovery still requires a separately persisted verified-idle snapshot.
+type DurableIdentity struct {
+	RecoveryEvidence     string
+	ProcessIncarnationID string
+	ConnectionID         string
 }
 
 var supervisorReferences atomic.Uint64
@@ -241,6 +259,21 @@ func NewWithSnapshotStore(session providersession.SessionRef, launcher Launcher,
 // NewWithStores keeps both CAS-09 recovery and CAS-10 audit evidence inside
 // this package. AuditStore receives only bounded safe projections.
 func NewWithStores(session providersession.SessionRef, launcher Launcher, deadlines Deadlines, initialization InitializationConfig, store SnapshotStore, auditStore AuditStore) (*Supervisor, error) {
+	reference := supervisorReferences.Add(1)
+	return newWithStoresAndIdentity(session, launcher, deadlines, initialization, store, auditStore, DurableIdentity{
+		RecoveryEvidence:     "recovery-" + strconv.FormatUint(reference, 10),
+		ProcessIncarnationID: "process-" + strconv.FormatUint(reference, 10),
+		ConnectionID:         "connection-" + strconv.FormatUint(reference, 10),
+	})
+}
+
+// NewWithStoresAndIdentity is the durable consumer constructor. Callers must
+// derive the opaque identity from package state, never provider payloads.
+func NewWithStoresAndIdentity(session providersession.SessionRef, launcher Launcher, deadlines Deadlines, initialization InitializationConfig, store SnapshotStore, auditStore AuditStore, identity DurableIdentity) (*Supervisor, error) {
+	return newWithStoresAndIdentity(session, launcher, deadlines, initialization, store, auditStore, identity)
+}
+
+func newWithStoresAndIdentity(session providersession.SessionRef, launcher Launcher, deadlines Deadlines, initialization InitializationConfig, store SnapshotStore, auditStore AuditStore, identity DurableIdentity) (*Supervisor, error) {
 	if err := validateSupervisorSession(session); err != nil {
 		return nil, err
 	}
@@ -256,20 +289,21 @@ func NewWithStores(session providersession.SessionRef, launcher Launcher, deadli
 	if err := initialization.validate(); err != nil {
 		return nil, err
 	}
-	reference := supervisorReferences.Add(1)
-	recoveryEvidence := "recovery-" + strconv.FormatUint(reference, 10)
+	if !safeEvidence(identity.RecoveryEvidence) || !validID(identity.ProcessIncarnationID) || !validID(identity.ConnectionID) || identity.ProcessIncarnationID == identity.ConnectionID {
+		return nil, errors.New("safe durable supervisor identity is required")
+	}
 	return &Supervisor{
 		session:          session,
 		launcher:         launcher,
 		deadlines:        deadlines,
 		initialization:   initialization,
 		store:            store,
-		audit:            newAuditJournal(session, recoveryEvidence, auditStore),
+		audit:            newAuditJournal(session, identity.RecoveryEvidence, auditStore),
 		state:            providersession.StateReady,
 		events:           make(chan providersession.Event, 16),
-		processRef:       "process-" + strconv.FormatUint(reference, 10),
-		connectionRef:    "connection-" + strconv.FormatUint(reference, 10),
-		recoveryEvidence: recoveryEvidence,
+		processRef:       identity.ProcessIncarnationID,
+		connectionRef:    identity.ConnectionID,
+		recoveryEvidence: identity.RecoveryEvidence,
 		shutdownDone:     make(chan struct{}),
 	}, nil
 }
@@ -343,6 +377,19 @@ func (s *Supervisor) Initialization() InitializationInfo {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	return s.initializationInfo
+}
+
+// CompletedTurnText returns the bounded final agent message only after an
+// exactly correlated completed terminal event. The text is transient: it is
+// never projected through provider-neutral events, audit, or recovery state,
+// and disconnect/shutdown clears it.
+func (s *Supervisor) CompletedTurnText() (string, bool) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	if !s.completedTurnTextReady || s.lifecycle.active || s.state == providersession.StateDisconnected {
+		return "", false
+	}
+	return s.completedTurnText, true
 }
 
 // RecoveryEvidence is an opaque reference only. It is usable after a safe
@@ -529,6 +576,8 @@ func (s *Supervisor) clearPrivateStateLocked() {
 		s.lifecycle.cancellation.timer.Stop()
 	}
 	s.lifecycle = lifecycleState{}
+	s.completedTurnText = ""
+	s.completedTurnTextReady = false
 }
 
 func (s *Supervisor) emit(state providersession.State, summary, operation, outcome string) bool {

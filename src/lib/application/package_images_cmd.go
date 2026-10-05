@@ -36,7 +36,7 @@ func cmdPackageImages(args []string) error {
 		fmt.Fprintf(os.Stdout, "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
 			trimDigestPrefix(r.Fingerprint),
 			row.Status,
-			firstNonEmptyString(strings.TrimSpace(r.ArtifactState), "planned"),
+			firstNonEmptyString(strings.TrimSpace(r.ArtifactState), string(domain.ImageArtifactPlanned)),
 			strings.TrimSpace(r.Source), strings.TrimSpace(r.ImageRef),
 			strings.TrimSpace(r.WorkflowName), strings.TrimSpace(r.PackageName),
 			strings.TrimSpace(r.StepID), strings.TrimSpace(r.ImageKey),
@@ -179,14 +179,14 @@ func imageArtifactLogicalKey(r domain.ImageArtifactManifest) string {
 }
 
 func imageArtifactAvailabilityStatus(r domain.ImageArtifactManifest, existsFn func(string) (bool, error)) string {
-	state := strings.TrimSpace(r.ArtifactState)
+	state := domain.ImageArtifactState(strings.TrimSpace(r.ArtifactState))
 	switch {
-	case state == "planned":
+	case state == domain.ImageArtifactPlanned:
 		return "planned"
-	case state == "referenced":
+	case state == domain.ImageArtifactReferenced:
 		return "referenced"
-	case state != "materialized" && state != "cached":
-		return firstNonEmptyString(state, "unknown")
+	case state != domain.ImageArtifactMaterialized && state != domain.ImageArtifactCached:
+		return firstNonEmptyString(string(state), "unknown")
 	}
 	if strings.TrimSpace(r.ImageRef) == "" || existsFn == nil {
 		return "unknown"
@@ -207,21 +207,21 @@ func putImageArtifactRecord(records map[string]domain.ImageArtifactManifest, r d
 		key = strings.TrimSpace(r.ImageRef) + "\x00" + strings.TrimSpace(r.ImageKey)
 	}
 	if strings.TrimSpace(r.ArtifactState) == "" {
-		r.ArtifactState = "planned"
+		r.ArtifactState = string(domain.ImageArtifactPlanned)
 	}
-	if existing, ok := records[key]; ok && imageArtifactStateRank(existing.ArtifactState) >= imageArtifactStateRank(r.ArtifactState) {
+	if existing, ok := records[key]; ok && imageArtifactStateRank(domain.ImageArtifactState(existing.ArtifactState)) >= imageArtifactStateRank(domain.ImageArtifactState(r.ArtifactState)) {
 		return
 	}
 	records[key] = r
 }
 
-func imageArtifactStateRank(state string) int {
-	switch strings.TrimSpace(state) {
-	case "materialized", "cached":
+func imageArtifactStateRank(state domain.ImageArtifactState) int {
+	switch domain.ImageArtifactState(strings.TrimSpace(string(state))) {
+	case domain.ImageArtifactMaterialized, domain.ImageArtifactCached:
 		return 3
-	case "referenced":
+	case domain.ImageArtifactReferenced:
 		return 2
-	case "planned":
+	case domain.ImageArtifactPlanned:
 		return 1
 	default:
 		return 0

@@ -10,6 +10,7 @@ import (
 )
 
 func TestComplianceSummary(t *testing.T) {
+	isolateHandoffLearningState(t)
 	root := t.TempDir()
 
 	findingsPath, err := statepaths.PackageCIFindingsPath(root)
@@ -40,7 +41,11 @@ func TestComplianceSummary(t *testing.T) {
 	}
 	writeAbs(filepath.Join(selfAnalysisDir, "git.txt"), "commit abc\n")
 	writeAbs(runPath, `{"name":"demo","ts":"now","policy":{"mode":"strict"},"extra":"x"}`)
-	writeAbs(statepaths.InsightsPath(root), `{"kind":"dockpipe_user_insights","insights":[{"category":"risk"},{"category":"compliance"},{"category":"risk"}]}`)
+	insightsPath, err := statepaths.InsightsPath(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	writeAbs(insightsPath, `{"kind":"dockpipe_user_insights","insights":[{"category":"risk"},{"category":"compliance"},{"category":"risk"}]}`)
 
 	out, err := ComplianceSummary(root)
 	if err != nil {
@@ -55,4 +60,12 @@ func TestComplianceSummary(t *testing.T) {
 	if !strings.Contains(out, "\"insight_count\": 3") || !strings.Contains(out, "\"compliance\"") {
 		t.Fatalf("missing insights summary: %s", out)
 	}
+}
+
+func isolateHandoffLearningState(t *testing.T) {
+	t.Helper()
+	root := t.TempDir()
+	t.Setenv("XDG_STATE_HOME", filepath.Join(root, "state"))
+	t.Setenv("LOCALAPPDATA", filepath.Join(root, "local-app-data"))
+	t.Setenv("HOME", filepath.Join(root, "home"))
 }

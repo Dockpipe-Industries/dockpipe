@@ -167,6 +167,103 @@ func parseSnapshot(data []byte, evidence string) (recoverySnapshot, error) {
 
 var ErrRecoveryRejected = errors.New("app server recovery was rejected")
 
+// RecoverBaseline revalidates the exact saved model and non-expanding policy
+// against a fresh initialized child before adopting the previously verified
+// idle thread. It never continues an active turn.
+func (s *Supervisor) RecoverBaseline(ctx context.Context, request providersession.RecoveryRequest, policy LifecyclePolicy) (LifecycleReference, providersession.EffectivePolicySnapshot, error) {
+	if err := request.Validate(); err != nil || policy.validate() != nil {
+		s.recoveryRequired("recovery_invalid")
+		return LifecycleReference{}, providersession.EffectivePolicySnapshot{}, ErrRecoveryRejected
+	}
+	s.mu.RLock()
+	fresh, configured, expected := !s.started && !s.initialized, s.store != nil, s.session
+	s.mu.RUnlock()
+	if !fresh || !configured || request.Session != expected {
+		s.recoveryRequired("recovery_invalid")
+		return LifecycleReference{}, providersession.EffectivePolicySnapshot{}, ErrRecoveryRejected
+	}
+	data, err := s.store.Load(ctx, request.RecoveryEvidence)
+	if err != nil {
+		s.recoveryRequired("snapshot_missing")
+		return LifecycleReference{}, providersession.EffectivePolicySnapshot{}, ErrRecoveryRejected
+	}
+	snapshot, err := parseSnapshot(data, request.RecoveryEvidence)
+	policyKey := policy.key()
+	if err != nil || snapshot.Session != request.Session || snapshot.Policy != hex.EncodeToString(policyKey[:]) {
+		s.recoveryRequired("snapshot_rejected")
+		return LifecycleReference{}, providersession.EffectivePolicySnapshot{}, ErrRecoveryRejected
+	}
+	if s.audit == nil {
+		s.recoveryRequired("audit_rejected")
+		return LifecycleReference{}, providersession.EffectivePolicySnapshot{}, ErrRecoveryRejected
+	}
+	recoveredCursor, err := s.audit.recoverCursorAfterIdleShutdown(ctx, request.RecoveryEvidence, snapshot.Session, snapshot.EventCursor)
+	if err != nil {
+		s.recoveryRequired("audit_rejected")
+		return LifecycleReference{}, providersession.EffectivePolicySnapshot{}, ErrRecoveryRejected
+	}
+	s.mu.Lock()
+	if snapshot.Process == s.processRef || snapshot.Connection == s.connectionRef {
+		s.mu.Unlock()
+		s.recoveryRequired("snapshot_rejected")
+		return LifecycleReference{}, providersession.EffectivePolicySnapshot{}, ErrRecoveryRejected
+	}
+	s.sequence, s.recoveryEvidence = recoveredCursor, request.RecoveryEvidence
+	s.mu.Unlock()
+	if err := s.start(ctx, false); err != nil {
+		return LifecycleReference{}, providersession.EffectivePolicySnapshot{}, ErrRecoveryRejected
+	}
+	effective, err := s.SelectBaselinePolicy(ctx, policy.Model, policy.ReasoningEffort)
+	if err != nil {
+		return LifecycleReference{}, providersession.EffectivePolicySnapshot{}, ErrRecoveryRejected
+	}
+	resolved, reason := s.resolveLifecyclePolicy(policy)
+	if reason != "" {
+		s.fail(reason)
+		return LifecycleReference{}, providersession.EffectivePolicySnapshot{}, ErrRecoveryRejected
+	}
+	s.mu.Lock()
+	if s.state == providersession.StateDisconnected || s.lifecycle.threadID != "" {
+		s.mu.Unlock()
+		s.fail(DisconnectEventOrdering)
+		return LifecycleReference{}, providersession.EffectivePolicySnapshot{}, ErrRecoveryRejected
+	}
+	s.lifecycle.threadID, s.lifecycle.policyKey, s.lifecycle.selectedPolicyKey, s.lifecycle.threadStatus, s.lifecycle.threadNotified = snapshot.Session.SessionID, policyKey, resolved.key, "", true
+	s.lifecycle.declaredRoots = map[string]bool{}
+	for _, root := range policy.WritableRoots {
+		s.lifecycle.declaredRoots[filepath.Clean(root)] = true
+	}
+	s.mu.Unlock()
+	client, ready := s.lifecycleReady()
+	if !ready {
+		s.fail(DisconnectLifecycleRejected)
+		return LifecycleReference{}, providersession.EffectivePolicySnapshot{}, ErrRecoveryRejected
+	}
+	params := resolved.policy.params()
+	params["threadId"], params["includeTurns"] = snapshot.Session.SessionID, false
+	result, err := s.lifecycleRequest(ctx, client, "thread/read", params)
+	if err != nil {
+		s.fail(client.failureReason())
+		return LifecycleReference{}, providersession.EffectivePolicySnapshot{}, ErrRecoveryRejected
+	}
+	if reason := projectIdleReconciliation(result, snapshot.Session.SessionID); reason != "" {
+		s.fail(reason)
+		return LifecycleReference{}, providersession.EffectivePolicySnapshot{}, ErrRecoveryRejected
+	}
+	s.mu.Lock()
+	if s.state == providersession.StateDisconnected || s.session != snapshot.Session || s.lifecycle.active || s.lifecycle.pending != nil || s.lifecycle.cancellation != nil || s.lifecycle.selectedPolicyKey != resolved.key {
+		s.mu.Unlock()
+		s.fail(DisconnectEventOrdering)
+		return LifecycleReference{}, providersession.EffectivePolicySnapshot{}, ErrRecoveryRejected
+	}
+	s.lifecycle.threadStatus = "idle"
+	s.mu.Unlock()
+	if !s.emit(providersession.StateReady, "recovered_idle", "recovery", "completed") {
+		return LifecycleReference{}, providersession.EffectivePolicySnapshot{}, ErrRecoveryRejected
+	}
+	return s.lifecycleReference(""), effective, nil
+}
+
 // Recover never reuses a prior child or continues prior work. It loads only a
 // safe idle snapshot, launches a fresh initialized child, then proves the
 // persisted thread is idle through one exact private reconciliation read.

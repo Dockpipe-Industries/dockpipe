@@ -239,7 +239,7 @@ DockPipe's actual source trees and agent workloads.
 
 - A lightweight Windows local runtime for simple tool containers without Docker Desktop.
 - Cleaner Pipeon/DorkPipe launch flows on locked-down machines where Docker Desktop install policy is painful.
-- SDK-level integration from a Windows launcher or future PipeDeck app to create managed Linux task containers.
+- SDK-level integration from a Windows launcher or future ForgePipe app to create managed Linux task containers.
 - Better cleanup and observability if WSLC sessions expose predictable storage/session handles.
 - Performance wins for Windows-hosted source bind mounts if `virtiofs` materially improves metadata-heavy workloads.
 

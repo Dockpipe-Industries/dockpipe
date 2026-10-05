@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"dockpipe/src/lib/application/internal/treecopy"
 	"dockpipe/src/lib/infrastructure"
 )
 
@@ -287,13 +288,13 @@ func copyBundledCoreInto(coreDest, repoRoot string) error {
 	wfDir := filepath.Join(coreSrc, "workflows")
 	if st, err := os.Stat(wfDir); err == nil && st.IsDir() {
 		for _, name := range []string{"assets", "resolvers", "runtimes", "strategies"} {
-			if err := copyDirMaybe(filepath.Join(coreSrc, name), filepath.Join(coreDest, name)); err != nil {
+			if err := copyCoreSourceDirMaybe(filepath.Join(coreSrc, name), filepath.Join(coreDest, name)); err != nil {
 				return err
 			}
 		}
 		return nil
 	}
-	return copyDirMaybe(coreSrc, coreDest)
+	return copyCoreSourceDirMaybe(coreSrc, coreDest)
 }
 
 // mergeBundledTemplatesCore copies templates/core from the dockpipe install into dest,
@@ -312,63 +313,19 @@ func copyFile(src, dst string) error {
 	return os.WriteFile(dst, b, 0o644)
 }
 
-func copyDirMaybe(src, dst string) error {
+func copyCoreSourceDirMaybe(src, dst string) error {
 	if _, err := os.Stat(src); err != nil {
 		return nil
 	}
-	return copyDir(src, dst)
+	return treecopy.CopyCore(src, dst)
 }
 
 // copyDirExcludingTopLevel copies src into dst but skips immediate child entries of src whose names are in exclude.
 // Used for compile core so resolver and workflow slices are not folded into the core tarball (those compile separately).
 func copyDirExcludingTopLevel(src, dst string, exclude map[string]bool) error {
-	if err := os.MkdirAll(dst, 0o755); err != nil {
-		return err
-	}
-	entries, err := os.ReadDir(src)
-	if err != nil {
-		return err
-	}
-	for _, e := range entries {
-		name := e.Name()
-		if exclude[name] {
-			continue
-		}
-		from := filepath.Join(src, name)
-		to := filepath.Join(dst, name)
-		if e.IsDir() {
-			if err := copyDir(from, to); err != nil {
-				return err
-			}
-			continue
-		}
-		if err := copyFile(from, to); err != nil {
-			return err
-		}
-	}
-	return nil
+	return treecopy.CopyExcludingTopLevel(src, dst, exclude)
 }
 
 func copyDir(src, dst string) error {
-	return filepath.WalkDir(src, func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-		rel, err := filepath.Rel(src, path)
-		if err != nil {
-			return err
-		}
-		if rel == "." {
-			return os.MkdirAll(dst, 0o755)
-		}
-		target := filepath.Join(dst, rel)
-		if d.IsDir() {
-			return os.MkdirAll(target, 0o755)
-		}
-		data, err := os.ReadFile(path)
-		if err != nil {
-			return err
-		}
-		return os.WriteFile(target, data, 0o644)
-	})
+	return treecopy.Copy(src, dst)
 }

@@ -6,10 +6,11 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"sort"
 	"strings"
 
+	"dockpipe/src/lib/application/internal/compileconfig"
+	"dockpipe/src/lib/application/internal/packagescript"
 	"dockpipe/src/lib/domain"
 	"dockpipe/src/lib/infrastructure"
 )
@@ -35,7 +36,7 @@ func discoverPackageScriptTargets(workdir, only string, selectScript func(*domai
 	if err != nil {
 		return nil, err
 	}
-	roots := effectiveWorkflowCompileRoots(cfg, projectRoot)
+	roots := compileconfig.WorkflowRoots(cfg, projectRoot)
 	var targets []packageScriptTarget
 	seenManifests := map[string]struct{}{}
 	for _, root := range roots {
@@ -106,18 +107,29 @@ func runPackageScriptTarget(workdir string, target packageScriptTarget, env []st
 		"DOCKPIPE_PACKAGE_ROOT="+target.PackageDir,
 		"DOCKPIPE_PACKAGE_MANIFEST="+target.Manifest,
 	)
-	if sdkPath := filepath.Join(infrastructure.CoreDir(workdir), "assets", "scripts", "lib", "dockpipe-sdk.sh"); fileExists(sdkPath) {
+	sdkPath := filepath.Join(infrastructure.CoreDir(workdir), "assets", "scripts", "lib", "dockpipe-sdk.sh")
+	if stat, err := os.Stat(sdkPath); err == nil && !stat.IsDir() {
 		baseEnv = append(baseEnv, "DOCKPIPE_SDK_SH="+sdkPath)
 	}
 	if stateDir, err := infrastructure.StateRoot(workdir); err == nil {
 		baseEnv = append(baseEnv, infrastructure.EnvStateDir+"="+stateDir)
 	}
-	scope := infrastructure.SanitizePackageStateScope(target.Name)
+	scope := strings.TrimSpace(target.Name)
 	baseEnv = append(baseEnv, infrastructure.EnvPackageID+"="+scope)
-	if packageStateDir, err := infrastructure.PackageStateDir(workdir, scope); err == nil {
-		baseEnv = append(baseEnv, infrastructure.EnvPackageStateDir+"="+packageStateDir)
+	packageState, err := infrastructure.PreparePackageStateDirWithManifests(workdir, scope, target.Manifest)
+	if err != nil {
+		return fmt.Errorf("prepare package state for %q: %w", target.Name, err)
 	}
-	if rawDir, analysisDir, err := ciArtifactDirs(workdir, ""); err == nil {
+	baseEnv = append(baseEnv, infrastructure.EnvPackageStateDir+"="+packageState.Dir)
+	ciBinding := strings.TrimSpace(os.Getenv("DOCKPIPE_CI_ARTIFACT_SCOPE"))
+	packageOwner := strings.TrimSpace(target.Name)
+	if ciBinding == "" {
+		ciBinding = "package:" + packageOwner
+	} else if resolved, err := resolveCIArtifactBinding(ciBinding, os.Getenv("DOCKPIPE_WORKFLOW_NAME"), packageOwner); err == nil {
+		ciBinding = resolved
+	}
+	baseEnv = append(baseEnv, "DOCKPIPE_CI_ARTIFACT_SCOPE="+ciBinding)
+	if rawDir, analysisDir, err := ciArtifactDirs(workdir, ciBinding); err == nil {
 		if strings.TrimSpace(os.Getenv("DOCKPIPE_CI_RAW_DIR")) == "" {
 			baseEnv = append(baseEnv, "DOCKPIPE_CI_RAW_DIR="+rawDir)
 		}
@@ -137,143 +149,17 @@ func runPackageScriptTarget(workdir string, target packageScriptTarget, env []st
 }
 
 func upsertEnvLocal(env []string, key, value string) []string {
-	prefix := key + "="
-	out := make([]string, 0, len(env)+1)
-	replaced := false
-	for _, entry := range env {
-		if strings.HasPrefix(entry, prefix) {
-			if !replaced {
-				out = append(out, prefix+value)
-				replaced = true
-			}
-			continue
-		}
-		out = append(out, entry)
-	}
-	if !replaced {
-		out = append(out, prefix+value)
-	}
-	return out
+	return packagescript.UpsertEnv(env, key, value)
 }
 
 func dockpipeScriptCommand(scriptAbs string) (*exec.Cmd, string, error) {
-	lower := strings.ToLower(scriptAbs)
-	switch {
-	case strings.HasSuffix(lower, ".ps1"):
-		return exec.Command("pwsh", "-File", scriptAbs), "", nil
-	case strings.HasSuffix(lower, ".cmd"), strings.HasSuffix(lower, ".bat"):
-		if runtime.GOOS != "windows" {
-			return nil, "", fmt.Errorf("script %q requires cmd.exe on Windows", scriptAbs)
-		}
-		return exec.Command("cmd", "/c", scriptAbs), "", nil
-	default:
-		bashExe, bashArg, err := dockpipeBashCommandParts(scriptAbs)
-		if err != nil {
-			return nil, "", err
-		}
-		return exec.Command(bashExe, bashArg), bashExe, nil
-	}
+	return packagescript.ScriptCommand(scriptAbs)
 }
 
 func dockpipeBashShellCommand(command string) (*exec.Cmd, string, error) {
-	if runtime.GOOS == "windows" {
-		if bashExe := gitBashWindowsPath(); bashExe != "" {
-			return exec.Command(bashExe, "-lc", command), bashExe, nil
-		}
-	}
-	bashExe, err := exec.LookPath("bash")
-	if err != nil {
-		return nil, "", fmt.Errorf("bash not found for shell command %q", command)
-	}
-	return exec.Command(bashExe, "-lc", command), bashExe, nil
+	return packagescript.BashShellCommand(command)
 }
 
 func dockpipePathForBashEnv(bashExe, p string) string {
-	if strings.TrimSpace(p) == "" {
-		return p
-	}
-	if runtime.GOOS != "windows" {
-		return p
-	}
-	if bashIsWSLPath(bashExe) {
-		return pathForWSLBash(p)
-	}
-	return pathForGitBash(p)
-}
-
-func dockpipeBashCommandParts(scriptAbs string) (string, string, error) {
-	if runtime.GOOS == "windows" {
-		if bashExe := gitBashWindowsPath(); bashExe != "" {
-			return bashExe, pathForGitBash(scriptAbs), nil
-		}
-	}
-	bashExe, err := exec.LookPath("bash")
-	if err != nil {
-		return "", "", fmt.Errorf("bash not found for script %q", scriptAbs)
-	}
-	return bashExe, scriptAbs, nil
-}
-
-func gitBashWindowsPath() string {
-	candidates := []string{
-		filepath.Join(os.Getenv("ProgramFiles"), "Git", "bin", "bash.exe"),
-		filepath.Join(os.Getenv("ProgramFiles(x86)"), "Git", "bin", "bash.exe"),
-		filepath.Join(os.Getenv("LocalAppData"), "Programs", "Git", "bin", "bash.exe"),
-		`C:\Program Files\Git\bin\bash.exe`,
-		`C:\Program Files (x86)\Git\bin\bash.exe`,
-	}
-	seen := map[string]bool{}
-	for _, p := range candidates {
-		if p == "" || seen[p] {
-			continue
-		}
-		seen[p] = true
-		if st, err := os.Stat(p); err == nil && !st.IsDir() {
-			return p
-		}
-	}
-	return ""
-}
-
-func pathForGitBash(p string) string {
-	abs, err := filepath.Abs(p)
-	if err != nil {
-		return p
-	}
-	vol := filepath.VolumeName(abs)
-	if len(vol) >= 2 && vol[1] == ':' {
-		drive := strings.ToLower(string(vol[0]))
-		rest := abs[len(vol):]
-		for len(rest) > 0 && (rest[0] == '\\' || rest[0] == '/') {
-			rest = rest[1:]
-		}
-		rest = filepath.ToSlash(rest)
-		return "/" + drive + "/" + rest
-	}
-	return filepath.ToSlash(abs)
-}
-
-func bashIsWSLPath(bashExe string) bool {
-	s := strings.ToLower(strings.ReplaceAll(strings.TrimSpace(bashExe), `\`, `/`))
-	return strings.Contains(s, "/system32/bash") ||
-		strings.Contains(s, "windowsapps") ||
-		strings.Contains(s, "/wsl/")
-}
-
-func pathForWSLBash(p string) string {
-	abs, err := filepath.Abs(p)
-	if err != nil {
-		return p
-	}
-	vol := filepath.VolumeName(abs)
-	if len(vol) >= 2 && vol[1] == ':' {
-		drive := strings.ToLower(string(vol[0]))
-		rest := abs[len(vol):]
-		for len(rest) > 0 && (rest[0] == '\\' || rest[0] == '/') {
-			rest = rest[1:]
-		}
-		rest = filepath.ToSlash(rest)
-		return "/mnt/" + drive + "/" + rest
-	}
-	return filepath.ToSlash(abs)
+	return packagescript.PathForBashEnv(bashExe, p)
 }

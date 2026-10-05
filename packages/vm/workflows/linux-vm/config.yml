@@ -1,0 +1,65 @@
+name: linux-vm
+category: app
+vault: none
+platforms: [deb]
+types:
+  - ../../resolvers/qemu/models/LinuxQemuVmResolverConfig.pipe
+dependencies:
+  host:
+    - id: qemu
+      command: qemu-system-x86_64
+      description: Required to boot a Linux development guest through QEMU.
+      install:
+        deb: sudo apt-get install -y qemu-system-x86 qemu-utils
+    - id: ssh
+      command: ssh
+      description: Required for development guest commands; qualification disables networking and SSH.
+      install:
+        deb: sudo apt-get install -y openssh-client
+view:
+  pages:
+    - id: image
+      title: Linux image
+      sections:
+        - id: immutable-image
+          title: Immutable source
+          fields: [Image.Url, Image.Sha256, Image.Override]
+        - id: development-disk
+          title: Development disk
+          fields: [Storage.Disk, Storage.Persistence]
+    - id: machine
+      title: Execution
+      sections:
+        - id: general
+          title: General
+          fields: [General.ExecMode, General.BootSource, General.Purpose]
+        - id: advanced
+          title: Development only
+          fields: [Advanced.SshUser, Advanced.NetDevice, Advanced.GuestCommand]
+    - id: qualification
+      title: Offline qualification contract
+      sections:
+        - id: identity
+          title: Stable identities
+          fields: [Qualification.Enabled, Qualification.Disposable, Qualification.MachineUuid, Qualification.DiskSerial, Qualification.RunId, Qualification.Scenario, Qualification.DurabilityBoundary]
+        - id: protocol
+          title: Mutual pinning
+          fields: [Protocol.ControllerPublicKey, Protocol.GuestPublicKey, Protocol.HarnessSha256]
+description: >-
+  Boot a user-supplied Linux development guest through the generic vm runtime
+  and packaged qemu resolver. The typed qualification fields describe the
+  package-owned offline contract only; this slice intentionally rejects live
+  qualification execution until its separately approved integration gate.
+runtime: vm
+resolver: qemu
+inputs:
+  General.ExecMode: bash
+  General.BootSource: image
+  General.Purpose: development
+  Storage.Persistence: ephemeral
+  Qualification.Enabled: false
+steps:
+  - id: guest-command
+    cmd: >-
+      if [ -n "${DOCKPIPE_VM_GUEST_COMMAND:-}" ]; then sh -ceu "$DOCKPIPE_VM_GUEST_COMMAND";
+      else printf '%s\n' '[dockpipe] Connected to Linux development VM over SSH.'; id; hostname; fi

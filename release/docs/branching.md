@@ -9,6 +9,8 @@
 
 **`master`** is **the released line**. **`staging`** holds “next release” integration until you ship.
 
+The current maintainer promotion path is **`js/pipelang` → `js/dev` → `dev` → `staging` → `master`**. Intermediate branches are for integration and qualification; production release publication runs only from `master`.
+
 There is **no separate “push a tag to release”** step for normal flow — the tag is created as part of the GitHub Release. (You can still use **Release → Run workflow** manually for dry-runs.)
 
 ### Vetting: PRs only (no direct pushes to `staging` / `master`)
@@ -79,7 +81,7 @@ On the **weekly schedule**, only **`codeql`** runs (**`test`** and **`test-windo
 | **workflow_dispatch** | **`ci.yml`** | **`test`** + **`test-windows`** + **`codeql`** (no VERSION gate) |
 | **Schedule** (weekly) | **`ci.yml`** | **`codeql`** only |
 | **Push** **`master`** (merge) | **`release.yml`** | Full build + **GitHub Release** `v$(cat VERSION)`; optional **dev.to** ([devto.md](devto.md)) |
-| **workflow_dispatch** on Release | **`release.yml`** | Same pipeline; **dry_run** optional |
+| **workflow_dispatch** on Release | **`release.yml`** | Defaults to **dry_run=true**, without deployment approval; **dry_run=false** requires **`master`** |
 
 > **Release** still runs only on **`push` to `master`**, not on pushes to **`staging`**.
 

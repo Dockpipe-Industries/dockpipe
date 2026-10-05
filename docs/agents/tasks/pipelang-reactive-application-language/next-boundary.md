@@ -1,0 +1,2003 @@
+## Active objective — P04.a general blocks
+
+Founder selected P04.a and separately said `approved` for its concrete scope.
+[general-blocks.md](general-blocks.md) owns implementation and pending verification.
+The completed objectives and historical boundaries below grant no additional scope.
+
+## Completed objective — nominal enums
+
+The founder selected option 1 and explicitly said `approved`; P01 is now complete.
+[nominal-enums.md](nominal-enums.md) owns accepted v0.113.0 verification, including the fresh
+complete suite, compiler matrix, integration/editor checks and independent inherited-proof comparison.
+The [language reference](../../../concepts/pipelang.md#pipelang-v01130-nominal-enums-and-exhaustive-matching)
+defines nominal tags, exact equality, exhaustive matching and bounded composition. Other foundation
+packages remain unselected. Historical entries below grant no new authority.
+
+## Current planning result — foundation specification and dependency plan
+
+The [planning objective](foundation-specification-plan.md) is complete. The
+[canonical delivery plan](../../../concepts/pipelang-foundation-delivery.md) owns F01–F34 dispositions,
+52–84 proposed foundation slices, the M-app gate, separate bootstrap work and verification cost.
+P01 nominal enums were subsequently selected and approved; see the current objective above.
+v0.113.0 is now accepted; the planning baseline below remains historical. Use the live index and this planning record for current status; the entries below are
+historical slice records and grant no present authority.
+
+## Completed objective — arrow-method selector result arms
+
+Founder selected A and separately said exact `approved` for v0.112.0.
+[arrow-selector-value-arms.md](arrow-selector-value-arms.md) owns the bounded
+completed objective and accepted verification. The [canonical language section](../../../concepts/pipelang.md#pipelang-v01120-conditional-result-arms-in-arrow-method-selectors)
+defines semantics and exclusions. v0.111.0 and both verification optimization
+objectives remain completed baseline. No successor is selected. Historical status
+below grants no new authority.
+
+## Completed objective — terminal-leaf selector result arms
+
+Founder selected A and separately said exact `approved` for v0.111.0.
+[terminal-leaf-selector-value-arms.md](terminal-leaf-selector-value-arms.md) owns the
+bounded scope and completed verification; state: `completed`. The [canonical language contract](../../../concepts/pipelang.md#pipelang-v01110-conditional-result-arms-in-terminal-leaf-selector-returns)
+defines semantics and exclusions. Completed v0.110 and both verification optimization
+objectives remain admitted baseline. No successor, commit, push or cleanup is authorized.
+
+## Completed objective — straight-line selector result arms
+
+Founder selected A and separately said exact `approved` for v0.110.0.
+[straight-line-selector-value-arms.md](straight-line-selector-value-arms.md) owns
+scope and completed verification. No successor is selected. Both verification optimization objectives and
+v0.109.0 are complete. Historical opening status below does not reopen them.
+[Canonical language contract](../../../concepts/pipelang.md#pipelang-v01100-conditional-result-arms-in-straight-line-selector-returns).
+
+## Current objective — resumable verification optimization
+
+The user authorized the complete verification optimization architecture and a
+fresh execution task. Read [the objective](conformance-verification-optimization.md)
+and [canonical plan](../../../runtime/pipelang-verification.md). State:
+`ready_for_execution`; the first checkpoint is durable receipts and invalidation.
+The completed language contract remains v0.109.0; no language successor is selected.
+
+## Completed objective — combined selector arms in terminal tests
+
+Founder selected A and separately said exact `approved` for v0.109.0.
+[terminal-combined-selector-arms.md](terminal-combined-selector-arms.md) owns the
+bounded contract and verification. Implementation and bounded verification are complete in the saved checkout. The objective record distinguishes the full inventory, focused retries, isolated compiler proof and aggregate containment repair.
+The [canonical language section](../../../concepts/pipelang.md#pipelang-v01090-combined-selector-arms-in-terminal-tests)
+defines semantics and exclusions. The language slice is complete; the verification objective above owns current authority.
+
+## Completed objective — inner-selector value arms in terminal tests
+
+Founder selected A and separately said exact `approved` for v0.108.0.
+[terminal-inner-selector-arms.md](terminal-inner-selector-arms.md) owns the bounded
+contract and verification. Implementation and bounded verification are complete.
+All 795 discovered compiler tests and 648 isolated scaling cases pass.
+No successor, commit, push, cleanup or live operation is authorized.
+
+## Completed objective — conditional result arms in terminal selector tests
+
+Founder selected A and separately said exact `approved` for v0.107.0.
+[terminal-selector-value-arms.md](terminal-selector-value-arms.md) owns the bounded
+contract and verification. Implementation and bounded verification are complete.
+All 781 discovered compiler tests and 648 isolated scaling cases pass.
+The [canonical language section](../../../concepts/pipelang.md#pipelang-v01070-conditional-result-arms-in-terminal-selector-tests)
+defines semantics and exclusions. Commit, push, cleanup and live operations remain outside scope.
+No successor is selected.
+
+## Completed objective — flat boolean selectors in terminal tests
+
+Founder selected A and separately said exact `approved` for v0.106.0.
+[terminal-boolean-selector-tests.md](terminal-boolean-selector-tests.md) owns the
+bounded contract and verification. Implementation and bounded verification are complete.
+All 767 discovered compiler tests and 216 isolated scaling cases pass.
+The canonical [language section](../../../concepts/pipelang.md#pipelang-v01060-flat-boolean-selectors-in-terminal-tests)
+describes the placement. Commit, push, cleanup and live operations remain outside scope.
+No successor is selected.
+
+## Completed objective — depth-three terminal conditional tests
+
+Founder selected A and separately said exact `approved` for v0.105.0.
+[depth-three-terminal-conditional-tests.md](depth-three-terminal-conditional-tests.md)
+owns scope and proof. Implementation and bounded verification are complete.
+All 753 discovered compiler tests and 648 isolated scaling cases pass.
+The canonical [language section](../../../concepts/pipelang.md#pipelang-v01050-depth-three-value-arms-in-terminal-conditional-tests)
+describes the placement. No successor, commit, push, cleanup or live operation is authorized.
+
+## Completed objective — nested terminal conditional tests
+
+Founder selected A and separately said exact `approved` for v0.104.0.
+[nested-terminal-conditional-tests.md](nested-terminal-conditional-tests.md) owns
+scope and proof. Implementation and bounded verification are complete.
+All 739 discovered compiler tests and 648 isolated scaling cases pass.
+The canonical [language section](../../../concepts/pipelang.md#pipelang-v01040-nested-value-arms-in-terminal-conditional-tests)
+describes the placement. No successor is selected; commit, push, cleanup and live
+operations remain outside scope.
+
+## Completed objective — direct terminal conditional tests
+
+Founder selected A and separately said exact `approved` for v0.103.0.
+[terminal-conditional-tests.md](terminal-conditional-tests.md) owns the bounded
+contract and verification. Implementation and bounded verification are complete.
+All 726 discovered compiler tests and 216 isolated scaling cases pass.
+The canonical [language section](../../../concepts/pipelang.md#pipelang-v01030-direct-conditional-tests-in-terminal-trees)
+describes the new placement. No successor is selected. Commit, push, cleanup and
+live operations remain outside scope.
+
+## Completed objective — terminal-tree boolean-selector initializers
+
+Founder selected A and separately said exact `approved` for v0.102.0.
+[terminal-boolean-selector-initializers.md](terminal-boolean-selector-initializers.md)
+owns completed scope and verification. The fresh 714-test compiler suite, integration
+checks and all 216 isolated scaling cases pass. No successor is selected.
+Commit, push, publication and live operations remain outside scope.
+
+## Completed objective — straight-line boolean-selector initializers
+
+Founder selected A and separately approved v0.101.0 implementation on 2026-09-08.
+[straight-line-boolean-selector-initializers.md](straight-line-boolean-selector-initializers.md)
+owns scope and verification. State: `completed`. The saved checkout baseline is
+`9af4a6de`; completed v0.100 evidence is retained. Commit, push, publication, cleanup,
+worktree creation and external operations remain outside scope. No successor is selected.
+
+## Completed current objective — arrow-method boolean selectors
+
+Founder selected A and separately approved v0.100.0 implementation on 2026-09-08.
+[arrow-boolean-selectors.md](arrow-boolean-selectors.md) owns scope and verification.
+State: `completed`. Completed v0.99 is committed at `7f5eeb7b`; its historical
+uncommitted prose does not change this baseline. Commit, push, publication, cleanup,
+worktree and external operations remain outside scope. No successor is selected.
+
+## Completed current objective — terminal-leaf boolean selectors
+
+Founder selected A and separately approved v0.99.0 implementation on 2026-09-08.
+[terminal-leaf-boolean-selectors.md](terminal-leaf-boolean-selectors.md) owns the
+bounded scope and verification. State: `completed`. Completed v0.98.0 is committed
+at `6ce476f6`; historical status below does not alter that baseline or current authority.
+Commit, push, cleanup, worktree and external operations remain outside scope.
+
+## Completed current objective — conditional boolean selectors
+
+Founder selected A and separately approved v0.98.0 implementation on 2026-09-08.
+[conditional-boolean-selectors.md](conditional-boolean-selectors.md) owns the bounded
+scope and verification. State: `completed`. Completed v0.97.0 is committed at
+`0c8e3bd1`; historical status below does not alter that baseline or current authority.
+No successor, commit, push, cleanup, worktree or external operation is authorized.
+
+## Completed current objective — depth-three terminal initializers
+
+Founder selected A and separately approved v0.97.0 implementation on 2026-09-08.
+[depth-three-terminal-initializers.md](depth-three-terminal-initializers.md) owns
+scope, exclusions and validation. State: `completed`. The v0.96 and shared-framework
+objectives are complete and committed; current baseline is `f4c00e56`.
+Historical snapshots below do not reopen performance work or change current authority.
+Commit, push, publication and successor selection remain separate.
+
+## Implemented shared native bundles
+
+The validated v0.91 bundle path is now the Linux retained-suite default. Full verification
+and migration reduced the executable cache from 14.391 GB to 12.692 GB (11.8 percent).
+All 634 discovered tests pass across 101 contained units before and after pruning, at
+271.910 and 272.063 seconds overall, with zero artifact misses. All current oracles,
+fresh compiler probes and language semantics are preserved.
+[Implementation and migration evidence](conformance-execution-performance.md#full-suite-bundle-promotion)
+records exact bytes, coverage and remaining storage. Changes are uncommitted. The whole-suite
+30-second and 1/1000-size goals remain unmet; other families have not been widened into bundles.
+
+## Earlier shared native bundle prototype
+
+The complete v0.91 layout-family prototype retains 56.6% fewer native artifact bytes and uses
+13.9% less median execution time, preserving all 2,859,840 vectors and 2064 native processes.
+At prototype completion, compiler intermediates were disposable and the original full cache was retained.
+[Final prototype evidence](conformance-execution-performance.md#shared-native-bundle-final-evidence)
+records that family proof. Full-cache migration was subsequently completed as recorded above;
+the 1/1000 target remains unproven.
+
+## Cache compaction follow-up — strict target not achieved
+
+The user requested unchanged rerun performance at 1/1000 of the roughly 14.4 GB cache.
+[Compaction evidence](conformance-execution-performance.md#strict-target-and-measured-experiments)
+records the tested approaches and their failure to meet that requirement. No cache or harness
+change was accepted; the committed performance implementation below remains intact.
+
+## Completed performance pass — 30-second target remains unmet
+
+The user requested a roughly 30-second target without compromising design. The saved checkout
+baseline is `87c1df6e`; previous optimization and its proof are committed.
+[conformance-execution-performance.md](conformance-execution-performance.md#final-evidence) records
+a complete retained-artifact rerun at 326.532 seconds, 6.54 times faster than 35.6 minutes.
+All inherited cases, independent oracles, fixture bytes and resource ceilings are preserved.
+This measures a warm rerun, not clean compilation. Changes remain uncommitted for review.
+
+## Completed objective — further conformance performance
+
+The user authorized further optimization after the committed three-slice baseline `04c07808`.
+[conformance-performance.md](conformance-performance.md#follow-up-final-evidence) owns the completed
+proof. Runtime oracle fixtures and bounded four-method batches reduce full conformance wall time
+from 57.0 to 35.6 minutes (37.6%). Representative medians fall 62.0–74.7% with lower memory.
+All 733 units pass; inherited outcomes, 278 layout inventories and 64 compiler fixtures are preserved.
+Production source, language contracts and resource ceilings are unchanged. Changes remain uncommitted;
+no successor implementation is selected.
+
+## Completed objective — conformance performance
+
+The user authorized profiling and reversible implementation in three slices.
+[conformance-performance.md](conformance-performance.md) owns the completed three-slice proof.
+All original coverage and resource ceilings are preserved; representative layouts are 26.6–30.4%
+faster, and full terminal summed unit time decreases 11.5%. Batching was rejected on memory evidence.
+v0.96 is complete and committed at `35680d50`; historical uncommitted wording is superseded.
+No additional implementation approval or successor selection is pending.
+
+## Completed current objective — depth-three straight-line initializers
+
+Founder selected A and separately approved v0.96.0 implementation on 2026-09-06.
+[depth-three-straight-line-initializers.md](depth-three-straight-line-initializers.md) owns
+scope, exclusions and validation. State: `completed`. Completed v0.95 is committed
+at `25f8af71`; its historical uncommitted wording is superseded. Commit, push,
+publication and successor selection remain separate.
+
+## Completed current objective — depth-three expression-bodied methods
+
+Founder selected A and separately approved v0.95.0 implementation on 2026-09-06.
+[depth-three-arrow-methods.md](depth-three-arrow-methods.md) owns scope, exclusions
+and validation. State: `completed`. Completed v0.94 is committed at `ecb035e6`;
+its historical uncommitted wording is superseded. Commit, push, publication and
+successor selection remain separate.
+
+## Completed current objective — depth-three terminal-leaf returns
+
+Founder approved option A in this task.
+[depth-three-terminal-leaf-returns.md](depth-three-terminal-leaf-returns.md) owns scope,
+exclusions and validation. State: `completed`. Completed v0.93 is committed at
+`0a54e858`; its historical uncommitted wording is superseded.
+Commit, push, publication and successor selection remain separate.
+
+## Completed current objective — depth-three straight-line returns
+
+Founder selected A and separately approved v0.93.0 implementation on 2026-09-06.
+[depth-three-straight-line-returns.md](depth-three-straight-line-returns.md) owns scope,
+exclusions and validation. State: `completed`. Completed v0.92 is committed at
+`ab59a59e`; its historical uncommitted wording is superseded. Commit, push,
+publication and successor selection remain separate.
+
+## Completed current objective — nested expression-bodied methods
+
+Founder selected A and separately approved v0.92.0 implementation on 2026-09-06.
+[nested-arrow-methods.md](nested-arrow-methods.md) owns scope, exclusions and verification.
+State: `completed`. Completed v0.91.0 is committed at `b1fbc31b`; its historical
+uncommitted wording is superseded. Commit, push, publication and successor selection
+remain separate.
+
+## Completed current objective — nested initializers throughout terminal trees
+
+Founder selected A and separately approved v0.91.0 implementation on 2026-09-06.
+[nested-terminal-initializers.md](nested-terminal-initializers.md) owns scope, exclusions,
+containment and verification. State: `completed`. v0.90.0 is committed at `83cd8adc`;
+historical uncommitted wording below is superseded. Commit, push, publication and successor
+selection remain separate.
+
+## Completed current objective — nested straight-line initializers
+
+Founder selected A and separately approved v0.90.0 implementation on 2026-09-06.
+[nested-straight-line-initializers.md](nested-straight-line-initializers.md) owns scope,
+exclusions, containment and evidence. State: `completed`.
+The completed v0.89.0 slice is committed at `2560ee1b`; historical uncommitted wording
+below is superseded. Commit, push, publication and successor selection remain separate.
+
+## Completed current objective — nested terminal-leaf returns
+
+Founder selected A and separately approved v0.89.0 implementation in this task.
+[nested-terminal-leaf-returns.md](nested-terminal-leaf-returns.md) owns scope, exclusions,
+contained validation and evidence. State: `completed`.
+The completed v0.88.0 slice is committed at `a8df6cc5`; earlier uncommitted wording and
+baseline references below are historical. Commit, push, publication and successor selection
+remain separate.
+
+## Completed current objective — nested straight-line returns
+
+Founder selected A and separately approved v0.88.0 implementation in this task.
+[nested-straight-line-returns.md](nested-straight-line-returns.md) owns scope, exclusions,
+contained validation and current evidence. State: `completed`.
+The completed v0.87.0 slice is committed at `ff9fa296`; earlier uncommitted wording and
+baseline references below are historical. Commit, push, publication and successor selection
+remain separate.
+
+## Completed current objective — conditional returns in terminal-tree leaves
+
+Founder selected A and separately approved v0.87.0 implementation in this task.
+[terminal-leaf-conditional-returns.md](terminal-leaf-conditional-returns.md) owns the exact
+scope, exclusions, containment and verification. State: `completed`.
+The completed v0.86.0 slice is committed at `9db7ed28`; earlier uncommitted wording
+and baseline references below are historical. Commit, push, publication and successor
+selection remain separate.
+
+## Completed current objective — conditional return composition
+
+Founder selected A and separately approved implementation of v0.86.0 in this task.
+[conditional-return-composition.md](conditional-return-composition.md) owns the exact scope,
+exclusions, containment requirements and verification status. State: `completed`.
+The completed v0.85.0 slice is committed at `f94fdafa`; earlier uncommitted/baseline wording
+below is historical. Commit, push, publication and successor selection remain separate.
+
+## Completed current objective — straight-line conditional locals
+
+The founder selected A and separately approved implementation of v0.85.0 in this task.
+[straight-line-conditional-locals.md](straight-line-conditional-locals.md) owns the exact scope,
+exclusions, containment requirements and verification status. State: `completed`.
+Baseline is clean `js/pipelang` at `a69a288b`, containing the completed compiler memory repair;
+earlier uncommitted/baseline wording below is historical. No successor, commit, push or
+publication is authorized by this approval.
+
+## Completed current objective — finite conditional-local sequences
+
+The founder selected A and separately approved implementation of v0.84.0.
+[finite-conditional-locals.md](finite-conditional-locals.md) owns the scope, exclusions, and
+verification. State: `completed`; implementation and terminal proof passed. v0.83 implementation and proof are committed at `08f01a47`;
+earlier uncommitted wording below is historical. No commit, push, publication, live action,
+or successor is authorized.
+
+## Completed current objective — two conditional locals in terminal trees
+
+The founder selected A and separately approved implementation of v0.83.0.
+[two-conditional-locals.md](two-conditional-locals.md) owns the objective, exclusions, and
+verification. The [canonical contract](../../../concepts/pipelang.md#pipelang-v0830-two-conditional-locals-in-terminal-trees)
+owns source/Core semantics. State: `completed`. The previous repair is committed at `776bfa9e`;
+its historical uncommitted wording below is superseded. No successor or commit is authorized.
+
+## Completed prior objective — multi-stage checked-chain inheritance repair
+
+The founder selected A and separately approved implementation in this task.
+[Multi-stage checked-chain inheritance repair](checked-chain-inheritance-repair.md) owns
+`TASK-021-next-compiler-slice-after-checked-propagation-inheritance-repair`, its bounded scope
+and passed terminal proof. State: `completed`; changes remain uncommitted for review.
+Language metadata remains v0.82.0.
+The prior checked-propagation inheritance repair is committed at `46ce299a`, superseding its
+historical uncommitted wording below. No successor is selected or authorized.
+
+## Completed prior objective — checked-propagation inheritance repair
+
+The founder selected A and separately approved implementation on 2026-09-04.
+[Checked-propagation inheritance repair](checked-propagation-inheritance-repair.md) owns
+`TASK-021-next-compiler-slice-after-numeric-comparison-repair`, its exact scope and proof.
+State: `completed`; implementation and terminal proof passed. Changes remain uncommitted for review.
+Language metadata remains v0.82.0. No successor is selected or authorized.
+The numeric-comparison repair is committed at `fb2f480a`, superseding its old uncommitted wording.
+
+## Completed prior objective — numeric-comparison evaluator parity
+
+The founder selected A and separately approved implementation on 2026-09-04.
+[Numeric-comparison repair](numeric-comparison-repair.md) owns
+`TASK-021-next-compiler-slice-after-v082`, its scope, exclusions, and completion proof.
+State: `completed`; implementation and terminal proof passed and are committed at `fb2f480a`.
+Existing language contracts remain unchanged at v0.82; no successor is selected or authorized.
+The v0.82 implementation and proof are committed at `8bb75896`; historical uncommitted wording
+below is superseded.
+
+## Completed prior objective — conditional local in terminal trees
+
+- Objective: `TASK-021-next-compiler-slice-after-v081`.
+- State: `completed`; founder selected A and separately said `approved` on 2026-09-04.
+  Implementation and terminal proof passed; changes remain uncommitted for founder review.
+  [Step 8av](completed-functions.md#step-8av-conditional-local-in-terminal-trees-v0820) records proof.
+  No successor is selected or authorized.
+- Execution skill: `dorkpipe-objective-execution`; authority: explicit founder approval.
+- Scope: `v0.82.0` adds at most one nonterminal ternary per method, only as the complete
+  initializer of one explicitly typed immutable local anywhere in a terminal tree through
+  depth three. Boolean condition, exact arm/local types, lexical descendant scope, lazy arm
+  evaluation, and source-ordered surrounding initializers are mandatory.
+- Representations: existing typed HIR/Core immutable-local and conditional nodes; independent
+  Core placement/count/depth/type/scope validation; evaluator and Core-only Go consume Core.
+- Completion criteria (passed): all 25 shapes, all lexical initializer positions and return paths, both arms,
+  eager order and laziness, source diagnostics, malformed-Core/backend refusal, deterministic
+  evaluator/pristine-Go agreement, and Application IR consumer proof pass; focused then terminal
+  compiler/consumer/45-source compatibility, CLI, vet, formatting, editor, and doc checks pass.
+- Preserve: accepted versioned forms and combinations, internal Core capabilities, public
+  compiler/semantic/Application IR identities, saved checkout, and exact frozen 45-source lane.
+- Exclude: new ternaries in return/condition/argument positions, nested or multiple ternaries,
+  deeper trees, new matching/propagation combinations, fallthrough, loops, mutation, effects,
+  unrelated repairs, commit, push, publication, generated-store refresh, credentials, live actions.
+- Checkpoints: automatic within this approved scope; handoff only if user requested.
+- Prior baseline: v0.81 implementation and proof committed at `c8dd8a9c70837eb6313240552e5172a78f76565c`;
+  the prior uncommitted wording below is superseded. Deferred numeric-comparison evaluator and
+  checked-propagation source-admission findings remain outside scope.
+
+## Prior v0.81 objective — completed and committed
+
+The [six v0.80 milestone repairs](milestone-v080-repairs.md) are complete, reviewed, and committed
+at `acbd10f88207d0a226ec24a073948362691adb8c`. The founder requested continuation to the next
+compiler slice on 2026-09-04. Option A is now implemented and verified as `v0.81.0`;
+earlier accepted language boundaries below remain unchanged.
+
+- Objective: `TASK-021-next-compiler-slice`.
+- State: `completed`; option A selected, separately approved, implemented, and verified on 2026-09-04.
+- Authority: the founder requested this continuation, selected A, and separately said `approved`.
+- Prior boundary: v0.81 was reviewed and committed at `c8dd8a9c`; the approved v0.82
+  objective above supersedes this historical boundary. Completion evidence is in
+  [step 8au](completed-functions.md#step-8au-terminal-trees-through-depth-three-v0810).
+- Admit the completed milestone proof; reopen it only for drift, a new failure, or a direct
+  dependency. The documented numeric-comparison evaluator limitation remains open and is not
+  automatically selected as the next slice.
+- Preserve the saved checkout, public identities, internal Core capabilities, and frozen 45-source
+  lane. No commit, push, publication, worktree, generated-store refresh, credentials, live operation,
+  or automatic future handoff is authorized by this continuation.
+
+### Completed option A — terminal trees through depth three
+
+This separately approved scope is complete. The [canonical language contract](../../../concepts/pipelang.md#pipelang-v0810-terminal-trees-through-depth-three)
+owns public behavior; the completion record owns proof and deferred findings.
+Alternatives B (exactly three expanded leaves) and C (numeric-comparison evaluator parity) were
+not selected as the objective.
+
+- **Source:** admit any terminal binary `if/else` tree with one to three decisions along a path,
+  including asymmetric trees and three or four expanded leaves on the symmetric depth-two base.
+  Each scope has zero or more finite, source-ordered, explicitly typed immutable locals followed
+  by either a terminal `if/else` or an exact-type return. This bounds the branching tree to seven
+  decisions and eight return paths; it does not add a new limit on local-sequence length.
+- **Semantics:** conditions are `bool`; every return exactly matches the declared method type.
+  A binding enters scope after its initializer and is visible only in its lexical descendants.
+  Preserve rejection of self/forward references, duplicates, shadowing, and sibling/escaping
+  references. Root locals execute eagerly once; selected-path locals execute once in order;
+  unselected branches do not execute. Operand forms retain the existing terminal-tree restrictions.
+- **Representations:** source analysis produces typed HIR, then target-neutral Core using existing
+  terminal `conditional` and `immutable_local` nodes. Core independently validates depth, complete
+  branches, terminal placement, types, positions, and lexical references. The evaluator and
+  Core-only Go backend consume validated Core; semantic/Application IR consumers use their
+  existing identities without reparsing or inferring language behavior.
+- **Value:** compiler parser/typechecker routines can express bounded decisions in their natural
+  asymmetric shapes without manufacturing a symmetric tree.
+- **Exclusions:** depth four, fallthrough, nonterminal/early returns, assignment, loops, effects,
+  inference, and new combinations with matching, propagation, or conditional expressions.
+  Existing accepted forms remain exact, including combinations already admitted by earlier
+  contracts. Numeric-comparison evaluator repair is deferred. No runtime, action, target, adapter,
+  UI, deployment, or self-hosted compiler implementation is included.
+- **Completion proof:** enumerate all 25 terminal branching shapes through depth three (excluding
+  the no-decision leaf) and every return path; cover root/branch/leaf local sequences, exact typing,
+  source spans, lexical visibility, eager order, and branch laziness. Require source rejection
+  tests, independent malformed-Core rejection including backend refusal, HIR/Core structure,
+  deterministic evaluator/generated-Go agreement, repeated artifact identity, semantic projection,
+  and an Application IR consumer fixture exercising newly admitted shapes. Preserve all accepted
+  versioned forms, internal Core capabilities, public compiler/semantic/Application IR identities,
+  and the frozen exact 45-source lane. Run focused checks followed by terminal PipeLang,
+  Application IR, compatibility, affected application/CLI, vet, formatting, editor syntax, and
+  documentation checks. Synchronize canonical language docs and task state with the approved
+  implementation. Continue ordinary checkpoints in this task without automatic handoff.
+
+Steps 7 and 8a of **Bounded Implementation Order** have completed the fixed numeric, compiler-internal
+checked-arithmetic Result, and direct production-source checked add, subtract, multiply, negate,
+binary64 divide, first-class arithmetic Result transport, ordinal Unicode text ordering, and
+primitive immutable record-identity transport, one-hop primitive-record field projection, and
+exact primitive-record construction and structural equality, plus primitive Optional
+construction, identity transport, presence inspection, and bounded defaulting slices, plus
+deterministic empty, singleton, identity transport, and cardinality of primitive-record lists.
+Deterministic immutable append of one primitive record to a primitive-record list is also complete.
+Exact Optional construction, identity transport, presence inspection, and bounded defaulting for
+one existing public primitive record is also complete.
+Exact construction, identity transport, success inspection, and bounded success/failure defaulting
+for one `Result<List<R>, string>` read-only snapshot envelope is also complete.
+Exact safe zero-based indexing of one primitive-record list into `Optional<R>` is also complete.
+Exact first-match lookup of one primitive-record list by one selected public string field into
+`Optional<R>` is also complete.
+Exact stable-order filtering of one primitive-record list by one selected public string field into
+`List<R>` is also complete.
+Exact Unicode 17.0.0 full-default case-folded containment of two direct strings is also complete.
+Exact stable-order case-folded containment filtering of one primitive-record list by one selected
+public string field is also complete.
+Exact construction, identity transport, success inspection, and bounded success/failure defaulting
+for `Result<string, string>` is also complete.
+Exact deterministic trimming of leading and trailing Unicode 17.0.0 `White_Space` from one direct
+strict-UTF-8 string is also complete.
+Exact stable-order filtering of one primitive-record list by exactly five source-ordered public
+string fields and one trimmed case-folded query is also complete.
+Exact stable ascending ordinal sorting of one primitive-record list by one selected public string
+field is also complete.
+Exact stable-order joined case-folded filtering by a record-bounded variable count of two or more
+source-ordered distinct public string fields is also complete.
+Exact stable ascending lexicographic ordinal sorting of one primitive-record list by a
+record-bounded variable count of two or more source-ordered distinct public string fields is also
+complete.
+`v0.2.0` admits only the exact explicit Result-returning addition;
+`v0.3.0` adds only direct subtraction; `v0.4.0` adds only direct multiplication; `v0.5.0` adds only
+direct integer negation; `v0.6.0` adds only direct binary64 division; and `v0.7.0` adds only direct
+identity transport of one identical existing arithmetic Result parameter and return while preserving
+every prior contract. `v0.8.0` adds only `<`, `<=`, `>`, and `>=` ordinal scalar-sequence ordering
+in the exact two-parameter direct method shape while preserving prior text concatenation/equality.
+`v0.9.0` adds only public nonempty primitive immutable records and exact one-parameter identity
+transport while preserving every prior contract.
+`v0.10.0` adds only direct one-hop read-only projection of one declared primitive field from the
+sole record parameter while preserving every prior contract.
+`v0.11.0` adds only direct declaration-ordered construction of one existing public primitive
+record from one corresponding primitive parameter per field while preserving every prior contract.
+`v0.12.0` adds only direct structural `==` and complementary `!=` between two parameters of the
+same existing public primitive record while preserving every prior contract.
+`v0.13.0` adds only `Optional<T>` for primitive `T` with exact direct `some(value)`, `none<T>()`,
+identity transport, and `has_value(value)` methods while preserving every prior contract.
+`v0.14.0` adds only exact two-parameter `value_or(Optional<T>, T) -> T` for primitive `T`, with
+both arguments canonically validated before selection, while preserving every prior contract.
+`v0.15.0` adds only `List<R>` for one existing public primitive record `R`, with exact direct
+`empty_list<R>()`, `list(value)`, and identity transport methods, fixed `pipelang:list` identity,
+canonical per-element validation, and copied storage while preserving every prior contract.
+`v0.16.0` adds only exact direct `count(List<R>) -> int` cardinality for one existing public
+primitive record `R`, with complete list/element validation and no implicit iteration semantics,
+while preserving every prior contract.
+`v0.17.0` adds only exact direct `append(List<R>, R) -> List<R>` for one existing public primitive
+record `R`, with complete input and appended-record validation plus fresh copied storage while
+preserving every prior contract.
+`v0.18.0` adds only exact direct `some`, `none`, identity transport, `has_value`, and `value_or`
+methods for `Optional<R>` where `R` is one existing public primitive record, with complete tagged
+value and record validation plus copied result storage while preserving every prior contract.
+`v0.19.0` adds only exact direct `ok`, `err`, identity transport, `is_ok`, `success_or`, and
+`failure_or` methods for `Result<List<R>, string>` where `R` is one existing public primitive
+record, with complete tagged payload/fallback validation plus copied list and record storage while
+preserving every prior contract.
+`v0.20.0` adds only exact direct `at(List<R>, int) -> Optional<R>` for one existing public
+primitive record `R`, with complete list and record validation before zero-based bounds selection,
+canonical absence, and copied selected-record storage while preserving every prior contract.
+`v0.21.0` adds only exact direct `find_by(List<R>, R.Field, string) -> Optional<R>` for one existing
+public primitive record `R` and one selected public string field, with complete list, record, and key
+validation before first ordinal-equal selection, canonical absence, and copied selected-record
+storage while preserving every prior contract.
+`v0.22.0` adds only exact direct `filter_by(List<R>, R.Field, string) -> List<R>` for one existing
+public primitive record `R` and one selected public string field, with complete list, record, and
+key validation before retaining every ordinal-equal match in stable input order, canonical non-nil
+empty output, and fresh copied list/record storage while preserving every prior contract.
+`v0.23.0` adds only exact direct `contains_casefolded(string, string) -> bool`, using pinned Unicode
+17.0.0 full default C/F mappings after complete UTF-8 validation of both operands. Containment is
+over the folded contiguous scalar sequence; an empty query matches. It performs no normalization,
+locale tailoring, grapheme segmentation, or host-runtime case conversion and preserves every prior
+contract.
+`v0.24.0` adds only exact direct
+`filter_contains_casefolded(List<R>, R.Field, string) -> List<R>` for one existing public primitive
+record `R` and one selected public string field. It completely validates the list, every record,
+field, and UTF-8 query before applying the pinned `v0.23.0` Unicode 17.0.0 full-default C/F
+containment rule, retaining every match in stable input order with canonical non-nil empty output
+and fresh copied list/record storage while preserving every prior contract.
+`v0.25.0` adds only exact direct `ok`, `err`, identity transport, `is_ok`, `success_or`, and
+`failure_or` methods for `Result<string, string>`. It completely validates tagged payloads and both
+selected and unselected fallback text as strict UTF-8, requires the canonical empty success payload
+for failures, reuses the existing Result semantic identity and HIR/Core expression kinds, and
+preserves every prior contract.
+`v0.26.0` adds only exact direct `trim(string) -> string`. It validates the direct parameter as
+strict UTF-8, removes the maximal leading and trailing sequence of scalars in the pinned Unicode
+17.0.0 `White_Space` set, preserves interior scalars exactly, returns canonical empty text for an
+all-whitespace input, carries one explicit `text_trim` HIR/Core node, and preserves every prior
+contract.
+`v0.27.0` adds only exact direct
+`filter_joined_contains_casefolded(List<R>, R.Field1, R.Field2, R.Field3, R.Field4, R.Field5,
+string) -> List<R>`. The two runtime operands are direct `List<R>` and `string` parameters; the five
+source-ordered selectors are distinct existing public string fields of the same existing primitive
+record `R`. It completely validates the query, list, records, and every field before filtering,
+joins selected strings with one U+0020 SPACE, trims the query with the pinned `v0.26.0` Unicode
+17.0.0 `White_Space` rule, then applies the pinned `v0.23.0` Unicode 17.0.0 full-default C/F
+case-folded contiguous containment rule. Empty trimmed query retains all rows; matches preserve
+stable order; empty output is canonical non-nil storage; result list and records are fresh copies.
+Typed HIR and target-neutral Core carry the explicit
+`list_filter_joined_contains_case_folded_text` node with five ordered field identities, names, and
+positions. `pipelang.compiler.v1`, `pipelang.semantic.v1`, and every earlier contract remain
+unchanged.
+`v0.28.0` adds only exact direct `sort_by_ordinal(List<R>, R.Field) -> List<R>` for one existing
+public primitive record `R` and one selected public string field. It completely validates the list,
+every record, and every selected and unselected field before returning a stable ascending sort under
+the existing `v0.8.0` ordinal Unicode scalar-sequence order. Equal keys retain input order; empty
+output is canonical non-nil storage; result list and records are fresh copies. Typed HIR and
+target-neutral Core carry the explicit `list_sort_by_ordinal_text` node with the field identity,
+name, and declaration position. `pipelang.compiler.v1`, `pipelang.semantic.v1`, and every earlier
+contract remain unchanged.
+`v0.29.0` widens only exact direct
+`filter_joined_contains_casefolded(List<R>, R.Field1, R.Field2, ..., string) -> List<R>` to two or
+more source-ordered selectors, bounded by the distinct public string fields of the same existing
+primitive record `R`. The list and query remain the two direct runtime parameters. It completely
+validates the query, list, every record, and every selected and unselected field before joining the
+selected strings with one U+0020 SPACE, trimming the query under v0.26.0, and applying the pinned
+v0.23.0 Unicode 17.0.0 full-default case-folded containment rule. Matches preserve stable input
+order; empty output is canonical non-nil storage; result lists and records are fresh copies. Typed
+HIR and target-neutral Core reuse the explicit `list_filter_joined_contains_case_folded_text` node
+and its ordered field identities, names, and positions. `v0.27.0` and `v0.28.0` retain their exact
+five-selector rule. `pipelang.compiler.v1`, `pipelang.semantic.v1`, and every earlier contract
+remain unchanged.
+`v0.30.0` widens only exact direct
+`sort_by_ordinal(List<R>, R.Field1, R.Field2, ...) -> List<R>` to two or more source-ordered
+selectors, bounded by the distinct public string fields of the same existing primitive record `R`.
+It completely validates the list, every record, and every selected and unselected field before
+returning a stable ascending lexicographic sort under the existing `v0.8.0` ordinal Unicode
+scalar-sequence order. The first unequal selected field decides each comparison; rows equal across
+all selectors retain input order. Empty output is canonical non-nil storage, and result lists and
+records are fresh copies. One-selector source under `v0.30.0` preserves the exact `v0.28.0`
+`list_sort_by_ordinal_text` HIR/Core projection; two or more selectors use the explicit
+`list_sort_by_ordinal_texts` node with ordered field identities, names, and declaration positions.
+`v0.28.0` and `v0.29.0` retain their exact one-selector rule. `pipelang.compiler.v1`,
+`pipelang.semantic.v1`, and every earlier contract remain unchanged.
+`v0.31.0` adds only exact direct
+`filter(List<R>, PredicateName, P1, ...) -> List<R>` and a same-public-class public
+`bool PredicateName(R item, P1, ...)` whose trailing parameters are primitive. The filter list and
+arguments are direct declared parameters in order. The predicate is a bounded pure expression over
+literals, trailing primitive parameters, one-hop public primitive fields of `item`, logical and
+comparison operators, `contains_casefolded`, and `trim`. Typed HIR and target-neutral Core carry an
+explicit `list_filter_predicate` node with the predicate method's existing semantic identity and
+ordered operands; local predicate bindings create no new public identity. Core validation resolves
+the target within the lowered program. Evaluation and deterministic Core-only Go validate all
+arguments and the complete list before iteration, invoke the predicate once per row in input order,
+require bool, fail atomically, and produce stable canonical non-nil fresh copied output.
+`pipelang.compiler.v1`, `pipelang.semantic.v1`, and every earlier contract remain unchanged.
+All other numeric arithmetic and every other Result construction, composition, or consumption form
+beyond the exact accepted checked-arithmetic helper match remain fail-closed from production source. Any next slice requires a new
+synchronized decision for its exact source spelling, type/value handling rule, semantic projection,
+migration, and bounded semantics before implementation.
+
+The first accepted application consumer is TASK-020's one-to-one DockPipe Launcher replacement,
+beginning with read-only Docker observability. Its typed snapshot requirements are dependency
+evidence when comparing remaining successor options. Completed primitive record transport, one-hop
+field projection, exact construction, structural equality, and primitive Optional presence satisfy
+five dependencies; bounded primitive Optional defaulting satisfies a sixth. They do not authorize
+nested or general record value use, optional extraction beyond `value_or` or composition,
+arbitrary multi-element collection construction or collection consumption, failures, UI, actions,
+effects, or Qt behavior as one batch. The accepted list foundation now satisfies the read-only
+consumer's empty, singleton, pass-through, count-summary, and deterministic multi-row growth
+boundary. The accepted record-Optional slice additionally satisfies typed absence/presence and
+deterministic whole-record fallback at that read-only boundary. The accepted snapshot-Result slice
+adds a typed whole-snapshot success/failure boundary plus deterministic cached-list and error
+fallback. The accepted list-at slice additionally provides safe positional row selection. The
+accepted stable-key slice additionally provides first-match selection and detail lookup by the
+consumer's stable string identity. The accepted selected-field filter slice additionally provides
+stable exact-field snapshot subsets. The case-folded text predicate supplies deterministic
+human-entered status/log matching, and the selected-field case-folded list filter now applies that
+predicate to one public string field while preserving adapter order. Direct deterministic trimming
+provides bounded whitespace cleanup for adapter-supplied labels, filters, and diagnostics. The
+exact five-field joined filter now supplies deterministic Name/State/Image/Ports/Created search.
+The variable-selector extension removes the language-level five-field arity coupling for future
+separately accepted projections without changing the frozen launcher behavior by implication.
+The exact one-field and multi-key ordinal sorts now supply target-neutral deterministic
+collection-ordering primitives, but applying either to the first launcher would require a separate
+TASK-020 parity decision because the checked-in oracle does not expose table sorting. The named
+predicate filter now supplies reusable deterministic combined row visibility/state filtering
+without authorizing any UI or adapter projection. Dynamic field selection, general functions and
+lambdas, descending or per-key direction sorting, general indexing,
+propagation, matching, and application projection remain later decisions.
+
+No broader Step-8 slice is included here. In particular, this checkpoint does not add general Result
+construction, inspection, extraction, wrapping, unwrapping, propagation, or matching beyond the
+exact accepted `Result<List<R>, string>` and `Result<string, string>` forms; additional
+Unicode text construction/scalar/grapheme APIs, trim variants or composition, normalization,
+locale-aware or additional case operations, value/reference,
+hashing, general total-order capabilities, optional extraction beyond `value_or`, equality,
+implicit defaults, nesting, chaining,
+general result, record nesting/chained or general access/mutation/hash/order, union, or additional
+deterministic collection production or consumption semantics beyond exact `filter_by`,
+`filter_contains_casefolded`, `filter_joined_contains_casefolded`, `sort_by_ordinal`, and the bounded
+named-predicate `filter`; accept
+namespace, import, migration, `internal`, overload, generic, or ID production syntax; implement
+overload resolution;
+add new types/declarations/expressions/operators, blocks, locals, branches, or loops; add effects,
+entrypoints, actions/state, contracts/replay, executable application/service semantics, Application
+IR, Service IR, another backend, or self-hosting; mutate generated stores; or widen Go emission by
+guessing successor semantics. Exact successor production spellings remain later synchronized language
+slices.
+
+## Accepted v0.32.0 boundary — per-key ordinal sorting direction
+
+`v0.32.0` adds only the paired direct spelling
+`sort_by_ordinal(values, R.Field1, ascending|descending, ...) -> List<R>`, with one or more
+source-ordered selector/direction pairs. `ascending` and `descending` are contextual identifiers
+only in those direction positions. The method still has exactly one direct `List<R>` parameter and
+the identical `List<R>` return, and its body is exactly this call. Every selector names a distinct
+public `string` field on the same existing primitive record. The complete input list, every record,
+and every field are validated before stable lexicographic ordinal Unicode scalar-sequence sorting.
+Equality at every key preserves source order. Empty results are non-nil, and all result/list/record
+storage is copied. The semantic projection changes only its explicit language-contract value;
+field and method stable identities are unchanged.
+
+Typed HIR and target-neutral Core use the dedicated `list_sort_by_ordinal_directions` expression,
+whose ordered selectors carry field semantic identity, source name, declaration position, and the
+canonical `ascending` or `descending` direction. The evaluator and Core-only Go backend validate
+before comparison and apply the same direction independently at each key. The legacy one-key
+`list_sort_by_ordinal_text` and ascending multi-key `list_sort_by_ordinal_texts` nodes and every
+v0.28.0/v0.30.0 source remain exact under their prior contracts; v0.32.0 intentionally requires
+explicit direction pairs and performs no implicit migration.
+
+This independently reviewable slice gives TASK-020 deterministic target-neutral descending and
+mixed-key row ordering without introducing dynamic selectors, direction values outside this call,
+comparers, normalization, case folding, locale tailoring, mutation, composition, general ordering,
+indexing, propagation, matching, Application IR, runtime behavior, or target behavior.
+
+
+## Accepted v0.33.0 boundary — safe general indexing
+
+`v0.33.0` adds only postfix `values[index] -> Optional<R>` for an existing primitive-record
+`List<R>` receiver and signed 64-bit `int` index. The enclosing method is exactly
+`Optional<R> M(List<R> values, int index) => values[index];`: two direct parameters in receiver/index
+order, no computed operands, nesting, or chaining. Negative and out-of-bounds indices produce canonical
+`none`; there are no panics, exceptions, defaults, negative-index translation, or target semantics. The
+complete non-nil list and every record/field are validated before selection; a present record and all
+list/record storage are copied.
+
+The semantic projection changes only its explicit language-contract value; callable, parameter, record,
+field, List, and Optional stable identities are unchanged. Typed HIR and target-neutral Core deliberately
+reuse the existing `list_at` node with direct list/index references, so the evaluator and Core-only Go
+backend retain identical deterministic validation, absence, and copying behavior. TASK-020 gains concise
+safe optional row selection without adapter-inferred bounds behavior. The v0.20.0 `at(values, index)`
+spelling and node remain accepted unchanged; earlier contracts do not accept postfix indexing.
+
+This is one coherent independently reviewable syntax-to-existing-semantics slice. It excludes primitive,
+nested, Optional, Result, string, map, and arbitrary receivers; non-int indices; literals, slicing, ranges,
+negative-index magic, unchecked access, defaults, mutation, composition, chaining, propagation, matching,
+Application IR, runtime behavior, and target behavior.
+
+## Accepted v0.34.0 boundary — bounded propagation
+
+`v0.34.0` adds only the contextual expression `propagate(carrier)` as the direct payload of the
+complete method body `some(propagate(carrier))` or `ok<T, E>(propagate(carrier))`. `carrier` is one
+direct parameter and must have the identical enclosing return carrier type. The Optional matrix is
+exactly the already admitted `Optional<T>` primitive and public primitive-record forms; the Result
+matrix is exactly the already admitted `Result<List<R>, string>` and `Result<string, string>` forms.
+On presence/success, propagation extracts a canonically validated, copied payload and the explicit
+outer constructor rebuilds the identical carrier. On absence/failure it returns the identical
+canonical carrier immediately without evaluating a later expression. Misuse is source-located as
+`PL3032`; `PL3029`–`PL3031` remain reserved for bounded matching diagnostics.
+
+Typed HIR and target-neutral Core carry an explicit `propagate` node containing its operand, inner
+success type, carrier type, and source span in HIR. Core validation proves the carrier/inner
+relationship. The evaluator and Core-only Go backend validate the complete input carrier before
+branching, preserve absence/failure exactly, and copy present/success record/list storage through the
+existing constructors and clone helpers. The semantic projection and public identities are
+unchanged because `propagate` is method-body control flow, not a declaration. This supplies TASK-020
+a bounded way to forward optional selection/details and read-only section failure without defaults.
+
+This independently reviewable slice adds no postfix operator, implicit conversion, exception,
+arbitrary Result, nested carrier, async/effect behavior, target-owned error semantics, matching,
+blocks, locals, or general early return. Every v0.1.0–v0.33.0 source remains unchanged and does not
+recognize `propagate` contextually.
+
+## Accepted v0.35.0 boundary — exhaustive bounded matching
+
+`v0.35.0` adds only `match(directTaggedParameter){ arms }` for every already admitted
+`Optional<T>` and `Result<T,E>` carrier, including checked-arithmetic Results. Optional arms are
+`some(binding) => expression` and `none => expression`; Result arms are `ok(binding) => expression`
+and `err(binding) => expression`. A final `_ => expression` is the only wildcard. Payload patterns
+require exactly one arm-local binding, absence has none, and every arm expression must have exactly
+the declared method return type—there are no conversions or inferred common supertypes. `PL3029`
+reports a missing tag, `PL3030` a duplicate tag, and `PL3031` any arm following `_`, deterministically
+at the pattern or complete match span.
+
+Typed HIR and target-neutral Core carry a dedicated `match` node, source-ordered arms, and explicit
+arm-local bindings distinct from parameters. The evaluator and Core-only Go backend validate the
+complete carrier, select exactly one arm, bind a validated copied payload, and evaluate only that
+arm. Matching changes no semantic declaration or stable identity; only the semantic projection's
+language-contract value advances. TASK-020 can now consume optional selection/details and explicit
+section success/failure without adapter-inferred defaults or tag semantics.
+
+This is one coherent independently reviewable syntax, typing, control-flow, diagnostics, execution,
+editor, and compatibility slice. Earlier source remains exact. Guards, destructuring, literals,
+open unions, fallthrough, blocks, effects, implicit conversion, target errors, actions, and
+Application IR are excluded.
+
+## Accepted v0.36.0 boundary — same-class pure calls
+
+`v0.36.0` adds only `Method(expression, ...)` inside a public expression-bodied method. The target
+must be one uniquely named public method declared by the same class. Semantic analysis resolves the
+target before lowering, requires exact ordered argument types and the exact declared return type,
+and rejects private callers or targets, missing targets, arity/type mismatches, direct recursion,
+and indirect cycles. Every call participant is closed over parameters and match-arm bindings rather
+than class-owned state. Calls may nest, and arguments may use expressions already admitted by the
+language contract. `PL3033` is the deterministic call-cycle diagnostic.
+
+Typed HIR and target-neutral Core carry an explicit `call` node with the existing callable semantic
+identity, source target name, and ordered typed operands. Lowering closes the transitive call graph
+and includes each dependency once. Core independently validates target presence, same-class owner,
+exact callable identity and signature, and acyclicity. The evaluator validates and copies argument
+values into isolated call frames. The deterministic Go backend consumes only validated Core and
+emits calls without resolving or inferring source semantics.
+
+TASK-020's Docker observability fixture proves
+`OrderContainers(FilterContainers(rows, query))` while the separately versioned
+`dockpipe.application.v1` projection keeps its existing explicit filter/order bindings. The public
+`pipelang.semantic.v1`, `pipelang.compiler.v1`, and `dockpipe.application.v1` schema shapes remain
+unchanged; only their recorded language-contract value advances. All 45 frozen legacy sources
+remain exact.
+
+This slice excludes cross-class or cross-module calls, private callers or targets, overloads,
+generics, function values, lambdas, recursion, blocks, locals, branches, loops, effects,
+entrypoints, async behavior, Application IR semantics, runtime behavior, and target-specific
+semantics. Any next language seam requires another source-backed founder decision and separate
+implementation approval.
+
+## Accepted v0.37.0 boundary — general pure-call composition
+
+`v0.37.0` removes only the v0.36.0 placement restriction that limited a call to the complete method
+body or a directly nested call argument. The same resolved call node may appear throughout
+expressions already admitted as eager and pure, including match-arm bodies, record and Optional
+construction, text operations, and arithmetic or comparison operands. Match carriers and
+propagation operands remain direct references. No new control-flow form or evaluation order is
+introduced.
+
+Semantic analysis retains the uniquely named public same-class target, exact ordered signature,
+parameter/arm-local closure, and deterministic `PL3033` cycle rejection. Typed HIR and
+target-neutral Core reuse the existing call node and transitive dependency closure. Core validates
+nested placement recursively; the evaluator uses isolated copied call frames; the Go backend emits
+only Core-validated calls and performs no semantic inference.
+
+TASK-020's Docker observability fixture proves an `Optional<ContainerRow>` selection match whose
+`some` arm calls `NormalizeName(row.Name)`. `pipelang.compiler.v1`, `pipelang.semantic.v1`, and
+`dockpipe.application.v1` retain their schema shapes; only language-contract metadata advances.
+All 45 frozen legacy sources remain exact. Cross-class/module calls, private targets, overloads,
+generics, function values, lambdas, recursion, blocks, locals, branches, loops, effects,
+entrypoints, runtime behavior, and target-specific semantics remain excluded.
+
+## Accepted v0.38.0 boundary — bounded conditional expression
+
+`v0.38.0` admits exactly one `condition ? whenTrue : whenFalse` node per method. The condition is
+exactly `bool`; both branches are statically checked and must have the exact same admitted type;
+only the selected branch executes. The three operands may contain existing eager pure expressions,
+including resolved v0.37.0 same-class calls, but may not contain another conditional, match, or
+propagation node. Match and propagation retain their established direct-carrier boundaries.
+
+Typed HIR and target-neutral Core represent the condition and both branches explicitly. Core
+independently validates the one-node bound, placement, operand exclusions, condition type, and
+branch/result equality. The evaluator selects one branch; the Go backend emits only from validated
+Core and performs no semantic inference. TASK-020's Docker observability fixture proves
+`name == "" ? fallback : NormalizeName(name)`. Public compiler, semantic projection, and
+Application IR schema shapes remain unchanged; only language-contract metadata advances, and all
+45 frozen legacy sources remain exact.
+
+This boundary adds no `if` statement, block, local, mutation, implicit conversion, pattern guard,
+effect, action, runtime policy, Application IR inference, or target behavior. Any further language
+seam requires another source-backed founder decision and separate implementation approval.
+
+## Accepted v0.39.0 boundary — immutable local plus terminal return
+
+`v0.39.0` admits exactly one method block of the form
+`{ T name = initializer; return expression; }`. The local type is explicit and must exactly match
+the initializer. Initialization is eager and occurs exactly once before the local enters lexical
+scope. The return expression may reference parameters, the local, and existing admitted pure
+expressions. An explicit checked-arithmetic `Result` local supplies the required result context.
+Contextual propagation remains confined to its established complete-method carrier shape and is
+excluded from both local expressions. The local cannot shadow a field or parameter and has no
+public semantic identity.
+
+Typed HIR and target-neutral Core carry one explicit `immutable_local` node containing the
+analysis-local binding, declared type, initializer, and terminal return. Core independently
+validates the single top-level node, canonical binding position, initializer scope and type, and
+return type. The evaluator copies the initialized value into the local frame once; the Core-only Go
+backend emits an equivalent typed lexical binding. TASK-020's Docker observability fixture proves
+normalization into one local followed by the existing bounded fallback conditional. Compiler,
+semantic projection, and Application IR schema shapes remain unchanged; only language-contract
+metadata advances, and all 45 frozen legacy sources remain exact.
+
+This boundary adds no inference, multiple locals, reassignment, shadowing, propagation, early return, `if`
+statement, nested block, loop, effect, action, runtime policy, Application IR inference, or target
+behavior. Any further language seam requires another source-backed founder decision and separate
+implementation approval.
+
+## Accepted v0.40.0 boundary — ordered immutable locals
+
+`v0.40.0` widens only the v0.39.0 method block to one or more source-ordered declarations followed
+by one terminal return:
+`{ T1 first = expression1; T2 second = expression2; ... return expression; }`. Every local type is
+explicit and must exactly match its initializer. Initializers evaluate eagerly exactly once in
+source order. A local enters lexical scope only after its initializer, so a later initializer may
+reference earlier locals while self-reference and forward reference fail. Local names are unique
+within the sequence and cannot shadow fields or parameters. Locals remain immutable and have no
+public semantic identity.
+
+Typed HIR and target-neutral Core reuse the explicit `immutable_local` node as one right-nested
+top-level sequence with contiguous binding positions after the parameters. Core independently
+proves that every local is in that sequence, validates exact initializer and return types, and
+rejects parameter/prior-local shadowing or a local in any initializer or non-sequence expression position. The evaluator
+and Core-only Go backend evaluate and copy each initialized value once, extend lexical scope in
+order, and evaluate the terminal return only after the sequence completes. TASK-020's Docker
+observability fixture proves normalization into one local, conditional selection into a second,
+and return of the selected value.
+
+Compiler, semantic projection, and Application IR schema identities and shapes remain unchanged;
+only language-contract metadata advances, and all 45 frozen legacy sources remain exact. This
+boundary adds no inference, reassignment, propagation inside the block, early return, statement
+branch, nested block, loop, effect, action, runtime policy, Application IR inference, or target
+behavior. Any further language seam requires another source-backed founder decision and separate
+implementation approval.
+
+## Accepted v0.41.0 boundary — block-scoped bounded propagation
+
+`v0.41.0` admits exactly one declaration spelled `T name = propagate(carrier);` as the first
+immutable local of a public pure method block. `carrier` must be the method's sole direct
+parameter, and its carrier type must exactly equal the method return type. `T` must exactly equal
+the carried payload type. When the carrier is present or successful, evaluation copies the
+validated payload into `name`, then evaluates later ordered locals and the terminal return. When
+the carrier is absent or failed, evaluation immediately returns the identical canonical carrier.
+
+The carrier matrix is closed: `Optional<T>` where `T` is an already admitted primitive or record,
+`Result<List<R>, string>`, and `Result<string, string>`. Typed HIR and target-neutral Core reuse the
+existing `propagate` expression and canonically positioned right-nested `immutable_local` nodes.
+Core independently proves the first-local placement, single propagation occurrence, direct sole
+parameter operand, exact carrier and payload types, and bounded carrier shape. The evaluator and
+Core-only Go backend preserve the same short-circuit and copied-value behavior. TASK-020's Docker
+observability consumer proves the text-Result form through `dockpipe.application.v1`.
+
+Compiler, semantic projection, and Application IR schema identities and shapes remain unchanged;
+only language-contract metadata advances, and all 45 frozen legacy sources remain exact. No
+second or nested propagation, computed operand, propagation from a prior local, arbitrary `Result`
+including checked-arithmetic results, inference, reassignment, early return, statement branch,
+nested block, loop, effect, action, runtime policy, target behavior, adapter, UI, or deployment
+behavior enters by implication. Any further language seam requires another source-backed founder
+decision and separate implementation approval.
+
+## Accepted v0.42.0 boundary — prior-local helper propagation
+
+`v0.42.0` admits exactly the first-two-local spelling
+`C carrier = Helper(input); T value = propagate(carrier);` in one public pure method block. The
+method has exactly one direct parameter `input`. `Helper` must resolve under the existing v0.36.0
+same-class public pure-call contract, take exactly that parameter type, and return carrier `C`; the
+call argument is exactly the method parameter. `C` must equal the enclosing method return type.
+The second initializer propagates a direct reference to the immediately preceding `carrier` local,
+and `T` exactly equals the carried payload. Helper evaluation occurs once before propagation.
+Presence or success binds a validated copied payload and continues through any later v0.40.0
+ordered locals and the terminal return; absence or failure immediately returns the identical
+canonical helper carrier.
+
+The carrier matrix remains closed to v0.41.0: `Optional<T>` for an admitted primitive or record,
+`Result<List<R>, string>`, and `Result<string, string>`. Typed HIR and target-neutral Core reuse the
+existing `call`, right-nested `immutable_local`, and `propagate` nodes. Core independently proves
+canonical local positions, one direct helper argument, the resolved same-owner callable and exact
+signature, a closed acyclic call graph, one propagation occurrence, the direct prior-local
+reference, and exact carrier/payload types. The evaluator and Core-only Go backend preserve
+once-only helper evaluation, short-circuit, canonical carrier return, and copied storage.
+TASK-020's Docker observability fixture proves `Details(string)` calling
+`ValidateDetails(string) -> Result<string, string>`, propagating the helper Result, trimming the
+payload, and returning the rebuilt Result through unchanged `dockpipe.application.v1` schema.
+
+Compiler, semantic projection, and Application IR schema identities and shapes remain unchanged;
+only language-contract metadata advances, and all 45 frozen legacy sources remain exact. The
+v0.41.0 direct-parameter first-local spelling remains unchanged. This slice adds no direct
+`propagate(Helper(...))`, multiple or nested propagation, more than one helper argument, computed
+helper arguments, propagation from any non-immediately-preceding local, arbitrary Result including
+checked arithmetic, inference, reassignment, early return, statement branch, nested block, loop,
+effect, action, runtime policy, target behavior, adapter, UI, or deployment behavior. Any further
+language seam requires another source-backed founder decision and separate implementation approval.
+
+## Accepted v0.43.0 boundary — helper-result matching composition
+
+`v0.43.0` admits exactly one top-level
+`match(Helper(input)) { ok(value) => whenOk, err(error) => whenErr }` expression in a public pure
+method with one direct `string` parameter and `string` return. `Helper` resolves to one uniquely
+named public pure same-class method, takes that direct parameter as its sole argument, and returns
+exactly `Result<string, string>`. It evaluates once. The complete carrier is validated before tag
+selection, the selected payload is copied into its unique arm binding, and only the selected arm
+expression evaluates. Arms must be exhaustive, wildcard-free, and source ordered `ok` then `err`.
+
+Typed HIR and target-neutral Core reuse the existing `call` and `match` nodes. Core independently
+proves top-level placement, one match occurrence, the sole direct helper argument, exact same-owner
+caller/helper signatures, a closed acyclic call graph, the text Result carrier, ordered arm tags,
+and unique bindings. The evaluator and Core-only Go backend preserve complete-carrier validation,
+once-only helper evaluation, copied payloads, and lazy arm selection. TASK-020's Docker observability
+fixture proves `DetailsMessage(string)` composing `ValidateDetails(string)` through unchanged
+`dockpipe.application.v1` identity and shape.
+
+Compiler, semantic projection, and Application IR schema identities and shapes remain unchanged;
+only language-contract metadata advances, and all 45 frozen legacy sources remain exact. This slice
+adds no Optional/list/arithmetic Result helper carrier, extra or computed helper argument, extra
+caller parameter, cross-class/module call, nested match, reversed or wildcard arm, guard, new block
+or local, propagation change, inference, reassignment, statement branch, loop, effect, action,
+runtime policy, target behavior, adapter, UI, or deployment behavior. Any further language seam
+requires another source-backed founder decision and separate implementation approval.
+
+## Accepted v0.44.0 boundary — general bounded helper-carrier matching
+
+`v0.44.0` admits exactly one complete top-level `match(Helper(...))` in a public pure caller with
+one or more parameters. Every caller parameter is passed directly, once, and in declaration order
+to a uniquely resolved public pure same-class helper with the exact parameter signature. Its
+carrier is closed to admitted `Optional<T>`, `Result<List<R>, string>`, or
+`Result<string, string>`. Optional arms are exact source-ordered `some(binding)` then binding-free
+`none`; Result arms are exact source-ordered `ok(binding)` then `err(binding)`. Both arm expressions
+exactly match the caller return type. The helper evaluates once, the complete carrier is validated,
+the selected payload is copied, and only the selected arm evaluates.
+
+Typed HIR and target-neutral Core reuse existing `call` and `match` nodes. Core independently
+proves top-level placement, one match, direct parameter position and type, exact same-owner target
+signature, closed carrier matrix, canonical arms, bindings, and the closed acyclic call graph. The
+evaluator and deterministic Core-only backend preserve once-only evaluation and lazy selection.
+TASK-020 proves the exact two-parameter Optional composition through `SelectedNameById` and
+`FindSelection` while `pipelang.compiler.v1`, `pipelang.semantic.v1`, and
+`dockpipe.application.v1` identities and shapes remain stable. Only language-contract metadata
+advances; the exact 45-source legacy lane remains frozen.
+
+Arithmetic Results, computed/reordered/omitted/extra helper arguments, cross-owner calls,
+overloads, generics, nested or multiple matches, wildcard or reversed arms, guards, propagation
+changes, new blocks, locals or statements, effects, actions, runtimes, targets, adapters, UI, and
+deployment behavior remain excluded. Any successor requires a new founder decision and separate
+implementation approval.
+
+## Accepted v0.45.0 boundary — first-local helper-carrier matching
+
+`v0.45.0` admits exactly one v0.44-compatible `match(Helper(...))` as the initializer of the first
+explicitly typed immutable local in a public pure caller with one or more parameters. Every caller
+parameter is passed directly, once, and in declaration order to one uniquely resolved public pure
+same-class helper with the exact parameter signature. Its carrier remains closed to admitted
+`Optional<T>`, `Result<List<R>, string>`, or `Result<string, string>`. Optional arms remain exact
+source-ordered `some(binding)` then binding-free `none`; Result arms remain exact source-ordered
+`ok(binding)` then `err(binding)`. Both arm expressions exactly match the declared local type.
+
+Typed HIR and target-neutral Core reuse `immutable_local`, `call`, and `match`. Core independently
+proves first-local placement, one match, direct parameter position and type, exact same-owner target
+signature, closed carrier matrix, canonical arms and bindings, exact local typing, and continuation
+scope. The evaluator and deterministic Core-only backend validate the complete carrier, evaluate
+the helper once, copy the selected result into the local once, evaluate only the selected arm, then
+execute existing ordered locals and the terminal return. TASK-020 proves selection followed by
+existing normalization through unchanged `dockpipe.application.v1`; `pipelang.compiler.v1` and
+`pipelang.semantic.v1` also retain their identities and shapes. Only language-contract metadata
+advances, and the exact 45-source legacy lane remains frozen.
+
+Match in later locals, the terminal return, arguments, or nested positions; multiple matches;
+computed/reordered/omitted/extra helper arguments; arithmetic Results; cross-owner calls;
+overloads; generics; wildcard or reversed arms; guards; propagation changes; inference;
+reassignment; early returns; statement branches; loops; effects; actions; runtimes; targets;
+adapters; UI; and deployment behavior remain excluded. Any successor requires a new founder
+decision and separate implementation approval.
+
+## Accepted v0.46.0 boundary — checked-arithmetic helper matching in the first local
+
+`v0.46.0` widens only the v0.45 first-local helper-carrier matrix to the already admitted
+checked-arithmetic `Result<int, ArithmeticError>` and `Result<float, ArithmeticError>` shapes. One
+public pure caller with one or more parameters may initialize its first explicitly typed immutable
+local with exactly one `match(Helper(...))`. Every caller parameter is passed directly once in
+declaration order to one uniquely resolved public pure same-class helper with the exact caller
+signature. Arms are exact source-ordered `ok(binding)` then `err(binding)`, and both arm expressions
+exactly match the declared local type.
+
+Typed HIR and target-neutral Core reuse `immutable_local`, `call`, and `match`. Core independently
+proves first-local placement, one match, direct parameter positions/types, same-owner target and
+exact signature, an existing int-or-binary64 checked-arithmetic carrier, canonical arms/bindings,
+exact local typing, and continuation scope. The evaluator and deterministic Core-only backend
+validate the complete Result, evaluate the helper once, copy the selected payload into the local
+once, evaluate only the selected arm, and execute existing ordered locals plus the terminal return.
+Integer overflow and binary64 division-by-zero select the error arm deterministically.
+
+`pipelang.compiler.v1`, `pipelang.semantic.v1`, and `dockpipe.application.v1` identities and shapes
+remain stable; only language-contract metadata advances, and the exact 45-source legacy lane
+remains frozen. TASK-020 continues to project unchanged through `dockpipe.application.v1`; the new
+checked-arithmetic composition supplies compiler-shaped self-hosting value rather than UI or adapter
+semantics.
+
+Checked-arithmetic helper matching as the complete method body, in a later local, the terminal
+return, arguments, or nested positions; multiple matches; computed/reordered/omitted/extra helper
+arguments; arithmetic Result propagation, construction, defaulting, or arbitrary Result widening;
+cross-owner calls; overloads; generics; wildcards or reversed arms; guards; inference;
+reassignment; early returns; statement branches; loops; effects; actions; runtimes; targets;
+adapters; UI; and deployment behavior remain excluded. Any successor requires a new founder
+decision and separate implementation approval.
+
+## Accepted v0.47.0 boundary — later-local helper-carrier matching
+
+`v0.47.0` widens only the v0.45/v0.46 local placement: one existing helper-carrier match may
+initialize any explicitly typed immutable local after zero or more ordinary locals in the existing
+ordered sequence. One public pure caller has one or more parameters, and every parameter is passed
+directly once in declaration order to one uniquely resolved public pure same-class exact-signature
+helper. The carrier matrix stays closed to admitted Optional primitive/record,
+`Result<List<R>, string>`, `Result<string, string>`, and checked-arithmetic
+`Result<int, ArithmeticError>` or `Result<float, ArithmeticError>`. Optional arms remain exact
+source-ordered `some(binding)` then binding-free `none`; Result arms remain exact source-ordered
+`ok(binding)` then `err(binding)`. Both arms exactly match the declared local type.
+
+Typed HIR and target-neutral Core reuse `immutable_local`, `call`, and `match`. Core independently
+proves one local match, direct parameter positions/types, same-owner target and exact signature,
+the closed carrier matrix, canonical arms/bindings, exact local typing, and continuation scope.
+Earlier ordinary locals evaluate eagerly once in source order. The helper evaluates once, the full
+carrier is validated, only the selected arm evaluates, and its copied result initializes the
+matched local once before later locals and the terminal return continue.
+
+`pipelang.compiler.v1`, `pipelang.semantic.v1`, and `dockpipe.application.v1` identities and shapes
+remain stable; only language-contract metadata advances, and the exact 45-source legacy lane
+remains frozen. TASK-020 proves the widened placement through `SelectedNameById`: an ordinary
+fallback local precedes the existing Optional helper match, while the Application IR schema and
+semantic identities remain unchanged.
+
+Terminal-return, argument, nested, or multiple matches; checked-arithmetic matching as the complete
+method body; computed/reordered/omitted/extra helper arguments; propagation changes; Result
+construction/defaulting or arbitrary widening; cross-owner/private/overloaded/generic helpers;
+wildcards or reversed arms; guards; inference; reassignment; statements; effects; actions;
+runtimes; targets; adapters; UI; and deployment behavior remain excluded. No statement, effect,
+runtime, action, target, adapter, UI, or deployment behavior enters by implication. Any successor
+requires a new founder decision and separate implementation approval.
+
+## Accepted v0.48.0 boundary — prior-local carrier matching
+
+`v0.48.0` widens only the local spelling accepted through v0.47. After zero or more ordinary
+locals, one explicitly typed carrier local is initialized by `Helper(p1, ..., pn)` and the
+immediately adjacent explicitly typed local is initialized by exactly one `match(carrier)`. The
+caller is public and pure with one or more parameters; every parameter is passed directly once in
+declaration order to one uniquely resolved public pure same-class exact-signature helper. The
+carrier matrix stays closed to admitted Optional primitive/record, `Result<List<R>, string>`,
+`Result<string, string>`, and checked-arithmetic `Result<int, ArithmeticError>` or
+`Result<float, ArithmeticError>`. Arms retain exact canonical source order and bindings.
+
+Typed HIR and target-neutral Core reuse `immutable_local`, `call`, `reference`, and `match`. Core
+independently proves adjacency, the exact carrier-local reference, one match, direct parameter
+positions/types, same-owner exact signature, the closed carrier matrix, canonical arms/bindings,
+exact local typing, and continuation scope. Earlier locals evaluate eagerly once; the helper and
+carrier local evaluate once; the complete carrier is validated; only the selected arm evaluates;
+the copied result initializes the matched local once; and later locals plus the terminal return
+continue. The evaluator and deterministic Core-only Go backend preserve the same semantics.
+
+`pipelang.compiler.v1`, `pipelang.semantic.v1`, and `dockpipe.application.v1` identities and shapes
+remain stable; only language-contract metadata advances, and the exact 45-source legacy lane
+remains frozen. TASK-020 proves the exact source spelling through `SelectedNameById`: a fallback
+local precedes `Optional<ContainerRow> selection = FindSelection(rows, id);`, immediately followed
+by `string selected = match(selection) { ... };`, without Application IR schema change.
+
+Non-adjacent, terminal-return, argument, nested, or multiple matches; checked-arithmetic matching
+as a complete method body; computed/reordered/omitted/extra helper arguments; propagation changes;
+Result construction/defaulting or arbitrary widening; cross-owner/private/overloaded/generic
+helpers; wildcards or reversed arms; guards; inference; reassignment; statements; effects; actions;
+runtimes; targets; adapters; UI; and deployment behavior remain excluded. No statement, effect,
+runtime, action, target, adapter, UI, or deployment behavior enters by implication. Any successor
+requires a new founder decision and separate implementation approval.
+
+## Accepted v0.50.0 boundary — dependent second-carrier matching
+
+`v0.50.0` adds one new exact two-match spelling:
+`C1 firstCarrier = Helper1(p1, ..., pn); T1 first = match(firstCarrier) { ... };`
+`C2 secondCarrier = Helper2(first, p1, ..., pn); T2 second = match(secondCarrier) { ... };`.
+These are four contiguous explicitly typed locals. Ordinary locals may appear before or after the
+stage only. `Helper1` keeps the v0.49 exact caller signature. `Helper2` resolves uniquely to a
+public pure same-class method whose first parameter exactly matches the first selected local,
+followed by every caller parameter directly once in declaration order. Both pairs keep the closed
+carrier matrix and canonical arms.
+
+HIR and Core reuse existing nodes; Core independently verifies the four-local stage, binding
+positions, exact helper ownership/signatures, carriers, arms, local types, and continuation. All
+locals and helpers evaluate once in source order, every complete carrier is validated, and only
+selected arms evaluate. Docker observability proves `ConfirmSelection(selected, rows, id)` without
+schema change. Public compiler, semantic, and Application IR identities and shapes stay stable;
+only language metadata advances, and the exact 45-source lane remains frozen.
+
+Existing zero-match, one-match, and independent v0.49 two-pair forms remain exact. Other local
+argument arrangements, computed/reordered/repeated arguments, split stages, third/nested/terminal
+matches, propagation changes, arbitrary Result widening, statements, effects, actions, runtimes,
+targets, adapters, UI, and deployment remain excluded. No behavior enters by implication. Any
+successor requires a new founder decision and separate implementation approval.
+
+## Accepted v0.51.0 boundary — general dependent carrier chains
+
+`v0.51.0` extends the v0.50 dependency rule to one exact chain of `k >= 2` pairs:
+`C1 carrier1 = Helper1(p1, ..., pn); T1 value1 = match(carrier1) { ... };`, then
+`Ci carrierI = HelperI(valueI-1, p1, ..., pn); Ti valueI = match(carrierI) { ... };` for every
+later stage. All `2k` explicitly typed locals are contiguous. Ordinary locals may appear before or
+after only. `Helper1` keeps the exact caller signature. Every later helper resolves uniquely to a
+public pure same-class method receiving the immediately preceding selected local, followed by every
+caller parameter directly once in declaration order. All pairs retain the closed carrier matrix and
+canonical arms.
+
+HIR and Core reuse `immutable_local`, `call`, `reference`, and `match`; Core independently verifies
+the complete chain, immediate-predecessor dependencies, binding and argument positions, exact
+helper ownership/signatures, carriers, arms, local types, and continuation. All locals and helpers
+evaluate once in source order, every complete carrier is validated, and only selected arms
+evaluate. Docker observability proves `FinalizeSelection(confirmed, rows, id)` as a third stage
+without schema change. Public compiler, semantic, and Application IR identities and shapes stay
+stable; only language metadata advances, and the exact 45-source lane remains frozen.
+
+Existing zero-match, one-match, v0.49 independent two-pair, and v0.50 dependent two-stage forms
+remain exact. Gaps, mixed independent/dependent chains, non-immediate dependencies, fan-in,
+computed/reordered/repeated/omitted/extra arguments, third matches outside the exact chain,
+nested/terminal/argument matches, propagation changes, arbitrary Result widening, statements,
+effects, actions, runtimes, targets, adapters, UI, and deployment remain excluded. No behavior
+enters by implication. Any successor requires a new founder decision and separate implementation
+approval.
+
+## Accepted v0.52.0 boundary — cumulative fan-in carrier chains
+
+`v0.52.0` adds one cumulative chain of `k >= 3` contiguous carrier/match pairs. Stage one is
+`C1 carrier1 = Helper1(p1, ..., pn); T1 value1 = match(carrier1) { canonical arms };`. Every later
+stage is exactly `Ci carrierI = HelperI(value1, ..., valueI-1, p1, ..., pn); Ti valueI =
+match(carrierI) { canonical arms };`: all prior selected locals occur directly once in chain order,
+followed by every caller parameter directly once in declaration order. A method uses either this
+cumulative mode or the inherited v0.51 immediate-only mode; modes cannot mix between stages.
+
+HIR and Core reuse `immutable_local`, `call`, `reference`, and `match`; Core independently verifies
+the complete chain, cumulative binding positions, helper ownership/signatures, carriers, arms,
+local types, and continuation. All locals and helpers evaluate once in source order, every complete
+carrier is validated, and only selected arms evaluate. Docker observability proves
+`FinalizeSelectionHistory(selected, confirmed, rows, id)` as the cumulative third stage without
+schema change. `pipelang.compiler.v1`, `pipelang.semantic.v1`, and `dockpipe.application.v1`
+identities and shapes stay stable; only language metadata advances, and the exact 45-source lane
+remains frozen.
+
+All inherited forms remain exact. Fewer than three cumulative pairs, partial/reordered/repeated/
+omitted/extra prior selections, per-stage mode mixing, gaps, non-chain dependencies, computed
+arguments, matches outside the chain, nested/terminal/argument matches, propagation changes,
+arbitrary Result widening, statements, effects, actions, runtimes, targets, adapters, UI, and
+deployment remain excluded. No behavior enters by implication. Any successor requires a new
+founder decision and separate implementation approval.
+
+## Accepted v0.53.0 boundary — multi-parameter helper propagation
+
+`v0.53.0` widens only the v0.42 prior-local propagation helper signature. One public pure method
+with at least two parameters may spell `C carrier = Helper(p1, ..., pn); T value =
+propagate(carrier); return admittedExpression;`. The helper call is the first immutable-local
+initializer, the propagation local is immediately adjacent, and the uniquely resolved public pure
+same-class helper receives every caller parameter directly once in declaration order. `C` equals
+the method return carrier and `T` equals its payload. The inherited one-parameter v0.42 form and
+closed Optional primitive/record, `Result<List<R>, string>`, and `Result<string, string>` carrier
+matrix remain exact.
+
+HIR and Core reuse `immutable_local`, `call`, `reference`, and `propagate`; Core independently
+checks argument positions, helper identity/signature, adjacency, carrier/payload types, and the
+single propagation. Evaluation and Core-only Go call the helper once, validate the complete
+carrier, copy success, and return canonical absence/failure otherwise. Docker observability proves
+`ResolveSelection(rows, id)` calling `FindSelection(rows, id)` without schema change.
+`pipelang.compiler.v1`, `pipelang.semantic.v1`, and `dockpipe.application.v1` identities and shapes
+stay stable; only language metadata advances, and the exact 45-source lane remains frozen.
+
+Computed/reordered/repeated/omitted/extra arguments, a non-first carrier, an intervening local,
+non-adjacent or additional propagation, mismatched carriers/payloads,
+cross-owner/private/overloaded/generic helpers, arbitrary Result widening, inference,
+reassignment, statements, effects, actions, runtimes, targets, adapters, UI, and deployment remain
+excluded. No behavior enters by implication. Any successor requires a new founder decision and
+separate implementation approval.
+
+## Accepted v0.54.0 boundary — checked-arithmetic helper propagation
+
+`v0.54.0` widens only the exact v0.53 prior-local helper propagation carrier matrix. One public
+pure method spells `Result<int, ArithmeticError> carrier = Helper(p1, ..., pn); int value =
+propagate(carrier); return admittedCheckedArithmeticExpression;`, or the identical `float` form.
+The helper call is the first typed local, propagation is the immediately adjacent second local,
+and every caller parameter is passed directly once in declaration order to one uniquely resolved
+public pure same-class helper. The helper carrier equals the method return type and the propagated
+local equals its success payload.
+
+HIR and Core reuse `immutable_local`, `call`, `reference`, `propagate`, and checked arithmetic;
+Core independently checks exact placement, argument positions, helper identity/signature,
+carrier/payload types, one propagation, and the continuation. Evaluation and deterministic
+Core-only Go call the helper once, validate the complete arithmetic Result, copy success, and
+return canonical overflow or division-by-zero before evaluating the continuation.
+`pipelang.compiler.v1`, `pipelang.semantic.v1`, and `dockpipe.application.v1` identities and shapes
+stay stable; only language metadata advances. A compiler-cursor fixture proves checked offset
+propagation as a concrete self-hosting consumer, and the exact 45-source lane remains frozen.
+
+Direct-parameter arithmetic propagation, `propagate(Helper(...))`, later or split pairs, computed,
+reordered, repeated, omitted, or extra arguments, additional propagation, arbitrary Result
+widening, inference, reassignment, statements, effects, actions, runtimes, targets, adapters, UI,
+and deployment remain excluded. No behavior enters by implication. Any successor requires a new
+founder decision and separate implementation approval.
+
+## Accepted v0.55.0 boundary — direct-parameter checked propagation
+
+`v0.55.0` widens only the inherited v0.41 first-local direct-parameter propagation carrier matrix.
+One public pure method spells `Result<int, ArithmeticError> Continue(Result<int, ArithmeticError>
+carrier) { int value = propagate(carrier); return admittedCheckedArithmeticExpression; }`, or the
+identical `float` form. The arithmetic Result is the method's sole direct parameter and exactly
+equals its return type. Propagation is the first typed local, whose declared type exactly equals the
+success payload. The terminal return is one already admitted checked add, subtract, multiply,
+negate, or binary64 divide expression.
+
+HIR and Core reuse `immutable_local`, `reference`, `propagate`, and checked arithmetic. Core
+independently verifies first-local placement, the sole direct carrier reference, carrier/return and
+payload/local equality, one propagation, and the checked continuation. Evaluation and
+deterministic Core-only Go validate the complete arithmetic Result, copy success, and return
+canonical overflow or division-by-zero before evaluating the continuation.
+`pipelang.compiler.v1`, `pipelang.semantic.v1`, and `dockpipe.application.v1` identities and shapes
+stay stable; only language metadata advances. A compiler-cursor fixture proves consumption of a
+checked cursor Result passed by the caller, and the exact 45-source lane remains frozen.
+
+Additional parameters, helper or computed propagation operands, later or split placement,
+additional propagation, mismatched carrier/payload types, arbitrary Result widening, inference,
+reassignment, statements, effects, actions, runtimes, targets, adapters, UI, and deployment remain
+excluded. The v0.54 helper form and every earlier contract remain exact. No behavior enters by
+implication. Any successor requires a new founder decision and separate implementation approval.
+
+## Accepted v0.56.0 boundary — multi-parameter direct checked propagation
+
+`v0.56.0` widens only the v0.55 direct checked-propagation caller signature and binary
+continuation. One public pure method spells `Result<int, ArithmeticError> Advance(Result<int,
+ArithmeticError> carrier, int operand) { int value = propagate(carrier); return value + operand; }`.
+The integer operator may be add, subtract, or multiply. The identical `float` form admits only
+binary64 divide. The arithmetic Result is the first parameter and exactly equals the return type;
+the second and only other parameter exactly equals its payload. Propagation remains the first typed
+local. Its local is the continuation's left operand and the second direct parameter is the right.
+
+HIR and Core reuse `immutable_local`, `reference`, `propagate`, and checked arithmetic. Core
+independently verifies parameter order/count/types, first-local placement, the direct carrier,
+exact local/parameter operands, one propagation, and the operator matrix. Evaluation and
+deterministic Core-only Go validate the complete carrier, copy success, return canonical incoming
+failure before the continuation, and preserve checked overflow or division-by-zero from the
+continuation. `pipelang.compiler.v1`, `pipelang.semantic.v1`, and `dockpipe.application.v1`
+identities and shapes stay stable; only language metadata advances. A compiler-cursor fixture
+proves checked cursor plus width advancement, and the exact 45-source lane remains frozen.
+
+The inherited v0.55 sole-carrier and v0.54 helper forms remain exact. A third parameter, reordered
+carrier/operand, mismatched operand type, reversed/repeated/literal/computed operands, unary
+negation as the new two-parameter form, helper or computed propagation operands, later/split or
+additional propagation, arbitrary Result widening, inference, reassignment, statements, effects,
+actions, runtimes, targets, adapters, UI, and deployment remain excluded. No behavior enters by
+implication. Any successor requires a new founder decision and separate implementation approval.
+
+## Accepted v0.57.0 boundary — two-stage checked propagation
+
+`v0.57.0` adds one exact three-parameter, two-stage form to direct checked propagation. One public
+pure method spells `Result<int, ArithmeticError> AdvanceTwice(Result<int, ArithmeticError> carrier,
+int first, int second) { int value = propagate(carrier); Result<int, ArithmeticError> nextCarrier =
+value + first; int next = propagate(nextCarrier); return next + second; }`. Each integer checked
+stage independently admits add, subtract, or multiply. The identical `float` form admits binary64
+divide at both stages. The carrier is the first parameter and method return; both remaining
+parameters exactly equal its success payload.
+
+HIR and Core reuse `immutable_local`, `reference`, `propagate`, and checked arithmetic. Core
+independently verifies parameter order/count/types, the three exact local positions/types, the
+incoming and intermediate direct carrier references, the two exact local/parameter operand pairs,
+exactly two propagation points, and the operator matrix. Evaluation and deterministic Core-only Go
+validate the complete incoming carrier, copy success, evaluate and validate the intermediate Result
+once, copy success again, and only then evaluate the terminal checked operation. Incoming failure
+and intermediate overflow or division-by-zero return before later evaluation; terminal failure
+remains canonical. `pipelang.compiler.v1`, `pipelang.semantic.v1`, and
+`dockpipe.application.v1` identities and shapes stay stable; only language metadata advances. A
+compiler-cursor fixture proves two checked width advances, and the exact 45-source lane remains
+frozen.
+
+The inherited v0.54-v0.56 forms remain exact. A fourth parameter, reordered/mismatched parameters,
+reversed/repeated/literal/computed operands, a missing/additional carrier/local/propagation stage,
+direct propagation of a computed expression, helper propagation, arbitrary Result widening,
+inference, reassignment, statements, effects, actions, runtimes, targets, adapters, UI, and
+deployment remain excluded. No behavior enters by implication. Any successor requires a new
+founder decision and separate implementation approval.
+
+## Accepted v0.58.0 boundary — generalized checked-propagation chains
+
+`v0.58.0` generalizes only the exact v0.57 two-stage direct checked-propagation shape to a
+contiguous chain of `K >= 2` stages. One public pure method has exact signature
+`Result<T, ArithmeticError> F(Result<T, ArithmeticError> carrier, T operand1, ..., T operandK)`.
+It begins with `T value0 = propagate(carrier);`. Every non-terminal stage `i` is spelled as the
+adjacent pair `Result<T, ArithmeticError> carrierI = valueI-1 opI operandI; T valueI =
+propagate(carrierI);`. The terminal return is exactly `valueK-1 opK operandK`. `T` is exactly
+`int` or `float`; every integer stage independently admits add, subtract, or multiply, while every
+float stage admits binary64 divide only.
+
+HIR and Core reuse `immutable_local`, `reference`, `propagate`, and checked arithmetic. Core
+independently verifies the parameter sequence, exact contiguous alternating local pairs, direct
+preceding-payload/local and matching parameter operands, carrier and payload types, propagation
+count, and operator matrix for the admitted chain length. Evaluation and deterministic Core-only Go
+validate every complete carrier once, copy each success, and return an incoming or intermediate
+canonical failure before any later stage; terminal overflow or division-by-zero remains canonical.
+`pipelang.compiler.v1`, `pipelang.semantic.v1`, and `dockpipe.application.v1` identities and shapes
+stay stable; only language metadata advances. A three-stage compiler-cursor fixture and metadata-only
+Docker-observability Application IR consumption prove the consumer boundary, and the exact
+45-source lane remains frozen.
+
+The inherited v0.54-v0.57 forms remain exact. Fewer than two stages, missing/additional chain
+locals, ordinary-local gaps, reordered/mismatched parameters, reversed/repeated/literal/computed
+operands, direct propagation of a computed expression, helper propagation, arbitrary Result
+widening, inference, reassignment, statements, effects, actions, runtimes, targets, adapters, UI,
+and deployment remain excluded. No behavior enters by implication. Any successor requires a new
+founder decision and separate implementation approval.
+
+## Accepted v0.59.0 boundary — bounded cross-payload Result propagation
+
+`v0.59.0` adds only the exact public pure method shape `Result<U, string> F(Result<T, string>
+carrier) { T value = propagate(carrier); return Helper(value); }`. `T` and `U` are distinct and
+each is exactly `string` or `List<R>` for an existing public primitive-field record. Propagation is
+the first and only typed local initializer. The terminal expression is one resolved public pure
+same-class helper call with exact signature `T -> Result<U, string>` and the direct propagated local
+as its sole argument.
+
+HIR and Core reuse `immutable_local`, `reference`, `propagate`, and `call`. Core independently
+verifies the bounded source and target carriers, distinct payloads, shared string error, direct
+parameter/local positions and types, one propagation, terminal call placement, direct local
+argument, same owner, callable identity, and exact helper signature. Evaluation and deterministic
+Core-only Go validate the complete incoming carrier once. Success is copied and the helper is
+invoked and validated once. Failure skips the helper and creates a canonical target-shaped failure
+with copied validated error text and the target payload's canonical zero. `pipelang.compiler.v1`,
+`pipelang.semantic.v1`, and `dockpipe.application.v1` identities and shapes stay stable; only
+language metadata advances. A compiler-pipeline fixture proves the exact text/list payload matrix,
+metadata-only Docker-observability Application IR consumption proves the consumer boundary, and the
+exact 45-source lane remains frozen.
+
+The inherited v0.54-v0.58 forms remain exact. Same-payload propagation receives no new spelling.
+Arbitrary error types, Optional/arithmetic carriers, extra parameters/locals/propagations, computed
+carriers, `propagate(Helper(...))`, helper propagation, non-direct helper arguments,
+private/cross-class/mismatched/overloaded/generic helpers, inference, reassignment, statements,
+effects, actions, runtimes, targets, adapters, UI, and deployment remain excluded. No behavior
+enters by implication. Any successor requires a new founder decision and separate implementation
+approval.
+
+## Accepted v0.60.0 boundary — two-stage bounded cross-payload Result propagation
+
+`v0.60.0` adds only the exact public pure method shape `Result<V, string> F(Result<T, string>
+carrier) { T first = propagate(carrier); Result<U, string> nextCarrier = First(first); U second =
+propagate(nextCarrier); return Second(second); }`. `T`, `U`, and `V` are each exactly `string` or
+`List<R>` for an existing public primitive-field record. Adjacent payloads are distinct (`T != U`
+and `U != V`), while `T` may equal `V`. The sole incoming carrier and explicit intermediate
+carrier are each propagated directly. `First` and `Second` are resolved public pure same-class
+helpers with exact signatures `T -> Result<U, string>` and `U -> Result<V, string>`.
+
+HIR and Core reuse `immutable_local`, `reference`, `propagate`, and `call`. Core independently
+verifies the bounded carriers, adjacent payload inequality, shared string failure, exact local
+positions and types, two direct propagations, explicit intermediate carrier, direct helper
+arguments, same owner, callable identities, and exact helper signatures. Evaluation and
+deterministic Core-only Go validate and copy each complete carrier once. Incoming failure skips
+both helpers and constructs a canonical target-shaped failure; intermediate failure skips
+`Second` and constructs the same target shape. Both preserve copied validated error text.
+`pipelang.compiler.v1`, `pipelang.semantic.v1`, and `dockpipe.application.v1` identities and shapes
+stay stable; only language metadata advances. Compiler-pipeline text/list/list and
+list/text/original-list fixtures plus metadata-only Docker-observability Application IR consumption
+prove the boundary, and the exact 45-source lane remains frozen.
+
+The inherited v0.54-v0.59 forms remain exact. General `K`-stage Result chains, same-payload adjacent
+stages, extra parameters or locals, computed carriers, `propagate(Helper(...))`, helper
+propagation, non-direct helper arguments, arbitrary error types, Optional/arithmetic carriers,
+private/cross-class/mismatched/overloaded/generic helpers, inference, reassignment, statements,
+branches, loops, effects, actions, runtimes, targets, adapters, UI, and deployment remain excluded.
+No behavior enters by implication. Any successor requires a new founder decision and separate
+implementation approval.
+
+## Accepted v0.61.0 boundary — generalized bounded cross-payload Result propagation chains
+
+`v0.61.0` generalizes the v0.60 form to exactly `K >= 2` adjacent stages. One public pure method
+takes a sole direct `Result<T0, string>` carrier and returns `Result<TK, string>`. It first directly
+propagates the incoming carrier. Each non-terminal helper stage is represented by an adjacent
+explicit `Result<Ti, string>` helper-call local and direct propagation local; the terminal helper
+receives the immediately preceding payload local. Every payload is exactly `string` or `List<R>`
+for an existing public primitive-field record. Adjacent payloads differ; non-adjacent payloads may
+match. Every helper is resolved, public, pure, same-class, and has the exact adjacent
+`Ti-1 -> Result<Ti, string>` signature.
+
+HIR and Core reuse `immutable_local`, `reference`, `propagate`, and `call`. Core independently
+verifies the bounded carriers, shared string failure, arbitrary admitted chain length, exact
+contiguous local positions and types, direct carrier and payload references, adjacent payload
+inequality, same owner, callable identities, and exact helper signatures. Evaluation and
+deterministic Core-only Go validate and copy every complete carrier once. Any incoming or
+intermediate failure skips all later helpers and constructs the canonical final-target-shaped
+failure with preserved copied error text. `pipelang.compiler.v1`, `pipelang.semantic.v1`, and
+`dockpipe.application.v1` identities and shapes stay stable; only language metadata advances. A
+four-stage compiler-pipeline fixture plus metadata-only Docker-observability Application IR
+consumption prove the boundary, and the exact 45-source lane remains frozen.
+
+The inherited v0.54-v0.60 forms remain exact. Fewer than two stages in the generalized form,
+same-payload adjacent stages, missing/additional/gapped locals, extra parameters, computed carriers,
+`propagate(Helper(...))`, helper propagation, non-direct helper arguments, arbitrary error types,
+Optional/arithmetic carriers, private/cross-class/mismatched/overloaded/generic helpers, inference,
+reassignment, statements, branches, loops, effects, actions, runtimes, targets, adapters, UI, and
+deployment remain excluded. No behavior enters by implication. Any successor requires a new
+founder decision and separate implementation approval.
+
+## Accepted v0.62.0 boundary — contextual bounded cross-payload Result propagation chains
+
+`v0.62.0` adds one exact contextual form to the v0.61 generalized chain. One public pure method
+takes exactly `Result<T0, string> carrier, string context` and returns `Result<TK, string>`.
+The first local directly propagates `carrier`. Every helper receives the immediately preceding
+payload local first and the unchanged direct `context` parameter second, and has the exact
+`(Ti-1, string) -> Result<Ti, string>` signature. Every non-terminal helper Result remains an
+explicit local immediately followed by its direct propagation local. The chain remains `K >= 2`;
+payloads remain text or lists of existing public primitive-field records; adjacent payloads differ;
+and all helpers remain resolved, public, pure, and same-class.
+
+HIR and Core reuse `immutable_local`, `reference`, `propagate`, and `call`. Core independently
+verifies the two exact caller parameters, direct string context identity, arbitrary admitted chain
+length, exact contiguous local positions and types, direct carrier, preceding-payload, and context
+references, adjacent payload inequality, shared string failure, same owner, callable identities,
+and exact helper signatures. Evaluation and deterministic Core-only Go validate and copy every
+complete carrier once and pass the validated context once to every invoked helper. Any failure
+skips all later helpers and constructs the canonical final-target-shaped failure with preserved
+copied error text. `pipelang.compiler.v1`, `pipelang.semantic.v1`, and
+`dockpipe.application.v1` identities and shapes stay stable; only language metadata advances. A
+four-stage contextual compiler-pipeline fixture plus metadata-only Docker-observability Application
+IR consumption prove the boundary, and the exact 45-source lane remains frozen.
+
+The inherited v0.54-v0.61 forms remain exact. Missing, reordered, repeated, computed, non-string,
+stage-specific, or additional context arguments; a third caller parameter; fewer than two stages;
+same-payload adjacent stages; missing/additional/gapped locals; computed carriers;
+`propagate(Helper(...))`; helper propagation; arbitrary error types; Optional/arithmetic carriers;
+private/cross-class/mismatched/overloaded/generic helpers; inference; reassignment; statements;
+branches; loops; effects; actions; runtimes; targets; adapters; UI; and deployment remain excluded.
+No behavior enters by implication. Any successor requires a new founder decision and separate
+implementation approval.
+
+## Accepted v0.63.0 boundary — one-stage contextual bounded cross-payload Result propagation
+
+`v0.63.0` adds only the exact public pure method shape `Result<U, string>
+F(Result<T, string> carrier, string context) { T value = propagate(carrier); return Helper(value,
+context); }`. `T` and `U` are distinct and each is exactly `string` or `List<R>` for an existing
+public primitive-field record. Propagation is the first and only typed local initializer. The
+terminal expression is one resolved public pure same-class helper call with exact signature
+`(T, string) -> Result<U, string>`, the direct propagated local first, and the unchanged direct
+context parameter second.
+
+HIR and Core reuse `immutable_local`, `reference`, `propagate`, and `call`. Core independently
+verifies the two exact caller parameters, bounded source and target carriers, distinct payloads,
+shared string failure, single propagation, exact local position and type, direct carrier/local/
+context references, same owner, callable identity, and exact helper signature. Evaluation and
+deterministic Core-only Go validate and copy the incoming carrier once. Success invokes and
+validates the helper once with validated context. Failure skips the helper and creates a canonical
+target-shaped failure with copied validated error text. `pipelang.compiler.v1`,
+`pipelang.semantic.v1`, and `dockpipe.application.v1` identities and shapes stay stable; only
+language metadata advances. Text-to-list and list-to-text compiler-pipeline fixtures plus
+metadata-only Docker-observability Application IR consumption prove the boundary, and the exact
+45-source lane remains frozen.
+
+The inherited v0.54-v0.62 forms remain exact. Same-payload flow, a missing/reordered/repeated/
+computed/non-string/additional context argument, a third caller parameter, extra locals or
+propagations, computed carriers, `propagate(Helper(...))`, helper propagation, arbitrary error
+types, Optional/arithmetic carriers, private/cross-class/mismatched/overloaded/generic helpers,
+inference, reassignment, statements, branches, loops, effects, actions, runtimes, targets,
+adapters, UI, and deployment remain excluded. No behavior enters by implication. Any successor
+requires a new founder decision and separate implementation approval.
+
+## Accepted v0.64.0 boundary — one-stage contextual same-payload Result propagation
+
+`v0.64.0` adds only the exact public pure method shape `Result<T, string>
+F(Result<T, string> carrier, string context) { T value = propagate(carrier); return Helper(value,
+context); }`. `T` is exactly `string` or `List<R>` for an existing public primitive-field record.
+Propagation is the first and only typed local initializer. The terminal expression is one resolved
+public pure same-class helper call with exact signature `(T, string) -> Result<T, string>`, the
+direct propagated local first, and the unchanged direct context parameter second.
+
+HIR and Core reuse `immutable_local`, `reference`, `propagate`, and `call`. Core independently
+verifies the two exact caller parameters, bounded equal payloads, shared string failure, single
+propagation, exact local position and type, direct carrier/local/context references, same owner,
+callable identity, and exact helper signature. Evaluation and deterministic Core-only Go validate
+and copy the incoming carrier once. Success invokes and validates the helper once with validated
+context. Failure skips the helper and returns a canonical same-shaped failure with copied validated
+error text. `pipelang.compiler.v1`, `pipelang.semantic.v1`, and `dockpipe.application.v1` identities
+and shapes stay stable; only language metadata advances. String and record-list compiler-pipeline
+fixtures plus metadata-only Docker-observability Application IR consumption prove the boundary,
+and the exact 45-source lane remains frozen.
+
+The inherited v0.54-v0.63 forms remain exact. Same-payload contextual chains with two or more
+stages; a missing/reordered/repeated/computed/non-string/additional context argument; a third caller
+parameter; extra locals or propagations; computed carriers; `propagate(Helper(...))`; helper
+propagation; arbitrary error types; Optional/arithmetic carriers; private/cross-class/mismatched/
+overloaded/generic helpers; inference; reassignment; statements; branches; loops; effects; actions;
+runtimes; targets; adapters; UI; and deployment remain excluded. No behavior enters by implication.
+Any successor requires a new founder decision and separate implementation approval.
+
+## Accepted v0.65.0 boundary — exact two-stage contextual bounded Result propagation
+
+`v0.65.0` adds only the exact public pure method shape `Result<T2, string>
+F(Result<T0, string> carrier, string context) { T0 first = propagate(carrier); Result<T1, string>
+nextCarrier = First(first, context); T1 second = propagate(nextCarrier); return Second(second,
+context); }`. `T0`, `T1`, and `T2` are each exactly `string` or `List<R>` for an existing public
+primitive-field record. Either or both adjacent payload pairs may be equal. Both helpers are
+resolved public pure same-class methods with exact `(Ti, string) -> Result<Ti+1, string>` signatures,
+the immediately preceding payload first, and the unchanged direct context second.
+
+HIR and Core reuse `immutable_local`, `reference`, `propagate`, and `call`. Core independently
+verifies the two exact caller parameters, exact two-stage local sequence, bounded payloads, shared
+string failure, direct carrier/local/context references, same owner, callable identities, and exact
+helper signatures. Evaluation and deterministic Core-only Go validate and copy each reached carrier
+once. Each failure skips all later helpers and becomes a canonical final-shaped failure with copied
+validated error text. Success passes the unchanged validated context once to each helper.
+`pipelang.compiler.v1`, `pipelang.semantic.v1`, and `dockpipe.application.v1` identities and shapes
+stay stable; only language metadata advances. Compiler-pipeline fixtures plus metadata-only
+Docker-observability Application IR consumption prove the boundary, and the exact 45-source lane
+remains frozen.
+
+The inherited v0.54-v0.64 forms remain exact. Same-payload transitions in contextual chains with
+three or more stages; a missing, reordered, repeated, computed, non-string, or additional context;
+a third caller parameter; extra or gapped locals; additional propagation; computed carriers;
+`propagate(Helper(...))`; arbitrary error types; Optional/arithmetic carriers; private,
+cross-class, mismatched, overloaded, or generic helpers; inference; reassignment; statements;
+branches; loops; effects; actions; runtimes; targets; adapters; UI; and deployment remain excluded.
+No behavior enters by implication. Any successor requires a new founder decision and separate
+implementation approval.
+
+## Accepted v0.66.0 boundary — generalized contextual bounded Result propagation
+
+`v0.66.0` generalizes the v0.62 contextual chain to permit equal or different payload types at any
+adjacent transition. One public pure method takes exactly `Result<T0, string> carrier, string
+context`, returns `Result<TK, string>`, and contains `K >= 2` helper stages. The first local directly
+propagates `carrier`. Every non-terminal helper Result remains an explicit local immediately
+followed by its direct propagation local, and the terminal expression is the final helper call.
+Every `Ti` is exactly `string` or `List<R>` for an existing public primitive-field record. Every
+helper remains resolved, public, pure, same-class, and exact
+`(Ti, string) -> Result<Ti+1, string>`, with the immediately preceding payload first and the
+unchanged direct context second.
+
+HIR and Core reuse `immutable_local`, `reference`, `propagate`, and `call`. Core independently
+verifies the two exact caller parameters, arbitrary admitted chain length, contiguous alternating
+locals, bounded payloads, shared string failure, direct carrier/payload/context references, same
+owner, callable identities, and exact helper signatures. Evaluation and deterministic Core-only Go
+validate and copy every reached carrier once. Each failure skips every later helper and becomes a
+canonical final-shaped failure with copied validated error text. Success passes the unchanged
+validated context once to each reached helper. `pipelang.compiler.v1`, `pipelang.semantic.v1`, and
+`dockpipe.application.v1` identities and shapes stay stable; only language metadata advances. Mixed
+and all-equal compiler-pipeline fixtures plus metadata-only Docker-observability Application IR
+consumption prove the boundary, and the exact 45-source lane remains frozen.
+
+The inherited v0.54-v0.65 forms remain exact. Fewer than two contextual helper stages; a missing,
+reordered, repeated, computed, non-string, stage-specific, or additional context; a third caller
+parameter; missing, additional, or gapped locals; computed carriers; `propagate(Helper(...))`;
+arbitrary error types; Optional/arithmetic carriers; private, cross-class, mismatched, overloaded,
+or generic helpers; inference; reassignment; statements; branches; loops; effects; actions;
+runtimes; targets; adapters; UI; and deployment remain excluded. No behavior enters by implication.
+Any successor requires a new founder decision and separate implementation approval.
+
+## Accepted v0.67.0 boundary — generalized shared-context Result propagation
+
+`v0.67.0` generalizes the v0.66 contextual chain to one direct bounded Result carrier followed by
+`N >= 1` direct `string` context parameters. The method still contains `K >= 2` helper stages and
+returns `Result<TK, string>`. Every helper receives the immediately preceding payload first and then
+every unchanged context exactly once in caller declaration order. Its exact signature is
+`(Ti, string...) -> Result<Ti+1, string>`. Every `Ti` remains `string` or `List<R>` for an existing
+public primitive-field record. Every non-terminal helper Result remains an explicit local
+immediately followed by direct propagation, and the final helper remains the terminal expression.
+
+HIR and Core reuse `immutable_local`, `reference`, `propagate`, and `call`. Core independently
+verifies arbitrary admitted stage and context counts, the complete ordered context vector at every
+helper call, contiguous alternating locals, bounded payloads, shared string failure, direct
+carrier/payload/context references, same owner, callable identities, and exact helper signatures.
+Evaluation and deterministic Core-only Go validate and copy every reached carrier once, pass every
+validated context unchanged to each reached helper, and reshape each failure into the canonical
+final Result before later helpers can run. `pipelang.compiler.v1`, `pipelang.semantic.v1`, and
+`dockpipe.application.v1` identities and shapes stay stable; only language metadata advances.
+Multi-context compiler-pipeline fixtures plus metadata-only Docker-observability Application IR
+consumption prove the boundary, and the exact 45-source lane remains frozen.
+
+The inherited v0.54-v0.66 forms remain exact. A contextual chain with no context; one-stage
+multi-context chains; missing, reordered, repeated, computed, non-string, or stage-specific
+contexts; missing, additional, or gapped locals; computed carriers; `propagate(Helper(...))`;
+arbitrary failure types; Optional/arithmetic carriers; private, cross-class, mismatched, overloaded,
+or generic helpers; inference; reassignment; statements; branches; loops; effects; actions;
+runtimes; targets; adapters; UI; and deployment remain excluded. No behavior enters by implication.
+Any successor requires a new founder decision and separate implementation approval.
+
+## Accepted v0.68.0 boundary — generalized one-stage shared-context Result propagation
+
+`v0.68.0` generalizes the v0.64 one-stage contextual bounded Result form to one direct bounded
+Result carrier followed by `N >= 1` direct `string` context parameters. The method returns
+`Result<T1, string>` and contains exactly one typed local initialized by direct propagation of the
+carrier followed by one terminal helper call. The helper receives the propagated payload first and
+then every unchanged context exactly once in caller declaration order. Its exact signature is
+`(T0, string...) -> Result<T1, string>`. `T0` and `T1` may match or differ and remain `string` or
+`List<R>` for an existing public primitive-field record.
+
+HIR and Core reuse `immutable_local`, `reference`, `propagate`, and `call`. Core independently
+verifies arbitrary admitted context count, the complete ordered direct context vector, the exact
+local and propagation placement, bounded payloads, shared string failure, direct references, same
+owner, callable identity, and helper signature. Evaluation and deterministic Core-only Go validate
+direct inputs, copy the reached carrier once, pass every context unchanged, and reshape incoming
+failure into the canonical target Result before the helper can run. `pipelang.compiler.v1`,
+`pipelang.semantic.v1`, and `dockpipe.application.v1` identities and shapes stay stable; only
+language metadata advances. One-stage multi-context compiler-pipeline fixtures plus metadata-only
+Docker-observability Application IR consumption prove the boundary, and the exact 45-source lane
+remains frozen.
+
+The inherited v0.54-v0.67 forms remain exact. A contextual form with no context; missing,
+reordered, repeated, computed, non-string, or stage-specific contexts; additional or gapped locals;
+computed carriers; `propagate(Helper(...))`; arbitrary failure types; Optional/arithmetic carriers;
+private, cross-class, mismatched, overloaded, or generic helpers; inference; reassignment;
+statements; branches; loops; effects; actions; runtimes; targets; adapters; UI; and deployment remain
+excluded. No behavior enters by implication. Any successor requires a new founder decision and
+separate implementation approval.
+
+## Accepted v0.69.0 boundary — terminal statement-level `if/else`
+
+`v0.69.0` admits one public pure method with one or more existing ordered immutable locals followed
+by exactly one terminal statement-level conditional:
+
+```pipe
+public string Select(string raw, bool normalize) {
+    string cleaned = trim(raw);
+    if (normalize) { return cleaned; }
+    else { return raw; }
+}
+```
+
+The condition is `bool`; both branches have the declared method return type; and each local,
+condition, and branch value remains an already-admitted eager pure expression or call. At most one
+preceding local initializer may use the inherited bounded conditional expression. HIR and Core
+reuse `immutable_local` and `conditional`, adding only an explicit terminal-statement marker. Core
+independently verifies the preceding local, unique terminal placement, boolean condition, matching
+branch types, and absence of propagation and matching in the method. Evaluation and deterministic
+Core-only Go reuse existing conditional semantics and evaluate only the selected branch.
+`pipelang.compiler.v1`, `pipelang.semantic.v1`, and `dockpipe.application.v1` identities and shapes
+stay stable; only language metadata advances. Terminal-if compiler-pipeline fixtures plus
+metadata-only Docker-observability Application IR consumption prove the boundary, and the exact
+45-source lane remains frozen.
+
+The inherited v0.54-v0.68 forms remain exact. A zero-local terminal conditional; branch locals;
+nested branches; missing `else`; fallthrough or returns elsewhere; propagation or matching in the
+method; assignment, reassignment, shadowing, or inference; loops; effects; actions; runtimes;
+targets; adapters; UI; and deployment remain excluded. No behavior enters by implication. Any
+successor requires a new founder decision and separate implementation approval.
+
+## Accepted v0.70.0 boundary — lexical terminal-branch locals
+
+`v0.70.0` preserves the exact v0.69 terminal conditional and permits either branch to declare at
+most one explicitly typed immutable local immediately before its return:
+
+```pipe
+public string Select(string raw, bool normalize) {
+    string cleaned = raw;
+    if (normalize) {
+        string selected = trim(cleaned);
+        return selected;
+    } else {
+        return raw;
+    }
+}
+```
+
+One or more top-level ordered immutable locals remain required. Either branch may stay a direct
+return or use one local; both branches may use the local form, and their independent scopes may
+reuse a name. A branch initializer evaluates only when selected, and the binding cannot escape the
+branch. Conditions remain `bool`, declared types remain exact, and only inherited eager pure
+expressions and calls are admitted. HIR and Core reuse `immutable_local` within the terminal
+`conditional`; evaluation and deterministic Core-only Go preserve lexical and lazy branch
+semantics. Compiler, semantic projection, and Application IR schema identities remain stable; only
+language metadata advances to `v0.70.0`. The exact 45-source lane remains frozen.
+
+Nested branches, multiple locals per branch, escaping branch bindings, propagation, match,
+assignment, fallthrough, other early returns, loops, effects, inference, actions, runtimes,
+targets, adapters, UI, and deployment remain excluded. No successor is implied; another slice
+requires a new founder decision and separate implementation approval.
+
+## Accepted v0.71.0 boundary — two-local terminal-branch sequences
+
+`v0.71.0` widens only the v0.70 per-branch local limit. Either terminal branch may contain at most
+two explicitly typed ordered immutable locals followed by its return. A second local may
+reference the first local in the same branch. Both branches may use the two-local form; their
+scopes remain independent, may reuse names and binding positions, and cannot escape to the
+condition, sibling branch, or surrounding method. One or more top-level ordered immutable locals
+still precede the terminal conditional. Initializers run in source order only when their branch is
+selected, and every declared type remains exact.
+
+Typed HIR and target-neutral Core reuse nested `immutable_local` nodes inside the terminal
+`conditional`. Core independently verifies a maximum of two root locals per branch, canonical
+binding positions, lexical references, exact types, and the existing unique terminal placement.
+Evaluation and deterministic Core-only Go preserve source order, lexical scope, and selected-branch
+execution. `pipelang.compiler.v1`, `pipelang.semantic.v1`, and `dockpipe.application.v1` remain
+stable; only language metadata advances to `v0.71.0`. The exact 45-source lane remains frozen.
+
+The inherited v0.69 direct-return and v0.70 one-local forms remain exact. A third branch local,
+nested branches, zero top-level locals, escaping bindings, propagation, matching, assignment,
+fallthrough, other early returns, loops, effects, inference, actions, runtimes, targets, adapters,
+UI, and deployment remain excluded. No successor is implied; another slice requires a new founder
+decision and separate implementation approval.
+
+## Accepted v0.72.0 boundary — general terminal-branch local sequences
+
+`v0.72.0` removes only the v0.71 per-branch local count ceiling. Either terminal branch may contain
+any finite source-ordered sequence of explicitly typed immutable locals followed by its return.
+Each local enters scope only after its initializer, so later locals may reference earlier locals in
+that branch while self-reference, forward reference, duplicate names, and shadowing remain invalid.
+Opposing branches retain independent lexical scopes, may reuse names and canonical binding
+positions, evaluate only when selected, and cannot leak bindings. One or more top-level ordered
+immutable locals still precede the terminal conditional.
+
+Typed HIR and target-neutral Core continue to represent each branch sequence as nested
+`immutable_local` nodes inside the terminal `conditional`. Core independently verifies the complete
+root sequence, exact types, canonical positions, lexical references, and unique terminal placement.
+Evaluation and deterministic Core-only Go preserve source order and selected-branch execution.
+`pipelang.compiler.v1`, `pipelang.semantic.v1`, and `dockpipe.application.v1` remain stable; only
+language metadata advances to `v0.72.0`. The exact 45-source lane remains frozen.
+
+The inherited v0.69 direct-return, v0.70 one-local, and v0.71 two-local forms remain exact. Nested
+branches, zero top-level locals, escaping bindings, propagation, matching, assignment, fallthrough,
+other early returns, loops, effects, inference, actions, runtimes, targets, adapters, UI, and
+deployment remain excluded. No successor is implied; another slice requires a new founder decision
+and separate implementation approval.
+
+## Accepted v0.73.0 boundary — direct terminal `if/else`
+
+`v0.73.0` removes only the v0.72 top-level-local prerequisite. One public pure method may use the
+existing terminal statement-level `if/else` as its complete body. Either branch may return directly
+or contain any finite source-ordered sequence of explicitly typed immutable locals followed by its
+return. Each branch local enters scope only after its initializer; later branch locals may reference
+earlier ones while self-reference, forward reference, duplicate names, and shadowing remain
+invalid. Opposing branches retain independent lexical scopes, may reuse names and canonical binding
+positions, evaluate only when selected, and cannot leak bindings.
+
+Typed HIR and target-neutral Core reuse the existing root `conditional` and nested
+`immutable_local` nodes. Core independently validates the unique root terminal placement, complete
+branch sequences, exact types, canonical positions, lexical references, and absence of nesting.
+Evaluation and deterministic Core-only Go preserve source order and selected-branch execution.
+`pipelang.compiler.v1`, `pipelang.semantic.v1`, and `dockpipe.application.v1` remain stable; only
+language metadata advances to `v0.73.0`. The exact 45-source lane remains frozen.
+
+The inherited v0.69-v0.72 forms with one or more top-level locals remain exact. Ordinary zero-local
+blocks, nested branches, escaping bindings, propagation, matching, assignment, fallthrough, other
+early returns, loops, effects, inference, actions, runtimes, targets, adapters, UI, and deployment
+remain excluded. No successor is implied; another slice requires a new founder decision and
+separate implementation approval.
+
+## Accepted v0.74.0 boundary — bounded nested terminal `if/else`
+
+`v0.74.0` adds one bounded nested decision to the complete v0.73 terminal form. The method has no
+top-level immutable locals. Exactly one outer branch may end in exactly one inner terminal
+`if/else` after zero or more explicitly typed ordered immutable locals; the sibling outer branch
+retains the v0.73 direct-or-local sequence, and both inner leaves return directly. Both conditions
+must be `bool`, all leaves must have the exact declared return type, and outer-branch locals remain
+visible to the inner condition and leaves after their initializer. Both levels evaluate only their
+selected branch.
+
+Typed HIR and target-neutral Core reuse the existing terminal `conditional` and
+`immutable_local` nodes. Core independently validates the exact two-conditional topology, nesting
+in exactly one outer branch, direct inner leaves, exact typing, canonical positions, and lexical
+references. Evaluation and deterministic Core-only Go preserve source order and selected-branch
+execution. `pipelang.compiler.v1`, `pipelang.semantic.v1`, and `dockpipe.application.v1` remain
+stable; only language metadata advances to `v0.74.0`. The exact 45-source lane remains frozen.
+
+The inherited v0.69-v0.73 forms remain exact. Top-level locals for the nested topology, inner
+locals, nesting in both outer branches, another nested decision, third-level nesting, conditional
+expressions within the topology, propagation, matching, assignment, fallthrough, other early
+returns, loops, effects, inference, actions, runtimes, targets, adapters, UI, and deployment remain
+excluded. No successor is implied; another slice requires a new founder decision and separate
+implementation approval.
+
+## Accepted v0.75.0 boundary — inner terminal-leaf immutable-local sequences
+
+`v0.75.0` widens only the inner leaves of the exact v0.74 nested terminal topology. Either inner
+leaf may contain any finite source-ordered sequence of explicitly typed immutable locals before its
+return. Each local enters scope only after its initializer; later locals may reference earlier
+locals in the same leaf, while self-reference, forward reference, duplicate names, shadowing,
+cross-leaf references, and escaping bindings remain invalid. Outer-branch locals remain visible to
+the inner condition and both leaves. Both conditions remain `bool`, every return retains the exact
+declared method type, and only the selected outer branch, selected inner leaf, and its local
+sequence evaluate.
+
+Typed HIR and target-neutral Core reuse the existing terminal `conditional` and
+`immutable_local` nodes. Core independently validates the exact two-conditional topology, nesting
+in exactly one outer branch, complete inner-leaf sequences, exact typing, canonical positions, and
+lexical references. Evaluation and deterministic Core-only Go preserve source order and
+selected-branch execution. `pipelang.compiler.v1`, `pipelang.semantic.v1`, and
+`dockpipe.application.v1` remain stable; only language metadata advances to `v0.75.0`. The exact
+45-source lane remains frozen.
+
+The inherited v0.69-v0.74 forms remain exact. Top-level locals for the nested topology, nesting in
+both outer branches, another nested decision, third-level nesting, conditional expressions within
+the topology, propagation, matching, assignment, fallthrough, other early returns, loops, effects,
+inference, actions, runtimes, targets, adapters, UI, and deployment remain excluded. No successor
+is implied; another slice requires a new founder decision and separate implementation approval.
+
+## Accepted v0.76.0 boundary — root immutable locals before bounded nested terminal branching
+
+`v0.76.0` permits one or more source-ordered explicitly typed immutable locals before the exact
+v0.75 one-branch bounded nested terminal topology. Each root local enters scope only after its
+initializer, evaluates eagerly once before the outer condition, and remains visible to that
+condition, both outer branches, and every descendant branch. Self-reference, forward reference,
+duplicate names, shadowing, and escaping bindings remain invalid. Both conditions remain `bool`,
+every return retains the exact declared method type, and branch execution remains selected-only
+after the eager root sequence.
+
+Typed HIR and target-neutral Core reuse the existing terminal `conditional` and `immutable_local`
+nodes. Core independently validates the root sequence, exact two-conditional topology, nesting in
+exactly one outer branch, complete branch-local sequences, exact typing, canonical positions, and
+lexical references. Evaluation and deterministic Core-only Go preserve eager source order before
+selected-branch execution. `pipelang.compiler.v1`, `pipelang.semantic.v1`, and
+`dockpipe.application.v1` remain stable; only language metadata advances to `v0.76.0`. The exact
+45-source lane remains frozen.
+
+The inherited rootless v0.75 and v0.69-v0.74 forms remain exact. Nesting in both outer branches,
+another nested decision, third-level nesting, conditional expressions within the topology or
+root-local nested form, propagation, matching, assignment, fallthrough, other early returns,
+loops, effects, inference, actions, runtimes, targets, adapters, UI, and deployment remain
+excluded. No successor is implied; another slice requires a new founder decision and separate
+implementation approval.
+
+## Accepted v0.77.0 boundary — symmetric depth-two terminal branching
+
+`v0.77.0` permits one or more source-ordered explicitly typed immutable root locals before an outer
+terminal `if/else` whose two branches each end in exactly one inner terminal `if/else`. Each outer
+branch and each inner leaf may contain any finite source-ordered immutable-local sequence. Root
+locals evaluate eagerly once before the outer condition and remain visible to both inner decisions
+and every leaf. Outer-branch locals remain confined to their own inner decision and leaves;
+inner-leaf locals remain confined to their selected leaf. All three conditions are `bool`, every
+return has the exact declared method type, and only the selected outer branch, its inner condition,
+and selected leaf execute.
+
+Typed HIR and target-neutral Core reuse the existing terminal `conditional` and `immutable_local`
+nodes. Core independently validates the required root sequence, exact three-conditional symmetric
+topology, complete branch-local sequences, exact typing, canonical positions, and lexical
+references. Evaluation and deterministic Core-only Go preserve eager root order and selected-branch
+execution. `pipelang.compiler.v1`, `pipelang.semantic.v1`, and `dockpipe.application.v1` remain
+stable; only language metadata advances to `v0.77.0`. The exact 45-source lane remains frozen.
+
+All v0.69-v0.76 forms remain exact. The symmetric topology without a root local, third-level or
+additional nesting, conditional expressions within the topology, propagation, matching,
+assignment, fallthrough, other early returns, loops, effects, inference, actions, runtimes,
+targets, adapters, UI, and deployment remain excluded. No successor is implied; another slice
+requires a new founder decision and separate implementation approval.
+
+## Accepted v0.49.0 boundary — bounded two-carrier matching
+
+`v0.49.0` widens only the occurrence count accepted through v0.48. One public pure method with one
+or more parameters may contain exactly two non-overlapping adjacent helper-carrier pairs:
+`C1 firstCarrier = Helper1(p1, ..., pn); T1 first = match(firstCarrier) { ... };` followed later by
+`C2 secondCarrier = Helper2(p1, ..., pn); T2 second = match(secondCarrier) { ... };`. Zero or more
+ordinary immutable locals may appear before, between, or after the pairs, but no local may split a
+carrier from its match local. Every helper receives every caller parameter directly once in
+declaration order and resolves uniquely to a public pure same-class method with that exact signature.
+Each pair independently retains the v0.48 Optional primitive/record, `Result<List<R>, string>`,
+`Result<string, string>`, and checked-arithmetic Result matrix plus canonical source-ordered arms.
+
+Typed HIR and target-neutral Core reuse `immutable_local`, `call`, `reference`, and `match`. Core
+independently proves exactly two matches, exactly two non-overlapping adjacent pairs, each exact
+carrier reference, direct parameter positions/types, same-owner exact signatures, closed carrier
+types, canonical arms/bindings, exact local typing, and continuation scope. All surrounding locals,
+helpers, carriers, and selected locals evaluate eagerly once in source order. Each complete carrier
+is validated and only its selected arm evaluates. Both pairs complete before later locals and the
+terminal return; the second pair and its arms may use prior locals under existing immutable scope.
+
+`pipelang.compiler.v1`, `pipelang.semantic.v1`, and `dockpipe.application.v1` identities and shapes
+remain stable; only language-contract metadata advances, and the exact 45-source lane remains
+frozen. TASK-020's Docker observability fixture proves `FindSelection(rows, id)` and
+`ConfirmSelection(rows, id)` as two exact-signature helpers, each stored in an adjacent carrier and
+canonical match-local pair before the normalized terminal return, without Application IR schema
+change.
+
+Existing zero-match and one-match forms remain exact. A third match, non-adjacent or overlapping
+pairs, terminal-return/argument/nested matching, non-helper or computed carriers, computed/
+reordered/omitted/extra helper arguments, propagation changes, Result construction/defaulting or
+arbitrary widening, cross-owner/private/overloaded/generic helpers, wildcard or reversed arms,
+guards, inference, reassignment, statements, effects, actions, runtimes, targets, adapters, UI, and
+deployment behavior remain excluded. No statement, effect, runtime, action, target, adapter, UI,
+or deployment behavior enters by implication. Any successor requires a new founder decision and
+separate implementation approval.
+
+## Accepted first Application IR boundary — `dockpipe.application.v1`
+
+The first target-neutral read-only Application IR consumes only a canonical public
+`pipelang.semantic.v1` projection, its contract-matching Core program, and an explicit
+source-located stable-identity spec. The spec names one application Core function and typed
+snapshot record; each section names its Result type, row record, stable key, visible columns,
+filter fields, and ascending/descending ordinal order; Optional row selection and Result text
+details/log identities are explicit. All identities must exist in the semantic projection and the application identity
+must exist in Core. Sections are sorted by identity, declared column/filter/order sequences remain
+stable, empty slices are non-nil, and canonical indented JSON is deterministic. Invalid inputs are
+rejected at the spec source range. PipeLang semantics and identities are unchanged. Parsing,
+evaluation, semantic inference, targets, Docker, refresh, actions, services, launcher migration,
+and CLI behavior are excluded.
+
+Filter and order behavior is bound, not inferred: their explicit identities must resolve both to
+semantic callables and Core functions with exact `(List<Row>, string) -> List<Row>` and
+`(List<Row>) -> List<Row>` signatures. Section Result, selection, details, and logs roles are also
+explicit Core-backed method identities with their recorded structured return types.
+
+## Accepted v0.78.0 boundary — rootless symmetric depth-two terminal branching
+
+`v0.78.0` additionally permits the exact symmetric depth-two terminal `if/else` topology
+without a preceding root immutable local. Both outer branches end in exactly one inner terminal
+`if/else`. Each outer branch and each inner leaf admits zero or more source-ordered, explicitly
+typed immutable locals. All three conditions are `bool`; every leaf returns exactly the declared
+method type. Bindings enter scope after their initializer. Self/forward references, duplicates,
+shadowing, cross-branch references, and escaping bindings remain invalid. Only the selected outer
+branch, its inner condition, and its selected leaf execute.
+
+The compiler reuses terminal `conditional` and `immutable_local` HIR/Core representations. Core
+independently checks exact topology, types, lexical bindings, and canonical positions; the Go
+backend refuses malformed Core. Existing rootful v0.77 and earlier accepted forms retain their
+behavior. `pipelang.compiler.v1`, `pipelang.semantic.v1`, and `dockpipe.application.v1` identities
+and shapes remain stable; only language metadata advances. The exact 45-source compatibility
+lane remains frozen.
+
+Third-level/additional nesting, conditional expressions within this topology, propagation,
+matching, assignment, fallthrough, other early returns, loops, effects, and inference remain
+excluded. This slice adds no workflow, runtime, action, target, adapter, UI, or deployment behavior.
+
+## Accepted v0.79.0 boundary — bounded depth-three terminal branching
+
+`v0.79.0` additionally permits an inherited rootful v0.77 or rootless v0.78 symmetric depth-two
+terminal topology to replace exactly one of its four terminal leaves with one additional terminal
+`if/else`. The result has exactly four terminal conditionals and five terminal return paths. The
+expanded path may contain any finite source-ordered sequence of explicitly typed immutable locals
+before the third-level decision, and both new leaves may contain the same kind of local sequence.
+All conditions are `bool`; every leaf returns exactly the declared method type. Root, outer-branch,
+expanded-path, and leaf bindings retain their lexical descendant scopes and enter scope only after
+their initializer. Only the selected path executes.
+
+Typed HIR and target-neutral Core reuse the existing terminal `conditional` and `immutable_local`
+representations. Core independently validates the exact four-conditional topology, the single
+expanded leaf, all types, binding positions, lexical references, and terminal placement; the Go
+backend refuses malformed Core. Existing v0.78 and earlier forms remain exact.
+`pipelang.compiler.v1`, `pipelang.semantic.v1`, and `dockpipe.application.v1` identities and shapes
+remain stable; only language metadata advances. The exact 45-source compatibility lane remains
+frozen.
+
+A second expanded depth-two leaf, depth four or additional nesting, a non-symmetric depth-two base,
+conditional expressions within the topology, propagation, matching, assignment, fallthrough,
+other early returns, loops, effects, and inference remain excluded. This slice adds no workflow,
+runtime, action, target, adapter, UI, or deployment behavior. Any successor requires a new founder
+decision and separate implementation approval.
+
+## Accepted v0.80.0 boundary — two expanded terminal leaves
+
+The founder selected option A and separately approved implementation. The new form expands
+exactly two of four leaves on the symmetric depth-two base: five conditionals, six return paths,
+maximum depth three, optional root locals, and finite ordered typed locals in every lexical scope.
+All six leaf pairs are supported. Existing versioned forms and the frozen 45-source lane remain
+unchanged. See the [canonical contract](../../../concepts/pipelang.md#pipelang-v0800-two-expanded-terminal-leaves)
+for semantics and exclusions.
+
+Core independently validates topology, types, scope, and terminal placement; the backend rejects
+malformed Core. HIR/Core node shapes and public compiler, semantic, and Application IR identities
+remain stable. A third expansion, depth four, or an asymmetric depth-three base is not admitted.
+Any successor requires a fresh founder selection and separate implementation approval.

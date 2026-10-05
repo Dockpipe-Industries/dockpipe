@@ -1,0 +1,2 @@
+# Generic remote edge setup entrypoint, relative to this resolver profile.
+DOCKPIPE_REMOTE_EDGE_SETUP=assets/scripts/setup.sh

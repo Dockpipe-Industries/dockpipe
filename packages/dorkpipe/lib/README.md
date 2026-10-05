@@ -45,6 +45,6 @@ Does **not** replace DockPipe’s workflow engine; it **invokes** the `dockpipe`
 
 **Orchestration:** `policy.branch_judge` + `branch_required` on nodes (JSON `{"winner":"…"}` from judge); `retrieve_if_calibrated_below`; `policy.early_stop_calibrated_above`; `parallel_group` agreement within a level; `kind: verifier` (Ollama transport, `verifier` score in JSON). CLI: **`dorkpipe eval`**, **`dorkpipe promote`**.
 
-Artifacts: **`dockpipe scope --package dorkpipe run.json`**, **`dockpipe scope --package dorkpipe metrics.jsonl`** (schema v2). Example DAG: **`examples/full-bar.yaml`** in this directory.
+Disposable run evidence resolves through **`dockpipe __state package-runtime --owner dorkpipe --path run.json`**. Cumulative metrics use the package-owned durable learning facade (schema v2), not a public root-level package-scope fallback. Example DAG: **`examples/full-bar.yaml`** in this directory.
 
-**DockPipe self-analysis:** the packaged workflows **`dorkpipe-self-analysis`** and **`dorkpipe-self-analysis-host`** run the analysis entrypoint in containerized or host mode. Optional local sidecar: **`packages/dorkpipe/resolvers/dorkpipe/assets/scripts/dev-stack.sh`**. Writes DockPipe state artifacts and DorkPipe package-scope facts.
+**DockPipe self-analysis:** the packaged workflows **`dorkpipe-self-analysis`** and **`dorkpipe-self-analysis-host`** run the analysis entrypoint in containerized or host mode. Optional local sidecar: **`packages/dorkpipe/resolvers/dorkpipe/assets/scripts/dev-stack.sh`**. Writes disposable package-runtime analysis products while cumulative learning remains durable through the package-owned facade.
