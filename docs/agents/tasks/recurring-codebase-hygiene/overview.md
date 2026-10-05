@@ -2,14 +2,13 @@
 
 The authorized [staging release channel](staging-release.md) is implemented and locally verified. The staging bucket/domain exist in isolated state, and the saved APT key plus DockPipe environment binding pass checks. Live checks confirm staging access and AccessDenied for production/state; the account-token policy grants object read/write only on `dockpipe-staging`. The user-approved GitHub setup is complete: `release-staging` contains three secrets, four public variables and a staging-only branch rule, without a manual approval gate. The source is now on staging; HTTPS readiness, successful hosted publication and installation qualification remain pending.
 
-The source checkpoint `62dda3a8` and release-notes gate repair `15e09e09` were pushed
-and promoted by the user. Latest staging push `37379712446` passed CI and all native
-builds, then failed the Linux amd64 VM regression test because the harness waited
-for process exit before finishing its stdout read. The local VM-only repair passes
-3,000 race-enabled stress invocations (19 failures before the fix) and the complete
-offline VM package suite. The user authorized its checkpoint/push and MR promotion
-through `js/dev` and `dev` to `staging`, stopping before master. No artifacts were
-published by the failed run.
+The VM harness repair `d6293516` was promoted through MRs #35–37. Staging run
+`37384217934` passed CI, all native builds, MSI and artifact assembly, then stopped
+before publication because the reusable release job received empty environment
+secrets. The approved follow-up adds `secrets: inherit` to the staging caller for
+the reported GitHub environment-secret resolution issue. Publication remains bound
+to `release-staging`; production credentials and master remain outside this repair.
+Hosted validation of this workaround is still pending.
 
 ## Current audit and cleanup — 2026-10-04
 
