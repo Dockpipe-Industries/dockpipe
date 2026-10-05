@@ -165,7 +165,16 @@ Suggested subdirectories (mirror authoring concepts; not all are required):
 
 **Metadata:** each installable unit should include **`package.yml`** next to its payload (see **`dockpipe package manifest`**). Core fields: **`name`**, **`version`**, **`title`**, **`description`**, **`author`**, **`website`**, **`license`**, **`kind`** (`workflow` \| `resolver` \| `core` \| `assets` \| `bundle`). Optional **`namespace`** — same rules as workflow **`config.yml`** **`namespace:`** (lowercase label; reserved words like **`dockpipe`**, **`core`**, **`system`** are rejected).
 
-**Versioning:** treat **`package.yml version`** as the release identity for that package. In this repo, authored package metadata under **`packages/`** and bundled example package metadata under **`src/core/`** should normally track the repo-root **`VERSION`** unless a package is intentionally released on a different cadence. Generated manifests from **`dockpipe package compile`** inherit repo-root **`VERSION`** by default when present; explicit versions must be semver-shaped so tarball names and CDN paths stay stable.
+**Versioning:** `package.yml version` is the independent release identity of that package;
+it does not need to match the CLI's repo-root `VERSION`. Bump a package when its
+published contents change. Generated workflow/resolver manifests inherit the nearest
+explicitly versioned owning `package.yml`, searching from the source directory up to
+`--workdir`. An explicit child version wins. External sources consult only their own
+manifest; loose sources without an owner fall back to repo-root `VERSION` (or `0.0.0`).
+An inherited version change invalidates compiled child output even when the child's
+files have not changed. Core remains tied to the CLI version. Store assembly preserves
+package versions; its `--version` is only a fallback, not a bulk version override.
+Versions must be semver-shaped so tarball names and CDN paths stay stable.
 
 **Rich metadata (authoring & store discovery)** — optional but recommended for **workflow** and **resolver** packages:
 

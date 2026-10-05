@@ -70,6 +70,30 @@ class ReleaseTests(unittest.TestCase):
         with self.assertRaises(FileNotFoundError):
             artifacts_module.prepare(self.root, "0.6.0")
 
+    def test_candidate_catalog_records_provenance_before_checksums(self):
+        version = "0.6.0"
+        candidate = version + "-staging.123.2." + "a" * 12
+        for platform in artifacts_module.PLATFORMS:
+            self.store(self.root / "stores" / platform)
+            suffix = "zip" if platform.startswith("windows") else "tar.gz"
+            names = [f"dockpipe_{version}_{platform.replace('-', '_')}.{suffix}",
+                     f"dockpipe-packages_{version}_{platform}.tar.gz"]
+            if platform.startswith("linux"):
+                arch = platform.split("-")[1]
+                names += [f"dockpipe_{version}_{arch}.deb"]
+                names += [f"dockpipe_{version}_linux_{arch}.{ext}" for ext in ("rpm", "apk", "pkg.tar.zst")]
+            for name in names:
+                (self.root / name).write_bytes(b"fixture")
+        artifacts_module.prepare(self.root, version, candidate, "a" * 40)
+        catalog = json.loads((self.root / "release-manifest.json").read_text())
+        self.assertEqual(catalog["candidate"], candidate)
+        self.assertEqual(catalog["source_sha"], "a" * 40)
+        self.assertEqual(catalog["channel"], "staging")
+        expected = artifacts_module.digest(self.root / "release-manifest.json")
+        self.assertIn(expected + "  release-manifest.json", (self.root / "SHA256SUMS.txt").read_text())
+        with self.assertRaises(ValueError):
+            artifacts_module.prepare(self.root, version, candidate, "b" * 40)
+
     def test_publish_commits_signed_index_after_payloads(self):
         artifacts = self.root / "artifacts"
         artifacts.mkdir()
@@ -92,6 +116,46 @@ class ReleaseTests(unittest.TestCase):
         with patch.dict(os.environ, environment), patch.object(publisher, "upload") as upload:
             with self.assertRaises(ValueError):
                 publisher.publish(artifacts, apt, "0.6.0", False)
+            upload.assert_not_called()
+
+    def test_staging_publication_is_isolated_and_commits_pointer_last(self):
+        artifacts = self.root / "artifacts"
+        artifacts.mkdir()
+        candidate = "0.6.0-staging.123.1." + "a" * 12
+        catalog = {"version": "0.6.0", "channel": "staging", "candidate": candidate, "source_sha": "a" * 40}
+        (artifacts / "release-manifest.json").write_text(json.dumps(catalog))
+        (artifacts / "payload.tar.gz").write_bytes(b"candidate")
+        apt = self.root / "apt"
+        (apt / "dists/staging").mkdir(parents=True)
+        (apt / "dists/staging/InRelease").write_bytes(b"signed")
+        (apt / "pool").mkdir()
+        (apt / "pool/candidate.deb").write_bytes(b"deb")
+        environment = {"DOCKPIPE_RELEASE_BUCKET": "dockpipe-staging", "R2_ENDPOINT_URL": "https://example.invalid", "R2_PREFIX": "packages"}
+        with patch.dict(os.environ, environment), patch.object(publisher, "upload") as upload, patch.object(publisher, "require_unpublished") as guard:
+            publisher.publish(artifacts, apt, "0.6.0", False, candidate)
+            prefix = f"packages/candidates/{candidate}"
+            keys = [call.args[1] for call in upload.call_args_list]
+            self.assertTrue(all(key.startswith(prefix + "/") for key in keys[:-1]))
+            self.assertEqual(keys[-2:], [prefix + "/release-manifest.json", "packages/latest.json"])
+            self.assertIn(prefix + "/apt/pool/candidate.deb", keys)
+            self.assertEqual(guard.call_args.args[2], prefix + "/release-manifest.json")
+            pointer = json.loads((self.root / "latest.json").read_text())
+            self.assertEqual(pointer["candidate"], candidate)
+            upload.reset_mock()
+            guard.side_effect = ValueError("already published")
+            with self.assertRaises(ValueError):
+                publisher.publish(artifacts, apt, "0.6.0", False, candidate)
+            upload.assert_not_called()
+        for bucket, identity in (("dockpipe", candidate), ("dockpipe-staging", ""), ("dockpipe-staging", "../escape")):
+            with patch.dict(os.environ, dict(environment, DOCKPIPE_RELEASE_BUCKET=bucket)), patch.object(publisher, "upload") as upload:
+                with self.assertRaises(ValueError):
+                    publisher.publish(artifacts, apt, "0.6.0", False, identity)
+                upload.assert_not_called()
+        catalog["source_sha"] = "b" * 40
+        (artifacts / "release-manifest.json").write_text(json.dumps(catalog))
+        with patch.dict(os.environ, environment), patch.object(publisher, "upload") as upload:
+            with self.assertRaises(ValueError):
+                publisher.publish(artifacts, apt, "0.6.0", False, candidate)
             upload.assert_not_called()
 
     def test_publisher_refuses_existing_versions_and_authentication_failures(self):
@@ -166,6 +230,16 @@ class ReleaseTests(unittest.TestCase):
                 self.assertEqual(call.kwargs["value"], values[call.args[0][3]])
                 self.assertNotIn(call.kwargs["value"], call.args[0])
             self.assertEqual(len(run.call_args_list), 7)
+            run.reset_mock()
+            with self.assertRaises(ValueError):
+                setup.configure(True, "release-staging")
+            run.assert_not_called()
+            with patch.dict(os.environ, {"DOCKPIPE_RELEASE_BUCKET": "dockpipe-staging"}):
+                setup.configure(True, "release-staging")
+            self.assertEqual(len(run.call_args_list), 7)
+            for call in run.call_args_list:
+                self.assertIn("release-staging", call.args[0])
+                self.assertNotIn("release", call.args[0])
 
     def test_release_setup_repairs_only_valid_flattened_armor(self):
         source = PACKAGING.parents[1] / "workflows/package/package-release-setup/assets/scripts/configure-release.py"
@@ -215,6 +289,17 @@ class ReleaseTests(unittest.TestCase):
         (lists / "partial").mkdir(parents=True)
         source = self.root / "dockpipe.list"
         source.write_text(f"deb [signed-by={apt}/dockpipe-archive-keyring.gpg] file:{apt} stable main\n")
+        subprocess.run(["apt-get", "-o", f"Dir::Etc::sourcelist={source}", "-o", "Dir::Etc::sourceparts=-",
+                        "-o", f"Dir::State::lists={lists}", "-o", "APT::Get::List-Cleanup=0", "update"],
+                       check=True, capture_output=True)
+
+        staged = self.root / "staging-apt"
+        subprocess.run(["bash", str(PACKAGING / "build-apt.sh"), str(artifacts), str(staged)],
+                       env=dict(env, APT_SUITE="staging"), check=True, capture_output=True)
+        subprocess.run(["gpgv", "--keyring", str(staged / "dockpipe-archive-keyring.gpg"),
+                        str(staged / "dists/staging/InRelease")], check=True, capture_output=True)
+        self.assertIn("Suite: staging", (staged / "dists/staging/Release").read_text())
+        source.write_text(f"deb [signed-by={staged}/dockpipe-archive-keyring.gpg] file:{staged} staging main\n")
         subprocess.run(["apt-get", "-o", f"Dir::Etc::sourcelist={source}", "-o", "Dir::Etc::sourceparts=-",
                         "-o", f"Dir::State::lists={lists}", "-o", "APT::Get::List-Cleanup=0", "update"],
                        check=True, capture_output=True)

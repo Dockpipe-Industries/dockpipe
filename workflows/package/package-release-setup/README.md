@@ -19,3 +19,7 @@ Apply after inspecting the target and fingerprint:
 ```
 
 GnuPG uses a temporary private directory, which is removed after validation. Provider errors and GitHub responses are withheld. No resolved env file or credentials are written into the checkout. A GitHub API failure can leave a partial configuration; rerunning the same setup completes it. This workflow does not publish artifacts or modify Cloudflare infrastructure.
+
+For staging, select `RELEASE_SETUP_ENVIRONMENT=release-staging`, the `dockpipe-staging`
+bucket, and a separate named secret environment containing staging-scoped keys.
+See [staging releases](../../../release/docs/staging.md).
