@@ -156,7 +156,7 @@ func evalExprWithProgram(expression coreir.Expr, arguments *argumentFrame, funct
 		if expression.Type.Kind == coreir.TypeResult {
 			result := arguments.values[*expression.Parameter].Result
 			if result == nil {
-				return Outcome{}, fmt.Errorf("Result reference has no canonical value")
+				return Outcome{}, fmt.Errorf("result reference has no canonical value")
 			}
 			return cloneOutcome(*result), nil
 		}
@@ -892,7 +892,7 @@ func directResultOperand(expression *coreir.Expr, arguments *argumentFrame) (Out
 		return Outcome{}, err
 	}
 	if argument.Result == nil {
-		return Outcome{}, fmt.Errorf("Result parameter has no canonical value")
+		return Outcome{}, fmt.Errorf("result parameter has no canonical value")
 	}
 	return cloneOutcome(*argument.Result), nil
 }
@@ -1013,7 +1013,7 @@ func validateValue(value Value) error {
 	}
 	if value.Type.Kind == coreir.TypeOptional {
 		if value.Type.Optional == nil || value.Optional == nil || value.Result != nil || len(value.Record) != 0 || value.List != nil {
-			return fmt.Errorf("Optional value does not match its type")
+			return fmt.Errorf("optional value does not match its type")
 		}
 		if !value.Optional.Present {
 			if value.Optional.Value != nil {
@@ -1059,11 +1059,11 @@ func validateValue(value Value) error {
 		return nil
 	}
 	if value.Type.Result == nil || value.Result == nil {
-		return fmt.Errorf("Result value has an invalid Result shape")
+		return fmt.Errorf("result value has an invalid Result shape")
 	}
 	result := value.Result
 	if !coreir.TypeEqual(result.Value.Type, value.Type.Result.Success) {
-		return fmt.Errorf("Result payload type does not match its success type")
+		return fmt.Errorf("result payload type does not match its success type")
 	}
 	if result.OK {
 		if result.Error != "" || result.Failure != nil {

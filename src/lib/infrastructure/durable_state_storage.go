@@ -231,7 +231,7 @@ func openPrivateLockFile(root, path string) (*os.File, error) {
 				return nil, createErr
 			}
 			if err := makePrivatePath(path, false); err != nil {
-				file.Close()
+				_ = file.Close()
 				return nil, err
 			}
 			return file, nil
@@ -251,7 +251,7 @@ func openPrivateLockFile(root, path string) (*os.File, error) {
 		}
 		opened, err := file.Stat()
 		if err != nil || !os.SameFile(info, opened) {
-			file.Close()
+			_ = file.Close()
 			return nil, errors.New("lock path changed while being opened")
 		}
 		return file, nil

@@ -198,7 +198,7 @@ func TestHeartbeatFailureDiffersFromOperatorCancellation(t *testing.T) {
 	for _, lost := range []bool{false, true} {
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if lost {
-				http.Error(w, "unavailable", 503)
+				http.Error(w, "unavailable", http.StatusServiceUnavailable)
 				return
 			}
 			w.Header().Set("Content-Type", "application/json")

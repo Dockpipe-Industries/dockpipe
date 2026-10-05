@@ -20,7 +20,7 @@ func Build(workdir, workflow string) map[string]string {
 
 // Merge combines identifier maps, trimming and omitting empty keys and values.
 func Merge(base map[string]string, extra map[string]string) map[string]string {
-	out := make(map[string]string, len(base)+len(extra))
+	out := make(map[string]string)
 	for key, value := range base {
 		key = strings.TrimSpace(key)
 		value = strings.TrimSpace(value)
