@@ -1,0 +1,46 @@
+{
+  "fixture": "pipelang.compiler-contract",
+  "fixtureVersion": 1,
+  "nonNormative": true,
+  "acceptsProductionSyntax": false,
+  "inputs": [
+    "sourceBytesByStableFileId",
+    "dependencyLock",
+    "languageContractVersion",
+    "compilerContractVersion",
+    "standardLibraryDigest",
+    "targetProfile",
+    "backendCapabilityManifest",
+    "explicitBuildOptions"
+  ],
+  "phases": [
+    "source-and-utf8",
+    "lossless-syntax",
+    "module-resolution-and-binding",
+    "typed-hir",
+    "core-ir"
+  ],
+  "representations": [
+    {"id": "syntax", "visibility": "compiler-internal", "versioning": "compiler-private"},
+    {"id": "bound-tree", "visibility": "compiler-internal", "versioning": "compiler-private"},
+    {"id": "typed-hir", "visibility": "compiler-internal", "versioning": "compiler-private"},
+    {"id": "core-ir", "visibility": "backend-contract", "targetNeutral": true},
+    {"id": "semantic-projection", "visibility": "public", "versionedIndependently": true},
+    {"id": "application-ir", "visibility": "task-020", "specializes": "semantic-projection+core-ir"},
+    {"id": "service-ir", "visibility": "task-022", "specializes": "semantic-projection+core-ir"}
+  ],
+  "firstNativeBackend": {
+    "id": "go",
+    "roles": ["deterministic-native-output", "stage-0-bootstrap-seed"],
+    "mayRedefineSemantics": false
+  },
+  "targetProfiles": ["full", "constrained", "mcu"],
+  "assertions": [
+    "all-consumers-use-one-compiler-contract",
+    "pure-compilation-is-offline-and-deterministic",
+    "no-parser-to-target-direct-emission",
+    "unsupported-required-capability-fails",
+    "backends-preserve-core-semantics",
+    "target-selection-does-not-change-source-language"
+  ]
+}

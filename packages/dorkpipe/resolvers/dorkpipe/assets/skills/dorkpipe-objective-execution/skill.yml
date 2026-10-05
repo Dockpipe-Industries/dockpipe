@@ -1,0 +1,3 @@
+name: dorkpipe-objective-execution
+description: Keep one bounded goal moving through implementation, authorized operations, evidence-based retries, and verification while respecting repository guidance and explicit user scope. Warn when conversation context is becoming wasteful; hand off only when the user requests it.
+short_description: Keep one objective moving

@@ -116,7 +116,7 @@ func imageArtifactBuildPathsExist(root string, artifact *domain.ImageArtifactMan
 }
 
 func prebuildCompiledImageArtifactFromRoot(workdir, buildRoot string, artifact *domain.ImageArtifactManifest) (bool, error) {
-	if artifact == nil || strings.TrimSpace(artifact.Source) != "build" || artifact.Build == nil {
+	if artifact == nil || domain.ImageSource(strings.TrimSpace(artifact.Source)) != domain.ImageSourceBuild || artifact.Build == nil {
 		return false, nil
 	}
 	ref := strings.TrimSpace(artifact.ImageRef)
@@ -132,7 +132,7 @@ func prebuildCompiledImageArtifactFromRoot(workdir, buildRoot string, artifact *
 		return false, err
 	}
 	if exists {
-		artifact.ArtifactState = "materialized"
+		artifact.ArtifactState = string(domain.ImageArtifactMaterialized)
 		if err := persistImageArtifactIndexRecord(workdir, artifact); err != nil {
 			return false, err
 		}
@@ -157,7 +157,7 @@ func prebuildCompiledImageArtifactFromRoot(workdir, buildRoot string, artifact *
 		if err := dockerBuildAppFn(ref, filepath.Dir(dockerfilePath), contextPath); err != nil {
 			return err
 		}
-		artifact.ArtifactState = "materialized"
+		artifact.ArtifactState = string(domain.ImageArtifactMaterialized)
 		if err := persistImageArtifactIndexRecord(workdir, artifact); err != nil {
 			return err
 		}

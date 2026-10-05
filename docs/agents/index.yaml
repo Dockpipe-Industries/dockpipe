@@ -5,8 +5,8 @@ skills:
   installed_codex:
     - dorkpipe-agentic-yaml
     - dorkpipe-core-review
+    - dorkpipe-objective-execution
     - dorkpipe-package-authoring
-    - dorkpipe-task-execution
     - dorkpipe-task-handoff
     - dorkpipe-token-optimization
     - dorkpipe-yaml-workflows
@@ -16,6 +16,22 @@ skills:
     claude: ./src/bin/dockpipe --package dorkpipe --workflow skills.render -- --target claude --output <path>
 
 tasks:
+  pipelang_foundation_planning:
+    read:
+      - AGENTS.md
+      - docs/agents/tasks/pipelang-reactive-application-language/index.yaml
+      - docs/agents/tasks/pipelang-reactive-application-language/foundation-specification-plan.md
+      - docs/agents/tasks/pipelang-reactive-application-language/foundation-alignment.md
+      - docs/concepts/pipelang-foundation.md
+      - docs/concepts/pipelang-foundation-contracts.md
+      - docs/concepts/pipelang-foundation-delivery.md
+    optional:
+      - docs/agents/tasks/pipelang-reactive-application-language/compiler-contract.md
+      - docs/agents/tasks/pipelang-reactive-application-language/language-surface.md
+    skills:
+      - dorkpipe-objective-execution
+      - dorkpipe-token-optimization
+
   orientation:
     read:
       - AGENTS.md
@@ -32,7 +48,7 @@ tasks:
       - AGENTS.md
       - docs/agents/core/engine-boundary.md
       - docs/agents/core/architecture.md
-      - docs/agents/core/package-model.md
+      - docs/agents/core/core-package-model.md
       - docs/agents/core/validation-commands.md
     optional:
       - docs/packages/package-model.md
@@ -50,6 +66,35 @@ tasks:
     validation:
       - go test ./src/lib/...
       - make build
+
+  compatibility_retirement:
+    read:
+      - AGENTS.md
+      - docs/agents/core/compatibility-retirement.md
+      - docs/agents/core/engine-boundary.md
+      - docs/agents/docs/docs-system.md
+      - docs/agents/core/validation-commands.md
+    optional:
+      - docs/compatibility-retirement.md
+      - docs/cli-reference.md
+      - docs/packages/package-model.md
+      - docs/workflows/workflow-yaml.md
+      - src/lib/infrastructure/schema/workflow.schema.json
+      - src/app/tooling/vscode-extensions/dockpipe-language-support/extension.js
+    skills:
+      - dorkpipe-core-review
+      - dorkpipe-token-optimization
+    escalate:
+      required_for:
+        - public compatibility behavior removal
+        - config, CLI, schema, or editor compatibility changes
+        - legacy layout, state migration, or cleanup
+        - package-owned compatibility changes
+    validation:
+      - rg -n "compat|legacy|alias|deprecated|ignored|no-op|noop" src packages workflows docs tests .github -S
+      - go test ./src/lib/domain ./src/lib/application ./src/lib/infrastructure
+      - ./src/bin/dockpipe package test --workdir . --only <package>
+      - git diff --check
 
   yaml_workflow_change:
     read:
@@ -75,7 +120,7 @@ tasks:
       - AGENTS.md
       - docs/agents/core/path-scopes.md
       - docs/agents/workflows/yaml-workflows.md
-      - docs/agents/core/package-model.md
+      - docs/agents/core/core-package-model.md
       - docs/agents/packages/package-authoring.md
       - docs/agents/core/validation-commands.md
     optional:
@@ -103,7 +148,7 @@ tasks:
       - docs/agents/core/architecture.md
       - docs/agents/core/engine-boundary.md
       - docs/agents/core/path-scopes.md
-      - docs/agents/core/package-model.md
+      - docs/agents/core/core-package-model.md
       - docs/agents/core/validation-commands.md
     optional:
       - docs/runtime/git-runtime-sessions.md
@@ -129,7 +174,7 @@ tasks:
       - AGENTS.md
       - docs/agents/packages/package-authoring.md
       - docs/agents/core/path-scopes.md
-      - docs/agents/core/package-model.md
+      - docs/agents/core/core-package-model.md
       - docs/agents/runtime/safety-guardrails.md
       - docs/agents/core/validation-commands.md
     optional:
@@ -148,7 +193,7 @@ tasks:
       - AGENTS.md
       - docs/agents/packages/package-promotion.md
       - docs/agents/packages/package-authoring.md
-      - docs/agents/core/package-model.md
+      - docs/agents/core/core-package-model.md
       - docs/agents/runtime/safety-guardrails.md
       - docs/agents/core/validation-commands.md
     optional:
@@ -203,7 +248,7 @@ tasks:
     optional:
       - docs/workflows/agentic-workflows.md
       - docs/workflows/workflow-yaml.md
-      - docs/agents/tasks/agentic-app-ui.md
+      - docs/agents/tasks/agentic-app-ui/index.yaml
       - src/app/tooling/vscode-extensions/dockpipe-language-support/extension.js
       - packages/pipeon/resolvers/pipeon/vscode-extension/README.md
       - packages/pipeon/resolvers/pipeon/vscode-extension/src/extension.ts
@@ -310,12 +355,13 @@ tasks:
       - docs/agents/docs/skills.md
     skills:
       - dorkpipe-task-handoff
+      - dorkpipe-objective-execution
       - dorkpipe-token-optimization
     validation:
       - ./src/bin/dockpipe --package dorkpipe --workflow skills.render -- --list
-      - ./src/bin/dockpipe --package dorkpipe --workflow skills.render -- --target codex --dry-run --skills dorkpipe-task-handoff
+      - ./src/bin/dockpipe --package dorkpipe --workflow skills.render -- --target codex --dry-run --skills dorkpipe-objective-execution,dorkpipe-task-handoff
 
-  task_execution:
+  objective_execution:
     read:
       - AGENTS.md
       - docs/agents/docs/session-handoffs.md
@@ -323,11 +369,11 @@ tasks:
       - docs/agents/task-index.yaml
       - docs/agents/workflows/planner-promotion-model.md
     skills:
-      - dorkpipe-task-execution
+      - dorkpipe-objective-execution
       - dorkpipe-task-handoff
     validation:
       - bash packages/dorkpipe/tests/test_task_skill_lifecycle.sh
-      - ./src/bin/dockpipe --package dorkpipe --workflow skills.render -- --target codex --dry-run --skills dorkpipe-task-execution,dorkpipe-task-handoff
+      - ./src/bin/dockpipe --package dorkpipe --workflow skills.render -- --target codex --dry-run --skills dorkpipe-objective-execution,dorkpipe-task-handoff
 
   safety_or_secrets:
     read:

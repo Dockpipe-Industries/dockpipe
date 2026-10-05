@@ -8,11 +8,11 @@ source "$SCRIPT_DIR/lib/dorkpipe-cli.sh"
 ROOT="${DOCKPIPE_SOURCE_ROOT:-${DOCKPIPE_WORKDIR:-$(pwd)}}"
 
 if [[ -z "${GOCACHE:-}" ]]; then
-  GOCACHE="$(dockpipe scope --package dorkpipe build go-cache --workdir "$ROOT")"
+  GOCACHE="$(dockpipe __state package-runtime --workdir "$ROOT" --owner dorkpipe --path build/go-cache)"
   export GOCACHE
 fi
 if [[ -z "${GOTMPDIR:-}" ]]; then
-  GOTMPDIR="$(dockpipe scope --package dorkpipe build go-tmp --workdir "$ROOT")"
+  GOTMPDIR="$(dockpipe __state package-runtime --workdir "$ROOT" --owner dorkpipe --path build/go-tmp)"
   export GOTMPDIR
 fi
 mkdir -p "$GOCACHE" "$GOTMPDIR"

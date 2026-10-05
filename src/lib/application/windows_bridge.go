@@ -7,6 +7,8 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+
+	"dockpipe/src/lib/application/internal/wslbridge"
 )
 
 // EnvUseWSLBridge, when set to "1", makes dockpipe.exe forward all commands
@@ -52,8 +54,10 @@ func TryWindowsWSLBridge(argv []string, stdin io.Reader, stdout, stderr io.Write
 	wslWd := winPathToWSL(distro, winWd)
 	fmt.Fprintf(stderr, "[dockpipe] Windows bridge: distro=%q cwd=%s -> %s\n", distro, winWd, wslWd)
 
-	translated := translateBridgeArgv(distro, argv)
-	script := buildBashForwardScript(wslWd, translated)
+	translator := wslbridge.New(func(path string) string {
+		return winPathToWSL(distro, path)
+	}, windowsGetwdFn)
+	script := translator.ForwardScript(wslWd, argv)
 	cmd := windowsExecCommandFn("wsl.exe", "-d", distro, "--", "bash", "-lc", script)
 	cmd.Stdin = stdin
 	cmd.Stdout = stdout
@@ -96,49 +100,5 @@ func winPathToWSL(distro, winPath string) string {
 	if err == nil {
 		return strings.ReplaceAll(strings.TrimSpace(string(out)), `\`, `/`)
 	}
-	return windowsPathToWSLFallback(winPath)
-}
-
-// windowsPathToWSLFallback maps C:\foo\bar -> /mnt/c/foo/bar when wslpath fails.
-// Uses drive-letter parsing so it behaves the same on Windows and on Linux (CI).
-func isUNCPathNormalized(s string) bool {
-	// After \ -> /, UNC is //server/share (not a triple slash).
-	return len(s) >= 3 && strings.HasPrefix(s, "//") && s[2] != '/'
-}
-
-func windowsPathToWSLFallback(winPath string) string {
-	// Normalize Windows separators; on Unix GOOS, filepath.Clean leaves slashes alone.
-	s := strings.TrimSpace(winPath)
-	s = strings.ReplaceAll(s, `\`, `/`)
-	// filepath.Clean turns "//server/share" into "/server/share" on Unix — breaks UNC.
-	if !isUNCPathNormalized(s) {
-		s = filepath.Clean(s)
-		// On Windows, Clean reintroduces '\' — WSL paths must use '/'.
-		s = strings.ReplaceAll(s, `\`, `/`)
-	}
-	if len(s) >= 2 && s[1] == ':' && s[0] != '/' {
-		drive := strings.ToLower(string(s[0]))
-		rest := strings.TrimPrefix(s[2:], "/")
-		if rest == "" {
-			return "/mnt/" + drive
-		}
-		return "/mnt/" + drive + "/" + rest
-	}
-	return s
-}
-
-func bashSingleQuote(s string) string {
-	return "'" + strings.ReplaceAll(s, "'", `'\''`) + "'"
-}
-
-func buildBashForwardScript(wslWd string, argv []string) string {
-	var sb strings.Builder
-	sb.WriteString("cd ")
-	sb.WriteString(bashSingleQuote(wslWd))
-	sb.WriteString(" && exec dockpipe")
-	for _, a := range argv {
-		sb.WriteString(" ")
-		sb.WriteString(bashSingleQuote(a))
-	}
-	return sb.String()
+	return wslbridge.PathToWSLFallback(winPath)
 }

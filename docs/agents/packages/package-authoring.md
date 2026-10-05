@@ -18,6 +18,9 @@ Packages are self-contained YAML plus assets plus resolver/runtime wiring. They 
 - For workflow scripts, prefer direct `dockpipe scope ...` calls for source/artifact/package/resolver paths.
 - For reusable shell libraries, prefer `eval "$(dockpipe sdk)"` and `dockpipe_sdk ...` actions.
 - Keep resolver-owned auth/config defaults in resolver profiles and read them with `dockpipe scope resolver <name> <field>`.
+- Choose state ownership explicitly: `dockpipe scope --package <owner-id>` is durable and owner-only; use `PackageRuntimeDir` or shell SDK `path package-runtime <owner-id>` for disposable caches, build output, scratch, and run evidence.
+- A maintained package with mixed legacy public state declares `package_state.compatibility_import: package-owned` plus exact `owner_ids`, then owns exhaustive cohort selection and migration. DockPipe propagates the selected manifest to package/workflow script context; never replace that declaration with engine package-name knowledge or classify an unknown cohort by guesswork.
+- Never link durable state back into `bin/.dockpipe`; compatibility import is validated copy-and-publish and leaves legacy bytes untouched.
 - Keep package tests self-contained.
 
 ## Repo-Local Binary Preferences

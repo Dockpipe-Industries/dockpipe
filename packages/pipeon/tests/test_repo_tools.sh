@@ -3,6 +3,7 @@
 set -euo pipefail
 
 ROOT="$(git rev-parse --show-toplevel)"
+DOCKPIPE_TEST_BIN="${DOCKPIPE_TEST_DOCKPIPE_BIN:-$ROOT/src/bin/dockpipe}"
 
 normalize_path() {
   local raw="${1:-}"
@@ -52,21 +53,38 @@ if [[ "$workflow_state" != "$expected_workflow_state" ]]; then
   exit 1
 fi
 
-ci_default="$(normalize_path "$(env -u DOCKPIPE_WORKFLOW_NAME -u DOCKPIPE_CI_RAW_DIR -u DOCKPIPE_CI_ANALYSIS_DIR -u DOCKPIPE_ARTIFACT_ROOT -u DOCKPIPE_OUTPUT_ROOT DOCKPIPE_WORKDIR="$ROOT" bash -lc 'source "$1"; dockpipe_sdk ci analysis findings.json' _ "$ROOT/src/core/assets/scripts/lib/dockpipe-sdk.sh")")"
+ci_default="$(normalize_path "$(env -u DOCKPIPE_WORKFLOW_NAME -u DOCKPIPE_CI_RAW_DIR -u DOCKPIPE_CI_ANALYSIS_DIR -u DOCKPIPE_ARTIFACT_ROOT -u DOCKPIPE_OUTPUT_ROOT DOCKPIPE_CI_ARTIFACT_SCOPE=package:pipeon DOCKPIPE_WORKDIR="$ROOT" bash -lc 'source "$1"; dockpipe_sdk ci analysis findings.json' _ "$ROOT/src/core/assets/scripts/lib/dockpipe-sdk.sh")")"
 state_root="$ROOT_NORM/bin/.dockpipe"
-expected_ci_default="$state_root/packages/dorkpipe/ci/analysis/findings.json"
+package_runtime="$(normalize_path "$("$DOCKPIPE_TEST_BIN" __state package-runtime --workdir "$ROOT" --owner pipeon)")"
+expected_ci_default="$package_runtime/ci/analysis/findings.json"
 if [[ "$ci_default" != "$expected_ci_default" ]]; then
-  echo "test_repo_tools: expected default CI artifacts under DorkPipe package state, got $ci_default" >&2
+  echo "test_repo_tools: expected explicitly bound CI artifacts under Pipeon package runtime, got $ci_default" >&2
   exit 1
 fi
 
-ci_default_injected="$(normalize_path "$(env -u DOCKPIPE_WORKFLOW_NAME -u DOCKPIPE_CI_RAW_DIR -u DOCKPIPE_CI_ANALYSIS_DIR -u DOCKPIPE_ARTIFACT_ROOT -u DOCKPIPE_OUTPUT_ROOT DOCKPIPE_WORKDIR="$ROOT" bash -lc 'source "$1"; printf "%s\n" "$DOCKPIPE_CI_ANALYSIS_DIR/findings.json"' _ "$ROOT/src/core/assets/scripts/lib/dockpipe-sdk.sh")")"
+ci_default_injected="$(normalize_path "$(env -u DOCKPIPE_WORKFLOW_NAME -u DOCKPIPE_CI_RAW_DIR -u DOCKPIPE_CI_ANALYSIS_DIR -u DOCKPIPE_ARTIFACT_ROOT -u DOCKPIPE_OUTPUT_ROOT DOCKPIPE_CI_ARTIFACT_SCOPE=package:pipeon DOCKPIPE_WORKDIR="$ROOT" bash -lc 'source "$1"; printf "%s\n" "$DOCKPIPE_CI_ANALYSIS_DIR/findings.json"' _ "$ROOT/src/core/assets/scripts/lib/dockpipe-sdk.sh")")"
 if [[ "$ci_default_injected" != "$expected_ci_default" ]]; then
-  echo "test_repo_tools: expected SDK refresh to inject default CI artifacts, got $ci_default_injected" >&2
+  echo "test_repo_tools: expected SDK refresh to inject explicitly bound CI artifacts, got $ci_default_injected" >&2
   exit 1
 fi
 
-ci_bound="$(env -u DOCKPIPE_CI_RAW_DIR -u DOCKPIPE_CI_ANALYSIS_DIR -u DOCKPIPE_ARTIFACT_ROOT -u DOCKPIPE_OUTPUT_ROOT DOCKPIPE_WORKDIR="$ROOT" DOCKPIPE_WORKFLOW_NAME=ci bash -lc 'source "$1"; printf "%s\n" "$(dockpipe_sdk ci raw)" "$(dockpipe_sdk ci analysis)"' _ "$ROOT/src/core/assets/scripts/lib/dockpipe-sdk.sh" | while IFS= read -r line; do normalize_path "$line"; done)"
+ci_unbound="$(env -u DOCKPIPE_WORKFLOW_NAME -u DOCKPIPE_CI_RAW_DIR -u DOCKPIPE_CI_ANALYSIS_DIR -u DOCKPIPE_ARTIFACT_ROOT -u DOCKPIPE_OUTPUT_ROOT -u DOCKPIPE_CI_ARTIFACT_SCOPE DOCKPIPE_WORKDIR="$ROOT" bash -lc 'source "$1"; printf "%s|%s\n" "${DOCKPIPE_CI_RAW_DIR:-}" "${DOCKPIPE_CI_ANALYSIS_DIR:-}"' _ "$ROOT/src/core/assets/scripts/lib/dockpipe-sdk.sh")"
+if [[ "$ci_unbound" != "|" ]]; then
+  echo "test_repo_tools: expected unbound generic SDK CI dirs to remain unset, got $ci_unbound" >&2
+  exit 1
+fi
+if env -u DOCKPIPE_WORKFLOW_NAME -u DOCKPIPE_CI_RAW_DIR -u DOCKPIPE_CI_ANALYSIS_DIR -u DOCKPIPE_CI_ARTIFACT_SCOPE DOCKPIPE_WORKDIR="$ROOT" bash -lc 'source "$1"; dockpipe_sdk ci analysis >/dev/null 2>&1' _ "$ROOT/src/core/assets/scripts/lib/dockpipe-sdk.sh"; then
+  echo "test_repo_tools: expected an unbound generic SDK CI lookup to fail" >&2
+  exit 1
+fi
+
+ci_explicit="$(env -u DOCKPIPE_WORKFLOW_NAME -u DOCKPIPE_CI_ARTIFACT_SCOPE DOCKPIPE_WORKDIR="$ROOT" bash -lc 'DOCKPIPE_CI_RAW_DIR=/custom/raw; DOCKPIPE_CI_ANALYSIS_DIR=/custom/analysis; source "$1"; bash -c '\''printf "%s|%s\n" "$DOCKPIPE_CI_RAW_DIR" "$DOCKPIPE_CI_ANALYSIS_DIR"'\''' _ "$ROOT/src/core/assets/scripts/lib/dockpipe-sdk.sh")"
+if [[ "$ci_explicit" != "/custom/raw|/custom/analysis" ]]; then
+  echo "test_repo_tools: expected explicit CI dirs to remain exported, got $ci_explicit" >&2
+  exit 1
+fi
+
+ci_bound="$(env -u DOCKPIPE_CI_RAW_DIR -u DOCKPIPE_CI_ANALYSIS_DIR -u DOCKPIPE_ARTIFACT_ROOT -u DOCKPIPE_OUTPUT_ROOT -u DOCKPIPE_CI_ARTIFACT_SCOPE DOCKPIPE_WORKDIR="$ROOT" DOCKPIPE_WORKFLOW_NAME=ci bash -lc 'source "$1"; printf "%s\n" "$(dockpipe_sdk ci raw)" "$(dockpipe_sdk ci analysis)"' _ "$ROOT/src/core/assets/scripts/lib/dockpipe-sdk.sh" | while IFS= read -r line; do normalize_path "$line"; done)"
 expected_ci_bound="$state_root/workflows/ci/artifacts/ci-raw
 $state_root/workflows/ci/artifacts/ci-analysis"
 if [[ "$ci_bound" != "$expected_ci_bound" ]]; then
@@ -74,7 +92,7 @@ if [[ "$ci_bound" != "$expected_ci_bound" ]]; then
   exit 1
 fi
 
-ci_injected="$(env -u DOCKPIPE_CI_RAW_DIR -u DOCKPIPE_CI_ANALYSIS_DIR -u DOCKPIPE_ARTIFACT_ROOT -u DOCKPIPE_OUTPUT_ROOT DOCKPIPE_WORKDIR="$ROOT" DOCKPIPE_WORKFLOW_NAME=ci bash -lc 'source "$1"; printf "%s\n" "$DOCKPIPE_CI_RAW_DIR" "$DOCKPIPE_CI_ANALYSIS_DIR"' _ "$ROOT/src/core/assets/scripts/lib/dockpipe-sdk.sh" | while IFS= read -r line; do normalize_path "$line"; done)"
+ci_injected="$(env -u DOCKPIPE_CI_RAW_DIR -u DOCKPIPE_CI_ANALYSIS_DIR -u DOCKPIPE_ARTIFACT_ROOT -u DOCKPIPE_OUTPUT_ROOT -u DOCKPIPE_CI_ARTIFACT_SCOPE DOCKPIPE_WORKDIR="$ROOT" DOCKPIPE_WORKFLOW_NAME=ci bash -lc 'source "$1"; printf "%s\n" "$DOCKPIPE_CI_RAW_DIR" "$DOCKPIPE_CI_ANALYSIS_DIR"' _ "$ROOT/src/core/assets/scripts/lib/dockpipe-sdk.sh" | while IFS= read -r line; do normalize_path "$line"; done)"
 if [[ "$ci_injected" != "$expected_ci_bound" ]]; then
   echo "test_repo_tools: expected SDK refresh to inject workflow-bound CI dirs, got $ci_injected" >&2
   exit 1

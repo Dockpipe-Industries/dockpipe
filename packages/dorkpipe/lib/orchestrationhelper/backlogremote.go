@@ -19,6 +19,7 @@ import (
 	"unicode"
 	"unicode/utf8"
 
+	"dockpipe/src/lib/infrastructure/filepublication"
 	"gopkg.in/yaml.v3"
 )
 
@@ -2851,21 +2852,11 @@ func writeTextFileAtomic(path, content string) error {
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return err
 	}
-	temporary, err := os.CreateTemp(filepath.Dir(path), ".backlog-remote-*.tmp")
+	temporaryPath, err := filepublication.Stage(filepath.Dir(path), ".backlog-remote-*.tmp", []byte(content))
 	if err != nil {
 		return err
 	}
-	temporaryPath := temporary.Name()
 	defer os.Remove(temporaryPath)
-	if _, err = temporary.WriteString(content); err == nil {
-		err = temporary.Sync()
-	}
-	if closeErr := temporary.Close(); err == nil {
-		err = closeErr
-	}
-	if err != nil {
-		return err
-	}
 	if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
 		return err
 	}

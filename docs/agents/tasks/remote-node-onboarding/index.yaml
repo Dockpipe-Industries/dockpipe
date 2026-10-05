@@ -1,0 +1,7 @@
+schema: 1
+task: TASK-036
+topic: Provider-neutral remote nodes and browser-authorized edge setup
+read_first:
+  - overview.md
+canonical:
+  - ../../../runtime/remote-nodes.md

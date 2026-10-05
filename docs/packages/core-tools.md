@@ -5,7 +5,7 @@
 | **DockPipe** | **`src/cmd/`**, **`src/lib/`** |
 | **DorkPipe** | Maintainer **`dorkpipe`** package — **`packages/dorkpipe/lib/README.md`** |
 | **Pipeon** | First-party **`packages/pipeon/`** — **`packages/pipeon/resolvers/pipeon/README.md`** (VS Code extension under **`vscode-extension/`**) |
-| **MCP** | **DorkPipe-owned MCP bridge** — **`packages/dorkpipe/mcp/README.md`** |
+| **MCP** | **DorkPipe-owned MCP bridge** — **`packages/dorkpipe-mcp/README.md`** |
 
 **Package index:** [`packages/`](../packages/).
 

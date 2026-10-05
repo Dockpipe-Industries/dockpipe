@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strconv"
 	"strings"
@@ -434,6 +435,8 @@ func TestRunContainerAttachedCallsCommitOnHost(t *testing.T) {
 		if workdir != wantWorkdir || message != "m" || bundleOut != "b.bundle" || bundleAll {
 			t.Fatalf("unexpected commit args: %q %q %q bundleAll=%v", workdir, message, bundleOut, bundleAll)
 		}
+		// Exercise successful logging with a nonzero elapsed duration.
+		time.Sleep(5 * time.Millisecond)
 		return HostCommitResult{Result: "committed", BundleOut: bundleOut}, nil
 	}
 	in, _ := os.CreateTemp(t.TempDir(), "in")
@@ -464,13 +467,13 @@ func TestRunContainerAttachedCallsCommitOnHost(t *testing.T) {
 		t.Fatalf("read stderr capture: %v", readErr)
 	}
 	stderrText := string(stderrBytes)
-	for _, want := range []string{
-		"unit=run.host_commit status=start bundle_out=b.bundle workspace=/tmp/wd",
-		"unit=run.host_commit status=done duration_ms=0 bundle_out=b.bundle result=committed workspace=/tmp/wd",
-	} {
-		if !strings.Contains(stderrText, want) {
-			t.Fatalf("expected stderr to contain %q, got:\n%s", want, stderrText)
-		}
+	start := "unit=run.host_commit status=start bundle_out=b.bundle workspace=/tmp/wd"
+	if !strings.Contains(stderrText, start) {
+		t.Fatalf("expected stderr to contain %q, got:\n%s", start, stderrText)
+	}
+	completion := regexp.MustCompile(`unit=run\.host_commit status=done duration_ms=[0-9]+ bundle_out=b\.bundle result=committed workspace=/tmp/wd`)
+	if !completion.MatchString(stderrText) {
+		t.Fatalf("expected successful host commit with a nonnegative duration, got:\n%s", stderrText)
 	}
 }
 

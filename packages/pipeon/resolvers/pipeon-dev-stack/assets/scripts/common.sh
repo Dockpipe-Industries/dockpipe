@@ -80,6 +80,10 @@ pipeon_stack_legacy_slug() {
 }
 
 pipeon_stack_state_dir() {
+  dockpipe __state package-runtime --workdir "$(pipeon_stack_workdir)" --owner pipeon/resolver/pipeon-dev-stack --ensure-private
+}
+
+pipeon_stack_legacy_state_dir() {
   dockpipe scope --package pipeon-dev-stack .
 }
 
@@ -163,7 +167,74 @@ pipeon_stack_code_server_url() {
 }
 
 pipeon_stack_code_server_home() {
-  printf '%s/code-server-home\n' "$(pipeon_stack_state_dir)"
+  if [[ -z "${PIPEON_CODE_SERVER_DURABLE_HOME:-}" ]]; then
+    echo "pipeon-dev-stack: code-server state was not prepared" >&2
+    return 1
+  fi
+  printf '%s\n' "$PIPEON_CODE_SERVER_DURABLE_HOME"
+}
+
+pipeon_stack_code_server_runtime_user_data() {
+  printf '%s\n' "${PIPEON_CODE_SERVER_RUNTIME_USER_DATA:?code-server state was not prepared}"
+}
+
+pipeon_stack_code_server_user_dir() {
+  dockpipe __state private-directory --root "${PIPEON_CODE_SERVER_DURABLE_USER_ROOT:?code-server state was not prepared}" --path user-data/User
+}
+
+pipeon_stack_code_server_machine_dir() {
+  dockpipe __state private-directory --root "${PIPEON_CODE_SERVER_DURABLE_USER_ROOT:?code-server state was not prepared}" --path user-data/Machine
+}
+
+pipeon_stack_code_server_extensions_dir() {
+  dockpipe __state private-directory --root "${PIPEON_CODE_SERVER_DURABLE_USER_ROOT:?code-server state was not prepared}" --path extensions
+}
+
+pipeon_stack_prepare_code_server_state() {
+  local workdir legacy_root home_status user_status runtime_root
+  workdir="$(pipeon_stack_workdir)" || return
+  legacy_root="$(pipeon_stack_legacy_state_dir)" || return
+  runtime_root="$(pipeon_stack_state_dir)" || return
+  home_status="$(dockpipe __state prepare-durable-cohort \
+    --workdir "$workdir" \
+    --owner pipeon/resolver/pipeon-dev-stack \
+    --cohort code-server-user-home-v1 \
+    --instance workspace \
+    --run maintained-session \
+    --legacy-root "$legacy_root" \
+    --tree code-server-home=home \
+    --ignore code-server-home/.cache \
+    --ignore code-server-home/.dotnet \
+    --ignore code-server-home/.npm \
+    --ignore code-server-home/.nuget/packages \
+    --ignore code-server-home/go \
+    --ignore code-server-home/.local/share/code-server)" || return
+  IFS=$'\t' read -r PIPEON_CODE_SERVER_DURABLE_HOME_ROOT _ <<<"$home_status"
+  user_status="$(dockpipe __state prepare-durable-cohort \
+    --workdir "$workdir" \
+    --owner pipeon/resolver/pipeon-dev-stack \
+    --cohort code-server-user-data-v1 \
+    --instance workspace \
+    --run maintained-session \
+    --legacy-root "$legacy_root" \
+    --tree code-server-home/.local/share/code-server/User=user-data/User \
+    --tree code-server-home/.local/share/code-server/Machine=user-data/Machine \
+    --tree code-server-home/.local/share/code-server/extensions=extensions)" || return
+  IFS=$'\t' read -r PIPEON_CODE_SERVER_DURABLE_USER_ROOT _ <<<"$user_status"
+
+  PIPEON_CODE_SERVER_DURABLE_HOME="$(dockpipe __state private-directory --root "$PIPEON_CODE_SERVER_DURABLE_HOME_ROOT" --path home)" || return
+  pipeon_stack_code_server_user_dir >/dev/null || return
+  pipeon_stack_code_server_machine_dir >/dev/null || return
+  pipeon_stack_code_server_extensions_dir >/dev/null || return
+  PIPEON_CODE_SERVER_RUNTIME_HOME="$(dockpipe __state private-directory --root "$runtime_root" --path code-server/home)" || return
+  PIPEON_CODE_SERVER_RUNTIME_CACHE="$(dockpipe __state private-directory --root "$runtime_root" --path code-server/home/.cache)" || return
+  PIPEON_CODE_SERVER_RUNTIME_DOTNET="$(dockpipe __state private-directory --root "$runtime_root" --path code-server/home/.dotnet)" || return
+  PIPEON_CODE_SERVER_RUNTIME_USER_DATA="$(dockpipe __state private-directory --root "$runtime_root" --path code-server/home/.local/share/code-server)" || return
+  dockpipe __state private-directory --root "$runtime_root" --path code-server/home/.local/share/code-server/User >/dev/null || return
+  dockpipe __state private-directory --root "$runtime_root" --path code-server/home/.local/share/code-server/Machine >/dev/null || return
+  export PIPEON_CODE_SERVER_DURABLE_HOME_ROOT PIPEON_CODE_SERVER_DURABLE_USER_ROOT PIPEON_CODE_SERVER_DURABLE_HOME
+  export PIPEON_CODE_SERVER_RUNTIME_HOME PIPEON_CODE_SERVER_RUNTIME_CACHE PIPEON_CODE_SERVER_RUNTIME_DOTNET
+  export PIPEON_CODE_SERVER_RUNTIME_USER_DATA
 }
 
 pipeon_stack_windows_docker_host_path() {
@@ -431,14 +502,32 @@ PY
 }
 
 ensure_pipeon_stack_state_dir() {
-  mkdir -p "$(pipeon_stack_state_dir)"
+  local state_dir
+  state_dir="$(pipeon_stack_state_dir)"
+  if [[ -L "$state_dir" || ! -d "$state_dir" ]]; then
+    echo "pipeon-dev-stack: package runtime root is linked or not a directory: $state_dir" >&2
+    return 1
+  fi
+}
+
+pipeon_stack_prepare_private_file() {
+  local path="${1:?private file path}"
+  if [[ -L "$path" || ( -e "$path" && ! -f "$path" ) ]]; then
+    echo "pipeon-dev-stack: private runtime file is linked or not regular: $path" >&2
+    return 1
+  fi
+  if [[ -f "$path" ]]; then
+    chmod 600 "$path"
+  fi
 }
 
 ensure_pipeon_stack_api_key() {
   local key_file
   key_file="$(pipeon_stack_api_key_file)"
-  ensure_pipeon_stack_state_dir
+  ensure_pipeon_stack_state_dir || return
+  pipeon_stack_prepare_private_file "$key_file" || return
   if [[ -s "$key_file" ]]; then
+    chmod 600 "$key_file"
     return 0
   fi
   if command -v openssl >/dev/null 2>&1; then
@@ -446,14 +535,16 @@ ensure_pipeon_stack_api_key() {
   else
     date +%s%N | sha256sum | cut -d' ' -f1 > "$key_file"
   fi
-  chmod 600 "$key_file" 2>/dev/null || true
+  chmod 600 "$key_file"
 }
 
 ensure_pipeon_stack_host_mcp_api_key() {
   local key_file
   key_file="$(pipeon_stack_host_mcp_api_key_file)"
-  ensure_pipeon_stack_state_dir
+  ensure_pipeon_stack_state_dir || return
+  pipeon_stack_prepare_private_file "$key_file" || return
   if [[ -s "$key_file" ]]; then
+    chmod 600 "$key_file"
     return 0
   fi
   if command -v openssl >/dev/null 2>&1; then
@@ -461,15 +552,21 @@ ensure_pipeon_stack_host_mcp_api_key() {
   else
     date +%s%N | sha256sum | cut -d' ' -f1 > "$key_file"
   fi
-  chmod 600 "$key_file" 2>/dev/null || true
+  chmod 600 "$key_file"
 }
 
 ensure_pipeon_stack_mcp_tls_material() {
   local cert_file key_file
   cert_file="$(pipeon_stack_mcp_tls_cert_file)"
   key_file="$(pipeon_stack_mcp_tls_key_file)"
-  ensure_pipeon_stack_state_dir
+  ensure_pipeon_stack_state_dir || return
+  pipeon_stack_prepare_private_file "$key_file" || return
+  if [[ -L "$cert_file" || ( -e "$cert_file" && ! -f "$cert_file" ) ]]; then
+    echo "pipeon-dev-stack: TLS certificate path is linked or not regular: $cert_file" >&2
+    return 1
+  fi
   if [[ -s "$cert_file" && -s "$key_file" ]]; then
+    chmod 600 "$key_file"
     return 0
   fi
   if ! command -v openssl >/dev/null 2>&1; then
@@ -491,8 +588,8 @@ ensure_pipeon_stack_mcp_tls_material() {
       -subj "/CN=dorkpipe-stack" \
       -addext "subjectAltName=DNS:dorkpipe-stack,DNS:localhost,IP:127.0.0.1" >/dev/null 2>&1
   fi
-  chmod 600 "$key_file" 2>/dev/null || true
-  chmod 644 "$cert_file" 2>/dev/null || true
+  chmod 600 "$key_file"
+  chmod 644 "$cert_file"
 }
 
 pipeon_stack_detect_nvidia_gpu() {
@@ -911,14 +1008,19 @@ pipeon_stack_compose_base_args() {
 }
 
 write_pipeon_stack_runtime_env() {
-  local workdir repo_root context_dir api_key_file tls_cert_file tls_key_file
+  local workdir repo_root context_dir api_key_file tls_cert_file tls_key_file runtime_env temporary_env
   workdir="$(pipeon_stack_workdir)"
   repo_root="$(pipeon_stack_repo_root)"
   context_dir="$(pipeon_stack_context_dir)"
   api_key_file="$(pipeon_stack_api_key_file)"
   tls_cert_file="$(pipeon_stack_mcp_tls_cert_file)"
   tls_key_file="$(pipeon_stack_mcp_tls_key_file)"
-  cat > "$(pipeon_stack_runtime_env)" <<EOF
+  runtime_env="$(pipeon_stack_runtime_env)"
+  ensure_pipeon_stack_state_dir || return
+  pipeon_stack_prepare_private_file "$runtime_env" || return
+  temporary_env="$(mktemp "${runtime_env}.tmp.XXXXXX")"
+  chmod 600 "$temporary_env"
+  cat > "$temporary_env" <<EOF
 WORKDIR=$workdir
 REPO_ROOT=$repo_root
 PIPEON_DEV_STACK_WORKDIR=$workdir
@@ -946,6 +1048,8 @@ PIPEON_HOST_MCP_CONTAINER_URL=$(pipeon_stack_host_mcp_container_url)
 PIPEON_HOST_MCP_API_KEY_FILE=$(pipeon_stack_host_mcp_api_key_file)
 PIPEON_DEV_STACK_GPU=${PIPEON_DEV_STACK_GPU:-auto}
 EOF
+  mv "$temporary_env" "$runtime_env"
+  pipeon_stack_prepare_private_file "$runtime_env" || return
 }
 
 pipeon_stack_compose_running() {

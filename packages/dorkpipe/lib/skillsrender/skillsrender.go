@@ -31,6 +31,7 @@ type skill struct {
 	Description      string
 	ShortDescription string
 	Instructions     string
+	SourceDir        string
 }
 
 type config struct {
@@ -187,6 +188,7 @@ func readSkill(skillDir string) (skill, error) {
 		Description:      strings.TrimSpace(meta.Description),
 		ShortDescription: strings.TrimSpace(meta.ShortDescription),
 		Instructions:     strings.TrimSpace(string(instructionsBytes)),
+		SourceDir:        skillDir,
 	}
 	if !nameRE.MatchString(item.Name) {
 		return skill{}, fmt.Errorf("%s: invalid name %q", dirName, item.Name)
@@ -310,7 +312,7 @@ func renderSkill(item skill, base string, cfg config, report *[]reportEntry) err
 	if err := ensureWithinBase(base, skillDir); err != nil {
 		return err
 	}
-	changed, err := changedExistingFiles(skillDir, files)
+	changed, err := changedExistingFiles(skillDir, files, item.Name, cfg.Target)
 	if err != nil {
 		return err
 	}
@@ -348,6 +350,12 @@ func renderSkill(item skill, base string, cfg config, report *[]reportEntry) err
 }
 
 func renderFiles(item skill, target string) (map[string]string, error) {
+	instructions, err := targetInstructions(item, target)
+	if err != nil {
+		return nil, err
+	}
+	item.Instructions = instructions
+
 	switch target {
 	case "codex":
 		short := item.ShortDescription
@@ -427,7 +435,15 @@ func ensureWithinBase(base, target string) error {
 	return nil
 }
 
-func changedExistingFiles(skillDir string, files map[string]string) ([]string, error) {
+func changedExistingFiles(skillDir string, files map[string]string, source, target string) ([]string, error) {
+	unchanged, err := unchangedManagedRender(skillDir, source, target)
+	if err != nil {
+		return nil, err
+	}
+	if unchanged {
+		return nil, nil
+	}
+
 	var changed []string
 	for rel, desired := range files {
 		path := filepath.Join(skillDir, rel)
@@ -444,6 +460,45 @@ func changedExistingFiles(skillDir string, files map[string]string) ([]string, e
 	}
 	sort.Strings(changed)
 	return changed, nil
+}
+
+func unchangedManagedRender(skillDir, source, target string) (bool, error) {
+	manifestPath := filepath.Join(skillDir, ".dorkpipe-skill-render.json")
+	manifestBytes, err := os.ReadFile(manifestPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return false, nil
+		}
+		return false, err
+	}
+	var manifest map[string]string
+	if err := json.Unmarshal(manifestBytes, &manifest); err != nil {
+		return false, nil
+	}
+	if manifest["renderer"] != rendererName || manifest["source"] != source ||
+		manifest["target"] != target || manifest["sha256"] == "" {
+		return false, nil
+	}
+
+	entries, err := os.ReadDir(skillDir)
+	if err != nil {
+		return false, err
+	}
+	current := map[string]string{}
+	for _, entry := range entries {
+		if entry.Name() == ".dorkpipe-skill-render.json" {
+			continue
+		}
+		if entry.IsDir() {
+			return false, nil
+		}
+		content, err := os.ReadFile(filepath.Join(skillDir, entry.Name()))
+		if err != nil {
+			return false, err
+		}
+		current[entry.Name()] = string(content)
+	}
+	return contentHash(current) == manifest["sha256"], nil
 }
 
 func removeClaudeStaleFiles(skillDir string) error {

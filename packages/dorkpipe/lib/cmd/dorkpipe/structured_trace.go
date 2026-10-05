@@ -190,7 +190,9 @@ func writePreparedArtifactBundle(root, artifactsDir string, artifact *editModelA
 	if err := validateEditArtifact(prepared); err != nil {
 		return nil, "", err
 	}
-	writeJSON(filepath.Join(artifactsDir, "artifact.json"), prepared)
+	if err := writeJSON(filepath.Join(artifactsDir, "artifact.json"), prepared); err != nil {
+		return nil, "", err
+	}
 	patchPath := filepath.Join(artifactsDir, "patch.diff")
 	if err := os.WriteFile(patchPath, []byte(prepared.Patch), 0o644); err != nil {
 		return nil, "", err

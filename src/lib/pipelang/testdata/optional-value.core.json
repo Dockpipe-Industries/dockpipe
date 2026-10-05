@@ -1,0 +1,259 @@
+{
+  "language_contract": "v0.13.0",
+  "compiler_contract": "pipelang.compiler.v1",
+  "functions": [
+    {
+      "identity": {
+        "package_id": "test.package",
+        "path": "app.root.root.present",
+        "callable": {
+          "parameters": [
+            {
+              "kind": "primitive",
+              "primitive": "string"
+            }
+          ],
+          "returns": {
+            "kind": "applied",
+            "package_id": "pipelang",
+            "path": "optional",
+            "name": "Optional",
+            "arguments": [
+              {
+                "kind": "primitive",
+                "primitive": "string"
+              }
+            ]
+          }
+        }
+      },
+      "name": "Present",
+      "parameters": [
+        {
+          "position": 0,
+          "name": "value",
+          "type": {
+            "kind": "primitive",
+            "primitive": "string"
+          }
+        }
+      ],
+      "return_type": {
+        "kind": "optional",
+        "optional": {
+          "value": {
+            "kind": "primitive",
+            "primitive": "string"
+          }
+        }
+      },
+      "body": {
+        "kind": "optional_some",
+        "type": {
+          "kind": "optional",
+          "optional": {
+            "value": {
+              "kind": "primitive",
+              "primitive": "string"
+            }
+          }
+        },
+        "some": {
+          "value": {
+            "kind": "reference",
+            "type": {
+              "kind": "primitive",
+              "primitive": "string"
+            },
+            "parameter": 0
+          }
+        }
+      }
+    },
+    {
+      "identity": {
+        "package_id": "test.package",
+        "path": "app.root.root.absent",
+        "callable": {
+          "parameters": [],
+          "returns": {
+            "kind": "applied",
+            "package_id": "pipelang",
+            "path": "optional",
+            "name": "Optional",
+            "arguments": [
+              {
+                "kind": "primitive",
+                "primitive": "string"
+              }
+            ]
+          }
+        }
+      },
+      "name": "Absent",
+      "parameters": [],
+      "return_type": {
+        "kind": "optional",
+        "optional": {
+          "value": {
+            "kind": "primitive",
+            "primitive": "string"
+          }
+        }
+      },
+      "body": {
+        "kind": "optional_none",
+        "type": {
+          "kind": "optional",
+          "optional": {
+            "value": {
+              "kind": "primitive",
+              "primitive": "string"
+            }
+          }
+        },
+        "none": {}
+      }
+    },
+    {
+      "identity": {
+        "package_id": "test.package",
+        "path": "app.root.root.forward",
+        "callable": {
+          "parameters": [
+            {
+              "kind": "applied",
+              "package_id": "pipelang",
+              "path": "optional",
+              "name": "Optional",
+              "arguments": [
+                {
+                  "kind": "primitive",
+                  "primitive": "string"
+                }
+              ]
+            }
+          ],
+          "returns": {
+            "kind": "applied",
+            "package_id": "pipelang",
+            "path": "optional",
+            "name": "Optional",
+            "arguments": [
+              {
+                "kind": "primitive",
+                "primitive": "string"
+              }
+            ]
+          }
+        }
+      },
+      "name": "Forward",
+      "parameters": [
+        {
+          "position": 0,
+          "name": "value",
+          "type": {
+            "kind": "optional",
+            "optional": {
+              "value": {
+                "kind": "primitive",
+                "primitive": "string"
+              }
+            }
+          }
+        }
+      ],
+      "return_type": {
+        "kind": "optional",
+        "optional": {
+          "value": {
+            "kind": "primitive",
+            "primitive": "string"
+          }
+        }
+      },
+      "body": {
+        "kind": "reference",
+        "type": {
+          "kind": "optional",
+          "optional": {
+            "value": {
+              "kind": "primitive",
+              "primitive": "string"
+            }
+          }
+        },
+        "parameter": 0
+      }
+    },
+    {
+      "identity": {
+        "package_id": "test.package",
+        "path": "app.root.root.hasvalue",
+        "callable": {
+          "parameters": [
+            {
+              "kind": "applied",
+              "package_id": "pipelang",
+              "path": "optional",
+              "name": "Optional",
+              "arguments": [
+                {
+                  "kind": "primitive",
+                  "primitive": "string"
+                }
+              ]
+            }
+          ],
+          "returns": {
+            "kind": "primitive",
+            "primitive": "bool"
+          }
+        }
+      },
+      "name": "HasValue",
+      "parameters": [
+        {
+          "position": 0,
+          "name": "value",
+          "type": {
+            "kind": "optional",
+            "optional": {
+              "value": {
+                "kind": "primitive",
+                "primitive": "string"
+              }
+            }
+          }
+        }
+      ],
+      "return_type": {
+        "kind": "primitive",
+        "primitive": "bool"
+      },
+      "body": {
+        "kind": "optional_has_value",
+        "type": {
+          "kind": "primitive",
+          "primitive": "bool"
+        },
+        "has_value": {
+          "value": {
+            "kind": "reference",
+            "type": {
+              "kind": "optional",
+              "optional": {
+                "value": {
+                  "kind": "primitive",
+                  "primitive": "string"
+                }
+              }
+            },
+            "parameter": 0
+          }
+        }
+      }
+    }
+  ]
+}

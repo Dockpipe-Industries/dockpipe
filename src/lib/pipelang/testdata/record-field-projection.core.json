@@ -1,0 +1,101 @@
+{
+  "language_contract": "v0.10.0",
+  "compiler_contract": "pipelang.compiler.v1",
+  "functions": [
+    {
+      "identity": {
+        "package_id": "test.package",
+        "path": "app.root.root.idof",
+        "callable": {
+          "parameters": [
+            {
+              "kind": "named",
+              "package_id": "test.package",
+              "path": "app.root.row"
+            }
+          ],
+          "returns": {
+            "kind": "primitive",
+            "primitive": "string"
+          }
+        }
+      },
+      "name": "IdOf",
+      "parameters": [
+        {
+          "position": 0,
+          "name": "value",
+          "type": {
+            "kind": "record",
+            "record": {
+              "fields": [
+                {
+                  "identity": {
+                    "package_id": "test.package",
+                    "path": "app.root.row.id"
+                  },
+                  "name": "Id",
+                  "type": {
+                    "kind": "primitive",
+                    "primitive": "string"
+                  }
+                }
+              ]
+            },
+            "identity": {
+              "package_id": "test.package",
+              "path": "app.root.row"
+            },
+            "name": "Row"
+          }
+        }
+      ],
+      "return_type": {
+        "kind": "primitive",
+        "primitive": "string"
+      },
+      "body": {
+        "kind": "field_projection",
+        "type": {
+          "kind": "primitive",
+          "primitive": "string"
+        },
+        "field": {
+          "receiver": {
+            "kind": "reference",
+            "type": {
+              "kind": "record",
+              "record": {
+                "fields": [
+                  {
+                    "identity": {
+                      "package_id": "test.package",
+                      "path": "app.root.row.id"
+                    },
+                    "name": "Id",
+                    "type": {
+                      "kind": "primitive",
+                      "primitive": "string"
+                    }
+                  }
+                ]
+              },
+              "identity": {
+                "package_id": "test.package",
+                "path": "app.root.row"
+              },
+              "name": "Row"
+            },
+            "parameter": 0
+          },
+          "identity": {
+            "package_id": "test.package",
+            "path": "app.root.row.id"
+          },
+          "name": "Id",
+          "position": 0
+        }
+      }
+    }
+  ]
+}

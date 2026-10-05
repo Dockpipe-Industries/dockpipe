@@ -10,6 +10,7 @@ import (
 )
 
 func TestBuildCursor(t *testing.T) {
+	isolateHandoffLearningState(t)
 	root := t.TempDir()
 	out, err := statepaths.SelfAnalysisDir(root)
 	if err != nil {

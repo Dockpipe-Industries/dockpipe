@@ -12,12 +12,17 @@ COMPILE_WORKDIR="${REPO_ROOT}/bin/.dockpipe/build/embedded-dorkpipe-assets"
 
 clean_generated() {
 	if [[ -f "${MARKER}" || "${DORKPIPE_CLEAN_EMBEDDED_DORKPIPE_ASSETS_FORCE:-0}" == "1" ]]; then
+		if [[ -f "${REPO_ROOT}/embed_release_generated.go" ]]; then
+			python3 "${REPO_ROOT}/release/packaging/embedded-inputs.py" --release --check
+			rm "${REPO_ROOT}/embed_release_generated.go"
+		fi
 		rm -rf "${TOOLING_BIN}"
 	fi
 }
 
 case "${cmd}" in
 prepare)
+	python3 "${REPO_ROOT}/release/packaging/embedded-inputs.py" --check
 	if [[ ! -f "${HOOK}" ]]; then
 		echo "prepare embedded dorkpipe assets: missing ${HOOK}" >&2
 		exit 1
@@ -41,6 +46,7 @@ prepare)
 		fi
 		chmod +x "${path}" 2>/dev/null || true
 	done
+	python3 "${REPO_ROOT}/release/packaging/embedded-inputs.py" --release
 	;;
 clean)
 	clean_generated

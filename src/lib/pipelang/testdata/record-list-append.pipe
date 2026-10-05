@@ -1,0 +1,12 @@
+public Record ContainerRow {
+    public string Id;
+    public string Name;
+    public bool Running;
+}
+
+public Class Root {
+    public List<ContainerRow> AppendRow(
+        List<ContainerRow> values,
+        ContainerRow value
+    ) => append(values, value);
+}

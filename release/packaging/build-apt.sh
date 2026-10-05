@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+# Build a signed, by-hash APT repository. Caller owns the temporary GPG home.
+set -euo pipefail
+artifacts="${1:?artifact directory}"
+destination="${2:?new repository directory}"
+fingerprint="${APT_SIGNING_FINGERPRINT:?APT signing key fingerprint is required}"
+[[ ! -e "$destination" ]] || { echo "APT destination already exists: $destination" >&2; exit 1; }
+mkdir -p "$destination"
+destination="$(cd "$destination" && pwd)"
+for arch in amd64 arm64; do
+  pool="$destination/pool/main/d/dockpipe/$arch"
+  index="$destination/dists/stable/main/binary-$arch"
+  mkdir -p "$pool" "$index/by-hash/SHA256"
+  shopt -s nullglob
+  packages=("$artifacts"/dockpipe_*_"$arch".deb)
+  [[ ${#packages[@]} -eq 1 ]] || { echo "Expected one $arch DEB" >&2; exit 1; }
+  [[ "$(dpkg-deb -f "${packages[0]}" Architecture)" == "$arch" ]]
+  cp "${packages[0]}" "$pool/"
+  (cd "$destination" && apt-ftparchive packages "pool/main/d/dockpipe/$arch") > "$index/Packages"
+  gzip -n -9 -c "$index/Packages" > "$index/Packages.gz"
+  for file in "$index/Packages" "$index/Packages.gz"; do
+    hash="$(sha256sum "$file" | cut -d ' ' -f1)"
+    cp "$file" "$index/by-hash/SHA256/$hash"
+  done
+done
+release="$destination/dists/stable/Release"
+apt-ftparchive \
+  -o APT::FTPArchive::Release::Origin=DockPipe \
+  -o APT::FTPArchive::Release::Label=DockPipe \
+  -o APT::FTPArchive::Release::Suite=stable \
+  -o APT::FTPArchive::Release::Codename=stable \
+  -o 'APT::FTPArchive::Release::Architectures=amd64 arm64' \
+  -o APT::FTPArchive::Release::Components=main \
+  -o APT::FTPArchive::Release::Acquire-By-Hash=yes \
+  release "$destination/dists/stable" > "$release"
+gpg --batch --yes --local-user "$fingerprint" --digest-algo SHA256 --clearsign --output "${release%Release}InRelease" "$release"
+gpg --batch --yes --local-user "$fingerprint" --digest-algo SHA256 --armor --detach-sign --output "$release.gpg" "$release"
+gpg --batch --export "$fingerprint" > "$destination/dockpipe-archive-keyring.gpg"
+gpgv --keyring "$destination/dockpipe-archive-keyring.gpg" "${release%Release}InRelease"

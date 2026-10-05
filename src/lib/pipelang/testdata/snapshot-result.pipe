@@ -1,0 +1,33 @@
+public Record ContainerRow {
+    public string Id;
+    public string Name;
+    public bool Running;
+}
+
+public Class Root {
+    public Result<List<ContainerRow>, string> RowsOk(
+        List<ContainerRow> value
+    ) => ok<List<ContainerRow>, string>(value);
+
+    public Result<List<ContainerRow>, string> RowsFailed(
+        string error
+    ) => err<List<ContainerRow>, string>(error);
+
+    public Result<List<ContainerRow>, string> ForwardRows(
+        Result<List<ContainerRow>, string> value
+    ) => value;
+
+    public bool RowsSucceeded(
+        Result<List<ContainerRow>, string> value
+    ) => is_ok(value);
+
+    public List<ContainerRow> RowsOr(
+        Result<List<ContainerRow>, string> value,
+        List<ContainerRow> fallback
+    ) => success_or(value, fallback);
+
+    public string ErrorOr(
+        Result<List<ContainerRow>, string> value,
+        string fallback
+    ) => failure_or(value, fallback);
+}

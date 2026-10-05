@@ -5,6 +5,11 @@ runtime and the `qemu` resolver. Its runnable path is development-only. The
 qualification fields are a typed contract for offline validation and are fixed
 to `Qualification.Enabled: false` until a separate integration and live gate.
 
+VM package 1.3.4 gives the hash-pinned SQLite harness only its fixed private
+role and `PATH=/usr/bin:/bin`, allowing the reviewed
+`systemd-detect-virt --vm` lookup without inheriting the guest-agent service
+environment or adding a generic execution surface.
+
 ## Immutable Ubuntu profile
 
 The reviewed profile is Ubuntu 24.04 LTS amd64 release stamp `20260801`:
@@ -181,11 +186,11 @@ Any failure stops once, preserves all four instance roots, and never retries or
 cleans. Cleanup requires a separate fresh authorization bound to the exact
 contract, plan, executor digest, and ordered resource list.
 
-Gate 1 materialized this bundle at
-`/home/jamie/.cache/dockpipe/vm/toolchains/qemu-11.0.3-linux-amd64.1`, with
-manifest SHA-256
-`11a27f32eb93e62aba8ebc500dfd877339a71821793cbf30845b53964c22320c`.
-Two independent builds matched the same complete output inventory. The
+Historical Gate 1 evidence is preserved in the source repository under
+`docs/research/vm-toolchain-2026-08-07/`. Those two builds matched the same
+complete output inventory. Fresh toolchains use the parameterized
+`toolchains/qemu-11.0.3-linux-amd64/` recipe with explicitly selected paths and
+new manifest and binary hashes; the historical hashes are not fresh-build defaults. The
 production Linux runner now implements the exact typed operations with no shell,
 environment passthrough, fallback tool, retry, or automatic cleanup. Offline
 tests use inert subprocess fixtures and in-memory connections. The first Gate 2
@@ -258,15 +263,17 @@ or preserved root.
 
 The reviewed deterministic builds are not yet Gate 2 inputs. A distinct
 offline promotion must first publish only the Linux/amd64 controller and guest
-agent into `/home/jamie/.local/share/dockpipe-vm-gates`, a fixed non-live
+agent into `<authorized-promotion-root>`, a fixed non-live
 task-owned namespace separate from the checkout, package/install and generated
 stores, caches, live XDG roots, and preserved Gate 2 roots. Promotion IDs match
-`vmp-[0-9a-f]{16}`. The first completed ID is `vmp-2026080815f0ea3f`:
+`vmp-[0-9a-f]{16}`. The first completed ID was `vmp-2026080815f0ea3f`; historical absolute paths
+are retained in `docs/research/vm-toolchain-2026-08-07/promotion-paths.md` in the
+source repository. The layout is:
 
 - root:
-  `/home/jamie/.local/share/dockpipe-vm-gates/promotions/vmp-2026080815f0ea3f`
+  `<authorized-promotion-root>/promotions/vmp-2026080815f0ea3f`
 - evidence:
-  `/home/jamie/.local/share/dockpipe-vm-gates/evidence/vmp-2026080815f0ea3f/promotion.evidence.json`
+  `<authorized-promotion-root>/evidence/vmp-2026080815f0ea3f/promotion.evidence.json`
 
 The root is exclusively created mode `0700`. Its immutable closed inventory is
 exactly `dockpipe-qemu-controller` (`5447054` bytes,
@@ -679,7 +686,8 @@ request is rejected unless it arrives through a fresh signed guest bootstrap
 with a different kernel boot ID.
 
 The guest runs only the root-owned mode-`0755`, hash-pinned
-`/usr/libexec/dockpipe-sqlite-vm-harness` under one of two fixed private roles.
+`/usr/libexec/dockpipe-sqlite-vm-harness` under one of two fixed private roles
+and the fixed `PATH=/usr/bin:/bin`.
 Both guest and controller validate canonical harness evidence for exact SQLite
 3.53.3/source identity, native `unix` VFS, expected old/new revision,
 `quick_check=ok`, metadata hashes, and zero retries, replays, repairs, or

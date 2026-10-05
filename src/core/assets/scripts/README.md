@@ -64,7 +64,7 @@ The important mapping is:
 - `dockpipe get state_dir` reads `DOCKPIPE_STATE_DIR` or defaults to `<workdir>/bin/.dockpipe`
 - `dockpipe get artifact_root` reads `DOCKPIPE_ARTIFACT_ROOT` or defaults to the current workflow artifact root
 - `dockpipe get output_root` reads `DOCKPIPE_OUTPUT_ROOT` or falls back to the artifact root
-- `dockpipe get package_state_dir` reads `DOCKPIPE_PACKAGE_STATE_DIR` or defaults to `<state_dir>/packages/<package_id>`
+- `dockpipe get package_state_dir` resolves owner-only durable project/package state. An injected `DOCKPIPE_PACKAGE_STATE_DIR` must equal that path or be an independently owner-controlled absolute override outside the checkout.
 
 For generated artifacts, prefer `dockpipe scope` instead of hand-writing `tmp/`, `.dockpipe/`, or
 package/workflow state paths:
@@ -72,7 +72,7 @@ package/workflow state paths:
 ```bash
 dockpipe scope artifacts providers/codex/result.json
 dockpipe scope workflow docs.orchestrate orchestrate
-dockpipe scope --package dorkpipe training metrics.jsonl
+dockpipe scope --package acme.tool settings.json
 ```
 
 Use `dockpipe_sdk` for shell actions that need to affect the current shell or load shared shell
@@ -81,6 +81,7 @@ helpers:
 ```bash
 eval "$(dockpipe sdk)"
 dockpipe_sdk path build npm-cache
+dockpipe_sdk path package-runtime acme.tool npm-cache
 dockpipe_sdk source terraform-pipeline
 ```
 
@@ -93,7 +94,9 @@ dockpipe_sdk source terraform-pipeline
 
 Use workflow scopes for files produced by the current step or workflow. `scopes.artifacts`
 controls that root, so a step can run with `cwd: repo` while generated files still land in artifact
-state. Use package scopes for package-owned service state, credentials, caches, and shared metrics.
+state. Use package scopes for durable service state, credentials, settings, recovery authority, and
+cumulative records. Use package runtime for caches, build output, scratch, run evidence, and other
+disposable products under `bin/.dockpipe/`.
 Use workflow paths for workflow-run artifacts such as orchestration task graphs, worker outputs,
 optimizer assessments, and proposed patches.
 
@@ -109,9 +112,11 @@ printf '%s\n' "$(dockpipe_sdk ci analysis findings.json)"
 ```
 
 Package scripts should use `dockpipe_sdk ci raw ...` and `dockpipe_sdk ci analysis ...` instead of
-appending filenames to injected environment variables. Package authors should not need to care
-whether the active workflow keeps that artifact lane in package state, workflow state, or an
-explicit caller-provided directory.
+appending filenames to injected environment variables. Workflow context binds these helpers to the
+current workflow automatically. Package-owned callers must provide their owner explicitly with
+`DOCKPIPE_CI_ARTIFACT_SCOPE=package:<name>` (or use an injected package context); cross-workflow
+callers may use `workflow:<name>`. An unbound SDK does not select a package implicitly. Explicit
+`DOCKPIPE_CI_RAW_DIR` and `DOCKPIPE_CI_ANALYSIS_DIR` values continue to take precedence.
 
 For direct test/manual calls that bypass the normal workflow boundary, callers may export the same
 backing env vars explicitly before invoking a package script.

@@ -16,8 +16,8 @@ var errStopScriptWalk = errors.New("stop script walk")
 
 // ResolveWorkflowScript resolves run/act path: scripts/* from the project (projectRoot/scripts/ if
 // present, else projectRoot/src/scripts/ for this dockpipe repo layout), else extra workflow roots
-// from dockpipe.config.json compile.workflows (nested trees), bundle roots from compile.bundles,
-// then templates/core (materialized merge), then templates/core/assets/scripts/;
+// from dockpipe.config.json compile.workflows (nested trees), then templates/core
+// (materialized merge), then templates/core/assets/scripts/;
 // other paths are relative to the workflow template dir.
 // repoRoot is the layout root (bundled cache or checkout); projectRoot is the DockPipe project
 // directory (--workdir or cwd). Pass projectRoot == "" to treat project as repoRoot.
@@ -387,24 +387,6 @@ func scriptPathFromWorkflowTarballs(projectRoot, pkgDir, rest string) (string, b
 	return "", false
 }
 
-// tryBundleRootsAssetsScripts maps rest "bundleName/tail/under/assets/scripts" under each bundle compile root.
-func tryBundleRootsAssetsScripts(rest string, bundleRoots []string) (string, bool) {
-	if !strings.Contains(rest, "/") {
-		return "", false
-	}
-	first, after, ok := strings.Cut(rest, "/")
-	if !ok || after == "" {
-		return "", false
-	}
-	for _, br := range bundleRoots {
-		p := filepath.Join(br, first, "assets", "scripts", after)
-		if scriptFileExists(p) {
-			return p, true
-		}
-	}
-	return "", false
-}
-
 func resolveScriptsPrefixedPath(repoRoot, projectRoot, rel string) string {
 	if projectRoot == "" {
 		projectRoot = repoRoot
@@ -474,7 +456,6 @@ func resolveScriptsPrefixedPath(repoRoot, projectRoot, rel string) string {
 	}
 	core := CoreDir(repoRoot)
 	wfRoots := WorkflowCompileRootsCached(projectRoot)
-	bundleRoots := BundleCompileRootsCached(projectRoot)
 	// Bundled cache layout: prefer spine resolvers/bundles under core/, then project compile roots
 	// (packages/, workflows/, …) so nested resolver trees resolve even when repoRoot is the
 	// materialized bundle and the real workflow lives under projectRoot.
@@ -505,9 +486,6 @@ func resolveScriptsPrefixedPath(repoRoot, projectRoot, rel string) string {
 	if p, ok := workflowAssetPathForLogicalScript(rest, wfRoots); ok {
 		return p
 	}
-	if p, ok := tryBundleRootsAssetsScripts(rest, bundleRoots); ok {
-		return p
-	}
 	if p, ok := tryBundledAssetsScripts(core, "resolvers", rest); ok {
 		return p
 	}
@@ -517,12 +495,6 @@ func resolveScriptsPrefixedPath(repoRoot, projectRoot, rel string) string {
 	}
 	for _, root := range wfRoots {
 		p := filepath.Join(root, rest)
-		if scriptFileExists(p) {
-			return p
-		}
-	}
-	for _, br := range bundleRoots {
-		p := filepath.Join(br, rest)
 		if scriptFileExists(p) {
 			return p
 		}

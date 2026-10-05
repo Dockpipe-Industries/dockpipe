@@ -1,0 +1,4 @@
+public Class Root
+{
+    public bool ContainsCaseFolded(string value, string query) => contains_casefolded(value, query);
+}

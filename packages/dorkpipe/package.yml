@@ -46,6 +46,9 @@ includes_resolvers:
   - user-insight-process
 script_contract:
   inject: [workdir, workflow_name, script_dir, package_root, assets_dir, dockpipe_bin]
+package_state:
+  compatibility_import: package-owned
+  owner_ids: [dorkpipe]
 build:
   source:
     script: assets/scripts/build-source.sh

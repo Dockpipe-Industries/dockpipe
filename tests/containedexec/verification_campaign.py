@@ -1,0 +1,201 @@
+#!/usr/bin/env python3
+"""Run or resume all PipeLang verification stages inside one bounded job.
+
+Default proof/cache storage is durable user-cache data. Final adoption is a
+separate read-only reconciliation after job.py proves aggregate tree removal.
+"""
+import argparse
+import json
+from pathlib import Path
+import subprocess
+import sys
+import time
+from campaign import Campaign, atomic_json, fingerprint, resource_accepted
+from verification import ROOT, dependency_guard, source_paths, bundle_paths
+from job import verify_job
+from estate import CampaignBudget, campaign_scope, storage_limit, accepted_storage
+from support_inputs import SupportInputs
+from budget import within_roots
+
+HERE = Path(__file__).resolve().parent
+MEMORY_FAMILIES = {'TestV1090TerminalCombinedSelectorArmsMemory': 1944,
+                   'TestV1100StraightLineSelectorValueArmsMemory': 192,
+                   'TestV1110TerminalLeafSelectorValueArmsMemory': 576,
+                   'TestV1120ArrowSelectorValueArmsMemory': 192,
+                   'TestV1130EnumsMemory': 18, 'TestV1140BlocksMemory': 12, 'TestV1150AssignmentsMemory': 12}
+MEMORY_COUNT = sum(MEMORY_FAMILIES.values())
+
+
+def validated_stage(output, stage, selected=None, summary_only=False):
+    dependencies = json.loads((output / 'dependency-inputs.json').read_text())
+    support = SupportInputs(dependencies.get('support_manifest'))
+    if not set(support.paths) <= set(map(Path, dependencies['paths'])):
+        raise RuntimeError('support closure changed since stage admission')
+    if not set(bundle_paths()) <= set(map(Path, dependencies['paths'])):
+        raise RuntimeError('new root bundle declarations since stage admission')
+    current = fingerprint(dependencies['paths'])['digest']
+    if current != dependencies['identity']['digest']:
+        raise RuntimeError('changed stage dependencies: ' + stage)
+    with Campaign(output / 'campaign', 'resume') as campaign:
+        campaign.current = {name: value['key'] for name, value in campaign.manifest['stages'].items()}
+        accepted = campaign.accepted(stage, current, selected, summary_only=summary_only)
+        expected = selected if selected is not None else campaign.manifest['stages'][stage]['inventory']
+        if set(accepted) != set(expected):
+            raise RuntimeError('incomplete or invalid stage: ' + stage)
+        return accepted
+
+
+def reconcile(output, baseline, job_report):
+    job = json.loads(job_report.read_text())
+    if job.get('outcome') != 'completed' or job.get('exit') != 0 or not job.get('tree_removed') or Path(job['cgroup']).exists() or job.get('swap_current') != 0:
+        raise RuntimeError('aggregate job completion/cleanup unavailable')
+    # memory.max events can be successful coordinator file-cache reclaim at
+    # its unchanged hard cap. OOM events and actual aggregate excess fail.
+    if job.get('aggregate_peak_bytes', 2 << 30) > 2 << 30:
+        raise RuntimeError('aggregate hard ceiling exceeded')
+    for name in ('oom', 'oom_kill'):
+        events = lambda text: dict(line.split() for line in text.splitlines())
+        if events(job['memory_events_before'])[name] != events(job['memory_events_after'])[name]:
+            raise RuntimeError('aggregate or descendant resource crossing: ' + name)
+    storage = accepted_storage(output)
+    suite = validated_stage(output / 'suite', 'suite', summary_only=True)
+    matrix = validated_stage(output / 'matrix', 'matrix')
+    integration = validated_stage(output / 'integration', 'integration', summary_only=True)
+    editor = validated_stage(output / 'integration', 'editor', summary_only=True)
+    prior = json.loads((baseline / 'suite/inventory.json').read_text())
+    current = json.loads((output / 'suite/inventory.json').read_text())
+    baseline_cases = {case for names, _ in prior['jobs'] for case in names}
+    if not baseline_cases <= set(suite) or not set(prior['tests']) <= set(current['tests']):
+        raise RuntimeError('baseline semantic inventory shrank')
+    if len(matrix) != MEMORY_COUNT or len(integration) != 9 or len(editor) != 1:
+        raise RuntimeError('required matrix/integration/editor inventory mismatch')
+    measured = [r['report'] for r in matrix.values()]
+    if any(r['child_maxrss_kib'] > 128 * 1024 or r['elapsed_s'] > 5 or 'memory.high' in r['limits'] for r in measured):
+        raise RuntimeError('isolated compiler acceptance changed')
+    result = dict(storage=storage, status='accepted', language_contract='v0.115.0', functions=len(current['tests']),
+                  logical_cases=len(suite), baseline_functions=len(prior['tests']), baseline_logical_cases=len(baseline_cases),
+                  isolated_cases=len(matrix), integration_checks=len(integration), editor_checks=len(editor),
+                  isolated_max_rss_mib=max(r['child_maxrss_kib'] for r in measured) / 1024,
+                  isolated_max_elapsed_s=max(r['elapsed_s'] for r in measured),
+                  job_receipt=str(job_report), aggregate_peak_bytes=job['aggregate_peak_bytes'],
+                  aggregate_elapsed_s=job['elapsed_s'], all_cgroups_removed=True,
+                  suite_summary=json.loads((output / 'suite/summary.json').read_text()))
+    atomic_json(output / 'accepted-verification.json', result)
+    return result
+
+
+def scheduling_arguments(args):
+    if args.no_pair_scheduling:
+        return []
+    if args.schedule_profile:
+        return ['--schedule-profile', str(args.schedule_profile)]
+    saved = args.root / 'schedule-profile.json'
+    hint = saved if saved.exists() else args.baseline / 'suite/schedule-profile.json'
+    return ['--auto-schedule-profile', str(hint)]
+
+
+def publish_profile(suite, root):
+    """Save predictions only from a complete successful suite, atomically."""
+    summary = json.loads((suite / 'summary.json').read_text())
+    if (summary['partial_suite'] or summary['failed'] or not summary['source_unchanged']
+            or not summary['toolchain_unchanged'] or summary['reconciliation']['missing']):
+        raise RuntimeError('cannot publish profile from incomplete or changed suite')
+    atomic_json(root / 'schedule-profile.json', json.loads((suite / 'schedule-profile.json').read_text()))
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--root', type=Path, default=Path.home() / '.cache/pipelang-verification')
+    parser.add_argument('--campaign', required=True, help='Private campaign directory name')
+    parser.add_argument('--node', type=Path, required=True)
+    parser.add_argument('--support-inputs', type=Path, help='Installed external tool/header/library input manifest')
+    parser.add_argument('--go', type=Path, required=True)
+    parser.add_argument('--cache', type=Path)
+    parser.add_argument('--compiled-cache', type=Path)
+    parser.add_argument('--native-build-cache', type=Path)
+    parser.add_argument('--baseline', type=Path, required=True)
+    parser.add_argument('--mode', choices=['fresh', 'resume'], default='fresh')
+    scheduling = parser.add_mutually_exclusive_group()
+    scheduling.add_argument('--schedule-profile', type=Path, help='Require this matching profile instead of automatic hints')
+    scheduling.add_argument('--no-pair-scheduling', action='store_true', help='Use singleton scheduling for controlled comparisons')
+    parser.add_argument('--disk-budget-gib', type=int, default=96)
+    parser.add_argument('--support-root', type=Path, action='append', default=[], help='Additional installed dependency roots, including Go modules')
+    parser.add_argument('--preserved-root', type=Path, action='append', default=[], help='Retained historical/research roots outside the campaign root')
+    parser.add_argument('--accept-job', type=Path, help='Reconcile completed job without executing stages')
+    args = parser.parse_args()
+    limit = storage_limit(args.disk_budget_gib)
+    verify_job()
+    if not args.root.is_absolute() or args.root.is_relative_to('/tmp') or Path(args.campaign).name != args.campaign or args.campaign in ('.', '..'):
+        parser.error('durable absolute root outside /tmp and a single campaign name required')
+    output = args.root / 'campaigns' / args.campaign
+    if args.accept_job:
+        print(json.dumps(reconcile(output, args.baseline, args.accept_job)))
+        return 0
+    output.mkdir(parents=True, exist_ok=True, mode=0o700)
+    cache = args.cache or args.root / 'go-build-cache'
+    compiled = args.compiled_cache or args.root / 'executables'
+    native = args.native_build_cache or args.root / 'native-build-cache'
+    for path in (cache, compiled, native):
+        path.mkdir(parents=True, exist_ok=True, mode=0o700)
+    external = SupportInputs(args.support_inputs)
+    support = [*source_paths('integration'), args.go.resolve().parent.parent, args.node.resolve(), *args.support_root, *external.paths]
+    roots = campaign_scope(args.root, cache, compiled, native, args.baseline, support, args.preserved_root)
+    with CampaignBudget(roots, output, limit, population_roots=[args.root, cache, compiled, native]) as budget, Campaign(output / 'controller', args.mode) as controller:
+        guard = dependency_guard(args.go, cache, output, 'integration', [args.node], args.support_inputs)
+        inputs = list(map(str, guard.paths))
+        # dependency_guard already persisted the complete hash inventory. This
+        # parent needs only its paths, digest and continuous mutation watches.
+        guard.release_file_inventory()
+        root_set = set(roots)
+        if any(not within_roots(Path(p).resolve(), root_set) for p in inputs):
+            raise RuntimeError('dependency outside storage scope; declare its support root')
+        budget.check()
+        controller.register('workflow', guard.check(), ['suite', 'matrix', 'integration'])
+        for name in ('suite', 'matrix', 'integration'):
+            guard.check()
+            stage_output = output / name
+            mode = 'resume' if args.mode == 'resume' and (stage_output / 'campaign/manifest.json').exists() else 'fresh'
+            driver = 'pipelang_suite.py' if name == 'suite' else name + '.py'
+            command = [sys.executable, '-B', str(HERE / driver), '--output', str(stage_output), '--cache', str(cache), '--mode', mode]
+            if args.support_inputs and name != 'matrix':
+                command += ['--support-inputs', str(args.support_inputs)]
+            if name == 'suite':
+                command += ['--go', str(args.go), '--compiled-cache', str(compiled), '--native-build-cache', str(native),
+                            '--build-store', str(args.root / 'builds'), '--workers', '2', '--audit-generated',
+                            '--disk-budget-gib', str(args.disk_budget_gib), '--campaign-budget', str(budget.path)]
+                command += scheduling_arguments(args)
+            elif name == 'matrix':
+                inventory = json.loads((output / 'suite/inventory.json').read_text())
+                paths=[]
+                for family,expected in MEMORY_FAMILIES.items():
+                    memory_cases=[case for names,_ in inventory['jobs'] for case in names if case.startswith(family+'/')]
+                    receipts=validated_stage(output/'suite','suite',memory_cases)
+                    family_paths=sorted({p for r in receipts.values() for p in r['artifacts'] if p.endswith('/measurement.json')})
+                    if len(family_paths)!=expected:
+                        raise RuntimeError('memory fixture inventory mismatch: '+family)
+                    paths.extend(family_paths)
+                if len(set(paths))!=MEMORY_COUNT:
+                    raise RuntimeError('memory fixture identities overlap')
+                manifest = output / 'compiler-fixtures.json'
+                atomic_json(manifest, paths)
+                command += ['--fixture-manifest', str(manifest), '--compiler', str(args.go.parent.parent / 'pkg/tool/linux_amd64/compile')]
+            else:
+                command += ['--go', str(args.go), '--node', str(args.node)]
+            with (output / (name + '-coordinator.log')).open('a') as log:
+                rc = subprocess.run(command, cwd=ROOT, stdout=log, stderr=subprocess.STDOUT).returncode
+            budget.check()
+            controller.event('stage_exit', stage=name, exit=rc)
+            if rc:
+                print(json.dumps(dict(stage=name, status='failed', log=str(output / (name + '-coordinator.log')))))
+                return rc
+            if name == 'suite':
+                publish_profile(stage_output, args.root)
+        guard.check()
+        budget.check()
+        atomic_json(output / 'stages-complete.json', dict(status='stages_complete_pending_aggregate_cleanup', inputs=guard.check()))
+        print(json.dumps(dict(status='stages_complete_pending_aggregate_cleanup', output=str(output))))
+    return 0
+
+
+if __name__ == '__main__':
+    sys.exit(main())

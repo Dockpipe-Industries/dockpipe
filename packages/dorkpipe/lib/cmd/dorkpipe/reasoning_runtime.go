@@ -48,7 +48,7 @@ func writeReasoningRunArtifact(artifactDir string, artifact *reasoning.RunArtifa
 	if strings.TrimSpace(artifactDir) == "" || artifact == nil {
 		return
 	}
-	writeJSON(filepath.Join(artifactDir, "reasoning.json"), artifact)
+	writeDiagnosticJSON(filepath.Join(artifactDir, "reasoning.json"), artifact)
 }
 
 func readReasoningRunArtifact(artifactDir string) *reasoning.RunArtifact {

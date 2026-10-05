@@ -2,9 +2,12 @@
 set -euo pipefail
 
 dorkpipe_orchestrate_init() {
+  local requested_root="${ROOT:-}"
   eval "$(dockpipe sdk)"
   dockpipe_sdk init-script
-  export ROOT="${ROOT:-$(dockpipe_sdk get workdir)}"
+  # The package runner exports its own DOCKPIPE_WORKDIR. Preserve an explicit consumer ROOT across
+  # SDK initialization so relative workflow inputs remain scoped to the consumer checkout.
+  export ROOT="${requested_root:-$(dockpipe_sdk get workdir)}"
   export DORKPIPE_ORCH_WORKFLOW="${DORKPIPE_ORCH_WORKFLOW:-${DOCKPIPE_WORKFLOW_NAME:-docs.orchestrate}}"
   default_orch_root="$(dockpipe scope artifacts orchestrate)"
   export DORKPIPE_ORCH_ROOT="${DORKPIPE_ORCH_ROOT:-${default_orch_root}}"
@@ -37,7 +40,7 @@ dorkpipe_orchestrate_init() {
   export DORKPIPE_ORCH_EXAMPLE_BRAIN_BASELINE="${DORKPIPE_ORCH_EXAMPLE_BRAIN_BASELINE:-${DOCKPIPE_ASSETS_DIR:-$(cd "${SCRIPT_DIR}/.." && pwd)}/docs/example-brain/baseline-rules.md}"
   export DORKPIPE_ORCH_LANE_PLAN_JSON="${DORKPIPE_ORCH_LANE_PLAN_JSON:-${DORKPIPE_ORCH_LANES_DIR}/plan.json}"
   export DORKPIPE_ORCH_TRAINING_METRICS_JSONL="${DORKPIPE_ORCH_TRAINING_METRICS_JSONL:-${DORKPIPE_ORCH_TRAINING_DIR}/metrics.jsonl}"
-  export DORKPIPE_ORCH_GLOBAL_TRAINING_METRICS="${DORKPIPE_ORCH_GLOBAL_TRAINING_METRICS:-$(dockpipe scope --package dorkpipe training metrics.jsonl)}"
+  export DORKPIPE_ORCH_GLOBAL_TRAINING_METRICS="${DORKPIPE_ORCH_GLOBAL_TRAINING_METRICS:-$("$(dorkpipe_orchestrate_helper_bin)" durable-training-metrics-path "${ROOT}")}"
   export DORKPIPE_ORCH_TRAINING_MODE="${DORKPIPE_ORCH_TRAINING_MODE:-observe}"
   export DORKPIPE_ORCH_LIVE_MODELS="${DORKPIPE_ORCH_LIVE_MODELS:-true}"
   export DORKPIPE_ORCH_CLOUD_LANES="${DORKPIPE_ORCH_CLOUD_LANES:-false}"
@@ -67,7 +70,7 @@ dorkpipe_orchestrate_init() {
   export DORKPIPE_ORCH_STOP_ON_BUDGET_EXCEEDED="${DORKPIPE_ORCH_STOP_ON_BUDGET_EXCEEDED:-true}"
   mkdir -p "${DORKPIPE_ORCH_SHARED_DIR}" "${DORKPIPE_ORCH_TASKS_DIR}" "${DORKPIPE_ORCH_MERGE_DIR}" "${DORKPIPE_ORCH_VERIFY_DIR}" "${DORKPIPE_ORCH_APPLY_DIR}" "${DORKPIPE_ORCH_LANES_DIR}" "${DORKPIPE_ORCH_TRAINING_DIR}"
   if [[ ! -f "${DORKPIPE_ORCH_CLOUD_USAGE_JSON}" ]]; then
-    cat > "${DORKPIPE_ORCH_CLOUD_USAGE_JSON}" <<EOF
+    cat > "${DORKPIPE_ORCH_CLOUD_USAGE_JSON}" <<EOF || return $?
 {
   "max_total_cloud_tokens": ${DORKPIPE_ORCH_MAX_TOTAL_CLOUD_TOKENS},
   "max_task_cloud_tokens": ${DORKPIPE_ORCH_MAX_TASK_CLOUD_TOKENS},
@@ -106,12 +109,12 @@ dorkpipe_orchestrate_helper_bin() {
   packaged_candidate="${DOCKPIPE_ASSETS_DIR:-}/tooling/bin/$(case "${OS:-}:${OSTYPE:-}:${MSYSTEM:-}" in Windows_NT:*|*:msys*:*|*:cygwin*:*|*:*:MINGW*) printf 'windows' ;; darwin*:*|*:darwin*:* ) printf 'darwin' ;; *) printf 'linux' ;; esac)/orchestrate-helper$(case "${OS:-}:${OSTYPE:-}:${MSYSTEM:-}" in Windows_NT:*|*:msys*:*|*:cygwin*:*|*:*:MINGW*) printf '.exe' ;; *) printf '' ;; esac)"
   helper_sources_stale="0"
   can_source_build="0"
-  if [[ -n "${source_repo_root:-}" && "${repo_root}" == "${source_repo_root}" ]] && [[ -d "${package_root}/lib/cmd/orchestrate-helper" ]] && [[ -d "${package_root}/lib/orchestrationhelper" ]]; then
+  if [[ -n "${source_repo_root:-}" && "${repo_root}" == "${source_repo_root}" ]] && [[ -d "${package_root}/lib/cmd/orchestrate-helper" ]] && [[ -d "${package_root}/lib/orchestrationhelper" ]] && [[ -d "${package_root}/lib/statepaths" ]]; then
     can_source_build="1"
   fi
   if [[ -x "${repo_candidate}" ]]; then
     if [[ "${can_source_build}" == "1" ]]; then
-      if ! find "${package_root}/lib/cmd/orchestrate-helper" "${package_root}/lib/orchestrationhelper" \
+      if ! find "${package_root}/lib/cmd/orchestrate-helper" "${package_root}/lib/orchestrationhelper" "${package_root}/lib/statepaths" \
         -type f \( -name '*.go' -o -name 'go.mod' -o -name 'go.sum' \) -newer "${repo_candidate}" -print -quit 2>/dev/null | grep -q .; then
         DORKPIPE_ORCH_HELPER_BIN="${repo_candidate}"
         export DORKPIPE_ORCH_HELPER_BIN
@@ -1513,7 +1516,7 @@ dorkpipe_orchestrate_with_cloud_usage_lock() {
 dorkpipe_orchestrate_halt_run() {
   local provider="${1:-unknown}"
   local reason="${2:-budget exceeded}"
-  cat > "${DORKPIPE_ORCH_HALT_JSON}" <<EOF
+  cat > "${DORKPIPE_ORCH_HALT_JSON}" <<EOF || return $?
 {
   "status": "halted",
   "provider": "$(dorkpipe_orchestrate_json_escape "${provider}")",
@@ -1522,20 +1525,20 @@ dorkpipe_orchestrate_halt_run() {
 EOF
   if [[ -f "${DORKPIPE_ORCH_CLOUD_USAGE_JSON}" ]]; then
     local total_input total_output total_tokens total_duration task_count exceeded codex_task_count codex_tokens codex_duration claude_task_count claude_tokens claude_duration
-    total_input="$(dorkpipe_orchestrate_read_usage_number "total_estimated_input_tokens")"
-    total_output="$(dorkpipe_orchestrate_read_usage_number "total_estimated_output_tokens")"
-    total_tokens="$(dorkpipe_orchestrate_read_usage_number "total_estimated_tokens")"
-    total_duration="$(dorkpipe_orchestrate_read_usage_number "total_duration_ms")"
-    task_count="$(dorkpipe_orchestrate_read_usage_number "cloud_task_count")"
+    total_input="$(dorkpipe_orchestrate_read_usage_number "total_estimated_input_tokens")" || return $?
+    total_output="$(dorkpipe_orchestrate_read_usage_number "total_estimated_output_tokens")" || return $?
+    total_tokens="$(dorkpipe_orchestrate_read_usage_number "total_estimated_tokens")" || return $?
+    total_duration="$(dorkpipe_orchestrate_read_usage_number "total_duration_ms")" || return $?
+    task_count="$(dorkpipe_orchestrate_read_usage_number "cloud_task_count")" || return $?
     exceeded="$(sed -n 's/.*"budget_exceeded": \(true\|false\).*/\1/p' "${DORKPIPE_ORCH_CLOUD_USAGE_JSON}" | head -1)"
     exceeded="${exceeded:-false}"
-    codex_task_count="$(dorkpipe_orchestrate_read_provider_usage_number "codex" "task_count")"
-    codex_tokens="$(dorkpipe_orchestrate_read_provider_usage_number "codex" "estimated_tokens")"
-    codex_duration="$(dorkpipe_orchestrate_read_provider_usage_number "codex" "duration_ms")"
-    claude_task_count="$(dorkpipe_orchestrate_read_provider_usage_number "claude" "task_count")"
-    claude_tokens="$(dorkpipe_orchestrate_read_provider_usage_number "claude" "estimated_tokens")"
-    claude_duration="$(dorkpipe_orchestrate_read_provider_usage_number "claude" "duration_ms")"
-    cat > "${DORKPIPE_ORCH_CLOUD_USAGE_JSON}" <<EOF
+    codex_task_count="$(dorkpipe_orchestrate_read_provider_usage_number "codex" "task_count")" || return $?
+    codex_tokens="$(dorkpipe_orchestrate_read_provider_usage_number "codex" "estimated_tokens")" || return $?
+    codex_duration="$(dorkpipe_orchestrate_read_provider_usage_number "codex" "duration_ms")" || return $?
+    claude_task_count="$(dorkpipe_orchestrate_read_provider_usage_number "claude" "task_count")" || return $?
+    claude_tokens="$(dorkpipe_orchestrate_read_provider_usage_number "claude" "estimated_tokens")" || return $?
+    claude_duration="$(dorkpipe_orchestrate_read_provider_usage_number "claude" "duration_ms")" || return $?
+    cat > "${DORKPIPE_ORCH_CLOUD_USAGE_JSON}" <<EOF || return $?
 {
   "max_total_cloud_tokens": ${DORKPIPE_ORCH_MAX_TOTAL_CLOUD_TOKENS},
   "max_task_cloud_tokens": ${DORKPIPE_ORCH_MAX_TASK_CLOUD_TOKENS},
@@ -1573,20 +1576,28 @@ dorkpipe_orchestrate_record_cloud_usage_unlocked() {
   local new_total_duration provider_task_count provider_tokens provider_duration budget_exceeded halted
   local codex_task_count codex_tokens codex_duration claude_task_count claude_tokens claude_duration
   total_tokens="$(( input_tokens + output_tokens ))"
-  new_total_input="$(( $(dorkpipe_orchestrate_read_usage_number "total_estimated_input_tokens") + input_tokens ))"
-  new_total_output="$(( $(dorkpipe_orchestrate_read_usage_number "total_estimated_output_tokens") + output_tokens ))"
-  new_total_tokens="$(( $(dorkpipe_orchestrate_read_usage_number "total_estimated_tokens") + total_tokens ))"
-  new_total_duration="$(( $(dorkpipe_orchestrate_read_usage_number "total_duration_ms") + duration_ms ))"
-  new_task_count="$(( $(dorkpipe_orchestrate_read_usage_number "cloud_task_count") + 1 ))"
-  provider_task_count="$(( $(dorkpipe_orchestrate_read_provider_usage_number "${provider}" "task_count") + 1 ))"
-  provider_tokens="$(( $(dorkpipe_orchestrate_read_provider_usage_number "${provider}" "estimated_tokens") + total_tokens ))"
-  provider_duration="$(( $(dorkpipe_orchestrate_read_provider_usage_number "${provider}" "duration_ms") + duration_ms ))"
-  codex_task_count="$(dorkpipe_orchestrate_read_provider_usage_number "codex" "task_count")"
-  codex_tokens="$(dorkpipe_orchestrate_read_provider_usage_number "codex" "estimated_tokens")"
-  codex_duration="$(dorkpipe_orchestrate_read_provider_usage_number "codex" "duration_ms")"
-  claude_task_count="$(dorkpipe_orchestrate_read_provider_usage_number "claude" "task_count")"
-  claude_tokens="$(dorkpipe_orchestrate_read_provider_usage_number "claude" "estimated_tokens")"
-  claude_duration="$(dorkpipe_orchestrate_read_provider_usage_number "claude" "duration_ms")"
+  new_total_input="$(dorkpipe_orchestrate_read_usage_number "total_estimated_input_tokens")" || return $?
+  new_total_input="$(( new_total_input + input_tokens ))"
+  new_total_output="$(dorkpipe_orchestrate_read_usage_number "total_estimated_output_tokens")" || return $?
+  new_total_output="$(( new_total_output + output_tokens ))"
+  new_total_tokens="$(dorkpipe_orchestrate_read_usage_number "total_estimated_tokens")" || return $?
+  new_total_tokens="$(( new_total_tokens + total_tokens ))"
+  new_total_duration="$(dorkpipe_orchestrate_read_usage_number "total_duration_ms")" || return $?
+  new_total_duration="$(( new_total_duration + duration_ms ))"
+  new_task_count="$(dorkpipe_orchestrate_read_usage_number "cloud_task_count")" || return $?
+  new_task_count="$(( new_task_count + 1 ))"
+  provider_task_count="$(dorkpipe_orchestrate_read_provider_usage_number "${provider}" "task_count")" || return $?
+  provider_task_count="$(( provider_task_count + 1 ))"
+  provider_tokens="$(dorkpipe_orchestrate_read_provider_usage_number "${provider}" "estimated_tokens")" || return $?
+  provider_tokens="$(( provider_tokens + total_tokens ))"
+  provider_duration="$(dorkpipe_orchestrate_read_provider_usage_number "${provider}" "duration_ms")" || return $?
+  provider_duration="$(( provider_duration + duration_ms ))"
+  codex_task_count="$(dorkpipe_orchestrate_read_provider_usage_number "codex" "task_count")" || return $?
+  codex_tokens="$(dorkpipe_orchestrate_read_provider_usage_number "codex" "estimated_tokens")" || return $?
+  codex_duration="$(dorkpipe_orchestrate_read_provider_usage_number "codex" "duration_ms")" || return $?
+  claude_task_count="$(dorkpipe_orchestrate_read_provider_usage_number "claude" "task_count")" || return $?
+  claude_tokens="$(dorkpipe_orchestrate_read_provider_usage_number "claude" "estimated_tokens")" || return $?
+  claude_duration="$(dorkpipe_orchestrate_read_provider_usage_number "claude" "duration_ms")" || return $?
   if [[ "${provider}" == "codex" ]]; then
     codex_task_count="${provider_task_count}"
     codex_tokens="${provider_tokens}"
@@ -1605,7 +1616,7 @@ dorkpipe_orchestrate_record_cloud_usage_unlocked() {
   if [[ -f "${DORKPIPE_ORCH_HALT_JSON}" ]]; then
     halted="true"
   fi
-  cat > "${DORKPIPE_ORCH_CLOUD_USAGE_JSON}" <<EOF
+  cat > "${DORKPIPE_ORCH_CLOUD_USAGE_JSON}" <<EOF || return $?
 {
   "max_total_cloud_tokens": ${DORKPIPE_ORCH_MAX_TOTAL_CLOUD_TOKENS},
   "max_task_cloud_tokens": ${DORKPIPE_ORCH_MAX_TASK_CLOUD_TOKENS},
@@ -1659,6 +1670,7 @@ dorkpipe_orchestrate_record_training_metric() {
   printf '%s\n' "${metric}" >> "${DORKPIPE_ORCH_TRAINING_METRICS_JSONL}"
   if [[ -n "${DORKPIPE_ORCH_GLOBAL_TRAINING_METRICS:-}" && "${DORKPIPE_ORCH_GLOBAL_TRAINING_METRICS}" != "${DORKPIPE_ORCH_TRAINING_METRICS_JSONL}" ]]; then
     mkdir -p "$(dirname "${DORKPIPE_ORCH_GLOBAL_TRAINING_METRICS}")"
-    printf '%s\n' "${metric}" >> "${DORKPIPE_ORCH_GLOBAL_TRAINING_METRICS}"
+    (umask 077; printf '%s\n' "${metric}" >> "${DORKPIPE_ORCH_GLOBAL_TRAINING_METRICS}")
+    chmod 600 "${DORKPIPE_ORCH_GLOBAL_TRAINING_METRICS}"
   fi
 }

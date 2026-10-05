@@ -15,8 +15,7 @@ tmp/*
 # Built Go binaries under src/bin (launchers stay as shell scripts; see Makefile / src/Makefile)
 # Maintainer packages — built ELF artifacts (not under src/bin/)
 packages/dorkpipe/bin/dorkpipe
-packages/dorkpipe-mcp/bin/mcpd
-packages/dorkpipe/mcp/bin/mcpd
+packages/*/bin/*.exe
 packages/dorkpipe/resolvers/dorkpipe/assets/tooling/bin/
 
 # Build output
@@ -131,3 +130,6 @@ tmp/
 # END dockpipe-gitignore
 
 .local-go-cache/*
+
+# Exact optional release embedding declaration; owned by release preparation.
+/embed_release_generated.go

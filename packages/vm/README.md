@@ -1,7 +1,10 @@
 # DockPipe VM package
 
 The `vm` package owns guest-specific workflows, QEMU resolver models, and the
-VMM-neutral control protocol. DockPipe core remains generic. Version 1.3.3
+VMM-neutral control protocol. DockPipe core remains generic. Version 1.3.4
+keeps the pinned SQLite harness environment closed while adding the exact
+`PATH=/usr/bin:/bin` required for its reviewed `systemd-detect-virt --vm`
+lookup. Version 1.3.3
 aligns the live controller with the sealed Gate 3 review contract: it loads the
 exact owner-read-only mode-`0400` plan, validates every typed plan predicate,
 and compares the complete plan with its freshly derived inert value before any
@@ -67,14 +70,14 @@ binary/key pins before returning a guest-signed response. Identity, health, and
 hash-pinned-launch are operational. Executor-v9 also binds checkpoint and
 recovery to one exact test-only SQLite harness binary, durable pending/consumed
 tickets, and four reviewed Gate 3 boundaries. The agent launches only that
-root-owned hash-pinned binary with one fixed private role variable and a strict
-typed JSON command; no generic argument, environment, shell, network, SSH, or
-arbitrary execution surface exists.
+root-owned hash-pinned binary with one fixed private role variable, the fixed
+`PATH=/usr/bin:/bin`, and a strict typed JSON command; no inherited environment,
+generic argument, shell, network, SSH, or arbitrary execution surface exists.
 
 `manifests/linux-provisioning.template.json` is deliberately non-runnable. A
 live gate must replace every marker with fresh identities, a 32-byte launch
-bootstrap nonce, the current XDG
-runtime root, task-owned binary paths and hashes, and mutually pinned fresh
+bootstrap nonce, the current XDG cache/state/configuration/runtime
+roots, task-owned toolchain and binary paths and hashes, and mutually pinned fresh
 keys. Fresh keypairs are generated in memory first, their public hashes are
 bound into the contract and plan, and only those same keys may then be reserved
 exclusively. The controller rejects relative, checkout, `.dockpipe`, `.dorkpipe`,
@@ -105,13 +108,16 @@ The provisioning contract also requires a separate task-owned immutable QEMU
 `qemu-img`, `qemu-system-x86_64`, and complete runtime-library/ROM/data inventory
 are hash-pinned. Validation rejects `PATH`, checkout/generated-root overlap,
 symlinks, extra files, widened modes, version/hash substitution, and fallback
-tools. Gate 1 materialized the exact bundle at
-`/home/jamie/.cache/dockpipe/vm/toolchains/qemu-11.0.3-linux-amd64.1`, pinned by
-manifest SHA-256
-`11a27f32eb93e62aba8ebc500dfd877339a71821793cbf30845b53964c22320c`.
-The exact manifest and build evidence live under
-`toolchains/qemu-11.0.3-linux-amd64/`; they do not wire package installation,
-release, registry, signing, or version-resolution backlog.
+tools. The [QEMU recipe](toolchains/qemu-11.0.3-linux-amd64/README.md) requires
+explicit source, build-record, and final toolchain paths. Its loader is pinned
+to the selected final root; moving a completed bundle requires a fresh build
+and new hashes. The provisioning template deliberately contains no previous
+machine's toolchain digest. `linux-qualification.json` is an offline fixture
+with example paths and synthetic binary/configuration hashes, never live inputs.
+Historical Gate 1 evidence is retained under
+`docs/research/vm-toolchain-2026-08-07/` in the source repository and is not shipped
+as package configuration. This does not wire package installation, release,
+registry, signing, or version-resolution backlog.
 
 `tools/internal/executor` derives a closed execution contract only from the
 authorized provisioning contract and plan digest. Its injected runner exposes
@@ -197,7 +203,7 @@ was promoted or copied into a live or preserved root.
 Deterministic source-build evidence is not promotion evidence and is not live
 authority. Before any fresh Gate 2 preparation, the reviewed Linux outputs must
 pass a separately authorized offline promotion gate into the fixed non-live
-namespace `/home/jamie/.local/share/dockpipe-vm-gates`. That namespace is
+namespace `<authorized-promotion-root>`. That namespace is
 distinct from the checkout, DockPipe's global package/install root,
 `.dockpipe` and `.dorkpipe`, VM image and toolchain caches, every live instance,
 evidence, configuration, and runtime XDG root, and every preserved Gate 2 root.
@@ -207,14 +213,15 @@ generated store.
 Every promotion ID must match `vmp-[0-9a-f]{16}`. A separately authorized gate
 must supply the exact ID and every source and destination path before execution;
 it may not discover, substitute, increment, or fall back to another destination.
-The first completed identity is `vmp-2026080815f0ea3f`, with exact paths:
+The first completed identity is `vmp-2026080815f0ea3f`, with the relative layout below (historical absolute paths are preserved in
+`docs/research/vm-toolchain-2026-08-07/promotion-paths.md` in the source repository):
 
 - promotion root:
-  `/home/jamie/.local/share/dockpipe-vm-gates/promotions/vmp-2026080815f0ea3f`
+  `<authorized-promotion-root>/promotions/vmp-2026080815f0ea3f`
 - evidence directory:
-  `/home/jamie/.local/share/dockpipe-vm-gates/evidence/vmp-2026080815f0ea3f`
+  `<authorized-promotion-root>/evidence/vmp-2026080815f0ea3f`
 - evidence file:
-  `/home/jamie/.local/share/dockpipe-vm-gates/evidence/vmp-2026080815f0ea3f/promotion.evidence.json`
+  `<authorized-promotion-root>/evidence/vmp-2026080815f0ea3f/promotion.evidence.json`
 
 The promotion root is exclusively created as mode `0700`, owned by the
 effective promotion user and that user's primary group. Its closed inventory is

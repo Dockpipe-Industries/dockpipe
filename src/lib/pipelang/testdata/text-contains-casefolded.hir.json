@@ -1,0 +1,228 @@
+{
+  "language_contract": "v0.23.0",
+  "compiler_contract": "pipelang.compiler.v1",
+  "functions": [
+    {
+      "identity": {
+        "package_id": "test.package",
+        "path": "app.root.root.containscasefolded",
+        "callable": {
+          "parameters": [
+            {
+              "kind": "primitive",
+              "primitive": "string"
+            },
+            {
+              "kind": "primitive",
+              "primitive": "string"
+            }
+          ],
+          "returns": {
+            "kind": "primitive",
+            "primitive": "bool"
+          }
+        }
+      },
+      "owner": {
+        "module": "app.root",
+        "symbol_id": 1,
+        "identity": {
+          "package_id": "test.package",
+          "path": "app.root.root"
+        },
+        "source_span": {
+          "file": "text-contains-casefolded.pipe",
+          "start": 0,
+          "end": 122
+        }
+      },
+      "name": "ContainsCaseFolded",
+      "parameters": [
+        {
+          "binding": {
+            "kind": "parameter",
+            "function": {
+              "package_id": "test.package",
+              "path": "app.root.root.containscasefolded",
+              "callable": {
+                "parameters": [
+                  {
+                    "kind": "primitive",
+                    "primitive": "string"
+                  },
+                  {
+                    "kind": "primitive",
+                    "primitive": "string"
+                  }
+                ],
+                "returns": {
+                  "kind": "primitive",
+                  "primitive": "bool"
+                }
+              }
+            },
+            "position": 0,
+            "name": "value"
+          },
+          "type": {
+            "kind": "primitive",
+            "primitive": "string"
+          },
+          "type_span": {
+            "file": "text-contains-casefolded.pipe",
+            "start": 55,
+            "end": 61
+          },
+          "span": {
+            "file": "text-contains-casefolded.pipe",
+            "start": 55,
+            "end": 67
+          }
+        },
+        {
+          "binding": {
+            "kind": "parameter",
+            "function": {
+              "package_id": "test.package",
+              "path": "app.root.root.containscasefolded",
+              "callable": {
+                "parameters": [
+                  {
+                    "kind": "primitive",
+                    "primitive": "string"
+                  },
+                  {
+                    "kind": "primitive",
+                    "primitive": "string"
+                  }
+                ],
+                "returns": {
+                  "kind": "primitive",
+                  "primitive": "bool"
+                }
+              }
+            },
+            "position": 1,
+            "name": "query"
+          },
+          "type": {
+            "kind": "primitive",
+            "primitive": "string"
+          },
+          "type_span": {
+            "file": "text-contains-casefolded.pipe",
+            "start": 69,
+            "end": 75
+          },
+          "span": {
+            "file": "text-contains-casefolded.pipe",
+            "start": 69,
+            "end": 81
+          }
+        }
+      ],
+      "return_type": {
+        "kind": "primitive",
+        "primitive": "bool"
+      },
+      "return_type_span": {
+        "file": "text-contains-casefolded.pipe",
+        "start": 31,
+        "end": 35
+      },
+      "body": {
+        "kind": "text_contains_case_folded",
+        "type": {
+          "kind": "primitive",
+          "primitive": "bool"
+        },
+        "span": {
+          "file": "text-contains-casefolded.pipe",
+          "start": 86,
+          "end": 119
+        },
+        "text_contains_case_folded": {
+          "value": {
+            "kind": "reference",
+            "type": {
+              "kind": "primitive",
+              "primitive": "string"
+            },
+            "span": {
+              "file": "text-contains-casefolded.pipe",
+              "start": 106,
+              "end": 111
+            },
+            "reference": {
+              "kind": "parameter",
+              "function": {
+                "package_id": "test.package",
+                "path": "app.root.root.containscasefolded",
+                "callable": {
+                  "parameters": [
+                    {
+                      "kind": "primitive",
+                      "primitive": "string"
+                    },
+                    {
+                      "kind": "primitive",
+                      "primitive": "string"
+                    }
+                  ],
+                  "returns": {
+                    "kind": "primitive",
+                    "primitive": "bool"
+                  }
+                }
+              },
+              "position": 0,
+              "name": "value"
+            }
+          },
+          "query": {
+            "kind": "reference",
+            "type": {
+              "kind": "primitive",
+              "primitive": "string"
+            },
+            "span": {
+              "file": "text-contains-casefolded.pipe",
+              "start": 113,
+              "end": 118
+            },
+            "reference": {
+              "kind": "parameter",
+              "function": {
+                "package_id": "test.package",
+                "path": "app.root.root.containscasefolded",
+                "callable": {
+                  "parameters": [
+                    {
+                      "kind": "primitive",
+                      "primitive": "string"
+                    },
+                    {
+                      "kind": "primitive",
+                      "primitive": "string"
+                    }
+                  ],
+                  "returns": {
+                    "kind": "primitive",
+                    "primitive": "bool"
+                  }
+                }
+              },
+              "position": 1,
+              "name": "query"
+            }
+          }
+        }
+      },
+      "span": {
+        "file": "text-contains-casefolded.pipe",
+        "start": 24,
+        "end": 120
+      }
+    }
+  ]
+}

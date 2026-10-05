@@ -371,9 +371,13 @@ func TestNodeConnectorCloudflareTunnelFailsClosedAndCleansUp(t *testing.T) {
 
 	t.Run("unexpected exit is redacted and cleanup remains bounded", func(t *testing.T) {
 		localStarter := newNodeConnectorCloudflareTunnelTestStarter(t)
-		localStarter.originBehavior = "exit_after_pid"
+		localStarter.originBehavior = "exit_after_release"
 		origin, err := StartNodeConnectorCloudflareTunnelOrigin(context.Background(), localStarter.originConfiguration(broker.Endpoint()), localStarter.executableResolver, localStarter.credentialResolver, localStarter.start)
 		if err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() { _ = origin.Close() })
+		if err := os.WriteFile(localStarter.releasePath, []byte("release"), 0o600); err != nil {
 			t.Fatal(err)
 		}
 		select {
@@ -413,10 +417,16 @@ func TestNodeConnectorCloudflareTunnelFailsClosedAndCleansUp(t *testing.T) {
 		if !nodeConnectorDuplexStateBytesEqual(before, nodeConnectorDuplexStateBytes(t, exchange.root)) {
 			t.Fatal("rejected Cloudflare Tunnel record mutated durable duplex state")
 		}
-		short := limits
-		short.IOTimeout = 25 * time.Millisecond
-		if _, err := readNodeConnectorTransportRecord(connectorConnection, short); err == nil {
+		if err := brokerConnection.Close(); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := readNodeConnectorTransportRecord(connectorConnection, limits); err == nil {
 			t.Fatal("downstream rejection emitted an acknowledgement")
+		} else {
+			var networkError net.Error
+			if errors.As(err, &networkError) && networkError.Timeout() {
+				t.Fatal("downstream rejection did not reach the explicit connection-close barrier")
+			}
 		}
 	})
 
@@ -445,10 +455,11 @@ func TestNodeConnectorCloudflareTunnelFailsClosedAndCleansUp(t *testing.T) {
 }
 
 const (
-	nodeConnectorCloudflareTunnelTestID            = "6ff42ae2-765d-4adf-8112-31c55c1551ef"
-	nodeConnectorCloudflareTunnelTestHostname      = "broker.example.test"
-	nodeConnectorCloudflareTunnelSecretMarker      = "raw-cloudflare-credential-secret-marker"
-	nodeConnectorCloudflareTunnelHelperEnvironment = "DORKPIPE_CLOUDFLARE_HELPER_PROCESS"
+	nodeConnectorCloudflareTunnelTestID             = "6ff42ae2-765d-4adf-8112-31c55c1551ef"
+	nodeConnectorCloudflareTunnelTestHostname       = "broker.example.test"
+	nodeConnectorCloudflareTunnelSecretMarker       = "raw-cloudflare-credential-secret-marker"
+	nodeConnectorCloudflareTunnelHelperEnvironment  = "DORKPIPE_CLOUDFLARE_HELPER_PROCESS"
+	nodeConnectorCloudflareTunnelReleaseEnvironment = "DORKPIPE_CLOUDFLARE_HELPER_RELEASE_FILE"
 )
 
 type nodeConnectorCloudflareTunnelTestCall struct {
@@ -465,6 +476,7 @@ type nodeConnectorCloudflareTunnelTestStarter struct {
 	credentialPath     string
 	temporaryRoot      string
 	edgePath           string
+	releasePath        string
 	originConfig       NodeConnectorCloudflareTunnelOriginConfig
 	clientConfig       NodeConnectorCloudflareTunnelClientConfig
 	originBehavior     string
@@ -487,7 +499,7 @@ func newNodeConnectorCloudflareTunnelTestStarter(t *testing.T) *nodeConnectorClo
 		t.Fatal(err)
 	}
 	starter := &nodeConnectorCloudflareTunnelTestStarter{
-		t: t, credentialPath: credentialPath, temporaryRoot: t.TempDir(), edgePath: filepath.Join(t.TempDir(), "edge-endpoint"),
+		t: t, credentialPath: credentialPath, temporaryRoot: t.TempDir(), edgePath: filepath.Join(t.TempDir(), "edge-endpoint"), releasePath: filepath.Join(t.TempDir(), "release"),
 		executable: NodeConnectorCloudflareTunnelExecutable{Path: executablePath, Capabilities: NodeConnectorCloudflareTunnelCapabilities{
 			Version: "2026.7.0", LocallyManagedCredentialFile: true, TCPIngress: true, AccessTCP: true, PIDFileReadiness: true,
 		}},
@@ -555,6 +567,7 @@ func (starter *nodeConnectorCloudflareTunnelTestStarter) startProcess(executable
 		nodeConnectorCloudflareTunnelHelperEnvironment+"="+mode,
 		"DORKPIPE_CLOUDFLARE_HELPER_EDGE_FILE="+starter.edgePath,
 		"DORKPIPE_CLOUDFLARE_HELPER_BEHAVIOR="+behavior,
+		nodeConnectorCloudflareTunnelReleaseEnvironment+"="+starter.releasePath,
 	)
 	command.Stdout = io.Discard
 	command.Stderr = io.Discard
@@ -714,9 +727,26 @@ func nodeConnectorCloudflareTunnelRunOriginHelper(t *testing.T, arguments []stri
 			os.Exit(25)
 		}
 	}
-	if behavior == "exit_after_pid" {
-		time.Sleep(50 * time.Millisecond)
-		os.Exit(29)
+	if behavior == "exit_after_release" {
+		deadline := time.NewTimer(5 * time.Second)
+		defer deadline.Stop()
+		ticker := time.NewTicker(10 * time.Millisecond)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-deadline.C:
+				os.Exit(30)
+			case <-ticker.C:
+				info, releaseErr := os.Lstat(os.Getenv(nodeConnectorCloudflareTunnelReleaseEnvironment))
+				if os.IsNotExist(releaseErr) {
+					continue
+				}
+				if releaseErr != nil || !info.Mode().IsRegular() || info.Mode()&os.ModeSymlink != 0 {
+					os.Exit(31)
+				}
+				os.Exit(29)
+			}
+		}
 	}
 	for {
 		edge, acceptErr := listener.Accept()

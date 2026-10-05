@@ -18,7 +18,7 @@ func TestRewriteMsysOrMntToWindows(t *testing.T) {
 		in   string
 		want string
 	}{
-		{`/c/Users/Jamie/repo`, filepath.Clean(`C:\Users\Jamie\repo`)},
+		{`/c/Users/TestUser/repo`, filepath.Clean(`C:\Users\TestUser\repo`)},
 		{`/C/Program Files/Git`, filepath.Clean(`C:\Program Files\Git`)},
 		{`/mnt/c/Users/x/wt`, filepath.Clean(`C:\Users\x\wt`)},
 	}
@@ -43,8 +43,8 @@ func TestHostPathForGitNonWindowsPassthrough(t *testing.T) {
 
 func TestHostPathForDockerWindowsDaemonRewrite(t *testing.T) {
 	t.Setenv("DOCKER_HOST", "npipe:////./pipe/docker_engine")
-	got := HostPathForDocker(`/mnt/c/Users/Jamie/repo`)
-	want := `C:\Users\Jamie\repo`
+	got := HostPathForDocker(`/mnt/c/Users/TestUser/repo`)
+	want := `C:\Users\TestUser\repo`
 	if got != want {
 		t.Fatalf("HostPathForDocker rewrite = %q want %q", got, want)
 	}
@@ -55,8 +55,8 @@ func TestNormalizeDockerBindMountWindows(t *testing.T) {
 	if runtime.GOOS != "windows" {
 		t.Skip("bind-mount MSYS normalization is Windows-only")
 	}
-	in := `/c/Users/Jamie/wt:/work`
-	want := filepath.Clean(`C:\Users\Jamie\wt`) + `:/work`
+	in := `/c/Users/TestUser/wt:/work`
+	want := filepath.Clean(`C:\Users\TestUser\wt`) + `:/work`
 	if got := normalizeDockerBindMountWindows(in); got != want {
 		t.Fatalf("got %q want %q", got, want)
 	}
@@ -64,8 +64,8 @@ func TestNormalizeDockerBindMountWindows(t *testing.T) {
 
 func TestNormalizeDockerBindMountWindowsDaemonRewrite(t *testing.T) {
 	t.Setenv("DOCKER_HOST", "npipe:////./pipe/docker_engine")
-	in := `/mnt/c/Users/Jamie/wt:/work`
-	want := `C:\Users\Jamie\wt:/work`
+	in := `/mnt/c/Users/TestUser/wt:/work`
+	want := `C:\Users\TestUser\wt:/work`
 	if got := normalizeDockerBindMountWindows(in); got != want {
 		t.Fatalf("got %q want %q", got, want)
 	}
@@ -128,7 +128,7 @@ func TestRewriteViaCygpathFallbackOnWindows(t *testing.T) {
 		return cmd
 	}
 	got := rewriteMsysOrMntToWindows(`/tmp/mounted.txt`)
-	want := filepath.Clean(`C:\Users\Jamie\AppData\Local\Temp\mounted.txt`)
+	want := filepath.Clean(`C:\Users\TestUser\AppData\Local\Temp\mounted.txt`)
 	if got != want {
 		t.Fatalf("rewriteMsysOrMntToWindows cygpath fallback = %q want %q", got, want)
 	}
@@ -153,6 +153,6 @@ func TestHostPathGitHelperProcess(t *testing.T) {
 	if name != "cygpath" || args[sep+2] != "-aw" || args[sep+3] != "/tmp/mounted.txt" {
 		os.Exit(3)
 	}
-	_, _ = os.Stdout.WriteString("C:\\Users\\Jamie\\AppData\\Local\\Temp\\mounted.txt\r\n")
+	_, _ = os.Stdout.WriteString("C:\\Users\\TestUser\\AppData\\Local\\Temp\\mounted.txt\r\n")
 	os.Exit(0)
 }

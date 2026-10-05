@@ -352,16 +352,22 @@ func testNodeConnectorPlacementExecutionGraphNextTaskLaunchExecutionExecutorReva
 		}},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			current := *value
-			if err := json.Unmarshal(expectedRaw, &current.expected); err != nil {
+			var expected NodeConnectorPlacementExecutionGraphNextTaskLaunchExecutionExecutorExpected
+			if err := json.Unmarshal(expectedRaw, &expected); err != nil {
 				t.Fatal(err)
 			}
+			current := *value
+			current.expected = expected
 			test.mutate(&current.expected)
 			assertNodeConnectorPlacementExecutionGraphNextTaskLaunchExecutionExecutorOpenFailsWithoutOutputs(t, &current)
 		})
 	}
-	if err := json.Unmarshal(expectedRaw, &value.expected); err != nil {
+	after, err := json.Marshal(value.expected)
+	if err != nil {
 		t.Fatal(err)
+	}
+	if !bytes.Equal(expectedRaw, after) {
+		t.Fatal("predecessor rejection cases mutated the shared fixture")
 	}
 }
 

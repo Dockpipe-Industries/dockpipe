@@ -3,8 +3,8 @@ description: >-
   Build release/artifacts for the DockPipe self-hosted package mirror, then upload each file to an
   S3-compatible bucket such as Cloudflare R2 with credentials injected from 1Password.
   Default upload mode is dry-run; set R2_PUBLISH_DRY_RUN=0 for a real push.
-platforms: [windows, deb]
-vault: op
+platforms: [windows, deb, macos]
+vault: environment
 
 dependencies:
   host:
@@ -28,7 +28,7 @@ dependencies:
         deb: sudo apt-get update && sudo apt-get install -y awscli
     - id: op
       command: op
-      description: "Required for vault: op secret injection from 1Password."
+      description: "Required for named 1Password Environments (op run --environment)."
       install:
         windows: winget install AgileBits.1Password.CLI
         deb: sudo apt-get update && sudo apt-get install -y 1password-cli
@@ -43,9 +43,9 @@ vars:
   R2_BUCKET: "dockpipe"
   R2_PREFIX: "packages/"
   R2_PUBLISH_DRY_RUN: "1"
-  R2_ENDPOINT_URL: ""
+  R2_ENDPOINT_URL: "https://a378c4328a20d669179d7b4adcfc5914.r2.cloudflarestorage.com"
   AWS_ENDPOINT_URL_S3: ""
-  AWS_REGION: ""
+  AWS_REGION: "auto"
   CLOUDFLARE_ACCOUNT_ID: ""
   R2_ACCOUNT_ID: ""
   AWS_ACCESS_KEY_ID: ""

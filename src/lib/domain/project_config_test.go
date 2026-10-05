@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -22,11 +23,83 @@ func TestDefaultDockpipeProjectConfigBytesRoundTrip(t *testing.T) {
 	if c.Compile.Workflows == nil || len(*c.Compile.Workflows) < 1 {
 		t.Fatal("expected compile.workflows")
 	}
-	if c.Compile.Resolvers != nil {
-		t.Fatal("default config should not set compile.resolvers (workflows is the entry point)")
-	}
 	if c.Secrets.VaultTemplate == nil || *c.Secrets.VaultTemplate == "" {
 		t.Fatal("expected secrets.vault_template in default")
+	}
+}
+
+func TestLoadDockpipeProjectConfigCanonicalCompileWorkflows(t *testing.T) {
+	tmp := t.TempDir()
+	p := filepath.Join(tmp, DockpipeProjectConfigFileName)
+	if err := os.WriteFile(p, []byte(`{"schema":1,"compile":{"workflows":["workflows","packages"]}}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	c, err := LoadDockpipeProjectConfig(tmp)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.Compile.Workflows == nil || len(*c.Compile.Workflows) != 2 {
+		t.Fatalf("compile.workflows = %v", c.Compile.Workflows)
+	}
+}
+
+func TestLoadDockpipeProjectConfigRejectsCompileResolvers(t *testing.T) {
+	tmp := t.TempDir()
+	p := filepath.Join(tmp, DockpipeProjectConfigFileName)
+	if err := os.WriteFile(p, []byte(`{"schema":1,"compile":{"resolvers":["extra"]}}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	_, err := LoadDockpipeProjectConfig(tmp)
+	if err == nil {
+		t.Fatal("expected compile.resolvers rejection")
+	}
+	if got := err.Error(); !strings.Contains(got, "compile.resolvers") || !strings.Contains(got, "compile.workflows") {
+		t.Fatalf("error should name old key and replacement: %v", err)
+	}
+}
+
+func TestLoadDockpipeProjectConfigRejectsCompileBundles(t *testing.T) {
+	tmp := t.TempDir()
+	p := filepath.Join(tmp, DockpipeProjectConfigFileName)
+	if err := os.WriteFile(p, []byte(`{"schema":1,"compile":{"bundles":["legacy"]}}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	_, err := LoadDockpipeProjectConfig(tmp)
+	if err == nil {
+		t.Fatal("expected compile.bundles rejection")
+	}
+	if got := err.Error(); !strings.Contains(got, "compile.bundles") || !strings.Contains(got, "compile.workflows") {
+		t.Fatalf("error should name old key and replacement: %v", err)
+	}
+}
+
+func TestLoadDockpipeProjectConfigRejectsCompileBundlesWhenWorkflowsAlsoPresent(t *testing.T) {
+	tmp := t.TempDir()
+	p := filepath.Join(tmp, DockpipeProjectConfigFileName)
+	if err := os.WriteFile(p, []byte(`{"schema":1,"compile":{"workflows":["canonical"],"bundles":["legacy"]}}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	_, err := LoadDockpipeProjectConfig(tmp)
+	if err == nil {
+		t.Fatal("expected compile.bundles rejection instead of precedence or merging")
+	}
+	if got := err.Error(); !strings.Contains(got, "compile.bundles") || !strings.Contains(got, "compile.workflows") {
+		t.Fatalf("both-key error should name rejected key and replacement: %v", err)
+	}
+}
+
+func TestLoadDockpipeProjectConfigStillIgnoresOtherUnknownKeys(t *testing.T) {
+	tmp := t.TempDir()
+	p := filepath.Join(tmp, DockpipeProjectConfigFileName)
+	if err := os.WriteFile(p, []byte(`{"schema":1,"future_top_level":true,"compile":{"workflows":["workflows"],"future_compile_key":true}}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	c, err := LoadDockpipeProjectConfig(tmp)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.Compile.Workflows == nil || len(*c.Compile.Workflows) != 1 {
+		t.Fatalf("compile.workflows = %v", c.Compile.Workflows)
 	}
 }
 

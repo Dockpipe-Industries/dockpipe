@@ -10,6 +10,30 @@ import (
 	"testing"
 )
 
+func TestRunResolvesDurableTrainingMetricsPath(t *testing.T) {
+	stateRoot := t.TempDir()
+	t.Setenv("XDG_STATE_HOME", filepath.Join(stateRoot, "state"))
+	t.Setenv("LOCALAPPDATA", filepath.Join(stateRoot, "local-app-data"))
+	t.Setenv("HOME", filepath.Join(stateRoot, "home"))
+	workdir := t.TempDir()
+	var stdout bytes.Buffer
+	if err := Run([]string{"durable-training-metrics-path", workdir}, map[string]string{}, &stdout, &bytes.Buffer{}); err != nil {
+		t.Fatal(err)
+	}
+	path := strings.TrimSpace(stdout.String())
+	if strings.HasPrefix(filepath.Clean(path), filepath.Clean(workdir)+string(filepath.Separator)) || !strings.HasSuffix(filepath.Clean(path), filepath.Join("learning", "training", "metrics.jsonl")) {
+		t.Fatalf("durable training metrics path = %q", path)
+	}
+	stdout.Reset()
+	if err := Run([]string{"durable-metrics-path", workdir}, map[string]string{}, &stdout, &bytes.Buffer{}); err != nil {
+		t.Fatal(err)
+	}
+	path = strings.TrimSpace(stdout.String())
+	if strings.HasPrefix(filepath.Clean(path), filepath.Clean(workdir)+string(filepath.Separator)) || !strings.HasSuffix(filepath.Clean(path), filepath.Join("learning", "metrics.jsonl")) {
+		t.Fatalf("durable metrics path = %q", path)
+	}
+}
+
 func TestLoadTaskPackSelectsExactStepAgentDeclaration(t *testing.T) {
 	root := t.TempDir()
 	workflowPath := filepath.Join(root, "workflows", "software-dev", "config.yml")
