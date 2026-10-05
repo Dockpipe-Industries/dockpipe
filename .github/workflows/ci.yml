@@ -27,6 +27,9 @@ concurrency:
   group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
+env:
+  GOTOOLCHAIN: local
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -39,7 +42,7 @@ jobs:
 
       - uses: actions/setup-go@v6
         with:
-          go-version: "1.25.11"
+          go-version: "1.25.13"
 
       - name: Install DockPipe Launcher build dependencies
         run: |
@@ -69,13 +72,19 @@ jobs:
           rm -rf "$CI_RAW_DIR" "$CI_ANALYSIS_DIR"
           mkdir -p "$CI_RAW_DIR"
           GOBIN="$(go env GOPATH)/bin"
-          go install honnef.co/go/tools/cmd/staticcheck@latest
-          go install golang.org/x/vuln/cmd/govulncheck@latest
-          go install github.com/securego/gosec/v2/cmd/gosec@latest
+          go install honnef.co/go/tools/cmd/staticcheck@v0.7.0
+          go install golang.org/x/vuln/cmd/govulncheck@v1.7.0
+          go install github.com/securego/gosec/v2/cmd/gosec@v2.29.0
           set +e
           "$GOBIN/govulncheck" -format json ./... > "$CI_RAW_DIR/govulncheck.json"
           VC=$?
-          "$GOBIN/gosec" -conf .gosec.json -fmt json -out="$CI_RAW_DIR/gosec.json" -exclude-dir=.gomodcache -exclude-dir=bin/.dockpipe ./...
+          if [[ $VC -eq 0 ]]; then
+            # JSON output reports findings without a failing exit status. Convert
+            # the same scan to text to enforce reachable vulnerabilities as a gate.
+            "$GOBIN/govulncheck" -mode convert < "$CI_RAW_DIR/govulncheck.json"
+            VC=$?
+          fi
+          "$GOBIN/gosec" -conf .gosec.json -fmt json -out="$CI_RAW_DIR/gosec.json" -exclude-dir=.gomodcache -exclude-dir=bin/.dockpipe -exclude-dir=testdata ./...
           GC=$?
           set -e
           bash packages/dorkpipe/resolvers/dorkpipe/assets/scripts/normalize-ci-scans.sh
@@ -91,8 +100,8 @@ jobs:
             exit "$GC"
           fi
 
-      - name: Go test
-        run: go test ./...
+      - name: Runtime Go tests (PipeLang uses separate containment qualification)
+        run: bash release/packaging/test-runtime.sh
 
       - name: Staticcheck
         run: staticcheck ./...
@@ -208,10 +217,10 @@ jobs:
 
       - uses: actions/setup-go@v6
         with:
-          go-version: "1.25.11"
+          go-version: "1.25.13"
 
-      - name: Go test
-        run: go test ./...
+      - name: Runtime Go tests (PipeLang uses separate containment qualification)
+        run: bash release/packaging/test-runtime.sh
 
       - name: Templates/core path guard (docs + code)
         run: bash src/scripts/check-templates-core-paths.sh

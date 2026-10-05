@@ -322,9 +322,9 @@ func runGeneratedBatch(t *testing.T, cases []generatedBatchCase) {
 		hashed()
 	}
 	if !hit {
-		command := exec.Command(filepath.Join(runtime.GOROOT(), "bin", "go"), "test", "-c", "-p=1", "-o", binary, ".")
+		command := exec.Command(filepath.Join(containedexec.GoRoot(t), "bin", "go"), "test", "-c", "-p=1", "-o", binary, ".")
 		command.Dir = dir
-		command.Env = append(os.Environ(), "GOROOT="+runtime.GOROOT(), "GOTOOLCHAIN=local", "GOPROXY=off", "GOSUMDB=off", "GOWORK=off")
+		command.Env = append(os.Environ(), "GOROOT="+containedexec.GoRoot(t), "GOTOOLCHAIN=local", "GOPROXY=off", "GOSUMDB=off", "GOWORK=off")
 		if sharedOracle != nil {
 			buildCache := os.Getenv("PIPELANG_BUNDLE_BUILD_CACHE")
 			if !filepath.IsAbs(buildCache) {

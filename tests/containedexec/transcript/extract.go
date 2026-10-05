@@ -6,6 +6,7 @@ import (
 	"debug/elf"
 	"encoding/json"
 	"fmt"
+	"math"
 	"os"
 	"path/filepath"
 	"sort"
@@ -32,8 +33,14 @@ func extract(binary, d string) {
 	tokens := []byte{}
 	spans := []span{}
 	for _, s := range ss {
-		off, end := int(s.Offset+24), int(s.Offset+s.FileSize)
-		ck(off >= 24 && off <= end && end <= len(b))
+		if s.Offset > uint64(len(b)) || s.FileSize < 24 || s.FileSize > uint64(len(b))-s.Offset {
+			panic("compressed section escapes input")
+		}
+		if s.Offset > math.MaxInt || s.FileSize > math.MaxInt {
+			panic("compressed section exceeds address space")
+		}
+		off := int(s.Offset) + 24
+		end := int(s.Offset) + int(s.FileSize)
 		z := b[off:end]
 		t := packZ(z)
 		ck(bytes.Equal(unpackZ(t), z))

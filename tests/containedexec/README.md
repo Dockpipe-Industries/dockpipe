@@ -112,6 +112,12 @@ monotonic clocks have separate domains; missing timing is unknown and nested
 spans must not be added to workload time. See the
 [architecture](../../docs/runtime/pipelang-verification.md) for scope and adoption evidence.
 
+Generated-test helpers resolve the installed toolchain from `PIPELANG_TEST_GO`
+when a retained-binary campaign selects it, or from the `GOROOT` exported by
+ordinary `go test` (then `PATH` if absent). The installed VERSION must match the
+test binary. The retained-artifact fingerprint hashes this same selected root;
+no compiler execution bypasses `CombinedOutput` or `Measure`.
+
 Generated PipeLang and Application IR tests require Linux cgroup v2 and a user
 systemd manager. There is no uncontained fallback. Other platforms currently
 refuse generated compilation; implementing and verifying an equivalent process-tree
