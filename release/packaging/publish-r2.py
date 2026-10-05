@@ -33,19 +33,38 @@ def require_unpublished(bucket, endpoint, key):
         raise ValueError("Could not verify publication state; refusing to write (provider output withheld)")
 
 
-def publish(artifacts, apt, version, dry_run):
+def publish(artifacts, apt, version, dry_run, candidate=""):
     if not re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", version):
         raise ValueError("Expected a release version X.Y.Z")
     bucket = os.environ.get("DOCKPIPE_RELEASE_BUCKET") or os.environ.get("R2_BUCKET")
     endpoint = os.environ.get("R2_ENDPOINT_URL")
     if not bucket or not endpoint or not endpoint.startswith("https://"):
         raise ValueError("DOCKPIPE_RELEASE_BUCKET and HTTPS R2_ENDPOINT_URL are required")
+    if candidate:
+        if bucket != "dockpipe-staging":
+            raise ValueError("Staging publication requires dockpipe-staging")
+        if not re.fullmatch(re.escape(version) + r"-staging\.[0-9]+\.[0-9]+\.[0-9a-f]{12}", candidate):
+            raise ValueError("Invalid staging candidate identity")
+    elif bucket == "dockpipe-staging":
+        raise ValueError("The staging bucket requires a candidate identity")
     prefix = os.environ.get("R2_PREFIX", "packages").strip("/")
-    version_prefix = "/".join(part for part in (prefix, "releases", version) if part)
-    if not (apt / "dists/stable/InRelease").is_file():
+    if candidate and prefix != "packages":
+        raise ValueError("Staging requires the packages prefix")
+    directory = "candidates" if candidate else "releases"
+    identity = candidate or version
+    suite = "staging" if candidate else "stable"
+    version_prefix = "/".join(part for part in (prefix, directory, identity) if part)
+    if not (apt / f"dists/{suite}/InRelease").is_file():
         raise ValueError("Signed APT repository is missing")
     if not (artifacts / "release-manifest.json").is_file():
         raise ValueError("Release catalog is missing")
+    if candidate:
+        catalog = json.loads((artifacts / "release-manifest.json").read_text())
+        sha = catalog.get("source_sha", "")
+        if (catalog.get("candidate") != candidate or catalog.get("channel") != "staging"
+                or catalog.get("version") != version or not re.fullmatch(r"[0-9a-f]{40}", sha)
+                or not candidate.endswith(sha[:12])):
+            raise ValueError("Staging catalog does not match the candidate")
     # Inspect the entire input before the first remote write.
     for directory in (artifacts, apt):
         for path in directory.rglob("*"):
@@ -65,11 +84,16 @@ def publish(artifacts, apt, version, dry_run):
     for path in sorted(apt_files, key=lambda path: (order.get(path.name, 0), str(path))):
         if path.is_symlink():
             raise ValueError(f"Refusing symlink: {path}")
-        upload(path, f"apt/{path.relative_to(apt).as_posix()}", bucket, endpoint, dry_run)
+        # Candidate APT pools must be immutable too: native versions can repeat.
+        apt_prefix = f"{version_prefix}/apt" if candidate else "apt"
+        upload(path, f"{apt_prefix}/{path.relative_to(apt).as_posix()}", bucket, endpoint, dry_run)
     # The catalog is the commit marker for a complete, immutable release.
     upload(artifacts / "release-manifest.json", catalog_key, bucket, endpoint, dry_run)
     latest = artifacts.parent / "latest.json"
-    latest.write_text(json.dumps({"version": version, "manifest": f"{version_prefix}/release-manifest.json"}) + "\n")
+    pointer = {"version": version, "manifest": f"{version_prefix}/release-manifest.json"}
+    if candidate:
+        pointer.update(channel="staging", candidate=candidate)
+    latest.write_text(json.dumps(pointer) + "\n")
     upload(latest, "/".join(part for part in (prefix, "latest.json") if part), bucket, endpoint, dry_run)
 
 
@@ -79,5 +103,6 @@ if __name__ == "__main__":
     parser.add_argument("--apt", type=Path, required=True)
     parser.add_argument("--version", required=True)
     parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument("--candidate", default="")
     args = parser.parse_args()
-    publish(args.artifacts, args.apt, args.version, args.dry_run)
+    publish(args.artifacts, args.apt, args.version, args.dry_run, args.candidate)
