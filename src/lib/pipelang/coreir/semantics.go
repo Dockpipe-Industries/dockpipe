@@ -4367,7 +4367,7 @@ func validateDirectOptionalFunction(function Function) error {
 			return fmt.Errorf("match requires one direct tagged parameter")
 		}
 	default:
-		return fmt.Errorf("Optional types are admitted only in direct some, none, identity transport, has_value, or value_or functions")
+		return fmt.Errorf("optional types are admitted only in direct some, none, identity transport, has_value, or value_or functions")
 	}
 	return nil
 }

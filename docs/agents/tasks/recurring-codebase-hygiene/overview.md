@@ -2,29 +2,35 @@
 
 ## Current audit and cleanup — 2026-10-04
 
-[Hosted 0.6 qualification](release-0.6-hosted.md) records eight approved dry runs.
-Checkpoint `863ba38b` is pushed. All five platform jobs passed in run `37236771195`,
-including Linux runtime/package/signed-APT tests and actual Windows MSI build,
-install, installed CLI execution, uninstall, and cleanup/PATH checks. Independent
-verification passed for all 290 platform package entries and bundled archives.
-The user identified the dry-run deployment prompt as a pipeline defect. The local
-repair separates unprotected artifact assembly from master-only production
-publication and defaults manual runs to dry-run. All 13 release-tooling tests pass;
-the new regressions reject the original workflow. The obsolete waiting
-run is confirmed cancelled. The repair is now pushed as `66d970e`; eighth dry run
-`37245474387` passed all four Unix jobs but failed a Windows test's hardcoded
-zero-millisecond expectation. Its test-only fix preserves success/argument/log
-checks and passes 20 repetitions locally after reproducing the old failure with
-a 5 ms delay. Assembly and production jobs were skipped with no pending deployment.
-The follow-up commit/push and fresh dry run require approval; unprotected hosted
-assembly remains unverified.
+[Hosted 0.6 qualification](release-0.6-hosted.md) passed in ninth dry run
+`37251332865` at pushed checkpoint `d6207ae`. All five native jobs, Windows MSI
+lifecycle, Linux runtime/package tests, and all 13 release-tooling tests passed.
+Combined artifact assembly ran without deployment approval; production publication
+and dev.to were skipped. Independent verification passed for all 290 package
+entries, bundled archives, 27 top-level checksums, test-key APT signature, four
+package-index hashes, and both DEBs. An isolated APT reader accepted both indexes.
+A redundant Release-header self-checksum is recorded as nonblocking metadata
+cleanup. Promotion remains `js/pipelang → js/dev → dev → staging → master`; actual
+publication requires master and separate authorization. Final evidence updates
+remain local; no engine behavior changed in the last test-only repair.
+
+The authorized [staging CI repair](release-0.6-hosted.md#staging-cisecurity-repair--2026-10-05)
+is now local: compatible scanner pins, shared runtime test selection, Go/Actions
+CodeQL coverage, allocation/path fixes, and an enforced vulnerability exit status.
+The user approved broader compiler/harness repairs and Go 1.25.13. Those changes
+are local; staticcheck, gosec, and govulncheck now pass with zero findings. Runtime
+suites, MCP regressions, 38 focused contained compiler cases, and all 18 release
+tooling tests pass. Failed containment preparation attempts remain recorded;
+limits were not increased. Full compiler qualification and fresh hosted
+CI/CodeQL/release proof remain unverified. The user approved checkpoint/push to
+`js/pipelang`; promotion and hosted dispatch remain separate gates.
 
 [0.6 error handling and architecture audit](release-0.6-audit.md) records six
 primary findings and their focused working-tree fixes: strict budget reads,
 checked artifact writes, resolver process-tree cancellation, bounded remote
 persistence/retry behavior, and verified Windows installer staging. Permanent
-regressions and the affected Go suites pass on Linux; native Windows/macOS
-execution and release recovery rehearsal remain outstanding. A Windows-path
+regressions and affected suites pass; native Windows/macOS hosted execution is
+now covered by the qualification above. Release recovery rehearsal remains separate. A Windows-path
 candidate regression found by the broader suite was also corrected. The
 [DDD/DRY cleanup checkpoint](release-0.6-cleanup.md) records the remote domain
 policy extraction, package-owned ledger and orchestration responsibility split,

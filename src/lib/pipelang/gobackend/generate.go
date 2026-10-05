@@ -1095,7 +1095,7 @@ func (g *generator) goType(typ coreir.Type, optionalTypeName string) (string, er
 	}
 	if typ.Kind == coreir.TypeList {
 		if typ.List == nil || typ.List.Element.Kind != coreir.TypeRecord {
-			return "", fmt.Errorf("Go list backend requires one record element type")
+			return "", fmt.Errorf("the Go list backend requires one record element type")
 		}
 		element, err := g.goType(typ.List.Element, optionalTypeName)
 		if err != nil {
@@ -1105,7 +1105,7 @@ func (g *generator) goType(typ coreir.Type, optionalTypeName string) (string, er
 	}
 	if typ.Kind == coreir.TypeOptional {
 		if typ.Optional == nil {
-			return "", fmt.Errorf("Go Optional backend requires a value type")
+			return "", fmt.Errorf("the Go Optional backend requires a value type")
 		}
 		value, err := g.goType(typ.Optional.Value, optionalTypeName)
 		if err != nil {
@@ -1115,13 +1115,13 @@ func (g *generator) goType(typ coreir.Type, optionalTypeName string) (string, er
 	}
 	if typ.Kind == coreir.TypeRecord {
 		if typ.Record == nil || typ.Identity == nil || typ.Identity.PackageID == "" || typ.Identity.Path == "" {
-			return "", fmt.Errorf("Go record backend requires an identified record schema")
+			return "", fmt.Errorf("the Go record backend requires an identified record schema")
 		}
 		return g.recordGoTypeName(typ), nil
 	}
 	if typ.Kind == coreir.TypeResult {
 		if typ.Result == nil {
-			return "", fmt.Errorf("Go Result backend requires success and failure types")
+			return "", fmt.Errorf("the Go Result backend requires success and failure types")
 		}
 		success, err := g.goType(typ.Result.Success, optionalTypeName)
 		if err != nil {
@@ -1131,7 +1131,7 @@ func (g *generator) goType(typ coreir.Type, optionalTypeName string) (string, er
 			return "PipeLangArithmeticResult[" + success + "]", nil
 		}
 		if !isBoundedValueResultType(typ) {
-			return "", fmt.Errorf("Go Result backend supports only arithmetic and bounded snapshot/text Result shapes")
+			return "", fmt.Errorf("the Go Result backend supports only arithmetic and bounded snapshot/text Result shapes")
 		}
 		failure, err := g.goType(typ.Result.Failure, optionalTypeName)
 		if err != nil {
@@ -1149,11 +1149,11 @@ func (g *generator) goType(typ coreir.Type, optionalTypeName string) (string, er
 		case typ.Numeric.Representation == coreir.NumericBinaryFloat && typ.Numeric.Bits == 64 && !typ.Numeric.Signed:
 			return "float64", nil
 		default:
-			return "", fmt.Errorf("Go checked-arithmetic backend does not support numeric representation %q/%d", typ.Numeric.Representation, typ.Numeric.Bits)
+			return "", fmt.Errorf("the Go checked-arithmetic backend does not support numeric representation %q/%d", typ.Numeric.Representation, typ.Numeric.Bits)
 		}
 	}
 	if typ.Kind != coreir.TypePrimitive {
-		return "", fmt.Errorf("Go checked-arithmetic backend supports primitive, fixed numeric, and arithmetic Result types only, got %q", typ.Kind)
+		return "", fmt.Errorf("the Go checked-arithmetic backend supports primitive, fixed numeric, and arithmetic Result types only, got %q", typ.Kind)
 	}
 	switch typ.Primitive {
 	case coreir.PrimitiveString:
@@ -1280,108 +1280,6 @@ func programNeedsOptionalSupport(functions []coreir.Function) bool {
 	return false
 }
 
-func programNeedsListSupport(functions []coreir.Function) bool {
-	for _, function := range functions {
-		if typeContainsList(function.ReturnType) || typeContainsList(function.Body.Type) {
-			return true
-		}
-		needsBodyList := false
-		coreir.WalkExpression(function.Body, func(expression coreir.Expr) bool {
-			if typeContainsList(expression.Type) {
-				needsBodyList = true
-				return false
-			}
-			return true
-		})
-		if needsBodyList {
-			return true
-		}
-		for _, parameter := range function.Parameters {
-			if typeContainsList(parameter.Type) {
-				return true
-			}
-		}
-	}
-	return false
-}
-
-func typeContainsList(value coreir.Type) bool {
-	if value.Kind == coreir.TypeList {
-		return true
-	}
-	if value.Result != nil {
-		return typeContainsList(value.Result.Success) || typeContainsList(value.Result.Failure)
-	}
-	return false
-}
-
-func programNeedsListCount(functions []coreir.Function) bool {
-	for _, function := range functions {
-		if expressionNeedsListCount(function.Body) {
-			return true
-		}
-	}
-	return false
-}
-
-func programNeedsListAppend(functions []coreir.Function) bool {
-	for _, function := range functions {
-		if expressionNeedsListAppend(function.Body) {
-			return true
-		}
-	}
-	return false
-}
-
-func programNeedsListAt(functions []coreir.Function) bool {
-	for _, function := range functions {
-		if expressionNeedsListAt(function.Body) {
-			return true
-		}
-	}
-	return false
-}
-
-func programNeedsListFindByText(functions []coreir.Function) bool {
-	for _, function := range functions {
-		if expressionNeedsListFindByText(function.Body) {
-			return true
-		}
-	}
-	return false
-}
-
-func programNeedsListFilterByText(functions []coreir.Function) bool {
-	for _, function := range functions {
-		if expressionNeedsListFilterByText(function.Body) {
-			return true
-		}
-	}
-	return false
-}
-
-func programNeedsListFilterContainsCaseFolded(functions []coreir.Function) bool {
-	for _, function := range functions {
-		if expressionNeedsListFilterContainsCaseFolded(function.Body) {
-			return true
-		}
-	}
-	return false
-}
-
-func programNeedsListFilterJoinedContainsCaseFolded(functions []coreir.Function) bool {
-	for _, function := range functions {
-		if expressionNeedsListFilterJoinedContainsCaseFolded(function.Body) {
-			return true
-		}
-	}
-	return false
-}
-
-func expressionNeedsListFilterJoinedContainsCaseFolded(expression coreir.Expr) bool {
-	return expressionContainsKind(expression, coreir.ExprListFilterJoinedContainsCaseFolded)
-}
-
 func programNeedsListSortByOrdinalText(functions []coreir.Function) bool {
 	for _, function := range functions {
 		if expressionContainsKind(function.Body, coreir.ExprListSortByOrdinalText) {
@@ -1445,30 +1343,6 @@ func programNeedsOptionalPropagation(functions []coreir.Function) bool {
 		}
 	}
 	return false
-}
-
-func expressionNeedsListFilterContainsCaseFolded(expression coreir.Expr) bool {
-	return expressionContainsKind(expression, coreir.ExprListFilterContainsCaseFolded)
-}
-
-func expressionNeedsListFilterByText(expression coreir.Expr) bool {
-	return expressionContainsKind(expression, coreir.ExprListFilterByText)
-}
-
-func expressionNeedsListFindByText(expression coreir.Expr) bool {
-	return expressionContainsKind(expression, coreir.ExprListFindByText)
-}
-
-func expressionNeedsListAt(expression coreir.Expr) bool {
-	return expressionContainsKind(expression, coreir.ExprListAt)
-}
-
-func expressionNeedsListAppend(expression coreir.Expr) bool {
-	return expressionContainsKind(expression, coreir.ExprListAppend)
-}
-
-func expressionNeedsListCount(expression coreir.Expr) bool {
-	return expressionContainsKind(expression, coreir.ExprListCount)
 }
 
 func expressionNeedsOptionalSupport(expression coreir.Expr) bool {
@@ -2006,20 +1880,6 @@ func isTextResultType(value coreir.Type) bool {
 
 func isBoundedValueResultType(value coreir.Type) bool {
 	return isSnapshotResultType(value) || isTextResultType(value)
-}
-
-func programNeedsSnapshotResult(functions []coreir.Function) bool {
-	for _, function := range functions {
-		if isSnapshotResultType(function.ReturnType) || expressionContainsType(function.Body, isSnapshotResultType) {
-			return true
-		}
-		for _, parameter := range function.Parameters {
-			if isSnapshotResultType(parameter.Type) {
-				return true
-			}
-		}
-	}
-	return false
 }
 
 func programNeedsTextResult(functions []coreir.Function) bool {

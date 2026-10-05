@@ -124,14 +124,6 @@ func InvokeFiles(files map[string][]byte, className, methodName string, args []s
 	return &InvokeOutput{ClassName: class.Name, MethodName: method.Name, Type: returnType, Value: val}, nil
 }
 
-func parseMergedProgram(files map[string][]byte) (*Program, error) {
-	analysis := AnalyzeFiles(files)
-	if err := analysis.Error(); err != nil {
-		return nil, err
-	}
-	return analysis.Program, nil
-}
-
 func parseArgValue(t ResolvedTypeRef, raw string) (Value, error) {
 	if t.Kind != TypeRefPrimitive {
 		return Value{}, fmt.Errorf("unsupported type %s", t)
