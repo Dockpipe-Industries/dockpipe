@@ -148,6 +148,51 @@ class ReleaseWorkflowTests(unittest.TestCase):
         self.assertEqual(triggers["push"]["branches"], ["master"])
         self.assertEqual(triggers["workflow_dispatch"]["inputs"]["dry_run"]["default"], "true")
 
+    def run_release_notes_gate(self, changed_paths):
+        ci = yaml.load((REPOSITORY / ".github/workflows/ci.yml").read_text(), Loader=yaml.BaseLoader)
+        gate = next(step for step in ci["jobs"]["test"]["steps"]
+                    if step.get("name") == "Release notes + version bump (PRs targeting master only)")
+        script = gate["run"].replace("${{ github.event.pull_request.base.sha }}", "base")
+        script = script.replace("${{ github.event.pull_request.head.sha }}", "head")
+        with tempfile.TemporaryDirectory(prefix="dockpipe-release-notes-gate-") as temporary:
+            root = Path(temporary)
+            (root / "VERSION").write_text("0.6.0\n")
+            notes = root / "release/releasenotes/0.6.0.md"
+            notes.parent.mkdir(parents=True)
+            notes.write_text("Release notes\n")
+            changed = root / "changed-paths.txt"
+            changed.write_text("\n".join(changed_paths) + "\n")
+            binaries = root / "bin"
+            binaries.mkdir()
+            git = binaries / "git"
+            git.write_text(
+                '#!/usr/bin/env bash\n'
+                'case "$*" in\n'
+                '  "show base:VERSION") printf "0.5.3\\n" ;;\n'
+                '  "diff --name-only base head") cat "$TEST_CHANGED_PATHS" ;;\n'
+                '  *) exit 2 ;;\n'
+                'esac\n'
+            )
+            git.chmod(0o755)
+            environment = dict(os.environ, PATH=str(binaries) + os.pathsep + os.environ["PATH"],
+                               TEST_CHANGED_PATHS=str(changed))
+            return subprocess.run(["bash", "-c", script], cwd=root, env=environment,
+                                  capture_output=True, text=True)
+
+    def test_release_notes_gate_accepts_a_large_change_set(self):
+        paths = ["release/releasenotes/0.6.0.md"]
+        paths.extend(f"packages/example/workflows/workflow-{number}/assets/script.sh" for number in range(10000))
+        result = self.run_release_notes_gate(paths)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("OK: shipping 0.6.0", result.stdout)
+
+    def test_release_notes_gate_requires_the_exact_notes_path(self):
+        for paths in (["VERSION"], ["release/releasenotes/0x6x0xmd"]):
+            with self.subTest(paths=paths):
+                result = self.run_release_notes_gate(paths)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("This PR must modify release/releasenotes/0.6.0.md", result.stdout)
+
 
 if __name__ == "__main__":
     unittest.main()
