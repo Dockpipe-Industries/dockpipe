@@ -15,15 +15,16 @@ publication requires master and separate authorization. Final evidence updates
 remain local; no engine behavior changed in the last test-only repair.
 
 The authorized [staging CI repair](release-0.6-hosted.md#staging-cisecurity-repair--2026-10-05)
-is now local: compatible scanner pins, shared runtime test selection, Go/Actions
-CodeQL coverage, allocation/path fixes, and an enforced vulnerability exit status.
-The user approved broader compiler/harness repairs and Go 1.25.13. Those changes
-are local; staticcheck, gosec, and govulncheck now pass with zero findings. Runtime
-suites, MCP regressions, 38 focused contained compiler cases, and all 18 release
-tooling tests pass. Failed containment preparation attempts remain recorded;
-limits were not increased. Full compiler qualification and fresh hosted
-CI/CodeQL/release proof remain unverified. The user approved checkpoint/push to
-`js/pipelang`; promotion and hosted dispatch remain separate gates.
+was committed and pushed as `3195439`. Subsequent staging run `37263035986` at
+`364b3a4` has an identical source tree and passes security scans, runtime suites,
+staticcheck, ShellCheck, the Docker test workflow, DEB build, and Windows CI.
+CodeQL run `37263035945` also passes. Shell unit tests fail because the Linux CI
+setup omits ripgrep, required by repository-layout, IDE, and backlog checks.
+The local follow-up explicitly installs ripgrep, matching release setup; no test
+or gate is skipped. Docker integration did not run after the failed shell step.
+Full compiler and fresh release qualification remain separate proof boundaries.
+The user approved checkpoint/push of the dependency follow-up to `js/pipelang`;
+promotion and hosted revalidation remain pending.
 
 [0.6 error handling and architecture audit](release-0.6-audit.md) records six
 primary findings and their focused working-tree fixes: strict budget reads,
