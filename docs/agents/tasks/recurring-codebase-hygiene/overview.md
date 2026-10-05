@@ -1,5 +1,7 @@
 # TASK-035 Recurring Codebase Hygiene
 
+The authorized [staging release channel](staging-release.md) is implemented and locally verified. The staging bucket/domain exist in isolated state, and the saved APT key plus DockPipe environment binding pass checks. Live checks confirm staging access and AccessDenied for production/state; the account-token policy grants object read/write only on `dockpipe-staging`. The user-approved GitHub setup is complete: `release-staging` contains three secrets, four public variables and a staging-only branch rule, without a manual approval gate. Activation still needs Git checkpoint/promotion and HTTPS readiness; hosted publication and installation qualification remain pending.
+
 ## Current audit and cleanup — 2026-10-04
 
 [Hosted 0.6 qualification](release-0.6-hosted.md) passed in ninth dry run

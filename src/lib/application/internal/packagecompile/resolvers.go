@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"dockpipe/src/lib/application/internal/compileconfig"
+	"dockpipe/src/lib/application/internal/packageversion"
 	"dockpipe/src/lib/application/internal/pipelangmaterialize"
 	"dockpipe/src/lib/application/internal/treecopy"
 	"dockpipe/src/lib/domain"
@@ -247,10 +248,15 @@ func filterExistingResolverRoots(roots []string) []string {
 // dockpipe-resolver-<name>-<ver>.tar.gz under destRoot.
 func compileSingleResolverDir(workdir, destRoot, from, name string, defaultNamespace string, defaultVersion string, force bool) error {
 	kind := "resolver"
+	resolvedVersion, err := packageversion.ForSource(workdir, from, defaultVersion)
+	if err != nil {
+		return err
+	}
 	opIDs := packageCompileIDs(workdir, map[string]string{
 		"package": name,
 		"source":  filepath.ToSlash(from),
 	})
+	defaultVersion = resolvedVersion
 	return infrastructure.RunOperationWithOptions(os.Stderr, "package.compile.resolver", "Compiling resolver package…", opIDs, infrastructure.OperationOptions{Spinner: false, ProgressEvery: packageCompileProgressEvery}, func() error {
 		if err := validateWorkflowConfigsUnderDir(from); err != nil {
 			return fmt.Errorf("validate resolver %s: %w", name, err)
@@ -265,6 +271,11 @@ func compileSingleResolverDir(workdir, destRoot, from, name string, defaultNames
 				if latestTar == "" {
 					rebuild = true
 				} else {
+					expectedName := fmt.Sprintf("dockpipe-resolver-%s-%s.tar.gz", packagebuild.SafeTarballToken(name), packagebuild.SafeTarballToken(resolvedVersion))
+					if filepath.Base(latestTar) != expectedName {
+						opIDs["rebuild_reason"] = "package_version_changed"
+						rebuild = true
+					}
 					if ok, reason := compiledPackageWorkflowConfigsValid(latestTar); !ok {
 						opIDs["rebuild_reason"] = "invalid_store_tarball"
 						opIDs["validation_error"] = reason
@@ -286,30 +297,8 @@ func compileSingleResolverDir(workdir, destRoot, from, name string, defaultNames
 					}
 				}
 			} else if _, err := os.Stat(legacyDir); err == nil {
-				refMax, err := infrastructure.MaxModTimeFilesUnder(legacyDir)
-				if err != nil {
-					return err
-				}
-				srcMax, err := infrastructure.MaxModTimeFilesUnder(from)
-				if err != nil {
-					return err
-				}
-				switch {
-				case srcMax.IsZero():
-					opIDs["rebuild_reason"] = "untimed_sources"
-					rebuild = true
-				case refMax.IsZero():
-					opIDs["rebuild_reason"] = "empty_legacy_store"
-					rebuild = true
-				case !srcMax.After(refMax):
-					opIDs["result"] = "skip"
-					opIDs["skip_reason"] = "up_to_date_legacy_store"
-					opIDs["output"] = filepath.ToSlash(legacyDir)
-					return nil
-				default:
-					opIDs["rebuild_reason"] = "source_newer_than_legacy_store"
-					rebuild = true
-				}
+				opIDs["rebuild_reason"] = "legacy_store_migration"
+				rebuild = true
 			}
 		}
 		if rebuild {
@@ -378,7 +367,7 @@ func compileSingleResolverDir(workdir, destRoot, from, name string, defaultNames
 				return err
 			}
 		}
-		pmParsed, err := domain.ParsePackageManifest(manifestPath)
+		pmParsed, err := readVersionedCompiledManifest(manifestPath, defaultVersion)
 		if err != nil {
 			return fmt.Errorf("%s %s: %w", kind, name, err)
 		}
