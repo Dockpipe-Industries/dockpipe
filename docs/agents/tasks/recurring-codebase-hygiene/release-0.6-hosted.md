@@ -5,9 +5,10 @@
 - Objective: `dockpipe-0.6-release-qualification`.
 - State: checkpoint `863ba38b` is committed and pushed. All five native platform
   jobs, including Windows MSI build/install/uninstall, passed in the seventh run.
-  The erroneous dry-run deployment gate is repaired locally. Cancellation of the
-  obsolete seventh run is confirmed; final hosted combined-artifact acceptance
-  requires a fresh dry run after the repair is committed and pushed.
+  The dry-run deployment isolation repair is committed and pushed as `66d970e`;
+  the eighth run passed all four Unix jobs but failed a Windows test that assumed
+  zero elapsed milliseconds. Its focused test-only repair passes locally; final
+  hosted combined-artifact acceptance remains pending.
 - Execution skill: `dorkpipe-objective-execution`.
 - Authority: on 2026-10-04 the user requested fixing the failing tests because
   "we need everything green", and explicitly invoked `dorkpipe-task-handoff`.
@@ -519,12 +520,46 @@ Obsolete run `37236771195` is confirmed `completed/cancelled`. Normal cancellati
 left its always-conditioned job waiting, so force cancellation completed the stop.
 No environment approval/bypass or protection-rule change was performed.
 
+## Approved pipeline repair checkpoint and eighth run
+
+The user approved committing and pushing the six-file pipeline repair and running
+one new dry run. Runtime checkpoint `cp-20261004-235423` created
+`66d970e17b9c90b1358ec7a796805c6bc6ef2ce2`, parent `863ba38b`. The exact six
+postimages and remote branch tip were verified; editor settings and both stashes
+were preserved.
+
+[Run 37245474387](https://github.com/Dockpipe-Industries/dockpipe/actions/runs/37245474387)
+started at `2026-10-04T23:55:08Z` on `js/pipelang`. Its API head SHA matches the
+checkpoint. Metadata job `111562399874` passed and its log confirms `version=0.6.0`,
+`dry_run=true`, and `build_msi=true`. Evidence uses
+`/tmp/dockpipe-0.6-run-37245474387`.
+
+The run completed with failure. All four Unix jobs passed; Linux amd64's hosted
+release-tooling suite includes all 13 tests and the new deployment-isolation
+regressions. Windows job `111562426050` failed only
+`TestRunContainerAttachedCallsCommitOnHost`: the expected successful log hardcoded
+`duration_ms=0`, but the actual successful host-commit log reported `duration_ms=4`.
+The runner had already built the Windows CLI/store and passed native smoke.
+MSI installation was not reached. Assembly and both production jobs were skipped;
+the pending-deployments API returned an empty list. This does not prove successful
+unprotected hosted assembly yet.
+
+The local follow-up changes only `src/lib/infrastructure/docker_run_test.go` and
+these two evidence documents. The successful host-commit assertion now requires a
+numeric nonnegative duration while preserving the complete success/result/path
+fields and existing argument/call assertions. A 5 ms delay in the fake commit
+operation exercises nonzero duration: the old assertion failed deterministically
+with `duration_ms=5`; the corrected Docker-run tests passed 20 repetitions.
+No engine behavior changed. Evidence:
+`/tmp/dockpipe-0.6-host-commit-duration-negative.log` and
+`/tmp/dockpipe-0.6-host-commit-duration-tests.log`.
+
 ## Remaining release gates
 
-The current pushed SHA remains `863ba38bfa2d2735e133cc6392e658c4aa915065`.
-The pipeline repair and documentation are local and require separate commit/push
-approval. A fresh dry run must prove that unprotected assembly completes and the
-production jobs are skipped; the old run cannot pick up local workflow changes.
+The current pushed SHA is `66d970e17b9c90b1358ec7a796805c6bc6ef2ce2`.
+The three-file timing-test follow-up requires separate commit/push approval and
+a fresh dry run. Unprotected assembly still needs hosted success after all native
+jobs pass; production jobs must remain skipped.
 Download and independently verify the new combined artifact before claiming full
 hosted completion. No production dispatch or branch promotion is authorized.
 
