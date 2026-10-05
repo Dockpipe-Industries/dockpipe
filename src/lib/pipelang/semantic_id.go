@@ -691,18 +691,20 @@ func (t *SemanticTable) sortAndIndexTargets() {
 
 func (t *SemanticTable) annotateDiagnostics(diagnostics Diagnostics) {
 	for index := range diagnostics {
-		if len(diagnostics[index].SemanticIDs) == 0 {
-			diagnostics[index].SemanticIDs = t.idsForSpan(diagnostics[index].Primary)
+		diagnostic := &diagnostics[index]
+		if len(diagnostic.SemanticIDs) == 0 {
+			diagnostic.SemanticIDs = t.idsForSpan(diagnostic.Primary)
 		}
-		if len(diagnostics[index].SemanticIdentities) == 0 {
-			diagnostics[index].SemanticIdentities = t.identitiesForSpan(diagnostics[index].Primary)
+		if len(diagnostic.SemanticIdentities) == 0 {
+			diagnostic.SemanticIdentities = t.identitiesForSpan(diagnostic.Primary)
 		}
-		for relatedIndex := range diagnostics[index].Related {
-			if len(diagnostics[index].Related[relatedIndex].SemanticIDs) == 0 {
-				diagnostics[index].Related[relatedIndex].SemanticIDs = t.idsForSpan(diagnostics[index].Related[relatedIndex].Span)
+		for relatedIndex := range diagnostic.Related {
+			related := &diagnostic.Related[relatedIndex]
+			if len(related.SemanticIDs) == 0 {
+				related.SemanticIDs = t.idsForSpan(related.Span)
 			}
-			if len(diagnostics[index].Related[relatedIndex].SemanticIdentities) == 0 {
-				diagnostics[index].Related[relatedIndex].SemanticIdentities = t.identitiesForSpan(diagnostics[index].Related[relatedIndex].Span)
+			if len(related.SemanticIdentities) == 0 {
+				related.SemanticIdentities = t.identitiesForSpan(related.Span)
 			}
 		}
 	}

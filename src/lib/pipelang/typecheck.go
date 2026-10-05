@@ -2316,10 +2316,6 @@ func (cp *checkedProgram) resolveNamedEntry(ref UnresolvedTypeRef) (symbolEntry,
 	return entry, nil
 }
 
-func inferExprType(sources *SourceSet, expr Expr, env map[string]ResolvedTypeRef) (ResolvedTypeRef, error) {
-	return inferExprTypeWithPolicy(sources, expr, env, false)
-}
-
 func (cp *checkedProgram) inferExprType(expr Expr, env map[string]ResolvedTypeRef) (ResolvedTypeRef, error) {
 	if t, handled, err := cp.inferEnumExpr(expr, env); handled {
 		return t, err
@@ -4551,10 +4547,6 @@ func inferExprTypeWithPolicy(sources *SourceSet, expr Expr, env map[string]Resol
 		}
 		return ResolvedTypeRef{}, oneDiagnostic(sources, CodeExpressionType, CategorySemantic, span, "unsupported expression")
 	}
-}
-
-func inferBinaryType(sources *SourceSet, span Span, op string, left, right ResolvedTypeRef) (ResolvedTypeRef, error) {
-	return inferBinaryTypeWithPolicy(sources, span, op, left, right, false)
 }
 
 func inferBinaryTypeWithPolicy(sources *SourceSet, span Span, op string, left, right ResolvedTypeRef, strictNumeric bool) (ResolvedTypeRef, error) {

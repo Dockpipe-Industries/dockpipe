@@ -6,7 +6,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"reflect"
-	"runtime"
 	"strings"
 	"testing"
 
@@ -119,7 +118,7 @@ func TestProject(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	command := exec.Command(filepath.Join(runtime.GOROOT(), "bin", "go"), "test", "-count=1", "-p=1", "-timeout=25s", ".")
+	command := exec.Command(filepath.Join(containedexec.GoRoot(t), "bin", "go"), "test", "-count=1", "-p=1", "-timeout=25s", ".")
 	command.Dir = dir
 	command.Env = append(os.Environ(), "GOTOOLCHAIN=local", "GOPROXY=off", "GOSUMDB=off", "GOWORK=off")
 	if output, err := containedexec.CombinedOutput(command); err != nil {

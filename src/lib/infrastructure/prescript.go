@@ -292,7 +292,7 @@ func parseEnv0(data []byte) map[string]string {
 
 func upsertEnv(env []string, key, value string) []string {
 	prefix := key + "="
-	out := make([]string, 0, len(env)+1)
+	out := make([]string, 0, len(env))
 	replaced := false
 	for _, entry := range env {
 		if strings.HasPrefix(entry, prefix) {

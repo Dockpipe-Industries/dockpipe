@@ -90,12 +90,12 @@ func PrepareDurableCohortImport(workdir string, spec DurableCohortImportSpec) (D
 		return DurableCohortImportStatus{}, fmt.Errorf("durable cohort package lock: %w", err)
 	}
 	if err := lockPrivateFile(packageCreationLock); err != nil {
-		packageCreationLock.Close()
+		_ = packageCreationLock.Close()
 		return DurableCohortImportStatus{}, fmt.Errorf("durable cohort package lock: %w", err)
 	}
 	packageRoot, err := ProjectPackageStateDir(workdir, validated.OwnerID)
 	unlockPrivateFile(packageCreationLock)
-	packageCreationLock.Close()
+	_ = packageCreationLock.Close()
 	if err != nil {
 		return DurableCohortImportStatus{}, fmt.Errorf("durable cohort package owner: %w", err)
 	}
@@ -675,7 +675,7 @@ func writeDurableImportManifest(root, path string, manifest durableImportManifes
 		return err
 	}
 	if err := makePrivatePath(path, false); err != nil {
-		file.Close()
+		_ = file.Close()
 		return err
 	}
 	if _, err = file.Write(raw); err == nil {

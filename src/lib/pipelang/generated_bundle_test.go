@@ -159,7 +159,7 @@ func TestCurrent(t *testing.T) {
 	if err := os.Chmod(buildCache, 0700); err != nil {
 		t.Fatal(err)
 	}
-	prepare := exec.Command(filepath.Join(runtime.GOROOT(), "bin", "go"), "build", "-p=1", "testing", "encoding/json", "reflect", "strings")
+	prepare := exec.Command(filepath.Join(containedexec.GoRoot(t), "bin", "go"), "build", "-p=1", "testing", "encoding/json", "reflect", "strings")
 	prepare.Env = append(os.Environ(), "GOENV=off", "GOFLAGS=", "GOCACHE="+buildCache, "GOTOOLCHAIN=local", "GOPROXY=off", "GOSUMDB=off", "GOWORK=off")
 	if output, _, err := measureGeneratedBuild(prepare); err != nil {
 		t.Fatalf("prepare probe dependencies: %v\n%s", err, output)

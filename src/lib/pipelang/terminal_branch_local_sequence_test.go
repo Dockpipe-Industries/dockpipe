@@ -67,8 +67,14 @@ func TestV710TerminalBranchLocalSequencePipeline(t *testing.T) {
 		t.Fatalf("v0.71.0 terminal branch-local sequence HIR = %#v", function.Body)
 	}
 	trueFirst := top.Return.Conditional.WhenTrue.ImmutableLocal
+	if trueFirst == nil || trueFirst.Return == nil {
+		t.Fatalf("missing local chain link: trueFirst = %#v", trueFirst)
+	}
 	trueSecond := trueFirst.Return.ImmutableLocal
 	falseFirst := top.Return.Conditional.WhenFalse.ImmutableLocal
+	if falseFirst == nil || falseFirst.Return == nil {
+		t.Fatalf("missing local chain link: falseFirst = %#v", falseFirst)
+	}
 	falseSecond := falseFirst.Return.ImmutableLocal
 	if trueFirst == nil || trueSecond == nil || falseFirst == nil || falseSecond == nil || trueFirst.Binding.Position != 3 || trueSecond.Binding.Position != 4 || falseFirst.Binding.Position != 3 || falseSecond.Binding.Position != 4 || trueSecond.Return.Reference == nil || trueSecond.Return.Reference.Position != 4 || falseSecond.Return.Reference == nil || falseSecond.Return.Reference.Position != 4 {
 		t.Fatalf("v0.71.0 branch-local HIR sequences = %#v", top.Return.Conditional)

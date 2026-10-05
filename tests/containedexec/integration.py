@@ -43,7 +43,7 @@ def main():
                 if build['exit']:
                     rows.append(build)
                     break
-            command = ['env', 'GOENV=off', str(args.go)]
+            command = ['env', 'GOENV=off', 'PIPELANG_TEST_GO=' + str(args.go), str(args.go)]
             if name == 'vet':
                 command += ['vet', '-p', '1', './src/lib/pipelang/...', './src/lib/applicationir', './src/lib/application', './src/cmd']
             else:

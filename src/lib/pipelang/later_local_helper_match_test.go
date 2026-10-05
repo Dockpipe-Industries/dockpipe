@@ -94,8 +94,11 @@ func TestV470LaterLocalHelperMatchPipeline(t *testing.T) {
 		t.Fatalf("Resolve HIR = %#v", resolveHIR.Body)
 	}
 	secondHIR := firstHIR.Return.ImmutableLocal
+	if secondHIR == nil || secondHIR.Return == nil {
+		t.Fatalf("missing local chain link: secondHIR = %#v", secondHIR)
+	}
 	thirdHIR := secondHIR.Return.ImmutableLocal
-	if secondHIR == nil || thirdHIR == nil || thirdHIR.Initializer.Kind != hir.ExprMatch || thirdHIR.Initializer.Match == nil || thirdHIR.Initializer.Match.Value == nil || thirdHIR.Initializer.Match.Value.Kind != hir.ExprCall || thirdHIR.Return.Kind != hir.ExprImmutableLocal {
+	if thirdHIR == nil || thirdHIR.Initializer.Kind != hir.ExprMatch || thirdHIR.Initializer.Match == nil || thirdHIR.Initializer.Match.Value == nil || thirdHIR.Initializer.Match.Value.Kind != hir.ExprCall || thirdHIR.Return.Kind != hir.ExprImmutableLocal {
 		t.Fatalf("Resolve later-local HIR = %#v", firstHIR.Return)
 	}
 
@@ -105,6 +108,9 @@ func TestV470LaterLocalHelperMatchPipeline(t *testing.T) {
 	}
 	resolve := coreFunctionNamed(t, program, "Resolve")
 	first := resolve.Body.ImmutableLocal
+	if first == nil || first.Return == nil {
+		t.Fatalf("missing local chain link: first = %#v", first)
+	}
 	second := first.Return.ImmutableLocal
 	third := second.Return.ImmutableLocal
 	if resolve.Body.Kind != coreir.ExprImmutableLocal || first == nil || first.Position != 2 || second == nil || second.Position != 3 || third == nil || third.Position != 4 || third.Initializer.Kind != coreir.ExprMatch || third.Initializer.Match == nil || third.Initializer.Match.Value == nil || third.Initializer.Match.Value.Kind != coreir.ExprCall {
@@ -176,8 +182,11 @@ func testV470CheckedArithmeticLaterLocal(t *testing.T, analysis *Analysis) {
 	}
 	add := coreFunctionNamed(t, program, "AddOrZero")
 	first := add.Body.ImmutableLocal
+	if first == nil || first.Return == nil {
+		t.Fatalf("missing local chain link: first = %#v", first)
+	}
 	second := first.Return.ImmutableLocal
-	if first == nil || first.Position != 2 || second == nil || second.Position != 3 || second.Initializer.Kind != coreir.ExprMatch || second.Initializer.Match == nil || second.Initializer.Match.Value == nil || second.Initializer.Match.Value.Type.Kind != coreir.TypeResult || second.Initializer.Match.Value.Type.Result == nil || second.Initializer.Match.Value.Type.Result.Failure.Kind != coreir.TypeArithmeticError {
+	if first.Position != 2 || second == nil || second.Position != 3 || second.Initializer.Kind != coreir.ExprMatch || second.Initializer.Match == nil || second.Initializer.Match.Value == nil || second.Initializer.Match.Value.Type.Kind != coreir.TypeResult || second.Initializer.Match.Value.Type.Result == nil || second.Initializer.Match.Value.Type.Result.Failure.Kind != coreir.TypeArithmeticError {
 		t.Fatalf("AddOrZero later-local Core = %#v", add.Body)
 	}
 	entry := coreir.SemanticIdentity{PackageID: string(identity.PackageID), Path: string(identity.Path)}

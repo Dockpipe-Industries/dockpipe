@@ -685,7 +685,7 @@ if((Check("A",a && present) ? Check("B",b || !present) : Check("C",c && present)
 					} else {
 						trace = append(trace, "C:C")
 					}
-					picked := e || !present
+					var picked bool
 					if selector {
 						trace = append(trace, "C:D")
 						picked = !e

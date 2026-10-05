@@ -158,13 +158,16 @@ func collectArtifacts(profile contract.Profile) (map[string][]byte, error) {
 		}
 		info, err := file.Stat()
 		if err != nil || !info.Mode().IsRegular() || info.Size() > int64(contract.MaxArtifacts-total) {
-			file.Close()
+			_ = file.Close()
 			return nil, errors.New("artifact is not a bounded regular file")
 		}
 		data, err := io.ReadAll(io.LimitReader(file, int64(contract.MaxArtifacts-total)+1))
-		file.Close()
+		closeErr := file.Close()
 		if err != nil {
 			return nil, err
+		}
+		if closeErr != nil {
+			return nil, closeErr
 		}
 		total += len(data)
 		if total > contract.MaxArtifacts {
