@@ -1,6 +1,14 @@
 # TASK-035 Recurring Codebase Hygiene
 
-The authorized [staging release channel](staging-release.md) is implemented and locally verified. The staging bucket/domain exist in isolated state, and the saved APT key plus DockPipe environment binding pass checks. Live checks confirm staging access and AccessDenied for production/state; the account-token policy grants object read/write only on `dockpipe-staging`. The user-approved GitHub setup is complete: `release-staging` contains three secrets, four public variables and a staging-only branch rule, without a manual approval gate. Activation still needs Git checkpoint/promotion and HTTPS readiness; hosted publication and installation qualification remain pending.
+The authorized [staging release channel](staging-release.md) is implemented and locally verified. The staging bucket/domain exist in isolated state, and the saved APT key plus DockPipe environment binding pass checks. Live checks confirm staging access and AccessDenied for production/state; the account-token policy grants object read/write only on `dockpipe-staging`. The user-approved GitHub setup is complete: `release-staging` contains three secrets, four public variables and a staging-only branch rule, without a manual approval gate. The source is now on staging; HTTPS readiness, successful hosted publication and installation qualification remain pending.
+
+The source checkpoint `62dda3a8` was pushed and the user promoted it to staging.
+First hosted staging release `37375091956` built and assembled successfully but
+correctly refused stale publication after staging advanced. The newer push run
+`37375906954` is in progress. The separate master PR run `37375911684` exposed a
+release-notes check broken-pipe false rejection; a local one-line fix and two
+regression tests pass all eight workflow tests. The user approved the follow-up
+checkpoint/push on `js/pipelang` and retains MR ownership.
 
 ## Current audit and cleanup — 2026-10-04
 
