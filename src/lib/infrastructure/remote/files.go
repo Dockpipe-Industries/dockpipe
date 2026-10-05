@@ -8,6 +8,7 @@ import (
 	"errors"
 	"io"
 	"os"
+	"path/filepath"
 
 	"dockpipe/src/lib/infrastructure"
 )
@@ -49,9 +50,21 @@ func ReadPrivate(path string, target any) error {
 	if err := infrastructure.ValidatePrivatePath(path, false); err != nil {
 		return err
 	}
-	data, err := os.ReadFile(path)
+	file, err := os.OpenInRoot(filepath.Dir(path), filepath.Base(path))
 	if err != nil {
 		return err
+	}
+	defer file.Close()
+	opened, err := file.Stat()
+	if err != nil || !opened.Mode().IsRegular() || !os.SameFile(info, opened) {
+		return errors.New("remote state changed while being opened")
+	}
+	data, err := io.ReadAll(io.LimitReader(file, (64<<20)+1))
+	if err != nil {
+		return err
+	}
+	if len(data) > 64<<20 {
+		return errors.New("remote state exceeds size limit")
 	}
 	return Decode(data, target)
 }

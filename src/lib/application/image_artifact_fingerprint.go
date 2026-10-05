@@ -20,10 +20,6 @@ func buildImageArtifactManifest(repoRoot, workflowName, packageName, imageKey, i
 	})
 }
 
-func trimImageArtifactProvenance(p domain.ImageArtifactProvenance) domain.ImageArtifactProvenance {
-	return imageartifact.NormalizeProvenance(p)
-}
-
 func marshalArtifactJSON(v any) ([]byte, error) {
 	return imageartifact.MarshalJSON(v)
 }

@@ -3,12 +3,12 @@
 ## Objective and authority
 
 - Objective: `dockpipe-0.6-release-qualification`.
-- State: checkpoint `863ba38b` is committed and pushed. All five native platform
-  jobs, including Windows MSI build/install/uninstall, passed in the seventh run.
-  The dry-run deployment isolation repair is committed and pushed as `66d970e`;
-  the eighth run passed all four Unix jobs but failed a Windows test that assumed
-  zero elapsed milliseconds. Its focused test-only repair passes locally; final
-  hosted combined-artifact acceptance remains pending.
+- State: staging CI repair is local and validated at focused scope; broader scan
+  findings remain unresolved. Hosted dry-run qualification passed at pushed checkpoint `d6207ae`.
+  All five native jobs, MSI lifecycle, and unprotected combined-artifact assembly
+  succeeded in ninth run `37251332865`. Production publication and dev.to were
+  skipped with no pending deployment approvals. Downloaded package checksums and
+  actual APT consumption passed; the redundant Release self-entry is noted below.
 - Execution skill: `dorkpipe-objective-execution`.
 - Authority: on 2026-10-04 the user requested fixing the failing tests because
   "we need everything green", and explicitly invoked `dorkpipe-task-handoff`.
@@ -23,10 +23,10 @@
   readiness/implementation repairs. New commits/pushes require user authorization.
 - Required promotion path, confirmed by the user: `js/pipelang → js/dev → dev →
   staging → master`. Production release publication must originate from `master`.
-  The current `js/pipelang` run is qualification only; its `publish` job assembles
-  dry-run artifacts with production publication disabled. This clarification does
+  The `js/pipelang` run is qualification only; `assemble` prepares and verifies
+  dry-run artifacts while `publish` is skipped. This clarification does
   not authorize branch merges or a production dispatch. Automatic release runs
-  already trigger on pushes to `master`; the local repair now also rejects
+  already trigger on pushes to `master`; the pushed repair also rejects
   manual non-dry-run dispatch on every other ref.
 - Exclusions: production release/tag, R2/APT publication, dev.to, merge, billing,
   protection rules, credential changes, infrastructure mutation, or automatic handoff.
@@ -554,16 +554,210 @@ No engine behavior changed. Evidence:
 `/tmp/dockpipe-0.6-host-commit-duration-negative.log` and
 `/tmp/dockpipe-0.6-host-commit-duration-tests.log`.
 
+## Approved timing-test checkpoint and ninth run
+
+The user approved the three-file timing-test follow-up, push, and ninth dry run.
+Runtime checkpoint `cp-20261005-012436` created
+`d6207aea48f6b4afa57a9c308d388bf083b8217b`, parent `66d970e`. The exact postimages,
+protected editor settings, both stashes, and remote `origin/js/pipelang` SHA were
+verified. Only the test and two evidence documents were committed; engine behavior
+was unchanged.
+
+[Run 37251332865](https://github.com/Dockpipe-Industries/dockpipe/actions/runs/37251332865)
+started at `2026-10-05T01:24:57Z` and completed **success** at the intended SHA.
+Metadata job `111579411798` confirms `version=0.6.0`, `dry_run=true`, and
+`build_msi=true`. Evidence uses `/tmp/dockpipe-0.6-run-37251332865`.
+
+| Target | Ninth-run result |
+| --- | --- |
+| Linux amd64 | Job `111579436626` passed native/store smoke, runtime and package regressions, and all 13 release-tooling tests. Artifact `11320754864`. |
+| Linux arm64 | Job `111579436583` passed native/store smoke and upload. Artifact `11321043170`. |
+| macOS Intel | Job `111579436635` passed native/store smoke and upload. Artifact `11321465498`. |
+| macOS Apple Silicon | Job `111579436476` passed native/store smoke and upload. Artifact `11320348848`. |
+| Windows amd64 / MSI | Job `111579436409` passed runtime tests, installer recovery, MSI regressions, build, install, installed CLI, uninstall, and cleanup. Artifact `11321345243`. |
+| Combined artifact assembly | Job `111580908903` started automatically without deployment approval and passed catalog/checksum preparation, temporary-key APT generation, and dry-run artifact upload. Artifact `11320414312`, `dockpipe-release-dry-run-0.6.0`. |
+| Production publication | Job `111581218439` skipped. Prepared production artifact upload also skipped. |
+| dev.to | Job `111581218441` skipped. |
+
+The pending-deployments API returned an empty list during assembly and after
+completion. No environment approval/bypass was performed and no production
+publication ran. The obsolete seventh run remains cancelled.
+
+The combined bundle was downloaded to
+`/tmp/dockpipe-0.6-run-37251332865-combined`. Independent verification confirmed:
+
+- All five stores, 58 package entries each (290 total), with 42 workflows and
+  15 resolvers per store, plus each bundled archive's manifest and payload hashes.
+- All 27 top-level checksums, complete platform catalog, Linux installer formats,
+  native CLI archives, and the MSI payload.
+- APT signature under the temporary key, all four package-index SHA256 entries,
+  by-hash paths, and both DEB payloads matching their release counterparts.
+- An isolated real APT reader consumed amd64 and arm64 indexes successfully without
+  installing packages or changing system sources. Host post-update hooks were
+  disabled for the clean isolated check; the first check exited zero but its host
+  hook emitted a sandbox connection error.
+
+Evidence: `-verification.log`, `-assemble.log`, `-windows.log`, `-linux-amd64.log`,
+and `-apt-reader/reader-no-host-hooks.log` under the evidence prefix above.
+
+### Nonblocking APT metadata cleanup
+
+The initial independent all-entry checksum scan rejected a redundant root
+`Release` self-entry: apt-ftparchive scanned the output while writing it, so the
+entry describes the initial 167-byte header rather than the final 2385-byte file.
+The exact header hash was confirmed. Package indexes and payloads all match their
+signed hashes, and the real APT reader accepts the repository. The corrected
+verification reports this entry separately; it does not claim the self-checksum
+matches the complete file. Preserve `-verification-initial.log` as evidence.
+A follow-up can write Release outside the scanned tree and move it into place
+before signing, with a regression covering every advertised hash. This is a
+metadata cleanup, not a failure of the verified dry-run deployment isolation.
+
 ## Remaining release gates
 
-The current pushed SHA is `66d970e17b9c90b1358ec7a796805c6bc6ef2ce2`.
-The three-file timing-test follow-up requires separate commit/push approval and
-a fresh dry run. Unprotected assembly still needs hosted success after all native
-jobs pass; production jobs must remain skipped.
-Download and independently verify the new combined artifact before claiming full
-hosted completion. No production dispatch or branch promotion is authorized.
+The approved pipeline fix and timing-test follow-up are pushed at
+`d6207aea48f6b4afa57a9c308d388bf083b8217b`. Hosted dry-run qualification is complete.
+Only the final evidence updates in these two documents remain uncommitted.
 
+Production promotion follows `js/pipelang → js/dev → dev → staging → master` and
+remains separately authorized; no merge or production dispatch was performed.
 Native hosted success does not establish M6 Mac onboarding, launchd, sleep/wake,
 or Nucleon remote execution. Publication-recovery rehearsal and production
 configuration/public-origin verification remain separate gates. PipeLang public
 rollout and compiler qualification remain deferred to 0.7.
+
+
+## Staging CI/security repair — 2026-10-05
+
+The user authorized repairing staging CI for PR #18 before release approval and
+requested this continuation in the saved checkout. Revalidated `js/pipelang` and
+live origin at `d6207aea48f6b4afa57a9c308d388bf083b8217b`; PR #18 remains open,
+`staging → master`, at `b29412e0a05061b1c0d93f9213408dcd9fba6a23`, with merge state
+`DIRTY`. Master README-only changes must be preserved; merging is not authorized.
+The successful release run above is admitted historical proof, not proof of these
+new local edits. Commit, push, promotion, and hosted dispatch remain separate gates.
+
+### Implemented local repair
+
+- CI host jobs and `workflows/ci/test` use the existing runtime release selector.
+  PipeLang, Application IR, compatibility, and containment harness tests retain
+  their separate campaign; no containment check was disabled or compiler
+  qualification claimed. Static/security scans still cover compiler source.
+- Both scanner install paths pin staticcheck `v0.7.0`, govulncheck `v1.7.0`, and
+  gosec `v2.29.0`, with `GOTOOLCHAIN=local`. All three installed successfully using
+  the exact Go `1.25.11` toolchain after checksum verification against official Go
+  release JSON. The subsequently authorized security update aligns the root/MCP
+  modules, CI images, and release build jobs on Go `1.25.13`.
+- CodeQL keeps the existing `CodeQL (Go)` check and adds Actions analysis under
+  `/language:actions`, matching the coverage required from master. No query,
+  severity, protection rule, or alert dismissal was weakened.
+- Allocation alerts #1/#17/#18: removed unnecessary capacity addition in the
+  environment slice and identifier map helpers.
+- MCP path alert #12: repository reads use `os.Root`, including search reads;
+  traversal and escaping symlinks cannot redirect reads outside the selected
+  repository. Search reads enforce their byte limit during I/O.
+- Broker path alerts #13–#16 share a result-path source: domain ID validation
+  already rejects separators. The filesystem boundary now also enforces a single
+  local component before constructing either read or write paths. Generic durable
+  validators remain intact. Remote private reads additionally bind the opened
+  file identity to validation and enforce the 64 MiB limit during I/O.
+- The existing JSON-only govulncheck command returned zero for vulnerable code.
+  Converting the saved scan to text now supplies a failing vulnerability exit
+  status while retaining JSON for DorkPipe. The existing scan fails with exit 3.
+- gosec excludes `testdata` compilation fixtures, consistent with Go package
+  discovery. This removes duplicate-declaration load errors; all 41 reported
+  findings remained present before repair. No source package or rule is excluded
+  by this change.
+
+### Validation and evidence
+
+Evidence prefix: `/tmp/dockpipe-ci-`. The tools and exact Go version are under
+`/tmp/dockpipe-ci-repair-tools`; no generated binaries or caches were added to Git.
+
+| Check | Result |
+| --- | --- |
+| Exact Go 1.25.11 tool installation | Passed; `tool-install.log` records binary module/build versions. |
+| Runtime selector on host | Passed 43 package suites; three packages have no tests (`runtime-host.log`). |
+| Operation identifiers, remote infrastructure, MCP suites | Passed on host (`focused-host.log`). Initial sandbox failure is preserved in `focused.log`: loopback sockets were denied. |
+| New path regressions | Passed (`regressions.log`); old MCP read calls fail the symlink regression using a temporary Go overlay (`mcp-negative.log`). |
+| Durable-state validation tests | Passed (`durable.log`), including owner-only and symlink checks. |
+| Windows remote/MCP tests | Cross-compiled successfully to `/tmp`; native execution is still required. |
+| CLI | Built successfully to `/tmp/dockpipe-ci-repaired-cli`. |
+| CI workflow regressions | Four tests passed: selector scope, host/nested parity and pins, vulnerability failure status, and Go/Actions coverage. |
+| Workflow/schema and shell | Nested workflow validates; selector Bash syntax and ShellCheck error gate pass; `git diff --check` passes. |
+| Hosted CodeQL/CI | Not rerun: requires a separately authorized checkpoint/push/promotion. Alert closure is unverified locally. |
+
+### Broader scanner repair authorized and implemented
+
+Restoring scanner installation exposed **121 staticcheck diagnostics across 60
+files** (127 output lines including six secondary explanations): 68 deprecated
+`runtime.GOROOT` calls, 26 unused declarations, 18 error-string style findings,
+six possible nil dereferences in tests, and three other diagnostics. Most are in
+PipeLang/compiler tests. Raw evidence: `staticcheck.log`; summary:
+`scan-summary.json`.
+
+Gosec initially reported **41 findings** after fixture exclusion with zero package-load
+errors: 13 conversion bounds, one deterministic PRNG use, seven slice bounds,
+and 20 unchecked errors. These span the compiler, its transcript harness, and
+runtime code. Raw evidence: `gosec-no-fixtures.json` and `.log`; the initial
+fixture-load failure remains in `gosec.json` and `.log`.
+
+Govulncheck identified **seven reachable standard-library vulnerabilities** in
+Go 1.25.11. All have fixes by **Go 1.25.13**: GO-2026-4970, GO-2026-5026,
+GO-2026-5856, GO-2026-5972, GO-2026-6089, GO-2026-6090, and GO-2026-6218.
+Evidence: `govulncheck.json` and `govulncheck-gate.log`. A same-minor security
+patch is justified; upgrading to Go 1.26 merely to install latest tools is not.
+Toolchain changes must align release build inputs and require fresh qualification
+before claiming the release artifacts are secured by the patch.
+
+The user explicitly approved the broader compiler/harness fixes and Go 1.25.13
+update ("of course"). The local implementation now:
+
+- Resolves the selected installed Go toolchain in generated-code tests. Retained
+  campaigns pass `PIPELANG_TEST_GO`; ordinary tests use their exported `GOROOT`
+  or installed Go. The helper rejects version mismatch, and retained artifact
+  fingerprints hash that same selected root. Process containment is unchanged.
+- Removes 26 unused private declarations; corrects error-string style and test
+  nil guards; preserves active compiler entry points and emitted output.
+- Checks narrowing conversions and compressed-section bounds in transcript
+  tooling, retains deterministic self-test noise, checks symbol-ID capacity,
+  and uses direct element references for diagnostic annotation.
+- Handles artifact-close failure, explicitly preserves primary failures during
+  cleanup, and makes infallible in-memory C++ emitter writes clear to gosec.
+
+### Final local validation of the broader repair
+
+| Check | Result |
+| --- | --- |
+| Staticcheck v0.7.0 | Passed with zero diagnostics (`staticcheck-accepted.log`). |
+| Gosec v2.29.0 | Passed, 282 files / 75,586 lines, zero findings and zero package-load errors (`gosec-accepted.json`); existing two suppressions unchanged. |
+| Govulncheck v1.7.0, Go 1.25.13 | No vulnerabilities found; text-conversion gate exits zero (`govulncheck-patched.json`, `govulncheck-patched-gate.log`). Original vulnerable exit-3 evidence retained. |
+| Runtime selector, Go 1.25.13 | All 43 package suites passed (`runtime-patched.log`); three packages have no tests. |
+| MCP package | Passed (`mcp-patched.log`), including symlink and bounded-read regressions. |
+| Core evaluator / Core IR / Go backend | Full component unit suites passed (`core-components.log`). |
+| Toolchain resolution / transcript widths | New unit tests passed; transcript self-test passed 21 round trips (`transcript-selftest.log`). |
+| Focused compiler campaign | 38/38 selected logical cases passed, no reused semantic receipts; `contained-suite/suite/summary.json` explicitly records partial proof and unchanged source/toolchain during execution. Aggregate job exits zero with process-tree cleanup (`contained-suite/job-focused.json`). A later edit only groups two test-file imports. |
+| Application IR generated code | Numeric-comparison and v115 assignment consumers passed under containment (`appir.output`, `appir-job.json`), including process-tree cleanup. |
+| Updated-toolchain cross-builds | Linux and Windows CLI builds and Windows remote/MCP test binaries compiled with Go 1.25.13; native Windows execution remains hosted proof. |
+| Containment safety | Three job safety probes passed (`containment-preflight.log`). |
+| CI/release tooling | All 18 tests passed on the host (`release-tooling-host.log`), including five new CI contract regressions. Initial sandbox GPG-socket denial retained separately. |
+| Go vet | Passed across `./...` on Go 1.25.13 (`vet-final.log`). |
+| Shell / workflow | ShellCheck error gate and templates/core path guard passed; nested workflow validates; YAML/Python parsing passed. |
+
+The focused compiler evidence preserves unsuccessful preparation attempts:
+`contained/focused.json` stopped at the existing 800 MiB proactive memory limit;
+`contained-suite/suite/campaign/attempts/f726ddf6babc407b94cecefb01c7527e`
+hit the unchanged 30-second cold-build deadline. Resume completed preparation
+without increasing limits. A selection-file error named generated test functions
+embedded in fixture strings; correcting only the temporary selection to the 38
+actual parent tests allowed the focused campaign to execute. The parent tests
+still execute their generated tests. No failed receipt was removed or relabeled.
+
+Full compiler/Application IR qualification remains a separate campaign; this is
+focused regression proof, not 0.7 language qualification. Hosted CI, CodeQL alert
+closure, Docker workflow execution, and fresh release artifacts on Go 1.25.13
+remain unverified. The earlier release dry run is historical proof only.
+The user subsequently approved committing and pushing this reviewed repair to
+`js/pipelang`. The checkpoint/push is being prepared against parent `d6207ae`;
+promotion, hosted dispatch, merge, and release publication remain separate gates. Protected editor settings,
+both stashes, and the empty index retain their admitted state.

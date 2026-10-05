@@ -141,8 +141,11 @@ func TestV400OrderedImmutableLocalsPipeline(t *testing.T) {
 		t.Fatalf("DisplayName first Core local = %#v", coreFunction.Body)
 	}
 	coreSecond := coreFirst.Return.ImmutableLocal
+	if coreSecond == nil || coreSecond.Return == nil {
+		t.Fatalf("missing local chain link: coreSecond = %#v", coreSecond)
+	}
 	coreThird := coreSecond.Return.ImmutableLocal
-	if coreSecond == nil || coreSecond.Position != 3 || coreThird == nil || coreThird.Position != 4 || coreThird.Return.Kind != coreir.ExprReference {
+	if coreSecond.Position != 3 || coreThird == nil || coreThird.Position != 4 || coreThird.Return.Kind != coreir.ExprReference {
 		t.Fatalf("DisplayName Core sequence = %#v", coreFunction.Body)
 	}
 
