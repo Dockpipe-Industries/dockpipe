@@ -62,7 +62,7 @@ GitHub and R2 are separate services, so publication is not an atomic transaction
 
 ## PipeLang qualification boundary
 
-The 0.6 runtime release uses `release/packaging/test-runtime.sh`: all root-module Go packages except `src/lib/pipelang/...`, `src/lib/applicationir`, and `tests/pipelangcompat`. Those compiler suites intentionally refuse generated compilation without their verified containment runner. A plain broad local test run failed those containment checks and timed out in PipeLang; it is not passing release evidence.
+The 0.6 runtime release uses `release/packaging/test-runtime.sh`: all root-module Go packages except `src/lib/pipelang/...`, `src/lib/applicationir`, `tests/pipelangcompat`, and `tests/containedexec/...`. Host CI on Linux and Windows and the nested Docker test workflow use the same selector. This is runtime qualification only; the separate PipeLang campaign remains required for compiler qualification. Those compiler suites intentionally refuse generated compilation without their verified containment runner. A plain broad local test run failed those containment checks and timed out in PipeLang; it is not passing release evidence.
 
 PipeLang's compiler campaigns remain under `tests/containedexec/` and must pass separately before the planned language release. This runtime gate does not claim compiler conformance or remove those tests. The public language rollout is deferred to 0.7; existing experimental CLI surfaces remain present.
 

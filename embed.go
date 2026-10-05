@@ -64,7 +64,7 @@ func (b bundledFS) Open(name string) (fs.File, error) {
 	}
 	entries, err := b.ReadDir(name)
 	if err != nil {
-		file.Close()
+		_ = file.Close()
 		return nil, err
 	}
 	return &bundleDirectory{File: file, entries: entries}, nil

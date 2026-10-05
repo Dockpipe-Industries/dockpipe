@@ -48,7 +48,7 @@ func (setup Setup) Execute(ctx context.Context) error {
 		return errors.New("choose a lowercase hostname in a domain already managed by Cloudflare")
 	}
 	if !strings.HasPrefix(setup.Origin, "http://") || contract.Endpoint(setup.Origin) != nil {
-		return errors.New("Cloudflare origin must be an explicit loopback HTTP endpoint")
+		return errors.New("origin for Cloudflare must be an explicit loopback HTTP endpoint")
 	}
 	if !filepath.IsAbs(setup.Executable) || !filepath.IsAbs(setup.Home) || !filepath.IsAbs(setup.Output) {
 		return errors.New("setup requires absolute executable, home, and output paths")
@@ -86,7 +86,7 @@ func (setup Setup) Execute(ctx context.Context) error {
 		// cloudflared owns its browser login and standard certificate location.
 		// Never copy this account-management certificate to workers.
 		if err := setup.Run(ctx, setup.Executable, []string{"tunnel", "login"}, true); err != nil {
-			return errors.New("Cloudflare browser login did not complete")
+			return errors.New("browser login to Cloudflare did not complete")
 		}
 	} else if err != nil {
 		return err
@@ -123,7 +123,7 @@ func (setup Setup) Execute(ctx context.Context) error {
 	// Provider-owned credential fields remain opaque; only its documented ID is
 	// used to bind routing and the runtime configuration.
 	if err := json.Unmarshal(raw, &credential); err != nil || !tunnelPattern.MatchString(credential.TunnelID) {
-		return errors.New("Cloudflare wrote invalid tunnel credentials")
+		return errors.New("invalid tunnel credentials written by Cloudflare")
 	}
 	if !state.Routed {
 		arguments := []string{"tunnel", "--origincert", certificate, "route", "dns", credential.TunnelID, setup.Hostname}
@@ -159,7 +159,7 @@ func (setup Setup) Execute(ctx context.Context) error {
 func privateCredential(path string) error {
 	info, err := os.Lstat(path)
 	if err != nil || !info.Mode().IsRegular() || info.Size() < 1 || info.Size() > 64<<10 {
-		return errors.New("Cloudflare credential must be a private regular file")
+		return errors.New("credential for Cloudflare must be a private regular file")
 	}
 	return infrastructure.ValidatePrivatePath(path, false)
 }

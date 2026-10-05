@@ -2,6 +2,7 @@ package mcpbridge
 
 import (
 	"fmt"
+	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -64,7 +65,7 @@ func repoReadFile(path string, maxChars int) (string, error) {
 		return "", err
 	}
 	maxChars = normalizeRepoReadMaxChars(maxChars)
-	b, err := os.ReadFile(abs)
+	b, err := readRepoFile(abs, 0)
 	if err != nil {
 		return "", err
 	}
@@ -102,7 +103,7 @@ func repoSearchText(query string, limit int) ([]string, error) {
 		if err != nil || info.Size() > maxRepoSearchFileBytes {
 			return nil
 		}
-		b, err := os.ReadFile(path)
+		b, err := readRepoFile(path, maxRepoSearchFileBytes)
 		if err != nil {
 			return nil
 		}
@@ -167,4 +168,45 @@ func clampRepoText(text string, maxChars int) string {
 		return text
 	}
 	return text[:maxChars] + "\n\n[truncated]"
+}
+
+// readRepoFile uses a directory handle so symlinks and concurrent renames cannot
+// turn a lexically contained repository path into a read outside the repository.
+func readRepoFile(path string, maxBytes int64) ([]byte, error) {
+	root, err := effectiveRepoRoot()
+	if err != nil {
+		return nil, err
+	}
+	relative, err := filepath.Rel(root, path)
+	if err != nil || !filepath.IsLocal(relative) {
+		return nil, fmt.Errorf("path escapes repo root")
+	}
+	directory, err := os.OpenRoot(root)
+	if err != nil {
+		return nil, err
+	}
+	defer directory.Close()
+	file, err := directory.Open(relative)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+	info, err := file.Stat()
+	if err != nil {
+		return nil, err
+	}
+	if !info.Mode().IsRegular() {
+		return nil, fmt.Errorf("repository path is not a regular file")
+	}
+	if maxBytes > 0 {
+		data, err := io.ReadAll(io.LimitReader(file, maxBytes+1))
+		if err != nil {
+			return nil, err
+		}
+		if int64(len(data)) > maxBytes {
+			return nil, fmt.Errorf("repository file exceeds search limit")
+		}
+		return data, nil
+	}
+	return io.ReadAll(file)
 }

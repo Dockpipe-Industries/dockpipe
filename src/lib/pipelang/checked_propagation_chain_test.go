@@ -57,8 +57,17 @@ func TestV580CheckedPropagationChainPipeline(t *testing.T) {
 		t.Fatalf("first propagation HIR = %#v", function.Body)
 	}
 	firstCarrier := first.Return.ImmutableLocal
+	if firstCarrier == nil || firstCarrier.Return == nil {
+		t.Fatalf("missing local chain link: firstCarrier = %#v", firstCarrier)
+	}
 	secondPayload := firstCarrier.Return.ImmutableLocal
+	if secondPayload == nil || secondPayload.Return == nil {
+		t.Fatalf("missing local chain link: secondPayload = %#v", secondPayload)
+	}
 	secondCarrier := secondPayload.Return.ImmutableLocal
+	if secondCarrier == nil || secondCarrier.Return == nil {
+		t.Fatalf("missing local chain link: secondCarrier = %#v", secondCarrier)
+	}
 	thirdPayload := secondCarrier.Return.ImmutableLocal
 	if firstCarrier == nil || firstCarrier.Binding.Position != 5 || firstCarrier.Initializer.Kind != hir.ExprBinary || secondPayload == nil || secondPayload.Binding.Position != 6 || secondPayload.Initializer.Kind != hir.ExprPropagate || secondCarrier == nil || secondCarrier.Binding.Position != 7 || secondCarrier.Initializer.Kind != hir.ExprBinary || thirdPayload == nil || thirdPayload.Binding.Position != 8 || thirdPayload.Initializer.Kind != hir.ExprPropagate {
 		t.Fatalf("checked propagation chain HIR = %#v", function.Body)

@@ -320,12 +320,6 @@ func copyCoreSourceDirMaybe(src, dst string) error {
 	return treecopy.CopyCore(src, dst)
 }
 
-// copyDirExcludingTopLevel copies src into dst but skips immediate child entries of src whose names are in exclude.
-// Used for compile core so resolver and workflow slices are not folded into the core tarball (those compile separately).
-func copyDirExcludingTopLevel(src, dst string, exclude map[string]bool) error {
-	return treecopy.CopyExcludingTopLevel(src, dst, exclude)
-}
-
 func copyDir(src, dst string) error {
 	return treecopy.Copy(src, dst)
 }

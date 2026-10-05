@@ -2,6 +2,7 @@ package pipelang
 
 import (
 	"fmt"
+	"math"
 	"sort"
 	"strings"
 )
@@ -148,10 +149,6 @@ func (t *SymbolTable) lookupIDEntry(id SymbolID) (symbolEntry, bool) {
 	return t.ordered[idx], true
 }
 
-func buildSymbolTable(sources *SourceSet, program *Program) (*SymbolTable, error) {
-	return buildSymbolTableWithOwners(sources, program, nil)
-}
-
 func buildSymbolTableWithOwners(sources *SourceSet, program *Program, modules *ModuleGraph) (*SymbolTable, error) {
 	if program == nil {
 		return nil, oneDiagnostic(sources, CodeInvalidProgram, CategorySemantic, Span{}, "program is nil")
@@ -221,7 +218,11 @@ func buildSymbolTableWithOwners(sources *SourceSet, program *Program, modules *M
 			previous := table.ordered[previousIndex].symbol
 			return nil, oneDiagnostic(sources, CodeDuplicateDecl, CategorySemantic, entry.symbol.DeclarationSpan, fmt.Sprintf("duplicate %s %q", entry.symbol.Kind, name), RelatedSpan{Span: previous.DeclarationSpan, Message: "first declaration"})
 		}
-		entry.symbol.ID = SymbolID(len(table.ordered) + 1)
+		identifier := uint64(len(table.ordered)) + 1
+		if identifier > math.MaxUint32 {
+			return nil, oneDiagnostic(sources, CodeInvalidDecl, CategorySemantic, entry.symbol.DeclarationSpan, "symbol table exceeds identity capacity")
+		}
+		entry.symbol.ID = SymbolID(identifier)
 		table.byOwnerName[key] = len(table.ordered)
 		table.byName[name] = append(table.byName[name], len(table.ordered))
 		table.byID[entry.symbol.ID] = len(table.ordered)
