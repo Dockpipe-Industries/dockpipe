@@ -141,8 +141,9 @@ native CLI and complete package store. The command is still `dockpipe` and uses 
 `DOCKPIPE_GLOBAL_ROOT` is set to a separate test directory.
 The stable formula is not yet published, so a conflict declaration against it is invalid.
 
-Desktop packaging is now implemented in source but requires a new candidate and
-native qualification. After the desktop cask is published, use
+The desktop cask is published and passed
+[native Homebrew validation on both Mac architectures](https://github.com/Dockpipe-Industries/homebrew-dockpipe/actions/runs/37419531103).
+Run `brew update`, then use
 `brew install --cask dockpipe-industries/dockpipe/dockpipe-desktop-staging` for the
 launcher and CLI together. The DMG offers a direct Apple Installer alternative.
 See [desktop installation](../../docs/install.md#desktop-installation) for platform

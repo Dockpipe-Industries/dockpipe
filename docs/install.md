@@ -10,7 +10,10 @@ Choose **Desktop** for the launcher and CLI together, or **CLI / Remote Worker**
 | Windows x64 | MSI with launcher selected by default | ZIP, or MSI with only the CLI feature |
 | Ubuntu 24.04 amd64 / arm64 | `dockpipe-desktop` DEB plus `dockpipe` | `dockpipe` DEB; RPM, APK, Arch and portable CLI packages also available |
 
-Desktop packaging is implemented in source. Use these options once a release containing the new desktop artifacts has passed native validation and been published. Existing CLI-only releases do not acquire a launcher automatically. The staging Homebrew CLI formula is already available; its desktop cask requires a new desktop candidate and tap update.
+Desktop packages are available in the staging channel. The Homebrew CLI formula and desktop cask
+passed [native installation checks on Apple Silicon and Intel](https://github.com/Dockpipe-Industries/homebrew-dockpipe/actions/runs/37419531103)
+before publication. Existing CLI-only installations do not acquire a launcher automatically; install
+the desktop cask below to add it. Apple Developer ID signing and notarization remain pending.
 
 ## Desktop installation
 
@@ -18,9 +21,10 @@ Desktop packaging is implemented in source. Use these options once a release con
 
 Use one installation method. The DMG installer refuses an existing foreign CLI or app; users with the Homebrew CLI should use the cask below. Re-running the DMG installer updates an installation owned by that installer. Locally built and current CI staging DMGs use ad-hoc signatures unless the maintainer supplies Developer ID signing and notarization. They are not yet normal Gatekeeper-approved public downloads; no security-setting changes are part of installation.
 
-**Homebrew on macOS (staging):** once the desktop cask is published, one command installs the launcher and CLI:
+**Homebrew on macOS (staging):** refresh the tap, then install the launcher and CLI together:
 
 ```sh
+brew update
 brew install --cask dockpipe-industries/dockpipe/dockpipe-desktop-staging
 ```
 
@@ -322,3 +326,15 @@ From the repo root:
 ```
 
 Attach that file to a GitHub Release. If we add a proper APT repo later, we’ll document it here.
+
+### Browsing staging packages in the launcher
+
+After installing the CLI and launcher together, open **Settings → Package Remotes → Use staging**,
+save, then open **Packages → Marketplace**. The staging origin is
+`https://packages.staging.dockpipe.com`; new launcher settings otherwise default to production at
+`https://packages.dockpipe.com`. Select one remote explicitly; the launcher does not mix channels.
+
+Marketplace installs individual packages into your user store after checksum verification.
+The full Brew/DMG installation already includes a matching package store. See
+[remote package installation](packages/package-model.md#remote-catalogs-and-user-installation)
+for the CLI contract and dependency behavior.

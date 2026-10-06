@@ -22,3 +22,15 @@ void extendMacOSExecutablePath()
     }
     qputenv("PATH", paths.join(QLatin1Char(':')).toLocal8Bit());
 }
+
+void applyGlobalRootDefault(const QString &savedRoot)
+{
+    static const QByteArray inheritedRoot = qgetenv("DOCKPIPE_GLOBAL_ROOT");
+    if (!inheritedRoot.trimmed().isEmpty())
+        return;
+    if (savedRoot.trimmed().isEmpty()) {
+        qunsetenv("DOCKPIPE_GLOBAL_ROOT");
+    } else {
+        qputenv("DOCKPIPE_GLOBAL_ROOT", savedRoot.toUtf8());
+    }
+}

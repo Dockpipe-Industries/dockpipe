@@ -7,6 +7,7 @@
 #include "GitHelper.h"
 #include "LogViewerDialog.h"
 #include "PackageManagerDialog.h"
+#include "LauncherEnvironment.h"
 #include "PromptDialog.h"
 #include "SettingsDialog.h"
 #include "WorkflowLaunchDialog.h"
@@ -356,6 +357,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), m_sessions(this)
     resize(800, 520);
 
     m_settings.load();
+    applyGlobalRootDefault(m_settings.globalRootOverride);
     const QStringList args = QCoreApplication::arguments();
     const bool startHome = args.contains(QStringLiteral("--start-home"));
     m_workflowCatalogWatcher = new QFutureWatcher<AsyncWorkflowCatalogResult>(this);
@@ -774,6 +776,7 @@ void MainWindow::onOpenSettings()
         return;
     m_settings = dialog.updatedSettings();
     m_settings.save();
+    applyGlobalRootDefault(m_settings.globalRootOverride);
     rebuildUi();
 }
 
@@ -781,6 +784,7 @@ void MainWindow::onManagePackages()
 {
     PackageManagerDialog dialog(m_settings.projectFolder, this);
     dialog.exec();
+    onRefreshAppList();
 }
 
 void MainWindow::onFileOpenProject()
