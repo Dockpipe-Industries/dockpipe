@@ -59,9 +59,21 @@ SettingsDialog::SettingsDialog(const LauncherSettings &settings, QWidget *parent
     form->addRow(tr("Extra Workflow Roots"), m_extraWorkflowRoots);
 
     m_packageRemotes = new QPlainTextEdit(joinLines(m_settings.packageRemotes));
-    m_packageRemotes->setPlaceholderText(tr("One remote package store URL per line"));
+    m_packageRemotes->setPlaceholderText(tr("One HTTPS catalog URL per line; empty disables Marketplace"));
     m_packageRemotes->setTabChangesFocus(true);
     form->addRow(tr("Package Remotes"), m_packageRemotes);
+    auto *remotePresets = new QHBoxLayout;
+    auto *production = new QPushButton(tr("Use production"));
+    auto *staging = new QPushButton(tr("Use staging"));
+    remotePresets->addWidget(production);
+    remotePresets->addWidget(staging);
+    connect(production, &QPushButton::clicked, this, [this]() {
+        m_packageRemotes->setPlainText(QStringLiteral("https://packages.dockpipe.com"));
+    });
+    connect(staging, &QPushButton::clicked, this, [this]() {
+        m_packageRemotes->setPlainText(QStringLiteral("https://packages.staging.dockpipe.com"));
+    });
+    form->addRow(tr("Official catalog"), remotePresets);
 
     layout->addLayout(form, 1);
 

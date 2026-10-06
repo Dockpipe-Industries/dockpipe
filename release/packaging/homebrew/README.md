@@ -50,7 +50,12 @@ available. A locally generated Ruby file is not installation proof.
 
 `dockpipe-desktop-staging` installs `DockPipe.app` from the candidate's native desktop ZIP and depends on `dockpipe-staging` for the terminal command. The app carries its matching runtime and complete package store, so Finder launches do not depend on a login shell's PATH. Cask removal retains the CLI and user data. The direct DMG uses Apple's Installer instead and must not be mixed with the cask.
 
-Desktop source and signing/native-validation boundaries are documented in [desktop/README.md](../desktop/README.md). The earlier hosted run cited above qualifies only the existing CLI formula, not this new cask.
+The desktop cask and updated CLI formula are published for candidate
+`0.6.0-staging.37414177001.1.48a5701e3652` after
+[run 37419531103](https://github.com/Dockpipe-Industries/homebrew-dockpipe/actions/runs/37419531103)
+passed install, CLI/launcher checks, uninstall, and version ordering on both Mac architectures.
+Published definitions were read back and matched the tested bytes. Desktop source and the remaining
+Apple signing/notarization boundary are documented in [desktop/README.md](../desktop/README.md).
 
 ## Stable formula follow-up
 

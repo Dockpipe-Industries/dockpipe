@@ -19,6 +19,10 @@ func cmdPackage(args []string) error {
 		return nil
 	}
 	switch args[0] {
+	case "catalog":
+		return cmdPackageRemote(args[1:], false)
+	case "install":
+		return cmdPackageRemote(args[1:], true)
 	case "list":
 		return cmdPackageList(args[1:])
 	case "images":
@@ -42,7 +46,13 @@ func cmdPackageList(args []string) error {
 		return nil
 	}
 	var workdir string
+	format := "text"
 	for i := 0; i < len(args); i++ {
+		if args[i] == "--format" && i+1 < len(args) {
+			format = args[i+1]
+			i++
+			continue
+		}
 		if args[i] == "--workdir" && i+1 < len(args) {
 			workdir = args[i+1]
 			i++
@@ -59,6 +69,12 @@ func cmdPackageList(args []string) error {
 			return err
 		}
 		workdir = wd
+	}
+	if format == "json" {
+		return writePackageInventory(workdir)
+	}
+	if format != "text" {
+		return fmt.Errorf("unknown format %q", format)
 	}
 	root, err := infrastructure.PackagesRoot(workdir)
 	if err != nil {
@@ -249,7 +265,9 @@ Inspect installed packages and package metadata. Installed store content lives u
 bin/.dockpipe/internal/packages/ by default (see docs/packages/package-model.md).
 
 Usage:
-  dockpipe package list [--workdir <path>]
+  dockpipe package list [--workdir <path>] [--format text|json]
+  dockpipe package catalog --remote <HTTPS manifest URL>
+  dockpipe package install --remote <HTTPS manifest URL> --kind <kind> --name <name> [--sha256 <digest>]
   dockpipe package images [--workdir <path>]
   dockpipe package manifest
   dockpipe package build core|source|store [options]
@@ -259,6 +277,8 @@ Usage:
   list      Find package.yml under bin/.dockpipe/internal/packages and print rel path, name, version, provider, capability, requires_capabilities (comma-separated), description.
   images    List compiled/planned and materialized Docker image artifacts.
   manifest  Print an example package.yml schema to stdout.
+  catalog   --remote <HTTPS manifest URL>: list remote packages as JSON for this platform.
+  install   --remote <URL> --kind <kind> --name <name> [--sha256 <digest>]: install into the user store.
   build     core: templates-core tarball + install-manifest; source: package-owned authoring-tree builds; store: gzip tar per compiled package + packages-store-manifest.json.
   test      Run package-owned tests declared as test.script in package.yml for source checkouts.
   compile   Materialize core / resolvers / workflows into bin/.dockpipe/internal/packages/ (see compile --help).
@@ -270,10 +290,11 @@ Environment:
 
 `
 
-const packageListUsageText = `dockpipe package list [--workdir <path>]
+const packageListUsageText = `dockpipe package list [--workdir <path>] [--format text|json]
 
 Scans bin/.dockpipe/internal/packages (recursive) for package.yml files.
 Output columns (tab-separated): path, name, version, provider, capability, requires_capabilities, description.
+With --format json, lists project/configured/user/system packages, warnings, and the user install root.
 
 `
 
