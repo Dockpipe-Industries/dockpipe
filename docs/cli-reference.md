@@ -96,6 +96,9 @@ Inspect **installed** package metadata. Store-backed installs are intended to la
 | Command | Purpose |
 |---------|---------|
 | `dockpipe package list [--workdir <path>]` | Walk **`bin/.dockpipe/internal/packages/`** for **`package.yml`** files; print **path**, **name**, **version**, **description** (tab-separated). |
+| `dockpipe package list --format json [--workdir <path>]` | Inventory project, configured, user, and system packages, plus warnings and the user install root. |
+| `dockpipe package catalog --remote <HTTPS manifest URL>` | Return the current platform's remote packages and resolved store manifest as JSON. Accepts a latest pointer, release catalog, or explicit platform store. |
+| `dockpipe package install --remote <URL> --kind core\|workflow\|resolver --name <name> [--sha256 <digest>]` | Verify and install one package into the user store. A digest pins the selected catalog entry. Dependencies are installed separately. |
 | `dockpipe package images [--workdir <path>]` | Merge planned image artifacts from compiled workflow tarballs with materialized/cached receipts under **`bin/.dockpipe/internal/images/by-fingerprint/`**; print **fingerprint**, **status**, **state**, **source**, **image_ref**, **workflow**, **package**, **step_id**, **image_key** (tab-separated). Status can show **`ready`**, **`missing`**, **`stale`**, **`planned`**, **`referenced`**, or **`docker-error`**. |
 | `dockpipe package manifest` | Print an example **`package.yml`** (schema: **name**, **version**, **title**, **description**, **author**, **website**, **license**, optional **kind**). |
 | `dockpipe package build core [--repo-root <path>] [--out <dir>] [--version <ver>]` | Write **`templates/core`** tarball (**`core/…`** prefix), **`.sha256`**, **`install-manifest.json`** for **`dockpipe install core`**. Default **`--out`**: **`release/artifacts/`**. |

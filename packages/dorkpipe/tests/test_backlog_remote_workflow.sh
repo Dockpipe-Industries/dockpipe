@@ -59,7 +59,7 @@ while IFS= read -r validation_input; do
   mkdir -p "$application_consumer/$(dirname "$validation_input")"
   cp "$validation_source" "$application_consumer/$validation_input"
 done <"$fixture_root/validation-input-files.json"
-test "$validation_input_file_count" -eq 229
+test "$validation_input_file_count" -eq 230
 cp -R "$application_consumer" "$application_pristine"
 cp -R "$application_consumer" "$application_expected"
 printf '%s\n' '# Fixture package' 'Untrusted remote fixture change.' >"$application_expected/packages/dorkpipe/README.md"

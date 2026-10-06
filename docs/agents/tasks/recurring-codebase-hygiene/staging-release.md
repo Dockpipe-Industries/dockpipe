@@ -498,3 +498,47 @@ Apple Developer ID signing/notarization, a new staging/public desktop release,
 and deploying the reviewed cask source to the public Homebrew tap remain separate
 unperformed steps. The existing public tap and release were not changed. Protected
 `.vscode/settings.json` and both pre-existing stashes retain their original hashes.
+
+### Staging desktop and Homebrew cask published — 2026-10-06
+
+The user approved promotion through `js/dev`, `dev`, and `staging`. PRs #44–46
+merged after staging PR CI and CodeQL passed. Staging commit `48a5701e3652` includes
+the Colima compatibility follow-up `bebf0edd`; master remained unchanged.
+[Staging CI 37414177001](https://github.com/Dockpipe-Industries/dockpipe/actions/runs/37414177001)
+passed all native builds and published candidate
+`0.6.0-staging.37414177001.1.48a5701e3652`.
+
+To complete the requested Homebrew installation path, the six reviewed tap source
+files were deployed through
+[tap PR #1](https://github.com/Dockpipe-Industries/homebrew-dockpipe/pull/1).
+[Tap run 37419531103](https://github.com/Dockpipe-Industries/homebrew-dockpipe/actions/runs/37419531103)
+passed CLI/cask installation, launcher diagnostics, uninstall, and version ordering
+on Apple Silicon and Intel, then published both definitions. Read-back matched
+the tested candidate and confirmed the invalid stable-formula conflict was absent.
+Receipts are under `/tmp/dockpipe-homebrew-desktop-20261006/`.
+
+`brew install --cask dockpipe-industries/dockpipe/dockpipe-desktop-staging` now
+installs the app and CLI dependency. Apple signing/notarization and live Colima VM
+qualification remain open. The user reports having an Apple account; paid program
+activation and signing credential provisioning have not yet been verified.
+
+## Launcher package remotes — local implementation, 2026-10-06
+
+The saved-only Package Remotes field and empty Marketplace have been replaced with an
+asynchronous CLI-backed catalog/install flow. Settings expose production/staging presets;
+new settings default to production, while an explicit empty list disables remote browsing.
+The CLI resolves latest → release → native-platform store, pins displayed checksums, and
+verifies bounded package archives before publishing to the existing user store. JSON package
+inventory includes project/configured/user/system roots. No package execution model changed.
+
+Local evidence: affected application/infrastructure/CLI Go suites passed; Qt build and subprocess
+and dialog tests passed. The new CLI read 59 live staging packages for Linux amd64 and installed
+one core, workflow, and resolver archive into an isolated `/tmp` root. No package was executed.
+Native macOS/Windows runtime tests and release publication of this implementation remain pending.
+Canonical behavior is in `docs/packages/package-model.md` and the launcher README.
+
+The first promotion CI run (`37424683434`) passed Windows and security checks but exposed
+an omitted validation input in the backlog fixture. Added `package_inventory.go` to the
+explicit fixture input list and advanced its asserted count to 230. The exact failing
+`test_backlog_remote_workflow.sh` passed with host loopback access; sandbox-only TLS
+listener failures were not counted as a pass.
