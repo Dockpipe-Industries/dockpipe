@@ -1,6 +1,6 @@
 # TASK-035 Recurring Codebase Hygiene
 
-The authorized [staging release channel](staging-release.md) published candidate `0.6.0-staging.37389279395.1.9725dee90d4d` through successful hosted CI. Public HTTPS, the five platform store manifests, and the staging APT signature are verified. Real installation qualification remains pending. Homebrew tap source is being prepared for automated polling and native Mac installation checks; see the [canonical staging guide](../../../../release/docs/staging.md).
+The authorized [staging release channel](staging-release.md) published candidate `0.6.0-staging.37389279395.1.9725dee90d4d` through successful hosted CI. Public HTTPS, the five platform store manifests, and the staging APT signature are verified. The Homebrew tap is active after successful Intel and Apple Silicon installation tests in run `37397290496`. APT/MSI installation and broader application qualification remain separate; see the [canonical staging guide](../../../../release/docs/staging.md).
 
 The VM harness repair `d6293516` was promoted through MRs #35–37. Staging run
 `37384217934` passed CI, all native builds, MSI and artifact assembly, then stopped

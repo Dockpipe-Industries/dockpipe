@@ -361,3 +361,22 @@ and no native Homebrew installation or formula publication has run. Activation
 requires the public tap seed on `main` and its first successful workflow. The
 stable formula remains an unpublished stub. Preserve `.vscode/` and existing
 stashes during any approved checkpoint; do not promote to master.
+
+### Approved Homebrew activation completed
+
+The user explicitly approved source commit/push, creation and seeding of the public
+tap, and its first native validation. Source checkpoint
+`9b7aac9a48ece11597e184f8a93312fd26ea1b97` was pushed and verified on `js/pipelang`.
+The public `Dockpipe-Industries/homebrew-dockpipe` repository was seeded on `main`
+at `5e219cada65a2de05da3782a12436744731e4dec` with the reviewed tap source and license.
+
+Run `37397290496` succeeded: preparation, Apple Silicon installation/formula test,
+Intel installation/formula test, version ordering, and gated publication all passed.
+The published formula exactly matches the locally reviewed candidate preview;
+its blob is `0a93ffe63cdf56f90db5c000557b3f7c7bc473f6`. The update workflow is active
+with its 15-minute schedule. Native logs and publication receipts are saved under
+`/tmp/dockpipe-homebrew-publication-20261005/`.
+
+This supersedes the tap-activation blocker above. Homebrew staging installation is
+qualified on the hosted Macs; user hardware, APT/MSI installation, and broader
+end-to-end product behavior remain distinct checks. No master promotion occurred.
