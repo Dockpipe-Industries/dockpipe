@@ -50,3 +50,20 @@ def render(candidate, checksums):
   end''')
     template = Path(__file__).with_name("staging_formula.rb.template").read_text()
     return template.replace("@CANDIDATE@", candidate).replace("@PLATFORMS@", "\n\n".join(blocks))
+
+
+def render_cask(candidate, checksums):
+    version, _, _, _ = candidate_parts(candidate)
+    base = f"{ORIGIN}/packages/candidates/{candidate}"
+    blocks = []
+    for architecture, condition in (("arm64", "on_arm"), ("amd64", "on_intel")):
+        filename = f"dockpipe-desktop_{version}_darwin_{architecture}.zip"
+        checksum = checksums.get(filename, "")
+        if not re.fullmatch(r"[0-9a-f]{64}", checksum):
+            raise ValueError(f"Missing or invalid checksum: {filename}")
+        blocks.append(f'''  {condition} do
+    url "{base}/{filename}"
+    sha256 "{checksum}"
+  end''')
+    template = Path(__file__).with_name("staging_cask.rb.template").read_text()
+    return template.replace("@CANDIDATE@", candidate).replace("@PLATFORMS@", "\n\n".join(blocks))

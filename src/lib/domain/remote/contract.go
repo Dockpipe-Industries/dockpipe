@@ -3,10 +3,12 @@
 package remote
 
 import (
+	"encoding/hex"
 	"errors"
 	"net"
 	"net/url"
 	"regexp"
+	"strings"
 	"time"
 )
 
@@ -38,20 +40,29 @@ func Endpoint(value string) error {
 }
 
 type Submission struct {
-	ID      string `json:"id"`
-	Node    string `json:"node"`
-	Profile string `json:"profile"`
+	ID         string `json:"id"`
+	Node       string `json:"node"`
+	Profile    string `json:"profile,omitempty"`
+	BundleHash string `json:"bundle_hash,omitempty"`
 }
 
 func (s Submission) Validate() error {
-	if !ValidID(s.ID) || !ValidID(s.Node) || !ValidID(s.Profile) {
-		return errors.New("job, node, and profile must be bounded identifiers")
+	if !ValidID(s.ID) || !ValidID(s.Node) {
+		return errors.New("job and node must be bounded identifiers")
+	}
+	if s.BundleHash != "" {
+		decoded, err := hex.DecodeString(s.BundleHash)
+		if err != nil || len(decoded) != 32 || strings.ToLower(s.BundleHash) != s.BundleHash || s.Profile != "" {
+			return errors.New("delivery must select a SHA256 bundle instead of a profile")
+		}
+	} else if !ValidID(s.Profile) {
+		return errors.New("select a worker profile or a workflow delivery")
 	}
 	return nil
 }
 
-// Profile is local authority on the worker. Requests cannot supply paths, argv,
-// environment variables, workflow definitions, or executable locations.
+// Profile selects a preinstalled workflow using worker-local authority.
+// Bundle submissions instead require a separate DeliveryPermission.
 type Profile struct {
 	Workdir        string   `json:"workdir"`
 	Workflow       string   `json:"workflow,omitempty"`
@@ -69,11 +80,12 @@ type Invitation struct {
 }
 
 type WorkerConfig struct {
-	Schema   string             `json:"schema"`
-	Endpoint string             `json:"endpoint"`
-	Node     string             `json:"node"`
-	Token    string             `json:"token"`
-	Profiles map[string]Profile `json:"profiles"`
+	Schema   string              `json:"schema"`
+	Endpoint string              `json:"endpoint"`
+	Node     string              `json:"node"`
+	Token    string              `json:"token"`
+	Profiles map[string]Profile  `json:"profiles"`
+	Delivery *DeliveryPermission `json:"delivery,omitempty"`
 }
 
 // EdgeConfig is written by a resolver after its provider-specific setup. Core

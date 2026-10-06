@@ -3,6 +3,7 @@ package remotecmd
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -79,10 +80,15 @@ func setup(ctx context.Context, root, listen, resolver, hostname string, checkDe
 	if err := remoteio.WritePrivate(filepath.Join(root, "operator.json"), config); err != nil {
 		return err
 	}
+	fmt.Fprintln(os.Stderr, "Edge configured. Installing the broker user service and checking the public endpoint...")
 	if err := installService(ctx, root, "broker"); err != nil {
 		return err
 	}
-	return waitForBroker(ctx, edge.Endpoint, config.Token)
+	if err := waitForBroker(ctx, edge.Endpoint, config.Token); err != nil {
+		return err
+	}
+	fmt.Fprintf(os.Stderr, "Broker ready at %s. Next: dockpipe remote invite --node <worker-name> --out <private-file> --state %q. Transfer that file privately to the worker, then run dockpipe remote pair --invite <private-file> --allow-delivery there.\n", edge.Endpoint, root)
+	return nil
 }
 
 func validateEdge(edge contract.EdgeConfig) error {

@@ -15,6 +15,9 @@ routes:
   implementation:
     read:
       - overview.md
+  colima_support:
+    read:
+      - overview.md
 
 documents:
   - path: overview.md

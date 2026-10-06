@@ -2,7 +2,46 @@
 
 **New to dockpipe?** Run **`dockpipe -- pwd`** after install, then read **[onboarding.md](onboarding.md)**. If something fails, **`dockpipe doctor`** checks **bash**, **Docker**, and bundled assets.
 
-**Platforms:** **Docker** and **bash** on the host are required everywhere. Linux: **`.deb`**, **`.apk`**, **`.rpm`**, **Arch `.pkg.tar.zst`**, portable **`.tar.gz`**, or **[`linux/install.sh`](https://github.com/Dockpipe-Industries/dockpipe/blob/master/release/packaging/linux/install.sh)** — see sections below. macOS: native Intel/Apple Silicon tarballs + bash; Docker Desktop is needed for container workflows. Windows: **`dockpipe.exe`** + Docker Desktop + **Git for Windows** (bash + git). **`DOCKPIPE_USE_WSL_BRIDGE=1`** and **`dockpipe windows …`** are **optional** — only if you want the Linux `dockpipe` binary inside a WSL distro.
+Choose **Desktop** for the launcher and CLI together, or **CLI / Remote Worker** for terminals, servers and CI. Docker is needed only for workflows that use containers. Host shell workflows need bash; Git for Windows supplies bash on Windows.
+
+| Platform | Desktop | CLI / Remote Worker |
+| --- | --- | --- |
+| macOS Apple Silicon / Intel | DMG installer, or Homebrew desktop cask | Homebrew formula or native tarball |
+| Windows x64 | MSI with launcher selected by default | ZIP, or MSI with only the CLI feature |
+| Ubuntu 24.04 amd64 / arm64 | `dockpipe-desktop` DEB plus `dockpipe` | `dockpipe` DEB; RPM, APK, Arch and portable CLI packages also available |
+
+Desktop packaging is implemented in source. Use these options once a release containing the new desktop artifacts has passed native validation and been published. Existing CLI-only releases do not acquire a launcher automatically. The staging Homebrew CLI formula is already available; its desktop cask requires a new desktop candidate and tap update.
+
+## Desktop installation
+
+**macOS:** download `dockpipe-desktop_VERSION_darwin_arm64.dmg` for Apple Silicon or `dockpipe-desktop_VERSION_darwin_amd64.dmg` for Intel, verify it against that release's `SHA256SUMS.txt`, open it, and run **Install DockPipe.pkg**. Apple's Installer installs **DockPipe.app** in Applications and **`dockpipe`** in `/usr/local/bin`. Open DockPipe from Applications; new terminals can run `dockpipe --version`. The desktop app contains the matching CLI, Qt runtime and complete native package store. macOS 13 or newer is required.
+
+Use one installation method. The DMG installer refuses an existing foreign CLI or app; users with the Homebrew CLI should use the cask below. Re-running the DMG installer updates an installation owned by that installer. Locally built and current CI staging DMGs use ad-hoc signatures unless the maintainer supplies Developer ID signing and notarization. They are not yet normal Gatekeeper-approved public downloads; no security-setting changes are part of installation.
+
+**Homebrew on macOS (staging):** once the desktop cask is published, one command installs the launcher and CLI:
+
+```sh
+brew install --cask dockpipe-industries/dockpipe/dockpipe-desktop-staging
+```
+
+The existing CLI formula is reused if already installed. To update both:
+
+```sh
+brew update
+brew upgrade dockpipe-staging dockpipe-desktop-staging
+```
+
+Uninstalling the desktop cask removes the app and retains the CLI formula. User contexts and data are retained. The app uses its bundled matching CLI; terminal commands use the formula. See [desktop packaging](../release/packaging/desktop/README.md) for direct-installer removal and signing requirements.
+
+**Windows:** run `dockpipe_VERSION_windows_amd64.msi`. The default installs the CLI, full Qt launcher runtime and a Start menu shortcut. Deselect **DockPipe Launcher** for a CLI-only install, or change the feature later through the installer's Modify option. The ZIP is always CLI-only.
+
+**Ubuntu 24.04:** after configuring the signed APT source below, run `sudo apt install dockpipe-desktop`; it installs the matching CLI dependency. For downloaded DEBs, install both together:
+
+```sh
+sudo apt install ./dockpipe_VERSION_amd64.deb ./dockpipe-desktop_VERSION_amd64.deb
+```
+
+Use `arm64` filenames on ARM64. Launch **DockPipe** from the application menu. Removing `dockpipe-desktop` leaves the CLI available. Desktop RPM, APK and Arch packages are not currently provided; those formats remain CLI-only.
 
 ### Bundled templates (no extra install tree)
 
@@ -78,7 +117,7 @@ Using `dpkg -i` avoids apt sandbox warnings when the .deb is in your home direct
 
 **Upgrades:** download the new .deb (same arch as before) and run `sudo dpkg -i dockpipe_*_amd64.deb` or `dockpipe_*_arm64.deb` as appropriate.
 
-**Requirements:** **amd64** or **arm64** package matching your machine. **Docker** (`docker.io` or `docker-ce`), **`bash`** on the host (required — dockpipe uses it), and **git** (for clone/worktree/commit-on-host only). Install Docker if needed:
+**Requirements:** **amd64** or **arm64** package matching your machine. **`bash`** on the host, and **git** for clone/worktree/commit-on-host workflows. Container workflows additionally need **Docker** (`docker.io` or `docker-ce`). Install Docker if needed:
 
 ```bash
 sudo apt-get install docker.io
@@ -147,7 +186,7 @@ You do **not** need a WSL distro or Linux `dockpipe` unless you opt into **`DOCK
 
 ### Install `dockpipe.exe` on Windows
 
-Add **`dockpipe.exe`** to `PATH` (**install script** or **zip**; **MSI** when published on a given release). Ensure **Docker Desktop** is running and **Git for Windows** (or another **`bash`** + **`git`** on `PATH`).
+Add **`dockpipe.exe`** to `PATH` (**install script** or **zip**; **MSI** when published on a given release). Install **Git for Windows** (or another **`bash`** + **`git`** on `PATH`). Start Docker Desktop when running container workflows.
 
 **Optional WSL bridge:** if you set **`DOCKPIPE_USE_WSL_BRIDGE=1`**, commands are forwarded into WSL. Then you also need **`dockpipe` installed inside that distro** and should run **`dockpipe windows setup`** once.
 
@@ -221,48 +260,54 @@ dockpipe windows doctor
 
 ---
 
-## macOS (current path: source fallback)
+## macOS CLI / Remote Worker
 
-Current reliable path is source-based:
+The published staging formula installs the CLI and complete native package store:
 
-```bash
-git clone https://github.com/Dockpipe-Industries/dockpipe.git
-cd dockpipe
-make
-export PATH="$PATH:$(pwd)/bin"
+```sh
+brew install dockpipe-industries/dockpipe/dockpipe-staging
+dockpipe --version
 ```
 
-To persist PATH on zsh (run from your **dockpipe** clone so `$(pwd)` is correct):
+The command is `dockpipe`; this formula alone does not install the desktop launcher. Use the desktop cask or DMG described above for both. The stable `dockpipe` formula is not published yet. Native release tarballs and the checksum-verifying CLI installer are alternatives that do not require Go or a source checkout.
 
-```bash
-echo "export PATH=\"\$PATH:$(pwd)/bin\"" >> ~/.zshrc
+See [staging installation](../release/docs/staging.md#homebrew-on-a-test-mac), [tap maintenance](../release/packaging/homebrew/README.md), and [release automation](../release/docs/releasing.md).
+
+### Containers with Colima
+
+For container workflows, you can use [Colima's Docker runtime](https://github.com/abiosoft/colima#docker)
+with the Docker CLI. Docker Desktop is another option. Neither is needed for host-only workflows.
+For a new Colima installation:
+
+```sh
+brew install colima docker docker-buildx
+colima start --runtime docker
+docker context ls
+docker version
 ```
 
-## macOS (Homebrew, when published)
+Follow the [Homebrew Buildx setup](https://formulae.brew.sh/formula/docker-buildx) to add the actual
+`$(brew --prefix)/lib/docker/cli-plugins` directory to `cliPluginsExtraDirs` in your existing Docker
+configuration (`~/.docker/config.json`, or the directory selected by `DOCKER_CONFIG`). Merge that
+setting without replacing existing configuration. Verify `docker buildx version` before workflows
+that build images. Workflows using Compose also need
+[docker-compose and its plugin setup](https://formulae.brew.sh/formula/docker-compose).
 
-**Requirements:** **Docker Desktop** (or another engine), and **`bash`** (dockpipe requires it; `/bin/bash` is normal). **git** for worktree / `--repo` flows.
+DockPipe uses the [Docker client's context selection](https://docs.docker.com/engine/manage-resources/contexts/).
+Use `docker context ls` to find your profile's context, then `docker context use <name>` if you want
+to change the default for both terminals and the launcher. For one terminal command, use
+`DOCKER_CONTEXT=<name> dockpipe doctor`. Existing `DOCKER_HOST`, `DOCKER_CONTEXT`, and `DOCKER_CONFIG`
+settings retain Docker's normal precedence; DockPipe does not switch contexts or start a VM.
 
-Preferred packaged path once the tap is published:
+The launcher adds `/opt/homebrew/bin` and `/usr/local/bin` after inherited `PATH` entries so Finder
+launches can discover Homebrew tools. Shell-only exports are not inherited by Finder; use Docker's
+saved context for Finder launches, or start the app executable from a configured terminal. Custom
+Homebrew locations still need an explicit `PATH`. If Docker is unreachable, start the selected Colima
+profile and verify `docker version` before retrying `dockpipe doctor`.
 
-```bash
-brew tap Dockpipe-Industries/dockpipe
-brew install dockpipe
-```
-
-Upgrade:
-
-```bash
-brew update
-brew upgrade dockpipe
-```
-
-Maintainer note: formula source is tracked in `release/packaging/homebrew/dockpipe.rb` with release process in `release/packaging/homebrew/README.md`.
-
-For the separate staging formula and its activation status, see the
-[staging Homebrew instructions](../release/docs/staging.md#homebrew-on-a-test-mac).
-It includes both the native CLI and package store, and supports candidate upgrades.
-
-General release automation details: **[release/docs/releasing.md](../release/docs/releasing.md)**.
+The compatibility changes are implemented in source. Native Colima container, mount, networking,
+and Compose qualification on macOS remains pending; the earlier desktop installer dry run does not
+cover this integration.
 
 ---
 
