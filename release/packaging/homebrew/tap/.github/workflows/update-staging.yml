@@ -1,0 +1,94 @@
+name: Update staging formula
+
+on:
+  schedule:
+    - cron: '7,22,37,52 * * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: staging-formula
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  prepare:
+    if: github.repository == 'Dockpipe-Industries/homebrew-dockpipe' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    outputs:
+      changed: ${{ steps.prepare.outputs.changed }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Prepare completed staging candidate
+        id: prepare
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/sync_staging.py prepare
+      - uses: actions/upload-artifact@v7
+        if: steps.prepare.outputs.changed == 'true'
+        with:
+          name: staging-formula
+          path: prepared/
+          if-no-files-found: error
+
+  verify:
+    needs: prepare
+    if: needs.prepare.outputs.changed == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [macos-15, macos-15-intel]
+    runs-on: ${{ matrix.runner }}
+    env:
+      HOMEBREW_NO_AUTO_UPDATE: '1'
+      HOMEBREW_NO_INSTALL_CLEANUP: '1'
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: staging-formula
+          path: prepared
+      - name: Install and test the candidate through Homebrew
+        shell: bash
+        run: |
+          set -euo pipefail
+          brew tap-new --no-git dockpipe-validation/candidate
+          tap="$(brew --repository dockpipe-validation/candidate)"
+          cp prepared/dockpipe-staging.rb "$tap/Formula/dockpipe-staging.rb"
+          brew install --formula dockpipe-validation/candidate/dockpipe-staging
+          brew test dockpipe-validation/candidate/dockpipe-staging
+          dockpipe --version
+      - name: Verify candidate upgrade ordering
+        shell: bash
+        run: |
+          cat > "$RUNNER_TEMP/check-versions.rb" <<'RUBY'
+          require "version"
+
+          previous_run = Version.new("0.6.0-staging.123.9.bbbbbbbbbbbb")
+          next_run = Version.new("0.6.0-staging.124.1.aaaaaaaaaaaa")
+          next_attempt = Version.new("0.6.0-staging.124.2.aaaaaaaaaaaa")
+          unless next_run > previous_run && next_attempt > next_run
+            abort "candidate versions do not advance"
+          end
+          RUBY
+          brew ruby "$RUNNER_TEMP/check-versions.rb"
+
+  publish:
+    needs: [prepare, verify]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v8
+        with:
+          name: staging-formula
+          path: prepared
+      - name: Publish tested formula if candidate is still current
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/sync_staging.py publish
