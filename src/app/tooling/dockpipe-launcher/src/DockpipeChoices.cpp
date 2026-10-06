@@ -107,6 +107,8 @@ QString DockpipeChoices::preferredDockpipeBinary(const QString &hintWorkdir)
     // launches need not inherit the terminal's PATH.
 #ifdef Q_OS_WIN
     const QString installedName = QStringLiteral("dockpipe.exe");
+#elif defined(Q_OS_MACOS)
+    const QString installedName = QStringLiteral("dockpipe-cli");
 #else
     const QString installedName = QStringLiteral("dockpipe");
 #endif

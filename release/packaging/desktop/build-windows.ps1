@@ -13,16 +13,12 @@ $visualStudio = & $vswhere -latest -products '*' -requires Microsoft.VisualStudi
 if (-not $visualStudio) {
     throw "Visual Studio C++ tools are required"
 }
-$developerCommand = Join-Path $visualStudio "Common7/Tools/VsDevCmd.bat"
-$environment = & cmd.exe /s /c "`"`"$developerCommand`" -arch=x64 -host_arch=x64 >nul && set`""
-if ($LASTEXITCODE -ne 0) {
-    throw "Visual Studio environment setup failed"
+$developerShell = Join-Path $visualStudio "Common7/Tools/Launch-VsDevShell.ps1"
+& $developerShell -Arch amd64 -HostArch amd64 -SkipAutomaticLocation
+if (-not $env:VCToolsInstallDir -or -not $env:VCToolsRedistDir) {
+    throw "Visual Studio developer environment is incomplete"
 }
-foreach ($line in $environment) {
-    if ($line -match '^([^=]+)=(.*)$') {
-        [Environment]::SetEnvironmentVariable($matches[1], $matches[2], 'Process')
-    }
-}
+
 try {
     cmake -S (Join-Path $root "src/app/tooling/dockpipe-launcher") -B $build -G "NMake Makefiles" `
         -DCMAKE_BUILD_TYPE=Release "-DDOCKPIPE_RELEASE_VERSION=$Version"

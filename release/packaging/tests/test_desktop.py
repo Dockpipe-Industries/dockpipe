@@ -21,7 +21,7 @@ class DesktopTests(unittest.TestCase):
         contents = self.root / "Applications/DockPipe.app/Contents"
         (contents / "MacOS").mkdir(parents=True)
         (contents / "Helpers").mkdir(parents=True)
-        wrapper = contents / "MacOS/dockpipe"
+        wrapper = contents / "MacOS/dockpipe-cli"
         shutil.copyfile(DESKTOP / "macos/dockpipe", wrapper)
         wrapper.chmod(0o755)
         binary = contents / "Helpers/dockpipe"
@@ -57,7 +57,7 @@ class DesktopTests(unittest.TestCase):
         self.assertNotEqual(subprocess.run(script, capture_output=True).returncode, 0)
         self.assertEqual(os.readlink(command), "/missing/foreign-command")
         command.unlink()
-        command.symlink_to("/Applications/DockPipe.app/Contents/MacOS/dockpipe")
+        command.symlink_to("/Applications/DockPipe.app/Contents/MacOS/dockpipe-cli")
         subprocess.run(script, check=True, capture_output=True)
         homebrew = self.root / "opt/homebrew/bin/dockpipe"
         homebrew.parent.mkdir(parents=True)

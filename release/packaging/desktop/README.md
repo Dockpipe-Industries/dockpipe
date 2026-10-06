@@ -76,7 +76,7 @@ and link. It does not install a daemon or change user data.
 For a direct-installer removal, first verify the receipt with
 `pkgutil --pkg-info com.dockpipe.desktop` and verify that
 `readlink /usr/local/bin/dockpipe` reports
-`/Applications/DockPipe.app/Contents/MacOS/dockpipe`. Remove that link and
+`/Applications/DockPipe.app/Contents/MacOS/dockpipe-cli`. Remove that link and
 `/Applications/DockPipe.app` with administrator permission, then run
 `sudo pkgutil --forget com.dockpipe.desktop`. Do not remove a command managed by
 another installer. For Homebrew use `brew uninstall --cask dockpipe-desktop-staging`;

@@ -435,3 +435,21 @@ verification with `dry_run=true` and `build_msi=true`. It does not authorize mas
 promotion, public release/tap publication or Apple credential provisioning.
 Pre-commit admission found the new remote smoke asset missing from the authored
 embed manifest; regenerated `embed_assets.go` adds only that reviewed file.
+
+First approved checkpoint `a4b7f2b9c9d55bb2fd4ebc7f9c9ca99a9aeb1268` was pushed
+to `origin/js/pipelang`. CI run `37407548104` passed Windows/runtime/security but
+stopped Linux at Staticcheck U1000 for the unused remote `pair` wrapper. Release
+dry-run `37407555314` passed both Linux architectures and their desktop checks.
+Both Macs built/installed the DMG and ran the CLI workflow, then failed launcher
+smoke because `DockPipe` and wrapper `dockpipe` collide on case-insensitive APFS.
+Windows stopped at quoting of the Visual Studio environment bootstrap path.
+No publication job ran.
+
+Focused repairs remove only the unused helper, use `dockpipe-cli` for the internal
+Mac wrapper while retaining the public `dockpipe` command, verify the GUI remains
+Mach-O before deployment, and initialize Windows through `Launch-VsDevShell.ps1`.
+Remote-command tests/Staticcheck, wrapper ownership tests, PowerShell parsing and
+shellcheck pass locally. The user's workflow-verification approval covers this
+bounded repair checkpoint and fresh CI/release dry-run; no release/tap publication
+or promotion is included. Logs are `/tmp/dockpipe-desktop-ci-37407548104-failure.log`
+and `/tmp/dockpipe-desktop-release-37407555314-failure.log`.
