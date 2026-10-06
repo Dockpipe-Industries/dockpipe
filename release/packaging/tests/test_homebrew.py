@@ -33,17 +33,35 @@ class HomebrewTests(unittest.TestCase):
         for arch in ("arm64", "amd64"):
             self.checksums[f"dockpipe_0.6.0_darwin_{arch}.tar.gz"] = "b" * 64
             self.checksums[f"dockpipe-packages_0.6.0_darwin-{arch}.tar.gz"] = "c" * 64
+            self.checksums[f"dockpipe-desktop_0.6.0_darwin_{arch}.zip"] = "d" * 64
+
+    def contents(self):
+        return {sync.FORMULA: formula.render(self.candidate, self.checksums),
+                sync.CASK: formula.render_cask(self.candidate, self.checksums)}
+
+    def test_cask_requires_verified_native_apps_and_cli_dependency(self):
+        rendered = formula.render_cask(self.candidate, self.checksums)
+        for arch in ("arm64", "amd64"):
+            self.assertIn(f"dockpipe-desktop_0.6.0_darwin_{arch}.zip", rendered)
+        self.assertIn('depends_on formula: "dockpipe-industries/dockpipe/dockpipe-staging"', rendered)
+        self.assertIn('app "DockPipe.app"', rendered)
+        self.checksums.pop("dockpipe-desktop_0.6.0_darwin_arm64.zip")
+        with self.assertRaises(ValueError):
+            formula.render_cask(self.candidate, self.checksums)
 
     def test_formula_pins_both_platforms_and_complete_package_resources(self):
         rendered = formula.render(self.candidate, self.checksums)
         self.assertIn(f'version "{self.candidate}"', rendered)
         for filename, checksum in self.checksums.items():
+            if filename.startswith("dockpipe-desktop"):
+                continue
             self.assertIn(f'{formula.ORIGIN}/packages/candidates/{self.candidate}/{filename}', rendered)
             self.assertIn(f'sha256 "{checksum}"', rendered)
         for kind in ("core", "workflows", "resolvers"):
             self.assertIn(f'packages/{kind}', rendered)
         self.assertNotIn("@CANDIDATE@", rendered)
         self.assertNotIn("@PLATFORMS@", rendered)
+        self.assertNotIn('conflicts_with "dockpipe"', rendered)
 
     def test_rejects_unpinned_inputs_and_ruby_injection(self):
         for candidate in ("0.6.0", '../bad', self.candidate + '"; system("bad")'):
@@ -78,11 +96,11 @@ class HomebrewTests(unittest.TestCase):
         checksum_text = "".join(f"{digest}  {name}\n" for name, digest in checksums.items()).encode()
         downloads = [json.dumps(self.pointer).encode(), catalog, checksum_text]
         with patch.object(sync, "download", side_effect=downloads), patch.object(sync, "github", return_value=self.run):
-            self.assertEqual(sync.latest_formula(), (self.candidate, formula.render(self.candidate, self.checksums)))
+            self.assertEqual(sync.latest_release(), (self.candidate, self.contents()))
         downloads[1] = catalog + b" "
         with patch.object(sync, "download", side_effect=downloads), patch.object(sync, "github", return_value=self.run):
             with self.assertRaisesRegex(ValueError, "checksum mismatch"):
-                sync.latest_formula()
+                sync.latest_release()
 
     def test_forward_updates_and_idempotency(self):
         current = formula.render(self.candidate, self.checksums)
@@ -99,28 +117,49 @@ class HomebrewTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             directory = Path(temporary)
             (directory / "candidate.txt").write_text(self.candidate)
-            (directory / "dockpipe-staging.rb").write_text(rendered)
+            for name, content in self.contents().items():
+                (directory / Path(name).name).write_text(content)
             environment = {"GITHUB_REPOSITORY": sync.TAP, "GITHUB_REF": "refs/heads/main"}
             old = formula.render("0.6.0-staging.122.1.bbbbbbbbbbbb", self.checksums)
             existing = {"content": base64.b64encode(old.encode()).decode(), "sha": "old-blob"}
-            with patch.dict(os.environ, environment), patch.object(sync, "latest_formula", return_value=(self.candidate, rendered)):
+            with patch.dict(os.environ, environment), patch.object(sync, "latest_release", return_value=(self.candidate, self.contents())):
                 verified = {"content": base64.b64encode(rendered.encode()).decode()}
-                with patch.object(sync, "github", side_effect=[existing, {"commit": {"sha": "new-commit"}}, verified]) as api:
+                with patch.object(sync, "github", side_effect=[existing, {"content": base64.b64encode(self.contents()[sync.CASK].encode()).decode()}, {"commit": {"sha": "new-commit"}}, verified]) as api:
                     sync.publish(directory)
-                    payload = api.call_args_list[1].args[1]
+                    payload = api.call_args_list[2].args[1]
                     self.assertEqual(payload["sha"], "old-blob")
                     self.assertEqual(payload["branch"], "main")
                     self.assertEqual(base64.b64decode(payload["content"]).decode(), rendered)
-            with patch.dict(os.environ, environment), patch.object(sync, "latest_formula", return_value=None):
+            with patch.dict(os.environ, environment), patch.object(sync, "latest_release", return_value=None):
                 with patch.object(sync, "github") as api:
                     sync.publish(directory)
                     api.assert_not_called()
-            with patch.dict(os.environ, environment), patch.object(sync, "latest_formula", return_value=(self.candidate, rendered + "# modified")):
+            with patch.dict(os.environ, environment), patch.object(sync, "latest_release", return_value=(self.candidate, dict(self.contents(), **{sync.FORMULA: rendered + "# modified"}))):
                 with self.assertRaises(ValueError):
                     sync.publish(directory)
             with patch.dict(os.environ, {"GITHUB_REPOSITORY": "fork/tap", "GITHUB_REF": "refs/heads/main"}):
                 with self.assertRaises(ValueError):
                     sync.publish(directory)
+
+    def test_publication_recovers_an_interrupted_formula_and_cask_pair(self):
+        contents = self.contents()
+        environment = {"GITHUB_REPOSITORY": sync.TAP, "GITHUB_REF": "refs/heads/main"}
+        formula_record = {"content": base64.b64encode(contents[sync.FORMULA].encode()).decode()}
+        cask_record = {"content": base64.b64encode(contents[sync.CASK].encode()).decode()}
+        with tempfile.TemporaryDirectory() as temporary:
+            directory = Path(temporary)
+            (directory / "candidate.txt").write_text(self.candidate)
+            for name, content in contents.items():
+                (directory / Path(name).name).write_text(content)
+            with patch.dict(os.environ, environment), patch.object(sync, "latest_release", return_value=(self.candidate, contents)):
+                responses = [formula_record, None, {"commit": {"sha": "cask-commit"}}, cask_record]
+                with patch.object(sync, "github", side_effect=responses) as api:
+                    sync.publish(directory)
+                    self.assertEqual(api.call_args_list[2].args[0], f"{sync.TAP}/contents/{sync.CASK}")
+                    self.assertEqual(base64.b64decode(api.call_args_list[2].args[1]["content"]).decode(), contents[sync.CASK])
+                with patch.object(sync, "github", side_effect=[formula_record, cask_record]) as api:
+                    sync.publish(directory)
+                    self.assertEqual(api.call_count, 2)
 
     def test_tap_workflow_gates_writes_on_both_native_tests(self):
         workflow = yaml.load((TAP / ".github/workflows/update-staging.yml").read_text(), Loader=yaml.BaseLoader)

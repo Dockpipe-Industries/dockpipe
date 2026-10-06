@@ -3,6 +3,7 @@
 #include "LauncherSettings.h"
 #include "WorkflowCatalog.h"
 
+#include <QCoreApplication>
 #include <QDir>
 #include <QFileInfo>
 #include <QProcessEnvironment>
@@ -101,6 +102,17 @@ QString DockpipeChoices::preferredDockpipeBinary(const QString &hintWorkdir)
         if (!candidate.isEmpty())
             return candidate;
     }
+
+    // Desktop installs keep their CLI beside the launcher. Finder and Start Menu
+    // launches need not inherit the terminal's PATH.
+#ifdef Q_OS_WIN
+    const QString installedName = QStringLiteral("dockpipe.exe");
+#else
+    const QString installedName = QStringLiteral("dockpipe");
+#endif
+    const QFileInfo installed(QDir(QCoreApplication::applicationDirPath()).filePath(installedName));
+    if (installed.isFile() && installed.isExecutable())
+        return installed.absoluteFilePath();
 
     return QStringLiteral("dockpipe");
 }

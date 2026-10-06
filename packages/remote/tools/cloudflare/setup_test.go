@@ -3,6 +3,7 @@
 package cloudflare
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"os"
@@ -28,6 +29,8 @@ func TestBrowserSetupRecoveryAndRuntimeCredentialSeparation(t *testing.T) {
 		t.Fatal(err)
 	}
 	setup := Setup{State: filepath.Join(root, "edge"), Output: filepath.Join(root, "edge.json"), Home: home, Executable: filepath.Join(root, "cloudflared"), Hostname: "bench.example.com", Origin: "http://127.0.0.1:47831"}
+	var progress bytes.Buffer
+	setup.Progress = &progress
 	var calls [][]string
 	setup.Run = func(ctx context.Context, executable string, args []string, interactive bool) error {
 		calls = append(calls, append([]string{}, args...))
@@ -60,6 +63,9 @@ func TestBrowserSetupRecoveryAndRuntimeCredentialSeparation(t *testing.T) {
 	}
 	if err := setup.Execute(context.Background()); err != nil {
 		t.Fatal(err)
+	}
+	if !strings.Contains(progress.String(), "login URL") || !strings.Contains(progress.String(), "browser login is not needed") {
+		t.Fatal("missing login and reuse guidance")
 	}
 	if len(calls) != 3 {
 		t.Fatalf("setup replayed mutations: %v", calls)
@@ -105,5 +111,30 @@ func TestUnknownTunnelCreateIsNotRetried(t *testing.T) {
 	}
 	if _, err := os.Stat(setup.Output); !os.IsNotExist(err) {
 		t.Fatal("published incomplete setup")
+	}
+}
+
+func TestLoginRunnerPreservesBrowserSessionWithoutCredentials(t *testing.T) {
+	root := t.TempDir()
+	marker := filepath.Join(root, "browser-opened")
+	browser := filepath.Join(root, "browser")
+	// Simulate cloudflared's browser handoff with the inherited desktop session.
+	script := "#!/bin/sh\n[ \"$XAUTHORITY\" = expected-xauth ] || exit 11\n[ \"$XDG_CURRENT_DESKTOP\" = expected-desktop ] || exit 12\n[ -z \"$CLOUDFLARE_API_TOKEN\" ] || exit 13\nprintf opened > \"$1\"\n"
+	if err := os.WriteFile(browser, []byte(script), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	fake := filepath.Join(root, "cloudflared")
+	if err := os.WriteFile(fake, []byte("#!/bin/sh\nexec \"$BROWSER\" \"$1\"\n"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("BROWSER", browser)
+	t.Setenv("XAUTHORITY", "expected-xauth")
+	t.Setenv("XDG_CURRENT_DESKTOP", "expected-desktop")
+	t.Setenv("CLOUDFLARE_API_TOKEN", "must-not-inherit")
+	if err := runCloudflared(context.Background(), fake, []string{marker}, true); err != nil {
+		t.Fatal(err)
+	}
+	if data, err := os.ReadFile(marker); err != nil || string(data) != "opened" {
+		t.Fatalf("browser handoff failed: %q %v", data, err)
 	}
 }

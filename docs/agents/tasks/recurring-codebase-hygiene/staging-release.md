@@ -380,3 +380,58 @@ with its 15-minute schedule. Native logs and publication receipts are saved unde
 This supersedes the tap-activation blocker above. Homebrew staging installation is
 qualified on the hosted Macs; user hardware, APT/MSI installation, and broader
 end-to-end product behavior remain distinct checks. No master promotion occurred.
+
+### Desktop installation cleanup — 2026-10-05
+
+User approved a consistent Desktop versus CLI / Remote Worker install, including
+an ordinary macOS DMG that installs both CLI and launcher. Implemented locally:
+
+- Native Qt desktop build steps for both Mac architectures, Windows x64 and Linux
+  amd64/arm64. Windows release MSI now requires the deployed launcher, Qt plugins
+  and app-local VC runtime; no silent CLI-only fallback. The CLI feature remains
+  mandatory, while the default-enabled launcher can be removed/restored.
+- macOS app bundle, complete native store and CLI wrapper; direct DMG contains an
+  Apple Installer package for Applications plus `/usr/local/bin/dockpipe`. Its
+  preinstall guard preserves foreign commands/apps. Developer ID and notarization
+  hooks accept existing keychain references; CI currently produces development
+  signatures only, not a Gatekeeper-qualified public desktop release.
+- Homebrew desktop cask source with formula dependency, pinned native app ZIPs,
+  provenance checks and both-architecture validation. Paired publishing checks
+  both versions first and recovers an interrupted formula/cask update. Removed
+  the invalid conflict with the unpublished stable formula.
+- Linux desktop DEB, icons and application menu entry, exact CLI dependency and
+  distribution-derived Qt ABI dependencies. APT now indexes both packages. Docker
+  moved from required dependency to Suggests in the CLI DEB, matching host-only
+  workflows and the existing other Linux package formats.
+- Download catalog and install docs distinguish Desktop from CLI. Packaged launcher
+  searches its sibling CLI before PATH, retaining explicit/development overrides.
+  Changes remain in release tooling and the standalone launcher; no engine change
+  is required for this packaging objective.
+
+Local proof: native Linux Qt build, real desktop DEB extraction and icon/menu
+payload, deployed Qt/CLI diagnostic with SDK paths removed, five-second window
+startup, and real native host workflow passed. All 36 packaging Python tests passed,
+including actual temporary-key signed APT/index consumption via a reviewed host
+run. Windows PowerShell parameter/parse checks, wrapper/ownership tests, shellcheck
+and workflow actionlint passed (the older local actionlint runner catalog required
+ignoring only its existing `macos-15-intel` label diagnostic; existing unrelated
+workflow ShellCheck warnings were not changed).
+
+Receipts/artifacts: `/tmp/dockpipe-desktop-packaging-final.log`,
+`/tmp/dockpipe-desktop-apt-tests.log`, `/tmp/dockpipe-desktop-smoke.log`,
+`/tmp/dockpipe-desktop-build-final.log`, `/tmp/dockpipe-desktop-artifacts/` and
+`/tmp/dockpipe-desktop-extracted/`. Native Mac DMG/Homebrew and Windows MSI checks
+are authored but have not run for this change. No new release, tap update, commit,
+push, native installer execution on user machines, or signing provisioning occurred.
+The activation order is native dry-run, Apple signing qualification for normal
+public desktop delivery, desktop candidate publication, then reviewed tap update.
+
+### Approved checkpoint and native workflow verification
+
+The user approved committing the reviewed work and running the workflows after
+the proposed branch checkpoint/push and native dry-run. Scope is the completed
+remote workflow delivery plus desktop packaging on `js/pipelang`, CI and release
+verification with `dry_run=true` and `build_msi=true`. It does not authorize master
+promotion, public release/tap publication or Apple credential provisioning.
+Pre-commit admission found the new remote smoke asset missing from the authored
+embed manifest; regenerated `embed_assets.go` adds only that reviewed file.

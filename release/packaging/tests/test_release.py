@@ -80,8 +80,11 @@ class ReleaseTests(unittest.TestCase):
                      f"dockpipe-packages_{version}_{platform}.tar.gz"]
             if platform.startswith("linux"):
                 arch = platform.split("-")[1]
-                names += [f"dockpipe_{version}_{arch}.deb"]
+                names += [f"dockpipe_{version}_{arch}.deb", f"dockpipe-desktop_{version}_{arch}.deb"]
                 names += [f"dockpipe_{version}_linux_{arch}.{ext}" for ext in ("rpm", "apk", "pkg.tar.zst")]
+            elif platform.startswith("darwin"):
+                names += [f"dockpipe-desktop_{version}_{platform.replace('-', '_')}.{extension}"
+                          for extension in ("dmg", "zip")]
             for name in names:
                 (self.root / name).write_bytes(b"fixture")
         artifacts_module.prepare(self.root, version, candidate, "a" * 40)
@@ -93,6 +96,10 @@ class ReleaseTests(unittest.TestCase):
         self.assertIn(expected + "  release-manifest.json", (self.root / "SHA256SUMS.txt").read_text())
         with self.assertRaises(ValueError):
             artifacts_module.prepare(self.root, version, candidate, "b" * 40)
+        self.assertEqual(catalog["downloads"]["darwin-arm64"]["desktop"], "dockpipe-desktop_0.6.0_darwin_arm64.dmg")
+        (self.root / "dockpipe-desktop_0.6.0_darwin_arm64.dmg").unlink()
+        with self.assertRaisesRegex(ValueError, "Missing release artifact"):
+            artifacts_module.prepare(self.root, version, candidate, "a" * 40)
 
     def test_publish_commits_signed_index_after_payloads(self):
         artifacts = self.root / "artifacts"
@@ -267,20 +274,22 @@ class ReleaseTests(unittest.TestCase):
         artifacts = self.root / "artifacts"
         artifacts.mkdir()
         for arch in ("amd64", "arm64"):
-            package = self.root / arch
-            (package / "DEBIAN").mkdir(parents=True)
-            (package / "DEBIAN/control").write_text(
-                f"Package: dockpipe\nVersion: 0.6.0\nArchitecture: {arch}\n"
-                "Maintainer: Test <test@example.invalid>\nDescription: Test only\n"
-            )
-            subprocess.run(["dpkg-deb", "--build", str(package), str(artifacts / f"dockpipe_0.6.0_{arch}.deb")],
-                           check=True, capture_output=True)
+            for name in ("dockpipe", "dockpipe-desktop"):
+                package = self.root / arch / name
+                (package / "DEBIAN").mkdir(parents=True)
+                (package / "DEBIAN/control").write_text(
+                    f"Package: {name}\nVersion: 0.6.0\nArchitecture: {arch}\n"
+                    "Maintainer: Test <test@example.invalid>\nDescription: Test only\n"
+                )
+                subprocess.run(["dpkg-deb", "--build", str(package), str(artifacts / f"{name}_0.6.0_{arch}.deb")],
+                               check=True, capture_output=True)
         apt = self.root / "apt"
         subprocess.run(["bash", str(PACKAGING / "build-apt.sh"), str(artifacts), str(apt)], env=env, check=True, capture_output=True)
         for arch in ("amd64", "arm64"):
             index = apt / "dists/stable/main" / f"binary-{arch}"
             packages = (index / "Packages").read_bytes()
             self.assertIn(f"Architecture: {arch}".encode(), packages)
+            self.assertIn(b"Package: dockpipe-desktop", packages)
             self.assertEqual((index / "by-hash/SHA256" / hashlib.sha256(packages).hexdigest()).read_bytes(), packages)
         subprocess.run(["gpgv", "--keyring", str(apt / "dockpipe-archive-keyring.gpg"), str(apt / "dists/stable/InRelease")],
                        check=True, capture_output=True)

@@ -155,9 +155,28 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           node-version: "22"
+      - name: Install Linux desktop build dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends qt6-base-dev qt6-qpa-plugins libgl1-mesa-dev dpkg-dev
+      - name: Install macOS Qt
+        if: runner.os == 'macOS'
+        run: |
+          python3 -m venv "$RUNNER_TEMP/aqt"
+          "$RUNNER_TEMP/aqt/bin/python" -m pip install aqtinstall==3.3.0
+          "$RUNNER_TEMP/aqt/bin/python" -m aqt install-qt mac desktop 6.8.3 clang_64 --outputdir "$RUNNER_TEMP/Qt"
+          echo "$RUNNER_TEMP/Qt/6.8.3/macos/bin" >> "$GITHUB_PATH"
+          echo "CMAKE_PREFIX_PATH=$RUNNER_TEMP/Qt/6.8.3/macos" >> "$GITHUB_ENV"
       - name: Build native CLI, all package stores, and installers
         shell: bash
         run: bash release/packaging/build-platform.sh "${{ needs.meta.outputs.version }}"
+      - name: Build native desktop installers
+        shell: bash
+        run: bash release/packaging/desktop/build-unix.sh "${{ needs.meta.outputs.version }}" release/artifacts
+      - name: Native desktop installation smoke test
+        shell: bash
+        run: bash release/packaging/desktop/smoke-unix.sh "${{ needs.meta.outputs.version }}"
       - name: Native CLI and workflow smoke test
         shell: bash
         run: |
@@ -217,6 +236,20 @@ jobs:
         shell: pwsh
         run: ./release/packaging/tests/msi-workflow.Tests.ps1
 
+      - name: Install Windows Qt
+        if: needs.meta.outputs.build_msi == 'true'
+        shell: pwsh
+        run: |
+          python -m pip install aqtinstall==3.3.0
+          python -m aqt install-qt windows desktop 6.8.3 win64_msvc2022_64 --outputdir "$env:RUNNER_TEMP/Qt"
+          if ($LASTEXITCODE -ne 0) { throw "Qt installation failed" }
+          "$env:RUNNER_TEMP/Qt/6.8.3/msvc2022_64/bin" | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
+          "CMAKE_PREFIX_PATH=$env:RUNNER_TEMP/Qt/6.8.3/msvc2022_64" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+      - name: Build Windows desktop runtime
+        if: needs.meta.outputs.build_msi == 'true'
+        shell: pwsh
+        run: ./release/packaging/desktop/build-windows.ps1 -Version "${{ needs.meta.outputs.version }}" -StageDir (Join-Path $PWD "bin/desktop-stage")
+
       # One pwsh step: GITHUB_ENV mangles/truncates Windows paths for WIX — pass -WixRoot into build.ps1 instead.
       - name: Install WiX and build MSI
         if: needs.meta.outputs.build_msi == 'true'
@@ -241,24 +274,20 @@ jobs:
           $coreStageDir = Join-Path $PWD "bin\msi-core"
           New-Item -ItemType Directory -Force -Path $coreStageDir | Out-Null
           Copy-Item "release\artifacts\stores\windows-amd64\dockpipe-core-*.tar.gz" $coreStageDir
-          $launcherCandidates = @(
-            (Join-Path $PWD "src\app\tooling\dockpipe-launcher\build\Release\dockpipe-launcher.exe"),
-            (Join-Path $PWD "src\app\tooling\dockpipe-launcher\build\dockpipe-launcher.exe")
-          )
-          $launcherExe = $launcherCandidates | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
+          $launcherStage = Join-Path $PWD "bin/desktop-stage"
+          foreach ($required in @("dockpipe-launcher.exe", "Qt6Core.dll", "platforms/qwindows.dll")) {
+            if (-not (Test-Path -LiteralPath (Join-Path $launcherStage $required))) {
+              throw "Desktop MSI requires the deployed launcher runtime: $required"
+            }
+          }
           New-Item -ItemType Directory -Force -Path bin\msi-dist | Out-Null
           $buildArgs = @{
             Version = $v
             SourceExe = Join-Path $PWD "src\bin\dockpipe.exe"
             CoreStageDir = $coreStageDir
+            LauncherStageDir = $launcherStage
             OutDir = Join-Path $PWD "bin\msi-dist"
             WixRoot = $wixRoot
-          }
-          if ($launcherExe) {
-            Write-Host "Including DockPipe Launcher in MSI: $launcherExe"
-            $buildArgs.LauncherExe = $launcherExe
-          } else {
-            Write-Host "DockPipe Launcher build not found; packaging CLI-only MSI."
           }
           & (Join-Path $PWD "release\packaging\msi\build.ps1") @buildArgs
 
@@ -270,14 +299,7 @@ jobs:
           if (-not $msi) {
             throw "No MSI found under bin\\msi-dist"
           }
-          $launcherPresent = Test-Path -LiteralPath (Join-Path $PWD "src\app\tooling\dockpipe-launcher\build\Release\dockpipe-launcher.exe")
-          if (-not $launcherPresent) {
-            $launcherPresent = Test-Path -LiteralPath (Join-Path $PWD "src\app\tooling\dockpipe-launcher\build\dockpipe-launcher.exe")
-          }
-          $smokeArgs = @{ MsiPath = $msi.FullName }
-          if ($launcherPresent) {
-            $smokeArgs.ExpectLauncher = $true
-          }
+          $smokeArgs = @{ MsiPath = $msi.FullName; ExpectLauncher = $true }
           & (Join-Path $PWD "release\packaging\msi\smoke-test.ps1") @smokeArgs
 
       - name: Collect MSI

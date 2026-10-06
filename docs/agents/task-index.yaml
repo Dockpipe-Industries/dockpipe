@@ -254,7 +254,7 @@ tasks:
       ownership: unclaimed
 
   - id: TASK-036
-    topic: Provider-neutral remote nodes and browser-authorized edge setup
+    topic: Provider-neutral workflow delivery and browser-authorized remote onboarding
     path: docs/agents/tasks/remote-node-onboarding/index.yaml
     dispatch:
       readiness: unclassified

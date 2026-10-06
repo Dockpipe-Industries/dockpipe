@@ -1,12 +1,15 @@
+#include "DockpipeChoices.h"
 #include "MainWindow.h"
 #include "SingleInstanceGuard.h"
 #include "Theme.h"
 
 #include <QApplication>
 #include <QIcon>
+#include <QProcess>
 #include <QProcessEnvironment>
 #include <QSize>
 #include <QStyleFactory>
+#include <QTextStream>
 #include <cstring>
 
 static bool allowSecondInstance(int argc, char *argv[])
@@ -58,6 +61,23 @@ int main(int argc, char *argv[])
     QApplication::setOrganizationName(QStringLiteral("dockpipe"));
     app.setDesktopFileName(QStringLiteral("dockpipe-launcher"));
     app.setWindowIcon(dockpipeLauncherIcon());
+
+    if (app.arguments().contains(QStringLiteral("--check-installation"))) {
+        // Exercise the same CLI selection as a desktop launch, including bundled
+        // wrappers, without opening a window or modifying contexts.
+        const QString binary = DockpipeChoices::preferredDockpipeBinary(QString());
+        QProcess cli;
+        cli.start(binary, {QStringLiteral("--version")});
+        if (!cli.waitForStarted() || !cli.waitForFinished(30000)) {
+            cli.kill();
+            cli.waitForFinished();
+            QTextStream(stderr) << "Cannot run DockPipe CLI: " << binary << '\n';
+            return 1;
+        }
+        QTextStream(stdout) << "CLI: " << binary << '\n' << cli.readAllStandardOutput();
+        QTextStream(stderr) << cli.readAllStandardError();
+        return cli.exitStatus() == QProcess::NormalExit ? cli.exitCode() : 1;
+    }
 
     app.setStyle(QStyleFactory::create(QStringLiteral("Fusion")));
 
