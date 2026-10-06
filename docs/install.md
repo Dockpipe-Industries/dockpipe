@@ -258,6 +258,10 @@ brew upgrade dockpipe
 
 Maintainer note: formula source is tracked in `release/packaging/homebrew/dockpipe.rb` with release process in `release/packaging/homebrew/README.md`.
 
+For the separate staging formula and its activation status, see the
+[staging Homebrew instructions](../release/docs/staging.md#homebrew-on-a-test-mac).
+It includes both the native CLI and package store, and supports candidate upgrades.
+
 General release automation details: **[release/docs/releasing.md](../release/docs/releasing.md)**.
 
 ---
