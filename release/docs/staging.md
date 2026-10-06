@@ -121,9 +121,9 @@ available beside the CLI, and individual stores are under `stores/<platform>/`.
 
 ### Homebrew on a test Mac
 
-The dedicated `Dockpipe-Industries/homebrew-dockpipe` tap is prepared in
-[`release/packaging/homebrew/tap`](../packaging/homebrew/tap/README.md). After that
-repository is provisioned and its first **Update staging formula** run succeeds:
+The public [DockPipe tap](https://github.com/Dockpipe-Industries/homebrew-dockpipe)
+is active. Its first [native validation run](https://github.com/Dockpipe-Industries/homebrew-dockpipe/actions/runs/37397290496)
+passed installation and formula tests on Apple Silicon and Intel before publishing:
 
 ```sh
 brew install Dockpipe-Industries/dockpipe/dockpipe-staging

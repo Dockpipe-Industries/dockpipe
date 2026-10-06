@@ -4,10 +4,13 @@ This directory contains the staging tap source and the older stable formula stub
 
 ## Staging tap
 
-`tap/` is the complete seed for the public `Dockpipe-Industries/homebrew-dockpipe`
-repository, with default branch `main`. Copy its authored files, including
-`.github/workflows/update-staging.yml`, into that repository. Do not copy caches,
-local prepared output, or the stable stub. No new secret is required: the workflow
+`tap/` is the maintained source for the active public
+[`Dockpipe-Industries/homebrew-dockpipe`](https://github.com/Dockpipe-Industries/homebrew-dockpipe)
+repository, with default branch `main`. Its initial native validation and formula
+publication passed in [run 37397290496](https://github.com/Dockpipe-Industries/homebrew-dockpipe/actions/runs/37397290496).
+Copy reviewed authored updates, including `.github/workflows/update-staging.yml`,
+into that repository. Do not copy caches, local prepared output, or the stable stub.
+No new secret is required: the workflow
 reads public R2 release metadata and uses the tap's own `GITHUB_TOKEN` for its one
 formula commit. Grant `contents: write` only to the publication job.
 
