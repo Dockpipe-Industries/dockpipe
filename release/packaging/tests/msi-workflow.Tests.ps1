@@ -144,14 +144,27 @@ try {
         New-ParameterRecorder -Source (Join-Path $repoRoot "release/packaging/msi/smoke-test.ps1") -Destination $smokeRecorder
         Set-Content -LiteralPath (Join-Path $fixture "release/artifacts/stores/windows-amd64/dockpipe-core-0.6.0.tar.gz") -Value "fixture"
         Set-Content -LiteralPath (Join-Path $fixture "src/bin/dockpipe.exe") -Value "fixture"
-        $launcher = Join-Path $fixture "src/app/tooling/dockpipe-launcher/build/Release/dockpipe-launcher.exe"
+        $launcherStage = Join-Path $fixture "bin/desktop-stage"
+        $launcher = Join-Path $launcherStage "dockpipe-launcher.exe"
         if ($withLauncher) {
             New-Item -ItemType Directory -Force -Path (Split-Path -Parent $launcher) | Out-Null
             Set-Content -LiteralPath $launcher -Value "fixture"
+            Set-Content -LiteralPath (Join-Path $launcherStage "Qt6Core.dll") -Value "fixture"
+            New-Item -ItemType Directory -Path (Join-Path $launcherStage "platforms") | Out-Null
+            Set-Content -LiteralPath (Join-Path $launcherStage "platforms/qwindows.dll") -Value "fixture"
         }
         $wixRoot = Join-Path $testRoot "WiX tools"
         Push-Location $fixture
         try {
+            if (-not $withLauncher) {
+                $rejected = $false
+                try { & ([scriptblock]::Create($buildScript)) } catch {
+                    if (-not $_.Exception.Message.StartsWith("Desktop MSI requires")) { throw }
+                    $rejected = $true
+                }
+                Assert-Equal $rejected $true "Missing desktop must fail"
+                continue
+            }
             & ([scriptblock]::Create($buildScript))
             $build = Get-Content -Raw -LiteralPath ($buildRecorder + ".json") | ConvertFrom-Json
             Assert-Equal $build.Version "0.6.0" "Version"
@@ -159,22 +172,14 @@ try {
             Assert-Equal $build.OutDir (Join-Path $fixture "bin/msi-dist") "OutDir"
             Assert-Equal $build.CoreStageDir (Join-Path $fixture "bin/msi-core") "CoreStageDir"
             Assert-Equal $build.WixRoot $wixRoot "WixRoot"
-            if ($withLauncher) {
-                Assert-Equal $build.LauncherExe $launcher "LauncherExe"
-            } elseif ($build.PSObject.Properties.Name -contains "LauncherExe") {
-                throw "CLI-only build unexpectedly bound LauncherExe"
-            }
+            Assert-Equal $build.LauncherStageDir $launcherStage "LauncherStageDir"
 
             $msiPath = Join-Path $fixture "bin/msi-dist/dockpipe_0.6.0_windows_amd64.msi"
             Set-Content -LiteralPath $msiPath -Value "fixture"
             & ([scriptblock]::Create($smokeScript))
             $smoke = Get-Content -Raw -LiteralPath ($smokeRecorder + ".json") | ConvertFrom-Json
             Assert-Equal $smoke.MsiPath $msiPath "MsiPath"
-            if ($withLauncher) {
-                Assert-Equal $smoke.ExpectLauncher.IsPresent $true "ExpectLauncher"
-            } elseif ($smoke.PSObject.Properties.Name -contains "ExpectLauncher") {
-                throw "CLI-only smoke unexpectedly bound ExpectLauncher"
-            }
+            Assert-Equal $smoke.ExpectLauncher.IsPresent $true "ExpectLauncher"
         } finally {
             Pop-Location
         }

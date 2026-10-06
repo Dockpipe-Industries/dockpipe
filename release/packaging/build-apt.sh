@@ -20,7 +20,14 @@ for arch in amd64 arm64; do
   packages=("$artifacts"/dockpipe_*_"$arch".deb)
   [[ ${#packages[@]} -eq 1 ]] || { echo "Expected one $arch DEB" >&2; exit 1; }
   [[ "$(dpkg-deb -f "${packages[0]}" Architecture)" == "$arch" ]]
+  [[ "$(dpkg-deb -f "${packages[0]}" Package)" == dockpipe ]]
   cp "${packages[0]}" "$pool/"
+  desktop=("$artifacts"/dockpipe-desktop_*_"$arch".deb)
+  [[ ${#desktop[@]} -eq 1 ]] || { echo "Expected one $arch desktop DEB" >&2; exit 1; }
+  [[ "$(dpkg-deb -f "${desktop[0]}" Architecture)" == "$arch" ]]
+  [[ "$(dpkg-deb -f "${desktop[0]}" Package)" == dockpipe-desktop ]]
+  [[ "$(dpkg-deb -f "${desktop[0]}" Version)" == "$(dpkg-deb -f "${packages[0]}" Version)" ]]
+  cp "${desktop[0]}" "$pool/"
   (cd "$destination" && apt-ftparchive packages "pool/main/d/dockpipe/$arch") > "$index/Packages"
   gzip -n -9 -c "$index/Packages" > "$index/Packages.gz"
   for file in "$index/Packages" "$index/Packages.gz"; do

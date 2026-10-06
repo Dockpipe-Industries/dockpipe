@@ -1,0 +1,22 @@
+#!/bin/sh
+set -eu
+destination="${3:-/}"
+command_path="${destination%/}/usr/local/bin/dockpipe"
+expected="/Applications/DockPipe.app/Contents/MacOS/dockpipe"
+homebrew_command="${destination%/}/opt/homebrew/bin/dockpipe"
+if [ -e "$homebrew_command" ] || [ -L "$homebrew_command" ]; then
+  echo 'A Homebrew dockpipe command already exists. Use the desktop cask or unlink that formula first.' >&2
+  exit 1
+fi
+if [ -e "$command_path" ] || [ -L "$command_path" ]; then
+  if [ ! -L "$command_path" ] || [ "$(readlink "$command_path")" != "$expected" ]; then
+    echo 'An existing dockpipe command is managed by another installation.' >&2
+    echo 'Remove or unlink that CLI first, or use the Homebrew desktop cask.' >&2
+    exit 1
+  fi
+fi
+app="${destination%/}/Applications/DockPipe.app"
+if [ -e "$app" ] && ! /usr/sbin/pkgutil --volume "$destination" --pkg-info com.dockpipe.desktop >/dev/null 2>&1; then
+  echo 'DockPipe.app already exists outside this installer. Remove it using its original installer first.' >&2
+  exit 1
+fi

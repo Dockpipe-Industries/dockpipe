@@ -1,6 +1,6 @@
 # Windows MSI (WiX 3)
 
-Builds **`dockpipe_<version>_windows_amd64.msi`**: per-user install to `%LOCALAPPDATA%\dockpipe`, appends that directory to the **user** `PATH` (no admin for silent install), and can also carry a staged **DockPipe Launcher** payload as an **optional MSI feature** with a per-user Start Menu shortcut.
+Builds **`dockpipe_<version>_windows_amd64.msi`**: per-user install to `%LOCALAPPDATA%\dockpipe`, appends that directory to the **user** `PATH` (no admin for silent install), and includes **DockPipe Launcher** by default in release builds, with the full Qt runtime and a per-user Start Menu shortcut. The launcher remains an optional MSI feature; the CLI is required.
 
 ## Release pipeline (optional)
 
@@ -55,4 +55,6 @@ Outputs:
 
 The **`build-msi`** job in **`.github/workflows/release.yml`** runs on **`windows-latest`** only (WiX does not run on Linux). It downloads **`wix314-binaries.zip`**, expands it under **`RUNNER_TEMP`**, and passes that folder as **`-WixRoot`**. **`build.ps1`** also supports an installed WiX layout with **`bin\candle.exe`**. **`GITHUB_ENV`** is avoided for WiX paths.
 
-That job now also runs **`smoke-test.ps1`** to verify silent per-user install, direct execution of the installed **`dockpipe.exe`**, and silent uninstall before publishing the artifact. If you include the launcher payload, the smoke test also verifies **`dockpipe-launcher.exe`**, **`Qt6Core.dll`**, **`platforms\qwindows.dll`**, and the Start Menu shortcut.
+That job now also runs **`smoke-test.ps1`** to verify silent per-user install, direct execution of the installed **`dockpipe.exe`**, and silent uninstall before publishing the artifact. Release builds require the launcher payload. The smoke test also verifies **`dockpipe-launcher.exe`**, **`Qt6Core.dll`**, **`platforms\qwindows.dll`**, and the Start Menu shortcut.
+
+CI now builds the native launcher with Qt 6.8.3 and `windeployqt`; a missing payload fails instead of silently producing a CLI-only MSI. Native smoke also starts the installed Qt app, checks its sibling CLI, exercises launcher feature removal/restoration, and uninstalls. Portable ZIPs remain CLI-only. These native checks must pass on Windows; PowerShell parameter tests on Linux do not qualify installation.

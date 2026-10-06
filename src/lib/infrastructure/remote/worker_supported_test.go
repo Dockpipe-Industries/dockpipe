@@ -124,3 +124,63 @@ func TestWorkerReturnsRevokedIdentityInsteadOfPollingForever(t *testing.T) {
 		t.Fatalf("revocation did not stop worker: %v", err)
 	}
 }
+
+func TestWorkerDeliveryAuthorityAndJournalRecovery(t *testing.T) {
+	for _, scenario := range []string{"disabled", "interrupted", "saved-result"} {
+		t.Run(scenario, func(t *testing.T) {
+			_, _, admin, server := testBroker(t)
+			token, _ := enroll(t, admin, "delivery")
+			bundle := contract.Bundle{WorkflowFile: "config.yml", Files: []contract.BundleFile{{Path: "config.yml", Data: []byte("name: delivery\nsteps: []\n")}}}
+			digest, _ := bundle.Digest()
+			request := contract.SubmitRequest{Submission: contract.Submission{ID: "delivery", Node: "delivery", BundleHash: digest}, Bundle: &bundle}
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+			if err := admin.Call(ctx, "/v1/submit", request, nil); err != nil {
+				t.Fatal(err)
+			}
+			state := filepath.Join(t.TempDir(), "worker")
+			config := contract.WorkerConfig{Schema: contract.Version, Endpoint: server.URL, Node: "delivery", Token: token, Profiles: map[string]contract.Profile{"local": {Workdir: t.TempDir(), Workflow: "local", TimeoutSeconds: 30}}}
+			if scenario != "disabled" {
+				config.Delivery = &contract.DeliveryPermission{TimeoutSeconds: 30}
+				worker, _ := NewClient(server.URL, token)
+				defer worker.HTTP.CloseIdleConnections()
+				var assigned contract.Job
+				session := strings.Repeat("b", 64)
+				if err := worker.Call(ctx, "/v1/next", map[string]string{"session": session}, &assigned); err != nil {
+					t.Fatal(err)
+				}
+				journal := WorkerJournal{Job: request.Submission, Session: session}
+				if scenario == "saved-result" {
+					journal.Result = &contract.Result{Status: "success", ExitCode: 0, Log: "completed before disconnect"}
+				}
+				if err := WritePrivate(filepath.Join(state, "jobs", request.ID+".json"), journal); err != nil {
+					t.Fatal(err)
+				}
+			}
+			done := make(chan error, 1)
+			go func() { done <- RunWorker(ctx, state, "/must/not/execute", config) }()
+			var job contract.Job
+			for ctx.Err() == nil {
+				if err := admin.Call(ctx, "/v1/job", map[string]string{"id": request.ID}, &job); err != nil {
+					t.Fatal(err)
+				}
+				if job.Result != nil {
+					break
+				}
+				time.Sleep(10 * time.Millisecond)
+			}
+			cancel()
+			<-done
+			want := map[string]string{"disabled": "failure", "interrupted": "unknown", "saved-result": "success"}[scenario]
+			if job.Status != want || job.Result == nil {
+				t.Fatalf("got %+v, want %s", job, want)
+			}
+			if scenario == "disabled" && !strings.Contains(job.Result.Log, "disabled") {
+				t.Fatal("missing authority diagnostic")
+			}
+			if _, err := os.Stat(filepath.Join(state, "deliveries")); !os.IsNotExist(err) {
+				t.Fatal("unapproved or recovered delivery was staged again")
+			}
+		})
+	}
+}

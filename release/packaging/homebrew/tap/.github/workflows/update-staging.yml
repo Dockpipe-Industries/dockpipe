@@ -1,4 +1,4 @@
-name: Update staging formula
+name: Update staging CLI and desktop
 
 on:
   schedule:
@@ -54,12 +54,19 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          brew tap-new --no-git dockpipe-validation/candidate
-          tap="$(brew --repository dockpipe-validation/candidate)"
+          brew tap-new --no-git dockpipe-industries/dockpipe
+          tap="$(brew --repository dockpipe-industries/dockpipe)"
+          mkdir -p "$tap/Casks"
           cp prepared/dockpipe-staging.rb "$tap/Formula/dockpipe-staging.rb"
-          brew install --formula dockpipe-validation/candidate/dockpipe-staging
-          brew test dockpipe-validation/candidate/dockpipe-staging
+          cp prepared/dockpipe-desktop-staging.rb "$tap/Casks/dockpipe-desktop-staging.rb"
+          brew install --formula dockpipe-industries/dockpipe/dockpipe-staging
+          brew test dockpipe-industries/dockpipe/dockpipe-staging
           dockpipe --version
+          brew install --cask dockpipe-industries/dockpipe/dockpipe-desktop-staging
+          QT_QPA_PLATFORM=offscreen /Applications/DockPipe.app/Contents/MacOS/DockPipe --check-installation
+          brew uninstall --cask dockpipe-desktop-staging
+          dockpipe --version
+          brew uninstall --formula dockpipe-staging
       - name: Verify candidate upgrade ordering
         shell: bash
         run: |

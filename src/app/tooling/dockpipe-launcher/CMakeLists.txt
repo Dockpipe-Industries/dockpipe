@@ -1,5 +1,6 @@
-cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 3.21.1)
 project(dockpipe-launcher VERSION 0.1.0 LANGUAGES CXX)
+set(DOCKPIPE_RELEASE_VERSION "${PROJECT_VERSION}" CACHE STRING "Desktop release version")
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -44,6 +45,18 @@ if(WIN32)
     qt_add_executable(dockpipe-launcher WIN32 ${DOCKPIPE_LAUNCHER_SOURCES})
 else()
     qt_add_executable(dockpipe-launcher ${DOCKPIPE_LAUNCHER_SOURCES})
+endif()
+
+if(APPLE)
+    set_target_properties(dockpipe-launcher PROPERTIES
+        MACOSX_BUNDLE TRUE
+        OUTPUT_NAME DockPipe
+        MACOSX_BUNDLE_GUI_IDENTIFIER com.dockpipe.launcher
+        MACOSX_BUNDLE_BUNDLE_NAME DockPipe
+        MACOSX_BUNDLE_BUNDLE_VERSION "${DOCKPIPE_RELEASE_VERSION}"
+        MACOSX_BUNDLE_SHORT_VERSION_STRING "${DOCKPIPE_RELEASE_VERSION}"
+        MACOSX_BUNDLE_ICON_FILE DockPipe.icns
+    )
 endif()
 
 target_include_directories(dockpipe-launcher PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)

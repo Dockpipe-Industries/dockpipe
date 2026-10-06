@@ -22,9 +22,13 @@ const usage = `dockpipe remote <command> [options]
   init    [--listen 127.0.0.1:47831]               Initialize a private broker
   serve                                          Run broker and configured edge
   invite  --node <name> --out <private-file>       Issue a 15-minute pairing file
-  pair    --invite <file> --profiles <json-file>   Approve workflows on this worker
+  pair    --invite <file> --allow-delivery        Trust this broker to send workflows
+          [--profiles <json-file>]                Or approve installed profiles
   worker                                         Run the outbound worker
   submit  --node <name> --profile <name> --id <id> Submit once; same ID is idempotent
+  submit  --node <name> --workflow-file <path> --id <id>  Deliver local sources
+          [--include <path>] [--dependency <package-dir>] [--artifact <path>]
+          [--workdir <directory>] [--dry-run]     Preview files and digest without sending
   jobs                                           List job states
   result  --id <id> [--out <new-private-directory>] Inspect/download a result
   cancel  --id <id>                               Request cancellation
@@ -53,6 +57,15 @@ func Run(args []string, checkDependencies func(string) error) error {
 	out := flags.String("out", "", "private output destination")
 	invite := flags.String("invite", "", "pairing file")
 	profiles := flags.String("profiles", "", "locally approved profiles file")
+	allowDelivery := flags.Bool("allow-delivery", false, "approve execution of operator-supplied code as this user")
+	timeout := flags.Int("timeout", 3600, "worker-local delivery timeout in seconds")
+	workflow := flags.String("workflow-file", "", "local workflow to deliver with its source directory")
+	workdir := flags.String("workdir", ".", "source project directory")
+	dryRun := flags.Bool("dry-run", false, "preview delivery files and digest without submitting")
+	var includes, dependencies, artifacts stringList
+	flags.Var(&includes, "include", "additional source path inside workdir (repeatable)")
+	flags.Var(&dependencies, "dependency", "unpacked package directory to deliver (repeatable)")
+	flags.Var(&artifacts, "artifact", "exact result file relative to delivered workdir (repeatable)")
 	role := flags.String("role", "", "broker or worker service")
 	if err := flags.Parse(args[1:]); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
@@ -62,6 +75,15 @@ func Run(args []string, checkDependencies func(string) error) error {
 	}
 	if flags.NArg() != 0 {
 		return errors.New("unexpected remote positional arguments")
+	}
+	if *dryRun && command != "submit" {
+		return errors.New("--dry-run is supported only by remote submit")
+	}
+	if (*workflow != "" || len(includes)+len(dependencies)+len(artifacts) != 0) && command != "submit" {
+		return errors.New("workflow delivery options are supported only by remote submit")
+	}
+	if *allowDelivery && command != "pair" {
+		return errors.New("--allow-delivery must be approved on the worker with remote pair")
 	}
 	root, err := stateRoot(*state)
 	if err != nil {
@@ -79,7 +101,7 @@ func Run(args []string, checkDependencies func(string) error) error {
 		case "serve":
 			return serve(ctx, root)
 		case "pair":
-			return pair(ctx, root, *invite, *profiles)
+			return pairWithDelivery(ctx, root, *invite, *profiles, *allowDelivery, *timeout)
 		case "worker":
 			var config contract.WorkerConfig
 			if err := remoteio.ReadPrivate(filepath.Join(root, "worker.json"), &config); err != nil {
@@ -92,7 +114,18 @@ func Run(args []string, checkDependencies func(string) error) error {
 			return remoteio.RunWorker(ctx, root, executable, config)
 		case "service":
 			return installService(ctx, root, *role)
-		case "invite", "submit", "jobs", "result", "cancel", "revoke":
+		case "submit":
+			if *workflow != "" {
+				if *profile != "" {
+					return errors.New("choose --workflow-file or --profile, not both")
+				}
+				return submitDelivery(ctx, root, *node, *id, *workdir, *workflow, includes, dependencies, artifacts, *dryRun)
+			}
+			if *dryRun || len(includes)+len(dependencies)+len(artifacts) != 0 {
+				return errors.New("delivery options require --workflow-file")
+			}
+			return operator(ctx, root, command, *node, *profile, *id, *out)
+		case "invite", "jobs", "result", "cancel", "revoke":
 			return operator(ctx, root, command, *node, *profile, *id, *out)
 		default:
 			return fmt.Errorf("unknown remote command %q\n%s", command, usage)
@@ -127,7 +160,11 @@ func operator(ctx context.Context, root, command, node, profile, id, output stri
 			return err
 		}
 		invitation.Endpoint = config.Endpoint
-		return remoteio.WritePrivate(output, invitation)
+		if err := remoteio.WritePrivate(output, invitation); err != nil {
+			return err
+		}
+		fmt.Fprintf(os.Stderr, "Invitation saved to %s (expires in 15 minutes). Transfer it privately to %s. There, run: dockpipe remote pair --invite <private-file> --allow-delivery.\n", output, node)
+		return nil
 	case "submit":
 		request := contract.Submission{ID: id, Node: node, Profile: profile}
 		if err := request.Validate(); err != nil {
@@ -166,6 +203,10 @@ func operator(ctx context.Context, root, command, node, profile, id, output stri
 }
 
 func pair(ctx context.Context, root, invitePath, profilesPath string) error {
+	return pairWithDelivery(ctx, root, invitePath, profilesPath, false, 3600)
+}
+
+func pairWithDelivery(ctx context.Context, root, invitePath, profilesPath string, allowDelivery bool, timeout int) error {
 	if err := remoteio.PrivateDirectory(root); err != nil {
 		return err
 	}
@@ -185,18 +226,24 @@ func pair(ctx context.Context, root, invitePath, profilesPath string) error {
 		return err
 	}
 	profiles := map[string]contract.Profile{}
-	data, err := os.ReadFile(profilesPath)
-	if err != nil {
-		return err
+	if profilesPath != "" {
+		data, err := os.ReadFile(profilesPath)
+		if err != nil {
+			return err
+		}
+		if len(data) > 64<<10 {
+			return errors.New("profiles file exceeds 64 KiB")
+		}
+		if err := remoteio.Decode(data, &profiles); err != nil {
+			return err
+		}
 	}
-	if len(data) > 64<<10 {
-		return errors.New("profiles file exceeds 64 KiB")
+	var delivery *contract.DeliveryPermission
+	if allowDelivery {
+		delivery = &contract.DeliveryPermission{TimeoutSeconds: timeout}
 	}
-	if err := remoteio.Decode(data, &profiles); err != nil {
-		return err
-	}
-	if err := remoteio.ValidateProfiles(profiles); err != nil {
-		return err
+	if err := remoteio.ValidateWorkerAuthority(contract.WorkerConfig{Profiles: profiles, Delivery: delivery}); err != nil {
+		return fmt.Errorf("approve --allow-delivery or provide --profiles: %w", err)
 	}
 	configPath := filepath.Join(root, "worker.json")
 	config := contract.WorkerConfig{}
@@ -205,7 +252,7 @@ func pair(ctx context.Context, root, invitePath, profilesPath string) error {
 		if err != nil {
 			return err
 		}
-		config = contract.WorkerConfig{Schema: contract.Version, Endpoint: invitation.Endpoint, Node: invitation.Node, Token: token, Profiles: profiles}
+		config = contract.WorkerConfig{Schema: contract.Version, Endpoint: invitation.Endpoint, Node: invitation.Node, Token: token, Profiles: profiles, Delivery: delivery}
 		if err := remoteio.WritePrivate(configPath, config); err != nil {
 			return err
 		}
@@ -215,15 +262,22 @@ func pair(ctx context.Context, root, invitePath, profilesPath string) error {
 	if config.Endpoint != invitation.Endpoint || config.Node != invitation.Node {
 		return errors.New("worker is already bound to another invitation")
 	}
-	if !reflect.DeepEqual(config.Profiles, profiles) {
-		return errors.New("worker profiles differ from the saved pairing; inspect the local worker configuration before changing authority")
+	if !reflect.DeepEqual(config.Profiles, profiles) || !reflect.DeepEqual(config.Delivery, delivery) {
+		return errors.New("worker authority differs from the saved pairing; inspect the local worker configuration before changing authority")
 	}
 	client, err := remoteio.NewClient(config.Endpoint, "")
 	if err != nil {
 		return err
 	}
 	defer client.HTTP.CloseIdleConnections()
-	return client.Call(ctx, "/v1/pair", map[string]string{"node": config.Node, "secret": invitation.Secret, "token": config.Token}, nil)
+	if err := client.Call(ctx, "/v1/pair", map[string]string{"node": config.Node, "secret": invitation.Secret, "token": config.Token}, nil); err != nil {
+		return err
+	}
+	fmt.Fprintf(os.Stderr, "Paired worker %s. Next: dockpipe remote worker --state %q (foreground), or dockpipe remote service --role worker --state %q.\n", config.Node, root, root)
+	if delivery != nil {
+		fmt.Fprintln(os.Stderr, "Delivery enabled: this broker may execute supplied workflows with your user permissions. It is not a sandbox.")
+	}
+	return nil
 }
 
 func saveResult(output string, job contract.Job) error {
