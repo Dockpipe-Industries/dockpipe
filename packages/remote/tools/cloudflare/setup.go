@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -32,6 +33,7 @@ type Setup struct {
 	Origin     string
 	Executable string
 	Home       string
+	Progress   io.Writer
 	Run        Runner
 }
 
@@ -44,6 +46,9 @@ type setupState struct {
 }
 
 func (setup Setup) Execute(ctx context.Context) error {
+	if setup.Progress == nil {
+		setup.Progress = os.Stderr
+	}
 	if len(setup.Hostname) > 253 || !hostnamePattern.MatchString(setup.Hostname) {
 		return errors.New("choose a lowercase hostname in a domain already managed by Cloudflare")
 	}
@@ -83,6 +88,7 @@ func (setup Setup) Execute(ctx context.Context) error {
 	}
 	certificate := filepath.Join(setup.Home, ".cloudflared", "cert.pem")
 	if _, err := os.Lstat(certificate); os.IsNotExist(err) {
+		fmt.Fprintln(setup.Progress, "1/3 Open Cloudflare in your browser and select the domain. If no browser appears, open the login URL printed below; keep this terminal running.")
 		// cloudflared owns its browser login and standard certificate location.
 		// Never copy this account-management certificate to workers.
 		if err := setup.Run(ctx, setup.Executable, []string{"tunnel", "login"}, true); err != nil {
@@ -90,10 +96,13 @@ func (setup Setup) Execute(ctx context.Context) error {
 		}
 	} else if err != nil {
 		return err
+	} else {
+		fmt.Fprintln(setup.Progress, "1/3 Reusing existing Cloudflare authorization; browser login is not needed.")
 	}
 	if err := privateCredential(certificate); err != nil {
 		return err
 	}
+	fmt.Fprintln(setup.Progress, "2/3 Preparing your named tunnel. Existing setup is reused.")
 	credentials := filepath.Join(setup.State, "tunnel.json")
 	if _, err := os.Lstat(credentials); os.IsNotExist(err) {
 		if state.CreateStarted {
@@ -125,6 +134,7 @@ func (setup Setup) Execute(ctx context.Context) error {
 	if err := json.Unmarshal(raw, &credential); err != nil || !tunnelPattern.MatchString(credential.TunnelID) {
 		return errors.New("invalid tunnel credentials written by Cloudflare")
 	}
+	fmt.Fprintf(setup.Progress, "3/3 Connecting https://%s to the local broker.\n", setup.Hostname)
 	if !state.Routed {
 		arguments := []string{"tunnel", "--origincert", certificate, "route", "dns", credential.TunnelID, setup.Hostname}
 		if err := setup.Run(ctx, setup.Executable, arguments, false); err != nil {
@@ -168,7 +178,7 @@ func runCloudflared(ctx context.Context, executable string, arguments []string, 
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Minute)
 	defer cancel()
 	command := exec.CommandContext(ctx, executable, arguments...)
-	for _, name := range []string{"PATH", "HOME", "USER", "TMPDIR", "LANG", "DISPLAY", "WAYLAND_DISPLAY", "XDG_RUNTIME_DIR", "DBUS_SESSION_BUS_ADDRESS"} {
+	for _, name := range []string{"PATH", "HOME", "USER", "TMPDIR", "LANG", "DISPLAY", "WAYLAND_DISPLAY", "XDG_RUNTIME_DIR", "DBUS_SESSION_BUS_ADDRESS", "XAUTHORITY", "XDG_CURRENT_DESKTOP", "XDG_SESSION_TYPE", "XDG_CONFIG_HOME", "BROWSER"} {
 		if value, exists := os.LookupEnv(name); exists {
 			command.Env = append(command.Env, name+"="+value)
 		}

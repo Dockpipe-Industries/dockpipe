@@ -137,9 +137,16 @@ dispatch is also available. No additional upload secret is required.
 
 Unlike the native DEB/MSI version, the Homebrew formula version includes the
 candidate identity so upgrades distinguish successive builds. It installs the
-native CLI and complete package store. The command is still `dockpipe`, conflicts
-with stable Homebrew `dockpipe`, and uses normal user data unless
+native CLI and complete package store. The command is still `dockpipe` and uses normal user data unless
 `DOCKPIPE_GLOBAL_ROOT` is set to a separate test directory.
+The stable formula is not yet published, so a conflict declaration against it is invalid.
+
+Desktop packaging is now implemented in source but requires a new candidate and
+native qualification. After the desktop cask is published, use
+`brew install --cask dockpipe-industries/dockpipe/dockpipe-desktop-staging` for the
+launcher and CLI together. The DMG offers a direct Apple Installer alternative.
+See [desktop installation](../../docs/install.md#desktop-installation) for platform
+choices and the outstanding Apple signing/notarization boundary.
 
 ### APT installation in a test VM
 

@@ -41,6 +41,7 @@ def prepare(directory, version, candidate="", source_sha=""):
                       or not candidate.endswith(source_sha[:12])):
         raise ValueError("Invalid staging candidate provenance")
     stores = {}
+    downloads = {}
     for platform in PLATFORMS:
         store = directory / "stores" / platform
         stores[platform] = {
@@ -56,10 +57,20 @@ def prepare(directory, version, candidate="", source_sha=""):
             arch = platform.split("-")[1]
             required += [f"dockpipe_{version}_{arch}.deb"]
             required += [f"dockpipe_{version}_linux_{arch}.{ext}" for ext in ("rpm", "apk", "pkg.tar.zst")]
+            desktop = f"dockpipe-desktop_{version}_{arch}.deb"
+            required.append(desktop)
+        elif platform.startswith("darwin"):
+            desktop = f"dockpipe-desktop_{version}_{platform.replace('-', '_')}.dmg"
+            required += [desktop, desktop.removesuffix(".dmg") + ".zip"]
+        else:
+            desktop = f"dockpipe_{version}_windows_amd64.msi"
+            if not (directory / desktop).is_file():
+                desktop = None
+        downloads[platform] = {"cli": required[0], "desktop": desktop}
         for name in required:
             if not (directory / name).is_file():
                 raise ValueError(f"Missing release artifact: {name}")
-    catalog = {"schema": 1, "version": version, "stores": stores}
+    catalog = {"schema": 1, "version": version, "stores": stores, "downloads": downloads}
     if source_sha:
         catalog["source_sha"] = source_sha
     if candidate:

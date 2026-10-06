@@ -11,15 +11,14 @@ publication passed in [run 37397290496](https://github.com/Dockpipe-Industries/h
 Copy reviewed authored updates, including `.github/workflows/update-staging.yml`,
 into that repository. Do not copy caches, local prepared output, or the stable stub.
 No new secret is required: the workflow
-reads public R2 release metadata and uses the tap's own `GITHUB_TOKEN` for its one
-formula commit. Grant `contents: write` only to the publication job.
+reads public R2 release metadata and uses the tap's own `GITHUB_TOKEN` for the generated
+formula and cask updates. Grant `contents: write` only to the publication job.
 
 The scheduled workflow checks every 15 minutes and supports manual dispatch. It
-requires the exact source CI run/attempt to have succeeded before generating a
-formula. macOS Intel and Apple Silicon runners each install and test the candidate
+requires the exact source CI run/attempt to have succeeded before generating the
+formula and cask. macOS Intel and Apple Silicon runners each install the formula and desktop cask and test their CLI/runtime
 before publication. The publisher rechecks the latest pointer and uses the existing
-formula blob SHA to reject concurrent overwrites. No new DockPipe release is needed
-to seed the tap from an already completed candidate.
+blob SHAs to reject concurrent overwrites. Both versions are checked before writing; the CLI is published first, and each update is idempotent if the pair is interrupted. The desktop cask requires a completed candidate containing both macOS desktop ZIPs. Publish that candidate before deploying these sync changes; older CLI-only candidates cannot seed the desktop cask.
 
 Review a formula locally without any remote write:
 
@@ -37,13 +36,21 @@ python3 -m unittest discover -s release/packaging/tests -p test_homebrew.py -v
 The formula installs the native CLI plus all core/workflow/resolver archives in its
 Homebrew keg. Its small launcher defaults `DOCKPIPE_SYSTEM_ROOT` to that package
 directory, respecting an explicit user override. No engine changes or writes to
-`/Library/Application Support` are needed. The formula conflicts with stable
-`dockpipe`; staging is not a separate product identity. Its candidate version is
+`/Library/Application Support` are needed. The stable `dockpipe` formula is not
+published, so staging must not declare a conflict with that unavailable formula.
+Add reciprocal conflicts when the stable formula is published: both install the
+`dockpipe` command. Staging is not a separate product identity. Its candidate version is
 upgradeable even while the binary reports the unchanged numeric core version.
 
 The tap is macOS-only initially. APT and portable archives remain the Linux paths.
 Native Homebrew installation must pass on hosted Macs before the formula is made
 available. A locally generated Ruby file is not installation proof.
+
+## Desktop cask
+
+`dockpipe-desktop-staging` installs `DockPipe.app` from the candidate's native desktop ZIP and depends on `dockpipe-staging` for the terminal command. The app carries its matching runtime and complete package store, so Finder launches do not depend on a login shell's PATH. Cask removal retains the CLI and user data. The direct DMG uses Apple's Installer instead and must not be mixed with the cask.
+
+Desktop source and signing/native-validation boundaries are documented in [desktop/README.md](../desktop/README.md). The earlier hosted run cited above qualifies only the existing CLI formula, not this new cask.
 
 ## Stable formula follow-up
 
