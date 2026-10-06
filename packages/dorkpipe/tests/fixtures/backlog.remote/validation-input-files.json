@@ -190,6 +190,7 @@
   "src/lib/infrastructure/operationrecord/operation_event.go",
   "src/lib/infrastructure/operationrecord/operation_result.go",
   "src/lib/infrastructure/operationrecord/spinner.go",
+  "src/lib/infrastructure/package_inventory.go",
   "src/lib/infrastructure/package_sources.go",
   "src/lib/infrastructure/package_tarballs.go",
   "src/lib/infrastructure/packagebuild/core.go",
