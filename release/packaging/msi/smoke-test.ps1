@@ -106,6 +106,17 @@ if ($ExpectLauncher) {
     if (-not (Test-Path -LiteralPath $startMenuShortcut)) {
         throw "DockPipe Launcher shortcut not found at $startMenuShortcut"
     }
+    python (Join-Path $PSScriptRoot "../desktop/smoke.py") $launcherPath $exePath
+    if ($LASTEXITCODE -ne 0) { throw "Installed desktop runtime smoke failed" }
+
+    $cliOnly = Start-Process msiexec.exe -ArgumentList @("/i", "`"$MsiPath`"", "/qn", "/norestart", "ADDLOCAL=MainFeature", "REMOVE=LauncherFeature") -Wait -PassThru
+    if ($cliOnly.ExitCode -notin @(0, 3010) -or (Test-Path -LiteralPath $launcherPath) -or -not (Test-Path -LiteralPath $exePath)) {
+        throw "Switching MSI to CLI-only failed"
+    }
+    $restoreDesktop = Start-Process msiexec.exe -ArgumentList @("/i", "`"$MsiPath`"", "/qn", "/norestart", "ADDLOCAL=MainFeature,LauncherFeature") -Wait -PassThru
+    if ($restoreDesktop.ExitCode -notin @(0, 3010) -or -not (Test-Path -LiteralPath $launcherPath)) {
+        throw "Restoring MSI desktop feature failed"
+    }
 }
 
 $userPath = Get-UserPathValue

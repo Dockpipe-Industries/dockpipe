@@ -12,6 +12,11 @@ This tree lives under **`src/app/tooling/dockpipe-launcher/`** as first-party Do
 - **`dockpipe`** on **`PATH`** (or set **dockpipe binary** in each context’s settings).
 - Host tools DockPipe already needs: **`bash`**, **`docker`**, **`git`** — see [docs/install.md](../../../../docs/install.md).
 
+On macOS, Finder launches append the standard Homebrew binary directories to the inherited `PATH`.
+Docker uses the user's saved context or inherited endpoint settings, including a Colima Docker
+profile. The launcher does not start or switch container providers. See
+[Colima setup](../../../../docs/install.md#containers-with-colima).
+
 ## Build
 
 `CMakeLists.txt` lives under **`src/app/tooling/dockpipe-launcher/`**. Run CMake with that directory as the **source** (or `cd` there first).

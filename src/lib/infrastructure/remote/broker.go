@@ -190,14 +190,17 @@ func (b *Broker) operator(path string, raw []byte) (any, error) {
 		b.state.Nodes[request.Node] = Enrollment{SecretHash: Hash(secret), ExpiresAt: expires}
 		return contract.Invitation{Schema: contract.Version, Node: request.Node, Secret: secret, ExpiresAt: expires}, b.save()
 	case "/v1/submit":
-		var request contract.Submission
+		var request contract.SubmitRequest
 		if err := Decode(raw, &request); err != nil {
 			return nil, err
 		}
 		node, exists := b.state.Nodes[request.Node]
 		enrolled := exists && !node.Revoked && node.TokenHash != ""
-		job, changed, err := contract.Queue(b.state.Jobs).Submit(request, enrolled, time.Now())
+		job, changed, err := contract.Queue(b.state.Jobs).Submit(request.Submission, enrolled, time.Now())
 		if err != nil {
+			return nil, err
+		}
+		if err := b.storeBundle(request); err != nil {
 			return nil, err
 		}
 		if !changed {
@@ -262,7 +265,7 @@ func (b *Broker) worker(node, path string, raw []byte) (any, error) {
 		}
 		b.state.Jobs[selected.ID] = *selected
 		return selected, b.save()
-	case "/v1/pulse", "/v1/result":
+	case "/v1/pulse", "/v1/result", "/v1/bundle":
 		var request struct {
 			ID      string           `json:"id"`
 			Session string           `json:"session"`
@@ -274,6 +277,9 @@ func (b *Broker) worker(node, path string, raw []byte) (any, error) {
 		job, err := contract.Queue(b.state.Jobs).Assigned(request.ID, node, request.Session)
 		if err != nil {
 			return nil, err
+		}
+		if path == "/v1/bundle" {
+			return b.loadBundle(job)
 		}
 		if path == "/v1/pulse" {
 			return map[string]bool{"cancel": job.CancelRequested}, nil

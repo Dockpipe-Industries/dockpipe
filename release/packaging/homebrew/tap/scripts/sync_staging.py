@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Prepare or publish a verified staging formula; never execute downloaded code."""
+"""Prepare or publish a verified staging formula and desktop cask; never execute downloaded code."""
 import argparse
 import base64
 import hashlib
@@ -11,12 +11,13 @@ import subprocess
 import urllib.error
 import urllib.request
 
-from staging_formula import ORIGIN, candidate_order, candidate_parts, parse_checksums, render
+from staging_formula import ORIGIN, candidate_order, candidate_parts, parse_checksums, render, render_cask
 
 
 SOURCE = "Dockpipe-Industries/dockpipe"
 TAP = "Dockpipe-Industries/homebrew-dockpipe"
 FORMULA = "Formula/dockpipe-staging.rb"
+CASK = "Casks/dockpipe-desktop-staging.rb"
 
 
 def download(path):
@@ -67,7 +68,7 @@ def completed_candidate(pointer, catalog, run):
     return run.get("status") == "completed" and run.get("conclusion") == "success"
 
 
-def latest_formula():
+def latest_release():
     pointer = json.loads(download("packages/latest.json"))
     candidate = pointer["candidate"]
     _, run_id, attempt, _ = candidate_parts(candidate)
@@ -82,7 +83,7 @@ def latest_formula():
     checksums = parse_checksums(download(f"{base}/SHA256SUMS.txt").decode())
     if checksums.get("release-manifest.json") != hashlib.sha256(catalog_bytes).hexdigest():
         raise ValueError("Release catalog checksum mismatch")
-    return candidate, render(candidate, checksums)
+    return candidate, {FORMULA: render(candidate, checksums), CASK: render_cask(candidate, checksums)}
 
 
 def require_forward_update(current, candidate, formula):
@@ -106,20 +107,23 @@ def output(name, value):
 
 
 def prepare(directory):
-    result = latest_formula()
+    result = latest_release()
     if result is None:
         output("changed", "false")
         return
-    candidate, formula = result
-    current_path = Path(FORMULA)
-    current = current_path.read_text() if current_path.exists() else ""
-    changed = require_forward_update(current, candidate, formula)
+    candidate, contents = result
+    changed = False
+    for name, content in contents.items():
+        current_path = Path(name)
+        current = current_path.read_text() if current_path.exists() else ""
+        changed = require_forward_update(current, candidate, content) or changed
     output("changed", str(changed).lower())
     if not changed:
         print(f"Tap already contains {candidate}.")
         return
     directory.mkdir(parents=True, exist_ok=True)
-    (directory / "dockpipe-staging.rb").write_text(formula)
+    for name, content in contents.items():
+        (directory / Path(name).name).write_text(content)
     (directory / "candidate.txt").write_text(candidate + "\n")
     print(f"Prepared {candidate} for native Homebrew validation.")
 
@@ -128,28 +132,33 @@ def publish(directory):
     if os.environ.get("GITHUB_REPOSITORY") != TAP or os.environ.get("GITHUB_REF") != "refs/heads/main":
         raise ValueError("Publication requires the official tap's main branch")
     candidate = (directory / "candidate.txt").read_text().strip()
-    formula = (directory / "dockpipe-staging.rb").read_text()
-    latest = latest_formula()
+    contents = {name: (directory / Path(name).name).read_text() for name in (FORMULA, CASK)}
+    latest = latest_release()
     if latest is None or latest[0] != candidate:
         print("A different candidate is current; leaving the tap unchanged.")
         return
-    if latest[1] != formula:
-        raise ValueError("Tested formula differs from the current release metadata")
-    endpoint = f"{TAP}/contents/{FORMULA}"
-    existing = github(endpoint + "?ref=main", allow_missing=True)
-    current = base64.b64decode(existing["content"]).decode() if existing else ""
-    if not require_forward_update(current, candidate, formula):
-        print("Formula already published.")
-        return
-    payload = {"message": f"Update DockPipe staging to {candidate}", "branch": "main",
-               "content": base64.b64encode(formula.encode()).decode()}
-    if existing:
-        payload["sha"] = existing["sha"]
-    result = github(endpoint, payload)
-    verified = github(endpoint + "?ref=main")
-    if base64.b64decode(verified["content"]).decode() != formula:
-        raise ValueError("Published formula read-back differs from the tested content")
-    print(f"Published {candidate}: {result['commit']['sha']}")
+    if latest[1] != contents:
+        raise ValueError("Tested tap content differs from the current release metadata")
+    # Validate both installed versions before the first write. Publish the CLI
+    # first: the cask's dependency must exist. Each update is independently
+    # idempotent, so a retry safely completes an interrupted pair.
+    updates = []
+    for name, content in contents.items():
+        endpoint = f"{TAP}/contents/{name}"
+        existing = github(endpoint + "?ref=main", allow_missing=True)
+        current = base64.b64decode(existing["content"]).decode() if existing else ""
+        if require_forward_update(current, candidate, content):
+            updates.append((endpoint, content, existing))
+    for endpoint, content, existing in updates:
+        payload = {"message": f"Update DockPipe staging to {candidate}", "branch": "main",
+                   "content": base64.b64encode(content.encode()).decode()}
+        if existing:
+            payload["sha"] = existing["sha"]
+        result = github(endpoint, payload)
+        verified = github(endpoint + "?ref=main")
+        if base64.b64decode(verified["content"]).decode() != content:
+            raise ValueError("Published tap read-back differs from the tested content")
+        print(f"Published {candidate}: {result['commit']['sha']}")
 
 
 if __name__ == "__main__":

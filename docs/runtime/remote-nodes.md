@@ -2,7 +2,8 @@
 
 `dockpipe remote` delivers one explicitly assigned workflow to a user-owned node. The node makes
 outbound HTTPS requests and invokes the existing local CLI. No SSH server, inbound worker port,
-remote shell, source synchronization, or automatic Git operation is involved.
+inbound shell endpoint or automatic Git operation is involved. Source delivery is an explicit,
+bounded snapshot; it does not synchronize an entire checkout.
 
 This initial single-operator CLI has Linux loopback proof. Darwin builds and launchd manifests
 do not establish native Mac, sleep/wake, or live Cloudflare readiness. There is no remote GUI yet.
@@ -50,6 +51,10 @@ dockpipe remote setup --resolver cloudflare --hostname benchmarks.example.com
 
 This command authorizes its documented setup effects: browser login, one named tunnel, its DNS
 route, private local state, and a user service. Passwords and MFA stay in Cloudflare's browser flow.
+Setup reports its login, tunnel, DNS, and readiness stages and prints the next pairing command.
+Cloudflared opens the browser itself; the resolver preserves desktop-session variables including
+XAUTHORITY and XDG desktop settings. If no window opens, follow cloudflared's printed login URL
+and keep the terminal open. A valid existing account certificate skips browser login explicitly.
 Existing account credentials are reused without copying them to nodes. Conflicting DNS records
 are not overwritten. Account-management credentials never appear in the runtime command.
 
@@ -76,57 +81,116 @@ dockpipe remote invite --node mac-mini --out "$PWD/pairing/mac-mini.json"
 Transfer the private file to the Mac. Do not commit it or paste it into chat. It enrolls one worker
 credential; an exact retry recovers a lost response. It contains no Cloudflare or operator credential.
 
-Prepare the desired source revision and a local profile on the Mac. These example paths must match
-an actual workflow; the connector does not create a Nucleon benchmark workflow:
+On the Mac, explicitly authorize workflow delivery from this broker and start the worker:
+
+```bash
+dockpipe remote pair --invite /private/path/mac-mini.json --allow-delivery
+dockpipe remote worker
+```
+
+Pairing prints the next command. Use `dockpipe remote service --role worker` instead of the foreground
+worker when you want a persistent user service. `--timeout 3600` is the default local delivery limit;
+it can be set during pairing, up to 86400 seconds. Pairing does not silently change saved authority:
+an exact retry is allowed, but changing profiles or the delivery timeout requires inspecting and
+editing the private worker configuration while the worker is stopped.
+
+**Delivery grants this broker permission to execute supplied workflow code as the Mac user.** It is
+not a sandbox. Only pair with your own trusted broker. Existing profile-only workers remain closed
+to delivery. Both broker and worker must use a CLI revision supporting delivery; old versions reject
+the new fields. Provider account credentials stay on the broker.
+
+Back on Linux, choose a local workflow and preview the snapshot:
+
+```bash
+dockpipe remote submit --node mac-mini --id benchmark-001 \
+  --workflow-file workflows/benchmark/config.yml \
+  --artifact results/benchmark.json --dry-run
+```
+
+Remove `--dry-run` to submit. The preview lists filenames, total bytes, output selections, and the
+content digest; it never prints file contents or contacts the broker. Paths resolve from the current
+project, or `--workdir <directory>`. Submission sends the selected workflow's directory, including
+its assets. A workflow file directly at the project root sends only that file, avoiding accidental
+whole-project upload. Use repeatable `--include <relative-file-or-directory>` for inputs outside
+the workflow directory, such as source files or small test data.
+
+For package dependencies, add repeatable `--dependency <unpacked-package-directory>`. Each directory
+must have a `package.yml` with a unique name and kind `workflow`, `resolver`, or `assets`. Include the
+complete `depends` closure; missing dependencies fail with the required name. These are selected
+package payloads, not the entire installed store. Bundles and core packages, registry downloads,
+compile hooks, host tool installation, and cross-compilation are not performed by delivery. Build
+portable source packages or target-compatible payloads first; the Mac still needs its native tools.
+For example:
+
+```bash
+dockpipe remote submit --node mac-mini --id benchmark-002 \
+  --workflow-file workflows/benchmark/config.yml \
+  --include fixtures/sample.txt --dependency vendor/metrics \
+  --artifact results/benchmark.json
+```
+
+The worker verifies the SHA256 digest and package manifest closure, writes the files into a new
+private per-job workdir, validates the workflow YAML, then invokes its local DockPipe executable.
+Delivered packages are selected through a generated local project configuration. Global packages
+and existing installations are not modified. Workflow imports and external script references must
+be included explicitly; arbitrary script dependencies cannot be inferred. Missing runtime inputs
+or native tools produce a failed result, not an automatic download or source synchronization.
+
+No sender environment, home directory, project configuration, Git metadata, credential files, or
+local state is automatically copied. Hidden paths, common credential filenames, links, special
+files, duplicate/case-colliding paths, and file/directory collisions reject the snapshot. Select a
+clean source tree rather than renaming private files to evade these checks. Filename checks are not
+a secret scanner: review scripts and YAML for embedded secrets. Credentials needed by a workflow
+must be configured separately on the worker through its normal local resolver mechanisms.
+
+```bash
+dockpipe remote jobs
+dockpipe remote result --id benchmark-001
+dockpipe remote result --id benchmark-001 --out /private/new-results-directory
+dockpipe remote cancel --id benchmark-001
+dockpipe remote revoke --id mac-mini
+```
+
+For an installed workflow instead, retain the narrower profile mode. Prepare its source on the Mac
+and supply a local profiles JSON:
 
 ```json
 {
-  "nucleon-bench": {
-    "workdir": "/Users/you/source/nucleon",
-    "workflow_file": "/Users/you/source/nucleon/workflows/benchmark/config.yml",
+  "bench": {
+    "workdir": "/Users/you/source/project",
+    "workflow": "benchmark",
     "timeout_seconds": 3600,
     "artifacts": ["results/benchmark.json"]
   }
 }
 ```
 
-Alternatively, `workflow` selects a named installed/source workflow. Set exactly one selector.
-Profiles grant local workflow authority. Requests cannot supply argv, environment, paths, workflow
-bodies, or new profiles. A workflow retains the local user's ordinary authority; this connector
-does not add a host sandbox.
+Pair with `--profiles /private/path/profiles.json`, then submit with `--profile bench` in place of
+`--workflow-file`. A profile selects either a workflow name or an absolute `workflow_file`, never
+both. Profiles and delivery can be approved together at pairing. Profile submissions cannot replace
+local paths, environment, argv, or workflow definitions.
 
-```bash
-dockpipe remote pair --invite /private/path/mac-mini.json --profiles /private/path/profiles.json
-dockpipe remote service --role worker
-```
-
-Use `dockpipe remote worker` for foreground diagnosis. Pairing files must be mode 0600; state
-directories must be private. Default state is the existing global DockPipe data root plus `remote`;
-all commands accept `--state` for another private directory.
-
-Back on the broker:
-
-```bash
-dockpipe remote submit --node mac-mini --profile nucleon-bench --id nucleon-arm64-001
-dockpipe remote jobs
-dockpipe remote result --id nucleon-arm64-001
-dockpipe remote result --id nucleon-arm64-001 --out /private/new-results-directory
-dockpipe remote cancel --id nucleon-arm64-001
-dockpipe remote revoke --id mac-mini
-```
+Pairing files must be mode 0600; state directories must be private. Default state is the existing
+global DockPipe data root plus `remote`; all commands accept `--state` for another private directory.
 
 Download writes `result.json`, `workflow.log`, and configured files under `artifacts/`. Results
 record exit status, timing, OS, architecture, and log truncation. The workflow owns source/compiler
-identity, benchmark measurements, and fresh output generation. Artifact paths are checkout-relative;
+identity, benchmark measurements, and fresh output generation. Artifact paths are relative to the
+profile checkout or the delivered job workdir;
 linked, escaping, or oversized files reject.
 
 ## Recovery and bounds
 
 The first implementation allows 64 nodes, 128 retained jobs, 32 MiB of broker metadata, one unresolved
 assignment per node, a 24-hour profile timeout, 1 MiB of logs, and 8 MiB of artifacts per job.
+A delivery allows at most 1024 regular files and 8 MiB of
+source bytes, with canonical relative paths up to 512 characters. Executable bits are preserved;
+other source permissions/ownership are not transferred.
 Result payloads are stored separately under the private `results/` state directory, with
 content digests in the broker metadata; maximum-size valid results fit for every admitted job.
-Keep that directory together with `broker.json` for backup/recovery.
+Source bundles are separately retained under private `bundles/` files, with digests in metadata.
+Keep `results/` and `bundles/` together with `broker.json` for backup/recovery. Worker `deliveries/`
+staging and `jobs/` journals are retained for inspection, including failed validation.
 Automatic retention and large-corpus transfer are not implemented. Download evidence and plan a
 fresh broker state when the configured capacity is exhausted.
 
@@ -164,10 +228,15 @@ implemented providers. Cloud-machine provisioning remains runtime-owned work.
 ```bash
 go test -race ./src/lib/infrastructure/remote ./src/lib/application/internal/remotecmd ./packages/remote/tools/...
 python3 packages/remote/tests/smoke.py /absolute/path/to/new/dockpipe
+python3 packages/remote/tests/delivery_smoke.py /absolute/path/to/new/dockpipe
 ```
 
-The smoke uses real CLI broker/worker processes and a native workflow on loopback. It does not
-contact Cloudflare, install services, or run Nucleon. Resolver tests use fake provider commands.
+The smokes use real CLI broker/worker processes and native workflows on loopback. The delivery
+smoke removes the original sender paths before starting an empty worker, executes a workflow
+with assets, an extra input and a package dependency, and retrieves logs/results. It also checks
+preview, pairing retries/authority changes, and submission identity. Neither smoke contacts
+Cloudflare, installs services, or runs Nucleon. Resolver tests use fake provider commands and
+exercise the desktop environment passed to the browser launcher.
 
 References: [Cloudflare login/setup](https://developers.cloudflare.com/tunnel/features/locally-managed-tunnels/create-local-tunnel/),
 [account and tunnel permissions](https://developers.cloudflare.com/tunnel/features/locally-managed-tunnels/tunnel-permissions/).
