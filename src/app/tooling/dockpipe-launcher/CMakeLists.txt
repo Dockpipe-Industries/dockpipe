@@ -29,6 +29,7 @@ set(DOCKPIPE_LAUNCHER_SOURCES
     src/WorkflowCatalog.cpp
     src/LauncherSettings.cpp
     src/BasicModeWidget.cpp
+    src/PackageCommand.cpp
     src/PackageManagerDialog.cpp
     src/SettingsDialog.cpp
     src/LogViewerDialog.cpp
@@ -76,4 +77,21 @@ if(BUILD_TESTING AND UNIX)
     target_include_directories(launcher-environment-test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
     target_link_libraries(launcher-environment-test PRIVATE Qt6::Core)
     add_test(NAME launcher-environment COMMAND launcher-environment-test)
+    add_executable(package-command-test tests/PackageCommandTest.cpp src/PackageCommand.cpp)
+    target_include_directories(package-command-test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+    target_link_libraries(package-command-test PRIVATE Qt6::Core)
+    add_test(NAME package-command COMMAND package-command-test)
+    add_executable(global-root-test tests/GlobalRootTest.cpp src/LauncherEnvironment.cpp)
+    target_include_directories(global-root-test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+    target_link_libraries(global-root-test PRIVATE Qt6::Core)
+    add_test(NAME global-root-default COMMAND global-root-test)
+    add_test(NAME global-root-inherited COMMAND global-root-test --inherited)
+    add_executable(package-manager-test
+        tests/PackageManagerTest.cpp src/PackageManagerDialog.cpp src/PackageCommand.cpp
+        src/DockpipeChoices.cpp src/WorkflowCatalog.cpp src/LauncherSettings.cpp
+        src/ContextStore.cpp src/Context.cpp)
+    target_include_directories(package-manager-test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+    target_link_libraries(package-manager-test PRIVATE Qt6::Widgets)
+    add_test(NAME package-manager COMMAND package-manager-test)
+    set_tests_properties(package-manager PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
 endif()
