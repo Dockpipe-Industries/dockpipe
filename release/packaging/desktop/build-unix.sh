@@ -15,6 +15,7 @@ if [[ "$(uname -s)" == Darwin ]]; then
 fi
 cmake "${args[@]}"
 cmake --build "$build" --parallel 2
+ctest --test-dir "$build" --output-on-failure
 if [[ "$(uname -s)" == Darwin ]]; then
   bash "$root/release/packaging/desktop/macos/package.sh" "$version" "$build/DockPipe.app" "$out"
 else

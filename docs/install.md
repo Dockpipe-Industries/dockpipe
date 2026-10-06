@@ -273,6 +273,42 @@ The command is `dockpipe`; this formula alone does not install the desktop launc
 
 See [staging installation](../release/docs/staging.md#homebrew-on-a-test-mac), [tap maintenance](../release/packaging/homebrew/README.md), and [release automation](../release/docs/releasing.md).
 
+### Containers with Colima
+
+For container workflows, you can use [Colima's Docker runtime](https://github.com/abiosoft/colima#docker)
+with the Docker CLI. Docker Desktop is another option. Neither is needed for host-only workflows.
+For a new Colima installation:
+
+```sh
+brew install colima docker docker-buildx
+colima start --runtime docker
+docker context ls
+docker version
+```
+
+Follow the [Homebrew Buildx setup](https://formulae.brew.sh/formula/docker-buildx) to add the actual
+`$(brew --prefix)/lib/docker/cli-plugins` directory to `cliPluginsExtraDirs` in your existing Docker
+configuration (`~/.docker/config.json`, or the directory selected by `DOCKER_CONFIG`). Merge that
+setting without replacing existing configuration. Verify `docker buildx version` before workflows
+that build images. Workflows using Compose also need
+[docker-compose and its plugin setup](https://formulae.brew.sh/formula/docker-compose).
+
+DockPipe uses the [Docker client's context selection](https://docs.docker.com/engine/manage-resources/contexts/).
+Use `docker context ls` to find your profile's context, then `docker context use <name>` if you want
+to change the default for both terminals and the launcher. For one terminal command, use
+`DOCKER_CONTEXT=<name> dockpipe doctor`. Existing `DOCKER_HOST`, `DOCKER_CONTEXT`, and `DOCKER_CONFIG`
+settings retain Docker's normal precedence; DockPipe does not switch contexts or start a VM.
+
+The launcher adds `/opt/homebrew/bin` and `/usr/local/bin` after inherited `PATH` entries so Finder
+launches can discover Homebrew tools. Shell-only exports are not inherited by Finder; use Docker's
+saved context for Finder launches, or start the app executable from a configured terminal. Custom
+Homebrew locations still need an explicit `PATH`. If Docker is unreachable, start the selected Colima
+profile and verify `docker version` before retrying `dockpipe doctor`.
+
+The compatibility changes are implemented in source. Native Colima container, mount, networking,
+and Compose qualification on macOS remains pending; the earlier desktop installer dry run does not
+cover this integration.
+
 ---
 
 ## Building the .deb (for maintainers)
