@@ -1,7 +1,8 @@
 # CLI reference
 
 `dockpipe remote` provides provider-neutral setup, pairing, outbound workers, explicit workflow
-submission, cancellation, and result download. See [Remote nodes](runtime/remote-nodes.md) for the
+submission (including source/assets/package delivery with `--workflow-file`), cancellation, and result download.
+Workers explicitly opt in with `remote pair --allow-delivery`; existing profiles remain supported. See [Remote nodes](runtime/remote-nodes.md) for the
 Cloudflare resolver, local profiles, credentials, recovery, and current qualification limits.
 
 **Run → isolate → act.** Overrides use the same names as workflow YAML. Precedence: **CLI** > config > environment.

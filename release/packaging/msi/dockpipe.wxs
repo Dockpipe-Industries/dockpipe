@@ -12,7 +12,7 @@
     <Package InstallerVersion="500"
              Compressed="yes"
              InstallScope="perUser"
-             Description="dockpipe - run commands in disposable containers"
+             Description="DockPipe CLI and desktop workflow launcher"
              Comments="Apache-2.0"
              Manufacturer="Jamie Steele" />
 
@@ -24,6 +24,7 @@
              Title="DockPipe CLI"
              Description="Core dockpipe command-line interface."
              Level="1"
+             Absent="disallow"
              Display="expand"
              ConfigurableDirectory="INSTALLFOLDER">
       <ComponentGroupRef Id="CoreComponents" />

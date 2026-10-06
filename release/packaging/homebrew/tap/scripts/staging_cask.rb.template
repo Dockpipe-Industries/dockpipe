@@ -1,0 +1,22 @@
+# Generated from a completed staging release; update through the sync workflow.
+cask "dockpipe-desktop-staging" do
+  version "@CANDIDATE@"
+
+@PLATFORMS@
+
+  name "DockPipe Desktop (staging)"
+  desc "Desktop launcher and command-line runtime for DockPipe workflows"
+  homepage "https://github.com/Dockpipe-Industries/dockpipe"
+
+  depends_on macos: ">= :ventura"
+  depends_on formula: "dockpipe-industries/dockpipe/dockpipe-staging"
+
+  app "DockPipe.app"
+
+  caveats <<~EOS
+    This is a staging candidate. Open DockPipe from Applications.
+    The dockpipe command is provided by the dockpipe-staging formula.
+    Use this cask or the direct DMG installer, not both.
+    Unsigned staging builds have not passed Apple's notarization checks.
+  EOS
+end

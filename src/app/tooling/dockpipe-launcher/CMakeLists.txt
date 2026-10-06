@@ -1,5 +1,6 @@
-cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 3.21.1)
 project(dockpipe-launcher VERSION 0.1.0 LANGUAGES CXX)
+set(DOCKPIPE_RELEASE_VERSION "${PROJECT_VERSION}" CACHE STRING "Desktop release version")
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -16,6 +17,7 @@ find_package(Qt6 REQUIRED COMPONENTS Widgets Network Concurrent)
 
 set(DOCKPIPE_LAUNCHER_SOURCES
     src/main.cpp
+    src/LauncherEnvironment.cpp
     src/SingleInstanceGuard.cpp
     src/Theme.cpp
     src/Context.cpp
@@ -46,9 +48,32 @@ else()
     qt_add_executable(dockpipe-launcher ${DOCKPIPE_LAUNCHER_SOURCES})
 endif()
 
+if(APPLE)
+    set_target_properties(dockpipe-launcher PROPERTIES
+        MACOSX_BUNDLE TRUE
+        OUTPUT_NAME DockPipe
+        MACOSX_BUNDLE_GUI_IDENTIFIER com.dockpipe.launcher
+        MACOSX_BUNDLE_BUNDLE_NAME DockPipe
+        MACOSX_BUNDLE_BUNDLE_VERSION "${DOCKPIPE_RELEASE_VERSION}"
+        MACOSX_BUNDLE_SHORT_VERSION_STRING "${DOCKPIPE_RELEASE_VERSION}"
+        MACOSX_BUNDLE_ICON_FILE DockPipe.icns
+    )
+endif()
+
 target_include_directories(dockpipe-launcher PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
 target_link_libraries(dockpipe-launcher PRIVATE Qt6::Widgets Qt6::Network Qt6::Concurrent)
 
 if(MSVC)
     target_compile_definitions(dockpipe-launcher PRIVATE _CRT_SECURE_NO_WARNINGS)
+endif()
+
+include(CTest)
+if(BUILD_TESTING AND UNIX)
+    add_executable(launcher-environment-test
+        tests/LauncherEnvironmentTest.cpp
+        src/LauncherEnvironment.cpp
+    )
+    target_include_directories(launcher-environment-test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+    target_link_libraries(launcher-environment-test PRIVATE Qt6::Core)
+    add_test(NAME launcher-environment COMMAND launcher-environment-test)
 endif()

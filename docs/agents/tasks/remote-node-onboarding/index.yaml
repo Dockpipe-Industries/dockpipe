@@ -1,6 +1,6 @@
 schema: 1
 task: TASK-036
-topic: Provider-neutral remote nodes and browser-authorized edge setup
+topic: Provider-neutral workflow delivery and browser-authorized remote onboarding
 read_first:
   - overview.md
 canonical:

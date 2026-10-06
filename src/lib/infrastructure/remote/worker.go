@@ -20,7 +20,7 @@ func RunWorker(ctx context.Context, root, executable string, config contract.Wor
 	if config.Schema != contract.Version || !contract.ValidID(config.Node) || len(config.Token) != 64 {
 		return errors.New("invalid worker identity")
 	}
-	if err := ValidateProfiles(config.Profiles); err != nil {
+	if err := ValidateWorkerAuthority(config); err != nil {
 		return err
 	}
 	if err := PrivateDirectory(root); err != nil {
@@ -81,13 +81,22 @@ func RunWorker(ctx context.Context, root, executable string, config contract.Wor
 				return err
 			}
 			profile, approved := config.Profiles[job.Profile]
-			if !approved {
-				journal.Result = &contract.Result{Status: "failure", ExitCode: -1, Log: "Workflow profile is not approved on this node."}
-			} else if job.CancelRequested {
+			if job.CancelRequested {
 				journal.Result = &contract.Result{Status: "cancelled", ExitCode: -1}
-			} else {
-				result := executeWithHeartbeat(ctx, client, executable, profile, job.ID, job.Session)
-				journal.Result = &result
+			} else if job.BundleHash != "" {
+				profile, err = deliveryProfile(ctx, client, root, *job, config.Delivery)
+				approved = err == nil
+				if err != nil {
+					journal.Result = &contract.Result{Status: "failure", ExitCode: -1, Log: err.Error()}
+				}
+			}
+			if journal.Result == nil {
+				if !approved {
+					journal.Result = &contract.Result{Status: "failure", ExitCode: -1, Log: "Workflow profile is not approved on this node."}
+				} else {
+					result := executeWithHeartbeat(ctx, client, executable, profile, job.ID, job.Session)
+					journal.Result = &result
+				}
 			}
 			if err := WritePrivate(journalPath, journal); err != nil {
 				return err
