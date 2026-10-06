@@ -20,7 +20,7 @@ bool LauncherSettings::load()
     repoRootOverride.clear();
     globalRootOverride.clear();
     extraWorkflowRoots.clear();
-    packageRemotes.clear();
+    packageRemotes = {QStringLiteral("https://packages.dockpipe.com")};
     thirdPartyDisclaimerDismissed = false;
     recentProjectFolders.clear();
 
@@ -52,6 +52,7 @@ bool LauncherSettings::load()
         }
     }
     if (o.contains(QStringLiteral("packageRemotes")) && o.value(QStringLiteral("packageRemotes")).isArray()) {
+        packageRemotes.clear();
         const QJsonArray a = o.value(QStringLiteral("packageRemotes")).toArray();
         for (const QJsonValue &v : a) {
             const QString p = v.toString().trimmed();

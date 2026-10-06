@@ -17,6 +17,28 @@ Docker uses the user's saved context or inherited endpoint settings, including a
 profile. The launcher does not start or switch container providers. See
 [Colima setup](../../../../docs/install.md#containers-with-colima).
 
+## Package remotes
+
+Open **Settings → Package Remotes** and choose **Use production** or **Use staging**.
+New settings default to `https://packages.dockpipe.com`; an explicitly saved empty list
+keeps remote browsing disabled. **Use staging** selects `https://packages.staging.dockpipe.com`.
+Installing a staging launcher does not silently change an existing remote selection.
+Custom remotes can be HTTPS manifest URLs; official origin-only URLs expand to
+`/packages/latest.json`. Multiple saved remotes appear in the package manager's selector.
+
+**Packages → Marketplace** reads the selected catalog for this machine's platform, supports
+search, and installs the selected package into the user store. Requests run asynchronously;
+errors stay visible and operations can be cancelled. Install pins the displayed store and
+checksum. A matching installed version is labelled **Version installed**; this does not assert
+identical content across staging candidates. The details explain replacement and dependencies.
+
+**Installed** uses the CLI inventory, including user packages and packages supplied by the
+system installer, Brew, or app bundle. Closing Packages refreshes the launcher's app list.
+The saved **Global Root Override** now applies to both package commands and workflow children;
+an inherited `DOCKPIPE_GLOBAL_ROOT` remains authoritative. The launcher delegates all package
+networking, integrity checks, and installation to `dockpipe package`; see the
+[package contract](../../../../docs/packages/package-model.md#remote-catalogs-and-user-installation).
+
 ## Build
 
 `CMakeLists.txt` lives under **`src/app/tooling/dockpipe-launcher/`**. Run CMake with that directory as the **source** (or `cd` there first).

@@ -97,9 +97,47 @@ Compile steps:
 
 The runner checks compiled package-store roots before authoring **`CoreDir`** so you can opt in to the compiled store per workdir. Edit **`package.yml`** after compile to add **namespaces**, **`depends`**, and metadata for store-shaped workflows.
 
+## Remote catalogs and user installation
+
+`dockpipe package catalog --remote <HTTPS manifest URL>` returns JSON for the current
+OS and architecture. It accepts a latest pointer, release catalog, or explicit platform
+store manifest. Latest pointers use origin-relative `manifest` paths; release catalogs
+use release-relative `stores.<os>-<arch>.manifest` paths. Store manifests retain the
+existing schema-1 `packages.core`, `packages.workflows`, and `packages.resolvers` layout.
+The response includes the resolved store `manifest`, `platform`, and flattened `packages`.
+An explicit store URL is already platform-specific; its operator must select the correct store.
+
+`dockpipe package install --remote <URL> --kind workflow --name <name>` installs the selected
+archive under `GlobalPackagesRoot()` in the appropriate `core`, `workflows`, or `resolvers`
+subdirectory. `DOCKPIPE_GLOBAL_ROOT` selects another user root. The command prints JSON with
+its installed `path`. Use the catalog response's resolved manifest URL and `--sha256 <digest>`
+to pin a selection; a changed checksum is rejected before downloading the archive.
+
+Installation requires HTTPS, restricts catalog references and redirects to the selected
+origin, bounds manifest/download/expanded sizes, and verifies SHA-256 and archive metadata.
+Catalog paths cannot traverse directories. Archives may contain only files and directories
+inside their declared package; links, duplicate members, conflicting metadata, and unsafe
+paths are rejected. An omitted package.yml version uses the store's version, matching the
+existing build contract. The completed archive is renamed into the user store only after
+verification. Failed verification preserves an existing package; publication atomicity follows
+the host filesystem's rename guarantees. Installing the same filename replaces that user copy.
+Other versions remain installed, and existing runtime resolution precedence still applies.
+
+These checks establish integrity against the chosen HTTPS catalog; they are not independent
+publisher signatures. Configure origins you trust to supply executable packages. Installation
+does not execute package code, modify the system/Brew store, resolve dependencies automatically,
+or fetch anything during ordinary workflow resolution. Required resolvers must already be
+installed or installed separately. Complete release installers continue to supply the full store.
+
+`dockpipe package list --format json` returns `packages`, `warnings`, and `install_root`,
+covering project, configured, user, and system package stores. Entries include name, version,
+kind, description, source, and path. This is an inventory of available packages; a displayed
+entry does not promise it wins every workflow's resolution precedence. The existing text
+listing remains scoped to the project store.
+
 ## Network boundary: install, not every `run`
 
-**HTTPS / CDN / registry traffic** should be confined to **explicit install (and publish)** commands — e.g. **`dockpipe install core`**, future **`dockpipe install package …`**, **`dockpipe release upload`**. After artifacts are on disk, **`dockpipe run`** against local workflows or installed packages should **not** need network unless the **workflow itself** does (e.g. `docker pull`, API calls).
+**HTTPS / CDN / registry traffic** should be confined to **explicit install (and publish)** commands — e.g. **`dockpipe install core`**, **`dockpipe package catalog/install`**, **`dockpipe release upload`**. After artifacts are on disk, **`dockpipe run`** against local workflows or installed packages should **not** need network unless the **workflow itself** does (e.g. `docker pull`, API calls).
 
 Package metadata may declare an OCI image reference as a **hint/reference**:
 
