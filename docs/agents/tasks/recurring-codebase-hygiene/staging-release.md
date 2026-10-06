@@ -453,3 +453,18 @@ shellcheck pass locally. The user's workflow-verification approval covers this
 bounded repair checkpoint and fresh CI/release dry-run; no release/tap publication
 or promotion is included. Logs are `/tmp/dockpipe-desktop-ci-37407548104-failure.log`
 and `/tmp/dockpipe-desktop-release-37407555314-failure.log`.
+
+Repair checkpoint `7cbfb77feb47b75fed458959de35f40f5cdf6a33` was pushed.
+CI `37408380164` passed all checks, including security, Staticcheck, runtime,
+shell and Docker integration. Release retry `37408385904` passed both Linux
+jobs; Apple Silicon confirmed the corrected app/CLI layout but its smoke forced
+an undeployed `offscreen` Qt plugin (the deployed Mac plugin is `cocoa`). Windows
+compiled/deployed the launcher and built/installed its MSI, but the same smoke
+configuration timed out before reporting the CLI. Logs were read before repair.
+
+The next narrow repair tests the deployed native Cocoa/Windows plugins, retaining
+headless offscreen only on Linux, compares Qt CLI output as filesystem paths so
+Windows separator spelling is irrelevant, and includes plugin diagnostics on a
+future timeout. The Homebrew native check uses Cocoa too. Native verification is
+still required; a Windows timeout is not itself proof of a plugin cause. Local
+Linux diagnostic/window smoke and Homebrew tests pass with the corrected test.
