@@ -119,6 +119,28 @@ suffix as a native installer version. Windows supports the same environment
 variables with the candidate's `install.ps1`. Full platform package bundles are
 available beside the CLI, and individual stores are under `stores/<platform>/`.
 
+### Homebrew on a test Mac
+
+The dedicated `Dockpipe-Industries/homebrew-dockpipe` tap is prepared in
+[`release/packaging/homebrew/tap`](../packaging/homebrew/tap/README.md). After that
+repository is provisioned and its first **Update staging formula** run succeeds:
+
+```sh
+brew install Dockpipe-Industries/dockpipe/dockpipe-staging
+dockpipe --version
+```
+
+Subsequent candidates use `brew update` followed by `brew upgrade dockpipe-staging`.
+The tap polls completed staging releases every 15 minutes and tests installation
+on Apple Silicon and Intel before updating. GitHub schedules can run late; manual
+dispatch is also available. No additional upload secret is required.
+
+Unlike the native DEB/MSI version, the Homebrew formula version includes the
+candidate identity so upgrades distinguish successive builds. It installs the
+native CLI and complete package store. The command is still `dockpipe`, conflicts
+with stable Homebrew `dockpipe`, and uses normal user data unless
+`DOCKPIPE_GLOBAL_ROOT` is set to a separate test directory.
+
 ### APT installation in a test VM
 
 Use the same candidate `base` selected above. Download its public key and compare

@@ -1,6 +1,6 @@
 # TASK-035 Recurring Codebase Hygiene
 
-The authorized [staging release channel](staging-release.md) is implemented and locally verified. The staging bucket/domain exist in isolated state, and the saved APT key plus DockPipe environment binding pass checks. Live checks confirm staging access and AccessDenied for production/state; the account-token policy grants object read/write only on `dockpipe-staging`. The user-approved GitHub setup is complete: `release-staging` contains three secrets, four public variables and a staging-only branch rule, without a manual approval gate. The source is now on staging; HTTPS readiness, successful hosted publication and installation qualification remain pending.
+The authorized [staging release channel](staging-release.md) published candidate `0.6.0-staging.37389279395.1.9725dee90d4d` through successful hosted CI. Public HTTPS, the five platform store manifests, and the staging APT signature are verified. Real installation qualification remains pending. Homebrew tap source is being prepared for automated polling and native Mac installation checks; see the [canonical staging guide](../../../../release/docs/staging.md).
 
 The VM harness repair `d6293516` was promoted through MRs #35–37. Staging run
 `37384217934` passed CI, all native builds, MSI and artifact assembly, then stopped
