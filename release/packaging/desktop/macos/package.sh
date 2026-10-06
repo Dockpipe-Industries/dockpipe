@@ -17,7 +17,9 @@ mkdir -p "$app/Contents/Helpers" "$store/packages/"{core,workflows,resolvers} "$
 cp -R "$root/release/packaging/desktop/licenses" "$resources/"
 cp "$root/LICENSE" "$resources/licenses/DockPipe-LICENSE.txt"
 install -m 755 "$root/src/bin/dockpipe" "$app/Contents/Helpers/dockpipe"
-install -m 755 "$root/release/packaging/desktop/macos/dockpipe" "$app/Contents/MacOS/dockpipe"
+install -m 755 "$root/release/packaging/desktop/macos/dockpipe" "$app/Contents/MacOS/dockpipe-cli"
+# The wrapper name must differ from DockPipe even on case-insensitive APFS.
+otool -hv "$app/Contents/MacOS/DockPipe" >/dev/null
 python3 "$root/release/packaging/release-artifacts.py" verify-store "$out/stores/darwin-$arch"
 cp "$out/stores/darwin-$arch/packages-store-manifest.json" "$store/"
 for kind in core workflow resolver; do
@@ -54,7 +56,7 @@ ditto -c -k --keepParent "$app" "$out/dockpipe-desktop_${version}_darwin_${arch}
 # The direct DMG installs both through Apple's Installer, including the CLI link.
 mkdir -p "$work/payload/Applications" "$work/payload/usr/local/bin" "$work/scripts" "$work/dmg"
 ditto "$app" "$work/payload/Applications/DockPipe.app"
-ln -s /Applications/DockPipe.app/Contents/MacOS/dockpipe "$work/payload/usr/local/bin/dockpipe"
+ln -s /Applications/DockPipe.app/Contents/MacOS/dockpipe-cli "$work/payload/usr/local/bin/dockpipe"
 install -m 755 "$root/release/packaging/desktop/macos/scripts/preinstall" "$work/scripts/preinstall"
 pkgbuild --analyze --root "$work/payload" "$work/components.plist"
 # Keep updates at /Applications; do not relocate a managed app to an old user copy.

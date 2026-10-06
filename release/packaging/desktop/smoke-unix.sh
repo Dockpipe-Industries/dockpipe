@@ -14,8 +14,8 @@ if [[ "$(uname -s)" == Darwin ]]; then
   # Native hosted runners are disposable. Exercise Apple's real Installer and CLI link.
   sudo installer -pkg "$stage/mount/Install DockPipe.pkg" -target /
   python3 "$root/release/packaging/tests/native-smoke.py" /usr/local/bin/dockpipe
-  python3 "$root/release/packaging/desktop/smoke.py" /Applications/DockPipe.app/Contents/MacOS/DockPipe /Applications/DockPipe.app/Contents/MacOS/dockpipe
-  test "$(readlink /usr/local/bin/dockpipe)" = /Applications/DockPipe.app/Contents/MacOS/dockpipe
+  python3 "$root/release/packaging/desktop/smoke.py" /Applications/DockPipe.app/Contents/MacOS/DockPipe /Applications/DockPipe.app/Contents/MacOS/dockpipe-cli
+  test "$(readlink /usr/local/bin/dockpipe)" = /Applications/DockPipe.app/Contents/MacOS/dockpipe-cli
   # Verify managed updates are accepted too.
   sudo installer -pkg "$stage/mount/Install DockPipe.pkg" -target /
   sudo rm /usr/local/bin/dockpipe

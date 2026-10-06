@@ -2,7 +2,7 @@
 set -eu
 destination="${3:-/}"
 command_path="${destination%/}/usr/local/bin/dockpipe"
-expected="/Applications/DockPipe.app/Contents/MacOS/dockpipe"
+expected="/Applications/DockPipe.app/Contents/MacOS/dockpipe-cli"
 homebrew_command="${destination%/}/opt/homebrew/bin/dockpipe"
 if [ -e "$homebrew_command" ] || [ -L "$homebrew_command" ]; then
   echo 'A Homebrew dockpipe command already exists. Use the desktop cask or unlink that formula first.' >&2

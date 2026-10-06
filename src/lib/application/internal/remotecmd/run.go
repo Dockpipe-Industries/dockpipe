@@ -202,10 +202,6 @@ func operator(ctx context.Context, root, command, node, profile, id, output stri
 	}
 }
 
-func pair(ctx context.Context, root, invitePath, profilesPath string) error {
-	return pairWithDelivery(ctx, root, invitePath, profilesPath, false, 3600)
-}
-
 func pairWithDelivery(ctx context.Context, root, invitePath, profilesPath string, allowDelivery bool, timeout int) error {
 	if err := remoteio.PrivateDirectory(root); err != nil {
 		return err
