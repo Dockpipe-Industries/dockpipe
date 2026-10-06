@@ -536,3 +536,9 @@ and dialog tests passed. The new CLI read 59 live staging packages for Linux amd
 one core, workflow, and resolver archive into an isolated `/tmp` root. No package was executed.
 Native macOS/Windows runtime tests and release publication of this implementation remain pending.
 Canonical behavior is in `docs/packages/package-model.md` and the launcher README.
+
+The first promotion CI run (`37424683434`) passed Windows and security checks but exposed
+an omitted validation input in the backlog fixture. Added `package_inventory.go` to the
+explicit fixture input list and advanced its asserted count to 230. The exact failing
+`test_backlog_remote_workflow.sh` passed with host loopback access; sandbox-only TLS
+listener failures were not counted as a pass.
