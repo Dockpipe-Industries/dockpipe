@@ -1,0 +1,13 @@
+#!/bin/sh
+# Resolve the installed app even when invoked through /usr/local/bin/dockpipe.
+command_path="$0"
+while [ -L "$command_path" ]; do
+  target="$(readlink "$command_path")"
+  case "$target" in
+    /*) command_path="$target" ;;
+    *) command_path="$(dirname "$command_path")/$target" ;;
+  esac
+done
+contents="$(cd "$(dirname "$command_path")/.." && pwd)"
+export DOCKPIPE_SYSTEM_ROOT="${DOCKPIPE_SYSTEM_ROOT:-$contents/Resources/share/dockpipe}"
+exec "$contents/Helpers/dockpipe" "$@"
