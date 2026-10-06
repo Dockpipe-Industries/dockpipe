@@ -63,7 +63,7 @@ jobs:
           brew test dockpipe-industries/dockpipe/dockpipe-staging
           dockpipe --version
           brew install --cask dockpipe-industries/dockpipe/dockpipe-desktop-staging
-          QT_QPA_PLATFORM=offscreen /Applications/DockPipe.app/Contents/MacOS/DockPipe --check-installation
+          QT_QPA_PLATFORM=cocoa /Applications/DockPipe.app/Contents/MacOS/DockPipe --check-installation
           brew uninstall --cask dockpipe-desktop-staging
           dockpipe --version
           brew uninstall --formula dockpipe-staging
