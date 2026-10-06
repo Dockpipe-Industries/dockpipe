@@ -17,6 +17,7 @@ find_package(Qt6 REQUIRED COMPONENTS Widgets Network Concurrent)
 
 set(DOCKPIPE_LAUNCHER_SOURCES
     src/main.cpp
+    src/LauncherEnvironment.cpp
     src/SingleInstanceGuard.cpp
     src/Theme.cpp
     src/Context.cpp
@@ -64,4 +65,15 @@ target_link_libraries(dockpipe-launcher PRIVATE Qt6::Widgets Qt6::Network Qt6::C
 
 if(MSVC)
     target_compile_definitions(dockpipe-launcher PRIVATE _CRT_SECURE_NO_WARNINGS)
+endif()
+
+include(CTest)
+if(BUILD_TESTING AND UNIX)
+    add_executable(launcher-environment-test
+        tests/LauncherEnvironmentTest.cpp
+        src/LauncherEnvironment.cpp
+    )
+    target_include_directories(launcher-environment-test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+    target_link_libraries(launcher-environment-test PRIVATE Qt6::Core)
+    add_test(NAME launcher-environment COMMAND launcher-environment-test)
 endif()

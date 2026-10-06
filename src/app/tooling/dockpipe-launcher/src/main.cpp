@@ -1,4 +1,5 @@
 #include "DockpipeChoices.h"
+#include "LauncherEnvironment.h"
 #include "MainWindow.h"
 #include "SingleInstanceGuard.h"
 #include "Theme.h"
@@ -47,6 +48,9 @@ static QIcon dockpipeLauncherIcon()
 
 int main(int argc, char *argv[])
 {
+#if defined(Q_OS_MACOS)
+    extendMacOSExecutablePath();
+#endif
     const QProcessEnvironment startupEnv = QProcessEnvironment::systemEnvironment();
 #if defined(Q_OS_LINUX)
     if (startupEnv.value(QStringLiteral("XDG_SESSION_TYPE")).compare(QStringLiteral("x11"), Qt::CaseInsensitive) == 0) {
