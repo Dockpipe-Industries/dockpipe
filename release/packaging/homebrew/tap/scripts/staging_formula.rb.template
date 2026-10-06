@@ -6,7 +6,6 @@ class DockpipeStaging < Formula
   license "Apache-2.0"
 
   depends_on :macos
-  conflicts_with "dockpipe", because: "both install the dockpipe command"
 
 @PLATFORMS@
 

@@ -124,13 +124,14 @@ func dockerDaemonHints() string {
 	var b strings.Builder
 	switch runtime.GOOS {
 	case "darwin":
-		b.WriteString("  • Start Docker Desktop (whale icon in the menu bar).\n")
+		b.WriteString("  • Start the Docker daemon or VM provider selected by your Docker context.\n")
 	case "windows":
 		b.WriteString("  • Start Docker Desktop. For WSL2: enable Docker Desktop → Settings → Resources → WSL integration.\n")
 	default:
 		b.WriteString("  • Linux: try `sudo systemctl start docker` (or your distro’s service name).\n")
 		b.WriteString("  • Add your user to the `docker` group if you see permission errors on the socket: `sudo usermod -aG docker $USER` (log out/in).\n")
 	}
+	b.WriteString("  • Check `docker context ls` and any DOCKER_CONTEXT or DOCKER_HOST overrides.\n")
 	b.WriteString("  • Docs: https://docs.docker.com/config/daemon/start/\n")
 	return b.String()
 }

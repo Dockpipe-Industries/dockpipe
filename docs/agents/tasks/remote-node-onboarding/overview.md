@@ -2,12 +2,39 @@
 
 ## Objective and authority
 
-Connect Cloudflare through browser login, pair a Mac without SSH, execute a locally approved native
-benchmark workflow, and return results. Preserve generic core execution and resolver-owned edges.
-The user authorized implementation in this checkout on 2026-10-03. Source/local verification does
+Connect Cloudflare through browser login, pair a Mac without SSH, deliver selected workflows with their assets and package dependencies, execute them on an
+explicitly consenting worker, and return results. Preserve generic core execution and resolver-owned edges.
+The user authorized initial implementation on 2026-10-03 and actual source delivery plus simpler
+onboarding on 2026-10-05. This is objective `remote-workflow-delivery-onboarding`. Source/local verification does
 not authorize live account mutation, service installation on this machine, or publication.
 
-## Current state
+## Delivery continuation (2026-10-05)
+
+- State: completed for implementation and local verification. No worktree, commit, push,
+  publication, live tunnel/DNS change, credential action, or persistent service installation.
+- Implemented explicit worker delivery permission, bounded content-addressed source snapshots,
+  safe private staging, package closure and workflow validation, and existing journal/result flow.
+- Added CLI preview, source/extra input/package selection, profile-free opt-in pairing, next-step
+  guidance, and resolver-owned desktop-session propagation with login progress.
+- Real Linux delivery smoke passes with the original sender paths removed before worker start:
+  new workflow, assets, extra input, package child workflow, logs, results and identity conflicts.
+- Terminal proof passed: focused remote domain/infrastructure/CLI/resolver race suite; application,
+  domain, infrastructure, model and CLI regressions; `go vet`; the standard remote package test hook;
+  real CLI profile and delivery smokes; native Linux CLI build and Darwin arm64 CLI/helper builds.
+  Final offline snapshot tests also cover oversized dependency manifests before YAML parsing.
+- The full `go test ./src/lib/... ./src/cmd ./packages/remote/tools/...` attempt is not a pass:
+  applicationir generated-Go checks refused the missing 1 GiB cgroup guard. The unrelated remaining
+  pipelang compiler test was explicitly stopped after that failure. Its contained full campaign and
+  Qt `make build` were not run for this remote-only change. Current application regressions pass,
+  including the test recorded as failing in the earlier baseline below.
+- Canonical docs and CLI help are updated; remote resolver/package versions are 0.2.0. Core remains
+  provider-neutral, provider/browser behavior remains package-owned, and workflow YAML is unchanged.
+- Generated binaries, cross-builds and test logs are under `/tmp`; smokes clean their temporary
+  broker/worker state. No generated deliverables were added to source. HEAD, stashes and `.vscode`
+  settings match the admitted handoff anchors. No additional task or subagent was created.
+- Native Mac and live Cloudflare remain separate qualification; the new code is not published.
+
+## Earlier completed state
 
 - Added single-target delivery, private pairing/state, session-bound jobs, durable worker journals,
   cancellation, local workflow profiles, results, and bounded artifact collection.
@@ -21,7 +48,7 @@ not authorize live account mutation, service installation on this machine, or pu
 - Existing `TestRunWorkflowStepsModeCliWorkdirOverridesInheritedEnvMap` fails with
   `resolve project checkout: lstat /path`; reproduced with pre-change `run.go` via a Go overlay.
 
-## Local verification
+## Earlier local verification
 
 - Core domain/infrastructure/application/CLI regressions pass with the one independently reproduced
   pre-existing checkout-path test excluded. The unfiltered run remains a preserved failure.
@@ -44,6 +71,6 @@ not authorize live account mutation, service installation on this machine, or pu
 ## Boundaries
 
 Initial scope is a single-operator CLI. GUI onboarding, additional Linux dependency installers, Windows
-workers, retention cleanup, corpus/source synchronization, multi-tenant hosting, and DorkPipe graph
+workers, retention cleanup, large-corpus/whole-checkout synchronization, multi-tenant hosting, and DorkPipe graph
 integration remain follow-ups. TASK-015 stays closed on fixture proof. TASK-033 owns wider Mac
 qualification. Canonical behavior: [Remote nodes](../../../runtime/remote-nodes.md).

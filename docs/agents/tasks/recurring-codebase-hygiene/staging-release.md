@@ -380,3 +380,121 @@ with its 15-minute schedule. Native logs and publication receipts are saved unde
 This supersedes the tap-activation blocker above. Homebrew staging installation is
 qualified on the hosted Macs; user hardware, APT/MSI installation, and broader
 end-to-end product behavior remain distinct checks. No master promotion occurred.
+
+### Desktop installation cleanup — 2026-10-05
+
+User approved a consistent Desktop versus CLI / Remote Worker install, including
+an ordinary macOS DMG that installs both CLI and launcher. Implemented locally:
+
+- Native Qt desktop build steps for both Mac architectures, Windows x64 and Linux
+  amd64/arm64. Windows release MSI now requires the deployed launcher, Qt plugins
+  and app-local VC runtime; no silent CLI-only fallback. The CLI feature remains
+  mandatory, while the default-enabled launcher can be removed/restored.
+- macOS app bundle, complete native store and CLI wrapper; direct DMG contains an
+  Apple Installer package for Applications plus `/usr/local/bin/dockpipe`. Its
+  preinstall guard preserves foreign commands/apps. Developer ID and notarization
+  hooks accept existing keychain references; CI currently produces development
+  signatures only, not a Gatekeeper-qualified public desktop release.
+- Homebrew desktop cask source with formula dependency, pinned native app ZIPs,
+  provenance checks and both-architecture validation. Paired publishing checks
+  both versions first and recovers an interrupted formula/cask update. Removed
+  the invalid conflict with the unpublished stable formula.
+- Linux desktop DEB, icons and application menu entry, exact CLI dependency and
+  distribution-derived Qt ABI dependencies. APT now indexes both packages. Docker
+  moved from required dependency to Suggests in the CLI DEB, matching host-only
+  workflows and the existing other Linux package formats.
+- Download catalog and install docs distinguish Desktop from CLI. Packaged launcher
+  searches its sibling CLI before PATH, retaining explicit/development overrides.
+  Changes remain in release tooling and the standalone launcher; no engine change
+  is required for this packaging objective.
+
+Local proof: native Linux Qt build, real desktop DEB extraction and icon/menu
+payload, deployed Qt/CLI diagnostic with SDK paths removed, five-second window
+startup, and real native host workflow passed. All 36 packaging Python tests passed,
+including actual temporary-key signed APT/index consumption via a reviewed host
+run. Windows PowerShell parameter/parse checks, wrapper/ownership tests, shellcheck
+and workflow actionlint passed (the older local actionlint runner catalog required
+ignoring only its existing `macos-15-intel` label diagnostic; existing unrelated
+workflow ShellCheck warnings were not changed).
+
+Receipts/artifacts: `/tmp/dockpipe-desktop-packaging-final.log`,
+`/tmp/dockpipe-desktop-apt-tests.log`, `/tmp/dockpipe-desktop-smoke.log`,
+`/tmp/dockpipe-desktop-build-final.log`, `/tmp/dockpipe-desktop-artifacts/` and
+`/tmp/dockpipe-desktop-extracted/`. Native Mac DMG/Homebrew and Windows MSI checks
+are authored but have not run for this change. No new release, tap update, commit,
+push, native installer execution on user machines, or signing provisioning occurred.
+The activation order is native dry-run, Apple signing qualification for normal
+public desktop delivery, desktop candidate publication, then reviewed tap update.
+
+### Approved checkpoint and native workflow verification
+
+The user approved committing the reviewed work and running the workflows after
+the proposed branch checkpoint/push and native dry-run. Scope is the completed
+remote workflow delivery plus desktop packaging on `js/pipelang`, CI and release
+verification with `dry_run=true` and `build_msi=true`. It does not authorize master
+promotion, public release/tap publication or Apple credential provisioning.
+Pre-commit admission found the new remote smoke asset missing from the authored
+embed manifest; regenerated `embed_assets.go` adds only that reviewed file.
+
+First approved checkpoint `a4b7f2b9c9d55bb2fd4ebc7f9c9ca99a9aeb1268` was pushed
+to `origin/js/pipelang`. CI run `37407548104` passed Windows/runtime/security but
+stopped Linux at Staticcheck U1000 for the unused remote `pair` wrapper. Release
+dry-run `37407555314` passed both Linux architectures and their desktop checks.
+Both Macs built/installed the DMG and ran the CLI workflow, then failed launcher
+smoke because `DockPipe` and wrapper `dockpipe` collide on case-insensitive APFS.
+Windows stopped at quoting of the Visual Studio environment bootstrap path.
+No publication job ran.
+
+Focused repairs remove only the unused helper, use `dockpipe-cli` for the internal
+Mac wrapper while retaining the public `dockpipe` command, verify the GUI remains
+Mach-O before deployment, and initialize Windows through `Launch-VsDevShell.ps1`.
+Remote-command tests/Staticcheck, wrapper ownership tests, PowerShell parsing and
+shellcheck pass locally. The user's workflow-verification approval covers this
+bounded repair checkpoint and fresh CI/release dry-run; no release/tap publication
+or promotion is included. Logs are `/tmp/dockpipe-desktop-ci-37407548104-failure.log`
+and `/tmp/dockpipe-desktop-release-37407555314-failure.log`.
+
+Repair checkpoint `7cbfb77feb47b75fed458959de35f40f5cdf6a33` was pushed.
+CI `37408380164` passed all checks, including security, Staticcheck, runtime,
+shell and Docker integration. Release retry `37408385904` passed both Linux
+jobs; Apple Silicon confirmed the corrected app/CLI layout but its smoke forced
+an undeployed `offscreen` Qt plugin (the deployed Mac plugin is `cocoa`). Windows
+compiled/deployed the launcher and built/installed its MSI, but the same smoke
+configuration timed out before reporting the CLI. Logs were read before repair.
+
+The next narrow repair tests the deployed native Cocoa/Windows plugins, retaining
+headless offscreen only on Linux, compares Qt CLI output as filesystem paths so
+Windows separator spelling is irrelevant, and includes plugin diagnostics on a
+future timeout. The Homebrew native check uses Cocoa too. Native verification is
+still required; a Windows timeout is not itself proof of a plugin cause. Local
+Linux diagnostic/window smoke and Homebrew tests pass with the corrected test.
+
+### Native desktop qualification passed
+
+Verified code commit `962c1390dc27668fff56714c9b3443c6df199f3e` is pushed on
+`js/pipelang`. Both final hosted runs completed successfully:
+
+- [CI 37409454216](https://github.com/Dockpipe-Industries/dockpipe/actions/runs/37409454216):
+  Linux and Windows runtime checks, security, Staticcheck, shell tests and Docker
+  integration passed.
+- [Release dry-run 37409460637](https://github.com/Dockpipe-Industries/dockpipe/actions/runs/37409460637):
+  Linux amd64/arm64 desktop packages and startup passed; Apple Silicon and Intel
+  DMGs installed the CLI and app, ran the CLI workflow and native Cocoa launcher,
+  and passed managed reinstall checks. Windows MSI passed native launcher startup,
+  CLI-only feature modification, restoration and uninstall. Artifact assembly,
+  checksums, complete stores, temporary-key APT verification and dry-run upload
+  passed. Production, staging publication and dev.to were all skipped.
+
+The native-plugin smoke repair resolved both desktop test failures. Source and
+runtime receipts are in `/tmp/dockpipe-desktop-publication-20261005/` and the two
+`/tmp/dockpipe-desktop-repair{1,2}-20261005/` directories. Final job receipts are
+`/tmp/dockpipe-desktop-ci-success.json` and
+`/tmp/dockpipe-desktop-release-success.json`; native Windows and Apple Silicon logs
+are `/tmp/dockpipe-desktop-windows-success.log` and
+`/tmp/dockpipe-desktop-mac-arm-success.log`.
+
+This final documentation-only receipt does not change the verified implementation.
+Apple Developer ID signing/notarization, a new staging/public desktop release,
+and deploying the reviewed cask source to the public Homebrew tap remain separate
+unperformed steps. The existing public tap and release were not changed. Protected
+`.vscode/settings.json` and both pre-existing stashes retain their original hashes.

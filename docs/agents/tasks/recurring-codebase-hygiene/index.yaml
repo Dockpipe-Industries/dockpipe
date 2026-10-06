@@ -13,6 +13,8 @@ routes:
     read: [overview.md]
   release_0_6_audit:
     read: [release-0.6-hosted.md, release-0.6-audit.md, release-0.6-cleanup.md]
+  desktop_packaging:
+    read: [staging-release.md]
   durable_package_state:
     read: [durable-package-contract.md, durable-package-cohorts.md, durable-package-cutover.md]
   ranked_hygiene:
@@ -35,6 +37,7 @@ routes:
     read: [topology.md]
 
 documents:
+  - {path: staging-release.md, role: staging publication and desktop packaging qualification boundaries}
   - {path: release-0.6-hosted.md, role: hosted release dry-run qualification and remaining release gates}
   - {path: release-0.6-cleanup.md, role: focused DDD and DRY cleanup, retained persistence contracts, and verification}
   - {path: release-0.6-audit.md, role: current audit, focused remediation, validation evidence, and architecture follow-ups}

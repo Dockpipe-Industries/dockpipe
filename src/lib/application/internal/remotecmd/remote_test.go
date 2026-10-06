@@ -28,3 +28,16 @@ func TestServiceManifestQuotesPathsAndContainsNoCredentials(t *testing.T) {
 		t.Fatal(unit)
 	}
 }
+
+func TestDeliveryFlagsCannotAccidentallyAuthorizeSetup(t *testing.T) {
+	for _, args := range [][]string{
+		{"setup", "--dry-run"},
+		{"pair", "--dry-run", "--allow-delivery"},
+		{"setup", "--workflow-file", "config.yml"},
+		{"setup", "--allow-delivery"},
+	} {
+		if err := Run(args, nil); err == nil {
+			t.Fatalf("accepted misplaced delivery flags: %v", args)
+		}
+	}
+}

@@ -921,6 +921,31 @@ func TestDockerCommandEnvPrependsDockerBinaryDir(t *testing.T) {
 	}
 }
 
+func TestDockerEnvironmentPreservesEndpointSelection(t *testing.T) {
+	dockerCmd := filepath.Join(t.TempDir(), "docker")
+	settings := []string{
+		"DOCKER_CONTEXT=selected-profile",
+		"DOCKER_HOST=unix:///custom/engine.sock",
+		"DOCKER_CONFIG=/custom docker config",
+		"DOCKER_TLS_VERIFY=1",
+		"DOCKER_CERT_PATH=/custom certificates",
+	}
+	for name, makeEnv := range map[string]func([]string, string) []string{
+		"command": dockerCommandEnv,
+		"build":   dockerBuildEnv,
+	} {
+		t.Run(name, func(t *testing.T) {
+			env := append([]string{"PATH=/usr/bin"}, settings...)
+			got := makeEnv(env, dockerCmd)
+			for _, setting := range settings {
+				if !containsEnv(got, setting) {
+					t.Fatalf("endpoint setting %q lost in %#v", setting, got)
+				}
+			}
+		})
+	}
+}
+
 func containsEnv(env []string, want string) bool {
 	for _, entry := range env {
 		if entry == want {
