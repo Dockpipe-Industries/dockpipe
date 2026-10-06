@@ -328,3 +328,55 @@ Local validation passed: all eight release-workflow tests and `git diff --check`
 Actionlint 1.7.7 passed with only its outdated `macos-15-intel` runner-label check
 excluded; the preceding hosted native build already passed on that runner.
 These checks validate workflow structure and guards, not hosted secret delivery.
+
+## Staging delivery verified; Homebrew prepared — 2026-10-05
+
+Run `37389279395` completed successfully at staging SHA
+`9725dee90d4d72522cb602d9690fea21e2b15ff7` and published candidate
+`0.6.0-staging.37389279395.1.9725dee90d4d`. The R2 hostname now has active SSL
+after the staging-only `/.well-known/` redirect exception and connection retry.
+HTTPS reads of the pointer, catalog, all five store manifests, installer and APT
+metadata passed; `gpgv` verified the expected staging signing fingerprint.
+This supersedes the hosted-publication and TLS blockers above. Native installation
+qualification remains separate.
+
+The user requested Homebrew support and selected a tap that polls every 15 minutes
+using its own GitHub token, without a new secret. The source under
+`release/packaging/homebrew/tap/` prepares a candidate formula from the existing
+public artifacts, requires successful matching staging CI, validates catalog and
+artifact checksum inputs, gates publication on Intel/Apple Silicon Homebrew tests,
+and rechecks freshness before an idempotent formula update. A launcher uses the
+existing `DOCKPIPE_SYSTEM_ROOT` override for the keg's complete package store.
+No engine, main release workflow, production credential or bucket changes were
+needed.
+
+Local checks: all 32 release-tool tests passed (the existing APT test required a
+reviewed host run for its temporary GPG agent); focused Homebrew tests and tap
+workflow Actionlint passed. Actionlint's known outdated `macos-15-intel` label
+check was excluded. Read-only generation against the live candidate succeeded;
+preview: `/tmp/dockpipe-homebrew-prepared/dockpipe-staging.rb`.
+
+At this checkpoint the tap repository is absent, source changes are uncommitted,
+and no native Homebrew installation or formula publication has run. Activation
+requires the public tap seed on `main` and its first successful workflow. The
+stable formula remains an unpublished stub. Preserve `.vscode/` and existing
+stashes during any approved checkpoint; do not promote to master.
+
+### Approved Homebrew activation completed
+
+The user explicitly approved source commit/push, creation and seeding of the public
+tap, and its first native validation. Source checkpoint
+`9b7aac9a48ece11597e184f8a93312fd26ea1b97` was pushed and verified on `js/pipelang`.
+The public `Dockpipe-Industries/homebrew-dockpipe` repository was seeded on `main`
+at `5e219cada65a2de05da3782a12436744731e4dec` with the reviewed tap source and license.
+
+Run `37397290496` succeeded: preparation, Apple Silicon installation/formula test,
+Intel installation/formula test, version ordering, and gated publication all passed.
+The published formula exactly matches the locally reviewed candidate preview;
+its blob is `0a93ffe63cdf56f90db5c000557b3f7c7bc473f6`. The update workflow is active
+with its 15-minute schedule. Native logs and publication receipts are saved under
+`/tmp/dockpipe-homebrew-publication-20261005/`.
+
+This supersedes the tap-activation blocker above. Homebrew staging installation is
+qualified on the hosted Macs; user hardware, APT/MSI installation, and broader
+end-to-end product behavior remain distinct checks. No master promotion occurred.
