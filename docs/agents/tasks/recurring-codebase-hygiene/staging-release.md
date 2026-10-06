@@ -468,3 +468,33 @@ Windows separator spelling is irrelevant, and includes plugin diagnostics on a
 future timeout. The Homebrew native check uses Cocoa too. Native verification is
 still required; a Windows timeout is not itself proof of a plugin cause. Local
 Linux diagnostic/window smoke and Homebrew tests pass with the corrected test.
+
+### Native desktop qualification passed
+
+Verified code commit `962c1390dc27668fff56714c9b3443c6df199f3e` is pushed on
+`js/pipelang`. Both final hosted runs completed successfully:
+
+- [CI 37409454216](https://github.com/Dockpipe-Industries/dockpipe/actions/runs/37409454216):
+  Linux and Windows runtime checks, security, Staticcheck, shell tests and Docker
+  integration passed.
+- [Release dry-run 37409460637](https://github.com/Dockpipe-Industries/dockpipe/actions/runs/37409460637):
+  Linux amd64/arm64 desktop packages and startup passed; Apple Silicon and Intel
+  DMGs installed the CLI and app, ran the CLI workflow and native Cocoa launcher,
+  and passed managed reinstall checks. Windows MSI passed native launcher startup,
+  CLI-only feature modification, restoration and uninstall. Artifact assembly,
+  checksums, complete stores, temporary-key APT verification and dry-run upload
+  passed. Production, staging publication and dev.to were all skipped.
+
+The native-plugin smoke repair resolved both desktop test failures. Source and
+runtime receipts are in `/tmp/dockpipe-desktop-publication-20261005/` and the two
+`/tmp/dockpipe-desktop-repair{1,2}-20261005/` directories. Final job receipts are
+`/tmp/dockpipe-desktop-ci-success.json` and
+`/tmp/dockpipe-desktop-release-success.json`; native Windows and Apple Silicon logs
+are `/tmp/dockpipe-desktop-windows-success.log` and
+`/tmp/dockpipe-desktop-mac-arm-success.log`.
+
+This final documentation-only receipt does not change the verified implementation.
+Apple Developer ID signing/notarization, a new staging/public desktop release,
+and deploying the reviewed cask source to the public Homebrew tap remain separate
+unperformed steps. The existing public tap and release were not changed. Protected
+`.vscode/settings.json` and both pre-existing stashes retain their original hashes.
