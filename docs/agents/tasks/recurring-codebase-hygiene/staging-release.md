@@ -542,3 +542,39 @@ an omitted validation input in the backlog fixture. Added `package_inventory.go`
 explicit fixture input list and advanced its asserted count to 230. The exact failing
 `test_backlog_remote_workflow.sh` passed with host loopback access; sandbox-only TLS
 listener failures were not counted as a pass.
+
+
+## Core-only installers and package actions — source correction, 2026-10-08
+
+The macOS app and staging Homebrew formula incorrectly shipped the complete release
+store, displaying every optional package as installed. The corrected source stages
+only the verified core archive in the app and downloads only core for the formula.
+The full platform catalog remains published for explicit Marketplace installations.
+Linux native packages and Windows MSI already select core only. Installer smoke tests
+now reject optional installed packages; the core staging test also rejects stale output.
+
+The user explicitly excluded installer cleanup/migration logic. None is included.
+A separate manual Brew uninstall/reset script is provided outside the repository;
+it leaves the user package store, settings, and data intact. No host cleanup was run.
+
+The package manager now offers Uninstall for optional user archives, protects core and
+externally managed packages, disables duplicate version installs, and hides Cancel
+when idle. Active cancellation stops both inventory and remote requests. Generic
+`package uninstall --path` enforces the user archive boundary and retains package state.
+
+Local validation: 37 release packaging tests and all five Qt tests passed, including
+install/uninstall button states and bounded cancellation. Application and infrastructure
+Go packages, CLI tests/build, staticcheck, configured gosec, and the backlog source fixture
+passed. A real CLI inventory/uninstall round trip retained user settings. The broad
+`go test ./src/lib/... ./src/cmd` attempt was stopped after application-IR tests refused
+missing compiler-containment limits; it is not a full-suite pass. An exploratory gosec
+run without repository configuration reported existing path/permission findings; the
+repository-configured check on both affected packages passed. Native macOS installation,
+Homebrew runner validation, and release/tap deployment remain pending. No commit or
+publication has been performed for this correction.
+
+Promotion PR #54 exposed Windows short/long ancestor spelling in the uninstall
+boundary (`TestUninstallUserPackagePreservesOtherPackagesAndData`). Normalize both
+store and selected archive after rejecting direct archive/category symlinks; retain
+root-confined removal. The focused removal/inventory tests, including an ancestor-alias
+regression, pass locally. The follow-up must pass native Windows CI before staging merge.

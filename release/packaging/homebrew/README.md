@@ -48,7 +48,7 @@ available. A locally generated Ruby file is not installation proof.
 
 ## Desktop cask
 
-`dockpipe-desktop-staging` installs `DockPipe.app` from the candidate's native desktop ZIP and depends on `dockpipe-staging` for the terminal command. The app carries its matching runtime and complete package store, so Finder launches do not depend on a login shell's PATH. Cask removal retains the CLI and user data. The direct DMG uses Apple's Installer instead and must not be mixed with the cask.
+`dockpipe-desktop-staging` installs `DockPipe.app` from the candidate's native desktop ZIP and depends on `dockpipe-staging` for the terminal command. The app carries its matching runtime and required core package, so Finder launches do not depend on a login shell's PATH. Cask removal retains the CLI and user data. The direct DMG uses Apple's Installer instead and must not be mixed with the cask.
 
 The desktop cask and updated CLI formula are published for candidate
 `0.6.0-staging.37414177001.1.48a5701e3652` after

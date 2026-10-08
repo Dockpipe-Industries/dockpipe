@@ -64,6 +64,9 @@ func TestInstalledPackageInventoryIncludesRuntimeStores(t *testing.T) {
 	sources := map[string]string{}
 	for _, entry := range inventory.Packages {
 		sources[entry.Name] = entry.Source
+		if entry.Removable != (entry.Source == "User") {
+			t.Fatalf("unexpected removal permission: %+v", entry)
+		}
 	}
 	if sources["project-tool"] != "Project" || sources["user-tool"] != "User" || sources["system-tool"] != "System" {
 		t.Fatalf("sources: %v", sources)
