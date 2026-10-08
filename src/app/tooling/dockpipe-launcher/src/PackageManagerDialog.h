@@ -22,6 +22,8 @@ private:
     void loadInstalled();
     void loadRemote();
     void installSelected();
+    void uninstallSelected();
+    bool versionInstalled(const QJsonObject &record) const;
     void applyFilter();
     void refreshDetails();
     void updateButtons();
@@ -31,7 +33,10 @@ private:
     QString m_hintWorkdir;
     QString m_manifest;
     QString m_installRoot;
-    bool m_installing = false;
+    enum class Operation { Catalog, Install, Uninstall };
+    Operation m_operation = Operation::Catalog;
+    bool m_cancelling = false;
+    bool m_inventoryReady = false;
     QJsonArray m_installed;
     QJsonArray m_available;
     PackageCommand *m_localCommand = nullptr;
@@ -39,9 +44,11 @@ private:
     QComboBox *m_remote = nullptr;
     QLineEdit *m_search = nullptr;
     QLabel *m_status = nullptr;
+    QLabel *m_actionHint = nullptr;
     QLabel *m_localStatus = nullptr;
     QPushButton *m_refresh = nullptr;
     QPushButton *m_install = nullptr;
+    QPushButton *m_uninstall = nullptr;
     QPushButton *m_cancel = nullptr;
     QTabWidget *m_tabs = nullptr;
     QTableWidget *m_installedTable = nullptr;
