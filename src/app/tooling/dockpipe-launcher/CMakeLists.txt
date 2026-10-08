@@ -62,6 +62,7 @@ if(APPLE)
 endif()
 
 target_include_directories(dockpipe-launcher PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+target_compile_definitions(dockpipe-launcher PRIVATE DOCKPIPE_RELEASE_VERSION="${DOCKPIPE_RELEASE_VERSION}")
 target_link_libraries(dockpipe-launcher PRIVATE Qt6::Widgets Qt6::Network Qt6::Concurrent)
 
 if(MSVC)
@@ -69,6 +70,10 @@ if(MSVC)
 endif()
 
 include(CTest)
+if(BUILD_TESTING)
+    add_test(NAME launcher-version COMMAND dockpipe-launcher --version)
+    set_tests_properties(launcher-version PROPERTIES PASS_REGULAR_EXPRESSION "${DOCKPIPE_RELEASE_VERSION}")
+endif()
 if(BUILD_TESTING AND UNIX)
     add_executable(launcher-environment-test
         tests/LauncherEnvironmentTest.cpp
