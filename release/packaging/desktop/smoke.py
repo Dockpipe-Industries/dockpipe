@@ -8,7 +8,21 @@ import sys
 import tempfile
 
 
-def check(launcher, expected_cli):
+def check_package_inventory(cli, home, environment, system_root=None):
+    inventory_environment = dict(environment)
+    if system_root is not None:
+        inventory_environment["DOCKPIPE_SYSTEM_ROOT"] = str(Path(system_root).resolve())
+    inventory = json.loads(subprocess.check_output(
+        [str(cli), "package", "list", "--format", "json", "--workdir", str(home)],
+        cwd=home, env=inventory_environment, text=True, timeout=45))
+    if inventory["warnings"] or not inventory["packages"]:
+        raise RuntimeError(f"Incomplete installer package inventory: {inventory}")
+    if any(package["kind"] != "core" for package in inventory["packages"]):
+        raise RuntimeError(f"Installer bundled optional packages: {inventory}")
+    print("PASS: clean installation contains core only")
+
+
+def check(launcher, expected_cli, inventory_system_root=None):
     launcher = Path(launcher).resolve()
     with tempfile.TemporaryDirectory(prefix="dockpipe-desktop-smoke-") as temporary:
         home = Path(temporary)
@@ -42,14 +56,10 @@ def check(launcher, expected_cli):
         if result.returncode or not selected_cli or Path(selected_cli).resolve() != Path(expected_cli).resolve():
             raise RuntimeError(result.stdout + result.stderr)
         print(result.stdout)
-        inventory = json.loads(subprocess.check_output(
-            [selected_cli, "package", "list", "--format", "json", "--workdir", str(home)],
-            cwd=home, env=environment, text=True, timeout=45))
-        if inventory["warnings"] or not inventory["packages"]:
-            raise RuntimeError(f"Incomplete installer package inventory: {inventory}")
-        if any(package["kind"] != "core" for package in inventory["packages"]):
-            raise RuntimeError(f"Installer bundled optional packages: {inventory}")
-        print("PASS: clean installation contains core only")
+        # Linux smoke uses an extracted DEB; MSI stores core under the original
+        # user's install directory. Inventory those payloads while keeping the
+        # launcher's isolated environment and default CLI lookup unchanged.
+        check_package_inventory(selected_cli, home, environment, inventory_system_root)
         with (home / "launcher.log").open("w+") as log:
             process = subprocess.Popen([str(launcher), "--allow-second-instance"], cwd=home,
                                        env=environment, stdout=log, stderr=log)
@@ -74,5 +84,6 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("launcher")
     parser.add_argument("expected_cli")
+    parser.add_argument("--inventory-system-root", type=Path)
     args = parser.parse_args()
-    check(args.launcher, args.expected_cli)
+    check(args.launcher, args.expected_cli, args.inventory_system_root)
