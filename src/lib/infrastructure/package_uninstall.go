@@ -17,7 +17,27 @@ func userPackageArchivePath(store, filename string) (string, error) {
 	if !filepath.IsAbs(filename) {
 		return "", fmt.Errorf("package path must be absolute")
 	}
-	relative, err := filepath.Rel(root, filename)
+	archive, err := os.Lstat(filename)
+	if err != nil {
+		return "", err
+	}
+	if !archive.Mode().IsRegular() {
+		return "", fmt.Errorf("package must be a regular archive, not a directory or symbolic link")
+	}
+	category, err := os.Lstat(filepath.Dir(filename))
+	if err != nil {
+		return "", err
+	}
+	if !category.IsDir() {
+		return "", fmt.Errorf("package category must be a directory, not a symbolic link")
+	}
+	// Canonicalize both sides: Windows can spell the same ancestor using either
+	// its short (8.3) name or its long name. Direct links were rejected above.
+	canonical, err := filepath.EvalSymlinks(filename)
+	if err != nil {
+		return "", err
+	}
+	relative, err := filepath.Rel(root, canonical)
 	if err != nil {
 		return "", err
 	}

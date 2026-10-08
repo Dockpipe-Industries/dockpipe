@@ -108,3 +108,23 @@ func TestUninstallRejectsSymlinkArchiveAndCategory(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestUninstallAcceptsCanonicalAncestorAliases(t *testing.T) {
+	parent := t.TempDir()
+	actual := filepath.Join(parent, "actual")
+	if err := os.Mkdir(actual, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	alias := filepath.Join(parent, "alias")
+	if err := os.Symlink(actual, alias); err != nil {
+		t.Skipf("ancestor aliases unavailable: %v", err)
+	}
+	t.Setenv("DOCKPIPE_GLOBAL_ROOT", actual)
+	selected := writeInventoryPackage(t, filepath.Join(alias, "packages"), "example")
+	if err := UninstallUserPackage(selected); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(selected); !os.IsNotExist(err) {
+		t.Fatalf("archive remains through alias: %v", err)
+	}
+}

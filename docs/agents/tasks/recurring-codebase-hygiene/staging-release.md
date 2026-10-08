@@ -572,3 +572,9 @@ run without repository configuration reported existing path/permission findings;
 repository-configured check on both affected packages passed. Native macOS installation,
 Homebrew runner validation, and release/tap deployment remain pending. No commit or
 publication has been performed for this correction.
+
+Promotion PR #54 exposed Windows short/long ancestor spelling in the uninstall
+boundary (`TestUninstallUserPackagePreservesOtherPackagesAndData`). Normalize both
+store and selected archive after rejecting direct archive/category symlinks; retain
+root-confined removal. The focused removal/inventory tests, including an ancestor-alias
+regression, pass locally. The follow-up must pass native Windows CI before staging merge.
