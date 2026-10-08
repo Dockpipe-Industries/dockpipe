@@ -8,7 +8,7 @@ choices.
 | --- | --- | --- |
 | macOS arm64 / amd64 | `dockpipe-desktop_VERSION_darwin_ARCH.dmg` | Apple Installer package: `/Applications/DockPipe.app` plus `/usr/local/bin/dockpipe` symlink |
 | macOS Homebrew | `dockpipe-desktop_VERSION_darwin_ARCH.zip` | Same self-contained app; cask depends on the CLI formula |
-| Ubuntu 24.04 arm64 / amd64 | `dockpipe-desktop_VERSION_ARCH.deb` | Launcher, icons, menu entry; exact-version CLI dependency and native Qt dependencies |
+| Ubuntu 22.04 / 24.04 arm64 / amd64; Pop!_OS 22.04 | `dockpipe-desktop_VERSION_ARCH.deb` | Launcher, icons, menu entry; exact-version CLI dependency and native Qt dependencies |
 | Windows amd64 | `dockpipe_VERSION_windows_amd64.msi` | CLI, core package, deployed Qt launcher and Start menu shortcut; launcher selected by default |
 
 The macOS app contains the CLI in `Contents/Helpers`, a wrapper in `Contents/MacOS`,
@@ -21,20 +21,29 @@ then checks its sibling CLI before falling back to PATH.
 ## Native builds and checks
 
 First run `bash release/packaging/build-platform.sh VERSION` on the target host.
-Then run `bash release/packaging/desktop/build-unix.sh VERSION release/artifacts`
-on Linux or macOS. Both require CMake and Qt Widgets, Network and Concurrent;
-Linux additionally requires OpenGL development files and Debian packaging tools.
-The release matrix uses distribution Qt on Ubuntu 24.04 and Qt 6.8.3 on macOS,
-with deployment target macOS 13. Windows uses `build-windows.ps1` with Visual
+On Linux, run `bash release/packaging/desktop/build-linux.sh VERSION release/artifacts`.
+It requires Docker and builds natively in Ubuntu 22.04 with distribution Qt 6.2,
+CMake, OpenGL development files and Debian packaging tools. This fixes the minimum
+ABI independently of the CI runner image; do not build release DEBs against newer
+host Qt libraries. `dpkg-shlibdeps` still derives the actual runtime dependencies.
+On macOS, run `bash release/packaging/desktop/build-unix.sh VERSION release/artifacts`
+with CMake and Qt 6.8.3, with deployment target macOS 13.
+Windows uses `build-windows.ps1` with Visual
 Studio 2022, Qt 6.8.3 and `windeployqt`, then the existing WiX MSI builder.
 
 `smoke.py` runs the installed launcher's `--check-installation` diagnostic outside
 the checkout, with isolated user directories and no injected CLI override. It
-verifies Qt loads, the selected CLI runs, and the actual window stays running.
+verifies Qt loads, the selected CLI runs, CLI and launcher versions match, and the
+actual window stays running. `dockpipe-launcher --version` reports the generated
+release version without requiring a display server.
 On disposable macOS CI runners, `smoke-unix.sh` mounts the DMG, uses Apple's real
 Installer, runs a host workflow through the installed CLI, checks the desktop,
 and exercises a second installation. It refuses that system-install test outside
-GitHub Actions. Linux smoke extracts the DEBs without modifying the host.
+GitHub Actions. `smoke-linux.sh VERSION [ARTIFACT_DIRECTORY]` installs the same CLI
+and launcher DEBs with APT in clean Ubuntu 22.04 and 24.04 containers on each native
+architecture. Neither container has the build toolchain or preinstalled Qt. It
+checks dependency resolution, core-only inventory, launcher startup, a host
+workflow, and desktop removal preserving the CLI. The host OS is not modified.
 Windows smoke installs the real MSI, checks the app/CLI, modifies the launcher
 feature and uninstalls. Homebrew separately tests formula/cask installation and
 cask removal on both Mac architectures before updating the tap.

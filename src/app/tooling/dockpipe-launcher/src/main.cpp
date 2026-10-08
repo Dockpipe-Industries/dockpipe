@@ -48,6 +48,12 @@ static QIcon dockpipeLauncherIcon()
 
 int main(int argc, char *argv[])
 {
+    for (int i = 1; i < argc; ++i) {
+        if (std::strcmp(argv[i], "--version") == 0) {
+            QTextStream(stdout) << DOCKPIPE_RELEASE_VERSION << '\n';
+            return 0;
+        }
+    }
 #if defined(Q_OS_MACOS)
     extendMacOSExecutablePath();
 #endif
@@ -61,6 +67,7 @@ int main(int argc, char *argv[])
 
     QApplication app(argc, argv);
     QApplication::setApplicationName(QStringLiteral("dockpipe-launcher"));
+    QApplication::setApplicationVersion(QStringLiteral(DOCKPIPE_RELEASE_VERSION));
     QApplication::setApplicationDisplayName(QStringLiteral("DockPipe Launcher"));
     QApplication::setOrganizationName(QStringLiteral("dockpipe"));
     app.setDesktopFileName(QStringLiteral("dockpipe-launcher"));
