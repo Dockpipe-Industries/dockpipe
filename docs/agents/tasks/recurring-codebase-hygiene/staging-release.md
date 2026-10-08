@@ -578,3 +578,10 @@ boundary (`TestUninstallUserPackagePreservesOtherPackagesAndData`). Normalize bo
 store and selected archive after rejecting direct archive/category symlinks; retain
 root-confined removal. The focused removal/inventory tests, including an ancestor-alias
 regression, pass locally. The follow-up must pass native Windows CI before staging merge.
+
+Before release publication, the new inventory smoke check was reviewed against the
+isolated test-home setup. Linux's extracted DEB and Windows's per-user MSI must pass
+their explicit installer store to the inventory subprocess; the launcher's own clean
+environment and default CLI discovery remain unchanged. The smoke regression rejects
+empty, unreadable, or optional-package inventories. A real extracted Linux-style
+payload passed CLI discovery, core-only inventory, and the running Qt window check.

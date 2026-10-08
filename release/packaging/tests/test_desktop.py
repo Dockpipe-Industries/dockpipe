@@ -1,5 +1,7 @@
 """Test installed CLI wrappers and installer ownership without modifying the host."""
 import json
+import importlib.util
+from unittest.mock import patch
 import os
 from pathlib import Path
 import shutil
@@ -9,6 +11,11 @@ import unittest
 
 
 DESKTOP = Path(__file__).resolve().parents[1] / "desktop"
+
+
+spec = importlib.util.spec_from_file_location("desktop_smoke", DESKTOP / "smoke.py")
+smoke = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(smoke)
 
 
 class DesktopTests(unittest.TestCase):
@@ -42,6 +49,26 @@ class DesktopTests(unittest.TestCase):
                                                  ["argument with spaces", "--version"]])
         result = subprocess.check_output([str(link)], env=dict(environment, DOCKPIPE_SYSTEM_ROOT="/custom store"))
         self.assertEqual(json.loads(result), ["/custom store", []])
+
+    def test_inventory_checks_explicit_installer_payload_without_changing_launcher_environment(self):
+        environment = {"DOCKPIPE_GLOBAL_ROOT": str(self.root / "isolated-user")}
+        payload = self.root / "extracted-install/usr/share/dockpipe"
+        core_only = {"packages": [{"kind": "core"}], "warnings": []}
+        with patch.object(smoke.subprocess, "check_output", return_value=json.dumps(core_only)) as command:
+            smoke.check_package_inventory("cli", self.root, environment, payload)
+            selected_environment = command.call_args.kwargs["env"]
+            self.assertEqual(selected_environment["DOCKPIPE_SYSTEM_ROOT"], str(payload.resolve()))
+            self.assertEqual(selected_environment["DOCKPIPE_GLOBAL_ROOT"], environment["DOCKPIPE_GLOBAL_ROOT"])
+        self.assertNotIn("DOCKPIPE_SYSTEM_ROOT", environment)
+        for inventory in ({"packages": [], "warnings": []},
+                          {"packages": [{"kind": "core"}, {"kind": "workflow"}], "warnings": []},
+                          {"packages": [{"kind": "core"}], "warnings": ["unreadable archive"]}):
+            with patch.object(smoke.subprocess, "check_output", return_value=json.dumps(inventory)):
+                with self.assertRaises(RuntimeError):
+                    smoke.check_package_inventory("cli", self.root, environment, payload)
+        with patch.object(smoke.subprocess, "check_output", return_value=json.dumps(core_only)) as command:
+            smoke.check_package_inventory("mac-wrapper", self.root, environment)
+            self.assertNotIn("DOCKPIPE_SYSTEM_ROOT", command.call_args.kwargs["env"])
 
     def test_mac_installer_preserves_foreign_commands_and_links(self):
         command = self.root / "usr/local/bin/dockpipe"
