@@ -27,5 +27,5 @@ else
   dpkg-deb -x "$out/dockpipe_${version}_${arch}.deb" "$stage"
   test -f "$stage/usr/share/applications/dockpipe-launcher.desktop"
   test -f "$stage/usr/share/icons/hicolor/256x256/apps/dockpipe-launcher.png"
-  python3 "$root/release/packaging/desktop/smoke.py" "$stage/usr/bin/dockpipe-launcher" "$stage/usr/bin/dockpipe"
+  python3 "$root/release/packaging/desktop/smoke.py" "$stage/usr/bin/dockpipe-launcher" "$stage/usr/bin/dockpipe" --inventory-system-root "$stage/usr/share/dockpipe"
 fi

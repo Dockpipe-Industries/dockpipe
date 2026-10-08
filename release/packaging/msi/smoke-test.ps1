@@ -106,7 +106,7 @@ if ($ExpectLauncher) {
     if (-not (Test-Path -LiteralPath $startMenuShortcut)) {
         throw "DockPipe Launcher shortcut not found at $startMenuShortcut"
     }
-    python (Join-Path $PSScriptRoot "../desktop/smoke.py") $launcherPath $exePath
+    python (Join-Path $PSScriptRoot "../desktop/smoke.py") $launcherPath $exePath --inventory-system-root (Split-Path -Parent $exePath)
     if ($LASTEXITCODE -ne 0) { throw "Installed desktop runtime smoke failed" }
 
     $cliOnly = Start-Process msiexec.exe -ArgumentList @("/i", "`"$MsiPath`"", "/qn", "/norestart", "ADDLOCAL=MainFeature", "REMOVE=LauncherFeature") -Wait -PassThru
