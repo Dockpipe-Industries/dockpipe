@@ -30,7 +30,8 @@ int main(int argc, char **argv)
                "catalog) printf '%s' '{\"packages\":[{\"name\":\"sample\"}]}' ;;\n"
                "failure) echo 'checksum mismatch' >&2; exit 1 ;;\n"
                "malformed) echo 'not json' ;;\n"
-               "slow) exec sleep 10 ;;\nesac\n");
+               "slow) exec sleep 10 ;;\n"
+               "stubborn) trap '' TERM; exec sleep 10 ;;\nesac\n");
     file.close();
     PackageCommand command;
     bool success = false;
@@ -70,6 +71,11 @@ int main(int argc, char **argv)
     QTimer::singleShot(20, &command, &PackageCommand::cancel);
     run(QStringLiteral("slow"));
     if (!check(!success && error.contains(QStringLiteral("cancelled")) && elapsed.elapsed() < 3000, "cancellation blocked or lost"))
+        return 1;
+    elapsed.restart();
+    QTimer::singleShot(50, &command, &PackageCommand::cancel);
+    run(QStringLiteral("stubborn"));
+    if (!check(!success && error.contains(QStringLiteral("cancelled")) && elapsed.elapsed() < 3500 && !command.busy(), "forced cancellation failed"))
         return 1;
     run(QStringLiteral("catalog"));
     if (!check(success, "cannot refresh after cancellation"))
