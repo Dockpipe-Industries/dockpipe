@@ -119,7 +119,7 @@ class ReleaseWorkflowTests(unittest.TestCase):
                         allowed = event == "push" and ref == "refs/heads/staging" and repository == "Dockpipe-Industries/dockpipe"
                         self.assertEqual(result.returncode == 0, allowed, result.stdout + result.stderr)
                         if allowed:
-                            self.assertIn("-staging.1234.2.aaaaaaaaaaaa", output.read_text())
+                            self.assertIn("staging_suffix=staging.1234.2.aaaaaaaaaaaa", output.read_text())
                             self.assertIn("dry_run=false", output.read_text())
                         else:
                             self.assertEqual(output.read_text(), "")
@@ -148,10 +148,52 @@ class ReleaseWorkflowTests(unittest.TestCase):
         self.assertEqual(triggers["push"]["branches"], ["master"])
         self.assertEqual(triggers["workflow_dispatch"]["inputs"]["dry_run"]["default"], "true")
 
+    def test_version_generation_uses_all_tags_and_fails_on_lookup_error(self):
+        step = next(step for step in self.jobs["meta"]["steps"] if step.get("id") == "version")
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            gh = root / "gh"
+            gh.write_text('#!/bin/sh\n[ "$2" = "--paginate" ] || exit 9\n'
+                          'printf "v0.6.0-staging.123.1.aaaaaaaaaaaa\\nv0.6.3\\n"\n')
+            gh.chmod(0o755)
+            output = root / "outputs"
+            env = dict(os.environ, PATH=f"{root}:{os.environ['PATH']}", RUNNER_TEMP=temporary,
+                       GITHUB_OUTPUT=str(output), BASE_VERSION="0.6.0",
+                       STAGING_SUFFIX="staging.456.2.bbbbbbbbbbbb", GITHUB_REPOSITORY="owner/repo")
+            subprocess.run(["bash", "-c", step["run"]], cwd=REPOSITORY, env=env, check=True)
+            self.assertIn("version=0.6.4\n", output.read_text())
+            self.assertIn("candidate=0.6.4-staging.456.2.bbbbbbbbbbbb\n", output.read_text())
+            output.unlink()
+            gh.write_text('#!/bin/sh\nexit 1\n')
+            failed = subprocess.run(["bash", "-c", step["run"]], cwd=REPOSITORY, env=env)
+            self.assertNotEqual(failed.returncode, 0)
+            self.assertFalse(output.exists())
+        self.assertEqual(self.jobs["meta"]["outputs"]["version"], "${{ steps.version.outputs.version }}")
+        concurrency = self.workflow["concurrency"]
+        self.assertEqual(concurrency["cancel-in-progress"], "false")
+        self.assertTrue(concurrency["group"].endswith("|| 'publish' }}"))
+
+    def test_published_notes_use_generated_version_without_editing_source(self):
+        step = next(step for step in self.jobs["assemble"]["steps"]
+                    if step.get("name") == "Prepare release notes body")
+        script = step["run"].replace("${{ needs.meta.outputs.notes_version }}", "0.6.0")
+        script = script.replace("${{ needs.meta.outputs.version }}", "0.6.12")
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            notes = root / "release/releasenotes/0.6.0.md"
+            notes.parent.mkdir(parents=True)
+            (root / "release/artifacts").mkdir()
+            original = "# v0.6.0\nDownload dockpipe_0.6.0_amd64.deb\nKeep 10.6.0 and 0.6.01\n"
+            notes.write_text(original)
+            subprocess.run(["bash", "-c", script], cwd=root, check=True)
+            self.assertEqual(notes.read_text(), original)
+            self.assertEqual((root / "release/artifacts/RELEASE_NOTES.md").read_text(),
+                             "# v0.6.12\nDownload dockpipe_0.6.12_amd64.deb\nKeep 10.6.0 and 0.6.01\n")
+
     def run_release_notes_gate(self, changed_paths):
         ci = yaml.load((REPOSITORY / ".github/workflows/ci.yml").read_text(), Loader=yaml.BaseLoader)
         gate = next(step for step in ci["jobs"]["test"]["steps"]
-                    if step.get("name") == "Release notes + version bump (PRs targeting master only)")
+                    if step.get("name") == "Release notes (PRs targeting master only)")
         script = gate["run"].replace("${{ github.event.pull_request.base.sha }}", "base")
         script = script.replace("${{ github.event.pull_request.head.sha }}", "head")
         with tempfile.TemporaryDirectory(prefix="dockpipe-release-notes-gate-") as temporary:
