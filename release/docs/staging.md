@@ -137,7 +137,7 @@ dispatch is also available. No additional upload secret is required.
 
 Unlike the native DEB/MSI version, the Homebrew formula version includes the
 candidate identity so upgrades distinguish successive builds. It installs the
-native CLI and complete package store. The command is still `dockpipe` and uses normal user data unless
+native CLI and required core package. The command is still `dockpipe` and uses normal user data unless
 `DOCKPIPE_GLOBAL_ROOT` is set to a separate test directory.
 The stable formula is not yet published, so a conflict declaration against it is invalid.
 

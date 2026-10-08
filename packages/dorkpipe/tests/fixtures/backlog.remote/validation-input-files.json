@@ -193,6 +193,7 @@
   "src/lib/infrastructure/package_inventory.go",
   "src/lib/infrastructure/package_sources.go",
   "src/lib/infrastructure/package_tarballs.go",
+  "src/lib/infrastructure/package_uninstall.go",
   "src/lib/infrastructure/packagebuild/core.go",
   "src/lib/infrastructure/packagebuild/extract.go",
   "src/lib/infrastructure/packagebuild/mode.go",

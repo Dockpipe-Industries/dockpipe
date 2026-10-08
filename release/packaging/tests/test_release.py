@@ -66,6 +66,34 @@ class ReleaseTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             artifacts_module.verify_store(self.root / "store")
 
+    def test_installer_stages_only_verified_core_and_preserves_full_store(self):
+        store = self.root / "store"
+        self.store(store)
+        core_name = "dockpipe-core-0.6.0.tar.gz"
+        (store / "core.tar.gz").rename(store / core_name)
+        manifest = json.loads((store / "packages-store-manifest.json").read_text())
+        manifest["packages"]["core"]["tarball"] = core_name
+        (store / "packages-store-manifest.json").write_text(json.dumps(manifest))
+        before = {path.name: path.read_bytes() for path in store.iterdir()}
+        destination = self.root / "app/Contents/Resources/share/dockpipe"
+        artifacts_module.stage_core(store, destination)
+        files = [path.relative_to(destination).as_posix() for path in destination.rglob("*") if path.is_file()]
+        self.assertEqual(files, [f"packages/core/{core_name}"])
+        self.assertEqual((destination / files[0]).read_bytes(), b"core")
+        self.assertEqual(before, {path.name: path.read_bytes() for path in store.iterdir()})
+        self.assertEqual(artifacts_module.verify_store(store), 3)
+        # A reused output must fail rather than retaining old optional packages.
+        with self.assertRaises(FileExistsError):
+            artifacts_module.stage_core(store, destination)
+        (store / core_name).write_bytes(b"corrupt")
+        with self.assertRaisesRegex(ValueError, "checksum mismatch"):
+            artifacts_module.stage_core(store, self.root / "bad-payload")
+        self.assertFalse((self.root / "bad-payload").exists())
+        manifest["packages"]["core"]["tarball"] = "../core.tar.gz"
+        (store / "packages-store-manifest.json").write_text(json.dumps(manifest))
+        with self.assertRaisesRegex(ValueError, "Invalid core filename"):
+            artifacts_module.stage_core(store, self.root / "bad-payload")
+
     def test_catalog_requires_every_platform(self):
         with self.assertRaises(FileNotFoundError):
             artifacts_module.prepare(self.root, "0.6.0")

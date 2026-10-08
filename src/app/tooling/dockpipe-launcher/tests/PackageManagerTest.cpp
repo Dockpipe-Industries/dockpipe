@@ -36,10 +36,33 @@ int main(int argc, char **argv)
     QFile file(script);
     if (!file.open(QIODevice::WriteOnly))
         return 1;
-    file.write("#!/bin/sh\ncase \"$2\" in\n"
-               "list) echo '{\"packages\":[{\"name\":\"installed-tool\",\"kind\":\"workflow\",\"version\":\"1.0.0\",\"source\":\"System\"}],\"install_root\":\"/user/packages\",\"warnings\":[]}' ;;\n"
-               "catalog) echo '{\"manifest\":\"https://example.com/pinned/store.json\",\"platform\":\"test-platform\",\"packages\":[{\"name\":\"remote-tool\",\"kind\":\"workflow\",\"version\":\"1.2.3\",\"sha256\":\"selection-digest\"}]}' ;;\n"
-               "install) printf '%s\\n' \"$@\" > install-args; echo '{\"path\":\"/user/packages/remote-tool.tar.gz\"}' ;;\nesac\n");
+    file.write(R"SCRIPT(#!/bin/sh
+case "$2" in
+list)
+    if [ -f installed-marker ]; then
+        echo '{"packages":[{"name":"installed-tool","kind":"workflow","version":"1.0.0","source":"System","removable":false},{"name":"remote-tool","kind":"workflow","version":"1.2.3","source":"User","path":"/user/packages/workflows/dockpipe-workflow-remote-tool-1.2.3.tar.gz","removable":true}],"install_root":"/user/packages","warnings":[]}'
+    else
+        echo '{"packages":[{"name":"installed-tool","kind":"workflow","version":"1.0.0","source":"System","removable":false}],"install_root":"/user/packages","warnings":[]}'
+    fi
+    ;;
+catalog)
+    if [ -f slow-catalog ]; then
+        exec sleep 10
+    fi
+    echo '{"manifest":"https://example.com/pinned/store.json","platform":"test-platform","packages":[{"name":"remote-tool","kind":"workflow","version":"1.2.3","sha256":"selection-digest"}]}'
+    ;;
+install)
+    printf '%s\n' "$@" > install-args
+    touch installed-marker
+    echo '{"path":"/user/packages/workflows/dockpipe-workflow-remote-tool-1.2.3.tar.gz"}'
+    ;;
+uninstall)
+    printf '%s\n' "$@" > uninstall-args
+    rm installed-marker
+    echo '{"path":"/user/packages/workflows/dockpipe-workflow-remote-tool-1.2.3.tar.gz"}'
+    ;;
+esac
+)SCRIPT");
     file.close();
     file.setPermissions(QFileDevice::ReadOwner | QFileDevice::WriteOwner | QFileDevice::ExeOwner);
     qputenv("DOCKPIPE_BIN", script.toUtf8());
@@ -57,8 +80,15 @@ int main(int argc, char **argv)
     auto *tabs = dialog.findChild<QTabWidget *>();
     auto *install = dialog.findChild<QPushButton *>(QStringLiteral("installPackage"));
     auto *status = dialog.findChild<QLabel *>(QStringLiteral("packageStatus"));
+    auto *uninstall = dialog.findChild<QPushButton *>(QStringLiteral("uninstallPackage"));
+    auto *cancel = dialog.findChild<QPushButton *>(QStringLiteral("cancelPackageOperation"));
+    auto *refresh = dialog.findChild<QPushButton *>(QStringLiteral("refreshPackages"));
     if (!waitUntil([&]() { return installed->rowCount() == 1 && marketplace->rowCount() == 1; })) {
         std::fprintf(stderr, "Package tables did not load\n");
+        return 1;
+    }
+    if (install->isVisible() || !uninstall->isVisible() || uninstall->isEnabled() || cancel->isVisible()) {
+        std::fprintf(stderr, "Idle installed actions are misleading\n");
         return 1;
     }
     tabs->setCurrentIndex(1);
@@ -75,6 +105,42 @@ int main(int argc, char **argv)
         std::fprintf(stderr, "Install did not pin the displayed selection\n");
         return 1;
     }
+    if (!waitUntil([&]() { return installed->rowCount() == 2 && !cancel->isVisible(); }))
+        return 1;
+    if (install->isEnabled() || install->text() != QStringLiteral("Installed")) {
+        std::fprintf(stderr, "Marketplace still offers duplicate installation\n");
+        return 1;
+    }
+    tabs->setCurrentIndex(0);
+    installed->selectRow(1);
+    if (!uninstall->isEnabled() || install->isVisible())
+        return 1;
+    uninstall->click();
+    if (!waitUntil([&]() { return installed->rowCount() == 1 && !cancel->isVisible(); }))
+        return 1;
+    QFile removedArguments(directory.filePath(QStringLiteral("uninstall-args")));
+    if (!removedArguments.open(QIODevice::ReadOnly)
+        || removedArguments.readAll() != "package\nuninstall\n--path\n/user/packages/workflows/dockpipe-workflow-remote-tool-1.2.3.tar.gz\n")
+        return 1;
+    tabs->setCurrentIndex(1);
+    if (!install->isEnabled())
+        return 1;
+    QFile slowCatalog(directory.filePath(QStringLiteral("slow-catalog")));
+    if (!slowCatalog.open(QIODevice::WriteOnly))
+        return 1;
+    slowCatalog.close();
+    refresh->click();
+    if (!cancel->isVisible() || !cancel->isEnabled())
+        return 1;
+    cancel->click();
+    if (!waitUntil([&]() { return !cancel->isVisible() && status->text().contains(QStringLiteral("cancelled")); })) {
+        std::fprintf(stderr, "Cancel failed to stop the operation and restore idle controls\n");
+        return 1;
+    }
+    slowCatalog.remove();
+    refresh->click();
+    if (!waitUntil([&]() { return !cancel->isVisible() && marketplace->rowCount() == 1; }))
+        return 1;
     const QString screenshot = qEnvironmentVariable("DOCKPIPE_PACKAGE_TEST_SCREENSHOT");
     if (!screenshot.isEmpty())
         dialog.grab().save(screenshot);

@@ -29,11 +29,14 @@ Custom remotes can be HTTPS manifest URLs; official origin-only URLs expand to
 **Packages → Marketplace** reads the selected catalog for this machine's platform, supports
 search, and installs the selected package into the user store. Requests run asynchronously;
 errors stay visible and operations can be cancelled. Install pins the displayed store and
-checksum. A matching installed version is labelled **Version installed**; this does not assert
-identical content across staging candidates. The details explain replacement and dependencies.
+checksum. A matching installed version is labelled **Installed**, with duplicate installation disabled;
+this does not assert identical content across staging candidates. **Cancel operation** is
+shown only during active requests and stops both inventory and remote requests. The details explain replacement and dependencies.
 
 **Installed** uses the CLI inventory, including user packages and packages supplied by the
-system installer, Brew, or app bundle. Closing Packages refreshes the launcher's app list.
+system installer, Brew, or app bundle. Optional user-store archives offer **Uninstall**, which
+retains package data and settings. Core and externally managed entries explain why they cannot
+be removed here. Normal installers include only core. Closing Packages refreshes the launcher's app list.
 The saved **Global Root Override** now applies to both package commands and workflow children;
 an inherited `DOCKPIPE_GLOBAL_ROOT` remains authoritative. The launcher delegates all package
 networking, integrity checks, and installation to `dockpipe package`; see the

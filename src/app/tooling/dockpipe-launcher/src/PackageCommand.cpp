@@ -10,6 +10,11 @@ PackageCommand::PackageCommand(QObject *parent) : QObject(parent)
     connect(&m_process, &QProcess::readyReadStandardOutput, this, &PackageCommand::readOutput);
     connect(&m_process, &QProcess::readyReadStandardError, this, &PackageCommand::readOutput);
     connect(&m_process, &QProcess::finished, this, &PackageCommand::finish);
+    connect(&m_process, &QProcess::started, this, [this]() {
+        // Cancellation can arrive before QProcess has finished starting.
+        if (!m_failure.isEmpty())
+            m_process.terminate();
+    });
     connect(&m_process, &QProcess::errorOccurred, this, [this](QProcess::ProcessError error) {
         if (error == QProcess::FailedToStart) {
             m_active = false;

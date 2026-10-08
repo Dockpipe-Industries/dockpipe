@@ -4,6 +4,7 @@ import argparse
 import hashlib
 import json
 import re
+import shutil
 from pathlib import Path
 
 PLATFORMS = ("linux-amd64", "linux-arm64", "darwin-amd64", "darwin-arm64", "windows-amd64")
@@ -33,6 +34,23 @@ def verify_store(directory):
         if path.is_symlink() or digest(path) != entry["sha256"]:
             raise ValueError(f"Package checksum mismatch: {path}")
     return len(entries)
+
+
+def stage_core(directory, destination):
+    """Stage only the verified core archive into a fresh installer-owned store."""
+    manifest = json.loads((directory / "packages-store-manifest.json").read_text())
+    core = manifest["packages"]["core"]
+    filename = core["tarball"]
+    if not re.fullmatch(r"dockpipe-core-[A-Za-z0-9_.-]+\.tar\.gz", filename):
+        raise ValueError(f"Invalid core filename: {filename}")
+    archive = directory / filename
+    if archive.is_symlink() or digest(archive) != core["sha256"]:
+        raise ValueError(f"Core checksum mismatch: {archive}")
+    # Refuse reused payloads: optional packages must never leak from an older build.
+    destination.mkdir(parents=True, exist_ok=False)
+    core_directory = destination / "packages" / "core"
+    core_directory.mkdir(parents=True)
+    shutil.copyfile(archive, core_directory / filename)
 
 
 def prepare(directory, version, candidate="", source_sha=""):
@@ -82,14 +100,19 @@ def prepare(directory, version, candidate="", source_sha=""):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("command", choices=("verify-store", "prepare"))
+    parser.add_argument("command", choices=("verify-store", "stage-core", "prepare"))
     parser.add_argument("directory", type=Path)
     parser.add_argument("--version")
+    parser.add_argument("--destination", type=Path)
     parser.add_argument("--candidate", default="")
     parser.add_argument("--source-sha", default="")
     args = parser.parse_args()
     if args.command == "verify-store":
         print(f"Verified {verify_store(args.directory)} packages in {args.directory}")
+    elif args.command == "stage-core":
+        if args.destination is None:
+            parser.error("stage-core requires --destination")
+        stage_core(args.directory, args.destination)
     else:
         if not args.version:
             parser.error("prepare requires --version")
