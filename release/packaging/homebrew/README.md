@@ -33,14 +33,14 @@ For local unit checks:
 python3 -m unittest discover -s release/packaging/tests -p test_homebrew.py -v
 ```
 
-The formula installs the native CLI plus all core/workflow/resolver archives in its
+The formula installs the native CLI plus only the required core archive in its
 Homebrew keg. Its small launcher defaults `DOCKPIPE_SYSTEM_ROOT` to that package
 directory, respecting an explicit user override. No engine changes or writes to
 `/Library/Application Support` are needed. The stable `dockpipe` formula is not
 published, so staging must not declare a conflict with that unavailable formula.
 Add reciprocal conflicts when the stable formula is published: both install the
 `dockpipe` command. Staging is not a separate product identity. Its candidate version is
-upgradeable even while the binary reports the unchanged numeric core version.
+upgradeable and the binary reports the generated numeric version.
 
 The tap is macOS-only initially. APT and portable archives remain the Linux paths.
 Native Homebrew installation must pass on hosted Macs before the formula is made

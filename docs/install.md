@@ -8,7 +8,7 @@ Choose **Desktop** for the launcher and CLI together, or **CLI / Remote Worker**
 | --- | --- | --- |
 | macOS Apple Silicon / Intel | DMG installer, or Homebrew desktop cask | Homebrew formula or native tarball |
 | Windows x64 | MSI with launcher selected by default | ZIP, or MSI with only the CLI feature |
-| Ubuntu 24.04 amd64 / arm64 | `dockpipe-desktop` DEB plus `dockpipe` | `dockpipe` DEB; RPM, APK, Arch and portable CLI packages also available |
+| Ubuntu 22.04 / 24.04 amd64 / arm64; Pop!_OS 22.04 | `dockpipe-desktop` DEB plus `dockpipe` | `dockpipe` DEB; RPM, APK, Arch and portable CLI packages also available |
 
 Normal installers ship the CLI and core, plus the launcher when selected. Optional workflows
 and resolvers are installed explicitly from **Packages → Marketplace** or `dockpipe package install`.
@@ -43,7 +43,7 @@ Uninstalling the desktop cask removes the app and retains the CLI formula. User 
 
 **Windows:** run `dockpipe_VERSION_windows_amd64.msi`. The default installs the CLI, full Qt launcher runtime and a Start menu shortcut. Deselect **DockPipe Launcher** for a CLI-only install, or change the feature later through the installer's Modify option. The ZIP is always CLI-only.
 
-**Ubuntu 24.04:** after configuring the signed APT source below, run `sudo apt install dockpipe-desktop`; it installs the matching CLI dependency. For downloaded DEBs, install both together:
+**Ubuntu 22.04 / 24.04 and Pop!_OS 22.04:** after configuring the signed APT source below, run `sudo apt install dockpipe-desktop`; it installs the matching CLI dependency. The launcher is built against Ubuntu 22.04's Qt runtime, and the same DEB is installation-tested on both Ubuntu releases. For downloaded DEBs, install both together:
 
 ```sh
 sudo apt install ./dockpipe_VERSION_amd64.deb ./dockpipe-desktop_VERSION_amd64.deb
@@ -71,6 +71,11 @@ User-created workflow files from **`dockpipe init`** live in your project, typic
 ---
 
 ## Signed APT repository
+
+Staging testers use the [permanent staging APT source](../release/docs/staging.md#apt-staging-installation-and-upgrades).
+Published builds receive increasing generated patch versions, so a configured channel
+updates both CLI and launcher through `sudo apt update` and `sudo apt upgrade`.
+Older candidate-specific staging sources remain pinned until explicitly replaced.
 
 Once the 0.6 release and public hostname are live, Debian/Ubuntu users can install and receive updates from the signed repository:
 

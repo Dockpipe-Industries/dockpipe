@@ -35,7 +35,9 @@ Each new successful staging push creates a separately selectable candidate.
 
 ## Versions and immutable candidates
 
-- Repo-root `VERSION` names the planned CLI/core release.
+- Repo-root `VERSION` selects the release line and notes baseline. The pipeline generates
+  the next unused numeric patch from all stable and staging release tags (for example,
+  `0.6.1`, then `0.6.2`). CLI, core, launcher and native installers use that version.
 - Each package's `package.yml` owns its independent version. Generated children
   inherit the nearest owner; explicit child versions take precedence. Existing
   equal version numbers do not imply that future bumps must be synchronized.
@@ -48,13 +50,17 @@ Each new successful staging push creates a separately selectable candidate.
   Publication uploads payloads and signed APT metadata before the catalog commit
   marker and pointer. Existing committed candidates cannot be overwritten.
 
-Native package and MSI versions remain numeric `X.Y.Z`. Repeated staging candidates
-for the same planned release are explicitly selected installs; package managers
-will not recognize them as successive version upgrades. APT repositories are also
-candidate-specific (`<candidate-base>/apt`, suite `staging`) so two candidates never
-replace the same native package file. Use an isolated test installation; these
-installers use the normal DockPipe product/package identity, not a side-by-side
-staging product. Defaults continue to select stable releases.
+Native package and MSI versions use the generated numeric `X.Y.Z`, so each published
+build advances the package manager's version. Stable and staging publication share
+one serialized allocator; dry runs preview the next version without reserving it.
+An existing published tag, including a partial publication, consumes that patch.
+New full runs select the next unused patch. Do not delete release tags to reuse numbers.
+
+Staging publishes a rolling signed APT repository at `https://packages.staging.dockpipe.com/apt`
+(suite `staging`), plus an immutable `<candidate-base>/apt` snapshot for explicit pins.
+Old pool objects and by-hash indexes are retained. These installers use the normal
+DockPipe product identity; configure one channel per machine. Source/default installs
+continue to select production unless staging is explicitly configured.
 
 ## Infrastructure preparation
 
@@ -107,10 +113,10 @@ Read the staging pointer, inspect its catalog and select its immutable identity.
 For example, substitute the actual published candidate below:
 
 ```bash
-candidate='0.6.0-staging.RUN_ID.ATTEMPT.SHORT_SHA'
+candidate='0.6.1-staging.RUN_ID.ATTEMPT.SHORT_SHA'
 base="https://packages.staging.dockpipe.com/packages/candidates/$candidate"
 curl -fsSL "$base/install.sh" -o /tmp/dockpipe-staging-install.sh
-DOCKPIPE_VERSION=0.6.0 DOCKPIPE_DOWNLOAD_BASE="$base" \
+DOCKPIPE_VERSION=0.6.1 DOCKPIPE_DOWNLOAD_BASE="$base" \
   DOCKPIPE_INSTALL_MODE=portable sh /tmp/dockpipe-staging-install.sh
 ```
 
@@ -135,8 +141,8 @@ The tap polls completed staging releases every 15 minutes and tests installation
 on Apple Silicon and Intel before updating. GitHub schedules can run late; manual
 dispatch is also available. No additional upload secret is required.
 
-Unlike the native DEB/MSI version, the Homebrew formula version includes the
-candidate identity so upgrades distinguish successive builds. It installs the
+The Homebrew formula version includes the candidate provenance in addition to the
+generated numeric version. It installs the
 native CLI and required core package. The command is still `dockpipe` and uses normal user data unless
 `DOCKPIPE_GLOBAL_ROOT` is set to a separate test directory.
 The stable formula is not yet published, so a conflict declaration against it is invalid.
@@ -149,34 +155,33 @@ launcher and CLI together. The DMG offers a direct Apple Installer alternative.
 See [desktop installation](../../docs/install.md#desktop-installation) for platform
 choices and the outstanding Apple signing/notarization boundary.
 
-### APT installation in a test VM
+### APT staging installation and upgrades
 
-Use the same candidate `base` selected above. Download its public key and compare
-the fingerprint with the staging signing identity before adding the repository:
+After a release using the rolling repository is published, configure its permanent URL
+once. Download the staging public key and check its fingerprint:
 
 ```bash
-curl -fsSL "$base/apt/dockpipe-archive-keyring.gpg" -o /tmp/dockpipe-staging-keyring.gpg
+curl -fsSL https://packages.staging.dockpipe.com/apt/dockpipe-archive-keyring.gpg -o /tmp/dockpipe-staging-keyring.gpg
 gpg --show-keys --with-fingerprint /tmp/dockpipe-staging-keyring.gpg
 ```
 
-The initial staging key fingerprint is
-`7295FA3FC25A3998E146D0779EAF522778B9C909` (expires 2028-10-04).
-After confirming the fingerprint, run in the disposable test VM:
+The staging fingerprint is `7295FA3FC25A3998E146D0779EAF522778B9C909`
+(expires 2028-10-04). After confirming it:
 
 ```bash
 sudo install -m 0644 /tmp/dockpipe-staging-keyring.gpg /usr/share/keyrings/dockpipe-staging.gpg
-printf 'deb [signed-by=/usr/share/keyrings/dockpipe-staging.gpg] %s/apt staging main\n' "$base" \
+printf '%s\n' 'deb [arch=amd64,arm64 signed-by=/usr/share/keyrings/dockpipe-staging.gpg] https://packages.staging.dockpipe.com/apt staging main' \
   | sudo tee /etc/apt/sources.list.d/dockpipe-staging.list >/dev/null
-sudo apt-get update
-sudo apt-get install dockpipe
-dockpipe --version
+sudo apt update
+sudo apt install dockpipe-desktop
 ```
 
-To test another candidate with the same numeric version, update the source URL,
-run `apt-get update`, then `apt-get install --reinstall dockpipe`. Do not configure
-both production and staging repositories in this VM: their package name and numeric
-version can be identical. Test the other native installers on their target OS;
-portable-install success alone does not qualify APT or MSI installation.
+The desktop package installs its exact-version CLI dependency. Headless machines can
+install only `dockpipe`. Subsequent releases use normal `sudo apt update` and
+`sudo apt upgrade`; no candidate URL edits or `--reinstall` are needed.
+Existing candidate-pinned sources must be replaced with this permanent source once;
+installers do not rewrite user APT configuration. Do not enable production and staging
+sources together. The immutable candidate APT URL remains available for intentional pins.
 
 A rerun of all jobs gets a new attempt identity. Rerunning only a failed publication
 job may encounter an existing GitHub tag or R2 catalog; inspect the partial result
