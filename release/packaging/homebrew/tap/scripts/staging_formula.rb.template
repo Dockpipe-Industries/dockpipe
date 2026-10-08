@@ -11,13 +11,9 @@ class DockpipeStaging < Formula
 
   def install
     (libexec/"bin").install "dockpipe"
-    resource("packages").stage do
-      store = libexec/"share/dockpipe"
-      store.install "packages-store-manifest.json"
-      (store/"packages/core").install Dir["dockpipe-core-*.tar.gz"]
-      (store/"packages/workflows").install Dir["dockpipe-workflow-*.tar.gz"]
-      (store/"packages/resolvers").install Dir["dockpipe-resolver-*.tar.gz"]
-    end
+    # Keep the verified archive intact. Optional packages are installed on demand.
+    core = resource("core").fetch
+    (libexec/"share/dockpipe/packages/core").install core => "dockpipe-core-@RELEASE_VERSION@.tar.gz"
 
     # Use the existing package-root override so Homebrew owns the entire install.
     (bin/"dockpipe").write <<~SH
@@ -55,17 +51,14 @@ class DockpipeStaging < Formula
     assert_equal "brew-ok", (testpath/"result.txt").read
 
     require "json"
-    require "digest"
     store = libexec/"share/dockpipe"
-    packages = JSON.parse((store/"packages-store-manifest.json").read).fetch("packages")
-    { "core" => [packages.fetch("core")],
-      "workflows" => packages.fetch("workflows"),
-      "resolvers" => packages.fetch("resolvers") }.each do |kind, entries|
-      refute_empty entries
-      entries.each do |entry|
-        archive = store/"packages"/kind/entry.fetch("tarball")
-        assert_equal entry.fetch("sha256"), Digest::SHA256.file(archive).hexdigest
-      end
+    installed_files = Dir.glob("#{store}/**/*").filter_map do |path|
+      Pathname(path).relative_path_from(store).to_s if File.file?(path)
     end
+    assert_equal ["packages/core/dockpipe-core-@RELEASE_VERSION@.tar.gz"], installed_files
+    inventory = JSON.parse(shell_output("#{bin}/dockpipe package list --format json --workdir #{testpath}"))
+    assert_empty inventory.fetch("warnings")
+    refute_empty inventory.fetch("packages")
+    assert_equal ["core"], inventory.fetch("packages").map { |package| package.fetch("kind") }.uniq
   end
 end

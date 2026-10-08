@@ -25,6 +25,7 @@ type InstalledPackage struct {
 	Description string `json:"description,omitempty"`
 	Path        string `json:"path"`
 	Source      string `json:"source"`
+	Removable   bool   `json:"removable"`
 }
 
 type PackageInventory struct {
@@ -104,9 +105,11 @@ func ListInstalledPackages(workdir string) (PackageInventory, error) {
 				out.Warnings = append(out.Warnings, fmt.Sprintf("%s: %v", filename, err))
 				return nil
 			}
+			_, removalErr := userPackageArchivePath(out.InstallRoot, absolute)
 			out.Packages = append(out.Packages, InstalledPackage{
 				Name: manifest.Name, Title: manifest.Title, Version: manifest.Version,
 				Kind: manifest.Kind, Description: manifest.Description, Path: absolute, Source: location.label,
+				Removable: location.label == "User" && archive && removalErr == nil && (manifest.Kind == "workflow" || manifest.Kind == "resolver"),
 			})
 			return nil
 		})
@@ -124,7 +127,11 @@ func inventoryArchiveManifest(filename string) (*domain.PackageManifest, error) 
 		return nil, err
 	}
 	defer file.Close()
-	gz, err := gzip.NewReader(file)
+	return inventoryArchiveManifestReader(file, filename)
+}
+
+func inventoryArchiveManifestReader(reader io.Reader, filename string) (*domain.PackageManifest, error) {
+	gz, err := gzip.NewReader(reader)
 	if err != nil {
 		return nil, err
 	}

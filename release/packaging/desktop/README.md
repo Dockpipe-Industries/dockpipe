@@ -12,7 +12,7 @@ choices.
 | Windows amd64 | `dockpipe_VERSION_windows_amd64.msi` | CLI, core package, deployed Qt launcher and Start menu shortcut; launcher selected by default |
 
 The macOS app contains the CLI in `Contents/Helpers`, a wrapper in `Contents/MacOS`,
-and the complete package store in `Contents/Resources/share/dockpipe`. The wrapper
+and only the required core package in `Contents/Resources/share/dockpipe`. The wrapper
 sets the existing `DOCKPIPE_SYSTEM_ROOT` only when unset. User data retains its
 normal location; no engine-specific macOS app knowledge is needed. Launcher
 discovery preserves explicit `DOCKPIPE_BIN` and repository development binaries,
