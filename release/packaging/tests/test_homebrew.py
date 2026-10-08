@@ -29,10 +29,9 @@ class HomebrewTests(unittest.TestCase):
         self.run = {"id": 123, "run_attempt": 2, "head_sha": "a" * 40, "head_branch": "staging",
                     "event": "push", "path": ".github/workflows/ci.yml",
                     "repository": {"full_name": sync.SOURCE}, "status": "completed", "conclusion": "success"}
-        self.checksums = {}
+        self.checksums = {"dockpipe-core-0.6.0.tar.gz": "e" * 64}
         for arch in ("arm64", "amd64"):
             self.checksums[f"dockpipe_0.6.0_darwin_{arch}.tar.gz"] = "b" * 64
-            self.checksums[f"dockpipe-packages_0.6.0_darwin-{arch}.tar.gz"] = "c" * 64
             self.checksums[f"dockpipe-desktop_0.6.0_darwin_{arch}.zip"] = "d" * 64
 
     def contents(self):
@@ -49,7 +48,7 @@ class HomebrewTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             formula.render_cask(self.candidate, self.checksums)
 
-    def test_formula_pins_both_platforms_and_complete_package_resources(self):
+    def test_formula_pins_both_platforms_and_only_core(self):
         rendered = formula.render(self.candidate, self.checksums)
         self.assertIn(f'version "{self.candidate}"', rendered)
         for filename, checksum in self.checksums.items():
@@ -57,8 +56,11 @@ class HomebrewTests(unittest.TestCase):
                 continue
             self.assertIn(f'{formula.ORIGIN}/packages/candidates/{self.candidate}/{filename}', rendered)
             self.assertIn(f'sha256 "{checksum}"', rendered)
-        for kind in ("core", "workflows", "resolvers"):
-            self.assertIn(f'packages/{kind}', rendered)
+        self.assertIn('packages/core', rendered)
+        self.assertNotIn('packages/workflows', rendered)
+        self.assertNotIn('packages/resolvers', rendered)
+        self.assertNotIn('dockpipe-packages_', rendered)
+        self.assertNotIn('@RELEASE_VERSION@', rendered)
         self.assertNotIn("@CANDIDATE@", rendered)
         self.assertNotIn("@PLATFORMS@", rendered)
         self.assertNotIn('conflicts_with "dockpipe"', rendered)

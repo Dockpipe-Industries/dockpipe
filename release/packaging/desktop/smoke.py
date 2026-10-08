@@ -1,5 +1,6 @@
 """Exercise deployed Qt and the launcher's CLI lookup outside a source checkout."""
 import argparse
+import json
 import os
 from pathlib import Path
 import subprocess
@@ -41,6 +42,14 @@ def check(launcher, expected_cli):
         if result.returncode or not selected_cli or Path(selected_cli).resolve() != Path(expected_cli).resolve():
             raise RuntimeError(result.stdout + result.stderr)
         print(result.stdout)
+        inventory = json.loads(subprocess.check_output(
+            [selected_cli, "package", "list", "--format", "json", "--workdir", str(home)],
+            cwd=home, env=environment, text=True, timeout=45))
+        if inventory["warnings"] or not inventory["packages"]:
+            raise RuntimeError(f"Incomplete installer package inventory: {inventory}")
+        if any(package["kind"] != "core" for package in inventory["packages"]):
+            raise RuntimeError(f"Installer bundled optional packages: {inventory}")
+        print("PASS: clean installation contains core only")
         with (home / "launcher.log").open("w+") as log:
             process = subprocess.Popen([str(launcher), "--allow-second-instance"], cwd=home,
                                        env=environment, stdout=log, stderr=log)

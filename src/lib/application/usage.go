@@ -74,7 +74,7 @@ var mainUsageSections = []usageSection{
 			{"build", "Compile packages into bin/.dockpipe/internal and prebuild Dockerfile image artifacts"},
 			{"clean [--dry-run]", "Preview or remove the complete checkout bin/.dockpipe disposable tree"},
 			{"rebuild", "Reset the resolved compiled store, then build"},
-			{"package list|images|manifest|build|test|compile", "Packages: list metadata, inspect image artifacts, run package tests, author tarballs, or compile into bin/.dockpipe/internal"},
+			{"package list|catalog|install|uninstall|images|manifest|build|test|compile", "Packages: list metadata, inspect image artifacts, run package tests, author tarballs, or compile into bin/.dockpipe/internal"},
 			{"test [package|workflow]", "Run package-owned tests and workflow-local tests for the current project/workdir"},
 			{"compile", "Same as dockpipe package compile (core, resolvers, workflows)"},
 			{"release upload", "Upload a file to S3-compatible storage (self-hosted; uses aws CLI)"},
