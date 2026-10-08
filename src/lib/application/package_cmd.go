@@ -23,6 +23,8 @@ func cmdPackage(args []string) error {
 		return cmdPackageRemote(args[1:], false)
 	case "install":
 		return cmdPackageRemote(args[1:], true)
+	case "uninstall":
+		return cmdPackageUninstall(args[1:])
 	case "list":
 		return cmdPackageList(args[1:])
 	case "images":
@@ -268,6 +270,7 @@ Usage:
   dockpipe package list [--workdir <path>] [--format text|json]
   dockpipe package catalog --remote <HTTPS manifest URL>
   dockpipe package install --remote <HTTPS manifest URL> --kind <kind> --name <name> [--sha256 <digest>]
+  dockpipe package uninstall --path <absolute user package archive>
   dockpipe package images [--workdir <path>]
   dockpipe package manifest
   dockpipe package build core|source|store [options]
@@ -279,6 +282,7 @@ Usage:
   manifest  Print an example package.yml schema to stdout.
   catalog   --remote <HTTPS manifest URL>: list remote packages as JSON for this platform.
   install   --remote <URL> --kind <kind> --name <name> [--sha256 <digest>]: install into the user store.
+  uninstall --path <archive>: remove one optional user package; retain data and settings.
   build     core: templates-core tarball + install-manifest; source: package-owned authoring-tree builds; store: gzip tar per compiled package + packages-store-manifest.json.
   test      Run package-owned tests declared as test.script in package.yml for source checkouts.
   compile   Materialize core / resolvers / workflows into bin/.dockpipe/internal/packages/ (see compile --help).

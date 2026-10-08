@@ -10,6 +10,10 @@ Choose **Desktop** for the launcher and CLI together, or **CLI / Remote Worker**
 | Windows x64 | MSI with launcher selected by default | ZIP, or MSI with only the CLI feature |
 | Ubuntu 24.04 amd64 / arm64 | `dockpipe-desktop` DEB plus `dockpipe` | `dockpipe` DEB; RPM, APK, Arch and portable CLI packages also available |
 
+Normal installers ship the CLI and core, plus the launcher when selected. Optional workflows
+and resolvers are installed explicitly from **Packages → Marketplace** or `dockpipe package install`.
+The complete release package store remains a separate opt-in download; it is never a default installer payload.
+
 Desktop packages are available in the staging channel. The Homebrew CLI formula and desktop cask
 passed [native installation checks on Apple Silicon and Intel](https://github.com/Dockpipe-Industries/homebrew-dockpipe/actions/runs/37419531103)
 before publication. Existing CLI-only installations do not acquire a launcher automatically; install
@@ -17,7 +21,7 @@ the desktop cask below to add it. Apple Developer ID signing and notarization re
 
 ## Desktop installation
 
-**macOS:** download `dockpipe-desktop_VERSION_darwin_arm64.dmg` for Apple Silicon or `dockpipe-desktop_VERSION_darwin_amd64.dmg` for Intel, verify it against that release's `SHA256SUMS.txt`, open it, and run **Install DockPipe.pkg**. Apple's Installer installs **DockPipe.app** in Applications and **`dockpipe`** in `/usr/local/bin`. Open DockPipe from Applications; new terminals can run `dockpipe --version`. The desktop app contains the matching CLI, Qt runtime and complete native package store. macOS 13 or newer is required.
+**macOS:** download `dockpipe-desktop_VERSION_darwin_arm64.dmg` for Apple Silicon or `dockpipe-desktop_VERSION_darwin_amd64.dmg` for Intel, verify it against that release's `SHA256SUMS.txt`, open it, and run **Install DockPipe.pkg**. Apple's Installer installs **DockPipe.app** in Applications and **`dockpipe`** in `/usr/local/bin`. Open DockPipe from Applications; new terminals can run `dockpipe --version`. The desktop app contains the matching CLI, Qt runtime and required core package. macOS 13 or newer is required.
 
 Use one installation method. The DMG installer refuses an existing foreign CLI or app; users with the Homebrew CLI should use the cask below. Re-running the DMG installer updates an installation owned by that installer. Locally built and current CI staging DMGs use ad-hoc signatures unless the maintainer supplies Developer ID signing and notarization. They are not yet normal Gatekeeper-approved public downloads; no security-setting changes are part of installation.
 
@@ -266,7 +270,7 @@ dockpipe windows doctor
 
 ## macOS CLI / Remote Worker
 
-The published staging formula installs the CLI and complete native package store:
+The published staging formula installs the CLI and required core package:
 
 ```sh
 brew install dockpipe-industries/dockpipe/dockpipe-staging

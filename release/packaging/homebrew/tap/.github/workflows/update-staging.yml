@@ -64,6 +64,18 @@ jobs:
           dockpipe --version
           brew install --cask dockpipe-industries/dockpipe/dockpipe-desktop-staging
           QT_QPA_PLATFORM=cocoa /Applications/DockPipe.app/Contents/MacOS/DockPipe --check-installation
+          # Inspect the actual app inventory, independently of the formula's test.
+          inventory_home="$(mktemp -d)"
+          DOCKPIPE_GLOBAL_ROOT="$inventory_home" /Applications/DockPipe.app/Contents/MacOS/dockpipe-cli \
+            package list --format json --workdir "$inventory_home" > "$inventory_home/inventory.json"
+          python3 - "$inventory_home/inventory.json" <<'PYTHON'
+          import json, sys
+          with open(sys.argv[1]) as stream:
+              inventory = json.load(stream)
+          assert not inventory["warnings"], inventory
+          assert inventory["packages"], inventory
+          assert all(package["kind"] == "core" for package in inventory["packages"]), inventory
+          PYTHON
           brew uninstall --cask dockpipe-desktop-staging
           dockpipe --version
           brew uninstall --formula dockpipe-staging

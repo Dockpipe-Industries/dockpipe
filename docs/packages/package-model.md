@@ -127,13 +127,27 @@ These checks establish integrity against the chosen HTTPS catalog; they are not 
 publisher signatures. Configure origins you trust to supply executable packages. Installation
 does not execute package code, modify the system/Brew store, resolve dependencies automatically,
 or fetch anything during ordinary workflow resolution. Required resolvers must already be
-installed or installed separately. Complete release installers continue to supply the full store.
+installed or installed separately. Normal installers supply only core; optional packages are selected explicitly from the remote catalog.
+The complete store is a separate opt-in download.
 
 `dockpipe package list --format json` returns `packages`, `warnings`, and `install_root`,
 covering project, configured, user, and system package stores. Entries include name, version,
-kind, description, source, and path. This is an inventory of available packages; a displayed
+kind, description, source, path, and `removable`. Only optional user-store archives are removable. This is an inventory of available packages; a displayed
 entry does not promise it wins every workflow's resolution precedence. The existing text
 listing remains scoped to the project store.
+
+`dockpipe package uninstall --path <absolute archive path>` removes the selected optional
+workflow or resolver archive from the user store. Use a `removable: true` entry from the
+JSON inventory. Core, system/installer packages, project/configured stores outside that
+root, compiled directories, and symbolic links are rejected. Uninstall retains package
+state, settings, caches, other versions, and dependencies; it never recursively deletes
+a package tree. The response contains the removed `path`.
+
+The launcher offers **Uninstall** on removable Installed entries and explains why managed
+entries are protected. Marketplace marks a matching name/kind/version **Installed** and
+disables duplicate installation; matching versions do not prove identical staging content.
+**Cancel operation** is visible only while a request is active and stops both catalog and
+inventory requests, with a bounded forced stop if the process does not exit.
 
 ## Network boundary: install, not every `run`
 
