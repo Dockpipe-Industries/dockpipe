@@ -22,10 +22,5 @@ if [[ "$(uname -s)" == Darwin ]]; then
   sudo rm -rf /Applications/DockPipe.app
   sudo pkgutil --forget com.dockpipe.desktop
 else
-  arch="$(dpkg --print-architecture)"
-  dpkg-deb -x "$out/dockpipe-desktop_${version}_${arch}.deb" "$stage"
-  dpkg-deb -x "$out/dockpipe_${version}_${arch}.deb" "$stage"
-  test -f "$stage/usr/share/applications/dockpipe-launcher.desktop"
-  test -f "$stage/usr/share/icons/hicolor/256x256/apps/dockpipe-launcher.png"
-  python3 "$root/release/packaging/desktop/smoke.py" "$stage/usr/bin/dockpipe-launcher" "$stage/usr/bin/dockpipe" --inventory-system-root "$stage/usr/share/dockpipe"
+  bash "$root/release/packaging/desktop/smoke-linux.sh" "$version" "$out"
 fi

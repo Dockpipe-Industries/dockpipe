@@ -55,6 +55,12 @@ def check(launcher, expected_cli, inventory_system_root=None):
         # than their platform-specific display spelling.
         if result.returncode or not selected_cli or Path(selected_cli).resolve() != Path(expected_cli).resolve():
             raise RuntimeError(result.stdout + result.stderr)
+        launcher_version = subprocess.check_output(
+            [str(launcher), "--version"], cwd=home, env=environment, text=True, timeout=30).strip()
+        cli_version = subprocess.check_output(
+            [selected_cli, "--version"], cwd=home, env=environment, text=True, timeout=30).strip()
+        if launcher_version != cli_version:
+            raise RuntimeError(f"Launcher/CLI version mismatch: {launcher_version} != {cli_version}")
         print(result.stdout)
         # Linux smoke uses an extracted DEB; MSI stores core under the original
         # user's install directory. Inventory those payloads while keeping the

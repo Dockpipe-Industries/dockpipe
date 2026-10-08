@@ -23,6 +23,7 @@ mkdir -p "${OUT_DIR}"
 
 WORKDIR="$(mktemp -d "${TMPDIR:-/tmp}/dockpipe-core-build-XXXXXX")"
 trap 'rm -rf "${WORKDIR}"' EXIT INT TERM
+printf '%s\n' "$VERSION" > "$WORKDIR/VERSION"
 
 run_with_elapsed_status "Compiling core package" \
   go run -trimpath -ldflags "-s -w -X main.Version=${VERSION}" ./src/cmd package compile core \
