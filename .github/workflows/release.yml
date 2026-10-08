@@ -456,7 +456,7 @@ jobs:
           bash release/packaging/build-apt.sh release/artifacts release/apt
 
       - name: Create GitHub release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2.6.2
         with:
           tag_name: ${{ needs.meta.outputs.tag }}
           target_commitish: ${{ github.sha }}
@@ -551,7 +551,7 @@ jobs:
           bash release/packaging/build-apt.sh release/artifacts release/apt
 
       - name: Create GitHub release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2.6.2
         with:
           prerelease: true
           make_latest: false

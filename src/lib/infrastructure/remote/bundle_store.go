@@ -4,6 +4,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 
 	contract "dockpipe/src/lib/domain/remote"
 )
@@ -25,7 +26,10 @@ func (b *Broker) storeBundle(request contract.SubmitRequest) error {
 	if digest != request.BundleHash {
 		return errors.New("delivery digest mismatch")
 	}
-	path := filepath.Join(filepath.Dir(b.path), "bundles", request.ID+".json")
+	path, err := b.bundlePath(request.ID)
+	if err != nil {
+		return err
+	}
 	var existing contract.Bundle
 	if err := ReadPrivate(path, &existing); err == nil {
 		previous, err := existing.Digest()
@@ -46,7 +50,11 @@ func (b *Broker) loadBundle(job contract.Job) (*contract.Bundle, error) {
 		return nil, errors.New("job does not select a delivery")
 	}
 	var bundle contract.Bundle
-	if err := ReadPrivate(filepath.Join(filepath.Dir(b.path), "bundles", job.ID+".json"), &bundle); err != nil {
+	path, err := b.bundlePath(job.ID)
+	if err != nil {
+		return nil, err
+	}
+	if err := ReadPrivate(path, &bundle); err != nil {
 		return nil, err
 	}
 	digest, err := bundle.Digest()
@@ -54,4 +62,13 @@ func (b *Broker) loadBundle(job contract.Job) (*contract.Bundle, error) {
 		return nil, errors.New("stored delivery digest mismatch")
 	}
 	return &bundle, nil
+}
+
+// bundlePath enforces the storage boundary independently of queue validation.
+// A submitted job ID must never select a path outside the bundle directory.
+func (b *Broker) bundlePath(id string) (string, error) {
+	if !filepath.IsLocal(id) || strings.ContainsAny(id, `/\`) || !contract.ValidID(id) {
+		return "", errors.New("bundle job ID must be a single local path component")
+	}
+	return filepath.Join(filepath.Dir(b.path), "bundles", id+".json"), nil
 }
