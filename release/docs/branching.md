@@ -4,7 +4,7 @@
 
 1. **Contributors** (or you) work on **feature branches** or **forks** → open **PR → `staging`**.
 2. **Merge to `staging`** when the change is accepted. After green CI, an installable [staging candidate](staging.md) publishes automatically. You can continue testing before production — you can push follow-ups, edit **`release/releasenotes/`**, bump **`VERSION`**, or tweak the contributor’s work on **`staging`** (via PR or maintainer commits, per your rules).
-3. When you’re ready to **cut a release**, open **PR `staging` → `master`** (or merge with the same protections). That PR must **bump `VERSION`** and **update `release/releasenotes/X.Y.Z.md`** (CI enforces this only for PRs **targeting `master`**).
+3. When you’re ready to **cut a release**, open **PR `staging` → `master`** (or merge with the same protections). That PR must **update `release/releasenotes/X.Y.Z.md`** for the selected release line; patch numbers are generated (CI enforces this only for PRs **targeting `master`**).
 4. **Merge to `master`** → **Release** workflow runs: artifacts + **GitHub Release** **`vX.Y.Z`**.
 
 **`master`** is **the released line**. **`staging`** holds “next release” integration until you ship.
@@ -25,7 +25,7 @@ Turn off **“allow administrators to bypass”** if you want **your own** chang
 
 ### Default branch = latest release (no drift)
 
-**`master`** should match **what you last shipped** (and **`v$(cat VERSION)`** on that branch). **`staging`** may be **ahead** until the next ship PR.
+**`master`** should match **what you last shipped** (and the generated release tag on that branch). **`staging`** may be **ahead** until the next ship PR.
 
 **First-time GitHub Actions:** Manual dispatch requires the workflow on the default branch. The staging push path calls the reusable release workflow from the same commit and can qualify candidates before a production merge.
 
@@ -34,7 +34,7 @@ Turn off **“allow administrators to bypass”** if you want **your own** chang
 1. **On a feature branch:** **Actions → CI → Run workflow** → pick your branch (full tests; **no** VERSION gate).
 2. **PR → `staging`:** CI runs **without** the release-notes / VERSION bump requirement.
 3. **On `staging`:** You adjust code, **release notes**, and **`VERSION`** when you’re ready to ship.
-4. **PR `staging` → `master`:** CI runs **with** the VERSION + release-notes gate → merge **ships**.
+4. **PR `staging` → `master`:** CI runs **with** the release-notes gate → merge **ships**.
 5. **Release dry run:** **Actions → Release → Run workflow** → branch + **dry_run: true**.
 
 ### Dependabot
@@ -45,17 +45,17 @@ Turn off **“allow administrators to bypass”** if you want **your own** chang
 
 ## `VERSION` + `release/releasenotes/X.Y.Z.md`
 
-- **[`VERSION`](../../VERSION)** — single line, semver **`X.Y.Z`** (no `v` prefix). This is the version **you are about to ship** when the **`staging` → `master`** PR lands.
+- **[`VERSION`](../../VERSION)** — single line, semver **`X.Y.Z`** (no `v` prefix). This selects the major/minor release line and minimum patch. Publication generates the next unused numeric patch across stable and staging tags.
 - **`release/releasenotes/${VERSION}.md`** — required body for the GitHub release.
 
 **Every PR into `master` must** (enforced by CI):
 
-1. **Bump** **`VERSION`** to a **new** semver vs the **base** branch (`master`).
-2. **Modify** **`release/releasenotes/<new-version>.md`** in that same PR.
+1. Keep a valid numeric **`VERSION`** baseline; a manual patch bump is not required.
+2. **Modify** **`release/releasenotes/<baseline-version>.md`** in that same PR.
 
 **PRs into `staging`** do **not** run that gate — integrate freely, then finalize notes + version on **`staging`** before the ship PR.
 
-**Docs-only or chore ship PRs** use a **patch** bump + a short release note (e.g. “Docs: …”).
+**Docs-only or chore ship PRs** receive a generated patch and still need a short release note (e.g. “Docs: …”).
 
 ---
 
@@ -63,7 +63,7 @@ Turn off **“allow administrators to bypass”** if you want **your own** chang
 
 **`.github/workflows/ci.yml`** is a single workflow named **CI**. Each trigger creates **one** run in the Actions list. Inside it, three **jobs** run in parallel:
 
-- **`test`** (Ubuntu) — **`govulncheck`**, **`gosec`**, **`go test`**, **`make`**, **`.deb`**, shell + integration tests, and (on PRs to **`master`**) the VERSION / release-notes gate.
+- **`test`** (Ubuntu) — **`govulncheck`**, **`gosec`**, **`go test`**, **`make`**, **`.deb`**, shell + integration tests, and (on PRs to **`master`**) the release-notes gate.
 - **`test-windows`** (Windows) — **`go test ./...`** and **`test_clone_worktree_include.sh`** (bash + git; host pre-script–like coverage). Does **not** run Docker integration tests or full **`tests/run_tests.sh`** (those stay on Linux).
 - **`codeql`** — **CodeQL** (Go, **`security-extended`** via **`.github/codeql/codeql-config.yml`**), uploads to **Security → Code scanning** when allowed.
 
@@ -75,12 +75,12 @@ On the **weekly schedule**, only **`codeql`** runs (**`test`** and **`test-windo
 
 | Event | Workflow | What it does |
 |--------|-----------|----------------|
-| **PR** → **`staging`** | **`ci.yml`** | Jobs **`test`** + **`test-windows`** + **`codeql`** — **no** VERSION / release-notes gate on **`test`** |
-| **PR** → **`master`** | **`ci.yml`** | Same + **release notes + VERSION bump** on **`test`** |
+| **PR** → **`staging`** | **`ci.yml`** | Jobs **`test`** + **`test-windows`** + **`codeql`** — **no** release-notes gate on **`test`** |
+| **PR** → **`master`** | **`ci.yml`** | Same + **release notes** on **`test`** |
 | **Push** **`staging`** / **`master`** | **`ci.yml`** | **`test`** + **`test-windows`** (no VERSION gate on push); staging then builds and publishes a candidate. CodeQL runs separately. |
 | **workflow_dispatch** | **`ci.yml`** | **`test`** + **`test-windows`** + **`codeql`** (no VERSION gate) |
 | **Schedule** (weekly) | **`ci.yml`** | **`codeql`** only |
-| **Push** **`master`** (merge) | **`release.yml`** | Full build + **GitHub Release** `v$(cat VERSION)`; optional **dev.to** ([devto.md](devto.md)) |
+| **Push** **`master`** (merge) | **`release.yml`** | Full build + **GitHub Release** with generated `vX.Y.Z`; optional **dev.to** ([devto.md](devto.md)) |
 | **workflow_dispatch** on Release | **`release.yml`** | Defaults to **dry_run=true**, without deployment approval; **dry_run=false** requires **`master`** |
 
 > **Release** still runs only on **`push` to `master`**, not on pushes to **`staging`**.

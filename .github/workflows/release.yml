@@ -1,6 +1,6 @@
 name: Release
 
-# Merging to master ships a release: version comes from repo-root VERSION + release/releasenotes/X.Y.Z.md.
+# VERSION selects the release line/notes; the patch is generated from published tags.
 # Manual runs default to dry-run verification; production runs require master.
 on:
   workflow_call:
@@ -14,7 +14,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: "Release version (e.g. 0.6.0). Leave empty to use VERSION file from the branch."
+        description: "Release baseline (e.g. 0.6.0); the patch is generated. Defaults to VERSION."
         required: false
         type: string
       dry_run:
@@ -29,7 +29,8 @@ on:
         type: boolean
 
 concurrency:
-  group: dockpipe-release-${{ github.event_name == 'workflow_dispatch' && inputs.dry_run && 'dry-run' || 'publish' }}-${{ github.ref }}
+  # Both publication channels share one allocator lock. Dry runs never reserve versions.
+  group: dockpipe-release-${{ github.event_name == 'workflow_dispatch' && inputs.dry_run && format('dry-run-{0}', github.ref) || 'publish' }}
   cancel-in-progress: false
 
 permissions:
@@ -39,11 +40,12 @@ jobs:
   meta:
     runs-on: ubuntu-latest
     outputs:
-      version: ${{ steps.m.outputs.version }}
-      tag: ${{ steps.m.outputs.tag }}
+      version: ${{ steps.version.outputs.version }}
+      tag: ${{ steps.version.outputs.tag }}
+      notes_version: ${{ steps.m.outputs.notes_version }}
       dry_run: ${{ steps.m.outputs.dry_run }}
       build_msi: ${{ steps.m.outputs.build_msi }}
-      candidate: ${{ steps.m.outputs.candidate }}
+      candidate: ${{ steps.version.outputs.candidate }}
     steps:
       - uses: actions/checkout@v6
 
@@ -102,28 +104,36 @@ jobs:
             echo "Missing release/releasenotes/${raw}.md" >&2
             exit 1
           fi
-          tag="v${raw}"
-          if [[ -n "$candidate" ]]; then
-            candidate="${raw}-${candidate}"
-            tag="v${candidate}"
-          fi
-          echo "candidate=${candidate}" >> "$GITHUB_OUTPUT"
-          echo "version=${raw}" >> "$GITHUB_OUTPUT"
-          echo "tag=${tag}" >> "$GITHUB_OUTPUT"
+          echo "staging_suffix=${candidate}" >> "$GITHUB_OUTPUT"
+          echo "notes_version=${raw}" >> "$GITHUB_OUTPUT"
           echo "dry_run=${dry_run}" >> "$GITHUB_OUTPUT"
           echo "build_msi=${build_msi}" >> "$GITHUB_OUTPUT"
+
+      - name: Generate the next native release version
+        id: version
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BASE_VERSION: ${{ steps.m.outputs.notes_version }}
+          STAGING_SUFFIX: ${{ steps.m.outputs.staging_suffix }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          tags="$RUNNER_TEMP/dockpipe-release-tags.txt"
+          gh api --paginate "repos/$GITHUB_REPOSITORY/tags?per_page=100" --jq '.[].name' > "$tags"
+          python3 release/packaging/release-version.py --base "$BASE_VERSION" \
+            --tags "$tags" --staging-suffix "$STAGING_SUFFIX" >> "$GITHUB_OUTPUT"
 
       - name: Require an unpublished version
         if: steps.m.outputs.dry_run != 'true'
         env:
           GH_TOKEN: ${{ github.token }}
-          RELEASE_TAG: ${{ steps.m.outputs.tag }}
+          RELEASE_TAG: ${{ steps.version.outputs.tag }}
         shell: bash
         run: |
           set -euo pipefail
           error_file="$RUNNER_TEMP/dockpipe-tag-check.err"
           if gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$RELEASE_TAG" >/dev/null 2>"$error_file"; then
-            echo "::error::This release tag already exists. Advance VERSION before publishing."
+            echo "::error::This release tag already exists. Start a fresh complete release run."
             exit 1
           elif ! grep -q 'HTTP 404' "$error_file"; then
             echo "::error::Could not verify whether the release tag exists."
@@ -155,11 +165,6 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           node-version: "22"
-      - name: Install Linux desktop build dependencies
-        if: runner.os == 'Linux'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends qt6-base-dev qt6-qpa-plugins libgl1-mesa-dev dpkg-dev
       - name: Install macOS Qt
         if: runner.os == 'macOS'
         run: |
@@ -171,10 +176,20 @@ jobs:
       - name: Build native CLI, all package stores, and installers
         shell: bash
         run: bash release/packaging/build-platform.sh "${{ needs.meta.outputs.version }}"
-      - name: Build native desktop installers
+      - name: Build Linux desktop against Ubuntu 22.04
+        if: runner.os == 'Linux'
+        shell: bash
+        run: bash release/packaging/desktop/build-linux.sh "${{ needs.meta.outputs.version }}" release/artifacts
+      - name: Build native macOS desktop installers
+        if: runner.os == 'macOS'
         shell: bash
         run: bash release/packaging/desktop/build-unix.sh "${{ needs.meta.outputs.version }}" release/artifacts
-      - name: Native desktop installation smoke test
+      - name: Install and test Linux desktop on Ubuntu 22.04 and 24.04
+        if: runner.os == 'Linux'
+        shell: bash
+        run: bash release/packaging/desktop/smoke-linux.sh "${{ needs.meta.outputs.version }}"
+      - name: Native macOS desktop installation smoke test
+        if: runner.os == 'macOS'
         shell: bash
         run: bash release/packaging/desktop/smoke-unix.sh "${{ needs.meta.outputs.version }}"
       - name: Native CLI and workflow smoke test
@@ -332,13 +347,21 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          VERSION="${{ needs.meta.outputs.version }}"
+          VERSION="${{ needs.meta.outputs.notes_version }}"
           NOTES_FILE="release/releasenotes/${VERSION}.md"
           if [[ ! -f "${NOTES_FILE}" ]]; then
             echo "Missing required release notes file: ${NOTES_FILE}" >&2
             exit 1
           fi
-          cp "${NOTES_FILE}" release/artifacts/RELEASE_NOTES.md
+          python3 - "$NOTES_FILE" "${{ needs.meta.outputs.version }}" "$VERSION" <<'PY'
+          from pathlib import Path
+          import re
+          import sys
+          notes, version, baseline = sys.argv[1:]
+          body = Path(notes).read_text()
+          body = re.sub(r"(?<![0-9.])" + re.escape(baseline) + r"(?![0-9.])", version, body)
+          Path("release/artifacts/RELEASE_NOTES.md").write_text(body)
+          PY
 
       - name: Prepare installers and complete release catalog
         shell: bash
@@ -574,6 +597,10 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v6
+      - uses: actions/download-artifact@v8
+        with:
+          name: dockpipe-release-prepared-${{ needs.meta.outputs.version }}
+          path: release/artifacts
 
       - name: Publish to dev.to (main PUT + optional one-time POST)
         shell: bash
@@ -593,7 +620,7 @@ jobs:
             echo "::error::Set secret DEVTO_API_KEY when DEVTO_PUBLISH is true."
             exit 1
           fi
-          NOTES="release/releasenotes/${VERSION}.md"
+          NOTES="release/artifacts/RELEASE_NOTES.md"
           if [[ ! -f "${NOTES}" ]]; then
             echo "::error::Missing ${NOTES}" >&2
             exit 1

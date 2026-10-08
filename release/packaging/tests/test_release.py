@@ -140,7 +140,7 @@ class ReleaseTests(unittest.TestCase):
             (apt / "dists/stable" / name).write_bytes(b"metadata")
         calls = []
         environment = {"DOCKPIPE_RELEASE_BUCKET": "test-packages", "R2_ENDPOINT_URL": "https://example.invalid", "R2_PREFIX": "packages"}
-        with patch.dict(os.environ, environment), patch.object(publisher, "upload", side_effect=lambda *args: calls.append(args)), patch.object(publisher, "require_unpublished"):
+        with patch.dict(os.environ, environment), patch.object(publisher, "upload", side_effect=lambda *args: calls.append(args)), patch.object(publisher, "require_forward_version"), patch.object(publisher, "require_unpublished"):
             publisher.publish(artifacts, apt, "0.6.0", False)
         keys = [call[1] for call in calls]
         self.assertEqual(keys[-1], "packages/latest.json")
@@ -166,12 +166,14 @@ class ReleaseTests(unittest.TestCase):
         (apt / "pool").mkdir()
         (apt / "pool/candidate.deb").write_bytes(b"deb")
         environment = {"DOCKPIPE_RELEASE_BUCKET": "dockpipe-staging", "R2_ENDPOINT_URL": "https://example.invalid", "R2_PREFIX": "packages"}
-        with patch.dict(os.environ, environment), patch.object(publisher, "upload") as upload, patch.object(publisher, "require_unpublished") as guard:
+        with patch.dict(os.environ, environment), patch.object(publisher, "upload") as upload, patch.object(publisher, "require_forward_version"), patch.object(publisher, "require_unpublished") as guard:
             publisher.publish(artifacts, apt, "0.6.0", False, candidate)
             prefix = f"packages/candidates/{candidate}"
             keys = [call.args[1] for call in upload.call_args_list]
-            self.assertTrue(all(key.startswith(prefix + "/") for key in keys[:-1]))
-            self.assertEqual(keys[-2:], [prefix + "/release-manifest.json", "packages/latest.json"])
+            self.assertTrue(all(key.startswith((prefix + "/", "apt/")) for key in keys[:-1]))
+            self.assertEqual(keys[-2:], ["apt/dists/staging/InRelease", "packages/latest.json"])
+            self.assertLess(keys.index(prefix + "/release-manifest.json"), keys.index("apt/pool/candidate.deb"))
+            self.assertLess(keys.index("apt/pool/candidate.deb"), keys.index("apt/dists/staging/InRelease"))
             self.assertIn(prefix + "/apt/pool/candidate.deb", keys)
             self.assertEqual(guard.call_args.args[2], prefix + "/release-manifest.json")
             pointer = json.loads((self.root / "latest.json").read_text())
@@ -202,6 +204,20 @@ class ReleaseTests(unittest.TestCase):
         missing = subprocess.CompletedProcess([], 1, stdout="", stderr="An error occurred (404) when calling HeadObject")
         with patch.object(publisher.subprocess, "run", return_value=missing):
             publisher.require_unpublished("bucket", "https://example.invalid", "manifest.json")
+
+    def test_publisher_requires_a_strictly_newer_native_version(self):
+        for old in ("0.6.2", "0.6.10", "0.7.0", "invalid"):
+            response = subprocess.CompletedProcess([], 0, stdout=json.dumps({"version": old}))
+            with self.subTest(old=old), patch.object(publisher.subprocess, "run", return_value=response):
+                with self.assertRaises(ValueError):
+                    publisher.require_forward_version("bucket", "https://example.invalid", "packages/latest.json", "0.6.2")
+        response = subprocess.CompletedProcess([], 0, stdout='{"version":"0.6.9"}')
+        with patch.object(publisher.subprocess, "run", return_value=response):
+            publisher.require_forward_version("bucket", "https://example.invalid", "packages/latest.json", "0.6.10")
+        for error in ("AccessDenied", "connection failed"):
+            response = subprocess.CompletedProcess([], 1, stdout="", stderr=error)
+            with patch.object(publisher.subprocess, "run", return_value=response), self.assertRaises(ValueError):
+                publisher.require_forward_version("bucket", "https://example.invalid", "packages/latest.json", "0.6.2")
 
     def test_direct_installer_checks_hashes_before_installing(self):
         import io
@@ -340,6 +356,38 @@ class ReleaseTests(unittest.TestCase):
         subprocess.run(["apt-get", "-o", f"Dir::Etc::sourcelist={source}", "-o", "Dir::Etc::sourceparts=-",
                         "-o", f"Dir::State::lists={lists}", "-o", "APT::Get::List-Cleanup=0", "update"],
                        check=True, capture_output=True)
+
+        # Simulate installed old packages in a private dpkg status file. Advance the
+        # same signed repository URL and ask APT itself to resolve the paired upgrade.
+        status = self.root / "installed-status"
+        status.write_text("\n".join(
+            f"Package: {name}\nStatus: install ok installed\nArchitecture: amd64\n"
+            "Version: 0.6.0\nMaintainer: Test <test@example.invalid>\nDescription: Test only\n"
+            for name in ("dockpipe", "dockpipe-desktop")))
+        for arch in ("amd64", "arm64"):
+            for name in ("dockpipe", "dockpipe-desktop"):
+                package = self.root / arch / name
+                control = package / "DEBIAN/control"
+                body = control.read_text().replace("Version: 0.6.0", "Version: 0.6.1")
+                if name == "dockpipe-desktop":
+                    body += "Depends: dockpipe (= 0.6.1)\n"
+                control.write_text(body)
+                (artifacts / f"{name}_0.6.0_{arch}.deb").unlink()
+                subprocess.run(["dpkg-deb", "--build", str(package), str(artifacts / f"{name}_0.6.1_{arch}.deb")],
+                               check=True, capture_output=True)
+        next_apt = self.root / "next-apt"
+        subprocess.run(["bash", str(PACKAGING / "build-apt.sh"), str(artifacts), str(next_apt)],
+                       env=dict(env, APT_SUITE="staging"), check=True, capture_output=True)
+        shutil.copytree(next_apt, staged, dirs_exist_ok=True)
+        apt_options = ["-o", f"Dir::Etc::sourcelist={source}", "-o", "Dir::Etc::sourceparts=-",
+                       "-o", f"Dir::State::lists={lists}", "-o", f"Dir::State::status={status}",
+                       "-o", "APT::Architecture=amd64", "-o", "Debug::NoLocking=1"]
+        subprocess.run(["apt-get", *apt_options, "update"], check=True, capture_output=True)
+        upgrade = subprocess.check_output(["apt-get", *apt_options, "--simulate", "upgrade"], text=True)
+        self.assertIn("Inst dockpipe [0.6.0] (0.6.1", upgrade)
+        self.assertIn("Inst dockpipe-desktop [0.6.0] (0.6.1", upgrade)
+        self.assertIn("2 upgraded, 0 newly installed, 0 to remove", upgrade)
+
 
 
 if __name__ == "__main__":
