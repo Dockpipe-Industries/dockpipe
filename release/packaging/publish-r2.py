@@ -33,6 +33,22 @@ def require_unpublished(bucket, endpoint, key):
         raise ValueError("Could not verify publication state; refusing to write (provider output withheld)")
 
 
+def require_forward_version(bucket, endpoint, key, version):
+    result = subprocess.run([
+        "aws", "s3", "cp", f"s3://{bucket}/{key}", "-", "--endpoint-url", endpoint,
+        "--region", "auto", "--only-show-errors",
+    ], capture_output=True, text=True)
+    if result.returncode:
+        if "(404)" in result.stderr or "(NoSuchKey)" in result.stderr:
+            return
+        raise ValueError("Could not read the current release version; refusing publication")
+    current = json.loads(result.stdout).get("version", "")
+    if not re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", current):
+        raise ValueError("Current release pointer has an invalid version")
+    if tuple(map(int, version.split("."))) <= tuple(map(int, current.split("."))):
+        raise ValueError("Native release version must advance before publishing")
+
+
 def publish(artifacts, apt, version, dry_run, candidate=""):
     if not re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", version):
         raise ValueError("Expected a release version X.Y.Z")
@@ -73,6 +89,7 @@ def publish(artifacts, apt, version, dry_run, candidate=""):
     catalog_key = f"{version_prefix}/release-manifest.json"
     if not dry_run:
         require_unpublished(bucket, endpoint, catalog_key)
+        require_forward_version(bucket, endpoint, f"{prefix}/latest.json", version)
     for path in sorted(artifacts.rglob("*")):
         if path.is_symlink():
             raise ValueError(f"Refusing symlink: {path}")
@@ -84,11 +101,17 @@ def publish(artifacts, apt, version, dry_run, candidate=""):
     for path in sorted(apt_files, key=lambda path: (order.get(path.name, 0), str(path))):
         if path.is_symlink():
             raise ValueError(f"Refusing symlink: {path}")
-        # Candidate APT pools must be immutable too: native versions can repeat.
+        # Retain a candidate-specific repository for explicit, reproducible installs.
         apt_prefix = f"{version_prefix}/apt" if candidate else "apt"
         upload(path, f"{apt_prefix}/{path.relative_to(apt).as_posix()}", bucket, endpoint, dry_run)
     # The catalog is the commit marker for a complete, immutable release.
     upload(artifacts / "release-manifest.json", catalog_key, bucket, endpoint, dry_run)
+    if candidate:
+        # Generated native versions give each pool object a unique filename. Publish
+        # the same signed repository at a permanent URL; keep old pools/by-hash files.
+        # APT reads InRelease last, after every referenced payload is available.
+        for path in sorted(apt_files, key=lambda path: (order.get(path.name, 0), str(path))):
+            upload(path, f"apt/{path.relative_to(apt).as_posix()}", bucket, endpoint, dry_run)
     latest = artifacts.parent / "latest.json"
     pointer = {"version": version, "manifest": f"{version_prefix}/release-manifest.json"}
     if candidate:

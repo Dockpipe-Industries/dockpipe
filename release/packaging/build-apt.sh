@@ -12,6 +12,7 @@ fingerprint="${APT_SIGNING_FINGERPRINT:?APT signing key fingerprint is required}
 [[ ! -e "$destination" ]] || { echo "APT destination already exists: $destination" >&2; exit 1; }
 mkdir -p "$destination"
 destination="$(cd "$destination" && pwd)"
+release_version=""
 for arch in amd64 arm64; do
   pool="$destination/pool/main/d/dockpipe/$arch"
   index="$destination/dists/$suite/main/binary-$arch"
@@ -21,12 +22,17 @@ for arch in amd64 arm64; do
   [[ ${#packages[@]} -eq 1 ]] || { echo "Expected one $arch DEB" >&2; exit 1; }
   [[ "$(dpkg-deb -f "${packages[0]}" Architecture)" == "$arch" ]]
   [[ "$(dpkg-deb -f "${packages[0]}" Package)" == dockpipe ]]
+  version="$(dpkg-deb -f "${packages[0]}" Version)"
+  [[ -z "$release_version" || "$version" == "$release_version" ]] || { echo 'APT architectures must share one release version' >&2; exit 1; }
+  release_version="$version"
+  [[ "$(basename "${packages[0]}")" == "dockpipe_${version}_${arch}.deb" ]] || { echo 'CLI DEB filename/version mismatch' >&2; exit 1; }
   cp "${packages[0]}" "$pool/"
   desktop=("$artifacts"/dockpipe-desktop_*_"$arch".deb)
   [[ ${#desktop[@]} -eq 1 ]] || { echo "Expected one $arch desktop DEB" >&2; exit 1; }
   [[ "$(dpkg-deb -f "${desktop[0]}" Architecture)" == "$arch" ]]
   [[ "$(dpkg-deb -f "${desktop[0]}" Package)" == dockpipe-desktop ]]
   [[ "$(dpkg-deb -f "${desktop[0]}" Version)" == "$(dpkg-deb -f "${packages[0]}" Version)" ]]
+  [[ "$(basename "${desktop[0]}")" == "dockpipe-desktop_${version}_${arch}.deb" ]] || { echo 'Desktop DEB filename/version mismatch' >&2; exit 1; }
   cp "${desktop[0]}" "$pool/"
   (cd "$destination" && apt-ftparchive packages "pool/main/d/dockpipe/$arch") > "$index/Packages"
   gzip -n -9 -c "$index/Packages" > "$index/Packages.gz"

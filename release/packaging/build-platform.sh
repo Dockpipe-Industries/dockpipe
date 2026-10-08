@@ -4,6 +4,21 @@ set -euo pipefail
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$root"
 version="${1:?release version}"
+[[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo 'Expected numeric release version' >&2; exit 1; }
+# Core compilation reads the workspace VERSION. Keep every generated payload on
+# the selected release version while preserving the authored release-line baseline.
+authored_version="$(mktemp)"
+cp VERSION "$authored_version"
+embedded_prepared=false
+cleanup() {
+  cp "$authored_version" VERSION
+  rm -f "$authored_version"
+  if [[ "$embedded_prepared" == true ]]; then
+    bash release/packaging/prepare-embedded-dorkpipe-assets.sh clean
+  fi
+}
+trap cleanup EXIT
+printf '%s\n' "$version" > VERSION
 platform="$(go env GOHOSTOS)-$(go env GOHOSTARCH)"
 exe="$(go env GOEXE)"
 out="$root/release/artifacts"
@@ -14,8 +29,8 @@ export DOCKPIPE_BIN="$root/src/bin/dockpipe$exe"
 export PIPEON_BUILD_DESKTOP=0
 export CGO_ENABLED=0
 go build -trimpath -ldflags "-s -w -X main.Version=$version" -o "$DOCKPIPE_BIN" ./src/cmd
+embedded_prepared=true
 bash release/packaging/prepare-embedded-dorkpipe-assets.sh prepare
-trap 'bash release/packaging/prepare-embedded-dorkpipe-assets.sh clean' EXIT
 go build -trimpath -ldflags "-s -w -X main.Version=$version" -o "$DOCKPIPE_BIN" ./src/cmd
 "$DOCKPIPE_BIN" --version
 "$DOCKPIPE_BIN" build --workdir "$root" --no-images

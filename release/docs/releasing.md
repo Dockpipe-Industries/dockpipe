@@ -4,9 +4,9 @@ This repo now supports an automated GitHub Actions release pipeline.
 
 **Optional dev.to:** **PUT** a main article (**`DEVTO_ARTICLE_ID`**) and/or **POST** a one-time post per release (**`DEVTO_ONE_TIME_POST`**) — see **[devto.md](devto.md)** (**`DEVTO_PUBLISH`**, **`DEVTO_API_KEY`** secret).
 
-**Ship model:** Integrate on **`staging`**; when ready, **PR `staging` → `master`** — that merge runs **Release** (see **[branching.md](branching.md)**). Version = repo-root **`VERSION`**; **`release/releasenotes/X.Y.Z.md`** must exist and be updated on the **ship** PR. **CI** runs on **`staging`** PRs too (tests only); the **VERSION + release-notes gate** applies only to PRs **into `master`**.
+**Ship model:** Integrate on **`staging`**; when ready, **PR `staging` → `master`** — that merge runs **Release** (see **[branching.md](branching.md)**). Repo-root **`VERSION`** selects the release line/notes baseline; the pipeline generates the next unused patch from stable and staging tags; **`release/releasenotes/X.Y.Z.md`** must exist and be updated on the **ship** PR. **CI** runs on **`staging`** PRs too (tests only); the **release-notes gate** applies only to PRs **into `master`**.
 
-**Release notes body:** Copy **[TEMPLATE.md](../releasenotes/TEMPLATE.md)** to **`release/releasenotes/X.Y.Z.md`**, replace **`X.Y.Z`** / **`vX.Y.Z`**, and fill in **What’s new**. The **Installation** section must include **Linux**, **macOS**, and **Windows** with concrete commands (`.deb` + **`.apk` / `.rpm` / Arch `.pkg.tar.zst`** + **`linux/install.sh`** + tarballs + source, Homebrew + Darwin tarballs + source, `install.ps1` / MSI / zip + optional WSL). That file becomes the GitHub Release description — users should not have to hunt **`docs/install.md`** for basics.
+**Release notes body:** Copy **[TEMPLATE.md](../releasenotes/TEMPLATE.md)** to **`release/releasenotes/X.Y.Z.md`**, replace **`X.Y.Z`** / **`vX.Y.Z`**, and fill in **What’s new**. The **Installation** section must include **Linux**, **macOS**, and **Windows** with concrete commands (`.deb` + **`.apk` / `.rpm` / Arch `.pkg.tar.zst`** + **`linux/install.sh`** + tarballs + source, Homebrew + Darwin tarballs + source, `install.ps1` / MSI / zip + optional WSL). The generated notes replace baseline version references with the actual numeric version and become the GitHub Release description — users should not have to hunt **`docs/install.md`** for basics.
 
 ---
 
@@ -19,9 +19,9 @@ Pipeline file: `.github/workflows/release.yml`
 
 Trigger options:
 
-1. **Merge (push) to `master`** — ships **`v$(cat VERSION)`** if **`release/releasenotes/${VERSION}.md`** exists on that commit.
+1. **Merge (push) to `master`** — ships the next generated **`vX.Y.Z`** if **`release/releasenotes/${VERSION}.md`** exists on that commit.
 2. **Manual dispatch** (Actions UI):
-   - `version`: optional — defaults to **`VERSION`** on the checked-out branch
+   - `version`: optional release baseline — defaults to **`VERSION`**; the selected patch may advance beyond it
    - `dry_run`: defaults to `true` → build, verify, and upload workflow artifacts without requesting deployment approval. `false` is accepted only on `master`; other refs fail before platform builds.
    - `build_msi`: optional — defaults to **`true`**. On **push** to `master`, MSI is built when the committed marker file **`release/packaging/msi/SHIP_MSI`** is present. This repo currently keeps that marker checked in, so normal releases include WiX/MSI unless you intentionally remove it.
 
@@ -35,7 +35,7 @@ Trigger options:
 4. The unprotected `assemble` job prepares the catalog and checksums. For dry runs it also builds a signed APT repository for amd64 and arm64 with immutable by-hash indexes, using a throwaway key, and uploads workflow artifacts. It has read-only repository permissions, no production secret references, and no deployment environment.
 5. Only a non-dry-run on `master` enters `publish`, which requires the protected `release` environment. It downloads the prepared artifacts, signs APT with the production key, and publishes release assets to GitHub and every individual package/store manifest to R2 at `packages/releases/VERSION/`. APT lives at `apt/`. Upload order is package payloads, APT pool/index files, signed metadata, then the version catalog and `packages/latest.json`. Old versions and old by-hash files are retained. The optional dev.to job uses the same master-only production condition.
 
-Dry runs and production runs use separate concurrency groups. Dry-run verification must not require a release-environment approval or administrator bypass. Production environment protections remain in place.
+Stable and staging publication share one concurrency group from version selection through publication. Dry runs use separate groups and do not reserve versions. Dry-run verification must not require a release-environment approval or administrator bypass. Production environment protections remain in place.
 
 Package generation does not prove installation on every downstream distro/version. The hosted matrix covers the selected native runners; the M6 Mac's launchd, sleep/wake, Docker, and remote-worker acceptance still need hardware testing. macOS notarization, Windows Authenticode, public Homebrew taps, and winget submission are separate follow-ups. No Flatpak is produced for this host CLI.
 
@@ -61,7 +61,7 @@ No production key is generated by a release or dry-run job. Create the productio
 
 Run Actions → Release with `dry_run=true` on the intended commit first. Inspect all five stores, native smoke results, the MSI check, signed APT test, and checksums. Production publication additionally requires the scoped secrets above and a verified public R2 hostname. Do not treat a local Linux build or a Go cross-build as native Mac/Windows qualification.
 
-GitHub and R2 are separate services, so publication is not an atomic transaction across both. If a release upload fails, inspect which objects and tags exist before recovery; do not dispatch a second release with changed bytes under an existing version. Existing Git tags and a published version catalog are rejected before publication. A new release must advance `VERSION` and its release notes.
+GitHub and R2 are separate services, so publication is not an atomic transaction across both. If a release upload fails, inspect which objects and tags exist before recovery; do not dispatch a second release with changed bytes under an existing version. Existing Git tags and a published version catalog are rejected before publication. A fresh complete run selects the next unused patch; update the release-line notes for the shipped changes. Change `VERSION` intentionally when advancing the major/minor line or setting a higher patch floor. Keep published tags: they are the allocation history.
 
 ## PipeLang qualification boundary
 
