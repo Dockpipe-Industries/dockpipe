@@ -585,3 +585,64 @@ their explicit installer store to the inventory subprocess; the launcher's own c
 environment and default CLI discovery remain unchanged. The smoke regression rejects
 empty, unreadable, or optional-package inventories. A real extracted Linux-style
 payload passed CLI discovery, core-only inventory, and the running Qt window check.
+
+## Linux desktop ABI baseline — local repair, 2026-10-08
+
+The published Ubuntu 24.04 launcher DEB could not install on Pop!_OS 22.04:
+its distribution-derived Qt dependencies required the unavailable `t64` packages.
+The old smoke extracted packages on the build host, so it never tested APT dependency
+resolution on the older supported target.
+
+Linux release jobs now build the launcher natively inside an Ubuntu 22.04 container
+with distribution Qt 6.2, independently of the runner's OS. The same generated DEB
+is installed with APT in fresh Ubuntu 22.04 and 24.04 containers before artifact
+upload. Runtime checks include CLI lookup, core-only inventory, launcher startup,
+a real host workflow, and desktop removal preserving the CLI. Dependencies remain
+derived from the actual binary; none were renamed or relaxed manually. No engine
+or installer cleanup/migration behavior changed.
+
+Local amd64 proof passed: all five Qt tests on 22.04, actual installation and runtime
+checks on both distributions, and dependency simulation on the user's Pop!_OS 22.04.
+The eight release-workflow tests, three desktop tooling tests, shell syntax,
+ShellCheck and `git diff --check` passed. Native ARM64 and hosted release checks
+remain pending. This source repair is not committed or published yet.
+
+Local deliverable: `/tmp/dockpipe-jammy-artifacts/dockpipe-desktop_0.6.0_amd64.deb`.
+Build and install receipts: `/tmp/dockpipe-jammy-build.log` and
+`/tmp/dockpipe-jammy-install.log`. The CLI fixture is the checksum-verified published
+candidate `0.6.0-staging.37798113751.1.ec6228b5b663`. Validation installed packages only
+inside disposable containers; it did not alter host packages or user data.
+
+## Generated release versions and rolling staging APT — local implementation, 2026-10-08
+
+The user requested generated patch numbers instead of every installer reporting
+`0.6.0`. `VERSION` now selects the major/minor line and notes baseline. The release
+workflow reads all stable/staging tags and selects the next unused numeric patch,
+bounded by Windows Installer's three-field limits. Both publication channels share
+one concurrency group; dry runs preview without reserving. Release tags remain the
+allocation history, including tags from partial publication. The publisher separately
+rejects a numeric version that does not advance the current channel pointer.
+
+CLI, core, launcher, DEB/RPM/APK/Arch, macOS and MSI inputs share the generated version.
+Optional packages retain their explicitly authored versions. Core compilation gets
+the effective workspace VERSION during the build; the authored baseline is restored
+on exit. Release notes are rendered with the generated number, and the master PR gate
+still requires changed release-line notes but no manual patch bump. The launcher now
+reports its version, and installer smoke rejects a CLI/launcher version mismatch.
+
+Staging publication retains the immutable candidate APT snapshot and also publishes
+the signed repository at `/apt`, with versioned pool files and by-hash indexes before
+`InRelease`. Old objects are retained. Existing candidate-pinned clients require one
+explicit source change after publication; installers do not rewrite user sources or
+clean unmanaged installations. Production remains master-only.
+
+Local proof: 46 release-tooling tests passed, including real temporary-key signed
+APT indexes and an isolated APT upgrade simulation selecting both newer packages.
+Generated `0.6.1` CLI/core/launcher DEBs were built; all six Qt tests passed, and actual
+APT installation, matching versions, launcher startup, host workflow, and desktop
+removal checks passed on Ubuntu 22.04 and 24.04 amd64. ShellCheck and whitespace
+validation passed. Fixtures, DEBs and receipts remain under `/tmp/dockpipe-generated-*`
+and the ignored `release/packaging/build/` directory. No engine behavior changed.
+
+Changes remain uncommitted/unpublished. Hosted five-platform qualification and native
+ARM64/Windows/macOS checks remain pending; the public APT source is not yet switched.

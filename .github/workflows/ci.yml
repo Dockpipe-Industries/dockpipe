@@ -149,8 +149,8 @@ jobs:
           ./src/bin/dockpipe --workflow codex-pav --resolver codex --runtime docker --workdir "${{ github.workspace }}" --
           ./src/bin/dockpipe --workflow codex-security --resolver codex --runtime docker --workdir "${{ github.workspace }}" --
 
-      # Ship PRs only: staging/integration PRs skip this (maintainer bumps VERSION when merging staging → master).
-      - name: Release notes + version bump (PRs targeting master only)
+      # Ship PRs update release-line notes; the publication workflow generates patch numbers.
+      - name: Release notes (PRs targeting master only)
         if: github.event_name == 'pull_request' && github.event.pull_request.base.ref == 'master'
         shell: bash
         run: |
@@ -167,11 +167,6 @@ jobs:
           fi
           base="${{ github.event.pull_request.base.sha }}"
           head="${{ github.event.pull_request.head.sha }}"
-          base_v=$(git show "${base}:VERSION" 2>/dev/null | tr -d ' \n\r' || true)
-          if [[ -n "$base_v" && "$base_v" == "$V" ]]; then
-            echo "::error::VERSION is still $V (same as target branch). Bump VERSION for each release merge."
-            exit 1
-          fi
           changed=$(git diff --name-only "$base" "$head")
           if ! grep -Fxq -- "$notes" <<< "$changed"; then
             echo "::error::This PR must modify $notes (current VERSION is $V)."
@@ -179,7 +174,7 @@ jobs:
             echo "$changed"
             exit 1
           fi
-          echo "OK: shipping $V with updated $notes (was ${base_v:-<no VERSION on base>})"
+          echo "OK: shipping $V release line with updated $notes; patch number is generated."
 
       - name: Build amd64 .deb (for test_deb_install.sh)
         run: bash ./release/packaging/build-deb.sh "$(tr -d ' \t\r\n' < VERSION)" amd64
