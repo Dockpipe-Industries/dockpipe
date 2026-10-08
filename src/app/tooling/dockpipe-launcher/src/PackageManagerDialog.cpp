@@ -81,7 +81,7 @@ PackageManagerDialog::PackageManagerDialog(const QString &hintWorkdir, QWidget *
     m_localCommand = new PackageCommand(this);
     m_remoteCommand = new PackageCommand(this);
     auto *layout = new QVBoxLayout(this);
-    auto *intro = new QLabel(tr("Browse installed packages or select a remote catalog. Install adds the selected package to your user store."));
+    auto *intro = new QLabel(tr("Install packages from Marketplace. Manage your packages in Installed."));
     intro->setWordWrap(true);
     layout->addWidget(intro);
     auto *remoteRow = new QHBoxLayout;
@@ -90,6 +90,7 @@ PackageManagerDialog::PackageManagerDialog(const QString &hintWorkdir, QWidget *
     m_remote->addItems(LauncherSettings::current().packageRemotes);
     remoteRow->addWidget(m_remote, 1);
     m_refresh = new QPushButton(tr("Refresh"));
+    m_refresh->setObjectName(QStringLiteral("refreshPackages"));
     remoteRow->addWidget(m_refresh);
     layout->addLayout(remoteRow);
     m_search = new QLineEdit;
@@ -117,13 +118,20 @@ PackageManagerDialog::PackageManagerDialog(const QString &hintWorkdir, QWidget *
     m_status->setWordWrap(true);
     m_status->setTextFormat(Qt::PlainText);
     layout->addWidget(m_status);
+    m_actionHint = new QLabel;
+    m_actionHint->setWordWrap(true);
+    layout->addWidget(m_actionHint);
     auto *actions = new QHBoxLayout;
     actions->addStretch();
     m_cancel = new QPushButton(tr("Cancel operation"));
-    m_install = new QPushButton(tr("Install to user store"));
+    m_cancel->setObjectName(QStringLiteral("cancelPackageOperation"));
+    m_install = new QPushButton(tr("Install"));
+    m_uninstall = new QPushButton(tr("Uninstall"));
+    m_uninstall->setObjectName(QStringLiteral("uninstallPackage"));
     m_install->setObjectName(QStringLiteral("installPackage"));
     actions->addWidget(m_cancel);
     actions->addWidget(m_install);
+    actions->addWidget(m_uninstall);
     layout->addLayout(actions);
 
     connect(m_search, &QLineEdit::textChanged, this, &PackageManagerDialog::applyFilter);
@@ -133,8 +141,16 @@ PackageManagerDialog::PackageManagerDialog(const QString &hintWorkdir, QWidget *
     connect(m_remote, &QComboBox::currentIndexChanged, this, &PackageManagerDialog::loadRemote);
     connect(m_refresh, &QPushButton::clicked, this, [this]() { loadInstalled(); loadRemote(); });
     connect(m_install, &QPushButton::clicked, this, &PackageManagerDialog::installSelected);
-    connect(m_cancel, &QPushButton::clicked, m_remoteCommand, &PackageCommand::cancel);
+    connect(m_uninstall, &QPushButton::clicked, this, &PackageManagerDialog::uninstallSelected);
+    connect(m_cancel, &QPushButton::clicked, this, [this]() {
+        m_cancelling = true;
+        m_status->setText(tr("Cancelling…"));
+        m_localCommand->cancel();
+        m_remoteCommand->cancel();
+        updateButtons();
+    });
     connect(m_localCommand, &PackageCommand::completed, this, [this](const QJsonObject &result) {
+        m_inventoryReady = true;
         m_installed = result.value(QStringLiteral("packages")).toArray();
         m_installRoot = result.value(QStringLiteral("install_root")).toString();
         QStringList warnings;
@@ -145,11 +161,14 @@ PackageManagerDialog::PackageManagerDialog(const QString &hintWorkdir, QWidget *
     });
     connect(m_localCommand, &PackageCommand::failed, this, [this](const QString &error) {
         m_localStatus->setText(error);
+        updateButtons();
     });
     connect(m_remoteCommand, &PackageCommand::completed, this, [this](const QJsonObject &result) {
-        if (m_installing) {
-            m_installing = false;
-            m_status->setText(tr("Installed: %1").arg(result.value(QStringLiteral("path")).toString()));
+        if (m_operation != Operation::Catalog) {
+            const bool installed = m_operation == Operation::Install;
+            m_operation = Operation::Catalog;
+            m_status->setText((installed ? tr("Installed: %1") : tr("Uninstalled: %1. Package data and settings were kept."))
+                                 .arg(result.value(QStringLiteral("path")).toString()));
             loadInstalled();
         } else {
             m_manifest = result.value(QStringLiteral("manifest")).toString();
@@ -164,9 +183,11 @@ PackageManagerDialog::PackageManagerDialog(const QString &hintWorkdir, QWidget *
         applyFilter();
     });
     connect(m_remoteCommand, &PackageCommand::failed, this, [this](const QString &error) {
-        m_installing = false;
+        const bool changedPackages = m_operation != Operation::Catalog;
+        m_operation = Operation::Catalog;
         m_status->setText(error);
-        loadInstalled();
+        if (changedPackages)
+            loadInstalled();
         updateButtons();
     });
     loadInstalled();
@@ -192,6 +213,7 @@ void PackageManagerDialog::loadInstalled()
 {
     if (m_localCommand->busy())
         return;
+    m_inventoryReady = false;
     run(m_localCommand, {QStringLiteral("package"), QStringLiteral("list"), QStringLiteral("--format"), QStringLiteral("json"), QStringLiteral("--workdir"), m_hintWorkdir});
 }
 
@@ -220,14 +242,39 @@ QJsonObject PackageManagerDialog::selection() const
 void PackageManagerDialog::installSelected()
 {
     const auto record = selection();
-    if (record.isEmpty() || m_manifest.isEmpty() || m_remoteCommand->busy() || m_tabs->currentIndex() != 1)
+    if (!m_inventoryReady || record.isEmpty() || m_manifest.isEmpty() || m_remoteCommand->busy() || m_localCommand->busy()
+        || m_tabs->currentIndex() != 1 || versionInstalled(record))
         return;
-    m_installing = true;
+    m_operation = Operation::Install;
     m_status->setText(tr("Downloading and verifying %1…").arg(record.value(QStringLiteral("name")).toString()));
     run(m_remoteCommand, {QStringLiteral("package"), QStringLiteral("install"), QStringLiteral("--remote"), m_manifest,
         QStringLiteral("--kind"), record.value(QStringLiteral("kind")).toString(),
         QStringLiteral("--name"), record.value(QStringLiteral("name")).toString(),
         QStringLiteral("--sha256"), record.value(QStringLiteral("sha256")).toString()});
+}
+
+void PackageManagerDialog::uninstallSelected()
+{
+    const auto record = selection();
+    if (!m_inventoryReady || m_tabs->currentIndex() != 0 || !record.value(QStringLiteral("removable")).toBool()
+        || m_remoteCommand->busy() || m_localCommand->busy())
+        return;
+    m_operation = Operation::Uninstall;
+    m_status->setText(tr("Uninstalling %1…").arg(record.value(QStringLiteral("name")).toString()));
+    run(m_remoteCommand, {QStringLiteral("package"), QStringLiteral("uninstall"),
+                         QStringLiteral("--path"), record.value(QStringLiteral("path")).toString()});
+}
+
+bool PackageManagerDialog::versionInstalled(const QJsonObject &record) const
+{
+    for (const auto &value : m_installed) {
+        const auto installed = value.toObject();
+        if (installed.value(QStringLiteral("name")) == record.value(QStringLiteral("name"))
+            && installed.value(QStringLiteral("kind")) == record.value(QStringLiteral("kind"))
+            && installed.value(QStringLiteral("version")) == record.value(QStringLiteral("version")))
+            return true;
+    }
+    return false;
 }
 
 void PackageManagerDialog::applyFilter()
@@ -236,15 +283,8 @@ void PackageManagerDialog::applyFilter()
     QJsonArray available = m_available;
     for (int index = 0; index < available.size(); ++index) {
         auto remote = available[index].toObject();
-        for (const auto &value : m_installed) {
-            const auto installed = value.toObject();
-            if (installed.value(QStringLiteral("name")) == remote.value(QStringLiteral("name"))
-                && installed.value(QStringLiteral("kind")) == remote.value(QStringLiteral("kind"))
-                && installed.value(QStringLiteral("version")) == remote.value(QStringLiteral("version"))) {
-                remote.insert(QStringLiteral("status"), tr("Version installed"));
-                break;
-            }
-        }
+        if (versionInstalled(remote))
+            remote.insert(QStringLiteral("status"), tr("Installed"));
         available[index] = remote;
     }
     populate(m_marketplaceTable, available, m_search->text(), tr("Available"));
@@ -262,7 +302,7 @@ void PackageManagerDialog::refreshDetails()
         if (!value.isEmpty())
             lines.append(QStringLiteral("%1: %2").arg(QLatin1String(field), value));
     }
-    if (m_tabs->currentIndex() == 1 && !record.isEmpty()) {
+    if (m_tabs->currentIndex() == 1 && !record.isEmpty() && !versionInstalled(record)) {
         lines.append(tr("Installs this package only. Required resolvers must also be installed. Existing project packages can take precedence."));
         lines.append(tr("A user copy of the same filename will be replaced after verification."));
     }
@@ -272,9 +312,34 @@ void PackageManagerDialog::refreshDetails()
 
 void PackageManagerDialog::updateButtons()
 {
-    const bool busy = m_remoteCommand->busy();
+    const bool busy = m_remoteCommand->busy() || m_localCommand->busy();
+    if (!busy)
+        m_cancelling = false;
+    const bool marketplace = m_tabs->currentIndex() == 1;
+    const auto record = selection();
+    const bool installed = versionInstalled(record);
     m_remote->setEnabled(!busy);
     m_refresh->setEnabled(!busy);
-    m_cancel->setEnabled(busy);
-    m_install->setEnabled(!busy && m_tabs->currentIndex() == 1 && !m_manifest.isEmpty() && !selection().isEmpty());
+    m_cancel->setVisible(busy);
+    m_cancel->setEnabled(busy && !m_cancelling);
+    m_install->setVisible(marketplace);
+    m_install->setText(installed ? tr("Installed") : tr("Install"));
+    m_install->setEnabled(m_inventoryReady && !busy && marketplace && !m_manifest.isEmpty() && !record.isEmpty() && !installed);
+    m_uninstall->setVisible(!marketplace && !record.isEmpty());
+    m_uninstall->setEnabled(m_inventoryReady && !busy && record.value(QStringLiteral("removable")).toBool());
+    QString hint;
+    if (!marketplace && !record.isEmpty()) {
+        if (record.value(QStringLiteral("kind")).toString() == QStringLiteral("core"))
+            hint = tr("Core is required by DockPipe and cannot be uninstalled here.");
+        else if (record.value(QStringLiteral("source")).toString() == QStringLiteral("System"))
+            hint = tr("This package is managed by your DockPipe installer and cannot be uninstalled here.");
+        else if (!record.value(QStringLiteral("removable")).toBool())
+            hint = tr("This package is managed outside the user store and cannot be uninstalled here.");
+        else
+            hint = tr("Uninstall removes this package. Its data and settings are kept.");
+    } else if (marketplace && installed) {
+        hint = tr("This version is already installed. Manage it from the Installed tab.");
+    }
+    m_actionHint->setText(hint);
+    m_actionHint->setVisible(!hint.isEmpty());
 }

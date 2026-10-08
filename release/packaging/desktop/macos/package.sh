@@ -13,20 +13,15 @@ work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
 resources="$app/Contents/Resources"
 store="$resources/share/dockpipe"
-mkdir -p "$app/Contents/Helpers" "$store/packages/"{core,workflows,resolvers} "$work/DockPipe.iconset"
+mkdir -p "$app/Contents/Helpers" "$resources" "$work/DockPipe.iconset"
 cp -R "$root/release/packaging/desktop/licenses" "$resources/"
 cp "$root/LICENSE" "$resources/licenses/DockPipe-LICENSE.txt"
 install -m 755 "$root/src/bin/dockpipe" "$app/Contents/Helpers/dockpipe"
 install -m 755 "$root/release/packaging/desktop/macos/dockpipe" "$app/Contents/MacOS/dockpipe-cli"
 # The wrapper name must differ from DockPipe even on case-insensitive APFS.
 otool -hv "$app/Contents/MacOS/DockPipe" >/dev/null
-python3 "$root/release/packaging/release-artifacts.py" verify-store "$out/stores/darwin-$arch"
-cp "$out/stores/darwin-$arch/packages-store-manifest.json" "$store/"
-for kind in core workflow resolver; do
-  category="$kind"
-  [[ "$kind" == core ]] || category="${kind}s"
-  cp "$out/stores/darwin-$arch/dockpipe-$kind-"*.tar.gz "$store/packages/$category/"
-done
+# Installer payloads contain core only; the full store is published separately.
+python3 "$root/release/packaging/release-artifacts.py" stage-core "$out/stores/darwin-$arch" --destination "$store"
 icon="$root/src/app/tooling/dockpipe-launcher/resources/images/dockpipe-launcher.png"
 for size in 16 32 128 256 512; do
   sips -z "$size" "$size" "$icon" --out "$work/DockPipe.iconset/icon_${size}x${size}.png" >/dev/null
