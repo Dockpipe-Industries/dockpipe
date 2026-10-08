@@ -646,3 +646,22 @@ and the ignored `release/packaging/build/` directory. No engine behavior changed
 
 Changes remain uncommitted/unpublished. Hosted five-platform qualification and native
 ARM64/Windows/macOS checks remain pending; the public APT source is not yet switched.
+
+## Release PR #18 security review follow-up — 2026-10-08
+
+The user requested closure of the staging release PR's review comments. Live
+staging CodeQL analysis at `e22af716a023` reported 18 open findings: 16 path-flow
+findings sharing the remote bundle-store job ID source, plus two floating
+`softprops/action-gh-release@v2` references. Five other review threads were already
+fixed and resolved; they require no suppression or code changes.
+
+Bundle reads and writes now validate the job ID as one local path component at
+storage entry, independently of queue/domain validation, matching the existing
+result-store boundary. Regression tests call storage directly with traversal,
+absolute, separator and NUL IDs, and reject linked files/directories while checking
+outside data remains unchanged. Both release action invocations are pinned to the
+verified v2.6.2 commit `3bb12739c298aeb8a4eeaf626c5b8d85266b0e65`.
+
+Local runtime qualification and ten release workflow tests passed. No scanner
+rules, exclusions, or alert dismissals were changed. Hosted CodeQL must verify
+closure after promotion; this does not authorize merging staging into master.
