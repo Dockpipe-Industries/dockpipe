@@ -47,7 +47,10 @@ func TestBrowserSetupRecoveryAndRuntimeCredentialSeparation(t *testing.T) {
 			if interactive || args[4] != "--credentials-file" {
 				t.Fatal(args)
 			}
-			return remoteio.WritePrivate(args[5], map[string]string{"TunnelID": "01234567-89ab-cdef-0123-456789abcdef", "TunnelSecret": "worker-secret"})
+			if err := remoteio.WritePrivate(args[5], map[string]string{"TunnelID": "01234567-89ab-cdef-0123-456789abcdef", "TunnelSecret": "worker-secret"}); err != nil {
+				return err
+			}
+			return os.Chmod(args[5], 0o400)
 		case len(args) == 7 && args[3] == "route":
 			if strings.Contains(strings.Join(args, " "), "overwrite") {
 				t.Fatal("DNS overwrite requested")
@@ -69,6 +72,10 @@ func TestBrowserSetupRecoveryAndRuntimeCredentialSeparation(t *testing.T) {
 	}
 	if len(calls) != 3 {
 		t.Fatalf("setup replayed mutations: %v", calls)
+	}
+	credentials, err := os.Stat(filepath.Join(setup.State, "tunnel.json"))
+	if err != nil || credentials.Mode().Perm() != 0o400 {
+		t.Fatalf("setup changed read-only tunnel credential permissions: %v", err)
 	}
 	var edge contract.EdgeConfig
 	if err := remoteio.ReadPrivate(setup.Output, &edge); err != nil {

@@ -64,7 +64,17 @@ struct WorkflowMeta {
     QMap<QString, QString> vars;
 };
 
+struct ResolverMeta {
+    QString name;
+    QString title;
+    QString version;
+    QString description;
+    QString capability;
+    QString remoteSetup;
+};
+
 struct WorkflowCatalogData {
+    QVector<ResolverMeta> resolverDetails;
     QVector<WorkflowMeta> workflows;
     QStringList resolvers;
     QStringList strategies;

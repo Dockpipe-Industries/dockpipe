@@ -20,6 +20,7 @@ struct SessionInfo {
     qint64 pid = 0;
     QString errorString;
     bool ready = false;
+    bool stopRequested = false;
 };
 
 class SessionManager : public QObject {

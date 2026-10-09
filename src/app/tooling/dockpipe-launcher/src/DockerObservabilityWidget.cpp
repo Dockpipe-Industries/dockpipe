@@ -267,16 +267,16 @@ DockerObservabilityWidget::DockerObservabilityWidget(QWidget *parent) : QWidget(
 void DockerObservabilityWidget::buildUi()
 {
     auto *outer = new QVBoxLayout(this);
-    outer->setContentsMargins(0, 0, 0, 0);
+    outer->setContentsMargins(28, 24, 28, 24);
     outer->setSpacing(12);
 
     auto *hero = new QFrame(this);
-    hero->setObjectName(QStringLiteral("dockerHero"));
+    hero->setObjectName(QStringLiteral("dockerPageHeader"));
     auto *heroLay = new QVBoxLayout(hero);
-    heroLay->setContentsMargins(14, 14, 14, 14);
+    heroLay->setContentsMargins(0, 0, 0, 0);
     heroLay->setSpacing(10);
 
-    auto *title = new QLabel(tr("Docker observability"));
+    auto *title = new QLabel(tr("Docker"));
     title->setObjectName(QStringLiteral("appTitle"));
     auto *subtitle = new QLabel(tr("Inspect containers, logs, bindings, networks, and volumes. Right-click a container for quick actions."));
     subtitle->setObjectName(QStringLiteral("appSubtitle"));
@@ -285,7 +285,7 @@ void DockerObservabilityWidget::buildUi()
     heroLay->addWidget(subtitle);
 
     auto *topRow = new QHBoxLayout;
-    m_status = new QLabel(tr("Docker observability opens cold. Right-click a container row to start or stop it."));
+    m_status = new QLabel(tr("Loading your local container engine…"));
     m_status->setWordWrap(true);
     m_search = new QLineEdit(this);
     m_search->setObjectName(QStringLiteral("surfaceSearch"));
@@ -764,7 +764,10 @@ void DockerObservabilityWidget::applySnapshot(const DockerSnapshot &snapshot)
             }
             stateItem->setData(Qt::UserRole + 1, state);
             stateItem->setData(Qt::ToolTipRole, rowData.statusText);
-            m_containers->setCellWidget(row, 1, makeStatusPill(rowData.statusText, state, m_containers));
+            auto *statePill = makeStatusPill(rowData.statusText, state, m_containers);
+            statePill->ensurePolished();
+            stateItem->setSizeHint(statePill->sizeHint() + QSize(20, 0));
+            m_containers->setCellWidget(row, 1, statePill);
             setItemText(m_containers, row, 2, rowData.image);
             setItemText(m_containers, row, 3, rowData.ports);
             setItemText(m_containers, row, 4, rowData.created);
