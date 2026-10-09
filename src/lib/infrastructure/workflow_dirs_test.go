@@ -318,6 +318,7 @@ func TestResolveWorkflowConfigPathWithWorkdirPrefersProjectWorkflowsOverTarball(
 		t.Fatal(err)
 	}
 	project := t.TempDir()
+	isolateWorkflowPackageRoots(t, project)
 	onDisk := filepath.Join(project, "workflows", "demo", "config.yml")
 	if err := os.MkdirAll(filepath.Dir(onDisk), 0o755); err != nil {
 		t.Fatal(err)
