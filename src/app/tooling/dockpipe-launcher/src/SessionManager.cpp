@@ -183,7 +183,10 @@ bool SessionManager::launch(const Context &ctx, const QString &logsDir)
                 m_processes.remove(ctx.id);
                 m_pendingOutput.remove(ctx.id);
                 SessionInfo &s = m_info[ctx.id];
-                s.status = SessionStatus::Stopped;
+                if (s.stopRequested || (exitCode == 0 && st == QProcess::NormalExit))
+                    s.status = SessionStatus::Stopped;
+                else
+                    s.status = SessionStatus::Failed;
                 s.pid = 0;
                 s.ready = false;
                 emit sessionStopped(ctx.id, exitCode, st);
@@ -228,6 +231,7 @@ void SessionManager::stop(const QString &contextId)
     QPointer<QProcess> proc = m_processes.value(contextId);
     if (!proc)
         return;
+    m_info[contextId].stopRequested = true;
     const qint64 pid = proc->processId();
 #ifdef Q_OS_WIN
     proc->terminate();

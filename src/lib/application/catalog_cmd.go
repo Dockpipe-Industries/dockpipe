@@ -72,10 +72,11 @@ type catalogWorkflowViewSectionRecord struct {
 }
 
 type catalogListOutput struct {
-	Workflows  []catalogWorkflowRecord `json:"workflows"`
-	Resolvers  []string                `json:"resolvers"`
-	Strategies []string                `json:"strategies"`
-	Runtimes   []string                `json:"runtimes"`
+	ResolverDetails []infrastructure.ResolverMetadata `json:"resolver_details"`
+	Workflows       []catalogWorkflowRecord           `json:"workflows"`
+	Resolvers       []string                          `json:"resolvers"`
+	Strategies      []string                          `json:"strategies"`
+	Runtimes        []string                          `json:"runtimes"`
 }
 
 type usageError string
@@ -161,11 +162,13 @@ func buildCatalogListOutput(projectRoot, workdir string) (catalogListOutput, err
 	if err != nil {
 		return catalogListOutput{}, err
 	}
+	resolvers := listCatalogResolvers(projectRoot, workdir)
 	return catalogListOutput{
-		Workflows:  workflows,
-		Resolvers:  listCatalogResolvers(projectRoot, workdir),
-		Strategies: listCatalogCoreCategoryNames(projectRoot, workdir, "strategies"),
-		Runtimes:   listCatalogCoreCategoryNames(projectRoot, workdir, "runtimes"),
+		Workflows:       workflows,
+		Resolvers:       resolvers,
+		ResolverDetails: catalogResolverDetails(workdir, resolvers),
+		Strategies:      listCatalogCoreCategoryNames(projectRoot, workdir, "strategies"),
+		Runtimes:        listCatalogCoreCategoryNames(projectRoot, workdir, "runtimes"),
 	}, nil
 }
 

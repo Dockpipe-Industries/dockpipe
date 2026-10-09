@@ -8,7 +8,6 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
-	"time"
 
 	"dockpipe/src/lib/domain"
 	"dockpipe/src/lib/infrastructure"
@@ -162,7 +161,10 @@ func maybeInstallMissingHostDependencies(missing []missingHostDependency, opts *
 		ids := mergeOperationResultIDs(hostDependencyResultIDs(dep), map[string]string{
 			"platform": currentDependencyPlatform(),
 		})
-		err = infrastructure.RunOperationWithOptions(os.Stderr, "dependency.host.install", "Installing host dependency…", ids, infrastructure.OperationOptions{Spinner: false, ProgressEvery: 5 * time.Second}, func() error {
+		// The installer inherits the terminal and may prompt without a trailing newline.
+		// Background progress output would obscure those prompts, including passwords.
+		err = infrastructure.RunOperationWithOptions(os.Stderr, "dependency.host.install", "Installing host dependency…", ids, infrastructure.OperationOptions{Spinner: false}, func() error {
+			fmt.Fprintln(os.Stderr, "[dockpipe] Running dependency installer. Follow its prompts below; password input may be hidden.")
 			ids["result"] = "installed"
 			return dependencyRunShellFn(installCmd)
 		})

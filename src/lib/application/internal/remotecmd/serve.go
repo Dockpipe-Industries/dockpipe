@@ -15,6 +15,9 @@ import (
 )
 
 func serve(ctx context.Context, root string) error {
+	if err := requireLocalBroker(root); err != nil {
+		return err
+	}
 	if err := remoteio.PrivateDirectory(root); err != nil {
 		return err
 	}
