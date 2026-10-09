@@ -14,6 +14,15 @@ import (
 	remoteio "dockpipe/src/lib/infrastructure/remote"
 )
 
+func privateConnectionDirectory(t *testing.T) string {
+	t.Helper()
+	root := filepath.Join(t.TempDir(), "private")
+	if err := remoteio.PrivateDirectory(root); err != nil {
+		t.Fatal(err)
+	}
+	return root
+}
+
 func writeConnectionFixture(t *testing.T, root, name string, value any) {
 	t.Helper()
 	if err := remoteio.WritePrivate(filepath.Join(root, name), value); err != nil {
@@ -22,10 +31,7 @@ func writeConnectionFixture(t *testing.T, root, name string, value any) {
 }
 
 func TestRemoteInfoLegacyAndBoundResolver(t *testing.T) {
-	root := t.TempDir()
-	if err := os.Chmod(root, 0700); err != nil {
-		t.Fatal(err)
-	}
+	root := privateConnectionDirectory(t)
 	info, err := describeRemote(root)
 	if err != nil || info.Broker != nil || info.Worker != nil {
 		t.Fatalf("empty state: %+v, %v", info, err)
@@ -67,10 +73,7 @@ func TestRemoteInfoLegacyAndBoundResolver(t *testing.T) {
 }
 
 func TestHostedConnectionAdoptionAndRouting(t *testing.T) {
-	root := t.TempDir()
-	if err := os.Chmod(root, 0700); err != nil {
-		t.Fatal(err)
-	}
+	root := privateConnectionDirectory(t)
 	metadata := infrastructure.ResolverMetadata{Name: "example.hosted", Title: "Example Hosted", RemoteSetup: "hosted", Capability: "remote.broker"}
 	result := hostedSetupResult{Schema: contract.Version, Endpoint: "https://broker.example.com", Token: strings.Repeat("private", 8)}
 	output := filepath.Join(root, "result.json")
@@ -129,23 +132,31 @@ func TestHostedConnectionRejectsUnsafeOutput(t *testing.T) {
 	for _, test := range []struct {
 		name   string
 		result hostedSetupResult
-		mode   os.FileMode
+		public bool
 	}{
-		{"http", hostedSetupResult{contract.Version, "http://127.0.0.1:47831", strings.Repeat("s", 64)}, 0600},
-		{"short-token", hostedSetupResult{contract.Version, "https://example.com", "short"}, 0600},
-		{"header-injection", hostedSetupResult{contract.Version, "https://example.com", strings.Repeat("s", 64) + "\r\n"}, 0600},
-		{"schema", hostedSetupResult{"other", "https://example.com", strings.Repeat("s", 64)}, 0600},
-		{"public", hostedSetupResult{contract.Version, "https://example.com", strings.Repeat("s", 64)}, 0644},
+		{"http", hostedSetupResult{contract.Version, "http://127.0.0.1:47831", strings.Repeat("s", 64)}, false},
+		{"short-token", hostedSetupResult{contract.Version, "https://example.com", "short"}, false},
+		{"header-injection", hostedSetupResult{contract.Version, "https://example.com", strings.Repeat("s", 64) + "\r\n"}, false},
+		{"schema", hostedSetupResult{"other", "https://example.com", strings.Repeat("s", 64)}, false},
+		{"public", hostedSetupResult{contract.Version, "https://example.com", strings.Repeat("s", 64)}, true},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			root := t.TempDir()
-			if err := os.Chmod(root, 0700); err != nil {
-				t.Fatal(err)
-			}
-			writeConnectionFixture(t, root, "result.json", test.result)
+			root := privateConnectionDirectory(t)
 			output := filepath.Join(root, "result.json")
-			if err := os.Chmod(output, test.mode); err != nil {
-				t.Fatal(err)
+			if test.public {
+				// An ordinary file lacks the private mode on Unix and protected ACL on Windows.
+				data, err := json.Marshal(test.result)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if err := os.WriteFile(output, data, 0644); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.Chmod(output, 0644); err != nil {
+					t.Fatal(err)
+				}
+			} else {
+				writeConnectionFixture(t, root, "result.json", test.result)
 			}
 			check := func(context.Context, string, string) error {
 				t.Fatal("unsafe output reached network validation")
@@ -162,11 +173,14 @@ func TestHostedConnectionRejectsUnsafeOutput(t *testing.T) {
 }
 
 func TestHostedSetupPreservesLocalBroker(t *testing.T) {
-	root := filepath.Join(t.TempDir(), "broker")
-	if _, err := initialize(root, "127.0.0.1:47831"); err != nil {
-		t.Fatal(err)
-	}
+	root := privateConnectionDirectory(t)
+	operator := OperatorConfig{Schema: contract.Version, Endpoint: "https://edge.example.com", Listen: "127.0.0.1:47831", Token: "existing-local-credential"}
+	writeConnectionFixture(t, root, "operator.json", operator)
 	if err := validateSetupMode(root, "hosted", "example.hosted"); err == nil {
 		t.Fatal("hosted setup accepted existing local state")
+	}
+	var saved OperatorConfig
+	if err := remoteio.ReadPrivate(filepath.Join(root, "operator.json"), &saved); err != nil || saved != operator {
+		t.Fatalf("existing local connection changed: %v", err)
 	}
 }

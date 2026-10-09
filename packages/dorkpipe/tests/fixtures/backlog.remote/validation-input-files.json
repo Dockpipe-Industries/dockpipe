@@ -214,6 +214,7 @@
   "src/lib/infrastructure/repo.go",
   "src/lib/infrastructure/resolver_file.go",
   "src/lib/infrastructure/resolver_for_capability.go",
+  "src/lib/infrastructure/resolver_metadata.go",
   "src/lib/infrastructure/run_policy_registry.go",
   "src/lib/infrastructure/schema/workflow.schema.json",
   "src/lib/infrastructure/source_mtime.go",
