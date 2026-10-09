@@ -1,21 +1,35 @@
 # Dockpipe
 
-Dockpipe runs commands and workflows in disposable isolated environments.
+**Run any command in a disposable container, then optionally act on the result.**
 
-Start with a command. Turn repeatable commands into workflows. Compile/package when
-you want reusable artifacts. Security policy and Docker image artifacts are
-available when you need stricter or faster runs, but they do not have to be the
-first thing you learn.
+Dockpipe gives you a simple way to run tests, scripts, code generation, and AI tools in clean Docker environments. Your working directory is mounted into the container, files remain owned by your user, and the container disappears when the command finishes.
+
+> [!IMPORTANT]
+> **Dockpipe 0.6.0 is coming soon—and it is a massive improvement.**
+>
+> You don’t have to wait for the release—**you can start using it now from the [`dev` branch](https://github.com/Dockpipe-Industries/dockpipe/tree/dev)**.
 
 ## Quick Start
 
-Most users should start with the packaged install flow, not a source checkout:
+### Install
 
-1. Install Dockpipe from [GitHub Releases](https://github.com/Dockpipe-Industries/dockpipe/releases) using [docs/install.md](docs/install.md).
-2. Run `dockpipe -- pwd`.
-3. Read [docs/onboarding.md](docs/onboarding.md) for the first workflow path.
+Download the latest `.deb` from [GitHub Releases](https://github.com/Dockpipe-Industries/dockpipe/releases):
 
-If you are contributing from a source checkout, use:
+```bash
+sudo dpkg -i dockpipe_*_all.deb
+```
+
+Or install from source:
+
+```bash
+git clone https://github.com/Dockpipe-Industries/dockpipe.git
+cd dockpipe
+export PATH="$PWD/bin:$PATH"
+```
+
+Dockpipe requires **Docker** and **Bash**.
+
+### Run a Command
 
 ```bash
 make dev-install
@@ -23,77 +37,280 @@ dockpipe init
 dockpipe -- pwd
 ```
 
-Requires **Docker** and **bash**. `make dev-install` is a contributor shortcut
-for this repository; `dockpipe doctor` checks your setup.
+Dockpipe runs `make test` in a clean container with your current directory mounted at `/work`. When the command exits, the container is removed.
 
-Your project is mounted at `/work` in a disposable container. When the command
-exits, the container is gone.
-
-## Product Story
-
-| Need | Start here |
-|------|------------|
-| Run one command in isolation | `dockpipe -- <command>` |
-| Reuse a sequence of commands | `workflows/<name>/config.yml` |
-| Pick where/how it runs | `runtime` + `resolver` |
-| Run something on the host | `kind: host` |
-| Reuse/share workflows | `dockpipe build` and package metadata |
-| Harden or speed up container runs | `security` and image artifacts |
-
-## Tiny Workflow
-
-```yaml
-name: test
-runtime: dockerimage
-
-steps:
-  - cmd: npm test
-```
-
-Run it with:
+The same pattern works for any command:
 
 ```bash
-dockpipe --workflow test --
+dockpipe -- npm test
+dockpipe -- cargo test
+dockpipe -- ./scripts/generate-docs.sh
 ```
 
-## Docs
+## What You Can Do
 
-| Goal | Doc |
-|------|-----|
-| First run | [docs/onboarding.md](docs/onboarding.md) |
-| Write workflow YAML | [docs/workflows/workflow-authoring.md](docs/workflows/workflow-authoring.md) |
-| Full workflow reference | [docs/workflows/workflow-yaml.md](docs/workflows/workflow-yaml.md) |
-| Compile/package reusable artifacts | [docs/packages/package-quickstart.md](docs/packages/package-quickstart.md) |
-| Package/store model | [docs/packages/package-model.md](docs/packages/package-model.md) |
-| Security policy | [docs/security/security-policy.md](docs/security/security-policy.md) |
-| Docker image artifacts | [docs/runtime/image-artifacts.md](docs/runtime/image-artifacts.md) |
-| CLI reference | [docs/cli-reference.md](docs/cli-reference.md) |
-| Architecture terms | [docs/concepts/architecture-model.md](docs/concepts/architecture-model.md) |
+| Use case | Command |
+| --- | --- |
+| Run tests in isolation | `dockpipe -- make test` |
+| Run a script | `dockpipe -- ./scripts/generate-docs.sh` |
+| Pipe standard input | `echo "input" \| dockpipe -- command` |
+| Run and then commit changes | `dockpipe --action examples/actions/commit-worktree.sh -- ./scripts/generate-docs.sh` |
+| Run an AI tool | `dockpipe --template agent-dev -- claude -p "Review this project"` |
+| Run an AI tool and commit its work | `dockpipe --template agent-dev --action examples/actions/commit-worktree.sh -- claude -p "Implement this task"` |
 
-Full index: [docs/README.md](docs/README.md).
+## How It Works
+
+Dockpipe has one small, composable lifecycle:
+
+1. **Spawn** — Start a disposable container.
+2. **Run** — Execute the command passed after `--`.
+3. **Act** — Optionally run an action script on the result.
+
+You choose the image, command, and optional action. Dockpipe handles the Docker boilerplate, working-directory mount, user mapping, cleanup, and persistent tool state.
+
+Dockpipe is not an AI framework. AI tools are simply one of the many command types it can run.
+
+## Why Not Just `docker run`?
+
+You could write:
+
+```bash
+docker run --rm \
+  -v "$(pwd):/work" \
+  -w /work \
+  -u "$(id -u):$(id -g)" \
+  some-image \
+  make test
+```
+
+Dockpipe gives you the same isolation with a shorter command:
+
+```bash
+dockpipe -- make test
+```
+
+It also adds:
+
+- an optional action phase
+- reusable container templates
+- persistent tool data
+- pipe-friendly command handling
+- automatic UID/GID mapping
+- attached and detached execution
+
+Files created inside the container remain owned by your host user.
+
+## Persistent Data
+
+By default, Dockpipe mounts a named volume called `dockpipe-data` at `/dockpipe-data` and uses it as `HOME`.
+
+This lets tools preserve state between disposable runs—for example, an authenticated CLI session or downloaded tool configuration.
+
+Use a different named volume:
+
+```bash
+dockpipe --data-vol my-project-data -- command
+```
+
+Use a host directory:
+
+```bash
+dockpipe --data-dir "$HOME/.dockpipe" -- command
+```
+
+Disable persistent data:
+
+```bash
+dockpipe --no-data -- command
+```
+
+Recreate the default named volume:
+
+```bash
+dockpipe --reinit -- command
+```
+
+`--reinit` asks for confirmation. Use `--force` to skip the prompt.
+
+If a tool exits unexpectedly while using the default data volume, try `--no-data` or recreate the volume with `--reinit`.
+
+## Actions
+
+Actions are scripts that run inside the container after the main command finishes.
+
+For example:
+
+```bash
+dockpipe \
+  --action examples/actions/commit-worktree.sh \
+  -- ./scripts/generate-docs.sh
+```
+
+Actions receive:
+
+- `DOCKPIPE_EXIT_CODE`
+- `DOCKPIPE_CONTAINER_WORKDIR`
+
+Create an action:
+
+```bash
+dockpipe action init my-action.sh
+```
+
+Start from a bundled action:
+
+```bash
+dockpipe action init my-commit.sh --from commit-worktree
+```
+
+Bundled examples include:
+
+- [`commit-worktree`](examples/actions/commit-worktree.sh)
+- [`export-patch`](examples/actions/export-patch.sh)
+- [`print-summary`](examples/actions/print-summary.sh)
+
+## Templates
+
+| Template | Description |
+| --- | --- |
+| `base-dev` | Lightweight development environment with Git, curl, Bash, ripgrep, and jq |
+| `dev` | General development environment with additional build tools |
+| `agent-dev` | Development environment for AI coding tools |
+| `claude` | Alias for `agent-dev` |
+
+Use a template with any command:
+
+```bash
+dockpipe --template dev -- make test
+```
+
+## Examples
+
+### Run a command
+
+```bash
+dockpipe -- ls -la
+```
+
+### Run a shell command
+
+```bash
+dockpipe -- bash -c "npm test"
+```
+
+### Run with a development template
+
+```bash
+dockpipe --template dev -- make test
+```
+
+### Run a script and commit its changes
+
+```bash
+dockpipe \
+  --action examples/actions/commit-worktree.sh \
+  -- ./my-script.sh
+```
+
+### Run Claude and commit its work
+
+```bash
+cd /path/to/repository
+
+dockpipe \
+  --template agent-dev \
+  --action examples/actions/commit-worktree.sh \
+  --env "DOCKPIPE_COMMIT_MESSAGE=agent: implement task" \
+  -- claude --dangerously-skip-permissions -p "Implement this task"
+```
+
+### Run in the background
+
+```bash
+dockpipe -d --template agent-dev -- claude -p "Review this repository"
+```
+
+Use Docker to inspect or reconnect to the running container:
+
+```bash
+docker logs <container-id>
+docker attach <container-id>
+```
+
+### Resume a Claude session
+
+```bash
+dockpipe \
+  --template agent-dev \
+  -- claude --resume <session-id> --dangerously-skip-permissions
+```
+
+### Chain isolated commands
+
+Each command runs in a fresh container:
+
+```bash
+dockpipe -- make lint \
+  && dockpipe -- make test \
+  && dockpipe -- make build
+```
+
+## Usage
+
+```text
+dockpipe [options] -- <command> [args...]
+dockpipe action init [--from <bundled-action>] <filename>
+```
+
+| Option | Description |
+| --- | --- |
+| `--image <name>` | Select the Docker image |
+| `--template <name>` | Use a predefined environment |
+| `--action <script>` | Run an action after the command |
+| `--workdir <path>` | Select the host directory mounted at `/work` |
+| `--data-vol <name>` | Use a named volume for persistent data |
+| `--data-dir <path>` | Use a host directory for persistent data |
+| `--no-data` | Disable persistent data |
+| `--reinit` | Recreate the named data volume |
+| `-f`, `--force` | Skip confirmation when using `--reinit` |
+| `--mount` | Add another volume mount |
+| `--env` | Pass an environment variable |
+| `-d`, `--detach` | Run the container in the background |
+| `--help` | Show command help |
+
+## Platform Support
+
+| Platform | Installation |
+| --- | --- |
+| Linux | Install the `.deb` from [GitHub Releases](https://github.com/Dockpipe-Industries/dockpipe/releases) |
+| macOS | Clone the repository and add `bin` to `PATH` |
+| Windows | Use WSL with Docker and install from source |
+
+See [docs/install.md](docs/install.md) for details.
+
+## More Examples
+
+- [Chained non-AI commands](examples/chained-non-ai/README.md)
+- [Chained multi-AI commands](examples/chained-multi-ai/README.md)
+- [Claude worktree example](examples/claude-worktree/README.md)
+- [Codex worktree example](examples/codex-worktree/README.md)
 
 ## Development
 
-```bash
-make dev-deps
-make dev-install
-make test        # build + Go tests + Dockpipe package/workflow tests
-make test-quick  # Go tests + package/workflow tests + path guard + bash unit tests
-make ci          # full Linux CI mirror
-```
-
-After `make build`, this repo can dogfood Dockpipe like any project:
+Run the test suite from the repository root:
 
 ```bash
-./src/bin/dockpipe --workflow <name> --workdir . --
+bash tests/run_tests.sh
 ```
 
-Maintainer-specific tools such as DorkPipe, Pipeon, and MCP live under
-`packages/`; see [docs/packages/core-tools.md](docs/packages/core-tools.md) when working on those
-first-party packages.
+Integration tests require Docker and the `agent-dev` image:
 
-## Disclaimer
+```bash
+bash integration-tests/run.sh
+```
 
-Dockpipe is open-source (Apache-2.0). It runs commands in containers and can run
-scripts on the host; review what you execute. Pre-1.0: flags and behavior may
-change between releases.
+See [integration-tests/README.md](integration-tests/README.md) for details.
+
+## License
+
+Dockpipe is licensed under the [Apache License 2.0](LICENSE).
