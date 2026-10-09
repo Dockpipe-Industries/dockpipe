@@ -183,6 +183,13 @@ type NodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputDeliver
 }
 
 func OpenNodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputDeliveryAcknowledgementReconciliationExecutor(root string, expected NodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputDeliveryAcknowledgementReconciliationExecutorExpected) (*NodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputDeliveryAcknowledgementReconciliationExecutor, error) {
+	// Opening must read the record and receipt under the same lock as publication.
+	// Otherwise a concurrent writer can make a valid receipt appear orphaned.
+	pathLock, _ := nodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputDeliveryAcknowledgementReconciliationExecutorLocks.LoadOrStore(root, &sync.Mutex{})
+	lock := pathLock.(*sync.Mutex)
+	lock.Lock()
+	defer lock.Unlock()
+
 	inputs, err := loadNodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputDeliveryAcknowledgementReconciliationExecutorInputs(root, expected)
 	if err != nil {
 		return nil, err

@@ -11,6 +11,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"testing"
+	"time"
 )
 
 type nodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputDeliveryAcknowledgementReconciliationExecutorTestFixture struct {
@@ -364,6 +365,72 @@ func TestNodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputDel
 	recovered := mustExecuteNodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputDeliveryAcknowledgementReconciliationExecutor(t, recovery)
 	if recordWrites.Load() != 1 || recovered.ReconciliationRecordWriteCount != 1 || recovered.ExecutorReceiptWriteCount != 1 {
 		t.Fatal("recovery repeated reconciliation instead of publishing only the missing receipt")
+	}
+}
+
+func TestAcknowledgementReconciliationOpenWaitsForPublication(t *testing.T) {
+	t.Parallel()
+	fixture := newNodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputDeliveryAcknowledgementReconciliationExecutorTestFixture(t, "succeeded", NodeConnectorPlacementExecutionGraphNextTaskResultContinuationRoute)
+	executor := mustOpenNodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputDeliveryAcknowledgementReconciliationExecutor(t, fixture)
+
+	recordPublished := make(chan struct{})
+	finishPublication := make(chan struct{})
+	var release sync.Once
+	releasePublication := func() {
+		release.Do(func() { close(finishPublication) })
+	}
+	defer releasePublication()
+	executor.writeReceiptAtomic = func(path string, artifact any) error {
+		close(recordPublished)
+		<-finishPublication
+		return writeJSONFileAtomic(path, artifact)
+	}
+	executed := make(chan error, 1)
+	go func() {
+		_, err := executor.Execute()
+		executed <- err
+	}()
+	select {
+	case <-recordPublished:
+	case err := <-executed:
+		t.Fatalf("execution stopped before publishing the record: %v", err)
+	case <-time.After(5 * time.Second):
+		t.Fatal("execution did not reach receipt publication")
+	}
+
+	opening := make(chan struct{})
+	opened := make(chan error, 1)
+	go func() {
+		close(opening)
+		_, err := OpenNodeConnectorPlacementExecutionGraphNextTaskResultContinuationOutputDeliveryAcknowledgementReconciliationExecutor(fixture.root, fixture.expected)
+		opened <- err
+	}()
+	<-opening
+	returnedDuringPublication := false
+	select {
+	case <-opened:
+		returnedDuringPublication = true
+	case <-time.After(100 * time.Millisecond):
+	}
+	releasePublication()
+	select {
+	case err := <-executed:
+		if err != nil {
+			t.Fatal(err)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("execution did not finish publication")
+	}
+	if returnedDuringPublication {
+		t.Fatal("opening an executor observed an in-progress record/receipt publication")
+	}
+	select {
+	case err := <-opened:
+		if err != nil {
+			t.Fatalf("opening the completed publication failed: %v", err)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("opening did not resume after publication")
 	}
 }
 
