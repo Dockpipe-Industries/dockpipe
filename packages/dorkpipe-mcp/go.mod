@@ -2,7 +2,7 @@ module dorkpipe.mcp
 
 go 1.25
 
-toolchain go1.25.13
+toolchain go1.26.9
 
 require dockpipe v0.0.0
 

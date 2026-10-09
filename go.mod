@@ -2,7 +2,7 @@ module dockpipe
 
 go 1.25
 
-toolchain go1.25.13
+toolchain go1.26.9
 
 require (
 	github.com/mattn/go-shellwords v1.0.12
