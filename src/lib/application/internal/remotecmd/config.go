@@ -31,6 +31,9 @@ func stateRoot(value string) (string, error) {
 }
 
 func initialize(root, listen string) (OperatorConfig, error) {
+	if err := requireLocalBroker(root); err != nil {
+		return OperatorConfig{}, err
+	}
 	if err := remoteio.PrivateDirectory(root); err != nil {
 		return OperatorConfig{}, err
 	}

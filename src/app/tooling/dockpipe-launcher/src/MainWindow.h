@@ -22,9 +22,12 @@ class QStackedWidget;
 class QAction;
 class QActionGroup;
 class BasicModeWidget;
-class QTabWidget;
+class QPushButton;
 class DockerObservabilityWidget;
 class QTimer;
+class QComboBox;
+class RemoteWidget;
+class ActivityWidget;
 
 struct AsyncWorkflowCatalogResult {
     QString workdir;
@@ -108,11 +111,16 @@ private:
     SessionManager m_sessions;
     LauncherSettings m_settings;
 
+    QListWidget *m_navigation = nullptr;
+    QComboBox *m_runTarget = nullptr;
+    RemoteWidget *m_remoteWidget = nullptr;
+    ActivityWidget *m_activityWidget = nullptr;
     QStackedWidget *m_stack = nullptr;
     BasicModeWidget *m_basicWidget = nullptr;
     QWidget *m_advancedPage = nullptr;
-    QTabWidget *m_advancedTabs = nullptr;
-    DockerObservabilityWidget *m_advancedDocker = nullptr;
+    QPushButton *m_workspaceButton = nullptr;
+    QLabel *m_workspacePath = nullptr;
+    DockerObservabilityWidget *m_dockerWidget = nullptr;
 
     QListWidget *m_list = nullptr;
     QLabel *m_hint = nullptr;

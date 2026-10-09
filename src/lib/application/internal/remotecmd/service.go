@@ -21,6 +21,11 @@ func installService(ctx context.Context, root, role string) error {
 	if role != "broker" && role != "worker" {
 		return errors.New("service role must be broker or worker")
 	}
+	if role == "broker" {
+		if err := requireLocalBroker(root); err != nil {
+			return err
+		}
+	}
 	config := "operator.json"
 	command := "serve"
 	if role == "worker" {
