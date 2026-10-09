@@ -12,8 +12,8 @@ GOWORK=off GOCACHE="$VM_TEST_TMP/cache" GOTMPDIR="$VM_TEST_TMP/tmp" CGO_ENABLED=
 cd "$PACKAGE_ROOT"
 bash tests/test_vmimage_state_split.sh
 python3 tests/test_toolchain_paths.py
-grep -Fq 'version: 1.3.4' package.yml
-grep -Fq 'const version = "1.3.4"' tools/cmd/dockpipe-qemu-controller/main.go
+grep -Fq 'version: 1.3.5' package.yml
+grep -Fq 'const version = "1.3.5"' tools/cmd/dockpipe-qemu-controller/main.go
 grep -Fq 'models/QemuVmResolverConfig' resolvers/qemu/types.yml
 grep -Fq 'models/LinuxQemuVmResolverConfig' resolvers/qemu/types.yml
 grep -Fq 'runtime: vm' workflows/windows-vm/config.yml
