@@ -190,6 +190,18 @@ WorkflowCatalogData WorkflowCatalog::discoverCatalog(const QString &hintWorkdir)
             out.workflows.append(meta);
     }
 
+    for (const QJsonValue &value : root.value(QStringLiteral("resolver_details")).toArray()) {
+        const auto object = value.toObject();
+        ResolverMeta resolver;
+        resolver.name = object.value("name").toString();
+        resolver.title = object.value("title").toString();
+        resolver.version = object.value("version").toString();
+        resolver.description = object.value("description").toString();
+        resolver.capability = object.value("capability").toString();
+        resolver.remoteSetup = object.value("remote_setup").toString();
+        if (!resolver.name.isEmpty())
+            out.resolverDetails.append(resolver);
+    }
     for (const QJsonValue &value : root.value(QStringLiteral("resolvers")).toArray())
         out.resolvers.append(value.toString().trimmed());
     for (const QJsonValue &value : root.value(QStringLiteral("strategies")).toArray())

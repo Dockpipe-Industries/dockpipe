@@ -275,6 +275,12 @@ When a unit cannot safely use the live spinner because child work is already wri
 the CLI should still prove liveness with periodic `status=progress duration_ms=...` heartbeat lines
 until the final `done` or `fail` result is emitted.
 
+Interactive child processes are an exception: installers and authentication tools must own the
+terminal while waiting for input. Disable both spinners and heartbeat lines, including those of
+enclosing operations, so prompts without trailing newlines remain visible. Emit start and final
+results around the child, and let the child show its own progress. Dependency installers and remote
+setup follow this rule; password input remains directly between the terminal and the installer.
+
 Example:
 
 ```text

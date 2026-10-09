@@ -171,7 +171,10 @@ func privateCredential(path string) error {
 	if err != nil || !info.Mode().IsRegular() || info.Size() < 1 || info.Size() > 64<<10 {
 		return errors.New("credential for Cloudflare must be a private regular file")
 	}
-	return infrastructure.ValidatePrivatePath(path, false)
+	if err := infrastructure.ValidateUnlinkedPath(path); err != nil {
+		return err
+	}
+	return validateCredentialAccess(path, info)
 }
 
 func runCloudflared(ctx context.Context, executable string, arguments []string, interactive bool) error {
