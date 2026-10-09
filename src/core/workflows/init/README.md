@@ -1,6 +1,6 @@
 # Init template
 
-Copied to **`workflows/<name>/`** when you run **`dockpipe init <name> --from init`**. Bare **`dockpipe init`** also seeds **`workflows/example/`** from this starter when the project has no DockPipe workflows yet.
+Copied to **`workflows/<name>/`** when you run **`dockpipe init <name> --from init`**. Bare **`dockpipe init`** also seeds **`workflows/example/`** from this starter when the project has no Dockpipe workflows yet.
 
 Edit **`config.yml`** to match your workflow. This starter intentionally uses the current **multi-step pipeline** style with:
 

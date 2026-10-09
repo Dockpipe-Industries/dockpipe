@@ -10,7 +10,7 @@ function Get-AgentRoot {
   if (-not [string]::IsNullOrWhiteSpace($ConfigPath)) {
     return Split-Path -Parent $ConfigPath
   }
-  return (Join-Path $env:ProgramData "DockPipe\GuestAgent")
+  return (Join-Path $env:ProgramData "Dockpipe\GuestAgent")
 }
 
 function Get-AgentConfigPath {

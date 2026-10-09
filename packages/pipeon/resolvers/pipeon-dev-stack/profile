@@ -1,2 +1,2 @@
 # Resolver: Pipeon local dev stack.
-# Brings up the local-first Pipeon surface backed by DorkPipe, MCP, and DockPipe-managed sidecars.
+# Brings up the local-first Pipeon surface backed by DorkPipe, MCP, and Dockpipe-managed sidecars.

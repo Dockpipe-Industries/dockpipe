@@ -19,7 +19,7 @@ func isNodeFamilyImage(image string) bool {
 
 // unixDockerUserSpec returns the value for docker run -u on Linux/macOS.
 //
-// When the dockpipe process runs as root (uid 0), DockPipe-owned node-family resolver images
+// When the dockpipe process runs as root (uid 0), Dockpipe-owned node-family resolver images
 // still start as root so their entrypoint can normalize files and then drop to node. Generic
 // root-host overrides remain available through DOCKPIPE_CONTAINER_USER.
 func unixDockerUserSpec(image string, stderr io.Writer) string {

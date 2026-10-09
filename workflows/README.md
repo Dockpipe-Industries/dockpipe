@@ -1,6 +1,6 @@
 # Repo-local workflows
 
-This directory is the **canonical** place for **this repository’s** DockPipe workflows: CI pipelines, Codex demos, R2 publish, self-analysis stacks, sandbox experiments, and host-only helpers.
+This directory is the **canonical** place for **this repository’s** Dockpipe workflows: CI pipelines, Codex demos, R2 publish, self-analysis stacks, sandbox experiments, and host-only helpers.
 
 Workflows are grouped by purpose while retaining their leaf workflow names for `--workflow`:
 
@@ -13,7 +13,7 @@ Workflows are grouped by purpose while retaining their leaf workflow names for `
 | **`agent/codex-pav`** | Optional Codex plan/apply/validate resolver demo (`OPENAI_API_KEY`; CI gated by `DOCKPIPE_CI_CODEX`). |
 | **`agent/codex-security`** | Optional Codex security-review resolver demo (`OPENAI_API_KEY`; CI gated by `DOCKPIPE_CI_CODEX`). |
 | **`agent/docs.orchestrate`** / **`agent/docs.optimize-orchestrate`** | DorkPipe docs-orchestration dogfood for this checkout; package docs now also ship a generic consumer-repo brain baseline for repo-native durable guidance. |
-| **`ci/test`** | Multi-step Docker chain: go test → vet → govulncheck → gosec → security brief (mirrors the spirit of `.github/workflows/ci.yml`’s DockPipe workflow step). |
+| **`ci/test`** | Multi-step Docker chain: go test → vet → govulncheck → gosec → security brief (mirrors the spirit of `.github/workflows/ci.yml`’s Dockpipe workflow step). |
 | **`ci/ci-emulate`** | Local CI emulator. Runs the Linux **`.github/workflows/ci.yml`** **`test`** job through **`act`** and validates the Windows CI subset either on the native Windows host or through **`windows-vm`** on Linux. |
 | **`ci/dockpipe-repo-quality`** | Host-only: lists the CI analysis artifact directory from `dockpipe scope workflow ci ci-analysis` after **`ci-emulate`** or GitHub CI writes the normalized scan bundle. |
 | **`package/package-store-infra`** | Thin composer: shared **`vars`** + nested packaged workflow **`dockpipe.cloudflare.r2infra`** (`workflow:` + `package:`); optional **`--tf`**. Store tarballs: run **`dockpipe package build store`** separately when needed. |

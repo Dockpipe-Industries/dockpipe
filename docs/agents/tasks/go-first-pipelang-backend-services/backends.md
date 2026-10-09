@@ -7,7 +7,7 @@ Go is the first production backend resolver. Generated Go should:
 - introduce a routing dependency only after a concrete standard-library limitation is documented;
 - use a conventional readable Go module/project layout;
 - be deterministic, `gofmt`-formatted, inspectable, and traceable to PipeLang semantic IDs;
-- compile/test without importing DockPipe internals;
+- compile/test without importing Dockpipe internals;
 - produce a standalone binary through normal Go tooling;
 - cross-compile through explicit normal Go target settings;
 - remain dependency-light and suitable for direct host execution or minimal containers; and
@@ -75,7 +75,7 @@ Required coverage includes:
 The real integration suite starts the generated Go binary, exercises it through the generated client
 or deterministic protocol harness, captures bounded diagnostics, and shuts it down cleanly.
 
-## DockPipe Workflow And Artifacts
+## Dockpipe Workflow And Artifacts
 
 A package-owned workflow should eventually:
 
@@ -104,9 +104,9 @@ The first Go service output should support explicit deployment as:
 
 - a direct standalone binary;
 - a minimal container;
-- a DockPipe host target;
-- a DockPipe VM target; and
-- a DockPipe remote target.
+- a Dockpipe host target;
+- a Dockpipe VM target; and
+- a Dockpipe remote target.
 
 Kubernetes, cloud-provider products, edge platforms, and WASI are future resolver/workflow concerns.
 Provider and infrastructure details do not enter PipeLang service semantics. Build, package,
@@ -116,7 +116,7 @@ deployment, authorization, and live apply remain separately reviewable operation
 
 The smallest credible end-to-end proof contains:
 
-1. one representative DockPipe-domain service;
+1. one representative Dockpipe-domain service;
 2. shared typed request/response models;
 3. one GET and one POST operation;
 4. path, query, and JSON-body binding;
@@ -132,9 +132,9 @@ The smallest credible end-to-end proof contains:
 14. deterministic in-memory adapter;
 15. contract and real HTTP integration tests;
 16. standalone binary packaging; and
-17. complete DockPipe artifact verification.
+17. complete Dockpipe artifact verification.
 
-Use a real DockPipe domain such as builds, workflows, packages, sessions, or catalogs rather than an
+Use a real Dockpipe domain such as builds, workflows, packages, sessions, or catalogs rather than an
 artificial greeting/todo service. Streaming, websockets, multiple backend ecosystems, Kubernetes,
 arbitrary OpenAPI import, and universal deployment are outside this slice.
 

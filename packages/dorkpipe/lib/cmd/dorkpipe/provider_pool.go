@@ -1974,7 +1974,7 @@ func providerPoolStatusFor(workdir string, provider providerPoolProvider, chosen
 					statusTimings["image_build_ms"] = elapsedMillis(imageBuildStartedAt)
 					status.State = "failed"
 					status.DisableReason = err.Error()
-					status.NextAction = "Inspect the DockPipe image build output, then retry."
+					status.NextAction = "Inspect the Dockpipe image build output, then retry."
 					status.Status = fmt.Sprintf("Provider: %s | State: failed | %s", provider.DisplayName, status.DisableReason)
 					return status, nil
 				}

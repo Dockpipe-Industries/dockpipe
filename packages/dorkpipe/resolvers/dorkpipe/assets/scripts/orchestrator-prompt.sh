@@ -18,7 +18,7 @@ fi
 mkdir -p "$GOCACHE" "$GOTMPDIR"
 
 if [[ $# -eq 0 && -n "${DOCKPIPE_ARGS:-}" ]]; then
-  # DOCKPIPE_ARGS is shell-joined by DockPipe for host-step CLI passthrough.
+  # DOCKPIPE_ARGS is shell-joined by Dockpipe for host-step CLI passthrough.
   # shellcheck disable=SC2086
   eval "set -- ${DOCKPIPE_ARGS}"
 fi

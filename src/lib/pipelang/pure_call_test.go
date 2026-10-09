@@ -42,7 +42,7 @@ func TestV360SameClassPureCallsPipeline(t *testing.T) {
 		t.Fatal(err)
 	}
 	outcome, err := coreeval.EvaluateProgram(core, coreir.SemanticIdentity{PackageID: string(identity.PackageID), Path: string(identity.Path)}, []coreeval.Value{
-		{Type: coreFunctionNamed(t, core, "Search").Parameters[0].Type, String: "  DockPipe  "},
+		{Type: coreFunctionNamed(t, core, "Search").Parameters[0].Type, String: "  Dockpipe  "},
 		{Type: coreFunctionNamed(t, core, "Search").Parameters[1].Type, String: "dockpipe"},
 	})
 	if err != nil || !outcome.OK || !outcome.Value.Bool {
@@ -58,7 +58,7 @@ func TestV360SameClassPureCallsPipeline(t *testing.T) {
 	compileAndRunGeneratedGoFiles(t, generated, []byte(`package pipelanggenerated
 import "testing"
 func TestPureCalls(t *testing.T) {
-	if !PipeLangSearch("  DockPipe  ", "dockpipe") { t.Fatal("nested pure call failed") }
+	if !PipeLangSearch("  Dockpipe  ", "dockpipe") { t.Fatal("nested pure call failed") }
 }`))
 }
 

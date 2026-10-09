@@ -158,7 +158,7 @@ Role `work_mode` controls how cloud worker prompts should treat mounted source p
 Use `artifact` for planning, synthesis, doc drafting, validation, and artifact generation. Use `edit`
 only for tasks whose purpose is implementation or repair, and pair it with explicit writable mounts.
 
-When `work_mode: edit` is used with managed DockPipe volume sessions, DorkPipe can request one of
+When `work_mode: edit` is used with managed Dockpipe volume sessions, DorkPipe can request one of
 two runtime-owned isolation strategies via `DORKPIPE_ORCH_EDIT_ISOLATION`:
 
 - `serialized` keeps workers on the authoritative session volume but allows only one active edit
@@ -358,7 +358,7 @@ Users sign in normally on the host; DorkPipe passes that auth into the container
 
 - Codex and Claude auth mounts come from resolver scope fields such as `auth-dir`, `container-auth-dir`, and `auth-mount-mode`
 - Workflows read those fields with `dockpipe scope resolver <name> <field>` instead of hardcoding provider auth paths
-- API-key env vars declared by resolver profiles are still forwarded by the DockPipe runner
+- API-key env vars declared by resolver profiles are still forwarded by the Dockpipe runner
 
 Before launching a `codex` or `claude` worker, DorkPipe runs an auth preflight. API-key env vars
 pass immediately. Otherwise DorkPipe checks the host resolver auth files. If auth is missing and the
@@ -406,4 +406,4 @@ dockpipe scope --package dorkpipe training/metrics.jsonl
 
 Each line captures task id, selected lane, provider, status, confidence, token estimates, whether a
 live model was used, and whether a budget halt occurred. This starts as observation data. Later,
-DorkPipe can use these stats to weight lane selection without changing the DockPipe engine.
+DorkPipe can use these stats to weight lane selection without changing the Dockpipe engine.

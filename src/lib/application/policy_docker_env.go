@@ -9,7 +9,7 @@ var policyEnvHints = []string{
 	"DOCKPIPE_NETWORK_PROXY_NO_PROXY",
 }
 
-// mergePolicyProxyEnvFromHost forwards DockPipe-managed proxy policy env into the
+// mergePolicyProxyEnvFromHost forwards Dockpipe-managed proxy policy env into the
 // docker environment map when those values were resolved earlier in the workflow.
 // This keeps proxy-backed enforcement generic and engine-owned without copying the
 // entire host/workflow environment into every container.

@@ -17,7 +17,7 @@ limit increases, commits, pushes, publication, external mutation, interruption,
 delegation, worktrees and automatic handoff. Prior recovery/Git authority is closed.
 
 Admission: clean `js/pipelang` at `616aab5dcc4ad5c31a55a4a2878c2a360b0cc78a`;
-both protected stashes match. Visible app tasks show no competing active DockPipe
+both protected stashes match. Visible app tasks show no competing active Dockpipe
 task; sandbox process visibility is limited. No campaign was launched or stopped.
 
 Checkpoint 1: receipt and metadata accounting completed. The v0.113 profile

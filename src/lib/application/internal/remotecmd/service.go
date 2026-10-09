@@ -13,6 +13,8 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+
+	"dockpipe/src/lib/infrastructure/packageplatform"
 )
 
 func installService(ctx context.Context, root, role string) error {
@@ -38,6 +40,14 @@ func installService(ctx context.Context, root, role string) error {
 	digest := sha256.Sum256([]byte(root))
 	name := fmt.Sprintf("com.dockpipe.remote.%s.%x", role, digest[:6])
 	arguments := []string{executable, "remote", command, "--state", root}
+	flatpak := packageplatform.IsFlatpak()
+	if flatpak {
+		applicationID, err := packageplatform.ApplicationID()
+		if err != nil {
+			return err
+		}
+		arguments = flatpakServiceArguments(applicationID, command, root)
+	}
 	var path, content string
 	switch runtime.GOOS {
 	case "darwin":
@@ -50,6 +60,10 @@ func installService(ctx context.Context, root, role string) error {
 		}
 		path = filepath.Join(base, "systemd", "user", name+".service")
 		content = systemdUnit(arguments)
+		if flatpak {
+			// /app and the sandbox PATH do not exist in the host user manager.
+			content = systemdUnitWithPath(arguments, "")
+		}
 	default:
 		return errors.New("remote user services currently support Linux and macOS")
 	}
@@ -78,6 +92,10 @@ func installService(ctx context.Context, root, role string) error {
 		return err
 	}
 	run := func(tool string, args ...string) error {
+		if flatpak {
+			args = append([]string{"--host", "--watch-bus", tool}, args...)
+			tool = "flatpak-spawn"
+		}
 		process := exec.CommandContext(ctx, tool, args...)
 		process.Stdout, process.Stderr = os.Stderr, os.Stderr
 		return process.Run()
@@ -89,6 +107,13 @@ func installService(ctx context.Context, root, role string) error {
 			return nil
 		}
 		return run("launchctl", "bootstrap", domain, path)
+	}
+	if flatpak {
+		// The unit lives in the app's host-visible XDG config directory. Link it
+		// explicitly rather than writing through Flatpak's redirected ~/.config.
+		if err := run("systemctl", "--user", "link", path); err != nil {
+			return err
+		}
 	}
 	if err := run("systemctl", "--user", "daemon-reload"); err != nil {
 		return err
@@ -123,12 +148,24 @@ func launchAgent(name string, arguments []string, log string) string {
 }
 
 func systemdUnit(arguments []string) string {
+	return systemdUnitWithPath(arguments, os.Getenv("PATH"))
+}
+
+func flatpakServiceArguments(applicationID, command, root string) []string {
+	return []string{"/usr/bin/flatpak", "run", "--command=dockpipe", applicationID, "remote", command, "--state", root}
+}
+
+func systemdUnitWithPath(arguments []string, environmentPath string) string {
 	quoted := make([]string, len(arguments))
 	for index, argument := range arguments {
 		argument = strings.ReplaceAll(argument, "%", "%%")
 		argument = strings.ReplaceAll(argument, "$", "$$")
 		quoted[index] = strconv.Quote(argument)
 	}
-	environmentPath := strings.ReplaceAll(os.Getenv("PATH"), "%", "%%")
-	return "[Unit]\nDescription=DockPipe remote node\nAfter=network-online.target\n\n[Service]\nType=simple\nExecStart=" + strings.Join(quoted, " ") + "\nEnvironment=" + strconv.Quote("PATH="+environmentPath) + "\nRestart=on-failure\nRestartSec=10\nKillMode=control-group\nUMask=0077\n\n[Install]\nWantedBy=default.target\n"
+	environment := ""
+	if environmentPath != "" {
+		environmentPath = strings.ReplaceAll(environmentPath, "%", "%%")
+		environment = "Environment=" + strconv.Quote("PATH="+environmentPath) + "\n"
+	}
+	return "[Unit]\nDescription=Dockpipe remote node\nAfter=network-online.target\n\n[Service]\nType=simple\nExecStart=" + strings.Join(quoted, " ") + "\n" + environment + "Restart=on-failure\nRestartSec=10\nKillMode=control-group\nUMask=0077\n\n[Install]\nWantedBy=default.target\n"
 }

@@ -1,17 +1,17 @@
 schema: 1
 kind: package
 name: vm
-version: 1.3.4
-title: DockPipe VM package family
+version: 1.3.5
+title: Dockpipe VM package family
 platforms: [windows, deb]
 description: |
-  First-party VM package family built on the generic DockPipe VM runtime.
+  First-party VM package family built on the generic Dockpipe VM runtime.
   Concrete VM products such as QEMU live as package resolvers, while workflows
   in this package compose those resolvers into user-facing guest flows.
-  Host VMM dependencies such as QEMU, OVMF, and swtpm stay outside DockPipe
+  Host VMM dependencies such as QEMU, OVMF, and swtpm stay outside Dockpipe
   and are declared through package/workflow dependency preflight. Workflows
   still prompt for user-supplied guest media as needed.
-author: DockPipe
+author: Dockpipe
 license: Apache-2.0
 repository: https://github.com/Dockpipe-Industries/dockpipe
 tags: [workflow, vm, qemu, windows, linux, qualification]

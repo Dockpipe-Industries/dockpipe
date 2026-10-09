@@ -19,7 +19,7 @@ var errStopScriptWalk = errors.New("stop script walk")
 // from dockpipe.config.json compile.workflows (nested trees), then templates/core
 // (materialized merge), then templates/core/assets/scripts/;
 // other paths are relative to the workflow template dir.
-// repoRoot is the layout root (bundled cache or checkout); projectRoot is the DockPipe project
+// repoRoot is the layout root (bundled cache or checkout); projectRoot is the Dockpipe project
 // directory (--workdir or cwd). Pass projectRoot == "" to treat project as repoRoot.
 //
 // Namespace: scripts/core.<dot.segments> maps to paths under core/ by turning dots into path segments
@@ -276,7 +276,7 @@ func workflowAssetPathForLogicalScript(rest string, roots []string) (string, boo
 }
 
 // resolveCoreNamespacedAsset resolves scripts/core.* to a file under core/ (compiled overlays first).
-// projectRoot is the DockPipe project directory (bin/.dockpipe, packages/); repoRoot is the layout root for CoreDir / bundle.
+// projectRoot is the Dockpipe project directory (bin/.dockpipe, packages/); repoRoot is the layout root for CoreDir / bundle.
 func resolveCoreNamespacedAsset(repoRoot, projectRoot, rest string) (string, bool) {
 	if projectRoot == "" {
 		projectRoot = repoRoot
@@ -503,7 +503,7 @@ func resolveScriptsPrefixedPath(repoRoot, projectRoot, rel string) string {
 }
 
 // ResolveActionPath resolves act script like bin/dockpipe.
-// projectRoot is the DockPipe project directory; pass "" to use repoRoot.
+// projectRoot is the Dockpipe project directory; pass "" to use repoRoot.
 func ResolveActionPath(action, repoRoot, cwd, projectRoot string) (string, error) {
 	if action == "" {
 		return "", nil

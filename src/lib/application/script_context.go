@@ -20,6 +20,9 @@ func envSliceWithScriptContext(env []string, scriptAbs string) []string {
 		}
 		envMap[k] = v
 	}
+	if toolsDir := packageToolsDir(filepath.Dir(scriptAbs)); toolsDir != "" {
+		envMap["PATH"] = prependPATHDir(envMap["PATH"], toolsDir)
+	}
 	return domain.EnvMapToSlice(envMap)
 }
 

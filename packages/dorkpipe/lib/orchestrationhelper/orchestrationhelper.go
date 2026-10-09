@@ -57,7 +57,7 @@ var durableOutputForbiddenTerms = []struct {
 	label   string
 	pattern *regexp.Regexp
 }{
-	{label: "DockPipe or DorkPipe", pattern: regexp.MustCompile(`(?i)\b(?:dockpipe|dorkpipe)\b`)},
+	{label: "Dockpipe or DorkPipe", pattern: regexp.MustCompile(`(?i)\b(?:dockpipe|dorkpipe)\b`)},
 	{label: "orchestration", pattern: regexp.MustCompile(`(?i)\borchestrat(?:ion|or|ed|ing)\b`)},
 	{label: "runtime mount terminology", pattern: regexp.MustCompile(`(?i)\b(?:runtime mounts?|mount labels?|mounted source(?: roots?)?)\b`)},
 	{label: "artifact root terminology", pattern: regexp.MustCompile(`(?i)\b(?:artifact|workflow) roots?\b`)},

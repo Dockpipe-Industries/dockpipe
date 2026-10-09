@@ -241,7 +241,7 @@ func TestCmdInitBareDoesNotWarnForEmptyWorkflowsSubdirs(t *testing.T) {
 			t.Fatalf("expected init stderr to contain %q, got:\n%s", want, stderr)
 		}
 	}
-	if strings.Contains(stderr, "has no DockPipe workflow folders") {
+	if strings.Contains(stderr, "has no Dockpipe workflow folders") {
 		t.Fatalf("did not expect workflows warning for empty directory tree, got:\n%s", stderr)
 	}
 }
@@ -262,7 +262,7 @@ func TestCmdInitBareWarnsForNonDockpipeWorkflowFiles(t *testing.T) {
 			t.Fatalf("cmdInit: %v", err)
 		}
 	})
-	if !strings.Contains(stderr, "has no DockPipe workflow folders") {
-		t.Fatalf("expected workflows warning for non-DockPipe workflow files, got:\n%s", stderr)
+	if !strings.Contains(stderr, "has no Dockpipe workflow folders") {
+		t.Fatalf("expected workflows warning for non-Dockpipe workflow files, got:\n%s", stderr)
 	}
 }

@@ -1,6 +1,6 @@
 # Compatibility Retirement Ledger
 
-This is the canonical inventory for DockPipe compatibility debt. It records accepted legacy
+This is the canonical inventory for Dockpipe compatibility debt. It records accepted legacy
 inputs, aliases, layouts, ignored values, and recovery readers so that a later change can retire
 exactly one surface without treating a repository search or an old task record as removal
 authority.
@@ -118,10 +118,10 @@ These scan hits are not retirement candidates in this ledger:
   `default_resolver` are already rejected, with `skip_container` covered by
   `src/lib/domain/workflow_test.go:187`; they are negative evidence, not maintained aliases;
 - generated third-party Tauri schemas under `packages/pipeon/apps/pipeon-desktop/src-tauri/gen/`
-  belong to that dependency/tool surface and are not DockPipe-authored promises;
+  belong to that dependency/tool surface and are not Dockpipe-authored promises;
 - package compatibility probes and fingerprints (for example backlog remote compatibility) describe
-  interoperability results, not backward-compatible DockPipe inputs;
-- `AWS_ENDPOINT_URL_S3` in the R2 uploader is the AWS CLI's endpoint input, not a DockPipe alias for
+  interoperability results, not backward-compatible Dockpipe inputs;
+- `AWS_ENDPOINT_URL_S3` in the R2 uploader is the AWS CLI's endpoint input, not a Dockpipe alias for
   `R2_ENDPOINT_URL`; the package declares both for different upload clients;
 - old DorkPipe/Pipeon context paths found only in negative fixtures are not active fallbacks;
 - `templates/core`, materialized `bundle/core`, and `bundle/workflows` are current installed layouts;

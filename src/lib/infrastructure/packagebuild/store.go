@@ -11,12 +11,14 @@ import (
 	"strings"
 
 	"dockpipe/src/lib/domain"
+	"dockpipe/src/lib/infrastructure/packageplatform"
 	"gopkg.in/yaml.v3"
 )
 
 // StoreBuildManifest is written next to compiled-package tarballs (packages-store-manifest.json).
 type StoreBuildManifest struct {
 	Schema    int    `json:"schema"`
+	Platform  string `json:"platform,omitempty"`
 	StoreRoot string `json:"store_root,omitempty"`
 	Packages  struct {
 		Core      *StoreArtifact  `json:"core,omitempty"`
@@ -52,7 +54,11 @@ func BuildCompiledStore(packagesRoot, outDir, fallbackVersion, only string) (*St
 	if err := os.MkdirAll(outDir, 0o755); err != nil {
 		return nil, err
 	}
-	m := &StoreBuildManifest{Schema: 1}
+	platform, err := packageplatform.Current()
+	if err != nil {
+		return nil, err
+	}
+	m := &StoreBuildManifest{Schema: 1, Platform: platform}
 	// Exported stores resolve tarballs beside the manifest, not in the builder's
 	// private source directory. Retain StoreRoot only for reading legacy metadata.
 

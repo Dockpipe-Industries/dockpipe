@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Shared DockPipe helper should prefer the repo-local dockpipe build, and the
+# Shared Dockpipe helper should prefer the repo-local dockpipe build, and the
 # DorkPipe package helper should resolve the package-local dorkpipe tool.
 set -euo pipefail
 

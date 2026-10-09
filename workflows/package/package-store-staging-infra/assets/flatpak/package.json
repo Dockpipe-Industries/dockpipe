@@ -1,0 +1,12 @@
+{
+  "schema": 1,
+  "artifacts": [
+    {
+      "kind": "workflow",
+      "name": "package-store-staging-infra"
+    }
+  ],
+  "tools": [],
+  "host_commands": [],
+  "required_files": []
+}

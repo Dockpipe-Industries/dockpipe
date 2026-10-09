@@ -3,7 +3,7 @@
 Provider adapters for `dockpipe remote`. Core owns delivery, pairing, execution, and results.
 Resolvers own provider login, endpoint setup, and tunnel configuration. DorkPipe retains scheduling.
 
-Cloudflare is the first adapter. Browser login, named tunnel, and DNS setup are implemented;
+`dockpipe.cloudflare.remote-edge` is the Cloudflare adapter (version 0.3.0). Browser login, named tunnel, and DNS setup are implemented;
 setup prints progress and pairing guidance and preserves the desktop browser session. Core can
 deliver selected workflows, assets and explicit package dependencies to workers that opt in with
 `--allow-delivery`. Local loopback delivery is tested; live account and macOS service qualification

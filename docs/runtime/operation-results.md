@@ -1,6 +1,6 @@
 # Operation Results
 
-This document defines a repo-wide pattern for DockPipe operations that do work, take time, and
+This document defines a repo-wide pattern for Dockpipe operations that do work, take time, and
 produce a result.
 
 It is broader than Git runtime sessions. The same contract should apply to engine/runtime work,
@@ -9,7 +9,7 @@ steps, and later UI/event surfaces.
 
 ## Goal
 
-DockPipe should stop inventing a new status string, log phrase, or ad hoc return payload for each
+Dockpipe should stop inventing a new status string, log phrase, or ad hoc return payload for each
 code path.
 
 Any meaningful operation should be modeled as one unit of work with:
@@ -163,7 +163,7 @@ Examples:
 - `session.publish.preflight` verifies remote, branch, auth, and dirty/checkpoint policy before
   `session.publish`
 
-Preflight does not need to become bureaucracy. It exists to catch bad assumptions before DockPipe
+Preflight does not need to become bureaucracy. It exists to catch bad assumptions before Dockpipe
 does expensive or destructive work and to make failure location obvious.
 
 ## Structured Events
@@ -261,7 +261,7 @@ That means:
 - nested work should compose child results rather than only printing freehand lines
 - JSON or machine-readable command modes should be able to expose the same result data without
   scraping text
-- interactive human CLI mode should render in-flight work with the existing DockPipe loading
+- interactive human CLI mode should render in-flight work with the existing Dockpipe loading
   animation/spinner rather than printing a final-looking `status=start` line and then leaving it in
   the scrollback as if it were the result
 

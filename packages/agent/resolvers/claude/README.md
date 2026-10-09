@@ -7,7 +7,7 @@ Bundled **workflow** for the **Claude Code** stack (`dockpipe-claude` image).
 
 **Standalone:** `dockpipe --workflow claude -- …` only makes sense if **`/work`** is already the worktree you want (e.g. after a clone). For full clone + commit automation, use **`strategy: worktree`** in your workflow YAML with **`--resolver claude`** — **[docs/workflows/workflow-yaml.md](../../../../docs/workflows/workflow-yaml.md#named-strategies)**.
 
-## Claude inside DockPipe Docker
+## Claude inside Dockpipe Docker
 
 **Runtime `docker`** is the isolation layer for the project at **`/work`**.
 

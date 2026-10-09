@@ -81,7 +81,7 @@ The review admitted the original v0.80 full-suite proof at the identical HEAD an
 compiled the five-conditional topology with root/leaf/unused locals across nine value types.
 No new defect was found in that topology classifier or the unused-local blank-use fix.
 This does not replace repair-specific verification. Sustained fuzzing, stack-exhaustion tests,
-the exhaustive version cross-product, and a repository-wide DockPipe audit were not performed.
+the exhaustive version cross-product, and a repository-wide Dockpipe audit were not performed.
 
 ### R1 completed — 2026-09-04
 

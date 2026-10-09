@@ -23,7 +23,7 @@ Staging uses the same native build and artifact assembly jobs as production:
 
 | Output | Platforms |
 | --- | --- |
-| DockPipe CLI archives and complete package-store bundles | Linux amd64/arm64, macOS amd64/arm64, Windows amd64 |
+| Dockpipe CLI archives and complete package-store bundles | Linux amd64/arm64, macOS amd64/arm64, Windows amd64 |
 | DEB, RPM, APK and Arch packages | Linux amd64/arm64 |
 | MSI installer | Windows amd64; always enabled for staging |
 | Signed APT repository | amd64/arm64, suite `staging`, separate signing key |
@@ -59,7 +59,7 @@ New full runs select the next unused patch. Do not delete release tags to reuse 
 Staging publishes a rolling signed APT repository at `https://packages.staging.dockpipe.com/apt`
 (suite `staging`), plus an immutable `<candidate-base>/apt` snapshot for explicit pins.
 Old pool objects and by-hash indexes are retained. These installers use the normal
-DockPipe product identity; configure one channel per machine. Source/default installs
+Dockpipe product identity; configure one channel per machine. Source/default installs
 continue to select production unless staging is explicitly configured.
 
 ## Infrastructure preparation
@@ -127,7 +127,7 @@ available beside the CLI, and individual stores are under `stores/<platform>/`.
 
 ### Homebrew on a test Mac
 
-The public [DockPipe tap](https://github.com/Dockpipe-Industries/homebrew-dockpipe)
+The public [Dockpipe tap](https://github.com/Dockpipe-Industries/homebrew-dockpipe)
 is active. Its first [native validation run](https://github.com/Dockpipe-Industries/homebrew-dockpipe/actions/runs/37397290496)
 passed installation and formula tests on Apple Silicon and Intel before publishing:
 

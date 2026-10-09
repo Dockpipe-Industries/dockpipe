@@ -1,7 +1,7 @@
 # Git Runtime Sessions
 
 This proposal defines a Git-owned session lifecycle for long-running autonomous and semi-autonomous
-DockPipe runs. It is a foundation document, not the full implementation plan.
+Dockpipe runs. It is a foundation document, not the full implementation plan.
 
 ## Problem
 
@@ -19,7 +19,7 @@ human review.
 ## Principles
 
 - AI agents do not execute arbitrary Git commands.
-- Git operations are runtime lifecycle actions owned by DockPipe or DorkPipe's orchestration runtime.
+- Git operations are runtime lifecycle actions owned by Dockpipe or DorkPipe's orchestration runtime.
 - Every autonomous edit session runs on a session branch.
 - Checkpoint commits are recovery and collaboration artifacts, not human-approved history.
 - Human review remains the final authority before merge.
@@ -30,7 +30,7 @@ human review.
 
 ## Architecture
 
-DockPipe keeps the existing architecture split:
+Dockpipe keeps the existing architecture split:
 
 - workflow: what should happen
 - runtime: where execution happens, including workspace lifecycle
@@ -129,7 +129,7 @@ Required properties:
 Runtime-owned Git/session operations should converge on one unit-of-work result shape instead of
 mixing ad hoc stderr strings with operation-specific return payloads.
 
-This is one application of the broader DockPipe pattern documented in
+This is one application of the broader Dockpipe pattern documented in
 `docs/runtime/operation-results.md`.
 
 Each nontrivial runtime action should have:
@@ -185,7 +185,7 @@ Example human-log shape:
 ```
 
 For the interactive CLI, the `session.volume.seed` start state should normally be shown through the
-existing DockPipe loading animation/spinner. Once the unit finishes, the CLI should finalize that
+existing Dockpipe loading animation/spinner. Once the unit finishes, the CLI should finalize that
 display as the stable result line with duration and relevant identifiers.
 
 Example failure shape:
@@ -588,7 +588,7 @@ Phase 1: local session branch runtime
 Phase 2: managed workspace path
 
 - Add `workspace.mode: managed`.
-- Create local managed clone/worktree under DockPipe state.
+- Create local managed clone/worktree under Dockpipe state.
 - Attach containers to that managed workspace instead of the source checkout.
 - Keep bind mode opt-in.
 

@@ -37,7 +37,7 @@ func TestDecideInitGitignorePromptsDefaultYes(t *testing.T) {
 	if got := strings.Join(argv, " "); got != "init" {
 		t.Fatalf("argv=%q, want %q", got, "init")
 	}
-	if !strings.Contains(out.String(), "Add recommended DockPipe .gitignore? (Y/n)") {
+	if !strings.Contains(out.String(), "Add recommended Dockpipe .gitignore? (Y/n)") {
 		t.Fatalf("missing prompt, got %q", out.String())
 	}
 }

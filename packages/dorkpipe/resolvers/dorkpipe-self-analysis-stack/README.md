@@ -1,6 +1,6 @@
 # dorkpipe-self-analysis-stack
 
-**DockPipe YAML** drives the full lifecycle:
+**Dockpipe YAML** drives the full lifecycle:
 
 1. **`stack_up`** (host) — the DorkPipe host stack helper starts Postgres + Ollama and handles Ollama GPU setup when available.
 2. **`self_analysis`** (container) — same as **`dorkpipe-self-analysis`**.
@@ -27,7 +27,7 @@ Current shape:
 
 - **stack up** goes through the package host script and follows explicit GPU policy from workflow vars or env
 - **stack down** also goes through the package host script, with keepalive controlled by **`DORKPIPE_DEV_STACK_AUTODOWN`**
-- the stack still exports **`DATABASE_URL`** and **`OLLAMA_HOST`** into the later DockPipe step through workflow vars
+- the stack still exports **`DATABASE_URL`** and **`OLLAMA_HOST`** into the later Dockpipe step through workflow vars
 
 GPU note:
 

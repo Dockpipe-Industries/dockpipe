@@ -40,8 +40,8 @@ This is the complete current production-file size inventory:
 Application remains the fan-in orchestration layer. Across recursive production files, 47 import
 Domain (46 direct plus `internal/imageartifact`), 57 import root Infrastructure, 13 import
 `infrastructure/packagebuild`, one imports `fetchinstall`, and three import PipeLang. Neither
-internal leaf imports its parent: `imageartifact` imports only Domain within DockPipe, while
-`wslbridge` imports no DockPipe package. Root application imports each leaf from exactly one owner,
+internal leaf imports its parent: `imageartifact` imports only Domain within Dockpipe, while
+`wslbridge` imports no Dockpipe package. Root application imports each leaf from exactly one owner,
 `image_artifact_fingerprint.go` and `windows_bridge.go`. Offline Go 1.25.0
 `go list -mod=readonly` resolved application and both leaves, Domain, Infrastructure and both of
 its child packages, and PipeLang without a network fallback or import cycle. The completed SDK

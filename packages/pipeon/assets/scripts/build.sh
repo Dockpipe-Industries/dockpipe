@@ -180,7 +180,7 @@ pipeon_prepare_code_server_build_context() {
     return 1
   fi
   if [[ -z "$dockpipe_vsix" || ! -f "$dockpipe_vsix" ]]; then
-    echo "pipeon-build: missing packaged DockPipe language support VSIX under $PIPEON_EXTENSIONS_DIR" >&2
+    echo "pipeon-build: missing packaged Dockpipe language support VSIX under $PIPEON_EXTENSIONS_DIR" >&2
     return 1
   fi
 
@@ -322,7 +322,7 @@ Commands:
   icons                    Regenerate Pipeon icon assets
   desktop                  Build the Pipeon desktop binary
   install-desktop-global   Install the repo-built Pipeon desktop under ~/.local/share
-  dockpipe-language-support Package the DockPipe language support VSIX dependency
+  dockpipe-language-support Package the Dockpipe language support VSIX dependency
   vscode-extension         Package the Pipeon VSIX
   install-vscode-extension Install the packaged Pipeon VSIX into Cursor / VS Code when available
   code-server-image        Build the branded dockpipe-code-server image
@@ -356,7 +356,7 @@ prompt_install_cargo() {
   prompt_install_host_tool \
     "pipeon.install-cargo" \
     "Install Rust Toolchain?" \
-    "Pipeon source build needs Cargo/Rust before it can build the desktop app. Allow DockPipe to launch the install command for this host?" \
+    "Pipeon source build needs Cargo/Rust before it can build the desktop app. Allow Dockpipe to launch the install command for this host?" \
     no \
     host-mutation \
     pipeon-host-tools \
@@ -554,10 +554,13 @@ build_source() {
     build_desktop
   fi
   package_vscode_extension
+  local runtime_context
+  runtime_context="$(pipeon_prepare_code_server_build_context)"
+  bash "$SCRIPT_DIR/stage-runtime.sh" "$runtime_context"
 }
 
 package_dockpipe_language_support() {
-  build_log "Packaging DockPipe language support VSIX"
+  build_log "Packaging Dockpipe language support VSIX"
   mkdir -p "$PIPEON_EXTENSIONS_DIR"
   (
     local version output_file
@@ -574,15 +577,15 @@ package_dockpipe_language_support() {
       "$DOCKPIPE_VSCODE_EXT_DIR/snippets" \
       "$DOCKPIPE_VSCODE_EXT_DIR/README.md" \
       "$DOCKPIPE_VSCODE_EXT_DIR/LICENSE"; then
-      build_log "DockPipe language support VSIX is current; skipping rebuild"
+      build_log "Dockpipe language support VSIX is current; skipping rebuild"
       return 0
     fi
     if [[ ! -x node_modules/.bin/vsce ]]; then
-      build_log "Installing DockPipe language support npm dependencies"
-      run_with_progress "DockPipe language support npm install" \
+      build_log "Installing Dockpipe language support npm dependencies"
+      run_with_progress "Dockpipe language support npm install" \
         env NPM_CONFIG_CACHE="$DOCKPIPE_VSCODE_TMP_CACHE" npm ci --no-audit --no-fund
     fi
-    build_log "Running vsce package for DockPipe language support"
+    build_log "Running vsce package for Dockpipe language support"
     if pipeon_is_windows_host; then
       package_vsix_windows "$DOCKPIPE_VSCODE_EXT_DIR" "$output_file" "$DOCKPIPE_VSCODE_TMP_CACHE"
     else
@@ -590,7 +593,7 @@ package_dockpipe_language_support() {
         node node_modules/@vscode/vsce/vsce package --no-dependencies \
         -o "$output_file"
     fi
-    build_log "DockPipe language support VSIX packaging returned"
+    build_log "Dockpipe language support VSIX packaging returned"
   )
 }
 

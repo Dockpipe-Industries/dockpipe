@@ -22,7 +22,7 @@ Run only one provider while debugging auth:
 DORKPIPE_AGENT_DOCTOR_PROVIDERS=claude dockpipe --workflow agent.cloud-lanes.doctor --
 ```
 
-The workflow runs from the repo root because it shells back into the DockPipe CLI with the
+The workflow runs from the repo root because it shells back into the Dockpipe CLI with the
 current checkout as `--workdir`. Its `scopes` bind source reads to the repo and generated
 output to this workflow's artifact root.
 

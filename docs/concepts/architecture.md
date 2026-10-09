@@ -1,12 +1,12 @@
-# DockPipe engine (data flow)
+# Dockpipe engine (data flow)
 
 **Terms:** **[architecture-model.md](architecture-model.md)**. This page is the current execution
-shape of the Go CLI: how DockPipe resolves workflows, prepares runtime state, runs host/container
+shape of the Go CLI: how Dockpipe resolves workflows, prepares runtime state, runs host/container
 work, and applies lifecycle actions around it.
 
 ## Primitive
 
-DockPipe still has one core action:
+Dockpipe still has one core action:
 
 1. prepare runtime-owned state and optional host pre-work
 2. run the requested step or command in the selected runtime
@@ -43,7 +43,7 @@ Current execution can enter through several surfaces:
 - compiled workflow tarball from the package store
 - arbitrary **`--workflow-file <path>`**
 
-After resolution, DockPipe may:
+After resolution, Dockpipe may:
 
 1. merge workflow defaults, step overrides, runtime/resolver selection, and strategy behavior
 2. prepare managed workspace/session state when **`workspace.mode: managed`** is in play
@@ -111,7 +111,7 @@ Those are engine/runtime responsibilities, not resolver-local shell conventions.
 
 ## Permissions
 
-For normal Docker runs, DockPipe still prefers host-user file ownership semantics where possible so
+For normal Docker runs, Dockpipe still prefers host-user file ownership semantics where possible so
 files in **`/work`** map cleanly back to the host checkout. Exact user mapping can vary by runtime
 profile or image, but workflow authors should continue to think in terms of governed `/work`
 execution rather than ad hoc container flags.

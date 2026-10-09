@@ -244,7 +244,7 @@ enums, and class-like ownership. The admitted checkpoint was limited to a source
 vocabulary cleanup: preserve all exported Go struct field types and authored JSON/YAML/CLI bytes,
 introduce value types only for closed domain vocabularies, replace production decision literals
 with named constants, and keep behavior beside its owning package. No generic `Models` directory
-was created because `src/lib/domain` already owns DockPipe's model and validation layer; Go value
+was created because `src/lib/domain` already owns Dockpipe's model and validation layer; Go value
 types and package functions are the idiomatic equivalent of enum/model classes here.
 
 Created `src/lib/domain/runtime_policy_values.go` as the owner of ten closed vocabularies:

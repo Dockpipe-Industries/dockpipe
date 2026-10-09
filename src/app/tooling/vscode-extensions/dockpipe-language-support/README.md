@@ -14,7 +14,7 @@ followed by a complete ternary return. Locals execute eagerly once in source ord
 are lazy and exactly match the method return type. Nested ternaries, new argument/condition
 placements and terminal-tree return choices remain excluded. Existing snippets retain their contracts.
 
-# DockPipe Language Support (VS Code)
+# Dockpipe Language Support (VS Code)
 
 PipeLang `v0.85.0` adds `pipe-straight-conditional-locals`: finite complete ternary
 initializers in typed immutable-local sequences followed by an ordinary return.
@@ -123,25 +123,25 @@ PipeLang `v0.71.0` adds a second ordered lexical immutable local per terminal br
 branch local, nested branches, zero top-level locals, propagation, matching, assignment,
 fallthrough, effects, inference, and deployment remain excluded.
 
-Language support for DockPipe authoring:
+Language support for Dockpipe authoring:
 
 - `.pipe` PipeLang syntax highlighting
 - PipeLang snippets and keyword completion
 - PipeLang diagnostics from the compiler's strict UTF-8, file-aware structured diagnostic contract
 - PipeLang model awareness for primitive, object/interface, and `List<T>` field types
-- DockPipe `config.yml` IntelliSense for common workflow keys, including `cwd` and `scopes` value suggestions (`repo`, `source`, `artifacts`)
+- Dockpipe `config.yml` IntelliSense for common workflow keys, including `cwd` and `scopes` value suggestions (`repo`, `source`, `artifacts`)
 - DorkPipe agent path snippets for `scope:artifacts:...`, `scope:workflow:<name>:...`, and `scope:package:<name>:...` references
-- DockPipe `config.yml` support for optional authored `view:` metadata (entry routing, pages, sections, and field-path driven launcher layouts)
+- Dockpipe `config.yml` support for optional authored `view:` metadata (entry routing, pages, sections, and field-path driven launcher layouts)
 - Up-to-date workflow help for packaged workflow steps (`workflow:` + `package:`), Compose host built-ins, and authored security/runtime policy blocks
-- DockPipe `package.yml` hover/docs and top-level key completion
-- DockPipe `package.yml` `icon` / `artwork` metadata hints for package-owned launcher/tooling assets
-- DockPipe `package.yml` image metadata hints for package-owned OCI image refs
-- DockPipe `package.yml` support for `script_contract.inject` with valid generic injectable suggestions
-- DockPipe `dockpipe.config.json` hover/docs and section-key completion
-- First-party package script IntelliSense for workflow cwd, `dockpipe scope`, and focused DockPipe SDK helpers in shell, PowerShell, Python, and Go
+- Dockpipe `package.yml` hover/docs and top-level key completion
+- Dockpipe `package.yml` `icon` / `artwork` metadata hints for package-owned launcher/tooling assets
+- Dockpipe `package.yml` image metadata hints for package-owned OCI image refs
+- Dockpipe `package.yml` support for `script_contract.inject` with valid generic injectable suggestions
+- Dockpipe `dockpipe.config.json` hover/docs and section-key completion
+- First-party package script IntelliSense for workflow cwd, `dockpipe scope`, and focused Dockpipe SDK helpers in shell, PowerShell, Python, and Go
 - Runtime path env suggestions for scripts: `DOCKPIPE_SOURCE_ROOT`, `DOCKPIPE_ARTIFACT_ROOT`, `DOCKPIPE_OUTPUT_ROOT`, and `DOCKPIPE_STEP_CWD`
 - Structure-aware YAML semantic coloring for workflow keys, step keys, `vars:` fields, and `types:` entries
-- YAML parse diagnostics for DockPipe workflow files (`config.yml` / `config.yaml`)
+- YAML parse diagnostics for Dockpipe workflow files (`config.yml` / `config.yaml`)
 - Hover/docs for top-level workflow keys, step keys, `types:` entries, and `vars:` fields from PipeLang XML summaries (`types:` entrypoint)
 - `vars:` value suggestions from implementing class defaults and nearby `Struct` known-values
 - Completion/hover for SDK-object patterns:
@@ -190,11 +190,11 @@ make install-dockpipe-language-support
 - `v0.30.0` widens only exact direct `sort_by_ordinal(List<R>, R.Field1, R.Field2, ...) -> List<R>` through `pipe-record-list-sort-by-ordinals`. It requires two or more distinct public string selectors of the same primitive record and applies stable ascending lexicographic ordinal Unicode scalar-sequence comparison in source selector order after complete validation, with canonical non-nil empty and copied results. One-selector source retains the exact v0.28.0 behavior and projection. Descending or per-key direction, dynamic selectors, comparers, normalization, case folding, locale tailoring, mutation, composition, and implicit migration remain unaccepted.
 - `v0.31.0` adds exact `filter(List<R>, PredicateName, P1, ...) -> List<R>` through `pipe-record-list-filter-predicate`. The same public class must declare a public `bool PredicateName(R row, P1, ...)`; trailing parameters are primitive, filter operands are direct parameters, and the predicate body is a bounded pure composition of literals, primitive parameters, one-hop public primitive record fields, logical/comparison operators, `contains_casefolded`, and `trim`. Evaluation validates all inputs before stable source-order iteration and returns a fresh copied non-nil list. Lambdas, closures, function values, overloads, effects, Optional/Result predicates, arbitrary calls, and implicit migration remain unaccepted.
 - PipeLang diagnostics call `dockpipe pipelang check --stdin --format json` without a shell, so unsaved buffers are checked without source or generated-state writes. The extension prefers `DOCKPIPE_BIN`, then a workspace-local `src/bin/dockpipe`, then `dockpipe` from `PATH`.
-- Shared script support points authors at the canonical DockPipe SDK under `src/core/assets/scripts/lib/` and `dockpipe sdk`.
+- Shared script support points authors at the canonical Dockpipe SDK under `src/core/assets/scripts/lib/` and `dockpipe sdk`.
 - Workflow scripts can use `dockpipe scope` / SDK scope helpers for checkout, workflow artifacts, and durable owner-only package state. Package caches, build output, scratch, and run evidence use `PackageRuntimeDir` or shell SDK `path package-runtime`; runtime env such as `DOCKPIPE_SOURCE_ROOT`, `DOCKPIPE_STEP_CWD`, `DOCKPIPE_OUTPUT_ROOT`, and `DOCKPIPE_ARTIFACT_ROOT` remains available for low-level integrations.
 - DorkPipe agent workflow path lists can use `scope:...` references; the orchestration planner resolves them through `dockpipe scope` before writing prompts and task JSON.
 - `package.yml` may declare package-owned artwork via `icon:` and `artwork:` paths relative to the manifest.
-- `package.yml` may also declare a package-owned OCI image reference via `image:`; DockPipe compiles that into the effective runtime/image artifact manifests.
+- `package.yml` may also declare a package-owned OCI image reference via `image:`; Dockpipe compiles that into the effective runtime/image artifact manifests.
 - `package.yml` `script_contract.inject` declares the generic injected fields. In shell, the public
   way to read those values is `dockpipe get ...`; the backing runtime env vars are
   `DOCKPIPE_WORKDIR`, `DOCKPIPE_WORKFLOW_NAME`, `DOCKPIPE_SCRIPT_DIR`,

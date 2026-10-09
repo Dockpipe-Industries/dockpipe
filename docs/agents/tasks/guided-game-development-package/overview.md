@@ -2,23 +2,23 @@
 
 ## Goal
 
-Define a first-party DockPipe package that guides people from a small game idea toward a playable,
-testable, and eventually releasable game while preserving human creative authority and DockPipe's
+Define a first-party Dockpipe package that guides people from a small game idea toward a playable,
+testable, and eventually releasable game while preserving human creative authority and Dockpipe's
 governed execution boundaries.
 
 This task is a product and package backlog contract. It does not authorize implementation.
 
 ## Product Hypothesis
 
-- DockPipe should act as a governed game-development guide, not a one-shot "generate my entire
+- Dockpipe should act as a governed game-development guide, not a one-shot "generate my entire
   game" tool.
 - The human owns the creative direction and final decisions. The system handles technical setup,
   project scaffolding, milestone planning, implementation agents, builds, verification, repair,
   playtest iteration, and release preparation within explicit boundaries.
 - Start with one opinionated Unreal Engine path. Do not initially support every engine, workflow,
   or genre.
-- Treat the package as a vertical application of existing DockPipe and DorkPipe capabilities, not
-  as a reason to put game-specific behavior in DockPipe core.
+- Treat the package as a vertical application of existing Dockpipe and DorkPipe capabilities, not
+  as a reason to put game-specific behavior in Dockpipe core.
 - Keep package-specific behavior in the eventual package tree. Add or change a core primitive only
   after repository evidence demonstrates a generic capability gap.
 
@@ -86,7 +86,7 @@ experience. Do not add agents or handoffs that do not improve the result.
 - A future custom Unreal Editor plugin may provide a thin dockable **Game Guide** panel.
 - The Editor plugin must remain a presentation and context adapter. It must not become a second
   workflow system or own prompts, credentials, budgets, approvals, or durable task state.
-- DockPipe YAML, package-owned catalogs, and run artifacts remain the durable source of truth.
+- Dockpipe YAML, package-owned catalogs, and run artifacts remain the durable source of truth.
 - Keep Unreal MCP local-only by default. Do not expose an unauthenticated MCP endpoint remotely.
 
 The first proof should use chat or CLI over the governed workflow and Unreal MCP bridge. A native
@@ -95,7 +95,7 @@ Editor surface is justified only after that workflow is useful and its durable c
 ## Proposed First Slices
 
 1. Define the product contract, nontechnical UX principles, and package boundary.
-2. Audit which existing DockPipe and DorkPipe capabilities can be composed unchanged.
+2. Audit which existing Dockpipe and DorkPipe capabilities can be composed unchanged.
 3. Add an Unreal resolver and doctor that detect and validate the engine, compiler, project,
    plugins, and build tooling.
 4. Add an opinionated Unreal starter and the first guided milestone workflow.

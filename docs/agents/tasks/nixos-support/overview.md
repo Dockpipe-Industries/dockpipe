@@ -2,7 +2,7 @@
 
 ## Goal
 
-Make DockPipe usable and supportable on NixOS without assuming mutable FHS paths, conventional
+Make Dockpipe usable and supportable on NixOS without assuming mutable FHS paths, conventional
 system packages, or imperative service installation.
 
 ## Scope
@@ -13,7 +13,7 @@ system packages, or imperative service installation.
   tool discovery, store paths, shells, CLI, packages/workflows, runtimes, and diagnostics.
 - Remove unjustified FHS, `/usr/bin`, mutable global-install, dynamic-linker, and PATH assumptions
   through general path/tool primitives rather than NixOS conditionals in engine code.
-- Distinguish running DockPipe on NixOS from using Nix as a resolver or build tool elsewhere.
+- Distinguish running Dockpipe on NixOS from using Nix as a resolver or build tool elsewhere.
 
 ## Acceptance Criteria
 

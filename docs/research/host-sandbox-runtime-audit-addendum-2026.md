@@ -12,7 +12,7 @@ is authoritative wherever it conflicts with the earlier drafts:
 - [platform mechanism appendix](host-sandbox-runtime-platform-appendix-2026.md)
 
 The Linux-first recommendation remains unchanged. The corrections narrow Windows claims, preserve
-DockPipe's existing public policy surface, and make the dogfooding topology executable.
+Dockpipe's existing public policy surface, and make the dogfooding topology executable.
 
 ## 1. Assurance Is Part Of The Fail-Closed Decision
 
@@ -54,27 +54,27 @@ There are three honest topologies:
 | Topology | Provider process | Tool execution | MVP status |
 | --- | --- | --- | --- |
 | Local model | Inside `host-sandbox` | Inside the same sandbox | Supported when the model and dependencies are already local |
-| Split controller/executor | Trusted DockPipe model loop outside the workload sandbox | Every repository read, write, and command goes through the sandbox runtime | Recommended dogfood topology |
+| Split controller/executor | Trusted Dockpipe model loop outside the workload sandbox | Every repository read, write, and command goes through the sandbox runtime | Recommended dogfood topology |
 | In-sandbox cloud CLI | Inside `host-sandbox` with a narrow provider broker | Inside the same sandbox | Deferred until a broker can be enforced and tested |
 
 ### Recommended MVP topology
 
 The top-level orchestrator owns a small trusted model-transport loop. It may call an approved model
 provider, but it does not execute model-produced shell text, load repository code, or expose a
-general host tool. Model-produced tool requests cross a typed, request-only DockPipe boundary. The
+general host tool. Model-produced tool requests cross a typed, request-only Dockpipe boundary. The
 runtime canonicalizes the request, applies the compiled policy and approval overlay, then starts the
 tool in `host-sandbox`. Results return as bounded, escaped data.
 
 This yields two distinct trust boundaries:
 
 1. **Provider control plane.** Holds only the provider credential and model-session state. It is part
-   of DockPipe's trusted computing base. It has no model-controlled general command interface.
+   of Dockpipe's trusted computing base. It has no model-controlled general command interface.
 2. **Sandboxed executor.** Holds the managed worktree and local developer tools. It has no ambient
    credentials and no network. All spawned descendants inherit the runtime boundary.
 
 The provider necessarily receives whatever source, diagnostics, or artifacts the orchestrator puts
 in model requests. That is an explicit data-disclosure capability, not a consequence hidden under
-`network_offline`. DockPipe must record provider identity, data classification/policy, redaction,
+`network_offline`. Dockpipe must record provider identity, data classification/policy, redaction,
 request size, and content/artifact hashes without logging secrets. A repository whose policy forbids
 provider disclosure must use an approved local model or a stronger approved environment.
 
@@ -155,7 +155,7 @@ dropped mitigation or limit appear in the enforcement report; there is no retry 
 ### Ordinary Windows Firewall rules
 
 Ordinary Windows Firewall rules are not the MVP boundary. They are normally machine policy, commonly
-identify a program/path rather than a unique DockPipe session identity, require administrative or
+identify a program/path rather than a unique Dockpipe session identity, require administrative or
 managed-policy authority to install reliably, and create setup/cleanup race and stale-rule risks.
 Mutable executable paths also make image-scoped policy a poor session identity.
 
@@ -166,7 +166,7 @@ address rotation prevent a durable OS hostname identity.
 
 ## 4. The Policy Contract Is An Additive, Versioned Evolution
 
-DockPipe's current public security fields are not replaced by the proposed path-oriented contract.
+Dockpipe's current public security fields are not replaced by the proposed path-oriented contract.
 Existing workflows and compiled container policy retain their current meaning.
 
 The schema rollout must be versioned. The exact authored version key should be decided with the
@@ -198,10 +198,10 @@ New `workspace`, `read`, `write`, `deny`, `caches`, credential, executable, and 
 fields are additive. They do not delete legacy fields in the first release.
 
 When legacy and expanded forms address the same dimension, exact duplicates after canonicalization
-are allowed and retain both provenance entries. Different values are a validation error. DockPipe
+are allowed and retain both provenance entries. Different values are a validation error. Dockpipe
 must not union writable roots, choose the broader rule, or silently reinterpret `root: writable`.
 For example, `process.pid_limit` and an expanded `resources.processes` must resolve to the same value
-or fail. Rules from profiles, workflow, and step scope still use DockPipe's documented precedence,
+or fail. Rules from profiles, workflow, and step scope still use Dockpipe's documented precedence,
 then pass through this conflict check.
 
 The authored schema, Go types, validation, editor support, compiled manifest, security docs, runtime
@@ -209,7 +209,7 @@ docs, and conformance fixtures must change together when implementation begins.
 
 ## 5. Runtime Selection And Terminology Corrections
 
-The recommended profile name remains `host-sandbox`, authored as DockPipe's existing runtime-profile
+The recommended profile name remains `host-sandbox`, authored as Dockpipe's existing runtime-profile
 string:
 
 ```yaml
@@ -232,12 +232,12 @@ configuration. They are never resolver implementations. Generic code may compose
 any compatible runtime, but it does not put substrate behavior in the resolver.
 
 Use `sandbox.enforcement.validate` for the lifecycle/event unit. The earlier
-`sandbox.capabilities.validate` name risks collision with DockPipe's existing resolver capability
+`sandbox.capabilities.validate` name risks collision with Dockpipe's existing resolver capability
 vocabulary. The report may still contain a platform-neutral list of enforcement guarantees.
 
 ## 6. Git Approval Uses A Typed Runtime Operation
 
-Raw `git push` is not a normal sandbox network overlay. DockPipe owns managed-workspace Git writes,
+Raw `git push` is not a normal sandbox network overlay. Dockpipe owns managed-workspace Git writes,
 checkpoints, sync, and publish. The corrected approval shape is:
 
 ```yaml
@@ -268,7 +268,7 @@ App Sandbox inheritance applies to appropriately signed embedded helpers carryin
 entitlement and compatible parent entitlements; it is not a supported general-purpose wrapper for
 arbitrary Homebrew, Xcode, shell, compiler, and package-manager trees. The
 `com.apple.security.files.user-selected.executable` entitlement enables a narrower user-selected
-executable use case, but it does not supply DockPipe's dynamic path, network, descendant, and
+executable use case, but it does not supply Dockpipe's dynamic path, network, descendant, and
 developer-tool contract. Custom Seatbelt profiles remain an unsupported experimental prototype, not
 a production driver.
 
@@ -290,7 +290,7 @@ The implementation recommendation is now more precise:
 - Keep Windows as a separately labelled technical preview with narrower guarantees; spike BFS in an
   experimental driver. Do not schedule a macOS production driver on unsupported Seatbelt APIs.
 
-Regular DockPipe dogfooding is allowed only after the Linux gates pass and the human explicitly
+Regular Dockpipe dogfooding is allowed only after the Linux gates pass and the human explicitly
 accepts `preview`. Promotion to production requires the independent security-review gate. If the
 team requires an in-sandbox cloud CLI, regular dogfooding is deferred until the provider-broker
 phase.

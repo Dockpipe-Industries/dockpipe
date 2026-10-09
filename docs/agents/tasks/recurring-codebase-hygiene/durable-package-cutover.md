@@ -184,7 +184,7 @@ home:
 - Pipeon's general code-server home uses `code-server-user-home-v1`, excluding tool caches and all
   `.local/share/code-server` products. The latter is runtime except for nested durable `User` and
   `Machine` data, while user-installed extensions use the independent
-  `code-server-user-data-v1` extension directory. Package-built Pipeon and DockPipe language VSIXes
+  `code-server-user-data-v1` extension directory. Package-built Pipeon and Dockpipe language VSIXes
   are copied into the image-owned built-in extension tree, so rehydratable package products cannot
   become durable user state. Code-server settings are seeded into the durable User directory by an
   owner-only atomic replacement that rejects linked or non-regular targets.
@@ -258,7 +258,7 @@ directory:
   validated; empty/default identity, traversal, links/reparse points, and unsafe injected roots fail
   closed. Workdir refresh discards inherited package-state authority.
 - A validated `package.yml` may declare
-  `package_state.compatibility_import: package-owned` plus exact `owner_ids`. DockPipe propagates
+  `package_state.compatibility_import: package-owned` plus exact `owner_ids`. Dockpipe propagates
   the selected manifest through generic package/workflow script context. The engine contains no
   maintained package names or cohort mappings: declared mixed owners leave the legacy public tree
   untouched for their package-owned exact cohort importers, while undeclared third-party owners

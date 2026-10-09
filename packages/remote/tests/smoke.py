@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Exercise real DockPipe broker, worker, workflow, and results on loopback."""
+"""Exercise real Dockpipe broker, worker, workflow, and results on loopback."""
 
 import json
 import os

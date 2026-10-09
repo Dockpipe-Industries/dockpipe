@@ -619,7 +619,7 @@ beyond the exact accepted checked-arithmetic helper match remain fail-closed fro
 synchronized decision for its exact source spelling, type/value handling rule, semantic projection,
 migration, and bounded semantics before implementation.
 
-The first accepted application consumer is TASK-020's one-to-one DockPipe Launcher replacement,
+The first accepted application consumer is TASK-020's one-to-one Dockpipe Launcher replacement,
 beginning with read-only Docker observability. Its typed snapshot requirements are dependency
 evidence when comparing remaining successor options. Completed primitive record transport, one-hop
 field projection, exact construction, structural equality, and primitive Optional presence satisfy

@@ -209,7 +209,7 @@ func maybeWarnUnusedWorkflowsRoot(projectDir string) {
 	if r, err := filepath.Rel(projectDir, root); err == nil && !strings.HasPrefix(r, "..") {
 		rel = r
 	}
-	fmt.Fprintf(os.Stderr, "[dockpipe] warning: %q exists but has no DockPipe workflow folders (no <name>/config.yml). "+
+	fmt.Fprintf(os.Stderr, "[dockpipe] warning: %q exists but has no Dockpipe workflow folders (no <name>/config.yml). "+
 		"This path is often used for GitHub Actions or other tools. New workflows will still be created here. "+
 		"To use a different directory set DOCKPIPE_WORKFLOWS_DIR or run: dockpipe init <name> --workflows-dir <path>\n", rel)
 }

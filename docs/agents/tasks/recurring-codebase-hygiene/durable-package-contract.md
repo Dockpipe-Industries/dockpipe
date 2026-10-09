@@ -94,7 +94,7 @@ created.
 The implementation above remains accurate historical evidence, but it did not close the product and
 authoring problem. The required `generated_state.roots` declaration moved internal cleanup taxonomy
 onto every project author. A user should not need to enumerate standard generated paths or understand
-DockPipe's internal owner, retention, and age classifications before cleaning a disposable tree.
+Dockpipe's internal owner, retention, and age classifications before cleaning a disposable tree.
 
 The follow-up package-boundary review also found a prerequisite defect. The generic
 `infrastructure.PackageStateDir` helper currently resolves package state under
@@ -201,7 +201,7 @@ package-state surfaces eventually delegate to this durable API; a separately nam
 - **OS root:** Linux uses `$XDG_STATE_HOME/dockpipe` or `~/.local/state/dockpipe`; macOS uses
   `~/Library/Application Support/dockpipe/state`; Windows uses
   `%LOCALAPPDATA%\dockpipe\state` with the existing user-home fallback. A future explicit override
-  must be absolute, owner-controlled, and dedicated to DockPipe state. `GlobalDockpipeDataDir` is
+  must be absolute, owner-controlled, and dedicated to Dockpipe state. `GlobalDockpipeDataDir` is
   reusable path-resolution precedent, but its install/data semantics and `DOCKPIPE_GLOBAL_ROOT`
   override do not define or relocate durable project state.
 - **Project identity:** storage uses a random 128-bit project ID recorded in owner-only state-root
@@ -224,7 +224,7 @@ package-state surfaces eventually delegate to this durable API; a separately nam
 - **Layout:** `<os-state-root>/projects/<project-id>/packages/<slug>-<full-id-digest>/`. Project and
   package metadata record schema version and exact identities. Metadata is not author configuration
   and adds no repository file or `dockpipe.config.json` field.
-- **Permissions:** on POSIX, DockPipe creates state/project/package directories as `0700` and files
+- **Permissions:** on POSIX, Dockpipe creates state/project/package directories as `0700` and files
   as `0600` regardless of umask; a package may explicitly publish a less restrictive derived file,
   never by weakening the root. On Windows, inheritance is disabled and the current user SID receives
   full control; broad `Everyone`/`Users` grants are rejected, with only OS-required system access
