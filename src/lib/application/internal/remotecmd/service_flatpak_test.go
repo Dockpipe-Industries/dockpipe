@@ -21,11 +21,20 @@ func TestFlatpakServiceUsesHostLauncherWithoutSandboxPath(t *testing.T) {
 		t.Fatalf("state path was not escaped: %s", unit)
 	}
 	// Exercise the systemd parser when available without creating a user service.
+	// verify also checks executable availability, so use an isolated fixture after
+	// asserting the real host command above. CI need not have Flatpak installed.
 	tool, err := exec.LookPath("systemd-analyze")
 	if err != nil {
 		return
 	}
-	path := filepath.Join(t.TempDir(), "qualification.service")
+	directory := t.TempDir()
+	launcher := filepath.Join(directory, "flatpak")
+	if err := os.WriteFile(launcher, []byte("#!/bin/sh\nexit 0\n"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	arguments[0] = launcher
+	unit = systemdUnitWithPath(arguments, "")
+	path := filepath.Join(directory, "qualification.service")
 	if err := os.WriteFile(path, []byte(unit), 0o600); err != nil {
 		t.Fatal(err)
 	}
