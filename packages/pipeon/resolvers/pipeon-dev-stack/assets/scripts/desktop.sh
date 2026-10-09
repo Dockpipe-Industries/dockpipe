@@ -33,6 +33,9 @@ CODE_SERVER_DURABLE_EXTENSIONS="$(pipeon_stack_code_server_extensions_dir)"
 CODE_SERVER_IMAGE="${CODE_SERVER_IMAGE:-dockpipe-code-server:latest}"
 CODE_SERVER_AUTH="${CODE_SERVER_AUTH:-none}"
 PIPEON_CODE_SERVER_SETTINGS_FILE="${PIPEON_CODE_SERVER_SETTINGS_FILE:-$(pipeon_stack_repo_root)/packages/pipeon/resolvers/pipeon/vscode-extension/code-server-user-settings.json}"
+if [[ ! -f "$PIPEON_CODE_SERVER_SETTINGS_FILE" ]] && packaged_context="$(pipeon_stack_packaged_context)"; then
+  PIPEON_CODE_SERVER_SETTINGS_FILE="$packaged_context/packages/pipeon/resolvers/pipeon/vscode-extension/code-server-user-settings.json"
+fi
 PIPEON_CODE_SERVER_THEME="${PIPEON_CODE_SERVER_THEME:-$(pipeon_stack_host_theme 2>/dev/null || true)}"
 PIPEON_DESKTOP_BIN="${PIPEON_DESKTOP_BIN:-$(pipeon_stack_desktop_bin)}"
 PIPEON_WINDOW_TITLE="${PIPEON_WINDOW_TITLE:-Pipeon}"
@@ -453,6 +456,7 @@ pipeon_start_code_server() {
     "$CODE_SERVER_IMAGE" \
     -lc '
       set -e
+      umask 077
       exec code-server \
         --bind-addr 0.0.0.0:8080 \
         --auth "'"$CODE_SERVER_AUTH"'" \
@@ -473,12 +477,6 @@ pipeon_start_code_server() {
   fi
   pipeon_configure_code_server_git
 }
-
-if [[ ! -x "$PIPEON_DESKTOP_BIN" ]]; then
-  echo "pipeon-dev-stack: Pipeon desktop binary not found at $PIPEON_DESKTOP_BIN" >&2
-  echo "Build it with: packages/pipeon/assets/scripts/build.sh desktop" >&2
-  exit 1
-fi
 
 if ! command -v curl >/dev/null 2>&1; then
   echo "pipeon-dev-stack: curl is required to wait for the Pipeon UI" >&2
@@ -506,4 +504,18 @@ if ! pipeon_stack_is_windows_host && [[ -z "${DISPLAY:-}" && -z "${WAYLAND_DISPL
 fi
 
 printf '[pipeon-dev-stack] opening Pipeon desktop shell at %s\n' "$CODE_SERVER_URL" >&2
+if [[ ! -x "$PIPEON_DESKTOP_BIN" ]]; then
+  if ! command -v xdg-open >/dev/null 2>&1; then
+    echo "pipeon-dev-stack: install a desktop shell or provide xdg-open to open the browser UI" >&2
+    exit 1
+  fi
+  xdg-open "$CODE_SERVER_URL" || exit
+  printf '[pipeon-dev-stack] browser UI open; stop this workflow to shut down the stack\n' >&2
+  # The desktop portal returns immediately. Keep the session alive until the
+  # user stops the workflow or the code-server container exits.
+  while [[ "$(docker inspect --format '{{.State.Running}}' "$CODE_SERVER_CONTAINER_NAME" 2>/dev/null)" == true ]]; do
+    sleep 2
+  done
+  exit 0
+fi
 PIPEON_URL="$CODE_SERVER_URL" PIPEON_WINDOW_TITLE="$PIPEON_WINDOW_TITLE" exec "$PIPEON_DESKTOP_BIN"

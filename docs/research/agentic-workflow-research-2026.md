@@ -1,8 +1,8 @@
-# AI Workflow Research And DockPipe Orchestration Value Bar
+# AI Workflow Research And Dockpipe Orchestration Value Bar
 
 Date: 2026-07-02
 
-Scope: current production guidance, benchmark evidence, model-routing notes, and practical implications for DockPipe/DorkPipe AI workflow plumbing. `brain.optimize` is treated as one consumer workflow case study, not the center of the architecture.
+Scope: current production guidance, benchmark evidence, model-routing notes, and practical implications for Dockpipe/DorkPipe AI workflow plumbing. `brain.optimize` is treated as one consumer workflow case study, not the center of the architecture.
 
 ## Executive Summary
 
@@ -24,19 +24,19 @@ The big design correction from this research pass: do not turn every workflow in
 
 Anthropic's "Building effective agents" remains one of the strongest public production guides. It distinguishes predictable workflows from more open-ended agents and lays out prompt chaining, routing, parallelization, orchestrator-worker, and evaluator-optimizer as separate patterns. The practical warning is that agentic systems trade latency and cost for performance, and complexity should be added only when it improves outcomes. Source: [Anthropic, "Building effective agents"](https://www.anthropic.com/engineering/building-effective-agents).
 
-DockPipe implication: AI workflow authoring should default to the simplest pattern that can beat a direct strong agent. A workflow DAG is not inherently better than one worker with good context and tools.
+Dockpipe implication: AI workflow authoring should default to the simplest pattern that can beat a direct strong agent. A workflow DAG is not inherently better than one worker with good context and tools.
 
 ### 2. Multi-agent systems are strongest for broad research
 
 Anthropic's June 2025 multi-agent research-system writeup is directly relevant to orchestration. Their internal eval found a 90.2% improvement over a single-agent baseline on their research task, but with high cost: agents used about 4x more tokens than chats, and multi-agent systems about 15x more tokens than chats. They also state that coding and tightly dependent work are often a weaker fit because fewer subtasks are truly parallel and coordination is difficult. Source: [Anthropic, "How we built our multi-agent research system"](https://www.anthropic.com/engineering/multi-agent-research-system).
 
-DockPipe implication: parallelism should be reserved for breadth: source discovery, independent repo/corpus scans, log analysis, migration inventory, test triage, or competing hypotheses. Authority-bearing synthesis, architecture decisions, validation, and final repair should be handled by strong lanes with clear gates.
+Dockpipe implication: parallelism should be reserved for breadth: source discovery, independent repo/corpus scans, log analysis, migration inventory, test triage, or competing hypotheses. Authority-bearing synthesis, architecture decisions, validation, and final repair should be handled by strong lanes with clear gates.
 
 ### 3. Deep research systems show the right source-grounding pattern
 
 OpenAI's deep research product shows a high-value research-agent pattern: multi-step search, source analysis, cited output, progress visibility, trusted-source restrictions, and user interruption/refinement. Its 2026 updates add MCP/app connections and trusted-site search restriction. Source: [OpenAI, "Introducing deep research"](https://openai.com/index/introducing-deep-research/).
 
-DockPipe implication: when a workflow has a large corpus, the missing primitive is usually not "more page authors." It is better source discovery, source selection, and validation against source locations. The exact artifact can be a memo, compact source architecture, evidence map, citation check, or generated report depending on the task. It should not be mandatory boilerplate.
+Dockpipe implication: when a workflow has a large corpus, the missing primitive is usually not "more page authors." It is better source discovery, source selection, and validation against source locations. The exact artifact can be a memo, compact source architecture, evidence map, citation check, or generated report depending on the task. It should not be mandatory boilerplate.
 
 ### 4. Long-horizon reliability is still fragile
 
@@ -46,7 +46,7 @@ OSWorld found humans completed 72.36% of open-ended computer tasks while the bes
 
 TAU-bench found function-calling agents succeeding on less than 50% of tasks in realistic tool-agent-user domains and showing inconsistency across repeated trials. Source: [TAU-bench](https://arxiv.org/abs/2406.12045).
 
-DockPipe implication: do not trust one successful agent run. Repeatability, trace artifacts, independent checks, and rerun mechanics are part of the value proposition.
+Dockpipe implication: do not trust one successful agent run. Repeatability, trace artifacts, independent checks, and rerun mechanics are part of the value proposition.
 
 ### 5. Evaluation has moved beyond accuracy
 
@@ -58,11 +58,11 @@ DockPipe implication: do not trust one successful agent run. Repeatability, trac
 
 2026 evaluation papers sharpen this further. AgentEval models agent execution as an evaluation DAG with typed node metrics, failure taxonomy, and dependency-aware root-cause attribution. It reports 2.17x higher failure detection recall than end-to-end evaluation and much faster root-cause identification in a production pilot. Source: [Guo et al., "AgentEval"](https://arxiv.org/abs/2604.23581).
 
-"Holistic Evaluation and Failure Diagnosis of AI Agents" combines top-down agent-level diagnosis with bottom-up span-level evaluation and reports large gains in localization and error categorization. The important finding for DockPipe is that the same frontier model performs much better as part of a structured evaluator than as a monolithic judge over a full trace. Source: [Madvil et al., 2026](https://arxiv.org/abs/2605.14865).
+"Holistic Evaluation and Failure Diagnosis of AI Agents" combines top-down agent-level diagnosis with bottom-up span-level evaluation and reports large gains in localization and error categorization. The important finding for Dockpipe is that the same frontier model performs much better as part of a structured evaluator than as a monolithic judge over a full trace. Source: [Madvil et al., 2026](https://arxiv.org/abs/2605.14865).
 
 "An Empirical Study of Automating Agent Evaluation" warns that simply asking frontier coding assistants to design evaluations is not enough: baseline assistants had only 30% execution success and produced over-engineered evaluations. Encoding evaluation expertise as reusable skills/templates improved Eval@1 from 17.5% to 65%. Source: [Zhou et al., 2026](https://arxiv.org/abs/2605.11378).
 
-DockPipe implication: DorkPipe should not stop at final pass/fail. It already has a workflow DAG, task artifacts, result artifacts, dependency edges, token ledgers, and halt/fallback state. Those should become evaluation inputs. The evaluation product should answer: which node failed, what failure class occurred, what upstream dependency likely caused it, whether rerun/repair is possible, and whether the workflow beat direct-agent baseline enough to justify its cost. Users should not have to declare a special `value_case` block to get that value.
+Dockpipe implication: DorkPipe should not stop at final pass/fail. It already has a workflow DAG, task artifacts, result artifacts, dependency edges, token ledgers, and halt/fallback state. Those should become evaluation inputs. The evaluation product should answer: which node failed, what failure class occurred, what upstream dependency likely caused it, whether rerun/repair is possible, and whether the workflow beat direct-agent baseline enough to justify its cost. Users should not have to declare a special `value_case` block to get that value.
 
 ### 6. Realistic workplace/coding benchmarks show scaffold matters
 
@@ -70,7 +70,7 @@ TheAgentCompany simulates a small software company with web, code, program execu
 
 SWE-Bench Mobile evaluates agents on a production iOS codebase and reports 12% best success in the paper. It also finds agent design can change results by up to 6x for the same model and that a simpler defensive prompt beat complex prompts by 7.4%. Source: [SWE-Bench Mobile](https://arxiv.org/abs/2602.09540).
 
-DockPipe implication: model choice matters, but scaffolding, mounts, context selection, edit/apply boundaries, validators, and prompts can dominate outcomes. DorkPipe's plumbing should make those choices repeatable and inspectable.
+Dockpipe implication: model choice matters, but scaffolding, mounts, context selection, edit/apply boundaries, validators, and prompts can dominate outcomes. DorkPipe's plumbing should make those choices repeatable and inspectable.
 
 ### 7. Model routing is now a first-class design concern
 
@@ -80,7 +80,7 @@ class, benchmark quality/cost/latency, and account for tool use, context window,
 requirements. OpenAI's Codex guidance is especially relevant here: subagents are explicit choices and
 consume extra tokens because each agent does its own model/tool work. Sources: [OpenAI Agents SDK](https://developers.openai.com/api/docs/guides/agents), [Codex subagents](https://developers.openai.com/codex/concepts/subagents), [OpenAI models](https://developers.openai.com/api/docs/models), [Claude models overview](https://platform.claude.com/docs/en/about-claude/models/overview), and [Ollama library](https://ollama.com/library).
 
-DockPipe implication: lane policy should be work-class driven. Use role-tier aliases such as
+Dockpipe implication: lane policy should be work-class driven. Use role-tier aliases such as
 `cheap_extractor`, `strong_reasoning`, `strong_coder`, and `validator`; resolve those aliases to
 current Codex, Claude, Ollama, or other provider/model choices in package-owned lane catalogs and
 environment config. Use cheap/local lanes for non-authoritative inventory, strong lanes for source
@@ -93,7 +93,7 @@ OpenAI's Codex usage paper reports rapid growth in agentic tool use and changing
 
 "Configuring Agentic AI Coding Tools" studies Claude Code, GitHub Copilot, Cursor, Gemini, and Codex configuration across 2,926 repositories. It finds context files dominate, AGENTS.md is emerging as an interoperable standard, and advanced mechanisms like skills and subagents are shallowly adopted, often only static instructions. Source: [Galster et al., 2026](https://arxiv.org/abs/2602.14690).
 
-DockPipe implication: repo-local guidance and skills matter, but they are not enough. DorkPipe should make advanced orchestration practical without making users hand-author complex subagent/eval systems. This supports the current router-plus-focused-docs approach, but argues for stronger generated metrics, run inspectors, and workflow templates.
+Dockpipe implication: repo-local guidance and skills matter, but they are not enough. DorkPipe should make advanced orchestration practical without making users hand-author complex subagent/eval systems. This supports the current router-plus-focused-docs approach, but argues for stronger generated metrics, run inspectors, and workflow templates.
 
 ### 9. Enterprise practice is focusing on token control
 
@@ -101,9 +101,9 @@ The Wall Street Journal reported on 2026-07-01 that companies are using dashboar
 
 ITPro reported in late June 2026 that analysts expect AI tool costs to become a major developer-budget issue and that context engineering, model routing, and selective task allocation are practical cost controls. Source: [ITPro](https://www.itpro.com/software/development/surging-ai-costs-could-exceed-developer-salaries-by-2028-analysts-say-context-engineering-could-be-the-key-to-optimizing-token-consumption).
 
-DockPipe implication: cost governance is not an afterthought. It is part of the orchestration product.
+Dockpipe implication: cost governance is not an afterthought. It is part of the orchestration product.
 
-## DockPipe Value Bar
+## Dockpipe Value Bar
 
 The platform should evaluate workflows against the direct-agent baseline:
 

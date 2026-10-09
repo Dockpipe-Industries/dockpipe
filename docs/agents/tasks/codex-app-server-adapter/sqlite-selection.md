@@ -2,7 +2,7 @@
 the logical-one-aggregate/physical-database distinction and replaces only the earlier raw-file
 storage-primitive dependency direction if a later implementation is authorized. It does not modify
 the inert Slice 1 code or path, add dependencies, create a database, authorize an evidence prototype,
-start Slice 2, change cutover or lifecycle semantics, reduce DockPipe platform support, or permit a
+start Slice 2, change cutover or lifecycle semantics, reduce Dockpipe platform support, or permit a
 Linux-only lane.
 
 | Surface | Selected baseline | Required fail-closed check |
@@ -52,7 +52,7 @@ outcome, or a second commit attempt.
 
 **Selected native-evidence plan.** The initial evidence cohorts remain Windows/local fixed-disk
 NTFS/`amd64`, Linux 5.8+/local ext4/`amd64`, and macOS/local APFS/`arm64`; this selects test cohorts,
-not a production allowlist or a reduction of general DockPipe support. Each run records exact OS/build,
+not a production allowlist or a reduction of general Dockpipe support. Each run records exact OS/build,
 kernel, architecture, filesystem/volume version and properties, storage device/virtualization facts,
 Go version, module graph, SQLite version/source ID, compile options, VFS, queried pragmas, DACL/modes,
 and pre/post file-tree hashes. The existing independent-process protocol and counts remain: 10,000
@@ -128,7 +128,7 @@ The implementation test matrix is:
    broader access requires conspicuous per-session confirmation and is not inherited. Approval and
    user-input responses require the complete current one-time
    correlation; duplicate, stale, cross-session, cross-process, and post-disconnect responses fail
-   closed. Denial remains denial; DockPipe never blindly approves on Codex's behalf.
+   closed. Denial remains denial; Dockpipe never blindly approves on Codex's behalf.
 5. **Fallback/rollback:** initialization failures may fall back before `turn/start`; every failure
    after dispatch blocks replay; the exec escape hatch and administrative App Server disablement
    handle new, idle, active, waiting, and disconnected sessions exactly as above; automatic

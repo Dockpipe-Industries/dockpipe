@@ -23,7 +23,7 @@ dockpipe --workflow devcontainer --package ide --workdir . -- up --workspace . \
   --managed-session-output artifacts/devcontainer-session.json
 ```
 
-DockPipe passes the arguments after `--` to this resolver through `DOCKPIPE_ARGS_JSON`; direct
+Dockpipe passes the arguments after `--` to this resolver through `DOCKPIPE_ARGS_JSON`; direct
 invocation of `assets/scripts/devcontainer-lifecycle.sh` accepts the same normal argv. The
 DorkPipe host MCP bridge exposes the exact same package output through its existing generic,
 tiered `dockpipe.run` tool (exec tier):

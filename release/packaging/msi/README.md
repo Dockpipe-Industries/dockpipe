@@ -1,6 +1,6 @@
 # Windows MSI (WiX 3)
 
-Builds **`dockpipe_<version>_windows_amd64.msi`**: per-user install to `%LOCALAPPDATA%\dockpipe`, appends that directory to the **user** `PATH` (no admin for silent install), and includes **DockPipe Launcher** by default in release builds, with the full Qt runtime and a per-user Start Menu shortcut. The launcher remains an optional MSI feature; the CLI is required.
+Builds **`dockpipe_<version>_windows_amd64.msi`**: per-user install to `%LOCALAPPDATA%\dockpipe`, appends that directory to the **user** `PATH` (no admin for silent install), and includes **Dockpipe Launcher** by default in release builds, with the full Qt runtime and a per-user Start Menu shortcut. The launcher remains an optional MSI feature; the CLI is required.
 
 ## Release pipeline (optional)
 
@@ -33,7 +33,7 @@ C:\Qt\6.8.3\msvc2022_64\bin\windeployqt.exe --release --compiler-runtime --dir .
 
 Output: `bin\.dockpipe\build\windows-msi\msi-dist\dockpipe_0.6.0_windows_amd64.msi`
 
-When the launcher payload is present, the MSI exposes **DockPipe Launcher** as a separate feature in the standard Windows installer UI. Users can deselect it during install and later use **Apps & features → dockpipe → Modify** to add or remove it. Silent installs can choose features with standard MSI properties such as `ADDLOCAL=MainFeature` for CLI-only installs.
+When the launcher payload is present, the MSI exposes **Dockpipe Launcher** as a separate feature in the standard Windows installer UI. Users can deselect it during install and later use **Apps & features → dockpipe → Modify** to add or remove it. Silent installs can choose features with standard MSI properties such as `ADDLOCAL=MainFeature` for CLI-only installs.
 
 ## Full local build
 

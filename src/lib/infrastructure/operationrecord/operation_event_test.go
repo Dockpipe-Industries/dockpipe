@@ -13,7 +13,7 @@ func TestOperationEventFromResultMapsCanonicalFields(t *testing.T) {
 	result := OperationResult{
 		Unit:       "build.compile",
 		Status:     OperationStatusDone,
-		Message:    "Compiling DockPipe packages...",
+		Message:    "Compiling Dockpipe packages...",
 		StartedAt:  time.Unix(1000, 0),
 		FinishedAt: time.Unix(1000, int64(25*time.Millisecond)),
 		DurationMs: 25,

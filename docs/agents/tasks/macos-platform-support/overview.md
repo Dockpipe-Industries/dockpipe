@@ -1,8 +1,8 @@
-# TASK-033 macOS DockPipe Platform Support And Qualification
+# TASK-033 macOS Dockpipe Platform Support And Qualification
 
 ## Goal
 
-Make DockPipe work and remain qualified on selected macOS releases and Apple Silicon, with Intel
+Make Dockpipe work and remain qualified on selected macOS releases and Apple Silicon, with Intel
 support retained only if explicitly selected and proven.
 
 ## Scope
@@ -45,19 +45,19 @@ remain open; installer qualification does not prove Colima integration.
 
 ## Colima container workflows backlog
 
-Requested and authorized for implementation 2026-10-06. Enable DockPipe CLI and launcher container
+Requested and authorized for implementation 2026-10-06. Enable Dockpipe CLI and launcher container
 workflows on macOS using Colima's Docker runtime as an alternative to Docker Desktop. The first
 compatibility fix is implemented locally; native Colima qualification remains open.
 [Upstream Colima](https://github.com/abiosoft/colima#docker) documents using the Docker client with
 its Docker runtime; containerd, Kubernetes, and other backends are outside this first slice.
 
 - Document optional Colima, Docker CLI, and required Compose/build tooling prerequisites for both
-  Homebrew and DMG users. Host-only DockPipe workflows must remain usable without a container VM.
+  Homebrew and DMG users. Host-only Dockpipe workflows must remain usable without a container VM.
 - Audit Docker endpoint resolution across CLI, launcher, and package workflows. Honor explicit
   context/host settings, support named Colima profiles, and preserve the user's selected context.
 - Diagnose missing tooling, stopped profiles, and unreachable daemons with actionable setup/start
   guidance. Installation and VM lifecycle actions must follow user intent; merely launching
-  DockPipe must not install or start Colima.
+  Dockpipe must not install or start Colima.
 - Verify image build/run, Compose, bind mounts and permissions, port access, cancellation, and
   cleanup on Apple Silicon and Intel hosts. Include coexistence with Docker Desktop and regression
   checks for the existing Docker path.

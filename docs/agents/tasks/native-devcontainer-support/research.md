@@ -5,16 +5,16 @@
 | Existing flow | What it owns | Gap to a repository Dev Container |
 | --- | --- | --- |
 | `packages/ide/resolvers/vscode` | A disposable `dockpipe-base-dev` container mounted at `/work`, then a host VS Code Dev Containers URI. | Does not read `.devcontainer` or use its image, Compose service, features, mounts, lifecycle commands, or `remoteUser`. |
-| `packages/ide/resolvers/cursor-dev` | The same DockPipe-authored base image/container and best-effort editor-attachment/idle heuristics. | It is not a native Cursor/Dev Container lifecycle and its attachment heuristics must not be reused as an ownership signal. |
+| `packages/ide/resolvers/cursor-dev` | The same Dockpipe-authored base image/container and best-effort editor-attachment/idle heuristics. | It is not a native Cursor/Dev Container lifecycle and its attachment heuristics must not be reused as an ownership signal. |
 | `packages/pipeon/resolvers/pipeon-dev-stack` | A Pipeon-scoped Compose control plane, code-server container, host MCP bridge, state directory, labels, and teardown. | It is Pipeon's product stack, not the workspace environment. It must neither replace nor be torn down with a discovered Dev Container. |
 | DorkPipe provider pools | Bounded, DorkPipe-owned provider workers exposed through CLI/MCP and consumed by Pipeon. | A ready Dev Container is not a provider-pool worker or generic runtime target without a later explicit resolver contract. |
 
 The exact missing capability is therefore read-only discovery and status of a *repository-owned
 definition*, followed only by an explicit, governed request to use it. Today no package reads a
 selected definition or reports the corresponding container identity/state. Existing Pipeon stack
-labels and cleanup apply only to Pipeon resources; existing IDE containers are DockPipe-authored,
+labels and cleanup apply only to Pipeon resources; existing IDE containers are Dockpipe-authored,
 disposable compatibility sessions. Neither is evidence that a user's native Dev Container is
-DockPipe-owned.
+Dockpipe-owned.
 
 ### Upstream CLI And Docker Evidence
 
@@ -70,15 +70,15 @@ editor attachment state. Docker labels are discovery hints, not sufficient owner
 
 | Classification | Rule | Allowed automatic action |
 | --- | --- | --- |
-| `external` | Any discovered/user-started container, including one that happens to carry Dev Container labels but lacks an exact DockPipe session record and DockPipe session label. | Read-only status/log reference only; never stop, remove, rebuild, or adopt for cleanup. |
-| `managed` | A future `up` result whose exact container id, selected definition fingerprint, workspace identity, and DockPipe session label were recorded together. | Read-only reconciliation only. |
+| `external` | Any discovered/user-started container, including one that happens to carry Dev Container labels but lacks an exact Dockpipe session record and Dockpipe session label. | Read-only status/log reference only; never stop, remove, rebuild, or adopt for cleanup. |
+| `managed` | A future `up` result whose exact container id, selected definition fingerprint, workspace identity, and Dockpipe session label were recorded together. | Read-only reconciliation only. |
 | `orphan_candidate` | A Docker-labeled prior managed container whose local session record is missing or mismatched. | Report repair options; no automatic cleanup. |
 | `ambiguous` | More than one matching container, a changed definition fingerprint, or any missing proof. | Fail closed and require a user selection/repair action. |
 
 Future managed starts should pass a namespaced label such as `com.dockpipe.devcontainer.session`
 through the CLI's `--id-label`, while preserving Dev Container labels. The local record must bind
 the opaque container id, workspace identity, definition reference/fingerprint, and session id.
-Never add a DockPipe label to an existing container solely to “adopt” it. “Use existing” initially
+Never add a Dockpipe label to an existing container solely to “adopt” it. “Use existing” initially
 means read-only status and, only after a later explicit product decision, explicit `exec` without
 cleanup authority.
 

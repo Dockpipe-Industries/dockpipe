@@ -27,7 +27,7 @@ view:
     type: choice
     field: General.BootSource
     title: Windows VM Source
-    description: Choose how you want to start this Windows VM before DockPipe shows the relevant settings.
+    description: Choose how you want to start this Windows VM before Dockpipe shows the relevant settings.
     options:
       - value: image
         label: Boot existing disk image

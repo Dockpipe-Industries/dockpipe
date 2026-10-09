@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Used by DockPipe workflow dorkpipe-self-analysis-stack — compose down unless skipped.
+# Used by Dockpipe workflow dorkpipe-self-analysis-stack — compose down unless skipped.
 # Set DORKPIPE_DEV_STACK_AUTODOWN=0 to keep Postgres+Ollama running after the workflow.
 set -euo pipefail
 SCRIPT_DIR="$(dockpipe get script_dir)"

@@ -1,14 +1,14 @@
-# DockPipe 0.6.0: the CLI that runs its own tests in Docker
+# Dockpipe 0.6.0: the CLI that runs its own tests in Docker
 
 ```bash
 dockpipe --workflow test --runtime docker
 ```
 
-That’s a real multi-step workflow—alpine containers, outputs handed to the next step, no extra setup. In **v0.6.0** we treat this as the bar: **DockPipe dogfoods itself in CI**, so what you run locally is what we ship.
+That’s a real multi-step workflow—alpine containers, outputs handed to the next step, no extra setup. In **v0.6.0** we treat this as the bar: **Dockpipe dogfoods itself in CI**, so what you run locally is what we ship.
 
 ---
 
-## What DockPipe does
+## What Dockpipe does
 
 **Run your command in a disposable container.** Your repo is at `/work`; when the process exits, the container is gone. Optional host scripts can run before and after—no bespoke “runner” stack.
 
@@ -20,7 +20,7 @@ That’s a real multi-step workflow—alpine containers, outputs handed to the n
 
 - **Stable story** — workflow = what happens; runtime = where; resolver = which tool; strategies and assets stay in their lanes.
 - **Bundled layout you can reason about** — `bundle/core/` and `bundle/workflows/` when the binary unpacks; authoring trees still use `templates/` if you’re in the repo.
-- **`dockpipe init`** — the obvious way to add DockPipe to a project.
+- **`dockpipe init`** — the obvious way to add Dockpipe to a project.
 - **Bundled examples** — including the `test` workflow above; the dockpipe project also ships extra workflows under `bundle/workflows/` and runs them in CI (same binary you install — see **AGENTS.md**).
 - **Windows in the test matrix** — same Go CLI, same tests, fewer surprises.
 

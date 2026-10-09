@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Run project shell/unit tests. Exit 0 if all pass. From repo root: bash tests/run_tests.sh
 # Integration tests (Docker): bash tests/integration-tests/run.sh
-# DockPipe-owned package/workflow hooks live behind `dockpipe test`.
+# Dockpipe-owned package/workflow hooks live behind `dockpipe test`.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"

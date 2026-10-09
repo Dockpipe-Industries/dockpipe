@@ -1,5 +1,9 @@
 # Installing dockpipe
 
+Flatpak for atomic desktops is an experimental
+[qualification build](../release/packaging/desktop/flatpak/README.md), including
+launcher and CLI. It is not yet a published, supported Bazzite/Pipeon install.
+
 **New to dockpipe?** Run **`dockpipe -- pwd`** after install, then read **[onboarding.md](onboarding.md)**. If something fails, **`dockpipe doctor`** checks **bash**, **Docker**, and bundled assets.
 
 Choose **Desktop** for the launcher and CLI together, or **CLI / Remote Worker** for terminals, servers and CI. Docker is needed only for workflows that use containers. Host shell workflows need bash; Git for Windows supplies bash on Windows.
@@ -21,7 +25,7 @@ the desktop cask below to add it. Apple Developer ID signing and notarization re
 
 ## Desktop installation
 
-**macOS:** download `dockpipe-desktop_VERSION_darwin_arm64.dmg` for Apple Silicon or `dockpipe-desktop_VERSION_darwin_amd64.dmg` for Intel, verify it against that release's `SHA256SUMS.txt`, open it, and run **Install DockPipe.pkg**. Apple's Installer installs **DockPipe.app** in Applications and **`dockpipe`** in `/usr/local/bin`. Open DockPipe from Applications; new terminals can run `dockpipe --version`. The desktop app contains the matching CLI, Qt runtime and required core package. macOS 13 or newer is required.
+**macOS:** download `dockpipe-desktop_VERSION_darwin_arm64.dmg` for Apple Silicon or `dockpipe-desktop_VERSION_darwin_amd64.dmg` for Intel, verify it against that release's `SHA256SUMS.txt`, open it, and run **Install Dockpipe.pkg**. Apple's Installer installs **DockPipe.app** in Applications and **`dockpipe`** in `/usr/local/bin`. Open Dockpipe from Applications; new terminals can run `dockpipe --version`. The desktop app contains the matching CLI, Qt runtime and required core package. macOS 13 or newer is required.
 
 Use one installation method. The DMG installer refuses an existing foreign CLI or app; users with the Homebrew CLI should use the cask below. Re-running the DMG installer updates an installation owned by that installer. Locally built and current CI staging DMGs use ad-hoc signatures unless the maintainer supplies Developer ID signing and notarization. They are not yet normal Gatekeeper-approved public downloads; no security-setting changes are part of installation.
 
@@ -41,7 +45,7 @@ brew upgrade dockpipe-staging dockpipe-desktop-staging
 
 Uninstalling the desktop cask removes the app and retains the CLI formula. User contexts and data are retained. The app uses its bundled matching CLI; terminal commands use the formula. See [desktop packaging](../release/packaging/desktop/README.md) for direct-installer removal and signing requirements.
 
-**Windows:** run `dockpipe_VERSION_windows_amd64.msi`. The default installs the CLI, full Qt launcher runtime and a Start menu shortcut. Deselect **DockPipe Launcher** for a CLI-only install, or change the feature later through the installer's Modify option. The ZIP is always CLI-only.
+**Windows:** run `dockpipe_VERSION_windows_amd64.msi`. The default installs the CLI, full Qt launcher runtime and a Start menu shortcut. Deselect **Dockpipe Launcher** for a CLI-only install, or change the feature later through the installer's Modify option. The ZIP is always CLI-only.
 
 **Ubuntu 22.04 / 24.04 and Pop!_OS 22.04:** after configuring the signed APT source below, run `sudo apt install dockpipe-desktop`; it installs the matching CLI dependency. The launcher is built against Ubuntu 22.04's Qt runtime, and the same DEB is installation-tested on both Ubuntu releases. For downloaded DEBs, install both together:
 
@@ -49,7 +53,7 @@ Uninstalling the desktop cask removes the app and retains the CLI formula. User 
 sudo apt install ./dockpipe_VERSION_amd64.deb ./dockpipe-desktop_VERSION_amd64.deb
 ```
 
-Use `arm64` filenames on ARM64. Launch **DockPipe** from the application menu. Removing `dockpipe-desktop` leaves the CLI available. Desktop RPM, APK and Arch packages are not currently provided; those formats remain CLI-only.
+Use `arm64` filenames on ARM64. Launch **Dockpipe** from the application menu. Removing `dockpipe-desktop` leaves the CLI available. Desktop RPM, APK and Arch packages are not currently provided; those formats remain CLI-only.
 
 ### Bundled templates (no extra install tree)
 
@@ -104,7 +108,7 @@ The CLI installer installs the CLI and core. Additional workflows and resolvers 
 {"schema":1,"packages":{"sources":[{"kind":"tarball_dir","path":"/absolute/path/to/extracted-store"}]}}
 ```
 
-An Apple Silicon Mac uses `darwin-arm64`; it does not need to clone DockPipe or install Go to use the compiled CLI and store. Provider CLIs such as `cloudflared` or `op` are still required by their resolvers. On Windows use an absolute Windows path in the JSON. Each platform's individual tarballs and `packages-store-manifest.json` are also served under `stores/OS-ARCH/` in that version directory. Do not mix native helpers from different platforms.
+An Apple Silicon Mac uses `darwin-arm64`; it does not need to clone Dockpipe or install Go to use the compiled CLI and store. Provider CLIs such as `cloudflared` or `op` are still required by their resolvers. On Windows use an absolute Windows path in the JSON. Each platform's individual tarballs and `packages-store-manifest.json` are also served under `stores/OS-ARCH/` in that version directory. Do not mix native helpers from different platforms.
 
 ---
 
@@ -306,11 +310,11 @@ setting without replacing existing configuration. Verify `docker buildx version`
 that build images. Workflows using Compose also need
 [docker-compose and its plugin setup](https://formulae.brew.sh/formula/docker-compose).
 
-DockPipe uses the [Docker client's context selection](https://docs.docker.com/engine/manage-resources/contexts/).
+Dockpipe uses the [Docker client's context selection](https://docs.docker.com/engine/manage-resources/contexts/).
 Use `docker context ls` to find your profile's context, then `docker context use <name>` if you want
 to change the default for both terminals and the launcher. For one terminal command, use
 `DOCKER_CONTEXT=<name> dockpipe doctor`. Existing `DOCKER_HOST`, `DOCKER_CONTEXT`, and `DOCKER_CONFIG`
-settings retain Docker's normal precedence; DockPipe does not switch contexts or start a VM.
+settings retain Docker's normal precedence; Dockpipe does not switch contexts or start a VM.
 
 The launcher adds `/opt/homebrew/bin` and `/usr/local/bin` after inherited `PATH` entries so Finder
 launches can discover Homebrew tools. Shell-only exports are not inherited by Finder; use Docker's

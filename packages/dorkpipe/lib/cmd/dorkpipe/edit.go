@@ -3028,7 +3028,7 @@ func inferRequestedPackagePurpose(message string) string {
 			}
 		}
 		head = strings.TrimSpace(strings.TrimSuffix(head, " dockpipe"))
-		head = strings.TrimSpace(strings.TrimSuffix(head, " DockPipe"))
+		head = strings.TrimSpace(strings.TrimSuffix(head, " Dockpipe"))
 		head = strings.Trim(head, " .,!?:;")
 		if len(head) >= 4 {
 			return head

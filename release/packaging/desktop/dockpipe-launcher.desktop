@@ -1,7 +1,7 @@
 [Desktop Entry]
 Type=Application
-Name=DockPipe
-Comment=Run DockPipe workflows and manage contexts
+Name=Dockpipe
+Comment=Run Dockpipe workflows and manage contexts
 Exec=dockpipe-launcher
 Icon=dockpipe-launcher
 Terminal=false

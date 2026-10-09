@@ -1,13 +1,13 @@
 schema: 1
 kind: workflow
 name: codex.cli.update
-version: 0.6.0
+version: 0.6.1
 title: Update the host Codex CLI
 description: |
   Explicitly updates the host Codex CLI through npm after user approval, then verifies that the
   installed CLI exposes the App Server schema. This workflow never runs automatically as a missing
   dependency preflight.
-author: DockPipe
+author: Dockpipe
 license: Apache-2.0
 repository: https://github.com/Dockpipe-Industries/dockpipe
 tags: [workflow, dorkpipe, codex, dependency, update]

@@ -1,0 +1,48 @@
+{
+  "schema": 1,
+  "architecture": "amd64",
+  "tools": {
+    "cloudflared": {
+      "version": "2026.10.0",
+      "url": "https://github.com/cloudflare/cloudflared/releases/download/2026.10.0/cloudflared-linux-amd64",
+      "sha256": "d33ff2d14475178d2012c2c56beba87389ac5ded27649519f198a7d3134a99db",
+      "format": "binary"
+    },
+    "act": {
+      "version": "0.2.89",
+      "url": "https://github.com/nektos/act/releases/download/v0.2.89/act_Linux_x86_64.tar.gz",
+      "sha256": "0191d6f1f3b716b5c55820032605d05fc3c1cdbf581ebeff655019e5dd1524c0",
+      "format": "tar"
+    },
+    "infisical": {
+      "version": "0.43.140",
+      "url": "https://github.com/Infisical/cli/releases/download/v0.43.140/cli_0.43.140_linux_amd64.tar.gz",
+      "sha256": "c9f014c78cb1b4ba57f758f921843dbe541a3c8d2b83e622b0dc67d77ead4178",
+      "format": "tar"
+    },
+    "terraform": {
+      "version": "1.16.5",
+      "url": "https://releases.hashicorp.com/terraform/1.16.5/terraform_1.16.5_linux_amd64.zip",
+      "sha256": "2bc2fcfff033265c9e02ca0351f01794eb122f62a9b2a49a3294b9e49eaab5e4",
+      "format": "zip"
+    },
+    "node": {
+      "version": "24.21.0",
+      "url": "https://nodejs.org/dist/v24.21.0/node-v24.21.0-linux-x64.tar.xz",
+      "sha256": "fd8e59d5a511510f6a298afb548f18c7d2b1be404d8b4a27d94fbe49f56cb2d6",
+      "format": "tar"
+    },
+    "go": {
+      "version": "1.26.9",
+      "url": "https://go.dev/dl/go1.26.9.linux-amd64.tar.gz",
+      "sha256": "42d158b4d8f7b61ac0a830567c940a86098fb7aac52e467a5ebec03ef5cc2f8d",
+      "format": "tar"
+    },
+    "aws": {
+      "version": "2.37.11",
+      "url": "https://awscli.amazonaws.com/awscli-exe-linux-x86_64-2.37.11.zip",
+      "sha256": "41e1cf5e301ed04ece2ca3c2d8bdf6c3584e8b67292269689cc3e80f97de71ea",
+      "format": "zip"
+    }
+  }
+}

@@ -2,6 +2,8 @@
 
 !compose/
 !compose/Dockerfile.dorkpipe-stack
+!provider-pools/
+!provider-pools/catalog.yml
 !tooling/
 !tooling/bin/
 !tooling/bin/linux/

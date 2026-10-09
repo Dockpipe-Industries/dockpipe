@@ -2,7 +2,7 @@
 
 ## Goal
 
-Make DockPipe work and remain qualified on selected Alpine Linux baselines as a distinct musl- and
+Make Dockpipe work and remain qualified on selected Alpine Linux baselines as a distinct musl- and
 BusyBox-based platform, not merely as an `.apk` publication target or generic Linux container.
 
 ## Scope

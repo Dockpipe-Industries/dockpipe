@@ -1,4 +1,4 @@
-/* DockPipe Launcher shared layout. Color accents live in pipeon-light.qss / pipeon-dark.qss. */
+/* Dockpipe Launcher shared layout. Color accents live in pipeon-light.qss / pipeon-dark.qss. */
 
 QWidget#mainCentral,
 QWidget#basicHomePage,

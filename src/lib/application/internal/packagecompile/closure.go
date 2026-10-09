@@ -48,7 +48,7 @@ func logCompileClosureSkip(projectRoot, parentWorkflow, relation, missingRef, re
 // compileClosureForWorkflow compiles core (if missing), then resolver tarballs and workflow tarballs
 // for the transitive closure of workflowName: config.yml inject:, package.yml depends, requires_resolvers,
 // resolver/runtime names on the workflow and steps, and nested delegate workflows from merged isolation profiles.
-// projectRoot is the DockPipe project directory (contains bin/.dockpipe and usually dockpipe.config.json).
+// projectRoot is the Dockpipe project directory (contains bin/.dockpipe and usually dockpipe.config.json).
 func compileClosureForWorkflow(projectRoot, workflowName string, force bool, sourceBuild CoreSourceBuild) error {
 	repoRoot, err := infrastructure.RepoRoot()
 	if err != nil {
@@ -141,7 +141,7 @@ func ensureCoreCompiled(projectRoot string, cfg *domain.DockpipeProjectConfig, f
 
 // closureWorkflowOrderAndResolvers returns workflow source dirs in dependency order (dependencies first)
 // and a set of resolver profile names to compile.
-// dockpipeRepoRoot is the DockPipe engine checkout (templates/core); projectRoot is the project being compiled.
+// dockpipeRepoRoot is the Dockpipe engine checkout (templates/core); projectRoot is the project being compiled.
 func closureWorkflowOrderAndResolvers(dockpipeRepoRoot, projectRoot, startDir string, cfg *domain.DockpipeProjectConfig) ([]string, map[string]bool, error) {
 	wfRoots := compileconfig.WorkflowRoots(cfg, projectRoot)
 	visited := make(map[string]bool)

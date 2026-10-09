@@ -2,35 +2,35 @@
 
 ### Decision Hypothesis
 
-Do **not** name or model this as `runtime: freenet`. A DockPipe runtime answers where local work runs;
+Do **not** name or model this as `runtime: freenet`. A Dockpipe runtime answers where local work runs;
 Freenet would coordinate which opted-in node receives an unchanged local task contract. It is also
 not a resolver because it does not select a tool or profile that performs the work.
 
 The provisional product shape is a **package-owned decentralized broker/coordination adapter for
 `node-execution.v1`**, with a Freenet-specific contract, companion, and optional delegate. A future
 name such as a `dorkpipe.freenet` package is descriptive only; naming and package placement require a
-later decision. Promotion of any seam into generic DockPipe code requires evidence that it is useful
+later decision. Promotion of any seam into generic Dockpipe code requires evidence that it is useful
 outside Freenet and cannot be composed from existing package interfaces.
 
 ```text
-Freenet application / DockPipe client
+Freenet application / Dockpipe client
   -> optional Freenet delegate: identity, signing, local consent
     -> Freenet job contract: mergeable signed coordination records
       -> local Freenet client API
         -> package-owned Freenet companion / node connector
           -> existing node-execution.v1 validation and authority boundary
-            -> DockPipe local workflow execution
+            -> Dockpipe local workflow execution
               -> host step | container runtime | VM runtime with QEMU resolver
 ```
 
 The companion is not a generic remote shell. It subscribes only to declared contract instances,
-accepts only versioned allow-listed DockPipe workflow references, validates the complete signed
+accepts only versioned allow-listed Dockpipe workflow references, validates the complete signed
 chain, and submits one exact accepted request to the existing local execution boundary. It exposes
 no public runner listener.
 
 ## Reuse And Boundary Map
 
-| Existing DockPipe/DorkPipe surface | Reuse expectation |
+| Existing Dockpipe/DorkPipe surface | Reuse expectation |
 | --- | --- |
 | `node-execution.v1` machine identity | Bind one enrolled runner independently of Freenet peer address, connection, or delegate identity. |
 | Immutable capability snapshot | Keep the current snapshot unchanged. A Freenet-specific signed advertisement should bind its fingerprint, issuer, and expiry; refreshing it creates a new advertisement and snapshot identity. |
@@ -67,8 +67,8 @@ state transitions that can be expressed safely under merge.
 ### Identity And Idempotency
 
 - Define `operation_id` as a stable digest over the protocol version, origin identity, origin nonce,
-  and finalized DockPipe request fingerprint.
-- Keep Freenet contract identity, origin application identity, delegate identity, DockPipe machine
+  and finalized Dockpipe request fingerprint.
+- Keep Freenet contract identity, origin application identity, delegate identity, Dockpipe machine
   identity, capability snapshot, lease, attempt, local run, and execution receipt distinct.
 - Key local deduplication by stable operation ID and exact request fingerprint. Re-delivery of the
   same accepted operation resumes or returns the same receipt; a conflicting payload fails closed.
@@ -92,7 +92,7 @@ is research; it must not be claimed to provide exactly-once execution without a 
 
 ### Event Ordering Over Mergeable State
 
-DockPipe's ordered per-run event semantics remain local and authoritative. Each outer event record
+Dockpipe's ordered per-run event semantics remain local and authoritative. Each outer event record
 binds the operation, attempt, lease, sequence, previous-event digest, inner event digest, and runner
 signature. Freenet may deliver these records in any order or more than once. Consumers reconstruct a
 contiguous verified chain and expose gaps, forks, and stale attempts explicitly. Contract merge order
@@ -100,26 +100,26 @@ does not become execution order, and a status projection does not grant lifecycl
 
 ## Delegate And Local Companion Boundary
 
-A DockPipe Freenet delegate may be useful for:
+A Dockpipe Freenet delegate may be useful for:
 
 - holding application signing and identity keys
 - signing exact job requests, claims, grants, approvals, cancellations, events, and receipts within
   a declared role
 - enforcing caller-specific signing policy from Freenet-attributed sender identities
 - prompting for consent when an unfamiliar application, runner, permission, or workload is seen
-- connecting Freenet application identity to DockPipe audit records without exporting private keys
+- connecting Freenet application identity to Dockpipe audit records without exporting private keys
 
-It must not be assumed to launch a native process, open arbitrary local IPC, access the DockPipe
+It must not be assumed to launch a native process, open arbitrary local IPC, access the Dockpipe
 workspace, or act as the runner. Official documentation describes delegates as sandboxed WebAssembly
 message handlers; no supported native-process bridge is established by this task.
 
 The first proof should use a separately installed least-privilege companion that talks to the local
-Freenet node through a supported authenticated client API and to DockPipe through a narrow local-only
+Freenet node through a supported authenticated client API and to Dockpipe through a narrow local-only
 authenticated interface. If an exact delegate-to-companion message path is required, obtain an
 upstream-supported pattern or capability first. Do not bypass the delegate sandbox, reuse a browser
-auth token as runner credentials, add ambient localhost trust, or weaken DockPipe approval policy.
+auth token as runner credentials, add ambient localhost trust, or weaken Dockpipe approval policy.
 
-A delegate approval and a DockPipe local execution approval may be related but remain separate
+A delegate approval and a Dockpipe local execution approval may be related but remain separate
 artifacts. Each must bind the exact request and scope it authorizes. Neither approval grants apply,
 checkpoint, commit, push, deployment, publication, secret access, or a future job unless those
 actions are independently requested and approved.
@@ -159,7 +159,7 @@ Create a formal threat model before implementation. It must cover at least:
   signed but false evidence
 - malicious origins that attempt sandbox escape, resource exhaustion, network exfiltration,
   persistence, privilege escalation, or lateral movement
-- compromised Freenet Core, delegate, companion, DockPipe service, signing key, artifact store, or
+- compromised Freenet Core, delegate, companion, Dockpipe service, signing key, artifact store, or
   local approval surface
 - contract-state flooding, metadata leakage, traffic analysis, stale-but-valid state, Sybil attacks,
   eclipse/routing concentration, and coordinated denial of service
@@ -179,7 +179,7 @@ Trustless result verification and confidential computing are separate research p
 
 ## Network Policy Interaction
 
-- A runner whose effective DockPipe policy denies network access cannot participate in live Freenet
+- A runner whose effective Dockpipe policy denies network access cannot participate in live Freenet
   coordination during that execution unless policy explicitly separates the companion's control
   channel from the workload's network namespace.
 - Freenet connectivity must not implicitly grant workload egress. The companion may remain connected

@@ -458,7 +458,7 @@ type Step struct {
 }
 
 // StepScopes binds source-facing and artifact-facing paths independently from
-// the process cwd. This lets a step run in the repo while DockPipe-managed
+// the process cwd. This lets a step run in the repo while Dockpipe-managed
 // outputs still land in generated state.
 type StepScopes struct {
 	Source    string `yaml:"source,omitempty"`

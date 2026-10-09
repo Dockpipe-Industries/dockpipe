@@ -13,7 +13,7 @@ templates/core/bundles/<domain>/ # domain trees (dorkpipe, …)
 
 | Kind | Notes |
 |------|--------|
-| **SAFE TO BUNDLE** | DockPipe-authored; ship in the binary. |
+| **SAFE TO BUNDLE** | Dockpipe-authored; ship in the binary. |
 | **USER-SUPPLIED** | Credentials / tools the user installs. |
 
 **Script details:** **`src/core/assets/scripts/README.md`** (**`DOCKPIPE_TF_*`**; Terraform library lives under **`packages/terraform/resolvers/terraform-core/`**). **Image search order:** resolver **`assets/images/<name>`** → bundle → **`assets/images/<name>`**.

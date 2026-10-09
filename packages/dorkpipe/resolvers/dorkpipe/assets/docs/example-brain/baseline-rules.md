@@ -6,7 +6,7 @@ These are the deterministic rules to seed first when producing example brain gui
 
 - Write from the consumer repo's point of view.
 - Prefer repo-native names, paths, and terminology.
-- Do not mention DockPipe, DorkPipe, mounts, `/work`, `/DesignNotes`, artifact roots, worker lanes,
+- Do not mention Dockpipe, DorkPipe, mounts, `/work`, `/DesignNotes`, artifact roots, worker lanes,
   or orchestration internals unless the consumer repo itself treats them as product concepts.
 - If an external corpus exists, describe it using the consumer repo's own naming and real local or
   organizational reference path, not the runtime mount label.

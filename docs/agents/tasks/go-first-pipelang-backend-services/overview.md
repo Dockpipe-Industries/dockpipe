@@ -2,7 +2,7 @@
 
 ## Goal
 
-Define first-class backend web-service support across PipeLang and DockPipe so one typed,
+Define first-class backend web-service support across PipeLang and Dockpipe so one typed,
 transport-neutral service contract can produce and verify:
 
 - a standalone Go backend service;
@@ -10,9 +10,9 @@ transport-neutral service contract can produce and verify:
 - OpenAPI and JSON Schema artifacts;
 - a deterministic in-memory service implementation;
 - contract, serialization, authorization, and real HTTP integration tests; and
-- DockPipe build, packaging, execution, deployment, and artifact-verification outputs.
+- Dockpipe build, packaging, execution, deployment, and artifact-verification outputs.
 
-Go is the required first production backend target. This aligns with DockPipe's implementation,
+Go is the required first production backend target. This aligns with Dockpipe's implementation,
 portable-runtime and cross-compilation direction, preference for standalone binaries, and low
 operational overhead. ASP.NET Core, Qt HTTP Server, WASI, and other ecosystems may become future
 resolver targets, but they must not shape PipeLang core or the transport-neutral service model.
@@ -69,8 +69,8 @@ Repository investigation must precede design or implementation. Relevant existin
 | Generated artifacts | project/package artifact manifests, scoped artifact paths, hashes/provenance, and operation results |
 | Secret handling | reference-only templates and resolver-owned secret injection; no plaintext generated source |
 | Go HTTP evidence | existing package-local `net/http` servers/tests demonstrate conventions but are not a generic service framework |
-| Remote and isolated execution | existing DockPipe runtime/resolver selection and task-owned artifacts rather than service-specific infrastructure |
+| Remote and isolated execution | existing Dockpipe runtime/resolver selection and task-owned artifacts rather than service-specific infrastructure |
 
 Do not introduce parallel package, capability, artifact, secret, approval, remote-execution, or
-runtime abstractions when current DockPipe contracts can carry the requirement. Current HTTP servers
+runtime abstractions when current Dockpipe contracts can carry the requirement. Current HTTP servers
 are implementation evidence only; they do not define the Service IR or generator contract.

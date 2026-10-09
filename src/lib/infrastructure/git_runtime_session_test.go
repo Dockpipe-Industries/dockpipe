@@ -23,7 +23,7 @@ func initGitSessionTestRepo(t *testing.T) string {
 	}
 	git("init")
 	git("config", "user.email", "test@example.invalid")
-	git("config", "user.name", "DockPipe Test")
+	git("config", "user.name", "Dockpipe Test")
 	if err := os.WriteFile(filepath.Join(repo, "README.md"), []byte("hello\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}

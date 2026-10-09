@@ -34,7 +34,7 @@ The intended compiler layering is:
            portable theme rules and ordinary assets
                               |
                               v
-                  DockPipe Application IR
+                  Dockpipe Application IR
                               |
                     +---------+----------+
                     |                    |

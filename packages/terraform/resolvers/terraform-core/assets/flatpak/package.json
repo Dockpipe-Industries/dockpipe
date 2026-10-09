@@ -1,0 +1,12 @@
+{
+  "schema": 1,
+  "artifacts": [
+    {
+      "kind": "workflow",
+      "name": "dockpipe.terraform.core"
+    }
+  ],
+  "tools": [],
+  "host_commands": [],
+  "required_files": []
+}

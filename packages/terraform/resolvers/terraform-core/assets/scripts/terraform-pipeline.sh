@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # shellcheck shell=bash
-# Reusable Terraform command pipeline for DockPipe host workflows (source this file).
+# Reusable Terraform command pipeline for Dockpipe host workflows (source this file).
 # Shipped with package dockpipe.terraform.core (packages/terraform/resolvers/terraform-core), not src/core.
 #
 # Convention: environment variables use the DOCKPIPE_TF_* namespace. Optional compatibility

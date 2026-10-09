@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "artifacts": [
+    {
+      "kind": "resolver",
+      "name": "qemu"
+    }
+  ],
+  "tools": [],
+  "host_commands": [
+    "qemu-img",
+    "qemu-system-x86_64"
+  ],
+  "required_files": []
+}

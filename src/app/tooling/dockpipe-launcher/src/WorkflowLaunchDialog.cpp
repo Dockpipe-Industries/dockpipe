@@ -110,7 +110,7 @@ WorkflowLaunchDialog::WorkflowLaunchDialog(const WorkflowMeta &workflow, const Q
     layout->setSpacing(10);
 
     auto *intro = new QLabel(workflow.description.trimmed().isEmpty()
-                                 ? tr("Provide workflow settings before launch. Values are stored for this project/workflow and passed through DockPipe as vars/env.")
+                                 ? tr("Provide workflow settings before launch. Values are stored for this project/workflow and passed through Dockpipe as vars/env.")
                                  : workflow.description.trimmed());
     intro->setWordWrap(true);
     layout->addWidget(intro);

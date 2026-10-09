@@ -1,6 +1,6 @@
 # Package Quickstart
 
-You do not need packages to use DockPipe. Source workflows under `workflows/`
+You do not need packages to use Dockpipe. Source workflows under `workflows/`
 are the low-friction authoring path.
 
 Use package/build commands when you want reusable, inspectable artifacts:
@@ -38,7 +38,7 @@ dockpipe package build
 dockpipe package test
 ```
 
-- `make build` rebuilds DockPipe core plus the DockPipe Launcher.
+- `make build` rebuilds Dockpipe core plus the Dockpipe Launcher.
 - `dockpipe package build` runs package-owned source builds for packages in this checkout that declare `build.source.script`.
 - `dockpipe package test` runs package-owned tests for packages in this checkout that declare `test.script`.
 
@@ -75,7 +75,7 @@ To run only package-owned source builds without compiling images:
 dockpipe package build
 ```
 
-To run all DockPipe-owned package and workflow tests in the current project:
+To run all Dockpipe-owned package and workflow tests in the current project:
 
 ```bash
 dockpipe test
@@ -138,7 +138,7 @@ resolution, dependency hints, and exact store layout. Keep those details in
 ## Package Author Safety
 
 When a package script may change the user’s machine or local tool state, prefer
-an explicit DockPipe prompt before doing it.
+an explicit Dockpipe prompt before doing it.
 
 Examples:
 
@@ -155,7 +155,7 @@ launcher can present it clearly and automation can bypass it deliberately:
 dockpipe_sdk prompt confirm \
   --id enable_gpu_setup \
   --title "Allow Docker GPU Setup?" \
-  --message "DockPipe will install GPU container support, update Docker config, and restart Docker. Continue?" \
+  --message "Dockpipe will install GPU container support, update Docker config, and restart Docker. Continue?" \
   --default no \
   --intent host-mutation \
   --automation-group system-changes \
@@ -170,7 +170,7 @@ Guidance:
 - use `--intent` / `--automation-group` metadata for transparency
 - only opt into `--allow-auto-approve` when the workflow is safe to run under explicit automation approval such as `dockpipe --yes`
 
-DockPipe can provide the prompt path and the automation override, but package
+Dockpipe can provide the prompt path and the automation override, but package
 authors still need to choose to use it in the flows they own.
 
 ## Package Author Test Hooks

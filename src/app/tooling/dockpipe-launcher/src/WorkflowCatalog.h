@@ -50,7 +50,7 @@ struct WorkflowViewMeta {
     QVector<WorkflowViewPageMeta> pages;
 };
 
-/// One workflow entry returned by DockPipe's launcher/tooling catalog contract.
+/// One workflow entry returned by Dockpipe's launcher/tooling catalog contract.
 struct WorkflowMeta {
     /// Folder / workflow name passed to `dockpipe --workflow`.
     QString workflowId;

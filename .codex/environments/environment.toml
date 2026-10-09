@@ -14,7 +14,7 @@ mkdir -p "$CODEX_WORKTREE_PATH/bin/.dockpipe/tmp"
 
 for tool in git go; do
   command -v "$tool" >/dev/null ||
-    { echo "DockPipe requires $tool on PATH"; exit 1; }
+    { echo "Dockpipe requires $tool on PATH"; exit 1; }
 done
 
 git --version
@@ -25,7 +25,7 @@ test -x ./src/bin/dockpipe ||
 
 ./src/bin/dockpipe --version
 
-# Optional tooling is reported for visibility only; core DockPipe setup does not require it.
+# Optional tooling is reported for visibility only; core Dockpipe setup does not require it.
 for tool in docker node npm python gh; do
   if command -v "$tool" >/dev/null 2>&1; then
     printf "Optional %s: available at %s\n" "$tool" "$(command -v "$tool")"
@@ -34,7 +34,7 @@ for tool in docker node npm python gh; do
   fi
 done'''
 [[actions]]
-name = "Build DockPipe"
+name = "Build Dockpipe"
 icon = "tool"
 command = "mkdir -p bin/.dockpipe/go-build-cache && GOCACHE=\"$PWD/bin/.dockpipe/go-build-cache\" go build ./src/..."
 
@@ -48,7 +48,7 @@ icon = "tool"
 command = "git status --short && git diff --check"
 
 [[actions]]
-name = "Test DockPipe core"
+name = "Test Dockpipe core"
 icon = "test"
 command = "mkdir -p bin/.dockpipe/go-build-cache && GOCACHE=\"$PWD/bin/.dockpipe/go-build-cache\" go test ./src/..."
 

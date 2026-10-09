@@ -1,11 +1,11 @@
-# DockPipe
+# Dockpipe
 
 **Run any command in a disposable container, then optionally act on the result.**
 
-DockPipe gives you a simple way to run tests, scripts, code generation, and AI tools in clean Docker environments. Your working directory is mounted into the container, files remain owned by your user, and the container disappears when the command finishes.
+Dockpipe gives you a simple way to run tests, scripts, code generation, and AI tools in clean Docker environments. Your working directory is mounted into the container, files remain owned by your user, and the container disappears when the command finishes.
 
 > [!IMPORTANT]
-> **DockPipe 0.6.0 is coming soon—and it is a massive improvement.**
+> **Dockpipe 0.6.0 is coming soon—and it is a massive improvement.**
 >
 > You don’t have to wait for the release—**you can start using it now from the [`dev` branch](https://github.com/Dockpipe-Industries/dockpipe/tree/dev)**.
 
@@ -27,7 +27,7 @@ cd dockpipe
 export PATH="$PWD/bin:$PATH"
 ```
 
-DockPipe requires **Docker** and **Bash**.
+Dockpipe requires **Docker** and **Bash**.
 
 ### Run a Command
 
@@ -37,7 +37,7 @@ dockpipe init
 dockpipe -- pwd
 ```
 
-DockPipe runs `make test` in a clean container with your current directory mounted at `/work`. When the command exits, the container is removed.
+Dockpipe runs `make test` in a clean container with your current directory mounted at `/work`. When the command exits, the container is removed.
 
 The same pattern works for any command:
 
@@ -60,15 +60,15 @@ dockpipe -- ./scripts/generate-docs.sh
 
 ## How It Works
 
-DockPipe has one small, composable lifecycle:
+Dockpipe has one small, composable lifecycle:
 
 1. **Spawn** — Start a disposable container.
 2. **Run** — Execute the command passed after `--`.
 3. **Act** — Optionally run an action script on the result.
 
-You choose the image, command, and optional action. DockPipe handles the Docker boilerplate, working-directory mount, user mapping, cleanup, and persistent tool state.
+You choose the image, command, and optional action. Dockpipe handles the Docker boilerplate, working-directory mount, user mapping, cleanup, and persistent tool state.
 
-DockPipe is not an AI framework. AI tools are simply one of the many command types it can run.
+Dockpipe is not an AI framework. AI tools are simply one of the many command types it can run.
 
 ## Why Not Just `docker run`?
 
@@ -83,7 +83,7 @@ docker run --rm \
   make test
 ```
 
-DockPipe gives you the same isolation with a shorter command:
+Dockpipe gives you the same isolation with a shorter command:
 
 ```bash
 dockpipe -- make test
@@ -102,7 +102,7 @@ Files created inside the container remain owned by your host user.
 
 ## Persistent Data
 
-By default, DockPipe mounts a named volume called `dockpipe-data` at `/dockpipe-data` and uses it as `HOME`.
+By default, Dockpipe mounts a named volume called `dockpipe-data` at `/dockpipe-data` and uses it as `HOME`.
 
 This lets tools preserve state between disposable runs—for example, an authenticated CLI session or downloaded tool configuration.
 
@@ -313,4 +313,4 @@ See [integration-tests/README.md](integration-tests/README.md) for details.
 
 ## License
 
-DockPipe is licensed under the [Apache License 2.0](LICENSE).
+Dockpipe is licensed under the [Apache License 2.0](LICENSE).

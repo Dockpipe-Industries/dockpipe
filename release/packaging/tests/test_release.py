@@ -98,6 +98,29 @@ class ReleaseTests(unittest.TestCase):
         with self.assertRaises(FileNotFoundError):
             artifacts_module.prepare(self.root, "0.6.0")
 
+    def test_flatpak_catalog_requires_matching_runtime_and_bundle(self):
+        platform = artifacts_module.FLATPAK_PLATFORM
+        store = self.root / "stores" / platform
+        self.store(store)
+        manifest_path = store / "packages-store-manifest.json"
+        manifest = json.loads(manifest_path.read_text())
+        bundle = "dockpipe-desktop_0.6.2_linux_amd64.flatpak"
+        with patch.object(artifacts_module, "PLATFORMS", ()):
+            with self.assertRaisesRegex(ValueError, "tested desktop bundle"):
+                artifacts_module.prepare(self.root, "0.6.2")
+            (self.root / bundle).write_bytes(b"qualified bundle fixture")
+            manifest["platform"] = "linux-amd64"
+            manifest_path.write_text(json.dumps(manifest))
+            with self.assertRaisesRegex(ValueError, "incorrect runtime target"):
+                artifacts_module.prepare(self.root, "0.6.2")
+            manifest["platform"] = platform
+            manifest_path.write_text(json.dumps(manifest))
+            artifacts_module.prepare(self.root, "0.6.2")
+        catalog = json.loads((self.root / "release-manifest.json").read_text())
+        self.assertEqual(catalog["stores"][platform]["count"], 3)
+        self.assertEqual(catalog["downloads"][platform], {"cli": bundle, "desktop": bundle})
+        self.assertIn(bundle, (self.root / "SHA256SUMS.txt").read_text())
+
     def test_candidate_catalog_records_provenance_before_checksums(self):
         version = "0.6.0"
         candidate = version + "-staging.123.2." + "a" * 12
@@ -310,7 +333,7 @@ class ReleaseTests(unittest.TestCase):
         gpg_home.mkdir(mode=0o700)
         env = dict(os.environ, GNUPGHOME=str(gpg_home))
         subprocess.run(["gpg", "--batch", "--pinentry-mode", "loopback", "--passphrase", "",
-                        "--quick-generate-key", "DockPipe test only", "rsa2048", "sign", "1d"],
+                        "--quick-generate-key", "Dockpipe test only", "rsa2048", "sign", "1d"],
                        env=env, check=True, capture_output=True)
         listing = subprocess.check_output(["gpg", "--with-colons", "--list-secret-keys"], env=env, text=True)
         fingerprint = next(line.split(":")[9] for line in listing.splitlines() if line.startswith("fpr:"))

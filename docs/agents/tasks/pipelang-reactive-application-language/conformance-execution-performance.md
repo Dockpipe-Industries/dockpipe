@@ -1774,7 +1774,7 @@ Objective contract:
   with 30-second units, 25-second children, 700 MiB high, 1 GiB hard, zero swap,
   128 tasks and proactive 800 MiB stop. Keep v0.96.0 unchanged.
 - ownership: conformance/artifact helpers and their actual source owners, not
-  generic DockPipe engine special cases. Apply focused core-review guidance if
+  generic Dockpipe engine special cases. Apply focused core-review guidance if
   integration touches compiler-owned test helpers under `src/lib/pipelang`.
 - checkpoints: automatic within this correction; user-requested handoff only.
 - exclusions: no new language/codec research seam, broad product redesign,
@@ -1863,7 +1863,7 @@ The export comparison driver also derives its plan dynamically. Its old
 `transcript_plan.json` is preserved historical research data, not execution
 admission. Reconstruction/encoding mechanics and v0.96.0 are unchanged. The
 changes under `src/lib/pipelang` are compiler-owned test helpers only; generic
-DockPipe engine/package boundaries are preserved.
+Dockpipe engine/package boundaries are preserved.
 
 Fresh acceptance (all evidence under `/tmp/pipelang-generalized/`):
 

@@ -9,7 +9,7 @@ description: >-
   semantic-review decision and emit readiness only for an approved, passed candidate, then require
   a separate explicit local decision before rollback-safe application of the exact accepted patch
   to the consumer checkout, then require one separately approved exact-path request before the
-  DockPipe runtime creates a checkpoint, then require one distinct approved request before the
+  Dockpipe runtime creates a checkpoint, then require one distinct approved request before the
   runtime publishes that exact commit to one reviewed remote branch ref, without invoking a live
   provider, syncing, merging, or selecting another task.
 

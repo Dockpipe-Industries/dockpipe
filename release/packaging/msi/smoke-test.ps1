@@ -1,4 +1,4 @@
-# Validates the per-user DockPipe MSI install/uninstall path on Windows.
+# Validates the per-user Dockpipe MSI install/uninstall path on Windows.
 param(
     [Parameter(Mandatory = $true)][string]$MsiPath,
     [switch]$ExpectLauncher
@@ -17,7 +17,7 @@ $launcherPath = Join-Path $installDir "dockpipe-launcher.exe"
 $launcherPlatformPlugin = Join-Path $installDir "platforms\qwindows.dll"
 $launcherCoreDll = Join-Path $installDir "Qt6Core.dll"
 $logPath = Join-Path $env:TEMP "dockpipe-msi-smoke.log"
-$startMenuShortcut = Join-Path $env:APPDATA "Microsoft\Windows\Start Menu\Programs\DockPipe\DockPipe Launcher.lnk"
+$startMenuShortcut = Join-Path $env:APPDATA "Microsoft\Windows\Start Menu\Programs\Dockpipe\Dockpipe Launcher.lnk"
 
 function Get-UserPathValue {
     return [Environment]::GetEnvironmentVariable("Path", "User")
@@ -104,7 +104,7 @@ if ($ExpectLauncher) {
         throw "Qt6Core.dll not found at $launcherCoreDll"
     }
     if (-not (Test-Path -LiteralPath $startMenuShortcut)) {
-        throw "DockPipe Launcher shortcut not found at $startMenuShortcut"
+        throw "Dockpipe Launcher shortcut not found at $startMenuShortcut"
     }
     python (Join-Path $PSScriptRoot "../desktop/smoke.py") $launcherPath $exePath --inventory-system-root (Split-Path -Parent $exePath)
     if ($LASTEXITCODE -ne 0) { throw "Installed desktop runtime smoke failed" }
@@ -156,7 +156,7 @@ if ($ExpectLauncher -and (Test-Path -LiteralPath $launcherCoreDll)) {
     throw "Qt6Core.dll still exists after uninstall: $launcherCoreDll"
 }
 if ($ExpectLauncher -and (Test-Path -LiteralPath $startMenuShortcut)) {
-    throw "DockPipe Launcher shortcut still exists after uninstall: $startMenuShortcut"
+    throw "Dockpipe Launcher shortcut still exists after uninstall: $startMenuShortcut"
 }
 
 $userPathAfter = Get-UserPathValue

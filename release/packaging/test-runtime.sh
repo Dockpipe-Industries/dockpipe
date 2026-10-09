@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# DockPipe 0.6 runtime/package qualification. PipeLang compiler campaigns use
+# Dockpipe 0.6 runtime/package qualification. PipeLang compiler campaigns use
 # tests/containedexec/ and are qualified separately for the language release.
 set -euo pipefail
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"

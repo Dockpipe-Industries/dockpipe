@@ -352,7 +352,7 @@ WorkflowCatalogData fastWorkflowShellCatalog(const QString &workdir)
 
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), m_sessions(this)
 {
-    setWindowTitle(tr("DockPipe Launcher"));
+    setWindowTitle(tr("Dockpipe Launcher"));
     setWindowIcon(QGuiApplication::windowIcon());
     resize(800, 520);
 
@@ -411,7 +411,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), m_sessions(this)
     connect(&m_sessions, &SessionManager::sessionOutput, this, &MainWindow::onSessionOutput);
     connect(&m_sessions, &SessionManager::sessionPrompt, this, &MainWindow::onSessionPrompt);
     connect(&m_sessions, &SessionManager::sessionFailed, this,
-            [this](const QString &, const QString &err) { QMessageBox::warning(this, tr("DockPipe Launcher"), err); });
+            [this](const QString &, const QString &err) { QMessageBox::warning(this, tr("Dockpipe Launcher"), err); });
     QTimer::singleShot(0, this, [this, startHome]() {
         m_store.load();
         setupTray();
@@ -439,7 +439,7 @@ void MainWindow::setupDisclaimerBar()
     lay->setSpacing(8);
 
     auto *disclaimer = new QLabel(
-        tr("Notice: DockPipe Launcher does not distribute third-party applications. Dockpipe workflows run on "
+        tr("Notice: Dockpipe Launcher does not distribute third-party applications. Dockpipe workflows run on "
            "your machine; install tools from official vendor or distribution channels and accept each "
            "publisher’s terms."));
     disclaimer->setObjectName(QStringLiteral("disclaimerWatermark"));
@@ -503,13 +503,13 @@ void MainWindow::setupMenuBar()
     packagesMenu->addAction(tr("Manage Packages…"), this, &MainWindow::onManagePackages);
 
     QMenu *help = menuBar()->addMenu(tr("Help"));
-    help->addAction(tr("About DockPipe Launcher…"), this, &MainWindow::onAbout);
+    help->addAction(tr("About Dockpipe Launcher…"), this, &MainWindow::onAbout);
     help->addSeparator();
     help->addAction(tr("Show notice in status bar again"), this, &MainWindow::onRestoreThirdPartyDisclaimer);
     help->addAction(tr("Third-party software notice…"), this, [this]() {
         QMessageBox::information(
             this, tr("Third-party software"),
-            tr("DockPipe Launcher is a launcher for dockpipe workflows. It does not ship or bundle third-party "
+            tr("Dockpipe Launcher is a launcher for dockpipe workflows. It does not ship or bundle third-party "
                "applications.\n\n"
                "If a workflow needs external tools, you install them yourself from official sources. Use of "
                "those products is subject to their respective licensors’ terms."));
@@ -530,13 +530,13 @@ void MainWindow::setupMenuBar()
 void MainWindow::onAbout()
 {
     QMessageBox box(this);
-    box.setWindowTitle(tr("About DockPipe Launcher"));
+    box.setWindowTitle(tr("About Dockpipe Launcher"));
     box.setIcon(QMessageBox::Information);
     box.setTextFormat(Qt::RichText);
     box.setTextInteractionFlags(Qt::TextBrowserInteraction);
     box.setText(
-        tr("<h3>DockPipe Launcher</h3>"
-           "<p>DockPipe Launcher is the desktop shell and local-first workspace surface for DockPipe workflows.</p>"
+        tr("<h3>Dockpipe Launcher</h3>"
+           "<p>Dockpipe Launcher is the desktop shell and local-first workspace surface for Dockpipe workflows.</p>"
            "<p><a href=\"https://dockpipe.com\">dockpipe.com</a></p>"));
     box.setStandardButtons(QMessageBox::Ok);
     box.exec();
@@ -920,7 +920,7 @@ void MainWindow::refreshSessionUi()
 void MainWindow::onBasicLaunch(const QString &workflowId)
 {
     if (m_settings.projectFolder.isEmpty()) {
-        QMessageBox::information(this, tr("DockPipe Launcher"),
+        QMessageBox::information(this, tr("Dockpipe Launcher"),
                                  tr("Choose a project folder first (File → Open project folder, or Choose folder…)."));
         return;
     }
@@ -966,7 +966,7 @@ void MainWindow::onBasicLaunch(const QString &workflowId)
             m_basicLaunchingContextId.clear();
             m_basicLaunchingWorkflowId.clear();
             updateBasicPage();
-            QMessageBox::warning(this, tr("DockPipe Launcher"), tr("Could not start dockpipe (see stderr)."));
+            QMessageBox::warning(this, tr("Dockpipe Launcher"), tr("Could not start dockpipe (see stderr)."));
         }
     });
 }
@@ -1060,17 +1060,17 @@ bool MainWindow::openWorkflowConfig(const WorkflowMeta &meta)
 {
     const QString configPath = QDir::cleanPath(meta.configPath);
     if (configPath.isEmpty()) {
-        QMessageBox::information(this, tr("DockPipe Launcher"),
+        QMessageBox::information(this, tr("Dockpipe Launcher"),
                                  tr("This workflow does not expose launcher-managed settings."));
         return false;
     }
     if (!QFileInfo::exists(configPath)) {
-        QMessageBox::warning(this, tr("DockPipe Launcher"),
+        QMessageBox::warning(this, tr("Dockpipe Launcher"),
                              tr("The workflow file could not be found:\n%1").arg(QDir::toNativeSeparators(configPath)));
         return false;
     }
     if (!QDesktopServices::openUrl(QUrl::fromLocalFile(configPath))) {
-        QMessageBox::warning(this, tr("DockPipe Launcher"),
+        QMessageBox::warning(this, tr("Dockpipe Launcher"),
                              tr("Could not open the workflow file:\n%1").arg(QDir::toNativeSeparators(configPath)));
         return false;
     }
@@ -1080,7 +1080,7 @@ bool MainWindow::openWorkflowConfig(const WorkflowMeta &meta)
 void MainWindow::setupTray()
 {
     m_tray = new QSystemTrayIcon(QGuiApplication::windowIcon(), this);
-    m_tray->setToolTip(tr("DockPipe Launcher"));
+    m_tray->setToolTip(tr("Dockpipe Launcher"));
     auto *menu = new QMenu(this);
     menu->addAction(tr("Show"), this, [this]() { show(); raise(); activateWindow(); });
     menu->addSeparator();
@@ -1158,11 +1158,11 @@ void MainWindow::applyAdvancedContextFilter()
             m_emptyBody->setText(tr("Open a project folder in Basic mode or with File → Open project folder."));
         } else if (m_advancedDiscoveryLoading) {
             m_emptyTitle->setText(tr("Loading workflows"));
-            m_emptyBody->setText(tr("DockPipe is discovering workflows for the current project folder."));
+            m_emptyBody->setText(tr("Dockpipe is discovering workflows for the current project folder."));
         } else if (noProjectRows) {
             m_emptyTitle->setText(tr("No workflows found"));
             m_emptyBody->setText(
-                tr("No DockPipe workflows were discovered for the current project folder."));
+                tr("No Dockpipe workflows were discovered for the current project folder."));
         } else {
             m_emptyTitle->setText(tr("No matching workflows"));
             m_emptyBody->setText(tr("Try a different search, or clear the filter to show every workflow."));
@@ -1342,14 +1342,14 @@ void MainWindow::onSessionPrompt(const QString &contextId, const QString &payloa
 {
     const QJsonDocument doc = QJsonDocument::fromJson(payload.toUtf8());
     if (!doc.isObject()) {
-        QMessageBox::warning(this, tr("DockPipe Launcher"), tr("Received an invalid DockPipe prompt payload."));
+        QMessageBox::warning(this, tr("Dockpipe Launcher"), tr("Received an invalid Dockpipe prompt payload."));
         m_sessions.sendInput(contextId, QString());
         return;
     }
 
     const QJsonObject obj = doc.object();
     const QString type = obj.value(QStringLiteral("type")).toString();
-    const QString title = obj.value(QStringLiteral("title")).toString(tr("DockPipe Prompt"));
+    const QString title = obj.value(QStringLiteral("title")).toString(tr("Dockpipe Prompt"));
     const QString message = obj.value(QStringLiteral("message")).toString();
     const QString defaultValue = obj.value(QStringLiteral("default")).toString();
     const QString intent = obj.value(QStringLiteral("intent")).toString();
@@ -1389,8 +1389,8 @@ void MainWindow::onSessionPrompt(const QString &contextId, const QString &payloa
         dialog.exec();
         response = dialog.response();
     } else {
-        QMessageBox::information(this, tr("DockPipe Launcher"),
-                                 tr("Unsupported prompt type from DockPipe: %1").arg(type));
+        QMessageBox::information(this, tr("Dockpipe Launcher"),
+                                 tr("Unsupported prompt type from Dockpipe: %1").arg(type));
     }
 
     m_sessions.sendInput(contextId, response);
@@ -1480,7 +1480,7 @@ void MainWindow::onLaunch()
     if (m_sessions.launch(*c, ContextStore::logsDir()))
         refreshSessionUi();
     else if (!m_sessions.isRunning(c->id))
-        QMessageBox::warning(this, tr("DockPipe Launcher"), tr("Could not start dockpipe (see stderr)."));
+        QMessageBox::warning(this, tr("Dockpipe Launcher"), tr("Could not start dockpipe (see stderr)."));
 }
 
 void MainWindow::onRelaunch()
@@ -1540,7 +1540,7 @@ void MainWindow::onOpenLogs()
         }
     }
     if (!c) {
-        QMessageBox::information(this, tr("DockPipe Launcher"), tr("No logs yet for this project."));
+        QMessageBox::information(this, tr("Dockpipe Launcher"), tr("No logs yet for this project."));
         return;
     }
     const SessionInfo si = m_sessions.info(c->id);

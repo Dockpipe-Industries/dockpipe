@@ -62,7 +62,7 @@ func cmdSessionList(args []string) error {
 		return enc.Encode(sessions)
 	}
 	if len(sessions) == 0 {
-		fmt.Fprintln(os.Stdout, "No DockPipe sessions found.")
+		fmt.Fprintln(os.Stdout, "No Dockpipe sessions found.")
 		return nil
 	}
 	tw := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)

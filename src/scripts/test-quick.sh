@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Quick checks: Go tests + DockPipe package/workflow tests + template path guard + bash unit tests (no Docker integration sweep).
+# Quick checks: Go tests + Dockpipe package/workflow tests + template path guard + bash unit tests (no Docker integration sweep).
 # From repo root:  make test-quick
 set -euo pipefail
 

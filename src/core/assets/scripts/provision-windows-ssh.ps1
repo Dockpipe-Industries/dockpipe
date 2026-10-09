@@ -202,7 +202,7 @@ function Ensure-DockPipeAgent {
     [int]$Port
   )
 
-  $agentRoot = Join-Path $env:ProgramData "DockPipe\GuestAgent"
+  $agentRoot = Join-Path $env:ProgramData "Dockpipe\GuestAgent"
   $agentExe = Join-Path $agentRoot "dockpipe-guest-agent.exe"
   $agentScript = Join-Path $agentRoot "dockpipe-guest-agent.ps1"
   $configPath = Join-Path $agentRoot "config.json"
@@ -229,29 +229,29 @@ function Ensure-DockPipeAgent {
   $pwshPath = Join-Path $env:WINDIR "System32\WindowsPowerShell\v1.0\powershell.exe"
   $existingTask = Get-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue
   if ($existingTask) {
-    Write-Step "Removing existing DockPipe guest agent scheduled task"
+    Write-Step "Removing existing Dockpipe guest agent scheduled task"
     Unregister-ScheduledTask -TaskName $taskName -Confirm:$false
   }
 
   Get-CimInstance Win32_Process -Filter "Name = 'dockpipe-guest-agent.exe'" -ErrorAction SilentlyContinue |
     ForEach-Object {
-      Write-Step "Stopping existing DockPipe guest agent process $($_.ProcessId)"
+      Write-Step "Stopping existing Dockpipe guest agent process $($_.ProcessId)"
       Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue
     }
 
   Get-CimInstance Win32_Process -Filter "Name = 'powershell.exe'" -ErrorAction SilentlyContinue |
     Where-Object { $_.CommandLine -like "*dockpipe-guest-agent.ps1*" } |
     ForEach-Object {
-      Write-Step "Stopping existing DockPipe guest agent process $($_.ProcessId)"
+      Write-Step "Stopping existing Dockpipe guest agent process $($_.ProcessId)"
       Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue
     }
 
   if (Test-Path -LiteralPath $agentExe) {
     $action = New-ScheduledTaskAction -Execute $agentExe -Argument ('-service -ConfigPath "{0}"' -f $configPath)
-    Write-Step "Installing DockPipe guest agent startup task as LocalSystem (native executable)"
+    Write-Step "Installing Dockpipe guest agent startup task as LocalSystem (native executable)"
   } else {
     $action = New-ScheduledTaskAction -Execute $pwshPath -Argument ('-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "{0}" -Service -ConfigPath "{1}"' -f $agentScript, $configPath)
-    Write-Step "Installing DockPipe guest agent startup task as LocalSystem (PowerShell fallback)"
+    Write-Step "Installing Dockpipe guest agent startup task as LocalSystem (PowerShell fallback)"
   }
   $trigger = New-ScheduledTaskTrigger -AtStartup
   $principal = New-ScheduledTaskPrincipal -UserId "SYSTEM" -LogonType ServiceAccount -RunLevel Highest
@@ -259,11 +259,11 @@ function Ensure-DockPipeAgent {
 
   Register-ScheduledTask -TaskName $taskName -Action $action -Trigger $trigger -Principal $principal -Settings $settings | Out-Null
 
-  Write-Step "Starting DockPipe guest agent startup task"
+  Write-Step "Starting Dockpipe guest agent startup task"
   Start-ScheduledTask -TaskName $taskName
   Start-Sleep -Seconds 2
   $task = Get-ScheduledTask -TaskName $taskName
-  Write-Step "DockPipe guest agent task state: $($task.State) on port $Port"
+  Write-Step "Dockpipe guest agent task state: $($task.State) on port $Port"
 }
 
 Assert-Administrator

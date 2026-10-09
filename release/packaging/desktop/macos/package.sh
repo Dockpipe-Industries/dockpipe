@@ -18,7 +18,7 @@ cp -R "$root/release/packaging/desktop/licenses" "$resources/"
 cp "$root/LICENSE" "$resources/licenses/DockPipe-LICENSE.txt"
 install -m 755 "$root/src/bin/dockpipe" "$app/Contents/Helpers/dockpipe"
 install -m 755 "$root/release/packaging/desktop/macos/dockpipe" "$app/Contents/MacOS/dockpipe-cli"
-# The wrapper name must differ from DockPipe even on case-insensitive APFS.
+# The wrapper name must differ from Dockpipe even on case-insensitive APFS.
 otool -hv "$app/Contents/MacOS/DockPipe" >/dev/null
 # Installer payloads contain core only; the full store is published separately.
 python3 "$root/release/packaging/release-artifacts.py" stage-core "$out/stores/darwin-$arch" --destination "$store"
@@ -61,15 +61,15 @@ pkg_args=(--root "$work/payload" --component-plist "$work/components.plist" --sc
 if [[ -n "${DOCKPIPE_MAC_INSTALLER_IDENTITY:-}" ]]; then
   pkg_args+=(--sign "$DOCKPIPE_MAC_INSTALLER_IDENTITY")
 fi
-pkgbuild "${pkg_args[@]}" "$work/dmg/Install DockPipe.pkg"
+pkgbuild "${pkg_args[@]}" "$work/dmg/Install Dockpipe.pkg"
 if [[ -n "${DOCKPIPE_MAC_NOTARY_PROFILE:-}" ]]; then
-  xcrun notarytool submit "$work/dmg/Install DockPipe.pkg" --keychain-profile "$DOCKPIPE_MAC_NOTARY_PROFILE" --wait
-  xcrun stapler staple "$work/dmg/Install DockPipe.pkg"
+  xcrun notarytool submit "$work/dmg/Install Dockpipe.pkg" --keychain-profile "$DOCKPIPE_MAC_NOTARY_PROFILE" --wait
+  xcrun stapler staple "$work/dmg/Install Dockpipe.pkg"
 fi
-printf '%s\n' 'Open Install DockPipe.pkg to install DockPipe in Applications and the dockpipe terminal command.' \
+printf '%s\n' 'Open Install Dockpipe.pkg to install Dockpipe in Applications and the dockpipe terminal command.' \
   'Use one installation method: this installer or Homebrew.' > "$work/dmg/Read Me.txt"
 dmg="$out/dockpipe-desktop_${version}_darwin_${arch}.dmg"
-hdiutil create -volname DockPipe -srcfolder "$work/dmg" -format UDZO -ov "$dmg"
+hdiutil create -volname Dockpipe -srcfolder "$work/dmg" -format UDZO -ov "$dmg"
 if [[ -n "${DOCKPIPE_MAC_NOTARY_PROFILE:-}" ]]; then
   codesign --sign "$identity" --timestamp "$dmg"
   xcrun notarytool submit "$dmg" --keychain-profile "$DOCKPIPE_MAC_NOTARY_PROFILE" --wait

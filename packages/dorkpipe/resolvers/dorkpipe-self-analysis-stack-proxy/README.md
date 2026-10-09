@@ -1,6 +1,6 @@
 # dorkpipe-self-analysis-stack-proxy
 
-This is the first DorkPipe workflow that consumes DockPipe's proxy-backed
+This is the first DorkPipe workflow that consumes Dockpipe's proxy-backed
 network policy path end to end.
 
 Lifecycle:
@@ -22,7 +22,7 @@ Keep services up after the run:
 DORKPIPE_DEV_STACK_AUTODOWN=0 dockpipe --workflow dorkpipe-self-analysis-stack-proxy --workdir . --
 ```
 
-What DockPipe owns here:
+What Dockpipe owns here:
 
 - compiled runtime policy
 - proxy env injection into the isolated container

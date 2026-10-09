@@ -403,7 +403,7 @@ entrypoint and are inert when compiled or inspected.
 
 The compiler core itself accepts source/dependency bytes and options as values and returns artifacts
 and diagnostics as values. Its CLI shell performs declared file/process effects through governed
-host capabilities. Ordinary external work follows the DockPipe chain
+host capabilities. Ordinary external work follows the Dockpipe chain
 workflow/package -> runtime -> resolver -> optional strategy. Device I/O, HTTP, Go runtime services,
 Qt events, files, clocks, randomness, secrets, processes, and models are resolver-owned effect
 implementations, never syntax-owned privileges.
