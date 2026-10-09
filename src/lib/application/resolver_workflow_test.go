@@ -10,6 +10,10 @@ import (
 
 func TestRunEmbeddedResolverWorkflowWithLoad_CallsRunSteps(t *testing.T) {
 	repoRoot := t.TempDir()
+	// Bound project discovery even when the test temp directory is inside a checkout.
+	if err := os.WriteFile(filepath.Join(repoRoot, "dockpipe.config.json"), []byte("{}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
 	wfDir := filepath.Join(repoRoot, "templates", "cursor-dev")
 	if err := os.MkdirAll(wfDir, 0o755); err != nil {
 		t.Fatal(err)
