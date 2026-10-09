@@ -13,7 +13,7 @@ if [[ ! -f "$PASTE" ]]; then
 fi
 mkdir -p "$(dirname "$PASTE")"
 {
-	echo "You are working in the DockPipe repository. Follow AGENTS.md."
+	echo "You are working in the Dockpipe repository. Follow AGENTS.md."
 	echo "Below: base implementation prompt, then Ollama-refined priorities from this checkout."
 	echo ""
 	echo "========== BASE PROMPT =========="

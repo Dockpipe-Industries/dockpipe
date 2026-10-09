@@ -21,7 +21,7 @@ When selected:
 7. Implement the Go backend resolver and deterministic in-memory adapter.
 8. Generate OpenAPI/JSON Schema and prove conformance from the same IR.
 9. Implement the generated Qt/C++ client resolver.
-10. Integrate the package-owned end-to-end DockPipe workflow and closed artifacts.
+10. Integrate the package-owned end-to-end Dockpipe workflow and closed artifacts.
 11. Add semantic, negative, compatibility, conformance, build, and real integration tests.
 12. Update canonical PipeLang/service, package/resolver, workflow, CLI, and artifact documentation.
 
@@ -45,15 +45,15 @@ providers, or deployment systems during the first vertical slice.
 - The in-memory adapter and real HTTP service pass the same transport-neutral contract fixtures.
 - The real service starts, reports health, handles GET/POST requests, emits bounded diagnostics, and
   shuts down gracefully under integration tests.
-- DockPipe produces verified source, binary, schema, client, test, provenance, dependency/licence,
+- Dockpipe produces verified source, binary, schema, client, test, provenance, dependency/licence,
   runtime, and deployment artifacts.
-- Existing PipeLang programs and DockPipe architecture remain compatible or use explicit migrations.
+- Existing PipeLang programs and Dockpipe architecture remain compatible or use explicit migrations.
 - Package/engine boundaries remain preserved with service-specific generation inside package-owned
   resolvers/assets/workflows unless a separately justified generic primitive is accepted.
 
 The demonstrated product claim is:
 
-> Define the application contract once. DockPipe resolves it into a standalone Go backend, typed Qt
+> Define the application contract once. Dockpipe resolves it into a standalone Go backend, typed Qt
 > clients, native and browser interfaces, schemas, tests, and verified deployable artifacts.
 
 ## Next Bounded Design Slice

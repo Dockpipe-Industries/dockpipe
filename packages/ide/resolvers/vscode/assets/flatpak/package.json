@@ -1,0 +1,18 @@
+{
+  "schema": 1,
+  "artifacts": [
+    {
+      "kind": "resolver",
+      "name": "vscode"
+    },
+    {
+      "kind": "workflow",
+      "name": "vscode"
+    }
+  ],
+  "tools": [],
+  "host_commands": [
+    "code"
+  ],
+  "required_files": []
+}

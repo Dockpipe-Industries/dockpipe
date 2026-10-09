@@ -32,7 +32,7 @@ have_jq() { command -v jq >/dev/null 2>&1; }
 	echo "| Lane | Meaning |"
 	echo "|------|---------|"
 	echo "| Repo / analysis facts | DorkPipe package self-analysis artifacts |"
-	echo "| Scan signals | DockPipe CI analysis scope for the active workflow |"
+	echo "| Scan signals | Dockpipe CI analysis scope for the active workflow |"
 	echo "| User guidance | DorkPipe package-scoped analysis insights (signal, not truth) |"
 	echo ""
 	echo "## CI / scans"
@@ -61,7 +61,7 @@ have_jq() { command -v jq >/dev/null 2>&1; }
 	fi
 
 	echo ""
-	echo "## User insights (DockPipe analysis scope)"
+	echo "## User insights (Dockpipe analysis scope)"
 	echo ""
 	INS="$(pipeon_scope_path --package dorkpipe analysis/insights.json)"
 	if [[ -f "$INS" ]] && have_jq; then

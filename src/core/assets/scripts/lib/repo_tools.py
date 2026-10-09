@@ -208,7 +208,7 @@ def prompt(
         print(f"::dockpipe-prompt::{payload}", file=sys.stderr)
         response = sys.stdin.readline()
         if response == "":
-            raise RuntimeError("DockPipe prompt response stream closed")
+            raise RuntimeError("Dockpipe prompt response stream closed")
         return response.rstrip("\r\n")
 
     if mode == "terminal":
@@ -249,7 +249,7 @@ def prompt(
                 return selected
         if kind == "choice":
             if not options:
-                raise RuntimeError("DockPipe choice prompt requires at least one option")
+                raise RuntimeError("Dockpipe choice prompt requires at least one option")
             print(message, file=sys.stderr)
             default_index = 1
             for idx, option in enumerate(options, start=1):
@@ -298,9 +298,9 @@ def prompt(
                     print(f"{kind_label} not found: {single}", file=sys.stderr)
                     continue
                 return single
-        raise RuntimeError(f"Unsupported DockPipe prompt kind: {kind}")
+        raise RuntimeError(f"Unsupported Dockpipe prompt kind: {kind}")
 
     if default:
         return default
-    raise RuntimeError("DockPipe prompt requires a terminal or DOCKPIPE_SDK_PROMPT_MODE=json")
+    raise RuntimeError("Dockpipe prompt requires a terminal or DOCKPIPE_SDK_PROMPT_MODE=json")
 dockpipe = DockpipeSDK()

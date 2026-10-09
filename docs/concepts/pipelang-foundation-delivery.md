@@ -85,7 +85,7 @@ Ownership notation: **V** = parser/typechecker, typed HIR, Core admission, evalu
 semantic projection/editor/debug tooling; **A** = Application IR consumer; **P** = profile admission.
 V always includes metadata T and consumer compatibility A, even when their implementations need
 no change. Runtime mechanisms belong in generic language/runtime abstractions; no package-specific
-business logic enters the DockPipe engine.
+business logic enters the Dockpipe engine.
 
 Every slice must: preserve frozen 45-source and all accepted post-legacy versions; add precise
 source/Core refusal, value/order/error oracles and version/migration diagnostics; update canonical

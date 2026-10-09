@@ -4,7 +4,7 @@
 
 ### Problem statement
 
-Pipeon and future top-level DockPipe orchestrators use host codex exec, buffered output and transcript-file discovery. That preserves native workspace sandboxing but cannot represent live turn state, native approvals, interruption completion or connection loss reliably. This is separate from successful disposable codex exec workflow workers.
+Pipeon and future top-level Dockpipe orchestrators use host codex exec, buffered output and transcript-file discovery. That preserves native workspace sandboxing but cannot represent live turn state, native approvals, interruption completion or connection loss reliably. This is separate from successful disposable codex exec workflow workers.
 
 ### Expected value
 
@@ -152,7 +152,7 @@ cleanup, live evidence run, or successor slice by itself.
 - replacing bounded codex exec workflow workers;
 - Codex-specific engine changes under src/lib or src/cmd;
 - WebSocket/remote-control transport;
-- DockPipe-fabricated automatic approval, silent authority expansion, inherited full access,
+- Dockpipe-fabricated automatic approval, silent authority expansion, inherited full access,
   thread shell-command, or raw protocol in Pipeon;
 - broad production abstraction beyond the named first Pipeon consumer.
 
@@ -160,7 +160,7 @@ cleanup, live evidence run, or successor slice by itself.
 
 - App Server runs on host; Codex native sandbox remains active.
 - Codex decides whether escalation is needed and may review it under the user-selected native policy;
-  DockPipe validates the policy, projects neutral records, and never fabricates approval.
+  Dockpipe validates the policy, projects neutral records, and never fabricates approval.
 - Host authority is never expanded silently or inferred from approval automation.
 - Adapter owns provider JSON-RPC; generic contracts expose provider-neutral events only.
 - Crash/disconnect is never reported as safe continued execution.
@@ -172,7 +172,7 @@ cleanup, live evidence run, or successor slice by itself.
 - stdio only initially; no external listener;
 - workspace-write/declared roots by default; broader access requires conspicuous per-session choice
   and must not be inherited accidentally; thread shell-command remains rejected;
-- expose only validated native reviewer modes; automatic review never means DockPipe blindly
+- expose only validated native reviewer modes; automatic review never means Dockpipe blindly
   approves, and approval automation never implies broader sandbox access;
 - approval uses process/thread/turn/item/request correlation and one-time persistence;
 - no credential copying; redact sensitive raw payloads;

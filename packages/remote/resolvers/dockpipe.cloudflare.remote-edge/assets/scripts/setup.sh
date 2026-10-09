@@ -3,6 +3,9 @@ set -euo pipefail
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 resolver_root="$(cd "$script_dir/../.." && pwd)"
+if [[ -d "$resolver_root/assets/tooling/bin" ]]; then
+  export PATH="$resolver_root/assets/tooling/bin:$PATH"
+fi
 edge_binary="${DOCKPIPE_CLOUDFLARE_EDGE_BIN:-$resolver_root/assets/tooling/bin/cloudflare-edge}"
 
 if [[ ! -x "$edge_binary" ]]; then

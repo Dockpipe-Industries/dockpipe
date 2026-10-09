@@ -1,7 +1,7 @@
 {
   "name": "dockpipe-language-support",
-  "displayName": "DockPipe Language Support",
-  "description": "PipeLang (.pipe) syntax + DockPipe workflow YAML IntelliSense.",
+  "displayName": "Dockpipe Language Support",
+  "description": "PipeLang (.pipe) syntax + Dockpipe workflow YAML IntelliSense.",
   "version": "0.0.1",
   "publisher": "dockpipe",
   "repository": {

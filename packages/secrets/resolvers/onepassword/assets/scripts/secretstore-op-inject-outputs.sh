@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Step 1 helper: op inject → file consumed by DockPipe outputs merge (next step sees KEY=VAL in env).
+# Step 1 helper: op inject → file consumed by Dockpipe outputs merge (next step sees KEY=VAL in env).
 # Requires: op, OP_ENV_FILE (default .env.op.template), SECRET_ENV_OUT (must match step outputs: path).
 set -euo pipefail
 

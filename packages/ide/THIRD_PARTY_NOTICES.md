@@ -1,7 +1,7 @@
 # Third-Party Notices
 
-The `ide` package contains DockPipe-authored resolver scripts and metadata for
-opening user-installed desktop editors against DockPipe-managed session
+The `ide` package contains Dockpipe-authored resolver scripts and metadata for
+opening user-installed desktop editors against Dockpipe-managed session
 containers.
 
 ## Editor Compatibility
@@ -11,9 +11,9 @@ containers.
 - `cursor-dev` is a compatibility resolver for a user-installed Cursor desktop
   application and its Dev Containers-style remote flow.
 
-DockPipe does not distribute Microsoft Visual Studio Code, Cursor, editor
+Dockpipe does not distribute Microsoft Visual Studio Code, Cursor, editor
 extension marketplace content, editor account credentials, or editor auth
-state in this package. The included icons are DockPipe generic artwork, not
+state in this package. The included icons are Dockpipe generic artwork, not
 Microsoft, Visual Studio Code, Cursor, or Anysphere product logos.
 
 Microsoft, Visual Studio Code, VS Code, Cursor, and Anysphere names belong to

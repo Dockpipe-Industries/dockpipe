@@ -46,7 +46,7 @@ PromptDialog::PromptDialog(const Spec &spec, QWidget *parent)
       m_mustExist(spec.mustExist)
 {
     setModal(true);
-    setWindowTitle(spec.title.isEmpty() ? tr("DockPipe Prompt") : spec.title);
+    setWindowTitle(spec.title.isEmpty() ? tr("Dockpipe Prompt") : spec.title);
     setMinimumWidth(560);
     resize(640, 0);
 
@@ -76,7 +76,7 @@ PromptDialog::PromptDialog(const Spec &spec, QWidget *parent)
     auto *eyebrow = new QLabel(eyebrowText, card);
     eyebrow->setObjectName(QStringLiteral("promptEyebrow"));
 
-    auto *title = new QLabel(spec.title.isEmpty() ? tr("DockPipe Prompt") : spec.title, card);
+    auto *title = new QLabel(spec.title.isEmpty() ? tr("Dockpipe Prompt") : spec.title, card);
     title->setObjectName(QStringLiteral("promptTitle"));
     title->setWordWrap(true);
 
@@ -193,7 +193,7 @@ void PromptDialog::buildChoiceUi()
     actionsLay->setContentsMargins(16, 16, 16, 16);
     actionsLay->setSpacing(10);
 
-    auto *hint = new QLabel(tr("Choose how DockPipe should continue."), actionsFrame);
+    auto *hint = new QLabel(tr("Choose how Dockpipe should continue."), actionsFrame);
     hint->setObjectName(QStringLiteral("promptHint"));
     actionsLay->addWidget(hint);
 
@@ -299,7 +299,7 @@ void PromptDialog::buildFileUi()
                 info = QFileInfo(QDir(m_baseDir).filePath(selected));
             const bool ok = (m_pathMode == QStringLiteral("open-dir")) ? info.exists() && info.isDir() : info.exists();
             if (!ok) {
-                QMessageBox::warning(this, tr("DockPipe Prompt"),
+                QMessageBox::warning(this, tr("Dockpipe Prompt"),
                                      (m_pathMode == QStringLiteral("open-dir"))
                                          ? tr("Choose an existing directory before continuing.")
                                          : tr("Choose an existing file before continuing."));
@@ -371,7 +371,7 @@ void PromptDialog::buildResourceUi()
                     info = QFileInfo(QDir(m_baseDir).filePath(entry));
                 const bool ok = (m_resourceKind == QStringLiteral("directory")) ? info.exists() && info.isDir() : info.exists();
                 if (!ok) {
-                    QMessageBox::warning(this, tr("DockPipe Prompt"),
+                    QMessageBox::warning(this, tr("Dockpipe Prompt"),
                                          (m_resourceKind == QStringLiteral("directory"))
                                              ? tr("Choose an existing directory before continuing.")
                                              : tr("Choose an existing file before continuing."));

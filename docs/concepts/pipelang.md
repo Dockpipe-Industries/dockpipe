@@ -1,6 +1,6 @@
 # PipeLang (v0.0.0.1)
 
-PipeLang is an optional typed authoring layer for DockPipe.
+PipeLang is an optional typed authoring layer for Dockpipe.
 
 It does not replace YAML workflows. YAML remains first-class.
 
@@ -15,7 +15,7 @@ Use PipeLang for:
 - defaults and documentation summaries close to the model
 - launcher/editor metadata derived from those types
 
-In `v0.0.0.1`, do not use PipeLang as a replacement for workflow execution logic. DockPipe still
+In `v0.0.0.1`, do not use PipeLang as a replacement for workflow execution logic. Dockpipe still
 runs normal workflow YAML.
 
 ## Scope in v0.0.0.1
@@ -82,7 +82,7 @@ types:
 
 This means:
 - the referenced `.pipe` file is the **entrypoint**
-- DockPipe reads the **module tree** rooted beside that file
+- Dockpipe reads the **module tree** rooted beside that file
 - sibling `.pipe` files in that module may contribute additional interfaces/classes
 - the selected entry type becomes the **root model** for tooling/catalog/launcher use
 
@@ -1093,7 +1093,7 @@ echo "$PIPELANG_IMAGE"
 
 PipeLang `v0.0.0.1` is an authoring/compiler feature.
 
-DockPipe execution still uses compiled YAML and existing workflow execution paths.
+Dockpipe execution still uses compiled YAML and existing workflow execution paths.
 
 `dockpipe run` does not parse PipeLang directly.
 
@@ -1130,7 +1130,7 @@ public semantic projection is independently versioned. Application IR and Servic
 the same semantic/Core foundation; neither reparses `.pipe` files nor defines language behavior.
 
 Pure compilation remains offline and deterministic. Executable entrypoints declare typed effects;
-ordinary external work still crosses the governed DockPipe workflow/package -> runtime -> resolver
+ordinary external work still crosses the governed Dockpipe workflow/package -> runtime -> resolver
 -> optional strategy boundary. Qt, Go, HTTP, browser, operating-system, and embedded behavior stays
 in target resolvers and cannot redefine or silently weaken PipeLang semantics.
 

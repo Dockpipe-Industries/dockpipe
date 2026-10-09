@@ -5,7 +5,7 @@ set -euo pipefail
 umask 077
 root="${DOCKPIPE_WORKDIR:?Run through package-store-staging-infra}"
 cli="${DOCKPIPE_BIN:-$root/src/bin/dockpipe}"
-[[ -x "$cli" ]] || { echo "Repo-local DockPipe binary is required" >&2; exit 1; }
+[[ -x "$cli" ]] || { echo "Repo-local Dockpipe binary is required" >&2; exit 1; }
 case "${DOCKPIPE_TF_COMMANDS:-plan}" in
   plan|init,plan|init,validate,plan) ;;
   *) echo "This workflow prepares a plan only; apply the reviewed saved plan separately." >&2; exit 1 ;;

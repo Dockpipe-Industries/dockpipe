@@ -76,7 +76,7 @@ func cmdTest(args []string) error {
 
 const testUsageText = `dockpipe test
 
-Run DockPipe-owned test hooks from the current project/workdir.
+Run Dockpipe-owned test hooks from the current project/workdir.
 
 By default this runs:
   - package tests declared via package.yml test.script

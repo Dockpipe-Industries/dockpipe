@@ -3527,7 +3527,7 @@ async function executeClaudeGuardedChat(root, text, signals, options: AnyRecord 
   if (options.onEvent) {
     options.onEvent("Starting Claude guarded bridge");
   }
-  options.channel?.appendLine("Claude direct chat: DorkPipe host MCP bridge -> guarded DockPipe workflow boundary");
+  options.channel?.appendLine("Claude direct chat: DorkPipe host MCP bridge -> guarded Dockpipe workflow boundary");
   const payload = await callHostMcpTool("dorkpipe.host_claude_chat", {
     workdir: root,
     message: text,
@@ -3997,7 +3997,7 @@ async function handleLocalCommand(root, rawText) {
           "",
           "- `Ollama stack` routes through the DorkPipe MCP boundary.",
           "- `Codex host exec` routes through the host MCP bridge, then runs `codex exec` with `--sandbox workspace-write`. Select `config` to use your host Codex config model.",
-          "- `Claude guarded` routes through the host MCP bridge, then through a guarded DockPipe workflow boundary.",
+          "- `Claude guarded` routes through the host MCP bridge, then through a guarded Dockpipe workflow boundary.",
           "- `/workflow <name>` launches a DorkPipe workflow for multi-step, risky, or agentic work.",
           "",
           "Use direct chat for one-worker answers. Use workflows when the task needs planning, verification, multiple workers, provider comparison, approvals, or durable artifacts.",
@@ -5590,7 +5590,7 @@ class PipeonChatViewProvider {
       content: yaml,
     });
     await vscode.window.showTextDocument(doc, { preview: false });
-    this.state.status = `Exported ${normalized.name} as DockPipe workflow YAML`;
+    this.state.status = `Exported ${normalized.name} as Dockpipe workflow YAML`;
     this.refresh();
   }
 

@@ -9,14 +9,14 @@ Planner output starts as a session artifact. It can become repo-owned configurat
 change is inside an allowed mutable surface, passes verification, and improves future runs without
 widening runtime authority.
 
-This keeps the useful part of agent-designed workflow shape while preserving DockPipe's governed
+This keeps the useful part of agent-designed workflow shape while preserving Dockpipe's governed
 runtime boundary.
 
 ## Layers
 
 | Layer | Owner | Durable by default | Examples |
 | --- | --- | --- | --- |
-| Hard runtime layer | DockPipe/DorkPipe | yes | mounts, access boundaries, auth, approval, publish/sync, budgets, destructive gates, operation-result logging |
+| Hard runtime layer | Dockpipe/DorkPipe | yes | mounts, access boundaries, auth, approval, publish/sync, budgets, destructive gates, operation-result logging |
 | Soft repo layer | repo | yes, when reviewed or verified | role definitions, recurring task templates, required artifacts, source-of-truth rules, prompt skeletons, stable dependency shapes |
 | Run planning layer | session | no | exact task split, lane choices, inferred extra artifacts, repair plan, experimental graph rewrites |
 
@@ -159,7 +159,7 @@ There are two valid executor modes:
 
 | Mode | Use when | Host authority |
 | --- | --- | --- |
-| Bridge mode | the master runs in Docker or another non-host-sandboxed lane | all host actions go through the governed DockPipe MCP or host bridge |
+| Bridge mode | the master runs in Docker or another non-host-sandboxed lane | all host actions go through the governed Dockpipe MCP or host bridge |
 | Native sandbox mode | the master executor has a trusted host sandbox and escalation runtime, such as Codex | safe host reads, edits, and commands may use the native sandbox path; privileged actions still require escalation |
 
 Both modes must emit the same structured request, approval, and operation-result events so CLI, UI,
@@ -168,7 +168,7 @@ logs, and artifacts do not depend on which model/provider executed the master ro
 Supported shape:
 
 - a master model plans, reads artifacts, and proposes next actions
-- privileged host actions go through a governed DockPipe MCP or host bridge
+- privileged host actions go through a governed Dockpipe MCP or host bridge
 - the bridge presents structured intent, risk, expected mutation, and required approval through the
   CLI first
 - the user or configured policy approves, denies, or escalates the request

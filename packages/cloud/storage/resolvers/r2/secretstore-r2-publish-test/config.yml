@@ -2,7 +2,7 @@
 #
 # Mapping (start here):
 #   - 1Password → env NAMES: edit .env.op.template under --workdir (see vars OP_ENV_FILE).
-#     Each line VAR=op://… ; op inject fills values; DockPipe passes VAR to step 2 unchanged.
+#     Each line VAR=op://… ; op inject fills values; Dockpipe passes VAR to step 2 unchanged.
 #   - Hint list only: packages/secrets/resolvers/onepassword/profile (DOCKPIPE_RESOLVER_ENV).
 #   - r2-publish vars: packages/cloud/storage/resolvers/r2/dockpipe.cloudflare.r2publish/README.md
 # Full walkthrough: README.md in this directory.
@@ -17,7 +17,7 @@
 name: secretstore-r2-publish-test
 workflow_type: secretstore
 description: >-
-  Test pipeline: op inject secrets into an outputs file, DockPipe merges into env, then r2-publish.
+  Test pipeline: op inject secrets into an outputs file, Dockpipe merges into env, then r2-publish.
 platforms: [windows, deb]
 dependencies:
   host:

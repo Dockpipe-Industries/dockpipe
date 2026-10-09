@@ -107,7 +107,7 @@
         "mode": {
           "type": "string",
           "enum": ["managed", "bind"],
-          "description": "Workspace storage mode. managed creates a DockPipe-owned session workspace; bind opts into the current checkout."
+          "description": "Workspace storage mode. managed creates a Dockpipe-owned session workspace; bind opts into the current checkout."
         },
         "base": {
           "type": "string",
@@ -804,7 +804,7 @@
       "description": "Host platforms this workflow supports. Host steps and required dependencies must work on every declared platform.",
       "items": {
         "type": "string",
-        "enum": ["windows", "macos", "linux", "deb"]
+        "enum": ["windows", "macos", "linux", "deb", "flatpak"]
       }
     },
     "imports": {
@@ -918,7 +918,7 @@
     "compile_hooks": {
       "type": "array",
       "items": { "type": "string" },
-      "description": "Shell commands run by dockpipe package compile against the staged package copy after validation and before packaging. DockPipe exports DOCKPIPE_COMPILE_KIND, DOCKPIPE_COMPILE_WORKDIR, DOCKPIPE_COMPILE_SOURCE_DIR, and DOCKPIPE_COMPILE_STAGING_DIR."
+      "description": "Shell commands run by dockpipe package compile against the staged package copy after validation and before packaging. Dockpipe exports DOCKPIPE_COMPILE_KIND, DOCKPIPE_COMPILE_WORKDIR, DOCKPIPE_COMPILE_SOURCE_DIR, and DOCKPIPE_COMPILE_STAGING_DIR."
     },
     "types": {
       "type": "array",

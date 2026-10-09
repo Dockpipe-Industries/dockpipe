@@ -23,7 +23,7 @@ type usageSection struct {
 var mainUsageSections = []usageSection{
 	{
 		intro: []string{
-			"DockPipe — run anything, anywhere, in isolation.",
+			"Dockpipe — run anything, anywhere, in isolation.",
 		},
 	},
 	{
@@ -68,7 +68,7 @@ var mainUsageSections = []usageSection{
 	{
 		title: "Commands",
 		entries: []usageEntry{
-			{"init", "Add DockPipe to the current project"},
+			{"init", "Add Dockpipe to the current project"},
 			{"install", "Fetch templates/core from HTTPS (e.g. Cloudflare R2); see install core --help"},
 			{"clone <name>", "Copy a compiled workflow package to workflows/ when allow_clone is true (see package manifest)"},
 			{"build", "Compile packages into bin/.dockpipe/internal and prebuild Dockerfile image artifacts"},
@@ -78,16 +78,16 @@ var mainUsageSections = []usageSection{
 			{"test [package|workflow]", "Run package-owned tests and workflow-local tests for the current project/workdir"},
 			{"compile", "Same as dockpipe package compile (core, resolvers, workflows)"},
 			{"release upload", "Upload a file to S3-compatible storage (self-hosted; uses aws CLI)"},
-			{"workflow validate|list", "Validate YAML or print the DockPipe-resolved workflow catalog"},
+			{"workflow validate|list", "Validate YAML or print the Dockpipe-resolved workflow catalog"},
 			{"session list|inspect|switch|publish", "Inspect and publish runtime-owned Git session workspaces"},
 			{"remote setup|serve|pair|worker|submit", "Pair outbound nodes and execute approved local workflows"},
-			{"catalog list", "Print the DockPipe-owned launcher/tooling catalog (workflows, resolvers, strategies, runtimes)"},
+			{"catalog list", "Print the Dockpipe-owned launcher/tooling catalog (workflows, resolvers, strategies, runtimes)"},
 			{"pipelang check|compile|invoke|materialize", "PipeLang typed authoring helpers"},
 			{"doctor", "Check docker, bash, and bundled assets"},
 			{"core script-path <dots>", "Print absolute path to a core asset (same as scripts/core.<dots> in YAML)"},
-			{"get <field> [--workdir]", "Print generic DockPipe context like workdir or dockpipe_bin"},
+			{"get <field> [--workdir]", "Print generic Dockpipe context like workdir or dockpipe_bin"},
 			{"scope [--package <name>]", "Print current workflow/package scope JSON or resolve a scope path"},
-			{"sdk [--workdir]", "Emit shell bootstrap for the DockPipe SDK object"},
+			{"sdk [--workdir]", "Emit shell bootstrap for the Dockpipe SDK object"},
 			{"result --unit <name> --status <status>", "Emit a canonical operation-result line and optional JSONL event"},
 			{"terraform pipeline-path | terraform run <cmds>", "Terraform helpers (see dockpipe terraform --help)"},
 			{"runs list|events [--workdir]", "List host-run records or inspect operation event JSONL logs"},
@@ -121,7 +121,7 @@ var initUsageSections = []usageSection{
 	{
 		title: "Usage",
 		entries: []usageEntry{
-			{"dockpipe init [flags]", "Create a blank project scaffold plus workflows/example/ when no DockPipe workflows exist yet"},
+			{"dockpipe init [flags]", "Create a blank project scaffold plus workflows/example/ when no Dockpipe workflows exist yet"},
 			{"dockpipe init <name> [flags]", "Create workflows/<name>/config.yml as an empty starter (see --workflows-dir)"},
 			{"dockpipe init <name> --from <src>", "Copy a bundled template or filesystem path into workflows/<name>/"},
 		},

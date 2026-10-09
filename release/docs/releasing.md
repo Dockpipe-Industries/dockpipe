@@ -74,7 +74,7 @@ PipeLang's compiler campaigns remain under `tests/containedexec/` and must pass 
 If/when this repo publishes `pipeon-desktop` updater artifacts, keep the updater scope narrow:
 
 - updater artifacts may replace the **Tauri desktop shell** only
-- updater artifacts must **not** bundle the Pipeon code-server image, Pipeon VSIX, stock VS Code, Cursor, or unrelated DockPipe/DorkPipe binaries
+- updater artifacts must **not** bundle the Pipeon code-server image, Pipeon VSIX, stock VS Code, Cursor, or unrelated Dockpipe/DorkPipe binaries
 
 Treat the Pipeon desktop shell and the Pipeon editor/runtime surface as **separate distribution lanes**:
 

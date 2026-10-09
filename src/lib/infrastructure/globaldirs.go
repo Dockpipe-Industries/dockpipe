@@ -12,10 +12,10 @@ import (
 // envGlobalRoot overrides GlobalDockpipeDataDir (absolute path recommended).
 const envGlobalRoot = "DOCKPIPE_GLOBAL_ROOT"
 
-// envSystemRoot overrides the system-shared DockPipe data root used by OS package installs.
+// envSystemRoot overrides the system-shared Dockpipe data root used by OS package installs.
 const envSystemRoot = "DOCKPIPE_SYSTEM_ROOT"
 
-// GlobalDockpipeDataDir returns the OS-appropriate root for user-wide DockPipe data:
+// GlobalDockpipeDataDir returns the OS-appropriate root for user-wide Dockpipe data:
 //   - Windows: %LOCALAPPDATA%\dockpipe (or %USERPROFILE%\AppData\Local\dockpipe if LOCALAPPDATA unset)
 //   - macOS:   ~/Library/Application Support/dockpipe
 //   - other:   $XDG_DATA_HOME/dockpipe, else ~/.local/share/dockpipe
@@ -92,7 +92,7 @@ func GlobalPackagesResolversDir() (string, error) {
 	return filepath.Join(root, "resolvers"), nil
 }
 
-// SystemDockpipeDataDirs returns candidate system-shared DockPipe data roots used by
+// SystemDockpipeDataDirs returns candidate system-shared Dockpipe data roots used by
 // OS package installs. These are searched after the per-user global root.
 //
 // Override with DOCKPIPE_SYSTEM_ROOT for tests or custom layouts.
@@ -164,7 +164,7 @@ func uniqueExistingLikeDirs(roots []string, suffix string) []string {
 }
 
 // GlobalImagesRoot holds user-wide image artifact records and indexes.
-// Docker layers still live in the Docker daemon/registry; this directory is DockPipe metadata only.
+// Docker layers still live in the Docker daemon/registry; this directory is Dockpipe metadata only.
 func GlobalImagesRoot() (string, error) {
 	root, err := GlobalDockpipeDataDir()
 	if err != nil {

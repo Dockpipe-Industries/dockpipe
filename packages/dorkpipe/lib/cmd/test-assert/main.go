@@ -123,7 +123,7 @@ func assertOrchestrationLanesInitial(root string) {
 	assertNotContains(prompt, "### contract_brain")
 	assertNotContains(prompt, "### workflow_brain")
 	assertContains(prompt, "AGENTS.md context:")
-	assertContains(prompt, "DockPipe Root Router")
+	assertContains(prompt, "Dockpipe Root Router")
 	graphTasks := taskMap(readJSON(filepath.Join(root, "task-graph.json")), "id")
 	assert(graphTasks["contract_brain"]["worker_type"] == "planning", "unexpected contract_brain worker_type")
 	assert(graphTasks["workflow_brain"]["worker_type"] == "planning", "unexpected workflow_brain worker_type")
@@ -252,7 +252,7 @@ func assertOrchestrationCompare(root string) {
 		assertContains(prompt, "Return only the requested artifact content.")
 		assertContains(prompt, "Do not create or describe task.json")
 		assertContains(prompt, "AGENTS.md context:")
-		assertContains(prompt, "DockPipe Root Router")
+		assertContains(prompt, "Dockpipe Root Router")
 		assertContains(prompt, "Briefing context excerpts:")
 		assertContains(prompt, "shared/repo-map.md")
 		if provider == "ollama" {

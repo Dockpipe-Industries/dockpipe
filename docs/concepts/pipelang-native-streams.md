@@ -22,7 +22,7 @@ public Class Transfer {
 `Codec.compressStream` is a manifest alias, not a compiler builtin. Nucleon's own
 SDK declares `Nucleon.compressStream` and `Nucleon.decompressStream`. Its manifest,
 `.pipe` facade, native adapter and compiled codec live in the private Nucleon repo.
-DockPipe contains only the generic compiler/type/runtime boundary.
+Dockpipe contains only the generic compiler/type/runtime boundary.
 
 The first profile admits public, stateless classes whose methods return one direct
 native call. Each method takes exactly one `ReadStream`, one `WriteStream`, and one
@@ -237,7 +237,7 @@ separate from these explicit application APIs.
 
 Nucleon has two intended consumers of the same private SDK:
 
-1. PipeLang/DockPipe internals: compressed executable artifacts, and future selected
+1. PipeLang/Dockpipe internals: compressed executable artifacts, and future selected
    cache, package and transport paths. Developers should benefit without calling
    compression themselves when those integrations are enabled.
 2. Developer applications: explicit native `.pipe` SDK calls with typed results and
@@ -253,4 +253,4 @@ Promotion should use a generic codec/provider boundary in the owning runtime or
 package layer, with format/version identity, integrity checks, resource limits,
 SDK availability and an ordinary representation for unsupported cases. Measure
 whole-workflow costs before choosing defaults. Codec implementation/model sources
-remain in Nucleon; enabling an internal integration must not copy them into DockPipe.
+remain in Nucleon; enabling an internal integration must not copy them into Dockpipe.

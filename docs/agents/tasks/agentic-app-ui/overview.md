@@ -2,8 +2,8 @@
 
 ## Goal
 
-Design and build ForgePipe, a standalone DockPipe-launched agentic app for creating, editing, running, and
-inspecting DockPipe/DorkPipe workflows through a clean modern interface.
+Design and build ForgePipe, a standalone Dockpipe-launched agentic app for creating, editing, running, and
+inspecting Dockpipe/DorkPipe workflows through a clean modern interface.
 
 The app should make the YAML contracts approachable without replacing them. Workflow, agent, MCP,
 model-lane, approval, and package contracts should still derive from durable YAML and package-owned
@@ -11,9 +11,9 @@ catalogs.
 
 ## Current Decisions
 
-- Build ForgePipe as a standalone app launched by DockPipe, using the same launcher-context model as
+- Build ForgePipe as a standalone app launched by Dockpipe, using the same launcher-context model as
   Pipeon.
-- Treat the app as a control and inspection surface over DockPipe, not a second runtime.
+- Treat the app as a control and inspection surface over Dockpipe, not a second runtime.
 - Keep YAML and package-owned catalogs as the durable source of truth.
 - Use one shared local/server API for desktop Qt, Qt mobile, and web clients.
 - Use the CLI/master protocol and operation-result stream for execution, approvals, logs, artifacts,
@@ -44,7 +44,7 @@ catalogs.
 
 ## Product Shape
 
-ForgePipe is a standalone application invoked through the same DockPipe launcher model as Pipeon. It
+ForgePipe is a standalone application invoked through the same Dockpipe launcher model as Pipeon. It
 inherits execution context from the launcher: selected repo, workflow/package context, environment,
 scopes, and runtime/session identity.
 

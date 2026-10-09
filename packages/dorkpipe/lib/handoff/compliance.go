@@ -18,7 +18,7 @@ func ComplianceSummary(workdir string) (string, error) {
 	}
 
 	var b strings.Builder
-	b.WriteString("\n=== DockPipe — compliance & security posture handoff (signals only) ===\n")
+	b.WriteString("\n=== Dockpipe — compliance & security posture handoff (signals only) ===\n")
 	b.WriteString("Read: docs/runtime/artifacts.md\n\n")
 
 	findingsPath, findingsErr := statepaths.PackageCIFindingsPath(root)

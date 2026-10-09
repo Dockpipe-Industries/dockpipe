@@ -2,7 +2,7 @@
 
 ## Goal
 
-Make DockPipe work on Arch Linux with a truthful rolling-release support policy that qualifies
+Make Dockpipe work on Arch Linux with a truthful rolling-release support policy that qualifies
 current repository state instead of pretending a monthly installer image is a long-lived baseline.
 
 ## Scope

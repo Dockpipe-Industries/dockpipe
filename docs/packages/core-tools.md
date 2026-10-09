@@ -2,7 +2,7 @@
 
 | Area | Code / doc |
 |------|------------|
-| **DockPipe** | **`src/cmd/`**, **`src/lib/`** |
+| **Dockpipe** | **`src/cmd/`**, **`src/lib/`** |
 | **DorkPipe** | Maintainer **`dorkpipe`** package — **`packages/dorkpipe/lib/README.md`** |
 | **Pipeon** | First-party **`packages/pipeon/`** — **`packages/pipeon/resolvers/pipeon/README.md`** (VS Code extension under **`vscode-extension/`**) |
 | **MCP** | **DorkPipe-owned MCP bridge** — **`packages/dorkpipe-mcp/README.md`** |
@@ -17,7 +17,7 @@ make dev-install
 dockpipe package build
 ```
 
-- **`make build`** builds the DockPipe CLI and DockPipe Launcher for this checkout.
+- **`make build`** builds the Dockpipe CLI and Dockpipe Launcher for this checkout.
 - **`make dev-install`** is a repo-contributor convenience: it installs the freshly built `dockpipe` into your local user PATH so plain `dockpipe ...` resolves to the new build.
 - **`dockpipe package build`** runs package-owned source builds for packages that declare **`build.source.script`** in **`package.yml`**.
 - **`dockpipe package test`** runs package-owned tests for packages that declare **`test.script`** in **`package.yml`**.

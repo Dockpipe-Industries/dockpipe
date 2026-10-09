@@ -1,4 +1,4 @@
-// Package envfile parses DockPipe dotenv-style environment files.
+// Package envfile parses Dockpipe dotenv-style environment files.
 package envfile
 
 import (

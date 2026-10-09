@@ -1,6 +1,6 @@
 # Security Policy
 
-DockPipe security policy is part of the runtime/isolation layer. Workflow YAML
+Dockpipe security policy is part of the runtime/isolation layer. Workflow YAML
 declares high-level intent; compile resolves that intent into an effective
 runtime/security manifest; run consumes the compiled truth.
 
@@ -20,7 +20,7 @@ The default posture is intentionally conservative:
 - PID/resource limits when configured
 
 Actual enforcement is recorded in the compiled manifest so users can see what
-DockPipe applied.
+Dockpipe applied.
 
 ## Public YAML
 
@@ -74,7 +74,7 @@ inside the child workflow.
 | `restricted` | Baseline-deny intent with curated allowances. |
 | `internet` | Normal outbound access, still with filesystem/process hardening. |
 
-DockPipe records whether enforcement is `native`, `proxy`, or `advisory`.
+Dockpipe records whether enforcement is `native`, `proxy`, or `advisory`.
 Domain allow/block rules are not something Docker enforces cleanly by itself, so
 the effective manifest and logs must be honest about coverage.
 

@@ -4,7 +4,7 @@ Read when routing tasks to DorkPipe skills or rendering assistant-specific skill
 
 ## Principle
 
-Skill ids are target-independent. Codex and Claude are render targets/adapters, not DockPipe concepts.
+Skill ids are target-independent. Codex and Claude are render targets/adapters, not Dockpipe concepts.
 
 Use:
 

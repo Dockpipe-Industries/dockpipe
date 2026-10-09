@@ -74,7 +74,7 @@ name: ci-pack
 version: 1.0.0
 title: CI Pack
 description: CI workflows
-author: DockPipe
+author: Dockpipe
 website: https://example.com
 license: Apache-2.0
 kind: workflow
@@ -442,7 +442,7 @@ name: ci-pack
 version: 1.0.0
 title: CI Pack
 description: CI workflows
-author: DockPipe
+author: Dockpipe
 website: https://example.com
 license: Apache-2.0
 kind: workflow

@@ -1,14 +1,14 @@
 # Repository maintainer Makefile.
 #
-# This file is a convenience layer for working inside the DockPipe source checkout.
+# This file is a convenience layer for working inside the Dockpipe source checkout.
 # It is not the package/runtime contract itself. Product/package lifecycle behavior
-# should live behind DockPipe commands such as:
+# should live behind Dockpipe commands such as:
 #   dockpipe build
 #   dockpipe package build
 #
 # Main local dev entrypoint:
 #   make build
-#     Builds DockPipe core + DockPipe Launcher for this checkout.
+#     Builds Dockpipe core + Dockpipe Launcher for this checkout.
 #
 # Contributors who want plain `dockpipe ...` on PATH should run:
 #   make dev-install
@@ -33,7 +33,7 @@ build-dockpipe-launcher:
 maintainer-tools: build
 	./src/bin/dockpipe package build --workdir .
 
-# Repo test sweep: core Go tests plus DockPipe-owned package/workflow test hooks.
+# Repo test sweep: core Go tests plus Dockpipe-owned package/workflow test hooks.
 test: build
 	go test ./...
 	./src/bin/dockpipe test --workdir .
@@ -46,7 +46,7 @@ install-dockpipe-launcher: build-dockpipe-launcher
 	cp -R src/app/tooling/dockpipe-launcher/resources/icons/hicolor/. bin/.dockpipe/tooling/share/icons/hicolor/
 	install -m 644 src/app/tooling/dockpipe-launcher/resources/images/dockpipe-launcher.png bin/.dockpipe/tooling/share/icons/dockpipe-launcher.png
 
-# Internal/local desktop helper: installs the repo-built DockPipe Launcher under ~/.local/share.
+# Internal/local desktop helper: installs the repo-built Dockpipe Launcher under ~/.local/share.
 install-dockpipe-launcher-global: install-dockpipe-launcher
 	mkdir -p "$$HOME/.local/share/dockpipe/bin"
 	mkdir -p "$$HOME/.local/share/dockpipe/icons"
@@ -59,7 +59,7 @@ install-dockpipe-launcher-global: install-dockpipe-launcher
 	printf '%s\n' \
 		'[Desktop Entry]' \
 		'Type=Application' \
-		'Name=DockPipe Launcher' \
+		'Name=Dockpipe Launcher' \
 		'Exec=/usr/bin/env -u DESKTOP_STARTUP_ID -u XDG_ACTIVATION_TOKEN '"$$HOME"'/.local/share/dockpipe/bin/dockpipe-launcher --start-home' \
 		'Icon=dockpipe-launcher' \
 		'Terminal=false' \
@@ -70,7 +70,7 @@ install-dockpipe-launcher-global: install-dockpipe-launcher
 		> "$$HOME/.local/share/applications/dockpipe-launcher.desktop"
 	if command -v update-desktop-database >/dev/null 2>&1; then update-desktop-database "$$HOME/.local/share/applications" >/dev/null 2>&1 || true; fi
 
-# Package DockPipe language support extension (.vsix).
+# Package Dockpipe language support extension (.vsix).
 package-dockpipe-language-support:
 	mkdir -p bin/.dockpipe/extensions
 	cd src/app/tooling/vscode-extensions/dockpipe-language-support && if [ ! -x node_modules/.bin/vsce ]; then NPM_CONFIG_CACHE=$$(pwd)/../../../../../bin/.dockpipe/build/npm-cache npm ci --no-audit --no-fund; fi && NPM_CONFIG_CACHE=$$(pwd)/../../../../../bin/.dockpipe/build/npm-cache node node_modules/@vscode/vsce/vsce package --no-dependencies -o ../../../../../bin/.dockpipe/extensions/dockpipe-language-support-$$(node -p "require('./package.json').version").vsix
@@ -78,17 +78,17 @@ package-dockpipe-language-support:
 # Back-compat alias.
 package-vscode-language-support: package-dockpipe-language-support
 
-# Build + install DockPipe language support into Cursor (fallback: VS Code CLI).
+# Build + install Dockpipe language support into Cursor (fallback: VS Code CLI).
 install-dockpipe-language-support: package-dockpipe-language-support
 	VSIX="$$(ls -1t bin/.dockpipe/extensions/dockpipe-language-support-*.vsix | head -n1)"; \
 	INSTALLED=0; \
 	if command -v cursor >/dev/null 2>&1; then \
-	  echo "[dockpipe] installing DockPipe language support into Cursor: $$VSIX"; \
+	  echo "[dockpipe] installing Dockpipe language support into Cursor: $$VSIX"; \
 	  cursor --install-extension "$$VSIX" --force; \
 	  INSTALLED=1; \
 	fi; \
 	if command -v code >/dev/null 2>&1; then \
-	  echo "[dockpipe] installing DockPipe language support into VS Code: $$VSIX"; \
+	  echo "[dockpipe] installing Dockpipe language support into VS Code: $$VSIX"; \
 	  code --install-extension "$$VSIX" --force; \
 	  INSTALLED=1; \
 	fi; \

@@ -13,7 +13,7 @@ public Interface IWindowsVmStorage
     [EnvName = "DOCKPIPE_VM_DISK_BUS"]
     public string DiskBus;
 
-    /// <summary>Optional installer disk size; when omitted DockPipe prompts with a suggested default.</summary>
+    /// <summary>Optional installer disk size; when omitted Dockpipe prompts with a suggested default.</summary>
     [DisplayName = "Disk Size"]
     [EnvName = "DOCKPIPE_VM_DISK_SIZE"]
     public string DiskSize;

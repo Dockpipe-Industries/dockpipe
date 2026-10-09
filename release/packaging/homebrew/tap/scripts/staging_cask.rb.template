@@ -4,8 +4,8 @@ cask "dockpipe-desktop-staging" do
 
 @PLATFORMS@
 
-  name "DockPipe Desktop (staging)"
-  desc "Desktop launcher and command-line runtime for DockPipe workflows"
+  name "Dockpipe Desktop (staging)"
+  desc "Desktop launcher and command-line runtime for Dockpipe workflows"
   homepage "https://github.com/Dockpipe-Industries/dockpipe"
 
   depends_on macos: ">= :ventura"
@@ -14,7 +14,7 @@ cask "dockpipe-desktop-staging" do
   app "DockPipe.app"
 
   caveats <<~EOS
-    This is a staging candidate. Open DockPipe from Applications.
+    This is a staging candidate. Open Dockpipe from Applications.
     The dockpipe command is provided by the dockpipe-staging formula.
     Use this cask or the direct DMG installer, not both.
     Unsigned staging builds have not passed Apple's notarization checks.

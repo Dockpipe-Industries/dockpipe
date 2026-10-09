@@ -75,7 +75,7 @@ A future generic primitive should:
 - fail explicitly when a required toolchain is absent or incompatible
 - keep toolchain installation/fetching separate from ordinary builds unless explicitly requested
 
-Do not settle command spelling here. `dockpipe compile` already means DockPipe package compilation.
+Do not settle command spelling here. `dockpipe compile` already means Dockpipe package compilation.
 `dockpipe target build ...` is an illustrative possibility only, not accepted syntax.
 
 ## Related Ownership

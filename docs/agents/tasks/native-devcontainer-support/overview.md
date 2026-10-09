@@ -27,7 +27,7 @@ approval, adapter-result, ownership-record, and event contract.
 - What is the bounded cross-platform live `up` adapter and reconciliation contract after the current
   pinned read-only CLI verification and fixture-only managed result?
 - How do Docker Compose-based definitions, features, mounts, `remoteUser`, forwarded ports, and
-  rebuild requirements map to bounded DockPipe operation-result events?
+  rebuild requirements map to bounded Dockpipe operation-result events?
 - How should Pipeon expose readiness, build progress, logs, container identity, attach targets, and
   repair actions while preserving the CLI as the execution authority?
 - Can the DorkPipe provider pool safely use a ready Dev Container as a declared execution location,
@@ -55,11 +55,11 @@ approval, adapter-result, ownership-record, and event contract.
 ## Safety And Boundary Rules
 
 - Keep Dev Container-specific resolution, CLI integration, and Docker behavior package/resolver
-  owned unless research identifies a genuinely generic DockPipe primitive.
+  owned unless research identifies a genuinely generic Dockpipe primitive.
 - Never auto-run a discovered configuration. Builds, pulls, feature installation, Compose changes,
   stop/remove, rebuild, and host-editor launch require explicit intent and applicable approval.
 - Respect the user's existing containers and labels. Do not stop, remove, or rebuild a container
-  not proven to belong to the selected definition and requested DockPipe session.
+  not proven to belong to the selected definition and requested Dockpipe session.
 - Do not copy repository contents into a Pipeon volume when the Dev Container contract already owns
   workspace mounting. Do not infer editor attachment state from unsupported host process heuristics.
 - Treat secrets only as existing Dev Container references or governed secret references; never read

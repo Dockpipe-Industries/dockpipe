@@ -191,7 +191,7 @@ pipeon_stack_code_server_extensions_dir() {
 }
 
 pipeon_stack_prepare_code_server_state() {
-  local workdir legacy_root home_status user_status runtime_root
+  local workdir legacy_root home_status user_status runtime_root mount_path
   workdir="$(pipeon_stack_workdir)" || return
   legacy_root="$(pipeon_stack_legacy_state_dir)" || return
   runtime_root="$(pipeon_stack_state_dir)" || return
@@ -223,6 +223,13 @@ pipeon_stack_prepare_code_server_state() {
   IFS=$'\t' read -r PIPEON_CODE_SERVER_DURABLE_USER_ROOT _ <<<"$user_status"
 
   PIPEON_CODE_SERVER_DURABLE_HOME="$(dockpipe __state private-directory --root "$PIPEON_CODE_SERVER_DURABLE_HOME_ROOT" --path home)" || return
+  # Docker otherwise creates nested mount targets in the bind-mounted home as
+  # its daemon user. Keep the durable home owned by the launching user so the
+  # next launch passes the same ownership checks as the first.
+  for mount_path in .cache .dotnet .local/share/code-server .local/share/code-server-extensions; do
+    dockpipe __state private-directory --root "$PIPEON_CODE_SERVER_DURABLE_HOME_ROOT" \
+      --path "home/$mount_path" >/dev/null || return
+  done
   pipeon_stack_code_server_user_dir >/dev/null || return
   pipeon_stack_code_server_machine_dir >/dev/null || return
   pipeon_stack_code_server_extensions_dir >/dev/null || return
@@ -378,7 +385,25 @@ pipeon_stack_build_script() {
   printf '%s/packages/pipeon/assets/scripts/build.sh\n' "$repo_root"
 }
 
+pipeon_stack_packaged_context() {
+  local assets
+  assets="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+  if [[ -f "$assets/code-server-context/packages/pipeon/resolvers/pipeon/vscode-extension/Dockerfile.code-server" ]]; then
+    printf '%s/code-server-context\n' "$assets"
+    return 0
+  fi
+  return 1
+}
+
 pipeon_stack_code_server_image_signature() {
+  local packaged_context
+  if packaged_context="$(pipeon_stack_packaged_context)"; then
+    (
+      cd "$packaged_context"
+      find . -type f -print0 | sort -z | xargs -0 sha256sum | sha256sum | awk '{print $1}'
+    )
+    return
+  fi
   local repo_root
   repo_root="$(pipeon_stack_repo_root)"
   local python_bin
@@ -747,6 +772,9 @@ install_with_zypper() {
 
 if command -v nvidia-ctk >/dev/null 2>&1; then
   :
+elif [[ -e /run/ostree-booted ]]; then
+  echo "pipeon-dev-stack: configure NVIDIA Container Toolkit using your atomic OS's supported host setup, then retry; CPU mode remains available" >&2
+  exit 2
 elif command -v apt-get >/dev/null 2>&1; then
   install_with_apt
 elif command -v dnf >/dev/null 2>&1; then
@@ -776,6 +804,13 @@ EOF
 
 pipeon_stack_run_gpu_setup_script() {
   local script_path="$1"
+  if [[ -n "${FLATPAK_ID:-}" ]]; then
+    dockpipe-host-command pkexec env PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \
+      "PIPEON_GPU_SETUP_ORIGINAL_USER=${PIPEON_GPU_SETUP_ORIGINAL_USER:-${USER:-}}" \
+      "PIPEON_GPU_SETUP_ORIGINAL_HOME=${PIPEON_GPU_SETUP_ORIGINAL_HOME:-$HOME}" \
+      bash "$script_path"
+    return $?
+  fi
   if [[ -n "${DISPLAY:-}${WAYLAND_DISPLAY:-}" ]] && command -v pkexec >/dev/null 2>&1; then
     pkexec env PATH="$PATH" bash "$script_path"
     return $?
@@ -871,7 +906,7 @@ configure_pipeon_stack_gpu() {
                   dockpipe_sdk prompt confirm \
                     --id pipeon_enable_docker_gpu_access_confirm \
                     --title "Allow Docker GPU Setup?" \
-                    --message "DockPipe will try to change this system by installing GPU container support, updating Docker runtime configuration, and restarting Docker. Continue?" \
+                    --message "Dockpipe will try to change this system by installing GPU container support, updating Docker runtime configuration, and restarting Docker. Continue?" \
                     --default no \
                     --intent host-mutation \
                     --automation-group system-changes \
@@ -905,7 +940,7 @@ configure_pipeon_stack_gpu() {
           else
             pipeon_stack_explain_docker_gpu_setup
             printf '[pipeon-dev-stack] Ollama GPU: continuing on CPU for this launch\n' >&2
-            echo "pipeon-dev-stack: continuing on CPU because no interactive DockPipe SDK prompt was available" >&2
+            echo "pipeon-dev-stack: continuing on CPU because no interactive Dockpipe SDK prompt was available" >&2
           fi
         fi
       else
@@ -1026,7 +1061,9 @@ REPO_ROOT=$repo_root
 PIPEON_DEV_STACK_WORKDIR=$workdir
 PIPEON_DEV_STACK_REPO_ROOT=$repo_root
 PIPEON_DEV_STACK_CONTEXT_DIR=$context_dir
+PIPEON_DEV_STACK_PROXY_SCRIPT=$context_dir/mcp-proxy.js
 PIPEON_DEV_STACK_MCP_PORT=$(pipeon_stack_mcp_port)
+PIPEON_DEV_STACK_IMAGE=${PIPEON_DEV_STACK_IMAGE:-dockpipe-dorkpipe-stack:latest}
 PIPEON_DEV_STACK_MCP_API_KEY_FILE=$api_key_file
 PIPEON_DEV_STACK_MCP_TLS_CERT_FILE=$tls_cert_file
 PIPEON_DEV_STACK_MCP_TLS_KEY_FILE=$tls_key_file

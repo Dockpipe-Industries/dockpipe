@@ -4,7 +4,7 @@
   owns the transport-neutral machine, capability snapshot, lease, event, cancellation, receipt,
   placement, and connector authority model. TASK-019 should adapt it, not invent a parallel remote
   execution contract.
-- [TASK-008 ForgePipe Agentic App UI](../agentic-app-ui/overview.md) owns general DockPipe/DorkPipe run,
+- [TASK-008 ForgePipe Agentic App UI](../agentic-app-ui/overview.md) owns general Dockpipe/DorkPipe run,
   approval, log, artifact, and inspection UX. A Freenet application remains a domain adapter rather
   than a second approval or execution system.
 - [TASK-001 Operation Results Contract Rollout](../closed/operation-results-contract.md) owns the
@@ -17,11 +17,11 @@
 
 - implementing any part of the integration in this backlog-only task
 - describing Freenet contracts or delegates as general-purpose native compute workers
-- adding a `freenet` DockPipe runtime or resolver without a later ADR and generic evidence
+- adding a `freenet` Dockpipe runtime or resolver without a later ADR and generic evidence
 - modifying Freenet Core for the first proof unless current public APIs are proven insufficient and
   upstream explicitly agrees on the seam
 - adding Freenet-specific behavior to `src/lib/` or `src/cmd/`
-- exposing an inbound public DockPipe listener, generic remote shell, or arbitrary command field
+- exposing an inbound public Dockpipe listener, generic remote shell, or arbitrary command field
 - putting secrets, private source, credentials, large logs, or raw artifacts in public contract state
 - treating a claim, connection, capability advertisement, status, signature, delegate approval,
   attestation, or artifact reference as proof of honest execution or broad lifecycle authority

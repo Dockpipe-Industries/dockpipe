@@ -8,14 +8,14 @@ Scope: explicit native-stream v3 with borrowed host-owned sessions and buffers,
 per-call consumption/production, cumulative counters, final-input signaling and
 typed backpressure/completion. Preserve v1/v2 and the current pure-language work.
 Nucleon owns the adapter, session lifetime/options/cancellation, operation/manifest
-identity, CMake packaging and runnable example. DockPipe owns only generic types,
+identity, CMake packaging and runnable example. Dockpipe owns only generic types,
 source/IR admission, independent evaluation, C++ generation and the compiler CLI.
 
 The application resubmits unconsumed input and schedules further calls; no hidden
 whole-stream loop sits in the adapter. The source cannot construct or retain raw
 buffers/session handles. Codec CPU work remains synchronous. General async language
 semantics, internal artifact format/default migration and throughput claims are not
-part of this capability. No DockPipe commit or remote publication was requested.
+part of this capability. No Dockpipe commit or remote publication was requested.
 
 Canonical contract: [native streams](../../../concepts/pipelang-native-streams.md).
 
@@ -51,7 +51,7 @@ Generic receipts and source/compiler identities are retained at
 `/home/jamie/.codex/visualizations/2026/09/16/01a0ac95-5a43-7013-a865-a6c1941137a4/pipelang-incremental-20260918/`.
 SDK logs/installations are in Nucleon's
 `build/20260918-pipelang-incremental-{release,asan}/` directories. Initial failure
-receipts remain. No new generated artifact is added to DockPipe source control.
+receipts remain. No new generated artifact is added to Dockpipe source control.
 
 The base SDK commit above is complete. Integration follow-up changes in both repos
 remain uncommitted; nothing was pushed. The unrelated mutable-locals verification

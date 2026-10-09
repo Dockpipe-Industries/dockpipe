@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"dockpipe/src/lib/application/internal/compileconfig"
+	"dockpipe/src/lib/domain"
 	"dockpipe/src/lib/infrastructure"
 	"dockpipe/src/lib/infrastructure/packagebuild"
 )
@@ -97,6 +98,20 @@ func cmdPackageCompileWorkflowsBatch(args []string) error {
 				if d.Name() == "config.pipe" {
 					if _, err := os.Stat(filepath.Join(wfDir, "config.yml")); err == nil {
 						return nil
+					}
+				} else {
+					data, err := os.ReadFile(path)
+					if err != nil {
+						return err
+					}
+					workflow, err := domain.ParseWorkflowYAML(data)
+					if err != nil {
+						return fmt.Errorf("workflow %q: %w", wfName, err)
+					}
+					// Deduplication and pruning must use the same identity as the
+					// archive compiler, including names that differ from the folder.
+					if declaredName := strings.TrimSpace(workflow.Name); declaredName != "" {
+						wfName = declaredName
 					}
 				}
 				if _, ok := seen[wfName]; ok {

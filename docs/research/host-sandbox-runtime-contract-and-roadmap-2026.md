@@ -16,10 +16,10 @@ this design change.
 ## Proposed Authored YAML
 
 This surface is not accepted by the current schema. Implementation must update the Go domain model,
-JSON Schema, DockPipe Language Support, workflow documentation, compiled runtime manifest, and tests
+JSON Schema, Dockpipe Language Support, workflow documentation, compiled runtime manifest, and tests
 in one change.
 
-DockPipe already uses a runtime profile string, and `runtime.type` already means `execution`, `ide`,
+Dockpipe already uses a runtime profile string, and `runtime.type` already means `execution`, `ide`,
 or `agent`. The aligned selector is therefore `runtime: host-sandbox`, not a new mapping with
 `type: host-sandbox`.
 
@@ -249,7 +249,7 @@ until the report allows it. Preparation failure invokes trusted teardown.
   initial executable identity.
 - Treat repository workflow/package declarations as **requests**, not authority. A hostile repository
   cannot widen its policy by editing YAML.
-- Resolve paths through existing DockPipe workspace/package/store helpers and retain OS object ids.
+- Resolve paths through existing Dockpipe workspace/package/store helpers and retain OS object ids.
 - Resolve tool roots using a controlled PATH and record implicit runtime/system grants.
 - Keep secret references separate from values and redact credential-bearing argv.
 - Reject ambiguous host hooks, unsupported special paths, and overlapping aliases before mutation.
@@ -324,7 +324,7 @@ uses a separate `sandbox_escape: true` operation.
 6. If none qualify, fail with stronger-runtime recommendations. Never select `host` as fallback.
 
 The same workflow can then use `host-sandbox`, `dockerimage`, `vm`, or a remote-backed profile. QEMU,
-WSL, Kubernetes, and providers remain backend/resolver composition details consistent with DockPipe's
+WSL, Kubernetes, and providers remain backend/resolver composition details consistent with Dockpipe's
 architecture rather than new special-purpose workflow semantics.
 
 ## Approval And Escalation
@@ -457,7 +457,7 @@ violations, approvals, and cleanup journal. Raw secrets and full inherited envir
 Namespaces and AppContainer often return `ENOENT`, `EACCES`, or network failure without a complete
 unprivileged violation stream. Rootless Linux mount namespaces do not attribute every denied path;
 stable AppContainer lacks a complete unprivileged file-denial feed; Seatbelt logs are not a structured
-control channel. `audit_policy_violations` is therefore partial/unsupported in the MVP. DockPipe must
+control channel. `audit_policy_violations` is therefore partial/unsupported in the MVP. Dockpipe must
 not fabricate denial details or widen policy for diagnostics.
 
 ## Threat Model And Trust Boundaries
@@ -467,7 +467,7 @@ not fabricate denial details or widen policy for diagnostics.
 The trusted computing base is deliberately small:
 
 - the host kernel and active OS security mechanisms;
-- the installed/verified DockPipe engine, policy compiler, launcher, supervisor, and artifact
+- the installed/verified Dockpipe engine, policy compiler, launcher, supervisor, and artifact
   collector;
 - the selected platform constructor/helper and its pinned version/provenance;
 - trusted machine/user policy and approval UI/channel;
@@ -496,7 +496,7 @@ the workload from the rest of the developer session.
 | Git hook modification | Worker lacks writable Git metadata; runtime helper disables repository hooks | Source files can still propose malicious hooks for later human execution; review required |
 | Writes outside workspace | OS filesystem boundary and negative canaries | Unsupported path classes cause preflight failure, never best-guess execution |
 | Terminal escape/output flood | Parent PTY/pipes, byte limits, rendered-control sanitization | Raw log viewers must remain explicitly marked and careful |
-| Runtime/approval tampering | Control state/channel outside worker view, fingerprints and scoped records | Compromise of DockPipe binary, approval UI, or same-user host session is outside workload boundary |
+| Runtime/approval tampering | Control state/channel outside worker view, fingerprints and scoped records | Compromise of Dockpipe binary, approval UI, or same-user host session is outside workload boundary |
 | Validation-to-use race | Object ids/handles retained through launch; immutable fingerprint | Any driver unable to bind identity race-free reports partial/unsupported |
 | Runaway or orphan process | PID namespace+cgroup kill or AppContainer+non-breakaway Job, watchdog, empty-tree proof | Delegation to external services is forbidden; unsupported teardown blocks required workflow |
 | GPU/device/kernel attack | Devices absent in MVP, minimal `/dev`, AppContainer device denial | Same kernel remains exposed; device/GPU/driver workloads require VM/remote disposable host |
@@ -536,7 +536,7 @@ Orchestrator guidance:
 - use remote workers for unattended/high-risk work, clean-machine guarantees, or when the local OS
   cannot enforce requirements.
 
-## DockPipe Dogfooding Design
+## Dockpipe Dogfooding Design
 
 ### Flow
 
@@ -625,7 +625,7 @@ approvals:
 ```
 
 Shared caches are read-only; a session cache absorbs writes and is discarded or promoted only after
-review. The worker receives a trusted installed DockPipe binary read-only, never a workspace-built
+review. The worker receives a trusted installed Dockpipe binary read-only, never a workspace-built
 launcher it can replace. `.git` and runtime control state are not writable or visible.
 
 ### Minimum regular-use safety bar
@@ -647,7 +647,7 @@ Dogfooding is not safe enough for regular use until all of these are true:
   collection pass representative compatibility tests.
 - Required guarantee decisions come from active probes and reports, not intended configuration.
 - Approval records are scoped/fingerprinted; unattended runs cannot approve or escape.
-- Teardown and cleanup reconciliation survive timeout, kill, terminal close, DockPipe crash, and reboot.
+- Teardown and cleanup reconciliation survive timeout, kill, terminal close, Dockpipe crash, and reboot.
 - An independent security review accepts the launcher, path binding, policy ceiling, and canary suite.
 
 Initial dogfooding should remain network-off and use preinstalled dependencies. Dependency installs,
@@ -714,11 +714,11 @@ Exit: Linux host facts produce a truthful report; no commands execute.
 Exit: synthetic hostile tests cannot read/write outside roots, network, escape descendants, or remain
 after teardown.
 
-### Phase 2: supervised DockPipe dogfooding
+### Phase 2: supervised Dockpipe dogfooding
 
 - Integrate runtime-owned managed worktrees and protect Git/control state.
 - Add interactive agent PTY, bounded artifact collection, once/session requests, and recovery journal.
-- Validate DockPipe Go/PowerShell/bash build/test compatibility with network disabled.
+- Validate Dockpipe Go/PowerShell/bash build/test compatibility with network disabled.
 - Run a limited backlog-item cohort with human review and collect compatibility/security metrics.
 
 Exit: minimum dogfood safety bar passes and an independent review approves regular supervised use.
@@ -750,7 +750,7 @@ production until Microsoft stabilizes it.
 - Reconsider production only if Apple publishes a supported dynamic arbitrary-process sandbox API, or
   treat Endpoint Security + Network Extension as a separately installed enterprise product.
 
-### Phase 6: DockPipe-owned native launchers
+### Phase 6: Dockpipe-owned native launchers
 
 This is a long-horizon optimization and dependency-reduction phase, not an MVP prerequisite. Keep the
 public `runtime: host-sandbox` profile and common guarantee contract unchanged while substituting an
@@ -762,7 +762,7 @@ explicitly selected implementation driver.
   and cgroup operations; do not add a setuid fallback.
 - Build a Windows launcher around supported AppContainer/LPAC, Job Object, handle-list, ConPTY, and
   mitigation APIs. Keep elevated WFP and experimental BFS in separately reviewed components.
-- Ship each launcher as a signed, provenance-recorded DockPipe component with an independent update
+- Ship each launcher as a signed, provenance-recorded Dockpipe component with an independent update
   and rollback path; record its version, digest, signing identity, reproducible-build provenance, and
   SBOM in the runtime manifest. Do not download or compile helpers during a workflow run.
 - Evaluate a pre-warmed per-user supervisor only after the one-shot launcher passes. It must create a
@@ -842,7 +842,7 @@ Compatibility is never fixed by automatic host retry.
 
 ### Native-driver equivalence and performance
 
-Run the external-constructor and DockPipe-native drivers against identical compiled policies,
+Run the external-constructor and Dockpipe-native drivers against identical compiled policies,
 fixtures, machines, and canary sets. Treat the security result and the performance result as separate
 gates.
 
@@ -882,10 +882,10 @@ gates.
    worker with workspace writes cannot tamper with it?
 4. Which policy sources are trusted, how are user/project ceilings approved/signed, and how does a
    repository request rather than grant wider permissions?
-5. Is bubblewrap's pathname interface sufficiently race-resistant for the preview, or should DockPipe
+5. Is bubblewrap's pathname interface sufficiently race-resistant for the preview, or should Dockpipe
    build a small native `openat2`/mount-FD launcher before any security claim?
 6. Which Linux distributions/kernels and cgroup-delegation shapes form the supported baseline? Is a
-   user systemd scope sufficient everywhere DockPipe targets?
+   user systemd scope sufficient everywhere Dockpipe targets?
 7. How are implicit runtime/tool roots discovered without mounting an entire home or making host
    toolchain resolution nondeterministic?
 8. Should required sensitive patterns inside a writable tree force a clean filtered managed worktree,
@@ -927,7 +927,7 @@ gates.
 parity.**
 
 - Build the common policy/report/driver contract and Linux offline proof first.
-- Promote Linux to regular DockPipe dogfooding only after active conformance, failure injection, the
+- Promote Linux to regular Dockpipe dogfooding only after active conformance, failure injection, the
   complete-teardown gate, and independent security review.
 - Run the Windows experimental-API spike in parallel, then build a stable AppContainer technical
   preview if compatibility merits it.
@@ -935,7 +935,7 @@ parity.**
   explicitly experimental.
 - Add network/package/local-service capabilities later through narrow brokers. Never weaken the MVP
   by sharing host networking or mounting ambient credentials.
-- After production baselines exist, evaluate DockPipe-owned native launchers as an internal driver
+- After production baselines exist, evaluate Dockpipe-owned native launchers as an internal driver
   optimization; require security equivalence and measured value before replacing external
   constructors.
 
@@ -981,7 +981,7 @@ Windows:
 - [Application Layer Enforcement](https://learn.microsoft.com/en-us/windows/win32/fwp/application-layer-enforcement--ale-)
 - [Windows Sandbox](https://learn.microsoft.com/en-us/windows/security/application-security/application-isolation/windows-sandbox/)
 
-DockPipe alignment sources:
+Dockpipe alignment sources:
 
 - [Architecture model](../concepts/architecture-model.md)
 - [Isolation layer](../concepts/isolation-layer.md)

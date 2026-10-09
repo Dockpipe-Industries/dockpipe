@@ -1,1 +1,1 @@
-u dockpipe-agent - "DockPipe qualification guest agent" /var/lib/dockpipe-agent /usr/sbin/nologin
+u dockpipe-agent - "Dockpipe qualification guest agent" /var/lib/dockpipe-agent /usr/sbin/nologin

@@ -68,9 +68,10 @@ int main(int argc, char *argv[])
     QApplication app(argc, argv);
     QApplication::setApplicationName(QStringLiteral("dockpipe-launcher"));
     QApplication::setApplicationVersion(QStringLiteral(DOCKPIPE_RELEASE_VERSION));
-    QApplication::setApplicationDisplayName(QStringLiteral("DockPipe Launcher"));
+    QApplication::setApplicationDisplayName(QStringLiteral("Dockpipe Launcher"));
     QApplication::setOrganizationName(QStringLiteral("dockpipe"));
-    app.setDesktopFileName(QStringLiteral("dockpipe-launcher"));
+    app.setDesktopFileName(qEnvironmentVariableIsSet("FLATPAK_ID")
+        ? qEnvironmentVariable("FLATPAK_ID") : QStringLiteral("dockpipe-launcher"));
     app.setWindowIcon(dockpipeLauncherIcon());
 
     if (app.arguments().contains(QStringLiteral("--check-installation"))) {
@@ -82,7 +83,7 @@ int main(int argc, char *argv[])
         if (!cli.waitForStarted() || !cli.waitForFinished(30000)) {
             cli.kill();
             cli.waitForFinished();
-            QTextStream(stderr) << "Cannot run DockPipe CLI: " << binary << '\n';
+            QTextStream(stderr) << "Cannot run Dockpipe CLI: " << binary << '\n';
             return 1;
         }
         QTextStream(stdout) << "CLI: " << binary << '\n' << cli.readAllStandardOutput();

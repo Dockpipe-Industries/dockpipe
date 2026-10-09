@@ -31,13 +31,13 @@ When changing authored workflow/config surfaces, update in the same change:
 
 - Go domain structs and validation
 - JSON schema at `src/lib/infrastructure/schema/workflow.schema.json`
-- DockPipe Language Support at `src/app/tooling/vscode-extensions/dockpipe-language-support/extension.js`
+- Dockpipe Language Support at `src/app/tooling/vscode-extensions/dockpipe-language-support/extension.js`
 - docs near `docs/workflows/workflow-yaml.md`
 - package/workflow examples affected by the change
 
 ## Template Development Rule
 
-When working on templates/workflows, act as a DockPipe user:
+When working on templates/workflows, act as a Dockpipe user:
 
 - allowed: YAML, scripts, images, docs
 - not allowed: template-specific core logic

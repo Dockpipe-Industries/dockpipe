@@ -13,6 +13,7 @@ import (
 	"dockpipe/src/lib/domain"
 	"dockpipe/src/lib/infrastructure"
 	"dockpipe/src/lib/infrastructure/packagebuild"
+	"dockpipe/src/lib/infrastructure/packageplatform"
 
 	"golang.org/x/term"
 	"gopkg.in/yaml.v3"
@@ -21,11 +22,13 @@ import (
 type hostDependencyCandidate struct {
 	Dep       domain.HostDependency
 	Platforms []string
+	ToolsDir  string
 }
 
 type missingHostDependency struct {
 	Dep       domain.HostDependency
 	Platforms []string
+	ToolsDir  string
 }
 
 type packageDependencyMetadata struct {
@@ -54,6 +57,20 @@ func checkWorkflowHostDependencies(wf *domain.Workflow, wfRoot, wfConfig string,
 			return err
 		}
 		deps = appendDependencyCandidates(deps, pkgMeta.Dependencies, pkgMeta.Platforms)
+	}
+	if len(deps) > 0 {
+		toolsRoot := wfRoot
+		if strings.TrimSpace(wfConfig) != "" {
+			configPath, err := infrastructure.WorkflowConfigOnDiskPath(effectiveWorkdirForWorkflowOpts(opts), wfConfig)
+			if err != nil {
+				return err
+			}
+			toolsRoot = filepath.Dir(configPath)
+		}
+		toolsDir := packageToolsDir(toolsRoot)
+		for i := range deps {
+			deps[i].ToolsDir = toolsDir
+		}
 	}
 	missing := preflightHostDependencies(deduplicateHostDependencies(deps))
 	if len(missing) == 0 {
@@ -260,7 +277,10 @@ func preflightHostDependencies(deps []hostDependencyCandidate) []missingHostDepe
 			}), "")
 			continue
 		}
-		path, err := resolveDependencyCommandPath(cmd)
+		path, err := bundledDependencyCommandPath(candidate.ToolsDir, cmd)
+		if err != nil {
+			path, err = resolveDependencyCommandPath(cmd)
+		}
 		if err == nil {
 			logDependencyResult("dependency.host.preflight", infrastructure.OperationStatusDone, mergeOperationResultIDs(ids, map[string]string{
 				"result": "found",
@@ -358,6 +378,10 @@ func logDependencyResult(unit, status string, ids map[string]string, err string)
 func installCommandForCurrentPlatform(dep domain.HostDependency) string {
 	hint := dep.Install
 	switch currentDependencyPlatform() {
+	case "flatpak":
+		// Runtime dependencies are provided by the app or the selected package.
+		// Native distribution installers cannot install into the immutable runtime.
+		return ""
 	case "windows":
 		return strings.TrimSpace(hint.Windows)
 	case "macos":
@@ -395,6 +419,9 @@ func currentDependencyPlatform() string {
 	case "darwin":
 		return "macos"
 	case "linux":
+		if packageplatform.IsFlatpak() {
+			return "flatpak"
+		}
 		if _, err := os.Stat("/etc/debian_version"); err == nil {
 			return "deb"
 		}

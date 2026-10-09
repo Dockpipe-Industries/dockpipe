@@ -1,0 +1,16 @@
+{
+  "schema": 1,
+  "artifacts": [
+    {
+      "kind": "resolver",
+      "name": "devcontainer"
+    },
+    {
+      "kind": "workflow",
+      "name": "devcontainer"
+    }
+  ],
+  "tools": [],
+  "host_commands": [],
+  "required_files": []
+}

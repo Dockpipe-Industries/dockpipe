@@ -523,7 +523,7 @@ vmimage_clipboard_bridge_mode() {
       printf 'agent\n'
       ;;
     1|true|yes|on|spice|qemu|0|false|no|off)
-      vmimage_log "DOCKPIPE_VM_CLIPBOARD is deprecated and ignored; DockPipe now uses the guest-agent clipboard path when available"
+      vmimage_log "DOCKPIPE_VM_CLIPBOARD is deprecated and ignored; Dockpipe now uses the guest-agent clipboard path when available"
       if vmimage_agent_enabled && vmimage_is_windows_host; then
         printf 'agent\n'
       else
@@ -531,7 +531,7 @@ vmimage_clipboard_bridge_mode() {
       fi
       ;;
     *)
-      vmimage_log "DOCKPIPE_VM_CLIPBOARD=${configured} is unsupported and ignored; DockPipe now uses the guest-agent clipboard path when available"
+      vmimage_log "DOCKPIPE_VM_CLIPBOARD=${configured} is unsupported and ignored; Dockpipe now uses the guest-agent clipboard path when available"
       if vmimage_agent_enabled && vmimage_is_windows_host; then
         printf 'agent\n'
       else
@@ -576,7 +576,7 @@ vmimage_maybe_start_clipboard_bridge() {
   vmimage_is_windows_host || return 0
   [[ -n "${DOCKPIPE_VM_AGENT_READY:-}" ]] || return 0
   [[ -z "${DOCKPIPE_VM_CLIPBOARD_BRIDGE_PID:-}" ]] || return 0
-  vmimage_log "starting DockPipe clipboard bridge"
+  vmimage_log "starting Dockpipe clipboard bridge"
   vmimage_clipboard_bridge_loop_windows &
   export DOCKPIPE_VM_CLIPBOARD_BRIDGE_PID="$!"
 }
@@ -584,7 +584,7 @@ vmimage_maybe_start_clipboard_bridge() {
 vmimage_stop_clipboard_bridge() {
   local pid="${DOCKPIPE_VM_CLIPBOARD_BRIDGE_PID:-}"
   [[ -n "$pid" ]] || return 0
-  vmimage_log "stopping DockPipe clipboard bridge"
+  vmimage_log "stopping Dockpipe clipboard bridge"
   kill "$pid" >/dev/null 2>&1 || true
   wait "$pid" >/dev/null 2>&1 || true
   unset DOCKPIPE_VM_CLIPBOARD_BRIDGE_PID || true
@@ -736,7 +736,7 @@ vmimage_confirm_user_supplied_media_rights() {
     vmimage_prompt_confirm \
       "vmimage.media-rights" \
       "Use User-Supplied VM Media?" \
-      "DockPipe does not ship or download Windows installers, licenses, or vendor driver media. Continue only if you supplied these image files yourself and have the rights to use them." \
+      "Dockpipe does not ship or download Windows installers, licenses, or vendor driver media. Continue only if you supplied these image files yourself and have the rights to use them." \
       no \
       credential-use \
       vm-media \
@@ -755,7 +755,7 @@ vmimage_confirm_persistent_disk_use() {
     vmimage_prompt_confirm \
       "vmimage.persistent-disk" \
       "Modify VM Disk Persistently?" \
-      "This run is configured for persistent VM storage. DockPipe will boot the guest directly from the selected disk, and guest changes may modify that image permanently." \
+      "This run is configured for persistent VM storage. Dockpipe will boot the guest directly from the selected disk, and guest changes may modify that image permanently." \
       no \
       destructive \
       vm-persistence \
@@ -851,7 +851,7 @@ vmimage_validate_iommu_group_membership() {
     fi
   done
   [[ -z "$unexpected_csv" ]] && return 0
-  vmimage_die "PCI device ${dev} is in IOMMU group ${group_id} with other device(s) not selected for passthrough: ${unexpected_csv}. Full group: ${full_group_csv}. DockPipe cannot safely detach just part of that group. To continue, change the host topology or firmware so the GPU lands in a cleaner group, deliberately pass the whole group if you accept losing those devices on the host too, or use an ACS override only if you explicitly accept the host-security and stability tradeoffs."
+  vmimage_die "PCI device ${dev} is in IOMMU group ${group_id} with other device(s) not selected for passthrough: ${unexpected_csv}. Full group: ${full_group_csv}. Dockpipe cannot safely detach just part of that group. To continue, change the host topology or firmware so the GPU lands in a cleaner group, deliberately pass the whole group if you accept losing those devices on the host too, or use an ACS override only if you explicitly accept the host-security and stability tradeoffs."
 }
 
 vmimage_confirm_gpu_passthrough() {
@@ -862,7 +862,7 @@ vmimage_confirm_gpu_passthrough() {
     vmimage_prompt_confirm \
       "vmimage.gpu-passthrough" \
       "Attach Host PCI Devices To VM?" \
-      "This VM run is configured to pass host PCI device(s) through to the guest: ${devices}. DockPipe expects them to already be isolated for VFIO, and the host may lose access to them while the VM is running." \
+      "This VM run is configured to pass host PCI device(s) through to the guest: ${devices}. Dockpipe expects them to already be isolated for VFIO, and the host may lose access to them while the VM is running." \
       no \
       destructive \
       vm-pci \
@@ -896,7 +896,7 @@ vmimage_prompt_prepare_pci_passthrough() {
     vmimage_prompt_confirm \
       "vmimage.prepare-pci" \
       "Prepare Host PCI Devices For Passthrough?" \
-      "DockPipe found PCI device(s) that are not yet bound to vfio-pci: ${devices}. Allow DockPipe to help rebind them for passthrough now?" \
+      "Dockpipe found PCI device(s) that are not yet bound to vfio-pci: ${devices}. Allow Dockpipe to help rebind them for passthrough now?" \
       no \
       host-mutation \
       vm-pci-prepare \
@@ -924,7 +924,7 @@ vmimage_pci_prepare_script() {
     script+="printf '%s' '${vendor} ${device}' > /sys/bus/pci/drivers/vfio-pci/new_id 2>/dev/null || true\n"
     script+="echo '${dev}' > /sys/bus/pci/drivers/vfio-pci/bind\n"
   done
-  script+='printf "\\nDockPipe PCI passthrough prep complete.\\n"\n'
+  script+='printf "\\nDockpipe PCI passthrough prep complete.\\n"\n'
   printf '%b' "$script"
 }
 
@@ -1000,7 +1000,7 @@ vmimage_validate_pci_passthrough() {
     else
       driver_name=""
     fi
-    [[ "$driver_name" == "vfio-pci" ]] || vmimage_die "PCI device ${dev} is not bound to vfio-pci (current driver: ${driver_name:-none}). Bind the device to vfio-pci before using DockPipe GPU passthrough."
+    [[ "$driver_name" == "vfio-pci" ]] || vmimage_die "PCI device ${dev} is not bound to vfio-pci (current driver: ${driver_name:-none}). Bind the device to vfio-pci before using Dockpipe GPU passthrough."
   done
 }
 
@@ -1030,16 +1030,16 @@ vmimage_launch_install_terminal() {
   term="$(vmimage_terminal_launcher)" || return 1
   case "$term" in
     x-terminal-emulator)
-      "$term" -e bash -lc "$command_text; status=\$?; echo; if [ \$status -eq 0 ]; then echo 'DockPipe host command completed.'; else echo 'Host command failed with status' \$status; fi; read -r -p 'Press Enter to close...' _"
+      "$term" -e bash -lc "$command_text; status=\$?; echo; if [ \$status -eq 0 ]; then echo 'Dockpipe host command completed.'; else echo 'Host command failed with status' \$status; fi; read -r -p 'Press Enter to close...' _"
       ;;
     gnome-terminal)
-      "$term" -- bash -lc "$command_text; status=\$?; echo; if [ \$status -eq 0 ]; then echo 'DockPipe host command completed.'; else echo 'Host command failed with status' \$status; fi; read -r -p 'Press Enter to close...' _"
+      "$term" -- bash -lc "$command_text; status=\$?; echo; if [ \$status -eq 0 ]; then echo 'Dockpipe host command completed.'; else echo 'Host command failed with status' \$status; fi; read -r -p 'Press Enter to close...' _"
       ;;
     konsole)
-      "$term" -e bash -lc "$command_text; status=\$?; echo; if [ \$status -eq 0 ]; then echo 'DockPipe host command completed.'; else echo 'Host command failed with status' \$status; fi; read -r -p 'Press Enter to close...' _"
+      "$term" -e bash -lc "$command_text; status=\$?; echo; if [ \$status -eq 0 ]; then echo 'Dockpipe host command completed.'; else echo 'Host command failed with status' \$status; fi; read -r -p 'Press Enter to close...' _"
       ;;
     xterm)
-      "$term" -e bash -lc "$command_text; status=\$?; echo; if [ \$status -eq 0 ]; then echo 'DockPipe host command completed.'; else echo 'Host command failed with status' \$status; fi; read -r -p 'Press Enter to close...' _"
+      "$term" -e bash -lc "$command_text; status=\$?; echo; if [ \$status -eq 0 ]; then echo 'Dockpipe host command completed.'; else echo 'Host command failed with status' \$status; fi; read -r -p 'Press Enter to close...' _"
       ;;
   esac
 }
@@ -1133,7 +1133,7 @@ vmimage_prompt_reset_secure_boot_vars() {
     vmimage_prompt_confirm \
       "vmimage.reset-firmware-vars" \
       "Reset VM Firmware Boot State?" \
-      "DockPipe found existing writable UEFI firmware vars for this install disk at ${vars_copy}. Reusing them can carry old boot entries into a fresh install. Reset them now?" \
+      "Dockpipe found existing writable UEFI firmware vars for this install disk at ${vars_copy}. Reusing them can carry old boot entries into a fresh install. Reset them now?" \
       yes \
       destructive \
       vm-firmware-vars \
@@ -1327,7 +1327,7 @@ vmimage_ensure_prompted_image_inputs() {
     vmimage_prompt_required_input \
       DOCKPIPE_VM_SSH_USER \
       "Guest SSH User" \
-      "Enter the guest SSH username DockPipe should use after the VM boots."
+      "Enter the guest SSH username Dockpipe should use after the VM boots."
   fi
 }
 
@@ -1336,7 +1336,7 @@ vmimage_ensure_prompted_installer_inputs() {
     vmimage_prompt_file_value \
       DOCKPIPE_VM_CDROM \
       "Choose Windows Installer ISO" \
-      "Choose the Windows installer ISO you want DockPipe to boot." \
+      "Choose the Windows installer ISO you want Dockpipe to boot." \
       open-file \
       "Disk Images (*.iso);;All Files (*)"
   fi
@@ -1344,7 +1344,7 @@ vmimage_ensure_prompted_installer_inputs() {
     vmimage_prompt_file_value \
       DOCKPIPE_VM_DISK \
       "Choose Install Disk Destination" \
-      "Choose where DockPipe should create or reuse the VM disk image for this Windows install." \
+      "Choose where Dockpipe should create or reuse the VM disk image for this Windows install." \
       save-file \
       "VM Images (*.qcow2 *.img *.raw);;All Files (*)" \
       false
@@ -1353,7 +1353,7 @@ vmimage_ensure_prompted_installer_inputs() {
     vmimage_prompt_required_input \
       DOCKPIPE_VM_DISK_SIZE \
       "VM Disk Size" \
-      "Enter the size for a new VM disk image if DockPipe needs to create one." \
+      "Enter the size for a new VM disk image if Dockpipe needs to create one." \
       "64G"
   fi
   if [[ -z "${DOCKPIPE_VM_VIRTIO_ISO:-}" ]]; then
@@ -1476,17 +1476,17 @@ vmimage_prepare_state_split() {
   fi
 
   helper="${DOCKPIPE_VM_STATE_HELPER:-$(dockpipe_sdk get dockpipe_bin)}"
-  [[ -n "$helper" ]] || vmimage_die "DockPipe state helper is unavailable"
+  [[ -n "$helper" ]] || vmimage_die "Dockpipe state helper is unavailable"
   if [[ -n "${DOCKPIPE_VM_STATE_HELPER:-}" ]]; then
     result="$("$helper" "${args[@]}")" || vmimage_die "failed to prepare durable VM guest identity state"
   else
     result="$("$helper" __state "${args[@]}")" || vmimage_die "failed to prepare durable VM guest identity state"
   fi
-  [[ "$result" != *$'\n'* ]] || vmimage_die "DockPipe state helper returned multiple result lines"
+  [[ "$result" != *$'\n'* ]] || vmimage_die "Dockpipe state helper returned multiple result lines"
   IFS=$'\t' read -r durable_dir runtime_dir imported diverged extra <<< "$result"
-  [[ -n "$durable_dir" && -n "$runtime_dir" && -z "$extra" ]] || vmimage_die "DockPipe state helper returned an incomplete state split"
-  [[ "$imported" == "true" || "$imported" == "false" ]] || vmimage_die "DockPipe state helper returned an invalid import status"
-  [[ "$diverged" == "true" || "$diverged" == "false" ]] || vmimage_die "DockPipe state helper returned an invalid divergence status"
+  [[ -n "$durable_dir" && -n "$runtime_dir" && -z "$extra" ]] || vmimage_die "Dockpipe state helper returned an incomplete state split"
+  [[ "$imported" == "true" || "$imported" == "false" ]] || vmimage_die "Dockpipe state helper returned an invalid import status"
+  [[ "$diverged" == "true" || "$diverged" == "false" ]] || vmimage_die "Dockpipe state helper returned an invalid divergence status"
   durable_dir="$(vmimage_shell_path "$durable_dir")"
   runtime_dir="$(vmimage_shell_path "$runtime_dir")"
   export DOCKPIPE_VM_DURABLE_STATE_DIR="$durable_dir"
@@ -1789,12 +1789,12 @@ vmimage_warn_reserved_bootstrap_overrides() {
     [[ -n "$reserved" ]] || continue
     if [[ -d "$shell_source" ]]; then
       if [[ -e "${shell_source}/${reserved}" ]]; then
-        vmimage_log "bootstrap payload includes reserved file ${reserved}; DockPipe will keep the built-in version"
+        vmimage_log "bootstrap payload includes reserved file ${reserved}; Dockpipe will keep the built-in version"
       fi
     else
       candidate_name="$(basename "$shell_source")"
       if [[ "$candidate_name" == "$reserved" ]]; then
-        vmimage_log "bootstrap payload file ${reserved} is reserved; DockPipe will keep the built-in version"
+        vmimage_log "bootstrap payload file ${reserved} is reserved; Dockpipe will keep the built-in version"
       fi
     fi
   done < <(vmimage_builtin_bootstrap_reserved_names)
@@ -1835,18 +1835,18 @@ vmimage_prepare_bootstrap_media() {
       cp "${SCRIPT_DIR}/dockpipe-guest-agent.ps1" "${shell_bootstrap}/"
     fi
     cat > "${shell_bootstrap}/README.txt" <<'EOF'
-DockPipe Windows VM bootstrap media
+Dockpipe Windows VM bootstrap media
 
-This media is attached automatically by the DockPipe VM runner.
+This media is attached automatically by the Dockpipe VM runner.
 Run provision-windows-ssh.ps1 from an elevated PowerShell session inside the guest
-to install and configure OpenSSH before DockPipe SSH automation is available.
+to install and configure OpenSSH before Dockpipe SSH automation is available.
 The same bootstrap media includes dockpipe-guest-agent.exe, which the
 provisioning script installs as a LocalSystem startup task by default.
-DockPipe also keeps a PowerShell fallback copy beside it for recovery/debugging.
+Dockpipe also keeps a PowerShell fallback copy beside it for recovery/debugging.
 
-Once the DockPipe guest agent is provisioned, DockPipe can bridge plain-text
+Once the Dockpipe guest agent is provisioned, Dockpipe can bridge plain-text
 clipboard contents between the host and guest automatically on Windows hosts.
-Clipboard bridging is provided by the DockPipe guest agent when it is
+Clipboard bridging is provided by the Dockpipe guest agent when it is
 provisioned and reachable.
 
 Example:
@@ -1904,8 +1904,8 @@ vmimage_windows_align_identity() {
   fi
   [[ "${DOCKPIPE_VM_WINDOWS_ADMIN_USER}" == "${DOCKPIPE_VM_SSH_USER}" ]] || vmimage_die "DOCKPIPE_VM_WINDOWS_ADMIN_USER and DOCKPIPE_VM_SSH_USER must match for unattended windows installs"
   export DOCKPIPE_VM_WINDOWS_COMPUTER_NAME="${DOCKPIPE_VM_WINDOWS_COMPUTER_NAME:-dockpipe-vm}"
-  export DOCKPIPE_VM_WINDOWS_FULL_NAME="${DOCKPIPE_VM_WINDOWS_FULL_NAME:-DockPipe}"
-  export DOCKPIPE_VM_WINDOWS_ORG="${DOCKPIPE_VM_WINDOWS_ORG:-DockPipe}"
+  export DOCKPIPE_VM_WINDOWS_FULL_NAME="${DOCKPIPE_VM_WINDOWS_FULL_NAME:-Dockpipe}"
+  export DOCKPIPE_VM_WINDOWS_ORG="${DOCKPIPE_VM_WINDOWS_ORG:-Dockpipe}"
   export DOCKPIPE_VM_WINDOWS_LOCALE="${DOCKPIPE_VM_WINDOWS_LOCALE:-en-US}"
   export DOCKPIPE_VM_WINDOWS_KEYBOARD="${DOCKPIPE_VM_WINDOWS_KEYBOARD:-${DOCKPIPE_VM_WINDOWS_LOCALE}}"
   export DOCKPIPE_VM_WINDOWS_TIMEZONE="${DOCKPIPE_VM_WINDOWS_TIMEZONE:-UTC}"
@@ -2136,7 +2136,7 @@ ${image_block}
       <FirstLogonCommands>
         <SynchronousCommand wcm:action="add">
           <Order>1</Order>
-          <Description>DockPipe first boot bootstrap</Description>
+          <Description>Dockpipe first boot bootstrap</Description>
           <CommandLine>powershell.exe -NoProfile -ExecutionPolicy Bypass -EncodedCommand ${bootstrap}</CommandLine>
         </SynchronousCommand>
       </FirstLogonCommands>
@@ -2193,7 +2193,7 @@ vmimage_ensure_disk_exists_for_install() {
     vmimage_prompt_confirm \
       "vmimage.create-disk" \
       "Create VM Disk Image?" \
-      "DockPipe will create a new VM disk image at ${disk} with size ${DOCKPIPE_VM_DISK_SIZE:-64G} for the Windows install." \
+      "Dockpipe will create a new VM disk image at ${disk} with size ${DOCKPIPE_VM_DISK_SIZE:-64G} for the Windows install." \
       yes \
       host-mutation \
       vm-disk-create \
@@ -2618,7 +2618,7 @@ vmimage_keepalive_wait() {
   vmimage_keepalive_enabled || return 0
   local seconds elapsed remaining
   seconds="$(vmimage_keepalive_seconds)"
-  vmimage_log "keepalive enabled; holding VM open for ${seconds} seconds (interrupt DockPipe to stop early)"
+  vmimage_log "keepalive enabled; holding VM open for ${seconds} seconds (interrupt Dockpipe to stop early)"
   elapsed=0
   while (( elapsed < seconds )); do
     remaining=$(( seconds - elapsed ))
@@ -2647,7 +2647,7 @@ vmimage_guest_shutdown_command() {
 vmimage_try_guest_shutdown() {
   vmimage_stop_clipboard_bridge
   if [[ -n "${DOCKPIPE_VM_AGENT_READY:-}" ]] && vmimage_agent_enabled && vmimage_is_windows_host; then
-    vmimage_log "requesting guest OS shutdown over DockPipe guest agent"
+    vmimage_log "requesting guest OS shutdown over Dockpipe guest agent"
     vmimage_agent_shutdown_windows >/dev/null 2>&1 || true
     return 0
   fi
@@ -2926,7 +2926,7 @@ vmimage_run_installer_session() {
   state_dir="$(vmimage_state_dir)"
   pidfile="${state_dir}/qemu-${DOCKPIPE_RUN_ID:-vm}.pid"
   rm -f "$pidfile"
-  vmimage_log "installer mode: launching interactive VM window and waiting until you close it or stop DockPipe"
+  vmimage_log "installer mode: launching interactive VM window and waiting until you close it or stop Dockpipe"
   "$qemu_bin" "${qemu_args[@]}" &
   pid="$!"
   printf '%s\n' "$pid" > "$pidfile"

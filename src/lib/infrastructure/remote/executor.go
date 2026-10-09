@@ -82,7 +82,7 @@ func ValidateProfiles(profiles map[string]contract.Profile) error {
 	return nil
 }
 
-// Execute invokes the existing local DockPipe boundary, with argv fixed by a
+// Execute invokes the existing local Dockpipe boundary, with argv fixed by a
 // locally approved profile. The broker has no generic remote-shell capability.
 func Execute(ctx context.Context, executable string, profile contract.Profile) contract.Result {
 	result := contract.Result{Status: "failure", ExitCode: -1, StartedAt: time.Now().UTC(), OS: runtime.GOOS, Architecture: runtime.GOARCH}
@@ -116,12 +116,12 @@ func Execute(ctx context.Context, executable string, profile contract.Profile) c
 		if errors.Is(context.Cause(ctx), context.Canceled) {
 			result.Status = "cancelled"
 		} else {
-			log.appendDiagnostic("DockPipe workflow stopped: " + context.Cause(ctx).Error())
+			log.appendDiagnostic("Dockpipe workflow stopped: " + context.Cause(ctx).Error())
 		}
 	} else if err == nil {
 		result.Status = "success"
 	} else {
-		log.appendDiagnostic("DockPipe workflow process failed.")
+		log.appendDiagnostic("Dockpipe workflow process failed.")
 	}
 	result.Log = string(log.data)
 	result.LogTruncated = log.truncated

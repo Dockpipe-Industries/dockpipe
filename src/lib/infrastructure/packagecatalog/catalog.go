@@ -138,6 +138,11 @@ func (c *Client) Load(ctx context.Context, remote, platform string) (Catalog, er
 			}
 			target, err = childURL(target, store.Manifest)
 		} else {
+			// A pinned/direct store must retain the same compatibility check as a
+			// release catalog. Legacy unlabelled stores are native-only.
+			if document.Platform != platform && (document.Platform != "" || strings.Contains(platform, "-flatpak-")) {
+				return out, fmt.Errorf("package store platform %q does not match %s", document.Platform, platform)
+			}
 			out.Manifest = target.String()
 			if document.Packages.Core != nil {
 				out.Packages = append(out.Packages, Entry{*document.Packages.Core, "core"})

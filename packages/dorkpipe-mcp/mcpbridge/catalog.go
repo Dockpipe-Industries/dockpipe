@@ -113,7 +113,7 @@ func mcpToolCatalog() []mcpToolMeta {
 		},
 		{
 			Name:        "dorkpipe.host_claude_chat",
-			Description: "Host bridge for guarded Claude chat. Routes through DockPipe's Claude workflow boundary instead of raw host Claude. Tier: exec only.",
+			Description: "Host bridge for guarded Claude chat. Routes through Dockpipe's Claude workflow boundary instead of raw host Claude. Tier: exec only.",
 			InputSchema: json.RawMessage(`{"type":"object","properties":{"workdir":{"type":"string"},"message":{"type":"string"},"model":{"type":"string"},"session_id":{"type":"string"},"active_file":{"type":"string"},"open_files":{"type":"array","items":{"type":"string"}},"selection_text":{"type":"string"}},"required":["message"],"additionalProperties":false}`),
 		},
 		{

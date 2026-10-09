@@ -122,10 +122,10 @@ BasicModeWidget::BasicModeWidget(QWidget *parent) : QWidget(parent)
     homeHeroLay->setSpacing(10);
     homeHeroLay->setContentsMargins(18, 18, 18, 18);
 
-    auto *homeTitle = new QLabel(tr("DockPipe Launcher"));
+    auto *homeTitle = new QLabel(tr("Dockpipe Launcher"));
     homeTitle->setObjectName(QStringLiteral("appTitle"));
     auto *homeSub = new QLabel(
-        tr("Open a project folder to see DockPipe workflows. Recent folders appear here — pick one or browse."));
+        tr("Open a project folder to see Dockpipe workflows. Recent folders appear here — pick one or browse."));
     homeSub->setObjectName(QStringLiteral("appSubtitle"));
     homeSub->setWordWrap(true);
     homeHeroLay->addWidget(homeTitle);
@@ -453,7 +453,7 @@ void BasicModeWidget::setAppDiscoveryLoading(bool loading)
     m_appDiscoveryLoading = loading;
     if (m_launchingWorkflowId.isEmpty() && m_loadingBanner) {
         if (loading) {
-            m_loadingBanner->setText(tr("Loading apps from DockPipe..."));
+            m_loadingBanner->setText(tr("Loading apps from Dockpipe..."));
             m_loadingBanner->setVisible(true);
         } else {
             m_loadingBanner->clear();
@@ -580,7 +580,7 @@ void BasicModeWidget::updateLoadingBanner()
         m_launchOverlayTitle->setText(tr("Launching %1").arg(name));
     if (m_launchOverlayBody) {
         m_launchOverlayBody->setText(
-            tr("DockPipe is preparing the workflow, warming the session, and opening the app shell."));
+            tr("Dockpipe is preparing the workflow, warming the session, and opening the app shell."));
     }
     m_loadingFrame += 1;
 }
