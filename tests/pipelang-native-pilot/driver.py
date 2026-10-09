@@ -1,4 +1,4 @@
-"""Receipt-backed native pilot; no compiler/backend selection in DockPipe's engine."""
+"""Receipt-backed native pilot; no compiler/backend selection in Dockpipe's engine."""
 from pathlib import Path
 import argparse, hashlib, json, os, sys, subprocess, threading
 R=Path(__file__).resolve().parents[2]

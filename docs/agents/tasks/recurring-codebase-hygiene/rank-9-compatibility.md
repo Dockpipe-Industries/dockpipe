@@ -64,7 +64,7 @@ successor was created.
 ## CR-001 `compile.resolvers` Retirement — 2026-08-14
 
 Retired only compatibility ledger entry `CR-001` in the saved dirty checkout. The product owner
-established `v0.6.0` as DockPipe's first supported release and confirmed that unreleased development
+established `v0.6.0` as Dockpipe's first supported release and confirmed that unreleased development
 use of `dockpipe.config.json` `compile.resolvers` does not require compatibility. Local release
 policy ships tagged versions from `master`; all available tags stop at `v0.5.8`, the old key first
 appeared later in commit `297af0cd`, and no maintained or generated project config uses it. This
@@ -113,7 +113,7 @@ created.
 ## CR-002 `compile.bundles` Retirement — 2026-08-15
 
 Retired only compatibility ledger entry `CR-002` in the saved dirty checkout. The product owner
-established `v0.6.0` as DockPipe's first supported release and confirmed that unreleased development
+established `v0.6.0` as Dockpipe's first supported release and confirmed that unreleased development
 use of `dockpipe.config.json` `compile.bundles` does not require compatibility. The old key first
 appeared after tag `v0.5.8` in commit `297af0cd`, and no authored or generated JSON project config
 uses it. The separately governed CLI command `dockpipe package compile bundles` and the

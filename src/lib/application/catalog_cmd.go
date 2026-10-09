@@ -88,7 +88,7 @@ func cmdCatalog(args []string) error {
 	if len(args) == 0 {
 		return usageError(`usage: dockpipe catalog list [--workdir <path>] [--format json|text]
 
-  Prints the launcher-facing DockPipe catalog. The launcher should consume this contract instead of
+  Prints the launcher-facing Dockpipe catalog. The launcher should consume this contract instead of
   scanning repo/package trees directly.`)
 	}
 	switch args[0] {
@@ -119,7 +119,7 @@ func cmdCatalogList(args []string) error {
 		case "--help", "-h":
 			fmt.Print(`dockpipe catalog list [--workdir <path>] [--format json|text]
 
-Print the DockPipe-owned workflow/resolver/runtime catalog for launchers and tools.
+Print the Dockpipe-owned workflow/resolver/runtime catalog for launchers and tools.
 `)
 			return nil
 		default:

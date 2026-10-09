@@ -5,7 +5,7 @@ Use this skill for package tree changes.
 ## Package Boundary
 
 Packages ship YAML, assets, resolver/runtime wiring, prompts, skills, policies, examples, and tests.
-They do not inject product-specific behavior into DockPipe core.
+They do not inject product-specific behavior into Dockpipe core.
 
 ## Hard Rules
 

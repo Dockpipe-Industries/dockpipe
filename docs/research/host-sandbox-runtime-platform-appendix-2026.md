@@ -50,7 +50,7 @@ explicit capabilities and are excluded from the MVP.
 Custom Seatbelt/SBPL can technically run ordinary development commands with inherited kernel policy,
 but the launcher must maintain an OS-version-sensitive allowlist of files, sysctls, Mach services,
 IOKit, sockets, and IPC. The custom profile interface is deprecated/unsupported, so these practical
-observations do not make it a supported DockPipe product boundary.
+observations do not make it a supported Dockpipe product boundary.
 
 - **Shells and command-line tools:** `sh`/`zsh`, Git, Clang, Node, and modern .NET can often run after
   system libraries, SDKs, temp, PTY, config, and executable roots are granted. Shell startup files and
@@ -160,7 +160,7 @@ No AppContainer network capability gives strong Internet/LAN/host-loopback denia
 is broad Internet access, not an allowlist. A loopback exemption is broad, not per-port.
 
 WFP can filter at ALE layers by AppContainer/package SID, executable, user, protocol, address, and
-port, but installing filters normally needs administrative authority. A future privileged DockPipe
+port, but installing filters normally needs administrative authority. A future privileged Dockpipe
 broker can own dynamic filters scoped to the unique AppContainer SID. Numeric IP/CIDR/port rules may
 then be `enforced`; FQDN rules remain partial because DNS visibility, caches, DoH, proxies, VPNs, and
 address rotation break a durable hostname identity.
@@ -168,7 +168,7 @@ address rotation break a durable hostname identity.
 ### Windows Sandbox applicability
 
 Windows Sandbox is a Hyper-V-backed disposable environment with a separate kernel. It is valuable as
-a stronger future DockPipe runtime, but it is explicitly a VM, does not reuse installed host
+a stronger future Dockpipe runtime, but it is explicitly a VM, does not reuse installed host
 applications as native processes, and violates this runtime's no-VM objective. It is not an API layer
 for constraining one arbitrary host process.
 

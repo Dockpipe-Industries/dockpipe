@@ -24,7 +24,7 @@ If you are writing a normal workflow, prefer thinking in terms of **steps + runt
 
 ## Defaults and overrides
 
-DockPipe uses a simple layering rule:
+Dockpipe uses a simple layering rule:
 
 - top-level **`runtime`** and **`resolver`** set the **workflow default**
 - step-level **`runtime`** and **`resolver`** **override** that default for one step
@@ -48,7 +48,7 @@ In practice, most workflows should:
 |------|---------|
 | **run** | Host scripts *before* the container (paths under `run:`). |
 | **isolate** | Low-level image or template override. Most workflows should start with **`runtime`** + **`resolver`** and only set **`isolate`** when they want to pin the exact image/template. |
-| **image** | Optional image customization for Dockerfile-backed runs. Use **`image.packages.apt`** to declare Debian packages that DockPipe installs into a derived image during package compile/build, instead of bloating every resolver image. Step-level **`image`** adds packages for that step only. |
+| **image** | Optional image customization for Dockerfile-backed runs. Use **`image.packages.apt`** to declare Debian packages that Dockpipe installs into a derived image during package compile/build, instead of bloating every resolver image. Step-level **`image`** adds packages for that step only. |
 | **act** | Follow-up after the main command (usually a **host** script; see **[../concepts/architecture.md](../concepts/architecture.md)** for in-container `DOCKPIPE_ACTION`). |
 | **workflow** | This file: a named preset selected with **`--workflow <name>`**. |
 | **strategy** | Optional **named lifecycle** wrapper: small **`KEY=value`** files under **`templates/<workflow>/strategies/<name>`** (optional) or **`templates/core/strategies/<name>`** define host scripts to run **before** and **after** the workflow body. See [Named strategies](#named-strategies) below. |
@@ -89,14 +89,14 @@ steps:
           - rustc
 ```
 
-DockPipe materializes these declarations as a derived Docker image at package compile/build time.
+Dockpipe materializes these declarations as a derived Docker image at package compile/build time.
 Keep common inspection tools in resolver images; declare heavier project-specific toolchains here.
 
 ### Host Dependencies
 
-Use `dependencies.host` when a workflow needs a host executable before it can run. DockPipe checks
+Use `dependencies.host` when a workflow needs a host executable before it can run. Dockpipe checks
 required dependencies before workspace/session mutation or step execution. If the command is missing
-and the current host platform is supported, DockPipe can run the package/workflow-authored install
+and the current host platform is supported, Dockpipe can run the package/workflow-authored install
 command after explicit approval (`--yes`, `DOCKPIPE_APPROVE_PROMPTS=1`, or an interactive confirm).
 
 ```yaml
@@ -113,11 +113,17 @@ dependencies:
 
 `command` is the executable name searched on `PATH`. `required` defaults to `true`; set
 `required: false` to document optional tooling without failing preflight. Top-level `platforms`
-may contain `windows`, `macos`, `linux`, or `deb`; when set, DockPipe blocks the workflow/package on
+may contain `windows`, `macos`, `linux`, `deb`, or `flatpak`; when set, Dockpipe blocks the workflow/package on
 unsupported hosts and only offers installers on supported platforms. Every required host dependency
 and host script must work on each declared platform. `install.<platform>` is an
 author-provided shell command and must be treated as code. Host dependencies are not package graph
-dependencies; use package `depends` for other DockPipe packages.
+dependencies; use package `depends` for other Dockpipe packages.
+
+Flatpak is a distinct execution platform and does not implicitly satisfy `linux` or `deb`.
+Distribution install hints are never offered inside Flatpak. The selected package can provide
+executables under `assets/tooling/bin`; dependency preflight checks that directory first,
+and package host scripts receive it at the front of their process-local `PATH`. Shared
+libraries must use package-owned loader paths rather than changing global library search paths.
 
 DorkPipe orchestration cloud workers also accept a run-level consumer image override:
 
@@ -214,7 +220,7 @@ steps:
       - scripts/dorkpipe/normalize-ci-scans.sh
 ```
 
-DockPipe creates the workflow artifact root under
+Dockpipe creates the workflow artifact root under
 **`bin/.dockpipe/workflows/<workflow>/artifacts`** and starts the step there. Scripts can write
 ordinary relative paths such as **`ci-analysis/findings.json`** without polluting source control.
 Scripts should write ordinary relative paths whenever `cwd` already puts them in the right root.
@@ -331,14 +337,14 @@ artifact in `response.md`; DorkPipe apply/promotion writes approved files later.
 edit` only for implementation or repair tasks, and pair it with writable container mounts plus
 matching `agent.access.write` policy.
 
-DockPipe also injects these variables for every step:
+Dockpipe also injects these variables for every step:
 
 | Variable | Meaning |
 |----------|---------|
 | **`DOCKPIPE_SOURCE_ROOT`** | Absolute source workdir/repo root. Use this when a script running from artifacts needs to read project files. |
 | **`DOCKPIPE_ARTIFACT_ROOT`** | Absolute generated artifact root selected by **`scopes.artifacts`**. |
 | **`DOCKPIPE_OUTPUT_ROOT`** | Alias for the output/artifact scope used by `dockpipe scope`. |
-| **`DOCKPIPE_STEP_CWD`** | Absolute directory DockPipe uses as the process working directory for the step. |
+| **`DOCKPIPE_STEP_CWD`** | Absolute directory Dockpipe uses as the process working directory for the step. |
 
 ---
 
@@ -350,9 +356,9 @@ DockPipe also injects these variables for every step:
 | `description` | Optional one-line task summary printed after `name` (e.g. what this workflow is for). |
 | `category` | Optional **UI metadata** for tools like **Pipeon**: e.g. `app` marks a launchable GUI/container IDE-style workflow shown in **Basic** mode. Omit or use other values for pipelines and advanced-only flows. |
 | `vars` | Map of default env vars (merged if not already set; `--var` overrides). |
-| `compose` | Optional Docker Compose settings for host built-ins such as `compose_up`, `compose_down`, and `compose_ps`. Fields: `file`, `project`, `project_directory`, `autodown_env`, `exports`, `services`. Compose runs inherit DockPipe’s resolved environment and vault-injected vars directly. |
+| `compose` | Optional Docker Compose settings for host built-ins such as `compose_up`, `compose_down`, and `compose_ps`. Fields: `file`, `project`, `project_directory`, `autodown_env`, `exports`, `services`. Compose runs inherit Dockpipe’s resolved environment and vault-injected vars directly. |
 | `container` | Optional container mount defaults. Use this to override the primary host path bound at `/work` (`workdir_host`), set a default container subdirectory under `/work` (`work_path`), and declare extra bind mounts (`mounts`). Relative host paths resolve from the active source/workdir, not the packaged workflow asset directory. |
-| `workspace` | Optional runtime-owned Git workspace/session lifecycle. Use `mode: managed` for a DockPipe-owned session workspace, or `mode: bind` only when a workflow intentionally operates on the current checkout. |
+| `workspace` | Optional runtime-owned Git workspace/session lifecycle. Use `mode: managed` for a Dockpipe-owned session workspace, or `mode: bind` only when a workflow intentionally operates on the current checkout. |
 | `security` | Optional container security policy. Select a core-owned `profile`, then apply bounded `network`, `filesystem`, and `process` overrides. This applies to container execution only; `kind: host` steps remain outside Docker policy. |
 | `run` | String or list of host pre-script paths (repo `scripts/…` or paths under the template). Single-flow shorthand only; do not combine with `steps:`. Logical resolver script ids like `scripts/dorkpipe/...` must also have an explicit resolver dependency (`requires_resolvers`, `inject.resolver`, or workflow/step resolver selection). |
 | `isolate` | Advanced low-level image/template override. Prefer **`runtime`** + **`resolver`** for the normal authoring path; use **`isolate`** when you need to pin the exact image/template. |
@@ -488,7 +494,7 @@ Public authoring fields:
 - `process.pid_limit`
 - `process.resources.cpu`, `process.resources.memory`
 
-DockPipe compiles this into an effective runtime policy manifest and derives the actual enforcement mode there. Public workflow YAML does **not** set raw Docker security options or the low-level network enforcement mechanism directly. See **[../security/security-policy.md](../security/security-policy.md)** for the policy model.
+Dockpipe compiles this into an effective runtime policy manifest and derives the actual enforcement mode there. Public workflow YAML does **not** set raw Docker security options or the low-level network enforcement mechanism directly. See **[../security/security-policy.md](../security/security-policy.md)** for the policy model.
 
 ### `workspace`
 
@@ -509,7 +515,7 @@ workspace:
 Public fields:
 
 - `repo`: logical repository identity or source path/URL.
-- `mode`: `managed` or `bind`. `managed` is preferred and creates a DockPipe-owned session
+- `mode`: `managed` or `bind`. `managed` is preferred and creates a Dockpipe-owned session
   workspace; `bind` opts into the current checkout.
 - `base`: optional base ref for the session branch; defaults to `HEAD`.
 - `storage`: optional advanced implementation hint: `worktree`, `volume`, or `clone`.
@@ -531,11 +537,11 @@ Current implementation:
   `/work` for container runs. The runner overlays the worktree into the volume before each
   container run and overlays volume changes back into the worktree after the run for checkpoints.
 - `mode: bind` checks out a runtime-created session branch in the current source checkout.
-- DockPipe writes session metadata and event logs under `bin/.dockpipe/sessions/<id>/`.
+- Dockpipe writes session metadata and event logs under `bin/.dockpipe/sessions/<id>/`.
 - Runtime lifecycle operations now include `CreateSessionBranch`, `CheckpointSession`,
   `SyncSession`, `PublishSession`, `ArchiveSession`, `CreateWorkerLease`, and
   `ReleaseWorkerLease`.
-- Agents should request lifecycle transitions through DockPipe behavior; they should not run raw
+- Agents should request lifecycle transitions through Dockpipe behavior; they should not run raw
   Git commands such as `git commit`, `git pull`, or `git push`.
 
 The long-term architecture is documented in **[../runtime/git-runtime-sessions.md](../runtime/git-runtime-sessions.md)**.
@@ -618,7 +624,7 @@ Step-level `container` follows the same shape as top-level `container`:
 - `work_path`: relative container cwd under `/work`
 - `mounts`: additional `{ host, guest, mode }` bind mounts, where `mode` is `ro` or `rw`
 
-Like `security`, this is only meaningful on container steps. DockPipe rejects `container:` on `kind: host` steps and on packaged workflow-call steps.
+Like `security`, this is only meaningful on container steps. Dockpipe rejects `container:` on `kind: host` steps and on packaged workflow-call steps.
 
 ### Agentic steps (`agent`)
 
@@ -732,7 +738,7 @@ steps:
 
 If `compose.autodown_env` is set, `compose_down` is skipped when that env resolves to `0`, `false`, `no`, or `off`.
 
-If `compose.exports` is set, those `KEY=value` pairs are merged into DockPipe’s workflow environment after a successful `compose_up` or `compose_ps`. That makes them available to later steps without an extra env-file layer.
+If `compose.exports` is set, those `KEY=value` pairs are merged into Dockpipe’s workflow environment after a successful `compose_up` or `compose_ps`. That makes them available to later steps without an extra env-file layer.
 
 ---
 

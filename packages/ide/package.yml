@@ -1,14 +1,14 @@
 schema: 1
 kind: package
 name: ide
-version: 0.6.0
-title: DockPipe IDE resolvers
+version: 0.6.1
+title: Dockpipe IDE resolvers
 platforms: [windows, deb]
 description: |
   Compatibility resolvers for user-installed desktop editors (vscode,
   cursor-dev) plus read-only native Dev Container discovery/status. First-party
   Pipeon lives under packages/pipeon/ in this repo.
-author: DockPipe
+author: Dockpipe
 license: Apache-2.0
 repository: https://github.com/Dockpipe-Industries/dockpipe
 icon: resolvers/cursor-dev/assets/images/icon.png

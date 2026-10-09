@@ -32,7 +32,7 @@ The workflow brings up the DorkPipe dev stack before planning and tears it down 
 5. orchestration planning/workers/merge/verify/approval/apply
 6. stack down
 
-By default, this workflow tears the sidecars down at the end like a normal one-shot DockPipe run.
+By default, this workflow tears the sidecars down at the end like a normal one-shot Dockpipe run.
 Override `DORKPIPE_DEV_STACK_AUTODOWN=0` when you want iterative CLI/app testing to reuse the same
 reasoning stack between runs. The default local endpoints are:
 

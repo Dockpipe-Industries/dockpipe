@@ -1113,7 +1113,7 @@ func validateNodeExecutionActiveLease(operation nodeExecutionOperationState, con
 func validateCanonicalDockPipeEvent(raw json.RawMessage) error {
 	var event map[string]any
 	if err := decodeNodeExecutionStrict(raw, &event); err != nil {
-		return fmt.Errorf("canonical DockPipe event is invalid: %w", err)
+		return fmt.Errorf("canonical Dockpipe event is invalid: %w", err)
 	}
 	canonical, err := json.Marshal(event)
 	if err != nil {
@@ -1121,10 +1121,10 @@ func validateCanonicalDockPipeEvent(raw json.RawMessage) error {
 	}
 	compacted := &bytes.Buffer{}
 	if err := json.Compact(compacted, raw); err != nil || !bytes.Equal(compacted.Bytes(), canonical) {
-		return errors.New("canonical DockPipe event uses a non-canonical key order or value encoding")
+		return errors.New("canonical Dockpipe event uses a non-canonical key order or value encoding")
 	}
 	if stringValue(event["schema"]) != "dockpipe.operation_event.v1" || stringValue(event["type"]) == "" || stringValue(event["unit"]) == "" || stringValue(event["status"]) == "" {
-		return errors.New("canonical DockPipe event is missing required fields")
+		return errors.New("canonical Dockpipe event is missing required fields")
 	}
 	if _, err := parseNodeExecutionTime(stringValue(event["ts"])); err != nil {
 		return err
@@ -1132,7 +1132,7 @@ func validateCanonicalDockPipeEvent(raw json.RawMessage) error {
 	for key := range event {
 		lower := strings.ToLower(key)
 		if lower == "stdout" || lower == "stderr" || lower == "command" || lower == "shell" || containsNodeExecutionSecret(lower) {
-			return errors.New("DockPipe event embeds forbidden output, command, or credential material")
+			return errors.New("Dockpipe event embeds forbidden output, command, or credential material")
 		}
 	}
 	return nil

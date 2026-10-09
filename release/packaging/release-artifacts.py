@@ -8,6 +8,7 @@ import shutil
 from pathlib import Path
 
 PLATFORMS = ("linux-amd64", "linux-arm64", "darwin-amd64", "darwin-arm64", "windows-amd64")
+FLATPAK_PLATFORM = "linux-amd64-flatpak-org.kde.Platform-6.10"
 
 
 def digest(path):
@@ -88,6 +89,19 @@ def prepare(directory, version, candidate="", source_sha=""):
         for name in required:
             if not (directory / name).is_file():
                 raise ValueError(f"Missing release artifact: {name}")
+    flatpak_store = directory / "stores" / FLATPAK_PLATFORM
+    flatpak_bundle = f"dockpipe-desktop_{version}_linux_amd64.flatpak"
+    if flatpak_store.exists() or (directory / flatpak_bundle).exists():
+        if not (directory / flatpak_bundle).is_file():
+            raise ValueError("Flatpak store requires its tested desktop bundle")
+        manifest = json.loads((flatpak_store / "packages-store-manifest.json").read_text())
+        if manifest.get("platform") != FLATPAK_PLATFORM:
+            raise ValueError("Flatpak store has an incorrect runtime target")
+        stores[FLATPAK_PLATFORM] = {
+            "manifest": f"stores/{FLATPAK_PLATFORM}/packages-store-manifest.json",
+            "count": verify_store(flatpak_store),
+        }
+        downloads[FLATPAK_PLATFORM] = {"cli": flatpak_bundle, "desktop": flatpak_bundle}
     catalog = {"schema": 1, "version": version, "stores": stores, "downloads": downloads}
     if source_sha:
         catalog["source_sha"] = source_sha

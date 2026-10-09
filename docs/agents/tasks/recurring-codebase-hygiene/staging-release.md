@@ -51,7 +51,7 @@ Passed:
 - All 23 Python release-tooling tests, including real stable/staging APT signing and
   isolated APT readers, candidate provenance and publication guards, credential target
   isolation, and production-setting rejection by the actual Terraform wrapper/pipeline.
-- Focused Staticcheck, CLI build, both modified DockPipe workflow validations,
+- Focused Staticcheck, CLI build, both modified Dockpipe workflow validations,
   ShellCheck, embedded-input membership check, path guard and whitespace checks.
 - Actionlint 1.7.7 passed with only its obsolete `macos-15-intel` label diagnostic
   excluded; that unchanged runner already passed previous hosted qualification.
@@ -133,7 +133,7 @@ The user supplied staging 1Password Environment ID `kuuppko2xxsb2wcr7am46bs6xa`.
 `packages-staging-release-setup` (upload pair plus signing key). No secret values
 are stored in source. The saved staging signing key matches
 `7295FA3FC25A3998E146D0779EAF522778B9C909`, expires 2028-10-04, and passed import,
-unattended signing and verification. DockPipe's checks-only release setup passed
+unattended signing and verification. Dockpipe's checks-only release setup passed
 with the actual binding and target `release-staging`.
 
 Created GitHub environment `release-staging` with no manual reviewer or wait timer
@@ -441,7 +441,7 @@ to `origin/js/pipelang`. CI run `37407548104` passed Windows/runtime/security bu
 stopped Linux at Staticcheck U1000 for the unused remote `pair` wrapper. Release
 dry-run `37407555314` passed both Linux architectures and their desktop checks.
 Both Macs built/installed the DMG and ran the CLI workflow, then failed launcher
-smoke because `DockPipe` and wrapper `dockpipe` collide on case-insensitive APFS.
+smoke because `Dockpipe` and wrapper `dockpipe` collide on case-insensitive APFS.
 Windows stopped at quoting of the Visual Studio environment bootstrap path.
 No publication job ran.
 
@@ -665,3 +665,29 @@ verified v2.6.2 commit `3bb12739c298aeb8a4eeaf626c5b8d85266b0e65`.
 Local runtime qualification and ten release workflow tests passed. No scanner
 rules, exclusions, or alert dismissals were changed. Hosted CodeQL must verify
 closure after promotion; this does not authorize merging staging into master.
+
+## Qualified remote resolver and Dockpipe branding — source follow-up, 2026-10-08
+
+The user requested a specific provider/capability identity instead of the generic
+`cloudflare` Marketplace entry, plus the spelling **Dockpipe** across product branding.
+The adapter is now `dockpipe.cloudflare.remote-edge` at 0.3.0, including its source
+directory, manifest, package build staging, embedded-input list, and setup examples.
+Existing installed `cloudflare` copies are not renamed or removed automatically.
+
+Display text, package descriptions/authors, CLI messages, installer labels, and
+tracked documentation now use Dockpipe. Changed package owners receive version
+increments so changed published contents do not reuse their previous identities.
+Case-sensitive credential references, persisted Git audit trailer names, macOS
+installation paths, and the existing APT Origin/Label remain compatible. APT metadata
+identity is deliberately retained to avoid interrupting normal updates with a
+release-info-change prompt. The macOS bundle display name and DMG volume use Dockpipe.
+
+Local verification passed: runtime qualification, all 46 release-packaging tests,
+remote package tests, `make build`, and all six Qt tests. The real source build
+produced `dockpipe-resolver-dockpipe.cloudflare.remote-edge-0.3.0.tar.gz` with the
+qualified manifest and bundled native helper in `/tmp/dockpipe-branding-store`.
+Embedded inputs and whitespace checks passed; credential references, Git audit
+trailer names, and APT identity were compared against HEAD and preserved. Build
+outputs remain ignored or under `/tmp`; no installed packages or live catalog were
+modified. Source changes remain uncommitted and unpublished; native macOS/Windows
+release qualification remains a hosted check.

@@ -1,8 +1,8 @@
-# TASK-032 Windows DockPipe Platform Support And Qualification
+# TASK-032 Windows Dockpipe Platform Support And Qualification
 
 ## Goal
 
-Maintain an explicit DockPipe-wide Windows support contract across installation, CLI, packages,
+Maintain an explicit Dockpipe-wide Windows support contract across installation, CLI, packages,
 workflows, runtimes, filesystem/process semantics, applications, and diagnostics.
 
 ## Scope

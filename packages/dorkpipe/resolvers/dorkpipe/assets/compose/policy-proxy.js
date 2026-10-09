@@ -119,7 +119,7 @@ const server = http.createServer((req, res) => {
 
   const targetHost = destinationHostFromHttpRequest(req);
   if (!policyAllowsHost(policy, targetHost)) {
-    writeDenied(res, `blocked by DockPipe network policy: ${targetHost}\n`);
+    writeDenied(res, `blocked by Dockpipe network policy: ${targetHost}\n`);
     return;
   }
 
@@ -165,7 +165,7 @@ server.on("connect", (req, clientSocket, head) => {
     return;
   }
   if (!policyAllowsHost(policy, host)) {
-    clientSocket.write(`HTTP/1.1 403 Forbidden\r\nContent-Type: text/plain\r\n\r\nblocked by DockPipe network policy: ${host}\n`);
+    clientSocket.write(`HTTP/1.1 403 Forbidden\r\nContent-Type: text/plain\r\n\r\nblocked by Dockpipe network policy: ${host}\n`);
     clientSocket.destroy();
     return;
   }

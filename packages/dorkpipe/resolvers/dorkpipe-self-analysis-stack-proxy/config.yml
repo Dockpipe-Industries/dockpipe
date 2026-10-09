@@ -1,4 +1,4 @@
-# Full DockPipe path: Compose sidecars up → isolated DorkPipe self-analysis with
+# Full Dockpipe path: Compose sidecars up → isolated DorkPipe self-analysis with
 # proxy-backed network policy → Compose down.
 #
 #   dockpipe --workflow dorkpipe-self-analysis-stack-proxy --workdir . --

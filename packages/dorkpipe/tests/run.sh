@@ -15,14 +15,32 @@ export GOTMPDIR="${GOTMPDIR:-$(dockpipe_sdk path build go-tmp)}"
 # Preserve the admitted Go module/toolchain cache before isolating HOME. Without this, Go derives
 # GOMODCACHE from the temporary test home and offline package tests lose already-cached modules.
 export GOMODCACHE="${GOMODCACHE:-$(go env GOMODCACHE)}"
-TEST_HOME="${TMPDIR:-/tmp}/dorkpipe-package-test-home-${RANDOM}-${RANDOM}"
-mkdir -p "$TEST_HOME"
+TEST_HOME="$(mktemp -d "$TMPDIR/dorkpipe-package-test-home.XXXXXX")"
+cleanup_test_home() {
+	local status=$?
+	trap - EXIT
+	# Go module caches can contain read-only directories inside the isolated home.
+	# Do not follow symlinks into shared caches or the caller's real home.
+	if ! find "$TEST_HOME" -type d -exec chmod u+w {} +; then
+		printf 'Failed to make temporary test directories writable: %s\n' "$TEST_HOME" >&2
+	fi
+	if ! rm -rf -- "$TEST_HOME"; then
+		printf 'Failed to remove temporary test home: %s\n' "$TEST_HOME" >&2
+		if [[ "$status" -eq 0 ]]; then
+			status=1
+		fi
+	fi
+	exit "$status"
+}
+trap cleanup_test_home EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
 export HOME="$TEST_HOME"
 export USERPROFILE="$TEST_HOME"
 export XDG_CONFIG_HOME="$TEST_HOME/.config"
 export DORKPIPE_ORCH_AUTH_LOGIN_ON_MISSING="${DORKPIPE_ORCH_AUTH_LOGIN_ON_MISSING:-never}"
 failed=0
-for f in test_cloud_usage_failure.sh test_normalize_ci_scans.sh test_user_insight_queue.sh test_durable_training_metrics.sh test_self_analysis_durable_metrics.sh test_repo_tools.sh test_disposable_package_runtime.sh test_build_source_operation_results.sh test_orchestration_approval_operation_results.sh test_orchestration_verify_status.sh test_orchestration_lanes.sh test_software_dev_workflow.sh test_backlog_remote_workflow.sh test_example_brain_contract.sh test_orchestration_optimize.sh test_orchestration_container_auth.sh test_dev_stack_gpu_policy.sh test_cas01_app_server.sh test_codex_cli_update.sh test_task_skill_lifecycle.sh; do
+for f in test_runner_cleanup.sh test_cloud_usage_failure.sh test_normalize_ci_scans.sh test_user_insight_queue.sh test_durable_training_metrics.sh test_self_analysis_durable_metrics.sh test_repo_tools.sh test_disposable_package_runtime.sh test_build_source_operation_results.sh test_orchestration_approval_operation_results.sh test_orchestration_verify_status.sh test_orchestration_lanes.sh test_software_dev_workflow.sh test_backlog_remote_workflow.sh test_example_brain_contract.sh test_orchestration_optimize.sh test_orchestration_container_auth.sh test_dev_stack_gpu_policy.sh test_cas01_app_server.sh test_codex_cli_update.sh test_task_skill_lifecycle.sh; do
 	echo "--- dorkpipe/tests/$f ---"
 	if ! bash "$DIR/$f"; then
 		echo "dorkpipe/tests/$f FAILED" >&2

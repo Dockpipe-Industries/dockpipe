@@ -288,7 +288,7 @@ function Invoke-DockpipePrompt {
         }
         "choice" {
           if (-not $Options -or $Options.Count -eq 0) {
-            throw "DockPipe prompt choice requires at least one option."
+            throw "Dockpipe prompt choice requires at least one option."
           }
           [Console]::Error.WriteLine($Message)
           $defaultIndex = 1
@@ -409,7 +409,7 @@ function Invoke-DockpipePrompt {
       if ($DefaultValue) {
         return $DefaultValue
       }
-      throw "DockPipe prompt requires a terminal or DOCKPIPE_SDK_PROMPT_MODE=json."
+      throw "Dockpipe prompt requires a terminal or DOCKPIPE_SDK_PROMPT_MODE=json."
     }
   }
 }

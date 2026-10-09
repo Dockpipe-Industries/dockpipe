@@ -118,12 +118,12 @@ The separately approved installed-binary inspection is now corroborated by the e
 It establishes only a client callback boundary: App Server can request and transport a
 client-produced token. The reviewed tagged App Server, protocol, and core source paths expose no
 generator; their only response construction is the integration-test fixture. The installed CLI does
-not expose a DockPipe-usable token producer; exec mode reports generation as unsupported and TUI
+not expose a Dockpipe-usable token producer; exec mode reports generation as unsupported and TUI
 reports it unavailable.
 
 Neither official source nor installed artifacts define a token algorithm, trust root, challenge,
 signing key, credential/account dependency, origin/audience binding, expiry, or replay rule.
-DockPipe therefore cannot safely fabricate, retrieve, store, or return a token, and cannot infer
+Dockpipe therefore cannot safely fabricate, retrieve, store, or return a token, and cannot infer
 authorization from an authenticated Codex session, account availability, connection, approval,
 sandbox, model, catalog, or confirmation. Production initialization and request rejection remain
 unchanged.
@@ -131,7 +131,7 @@ unchanged.
 There is no smaller safe package-local CAS-14 implementation action. The prerequisite is an upstream
 Codex contract and implementation that both supplies an authoritative client token generator and
 aborts the provider request when attestation is absent, invalid, rejected, canceled, or timed out.
-Only after that behavior exists could a separately bounded DockPipe slice reconsider a private
+Only after that behavior exists could a separately bounded Dockpipe slice reconsider a private
 request/result validator and pre-initialization handler. Initialization opt-in, request acceptance,
 response dispatch, live probes, and consumer integration remain out of scope and unauthorized.
 

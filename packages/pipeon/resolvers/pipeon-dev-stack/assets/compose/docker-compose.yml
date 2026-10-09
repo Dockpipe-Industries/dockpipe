@@ -19,7 +19,7 @@ services:
     volumes:
       - dorkpipe_ollama:/root/.ollama
   dorkpipe-stack:
-    image: dockpipe-dorkpipe-stack:latest
+    image: "${PIPEON_DEV_STACK_IMAGE:-dockpipe-dorkpipe-stack:latest}"
     build:
       context: "${PIPEON_DEV_STACK_CONTEXT_DIR:?PIPEON_DEV_STACK_CONTEXT_DIR is required}"
       dockerfile: compose/Dockerfile.dorkpipe-stack
@@ -32,6 +32,7 @@ services:
     environment:
       DOCKPIPE_BIN: "/usr/local/bin/dockpipe"
       DORKPIPE_BIN: "/usr/local/bin/dorkpipe"
+      DORKPIPE_PROVIDER_POOL_CATALOG: "/opt/pipeon/provider-pools/catalog.yml"
       DOCKPIPE_WORKDIR: "${PIPEON_DEV_STACK_DORKPIPE_WORKDIR:-/work}"
       DOCKPIPE_MCP_TIER: "${DOCKPIPE_MCP_TIER:-exec}"
       DOCKPIPE_MCP_RESTRICT_WORKDIR: "1"
@@ -67,9 +68,9 @@ services:
     command:
       - /bin/sh
       - -lc
-      - exec node /repo/packages/pipeon/resolvers/pipeon-dev-stack/assets/scripts/mcp-proxy.js
+      - exec node /opt/pipeon/mcp-proxy.js
     volumes:
-      - "${PIPEON_DEV_STACK_REPO_ROOT:-.}:/repo"
+      - "${PIPEON_DEV_STACK_PROXY_SCRIPT:?PIPEON_DEV_STACK_PROXY_SCRIPT is required}:/opt/pipeon/mcp-proxy.js:ro"
       - "${PIPEON_DEV_STACK_MCP_API_KEY_FILE:?PIPEON_DEV_STACK_MCP_API_KEY_FILE is required}:/run/pipeon/mcp-api-key:ro"
       - "${PIPEON_DEV_STACK_MCP_TLS_CERT_FILE:?PIPEON_DEV_STACK_MCP_TLS_CERT_FILE is required}:/run/pipeon/mcp-tls.crt:ro"
 

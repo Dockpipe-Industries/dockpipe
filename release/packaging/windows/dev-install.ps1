@@ -1,7 +1,7 @@
 #Requires -Version 5.1
 <#
 .SYNOPSIS
-  Build the current DockPipe source tree and install it into the local per-user DockPipe location.
+  Build the current Dockpipe source tree and install it into the local per-user Dockpipe location.
 
 .DESCRIPTION
   Dev-side install helper for Windows. This script:
@@ -166,7 +166,7 @@ function Stop-LauncherIfRunning {
         }
     }
     if ($running.Count -gt 0) {
-        Write-Host "Stopping running DockPipe Launcher process(es)"
+        Write-Host "Stopping running Dockpipe Launcher process(es)"
         $running | Stop-Process -Force
         Start-Sleep -Milliseconds 500
         return $true
@@ -246,7 +246,7 @@ function Try-RefreshLauncher {
     }
 
     if ($restartLauncher) {
-        Write-Host "Restarting DockPipe Launcher"
+        Write-Host "Restarting Dockpipe Launcher"
         Start-Process -FilePath (Join-Path $InstallRoot "dockpipe-launcher.exe") | Out-Null
     }
 }
@@ -347,7 +347,7 @@ else {
 }
 
 Write-Host ""
-Write-Host "Installed DockPipe dev build:"
+Write-Host "Installed Dockpipe dev build:"
 Write-Host "  exe:  $installExe"
 Write-Host "  core: $(Join-Path $installCoreDir $coreTarball.Name)"
 if (-not $SkipLauncher) {

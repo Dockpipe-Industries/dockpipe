@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "artifacts": [
+    {
+      "kind": "workflow",
+      "name": "codex.cli.update"
+    }
+  ],
+  "tools": [],
+  "host_commands": [
+    "codex",
+    "npm"
+  ],
+  "required_files": []
+}

@@ -1,0 +1,12 @@
+{
+  "schema": 1,
+  "artifacts": [
+    {
+      "kind": "workflow",
+      "name": "dockpipe.cloudflare.r2upload"
+    }
+  ],
+  "tools": [],
+  "host_commands": [],
+  "required_files": []
+}

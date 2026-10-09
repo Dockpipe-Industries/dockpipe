@@ -32,7 +32,7 @@ test function, plus `internal/wslbridge` at one 314-line production file and two
 test files with 35 tests. Infrastructure has `fetchinstall` at one 552-line production file and one
 247-line test file with 10 tests, plus `packagebuild` at six production files/1,068 lines and five
 test files/495 lines with seven tests. Neither application internal leaf imports its parent;
-`imageartifact` imports only `domain` inside DockPipe and `wslbridge` imports no DockPipe package.
+`imageartifact` imports only `domain` inside Dockpipe and `wslbridge` imports no Dockpipe package.
 `packagebuild` imports only `domain`. `fetchinstall` imports root infrastructure, while root
 infrastructure does not import `fetchinstall`. No generic tests directory or cyclic child-to-parent
 dependency has appeared.
@@ -40,7 +40,7 @@ dependency has appeared.
 Source import declarations show application production files importing `domain` from 45 files,
 root `infrastructure` from 54, `infrastructure/packagebuild` from 12, and `fetchinstall` from one.
 Root infrastructure imports `domain` from 10 production files and `packagebuild` from six. Domain
-still imports no DockPipe package and depends only on the standard library and YAML. The increases
+still imports no Dockpipe package and depends only on the standard library and YAML. The increases
 in application import-file counts are the expected result of completed in-package splits; they do
 not introduce a new dependency direction. Application remains the fan-in orchestration layer,
 domain remains dependency-inward and I/O-free, and infrastructure remains the adapter layer.

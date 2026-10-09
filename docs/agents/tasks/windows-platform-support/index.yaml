@@ -1,7 +1,7 @@
-# TASK-032 Windows DockPipe platform support and qualification
+# TASK-032 Windows Dockpipe platform support and qualification
 schema: 1
 id: TASK-032
-topic: "Windows DockPipe platform support and qualification"
+topic: "Windows Dockpipe platform support and qualification"
 entrypoint: overview.md
 
 dispatch:

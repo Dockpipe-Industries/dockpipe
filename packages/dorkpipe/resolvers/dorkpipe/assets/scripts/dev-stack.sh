@@ -47,7 +47,7 @@ dorkpipe_stack_require_consumer_binaries() {
 	if [[ "$bundle_mode" == "checkout" ]]; then
 		repo_root="$(git -C "$ROOT" rev-parse --show-toplevel 2>/dev/null || true)"
 		if [[ -z "$repo_root" || ! -f "$repo_root/packages/dorkpipe/resolvers/dorkpipe/assets/compose/Dockerfile.dorkpipe-stack" ]]; then
-			echo "dev-stack: checkout bundle mode requires a DockPipe source checkout" >&2
+			echo "dev-stack: checkout bundle mode requires a Dockpipe source checkout" >&2
 			return 1
 		fi
 		for path in \

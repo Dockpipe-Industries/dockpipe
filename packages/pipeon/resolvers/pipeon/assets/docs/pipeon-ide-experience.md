@@ -8,9 +8,9 @@
 |--------|------|
 | **DorkPipe control plane** | Pipeon and editor clients talk to **DorkPipe over MCP**; orchestration and model routing stay server-side. |
 | **Internal model service** | Default local inference stays **inside the isolated DorkPipe stack** (private, local-first, not a client concern). |
-| **Docker (backend)** | Used for **isolation** and for **DockPipe-class work** (containers, reproducible steps)—not as the thing the user manually drives for every chat turn. The app orchestrates it; the user does not live in `docker run` for daily chat. |
+| **Docker (backend)** | Used for **isolation** and for **Dockpipe-class work** (containers, reproducible steps)—not as the thing the user manually drives for every chat turn. The app orchestrates it; the user does not live in `docker run` for daily chat. |
 | **Safe host mapping** | The user **opens directories** (projects, worktrees) **in the app**; Pipeon maps them into the isolated side **safely** (bounded mounts, clear labels, no silent exfiltration)—**like a native “add folder” workflow**, not manual volume flags. |
-| **Intelligence** | Everything we added—DockPipe state, DorkPipe package facts, insights queue, CI normalization, workflows—is **ingested** so the model and UI can **hint** what’s available and **ground** answers. |
+| **Intelligence** | Everything we added—Dockpipe state, DorkPipe package facts, insights queue, CI normalization, workflows—is **ingested** so the model and UI can **hint** what’s available and **ground** answers. |
 
 ### Boot and conversation (product UX)
 
@@ -194,13 +194,13 @@ Pipeon should **treat those as distinct lanes** in prompts and in user-facing di
 
 ### Product (Pipeon app — target UX)
 
-The **shipping** Pipeon experience is a **desktop (or equivalent) application** that implements the **gateway** model in the opening section above: boot hints, in-app chat to **DorkPipe over MCP**, **Docker-backed** isolation for engine work, **safe host directory mapping**, and unified use of DockPipe/DorkPipe artifacts. That UI is **not** fully implemented in this repository yet; this repo defines the **contracts**, **artifact layout**, and a **thin harness** for developers.
+The **shipping** Pipeon experience is a **desktop (or equivalent) application** that implements the **gateway** model in the opening section above: boot hints, in-app chat to **DorkPipe over MCP**, **Docker-backed** isolation for engine work, **safe host directory mapping**, and unified use of Dockpipe/DorkPipe artifacts. That UI is **not** fully implemented in this repository yet; this repo defines the **contracts**, **artifact layout**, and a **thin harness** for developers.
 
 ### Repository today (intelligence + dev harness)
 
 | Piece | Purpose |
 |-------|---------|
-| **Artifact lanes** | DockPipe state, DorkPipe package facts, insights, CI bundle—documented across **`docs/`** |
+| **Artifact lanes** | Dockpipe state, DorkPipe package facts, insights, CI bundle—documented across **`docs/`** |
 | **`../assets/scripts/bundle-context.sh`** | Builds **`pipeon-context.md`** — same **aggregate** the app should load (harness + future UI) |
 | **`packages/pipeon/resolvers/pipeon/bin/pipeon`** / **`chat.sh`** | **Dev-only:** one-shot local harness to validate prompts + bundle (**not** the user-facing UX) |
 | **`../assets/scripts/lib/enable.sh`** | Feature gate for harness (**`DOCKPIPE_PIPEON`**, min version **0.6.5**, **`DOCKPIPE_PIPEON_ALLOW_PRERELEASE`**) |

@@ -1,0 +1,14 @@
+{
+  "schema": 1,
+  "artifacts": [
+    {
+      "kind": "resolver",
+      "name": "dockpipe.cloudflare.remote-edge"
+    }
+  ],
+  "tools": [],
+  "host_commands": [],
+  "required_files": [
+    "assets/tooling/bin/cloudflare-edge"
+  ]
+}

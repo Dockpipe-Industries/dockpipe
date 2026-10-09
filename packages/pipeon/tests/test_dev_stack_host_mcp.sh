@@ -116,11 +116,33 @@ if [[ ! -f "$(pipeon_stack_code_server_home)/.gitconfig" \
   echo "pipeon-dev-stack durable user configuration or extensions were not imported" >&2
   exit 1
 fi
-if [[ -e "$(pipeon_stack_code_server_home)/.cache" \
+if [[ -e "$(pipeon_stack_code_server_home)/.cache/cache" \
   || -e "$(pipeon_stack_code_server_runtime_user_data)/User/settings.json" ]]; then
   echo "pipeon-dev-stack cache or runtime server product fell back to durable/user authority" >&2
   exit 1
 fi
+# Bind targets must exist before Docker mounts into the durable home. Otherwise
+# its daemon creates them with a different owner and the next launch rejects it.
+for mount_path in .cache .dotnet .local/share/code-server .local/share/code-server-extensions; do
+  mount_target="$(pipeon_stack_code_server_home)/$mount_path"
+  if [[ ! -d "$mount_target" || "$(stat -c '%u:%a' "$mount_target")" != "$(id -u):700" ]]; then
+    echo "pipeon-dev-stack nested mount target is not private and user-owned: $mount_target" >&2
+    exit 1
+  fi
+done
+# Model code-server writing its default config through the durable home mount.
+# The container entrypoint must keep every newly created path private too.
+container_umask="$(sed -n '/    -lc '\''/,/^    '\''/p' "$desktop" | sed -n 's/^      umask /umask /p')"
+if [[ -z "$container_umask" ]]; then
+  echo "pipeon-dev-stack code-server entrypoint has no private umask" >&2
+  exit 1
+fi
+(
+  eval "$container_umask"
+  mkdir -p "$(pipeon_stack_code_server_home)/.config/code-server"
+  printf 'test config\n' > "$(pipeon_stack_code_server_home)/.config/code-server/config.yaml"
+)
+pipeon_stack_prepare_code_server_state
 if [[ "$legacy_hash" != "$(find "$legacy_root/code-server-home" -type f -print0 | sort -z | xargs -0 sha256sum | sha256sum)" ]]; then
   echo "pipeon-dev-stack legacy code-server home was mutated" >&2
   exit 1

@@ -1,0 +1,16 @@
+{
+  "schema": 1,
+  "artifacts": [
+    {
+      "kind": "resolver",
+      "name": "ollama"
+    },
+    {
+      "kind": "workflow",
+      "name": "ollama"
+    }
+  ],
+  "tools": [],
+  "host_commands": [],
+  "required_files": []
+}

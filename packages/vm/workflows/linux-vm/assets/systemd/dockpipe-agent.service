@@ -1,5 +1,5 @@
 [Unit]
-Description=DockPipe qualification guest agent
+Description=Dockpipe qualification guest agent
 DefaultDependencies=no
 Before=network-pre.target
 After=local-fs.target var-lib-dockpipe\x2dqualification.mount

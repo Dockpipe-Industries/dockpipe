@@ -1,0 +1,12 @@
+{
+  "schema": 1,
+  "artifacts": [
+    {
+      "kind": "resolver",
+      "name": "dotenv"
+    }
+  ],
+  "tools": [],
+  "host_commands": [],
+  "required_files": []
+}

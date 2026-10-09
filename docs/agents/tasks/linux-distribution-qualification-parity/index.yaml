@@ -1,7 +1,7 @@
-# TASK-024 Fedora and Debian DockPipe support and qualification parity
+# TASK-024 Fedora and Debian Dockpipe support and qualification parity
 schema: 1
 id: TASK-024
-topic: "Fedora and Debian DockPipe support and qualification parity"
+topic: "Fedora and Debian Dockpipe support and qualification parity"
 entrypoint: overview.md
 
 dispatch:

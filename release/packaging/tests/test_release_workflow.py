@@ -83,12 +83,20 @@ class ReleaseWorkflowTests(unittest.TestCase):
             self.assertNotIn("write", job.get("permissions", {}).values(), name)
 
         assembly = self.jobs["assemble"]
-        self.assertEqual(assembly["needs"], ["meta", "build-unix", "build-msi"])
+        self.assertEqual(assembly["needs"], ["meta", "build-unix", "build-msi", "build-flatpak"])
         self.assertEqual(self.jobs["publish"]["needs"], ["meta", "assemble"])
         self.assertEqual(self.jobs["devto"]["needs"], ["meta", "publish"])
         self.assertIn("needs.build-unix.result == 'success'", assembly["if"])
         self.assertIn("needs.build-msi.result == 'success'", assembly["if"])
         self.assertIn("needs.build-msi.result == 'skipped'", assembly["if"])
+        self.assertIn("needs.build-flatpak.result == 'success'", assembly["if"])
+        self.assertEqual(self.jobs["build-flatpak"]["uses"], "./.github/workflows/flatpak.yml")
+        flatpak = yaml.load((REPOSITORY / ".github/workflows/flatpak.yml").read_text(), Loader=yaml.BaseLoader)
+        self.assertNotIn("secrets", self.jobs["build-flatpak"])
+        self.assertEqual(flatpak["permissions"], {"contents": "read"})
+        for job in flatpak["jobs"].values():
+            self.assertNotIn("environment", job)
+            self.assertNotIn("secrets.", yaml.dump(job))
 
         dry_run_upload = next(step for step in assembly["steps"]
                               if step.get("name") == "Upload dry-run artifacts")

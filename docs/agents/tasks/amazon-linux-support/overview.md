@@ -2,7 +2,7 @@
 
 ## Goal
 
-Make DockPipe work and remain qualified on selected supported Amazon Linux releases for AWS-hosted
+Make Dockpipe work and remain qualified on selected supported Amazon Linux releases for AWS-hosted
 development, build, orchestration, and server workloads.
 
 ## Scope
@@ -13,7 +13,7 @@ development, build, orchestration, and server workloads.
 - Test Graviton separately from x86_64 and keep cloud-host proof separate from generic Fedora or
   enterprise-Linux evidence.
 - Prevent ambient instance roles, metadata credentials, or AWS sockets from becoming implicit
-  DockPipe worker authority.
+  Dockpipe worker authority.
 
 ## Acceptance Criteria
 

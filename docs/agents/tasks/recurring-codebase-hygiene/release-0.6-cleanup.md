@@ -72,7 +72,7 @@ engine primitive has no package names, workflow knowledge, or provider logic.
   of recovery payloads, private-file checks, exact counters, and output failures.
 - The orchestration shell lane suite and cloud-usage failure regression passed
   with a freshly built helper and isolated temporary state; live models were off.
-- DockPipe CLI and orchestration helper builds passed for Linux amd64, Windows
+- Dockpipe CLI and orchestration helper builds passed for Linux amd64, Windows
   amd64, and macOS arm64. Cross-builds do not establish native runtime behavior.
 - Existing helper-declaration reconstruction, formatting, embed-manifest checks,
   whitespace checks, and preservation of unrelated changed files passed.

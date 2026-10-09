@@ -48,7 +48,11 @@ Windows smoke installs the real MSI, checks the app/CLI, modifies the launcher
 feature and uninstalls. Homebrew separately tests formula/cask installation and
 cask removal on both Mac architectures before updating the tap.
 
-Linux desktop support is currently DEB only. Do not put the glibc Qt binary into
+Published Linux desktop support is currently DEB only. An experimental
+[Flatpak qualification lane](flatpak/README.md) builds launcher and CLI against a
+defined runtime, with separate on-demand compatible packages. It is not yet a
+public Flatpak release or a Bazzite/Pipeon support claim.
+Do not put the glibc Qt binary into
 an Alpine package. Other Linux package formats and portable archives remain CLI
 options. Native Mac/Windows installation proof cannot be inferred from a Linux
 cross-build or script fixture test.
@@ -78,7 +82,7 @@ Dynamic Qt license notices are included in the macOS/Windows payloads.
 
 The direct macOS installer refuses foreign CLI links/files, an Apple Silicon
 Homebrew command, or an existing app without its package receipt. Use the cask
-when Homebrew already manages DockPipe. Do not mix a cask-managed app and a
+when Homebrew already manages Dockpipe. Do not mix a cask-managed app and a
 package-managed app. Re-running the direct installer updates its managed app
 and link. It does not install a daemon or change user data.
 
