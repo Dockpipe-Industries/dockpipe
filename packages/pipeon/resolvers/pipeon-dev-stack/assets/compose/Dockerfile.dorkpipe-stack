@@ -8,6 +8,7 @@ RUN set -eux; \
 COPY tooling/bin/linux/dockpipe /usr/local/bin/dockpipe
 COPY tooling/bin/linux/dorkpipe /usr/local/bin/dorkpipe
 COPY tooling/bin/linux/mcpd /usr/local/bin/mcpd
+COPY provider-pools/catalog.yml /opt/pipeon/provider-pools/catalog.yml
 
 RUN chmod +x /usr/local/bin/dockpipe /usr/local/bin/dorkpipe /usr/local/bin/mcpd
 

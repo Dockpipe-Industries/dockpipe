@@ -150,7 +150,7 @@ def publish(directory):
         if require_forward_update(current, candidate, content):
             updates.append((endpoint, content, existing))
     for endpoint, content, existing in updates:
-        payload = {"message": f"Update DockPipe staging to {candidate}", "branch": "main",
+        payload = {"message": f"Update Dockpipe staging to {candidate}", "branch": "main",
                    "content": base64.b64encode(content.encode()).decode()}
         if existing:
             payload["sha"] = existing["sha"]

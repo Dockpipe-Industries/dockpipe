@@ -25,6 +25,9 @@ func buildWorkflowEnvInto(env map[string]string, wf *domain.Workflow, wfConfig, 
 			"DOCKPIPE_WORKFLOW_CONFIG":     wfConfigOnDisk,
 			"DOCKPIPE_WORKFLOW_CONFIG_URI": wfConfig,
 		})
+		if toolsDir := packageToolsDir(filepath.Dir(wfConfigOnDisk)); toolsDir != "" {
+			env["PATH"] = prependPATHDir(env["PATH"], toolsDir)
+		}
 	}
 	if strings.TrimSpace(wfRoot) != "" {
 		domain.MergeIfUnset(env, map[string]string{"DOCKPIPE_WORKFLOW_DIR": wfRoot})

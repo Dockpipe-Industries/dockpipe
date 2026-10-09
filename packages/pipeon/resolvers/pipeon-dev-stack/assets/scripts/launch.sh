@@ -131,6 +131,7 @@ resolve_pipeon_bin() {
   fi
 
   for candidate in \
+    "$SCRIPT_DIR/../tooling/bin/pipeon" \
     "$WORKDIR/packages/pipeon/resolvers/pipeon/bin/pipeon" \
     "$PROJECT_DIR/packages/pipeon/resolvers/pipeon/bin/pipeon"
   do
@@ -213,8 +214,28 @@ build_pipeon_stack_linux_tool() {
 }
 
 prepare_pipeon_stack_linux_binaries() {
-  local output_dir version
+  local output_dir version packaged_dir tool wanted_arch
   output_dir="$(pipeon_stack_state_dir)/linux-tooling/bin"
+  packaged_dir="$SCRIPT_DIR/../tooling/bin/linux"
+  if [[ -f "$packaged_dir/architecture" ]]; then
+    wanted_arch="${PIPEON_DEV_STACK_GOARCH:-$(cat "$packaged_dir/architecture")}"
+    if [[ "$wanted_arch" != "$(cat "$packaged_dir/architecture")" ]]; then
+      echo "pipeon-dev-stack: installed container tools do not support architecture $wanted_arch" >&2
+      return 1
+    fi
+    mkdir -p "$output_dir"
+    for tool in dockpipe dorkpipe mcpd; do
+      if [[ ! -x "$packaged_dir/$tool" ]]; then
+        echo "pipeon-dev-stack: installed package is missing container tool $tool" >&2
+        return 1
+      fi
+      if ! cmp -s "$packaged_dir/$tool" "$output_dir/$tool"; then
+        cp "$packaged_dir/$tool" "$output_dir/$tool"
+        PIPEON_DEV_STACK_LINUX_TOOLING_CHANGED=1
+      fi
+    done
+    return 0
+  fi
   version="0.0.0"
   if [[ -f "$PROJECT_DIR/VERSION" ]]; then
     version="$(tr -d ' \t\r\n' < "$PROJECT_DIR/VERSION")"
@@ -250,6 +271,19 @@ prepare_pipeon_stack_context() {
   prepare_pipeon_stack_linux_binaries
   rm -rf "$context_root"
   mkdir -p "$context_root/compose" "$context_root/tooling/bin/linux"
+  cp "$SCRIPT_DIR/mcp-proxy.js" "$context_root/mcp-proxy.js"
+  local provider_catalog
+  provider_catalog="$SCRIPT_DIR/../provider-pools/catalog.yml"
+  if [[ ! -f "$provider_catalog" ]]; then
+    provider_catalog="$PROJECT_DIR/packages/dorkpipe/resolvers/dorkpipe/assets/provider-pools/catalog.yml"
+  fi
+  if [[ ! -f "$provider_catalog" ]]; then
+    echo "pipeon-dev-stack: provider-pool catalog is missing from the package" >&2
+    return 1
+  fi
+  mkdir -p "$context_root/provider-pools"
+  cp "$provider_catalog" "$context_root/provider-pools/catalog.yml"
+  export DORKPIPE_PROVIDER_POOL_CATALOG="$provider_catalog"
   cp "$COMPOSE_ASSETS_DIR/Dockerfile.dorkpipe-stack" "$context_root/compose/Dockerfile.dorkpipe-stack"
   if [[ -f "$COMPOSE_ASSETS_DIR/Dockerfile.dorkpipe-stack.dockerignore" ]]; then
     cp "$COMPOSE_ASSETS_DIR/Dockerfile.dorkpipe-stack.dockerignore" "$context_root/compose/Dockerfile.dorkpipe-stack.dockerignore"
@@ -270,6 +304,7 @@ prepare_pipeon_stack_context() {
       cd "$context_root"
       sha256sum \
         compose/Dockerfile.dorkpipe-stack \
+        provider-pools/catalog.yml \
         tooling/bin/linux/dockpipe \
         tooling/bin/linux/dorkpipe \
         tooling/bin/linux/mcpd 2>/dev/null | sha256sum | awk '{print $1}'
@@ -277,7 +312,7 @@ prepare_pipeon_stack_context() {
   fi
   saved_sig="$(cat "$stamp_file" 2>/dev/null || true)"
   have_image=0
-  docker image inspect dockpipe-dorkpipe-stack:latest >/dev/null 2>&1 && have_image=1
+  docker image inspect "${PIPEON_DEV_STACK_IMAGE:-dockpipe-dorkpipe-stack:latest}" >/dev/null 2>&1 && have_image=1
   PIPEON_DEV_STACK_STACK_IMAGE_SIGNATURE="$current_sig"
   if [[ "$have_image" -eq 0 || -z "$current_sig" || "$current_sig" != "$saved_sig" || "$PIPEON_DEV_STACK_LINUX_TOOLING_CHANGED" == "1" ]]; then
     PIPEON_DEV_STACK_REBUILD_STACK_IMAGE=1
@@ -301,8 +336,9 @@ retry_with_backoff() {
   while true; do
     if "$@"; then
       return 0
+    else
+      status=$?
     fi
-    status=$?
     if (( attempt >= attempts )); then
       printf '[pipeon-dev-stack] %s failed after %s attempt(s)\n' "$label" "$attempt" >&2
       return "$status"
@@ -319,7 +355,7 @@ ensure_pipeon_code_server_surface() {
     return 0
   fi
 
-  local build_script stamp_file current_sig saved_sig have_image refresh_reason
+  local build_script stamp_file current_sig saved_sig have_image refresh_reason packaged_context
   build_script="$(pipeon_stack_build_script)"
   stamp_file="$(pipeon_stack_image_stamp_file)"
   current_sig="$(pipeon_stack_code_server_image_signature)"
@@ -346,6 +382,15 @@ ensure_pipeon_code_server_surface() {
   esac
 
   if [[ -z "$refresh_reason" ]]; then
+    return 0
+  fi
+
+  if packaged_context="$(pipeon_stack_packaged_context)"; then
+    printf '[pipeon-dev-stack] building code-server from installed package assets\n' >&2
+    docker build -t dockpipe-code-server:latest \
+      -f "$packaged_context/packages/pipeon/resolvers/pipeon/vscode-extension/Dockerfile.code-server" "$packaged_context" || return
+    ensure_pipeon_stack_state_dir
+    printf '%s\n' "$current_sig" > "$stamp_file"
     return 0
   fi
 
@@ -572,11 +617,13 @@ DOCKPIPE_BIN="$(resolve_repo_tool_bin "${DOCKPIPE_BIN:-}" dockpipe \
   "$WORKDIR/src/bin/dockpipe" \
   "$PROJECT_DIR/src/bin/dockpipe")"
 DORKPIPE_BIN="$(resolve_repo_tool_bin "${DORKPIPE_BIN:-}" dorkpipe \
+  "$SCRIPT_DIR/../tooling/bin/dorkpipe" \
   "$WORKDIR/bin/.dockpipe/tooling/bin/dorkpipe" \
   "$PROJECT_DIR/bin/.dockpipe/tooling/bin/dorkpipe" \
   "$WORKDIR/packages/dorkpipe/bin/dorkpipe" \
   "$PROJECT_DIR/packages/dorkpipe/bin/dorkpipe")"
 MCPD_BIN="$(resolve_repo_tool_bin "${MCPD_BIN:-}" mcpd \
+  "$SCRIPT_DIR/../tooling/bin/mcpd" \
   "$WORKDIR/packages/dorkpipe-mcp/bin/mcpd" \
   "$PROJECT_DIR/packages/dorkpipe-mcp/bin/mcpd" \
   "$WORKDIR/bin/.dockpipe/tooling/bin/mcpd" \
@@ -606,7 +653,9 @@ cleanup() {
     stop_pipeon_host_mcp_bridge
   fi
 }
-trap cleanup EXIT INT TERM
+trap cleanup EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
 
 configure_pipeon_stack_gpu
 

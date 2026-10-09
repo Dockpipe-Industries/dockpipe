@@ -2,7 +2,7 @@
 
 Status: local SDK integration and bounded pilot complete. Changes are uncommitted; no public release or new full-language acceptance.
 
-Nucleon ran through its private C++ shared library on real PipeLang-generated executables. The consumer contains only the optional SDK client, representation adapter and tests. No proprietary implementation, models or SDK binary were added to DockPipe.
+Nucleon ran through its private C++ shared library on real PipeLang-generated executables. The consumer contains only the optional SDK client, representation adapter and tests. No proprietary implementation, models or SDK binary were added to Dockpipe.
 
 ## Result
 
@@ -42,7 +42,7 @@ Both warm compressed runs performed zero preparations. Nucleon cold preparation 
 
 - Host: Intel(R) Core(TM) i9-10900K CPU @ 3.70GHz; 20 allowed logical CPUs; Linux-7.1.1-76070101-generic-x86_64-with-glibc2.35. SDK: c++ (Ubuntu 11.4.0-1ubuntu1~22.04.3) 11.4.0, cmake version 3.22.1, Release `-O3 -DNDEBUG`, C++17. No SDK CPU pinning.
 
-- Current dirty DockPipe checkout based on `1c839e3ce92591c845fc647970d453bcad6dffea`; preexisting language/harness edits were preserved. The Nucleon retained source/models were unchanged from private baseline `332f8835f4cdcdada632d4effbbe2e116411c81b`.
+- Current dirty Dockpipe checkout based on `1c839e3ce92591c845fc647970d453bcad6dffea`; preexisting language/harness edits were preserved. The Nucleon retained source/models were unchanged from private baseline `332f8835f4cdcdada632d4effbbe2e116411c81b`.
 - Complete `TestV910NestedTerminalInitializersLayouts` family: 200 logical shape cases, one of 884 discovered top-level tests. Every final arm accepted exactly the same 200 artifact keys with fresh current Value/Trace checks and fresh native child processes. No result receipts were reused.
 - Go 1.25.13, Linux x86-64, workers=1, shape batch size=5, native bundles enabled, parallel shapes disabled, no scheduling profiles. Compiler/executable caches were warm for the five final comparison arms; compressed stores were empty for their cold arms.
 - Run order after the socket fix: Nucleon cold, ordinary warm, Nucleon warm, structural/Zstd cold, structural/Zstd warm. Comparisons ran serially. Detailed job commands, source/toolchain hashes and environment identities are in the receipts.

@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://dockpipe.dev/schemas/dockpipe-user-insights.schema.json",
-  "title": "DockPipe normalized user insights",
+  "title": "Dockpipe normalized user insights",
   "description": "Structured, attributable user guidance. Separate from repo facts and CI findings; see separation.",
   "type": "object",
   "required": ["schema_version", "kind", "insights"],

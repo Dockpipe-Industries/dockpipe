@@ -10,7 +10,7 @@ import (
 	modelproject "dockpipe/src/lib/model/project"
 )
 
-// DockpipeProjectConfigFileName is the repo-root JSON file for project-level DockPipe settings
+// DockpipeProjectConfigFileName is the repo-root JSON file for project-level Dockpipe settings
 // (compile source lists, future package registry hints). Optional — compile uses built-in defaults when absent.
 const DockpipeProjectConfigFileName = "dockpipe.config.json"
 

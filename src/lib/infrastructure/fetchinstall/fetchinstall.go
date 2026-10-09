@@ -1,4 +1,4 @@
-// Package fetchinstall downloads DockPipe template bundles over HTTPS and extracts them safely.
+// Package fetchinstall downloads Dockpipe template bundles over HTTPS and extracts them safely.
 package fetchinstall
 
 import (

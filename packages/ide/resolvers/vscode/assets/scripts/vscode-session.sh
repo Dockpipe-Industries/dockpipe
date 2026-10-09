@@ -33,7 +33,7 @@ if ! docker image inspect "$IMAGE" >/dev/null 2>&1; then
   elif docker image inspect dockpipe-base-dev >/dev/null 2>&1; then
     IMAGE=dockpipe-base-dev
   elif [[ -n "$REPO_ROOT" ]] && [[ -f "$REPO_ROOT/templates/core/assets/images/base-dev/Dockerfile" ]]; then
-    printf '[dockpipe] Building dockpipe-base-dev image from the local DockPipe checkout…\n' >&2
+    printf '[dockpipe] Building dockpipe-base-dev image from the local Dockpipe checkout…\n' >&2
     docker build -q -t dockpipe-base-dev -f "$REPO_ROOT/templates/core/assets/images/base-dev/Dockerfile" "$REPO_ROOT"
     IMAGE=dockpipe-base-dev:latest
   else

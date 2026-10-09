@@ -45,7 +45,7 @@ else
 	HANDOFF_PATH=""
 	REFINED_PATH=""
 	PASTE=""
-	echo "dorkpipe-self-analysis: DockPipe CLI unavailable; runtime artifact paths cannot be resolved"
+	echo "dorkpipe-self-analysis: Dockpipe CLI unavailable; runtime artifact paths cannot be resolved"
 fi
 if [[ -n "$REFINED_PATH" && -f "$REFINED_PATH" ]]; then
 	echo "dorkpipe-self-analysis: Ollama refine → ${REFINED_PATH}"

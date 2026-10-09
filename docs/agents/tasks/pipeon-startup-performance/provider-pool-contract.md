@@ -1,13 +1,13 @@
 ## DorkPipe Provider Pools
 
 Provider pools are a DorkPipe orchestration feature. They keep a bounded number of provider workers
-ready for low-latency top-level orchestration while preserving DockPipe's governed runtime boundary.
+ready for low-latency top-level orchestration while preserving Dockpipe's governed runtime boundary.
 
 Core intent:
 
 - DorkPipe owns provider identity, pool lifecycle, provider availability, session affinity, queueing,
   spend limits, auth state, worker health, and workflow escalation policy.
-- DockPipe remains the generic spawn/run/act engine. Do not add Pipeon-, Claude-, Codex-, or
+- Dockpipe remains the generic spawn/run/act engine. Do not add Pipeon-, Claude-, Codex-, or
   Ollama-specific behavior to `src/lib/` or `src/cmd/`.
 - Pipeon, CLI workflows, and future UI surfaces call the same DorkPipe pool contract instead of each
   inventing provider routing.
@@ -33,7 +33,7 @@ Desired steady-state model:
 
 Historical gap resolved by the stream-worker implementation recorded below:
 
-- Claude direct chat previously routed through the guarded DockPipe workflow boundary per prompt. That
+- Claude direct chat previously routed through the guarded Dockpipe workflow boundary per prompt. That
   preserved the resolver/auth/container boundary, but created a container, ran one prompt, returned,
   and tore down. It was correct for cold workflow execution but too slow for a top-level chat lane.
 
@@ -157,7 +157,7 @@ Worker lifecycle rules:
 Boundary and ownership rules:
 
 - Keep provider-specific protocol adapters in DorkPipe package-owned assets/code/catalogs, not
-  DockPipe engine code. Core DockPipe remains spawn/run/act.
+  Dockpipe engine code. Core Dockpipe remains spawn/run/act.
 - The generic provider-pool contract is provider/session/worker oriented. It must not expose fields
   such as `claude_session_id` as public API; provider-native IDs belong under provider metadata.
 - MCP is a front door and session router, not the only implementation. CLI workflows, Pipeon, and

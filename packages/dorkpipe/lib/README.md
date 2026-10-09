@@ -1,6 +1,6 @@
 # DorkPipe (`dorkpipe.orchestrator`)
 
-Go module **`dorkpipe.orchestrator`** — local-first orchestration **on top of** DockPipe: DAG specs, parallel levels, real workers (shell, `dockpipe` subprocess, Ollama HTTP, PostgreSQL/pgvector), aggregation + confidence, optional Codex escalation.
+Go module **`dorkpipe.orchestrator`** — local-first orchestration **on top of** Dockpipe: DAG specs, parallel levels, real workers (shell, `dockpipe` subprocess, Ollama HTTP, PostgreSQL/pgvector), aggregation + confidence, optional Codex escalation.
 
 **Location:** **`packages/dorkpipe/lib/`** (sibling to **`resolvers/`** YAML in this maintainer pack). The root repo **`go.work`** includes this module next to **`dockpipe`**.
 
@@ -15,21 +15,21 @@ Go module **`dorkpipe.orchestrator`** — local-first orchestration **on top of*
 - **`cianalysis/`** — normalize CI scan outputs into DorkPipe findings artifacts  
 - **`userinsight/`** — queue / normalize / review user guidance signals  
 - **`handoff/`** — build AI-facing handoff documents and signal summaries  
-- **`statepaths/`** — canonical DorkPipe artifact layout backed by DockPipe package/state scopes
+- **`statepaths/`** — canonical DorkPipe artifact layout backed by Dockpipe package/state scopes
 - **`engine/`** — wires planner → scheduler → workers → aggregator  
 
 CLI: **`./src/bin/dockpipe package build source --workdir . --only dorkpipe`** (repo root) builds the package-owned source artifacts that the wrappers under **`packages/dorkpipe/bin/`** forward to. Run **`packages/dorkpipe/bin/dorkpipe`** directly — it is **not** installed under **`src/bin/`**.
 
 ## Authoring note
 
-When maintainer scripts in the DorkPipe package need generic DockPipe workflow context, use the shared core SDK instead of open-coding `command -v` lookups:
+When maintainer scripts in the DorkPipe package need generic Dockpipe workflow context, use the shared core SDK instead of open-coding `command -v` lookups:
 
 - **Shell:** use **`dockpipe get ...`** for plain context reads; bootstrap **`eval "$(dockpipe sdk)"`** only for shell-specific actions like **`dockpipe_sdk init-script`**
 - **`src/core/assets/scripts/lib/repo-tools.ps1`**
 - **`src/core/assets/scripts/lib/repo_tools.py`**
 - **`src/core/assets/scripts/lib/repotools/repotools.go`**
 
-That shared SDK surface prefers the real repo-local DockPipe build:
+That shared SDK surface prefers the real repo-local Dockpipe build:
 
 - **`src/bin/dockpipe`**
 
@@ -39,7 +39,7 @@ If a DorkPipe package script needs to invoke the DorkPipe tool itself, keep that
 
 - **`packages/dorkpipe/resolvers/dorkpipe/assets/scripts/lib/dorkpipe-cli.sh`**
 
-Does **not** replace DockPipe’s workflow engine; it **invokes** the `dockpipe` binary for resolver steps.
+Does **not** replace Dockpipe’s workflow engine; it **invokes** the `dockpipe` binary for resolver steps.
 
 **Confidence:** per-node **vectors** → harmonic mean **per dimension** across nodes → **weighted `calibrated`** (see `policy.merge_weights`). Skipped nodes (branch, `retrieve_if`, `early_stop`) are excluded from the aggregate.
 
@@ -47,4 +47,4 @@ Does **not** replace DockPipe’s workflow engine; it **invokes** the `dockpipe`
 
 Disposable run evidence resolves through **`dockpipe __state package-runtime --owner dorkpipe --path run.json`**. Cumulative metrics use the package-owned durable learning facade (schema v2), not a public root-level package-scope fallback. Example DAG: **`examples/full-bar.yaml`** in this directory.
 
-**DockPipe self-analysis:** the packaged workflows **`dorkpipe-self-analysis`** and **`dorkpipe-self-analysis-host`** run the analysis entrypoint in containerized or host mode. Optional local sidecar: **`packages/dorkpipe/resolvers/dorkpipe/assets/scripts/dev-stack.sh`**. Writes disposable package-runtime analysis products while cumulative learning remains durable through the package-owned facade.
+**Dockpipe self-analysis:** the packaged workflows **`dorkpipe-self-analysis`** and **`dorkpipe-self-analysis-host`** run the analysis entrypoint in containerized or host mode. Optional local sidecar: **`packages/dorkpipe/resolvers/dorkpipe/assets/scripts/dev-stack.sh`**. Writes disposable package-runtime analysis products while cumulative learning remains durable through the package-owned facade.

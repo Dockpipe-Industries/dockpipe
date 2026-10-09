@@ -1,10 +1,10 @@
 # cursor-dev
 
-**Scripts** (**`cursor-dev-session.sh`**, **`session-idle.sh`** (container PID 1 helper), **`cursor-prep.sh`**, **`cursor-dev-common.sh`**, **`cursor-print-next-steps.sh`**) live **in this directory** (same folder as **`config.yml`**). Workflows use logical script ids like **`run: scripts/cursor-dev/…`**; DockPipe resolves those to the compiled or materialized resolver asset for this package/resolver.
+**Scripts** (**`cursor-dev-session.sh`**, **`session-idle.sh`** (container PID 1 helper), **`cursor-prep.sh`**, **`cursor-dev-common.sh`**, **`cursor-print-next-steps.sh`**) live **in this directory** (same folder as **`config.yml`**). Workflows use logical script ids like **`run: scripts/cursor-dev/…`**; Dockpipe resolves those to the compiled or materialized resolver asset for this package/resolver.
 
-## DockPipe Launcher
+## Dockpipe Launcher
 
-**DockPipe Launcher’s “Set up Cursor MCP”** button runs **`cursor-prep.sh` only** (writes cursor-dev package state). It does **not** start Docker or run DockPipe. **Double-click the `cursor-dev` app** in Basic mode to run **`dockpipe --workflow cursor-dev`** (full session: container + Cursor on the host).
+**Dockpipe Launcher’s “Set up Cursor MCP”** button runs **`cursor-prep.sh` only** (writes cursor-dev package state). It does **not** start Docker or run Dockpipe. **Double-click the `cursor-dev` app** in Basic mode to run **`dockpipe --workflow cursor-dev`** (full session: container + Cursor on the host).
 
 ## What it does
 
@@ -34,7 +34,7 @@ To inspect manually: **`docker exec -it <container> ps aux`** or files under **`
 
 So **`cursor-dev`** layers **best-effort heuristics**: **TCP to the container IP**, **localhost TCP** from Cursor, **`.cursor-server/`** file activity in the package-scoped home, bind-mounted **`remote_active`**, then **`pgrep` / full `ps` / `/proc/…/cmdline`** / **`docker exec`**. **Default** **`CURSOR_DEV_SESSION_SHUTDOWN=both`** stops the session when **you quit Cursor on the host** *or* when the **in-container remote** session goes idle (e.g. you closed only the remote window). Set **`CURSOR_DEV_SESSION_SHUTDOWN=host`** if remote detection misbehaves and you only care about **quit Cursor entirely**.
 
-**Host cleanup (core):** After **`docker run`**, the script writes the container name to DockPipe cleanup state for **`ApplyHostCleanup`** in **`RunHostScript`** (see **`docs/workflows/workflow-yaml.md`** — **Host `kind: host` lifecycle**). It also writes **`dockpipe scope --package cursor-dev session_container`**. If **`DOCKPIPE_RUN_ID`** is set, run-scoped cleanup state is written for **`dockpipe runs list`**. The session script registers **`trap … EXIT`** so **`set -e`** failures after **`docker run`** still run **`docker stop`**. When the host script exits, the Go runner applies **host cleanup** if markers remain (e.g. **`kill -9`** on bash).
+**Host cleanup (core):** After **`docker run`**, the script writes the container name to Dockpipe cleanup state for **`ApplyHostCleanup`** in **`RunHostScript`** (see **`docs/workflows/workflow-yaml.md`** — **Host `kind: host` lifecycle**). It also writes **`dockpipe scope --package cursor-dev session_container`**. If **`DOCKPIPE_RUN_ID`** is set, run-scoped cleanup state is written for **`dockpipe runs list`**. The session script registers **`trap … EXIT`** so **`set -e`** failures after **`docker run`** still run **`docker stop`**. When the host script exits, the Go runner applies **host cleanup** if markers remain (e.g. **`kill -9`** on bash).
 
 **GUI hint:** Set **`DOCKPIPE_LAUNCH_MODE=gui`** in **`vars`** so the script prints that this flow opens the **desktop app** (not a remote Cursor server); dockpipe still **waits on this host script** until **`docker wait`** returns or you interrupt **`dockpipe`**.
 
@@ -97,8 +97,8 @@ Use **`--workdir`** if you are not already in the project root.
 
 ## Experimental / caveats
 
-- This compatibility resolver is DockPipe-authored and is **not** affiliated with, sponsored by, or endorsed by Cursor or Anysphere.
-- DockPipe does not ship Cursor, Cursor logos, Anysphere services, credentials, or editor auth state in this package.
+- This compatibility resolver is Dockpipe-authored and is **not** affiliated with, sponsored by, or endorsed by Cursor or Anysphere.
+- Dockpipe does not ship Cursor, Cursor logos, Anysphere services, credentials, or editor auth state in this package.
 - Does **not** configure Remote SSH or WSL automatically. It **can** launch Cursor already attached to the session container (Dev Containers URI — **`CURSOR_DEV_REMOTE_URI`**).
 - Launcher detection is best-effort; if nothing matches, use **File → Open Folder** with the printed path.
 - **`dockpipe-base-dev`** must be available locally unless you override **`CURSOR_DEV_SESSION_IMAGE`**. Rebuild the image after upgrades (**`docker rmi dockpipe-base-dev:latest`** then run **`cursor-dev`** or **`dockpipe --isolate base-dev -- echo ok`**) so the container has a valid package-scoped **`HOME`** (Cursor/VS Code remote server installs to **`$HOME/.cursor-server`**; without **`HOME`**, **`docker run -u uid:gid`** can yield permission errors) and the GNU **`base64`** shim (install scripts may call **`base64 -D`**).

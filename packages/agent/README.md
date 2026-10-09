@@ -1,6 +1,6 @@
 # agent
 
-Tracked first-party package family for governed AI stages in DockPipe.
+Tracked first-party package family for governed AI stages in Dockpipe.
 
 What lives here:
 
@@ -9,9 +9,9 @@ What lives here:
 - `resolvers/ollama/` — local Ollama resolver profile
 - `workflows/agent.cloud-lanes.doctor/` — portable diagnostic for cloud-backed agent lanes
 
-This package keeps DockPipe's separation of concerns intact:
+This package keeps Dockpipe's separation of concerns intact:
 
-- DockPipe is the governed runtime and orchestration layer.
+- Dockpipe is the governed runtime and orchestration layer.
 - Resolver profiles such as `claude` and `codex` are tool adapters, not the product.
 - AI workers are workflow/package stages with explicit YAML contracts: prompts, context, access
   boundaries, model policy, output artifacts, verification, and approval requirements.

@@ -416,7 +416,7 @@ PipeLang executable, buffer decode requested allocations fell from 9,714,071 to
 control was slightly slower; no universal speedup or whole-process RSS reduction
 is claimed. Details and private source stay in Nucleon's
 `research/experiments/2026-09-16-parser-ownership/`; no private implementation was
-copied into DockPipe, and the installed SDK used by this campaign is unchanged.
+copied into Dockpipe, and the installed SDK used by this campaign is unchanged.
 All four build/measurement jobs passed containment and removed their trees.
 
 ### Coordinator memory recovery and fresh terminal-efficiency-7
@@ -646,7 +646,7 @@ and the supported one-worker recovery are part of the full cost, not hidden by t
 final successful job duration. The measured Nucleon and reporting improvements are
 retained; no universal throughput or physical-RSS benefit is claimed. Evidence and
 probe outputs live under O; `RESULTS.md` and `terminal-attempt-costs.json` summarize
-them. Private codec implementation remains in Nucleon and DockPipe retains its
+them. Private codec implementation remains in Nucleon and Dockpipe retains its
 generic boundary. No commit, push, publication, worktree or successor implementation
 has been performed. P04.b, P03 and other capabilities still require selection and
 separate approval.

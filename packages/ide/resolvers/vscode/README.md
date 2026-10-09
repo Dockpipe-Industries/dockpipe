@@ -34,14 +34,14 @@ dockpipe --workflow vscode
 One-off CLI overrides: **`--var KEY=value`** (locks the key for that run).
 
 - **`VSCODE_CMD`** — explicit path or command name if `code` is not on `PATH`.
-- **`VSCODE_WAIT=1`** (default) — keep DockPipe attached until you quit VS Code or the remote session ends.
+- **`VSCODE_WAIT=1`** (default) — keep Dockpipe attached until you quit VS Code or the remote session ends.
 - **`VSCODE_SESSION_SHUTDOWN=both`** (default) — stop on host quit or remote idle. Set `host` for host-only shutdown.
 - **`VSCODE_SESSION_IMAGE`** — override the base-dev image.
 
 ## Caveats
 
-- This compatibility resolver is DockPipe-authored and is not affiliated with, sponsored by, or endorsed by Microsoft.
-- DockPipe does not ship Visual Studio Code, VS Code logos, Microsoft services, extension marketplace content, credentials, or editor auth state in this package.
+- This compatibility resolver is Dockpipe-authored and is not affiliated with, sponsored by, or endorsed by Microsoft.
+- Dockpipe does not ship Visual Studio Code, VS Code logos, Microsoft services, extension marketplace content, credentials, or editor auth state in this package.
 - This workflow expects desktop VS Code plus the Dev Containers / remote support needed to open a dev-container URI.
 - This uses your normal desktop VS Code profile, so your existing extensions/theme/profile will appear.
 - For the browser/server flow, use Pipeon instead.

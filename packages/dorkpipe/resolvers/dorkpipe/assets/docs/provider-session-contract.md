@@ -173,7 +173,7 @@ authority, and broader sandbox projection cannot change approval authority.
 
 The third supervisor-only CAS-14 projection is fixture-backed and unused by a consumer. Its bounded,
 order-independent capability catalog requires stable available opaque references while keeping
-availability distinct from explicit DockPipe support. The baseline projects every advertised record
+availability distinct from explicit Dockpipe support. The baseline projects every advertised record
 disabled. An enabled subset must name exact advertised supported references, and every
 authority-expanding or experimental capability requires its own per-session confirmation. Empty,
 duplicate, unavailable, removed, changed, unsupported, unconfirmed, mismatched, or substituted
@@ -429,14 +429,14 @@ does not change.
 The approved installed-binary inspection is corroborated by the exact tagged source. It proves only
 that App Server delegates generation to its client and transports a result. The reviewed tagged App
 Server, protocol, and core source paths expose no generator; their only response construction is the
-integration-test fixture. The installed CLI exposes no DockPipe-usable producer, reports generation
+integration-test fixture. The installed CLI exposes no Dockpipe-usable producer, reports generation
 as unsupported in exec mode, and reports it unavailable in TUI.
 
 Neither official source nor installed artifacts define a token algorithm, trust root, challenge,
 signing key, credential/account dependency, origin/audience binding, expiry, or replay rule. There
 is no smaller safe package-local action. An upstream Codex contract and implementation must first
 supply an authoritative client generator and abort provider I/O on absent, invalid, rejected,
-canceled, or timed-out attestation. Only then could a separately bounded DockPipe slice reconsider a
+canceled, or timed-out attestation. Only then could a separately bounded Dockpipe slice reconsider a
 private request/result validator or runtime authority. The neutral contract still requires no
 change.
 

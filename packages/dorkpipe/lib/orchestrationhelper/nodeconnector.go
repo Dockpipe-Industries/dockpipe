@@ -9,13 +9,13 @@ import (
 )
 
 // NodeValidationInvocation is the complete authority exposed to a prepared,
-// read-only local DockPipe validation boundary.
+// read-only local Dockpipe validation boundary.
 type NodeValidationInvocation struct {
 	Workflow       NodeExecutionWorkflowReference
 	SourceRevision string
 }
 
-// NodeValidationEventEvidence carries one unchanged canonical DockPipe event
+// NodeValidationEventEvidence carries one unchanged canonical Dockpipe event
 // and only checksum-backed references to any bounded output.
 type NodeValidationEventEvidence struct {
 	Sequence         int64
@@ -225,7 +225,7 @@ func prepareNodeValidationDelivery(request NodeExecutionRequest, lease NodeExecu
 	}
 	if (evidence.TerminalResult == "succeeded" && terminalStatus != "done") ||
 		((evidence.TerminalResult == "failed" || evidence.TerminalResult == "degraded" || evidence.TerminalResult == "cancelled") && terminalStatus != "fail") {
-		return nodeValidationPreparedDelivery{}, errors.New("local validation terminal result conflicts with its final DockPipe event")
+		return nodeValidationPreparedDelivery{}, errors.New("local validation terminal result conflicts with its final Dockpipe event")
 	}
 
 	if cancellation == nil {

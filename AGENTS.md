@@ -1,8 +1,8 @@
-# AGENTS.md - DockPipe Root Router
+# AGENTS.md - Dockpipe Root Router
 
-DockPipe is the governed, cross-platform runtime for commands, packages, environments, CI jobs, AI workflows, and deployable tooling.
+Dockpipe is the governed, cross-platform runtime for commands, packages, environments, CI jobs, AI workflows, and deployable tooling.
 The engine has one action: spawn -> run -> act.
-DorkPipe is a DockPipe package and harness, not a replacement for DockPipe.
+DorkPipe is a Dockpipe package and harness, not a replacement for Dockpipe.
 This file is a lightweight router. Load only the focused docs needed for the task.
 
 Machine-readable routing: `docs/agents/index.yaml`.
@@ -126,4 +126,4 @@ Report:
 - `docs/agents/docs/docs-system.md`
 - `docs/agents/task-index.yaml`
 
-DockPipe runs anything, anywhere, in isolation. Keep it simple. Keep it composable.
+Dockpipe runs anything, anywhere, in isolation. Keep it simple. Keep it composable.

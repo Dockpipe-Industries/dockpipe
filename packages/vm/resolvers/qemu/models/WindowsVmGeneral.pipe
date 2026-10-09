@@ -8,7 +8,7 @@ public Interface IWindowsVmGeneral
     [EnvName = "DOCKPIPE_VM_EXEC_MODE"]
     public string ExecMode;
 
-    /// <summary>Optional boot source hint. Leave empty to let DockPipe prompt for image vs ISO.</summary>
+    /// <summary>Optional boot source hint. Leave empty to let Dockpipe prompt for image vs ISO.</summary>
     [DisplayName = "Boot Source"]
     [EnvName = "DOCKPIPE_VM_BOOT_SOURCE"]
     public string BootSource;

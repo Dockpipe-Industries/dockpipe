@@ -68,7 +68,7 @@ func cmdWorkflow(args []string) error {
 			case "--help", "-h":
 				fmt.Print(`dockpipe workflow list [--workdir <path>] [--format json|text]
 
-Print the workflow catalog resolved by DockPipe for the given project/workdir.
+Print the workflow catalog resolved by Dockpipe for the given project/workdir.
 `)
 				return nil
 			default:

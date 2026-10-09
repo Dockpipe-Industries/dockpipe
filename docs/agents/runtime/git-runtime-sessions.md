@@ -72,7 +72,7 @@ session work should follow.
   the user's provider skills and overlays curated DorkPipe skills for deterministic script/task
   routing guidance.
 - Non-AI runtime helper tools may clone/fetch/checkout/checkpoint/publish against the volume
-  workspace as part of DockPipe runtime behavior.
+  workspace as part of Dockpipe runtime behavior.
 - Keep session metadata and audit logs under `bin/.dockpipe/sessions/...`.
 
 ## Validation

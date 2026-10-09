@@ -9,7 +9,7 @@ Status: proposed direction; no production integration in this change
 
 Keep codex exec as the default for bounded DorkPipe worker reps: they are disposable, scoped tasks that produce artifacts then terminate. Prototype App Server only for the host-resident master/orchestrator use case. Pipeon is the first migration candidate because it needs durable direct-chat sessions but currently has no typed approval or lifecycle stream.
 
-The spike should supervise one App Server stdio child per top-level session. It must retain Codex native sandboxing, use the user as approval reviewer, relay every request through DockPipe, persist an audit record and fail closed on disconnect. Do not use WebSocket in production: official documentation calls it experimental/unsupported. Local codex-cli 0.143.0 also labels app-server experimental.
+The spike should supervise one App Server stdio child per top-level session. It must retain Codex native sandboxing, use the user as approval reviewer, relay every request through Dockpipe, persist an audit record and fail closed on disconnect. Do not use WebSocket in production: official documentation calls it experimental/unsupported. Local codex-cli 0.143.0 also labels app-server experimental.
 
 ## Sources and evidence
 
@@ -32,12 +32,12 @@ Read-only local checks found codex-cli 0.143.0. Help confirms stdio, Unix socket
 
 ### Transport and initialization
 
-- **Documented:** App Server is bidirectional JSON-RPC 2.0; stdio is default and sends JSONL. It is the only first-release DockPipe transport.
+- **Documented:** App Server is bidirectional JSON-RPC 2.0; stdio is default and sends JSONL. It is the only first-release Dockpipe transport.
 - **Documented:** Unix socket uses WebSocket framing below CODEX_HOME and proxy can bridge it to stdio. It is out of initial scope.
 - **Documented:** WebSocket provides ready/health probes but is experimental/unsupported. Do not expose it in Pipeon/ForgePipe.
 - **Documented:** bounded queues return JSON-RPC -32001 overload; clients should retry with jittered backoff.
 - **Documented:** each connection sends initialize then initialized; response includes codexHome/platform, and pre-init/repeated init is rejected.
-- **Documented:** clientInfo identifies an integration for OpenAI compliance logs. DockPipe needs a stable truthful identity/version in audit records.
+- **Documented:** clientInfo identifies an integration for OpenAI compliance logs. Dockpipe needs a stable truthful identity/version in audit records.
 - **Source-derived:** stable v2 types live under app-server-protocol/src/protocol/common.rs and v2.rs. Generate/pin stable schema from the selected binary; do not hand-copy provider types.
 
 ### Configuration, sandbox and auth
@@ -47,7 +47,7 @@ Read-only local checks found codex-cli 0.143.0. Help confirms stdio, Unix socket
 - **Documented:** approval and sandbox policy plus experimental permission profiles can be thread/turn scoped. User is default approval reviewer; auto-review delegates to a subagent.
 - **Security requirement:** explicitly choose user; never auto-review. Never call thread shell-command because official docs say it is unsandboxed and ignores thread policy.
 - **Documented:** account read/notifications show API key, ChatGPT, PAT and supported managed auth; ChatGPT managed auth persists/refreshes in Codex.
-- **Prototype required:** prove current user ChatGPT auth is reused without DockPipe reading/copying auth material.
+- **Prototype required:** prove current user ChatGPT auth is reused without Dockpipe reading/copying auth material.
 - **Documented:** skills are listable/reloadable/watched; normal CODEX_HOME launch uses existing config, skills and MCP settings. Do not isolate CODEX_HOME without explicit complete profile provisioning.
 
 ### Thread, turn, events and approvals
@@ -58,7 +58,7 @@ Read-only local checks found codex-cli 0.143.0. Help confirms stdio, Unix socket
 - **Documented:** turn interrupt requests cancellation; only terminal interrupted confirms it. Background terminal cleanup is experimental and excluded.
 - **Documented:** command/file approvals are server-to-client JSON-RPC requests carrying thread, turn, item, reason and action context. Server request resolved plus terminal item state establish outcome. Permission response grants only a subset; omitted permission is denied.
 - **Design:** lost stream/process, invalid message or missing terminal state is Disconnected, never completed/failed until recovery proves it.
-- **Documented:** MCP startup/tool/resource/OAuth/config reload are exposed; startup is starting, ready, failed or cancelled. Record tool/server identity but keep DockPipe MCP capability-scoped/audited.
+- **Documented:** MCP startup/tool/resource/OAuth/config reload are exposed; startup is starting, ready, failed or cancelled. Record tool/server identity but keep Dockpipe MCP capability-scoped/audited.
 - **Documented:** LOG_FORMAT=json gives JSON tracing on stderr. Redacted RPC plus trace can improve audit evidence.
 
 ### Stability, licensing and CLI gaps
@@ -69,7 +69,7 @@ Read-only local checks found codex-cli 0.143.0. Help confirms stdio, Unix socket
 - **Documented:** source is Apache-2.0. Invoke user-installed Codex, not a bundled fork, pending service/distribution review.
 - **Gap:** App Server is not a terminal/TUI replacement. Pipeon can render protocol controls but must not expose unsafe shell shortcuts.
 
-## DockPipe current-state trace
+## Dockpipe current-state trace
 
 ### Bounded workers: working and retained
 
@@ -100,7 +100,7 @@ This current implementation is not wrong: it is simple, preserves native sandbox
 
 ## Direct comparison
 
-| Area | Current CLI | App Server | DockPipe impact | Status |
+| Area | Current CLI | App Server | Dockpipe impact | Status |
 | --- | --- | --- | --- | --- |
 | Process startup | One exec per prompt/resume. | Supervised process can own many threads/turns. | Less churn. | Likely; prototype. |
 | Authentication | Existing CLI/auth discovery. | Effective account/config plus account read. | No credential copy. | Confirmed API; reuse prototype. |
@@ -111,7 +111,7 @@ This current implementation is not wrong: it is simple, preserves native sandbox
 | Approvals | Not relayed. | Server request/response/resolution. | Native approve/deny audit. | Confirmed; policy spike. |
 | Cancellation | Kill/cancel child. | Turn interrupt then terminal event. | Graceful cancel. | Confirmed. |
 | Failure detection | Exit/text. | Failed/error; supervisor still needed. | Better classification. | Confirmed. |
-| MCP | Separate DockPipe MCP only. | MCP status/tool/resource events. | Event correlation. | Confirmed. |
+| MCP | Separate Dockpipe MCP only. | MCP status/tool/resource events. | Event correlation. | Confirmed. |
 | Sandbox | New exec explicit; resume inferred. | Thread/turn policy override. | Persist/verify policy. | Confirmed API; Windows spike. |
 | Auditability | Output plus binding. | IDs/events/JSON log. | Stronger ledger. | Confirmed; persistence needed. |
 | Protocol stability | CLI output/flags. | Schema and stable/experimental split. | Version gate/tests. | Likely, not guaranteed. |
@@ -121,7 +121,7 @@ This current implementation is not wrong: it is simple, preserves native sandbox
 
 Architecture:
 
-Pipeon, ForgePipe or CLI sends only provider-neutral session operations into DockPipe. The generic contract owns provider/session ref, workspace/policy envelope, start/resume/follow-up/cancel/decision, normalized states/events and opaque correlation. A Codex-specific DorkPipe adapter owns JSON-RPC, schemas, thread/turn IDs, raw items and approval unions. The adapter runs a supervised host App Server stdio child, retains native sandbox/escalation, and projects approval/audit into DockPipe. Pipeon never parses provider protocol.
+Pipeon, ForgePipe or CLI sends only provider-neutral session operations into Dockpipe. The generic contract owns provider/session ref, workspace/policy envelope, start/resume/follow-up/cancel/decision, normalized states/events and opaque correlation. A Codex-specific DorkPipe adapter owns JSON-RPC, schemas, thread/turn IDs, raw items and approval unions. The adapter runs a supervised host App Server stdio child, retains native sandbox/escalation, and projects approval/audit into Dockpipe. Pipeon never parses provider protocol.
 
 Normalized lifecycle:
 
@@ -131,7 +131,7 @@ Supervisor responsibilities:
 
 1. Resolve absolute Codex binary/version and reject unsupported schema.
 2. Spawn stdio child with normal user CODEX_HOME, least environment, workspace policy and no hidden full-access override; own process/job/streams.
-3. Initialize with DockPipe identity, no experimental opt-in by default; validate returned codexHome.
+3. Initialize with Dockpipe identity, no experimental opt-in by default; validate returned codexHome.
 4. Start/resume with workspace-write and user reviewer; record policy fingerprint and warnings.
 5. Normalize RPC/events/parser failures to ordered journal. Restrict/redact raw provider log; Pipeon receives safe events only.
 6. Persist session/workspace/binary/process-incarnation/thread/turn/state/event-cursor/pending-approval/outcome in DorkPipe package state. Never persist tokens.
@@ -141,7 +141,7 @@ Supervisor responsibilities:
 Approval relay:
 
 1. Persist request before UI render with process incarnation, connection, thread, turn, item, RPC request id, event hash, normalized intent/scope and safe preview.
-2. Pipeon renders DockPipe record only; it cannot call App Server directly.
+2. Pipeon renders Dockpipe record only; it cannot call App Server directly.
 3. User choice must exactly match the active tuple, is single-use and has send/result audit.
 4. Do not resolve until server request resolved and terminal item event. Timeout, disconnect, restart, duplicate/mismatch means decline/cancel.
 5. Prototype supports one-shot accept/decline/cancel only. Session-wide/amendment approval remains disabled.

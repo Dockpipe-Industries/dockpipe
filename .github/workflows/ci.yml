@@ -42,7 +42,7 @@ jobs:
 
       - uses: actions/setup-go@v6
         with:
-          go-version: "1.25.13"
+          go-version: "1.26.9"
 
       - name: Install build and shell-test dependencies
         run: |
@@ -124,7 +124,7 @@ jobs:
         run: bash src/scripts/check-templates-core-paths.sh
 
       # Workflow "test" = go test + vet + staticcheck + govulncheck + gosec inside Docker (tools installed in-container; only mod cache mounted).
-      - name: DockPipe workflow — test
+      - name: Dockpipe workflow — test
         if: ${{ env.ACT != 'true' }}
         env:
           DOCKPIPE_REPO_ROOT: ${{ github.workspace }}
@@ -135,7 +135,7 @@ jobs:
             --
 
       # Optional: Codex resolver workflows (set repo variable DOCKPIPE_CI_CODEX=true and secret OPENAI_API_KEY).
-      - name: DockPipe workflows — codex-pav, codex-security (optional)
+      - name: Dockpipe workflows — codex-pav, codex-security (optional)
         if: ${{ vars.DOCKPIPE_CI_CODEX == 'true' }}
         env:
           DOCKPIPE_REPO_ROOT: ${{ github.workspace }}
@@ -213,7 +213,7 @@ jobs:
 
       - uses: actions/setup-go@v6
         with:
-          go-version: "1.25.13"
+          go-version: "1.26.9"
 
       - name: Runtime Go tests (PipeLang uses separate containment qualification)
         run: bash release/packaging/test-runtime.sh

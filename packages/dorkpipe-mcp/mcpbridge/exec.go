@@ -723,7 +723,7 @@ func runHostClaudeChat(ctx context.Context, workdir, message, model, pipeonSessi
 		text = "Claude workflow exited without stdout.\n\n```text\n" + strings.TrimSpace(stderr) + "\n```"
 	}
 	if text == "" {
-		text = "Claude workflow returned no provider output. The DockPipe run only emitted infrastructure output."
+		text = "Claude workflow returned no provider output. The Dockpipe run only emitted infrastructure output."
 	}
 	if chosenModel == "" {
 		chosenModel = "claude"
@@ -751,7 +751,7 @@ func runHostClaudeChat(ctx context.Context, workdir, message, model, pipeonSessi
 		Provider: "claude",
 		Model:    chosenModel,
 		Text:     text,
-		Status:   "Provider: Claude | Guard: DockPipe workflow boundary",
+		Status:   "Provider: Claude | Guard: Dockpipe workflow boundary",
 		ExitCode: code,
 		Stdout:   stdout,
 		Stderr:   stderr,
@@ -812,7 +812,7 @@ func runHostClaudeAuth(ctx context.Context, workdir string) (*hostAuthSummary, e
 			"Set-Location -LiteralPath " + psQuote(wd) + "; " +
 			"& " + psQuote(before.CLIPath) + " auth login; " +
 			"Write-Host ''; Write-Host 'Claude login finished. You can close this terminal.'"
-		cmd := exec.CommandContext(ctx, "cmd.exe", "/C", "start", "DockPipe Claude Login", "powershell.exe", "-NoExit", "-ExecutionPolicy", "Bypass", "-Command", script)
+		cmd := exec.CommandContext(ctx, "cmd.exe", "/C", "start", "Dockpipe Claude Login", "powershell.exe", "-NoExit", "-ExecutionPolicy", "Bypass", "-Command", script)
 		if err := cmd.Start(); err != nil {
 			return nil, fmt.Errorf("launch Claude auth terminal: %w", err)
 		}

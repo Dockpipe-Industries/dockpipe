@@ -5,7 +5,7 @@ Completed: 2026-07-18
 ## Shipped
 
 - Added package-owned `software.dev`, selected by an exact consumer-repo-relative workflow path and
-  step id without a new DockPipe schema or engine primitive.
+  step id without a new Dockpipe schema or engine primitive.
 - Kept access ceilings, deny rules, budgets, approval, apply mechanics, and absent publish/sync in
   DorkPipe's hard layer. Repo task packs and planner proposals can narrow but cannot widen it.
 - Added deterministic task-pack loading, field-class normalization, strict proposal parsing, and a

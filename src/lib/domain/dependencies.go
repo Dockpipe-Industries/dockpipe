@@ -62,9 +62,9 @@ func ValidatePlatformList(fieldPrefix string, platforms []string) error {
 	for i, platform := range platforms {
 		platform = strings.TrimSpace(strings.ToLower(platform))
 		switch platform {
-		case "windows", "macos", "linux", "deb":
+		case "windows", "macos", "linux", "deb", "flatpak":
 		default:
-			return fmt.Errorf("%s[%d] must be one of windows, macos, linux, deb", fieldPrefix, i)
+			return fmt.Errorf("%s[%d] must be one of windows, macos, linux, deb, flatpak", fieldPrefix, i)
 		}
 		if _, ok := seen[platform]; ok {
 			return fmt.Errorf("%s[%d] duplicates platform %q", fieldPrefix, i, platform)

@@ -28,7 +28,7 @@ Dry-run is the default:
 ./src/bin/dockpipe --workflow package-store-publish --secret-environment packages-production --
 ```
 
-On a machine without the AWS CLI, DockPipe will prompt to install it from the workflow dependency definition before continuing.
+On a machine without the AWS CLI, Dockpipe will prompt to install it from the workflow dependency definition before continuing.
 
 Real upload:
 

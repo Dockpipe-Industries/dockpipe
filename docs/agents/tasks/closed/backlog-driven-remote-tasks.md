@@ -55,12 +55,12 @@ Provide package-owned DorkPipe workflows for two related but distinct remote-exe
 
 1. inspect one explicitly selected or uniquely eligible decision-ready backlog item as a bounded
    remote Codex task input;
-2. execute one DorkPipe task graph across user-owned DockPipe nodes through a transport-neutral
+2. execute one DorkPipe task graph across user-owned Dockpipe nodes through a transport-neutral
    broker contract and pluggable edge adapters.
 
 The first path turns an item from `docs/agents/task-index.yaml` and its linked task document into a
 bounded remote Codex task. The second schedules implementation, validation, repair, and aggregation
-without turning DockPipe into a cluster scheduler. They share immutable dispatch/result artifacts and
+without turning Dockpipe into a cluster scheduler. They share immutable dispatch/result artifacts and
 approval discipline, but neither path depends on the other.
 
 The remote Codex task is the authority for asynchronous task state. DorkPipe retains only immutable
@@ -70,7 +70,7 @@ memory, or a shared-worktree inference loop to resume work after interruption.
 ## Why This Is A Separate Task
 
 TASK-007 shipped the generic software-development workflow and repo task-pack model. This task
-applies that model to the DockPipe standardized backlog and a remote-task adapter. TASK-013 remains
+applies that model to the Dockpipe standardized backlog and a remote-task adapter. TASK-013 remains
 the separate host-resident App Server path for interactive top-level sessions; this task must not
 couple remote Cloud task lifecycle to that adapter.
 
@@ -141,7 +141,7 @@ affirmative decision bound to passed validation emits a separate readiness artif
 separately identified fixture-backed local decision may then authorize one exact rollback-safe
 application to the consumer checkout and emit an `applied_for_review` receipt. A third separately
 identified local decision may authorize submission of one exact-path request to the generic
-DockPipe runtime, which independently verifies the runtime session, Git state, and approved
+Dockpipe runtime, which independently verifies the runtime session, Git state, and approved
 postimages before creating one checkpoint and receipt. It does not create a scheduler, live-poll,
 infer any approval from provider/result/receipt/validation evidence, auto-push, sync, publish,
 merge, select another task, or create a cross-task orchestrator.
@@ -505,7 +505,7 @@ mismatch, malformed, missing, and tampered reason codes.
 
 The package-owned evidence and approval phases invoke no Codex, raw Git, Docker, SSH, network, live
 status/diff/result/receipt polling, automatic semantic interpretation, push, publication, sync,
-merge, or next-task surface. Only the generic DockPipe runtime invokes local Git for the separately
+merge, or next-task surface. Only the generic Dockpipe runtime invokes local Git for the separately
 approved exact checkpoint. Existing selection, request, compatibility, fixture dispatch, follow-up,
 completion-candidate, status, diff, patch, result, validation-receipt, and validation-execution artifacts remain
 byte-for-byte deterministic, and software.dev/Example Brain behavior is preserved. Patch-boundary
@@ -596,7 +596,7 @@ one fake execution, lease expiry/substitution rejection, reconnect and restart r
 events, cancellation/cleanup separation, terminal receipt idempotence/conflict rejection, manifest
 binding, strict field/time/identifier validation, full-chain tamper rejection, and no partial atomic
 publication. The fake accepts only an injected deterministic test executor and events. It adds no
-DockPipe process execution, network/socket, service, Git, provider, workflow, retry/repair, apply,
+Dockpipe process execution, network/socket, service, Git, provider, workflow, retry/repair, apply,
 checkpoint, publication, or external-call surface. Cloudflare, ngrok, direct TLS, private-overlay,
 and future edges remain replaceable deployment adapters above the unchanged broker contract.
 
@@ -604,7 +604,7 @@ The package-owned local node-validation connector is now implemented in
 `packages/dorkpipe/lib/orchestrationhelper/nodeconnector.go`. It accepts only one configured
 `NodeExecutionWorkflowReference` and exact 40-character source revision, invokes an injected
 already-prepared read-only validation function at most once, validates the complete returned evidence
-before broker publication, and feeds unchanged canonical DockPipe events plus bounded checksum
+before broker publication, and feeds unchanged canonical Dockpipe events plus bounded checksum
 references, local run identity, terminal result, cancellation acknowledgement, cleanup evidence, and
 artifacts into the existing event and receipt contracts. Exact duplicate dispatch, reconnect, broker
 reopen, repeated resume, and terminal delivery reuse the durable broker result without validation
@@ -1116,22 +1116,22 @@ fail-closed cleanup error for a persistent lock; workflow-run scratch data remai
 
 ---
 
-# Multi-Machine DockPipe Execution Extension
+# Multi-Machine Dockpipe Execution Extension
 
 ## Scope And Evidence
 
-This extension is a DorkPipe scheduling concern, not a request to make every DockPipe installation a
+This extension is a DorkPipe scheduling concern, not a request to make every Dockpipe installation a
 network worker. It was assessed against the current monorepo surfaces:
 
 | Area inspected | Existing evidence | Consequence for this task |
 | --- | --- | --- |
-| DockPipe engine (`src/lib/`, `src/core/runtimes/`) | Generic workflow execution, host/Docker/VM runtimes, QEMU Windows helper assets, WSL guidance, runtime-owned Git sessions, run-scoped cleanup. | A node already has the local execution/lifecycle boundary; core must stay generic. |
-| DockPipe results/events (`docs/runtime/operation-results.md`, `src/lib/infrastructure/operation_event.go`) | Canonical `OperationResult` records can be emitted as JSONL operation events with IDs, status, timing, and errors. | Keep the inner event unchanged; add distributed correlation outside it. |
-| DockPipe artifacts and sessions (`docs/runtime/artifacts.md`, `docs/runtime/git-runtime-sessions.md`) | Scoped artifacts, session metadata, worker leases, checkpoints, sync/publish lifecycle, and future distributed-session intent. | Exact-commit execution and cleanup can reuse runtime primitives; graph ownership must remain above them. |
+| Dockpipe engine (`src/lib/`, `src/core/runtimes/`) | Generic workflow execution, host/Docker/VM runtimes, QEMU Windows helper assets, WSL guidance, runtime-owned Git sessions, run-scoped cleanup. | A node already has the local execution/lifecycle boundary; core must stay generic. |
+| Dockpipe results/events (`docs/runtime/operation-results.md`, `src/lib/infrastructure/operation_event.go`) | Canonical `OperationResult` records can be emitted as JSONL operation events with IDs, status, timing, and errors. | Keep the inner event unchanged; add distributed correlation outside it. |
+| Dockpipe artifacts and sessions (`docs/runtime/artifacts.md`, `docs/runtime/git-runtime-sessions.md`) | Scoped artifacts, session metadata, worker leases, checkpoints, sync/publish lifecycle, and future distributed-session intent. | Exact-commit execution and cleanup can reuse runtime primitives; graph ownership must remain above them. |
 | DorkPipe package (`packages/dorkpipe/`) | DAG parsing/validation, topological scheduling, bounded parallel task execution, dependency artifacts, follow-up reruns, repair, budgets, approval, merge, and verification. | DorkPipe is the natural owner of node selection, graph state, retries, and final aggregation. |
 | [GitHub issue #11](https://github.com/Dockpipe-Industries/dockpipe/issues/11) | Broker/worker design feedback calls out separate machine, capability, task-lease, and execution-receipt identities, with idempotent receipts keyed by operation ID. | Make those identities explicit before a real transport so reconnects and UI disconnects cannot duplicate work or transfer responsibility. |
 
-`packages/dorkpipe/` is a first-party package in this DockPipe checkout, not a separate Git checkout
+`packages/dorkpipe/` is a first-party package in this Dockpipe checkout, not a separate Git checkout
 here. Its package boundary is nevertheless the DorkPipe product boundary for this decision.
 
 ## Decision
@@ -1142,11 +1142,11 @@ Adopt this responsibility boundary:
 DorkPipe scheduler and graph state
   -> broker protocol / outer transport envelope
     -> outbound node connector
-      -> DockPipe local workflow execution
+      -> Dockpipe local workflow execution
         -> host | Docker | QEMU | WSL | future runtime
 ```
 
-- **DockPipe executes one assigned contract on one node or runtime.** It owns local policy
+- **Dockpipe executes one assigned contract on one node or runtime.** It owns local policy
   enforcement, approvals presented at that node, process-tree termination, runtime teardown,
   artifacts, local operation results, and capability observation.
 - **DorkPipe decides where, when, and why work executes across nodes.** It owns the graph, placement,
@@ -1158,25 +1158,25 @@ DorkPipe scheduler and graph state
   defines the execution contract.
 
 This confirms the hypothesis. The location, availability, and scheduling concepts are orchestration
-concepts; putting them in DockPipe core would couple a standalone local executor to a cluster-control
+concepts; putting them in Dockpipe core would couple a standalone local executor to a cluster-control
 plane it does not need.
 
 ## Deployment Modes
 
 | Deployment mode | Ownership | Boundary and verdict |
 | --- | --- | --- |
-| A. Local/private broker | The user runs the broker and nodes on one machine, LAN, VPN, or private overlay. | Free and local-first. It requires no external edge provider or DockPipe-hosted infrastructure and is the deterministic development/test baseline. |
-| B. BYO edge and broker | The user hosts the broker and owns the domain, tunnel/edge account, credentials, and policy. | Cloudflare Tunnel, ngrok, direct TLS, and equivalent adapters expose the same broker protocol. DockPipe may automate setup and diagnostics but does not own or persist provider credentials. |
-| C. Managed DockPipe broker | DockPipe hosts the multi-tenant broker and edge; users enroll outbound-only nodes. | Subscription service. Tenant identity, quotas, audit, retention, availability, and billing remain control-plane concerns and cannot widen local execution authority. |
+| A. Local/private broker | The user runs the broker and nodes on one machine, LAN, VPN, or private overlay. | Free and local-first. It requires no external edge provider or Dockpipe-hosted infrastructure and is the deterministic development/test baseline. |
+| B. BYO edge and broker | The user hosts the broker and owns the domain, tunnel/edge account, credentials, and policy. | Cloudflare Tunnel, ngrok, direct TLS, and equivalent adapters expose the same broker protocol. Dockpipe may automate setup and diagnostics but does not own or persist provider credentials. |
+| C. Managed Dockpipe broker | Dockpipe hosts the multi-tenant broker and edge; users enroll outbound-only nodes. | Subscription service. Tenant identity, quotas, audit, retention, availability, and billing remain control-plane concerns and cannot widen local execution authority. |
 
 SSH, WinRM, and other remote-shell integrations may exist later as compatibility adapters, but they
 are not the target architecture and must not shape `node-execution.v1`. The default node makes an
 outbound authenticated connection and exposes no inbound public listener or generic remote shell.
-Local/private and BYO modes must not require DockPipe-hosted infrastructure.
+Local/private and BYO modes must not require Dockpipe-hosted infrastructure.
 
 ## Responsibilities
 
-### DockPipe core
+### Dockpipe core
 
 Keep or add only reusable local-node primitives:
 
@@ -1191,7 +1191,7 @@ Keep or add only reusable local-node primitives:
 - support exact source revision/workspace preparation through runtime-owned Git lifecycle APIs;
 - optionally expose these same local primitives through a narrowly scoped endpoint in the future.
 
-DockPipe core must **not** gain node enrollment, scheduler persistence, task-graph state, dispatch
+Dockpipe core must **not** gain node enrollment, scheduler persistence, task-graph state, dispatch
 queues, leases between machines, retries, repair policy, health-based placement, cost/risk placement,
 distributed approvals, artifact fan-in, coordinator hosting, or a DorkPipe-specific protocol.
 
@@ -1200,12 +1200,12 @@ distributed approvals, artifact fan-in, coordinator hosting, or a DorkPipe-speci
 A narrow node connector maintains an outbound authenticated broker connection for execution,
 capability snapshots, event streaming, cancellation, artifact transfer, and health. It should be an
 installable Windows service or systemd service, not part of normal `dockpipe` CLI startup. The first
-slice may keep it package-owned while the contract is proven; promotion into generic DockPipe code
+slice may keep it package-owned while the contract is proven; promotion into generic Dockpipe code
 requires evidence that the primitive is independently reusable.
 
 It owns local request deduplication and cleanup recovery for a request it accepted. It does not own
 tenant policy, global leases, task selection, graph persistence, placement, billing, or final graph
-success. It invokes the local DockPipe execution boundary and cannot become an independent executor
+success. It invokes the local Dockpipe execution boundary and cannot become an independent executor
 or arbitrary command relay.
 
 ### DorkPipe scheduler/orchestration
@@ -1244,7 +1244,7 @@ The protocol keeps four identities distinct:
 3. **Task lease identity** binds one broker assignment, attempt, expiry, and cancellation authority;
    reconnecting does not silently create or transfer a lease.
 4. **Execution receipt identity** is keyed by a stable operation ID and binds the accepted contract,
-   local DockPipe run, terminal outcome, events, artifacts, and cleanup. Retrying delivery of the same
+   local Dockpipe run, terminal outcome, events, artifacts, and cleanup. Retrying delivery of the same
    operation returns or resumes the same receipt instead of executing it twice.
 
 Broker responsibility survives UI disconnects, node reconnects, and process restarts. Connection
@@ -1252,15 +1252,15 @@ presence is evidence only; it cannot grant a lease, prove completion, or transfe
 
 ## Target Model And Authoring Boundary
 
-Placement belongs in a **DorkPipe scheduler extension over DockPipe task contracts**, not in generic
-DockPipe workflow YAML. A DockPipe workflow specifies *what local work does*; DorkPipe specifies
+Placement belongs in a **DorkPipe scheduler extension over Dockpipe task contracts**, not in generic
+Dockpipe workflow YAML. A Dockpipe workflow specifies *what local work does*; DorkPipe specifies
 which compatible surface should receive that local contract. This keeps existing local workflows
 backward compatible and allows the same workflow to be placed on several nodes.
 
 The target model must preserve the compatibility surface:
 
 ```yaml
-# DorkPipe task/scheduler authoring; not a DockPipe runtime selector.
+# DorkPipe task/scheduler authoring; not a Dockpipe runtime selector.
 target:
   requires:
     host_os: linux
@@ -1288,7 +1288,7 @@ task:
   workflow: test.cross-platform
 ```
 
-It expands into separate graph nodes, each dispatching the unchanged local DockPipe workflow.
+It expands into separate graph nodes, each dispatching the unchanged local Dockpipe workflow.
 The syntax remains a proposal until DorkPipe's current task schema and package contract are extended
 with fixtures, validation, docs, and migration rules.
 
@@ -1300,7 +1300,7 @@ workspace. A shared remote Git repository is the preferred transfer mechanism. G
 fallback for air-gapped/private-LAN cases. Patch, network-file, and workspace-snapshot transfer are
 not version-one defaults because they weaken reproducibility and authority boundaries.
 
-Keep DockPipe's inner events unchanged. DorkPipe records an outer immutable envelope, for example:
+Keep Dockpipe's inner events unchanged. DorkPipe records an outer immutable envelope, for example:
 
 ```yaml
 graph_run_id: dorkpipe-912
@@ -1308,17 +1308,17 @@ node_id: office-windows
 dockpipe_run_id: dp-412
 task_id: verify-windows-host
 sequence: 184
-event: # unchanged DockPipe operation event
+event: # unchanged Dockpipe operation event
   schema: dockpipe.operation_event.v1
   type: operation_result
   status: done
 ```
 
 At dispatch time, generic correlation keys such as `run_id`, `request_id`, and `task_id` may be
-injected into the DockPipe execution context and its existing ID map. `graph_run_id`, placement, and
+injected into the Dockpipe execution context and its existing ID map. `graph_run_id`, placement, and
 other DorkPipe concepts stay in the outer envelope. Every terminal target receipt must record:
 
-- DorkPipe graph/run/task IDs, node identity, local DockPipe run ID, and sequence boundaries;
+- DorkPipe graph/run/task IDs, node identity, local Dockpipe run ID, and sequence boundaries;
 - tested commit/ref and checkout verification receipt;
 - physical node, host OS, runtime, guest OS, QEMU image/snapshot, tool/capability snapshot;
 - policy and approval context, event log/artifact manifest integrity, cancellation/cleanup outcome;
@@ -2155,10 +2155,10 @@ commit history, or task presence implies readiness.
 
 ## Acceptance Criteria For This Extension
 
-- Standalone, local-only DockPipe workflows retain their current behavior and require no service.
-- DorkPipe owns graph and placement decisions; DockPipe receives only a local execution contract.
+- Standalone, local-only Dockpipe workflows retain their current behavior and require no service.
+- DorkPipe owns graph and placement decisions; Dockpipe receives only a local execution contract.
 - Host/runtime/guest dimensions are separately matched and reported.
-- Existing DockPipe operation events/results are reused inside an outer DorkPipe envelope.
+- Existing Dockpipe operation events/results are reused inside an outer DorkPipe envelope.
 - The completed foundation binds one exact commit through the fake broker and injected connector,
   accepts deterministic structured results/artifacts, and proves reconnect, idempotent receipt,
   cancellation, and cleanup without running the commit yet.
@@ -2168,7 +2168,7 @@ commit history, or task presence implies readiness.
   the exact selected machine/capability and complete finalized execution request and cannot widen
   fixture-only submission authority. Only its explicit one-time submission may issue the exact fake-
   broker lease; that evidence cannot invoke execution or become a receipt.
-- Default execution needs neither DockPipe-hosted cloud infrastructure, an external edge provider,
+- Default execution needs neither Dockpipe-hosted cloud infrastructure, an external edge provider,
   nor a public node listener.
 - A failure cannot silently duplicate a task, replay a stale cancellation, hide cleanup residue, or
   automatically publish a change.
@@ -2177,7 +2177,7 @@ commit history, or task presence implies readiness.
 
 ## Open Decisions For The Extension
 
-- Whether the current DockPipe process-runner/cancellation primitives need one small generic
+- Whether the current Dockpipe process-runner/cancellation primitives need one small generic
   machine-readable cancel/status API before the connector can make its cleanup guarantee.
 - The exact target schema location and migration path in the DorkPipe orchestration contract.
 - Artifact transfer limits, retention, and checksum/signature policy for large guest logs/images.

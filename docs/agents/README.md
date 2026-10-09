@@ -1,6 +1,6 @@
 # Agent Docs
 
-This folder is the focused agent-routing layer for the DockPipe repo.
+This folder is the focused agent-routing layer for the Dockpipe repo.
 
 Start at:
 

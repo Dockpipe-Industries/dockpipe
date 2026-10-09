@@ -2,7 +2,7 @@
 
 **Agnostic** run/act helpers live **here** (root of this folder): clone/commit worktree, export patch, print summary, examples.
 
-**Shared script SDK libs** live under **`lib/`** in this folder. The canonical cross-language DockPipe SDK support now lives in:
+**Shared script SDK libs** live under **`lib/`** in this folder. The canonical cross-language Dockpipe SDK support now lives in:
 
 - **`src/core/assets/scripts/lib/dockpipe-sdk.sh`**
 - **`src/core/assets/scripts/lib/repo-tools.sh`**
@@ -19,7 +19,7 @@ dockpipe scope source
 
 ## Injected script context
 
-When a DockPipe-managed host script is launched, the runtime injects generic package script
+When a Dockpipe-managed host script is launched, the runtime injects generic package script
 context into the environment. The backing env vars are:
 
 - `DOCKPIPE_WORKDIR`
@@ -60,7 +60,7 @@ The important mapping is:
 - `dockpipe get assets_dir` reads injected `DOCKPIPE_ASSETS_DIR`
 - `dockpipe get workflow_name` reads injected `DOCKPIPE_WORKFLOW_NAME`
 - `dockpipe get workdir` prefers injected `DOCKPIPE_WORKDIR` and otherwise falls back to the current directory; authored scripts should usually use `pwd` after setting workflow `cwd`
-- `dockpipe get dockpipe_bin` resolves the active DockPipe binary for the current workdir
+- `dockpipe get dockpipe_bin` resolves the active Dockpipe binary for the current workdir
 - `dockpipe get state_dir` reads `DOCKPIPE_STATE_DIR` or defaults to `<workdir>/bin/.dockpipe`
 - `dockpipe get artifact_root` reads `DOCKPIPE_ARTIFACT_ROOT` or defaults to the current workflow artifact root
 - `dockpipe get output_root` reads `DOCKPIPE_OUTPUT_ROOT` or falls back to the artifact root
@@ -100,7 +100,7 @@ disposable products under `bin/.dockpipe/`.
 Use workflow paths for workflow-run artifacts such as orchestration task graphs, worker outputs,
 optimizer assessments, and proposed patches.
 
-When DockPipe runs a workflow, SDK bootstrap uses the injected workflow name to place workflow-owned
+When Dockpipe runs a workflow, SDK bootstrap uses the injected workflow name to place workflow-owned
 artifacts under that workflow's state. External scripts that mirror a workflow can set
 `DOCKPIPE_WORKFLOW_NAME` before SDK bootstrap:
 
@@ -144,7 +144,7 @@ answer="$(dockpipe_sdk prompt confirm \
 Prompt behavior:
 
 - In a normal terminal, `dockpipe_sdk prompt ...` renders an interactive CLI prompt and returns the answer on stdout.
-- Under the DockPipe Launcher, the shell SDK emits a structured prompt event (`DOCKPIPE_SDK_PROMPT_MODE=json`), the launcher renders native UI, and the selected answer is written back to the running workflow.
+- Under the Dockpipe Launcher, the shell SDK emits a structured prompt event (`DOCKPIPE_SDK_PROMPT_MODE=json`), the launcher renders native UI, and the selected answer is written back to the running workflow.
 - Supported prompt kinds today: `confirm`, `choice`, `input`, `file`.
 - File prompts can declare `--path-mode open-file|open-dir|save-file`, `--filter`, and `--must-exist`.
 - Prompt metadata can classify author intent with options like `--intent`, `--automation-group`,

@@ -1,7 +1,7 @@
-# TASK-033 macOS DockPipe platform support and qualification
+# TASK-033 macOS Dockpipe platform support and qualification
 schema: 1
 id: TASK-033
-topic: "macOS DockPipe platform support and qualification"
+topic: "macOS Dockpipe platform support and qualification"
 entrypoint: overview.md
 
 dispatch:

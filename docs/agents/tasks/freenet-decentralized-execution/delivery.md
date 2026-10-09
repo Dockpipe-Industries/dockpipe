@@ -5,7 +5,7 @@
 1. Pin and audit current Freenet Core, `fdev`, contract/delegate interfaces, client SDK, auth model,
    state limits, persistence behavior, and supported local companion patterns.
 2. Write an ADR choosing package placement, naming, contract boundaries, client API, lease authority,
-   identity mapping, upgrade/version strategy, and whether any generic DockPipe seam is justified.
+   identity mapping, upgrade/version strategy, and whether any generic Dockpipe seam is justified.
 3. Write the threat model, abuse cases, trust assumptions, and private-swarm security profile.
 4. Specify and property-test the bounded commutative contract algebra under reorder, duplication,
    loss, partitions, stale state, conflicting claims, expiry, and replay.
@@ -22,7 +22,7 @@ No live native execution is allowed in this phase.
 - Exact `node-execution.v1` request, capability, lease, event, receipt, cancellation, and cleanup
   bindings.
 - External or origin-hosted content-addressed artifacts; only digests and metadata in Freenet.
-- No centralized DockPipe control-plane service.
+- No centralized Dockpipe control-plane service.
 
 ### Phase 2: Approved Community Runners
 
@@ -43,8 +43,8 @@ abuse questions make this phase especially speculative.
 
 The Phase 1 vertical slice succeeds only when all of the following are demonstrated:
 
-1. Two or more trusted machines run pinned compatible Freenet and DockPipe versions.
-2. The origin publishes one signed, non-sensitive, versioned DockPipe job request through a bounded
+1. Two or more trusted machines run pinned compatible Freenet and Dockpipe versions.
+2. The origin publishes one signed, non-sensitive, versioned Dockpipe job request through a bounded
    Freenet contract.
 3. At least one runner publishes a signed immutable capability snapshot; placement distinguishes
    host OS, runtime, guest OS, toolchain/package versions, and local policy.
@@ -53,9 +53,9 @@ The Phase 1 vertical slice succeeds only when all of the following are demonstra
 5. The runner revalidates the full immutable chain, required local approval, and effective sandbox
    capabilities before invoking an allow-listed harmless workflow.
 6. The workflow compiles a sample public repository or runs a bounded test suite through an existing
-   isolated DockPipe runtime. The contract or delegate executes no native workload.
+   isolated Dockpipe runtime. The contract or delegate executes no native workload.
 7. Signed outer status records synchronize through Freenet while preserving the unchanged ordered
-   DockPipe event chain and making gaps or duplicates visible.
+   Dockpipe event chain and making gaps or duplicates visible.
 8. The origin retrieves a terminal signed receipt, cleanup outcome, artifact manifest, and verifies
    the downloaded artifact bytes against their digest.
 9. Exact request replay returns/resumes the same operation and never invokes the workload twice.
@@ -65,7 +65,7 @@ The Phase 1 vertical slice succeeds only when all of the following are demonstra
     completion.
 12. No plaintext secret, private repository credential, large log, raw artifact, arbitrary command,
     or unrestricted network authority enters Freenet contract state.
-13. No centralized DockPipe broker/control-plane service participates; the trusted origin may still
+13. No centralized Dockpipe broker/control-plane service participates; the trusted origin may still
     act as the explicit lease authority for its own job.
 14. The proof runs against deterministic partition/reorder/replay fixtures before the multi-machine
     demonstration and records the pinned versions and known Freenet limitations.
@@ -73,7 +73,7 @@ The Phase 1 vertical slice succeeds only when all of the following are demonstra
 ## Open Technical Questions
 
 - Can a bounded job/claim/grant/event/receipt algebra satisfy Freenet's merge requirements without
-  hiding forks or violating DockPipe's ordered per-attempt event semantics?
+  hiding forks or violating Dockpipe's ordered per-attempt event semantics?
 - What stabilization and expiry rule is safe enough for the private-swarm proof, and which duplicate
   execution cases remain impossible to exclude under partition?
 - Should the adapter implement a `node-execution.v1` broker interface, a new decentralized
@@ -85,7 +85,7 @@ The Phase 1 vertical slice succeeds only when all of the following are demonstra
 - What exact supported mechanism lets a delegate authorize a local native companion, if any, without
   exporting keys or bypassing the delegate sandbox?
 - How are contract/delegate code upgrades negotiated when content-addressed code changes identity?
-- How are DockPipe workflow, package, schema, runner, and runtime versions negotiated and retired?
+- How are Dockpipe workflow, package, schema, runner, and runtime versions negotiated and retired?
 - How are clocks, expiry, and lease safety handled when peers disagree on time?
 - How are capability facts observed, signed, refreshed, revoked, and independently checked?
 - Which event and artifact metadata is safe to replicate publicly without leaking repository names,
@@ -96,7 +96,7 @@ The Phase 1 vertical slice succeeds only when all of the following are demonstra
   credentials?
 - What execution evidence is realistic for builds, GPU inference, Windows/QEMU, browser automation,
   and agent workflows, and what remains only a trusted runner claim?
-- How do local DockPipe network-denied/offline policies coexist with a continuously connected Freenet
+- How do local Dockpipe network-denied/offline policies coexist with a continuously connected Freenet
   companion?
 - What contract-state, delta, signature-verification, event-count, artifact-count, byte, and retention
   bounds prevent resource abuse?
