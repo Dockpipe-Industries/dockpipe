@@ -137,8 +137,8 @@ var reviewedAssetSHA256 = map[string]string{
 	"nocloud/meta-data":               "e1e3a5697cd018d2465093e7011a60dfa17de51ade7a702252d887fada833ef7",
 	"nocloud/network-config":          "639b6f419a9ac49312b218e12395dc7e7d623d96202c3315a92dcd19d6fa02ba",
 	"nocloud/user-data":               "1c3d8edbc1073ed523f7d2a818712a7d8509b9a99de6267c17d498594402a693",
-	"systemd/dockpipe-agent.service":  "1111759c65b550ae76660d0c9fa1f51431abeec7d1e4cc52c3911efe589aa50d",
-	"systemd/dockpipe-agent.sysusers": "918c4529043c930ec81256f8c72c915f460283ce33a1d75712bf44aecfa1e5c9",
+	"systemd/dockpipe-agent.service":  "88a84150397ffa3ad61faeee8103ac75d04ad54bb7c1d49ae57938ccfcbfb71f",
+	"systemd/dockpipe-agent.sysusers": "afbf7a7394b133b7e21fdbec86f24d79fbdf619d0333b8c0da2fbc70cb37f774",
 	"systemd/dockpipe-agent.tmpfiles": "793f4cd1a8e5433e117c4b615932d13241db2cde8932dcd4efb1753376d2680b",
 	"udev/99-dockpipe-agent.rules":    "d86c156c48b97a9da7ebd3dc67fa9d17a6cf9f11a8e0cec068480a261ce09095",
 }
