@@ -1,7 +1,7 @@
 # Same checks as the Linux CI job, but this multi-step workflow runs them inside Docker.
 # Canonical path in this repo: workflows/ci/test. Host job still runs govulncheck/gosec/go test first for fast signal; this workflow mirrors the stack in isolation.
 # Mount only $(go env GOPATH)/pkg:/go/pkg — do NOT mount host GOBIN: govulncheck/gosec must be built with the
-# container Go (e.g. 1.25); a host-built binary often mismatches and breaks vulncheck.
+# container Go (e.g. 1.26); a host-built binary often mismatches and breaks vulncheck.
 # Images: golang official (pulls from Docker Hub on first use).
 # DOCKPIPE_DOCKER_NETWORK=host: many Linux setups have no working IPv6 from Docker bridge; Go then
 # cannot reach proxy.golang.org for go install / govulncheck. Host network matches the host stack.
@@ -27,7 +27,7 @@ description: >-
 
 steps:
   - id: prepare
-    isolate: golang:1.25.13-bookworm
+    isolate: golang:1.26.9-bookworm
     outputs: prepare.env
     vars:
       HOME: /tmp/dockpipe-home
@@ -57,7 +57,7 @@ steps:
       echo "[demo] step 1/3 prepare — wrote demo artifact + checksum for next step"'
 
   - id: scan
-    isolate: golang:1.25.13-bookworm
+    isolate: golang:1.26.9-bookworm
     outputs: scan.env
     security:
       profile: build-online
@@ -114,7 +114,7 @@ steps:
       printf "%s\n" "VERIFY_OK=1" "SCAN_PASS=1" "DEMO_STAGE=scan" > "$DOCKPIPE_STEP_OUTPUTS_FILE"'
 
   - id: report
-    isolate: golang:1.25.13-bookworm
+    isolate: golang:1.26.9-bookworm
     vars:
       HOME: /tmp/dockpipe-home
     cmd: |-
@@ -128,7 +128,7 @@ steps:
       echo "[demo]   workdir persists between steps; review images and workflow YAML like CI."
       echo "[demo] • Data paths: treat host run:/act: scripts as part of your trust boundary."
       echo "[demo] • Supply chain: pin image digests in production; this workflow uses"
-      echo "[demo]   golang:1.25.13-bookworm for reproducible test runs."
+      echo "[demo]   golang:1.26.9-bookworm for reproducible test runs."
       echo "[demo] • For an actual model-driven security review, use a resolver workflow"
       echo "[demo]   (e.g. Codex) with your policy — this block is static showcase copy."
       echo "[demo] pipeline complete — go test + vet + staticcheck + govulncheck + gosec in isolation + security brief emitted"'
