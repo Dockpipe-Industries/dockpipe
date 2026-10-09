@@ -61,7 +61,7 @@ func cmdBuild(args []string) error {
 		compileIDs["mode"] = "for-workflow"
 		compileArgs = append([]string{"compile", "for-workflow", wfName, "--force"}, forward...)
 	}
-	if err := infrastructure.RunOperationWithOptions(os.Stderr, "build.compile", "Compiling DockPipe packages…", compileIDs, infrastructure.OperationOptions{Spinner: false, ProgressEvery: 5 * time.Second}, func() error {
+	if err := infrastructure.RunOperationWithOptions(os.Stderr, "build.compile", "Compiling Dockpipe packages…", compileIDs, infrastructure.OperationOptions{Spinner: false, ProgressEvery: 5 * time.Second}, func() error {
 		return cmdPackage(compileArgs)
 	}); err != nil {
 		return err

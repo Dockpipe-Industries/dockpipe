@@ -64,7 +64,7 @@ For **development**, open **`packages/pipeon/resolvers/pipeon/vscode-extension`*
 
 ## 5. Relationship to `dockpipe`
 
-- **This repo** = DockPipe / DorkPipe **engine**, artifact **schemas**, **harness** (`packages/pipeon/resolvers/pipeon/bin/pipeon`), and **extension stub**.
+- **This repo** = Dockpipe / DorkPipe **engine**, artifact **schemas**, **harness** (`packages/pipeon/resolvers/pipeon/bin/pipeon`), and **extension stub**.
 - **Pipeon editor repo** = **fork** of Code OSS + CI + signing + your product updates.
 
 Keep them **linked** in docs (version pins, extension version).

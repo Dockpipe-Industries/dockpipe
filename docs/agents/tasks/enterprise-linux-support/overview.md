@@ -2,7 +2,7 @@
 
 ## Goal
 
-Make DockPipe work and remain qualified on selected long-lived enterprise-Linux baselines. Fedora
+Make Dockpipe work and remain qualified on selected long-lived enterprise-Linux baselines. Fedora
 evidence alone does not establish RHEL-family compatibility.
 
 ## Scope
@@ -19,7 +19,7 @@ evidence alone does not establish RHEL-family compatibility.
 ## Acceptance Criteria
 
 - Every claimed enterprise baseline passes reproducible native or VM evidence for all claimed
-  DockPipe surfaces, including SELinux-enforcing operation where applicable.
+  Dockpipe surfaces, including SELinux-enforcing operation where applicable.
 - Required compatibility fixes are implemented with generic primitives or package-owned behavior in
   the correct layer; unsupported releases fail closed.
 - RPM availability is not presented as support until install, operation, and evidence gates pass.

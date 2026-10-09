@@ -1,6 +1,6 @@
 ## Launcher Integration
 
-The app should launch from DockPipe using the same context-passing approach as Pipeon.
+The app should launch from Dockpipe using the same context-passing approach as Pipeon.
 
 Expected launcher context:
 

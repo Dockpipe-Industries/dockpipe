@@ -5,6 +5,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"dockpipe/src/lib/infrastructure/packageplatform"
 )
 
 func TestBuildCompiledStore(t *testing.T) {
@@ -71,6 +73,10 @@ requires_capabilities: [cli.codex]
 	}
 	if _, present := fields["store_root"]; present {
 		t.Fatal("exported manifest contains the builder's private store path")
+	}
+	platform, err := packageplatform.Current()
+	if err != nil || dec.Platform != platform {
+		t.Fatalf("store platform = %q; want %q (%v)", dec.Platform, platform, err)
 	}
 	if dec.Packages.Core.Tarball == "" {
 		t.Fatal("empty core tarball in manifest")

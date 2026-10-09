@@ -1,10 +1,10 @@
 # DorkPipe Agentic YAML
 
-Use this skill when building agentic workflows through DockPipe.
+Use this skill when building agentic workflows through Dockpipe.
 
 ## Core Position
 
-DorkPipe is the harness. DockPipe remains the governed runtime. Agentic behavior should be declared
+DorkPipe is the harness. Dockpipe remains the governed runtime. Agentic behavior should be declared
 in YAML and materialized into artifacts by package scripts.
 
 AI workflows must beat one strong direct worker on quality, safety, cost, review effort, rerun value,

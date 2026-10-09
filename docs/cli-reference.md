@@ -37,7 +37,7 @@ Local project setup only: **no `git clone`**, no treating **`init`** as a remote
 
 | Command | Purpose |
 |---------|---------|
-| `dockpipe init` | Create the **minimal project scaffold**: **`workflows/`**, **`README.md`**, **`dockpipe.config.json`**, and **`.env.vault.template.example`** when missing. If no DockPipe workflows exist yet, also create **`workflows/example/config.yml`** as a starter. It does **not** copy **`templates/core/`**, **`scripts/`**, or **`images/`** into the project. |
+| `dockpipe init` | Create the **minimal project scaffold**: **`workflows/`**, **`README.md`**, **`dockpipe.config.json`**, and **`.env.vault.template.example`** when missing. If no Dockpipe workflows exist yet, also create **`workflows/example/config.yml`** as a starter. It does **not** copy **`templates/core/`**, **`scripts/`**, or **`images/`** into the project. |
 | `dockpipe init <name>` | Create **`workflows/<name>/config.yml`** as a **minimal empty workflow** (name + description only). Does **not** copy the bundled **`init`** template unless you pass **`--from init`**. If **`workflows/`** already exists but has no **`*/config.yml`** trees, the CLI prints a **warning** (often a conflict with GitHub Actions). |
 | `dockpipe init <name> --workflows-dir <path>` | Put the new workflow under **`<path>/<name>/`** instead of **`workflows/`** (repo-relative or absolute). Same as env **`DOCKPIPE_WORKFLOWS_DIR`** for **`dockpipe run`**. |
 | `dockpipe init <name> --from <source>` | Copy into **`workflows/<name>/`** (or **`--workflows-dir`**): **`--from`** may be **`blank`**, **`init`**, another **bundled** name (resolved under **`templates/&lt;name&gt;`** or the bundled workflows root), or a **filesystem path** (e.g. **`workflows/&lt;name&gt;`** in a dockpipe checkout). Not a Git URL. |
@@ -97,7 +97,7 @@ Inspect **installed** package metadata. Store-backed installs are intended to la
 |---------|---------|
 | `dockpipe package list [--workdir <path>]` | Walk **`bin/.dockpipe/internal/packages/`** for **`package.yml`** files; print **path**, **name**, **version**, **description** (tab-separated). |
 | `dockpipe package list --format json [--workdir <path>]` | Inventory project, configured, user, and system packages, plus warnings and the user install root. |
-| `dockpipe package catalog --remote <HTTPS manifest URL>` | Return the current platform's remote packages and resolved store manifest as JSON. Accepts a latest pointer, release catalog, or explicit platform store. |
+| `dockpipe package catalog --remote <HTTPS manifest URL>` | Return the current execution platform's remote packages and resolved store manifest as JSON. Inside Flatpak this includes its runtime ID/branch; native processes retain OS/architecture selection. Accepts a latest pointer, release catalog, or explicit platform store. |
 | `dockpipe package install --remote <URL> --kind core\|workflow\|resolver --name <name> [--sha256 <digest>]` | Verify and install one package into the user store. A digest pins the selected catalog entry. Dependencies are installed separately. |
 | `dockpipe package uninstall --path <absolute archive path>` | Remove one optional user-store archive. Core, external stores, directories, and symlinks are protected; package data and settings are retained. |
 | `dockpipe package images [--workdir <path>]` | Merge planned image artifacts from compiled workflow tarballs with materialized/cached receipts under **`bin/.dockpipe/internal/images/by-fingerprint/`**; print **fingerprint**, **status**, **state**, **source**, **image_ref**, **workflow**, **package**, **step_id**, **image_key** (tab-separated). Status can show **`ready`**, **`missing`**, **`stale`**, **`planned`**, **`referenced`**, or **`docker-error`**. |
@@ -129,7 +129,7 @@ Commands:
 
 ## `dockpipe pipelang`
 
-Optional typed authoring helper. PipeLang compiles to inspectable artifacts; workflow execution still uses normal DockPipe YAML.
+Optional typed authoring helper. PipeLang compiles to inspectable artifacts; workflow execution still uses normal Dockpipe YAML.
 
 When a workflow also declares `view:`, that YAML remains a launcher/tooling presentation layer over the typed model rather than a separate execution contract. See **[concepts/pipelang.md](concepts/pipelang.md)** and **[workflows/workflow-yaml.md](workflows/workflow-yaml.md)**.
 
@@ -144,7 +144,7 @@ Method support (v0.0.0.1): expression-bodied methods are parsed, type-checked, i
 
 ## `dockpipe release`
 
-Upload a single file to an **S3-compatible** bucket (e.g. **Cloudflare R2**) using the **`aws`** CLI. Requires **`AWS_ACCESS_KEY_ID`** and **`AWS_SECRET_ACCESS_KEY`** (or compatible credentials). Not required for **official** DockPipe distribution; use for **self-hosted** package mirrors.
+Upload a single file to an **S3-compatible** bucket (e.g. **Cloudflare R2**) using the **`aws`** CLI. Requires **`AWS_ACCESS_KEY_ID`** and **`AWS_SECRET_ACCESS_KEY`** (or compatible credentials). Not required for **official** Dockpipe distribution; use for **self-hosted** package mirrors.
 
 | Command | Purpose |
 |---------|---------|
@@ -173,7 +173,7 @@ All options must appear **before** a standalone **`--`**. The command and its ar
 
 | Flag | Aliases | Purpose |
 |------|---------|---------|
-| `--workflow <name>` | | Load a named workflow. The normal lookup path is project **`workflows/`**, configured package/workflow roots from **`compile.workflows`**, and bundled workflows included with the DockPipe build. Legacy **`templates/`** and some maintainer/example roots remain as compatibility fallbacks. With **`steps:`**, a final **`--`** is optional (see **[workflows/workflow-yaml.md](workflows/workflow-yaml.md)**). Mutually exclusive with **`--workflow-file`**. |
+| `--workflow <name>` | | Load a named workflow. The normal lookup path is project **`workflows/`**, configured package/workflow roots from **`compile.workflows`**, and bundled workflows included with the Dockpipe build. Legacy **`templates/`** and some maintainer/example roots remain as compatibility fallbacks. With **`steps:`**, a final **`--`** is optional (see **[workflows/workflow-yaml.md](workflows/workflow-yaml.md)**). Mutually exclusive with **`--workflow-file`**. |
 | `--workflow-file <path>` | | Load workflow YAML from an arbitrary path (same shape as bundled **`config.yml`**). Relative **`run:`** / **`act:`** paths resolve next to that file. **Resolver** profiles load only from **`templates/core/resolvers/`** (or **`bundle/core/resolvers/`** in the materialized bundle) — not from folders beside the YAML file. Mutually exclusive with **`--workflow`**. |
 | `--package <name>` | | With **`--workflow <name>`**, select an unpacked packaged workflow whose nearest **`package.yml`** has matching **`name:`**. This is a generic package selector, not an AI-provider concept. Mutually exclusive with **`--workflow-file`**. |
 | `--workflows-dir <path>` | | Repo-relative or absolute directory for **`--workflow <name>`** resolution (default **`workflows/`**). Same as **`DOCKPIPE_WORKFLOWS_DIR`**. Also **`dockpipe init <name> --workflows-dir …`**. |
@@ -224,7 +224,7 @@ All options must appear **before** a standalone **`--`**. The command and its ar
 
 **Windows:** host uid is unavailable; dockpipe **does not** pass **`-u`** unless **`DOCKPIPE_WINDOWS_CONTAINER_USER`** is set (image **`USER`** applies — e.g. **`node`** in **claude/codex** images). Defaulting **`-u node`** from the CLI caused bind-mount stalls for some Docker Desktop setups, so use an **explicit** value when needed: **`DOCKPIPE_WINDOWS_CONTAINER_USER=node`** for Claude Code with **`--dangerously-skip-permissions`**, or **`0`** for root.
 
-**Claude Code `--dangerously-skip-permissions`:** The CLI blocks that flag when it thinks you’re root/sudo. In DockPipe that behavior is handled by the **resolver image wrappers**, not the shared root entrypoint: the **claude** and **codex** images set **`IS_SANDBOX=1`** by default (Claude Code’s supported disposable-sandbox mode — see **[anthropics/claude-code#9184](https://github.com/anthropics/claude-code/issues/9184)**) and re-exec **root → `node`** via **`runuser`**/**`setpriv`** when the container still starts as uid 0. Opt out: **`DOCKPIPE_NO_SANDBOX_ENV=1`** and **`DOCKPIPE_SKIP_DROP_TO_NODE=1`**. **`DOCKPIPE_DEBUG=1`** still prints **`id`** from the shared entrypoint. Rebuild the resolver image after wrapper changes. **`DOCKPIPE_WINDOWS_CONTAINER_USER`** remains available if you want an explicit **`-u`** from the host.
+**Claude Code `--dangerously-skip-permissions`:** The CLI blocks that flag when it thinks you’re root/sudo. In Dockpipe that behavior is handled by the **resolver image wrappers**, not the shared root entrypoint: the **claude** and **codex** images set **`IS_SANDBOX=1`** by default (Claude Code’s supported disposable-sandbox mode — see **[anthropics/claude-code#9184](https://github.com/anthropics/claude-code/issues/9184)**) and re-exec **root → `node`** via **`runuser`**/**`setpriv`** when the container still starts as uid 0. Opt out: **`DOCKPIPE_NO_SANDBOX_ENV=1`** and **`DOCKPIPE_SKIP_DROP_TO_NODE=1`**. **`DOCKPIPE_DEBUG=1`** still prints **`id`** from the shared entrypoint. Rebuild the resolver image after wrapper changes. **`DOCKPIPE_WINDOWS_CONTAINER_USER`** remains available if you want an explicit **`-u`** from the host.
 
 **Design: loose defaults in isolation.** Dockpipe targets **disposable containers**; resolver-owned images may apply automation-friendly defaults like **`IS_SANDBOX=1`** while the CLI still passes host **uid:gid** on Unix. People who want stricter behavior can opt out with the env vars above. **Dockpipe does not append** **`--dangerously-skip-permissions`** to your command — add it after **`--`** if you want that mode. **Security** is mostly **what you mount** (only **`/work`** etc.), **secrets** in env/volumes, and **network** — not “CLI tightness” alone.
 

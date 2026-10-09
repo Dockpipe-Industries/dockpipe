@@ -158,7 +158,7 @@ func cmdRunsEvents(eventLog, eventIndex string, jsonOut bool) error {
 		return enc.Encode(events)
 	}
 	if len(events) == 0 {
-		fmt.Fprintln(os.Stdout, "No DockPipe operation events found.")
+		fmt.Fprintln(os.Stdout, "No Dockpipe operation events found.")
 		return nil
 	}
 	for _, event := range events {

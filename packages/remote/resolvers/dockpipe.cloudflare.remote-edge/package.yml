@@ -1,9 +1,9 @@
 schema: 1
 kind: resolver
-name: cloudflare
-version: 0.2.0
+name: dockpipe.cloudflare.remote-edge
+version: 0.3.0
 title: Cloudflare Tunnel remote edge
-description: Browser login, named tunnel, and DNS setup for a loopback DockPipe broker.
+description: Browser login, named tunnel, and DNS setup for a loopback Dockpipe broker.
 capability: remote.edge
 dependencies:
   host:

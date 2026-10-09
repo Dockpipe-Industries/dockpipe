@@ -8,7 +8,7 @@ import (
 	"strings"
 )
 
-// Copy copies a directory tree using DockPipe's normalized authored-file modes.
+// Copy copies a directory tree using Dockpipe's normalized authored-file modes.
 func Copy(src, dst string) error {
 	return copyFiltered(src, dst, nil)
 }

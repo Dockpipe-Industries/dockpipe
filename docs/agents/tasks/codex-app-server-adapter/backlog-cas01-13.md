@@ -221,7 +221,7 @@ the authenticated current App Server with exact `gpt-5.6-terra` / `high` catalog
 workspace-write, declared-root, network-disabled, human-reviewed no-tool turn reached normalized
 completion and clean child shutdown; a second turn reached the exact correlated interrupted
 terminal after neutral cancellation. A constrained workspace-change turn produced a file-change
-approval request, DockPipe denied it, and the exact resolution returned to running without making
+approval request, Dockpipe denied it, and the exact resolution returned to running without making
 the requested change. Controlled stdout loss projected `transport_closed`, while termination of
 the direct child projected `child_exit` after a bounded owned-child exit observation. No raw frame,
 provider error, prompt, command, path, credential, account value, or provider identifier was

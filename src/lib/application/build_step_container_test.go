@@ -124,7 +124,7 @@ func TestBuildStepContainer_ForwardsMultipleResolverEnvHints(t *testing.T) {
 	}
 }
 
-// TestBuildStepContainer_ForwardsPolicyProxyEnv copies DockPipe policy proxy settings from
+// TestBuildStepContainer_ForwardsPolicyProxyEnv copies Dockpipe policy proxy settings from
 // the resolved workflow environment into the container env so compose exports can drive
 // proxy-backed network enforcement on later steps.
 func TestBuildStepContainer_ForwardsPolicyProxyEnv(t *testing.T) {

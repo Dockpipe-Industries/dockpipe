@@ -146,7 +146,7 @@ func TestProviderAuthStatusClaudeUsesAPIKey(t *testing.T) {
 func TestClaudeAuthCommandIsDirectHostCLI(t *testing.T) {
 	got := claudeAuthCommand("C:\\Source\\dockpipe")
 	if strings.Contains(got, "--workflow claude") || strings.Contains(got, " dockpipe ") || strings.Contains(got, "& 'dockpipe'") {
-		t.Fatalf("auth command should not route through DockPipe workflow: %q", got)
+		t.Fatalf("auth command should not route through Dockpipe workflow: %q", got)
 	}
 	if !strings.Contains(got, "claude auth login") {
 		t.Fatalf("auth command should use direct Claude host auth: %q", got)

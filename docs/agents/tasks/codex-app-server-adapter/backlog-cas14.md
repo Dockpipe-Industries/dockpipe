@@ -47,8 +47,8 @@ whole surface should migrate.
   remains the proven baseline, not the only production lane.
 - New sessions default to the user's native Codex approval configuration and `workspace-write`.
   Model, reasoning level, approval/reviewer mode, and sandbox mode are visible and user-selectable per
-  session. Pipeon may expose Codex's native automatic-review modes; DockPipe passes the chosen native
-  policy through, validates it, and audits its neutral outcomes. DockPipe never implements automatic
+  session. Pipeon may expose Codex's native automatic-review modes; Dockpipe passes the chosen native
+  policy through, validates it, and audits its neutral outcomes. Dockpipe never implements automatic
   review by blindly approving requests itself.
 - Approval automation and sandbox authority are independent controls. Broader-than-workspace access
   requires a separate conspicuous per-session confirmation, is never inferred from automatic review,
@@ -59,7 +59,7 @@ whole surface should migrate.
   validation, or becomes a default merely because native automatic review is selected.
 - Advertised stable capabilities may become supported after schema, provider-neutral projection, and
   policy validation. Support does not mean automatic enablement: any capability that expands access,
-  execution, approvals, credentials, or transport requires an explicit DockPipe policy mapping and
+  execution, approvals, credentials, or transport requires an explicit Dockpipe policy mapping and
   user choice. Unknown capabilities fail closed. Experimental capabilities are gated individually
   behind clearly labeled advanced settings; there is no global "enable all experiments" switch.
 - `codex_exec` remains the governed legacy adapter, the implementation for bounded workers, and the
@@ -113,8 +113,8 @@ state and never implies readiness.
 | starting | “Starting Codex session”; no completion claim and no decision controls. |
 | `ready` | “Ready”; initialized, policy-verified, and known idle. The composer may submit one turn. |
 | `running` | “Running”; show bounded progress summaries and cancellation only. |
-| `waiting_for_approval` | “Waiting for approval”; render the bounded DockPipe approval record and one-turn controls bound to its complete one-time correlation. Native automatic review may resolve through the selected Codex policy, but Pipeon never fabricates an approval. |
-| `waiting_for_user_input` | “Waiting for your input”; render the bounded DockPipe prompt record and its bounded answer controls. No raw App Server question or option object reaches Pipeon. |
+| `waiting_for_approval` | “Waiting for approval”; render the bounded Dockpipe approval record and one-turn controls bound to its complete one-time correlation. Native automatic review may resolve through the selected Codex policy, but Pipeon never fabricates an approval. |
+| `waiting_for_user_input` | “Waiting for your input”; render the bounded Dockpipe prompt record and its bounded answer controls. No raw App Server question or option object reaches Pipeon. |
 | `completed` | “Completed”; only an exact correlated terminal completion permits this label and final text. |
 | `cancelled` | “Interrupted”; only the exact correlated interrupted terminal or the already-audited bounded termination path permits this label. |
 | `failed` | “Failed”; show a closed safe reason class and no retry claim. |
@@ -125,7 +125,7 @@ operation, and its opaque `PromptRef` alone is not renderable. CAS-14 implementa
 requires one bounded provider-neutral prompt-record lookup and one exact-correlation, one-time
 user-input response operation. Those operations belong in `providersession` and the adapter; they
 must not encode App Server question unions, raw payloads, or session-wide decisions. Pipeon sends
-approval and input responses back through the DockPipe bridge only. It never holds a provider RPC id
+approval and input responses back through the Dockpipe bridge only. It never holds a provider RPC id
 and never reads or writes App Server JSON-RPC.
 
 #### Retention, redaction, diagnostics, and recovery

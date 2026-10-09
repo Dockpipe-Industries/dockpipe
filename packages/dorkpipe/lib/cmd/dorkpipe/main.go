@@ -1,4 +1,4 @@
-// Command dorkpipe is the DorkPipe orchestrator CLI (DAG on top of DockPipe).
+// Command dorkpipe is the DorkPipe orchestrator CLI (DAG on top of Dockpipe).
 package main
 
 import (
@@ -166,7 +166,7 @@ func insightCmd(argv []string) {
 
 func insightEnqueueCmd(argv []string) {
 	fs := flag.NewFlagSet("insight enqueue", flag.ExitOnError)
-	workdir := fs.String("workdir", "", "DockPipe workdir containing user insight analysis state (default cwd)")
+	workdir := fs.String("workdir", "", "Dockpipe workdir containing user insight analysis state (default cwd)")
 	message := fs.String("m", "", "insight text")
 	categoryHint := fs.String("category-hint", "unknown", "category hint")
 	repoPath := fs.String("repo-path", "", "repo path scope")
@@ -193,7 +193,7 @@ func insightEnqueueCmd(argv []string) {
 
 func insightProcessCmd(argv []string) {
 	fs := flag.NewFlagSet("insight process", flag.ExitOnError)
-	workdir := fs.String("workdir", "", "DockPipe workdir containing user insight analysis state (default cwd)")
+	workdir := fs.String("workdir", "", "Dockpipe workdir containing user insight analysis state (default cwd)")
 	_ = fs.Parse(argv)
 	wd := mustWorkdir(*workdir)
 	res, err := userinsight.Process(wd)
@@ -206,7 +206,7 @@ func insightProcessCmd(argv []string) {
 
 func insightExportByCategoryCmd(argv []string) {
 	fs := flag.NewFlagSet("insight export-by-category", flag.ExitOnError)
-	workdir := fs.String("workdir", "", "DockPipe workdir containing user insight analysis state (default cwd)")
+	workdir := fs.String("workdir", "", "Dockpipe workdir containing user insight analysis state (default cwd)")
 	_ = fs.Parse(argv)
 	wd := mustWorkdir(*workdir)
 	outDir, err := userinsight.ExportByCategory(wd)
@@ -219,7 +219,7 @@ func insightExportByCategoryCmd(argv []string) {
 
 func insightMarkStaleCmd(argv []string) {
 	fs := flag.NewFlagSet("insight mark-stale", flag.ExitOnError)
-	workdir := fs.String("workdir", "", "DockPipe workdir containing user insight analysis state (default cwd)")
+	workdir := fs.String("workdir", "", "Dockpipe workdir containing user insight analysis state (default cwd)")
 	_ = fs.Parse(argv)
 	if fs.NArg() != 1 {
 		fmt.Fprintln(os.Stderr, "usage: dorkpipe insight mark-stale <insight-or-queue-id> [--workdir <dir>]")
@@ -236,7 +236,7 @@ func insightMarkStaleCmd(argv []string) {
 
 func insightReviewCmd(argv []string) {
 	fs := flag.NewFlagSet("insight review", flag.ExitOnError)
-	workdir := fs.String("workdir", "", "DockPipe workdir containing user insight analysis state (default cwd)")
+	workdir := fs.String("workdir", "", "Dockpipe workdir containing user insight analysis state (default cwd)")
 	reason := fs.String("reason", "", "review reason")
 	_ = fs.Parse(argv)
 	if fs.NArg() != 2 {
@@ -256,7 +256,7 @@ func insightReviewCmd(argv []string) {
 
 func insightSupersedeCmd(argv []string) {
 	fs := flag.NewFlagSet("insight supersede", flag.ExitOnError)
-	workdir := fs.String("workdir", "", "DockPipe workdir containing user insight analysis state (default cwd)")
+	workdir := fs.String("workdir", "", "Dockpipe workdir containing user insight analysis state (default cwd)")
 	_ = fs.Parse(argv)
 	if fs.NArg() != 2 {
 		fmt.Fprintln(os.Stderr, "usage: dorkpipe insight supersede <new_insight_id> <old_insight_id> [--workdir <dir>]")
@@ -408,7 +408,7 @@ func validateCmd(argv []string) {
 
 func evalCmd(argv []string) {
 	fs := flag.NewFlagSet("eval", flag.ExitOnError)
-	workdir := fs.String("workdir", "", "DockPipe workdir containing DorkPipe package metrics (default cwd)")
+	workdir := fs.String("workdir", "", "Dockpipe workdir containing DorkPipe package metrics (default cwd)")
 	_ = fs.Parse(argv)
 	wd := *workdir
 	if wd == "" {
@@ -436,7 +436,7 @@ func evalCmd(argv []string) {
 
 func promoteCmd(argv []string) {
 	fs := flag.NewFlagSet("promote", flag.ExitOnError)
-	workdir := fs.String("workdir", "", "DockPipe workdir containing DorkPipe package state (default cwd)")
+	workdir := fs.String("workdir", "", "Dockpipe workdir containing DorkPipe package state (default cwd)")
 	_ = fs.Parse(argv)
 	wd := *workdir
 	if wd == "" {

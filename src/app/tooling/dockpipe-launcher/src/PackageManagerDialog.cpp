@@ -330,9 +330,9 @@ void PackageManagerDialog::updateButtons()
     QString hint;
     if (!marketplace && !record.isEmpty()) {
         if (record.value(QStringLiteral("kind")).toString() == QStringLiteral("core"))
-            hint = tr("Core is required by DockPipe and cannot be uninstalled here.");
+            hint = tr("Core is required by Dockpipe and cannot be uninstalled here.");
         else if (record.value(QStringLiteral("source")).toString() == QStringLiteral("System"))
-            hint = tr("This package is managed by your DockPipe installer and cannot be uninstalled here.");
+            hint = tr("This package is managed by your Dockpipe installer and cannot be uninstalled here.");
         else if (!record.value(QStringLiteral("removable")).toBool())
             hint = tr("This package is managed outside the user store and cannot be uninstalled here.");
         else

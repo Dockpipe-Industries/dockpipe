@@ -1,17 +1,17 @@
-# TASK-024 Fedora And Debian DockPipe Support And Qualification Parity
+# TASK-024 Fedora And Debian Dockpipe Support And Qualification Parity
 
 ## Goal
 
-Make DockPipe work as a supported platform on Fedora and Debian, then establish explicit,
+Make Dockpipe work as a supported platform on Fedora and Debian, then establish explicit,
 evidence-backed qualification alongside the currently qualified Pop!_OS host and Ubuntu 24.04 guest
 paths. This task owns both the compatibility implementation and its proof. Treat release packaging,
-successful installation, normal DockPipe operation, and workload-specific host qualification as
+successful installation, normal Dockpipe operation, and workload-specific host qualification as
 separate claims that must each be proven before the corresponding distribution is advertised as
 supported.
 
 ## Current State
 
-- DockPipe publishes `.deb` and `.rpm` release packages, and the install documentation includes
+- Dockpipe publishes `.deb` and `.rpm` release packages, and the install documentation includes
   Debian-family and Fedora/RHEL-family installation paths.
 - The package-owned SQLite durability qualification currently accepts valid Pop!_OS identities and
   exact Ubuntu `VERSION_ID=24.04`; Debian, Fedora, and unsupported Ubuntu releases fail closed.
@@ -26,12 +26,12 @@ Package availability is not by itself a platform qualification claim.
 
 - Select and document the exact Fedora and Debian release/architecture baselines to qualify.
 - Inventory and implement the engine, CLI, package, resolver, workflow, installer, and diagnostic
-  changes required for normal DockPipe use on those baselines. Route each change through its focused
+  changes required for normal Dockpipe use on those baselines. Route each change through its focused
   architecture guidance and keep distribution-specific behavior out of generic engine code unless
   a genuinely general platform primitive is required.
 - Define a versioned Linux distribution support matrix covering:
   - release artifact installation and upgrade;
-  - DockPipe CLI initialization, package compilation, workflow execution, and diagnostics;
+  - Dockpipe CLI initialization, package compilation, workflow execution, and diagnostics;
   - package-owned DorkPipe/App Server consumers that enforce host identity or filesystem contracts;
   - VM and native-host evidence where a workload makes platform-specific durability or isolation
     claims.
@@ -44,7 +44,7 @@ Package availability is not by itself a platform qualification claim.
 - Update canonical installation/support documentation when evidence justifies a support claim.
 
 The task is not complete if it only produces a matrix or identifies incompatibilities. Every
-accepted Fedora and Debian baseline must either work across the claimed DockPipe surfaces or retain
+accepted Fedora and Debian baseline must either work across the claimed Dockpipe surfaces or retain
 an explicit unresolved blocker without being advertised as supported.
 
 ## Non-Goals
@@ -73,7 +73,7 @@ an explicit unresolved blocker without being advertised as supported.
 
 - A canonical support matrix names exact Fedora and Debian releases and architectures, distinguishes
   packaging from qualified operation, and identifies unsupported combinations explicitly.
-- All compatibility gaps on the claimed DockPipe surfaces are implemented and validated, with
+- All compatibility gaps on the claimed Dockpipe surfaces are implemented and validated, with
   package-specific behavior kept package-owned and generic engine changes limited to general
   cross-platform primitives.
 - Install/upgrade, CLI, package compilation, representative workflow, and diagnostic checks pass on

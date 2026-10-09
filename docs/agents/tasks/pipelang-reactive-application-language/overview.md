@@ -486,7 +486,7 @@ Canonical current behavior is documented in `docs/concepts/pipelang.md` as PipeL
 | Integration | workflow `types:`, catalog/tooling metadata, materialization, CLI compile/invoke, and VS Code/Cursor language support |
 
 The current contract explicitly rejects side effects, runtime/resolver execution through methods,
-hidden compile-time execution, and general-purpose scripting. YAML remains first-class and DockPipe
+hidden compile-time execution, and general-purpose scripting. YAML remains first-class and Dockpipe
 workflow execution does not parse PipeLang directly.
 
 ## Existing Ownership Map
@@ -509,7 +509,7 @@ not lead or silently define the language.
 
 ## Hard Language Boundary
 
-PipeLang is a general-purpose managed language and compiler foundation, not a second DockPipe
+PipeLang is a general-purpose managed language and compiler foundation, not a second Dockpipe
 execution engine and not an unsafe/manual-memory systems language.
 
 It must not expose unrestricted:
@@ -526,7 +526,7 @@ ownership, ordering, race-safety and replay contracts must be specified; the old
 thread/lock exclusion is no longer the roadmap. Current versions gain no behavior from this change.
 
 Pure language evaluation is deterministic and offline. External work is represented by a typed
-effect declaration and remains governed by the existing DockPipe model:
+effect declaration and remains governed by the existing Dockpipe model:
 
 ```text
 PipeLang effect declaration

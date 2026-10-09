@@ -4,7 +4,7 @@ Pipeon is a **Cursor / VS Code–class** product: **editor + workspace + chat**,
 
 The **editor shell** is implemented by **forking VS Code (Code OSS)** and layering Pipeon-specific UI and the worker—see **`pipeon-vscode-fork.md`**.
 
-This **dockpipe** repository ships **contracts** (DockPipe state, workflow artifacts, and DorkPipe package-scope facts), a **shell harness** (`packages/pipeon/resolvers/pipeon/bin/pipeon`), and a **VS Code extension** stub under **`packages/pipeon/resolvers/pipeon/vscode-extension/`** that you install into your fork or stock VS Code.
+This **dockpipe** repository ships **contracts** (Dockpipe state, workflow artifacts, and DorkPipe package-scope facts), a **shell harness** (`packages/pipeon/resolvers/pipeon/bin/pipeon`), and a **VS Code extension** stub under **`packages/pipeon/resolvers/pipeon/vscode-extension/`** that you install into your fork or stock VS Code.
 
 ---
 
@@ -14,7 +14,7 @@ This **dockpipe** repository ships **contracts** (DockPipe state, workflow artif
 |--------|------|
 | **Client** | VS Code–compatible shell (your **fork** of Code OSS, branded Pipeon). |
 | **Pipeon extension** | In-IDE commands, panels, chat UI, and attachment picking; talks to a local Pipeon MCP proxy, which forwards into DorkPipe MCP. |
-| **DorkPipe control plane** | Aggregates artifacts, runs DockPipe/Docker when needed, routes inference, and owns the MCP boundary. |
+| **DorkPipe control plane** | Aggregates artifacts, runs Dockpipe/Docker when needed, routes inference, and owns the MCP boundary. |
 | **Internal model service** | Default local inference inside the isolated DorkPipe stack. |
 | **Cloud (later)** | Optional accounts; same UX. |
 

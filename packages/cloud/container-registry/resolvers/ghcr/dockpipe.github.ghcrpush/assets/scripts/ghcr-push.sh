@@ -106,7 +106,7 @@ if [[ "$LOGIN_SKIP" != "1" ]]; then
     dockpipe_sdk prompt confirm \
       --id ghcr_registry_login \
       --title "Allow Registry Login?" \
-      --message "DockPipe will log into ${REGISTRY} with ${CONTAINER_CLI}, which may update local registry credentials on this machine. Continue?" \
+      --message "Dockpipe will log into ${REGISTRY} with ${CONTAINER_CLI}, which may update local registry credentials on this machine. Continue?" \
       --default no \
       --intent credential-use \
       --automation-group registry-login \

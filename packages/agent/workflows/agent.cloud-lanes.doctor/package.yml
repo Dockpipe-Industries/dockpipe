@@ -1,10 +1,10 @@
 schema: 1
 kind: workflow
 name: agent.cloud-lanes.doctor
-version: 0.6.0
+version: 0.6.1
 title: Agent Cloud Lane Doctor
 description: Validate Codex and Claude resolver containers, auth mounts, skills, and tiny live prompts.
-author: DockPipe
+author: Dockpipe
 license: Apache-2.0
 tags: [agent, codex, claude, doctor, validation]
 platforms: [windows, deb]

@@ -3,7 +3,7 @@
 ## Goal
 
 Determine whether Anthropic-hosted Managed Agents should become an optional remote DorkPipe provider
-mode while preserving DockPipe's local-first behavior, provider-neutral contracts, explicit budgets,
+mode while preserving Dockpipe's local-first behavior, provider-neutral contracts, explicit budgets,
 and guarded execution boundaries.
 
 ## Upstream Baseline (2026-08-12)
@@ -33,7 +33,7 @@ and guarded execution boundaries.
    first-party documentation.
 2. **Neutral mapping:** map agents, environments, sessions, threads, events, approvals, interrupts,
    usage, and terminal states into the existing DorkPipe provider/session/turn vocabulary without
-   exposing Claude-native fields in public DockPipe or MCP contracts.
+   exposing Claude-native fields in public Dockpipe or MCP contracts.
 3. **Resource boundary:** define an explicit allowlisted upload/mount model. Never infer authority to
    send a checkout, credentials, private payloads, or host paths to Anthropic infrastructure.
 4. **Safety and economics:** require visible remote-execution selection, network/data disclosure,

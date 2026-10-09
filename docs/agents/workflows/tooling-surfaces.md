@@ -1,6 +1,6 @@
 # Tooling Surfaces
 
-Read when changing DockPipe Language Support, the DorkPipe/Pipeon VS Code extension, ForgePipe,
+Read when changing Dockpipe Language Support, the DorkPipe/Pipeon VS Code extension, ForgePipe,
 model browser, template designer, run inspector, or any editor/app-facing workflow UX.
 
 ## Contract Rule
@@ -16,15 +16,15 @@ configuration model.
 
 | Layer | Owns |
 | --- | --- |
-| DockPipe Language Support | YAML/schema completions, hovers, diagnostics, snippets. |
+| Dockpipe Language Support | YAML/schema completions, hovers, diagnostics, snippets. |
 | DorkPipe/Pipeon extension | Chat, designer, model browser, run inspector, draft UI state. |
 | ForgePipe | Launcher-context workflow control, YAML-backed authoring, run inspection, approvals, artifact/log views, diff preview. |
 | DorkPipe package | Agent orchestration, model escalation, skills, artifacts, package-owned catalogs. |
-| DockPipe engine | Generic workflow/package/runtime/resolver execution primitives. |
+| Dockpipe engine | Generic workflow/package/runtime/resolver execution primitives. |
 
 ## ForgePipe
 
-ForgePipe should be invoked by the DockPipe launcher, using the same context-passing model as Pipeon.
+ForgePipe should be invoked by the Dockpipe launcher, using the same context-passing model as Pipeon.
 The launcher provides the current repo/workspace, selected workflow or package, session
 identity, artifact root, allowed scopes, model/resolver lanes, and MCP connector availability.
 
@@ -66,7 +66,7 @@ through operation-result events, and backed by YAML/package config rather than U
 - Extension-local state is only for drafts, caches, active selections, and UI preferences.
 - Repo files should change only when the user exports/saves a `config.yml` workflow or edits package
   assets explicitly.
-- If the YAML surface changes, update DockPipe Language Support in the same change.
+- If the YAML surface changes, update Dockpipe Language Support in the same change.
 - If the rich extension UX changes, document how it maps back to YAML and package-owned catalogs.
 - If ForgePipe UX changes, document the launcher context, YAML mapping, event stream, and
   artifact/run-inspection behavior.

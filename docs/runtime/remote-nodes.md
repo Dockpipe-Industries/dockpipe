@@ -22,6 +22,13 @@ The Cloudflare resolver ships in `packages/remote`. Additional providers impleme
 contract without vendor branches in core. TASK-015's `node-execution.v1` fixtures stay unchanged;
 this `dockpipe.remote/v1` transport does not turn its fake broker into a hosted service.
 
+## Install the resolver
+
+From the launcher Marketplace, install `dockpipe.cloudflare.remote-edge` on the broker
+host. Its title is **Cloudflare Tunnel remote edge**. The worker only needs the CLI.
+The resolver was previously published as `cloudflare`; existing installs of that name
+are not renamed automatically. New setup commands use the qualified identity below.
+
 ## Build the resolver
 
 Use a CLI built from this revision. Install it at a stable path before installing services:
@@ -36,7 +43,7 @@ a self-contained resolver tarball with the host-native helper. Only the broker n
 Use normal package distribution for that compiled artifact. Compiling the source-only resolver over
 it removes the bundled binary. Build separate artifacts for other OS/architecture combinations.
 
-Setup reuses DockPipe's existing host-dependency preflight. On macOS it can offer the declared
+Setup reuses Dockpipe's existing host-dependency preflight. On macOS it can offer the declared
 `brew install cloudflared` installer. Linux users install the official Cloudflare package first;
 this resolver does not add package repositories. Noninteractive setup does not silently approve
 dependency installation. `DOCKPIPE_CLOUDFLARED_BIN` selects an explicit executable after preflight.
@@ -46,7 +53,7 @@ dependency installation. `DOCKPIPE_CLOUDFLARED_BIN` selects an explicit executab
 With a domain already managed by your Cloudflare account:
 
 ```bash
-dockpipe remote setup --resolver cloudflare --hostname benchmarks.example.com
+dockpipe remote setup --resolver dockpipe.cloudflare.remote-edge --hostname benchmarks.example.com
 ```
 
 This command authorizes its documented setup effects: browser login, one named tunnel, its DNS
@@ -130,7 +137,7 @@ dockpipe remote submit --node mac-mini --id benchmark-002 \
 ```
 
 The worker verifies the SHA256 digest and package manifest closure, writes the files into a new
-private per-job workdir, validates the workflow YAML, then invokes its local DockPipe executable.
+private per-job workdir, validates the workflow YAML, then invokes its local Dockpipe executable.
 Delivered packages are selected through a generated local project configuration. Global packages
 and existing installations are not modified. Workflow imports and external script references must
 be included explicitly; arbitrary script dependencies cannot be inferred. Missing runtime inputs
@@ -171,7 +178,7 @@ both. Profiles and delivery can be approved together at pairing. Profile submiss
 local paths, environment, argv, or workflow definitions.
 
 Pairing files must be mode 0600; state directories must be private. Default state is the existing
-global DockPipe data root plus `remote`; all commands accept `--state` for another private directory.
+global Dockpipe data root plus `remote`; all commands accept `--state` for another private directory.
 
 Download writes `result.json`, `workflow.log`, and configured files under `artifacts/`. Results
 record exit status, timing, OS, architecture, and log truncation. The workflow owns source/compiler

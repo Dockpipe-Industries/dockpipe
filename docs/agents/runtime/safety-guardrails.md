@@ -8,7 +8,7 @@ Read when touching secrets, generated artifacts, package promotion, destructive 
 - Never commit plaintext secrets.
 - Keep private vault templates local/gitignored.
 - `op inject` output for workflow env is read into process memory.
-- DockPipe does not write a second resolved template file for that merge.
+- Dockpipe does not write a second resolved template file for that merge.
 - Never use shell redirects like `> -`; that creates a file named `-`.
 
 ## Filesystem Safety

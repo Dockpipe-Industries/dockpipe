@@ -1,4 +1,4 @@
-# DockPipe self-analysis — runs inside an isolated container (golang) over the mounted repo at /work.
+# Dockpipe self-analysis — runs inside an isolated container (golang) over the mounted repo at /work.
 # Optional local sidecar stack (Ollama + Postgres): scripts/dorkpipe/dev-stack.sh up
 # Host-only fallback workflow: dorkpipe-self-analysis-host
 name: dorkpipe-self-analysis

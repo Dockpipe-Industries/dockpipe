@@ -1,12 +1,12 @@
 schema: 1
 kind: workflow
 name: orchestrator
-version: 0.6.0
+version: 0.6.1
 title: DorkPipe Direct Orchestrator
 description: |
   Direct prompt workflow that routes through the shared DorkPipe provider-pool catalog and status
   contract used by Pipeon and future UI surfaces.
-author: DockPipe
+author: Dockpipe
 license: Apache-2.0
 repository: https://github.com/Dockpipe-Industries/dockpipe
 tags: [workflow, dorkpipe, orchestrator, provider-pool, codex, claude, ollama]

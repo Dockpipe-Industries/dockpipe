@@ -50,7 +50,7 @@ SettingsDialog::SettingsDialog(const LauncherSettings &settings, QWidget *parent
     form->addRow(tr("Repo Root Fallback"), pathRow(m_repoRootOverride, tr("Browse…"), this, SLOT(browseRepoRoot())));
 
     m_globalRootOverride = new QLineEdit(m_settings.globalRootOverride);
-    m_globalRootOverride->setPlaceholderText(tr("Optional global DockPipe data root"));
+    m_globalRootOverride->setPlaceholderText(tr("Optional global Dockpipe data root"));
     form->addRow(tr("Global Root Override"), pathRow(m_globalRootOverride, tr("Browse…"), this, SLOT(browseGlobalRoot())));
 
     m_extraWorkflowRoots = new QPlainTextEdit(joinLines(m_settings.extraWorkflowRoots));

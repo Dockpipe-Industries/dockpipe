@@ -1,13 +1,13 @@
 # Repo Map
 
-Read when orienting in the DockPipe checkout.
+Read when orienting in the Dockpipe checkout.
 
 ## Core Paths
 
 | Path | Purpose |
 | --- | --- |
-| `src/lib/` | DockPipe engine library. Must stay generic. |
-| `src/cmd/` | DockPipe CLI entrypoint. Must stay generic. |
+| `src/lib/` | Dockpipe engine library. Must stay generic. |
+| `src/cmd/` | Dockpipe CLI entrypoint. Must stay generic. |
 | `src/core/` | Bundled core authoring: runtimes, resolvers, strategies, assets, and shipped example workflows. |
 | `workflows/` | This repo's lean CI/dogfood workflows. Not an engine contract. |
 | `packages/` | First-party package authoring trees. Treat each like a separate product repo. |

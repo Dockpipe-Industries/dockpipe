@@ -1,4 +1,4 @@
-"""Render a pinned macOS formula from a completed DockPipe staging release."""
+"""Render a pinned macOS formula from a completed Dockpipe staging release."""
 import re
 from pathlib import Path
 

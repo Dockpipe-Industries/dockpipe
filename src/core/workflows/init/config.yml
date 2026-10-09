@@ -1,5 +1,5 @@
 # Scaffolded by `dockpipe init` or `dockpipe init <name> --from init`.
-# This starter shows the current DockPipe style:
+# This starter shows the current Dockpipe style:
 # - a small typed config contract under models/
 # - a couple of vars with concrete defaults
 # - clear multi-step flow with host/container boundaries

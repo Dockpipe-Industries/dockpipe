@@ -31,7 +31,7 @@ func NormalizeRuntimeKind(s string) RuntimeKind {
 	return RuntimeKind(strings.TrimSpace(strings.ToLower(s)))
 }
 
-// IsValid reports whether kind is one of DockPipe's three runtime classifications.
+// IsValid reports whether kind is one of Dockpipe's three runtime classifications.
 func (kind RuntimeKind) IsValid() bool {
 	switch kind {
 	case RuntimeKindExecution, RuntimeKindIDE, RuntimeKindAgent:

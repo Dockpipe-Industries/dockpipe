@@ -102,7 +102,7 @@ steps:
           - "**/*token*"
       orchestration:
         request:
-          text: Assess whether orchestration adds value for governed documentation generation in DockPipe.
+          text: Assess whether orchestration adds value for governed documentation generation in Dockpipe.
         plan:
           goal: Evaluate orchestration as a real primitive using bounded multi-worker tasks.
           steps:

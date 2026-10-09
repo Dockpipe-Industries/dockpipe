@@ -666,7 +666,7 @@ dorkpipe_stack_prompt_for_gpu_recovery() {
         dockpipe_sdk prompt confirm \
           --id dorkpipe_enable_docker_gpu_access_confirm \
           --title "Allow Docker GPU Setup?" \
-          --message "DockPipe will try to change this system by installing GPU container support, updating Docker runtime configuration, and restarting Docker. Continue?" \
+          --message "Dockpipe will try to change this system by installing GPU container support, updating Docker runtime configuration, and restarting Docker. Continue?" \
           --default no \
           --intent host-mutation \
           --automation-group system-changes \

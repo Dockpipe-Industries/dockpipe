@@ -1,6 +1,6 @@
 # Docker Image Artifacts
 
-DockPipe treats Docker images as build artifacts, not just accidental side
+Dockpipe treats Docker images as build artifacts, not just accidental side
 effects of `run`.
 
 The goal is simple: if a valid image already exists, do not rebuild it.
@@ -19,7 +19,7 @@ The goal is simple: if a valid image already exists, do not rebuild it.
 | State | Meaning |
 |-------|---------|
 | `planned` | Compile selected a Dockerfile-backed image, but it has not been built/verified. |
-| `materialized` | DockPipe built or verified a local Docker image for this artifact. |
+| `materialized` | Dockpipe built or verified a local Docker image for this artifact. |
 | `referenced` | Metadata points at an OCI image ref; layers live in Docker/OCI. |
 | `cached` | A registry-backed image has been pulled/verified and recorded locally. |
 
@@ -84,7 +84,7 @@ For Dockerfile-backed images, the fingerprint should cover:
 - builder schema version when needed
 
 Runtime-only security restrictions should not force an image rebuild unless they
-change how the image is built or selected. DockPipe keeps the image fingerprint
+change how the image is built or selected. Dockpipe keeps the image fingerprint
 and `security_manifest_fingerprint` separate for that reason.
 
 ## Inspecting Images
@@ -112,7 +112,7 @@ Status meanings:
 
 Keep these out of the first stable artifact model:
 
-- Docker layer packaging inside DockPipe package tarballs
+- Docker layer packaging inside Dockpipe package tarballs
 - custom Docker build DSL
 - registry auth manager
 - multi-arch build orchestration

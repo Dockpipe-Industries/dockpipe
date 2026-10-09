@@ -90,7 +90,7 @@ type NativePolicySelection struct {
 
 // CapabilityOption is fixture-backed policy evidence for one opaque stable
 // capability. Available and Supported are independent: availability never
-// implies that DockPipe policy supports or enables the capability. An exact
+// implies that Dockpipe policy supports or enables the capability. An exact
 // private mapping, when present, is catalog evidence only and is not
 // initialization or lifecycle dispatch.
 type CapabilityOption struct {
