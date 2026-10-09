@@ -14,20 +14,33 @@ import (
 	remoteio "dockpipe/src/lib/infrastructure/remote"
 )
 
-func setup(ctx context.Context, root, listen, resolver, hostname string, checkDependencies func(string) error) error {
+func setup(ctx context.Context, root, listen, resolver, hostname, workdir string, checkDependencies func(string) error) error {
 	if resolver == "" {
 		return errors.New("setup requires --resolver")
 	}
-	config, err := initialize(root, listen)
-	if err != nil {
-		return err
-	}
-	workdir, err := os.Getwd()
-	if err != nil {
-		return err
-	}
 	profilePath, err := infrastructure.ResolveResolverFilePath(workdir, resolver)
 	if err != nil {
+		return err
+	}
+	metadata, err := infrastructure.DescribeResolver(profilePath, resolver)
+	if err != nil {
+		return err
+	}
+	if metadata.RemoteSetup == "" {
+		return errors.New("resolver does not declare a supported remote setup contract")
+	}
+	if metadata.RemoteSetup == "hosted" && hostname != "" {
+		return errors.New("hosted broker setup does not accept --hostname")
+	}
+	if err := remoteio.PrivateDirectory(root); err != nil {
+		return err
+	}
+	unlock, err := remoteio.Lock(filepath.Join(root, "setup.lock"))
+	if err != nil {
+		return err
+	}
+	defer unlock()
+	if err := validateSetupMode(root, metadata.RemoteSetup, resolver); err != nil {
 		return err
 	}
 	if checkDependencies != nil {
@@ -36,6 +49,13 @@ func setup(ctx context.Context, root, listen, resolver, hostname string, checkDe
 		}
 	}
 	profile, err := infrastructure.LoadResolverFile(profilePath)
+	if err != nil {
+		return err
+	}
+	if metadata.RemoteSetup == "hosted" {
+		return setupHosted(ctx, root, profilePath, profile, metadata)
+	}
+	config, err := initialize(root, listen)
 	if err != nil {
 		return err
 	}
@@ -80,6 +100,13 @@ func setup(ctx context.Context, root, listen, resolver, hostname string, checkDe
 	if err := remoteio.WritePrivate(filepath.Join(root, "operator.json"), config); err != nil {
 		return err
 	}
+	connection := connectionConfig{
+		Schema: contract.Version, Mode: "local", Endpoint: edge.Endpoint,
+		Resolver: metadata, EdgeDigest: edgeDigest(edge),
+	}
+	if err := remoteio.WritePrivate(filepath.Join(root, "connection.json"), connection); err != nil {
+		return err
+	}
 	fmt.Fprintln(os.Stderr, "Edge configured. Installing the broker user service and checking the public endpoint...")
 	if err := installService(ctx, root, "broker"); err != nil {
 		return err
@@ -87,7 +114,7 @@ func setup(ctx context.Context, root, listen, resolver, hostname string, checkDe
 	if err := waitForBroker(ctx, edge.Endpoint, config.Token); err != nil {
 		return err
 	}
-	fmt.Fprintf(os.Stderr, "Broker ready at %s. Next: dockpipe remote invite --node <worker-name> --out <private-file> --state %q. Transfer that file privately to the worker, then run dockpipe remote pair --invite <private-file> --allow-delivery there.\n", edge.Endpoint, root)
+	fmt.Fprintf(os.Stderr, "Broker ready at %s. In the launcher, open Machines → Add another machine to pair a worker.\n", edge.Endpoint)
 	return nil
 }
 

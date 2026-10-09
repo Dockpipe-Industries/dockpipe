@@ -18,9 +18,18 @@ import (
 )
 
 const usage = `dockpipe remote <command> [options]
-  setup   --resolver <name> --hostname <hostname>  Browser login and edge setup
+  setup   --resolver <name> [--hostname <hostname>]  Package-owned remote setup
+  info                                           Show configuration without credentials
   init    [--listen 127.0.0.1:47831]               Initialize a private broker
   serve                                          Run broker and configured edge
+  pairing-open                                   Accept pairing requests for 15 minutes
+  pairings                                       Show pending verification codes
+  approve --code <code>                          Approve the code shown on your worker
+  deny    --code <code>                          Reject a pairing request
+  pairing-close                                  Close pairing and deny pending requests
+  nodes                                          List enrolled machines (not live presence)
+  pair    --endpoint <https-origin> --node <name> --allow-delivery
+                                                 Request approval without transferring files
   invite  --node <name> --out <private-file>       Issue a 15-minute pairing file
   pair    --invite <file> --allow-delivery        Trust this broker to send workflows
           [--profiles <json-file>]                Or approve installed profiles
@@ -29,6 +38,7 @@ const usage = `dockpipe remote <command> [options]
   submit  --node <name> --workflow-file <path> --id <id>  Deliver local sources
           [--include <path>] [--dependency <package-dir>] [--artifact <path>]
           [--workdir <directory>] [--dry-run]     Preview files and digest without sending
+          [--expected-digest <sha256>]            Require the reviewed snapshot
   jobs                                           List job states
   result  --id <id> [--out <new-private-directory>] Inspect/download a result
   cancel  --id <id>                               Request cancellation
@@ -49,18 +59,21 @@ func Run(args []string, checkDependencies func(string) error) error {
 	flags := flag.NewFlagSet("remote "+command, flag.ContinueOnError)
 	state := flags.String("state", "", "private state directory")
 	listen := flags.String("listen", "127.0.0.1:47831", "loopback origin address")
-	resolver := flags.String("resolver", "", "edge resolver profile")
+	resolver := flags.String("resolver", "", "remote access resolver profile")
 	hostname := flags.String("hostname", "", "public edge hostname")
 	node := flags.String("node", "", "worker name")
 	profile := flags.String("profile", "", "worker-approved workflow profile")
 	id := flags.String("id", "", "stable job ID or node for revoke")
 	out := flags.String("out", "", "private output destination")
+	endpoint := flags.String("endpoint", "", "broker HTTPS origin for online pairing")
+	code := flags.String("code", "", "verification code displayed on the worker")
 	invite := flags.String("invite", "", "pairing file")
 	profiles := flags.String("profiles", "", "locally approved profiles file")
 	allowDelivery := flags.Bool("allow-delivery", false, "approve execution of operator-supplied code as this user")
 	timeout := flags.Int("timeout", 3600, "worker-local delivery timeout in seconds")
 	workflow := flags.String("workflow-file", "", "local workflow to deliver with its source directory")
 	workdir := flags.String("workdir", ".", "source project directory")
+	expectedDigest := flags.String("expected-digest", "", "require the exact previously previewed bundle digest")
 	dryRun := flags.Bool("dry-run", false, "preview delivery files and digest without submitting")
 	var includes, dependencies, artifacts stringList
 	flags.Var(&includes, "include", "additional source path inside workdir (repeatable)")
@@ -76,11 +89,17 @@ func Run(args []string, checkDependencies func(string) error) error {
 	if flags.NArg() != 0 {
 		return errors.New("unexpected remote positional arguments")
 	}
-	if *dryRun && command != "submit" {
-		return errors.New("--dry-run is supported only by remote submit")
+	if (*dryRun || *expectedDigest != "") && command != "submit" {
+		return errors.New("--dry-run and --expected-digest are supported only by remote submit")
 	}
 	if (*workflow != "" || len(includes)+len(dependencies)+len(artifacts) != 0) && command != "submit" {
 		return errors.New("workflow delivery options are supported only by remote submit")
+	}
+	if *endpoint != "" && command != "pair" {
+		return errors.New("--endpoint is supported only by remote pair")
+	}
+	if *code != "" && command != "approve" && command != "deny" {
+		return errors.New("--code is supported only by remote approve or deny")
 	}
 	if *allowDelivery && command != "pair" {
 		return errors.New("--allow-delivery must be approved on the worker with remote pair")
@@ -91,16 +110,33 @@ func Run(args []string, checkDependencies func(string) error) error {
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
-	return infrastructure.RunOperation(os.Stderr, "remote."+command, "Remote "+command, nil, func() error {
+	// Setup hands the terminal to dependency installers and provider authentication.
+	// An outer spinner would overwrite their prompts even when nested operations are quiet.
+	options := infrastructure.OperationOptions{Spinner: command != "setup" && command != "pair"}
+	return infrastructure.RunOperationWithOptions(os.Stderr, "remote."+command, "Remote "+command, nil, options, func() error {
 		switch command {
+		case "info":
+			info, err := describeRemote(root)
+			if err != nil {
+				return err
+			}
+			return json.NewEncoder(os.Stdout).Encode(info)
 		case "init":
 			_, err := initialize(root, *listen)
 			return err
 		case "setup":
-			return setup(ctx, root, *listen, *resolver, *hostname, checkDependencies)
+			return setup(ctx, root, *listen, *resolver, *hostname, *workdir, checkDependencies)
 		case "serve":
 			return serve(ctx, root)
+		case "pairing-open", "pairing-close", "pairings", "approve", "deny":
+			return pairingOperator(ctx, root, command, *code)
 		case "pair":
+			if *endpoint != "" {
+				if *invite != "" || *profiles != "" {
+					return errors.New("online pairing cannot be combined with invitation or profiles files")
+				}
+				return pairOnline(ctx, root, *endpoint, *node, *allowDelivery, *timeout)
+			}
 			return pairWithDelivery(ctx, root, *invite, *profiles, *allowDelivery, *timeout)
 		case "worker":
 			var config contract.WorkerConfig
@@ -119,13 +155,13 @@ func Run(args []string, checkDependencies func(string) error) error {
 				if *profile != "" {
 					return errors.New("choose --workflow-file or --profile, not both")
 				}
-				return submitDelivery(ctx, root, *node, *id, *workdir, *workflow, includes, dependencies, artifacts, *dryRun)
+				return submitDelivery(ctx, root, *node, *id, *workdir, *workflow, includes, dependencies, artifacts, *dryRun, *expectedDigest)
 			}
-			if *dryRun || len(includes)+len(dependencies)+len(artifacts) != 0 {
+			if *dryRun || *expectedDigest != "" || len(includes)+len(dependencies)+len(artifacts) != 0 {
 				return errors.New("delivery options require --workflow-file")
 			}
 			return operator(ctx, root, command, *node, *profile, *id, *out)
-		case "invite", "jobs", "result", "cancel", "revoke":
+		case "invite", "nodes", "jobs", "result", "cancel", "revoke":
 			return operator(ctx, root, command, *node, *profile, *id, *out)
 		default:
 			return fmt.Errorf("unknown remote command %q\n%s", command, usage)
@@ -134,12 +170,7 @@ func Run(args []string, checkDependencies func(string) error) error {
 }
 
 func operator(ctx context.Context, root, command, node, profile, id, output string) error {
-	var config OperatorConfig
-	if err := remoteio.ReadPrivate(filepath.Join(root, "operator.json"), &config); err != nil {
-		return err
-	}
-	// Administration stays on loopback. Worker pairing uses the published edge.
-	client, err := remoteio.NewClient("http://"+config.Listen, config.Token)
+	client, err := operatorClient(root)
 	if err != nil {
 		return err
 	}
@@ -159,7 +190,14 @@ func operator(ctx context.Context, root, command, node, profile, id, output stri
 		if err := client.Call(ctx, "/v1/invite", map[string]string{"node": node}, &invitation); err != nil {
 			return err
 		}
-		invitation.Endpoint = config.Endpoint
+		info, err := describeRemote(root)
+		if err != nil {
+			return err
+		}
+		if info.Broker == nil {
+			return errors.New("broker connection is not configured")
+		}
+		invitation.Endpoint = info.Broker.Endpoint
 		if err := remoteio.WritePrivate(output, invitation); err != nil {
 			return err
 		}

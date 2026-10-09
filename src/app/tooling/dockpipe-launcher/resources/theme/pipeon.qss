@@ -46,13 +46,11 @@ QStatusBar {
 QLabel#appTitle {
     font-size: 22px;
     font-weight: 700;
-    color: palette(window-text);
 }
 
 QLabel#sectionTitle {
     font-size: 14px;
     font-weight: 700;
-    color: palette(window-text);
 }
 
 QLabel#appSubtitle {
@@ -110,13 +108,11 @@ QLabel#promptEyebrow {
 QLabel#promptTitle {
     font-size: 24px;
     font-weight: 700;
-    color: palette(window-text);
 }
 
 QLabel#promptBody {
     font-size: 13px;
     line-height: 1.55;
-    color: palette(window-text);
 }
 
 QLabel#promptHint {
@@ -141,13 +137,11 @@ QLabel#launchOverlayGlyph {
 QLabel#launchOverlayTitle {
     font-size: 21px;
     font-weight: 700;
-    color: palette(window-text);
 }
 
 QLabel#launchOverlayBody {
     font-size: 13px;
     font-weight: 500;
-    color: palette(window-text);
     padding: 2px 8px 0 8px;
     qproperty-wordWrap: true;
 }
@@ -213,7 +207,6 @@ QWidget#contextRow {
 QLabel#contextTitle {
     font-size: 13px;
     font-weight: 700;
-    color: palette(window-text);
 }
 
 QLabel#contextPath {
@@ -228,7 +221,6 @@ QLabel#consoleMeta {
 QLabel#consoleTitle {
     font-size: 14px;
     font-weight: 700;
-    color: palette(window-text);
 }
 
 QLabel#statusBadge {
@@ -253,7 +245,6 @@ QGroupBox::title {
     subcontrol-position: top left;
     left: 10px;
     padding: 0 6px;
-    color: palette(window-text);
 }
 
 QPushButton#primaryButton,
@@ -360,7 +351,6 @@ QTabBar::tab {
     margin-right: 6px;
     border-radius: 11px;
     background: palette(alternate-base);
-    color: palette(window-text);
     font-weight: 600;
 }
 
@@ -396,4 +386,116 @@ QScrollBar::add-page,
 QScrollBar::sub-page {
     border: none;
     background: transparent;
+}
+
+/* Workspace shell and app library */
+QFrame#workspaceBar {
+    border-bottom: 1px solid palette(mid);
+}
+
+QLabel#eyebrow {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 1px;
+}
+
+QLabel#workspacePath {
+    font-size: 12px;
+}
+
+QListWidget#workspaceNavigation {
+    border: none;
+    padding: 12px 0;
+}
+
+QListWidget#workspaceNavigation::item {
+    margin: 0;
+    padding: 0 14px;
+    border-radius: 8px;
+}
+
+QFrame#navigationRail QPushButton {
+    text-align: left;
+    padding: 10px 14px;
+    border: none;
+    border-radius: 8px;
+}
+
+QPushButton#workspaceSelector {
+    padding: 8px 28px 8px 12px;
+    border-radius: 7px;
+    font-weight: 600;
+}
+
+QPushButton#workspaceSelector::menu-indicator {
+    subcontrol-position: right center;
+    right: 10px;
+}
+
+QListWidget#basicAppList {
+    border: none;
+    padding: 0;
+}
+
+QListWidget#basicAppList::item {
+    margin: 0;
+    padding: 0;
+    border-radius: 12px;
+}
+
+QFrame#appCard {
+    border: 1px solid palette(mid);
+    border-radius: 12px;
+}
+
+QLabel#cardTitle {
+    font-size: 15px;
+    font-weight: 600;
+}
+
+QLabel#cardDescription {
+    font-size: 12px;
+}
+
+QLabel#cardStatus {
+    font-size: 10px;
+    font-weight: 600;
+    padding: 3px 6px;
+    border-radius: 5px;
+}
+
+QPushButton#remoteSetupNavigation, QPushButton#quietButton, QPushButton#cardLaunchButton {
+    border: 1px solid transparent;
+    border-radius: 7px;
+    padding: 7px 10px;
+    min-height: 20px;
+}
+
+QPushButton#cardLaunchButton {
+    font-weight: 600;
+}
+
+QPushButton#remoteSetupNavigation:focus, QPushButton#quietButton:focus, QPushButton#cardLaunchButton:focus {
+    border-color: #508cca;
+}
+
+QWidget#appsEmptyState QLabel#emptyTitle {
+    font-size: 20px;
+    font-weight: 600;
+}
+
+QScrollArea#machineScroll {
+    background: transparent;
+    border: none;
+}
+
+QScrollArea#machineScroll QScrollBar::handle:vertical {
+    min-width: 0;
+    min-height: 28px;
+    border-radius: 4px;
+}
+
+QScrollArea#machineScroll QScrollBar::add-line:vertical,
+QScrollArea#machineScroll QScrollBar::sub-line:vertical {
+    height: 0;
 }

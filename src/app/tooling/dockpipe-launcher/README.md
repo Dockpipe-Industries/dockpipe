@@ -44,6 +44,15 @@ networking, integrity checks, and installation to `dockpipe package`; see the
 
 ## Build
 
+Development builds show `dev+<12-character-commit>` and append `.dirty` for uncommitted
+changes. The identity is captured at build time, refreshed during incremental builds,
+and shown by `--version`, Help → About, and the development window title. Git-free
+source builds show `dev+unknown`. Release packaging supplies
+`-DDOCKPIPE_RELEASE_VERSION=<version>` and retains that exact version. To clear an old
+explicit version from an existing build directory, configure with
+`-U DOCKPIPE_RELEASE_VERSION`. Numeric macOS bundle metadata remains separate from the
+development display identity.
+
 `CMakeLists.txt` lives under **`src/app/tooling/dockpipe-launcher/`**. Run CMake with that directory as the **source** (or `cd` there first).
 
 **Fastest — from the repo root:** `cmake -S src/app/tooling/dockpipe-launcher -B src/app/tooling/dockpipe-launcher/build && cmake --build src/app/tooling/dockpipe-launcher/build` (writes **`src/app/tooling/dockpipe-launcher/build/`**).
@@ -111,15 +120,23 @@ The launcher sets **`DOCKPIPE_SDK_PROMPT_MODE=json`** for managed `dockpipe` sub
 
 That includes **file prompts**: when a package or runtime emits `dockpipe_sdk prompt file ...`, the launcher renders a native file or directory picker instead of forcing the user to paste a path manually.
 
-## Basic vs Advanced
+## Workspace navigation
 
-- **Basic** (default): **File → Open project folder…** (or **Choose folder…**) sets the project directory passed to `dockpipe` as **`--workdir`** (your code is mounted in the tool’s container). The main area lists only workflows whose workflow YAML includes **`category: app`** (see `docs/workflows/workflow-yaml.md`) — GUI/IDE-style apps. Double-click an app to launch. **Set up Cursor MCP** runs the prep flow only (writes cursor-dev package-scope hints; **no** Docker, **no** full `dockpipe` session). For a **Docker session container + Cursor on the host**, double-click the **`cursor-dev`** app — not the MCP button. **Refresh apps** (toolbar) or **File → Refresh app list** (**F5**) reloads the Dockpipe-owned workflow catalog for the selected project so new or edited workflows appear without restarting. **View → Icon grid** / **Compact list** toggles presentation. Mode and view are stored in **`launcher.json`**.
-- The **Docker** tab in both Basic and Advanced modes shows all containers (`docker ps -a`), presents row status as styled badges, and exposes **Inspect / Start / Stop / Refresh** from the container row’s **right-click context menu**.
-- **Advanced**: **View → Advanced mode** shows the full **context** list (same as before): **Add folder…** can import every workflow under the resolved repo; technical details per row; **Edit**, worktrees, logs, etc.
+The sidebar provides **Apps**, **Workflows**, **Machines**, **Activity**, and **Docker**.
+The workspace selector above every page opens a folder or switches to a recent project.
+That folder is passed to Dockpipe as `--workdir`.
 
-## Add folder (Advanced)
+- **Apps** lists installed workflows marked `category: app`. Each card offers **Open app** and
+  **Configure**; double-click and keyboard activation also launch the selected app.
+  **View → Icon grid / Compact list** changes presentation. Empty workspaces link directly to
+  the package manager. **Refresh** or **F5** reloads the catalog.
+- **Workflows** shows the complete project catalog, a **Run on** machine selector, and run output.
+  Right-click a workflow for additional actions.
+- **Docker** is a single independent page with Containers, Networks, and Volumes tabs. It shows
+  local engine objects and refreshes while selected. Container context menus provide
+  Inspect, Start, Stop, and Refresh.
 
-Choosing **Add folder…** resolves a Dockpipe project root by walking upward for project markers such as `dockpipe.config.json`, `workflows`, or package roots. The launcher then asks Dockpipe for the available workflow catalog for that project and adds **one context** per discovered workflow name with that **workdir**. If no Dockpipe project is found, it adds a single context with workflow `vscode`. Existing `(workdir, workflow, workflow file)` combinations are skipped.
+The existing `basic` / `advanced` settings values remain compatible with Apps / Workflows.
 
 ## Data locations
 
@@ -149,3 +166,48 @@ The window uses **Qt Fusion** plus stylesheets embedded in **`dockpipe-launcher.
 ## Scope
 
 Per design: the launcher only **controls** sessions. It does **not** replace **DorkPipe** orchestration or embed Ollama/containers.
+
+## Workflow workspace and remote machines
+
+The sidebar exposes Apps, Workflows, Machines, Activity, and Docker. Apps continue to use
+`category: app` metadata and the existing local execution path. Workflows show a
+**Run on** selector: this computer, or machines reported as paired by the configured
+broker. Paired is an enrollment state, not a live-presence claim.
+
+Machines uses the public `dockpipe remote` commands and CLI-owned private state.
+Its default view lists managed machines and explains invitation, paired, and removed-access
+states. **Add another machine** guides the managing computer through opening pairing,
+continuing on the other computer, and comparing the verification code. Requests refresh
+every five seconds while that page is visible; approval requires selecting a request and
+confirming the code. On the other computer, **Connect this computer** accepts the HTTPS
+address and machine name with explicit workflow-execution consent. Technical output is
+collapsed under **Show details**. No invitation file or SSH
+is required. Start the worker user service after pairing. Cancelling stops the
+local wait; the pending request can still be denied or closed on the broker and
+otherwise expires. Closing the launcher does not revoke existing enrollment.
+
+The connection summary shows the recorded provider name, resolver ID/version, hosting mode
+and address. Older setups explicitly show that their resolver was not recorded. This is
+configuration information, not a health check. **Set up remote access…** discovers installed
+remote providers from the public catalog. Edge providers run a broker on this computer;
+hosted providers use package-owned sign-in without hostname fields. Selecting a provider
+does not switch the active connection. Dockpipe Cloud is not yet an implemented provider.
+
+Setup opens a real terminal for the selected installed resolver,
+dependency prompts and browser authentication. Launching a terminal is not setup
+success; completion is reported there. Linux uses an available desktop terminal;
+Flatpak asks the host terminal to run the same app's CLI through `flatpak run`.
+macOS uses Terminal. Provider behavior remains in the resolver package.
+
+Remote workflow launch previews the selected workflow tree, extra source paths,
+explicit unpacked package dependencies and requested results through `remote submit
+--dry-run`. Submission binds `--expected-digest` to that preview. Editing the
+selection invalidates approval; changing source contents makes the CLI reject
+submission. Runtime/resolver settings come from the delivered YAML. Local launch
+overrides are not silently dropped or sent. Credentials must never be included.
+
+Activity shows launcher-owned local sessions and broker jobs. Remote jobs refresh
+while the Remote tab is visible after the first successful refresh. Cancellation
+uses the broker's existing cancellation request, and result downloads contain the
+workflow log and requested artifacts. A submitted job is queued, not completed.
+Local history is limited to this launcher session; remote history is broker-owned.

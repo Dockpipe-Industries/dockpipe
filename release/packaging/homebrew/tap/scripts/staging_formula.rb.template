@@ -11,8 +11,10 @@ class DockpipeStaging < Formula
 
   def install
     (libexec/"bin").install "dockpipe"
-    # Keep the verified archive intact. Optional packages are installed on demand.
-    core = resource("core").fetch
+    # Homebrew already fetched and verified this resource before entering the
+    # install sandbox. Fetching again tries to acquire a download-cache lock.
+    # Keep the verified archive intact; optional packages are installed on demand.
+    core = resource("core").cached_download
     (libexec/"share/dockpipe/packages/core").install core => "dockpipe-core-@RELEASE_VERSION@.tar.gz"
 
     # Use the existing package-root override so Homebrew owns the entire install.

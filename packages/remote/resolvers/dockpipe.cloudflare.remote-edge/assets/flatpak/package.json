@@ -6,9 +6,10 @@
       "name": "dockpipe.cloudflare.remote-edge"
     }
   ],
-  "tools": [],
+  "tools": ["cloudflared"],
   "host_commands": [],
   "required_files": [
-    "assets/tooling/bin/cloudflare-edge"
+    "assets/tooling/bin/cloudflare-edge",
+    "assets/tooling/bin/cloudflared"
   ]
 }

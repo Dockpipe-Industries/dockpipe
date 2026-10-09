@@ -44,9 +44,15 @@ Use normal package distribution for that compiled artifact. Compiling the source
 it removes the bundled binary. Build separate artifacts for other OS/architecture combinations.
 
 Setup reuses Dockpipe's existing host-dependency preflight. On macOS it can offer the declared
-`brew install cloudflared` installer. Linux users install the official Cloudflare package first;
-this resolver does not add package repositories. Noninteractive setup does not silently approve
-dependency installation. `DOCKPIPE_CLOUDFLARED_BIN` selects an explicit executable after preflight.
+`brew install cloudflared` installer. On Debian/Ubuntu/Pop!_OS it offers the package-declared sudo
+installer for Cloudflare's official signed APT repository, scoped to the machine architecture.
+The repository refresh targets only Cloudflare, so unrelated repository errors do not block it.
+If curl or CA certificates are missing, their bootstrap first uses the existing system repositories.
+Flatpak Marketplace artifacts bundle `cloudflared` and never run a native package installer.
+Noninteractive setup does not silently approve dependency installation.
+During setup, installers and browser-authentication tools own the terminal: no setup spinner or
+dependency heartbeat overwrites their prompts. A password prompt may hide typed characters.
+`DOCKPIPE_CLOUDFLARED_BIN` selects an explicit executable after preflight.
 
 ## Cloudflare setup
 
@@ -77,6 +83,48 @@ user's PATH. They are user-session services, not a promise of operation before l
 machine sleeps. Configure power/session policy separately for an always-on benchmark worker.
 
 ## Pair and run
+
+### Pair without transferring a file
+
+Use the same updated CLI version on the broker and worker. On the broker, open a
+15-minute pairing window:
+
+```bash
+dockpipe remote pairing-open
+```
+
+On the worker, choose a name and explicitly grant workflow delivery authority:
+
+```bash
+dockpipe remote pair --endpoint https://your-broker.example.com --node mac-mini --allow-delivery
+```
+
+The worker prints a verification code and waits. On the broker, list requests and
+approve only the code you can compare on your intended worker:
+
+```bash
+dockpipe remote pairings
+dockpipe remote approve --code ABCD-1234-5678
+```
+
+The code is a request identifier, not a bearer credential. The worker generates
+and privately persists its own 256-bit token before requesting approval. Approval
+binds that exact token and node; retries recover the same identity. Pairing never
+replaces an enrolled/revoked node or widens saved worker authority. Unused file
+invitations for the approved name are invalidated. Public requests are accepted
+only during the window, with bounded bodies, 32 retained requests, and a global
+12-new-requests-per-minute limit. Names are untrusted until the code is verified.
+
+Use `remote deny --code <code>` to reject a request or `remote pairing-close` to
+close the window and deny all pending requests. Cancelling the worker's wait
+preserves its private identity for retry; it does not revoke a request already
+approved by the broker. `remote nodes` reports enrollment, not live presence.
+
+After approval, start `dockpipe remote service --role worker` on the worker, or
+`dockpipe remote worker` for foreground execution. The launcher exposes these
+operations under Machines and remote job progress under Activity.
+
+### File invitation compatibility
 
 On the broker, issue a 15-minute invitation:
 
@@ -230,6 +278,58 @@ private file references, never literal tokens in argv. Core supervises the decla
 small ordinary environment and verifies public readiness. Ngrok/AWS/Azure are future adapters, not
 implemented providers. Cloud-machine provisioning remains runtime-owned work.
 
+### Provider discovery and connection details
+
+`dockpipe catalog list --format json` preserves the `resolvers` name array and adds
+`resolver_details`: name, title, version, description, capability and `remote_setup`.
+The details describe the profile selected by normal resolver lookup, including project
+precedence. Profile values, scripts and credentials are excluded. `remote_setup` is
+`local` for an edge setup hook or `hosted` for the hosted contract below. Conflicting
+hooks and incompatible capabilities are not offered in the launcher's provider selector.
+Legacy edge profiles without a capability remain supported.
+
+`dockpipe remote info` returns a safe configuration summary: optional `broker` with
+mode, endpoint and recorded resolver metadata; optional `worker` with endpoint and node.
+It performs no network probe and does not claim the broker or worker is online.
+Older local setups show no resolver metadata until setup records it. Core never guesses
+from a hostname. A local metadata snapshot is bound to the edge configuration digest;
+changing the edge invalidates the displayed provider instead of leaving a stale label.
+
+The launcher shows the configured provider and address independently of the provider
+selected for a new setup. Setup uses the current workspace's resolver catalog and passes
+`--workdir` to the CLI. Provider selection itself performs no setup or account mutation.
+
+### Hosted broker contract
+
+A hosted provider is a resolver package with `capability: remote.broker` and
+`DOCKPIPE_REMOTE_BROKER_SETUP=assets/scripts/login.sh`. It must not also declare an edge
+setup hook. The package owns browser authentication, account selection, credential
+renewal and any provider dependencies. The user does not supply a hostname. The current
+launcher hands authentication to a terminal; a fully integrated Dockpipe Cloud account
+sign-in experience is future work, not an available provider.
+
+Core runs the relative, non-symlinked Bash script with `--state <private-provider-dir>`
+and `--output <private-staging-file>`, plus the same `DOCKPIPE_BIN` and
+`DOCKPIPE_RESOLVER_PROFILE` environment as edge setup. The script must write private
+JSON (owner-only file permissions, at most 16 KiB) with `schema: dockpipe.remote/v1`,
+`endpoint` (HTTPS origin), and `token` (32–8192 visible ASCII bytes, no whitespace). Do not put tokens
+in arguments or terminal output. Provider packages are trusted executable code and must
+protect authentication material themselves.
+
+The endpoint must implement the existing broker protocol and authenticate the operator
+credential. Core validates the result, checks authenticated `/v1/health`, then atomically
+adopts the connection in private `connection.json`. Failed or cancelled login leaves
+existing connection credentials unchanged. Operator commands use this hosted endpoint;
+local administration continues to use loopback. Workers retain explicit consent and
+outbound connections. Hosted setup never initializes or starts a local broker or tunnel.
+
+Setup can reauthenticate the same provider and endpoint. Replacing a configured provider,
+changing its endpoint or mixing hosted/local broker state is rejected; use a separate
+`--state` directory. Automatic provider migration, account logout/revocation, background
+token renewal and multi-connection selection in the launcher are not implemented.
+A future Dockpipe-managed provider must implement these identity/service requirements;
+this contract alone does not supply a hosted service or multi-tenant authorization.
+
 ## Verification
 
 ```bash
@@ -247,3 +347,15 @@ exercise the desktop environment passed to the browser launcher.
 
 References: [Cloudflare login/setup](https://developers.cloudflare.com/tunnel/features/locally-managed-tunnels/create-local-tunnel/),
 [account and tunnel permissions](https://developers.cloudflare.com/tunnel/features/locally-managed-tunnels/tunnel-permissions/).
+
+
+### Binding a preview to submission
+
+`remote submit --expected-digest <bundle_hash>` requires the exact bundle digest
+returned by `--dry-run`. A changed snapshot fails before contacting the broker.
+The launcher uses this to keep the file review and actual delivery consistent.
+
+Removing machine access retains its record. Pairing again with the same name requires a
+fresh worker credential and a newly approved verification code. An explicit `remote pair`
+rotates a saved revoked credential; the background worker never re-enrolls itself. Old
+credentials remain unable to authenticate after replacement.

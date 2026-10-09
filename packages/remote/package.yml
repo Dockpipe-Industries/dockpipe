@@ -1,7 +1,7 @@
 schema: 1
 kind: package
 name: remote
-version: 0.3.0
+version: 0.3.1
 title: Remote connectivity resolvers
 description: Provider adapters for outbound Dockpipe node connectivity.
 author: Dockpipe
