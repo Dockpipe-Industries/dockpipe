@@ -20,7 +20,7 @@ acceptance or implementation authority:
 5. Initial tuples are Windows/local fixed-disk NTFS/`amd64`, Linux/local fixed-disk ext4/`amd64`,
    and macOS/local fixed-disk APFS/`arm64`.
 6. Minimum versions derive from documented primitives and later native evidence. Older hosts may run
-   DockPipe, but aggregate cutover must fail closed there.
+   Dockpipe, but aggregate cutover must fail closed there.
 7. Later implementation may use only the Go standard library plus the newest compatible, reviewed,
    exactly pinned `golang.org/x/sys`; no CGO or portability wrapper is authorized.
 8. Each session has one deterministic persistent empty lock file. It is immutable,

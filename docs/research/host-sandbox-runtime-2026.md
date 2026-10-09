@@ -12,7 +12,7 @@ Status: research and architecture recommendation; no production implementation i
 
 ## Executive Summary
 
-DockPipe should **prototype**, not yet broadly ship, a new runtime profile named **`host-sandbox`**.
+Dockpipe should **prototype**, not yet broadly ship, a new runtime profile named **`host-sandbox`**.
 It should provide a common declarative policy and capability-report contract, with independent
 operating-system drivers. It must remain visibly distinct from unrestricted host execution and must
 never fall back to it.
@@ -22,7 +22,7 @@ The recommended platform order is:
 1. **Linux prototype and MVP.** A useful rootless boundary is feasible with user, mount, PID, IPC,
    UTS, and network namespaces; an explicitly constructed filesystem view; `no_new_privs`; dropped
    capabilities; a parent-owned cgroup v2; and optional Landlock/seccomp defense in depth. Bubblewrap
-   is a practical namespace/mount constructor, but DockPipe must own the policy and probes. Linux is
+   is a practical namespace/mount constructor, but Dockpipe must own the policy and probes. Linux is
    the best combination of enforcement strength, implementation effort, and usefulness.
 2. **Windows technical preview and API spike.** A stable design is possible with AppContainer plus a
    non-breakaway Job Object, a dedicated local NTFS worktree, explicit AppContainer SID access, a
@@ -68,14 +68,14 @@ Use **`host-sandbox`** as the public runtime profile name.
 - `native-sandbox` is ambiguous: it can mean native code, a native API, or the target OS.
 - `constrained-host` is accurate but too easy to mistake for advisory restrictions.
 
-DockPipe currently authors runtime selection as a **profile string**, and `runtime.type` already means
+Dockpipe currently authors runtime selection as a **profile string**, and `runtime.type` already means
 the behavioral classification `execution`, `ide`, or `agent`. Therefore the aligned form is:
 
 ```yaml
 runtime: host-sandbox
 ```
 
-It should **not** be authored as `runtime: { type: host-sandbox }`, because that overloads DockPipe's
+It should **not** be authored as `runtime: { type: host-sandbox }`, because that overloads Dockpipe's
 existing `runtime.type` terminology.
 
 The steady-state runtime selector should make unrestricted host execution equally explicit as
@@ -84,14 +84,14 @@ That migration is a public engine/schema change and is not part of this research
 that refactor is implemented, `host-sandbox` must not be implemented as a `kind: host` step: current
 host steps intentionally bypass runtime security.
 
-DockPipe's canonical profiles remain substrate-oriented. Container profiles are `dockerimage` and
+Dockpipe's canonical profiles remain substrate-oriented. Container profiles are `dockerimage` and
 `dockerfile`; VM-backed execution uses `vm`; QEMU is a VM backend/resolver choice rather than a new
 workflow primitive. WSL-, Kubernetes-, and remote-backed execution should likewise compose through
 the existing runtime/resolver boundary instead of adding product-specific branches to core.
 
-## Architectural Fit With DockPipe
+## Architectural Fit With Dockpipe
 
-The design preserves DockPipe's normative model:
+The design preserves Dockpipe's normative model:
 
 | Concern | Ownership |
 | --- | --- |
@@ -174,7 +174,7 @@ The smallest dependable rootless stack is:
    [Landlock userspace API](https://docs.kernel.org/userspace-api/landlock.html).
 
 AppArmor and SELinux can strengthen an administrator-managed installation, but loading dynamic
-policy is not a portable rootless primitive. Report an active DockPipe profile as defense in depth;
+policy is not a portable rootless primitive. Report an active Dockpipe profile as defense in depth;
 do not make it the Linux MVP baseline.
 
 ### Linux filesystem limits
@@ -211,7 +211,7 @@ The MVP supports only `network.mode: offline`.
 - Filesystem Unix sockets are a separate IPC surface and remain absent unless explicitly granted.
 
 A later brokered design can give the network namespace a single user-mode uplink and force HTTP(S)
-through a DockPipe proxy. The proxy can resolve names itself, reject direct IP bypass, pin each
+through a Dockpipe proxy. The proxy can resolve names itself, reject direct IP bypass, pin each
 connection, reject private/link-local destinations unless requested, and count bytes. That would be
 **broker-enforced protocol-scoped hostname policy**, not an OS hostname guarantee.
 
@@ -274,7 +274,7 @@ decision logic. Apple documents an implicit allow when an authorization client m
 Network Extension content filters can enforce flows but require a signed, notarized, installed
 system extension and user approval. Apple also says [`pf` is not a product API](https://developer.apple.com/documentation/technotes/tn3165-packet-filter-is-not-api).
 
-Endpoint Security plus Network Extension could become a separate enterprise DockPipe security agent.
+Endpoint Security plus Network Extension could become a separate enterprise Dockpipe security agent.
 It is not the lightweight runtime requested here.
 
 ### macOS capability disposition
@@ -338,7 +338,7 @@ Restricted tokens and Low Integrity are useful layers, not substitutes:
 
 ### New experimental Windows sandbox API
 
-The June 2026 `Experimental_CreateProcessInSandbox` API maps directly to several DockPipe needs:
+The June 2026 `Experimental_CreateProcessInSandbox` API maps directly to several Dockpipe needs:
 
 - AppContainer creation and identity;
 - Bound File System read-only/read-write roots without persistent recursive ACL edits;
@@ -351,7 +351,7 @@ It is nevertheless explicitly experimental, exported dynamically from `processmo
 public header, declares only "Windows 11 (experimental)" as its minimum, and requires a FlatBuffer
 specification whose current version is `0.1.0`. Use it for a parallel prototype and conformance
 experiments. Do not make it the baseline until Microsoft publishes a supported API/schema and
-DockPipe proves ConPTY, nested jobs, reparse points, BFS lifecycle, and proxy bypass behavior.
+Dockpipe proves ConPTY, nested jobs, reparse points, BFS lifecycle, and proxy bypass behavior.
 
 ### Windows network and filesystem limits
 
@@ -359,7 +359,7 @@ Network-off is strong with no AppContainer capability, including host loopback b
 allowlisting is not an MVP feature:
 
 - WFP can enforce AppContainer SID, application, user, address, protocol, and port at ALE layers.
-- Adding filters normally requires elevation. A future installed DockPipe policy broker could own
+- Adding filters normally requires elevation. A future installed Dockpipe policy broker could own
   dynamic WFP sessions and scope them to a unique AppContainer SID.
 - Numeric IP/CIDR/port policy could then be `enforced` after conformance testing.
 - FQDN rules depend on DNS observations and are vulnerable to caches, DoH, proxies, VPN behavior,
@@ -386,7 +386,7 @@ Compatibility failure is a normal reported result; it must never trigger unrestr
 
 ### Desired policy versus observed enforcement
 
-DockPipe must keep three objects distinct:
+Dockpipe must keep three objects distinct:
 
 1. **Requested policy**: portable workflow intent such as readable roots and offline networking.
 2. **Required guarantees**: the minimum enforcement a workflow will accept.
@@ -521,7 +521,7 @@ Default ambient credential posture is deny:
   Docker sockets, Kubernetes configuration, Git credential managers, or user package-manager auth;
 - use a synthetic home so shell startup files and user configuration do not leak in;
 - keep Git clone/fetch/checkpoint/publish credentials in runtime-owned helpers, not AI workers;
-- inject only explicit DockPipe secret references, preferably short-lived and step-scoped, through a
+- inject only explicit Dockpipe secret references, preferably short-lived and step-scoped, through a
   private environment value, memory/pipe channel, or private temporary file;
 - redact values from policy, events, command displays, and artifacts;
 - mount package-manager auth only for the install step and combine it with the narrow registry policy;

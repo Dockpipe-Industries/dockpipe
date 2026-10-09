@@ -2,7 +2,7 @@
 
 ## Goal
 
-Build a useful Linux- and Windows-first MIDI package that proves DockPipe's deterministic buffered
+Build a useful Linux- and Windows-first MIDI package that proves Dockpipe's deterministic buffered
 control model with existing hardware, then use it as the first capability-package customer of the
 portable embedded execution target.
 
@@ -12,7 +12,7 @@ TASK-015.
 ## Proving Chain
 
 ```text
-DockPipe on Linux or Windows
+Dockpipe on Linux or Windows
         |
 MIDI device / virtual MIDI / network MIDI
         |

@@ -28,7 +28,7 @@ Install this into **stock VS Code** for development, or pack as **`.vsix`** and 
 
 The **`images/`** directory holds both the Pipeon app mark and the DorkPipe extension mark. The extension now uses **`dorkpipe-icon.png`** for its Marketplace/activity-bar identity, while Pipeon browser/app assets continue to use the Pipeon mark.
 
-**`dockpipe-code-server:latest`** (Coder code-server in the browser) is built via **`Dockerfile.code-server`** in this directory; **`code-server-user-settings.json`** is the default User settings baked into that image. The image installs the **DorkPipe** extension plus **DockPipe Language Support**. Build it from the repo root with **`packages/pipeon/assets/scripts/build.sh code-server-image`**.
+**`dockpipe-code-server:latest`** (Coder code-server in the browser) is built via **`Dockerfile.code-server`** in this directory; **`code-server-user-settings.json`** is the default User settings baked into that image. The image installs the **DorkPipe** extension plus **Dockpipe Language Support**. Build it from the repo root with **`packages/pipeon/assets/scripts/build.sh code-server-image`**.
 
 ## Pack
 
@@ -57,7 +57,7 @@ Source of truth:
 
 - Edit **`src/extension.ts`** and **`src/webview/*.ts`**
 - Treat **`extension.js`** and **`webview/*.js`** as generated runtime artifacts
-- Keep generated DockPipe runtime/cache trees such as **`.dockpipe/`** and **`bin/.dockpipe/`** out of normal editor workflows; the baked Pipeon user settings exclude them so stale compiled package snapshots do not bleed into Problems or search
+- Keep generated Dockpipe runtime/cache trees such as **`.dockpipe/`** and **`bin/.dockpipe/`** out of normal editor workflows; the baked Pipeon user settings exclude them so stale compiled package snapshots do not bleed into Problems or search
 
 Build the runtime files after edits:
 
@@ -73,9 +73,9 @@ npm run typecheck
 
 ## Note
 
-This extension now carries a meaningful in-editor chat surface, but the long-term product boundary is still the same: Pipeon owns UX, DorkPipe is the server-authoritative orchestration layer, and DockPipe remains the mutation boundary.
+This extension now carries a meaningful in-editor chat surface, but the long-term product boundary is still the same: Pipeon owns UX, DorkPipe is the server-authoritative orchestration layer, and Dockpipe remains the mutation boundary.
 
-The model browser and template designer are UX projections over the DockPipe/DorkPipe contract, not
+The model browser and template designer are UX projections over the Dockpipe/DorkPipe contract, not
 an alternate workflow system:
 
 - workflow YAML remains the durable source of truth for `model_policy`, `steps[].agent`, access,
@@ -86,7 +86,7 @@ an alternate workflow system:
 - model entries should map to DorkPipe escalation lanes backed by workflow/package metadata, not
   private provider strings that only this extension understands
 - export/import should round-trip designer state through `config.yml` and package-owned
-  catalogs so DockPipe CLI, DockPipe Language Support, DorkPipe, and Pipeon all share one UX path
+  catalogs so Dockpipe CLI, Dockpipe Language Support, DorkPipe, and Pipeon all share one UX path
 
 Attachment roadmap:
 

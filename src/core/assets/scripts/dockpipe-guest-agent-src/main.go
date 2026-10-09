@@ -159,7 +159,7 @@ func resolveAgentRoot(configPath string) string {
 	if strings.TrimSpace(programData) == "" {
 		programData = filepath.Join(os.Getenv("SystemDrive")+"\\", "ProgramData")
 	}
-	return filepath.Join(programData, "DockPipe", "GuestAgent")
+	return filepath.Join(programData, "Dockpipe", "GuestAgent")
 }
 
 func loadConfig(configPath, root string) (config, error) {

@@ -60,7 +60,7 @@ bool SingleInstanceGuard::tryRunPrimaryInstance(bool startHome)
         m_mem.detach();
         if (notifyPrimaryToActivate(startHome))
             return false;
-        qWarning("DockPipe Launcher: stale single-instance shared memory found; recovering primary instance.");
+        qWarning("Dockpipe Launcher: stale single-instance shared memory found; recovering primary instance.");
     }
 
     if (!m_mem.create(1)) {
@@ -70,20 +70,20 @@ bool SingleInstanceGuard::tryRunPrimaryInstance(bool startHome)
                 m_mem.detach();
                 if (notifyPrimaryToActivate(startHome))
                     return false;
-                qWarning("DockPipe Launcher: stale shared memory persisted after retry; continuing as primary.");
+                qWarning("Dockpipe Launcher: stale shared memory persisted after retry; continuing as primary.");
                 if (!m_mem.create(1)) {
-                    qWarning("DockPipe Launcher: could not recreate shared memory after stale-state recovery (%s); continuing without guard.",
+                    qWarning("Dockpipe Launcher: could not recreate shared memory after stale-state recovery (%s); continuing without guard.",
                              qPrintable(m_mem.errorString()));
                     return true;
                 }
             } else if (!m_mem.create(1)) {
-                qWarning("DockPipe Launcher: single-instance shared memory unavailable after retry (%s); continuing without guard.",
+                qWarning("Dockpipe Launcher: single-instance shared memory unavailable after retry (%s); continuing without guard.",
                          qPrintable(m_mem.errorString()));
                 return true;
             }
         }
         if (!m_mem.isAttached()) {
-            qWarning("DockPipe Launcher: single-instance shared memory unavailable (%s); continuing without guard.",
+            qWarning("Dockpipe Launcher: single-instance shared memory unavailable (%s); continuing without guard.",
                      qPrintable(m_mem.errorString()));
             return true;
         }
@@ -92,7 +92,7 @@ bool SingleInstanceGuard::tryRunPrimaryInstance(bool startHome)
     const QString name = ipcServerName();
     QLocalServer::removeServer(name);
     if (!m_server.listen(name)) {
-        qWarning("DockPipe Launcher: could not bind IPC server (%s); continuing without single-instance.",
+        qWarning("Dockpipe Launcher: could not bind IPC server (%s); continuing without single-instance.",
                  qPrintable(m_server.errorString()));
         return true;
     }

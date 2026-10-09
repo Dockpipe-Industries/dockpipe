@@ -24,7 +24,7 @@ a harmless capability check such as `docker info`. If it is unavailable, request
 start or use Docker Desktop; do not silently substitute an ungoverned local or cloud lane.
 
 The host request must remain minimal. For example, request permission to run a particular
-DockPipe package check after Docker Desktop is running, rather than requesting unrestricted Docker
+Dockpipe package check after Docker Desktop is running, rather than requesting unrestricted Docker
 access. A rejected or failed request leaves the work blocked; it does not authorize a sandbox
 bypass.
 
@@ -35,7 +35,7 @@ such as `git status`, `git diff`, and `git log` is acceptable only when the exec
 the repository policy permits it. Do not infer that `git fetch`, `pull`, `push`, `clone`, remote
 credential helpers, package downloads, or provider logins will work.
 
-For a managed DockPipe session, agents request the runtime-owned lifecycle action—checkpoint,
+For a managed Dockpipe session, agents request the runtime-owned lifecycle action—checkpoint,
 sync, or publish—rather than raw Git commands. The runtime performs any required host-side Git or
 network work under its normal authorization and operation-result ledger. For an ordinary checkout,
 request the smallest reviewed host command needed for the remote operation. Never expose, copy, or

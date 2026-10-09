@@ -4,7 +4,7 @@ Read when changing `docs/`, `AGENTS.md`, `docs/agents/`, indexes, or generated g
 
 ## Goal
 
-Keep DockPipe documentation self-documenting without creating two competing source trees.
+Keep Dockpipe documentation self-documenting without creating two competing source trees.
 
 ## Layering
 

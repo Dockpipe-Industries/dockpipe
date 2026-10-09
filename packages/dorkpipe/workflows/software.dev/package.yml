@@ -1,12 +1,12 @@
 schema: 1
 kind: workflow
 name: software.dev
-version: 0.6.0
+version: 0.6.1
 title: Governed Software Development
 description: |
   Package-owned software-development orchestration that compiles a repo workflow step and optional
   planner proposal inside fixed DorkPipe authority, approval, apply, publish, and sync boundaries.
-author: DockPipe
+author: Dockpipe
 license: Apache-2.0
 repository: https://github.com/Dockpipe-Industries/dockpipe
 tags: [workflow, dorkpipe, software-development, orchestration]

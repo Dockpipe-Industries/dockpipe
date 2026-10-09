@@ -56,6 +56,6 @@ changed. That update lane does not touch host VS Code or Cursor installations.
 
 ## Boundary
 
-Pipeon is the client surface. DorkPipe is orchestration and routing. DockPipe remains the mutation
+Pipeon is the client surface. DorkPipe is orchestration and routing. Dockpipe remains the mutation
 boundary. The dev stack now keeps the DorkPipe control plane inside compose and exposes only MCP back
 to Pipeon / VS Code. See **`../pipeon/assets/docs/pipeon-dorkpipe-contract.md`**.

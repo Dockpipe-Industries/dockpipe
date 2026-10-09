@@ -12,12 +12,12 @@ if [[ "$(uname -s)" == Darwin ]]; then
   trap 'hdiutil detach "$stage/mount" >/dev/null 2>&1 || true; rm -rf "$stage"' EXIT
   hdiutil attach "$out/dockpipe-desktop_${version}_darwin_${arch}.dmg" -nobrowse -mountpoint "$stage/mount"
   # Native hosted runners are disposable. Exercise Apple's real Installer and CLI link.
-  sudo installer -pkg "$stage/mount/Install DockPipe.pkg" -target /
+  sudo installer -pkg "$stage/mount/Install Dockpipe.pkg" -target /
   python3 "$root/release/packaging/tests/native-smoke.py" /usr/local/bin/dockpipe
   python3 "$root/release/packaging/desktop/smoke.py" /Applications/DockPipe.app/Contents/MacOS/DockPipe /Applications/DockPipe.app/Contents/MacOS/dockpipe-cli
   test "$(readlink /usr/local/bin/dockpipe)" = /Applications/DockPipe.app/Contents/MacOS/dockpipe-cli
   # Verify managed updates are accepted too.
-  sudo installer -pkg "$stage/mount/Install DockPipe.pkg" -target /
+  sudo installer -pkg "$stage/mount/Install Dockpipe.pkg" -target /
   sudo rm /usr/local/bin/dockpipe
   sudo rm -rf /Applications/DockPipe.app
   sudo pkgutil --forget com.dockpipe.desktop

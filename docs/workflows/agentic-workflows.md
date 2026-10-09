@@ -1,9 +1,9 @@
 # Governed AI Workflows
 
-DockPipe is a governed cross-platform runtime and orchestration layer for commands, packages,
+Dockpipe is a governed cross-platform runtime and orchestration layer for commands, packages,
 environments, CI jobs, AI workflows, and deployable tooling.
 
-That distinction matters: AI agents are not the product surface by themselves. In DockPipe, an AI
+That distinction matters: AI agents are not the product surface by themselves. In Dockpipe, an AI
 worker is a specialized workflow/package stage that runs under an explicit contract:
 
 - inputs
@@ -15,7 +15,7 @@ worker is a specialized workflow/package stage that runs under an explicit contr
 - verification
 - approval before promotion
 
-This keeps AI work inside the same primitives DockPipe already uses everywhere else:
+This keeps AI work inside the same primitives Dockpipe already uses everywhere else:
 
 - workflows describe what happens
 - runtimes describe where execution happens
@@ -85,7 +85,7 @@ that YAML cannot provide.
 Planner output starts as a session artifact. Promote it into durable repo configuration only when it
 fits the planner promotion model in `docs/agents/workflows/planner-promotion-model.md`. In short:
 
-- hard runtime settings are DockPipe/DorkPipe-owned and not agent-designed at runtime
+- hard runtime settings are Dockpipe/DorkPipe-owned and not agent-designed at runtime
 - soft repo settings can be proposed by agents and promoted after verification
 - exact per-run task splits, lane choices, and experimental workflow rewrites remain artifacts until
   they pass promotion checks
@@ -96,7 +96,7 @@ generic contract after validation.
 
 The future master-agent layer should be model-agnostic at the planning level. It may use Codex,
 Ollama, Claude, or another configured lane, but privileged host actions must go through a governed
-DockPipe MCP or host bridge that asks for approval and returns operation-result events. The model is
+Dockpipe MCP or host bridge that asks for approval and returns operation-result events. The model is
 not the trust boundary; the bridge is. Build this CLI-first: terminal approval prompts and
 non-interactive policy modes should use the same structured bridge requests and operation-result
 events that a later UI can render.
@@ -107,7 +107,7 @@ have a trusted host sandbox and escalation path; safe host actions may run direc
 sandbox, while privileged actions still require escalation. Both modes must produce the same event
 stream so CLI, UI, logs, and artifacts stay consistent.
 
-ForgePipe should sit on top of that same stream. It is launched through DockPipe, inherits
+ForgePipe should sit on top of that same stream. It is launched through Dockpipe, inherits
 Pipeon-style launcher context, and surfaces workflow/agent/MCP/model-lane YAML through a modern UI.
 It can run workflows, inspect artifacts/logs, show approvals, preview diffs and conflicts, and map
 agents to markdown guidance without becoming a full IDE.
@@ -129,8 +129,8 @@ has TODOs before it fully hides physical execution planning:
 Agent tooling should expose the same contract from different angles, not create separate control
 planes.
 
-- DockPipe workflow YAML is the durable source of truth.
-- DockPipe Language Support is the schema-facing editor layer for that YAML.
+- Dockpipe workflow YAML is the durable source of truth.
+- Dockpipe Language Support is the schema-facing editor layer for that YAML.
 - The DorkPipe/Pipeon VS Code extension may provide richer chat, model browser, template designer,
   and run inspector surfaces, but those surfaces should read/write or import/export workflow YAML
   and package-owned catalogs.
@@ -147,7 +147,7 @@ planes.
 
 The intended user story is:
 
-1. A user authors or opens a DockPipe workflow.
+1. A user authors or opens a Dockpipe workflow.
 2. The editor and designer both surface the same `config.yml` contract.
 3. Starting the stack prepares the declared local/cloud model lanes.
 4. DorkPipe chooses the cheapest valid lane first and escalates according to `model_policy`.

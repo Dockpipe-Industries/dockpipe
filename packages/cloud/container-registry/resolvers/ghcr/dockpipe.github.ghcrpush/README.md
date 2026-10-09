@@ -8,7 +8,7 @@ This workflow does **not** build the image. It expects a local source image to a
 - retags the local image for the target GHCR repository
 - pushes one or more tags
 
-When login is enabled, DockPipe now prompts before calling the container CLI login path because that
+When login is enabled, Dockpipe now prompts before calling the container CLI login path because that
 may update the local credential store. Automation can explicitly bypass that prompt with
 **`dockpipe --yes`**.
 

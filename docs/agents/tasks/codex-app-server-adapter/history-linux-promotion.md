@@ -15,7 +15,7 @@ guest-agent compatibility output has SHA-256
 Windows artifact is compatibility evidence only and is never promoted for Linux Gate 2.
 
 The fixed non-live namespace is `/home/jamie/.local/share/dockpipe-vm-gates`. It is task-owned VM
-qualification input, not the checkout, DockPipe global package/install root, `.dockpipe`,
+qualification input, not the checkout, Dockpipe global package/install root, `.dockpipe`,
 `.dorkpipe`, an image/toolchain cache, a live instance/evidence/configuration/runtime XDG root, or
 any preserved Gate 2 root. Promotion IDs match `vmp-[0-9a-f]{16}`. Each future gate must provide
 the exact ID and all source and destination paths before execution and may not discover, substitute,

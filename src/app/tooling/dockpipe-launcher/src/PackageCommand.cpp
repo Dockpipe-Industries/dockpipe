@@ -19,7 +19,7 @@ PackageCommand::PackageCommand(QObject *parent) : QObject(parent)
         if (error == QProcess::FailedToStart) {
             m_active = false;
             m_timeout.stop();
-            emit failed(tr("Could not start DockPipe: %1").arg(m_process.errorString()));
+            emit failed(tr("Could not start Dockpipe: %1").arg(m_process.errorString()));
         }
     });
     connect(&m_timeout, &QTimer::timeout, this, [this]() {
@@ -73,7 +73,7 @@ void PackageCommand::readOutput()
     m_output += m_process.readAllStandardOutput();
     m_errors += m_process.readAllStandardError();
     if (m_output.size() > 8 * 1024 * 1024 || m_errors.size() > 1024 * 1024) {
-        m_failure = tr("DockPipe returned too much package output.");
+        m_failure = tr("Dockpipe returned too much package output.");
         m_process.kill();
     }
 }
@@ -88,13 +88,13 @@ void PackageCommand::finish(int exitCode, QProcess::ExitStatus status)
         return;
     }
     if (status != QProcess::NormalExit || exitCode != 0) {
-        emit failed(m_errors.isEmpty() ? tr("DockPipe package operation failed.") : QString::fromUtf8(m_errors).left(4000));
+        emit failed(m_errors.isEmpty() ? tr("Dockpipe package operation failed.") : QString::fromUtf8(m_errors).left(4000));
         return;
     }
     QJsonParseError error;
     const QJsonDocument document = QJsonDocument::fromJson(m_output, &error);
     if (error.error != QJsonParseError::NoError || !document.isObject()) {
-        emit failed(tr("DockPipe returned an invalid package response. Update the CLI and launcher together."));
+        emit failed(tr("Dockpipe returned an invalid package response. Update the CLI and launcher together."));
         return;
     }
     emit completed(document.object());

@@ -26,7 +26,7 @@ Maintainer: dockpipe maintainers
 Section: devel
 Priority: optional
 Depends: dockpipe (= $version), $dependencies, qt6-qpa-plugins
-Description: DockPipe desktop launcher
- Desktop launcher and application menu entry for DockPipe workflows.
+Description: Dockpipe desktop launcher
+ Desktop launcher and application menu entry for Dockpipe workflows.
 EOF
 dpkg-deb --root-owner-group --build "$stage/root" "$out/dockpipe-desktop_${version}_${arch}.deb"

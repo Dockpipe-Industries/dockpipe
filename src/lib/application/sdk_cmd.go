@@ -27,7 +27,7 @@ environment and otherwise falls back to the current working directory.
 This bootstraps the shell SDK object from the canonical core helper.
 `
 
-const getUsageText = `dockpipe get — print generic DockPipe context fields
+const getUsageText = `dockpipe get — print generic Dockpipe context fields
 
 Usage:
   dockpipe get <field> [--workdir <path>]

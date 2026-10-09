@@ -393,7 +393,7 @@ Effects are inert declarations invoked only by an exported effectful entrypoint 
 binding through the governed host bridge. Actions cannot perform effects; they may apply a returned
 typed effect result. Generated action forms may project this contract but cannot own it. No syntax is
 accepted until it proves that catalog/editor analysis remains inert and execution still crosses
-normal DockPipe authority boundaries.
+normal Dockpipe authority boundaries.
 
 External model invocation is only one explicit resolver-backed effect. Model input/output is typed
 and validated like any other effect, carries `ExternalModel` authority, and cannot become an
@@ -471,7 +471,7 @@ replay metadata. The language/compiler contract should support:
 - shrinking while preserving constraints and semantic identity;
 - derivation of baseline checks from `requires`, `ensures`, and invariants;
 - association of tests/failures with declaration and contract IDs; and
-- machine-readable test metadata for DockPipe tooling.
+- machine-readable test metadata for Dockpipe tooling.
 
 Illustrative C#-style directions:
 
@@ -580,7 +580,7 @@ inferred by this debugging direction.
 
 Agents and other tools may submit a proposed change manifest containing intent, touched semantic
 IDs, claimed preserved contracts, tests, and requested capabilities. The manifest belongs at the
-compiler/tooling or DockPipe operation boundary, not necessarily inside PipeLang syntax.
+compiler/tooling or Dockpipe operation boundary, not necessarily inside PipeLang syntax.
 
 Illustrative external shape:
 

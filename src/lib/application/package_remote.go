@@ -7,13 +7,13 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
-	"runtime"
 	"strings"
 	"syscall"
 	"time"
 
 	"dockpipe/src/lib/infrastructure"
 	"dockpipe/src/lib/infrastructure/packagecatalog"
+	"dockpipe/src/lib/infrastructure/packageplatform"
 )
 
 func cmdPackageRemote(args []string, install bool) error {
@@ -46,7 +46,11 @@ func cmdPackageRemote(args []string, install bool) error {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Minute)
 	defer cancel()
 	client := packagecatalog.NewClient()
-	catalog, err := client.Load(ctx, *remote, runtime.GOOS+"-"+runtime.GOARCH)
+	platform, err := packageplatform.Current()
+	if err != nil {
+		return err
+	}
+	catalog, err := client.Load(ctx, *remote, platform)
 	if err != nil {
 		return err
 	}

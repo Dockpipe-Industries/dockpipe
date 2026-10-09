@@ -1,11 +1,11 @@
 # Documentation
 
-DockPipe has a small front door and deeper reference material behind it. Start
+Dockpipe has a small front door and deeper reference material behind it. Start
 with the task you are doing, then drop into reference docs only when needed.
 
 ## Start Here
 
-If you are new to DockPipe, stay in this section first. The concept and
+If you are new to Dockpipe, stay in this section first. The concept and
 maintainer docs below are reference material, not the shortest learning path.
 
 | Goal | Doc |
@@ -42,12 +42,12 @@ maintainer docs below are reference material, not the shortest learning path.
 ## Advanced / Maintainer
 
 Most users do not need this section on day one. Use it when you are maintaining
-DockPipe itself, publishing packages, or debugging compiled/runtime behavior.
+Dockpipe itself, publishing packages, or debugging compiled/runtime behavior.
 
 | Topic | Doc |
 |-------|-----|
 | Engine data flow | [concepts/architecture.md](concepts/architecture.md) |
-| DockPipe vs first-party maintainer packages | [packages/core-tools.md](packages/core-tools.md) |
+| Dockpipe vs first-party maintainer packages | [packages/core-tools.md](packages/core-tools.md) |
 | Generated maintainer artifacts | [runtime/artifacts.md](runtime/artifacts.md) |
 | Compatibility retirement ledger | [compatibility-retirement.md](compatibility-retirement.md) |
 | Codex workspace-sandbox session limits and host requests | [runtime/codex-sandbox-sessions.md](runtime/codex-sandbox-sessions.md) |

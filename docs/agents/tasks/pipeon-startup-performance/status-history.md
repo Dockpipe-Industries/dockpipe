@@ -101,7 +101,7 @@ Stream-worker implementation pass:
 
 - The generic provider-pool public path remains unchanged: CLI workflows, MCP, and Pipeon still call
   `dorkpipe provider-pool prompt --json` through `dorkpipe.provider_pool_chat`. No Claude-specific
-  public MCP tool or DockPipe core logic was added.
+  public MCP tool or Dockpipe core logic was added.
 - Claude direct prompts now default to a session/model-affine stream worker inside the guarded
   container. The worker is addressed by generic provider-pool fields (`provider`, `session_id`,
   `worker_id`, `worker_mode`, `prompt_turn_id`) and launches:
@@ -138,7 +138,7 @@ Stream-worker implementation pass:
 
 - Codex provider-pool scratch files now stay under project package state at
   `bin/.dockpipe/packages/dorkpipe/provider-pools/scratch` instead of system temp. This keeps generated
-  provider-pool handoff material in DockPipe-owned project state and avoids `.tmp` drift.
+  provider-pool handoff material in Dockpipe-owned project state and avoids `.tmp` drift.
 - Workdir hash fallback now accounts for Windows-style path normalization and candidate hashes. This
   preserves cleanup when a worker was started through one host path spelling and stopped through
   another, such as Git Bash/MSYS slash conversion or case differences.
@@ -169,7 +169,7 @@ Stream-worker implementation pass:
 
 Boundary check:
 
-- DockPipe core under `src/lib` and `src/cmd` was not changed.
+- Dockpipe core under `src/lib` and `src/cmd` was not changed.
 - Provider-pool lifecycle logic remains in the DorkPipe package, and Pipeon behavior remains package-local
   to the `pipeon-dev-stack` scripts.
 - Direct Pipeon chat isolation from workflow/subagent sessions is preserved: Pipeon still calls the shared

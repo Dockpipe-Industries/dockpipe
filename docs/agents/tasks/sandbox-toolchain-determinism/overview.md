@@ -3,7 +3,7 @@
 
 ## Problem
 
-DockPipe package tests currently depend on tools discovered from the invoking shell `PATH`. In Codex
+Dockpipe package tests currently depend on tools discovered from the invoking shell `PATH`. In Codex
 or other sandboxed hosts, a tool can appear installed but still be unusable. One concrete example is
 Git Bash resolving `jq` through the WinGet link under `C:\Users\...\AppData\Local\Microsoft\WinGet`,
 which PowerShell can see but the Codex sandbox cannot execute.
@@ -13,7 +13,7 @@ environment.
 
 ## Desired Direction
 
-- Prefer DockPipe-managed repo-local tooling before user-profile shims or global `PATH`.
+- Prefer Dockpipe-managed repo-local tooling before user-profile shims or global `PATH`.
 - Add a small test/tool resolver used by package tests and CI helpers.
 - Add a sandbox/toolchain preflight that verifies required tools from the same shell that will run
   the tests.
@@ -26,7 +26,7 @@ environment.
 
 - Resolve tools in this order:
   - `bin/.dockpipe/tooling/bin`
-  - explicit DockPipe-managed cache path
+  - explicit Dockpipe-managed cache path
   - shell `PATH`
 - For Windows Git Bash, prefer real `.exe` paths over WinGet/app-execution aliases when possible.
 - Provide a package-test helper such as `dorkpipe_test_require_tool jq` so tests do not duplicate

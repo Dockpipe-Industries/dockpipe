@@ -2,7 +2,7 @@
 
 ## Goal
 
-Make DockPipe work on openSUSE with separate stable Leap and rolling Tumbleweed contracts rather
+Make Dockpipe work on openSUSE with separate stable Leap and rolling Tumbleweed contracts rather
 than treating SUSE-family hosts as generic RPM systems.
 
 ## Scope

@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://dockpipe.dev/schemas/dockpipe-user-insight-queue.schema.json",
-  "title": "DockPipe user insight capture queue",
+  "title": "Dockpipe user insight capture queue",
   "description": "Append-only capture of user-provided guidance before normalization. User text is a signal, not verified fact.",
   "type": "object",
   "required": ["schema_version", "kind", "items"],

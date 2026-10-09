@@ -27,7 +27,7 @@ class DockpipeStaging < Formula
   def caveats
     <<~EOS
       This is a staging candidate. The command is dockpipe.
-      It uses the normal DockPipe user data unless DOCKPIPE_GLOBAL_ROOT is set.
+      It uses the normal Dockpipe user data unless DOCKPIPE_GLOBAL_ROOT is set.
       Docker is needed only for workflows that use containers.
     EOS
   end

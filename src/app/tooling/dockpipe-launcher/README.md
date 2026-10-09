@@ -1,8 +1,8 @@
-# DockPipe Launcher
+# Dockpipe Launcher
 
-Cross-platform **Qt 6** system-tray app: save **contexts** (folder + resolver / strategy / runtime), **launch** or **stop** `dockpipe` subprocesses, **open logs** and folders. It does **not** run workflows inside the GUI; all execution stays in **DockPipe** (and optionally **DorkPipe** later).
+Cross-platform **Qt 6** system-tray app: save **contexts** (folder + resolver / strategy / runtime), **launch** or **stop** `dockpipe` subprocesses, **open logs** and folders. It does **not** run workflows inside the GUI; all execution stays in **Dockpipe** (and optionally **DorkPipe** later).
 
-This tree lives under **`src/app/tooling/dockpipe-launcher/`** as first-party DockPipe tooling. It drives the DockPipe CLI but is not part of the engine (**`src/lib/`**, **`src/cmd/`**). The tray/window icon comes from **`resources/images/dockpipe-launcher.png`** and Linux desktop installs use the generated **`resources/icons/hicolor/`** size set.
+This tree lives under **`src/app/tooling/dockpipe-launcher/`** as first-party Dockpipe tooling. It drives the Dockpipe CLI but is not part of the engine (**`src/lib/`**, **`src/cmd/`**). The tray/window icon comes from **`resources/images/dockpipe-launcher.png`** and Linux desktop installs use the generated **`resources/icons/hicolor/`** size set.
 
 ## Requirements
 
@@ -10,7 +10,7 @@ This tree lives under **`src/app/tooling/dockpipe-launcher/`** as first-party Do
 - **Qt 6** (`Widgets` + **`Network`**) — install dev packages (e.g. `qt6-base-dev` on Debian/Ubuntu) or use the [Qt Online Installer](https://www.qt.io/download) and set **`CMAKE_PREFIX_PATH`** to the Qt 6 prefix.
 - **OpenGL / EGL development libraries** — Qt 6 Gui pulls in **WrapOpenGL**. On Ubuntu/Pop!_OS, if CMake says `WrapOpenGL could not be found` or `Qt6Gui_FOUND` is FALSE, install **`libgl1-mesa-dev`** and **`libegl1-mesa-dev`** (see Build section below).
 - **`dockpipe`** on **`PATH`** (or set **dockpipe binary** in each context’s settings).
-- Host tools DockPipe already needs: **`bash`**, **`docker`**, **`git`** — see [docs/install.md](../../../../docs/install.md).
+- Host tools Dockpipe already needs: **`bash`**, **`docker`**, **`git`** — see [docs/install.md](../../../../docs/install.md).
 
 On macOS, Finder launches append the standard Homebrew binary directories to the inherited `PATH`.
 Docker uses the user's saved context or inherited endpoint settings, including a Colima Docker
@@ -105,7 +105,7 @@ Qt is available under **LGPL** and commercially. If you **ship binaries**, compl
 The launcher now understands the shell SDK prompt bridge from **`dockpipe_sdk prompt ...`**. Package scripts can emit a framework prompt once and get:
 
 - terminal interaction in plain CLI runs
-- native launcher dialogs when the same workflow is started from DockPipe Launcher
+- native launcher dialogs when the same workflow is started from Dockpipe Launcher
 
 The launcher sets **`DOCKPIPE_SDK_PROMPT_MODE=json`** for managed `dockpipe` subprocesses, watches for prompt events on process output, and writes the user’s response back to the running workflow over stdin.
 
@@ -113,13 +113,13 @@ That includes **file prompts**: when a package or runtime emits `dockpipe_sdk pr
 
 ## Basic vs Advanced
 
-- **Basic** (default): **File → Open project folder…** (or **Choose folder…**) sets the project directory passed to `dockpipe` as **`--workdir`** (your code is mounted in the tool’s container). The main area lists only workflows whose workflow YAML includes **`category: app`** (see `docs/workflows/workflow-yaml.md`) — GUI/IDE-style apps. Double-click an app to launch. **Set up Cursor MCP** runs the prep flow only (writes cursor-dev package-scope hints; **no** Docker, **no** full `dockpipe` session). For a **Docker session container + Cursor on the host**, double-click the **`cursor-dev`** app — not the MCP button. **Refresh apps** (toolbar) or **File → Refresh app list** (**F5**) reloads the DockPipe-owned workflow catalog for the selected project so new or edited workflows appear without restarting. **View → Icon grid** / **Compact list** toggles presentation. Mode and view are stored in **`launcher.json`**.
+- **Basic** (default): **File → Open project folder…** (or **Choose folder…**) sets the project directory passed to `dockpipe` as **`--workdir`** (your code is mounted in the tool’s container). The main area lists only workflows whose workflow YAML includes **`category: app`** (see `docs/workflows/workflow-yaml.md`) — GUI/IDE-style apps. Double-click an app to launch. **Set up Cursor MCP** runs the prep flow only (writes cursor-dev package-scope hints; **no** Docker, **no** full `dockpipe` session). For a **Docker session container + Cursor on the host**, double-click the **`cursor-dev`** app — not the MCP button. **Refresh apps** (toolbar) or **File → Refresh app list** (**F5**) reloads the Dockpipe-owned workflow catalog for the selected project so new or edited workflows appear without restarting. **View → Icon grid** / **Compact list** toggles presentation. Mode and view are stored in **`launcher.json`**.
 - The **Docker** tab in both Basic and Advanced modes shows all containers (`docker ps -a`), presents row status as styled badges, and exposes **Inspect / Start / Stop / Refresh** from the container row’s **right-click context menu**.
 - **Advanced**: **View → Advanced mode** shows the full **context** list (same as before): **Add folder…** can import every workflow under the resolved repo; technical details per row; **Edit**, worktrees, logs, etc.
 
 ## Add folder (Advanced)
 
-Choosing **Add folder…** resolves a DockPipe project root by walking upward for project markers such as `dockpipe.config.json`, `workflows`, or package roots. The launcher then asks DockPipe for the available workflow catalog for that project and adds **one context** per discovered workflow name with that **workdir**. If no DockPipe project is found, it adds a single context with workflow `vscode`. Existing `(workdir, workflow, workflow file)` combinations are skipped.
+Choosing **Add folder…** resolves a Dockpipe project root by walking upward for project markers such as `dockpipe.config.json`, `workflows`, or package roots. The launcher then asks Dockpipe for the available workflow catalog for that project and adds **one context** per discovered workflow name with that **workdir**. If no Dockpipe project is found, it adds a single context with workflow `vscode`. Existing `(workdir, workflow, workflow file)` combinations are skipped.
 
 ## Data locations
 

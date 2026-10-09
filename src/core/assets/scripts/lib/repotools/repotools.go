@@ -487,7 +487,7 @@ func Prompt(spec PromptSpec) (string, error) {
 				return selected, nil
 			}
 		default:
-			return "", fmt.Errorf("unsupported DockPipe prompt kind: %s", spec.Type)
+			return "", fmt.Errorf("unsupported Dockpipe prompt kind: %s", spec.Type)
 		}
 	default:
 		if strings.TrimSpace(spec.Default) != "" {

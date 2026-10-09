@@ -1,0 +1,751 @@
+{
+  "python": "3.13",
+  "architecture": "amd64",
+  "wheels": [
+    {
+      "file": "PyGithub-1.59.1-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/2c/71/aff5465d9e3d448a5d4beab1dc7c8dec72037e3ae7e0d856ee08538dc934/PyGithub-1.59.1-py3-none-any.whl",
+      "sha256": "3d87a822e6c868142f0c2c4bf16cce4696b5a7a4d142a7bd160e1bdf75bc54a9"
+    },
+    {
+      "file": "PySocks-1.7.1-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/8d/59/b4572118e098ac8e46e399a1dd0f2d85403ce8bbaad9ec79373ed6badaf9/PySocks-1.7.1-py3-none-any.whl",
+      "sha256": "2725bd0a9925919b9b51739eea5f9e2bae91e83288108a9ad338b2e3a4435ee5"
+    },
+    {
+      "file": "antlr4_python3_runtime-4.13.2-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/89/03/a851e84fcbb85214dc637b6378121ef9a0dd61b4c65264675d8a5c9b1ae7/antlr4_python3_runtime-4.13.2-py3-none-any.whl",
+      "sha256": "fe3835eb8d33daece0e799090eda89719dbccee7aa39ef94eed3818cafa5a7e8"
+    },
+    {
+      "file": "applicationinsights-0.11.10-py2.py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/f4/0d/cb6b23164eb55eebaa5f9f302dfe557cfa751bd7b2779863f1abd0343b6b/applicationinsights-0.11.10-py2.py3-none-any.whl",
+      "sha256": "e89a890db1c6906b6a7d0bcfd617dac83974773c64573147c8d6654f9cf2a6ea"
+    },
+    {
+      "file": "argcomplete-3.5.3-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/c4/08/2a4db06ec3d203124c967fc89295e85a202e5cbbcdc08fd6a64b65217d1e/argcomplete-3.5.3-py3-none-any.whl",
+      "sha256": "2ab2c4a215c59fd6caaff41a869480a23e8f6a5f910b266c1808037f4e375b61"
+    },
+    {
+      "file": "azure_ai_agents-1.1.0-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/e6/31/43750555bf20d3d2d7589fcd775c96ce7c96e58e208b81c1ed6d4bad6c5f/azure_ai_agents-1.1.0-py3-none-any.whl",
+      "sha256": "f660bb0d564aeb88e33140ebc1e4700d2e36e2e12ee60c3346915d702a9310a9"
+    },
+    {
+      "file": "azure_ai_projects-1.0.0-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/b5/db/7149cdf71e12d9737f186656176efc94943ead4f205671768c1549593efe/azure_ai_projects-1.0.0-py3-none-any.whl",
+      "sha256": "81369ed7a2f84a65864f57d3fa153e16c30f411a1504d334e184fb070165a3fa"
+    },
+    {
+      "file": "azure_appconfiguration-1.10.0b1-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/33/14/c37cc0d25bd33d67646088d181847b4a6eff9c26b3b6d77c71729d299bc2/azure_appconfiguration-1.10.0b1-py3-none-any.whl",
+      "sha256": "11fb8e67b541a14ea1d9d24518c404613bb2b574547903c59574a5967bb90581"
+    },
+    {
+      "file": "azure_batch-15.0.0b1-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/2d/ef/9f9b818b30589f48909a5772c21a41653b44b98fb712526f35033a2ff864/azure_batch-15.0.0b1-py3-none-any.whl",
+      "sha256": "e9cacfa058405c77f27fbf35cecb8f3be81b220deed06d2d9535c8dacae5af10"
+    },
+    {
+      "file": "azure_cli-2.91.0-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/1f/8f/2209857736404119183c032fc5570f11a31d60ab3db8e30ccd08510cd954/azure_cli-2.91.0-py3-none-any.whl",
+      "sha256": "998f2b7812e553520c0f4c7bbb8420487d83f9930711cef335401c1f3fc5e0b6"
+    },
+    {
+      "file": "azure_cli_core-2.91.0-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/e0/3c/d32853584906917b73d37347d381b8a75bb6e24800ce7e3c4eb3ce89a5c5/azure_cli_core-2.91.0-py3-none-any.whl",
+      "sha256": "5b8ee74922c25e70ab238dd8739bcd77c6698a432ac27bde3c4cda8e5609d5c2"
+    },
+    {
+      "file": "azure_cli_telemetry-1.1.0-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/7e/23/5940808a891282e7fdd240d689aedc91bc945b4eb653c15e694f45a4babc/azure_cli_telemetry-1.1.0-py3-none-any.whl",
+      "sha256": "2fc12608c0cf0ea6e69b392af9cab92f1249340b8caff7e9674cf91b3becb337"
+    },
+    {
+      "file": "azure_common-1.1.28-py2.py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/62/55/7f118b9c1b23ec15ca05d15a578d8207aa1706bc6f7c87218efffbbf875d/azure_common-1.1.28-py2.py3-none-any.whl",
+      "sha256": "5c12d3dcf4ec20599ca6b0d3e09e86e146353d443e7fcc050c9a19c1f9df20ad"
+    },
+    {
+      "file": "azure_core-1.39.0-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/7e/d6/8ebcd05b01a580f086ac9a97fb9fac65c09a4b012161cc97c21a336e880b/azure_core-1.39.0-py3-none-any.whl",
+      "sha256": "4ac7b70fab5438c3f68770649a78daf97833caa83827f91df9c14e0e0ea7d34f"
+    },
+    {
+      "file": "azure_cosmos-3.2.0-py2.py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/4a/4f/23ffc8e870df94ea6def08121245301e763eaee7236fb8c3d02d5ff66687/azure_cosmos-3.2.0-py2.py3-none-any.whl",
+      "sha256": "313e766bcf5a1779802c274dec94d5b9cc0e4d0d269489c56606fd2464070fad"
+    },
+    {
+      "file": "azure_data_tables-12.4.0-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/2d/b0/de3f41976ec514e477a679a3238899709572cb4808ca4291062296cfb89e/azure_data_tables-12.4.0-py3-none-any.whl",
+      "sha256": "a9a2f3a7db410a874c91d5b0994c697d3d8c54c322be1bbf3d1186ec74ab0968"
+    },
+    {
+      "file": "azure_datalake_store-1.0.1-py2.py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/75/bd/9cc9f114dbf90717dac49f1f7365156a9a005ef7016df2d4eb28d6442b90/azure_datalake_store-1.0.1-py2.py3-none-any.whl",
+      "sha256": "3772a2a247aaf9f5fa4b0f2cc0a0225072960cc245cfc8130588babb2b9fe705"
+    },
+    {
+      "file": "azure_keyvault_administration-4.8.0b2-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/75/f4/c80c77ac0e7d411edfc7db978145dcb5984a29b622f06b300de6fcfdcbad/azure_keyvault_administration-4.8.0b2-py3-none-any.whl",
+      "sha256": "c029ae2bbdce864a558ae4585c9fbbf9f2ed06149c03d2fe557d23e5d6f20978"
+    },
+    {
+      "file": "azure_keyvault_certificates-4.7.0-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/a4/14/fbdca7fba9ae90f550a64f4f1c96dc294b09116a17d1ad73c72977da29d4/azure_keyvault_certificates-4.7.0-py3-none-any.whl",
+      "sha256": "4ddf29529309da9587d9afdf8be3c018a3455ed27bffae9428acb1802789a3d6"
+    },
+    {
+      "file": "azure_keyvault_keys-4.12.0b2-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/67/2a/90f66dd7656bd9ac970cbb06dd08505325ab0ef05310d13c463904e7762a/azure_keyvault_keys-4.12.0b2-py3-none-any.whl",
+      "sha256": "4052c02e0f58b6c0ebc785acc425ba65b6712c86cb5046c5e5ba27ed38f4f6a3"
+    },
+    {
+      "file": "azure_keyvault_secrets-4.7.0-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/d0/cf/92298854e657c29d31f9b028dec3ce9802467bff97c74d6c4145e9cfa96f/azure_keyvault_secrets-4.7.0-py3-none-any.whl",
+      "sha256": "a16c7e6dfa9cba68892bb6fcb905bf2e2ec1f2a6dc05522b61df79621e050901"
+    },
+    {
+      "file": "azure_keyvault_securitydomain-1.0.0b1-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/41/77/ad71f8f35ccf78b8e833b355493726ffe401840c448073fef0a8562e1e87/azure_keyvault_securitydomain-1.0.0b1-py3-none-any.whl",
+      "sha256": "6b97592dbf1ae8139a46a3e9e836a5889b30412f3f16da010d9ed031a8515dd6"
+    },
+    {
+      "file": "azure_mgmt_advisor-9.0.0-py2.py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/ea/34/776fc2d130dab6259471b7d206a95246cc373ebb490f198fe970f1ab5ef7/azure_mgmt_advisor-9.0.0-py2.py3-none-any.whl",
+      "sha256": "d4281663fb0ecb7e1cd2a4bf3dd84a7d349f55377537cf77ef001c8c387a98f5"
+    },
+    {
+      "file": "azure_mgmt_apimanagement-4.0.0-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/7c/bc/921cad32d4b5fae4d5e32a10422413d52bb9ef7d18e587a344a7f540519a/azure_mgmt_apimanagement-4.0.0-py3-none-any.whl",
+      "sha256": "cc380e91cc98769d84aca0fab997ff650298d4752c16992696f62b65d0843e67"
+    },
+    {
+      "file": "azure_mgmt_appconfiguration-6.0.0b2-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/03/83/664f6fe24e34aa8a22c4bc108e27a6dddbe7d10ddb8c1b68582ccc64ba8e/azure_mgmt_appconfiguration-6.0.0b2-py3-none-any.whl",
+      "sha256": "68e767d01f6885a9469a2488b1d38f31ab8b76546ce158c21c72c3413cd15bb5"
+    },
+    {
+      "file": "azure_mgmt_appcontainers-2.0.0-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/c1/99/24c7eadc51cc82cdfb82dec77c7b7d6cfef84c71f3371e042476e864801c/azure_mgmt_appcontainers-2.0.0-py3-none-any.whl",
+      "sha256": "1134e93552c723992e6dae6b992cbe81f7496a76c56e49eba635fdd1a835f88a"
+    },
+    {
+      "file": "azure_mgmt_applicationinsights-1.0.0-py2.py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/55/7a/4885085be054781942c9d0ddf8d8575eb5ef47abcaa641a50bba1d1eae49/azure_mgmt_applicationinsights-1.0.0-py2.py3-none-any.whl",
+      "sha256": "2ed3c5a8355f3909cec0b0c5c9aebfc7b98a441a82744cdb86270cebc4735e3f"
+    },
+    {
+      "file": "azure_mgmt_authorization-5.0.0b2-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/a9/68/9d814177108f7b0dcd947f1c336776101e73eeb01cc3173e9f695ad3cec1/azure_mgmt_authorization-5.0.0b2-py3-none-any.whl",
+      "sha256": "2581946b17e32972d7d9ecdf5a7a3e8d126862b6a683a071c67ef4873dd146f2"
+    },
+    {
+      "file": "azure_mgmt_batch-17.3.0-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/46/0d/f7d816ad7eb722c4be1a926cbc70d67a581914778918f04a4052834f94fe/azure_mgmt_batch-17.3.0-py3-none-any.whl",
+      "sha256": "8cd70837831c2681a6fa2d0b3232bbec9df69627283c6abe1c336fd230249a12"
+    },
+    {
+      "file": "azure_mgmt_batchai-7.0.0b1-py2.py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/c9/22/1a02a70996f1032fa96c03d788dbe44e1c6517eef453e2700146a42ab3d0/azure_mgmt_batchai-7.0.0b1-py2.py3-none-any.whl",
+      "sha256": "85341b0e81dacfeed3984631b52ab00bc9286255c97cf9e542ac17abe0880b81"
+    },
+    {
+      "file": "azure_mgmt_billing-6.0.0-py2.py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/e4/a3/0334e349c6a00a94cd6a3e06de43d15b4b3a9a1a04c596852d27eff7f138/azure_mgmt_billing-6.0.0-py2.py3-none-any.whl",
+      "sha256": "816c6b68b8727f779cbabbc58ac2ba848d227c70e5f33e9fe376450c243c9f87"
+    },
+    {
+      "file": "azure_mgmt_botservice-2.0.0-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/a4/ad/3a3669a6b9ae3b1c9d828e286ac2867e3f107ff2ffa337a559e0d1981077/azure_mgmt_botservice-2.0.0-py3-none-any.whl",
+      "sha256": "d78d2d153ff26d32ac3498c0395b4d084e9bd2e63897363b58aec943caca05ea"
+    },
+    {
+      "file": "azure_mgmt_cdn-12.0.0-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/b2/a7/8d3ceda8211cc842e8ca406f78838a2891ee59363170153adf90a82af5e0/azure_mgmt_cdn-12.0.0-py3-none-any.whl",
+      "sha256": "531c17c7e785ed7490a4ba40a409a12c24f5e9bd6db75a79ab33bfa2b29babdc"
+    },
+    {
+      "file": "azure_mgmt_cognitiveservices-15.0.0b4-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/da/84/e7e3183df87363871fddb80a71a0b11db87b875815e5bf8a8d972ec8a1f4/azure_mgmt_cognitiveservices-15.0.0b4-py3-none-any.whl",
+      "sha256": "e71bbd4da5e85c87be28e1d5012f77589f17f448b25ba34a0ef4d034144a5a9a"
+    },
+    {
+      "file": "azure_mgmt_compute-34.1.0-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/52/ba/554194c2287d7fd53257de27898f1d391090e6f2fe54f888c109c90a6592/azure_mgmt_compute-34.1.0-py3-none-any.whl",
+      "sha256": "5de9c4ba12a79c69e2db3d880f93869a0a80e5c99d8232dbebf6c19b1ada3638"
+    },
+    {
+      "file": "azure_mgmt_containerinstance-10.2.0b1-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/42/e8/c8e53b87f8d09c2e8ab32dcfb67064f361c80e6a81a04528220a3e7e3739/azure_mgmt_containerinstance-10.2.0b1-py3-none-any.whl",
+      "sha256": "e907807279feae82d14e0692509e5196739c7a7370781a47336db5d369620d1e"
+    },
+    {
+      "file": "azure_mgmt_containerregistry-15.1.0b3-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/d9/19/4cabb8dda08678aaf0eeb4796741784c44a0d93d1630b2c128d44218f820/azure_mgmt_containerregistry-15.1.0b3-py3-none-any.whl",
+      "sha256": "8a2e03d99f6c6a1d2e615376ac9bee15760f8415ce6067b814a8502981c897ee"
+    },
+    {
+      "file": "azure_mgmt_containerregistrytasks-1.0.0b1-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/46/5c/806a87042149bcef5edcb8440fe77115a698bbd62fdba40dcacb7f81b1ee/azure_mgmt_containerregistrytasks-1.0.0b1-py3-none-any.whl",
+      "sha256": "1431d8f7290e115475ac84e90485cce0a79350e656fae8f7264683640e4f79be"
+    },
+    {
+      "file": "azure_mgmt_containerservice-41.6.0-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/ae/2a/f68589d2e5de168f7b725a86495ee86559515cc54029592be2ee8c66e87b/azure_mgmt_containerservice-41.6.0-py3-none-any.whl",
+      "sha256": "42aa7c6d3b7464ceb0bb5ef126ba4d354ad536a7019826a635e7795754228f71"
+    },
+    {
+      "file": "azure_mgmt_core-1.6.0-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/a0/26/c79f962fd3172b577b6f38685724de58b6b4337a51d3aad316a43a4558c6/azure_mgmt_core-1.6.0-py3-none-any.whl",
+      "sha256": "0460d11e85c408b71c727ee1981f74432bc641bb25dfcf1bb4e90a49e776dbc4"
+    },
+    {
+      "file": "azure_mgmt_cosmosdb-10.0.0-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/5c/2c/77909b16e232f8030f6f9c45df28db32e7778514a63de2f8d73963a41a7a/azure_mgmt_cosmosdb-10.0.0-py3-none-any.whl",
+      "sha256": "36f61f40e230df6b8903392b6bd7a434418c5f98b93d934c1eb4d0991e2ae36b"
+    },
+    {
+      "file": "azure_mgmt_datalake_store-1.1.0b1-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/9e/4f/8e5cb7ffacdf569c39831a4dd38ca9512b6ab3e77b9db37d69f001dc7efa/azure_mgmt_datalake_store-1.1.0b1-py3-none-any.whl",
+      "sha256": "6b16d63f8cd3b12048d624bdd16eb19605b1661d5b15cf01601ec1b0041b76de"
+    },
+    {
+      "file": "azure_mgmt_datamigration-10.0.0-py2.py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/ef/4b/204a70848eaa5625e09e93a5d6030da352cb109818958b4b1d0328e0485c/azure_mgmt_datamigration-10.0.0-py2.py3-none-any.whl",
+      "sha256": "35e21390540689d3c066ac9283293f31f36d48eb27a5c8e96b076fd2e29503ae"
+    },
+    {
+      "file": "azure_mgmt_domainregistration-1.0.0b1-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/60/77/3d8116abaaf0c90326df38fca5fd9cce731cd0c6d389ccae55c7417f2dfc/azure_mgmt_domainregistration-1.0.0b1-py3-none-any.whl",
+      "sha256": "a2fd11f72fbecc8f9d7b69e650c27d96f79c16254e81fc860b43195e85065147"
+    },
+    {
+      "file": "azure_mgmt_eventgrid-10.2.0b2-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/48/cf/aa0b1226011104e4546a4e0c4929026c189170dda789b44eda12931e9d1b/azure_mgmt_eventgrid-10.2.0b2-py3-none-any.whl",
+      "sha256": "040a0f63b2550d2bd240d2b7048203ab0c49a034e3dc0123bb994a0673765dba"
+    },
+    {
+      "file": "azure_mgmt_eventhub-12.0.0-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/eb/5b/bbdaab2f5f725fe56c1e152e6a460e58b25b2876ab97cb6da91978ee6958/azure_mgmt_eventhub-12.0.0-py3-none-any.whl",
+      "sha256": "2292fb6c0affdccce19ef63bba3c8add35a7fdcf1848d21f73560408c4bf4c30"
+    },
+    {
+      "file": "azure_mgmt_extendedlocation-1.0.0b2-py2.py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/2a/4b/c4ee8d9695cc203b94c211e8ac9d9808354e87fabf695714adaa41cc2517/azure_mgmt_extendedlocation-1.0.0b2-py2.py3-none-any.whl",
+      "sha256": "e73a72afe51e89ab623098efd90abd652d3217ee646c4794fda98560d41ba9a7"
+    },
+    {
+      "file": "azure_mgmt_hdinsight-9.1.0b2-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/ac/6f/ec0e2b6420193a4f531f475ab6160733daac10294d3631aa1466c075d528/azure_mgmt_hdinsight-9.1.0b2-py3-none-any.whl",
+      "sha256": "1d131b2dd178daf42942e74c34be4989cdde34b08892d336fc1671f75c956cdf"
+    },
+    {
+      "file": "azure_mgmt_imagebuilder-1.3.0-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/f4/3f/573a8456c6973f914e8080a6aa9ce4950161726aed0455b0e3181e1b2ac7/azure_mgmt_imagebuilder-1.3.0-py3-none-any.whl",
+      "sha256": "30a8ac157349f60cf0eb6dfa578eeed9913399885b725aca4eabc3bbe778f09d"
+    },
+    {
+      "file": "azure_mgmt_iotcentral-10.0.0b2-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/0e/b7/538d040e3b0a53e75d7094025a36f821ae2f1d583cde7685befd82467c9b/azure_mgmt_iotcentral-10.0.0b2-py3-none-any.whl",
+      "sha256": "60a078059c3c8da9dded0d5a23b951b641405a69eaed3e68cf71b758a608c9fe"
+    },
+    {
+      "file": "azure_mgmt_iothub-5.0.0b1-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/9a/c9/97236da2191233761870c60f76e81f4104da8dbb9a5e9db584465de4d58b/azure_mgmt_iothub-5.0.0b1-py3-none-any.whl",
+      "sha256": "1aeab2e9a8f3e61d2dd671f97af20c0e6910d530f1dce60691641aa3d9ccef6f"
+    },
+    {
+      "file": "azure_mgmt_iothubprovisioningservices-1.1.0-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/fa/56/2f8c00be7ea99a1c35aac4e64a286c9c4b6f73991076426b8943d13dbf79/azure_mgmt_iothubprovisioningservices-1.1.0-py3-none-any.whl",
+      "sha256": "4871c7e98b4039fcde22c093484cc36bf1f47cb205674dbbe73c261bb27a1731"
+    },
+    {
+      "file": "azure_mgmt_keyvault-14.0.1-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/9c/c3/29238b1ef3784c31722b900c9c187d7c23dd0d7e724e970f3a7c104ed7aa/azure_mgmt_keyvault-14.0.1-py3-none-any.whl",
+      "sha256": "7710873c5b667e19d86109caf2898dddb902e5ed21013e01d7d85ebb496928d7"
+    },
+    {
+      "file": "azure_mgmt_loganalytics-13.0.0b4-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/dd/49/ae15bb8c54ed90b7c9b06ea304221ec483d77002c9ff23781d26394938ea/azure_mgmt_loganalytics-13.0.0b4-py3-none-any.whl",
+      "sha256": "1048c6ce66395e04d533ee466dd56470bd7f0a0a327310f091dfacb568930d40"
+    },
+    {
+      "file": "azure_mgmt_managementgroups-1.0.0-py2.py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/8c/60/1e87704cc91f158f2c7de3a199000e7485b200953a5c73495591e6f68a80/azure_mgmt_managementgroups-1.0.0-py2.py3-none-any.whl",
+      "sha256": "f569b942cfdabb4adf184aedd689dec98373fb173f5aa81131328159bfb4e629"
+    },
+    {
+      "file": "azure_mgmt_maps-2.0.0-py2.py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/ec/9e/c9b505e4ffcc229a75aab0b4c297380df69664dbaa5a72047a356fcff97b/azure_mgmt_maps-2.0.0-py2.py3-none-any.whl",
+      "sha256": "f2f5152edec14d4386878a4334c949b3cc3cbd85af2c4ba7a28b73e5980f0f58"
+    },
+    {
+      "file": "azure_mgmt_marketplaceordering-1.1.0-py2.py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/e1/4b/463f621aa8b6cc1eaa0342d4316bae941b61f93de866332f120faf5677f7/azure_mgmt_marketplaceordering-1.1.0-py2.py3-none-any.whl",
+      "sha256": "dbce4ea08ead3fce6c663a0b448f7e34e92ce4cdb23393aead0a65f082cb14f0"
+    },
+    {
+      "file": "azure_mgmt_media-9.0.0-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/d5/88/2fbd07b9cb9f565f5c5bb5047a46e6fe788add00609e36124ff6596c9645/azure_mgmt_media-9.0.0-py3-none-any.whl",
+      "sha256": "a0515f7183a5c043c4d1aa8e2575a8a5a1a2c09d3a62212a959bccf8d911bb8a"
+    },
+    {
+      "file": "azure_mgmt_monitor-7.0.0-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/c6/d1/f6ea4731edfa02c14756770d7c3d5202b40c5c72744f15142c0d89b6d957/azure_mgmt_monitor-7.0.0-py3-none-any.whl",
+      "sha256": "ad63b5d187e21d2d34366271ade6abbeea1fcf76e313ff0f83d394d9c124aa1b"
+    },
+    {
+      "file": "azure_mgmt_msi-7.1.0-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/e5/38/6c7fee6d6b543c8c2eddb00f4c9584c07ada660b54760bf0a155de41e5b3/azure_mgmt_msi-7.1.0-py3-none-any.whl",
+      "sha256": "4810d5559e71bd3c4e3e8bce311753fbe993d2bda23805bb81d3ca66786ad4da"
+    },
+    {
+      "file": "azure_mgmt_mysqlflexibleservers-1.1.0b3-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/94/e8/c82d881e5fe167e61cb962b239c810efbf64cba2081eb3650e3693d3344a/azure_mgmt_mysqlflexibleservers-1.1.0b3-py3-none-any.whl",
+      "sha256": "d34dd9717f86114837d1d6fa90cd9935fbcbe805091327fd635145f4dc38b2c4"
+    },
+    {
+      "file": "azure_mgmt_netapp-10.1.0-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/0e/dc/128a4e9e0ae589d07715a5e24320f6bdecf3d804170ba550cb65c84fe097/azure_mgmt_netapp-10.1.0-py3-none-any.whl",
+      "sha256": "0e61d5686fbc2b5a9ec95ed86e924e9e3af7573de78efd2e1623166d2b978c08"
+    },
+    {
+      "file": "azure_mgmt_policyinsights-1.1.0b4-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/cd/ef/388024c77b4db3566024d6fb9ab4ef5e160d428660df0ff60f1cc41d57e4/azure_mgmt_policyinsights-1.1.0b4-py3-none-any.whl",
+      "sha256": "5a7f6c2f6eebe6cd694dcb89c396ab9c3f9dd6a192fe496b2ed2a966408dbca8"
+    },
+    {
+      "file": "azure_mgmt_postgresqlflexibleservers-3.0.0b2-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/f9/69/cca3418867823828a157caf746a93819fa627dcdb60698d1bf52b50728db/azure_mgmt_postgresqlflexibleservers-3.0.0b2-py3-none-any.whl",
+      "sha256": "bc8f472747a6da8eceab679735d79695007e99a7a858314ddf64a60d4e73d44e"
+    },
+    {
+      "file": "azure_mgmt_privatedns-1.0.0-py2.py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/47/c7/4ace177f9f5050b962d17d7c4e338ead4f4bcf36498218b7f01f7366a5a3/azure_mgmt_privatedns-1.0.0-py2.py3-none-any.whl",
+      "sha256": "683a3eedb65b40c56b08b5636d2c1d125db58d536989a858fed8661d1ec011b6"
+    },
+    {
+      "file": "azure_mgmt_rdbms-10.2.0b17-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/8e/e2/b021d3132a3d8a0b2e94f7c74c871992daab1c5cdb7c0d6520d5d7b563a4/azure_mgmt_rdbms-10.2.0b17-py3-none-any.whl",
+      "sha256": "b88924fb85fcdc630c604a9124a7edb2a10b16119e7d6c4b8c231cefd98139fb"
+    },
+    {
+      "file": "azure_mgmt_recoveryservices-4.2.0-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/96/87/15b82b32d92324a8e29a4a2a2a6b88f62b16962453dc51eace5f220d5861/azure_mgmt_recoveryservices-4.2.0-py3-none-any.whl",
+      "sha256": "1ffc3ef501b1ed642d0cf8682c57f3b0bbc9471256f0efd9920d1cc4af04c0cb"
+    },
+    {
+      "file": "azure_mgmt_recoveryservicesbackup-11.1.0-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/e2/97/4a1eaa55a571e083a491687fee646ca52ddf9be84e713b7b75a3e2ad60fb/azure_mgmt_recoveryservicesbackup-11.1.0-py3-none-any.whl",
+      "sha256": "5655f814e766e91c947be1df9cb5976c72d2d4a189da09b63d07946b3bd5f518"
+    },
+    {
+      "file": "azure_mgmt_recoveryservicesbackup_passivestamp-1.0.0b1-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/5d/a5/ae103babc2dcb5ce6242645ab50d1abdabc69846adf11becef521868fd37/azure_mgmt_recoveryservicesbackup_passivestamp-1.0.0b1-py3-none-any.whl",
+      "sha256": "1d7ad4966cbe0664ed9a68aa5a0a3edf24b4612ba013edfdc1d6fcc8f7439786"
+    },
+    {
+      "file": "azure_mgmt_redhatopenshift-3.0.0-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/cb/10/1573376163a87d72de258e93d4646833bef6103512117ed6c46bb3c67bb3/azure_mgmt_redhatopenshift-3.0.0-py3-none-any.whl",
+      "sha256": "6e86f143e3d39c6245475353e6d6ea8a403fea09f212b8c1f007e4ba20ac7c52"
+    },
+    {
+      "file": "azure_mgmt_redis-14.5.0-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/64/ac/8631a3eb30892252b5476c0e8a59c5819c6831e59f1ee769a2f8914baa86/azure_mgmt_redis-14.5.0-py3-none-any.whl",
+      "sha256": "d98fe771a4478920bc520687ae158eb3c0e68faa073e5a27c2b6c65898572028"
+    },
+    {
+      "file": "azure_mgmt_resource-24.0.0-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/14/18/f047cb553dad6fdb65c625c4fe48552e043c4e9a859416a70c5047d07475/azure_mgmt_resource-24.0.0-py3-none-any.whl",
+      "sha256": "27b32cd223e2784269f5a0db3c282042886ee4072d79cedc638438ece7cd0df4"
+    },
+    {
+      "file": "azure_mgmt_resource_deployments-1.0.0b1-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/bb/2e/928cdec25834b6609362563a69631307e6a027666d287b9f54d819982dec/azure_mgmt_resource_deployments-1.0.0b1-py3-none-any.whl",
+      "sha256": "5a5b9a4db79e691cefb3bcf95bd41f3290d71989ebbd40dade4ecd82d0c736df"
+    },
+    {
+      "file": "azure_mgmt_resource_deploymentscripts-1.0.0b1-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/67/d4/9f198f86455a39b7d9ee456930c0d4ea749453d908e39a60b9bd48cdf9fb/azure_mgmt_resource_deploymentscripts-1.0.0b1-py3-none-any.whl",
+      "sha256": "5e639f1b3fe213479ef78a5c2795b89156224c540476408d44dc4a6b1fcd3912"
+    },
+    {
+      "file": "azure_mgmt_resource_deploymentstacks-1.0.0-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/6f/25/eeb021cb8da7947997497358552ca8237722f152d3b5b8ca7f0cc14dedca/azure_mgmt_resource_deploymentstacks-1.0.0-py3-none-any.whl",
+      "sha256": "e36455d3e8afed7a7eb129fc69361d6936a94c68aef3f18574c1a73970e8204e"
+    },
+    {
+      "file": "azure_mgmt_resource_templatespecs-1.0.0b1-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/8d/68/1c6ade05876b12e70b145bc6b55f72397fa983dc766142a42767f886aab5/azure_mgmt_resource_templatespecs-1.0.0b1-py3-none-any.whl",
+      "sha256": "a228bb5427cabf1c0ffc36e6fdebeec41523f2d0b89ea5ba8bc32fc208d20519"
+    },
+    {
+      "file": "azure_mgmt_search-9.2.0-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/6d/c8/5bd4676358118c01e64934dcc374b383e9303e24621399b47e22d7f3d88d/azure_mgmt_search-9.2.0-py3-none-any.whl",
+      "sha256": "29dbbec94c4668c65a5e5138a724532d5f08d3ed1cfcb458f9da46dc8e5400ea"
+    },
+    {
+      "file": "azure_mgmt_security-6.0.0-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/dc/8f/44814e7f38d1beffe38165793661769bb56f02478af96a5f7841c51c9b97/azure_mgmt_security-6.0.0-py3-none-any.whl",
+      "sha256": "c88570003ac8138c59e6e549e2d8bb6a6c7057c496303d8c33392fdfe05f294c"
+    },
+    {
+      "file": "azure_mgmt_servicebus-10.0.0-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/d6/d8/233c5edb622b8f07f3cc81759203dc23da9d01e54a3a1cc321918e6d1563/azure_mgmt_servicebus-10.0.0-py3-none-any.whl",
+      "sha256": "a3e243b8114000cc8a72d69d10d64c5939680b2fcb7108c92b536880fea262f2"
+    },
+    {
+      "file": "azure_mgmt_servicefabric-2.1.0-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/b0/d5/ad63a8baa7aa81fc47a0be5f4c55ddd7f315dac15414c09a7a3e87cafa4d/azure_mgmt_servicefabric-2.1.0-py3-none-any.whl",
+      "sha256": "e3043717d6a4d47b63f7ba7aa1b4e616690a31e308f438c322eb0ad3f99f7f28"
+    },
+    {
+      "file": "azure_mgmt_servicefabricmanagedclusters-2.1.0b3-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/83/9a/6f9918a45cf3507f1fd30536caef2580c641826b15ad7adffffcb7de194d/azure_mgmt_servicefabricmanagedclusters-2.1.0b3-py3-none-any.whl",
+      "sha256": "5ae11141a790c7135639722ed6d5bebf8bb490ede3009dfbce426caf2d1c2b21"
+    },
+    {
+      "file": "azure_mgmt_servicelinker-1.2.0b3-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/3e/9c/9e0300d3133c447e8d952aa2211ef55e91dab432ed1ace70aa95a0e8b1dc/azure_mgmt_servicelinker-1.2.0b3-py3-none-any.whl",
+      "sha256": "ad615551b42e1007d00f1d6dc3005e1341f99a3758cf18d85721e2ba4ca2be89"
+    },
+    {
+      "file": "azure_mgmt_signalr-2.0.0b2-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/73/17/4b272d95c753077676a3af28efbcb1b352280fa7a7e59d36852d30a53ba6/azure_mgmt_signalr-2.0.0b2-py3-none-any.whl",
+      "sha256": "2299c7449b1a5efb9e69a81a8dbb46a5c5ba4c6ff112985f05cd83a1bf2a1da1"
+    },
+    {
+      "file": "azure_mgmt_sql-4.0.0b22-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/ec/78/f543541cd66214f6621bb988f0b2d0d2c03b8b6b3ca2219dc47c2b5e4cd9/azure_mgmt_sql-4.0.0b22-py3-none-any.whl",
+      "sha256": "79261d114512e14d014193b4b533a3b9a190f7cafe924f36b4015b1752dfa75c"
+    },
+    {
+      "file": "azure_mgmt_sqlvirtualmachine-1.0.0b5-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/93/48/f45075e39485d6cc2ef4ffa495cb45615bbee8bdcb5de8a73f9cf1493a60/azure_mgmt_sqlvirtualmachine-1.0.0b5-py3-none-any.whl",
+      "sha256": "b41ae1c1419cd2b86e465cc2525b6dd978faf3fc9d0ff157edf01f6629e71575"
+    },
+    {
+      "file": "azure_mgmt_storage-25.0.0-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/3d/ca/92239e71a92cd3a60c5c6175539defcec5ffa086bd9507817330cf7f4662/azure_mgmt_storage-25.0.0-py3-none-any.whl",
+      "sha256": "7824840e8251aa6b2c27abf29cbd0ab86fc6685aa69e44f61c2f53168e71ff2d"
+    },
+    {
+      "file": "azure_mgmt_synapse-2.1.0b5-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/d3/c9/01eeec86e7e16d79285b534d39cb79aeb26cfda5e0591e7983b4ee511ff1/azure_mgmt_synapse-2.1.0b5-py3-none-any.whl",
+      "sha256": "bc49a3000b8412cb9f1651c43b7a0e12c227c843b02536066ec40700779982f4"
+    },
+    {
+      "file": "azure_mgmt_trafficmanager-1.0.0-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/ef/cb/1b9211756d93d62990aa4169e86e0df6d75915127a30e9ac788a2e0b64fd/azure_mgmt_trafficmanager-1.0.0-py3-none-any.whl",
+      "sha256": "94c9a238de8993dfcc06892c6f984c5680ea7de687a7e8a9262128ce839629a0"
+    },
+    {
+      "file": "azure_mgmt_web-11.0.0-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/fd/5e/0e4922a0c17464a821271ae2df4e49e351364d2062e131b96fd3d70f7a97/azure_mgmt_web-11.0.0-py3-none-any.whl",
+      "sha256": "ccaeeaa757de94a6deb62e7692c0274190fe9e252e67984baf43d7fa3913df7b"
+    },
+    {
+      "file": "azure_monitor_query-1.2.0-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/77/f5/1976e2e9ee3b0d7c6c3da2ff42be3d495cd7b60e5453d9bd3da59d02ea76/azure_monitor_query-1.2.0-py3-none-any.whl",
+      "sha256": "0d06f20316910b6e95f733a1e5007e1e4853792e1f6c8d8bf247c1ac11933176"
+    },
+    {
+      "file": "azure_storage_blob-12.29.0b1-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/e7/1a/f356cbfbcd8c2a1cbe8e8edce4d4b0f9a776fcc91759e34e5b980897bb23/azure_storage_blob-12.29.0b1-py3-none-any.whl",
+      "sha256": "64702c0c67b7ac709feb80aacb61183bb5960ad615d36c43e95fe197c9bf610c"
+    },
+    {
+      "file": "azure_storage_common-1.4.2-py2.py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/05/6c/b2285bf3687768dbf61b6bc085b0c1be2893b6e2757a9d023263764177f3/azure_storage_common-1.4.2-py2.py3-none-any.whl",
+      "sha256": "de4817cce35a23d1c89563edc38b481ebd8da4655bdf32d26fa2b06095179e4a"
+    },
+    {
+      "file": "azure_storage_file_datalake-12.24.0b1-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/63/38/8a5195c436c4507c45de3374bbf7c0bb870230d23f2891548dc09cd47b73/azure_storage_file_datalake-12.24.0b1-py3-none-any.whl",
+      "sha256": "49a0ae4589f56f66395aab75120831711b88b297802b25e1da022547ee39a709"
+    },
+    {
+      "file": "azure_storage_file_share-12.25.0b1-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/7c/5b/99c19d85101e112f8a3e6a08070f51dd24f55c4685fad81ba006ec9a6f3f/azure_storage_file_share-12.25.0b1-py3-none-any.whl",
+      "sha256": "5b9f58c98b58de92053d845042f9f62415b2cb88a9db08edee2723951b8d72d1"
+    },
+    {
+      "file": "azure_storage_queue-12.16.0b1-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/ce/e3/5825bffe2f28c4a0626986ed6873d8af61d73168b4b73005f9a827562ad3/azure_storage_queue-12.16.0b1-py3-none-any.whl",
+      "sha256": "7de9f434a58473e07aa86c594446a67e5d3d33a3521f4536f9eec55a727e1ff5"
+    },
+    {
+      "file": "azure_synapse_accesscontrol-0.5.0-py2.py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/f9/b4/b37bc1d16f7f19ed453f12dbe756868f4b63daf164a8313497c466d00cb8/azure_synapse_accesscontrol-0.5.0-py2.py3-none-any.whl",
+      "sha256": "0bb2b4f9f04e781781901f1790fe6fa36d1455ce8c287185b92af737b1fe89bd"
+    },
+    {
+      "file": "azure_synapse_artifacts-0.22.0-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/1a/fd/0c228037bc8793842631567b31172d38bab63a29d157e0163cb8ced07d04/azure_synapse_artifacts-0.22.0-py3-none-any.whl",
+      "sha256": "8c4ddb3f7ea541138b0d29ac1297e38aa22cf13b1afaec1849d67bfee73c5ff9"
+    },
+    {
+      "file": "azure_synapse_managedprivateendpoints-0.4.0-py2.py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/8b/7a/18ae2441e4c298fff96dbc42a45f47bce3bb002efe45cce16bdac3ac6430/azure_synapse_managedprivateendpoints-0.4.0-py2.py3-none-any.whl",
+      "sha256": "97f999b61af403764259524e02a6096bfd27fb6b4a29b9b46b88c7ff9153092e"
+    },
+    {
+      "file": "azure_synapse_spark-0.7.0-py2.py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/13/65/13257808afbe56df91a82071d77ae6ab1d9eb080cae6d3e2119bff6a09fb/azure_synapse_spark-0.7.0-py2.py3-none-any.whl",
+      "sha256": "972b6957f3024fe467b27e5f14477a32a7e6aa29e1abb4108d9430abc48828bd"
+    },
+    {
+      "file": "bcrypt-5.0.0-cp39-abi3-manylinux_2_34_x86_64.whl",
+      "url": "https://files.pythonhosted.org/packages/d4/8d/5e43d9584b3b3591a6f9b68f755a4da879a59712981ef5ad2a0ac1379f7a/bcrypt-5.0.0-cp39-abi3-manylinux_2_34_x86_64.whl",
+      "sha256": "611f0a17aa4a25a69362dcc299fda5c8a3d4f160e2abb3831041feb77393a14a"
+    },
+    {
+      "file": "certifi-2026.7.22-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/0b/a7/71ac2cff56fec219ed242bb11b8efb69fcc4bec75db06fb7bfe35de520e6/certifi-2026.7.22-py3-none-any.whl",
+      "sha256": "62f22742b58a1a33014a2b6b706588a8d7e2a88ae7bd1a6ebe8c992928483775"
+    },
+    {
+      "file": "cffi-2.1.1-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.whl",
+      "url": "https://files.pythonhosted.org/packages/95/95/86342356ff5953b3fb06f7ef7c5bee212d45e770abc7218d451b9148313c/cffi-2.1.1-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.whl",
+      "sha256": "a931079504ecc49efed7744c476a5c343a92fabf66dec2db95edb1b2fdc770e2"
+    },
+    {
+      "file": "chardet-5.2.0-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/38/6f/f5fbc992a329ee4e0f288c1fe0e2ad9485ed064cac731ed2fe47dcc38cbf/chardet-5.2.0-py3-none-any.whl",
+      "sha256": "e1cf59446890a00105fe7b7912492ea04b6e6f06d4b742b2c788469e34c82970"
+    },
+    {
+      "file": "charset_normalizer-3.5.2-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl",
+      "url": "https://files.pythonhosted.org/packages/4b/85/41d27f234b82e47c167a5f6c0f62501dc0c640585ff4aba79e08a390336a/charset_normalizer-3.5.2-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl",
+      "sha256": "7218e8f32b0956cfcd048fd42d9d5779809745ca1d86113ca56f66e7ae1549c4"
+    },
+    {
+      "file": "colorama-0.4.6-py2.py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/d1/d6/3965ed04c63042e047cb6a3e6ed1a63a35087b6a609aa3a15ed8ac56c221/colorama-0.4.6-py2.py3-none-any.whl",
+      "sha256": "4f1d9991f5acc0ca119f9d443620b77f9d6b33703e51011c16baf57afb285fc6"
+    },
+    {
+      "file": "cryptography-50.0.2-cp311-abi3-manylinux_2_34_x86_64.whl",
+      "url": "https://files.pythonhosted.org/packages/d3/69/2c833a049475e0a3444e94c7d0aca0aa51d166374a449b09e92ac98138de/cryptography-50.0.2-cp311-abi3-manylinux_2_34_x86_64.whl",
+      "sha256": "9dab55f57c74c3cad24c323bacbbd04be4705ba6eb0d92e920b1fc4837ed5079"
+    },
+    {
+      "file": "decorator-5.3.1-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/05/7f/798705f5296a58ca505d600456748d1be48078eac8a7050d8a98bc9edb89/decorator-5.3.1-py3-none-any.whl",
+      "sha256": "f47fe6fdbd2edd623ecfe36875d37aba411624e2670dd395dddae1358689bb3c"
+    },
+    {
+      "file": "deprecated-3.0.0-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/83/ae/676feae8e4644a6d7169951a97f61c56f416c73f67bf1761f2461d75cc81/deprecated-3.0.0-py3-none-any.whl",
+      "sha256": "58204cf4a7f6270d547af5c278ee7a6bb56045a4b3d8441a1cd11660f41b7939"
+    },
+    {
+      "file": "distro-1.9.0-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/12/b3/231ffd4ab1fc9d679809f356cebee130ac7daa00d6d6f3206dd4fd137e9e/distro-1.9.0-py3-none-any.whl",
+      "sha256": "7bffd925d65168f85027d8da9af6bddab658135b840670a223589bc0c8ef02b2"
+    },
+    {
+      "file": "fabric-3.2.3-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/37/f9/f8497ef8b873a8bb2a750ee2a6c5f0fc22258e1acb6245fd237042a6c279/fabric-3.2.3-py3-none-any.whl",
+      "sha256": "ce61917f4f398018337ce279b357650a3a74baecf3fdd53a5839013944af965e"
+    },
+    {
+      "file": "humanfriendly-10.0-py2.py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/f0/0f/310fb31e39e2d734ccaa2c0fb981ee41f7bd5056ce9bc29b2248bd569169/humanfriendly-10.0-py2.py3-none-any.whl",
+      "sha256": "1697e1a8a8f550fd43c2865cd84542fc175a61dcb779b6fee18cf6b6ccba1477"
+    },
+    {
+      "file": "idna-3.20-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/58/a2/bb081bab032533a855d44de1d56f8e8426114ff1ba5d1f07a438a0a654f8/idna-3.20-py3-none-any.whl",
+      "sha256": "ab7ae7122974553370f0bdb919e1a960b2cd1bc1ef0276416d896db81c14582c"
+    },
+    {
+      "file": "invoke-2.2.1-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/32/4b/b99e37f88336009971405cbb7630610322ed6fbfa31e1d7ab3fbf3049a2d/invoke-2.2.1-py3-none-any.whl",
+      "sha256": "2413bc441b376e5cd3f55bb5d364f973ad8bdd7bf87e53c79de3c11bf3feecc8"
+    },
+    {
+      "file": "isodate-0.7.2-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/15/aa/0aca39a37d3c7eb941ba736ede56d689e7be91cab5d9ca846bde3999eba6/isodate-0.7.2-py3-none-any.whl",
+      "sha256": "28009937d8031054830160fce6d409ed342816b543597cece116d966c6d99e15"
+    },
+    {
+      "file": "javaproperties-0.5.2-py2.py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/3e/ab/273a862537551fc7845871c59abc2eecb74ae53633c1f019d16eb5c2e121/javaproperties-0.5.2-py2.py3-none-any.whl",
+      "sha256": "cac8a5d161ad466bbaf4323aea632904b2a259eee2068c78a8187bcd2388d5f9"
+    },
+    {
+      "file": "jmespath-1.1.0-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/14/2f/967ba146e6d58cf6a652da73885f52fc68001525b4197effc174321d70b4/jmespath-1.1.0-py3-none-any.whl",
+      "sha256": "a5663118de4908c91729bea0acadca56526eb2698e83de10cd116ae0f4e97c64"
+    },
+    {
+      "file": "jsondiff-2.0.0-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/db/15/0d33d6e8114901a7b2a56d4190e3dc1803a195495ee4f9696c630e046c9e/jsondiff-2.0.0-py3-none-any.whl",
+      "sha256": "689841d66273fc88fc79f7d33f4c074774f4f214b6466e3aff0e5adaf889d1e0"
+    },
+    {
+      "file": "knack-0.14.0-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/37/9c/d3ce35e8fa60617ae0b6845f274b695ecd053d2ebedc2021aae636891935/knack-0.14.0-py3-none-any.whl",
+      "sha256": "0a54976bbc595a8fd90c412b661200bd4fc53b929e92dd610deaea494226526f"
+    },
+    {
+      "file": "microsoft_security_utilities_secret_masker-1.0.0b4-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/6b/4b/69befea52f4623da5356e46cb3fc020525d35ceb766a428abb4919628cdc/microsoft_security_utilities_secret_masker-1.0.0b4-py3-none-any.whl",
+      "sha256": "0429fcaad10fc8ae3f940ab84fd2926e4f50ede134162144123b35937be831a8"
+    },
+    {
+      "file": "msal-1.39.0-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/a4/32/178457385925ce301c7b3232bd85665d4df57da39568b62dcfc74031873f/msal-1.39.0-py3-none-any.whl",
+      "sha256": "2d2577886906cd7293850dffa2da29119966c213bfc6ec0cecf8bf7621e1ca77"
+    },
+    {
+      "file": "msal_extensions-1.3.1-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/5e/75/bd9b7bb966668920f06b200e84454c8f3566b102183bc55c5473d96cb2b9/msal_extensions-1.3.1-py3-none-any.whl",
+      "sha256": "96d3de4d034504e969ac5e85bae8106c8373b5c6568e4c8fa7af2eca9dbe6bca"
+    },
+    {
+      "file": "msrest-0.7.1-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/15/cf/f2966a2638144491f8696c27320d5219f48a072715075d168b31d3237720/msrest-0.7.1-py3-none-any.whl",
+      "sha256": "21120a810e1233e5e6cc7fe40b474eeb4ec6f757a15d7cf86702c369f9567c32"
+    },
+    {
+      "file": "oauthlib-4.0.0-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/d9/f4/78229a1066068ca14fc60fb26cf7381cabe4382261392b90e5f9552722d4/oauthlib-4.0.0-py3-none-any.whl",
+      "sha256": "624c28c13a0a59cabf9747dfa52af63be3e512a7f2714df16e91b5b3a145e6cd"
+    },
+    {
+      "file": "packaging-26.3-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/63/34/ba1c580383c9eada3711951fef0795c80b829a078d72188184bcab9dd527/packaging-26.3-py3-none-any.whl",
+      "sha256": "d7193f7c8e4e93f444fde0262bf90af30e16fa0ad0ad44cb553c87339b23cd1c"
+    },
+    {
+      "file": "paramiko-5.0.0-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/82/5b/eadf6d45de38d30ab603f49393b6cd2cbe7e233af8cf90197e32782b68a9/paramiko-5.0.0-py3-none-any.whl",
+      "sha256": "b7044611c30140d9a75261653210e2002977b71a0497ff3ba0d98d7edbf62f7c"
+    },
+    {
+      "file": "pkginfo-1.13-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/ed/ad/2e9e8a7bb014758af9453b3d818848d50852592296aceb8817f2a937fa71/pkginfo-1.13-py3-none-any.whl",
+      "sha256": "37e1bfb7b5b149829e6f140a225b517c4c8808d8d164f68137b9492023874061"
+    },
+    {
+      "file": "portalocker-2.10.1-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/9b/fb/a70a4214956182e0d7a9099ab17d50bfcba1056188e9b14f35b9e2b62a0d/portalocker-2.10.1-py3-none-any.whl",
+      "sha256": "53a5984ebc86a025552264b459b46a2086e269b21823cb572f8f28ee759e45bf"
+    },
+    {
+      "file": "psutil-7.2.2-cp36-abi3-manylinux2010_x86_64.manylinux_2_12_x86_64.manylinux_2_28_x86_64.whl",
+      "url": "https://files.pythonhosted.org/packages/b5/70/5d8df3b09e25bce090399cf48e452d25c935ab72dad19406c77f4e828045/psutil-7.2.2-cp36-abi3-manylinux2010_x86_64.manylinux_2_12_x86_64.manylinux_2_28_x86_64.whl",
+      "sha256": "076a2d2f923fd4821644f5ba89f059523da90dc9014e85f8e45a5774ca5bc6f9"
+    },
+    {
+      "file": "py_deviceid-0.1.1-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/4b/a5/a598864cd753af149a4714482da1396d3f772b089d1a26579a3e4545b7a3/py_deviceid-0.1.1-py3-none-any.whl",
+      "sha256": "c0e32815e87a08087a0811c18f4402ee88b28a321f997753d75ecdaab570321b"
+    },
+    {
+      "file": "pycomposefile-0.0.34-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/82/09/9918fd59abae02b2610e65dc94d3cc301c8dd25c0f3fb2f4a9fd7f66f609/pycomposefile-0.0.34-py3-none-any.whl",
+      "sha256": "751a7e62fe464a612cc1a05431f13c1ac305a8fefb99f90d6eecdaca8790a420"
+    },
+    {
+      "file": "pycparser-3.1-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/99/ce/b3ae9ee0324d991c860187be2a6ee436d27a3d02397eaddbb101ec901f3d/pycparser-3.1-py3-none-any.whl",
+      "sha256": "f09d358c840bd147b79e55f2bc494f18ea869dc897f5852a8f5766b74f787882"
+    },
+    {
+      "file": "pygments-2.21.0-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/71/46/17f022dd3e953bf20a04a028a21ec746d942f8d2af30fa0f124fa0e6a684/pygments-2.21.0-py3-none-any.whl",
+      "sha256": "2363c69b61c4a97c838da3b130dcd6468f4848992b21a82f2a63ec34377137d9"
+    },
+    {
+      "file": "pyjwt-2.15.1-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/50/ca/44de4e75f8aadc457f0634be3b542815078ded46dca30efb960edeecad6e/pyjwt-2.15.1-py3-none-any.whl",
+      "sha256": "42d59d631f7768a1028a64c7ff581a9bf7519804daf91fc5b6c56e30eec5e193"
+    },
+    {
+      "file": "pynacl-1.6.2-cp38-abi3-manylinux_2_34_x86_64.whl",
+      "url": "https://files.pythonhosted.org/packages/c9/a8/b917096b1accc9acd878819a49d3d84875731a41eb665f6ebc826b1af99e/pynacl-1.6.2-cp38-abi3-manylinux_2_34_x86_64.whl",
+      "sha256": "c8a231e36ec2cab018c4ad4358c386e36eede0319a0c41fed24f840b1dac59f6"
+    },
+    {
+      "file": "pyopenssl-26.4.0-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/51/ad/2cf6d3fa2fae5c79e1ed9960c0d42badd0f94d81dd12b50604cdc839e648/pyopenssl-26.4.0-py3-none-any.whl",
+      "sha256": "f0eb0cb2d581d3ad2b9c489468485e7f2ab6727d08401bcf9d824c3caddf3c1c"
+    },
+    {
+      "file": "python_dateutil-2.9.0.post0-py2.py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/ec/57/56b9bcc3c9c6a792fcbaf139543cee77261f3651ca9da0c93f5c1221264b/python_dateutil-2.9.0.post0-py2.py3-none-any.whl",
+      "sha256": "a8b2bc7bffae282281c8140a97d3aa9c14da0b136dfe83f850eea9a5f7470427"
+    },
+    {
+      "file": "pyyaml-6.0.3-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl",
+      "url": "https://files.pythonhosted.org/packages/74/27/e5b8f34d02d9995b80abcef563ea1f8b56d20134d8f4e5e81733b1feceb2/pyyaml-6.0.3-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl",
+      "sha256": "0f29edc409a6392443abf94b9cf89ce99889a1dd5376d94316ae5145dfedd5d6"
+    },
+    {
+      "file": "requests-2.34.2-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/a0/f4/c67b0b3f1b9245e8d266f0f112c500d50e5b4e83cb6f3b71b6528104182a/requests-2.34.2-py3-none-any.whl",
+      "sha256": "2a0d60c172f83ac6ab31e4554906c0f3b3588d37b5cb939b1c061f4907e278e0"
+    },
+    {
+      "file": "requests_oauthlib-2.0.0-py2.py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/3b/5d/63d4ae3b9daea098d5d6f5da83984853c1bbacd5dc826764b249fe119d24/requests_oauthlib-2.0.0-py2.py3-none-any.whl",
+      "sha256": "7dd8a5c40426b779b0868c404bdef9768deccf22749cde15852df527e6269b36"
+    },
+    {
+      "file": "scp-0.13.6-py2.py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/71/cf/7f011df117ba66f20e8fe3acebac83170c5e43edfc7073cb9959b46e921a/scp-0.13.6-py2.py3-none-any.whl",
+      "sha256": "5e23f22b00bdbeed83a982c6b2dfae98c125b80019c15fbb16dd64dfd864a452"
+    },
+    {
+      "file": "semver-3.1.0-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/be/02/bce7a1d70e9d0f6ea8623c16386138c251b5855af6cd3a11433d3fba4e66/semver-3.1.0-py3-none-any.whl",
+      "sha256": "6e4998f8b4762acdfea85f9bfd5b4032e0bb50038dc04bf82011b42d5d1145c5"
+    },
+    {
+      "file": "six-1.17.0-py2.py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/b7/ce/149a00dd41f10bc29e5921b496af8b574d8413afcd5e30dfa0ed46c2cc5e/six-1.17.0-py2.py3-none-any.whl",
+      "sha256": "4721f391ed90541fddacab5acf947aa0d3dc7d27b2e1e8eda2be8970586c3274"
+    },
+    {
+      "file": "sshtunnel-0.1.5-py2.py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/38/7d/6f19be1ee49cee9593c5ac3aa1fb38fe30eaf1520114e08dee2ab2a45855/sshtunnel-0.1.5-py2.py3-none-any.whl",
+      "sha256": "5eee2e414c3fd9e9ef5d058bebece272a6aae928849ef7f2d9561b7fffab7aea"
+    },
+    {
+      "file": "tabulate-0.10.0-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/99/55/db07de81b5c630da5cbf5c7df646580ca26dfaefa593667fc6f2fe016d2e/tabulate-0.10.0-py3-none-any.whl",
+      "sha256": "f0b0622e567335c8fabaaa659f1b33bcb6ddfe2e496071b743aa113f8774f2d3"
+    },
+    {
+      "file": "typing_extensions-4.16.0-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/49/d3/b8441a820a491ddfc024b0b0cf0393375b75ea13866d9c66727e54c2fc80/typing_extensions-4.16.0-py3-none-any.whl",
+      "sha256": "481caa481374e813c1b176ada14e97f1f67a4539ce9cfeb3f350d78d6370c2e8"
+    },
+    {
+      "file": "urllib3-2.8.0-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/92/9d/c4e665119135114480843e7ab388fa94d8480650450e6f8e26b70d323a4c/urllib3-2.8.0-py3-none-any.whl",
+      "sha256": "0cf3cae568d36aa9576b28dfb35f11328f1cb974ca7647d9475ebb86c75ac6e3"
+    },
+    {
+      "file": "websocket_client-1.8.0-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/5a/84/44687a29792a70e111c5c477230a72c4b957d88d16141199bf9acb7537a3/websocket_client-1.8.0-py3-none-any.whl",
+      "sha256": "17b44cc997f5c498e809b22cdf2d9c7a9e71c02c8cc2b6c56e7c2d1239bfa526"
+    },
+    {
+      "file": "wrapt-2.5.0-cp313-cp313-manylinux1_x86_64.manylinux_2_28_x86_64.manylinux_2_5_x86_64.whl",
+      "url": "https://files.pythonhosted.org/packages/1e/02/c7174e78b0c38bb279b2d3c25a6bd7fb9d3b0200c3e5a8fad084e7cc3e85/wrapt-2.5.0-cp313-cp313-manylinux1_x86_64.manylinux_2_28_x86_64.manylinux_2_5_x86_64.whl",
+      "sha256": "b95a6eca3b927853529eea958310563c83140ae8451dd5dc4399c7da385dc4f3"
+    },
+    {
+      "file": "xmltodict-0.15.1-py2.py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/5d/4e/001c53a22f6bd5f383f49915a53e40f0cab2d3f1884d968f3ae14be367b7/xmltodict-0.15.1-py2.py3-none-any.whl",
+      "sha256": "dcd84b52f30a15be5ac4c9099a0cb234df8758624b035411e329c5c1e7a49089"
+    }
+  ]
+}

@@ -5,7 +5,7 @@ set -euo pipefail
 
 CI_ANALYSIS_DIR="$(dockpipe scope artifacts ci-analysis)"
 if [[ -d "$CI_ANALYSIS_DIR" ]]; then
-	echo "=== DockPipe CI analysis ($CI_ANALYSIS_DIR/) ==="
+	echo "=== Dockpipe CI analysis ($CI_ANALYSIS_DIR/) ==="
 	find "$CI_ANALYSIS_DIR" -type f | sort | head -50
 	echo ""
 	echo "Populated by: govulncheck + gosec + dorkpipe ci normalize-scans (wrapper: packages/dorkpipe/resolvers/dorkpipe/assets/scripts/normalize-ci-scans.sh; see ci-local.sh / CI)."

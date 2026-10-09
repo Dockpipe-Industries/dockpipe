@@ -2,7 +2,7 @@
 
 ## Start here: where is the mapping?
 
-There is **no** separate “mapping table” in DockPipe. **You define names and 1Password references in one place:**
+There is **no** separate “mapping table” in Dockpipe. **You define names and 1Password references in one place:**
 
 | What you want | Where to look / what to edit |
 |---------------|------------------------------|
@@ -11,7 +11,7 @@ There is **no** separate “mapping table” in DockPipe. **You define names and
 | **Which script reads the template and where it writes** | This workflow’s **`vars:`** → `OP_ENV_FILE` (input) and `SECRET_ENV_OUT` (must match step 1 **`outputs:`**). Script: **`scripts/onepassword/secretstore-op-inject-outputs.sh`** from the onepassword package. |
 | **What step 2 consumes** | **`scripts/dockpipe/r2-publish.sh`** and **`packages/cloud/storage/resolvers/r2/dockpipe.cloudflare.r2publish/README.md`** — same variable names as in your `.env.op.template` after `op inject`. |
 
-**Flow:** `op inject` turns `op://…` into values but **keeps your left-hand names** (`VAR_NAME=`). DockPipe then loads that file as **`KEY=VAL`** into the process environment for step 2 — **no rename step**.
+**Flow:** `op inject` turns `op://…` into values but **keeps your left-hand names** (`VAR_NAME=`). Dockpipe then loads that file as **`KEY=VAL`** into the process environment for step 2 — **no rename step**.
 
 ---
 
@@ -19,7 +19,7 @@ Internal workflow: **`op inject`** (1Password) → **outputs merge** → **`r2-p
 
 ## Why two steps
 
-DockPipe merges the first step’s **`outputs:`** file into the environment **after** that step’s host script runs. The inject script writes **`SECRET_ENV_OUT`** (must match **`outputs:`**); the second step sees **`CLOUDFLARE_*`**, **`R2_*`**, etc. without nesting a second `dockpipe` process.
+Dockpipe merges the first step’s **`outputs:`** file into the environment **after** that step’s host script runs. The inject script writes **`SECRET_ENV_OUT`** (must match **`outputs:`**); the second step sees **`CLOUDFLARE_*`**, **`R2_*`**, etc. without nesting a second `dockpipe` process.
 
 ## Quick test
 

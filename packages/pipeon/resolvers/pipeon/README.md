@@ -45,13 +45,13 @@ See **`assets/docs/pipeon-ide-experience.md`**, **`assets/docs/pipeon-shortcuts.
 ## Pipeon ↔ DorkPipe boundary
 
 The internal client/orchestrator contract lives in **`assets/docs/pipeon-dorkpipe-contract.md`**. Pipeon is
-the chat client and UX shell; DorkPipe remains server-authoritative for routing and validation; DockPipe is
+the chat client and UX shell; DorkPipe remains server-authoritative for routing and validation; Dockpipe is
 the isolated mutation boundary.
 
 ## VS Code extension and fork
 
 The checked-in extension (browser tab, context command) lives under **`vscode-extension/`** next to this resolver — see **`vscode-extension/README.md`** for packaging and **code-server** image build.
 
-## DockPipe Launcher
+## Dockpipe Launcher
 
-The native tray app is **`src/app/tooling/dockpipe-launcher/`** (separate binary; not this resolver). Pipeon uses it for first-run setup and app-style launching, but it is DockPipe tooling rather than a Pipeon-owned app.
+The native tray app is **`src/app/tooling/dockpipe-launcher/`** (separate binary; not this resolver). Pipeon uses it for first-run setup and app-style launching, but it is Dockpipe tooling rather than a Pipeon-owned app.

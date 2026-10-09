@@ -16,7 +16,7 @@ name: agent
 version: 0.1.0
 title: Agent package
 description: Umbrella for agent resolvers
-author: DockPipe
+author: Dockpipe
 license: Apache-2.0
 kind: package
 includes_resolvers: [codex, claude]

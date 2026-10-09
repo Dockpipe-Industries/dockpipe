@@ -16,7 +16,7 @@ Invariants: preserve v1 and ordinary pure-language contracts, existing dirty
 general-block work, caller-owned stream lifetime, explicit host authority,
 left-to-right effects and lazy branches. Keep the codec private and unchanged.
 Exclusions: full-language promotion, async scheduling/nonblocking I/O, arbitrary
-FFI/pointers or file-opening syntax, publishing, and DockPipe commits.
+FFI/pointers or file-opening syntax, publishing, and Dockpipe commits.
 Checkpoint policy: automatic within scope. Handoff: user requested only.
 
 The prior synchronous v1 SDK proof remains complete. This continuation does not
@@ -49,7 +49,7 @@ should also call the SDK in apps. Both consume the same private binary boundary.
 The existing internal executable-artifact pilot was reverified; its opt-in behavior
 is preserved. Production-wide internal cache/package/transport adoption is planned
 separately in Nucleon task 009. It is not implied by this bounded profile completion.
-Async I/O and full-language acceptance remain open. DockPipe changes stay uncommitted;
+Async I/O and full-language acceptance remain open. Dockpipe changes stay uncommitted;
 no remote publication is part of this continuation.
 
 Nucleon integration commit: `85041db4c2c8ce17c502cf53a8fef307b5e59060`. Private checkout clean, two local commits ahead; no push.

@@ -8,7 +8,7 @@ Use for the GitHub **About** field, short blurbs, and anything that should match
 
 **One-line product:**
 
-> DockPipe runs anything, anywhere, in isolation.
+> Dockpipe runs anything, anywhere, in isolation.
 
 **Longer pitch** (README body):
 

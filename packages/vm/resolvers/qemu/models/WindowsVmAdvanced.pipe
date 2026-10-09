@@ -3,12 +3,12 @@
 /// </summary>
 public Interface IWindowsVmAdvanced
 {
-    /// <summary>Enable the DockPipe guest agent service path for structured readiness, observability, and graceful shutdown on provisioned Windows guests.</summary>
-    [DisplayName = "DockPipe Guest Agent"]
+    /// <summary>Enable the Dockpipe guest agent service path for structured readiness, observability, and graceful shutdown on provisioned Windows guests.</summary>
+    [DisplayName = "Dockpipe Guest Agent"]
     [EnvName = "DOCKPIPE_VM_AGENT"]
     public string Agent;
 
-    /// <summary>Host and guest port used for the DockPipe guest agent HTTP control plane.</summary>
+    /// <summary>Host and guest port used for the Dockpipe guest agent HTTP control plane.</summary>
     [DisplayName = "Guest Agent Port"]
     [EnvName = "DOCKPIPE_VM_AGENT_PORT"]
     public string AgentPort;

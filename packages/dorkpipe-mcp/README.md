@@ -1,6 +1,6 @@
 # `dorkpipe.mcp` (`packages/dorkpipe-mcp`)
 
-DorkPipe-owned **MCP bridge** for DockPipe / DorkPipe — Go module **`dorkpipe.mcp`**, library **`mcpbridge/`**, binary **`cmd/mcpd`**.
+DorkPipe-owned **MCP bridge** for Dockpipe / DorkPipe — Go module **`dorkpipe.mcp`**, library **`mcpbridge/`**, binary **`cmd/mcpd`**.
 
 - **`go.work`** at the repo root includes this module next to **`dockpipe`** and **`dorkpipe.orchestrator`**.
 - **`replace dockpipe => ../..`** in **`go.mod`** pins the engine for **`dockpipe/.../infrastructure`** imports.
@@ -33,11 +33,11 @@ flowchart LR
 
 | Layer | Role |
 |--------|------|
-| **DockPipe** | Execution truth: workflows, containers, `.dockpipe/`. |
+| **Dockpipe** | Execution truth: workflows, containers, `.dockpipe/`. |
 | **DorkPipe** | DAG / policy; still shells **`dockpipe`** for tool steps. |
 | **MCP** | Discovery + typed calls → same CLIs a human would run. |
 
-**Three different things:** (1) DockPipe state and DorkPipe package-scope facts = generated context — read-only for agents unless the user refreshes. (2) **MCP** = named tools + **tiered IAM**. (3) **DockPipe/DorkPipe** = real execution — outside MCP unless tier **`exec`**.
+**Three different things:** (1) Dockpipe state and DorkPipe package-scope facts = generated context — read-only for agents unless the user refreshes. (2) **MCP** = named tools + **tiered IAM**. (3) **Dockpipe/DorkPipe** = real execution — outside MCP unless tier **`exec`**.
 
 ## Tools and tiers
 

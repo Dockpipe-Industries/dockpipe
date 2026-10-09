@@ -7,7 +7,7 @@ implementation or cross-platform parity claims.
 
 ## Decision
 
-DockPipe should use the name `host-sandbox` and preserve its existing runtime-profile syntax:
+Dockpipe should use the name `host-sandbox` and preserve its existing runtime-profile syntax:
 
 ```yaml
 runtime: host-sandbox
@@ -106,10 +106,10 @@ runtime backends, never resolver details. The compiled runtime manifest records 
 policy, sources, canonical resources, mechanisms, implicit grants, assurance, canary evidence,
 decision, and fingerprints. Existing operation-result/event infrastructure remains authoritative.
 
-## Long-Horizon: DockPipe-Owned Native Sandbox Substrate
+## Long-Horizon: Dockpipe-Owned Native Sandbox Substrate
 
-The public runtime remains `host-sandbox`. In the longer term, DockPipe may replace external
-constructors and platform glue with a signed, DockPipe-owned launcher and supervisor for each
+The public runtime remains `host-sandbox`. In the longer term, Dockpipe may replace external
+constructors and platform glue with a signed, Dockpipe-owned launcher and supervisor for each
 supported operating system. This is an implementation evolution behind the common driver contract,
 not a new workflow runtime type and not a claim that one portable enforcement mechanism exists.
 
@@ -124,7 +124,7 @@ approval model, and one conformance suite. Enforcement remains native and operat
   protocol with a separately installed/elevated WFP broker; the unprivileged launcher never acquires
   that authority itself. Bound File System remains a separate experimental backend until Microsoft
   stabilizes it.
-- **macOS:** an owned binary does not create a supported sandbox API. DockPipe should keep a detector
+- **macOS:** an owned binary does not create a supported sandbox API. Dockpipe should keep a detector
   and fail required guarantees until Apple exposes a supported mechanism, or treat a privileged
   Endpoint Security/Network Extension product as a different deployment class.
 
@@ -149,7 +149,7 @@ A resident service must not become a broad privileged command broker.
 
 Owning the launch path could provide:
 
-- one signed DockPipe distribution instead of separately installed/versioned sandbox executables;
+- one signed Dockpipe distribution instead of separately installed/versioned sandbox executables;
 - tighter provenance, update, compatibility, and vulnerability-response control;
 - fewer process hops and less argument/path translation during setup;
 - FD/handle-based path binding that reduces validation/use races;
@@ -157,7 +157,7 @@ Owning the launch path could provide:
 - lower cold-start and high-frequency command overhead where measurements prove it.
 
 These are hypotheses, not guarantees. Most agent time may be dominated by tool startup, builds, or
-model latency, and a custom launcher expands DockPipe's security-critical code and maintenance load.
+model latency, and a custom launcher expands Dockpipe's security-critical code and maintenance load.
 The project must measure before replacing a mature constructor.
 
 ### Promotion gates
@@ -207,7 +207,7 @@ The design-audit addendum is authoritative over conflicting supporting examples.
   and the experimental Windows Bound File System API as distinct drivers.
 - **Defer:** production Windows claims, endpoint allowlisting, an in-sandbox cloud CLI, GPU/device and
   local-service brokers, shared writable caches, and a privileged Windows WFP service.
-- **Long horizon:** evaluate signed DockPipe-owned native launchers after the Linux preview establishes
+- **Long horizon:** evaluate signed Dockpipe-owned native launchers after the Linux preview establishes
   security and performance baselines; retain the same `host-sandbox` policy and driver contract.
 - **Do not build as a production runtime:** a macOS driver based on custom Seatbelt profiles or
   `sandbox-exec`.

@@ -1,0 +1,16 @@
+{
+  "schema": 1,
+  "artifacts": [
+    {
+      "kind": "resolver",
+      "name": "claude"
+    },
+    {
+      "kind": "workflow",
+      "name": "claude"
+    }
+  ],
+  "tools": [],
+  "host_commands": [],
+  "required_files": []
+}

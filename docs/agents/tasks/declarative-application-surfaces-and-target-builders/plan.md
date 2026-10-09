@@ -48,7 +48,7 @@ When prioritized:
 - The local native launcher remains usable without a browser, PWA, remote account, or network
   dependency.
 - Generated UI code never embeds raw Docker, process, Git, filesystem, VM, package, or workflow
-  execution; selected DockPipe capabilities retain those authorities.
+  execution; selected Dockpipe capabilities retain those authorities.
 - At least two adapters, or another convincing generic fixture, prove target independence.
 - `static-html` and the selected Qt implementation preserve the same typed bindings, actions,
   validation, accessibility, responsive intent, and governed effects from one IR fixture.

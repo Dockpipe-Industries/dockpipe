@@ -5,18 +5,18 @@ Status: advanced design/history notes. For reader-facing docs, start with
 
 This document describes two linked enhancements:
 
-1. A compiled Docker/container security policy model declared in workflow YAML and enforced by DockPipe.
+1. A compiled Docker/container security policy model declared in workflow YAML and enforced by Dockpipe.
 2. A compiled Docker image artifact model so `run` can reuse valid images instead of rebuilding on every execution.
 
-The goal is to keep DockPipe as the central enforcement and artifact-resolution layer. Higher-level tools such as DorkPipe and Pipeon should inherit the same behavior by consuming DockPipe manifests and run records rather than reimplementing their own container policy logic.
+The goal is to keep Dockpipe as the central enforcement and artifact-resolution layer. Higher-level tools such as DorkPipe and Pipeon should inherit the same behavior by consuming Dockpipe manifests and run records rather than reimplementing their own container policy logic.
 
 ## Why these features belong together
 
 Both concerns live at the same boundary:
 
-- DockPipe already owns compile/materialization.
-- DockPipe already owns `docker build` / `docker run`.
-- DockPipe already has a project-local package/artifact model under `bin/.dockpipe/internal/` and a separate global install root via `GlobalDockpipeDataDir()`.
+- Dockpipe already owns compile/materialization.
+- Dockpipe already owns `docker build` / `docker run`.
+- Dockpipe already has a project-local package/artifact model under `bin/.dockpipe/internal/` and a separate global install root via `GlobalDockpipeDataDir()`.
 
 So the right shape is:
 
@@ -34,7 +34,7 @@ That keeps the system inspectable, cacheable, and explainable.
 - Run consumes the compiled manifest and does not reinterpret policy ad hoc.
 - Image validity is based on fingerprints and digests, not tags alone.
 - Rebuild only when inputs actually changed.
-- If a rule is advisory or partially enforced, DockPipe must say so clearly.
+- If a rule is advisory or partially enforced, Dockpipe must say so clearly.
 
 ## High-level architecture
 
@@ -52,7 +52,7 @@ The public surface stays product-shaped:
 - `process.user: auto | non-root | root`
 - `image.source: auto | build | registry`
 
-DockPipe maps those settings to Docker-specific flags internally.
+Dockpipe maps those settings to Docker-specific flags internally.
 
 ### Compile layer
 
@@ -123,7 +123,7 @@ security:
       - "*.facebook.com"
 ```
 
-DockPipe compiles this into the effective runtime manifest. Public YAML selects the policy profile and desired restrictions; the compiled manifest records the actual enforcement mode (`native`, `proxy`, or `advisory`).
+Dockpipe compiles this into the effective runtime manifest. Public YAML selects the policy profile and desired restrictions; the compiled manifest records the actual enforcement mode (`native`, `proxy`, or `advisory`).
 
 ## Security policy model
 
@@ -162,23 +162,23 @@ Every compiled rule should have a stable rule id so run records can later answer
 
 ### Selective proxy path
 
-DockPipe should not force every container onto a sidecar/proxy path.
+Dockpipe should not force every container onto a sidecar/proxy path.
 
 - `offline` uses native Docker `--network none`
 - `internet` uses normal Docker networking
 - `allowlist` / `restricted` may compile as `advisory` or `proxy`
 
-When a workflow compiles under a profile such as `sidecar-client`, DockPipe may derive `proxy` enforcement for `allowlist` / `restricted` modes and expect a proxy-backed egress layer at run time. This keeps the stronger path selective and lets higher-level tools such as DorkPipe reuse their existing sidecar/proxy patterns without making them part of every workflow.
+When a workflow compiles under a profile such as `sidecar-client`, Dockpipe may derive `proxy` enforcement for `allowlist` / `restricted` modes and expect a proxy-backed egress layer at run time. This keeps the stronger path selective and lets higher-level tools such as DorkPipe reuse their existing sidecar/proxy patterns without making them part of every workflow.
 
-Compose-managed stacks can feed this path cleanly through DockPipe-owned workflow env. For example, a prior `compose_up` step may export `DOCKPIPE_POLICY_PROXY_URL` via `compose.exports`, and the later container step will consume that run-local setting when applying the compiled runtime policy.
+Compose-managed stacks can feed this path cleanly through Dockpipe-owned workflow env. For example, a prior `compose_up` step may export `DOCKPIPE_POLICY_PROXY_URL` via `compose.exports`, and the later container step will consume that run-local setting when applying the compiled runtime policy.
 
-In the richer proxy-backed path, DockPipe turns that base proxy URL into a per-step effective proxy URL that carries the compiled network policy token. That keeps the public YAML high-level while still letting a DockPipe-aware proxy enforce the actual per-step `allow` / `block` rules instead of a static sidecar-wide allowlist.
+In the richer proxy-backed path, Dockpipe turns that base proxy URL into a per-step effective proxy URL that carries the compiled network policy token. That keeps the public YAML high-level while still letting a Dockpipe-aware proxy enforce the actual per-step `allow` / `block` rules instead of a static sidecar-wide allowlist.
 
 First package consumer in this repository:
 
 - `packages/dorkpipe/resolvers/dorkpipe-self-analysis-stack-proxy/`
 - compose-managed support services remain package-owned
-- DockPipe still owns lifecycle, env export, manifest compilation, and proxy env injection
+- Dockpipe still owns lifecycle, env export, manifest compilation, and proxy env injection
 
 ## Image artifact model
 
@@ -190,7 +190,7 @@ Image artifacts are related to packages, but they are not packages:
 - project-local image artifact indexes live under `bin/.dockpipe/internal/images/`
 - project-local cached image records live under `bin/.dockpipe/internal/cache/images/`
 - global image artifact indexes live under `<global-root>/images/`
-- Docker image layers stay in the Docker daemon or OCI registry, not in DockPipe package tarballs
+- Docker image layers stay in the Docker daemon or OCI registry, not in Dockpipe package tarballs
 
 Suggested manifest fields:
 
@@ -220,14 +220,14 @@ Suggested manifest fields:
 
 Artifact states:
 
-- `planned` — compile selected a Dockerfile-backed image, but DockPipe has not materialized or verified the local daemon image yet.
-- `materialized` — DockPipe built or verified a local image for this artifact.
+- `planned` — compile selected a Dockerfile-backed image, but Dockpipe has not materialized or verified the local daemon image yet.
+- `materialized` — Dockpipe built or verified a local image for this artifact.
 - `referenced` — package/runtime metadata points at an OCI image ref; Docker layers remain in the daemon or registry.
 - `cached` — a registry-backed image has been pulled/verified and recorded locally.
 
 `dockpipe package compile` emits `planned` image artifacts only. `dockpipe build` prebuilds Dockerfile-backed `planned` artifacts by default and writes materialized image metadata under `bin/.dockpipe/internal/images/by-fingerprint/`. `dockpipe run` checks that fingerprint index before falling back to Docker daemon state, so a valid prebuilt image is reused without rebuilding. Use `dockpipe build --no-images` to keep the command manifest-only.
 
-Use `dockpipe package images` to inspect the merged image view DockPipe sees: planned artifacts from compiled workflow tarballs plus materialized/cached fingerprint receipts. The status column calls out `ready`, `missing`, `stale`, `planned`, `referenced`, and `docker-error` so rebuild/pull behavior is explainable before run.
+Use `dockpipe package images` to inspect the merged image view Dockpipe sees: planned artifacts from compiled workflow tarballs plus materialized/cached fingerprint receipts. The status column calls out `ready`, `missing`, `stale`, `planned`, `referenced`, and `docker-error` so rebuild/pull behavior is explainable before run.
 
 ## What contributes to image validity
 
@@ -267,8 +267,8 @@ The model should support both:
 
 Suggested rule:
 
-- `source: build` means DockPipe owns the build provenance
-- `source: registry` means DockPipe verifies and consumes a pulled image
+- `source: build` means Dockpipe owns the build provenance
+- `source: registry` means Dockpipe verifies and consumes a pulled image
 - `source: auto` allows a future policy such as “prefer local artifact, otherwise pull/build”
 
 ## Logging and user-facing summaries
@@ -298,7 +298,7 @@ The two places most likely to get messy are:
 Notes:
 
 - Docker does not natively provide clean domain allow/block enforcement on its own.
-- DockPipe must distinguish between native, proxy-backed, and advisory enforcement.
+- Dockpipe must distinguish between native, proxy-backed, and advisory enforcement.
 - The UI and logs should show the effective enforcement mode, not just the desired policy.
 - Security settings that do not affect the image build should not poison the image cache key.
 
@@ -334,7 +334,7 @@ Internal:
 
 ## Recommended first step
 
-Start by compiling and logging effective manifests before enforcing every rule. That gives DockPipe:
+Start by compiling and logging effective manifests before enforcing every rule. That gives Dockpipe:
 
 - visibility
 - testability

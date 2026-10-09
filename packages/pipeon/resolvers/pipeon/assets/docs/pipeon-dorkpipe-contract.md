@@ -4,11 +4,11 @@ Versioned internal API contract between:
 
 - **Pipeon** — chat client / user experience
 - **DorkPipe** — routing, orchestration, validation
-- **DockPipe** — isolated mutation boundary
+- **Dockpipe** — isolated mutation boundary
 
 ## Guiding rule
 
-Pipeon sends requests. DorkPipe decides, orchestrates, validates, and streams. DockPipe mutates the
+Pipeon sends requests. DorkPipe decides, orchestrates, validates, and streams. Dockpipe mutates the
 filesystem. Model output is never executed directly.
 
 ## Boundary
@@ -29,11 +29,11 @@ filesystem. Model output is never executed directly.
 - model invocation
 - validation of model output into bounded artifacts
 - optional confirmation gates
-- hands only validated artifacts to DockPipe
+- hands only validated artifacts to Dockpipe
 - may return a routed non-mutating action for Pipeon to execute locally when that action is already a bounded primitive
 - may stop edit flows at `ready_to_apply` so Pipeon can ask for confirmation before mutation
 
-### DockPipe
+### Dockpipe
 
 - isolated execution
 - workflow and script execution
@@ -182,7 +182,7 @@ The contract must never expose by default:
 - patch bodies
 - validator internals
 - direct mutation controls
-- DockPipe execution arguments
+- Dockpipe execution arguments
 - anything that allows Pipeon to bypass DorkPipe
 
 ## Debug mode
@@ -224,6 +224,6 @@ See also:
 - model output is data only
 - streamed model text is UI only
 - no execution of raw model text
-- only validated artifacts cross to DockPipe
+- only validated artifacts cross to Dockpipe
 - all mutation happens outside DorkPipe
 - Pipeon receives no direct mutation controls

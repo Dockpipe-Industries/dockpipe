@@ -217,7 +217,7 @@ func resolveReleaseEndpoint() string {
 const releaseUsageText = `dockpipe release
 
 Upload artifacts to a self-hosted S3-compatible bucket (e.g. Cloudflare R2).
-Official DockPipe distribution does not require this; it is for dogfooding and
+Official Dockpipe distribution does not require this; it is for dogfooding and
 downstream registries. Credentials: AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY
 (R2 API tokens or AWS keys). Same endpoint patterns as the dockpipe.cloudflare.r2publish workflow in this repository’s package layout.
 

@@ -69,7 +69,7 @@ name, permissions, and schema-evolution syntax are later schema/storage decision
 the semantics above but may not change them. No schema is created by this plan.
 
 **Owner-operation boundary.** The future operation belongs to the DorkPipe provider-pool component,
-with storage paths supplied by `packages/dorkpipe/lib/statepaths`; it does not belong in DockPipe
+with storage paths supplied by `packages/dorkpipe/lib/statepaths`; it does not belong in Dockpipe
 engine code, `providersession`, appserversupervisor, MCP, or Pipeon. The same owner operation is
 responsible for strict source loading, fingerprint construction, session-scoped cross-process
 locking, recovery observation, pre-state comparison, first migration commit, later aggregate

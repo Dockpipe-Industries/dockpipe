@@ -1,4 +1,4 @@
-# Full DockPipe path: Compose sidecars up → isolated DorkPipe self-analysis → Compose down.
+# Full Dockpipe path: Compose sidecars up → isolated DorkPipe self-analysis → Compose down.
 # Step order is the workflow contract (no separate manual dev-stack.sh unless you prefer).
 #
 #   dockpipe --workflow dorkpipe-self-analysis-stack --workdir . --

@@ -3,7 +3,7 @@ package packagemodel
 
 import modeldependency "dockpipe/src/lib/model/dependency"
 
-// PackageManifest is optional metadata for a DockPipe package (workflow slice, core slice, or umbrella package).
+// PackageManifest is optional metadata for a Dockpipe package (workflow slice, core slice, or umbrella package).
 // Stored as package.yml next to the package contents. Schema may evolve; extra YAML keys are ignored by the parser.
 // Rich fields support store discovery, authoring, and dependency hints (workflows vs resolver packs).
 type PackageManifest struct {
@@ -65,7 +65,7 @@ type PackageManifest struct {
 	// Image declares a package-owned runtime image reference.
 	// Keep this to normal OCI/registry refs; compile resolves it into the image artifact manifest.
 	Image PackageImageSpec `yaml:"image,omitempty"`
-	// ScriptContract declares generic package-level script context that DockPipe-aware tooling may inject for package assets.
+	// ScriptContract declares generic package-level script context that Dockpipe-aware tooling may inject for package assets.
 	// This is intentionally generic package/runtime context only, not package-specific tooling handles.
 	ScriptContract PackageScriptContract `yaml:"script_contract,omitempty"`
 	// PackageState declares package-owned compatibility migration for maintained mixed state.
@@ -75,7 +75,7 @@ type PackageManifest struct {
 	// This is for source checkouts only; installed tarballs should already contain the artifacts they ship.
 	Build PackageBuildSpec `yaml:"build,omitempty"`
 	// Test declares optional package-owned test behavior for source checkouts and CI.
-	// Keep this generic: package authors own the script, DockPipe only executes it.
+	// Keep this generic: package authors own the script, Dockpipe only executes it.
 	Test PackageTestSpec `yaml:"test,omitempty"`
 }
 

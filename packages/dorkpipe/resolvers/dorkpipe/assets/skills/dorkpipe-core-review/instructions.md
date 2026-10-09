@@ -1,6 +1,6 @@
 # DorkPipe Core Review
 
-Use this skill before and after DockPipe engine edits.
+Use this skill before and after Dockpipe engine edits.
 
 ## Read First
 

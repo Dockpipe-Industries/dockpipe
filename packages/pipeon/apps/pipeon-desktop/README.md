@@ -7,7 +7,7 @@ Purpose:
 - keep Pipeon branding, icon, and window chrome under our control
 - avoid the default-browser-tab flow for the Pipeon product surface
 
-This app is intentionally thin. It does not replace DorkPipe, DockPipe, or the
+This app is intentionally thin. It does not replace DorkPipe, Dockpipe, or the
 Pipeon web/editor surface. It is just the desktop host window.
 
 Current host affordances:
@@ -24,7 +24,7 @@ It does **not** update:
 - the Pipeon code-server/editor surface
 - the Pipeon VS Code extension / VSIX
 - stock host VS Code or Cursor installs
-- unrelated DockPipe / DorkPipe binaries
+- unrelated Dockpipe / DorkPipe binaries
 
 ### Desktop updater configuration
 

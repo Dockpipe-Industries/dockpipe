@@ -102,7 +102,7 @@ steps:
   - cmd: npm test
 ```
 
-Security policy is container-only. DockPipe compiles it into an effective runtime
+Security policy is container-only. Dockpipe compiles it into an effective runtime
 manifest that run consumes. For the security model, see
 [../security/security-policy.md](../security/security-policy.md).
 

@@ -99,7 +99,7 @@ func isInteractiveSession(stdin, stdout *os.File) bool {
 }
 
 func promptGitignore(in io.Reader, out io.Writer) (bool, error) {
-	if _, err := fmt.Fprint(out, "Add recommended DockPipe .gitignore? (Y/n) "); err != nil {
+	if _, err := fmt.Fprint(out, "Add recommended Dockpipe .gitignore? (Y/n) "); err != nil {
 		return false, err
 	}
 	reader := bufio.NewReader(in)
@@ -219,9 +219,9 @@ func main() {
 			os.Exit(1)
 		}
 		if added {
-			fmt.Println("✔ Added DockPipe entries to .gitignore")
+			fmt.Println("✔ Added Dockpipe entries to .gitignore")
 		} else {
-			fmt.Println("✔ DockPipe entries already present in .gitignore")
+			fmt.Println("✔ Dockpipe entries already present in .gitignore")
 		}
 	case gitignoreDeclined:
 		fmt.Println("Skipped .gitignore update")

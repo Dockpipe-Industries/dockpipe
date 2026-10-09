@@ -1,13 +1,13 @@
 schema: 1
 kind: package
 name: agent
-version: 0.6.0
-title: DockPipe agent workflows and resolvers
+version: 0.6.1
+title: Dockpipe agent workflows and resolvers
 description: |
   First-party agent-oriented package family for governed AI stages. Resolver profiles such as
   codex, claude, and ollama stay separate from workflow contracts; package workflows provide
   portable diagnostics and examples rather than repository-specific automation.
-author: DockPipe
+author: Dockpipe
 license: Apache-2.0
 repository: https://github.com/Dockpipe-Industries/dockpipe
 tags: [resolver, workflow, agents, ai]

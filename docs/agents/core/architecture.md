@@ -4,7 +4,7 @@ Read when changing concepts, docs, workflow semantics, packages, or engine behav
 
 ## Core Action
 
-DockPipe's engine has one action:
+Dockpipe's engine has one action:
 
 1. spawn an isolated environment
 2. run a command inside it
@@ -26,9 +26,9 @@ Capabilities are separate dotted ids documented in `docs/concepts/capabilities.m
 - Do not confuse runtimes and resolvers.
 - Packaged workflow invocation is a step form: `workflow:` plus `package:`.
 - Not runtimes: Kubernetes, cloud APIs, Terraform, AI providers. Use runtimes/resolvers plus scripts.
-- `runtime.type: agent` classifies behavior. It is not a separate DockPipe product model.
-- DorkPipe is a package/harness on top of DockPipe primitives.
-- DockPipe is extended with workflows, runtimes, resolvers, and strategies; not plugins, core branching, or special-case flags.
+- `runtime.type: agent` classifies behavior. It is not a separate Dockpipe product model.
+- DorkPipe is a package/harness on top of Dockpipe primitives.
+- Dockpipe is extended with workflows, runtimes, resolvers, and strategies; not plugins, core branching, or special-case flags.
 - Runtime-owned Git sessions are runtime lifecycle behavior. Agents and resolvers request lifecycle
   transitions; they do not own raw Git commands.
 

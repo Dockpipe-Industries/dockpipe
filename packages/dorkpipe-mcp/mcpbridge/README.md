@@ -7,7 +7,7 @@ This package implements a **minimal** JSON-RPC over stdio (Content-Length framin
 - `dockpipe` and `dorkpipe` subprocesses (same binaries as the CLI), and  
 - read-only discovery via `dockpipe/src/lib/infrastructure` (workflow names only).
 
-**Do not** add orchestration, policy, or workflow parsing here. That stays in **DockPipe** / **DorkPipe**.
+**Do not** add orchestration, policy, or workflow parsing here. That stays in **Dockpipe** / **DorkPipe**.
 
 ## Environment
 
