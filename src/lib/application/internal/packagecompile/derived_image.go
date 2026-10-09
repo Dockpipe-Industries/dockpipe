@@ -89,7 +89,7 @@ func insertAptInstallAfterBaseImage(dockerfile string, pkgs []string) string {
 	}
 	block := []string{
 		"",
-		"# DockPipe workflow-authored image packages.",
+		"# Dockpipe workflow-authored image packages.",
 		"USER root",
 		aptInstallDockerfileRun(pkgs),
 		"",

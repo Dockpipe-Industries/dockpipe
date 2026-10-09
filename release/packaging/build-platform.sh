@@ -34,6 +34,9 @@ bash release/packaging/prepare-embedded-dorkpipe-assets.sh prepare
 go build -trimpath -ldflags "-s -w -X main.Version=$version" -o "$DOCKPIPE_BIN" ./src/cmd
 "$DOCKPIPE_BIN" --version
 "$DOCKPIPE_BIN" build --workdir "$root" --no-images
+# Resolver compilation invalidates top-level workflow consumers. Restore the
+# authored top-level workflows without recompiling prepared package payloads.
+"$DOCKPIPE_BIN" package compile workflows --workdir "$root" --from workflows
 "$DOCKPIPE_BIN" package build store --workdir "$root" --out "$store" --version "$version"
 python3 release/packaging/release-artifacts.py verify-store "$store"
 tar -C "$store" -czf "$out/dockpipe-packages_${version}_${platform}.tar.gz" .

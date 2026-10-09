@@ -7,7 +7,7 @@ WINDOWS_OUT ?= src/bin/dockpipe.exe
 
 .PHONY: build build-core build-windows test-core
 
-# Core DockPipe CLI. Workflows + compiled packages: use ./src/bin/dockpipe --workflow … (same as downstream).
+# Core Dockpipe CLI. Workflows + compiled packages: use ./src/bin/dockpipe --workflow … (same as downstream).
 build build-core:
 	cp VERSION src/cmd/VERSION
 	@mkdir -p src/bin

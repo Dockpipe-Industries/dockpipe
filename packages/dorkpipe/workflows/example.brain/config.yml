@@ -123,7 +123,7 @@ steps:
               - Bullet 1 must start with "rules:" and assign source-of-truth-rules.md and index.md.
               - Bullet 2 must start with "inventory:" and assign repo-knowledge.md.
               - Bullet 3 must start with "gaps:" and assign open-gaps.md.
-              - Do not mention runtime mounts, DockPipe, DorkPipe, or orchestration mechanics.
+              - Do not mention runtime mounts, Dockpipe, DorkPipe, or orchestration mechanics.
           - id: rules_writer
             agent: guidance_architect
             depends_on:
@@ -151,7 +151,7 @@ steps:
               Rules:
               - Output only dorkpipe:file blocks for the required files.
               - Write from the repo's point of view.
-              - Do not mention DockPipe, DorkPipe, /work, mounts, artifact roots, or worker lanes.
+              - Do not mention Dockpipe, DorkPipe, /work, mounts, artifact roots, or worker lanes.
               - index.md should explain what the brain docs are for and which page to read first.
               - source-of-truth-rules.md should separate current implementation, intended direction, terminology, and conflict handling.
               - Use concise markdown suitable for durable repo docs.
@@ -189,7 +189,7 @@ steps:
               Rules:
               - Output only dorkpipe:file blocks for the required files.
               - Write from the repo's point of view.
-              - Do not mention DockPipe, DorkPipe, /work, mounts, artifact roots, or worker lanes.
+              - Do not mention Dockpipe, DorkPipe, /work, mounts, artifact roots, or worker lanes.
               - repo-knowledge.md should summarize high-value current repo facts and likely starting points.
               - open-gaps.md should capture unresolved truth gaps, parity gaps, or documentation gaps that deserve later follow-up.
               - Do not claim target architecture is already implemented unless direct repo evidence proves it.

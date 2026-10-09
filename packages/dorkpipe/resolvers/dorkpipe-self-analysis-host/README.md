@@ -4,4 +4,4 @@ Same behavior as **`dorkpipe-self-analysis`**, but with **`kind: host`** — run
 
 Use when **Docker** is not available or you want the fastest path without building **`bin/dorkpipe`** inside a container.
 
-Prefer **`dorkpipe-self-analysis`** for isolation aligned with DockPipe’s product model.
+Prefer **`dorkpipe-self-analysis`** for isolation aligned with Dockpipe’s product model.

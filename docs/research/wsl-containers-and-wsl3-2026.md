@@ -4,7 +4,7 @@ Date: 2026-07-05
 
 Scope: Windows Subsystem for Linux container support, how it differs from Docker Desktop and traditional WSL
 distribution workflows, performance implications for developer/runtime tooling, and what "WSL3" likely means for
-DockPipe planning.
+Dockpipe planning.
 
 ## Executive Summary
 
@@ -15,7 +15,7 @@ Desktop yet. It is a new Windows-owned container substrate that could eventually
 for simple local Linux container runs, embedded Windows apps that need Linux containers, and managed enterprise
 developer environments.
 
-For DockPipe, the practical position is:
+For Dockpipe, the practical position is:
 
 - Keep Docker as the stable default Windows container backend for now.
 - Track `wslc` as a future first-class runtime/resolver target once it reaches general availability and proves stable.
@@ -56,7 +56,7 @@ it, wait for the init process, then stop/delete/release the container and termin
 
 The SDK is not complete parity across languages. The documented known gaps say some C API capabilities, such as
 raw-handle image import/load and raw process callback/IO handles, are hidden or not exposed in the C++/WinRT and C#
-projections. That matters if DockPipe ever wants to integrate directly with the SDK instead of shelling out to `wslc`.
+projections. That matters if Dockpipe ever wants to integrate directly with the SDK instead of shelling out to `wslc`.
 
 ## How WSLC Differs From Docker Desktop
 
@@ -138,12 +138,12 @@ on a Windows-managed virtualization substrate. Expect the performance question t
 The WSL `2.9.3` release notes also mention lower-level fixes and improvements related to `virtiofs`, `Consomme`
 networking, DNS tunneling, VirtioNet tracing, VHD handling, and mirrored networking. Public reporting around the
 preview says Microsoft is positioning `virtiofs` as a significantly faster Windows-file access path and `Consomme`
-as the newer default networking mode. Treat those as promising platform signals, not DockPipe performance facts until
+as the newer default networking mode. Treat those as promising platform signals, not Dockpipe performance facts until
 we run our own workload benchmarks.
 
-### What DockPipe Should Benchmark
+### What Dockpipe Should Benchmark
 
-DockPipe should avoid deciding this by vibes. A useful Windows benchmark matrix would include:
+Dockpipe should avoid deciding this by vibes. A useful Windows benchmark matrix would include:
 
 - `git status`, `rg`, and tree walk over a large Windows checkout bind-mounted into a Linux container.
 - Same repo stored inside WSL ext4/VHD and mounted from there.
@@ -164,40 +164,40 @@ mode or Enhanced Container Isolation.
 
 For WSLC, the preview adds policy management through ADMX/group policy and exposes per-container limits. That is
 useful, but preview status matters. Until the security model, CVE handling, update cadence, and enterprise controls
-are proven, DockPipe should not treat `wslc` as a stronger isolation boundary than Docker Desktop or a dedicated VM.
+are proven, Dockpipe should not treat `wslc` as a stronger isolation boundary than Docker Desktop or a dedicated VM.
 
-Practical DockPipe stance:
+Practical Dockpipe stance:
 
 - Docker Desktop remains the known Windows container backend.
 - Hyper-V or dedicated VM remains the answer for hard isolation.
 - WSLC may become attractive for "good local dev isolation with less installed product surface."
-- Secrets and host mounts should keep DockPipe's existing explicit-reference and approval rules.
+- Secrets and host mounts should keep Dockpipe's existing explicit-reference and approval rules.
 
 ## WSL3 And NPU Passthrough
 
 Correction from the first pass: WSL3 should not be dismissed. Build 2026 reporting explicitly references WSL 3 in the
 context of NPU passthrough, where Linux environments would get access to Windows PC NPU hardware for on-device AI
-inference. That is a real enough platform signal for DockPipe planning.
+inference. That is a real enough platform signal for Dockpipe planning.
 
 The careful distinction is release status. As of 2026-07-05, the official Microsoft Learn docs and Microsoft WSL
 GitHub releases I could verify still describe WSL 2 as the default architecture and show the public release stream as
 WSL 2.x, with `2.9.3` carrying the WSLC public preview. I did not find an official WSL 3 GitHub release, Microsoft
 Learn architecture page, or WSL open-source API page that describes WSL 3 as a released package.
 
-| Layer | Evidence | DockPipe stance |
+| Layer | Evidence | Dockpipe stance |
 | --- | --- | --- |
 | Released WSL package stream | Official WSL GitHub releases show WSL `2.9.3` pre-release, not a 3.x package | Do not require WSL3 in runtime code yet |
 | Current public container feature | WSLC public preview is in WSL `2.9.3` | Benchmark and track as the near-term container backend |
 | Build-era platform direction | Reporting says Build 2026 sessions cover NPU passthrough in WSL 3 | Track separately for local AI/model runtime planning |
 
 That distinction matters because WSL3 is not just a container story. If NPU passthrough lands as described, the more
-important DockPipe impact is local AI execution:
+important Dockpipe impact is local AI execution:
 
 - Windows laptops with NPUs become more credible local inference hosts for Linux-side tooling.
 - Linux agent workers could use Windows AI hardware without requiring cloud fallback for every model lane.
 - Container and model scheduling may need to account for CPU, GPU, and NPU availability as separate runtime
   capabilities.
-- DockPipe may eventually need capability detection for `wslc`, GPU CDI, NPU exposure, model runtimes, and Windows
+- Dockpipe may eventually need capability detection for `wslc`, GPU CDI, NPU exposure, model runtimes, and Windows
   AI Runtime rather than a single "Docker available" check.
 
 WSL2 was mostly a kernel and virtualization boundary shift from syscall translation to a real Linux kernel in a
@@ -210,7 +210,7 @@ more capable Windows Linux/container substrate. Docker can keep winning where it
 the job is "run this Linux container locally on Windows with minimal product dependency." WSL3/NPU passthrough can win
 where the job is "run local Linux AI workloads against Windows accelerator hardware."
 
-## DockPipe Implications
+## Dockpipe Implications
 
 ### Near term
 
@@ -226,14 +226,14 @@ resolver layer.
 
 ### What to avoid
 
-Do not bake `wslc` names or WSL-version assumptions into core engine paths. The existing DockPipe architecture wants
+Do not bake `wslc` names or WSL-version assumptions into core engine paths. The existing Dockpipe architecture wants
 runtime = where, resolver = tool/profile, strategy = lifecycle wrapper. WSLC should fit that model if it is added.
 
 Do not assume `wslc` has Docker Compose, BuildKit cache behavior, registry auth parity, image scanning, or Docker
 Desktop admin/security features until confirmed.
 
 Do not assume cross-OS bind mounts are cheap enough for all workflows just because `virtiofs` is improving. Benchmark
-DockPipe's actual source trees and agent workloads.
+Dockpipe's actual source trees and agent workloads.
 
 ### Likely opportunities
 
@@ -245,14 +245,14 @@ DockPipe's actual source trees and agent workloads.
 
 ## Recommendation
 
-Treat WSLC as the most important Windows runtime development to watch for DockPipe, but not as a default backend yet.
-The platform direction supports DockPipe's model: a generic engine that can target multiple runtimes while package
+Treat WSLC as the most important Windows runtime development to watch for Dockpipe, but not as a default backend yet.
+The platform direction supports Dockpipe's model: a generic engine that can target multiple runtimes while package
 assets own platform-specific behavior.
 
 Recommended next steps:
 
 1. Add a `wslc` tracking task once the preview is installable on our Windows dev machines.
-2. Build a benchmark script that compares Docker Desktop, WSLC, and direct WSL for DockPipe-like workloads.
+2. Build a benchmark script that compares Docker Desktop, WSLC, and direct WSL for Dockpipe-like workloads.
 3. Prototype a package-owned `wslc` resolver/runtime shim outside `src/lib` once the CLI stabilizes.
 4. Keep Docker Desktop docs current as the production path.
 5. Track WSL3/NPU passthrough as a separate local-AI runtime task, while keeping WSLC container support as the

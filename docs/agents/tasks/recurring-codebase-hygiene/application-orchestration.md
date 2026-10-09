@@ -41,7 +41,7 @@ Application remains the fan-in layer. Its production files import `domain` from 
 `infrastructure` from 55, `packagebuild` from 13, `fetchinstall` from one, and `pipelang` from
 three. The two application internal leaves do not import their parent. Root infrastructure imports
 `domain` from 10 production files and `packagebuild` from six; `packagebuild` imports only `domain`,
-and root infrastructure does not import `fetchinstall`. Domain and PipeLang import no DockPipe
+and root infrastructure does not import `fetchinstall`. Domain and PipeLang import no Dockpipe
 package. The previous description of Domain as literally I/O-free is corrected: it is
 dependency-inward, but existing compile-root, project-config, package-manifest, import-path, and
 validation contracts intentionally use `os` and path primitives.

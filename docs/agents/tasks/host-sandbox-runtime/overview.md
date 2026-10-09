@@ -2,7 +2,7 @@
 
 ## Goal
 
-Deliver `runtime: host-sandbox` as DockPipe's lightweight, OS-enforced native execution option for
+Deliver `runtime: host-sandbox` as Dockpipe's lightweight, OS-enforced native execution option for
 workloads that need stronger isolation than unrestricted host execution without the startup and
 packaging weight of a full container or VM.
 
@@ -83,7 +83,7 @@ must select a stronger runtime.
    mount construction, network-off, credential/FD isolation, cgroup delegation, child inheritance,
    teardown, and unsupported/downgraded guarantees without running arbitrary workloads.
 3. **Offline Linux reference prototype.** Implement the smallest explicitly opted-in preview driver,
-   initially using Bubblewrap as the namespace/mount constructor while DockPipe owns policy,
+   initially using Bubblewrap as the namespace/mount constructor while Dockpipe owns policy,
    probes, lifecycle, reports, and teardown. Prove no fallback to host.
 4. **Runtime integration.** Add `runtime: host-sandbox` through the Go domain model, JSON Schema,
    language support, workflow docs, compiled runtime manifest, CLI/runtime selection, and tests in

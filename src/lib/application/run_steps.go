@@ -33,7 +33,7 @@ type runStepsOpts struct {
 	wfRoot         string
 	wfConfig       string
 	repoRoot       string
-	projectRoot    string // DockPipe project dir (--workdir / cwd); script resolution for scripts/…
+	projectRoot    string // Dockpipe project dir (--workdir / cwd); script resolution for scripts/…
 	cliArgs        []string
 	envMap         map[string]string
 	envSlice       []string

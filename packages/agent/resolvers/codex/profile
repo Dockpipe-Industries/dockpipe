@@ -9,7 +9,7 @@ DOCKPIPE_RESOLVER_AUTH_MOUNT_MODE=rw
 DOCKPIPE_RESOLVER_ENV=OPENAI_API_KEY,CODEX_API_KEY
 #
 # Docker + Codex sandbox (nested isolation):
-# - DockPipe's Docker run is the isolation boundary for /work.
+# - Dockpipe's Docker run is the isolation boundary for /work.
 # - Codex --sandbox workspace-write uses bubblewrap inside the container; that needs Linux
 #   unprivileged user namespaces and often fails in Docker (bwrap namespace errors).
 # - Workflows that run codex exec inside this resolver's image should use

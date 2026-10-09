@@ -378,7 +378,7 @@ function classify(candidate, containers, sessionsPayload, root) {
   const id = String(container.Id || container.ID || container.id || '');
   const record = records.find((value) => value && String(value.container_id || '') === id && String(value.session_id || '') === sessionID);
   if (!record) {
-    return { state: statusForContainer(container), ownership: 'orphan_candidate', summary: 'A prior DockPipe-labeled container has no matching managed session record.', next_actions: ['repair_managed_session'], environmentRef: opaqueEnvironmentRef(container) };
+    return { state: statusForContainer(container), ownership: 'orphan_candidate', summary: 'A prior Dockpipe-labeled container has no matching managed session record.', next_actions: ['repair_managed_session'], environmentRef: opaqueEnvironmentRef(container) };
   }
   const recordWorkspace = fixtureRef(record.workspace_ref, root);
   if (recordWorkspace !== '.' || record.definition_ref !== candidate.definition_ref || record.definition_fingerprint !== candidate.definition_fingerprint) {
@@ -438,7 +438,7 @@ function managedRecordFromUp(payload, candidate, root) {
   const sessionID = String(payload.session_id || '');
   const labels = payload.labels && typeof payload.labels === 'object' ? payload.labels : {};
   if (!containerID || !sessionID || String(labels[SESSION_LABEL] || '') !== sessionID) {
-    fail('up result fixture must bind container_id, session_id, and the DockPipe session label');
+    fail('up result fixture must bind container_id, session_id, and the Dockpipe session label');
   }
   return {
     container_id: containerID,

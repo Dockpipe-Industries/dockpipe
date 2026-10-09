@@ -33,7 +33,7 @@ def signing_fingerprint(key):
                 raise ValueError("APT_SIGNING_KEY must contain one signing identity")
             fingerprint = next(line.split(":")[9] for line in listing.splitlines() if line.startswith("fpr:"))
             payload = Path(directory) / "check.txt"
-            payload.write_text("DockPipe signing configuration check\n")
+            payload.write_text("Dockpipe signing configuration check\n")
             run(["gpg", "--batch", "--pinentry-mode", "loopback", "--passphrase", "",
                  "--local-user", fingerprint, "--detach-sign", str(payload)], env=env)
             return fingerprint

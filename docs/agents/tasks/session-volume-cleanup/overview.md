@@ -2,7 +2,7 @@
 
 ## Current State
 
-- Core DockPipe now auto-cleans managed session base volumes after successful workflow completion
+- Core Dockpipe now auto-cleans managed session base volumes after successful workflow completion
   and after `dockpipe session publish` when the session uses `workspace.storage: volume`.
 - Cleanup is runtime-owned and gated by preflight checks: managed worktree exists, local session
   branch exists and matches the workspace branch, local session branch metadata still exists, and

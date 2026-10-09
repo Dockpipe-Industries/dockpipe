@@ -176,7 +176,7 @@ func printInstallCoreUsage() {
 
 const installUsageText = `dockpipe install
 
-Download DockPipe template bundles from HTTPS (e.g. a public URL on Cloudflare R2
+Download Dockpipe template bundles from HTTPS (e.g. a public URL on Cloudflare R2
 or a custom domain in front of R2). Does not run bash workflows.
 
 Usage:
@@ -208,7 +208,7 @@ Environment:
 
 Options:
   --workdir <path>   Project root (default: current directory).
-  -g, --global       Install into the user-wide DockPipe data directory (OS-appropriate: e.g.
+  -g, --global       Install into the user-wide Dockpipe data directory (OS-appropriate: e.g.
                      %LOCALAPPDATA%\\dockpipe on Windows, ~/Library/Application Support/dockpipe on
                      macOS, ~/.local/share/dockpipe on Linux). Same layout as a project:
                      <global>/templates/core. Override base with DOCKPIPE_GLOBAL_ROOT.

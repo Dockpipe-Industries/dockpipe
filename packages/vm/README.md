@@ -1,7 +1,7 @@
-# DockPipe VM package
+# Dockpipe VM package
 
 The `vm` package owns guest-specific workflows, QEMU resolver models, and the
-VMM-neutral control protocol. DockPipe core remains generic. Version 1.3.4
+VMM-neutral control protocol. Dockpipe core remains generic. Version 1.3.5
 keeps the pinned SQLite harness environment closed while adding the exact
 `PATH=/usr/bin:/bin` required for its reviewed `systemd-detect-virt --vm`
 lookup. Version 1.3.3
@@ -204,10 +204,10 @@ Deterministic source-build evidence is not promotion evidence and is not live
 authority. Before any fresh Gate 2 preparation, the reviewed Linux outputs must
 pass a separately authorized offline promotion gate into the fixed non-live
 namespace `<authorized-promotion-root>`. That namespace is
-distinct from the checkout, DockPipe's global package/install root,
+distinct from the checkout, Dockpipe's global package/install root,
 `.dockpipe` and `.dorkpipe`, VM image and toolchain caches, every live instance,
 evidence, configuration, and runtime XDG root, and every preserved Gate 2 root.
-It is task-owned VM qualification input, not a DockPipe package installation or
+It is task-owned VM qualification input, not a Dockpipe package installation or
 generated store.
 
 Every promotion ID must match `vmp-[0-9a-f]{16}`. A separately authorized gate

@@ -3,8 +3,8 @@
 #include <QString>
 #include <QStringList>
 
-/// Launcher-facing DockPipe choice lists sourced from the DockPipe CLI contract.
-/// Falls back to static lists when no usable DockPipe catalog is available.
+/// Launcher-facing Dockpipe choice lists sourced from the Dockpipe CLI contract.
+/// Falls back to static lists when no usable Dockpipe catalog is available.
 class DockpipeChoices {
 public:
     /// Walk upward from workdir to find a dockpipe project root.

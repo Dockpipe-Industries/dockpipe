@@ -2,7 +2,7 @@
 
 The `dorkpipe` package is the consumer-facing agentic stack. It ships DorkPipe workflows, MCP sidecar
 assets, packaged helper binaries, and the local control-plane compose contract without requiring a
-DockPipe source checkout in the consuming repo.
+Dockpipe source checkout in the consuming repo.
 
 | Resolver / workflow | Role |
 |---------------------|------|

@@ -197,7 +197,7 @@ hooks find it beside the already-injected `DOCKPIPE_SDK_SH`, accept an explicit 
 fall back to the source-checkout core path for direct maintainer invocation. Neither package imports
 the other package tree. The existing dirty `dockpipe-sdk.sh` and scripts README were not edited.
 
-`tests/unit-tests/package-source-build-test-lib.sh` is the neutral fake DockPipe/Go fixture used by
+`tests/unit-tests/package-source-build-test-lib.sh` is the neutral fake Dockpipe/Go fixture used by
 both focused package tests. For every package-owned specification it proves the exact versioned Go
 command, module and output identities, default cache/temp paths, successful start/done results,
 missing-result-command stderr fallback, failing start/fail results, error field, and exit code `23`

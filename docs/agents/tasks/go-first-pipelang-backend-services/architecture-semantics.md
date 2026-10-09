@@ -181,7 +181,7 @@ explicit identity/policy/approval enforcement interfaces and fails closed when a
 has no selected adapter.
 
 Credentials never appear in PipeLang service declarations, generated Go/Qt source, schemas, or test
-fixtures. Generated services use DockPipe's governed secret references and resolver-owned resolution.
+fixtures. Generated services use Dockpipe's governed secret references and resolver-owned resolution.
 
 The compiler validates declared effects against operation implementations/capability calls and
 rejects undeclared widening. External model invocation remains an explicit typed resolver-backed
@@ -249,6 +249,6 @@ websocket
 ```
 
 Required, optional, unsupported, and deferred capabilities are machine-readable. Silent degradation
-is prohibited. Capability negotiation uses existing DockPipe package/resolver capability ownership
+is prohibited. Capability negotiation uses existing Dockpipe package/resolver capability ownership
 rather than creating a service-specific plugin system.
 

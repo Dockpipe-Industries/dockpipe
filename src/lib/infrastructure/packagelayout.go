@@ -22,7 +22,7 @@ import (
 // `dockpipe install core --global` and infrastructure/globaldirs.go.
 const PackageManifestFilename = "package.yml"
 
-// DockpipeDirRel is the project-relative root for materialized DockPipe state (compiled packages,
+// DockpipeDirRel is the project-relative root for materialized Dockpipe state (compiled packages,
 // tarball cache, host runs, cleanup markers). Placed under bin/ so typical .gitignore `bin/` rules
 // cover compile output without a separate `.dockpipe/` entry.
 var (
@@ -38,7 +38,7 @@ const (
 	EnvPackageStateDir = "DOCKPIPE_PACKAGE_STATE_DIR"
 )
 
-// StateRoot returns the absolute project-local DockPipe state root (default: workdir/bin/.dockpipe).
+// StateRoot returns the absolute project-local Dockpipe state root (default: workdir/bin/.dockpipe).
 func StateRoot(workdir string) (string, error) {
 	wd, err := absHostWorkdir(workdir)
 	if err != nil {
@@ -47,7 +47,7 @@ func StateRoot(workdir string) (string, error) {
 	return filepath.Join(wd, DockpipeDirRel), nil
 }
 
-// StateInternalDir returns the absolute root for DockPipe-owned internal state
+// StateInternalDir returns the absolute root for Dockpipe-owned internal state
 // (default: workdir/bin/.dockpipe/internal). New internal artifact families should
 // derive from this helper instead of spelling ".dockpipe" paths by hand.
 func StateInternalDir(workdir string) (string, error) {

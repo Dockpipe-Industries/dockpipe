@@ -40,7 +40,7 @@ developer machine during first launch.
 
 Candidate images:
 
-- `dockpipe-code-server:<version>` with Pipeon and DockPipe language-support VSIX files already
+- `dockpipe-code-server:<version>` with Pipeon and Dockpipe language-support VSIX files already
   installed.
 - `dockpipe-dorkpipe-stack:<version>-linux-amd64` with Linux `dockpipe`, `dorkpipe`, and `mcpd`
   binaries already present.
@@ -51,7 +51,7 @@ Candidate images:
 Release flow:
 
 - Build images from exact package inputs and versioned tool binaries.
-- Tag by DockPipe version and content digest.
+- Tag by Dockpipe version and content digest.
 - Publish image metadata with expected package/version/signature.
 - Let `pipeon-dev-stack` prefer matching prebuilt images when available.
 - Fall back to local source builds when offline, unpublished, or running dirty development inputs.

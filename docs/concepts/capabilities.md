@@ -5,7 +5,7 @@ workflow author needs to learn. If you are just writing a workflow, start with
 **runtime** and **resolver**. Come back here when you need package metadata,
 catalog metadata, or package-level dependency matching.
 
-DockPipe separates **what you need** (abstract) from **how it is satisfied** (concrete packages and profiles).
+Dockpipe separates **what you need** (abstract) from **how it is satisfied** (concrete packages and profiles).
 
 ## Terms
 
@@ -16,19 +16,19 @@ DockPipe separates **what you need** (abstract) from **how it is satisfied** (co
 | **Runtime** | **Where** execution runs — in normal authored workflows that means **`dockerimage`** or **`dockerfile`**; legacy **`cli`** / **`powershell`** / **`cmd`** normalize to **`dockerimage`** — **orthogonal** to capability and resolver. |
 | **Package** | **Workflow**, **resolver**, **core**, **bundle**, or **assets** — installable units with **`package.yml`**. **Resolvers are packages**; **workflows are packages** too when compiled or published. Same packaging story (`dockpipe package compile`, store tarballs). |
 
-## DockPipe-owned namespacing (`dockpipe.*`)
+## Dockpipe-owned namespacing (`dockpipe.*`)
 
-**First-party** capabilities, runtime-scoped resolver groupings, and other identifiers **authored as part of DockPipe** should use the **`dockpipe.`** prefix so they stay distinct from vendor ids, community packs, and downstream projects.
+**First-party** capabilities, runtime-scoped resolver groupings, and other identifiers **authored as part of Dockpipe** should use the **`dockpipe.`** prefix so they stay distinct from vendor ids, community packs, and downstream projects.
 
 Examples (illustrative):
 
 | Id | Role |
 |----|------|
 | **`dockpipe.cli`** | Baseline host/shell execution (project-defined). |
-| **`dockpipe.docker`** | Local container-oriented resolver/package grouping when you need a DockPipe-owned dotted id at the package layer. |
+| **`dockpipe.docker`** | Local container-oriented resolver/package grouping when you need a Dockpipe-owned dotted id at the package layer. |
 | **`dockpipe.cloud.aws.ec2`** | Cloud/runtime-specific resolver namespace — provider-shaped grouping under **`cloud`**. |
 
-Existing ecosystem-style ids (e.g. **`cli.codex`**) remain valid; **new** DockPipe-first-party surface area should prefer **`dockpipe.*`** unless you are deliberately aligning with an external convention.
+Existing ecosystem-style ids (e.g. **`cli.codex`**) remain valid; **new** Dockpipe-first-party surface area should prefer **`dockpipe.*`** unless you are deliberately aligning with an external convention.
 
 ## Rules
 

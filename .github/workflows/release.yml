@@ -327,10 +327,18 @@ jobs:
           path: release/artifacts/
           if-no-files-found: error
 
+  build-flatpak:
+    needs: [meta]
+    uses: ./.github/workflows/flatpak.yml
+    with:
+      version: ${{ needs.meta.outputs.version }}
+    permissions:
+      contents: read
+
   assemble:
     name: Assemble and verify artifacts
-    needs: [meta, build-unix, build-msi]
-    if: ${{ !cancelled() && needs.meta.result == 'success' && needs.build-unix.result == 'success' && (needs.build-msi.result == 'success' || needs.build-msi.result == 'skipped') }}
+    needs: [meta, build-unix, build-msi, build-flatpak]
+    if: ${{ !cancelled() && needs.meta.result == 'success' && needs.build-unix.result == 'success' && needs.build-flatpak.result == 'success' && (needs.build-msi.result == 'success' || needs.build-msi.result == 'skipped') }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -384,7 +392,7 @@ jobs:
           export GNUPGHOME="$(mktemp -d)"
           trap 'rm -rf "$GNUPGHOME"' EXIT
           chmod 700 "$GNUPGHOME"
-          gpg --batch --passphrase '' --quick-generate-key 'DockPipe dry-run (not for publication)' rsa3072 sign 1d
+          gpg --batch --passphrase '' --quick-generate-key 'Dockpipe dry-run (not for publication)' rsa3072 sign 1d
           export APT_SIGNING_FINGERPRINT="$(gpg --with-colons --list-secret-keys | awk -F: '$1 == "fpr" {print $10; exit}')"
           bash release/packaging/build-apt.sh release/artifacts release/apt
 

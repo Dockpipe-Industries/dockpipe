@@ -54,6 +54,7 @@ const PIPELANG_COMPLETION_KEYWORDS = [
 ];
 
 const DOCKPIPE_TOP_LEVEL_KEYS = [
+  "platforms",
   "name",
   "description",
   "category",
@@ -116,6 +117,7 @@ const DOCKPIPE_STEP_KEYS = [
 ];
 
 const TOP_LEVEL_KEY_DETAILS = {
+  platforms: "Supported execution platforms: windows, macos, linux, deb, flatpak. Flatpak support requires runtime-compatible bundled tools or explicit host integrations.",
   name: "Workflow name.",
   description: "Human-readable workflow description.",
   category: "Optional UI hint for control surfaces such as Pipeon or Launcher.",
@@ -128,8 +130,8 @@ const TOP_LEVEL_KEY_DETAILS = {
   vars: "Workflow variables exported before execution unless already set in the environment.",
   compose: "Optional Docker Compose settings for host built-ins such as compose_up, compose_down, and compose_ps.",
   container: "Optional container mount defaults. Use this to override the primary /work bind for the workflow and declare additional host-to-container mounts.",
-  workspace: "Optional runtime-owned Git workspace/session lifecycle. Use managed for DockPipe-owned worktrees and bind only for explicit local checkout sessions.",
-  dependencies: "Host tools required before this workflow can run. Use dependencies.platforms plus dependencies.host[] command/install entries.",
+  workspace: "Optional runtime-owned Git workspace/session lifecycle. Use managed for Dockpipe-owned worktrees and bind only for explicit local checkout sessions.",
+  dependencies: "Host tools required before this workflow can run. Use top-level platforms plus dependencies.host[] command/install entries. Package tools may be bundled in assets/tooling/bin.",
   security: "Optional authored container security policy. Choose a security profile, then apply bounded network/filesystem/process overrides.",
   image: "Optional image customization. Use image.packages.apt to materialize a derived Docker image with workflow-authored Debian packages.",
   steps: "Ordered workflow steps. Each step can run in a container or on the host.",
@@ -238,6 +240,7 @@ const DOCKPIPE_RUNTIME_ENV_DETAILS = {
 };
 
 const PACKAGE_MANIFEST_KEYS = [
+  "platforms",
   "schema",
   "kind",
   "name",
@@ -288,7 +291,7 @@ const PACKAGE_MANIFEST_KEY_DETAILS = {
   namespace: "Optional author or org namespace used for compiled artifacts and lookup preference.",
   tags: "Search and filtering tags.",
   keywords: "Additional search keywords.",
-  min_dockpipe_version: "Optional minimum DockPipe version constraint.",
+  min_dockpipe_version: "Optional minimum Dockpipe version constraint.",
   repository: "Source repository URL.",
   provides: "Additional named capabilities or features exposed by this package.",
   requires_capabilities: "Capabilities a workflow package expects from its chosen resolver.",
@@ -296,10 +299,10 @@ const PACKAGE_MANIFEST_KEY_DETAILS = {
   requires_resolvers: "Resolver profile names suggested or required by a workflow package.",
   includes_resolvers: "Resolver names included under a kind: package umbrella tree.",
   depends: "Other package names this package expects in the compiled store.",
-  dependencies: "Host tools expected by this package's workflows or scripts. Use dependencies.platforms plus dependencies.host[] command/install entries.",
+  dependencies: "Host tools expected by this package's workflows or scripts. Use top-level platforms plus dependencies.host[] command/install entries. Package tools may be bundled in assets/tooling/bin.",
   allow_clone: "When true, dockpipe clone may copy this compiled package back into an authoring tree.",
   distribution: "Human/tooling hint such as source or binary.",
-  image: "Optional package-owned runtime image reference. Use a normal OCI/registry ref; DockPipe compiles it into the effective image artifact manifest.",
+  image: "Optional package-owned runtime image reference. Use a normal OCI/registry ref; Dockpipe compiles it into the effective image artifact manifest.",
   script_contract: "Generic package-level script context contract for assets/scripts consumers."
 };
 
@@ -310,8 +313,8 @@ const PACKAGE_SCRIPT_CONTRACT_KEY_DETAILS = {
 };
 
 const PACKAGE_SCRIPT_CONTRACT_INJECTABLES = {
-  workdir: "Effective DockPipe workdir/repo root.",
-  workflow_name: "Workflow name when the script is running inside a DockPipe workflow.",
+  workdir: "Effective Dockpipe workdir/repo root.",
+  workflow_name: "Workflow name when the script is running inside a Dockpipe workflow.",
   script_dir: "Directory containing the current package script.",
   package_root: "Nearest package root containing package.yml for the current script.",
   assets_dir: "Nearest assets/ directory for the current script.",
@@ -349,7 +352,7 @@ const DOCKPIPE_PROJECT_SECTION_KEY_DETAILS = {
 
 const VAR_KEY_FALLBACK_DETAIL = "Workflow variable. This key exports an environment variable for the workflow or step.";
 const INPUT_BINDING_KEY_DETAILS = {
-  from: "Read this typed input from another env var after DockPipe has merged workflow vars, env files, and vault injection.",
+  from: "Read this typed input from another env var after Dockpipe has merged workflow vars, env files, and vault injection.",
   value: "Literal fallback value for this typed input when from: is unset or resolves empty."
 };
 
@@ -418,12 +421,12 @@ const WORKFLOW_VIEW_SECTION_KEY_DETAILS = {
 
 const STEP_VM_KEY_DETAILS = {
   mounts: "Optional list of host-to-guest mappings applied before the guest command runs. Use this when you want more than one synced path, or when you want the mapping to be explicit instead of relying on guest_path sugar.",
-  host_context: "Optional host path to sync into the guest. When guest_path is set and host_context is omitted, DockPipe uses the effective DOCKPIPE_WORKDIR/workdir by default.",
+  host_context: "Optional host path to sync into the guest. When guest_path is set and host_context is omitted, Dockpipe uses the effective DOCKPIPE_WORKDIR/workdir by default.",
   guest_path: "Guest destination path for host-to-guest sync before the VM guest command runs.",
   interactive_debug: "Launch the VM with a visible window and skip guest-command automation so you can inspect or configure the guest manually.",
   interactive_ssh: "Boot the VM, wait for SSH readiness, then open an authenticated interactive guest shell instead of running a one-shot guest command.",
   keepalive: "Keep the VM alive after the guest command exits so you can continue setup work manually.",
-  keepalive_seconds: "Maximum keepalive window in seconds before DockPipe tears the VM down.",
+  keepalive_seconds: "Maximum keepalive window in seconds before Dockpipe tears the VM down.",
   hostfwd: "Additional QEMU host forward string such as tcp::3389-:3389."
 };
 
@@ -434,7 +437,7 @@ const STEP_VM_MOUNT_KEY_DETAILS = {
 
 const CONTAINER_KEY_DETAILS = {
   workdir_host: "Optional host path to bind at /work for container execution. Relative paths resolve from the active workflow source/workdir, not the packaged workflow asset directory.",
-  work_path: "Optional working subdirectory under /work. Keep this relative; DockPipe rejects absolute container paths here.",
+  work_path: "Optional working subdirectory under /work. Keep this relative; Dockpipe rejects absolute container paths here.",
   mounts: "Optional additional host-to-container bind mounts applied after the primary /work mount."
 };
 
@@ -465,7 +468,7 @@ const CORE_HELPER_PROFILES = {
     sourceSnippet:
       'dockpipe scope source',
     sourceLabel: "dockpipe scope source",
-    sourceDetail: "Resolve DockPipe source/artifact paths through the CLI",
+    sourceDetail: "Resolve Dockpipe source/artifact paths through the CLI",
     functions: [
       {
         name: "dockpipe scope source",
@@ -479,7 +482,7 @@ const CORE_HELPER_PROFILES = {
         detail: "Print the SDK workflow name.",
         insertText: "dockpipe get workflow_name",
         filterText: "dockpipe get workflow_name dockpipe workflow name",
-        documentation: "First-hand shell CLI getter that prints `DOCKPIPE_WORKFLOW_NAME` when the script is running inside a DockPipe workflow."
+        documentation: "First-hand shell CLI getter that prints `DOCKPIPE_WORKFLOW_NAME` when the script is running inside a Dockpipe workflow."
       },
       {
         name: "dockpipe get script_dir",
@@ -556,7 +559,7 @@ const CORE_HELPER_PROFILES = {
         detail: "Initialize common script vars and enter the workdir.",
         insertText: "dockpipe_sdk init-script",
         filterText: "dockpipe_sdk init-script dockpipe init script root wf_ns workdir",
-        documentation: "First-hand shell SDK action that initializes `ROOT` and `WF_NS` from the SDK context and changes into the DockPipe workdir."
+        documentation: "First-hand shell SDK action that initializes `ROOT` and `WF_NS` from the SDK context and changes into the Dockpipe workdir."
       },
       {
         name: "dockpipe_sdk require workflow-name",
@@ -599,13 +602,13 @@ const CORE_HELPER_PROFILES = {
     sourceSnippet:
       '. (Join-Path (if ($env:DOCKPIPE_WORKDIR) { $env:DOCKPIPE_WORKDIR } else { (Get-Location).Path }) "src/core/assets/scripts/lib/repo-tools.ps1")',
     sourceLabel: "dockpipe sdk import",
-    sourceDetail: "Dot-source the canonical DockPipe PowerShell SDK",
+    sourceDetail: "Dot-source the canonical Dockpipe PowerShell SDK",
     functions: [
       {
         name: "$dockpipe.Workdir",
         detail: "SDK workdir/root.",
         insertText: "$dockpipe.Workdir",
-        documentation: "Object-style PowerShell SDK field for the effective DockPipe workdir/repo root."
+        documentation: "Object-style PowerShell SDK field for the effective Dockpipe workdir/repo root."
       },
       {
         name: "$dockpipe.DockpipeBin",
@@ -617,7 +620,7 @@ const CORE_HELPER_PROFILES = {
         name: "$dockpipe.WorkflowName",
         detail: "SDK workflow name.",
         insertText: "$dockpipe.WorkflowName",
-        documentation: "Object-style PowerShell SDK field for `DOCKPIPE_WORKFLOW_NAME` when running inside a DockPipe workflow."
+        documentation: "Object-style PowerShell SDK field for `DOCKPIPE_WORKFLOW_NAME` when running inside a Dockpipe workflow."
       },
       {
         name: "$dockpipe.ScriptDir",
@@ -650,13 +653,13 @@ const CORE_HELPER_PROFILES = {
     sourceSnippet:
       "from src.core.assets.scripts.lib.repo_tools import dockpipe",
     sourceLabel: "dockpipe sdk import",
-    sourceDetail: "Import the canonical DockPipe Python SDK object",
+    sourceDetail: "Import the canonical Dockpipe Python SDK object",
     functions: [
       {
         name: "dockpipe.workdir",
         detail: "SDK workdir/root.",
         insertText: "dockpipe.workdir",
-        documentation: "Object-style Python SDK field for the effective DockPipe workdir/repo root."
+        documentation: "Object-style Python SDK field for the effective Dockpipe workdir/repo root."
       },
       {
         name: "dockpipe.dockpipe_bin",
@@ -668,7 +671,7 @@ const CORE_HELPER_PROFILES = {
         name: "dockpipe.workflow_name",
         detail: "SDK workflow name.",
         insertText: "dockpipe.workflow_name",
-        documentation: "Object-style Python SDK field for `DOCKPIPE_WORKFLOW_NAME` when running inside a DockPipe workflow."
+        documentation: "Object-style Python SDK field for `DOCKPIPE_WORKFLOW_NAME` when running inside a Dockpipe workflow."
       },
       {
         name: "dockpipe.script_dir",
@@ -700,13 +703,13 @@ const CORE_HELPER_PROFILES = {
     helperPath: "dockpipe/src/core/assets/scripts/lib/repotools",
     sourceSnippet: 'import repotools "dockpipe/src/core/assets/scripts/lib/repotools"\n\ndockpipe, err := repotools.Load("")',
     sourceLabel: "dockpipe sdk import",
-    sourceDetail: "Import the canonical DockPipe Go SDK and load the SDK object",
+    sourceDetail: "Import the canonical Dockpipe Go SDK and load the SDK object",
     functions: [
       {
         name: "dockpipe.Workdir",
         detail: "SDK workdir/root.",
         insertText: "dockpipe.Workdir",
-        documentation: "Object-style Go SDK field for the effective DockPipe workdir/repo root."
+        documentation: "Object-style Go SDK field for the effective Dockpipe workdir/repo root."
       },
       {
         name: "dockpipe.DockpipeBin",
@@ -718,7 +721,7 @@ const CORE_HELPER_PROFILES = {
         name: "dockpipe.WorkflowName",
         detail: "SDK workflow name.",
         insertText: "dockpipe.WorkflowName",
-        documentation: "Object-style Go SDK field for `DOCKPIPE_WORKFLOW_NAME` when running inside a DockPipe workflow."
+        documentation: "Object-style Go SDK field for `DOCKPIPE_WORKFLOW_NAME` when running inside a Dockpipe workflow."
       },
       {
         name: "dockpipe.ScriptDir",
@@ -1719,7 +1722,7 @@ function packageManifestListTokenType(parentKey) {
 function runtimeEnvCompletionItems(languageId) {
   return Object.entries(DOCKPIPE_RUNTIME_ENV_DETAILS).map(([name, doc]) => {
     const item = new vscode.CompletionItem(name, vscode.CompletionItemKind.Variable);
-    item.detail = "DockPipe runtime path";
+    item.detail = "Dockpipe runtime path";
     item.documentation = doc;
     switch (languageId) {
       case "powershell":
@@ -2294,7 +2297,7 @@ function activate(context) {
             return Object.entries(STEP_CWD_VALUE_DETAILS).map(([value, doc]) => {
               const it = new vscode.CompletionItem(value, vscode.CompletionItemKind.EnumMember);
               it.insertText = value;
-              it.detail = "DockPipe step cwd";
+              it.detail = "Dockpipe step cwd";
               it.documentation = doc;
               return it;
             });
@@ -2303,7 +2306,7 @@ function activate(context) {
             return Object.entries(STEP_CWD_VALUE_DETAILS).map(([value, doc]) => {
               const it = new vscode.CompletionItem(value, vscode.CompletionItemKind.EnumMember);
               it.insertText = value;
-              it.detail = "DockPipe step scope";
+              it.detail = "Dockpipe step scope";
               it.documentation = doc;
               return it;
             });

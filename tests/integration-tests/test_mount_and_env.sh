@@ -21,7 +21,7 @@ esac
 
 # 1. --mount: bind a host directory into the container.
 # Windows Docker Desktop is more reliable with directory binds than single-file binds, while still
-# covering the same DockPipe mount path.
+# covering the same Dockpipe mount path.
 echo "mount_content_here" > "$tmp/mounted.txt"
 out=$(MSYS2_ARG_CONV_EXCL='*' "$DOCKPIPE" --no-data --template agent-dev --mount "$mount_host:/tmp/inttest" -- sh -c 'cat /tmp/inttest/mounted.txt')
 [[ "$out" == *"mount_content_here"* ]] || { echo "Expected mounted content in output, got: $out"; exit 1; }

@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "artifacts": [
+    {
+      "kind": "workflow",
+      "name": "linux-vm"
+    }
+  ],
+  "tools": [],
+  "host_commands": [
+    "qemu-img",
+    "qemu-system-x86_64"
+  ],
+  "required_files": []
+}

@@ -6,7 +6,7 @@ import (
 )
 
 // dockpipeRunInput is the generic MCP-to-CLI shape. Package selection stays
-// generic: it lets any package-owned workflow use the same DockPipe boundary
+// generic: it lets any package-owned workflow use the same Dockpipe boundary
 // without adding product-specific MCP tools.
 type dockpipeRunInput struct {
 	Workflow   string   `json:"workflow"`

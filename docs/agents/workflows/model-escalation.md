@@ -4,8 +4,8 @@ Read when working on agentic AI workflows, DorkPipe orchestration, local/cloud m
 
 ## Position
 
-DockPipe provides governed runtime primitives. DorkPipe owns AI harness behavior through package YAML/assets/scripts.
-Codex, Claude, and Ollama are targets/resolvers/adapters, not DockPipe core concepts.
+Dockpipe provides governed runtime primitives. DorkPipe owns AI harness behavior through package YAML/assets/scripts.
+Codex, Claude, and Ollama are targets/resolvers/adapters, not Dockpipe core concepts.
 
 ## Policy Surface
 

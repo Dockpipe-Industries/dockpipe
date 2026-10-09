@@ -49,7 +49,7 @@ type durablePackageMetadata struct {
 	OwnerDigest string `json:"owner_digest"`
 }
 
-// DurableStateRoot returns the OS-appropriate per-user root for DockPipe state that must survive
+// DurableStateRoot returns the OS-appropriate per-user root for Dockpipe state that must survive
 // removal of a checkout's disposable bin/.dockpipe tree. It intentionally does not honor
 // DOCKPIPE_GLOBAL_ROOT, which owns install/data semantics rather than project identity.
 func DurableStateRoot() (string, error) {
@@ -57,7 +57,7 @@ func DurableStateRoot() (string, error) {
 	if runtime.GOOS != "windows" || strings.TrimSpace(os.Getenv("LOCALAPPDATA")) == "" {
 		resolvedHome, err := os.UserHomeDir()
 		if err != nil {
-			return "", fmt.Errorf("durable DockPipe state root: %w", err)
+			return "", fmt.Errorf("durable Dockpipe state root: %w", err)
 		}
 		home = resolvedHome
 	}
@@ -75,32 +75,32 @@ func durableStateRootFor(goos string, env map[string]string) (string, error) {
 		base := strings.TrimSpace(env["LOCALAPPDATA"])
 		if base == "" {
 			if home == "" {
-				return "", errors.New("durable DockPipe state root: user home is unavailable")
+				return "", errors.New("durable Dockpipe state root: user home is unavailable")
 			}
 			base = filepath.Join(home, "AppData", "Local")
 		}
 		if !durablePathIsAbsoluteForOS(goos, base) {
-			return "", errors.New("durable DockPipe state root: LOCALAPPDATA or user home must be absolute")
+			return "", errors.New("durable Dockpipe state root: LOCALAPPDATA or user home must be absolute")
 		}
 		return filepath.Join(filepath.Clean(base), "dockpipe", "state"), nil
 	case "darwin":
 		if home == "" {
-			return "", errors.New("durable DockPipe state root: user home is unavailable")
+			return "", errors.New("durable Dockpipe state root: user home is unavailable")
 		}
 		if !durablePathIsAbsoluteForOS(goos, home) {
-			return "", errors.New("durable DockPipe state root: user home must be absolute")
+			return "", errors.New("durable Dockpipe state root: user home must be absolute")
 		}
 		return path.Join(home, "Library", "Application Support", "dockpipe", "state"), nil
 	default:
 		base := strings.TrimSpace(env["XDG_STATE_HOME"])
 		if base == "" {
 			if home == "" {
-				return "", errors.New("durable DockPipe state root: user home is unavailable")
+				return "", errors.New("durable Dockpipe state root: user home is unavailable")
 			}
 			base = path.Join(home, ".local", "state")
 		}
 		if !durablePathIsAbsoluteForOS(goos, base) {
-			return "", errors.New("durable DockPipe state root: XDG_STATE_HOME or user home must be absolute")
+			return "", errors.New("durable Dockpipe state root: XDG_STATE_HOME or user home must be absolute")
 		}
 		return path.Join(base, "dockpipe"), nil
 	}
@@ -447,7 +447,7 @@ func PreparePrivateStateSubdirectory(root, suffix string) (string, error) {
 }
 
 // ValidatePackageStateOverride accepts the resolved durable path or an independently existing,
-// owner-only directory outside the checkout and disposable DockPipe runtime tree. It never creates
+// owner-only directory outside the checkout and disposable Dockpipe runtime tree. It never creates
 // or repairs an override and rejects links/reparse points in the resolved path.
 func ValidatePackageStateOverride(workdir, candidate, resolved string) (string, error) {
 	candidate = strings.TrimSpace(candidate)

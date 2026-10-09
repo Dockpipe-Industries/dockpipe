@@ -15,13 +15,13 @@ What it owns:
 - Windows-friendly QEMU defaults such as disk bus and NIC model
 - baseline guest hardware defaults for the first-party Windows flow
 - optional host-to-guest sync settings consumed by the generic vmimage runner before the guest command starts
-- optional DockPipe guest agent forwarding for structured status and shutdown on provisioned Windows guests
+- optional Dockpipe guest agent forwarding for structured status and shutdown on provisioned Windows guests
 - host-side delegation for the `vm` runtime; workflows should select `runtime: vm` and `resolver: qemu` and let the resolver own the host bridge
 
 What it does not own:
 
 - Windows media or licenses
-- DockPipe core VM lifecycle primitives
+- Dockpipe core VM lifecycle primitives
 - workflow-specific Windows setup values like locale, admin user, or guest command
 
 Current resolver defaults:
@@ -98,21 +98,21 @@ steps:
     cmd: echo skipped while you inspect the guest manually
 ```
 
-When `vm.interactive_debug: true` is set, DockPipe tells the VM runner to launch a visible guest session and skip the normal guest-command-over-SSH automation path. Use it when you need to finish manual Windows setup before turning automation back on.
+When `vm.interactive_debug: true` is set, Dockpipe tells the VM runner to launch a visible guest session and skip the normal guest-command-over-SSH automation path. Use it when you need to finish manual Windows setup before turning automation back on.
 
-When `vm.interactive_ssh: true` is set, DockPipe waits for guest SSH readiness and then opens a live authenticated shell instead of executing `cmd:` as a one-shot guest command. On Windows guests, DockPipe currently uses a minimal `cmd.exe /d /q /k prompt $P$G` shell even when `ExecMode` is `powershell`, because that path is more stable over the password-authenticated `plink` terminal. Bash mode still opens `bash -li`.
+When `vm.interactive_ssh: true` is set, Dockpipe waits for guest SSH readiness and then opens a live authenticated shell instead of executing `cmd:` as a one-shot guest command. On Windows guests, Dockpipe currently uses a minimal `cmd.exe /d /q /k prompt $P$G` shell even when `ExecMode` is `powershell`, because that path is more stable over the password-authenticated `plink` terminal. Bash mode still opens `bash -li`.
 
-If the guest image is not yet SSH-ready, DockPipe now ships a built-in guest-side provisioning helper at `src/core/assets/scripts/provision-windows-ssh.ps1`.
+If the guest image is not yet SSH-ready, Dockpipe now ships a built-in guest-side provisioning helper at `src/core/assets/scripts/provision-windows-ssh.ps1`.
 
-For first-run setup before SSH exists, the VM runner now auto-attaches guest-readable bootstrap media containing that helper plus `dockpipe-guest-agent.exe`. If you also set `Advanced.BootstrapPath` / `DOCKPIPE_VM_BOOTSTRAP_PATH`, DockPipe merges your extra host file or directory into the same bootstrap media. The filenames `provision-windows-ssh.ps1`, `dockpipe-guest-agent.exe`, `dockpipe-guest-agent.ps1`, and `README.txt` are reserved by DockPipe and are always restaged last so a custom payload cannot accidentally replace them. This is the intended path for provisioning scripts and one-off setup assets when clipboard or sync are not available yet. The provisioning script installs the guest agent as a LocalSystem startup task.
+For first-run setup before SSH exists, the VM runner now auto-attaches guest-readable bootstrap media containing that helper plus `dockpipe-guest-agent.exe`. If you also set `Advanced.BootstrapPath` / `DOCKPIPE_VM_BOOTSTRAP_PATH`, Dockpipe merges your extra host file or directory into the same bootstrap media. The filenames `provision-windows-ssh.ps1`, `dockpipe-guest-agent.exe`, `dockpipe-guest-agent.ps1`, and `README.txt` are reserved by Dockpipe and are always restaged last so a custom payload cannot accidentally replace them. This is the intended path for provisioning scripts and one-off setup assets when clipboard or sync are not available yet. The provisioning script installs the guest agent as a LocalSystem startup task.
 
-When `Advanced.Agent` / `DOCKPIPE_VM_AGENT=true` is enabled, DockPipe also forwards a guest agent port and can use that control plane for structured readiness and graceful shutdown once the guest has been provisioned.
+When `Advanced.Agent` / `DOCKPIPE_VM_AGENT=true` is enabled, Dockpipe also forwards a guest agent port and can use that control plane for structured readiness and graceful shutdown once the guest has been provisioned.
 
-When `Network.SshPassword` / `DOCKPIPE_VM_SSH_PASSWORD` is set on a Windows host, DockPipe can use a non-interactive PuTTY transport (`plink` / `pscp`) instead of the default key-oriented OpenSSH path. This is intended as a pragmatic bootstrap mode; key auth still remains supported.
+When `Network.SshPassword` / `DOCKPIPE_VM_SSH_PASSWORD` is set on a Windows host, Dockpipe can use a non-interactive PuTTY transport (`plink` / `pscp`) instead of the default key-oriented OpenSSH path. This is intended as a pragmatic bootstrap mode; key auth still remains supported.
 
-For visible Windows-host sessions, DockPipe now defaults the display backend to `gtk,grab-on-hover=on,window-close=on` because the plain QEMU window default tends to release the pointer too easily at the edges.
+For visible Windows-host sessions, Dockpipe now defaults the display backend to `gtk,grab-on-hover=on,window-close=on` because the plain QEMU window default tends to release the pointer too easily at the edges.
 
-When the DockPipe guest agent is enabled and provisioned on a Windows guest, DockPipe bridges plain-text clipboard behavior through that agent on Windows hosts. That path does not need SPICE guest tools or an extra workflow flag; it starts automatically once the guest agent is reachable.
+When the Dockpipe guest agent is enabled and provisioned on a Windows guest, Dockpipe bridges plain-text clipboard behavior through that agent on Windows hosts. That path does not need SPICE guest tools or an extra workflow flag; it starts automatically once the guest agent is reachable.
 
 Incorrect pattern:
 
@@ -126,9 +126,9 @@ steps:
     cmd: echo should-not-be-host
 ```
 
-`qemu` already delegates through the resolver/runtime bridge. Marking the step as `kind: host` conflicts with that contract and DockPipe will reject it.
+`qemu` already delegates through the resolver/runtime bridge. Marking the step as `kind: host` conflicts with that contract and Dockpipe will reject it.
 
-When `vm.guest_path` is set, DockPipe treats the effective workdir as the default host context and maps it into the guest before the guest command runs. Override that with `vm.host_context` when you want to sync a different host directory.
+When `vm.guest_path` is set, Dockpipe treats the effective workdir as the default host context and maps it into the guest before the guest command runs. Override that with `vm.host_context` when you want to sync a different host directory.
 
 When you need more than one host-to-guest mapping, use `vm.mounts`. Each `host` -> `guest` pair is applied in order before the guest command runs. The older `vm.host_context` + `vm.guest_path` shape remains as sugar for a single default mapping.
 

@@ -2,8 +2,8 @@
 
 ## Goal
 
-Introduce a portable embedded execution target that compiles validated DockPipe instructions into
-streamable bytecode or standalone MCU firmware. Keep this a generic DockPipe primitive rather than
+Introduce a portable embedded execution target that compiles validated Dockpipe instructions into
+streamable bytecode or standalone MCU firmware. Keep this a generic Dockpipe primitive rather than
 putting firmware-specific behavior in a capability package.
 
 This is a deferred, non-MVP backlog contract. It does not authorize implementation or expand
@@ -12,7 +12,7 @@ TASK-015.
 ## Product Shape
 
 ```text
-DockPipe program
+Dockpipe program
       |
 portable embedded IR / bytecode
       |
@@ -50,7 +50,7 @@ modes. Connection presence is not capability, authority, or completion evidence.
 
 ## Boundary And Safety Rules
 
-- Preserve DockPipe's architecture: the program defines what happens; the embedded runtime defines
+- Preserve Dockpipe's architecture: the program defines what happens; the embedded runtime defines
   where it executes; target adapters resolve board- and toolchain-specific behavior.
 - Keep domain protocols and device behavior out of the generic runtime and compiler.
 - Require explicit target capability declarations; reject unsupported instructions before

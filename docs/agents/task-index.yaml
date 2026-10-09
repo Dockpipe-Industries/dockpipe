@@ -181,13 +181,13 @@ tasks:
       readiness: decision_ready
       ownership: unclaimed
   - id: TASK-024
-    topic: Fedora and Debian DockPipe support and qualification parity
+    topic: Fedora and Debian Dockpipe support and qualification parity
     path: docs/agents/tasks/linux-distribution-qualification-parity/index.yaml
     dispatch:
       readiness: unclassified
       ownership: unclaimed
   - id: TASK-025
-    topic: DockPipe supported-platform program and qualification matrix
+    topic: Dockpipe supported-platform program and qualification matrix
     path: docs/agents/tasks/supported-platform-program/index.yaml
     dispatch:
       readiness: unclassified
@@ -229,13 +229,13 @@ tasks:
       readiness: unclassified
       ownership: unclaimed
   - id: TASK-032
-    topic: Windows DockPipe platform support and qualification
+    topic: Windows Dockpipe platform support and qualification
     path: docs/agents/tasks/windows-platform-support/index.yaml
     dispatch:
       readiness: unclassified
       ownership: unclaimed
   - id: TASK-033
-    topic: macOS DockPipe platform support and qualification
+    topic: macOS Dockpipe platform support and qualification
     path: docs/agents/tasks/macos-platform-support/index.yaml
     dispatch:
       readiness: unclassified

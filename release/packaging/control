@@ -7,5 +7,5 @@ Depends: bash, git
 Suggests: docker.io | docker-ce
 Maintainer: dockpipe maintainers
 Description: Run commands, packages and workflows across native and container runtimes
- DockPipe runs host and container workflows with managed environments and packages.
+ Dockpipe runs host and container workflows with managed environments and packages.
  Docker is needed only for workflows that use containers.

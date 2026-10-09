@@ -1,7 +1,7 @@
-# TASK-025 DockPipe supported-platform program and qualification matrix
+# TASK-025 Dockpipe supported-platform program and qualification matrix
 schema: 1
 id: TASK-025
-topic: "DockPipe supported-platform program and qualification matrix"
+topic: "Dockpipe supported-platform program and qualification matrix"
 entrypoint: overview.md
 
 dispatch:

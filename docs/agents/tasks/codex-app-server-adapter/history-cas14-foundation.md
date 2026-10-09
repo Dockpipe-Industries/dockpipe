@@ -40,7 +40,7 @@ sandbox choice cannot change approval authority.
 
 The third supervisor-only CAS-14 projection slice is complete. A fixture-backed, order-independent
 capability catalog requires a bounded non-empty set of stable, available opaque references and keeps
-availability separate from explicit DockPipe support. Its baseline selection projects every catalog
+availability separate from explicit Dockpipe support. Its baseline selection projects every catalog
 record disabled. An enabled subset must name exact advertised supported references; every
 authority-expanding or experimental reference requires its own per-session confirmation. Empty,
 duplicate, unavailable, removed, changed, unsupported, unconfirmed, mismatched, or substituted

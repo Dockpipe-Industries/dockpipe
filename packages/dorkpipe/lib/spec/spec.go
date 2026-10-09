@@ -1,4 +1,4 @@
-// Package spec defines the DorkPipe DAG YAML format (orchestrator on top of DockPipe).
+// Package spec defines the DorkPipe DAG YAML format (orchestrator on top of Dockpipe).
 package spec
 
 import (

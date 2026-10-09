@@ -2196,7 +2196,7 @@ func TestProviderPoolLeasePolicyCanNarrowMaxActive(t *testing.T) {
 }
 
 func TestProviderPoolWorkdirHashCandidatesIncludeWindowsStyleNormalizations(t *testing.T) {
-	workdir := `C:\Source\DockPipe`
+	workdir := `C:\Source\Dockpipe`
 	candidates := providerPoolWorkdirCanonicalCandidates(workdir)
 	if !containsAll(strings.Join(candidates, "\x00"),
 		`c:\source\dockpipe`,
@@ -2205,7 +2205,7 @@ func TestProviderPoolWorkdirHashCandidatesIncludeWindowsStyleNormalizations(t *t
 		t.Fatalf("windows-style candidates missing normalized variants: %#v", candidates)
 	}
 
-	lowerHash := providerPoolWorkdirHash(`C:\Source\DockPipe`)
+	lowerHash := providerPoolWorkdirHash(`C:\Source\Dockpipe`)
 	upperHash := providerPoolWorkdirHash(`C:\SOURCE\DOCKPIPE`)
 	if lowerHash != upperHash {
 		t.Fatalf("windows-style hash should be case-insensitive: %q != %q", lowerHash, upperHash)

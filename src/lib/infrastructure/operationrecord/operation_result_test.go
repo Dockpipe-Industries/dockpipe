@@ -115,7 +115,7 @@ func TestRunOperationWithOptionsWithoutSpinnerStillLogsStartAndDoneOnTerminal(t 
 	}
 	defer stderr.Close()
 
-	if err := RunOperationWithOptions(stderr, "build.compile", "Compiling DockPipe packages…", map[string]string{
+	if err := RunOperationWithOptions(stderr, "build.compile", "Compiling Dockpipe packages…", map[string]string{
 		"project": "dockpipe",
 	}, OperationOptions{Spinner: false}, func() error {
 		return nil
@@ -158,7 +158,7 @@ func TestRunOperationWithOptionsWithoutSpinnerLogsProgressHeartbeat(t *testing.T
 	}
 	defer stderr.Close()
 
-	if err := RunOperationWithOptions(stderr, "build.compile", "Compiling DockPipe packages…", map[string]string{
+	if err := RunOperationWithOptions(stderr, "build.compile", "Compiling Dockpipe packages…", map[string]string{
 		"project": "dockpipe",
 	}, OperationOptions{Spinner: false, ProgressEvery: 2 * time.Millisecond}, func() error {
 		time.Sleep(8 * time.Millisecond)

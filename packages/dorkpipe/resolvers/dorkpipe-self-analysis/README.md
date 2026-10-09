@@ -1,6 +1,6 @@
 # dorkpipe-self-analysis
 
-**DockPipe** workflow that runs **DorkPipe** over the **mounted repository** in an **isolated container** (`golang:1.25-bookworm` at **`/work`**). That matches DockPipe’s core model: **work runs in a container**, not on the host.
+**Dockpipe** workflow that runs **DorkPipe** over the **mounted repository** in an **isolated container** (`golang:1.25-bookworm` at **`/work`**). That matches Dockpipe’s core model: **work runs in a container**, not on the host.
 
 | Output | Purpose |
 |--------|---------|
@@ -9,7 +9,7 @@
 | `dockpipe __state package-runtime --owner dorkpipe --path self-analysis` | Raw facts (git, package counts, ripgrep hits) — auditable and disposable |
 | `dockpipe __state package-runtime --owner dorkpipe --path handoff/orchestrator-cursor-prompt.refined.md` | Only with **`spec.combined.yaml`**: Ollama refine; merged into `paste-this-prompt.txt` |
 
-The workflow runs in **`golang:1.25-bookworm`** (git and curl from the image; no **`apt-get`** — DockPipe runs the container as your host uid, so package installs as root are not available). It runs the package self-analysis entrypoint from packaged assets and resolves the DorkPipe CLI from packaged tooling first, with checkout-only rebuild behavior left as a maintainer fallback.
+The workflow runs in **`golang:1.25-bookworm`** (git and curl from the image; no **`apt-get`** — Dockpipe runs the container as your host uid, so package installs as root are not available). It runs the package self-analysis entrypoint from packaged assets and resolves the DorkPipe CLI from packaged tooling first, with checkout-only rebuild behavior left as a maintainer fallback.
 
 **Full YAML lifecycle (Compose up → analysis → Compose down):** use **`dorkpipe-self-analysis-stack`** — see **`../dorkpipe-self-analysis-stack/README.md`**.
 
@@ -52,7 +52,7 @@ dockpipe --workflow dorkpipe-self-analysis-host --workdir . --
 
 **`spec.combined.yaml`** adds an **Ollama** node. From the **host**, point **`OLLAMA_HOST`** at a running Ollama (e.g. after **`dev-stack.sh up`** or **`ollama serve`**).
 
-Running **`spec.combined.yaml` via the containerized DockPipe workflow** may need **`OLLAMA_HOST`** to reach the **host** (not `127.0.0.1` from inside the isolate). Typical fixes: set **`OLLAMA_HOST=http://host.docker.internal:11434`** (Docker Desktop) or **`http://172.17.0.1:11434`** (Linux bridge), or run the **host workflow** instead.
+Running **`spec.combined.yaml` via the containerized Dockpipe workflow** may need **`OLLAMA_HOST`** to reach the **host** (not `127.0.0.1` from inside the isolate). Typical fixes: set **`OLLAMA_HOST=http://host.docker.internal:11434`** (Docker Desktop) or **`http://172.17.0.1:11434`** (Linux bridge), or run the **host workflow** instead.
 
 ```bash
 DORKPIPE_SELF_ANALYSIS_SPEC=packages/dorkpipe/resolvers/dorkpipe-self-analysis/spec.combined.yaml \
@@ -67,6 +67,6 @@ DORKPIPE_SELF_ANALYSIS_SPEC=packages/dorkpipe/resolvers/dorkpipe-self-analysis/s
 ## Principles
 
 - **No fake analysis**: prep/signals only record command output.
-- **DockPipe** is the fabric; **DorkPipe** is the DAG orchestrator on top.
+- **Dockpipe** is the fabric; **DorkPipe** is the DAG orchestrator on top.
 
 See **`AGENTS.md`** and **`docs/runtime/artifacts.md`**.

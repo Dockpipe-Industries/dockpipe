@@ -344,7 +344,7 @@ type UserInputOption struct {
 	Label     string `json:"label"`
 }
 
-// UserInputPrompt is a bounded, renderable DockPipe record. Summary and option
+// UserInputPrompt is a bounded, renderable Dockpipe record. Summary and option
 // labels must be normalized by the adapter; raw provider question/option objects
 // and provider request identifiers must never populate this type.
 type UserInputPrompt struct {

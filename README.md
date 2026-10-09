@@ -1,6 +1,6 @@
-# DockPipe
+# Dockpipe
 
-DockPipe runs commands and workflows in disposable isolated environments.
+Dockpipe runs commands and workflows in disposable isolated environments.
 
 Start with a command. Turn repeatable commands into workflows. Compile/package when
 you want reusable artifacts. Security policy and Docker image artifacts are
@@ -11,7 +11,7 @@ first thing you learn.
 
 Most users should start with the packaged install flow, not a source checkout:
 
-1. Install DockPipe from [GitHub Releases](https://github.com/Dockpipe-Industries/dockpipe/releases) using [docs/install.md](docs/install.md).
+1. Install Dockpipe from [GitHub Releases](https://github.com/Dockpipe-Industries/dockpipe/releases) using [docs/install.md](docs/install.md).
 2. Run `dockpipe -- pwd`.
 3. Read [docs/onboarding.md](docs/onboarding.md) for the first workflow path.
 
@@ -77,12 +77,12 @@ Full index: [docs/README.md](docs/README.md).
 ```bash
 make dev-deps
 make dev-install
-make test        # build + Go tests + DockPipe package/workflow tests
+make test        # build + Go tests + Dockpipe package/workflow tests
 make test-quick  # Go tests + package/workflow tests + path guard + bash unit tests
 make ci          # full Linux CI mirror
 ```
 
-After `make build`, this repo can dogfood DockPipe like any project:
+After `make build`, this repo can dogfood Dockpipe like any project:
 
 ```bash
 ./src/bin/dockpipe --workflow <name> --workdir . --
@@ -94,6 +94,6 @@ first-party packages.
 
 ## Disclaimer
 
-DockPipe is open-source (Apache-2.0). It runs commands in containers and can run
+Dockpipe is open-source (Apache-2.0). It runs commands in containers and can run
 scripts on the host; review what you execute. Pre-1.0: flags and behavior may
 change between releases.

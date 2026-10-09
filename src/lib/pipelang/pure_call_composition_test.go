@@ -77,7 +77,7 @@ func TestV370GeneralPureCallCompositionPipeline(t *testing.T) {
 		t.Fatal(err)
 	}
 	searchOutcome, err := coreeval.EvaluateProgram(searchCore, coreir.SemanticIdentity{PackageID: string(searchIdentity.PackageID), Path: string(searchIdentity.Path)}, []coreeval.Value{
-		{Type: coreFunctionNamed(t, searchCore, "Search").Parameters[0].Type, String: "  DockPipe  "},
+		{Type: coreFunctionNamed(t, searchCore, "Search").Parameters[0].Type, String: "  Dockpipe  "},
 		{Type: coreFunctionNamed(t, searchCore, "Search").Parameters[1].Type, String: "dockpipe"},
 	})
 	if err != nil || !searchOutcome.OK || !searchOutcome.Value.Bool {

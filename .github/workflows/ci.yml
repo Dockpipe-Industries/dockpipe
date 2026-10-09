@@ -124,7 +124,7 @@ jobs:
         run: bash src/scripts/check-templates-core-paths.sh
 
       # Workflow "test" = go test + vet + staticcheck + govulncheck + gosec inside Docker (tools installed in-container; only mod cache mounted).
-      - name: DockPipe workflow — test
+      - name: Dockpipe workflow — test
         if: ${{ env.ACT != 'true' }}
         env:
           DOCKPIPE_REPO_ROOT: ${{ github.workspace }}
@@ -135,7 +135,7 @@ jobs:
             --
 
       # Optional: Codex resolver workflows (set repo variable DOCKPIPE_CI_CODEX=true and secret OPENAI_API_KEY).
-      - name: DockPipe workflows — codex-pav, codex-security (optional)
+      - name: Dockpipe workflows — codex-pav, codex-security (optional)
         if: ${{ vars.DOCKPIPE_CI_CODEX == 'true' }}
         env:
           DOCKPIPE_REPO_ROOT: ${{ github.workspace }}

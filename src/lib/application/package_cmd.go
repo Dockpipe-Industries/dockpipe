@@ -200,7 +200,7 @@ func cmdPackageManifest(args []string) error {
 	return nil
 }
 
-const examplePackageManifestYAML = `# package.yml — metadata for a DockPipe package (workflow, resolver, core slice, or assets).
+const examplePackageManifestYAML = `# package.yml — metadata for a Dockpipe package (workflow, resolver, core slice, or assets).
 # Place next to the package tree under bin/.dockpipe/internal/packages/ (see docs/packages/package-model.md).
 schema: 1
 name: my-package

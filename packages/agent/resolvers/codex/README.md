@@ -7,11 +7,11 @@ Bundled **workflow** for the **OpenAI Codex CLI** stack (`dockpipe-codex` image)
 
 **Standalone:** `dockpipe --workflow codex -- …` only makes sense if **`/work`** is already the worktree you want. For full clone + commit automation, use **`strategy: worktree`** with **`--resolver codex`** — **[docs/workflows/workflow-yaml.md](../../../../docs/workflows/workflow-yaml.md#named-strategies)**.
 
-## Codex inside DockPipe Docker (no nested sandbox)
+## Codex inside Dockpipe Docker (no nested sandbox)
 
-DockPipe **runtime `docker`** is the isolation layer for the project at **`/work`**.
+Dockpipe **runtime `docker`** is the isolation layer for the project at **`/work`**.
 
-Codex’s **`--sandbox workspace-write`** (and similar) runs **bubblewrap** inside the container. That stacks a second Linux sandbox on top of Docker and typically **fails** with user-namespace errors (`bwrap: No permissions to create a new namespace`, etc.) on common kernels/AppArmor setups—**without** any fault in DockPipe.
+Codex’s **`--sandbox workspace-write`** (and similar) runs **bubblewrap** inside the container. That stacks a second Linux sandbox on top of Docker and typically **fails** with user-namespace errors (`bwrap: No permissions to create a new namespace`, etc.) on common kernels/AppArmor setups—**without** any fault in Dockpipe.
 
 **Recommended for workflow steps that invoke `codex exec` in this image:**
 

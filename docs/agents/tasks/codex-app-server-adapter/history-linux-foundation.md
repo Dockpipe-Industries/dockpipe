@@ -75,7 +75,7 @@ The remaining live work stays split into separate maintainer approvals:
 The missing offline contract between the inert Gate 2 provisioning plan and any future live runner
 is now implemented under `packages/vm/**` as VM package version `0.9.0`. “Package-owned” here means
 the VM-specific source, policy, templates, and tests remain in the VM package. It does not wire the
-task into DockPipe package installation, release, registry, signing, global-store, or version
+task into Dockpipe package installation, release, registry, signing, global-store, or version
 resolution. Those package-layer capabilities remain separate backlog work. The future QEMU bundle
 is instead a separately prepared task-owned local artifact, like the pinned image and task-owned
 controller/guest builds.
@@ -301,7 +301,7 @@ A separately authorized offline forensic artifact with SHA-256
 mount namespaces using kernel NBD read-only and ext4 `ro,noload,nodev,nosuid,noexec` mounts. It
 uniquely identified `/dev/nbd15p1` as root, found `/var/lib/cloud` absent, found no cloud-init
 `status.json`, `result.json`, or `boot-finished`, found no matching persistent-journal agent entries,
-and found no DockPipe-specific udev ownership/mode rule. It did not record the actual runtime
+and found no Dockpipe-specific udev ownership/mode rule. It did not record the actual runtime
 virtio-port ownership or mode. NBD and mounts were detached; the preserved disk metadata tuple was
 unchanged. The owner-only report SHA-256 is
 `504e8e68acc91ace97eba74a676c1e9675d5a5c1d13a216ed93a27a3ad0e7565`. Earlier v1-v3 forensic

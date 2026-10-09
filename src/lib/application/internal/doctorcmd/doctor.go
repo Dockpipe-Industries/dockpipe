@@ -24,7 +24,7 @@ var doctorLoadProjectConfigFn = compileconfig.Load
 var doctorStatFn = os.Stat
 var doctorOpLookPathFn = exec.LookPath
 
-// Run verifies required and optional local DockPipe prerequisites.
+// Run verifies required and optional local Dockpipe prerequisites.
 func Run(argv []string) error {
 	if len(argv) > 0 && (argv[0] == "-h" || argv[0] == "--help") {
 		fmt.Print(`dockpipe doctor — verify bash, Docker, and bundled assets
