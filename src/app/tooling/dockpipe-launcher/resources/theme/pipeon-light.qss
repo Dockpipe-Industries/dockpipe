@@ -1,3 +1,16 @@
+/* Explicit foregrounds keep scheme changes independent of Qt's cached widget palettes. */
+QWidget {
+    color: #25344a;
+}
+
+QWidget:disabled {
+    color: #8993a1;
+}
+
+QPushButton#primaryButton {
+    color: #ffffff;
+}
+
 /* Light UI — high contrast for secondary text and badges (WCAG-friendly on white/near-white) */
 
 QLabel#appSubtitle,
@@ -294,4 +307,112 @@ QScrollBar::handle:horizontal {
 QScrollBar::handle:vertical:hover,
 QScrollBar::handle:horizontal:hover {
     background-color: #aeb9c8;
+}
+
+QWidget#mainCentral, QWidget#basicHomePage, QWidget#basicWorkspacePage, QWidget#basicAppsPage,
+QWidget#machineContent {
+    background: #f7f8fb;
+}
+
+QFrame#navigationRail {
+    background: #edf0f5;
+    border-right: 1px solid #dce1e9;
+}
+
+QFrame#workspaceBar {
+    background: #f7f8fb;
+    border-bottom-color: #dce1e9;
+}
+
+QLabel#eyebrow, QLabel#workspacePath, QLabel#cardDescription {
+    color: #5e6b7e;
+}
+
+QPushButton#workspaceSelector {
+    background: #e8edf5;
+    color: #25344a;
+    border: none;
+}
+
+QListWidget#workspaceNavigation::item {
+    color: #536176;
+}
+
+QListWidget#workspaceNavigation::item:selected {
+    background: #dce9fb;
+    color: #18559f;
+}
+
+QListWidget#workspaceNavigation::item:hover {
+    background: #e1e7f0;
+}
+
+QFrame#navigationRail QPushButton {
+    background: transparent;
+    color: #536176;
+}
+
+QFrame#navigationRail QPushButton:hover {
+    background: #dce9fb;
+    color: #18559f;
+}
+
+QFrame#appCard {
+    background: #ffffff;
+    border-color: #dce2eb;
+}
+
+QFrame#appCard:hover {
+    border-color: #93abc9;
+    background: #fafcff;
+}
+
+QLabel#cardTitle {
+    color: #243247;
+}
+
+QLabel#cardStatus {
+    background: #dff3e8;
+    color: #256147;
+}
+
+QPushButton#remoteSetupNavigation, QPushButton#quietButton {
+    background: transparent;
+    color: #5e6b7e;
+}
+
+QPushButton#remoteSetupNavigation:hover, QPushButton#quietButton:hover {
+    background: #e8edf5;
+    color: #25344a;
+}
+
+QPushButton#cardLaunchButton {
+    background: #e5efff;
+    color: #1d579c;
+}
+
+QPushButton#cardLaunchButton:hover {
+    background: #d0e3ff;
+    color: #164579;
+}
+
+QPushButton#cardLaunchButton:disabled {
+    background: #edf0f4;
+    color: #8a94a4;
+}
+
+QScrollArea#machineScroll QScrollBar {
+    background: #f7f8fb;
+}
+
+QPushButton#primaryButton:disabled {
+    background: #e4e9f0;
+    border-color: #e4e9f0;
+    color: #8591a2;
+}
+
+QPushButton#secondaryButton:disabled,
+QPushButton#remoteSetupNavigation:disabled, QPushButton#quietButton:disabled {
+    color: #8591a2;
+    background: transparent;
 }

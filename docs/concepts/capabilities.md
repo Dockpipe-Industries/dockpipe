@@ -72,6 +72,11 @@ resolver: codex
 - **`dockpipe package list`** — tab-separated columns include **`provider`**, **`capability`**, **`requires_capabilities`** (comma-separated when multiple), **`description`**.
 - **`packages-store-manifest.json`** (from **`dockpipe package build store`**) — each artifact includes **`provider`**, **`capability`**, and for workflow packages **`requires_capabilities`** when set in **`package.yml`**.
 
+Remote connection adapters use `remote.edge` for a tunnel to a local broker and
+`remote.broker` for a hosted broker with package-owned sign-in. The launcher discovers
+these through their matching setup hooks; capability metadata alone never executes
+setup. See the [remote resolver contract](../runtime/remote-nodes.md#resolver-contract).
+
 ## See also
 
 - **[architecture-model.md](architecture-model.md)** — normative runtime / resolver / workflow definitions  

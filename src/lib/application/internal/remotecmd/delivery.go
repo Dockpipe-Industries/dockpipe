@@ -3,9 +3,9 @@ package remotecmd
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
 
 	contract "dockpipe/src/lib/domain/remote"
@@ -20,7 +20,7 @@ func (values *stringList) Set(value string) error {
 	return nil
 }
 
-func submitDelivery(ctx context.Context, root, node, id, workdir, workflow string, includes, dependencies, artifacts []string, dryRun bool) error {
+func submitDelivery(ctx context.Context, root, node, id, workdir, workflow string, includes, dependencies, artifacts []string, dryRun bool, expectedDigest string) error {
 	bundle, err := remoteio.BuildBundle(workdir, workflow, includes, dependencies, artifacts)
 	if err != nil {
 		return err
@@ -28,6 +28,9 @@ func submitDelivery(ctx context.Context, root, node, id, workdir, workflow strin
 	digest, err := bundle.Digest()
 	if err != nil {
 		return err
+	}
+	if expectedDigest != "" && expectedDigest != digest {
+		return errors.New("workflow snapshot changed since preview; preview again before submitting")
 	}
 	request := contract.SubmitRequest{Submission: contract.Submission{ID: id, Node: node, BundleHash: digest}, Bundle: bundle}
 	if err := request.Validate(); err != nil {
@@ -42,11 +45,7 @@ func submitDelivery(ctx context.Context, root, node, id, workdir, workflow strin
 		}
 		return json.NewEncoder(os.Stdout).Encode(map[string]any{"submission": request.Submission, "files": paths, "bytes": total, "artifacts": bundle.Artifacts})
 	}
-	var config OperatorConfig
-	if err := remoteio.ReadPrivate(filepath.Join(root, "operator.json"), &config); err != nil {
-		return err
-	}
-	client, err := remoteio.NewClient("http://"+config.Listen, config.Token)
+	client, err := operatorClient(root)
 	if err != nil {
 		return err
 	}
