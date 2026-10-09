@@ -45,3 +45,33 @@ the task crosses the value bar for orchestration.
   approval prompts, audit logs, and teardown.
 - Decide the Qt mobile packaging path, authentication model, offline behavior, and which actions are
   safe to expose from mobile.
+
+## Launcher workspace continuation (2026-10-09)
+
+The user authorized a workflow-focused launcher shell during remote onboarding.
+The Qt launcher now exposes Apps, Workflows, Machines, Activity and Docker, using existing
+catalog/category metadata and CLI execution. Machines offers provider-neutral
+broker setup, online pairing with explicit code comparison, and user-service
+startup. Remote runs choose an enrolled node, preview the selected source snapshot,
+and submit its exact digest. Activity reads broker job state and downloads results.
+This is launcher execution/onboarding UX, not the ForgePipe workflow editor or an
+AI planner. All seven Qt checks pass, including the new remote UI fixture test and visual
+inspection of captured screens. This local validation does not qualify native macOS/Flatpak UI or a
+live cross-machine workflow; these remain distinct test boundaries.
+
+The follow-up layout pass removes the nested Applications/Docker navigation, shares a
+workspace selector across all pages, and introduces app cards, compact rows, and an
+empty-library package action. Docker has one page and one refresh owner. Fixture checks
+cover navigation, app action identity, empty-library package access, and Docker discovery;
+rendered dark/light and desktop-width captures are inspected without live provider access.
+
+The Machines page now starts with a bounded machine list and human-readable access
+states. Pairing and worker connection are separate guided pages; broker setup is secondary.
+Details are collapsed, approval/removal controls require a selection, and pending requests
+refresh only on the visible pairing page. Fixture checks cover the invited-state explanation,
+tall-window layout, navigation, consent gating, code display, and cancellation.
+
+Provider-aware Machines setup now consumes resolver metadata from the public catalog and
+shows active provider identity/address separately from the setup choice. Local-edge and
+hosted-broker forms follow generic package hooks. Actual Dockpipe Cloud account login and
+managed backend remain future work; see TASK-036 and the canonical remote resolver contract.

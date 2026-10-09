@@ -481,3 +481,21 @@ public Class DemoVmWorkflowConfig
 		t.Fatalf("unexpected field refs %#v", page.Sections[0].Fields)
 	}
 }
+
+func TestCatalogResolverDetailsUsesResolvedProvider(t *testing.T) {
+	root := t.TempDir()
+	provider := filepath.Join(root, "templates", "core", "resolvers", "example.hosted")
+	if err := os.MkdirAll(provider, 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(provider, "package.yml"), []byte("schema: 1\nkind: resolver\nname: example.hosted\nversion: 2.1.0\ntitle: Hosted example\ncapability: remote.broker\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(provider, "profile"), []byte("DOCKPIPE_REMOTE_BROKER_SETUP=assets/login.sh\nPRIVATE=do-not-expose\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	details := catalogResolverDetails(root, []string{"example.hosted", "does-not-exist"})
+	if len(details) != 1 || details[0].Name != "example.hosted" || details[0].RemoteSetup != "hosted" || details[0].Version != "2.1.0" {
+		t.Fatalf("unexpected resolver catalog: %+v", details)
+	}
+}

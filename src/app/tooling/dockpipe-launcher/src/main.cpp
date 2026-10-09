@@ -1,3 +1,4 @@
+#include "BuildVersion.h"
 #include "DockpipeChoices.h"
 #include "LauncherEnvironment.h"
 #include "MainWindow.h"

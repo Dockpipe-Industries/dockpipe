@@ -1,6 +1,10 @@
 #include "MainWindow.h"
 
 #include "BasicModeWidget.h"
+#include "RemoteWidget.h"
+#include "ActivityWidget.h"
+#include "RemoteRunDialog.h"
+#include <QComboBox>
 #include "ContextRowWidget.h"
 #include "DockpipeChoices.h"
 #include "DockerObservabilityWidget.h"
@@ -70,7 +74,7 @@ QString statusLabel(SessionManager &sm, const QString &id, bool *runningOut, boo
         return QObject::tr("Failed");
     }
     *failedOut = false;
-    return QObject::tr("Stopped");
+    return QObject::tr("Ready");
 }
 
 bool contextMatchesFilter(const Context &c, const QString &filter)
@@ -270,7 +274,7 @@ QVector<Context> contextsFromCatalog(const QString &workdir, const QString &repo
             continue;
         Context c = Context::createNew();
         c.workdir = clean;
-        c.label = baseLabel + QStringLiteral(" — ") + wf.workflowId;
+        c.label = wf.displayName.isEmpty() ? wf.workflowId : wf.displayName;
         c.workflow = wf.workflowId;
         c.dockpipeBinary = DockpipeChoices::preferredDockpipeBinary(clean);
         out.append(c);
@@ -352,9 +356,11 @@ WorkflowCatalogData fastWorkflowShellCatalog(const QString &workdir)
 
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), m_sessions(this)
 {
-    setWindowTitle(tr("Dockpipe Launcher"));
+    const QString version = QCoreApplication::applicationVersion();
+    setWindowTitle(version.startsWith("dev+") ? tr("Dockpipe Launcher — %1").arg(version)
+                                             : tr("Dockpipe Launcher"));
     setWindowIcon(QGuiApplication::windowIcon());
-    resize(800, 520);
+    resize(1180, 780);
 
     m_settings.load();
     applyGlobalRootDefault(m_settings.globalRootOverride);
@@ -390,12 +396,122 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), m_sessions(this)
 
     m_stack->addWidget(m_basicWidget);
     m_stack->addWidget(m_advancedPage);
-    outer->addWidget(m_stack);
+    m_remoteWidget = new RemoteWidget;
+    m_activityWidget = new ActivityWidget(m_sessions, m_store);
+    m_stack->addWidget(m_remoteWidget);
+    m_stack->addWidget(m_activityWidget);
+    m_dockerWidget = new DockerObservabilityWidget;
+    m_stack->addWidget(m_dockerWidget);
+
+    auto *shell = new QHBoxLayout;
+    shell->setSpacing(0);
+    auto *rail = new QFrame;
+    rail->setObjectName(QStringLiteral("navigationRail"));
+    rail->setFixedWidth(196);
+    auto *railLayout = new QVBoxLayout(rail);
+    railLayout->setContentsMargins(16, 24, 16, 16);
+    railLayout->setSpacing(12);
+    auto *brand = new QLabel(tr("Dockpipe"));
+    brand->setObjectName(QStringLiteral("appTitle"));
+    railLayout->addWidget(brand);
+    auto *tagline = new QLabel(tr("Your work. Anywhere."));
+    tagline->setObjectName(QStringLiteral("appSubtitle"));
+    railLayout->addWidget(tagline);
+    m_navigation = new QListWidget;
+    m_navigation->setObjectName(QStringLiteral("workspaceNavigation"));
+    m_navigation->addItems({tr("Apps"), tr("Workflows"), tr("Machines"), tr("Activity"), tr("Docker")});
+    m_navigation->setSpacing(6);
+    m_navigation->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    for (int i = 0; i < m_navigation->count(); ++i)
+        m_navigation->item(i)->setSizeHint(QSize(140, 42));
+    railLayout->addWidget(m_navigation, 1);
+    auto *packages = new QPushButton(tr("Packages"));
+    auto *settings = new QPushButton(tr("Settings"));
+    railLayout->addWidget(packages);
+    railLayout->addWidget(settings);
+    connect(packages, &QPushButton::clicked, this, &MainWindow::onManagePackages);
+    connect(settings, &QPushButton::clicked, this, &MainWindow::onOpenSettings);
+    shell->addWidget(rail);
+    auto *workspace = new QVBoxLayout;
+    workspace->setContentsMargins(0, 0, 0, 0);
+    workspace->setSpacing(0);
+    auto *workspaceBar = new QFrame;
+    workspaceBar->setObjectName(QStringLiteral("workspaceBar"));
+    auto *workspaceLayout = new QHBoxLayout(workspaceBar);
+    workspaceLayout->setContentsMargins(28, 12, 28, 12);
+    workspaceLayout->setSpacing(12);
+    auto *workspaceLabel = new QLabel(tr("WORKSPACE"));
+    workspaceLabel->setObjectName(QStringLiteral("eyebrow"));
+    workspaceLayout->addWidget(workspaceLabel);
+    m_workspaceButton = new QPushButton;
+    m_workspaceButton->setObjectName(QStringLiteral("workspaceSelector"));
+    m_workspaceButton->setMaximumWidth(280);
+    auto *workspaceMenu = new QMenu(m_workspaceButton);
+    connect(workspaceMenu, &QMenu::aboutToShow, this, [this, workspaceMenu]() {
+        workspaceMenu->clear();
+        workspaceMenu->addAction(tr("Open folder…"), this, &MainWindow::onFileOpenProject);
+        if (!m_settings.recentProjectFolders.isEmpty())
+            workspaceMenu->addSeparator();
+        for (const QString &folder : m_settings.recentProjectFolders) {
+            auto *action = workspaceMenu->addAction(QDir::toNativeSeparators(folder));
+            connect(action, &QAction::triggered, this, [this, folder]() { onBasicOpenRecent(folder); });
+        }
+    });
+    m_workspaceButton->setMenu(workspaceMenu);
+    workspaceLayout->addWidget(m_workspaceButton);
+    m_workspacePath = new QLabel;
+    m_workspacePath->setTextFormat(Qt::PlainText);
+    m_workspacePath->setObjectName(QStringLiteral("workspacePath"));
+    m_workspacePath->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
+    workspaceLayout->addWidget(m_workspacePath, 1);
+    workspace->addWidget(workspaceBar);
+    workspace->addWidget(m_stack, 1);
+    shell->addLayout(workspace, 1);
+    outer->addLayout(shell, 1);
+    connect(m_navigation, &QListWidget::currentRowChanged, this, [this](int page) {
+        if (page < 0)
+            return;
+        m_stack->setCurrentIndex(page);
+        m_dockerWidget->setActive(page == 4);
+        m_actBasic->setChecked(page == 0);
+        m_actAdvanced->setChecked(page == 1);
+        m_actIcons->setEnabled(page == 0);
+        m_actList->setEnabled(page == 0);
+        if (page == 0) {
+            m_settings.uiMode = QStringLiteral("basic");
+            if (!m_settings.projectFolder.isEmpty())
+                m_basicWidget->showWorkspacePage();
+            updateBasicPage();
+        } else if (page == 1) {
+            m_settings.uiMode = QStringLiteral("advanced");
+            startAdvancedContextDiscovery();
+        } else if (page == 2) {
+            m_remoteWidget->setWorkdir(m_settings.projectFolder);
+            m_remoteWidget->refresh();
+        } else if (page == 3) {
+            m_activityWidget->setWorkdir(m_settings.projectFolder);
+            m_activityWidget->refreshLocal();
+        }
+    });
+    connect(m_remoteWidget, &RemoteWidget::nodesChanged, this, [this](const QStringList &nodes) {
+        const QString selected = m_runTarget->currentData().toString();
+        m_runTarget->clear();
+        m_runTarget->addItem(tr("This computer"), QString());
+        for (const auto &node : nodes)
+            m_runTarget->addItem(node, node);
+        const int index = m_runTarget->findData(selected);
+        m_runTarget->setCurrentIndex(index < 0 ? 0 : index);
+    });
+    connect(m_stack, &QStackedWidget::currentChanged, this, [this](int index) {
+        if (m_navigation->currentRow() != index)
+            m_navigation->setCurrentRow(index);
+    });
 
     setCentralWidget(central);
 
     setupDisclaimerBar();
 
+    connect(m_basicWidget, &BasicModeWidget::packagesRequested, this, &MainWindow::onManagePackages);
     connect(m_basicWidget, &BasicModeWidget::openProjectRequested, this, &MainWindow::onFileOpenProject);
     connect(m_basicWidget, &BasicModeWidget::refreshAppsRequested, this, &MainWindow::onRefreshAppList);
     connect(m_basicWidget, &BasicModeWidget::launchRequested, this, &MainWindow::onBasicLaunch);
@@ -487,10 +603,10 @@ void MainWindow::setupMenuBar()
 
     QMenu *view = menuBar()->addMenu(tr("View"));
     auto *modeGroup = new QActionGroup(this);
-    m_actBasic = view->addAction(tr("Basic mode"));
+    m_actBasic = view->addAction(tr("Apps"));
     m_actBasic->setCheckable(true);
     modeGroup->addAction(m_actBasic);
-    m_actAdvanced = view->addAction(tr("Advanced mode"));
+    m_actAdvanced = view->addAction(tr("Workflows"));
     m_actAdvanced->setCheckable(true);
     modeGroup->addAction(m_actAdvanced);
     connect(m_actBasic, &QAction::triggered, this, &MainWindow::onViewBasic);
@@ -536,8 +652,10 @@ void MainWindow::onAbout()
     box.setTextInteractionFlags(Qt::TextBrowserInteraction);
     box.setText(
         tr("<h3>Dockpipe Launcher</h3>"
+           "<p>Version: %1</p>"
            "<p>Dockpipe Launcher is the desktop shell and local-first workspace surface for Dockpipe workflows.</p>"
-           "<p><a href=\"https://dockpipe.com\">dockpipe.com</a></p>"));
+           "<p><a href=\"https://dockpipe.com\">dockpipe.com</a></p>")
+            .arg(QCoreApplication::applicationVersion().toHtmlEscaped()));
     box.setStandardButtons(QMessageBox::Ok);
     box.exec();
 }
@@ -546,17 +664,17 @@ void MainWindow::setupAdvancedPage(QWidget *page)
 {
     auto *root = new QVBoxLayout(page);
     root->setSpacing(14);
-    root->setContentsMargins(16, 16, 16, 16);
+    root->setContentsMargins(28, 24, 28, 24);
 
     auto *header = new QFrame;
-    header->setObjectName(QStringLiteral("headerBar"));
+    header->setObjectName(QStringLiteral("workflowHeader"));
     auto *headLay = new QVBoxLayout(header);
     headLay->setSpacing(12);
-    headLay->setContentsMargins(14, 14, 14, 14);
+    headLay->setContentsMargins(0, 0, 0, 0);
 
-    auto *title = new QLabel(tr("Contexts (advanced)"));
+    auto *title = new QLabel(tr("Workflows"));
     title->setObjectName(QStringLiteral("appTitle"));
-    auto *subtitle = new QLabel(tr("Project workflows for the current folder. Right-click a row for launch and session actions."));
+    auto *subtitle = new QLabel(tr("Choose what to run, choose a machine, and follow its progress in Activity."));
     subtitle->setObjectName(QStringLiteral("appSubtitle"));
     subtitle->setWordWrap(true);
     headLay->addWidget(title);
@@ -570,16 +688,21 @@ void MainWindow::setupAdvancedPage(QWidget *page)
         connect(b, &QPushButton::clicked, this, slot);
         primaryRow->addWidget(b);
     };
-    addPrimary(tr("Open Logs"), &MainWindow::onOpenLogs, "primaryButton");
-    addPrimary(tr("Stop All for Repo"), &MainWindow::onStopAllForRepo, "primaryButton");
+    auto *targetLabel = new QLabel(tr("Run on"));
+    primaryRow->addWidget(targetLabel);
+    m_runTarget = new QComboBox;
+    m_runTarget->setObjectName(QStringLiteral("runTarget"));
+    m_runTarget->addItem(tr("This computer"), QString());
+    m_runTarget->setMinimumWidth(180);
+    primaryRow->addWidget(m_runTarget);
+    addPrimary(tr("Run selected"), &MainWindow::onLaunch, "primaryButton");
+    addPrimary(tr("Stop"), &MainWindow::onStop, "quietButton");
+    addPrimary(tr("Logs"), &MainWindow::onOpenLogs, "quietButton");
     primaryRow->addStretch(1);
     headLay->addLayout(primaryRow);
 
     root->addWidget(header);
-    m_advancedTabs = new QTabWidget(page);
-    m_advancedTabs->setObjectName(QStringLiteral("surfaceTabs"));
-
-    auto *contextsPage = new QWidget(m_advancedTabs);
+    auto *contextsPage = new QWidget(page);
     auto *contextsRoot = new QVBoxLayout(contextsPage);
     contextsRoot->setContentsMargins(0, 0, 0, 0);
     contextsRoot->setSpacing(14);
@@ -642,7 +765,7 @@ void MainWindow::setupAdvancedPage(QWidget *page)
     m_emptyTitle->setObjectName(QStringLiteral("emptyTitle"));
     m_emptyTitle->setAlignment(Qt::AlignCenter);
     m_emptyBody = new QLabel(
-        tr("Open a project folder in Basic mode or with File → Open project folder."));
+        tr("Open a project folder with File → Open project folder."));
     m_emptyBody->setObjectName(QStringLiteral("emptyBody"));
     m_emptyBody->setWordWrap(true);
     m_emptyBody->setAlignment(Qt::AlignCenter);
@@ -662,7 +785,7 @@ void MainWindow::setupAdvancedPage(QWidget *page)
     consoleLay->setContentsMargins(12, 12, 12, 12);
     consoleLay->setSpacing(8);
 
-    m_consoleTitle = new QLabel(tr("Inline CLI"));
+    m_consoleTitle = new QLabel(tr("Run output"));
     m_consoleTitle->setObjectName(QStringLiteral("consoleTitle"));
     m_consoleMeta = new QLabel(tr("Select a workflow row, then launch it to see output here."));
     m_consoleMeta->setObjectName(QStringLiteral("consoleMeta"));
@@ -685,15 +808,7 @@ void MainWindow::setupAdvancedPage(QWidget *page)
     splitter->setSizes({360, 240});
     contextsRoot->addWidget(splitter, 1);
 
-    m_advancedDocker = new DockerObservabilityWidget(m_advancedTabs);
-    m_advancedTabs->addTab(contextsPage, tr("Contexts"));
-    m_advancedTabs->addTab(m_advancedDocker, tr("Docker"));
-    connect(m_advancedTabs, &QTabWidget::currentChanged, this, [this](int index) {
-        if (m_advancedDocker)
-            m_advancedDocker->setActive(index == 1);
-    });
-
-    root->addWidget(m_advancedTabs, 1);
+    root->addWidget(contextsPage, 1);
 
     connect(m_list, &QListWidget::customContextMenuRequested, this, [this](const QPoint &p) {
         if (QListWidgetItem *it = m_list->itemAt(p))
@@ -710,6 +825,7 @@ void MainWindow::applyUiMode()
     m_actList->blockSignals(true);
 
     m_stack->setCurrentIndex(m_settings.isAdvanced() ? 1 : 0);
+    m_navigation->setCurrentRow(m_stack->currentIndex());
     m_actBasic->setChecked(!m_settings.isAdvanced());
     m_actAdvanced->setChecked(m_settings.isAdvanced());
     const bool basic = !m_settings.isAdvanced();
@@ -718,14 +834,15 @@ void MainWindow::applyUiMode()
     m_actIcons->setChecked(basic && m_settings.isBasicIcons());
     m_actList->setChecked(basic && !m_settings.isBasicIcons());
     m_basicWidget->setViewIconMode(m_settings.isBasicIcons());
-    m_basicWidget->setProjectFolder(m_settings.projectFolder);
     m_basicWidget->setRecentProjects(m_settings.recentProjectFolders);
     m_basicWidget->setContinueLastVisible(!m_settings.projectFolder.isEmpty()
                                            || !m_settings.recentProjectFolders.isEmpty());
-    if (basic)
-        m_basicWidget->showHomePage();
-    if (m_advancedDocker && m_advancedTabs)
-        m_advancedDocker->setActive(!basic && m_advancedTabs->currentIndex() == 1);
+    if (basic) {
+        if (m_settings.projectFolder.isEmpty())
+            m_basicWidget->showHomePage();
+        else
+            m_basicWidget->showWorkspacePage();
+    }
 
     m_actBasic->blockSignals(false);
     m_actAdvanced->blockSignals(false);
@@ -797,7 +914,6 @@ void MainWindow::onFileOpenProject()
     m_settings.save();
     m_basicWidget->setRecentProjects(m_settings.recentProjectFolders);
     m_basicWidget->setContinueLastVisible(true);
-    m_basicWidget->setProjectFolder(m_settings.projectFolder);
     m_basicWidget->showWorkspacePage();
     rebuildUi();
 }
@@ -819,7 +935,6 @@ void MainWindow::onBasicOpenRecent(const QString &absPath)
     m_settings.save();
     m_basicWidget->setRecentProjects(m_settings.recentProjectFolders);
     m_basicWidget->setContinueLastVisible(true);
-    m_basicWidget->setProjectFolder(m_settings.projectFolder);
     m_basicWidget->showWorkspacePage();
     rebuildUi();
 }
@@ -836,7 +951,6 @@ void MainWindow::onBasicContinueLast()
     m_settings.save();
     m_basicWidget->setRecentProjects(m_settings.recentProjectFolders);
     m_basicWidget->setContinueLastVisible(true);
-    m_basicWidget->setProjectFolder(m_settings.projectFolder);
     m_basicWidget->showWorkspacePage();
     rebuildUi();
 }
@@ -846,7 +960,6 @@ void MainWindow::activateHome()
     m_settings.uiMode = QStringLiteral("basic");
     m_settings.projectFolder.clear();
     m_settings.save();
-    m_basicWidget->setProjectFolder(QString());
     m_basicWidget->setRecentProjects(m_settings.recentProjectFolders);
     m_basicWidget->setContinueLastVisible(!m_settings.recentProjectFolders.isEmpty());
     m_basicWidget->showHomePage();
@@ -866,6 +979,17 @@ void MainWindow::onRefreshAppList()
 
 void MainWindow::updateBasicPage()
 {
+    const QString folder = QDir::toNativeSeparators(m_settings.projectFolder);
+    const QString name = QFileInfo(m_settings.projectFolder).fileName();
+    QString workspaceName = name.isEmpty() ? folder : name;
+    if (folder.isEmpty())
+        workspaceName = tr("Open a project");
+    m_workspaceButton->setText(workspaceName);
+    m_workspaceButton->setToolTip(folder);
+    m_workspacePath->setText(folder);
+    m_workspacePath->setToolTip(folder);
+    m_remoteWidget->setWorkdir(m_settings.projectFolder);
+    m_activityWidget->setWorkdir(m_settings.projectFolder);
     if (m_settings.projectFolder.isEmpty()) {
         m_basicAppsLoading = false;
         m_basicApps.clear();
@@ -1155,7 +1279,7 @@ void MainWindow::applyAdvancedContextFilter()
     if (m_emptyTitle && m_emptyBody) {
         if (!hasProject) {
             m_emptyTitle->setText(tr("No project selected"));
-            m_emptyBody->setText(tr("Open a project folder in Basic mode or with File → Open project folder."));
+            m_emptyBody->setText(tr("Open a project folder with File → Open project folder."));
         } else if (m_advancedDiscoveryLoading) {
             m_emptyTitle->setText(tr("Loading workflows"));
             m_emptyBody->setText(tr("Dockpipe is discovering workflows for the current project folder."));
@@ -1183,7 +1307,7 @@ void MainWindow::applyAdvancedContextFilter()
 
         bool running = false;
         bool failed = false;
-        QString st = tr("Stopped");
+        QString st = tr("Ready");
         if (Context *stored = findStoredContextForDisplay(c))
             st = statusLabel(m_sessions, stored->id, &running, &failed);
 
@@ -1255,6 +1379,10 @@ void MainWindow::startWorkflowCatalogDiscovery()
 
     const QString previousRequested = QDir::cleanPath(m_workflowCatalogRequestedWorkdir);
     const bool projectChanged = previousRequested != workdir;
+    if (projectChanged) {
+        m_remoteWidget->setResolvers({});
+        m_remoteWidget->setWorkdir(workdir);
+    }
     m_workflowCatalogRequestedWorkdir = workdir;
     m_advancedDiscoveryRequestedWorkdir = workdir;
     m_basicAppsRequestedWorkdir = workdir;
@@ -1306,8 +1434,9 @@ void MainWindow::applyWorkflowCatalogResult(const AsyncWorkflowCatalogResult &re
     if (catalog.workflows.isEmpty()) {
         const WorkflowCatalogData fallback = fastWorkflowShellCatalog(result.workdir);
         if (!fallback.workflows.isEmpty())
-            catalog = fallback;
+            catalog.workflows = fallback.workflows;
     }
+    m_remoteWidget->setResolvers(catalog.resolverDetails);
     m_advancedSourceContexts = contextsFromCatalog(result.workdir, result.repoRoot, catalog);
     m_basicApps = appWorkflowsFromCatalog(catalog);
     m_advancedDiscoveryLoading = false;
@@ -1475,6 +1604,28 @@ void MainWindow::onLaunch()
         return;
     Context *c = ensureStoredContextForDisplay(*display);
     const WorkflowMeta meta = findWorkflowMeta(c->workdir, c->workflow, c->workflowFile);
+    const QString node = m_runTarget->currentData().toString();
+    if (!node.isEmpty()) {
+        Context remoteContext = *c;
+        if (remoteContext.workflowFile.isEmpty())
+            remoteContext.workflowFile = meta.configPath;
+        if (remoteContext.workflowFile.isEmpty()) {
+            QMessageBox::information(this, tr("Workflow source required"), tr("Remote delivery requires a discovered workflow source file."));
+            return;
+        }
+        if (!c->envFile.isEmpty() || !c->extraDockpipeEnv.isEmpty() || !c->resolver.isEmpty() || !c->runtime.isEmpty() || !c->strategy.isEmpty()) {
+            QMessageBox::information(this, tr("Local launch overrides"),
+                tr("This launch has local environment or execution overrides. Remote delivery uses the workflow YAML. "
+                   "Clear local overrides and put non-secret execution settings in the workflow before sending it."));
+            return;
+        }
+        RemoteRunDialog dialog(remoteContext, node, this);
+        if (dialog.exec() == QDialog::Accepted) {
+            m_navigation->setCurrentRow(3);
+            m_activityWidget->refreshRemote();
+        }
+        return;
+    }
     if (!configureContextForWorkflow(*c, meta, false))
         return;
     if (m_sessions.launch(*c, ContextStore::logsDir()))
@@ -1600,7 +1751,7 @@ void MainWindow::refreshInlineConsole()
     Context *c = currentContext();
     if (!display && !c) {
         m_consoleContextId.clear();
-        m_consoleTitle->setText(tr("Inline CLI"));
+        m_consoleTitle->setText(tr("Run output"));
         m_consoleMeta->setText(tr("Select a workflow row, then launch it to see output here."));
         m_console->setPlainText(QString());
         return;
@@ -1608,7 +1759,7 @@ void MainWindow::refreshInlineConsole()
 
     const Context *metaContext = c ? c : display;
     m_consoleContextId = c ? c->id : QString();
-    m_consoleTitle->setText(metaContext->label.isEmpty() ? tr("Inline CLI") : metaContext->label);
+    m_consoleTitle->setText(metaContext->label.isEmpty() ? tr("Run output") : metaContext->label);
     m_consoleMeta->setText(currentContextCommandLine());
 
     const SessionInfo si = c ? m_sessions.info(c->id) : SessionInfo{};

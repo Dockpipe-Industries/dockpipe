@@ -2,7 +2,8 @@
 # Paths are relative to repo root (CURDIR when you invoke make from the checkout).
 
 DEB_VERSION ?= $(shell test -f VERSION && tr -d ' \t\r\n' < VERSION || echo 0.6.0)
-GO_LDFLAGS := -s -w -X main.Version=$(DEB_VERSION)
+BUILD_VERSION ?= dev
+GO_LDFLAGS := -s -w -X main.Version=$(BUILD_VERSION)
 WINDOWS_OUT ?= src/bin/dockpipe.exe
 
 .PHONY: build build-core build-windows test-core

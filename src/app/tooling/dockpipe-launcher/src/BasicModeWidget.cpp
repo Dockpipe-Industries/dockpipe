@@ -1,5 +1,5 @@
 #include "BasicModeWidget.h"
-#include "DockerObservabilityWidget.h"
+#include "AppCardWidget.h"
 
 #include <QAbstractItemView>
 #include <QFrame>
@@ -16,7 +16,6 @@
 #include <QSizePolicy>
 #include <QStackedWidget>
 #include <QStyle>
-#include <QTabWidget>
 #include <QTimer>
 #include <QVBoxLayout>
 
@@ -114,7 +113,7 @@ BasicModeWidget::BasicModeWidget(QWidget *parent) : QWidget(parent)
     m_homePage->setObjectName(QStringLiteral("basicHomePage"));
     auto *homeLay = new QVBoxLayout(m_homePage);
     homeLay->setSpacing(12);
-    homeLay->setContentsMargins(12, 12, 12, 12);
+    homeLay->setContentsMargins(28, 24, 28, 24);
 
     auto *homeHero = new QFrame(m_homePage);
     homeHero->setObjectName(QStringLiteral("basicHero"));
@@ -122,10 +121,10 @@ BasicModeWidget::BasicModeWidget(QWidget *parent) : QWidget(parent)
     homeHeroLay->setSpacing(10);
     homeHeroLay->setContentsMargins(18, 18, 18, 18);
 
-    auto *homeTitle = new QLabel(tr("Dockpipe Launcher"));
+    auto *homeTitle = new QLabel(tr("Choose your workspace"));
     homeTitle->setObjectName(QStringLiteral("appTitle"));
     auto *homeSub = new QLabel(
-        tr("Open a project folder to see Dockpipe workflows. Recent folders appear here — pick one or browse."));
+        tr("Open a project to bring its apps and workflows together."));
     homeSub->setObjectName(QStringLiteral("appSubtitle"));
     homeSub->setWordWrap(true);
     homeHeroLay->addWidget(homeTitle);
@@ -185,32 +184,31 @@ BasicModeWidget::BasicModeWidget(QWidget *parent) : QWidget(parent)
     m_workspacePage = new QWidget;
     m_workspacePage->setObjectName(QStringLiteral("basicWorkspacePage"));
     auto *root = new QVBoxLayout(m_workspacePage);
-    root->setSpacing(12);
-    root->setContentsMargins(12, 12, 12, 12);
+    root->setSpacing(24);
+    root->setContentsMargins(28, 24, 28, 24);
 
-    auto *navRow = new QHBoxLayout;
-    m_backHome = new QPushButton(tr("← Projects"));
-    m_backHome->setObjectName(QStringLiteral("secondaryButton"));
-    m_backHome->setToolTip(tr("Back to the project list"));
-    connect(m_backHome, &QPushButton::clicked, this, &BasicModeWidget::backToHomeRequested);
-    navRow->addWidget(m_backHome);
-    navRow->addStretch(1);
-    root->addLayout(navRow);
-
-    auto *workspaceHero = new QFrame(m_workspacePage);
-    workspaceHero->setObjectName(QStringLiteral("basicHero"));
-    auto *workspaceHeroLay = new QVBoxLayout(workspaceHero);
-    workspaceHeroLay->setSpacing(12);
-    workspaceHeroLay->setContentsMargins(18, 18, 18, 18);
-
+    auto *workspaceHero = new QWidget(m_workspacePage);
+    auto *workspaceHeroLay = new QHBoxLayout(workspaceHero);
+    workspaceHeroLay->setContentsMargins(0, 0, 0, 0);
+    workspaceHeroLay->setSpacing(16);
+    auto *heading = new QVBoxLayout;
+    heading->setSpacing(6);
     auto *title = new QLabel(tr("Apps"));
     title->setObjectName(QStringLiteral("appTitle"));
-
-    auto *sub = new QLabel(
-        tr("Launch a tool for this folder. It is passed to dockpipe as --workdir (mounted in the container).\n"
-           "The cursor-dev app starts a long-lived Docker session then opens Cursor on the host."));
+    auto *sub = new QLabel(tr("Your installed apps, ready for this workspace."));
     sub->setObjectName(QStringLiteral("appSubtitle"));
     sub->setWordWrap(true);
+    heading->addWidget(title);
+    heading->addWidget(sub);
+    workspaceHeroLay->addLayout(heading, 1);
+    m_refresh = new QPushButton(tr("Refresh"));
+    m_refresh->setObjectName(QStringLiteral("quietButton"));
+    connect(m_refresh, &QPushButton::clicked, this, &BasicModeWidget::onRefresh);
+    workspaceHeroLay->addWidget(m_refresh);
+    auto *getApps = new QPushButton(tr("Browse packages"));
+    getApps->setObjectName(QStringLiteral("secondaryButton"));
+    connect(getApps, &QPushButton::clicked, this, &BasicModeWidget::packagesRequested);
+    workspaceHeroLay->addWidget(getApps);
 
     m_loadingBanner = new QLabel;
     m_loadingBanner->setObjectName(QStringLiteral("hintText"));
@@ -221,37 +219,7 @@ BasicModeWidget::BasicModeWidget(QWidget *parent) : QWidget(parent)
     m_loadingTimer->setInterval(170);
     connect(m_loadingTimer, &QTimer::timeout, this, &BasicModeWidget::updateLoadingBanner);
 
-    auto *projRow = new QHBoxLayout;
-    m_projectLabel = new QLabel(tr("No project folder"));
-    m_projectLabel->setObjectName(QStringLiteral("hintText"));
-    m_projectLabel->setWordWrap(true);
-    m_browse = new QPushButton(tr("Choose folder…"));
-    m_browse->setObjectName(QStringLiteral("primaryButton"));
-    m_refresh = new QPushButton(tr("Refresh apps"));
-    m_refresh->setObjectName(QStringLiteral("secondaryButton"));
-    m_refresh->setToolTip(tr("Reload the app list from disk (new workflows, category changes)."));
-    connect(m_browse, &QPushButton::clicked, this, &BasicModeWidget::onBrowse);
-    connect(m_refresh, &QPushButton::clicked, this, &BasicModeWidget::onRefresh);
-    projRow->addWidget(m_projectLabel, 1);
-    projRow->addWidget(m_refresh, 0, Qt::AlignRight);
-    projRow->addWidget(m_browse, 0, Qt::AlignRight);
-
-    auto *projectPanel = new QFrame(workspaceHero);
-    projectPanel->setObjectName(QStringLiteral("projectSummary"));
-    auto *projectLay = new QVBoxLayout(projectPanel);
-    projectLay->setContentsMargins(14, 14, 14, 14);
-    projectLay->setSpacing(10);
-    projectLay->addLayout(projRow);
-
-    workspaceHeroLay->addWidget(title);
-    workspaceHeroLay->addWidget(sub);
-    workspaceHeroLay->addWidget(m_loadingBanner);
-    workspaceHeroLay->addWidget(projectPanel);
-
-    m_workspaceTabs = new QTabWidget(m_workspacePage);
-    m_workspaceTabs->setObjectName(QStringLiteral("surfaceTabs"));
-
-    m_appsPage = new QWidget(m_workspaceTabs);
+    m_appsPage = new QWidget(m_workspacePage);
     m_appsPage->setObjectName(QStringLiteral("basicAppsPage"));
     auto *appsLay = new QVBoxLayout(m_appsPage);
     appsLay->setContentsMargins(0, 0, 0, 0);
@@ -288,6 +256,30 @@ BasicModeWidget::BasicModeWidget(QWidget *parent) : QWidget(parent)
     });
 
     appsLay->addWidget(m_list, 1);
+    m_emptyApps = new QWidget;
+    m_emptyApps->setObjectName(QStringLiteral("appsEmptyState"));
+    auto *emptyLayout = new QVBoxLayout(m_emptyApps);
+    emptyLayout->setSpacing(12);
+    emptyLayout->addStretch();
+    auto *emptyGlyph = new QLabel;
+    emptyGlyph->setPixmap(QIcon(QStringLiteral(":/icon.png")).pixmap(56, 56));
+    emptyLayout->addWidget(emptyGlyph, 0, Qt::AlignHCenter);
+    m_emptyAppsTitle = new QLabel;
+    m_emptyAppsTitle->setObjectName(QStringLiteral("emptyTitle"));
+    m_emptyAppsTitle->setAlignment(Qt::AlignCenter);
+    m_emptyAppsBody = new QLabel;
+    m_emptyAppsBody->setObjectName(QStringLiteral("appSubtitle"));
+    m_emptyAppsBody->setAlignment(Qt::AlignCenter);
+    m_emptyAppsBody->setWordWrap(true);
+    emptyLayout->addWidget(m_emptyAppsTitle);
+    emptyLayout->addWidget(m_emptyAppsBody);
+    m_emptyPackages = new QPushButton(tr("Find an app"));
+    m_emptyPackages->setObjectName(QStringLiteral("primaryButton"));
+    connect(m_emptyPackages, &QPushButton::clicked, this, &BasicModeWidget::packagesRequested);
+    emptyLayout->addWidget(m_emptyPackages, 0, Qt::AlignHCenter);
+    emptyLayout->addStretch(2);
+    appsLay->addWidget(m_emptyApps, 1);
+    updateEmptyState();
 
     m_launchOverlay = new QWidget(m_appsPage);
     m_launchOverlay->setObjectName(QStringLiteral("launchOverlay"));
@@ -327,16 +319,9 @@ BasicModeWidget::BasicModeWidget(QWidget *parent) : QWidget(parent)
     overlayLay->addWidget(m_launchOverlayCard, 0, Qt::AlignHCenter);
     overlayLay->addStretch(1);
 
-    m_docker = new DockerObservabilityWidget(m_workspaceTabs);
-    m_workspaceTabs->addTab(m_appsPage, tr("Applications"));
-    m_workspaceTabs->addTab(m_docker, tr("Docker"));
-    connect(m_workspaceTabs, &QTabWidget::currentChanged, this, [this](int index) {
-        setDockerTabActive(index == 1);
-        updateLaunchOverlayGeometry();
-    });
-
     root->addWidget(workspaceHero);
-    root->addWidget(m_workspaceTabs, 1);
+    root->addWidget(m_loadingBanner);
+    root->addWidget(m_appsPage, 1);
 
     m_stack->addWidget(m_homePage);
     m_stack->addWidget(m_workspacePage);
@@ -346,14 +331,12 @@ BasicModeWidget::BasicModeWidget(QWidget *parent) : QWidget(parent)
 
 void BasicModeWidget::showHomePage()
 {
-    setDockerTabActive(false);
     m_stack->setCurrentWidget(m_homePage);
 }
 
 void BasicModeWidget::showWorkspacePage()
 {
     m_stack->setCurrentWidget(m_workspacePage);
-    setDockerTabActive(m_workspaceTabs && m_workspaceTabs->currentIndex() == 1);
     updateResponsiveMetrics();
     updateLaunchOverlayGeometry();
 }
@@ -399,15 +382,6 @@ void BasicModeWidget::rebuildRecentList()
     }
 }
 
-void BasicModeWidget::setProjectFolder(const QString &absPath)
-{
-    if (absPath.isEmpty()) {
-        m_projectLabel->setText(tr("No project folder — use File → Open project folder or Choose folder…"));
-        return;
-    }
-    m_projectLabel->setText(tr("Project: %1").arg(QDir::toNativeSeparators(absPath)));
-}
-
 void BasicModeWidget::applyViewMode()
 {
     if (m_iconMode) {
@@ -436,6 +410,11 @@ void BasicModeWidget::setViewIconMode(bool icons)
 void BasicModeWidget::setApps(const QVector<WorkflowMeta> &apps)
 {
     m_apps = apps;
+    // Qt defers item-widget deletion; hide outgoing cards before rebuilding.
+    for (int i = 0; i < m_list->count(); ++i) {
+        if (auto *card = m_list->itemWidget(m_list->item(i)))
+            card->hide();
+    }
     m_list->clear();
     for (const WorkflowMeta &m : apps) {
         auto *it = new QListWidgetItem;
@@ -446,11 +425,13 @@ void BasicModeWidget::setApps(const QVector<WorkflowMeta> &apps)
     }
     updateResponsiveMetrics();
     rebuildItemTexts();
+    updateEmptyState();
 }
 
 void BasicModeWidget::setAppDiscoveryLoading(bool loading)
 {
     m_appDiscoveryLoading = loading;
+    updateEmptyState();
     if (m_launchingWorkflowId.isEmpty() && m_loadingBanner) {
         if (loading) {
             m_loadingBanner->setText(tr("Loading apps from Dockpipe..."));
@@ -469,19 +450,14 @@ void BasicModeWidget::rebuildItemTexts()
         QListWidgetItem *it = m_list->item(i);
         const bool run = m_running.value(m.workflowId, false);
         const bool launching = (m.workflowId == m_launchingWorkflowId);
-        QString t = m.displayName;
-        if (launching)
-            t += tr(" — Launching");
-        else if (run)
-            t += tr(" — Running");
-        it->setText(t);
-        if (!m_iconMode) {
-            QString sub = m.description;
-            if (sub.length() > 120)
-                sub = sub.left(117) + QStringLiteral("…");
-            const QString stateLine = launching ? tr("\n(Launching)") : (run ? tr("\n(Running)") : QString());
-            it->setText(m.displayName + QStringLiteral("\n") + sub + stateLine);
-        }
+        it->setText(QString());
+        it->setIcon(QIcon());
+        auto *card = new AppCardWidget(m, appIconForWorkflow(m), !m_iconMode, run, launching, m_list);
+        connect(card, &AppCardWidget::launchRequested, this, [this, id = m.workflowId]() { emit launchRequested(id); });
+        connect(card, &AppCardWidget::configureRequested, this, [this, id = m.workflowId]() { emit configureRequested(id); });
+        if (auto *previous = m_list->itemWidget(it))
+            previous->hide();
+        m_list->setItemWidget(it, card);
     }
 }
 
@@ -489,42 +465,38 @@ void BasicModeWidget::updateResponsiveMetrics()
 {
     if (!m_list)
         return;
-    if (m_iconMode) {
-        const int availableWidth = qMax(320, m_list->viewport()->width());
-        const int columns = qMax(1, (availableWidth + 16) / 220);
-        const int cellWidth = qBound(168, (availableWidth - ((columns + 1) * 12)) / columns, 260);
-        const int iconSize = qBound(44, cellWidth / 3, 68);
-        m_list->setIconSize(QSize(iconSize, iconSize));
-        m_list->setGridSize(QSize(cellWidth, 168));
-    } else {
-        m_list->setIconSize(QSize(30, 30));
-    }
+    const int availableWidth = qMax(220, m_list->viewport()->width() - 24);
+    const int columns = qMax(1, availableWidth / 270);
+    const int cellWidth = qMin(340, (availableWidth - (columns - 1) * 12) / columns);
+    m_list->setGridSize(m_iconMode ? QSize(cellWidth, 206) : QSize());
+    for (int i = 0; i < m_list->count(); ++i)
+        m_list->item(i)->setSizeHint(m_iconMode ? QSize(cellWidth - 12, 194) : QSize(0, 86));
 }
 
 void BasicModeWidget::setRunningByWorkflow(const QHash<QString, bool> &running)
 {
+    if (m_running == running)
+        return;
     m_running = running;
     rebuildItemTexts();
 }
 
-void BasicModeWidget::onBrowse()
-{
-    emit openProjectRequested();
-}
-
 void BasicModeWidget::onRefresh()
 {
-    if (m_workspaceTabs && m_workspaceTabs->currentIndex() == 1 && m_docker) {
-        m_docker->refresh();
-        return;
-    }
     emit refreshAppsRequested();
 }
 
-void BasicModeWidget::setDockerTabActive(bool active)
+void BasicModeWidget::updateEmptyState()
 {
-    if (m_docker)
-        m_docker->setActive(active);
+    if (!m_emptyApps)
+        return;
+    const bool empty = m_apps.isEmpty();
+    m_emptyApps->setVisible(empty);
+    m_list->setVisible(!empty);
+    m_emptyAppsTitle->setText(m_appDiscoveryLoading ? tr("Finding your apps…") : tr("Make this workspace yours"));
+    m_emptyAppsBody->setText(m_appDiscoveryLoading ? tr("Checking the installed app catalog.")
+        : tr("No apps are installed for this workspace yet.\nBrowse packages to add the tools you use."));
+    m_emptyPackages->setVisible(!m_appDiscoveryLoading);
 }
 
 void BasicModeWidget::setLaunchingWorkflow(const QString &workflowId, const QString &displayName)
@@ -546,6 +518,8 @@ void BasicModeWidget::setLaunchingWorkflow(const QString &workflowId, const QStr
 
 void BasicModeWidget::clearLaunchingWorkflow()
 {
+    if (m_launchingWorkflowId.isEmpty())
+        return;
     m_launchingWorkflowId.clear();
     m_launchingWorkflowName.clear();
     if (m_loadingTimer)

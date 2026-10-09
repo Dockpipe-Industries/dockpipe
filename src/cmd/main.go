@@ -3,7 +3,6 @@ package main
 
 import (
 	"bufio"
-	_ "embed"
 	"errors"
 	"fmt"
 	"io"
@@ -16,13 +15,6 @@ import (
 
 	"golang.org/x/term"
 )
-
-// Version is set at link time: -X main.Version=X.Y.Z (see Makefile, release/packaging/build-deb.sh, CI).
-// When left as "dev", versionString() uses the embedded copy of repo-root VERSION (see src/cmd/VERSION).
-var Version = "dev"
-
-//go:embed VERSION
-var versionFile string
 
 type gitignoreDecision int
 
@@ -41,14 +33,6 @@ var dockpipeGitignoreEntries = []string{
 }
 
 var isTerminalFn = term.IsTerminal
-
-func versionString() string {
-	v := strings.TrimSpace(Version)
-	if v != "" && v != "dev" {
-		return v
-	}
-	return strings.TrimSpace(versionFile)
-}
 
 func hasInitHelpArg(args []string) bool {
 	for _, a := range args {
