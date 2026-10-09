@@ -83,11 +83,11 @@ func processPlatform(goos, goarch, flatpakID, infoPath string) (string, error) {
 	// the runtime/ prefix. Both describe the same execution environment.
 	parts := strings.Split(strings.TrimPrefix(runtimeRef, "runtime/"), "/")
 	if len(parts) != 3 || !safeToken.MatchString(parts[0]) || !safeToken.MatchString(parts[2]) {
-		return "", fmt.Errorf("Flatpak execution metadata needs a valid runtime reference")
+		return "", fmt.Errorf("invalid Flatpak execution metadata: runtime reference is missing or malformed")
 	}
 	arches := map[string]string{"amd64": "x86_64", "arm64": "aarch64"}
 	if arches[goarch] == "" || parts[1] != arches[goarch] {
-		return "", fmt.Errorf("Flatpak runtime architecture does not match %s", goarch)
+		return "", fmt.Errorf("runtime architecture in Flatpak metadata does not match %s", goarch)
 	}
 	return native + "-flatpak-" + parts[0] + "-" + parts[2], nil
 }
