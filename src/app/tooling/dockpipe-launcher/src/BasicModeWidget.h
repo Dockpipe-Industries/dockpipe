@@ -9,8 +9,6 @@ class QLabel;
 class QListWidget;
 class QPushButton;
 class QStackedWidget;
-class QTabWidget;
-class DockerObservabilityWidget;
 class QTimer;
 class QFrame;
 
@@ -23,7 +21,6 @@ public:
     void showHomePage();
     void showWorkspacePage();
 
-    void setProjectFolder(const QString &absPath);
     void setRecentProjects(const QStringList &paths);
     void setContinueLastVisible(bool visible);
 
@@ -37,6 +34,7 @@ public:
 signals:
     void openProjectRequested();
     void refreshAppsRequested();
+    void packagesRequested();
     void launchRequested(const QString &workflowId);
     void configureRequested(const QString &workflowId);
 
@@ -44,7 +42,6 @@ signals:
     void recentProjectSelected(const QString &absPath);
     void continueLastRequested();
 private slots:
-    void onBrowse();
     void onRefresh();
 
 private:
@@ -52,7 +49,7 @@ private:
     void rebuildItemTexts();
     void rebuildRecentList();
     void updateResponsiveMetrics();
-    void setDockerTabActive(bool active);
+    void updateEmptyState();
     void updateLoadingBanner();
     void updateLaunchOverlayGeometry();
 
@@ -68,8 +65,10 @@ protected:
     QPushButton *m_openProjectHome = nullptr;
     QPushButton *m_continueLast = nullptr;
 
-    QPushButton *m_backHome = nullptr;
-    QLabel *m_projectLabel = nullptr;
+    QWidget *m_emptyApps = nullptr;
+    QLabel *m_emptyAppsTitle = nullptr;
+    QLabel *m_emptyAppsBody = nullptr;
+    QPushButton *m_emptyPackages = nullptr;
     QLabel *m_loadingBanner = nullptr;
     QWidget *m_appsPage = nullptr;
     QWidget *m_launchOverlay = nullptr;
@@ -77,11 +76,8 @@ protected:
     QLabel *m_launchOverlayGlyph = nullptr;
     QLabel *m_launchOverlayTitle = nullptr;
     QLabel *m_launchOverlayBody = nullptr;
-    QPushButton *m_browse = nullptr;
     QPushButton *m_refresh = nullptr;
-    QTabWidget *m_workspaceTabs = nullptr;
     QListWidget *m_list = nullptr;
-    DockerObservabilityWidget *m_docker = nullptr;
     QTimer *m_loadingTimer = nullptr;
 
     QStringList m_recentPaths;

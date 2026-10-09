@@ -25,17 +25,21 @@ type Enrollment struct {
 }
 
 type BrokerState struct {
-	Schema    string                  `json:"schema"`
-	AdminHash string                  `json:"admin_hash"`
-	Nodes     map[string]Enrollment   `json:"nodes"`
-	Jobs      map[string]contract.Job `json:"jobs"`
+	Pairings     map[string]PairingSession `json:"pairings,omitempty"`
+	PairingUntil time.Time                 `json:"pairing_until,omitempty"`
+	Schema       string                    `json:"schema"`
+	AdminHash    string                    `json:"admin_hash"`
+	Nodes        map[string]Enrollment     `json:"nodes"`
+	Jobs         map[string]contract.Job   `json:"jobs"`
 }
 
 type Broker struct {
-	mutex    sync.Mutex
-	path     string
-	state    BrokerState
-	poisoned bool
+	mutex            sync.Mutex
+	path             string
+	state            BrokerState
+	poisoned         bool
+	pairingRateStart time.Time
+	pairingRateCount int
 }
 
 func Hash(value string) string {
@@ -54,6 +58,9 @@ func NewBroker(root string) (*Broker, error) {
 	}
 	if b.state.Schema != contract.Version || len(b.state.AdminHash) != 64 || b.state.Nodes == nil || b.state.Jobs == nil {
 		return nil, errors.New("invalid broker state")
+	}
+	if b.state.Pairings == nil {
+		b.state.Pairings = map[string]PairingSession{}
 	}
 	// Claimed jobs are never automatically requeued after a crash. The worker
 	// journal may deliver a completed result, otherwise the operator sees unknown.
@@ -98,7 +105,11 @@ func (b *Broker) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "POST required", http.StatusMethodNotAllowed)
 		return
 	}
-	body, err := io.ReadAll(http.MaxBytesReader(w, r.Body, contract.MaxBody))
+	limit := int64(contract.MaxBody)
+	if r.URL.Path == "/v1/pairing-request" {
+		limit = 1024
+	}
+	body, err := io.ReadAll(http.MaxBytesReader(w, r.Body, limit))
 	if err != nil {
 		http.Error(w, "request too large", http.StatusRequestEntityTooLarge)
 		return
@@ -110,6 +121,10 @@ func (b *Broker) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	token := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
+	if r.URL.Path == "/v1/pairing-request" {
+		b.respond(w, func() (any, error) { return b.requestPairing(body) })
+		return
+	}
 	if r.URL.Path == "/v1/pair" {
 		b.respond(w, func() (any, error) { return b.pair(body) })
 		return
@@ -170,6 +185,22 @@ func (b *Broker) pair(raw []byte) (any, error) {
 
 func (b *Broker) operator(path string, raw []byte) (any, error) {
 	switch path {
+	case "/v1/pairing-open", "/v1/pairing-close", "/v1/pairings", "/v1/approve", "/v1/deny":
+		return b.pairingOperator(path, raw)
+	case "/v1/nodes":
+		nodes := []contract.NodeStatus{}
+		for name, enrollment := range b.state.Nodes {
+			status := "invited"
+			if enrollment.TokenHash != "" {
+				status = "paired"
+			}
+			if enrollment.Revoked {
+				status = "revoked"
+			}
+			nodes = append(nodes, contract.NodeStatus{Node: name, Status: status})
+		}
+		sort.Slice(nodes, func(i, j int) bool { return nodes[i].Node < nodes[j].Node })
+		return nodes, nil
 	case "/v1/health":
 		return map[string]string{"schema": contract.Version}, nil
 	case "/v1/invite":

@@ -1,7 +1,7 @@
 schema: 1
 kind: resolver
 name: dockpipe.cloudflare.remote-edge
-version: 0.3.0
+version: 0.3.1
 title: Cloudflare Tunnel remote edge
 description: Browser login, named tunnel, and DNS setup for a loopback Dockpipe broker.
 capability: remote.edge
@@ -12,3 +12,24 @@ dependencies:
       description: Cloudflare's browser authentication and outbound tunnel client.
       install:
         macos: brew install cloudflared
+        deb: >-
+          set -eu;
+          command -v curl >/dev/null 2>&1 && test -r /etc/ssl/certs/ca-certificates.crt ||
+          (sudo apt-get update && sudo apt-get install -y ca-certificates curl);
+          temporary_dir=$(mktemp -d);
+          trap 'rm -rf "$temporary_dir"' EXIT;
+          trap 'exit 1' HUP INT TERM;
+          curl --fail --silent --show-error --location --proto '=https'
+          https://pkg.cloudflare.com/cloudflare-main.gpg
+          --output "$temporary_dir/cloudflare-main.gpg";
+          architecture=$(dpkg --print-architecture);
+          printf 'deb [arch=%s signed-by=/usr/share/keyrings/cloudflare-main.gpg] https://pkg.cloudflare.com/cloudflared any main\n'
+          "$architecture" > "$temporary_dir/cloudflared.list";
+          sudo install -d -m 0755 /usr/share/keyrings;
+          sudo install -m 0644 "$temporary_dir/cloudflare-main.gpg" /usr/share/keyrings/cloudflare-main.gpg;
+          sudo install -m 0644 "$temporary_dir/cloudflared.list" /etc/apt/sources.list.d/cloudflared.list;
+          sudo apt-get update
+          -o Dir::Etc::sourcelist=/etc/apt/sources.list.d/cloudflared.list
+          -o Dir::Etc::sourceparts=-
+          -o APT::Get::List-Cleanup=0;
+          sudo apt-get install -y cloudflared
