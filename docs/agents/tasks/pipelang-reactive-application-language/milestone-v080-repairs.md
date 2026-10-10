@@ -371,7 +371,7 @@ performed in R5.
 
 ### R6 completed — 2026-09-04
 
-The receiver verified `/home/jamie/source/dockpipe`, branch `js/pipelang`, HEAD
+The receiver verified `<checkout>`, branch `js/pipelang`, HEAD
 `163a6effba408bc8ad6c4b5d88dc594b8817d483`, and no staged, unstaged, or untracked entries.
 R1–R5's durable proof was admitted. No worktree, cleanup, stash operation, or commit was performed.
 

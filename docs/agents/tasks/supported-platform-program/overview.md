@@ -101,9 +101,16 @@ The final local export contains 62 entries: required core plus 15 resolvers and
 The reusable Flatpak CI job is wired into release assembly, preserving the existing
 publication gates and a distinct runtime-specific Marketplace store. Local Docker
 and Compose bind-mount checks passed. Hosted qualification and staging publication
-remain separate gates from this local proof.
+provide additional evidence beyond this local proof.
+
+Publication rechecked 2026-10-10: the staging pointer selects
+`0.6.3-staging.37959504785.1.4da6948415b9`; its manifest includes the 62-entry Flatpak
+store and the combined launcher/CLI bundle, whose package-host URL returns HTTP 200.
+The matching hosted Flatpak run succeeded. See the canonical
+[publication evidence](../../../../release/packaging/desktop/flatpak/README.md#release-integration-and-proof-limits)
+and [installation guide](../../../install.md#flatpak-desktop-staging-linux-amd64).
 
 Still open: native Bazzite, Podman/SELinux, arm64, signed/updating Flatpak remote,
-hosted release proof and authenticated/provider or VM end-to-end parity. Package
+production Flatpak publication and authenticated/provider or VM end-to-end parity. Package
 availability checks do not prove every workflow on every host. See the canonical
 build contract for current test boundaries and host prerequisites.

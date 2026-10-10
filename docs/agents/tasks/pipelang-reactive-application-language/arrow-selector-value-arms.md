@@ -27,7 +27,7 @@
 
 ## Evidence
 
-Durable proof root: `/home/jamie/.codex/visualizations/2026/09/11/01a09287-8762-7e02-a5ca-da7b5be9ddea`.
+Durable proof root: `<local-evidence>/2026/09/11/01a09287-8762-7e02-a5ca-da7b5be9ddea`.
 `admission.json` records the initial checkout and protected state. Verification completed and independently accepted.
 
 

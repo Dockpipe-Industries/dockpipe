@@ -30,12 +30,11 @@ Read when using generated context, self-analysis artifacts, or DorkPipe MCP tool
 Set with `DOCKPIPE_MCP_TIER`. Default tier is `validate`. `exec` or legacy
 `DOCKPIPE_MCP_ALLOW_EXEC=1` is required for run tools.
 
-## Freshness
+## Scaffolded Handoffs
 
-- If artifacts exist, say whether they look current vs `HEAD`.
-- If missing or stale, suggest refresh only when relevant.
-- Do not auto-regenerate self-analysis.
-- `dockpipe init ... --from dorkpipe-self-analysis` appends a handoff section to `AGENTS.md` in new projects using marker `<!-- dockpipe: self-analysis handoff -->`.
+`dockpipe init ... --from dorkpipe-self-analysis` appends a handoff section to
+`AGENTS.md` in new projects using marker `<!-- dockpipe: self-analysis handoff -->`.
+Treat that generated section as evidence subject to the rules above.
 
 ## Docs
 

@@ -11,6 +11,10 @@ dispatch:
 routes:
   orientation:
     read: [overview.md]
+  agent_documentation:
+    read: [agent-docs-audit.md]
+  public_documentation:
+    read: [public-docs-audit.md]
   release_0_6_audit:
     read: [release-0.6-hosted.md, release-0.6-audit.md, release-0.6-cleanup.md]
   desktop_packaging:
@@ -37,6 +41,8 @@ routes:
     read: [topology.md]
 
 documents:
+  - {path: agent-docs-audit.md, role: portable agent guidance, stale status cleanup and backlog audit}
+  - {path: public-docs-audit.md, role: selected public-site documentation audience audit and local verification}
   - {path: staging-release.md, role: staging publication and desktop packaging qualification boundaries}
   - {path: release-0.6-hosted.md, role: hosted release dry-run qualification and remaining release gates}
   - {path: release-0.6-cleanup.md, role: focused DDD and DRY cleanup, retained persistence contracts, and verification}

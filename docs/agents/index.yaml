@@ -2,7 +2,7 @@ schema: 1
 description: Machine-readable routing map for Dockpipe agent guidance. Skill ids are target-independent; renderers decide Codex, Claude, or generic format.
 
 skills:
-  installed_codex:
+  curated:
     - dorkpipe-agentic-yaml
     - dorkpipe-core-review
     - dorkpipe-objective-execution

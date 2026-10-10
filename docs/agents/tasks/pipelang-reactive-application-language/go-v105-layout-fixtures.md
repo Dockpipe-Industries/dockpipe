@@ -43,7 +43,7 @@ adoption, commit/push/publication, credentials/external mutation, delegation,
 campaign interruption, worktrees and automatic handoff.
 
 Evidence:
-`/home/jamie/.codex/visualizations/2026/09/13/01a099c1-826a-7420-bae9-9f8c84acf922/go-v105-layout-fixtures/`.
+`<local-evidence>/2026/09/13/01a099c1-826a-7420-bae9-9f8c84acf922/go-v105-layout-fixtures/`.
 
 Completion: all eight matched passes preserve 81 layouts, 663,552 vectors and
 162 fresh native executions per pass, with zero warm misses. Eighteen focused

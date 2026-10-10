@@ -6,7 +6,7 @@
 - Authority: founder selected A and separately said `approved` on 2026-09-04.
 - Execution skill: `dorkpipe-objective-execution`; automatic checkpoints within this scope;
   handoff only when requested by the user.
-- Baseline: saved checkout `/home/jamie/source/dockpipe`, branch `js/pipelang`, clean at
+- Baseline: saved checkout `<checkout>`, branch `js/pipelang`, clean at
   `8bb75896d14ae020b572c3d56750b4b4b4299bde`. That commit contains completed v0.82 implementation
   and proof; earlier descriptions of that slice as uncommitted are superseded.
 - Scope: repair evaluation of already-admitted signed-int64 and binary64 comparisons from

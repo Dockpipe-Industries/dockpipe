@@ -43,7 +43,7 @@ adoption, commit/push/publication, credentials/external mutation, delegation,
 campaign interruption, worktrees and automatic handoff.
 
 Evidence:
-`/home/jamie/.codex/visualizations/2026/09/13/01a099d5-a3bc-74e3-8ac3-2540173fd02c/go-v104-layout-fixtures/`.
+`<local-evidence>/2026/09/13/01a099d5-a3bc-74e3-8ac3-2540173fd02c/go-v104-layout-fixtures/`.
 
 Scope extension: user selected option 1, authorizing a bounded shared storage-
 accounting memory repair under unchanged limits and a fresh comparison/acceptance

@@ -123,8 +123,8 @@ reviewed recipe SHA-256 is
 
 Two independent no-network builds produced byte-identical 125-entry output inventories with
 SHA-256 `22f24ba020b98b0802d67956bd5d7699bcd9d12a99773e185165087b8b1aedec`.
-The immutable `jamie:jamie` bundle is
-`/home/jamie/.cache/dockpipe/vm/toolchains/qemu-11.0.3-linux-amd64.1`; its
+The immutable bundle, owned by the invoking user and group, is
+`<local-cache>/dockpipe/vm/toolchains/qemu-11.0.3-linux-amd64.1`; its
 `toolchain.json` SHA-256 is
 `11a27f32eb93e62aba8ebc500dfd877339a71821793cbf30845b53964c22320c`.
 `qemu-img` is `8f136e6f9550ca0c4d0bed73c7fb761537425c4bd0e4f95c0fd8ee93b6b2ed81`, and

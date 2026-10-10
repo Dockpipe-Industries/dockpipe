@@ -4,7 +4,7 @@
 
 - Objective: `TASK-021-nested-terminal-leaf-returns`; state: `completed`.
 - Founder selected A and separately said `approved` in this task.
-- Baseline: clean saved checkout `/home/jamie/source/dockpipe`, `js/pipelang` at
+- Baseline: clean saved checkout `<checkout>`, `js/pipelang` at
   `a8df6cc5b96c455a4ead8cadbee92b035d8512a4`; completed v0.88 proof admitted.
 - Execution skill: `dorkpipe-objective-execution`; automatic checkpoints within this scope;
   handoff only on user request.

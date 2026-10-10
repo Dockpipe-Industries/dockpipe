@@ -4,7 +4,7 @@
 
 - Objective: `TASK-021-nested-arrow-methods`; state: `completed`.
 - Founder selected A and separately said `approved` in this task on 2026-09-06.
-- Baseline: clean saved `/home/jamie/source/dockpipe`, `js/pipelang` at
+- Baseline: clean saved `<checkout>`, `js/pipelang` at
   `b1fbc31b36cad52add2efc87d5f479810326602b`; completed v0.91 proof admitted.
   All 38 validated paths, both protected stashes and the ignored inventory match.
 - Execution skill: `dorkpipe-objective-execution`; automatic checkpoints within scope;

@@ -74,7 +74,7 @@ unchanged compiler ceiling with normal GC and inlining. All 18 enum resource fix
 0/1/8/32/128/256 locals) passed the focused scaling run. The Application IR enum consumer and editor
 checks passed. Final focused checks include module order/identity and branch-local composition.
 
-Evidence root: `/home/jamie/.codex/visualizations/2026/09/12/01a09387-ddcf-71d1-94b7-9395966a4500`.
+Evidence root: `<local-evidence>/2026/09/12/01a09387-ddcf-71d1-94b7-9395966a4500`.
 Focused receipts: `enums-focused-7-job.json`, `enums-focused-8-job.json`,
 `enums-consumer-1-job.json`; final focused and complete terminal receipts follow below.
 Earlier failed attempts remain diagnostic evidence and are not acceptance claims.
@@ -116,7 +116,7 @@ no OOM or swap occurred. The terminal campaign took 6933.34 seconds and
 independent acceptance took 232.42 seconds, totaling
 119.43 minutes for final proof.
 
-Receipts under `/home/jamie/.codex/visualizations/2026/09/12/01a09387-ddcf-71d1-94b7-9395966a4500`:
+Receipts under `<local-evidence>/2026/09/12/01a09387-ddcf-71d1-94b7-9395966a4500`:
 `terminal-2-job.json`, `terminal-accept-job.json`, `terminal-comparison.json`,
 `verification-data/campaigns/terminal-2/accepted-verification.json`,
 `terminal-source-postimages.json` and `enum-doc-validation.json`.

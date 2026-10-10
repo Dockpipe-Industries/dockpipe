@@ -1,7 +1,7 @@
 # Compiler memory repair
 
 Objective: `TASK-021-compiler-memory-repair-2026-09-05`; state: completed.
-Jamie authorized implementation and safe validation. Saved checkout `js/pipelang`,
+The user authorized implementation and safe validation. Saved checkout `js/pipelang`,
 baseline `3b0de057cb455db41a39c20ef75dba77f860b99a`. No commit/push or new features.
 
 The v0.84 choice-count/version gate left long zero/one/two-choice and inherited
@@ -182,7 +182,7 @@ both protected stash objects remain intact. The final ignored-path inventory has
 This is path-inventory evidence, not an ignored-file content proof. The handoff used
 the saved checkout directly.
 
-Pinned toolchain: `/home/jamie/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.25.13.linux-amd64/bin/go`.
+Pinned toolchain: `<go-module-cache>/golang.org/toolchain@v0.0.1-go1.25.13.linux-amd64/bin/go`.
 All Go runs were offline (`GOTOOLCHAIN=local GOPROXY=off GOSUMDB=off GOWORK=off`) with
 private caches and temporary outputs. Successful terminal checks:
 

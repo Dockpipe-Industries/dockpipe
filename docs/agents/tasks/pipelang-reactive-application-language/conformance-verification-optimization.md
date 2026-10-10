@@ -41,16 +41,16 @@ proof, actual reboot, publication or external service mutation is authorized.
 
 ## Evidence and protected state
 
-- Saved checkout: `/home/jamie/source/dockpipe`, branch `js/pipelang`, HEAD
+- Saved checkout: `<checkout>`, branch `js/pipelang`, HEAD
   `f599a20e2f652f2e33645cba222bbf5d8d256475` at planning admission.
 - [Completed v109 record](terminal-combined-selector-arms.md) remains accepted.
-  Receipt root: `/home/jamie/.cache/pipelang-v109-resume-20260909`.
+  Receipt root: `<local-cache>/pipelang-v109-resume-20260909`.
   `accepted-verification.json` reconciles 810 functions/6,187 units, two focused
   retries, nine integration checks and 1,944 fresh isolated compiler cases.
   Original suite failures 881/883 and application preparation timeout are
   retained evidence; successful continuations resolved them.
 - Durable planning evidence root:
-  `/home/jamie/.codex/visualizations/2026/09/09/01a08830-6111-7632-b63f-0de5a2ac9a56/pipelang-verification-optimization`.
+  `<local-evidence>/2026/09/09/01a08830-6111-7632-b63f-0de5a2ac9a56/pipelang-verification-optimization`.
   `measurements/` preserves the six profiling attempts, logs and generated
   artifacts copied from `/tmp/pipelang-v109-verification-analysis`.
   `handoff-state.json` captures current ownership, hashes, index, ignored

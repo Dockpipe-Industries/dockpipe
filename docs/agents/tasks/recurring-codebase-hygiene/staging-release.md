@@ -64,7 +64,7 @@ Pending boundary: the live plan stops at `op inject` because 1Password desktop i
 unavailable. The user was asked to open/unlock it. Once ready, rerun:
 
 ```bash
-/tmp/dockpipe-staging-cli --workflow package-store-staging-infra --workdir /home/jamie/source/dockpipe --tf plan --
+/tmp/dockpipe-staging-cli --workflow package-store-staging-infra --workdir . --tf plan --
 ```
 
 Use a reviewed host execution for existing vault/state/provider access. Inspect the

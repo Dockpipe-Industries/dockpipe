@@ -43,7 +43,7 @@ retained; they are not newly accepted by this objective.
   entered Dockpipe, and no commit/push/publication was performed.
 
 Durable detailed proof (receipts, failure logs, source/install hashes, test output):
-`/home/jamie/.codex/visualizations/2026/09/15/01a0a309-d1b8-7021-bd8e-96fc2c309059/nucleon-streaming-20260915/`.
+`<local-evidence>/2026/09/15/01a0a309-d1b8-7021-bd8e-96fc2c309059/nucleon-streaming-20260915/`.
 Nucleon owns the report at
 `research/experiments/2026-09-15-streaming-sdk/README.md` in its private checkout.
 
