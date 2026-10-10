@@ -48,7 +48,7 @@ Final validation passed:
   ceiling was increased. No full pure-language acceptance or throughput claim.
 
 Generic receipts and source/compiler identities are retained at
-`/home/jamie/.codex/visualizations/2026/09/16/01a0ac95-5a43-7013-a865-a6c1941137a4/pipelang-incremental-20260918/`.
+`<local-evidence>/2026/09/16/01a0ac95-5a43-7013-a865-a6c1941137a4/pipelang-incremental-20260918/`.
 SDK logs/installations are in Nucleon's
 `build/20260918-pipelang-incremental-{release,asan}/` directories. Initial failure
 receipts remain. No new generated artifact is added to Dockpipe source control.

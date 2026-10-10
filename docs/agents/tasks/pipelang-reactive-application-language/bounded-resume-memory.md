@@ -26,7 +26,7 @@ proof, normal GC/inlining, 128 MiB/5-second isolated compiler limits and canonic
 `job.py` enclosing `run.py`, including the 512 MiB coordinator cap.
 
 Evidence root:
-`/home/jamie/.codex/visualizations/2026/09/13/01a0988e-e86c-7e80-a485-9b336144d955/resume-memory`.
+`<local-evidence>/2026/09/13/01a0988e-e86c-7e80-a485-9b336144d955/resume-memory`.
 The original interrupted campaign is read-only input; copied records used for
 loader measurement are historical validation fixtures, never fresh semantic proof.
 

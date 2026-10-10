@@ -479,7 +479,7 @@ passed and confirms all three inputs. Evidence uses `/tmp/dockpipe-0.6-run-37236
 | Windows amd64 / MSI | Job `111537358719` passed store/native smoke, runtime tests, installer failure recovery, snapshot/binding regressions, WiX MSI build, actual install, installed CLI execution, uninstall, all post-uninstall cleanup/PATH checks, and upload. Artifact `11316396260`. |
 | Combined release artifact | Job `111538919622` is waiting on the protected `release` environment before catalog/checksum and dry-run signed-APT assembly. |
 
-The environment API reports required reviewer `jamie-steele`, `prevent_self_review:
+The environment API reports a required reviewer, `prevent_self_review:
 true`, and `current_user_can_approve: false`. Administrator bypass is enabled in the
 existing environment configuration. The user was asked to clear the gate in GitHub;
 no protection rule was changed and no approval/bypass was attempted by the agent.
@@ -621,7 +621,7 @@ Only the final evidence updates in these two documents remain uncommitted.
 
 Production promotion follows `js/pipelang → js/dev → dev → staging → master` and
 remains separately authorized; no merge or production dispatch was performed.
-Native hosted success does not establish M6 Mac onboarding, launchd, sleep/wake,
+Native hosted success does not establish physical Mac onboarding, launchd, sleep/wake,
 or Nucleon remote execution. Publication-recovery rehearsal and production
 configuration/public-origin verification remain separate gates. PipeLang public
 rollout and compiler qualification remain deferred to 0.7.

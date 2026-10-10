@@ -38,7 +38,7 @@
 ## Evidence
 
 Durable task root:
-`/home/jamie/.codex/visualizations/2026/09/10/01a08c7e-4d58-71e0-a405-9addfc7d35ae`.
+`<local-evidence>/2026/09/10/01a08c7e-4d58-71e0-a405-9addfc7d35ae`.
 Baseline source identities are in `baseline.json`. Implementation and verification are complete; the completion section below owns terminal acceptance.
 
 ## Focused proof

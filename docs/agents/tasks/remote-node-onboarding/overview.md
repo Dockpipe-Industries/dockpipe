@@ -6,7 +6,7 @@ Connect Cloudflare through browser login, pair a Mac without SSH, deliver select
 explicitly consenting worker, and return results. Preserve generic core execution and resolver-owned edges.
 The user authorized initial implementation on 2026-10-03 and actual source delivery plus simpler
 onboarding on 2026-10-05. This is objective `remote-workflow-delivery-onboarding`. Source/local verification does
-not authorize live account mutation, service installation on this machine, or publication.
+not authorize live account mutation, service installation on the current host, or publication.
 
 ## File-free pairing and launcher workspace (2026-10-09)
 

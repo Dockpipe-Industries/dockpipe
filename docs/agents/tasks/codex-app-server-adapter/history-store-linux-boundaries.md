@@ -137,10 +137,10 @@ point. Rollups bound scenario ID, attempt, and hash.
 
 **Exact Linux commit call-chain qualification — 2026-08-05.** The reviewed standard-library source
 was Go `go1.25.0` under
-`/home/jamie/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.25.0.linux-amd64`, with
+`<go-module-cache>/golang.org/toolchain@v0.0.1-go1.25.0.linux-amd64`, with
 `database/sql/sql.go:2287-2319` and `database/sql/driver/driver.go:519-522`. The reviewed
 pinned module source was `modernc.org/sqlite v1.56.0` with `modernc.org/libc v1.74.4` under
-`/home/jamie/go/pkg/mod`. The exact path was:
+`<go-module-cache>`. The exact path was:
 
 ```text
 (*database/sql.Tx).Commit

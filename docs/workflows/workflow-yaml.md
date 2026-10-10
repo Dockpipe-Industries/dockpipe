@@ -1,10 +1,14 @@
 # Workflow YAML (`config.yml`)
 
-**Workflow YAML** for **`--workflow <name>`** resolves to **`workflows/<name>/config.yml`** (when present), then **nested** **`config.yml`** under any directory listed in **`dockpipe.config.json` `compile.workflows`** (same roots **`dockpipe package compile workflows`** uses), then **`src/core/workflows/<name>/config.yml`** (bundled examples in a dockpipe checkout), or **`templates/<name>/config.yml`** (legacy project layout). The **materialized bundle cache** still uses a **`bundle/workflows/`** layout on disk (see **[../install.md](../install.md#bundled-templates-no-extra-install-tree)**).
+Save a project workflow at `workflows/<name>/config.yml`, then run it with
+`dockpipe --workflow <name> --` from that project. Installed workflow packages are
+also discoverable by name. Use `--workflow-file /path/to/config.yml` for an explicit
+file instead of name lookup.
 
 If you are new to authoring workflows, start with
-**[workflow-authoring.md](workflow-authoring.md)**. This file is the fuller YAML
-reference.
+[workflow-authoring.md](workflow-authoring.md). This page is the field reference;
+examples are configuration patterns, not a list of preinstalled workflows.
+See the [package model](../packages/package-model.md) for source/store precedence.
 
 ## Recommended mental model
 
@@ -36,11 +40,18 @@ In practice, most workflows should:
 2. override them only on the few steps that genuinely differ
 3. reach for **`isolate`** only when a step must pin a specific image/template rather than just a substrate/profile
 
-**Workflows vs core slices:** **Runtimes** are **core-owned** execution substrates ( **`templates/core/runtimes/<name>/`** ). Workflow YAML may only **select** a substrate by **name** (`runtime`, per-step `runtime:`) — it does **not** define new runtime types or override how substrates work. **Resolvers** and **strategies** follow the same idea: **definitions** live under **`templates/core/resolvers/`**, **`strategies/`** (or maintainer trees under **`compile.workflows`**); the workflow **references** them — see **Authoring: workflow YAML vs resolver / runtime / strategy slices** in **[../packages/package-model.md](../packages/package-model.md)** and **[../concepts/architecture-model.md](../concepts/architecture-model.md)**. Resolver delegate YAML also loads from **`…/core/resolvers/<name>/config.yml`** next to the authoring core root (**`src/core/resolvers/…`** or **`templates/core/…`**) or **`bundle/core/resolvers/<name>/config.yml`** (materialized bundle). Load with **`dockpipe --workflow <name>`** (plus your command after **`--`**).
+**Profiles:** workflows select installed runtimes, resolvers and strategies by
+name. They do not define new execution substrates. Keep tool integrations in
+resolver packages; see the [architecture model](../concepts/architecture-model.md).
 
-**Arbitrary-path workflow:** put the **same** YAML shape in any file (for example **`workflows/foo/config.yml`**) and run **`dockpipe --workflow-file <path>`** so **`run:`** / **`act:`** paths resolve relative to that file’s directory. **Resolver** profiles are **not** beside the file — they load only from **`templates/core/resolvers/`** (see below). Do not pass **`--workflow`** and **`--workflow-file`** together.
+**Arbitrary-path workflow:** `--workflow-file <path>` accepts the same YAML shape.
+Relative `run:` / `act:` paths resolve beside that file. Resolver definitions come
+from the configured package/core lookup, not an arbitrary resolver folder beside
+the file. Do not combine `--workflow` and `--workflow-file`.
 
-**Lint:** **`dockpipe workflow validate [path]`** — parses the workflow (including **`imports:`**) and checks against a small embedded JSON Schema. **`path`** is optional only for the simple flat single-workflow case; organized or multi-workflow trees should pass a **relative** path (resolved from the current directory first, then from **DOCKPIPE_REPO_ROOT** / the materialized bundle root), for example **`workflows/ci/test/config.yml`**.
+**Validate:** use `dockpipe workflow validate workflows/hello/config.yml` from your
+project. Validation checks YAML/schema structure; it does not install dependencies,
+authenticate providers, execute commands or prove that a workflow will succeed.
 
 **Terminology (same as the CLI):**
 
@@ -52,9 +63,9 @@ In practice, most workflows should:
 | **act** | Follow-up after the main command (usually a **host** script; see **[../concepts/architecture.md](../concepts/architecture.md)** for in-container `DOCKPIPE_ACTION`). |
 | **workflow** | This file: a named preset selected with **`--workflow <name>`**. |
 | **strategy** | Optional **named lifecycle** wrapper: small **`KEY=value`** files under **`templates/<workflow>/strategies/<name>`** (optional) or **`templates/core/strategies/<name>`** define host scripts to run **before** and **after** the workflow body. See [Named strategies](#named-strategies) below. |
-| **runtime** / **resolver** | **Runtime** — **where** execution runs: **core** profiles under **`templates/core/runtimes/<name>`** (**`DOCKPIPE_RUNTIME_*`**). **Resolver** — **which tool/profile**: **`templates/core/resolvers/<name>`** (**`DOCKPIPE_RESOLVER_*`**). Those are the main selection knobs most workflows should use. In the materialized bundle, the same paths live under **`bundle/core/`**. See **[../concepts/architecture-model.md](../concepts/architecture-model.md)** · **[../concepts/isolation-layer.md](../concepts/isolation-layer.md)**. |
+| **runtime** / **resolver** | **Runtime** selects where execution runs; **resolver** selects an installed tool integration. Profiles come from core and configured package stores. See [Architecture model](../concepts/architecture-model.md) and [Isolation](../concepts/isolation-layer.md). |
 
-**Learning path:** [../onboarding.md](../onboarding.md) · **[../concepts/architecture-model.md](../concepts/architecture-model.md)** · **[../concepts/isolation-layer.md](../concepts/isolation-layer.md)** · Implementation notes: [`src/lib/README.md`](../../src/lib/README.md).
+**Learning path:** [../onboarding.md](../onboarding.md) · **[../concepts/architecture-model.md](../concepts/architecture-model.md)** · **[../concepts/isolation-layer.md](../concepts/isolation-layer.md)**.
 
 ---
 
@@ -503,11 +514,11 @@ agents or package scripts own Git lifecycle commands.
 
 ```yaml
 workspace:
-  repo: biztraak
+  repo: /path/to/your/project
   mode: managed
   lifecycle:
     branch_prefix: ai
-    branch: js/features/spnext/reporting/worktree-report-poc
+    branch: feature/reporting
     checkpoint: auto
     publish: review
 ```
@@ -806,33 +817,26 @@ Pipe stdout between runs if needed. Prefer **`steps:`** in **`config.yml`** when
 
 ---
 
-## Example workflows in this repo
+## Try a complete example
 
-| Workflow | Purpose |
-|----------|---------|
-| **[workflows/ci/test/](../../workflows/ci/test/)** (this repo) | CI-style **go test** + **govulncheck** + **gosec** chain via step `outputs` under the workflow artifact root — canonical repo path is **`workflows/`**, not **`templates/`**. |
-| **[src/core/workflows/run/](../../src/core/workflows/run/)** | Compact single-command shorthand in a container, then optional **git** commit on the current branch (**strategy `git-commit`**). |
-| **[src/core/workflows/run-apply/](../../src/core/workflows/run-apply/)** | Two-step **run → apply** pipeline (replace **`cmd:`** with your tools). |
-| **[src/core/workflows/run-apply-validate/](../../src/core/workflows/run-apply-validate/)** | Three-step **run → apply → validate** pipeline (replace **`cmd:`** with your tools). |
+Follow [Your first workflow](../onboarding.md) to create `hello` in your own project,
+or [Workflow authoring](workflow-authoring.md) for container, host and output
+examples. Run only workflows you have created or installed:
 
-**Async groups** (`group.mode: async`) are documented above in this file.
-
-```bash
-dockpipe --workflow test
-dockpipe --workflow run -- echo ok
-dockpipe --workflow run-apply
-dockpipe --workflow run-apply-validate
+```sh
+dockpipe workflow validate workflows/hello/config.yml
+dockpipe --workflow hello --
 ```
 
----
+Dockpipe's own CI and documentation workflows are contributor automation; they
+are not prerequisites or guaranteed contents of an installed package catalog.
 
 ## See also
 
-- **[../concepts/capabilities.md](../concepts/capabilities.md)** — abstract **capabilities**, **resolver** packages, **`capability:`** / **`requires_capabilities:`**
+- [CLI reference](../cli-reference.md): flags and project selection.
+- [Package quickstart](../packages/package-quickstart.md): discover and install packages.
+- [Architecture model](../concepts/architecture-model.md): workflow, runtime, resolver and strategy.
 
-- **[CLI reference](../cli-reference.md)** — flags, `--workflow`, `--workflow-file`, `workflow validate`, `--var`, `--env-file`.
-- **[Architecture](../concepts/architecture.md)** — how the Go CLI runs steps, docker, pre-scripts.
-- **[src/lib/README.md](../../src/lib/README.md)** — package layout and contributor-oriented notes.
 ### Packaged workflow step
 
 Use a packaged workflow call directly on the step:

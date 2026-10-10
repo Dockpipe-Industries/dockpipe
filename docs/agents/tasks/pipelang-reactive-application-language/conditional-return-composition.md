@@ -4,7 +4,7 @@
 
 - Objective: `TASK-021-conditional-return-composition`; state: `completed`.
 - Founder selected A and separately said `approved` in this task.
-- Baseline: clean saved checkout `/home/jamie/source/dockpipe`, `js/pipelang` at
+- Baseline: clean saved checkout `<checkout>`, `js/pipelang` at
   `f94fdafa31bdde269425ebf0d1558412af6aa6f8`; completed v0.85 proof admitted.
 - Execution skill: `dorkpipe-objective-execution`; automatic checkpoints within this scope;
   handoff only on user request.

@@ -217,7 +217,7 @@ Focused offline validation used only isolated state/cache/temp roots under `/tmp
   retained only the two inherited rank-1 failures: missing
   `workflows/software-dev/task-pack.yml` and canonical backlog `--next` unexpectedly selecting a
   task. A first harness attempt without the preserved module/toolchain cache was rejected as setup
-  evidence; the corrected `GOPATH=/home/jamie/go`, `GOPROXY=off` run is authoritative;
+  evidence; the corrected `GOPATH=<go-workspace>`, `GOPROXY=off` run is authoritative;
 - the full affected Go run passed `statepaths` and reached only the inherited, untouched
   `TestProviderPoolWorkdirHashCandidatesIncludeWindowsStyleNormalizations` assertion in
   `cmd/dorkpipe`.

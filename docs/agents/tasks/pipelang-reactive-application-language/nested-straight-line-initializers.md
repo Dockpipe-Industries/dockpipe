@@ -4,7 +4,7 @@
 
 - Objective: `TASK-021-nested-straight-line-initializers`; state: `completed`.
 - Founder selected A and separately said `approved` in this task on 2026-09-06.
-- Baseline: clean saved `/home/jamie/source/dockpipe`, `js/pipelang` at
+- Baseline: clean saved `<checkout>`, `js/pipelang` at
   `2560ee1b4b1045efdc8045ed358ab872a7c6b207`; completed v0.89 proof admitted.
 - Execution skill: `dorkpipe-objective-execution`; automatic checkpoints within scope;
   handoff only on user request.

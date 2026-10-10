@@ -4,7 +4,7 @@
 
 - Objective: `TASK-021-nested-terminal-initializers`; state: `completed`.
 - Founder selected A and separately said `approved` on 2026-09-06.
-- Baseline: clean saved `/home/jamie/source/dockpipe`, `js/pipelang` at
+- Baseline: clean saved `<checkout>`, `js/pipelang` at
   `83cd8adc986b8abd5c70a67b1c701684c7c88539`; completed v0.90 proof admitted.
   This live commit supersedes historical uncommitted wording in the v0.90 record.
 - Execution skill: `dorkpipe-objective-execution`; automatic checkpoints within scope;

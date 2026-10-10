@@ -4,7 +4,7 @@
 
 - Objective: `TASK-021-next-compiler-slice-after-v083`.
 - State: `completed`; founder selected A and separately said `approved` in this task.
-- Baseline: saved checkout `/home/jamie/source/dockpipe`, branch `js/pipelang`, clean at
+- Baseline: saved checkout `<checkout>`, branch `js/pipelang`, clean at
   `08f01a47f53cd7a3c1bea8ad3bb715f7e60b61e1`. v0.83 implementation and proof are committed;
   earlier records describing those changes as uncommitted are historical.
 - Execution skill: `dorkpipe-objective-execution`; automatic checkpoints within this scope;

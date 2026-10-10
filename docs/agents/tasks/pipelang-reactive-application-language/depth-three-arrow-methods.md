@@ -4,7 +4,7 @@
 
 - Objective: `TASK-021-depth-three-arrow-methods`; state: `completed`.
 - Founder selected A and separately said `approved` on 2026-09-06.
-- Baseline: clean saved `/home/jamie/source/dockpipe`, `js/pipelang` at
+- Baseline: clean saved `<checkout>`, `js/pipelang` at
   `ecb035e6f80eef7d137a1ba9afb78d6c8e26b1e8`. Completed v0.94 proof is admitted.
 - Scope: v0.95.0 admits complete ternary arrow bodies through depth three in public
   pure methods, with either or both arms nesting and at most three decisions per path.
