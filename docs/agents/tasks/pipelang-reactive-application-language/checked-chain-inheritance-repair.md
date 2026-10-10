@@ -5,7 +5,7 @@
 - Objective: `TASK-021-next-compiler-slice-after-checked-propagation-inheritance-repair`;
   state: `completed`.
 - Authority: founder selected A and separately said `approved` in this task.
-- Baseline: saved checkout `/home/jamie/source/dockpipe`, branch `js/pipelang`, clean at
+- Baseline: saved checkout `<checkout>`, branch `js/pipelang`, clean at
   `46ce299a385f58b41b6619454168c56429349995`. That commit contains the completed prior
   checked-propagation inheritance repair and supersedes its historical uncommitted wording.
 - Execution skill: `dorkpipe-objective-execution`; automatic checkpoints within this scope;

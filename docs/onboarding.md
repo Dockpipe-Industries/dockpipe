@@ -1,79 +1,113 @@
-# Onboarding
+# Your first workflow
 
-**Prerequisites:** [Docker](https://docs.docker.com/get-docker/) and **bash** — see **[install.md](install.md)**.
+Start with an [installed Dockpipe CLI or desktop app](install.md). You do not need
+Dockpipe's source repository, Go, or its contributor tools. Use a folder you own;
+all project paths below refer to that folder.
 
----
+For Flatpak, replace `dockpipe` in the commands below with
+`flatpak run --command=dockpipe com.dockpipe.Dockpipe`.
 
-## 1. First run
+## 1. Check your installation
 
-```bash
-dockpipe -- pwd
+```sh
+dockpipe --version
 ```
 
-If something fails, **`dockpipe doctor`** checks **bash**, **Docker**, and bundled assets.
+Native installations need Bash for host steps (Git for Windows supplies it on
+Windows). The Flatpak includes its shell tools. Docker is only needed for container
+steps; the first workflow below does not use it.
 
----
+## 2. Create a workflow in your project
 
-## 2. Primitive: run → isolate → act
+Open a terminal in your project folder and run:
 
-| Phase | Where | What |
-|--------|--------|------|
-| **Run** | Host | Optional scripts before the container (`run:` / `--run`). |
-| **Isolate** | Container | Your command after **`--`**; project at **`/work`**. |
-| **Act** | Host or container | Optional script after the main command (see **[concepts/architecture.md](concepts/architecture.md)**). |
-
-Most days: **`dockpipe -- <command>`** only.
-
----
-
-## 3. Try a workflow
-
-```bash
-dockpipe --workflow test --runtime dockerimage
+```sh
+dockpipe init hello
 ```
 
-- **`--workflow test`** — This repo’s containerized CI-parity workflow. It runs **`go test`**, **`go vet`**, **`staticcheck`**, **`govulncheck`**, and **`gosec`** inside Docker so you can validate the isolated toolchain locally. GitHub Actions also runs host-side **`go test`**, **`staticcheck`**, and scan normalization outside this workflow for fast signal and artifact upload.  
-- **`--workflow docs.orchestrate`** — Agentic docs dogfood: declarative task graph, local/cloud lanes, merge, verification, and approval artifacts.
+This creates project configuration when missing and an empty
+`workflows/hello/config.yml`. Replace that file's contents with:
 
-Mount **`--mount "$(go env GOPATH)/pkg:/go/pkg:rw"`** so module data is visible in the container. Named workflows usually resolve from project **`workflows/`**, package-owned workflow roots configured through **`dockpipe.config.json`**, or the materialized bundled workflow set. Legacy **`templates/`** lookup still exists for compatibility, but it is not the primary authoring path.
+```yaml
+name: hello
+description: Print a message from this project.
+docker_preflight: false
 
-To reuse **`workflows/`** presets in another tree, copy the directory or use **`dockpipe init`** with **`--from`** pointing at that path (see **[AGENTS.md](../AGENTS.md)**).
+steps:
+  - id: greet
+    kind: host
+    cmd: printf 'Hello from Dockpipe!\n'
+```
 
----
+Validate and run it from the same project folder:
 
-## 4. Concepts (same words everywhere)
+```sh
+dockpipe workflow validate workflows/hello/config.yml
+dockpipe --workflow hello --
+```
 
-| Term | Meaning |
-|------|---------|
-| **Workflow** | What happens — **`config.yml`**, **`--workflow <name>`**. |
-| **Runtime** | **Core** concept — **where** execution runs: profiles under **`templates/core/runtimes/<name>`** (or **`bundle/core/runtimes/`** in the cache). Top-level `runtime` sets the workflow default; a step can override it. |
-| **Resolver** | Which tool or platform — **`templates/core/resolvers/<name>`** (or **`bundle/core/resolvers/`**). Top-level `resolver` sets the workflow default; a step can override it. |
-| **Strategy** | Lifecycle wrapper — **`templates/core/strategies/<name>`**, optional **`strategy:`** in YAML. |
-| **Assets** | Support files — **`templates/core/assets/`** (`scripts/`, `images/`, `compose/`). |
+The run prints `Hello from Dockpipe!` alongside its progress messages. A `kind: host`
+step runs in the environment where Dockpipe is running. For Flatpak, that means the
+app sandbox; specific integrations can explicitly call host tools.
 
-If you are authoring workflow YAML, the normal path is:
+## 3. Try a container
 
-1. use **`steps:`**
-2. set **`runtime`** + **`resolver`** at the top
-3. override them on a step only when that step genuinely differs
-4. add **`security`** when the workflow needs to declare network/filesystem/process policy
-5. use **`isolate`** only when you must pin a specific image/template
-6. treat top-level **`run`** / **`act`** as compact single-flow shorthand only, not step-workflow defaults
+For this step, install and start Docker or configure a supported container engine
+as described in the [installation guide](install.md). Check connectivity with:
 
-Details: **[concepts/architecture-model.md](concepts/architecture-model.md)** · **[concepts/isolation-layer.md](concepts/isolation-layer.md)**.
+```sh
+dockpipe doctor
+```
 
----
+Run a small command in an explicitly selected image:
 
-## 5. Next steps
+```sh
+dockpipe --runtime dockerimage --isolate alpine:3.22 -- pwd
+```
 
-| Doc | Use when |
-|-----|----------|
-| [workflows/workflow-yaml.md](workflows/workflow-yaml.md) | Editing **`config.yml`**, **`steps:`**, **`resolver`**, **`strategy`**, **`runtime`** |
-| [workflows/workflow-authoring.md](workflows/workflow-authoring.md) | Short workflow authoring path before the full reference |
-| [packages/package-quickstart.md](packages/package-quickstart.md) | Compile/package/reuse flow |
-| [security/security-policy.md](security/security-policy.md) | Container security profiles and effective policy |
-| [runtime/image-artifacts.md](runtime/image-artifacts.md) | Docker image build/reuse artifacts |
-| [packages/package-model.md](packages/package-model.md) | Authoring vs packages, **`compile.*`** in **`dockpipe.config.json`**, how workflows relate to resolver/runtime/strategy slices |
-| [cli-reference.md](cli-reference.md) | Flags and precedence |
-| [workflows/workflow-yaml.md](workflows/workflow-yaml.md) § Chaining | Multiple **`dockpipe`** runs, same workdir |
-| [runtime/wsl-windows.md](runtime/wsl-windows.md) | Optional WSL bridge on Windows |
+The first run may download the image. Your project is mounted at `/work`; `pwd`
+should print `/work`. The container is removed after the command finishes, while
+files written into the mounted project remain.
+
+To save that command as a workflow, replace `workflows/hello/config.yml` with:
+
+```yaml
+name: hello
+runtime: dockerimage
+isolate: alpine:3.22
+
+steps:
+  - id: location
+    cmd: pwd
+```
+
+Validate and run it using the same two commands from step 2. Replace `cmd` with your
+own project's command and select an image that contains the tools it needs.
+
+## 4. Add reusable tools when you need them
+
+The installer includes required core. Open **Packages → Marketplace** in the
+launcher to install optional workflows and resolvers. Staging users first select
+**Settings → Package Remotes → Use staging** and save.
+
+The [package quickstart](packages/package-quickstart.md) covers discovery,
+installation and dependencies from the terminal. A workflow shown in an example
+is not necessarily installed: create it in your project or install its package
+before running it.
+
+## If something fails
+
+| Problem | Check |
+| --- | --- |
+| `dockpipe` is not found | Open a new terminal after installation; Flatpak users use the command prefix above. |
+| Bash is missing | Install Bash for the native CLI; on Windows use Git for Windows. |
+| Docker cannot be reached | Start your engine and check its selected context/socket; host-only workflows do not need Docker. |
+| Workflow is not found | Run from the folder containing `workflows/hello/config.yml`, or use `--workdir /path/to/project`. |
+| Tool is missing inside a container | Choose an image or installed resolver that supplies that tool. |
+
+## Next steps
+
+- [Author workflows](workflows/workflow-authoring.md): steps, scripts and outputs.
+- [Install packages](packages/package-quickstart.md): optional tools and workflows.
+- [CLI reference](cli-reference.md): flags, project selection and diagnostics.
+- [Security policy](security/security-policy.md): container permissions and host-step limits.

@@ -23,7 +23,7 @@ No package-specific behavior belongs in `src/lib` or `src/cmd`.
 
 Baseline: saved `js/pipelang`, HEAD `616aab5dcc4ad5c31a55a4a2878c2a360b0cc78a`;
 no staged files; eight handed-off document postimages verified before changes.
-Evidence: `/home/jamie/.codex/visualizations/2026/09/13/01a098f4-8488-7220-8803-af2101842918/repair/`.
+Evidence: `<local-evidence>/2026/09/13/01a098f4-8488-7220-8803-af2101842918/repair/`.
 
 
 Completion: 533 authored files are preserved byte-for-byte and the root filesystem

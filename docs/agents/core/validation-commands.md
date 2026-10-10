@@ -11,7 +11,10 @@ make build
 make ci
 ```
 
-Use escalated execution when sandboxed Go cache or build cache blocks validation.
+Use writable task-owned cache/state directories when an isolated check supports them.
+If a required host capability is unavailable, follow the
+[sandbox guide](../runtime/codex-sandbox-sessions.md) for a narrow reviewed operation;
+a cache permission failure alone does not require running the whole suite on the host.
 
 ## Workflow
 

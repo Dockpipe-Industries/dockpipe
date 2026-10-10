@@ -4,7 +4,7 @@
 
 - Objective: `TASK-021-nested-straight-line-returns`; state: `completed`.
 - Founder selected A and separately said `approved` in this task.
-- Baseline: clean saved checkout `/home/jamie/source/dockpipe`, `js/pipelang` at
+- Baseline: clean saved checkout `<checkout>`, `js/pipelang` at
   `ff9fa2961b0fd30b91524f755e7a11cc650efda4`; completed v0.87 proof admitted.
 - Execution skill: `dorkpipe-objective-execution`; automatic checkpoints within this scope;
   handoff only on user request.

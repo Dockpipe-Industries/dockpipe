@@ -209,7 +209,7 @@ editor assertions/syntax checks pass. Branch `js/pipelang`, HEAD `35680d50`, bot
 stashes and the 108166-path ignored inventory remain unchanged; the inventory does not prove
 ignored file contents. Changes remain unstaged and uncommitted.
 
-Exact toolchain used: `/home/jamie/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.25.13.linux-amd64/bin/go`.
+Exact toolchain used: `<go-module-cache>/golang.org/toolchain@v0.0.1-go1.25.13.linux-amd64/bin/go`.
 The private cache is `/tmp/pipelang-performance-proof/cache`. Source and final-evidence manifests
 are retained alongside the receipts for review, with no generated artifacts added to the repository.
 

@@ -44,7 +44,7 @@ installs, cleanup, raised limits or proposed-budget adoption, commit/push/public
 credentials/external mutation, delegation, campaign interruption and worktrees.
 
 Evidence:
-`/home/jamie/.codex/visualizations/2026/09/13/01a0996c-60eb-7e62-9263-8552b3556735/go-scope-fixtures/`.
+`<local-evidence>/2026/09/13/01a0996c-60eb-7e62-9263-8552b3556735/go-scope-fixtures/`.
 
 Completion: retained compact scope fixtures with exact matched source multisets
 and ordered input/value/trace digests in every cold/warm comparison. All twelve

@@ -13,21 +13,18 @@ maintainer docs below are reference material, not the shortest learning path.
 | Install and run the first command | [install.md](install.md), then [onboarding.md](onboarding.md) |
 | Write a workflow | [workflows/workflow-authoring.md](workflows/workflow-authoring.md) |
 | Look up every YAML key | [workflows/workflow-yaml.md](workflows/workflow-yaml.md) |
-| Compile/package reusable artifacts | [packages/package-quickstart.md](packages/package-quickstart.md) |
+| Find, install and use packages | [packages/package-quickstart.md](packages/package-quickstart.md) |
 | Inspect CLI flags and subcommands | [cli-reference.md](cli-reference.md) |
 
 ## Core Concepts
 
 | Topic | Doc |
 |-------|-----|
-| Terms: workflow, runtime, resolver, strategy | [concepts/architecture-model.md](concepts/architecture-model.md) |
+| How workflow, runtime, resolver and strategy fit together | [concepts/architecture-model.md](concepts/architecture-model.md) |
 | Isolation layer and profile files | [concepts/isolation-layer.md](concepts/isolation-layer.md) |
 | Capability ids and resolver packages | [concepts/capabilities.md](concepts/capabilities.md) |
 | Governed AI/documentation workflows | [workflows/agentic-workflows.md](workflows/agentic-workflows.md) |
 | Optional typed authoring layer | [concepts/pipelang.md](concepts/pipelang.md) |
-| PipeLang foundation inventory | [concepts/pipelang-foundation.md](concepts/pipelang-foundation.md) |
-| PipeLang foundation contract proposals | [concepts/pipelang-foundation-contracts.md](concepts/pipelang-foundation-contracts.md) |
-| PipeLang foundation dependencies, milestones and verification cost | [concepts/pipelang-foundation-delivery.md](concepts/pipelang-foundation-delivery.md) |
 
 ## Packages, Security, And Images
 
@@ -46,6 +43,10 @@ Dockpipe itself, publishing packages, or debugging compiled/runtime behavior.
 
 | Topic | Doc |
 |-------|-----|
+| Engine invariants and source layout | [concepts/architecture-contract.md](concepts/architecture-contract.md) |
+| AI workflow design and contributor examples | [workflows/agentic-design-notes.md](workflows/agentic-design-notes.md) |
+| Self-hosted package publication | [packages/package-publishing.md](packages/package-publishing.md) |
+| PipeLang foundation and proposals | [concepts/pipelang-foundation.md](concepts/pipelang-foundation.md), [contracts](concepts/pipelang-foundation-contracts.md), [delivery](concepts/pipelang-foundation-delivery.md) |
 | Engine data flow | [concepts/architecture.md](concepts/architecture.md) |
 | Dockpipe vs first-party maintainer packages | [packages/core-tools.md](packages/core-tools.md) |
 | Generated maintainer artifacts | [runtime/artifacts.md](runtime/artifacts.md) |

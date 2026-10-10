@@ -28,7 +28,7 @@ session work should follow.
 | --- | --- |
 | Runtime/session primitives | `docs/agents/core/engine-boundary.md`, `docs/agents/core/architecture.md` |
 | Provider detection or auth mounts | `docs/agents/runtime/git-runtime-auth.md`, `docs/agents/core/engine-boundary.md` |
-| Workspace storage or path movement | `docs/agents/core/path-scopes.md`, `docs/agents/core/package-model.md` |
+| Workspace storage or path movement | `docs/agents/core/path-scopes.md`, `docs/agents/core/core-package-model.md` |
 | Workflow YAML fields | `docs/agents/workflows/yaml-workflows.md`, `src/lib/infrastructure/schema/workflow.schema.json` |
 | Agentic orchestration behavior | `docs/agents/workflows/model-escalation.md`, `docs/agents/workflows/docs-generation.md` |
 | Generated state, recovery logs, MCP/session metadata | `docs/agents/runtime/artifacts-and-mcp.md` |

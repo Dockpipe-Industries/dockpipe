@@ -32,12 +32,12 @@ matched sample and independent terminal reconciliation. Handoff: user_requested_
 Context pressure: warn_and_continue. Output: quiet_success_bounded_failure.
 Terminal conditions: completed, blocked, failed_verification or cancelled.
 
-Admission: clean saved `/home/jamie/source/dockpipe`, branch `js/pipelang`, HEAD
+Admission: clean saved `<checkout>`, branch `js/pipelang`, HEAD
 `d55d83e67d18c78981b008438a7dc4cb59d39f88`. Completed v0.97 proof admitted with six
 matching postimages and 258 evidence digests; no benchmark replay.
 Protected stashes: `26ea507907550d2449dc6f9c81b9942bd52d8629` and
 `e3afeea1dad94ca0c63dac434f0873548875bfc5`.
-Evidence: `/home/jamie/.codex/visualizations/2026/09/13/01a09c04-20ed-7990-8f8b-e370305d21e7/go-v091-layout-fixtures/`.
+Evidence: `<local-evidence>/2026/09/13/01a09c04-20ed-7990-8f8b-e370305d21e7/go-v091-layout-fixtures/`.
 
 Excluded: other family conversions, shared reader/batch changes, compiler/evaluator/
 language changes, accounting changes, validation-read optimization, C++, installs,

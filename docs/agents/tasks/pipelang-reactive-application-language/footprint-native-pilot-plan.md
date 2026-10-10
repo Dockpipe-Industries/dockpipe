@@ -29,7 +29,7 @@ owns attribution, budget provenance and ranked actions. The
 [native-backend proposal](../../../concepts/pipelang-native-backends.md#bounded-c-pilot-proposal)
 owns the installed-tool inventory and matched eight-program pilot design.
 
-Evidence: `/home/jamie/.codex/visualizations/2026/09/13/01a098cd-9038-7c62-81d8-7e9140a7ceef/footprint/`.
+Evidence: `<local-evidence>/2026/09/13/01a098cd-9038-7c62-81d8-7e9140a7ceef/footprint/`.
 `inventory.json` and `generation-comparison.json` use existing receipt identities
 and live metadata, not fresh executable validation. No bytes freed.
 
