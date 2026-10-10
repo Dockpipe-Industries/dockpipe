@@ -3,7 +3,9 @@
 Dockpipe treats Docker images as build artifacts, not just accidental side
 effects of `run`.
 
-The goal is simple: if a valid image already exists, do not rebuild it.
+Use this guide when a workflow rebuilds an image, cannot find one, or fails to
+reach Docker. Run the commands from your project with an installed CLI; building
+Dockpipe itself is not required. A valid local image can be reused.
 
 ## Lifecycle
 
@@ -108,9 +110,9 @@ Status meanings:
 - `referenced`: registry image reference
 - `docker-error`: Docker check failed, but inspection remains non-fatal
 
-## What Is Not In V1
+## Current limits
 
-Keep these out of the first stable artifact model:
+The image-artifact model does not itself provide:
 
 - Docker layer packaging inside Dockpipe package tarballs
 - custom Docker build DSL
@@ -120,6 +122,7 @@ Keep these out of the first stable artifact model:
 - proxy-mediated `docker pull`
 - automatic online base image refresh during normal run
 
-Those are useful later, but they would blur the simple model: install/publish are
-the network-facing operations; run consumes local artifacts unless the workflow
-itself needs network.
+Registry authentication and multi-platform build setup must be configured through
+your container tools or the selected workflow. A local artifact record does not
+prove the image is still present in Docker; inspect the reported status before
+assuming the next run can work offline.

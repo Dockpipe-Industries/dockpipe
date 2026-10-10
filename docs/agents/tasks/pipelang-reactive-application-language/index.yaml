@@ -21,108 +21,15 @@ dispatch:
   ownership: claimed
 
 state:
-  qt_boundary_foundation: qt-boundary-foundation.md
-  decision: accepted
   current_language_contract: v0.114.0
   active_objective: TASK-021-mutable-locals
-  mutable_locals_verification: failed_coordinator_headroom
-  mutable_locals: mutable-locals.md
-  general_blocks: general-blocks.md
-  general_blocks_verification: accepted_terminal_efficiency_9_independent_ordered_audit
-  general_blocks_recovery: compact_matrix_reporting_78_focused_passed
-  native_streaming_sdk: native-streaming-sdk.md
-  native_stream_incremental: native-stream-incremental.md
-  completed_qt_boundary_foundation_objective: pipelang-qt-boundary-foundation-20260913
-  completed_language_objective: TASK-021-general-blocks
-  completed_planning_objective: TASK-021-foundation-specification-and-dependency-plan
-  completed_verification_objective: TASK-021-resumable-verification-optimization
-  completed_performance_objective: TASK-021-verification-performance-round-2
-  completed_research_objective: pipelang-performance-compression-research-20260912
-  completed_identity_fixture_objective: pipelang-performance-identity-fixtures-20260912
-  completed_pair_scheduling_objective: pipelang-performance-pair-scheduling-20260912
-  completed_automatic_pair_scheduling_objective: pipelang-performance-default-pairing-20260912
-  completed_resume_memory_objective: pipelang-performance-resume-memory-20260913
-  completed_footprint_planning_objective: pipelang-footprint-attribution-native-pilot-plan-20260913
-  footprint_plan: footprint-native-pilot-plan.md
-  completed_package_input_budget_objective: pipelang-package-input-inclusive-budget-repair-20260913
-  package_input_budget_repair: package-input-budget-repair.md
-  completed_go_artifact_reduction_objective: pipelang-go-artifact-reduction-20260913
-  go_artifact_reduction: go-artifact-reduction.md
-  completed_go_scope_fixtures_objective: pipelang-go-scope-fixtures-20260913
-  go_scope_fixtures: go-scope-fixtures.md
-  completed_go_v109_layout_fixtures_objective: pipelang-go-v109-layout-fixtures-20260913
-  go_v109_layout_fixtures: go-v109-layout-fixtures.md
-  completed_go_v108_layout_fixtures_objective: pipelang-go-v108-layout-fixtures-20260913
-  go_v108_layout_fixtures: go-v108-layout-fixtures.md
-  completed_go_v107_layout_fixtures_objective: pipelang-go-v107-layout-fixtures-20260913
-  go_v107_layout_fixtures: go-v107-layout-fixtures.md
-  completed_go_v106_layout_fixtures_objective: pipelang-go-v106-layout-fixtures-20260913
-  go_v106_layout_fixtures: go-v106-layout-fixtures.md
-  completed_go_v105_layout_fixtures_objective: pipelang-go-v105-layout-fixtures-20260913
-  go_v105_layout_fixtures: go-v105-layout-fixtures.md
-  completed_go_v104_layout_fixtures_objective: pipelang-go-v104-layout-fixtures-20260913
-  go_v104_layout_fixtures: go-v104-layout-fixtures.md
-  completed_go_v103_layout_fixtures_objective: pipelang-go-v103-layout-fixtures-20260913
-  go_v103_layout_fixtures: go-v103-layout-fixtures.md
-  completed_go_v102_layout_fixtures_objective: pipelang-go-v102-layout-fixtures-20260913
-  completed_go_v097_layout_fixtures_objective: pipelang-go-v097-layout-fixtures-20260913
-  completed_go_v091_layout_fixtures_objective: pipelang-go-v091-layout-fixtures-20260913
-  completed_go_v089_layout_fixtures_objective: pipelang-go-v089-layout-fixtures-20260913
-  go_v091_layout_fixtures: go-v091-layout-fixtures.md
-  go_v089_layout_fixtures: go-v089-layout-fixtures.md
-  go_v097_layout_fixtures: go-v097-layout-fixtures.md
-  go_v102_layout_fixtures: go-v102-layout-fixtures.md
-  completed_verification_overhead_profile_objective: pipelang-verification-overhead-profile-20260913
-  verification_overhead_profile: verification-overhead-profile.md
-  toolchain_transcript: toolchain-transcript.md
-  completed_toolchain_transcript_objective: pipelang-toolchain-transcript-20260913
-  toolchain_transcript_disposition: rejected_performance_consistency
-  cpp_qt_pilot: cpp-qt-pilot.md
-  completed_cpp_qt_pilot_objective: pipelang-cpp-qt-pilot-20260913
-  cpp_qt_pilot_disposition: retained_experimental_integration
-  next_implementation_recommendation: null
-  research_record: performance-compression-research.md
   objective_state: failed_verification
   selected_option: P04.b
   selected_scope: mutable_locals_and_definite_assignment
-  implementation_approval: approved
-  planning_authority: explicit_user_request
-  completed_language_implementation_approval: approved
-  completed_repair_objective: TASK-021-PipeLang-v0.80-milestone-repairs
-  repair_commit: acbd10f88207d0a226ec24a073948362691adb8c
-  repair_record: milestone-v080-repairs.md
-  completed_repair_slices: [R1, R2, R3, R4, R5, R6]
-  next_repair_slice: null
-  completed_through: v0.114.0 general lexical blocks joins and early returns plus v0.113.0 nominal enums and exhaustive matching plus v0.112.0 conditional result arms in arrow-method selectors plus v0.111.0 conditional result arms in terminal-leaf selector returns plus v0.110.0 conditional result arms in straight-line selector returns plus v0.109.0 combined inner-selector and outer result arms in terminal tests plus v0.108.0 inner-selector value arms in terminal tests plus v0.107.0 conditional result arms in terminal selector tests plus v0.106.0 flat boolean selectors in terminal tests plus v0.105.0 depth-three value arms in terminal conditional tests plus v0.104.0 nested value arms in terminal conditional tests plus v0.103.0 direct terminal conditional tests plus v0.102.0 terminal-tree boolean-selector initializers plus v0.101.0 straight-line boolean-selector initializers plus v0.100.0 arrow-method boolean selectors plus v0.99.0 terminal-leaf boolean selectors plus v0.98.0 conditional boolean selectors plus v0.97.0 depth-three terminal initializers plus v0.96.0 depth-three straight-line initializers plus v0.95.0 depth-three expression-bodied methods plus v0.94.0 depth-three terminal-leaf returns plus v0.93.0 depth-three straight-line returns plus v0.92.0 nested expression-bodied methods plus v0.91.0 nested initializers throughout terminal trees plus v0.90.0 nested straight-line initializers plus v0.89.0 nested terminal-leaf returns plus v0.88.0 nested straight-line returns plus v0.87.0 conditional returns in terminal-tree leaves plus v0.86.0 conditional return composition plus v0.85.0 straight-line conditional-local sequences plus v0.84.0 finite conditional-local sequences plus v0.83.0 two conditional locals in terminal trees plus v0.82.0 conditional local in terminal trees plus v0.81.0 terminal trees through depth three plus v0.80.0 two expanded terminal leaves plus v0.79.0 bounded depth-three terminal branching plus v0.78.0 rootless symmetric depth-two terminal branching plus v0.77.0 symmetric depth-two terminal branching with shared root immutable locals plus v0.76.0 shared root immutable-local sequences before the v0.75.0 bounded nested terminal topology, v0.75.0 inner terminal-leaf immutable-local sequences, v0.74.0 one-branch bounded nested terminal if/else, v0.73.0 direct terminal if/else without a top-level-local prerequisite, v0.72.0 general terminal-branch local sequences, v0.71.0 two-local terminal-branch sequences, v0.70.0 lexical terminal-branch locals, and v0.69.0 terminal statement-level if/else after ordered immutable locals, generalized one-stage and multi-stage shared-context Result propagation, generalized contextual bounded Result propagation, exact two-stage and one-stage contextual bounded propagation, contextual and generalized cross-payload chains, exact two-stage and one-stage cross-payload Result propagation, generalized checked-propagation chains, two-stage, multi-parameter direct, direct, and helper checked propagation, multi-parameter propagation, cumulative and immediate dependent chains, dependent and independent two-carrier forms, prior-local and later-local helper matching, checked arithmetic, pure calls, matching, propagation, ordered immutable locals, and dockpipe.application.v1 consumer proof
-  authority: >-
-    Founder selected option 1 (P01 enums), then explicitly said approved.
-    nominal-enums.md owns completed v0.113.0 and accepted fresh independent proof.
-    Foundation planning remains completed; P04.a is accepted at v0.114.0 after fresh complete and independent ordered proof. No successor capability is selected.
-    Founder selected A and approved the bounded pair-scheduling performance objective.
-    That objective is completed. The user then requested automatic complete-campaign
-    adoption; automatic-pair-scheduling.md owns the bounded implementation and proof.
-    The user subsequently selected A, bounded large-campaign resume; bounded-resume-memory.md
-    owns the completed recovery repair and unchanged proof limits. The user then requested
-    footprint attribution and native pilot planning, completed in footprint-native-pilot-plan.md.
-    The user subsequently approved package-input and inclusive-budget repair; numerical targets remain proposed.
-    Completed Go construction experiments through v0.104 remain admitted evidence.
-    The v0.103 construction experiment is completed and committed. The user selected
-    another bounded Go fixture experiment, reviewed the v0.102 scope and said
-    "I approve the recommended". go-v102-layout-fixtures.md owns implementation
-    and matched proof; accounting rules and limits remain unchanged.
-    The v0.102 objective is completed. The user selected another Go fixture experiment,
-    reviewed the v0.97 scope and said "I approve". go-v097-layout-fixtures.md owns
-    the completed implementation and bounded proof under unchanged limits.
-    The user selected another Go fixture experiment, reviewed the v0.91 scope and
-    said "I approve". go-v091-layout-fixtures.md owns the completed implementation
-    and bounded proof. No commit, push, publication, worktree, cleanup or external
-    mutation is authorized.
-    The v0.91 objective is completed and committed. The user selected another Go
-    fixture family, reviewed the bounded v0.89 scope and said "I approve".
-    go-v089-layout-fixtures.md owns the completed proof; all existing ceilings remain.
-    The user subsequently approved the bounded C++/assembly/Qt pilot.
-    cpp-qt-pilot.md owns its completed experimental integration proof.
-    No full backend, default selection or next implementation is selected.
+  mutable_locals: mutable-locals.md
+  mutable_locals_verification: failed_coordinator_headroom
+  accepted_baseline: general-blocks.md
+  history: history-state.yaml
 
 routes:
   general_blocks:
@@ -255,48 +162,12 @@ routes:
       - conformance-similarity-search-experiment.md
 
   orientation:
-    read:
-      - foundation-alignment.md
-      - conformance-verification-performance-round-2.md
-      - conformance-verification-optimization.md
-      - conformance-execution-performance.md
-      - conformance-performance.md
-      - arrow-selector-value-arms.md
-      - terminal-leaf-selector-value-arms.md
-      - straight-line-selector-value-arms.md
-      - terminal-combined-selector-arms.md
-      - terminal-inner-selector-arms.md
-      - terminal-selector-value-arms.md
-      - terminal-boolean-selector-tests.md
-      - depth-three-terminal-conditional-tests.md
-      - nested-terminal-conditional-tests.md
-      - terminal-conditional-tests.md
-      - terminal-boolean-selector-initializers.md
-      - straight-line-boolean-selector-initializers.md
-      - arrow-boolean-selectors.md
-      - terminal-leaf-boolean-selectors.md
-      - conditional-boolean-selectors.md
-      - depth-three-terminal-initializers.md
-      - depth-three-straight-line-initializers.md
-      - depth-three-arrow-methods.md
-      - depth-three-terminal-leaf-returns.md
-      - depth-three-straight-line-returns.md
-      - nested-arrow-methods.md
-      - nested-terminal-initializers.md
-      - nested-straight-line-initializers.md
-      - nested-terminal-leaf-returns.md
-      - nested-straight-line-returns.md
-      - terminal-leaf-conditional-returns.md
-      - conditional-return-composition.md
-      - straight-line-conditional-locals.md
-      - compiler-memory-repair.md
-      - finite-conditional-locals.md
-      - two-conditional-locals.md
-      - checked-chain-inheritance-repair.md
-      - checked-propagation-inheritance-repair.md
-      - overview.md
-      - numeric-comparison-repair.md
-      - milestone-v080-repairs.md
+    read: [overview.md, mutable-locals.md]
+    optional: [../../../concepts/pipelang-foundation-delivery.md]
+
+  mutable_locals:
+    read: [mutable-locals.md, ../../../runtime/pipelang-verification.md]
+    optional: [general-blocks.md]
 
   milestone_repairs:
     read:
@@ -416,6 +287,16 @@ history_by_slice:
   steps_8a_to_8aw: completed-functions.md
 
 documents:
+  - path: history-overview.md
+    purpose: Archived progress and original design context; historical evidence only
+  - path: history-state.yaml
+    purpose: Archived completed-objective metadata; no current authority
+  - path: mutable-locals.md
+    purpose: Current P04.b scope, failed verification and outstanding acceptance
+  - path: native-stream-composition.md
+    purpose: Recorded native stream composition proof
+  - path: ../../../research/pipelang-nucleon-pilot.md
+    purpose: Recorded Nucleon SDK pilot research
   - path: go-v109-layout-fixtures.md
     purpose: Completed v0.109 layout fixture construction and matched proof
   - path: go-scope-fixtures.md
@@ -423,13 +304,13 @@ documents:
   - path: nominal-enums.md
     purpose: Selected and approved v0.113.0 nominal enums scope and verification
   - path: foundation-specification-plan.md
-    purpose: Completed planning objective, admitted proof, documentation validation and pending founder selection
+    purpose: Completed foundation planning objective and documentation validation
   - path: ../../../concepts/pipelang-foundation-contracts.md
     purpose: Proposed foundation contracts and worked acceptance/rejection examples
   - path: ../../../concepts/pipelang-foundation-delivery.md
     purpose: F01-F34 evidence ledger, dependencies, slice estimates, milestone choices and verification economics
   - path: foundation-alignment.md
-    purpose: Accepted foundation requirements and pending implementation decision routing
+    purpose: Accepted foundation requirements and design direction
   - path: arrow-selector-value-arms.md
     purpose: Approved v0.112.0 arrow selector result-arm scope and verification
   - path: terminal-leaf-selector-value-arms.md

@@ -1,5 +1,10 @@
 # Conformance execution performance
 
+This completed record contains historical commands and handoff checkpoints.
+They grant no current authority. Local paths are anonymized as described in
+[Agent Tasks](../../TASKS.md); `$GO_TOOLCHAIN` in command transcripts denotes the
+recorded Go 1.25.13 Linux/amd64 executable, not a discovered current installation.
+
 ## Objective contract
 
 - objective_id: `TASK-021-conformance-execution-performance`; state: `completed` for this validated performance pass; 30-second target remains unmet.
@@ -171,7 +176,7 @@ Reproduce the complete warm rerun from the saved checkout with a fresh output di
 
 ```bash
 python3 tests/containedexec/pipelang_suite.py \
-  --go /home/jamie/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.25.13.linux-amd64/bin/go \
+  --go "$GO_TOOLCHAIN" \
   --output /tmp/pipelang-execution-performance/next-rerun \
   --cache /tmp/pipelang-performance-proof/cache \
   --compiled-cache /tmp/pipelang-execution-performance/complete-artifacts \
@@ -332,7 +337,7 @@ cache, where the prototype artifacts were subsequently consolidated:
 python3 tests/containedexec/pipelang_suite.py \
   --native-bundle --audit-generated \
   --test-family TestV910NestedTerminalInitializersLayouts \
-  --go /home/jamie/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.25.13.linux-amd64/bin/go \
+  --go "$GO_TOOLCHAIN" \
   --output /tmp/pipelang-native-bundle/next-family-run \
   --cache /tmp/pipelang-performance-proof/cache \
   --compiled-cache /tmp/pipelang-execution-performance/complete-artifacts \
@@ -831,7 +836,7 @@ failures bounded. After focused proof, run the final complete suite with all ori
 if no code changes are justified, preserve the admitted correctness proof and document the
 measured limitation without a ceremonial repeat.
 
-Transport exactly one fresh task into `/home/jamie/source/dockpipe`, with no worktree. Admission
+The historical handoff requested one fresh task in the existing checkout, without a worktree. Admission
 still matches HEAD `0f07ab8de053503613b846d3397c9868a6eba950`, branch `js/pipelang`, both
 protected stashes, all 198 proof-source hashes and the 108,166-entry ignored inventory. The
 three task-record files are the only unstaged handoff-owned changes; nothing is staged or
@@ -1002,7 +1007,7 @@ no further task was created.
 
 ### Latest user direction: keep iterating (2026-09-07)
 
-After the inference pass was fully recorded and its 217 units audited, Jamie's side
+After the inference pass was fully recorded and its 217 units audited, the user's side
 conversation relayed “just keep iterating.” The same objective is **executing** again
 under that explicit direction: continue measured, bounded deterministic improvements
 with correctness, complete-suite timing, aggregate memory and complete retained-storage

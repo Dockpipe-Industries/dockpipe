@@ -26,7 +26,7 @@ singleton measurements for successful cases, rechecking identity and executable
 digests on each run. Standalone suites retain their singleton default.
 
 Evidence is retained under
-`/home/jamie/.codex/visualizations/2026/09/12/01a09603-329e-74d1-a913-8619e5e68b64/default-pairing`.
+`<local-evidence>/2026/09/12/01a09603-329e-74d1-a913-8619e5e68b64/default-pairing`.
 Prior full proof remains historical: harness edits intentionally invalidate its
 profile identity. No profile identity is rewritten and no prior receipt is claimed
 as execution of the modified orchestration.

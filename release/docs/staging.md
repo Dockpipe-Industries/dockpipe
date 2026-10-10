@@ -2,8 +2,8 @@
 
 A successful **push to `staging`** runs the Linux and Windows CI jobs, then calls
 `release.yml` from the same commit. PRs and manual CI runs do not publish. All five
-native builds, package stores, installer checks and release tooling checks must
-succeed before publication. CodeQL remains a separate workflow; this dependency
+native builds, the Flatpak qualification job, package stores, installer checks and
+release tooling checks must succeed before publication. CodeQL remains a separate workflow; this dependency
 chain gates on the `CI` test jobs, not the separate CodeQL result.
 
 The staging publisher uses GitHub environment **`release-staging`**, R2 bucket
@@ -19,19 +19,24 @@ makes caller repository and organization secrets available to the called workflo
 Keep publication credentials in their respective GitHub environments: the staging
 publisher binds `release-staging`, whose values take precedence for that job.
 
-Staging uses the same native build and artifact assembly jobs as production:
+Staging uses the same native/Flatpak build and artifact assembly jobs as production:
 
 | Output | Platforms |
 | --- | --- |
 | Dockpipe CLI archives and complete package-store bundles | Linux amd64/arm64, macOS amd64/arm64, Windows amd64 |
 | DEB, RPM, APK and Arch packages | Linux amd64/arm64 |
 | MSI installer | Windows amd64; always enabled for staging |
+| Flatpak launcher plus CLI/core and separate Marketplace store | Linux amd64, KDE Platform 6.10 |
 | Signed APT repository | amd64/arm64, suite `staging`, separate signing key |
 | Install scripts, release catalog, package manifests and checksums | Included with each candidate |
 
 GitHub receives a prerelease with the downloadable release assets. R2 receives the
 complete artifact tree, including individual platform package stores and APT.
 Each new successful staging push creates a separately selectable candidate.
+The Flatpak bundle is published on the package host; it was absent from the GitHub
+assets for the verified 0.6.3 candidate. Use the catalog's download entry. See
+[Flatpak user installation and manual updates](../../docs/install.md#flatpak-desktop-staging-linux-amd64)
+and [publication evidence and qualification limits](../packaging/desktop/flatpak/README.md#release-integration-and-proof-limits).
 
 ## Versions and immutable candidates
 

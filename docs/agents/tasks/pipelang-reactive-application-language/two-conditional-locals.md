@@ -4,7 +4,7 @@
 
 - Objective: `TASK-021-next-compiler-slice-after-checked-chain-inheritance-repair`.
 - State: `completed`; founder selected A and separately said `approved` in this task.
-- Baseline: saved checkout `/home/jamie/source/dockpipe`, branch `js/pipelang`, clean at
+- Baseline: saved checkout `<checkout>`, branch `js/pipelang`, clean at
   `776bfa9e5c2e3a08bda362d489d30d2f69379bae`. The checked-chain repair is committed here;
   its historical uncommitted wording is superseded by live read-back.
 - Execution skill: `dorkpipe-objective-execution`; automatic checkpoints within this scope;

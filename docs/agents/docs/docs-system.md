@@ -72,3 +72,22 @@ Use compressed agent-only text only when at least one of these is true:
 - Can an agent route from `AGENTS.md` plus `docs/agents/index.yaml` without loading half the repo?
 - Did a behavior change update the main doc before the compressed agent layer?
 - Are there any stale agent summaries that still mention old paths, old flags, or old architecture terms?
+
+## Public-site audience
+
+The DockPipe Cloud site selects source pages in its `scripts/site/stage-docs.py`.
+Before changing site-facing docs, inspect that selection rather than assuming all
+repository Markdown is published.
+
+- Installation and quickstarts assume an installed application and the user's own
+  project, without a Dockpipe checkout, Go compiler or contributor Make targets.
+- State package/image/tool prerequisites before commands; use runnable project
+  examples rather than Dockpipe's own CI or documentation workflows.
+- Keep engine invariants, release operations and product proposals in linked
+  contributor references outside the public learning path.
+- Preserve substantive contracts when moving material; check relative links and
+  site link rewriting after edits.
+- Validate examples outside this checkout. Distinguish schema validation, local
+  execution and provider/platform acceptance.
+- Source edits do not refresh or publish the Cloud site. Report snapshot/build
+  boundaries explicitly.

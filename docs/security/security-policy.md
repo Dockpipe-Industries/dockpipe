@@ -4,6 +4,8 @@ Dockpipe security policy is part of the runtime/isolation layer. Workflow YAML
 declares high-level intent; compile resolves that intent into an effective
 runtime/security manifest; run consumes the compiled truth.
 
+Set this policy in your project's workflow YAML. It applies to container steps;
+it does not sandbox host steps or grant permission to run an untrusted package.
 The public YAML does not expose raw Docker flags.
 
 ## Secure Default
@@ -76,7 +78,9 @@ inside the child workflow.
 
 Dockpipe records whether enforcement is `native`, `proxy`, or `advisory`.
 Domain allow/block rules are not something Docker enforces cleanly by itself, so
-the effective manifest and logs must be honest about coverage.
+inspect the effective manifest and logs before relying on an allowlist.
+In the current implementation, restricted/allowlist rules can be advisory; an
+`allow` entry alone is not proof that other destinations are blocked.
 
 ## Host Steps
 
@@ -102,20 +106,22 @@ what was enforced and why something was blocked or rebuilt.
 
 ## "Why Was This Blocked?"
 
-The diagnostic path should be:
+1. Read the failing command and the run's policy summary.
+2. Check `network.mode` and whether enforcement is native, proxy-backed or advisory.
+3. Check whether the step runs in a container or on the host.
+4. Inspect the effective runtime/security manifest in the compiled workflow package
+   when you need the exact resolved settings.
 
-1. inspect the run record under `bin/.dockpipe/runs/`
-2. check the policy fingerprint and rule ids
-3. read the effective runtime/security manifest from the compiled workflow
-4. compare logs such as `policy enforcement` and `policy coverage`
-
-Typical messages:
+For example, current advisory-policy logs can include:
 
 ```text
-runtime policy: network=restricted, root=readonly, no-new-privileges
-policy enforcement: network restricted is advisory in this build
-blocked outbound request to example.com by network.allowlist rule network.allow[0]
+policy enforcement: network restricted is advisory in this build; full egress filtering is not active yet
+policy coverage: domain allow/block rules are compiled for inspection but are not enforced natively by Docker
 ```
+
+These messages describe a limit, not a successful outbound block. If a command
+needs network access, declare that requirement deliberately rather than disabling
+all policy to get past an error.
 
 ## Advanced
 

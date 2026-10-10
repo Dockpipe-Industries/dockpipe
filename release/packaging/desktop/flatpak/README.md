@@ -1,5 +1,11 @@
 # Flatpak desktop and Marketplace packages
 
+The Linux amd64 launcher-plus-CLI bundle is published on the staging package host.
+Use the [installation guide](../../../../docs/install.md#flatpak-desktop-staging-linux-amd64)
+for KDE runtime setup, verified download URLs, user installation, launch commands,
+manual bundle updates and Marketplace setup. This is not a Flathub listing or an
+updating Dockpipe Flatpak remote.
+
 Dockpipe running inside Flatpak selects Flatpak Marketplace artifacts. Native
 Dockpipe selects native artifacts, even on an atomic OS or a machine with Flatpak
 installed. Selection follows the process boundary, without a distribution toggle.
@@ -60,7 +66,7 @@ bash release/packaging/desktop/flatpak/build.sh VERSION /absolute/path/dockpipe 
 
 The builder compiles the launcher in the SDK, runs six Qt tests, and checks the
 launcher, CLI, core-only inventory, workflow execution and package target selection
-in the smaller Platform. Outputs include an unsigned test `.flatpak` bundle, OSTree
+in the smaller Platform. Outputs include an unsigned staging `.flatpak` bundle, OSTree
 repository, app build directory and SDK/runtime commit receipts.
 
 ```bash
@@ -71,7 +77,8 @@ flatpak run --command=dockpipe com.dockpipe.Dockpipe --version
 
 The CLI is included in the same app. Its normal XDG data is separate from native
 Dockpipe. Project-local packages and explicit data-root overrides still take
-precedence. Installing a test bundle does not configure an updating Flatpak remote.
+precedence. The bundle exports app branch `staging` and supplies Flathub as its KDE
+runtime-repository hint. It does not configure an updating Dockpipe Flatpak remote.
 
 ## Optional package builds
 
@@ -122,11 +129,25 @@ Flatpak download contains both launcher and CLI. Native and Flatpak stores canno
 be substituted, including through pinned store URLs. Runtime branch upgrades
 require package rebuilds and qualification.
 
+Publication verified on **2026-10-10**: the
+[staging pointer](https://packages.staging.dockpipe.com/packages/latest.json) selects
+`0.6.3-staging.37959504785.1.4da6948415b9`. Its
+[release manifest](https://packages.staging.dockpipe.com/packages/candidates/0.6.3-staging.37959504785.1.4da6948415b9/release-manifest.json)
+records source `4da6948415b9ecb2af3d7ce7f5d3d1f38544498f`, 62 Flatpak store entries
+(core plus 61 optional artifacts), and the same
+[desktop bundle](https://packages.staging.dockpipe.com/packages/candidates/0.6.3-staging.37959504785.1.4da6948415b9/dockpipe-desktop_0.6.3_linux_amd64.flatpak)
+for both `cli` and `desktop` downloads. The bundle URL returned HTTP 200 and appears
+in the candidate's `SHA256SUMS.txt`. The matching
+[hosted Flatpak qualification run](https://github.com/Dockpipe-Industries/dockpipe/actions/runs/37959515012)
+succeeded. Use package-host URLs; the matching GitHub release did not attach the
+`.flatpak` asset. Recheck the pointer and candidate metadata for later versions.
+
 Dependency/preflight checks cover package availability, not authenticated cloud
 operations, editor interaction, VM boot or all container lifecycle behavior. These
 still depend on the user's host tools, credentials and engine. Native Bazzite,
-Podman/SELinux behavior, arm64, hosted CI and public distribution must be qualified
-separately. Do not describe these local checks as universal workflow parity.
+Podman/SELinux behavior, ARM64 Flatpak builds, a signed/updating Flatpak remote and
+production-channel distribution remain separate qualification/publication work.
+Do not describe local or hosted checks as universal workflow parity.
 
 Local Linux amd64 qualification exercised all 61 optional artifacts in the Platform,
 the core-only launcher/CLI, a bundled shared library, real Docker/Compose bind mounts,

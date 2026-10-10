@@ -10,6 +10,7 @@ choices.
 | macOS Homebrew | `dockpipe-desktop_VERSION_darwin_ARCH.zip` | Same self-contained app; cask depends on the CLI formula |
 | Ubuntu 22.04 / 24.04 arm64 / amd64; Pop!_OS 22.04 | `dockpipe-desktop_VERSION_ARCH.deb` | Launcher, icons, menu entry; exact-version CLI dependency and native Qt dependencies |
 | Windows amd64 | `dockpipe_VERSION_windows_amd64.msi` | CLI, core package, deployed Qt launcher and Start menu shortcut; launcher selected by default |
+| Linux amd64 Flatpak (staging) | `dockpipe-desktop_VERSION_linux_amd64.flatpak` | Launcher, CLI, core and container clients; requires KDE Platform 6.10; optional packages use a separate runtime-specific store |
 
 The macOS app contains the CLI in `Contents/Helpers`, a wrapper in `Contents/MacOS`,
 and only the required core package in `Contents/Resources/share/dockpipe`. The wrapper
@@ -48,10 +49,11 @@ Windows smoke installs the real MSI, checks the app/CLI, modifies the launcher
 feature and uninstalls. Homebrew separately tests formula/cask installation and
 cask removal on both Mac architectures before updating the tap.
 
-Published Linux desktop support is currently DEB only. An experimental
-[Flatpak qualification lane](flatpak/README.md) builds launcher and CLI against a
-defined runtime, with separate on-demand compatible packages. It is not yet a
-public Flatpak release or a Bazzite/Pipeon support claim.
+Published staging Linux desktop artifacts include DEBs and the
+[Flatpak launcher-plus-CLI bundle](flatpak/README.md), with separate on-demand
+runtime-compatible packages. The Flatpak bundle is available from the staging
+package host; this does not establish Bazzite/Pipeon or full Podman/SELinux support.
+See [Flatpak installation and manual updates](../../../docs/install.md#flatpak-desktop-staging-linux-amd64).
 Do not put the glibc Qt binary into
 an Alpine package. Other Linux package formats and portable archives remain CLI
 options. Native Mac/Windows installation proof cannot be inferred from a Linux

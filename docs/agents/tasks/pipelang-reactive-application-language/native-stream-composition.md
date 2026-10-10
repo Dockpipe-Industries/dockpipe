@@ -40,7 +40,7 @@ One compatibility invocation used the repository root instead of the package
 working directory; the two affected import checks passed on corrected rerun.
 The failed receipt remains preserved. No resource limits were raised.
 
-Durable proof: `/home/jamie/.codex/visualizations/2026/09/15/01a0a309-d1b8-7021-bd8e-96fc2c309059/nucleon-composition-20260915/`.
+Durable proof: `<local-evidence>/2026/09/15/01a0a309-d1b8-7021-bd8e-96fc2c309059/nucleon-composition-20260915/`.
 
 ## Both SDK consumers
 

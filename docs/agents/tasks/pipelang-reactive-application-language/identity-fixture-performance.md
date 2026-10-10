@@ -76,13 +76,13 @@ Inherited research/documentation changes are owned and uncommitted; preserve the
 The source task's `execution-handoff-state.json` records the exact dirty paths,
 postimages, index identity, protected stashes, and all 33 accepted source hashes.
 It lives under
-`/home/jamie/.codex/visualizations/2026/09/12/01a09431-f799-75e1-a603-a139ea3af283`.
+`<local-evidence>/2026/09/12/01a09431-f799-75e1-a603-a139ea3af283`.
 That directory also owns the current receipt analysis, source-frozen record
 sample, codec results, failed preflight and successful contained sample, and
 documentation validation receipts. There is no running job to inherit.
 
 The accepted v0.113.0 campaign remains at
-`/home/jamie/.codex/visualizations/2026/09/12/01a09387-ddcf-71d1-94b7-9395966a4500/verification-data/campaigns/terminal-2`.
+`<local-evidence>/2026/09/12/01a09387-ddcf-71d1-94b7-9395966a4500/verification-data/campaigns/terminal-2`.
 It proves 871 functions, 8,859 logical cases, 2,922 isolated compiler cases,
 nine integration checks, editor proof, 49,465 inherited ordered audits/native
 children and 49,526 current total native children. Final job plus independent
@@ -95,7 +95,7 @@ The receiving task admitted all seven inherited documentation postimages, the in
 branch/HEAD, both protected stashes and 33 accepted source hashes without drift.
 No completed campaign was rerun. The frozen 48-case selection and experiment order
 are recorded in `selection.json` and `frozen-design.json` under
-`/home/jamie/.codex/visualizations/2026/09/12/01a0944d-24d3-78a2-8064-d1537381f4e7`.
+`<local-evidence>/2026/09/12/01a0944d-24d3-78a2-8064-d1537381f4e7`.
 Selection precedes instrumentation and candidate tuning: eight cases from each of
 the four dominant families, four older layouts, four heavy layouts, four memory
 cases and four standalone artifact/special-harness checks.

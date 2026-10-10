@@ -122,7 +122,7 @@ The queried engine was SQLite `3.53.3` with source ID
 and native `win32` VFS. The exact selected main-database URI was:
 
 ```text
-file:///C:/Users/Jamie/AppData/Local/Temp/TestWindowsNativeSQLiteSmoke827599481/001/main/aggregate.sqlite?_dqs=0&_error_rc=1&_txlock=exclusive&cache=private&mode=rw&vfs=win32
+file:///C:/Users/ExampleUser/AppData/Local/Temp/TestWindowsNativeSQLiteSmoke827599481/001/main/aggregate.sqlite?_dqs=0&_error_rc=1&_txlock=exclusive&cache=private&mode=rw&vfs=win32
 ```
 
 The lane read back the selected `journal_mode=delete`, `synchronous=3` (`EXTRA`), `fullfsync=1`,

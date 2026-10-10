@@ -58,7 +58,7 @@ DorkPipe renders the same curated skills to Codex, Claude, or generic targets:
 ./src/bin/dockpipe --package dorkpipe --workflow skills.render -- --target codex
 ```
 
-Installed Codex skills expected here:
+Curated skills available from the package (verify host availability before use):
 
 - `dorkpipe-agentic-yaml`
 - `dorkpipe-core-review`

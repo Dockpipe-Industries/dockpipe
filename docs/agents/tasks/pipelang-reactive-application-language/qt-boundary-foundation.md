@@ -30,7 +30,7 @@ both protected stashes unchanged. All 15 pilot postimages matched final-acceptan
 (SHA-256 698666226202ed6e4c22ceb05ee408fe48b7fb26837192f62fb7519d1612f387).
 Pilot authored files, caches, ignored bytecode and failed evidence are preserved.
 Own new boundary files, canonical/routing updates and the bounded frontend repair.
-Evidence: /home/jamie/.codex/visualizations/2026/09/13/01a09ce0-e669-7be3-9dc1-df0857a4f804/qt-boundary.
+Evidence: `<local-evidence>/2026/09/13/01a09ce0-e669-7be3-9dc1-df0857a4f804/qt-boundary`.
 
 Checkpoint evidence: the initial Qt functional run passed but its source watcher
 invalidated completion when the README was added during execution. The stable

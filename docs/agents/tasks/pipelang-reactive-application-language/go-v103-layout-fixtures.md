@@ -25,7 +25,7 @@ Frozen sample: twelve owners, partitions 8/9/10, 32/33/34, 112/113/114 and
 331,776 vectors and 162 fresh native executions per pass. Every assigned subset
 and all 4,096 vectors per layout remain. The full family retains all 200 owners.
 
-Admission: clean saved `/home/jamie/source/dockpipe`, branch `js/pipelang`, HEAD
+Admission: clean saved `<checkout>`, branch `js/pipelang`, HEAD
 `f74649308429a572cca484b96d665f2f4fe290da`. Completed v0.104 proof was admitted
 through its clean handoff, ten matching postimages and 38 matching evidence digests.
 Protected stashes: `26ea507907550d2449dc6f9c81b9942bd52d8629` and
@@ -41,7 +41,7 @@ reviewed host operation. No uncontained fallback is allowed.
 Owned source: `src/lib/pipelang/terminal_conditional_tests_test.go`; documentation
 includes this record, the task indexes, canonical report and footprint follow-up.
 Evidence root:
-`/home/jamie/.codex/visualizations/2026/09/13/01a09ba6-75b0-7401-af5e-f9b46c56e266/go-v103-layout-fixtures/`.
+`<local-evidence>/2026/09/13/01a09ba6-75b0-7401-af5e-f9b46c56e266/go-v103-layout-fixtures/`.
 
 Excluded: other family conversions, compiler/evaluator/language changes, accounting
 repair, validation-read optimization, C++, installs, cleanup, raised limits or
