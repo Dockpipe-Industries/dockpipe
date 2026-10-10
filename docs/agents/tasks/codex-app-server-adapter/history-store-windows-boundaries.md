@@ -72,7 +72,7 @@ commit; the control transaction returned genuine success. No error code was fabr
 was Go `go1.26.4` at `C:\Program Files\Go\src\database\sql\sql.go:2287-2319` and
 `C:\Program Files\Go\src\database\sql\driver\driver.go:518-522`. The reviewed pinned module source
 was `modernc.org/sqlite v1.56.0` at
-`C:\Users\Jamie\go\pkg\mod\modernc.org\sqlite@v1.56.0`, with its required
+`<go-module-cache>\modernc.org\sqlite@v1.56.0`, with its required
 `modernc.org/libc v1.74.4`. The exact path is:
 
 ```text

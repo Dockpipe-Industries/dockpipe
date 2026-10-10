@@ -32,7 +32,7 @@ iterations on 2026-09-16. The installed SDK remains frozen for the current proof
 
 ## Preserved implementation and verification history
 
-Original admission: saved checkout `/home/jamie/source/dockpipe`, branch `js/pipelang`, HEAD
+Original admission: saved checkout `<checkout>`, branch `js/pipelang`, HEAD
 `1c839e3ce92591c845fc647970d453bcad6dffea`; staging/tracked/untracked inventories empty.
 Both protected stashes and all 28 prior authored postimages matched the clean-handoff
 receipt. Completed P01 and Qt objectives remain admitted evidence, not active work.
@@ -42,7 +42,7 @@ canonical/task documentation. Preserve failed evidence and all caches outside th
 Verification retains offline Go 1.25.13, 128 MiB/5-second direct source probes,
 2 GiB aggregate/1536 MiB high, 512 MiB coordinator, 1 GiB unit/700 MiB high, zero swap,
 96 GiB inclusive estate and 8 GiB reserve. Preparation-only GOMEMLIMIT remains 600 MiB.
-Evidence root: `/home/jamie/.codex/visualizations/2026/09/13/01a09d03-2870-7022-be17-0e22f9f2291b/general-blocks`.
+Evidence root: `<local-evidence>/2026/09/13/01a09d03-2870-7022-be17-0e22f9f2291b/general-blocks`.
 
 Historical checkpoint: focused regeneration passed; fresh complete verification
 and independent acceptance were pending at this point. See final acceptance below.
@@ -209,7 +209,7 @@ tests; the old Go-only discovery does not bind that closure. Keep all existing
 proof requirements and limits. P04.a remains blocked and v0.114.0 unaccepted.
 
 Evidence and reviewable recovery plan:
-`/home/jamie/.codex/visualizations/2026/09/15/01a0a70d-2a69-7bf1-a168-538d71be58b9/p04a-recovery/README.md`.
+`<local-evidence>/2026/09/15/01a0a70d-2a69-7bf1-a168-538d71be58b9/p04a-recovery/README.md`.
 This continuation changes only task documentation and audit evidence; it performs
 no commit, push, worktree, delegation or native-backend promotion.
 
@@ -273,7 +273,7 @@ No bytes were freed, codec source changed, or resource limits raised.
 
 `efficiency-1-job.json` completed in 39.26 seconds with a 402,972,672-byte aggregate
 peak, zero OOM/swap and removed tree. Evidence is under
-`/home/jamie/.codex/visualizations/2026/09/15/01a0a754-2974-7462-8226-6384458856a6/p04a-continuation/`.
+`<local-evidence>/2026/09/15/01a0a754-2974-7462-8226-6384458856a6/p04a-continuation/`.
 The changed harness requires a fresh `terminal-efficiency` campaign using the
 existing verified build caches, followed by the matrix, integration/editor and
 independent ordered acceptance audit. No successor is selected or accepted.

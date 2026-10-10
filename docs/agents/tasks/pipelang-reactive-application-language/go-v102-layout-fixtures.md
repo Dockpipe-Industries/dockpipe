@@ -26,7 +26,7 @@ Frozen sample: seventeen owners, partitions 8/9/10, 32/33/34, 112/113/114 and
 executions per pass, including every scope mask and both five-local layouts.
 Every assigned layout and vector remains; the full family retains all 200 owners.
 
-Admission: clean saved `/home/jamie/source/dockpipe`, branch `js/pipelang`, HEAD
+Admission: clean saved `<checkout>`, branch `js/pipelang`, HEAD
 `058c90f1b88e8e96e51519efc34a02d571f74572`. Completed v0.103 proof was admitted
 through its clean handoff, six matching postimages and 254 matching evidence digests.
 Protected stashes: `26ea507907550d2449dc6f9c81b9942bd52d8629` and
@@ -42,7 +42,7 @@ reviewed host operation. No uncontained fallback is allowed.
 Owned source: `src/lib/pipelang/terminal_boolean_selector_initializers_test.go`;
 documentation includes this record, the task indexes, canonical report and
 footprint follow-up. Evidence root:
-`/home/jamie/.codex/visualizations/2026/09/13/01a09bb6-b240-7a11-9bb2-afc1de69972e/go-v102-layout-fixtures/`.
+`<local-evidence>/2026/09/13/01a09bb6-b240-7a11-9bb2-afc1de69972e/go-v102-layout-fixtures/`.
 
 Excluded: other family conversions, shared reader/batch changes, compiler/evaluator/
 language changes, accounting repair, validation-read optimization, C++, installs,

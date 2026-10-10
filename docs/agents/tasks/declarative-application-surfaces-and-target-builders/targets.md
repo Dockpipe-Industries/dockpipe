@@ -94,7 +94,7 @@ Do not settle command spelling here. `dockpipe compile` already means Dockpipe p
 - [TASK-017](../portable-embedded-execution-target/overview.md) owns a portable embedded instruction/runtime
   target. It is adjacent evidence for target manifests and adapters, not the owner of application
   rendering or Site Compiler behavior.
-- `/home/jamie/source/dockpipe-cloud/docs/agents/tasks/unified-qt-surface.md` and its sibling proposal
+- `<dockpipe-cloud-checkout>/docs/agents/tasks/unified-qt-surface.md` and its sibling proposal
   remain consumer evidence. They do not define main-repository contracts.
 
 ### Bounded Qt integration foundation

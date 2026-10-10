@@ -4,7 +4,7 @@
 
 - Objective: `TASK-021-conditional-boolean-selectors`; state: `completed`.
 - Founder selected A and separately said exact `approved` on 2026-09-08.
-- Baseline: clean saved `/home/jamie/source/dockpipe`, `js/pipelang` at
+- Baseline: clean saved `<checkout>`, `js/pipelang` at
   `0c8e3bd1ef202126699a53ff63498a3ad486b5ae`. All 34 v0.97 source hashes,
   both protected stashes and ignored inventory match; completed proof is admitted.
 - Scope: v0.98.0 accepts `return (a ? b : c) ? x : y;` only in straight-line

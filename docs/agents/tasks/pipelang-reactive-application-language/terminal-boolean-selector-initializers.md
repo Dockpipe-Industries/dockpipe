@@ -129,8 +129,10 @@ stop, zero swap, 128 pids, 30-second units and 25-second children, with at most 
 units. Isolated measurements use the canonical defaults. The harness-only 600 MiB
 Go GC target described above is not applied to tests or resource measurements.
 
+For the historical reproduction command, `GO_TOOLCHAIN` denotes the pinned Go
+1.25.13 Linux/amd64 executable. Resolve that toolchain locally before using it.
 Reproduce the full suite with `python3 -B tests/containedexec/pipelang_suite.py`,
-`--go /home/jamie/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.25.13.linux-amd64/bin/go`,
+`--go "$GO_TOOLCHAIN"`,
 `--cache /tmp/pipelang-performance-proof/cache`,
 `--compiled-cache /tmp/pipelang-execution-performance/complete-artifacts`,
 `--shape-batch-size 1 --workers 2 --audit-generated` and a fresh `--output` directory.

@@ -4,7 +4,7 @@
 
 - Objective: `TASK-021-depth-three-terminal-initializers`; state: `completed`.
 - Founder selected A and separately said `approved` on 2026-09-08.
-- Baseline: clean saved `/home/jamie/source/dockpipe`, `js/pipelang` at
+- Baseline: clean saved `<checkout>`, `js/pipelang` at
   `f4c00e56d99d83d7568fb5372a03d2bc9a8d5d13`. Completed v0.96 and shared-framework
   acceptance are admitted; the performance objective is closed.
 - Scope: v0.97.0 admits complete depth-three ternary initializers in any subset of
