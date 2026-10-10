@@ -1,0 +1,12 @@
+{
+  "schema": 1,
+  "artifacts": [
+    {
+      "kind": "workflow",
+      "name": "secretstore-r2-publish-test"
+    }
+  ],
+  "tools": [],
+  "host_commands": [],
+  "required_files": []
+}

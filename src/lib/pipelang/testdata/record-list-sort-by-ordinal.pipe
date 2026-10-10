@@ -1,0 +1,10 @@
+public Record ContainerRow {
+    public string Id;
+    public string Name;
+    public string Note;
+}
+
+public Class Root {
+    public List<ContainerRow> SortRows(List<ContainerRow> values) =>
+        sort_by_ordinal(values, ContainerRow.Name);
+}

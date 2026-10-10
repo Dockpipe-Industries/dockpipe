@@ -1,0 +1,76 @@
+# TASK-013 Codex App Server adapter for top-level orchestrators
+schema: 1
+id: TASK-013
+topic: Codex App Server adapter for top-level orchestrators
+entrypoint: overview.md
+
+dispatch:
+  readiness: unclassified
+  ownership: unclaimed
+
+routes:
+  orientation:
+    read: [overview.md]
+  active_backlog:
+    read: [overview.md, backlog-cas01-13.md, backlog-cas14.md, acceptance-gates.md]
+  reconciliation_decision:
+    read: [overview.md, reconciliation-decision.md, reconciliation-plan.md]
+  storage_decision:
+    read:
+      - overview.md
+      - storage-policy.md
+      - storage-matrix-gates.md
+      - sqlite-reconsideration.md
+      - sqlite-selection.md
+  closed_cas14_evidence:
+    read:
+      - history-cas14-foundation.md
+      - history-cas14-policy.md
+      - history-cas14-routing.md
+      - history-pipeon-approval.md
+      - history-pipeon-input-controller.md
+      - history-pipeon-cancellation.md
+  closed_store_evidence:
+    read:
+      - history-store-windows-smoke.md
+      - history-store-windows-boundaries.md
+      - history-store-linux-smoke.md
+      - history-store-linux-contention.md
+      - history-store-linux-boundaries.md
+  closed_vm_evidence:
+    read:
+      - history-linux-foundation.md
+      - history-linux-promotion.md
+      - history-linux-gates.md
+
+documents:
+  - {path: overview.md, role: epic status, scope, boundaries, rollback, and acceptance}
+  - {path: backlog-cas01-13.md, role: CAS-01 through CAS-13 backlog}
+  - {path: backlog-cas14.md, role: CAS-14 maintainer decision packet}
+  - {path: reconciliation-decision.md, role: post-reconciliation product and storage decision}
+  - {path: reconciliation-plan.md, role: accepted post-reconciliation implementation plan}
+  - {path: storage-policy.md, role: pre-Slice-2 storage research and platform policy}
+  - {path: storage-matrix-gates.md, role: platform matrix, evidence protocol, and open gates}
+  - {path: sqlite-reconsideration.md, role: bounded SQLite reconsideration}
+  - {path: sqlite-selection.md, role: authorized SQLite baseline and evidence matrix}
+  - {path: acceptance-gates.md, role: remaining cross-platform evidence and acceptance gates}
+  - {path: impact-map.md, role: likely impact map}
+  - {path: history-cas14-foundation.md, role: closed CAS-14 foundation evidence}
+  - {path: history-cas14-policy.md, role: closed CAS-14 policy evidence}
+  - {path: history-cas14-routing.md, role: closed CAS-14 routing evidence}
+  - {path: history-pipeon-approval.md, role: closed Pipeon approval evidence}
+  - {path: history-pipeon-input-controller.md, role: closed Pipeon input and controller evidence}
+  - {path: history-pipeon-cancellation.md, role: closed Pipeon cancellation evidence}
+  - {path: history-store-windows-smoke.md, role: closed Windows store smoke evidence}
+  - {path: history-store-windows-boundaries.md, role: closed Windows store boundary evidence}
+  - {path: history-store-linux-smoke.md, role: closed Linux store smoke evidence}
+  - {path: history-store-linux-contention.md, role: closed Linux store contention evidence}
+  - {path: history-store-linux-boundaries.md, role: closed Linux store boundary evidence}
+  - {path: history-linux-foundation.md, role: closed Linux VM foundation evidence}
+  - {path: history-linux-promotion.md, role: closed Linux VM promotion evidence}
+  - {path: history-linux-gates.md, role: closed Linux VM gate evidence}
+
+maintenance:
+  - Resolve document paths relative to this index; never load every history route by default.
+  - Closed evidence grants no fresh authority.
+  - Keep dispatch metadata synchronized with docs/agents/task-index.yaml.

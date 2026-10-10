@@ -1,0 +1,21 @@
+/// <summary>Linux guest and qualification disk settings.</summary>
+public Class LinuxVmStorage
+{
+    /// <summary>Optional existing development guest disk.</summary>
+    [EnvName = "DOCKPIPE_VM_DISK"]
+    [Control = "file"]
+    [FileMode = "save-file"]
+    public string Disk = "";
+
+    /// <summary>Development persistence mode.</summary>
+    [EnvName = "DOCKPIPE_VM_PERSISTENCE"]
+    public string Persistence = "ephemeral";
+
+    /// <summary>Qualification data disk size; fixed at 4 GiB.</summary>
+    [EnvName = "DOCKPIPE_VM_QUALIFICATION_DATA_DISK_BYTES"]
+    public string QualificationDataDiskBytes = "4294967296";
+
+    /// <summary>Qualification mount point; fixed for evidence comparability.</summary>
+    [EnvName = "DOCKPIPE_VM_QUALIFICATION_MOUNT"]
+    public string QualificationMount = "/var/lib/dockpipe-qualification";
+}

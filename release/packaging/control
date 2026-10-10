@@ -1,0 +1,11 @@
+Package: dockpipe
+Version: 0.6.0
+Section: utils
+Priority: optional
+Architecture: amd64
+Depends: bash, git
+Suggests: docker.io | docker-ce
+Maintainer: dockpipe maintainers
+Description: Run commands, packages and workflows across native and container runtimes
+ Dockpipe runs host and container workflows with managed environments and packages.
+ Docker is needed only for workflows that use containers.

@@ -1,0 +1,53 @@
+# Repo Map
+
+Read when orienting in the Dockpipe checkout.
+
+## Core Paths
+
+| Path | Purpose |
+| --- | --- |
+| `src/lib/` | Dockpipe engine library. Must stay generic. |
+| `src/cmd/` | Dockpipe CLI entrypoint. Must stay generic. |
+| `src/core/` | Bundled core authoring: runtimes, resolvers, strategies, assets, and shipped example workflows. |
+| `workflows/` | This repo's lean CI/dogfood workflows. Not an engine contract. |
+| `packages/` | First-party package authoring trees. Treat each like a separate product repo. |
+| `.staging/` | Maintainer packaging and experiments. Not an engine contract. |
+| `bin/.dockpipe/` | Disposable generated project-local runtime, compiled packages, caches, and artifacts. |
+| `.dorkpipe/` | Generated DorkPipe handoffs/analysis where present. |
+| `docs/` | Human docs and agent routing. |
+| `docs/agents/task-index.yaml` | AI entrypoint for the indexed cross-cutting backlog; update it and the linked task files when work materially completes or advances one of its items. |
+
+## Generated State
+
+Use generated artifacts as read-only grounding unless the user asks to refresh them.
+
+| Generated path | Notes |
+| --- | --- |
+| `bin/.dockpipe/internal/packages/` | Project-local compiled package store. |
+| package scope (`dockpipe scope --package <owner-id> ...`) | Durable owner-only project/package state outside the checkout. |
+| `bin/.dockpipe/packages-runtime/` | Collision-safe disposable package runtime state. |
+| `bin/.dockpipe/runs/` | Host step run records. |
+| `.dorkpipe/` | Optional DorkPipe analysis/handoff state. |
+
+## Fast Orientation
+
+- Architecture terms: `docs/agents/core/architecture.md`
+- Engine boundary: `docs/agents/core/engine-boundary.md`
+- Package/store model: `docs/agents/core/core-package-model.md`
+- Validation commands: `docs/agents/core/validation-commands.md`
+
+## Internal Workflow Locations
+
+| Location | Use |
+| --- | --- |
+| `src/core/workflows/<name>/` | Bundled reusable examples only. |
+| `workflows/<name>/` | This repo's lean CI/dogfood workflows. |
+| `.staging/...` | Maintainer packaging and experiments. |
+| `packages/<name>/workflows/` | Package-owned workflows. |
+
+Do not put this repo's CI/demo/internal automation in `src/core/workflows/`.
+First-party workflow scripts belong beside the workflow `config.yml`, not in repo-root shadow script trees.
+
+## Editor Mirrors
+
+If a local editor-rule mirror of `AGENTS.md` exists, keep it in sync. Do not assume every checkout has one.

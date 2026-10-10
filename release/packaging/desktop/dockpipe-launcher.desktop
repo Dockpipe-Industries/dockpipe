@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Dockpipe
+Comment=Run Dockpipe workflows and manage contexts
+Exec=dockpipe-launcher
+Icon=dockpipe-launcher
+Terminal=false
+Categories=Development;Utility;
+StartupWMClass=dockpipe-launcher

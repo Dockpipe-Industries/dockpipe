@@ -1,0 +1,315 @@
+{
+  "language_contract": "v0.12.0",
+  "compiler_contract": "pipelang.compiler.v1",
+  "functions": [
+    {
+      "identity": {
+        "package_id": "test.package",
+        "path": "app.root.root.same",
+        "callable": {
+          "parameters": [
+            {
+              "kind": "named",
+              "package_id": "test.package",
+              "path": "app.root.row"
+            },
+            {
+              "kind": "named",
+              "package_id": "test.package",
+              "path": "app.root.row"
+            }
+          ],
+          "returns": {
+            "kind": "primitive",
+            "primitive": "bool"
+          }
+        }
+      },
+      "name": "Same",
+      "parameters": [
+        {
+          "position": 0,
+          "name": "left",
+          "type": {
+            "kind": "record",
+            "record": {
+              "fields": [
+                {
+                  "identity": {
+                    "package_id": "test.package",
+                    "path": "app.root.row.id"
+                  },
+                  "name": "Id",
+                  "type": {
+                    "kind": "primitive",
+                    "primitive": "string"
+                  }
+                },
+                {
+                  "identity": {
+                    "package_id": "test.package",
+                    "path": "app.root.row.count"
+                  },
+                  "name": "Count",
+                  "type": {
+                    "kind": "numeric",
+                    "numeric": {
+                      "representation": "integer",
+                      "bits": 64,
+                      "signed": true
+                    }
+                  }
+                },
+                {
+                  "identity": {
+                    "package_id": "test.package",
+                    "path": "app.root.row.ratio"
+                  },
+                  "name": "Ratio",
+                  "type": {
+                    "kind": "numeric",
+                    "numeric": {
+                      "representation": "binary_float",
+                      "bits": 64
+                    }
+                  }
+                },
+                {
+                  "identity": {
+                    "package_id": "test.package",
+                    "path": "app.root.row.ready"
+                  },
+                  "name": "Ready",
+                  "type": {
+                    "kind": "primitive",
+                    "primitive": "bool"
+                  }
+                }
+              ]
+            },
+            "identity": {
+              "package_id": "test.package",
+              "path": "app.root.row"
+            },
+            "name": "Row"
+          }
+        },
+        {
+          "position": 1,
+          "name": "right",
+          "type": {
+            "kind": "record",
+            "record": {
+              "fields": [
+                {
+                  "identity": {
+                    "package_id": "test.package",
+                    "path": "app.root.row.id"
+                  },
+                  "name": "Id",
+                  "type": {
+                    "kind": "primitive",
+                    "primitive": "string"
+                  }
+                },
+                {
+                  "identity": {
+                    "package_id": "test.package",
+                    "path": "app.root.row.count"
+                  },
+                  "name": "Count",
+                  "type": {
+                    "kind": "numeric",
+                    "numeric": {
+                      "representation": "integer",
+                      "bits": 64,
+                      "signed": true
+                    }
+                  }
+                },
+                {
+                  "identity": {
+                    "package_id": "test.package",
+                    "path": "app.root.row.ratio"
+                  },
+                  "name": "Ratio",
+                  "type": {
+                    "kind": "numeric",
+                    "numeric": {
+                      "representation": "binary_float",
+                      "bits": 64
+                    }
+                  }
+                },
+                {
+                  "identity": {
+                    "package_id": "test.package",
+                    "path": "app.root.row.ready"
+                  },
+                  "name": "Ready",
+                  "type": {
+                    "kind": "primitive",
+                    "primitive": "bool"
+                  }
+                }
+              ]
+            },
+            "identity": {
+              "package_id": "test.package",
+              "path": "app.root.row"
+            },
+            "name": "Row"
+          }
+        }
+      ],
+      "return_type": {
+        "kind": "primitive",
+        "primitive": "bool"
+      },
+      "body": {
+        "kind": "binary",
+        "type": {
+          "kind": "primitive",
+          "primitive": "bool"
+        },
+        "binary": {
+          "operator": "equal",
+          "left": {
+            "kind": "reference",
+            "type": {
+              "kind": "record",
+              "record": {
+                "fields": [
+                  {
+                    "identity": {
+                      "package_id": "test.package",
+                      "path": "app.root.row.id"
+                    },
+                    "name": "Id",
+                    "type": {
+                      "kind": "primitive",
+                      "primitive": "string"
+                    }
+                  },
+                  {
+                    "identity": {
+                      "package_id": "test.package",
+                      "path": "app.root.row.count"
+                    },
+                    "name": "Count",
+                    "type": {
+                      "kind": "numeric",
+                      "numeric": {
+                        "representation": "integer",
+                        "bits": 64,
+                        "signed": true
+                      }
+                    }
+                  },
+                  {
+                    "identity": {
+                      "package_id": "test.package",
+                      "path": "app.root.row.ratio"
+                    },
+                    "name": "Ratio",
+                    "type": {
+                      "kind": "numeric",
+                      "numeric": {
+                        "representation": "binary_float",
+                        "bits": 64
+                      }
+                    }
+                  },
+                  {
+                    "identity": {
+                      "package_id": "test.package",
+                      "path": "app.root.row.ready"
+                    },
+                    "name": "Ready",
+                    "type": {
+                      "kind": "primitive",
+                      "primitive": "bool"
+                    }
+                  }
+                ]
+              },
+              "identity": {
+                "package_id": "test.package",
+                "path": "app.root.row"
+              },
+              "name": "Row"
+            },
+            "parameter": 0
+          },
+          "right": {
+            "kind": "reference",
+            "type": {
+              "kind": "record",
+              "record": {
+                "fields": [
+                  {
+                    "identity": {
+                      "package_id": "test.package",
+                      "path": "app.root.row.id"
+                    },
+                    "name": "Id",
+                    "type": {
+                      "kind": "primitive",
+                      "primitive": "string"
+                    }
+                  },
+                  {
+                    "identity": {
+                      "package_id": "test.package",
+                      "path": "app.root.row.count"
+                    },
+                    "name": "Count",
+                    "type": {
+                      "kind": "numeric",
+                      "numeric": {
+                        "representation": "integer",
+                        "bits": 64,
+                        "signed": true
+                      }
+                    }
+                  },
+                  {
+                    "identity": {
+                      "package_id": "test.package",
+                      "path": "app.root.row.ratio"
+                    },
+                    "name": "Ratio",
+                    "type": {
+                      "kind": "numeric",
+                      "numeric": {
+                        "representation": "binary_float",
+                        "bits": 64
+                      }
+                    }
+                  },
+                  {
+                    "identity": {
+                      "package_id": "test.package",
+                      "path": "app.root.row.ready"
+                    },
+                    "name": "Ready",
+                    "type": {
+                      "kind": "primitive",
+                      "primitive": "bool"
+                    }
+                  }
+                ]
+              },
+              "identity": {
+                "package_id": "test.package",
+                "path": "app.root.row"
+              },
+              "name": "Row"
+            },
+            "parameter": 1
+          }
+        }
+      }
+    }
+  ]
+}

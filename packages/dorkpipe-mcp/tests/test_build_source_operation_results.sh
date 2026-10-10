@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+set -euo pipefail
+trap 'rc=$?; echo "test_build_source_operation_results failed at line ${LINENO}: ${BASH_COMMAND}" >&2; exit "$rc"' ERR
+
+ROOT="$(git rev-parse --show-toplevel)"
+SCRIPT="$ROOT/packages/dorkpipe-mcp/assets/scripts/build-source.sh"
+# shellcheck source=tests/unit-tests/package-source-build-test-lib.sh
+source "$ROOT/tests/unit-tests/package-source-build-test-lib.sh"
+
+dockpipe_test_source_build_contract "$ROOT" "$SCRIPT" "dorkpipe-mcp" "dorkpipe.mcp" \
+  "mcpd|.|mcpd|./cmd/mcpd"
+
+echo "dorkpipe-mcp test_build_source_operation_results OK"

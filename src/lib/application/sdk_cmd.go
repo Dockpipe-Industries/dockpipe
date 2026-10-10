@@ -1,0 +1,364 @@
+package application
+
+import (
+	"fmt"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"strings"
+
+	"dockpipe/src/lib/application/internal/shellquote"
+	"dockpipe/src/lib/infrastructure"
+)
+
+const sdkUsageText = `dockpipe sdk — bootstrap SDK helpers for supported languages
+
+Usage:
+  dockpipe sdk [--workdir <path>]
+  dockpipe sdk shell-env [--workdir <path>]
+
+By default, sdk emits shell code suitable for:
+
+  eval "$(dockpipe sdk)"
+
+When --workdir is omitted, sdk prefers DOCKPIPE_WORKDIR from the
+environment and otherwise falls back to the current working directory.
+
+This bootstraps the shell SDK object from the canonical core helper.
+`
+
+const getUsageText = `dockpipe get — print generic Dockpipe context fields
+
+Usage:
+  dockpipe get <field> [--workdir <path>]
+
+Fields:
+  workdir
+  dockpipe_bin
+  workflow_name
+  script_dir
+  package_root
+  assets_dir
+  state_dir
+  artifact_root
+  event_log
+  event_index
+  output_root
+  package_id
+  package_state_dir
+
+When --workdir is omitted, get prefers DOCKPIPE_WORKDIR from the
+environment and otherwise falls back to the current working directory.
+
+Fields such as script_dir, package_root, and assets_dir are env-backed and
+print the current injected values when available.
+`
+
+func cmdSDK(args []string) error {
+	if len(args) == 0 {
+		return cmdSDKShellEnv(nil)
+	}
+	if args[0] == "-h" || args[0] == "--help" {
+		fmt.Print(sdkUsageText)
+		return nil
+	}
+	if strings.HasPrefix(args[0], "-") {
+		return cmdSDKShellEnv(args)
+	}
+	switch args[0] {
+	case "shell-env":
+		return cmdSDKShellEnv(args[1:])
+	default:
+		return fmt.Errorf("unknown sdk subcommand %q (try: dockpipe sdk --help)", args[0])
+	}
+}
+
+func cmdGet(args []string) error {
+	if len(args) == 0 || args[0] == "-h" || args[0] == "--help" {
+		fmt.Print(getUsageText)
+		return nil
+	}
+	field := normalizeGetField(args[0])
+	workdir, err := parseSDKWorkdirFlag(args[1:])
+	if err != nil {
+		return err
+	}
+	switch field {
+	case "workdir":
+		fmt.Println(workdir)
+		return nil
+	case "dockpipe_bin":
+		bin, err := resolveDockpipeBinForSDK(workdir)
+		if err != nil {
+			return err
+		}
+		fmt.Println(bin)
+		return nil
+	case "workflow_name":
+		v := strings.TrimSpace(os.Getenv("DOCKPIPE_WORKFLOW_NAME"))
+		if v == "" {
+			return fmt.Errorf("DOCKPIPE_WORKFLOW_NAME is not set")
+		}
+		fmt.Println(v)
+		return nil
+	case "script_dir":
+		v := strings.TrimSpace(os.Getenv("DOCKPIPE_SCRIPT_DIR"))
+		if v == "" {
+			return fmt.Errorf("DOCKPIPE_SCRIPT_DIR is not set")
+		}
+		fmt.Println(v)
+		return nil
+	case "package_root":
+		v := strings.TrimSpace(os.Getenv("DOCKPIPE_PACKAGE_ROOT"))
+		if v == "" {
+			return fmt.Errorf("DOCKPIPE_PACKAGE_ROOT is not set")
+		}
+		fmt.Println(v)
+		return nil
+	case "assets_dir":
+		v := strings.TrimSpace(os.Getenv("DOCKPIPE_ASSETS_DIR"))
+		if v == "" {
+			return fmt.Errorf("DOCKPIPE_ASSETS_DIR is not set")
+		}
+		fmt.Println(v)
+		return nil
+	case "state_dir":
+		v := strings.TrimSpace(os.Getenv(infrastructure.EnvStateDir))
+		if v == "" {
+			v, err = infrastructure.StateRoot(workdir)
+			if err != nil {
+				return err
+			}
+		}
+		fmt.Println(v)
+		return nil
+	case "artifact_root":
+		v := strings.TrimSpace(os.Getenv("DOCKPIPE_ARTIFACT_ROOT"))
+		if v == "" {
+			v, err = workflowArtifactRoot(workdir, strings.TrimSpace(os.Getenv("DOCKPIPE_WORKFLOW_NAME")))
+			if err != nil {
+				return err
+			}
+		}
+		fmt.Println(v)
+		return nil
+	case "event_log":
+		v, err := resolveEventLogPath(workdir)
+		if err != nil {
+			return err
+		}
+		fmt.Println(v)
+		return nil
+	case "event_index":
+		v, err := resolveEventIndexPath(workdir)
+		if err != nil {
+			return err
+		}
+		fmt.Println(v)
+		return nil
+	case "output_root":
+		v := strings.TrimSpace(os.Getenv("DOCKPIPE_OUTPUT_ROOT"))
+		if v == "" {
+			v = strings.TrimSpace(os.Getenv("DOCKPIPE_ARTIFACT_ROOT"))
+		}
+		if v == "" {
+			v, err = workflowArtifactRoot(workdir, strings.TrimSpace(os.Getenv("DOCKPIPE_WORKFLOW_NAME")))
+			if err != nil {
+				return err
+			}
+		}
+		fmt.Println(v)
+		return nil
+	case "package_id":
+		v := strings.TrimSpace(os.Getenv(infrastructure.EnvPackageID))
+		if v == "" {
+			root := strings.TrimSpace(os.Getenv("DOCKPIPE_PACKAGE_ROOT"))
+			if root != "" {
+				v = filepath.Base(root)
+			}
+		}
+		if v == "" {
+			return fmt.Errorf("DOCKPIPE_PACKAGE_ID is not set")
+		}
+		fmt.Println(strings.TrimSpace(v))
+		return nil
+	case "package_state_dir":
+		scope := strings.TrimSpace(os.Getenv(infrastructure.EnvPackageID))
+		if scope == "" {
+			root := strings.TrimSpace(os.Getenv("DOCKPIPE_PACKAGE_ROOT"))
+			if root != "" {
+				scope = filepath.Base(root)
+			}
+		}
+		if scope == "" {
+			return fmt.Errorf("DOCKPIPE_PACKAGE_ID and DOCKPIPE_PACKAGE_ROOT are not set")
+		}
+		status, err := infrastructure.PreparePackageStateDir(workdir, scope)
+		if err != nil {
+			return err
+		}
+		v := status.Dir
+		if injected := strings.TrimSpace(os.Getenv(infrastructure.EnvPackageStateDir)); injected != "" {
+			v, err = infrastructure.ValidatePackageStateOverride(workdir, injected, status.Dir)
+			if err != nil {
+				return fmt.Errorf("%s: %w", infrastructure.EnvPackageStateDir, err)
+			}
+		}
+		if status.LegacyDiverged {
+			fmt.Fprintf(os.Stderr, "[dockpipe] package state: durable state is authoritative; legacy %q has diverged and was not merged\n", scope)
+		}
+		fmt.Println(v)
+		return nil
+	default:
+		return fmt.Errorf("unknown get field %q (try: dockpipe get --help)", args[0])
+	}
+}
+
+func cmdSDKShellEnv(args []string) error {
+	workdir, err := parseSDKWorkdirFlag(args)
+	if err != nil {
+		return err
+	}
+	sdkPath, err := resolveShellSDKPath(workdir)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("export DOCKPIPE_WORKDIR=%s\n", shellquote.POSIX(workdir))
+	fmt.Printf("source %s\n", shellquote.POSIX(sdkPath))
+	return nil
+}
+
+func parseSDKWorkdirFlag(args []string) (string, error) {
+	workdir := ""
+	for i := 0; i < len(args); i++ {
+		switch args[i] {
+		case "--workdir":
+			if i+1 >= len(args) {
+				return "", fmt.Errorf("--workdir requires a path")
+			}
+			workdir = strings.TrimSpace(args[i+1])
+			i++
+		case "-h", "--help":
+			return "", fmt.Errorf("usage: dockpipe sdk shell-env [--workdir <path>]")
+		default:
+			return "", fmt.Errorf("unknown option %q", args[i])
+		}
+	}
+
+	return resolveSDKWorkdir(workdir)
+}
+
+func resolveSDKWorkdir(workdir string) (string, error) {
+	if strings.TrimSpace(workdir) == "" {
+		workdir = strings.TrimSpace(os.Getenv("DOCKPIPE_WORKDIR"))
+		if workdir == "" {
+			wd, err := os.Getwd()
+			if err != nil {
+				return "", err
+			}
+			workdir = wd
+		}
+	}
+	workdir = infrastructure.HostPathForGit(workdir)
+	if abs, err := filepath.Abs(workdir); err != nil {
+		return "", err
+	} else {
+		workdir = abs
+	}
+	return workdir, nil
+}
+
+func resolveEventLogPath(workdir string) (string, error) {
+	if v := strings.TrimSpace(os.Getenv(infrastructure.EnvDockpipeEventLog)); v != "" {
+		return v, nil
+	}
+	artifactRoot := strings.TrimSpace(os.Getenv("DOCKPIPE_ARTIFACT_ROOT"))
+	if artifactRoot == "" {
+		var err error
+		artifactRoot, err = workflowArtifactRoot(workdir, strings.TrimSpace(os.Getenv("DOCKPIPE_WORKFLOW_NAME")))
+		if err != nil {
+			return "", err
+		}
+	}
+	return filepath.Join(artifactRoot, "events.jsonl"), nil
+}
+
+func resolveEventIndexPath(workdir string) (string, error) {
+	if v := strings.TrimSpace(os.Getenv(infrastructure.EnvDockpipeEventIndex)); v != "" {
+		return v, nil
+	}
+	artifactRoot := strings.TrimSpace(os.Getenv("DOCKPIPE_ARTIFACT_ROOT"))
+	if artifactRoot == "" {
+		var err error
+		artifactRoot, err = workflowArtifactRoot(workdir, strings.TrimSpace(os.Getenv("DOCKPIPE_WORKFLOW_NAME")))
+		if err != nil {
+			return "", err
+		}
+	}
+	return filepath.Join(artifactRoot, "events-index.json"), nil
+}
+
+func resolveDockpipeBinForSDK(workdir string) (string, error) {
+	if local := resolveRepoLocalDockpipeBin(workdir); local != "" {
+		return local, nil
+	}
+	if configured := strings.TrimSpace(os.Getenv("DOCKPIPE_BIN")); configured != "" {
+		return configured, nil
+	}
+	path, err := exec.LookPath("dockpipe")
+	if err != nil {
+		return "", fmt.Errorf("dockpipe binary not found; set DOCKPIPE_BIN or add dockpipe to PATH")
+	}
+	return path, nil
+}
+
+var osExecutableFn = os.Executable
+
+func resolveDockpipeBinForChildProcess(workdir string) (string, error) {
+	if exe, err := osExecutableFn(); err == nil {
+		exe = strings.TrimSpace(exe)
+		if exe != "" {
+			if st, statErr := os.Stat(exe); statErr == nil && !st.IsDir() {
+				return exe, nil
+			}
+		}
+	}
+	return resolveDockpipeBinForSDK(workdir)
+}
+
+func resolveRepoLocalDockpipeBin(workdir string) string {
+	candidates := []string{
+		filepath.Join(workdir, "src", "bin", "dockpipe.exe"),
+		filepath.Join(workdir, "src", "bin", "dockpipe"),
+	}
+	for _, candidate := range candidates {
+		if st, err := os.Stat(candidate); err == nil && !st.IsDir() {
+			return candidate
+		}
+	}
+	return ""
+}
+
+func normalizeGetField(s string) string {
+	s = strings.TrimSpace(strings.ToLower(s))
+	s = strings.ReplaceAll(s, "-", "_")
+	return s
+}
+
+func resolveShellSDKPath(workdir string) (string, error) {
+	for cur := workdir; ; cur = filepath.Dir(cur) {
+		if infrastructure.DockpipeAuthoringSourceTree(cur) {
+			return filepath.Join(infrastructure.CoreDir(cur), "assets", "scripts", "lib", "dockpipe-sdk.sh"), nil
+		}
+		next := filepath.Dir(cur)
+		if next == cur {
+			break
+		}
+	}
+	rr, err := infrastructure.RepoRoot()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(infrastructure.CoreDir(rr), "assets", "scripts", "lib", "dockpipe-sdk.sh"), nil
+}

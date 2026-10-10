@@ -1,0 +1,81 @@
+{
+  "name": "PipeLang",
+  "scopeName": "source.pipelang",
+  "patterns": [
+    { "include": "#comments" },
+    { "include": "#keywords" },
+    { "include": "#types" },
+    { "include": "#strings" },
+    { "include": "#numbers" },
+    { "include": "#operators" }
+  ],
+  "repository": {
+    "comments": {
+      "patterns": [
+        {
+          "name": "comment.line.double-slash.pipelang",
+          "match": "//.*$"
+        }
+      ]
+    },
+    "keywords": {
+      "patterns": [
+        {
+          "name": "keyword.control.pipelang",
+          "match": "\\b(public|private|Interface|Class|Struct|Record|Enum|new|return|if|else|mutable)\\b"
+        },
+        {
+          "name": "storage.modifier.interface.pipelang",
+          "match": "\\bIComparable\\b"
+        },
+        {
+          "name": "constant.language.boolean.pipelang",
+          "match": "\\b(true|false)\\b"
+        },
+        {
+          "name": "support.function.builtin.pipelang",
+          "match": "\\b(some|none|has_value|value_or|empty_list|list|count|append|at|find_by|filter_by|filter|contains_casefolded|filter_contains_casefolded|filter_joined_contains_casefolded|sort_by_ordinal|ascending|descending|propagate|match|trim|ok|err|is_ok|success_or|failure_or)\\b"
+        }
+      ]
+    },
+    "types": {
+      "patterns": [
+        {
+          "name": "storage.type.pipelang",
+          "match": "\\b(string|int|bool|float|List|Result|ArithmeticError|Optional|[A-Z][A-Za-z0-9_]*)\\b"
+        }
+      ]
+    },
+    "strings": {
+      "patterns": [
+        {
+          "name": "string.quoted.double.pipelang",
+          "begin": "\"",
+          "end": "\"",
+          "patterns": [
+            {
+              "name": "constant.character.escape.pipelang",
+              "match": "\\\\."
+            }
+          ]
+        }
+      ]
+    },
+    "numbers": {
+      "patterns": [
+        {
+          "name": "constant.numeric.pipelang",
+          "match": "\\b\\d+(?:\\.\\d+)?\\b"
+        }
+      ]
+    },
+    "operators": {
+      "patterns": [
+        {
+          "name": "keyword.operator.pipelang",
+          "match": "=>|==|!=|<=|>=|&&|\\|\\||[+\\-*/=<>!?:.]"
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,187 @@
+{
+  "language_contract": "v0.10.0",
+  "compiler_contract": "pipelang.compiler.v1",
+  "functions": [
+    {
+      "identity": {
+        "package_id": "test.package",
+        "path": "app.root.root.idof",
+        "callable": {
+          "parameters": [
+            {
+              "kind": "named",
+              "package_id": "test.package",
+              "path": "app.root.row"
+            }
+          ],
+          "returns": {
+            "kind": "primitive",
+            "primitive": "string"
+          }
+        }
+      },
+      "owner": {
+        "module": "app.root",
+        "symbol_id": 2,
+        "identity": {
+          "package_id": "test.package",
+          "path": "app.root.root"
+        },
+        "source_span": {
+          "file": "record-field-projection.pipe",
+          "start": 44,
+          "end": 112
+        }
+      },
+      "name": "IdOf",
+      "parameters": [
+        {
+          "binding": {
+            "kind": "parameter",
+            "function": {
+              "package_id": "test.package",
+              "path": "app.root.root.idof",
+              "callable": {
+                "parameters": [
+                  {
+                    "kind": "named",
+                    "package_id": "test.package",
+                    "path": "app.root.row"
+                  }
+                ],
+                "returns": {
+                  "kind": "primitive",
+                  "primitive": "string"
+                }
+              }
+            },
+            "position": 0,
+            "name": "value"
+          },
+          "type": {
+            "kind": "record",
+            "record": {
+              "fields": [
+                {
+                  "identity": {
+                    "package_id": "test.package",
+                    "path": "app.root.row.id"
+                  },
+                  "name": "Id",
+                  "type": {
+                    "kind": "primitive",
+                    "primitive": "string"
+                  }
+                }
+              ]
+            },
+            "symbol_id": 1,
+            "identity": {
+              "package_id": "test.package",
+              "path": "app.root.row"
+            },
+            "name": "Row"
+          },
+          "type_span": {
+            "file": "record-field-projection.pipe",
+            "start": 87,
+            "end": 90
+          },
+          "span": {
+            "file": "record-field-projection.pipe",
+            "start": 87,
+            "end": 96
+          }
+        }
+      ],
+      "return_type": {
+        "kind": "primitive",
+        "primitive": "string"
+      },
+      "return_type_span": {
+        "file": "record-field-projection.pipe",
+        "start": 75,
+        "end": 81
+      },
+      "body": {
+        "kind": "field_projection",
+        "type": {
+          "kind": "primitive",
+          "primitive": "string"
+        },
+        "span": {
+          "file": "record-field-projection.pipe",
+          "start": 101,
+          "end": 109
+        },
+        "field": {
+          "receiver": {
+            "kind": "reference",
+            "type": {
+              "kind": "record",
+              "record": {
+                "fields": [
+                  {
+                    "identity": {
+                      "package_id": "test.package",
+                      "path": "app.root.row.id"
+                    },
+                    "name": "Id",
+                    "type": {
+                      "kind": "primitive",
+                      "primitive": "string"
+                    }
+                  }
+                ]
+              },
+              "symbol_id": 1,
+              "identity": {
+                "package_id": "test.package",
+                "path": "app.root.row"
+              },
+              "name": "Row"
+            },
+            "span": {
+              "file": "record-field-projection.pipe",
+              "start": 101,
+              "end": 106
+            },
+            "reference": {
+              "kind": "parameter",
+              "function": {
+                "package_id": "test.package",
+                "path": "app.root.root.idof",
+                "callable": {
+                  "parameters": [
+                    {
+                      "kind": "named",
+                      "package_id": "test.package",
+                      "path": "app.root.row"
+                    }
+                  ],
+                  "returns": {
+                    "kind": "primitive",
+                    "primitive": "string"
+                  }
+                }
+              },
+              "position": 0,
+              "name": "value"
+            }
+          },
+          "identity": {
+            "package_id": "test.package",
+            "path": "app.root.row.id"
+          },
+          "name": "Id",
+          "position": 0
+        }
+      },
+      "span": {
+        "file": "record-field-projection.pipe",
+        "start": 68,
+        "end": 110
+      }
+    }
+  ]
+}

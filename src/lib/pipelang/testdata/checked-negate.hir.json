@@ -1,0 +1,210 @@
+{
+  "language_contract": "v0.5.0",
+  "compiler_contract": "pipelang.compiler.v1",
+  "functions": [
+    {
+      "identity": {
+        "package_id": "test.package",
+        "path": "app.root.root.negate",
+        "callable": {
+          "parameters": [
+            {
+              "kind": "primitive",
+              "primitive": "int"
+            }
+          ],
+          "returns": {
+            "kind": "applied",
+            "package_id": "pipelang",
+            "path": "result",
+            "name": "Result",
+            "arguments": [
+              {
+                "kind": "primitive",
+                "primitive": "int"
+              },
+              {
+                "kind": "named",
+                "package_id": "pipelang",
+                "path": "arithmetic.error"
+              }
+            ]
+          }
+        }
+      },
+      "owner": {
+        "module": "app.root",
+        "symbol_id": 1,
+        "identity": {
+          "package_id": "test.package",
+          "path": "app.root.root"
+        },
+        "source_span": {
+          "file": "root.pipe",
+          "start": 0,
+          "end": 86
+        }
+      },
+      "name": "Negate",
+      "parameters": [
+        {
+          "binding": {
+            "kind": "parameter",
+            "function": {
+              "package_id": "test.package",
+              "path": "app.root.root.negate",
+              "callable": {
+                "parameters": [
+                  {
+                    "kind": "primitive",
+                    "primitive": "int"
+                  }
+                ],
+                "returns": {
+                  "kind": "applied",
+                  "package_id": "pipelang",
+                  "path": "result",
+                  "name": "Result",
+                  "arguments": [
+                    {
+                      "kind": "primitive",
+                      "primitive": "int"
+                    },
+                    {
+                      "kind": "named",
+                      "package_id": "pipelang",
+                      "path": "arithmetic.error"
+                    }
+                  ]
+                }
+              }
+            },
+            "position": 0,
+            "name": "value"
+          },
+          "type": {
+            "kind": "numeric",
+            "numeric": {
+              "representation": "integer",
+              "bits": 64,
+              "signed": true
+            }
+          },
+          "type_span": {
+            "file": "root.pipe",
+            "start": 63,
+            "end": 66
+          },
+          "span": {
+            "file": "root.pipe",
+            "start": 63,
+            "end": 72
+          }
+        }
+      ],
+      "return_type": {
+        "kind": "result",
+        "result": {
+          "success": {
+            "kind": "numeric",
+            "numeric": {
+              "representation": "integer",
+              "bits": 64,
+              "signed": true
+            }
+          },
+          "failure": {
+            "kind": "arithmetic_error"
+          }
+        }
+      },
+      "return_type_span": {
+        "file": "root.pipe",
+        "start": 27,
+        "end": 55
+      },
+      "body": {
+        "kind": "unary",
+        "type": {
+          "kind": "result",
+          "result": {
+            "success": {
+              "kind": "numeric",
+              "numeric": {
+                "representation": "integer",
+                "bits": 64,
+                "signed": true
+              }
+            },
+            "failure": {
+              "kind": "arithmetic_error"
+            }
+          }
+        },
+        "span": {
+          "file": "root.pipe",
+          "start": 77,
+          "end": 83
+        },
+        "unary": {
+          "operator": "negate",
+          "operand": {
+            "kind": "reference",
+            "type": {
+              "kind": "numeric",
+              "numeric": {
+                "representation": "integer",
+                "bits": 64,
+                "signed": true
+              }
+            },
+            "span": {
+              "file": "root.pipe",
+              "start": 78,
+              "end": 83
+            },
+            "reference": {
+              "kind": "parameter",
+              "function": {
+                "package_id": "test.package",
+                "path": "app.root.root.negate",
+                "callable": {
+                  "parameters": [
+                    {
+                      "kind": "primitive",
+                      "primitive": "int"
+                    }
+                  ],
+                  "returns": {
+                    "kind": "applied",
+                    "package_id": "pipelang",
+                    "path": "result",
+                    "name": "Result",
+                    "arguments": [
+                      {
+                        "kind": "primitive",
+                        "primitive": "int"
+                      },
+                      {
+                        "kind": "named",
+                        "package_id": "pipelang",
+                        "path": "arithmetic.error"
+                      }
+                    ]
+                  }
+                }
+              },
+              "position": 0,
+              "name": "value"
+            }
+          }
+        }
+      },
+      "span": {
+        "file": "root.pipe",
+        "start": 20,
+        "end": 84
+      }
+    }
+  ]
+}

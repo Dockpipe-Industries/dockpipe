@@ -1,0 +1,15 @@
+/// <summary>Generic development-only guest controls.</summary>
+public Class LinuxVmAdvanced
+{
+    /// <summary>Optional development guest command. Qualification manifests reject it.</summary>
+    [EnvName = "DOCKPIPE_VM_GUEST_COMMAND"]
+    public string GuestCommand = "";
+
+    /// <summary>Optional SSH user for development guests. Qualification manifests disable SSH.</summary>
+    [EnvName = "DOCKPIPE_VM_SSH_USER"]
+    public string SshUser = "";
+
+    /// <summary>Development-only network adapter. Qualification manifests require none.</summary>
+    [EnvName = "DOCKPIPE_VM_NET_DEVICE"]
+    public string NetDevice = "virtio-net-pci";
+}

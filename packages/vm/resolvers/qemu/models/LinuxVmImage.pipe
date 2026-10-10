@@ -1,0 +1,17 @@
+/// <summary>Immutable Linux cloud image selection and integrity.</summary>
+public Class LinuxVmImage
+{
+    /// <summary>Immutable official release-stamped cloud image URL.</summary>
+    [EnvName = "DOCKPIPE_VM_IMAGE_URL"]
+    public string Url = "https://cloud-images.ubuntu.com/releases/noble/release-20260801/ubuntu-24.04-server-cloudimg-amd64.img";
+
+    /// <summary>Mandatory SHA-256 for the selected image.</summary>
+    [EnvName = "DOCKPIPE_VM_IMAGE_SHA256"]
+    public string Sha256 = "0533b0655c32e68b31d792ecd6ccfca95abdbc536c4446874fe0513bd4140ffe";
+
+    /// <summary>Optional user-supplied image path. A matching explicit checksum is still required.</summary>
+    [EnvName = "DOCKPIPE_VM_IMAGE_OVERRIDE"]
+    [Control = "file"]
+    [FileMode = "open-file"]
+    public string Override = "";
+}

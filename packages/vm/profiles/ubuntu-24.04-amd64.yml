@@ -1,0 +1,18 @@
+schema: dockpipe.vm.image.v1
+name: ubuntu-24.04-lts-amd64-20260801
+architecture: amd64
+release: "24.04"
+release_stamp: "20260801"
+source:
+  url: https://cloud-images.ubuntu.com/releases/noble/release-20260801/ubuntu-24.04-server-cloudimg-amd64.img
+  sha256: 0533b0655c32e68b31d792ecd6ccfca95abdbc536c4446874fe0513bd4140ffe
+  checksum_source: https://cloud-images.ubuntu.com/releases/noble/release-20260801/SHA256SUMS
+cache:
+  root: "${XDG_CACHE_HOME:-$HOME/.cache}/dockpipe/vm/images"
+  filename: ubuntu-24.04-server-cloudimg-amd64-20260801.img
+provisioning:
+  datasource: nocloud
+  network: disabled
+  apt_update: false
+  apt_upgrade: false
+  additional_debs: []

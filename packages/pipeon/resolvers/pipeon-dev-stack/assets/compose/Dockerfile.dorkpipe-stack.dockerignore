@@ -1,0 +1,12 @@
+**
+
+!compose/
+!compose/Dockerfile.dorkpipe-stack
+!provider-pools/
+!provider-pools/catalog.yml
+!tooling/
+!tooling/bin/
+!tooling/bin/linux/
+!tooling/bin/linux/dockpipe
+!tooling/bin/linux/dorkpipe
+!tooling/bin/linux/mcpd

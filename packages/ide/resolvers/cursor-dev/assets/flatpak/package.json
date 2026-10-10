@@ -1,0 +1,18 @@
+{
+  "schema": 1,
+  "artifacts": [
+    {
+      "kind": "resolver",
+      "name": "cursor-dev"
+    },
+    {
+      "kind": "workflow",
+      "name": "cursor-dev"
+    }
+  ],
+  "tools": [],
+  "host_commands": [
+    "cursor"
+  ],
+  "required_files": []
+}
