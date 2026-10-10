@@ -39,7 +39,7 @@ native children match; all 39 source postimages match. There were 3,172 pairs an
 Accepted job trees were removed with zero OOM/swap.
 
 Evidence root:
-`/home/jamie/.codex/visualizations/2026/09/12/01a09603-329e-74d1-a913-8619e5e68b64`.
+`<local-evidence>/2026/09/12/01a09603-329e-74d1-a913-8619e5e68b64`.
 
 - `frozen-design.json`, `selection.json`, `pair-experiments.json` and
   `sample-comparison.json`: predeclared sample, balanced orders and all controls.

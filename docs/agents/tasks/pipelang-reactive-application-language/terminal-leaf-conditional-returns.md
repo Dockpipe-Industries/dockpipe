@@ -4,7 +4,7 @@
 
 - Objective: `TASK-021-terminal-leaf-conditional-returns`; state: `completed`.
 - Founder selected A and separately said `approved` in this task.
-- Baseline: clean saved checkout `/home/jamie/source/dockpipe`, `js/pipelang` at
+- Baseline: clean saved checkout `<checkout>`, `js/pipelang` at
   `9db7ed28f8e6de782921bd5d272614fef47cf883`; completed v0.86 proof admitted.
 - Execution skill: `dorkpipe-objective-execution`; automatic checkpoints within this scope;
   handoff only on user request.

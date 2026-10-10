@@ -3,7 +3,9 @@
 Use a workflow when a command becomes repeatable. A workflow is a
 `workflows/<name>/config.yml` file plus any scripts/assets beside it.
 
-For the complete key reference, see [workflow-yaml.md](workflow-yaml.md).
+Use your own project folder; none of the examples require Dockpipe's source
+checkout. Start with [Your first workflow](../onboarding.md) if you have not run a
+workflow yet. For the complete key reference, see [workflow-yaml.md](workflow-yaml.md).
 
 ## Mental Model
 
@@ -21,25 +23,37 @@ need to pin a specific image/template.
 
 ## Simple Container Workflow
 
+Create `workflows/location/config.yml` with the following contents. Docker must
+be running; the first run may download the example image.
+
 ```yaml
-name: test
+name: location
 runtime: dockerimage
+isolate: alpine:3.22
 
 steps:
-  - id: test
-    cmd: npm test
+  - id: location
+    cmd: pwd
 ```
 
 Run it:
 
 ```bash
-dockpipe --workflow test --
+dockpipe workflow validate workflows/location/config.yml
+dockpipe --workflow location --
 ```
+
+The command prints `/work`, your mounted project directory. Replace the command
+and image with ones appropriate to your project. An image must contain the tools
+the command uses; Dockpipe does not add Node or other language toolchains to an
+arbitrary image.
 
 ## Host Step
 
 Use `kind: host` only when the step genuinely needs host access, such as a local
-CLI, GUI launcher, or sidecar lifecycle script.
+CLI, GUI launcher, or sidecar lifecycle script. The following example assumes your
+project has `scripts/prepare.sh`, `package.json`, and installed Node dependencies.
+Save it as `workflows/build-with-setup/config.yml`.
 
 ```yaml
 name: build-with-setup
@@ -51,6 +65,7 @@ steps:
 
   - id: test
     runtime: dockerimage
+    isolate: node:22
     cmd: npm test
 ```
 
@@ -59,6 +74,9 @@ container steps.
 
 ## Resolver-Backed Container Step
 
+Install the `codex` resolver and satisfy its authentication requirements before
+using it. This example assumes your project supplies `scripts/review.sh` and a
+Node test setup; choose an image version that matches your project.
 Set defaults once, then override only where a step differs:
 
 ```yaml
@@ -67,6 +85,7 @@ runtime: dockerimage
 
 steps:
   - id: lint
+    isolate: node:22
     cmd: npm run lint
 
   - id: security-review
@@ -76,7 +95,8 @@ steps:
 
 ## Packaged Child Workflow
 
-Use explicit `workflow` + `package` for nested packaged workflows:
+Use explicit `workflow` + `package` for nested packaged workflows. Install the
+child first and replace the example names with its workflow name and namespace:
 
 ```yaml
 steps:
@@ -89,9 +109,13 @@ own runtime/resolver/security settings.
 
 ## Security Profile Example
 
+This example expects dependencies to be present in your project or image before
+execution; offline policy prevents downloading them during the step.
+
 ```yaml
 name: offline-test
 runtime: dockerimage
+isolate: node:22
 
 security:
   profile: secure-default
@@ -108,16 +132,23 @@ manifest that run consumes. For the security model, see
 
 ## Step Outputs
 
-Steps pass values forward with dotenv-style output files:
+Steps pass values forward with dotenv-style output files. This example uses
+host steps so both commands run with your local shell tools; it does not require
+Docker. Save it as `workflows/version/config.yml`:
 
 ```yaml
+name: version
+docker_preflight: false
+
 steps:
   - id: compute
+    kind: host
     cwd: artifacts
     cmd: sh -c 'echo VERSION=1.2.3 > version.env'
     outputs: version.env
 
   - id: use
+    kind: host
     cmd: echo "$VERSION"
 ```
 

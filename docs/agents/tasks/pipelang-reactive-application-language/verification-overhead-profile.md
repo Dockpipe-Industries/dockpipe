@@ -28,12 +28,12 @@ independent terminal reconciliation. Handoff: user_requested_only.
 Context pressure: warn_and_continue. Output: quiet_success_bounded_failure.
 Terminal conditions: completed, blocked, failed_verification or cancelled.
 
-Admission: clean saved `/home/jamie/source/dockpipe`, `js/pipelang`, HEAD
+Admission: clean saved `<checkout>`, `js/pipelang`, HEAD
 `8add7dc2cb7c755cb9d73c60c92452a75eca3a09`. Six v0.89 accepted postimages and its
 final acceptance digest match; completed benchmark proof is admitted, not replayed.
 Protected stashes: `26ea507907550d2449dc6f9c81b9942bd52d8629` and
 `e3afeea1dad94ca0c63dac434f0873548875bfc5`.
-Evidence: `/home/jamie/.codex/visualizations/2026/09/13/01a09c2e-b445-7322-8a02-1d2328313bec/verification-overhead/`.
+Evidence: `<local-evidence>/2026/09/13/01a09c2e-b445-7322-8a02-1d2328313bec/verification-overhead/`.
 
 Exclude fixture conversions, compiler/evaluator/language/acceptance changes, hash reuse,
 new caching/sealing behavior, full campaigns, installs, cleanup, raised limits,

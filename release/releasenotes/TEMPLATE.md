@@ -1,187 +1,95 @@
-# Release notes template
+<!--
+Copy this file to release/releasenotes/<VERSION>.md, using the repo-root VERSION
+as the notes baseline. Replace X.Y.Z throughout. The release workflow substitutes
+the generated numeric version into the published body; do not hardcode a staging
+candidate or guess the next patch. Remove these instructions and unused sections.
 
-Copy this file to **`release/releasenotes/X.Y.Z.md`** for the next release. Replace **`X.Y.Z`** everywhere (and **`vX.Y.Z`** in download URLs). Keep the **Linux → macOS → Windows** install order.
+Write for someone installing and using Dockpipe. Lead with observable changes,
+then installation, upgrade actions and limitations. Verify claims against the
+implementation, artifact inventory and relevant platform/provider evidence.
+Keep source-build instructions, internal task IDs and CI chronology in contributor
+docs. Mark preview/staging capabilities explicitly. Do not promise publication,
+signing, provider acceptance or platform support from a successful build alone.
+-->
 
-The GitHub Release workflow uses **`release/releasenotes/${VERSION}.md`** as the release body — include complete per-platform install steps below the “What’s new” section.
+# Dockpipe vX.Y.Z
 
----
-
-## Title line (example)
-
-**X.Y.Z — Short summary of the release.**
-
----
+<!-- One short paragraph describing what users gain from this release. -->
 
 ## What's new
 
-*(Changelog bullets, breaking changes, migration notes.)*
+<!-- Group related user outcomes. Explain prerequisites and link to setup guides.
+For a fix, describe the symptom and the corrected behavior, not just an internal
+component name. Do not advertise every optional package as bundled or enabled. -->
 
----
+## Install
 
-## Installation
-
-Full reference: **[docs/install.md](https://github.com/Dockpipe-Industries/dockpipe/blob/vX.Y.Z/docs/install.md)**. Below: **Linux**, **macOS**, **Windows** for this tag (**vX.Y.Z**).
+Choose assets for your operating system and CPU. Native host steps need Bash
+(Git for Windows supplies it on Windows). Container workflows additionally need a
+reachable container engine. Install provider tools only for workflows that use them.
 
 ### Linux
 
-**Prerequisites**
-
-- **Docker** — required.
-- **Bash** on the host — required (dockpipe always invokes bash).
-- **git** on the host — for **clone / worktree / commit-on-host** only.
-
-**Option A — `.deb` (recommended)**
-
-**x86_64:**
-
-```bash
-wget https://github.com/Dockpipe-Industries/dockpipe/releases/download/vX.Y.Z/dockpipe_X.Y.Z_amd64.deb
-sudo dpkg -i dockpipe_X.Y.Z_amd64.deb
+```sh
+curl -fsSL https://github.com/Dockpipe-Industries/dockpipe/releases/download/vX.Y.Z/install.sh -o /tmp/dockpipe-install.sh
+DOCKPIPE_VERSION=X.Y.Z sh /tmp/dockpipe-install.sh
+export PATH="$HOME/.local/bin:$PATH"
 ```
 
-**aarch64 (ARM64):**
-
-```bash
-wget https://github.com/Dockpipe-Industries/dockpipe/releases/download/vX.Y.Z/dockpipe_X.Y.Z_arm64.deb
-sudo dpkg -i dockpipe_X.Y.Z_arm64.deb
-```
-
-If `dpkg` reports missing dependencies:
-
-```bash
-sudo apt-get install -f
-```
-
-**Option A2 — install script (Debian/Ubuntu, Alpine, Fedora, Arch, or tarball fallback)**
-
-```bash
-DOCKPIPE_VERSION=X.Y.Z curl -fsSL https://raw.githubusercontent.com/Dockpipe-Industries/dockpipe/master/release/packaging/linux/install.sh | sh
-```
-
-**Option A3 — Alpine / Fedora / Arch packages** (same tag on [Releases](https://github.com/Dockpipe-Industries/dockpipe/releases))
-
-- **Alpine (x86_64 / aarch64):** `dockpipe_X.Y.Z_linux_amd64.apk` / `…_arm64.apk` — `sudo apk add --allow-untrusted ./dockpipe_….apk`
-- **Fedora / RHEL-compatible:** `dockpipe_X.Y.Z_linux_amd64.rpm` / `…_arm64.rpm` — `sudo dnf install ./dockpipe_….rpm`
-- **Arch:** `dockpipe_X.Y.Z_linux_amd64.pkg.tar.zst` / `…_arm64.pkg.tar.zst` — `sudo pacman -U ./dockpipe_….pkg.tar.zst`
-
-**Option B — tarball**
-
-```bash
-# amd64
-wget https://github.com/Dockpipe-Industries/dockpipe/releases/download/vX.Y.Z/dockpipe_X.Y.Z_linux_amd64.tar.gz
-tar -xzf dockpipe_X.Y.Z_linux_amd64.tar.gz
-sudo install -m 0755 dockpipe /usr/local/bin/dockpipe
-```
-
-```bash
-# arm64
-wget https://github.com/Dockpipe-Industries/dockpipe/releases/download/vX.Y.Z/dockpipe_X.Y.Z_linux_arm64.tar.gz
-tar -xzf dockpipe_X.Y.Z_linux_arm64.tar.gz
-sudo install -m 0755 dockpipe /usr/local/bin/dockpipe
-```
-
-**Option C — build from source**
-
-Requires **Go** (see repo **`go.mod`**). From a clone at **`vX.Y.Z`**:
-
-```bash
-git clone https://github.com/Dockpipe-Industries/dockpipe.git
-cd dockpipe && git checkout vX.Y.Z
-make
-export PATH="$PATH:$(pwd)/bin"
-```
-
----
+<!-- Name the desktop asset and verified minimum OS versions when offered.
+Distinguish CLI-only package formats from desktop packages. -->
 
 ### macOS
 
-**Prerequisites**
-
-- **Docker Desktop for Mac** (or compatible engine) — required.
-- **Bash** — required (`/bin/bash` is typical).
-- **git** — for worktree / `--repo` / commit-on-host flows.
-
-**Option A — Homebrew** (after the tap is published)
-
-```bash
-brew tap Dockpipe-Industries/dockpipe
-brew install dockpipe
+```sh
+curl -fsSL https://github.com/Dockpipe-Industries/dockpipe/releases/download/vX.Y.Z/install.sh -o /tmp/dockpipe-install.sh
+DOCKPIPE_VERSION=X.Y.Z sh /tmp/dockpipe-install.sh
+export PATH="$HOME/.local/bin:$PATH"
 ```
 
-**Option B — release tarball**
-
-**Apple Silicon (arm64):**
-
-```bash
-curl -LO https://github.com/Dockpipe-Industries/dockpipe/releases/download/vX.Y.Z/dockpipe_X.Y.Z_darwin_arm64.tar.gz
-tar -xzf dockpipe_X.Y.Z_darwin_arm64.tar.gz
-sudo install -m 0755 dockpipe /usr/local/bin/dockpipe
-```
-
-**Intel (amd64):**
-
-```bash
-curl -LO https://github.com/Dockpipe-Industries/dockpipe/releases/download/vX.Y.Z/dockpipe_X.Y.Z_darwin_amd64.tar.gz
-tar -xzf dockpipe_X.Y.Z_darwin_amd64.tar.gz
-sudo install -m 0755 dockpipe /usr/local/bin/dockpipe
-```
-
-**Option C — build from source**
-
-```bash
-git clone https://github.com/Dockpipe-Industries/dockpipe.git
-cd dockpipe && git checkout vX.Y.Z
-make
-export PATH="$PATH:$(pwd)/bin"
-```
-
----
+<!-- State desktop availability, minimum OS, signing/notarization and conflicts
+between installation methods. Include Homebrew only for a verified channel. -->
 
 ### Windows
 
-**Prerequisites**
-
-- **Docker Desktop** — required.
-- **`bash.exe`** on `PATH` — required. **Git for Windows** is the usual install (**`bash.exe` + `git.exe`**).
-- **`git`** — additionally for worktrees, **`--repo`**, commit-on-host, etc.
-
-**Option A — PowerShell install script**
-
 ```powershell
-$i = "$env:TEMP\dockpipe-install.ps1"
-Invoke-WebRequest -Uri "https://raw.githubusercontent.com/Dockpipe-Industries/dockpipe/master/release/packaging/windows/install.ps1" -OutFile $i -UseBasicParsing
-& $i -Version X.Y.Z
+$installer = Join-Path $env:TEMP 'dockpipe-install.ps1'
+Invoke-WebRequest https://github.com/Dockpipe-Industries/dockpipe/releases/download/vX.Y.Z/install.ps1 -OutFile $installer
+& $installer -Version X.Y.Z -SkipWSLSetup
 ```
 
-**Option B — MSI** — If **`dockpipe_X.Y.Z_windows_amd64.msi`** is attached to this release, install per-user (adds `%LOCALAPPDATA%\dockpipe` to **PATH**). If **no** `.msi` is published for this tag (e.g. MSI was skipped), write **“MSI — coming soon”** and point users to **Option A** + zip only.
+Open a new terminal after installation. WSL is optional; this command skips setup.
 
-**Option C — zip** — **`dockpipe_X.Y.Z_windows_amd64.zip`**: unzip, add to `PATH`, open a new terminal.
+<!-- Describe the MSI/ZIP and launcher choices actually attached to this release,
+and the current signing status. -->
 
-**Verify**
+The install scripts verify downloaded assets against the release checksums. For
+manual downloads, check `SHA256SUMS.txt` from the same release before installation.
+See the [installation guide](https://github.com/Dockpipe-Industries/dockpipe/blob/vX.Y.Z/docs/install.md)
+for platform details and any separately labelled staging channels.
 
-```powershell
+## Get started
+
+```sh
 dockpipe --version
-dockpipe -- echo ok
 ```
 
-**Optional — WSL bridge** (`DOCKPIPE_USE_WSL_BRIDGE=1`): install **`dockpipe`** in WSL, then **`dockpipe windows setup`**. See **[docs/install.md](https://github.com/Dockpipe-Industries/dockpipe/blob/vX.Y.Z/docs/install.md)** (Windows). Optional advanced **git bundle** handoff between WSL and Windows: **[docs/runtime/wsl-windows.md](https://github.com/Dockpipe-Industries/dockpipe/blob/vX.Y.Z/docs/runtime/wsl-windows.md)**.
+Follow [your first workflow](https://github.com/Dockpipe-Industries/dockpipe/blob/vX.Y.Z/docs/onboarding.md).
 
-**Build from source on Windows**
-
-```powershell
-git clone https://github.com/Dockpipe-Industries/dockpipe.git
-cd dockpipe
-git checkout vX.Y.Z
-$env:GOOS = "windows"; $env:GOARCH = "amd64"; $env:CGO_ENABLED = "0"
-go build -trimpath -ldflags "-s -w -X main.Version=X.Y.Z" -o dockpipe.exe ./src/cmd
-```
-
----
+<!-- Optionally include one tested installed-user example. Do not use repo-only
+workflows such as internal CI tests or commands requiring a source checkout. -->
 
 ## Upgrade notes
 
-*(From previous version — optional.)*
+<!-- State the previous version/configuration affected and concrete action needed.
+Cover package dependencies, channel selection, state migration and changed defaults
+where relevant. Distinguish retained compatibility from actual breaking changes. -->
 
----
+## Known limitations
 
-Feedback: [CONTRIBUTING.md](https://github.com/Dockpipe-Industries/dockpipe/blob/master/CONTRIBUTING.md)
+<!-- Include limits that affect adoption: previews, unsupported combinations,
+provider prerequisites and unverified native behavior. Do not bury them in internal
+qualification links or describe unfinished features as shipped. -->
+
+[Report a problem](https://github.com/Dockpipe-Industries/dockpipe/issues) with your
+Dockpipe version, platform and steps to reproduce it.

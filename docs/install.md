@@ -1,33 +1,34 @@
-# Installing dockpipe
+# Install Dockpipe
 
-Flatpak for atomic desktops is an experimental
-[qualification build](../release/packaging/desktop/flatpak/README.md), including
-launcher and CLI. It is not yet a published, supported Bazzite/Pipeon install.
+Choose **Desktop** for the launcher and CLI together, or **CLI / Remote Worker**
+for terminals, servers and CI. You do not need a Dockpipe source checkout or Go.
+Optional workflows and resolvers are installed from **Packages → Marketplace** or
+`dockpipe package install`; the base installer includes required core.
 
-**New to dockpipe?** Run **`dockpipe -- pwd`** after install, then read **[onboarding.md](onboarding.md)**. If something fails, **`dockpipe doctor`** checks **bash**, **Docker**, and bundled assets.
-
-Choose **Desktop** for the launcher and CLI together, or **CLI / Remote Worker** for terminals, servers and CI. Docker is needed only for workflows that use containers. Host shell workflows need bash; Git for Windows supplies bash on Windows.
+The verified downloads below use the **staging channel**. Check the
+[staging catalog](https://packages.staging.dockpipe.com/packages/latest.json) for the
+current candidate. Staging builds carry the qualification limits described below.
 
 | Platform | Desktop | CLI / Remote Worker |
 | --- | --- | --- |
-| macOS Apple Silicon / Intel | DMG installer, or Homebrew desktop cask | Homebrew formula or native tarball |
-| Windows x64 | MSI with launcher selected by default | ZIP, or MSI with only the CLI feature |
-| Ubuntu 22.04 / 24.04 amd64 / arm64; Pop!_OS 22.04 | `dockpipe-desktop` DEB plus `dockpipe` | `dockpipe` DEB; RPM, APK, Arch and portable CLI packages also available |
+| macOS Apple Silicon / Intel | Homebrew staging cask or DMG | Homebrew staging formula or native tarball |
+| Windows x64 | MSI with launcher selected | ZIP, or MSI with only the CLI feature |
+| Ubuntu 22.04 / 24.04 amd64 / arm64; Pop!_OS 22.04 | `dockpipe-desktop` DEB plus `dockpipe` | `dockpipe` DEB |
+| Linux amd64 with Flatpak | Combined launcher and CLI bundle, KDE Platform 6.10 | Bundled CLI via `flatpak run`; native packages are separate |
+| Other Linux distributions | See Flatpak requirements and qualification limits | RPM, APK, Arch or portable archive matching your CPU |
 
-Normal installers ship the CLI and core, plus the launcher when selected. Optional workflows
-and resolvers are installed explicitly from **Packages → Marketplace** or `dockpipe package install`.
-The complete release package store remains a separate opt-in download; it is never a default installer payload.
+Native host steps need Bash; Git for Windows supplies it on Windows. Container
+workflows need a reachable Docker engine. Git, provider CLIs and authentication
+are needed only by workflows that use them. The Flatpak includes shell and
+container client tools but still needs a host engine for container workflows.
 
-Desktop packages are available in the staging channel. The Homebrew CLI formula and desktop cask
-passed [native installation checks on Apple Silicon and Intel](https://github.com/Dockpipe-Industries/homebrew-dockpipe/actions/runs/37419531103)
-before publication. Existing CLI-only installations do not acquire a launcher automatically; install
-the desktop cask below to add it. Apple Developer ID signing and notarization remain pending.
+After installation, start with [Your first workflow](onboarding.md).
 
 ## Desktop installation
 
 **macOS:** download `dockpipe-desktop_VERSION_darwin_arm64.dmg` for Apple Silicon or `dockpipe-desktop_VERSION_darwin_amd64.dmg` for Intel, verify it against that release's `SHA256SUMS.txt`, open it, and run **Install Dockpipe.pkg**. Apple's Installer installs **DockPipe.app** in Applications and **`dockpipe`** in `/usr/local/bin`. Open Dockpipe from Applications; new terminals can run `dockpipe --version`. The desktop app contains the matching CLI, Qt runtime and required core package. macOS 13 or newer is required.
 
-Use one installation method. The DMG installer refuses an existing foreign CLI or app; users with the Homebrew CLI should use the cask below. Re-running the DMG installer updates an installation owned by that installer. Locally built and current CI staging DMGs use ad-hoc signatures unless the maintainer supplies Developer ID signing and notarization. They are not yet normal Gatekeeper-approved public downloads; no security-setting changes are part of installation.
+Use one installation method. The DMG installer refuses an existing foreign CLI or app; users with the Homebrew CLI should use the cask below. Re-running the DMG installer updates an installation owned by that installer. Current staging DMGs use ad-hoc signatures and are not yet Developer ID signed and notarized. They may be blocked by Gatekeeper; the installation instructions do not require changing macOS security settings.
 
 **Homebrew on macOS (staging):** refresh the tap, then install the launcher and CLI together:
 
@@ -47,7 +48,7 @@ Uninstalling the desktop cask removes the app and retains the CLI formula. User 
 
 **Windows:** run `dockpipe_VERSION_windows_amd64.msi`. The default installs the CLI, full Qt launcher runtime and a Start menu shortcut. Deselect **Dockpipe Launcher** for a CLI-only install, or change the feature later through the installer's Modify option. The ZIP is always CLI-only.
 
-**Ubuntu 22.04 / 24.04 and Pop!_OS 22.04:** after configuring the signed APT source below, run `sudo apt install dockpipe-desktop`; it installs the matching CLI dependency. The launcher is built against Ubuntu 22.04's Qt runtime, and the same DEB is installation-tested on both Ubuntu releases. For downloaded DEBs, install both together:
+**Ubuntu 22.04 / 24.04 and Pop!_OS 22.04:** after configuring the signed APT source below, run `sudo apt install dockpipe-desktop`; it installs the matching CLI dependency. The DEB supports Ubuntu 22.04's Qt libraries and is installation-tested on both Ubuntu releases. For downloaded DEBs, install both together:
 
 ```sh
 sudo apt install ./dockpipe_VERSION_amd64.deb ./dockpipe-desktop_VERSION_amd64.deb
@@ -55,240 +56,202 @@ sudo apt install ./dockpipe_VERSION_amd64.deb ./dockpipe-desktop_VERSION_amd64.d
 
 Use `arm64` filenames on ARM64. Launch **Dockpipe** from the application menu. Removing `dockpipe-desktop` leaves the CLI available. Desktop RPM, APK and Arch packages are not currently provided; those formats remain CLI-only.
 
-### Bundled templates (no extra install tree)
+### Flatpak desktop (staging, Linux amd64)
 
-The binary **embeds** **`templates/`** (including **`templates/core/`**: template **assets**, runtimes, resolvers, strategies) and repository root **`assets/entrypoint.sh`**. On first use it unpacks to the **user cache** with this **materialized** layout:
+The staging package host publishes `dockpipe-desktop_VERSION_linux_amd64.flatpak`.
+It installs **`com.dockpipe.Dockpipe`**, branch **`staging`**, with launcher, CLI,
+required core, Git, Docker CLI, Compose and Buildx. Optional Marketplace packages
+are downloaded separately. There is no published ARM64 Flatpak catalog or Dockpipe
+Flathub listing. Native DEB/RPM/APK/Arch packages and tarballs remain separate host
+CLI installation choices.
 
-```text
-dockpipe/
-  core/          # assets/, resolvers/, runtimes/, strategies/
-  workflows/     # one dir per bundled workflow (same as templates/<name>/ in a checkout)
+Install Flatpak using your distribution's instructions first. The app requires the
+**`org.kde.Platform//6.10` x86_64 runtime**; the SDK is only needed to build it.
+Set up the runtime in your user installation:
+
+```sh
+flatpak remote-add --user --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+flatpak install --user flathub org.kde.Platform/x86_64/6.10
 ```
 
-**`assets/`** (embedded **`entrypoint.sh`**) and **`version`** sit beside **`dockpipe/`** at the cache root. The CLI resolves **either** this layout **or** a normal git checkout (**`templates/`** + **`templates/core/`** + repository **`assets/`**). You do **not** need a clone of the dockpipe repo next to the binary for **`--workflow`** or default images.
+Flathub supplies the KDE runtime here, not the Dockpipe app. The bundle also carries
+that runtime-repository hint; it does not contain the runtime itself.
 
-- **`DOCKPIPE_REPO_ROOT`** — optional override to point at a **dockpipe source tree** (e.g. when editing templates).
-- **`DOCKPIPE_BUNDLED_CACHE`** — optional parent directory for the `dockpipe/bundled-*` folder (tests, custom cache location).
+The following immutable candidate was verified on **2026-10-10**. For a newer build,
+read the [staging pointer](https://packages.staging.dockpipe.com/packages/latest.json),
+then its `manifest` URL relative to `https://packages.staging.dockpipe.com/`.
+Use the `downloads["linux-amd64-flatpak-org.kde.Platform-6.10"].desktop` filename
+relative to that manifest's directory. Do not construct a GitHub asset URL: the
+verified bundle is on the package host and was absent from the matching GitHub
+release assets.
 
-User-created workflow files from **`dockpipe init`** live in your project, typically under **`workflows/`**. Legacy template-oriented paths still exist in some maintainer and compatibility flows, but they are not the normal starting point for new projects.
+Run in a download directory; continue to installation only if the checksum reports
+`OK`:
 
----
+```sh
+candidate=0.6.3-staging.37959504785.1.4da6948415b9
+base="https://packages.staging.dockpipe.com/packages/candidates/$candidate"
+bundle=dockpipe-desktop_0.6.3_linux_amd64.flatpak
+curl -fSL "$base/$bundle" -o "$bundle"
+curl -fsSL "$base/SHA256SUMS.txt" -o SHA256SUMS.txt
+awk -v file="$bundle" '$2 == file { print }' SHA256SUMS.txt > "$bundle.sha256"
+sha256sum --check "$bundle.sha256"
+```
+
+```sh
+flatpak install --user ./dockpipe-desktop_0.6.3_linux_amd64.flatpak
+flatpak run com.dockpipe.Dockpipe
+flatpak run --command=dockpipe com.dockpipe.Dockpipe --version
+```
+
+The last command invokes the bundled CLI; installation does not add a native
+`dockpipe` command to your host `PATH`. Normal app XDG data is separate from native
+Dockpipe data. Project-local packages and explicit data-root overrides still take
+precedence, so check those when sharing a project between native and Flatpak runs.
+
+**Updates:** this is a standalone bundle, without an updating Dockpipe Flatpak
+remote. `flatpak update` can update the KDE runtime from Flathub, but does not fetch
+new Dockpipe bundles from the staging JSON catalog. Download and verify the newer
+candidate as above, close the launcher and finish active workflows, then run
+`flatpak install --user --or-update ./dockpipe-desktop_VERSION_linux_amd64.flatpak`
+with the new filename. See Flatpak's [bundle guidance](https://docs.flatpak.org/en/latest/single-file-bundles.html)
+and [install options](https://docs.flatpak.org/en/latest/flatpak-command-reference.html#flatpak-install).
+
+**Packages:** in the Flatpak launcher, choose **Settings → Package Remotes → Use staging**,
+save, then open **Packages → Marketplace**. Selection uses the running app's
+architecture and KDE runtime branch, currently `linux-amd64-flatpak-org.kde.Platform-6.10`.
+The verified catalog has 62 entries: core plus 61 optional artifacts, not 62 bundled
+apps. Native Dockpipe still selects native stores on the same machine. Missing or
+mismatched Flatpak stores fail explicitly, including pinned store URLs; there is no
+automatic native fallback. Marketplace packages are ordinary Dockpipe archives,
+not separate Flatpak apps, and are independent of the app-bundle update procedure.
+
+**Host integrations and limits:** container clients require a reachable host Docker
+or compatible Podman API socket; the app does not install or start an engine.
+Explicit Docker environment settings take priority over detected sockets. Editors,
+Codex/Claude, 1Password, QEMU and service/GPU management use explicit host bridges
+and require the host tools and authentication. The app requests home access,
+network, display/graphics, engine sockets and host execution permission. Local amd64
+tests and hosted CI do not qualify native Bazzite, full Podman/SELinux behavior,
+authenticated providers, VM boot or universal workflow parity. See the
+[host integration and qualification details](../release/packaging/desktop/flatpak/README.md).
 
 ## Signed APT repository
 
-Staging testers use the [permanent staging APT source](../release/docs/staging.md#apt-staging-installation-and-upgrades).
-Published builds receive increasing generated patch versions, so a configured channel
-updates both CLI and launcher through `sudo apt update` and `sudo apt upgrade`.
-Older candidate-specific staging sources remain pinned until explicitly replaced.
+For Ubuntu/Pop!_OS staging installations, configure the permanent staging source
+once. Download the public key and inspect its fingerprint:
 
-Once the 0.6 release and public hostname are live, Debian/Ubuntu users can install and receive updates from the signed repository:
-
-```bash
-curl -fsSL https://packages.dockpipe.com/apt/dockpipe-archive-keyring.gpg -o /tmp/dockpipe-archive-keyring.gpg
-sudo install -m 0644 /tmp/dockpipe-archive-keyring.gpg /usr/share/keyrings/dockpipe-archive-keyring.gpg
-printf '%s\n' 'deb [arch=amd64,arm64 signed-by=/usr/share/keyrings/dockpipe-archive-keyring.gpg] https://packages.dockpipe.com/apt stable main' | sudo tee /etc/apt/sources.list.d/dockpipe.list
-sudo apt-get update
-sudo apt-get install dockpipe
+```sh
+curl -fsSL https://packages.staging.dockpipe.com/apt/dockpipe-archive-keyring.gpg -o /tmp/dockpipe-staging-keyring.gpg
+gpg --show-keys --with-fingerprint /tmp/dockpipe-staging-keyring.gpg
 ```
 
-The repository public key is restricted to this source by `signed-by`. APT validates the signed indexes and package hashes. The service must be provisioned and the first signed release published before these commands work.
+Confirm fingerprint `7295FA3FC25A3998E146D0779EAF522778B9C909` before proceeding:
+
+```sh
+sudo install -m 0644 /tmp/dockpipe-staging-keyring.gpg /usr/share/keyrings/dockpipe-staging.gpg
+printf '%s\n' 'deb [arch=amd64,arm64 signed-by=/usr/share/keyrings/dockpipe-staging.gpg] https://packages.staging.dockpipe.com/apt staging main' | sudo tee /etc/apt/sources.list.d/dockpipe-staging.list >/dev/null
+sudo apt update
+sudo apt install dockpipe-desktop
+```
+
+Use `sudo apt install dockpipe` for CLI only. The desktop package installs its
+matching CLI dependency. Updates use:
+
+```sh
+sudo apt update
+sudo apt upgrade
+```
+
+Do not configure staging and production APT sources together. If you previously
+used a candidate-specific staging source, replace that source with the permanent
+one above to receive later candidates. Removing `dockpipe-desktop` retains the CLI.
 
 ## Direct downloads and complete package stores
 
-GitHub release assets are also mirrored at `https://packages.dockpipe.com/packages/releases/VERSION/`. Linux and macOS can use the checksum-verifying installer against that origin:
+Read the [staging pointer](https://packages.staging.dockpipe.com/packages/latest.json)
+and follow its `manifest` path relative to `https://packages.staging.dockpipe.com/`.
+The release manifest lists numeric `version`, per-platform `downloads`, and
+`stores`. Download filenames are relative to the manifest's directory.
 
-```bash
-curl -fsSL https://packages.dockpipe.com/packages/releases/0.6.0/install.sh -o /tmp/dockpipe-install.sh
-DOCKPIPE_VERSION=0.6.0 DOCKPIPE_DOWNLOAD_BASE=https://packages.dockpipe.com/packages/releases/0.6.0 sh /tmp/dockpipe-install.sh
+Choose `amd64` for x86_64 or `arm64` for aarch64/Apple Silicon. Verify downloaded
+files against `SHA256SUMS.txt` from that same candidate before installing. On Linux
+use `sha256sum`; on macOS use `shasum -a 256`; on Windows use `Get-FileHash -Algorithm SHA256`.
+
+The native CLI installer can use an explicit candidate. This example is pinned to
+the same verified 0.6.3 staging candidate as the Flatpak instructions:
+
+```sh
+candidate=0.6.3-staging.37959504785.1.4da6948415b9
+base="https://packages.staging.dockpipe.com/packages/candidates/$candidate"
+curl -fsSL "$base/install.sh" -o /tmp/dockpipe-install.sh
+DOCKPIPE_VERSION=0.6.3 DOCKPIPE_DOWNLOAD_BASE="$base" DOCKPIPE_INSTALL_MODE=portable sh /tmp/dockpipe-install.sh
 ```
 
-The CLI installer installs the CLI and core. Additional workflows and resolvers are in the complete native package-store bundle `dockpipe-packages_VERSION_OS-ARCH.tar.gz` (`linux-amd64`, `linux-arm64`, `darwin-amd64`, `darwin-arm64`, or `windows-amd64`). Verify the bundle against `SHA256SUMS.txt`, extract it to a local directory, and reference that directory through `packages.sources` in your project's `dockpipe.config.json`:
+The installer verifies its CLI payload checksum. It installs the portable CLI in
+`~/.local/bin` by default; add that directory to your shell's `PATH` if needed.
+Use the candidate's numeric version for `DOCKPIPE_VERSION`, not its staging suffix.
+This script installs CLI/core, not the desktop launcher.
+
+### Native Linux packages
+
+After downloading and verifying the matching packages, install the appropriate
+format. Replace `VERSION` and use `arm64` filenames where supported:
+
+| Format | Example |
+| --- | --- |
+| DEB CLI | `sudo apt install ./dockpipe_VERSION_amd64.deb` |
+| DEB desktop and CLI | `sudo apt install ./dockpipe_VERSION_amd64.deb ./dockpipe-desktop_VERSION_amd64.deb` |
+| RPM CLI | `sudo dnf install ./dockpipe_VERSION_linux_amd64.rpm` |
+| Alpine CLI | `sudo apk add --allow-untrusted ./dockpipe_VERSION_linux_amd64.apk` |
+| Arch CLI | `sudo pacman -U ./dockpipe_VERSION_linux_amd64.pkg.tar.zst` |
+
+RPM, APK and Arch packages are CLI-only. For direct-file upgrades, download,
+verify and install the newer files using the same method. Generation of a package
+format does not qualify every downstream distribution or container engine.
+
+### Complete stores (optional)
+
+Most users should install individual packages from Marketplace. If you need a
+complete native store, download `dockpipe-packages_VERSION_OS-ARCH.tar.gz`, verify
+its checksum and extract it. Register the extracted store in your project's
+`dockpipe.config.json`:
 
 ```json
 {"schema":1,"packages":{"sources":[{"kind":"tarball_dir","path":"/absolute/path/to/extracted-store"}]}}
 ```
 
-An Apple Silicon Mac uses `darwin-arm64`; it does not need to clone Dockpipe or install Go to use the compiled CLI and store. Provider CLIs such as `cloudflared` or `op` are still required by their resolvers. On Windows use an absolute Windows path in the JSON. Each platform's individual tarballs and `packages-store-manifest.json` are also served under `stores/OS-ARCH/` in that version directory. Do not mix native helpers from different platforms.
+Use the store built for your platform; native stores cannot replace a Flatpak
+runtime-specific store. Provider tools and credentials may still be needed.
+See the [package model](packages/package-model.md#remote-catalogs-and-user-installation).
 
----
+## Windows CLI and optional WSL
 
-## Install the .deb (Linux)
-
-1. Download the latest `.deb` for your CPU from [Releases](https://github.com/Dockpipe-Industries/dockpipe/releases):
-   - **x86_64** → `dockpipe_*_amd64.deb`
-   - **aarch64** (ARM64 Linux, e.g. many cloud VMs / Raspberry Pi OS 64-bit) → `dockpipe_*_arm64.deb`  
-   The two packages are **not** interchangeable (each contains a native Go binary). The `.deb` installs **`/usr/bin/dockpipe`** only (bundled assets are inside the binary; no `/usr/lib/dockpipe` layout).
-2. Install:
-
-   ```bash
-   sudo dpkg -i dockpipe_*_amd64.deb    # or *_arm64.deb on aarch64
-   ```
-
-3. If `dpkg` reports missing dependencies (e.g. Docker):
-
-   ```bash
-   sudo apt-get install -f
-   ```
-
-Using `dpkg -i` avoids apt sandbox warnings when the .deb is in your home directory; `apt install ./file.deb` there can show a permission notice (apt’s `_apt` user can’t read the file).
-
-**Upgrades:** download the new .deb (same arch as before) and run `sudo dpkg -i dockpipe_*_amd64.deb` or `dockpipe_*_arm64.deb` as appropriate.
-
-**Requirements:** **amd64** or **arm64** package matching your machine. **`bash`** on the host, and **git** for clone/worktree/commit-on-host workflows. Container workflows additionally need **Docker** (`docker.io` or `docker-ce`). Install Docker if needed:
-
-```bash
-sudo apt-get install docker.io
-```
-
-**Persistent data:** By default dockpipe mounts a named volume `dockpipe-data` at `/dockpipe-data` and sets `HOME` there so tool state (e.g. first-time login) persists. Use `--data-vol <name>`, `--data-dir /path`, or `--no-data` to change or disable. If a tool exits immediately with the default volume, try `--no-data` or `--reinit` to get a fresh volume.
-
-**Workflow YAML:** Multi-step templates (`steps:`, async groups, `outputs:`) are documented in **[workflows/workflow-yaml.md](workflows/workflow-yaml.md)**.
-
----
-
-## Alpine, Fedora/RHEL, Arch Linux (release packages)
-
-Releases ship **`.apk`** (Alpine), **`.rpm`** (Fedora, RHEL-compatible), and **`.pkg.tar.zst`** (Arch), for **amd64** and **arm64**, alongside **`.deb`** and **`.tar.gz`**.
-
-| Format | Example install |
-|--------|-----------------|
-| **Alpine** | `sudo apk add --allow-untrusted ./dockpipe_*_linux_amd64.apk` |
-| **Fedora** | `sudo dnf install ./dockpipe_*_linux_amd64.rpm` |
-| **Arch** | `sudo pacman -U ./dockpipe_*_linux_amd64.pkg.tar.zst` |
-
-Packages declare **`bash`** and **`git`** as dependencies; **Docker** is still something you install the usual way for that distro (`docker` / `docker-cli` / `podman` + compose, etc.) — same as the `.deb` story.
-
----
-
-## One-liner Linux and macOS install
-
-From a network-connected shell (uses [GitHub Releases](https://github.com/Dockpipe-Industries/dockpipe/releases); detects distro from `/etc/os-release`, otherwise drops the **portable `.tar.gz`** into **`~/.local/bin`**):
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/Dockpipe-Industries/dockpipe/master/release/packaging/linux/install.sh | sh
-```
-
-Pin a version: `DOCKPIPE_VERSION=0.6.0 curl -fsSL … | sh`  
-Forks: `DOCKPIPE_REPO=you/dockpipe curl -fsSL … | sh`
-
-Script: **[release/packaging/linux/install.sh](../release/packaging/linux/install.sh)**.
-
----
-
-## Or run from source (Linux or macOS, no root)
-
-The CLI is built with **Go** matching **`go.mod`** (currently **1.25**; see `toolchain` there) (`go build -o src/bin/dockpipe.bin ./src/cmd` or **`make`**). The `src/bin/dockpipe` script runs the binary if present, otherwise `go run`.
-
-```bash
-git clone https://github.com/Dockpipe-Industries/dockpipe.git
-cd dockpipe
-make   # or: go build -o src/bin/dockpipe.bin ./src/cmd
-export PATH="$PATH:$(pwd)/bin"
-dockpipe -- ls -la
-```
-
-**Windows `dockpipe.exe` from a Unix dev machine:** from the **repo root**, run **`make build-windows`** — output is **`src/bin/dockpipe.exe`** (gitignored). Copy that file to your PC; do not rely on a hardcoded path on someone else’s machine.
-
----
-
-## Windows (Docker Desktop + native `dockpipe.exe`)
-
-**Required:** **Docker Desktop**, **`bash.exe`** on `PATH`, and **`dockpipe.exe`** on `PATH`. Dockpipe always invokes **bash** on the host; **Git for Windows** is the usual way to get **`bash.exe`** (and **`git.exe`**) together. Docker Desktop does **not** ship bash. If you use **WSL**, put **Git’s `…\Git\bin`** **before** `C:\Windows\System32` on `PATH` so **`bash`** is **Git Bash**, not **WSL’s** `bash.exe` (dockpipe prefers Git Bash when installed; otherwise it uses WSL path rules).
-
-**Host `git`:** additionally required for **clone / worktree / commit-on-host** (e.g. **`--repo`**, **`clone-worktree.sh`**). Git for Windows covers that for most users.
-
-**Local / gitignored config in worktrees** (e.g. `.env`, `appsettings.Development.json`): see **[runtime/worktree-include.md](runtime/worktree-include.md)** — use **`.dockpipe-worktreeinclude`** or **`.worktreeinclude`** so dockpipe copies those paths into the worktree after it is created.
-
-You do **not** need a WSL distro or Linux `dockpipe` unless you opt into **`DOCKPIPE_USE_WSL_BRIDGE=1`**. If **`bash`** is missing but **WSL** is installed, the CLI may offer to **re-run through WSL** (interactive). Optional advanced note: **[runtime/wsl-windows.md](runtime/wsl-windows.md)** only if you still use **git bundle** handoff between WSL and Windows clones — not part of the default native-Windows flow.
-
-### Install `dockpipe.exe` on Windows
-
-Add **`dockpipe.exe`** to `PATH` (**install script** or **zip**; **MSI** when published on a given release). Install **Git for Windows** (or another **`bash`** + **`git`** on `PATH`). Start Docker Desktop when running container workflows.
-
-**Optional WSL bridge:** if you set **`DOCKPIPE_USE_WSL_BRIDGE=1`**, commands are forwarded into WSL. Then you also need **`dockpipe` installed inside that distro** and should run **`dockpipe windows setup`** once.
-
-**Automated (recommended):** downloads from the latest release — prefers **MSI** when the release includes it, otherwise **zip** — verifies **`SHA256SUMS.txt`** when available, installs **per-user** (no admin):
+For a native CLI installation, download and verify
+`dockpipe_VERSION_windows_amd64.zip`, extract it and add its folder to your user
+`PATH`. Alternatively use the MSI and select the CLI feature. Open a new terminal
+and check:
 
 ```powershell
-irm https://raw.githubusercontent.com/Dockpipe-Industries/dockpipe/master/release/packaging/windows/install.ps1 | iex
+dockpipe --version
 ```
 
-Pin a version: save [release/packaging/windows/install.ps1](https://github.com/Dockpipe-Industries/dockpipe/blob/master/release/packaging/windows/install.ps1) and run `.\install.ps1 -Version 0.6.0`.
-
-**Manual:** from [Releases](https://github.com/Dockpipe-Industries/dockpipe/releases):
-
-- **`dockpipe_<version>_windows_amd64.zip`** — unzip and add the folder to `PATH`.
-- **`dockpipe_<version>_windows_amd64.msi`** — **when published** for that release: double-click, or `msiexec /i .\….msi /qn` (adds `%LOCALAPPDATA%\dockpipe` to your user **PATH**). Some releases ship **zip only** until MSI is enabled for that tag.
-
-**winget:** not in the default Microsoft catalog until a manifest is accepted; see **[release/packaging/winget/README.md](../release/packaging/winget/README.md)** for maintainers and future `winget install`.
-
-Open a **new** terminal after install so `PATH` is picked up.
-
-### Daily use from Windows
-
-With **`dockpipe.exe`** on `PATH` (install script, zip, or MSI when available). From **PowerShell or CMD**, `cd` to your repo and run the same CLI as on Linux, e.g.:
-
-```powershell
-cd C:\Users\you\src\myrepo
-dockpipe -- echo ok
-```
-
-**Native mode (default):** `dockpipe` runs on Windows; **`docker`** comes from Docker Desktop; **`bash`** (and usually **`git`**) from Git for Windows. **`git`** is only needed for worktree/repo flows (see above). No WSL shell or Linux `dockpipe` required unless you use the bridge.
-
-### Optional: WSL bridge (`DOCKPIPE_USE_WSL_BRIDGE=1`)
-
-Set the environment variable **for the session** (or persist it in **Windows user environment variables** / your shell profile) so **`dockpipe.exe` forwards** into WSL: cwd is mapped with `wslpath`, then **`dockpipe`** runs inside the distro from **`dockpipe windows setup`** (or the first listed distro).
-
-```powershell
-# PowerShell — this session only
-$env:DOCKPIPE_USE_WSL_BRIDGE = "1"
-```
-
-```bat
-REM cmd.exe — this session only
-set DOCKPIPE_USE_WSL_BRIDGE=1
-```
-
-- **`dockpipe windows …`** always runs **only on Windows** (setup / doctor).
-- With the bridge, path-like flags are rewritten to WSL paths before the inner `dockpipe` sees them. Arguments after **`--`** are not rewritten.
-
-**One-time WSL bootstrap** (only if you use the bridge):
-
-```powershell
-dockpipe windows setup
-```
-
-What setup does: picks a distro, saves it to `%APPDATA%\dockpipe\windows-config.env`, bootstraps `~/.dockpipe/windows-host.env` in WSL, optionally runs `--install-command`, verifies `dockpipe` in that distro.
-
-**Automated path for testers** (installs **WSL + Alpine** by default — small footprint — then **Linux `dockpipe`** from the latest GitHub release into `~/.local/bin` inside WSL — may prompt for **Administrator** or require a **reboot**). If **`wsl --install -d Alpine`** is not listed on your PC, use **`--distro Ubuntu`**.
-
-```powershell
-dockpipe windows setup --bootstrap-wsl --distro Alpine --non-interactive --install-dockpipe
-```
-
-The Windows **`install.ps1`** script runs that after installing **`dockpipe.exe`** unless you pass **`-SkipWSLSetup`**.
-
-```powershell
-dockpipe windows setup --distro Ubuntu --install-command "<your install command>" --non-interactive
-dockpipe windows doctor
-```
-
-**Manual QA:** **[manual-qa.md](manual-qa.md)**.
-
----
+Native Windows workflows use Git for Windows for Bash and Docker Desktop for
+container execution. WSL is optional; a native install does not require a Linux
+Dockpipe binary. Follow [the WSL bridge guide](runtime/wsl-windows.md) only when you
+want execution inside a WSL distribution. Dockpipe is not listed in the default
+winget catalog yet.
 
 ## macOS CLI / Remote Worker
-
-The published staging formula installs the CLI and required core package:
 
 ```sh
 brew install dockpipe-industries/dockpipe/dockpipe-staging
 dockpipe --version
 ```
 
-The command is `dockpipe`; this formula alone does not install the desktop launcher. Use the desktop cask or DMG described above for both. The stable `dockpipe` formula is not published yet. Native release tarballs and the checksum-verifying CLI installer are alternatives that do not require Go or a source checkout.
-
-See [staging installation](../release/docs/staging.md#homebrew-on-a-test-mac), [tap maintenance](../release/packaging/homebrew/README.md), and [release automation](../release/docs/releasing.md).
+This formula installs CLI/core. The desktop cask above adds the launcher. Update
+with `brew update` followed by `brew upgrade dockpipe-staging`. The stable formula
+is not published yet; native tarballs are another option.
 
 ### Containers with Colima
 
@@ -326,28 +289,30 @@ The compatibility changes are implemented in source. Native Colima container, mo
 and Compose qualification on macOS remains pending; the earlier desktop installer dry run does not
 cover this integration.
 
----
+## Browsing staging packages in the launcher
 
-## Building the .deb (for maintainers)
+Open **Settings → Package Remotes → Use staging**, save, then open
+**Packages → Marketplace**. The staging origin is
+`https://packages.staging.dockpipe.com`; new launcher settings otherwise default to
+production at `https://packages.dockpipe.com`. Select one channel explicitly.
 
-From the repo root:
+Marketplace verifies checksums and installs selected packages into your user
+store. Base installers include core only. See [Find and use packages](packages/package-quickstart.md)
+for dependencies, terminal installation and removal.
 
-```bash
-./release/packaging/build-deb.sh [version] [amd64|arm64]   # default: 0.6.0 amd64
-./release/packaging/build-deb-all.sh [version]             # both amd64 + arm64
-# Output: release/packaging/build/dockpipe_<version>_{amd64,arm64}.deb
-```
+## Bundled templates (no extra install tree)
 
-Attach that file to a GitHub Release. If we add a proper APT repo later, we’ll document it here.
+The CLI and installer supply the required runtime assets. You do not need to copy
+`templates/`, clone Dockpipe, or compile its source to run an installed workflow.
+Dockpipe may materialize embedded assets in its user cache automatically.
 
-### Browsing staging packages in the launcher
+Your own source workflows live under `workflows/` in your project. Optional packages
+live in the user store; the [package model](packages/package-model.md) explains
+storage and precedence when you need advanced configuration.
 
-After installing the CLI and launcher together, open **Settings → Package Remotes → Use staging**,
-save, then open **Packages → Marketplace**. The staging origin is
-`https://packages.staging.dockpipe.com`; new launcher settings otherwise default to production at
-`https://packages.dockpipe.com`. Select one remote explicitly; the launcher does not mix channels.
+## Building or maintaining Dockpipe
 
-Marketplace installs individual packages into your user store after checksum verification.
-The full Brew/DMG installation already includes a matching package store. See
-[remote package installation](packages/package-model.md#remote-catalogs-and-user-installation)
-for the CLI contract and dependency behavior.
+Source builds and contributor setup are covered in [CONTRIBUTING.md](../CONTRIBUTING.md).
+Installer construction and release publication belong to the
+[release documentation](../release/README.md). They are not installation steps for
+an end user.

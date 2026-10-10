@@ -24,7 +24,7 @@ v0.109.0 language slice remain complete. No successor was selected or created.
 
 ## Scope and protected state
 
-Used the saved `/home/jamie/source/dockpipe` checkout on `js/pipelang`, admitted clean
+Used the saved `<checkout>` checkout on `js/pipelang`, admitted clean
 at `3154030bdaa22ef8a5ef6570088e8528180719ff`. Index, stashes
 `26ea507907550d2449dc6f9c81b9942bd52d8629` and
 `e3afeea1dad94ca0c63dac434f0873548875bfc5`, all 108169 ignored paths and the inherited
@@ -82,7 +82,7 @@ Final documentation and protected-state checks are recorded in `final-checks.jso
 ## Durable evidence
 
 Current root:
-`/home/jamie/.codex/visualizations/2026/09/10/01a08c0e-03d5-7212-ad5f-51f9a86eaff9`.
+`<local-evidence>/2026/09/10/01a08c0e-03d5-7212-ad5f-51f9a86eaff9`.
 
 - `selection.json`, `hash-probe.go`, `hash-probe.output`, `hash-probe.json`:
   predeclared sample and unretained allocation experiment.
@@ -97,7 +97,7 @@ Current root:
   total costs and final protected-state/documentation checks.
 
 Predecessor root:
-`/home/jamie/.codex/visualizations/2026/09/10/01a089a6-9615-79f1-bfb2-fd72e289205d`.
+`<local-evidence>/2026/09/10/01a089a6-9615-79f1-bfb2-fd72e289205d`.
 Its `round-two-handoff-state.json` and accepted terminal campaign were admitted
 without rerunning the baseline full suite. Original caches and all receipts,
 failures and ignored state remain preserved. No required work remains in this round.

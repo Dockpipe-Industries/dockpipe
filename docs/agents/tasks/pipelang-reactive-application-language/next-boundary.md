@@ -1,4 +1,11 @@
-## Active objective — P04.a general blocks
+# Historical PipeLang boundary decisions
+
+This record preserves earlier selections and versioned acceptance boundaries.
+Its old "current", pending and approval statements are checkpoint history, not
+instructions to resume those objectives. [The overview](overview.md) owns current
+status; P04.a is complete and P04.b remains unaccepted pending terminal proof.
+
+## Completed objective — P04.a general blocks
 
 Founder selected P04.a and separately said `approved` for its concrete scope.
 [general-blocks.md](general-blocks.md) owns implementation and pending verification.
@@ -374,7 +381,7 @@ below is superseded.
 - Objective: `TASK-021-next-compiler-slice-after-v081`.
 - State: `completed`; founder selected A and separately said `approved` on 2026-09-04.
   Implementation and terminal proof passed; changes remain uncommitted for founder review.
-  [Step 8av](completed-functions.md#step-8av-conditional-local-in-terminal-trees-v0820) records proof.
+  [Step 8av](completed-functions.md#step-8av--conditional-local-in-terminal-trees-v0820) records proof.
   No successor is selected or authorized.
 - Execution skill: `dorkpipe-objective-execution`; authority: explicit founder approval.
 - Scope: `v0.82.0` adds at most one nonterminal ternary per method, only as the complete

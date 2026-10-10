@@ -41,7 +41,7 @@ delegation, worktrees and automatic handoff. Host containment needs a narrow rev
 Admission: saved `js/pipelang` at `8add7dc2cb7c755cb9d73c60c92452a75eca3a09`.
 The four owned profiling documents remain uncommitted and match final acceptance; preserve them.
 Both protected stashes match. Completed 417-unit profiling proof is admitted without replay.
-Evidence: `/home/jamie/.codex/visualizations/2026/09/13/01a09c2e-b445-7322-8a02-1d2328313bec/toolchain-transcript/`.
+Evidence: `<local-evidence>/2026/09/13/01a09c2e-b445-7322-8a02-1d2328313bec/toolchain-transcript/`.
 
 
 Completed outcome: independent correctness/resource acceptance passed for 11 fresh

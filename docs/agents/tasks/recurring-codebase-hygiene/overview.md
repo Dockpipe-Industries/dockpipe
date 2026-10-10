@@ -1,54 +1,35 @@
 # TASK-035 Recurring Codebase Hygiene
 
-The authorized [staging release channel](staging-release.md) published candidate `0.6.0-staging.37389279395.1.9725dee90d4d` through successful hosted CI. Public HTTPS, the five platform store manifests, and the staging APT signature are verified. The Homebrew tap is active after successful Intel and Apple Silicon installation tests in run `37397290496`. APT/MSI installation and broader application qualification remain separate; see the [canonical staging guide](../../../../release/docs/staging.md).
+## Agent documentation — 2026-10-10
 
-The VM harness repair `d6293516` was promoted through MRs #35–37. Staging run
-`37384217934` passed CI, all native builds, MSI and artifact assembly, then stopped
-before publication because the reusable release job received empty environment
-secrets. The approved follow-up adds `secrets: inherit` to the staging caller for
-the reported GitHub environment-secret resolution issue. Publication remains bound
-to `release-staging`; production credentials and master remain outside this repair.
-Hosted validation of this workaround is still pending.
+The [agent documentation audit](agent-docs-audit.md) removes personal machine
+assumptions, separates completed history from active routing and closes superseded
+status checkpoints. All 30 wider tasks remain open with their outstanding scope.
 
-## Current audit and cleanup — 2026-10-04
+## Public documentation audience — 2026-10-10
 
-[Hosted 0.6 qualification](release-0.6-hosted.md) passed in ninth dry run
-`37251332865` at pushed checkpoint `d6207ae`. All five native jobs, Windows MSI
-lifecycle, Linux runtime/package tests, and all 13 release-tooling tests passed.
-Combined artifact assembly ran without deployment approval; production publication
-and dev.to were skipped. Independent verification passed for all 290 package
-entries, bundled archives, 27 top-level checksums, test-key APT signature, four
-package-index hashes, and both DEBs. An isolated APT reader accepted both indexes.
-A redundant Release-header self-checksum is recorded as nonblocking metadata
-cleanup. Promotion remains `js/pipelang → js/dev → dev → staging → master`; actual
-publication requires master and separate authorization. Final evidence updates
-remain local; no engine behavior changed in the last test-only repair.
+The [public documentation audit](public-docs-audit.md) covers all 12 pages selected
+by the Cloud site's source bundler. Installation, onboarding and packages now lead
+with an installed application and the user's own project. Contributor architecture,
+AI design and package-publication material is linked separately. Local example and
+bundle checks are recorded there; live site refresh remains outside this change.
 
-The authorized [staging CI repair](release-0.6-hosted.md#staging-cisecurity-repair--2026-10-05)
-was pushed as `3195439`; the missing-ripgrep follow-up was pushed as `3e21f91`.
-Staging run `37264618895` at `95415dc` has an identical source tree to `3e21f91`.
-All shell tests, security/static scans, runtime tests, the Docker test workflow,
-DEB build, and Windows CI pass; CodeQL run `37264618880` also passes. The only
-failed integration fixture is `test_cursor_dev_session_guard.sh`, which resolves
-an uncreated workspace and uses the old session-marker location. The local
-fixture repair creates its workspace, uses current runtime helpers, runs from
-the correct directory, and isolates/cleans temporary state. Its guard assertions
-pass locally; all other integration tests passed in the hosted run. The fixture
-follow-up is approved for checkpoint/push to `js/pipelang`; hosted revalidation
-and fresh release qualification remain pending.
+## Release work and remaining qualification
 
-[0.6 error handling and architecture audit](release-0.6-audit.md) records six
-primary findings and their focused working-tree fixes: strict budget reads,
-checked artifact writes, resolver process-tree cancellation, bounded remote
-persistence/retry behavior, and verified Windows installer staging. Permanent
-regressions and affected suites pass; native Windows/macOS hosted execution is
-now covered by the qualification above. Release recovery rehearsal remains separate. A Windows-path
-candidate regression found by the broader suite was also corrected. The
-[DDD/DRY cleanup checkpoint](release-0.6-cleanup.md) records the remote domain
-policy extraction, package-owned ledger and orchestration responsibility split,
-and shared file staging with caller-specific durability preserved. Affected Go,
-race, shell, and cross-build checks pass. See the checkpoints for proof and limits;
-prior historical rankings are not evidence that the whole repository is clean.
+The earlier VM fixture and reusable-workflow secret blockers are resolved in the
+recorded successful staging delivery. Their old requests for push or hosted retry
+are closed historical checkpoints, not pending actions. See [staging evidence](staging-release.md)
+and [hosted qualification](release-0.6-hosted.md) for the exact runs, source revisions
+and per-platform limits. The [staging guide](../../../../release/docs/staging.md)
+owns current installation and channel behavior; do not treat an old candidate here
+as the current release pointer.
+
+The [0.6 audit](release-0.6-audit.md) and [DDD/DRY cleanup](release-0.6-cleanup.md)
+record completed focused fixes and validation. Release recovery rehearsal and
+broader native application qualification remain separate. Platform-wide support
+belongs to TASK-025 and its platform tasks; real remote pairing and delivery
+acceptance remains in TASK-036. A completed local or hosted test does not close
+those programs.
 
 ## Practice, Trigger, and Cadence
 
