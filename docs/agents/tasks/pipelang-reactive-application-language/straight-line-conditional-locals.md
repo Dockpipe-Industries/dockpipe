@@ -4,7 +4,7 @@
 
 - Objective: `TASK-021-straight-line-conditional-locals`; state: `completed`.
 - Founder selected A and separately said `approved` in this task.
-- Baseline: saved checkout `/home/jamie/source/dockpipe`, clean `js/pipelang` at
+- Baseline: saved checkout `<checkout>`, clean `js/pipelang` at
   `a69a288bfbc7dd2e09c7c17ad3dbf87787015367`; completed compiler memory repair admitted.
 - Execution skill: `dorkpipe-objective-execution`; automatic checkpoints within this scope;
   handoff only on user request; warn and continue under context pressure.

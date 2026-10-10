@@ -4,7 +4,7 @@
 
 - Objective: `TASK-021-depth-three-straight-line-returns`; state: `completed`.
 - Founder selected A and separately said `approved` on 2026-09-06.
-- Baseline: clean saved `/home/jamie/source/dockpipe`, `js/pipelang` at
+- Baseline: clean saved `<checkout>`, `js/pipelang` at
   `ab59a59e4199b64c8793cb6342c6625269a7b4ec`; completed v0.92 proof admitted.
   All 31 validated paths, both protected stashes and the ignored inventory match.
 - Execution skill: `dorkpipe-objective-execution`; automatic checkpoints within scope;

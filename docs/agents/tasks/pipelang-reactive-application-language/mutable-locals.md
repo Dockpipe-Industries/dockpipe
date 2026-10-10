@@ -30,7 +30,7 @@ Generic engine/package boundaries and independent oracles remain intact.
 
 ## Admission and verification
 
-Saved checkout `/home/jamie/source/dockpipe`, branch `js/pipelang`, clean at
+Saved checkout `<checkout>`, branch `js/pipelang`, clean at
 `e5f5e2ebbb9e17c201d941d533d73de0d31a238d`. Protected stashes remain
 `26ea507907550d2449dc6f9c81b9942bd52d8629` and `e3afeea1dad94ca0c63dac434f0873548875bfc5`.
 P04.a / v0.114.0 remains the accepted baseline. Its acceptance manifest, ten recorded
@@ -44,7 +44,7 @@ material source change. Preserve failed receipts and use sequential full-estate 
 
 Current checkpoint: implementation and focused checks pass; terminal acceptance is blocked by coordinator headroom. No verification job remains running after closeout.
 
-Evidence root: `/home/jamie/.codex/visualizations/2026/09/16/01a0ac95-5a43-7013-a865-a6c1941137a4/p04b`.
+Evidence root: `<local-evidence>/2026/09/16/01a0ac95-5a43-7013-a865-a6c1941137a4/p04b`.
 Source and Core independently track definite/possible assignment. HIR retains declaration
 mutability and bound assignment targets; Go/evaluator updates preserve copied values and
 per-invocation state. Declaration-only types participate in backend support and enum/schema
@@ -116,7 +116,7 @@ module was requested. The corrected standalone test selection passed.
 
 Because the harness changed, the earlier 8,892-case suite is retained as historical proof,
 not terminal acceptance for the revised inputs. A fresh campaign now runs under evidence root
-`/home/jamie/.codex/visualizations/2026/09/16/01a0ac95-5a43-7013-a865-a6c1941137a4/p04b/guard-1`,
+`<local-evidence>/2026/09/16/01a0ac95-5a43-7013-a865-a6c1941137a4/p04b/guard-1`,
 with 17,043 frozen postimages and no semantic receipts copied from the earlier campaign.
 
 That guard-1 admission still exhausted headroom after 117 seconds; no OOM/swap occurred and

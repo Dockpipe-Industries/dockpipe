@@ -43,7 +43,7 @@ installs, cleanup, cap changes, proposed-budget adoption, commit/push/publicatio
 credentials/external mutation, delegation, campaign interruption and worktrees.
 
 Evidence:
-`/home/jamie/.codex/visualizations/2026/09/13/01a0997d-9f74-7301-891c-b485518f17d6/go-v109-layout-fixtures/`.
+`<local-evidence>/2026/09/13/01a0997d-9f74-7301-891c-b485518f17d6/go-v109-layout-fixtures/`.
 
 Completion: all eight matched passes preserve 35 source layouts, 143,360 vectors
 and 70 fresh native package executions per pass, with zero warm misses. Thirteen

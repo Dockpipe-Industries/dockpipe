@@ -4,7 +4,7 @@
 
 - Objective: `TASK-021-depth-three-straight-line-initializers`; state: `completed`.
 - Founder selected A and separately said `approved` on 2026-09-06.
-- Baseline: clean saved `/home/jamie/source/dockpipe`, `js/pipelang` at
+- Baseline: clean saved `<checkout>`, `js/pipelang` at
   `25f8af71b0478af6255ab3a9c508cfba6f6c43e4`. Completed v0.95 proof is admitted.
 - Scope: v0.96.0 admits complete ternary initializers through depth three in any
   subset of a finite explicitly typed immutable-local sequence in straight-line

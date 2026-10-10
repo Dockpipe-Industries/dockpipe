@@ -1,9 +1,7 @@
 # CLI reference
 
-`dockpipe remote` provides provider-neutral setup, pairing, outbound workers, explicit workflow
-submission (including source/assets/package delivery with `--workflow-file`), cancellation, and result download.
-Workers explicitly opt in with `remote pair --allow-delivery`; existing profiles remain supported. See [Remote nodes](runtime/remote-nodes.md) for the
-Cloudflare resolver, local profiles, credentials, recovery, and current qualification limits.
+Use `dockpipe -- <command>` for a one-off command or
+`dockpipe --workflow <name> --` for a workflow you created or installed.
 
 **Run → isolate → act.** Overrides use the same names as workflow YAML. Precedence: **CLI** > config > environment.
 
@@ -15,7 +13,9 @@ For most users, the main knobs are:
 
 Treat **`--isolate`** as the low-level image/template override, not the main way to think about workflow selection.
 
-**Prerequisites:** **Docker** and **`bash` on the host** (dockpipe always invokes bash). **`git` on the host** for **`--repo`**, worktrees, and commit-on-host. See **[install.md](install.md)**.
+**Prerequisites:** native host steps need Bash; container workflows need a reachable
+engine. Git is needed for Git operations. Flatpak supplies its shell/container
+clients and uses explicit host integrations where required. See [installation](install.md).
 
 **Workflow YAML (`config.yml`):** single-command layout (`run` / `isolate` / `act`) or multi-step **`steps:`** (ordering, **`outputs:`**, explicit **`group.mode: async`** for parallel work). In step mode, top-level `run` / `act` are not used. Full reference: **[workflows/workflow-yaml.md](workflows/workflow-yaml.md)**.
 
@@ -29,7 +29,18 @@ If you just want the common path:
 - `dockpipe test` runs package-owned tests plus workflow-local tests
 - `dockpipe doctor` checks bash, Docker, and bundled assets
 
-The detailed sections below include maintainer-only commands and lower-level behavior.
+Use an installed CLI from your own project folder. For Flatpak, replace `dockpipe`
+with `flatpak run --command=dockpipe com.dockpipe.Dockpipe`.
+
+The detailed sections include optional package-author and self-hosted publishing
+commands. They are not steps required to install or use Dockpipe.
+
+## Remote workers
+
+`dockpipe remote` provides provider-neutral setup, pairing, outbound workers, explicit workflow
+submission (including source/assets/package delivery with `--workflow-file`), cancellation, and result download.
+Workers explicitly opt in with `remote pair --allow-delivery`; existing profiles remain supported. See [Remote nodes](runtime/remote-nodes.md) for the
+Cloudflare resolver, local profiles, credentials, recovery, and current qualification limits.
 
 ## `dockpipe init`
 
@@ -44,13 +55,17 @@ Local project setup only: **no `git clone`**, no treating **`init`** as a remote
 | `dockpipe init <name> --resolver <n> --runtime <n> --strategy <n>` | Optional; written into the new **`config.yml`**. New workflows use plain **`resolver:`** and **`runtime:`**. Example: **`dockpipe init my-pipeline --from run-apply --resolver codex --runtime dockerimage`**. |
 | `dockpipe init --gitignore` | **Opt-in** only: append a marked block to **`.gitignore`** at the **git repository root** (`bin/.dockpipe/`, Go caches, `tmp/`). Idempotent if the block is already present. Requires a **git working tree** (run from inside a repo). |
 
-On a **dockpipe source checkout**, **`--workflow`** usually resolves **`workflows/<name>/config.yml`** first, then package-owned workflow roots declared in **`dockpipe.config.json` `compile.workflows`**, then bundled/example workflow roots such as **`src/core/workflows/<name>/config.yml`**. In a **typical downstream project**, named workflows live under **`workflows/<name>/config.yml`** by default; **`templates/<name>/config.yml`** remains a **legacy** fallback. Override the primary folder with **`--workflows-dir`** or **`DOCKPIPE_WORKFLOWS_DIR`**.
+Named workflows normally live at `workflows/<name>/config.yml` in your project.
+Installed packages and configured source roots are also searched. Override the
+primary source folder with `--workflows-dir` or `DOCKPIPE_WORKFLOWS_DIR`; use
+`--workflow-file` when you want an exact file. Legacy `templates/<name>/config.yml`
+remains a compatibility fallback.
 
 **`dockpipe init`** creates the root **`README.md`** when missing and ensures **`workflows/`** exists.
 
 ## `dockpipe install`
 
-Fetches a published **`templates/core`** tree over **HTTPS** and replaces **`<workdir>/templates/core`**. Intended for packages hosted on **Cloudflare R2** (or any static HTTPS origin); credentials are **not** required for public URLs.
+Fetches a published **`templates/core`** tree over **HTTPS** and replaces **`<workdir>/templates/core`**. This is a legacy core-tree/mirror command, not the normal application installer or Marketplace package install. Intended for packages hosted on **Cloudflare R2** (or any static HTTPS origin); credentials are **not** required for public URLs.
 
 | Command | Purpose |
 |---------|---------|
@@ -61,9 +76,9 @@ Fetches a published **`templates/core`** tree over **HTTPS** and replaces **`<wo
 
 **Environment:** **`DOCKPIPE_INSTALL_BASE_URL`**, optional **`DOCKPIPE_INSTALL_VERSION`**, **`DOCKPIPE_INSTALL_MANIFEST`** (default **`install-manifest.json`**), **`DOCKPIPE_INSTALL_ALLOW_INSECURE_HTTP=1`** for **`http://`** (local tests only).
 
-**Publish (self-hosted mirror):** **`make package-templates-core`** or **`dockpipe package build core`** → **`release/artifacts/templates-core-<VERSION>.tar.gz`**, **`.sha256`**, **`release/artifacts/install-manifest.json`** (same layout as **`release/packaging/package-templates-core.sh`**; override dir with **`DOCKPIPE_ARTIFACTS_DIR`**). After **`dockpipe build`**, **`dockpipe package build store`** writes one **`.tar.gz`** (+ **`.sha256`**) per compiled package under **`bin/.dockpipe/internal/packages/`** (core, workflows, resolvers; bundles only with **`--only bundles`**) and **`packages-store-manifest.json`** — suitable for mirroring. When a workflow **`config.yml` inside that tarball** declares **`namespace:`**, **`dockpipe run --workflow <name>`** can resolve and **stream** from **`release/artifacts/dockpipe-workflow-<name>-*.tar.gz`** (see **`packages.tarball_dir`** / **`packages.namespace`** in **`dockpipe.config.json`**) if no on-disk workflow wins. Upload those files to the same **`--base-url`** path, then run the repo workflow **`package-store-publish`** or **`dockpipe release upload <file>`** / **`aws s3 cp`** to R2. Official releases may use a different pipeline; **`package build`** / **`release upload`** are for self-hosted mirrors and in-repo mirrors.
-
-**Archive format:** `tar czf -C src core --exclude='core/workflows'` — entries must be **`core/…`** (category dirs only; see **`release/packaging/package-templates-core.sh`**). After extract, the CLI **re-reads the tarball** and checks **every file on disk** matches the archive, then prints the **tarball sha256** (and compares to manifest/`.sha256` when present).
+For archive construction and self-hosted publication, see
+[Package publishing](packages/package-publishing.md). Application users should use
+[the installation guide](install.md) and `dockpipe package install` below.
 
 ## `dockpipe clone`
 
@@ -91,11 +106,15 @@ of the resolved compiled store for `DOCKPIPE_PACKAGES_ROOT` compatibility.
 
 ## `dockpipe package`
 
-Inspect **installed** package metadata. Store-backed installs are intended to land under **`bin/.dockpipe/internal/packages/`** (workflows, core slices, assets); see **[packages/package-model.md](packages/package-model.md)** for **authoring vs compiled run modes**, **install vs run network boundary**, and the **compile → package → release** pipeline (compile will grow to pull in domain assets; **`package compile workflow`** today copies the source tree after validate).
+Discover and install remote packages, inspect local inventory, or compile your own
+workflows. Remote installation uses the per-user store; project compilation uses
+`bin/.dockpipe/internal/packages/`. See [Find and use packages](packages/package-quickstart.md)
+for the normal install/run path and [Package model](packages/package-model.md) for
+advanced authoring and storage.
 
 | Command | Purpose |
 |---------|---------|
-| `dockpipe package list [--workdir <path>]` | Walk **`bin/.dockpipe/internal/packages/`** for **`package.yml`** files; print **path**, **name**, **version**, **description** (tab-separated). |
+| `dockpipe package list [--workdir <path>]` | Print project-store package metadata in text form; use `--format json` for inventory across project, configured, user and system stores, with warnings. |
 | `dockpipe package list --format json [--workdir <path>]` | Inventory project, configured, user, and system packages, plus warnings and the user install root. |
 | `dockpipe package catalog --remote <HTTPS manifest URL>` | Return the current execution platform's remote packages and resolved store manifest as JSON. Inside Flatpak this includes its runtime ID/branch; native processes retain OS/architecture selection. Accepts a latest pointer, release catalog, or explicit platform store. |
 | `dockpipe package install --remote <URL> --kind core\|workflow\|resolver --name <name> [--sha256 <digest>]` | Verify and install one package into the user store. A digest pins the selected catalog entry. Dependencies are installed separately. |
@@ -174,7 +193,7 @@ All options must appear **before** a standalone **`--`**. The command and its ar
 | Flag | Aliases | Purpose |
 |------|---------|---------|
 | `--workflow <name>` | | Load a named workflow. The normal lookup path is project **`workflows/`**, configured package/workflow roots from **`compile.workflows`**, and bundled workflows included with the Dockpipe build. Legacy **`templates/`** and some maintainer/example roots remain as compatibility fallbacks. With **`steps:`**, a final **`--`** is optional (see **[workflows/workflow-yaml.md](workflows/workflow-yaml.md)**). Mutually exclusive with **`--workflow-file`**. |
-| `--workflow-file <path>` | | Load workflow YAML from an arbitrary path (same shape as bundled **`config.yml`**). Relative **`run:`** / **`act:`** paths resolve next to that file. **Resolver** profiles load only from **`templates/core/resolvers/`** (or **`bundle/core/resolvers/`** in the materialized bundle) — not from folders beside the YAML file. Mutually exclusive with **`--workflow`**. |
+| `--workflow-file <path>` | | Load workflow YAML from an arbitrary path (same shape as bundled **`config.yml`**). Relative **`run:`** / **`act:`** paths resolve next to that file. **Resolver** profiles use the configured package/core lookup, not arbitrary folders beside the YAML file. Mutually exclusive with **`--workflow`**. |
 | `--package <name>` | | With **`--workflow <name>`**, select an unpacked packaged workflow whose nearest **`package.yml`** has matching **`name:`**. This is a generic package selector, not an AI-provider concept. Mutually exclusive with **`--workflow-file`**. |
 | `--workflows-dir <path>` | | Repo-relative or absolute directory for **`--workflow <name>`** resolution (default **`workflows/`**). Same as **`DOCKPIPE_WORKFLOWS_DIR`**. Also **`dockpipe init <name> --workflows-dir …`**. |
 | `--run <path>` | `--pre-script` | **Run:** script(s) on the host before the container. Repeatable. |

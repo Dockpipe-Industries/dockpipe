@@ -114,7 +114,7 @@ scaling baseline follows the existing backend's fixed wrapper emission. Failed
 attempts are not terminal acceptance.
 
 Reproduce with `python3 -B tests/containedexec/pipelang_suite.py`,
-`--go /home/jamie/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.25.13.linux-amd64/bin/go`,
+`--go "$GO_TOOLCHAIN"`,
 `--cache /tmp/pipelang-performance-proof/cache`,
 `--compiled-cache /tmp/pipelang-execution-performance/complete-artifacts`,
 `--shape-batch-size 1 --workers 2 --audit-generated` and a fresh `--output` directory.

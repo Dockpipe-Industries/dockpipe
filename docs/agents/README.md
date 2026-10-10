@@ -1,15 +1,8 @@
 # Agent Docs
 
-This folder is the focused agent-routing layer for the Dockpipe repo.
+Start with [AGENTS.md](../../AGENTS.md) and [index.yaml](index.yaml) to select
+focused guidance. Main product/reference docs remain canonical; see the
+[docs contract](docs/docs-system.md).
 
-Start at:
-
-- `AGENTS.md`
-- `docs/agents/index.yaml`
-
-Use `docs/agents/docs/docs-system.md` for the contract between canonical main docs and the compressed
-agent-facing layer.
-
-The active AI task backlog lives at:
-
-- `docs/agents/task-index.yaml`
+For backlog work, use [task-index.yaml](task-index.yaml). [Task maintenance](TASKS.md)
+explains closure, current versus historical evidence, and portable path conventions.

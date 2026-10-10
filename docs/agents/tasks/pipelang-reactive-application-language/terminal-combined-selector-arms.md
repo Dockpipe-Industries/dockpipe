@@ -43,7 +43,7 @@
 
 Pre-crash receipts under `/tmp/pipelang-v109-proof` were lost during reboot.
 Implementation and bounded verification are complete under aggregate containment.
-Current receipts: `/home/jamie/.cache/pipelang-v109-resume-20260909`.
+Current receipts: `<local-cache>/pipelang-v109-resume-20260909`.
 
 
 ## Host memory incident — 2026-09-09
@@ -75,7 +75,7 @@ Post-reboot investigation:
 - The founder authorized a privileged read of selected diagnostic fields from the
   root-owned apport report dated 19:11:42, using the system authentication dialog.
   Apport failed with `FileNotFoundError` opening the vanished process's `cwd` while
-  handling a .NET SIGABRT (`/home/jamie/.dotnet/dotnet`, host PID 1228425).
+  handling a .NET SIGABRT (`<dotnet-executable>`, host PID 1228425).
   This report does not identify an OOM cause. Its recorded memory figures describe
   the crash reporter, not whole-host memory or the original .NET process.
   The ChatGPT crash report in `/var/crash` is dated September 4 and is not evidence
@@ -105,7 +105,7 @@ protected stashes still match the admitted baseline; the 28 v0.109 changed paths
 survived. The temporary receipts and caches did not. The necessary containment
 repair adds a shared temporary slice for coordinators and all child units, streams
 log inventory, and retains resumed receipts in the private durable directory
-`/home/jamie/.cache/pipelang-v109-resume-20260909`. Three small live aggregate probes
+`<local-cache>/pipelang-v109-resume-20260909`. Three small live aggregate probes
 passed (nested containment and cleanup, independent deadline cancellation, and
 uncontained-coordinator refusal). Existing per-unit limits and compiler ceilings
 are unchanged. Completion is recorded below; this does not assert a crash cause.
@@ -158,7 +158,7 @@ needed for either preparation timeout or the two inherited test timeouts.
 ## Completion — 2026-09-10
 
 The accepted receipt is
-`/home/jamie/.cache/pipelang-v109-resume-20260909/accepted-verification.json`.
+`<local-cache>/pipelang-v109-resume-20260909/accepted-verification.json`.
 It reconciles all 810 discovered functions and all 6,187 scheduled units across
 6,189 attempts, retaining the two initial deadline failures and their passing
 focused retries. It also verifies unchanged compiler/harness source, complete

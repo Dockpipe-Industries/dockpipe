@@ -41,7 +41,7 @@ emitter, new CLI surface, language expansion or full app port.
 Admission: clean saved `js/pipelang` at 0bf0b0b49da04823c633fdba37558787d6da39eb.
 Protected stashes match prior evidence. Previous experiment documentation is committed
 and preserved. Evidence root:
-`/home/jamie/.codex/visualizations/2026/09/13/01a09c2e-b445-7322-8a02-1d2328313bec/cpp-qt-pilot/`.
+`<local-evidence>/2026/09/13/01a09c2e-b445-7322-8a02-1d2328313bec/cpp-qt-pilot/`.
 Qt 6.2.4 CMake packages and moc are installed despite absent pkg-config entries;
 contained compilation and actual GUI execution subsequently passed.
 

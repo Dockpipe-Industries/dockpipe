@@ -31,7 +31,7 @@
 
 ## Evidence
 
-Durable proof root: `/home/jamie/.codex/visualizations/2026/09/10/01a08cf5-e6c6-7331-9956-f854d2c59619`.
+Durable proof root: `<local-evidence>/2026/09/10/01a08cf5-e6c6-7331-9956-f854d2c59619`.
 Implementation and verification are complete. The fresh `terminal-2` campaign and
 independent acceptance below are the current proof; earlier failed attempts remain preserved.
 
