@@ -55,7 +55,8 @@ If it is a tool/platform, put it under `resolvers/`. If it is an execution subst
 
 ## Canonical Docs
 
-- `docs/concepts/architecture-model.md`
+- `docs/concepts/architecture-model.md` (user concepts)
+- `docs/concepts/architecture-contract.md` (normative engine invariants and source layout)
 - `docs/concepts/capabilities.md`
 - `docs/runtime/operation-results.md`
 - `docs/runtime/git-runtime-sessions.md`

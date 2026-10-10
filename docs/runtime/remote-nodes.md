@@ -5,8 +5,10 @@ outbound HTTPS requests and invokes the existing local CLI. No SSH server, inbou
 inbound shell endpoint or automatic Git operation is involved. Source delivery is an explicit,
 bounded snapshot; it does not synchronize an entire checkout.
 
-This initial single-operator CLI has Linux loopback proof. Darwin builds and launchd manifests
-do not establish native Mac, sleep/wake, or live Cloudflare readiness. There is no remote GUI yet.
+The launcher exposes remote setup and pairing in **Machines**, delivery in **Workflows**,
+and results in **Activity**. The current single-operator implementation has Linux loopback
+and local UI test evidence. Darwin builds and launchd manifests alone do not establish
+complete native Mac pairing, sleep/wake or end-to-end provider acceptance.
 Remote broker initialization, workers, and provider setup currently require Linux or macOS;
 Windows remote workers remain a follow-up. Cross-platform protocol, storage, and process tests
 do not establish Windows remote-node support.

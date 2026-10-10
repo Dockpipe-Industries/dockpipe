@@ -23,7 +23,7 @@ For provider-specific behavior, use the renderer's section overrides described i
 [DorkPipe Skills Renderer](../../../packages/dorkpipe/README.md#skills-renderer).
 Keep shared instructions in one source; replace only the sections that differ for a target.
 
-## Installed Codex Skills
+## Curated Skill IDs
 
 - `dorkpipe-agentic-yaml`
 - `dorkpipe-core-review`
@@ -32,6 +32,9 @@ Keep shared instructions in one source; replace only the sections that differ fo
 - `dorkpipe-task-handoff`
 - `dorkpipe-token-optimization`
 - `dorkpipe-yaml-workflows`
+
+These are repository-owned sources, not a claim that every host has them installed.
+Inspect available skills or render them for the selected adapter when needed.
 
 ## Render Commands
 

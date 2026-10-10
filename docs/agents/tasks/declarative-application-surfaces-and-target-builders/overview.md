@@ -34,7 +34,7 @@ CLI changes, launcher rewrites, generated-state refreshes, or target-toolchain i
 
 ## Proven Consumer Evidence
 
-The read-only consumer proof in `/home/jamie/source/dockpipe-cloud` demonstrates the direction using
+The read-only consumer proof in `<dockpipe-cloud-checkout>` demonstrates the direction using
 current Dockpipe behavior and no main-repository changes:
 
 | Evidence | What it proves |

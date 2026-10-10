@@ -1,6 +1,9 @@
 schema: 1
 task: TASK-036
 topic: Provider-neutral workflow delivery and browser-authorized remote onboarding
+dispatch:
+  readiness: unclassified
+  ownership: unclaimed
 read_first:
   - overview.md
 canonical:

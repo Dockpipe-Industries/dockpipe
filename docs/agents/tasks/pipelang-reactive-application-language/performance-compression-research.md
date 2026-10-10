@@ -44,7 +44,7 @@ originals remain; zero bytes freed.
 ## Evidence and scope
 
 Research evidence root:
-`/home/jamie/.codex/visualizations/2026/09/12/01a09431-f799-75e1-a603-a139ea3af283`.
+`<local-evidence>/2026/09/12/01a09431-f799-75e1-a603-a139ea3af283`.
 `receipt-analysis.json`, `record-sample.json`, `record-codec-results.json`,
 `support-accounting.json`, analysis/probe scripts, and the successful
 `record-codec-host-job.json` / `record-codec-unit.json` preserve the measurements.

@@ -27,7 +27,7 @@ both native assertions. Checkpoints advance automatically; handoff is user-reque
 only. Context pressure prompts a warning and continuation. Terminal states are
 completed, blocked, failed_verification or cancelled; retain failed evidence.
 
-Admission: clean saved `/home/jamie/source/dockpipe`, branch `js/pipelang`, HEAD
+Admission: clean saved `<checkout>`, branch `js/pipelang`, HEAD
 `62b13d068ba576c12c8917afb0ef609464a56147`. Completed v0.102 proof admitted with
 six matching postimages, 336 evidence digests and five failed-attempt bindings.
 Protected stashes: `26ea507907550d2449dc6f9c81b9942bd52d8629` and
@@ -41,7 +41,7 @@ operation. No uncontained fallback.
 
 Owned source: `src/lib/pipelang/depth_three_terminal_initializers_test.go`.
 Documentation: this record, both task indexes, canonical report and footprint follow-up.
-Evidence: `/home/jamie/.codex/visualizations/2026/09/13/01a09bce-198f-7f70-b71d-ba99eca633bb/go-v097-layout-fixtures/`.
+Evidence: `<local-evidence>/2026/09/13/01a09bce-198f-7f70-b71d-ba99eca633bb/go-v097-layout-fixtures/`.
 
 Excluded: other family conversions, shared reader/batch changes, compiler/evaluator/
 language changes, accounting changes, validation-read optimization, C++, installs,

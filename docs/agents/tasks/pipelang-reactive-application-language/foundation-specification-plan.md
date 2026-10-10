@@ -21,7 +21,7 @@ terminal_conditions: completed | blocked | failed_verification | cancelled
 
 ## Admission
 
-Saved checkout `/home/jamie/source/dockpipe`, branch `js/pipelang`, HEAD
+Saved checkout `<checkout>`, branch `js/pipelang`, HEAD
 `9f5abd00fbc21ae2ab23178cc4fbe761903e5167`; staged, unstaged and untracked state empty.
 Protected stashes `26ea507907550d2449dc6f9c81b9942bd52d8629` and
 `e3afeea1dad94ca0c63dac434f0873548875bfc5` present. Preserve ignored caches and proof.
@@ -57,7 +57,7 @@ by this planning objective. Founder selection and implementation approval remain
   dependency links now name the proposed M-app milestone; their implementation remains unapproved.
 
 Validation artifact:
-`/home/jamie/.codex/visualizations/2026/09/12/01a09387-ddcf-71d1-94b7-9395966a4500/foundation-doc-validation.json`.
+`<local-evidence>/2026/09/12/01a09387-ddcf-71d1-94b7-9395966a4500/foundation-doc-validation.json`.
 Checks cover all 34 unique inventory/ledger rows, all 33 P packages and five B packages, exact
 slice-range arithmetic, the 34-node/58-edge acyclic summary graph, new/changed Markdown links,
 209 task route/document paths, parsed YAML and synchronized dispatch/approval metadata.
@@ -65,7 +65,7 @@ slice-range arithmetic, the 34-node/58-edge acyclic summary graph, new/changed M
 protected stashes remain unchanged. No ignored cache or old evidence was edited or removed.
 
 The routed `./src/bin/dockpipe --package dorkpipe --workflow skills.render -- --list` check stopped
-before rendering because the sandbox cannot chmod `/home/jamie/.local/state/dockpipe` (read-only
+before rendering because the sandbox cannot chmod `<dockpipe-state>` (read-only
 filesystem). This is an unavailable host launcher check, not a documentation or compiler failure.
 No skill source/routing IDs changed; YAML paths and referenced installed skill IDs were checked
 read-only. No host permission change or generated skill refresh was attempted. Broad compiler,

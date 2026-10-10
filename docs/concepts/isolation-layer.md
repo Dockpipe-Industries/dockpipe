@@ -1,82 +1,92 @@
-# Isolation layer (named execution environments)
+# Choose where commands run
 
-Dockpipe separates **what runs** (workflow, steps, commands) from **where / how it runs** (container image, host script, embedded sub-workflow). This doc names that second concern the **isolation layer**.
+Dockpipe workflows can run commands in containers or in the environment running
+Dockpipe. Select the boundary that matches the command's needs.
 
-**Normative terminology:** **[architecture-model.md](architecture-model.md)** (FINAL). **workflow** · **runtime** (environment) · **resolver** (tool) · **strategy** · **`runtime.type`**. A single on-disk file may hold keys for **both** subsystems; they remain **semantically separate** per architecture-model § *Configuration layering*. **`DOCKPIPE_RUNTIME_TYPE`** = **`runtime.type`**.
+## Container or host step?
 
----
+| Choice | Use it for | Requirements |
+| --- | --- | --- |
+| Container from an image (`runtime: dockerimage`) | Commands that need a repeatable tool environment | A reachable Docker engine and an image containing the tools |
+| Dockerfile-backed execution (`runtime: dockerfile`) | A workflow/resolver that builds its own tool image | Docker, the declared build inputs, and any permitted build network access |
+| Host step (`kind: host`) | Local tools or explicit host integrations | The required tools in the environment running Dockpipe |
 
-## Concepts
+Installing a package does not start a container engine. A native CLI uses your
+configured Docker context/environment. The Flatpak bundles container clients and
+connects to an available host socket; see [installation](../install.md).
 
-| Term | Meaning |
-|------|--------|
-| **runtime.type** | **`execution`** \| **`ide`** \| **`agent`** — classification of **runtime behavior** only (not Docker vs EC2). Set with **`DOCKPIPE_RUNTIME_TYPE`** (see **`domain/runtime_kind.go`**). |
-| **Technical runtime keys** | *How* isolation is wired — Dockerfile-backed image, pinned image, embedded workflow YAML, or host script. Expressed with **`DOCKPIPE_RUNTIME_*`** (vendor-agnostic field names). |
-| **Resolver** | *Which tool or platform* — **`templates/core/resolvers/<name>`** (file or **`profile`**), **`--resolver`**, **`DOCKPIPE_RESOLVER_*`** (same semantics as **`DOCKPIPE_RUNTIME_*`** for that file where applicable). |
-| **Profile name** | The string you pass as **`--runtime`** / **`--resolver`** or **`runtime:`** / **`resolver:`** in YAML (resolved under **`templates/core/`** or **`bundle/core/`** in the materialized bundle). **`--isolate`** / **`isolate:`** can also name a **`TemplateBuild`** template or a raw image without a profile file. |
-| **Profile file** | A **`KEY=value`** file under **`templates/core/resolvers/<name>`** or **`templates/core/resolvers/<name>/profile`**. **No** per-workflow override — custom behavior belongs in **workflow** YAML. |
+## Select an image
 
-**Workflow** = sequence, vars, steps. **`strategy:`** = lifecycle hooks before/after the body. **Runtime** and **resolver** are separate; **`DOCKPIPE_RUNTIME_TYPE`** carries **`runtime.type`** per **[architecture-model.md](architecture-model.md)**.
+For a one-off command:
 
----
+```sh
+dockpipe --runtime dockerimage --isolate alpine:3.22 -- pwd
+```
 
-## Profile kinds (cohesion model)
+The project is mounted at `/work`. The command runs in the container, which is
+removed when it finishes. Files written to the project mount remain in your
+project. The image may need to be downloaded on first use.
 
-A profile is **one** of these execution shapes. The runner decides from which keys are set in the profile file (and from `isolate:` / `TemplateBuild`).
+The equivalent workflow selection is:
 
-| Kind | Mechanism | Typical examples |
-|------|-----------|------------------|
-| **Dockerfile template** | **`DOCKPIPE_RESOLVER_TEMPLATE`** → **`TemplateBuild`** / **`DockerfileDir`** → build **`resolvers/<name>/assets/images/<name>`** (or **`bundles/…/assets/images`**, then **`assets/images/<name>`**), run **`docker run`**. | `claude`, `codex`, `vscode`, `base-dev`, `dev`, `agent-dev` |
-| **Pinned image** | **`isolate:`** in YAML or CLI **`--isolate`** with a name **`TemplateBuild`** does not know → treat as **image name** (optional `:` tag). | `alpine`, `dockpipe-claude:1.2.3` |
-| **Embedded workflow** | **`DOCKPIPE_RESOLVER_WORKFLOW`** → run **`templates/<name>/config.yml`** with the same runner (multi-step / host IDE). | `cursor-dev`, `vscode`, `claude`, `codex`, `code-server` (single-step templates) |
-| **Host isolate** | **`DOCKPIPE_RESOLVER_HOST_ISOLATE`** → host script instead of `docker run` for that step/run. | Custom installers |
-| **Compose / URL / desktop** | *Not first-class in the runner yet* — extension points below. | Future |
+```yaml
+name: location
+runtime: dockerimage
+isolate: alpine:3.22
 
-**Same name, different axes:** e.g. **`code-server`** can be a **Dockerfile template** image when you **`--isolate code-server`**, or **embedded delegate** when the **`worktree`** strategy sample + resolver **`code-server`** sets **`DOCKPIPE_RESOLVER_WORKFLOW=code-server`**. The profile file defines which path applies.
+steps:
+  - id: location
+    cmd: pwd
+```
 
----
+Choose an image that contains your command's tools. A minimal Alpine image does
+not include Node, Go or your provider CLI. For repeatable builds, use an image
+version or digest approved for your project.
 
-## Where things live (framework layout)
+## Use a tool integration
 
-| Location | Role |
-|----------|------|
-| **`templates/core/resolvers/<name>`** | Shared **resolver** profiles (tool integrations): claude, codex, cursor, vscode, code-server, … |
-| **`templates/core/resolvers/<name>/assets/images/<name>/Dockerfile`** (or **`bundles/…/assets/images/…`**, else **`assets/images/<name>`**) | **Dockerfile-backed** profiles; **`TemplateBuild`** maps template name → image + build dir. |
-| **`templates/<workflow>/config.yml`** | **Embedded workflows** referenced by **`DOCKPIPE_RESOLVER_WORKFLOW`** (e.g. cursor-dev, vscode). |
-| **`templates/core/assets/scripts/*.sh`**, **`templates/core/bundles/**`** | Shared host helpers and **domain** bundles; **`scripts/…`** resolves to project **`scripts/`**, then **`resolvers/`**, **`bundles/`**, then **`assets/scripts/`**. |
-| **`templates/core/resolvers/…/assets/compose/`**, **`templates/core/bundles/…/assets/compose/`** | Optional **Compose** example assets (not a runtime); use with **`docker compose`** when a resolver or bundle benefits from multi-service setups. **`assets/compose/README.md`** documents the layout. |
+A resolver adds a tool's setup and execution behavior. Install its package and
+follow its requirements before selecting it with `resolver:` or `--resolver`.
+A resolver may use a Dockerfile-backed image, delegate to a packaged workflow or
+perform an explicit host integration; read its package documentation.
 
-Resolution order for a profile file: **`templates/core/resolvers/<name>`** → **`templates/core/resolvers/<name>/profile`** (see **`tryResolveResolver`** / **`ResolveResolverFilePath`**). Profiles are **not** read from **`templates/<workflow>/resolvers/`** — custom flows use **workflow** YAML under **`templates/`** or **`templates/<workflow>/`**, not parallel resolver trees.
+Runtime and resolver remain separate choices: the runtime owns the execution
+boundary, while the resolver supplies tool-specific behavior. Neither the
+presence of a local executable nor installing Flatpak changes which package
+platform a native Dockpipe process selects.
 
----
+## Host steps and Flatpak
 
-## Adding a new profile (checklist)
+```yaml
+name: hello
+docker_preflight: false
 
-1. **Container from a new Dockerfile** — add **`templates/core/resolvers/<name>/assets/images/<name>/`** (or **`bundles/<domain>/assets/images/<domain>/`**), **`TemplateBuild`** case in **`src/lib/infrastructure/template.go`**, **`templates/core/resolvers/<name>`** with **`DOCKPIPE_RESOLVER_TEMPLATE=<name>`** when it is a resolver (and docs / env hints).
-2. **Reuse an existing image only** — often no new Dockerfile; **resolver** file sets **`DOCKPIPE_RESOLVER_TEMPLATE`** or users pass **`--isolate <image>`** directly.
-3. **IDE / long-running host flow** — add **`templates/<myflow>/config.yml`** + **`steps:`**; set **`DOCKPIPE_RESOLVER_WORKFLOW=myflow`** in a resolver profile.
-4. **Host-only** — **`DOCKPIPE_RESOLVER_HOST_ISOLATE=scripts/...`**.
+steps:
+  - id: hello
+    kind: host
+    cmd: printf 'Hello from this environment!\n'
+```
 
----
+On a native installation, this runs with your user permissions on the host.
+Inside Flatpak, it runs in the app environment. Packages that open an editor,
+call a host provider CLI or manage a host service use explicit host integrations
+and need those host tools and permissions.
 
-## Future extension points (doors to open)
+Docker's network, filesystem and process policy does not sandbox `kind: host`
+steps. Do not use a host step to run code you intended to isolate in Docker.
 
-These are **not** implemented as separate kinds in the runner today, but the isolation layer is meant to grow here:
+## Network, files and reusable images
 
-| Idea | Possible direction |
-|------|---------------------|
-| **Docker Compose** | Reusable examples under each **`resolvers/<name>/assets/compose/`** or **`bundles/<domain>/assets/compose/`**; optional profile keys later → `docker compose run` / `up` with a defined service name. |
-| **Raw image URL** | Already partially supported **via** `--isolate` when the value looks like a registry reference; could be first-class in profile files. |
-| **Electron / desktop app** | Profile kind **desktop** → host script that launches a binary; same **host isolate** path with richer conventions. |
-| **Browser / remote** | **Embedded workflow** (vscode, code-server) **or** host script opening a URL — already covered by **workflow** + **host** patterns. |
+Use workflow `security` settings to declare container policy. Check the effective
+policy and logs: some network rules may be advisory rather than enforced.
+Provider calls and dependency installation may need explicitly permitted network
+access. See [Security policy](../security/security-policy.md).
 
-When adding a new kind, prefer **one profile file** + **one clear primary key** (e.g. `DOCKPIPE_RESOLVER_COMPOSE_FILE=...`) and keep **`FromResolverMap`** / **domain** in sync — see **`src/lib/domain/resolver.go`**.
+Dockpipe can reuse local images and build receipts. Use `dockpipe package images`
+from your project to inspect image state; see
+[Image artifacts](../runtime/image-artifacts.md) for missing/stale image behavior.
 
----
-
-## Related docs
-
-- **[../workflows/workflow-yaml.md](../workflows/workflow-yaml.md)** — `isolate:`, `resolver:` / `runtime:` on steps, and `kind: host` for host-side actions  
-- **[architecture.md](architecture.md)** — data flow and extension points  
-- **[architecture-model.md](architecture-model.md)** — **`templates/core/`** layout (runtimes, resolvers, strategies, assets)  
-- **Resolver KEY reference** — **`templates/core/resolvers/README.md`**
+You can author workflows and select installed profiles without editing Dockpipe's
+source or its core files. For package authoring, use the
+[package model](../packages/package-model.md); engine layout belongs to the
+[maintainer architecture contract](architecture-contract.md).

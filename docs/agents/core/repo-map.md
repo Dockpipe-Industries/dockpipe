@@ -33,7 +33,7 @@ Use generated artifacts as read-only grounding unless the user asks to refresh t
 
 - Architecture terms: `docs/agents/core/architecture.md`
 - Engine boundary: `docs/agents/core/engine-boundary.md`
-- Package/store model: `docs/agents/core/package-model.md`
+- Package/store model: `docs/agents/core/core-package-model.md`
 - Validation commands: `docs/agents/core/validation-commands.md`
 
 ## Internal Workflow Locations

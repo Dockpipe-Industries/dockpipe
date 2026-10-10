@@ -28,7 +28,7 @@ is unavailable; previous task permissions are closed.
 Admission: clean saved `js/pipelang` at
 `915baf69522bf86e0d44d5d861c1b4b9bd6297ae`. Completed package-input repair and
 its matching handoff proof are admitted without rebuilding it.
-Evidence: `/home/jamie/.codex/visualizations/2026/09/13/01a09949-c588-72e2-a577-1f1b7daf5647/go-artifact-reduction/`.
+Evidence: `<local-evidence>/2026/09/13/01a09949-c588-72e2-a577-1f1b7daf5647/go-artifact-reduction/`.
 
 Initial finding: v0.111 subsets emit inline Value/Trace assertions, unlike the
 fixture-driven v0.109 layouts. Test compact current-fixture checks in v0.111.

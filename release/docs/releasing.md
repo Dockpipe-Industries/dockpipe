@@ -6,7 +6,7 @@ This repo now supports an automated GitHub Actions release pipeline.
 
 **Ship model:** Integrate on **`staging`**; when ready, **PR `staging` → `master`** — that merge runs **Release** (see **[branching.md](branching.md)**). Repo-root **`VERSION`** selects the release line/notes baseline; the pipeline generates the next unused patch from stable and staging tags; **`release/releasenotes/X.Y.Z.md`** must exist and be updated on the **ship** PR. **CI** runs on **`staging`** PRs too (tests only); the **release-notes gate** applies only to PRs **into `master`**.
 
-**Release notes body:** Copy **[TEMPLATE.md](../releasenotes/TEMPLATE.md)** to **`release/releasenotes/X.Y.Z.md`**, replace **`X.Y.Z`** / **`vX.Y.Z`**, and fill in **What’s new**. The **Installation** section must include **Linux**, **macOS**, and **Windows** with concrete commands (`.deb` + **`.apk` / `.rpm` / Arch `.pkg.tar.zst`** + **`linux/install.sh`** + tarballs + source, Homebrew + Darwin tarballs + source, `install.ps1` / MSI / zip + optional WSL). The generated notes replace baseline version references with the actual numeric version and become the GitHub Release description — users should not have to hunt **`docs/install.md`** for basics.
+**Release notes body:** Start from [TEMPLATE.md](../releasenotes/TEMPLATE.md) and update the notes matching repo-root `VERSION`. Lead with end-user outcomes, then Linux/macOS/Windows installation, upgrade actions and known limits. Include a working recommended install path per platform; link alternatives and contributor build instructions instead of duplicating them. Verify asset names, prerequisites and signing/platform claims, and label preview or staging-only features. The workflow replaces baseline version references with the generated numeric version and publishes the body as the GitHub Release description.
 
 ---
 
@@ -30,14 +30,23 @@ Trigger options:
 ## What the pipeline does
 
 1. Builds on native Linux amd64/arm64, macOS Intel/Apple Silicon, and Windows amd64 runners. Each runner builds the CLI and every package's source hook, verifies its complete store manifest, and runs a host workflow smoke test outside the checkout.
-2. Creates Linux DEB, RPM, Alpine APK, Arch packages, Linux/macOS tarballs, Windows ZIP, and optional MSI. It also creates `dockpipe-packages_VERSION_OS-ARCH.tar.gz` for each target. These stores include native resolver helpers and must not be interchanged across platforms. Pipeon's optional desktop application has its own distribution lane.
-3. Requires all five platform stores and verifies every package checksum before producing `release-manifest.json` and `SHA256SUMS.txt`. Linux runs runtime/package/shell regressions and real signed-APT tests; Windows runs runtime/package regressions and MSI installation/removal when enabled.
+2. Creates Linux DEB, RPM, Alpine APK, Arch packages, Linux/macOS tarballs, Windows ZIP, and optional MSI. It also creates `dockpipe-packages_VERSION_OS-ARCH.tar.gz` for each native target. These stores include native resolver helpers and must not be interchanged across platforms. The reusable `.github/workflows/flatpak.yml` separately builds and tests `dockpipe-desktop_VERSION_linux_amd64.flatpak` (launcher plus CLI/core) and its `linux-amd64-flatpak-org.kde.Platform-6.10` Marketplace store. Pipeon's optional desktop application has its own distribution lane.
+3. Requires all five native platform stores and successful Flatpak qualification before assembly. It verifies package checksums and records the separate Flatpak store and combined launcher/CLI download in `release-manifest.json`; `SHA256SUMS.txt` includes the bundle. Linux runs runtime/package/shell regressions and real signed-APT tests; Windows runs runtime/package regressions and MSI installation/removal when enabled.
 4. The unprotected `assemble` job prepares the catalog and checksums. For dry runs it also builds a signed APT repository for amd64 and arm64 with immutable by-hash indexes, using a throwaway key, and uploads workflow artifacts. It has read-only repository permissions, no production secret references, and no deployment environment.
 5. Only a non-dry-run on `master` enters `publish`, which requires the protected `release` environment. It downloads the prepared artifacts, signs APT with the production key, and publishes release assets to GitHub and every individual package/store manifest to R2 at `packages/releases/VERSION/`. APT lives at `apt/`. Upload order is package payloads, APT pool/index files, signed metadata, then the version catalog and `packages/latest.json`. Old versions and old by-hash files are retained. The optional dev.to job uses the same master-only production condition.
 
 Stable and staging publication share one concurrency group from version selection through publication. Dry runs use separate groups and do not reserve versions. Dry-run verification must not require a release-environment approval or administrator bypass. Production environment protections remain in place.
 
-Package generation does not prove installation on every downstream distro/version. The hosted matrix covers the selected native runners; the M6 Mac's launchd, sleep/wake, Docker, and remote-worker acceptance still need hardware testing. macOS notarization, Windows Authenticode, public Homebrew taps, and winget submission are separate follow-ups. No Flatpak is produced for this host CLI.
+Package generation does not prove installation on every downstream distro/version. The hosted matrix covers the selected native runners; physical Mac launchd, sleep/wake, Docker, and remote-worker acceptance still need hardware testing. macOS notarization, Windows Authenticode and winget submission are separate follow-ups; staging Homebrew has its own [native qualification and publication lane](../packaging/homebrew/README.md).
+
+The Flatpak includes the CLI inside the desktop app; it does not replace native host
+CLI packages. Staging publication and matching hosted Flatpak qualification are
+[verified for the 0.6.3 candidate](../packaging/desktop/flatpak/README.md#release-integration-and-proof-limits).
+The public package host serves the `.flatpak`; the matching GitHub release assets
+did not include it. Resolve download links from the published catalog rather than
+assuming GitHub attachments. There is no Dockpipe Flathub listing or automatic-update
+remote. Bazzite, Podman/SELinux, ARM64 Flatpak and authenticated provider/VM behavior
+remain separate qualification work. See [user installation and manual updates](../../docs/install.md#flatpak-desktop-staging-linux-amd64).
 
 ## Production credentials and public origin
 
@@ -59,7 +68,7 @@ No production key is generated by a release or dry-run job. Create the productio
 
 ## Qualification before publication
 
-Run Actions → Release with `dry_run=true` on the intended commit first. Inspect all five stores, native smoke results, the MSI check, signed APT test, and checksums. Production publication additionally requires the scoped secrets above and a verified public R2 hostname. Do not treat a local Linux build or a Go cross-build as native Mac/Windows qualification.
+Run Actions → Release with `dry_run=true` on the intended commit first. Inspect all five native stores, the Flatpak bundle and runtime-specific store, Flatpak qualification receipts, native smoke results, the MSI check, signed APT test, and checksums. Production publication additionally requires the scoped secrets above and a verified public R2 hostname. Do not treat a local Linux build or a Go cross-build as native Mac/Windows qualification.
 
 GitHub and R2 are separate services, so publication is not an atomic transaction across both. If a release upload fails, inspect which objects and tags exist before recovery; do not dispatch a second release with changed bytes under an existing version. Existing Git tags and a published version catalog are rejected before publication. A fresh complete run selects the next unused patch; update the release-line notes for the shipped changes. Change `VERSION` intentionally when advancing the major/minor line or setting a higher patch floor. Keep published tags: they are the allocation history.
 

@@ -14,7 +14,7 @@ guest-agent compatibility output has SHA-256
 `-buildvcs=false`, and all non-standard build inputs resolve below `packages/vm/tools/**`. The
 Windows artifact is compatibility evidence only and is never promoted for Linux Gate 2.
 
-The fixed non-live namespace is `/home/jamie/.local/share/dockpipe-vm-gates`. It is task-owned VM
+The fixed non-live namespace is `<vm-gate-state>`. It is task-owned VM
 qualification input, not the checkout, Dockpipe global package/install root, `.dockpipe`,
 `.dorkpipe`, an image/toolchain cache, a live instance/evidence/configuration/runtime XDG root, or
 any preserved Gate 2 root. Promotion IDs match `vmp-[0-9a-f]{16}`. Each future gate must provide
@@ -23,11 +23,11 @@ increment, or fall back to another destination. The proposed first promotion is
 `vmp-2026080815f0ea3f`, with exact documentation-only paths:
 
 - promotion root:
-  `/home/jamie/.local/share/dockpipe-vm-gates/promotions/vmp-2026080815f0ea3f`;
+  `<vm-gate-state>/promotions/vmp-2026080815f0ea3f`;
 - evidence directory:
-  `/home/jamie/.local/share/dockpipe-vm-gates/evidence/vmp-2026080815f0ea3f`; and
+  `<vm-gate-state>/evidence/vmp-2026080815f0ea3f`; and
 - evidence file:
-  `/home/jamie/.local/share/dockpipe-vm-gates/evidence/vmp-2026080815f0ea3f/promotion.evidence.json`.
+  `<vm-gate-state>/evidence/vmp-2026080815f0ea3f/promotion.evidence.json`.
 
 The promotion root is exclusively created mode `0700`, owned by the effective promotion user and
 that user's primary group. Its closed inventory is exactly two regular, non-symlink, single-link,
@@ -102,10 +102,10 @@ separate gates. The package/engine boundary remains preserved with no `src/**` c
 #### Linux VM promotion, fresh Gate 2 evidence, and deadline correction (2026-08-08)
 
 The separately authorized promotion `vmp-2026080815f0ea3f` completed once under
-`/home/jamie/.local/share/dockpipe-vm-gates`. Its immutable closed inventory contains only the
+`<vm-gate-state>`. Its immutable closed inventory contains only the
 mode-`0500` Linux/amd64 controller and guest agent with the reviewed hashes above. Canonical evidence
 is stored at
-`/home/jamie/.local/share/dockpipe-vm-gates/evidence/vmp-2026080815f0ea3f/promotion.evidence.json`
+`<vm-gate-state>/evidence/vmp-2026080815f0ea3f/promotion.evidence.json`
 with SHA-256 `c411a6cfa326d61c6bfd9663a7f063d21dcb364520c2274fb3fe34d1f951889b`.
 
 Fresh offline preparation then produced run `g2r-e58b5061e0e69e7e`, cohort
@@ -168,7 +168,7 @@ artifacts until a separately authorized fresh promotion.
 The separately authorized immutable promotion `vmp-20260808f6d5c19c` then completed once. Its exact
 mode-`0700` root contains only the mode-`0500` controller and guest-agent files with the hashes and
 sizes above. Canonical evidence is
-`/home/jamie/.local/share/dockpipe-vm-gates/evidence/vmp-20260808f6d5c19c/promotion.evidence.json`
+`<vm-gate-state>/evidence/vmp-20260808f6d5c19c/promotion.evidence.json`
 with SHA-256 `71827ec3cb32d35b92773b74fc0e0e2a68f0ba223341811c5e9da6b2de0f271d`.
 Immediate read-back revalidated the independent build comparisons, embedded Go metadata, closed
 inventories, owner-only modes, file and directory synchronization boundaries, and package/engine

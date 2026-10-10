@@ -6,7 +6,7 @@
 - Authority: founder selected A and separately said `approved` on 2026-09-04.
 - Execution skill: `dorkpipe-objective-execution`; automatic checkpoints within this scope;
   handoff only when requested; context pressure means warn and continue.
-- Baseline: saved checkout `/home/jamie/source/dockpipe`, branch `js/pipelang`, clean at
+- Baseline: saved checkout `<checkout>`, branch `js/pipelang`, clean at
   `fb2f480af497ec34d134105eba0eadcdb0ab9a74` (numeric-comparison repair committed).
 - Scope: reproduce and repair inheritance of the exact v0.56 two-parameter direct checked
   propagation form through v0.82, for integer addition/subtraction/multiplication and float
