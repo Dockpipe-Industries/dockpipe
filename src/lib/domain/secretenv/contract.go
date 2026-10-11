@@ -10,6 +10,8 @@ import (
 const Schema = "dockpipe.secret-environment/v1"
 const MaxBytes = 1 << 20
 
+var ErrAuthenticationRequired = errors.New("secret environment authentication required; rerun from an interactive terminal or configure an unattended credential")
+
 var variableName = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*$`)
 
 type Request struct {
@@ -21,6 +23,11 @@ type Request struct {
 type Response struct {
 	Schema string            `json:"schema"`
 	Values map[string]string `json:"values"`
+	Error  string            `json:"error,omitempty"`
+}
+
+func AuthenticationRequired(response Response) bool {
+	return response.Schema == Schema && response.Error == "authentication_required" && len(response.Values) == 0
 }
 
 func ValidateBindings(bindings map[string]string) error {
@@ -36,7 +43,7 @@ func ValidateBindings(bindings map[string]string) error {
 }
 
 func ValidateResponse(request Request, response Response) error {
-	if response.Schema != Schema || len(response.Values) != len(request.Bindings) {
+	if response.Schema != Schema || response.Error != "" || len(response.Values) != len(request.Bindings) {
 		return errors.New("secret resolver returned an incomplete or unexpected environment")
 	}
 	for name := range request.Bindings {
