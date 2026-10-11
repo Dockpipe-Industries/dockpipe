@@ -6,16 +6,28 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"golang.org/x/term"
 	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"time"
 
 	contract "dockpipe/src/lib/domain/secretenv"
 	"dockpipe/src/lib/infrastructure"
 	"dockpipe/src/lib/infrastructure/process"
 )
+
+var interactiveLogin = func() bool {
+	return loginAllowed(os.Getenv("CI"), term.IsTerminal(int(os.Stdin.Fd())), term.IsTerminal(int(os.Stderr.Fd())))
+}
+
+func loginAllowed(ci string, inputTerminal, outputTerminal bool) bool {
+	ci = strings.ToLower(strings.TrimSpace(ci))
+	return (ci == "" || ci == "0" || ci == "false") && inputTerminal && outputTerminal
+}
 
 type boundedOutput struct{ bytes.Buffer }
 
@@ -41,30 +53,57 @@ func Resolve(ctx context.Context, workdir, resolver string, request contract.Req
 	if err != nil {
 		return nil, err
 	}
-	script := filepath.FromSlash(profile["DOCKPIPE_SECRET_ENVIRONMENT_RESOLVE"])
-	if !filepath.IsLocal(script) || script == "." {
-		return nil, errors.New("resolver must declare a local DOCKPIPE_SECRET_ENVIRONMENT_RESOLVE script")
-	}
-	scriptPath := filepath.Join(filepath.Dir(profilePath), script)
-	resolvedRoot, err := filepath.EvalSymlinks(filepath.Dir(profilePath))
+	scriptPath, err := resolverScript(profilePath, profile["DOCKPIPE_SECRET_ENVIRONMENT_RESOLVE"])
 	if err != nil {
 		return nil, err
-	}
-	resolvedScript, err := filepath.EvalSymlinks(scriptPath)
-	if err != nil {
-		return nil, errors.New("secret environment resolver script is unavailable")
-	}
-	relative, err := filepath.Rel(resolvedRoot, resolvedScript)
-	if err != nil || !filepath.IsLocal(relative) {
-		return nil, errors.New("secret environment resolver script escapes its package")
 	}
 	input, err := json.Marshal(request)
 	if err != nil || len(input) > contract.MaxBytes {
 		return nil, errors.New("invalid secret environment request")
 	}
+	values, err := resolveProcess(ctx, workdir, scriptPath, input, request)
+	if !errors.Is(err, contract.ErrAuthenticationRequired) || !interactiveLogin() {
+		return values, err
+	}
+	if profile["DOCKPIPE_SECRET_ENVIRONMENT_AUTHENTICATE"] == "" {
+		return nil, contract.ErrAuthenticationRequired
+	}
+	authenticatePath, err := resolverScript(profilePath, profile["DOCKPIPE_SECRET_ENVIRONMENT_AUTHENTICATE"])
+	if err != nil {
+		return nil, err
+	}
+	if err := authenticate(ctx, workdir, authenticatePath, input); err != nil {
+		return nil, err
+	}
+	// One login attempt, then one resolution. Never loop on provider failures.
+	return resolveProcess(ctx, workdir, scriptPath, input, request)
+}
+
+func resolverScript(profilePath, declared string) (string, error) {
+	script := filepath.FromSlash(declared)
+	if !filepath.IsLocal(script) || script == "." {
+		return "", errors.New("secret environment hook must declare a local script")
+	}
+	scriptPath := filepath.Join(filepath.Dir(profilePath), script)
+	resolvedRoot, err := filepath.EvalSymlinks(filepath.Dir(profilePath))
+	if err != nil {
+		return "", err
+	}
+	resolvedScript, err := filepath.EvalSymlinks(scriptPath)
+	if err != nil {
+		return "", errors.New("secret environment resolver script is unavailable")
+	}
+	relative, err := filepath.Rel(resolvedRoot, resolvedScript)
+	if err != nil || !filepath.IsLocal(relative) {
+		return "", errors.New("secret environment resolver script escapes its package")
+	}
+	return resolvedScript, nil
+}
+
+func resolveProcess(ctx context.Context, workdir, script string, input []byte, request contract.Request) (map[string]string, error) {
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Minute)
 	defer cancel()
-	command := exec.CommandContext(ctx, "bash", resolvedScript)
+	command := exec.CommandContext(ctx, "bash", script)
 	command.Dir = workdir
 	executable, err := os.Executable()
 	if err != nil {
@@ -81,6 +120,10 @@ func Resolve(ctx context.Context, workdir, resolver string, request contract.Req
 		if ctx.Err() != nil {
 			return nil, ctx.Err()
 		}
+		var failure contract.Response
+		if json.Unmarshal(output.Bytes(), &failure) == nil && contract.AuthenticationRequired(failure) {
+			return nil, contract.ErrAuthenticationRequired
+		}
 		return nil, errors.New("secret environment resolution failed; check the resolver CLI, authentication, and references (provider output withheld)")
 	}
 	var response contract.Response
@@ -91,4 +134,30 @@ func Resolve(ctx context.Context, workdir, resolver string, request contract.Req
 		return nil, err
 	}
 	return response.Values, nil
+}
+
+func authenticate(ctx context.Context, workdir, script string, input []byte) error {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Minute)
+	defer cancel()
+	executable, err := os.Executable()
+	if err != nil {
+		return err
+	}
+	command := exec.CommandContext(ctx, "bash", script)
+	command.Dir = workdir
+	command.Env = append(os.Environ(), "DOCKPIPE_BIN="+executable)
+	command.Stdin = bytes.NewReader(input)
+	command.Stdout = io.Discard
+	// This hook owns a login UI, never secret resolution. Providers must emit
+	// only safe progress and browser challenges on this separate channel.
+	command.Stderr = os.Stderr
+	command.WaitDelay = time.Second
+	fmt.Fprintln(os.Stderr, "[dockpipe] vault: authentication required; complete the browser sign-in to continue")
+	if err := process.Run(command); err != nil {
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
+		return errors.New("secret environment login failed; check the resolver login configuration; no automatic retry was made")
+	}
+	return nil
 }
