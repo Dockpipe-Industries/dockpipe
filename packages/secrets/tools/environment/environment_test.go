@@ -27,6 +27,9 @@ func TestProvidersReturnOnlyBoundValues(t *testing.T) {
 		t.Run(test.provider, func(t *testing.T) {
 			request := contract.Request{Schema: contract.Schema, Parameters: test.parameters, Bindings: map[string]string{"TOKEN": "remote-key"}}
 			runner := func(ctx context.Context, args []string, input []byte, env []string) ([]byte, error) {
+				if len(args) > 2 && args[0] == "infisical" && args[1] == "login" {
+					return []byte(`{"sessions":[{"status":"authenticated"}]}`), nil
+				}
 				if !reflect.DeepEqual(args[:len(test.prefix)], test.prefix) {
 					t.Fatalf("unexpected provider command: %v", args)
 				}

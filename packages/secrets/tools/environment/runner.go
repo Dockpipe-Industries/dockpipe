@@ -31,16 +31,31 @@ func Run(ctx context.Context, arguments []string, input []byte, environment []st
 	command := exec.CommandContext(ctx, arguments[0], arguments[1:]...)
 	command.Stdin = bytes.NewReader(input)
 	command.Env = environment
+	statusCommand := len(arguments) >= 3 && arguments[0] == "infisical" && arguments[1] == "login" && arguments[2] == "status"
+	var diagnostics limitedBuffer
+	defer func() { clear(diagnostics.Bytes()) }()
 	command.Stderr = io.Discard
+	if statusCommand {
+		command.Stderr = &diagnostics
+	}
 	command.WaitDelay = time.Second
 	var output limitedBuffer
 	command.Stdout = &output
 	if err := process.RunNested(command); err != nil {
-		clear(output.Bytes())
 		if ctx.Err() != nil {
+			clear(output.Bytes())
 			return nil, ctx.Err()
 		}
-		return nil, errors.New("provider command failed (output withheld)")
+		if statusCommand &&
+			strings.Contains(diagnostics.String(), "error: profile not found: profile '") && strings.Contains(diagnostics.String(), "does not exist.") {
+			clear(output.Bytes())
+			return nil, errProfileMissing
+		}
+		if !statusCommand {
+			clear(output.Bytes())
+			return nil, errors.New("provider command failed (output withheld)")
+		}
+		return output.Bytes(), errors.New("provider command failed (output withheld)")
 	}
 	return output.Bytes(), nil
 }
@@ -114,10 +129,10 @@ func captureWith(ctx context.Context, request contract.Request, run Runner, argu
 		return nil, err
 	}
 	output, err := run(ctx, arguments, input, authenticationEnvironment(request))
+	defer clear(output)
 	if err != nil {
 		return nil, err
 	}
-	defer clear(output)
 	var response contract.Response
 	if json.Unmarshal(output, &response) != nil {
 		return nil, errors.New("provider environment response is invalid (output withheld)")
