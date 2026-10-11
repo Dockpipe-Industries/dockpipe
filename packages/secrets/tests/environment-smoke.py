@@ -88,6 +88,7 @@ else:
 
         if provider == "infisical" and os.name != "nt":
             import pty
+            import select
 
             (tools / "xdg-open").write_text("#!/bin/sh\nexit 0\n")
             (tools / "xdg-open").chmod(0o755)
@@ -101,14 +102,12 @@ else:
             try:
                 result = subprocess.run(command, cwd=root, env=environment, stdin=slave, stderr=slave,
                                         stdout=subprocess.PIPE, text=True, timeout=60)
-                os.close(slave)
-                slave = None
+                # Keep the slave open until buffered output is drained: macOS can
+                # discard unread terminal output when the last slave is closed.
+                # The child has exited, so stop once no buffered bytes are ready.
                 diagnostic = bytearray()
-                while True:
-                    try:
-                        chunk = os.read(master, 4096)
-                    except OSError:
-                        break
+                while select.select([master], [], [], 0)[0]:
+                    chunk = os.read(master, 4096)
                     if not chunk:
                         break
                     diagnostic.extend(chunk)
@@ -117,8 +116,7 @@ else:
                 assert b"https://vault.example/login?callback_port=54321" in diagnostic
                 assert (root / "logged-in").exists() and (root / "result").read_text() == "passed"
             finally:
-                if slave is not None:
-                    os.close(slave)
+                os.close(slave)
                 os.close(master)
             environment.pop("FAKE_NEEDS_LOGIN")
             print("PASS: Infisical terminal login resumes workflow; CI never logs in; login secrets withheld")
