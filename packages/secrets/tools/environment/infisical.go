@@ -7,15 +7,23 @@ import (
 )
 
 func infisical(ctx context.Context, request contract.Request, run Runner, executable string) (map[string]string, error) {
-	if err := parameters(request, []string{"project_id", "environment"}, "path", "domain"); err != nil {
+	if err := validateInfisical(request); err != nil {
 		return nil, err
+	}
+	if !hasInfisicalToken() {
+		state, err := infisicalSession(ctx, request, run)
+		if err != nil {
+			return nil, err
+		}
+		if state != sessionReady {
+			return nil, contract.ErrAuthenticationRequired
+		}
 	}
 	arguments := []string{"infisical", "run", "--silent", "--log-destination=stderr", "--expand=false", "--secret-overriding=false",
 		"--projectId=" + request.Parameters["project_id"], "--env=" + request.Parameters["environment"]}
-	for _, name := range []string{"path", "domain"} {
-		if value := request.Parameters[name]; value != "" {
-			arguments = append(arguments, "--"+name+"="+value)
-		}
+	if path := request.Parameters["path"]; path != "" {
+		arguments = append(arguments, "--path="+path)
 	}
+	arguments = append(arguments, infisicalScope(request)...)
 	return captureWith(ctx, request, run, arguments, executable)
 }

@@ -15,4 +15,4 @@ if [[ ! -x "$helper" ]]; then
   eval "$("$dockpipe_cmd" sdk)"
   helper="$(dockpipe_sdk require tooling-bin "$tool")"
 fi
-exec "$helper" infisical
+exec "$helper" "${1:-infisical}"
