@@ -11,7 +11,8 @@ binary = str(Path(sys.argv[1]).resolve())
 store = str(Path(sys.argv[2]).resolve())
 providers = {
     "onepassword": ("op", {"environment_id": "production-test"}),
-    "infisical": ("infisical", {"project_id": "test-project", "environment": "prod"}),
+    "infisical": ("infisical", {"project_id": "test-project", "environment": "prod",
+                              "profile": "smoke-test", "domain": "https://vault.example/api"}),
     "aws-secretsmanager": ("aws", {"secret_id": "test-production"}),
     "azure-keyvault": ("az", {"vault_name": "test-production"}),
 }
@@ -27,7 +28,15 @@ from pathlib import Path
 name = Path(sys.argv[0]).name
 missing = os.environ.get("FAKE_SECRET_MISSING") == "1"
 value = "SECRET_SENTINEL\\nsecond line"
-if name == "aws":
+if name == "infisical" and sys.argv[1:3] == ["login", "status"]:
+    needs_login = os.environ.get("FAKE_NEEDS_LOGIN") == "1" and not Path("logged-in").exists()
+    print(json.dumps({"sessions": [] if needs_login else [{"status": "authenticated"}]}))
+    sys.exit(1 if needs_login else 0)
+elif name == "infisical" and sys.argv[1] == "login":
+    print("SECRET_SENTINEL", file=sys.stderr)
+    print("To complete your login: https://vault.example/login?callback_port=54321", file=sys.stderr)
+    Path("logged-in").write_text("authenticated")
+elif name == "aws":
     print(json.dumps({"SecretString": json.dumps({} if missing else {"REMOTE_KEY": value, "UNBOUND": "private"})}))
 elif name == "az":
     if missing:
@@ -58,6 +67,7 @@ else:
                        DOCKPIPE_GLOBAL_ROOT=str(root / "global"), XDG_STATE_HOME=str(root / "state"),
                        XDG_CACHE_HOME=str(root / "cache"),
                        TOKEN="parent-fallback-forbidden", REMOTE_KEY="parent-fallback-forbidden")
+    environment.pop("INFISICAL_TOKEN", None)
     for provider, (_, parameters) in providers.items():
         config = {"schema": 1, "packages": {"sources": [{"kind": "tarball_dir", "path": store}]},
                   "secrets": {"environments": {"production": {"resolver": provider, "parameters": parameters,
@@ -75,3 +85,40 @@ else:
             elif result.returncode != 0 or not (root / "result").exists():
                 raise AssertionError(f"{provider} integration failed: {result.stderr}")
         print(f"PASS: {provider} packaged injection, multiline values, filtering, missing-value stop")
+
+        if provider == "infisical" and os.name != "nt":
+            import pty
+
+            (tools / "xdg-open").write_text("#!/bin/sh\nexit 0\n")
+            (tools / "xdg-open").chmod(0o755)
+            environment.update(FAKE_NEEDS_LOGIN="1", FAKE_SECRET_MISSING="0", CI="true")
+            result = subprocess.run(command, cwd=root, env=environment, capture_output=True, text=True, timeout=60)
+            assert result.returncode != 0 and "authentication required" in result.stderr
+            assert not (root / "logged-in").exists(), "CI started a browser login"
+
+            environment["CI"] = "false"
+            master, slave = pty.openpty()
+            try:
+                result = subprocess.run(command, cwd=root, env=environment, stdin=slave, stderr=slave,
+                                        stdout=subprocess.PIPE, text=True, timeout=60)
+                os.close(slave)
+                slave = None
+                diagnostic = bytearray()
+                while True:
+                    try:
+                        chunk = os.read(master, 4096)
+                    except OSError:
+                        break
+                    if not chunk:
+                        break
+                    diagnostic.extend(chunk)
+                assert result.returncode == 0, diagnostic.decode()
+                assert b"SECRET_SENTINEL" not in diagnostic and "SECRET_SENTINEL" not in result.stdout
+                assert b"https://vault.example/login?callback_port=54321" in diagnostic
+                assert (root / "logged-in").exists() and (root / "result").read_text() == "passed"
+            finally:
+                if slave is not None:
+                    os.close(slave)
+                os.close(master)
+            environment.pop("FAKE_NEEDS_LOGIN")
+            print("PASS: Infisical terminal login resumes workflow; CI never logs in; login secrets withheld")
