@@ -11,4 +11,4 @@ Build native helper binaries and compile the resolvers from this checkout:
 ./src/bin/dockpipe package test --workdir . --only secrets
 ```
 
-Release stores contain a helper built for the store's OS and CPU. Install the matching platform store; no Go compiler is needed by consumers. Provider CLIs (`op`, `aws`, `az`, or `infisical`) must be installed and authenticated on the host. Source-only resolver compilation needs the source-build hook to package the helper first.
+Release stores contain a helper built for the store's OS and CPU. Install the matching platform store; no Go compiler is needed by consumers. Provider CLIs (`op`, `aws`, `az`, or `infisical`) must be installed on the host. Infisical supports browser login during interactive workflow startup; configure a dedicated profile and instance as described in the vault guide. Other providers require an existing login. Source-only resolver compilation needs the source-build hook to package the helper first.
