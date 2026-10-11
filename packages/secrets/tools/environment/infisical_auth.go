@@ -20,7 +20,7 @@ const (
 	sessionExpired
 )
 
-var errProfileMissing = errors.New("Infisical profile does not exist")
+var errProfileMissing = errors.New("requested Infisical profile does not exist")
 
 func validateInfisical(request contract.Request) error {
 	return parameters(request, []string{"project_id", "environment"}, "path", "domain", "profile", "organization_id")
@@ -58,7 +58,7 @@ func infisicalSession(ctx context.Context, request contract.Request, run Runner)
 		} `json:"sessions"`
 	}
 	if json.Unmarshal(output, &report) != nil || report.Sessions == nil {
-		return sessionMissing, errors.New("Infisical login status unavailable; check CLI version, keyring and connection")
+		return sessionMissing, errors.New("cannot determine Infisical login status; check CLI version, keyring and connection")
 	}
 	if len(*report.Sessions) == 0 {
 		return sessionMissing, nil
@@ -74,7 +74,7 @@ func infisicalSession(ctx context.Context, request contract.Request, run Runner)
 	case "expired", "rejected":
 		return sessionExpired, nil
 	}
-	return sessionMissing, errors.New("Infisical login status was not recognized")
+	return sessionMissing, errors.New("unrecognized Infisical login status")
 }
 
 // AuthenticateInfisical owns browser login. Token-based automation never falls
