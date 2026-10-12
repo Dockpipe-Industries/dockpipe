@@ -3,6 +3,7 @@
 package infrastructure
 
 import (
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -11,6 +12,46 @@ import (
 
 	"golang.org/x/sys/windows"
 )
+
+func TestWindowsPrivateDirectoryIsProtectedAtCreation(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "private")
+	if err := createPrivateDirectory(path); err != nil {
+		t.Fatal(err)
+	}
+	if err := validatePrivatePath(path, true); err != nil {
+		t.Fatalf("directory was visible without its private DACL: %v", err)
+	}
+	if err := createPrivateDirectory(path); !os.IsExist(err) {
+		t.Fatalf("existing directory must remain distinguishable: %v", err)
+	}
+}
+
+func TestWindowsPrivateMetadataReplacementPreservesOpenReader(t *testing.T) {
+	root := filepath.Join(t.TempDir(), "private")
+	if err := createPrivateDirectory(root); err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(root, "metadata.json")
+	if err := writePrivateJSONAtomic(root, path, "before"); err != nil {
+		t.Fatal(err)
+	}
+	reader, err := openPrivateReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer reader.Close()
+	if err := writePrivateJSONAtomic(root, path, "after"); err != nil {
+		t.Fatalf("open reader blocked atomic metadata replacement: %v", err)
+	}
+	previous, err := io.ReadAll(reader)
+	if err != nil || string(previous) != "\"before\"\n" {
+		t.Fatalf("reader lost its original snapshot: %q, %v", previous, err)
+	}
+	var current string
+	if err := readPrivateJSON(root, path, &current); err != nil || current != "after" {
+		t.Fatalf("new reader did not receive replacement: %q, %v", current, err)
+	}
+}
 
 func TestWindowsUnlinkedPathsAcceptShortNamesAndRejectJunctions(t *testing.T) {
 	root := filepath.Join(t.TempDir(), "long directory name")
