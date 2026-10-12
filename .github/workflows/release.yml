@@ -617,31 +617,37 @@ jobs:
           DEVTO_ARTICLE_ID: ${{ vars.DEVTO_ARTICLE_ID }}
           DEVTO_ONE_TIME_POST: ${{ vars.DEVTO_ONE_TIME_POST }}
           DEVTO_TAGS: ${{ vars.DEVTO_TAGS }}
-          DEVTO_TITLE: ${{ vars.DEVTO_TITLE }}
-          DEVTO_ONE_TIME_TITLE: ${{ vars.DEVTO_ONE_TIME_TITLE }}
-          VERSION: ${{ needs.meta.outputs.version }}
+          NOTES_VERSION: ${{ needs.meta.outputs.notes_version }}
           TAG: ${{ needs.meta.outputs.tag }}
-          REPO_URL: ${{ github.server_url }}/${{ github.repository }}
+          ARTICLE_REPOSITORY: ${{ github.repository }}
+          ARTICLE_SOURCE_SHA: ${{ github.sha }}
         run: |
           set -euo pipefail
           if [[ -z "${DEVTO_API_KEY:-}" ]]; then
             echo "::error::Set secret DEVTO_API_KEY when DEVTO_PUBLISH is true."
             exit 1
           fi
-          NOTES="release/artifacts/RELEASE_NOTES.md"
-          if [[ ! -f "${NOTES}" ]]; then
-            echo "::error::Missing ${NOTES}" >&2
-            exit 1
-          fi
-          RELEASE_URL="${REPO_URL}/releases/tag/${TAG}"
-          TITLE_MAIN="${DEVTO_TITLE:-dockpipe ${TAG} released}"
-          TITLE_ONETIME="${DEVTO_ONE_TIME_TITLE:-dockpipe ${TAG} released}"
-          {
-            printf '**[%s](%s)** — [GitHub release →](%s)\n\n' "${TAG}" "${RELEASE_URL}" "${RELEASE_URL}"
-            echo "---"
-            echo ""
-            cat "${NOTES}"
-          } > /tmp/devto-body.md
+          python3 release/packaging/prepare-article.py \
+            --article "release/articles/${NOTES_VERSION}.md" \
+            --repository "$ARTICLE_REPOSITORY" --source-sha "$ARTICLE_SOURCE_SHA" \
+            --tag "$TAG" --output /tmp/devto-article.json
+          TITLE_MAIN=$(jq -r .title /tmp/devto-article.json)
+          TITLE_ONETIME="$TITLE_MAIN"
+          RELEASE_URL=$(jq -r .release_url /tmp/devto-article.json)
+          MAIN_IMAGE=$(jq -r .main_image /tmp/devto-article.json)
+          jq -r .body_markdown /tmp/devto-article.json > /tmp/devto-body.md
+          # Verify public media before publishing an article with broken images.
+          python3 - <<'PYIMAGES' > /tmp/devto-images.txt
+          import json, re
+          article = json.load(open("/tmp/devto-article.json"))
+          print(article["main_image"])
+          for url in re.findall(r"!\[[^\]]*\]\(([^)]+)\)", article["body_markdown"]):
+              print(url)
+          PYIMAGES
+          while IFS= read -r image_url; do
+            curl --fail --silent --show-error --location --retry 3 \
+              --output /dev/null "$image_url"
+          done < /tmp/devto-images.txt
           TAGS_JSON=$(python3 <<'PY'
           import json, os
           raw = os.environ.get("DEVTO_TAGS") or "dockpipe,cli,golang"
@@ -657,6 +663,7 @@ jobs:
               --arg title "$title" \
               --rawfile body /tmp/devto-body.md \
               --arg canonical "$RELEASE_URL" \
+              --arg main_image "$MAIN_IMAGE" \
               --argjson tags "$TAGS_JSON" \
               '{
                 article: {
@@ -664,6 +671,7 @@ jobs:
                   body_markdown: ($body | rtrimstr("\n")),
                   published: true,
                   canonical_url: $canonical,
+                  main_image: $main_image,
                   tags: $tags
                 }
               }' > "$out"
