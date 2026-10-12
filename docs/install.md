@@ -77,29 +77,28 @@ flatpak install --user flathub org.kde.Platform/x86_64/6.10
 Flathub supplies the KDE runtime here, not the Dockpipe app. The bundle also carries
 that runtime-repository hint; it does not contain the runtime itself.
 
-The following immutable candidate was verified on **2026-10-10**. For a newer build,
-read the [staging pointer](https://packages.staging.dockpipe.com/packages/latest.json),
-then its `manifest` URL relative to `https://packages.staging.dockpipe.com/`.
-Use the `downloads["linux-amd64-flatpak-org.kde.Platform-6.10"].desktop` filename
-relative to that manifest's directory. Do not construct a GitHub asset URL: the
-verified bundle is on the package host and was absent from the matching GitHub
-release assets.
-
-Run in a download directory; continue to installation only if the checksum reports
-`OK`:
+Use the current [staging pointer](https://packages.staging.dockpipe.com/packages/latest.json)
+to select one immutable candidate. The commands below require `curl`, `jq`, and
+`sha256sum`. Run them in a download directory and continue only when the checksum
+reports `OK`. The manifest supplies the bundle filename on the package host;
+do not construct a GitHub asset URL.
 
 ```sh
-candidate=0.6.3-staging.37959504785.1.4da6948415b9
-base="https://packages.staging.dockpipe.com/packages/candidates/$candidate"
-bundle=dockpipe-desktop_0.6.3_linux_amd64.flatpak
+origin=https://packages.staging.dockpipe.com
+manifest=$(curl -fsSL "$origin/packages/latest.json" | jq -er '.manifest')
+base="$origin/${manifest%/*}"
+curl -fsSL "$origin/$manifest" -o release-manifest.json
+bundle=$(jq -er '.downloads["linux-amd64-flatpak-org.kde.Platform-6.10"].desktop' release-manifest.json)
 curl -fSL "$base/$bundle" -o "$bundle"
 curl -fsSL "$base/SHA256SUMS.txt" -o SHA256SUMS.txt
 awk -v file="$bundle" '$2 == file { print }' SHA256SUMS.txt > "$bundle.sha256"
 sha256sum --check "$bundle.sha256"
 ```
 
+After the checksum succeeds, use the same shell and download directory:
+
 ```sh
-flatpak install --user ./dockpipe-desktop_0.6.3_linux_amd64.flatpak
+flatpak install --user --or-update "./$bundle"
 flatpak run com.dockpipe.Dockpipe
 flatpak run --command=dockpipe com.dockpipe.Dockpipe --version
 ```
@@ -206,14 +205,16 @@ Choose `amd64` for x86_64 or `arm64` for aarch64/Apple Silicon. Verify downloade
 files against `SHA256SUMS.txt` from that same candidate before installing. On Linux
 use `sha256sum`; on macOS use `shasum -a 256`; on Windows use `Get-FileHash -Algorithm SHA256`.
 
-The native CLI installer can use an explicit candidate. This example is pinned to
-the same verified 0.6.3 staging candidate as the Flatpak instructions:
+The native CLI installer can use the current staging candidate. These commands
+require `curl` and `jq` and select one immutable manifest before downloading:
 
 ```sh
-candidate=0.6.3-staging.37959504785.1.4da6948415b9
-base="https://packages.staging.dockpipe.com/packages/candidates/$candidate"
+origin=https://packages.staging.dockpipe.com
+manifest=$(curl -fsSL "$origin/packages/latest.json" | jq -er '.manifest')
+base="$origin/${manifest%/*}"
+version=$(curl -fsSL "$origin/$manifest" | jq -er '.version')
 curl -fsSL "$base/install.sh" -o /tmp/dockpipe-install.sh
-DOCKPIPE_VERSION=0.6.3 DOCKPIPE_DOWNLOAD_BASE="$base" DOCKPIPE_INSTALL_MODE=portable sh /tmp/dockpipe-install.sh
+DOCKPIPE_VERSION="$version" DOCKPIPE_DOWNLOAD_BASE="$base" DOCKPIPE_INSTALL_MODE=portable sh /tmp/dockpipe-install.sh
 ```
 
 The installer verifies its CLI payload checksum. It installs the portable CLI in
