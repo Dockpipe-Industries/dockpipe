@@ -18,6 +18,11 @@ fn write_clipboard_text() -> &'static str {
     "allowed"
 }
 
+// Expand once: on macOS the macro embeds a single application Info.plist symbol.
+fn app_context() -> tauri::Context<MockRuntime> {
+    tauri::generate_context!()
+}
+
 fn invoke(window: &WebviewWindow<MockRuntime>, origin: &str, command: &str) -> bool {
     get_ipc_response(
         window,
@@ -41,7 +46,7 @@ fn clipboard_grant_is_limited_to_the_configured_editor_origin_and_webview() {
             read_clipboard_text,
             write_clipboard_text
         ])
-        .build(tauri::generate_context!())
+        .build(app_context())
         .unwrap();
     let editor_url = "http://127.0.0.1:38421/editor?folder=project".parse().unwrap();
     let main = WebviewWindowBuilder::new(&app, "main", Default::default())
@@ -89,7 +94,7 @@ fn configured_localhost_and_ipv6_origins_keep_their_explicit_ports() {
     for origin in ["http://localhost:49152/", "http://[::1]:49152/"] {
         let app = mock_builder()
             .invoke_handler(tauri::generate_handler![read_clipboard_text])
-            .build(tauri::generate_context!())
+            .build(app_context())
             .unwrap();
         app.add_capability(clipboard_access::clipboard_capability(&origin.parse().unwrap()).unwrap())
             .unwrap();
