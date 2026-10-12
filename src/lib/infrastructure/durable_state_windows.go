@@ -278,11 +278,42 @@ func replacePrivateFile(source, destination string) error {
 	if err != nil {
 		return err
 	}
-	destinationp, err := windows.UTF16PtrFromString(destination)
+	handle, err := windows.CreateFile(sourcep, windows.DELETE,
+		windows.FILE_SHARE_READ|windows.FILE_SHARE_WRITE|windows.FILE_SHARE_DELETE,
+		nil, windows.OPEN_EXISTING, windows.FILE_FLAG_OPEN_REPARSE_POINT, 0)
+	if err != nil {
+		return fmt.Errorf("open private replacement: %w", err)
+	}
+	defer windows.CloseHandle(handle)
+	absolute, err := filepath.Abs(destination)
 	if err != nil {
 		return err
 	}
-	return windows.MoveFileEx(sourcep, destinationp, windows.MOVEFILE_REPLACE_EXISTING|windows.MOVEFILE_WRITE_THROUGH)
+	name, err := windows.UTF16FromString(absolute)
+	if err != nil {
+		return err
+	}
+	// FILE_RENAME_INFO has a variable-length UTF-16 filename. POSIX semantics
+	// retain existing readers' snapshots while publishing the replacement name.
+	// MoveFileEx cannot replace a destination with an open reader, even when the
+	// reader allows delete sharing.
+	type renameInformation struct {
+		Flags          uint32
+		RootDirectory  windows.Handle
+		FileNameLength uint32
+		FileName       [1]uint16
+	}
+	var layout renameInformation
+	nameBytes := (len(name) - 1) * 2
+	buffer := make([]byte, int(unsafe.Offsetof(layout.FileName))+len(name)*2)
+	information := (*renameInformation)(unsafe.Pointer(&buffer[0]))
+	information.Flags = windows.FILE_RENAME_REPLACE_IF_EXISTS | windows.FILE_RENAME_POSIX_SEMANTICS
+	information.FileNameLength = uint32(nameBytes)
+	copy(unsafe.Slice(&information.FileName[0], len(name)), name)
+	if err := windows.SetFileInformationByHandle(handle, windows.FileRenameInfoEx, &buffer[0], uint32(len(buffer))); err != nil {
+		return fmt.Errorf("replace private metadata: %w", err)
+	}
+	return nil
 }
 
 func syncPrivateDirectory(string) error {
