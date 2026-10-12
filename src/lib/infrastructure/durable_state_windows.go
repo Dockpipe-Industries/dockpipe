@@ -18,6 +18,49 @@ import (
 // all nine file-specific access rights. x/sys/windows does not expose this mask.
 const windowsFileAllAccess = windows.STANDARD_RIGHTS_REQUIRED | windows.SYNCHRONIZE | 0x01ff
 
+// Create the protected DACL with the directory so concurrent callers can never
+// observe a newly created directory with inherited, unprotected permissions.
+func createPrivateDirectory(path string) error {
+	userSID, err := currentWindowsUserSID()
+	if err != nil {
+		return err
+	}
+	descriptor, err := windows.SecurityDescriptorFromString(
+		"O:" + userSID.String() + "D:P(A;OICI;FA;;;" + userSID.String() + ")(A;OICI;FA;;;SY)",
+	)
+	if err != nil {
+		return err
+	}
+	attributes := windows.SecurityAttributes{
+		Length:             uint32(unsafe.Sizeof(windows.SecurityAttributes{})),
+		SecurityDescriptor: descriptor,
+	}
+	pathPointer, err := windows.UTF16PtrFromString(path)
+	if err != nil {
+		return err
+	}
+	if err := windows.CreateDirectory(pathPointer, &attributes); err != nil {
+		return &os.PathError{Op: "mkdir", Path: path, Err: err}
+	}
+	return nil
+}
+
+// Metadata writers replace complete files atomically. Readers must permit that
+// replacement while keeping their own handle to the original snapshot.
+func openPrivateReadFile(path string) (*os.File, error) {
+	pathPointer, err := windows.UTF16PtrFromString(path)
+	if err != nil {
+		return nil, err
+	}
+	handle, err := windows.CreateFile(pathPointer, windows.GENERIC_READ,
+		windows.FILE_SHARE_READ|windows.FILE_SHARE_WRITE|windows.FILE_SHARE_DELETE,
+		nil, windows.OPEN_EXISTING, windows.FILE_FLAG_OPEN_REPARSE_POINT, 0)
+	if err != nil {
+		return nil, &os.PathError{Op: "open", Path: path, Err: err}
+	}
+	return os.NewFile(uintptr(handle), path), nil
+}
+
 func durableFileIdentity(path string) (string, error) {
 	info, err := durableWindowsFileInformation(path)
 	if err != nil {
