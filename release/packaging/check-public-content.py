@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Reject private identifiers and organization-specific deployment defaults."""
 import argparse
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 import re
 import subprocess
 import tarfile
@@ -19,6 +19,23 @@ DEPLOYMENT_DEFAULT = re.compile(
     r'[^\n]*?(?:[=:]\s*["\x27]?|:-)(?:dockpipe(?:-staging|-tfstate)?|Dockpipe-Industries/dockpipe)'
     r'(?=["\x27}\s;]|$)'
 )
+# These exact payload roots are populated from the pinned upstream inputs in
+# desktop/flatpak/prepare-package-tools.py. Our wrappers, source metadata, npm
+# lockfiles, and all tracked repository files remain subject to the check.
+BUNDLED_TOOL_PAYLOAD = re.compile(
+    r'^(?:resolvers|workflows)/[^/]+/assets/tooling/bin/\.deps/'
+    r'(?:aws/aws/|node/runtime/|go/go/|wrangler/node_modules/|azure/)'
+)
+
+
+def is_bundled_tool_payload(name):
+    path = PurePosixPath(name)
+    if path.is_absolute() or ".." in path.parts or "\\" in name:
+        return False
+    canonical = path.as_posix()
+    if canonical.endswith('/.deps/azure/source.json'):
+        return False
+    return BUNDLED_TOOL_PAYLOAD.match(canonical) is not None
 
 
 def findings(path, text):
@@ -60,7 +77,7 @@ def tracked_entries(root):
 def archive_entries(path):
     with tarfile.open(path, "r:*") as archive:
         for member in archive:
-            if member.isfile():
+            if member.isfile() and not is_bundled_tool_payload(member.name):
                 stream = archive.extractfile(member)
                 if stream is not None:
                     yield "packages/" + member.name.lstrip("./"), stream.read()
