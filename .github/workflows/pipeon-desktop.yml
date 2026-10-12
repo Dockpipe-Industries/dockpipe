@@ -39,7 +39,7 @@ jobs:
     env:
       CARGO_TERM_COLOR: always
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Install Linux GUI dependencies
         if: runner.os == 'Linux'
         run: |
