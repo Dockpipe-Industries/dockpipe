@@ -83,3 +83,13 @@ loopback editor's exact origin (scheme, host and port), in the main webview.
 A different local port, a redirected remote site, or a secondary webview cannot
 use that grant. A non-loopback `PIPEON_URL` can still open, but receives no native
 clipboard permission. Ordinary browser clipboard behavior remains separate.
+
+## Linux GLib security backport
+
+The Linux shell uses a package-local glib 0.18.5 with the upstream fix for
+[RUSTSEC-2024-0429](https://rustsec.org/advisories/RUSTSEC-2024-0429.html).
+GTK's current dependency constraint prevents using glib 0.20 directly. The
+[backport provenance](src-tauri/vendor/README.md) records the original crate
+checksum, exact source change, licence and removal criteria. Builds use the
+checked-in Cargo patch and lockfile; do not remove the patch just to update
+the lockfile. The native Linux CI runs an optimized iterator regression test.
