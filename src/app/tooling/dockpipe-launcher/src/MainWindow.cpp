@@ -528,6 +528,9 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), m_sessions(this)
     connect(&m_sessions, &SessionManager::sessionPrompt, this, &MainWindow::onSessionPrompt);
     connect(&m_sessions, &SessionManager::sessionFailed, this,
             [this](const QString &, const QString &err) { QMessageBox::warning(this, tr("Dockpipe Launcher"), err); });
+    auto *trayAvailability = new QTimer(this);
+    connect(trayAvailability, &QTimer::timeout, this, &MainWindow::setupTray);
+    trayAvailability->start(5000);
     QTimer::singleShot(0, this, [this, startHome]() {
         m_store.load();
         setupTray();
@@ -1203,6 +1206,20 @@ bool MainWindow::openWorkflowConfig(const WorkflowMeta &meta)
 
 void MainWindow::setupTray()
 {
+    if (!QSystemTrayIcon::isSystemTrayAvailable()) {
+        if (m_tray && m_tray->isVisible()) {
+            m_tray->hide();
+            // A desktop-shell restart must not strand a hidden launcher.
+            if (!isVisible())
+                show();
+        }
+        return;
+    }
+    if (m_tray) {
+        if (!m_tray->isVisible())
+            m_tray->show();
+        return;
+    }
     m_tray = new QSystemTrayIcon(QGuiApplication::windowIcon(), this);
     m_tray->setToolTip(tr("Dockpipe Launcher"));
     auto *menu = new QMenu(this);
@@ -1229,7 +1246,7 @@ void MainWindow::onTrayActivate(QSystemTrayIcon::ActivationReason reason)
 
 void MainWindow::closeEvent(QCloseEvent *event)
 {
-    if (m_tray && m_tray->isVisible()) {
+    if (m_tray && m_tray->isVisible() && QSystemTrayIcon::isSystemTrayAvailable()) {
         hide();
         event->ignore();
         return;

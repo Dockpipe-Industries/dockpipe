@@ -104,10 +104,38 @@ flatpak run com.dockpipe.Dockpipe
 flatpak run --command=dockpipe com.dockpipe.Dockpipe --version
 ```
 
-The last command invokes the bundled CLI; installation does not add a native
-`dockpipe` command to your host `PATH`. Normal app XDG data is separate from native
+**Terminal setup is automatic:** open Dockpipe after installing the Flatpak,
+then open a terminal and run `dockpipe --version`. The launcher creates
+`~/.local/bin/dockpipe` for your account and, when needed, adds that directory to
+Bash, Zsh, or Fish startup configuration. There is no separate enable step.
+Existing native commands and files are preserved. The shortcut uses the bundled
+CLI and the Flatpak's package storage.
+
+Flatpak bundles do not run host installation hooks, so this user-level integration
+finishes on the first launcher start. Older bundles can use the direct
+`flatpak run --command=dockpipe com.dockpipe.Dockpipe` command above until upgraded.
+If automatic setup cannot complete, the launcher reports the reason and remains
+usable. Custom or symlinked shell configuration is left unchanged. Other shells
+can invoke the shortcut by its full path. Remove the shortcut and its labelled
+PATH block when uninstalling Dockpipe.
+
+Normal app XDG data is separate from native
 Dockpipe data. Project-local packages and explicit data-root overrides still take
 precedence, so check those when sharing a project between native and Flatpak runs.
+
+**Desktop warnings:** Dockpipe uses a tray only when the desktop provides one;
+without a tray, closing the window exits the launcher. The Flatpak requests access
+to the tray watcher service rather than the entire session bus. A known Qt warning
+about a null Wayland surface during teardown is filtered narrowly in the launcher;
+other Qt warnings and errors remain visible. To include that diagnostic in a bug
+report, run:
+
+```sh
+flatpak run --env=DOCKPIPE_QT_DIAGNOSTICS=1 com.dockpipe.Dockpipe
+```
+
+Actual keyboard, focus, or window failures should still be reported with the
+desktop environment, Flatpak/runtime versions, and steps to reproduce them.
 
 **Updates:** this is a standalone bundle, without an updating Dockpipe Flatpak
 remote. `flatpak update` can update the KDE runtime from Flathub, but does not fetch
