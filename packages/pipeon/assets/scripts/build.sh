@@ -634,7 +634,7 @@ build_desktop() {
   mkdir -p "$PIPEON_DESKTOP_TARGET_DIR"
   run_with_progress "Pipeon desktop Cargo build" \
     env CARGO_TARGET_DIR="$PIPEON_DESKTOP_TARGET_DIR" \
-    cargo build --manifest-path "$REPO_ROOT/packages/pipeon/apps/pipeon-desktop/src-tauri/Cargo.toml" --release
+    cargo build --locked --manifest-path "$REPO_ROOT/packages/pipeon/apps/pipeon-desktop/src-tauri/Cargo.toml" --release
   mkdir -p "$REPO_ROOT/packages/pipeon/apps/pipeon-desktop/bin"
   cp -f "$PIPEON_DESKTOP_TARGET_DIR/release/pipeon-desktop" "$REPO_ROOT/packages/pipeon/apps/pipeon-desktop/bin/pipeon-desktop"
   chmod +x "$REPO_ROOT/packages/pipeon/apps/pipeon-desktop/bin/pipeon-desktop"
