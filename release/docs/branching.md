@@ -39,7 +39,24 @@ Turn off **“allow administrators to bypass”** if you want **your own** chang
 
 ### Dependabot
 
-**`.github/dependabot.yml`** runs **weekly** version updates for **`gomod`** (repo root) and **`github-actions`** (workflows; grouped into one PR). PRs target **`staging`** so dependency bumps do not push straight to **`master`** (which would run **Release**). Ensure branch **`staging`** exists, or remove **`target-branch`** until it does.
+**`.github/dependabot.yml`** runs **weekly** version updates for **`gomod`**
+(repo root), **`github-actions`** (grouped), and **`cargo`** (Pipeon desktop,
+grouped). Version-update PRs target **`dev`** and follow **`dev` → `staging` →
+`master`**. CI and CodeQL cover both PRs and pushes to `dev`; pushes to `dev`
+do not publish a staging candidate or a production release.
+
+Dependabot reads its configuration from the repository's default branch, so
+configuration changes become active after promotion to `master`. Fork owners
+using this routing need a `dev` branch.
+
+**Security updates always target the default branch.** GitHub does not apply
+`target-branch` to them. Retarget those PRs to `dev` and update their branches
+with the current `dev` before qualification; do not bypass required checks.
+See [GitHub's target-branch rules](https://docs.github.com/en/code-security/reference/supply-chain-security/dependabot-options-reference#target-branch).
+
+Pipeon desktop changes also run **Pipeon desktop qualification**, which builds
+the locked Rust dependency graph on Linux, macOS, and Windows. The Flatpak
+qualification alone does not cover this optional Tauri desktop shell.
 
 ---
 
