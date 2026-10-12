@@ -397,7 +397,7 @@ func PreparePackageRuntimeDir(workdir, ownerID string) (string, error) {
 		current = filepath.Join(current, part)
 		info, statErr := os.Lstat(current)
 		if os.IsNotExist(statErr) {
-			if mkdirErr := os.Mkdir(current, 0o700); mkdirErr != nil && !os.IsExist(mkdirErr) {
+			if mkdirErr := createPrivateDirectory(current); mkdirErr != nil && !os.IsExist(mkdirErr) {
 				return "", mkdirErr
 			}
 			info, statErr = os.Lstat(current)

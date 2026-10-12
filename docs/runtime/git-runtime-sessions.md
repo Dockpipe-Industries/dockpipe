@@ -221,7 +221,7 @@ Workflow authors should describe workspace intent without selecting storage mech
 
 ```yaml
 workspace:
-  repo: biztraak
+  repo: example-project
   mode: managed
   lifecycle:
     branch_prefix: ai
@@ -320,17 +320,17 @@ bin/.dockpipe/sessions/<session-id>/
 {
   "schema": 1,
   "session_id": "ai/run-1842-feature-comments",
-  "workspace_id": "biztraak",
+  "workspace_id": "example-project",
   "repo": {
-    "logical_id": "biztraak",
-    "source": "git@github.com:org/biztraak.git",
+    "logical_id": "example-project",
+    "source": "git@github.com:org/example-project.git",
     "base_ref": "main",
     "session_ref": "ai/session-2026-07-01-feature-comments"
   },
   "storage": {
     "mode": "managed",
     "backend": "docker_volume",
-    "volume": "dockpipe-ws-biztraak-run-1842"
+    "volume": "dockpipe-ws-example-project-run-1842"
   },
   "status": "active",
   "created_at": "2026-07-01T00:00:00Z",

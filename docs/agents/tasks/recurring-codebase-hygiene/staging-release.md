@@ -128,7 +128,7 @@ and package-store builds, Linux DEB/RPM/APK/Arch packages, Windows MSI, install
 scripts, catalogs/checksums, a GitHub prerelease, and candidate-specific signed APT.
 Added an artifact inventory and test-VM APT instructions to `release/docs/staging.md`.
 
-The user supplied staging 1Password Environment ID `kuuppko2xxsb2wcr7am46bs6xa`.
+The staging environment was supplied privately; its identifier is intentionally omitted.
 `dockpipe.config.json` now defines `packages-staging` (upload pair) and
 `packages-staging-release-setup` (upload pair plus signing key). No secret values
 are stored in source. The saved staging signing key matches
@@ -691,3 +691,12 @@ trailer names, and APT identity were compared against HEAD and preserved. Build
 outputs remain ignored or under `/tmp`; no installed packages or live catalog were
 modified. Source changes remain uncommitted and unpublished; native macOS/Windows
 release qualification remains a hosted check.
+
+## Public configuration cleanup — 2026-10-12
+
+Account references and personal home paths were removed from public source and historical
+notes. Public configuration now requires operator-supplied deployment targets. The
+source/package-content regression gate and fork publication opt-in are documented in
+[the public repository boundary](../../../../public-repository-boundary.md). Local validation
+and hosted release qualification must be reported separately. Confirm publication
+from the release run and live catalog before reporting it complete.

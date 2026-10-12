@@ -5,11 +5,12 @@ import base64
 import binascii
 import os
 from pathlib import Path
+import re
 import subprocess
 import tempfile
 import textwrap
+from urllib.parse import urlsplit
 
-REPOSITORY = "Dockpipe-Industries/dockpipe"
 SECRETS = ("AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "APT_SIGNING_KEY")
 VARIABLES = ("R2_ENDPOINT_URL", "DOCKPIPE_RELEASE_BUCKET", "R2_PREFIX")
 
@@ -71,26 +72,29 @@ def normalize_signing_key(value):
 def configure(apply, environment="release"):
     if environment not in ("release", "release-staging"):
         raise ValueError("Expected release or release-staging environment")
+    repository = os.environ.get("RELEASE_SETUP_REPOSITORY", "").strip()
+    if not re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", repository):
+        raise ValueError("Set RELEASE_SETUP_REPOSITORY to the intended owner/repository")
     values = {name: os.environ.get(name, "") for name in (*SECRETS, *VARIABLES)}
     missing = [name for name, value in values.items() if not value]
     if missing:
         raise ValueError("Missing release settings: " + ", ".join(missing))
-    if not values["R2_ENDPOINT_URL"].startswith("https://"):
-        raise ValueError("R2_ENDPOINT_URL must use HTTPS")
-    if environment == "release-staging" and (values["DOCKPIPE_RELEASE_BUCKET"] != "dockpipe-staging"
-                                              or values["R2_PREFIX"].strip("/") != "packages"):
-        raise ValueError("Staging setup requires dockpipe-staging and the packages prefix")
+    endpoint = urlsplit(values["R2_ENDPOINT_URL"])
+    if (endpoint.scheme != "https" or not endpoint.hostname or endpoint.username
+            or endpoint.password or endpoint.query or endpoint.fragment):
+        raise ValueError("R2_ENDPOINT_URL must be an HTTPS endpoint without embedded credentials")
     values["APT_SIGNING_KEY"] = normalize_signing_key(values["APT_SIGNING_KEY"])
     fingerprint = signing_fingerprint(values["APT_SIGNING_KEY"])
     print(f"Validated APT signing fingerprint: {fingerprint}")
-    print(f"Target: {REPOSITORY}, GitHub environment: {environment}")
+    print(f"Target: {repository}, GitHub environment: {environment}")
+    print(f"Publication bucket: {values['DOCKPIPE_RELEASE_BUCKET']}, endpoint: {values['R2_ENDPOINT_URL']}")
     if not apply:
         print("Checks passed. Set RELEASE_SETUP_APPLY=1 to copy the three scoped secrets and public settings.")
         return
     for name in SECRETS:
-        run(["gh", "secret", "set", name, "--repo", REPOSITORY, "--env", environment], value=values[name])
+        run(["gh", "secret", "set", name, "--repo", repository, "--env", environment], value=values[name])
     for name, value in {**{name: values[name] for name in VARIABLES}, "APT_SIGNING_FINGERPRINT": fingerprint}.items():
-        run(["gh", "variable", "set", name, "--repo", REPOSITORY, "--env", environment, "--body", value])
+        run(["gh", "variable", "set", name, "--repo", repository, "--env", environment, "--body", value])
     print("Configured the GitHub release environment. No release was started.")
 
 

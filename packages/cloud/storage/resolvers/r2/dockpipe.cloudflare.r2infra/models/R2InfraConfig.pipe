@@ -11,9 +11,9 @@ public Class R2InfraConfig : IR2InfraConfig
     public string DockpipeTfAttachCloudflareProvider = "1";
     public string DockpipeTfUseR2PublishMap = "1";
     public string DockpipeTfApplyAutoApprove = "1";
-    public string DockpipeTfStateBucket = "dockpipe";
+    public string DockpipeTfStateBucket = "";
     public string DockpipeTfStateKey = "state/dockpipe.cloudflare.r2publish/terraform.tfstate";
-    public string R2Bucket = "dockpipe";
+    public string R2Bucket = "";
     public string TfVarCacheBrowserTtlSeconds = "3600";
     public string TfVarCacheEdgeTtlSeconds = "86400";
     public string TfVarEnableCacheRules = "true";

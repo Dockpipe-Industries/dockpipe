@@ -26,7 +26,7 @@ Typical order: **`r2infra`** (or **`package-store-infra`** with nested r2infra +
 | **S3 API** | `AWS_ACCESS_KEY_ID` + `AWS_SECRET_ACCESS_KEY` (R2 access keys) | `aws s3 cp` | You create the bucket (or use Terraform separately). |
 | **Single API token** | `CLOUDFLARE_API_TOKEN` + `CLOUDFLARE_ACCOUNT_ID` | Terraform **creates** the bucket, then **`wrangler r2 object put`** | Created by Terraform unless you skip it. |
 
-**Terraform state** defaults to **remote** on R2: bucket **`dockpipe`**, object key **`state/dockpipe.cloudflare.r2publish/terraform.tfstate`** (same account as `CLOUDFLARE_ACCOUNT_ID`). If you used **`state/r2-publish/terraform.tfstate`**, set **`R2_TF_STATE_KEY`** until you migrate. The S3-compatible backend uses **R2 access keys** (`R2_STATE_*` or `AWS_*`), not the Cloudflare API token — see [Remote R2 backend](https://developers.cloudflare.com/terraform/advanced-topics/remote-backend/). If the publish bucket already exists, **`terraform import`** before apply — see **`terraform/README.md`**.
+**Terraform state** defaults to **remote** on R2: an explicitly configured private state bucket, object key **`state/dockpipe.cloudflare.r2publish/terraform.tfstate`** (same account as `CLOUDFLARE_ACCOUNT_ID`). If you used **`state/r2-publish/terraform.tfstate`**, set **`R2_TF_STATE_KEY`** until you migrate. The S3-compatible backend uses **R2 access keys** (`R2_STATE_*` or `AWS_*`), not the Cloudflare API token — see [Remote R2 backend](https://developers.cloudflare.com/terraform/advanced-topics/remote-backend/). If the publish bucket already exists, **`terraform import`** before apply — see **`terraform/README.md`**.
 
 R2 is the **destination**, not a Dockpipe runtime. **`cloudflare`** is not a runtime; the workflow uses **`runtime: dockerimage`** with **`kind: host`** where it needs host-side CLI work.
 
@@ -49,7 +49,7 @@ See [Cloudflare R2 — AWS CLI](https://developers.cloudflare.com/r2/examples/aw
 - **Terraform** (`terraform` on `PATH`) — module at **`…/dockpipe.cloudflare.r2publish/terraform`** (or `R2_TERRAFORM_DIR`); use workflow **`dockpipe.cloudflare.r2infra`**
 - **Wrangler** — either `wrangler` on `PATH`, or **Node.js** (`npx` runs `wrangler@3`)
 - **API token** with at least **Account → R2 → Edit** (bucket + objects). If Terraform also creates a **custom domain**, **WAF**, or **cache rules**, the token needs **zone** permissions for that hostname’s zone — see **`terraform/README.md`**. See [R2 API tokens](https://developers.cloudflare.com/r2/api/tokens/).
-- **R2 API keys for Terraform state** — scoped to the **`dockpipe`** bucket (Object Read & Write). Set **`R2_STATE_ACCESS_KEY_ID`** / **`R2_STATE_SECRET_ACCESS_KEY`**, or use the same **`AWS_*`** pair if it already targets that bucket. Use **`R2_TF_BACKEND=local`** to keep state only on disk (no keys).
+- **R2 API keys for Terraform state** — scoped to your private state bucket (Object Read & Write). Set **`R2_STATE_ACCESS_KEY_ID`** / **`R2_STATE_SECRET_ACCESS_KEY`**, or use the same **`AWS_*`** pair if it already targets that bucket. Use **`R2_TF_BACKEND=local`** to keep state only on disk (no keys).
 
 Terraform module: [Cloudflare provider + R2](https://developers.cloudflare.com/r2/examples/terraform/) (`cloudflare_r2_bucket`, optional `cloudflare_r2_custom_domain` and rulesets; provider **`~> 5.0`**, lock file: `terraform/.terraform.lock.hcl`). **Import** existing buckets: **`terraform/README.md`**.
 
@@ -104,8 +104,8 @@ R2_PUBLISH_DRY_RUN=1 dockpipe --workflow dockpipe.cloudflare.r2upload
 | `R2_SKIP_TERRAFORM` | `0` | Set to `1` to skip Terraform ( **`dockpipe.cloudflare.r2upload`** sets this). |
 | `R2_USE_TERRAFORM` | *(see below)* | `1` to always run Terraform; `0` to never run. |
 | `R2_PUBLISH_DRY_RUN` | `0` | Set to `1` to print only what would run. |
-| `R2_TF_BACKEND` | `remote` | `remote` — state in R2 (`dockpipe` / `state/dockpipe.cloudflare.r2publish/terraform.tfstate` by default). `local` — `terraform init -backend=false` (no R2 keys). |
-| `R2_TF_STATE_BUCKET` | `dockpipe` | State object bucket (S3 backend). |
+| `R2_TF_BACKEND` | `remote` | `remote` — state in R2 (an explicitly configured state bucket and `state/dockpipe.cloudflare.r2publish/terraform.tfstate`). `local` — `terraform init -backend=false` (no R2 keys). |
+| `R2_TF_STATE_BUCKET` | *(required for remote state)* | State object bucket (S3 backend). |
 | `R2_TF_STATE_KEY` | `state/dockpipe.cloudflare.r2publish/terraform.tfstate` | State object key inside that bucket. |
 | `R2_STATE_ACCESS_KEY_ID` | *(unset)* | R2 S3 API access key for the **state** bucket (or use `AWS_ACCESS_KEY_ID` when it targets that bucket). |
 | `R2_STATE_SECRET_ACCESS_KEY` | *(unset)* | Secret for `R2_STATE_ACCESS_KEY_ID`. |
@@ -170,7 +170,7 @@ terraform apply
 
 **Terraform:** With **S3 keys**, Terraform is **off** unless you set **`R2_USE_TERRAFORM=1`**. With **`CLOUDFLARE_API_TOKEN`** only, Terraform runs **by default** unless **`R2_SKIP_TERRAFORM=1`**.
 
-**Remote state:** Defaults match a shared **`dockpipe`** bucket with a **`state/`** prefix in the dashboard. Override bucket/key with **`R2_TF_STATE_*`** if you use a different layout.
+**Remote state:** Set your private state bucket explicitly with **`DOCKPIPE_TF_STATE_BUCKET`** (or **`R2_TF_STATE_BUCKET`**). Keep it separate from your publication bucket. Set a distinct state key for each environment.
 
 ## Git
 
