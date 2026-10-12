@@ -64,6 +64,7 @@ flatpak build-finish --command=dockpipe-launcher --share=network --share=ipc \
   --socket=wayland --socket=fallback-x11 --device=dri --filesystem=home \
   --filesystem=/run/docker.sock --filesystem=xdg-run/docker.sock --filesystem=xdg-run/podman/podman.sock \
   --talk-name=org.freedesktop.Flatpak \
+  --talk-name=org.kde.StatusNotifierWatcher \
   --env=DOCKPIPE_SYSTEM_ROOT=/app/share/dockpipe --env=DOCKPIPE_BIN=/app/bin/dockpipe "$app"
 
 # Exercise runtime libraries, not the larger development SDK. No app installation.
