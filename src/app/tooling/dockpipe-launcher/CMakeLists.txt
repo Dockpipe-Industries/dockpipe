@@ -34,6 +34,8 @@ find_package(Qt6 REQUIRED COMPONENTS Widgets Network Concurrent)
 set(DOCKPIPE_LAUNCHER_SOURCES
     src/main.cpp
     src/LauncherEnvironment.cpp
+    src/LauncherDiagnostics.cpp
+    src/FlatpakTerminal.cpp
     src/SingleInstanceGuard.cpp
     src/Theme.cpp
     src/Context.cpp
@@ -130,6 +132,21 @@ if(BUILD_TESTING AND UNIX)
     target_link_libraries(package-manager-test PRIVATE Qt6::Widgets)
     add_test(NAME package-manager COMMAND package-manager-test)
     set_tests_properties(package-manager PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+    if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+        add_executable(flatpak-terminal-test
+            tests/FlatpakTerminalTest.cpp src/FlatpakTerminal.cpp)
+        target_include_directories(flatpak-terminal-test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+        target_link_libraries(flatpak-terminal-test PRIVATE Qt6::Core)
+        add_dependencies(flatpak-terminal-test dockpipe-launcher)
+        add_test(NAME flatpak-terminal COMMAND flatpak-terminal-test $<TARGET_FILE:dockpipe-launcher>)
+        set_tests_properties(flatpak-terminal PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+    endif()
+    add_executable(launcher-diagnostics-test tests/LauncherDiagnosticsTest.cpp src/LauncherDiagnostics.cpp)
+    target_include_directories(launcher-diagnostics-test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+    target_link_libraries(launcher-diagnostics-test PRIVATE Qt6::Core)
+    add_test(NAME launcher-diagnostics COMMAND launcher-diagnostics-test)
+    add_test(NAME launcher-diagnostics-opt-in COMMAND launcher-diagnostics-test --diagnostics)
+    add_test(NAME launcher-diagnostics-native COMMAND launcher-diagnostics-test --native)
 endif()
 
 if(BUILD_TESTING AND UNIX)

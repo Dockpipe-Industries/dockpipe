@@ -85,7 +85,7 @@ $manifestPath = Join-Path $repoRootResolved 'packages\pipeon\apps\pipeon-desktop
 $desktopBinDir = Join-Path $repoRootResolved 'packages\pipeon\apps\pipeon-desktop\bin'
 New-Item -ItemType Directory -Path $desktopBinDir -Force | Out-Null
 
-$cargoCmd = 'set "CARGO_TARGET_DIR={0}" && "{1}" build --manifest-path "{2}" --release' -f `
+$cargoCmd = 'set "CARGO_TARGET_DIR={0}" && "{1}" build --locked --manifest-path "{2}" --release' -f `
   $targetDirResolved, $cargoExe, $manifestPath
 
 Invoke-WithVcVars -VcVarsPath $vcvars -Command $cargoCmd
