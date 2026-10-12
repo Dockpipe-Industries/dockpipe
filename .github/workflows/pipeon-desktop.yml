@@ -53,3 +53,7 @@ jobs:
         env:
           CARGO_TARGET_DIR: ${{ runner.temp }}/pipeon-desktop-target
         run: cargo +1.95.0 build --locked --manifest-path packages/pipeon/apps/pipeon-desktop/src-tauri/Cargo.toml
+      - name: Test clipboard origin isolation
+        env:
+          CARGO_TARGET_DIR: ${{ runner.temp }}/pipeon-desktop-target
+        run: cargo +1.95.0 test --locked --manifest-path packages/pipeon/apps/pipeon-desktop/src-tauri/Cargo.toml --test clipboard_access
