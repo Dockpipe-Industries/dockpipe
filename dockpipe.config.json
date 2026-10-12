@@ -1,0 +1,61 @@
+{
+  "schema": 1,
+  "compile": {
+    "workflows": [
+      "workflows",
+      "packages"
+    ]
+  },
+  "packages": {
+    "namespace": "dockpipeproject"
+  },
+  "secrets": {
+    "vault_template": ".env.template",
+    "vault": "op",
+    "notes": "vault_template: env mapping file (agnostic name). With vault op, use op inject (op://). Other vault backends can substitute the same keys.",
+    "environments": {
+      "packages-production": {
+        "resolver": "onepassword",
+        "parameters": {
+          "environment_id": "rimccmsvbaehthwukfmrmskh6m"
+        },
+        "bindings": {
+          "AWS_ACCESS_KEY_ID": "AWS_ACCESS_KEY_ID",
+          "AWS_SECRET_ACCESS_KEY": "AWS_SECRET_ACCESS_KEY"
+        }
+      },
+      "packages-staging": {
+        "resolver": "onepassword",
+        "parameters": {
+          "environment_id": "kuuppko2xxsb2wcr7am46bs6xa"
+        },
+        "bindings": {
+          "AWS_ACCESS_KEY_ID": "AWS_ACCESS_KEY_ID",
+          "AWS_SECRET_ACCESS_KEY": "AWS_SECRET_ACCESS_KEY"
+        }
+      },
+      "packages-staging-release-setup": {
+        "resolver": "onepassword",
+        "parameters": {
+          "environment_id": "kuuppko2xxsb2wcr7am46bs6xa"
+        },
+        "bindings": {
+          "AWS_ACCESS_KEY_ID": "AWS_ACCESS_KEY_ID",
+          "AWS_SECRET_ACCESS_KEY": "AWS_SECRET_ACCESS_KEY",
+          "APT_SIGNING_KEY": "APT_SIGNING_KEY"
+        }
+      },
+      "packages-release-setup": {
+        "resolver": "onepassword",
+        "parameters": {
+          "environment_id": "rimccmsvbaehthwukfmrmskh6m"
+        },
+        "bindings": {
+          "AWS_ACCESS_KEY_ID": "AWS_ACCESS_KEY_ID",
+          "AWS_SECRET_ACCESS_KEY": "AWS_SECRET_ACCESS_KEY",
+          "APT_SIGNING_KEY": "APT_SIGNING_KEY"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,12 @@
+public Record ContainerRow {
+    public string Id;
+    public string Name;
+    public bool Running;
+}
+
+public Class Root {
+    public Optional<ContainerRow> RowAt(
+        List<ContainerRow> values,
+        int index
+    ) => at(values, index);
+}

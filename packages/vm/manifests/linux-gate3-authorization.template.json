@@ -1,0 +1,10 @@
+{
+  "schema": "dockpipe.vm.gate3-authorization.v1",
+  "approved": false,
+  "execution_sha256": "REPLACE_WITH_EXACT_EXECUTOR_SHA256",
+  "plan_sha256": "REPLACE_WITH_EXACT_GATE3_PLAN_SHA256",
+  "run_id": "run-example-001",
+  "cohort_id": "cohort-example-001",
+  "token_sha256": "REPLACE_WITH_EXACT_DESTRUCTIVE_TOKEN_SHA256",
+  "expires_at_unix": 0
+}

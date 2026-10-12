@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "artifacts": [
+    {
+      "kind": "resolver",
+      "name": "pipeon-dev-stack"
+    },
+    {
+      "kind": "workflow",
+      "name": "pipeon-dev-stack"
+    }
+  ],
+  "tools": [],
+  "host_commands": [
+    "nvidia-smi",
+    "nvidia-ctk",
+    "pkexec"
+  ],
+  "required_files": [
+    "assets/tooling/bin/linux/dockpipe",
+    "assets/tooling/bin/linux/dorkpipe",
+    "assets/tooling/bin/linux/mcpd",
+    "assets/code-server-context/packages/pipeon/resolvers/pipeon/vscode-extension/code-server-user-settings.json",
+    "assets/provider-pools/catalog.yml"
+  ]
+}
