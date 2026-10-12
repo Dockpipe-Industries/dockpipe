@@ -52,7 +52,7 @@ class ReleaseWorkflowTests(unittest.TestCase):
                         dry_run = event == "workflow_dispatch" and requested_dry_run != "false"
                         allowed = dry_run or ref == "refs/heads/master"
                         environment = dict(os.environ, GITHUB_REF=ref, GITHUB_EVENT_NAME=event,
-                                           GITHUB_OUTPUT=str(output), INPUT_VERSION="",
+                                           GITHUB_OUTPUT=str(output), INPUT_VERSION="", RELEASE_ENABLED="true",
                                            INPUT_DRY_RUN=requested_dry_run, INPUT_BUILD_MSI="true")
                         result = subprocess.run(["bash", "-c", metadata["run"]], cwd=REPOSITORY,
                                                 env=environment, text=True, capture_output=True)
@@ -110,21 +110,21 @@ class ReleaseWorkflowTests(unittest.TestCase):
         self.assertEqual(prepared["with"]["name"], download["with"]["name"])
         self.assertEqual(prepared["with"]["path"].rstrip("/"), download["with"]["path"])
 
-    def test_staging_admission_requires_own_staging_push(self):
+    def test_staging_admission_supports_enabled_forks_and_rejects_other_events(self):
         metadata = next(step for step in self.jobs["meta"]["steps"] if step.get("id") == "m")
         with tempfile.TemporaryDirectory() as temporary:
             output = Path(temporary) / "outputs"
             for event in ("push", "pull_request", "workflow_dispatch"):
                 for ref in ("refs/heads/staging", "refs/heads/master", "refs/heads/dev"):
-                    for repository in ("Dockpipe-Industries/dockpipe", "fork/dockpipe"):
+                    for repository, enabled in (("upstream/project", "true"), ("fork/project", "true"), ("fork/project", "false")):
                         output.write_text("")
                         environment = dict(os.environ, GITHUB_REF=ref, GITHUB_EVENT_NAME=event,
-                                           GITHUB_REPOSITORY=repository, GITHUB_SHA="a" * 40,
+                                           GITHUB_REPOSITORY=repository, RELEASE_ENABLED=enabled, GITHUB_SHA="a" * 40,
                                            GITHUB_RUN_ID="1234", GITHUB_RUN_ATTEMPT="2",
                                            GITHUB_OUTPUT=str(output), INPUT_STAGING="true")
                         result = subprocess.run(["bash", "-c", metadata["run"]], cwd=REPOSITORY,
                                                 env=environment, text=True, capture_output=True)
-                        allowed = event == "push" and ref == "refs/heads/staging" and repository == "Dockpipe-Industries/dockpipe"
+                        allowed = event == "push" and ref == "refs/heads/staging" and enabled == "true"
                         self.assertEqual(result.returncode == 0, allowed, result.stdout + result.stderr)
                         if allowed:
                             self.assertIn("staging_suffix=staging.1234.2.aaaaaaaaaaaa", output.read_text())
@@ -141,6 +141,7 @@ class ReleaseWorkflowTests(unittest.TestCase):
         self.assertIn("github.event_name == 'push'", call["if"])
         self.assertIn("github.ref == 'refs/heads/staging'", call["if"])
         self.assertEqual(call["secrets"], "inherit")
+        self.assertIn("vars.DOCKPIPE_RELEASE_ENABLED == 'true'", call["if"])
         job = self.jobs["publish-staging"]
         self.assertEqual(job["needs"], ["meta", "assemble"])
         self.assertEqual(job["environment"], "release-staging")

@@ -72,8 +72,10 @@ if sys.argv[1] == "plan":
                        DOCKPIPE_WORKDIR=str(root), DOCKPIPE_BIN=str(cli), TEST_LOG=str(log), TEST_PIPELINE=str(pipeline),
                        CLOUDFLARE_ACCOUNT_ID="a" * 32, CLOUDFLARE_API_TOKEN="test-token",
                        R2_STATE_ACCESS_KEY_ID="test-state", R2_STATE_SECRET_ACCESS_KEY="test-state-secret",
-                       TF_VAR_zone_id="b" * 32, TF_VAR_public_hostname="packages.dockpipe.com",
-                       TF_VAR_bucket_name="dockpipe", TF_VAR_enable_cache_rules="true", TF_VAR_enable_waf_baseline="true",
+                       STAGING_R2_BUCKET="example-staging", STAGING_PUBLIC_HOSTNAME="staging.example.com",
+                       STAGING_TF_STATE_BUCKET="example-state", STAGING_TF_STATE_KEY="state/staging/terraform.tfstate",
+                       TF_VAR_zone_id="b" * 32, TF_VAR_public_hostname="production.example.com",
+                       TF_VAR_bucket_name="production-packages", TF_VAR_enable_cache_rules="true", TF_VAR_enable_waf_baseline="true",
                        DOCKPIPE_TF_STATE_KEY="state/terraform.tfstate", DOCKPIPE_TF_STATE_BUCKET="production-state",
                        DOCKPIPE_TF_IMPORT_ARGS="unwanted import", DOCKPIPE_TF_WORKSPACE="production",
                        DOCKPIPE_TF_REMOTE_BACKEND_FILE="production.hcl", TF_WORKSPACE="production",
@@ -82,12 +84,12 @@ if sys.argv[1] == "plan":
             self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
             calls = [json.loads(line) for line in log.read_text().splitlines()]
             self.assertEqual([call["args"][0] for call in calls], ["init", "validate", "plan"])
-            self.assertIn('key    = "state/package-store-staging/terraform.tfstate"', calls[0]["backend"])
-            self.assertIn('bucket = "dockpipe-tfstate"', calls[0]["backend"])
+            self.assertIn('key    = "state/staging/terraform.tfstate"', calls[0]["backend"])
+            self.assertIn('bucket = "example-state"', calls[0]["backend"])
             for call in calls:
                 environment = call["env"]
-                self.assertEqual(environment["TF_VAR_bucket_name"], "dockpipe-staging")
-                self.assertEqual(environment["TF_VAR_public_hostname"], "packages.staging.dockpipe.com")
+                self.assertEqual(environment["TF_VAR_bucket_name"], "example-staging")
+                self.assertEqual(environment["TF_VAR_public_hostname"], "staging.example.com")
                 self.assertEqual(environment["TF_VAR_enable_cache_rules"], "false")
                 self.assertEqual(environment["TF_VAR_enable_waf_baseline"], "false")
                 self.assertNotIn("TF_WORKSPACE", environment)
@@ -101,3 +103,9 @@ if sys.argv[1] == "plan":
             result = subprocess.run(["bash", str(WRAPPER)], env=dict(env, DOCKPIPE_TF_COMMANDS="apply"), capture_output=True)
             self.assertNotEqual(result.returncode, 0)
             self.assertFalse(log.exists())
+
+            for setting in ("STAGING_R2_BUCKET", "STAGING_PUBLIC_HOSTNAME", "STAGING_TF_STATE_BUCKET", "STAGING_TF_STATE_KEY"):
+                with self.subTest(missing=setting):
+                    result = subprocess.run(["bash", str(WRAPPER)], env=dict(env, **{setting: ""}), capture_output=True)
+                    self.assertNotEqual(result.returncode, 0)
+                    self.assertFalse(log.exists())

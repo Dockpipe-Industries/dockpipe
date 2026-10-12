@@ -3,7 +3,7 @@ terraform {
   required_version = ">= 1.2"
 
   # Remote state on Cloudflare R2 (S3-compatible). Full config is supplied at `terraform init`
-  # via `-backend-config` (see workflow README and r2-publish.sh); defaults: bucket `dockpipe`,
+  # via `-backend-config` (see workflow README and r2-publish.sh); requires an explicitly configured state bucket; default
   # object key `state/dockpipe.cloudflare.r2publish/terraform.tfstate`.
   backend "s3" {
   }

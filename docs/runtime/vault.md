@@ -4,7 +4,7 @@ Dockpipe can load an explicitly selected secret environment before workflow step
 
 ## Named environments
 
-Install/build the `secrets` package and install the chosen vendor CLI on the host. Infisical can sign in through your browser during an interactive run; other providers require an existing CLI login. Configure references, never credentials, in `dockpipe.config.json`:
+Install/build the `secrets` package and install the chosen vendor CLI on the host. Infisical can sign in through your browser during an interactive run; other providers require an existing CLI login. Configure references, never credentials, in your private project's `dockpipe.config.json`. Public repositories must use placeholders for account, environment and vault identifiers; see the [public repository boundary](../public-repository-boundary.md):
 
 ```json
 {

@@ -144,7 +144,7 @@ explanation, not isolated causal proof. No benchmark deadline or acceptance pred
 
 ## Evidence
 
-`E=/home/jamie/.codex/visualizations/2026/09/13/01a09c2e-b445-7322-8a02-1d2328313bec/verification-overhead/`
+`E=/home/developer/.codex/visualizations/2026/09/13/01a09c2e-b445-7322-8a02-1d2328313bec/verification-overhead/`
 
 The original `profile-job.json` and `recovery.json` retain failure and recovery facts.
 `selection.json` freezes case selection. `attempt-2/frozen-design.json` binds current

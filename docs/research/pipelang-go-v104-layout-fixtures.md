@@ -135,7 +135,7 @@ separate. **Zero existing bytes were freed.** These are metadata samples, not ex
 physical peaks; hardlinks are accounted for, shared extents are unidentified, and
 later final documentation/acceptance records are outside the closing sample.
 
-`E=/home/jamie/.codex/visualizations/2026/09/13/01a099d5-a3bc-74e3-8ac3-2540173fd02c/go-v104-layout-fixtures/`
+`E=/home/developer/.codex/visualizations/2026/09/13/01a099d5-a3bc-74e3-8ac3-2540173fd02c/go-v104-layout-fixtures/`
 
 `guarded/validation-receipt.json` owns fresh comparisons and unit results;
 `guarded/validation-job.json` owns aggregate containment and cleanup;

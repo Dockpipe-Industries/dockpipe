@@ -4,7 +4,7 @@ set -euo pipefail
 ROOT="${DOCKPIPE_SOURCE_ROOT:-$(pwd)}"
 ARTIFACTS_DIR="${RELEASE_ARTIFACTS_DIR:-release/artifacts}"
 SKIP_UPLOAD="${PACKAGE_RELEASE_SKIP_UPLOAD:-0}"
-DRY_RUN="${R2_PUBLISH_DRY_RUN:-0}"
+DRY_RUN="${R2_PUBLISH_DRY_RUN:-1}"
 
 is_windows_host() {
   case "$(uname -s)" in
