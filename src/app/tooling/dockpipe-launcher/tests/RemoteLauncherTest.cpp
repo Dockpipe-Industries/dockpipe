@@ -330,5 +330,12 @@ esac
     QFile submitted(directory.filePath("submit-args"));
     if (!submitted.open(QIODevice::ReadOnly) || !submitted.readAll().contains("--expected-digest\nabc123\n"))
         return 11;
+    // The offscreen platform has no tray. Closing must really close the window,
+    // rather than pretending an unavailable tray can reopen it.
+    if (QSystemTrayIcon::isSystemTrayAvailable() || window.findChild<QSystemTrayIcon *>())
+        return 31;
+    window.close();
+    if (window.isVisible())
+        return 32;
     return 0;
 }

@@ -19,6 +19,17 @@ profile. The launcher does not start or switch container providers. See
 
 ## Package remotes
 
+The Flatpak launcher automatically sets up the host terminal command on first
+launch. It preserves an existing host CLI; otherwise it creates
+`~/.local/bin/dockpipe` and adds it to Bash, Zsh, or Fish PATH configuration when
+needed. No opt-in setting or separate command is required. Setup failures remain
+visible without blocking launcher startup.
+
+The launcher only hides on close when a system tray is available. It restores a
+hidden window if the tray disappears and exits normally when closed without one.
+See the [Flatpak guide](../../../../release/packaging/desktop/flatpak/README.md)
+for the narrowly handled Wayland teardown diagnostic and diagnostic opt-in.
+
 Open **Settings → Package Remotes** and choose **Use production** or **Use staging**.
 New settings default to `https://packages.dockpipe.com`; an explicitly saved empty list
 keeps remote browsing disabled. **Use staging** selects `https://packages.staging.dockpipe.com`.
