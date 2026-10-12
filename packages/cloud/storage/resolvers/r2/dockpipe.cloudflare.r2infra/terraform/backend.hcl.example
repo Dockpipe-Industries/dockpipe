@@ -2,7 +2,7 @@
 # The r2-publish.sh host script generates this from env (bucket/key/endpoint defaults).
 # Replace ACCOUNT_ID and use R2 S3 keys (Object Read & Write on the state bucket).
 
-bucket = "dockpipe"
+bucket = "your-state-bucket"
 key    = "state/dockpipe.cloudflare.r2publish/terraform.tfstate"
 region = "auto"
 

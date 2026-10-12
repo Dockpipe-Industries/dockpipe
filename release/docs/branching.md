@@ -102,3 +102,23 @@ test -f "release/releasenotes/$(tr -d ' \t\r\n' < VERSION).md"
 ```
 
 **Makefile** `deb` / `deb-all` use **`VERSION`** automatically when the file exists.
+
+## Running a fork
+
+CI and manual release dry runs work without an organization allowlist. Automatic
+publication is off until the fork owner sets repository variable
+`DOCKPIPE_RELEASE_ENABLED=true`. First configure separate `release` and
+`release-staging` GitHub environments with your own scoped credentials, signing
+identity, endpoint, bucket, and prefix. Preserve the `staging` → `master` release
+flow and apply branch protections appropriate for your repository.
+
+The [release setup workflow](../../workflows/package/package-release-setup/README.md)
+requires `RELEASE_SETUP_REPOSITORY=your-owner/your-repository`; it never infers a
+credential destination from the upstream repository. Run checks before enabling
+apply. For CLI installation from a fork, use `DOCKPIPE_REPO=your-owner/your-repository`
+with the shell installer or `-Repo your-owner/your-repository` with PowerShell.
+Official Dockpipe download defaults remain available for ordinary users.
+
+Do not enable `DEVTO_PUBLISH` in a fork unless you deliberately configure your own
+article destination and credentials. Follow the [public configuration boundary](../../docs/public-repository-boundary.md)
+for operator settings and examples.

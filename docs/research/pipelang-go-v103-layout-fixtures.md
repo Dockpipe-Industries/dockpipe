@@ -87,7 +87,7 @@ This task retains approximately 397.5 MB before final documentation and
 acceptance; shared-cache growth is separate. **Zero existing bytes were freed.**
 Later documentation and final acceptance are outside the closing storage sample.
 
-`E=/home/jamie/.codex/visualizations/2026/09/13/01a09ba6-75b0-7401-af5e-f9b46c56e266/go-v103-layout-fixtures/`
+`E=/home/developer/.codex/visualizations/2026/09/13/01a09ba6-75b0-7401-af5e-f9b46c56e266/go-v103-layout-fixtures/`
 
 `validation-receipt.json` owns matched results, sources and debug artifact digests;
 `validation-job.json` owns aggregate containment and process-tree removal;

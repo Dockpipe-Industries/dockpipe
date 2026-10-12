@@ -162,7 +162,7 @@ class ReleaseTests(unittest.TestCase):
         for name in ("InRelease", "Release", "Release.gpg", "Packages"):
             (apt / "dists/stable" / name).write_bytes(b"metadata")
         calls = []
-        environment = {"DOCKPIPE_RELEASE_BUCKET": "test-packages", "R2_ENDPOINT_URL": "https://example.invalid", "R2_PREFIX": "packages"}
+        environment = {"DOCKPIPE_RELEASE_CHANNEL": "stable", "DOCKPIPE_RELEASE_BUCKET": "test-packages", "R2_ENDPOINT_URL": "https://example.invalid", "R2_PREFIX": "packages"}
         with patch.dict(os.environ, environment), patch.object(publisher, "upload", side_effect=lambda *args: calls.append(args)), patch.object(publisher, "require_forward_version"), patch.object(publisher, "require_unpublished"):
             publisher.publish(artifacts, apt, "0.6.0", False)
         keys = [call[1] for call in calls]
@@ -188,7 +188,7 @@ class ReleaseTests(unittest.TestCase):
         (apt / "dists/staging/InRelease").write_bytes(b"signed")
         (apt / "pool").mkdir()
         (apt / "pool/candidate.deb").write_bytes(b"deb")
-        environment = {"DOCKPIPE_RELEASE_BUCKET": "dockpipe-staging", "R2_ENDPOINT_URL": "https://example.invalid", "R2_PREFIX": "packages"}
+        environment = {"DOCKPIPE_RELEASE_CHANNEL": "staging", "DOCKPIPE_RELEASE_BUCKET": "example-staging", "R2_ENDPOINT_URL": "https://example.invalid", "R2_PREFIX": "packages"}
         with patch.dict(os.environ, environment), patch.object(publisher, "upload") as upload, patch.object(publisher, "require_forward_version"), patch.object(publisher, "require_unpublished") as guard:
             publisher.publish(artifacts, apt, "0.6.0", False, candidate)
             prefix = f"packages/candidates/{candidate}"
@@ -206,8 +206,8 @@ class ReleaseTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 publisher.publish(artifacts, apt, "0.6.0", False, candidate)
             upload.assert_not_called()
-        for bucket, identity in (("dockpipe", candidate), ("dockpipe-staging", ""), ("dockpipe-staging", "../escape")):
-            with patch.dict(os.environ, dict(environment, DOCKPIPE_RELEASE_BUCKET=bucket)), patch.object(publisher, "upload") as upload:
+        for channel, identity in (("stable", candidate), ("staging", ""), ("staging", "../escape"), ("", candidate)):
+            with patch.dict(os.environ, dict(environment, DOCKPIPE_RELEASE_CHANNEL=channel)), patch.object(publisher, "upload") as upload:
                 with self.assertRaises(ValueError):
                     publisher.publish(artifacts, apt, "0.6.0", False, identity)
                 upload.assert_not_called()
@@ -291,8 +291,8 @@ class ReleaseTests(unittest.TestCase):
         spec = importlib.util.spec_from_file_location("release_setup", source)
         setup = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(setup)
-        values = {"AWS_ACCESS_KEY_ID": "test-id", "AWS_SECRET_ACCESS_KEY": "test-key", "APT_SIGNING_KEY": "test-signing-key\nsecond-line",
-                  "R2_ENDPOINT_URL": "https://example.invalid", "DOCKPIPE_RELEASE_BUCKET": "dockpipe", "R2_PREFIX": "packages",
+        values = {"RELEASE_SETUP_REPOSITORY": "example/project", "AWS_ACCESS_KEY_ID": "test-id", "AWS_SECRET_ACCESS_KEY": "test-key", "APT_SIGNING_KEY": "test-signing-key\nsecond-line",
+                  "R2_ENDPOINT_URL": "https://example.invalid", "DOCKPIPE_RELEASE_BUCKET": "example-packages", "R2_PREFIX": "packages",
                   "CLOUDFLARE_API_TOKEN": "must-not-copy", "R2_STATE_SECRET_ACCESS_KEY": "must-not-copy"}
         with patch.dict(os.environ, values), patch.object(setup, "signing_fingerprint", return_value="A" * 40), patch.object(setup, "run") as run:
             setup.configure(False)
@@ -305,13 +305,15 @@ class ReleaseTests(unittest.TestCase):
                 self.assertNotIn(call.kwargs["value"], call.args[0])
             self.assertEqual(len(run.call_args_list), 7)
             run.reset_mock()
-            with self.assertRaises(ValueError):
-                setup.configure(True, "release-staging")
+            with patch.dict(os.environ, {"RELEASE_SETUP_REPOSITORY": ""}):
+                with self.assertRaises(ValueError):
+                    setup.configure(True, "release-staging")
             run.assert_not_called()
-            with patch.dict(os.environ, {"DOCKPIPE_RELEASE_BUCKET": "dockpipe-staging"}):
+            with patch.dict(os.environ, {"DOCKPIPE_RELEASE_BUCKET": "example-staging"}):
                 setup.configure(True, "release-staging")
             self.assertEqual(len(run.call_args_list), 7)
             for call in run.call_args_list:
+                self.assertIn("example/project", call.args[0])
                 self.assertIn("release-staging", call.args[0])
                 self.assertNotIn("release", call.args[0])
 
