@@ -1,0 +1,278 @@
+{
+  "language_contract": "v0.14.0",
+  "compiler_contract": "pipelang.compiler.v1",
+  "functions": [
+    {
+      "identity": {
+        "package_id": "test.package",
+        "path": "app.root.root.valueor",
+        "callable": {
+          "parameters": [
+            {
+              "kind": "applied",
+              "package_id": "pipelang",
+              "path": "optional",
+              "name": "Optional",
+              "arguments": [
+                {
+                  "kind": "primitive",
+                  "primitive": "string"
+                }
+              ]
+            },
+            {
+              "kind": "primitive",
+              "primitive": "string"
+            }
+          ],
+          "returns": {
+            "kind": "primitive",
+            "primitive": "string"
+          }
+        }
+      },
+      "owner": {
+        "module": "app.root",
+        "symbol_id": 1,
+        "identity": {
+          "package_id": "test.package",
+          "path": "app.root.root"
+        },
+        "source_span": {
+          "file": "root.pipe",
+          "start": 0,
+          "end": 118
+        }
+      },
+      "name": "ValueOr",
+      "parameters": [
+        {
+          "binding": {
+            "kind": "parameter",
+            "function": {
+              "package_id": "test.package",
+              "path": "app.root.root.valueor",
+              "callable": {
+                "parameters": [
+                  {
+                    "kind": "applied",
+                    "package_id": "pipelang",
+                    "path": "optional",
+                    "name": "Optional",
+                    "arguments": [
+                      {
+                        "kind": "primitive",
+                        "primitive": "string"
+                      }
+                    ]
+                  },
+                  {
+                    "kind": "primitive",
+                    "primitive": "string"
+                  }
+                ],
+                "returns": {
+                  "kind": "primitive",
+                  "primitive": "string"
+                }
+              }
+            },
+            "position": 0,
+            "name": "value"
+          },
+          "type": {
+            "kind": "optional",
+            "optional": {
+              "value": {
+                "kind": "primitive",
+                "primitive": "string"
+              }
+            }
+          },
+          "type_span": {
+            "file": "root.pipe",
+            "start": 46,
+            "end": 62
+          },
+          "span": {
+            "file": "root.pipe",
+            "start": 46,
+            "end": 68
+          }
+        },
+        {
+          "binding": {
+            "kind": "parameter",
+            "function": {
+              "package_id": "test.package",
+              "path": "app.root.root.valueor",
+              "callable": {
+                "parameters": [
+                  {
+                    "kind": "applied",
+                    "package_id": "pipelang",
+                    "path": "optional",
+                    "name": "Optional",
+                    "arguments": [
+                      {
+                        "kind": "primitive",
+                        "primitive": "string"
+                      }
+                    ]
+                  },
+                  {
+                    "kind": "primitive",
+                    "primitive": "string"
+                  }
+                ],
+                "returns": {
+                  "kind": "primitive",
+                  "primitive": "string"
+                }
+              }
+            },
+            "position": 1,
+            "name": "fallback"
+          },
+          "type": {
+            "kind": "primitive",
+            "primitive": "string"
+          },
+          "type_span": {
+            "file": "root.pipe",
+            "start": 70,
+            "end": 76
+          },
+          "span": {
+            "file": "root.pipe",
+            "start": 70,
+            "end": 85
+          }
+        }
+      ],
+      "return_type": {
+        "kind": "primitive",
+        "primitive": "string"
+      },
+      "return_type_span": {
+        "file": "root.pipe",
+        "start": 31,
+        "end": 37
+      },
+      "body": {
+        "kind": "optional_value_or",
+        "type": {
+          "kind": "primitive",
+          "primitive": "string"
+        },
+        "span": {
+          "file": "root.pipe",
+          "start": 90,
+          "end": 115
+        },
+        "value_or": {
+          "value": {
+            "kind": "reference",
+            "type": {
+              "kind": "optional",
+              "optional": {
+                "value": {
+                  "kind": "primitive",
+                  "primitive": "string"
+                }
+              }
+            },
+            "span": {
+              "file": "root.pipe",
+              "start": 99,
+              "end": 104
+            },
+            "reference": {
+              "kind": "parameter",
+              "function": {
+                "package_id": "test.package",
+                "path": "app.root.root.valueor",
+                "callable": {
+                  "parameters": [
+                    {
+                      "kind": "applied",
+                      "package_id": "pipelang",
+                      "path": "optional",
+                      "name": "Optional",
+                      "arguments": [
+                        {
+                          "kind": "primitive",
+                          "primitive": "string"
+                        }
+                      ]
+                    },
+                    {
+                      "kind": "primitive",
+                      "primitive": "string"
+                    }
+                  ],
+                  "returns": {
+                    "kind": "primitive",
+                    "primitive": "string"
+                  }
+                }
+              },
+              "position": 0,
+              "name": "value"
+            }
+          },
+          "fallback": {
+            "kind": "reference",
+            "type": {
+              "kind": "primitive",
+              "primitive": "string"
+            },
+            "span": {
+              "file": "root.pipe",
+              "start": 106,
+              "end": 114
+            },
+            "reference": {
+              "kind": "parameter",
+              "function": {
+                "package_id": "test.package",
+                "path": "app.root.root.valueor",
+                "callable": {
+                  "parameters": [
+                    {
+                      "kind": "applied",
+                      "package_id": "pipelang",
+                      "path": "optional",
+                      "name": "Optional",
+                      "arguments": [
+                        {
+                          "kind": "primitive",
+                          "primitive": "string"
+                        }
+                      ]
+                    },
+                    {
+                      "kind": "primitive",
+                      "primitive": "string"
+                    }
+                  ],
+                  "returns": {
+                    "kind": "primitive",
+                    "primitive": "string"
+                  }
+                }
+              },
+              "position": 1,
+              "name": "fallback"
+            }
+          }
+        }
+      },
+      "span": {
+        "file": "root.pipe",
+        "start": 24,
+        "end": 116
+      }
+    }
+  ]
+}

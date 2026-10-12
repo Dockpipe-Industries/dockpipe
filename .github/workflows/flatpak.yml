@@ -1,0 +1,124 @@
+name: Flatpak qualification
+
+# Standalone runs produce qualification artifacts. The release caller includes
+# the tested bundle and distinct Marketplace store in its normal publication gate.
+on:
+  workflow_call:
+    inputs:
+      version:
+        required: true
+        type: string
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - .github/workflows/flatpak.yml
+      - release/packaging/desktop/flatpak/**
+      - release/packaging/tests/fixtures/flatpak-package/**
+      - src/lib/infrastructure/packageplatform/**
+      - src/lib/infrastructure/packagecatalog/**
+      - src/lib/infrastructure/packagebuild/**
+      - src/lib/application/package_remote.go
+      - src/lib/application/bundled_tools.go
+      - src/lib/application/dependencies.go
+      - src/lib/application/internal/remotecmd/**
+      - src/app/tooling/dockpipe-launcher/**
+      - packages/**
+      - workflows/**
+
+permissions:
+  contents: read
+
+jobs:
+  desktop:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+    env:
+      DOCKPIPE_FLATPAK_VERSION: ${{ inputs.version }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v6
+        with:
+          go-version: '1.26.9'
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24.21.0'
+      - name: Install Flatpak SDK and runtime
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends flatpak python3-yaml
+          flatpak remote-add --user --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+          flatpak install --user --noninteractive --assumeyes flathub org.kde.Sdk//6.10 org.kde.Platform//6.10
+      - name: Build CLI and required core only
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="${DOCKPIPE_FLATPAK_VERSION:-$(cat VERSION)}"
+          [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          printf '%s\n' "$version" > VERSION
+          export CGO_ENABLED=0
+          export DOCKPIPE_PACKAGES_ROOT="$RUNNER_TEMP/core-compiled"
+          export XDG_STATE_HOME="$RUNNER_TEMP/dockpipe-state"
+          go build -trimpath -ldflags "-s -w -X main.Version=$version" -o "$RUNNER_TEMP/dockpipe" ./src/cmd
+          "$RUNNER_TEMP/dockpipe" package compile core --workdir "$GITHUB_WORKSPACE"
+          "$RUNNER_TEMP/dockpipe" package build store --workdir "$GITHUB_WORKSPACE" --only core --out "$RUNNER_TEMP/core-store"
+      - name: Build and test Flatpak desktop and optional bundled dependency
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash release/packaging/desktop/flatpak/build.sh "$(cat VERSION)" "$RUNNER_TEMP/dockpipe" "$RUNNER_TEMP/core-store" "$RUNNER_TEMP/flatpak"
+          bash release/packaging/desktop/flatpak/build-package.sh "$RUNNER_TEMP/flatpak/app" release/packaging/tests/fixtures/flatpak-package "$RUNNER_TEMP/flatpak-package"
+      - name: Qualify real Docker and Compose bind mounts
+        run: |
+          docker pull debian:12
+          python3 release/packaging/desktop/flatpak/container-smoke.py "$RUNNER_TEMP/flatpak/app"
+      - name: Prepare complete optional package inputs
+        shell: bash
+        run: |
+          set -euo pipefail
+          export CGO_ENABLED=0 PIPEON_BUILD_DESKTOP=0
+          export DOCKPIPE_BIN="$RUNNER_TEMP/dockpipe"
+          export DOCKPIPE_PACKAGES_ROOT="$RUNNER_TEMP/native-packages"
+          export XDG_STATE_HOME="$RUNNER_TEMP/dockpipe-state"
+          export XDG_CACHE_HOME="$RUNNER_TEMP/dockpipe-cache"
+          "$DOCKPIPE_BIN" package compile all --workdir "$GITHUB_WORKSPACE" --force
+          for package in secrets remote pipeon; do
+            "$DOCKPIPE_BIN" package build source --workdir "$GITHUB_WORKSPACE" --only "$package"
+          done
+          # Source compilation invalidates consumers of the replaced resolvers.
+          "$DOCKPIPE_BIN" package compile workflows --workdir "$GITHUB_WORKSPACE" --from workflows
+      - name: Build and qualify optional Flatpak catalog
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 release/packaging/desktop/flatpak/test_package_tools.py
+          python3 release/packaging/desktop/flatpak/prepare-package-tools.py "$RUNNER_TEMP/package-tools" \
+            --cache "$RUNNER_TEMP/package-downloads" --app "$RUNNER_TEMP/flatpak/app"
+          python3 release/packaging/desktop/flatpak/build-catalog.py "$RUNNER_TEMP/flatpak/app" \
+            "$RUNNER_TEMP/native-packages" "$RUNNER_TEMP/package-tools" "$RUNNER_TEMP/flatpak-catalog"
+      - name: Stage tested release artifacts
+        if: inputs.version != ''
+        shell: bash
+        run: |
+          set -euo pipefail
+          target=linux-amd64-flatpak-org.kde.Platform-6.10
+          mkdir -p "release/artifacts/stores/$target"
+          cp "$RUNNER_TEMP/flatpak/"*.flatpak release/artifacts/
+          cp "$RUNNER_TEMP/flatpak-catalog/store/"* "release/artifacts/stores/$target/"
+          cp "$RUNNER_TEMP/flatpak-catalog/qualification.json" "release/artifacts/stores/$target/"
+      - uses: actions/upload-artifact@v7
+        if: inputs.version != ''
+        with:
+          name: release-flatpak
+          path: release/artifacts/
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v7
+        if: inputs.version == ''
+        with:
+          name: flatpak-qualification-amd64
+          path: |
+            ${{ runner.temp }}/flatpak/*.flatpak
+            ${{ runner.temp }}/flatpak/*-commit.txt
+            ${{ runner.temp }}/flatpak-package/store/
+            ${{ runner.temp }}/flatpak-catalog/store/
+            ${{ runner.temp }}/flatpak-catalog/qualification.json
+          if-no-files-found: error

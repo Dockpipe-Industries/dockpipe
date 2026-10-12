@@ -1,0 +1,4 @@
+public Class Root
+{
+    public string Trim(string value) => trim(value);
+}

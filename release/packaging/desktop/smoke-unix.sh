@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+set -euo pipefail
+root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
+version="${1:?version}"
+out="$root/release/artifacts"
+stage="$(mktemp -d)"
+trap 'rm -rf "$stage"' EXIT
+if [[ "$(uname -s)" == Darwin ]]; then
+  [[ "${GITHUB_ACTIONS:-}" == true ]] || { echo 'Installer smoke requires a disposable CI runner' >&2; exit 1; }
+  case "$(uname -m)" in arm64) arch=arm64 ;; x86_64) arch=amd64 ;; esac
+  mkdir "$stage/mount"
+  trap 'hdiutil detach "$stage/mount" >/dev/null 2>&1 || true; rm -rf "$stage"' EXIT
+  hdiutil attach "$out/dockpipe-desktop_${version}_darwin_${arch}.dmg" -nobrowse -mountpoint "$stage/mount"
+  # Native hosted runners are disposable. Exercise Apple's real Installer and CLI link.
+  sudo installer -pkg "$stage/mount/Install Dockpipe.pkg" -target /
+  python3 "$root/release/packaging/tests/native-smoke.py" /usr/local/bin/dockpipe
+  python3 "$root/release/packaging/desktop/smoke.py" /Applications/DockPipe.app/Contents/MacOS/DockPipe /Applications/DockPipe.app/Contents/MacOS/dockpipe-cli
+  test "$(readlink /usr/local/bin/dockpipe)" = /Applications/DockPipe.app/Contents/MacOS/dockpipe-cli
+  # Verify managed updates are accepted too.
+  sudo installer -pkg "$stage/mount/Install Dockpipe.pkg" -target /
+  sudo rm /usr/local/bin/dockpipe
+  sudo rm -rf /Applications/DockPipe.app
+  sudo pkgutil --forget com.dockpipe.desktop
+else
+  bash "$root/release/packaging/desktop/smoke-linux.sh" "$version" "$out"
+fi

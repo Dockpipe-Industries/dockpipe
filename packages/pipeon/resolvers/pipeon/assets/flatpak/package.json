@@ -1,0 +1,16 @@
+{
+  "schema": 1,
+  "artifacts": [
+    {
+      "kind": "resolver",
+      "name": "pipeon"
+    },
+    {
+      "kind": "workflow",
+      "name": "pipeon"
+    }
+  ],
+  "tools": [],
+  "host_commands": [],
+  "required_files": []
+}

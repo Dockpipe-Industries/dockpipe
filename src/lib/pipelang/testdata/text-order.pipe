@@ -1,0 +1,1 @@
+public Class Root { public bool Before(string left, string right) => left < right; }

@@ -1,0 +1,532 @@
+{
+  "language_contract": "v0.24.0",
+  "compiler_contract": "pipelang.compiler.v1",
+  "functions": [
+    {
+      "identity": {
+        "package_id": "test.package",
+        "path": "app.root.root.searchrows",
+        "callable": {
+          "parameters": [
+            {
+              "kind": "applied",
+              "package_id": "pipelang",
+              "path": "list",
+              "name": "List",
+              "arguments": [
+                {
+                  "kind": "named",
+                  "package_id": "test.package",
+                  "path": "app.root.containerrow"
+                }
+              ]
+            },
+            {
+              "kind": "primitive",
+              "primitive": "string"
+            }
+          ],
+          "returns": {
+            "kind": "applied",
+            "package_id": "pipelang",
+            "path": "list",
+            "name": "List",
+            "arguments": [
+              {
+                "kind": "named",
+                "package_id": "test.package",
+                "path": "app.root.containerrow"
+              }
+            ]
+          }
+        }
+      },
+      "owner": {
+        "module": "app.root",
+        "symbol_id": 2,
+        "identity": {
+          "package_id": "test.package",
+          "path": "app.root.root"
+        },
+        "source_span": {
+          "file": "record-list-filter-contains-casefolded.pipe",
+          "start": 103,
+          "end": 271
+        }
+      },
+      "name": "SearchRows",
+      "parameters": [
+        {
+          "binding": {
+            "kind": "parameter",
+            "function": {
+              "package_id": "test.package",
+              "path": "app.root.root.searchrows",
+              "callable": {
+                "parameters": [
+                  {
+                    "kind": "applied",
+                    "package_id": "pipelang",
+                    "path": "list",
+                    "name": "List",
+                    "arguments": [
+                      {
+                        "kind": "named",
+                        "package_id": "test.package",
+                        "path": "app.root.containerrow"
+                      }
+                    ]
+                  },
+                  {
+                    "kind": "primitive",
+                    "primitive": "string"
+                  }
+                ],
+                "returns": {
+                  "kind": "applied",
+                  "package_id": "pipelang",
+                  "path": "list",
+                  "name": "List",
+                  "arguments": [
+                    {
+                      "kind": "named",
+                      "package_id": "test.package",
+                      "path": "app.root.containerrow"
+                    }
+                  ]
+                }
+              }
+            },
+            "position": 0,
+            "name": "values"
+          },
+          "type": {
+            "kind": "list",
+            "list": {
+              "element": {
+                "kind": "record",
+                "record": {
+                  "fields": [
+                    {
+                      "identity": {
+                        "package_id": "test.package",
+                        "path": "app.root.containerrow.id"
+                      },
+                      "name": "Id",
+                      "type": {
+                        "kind": "primitive",
+                        "primitive": "string"
+                      }
+                    },
+                    {
+                      "identity": {
+                        "package_id": "test.package",
+                        "path": "app.root.containerrow.name"
+                      },
+                      "name": "Name",
+                      "type": {
+                        "kind": "primitive",
+                        "primitive": "string"
+                      }
+                    },
+                    {
+                      "identity": {
+                        "package_id": "test.package",
+                        "path": "app.root.containerrow.running"
+                      },
+                      "name": "Running",
+                      "type": {
+                        "kind": "primitive",
+                        "primitive": "bool"
+                      }
+                    }
+                  ]
+                },
+                "symbol_id": 1,
+                "identity": {
+                  "package_id": "test.package",
+                  "path": "app.root.containerrow"
+                },
+                "name": "ContainerRow"
+              }
+            },
+            "identity": {
+              "package_id": "pipelang",
+              "path": "list"
+            },
+            "name": "List"
+          },
+          "type_span": {
+            "file": "record-list-filter-contains-casefolded.pipe",
+            "start": 164,
+            "end": 182
+          },
+          "span": {
+            "file": "record-list-filter-contains-casefolded.pipe",
+            "start": 164,
+            "end": 189
+          }
+        },
+        {
+          "binding": {
+            "kind": "parameter",
+            "function": {
+              "package_id": "test.package",
+              "path": "app.root.root.searchrows",
+              "callable": {
+                "parameters": [
+                  {
+                    "kind": "applied",
+                    "package_id": "pipelang",
+                    "path": "list",
+                    "name": "List",
+                    "arguments": [
+                      {
+                        "kind": "named",
+                        "package_id": "test.package",
+                        "path": "app.root.containerrow"
+                      }
+                    ]
+                  },
+                  {
+                    "kind": "primitive",
+                    "primitive": "string"
+                  }
+                ],
+                "returns": {
+                  "kind": "applied",
+                  "package_id": "pipelang",
+                  "path": "list",
+                  "name": "List",
+                  "arguments": [
+                    {
+                      "kind": "named",
+                      "package_id": "test.package",
+                      "path": "app.root.containerrow"
+                    }
+                  ]
+                }
+              }
+            },
+            "position": 1,
+            "name": "query"
+          },
+          "type": {
+            "kind": "primitive",
+            "primitive": "string"
+          },
+          "type_span": {
+            "file": "record-list-filter-contains-casefolded.pipe",
+            "start": 191,
+            "end": 197
+          },
+          "span": {
+            "file": "record-list-filter-contains-casefolded.pipe",
+            "start": 191,
+            "end": 203
+          }
+        }
+      ],
+      "return_type": {
+        "kind": "list",
+        "list": {
+          "element": {
+            "kind": "record",
+            "record": {
+              "fields": [
+                {
+                  "identity": {
+                    "package_id": "test.package",
+                    "path": "app.root.containerrow.id"
+                  },
+                  "name": "Id",
+                  "type": {
+                    "kind": "primitive",
+                    "primitive": "string"
+                  }
+                },
+                {
+                  "identity": {
+                    "package_id": "test.package",
+                    "path": "app.root.containerrow.name"
+                  },
+                  "name": "Name",
+                  "type": {
+                    "kind": "primitive",
+                    "primitive": "string"
+                  }
+                },
+                {
+                  "identity": {
+                    "package_id": "test.package",
+                    "path": "app.root.containerrow.running"
+                  },
+                  "name": "Running",
+                  "type": {
+                    "kind": "primitive",
+                    "primitive": "bool"
+                  }
+                }
+              ]
+            },
+            "symbol_id": 1,
+            "identity": {
+              "package_id": "test.package",
+              "path": "app.root.containerrow"
+            },
+            "name": "ContainerRow"
+          }
+        },
+        "identity": {
+          "package_id": "pipelang",
+          "path": "list"
+        },
+        "name": "List"
+      },
+      "return_type_span": {
+        "file": "record-list-filter-contains-casefolded.pipe",
+        "start": 134,
+        "end": 152
+      },
+      "body": {
+        "kind": "list_filter_contains_case_folded_text",
+        "type": {
+          "kind": "list",
+          "list": {
+            "element": {
+              "kind": "record",
+              "record": {
+                "fields": [
+                  {
+                    "identity": {
+                      "package_id": "test.package",
+                      "path": "app.root.containerrow.id"
+                    },
+                    "name": "Id",
+                    "type": {
+                      "kind": "primitive",
+                      "primitive": "string"
+                    }
+                  },
+                  {
+                    "identity": {
+                      "package_id": "test.package",
+                      "path": "app.root.containerrow.name"
+                    },
+                    "name": "Name",
+                    "type": {
+                      "kind": "primitive",
+                      "primitive": "string"
+                    }
+                  },
+                  {
+                    "identity": {
+                      "package_id": "test.package",
+                      "path": "app.root.containerrow.running"
+                    },
+                    "name": "Running",
+                    "type": {
+                      "kind": "primitive",
+                      "primitive": "bool"
+                    }
+                  }
+                ]
+              },
+              "symbol_id": 1,
+              "identity": {
+                "package_id": "test.package",
+                "path": "app.root.containerrow"
+              },
+              "name": "ContainerRow"
+            }
+          },
+          "identity": {
+            "package_id": "pipelang",
+            "path": "list"
+          },
+          "name": "List"
+        },
+        "span": {
+          "file": "record-list-filter-contains-casefolded.pipe",
+          "start": 208,
+          "end": 268
+        },
+        "list_filter_contains_case_folded_text": {
+          "values": {
+            "kind": "reference",
+            "type": {
+              "kind": "list",
+              "list": {
+                "element": {
+                  "kind": "record",
+                  "record": {
+                    "fields": [
+                      {
+                        "identity": {
+                          "package_id": "test.package",
+                          "path": "app.root.containerrow.id"
+                        },
+                        "name": "Id",
+                        "type": {
+                          "kind": "primitive",
+                          "primitive": "string"
+                        }
+                      },
+                      {
+                        "identity": {
+                          "package_id": "test.package",
+                          "path": "app.root.containerrow.name"
+                        },
+                        "name": "Name",
+                        "type": {
+                          "kind": "primitive",
+                          "primitive": "string"
+                        }
+                      },
+                      {
+                        "identity": {
+                          "package_id": "test.package",
+                          "path": "app.root.containerrow.running"
+                        },
+                        "name": "Running",
+                        "type": {
+                          "kind": "primitive",
+                          "primitive": "bool"
+                        }
+                      }
+                    ]
+                  },
+                  "symbol_id": 1,
+                  "identity": {
+                    "package_id": "test.package",
+                    "path": "app.root.containerrow"
+                  },
+                  "name": "ContainerRow"
+                }
+              },
+              "identity": {
+                "package_id": "pipelang",
+                "path": "list"
+              },
+              "name": "List"
+            },
+            "span": {
+              "file": "record-list-filter-contains-casefolded.pipe",
+              "start": 235,
+              "end": 241
+            },
+            "reference": {
+              "kind": "parameter",
+              "function": {
+                "package_id": "test.package",
+                "path": "app.root.root.searchrows",
+                "callable": {
+                  "parameters": [
+                    {
+                      "kind": "applied",
+                      "package_id": "pipelang",
+                      "path": "list",
+                      "name": "List",
+                      "arguments": [
+                        {
+                          "kind": "named",
+                          "package_id": "test.package",
+                          "path": "app.root.containerrow"
+                        }
+                      ]
+                    },
+                    {
+                      "kind": "primitive",
+                      "primitive": "string"
+                    }
+                  ],
+                  "returns": {
+                    "kind": "applied",
+                    "package_id": "pipelang",
+                    "path": "list",
+                    "name": "List",
+                    "arguments": [
+                      {
+                        "kind": "named",
+                        "package_id": "test.package",
+                        "path": "app.root.containerrow"
+                      }
+                    ]
+                  }
+                }
+              },
+              "position": 0,
+              "name": "values"
+            }
+          },
+          "field": {
+            "package_id": "test.package",
+            "path": "app.root.containerrow.name"
+          },
+          "name": "Name",
+          "position": 1,
+          "query": {
+            "kind": "reference",
+            "type": {
+              "kind": "primitive",
+              "primitive": "string"
+            },
+            "span": {
+              "file": "record-list-filter-contains-casefolded.pipe",
+              "start": 262,
+              "end": 267
+            },
+            "reference": {
+              "kind": "parameter",
+              "function": {
+                "package_id": "test.package",
+                "path": "app.root.root.searchrows",
+                "callable": {
+                  "parameters": [
+                    {
+                      "kind": "applied",
+                      "package_id": "pipelang",
+                      "path": "list",
+                      "name": "List",
+                      "arguments": [
+                        {
+                          "kind": "named",
+                          "package_id": "test.package",
+                          "path": "app.root.containerrow"
+                        }
+                      ]
+                    },
+                    {
+                      "kind": "primitive",
+                      "primitive": "string"
+                    }
+                  ],
+                  "returns": {
+                    "kind": "applied",
+                    "package_id": "pipelang",
+                    "path": "list",
+                    "name": "List",
+                    "arguments": [
+                      {
+                        "kind": "named",
+                        "package_id": "test.package",
+                        "path": "app.root.containerrow"
+                      }
+                    ]
+                  }
+                }
+              },
+              "position": 1,
+              "name": "query"
+            }
+          }
+        }
+      },
+      "span": {
+        "file": "record-list-filter-contains-casefolded.pipe",
+        "start": 127,
+        "end": 269
+      }
+    }
+  ]
+}

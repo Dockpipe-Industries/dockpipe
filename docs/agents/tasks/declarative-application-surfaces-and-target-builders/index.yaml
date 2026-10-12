@@ -1,0 +1,31 @@
+# TASK-020 Declarative application surfaces and standalone target builders
+schema: 1
+id: TASK-020
+topic: Declarative application surfaces and standalone target builders
+entrypoint: overview.md
+
+dispatch:
+  readiness: unclassified
+  ownership: unclaimed
+
+routes:
+  orientation:
+    read: [overview.md]
+  architecture_and_authoring:
+    read: [overview.md, architecture-authoring.md]
+  application_ir_and_targets:
+    read: [overview.md, targets.md]
+    optional: [architecture-authoring.md]
+  implementation_planning:
+    read: [overview.md, accepted-consumer.md, plan.md]
+
+documents:
+  - {path: overview.md, role: goal, proven evidence, and ownership boundary}
+  - {path: accepted-consumer.md, role: accepted Docker-observability consumer and parity baseline}
+  - {path: architecture-authoring.md, role: architecture, compiler direction, authoring, and PipeLang dependency}
+  - {path: targets.md, role: Application IR, escape hatches, Qt, web, and target-building contracts}
+  - {path: plan.md, role: related ownership, implementation sequence, acceptance, and next slice}
+
+maintenance:
+  - Resolve document paths relative to this index and load only the route needed.
+  - Keep dispatch metadata synchronized with docs/agents/task-index.yaml.

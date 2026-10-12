@@ -1,0 +1,12 @@
+{
+  "schema": 1,
+  "artifacts": [
+    {
+      "kind": "workflow",
+      "name": "dorkpipe-orchestrator"
+    }
+  ],
+  "tools": [],
+  "host_commands": [],
+  "required_files": []
+}

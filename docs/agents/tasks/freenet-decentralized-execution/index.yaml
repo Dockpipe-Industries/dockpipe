@@ -1,0 +1,27 @@
+# TASK-019 Freenet decentralized execution coordination
+schema: 1
+id: TASK-019
+topic: Freenet decentralized execution coordination
+entrypoint: overview.md
+
+dispatch:
+  readiness: unclassified
+  ownership: unclaimed
+
+routes:
+  orientation:
+    read: [overview.md]
+  architecture_and_security:
+    read: [overview.md, architecture.md]
+  delivery_and_acceptance:
+    read: [overview.md, delivery.md, dependencies-next.md]
+
+documents:
+  - {path: overview.md, role: goal, posture, problem, value, and feasibility}
+  - {path: architecture.md, role: architecture, state, identity, delegation, security, and network policy}
+  - {path: delivery.md, role: phases, proof-of-concept acceptance, open questions, and upstream collaboration}
+  - {path: dependencies-next.md, role: dependencies, non-goals, required research, references, and next slice}
+
+maintenance:
+  - Resolve document paths relative to this index and load only the route needed.
+  - Keep dispatch metadata synchronized with docs/agents/task-index.yaml.

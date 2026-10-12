@@ -1,0 +1,277 @@
+{
+  "language_contract": "v0.16.0",
+  "compiler_contract": "pipelang.compiler.v1",
+  "functions": [
+    {
+      "identity": {
+        "package_id": "test.package",
+        "path": "app.root.root.countrows",
+        "callable": {
+          "parameters": [
+            {
+              "kind": "applied",
+              "package_id": "pipelang",
+              "path": "list",
+              "name": "List",
+              "arguments": [
+                {
+                  "kind": "named",
+                  "package_id": "test.package",
+                  "path": "app.root.containerrow"
+                }
+              ]
+            }
+          ],
+          "returns": {
+            "kind": "primitive",
+            "primitive": "int"
+          }
+        }
+      },
+      "owner": {
+        "module": "app.root",
+        "symbol_id": 2,
+        "identity": {
+          "package_id": "test.package",
+          "path": "app.root.root"
+        },
+        "source_span": {
+          "file": "record-list-count.pipe",
+          "start": 103,
+          "end": 202
+        }
+      },
+      "name": "CountRows",
+      "parameters": [
+        {
+          "binding": {
+            "kind": "parameter",
+            "function": {
+              "package_id": "test.package",
+              "path": "app.root.root.countrows",
+              "callable": {
+                "parameters": [
+                  {
+                    "kind": "applied",
+                    "package_id": "pipelang",
+                    "path": "list",
+                    "name": "List",
+                    "arguments": [
+                      {
+                        "kind": "named",
+                        "package_id": "test.package",
+                        "path": "app.root.containerrow"
+                      }
+                    ]
+                  }
+                ],
+                "returns": {
+                  "kind": "primitive",
+                  "primitive": "int"
+                }
+              }
+            },
+            "position": 0,
+            "name": "values"
+          },
+          "type": {
+            "kind": "list",
+            "list": {
+              "element": {
+                "kind": "record",
+                "record": {
+                  "fields": [
+                    {
+                      "identity": {
+                        "package_id": "test.package",
+                        "path": "app.root.containerrow.id"
+                      },
+                      "name": "Id",
+                      "type": {
+                        "kind": "primitive",
+                        "primitive": "string"
+                      }
+                    },
+                    {
+                      "identity": {
+                        "package_id": "test.package",
+                        "path": "app.root.containerrow.name"
+                      },
+                      "name": "Name",
+                      "type": {
+                        "kind": "primitive",
+                        "primitive": "string"
+                      }
+                    },
+                    {
+                      "identity": {
+                        "package_id": "test.package",
+                        "path": "app.root.containerrow.running"
+                      },
+                      "name": "Running",
+                      "type": {
+                        "kind": "primitive",
+                        "primitive": "bool"
+                      }
+                    }
+                  ]
+                },
+                "symbol_id": 1,
+                "identity": {
+                  "package_id": "test.package",
+                  "path": "app.root.containerrow"
+                },
+                "name": "ContainerRow"
+              }
+            },
+            "identity": {
+              "package_id": "pipelang",
+              "path": "list"
+            },
+            "name": "List"
+          },
+          "type_span": {
+            "file": "record-list-count.pipe",
+            "start": 148,
+            "end": 166
+          },
+          "span": {
+            "file": "record-list-count.pipe",
+            "start": 148,
+            "end": 173
+          }
+        }
+      ],
+      "return_type": {
+        "kind": "numeric",
+        "numeric": {
+          "representation": "integer",
+          "bits": 64,
+          "signed": true
+        }
+      },
+      "return_type_span": {
+        "file": "record-list-count.pipe",
+        "start": 134,
+        "end": 137
+      },
+      "body": {
+        "kind": "list_count",
+        "type": {
+          "kind": "numeric",
+          "numeric": {
+            "representation": "integer",
+            "bits": 64,
+            "signed": true
+          }
+        },
+        "span": {
+          "file": "record-list-count.pipe",
+          "start": 186,
+          "end": 199
+        },
+        "list_count": {
+          "value": {
+            "kind": "reference",
+            "type": {
+              "kind": "list",
+              "list": {
+                "element": {
+                  "kind": "record",
+                  "record": {
+                    "fields": [
+                      {
+                        "identity": {
+                          "package_id": "test.package",
+                          "path": "app.root.containerrow.id"
+                        },
+                        "name": "Id",
+                        "type": {
+                          "kind": "primitive",
+                          "primitive": "string"
+                        }
+                      },
+                      {
+                        "identity": {
+                          "package_id": "test.package",
+                          "path": "app.root.containerrow.name"
+                        },
+                        "name": "Name",
+                        "type": {
+                          "kind": "primitive",
+                          "primitive": "string"
+                        }
+                      },
+                      {
+                        "identity": {
+                          "package_id": "test.package",
+                          "path": "app.root.containerrow.running"
+                        },
+                        "name": "Running",
+                        "type": {
+                          "kind": "primitive",
+                          "primitive": "bool"
+                        }
+                      }
+                    ]
+                  },
+                  "symbol_id": 1,
+                  "identity": {
+                    "package_id": "test.package",
+                    "path": "app.root.containerrow"
+                  },
+                  "name": "ContainerRow"
+                }
+              },
+              "identity": {
+                "package_id": "pipelang",
+                "path": "list"
+              },
+              "name": "List"
+            },
+            "span": {
+              "file": "record-list-count.pipe",
+              "start": 192,
+              "end": 198
+            },
+            "reference": {
+              "kind": "parameter",
+              "function": {
+                "package_id": "test.package",
+                "path": "app.root.root.countrows",
+                "callable": {
+                  "parameters": [
+                    {
+                      "kind": "applied",
+                      "package_id": "pipelang",
+                      "path": "list",
+                      "name": "List",
+                      "arguments": [
+                        {
+                          "kind": "named",
+                          "package_id": "test.package",
+                          "path": "app.root.containerrow"
+                        }
+                      ]
+                    }
+                  ],
+                  "returns": {
+                    "kind": "primitive",
+                    "primitive": "int"
+                  }
+                }
+              },
+              "position": 0,
+              "name": "values"
+            }
+          }
+        }
+      },
+      "span": {
+        "file": "record-list-count.pipe",
+        "start": 127,
+        "end": 200
+      }
+    }
+  ]
+}

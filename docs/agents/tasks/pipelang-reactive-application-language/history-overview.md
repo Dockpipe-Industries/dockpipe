@@ -1,0 +1,548 @@
+# PipeLang progress history
+
+Archived from the task overview on 2026-10-10. This is historical evidence, not
+current execution guidance. Dates, baselines, pending actions and approvals below
+belong to their recorded checkpoints; later results supersede earlier status.
+See [the current overview](overview.md) and its selected objective before acting.
+
+## Verification blocked — P04.b mutable locals
+
+The founder selected P04.b and approved its concrete implementation and verification scope.
+[mutable-locals.md](mutable-locals.md) owns proposed v0.115.0. P04.a / v0.114.0 remains
+the accepted baseline. Implementation and focused checks pass, but repeated coordinator
+headroom stops prevent fresh complete and independent acceptance. The objective records
+the failed attempts, fixed limits and outstanding proof.
+
+## Completed objective — P04.a general blocks
+
+[general-blocks.md](general-blocks.md) owns the selected and explicitly approved
+lexical blocks/joins/early-return implementation. Fresh complete verification and
+independent ordered acceptance passed: 8,882 suite cases / 892 functions, 2,934
+isolated compiler cases, nine integrations and one editor check. The accepted
+baseline is v0.114.0. P04.b is the separately selected and approved continuation above.
+
+## Completed objective — package inputs and inclusive storage
+
+The approved [packaging/storage repair](package-input-budget-repair.md) preserves
+533 authored assets and reduces the matched application test binary from 1.311 GB
+to 21.439 MB (98.36%). Complete-campaign storage now belongs to the controller,
+including standard test/compiler temporaries and independent final accounting.
+All proof and original files remain retained; zero bytes freed. Numerical 16/32-GiB
+targets and the native pilot remain separate, unadopted work.
+
+## Completed planning — footprint and native pilot
+
+[Footprint/native planning](footprint-native-pilot-plan.md) owns the completed
+2026-09-13 investigation. The canonical report recommends package-input and
+inclusive-budget repair first, followed by a bounded Go-frontend/C++-output pilot.
+The user subsequently approved the [package-input/storage repair](package-input-budget-repair.md).
+Cleanup, numerical-limit adoption and the native pilot remain unapproved. v0.113.0
+and the completed recovery proof remain accepted.
+
+## Completed objective — nominal enums
+
+The founder selected option 1 and explicitly said `approved`; P01 is now complete.
+[nominal-enums.md](nominal-enums.md) owns accepted v0.113.0 verification, including the fresh
+complete suite, compiler matrix, integration/editor checks and independent inherited-proof comparison.
+The [language reference](../../../concepts/pipelang.md#pipelang-v01130-nominal-enums-and-exhaustive-matching)
+defines nominal tags, exact equality, exhaustive matching and bounded composition. Other foundation
+packages remain unselected. Historical entries below grant no new authority.
+
+## Current planning result — foundation specification and dependency plan
+
+The [planning objective](foundation-specification-plan.md) is complete. The
+[canonical delivery plan](../../../concepts/pipelang-foundation-delivery.md) owns F01–F34 dispositions,
+52–84 proposed foundation slices, the M-app gate, separate bootstrap work and verification cost.
+P01 nominal enums were subsequently selected and approved; see the current objective above.
+v0.114.0 is now accepted; the planning baseline below remains historical. Use the live index and this planning record for current status; the entries below are
+historical slice records and grant no present authority.
+
+## Completed objective — arrow-method selector result arms
+
+Founder selected A and separately said exact `approved` for v0.112.0.
+[arrow-selector-value-arms.md](arrow-selector-value-arms.md) owns the bounded
+completed objective and accepted verification. The [canonical language section](../../../concepts/pipelang.md#pipelang-v01120-conditional-result-arms-in-arrow-method-selectors)
+defines semantics and exclusions. v0.111.0 and both verification optimization
+objectives remain completed baseline. No successor is selected. Historical status
+below grants no new authority.
+
+## Completed objective — terminal-leaf selector result arms
+
+Founder selected A and separately said exact `approved` for v0.111.0.
+[terminal-leaf-selector-value-arms.md](terminal-leaf-selector-value-arms.md) owns the
+bounded scope and completed verification; state: `completed`. The [canonical language contract](../../../concepts/pipelang.md#pipelang-v01110-conditional-result-arms-in-terminal-leaf-selector-returns)
+defines semantics and exclusions. Completed v0.110 and both verification optimization
+objectives remain admitted baseline. No successor, commit, push or cleanup is authorized.
+
+## Completed objective — straight-line selector result arms
+
+Founder selected A and separately said exact `approved` for v0.110.0.
+[straight-line-selector-value-arms.md](straight-line-selector-value-arms.md) owns
+scope and completed verification. No successor is selected. Both verification optimization objectives and
+v0.109.0 are complete. Historical opening status below does not reopen them.
+[Canonical language contract](../../../concepts/pipelang.md#pipelang-v01100-conditional-result-arms-in-straight-line-selector-returns).
+
+## Current objective — resumable verification optimization
+
+The user authorized the complete verification optimization architecture and a
+fresh execution task. Read [the objective](conformance-verification-optimization.md)
+and [canonical plan](../../../runtime/pipelang-verification.md). State:
+`ready_for_execution`; the first checkpoint is durable receipts and invalidation.
+The completed language contract remains v0.109.0; no language successor is selected.
+
+## Completed objective — combined selector arms in terminal tests
+
+Founder selected A and separately said exact `approved` for v0.109.0.
+[terminal-combined-selector-arms.md](terminal-combined-selector-arms.md) owns the
+bounded contract and verification. Implementation and bounded verification are complete in the saved checkout. The objective record distinguishes the full inventory, focused retries, isolated compiler proof and aggregate containment repair.
+The [canonical language section](../../../concepts/pipelang.md#pipelang-v01090-combined-selector-arms-in-terminal-tests)
+defines semantics and exclusions. The language slice is complete; the verification objective above owns current authority.
+
+## Completed objective — inner-selector value arms in terminal tests
+
+Founder selected A and separately said exact `approved` for v0.108.0.
+[terminal-inner-selector-arms.md](terminal-inner-selector-arms.md) owns the bounded
+contract and verification. Implementation and bounded verification are complete.
+All 795 discovered compiler tests and 648 isolated scaling cases pass.
+No successor, commit, push, cleanup or live operation is authorized.
+
+## Completed objective — conditional result arms in terminal selector tests
+
+Founder selected A and separately said exact `approved` for v0.107.0.
+[terminal-selector-value-arms.md](terminal-selector-value-arms.md) owns the bounded
+contract and verification. Implementation and bounded verification are complete.
+All 781 discovered compiler tests and 648 isolated scaling cases pass.
+The [canonical language section](../../../concepts/pipelang.md#pipelang-v01070-conditional-result-arms-in-terminal-selector-tests)
+defines semantics and exclusions. Commit, push, cleanup and live operations remain outside scope.
+No successor is selected.
+
+## Completed objective — flat boolean selectors in terminal tests
+
+Founder selected A and separately said exact `approved` for v0.106.0.
+[terminal-boolean-selector-tests.md](terminal-boolean-selector-tests.md) owns the
+bounded contract and verification. Implementation and bounded verification are complete.
+All 767 discovered compiler tests and 216 isolated scaling cases pass.
+The canonical [language section](../../../concepts/pipelang.md#pipelang-v01060-flat-boolean-selectors-in-terminal-tests)
+describes the placement. Commit, push, cleanup and live operations remain outside scope.
+No successor is selected.
+
+## Completed objective — depth-three terminal conditional tests
+
+Founder selected A and separately said exact `approved` for v0.105.0.
+[depth-three-terminal-conditional-tests.md](depth-three-terminal-conditional-tests.md)
+owns scope and proof. Implementation and bounded verification are complete.
+All 753 discovered compiler tests and 648 isolated scaling cases pass.
+The canonical [language section](../../../concepts/pipelang.md#pipelang-v01050-depth-three-value-arms-in-terminal-conditional-tests)
+describes the placement. No successor, commit, push, cleanup or live operation is authorized.
+
+## Completed objective — nested terminal conditional tests
+
+Founder selected A and separately said exact `approved` for v0.104.0.
+[nested-terminal-conditional-tests.md](nested-terminal-conditional-tests.md) owns
+scope and proof. Implementation and bounded verification are complete.
+All 739 discovered compiler tests and 648 isolated scaling cases pass.
+The canonical [language section](../../../concepts/pipelang.md#pipelang-v01040-nested-value-arms-in-terminal-conditional-tests)
+describes the placement. No successor is selected; commit, push, cleanup and live
+operations remain outside scope.
+
+## Completed objective — direct terminal conditional tests
+
+Founder selected A and separately said exact `approved` for v0.103.0.
+[terminal-conditional-tests.md](terminal-conditional-tests.md) owns the bounded
+contract and verification. Implementation and bounded verification are complete.
+All 726 discovered compiler tests and 216 isolated scaling cases pass.
+The canonical [language section](../../../concepts/pipelang.md#pipelang-v01030-direct-conditional-tests-in-terminal-trees)
+describes the new placement. No successor is selected. Commit, push, cleanup and
+live operations remain outside scope.
+
+## Completed objective — terminal-tree boolean-selector initializers
+
+Founder selected A and separately said exact `approved` for v0.102.0.
+[terminal-boolean-selector-initializers.md](terminal-boolean-selector-initializers.md)
+owns completed scope and verification. The fresh 714-test compiler suite, integration
+checks and all 216 isolated scaling cases pass. No successor is selected.
+Commit, push, publication and live operations remain outside scope.
+
+## Completed objective — straight-line boolean-selector initializers
+
+Founder selected A and separately approved v0.101.0 implementation on 2026-09-08.
+[straight-line-boolean-selector-initializers.md](straight-line-boolean-selector-initializers.md)
+owns scope and verification. State: `completed`. The saved checkout baseline is
+`9af4a6de`; completed v0.100 evidence is retained. Commit, push, publication, cleanup,
+worktree creation and external operations remain outside scope. No successor is selected.
+
+## Completed current objective — arrow-method boolean selectors
+
+Founder selected A and separately approved v0.100.0 implementation on 2026-09-08.
+[arrow-boolean-selectors.md](arrow-boolean-selectors.md) owns scope and verification.
+State: `completed`. Completed v0.99 is committed at `7f5eeb7b`; its historical
+uncommitted prose does not change this baseline. Commit, push, publication, cleanup,
+worktree and external operations remain outside scope. No successor is selected.
+
+## Completed current objective — terminal-leaf boolean selectors
+
+Founder selected A and separately approved v0.99.0 implementation on 2026-09-08.
+[terminal-leaf-boolean-selectors.md](terminal-leaf-boolean-selectors.md) owns the
+bounded scope and verification. State: `completed`. Completed v0.98.0 is committed
+at `6ce476f6`; historical status below does not alter that baseline or current authority.
+Commit, push, cleanup, worktree and external operations remain outside scope.
+
+## Completed current objective — conditional boolean selectors
+
+Founder selected A and separately approved v0.98.0 implementation on 2026-09-08.
+[conditional-boolean-selectors.md](conditional-boolean-selectors.md) owns the bounded
+scope and verification. State: `completed`. Completed v0.97.0 is committed at
+`0c8e3bd1`; historical status below does not alter that baseline or current authority.
+No successor, commit, push, cleanup, worktree or external operation is authorized.
+
+## Completed current objective — depth-three terminal initializers
+
+Founder selected A and separately approved v0.97.0 implementation on 2026-09-08.
+[depth-three-terminal-initializers.md](depth-three-terminal-initializers.md) owns
+scope, exclusions and validation. State: `completed`. The v0.96 and shared-framework
+objectives are complete and committed; current baseline is `f4c00e56`.
+Historical snapshots below do not reopen performance work or change current authority.
+Commit, push, publication and successor selection remain separate.
+
+## Implemented shared native bundles
+
+The validated v0.91 bundle path is now the Linux retained-suite default. Full verification
+and migration reduced the executable cache from 14.391 GB to 12.692 GB (11.8 percent).
+All 634 discovered tests pass across 101 contained units before and after pruning, at
+271.910 and 272.063 seconds overall, with zero artifact misses. All current oracles,
+fresh compiler probes and language semantics are preserved.
+[Implementation and migration evidence](conformance-execution-performance.md#full-suite-bundle-promotion)
+records exact bytes, coverage and remaining storage. Changes are uncommitted. The whole-suite
+30-second and 1/1000-size goals remain unmet; other families have not been widened into bundles.
+
+## Earlier shared native bundle prototype
+
+The complete v0.91 layout-family prototype retains 56.6% fewer native artifact bytes and uses
+13.9% less median execution time, preserving all 2,859,840 vectors and 2064 native processes.
+At prototype completion, compiler intermediates were disposable and the original full cache was retained.
+[Final prototype evidence](conformance-execution-performance.md#shared-native-bundle-final-evidence)
+records that family proof. Full-cache migration was subsequently completed as recorded above;
+the 1/1000 target remains unproven.
+
+## Cache compaction follow-up — strict target not achieved
+
+The user requested unchanged rerun performance at 1/1000 of the roughly 14.4 GB cache.
+[Compaction evidence](conformance-execution-performance.md#strict-target-and-measured-experiments)
+records the tested approaches and their failure to meet that requirement. No cache or harness
+change was accepted; the committed performance implementation below remains intact.
+
+## Completed performance pass — 30-second target remains unmet
+
+The user requested a roughly 30-second target without compromising design. The saved checkout
+baseline is `87c1df6e`; previous optimization and its proof are committed.
+[conformance-execution-performance.md](conformance-execution-performance.md#final-evidence) records
+a complete retained-artifact rerun at 326.532 seconds, 6.54 times faster than 35.6 minutes.
+All inherited cases, independent oracles, fixture bytes and resource ceilings are preserved.
+This measures a warm rerun, not clean compilation. Changes remain uncommitted for review.
+
+## Completed objective — further conformance performance
+
+The user authorized further optimization after the committed three-slice baseline `04c07808`.
+[conformance-performance.md](conformance-performance.md#follow-up-final-evidence) owns the completed
+proof. Runtime oracle fixtures and bounded four-method batches reduce full conformance wall time
+from 57.0 to 35.6 minutes (37.6%). Representative medians fall 62.0–74.7% with lower memory.
+All 733 units pass; inherited outcomes, 278 layout inventories and 64 compiler fixtures are preserved.
+Production source, language contracts and resource ceilings are unchanged. Changes remain uncommitted;
+no successor implementation is selected.
+
+## Completed objective — conformance performance
+
+The user authorized profiling and reversible implementation in three slices.
+[conformance-performance.md](conformance-performance.md) owns the completed three-slice proof.
+All original coverage and resource ceilings are preserved; representative layouts are 26.6–30.4%
+faster, and full terminal summed unit time decreases 11.5%. Batching was rejected on memory evidence.
+v0.96 is complete and committed at `35680d50`; historical uncommitted wording is superseded.
+No additional implementation approval or successor selection is pending.
+
+## Completed current objective — depth-three straight-line initializers
+
+Founder selected A and separately approved v0.96.0 implementation on 2026-09-06.
+[depth-three-straight-line-initializers.md](depth-three-straight-line-initializers.md) owns
+scope, exclusions and validation. State: `completed`. Completed v0.95 is committed
+at `25f8af71`; its historical uncommitted wording is superseded. Commit, push,
+publication and successor selection remain separate.
+
+## Completed current objective — depth-three expression-bodied methods
+
+Founder selected A and separately approved v0.95.0 implementation on 2026-09-06.
+[depth-three-arrow-methods.md](depth-three-arrow-methods.md) owns scope, exclusions
+and validation. State: `completed`. Completed v0.94 is committed at `ecb035e6`;
+its historical uncommitted wording is superseded. Commit, push, publication and
+successor selection remain separate.
+
+## Completed current objective — depth-three terminal-leaf returns
+
+Founder approved option A in this task.
+[depth-three-terminal-leaf-returns.md](depth-three-terminal-leaf-returns.md) owns scope,
+exclusions and validation. State: `completed`. Completed v0.93 is committed at
+`0a54e858`; its historical uncommitted wording is superseded.
+Commit, push, publication and successor selection remain separate.
+
+## Completed current objective — depth-three straight-line returns
+
+Founder selected A and separately approved v0.93.0 implementation on 2026-09-06.
+[depth-three-straight-line-returns.md](depth-three-straight-line-returns.md) owns scope,
+exclusions and validation. State: `completed`. Completed v0.92 is committed at
+`ab59a59e`; its historical uncommitted wording is superseded. Commit, push,
+publication and successor selection remain separate.
+
+## Completed current objective — nested expression-bodied methods
+
+Founder selected A and separately approved v0.92.0 implementation on 2026-09-06.
+[nested-arrow-methods.md](nested-arrow-methods.md) owns scope, exclusions and verification.
+State: `completed`. Completed v0.91.0 is committed at `b1fbc31b`; its historical
+uncommitted wording is superseded. Commit, push, publication and successor selection
+remain separate.
+
+## Completed current objective — nested initializers throughout terminal trees
+
+Founder selected A and separately approved v0.91.0 implementation on 2026-09-06.
+[nested-terminal-initializers.md](nested-terminal-initializers.md) owns scope, exclusions,
+containment and verification. State: `completed`. v0.90.0 is committed at `83cd8adc`;
+historical uncommitted wording below is superseded. Commit, push, publication and successor
+selection remain separate.
+
+## Completed current objective — nested straight-line initializers
+
+Founder selected A and separately approved v0.90.0 implementation on 2026-09-06.
+[nested-straight-line-initializers.md](nested-straight-line-initializers.md) owns scope,
+exclusions, containment and evidence. State: `completed`.
+The completed v0.89.0 slice is committed at `2560ee1b`; historical uncommitted wording
+below is superseded. Commit, push, publication and successor selection remain separate.
+
+## Completed current objective — nested terminal-leaf returns
+
+Founder selected A and separately approved v0.89.0 implementation in this task.
+[nested-terminal-leaf-returns.md](nested-terminal-leaf-returns.md) owns scope, exclusions,
+contained validation and evidence. State: `completed`.
+The completed v0.88.0 slice is committed at `a8df6cc5`; earlier uncommitted wording and
+baseline references below are historical. Commit, push, publication and successor selection
+remain separate.
+
+## Completed current objective — nested straight-line returns
+
+Founder selected A and separately approved v0.88.0 implementation in this task.
+[nested-straight-line-returns.md](nested-straight-line-returns.md) owns scope, exclusions,
+contained validation and current evidence. State: `completed`.
+The completed v0.87.0 slice is committed at `ff9fa296`; earlier uncommitted wording and
+baseline references below are historical. Commit, push, publication and successor selection
+remain separate.
+
+## Completed current objective — conditional returns in terminal-tree leaves
+
+Founder selected A and separately approved v0.87.0 implementation in this task.
+[terminal-leaf-conditional-returns.md](terminal-leaf-conditional-returns.md) owns the exact
+scope, exclusions, containment and verification. State: `completed`.
+The completed v0.86.0 slice is committed at `9db7ed28`; earlier uncommitted wording
+and baseline references below are historical. Commit, push, publication and successor
+selection remain separate.
+
+## Completed current objective — conditional return composition
+
+Founder selected A and separately approved implementation of v0.86.0 in this task.
+[conditional-return-composition.md](conditional-return-composition.md) owns the exact scope,
+exclusions, containment requirements and verification status. State: `completed`.
+The completed v0.85.0 slice is committed at `f94fdafa`; earlier uncommitted/baseline wording
+below is historical. Commit, push, publication and successor selection remain separate.
+
+## Completed current objective — straight-line conditional locals
+
+The founder selected A and separately approved implementation of v0.85.0 in this task.
+[straight-line-conditional-locals.md](straight-line-conditional-locals.md) owns the exact scope,
+exclusions, containment requirements and verification status. State: `completed`.
+Baseline is clean `js/pipelang` at `a69a288b`, containing the completed compiler memory repair;
+earlier uncommitted/baseline wording below is historical. No successor, commit, push or
+publication is authorized by this approval.
+
+# TASK-021 PipeLang Deterministic Self-Hosting Managed Language Foundation
+
+## Completed current objective — finite conditional-local sequences
+
+The founder selected A and separately approved implementation of v0.84.0.
+[finite-conditional-locals.md](finite-conditional-locals.md) owns the scope, exclusions, and
+verification. State: `completed`; implementation and terminal proof passed. v0.83 implementation and proof are committed at `08f01a47`;
+earlier uncommitted wording below is historical. No commit, push, publication, live action,
+or successor is authorized.
+
+Prior work: **v0.83.0 two conditional locals in terminal trees is implemented and verified** after
+founder selection of A and separate implementation approval. [The objective record](two-conditional-locals.md)
+owns scope and passed focused/terminal proof. Changes remain uncommitted for review. The preceding checked-chain repair is committed at `776bfa9e`;
+its historical uncommitted wording below is superseded.
+
+Prior work: **multi-stage checked-chain inheritance repair is implemented and verified**.
+The founder selected A and separately approved implementation in this task. The
+[repair record](checked-chain-inheritance-repair.md) owns scope and passed terminal proof. Changes remain uncommitted for review.
+Language metadata remains v0.82.0. The prior checked-propagation inheritance repair is committed
+at `46ce299a`; its historical uncommitted wording is superseded.
+
+The numeric-comparison repair and proof are committed at `fb2f480a`; its earlier uncommitted
+wording is superseded. The v0.82 implementation and proof are committed at `8bb75896`.
+
+Prior work: **v0.82.0 conditional local in terminal trees is implemented and verified** after founder selection of A and separate implementation approval on 2026-09-04.
+[step 8av](completed-functions.md#step-8av--conditional-local-in-terminal-trees-v0820) owns completion
+proof; changes remain uncommitted for founder review. [next-boundary.md](next-boundary.md)
+records the completed objective without selecting a successor. The preceding v0.81 terminal-tree
+slice and proof are committed at `c8dd8a9c`; its old uncommitted status is superseded.
+The six milestone repairs remain committed at `acbd10f8`.
+
+## Decision Status
+
+The `vNext` foundation decision packet in this record is **accepted** as of 2026-08-16. Acceptance
+fixes semantics, compiler boundaries, bootstrap stages, compatibility, and implementation order;
+examples and fixtures remain non-normative and accept no production syntax. Separately authorized
+bounded objectives have completed implementation-order steps 1 through 6, step-7 slices 7a
+through 7ae, and bounded Step-8 function seams 8a through 8bj. Depth-three straight-line initializers are implemented and verified.
+The current explicit language contract is `v0.96.0`; the separately versioned read-only projection is
+`dockpipe.application.v1`; the frozen `v0.0.0.1` lane remains unchanged. This record does not by itself
+authorize another language slice.
+
+## Goal
+
+Evolve PipeLang from its current optional typed configuration/model layer into a general-purpose,
+target-neutral managed language for deterministic programs, compiler implementation, AI-assisted
+change analysis, automated verification, declarative applications, and transport-neutral services.
+PipeLang must eventually compile its own compiler without becoming C#-compatible, target-shaped, or
+an unsafe/manual-memory systems language.
+
+PipeLang should own types, validation, reactive state, pure computed values, typed state actions,
+stable semantic identities, explicit effects and authority, contracts/invariants, deterministic
+replay metadata, governed effect declarations, test-generation metadata, and safe binding
+expressions. It compiles those semantics through one generic executable pipeline and publishes
+versioned semantic projections consumed by tooling. The Application IR in
+[TASK-020](../declarative-application-surfaces-and-target-builders/overview.md) and Service IR in
+[TASK-022](../go-first-pipelang-backend-services/overview.md) are specialized projections over that shared
+semantic/Core foundation, not independent language models.
+
+This is the durable design and bounded-progress record. It does not authorize additional parser,
+lexer, AST, typechecker, evaluator, compiler, CLI, schema, catalog, editor-extension,
+generated-artifact, or runtime changes beyond an explicitly granted implementation objective.
+
+## Priority And Dependency
+
+[Foundation alignment](foundation-alignment.md) records the 2026-09-11 founder direction and links
+the canonical capability inventory. After the currently approved objective terminates, recommend
+foundation specification/dependency planning before selecting more placement variants or production
+application/service generation. This updates roadmap priority, not the active implementation scope.
+
+
+This is the first implementation dependency for TASK-020. Define and prove the language semantics
+before implementing Qt/web application adapters or accepting a public application YAML shape.
+
+TASK-021 owns the language and compiler contract. TASK-020 owns semantic application components,
+layout/styling, Application IR integration, target adapters, and artifact manifests. Qt, HTML, CSS,
+QML, C++, CMake, and WebAssembly remain absent from PipeLang semantics.
+
+[TASK-022](../go-first-pipelang-backend-services/overview.md) consumes the stable IDs, type, contract,
+effect/authority, determinism, replay, and semantic-graph foundations defined here to describe
+transport-neutral services. TASK-022 owns Service IR, Go backend and Qt client resolvers, schemas,
+service tests, packaging, and deployment artifacts; backend concerns do not widen PipeLang core by
+implication.
+
+The initial delivery priority is:
+
+1. source files, UTF-8 decoding, source spans, and structured diagnostics;
+2. structured `TypeRef`, symbol ownership, modules/imports, and stable semantic identities;
+3. one binding/type-checking path into typed HIR and backend-neutral Core IR;
+4. explicit effects/authority plus contracts, replay, and first-class tests; and
+5. the deterministic Go seed/backend needed to prove executable output and later self-hosting.
+
+Broader reactive-state and application-language features build on those foundations rather than
+landing as one uncontrolled rewrite.
+
+## Language Personality
+
+PipeLang remains C#-familiar without claiming C# source, binary, library, runtime, reflection, or
+tooling compatibility:
+
+- familiar braces, declarations, attributes, expressions, generics, and type spelling;
+- strong static typing and ordinary code readable by C# developers;
+- minimal punctuation and ceremony with clear source-located compiler diagnostics;
+- deterministic semantics and explicit authority;
+- no YAML-like indentation/nesting inside `.pipe` files;
+- no Lisp-like, academic, or unnecessarily exotic surface syntax;
+- no magical AI syntax embedded through normal programs; and
+- one language contract across CLI, editor, compiler, semantic graph, tests, and backends.
+
+Advanced semantics should make ordinary code safer and easier to inspect without making ordinary
+code noisy. Attributes are appropriate for stable metadata and restrained architectural intent;
+core control flow and contracts should use readable language constructs when attributes would hide
+semantics.
+
+The goal is not to bolt a model onto the language. Normal PipeLang remains fully useful without AI.
+The language instead exposes enough stable, typed, deterministic structure for humans, agents,
+compilers, IDEs, and verification tools to reason about the same program.
+
+## Current Baseline
+
+Canonical current behavior is documented in `docs/concepts/pipelang.md` as PipeLang `v0.0.0.1`.
+
+| Current capability | Current boundary |
+| --- | --- |
+| Primitive types | `string`, `int`, `bool`, and `float` |
+| Declarations | `Interface` and `Class`, visibility, annotations, fields, defaults, and structural conformance |
+| Composite shapes | object/interface fields and `List<T>` type shapes |
+| Modules | declarations merged from sibling `.pipe` files under one detected module tree |
+| Methods | expression-bodied, statically typed, side-effect-free methods with CLI-only invocation |
+| Expressions | literals, identifiers, unary operators, and bounded binary operators |
+| Compilation | deterministic workflow YAML, bindings JSON, and bindings env artifacts |
+| Integration | workflow `types:`, catalog/tooling metadata, materialization, CLI compile/invoke, and VS Code/Cursor language support |
+
+The current contract explicitly rejects side effects, runtime/resolver execution through methods,
+hidden compile-time execution, and general-purpose scripting. YAML remains first-class and Dockpipe
+workflow execution does not parse PipeLang directly.
+
+## Existing Ownership Map
+
+| Area | Current owner |
+| --- | --- |
+| Canonical language behavior | `docs/concepts/pipelang.md` |
+| AST and type representation | `src/lib/pipelang/ast.go` |
+| Lexing and parsing | `src/lib/pipelang/lexer.go`, `parser.go` |
+| Static semantics | `src/lib/pipelang/typecheck.go` |
+| Pure method evaluation | `src/lib/pipelang/eval.go` |
+| Deterministic compilation | `src/lib/pipelang/compile.go` |
+| CLI compile/invoke/materialize | `src/lib/application/pipelang_cmd.go`, `pipelang_materialize.go` |
+| Workflow/catalog integration | `src/lib/domain/workflow.go` plus existing catalog/application projections |
+| Editor language support | `src/app/tooling/vscode-extensions/dockpipe-language-support/` |
+| Tests and compatibility fixtures | `src/lib/pipelang/*_test.go`, application PipeLang tests, and compiler golden tests |
+
+Any public language change must update all affected owners together. Generated syntax support may
+not lead or silently define the language.
+
+## Hard Language Boundary
+
+PipeLang is a general-purpose managed language and compiler foundation, not a second Dockpipe
+execution engine and not an unsafe/manual-memory systems language.
+
+It must not expose unrestricted:
+
+- filesystem, network, process, shell, environment, or secret access;
+- pointers, manual allocation, unsafe memory, or raw target runtime/thread handles;
+- Qt, QML, browser DOM, JavaScript, C++, CMake, WebAssembly, or resolver-specific APIs;
+- hidden work during parsing, type-checking, compilation, catalog projection, or editor analysis; or
+- direct runtime/resolver execution that bypasses workflow/package and policy ownership.
+
+Managed tasks, shared-memory synchronization, atomics, locks and semaphores are required future
+foundation capabilities under the [revised plan](../../../concepts/pipelang-foundation.md). Their
+ownership, ordering, race-safety and replay contracts must be specified; the older blanket
+thread/lock exclusion is no longer the roadmap. Current versions gain no behavior from this change.
+
+Pure language evaluation is deterministic and offline. External work is represented by a typed
+effect declaration and remains governed by the existing Dockpipe model:
+
+```text
+PipeLang effect declaration
+          |
+          v
+typed capability request
+          |
+          v
+workflow/package -> runtime -> resolver -> optional strategy
+```
+
+Compiling, cataloging, rendering, hovering, or completing a PipeLang file never invokes the effect.
