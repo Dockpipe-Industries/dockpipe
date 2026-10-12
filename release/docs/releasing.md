@@ -52,7 +52,7 @@ remain separate qualification work. See [user installation and manual updates](.
 
 Public origin: **https://packages.dockpipe.com**. The R2 package bucket is **dockpipe**. Binding that hostname to the bucket, public access, and the private Terraform-state bucket are managed separately through `package-store-infra`; release jobs receive no Cloudflare management token or state-bucket credential.
 
-The 1Password Environment **Dockpipe Packages - Production** (`rimccmsvbaehthwukfmrmskh6m`) should contain only:
+The 1Password Environment **Dockpipe Packages - Production** (`your-production-environment-id`) should contain only:
 
 | Variable | Scope |
 | --- | --- |
@@ -60,7 +60,7 @@ The 1Password Environment **Dockpipe Packages - Production** (`rimccmsvbaehthwuk
 | `AWS_SECRET_ACCESS_KEY` | Matching restricted R2 secret |
 | `APT_SIGNING_KEY` | ASCII-armored private APT signing key for unattended signing |
 
-Keep the existing broader Cloudflare credentials in their original vault item. The project config names `packages-production` for the two upload variables and `packages-release-setup` for all three. Neither is the project default.
+Keep the existing broader Cloudflare credentials in their original vault item. The public project config uses placeholder environment IDs and names `packages-production` for the two upload variables and `packages-release-setup` for all three. Neither is the project default. Actual environment IDs belong in private project configuration; set `RELEASE_SETUP_REPOSITORY`, `R2_ENDPOINT_URL`, and `DOCKPIPE_RELEASE_BUCKET` explicitly before setup. See the [fork setup guide](branching.md#running-a-fork).
 
 Run the [release setup workflow](../../workflows/package/package-release-setup/README.md) to validate the key and copy only those three secrets into GitHub's **release** environment. The helper also sets public variables `APT_SIGNING_FINGERPRINT`, `R2_ENDPOINT_URL`, `DOCKPIPE_RELEASE_BUCKET`, and `R2_PREFIX`. GitHub then publishes unattended using scoped copies; it does not require desktop login or access to the rest of the 1Password vault. Re-run setup when rotating credentials. Apply environment protection rules before publishing.
 

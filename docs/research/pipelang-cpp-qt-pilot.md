@@ -192,7 +192,7 @@ for diagnosis. A full C++ backend or performance-based adoption needs broader
 language coverage, repeated clean/incremental comparisons and packaging proof.
 
 Local evidence root:
-`/home/jamie/.codex/visualizations/2026/09/13/01a09c2e-b445-7322-8a02-1d2328313bec/cpp-qt-pilot/`.
+`/home/developer/.codex/visualizations/2026/09/13/01a09c2e-b445-7322-8a02-1d2328313bec/cpp-qt-pilot/`.
 Primary records: `prepare-7`, `native-proof-1`, `recovery`, their job receipts,
 `qt-proof-1/qt-pilot.png`, `qt-proof-1/acceptance.json`, `measurements.json`, and the
 `supplement-1`, `independent-acceptance.json`, `acceptance-job-work`,

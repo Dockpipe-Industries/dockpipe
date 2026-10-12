@@ -2852,7 +2852,7 @@ description: |
   workflows, resolvers, or assets.
 author: Generated
 license: Apache-2.0
-repository: https://github.com/Dockpipe-Industries/dockpipe
+repository: ""
 tags: [experimental, authoring, generated]
 `, packageName, version, titleName, description)) + "\n"
 	readmeBody := strings.TrimSpace(fmt.Sprintf(`# %s

@@ -44,7 +44,7 @@ dockpipe_tf_map_r2_publish_env() {
   export DOCKPIPE_TF_IMPORT_R2_BUCKET="${DOCKPIPE_TF_IMPORT_R2_BUCKET:-${R2_TF_IMPORT_R2_BUCKET:-0}}"
   export DOCKPIPE_TF_R2_IMPORT_JURISDICTION="${DOCKPIPE_TF_R2_IMPORT_JURISDICTION:-${R2_TF_R2_IMPORT_JURISDICTION:-default}}"
   export DOCKPIPE_TF_BACKEND="${DOCKPIPE_TF_BACKEND:-${R2_TF_BACKEND:-remote}}"
-  export DOCKPIPE_TF_STATE_BUCKET="${DOCKPIPE_TF_STATE_BUCKET:-${R2_TF_STATE_BUCKET:-dockpipe}}"
+  export DOCKPIPE_TF_STATE_BUCKET="${DOCKPIPE_TF_STATE_BUCKET:-${R2_TF_STATE_BUCKET:-}}"
   export DOCKPIPE_TF_STATE_KEY="${DOCKPIPE_TF_STATE_KEY:-${R2_TF_STATE_KEY:-state/dockpipe.cloudflare.r2publish/terraform.tfstate}}"
   export DOCKPIPE_TF_STATE_ACCESS_KEY_ID="${DOCKPIPE_TF_STATE_ACCESS_KEY_ID:-${R2_STATE_ACCESS_KEY_ID:-}}"
   export DOCKPIPE_TF_STATE_SECRET_ACCESS_KEY="${DOCKPIPE_TF_STATE_SECRET_ACCESS_KEY:-${R2_STATE_SECRET_ACCESS_KEY:-}}"
@@ -91,7 +91,7 @@ dockpipe_tf_write_r2_remote_backend_config() {
   local account
   account="$(dockpipe_tf_normalize_cloudflare_account_id "$account_raw")"
   [[ "$account" =~ ^[a-fA-F0-9]{32}$ ]] || dockpipe_tf_die "CLOUDFLARE_ACCOUNT_ID must be the 32-char account id (or full https://<id>.r2.cloudflarestorage.com endpoint). Could not parse: ${account_raw}"
-  local bucket="${DOCKPIPE_TF_STATE_BUCKET:-dockpipe}"
+  local bucket="${DOCKPIPE_TF_STATE_BUCKET:?Set an explicit remote state bucket}"
   local key="${DOCKPIPE_TF_STATE_KEY:-state/terraform.tfstate}"
   local ep="https://${account}.r2.cloudflarestorage.com"
   cat >"$out" <<EOF
@@ -198,7 +198,7 @@ dockpipe_tf_run_pipeline() {
     dockpipe_tf_log "DRY RUN — DOCKPIPE_TF_COMMANDS → ${TF_CMDS[*]}"
     dockpipe_tf_log "DRY RUN — DOCKPIPE_TF_BACKEND=$tf_backend"
     if [[ "$tf_backend" == remote ]]; then
-      dockpipe_tf_log "DRY RUN — state bucket: ${DOCKPIPE_TF_STATE_BUCKET:-dockpipe} key: ${DOCKPIPE_TF_STATE_KEY:-state/terraform.tfstate}"
+      dockpipe_tf_log "DRY RUN — state bucket: ${DOCKPIPE_TF_STATE_BUCKET:-<unset>} key: ${DOCKPIPE_TF_STATE_KEY:-state/terraform.tfstate}"
     fi
     if [[ "$TF_PIPELINE_HAS_APPLY" != "1" && -n "$_hint" ]]; then
       dockpipe_tf_log "DRY RUN — $_hint"
@@ -287,7 +287,7 @@ dockpipe_tf_run_pipeline() {
     done
     if [[ "$tf_backend" == remote && "$did_apply" == true ]]; then
       local b k ws n
-      b="${DOCKPIPE_TF_STATE_BUCKET:-dockpipe}"
+      b="${DOCKPIPE_TF_STATE_BUCKET:-<unset>}"
       k="${DOCKPIPE_TF_STATE_KEY:-state/terraform.tfstate}"
       ws="$(terraform workspace show 2>/dev/null || echo default)"
       n="$(terraform state list 2>/dev/null | grep -c . || true)"

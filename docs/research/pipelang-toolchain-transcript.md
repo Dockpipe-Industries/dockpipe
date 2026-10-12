@@ -93,7 +93,7 @@ alongside the prior completed profiling documents. No full campaign, promotion, 
 commit, push, publication, retained-artifact cleanup or successor selection occurred.
 
 Evidence root:
-`/home/jamie/.codex/visualizations/2026/09/13/01a09c2e-b445-7322-8a02-1d2328313bec/toolchain-transcript/`.
+`/home/developer/.codex/visualizations/2026/09/13/01a09c2e-b445-7322-8a02-1d2328313bec/toolchain-transcript/`.
 Key records: `frozen-design.json`, `retention-rule.json`, `runs.json`,
 `independent-acceptance.json`, `experiment-job.json`, `accept-job.json`,
 `post-run-storage.json`, `task-retained-storage.json`, `rejected-source/manifest.json`,

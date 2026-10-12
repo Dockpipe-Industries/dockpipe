@@ -3,6 +3,11 @@ description: Plan the staging bucket and custom domain through the Cloudflare R2
 platforms: [deb]
 vault: op
 docker_preflight: false
+vars:
+  STAGING_R2_BUCKET: "" # Required: your staging publication bucket.
+  STAGING_PUBLIC_HOSTNAME: "" # Required: your staging hostname.
+  STAGING_TF_STATE_BUCKET: "" # Required: a private state bucket.
+  STAGING_TF_STATE_KEY: "" # Required: a staging-only state object key.
 steps:
   - id: staging-infrastructure
     kind: host

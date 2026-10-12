@@ -26,6 +26,7 @@ it, or the host lacks that UI.
 | Package-specific behavior belongs inside package YAML/assets/scripts/docs/tests. | `docs/agents/packages/package-authoring.md` |
 | Keep authored YAML/schema/editor docs in sync when changing workflow/config surfaces. | `docs/agents/workflows/yaml-workflows.md` |
 | Secrets must be references only. Never commit plaintext secrets or generated resolved templates. | `docs/agents/runtime/safety-guardrails.md` |
+| This is the public product repository. Personal identifiers and deployment configuration stay private; reusable packages and workflows require operator-supplied targets. | `docs/public-repository-boundary.md` |
 | Treat `bin/.dockpipe/` and `.dorkpipe/` as generated/read-only grounding unless the user asks to refresh. | `docs/agents/runtime/artifacts-and-mcp.md` |
 | AI workflows must beat one strong direct worker on quality, safety, cost, review effort, or rerun value. DorkPipe owns the lower-level proof through artifacts/metrics, not user boilerplate. | `docs/agents/workflows/ai-workflow-value-bar.md` |
 | Main docs stay canonical for repo facts and public behavior. `docs/agents/` is the compressed routing/safety layer, not a shadow documentation tree. | `docs/agents/docs/docs-system.md` |

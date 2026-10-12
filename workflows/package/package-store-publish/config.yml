@@ -40,10 +40,10 @@ vars:
   RELEASE_VERSION: ""
   PACKAGE_RELEASE_PREPARE_EMBEDDED_ASSETS: "1"
   PACKAGE_RELEASE_SKIP_UPLOAD: "0"
-  R2_BUCKET: "dockpipe"
+  R2_BUCKET: "" # Required for uploads: your publication bucket.
   R2_PREFIX: "packages/"
   R2_PUBLISH_DRY_RUN: "1"
-  R2_ENDPOINT_URL: "https://a378c4328a20d669179d7b4adcfc5914.r2.cloudflarestorage.com"
+  R2_ENDPOINT_URL: "" # Your HTTPS endpoint, or configure an account ID below.
   AWS_ENDPOINT_URL_S3: ""
   AWS_REGION: "auto"
   CLOUDFLARE_ACCOUNT_ID: ""

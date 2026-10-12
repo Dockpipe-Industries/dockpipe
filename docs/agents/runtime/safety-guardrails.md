@@ -4,6 +4,11 @@ Read when touching secrets, generated artifacts, package promotion, destructive 
 
 ## Secrets
 
+- This public repository follows [the public configuration boundary](../../public-repository-boundary.md).
+- Even non-secret account IDs, vault/environment IDs, personal paths, and deployment destinations
+  must not become public defaults or operational records. Use placeholders and private configuration.
+- Require explicit deployment targets before credentials can be copied or remote resources changed.
+
 - Template files contain references only, such as `op://...`.
 - Never commit plaintext secrets.
 - Keep private vault templates local/gitignored.
