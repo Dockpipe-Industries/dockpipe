@@ -1,7 +1,7 @@
 schema: 1
 kind: package
 name: dorkpipe.mcp
-version: 0.6.1
+version: 0.6.2
 title: DorkPipe MCP bridge
 platforms: [windows, deb]
 description: |
