@@ -31,7 +31,11 @@ int main(int argc, char **argv)
         "virtual void QtWaylandClient::QWaylandTextInputv3::zwp_text_input_v3_leave(wl_surface*) "
         "Got leave event for surface 0x0 with focusing surface 0x556e893ffe00");
     QMessageLogger(nullptr, 0, nullptr, category).warning("%s", qPrintable(benign));
-    const QStringList expected = native || diagnostics ? QStringList{benign} : QStringList{};
+    bool filtered = false;
+#if defined(Q_OS_LINUX)
+    filtered = !native && !diagnostics;
+#endif
+    const QStringList expected = filtered ? QStringList{} : QStringList{benign};
     if (received != expected)
         return 1;
     received.clear();
