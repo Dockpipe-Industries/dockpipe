@@ -91,7 +91,7 @@ the closing storage sample.
 This task retains approximately **359.7 MB** before final documentation
 and acceptance; shared-cache growth is separate. **Zero existing bytes were freed.**
 
-`E=/home/jamie/.codex/visualizations/2026/09/13/01a09bce-198f-7f70-b71d-ba99eca633bb/go-v097-layout-fixtures/`
+`E=/home/developer/.codex/visualizations/2026/09/13/01a09bce-198f-7f70-b71d-ba99eca633bb/go-v097-layout-fixtures/`
 
 `validation-receipt.json` owns matched measurements, sources and debug artifact hashes;
 `validation-job.json` owns aggregate containment and process-tree removal; `storage/`

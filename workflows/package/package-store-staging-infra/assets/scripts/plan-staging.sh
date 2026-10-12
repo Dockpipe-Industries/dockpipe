@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Maintainer composition: credentials arrive through the normal vault injection;
-# staging resource identities are pinned afterwards, before the package runner.
+# explicitly configured staging identities are pinned before the package runner.
 set -euo pipefail
 umask 077
 root="${DOCKPIPE_WORKDIR:?Run through package-store-staging-infra}"
@@ -12,6 +12,11 @@ case "${DOCKPIPE_TF_COMMANDS:-plan}" in
 esac
 zone="${TF_VAR_zone_id:?Cloudflare zone id is required}"
 [[ "$zone" =~ ^[a-fA-F0-9]{32}$ ]] || { echo "Invalid Cloudflare zone id" >&2; exit 1; }
+staging_bucket="${STAGING_R2_BUCKET:?Set your staging publication bucket}"
+staging_hostname="${STAGING_PUBLIC_HOSTNAME:?Set your staging public hostname}"
+staging_state_bucket="${STAGING_TF_STATE_BUCKET:?Set your staging state bucket}"
+staging_state_key="${STAGING_TF_STATE_KEY:?Set a staging-only state object key}"
+[[ "$staging_bucket" != "$staging_state_bucket" ]] || { echo "Publication and state buckets must differ" >&2; exit 1; }
 # Do not inherit production tfvars, imports, workspaces, CLI flags or backend paths.
 while IFS= read -r key; do
   case "$key" in
@@ -27,11 +32,11 @@ cp "$module"/terraform/*.tf "$run_directory/"
 if [[ -f "$module/terraform/.terraform.lock.hcl" ]]; then
   cp "$module/terraform/.terraform.lock.hcl" "$run_directory/"
 fi
-export R2_BUCKET=dockpipe-staging
+export R2_BUCKET="$staging_bucket"
 export DOCKPIPE_TF_MODULE_DIR="$run_directory"
 export DOCKPIPE_TF_BACKEND=remote
-export DOCKPIPE_TF_STATE_BUCKET=dockpipe-tfstate
-export DOCKPIPE_TF_STATE_KEY=state/package-store-staging/terraform.tfstate
+export DOCKPIPE_TF_STATE_BUCKET="$staging_state_bucket"
+export DOCKPIPE_TF_STATE_KEY="$staging_state_key"
 export DOCKPIPE_TF_COMMANDS=init,validate,plan
 export DOCKPIPE_TF_INIT_ARGS=-reconfigure
 export DOCKPIPE_TF_PLAN_ARGS=-out=staging.tfplan
@@ -42,7 +47,7 @@ export DOCKPIPE_TF_ATTACH_CLOUDFLARE_PROVIDER=1
 export DOCKPIPE_TF_DRY_RUN=0
 export TF_DATA_DIR="$run_directory/.terraform"
 export TF_VAR_zone_id="$zone"
-export TF_VAR_public_hostname=packages.staging.dockpipe.com
+export TF_VAR_public_hostname="$staging_hostname"
 export TF_VAR_enable_r2_custom_domain=true
 export TF_VAR_r2_custom_domain_enabled=true
 export TF_VAR_enable_cache_rules=false

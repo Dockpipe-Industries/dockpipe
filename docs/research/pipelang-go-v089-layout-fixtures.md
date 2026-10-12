@@ -102,7 +102,7 @@ The separate post-run inventory passed at 43,560,265,966 logical /
 45,637,001,216 allocated bytes under unchanged limits. Its capped job took
 27.686 seconds and passed process-tree removal with no OOM/swap events.
 
-`E=/home/jamie/.codex/visualizations/2026/09/13/01a09c19-13f3-7841-a3b3-251c5d8bbce9/go-v089-layout-fixtures/`
+`E=/home/developer/.codex/visualizations/2026/09/13/01a09c19-13f3-7841-a3b3-251c5d8bbce9/go-v089-layout-fixtures/`
 
 `validation-receipt.json` owns matched measurements and source/debug hashes;
 `validation-job.json` owns aggregate containment; `storage/` owns inclusive
