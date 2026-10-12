@@ -256,7 +256,7 @@ B01–B04 sum to 8–16; B05 makes 10–19. Second-native-backend and physical-t
 
 Read existing receipts; no benchmark or semantic campaign was run for this planning objective.
 The v0.112 proof root is
-`/home/jamie/.codex/visualizations/2026/09/11/01a09287-8762-7e02-a5ca-da7b5be9ddea`.
+`/home/developer/.codex/visualizations/2026/09/11/01a09287-8762-7e02-a5ca-da7b5be9ddea`.
 Its `terminal-job.json`, `terminal-acceptance-job.json`, `terminal-comparison.json` and
 `verification-data/campaigns/terminal/accepted-verification.json` agree with the owning completion
 record. All 19 `terminal-source-postimages.json` entries matched on planning admission.

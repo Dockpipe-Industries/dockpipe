@@ -333,7 +333,7 @@ func TestParseWorkflowYAMLWorkspace(t *testing.T) {
 	y := `
 name: session-demo
 workspace:
-  repo: biztraak
+  repo: example-project
   mode: managed
   base: main
   storage: worktree
@@ -351,7 +351,7 @@ steps:
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := w.Workspace.Repo; got != "biztraak" {
+	if got := w.Workspace.Repo; got != "example-project" {
 		t.Fatalf("workspace.repo = %q", got)
 	}
 	if got := w.Workspace.Lifecycle.Checkpoint; got != "auto" {

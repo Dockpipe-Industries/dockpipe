@@ -1,13 +1,14 @@
 # Staging release channel
 
-A successful **push to `staging`** runs the Linux and Windows CI jobs, then calls
+With repository variable `DOCKPIPE_RELEASE_ENABLED=true`, a successful **push to `staging`** runs the Linux and Windows CI jobs, then calls
 `release.yml` from the same commit. PRs and manual CI runs do not publish. All five
 native builds, the Flatpak qualification job, package stores, installer checks and
 release tooling checks must succeed before publication. CodeQL remains a separate workflow; this dependency
 chain gates on the `CI` test jobs, not the separate CodeQL result.
 
-The staging publisher uses GitHub environment **`release-staging`**, R2 bucket
-**`dockpipe-staging`**, and **`https://packages.staging.dockpipe.com`**. Configure the
+The staging publisher uses GitHub environment **`release-staging`** and its explicitly
+configured publication bucket and endpoint. Dockpipe's public staging downloads are
+available at **`https://packages.staging.dockpipe.com`**; a fork configures its own origin. Configure the
 environment to allow only the staging branch, without a manual reviewer if
 publication should be automatic. Its credentials must be restricted to the staging
 bucket. Production still requires master and environment `release`.
@@ -69,17 +70,19 @@ continue to select production unless staging is explicitly configured.
 
 ## Infrastructure preparation
 
-Run from this checkout with the existing 1Password desktop integration available:
+Configure `STAGING_R2_BUCKET`, `STAGING_PUBLIC_HOSTNAME`, `STAGING_TF_STATE_BUCKET`,
+and `STAGING_TF_STATE_KEY` in your private configuration first. See the
+[workflow inputs](../../workflows/package/package-store-staging-infra/README.md).
+Run from this checkout with your authenticated secret provider available:
 
 ```bash
 ./src/bin/dockpipe --workflow package-store-staging-infra --workdir . --tf plan --
 ```
 
 The maintainer wrapper calls the existing Cloudflare R2 package's Terraform runner.
-It pins the staging bucket and hostname after vault injection, copies only the
+It pins your explicitly configured staging bucket and hostname after vault injection, copies only the
 module's `.tf` files and optional lockfile to a private workflow artifact directory,
-and uses state bucket `dockpipe-tfstate` with key
-`state/package-store-staging/terraform.tfstate`. It clears inherited production
+and uses your private state bucket and staging-only state key. It clears inherited production
 Terraform flags, imports, workspaces, tfvars and backend overrides. Zone-level
 cache and WAF rules remain disabled to avoid separate state claiming the existing
 zone entrypoints. The existing R2 custom-domain resource owns the HTTPS binding.
@@ -87,13 +90,13 @@ zone entrypoints. The existing R2 custom-domain resource owns the HTTPS binding.
 The workflow is plan-only and reports a saved `staging.tfplan` path. Review that
 plan for exactly the staging bucket and custom domain before separately approving
 apply. Plan files contain sensitive provider inputs; keep them in the private
-artifact directory and never attach them to a PR. No new state bucket is needed.
+artifact directory and never attach them to a PR.
 
 ## Publication credentials
 
-Provision bucket-scoped R2 Object Read & Write credentials for `dockpipe-staging`
+Provision bucket-scoped R2 Object Read & Write credentials for your staging bucket
 and a staging APT signing identity. Store them in a separate secret environment;
-do not reuse the production upload token. `dockpipe.config.json` maps
+do not reuse the production upload token. Your private project configuration maps
 `packages-staging-release-setup` to the staging 1Password environment with bindings
 `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, and `APT_SIGNING_KEY`.
 `packages-staging` binds only the upload credential pair.
@@ -104,7 +107,9 @@ The existing setup workflow supports checks followed by separately approved writ
 ./src/bin/dockpipe --workflow package-release-setup --workdir . \
   --secret-environment packages-staging-release-setup \
   --var RELEASE_SETUP_ENVIRONMENT=release-staging \
-  --var DOCKPIPE_RELEASE_BUCKET=dockpipe-staging --
+  --var RELEASE_SETUP_REPOSITORY=your-owner/your-repository \
+  --var R2_ENDPOINT_URL=https://your-account-id.r2.cloudflarestorage.com \
+  --var DOCKPIPE_RELEASE_BUCKET=your-staging-bucket --
 ```
 
 After review, the same command with `--var RELEASE_SETUP_APPLY=1` copies only those

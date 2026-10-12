@@ -44,6 +44,9 @@ jobs:
         with:
           go-version: "1.26.9"
 
+      - name: Public repository configuration boundary
+        run: python3 release/packaging/check-public-content.py
+
       - name: Install build and shell-test dependencies
         run: |
           set -euo pipefail
@@ -226,7 +229,7 @@ jobs:
 
   staging-release:
     needs: [test, test-windows]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/staging' && github.repository == 'Dockpipe-Industries/dockpipe'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/staging' && vars.DOCKPIPE_RELEASE_ENABLED == 'true'
     permissions:
       contents: write
     uses: ./.github/workflows/release.yml

@@ -38,6 +38,7 @@ permissions:
 
 jobs:
   meta:
+    if: github.event_name == 'workflow_dispatch' || vars.DOCKPIPE_RELEASE_ENABLED == 'true'
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.version.outputs.version }}
@@ -49,6 +50,9 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
+      - name: Public repository configuration boundary
+        run: python3 release/packaging/check-public-content.py
+
       - id: m
         shell: bash
         env:
@@ -56,14 +60,15 @@ jobs:
           INPUT_VERSION: ${{ inputs.version }}
           INPUT_DRY_RUN: ${{ inputs.dry_run }}
           INPUT_BUILD_MSI: ${{ inputs.build_msi }}
+          RELEASE_ENABLED: ${{ vars.DOCKPIPE_RELEASE_ENABLED }}
         run: |
           set -euo pipefail
           dry_run="false"
           build_msi="false"
           candidate=""
           if [[ "${INPUT_STAGING:-false}" == "true" ]]; then
-            if [[ "$GITHUB_EVENT_NAME" != push || "$GITHUB_REF" != refs/heads/staging || "$GITHUB_REPOSITORY" != Dockpipe-Industries/dockpipe ]]; then
-              echo "::error::Staging publication requires this repository's staging push."
+            if [[ "$GITHUB_EVENT_NAME" != push || "$GITHUB_REF" != refs/heads/staging || "${RELEASE_ENABLED:-}" != true ]]; then
+              echo "::error::Staging publication requires an enabled repository's staging push."
               exit 1
             fi
             [[ "$GITHUB_RUN_ID" =~ ^[0-9]+$ && "$GITHUB_RUN_ATTEMPT" =~ ^[0-9]+$ && "$GITHUB_SHA" =~ ^[0-9a-f]{40}$ ]]
@@ -93,6 +98,10 @@ jobs:
           fi
           if [[ -z "$candidate" && "$dry_run" != "true" && "${GITHUB_REF}" != "refs/heads/master" ]]; then
             echo "::error::Production releases require master. Use dry_run=true for branch verification."
+            exit 1
+          fi
+          if [[ "$dry_run" != true && "${RELEASE_ENABLED:-}" != true ]]; then
+            echo "::error::Configure release environments and set DOCKPIPE_RELEASE_ENABLED=true before publishing."
             exit 1
           fi
           raw="${raw#v}"
@@ -378,6 +387,9 @@ jobs:
           cp release/packaging/windows/install.ps1 release/artifacts/install.ps1
           python3 release/packaging/release-artifacts.py prepare release/artifacts --version "${{ needs.meta.outputs.version }}" --candidate "${{ needs.meta.outputs.candidate }}" --source-sha "${{ github.sha }}"
 
+      - name: Check public package contents
+        run: python3 release/packaging/check-public-content.py --store-root release/artifacts/stores
+
       - name: Install dry-run repository tools
         if: needs.meta.outputs.dry_run == 'true'
         run: |
@@ -492,6 +504,7 @@ jobs:
           DOCKPIPE_RELEASE_BUCKET: ${{ vars.DOCKPIPE_RELEASE_BUCKET }}
           R2_ENDPOINT_URL: ${{ vars.R2_ENDPOINT_URL }}
           R2_PREFIX: ${{ vars.R2_PREFIX }}
+          DOCKPIPE_RELEASE_CHANNEL: stable
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_DEFAULT_REGION: auto
@@ -539,7 +552,6 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          [[ "$DOCKPIPE_RELEASE_BUCKET" == dockpipe-staging ]] || { echo "::error::Staging requires dockpipe-staging."; exit 1; }
           for name in AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY APT_SIGNING_KEY APT_SIGNING_FINGERPRINT R2_ENDPOINT_URL DOCKPIPE_RELEASE_BUCKET; do
             [[ -n "${!name}" ]] || { echo "::error::Missing release setting: $name"; exit 1; }
           done
@@ -589,6 +601,7 @@ jobs:
           DOCKPIPE_RELEASE_BUCKET: ${{ vars.DOCKPIPE_RELEASE_BUCKET }}
           R2_ENDPOINT_URL: ${{ vars.R2_ENDPOINT_URL }}
           R2_PREFIX: ${{ vars.R2_PREFIX }}
+          DOCKPIPE_RELEASE_CHANNEL: staging
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_DEFAULT_REGION: auto

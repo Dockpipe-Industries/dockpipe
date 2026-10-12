@@ -35,13 +35,13 @@ Then open a **new** terminal and run `dockpipe windows setup`.
 After a GitHub release is published (MSI + `SHA256SUMS.txt`):
 
 1. Install [wingetcreate](https://github.com/microsoft/winget-create) or use the **winget** bot flow you prefer.
-2. Create or update manifests for **`JamieSteele.Dockpipe`** (adjust identifier to match your chosen `Publisher.Package` naming).
+2. Create or update manifests for **`YourPublisher.YourPackage`** (adjust identifier to match your chosen `Publisher.Package` naming).
 3. Point **`InstallerUrl`** at the release MSI, set **`InstallerSha256`** from `SHA256SUMS.txt`, **`PackageVersion`** = semver without `v`.
 
 Example `wingetcreate` flow (adjust URLs/versions):
 
 ```text
-wingetcreate update JamieSteele.Dockpipe --version 0.6.0 --urls "<MSI_URL>" --submit
+wingetcreate update YourPublisher.YourPackage --version 0.6.0 --urls "<MSI_URL>" --submit
 ```
 
 Use **`InstallerType: msi`** (or `wix` if the validator prefers it for WiX-built MSIs). If the validator asks for **ProductCode**, read it from the installed MSI (e.g. `Get-WmiObject Win32_Product` is slow; prefer **Orca** / **WiX** log / `msiexec /l*v` after a test install).

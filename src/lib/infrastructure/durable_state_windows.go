@@ -18,6 +18,49 @@ import (
 // all nine file-specific access rights. x/sys/windows does not expose this mask.
 const windowsFileAllAccess = windows.STANDARD_RIGHTS_REQUIRED | windows.SYNCHRONIZE | 0x01ff
 
+// Create the protected DACL with the directory so concurrent callers can never
+// observe a newly created directory with inherited, unprotected permissions.
+func createPrivateDirectory(path string) error {
+	userSID, err := currentWindowsUserSID()
+	if err != nil {
+		return err
+	}
+	descriptor, err := windows.SecurityDescriptorFromString(
+		"O:" + userSID.String() + "D:P(A;OICI;FA;;;" + userSID.String() + ")(A;OICI;FA;;;SY)",
+	)
+	if err != nil {
+		return err
+	}
+	attributes := windows.SecurityAttributes{
+		Length:             uint32(unsafe.Sizeof(windows.SecurityAttributes{})),
+		SecurityDescriptor: descriptor,
+	}
+	pathPointer, err := windows.UTF16PtrFromString(path)
+	if err != nil {
+		return err
+	}
+	if err := windows.CreateDirectory(pathPointer, &attributes); err != nil {
+		return &os.PathError{Op: "mkdir", Path: path, Err: err}
+	}
+	return nil
+}
+
+// Metadata writers replace complete files atomically. Readers must permit that
+// replacement while keeping their own handle to the original snapshot.
+func openPrivateReadFile(path string) (*os.File, error) {
+	pathPointer, err := windows.UTF16PtrFromString(path)
+	if err != nil {
+		return nil, err
+	}
+	handle, err := windows.CreateFile(pathPointer, windows.GENERIC_READ,
+		windows.FILE_SHARE_READ|windows.FILE_SHARE_WRITE|windows.FILE_SHARE_DELETE,
+		nil, windows.OPEN_EXISTING, windows.FILE_FLAG_OPEN_REPARSE_POINT, 0)
+	if err != nil {
+		return nil, &os.PathError{Op: "open", Path: path, Err: err}
+	}
+	return os.NewFile(uintptr(handle), path), nil
+}
+
 func durableFileIdentity(path string) (string, error) {
 	info, err := durableWindowsFileInformation(path)
 	if err != nil {
@@ -235,11 +278,42 @@ func replacePrivateFile(source, destination string) error {
 	if err != nil {
 		return err
 	}
-	destinationp, err := windows.UTF16PtrFromString(destination)
+	handle, err := windows.CreateFile(sourcep, windows.DELETE,
+		windows.FILE_SHARE_READ|windows.FILE_SHARE_WRITE|windows.FILE_SHARE_DELETE,
+		nil, windows.OPEN_EXISTING, windows.FILE_FLAG_OPEN_REPARSE_POINT, 0)
+	if err != nil {
+		return fmt.Errorf("open private replacement: %w", err)
+	}
+	defer windows.CloseHandle(handle)
+	absolute, err := filepath.Abs(destination)
 	if err != nil {
 		return err
 	}
-	return windows.MoveFileEx(sourcep, destinationp, windows.MOVEFILE_REPLACE_EXISTING|windows.MOVEFILE_WRITE_THROUGH)
+	name, err := windows.UTF16FromString(absolute)
+	if err != nil {
+		return err
+	}
+	// FILE_RENAME_INFO has a variable-length UTF-16 filename. POSIX semantics
+	// retain existing readers' snapshots while publishing the replacement name.
+	// MoveFileEx cannot replace a destination with an open reader, even when the
+	// reader allows delete sharing.
+	type renameInformation struct {
+		Flags          uint32
+		RootDirectory  windows.Handle
+		FileNameLength uint32
+		FileName       [1]uint16
+	}
+	var layout renameInformation
+	nameBytes := (len(name) - 1) * 2
+	buffer := make([]byte, int(unsafe.Offsetof(layout.FileName))+len(name)*2)
+	information := (*renameInformation)(unsafe.Pointer(&buffer[0]))
+	information.Flags = windows.FILE_RENAME_REPLACE_IF_EXISTS | windows.FILE_RENAME_POSIX_SEMANTICS
+	information.FileNameLength = uint32(nameBytes)
+	copy(unsafe.Slice(&information.FileName[0], len(name)), name)
+	if err := windows.SetFileInformationByHandle(handle, windows.FileRenameInfoEx, &buffer[0], uint32(len(buffer))); err != nil {
+		return fmt.Errorf("replace private metadata: %w", err)
+	}
+	return nil
 }
 
 func syncPrivateDirectory(string) error {

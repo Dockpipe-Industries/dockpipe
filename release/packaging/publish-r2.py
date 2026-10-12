@@ -56,13 +56,13 @@ def publish(artifacts, apt, version, dry_run, candidate=""):
     endpoint = os.environ.get("R2_ENDPOINT_URL")
     if not bucket or not endpoint or not endpoint.startswith("https://"):
         raise ValueError("DOCKPIPE_RELEASE_BUCKET and HTTPS R2_ENDPOINT_URL are required")
+    channel = os.environ.get("DOCKPIPE_RELEASE_CHANNEL", "")
+    expected_channel = "staging" if candidate else "stable"
+    if channel != expected_channel:
+        raise ValueError(f"Set DOCKPIPE_RELEASE_CHANNEL={expected_channel} for this publication")
     if candidate:
-        if bucket != "dockpipe-staging":
-            raise ValueError("Staging publication requires dockpipe-staging")
         if not re.fullmatch(re.escape(version) + r"-staging\.[0-9]+\.[0-9]+\.[0-9a-f]{12}", candidate):
             raise ValueError("Invalid staging candidate identity")
-    elif bucket == "dockpipe-staging":
-        raise ValueError("The staging bucket requires a candidate identity")
     prefix = os.environ.get("R2_PREFIX", "packages").strip("/")
     if candidate and prefix != "packages":
         raise ValueError("Staging requires the packages prefix")
