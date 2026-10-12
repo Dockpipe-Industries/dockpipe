@@ -9,7 +9,7 @@ updates:
     target-branch: "dev"
     schedule:
       interval: "weekly"
-    open-pull-request-limit: 5
+    open-pull-requests-limit: 5
     labels:
       - "dependencies"
       - "go"
@@ -19,7 +19,7 @@ updates:
     target-branch: "dev"
     schedule:
       interval: "weekly"
-    open-pull-request-limit: 5
+    open-pull-requests-limit: 5
     labels:
       - "dependencies"
       - "github-actions"
@@ -33,7 +33,7 @@ updates:
     target-branch: "dev"
     schedule:
       interval: "weekly"
-    open-pull-request-limit: 5
+    open-pull-requests-limit: 5
     labels:
       - "dependencies"
     groups:
