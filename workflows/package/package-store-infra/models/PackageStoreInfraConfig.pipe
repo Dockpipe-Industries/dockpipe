@@ -3,7 +3,7 @@
 /// </summary>
 public Class PackageStoreInfraConfig : IPackageStoreInfraConfig
 {
-    public string R2Bucket = "dockpipe";
+    public string R2Bucket = "";
     public string R2Prefix = "packages/";
     public string R2PublishDryRun = "0";
     public string R2SkipTerraform = "0";
@@ -51,7 +51,7 @@ public Class PackageStoreInfraConfig : IPackageStoreInfraConfig
     public string DockpipeTfR2ImportJurisdiction = "default";
     public string DockpipeTfSkipInit = "0";
     public string DockpipeTfStateAccessKeyId = "";
-    public string DockpipeTfStateBucket = "dockpipe-tfstate";
+    public string DockpipeTfStateBucket = "";
     public string DockpipeTfStateKey = "state/terraform.tfstate";
     public string DockpipeTfStateSecretAccessKey = "";
     public string DockpipeTfUseR2PublishMap = "1";

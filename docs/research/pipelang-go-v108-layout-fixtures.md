@@ -83,7 +83,7 @@ physical-device usage. Later small documentation/acceptance records are outside
 the closing job sample. The 96-GiB cap and 8-GiB reserve remain unchanged; proposed
 16/32-GiB budgets and retention/cleanup policy remain separate.
 
-`E=/home/jamie/.codex/visualizations/2026/09/13/01a0998d-a291-7633-985a-944246ec9459/go-v108-layout-fixtures/`
+`E=/home/developer/.codex/visualizations/2026/09/13/01a0998d-a291-7633-985a-944246ec9459/go-v108-layout-fixtures/`
 
 `validate.py` freezes comparison and checks; `source-review.json` records the
 structural review against `admitted-matrix.go` and the audit-only control overlay.

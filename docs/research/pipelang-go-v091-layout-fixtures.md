@@ -97,7 +97,7 @@ Post-cleanup storage acceptance separately re-inventories the declared estate
 without rewriting population credits. Its separate capped job took 23.048 seconds
 and also passed containment/cleanup, with zero OOM/swap events.
 
-`E=/home/jamie/.codex/visualizations/2026/09/13/01a09c04-20ed-7990-8f8b-e370305d21e7/go-v091-layout-fixtures/`
+`E=/home/developer/.codex/visualizations/2026/09/13/01a09c04-20ed-7990-8f8b-e370305d21e7/go-v091-layout-fixtures/`
 
 `validation-receipt.json` owns matched measurements, source and debug hashes;
 `validation-job.json` owns aggregate containment and process-tree removal;

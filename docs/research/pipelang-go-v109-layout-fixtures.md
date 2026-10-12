@@ -80,7 +80,7 @@ or unique physical-device storage. Later small documentation/acceptance records
 fall outside the closing job sample. The 96-GiB cap and 8-GiB reserve were preserved;
 16/32-GiB targets and retention/cleanup policy remain separate and unadopted.
 
-`E=/home/jamie/.codex/visualizations/2026/09/13/01a0997d-9f74-7301-891c-b485518f17d6/go-v109-layout-fixtures/`
+`E=/home/developer/.codex/visualizations/2026/09/13/01a0997d-9f74-7301-891c-b485518f17d6/go-v109-layout-fixtures/`
 
 `validate.py` freezes comparison and checks; `source-review.json` proves the
 control is audit-only and source generation/oracle/evaluator prefixes and other

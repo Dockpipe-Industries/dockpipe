@@ -97,7 +97,7 @@ Both attempts retain approximately **614.1 MB** before final documentation
 and acceptance; shared-cache growth is separate. **Zero existing bytes were freed.**
 Later documentation and final acceptance are outside the closing storage sample.
 
-`E=/home/jamie/.codex/visualizations/2026/09/13/01a09bb6-b240-7a11-9bb2-afc1de69972e/go-v102-layout-fixtures/`
+`E=/home/developer/.codex/visualizations/2026/09/13/01a09bb6-b240-7a11-9bb2-afc1de69972e/go-v102-layout-fixtures/`
 
 Successful proof lives in `E/retry-1/`: `validation-receipt.json` owns matched results,
 sources and debug artifact digests; `validation-job.json` owns aggregate containment

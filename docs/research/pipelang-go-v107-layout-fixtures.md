@@ -75,7 +75,7 @@ Later documentation/acceptance records are outside the closing job sample. The
 96-GiB cap and 8-GiB reserve remain unchanged; proposed numerical targets and
 retention/cleanup policy remain separate.
 
-`E=/home/jamie/.codex/visualizations/2026/09/13/01a099a3-db29-75f0-8798-1c8ef79b6842/go-v107-layout-fixtures/`
+`E=/home/developer/.codex/visualizations/2026/09/13/01a099a3-db29-75f0-8798-1c8ef79b6842/go-v107-layout-fixtures/`
 
 `validate.py` freezes comparisons/checks; `source-review.json` records structural
 review against `admitted-matrix.go` and the audit-only control overlay.

@@ -105,7 +105,7 @@ if [[ "${R2_INFRA_ONLY:-0}" == "1" ]]; then
   trap cleanup EXIT
   run_terraform_pipeline "$WORK/r2-tf-backend.hcl"
   echo "${WF_NS}: infra-only done — no package tarball upload (use dockpipe.cloudflare.r2upload for that)."
-  echo "${WF_NS}: Terraform remote state → s3 backend bucket=${DOCKPIPE_TF_STATE_BUCKET:-dockpipe} key=${DOCKPIPE_TF_STATE_KEY:-state/terraform.tfstate}; object appears in R2 after terraform apply (plan/init do not write the state blob)."
+  echo "${WF_NS}: Terraform remote state → s3 backend bucket=${DOCKPIPE_TF_STATE_BUCKET:-<unset>} key=${DOCKPIPE_TF_STATE_KEY:-state/terraform.tfstate}; object appears in R2 after terraform apply (plan/init do not write the state blob)."
   exit 0
 fi
 

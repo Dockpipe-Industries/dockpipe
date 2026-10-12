@@ -14,7 +14,7 @@ This is the correct mirror shape for `dockpipe install core` and store-backed wo
 
 ## Secrets
 
-The workflow uses `vault: environment`. Select `packages-production`, configured in the repo's `dockpipe.config.json`, to read only `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` from **Dockpipe Packages - Production** (`rimccmsvbaehthwukfmrmskh6m`). The credential must have Object Read & Write access to the **dockpipe** package bucket only. Existing Cloudflare management and Terraform-state credentials stay in the original vault item.
+The workflow uses `vault: environment`. Configure your own named secret environment and explicitly supply `R2_BUCKET` and `R2_ENDPOINT_URL` (or your account ID) through private configuration. The public project config contains placeholders only. Scope upload credentials to your publication bucket; keep account-management and Terraform-state credentials separate.
 
 The endpoint and bucket are non-secret workflow variables. No `op://` template or broad Cloudflare token is loaded. Install a 1Password CLI version supporting `op run --environment` and authenticate it first. Build the secrets resolver with `dockpipe build --no-images` after updating this checkout.
 

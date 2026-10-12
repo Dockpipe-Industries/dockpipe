@@ -67,7 +67,7 @@ The proposed 16/32-GiB targets remain unadopted.
 
 ## Evidence
 
-`E=/home/jamie/.codex/visualizations/2026/09/13/01a09949-c588-72e2-a577-1f1b7daf5647/go-artifact-reduction/`
+`E=/home/developer/.codex/visualizations/2026/09/13/01a09949-c588-72e2-a577-1f1b7daf5647/go-artifact-reduction/`
 
 `compact-candidate-receipt.json` owns the matched identities, source inventory and
 counts; `compact-checks-receipt.json` owns focused checks/storage;

@@ -12,7 +12,7 @@ types:
   - models/IPackageStoreInfraConfig
 
 vars:
-  R2_BUCKET: "dockpipe"  # R2 bucket name (matches dashboard)
+  R2_BUCKET: ""  # Required: your publication bucket
   R2_PREFIX: "packages/"  # object key prefix for uploads (r2upload); trailing slash optional in scripts
   R2_PUBLISH_DRY_RUN: "0"  # 1 = dry-run for mapped pipelines
   R2_SKIP_TERRAFORM: "0"  # 1 = r2publish skips Terraform (not used by r2infra-only path)
@@ -60,7 +60,7 @@ vars:
   DOCKPIPE_TF_R2_IMPORT_JURISDICTION: "default"
   DOCKPIPE_TF_SKIP_INIT: "0"
   DOCKPIPE_TF_STATE_ACCESS_KEY_ID: ""  # state bucket S3 keys; vault inject
-  DOCKPIPE_TF_STATE_BUCKET: "dockpipe-tfstate"  # dedicated state bucket (not R2_BUCKET)
+  DOCKPIPE_TF_STATE_BUCKET: ""  # dedicated state bucket (not R2_BUCKET)
   DOCKPIPE_TF_STATE_KEY: "state/terraform.tfstate"  # object key for remote state
   DOCKPIPE_TF_STATE_SECRET_ACCESS_KEY: ""  # paired with state access key id
   DOCKPIPE_TF_USE_R2_PUBLISH_MAP: "1"  # keep 1 for nested r2infra
