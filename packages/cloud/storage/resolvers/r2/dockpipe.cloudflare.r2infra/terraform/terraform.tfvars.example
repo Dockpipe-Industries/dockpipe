@@ -53,7 +53,7 @@
 # cache_rule_description    = "Edge + browser TTL for package objects"
 # cache_rule_enabled        = true
 
-# cache_edge_ttl_mode    = "override_origin"
-# cache_browser_ttl_mode = "override_origin"
+# cache_edge_ttl_mode    = "respect_origin"
+# cache_browser_ttl_mode = "respect_origin"
 # cache_respect_strong_etags = true
 # cache_eligible         = true
