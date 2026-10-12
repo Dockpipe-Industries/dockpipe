@@ -1,6 +1,8 @@
 #include "BuildVersion.h"
 #include "DockpipeChoices.h"
+#include "FlatpakTerminal.h"
 #include "LauncherEnvironment.h"
+#include "LauncherDiagnostics.h"
 #include "MainWindow.h"
 #include "SingleInstanceGuard.h"
 #include "Theme.h"
@@ -10,6 +12,9 @@
 #include <QProcess>
 #include <QProcessEnvironment>
 #include <QSize>
+#include <QStatusBar>
+#include <QFutureWatcher>
+#include <QtConcurrent/QtConcurrentRun>
 #include <QStyleFactory>
 #include <QTextStream>
 #include <cstring>
@@ -66,6 +71,7 @@ int main(int argc, char *argv[])
     }
 #endif
 
+    installLauncherDiagnostics();
     QApplication app(argc, argv);
     QApplication::setApplicationName(QStringLiteral("dockpipe-launcher"));
     QApplication::setApplicationVersion(QStringLiteral(DOCKPIPE_RELEASE_VERSION));
@@ -97,7 +103,7 @@ int main(int argc, char *argv[])
     applyDockpipeLauncherTheme(app);
     connectDockpipeLauncherThemeUpdates(app);
 
-    app.setQuitOnLastWindowClosed(false);
+    app.setQuitOnLastWindowClosed(true);
 
     const bool startHome = app.arguments().contains(QStringLiteral("--start-home"));
     const bool allowSecond = allowSecondInstance(argc, argv);
@@ -109,5 +115,17 @@ int main(int argc, char *argv[])
     if (!allowSecond)
         singleGuard.setActivationTarget(&w);
     w.show();
+    if (!qEnvironmentVariableIsEmpty("FLATPAK_ID")) {
+        auto *terminalSetup = new QFutureWatcher<FlatpakTerminal::Result>(&w);
+        QObject::connect(terminalSetup, &QFutureWatcher<FlatpakTerminal::Result>::finished, &w, [&w, terminalSetup]() {
+            const auto result = terminalSetup->result();
+            if (!result.success) {
+                w.statusBar()->showMessage(result.message);
+                QTextStream(stderr) << result.message << '\n';
+            }
+            terminalSetup->deleteLater();
+        });
+        terminalSetup->setFuture(QtConcurrent::run(&FlatpakTerminal::setupForCurrentUser));
+    }
     return app.exec();
 }
