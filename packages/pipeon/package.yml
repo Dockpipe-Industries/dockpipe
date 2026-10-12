@@ -1,7 +1,7 @@
 schema: 1
 kind: package
 name: pipeon
-version: 0.6.1
+version: 0.6.2
 title: Dockpipe Pipeon
 platforms: [windows, deb]
 description: |
