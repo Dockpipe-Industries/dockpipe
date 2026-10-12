@@ -75,7 +75,7 @@ validation; about 378 MB is retained in this task's artifacts, with additional
 shared cache growth. **Zero existing bytes were freed.** Later small documentation
 and final acceptance records are outside the closing job sample.
 
-`E=/home/jamie/.codex/visualizations/2026/09/13/01a0996c-60eb-7e62-9263-8552b3556735/go-scope-fixtures/`
+`E=/home/developer/.codex/visualizations/2026/09/13/01a0996c-60eb-7e62-9263-8552b3556735/go-scope-fixtures/`
 
 `validate.py` freezes invocation and comparison logic; `source-review.json`
 records control-overlay and unchanged-function checks. `validation-receipt.json`

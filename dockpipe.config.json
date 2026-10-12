@@ -17,7 +17,7 @@
       "packages-production": {
         "resolver": "onepassword",
         "parameters": {
-          "environment_id": "rimccmsvbaehthwukfmrmskh6m"
+          "environment_id": "your-production-environment-id"
         },
         "bindings": {
           "AWS_ACCESS_KEY_ID": "AWS_ACCESS_KEY_ID",
@@ -27,7 +27,7 @@
       "packages-staging": {
         "resolver": "onepassword",
         "parameters": {
-          "environment_id": "kuuppko2xxsb2wcr7am46bs6xa"
+          "environment_id": "your-staging-environment-id"
         },
         "bindings": {
           "AWS_ACCESS_KEY_ID": "AWS_ACCESS_KEY_ID",
@@ -37,7 +37,7 @@
       "packages-staging-release-setup": {
         "resolver": "onepassword",
         "parameters": {
-          "environment_id": "kuuppko2xxsb2wcr7am46bs6xa"
+          "environment_id": "your-staging-environment-id"
         },
         "bindings": {
           "AWS_ACCESS_KEY_ID": "AWS_ACCESS_KEY_ID",
@@ -48,7 +48,7 @@
       "packages-release-setup": {
         "resolver": "onepassword",
         "parameters": {
-          "environment_id": "rimccmsvbaehthwukfmrmskh6m"
+          "environment_id": "your-production-environment-id"
         },
         "bindings": {
           "AWS_ACCESS_KEY_ID": "AWS_ACCESS_KEY_ID",

@@ -10,6 +10,14 @@ import (
 	"syscall"
 )
 
+func createPrivateDirectory(path string) error {
+	return os.Mkdir(path, 0o700)
+}
+
+func openPrivateReadFile(path string) (*os.File, error) {
+	return os.Open(path)
+}
+
 func durableFileIdentity(path string) (string, error) {
 	info, err := os.Stat(path)
 	if err != nil {

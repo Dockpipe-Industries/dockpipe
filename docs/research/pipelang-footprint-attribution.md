@@ -15,7 +15,7 @@ of ignored Tauri build output**. Fix that input boundary and inclusive budget
 enforcement first; evaluate native output as a separate, bounded second objective.
 
 Evidence directory `E`:
-`/home/jamie/.codex/visualizations/2026/09/13/01a098cd-9038-7c62-81d8-7e9140a7ceef/footprint`.
+`/home/developer/.codex/visualizations/2026/09/13/01a098cd-9038-7c62-81d8-7e9140a7ceef/footprint`.
 `inventory.py`, `elf_accounting.py` and `embed_accounting.py` retain the analysis
 methods. Existing JSON identities were read; file sizes/inodes/allocated blocks
 were inspected. ELF accounting requested 31,086,526 bytes of headers/tables across
@@ -39,7 +39,7 @@ files. Its allocated figure, including metadata, was 14,413,168,640 bytes.
 
 Sources: [early accounting](../agents/tasks/pipelang-reactive-application-language/conformance-execution-performance.md),
 `E/generation-comparison.json`, `E/inventory.json`; historical v0.113 evidence
-`/home/jamie/.codex/visualizations/2026/09/12/01a09387-ddcf-71d1-94b7-9395966a4500/verification-data/campaigns/terminal-2/suite/{artifacts,schedule-profile,summary}.json`.
+`/home/developer/.codex/visualizations/2026/09/12/01a09387-ddcf-71d1-94b7-9395966a4500/verification-data/campaigns/terminal-2/suite/{artifacts,schedule-profile,summary}.json`.
 
 Count increased 4.918 times from the early snapshot; mean file size increased
 only 0.288%. This is an arithmetic decomposition, not a matched compiler experiment.

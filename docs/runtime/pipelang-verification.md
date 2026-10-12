@@ -44,7 +44,7 @@ reconciled unchanged acceptance after the final source edits. No production
 compiler or engine behavior was changed for this objective.
 
 Evidence root:
-`/home/jamie/.codex/visualizations/2026/09/10/01a089a6-9615-79f1-bfb2-fd72e289205d`.
+`/home/developer/.codex/visualizations/2026/09/10/01a089a6-9615-79f1-bfb2-fd72e289205d`.
 The authoritative result is
 `verification-data/campaigns/terminal/accepted-verification.json`, supported by
 `terminal-job.json`, `terminal-acceptance-job.json` and atomic stage receipts.
@@ -147,7 +147,7 @@ The original architecture objective remains complete and no successor is selecte
 
 ## Measured baseline and limitations
 
-Completed receipts: `/home/jamie/.cache/pipelang-v109-resume-20260909`.
+Completed receipts: `/home/developer/.cache/pipelang-v109-resume-20260909`.
 Use `accepted-verification.json` to reconcile the two successful retries with
 `suite/summary.json`, whose original failed entries are intentionally retained.
 
