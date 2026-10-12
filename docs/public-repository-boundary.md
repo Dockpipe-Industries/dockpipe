@@ -46,6 +46,13 @@ It detects common environment IDs, account-specific endpoints, personal home pat
 and organization-specific deployment defaults. It is a focused regression gate,
 not proof that every possible secret or personal detail has been detected.
 
+Archive scanning excludes the exact upstream tool payload directories populated by
+the Flatpak dependency preparer (Go, Node, AWS CLI, Azure CLI, and Wrangler). Those
+distributions contain their own public examples and test fixtures. Their pinned
+downloads and dependency locks are verified by the packaging process. Dockpipe's
+wrappers, configuration, provenance metadata, and dependency locks are still scanned;
+the exclusion never applies to tracked repository files or arbitrary vendor folders.
+
 Review changed examples and generated package contents as well as source. Synthetic
 fixtures may model provider formats but must never reuse a real operator's values.
 Deleting a value from the current tree does not remove previous commits or immutable
