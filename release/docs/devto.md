@@ -11,7 +11,7 @@ After each **GitHub Release**, the **Release** workflow can call the [Forem API]
 
 You can enable **either**, **both**, or **neither** (job runs only if at least one action is configured — see below).
 
-Body for both is the same: link to the **GitHub release**, then **`release/releasenotes/X.Y.Z.md`**.
+Both actions publish the reviewed **`release/articles/X.Y.Z.md`** matching the `VERSION` baseline. Its first heading supplies the title. Release notes remain the separate GitHub release body. Images live in `release/articles/assets/`; publication pins their public URLs to the source commit and verifies that they are reachable. The company brand image supplies the article cover.
 
 ---
 
@@ -33,8 +33,6 @@ Body for both is the same: link to the **GitHub release**, then **`release/relea
 | **`DEVTO_ARTICLE_ID`** | Numeric id of the **main** post to **PUT** each release. Omit if you only use one-time posts. |
 | **`DEVTO_ONE_TIME_POST`** | Set to **`true`** to **POST** a **new** article every release (no id). Omit if you only update the main post. |
 | **`DEVTO_TAGS`** | Optional. Comma-separated tags (lowercase). Default: `dockpipe,cli,golang`. |
-| **`DEVTO_TITLE`** | Optional. Title for **PUT** (main). Default: `dockpipe vX.Y.Z released`. |
-| **`DEVTO_ONE_TIME_TITLE`** | Optional. Title for **POST** (one-time). Default: same pattern as **`DEVTO_TITLE`**. |
 
 **Job runs when:** `DEVTO_PUBLISH=true` **and** **`DEVTO_ARTICLE_ID` is non-empty** **or** **`DEVTO_ONE_TIME_POST=true`**.
 
@@ -53,8 +51,9 @@ If **`DEVTO_PUBLISH=true`** but neither action is set, the job is **skipped** (c
 
 ## What gets published
 
-- **Title:** `DEVTO_TITLE` / `DEVTO_ONE_TIME_TITLE` or default from release tag.
-- **Body:** markdown with a linked release tag, plus the **GitHub release** link and **`release/releasenotes/X.Y.Z.md`**.
+- **Title:** first heading of the reviewed article. Legacy title variables are ignored.
+- **Body:** the reviewed article, with image URLs pinned to the source commit and its production-release link pinned to the generated tag. Missing article or image files fail publication instead of falling back to release notes.
+- **Cover:** `release/articles/assets/brand.png`, pinned to the same source commit.
 - **`canonical_url`:** GitHub release URL.
 - **`published`:** `true`.
 
