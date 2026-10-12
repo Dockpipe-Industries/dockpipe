@@ -1,5 +1,7 @@
+mod clipboard_access;
+
 use std::env;
-use tauri::{LogicalSize, WebviewUrl, WebviewWindowBuilder};
+use tauri::{LogicalSize, Manager, WebviewUrl, WebviewWindowBuilder};
 
 #[tauri::command]
 fn read_clipboard_text() -> Result<String, String> {
@@ -416,6 +418,10 @@ fn main() {
 
             let parsed = url::Url::parse(&url)
                 .map_err(|e| -> Box<dyn std::error::Error> { Box::new(e) })?;
+
+            if let Some(capability) = clipboard_access::clipboard_capability(&parsed) {
+                app.add_capability(capability)?;
+            }
 
             let window = WebviewWindowBuilder::new(app, "main", WebviewUrl::External(parsed))
                 .title(&title)
