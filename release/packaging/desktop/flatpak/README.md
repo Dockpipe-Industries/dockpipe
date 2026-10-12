@@ -38,6 +38,31 @@ by a different provider. The app requests the Flatpak host execution permission,
 home/project access, display/graphics, network and engine socket access. This is a
 development tool with approved host integrations, not an isolated viewer.
 
+The bundle also permits talking to `org.kde.StatusNotifierWatcher` for the Qt tray
+icon. It does not request unrestricted session-bus access. The launcher checks tray
+availability before registration and before hiding on close; if the tray disappears
+while the launcher is hidden, the window is restored. Without a tray, closing exits.
+
+On normal launcher startup, terminal integration runs automatically in a background
+task. It reads only the needed host environment fields through `flatpak-spawn`,
+preserves an existing host `dockpipe` command, and otherwise creates
+`~/.local/bin/dockpipe`. No Settings switch or extra setup action is required.
+If the host PATH omits that directory, setup adds an idempotent labelled block to
+Bash/Zsh startup configuration or a Fish `conf.d` file. Existing content is retained;
+symlinks, conflicting files, and modified Dockpipe blocks are not replaced. Setup
+errors stay visible in the launcher without preventing it from opening.
+
+The wrapper uses Flatpak's normal app selection, forwards arguments and exit status,
+and retains the caller's working directory. Version/installation smoke probes and
+native launcher runs do not perform terminal setup. Remove the wrapper and the
+labelled PATH configuration when uninstalling the app.
+
+The launcher filters only the older Qt text-input-v3 warning for a null surface
+on leave, matching [Qt's treatment of destroyed surfaces as normal teardown](https://github.com/qt/qtbase/blob/dev/src/plugins/platforms/wayland/qwaylandtextinputv3.cpp).
+No Wayland input behavior is disabled or replaced. Set `DOCKPIPE_QT_DIAGNOSTICS=1`
+inside the Flatpak to retain the original diagnostic. Other messages, non-null
+surface mismatches, and critical errors continue through the existing Qt handler.
+
 Remote user services invoke `flatpak run --command=dockpipe APP_ID`; they never
 attempt to execute a sandbox-only `/app` path on the host. The service file remains
 in the app's XDG config directory and is explicitly linked into the host user
@@ -64,7 +89,7 @@ bash release/packaging/desktop/flatpak/build.sh VERSION /absolute/path/dockpipe 
   /absolute/path/core-store /absolute/path/new-output
 ```
 
-The builder compiles the launcher in the SDK, runs six Qt tests, and checks the
+The builder compiles the launcher in the SDK, runs the Qt regression tests, and checks the
 launcher, CLI, core-only inventory, workflow execution and package target selection
 in the smaller Platform. Outputs include an unsigned staging `.flatpak` bundle, OSTree
 repository, app build directory and SDK/runtime commit receipts.
