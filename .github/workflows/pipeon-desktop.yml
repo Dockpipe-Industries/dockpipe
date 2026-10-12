@@ -57,3 +57,8 @@ jobs:
         env:
           CARGO_TARGET_DIR: ${{ runner.temp }}/pipeon-desktop-target
         run: cargo +1.95.0 test --locked --manifest-path packages/pipeon/apps/pipeon-desktop/src-tauri/Cargo.toml --test clipboard_access
+      - name: Test optimized GLib security backport
+        if: runner.os == 'Linux'
+        env:
+          CARGO_TARGET_DIR: ${{ runner.temp }}/pipeon-desktop-target
+        run: cargo +1.95.0 test --locked --manifest-path packages/pipeon/apps/pipeon-desktop/src-tauri/Cargo.toml --test glib_variant

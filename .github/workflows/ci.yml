@@ -44,6 +44,12 @@ jobs:
         with:
           go-version: "1.26.9"
 
+      - name: Verify MCP module without workspace resolution
+        working-directory: packages/dorkpipe-mcp
+        env:
+          GOWORK: "off"
+        run: go test -mod=readonly ./...
+
       - name: Public repository configuration boundary
         run: python3 release/packaging/check-public-content.py
 
