@@ -20,11 +20,11 @@ resource "cloudflare_ruleset" "package_cdn_cache" {
         cache = var.cache_eligible
         edge_ttl = {
           mode    = var.cache_edge_ttl_mode
-          default = var.cache_edge_ttl_seconds
+          default = var.cache_edge_ttl_mode == "override_origin" ? var.cache_edge_ttl_seconds : null
         }
         browser_ttl = {
           mode    = var.cache_browser_ttl_mode
-          default = var.cache_browser_ttl_seconds
+          default = var.cache_browser_ttl_mode == "override_origin" ? var.cache_browser_ttl_seconds : null
         }
         respect_strong_etags = var.cache_respect_strong_etags
       }

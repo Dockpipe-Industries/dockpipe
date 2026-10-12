@@ -35,11 +35,11 @@ jobs:
     env:
       DOCKPIPE_FLATPAK_VERSION: ${{ inputs.version }}
     steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-go@v6
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
         with:
           go-version: '1.26.9'
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: '24.21.0'
       - name: Install Flatpak SDK and runtime

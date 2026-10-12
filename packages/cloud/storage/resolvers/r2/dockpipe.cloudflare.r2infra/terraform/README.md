@@ -23,8 +23,20 @@ Requires **Cloudflare Terraform provider `~> 5.0`** (see `versions.tf` and `.ter
 | `cloudflare_managed_ruleset_id` | (see `variables.tf`) | **Execute** target ID for Cloudflare Managed Ruleset; override if Cloudflare changes catalog IDs. |
 | `enable_cache_rules` | `false` | Deploy cache rules for package artifacts on that hostname. |
 | `cache_rule_expression` | `""` | Override the default Rules expression (host + path suffixes). |
-| `cache_edge_ttl_seconds` | `86400` | Edge cache TTL (override origin). |
-| `cache_browser_ttl_seconds` | `3600` | Browser cache TTL. |
+| `cache_edge_ttl_seconds` | `86400` | Edge TTL only when explicitly overriding origin. |
+| `cache_browser_ttl_seconds` | `3600` | Browser TTL only when explicitly overriding origin. |
+
+### Mutable release metadata
+
+The default edge and browser TTL modes are `respect_origin`. The publisher marks
+mutable catalogs and APT indexes `no-cache`, while versioned artifacts use long
+immutable caching. Overriding origin TTLs for `.json` also caches `latest.json`
+and can hide newly published releases until the override expires.
+
+For existing deployments, update both TTL modes to `respect_origin`, apply a
+reviewed plan, then purge the previously cached mutable URLs. A module upgrade
+alone does not change deployed rules. If you deliberately use `override_origin`,
+restrict the rule to immutable objects; do not include mutable release pointers.
 
 ### Customization (forks / white-label)
 
