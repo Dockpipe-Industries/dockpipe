@@ -359,7 +359,7 @@ func ensurePrivateImportSubdirectory(root, destination string) error {
 	for _, component := range strings.Split(rel, string(filepath.Separator)) {
 		current = filepath.Join(current, component)
 		if _, err := os.Lstat(current); os.IsNotExist(err) {
-			if err := os.Mkdir(current, 0o700); err != nil && !os.IsExist(err) {
+			if err := createPrivateDirectory(current); err != nil && !os.IsExist(err) {
 				return err
 			}
 			if err := makePrivatePath(current, true); err != nil {

@@ -143,7 +143,7 @@ func readPrivateFile(root, path string) ([]byte, error) {
 	if err := makePrivatePath(path, false); err != nil {
 		return nil, err
 	}
-	file, err := os.Open(path)
+	file, err := openPrivateReadFile(path)
 	if err != nil {
 		return nil, err
 	}
@@ -330,7 +330,7 @@ func ensurePrivateRootWithPolicy(path string, repairExisting bool) error {
 		info, statErr := os.Lstat(current)
 		created := false
 		if os.IsNotExist(statErr) {
-			mkdirErr := os.Mkdir(current, 0o700)
+			mkdirErr := createPrivateDirectory(current)
 			if mkdirErr != nil && !os.IsExist(mkdirErr) {
 				return mkdirErr
 			}
@@ -381,7 +381,7 @@ func ensurePrivateSubdirectory(root, path string) error {
 		current = filepath.Join(current, part)
 		info, statErr := os.Lstat(current)
 		if os.IsNotExist(statErr) {
-			if mkdirErr := os.Mkdir(current, 0o700); mkdirErr != nil && !os.IsExist(mkdirErr) {
+			if mkdirErr := createPrivateDirectory(current); mkdirErr != nil && !os.IsExist(mkdirErr) {
 				return mkdirErr
 			}
 			info, statErr = os.Lstat(current)
