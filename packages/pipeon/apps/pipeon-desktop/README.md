@@ -75,3 +75,11 @@ PIPEON_WINDOW_TITLE=Pipeon \
 ```
 
 The Pipeon dev stack uses this automatically when present.
+
+## Native clipboard access
+
+The desktop shell grants its native clipboard bridge only to the configured
+loopback editor's exact origin (scheme, host and port), in the main webview.
+A different local port, a redirected remote site, or a secondary webview cannot
+use that grant. A non-loopback `PIPEON_URL` can still open, but receives no native
+clipboard permission. Ordinary browser clipboard behavior remains separate.
