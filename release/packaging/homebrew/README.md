@@ -20,6 +20,43 @@ formula and cask. macOS Intel and Apple Silicon runners each install the formula
 before publication. The publisher rechecks the latest pointer and uses the existing
 blob SHAs to reject concurrent overwrites. Both versions are checked before writing; the CLI is published first, and each update is idempotent if the pair is interrupted. The desktop cask requires a completed candidate containing both macOS desktop ZIPs. Publish that candidate before deploying these sync changes; older CLI-only candidates cannot seed the desktop cask.
 
+### Immediate notification after staging publication
+
+The source repository's `.github/workflows/homebrew-staging.yml` listens for
+completed staging `CI` runs. It verifies that the exact run attempt was a successful
+same-repository staging push and that its staging publication job succeeded, then
+dispatches the tap's existing `update-staging.yml`. It runs after CI completion:
+dispatching from inside the release job would race the tap's completed-run check.
+The tap still independently checks the latest candidate and qualifies both native
+Mac installations. The scheduled and manual tap triggers remain recovery paths.
+
+Install a dedicated GitHub App on **only the target tap repository**, granting
+repository **Actions: read and write** (and GitHub's required Metadata: read).
+Disable webhooks; no webhook endpoint or user authorization callback is needed.
+Configure these Actions settings on the **source** repository:
+
+| Setting | Kind | Value |
+| --- | --- | --- |
+| `HOMEBREW_APP_CLIENT_ID` | Variable | The dedicated app's client ID |
+| `HOMEBREW_APP_PRIVATE_KEY` | Secret | The app's generated PEM private key |
+| `HOMEBREW_TAP_OWNER` | Variable | Owner of your tap repository |
+| `HOMEBREW_TAP_REPOSITORY` | Variable | Tap repository name without its owner |
+| `HOMEBREW_TAP_REF` | Variable | Tap branch containing `update-staging.yml` |
+| `HOMEBREW_SYNC_ENABLED` | Variable | `true`, after configuring the above |
+
+No account IDs, private keys, or deployment destinations belong in source. Forks
+are disabled until their operator explicitly configures these settings. The app
+token is short-lived, restricted to the named tap and Actions permission, and
+revoked after the notification job. The tap uses its own token for publication.
+
+The notification workflow must be merged into the source repository's **default
+branch** before GitHub delivers `workflow_run` events. It checks out only that
+trusted default branch, never code or artifacts from the triggering run. For
+recovery or activation testing, manually dispatch the notification workflow with
+the numeric `run_id` of a completed staging CI run; the same checks still apply.
+Notification success means the tap was requested, not that its native tests or
+publication have finished. Inspect the resulting tap run before claiming an update.
+
 Review a formula locally without any remote write:
 
 ```sh

@@ -6,8 +6,8 @@ You do not need to clone or build Dockpipe to use them.
 
 ## Use the Marketplace
 
-1. Open **Settings → Package Remotes** and choose your channel. For staging builds,
-   select **Use staging**, then save.
+1. Open **Settings → Package Remotes** and select **Use production**,
+   then save. Keep the catalog on the same release channel as your application.
 2. Open **Packages → Marketplace** and choose a workflow or resolver.
 3. Review its description, platform and dependencies before installing it.
 4. Install any required packages separately, then follow the workflow's usage instructions.
@@ -26,14 +26,14 @@ platform setup.
 List packages available for the running CLI's platform:
 
 ```sh
-dockpipe package catalog --remote https://packages.staging.dockpipe.com/packages/latest.json
+dockpipe package catalog --remote https://packages.dockpipe.com/packages/latest.json
 ```
 
 The result is JSON. Choose the exact `name` and `kind` from that catalog, then
 substitute them below (`workflow` and `resolver` are the optional package kinds):
 
 ```sh
-dockpipe package install --remote https://packages.staging.dockpipe.com/packages/latest.json --kind workflow --name WORKFLOW_NAME
+dockpipe package install --remote https://packages.dockpipe.com/packages/latest.json --kind workflow --name WORKFLOW_NAME
 dockpipe package list --format json
 ```
 

@@ -46,7 +46,7 @@ The public package host serves the `.flatpak`; the matching GitHub release asset
 did not include it. Resolve download links from the published catalog rather than
 assuming GitHub attachments. There is no Dockpipe Flathub listing or automatic-update
 remote. Bazzite, Podman/SELinux, ARM64 Flatpak and authenticated provider/VM behavior
-remain separate qualification work. See [user installation and manual updates](../../docs/install.md#flatpak-desktop-staging-linux-amd64).
+remain separate qualification work. See [user installation and manual updates](../../docs/install.md#flatpak-desktop-linux-amd64).
 
 ## Production credentials and public origin
 
