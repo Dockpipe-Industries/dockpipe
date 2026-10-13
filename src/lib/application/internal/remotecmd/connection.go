@@ -83,6 +83,9 @@ func operatorClient(root string) (*remoteio.Client, error) {
 	}
 	var config OperatorConfig
 	if err := remoteio.ReadPrivate(filepath.Join(root, "operator.json"), &config); err != nil {
+		if os.IsNotExist(err) {
+			return nil, errors.New("broker management is not configured on this computer; worker pairing only permits receiving workflows. Manage jobs from the computer that approved pairing, or sign in to your hosted broker here")
+		}
 		return nil, err
 	}
 	if err := validateListen(config.Listen); err != nil {

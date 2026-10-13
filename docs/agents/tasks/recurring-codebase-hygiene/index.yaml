@@ -9,6 +9,8 @@ dispatch:
   ownership: unclaimed
 
 routes:
+  reliability:
+    read: [reliability-audit.md]
   orientation:
     read: [overview.md]
   agent_documentation:
@@ -41,6 +43,7 @@ routes:
     read: [topology.md]
 
 documents:
+  - {path: reliability-audit.md, role: bounded execution and resource review with prioritized open repairs}
   - {path: agent-docs-audit.md, role: portable agent guidance, stale status cleanup and backlog audit}
   - {path: public-docs-audit.md, role: selected public-site documentation audience audit and local verification}
   - {path: staging-release.md, role: staging publication and desktop packaging qualification boundaries}

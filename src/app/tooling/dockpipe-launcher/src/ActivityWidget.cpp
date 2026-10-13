@@ -74,8 +74,12 @@ ActivityWidget::ActivityWidget(SessionManager &sessions, ContextStore &store, QW
     remoteLayout->addWidget(m_jobs);
     auto *remoteButtons = new QHBoxLayout;
     auto *refresh = new QPushButton(tr("Refresh jobs"));
-    auto *cancel = new QPushButton(tr("Cancel selected job"));
-    auto *download = new QPushButton(tr("Download result & logs"));
+    m_cancelJob = new QPushButton(tr("Cancel selected job"));
+    m_downloadResult = new QPushButton(tr("Download result & logs"));
+    auto *cancel = m_cancelJob;
+    auto *download = m_downloadResult;
+    cancel->setEnabled(false);
+    download->setEnabled(false);
     remoteButtons->addWidget(refresh);
     remoteButtons->addWidget(cancel);
     remoteButtons->addWidget(download);
@@ -97,10 +101,10 @@ ActivityWidget::ActivityWidget(SessionManager &sessions, ContextStore &store, QW
     connect(&m_command, &RemoteCommand::output, this, [this](const QString &text) {
         m_output->appendPlainText(text.trimmed());
     });
-    connect(&m_command, &RemoteCommand::busyChanged, this, [refresh, cancel, download](bool busy) {
+    connect(&m_command, &RemoteCommand::busyChanged, this, [this, refresh, cancel, download](bool busy) {
         refresh->setEnabled(!busy);
-        cancel->setEnabled(!busy);
-        download->setEnabled(!busy);
+        cancel->setEnabled(!busy && m_remoteLoaded);
+        download->setEnabled(!busy && m_remoteLoaded);
     });
     connect(refresh, &QPushButton::clicked, this, &ActivityWidget::refreshRemote);
     connect(cancel, &QPushButton::clicked, this, [this]() {
@@ -177,8 +181,36 @@ void ActivityWidget::run(const QStringList &args, RemoteCommand::Completion comp
 
 void ActivityWidget::refreshRemote()
 {
+    if (m_command.busy())
+        return;
+    m_remoteLoaded = false;
+    run({"info"}, [this](bool ok, const QByteArray &data) {
+        if (!ok)
+            return;
+        QJsonParseError error;
+        const auto document = QJsonDocument::fromJson(data, &error);
+        if (error.error != QJsonParseError::NoError || !document.isObject()) {
+            m_status->setText(tr("Could not read remote connection information. Refresh to try again."));
+            return;
+        }
+        const auto info = document.object();
+        if (info.value("broker").toObject().isEmpty()) {
+            m_jobs->setRowCount(0);
+            m_status->setText(info.value("worker").toObject().isEmpty()
+                ? tr("No broker is managed from this computer. Set up remote access in Machines to manage jobs.")
+                : tr("This computer is paired to receive workflows. Manage remote jobs from the computer that approved pairing. If worker setup was interrupted, use Start worker service in Machines to finish it."));
+            return;
+        }
+        loadRemoteJobs();
+    });
+}
+
+void ActivityWidget::loadRemoteJobs()
+{
     run({"jobs"}, [this](bool ok, const QByteArray &data) {
         m_remoteLoaded = ok;
+        m_cancelJob->setEnabled(ok);
+        m_downloadResult->setEnabled(ok);
         if (!ok)
             return;
         const QString selected = selectedJob();

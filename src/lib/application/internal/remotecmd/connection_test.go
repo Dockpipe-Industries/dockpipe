@@ -184,3 +184,26 @@ func TestHostedSetupPreservesLocalBroker(t *testing.T) {
 		t.Fatalf("existing local connection changed: %v", err)
 	}
 }
+
+func TestWorkerPairingDoesNotGrantOperatorAccess(t *testing.T) {
+	root := privateConnectionDirectory(t)
+	worker := contract.WorkerConfig{
+		Schema: contract.Version, Endpoint: "https://broker.example.com",
+		Node: "mac", Token: "worker-secret-never-public",
+	}
+	writeConnectionFixture(t, root, "worker.json", worker)
+	client, err := operatorClient(root)
+	if client != nil || err == nil || !strings.Contains(err.Error(), "worker pairing only permits receiving workflows") {
+		t.Fatalf("expected operator setup guidance, got %v, %v", client, err)
+	}
+	if strings.Contains(err.Error(), worker.Token) || strings.Contains(err.Error(), root) {
+		t.Fatal("operator guidance exposed private state")
+	}
+	info, err := describeRemote(root)
+	if err != nil || info.Broker != nil || info.Worker == nil || info.Worker.Node != worker.Node {
+		t.Fatalf("paired worker was not preserved: %+v, %v", info, err)
+	}
+	if _, err := os.Lstat(filepath.Join(root, "operator.json")); !os.IsNotExist(err) {
+		t.Fatal("worker credentials were promoted to operator credentials")
+	}
+}

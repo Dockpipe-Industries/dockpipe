@@ -140,9 +140,18 @@ close the window and deny all pending requests. Cancelling the worker's wait
 preserves its private identity for retry; it does not revoke a request already
 approved by the broker. `remote nodes` reports enrollment, not live presence.
 
-After approval, start `dockpipe remote service --role worker` on the worker, or
-`dockpipe remote worker` for foreground execution. The launcher exposes these
-operations under Machines and remote job progress under Activity.
+The launcher's **Connect this computer** flow starts the worker user service
+automatically after approval and reports service startup separately from pairing.
+If startup fails, pairing is preserved; use **Start worker service** to retry.
+Existing paired computers can use that button without pairing again.
+For CLI pairing, start `dockpipe remote service --role worker` on the worker, or
+`dockpipe remote worker` for foreground execution. View remote job progress in Activity on the computer
+that manages the broker. Pairing authorizes a worker to receive workflows; it does
+not give that worker permission to list, submit, cancel or download broker jobs.
+A receive-only worker normally has no `operator.json`. Its Activity view explains
+this role instead of requesting broker-wide jobs. Enrollment or successful service
+installation does not prove that a workflow has executed; submit a job from the
+managing computer and inspect its result to verify delivery.
 
 ### File invitation compatibility
 
