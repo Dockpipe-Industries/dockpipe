@@ -34,6 +34,7 @@ private:
     void updateActions();
     void refreshPairings();
     void refreshNodes();
+    void startWorkerService();
     void updateSetup();
     void run(const QStringList &arguments, RemoteCommand::Completion completion = {}, int timeoutMs = 30000);
     void decidePairing(bool approve);
