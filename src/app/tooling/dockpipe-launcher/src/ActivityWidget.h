@@ -7,6 +7,7 @@
 
 class QLabel;
 class QPlainTextEdit;
+class QPushButton;
 class QTableWidget;
 
 class ActivityWidget : public QWidget {
@@ -18,6 +19,7 @@ public:
     void refreshRemote();
 private:
     void run(const QStringList &args, RemoteCommand::Completion completion);
+    void loadRemoteJobs();
     QString selectedJob() const;
     SessionManager &m_sessions;
     ContextStore &m_store;
@@ -27,5 +29,7 @@ private:
     QTableWidget *m_jobs;
     QPlainTextEdit *m_output;
     QLabel *m_status;
+    QPushButton *m_cancelJob;
+    QPushButton *m_downloadResult;
     bool m_remoteLoaded = false;
 };

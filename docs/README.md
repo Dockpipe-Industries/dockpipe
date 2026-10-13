@@ -44,6 +44,7 @@ Dockpipe itself, publishing packages, or debugging compiled/runtime behavior.
 | Topic | Doc |
 |-------|-----|
 | Engine invariants and source layout | [concepts/architecture-contract.md](concepts/architecture-contract.md) |
+| Coding style, resource bounds and failure handling | [coding-style.md](coding-style.md) |
 | AI workflow design and contributor examples | [workflows/agentic-design-notes.md](workflows/agentic-design-notes.md) |
 | Self-hosted package publication | [packages/package-publishing.md](packages/package-publishing.md) |
 | PipeLang foundation and proposals | [concepts/pipelang-foundation.md](concepts/pipelang-foundation.md), [contracts](concepts/pipelang-foundation-contracts.md), [delivery](concepts/pipelang-foundation-delivery.md) |

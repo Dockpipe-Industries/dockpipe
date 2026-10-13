@@ -16,6 +16,7 @@ it, or the host lacks that UI.
 
 | Rule | Where to read |
 | --- | --- |
+| Apply readable code, contract-based resource bounds, cancellation and failure-path verification to new or materially changed code. | `docs/coding-style.md` |
 | Keep `src/lib/` and `src/cmd/` generic. No repo-specific package/workflow/staging knowledge in engine code. | `docs/agents/core/engine-boundary.md` |
 | Preserve the architecture model: workflow/template = what, runtime = where, resolver = tool/profile, strategy = lifecycle wrapper. | `docs/agents/core/architecture.md` |
 | Use package/store helpers for project/global paths. Do not hand-write bare `.dockpipe/internal` paths. | `docs/agents/core/core-package-model.md` |

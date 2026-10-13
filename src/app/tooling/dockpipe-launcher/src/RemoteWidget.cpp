@@ -298,6 +298,7 @@ QWidget *RemoteWidget::buildConnection()
     m_allow = new QCheckBox(tr("Allow workflows from the managing computer to run as my user"));
     layout->addWidget(m_allow);
     layout->addWidget(textLabel(tr("Only connect to a computer you trust. Supplied workflows can access this user's files and tools; pairing does not sandbox them."), "hintText"));
+    layout->addWidget(textLabel(tr("After approval, Dockpipe starts a background worker service for your user so this computer can receive workflows."), "hintText"));
     auto *actions = new QHBoxLayout;
     m_request = actionButton(tr("Request pairing"), actions, "primaryButton");
     m_actions.append(m_request);
@@ -313,7 +314,7 @@ QWidget *RemoteWidget::buildConnection()
             [this](bool ok, const QByteArray &) {
                 m_pairingCode->hide();
                 if (ok)
-                    m_status->setText(tr("Paired successfully. Start the worker below to receive workflows."));
+                    startWorkerService();
             }, 16 * 60 * 1000);
         m_status->setText(tr("Waiting for approval. Compare the code below on the managing computer."));
     });
@@ -323,19 +324,24 @@ QWidget *RemoteWidget::buildConnection()
     m_pairingCode->hide();
     layout->addWidget(m_pairingCode);
     layout->addWidget(textLabel(tr("After pairing"), "sectionTitle"));
-    layout->addWidget(textLabel(tr("Start the background worker to receive workflows. Already paired? You can start it directly. Keep this computer awake while work runs.")));
+    layout->addWidget(textLabel(tr("The worker starts automatically after pairing. Already paired, or setup interrupted? Start it here without pairing again. Keep this computer awake while work runs.")));
     auto *serviceActions = new QHBoxLayout;
     auto *start = actionButton(tr("Start worker service"), serviceActions);
     m_actions.append(start);
     serviceActions->addStretch();
-    connect(start, &QPushButton::clicked, this, [this]() {
-        run({"service", "--role", "worker"}, [this](bool ok, const QByteArray &) {
-            if (ok)
-                m_status->setText(tr("Worker service started. Choose this computer under Run on from your managing computer."));
-        });
-    });
+    connect(start, &QPushButton::clicked, this, &RemoteWidget::startWorkerService);
     layout->addLayout(serviceActions);
     return page;
+}
+
+void RemoteWidget::startWorkerService()
+{
+    run({"service", "--role", "worker"}, [this](bool ok, const QByteArray &) {
+        m_status->setText(ok
+            ? tr("Worker service started. Choose this computer under Run on from your managing computer.")
+            : tr("Could not start the worker service. Your pairing is preserved. See details, then choose Start worker service to retry."));
+    });
+    m_status->setText(tr("Starting the background worker service…"));
 }
 
 QWidget *RemoteWidget::buildSetup()
